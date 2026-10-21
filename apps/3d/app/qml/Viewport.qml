@@ -81,8 +81,9 @@ Rectangle {
                 onScrubbed: (v) => viewport.setExposure(v)
                 onEdited: (v) => viewport.setExposure(v)
             }
-            Label { text: "Studio light" }
+            Label { text: "Studio light"; visible: viewport.studioInUse }
             Slider {
+                visible: viewport.studioInUse   // the scene's own dome lights the view: the studio isn't used
                 width: 96; anchors.verticalCenter: parent.verticalCenter
                 from: 0; to: 2; step: 0.05; value: viewport.studio
                 onScrubbed: (v) => viewport.setStudio(v)

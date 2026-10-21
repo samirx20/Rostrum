@@ -12,9 +12,11 @@ from pathlib import Path
 
 from PIL import Image
 
+from .. import blends
 from ..engine import EngineError, find_exe
 
-BLENDS = {"normal": "normal", "multiply": "multiply", "screen": "screen", "overlay": "overlay", "softlight": "soft-light"}
+# usvg's blend names (its own, lowercased: "softlight", "colordodge" …) → ours (the one list, blends.txt).
+BLENDS = {n.replace("-", ""): n for n in blends.BLENDS if n != "add"}
 
 
 def svg_tree(path, text: str = "text") -> dict:

@@ -11,6 +11,7 @@ from pathlib import Path
 from rostrum2d import fields as F
 from rostrum_core.keys import easing
 from rostrum2d.evaluate import resolve
+from rostrum2d.layout_fields import py_only
 from rostrum2d.scene import FORMAT, VERSION
 
 HERE = Path(__file__).with_name("reference.json")
@@ -18,7 +19,7 @@ SCENE_TYPES = [t for t in F.FIELDS if t not in ("key", "frame")]     # "frame" i
 
 
 def item(id, type, anim=None, **props):
-    node = {"id": id, "type": type, "props": {**F.defaults(type), **props}}
+    node = {"id": id, "type": type, "props": {k: v for k, v in {**F.defaults(type), **props}.items() if k not in py_only(type)}}
     if anim:
         node["anim"] = anim
     return node
@@ -69,7 +70,8 @@ def frame_at(node, t):
     """The scene at time t through evaluate.resolve: every value evaluated, layers outside start..end dropped."""
     item = {"id": node["id"], "type": node["type"], **node["props"],
             "keys": [{"prop": p, **k} for p, ks in node.get("anim", {}).items() for k in ks]}
-    out = {"id": node["id"], "type": node["type"], "props": resolve(item, t)}
+    props = {k: v for k, v in resolve(item, t).items() if k not in py_only(node["type"])}
+    out = {"id": node["id"], "type": node["type"], "props": props}
     for part in ("effects", "masks", "layers"):
         if part in node:
             out[part] = [k for k in (frame_at(c, t) for c in node[part]) if k is not None]
@@ -79,8 +81,9 @@ def frame_at(node, t):
 
 old = json.loads(HERE.read_text(encoding="utf-8"))
 out = {
-    "fields": {t: [kinds(p) for p in F.FIELDS[t]] for t in SCENE_TYPES},
-    "animatable": {t: F.animatable(t) for t in SCENE_TYPES},
+    # The layout's own fields stay on the Python side (scene.py): the engine never sees them.
+    "fields": {t: [kinds(p) for p in F.FIELDS[t] if p.name not in py_only(t)] for t in SCENE_TYPES},
+    "animatable": {t: [f for f in F.animatable(t) if f not in py_only(t)] for t in SCENE_TYPES},
     "eases": eases,
     "scene": scene,
     "frames": [{"format": FORMAT, "version": VERSION, "t": t, "comp": frame_at(comp, t)} for t in times],

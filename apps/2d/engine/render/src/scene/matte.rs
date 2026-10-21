@@ -63,7 +63,7 @@ pub fn of<'p, 'a>(l: &Item, parent: &'p Item<'a>) -> Option<Option<&'p Item<'a>>
 /// The matted layer's placed markup seen through the matte's placed markup ("" outside its times). The box holds
 /// the layer apart from what is under it, so it carries the layer's blend.
 pub fn wrap(l: &Item, matte: &str, layer: String) -> String {
-    let blend = match l.str("blend") { "normal" => String::new(), "add" => "mix-blend-mode:plus-lighter;".into(), b => format!("mix-blend-mode:{b};") };
+    let blend = super::blends::style(l.str("blend"));
     let full = "position:absolute;left:0;top:0;width:100%;height:100%;";
     format!(
         "<div data-matte=\"{}\" data-track-matte=\"{}\" style=\"{full}{blend}\"><div style=\"{full}\">{matte}</div><div style=\"{full}\">{layer}</div></div>",

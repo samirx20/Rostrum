@@ -16,18 +16,31 @@ use Kind::*;
 
 pub type Field = (&'static str, Kind);
 
-pub const BLENDS: &[&str] = &["normal", "screen", "add", "multiply", "overlay", "soft-light"];
 const SHAPES: &[&str] = &["rect", "ellipse"];
 
 const TRANSFORM: &[Field] = &[
     ("x", Number), ("y", Number), ("scale", Number), ("rotation", Number), ("opacity", Number),
     ("anchorX", Number), ("anchorY", Number), ("scaleX", Number), ("scaleY", Number),
-    ("tiltX", Number), ("tiltY", Number), ("start", Number), ("end", Number), ("blend", Choice(BLENDS)),
+    ("tiltX", Number), ("tiltY", Number), ("start", Number), ("end", Number),
+];
+/// After the blend (its options are the one list, super::blends) and before the layout's own fields.
+const TRANSFORM_AFTER_BLEND: &[Field] = &[
     // The camera (crate::camera; CAMERA.md): how far behind the camera's plane a top-level layer sits, or locked to the screen.
     ("depth", Number), ("screenLock", Toggle),
     // A track matte (super::matte): a sibling layer's id ("" = none) and how its drawing is read.
     ("matte", Text), ("matteMode", Choice(super::matte::MODES)),
+    // Colour effects (super::grade): adjust, levels, curves (points as text, "x,y x,y …"), a .cube LUT ("" = none).
+    ("adjust", Toggle), ("exposure", Number), ("contrast", Number), ("saturation", Number), ("temperature", Number),
+    ("tint", Number), ("hue", Number),
+    ("levels", Toggle), ("inBlack", Number), ("inWhite", Number), ("gamma", Number), ("outBlack", Number), ("outWhite", Number),
+    ("curves", Toggle), ("curve", Text), ("curveR", Text), ("curveG", Text), ("curveB", Text),
+    ("lut", Text), ("lutMix", Number),
 ];
+
+/// Every layer's transform, look and colour fields, in the table's order.
+fn transform() -> impl Iterator<Item = Field> {
+    TRANSFORM.iter().copied().chain([("blend", Choice(super::blends::names()))]).chain(TRANSFORM_AFTER_BLEND.iter().copied())
+}
 
 const COMP: &[Field] = &[("width", Number), ("height", Number), ("fps", Number), ("duration", Number), ("background", Color)];
 const SHAPE: &[Field] = &[
@@ -86,7 +99,7 @@ pub enum Role {
 
 /// An item type's role and fields (a layer's are its own, then the transform's); None for an unknown type.
 pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
-    let layer = |own: &[Field]| Some((Role::Layer, own.iter().chain(TRANSFORM).copied().collect()));
+    let layer = |own: &[Field]| Some((Role::Layer, own.iter().copied().chain(transform()).collect()));
     match kind {
         "comp" => Some((Role::Comp, COMP.iter().chain(crate::motion::COMP).copied().collect())),
         "camera" => Some((Role::Layer, crate::camera::FIELDS.to_vec())),

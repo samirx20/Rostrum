@@ -108,11 +108,7 @@ pub fn run(spec: &str, lut_dir: &str) -> Result<Value, String> {
     let mut images = vec![];
     for (i, t) in g.lut_images().iter().enumerate() {
         let path = std::path::Path::new(lut_dir).join(format!("lut{i}.rhalf"));
-        let mut bytes = blitz_dom::net::RHALF_MAGIC.to_vec();
-        bytes.extend_from_slice(&(t.width as u32).to_le_bytes());
-        bytes.extend_from_slice(&(t.height as u32).to_le_bytes());
-        bytes.extend(t.rgba.iter().flat_map(|v| half::f16::from_f32(*v).to_le_bytes()));
-        std::fs::write(&path, bytes).map_err(|e| format!("{}: {e}", path.display()))?;
+        write_rhalf(&path, t)?;
         images.push(json!([format!("lut{i}"), path.to_string_lossy()]));
     }
     let stages = g.matte_stages()?;
@@ -122,6 +118,15 @@ pub fn run(spec: &str, lut_dir: &str) -> Result<Value, String> {
         out["mattes"] = Value::Array(stages.iter().map(stage_json).collect());
     }
     Ok(out)
+}
+
+/// A grade's child image (a LUT table) as an RHALF file (half floats: the GPU reads 8 bits of an F32 image).
+pub fn write_rhalf(path: &std::path::Path, t: &rostrum_color::grade::LutImage) -> Result<(), String> {
+    let mut bytes = blitz_dom::net::RHALF_MAGIC.to_vec();
+    bytes.extend_from_slice(&(t.width as u32).to_le_bytes());
+    bytes.extend_from_slice(&(t.height as u32).to_le_bytes());
+    bytes.extend(t.rgba.iter().flat_map(|v| half::f16::from_f32(*v).to_le_bytes()));
+    std::fs::write(path, bytes).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 /// `rostrum2d-render sksl lut <spec.json> <out.cube> [--size N] [--in space] [--out space] [--view id [--target sdr|hdr1000]] [--note text]…`:

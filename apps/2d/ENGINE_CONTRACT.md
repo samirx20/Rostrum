@@ -16,6 +16,7 @@ The engine holds the scene and evaluates every frame itself. The request header 
 | `{"export": {"start"?, "end"?, "encode": {…ffmpeg…}, "file"?, "images"?, "progress"?}}` | `{"ok": true, "frames": 90, "timing"}` | Every frame from `start` (default 0) to `end` (default the comp's duration) at the comp's fps, into the encoder; `file` is checked to exist and not be empty afterwards. Or `"images": "C:\…\f-{frame}.png"`: each frame to a picture. With `"progress": true` a line `{"progress": i, "of": n}` comes after each frame, before the reply. |
 | `{"edit": [{"id": "title", "props"?: {"x": 700}, "anim"?: {"y": [keys] \| null}}, …]}` | `{"ok": true, "edits": n}` | Small changes to the held scene without resending it (a drag). **All or nothing**: the whole list is checked as a load is, and nothing is applied if any part fails. |
 | `{"bones": {"t": 1.25}}` | `{"ok": true, "rigs": {"<rig id>": {"bones": {"<id>": {"x", "y", "tipX", "tipY", "angle"}}, "iks": {"<id>": {"targetX", "targetY", "gap"}}}}}` | Every rig's posed bones (pivot, tip, angle) and each IK's (held) target and how far its tip misses it, at `t`, in comp px (tilt left out). The agents' eyes on a character ([`RIG.md`](RIG.md)). |
+| `{"measure": {"items": [{"id": "title", "body", "font", "size", "weight", "stretch", "tracking", "lineHeight", "align", "boxWidth", "features"?, "axes"?, "ligatures"?, "figures"?, "smallCaps"?, "slant"?, "grade"?, "path"?, "pathOffset"?, "pathAlign"?, "pathOverflow"?, "letterDelay"?, "letterSplit"?}, …]}}` | `{"ok": true, "sizes": {"title": [w, h]}}` | Each text's box in its own px (before scale and turn): the box the renderer lays it out in, by the same code that draws it (one line, or `boxWidth` wide and wrapped; letter by letter or on a path, the box its letters are placed in). The fields are the text's evaluated values (no time: evaluate keys first); a type field left out is fields.py's default. The whole list is one round trip and one layout. Needs no scene; with one loaded, its fonts. A font not found, or a field the text doesn't have or with a wrong value, fails as `scene` does, naming the id. Python: `Engine.measure`, cached by `rostrum2d/textsize.py`. |
 
 Errors are `{"error": "…"}` naming the item id and field; the process keeps serving. The engine never draws a frame it couldn't fully understand.
 
@@ -138,6 +139,22 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
   the painter draws the matte layer's own markup (`data-track-matte`, vendor/blitz-paint/src/track_matte.rs) as the
   mask, so a matte looks exactly as that layer would on its own. Refused when the scene loads or is edited: a matte that
   is no layer beside it, the layer itself, the camera, or a layer that has a matte of its own.
+- **Blend:** `blend` is one of the modes in `apps/2d/python/rostrum2d/blends.txt`, the one list (Python reads it at
+  import; the engine compiles it in, `scene/blends.rs`): normal, multiply, screen, add, overlay, soft-light,
+  hard-light, darken, lighten, color-dodge, color-burn, difference, exclusion, hue, saturation, color, luminosity.
+  Each is written as the CSS `mix-blend-mode` in that file's second column (`add` = `plus-lighter`) and drawn by Skia's
+  blend of the same name. A layer under a camera or a track matte carries its blend on the wrapper (`blends::style`).
+- **Colour effects** (`scene/grade.rs`, every layer): `adjust` on → `exposure` (stops), `temperature` / `tint`
+  (the grade's `warmth`), `contrast` (×, about mid grey), `saturation` (×), `hue` (degrees); `levels` on →
+  `inBlack`, `inWhite`, `gamma`, `outBlack`, `outWhite` (screen brightness 0..1); `curves` on → `curve` (all channels),
+  `curveR`, `curveG`, `curveB` (text `"x,y x,y …"`, 0..1, x rising, smooth through the points without overshoot);
+  `lut` = an absolute path to a `.cube` (1D or 3D, screen colours in and out) at `lutMix`. In that order they make one
+  rostrum-color grade (the same grade `sksl grade` serves), compiled to one SkSL colour filter that the painter runs on
+  the layer's look (content, masks, effects; not a frosted-glass backdrop) as an `<feshader effect="grade">`; levels
+  and curves become the grade's curve tables (`scene/grade_curve.rs`), the LUT's table an RHALF image in
+  `~/.rostrum/cache/2d-lut`. Numbers can be keyed; the curve texts and the LUT file can't. Refused when the scene loads
+  or is edited, naming the layer and field: a curve that isn't valid points, `inWhite` not above `inBlack`, a LUT file
+  that is relative, missing or malformed (the `.cube` line number). Nothing changes in the markup while every effect is off.
 - **Effects, in list order:** `gradient` fills the layer instead of its colour (a shape's fill, **a text's letters**, a group's background): `linear` at `angle` (CSS convention: 180 = top to bottom), `radial` (closest side, at `cx`, `cy`) or `conic` (from `angle`, 0 = up, clockwise, at `cx`, `cy`; `cx`, `cy` fractions of the box); `color1` → (`color3` at `mid` when `middle`) → `color2`. `blur` (`radius` px). `glow`: a blurred copy (`radius`) added behind, `strength` 0..4, the layer's own colours or `color`. `shadow`: offset `dx`, `dy`, softness `radius`, `color`, `strength`. `backdrop` (frosted glass): blurs what is behind the layer inside its box and corner
   radius (`radius` blur σ px, `saturate`, `brightness`), drawn before the content; the layer's fill shows over it at
   `fillAmount`; the layer's opacity applies to the glass and the content. Refused with a non-normal blend or with a
@@ -160,4 +177,5 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - S9 (same version): text `pathOverflow`.
 - S10 (same version): text `pathLayer` (a text follows a path layer, per frame); a text on a path now takes its colour and outline when not played letter by letter.
 - H10 (same version): rig layers, bones, IK, binds; the `bones` request.
+- H16 (same version): the `measure` request (a text's laid-out box, for auto layout and the screen's boxes).
 - S8 (same version): `path` and `video` layers; text features, axes, text on a path, letter by letter; gradient `conic` and centre; `backdrop`; masks feather / invert / `angle` for every shape; scene `fonts` and the `scene` reply's font list; `pixels` written out.

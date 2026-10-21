@@ -1,5 +1,5 @@
-"""Where each layer is, from its evaluated values alone (no rendering). All boxes are APPROXIMATE: text width is
-estimated from its size and letters, and effects (glow, shadow, blur) are not counted.
+"""Where each layer is, from its evaluated values alone (no rendering). A text's box is the engine's laid-out one
+(rostrum2d/textsize.py); effects (glow, shadow, blur) are not counted.
 
 A layer's box runs from (0,0) to (w,h) in its own coordinates; its anchor sits at (x,y) in its parent, then it is
 scaled, turned. A group's children live inside the group's own coordinates (top-left of its box is 0,0). The
@@ -14,7 +14,7 @@ from rostrum2d import fields as F, follow
 from rostrum2d.camera import view as camera
 from rostrum2d.evaluate import resolve
 from rostrum2d.layout import solve
-from rostrum2d.sizes import TEXT_EM, own_size  # noqa: F401  (own_size: the one size rule)
+from rostrum2d.sizes import own_size  # the one size rule
 
 VISIBLE_OPACITY = 0.01
 

@@ -16,6 +16,9 @@
 //! - `{"edit": [{"id", "props"?: {…}, "anim"?: {field: [keys] | null}}, …]}` → `{"ok": true, "edits": n}`: small
 //!   changes to the held scene (a drag), checked as a load is; the next frame shows them.
 //! - `{"bones": {"t": 1.25}}` → `{"ok": true, "rigs": {…}}`: every rig's posed bones and IK targets in comp px (rig/bones.rs, RIG.md).
+//! - `{"measure": {"items": [{"id", "body", "font", "size", "weight", "stretch", "tracking", "lineHeight", "align", "boxWidth", …}]}}`
+//!   → `{"ok": true, "sizes": {id: [w, h]}}`: each text's laid-out box in its own px, by the path that draws it (scene/measure.rs);
+//!   with the loaded scene's fonts, else the app's. Needs no scene and no open page.
 
 use std::time::Instant;
 
@@ -90,6 +93,10 @@ pub fn edit(held: &mut Held, edits: &Value) -> Result<Value, String> {
     check(&next)?;
     held.scene = Some(next);
     Ok(json!({ "ok": true, "edits": n }))
+}
+
+pub fn measure(held: &Held, req: &Value) -> Result<Value, String> {
+    crate::scene::measure::measure(req, held.scene.as_ref().map(|s| s.fonts.as_slice()))
 }
 
 pub fn bones(held: &Held, req: &Value) -> Result<Value, String> {

@@ -5,6 +5,7 @@ look tools and exports all render through it, the same way (preview ≡ export).
         eng.load(scene)                 # scene.describe(doc.data, comp); load again after a change
         eng.still(1.2, png)             # one frame at 1.2 s
         eng.video(mp4)                  # the whole comp (or start=, end=)
+        eng.measure([{"id": "t", **text_fields}])   # {"t": (w, h)}: a text's laid-out box (textsize.py keeps them)
 
 The engine holds the scene and evaluates every frame itself (keys, easing, drawing); Python only describes it.
 """
@@ -103,6 +104,13 @@ class Engine:
         """The posed rigs at `t`, in comp px: {rig id: {"bones": {id: {x, y, tipX, tipY, angle}}, "iks": {id: {targetX, targetY, gap}}}}."""
         self._props()
         return self._request({"bones": {"t": t}})["rigs"]
+
+    def measure(self, items: list[dict]) -> dict[str, tuple[float, float]]:
+        """Each text's laid-out box (w, h) in its own px, by the code that draws it: items are {id, and the text's
+        evaluated fields} (ENGINE_CONTRACT.md § 1 `measure`). One round trip for the list; needs no scene loaded.
+        Callers go through textsize.py, which keeps what was measured."""
+        sizes = self._request({"measure": {"items": items}})["sizes"]
+        return {k: (float(w), float(h)) for k, (w, h) in sizes.items()}
 
     def pixels(self, t: float) -> tuple[memoryview, int, int, int]:
         """The frame at `t` as straight-alpha RGBA8 in the engine's shared memory (no PNG, no pipe; Windows):

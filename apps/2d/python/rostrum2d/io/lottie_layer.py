@@ -6,11 +6,10 @@ Our anchor is a fraction of the box that sits at (x, y); Lottie's `a` is a point
 """
 from __future__ import annotations
 
-from .. import pathdata
+from .. import blends, pathdata
 from .lottie_props import Ctx, build, frozen
 from .lottie_shapes import shape_value
 
-BLEND = {"normal": 0, "multiply": 1, "screen": 2, "overlay": 3, "soft-light": 9, "add": 16}
 EFFECT_SAYS = {"blur": "blur", "glow": "glow", "shadow": "drop shadow", "backdrop": "frosted-glass backdrop"}
 
 
@@ -72,7 +71,7 @@ def common(node: dict, ctx: Ctx, ty: int, ind: int, extra_masks: list[dict] = ()
             ctx.say(f'{EFFECT_SAYS[fx["type"]]} effect is not exported (Lottie players ignore effects)')
     layer = {"ddd": 0, "ind": ind, "ty": ty, "nm": node["id"], "sr": 1, "ks": transform(node, ctx),
              "ao": 0, "ip": round(pr["start"] * ctx.fps, 4), "op": round(min(pr["end"], ctx.duration) * ctx.fps, 4),
-             "st": 0, "bm": BLEND[pr["blend"]]}
+             "st": 0, "bm": blends.LOTTIE[pr["blend"]]}
     if masks:
         layer["hasMask"] = True
         layer["masksProperties"] = [_mask(m, ctx, i == 0) for i, m in enumerate(masks)]

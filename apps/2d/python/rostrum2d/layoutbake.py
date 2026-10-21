@@ -11,7 +11,7 @@ import math
 
 from rostrum_core.keys import track_value
 
-from . import fields as F
+from . import fields as F, textsize
 from .evaluate import resolve
 from .exprbake import items_of
 from .layout import has_layout, solve
@@ -35,9 +35,11 @@ def bake(comp: dict, fps: float, baked: dict | None = None) -> dict[str, dict[st
 
     duration = comp.get("duration", F.defaults("comp")["duration"])
     n = max(1, math.ceil(duration * fps - 1e-9))
+    times = [round(min(i / fps, duration), 6) for i in range(n + 1)]
+    texts = [i for i in items_of(comp).values() if i["type"] == "text"]
+    textsize.prime([props(item, t) for t in times for item in texts])     # every frame's texts in one engine trip
     tracks: dict[str, dict[str, list]] = {}
-    for i in range(n + 1):
-        t = round(min(i / fps, duration), 6)
+    for t in times:
         for item_id, values in solve(comp, t, props).items():
             for prop, v in values.items():
                 tracks.setdefault(item_id, {}).setdefault(prop, []).append({"t": t, "v": v, "ease": "linear"})

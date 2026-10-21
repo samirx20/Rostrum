@@ -19,14 +19,14 @@ Modelling, painting, materials, lighting, animation, simulation and rendering, b
 | Part | Files |
 |---|---|
 | Core: requests, Hydra, colour, memory | `core/src/main.cpp`, `serve.*`, `requests.*`, `args.h`, `hydra.*` (one engine per renderer, progressive loop, pick), `gl_context.*` (hidden GL 4.6 context, float framebuffer), `image_out.*` (EXR; OCIO PNG; `.partial` then rename), `gpu_mem.*` (DXGI + NVML), `inspect.*` |
-| Core: live viewport | `view_camera.*` (scene or free camera → frustum), `studio.*` (the viewport's studio dome), `outline.*` (selection ring), `shm.*` (pictures in shared memory) |
+| Core: live viewport | `view_camera.*` (scene or free camera → frustum), `studio.*` (the viewport's studio dome), `sky.*` (the scene dome for Storm), `dome_cycles.*` (domes turned for Cycles), `outline.*` (selection ring), `shm.*` (pictures in shared memory) |
 | Core: scene → USD | `core/src/stage_build.*`, `stage_items.*`, `item_track.h` (per-frame samples), `primitives.*`, `materials.*`, `lights_cameras.cpp`, `json_read.h` |
 | Python | `python/rostrum3d/`: `fields.py` (the one table), `kind.py`, `ops_*.py`, `build.py`, `aim.py`, `script.py`, `compile.py`, `engine.py`, `mcp/` |
 
 ## Open
 
 - Storm has no depth of field and no soft shadows from the studio light; Cycles has both (side by side: `C:\Users\Sam\.rostrum\waves\results\stage2\3d-screen\storm-vs-cycles.png`).
-- The viewport never shows its studio light. A scene with its own dome light is lit by that dome in the viewport and the dome is seen behind the scene, matching Cycles in colour and brightness (H14, H15: `core/src/sky.cpp`). Still open: an HDR dome's horizon sits about 10° lower in Storm than in Cycles (turning the dome changes nothing, so it is the vertical mapping); the newer dome type with its pole axis is untested.
+- The viewport never shows its studio light. A scene with its own dome light is lit by that dome in the viewport and the dome is seen behind the scene, matching Cycles in colour and brightness (H14, H15: `core/src/sky.cpp`). H16: the HDR horizon now sits in the same place in both (Cycles had read the picture Z-up; `core/src/dome_cycles.*` turns domes for Cycles only), and a Storm render gets the dome like the quick view (`C:\Users\Sam\.rostrum\waves\results\stage2\h16\storm-vs-cycles-after.png`). The view reply says `sceneDome`, and the screen hides the Studio light slider while the dome is used. Still open: in Storm a sunny HDR's sun (83% of the beach HDR's light, in 10 pixels) barely lights the scene and casts no shadow, so the floor is about half as bright as in Cycles. Next: take the sun out of the dome picture as a distant light with a shadow for Storm. A mirror ball reflects only the sky in Storm (no reflections of other objects); the newer dome type with its pole axis is untested.
 - A viewport picture takes ~60–80 ms at 960×540 (drawing 10–20 ms; the rest is reading back floats and the colour transform on the CPU). Fine for clicking and orbiting, short of 60 fps. Next: the colour transform on the GPU, or the native `QQuickRhiItem` viewport planned in `proofs/gui-qt`.
 - The stylized renderer takes no look settings through the contract yet.
 - Imports in other units (e.g. centimetres) are not rescaled; the import's scale must be set.
