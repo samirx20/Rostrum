@@ -62,19 +62,25 @@ pub fn place(it: &Item) -> R<Placed> {
         return Err(format!("{}.body: text on a path is one line (no line breaks)", it.id));
     }
     let along = Along::new(it, path)?;
-    // Past either end of the path a letter is left out ("hide", the default), or the path goes on straight.
+    // A text following a path layer sits on the part of it that is drawn (its trim window, follow.rs).
+    let followed = super::follow::window(it);
+    let (from, to) = followed.map_or((0.0, along.total), |((a, b), _)| (a * along.total, b.max(a) * along.total));
+    // Past either end of the path a letter is left out ("hide", the default), or the path goes on straight; a
+    // letter on the trimmed-off part of a followed path is always left out.
     let straight = it.str("pathOverflow") == "straight";
-    let mut pen = match it.str("pathAlign") { "end" => along.total - widths[0], "center" => (along.total - widths[0]) / 2.0, _ => 0.0 } + it.num("pathOffset");
+    let lo = if straight && from <= 0.0 { f64::NEG_INFINITY } else { from };
+    let hi = if straight && to >= along.total { f64::INFINITY } else { to };
+    let mut pen = match it.str("pathAlign") { "end" => to - widths[0], "center" => from + (to - from - widths[0]) / 2.0, _ => from } + it.num("pathOffset");
     for (ch, adv) in lines[0].chars().zip(&measures[0].advances) {
         let centre = pen + adv / 2.0;
-        if let Some(unit) = units.next(ch).filter(|_| straight || (0.0..=along.total).contains(&centre)) {
+        if let Some(unit) = units.next(ch).filter(|_| (lo..=hi).contains(&centre)) {
             let (p, angle) = along.at(centre);
             letters.push(Letter { ch, unit, x: p.x, y: p.y, angle, advance: *adv });
         }
         pen += adv;
     }
-    let b = along.path.bounding_box();
-    Ok(Placed { letters, w: b.x1.max(0.0), h: b.y1.max(0.0), line, baseline })
+    let (w, h) = followed.map_or_else(|| { let b = along.path.bounding_box(); (b.x1.max(0.0), b.y1.max(0.0)) }, |(_, size)| size);
+    Ok(Placed { letters, w, h, line, baseline })
 }
 
 /// Counts units: every letter, or every word (spaces and line breaks belong to none).

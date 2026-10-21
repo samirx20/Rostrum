@@ -75,6 +75,7 @@ fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
         layers: node.layers.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
         props,
     };
+    super::follow::resolve(node, &mut item.layers, t);
     if node.kind == "rig" {
         crate::rig::pose(&mut item);
     }
