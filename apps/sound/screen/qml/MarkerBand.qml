@@ -7,6 +7,7 @@ import RostrumKit
 Item {
     id: band
     property var ruler
+    clip: true
     function tagWidth(name) { return metrics.advanceWidth(name) + 14 }
     function markerAt(x) {
         var best = ""
@@ -24,6 +25,7 @@ Item {
             required property var modelData
             readonly property bool on: modelData.id === backend.selected
             x: Math.round(band.ruler.xOf(modelData.t)); y: 1
+            visible: x + width > 0 && x < band.width
             width: tag.implicitWidth + 12; height: band.height - 2
             radius: 3; color: on ? Theme.accent : Theme.raised
             Rectangle { width: 2; height: parent.height; color: parent.on ? Theme.fg : Theme.fg3; radius: 1 }
@@ -46,6 +48,8 @@ Item {
         }
         onPositionChanged: (m) => { if (dragging && pressed)
             backend.dragBy((m.x - x0) / band.ruler.perSec, 0, (m.modifiers & Qt.ShiftModifier) !== 0) }
+        onWheel: (w) => backend.viewWheel(w.angleDelta.x, w.angleDelta.y, (w.modifiers & Qt.ControlModifier) !== 0,
+                                          (w.modifiers & Qt.ShiftModifier) !== 0, w.x / band.width, false)
         onReleased: { if (dragging) backend.endDrag(); dragging = false }
         onCanceled: { if (dragging) backend.cancelDrag(); dragging = false }
     }

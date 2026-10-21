@@ -122,3 +122,11 @@ def test_buses_sends_and_ducks_compile_and_a_rerun_keeps_them():
         _person(doc, "bus.remove", "reverb")
     with pytest.raises(RostrumError, match="not master or a bus"):
         _person(doc, "track.set", "pad", output="nowhere")
+
+
+def test_a_script_sets_vibrato_rate_after_its_vibrato_lane():
+    # valid_when facts (a vibrato lane) hold in the script layer too (P4's cue broke on this, found in P5).
+    src = 't = track("v", builtIn="warmPad")\nt.note("A3", at=0, dur=1)\nt.vibrato([(0, 0.0), (1, 0.5)], rate=5.2, depth=10)\n'
+    doc = Document.new(KIND)
+    doc.run_script("v.py", run_source(src, "v.py"), Who.script("v.py"))
+    assert compile(doc)["tracks"][0]["expression"]["vibratoRate"] == 5.2

@@ -14,6 +14,7 @@ from .doc import blank
 from .doc import fields as FD
 from .doc import ids
 from .doc.check import playing
+from .doc.kind import facts as item_facts
 from .doc.registry import MASTER_ID
 
 INSTRUMENT_KEYS = tuple(FD.INSTRUMENT_FIELD)
@@ -33,7 +34,9 @@ class Track(Inserts):
         self.init_inserts(f"track {id_}")
 
     def set(self, **fields):
-        self.fields = checked("track", fields, f"track {self.id}", self.fields)
+        # The same facts the document asks of a track (its lanes), from what this builder holds so far.
+        facts = item_facts({"type": "track", "automation": [{"lane": k} for k in self.lanes]})
+        self.fields = checked("track", fields, f"track {self.id}", self.fields, facts)
         return self
 
     def note(self, pitch, at, dur, vel=None, pan=None, id=None, **playing_):

@@ -23,6 +23,7 @@ from rostrum_sound import KIND, run_source
 from screensound.bridge import SoundBridge
 from screensound.instruments import InstrumentsPage
 from screensound.mixer import MixPage
+from screensound.recording import Recording
 from screensound.sample import SOURCE
 from screensound.steps import do_step, wait_render
 
@@ -58,8 +59,9 @@ def main():
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
     name = args.doc[1] if args.doc else Path(args.script).stem if args.script else "Sample song"
     bridge = SoundBridge(load_doc(args), name, autosave=bool(args.doc))
-    instruments, mixer = InstrumentsPage(bridge), MixPage(bridge)
-    _, engine, win = start(HERE / "qml" / "Main.qml", {"backend": bridge, "instruments": instruments, "mixer": mixer},
+    instruments, mixer, recorder = InstrumentsPage(bridge), MixPage(bridge), Recording(bridge)
+    _, engine, win = start(HERE / "qml" / "Main.qml", {"backend": bridge, "instruments": instruments, "mixer": mixer,
+                                       "recorder": recorder},
                            (1600, 960))
     code = [0]
 
@@ -73,7 +75,7 @@ def main():
 
     def run_steps():
         for s in args.step:
-            do_step(bridge, win, s)
+            do_step(bridge, win, s, recorder)
         if args.shot:
             wait_render(bridge)
             QTimer.singleShot(600, lambda: guarded(shoot))     # the 160 ms reveals have finished
@@ -92,6 +94,7 @@ def main():
     if args.shot:
         QTimer.singleShot(180000, lambda: (print("FAIL: timeout", file=sys.stderr), app.exit(4)))
     app.exec()
+    recorder.close()
     mixer.close()
     bridge.close()
     del engine

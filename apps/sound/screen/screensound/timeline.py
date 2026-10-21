@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from rostrum_sound import names
+from rostrum_sound import names, voice_lines
 
-from . import timing
+from . import lanes, timing
 
 # no blues: blue is the selection (Theme.accent)
 HUES = ["#4fb5a5", "#e0a458", "#d27aa8", "#a0c167", "#b48ce0", "#c98c6b", "#d6c86c", "#e07a6b"]
@@ -64,10 +64,23 @@ def clip_block(c, root):
     return {"id": c["id"], "type": "clip", "t": t, "dur": dur, "label": label, "peaks": list(peaks)}
 
 
+def line_block(track, ln, root):
+    """A voice line, drawn as a clip on its take (its words as the label); before its take is made, a block as long
+    as the words would take to say (~0.4 s a word), marked "not made"."""
+    take = voice_lines.take_of(track, ln)
+    t = timing.sec(ln["at"], root, ln["id"])
+    if take is None:
+        return {"id": ln["id"], "type": "line", "t": t, "dur": max(0.4 * len(ln["text"].split()), 0.5),
+                "label": f'not made · {ln["text"]}', "peaks": []}
+    total, peaks = media(take.file)
+    return {"id": ln["id"], "type": "line", "t": t, "dur": max(total, 0.05), "label": ln["text"], "peaks": list(peaks)}
+
+
 def blocks(track: dict, root: dict) -> list[dict]:
     return ([note_block(n, root) for n in track.get("notes", [])]
             + [hit_block(h, root) for h in track.get("hits", [])]
-            + [clip_block(c, root) for c in track.get("clips", [])])
+            + [clip_block(c, root) for c in track.get("clips", [])]
+            + [line_block(track, ln, root) for ln in track.get("lines", [])])
 
 
 def drums_of(track: dict) -> list[str]:
@@ -78,7 +91,9 @@ def drums_of(track: dict) -> list[str]:
 
 
 def kind_of(track: dict) -> str:
-    """What the piano roll draws for a track: "notes", "drums", "audio" (clips) or "empty"."""
+    """What the piano roll draws for a track: "notes", "drums", "audio" (clips, voice lines) or "empty"."""
+    if track.get("instrument") == "voice":
+        return "audio"
     if track.get("instrument") in ("kit", "kitSfz") or track.get("hits"):
         return "drums"
     if track.get("instrument") not in (None, "none") or track.get("notes"):
@@ -86,9 +101,10 @@ def kind_of(track: dict) -> str:
     return "audio" if track.get("clips") else "empty"
 
 
-def rows(root: dict) -> list[dict]:
+def rows(root: dict, open_lanes: dict | None = None) -> list[dict]:
     """One row per track for the arrangement: name, hue, mute / solo, kind, and its blocks with lanes 0..1 (top to
-    bottom: notes by pitch, one per key of a chord; hits by drum row) so a row reads like a small piano roll."""
+    bottom: notes by pitch, one per key of a chord; hits by drum row) so a row reads like a small piano roll.
+    `open_lanes` (track id -> (item id, lane)) adds `auto`: the automation lane drawn under that track's row."""
     out = []
     for i, t in enumerate(root.get("tracks", [])):
         bl = blocks(t, root)
@@ -101,7 +117,9 @@ def rows(root: dict) -> list[dict]:
             elif b["type"] == "hit":
                 b["lanes"] = [drums.index(b["drum"]) / max(len(drums) - 1, 1)]
         out.append({"id": t["id"], "name": t.get("name") or t["id"], "hue": HUES[i % len(HUES)],
-                    "mute": bool(t.get("mute")), "solo": bool(t.get("solo")), "kind": kind_of(t), "blocks": bl})
+                    "mute": bool(t.get("mute")), "solo": bool(t.get("solo")), "kind": kind_of(t), "blocks": bl,
+                    "autoUsed": lanes.used(t),
+                    "auto": lanes.lane_data(t, root, *open_lanes[t["id"]]) if t["id"] in (open_lanes or {}) else None})
     return out
 
 

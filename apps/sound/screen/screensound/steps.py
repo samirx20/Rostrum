@@ -3,16 +3,24 @@
     page instruments|timeline|mix | select <id> | time <s> | set <param> <json value>
     drag-note <id> <dt s> <d semitones> | drag-clip <id> <dt s> | drag-marker <id> <dt s>   (one gesture each)
     add-note <t s> <midi key> | delete | mute <track> | solo <track>
+    arm <track> | record (start / stop, the real microphone) | record-fake <source.wav> (TEST SEAM: a WAV stands in
+    for the microphone; the take stays running for the shot)
     undo | redo | play | render (wait for the newest render) | more | commands [query …] | run <command key> |
     wait <seconds>
+    zoom <factor> | scroll <s> | fit | lane <track> <lane> | lane-point <track> <t> <v> [<t2> <v2>] | lane-delete |
+    picture <file|none>     (see steps_view.py)
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
 
 import json
+import sys
 import time
+from pathlib import Path
 
 from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject
+
+from .steps_view import WORDS as VIEW_WORDS, do_view_step
 
 RENDER_WAIT_S = 120
 
@@ -44,7 +52,7 @@ def wait_render(bridge):
         raise RuntimeError(f"render failed: {bridge.status}")
 
 
-def do_step(bridge, win, step):
+def do_step(bridge, win, step, recorder=None):
     word, *rest = step.split()
     if word == "page":
         bridge.setPage(rest[0])
@@ -64,6 +72,18 @@ def do_step(bridge, win, step):
         bridge.removeSelected()
     elif word in ("mute", "solo"):
         bridge.toggleTrack(rest[0], word)
+    elif word == "arm":
+        recorder.arm(rest[0])
+    elif word == "record":
+        recorder.toggleRecord()
+    elif word == "record-fake":
+        recorder.command = [sys.executable, "-I", str(Path(__file__).with_name("fake_mic.py")), "{out}", rest[0]]
+        recorder.toggleRecord()
+        for _ in range(15):                     # let a second of levels arrive
+            QCoreApplication.processEvents()
+            time.sleep(0.1)
+    elif word in VIEW_WORDS:
+        do_view_step(bridge, word, rest)
     elif word in ("undo", "redo"):
         getattr(bridge, word)()
     elif word == "play":

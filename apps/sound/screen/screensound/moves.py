@@ -8,9 +8,9 @@ from rostrum_core import RostrumError, codes
 
 from . import timing
 
-MOVABLE = ("note", "hit", "clip", "marker")
-REMOVABLE = ("note", "hit", "clip", "marker", "track", "effect", "automation")
-LABELS = {"note": "Move note", "hit": "Move drum hit", "clip": "Move clip", "marker": "Move marker"}
+MOVABLE = ("note", "hit", "clip", "line", "marker")
+REMOVABLE = ("note", "hit", "clip", "line", "marker", "track", "effect", "automation", "bus", "send", "duck")
+LABELS = {"note": "Move note", "hit": "Move drum hit", "clip": "Move clip", "line": "Move line", "marker": "Move marker"}
 
 
 def grab(doc, item_id) -> dict:

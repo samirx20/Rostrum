@@ -10,8 +10,9 @@ from .doc import fields as FD
 from .doc import ids
 
 
-def checked(type_, given: dict, where: str, base: dict | None = None) -> dict:
-    """`given` checked against the type's fields (unknown names and bad values fail), merged onto `base`."""
+def checked(type_, given: dict, where: str, base: dict | None = None, facts: dict | None = None) -> dict:
+    """`given` checked against the type's fields (unknown names and bad values fail), merged onto `base`;
+    `facts`: what valid_when may ask beyond the fields (doc/kind.py facts, e.g. the track has a vibrato lane)."""
     params = {p.name: p for p in FD.params(type_)}
     out = dict(base or {})
     for k, v in given.items():
@@ -23,7 +24,7 @@ def checked(type_, given: dict, where: str, base: dict | None = None) -> dict:
         out[k] = params[k].check(v, where)
     for k in given:
         p = params.get(k)
-        if p and given[k] is not None and not holds(p.valid_when, out):
+        if p and given[k] is not None and not holds(p.valid_when, out, facts):
             raise RostrumError(codes.BAD_ARGUMENT, where, f'"{k}"', f"only applies when {describe(p.valid_when)}")
     return out
 

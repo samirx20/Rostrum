@@ -11,8 +11,9 @@ Panel {
     readonly property int keysWidth: 52
     title: roll.name !== "" ? roll.name : "Piano roll"
     headerRight: [
+        PictureToggle { anchors.verticalCenter: parent.verticalCenter },
         Text { anchors.verticalCenter: parent.verticalCenter; rightPadding: Theme.grid
-               text: p.kind === "notes" ? "Double-click to add a note  ·  Shift drags freely"
+               text: p.kind === "notes" ? "Double-click to add a note  ·  Shift drags freely  ·  Ctrl + wheel zooms"
                    : p.kind === "drums" || p.kind === "audio" ? "Shift drags freely" : ""
                color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label }
     ]
@@ -39,8 +40,12 @@ Panel {
                 property real x0: 0
                 property real y0: 0
                 property bool dragging: false
-                onWheel: (w) => { view.contentY = Math.max(0, Math.min(view.contentHeight - view.height,
-                                                                       view.contentY - w.angleDelta.y / 2)) }
+                onWheel: (w) => {   // Ctrl zooms, Shift / sideways scrolls in time (the Timeline's view); else up and down
+                    if (!backend.viewWheel(w.angleDelta.x, w.angleDelta.y, (w.modifiers & Qt.ControlModifier) !== 0,
+                                           (w.modifiers & Qt.ShiftModifier) !== 0, w.x / width, true))
+                        view.contentY = Math.max(0, Math.min(view.contentHeight - view.height, view.contentY - w.angleDelta.y / 2))
+                }
+                PinchGrow {}
                 onPressed: (m) => {
                     var id = backend.rollAt(bars.tOf(m.x), grid.rowAt(m.y), 6 / bars.perSec)
                     x0 = m.x; y0 = m.y
@@ -67,10 +72,10 @@ Panel {
             model: backend.markers
             delegate: Rectangle { required property var modelData
                 x: p.keysWidth + Math.round(bars.xOf(modelData.t)); width: 1; height: well.height
-                color: Theme.fg4; opacity: 0.6 }
+                visible: bars.visibleX(x - p.keysWidth); color: Theme.fg4; opacity: 0.6 }
         }
         Rectangle { x: p.keysWidth + Math.round(bars.xOf(backend.time)); width: 1; height: well.height
-                    color: Theme.accent; opacity: 0.9 }
+                    visible: bars.visibleX(x - p.keysWidth); color: Theme.accent; opacity: 0.9 }
     }
     Column {   // nothing to draw: say what to do, calmly
         visible: !bars.visible

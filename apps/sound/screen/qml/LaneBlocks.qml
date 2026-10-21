@@ -18,11 +18,11 @@ Item {
             id: b
             required property var modelData
             readonly property bool on: modelData.id === backend.selected
-            readonly property bool isClip: modelData.type === "clip"
+            readonly property bool isClip: modelData.type === "clip" || modelData.type === "line"
             readonly property real barH: modelData.type === "hit" ? lane.mark * 1.8 : lane.mark
             x: Math.round(lane.ruler.xOf(modelData.t))
             y: lane.pad; height: lane.height - 2 * lane.pad
-            width: modelData.type === "hit" ? (on ? 3 : 2) : Math.max(2, lane.ruler.xOf(modelData.dur) - 1)
+            width: modelData.type === "hit" ? (on ? 3 : 2) : Math.max(2, lane.ruler.wOf(modelData.dur) - 1)
             z: on ? 2 : isClip ? 0 : 1
 
             Repeater {   // notes and hits: a bar per lane
