@@ -89,3 +89,64 @@ binds on one layer, or a `bone2` that isn't a child of `bone` are refused when t
 - Keys: the usual `key.add` / `value.set` on bone and ik fields.
 - Script: `with rig("puppet", w=, h=, ...):` then `bone(...)`, `ik(...)`, `bind(...)` inside; `.key(field, {t: v}, ease=)`
   on bones and iks as on layers.
+
+## Swap sets (a slot that shows one drawing at a time)
+
+A swap set is an ordinary `group` with two more fields (Python side only, `rostrum2d/swap.py`; the engine never sees
+them). `swap` ("One at a time", group "Swap set", secondary) turns the group into a slot. `show` ("Shows", whole number
+0–999, animatable) exists only while `swap` is on (rule of individuality): which child shows, **0 = the first in the
+list**. In the inspector it is a choice among the slot's own children by name, not a number (`screen2d/swap_rows.py`).
+
+`show` is a **stepped choice**: its keys always read as jumps, whatever ease they carry (the value holds until the next
+key), and it is clamped to the children (a number past the last child shows the last). Operations that key it use `hold`.
+
+Scene translation (`swap.apply`, after layout and chains, before stepped timing): the set is sent as a plain group.
+`show` is sampled on every frame; each child's opacity is multiplied by 1 (shown) or 0 (hidden). A child with no opacity
+keys gets one `hold` key where it turns on or off; a child with its own opacity keys gets one `hold` key per frame of
+its own value × shown. The document's keys stay as they are. A swap set with no children sends nothing extra.
+
+Operations (`rostrum2d/ops_swap.py`):
+- `swap.show` (target: a swap set; `t`, and `layer` = a child id or `index` counted from 0): a hold key on `show`.
+  A layer that is not a child is refused, naming the children.
+- `blink.add` (target: a swap set; `open`, `closed`, optional `half`, `start`, `end`, `every` = mean gap in s (3.5),
+  `vary` 0..1 (0.3), `seed` (0), `frames` = frames closed (2)): hold keys on `show`. With `half`, it shows one frame
+  either side of closed. It only adds keys: a time that already has one (or a key moved away from it) stays. The same
+  seed gives the same blinks.
+- `lipsync.apply` / `lipsync(..., slot=<swap set>)`: when the target is a swap set and the mouth shapes are its
+  children, the slot's `show` is keyed (one key per change of mouth) instead of each layer's opacity (LIPSYNC.md).
+- Script: `slot = group("mouth", swap=True)`, children inside `with slot:`, then `slot.show({0: "open", 1.2: "closed"})`
+  (a child, its id or its place; hold keys), or `slot.key("show", {t: n}, ease="hold")`.
+- MCP: `inspect_swaps {time}` lists each set's children (place, id, name) and the one showing then. No rendering.
+
+## Long IK chains (Python, `rostrum2d/rig/chain.py`, P16)
+
+An `ik` with `chain` > 2 (field "Bones in chain", 2..32, not animatable) reaches with the lower bone and its parents,
+`chain` bones in all: a spine, a tail, an arm with a hand bone. `chain` = 2 is the engine's two-bone solve above.
+
+- **Where it is solved.** In the scene description, not the engine: every frame from 0 to the comp's length the bones
+  are posed by FK (`rig/fk.py`, a Python copy of `pose.rs`'s FK; `tests/test_rig_chain.py` checks it against the
+  engine's `bones` answer), FABRIK moves the chain's joints so the last tip reaches the (held) target, each bone's turn
+  is blended with FK by `mix` (shortest angle), and the difference from its parent's turn is added to the bone's own
+  `rotation`. The bones are sent with per-frame linear `rotation` keys (as an expression is); the ik node itself is
+  not sent, so the engine never sees `chain`.
+- **Fields.** `targetX`/`targetY`, `mix`, `mode`, `pin` mean what they mean for two bones (the held target uses the
+  same pin rule). `bend`: a chain that is straight at that frame is curled a little this way before solving (a
+  straight chain has no way to fold otherwise); a bent chain keeps the way it bends.
+- **Several chains** in one rig are solved upper first; a lower chain poses on top of the turns found above it.
+- **Limits.** The chain's base follows FK only: a long chain hanging from bones that a two-bone IK moves sees them at
+  their FK pose. `look_rig` / `inspect_rig_motion` report two-bone chains only (the engine's); check a long chain by
+  its bones' tips. Request to Team Hem: a native N-bone solve in `ik.rs` would remove the bake
+  (`C:\Users\Sam\.rostrum\waves\results\stage2\p16\request-team-hem.md`).
+
+## Poses (Python, `rostrum2d/rig/poses.py`, P16)
+
+A rig holds a `poses` list (`pose` items: `id`, `name`, `note`, and `values` = `{item id: {field: value}}`). A pose
+holds the bones' `rotation`, `scale`, `moveX`, `moveY`, the iks' `targetX`, `targetY`, `mix`, and each swap set's
+`show` (§ Swap sets) inside the rig.
+
+- `pose.save` (target: rig; `id`/`name`, `t`, `parts` = only these bone / ik / swap ids, empty = all): the values at `t`.
+- `pose.apply` (target: rig; `pose`, `t`, `with` + `mix` = blend with a second pose, `amount` = part of the way from
+  what is at `t` now, `ease`): keys every field of the pose at `t`. Numbers blend linearly; a swap choice jumps at the
+  half (`mix` ≥ 0.5 takes the second pose's; `amount` < 0.5 keeps the current one) and is keyed `hold`. A bone deleted
+  since the save is skipped. One operation = one undo step; it only puts keys.
+- `pose.remove`; `pose.set` (rename, note).

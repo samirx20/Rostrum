@@ -19,7 +19,7 @@ from .rig import model as rig_model
 OWNED = ["effects", "masks", "keys"]
 LISTS = {"doc": ["comps"], "comp": ["layers"], "group": ["layers", *OWNED], "drawing": ["frames", *OWNED],
          "frame": rostrum_paint.CANVAS_LISTS, **rostrum_paint.LISTS,
-         "rig": ["layers", "bones", "iks", "binds", *OWNED], "bone": ["keys"], "ik": ["keys"], "camera": ["keys"],
+         "rig": ["layers", "bones", "iks", "binds", "poses", *OWNED], "bone": ["keys"], "ik": ["keys"], "camera": ["keys"],
          **{t: OWNED for t in ("shape", "text", "image", "video", "path")},
          **{t: ["keys"] for t in (*F.EFFECTS, "mask")}}
 for _t, _owned in LISTS.items():       # whatever animates a field may also hold its expression (ops_expr.py)
@@ -27,7 +27,7 @@ for _t, _owned in LISTS.items():       # whatever animates a field may also hold
         _owned.append("exprs")
 HOLDS = {"comps": ("comp",), "layers": F.LAYERS, "effects": F.EFFECTS, "masks": ("mask",), "keys": ("key",),
          "exprs": ("expr",),
-         "frames": ("frame",), "bones": ("bone",), "iks": ("ik",), "binds": ("bind",), **rostrum_paint.HOLDS}
+         "frames": ("frame",), "bones": ("bone",), "iks": ("ik",), "binds": ("bind",), "poses": ("pose",), **rostrum_paint.HOLDS}
 
 REGISTRY = Registry()
 
@@ -111,5 +111,6 @@ rostrum_paint.register(REGISTRY, canvas_types=("frame",))
 from . import ops_draw, ops_expr, ops_items, ops_keys  # noqa: E402,F401  (they register on REGISTRY)
 from . import follow  # noqa: E402,F401  (text.follow: a text on a path layer)
 from . import ops_path  # noqa: E402,F401  (vector paths, booleans)
-from .rig import ops as _rig_ops  # noqa: E402,F401  (bones, IK chains, binds)
+from .rig import ops as _rig_ops, poses as _rig_poses  # noqa: E402,F401  (bones, IK chains, binds, poses)
 from .lipsync import ops as _lipsync_ops  # noqa: E402,F401  (lipsync.apply)
+from . import ops_swap  # noqa: E402,F401  (swap.show, blink.add)

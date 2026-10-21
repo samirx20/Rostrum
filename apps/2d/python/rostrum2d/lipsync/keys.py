@@ -35,3 +35,14 @@ def plan(cues: list[dict], shapes: dict, at: float, clip_start: float) -> tuple[
             keys[current][t], keys[lay][t] = 0.0, 1.0
         current = lay
     return keys, shown
+
+
+def slot_keys(shown: list[dict], children: list[str]) -> dict[float, int]:
+    """{comp time: child index} for a swap set (swap.py): the cues from `plan` as the slot's `show` choices, one where
+    the shown mouth changes. Every shape's layer must be one of `children` (ids, in the slot's order)."""
+    out, current = {}, None
+    for s in shown:
+        if s["layer"] != current:
+            out[s["start"]] = children.index(s["layer"])
+            current = s["layer"]
+    return out

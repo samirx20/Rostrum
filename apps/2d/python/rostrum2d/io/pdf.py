@@ -17,6 +17,7 @@ from pypdfium2._helpers.pageobjects import PdfObject
 from .. import pathdata as PD
 from . import pdf_clip as K
 from . import pdf_content as C
+from . import pdf_font as FONT
 from . import pdf_raw as P
 from .pdf_shading import gradient
 
@@ -180,8 +181,7 @@ def _text(ctx, obj, m, outer) -> dict | None:
     body = obj.extract()
     if not body.strip():
         return None
-    font = obj.get_font()
-    family = font.get_base_name().split("+")[-1]
+    family, weight, slant = FONT.of_text_object(obj)
     size = obj.get_font_size() * P.scale_of(m) * ctx["s"]
     l, b, r, t = (ctypes.c_float() for _ in range(4))
     R.FPDFPageObj_GetBounds(obj.raw, l, b, r, t)
@@ -189,7 +189,7 @@ def _text(ctx, obj, m, outer) -> dict | None:
     xs, ys = [p[0] for p in pts], [p[1] for p in pts]
     return {"type": "text", "name": body.strip()[:30], "box": [min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)],
             "props": {"body": body.replace("\r\n", "\n"), "size": max(size, 1.0), "color": P.fill_colour(obj.raw),
-                      "align": "left", "font": family, "weight": float(font.get_weight() or 400)}}
+                      "align": "left", "font": family, "weight": weight, **({"slant": slant} if slant else {})}}
 
 
 def _image(ctx, obj, m) -> dict | None:

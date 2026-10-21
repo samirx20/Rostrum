@@ -31,6 +31,7 @@ from .expr import ExprError, parse
 from .kind import KIND, LISTS
 from .ops_expr import expr_id, link_source
 from .rig import script as rig_script
+from .swap import child_index
 from .lipsync import script as lipsync_script
 
 SAFE = {n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__builtins__, n)
@@ -61,6 +62,11 @@ class Item:
             F.param("key", "ease").check(e, f"{self.id}.{prop} at {t} s")
             self.node["keys"].append(k)
         return self
+
+    def show(self, choices: dict) -> "Item":
+        """Key a swap set's choice: `mouth.show({0: "open", 1.2: "closed", 1.3: 0})`, {time: child or its place} (swap.py)."""
+        kids = [c["id"] for c in self.node.get("layers", [])]
+        return self.key("show", {t: (child_index(kids, getattr(v, "id", v)), "hold") for t, v in choices.items()})
 
     def expr(self, prop: str, source: str) -> "Item":
         """Drive a field by an expression: `title.expr("x", "sin(time * 3) * 40 + 960")` (expr.py)."""

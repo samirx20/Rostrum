@@ -12,7 +12,7 @@ from dataclasses import replace
 from rostrum_core import Param
 from rostrum_core.keys import KEY_FIELDS
 
-from . import blends as _blends, grade_fields as _grade, layout_fields as _layout, stepped as _stepped
+from . import blends as _blends, grade_fields as _grade, layout_fields as _layout, stepped as _stepped, swap as _swap
 
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 P = "primary"
@@ -268,6 +268,7 @@ FIELDS: dict[str, list[Param]] = {
 }
 
 FIELDS["group"] += _layout.GROUP           # auto layout (layout.py): Python-side, baked into the children's keys
+FIELDS["group"] += _swap.GROUP             # swap sets (swap.py): Python-side, shown as the children's opacity
 FIELDS.update(_rig.FIELDS)
 FIELDS.update(_camera.FIELDS)
 FIELDS.update(_motion.FIELDS)

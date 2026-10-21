@@ -10,7 +10,7 @@ from rostrum_core.tree import index
 
 from ..kind import REGISTRY as R
 from ..ops_keys import put_key
-from . import visemes as V
+from . import keys as K, visemes as V
 from .phonemes import LANGUAGES
 from .track import TIMING, track
 
@@ -39,7 +39,7 @@ PARAMS = [
 ]
 
 
-def _comp_of(ctx, id_) -> dict:
+def comp_of(ctx, id_) -> dict:
     idx = index(ctx.doc, ctx.kind.lists)
     while idx[id_].item["type"] != "comp":
         id_ = idx[id_].parent
@@ -56,7 +56,8 @@ def _inside(ctx, layer, target) -> bool:
 
 
 @R.operation("lipsync.apply", "Key mouth layers to a voice clip: one layer per mouth shape shows at a time (opacity "
-             "keys, hold). Missing shapes show the nearest one given. Adds keys only; keys already there stay.",
+             "keys, hold), or, in a swap set whose children they are, the set's `show` choice. Missing shapes show the nearest "
+             "one given. Adds keys only; keys already there stay.",
              target=("rig", "group"), label="Lip sync", params=PARAMS)
 def lipsync_apply(ctx, targets, args):
     shapes = {s: args[f"shape{s}"] for s in V.SHAPES if args.get(f"shape{s}")}
@@ -69,10 +70,17 @@ def lipsync_apply(ctx, targets, args):
         outside = [lay for lay in shapes.values() if not _inside(ctx, lay, t)]
         if outside:
             ctx.fail(codes.BAD_ARGUMENT, f"mouth layers {outside}", f"are not inside {t}")
-        fps = _comp_of(ctx, t).get("fps", 30)
+        fps = comp_of(ctx, t).get("fps", 30)
         job = track(args["source"], args.get("at", 0.0), fps, shapes, args.get("text"), args.get("start", 0.0),
                     args.get("end"), args.get("language", "english"), where=ctx.where, **timing)
         known = index(ctx.doc, ctx.kind.lists)
+        kids = [c["id"] for c in ctx.item(t).get("layers", [])]
+        if ctx.item(t).get("swap") and set(shapes.values()) <= set(kids):       # a swap set's slot (swap.py)
+            there = {round(k["t"], 4) for k in ctx.item(t).get("keys", []) if k["prop"] == "show"}
+            for at, i in K.slot_keys(job["shown"], kids).items():
+                if key_id(t, "show", at) not in known and round(at, 4) not in there:
+                    put_key(ctx, t, "show", at, {"v": i, "ease": "hold"})
+            continue
         for layer, ks in job["keys"].items():
             there = {round(k["t"], 4) for k in ctx.item(layer).get("keys", []) if k["prop"] == "opacity"}
             for at, v in ks.items():

@@ -3,6 +3,7 @@ Apache-2.0) shapes each paragraph, so kerning, ligatures and the text's OpenType
 does; lines break at new lines and wrap at word ends past `boxWidth`."""
 from __future__ import annotations
 
+import math
 import re
 from pathlib import Path
 
@@ -14,6 +15,24 @@ def shaper(path: Path, location: tuple):
     font = hb.Font(hb.Face(hb.Blob.from_file_path(str(path))))
     font.set_variations(dict(location))
     return font
+
+
+def metrics(font, size: float) -> tuple[float, float]:
+    """(ascent, descent) in px as the engine's text shaper reads them: OS/2 typo metrics when the font sets
+    USE_TYPO_METRICS (fsSelection bit 7) and has them, else hhea."""
+    upm, os2, hh = font["head"].unitsPerEm, font["OS/2"] if "OS/2" in font else None, font["hhea"]
+    if os2 is not None and os2.fsSelection & 128 and (os2.sTypoAscender or os2.sTypoDescender):
+        return os2.sTypoAscender * size / upm, -os2.sTypoDescender * size / upm
+    return hh.ascent * size / upm, -hh.descent * size / upm
+
+
+def baseline(n: int, line_height: float, ascent: float, descent: float) -> float:
+    """Distance from the text box's top to line n's baseline, by the engine's rule (parley, quantized, as CSS in
+    Chromium): ascent and descent each round to whole px, the half-leading above the baseline is floored, and the
+    line's top (n lines of `line_height` down) rounds to a whole px."""
+    near = lambda x: math.floor(x + 0.5)            # Rust's round (half up), not Python's half-to-even
+    a, d = near(ascent), near(descent)
+    return near(n * line_height) + a + math.floor((line_height - (a + d)) / 2)
 
 
 def _features(p: dict) -> dict:

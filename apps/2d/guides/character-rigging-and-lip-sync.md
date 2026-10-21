@@ -100,9 +100,30 @@ SVG as paths), put them in a `rig`, then add bones at the joints.
 
 ## Poses
 
-Not yet: named poses, pose libraries, mirror pose, copy a pose between frames. A pose today is the keys on the bones' `rotation`
-/ `scale` / `moveX` / `moveY` and the IK `targetX` / `targetY` / `pin` / `mix`. To reuse one, key the same values again at
-another time (a loop in the script).
+A pose library keeps named poses on the rig, so a person or an agent can reuse a pose instead of keying it again.
+
+- **Save.** Pose the rig at some time (keys or still values), then `pose.save target=puppet id=wave_up t=1.2`. With
+  `parts=[...]` it saves only those bones, IK chains and swap sets: a hand shape, a face, one arm.
+- **Apply.** `pose.apply target=puppet pose=wave_up t=2` keys every field the pose holds at that time (one undo step).
+  `amount=0.5` goes half way from what is there; `with=other mix=0.3` keys a blend of two poses (a swap set's drawing
+  jumps at the half, never blends).
+- **Ways to use it:** block a shot with key poses first, then key the in-betweens; keep a library per character
+  (`pose.set` renames, `note` says what one is for); make a variation by blending two poses a little instead of
+  posing a third by hand.
+- Not yet: mirroring a pose, copying poses between rigs.
+
+## Long chains: spines, tails, arms with hands
+
+`ik.add target=puppet bone=hand chain=3` reaches with the hand and its two parents (forearm, upper arm). Any number of
+bones from the lower one up: a tail of 6, a spine of 4. Keys on `targetX` / `targetY`, `mix` and `pin` work as for a
+leg; `bend` says which way a straight chain starts to curl. The turns are worked out per frame in Python and drawn by
+the engine (RIG.md › Long IK chains), so the canvas and the export show the same.
+
+- Fade `mix` from 0 to 1 to lift an arm from its own (FK) swing into a reach, and back down.
+- A long chain spreads the bend over all its joints. For a joint that should stay stiff, shorten the chain or key that
+  bone yourself.
+- Check the tip with `look_frame` / `look_sheet` at the extremes. `look_rig` draws the bones; its IK crosses are
+  two-bone chains only for now.
 
 ## Lip sync
 
@@ -131,6 +152,25 @@ The first run on a clip loads a speech model (a GPU job, a few seconds); after t
 
 Not yet: lip sync from a RostrumSound voice line or a shared marker as `at` (today `source` is a WAV and `at` is seconds),
 languages other than English with words.
+
+## Swap sets: one drawing at a time
+
+A swap set is a slot on a character that shows one of several drawings: mouth shapes, hands, eyes, a blink. It is a group
+with **One at a time** on; its children are the drawings, in order, and **Shows** says which one (0 is the first).
+
+- **Draw the set.** One layer per drawing, all placed where they should sit, as children of the group. Keep the same
+  registration (the same pivot and size) so a swap does not make the part jump. A child may have its own animation
+  (opacity fades, moves); it plays only while it is the one showing.
+- **Key a choice.** `slot.show({0: "open", 1.2: "closed", 1.3: "open"})` in a script, or `swap.show` with `t` and `layer`
+  (or `index`) as an operation. Each is a jump: it holds until the next key. No ease is needed or has any effect.
+  `inspect_swaps time=1.25` says which child shows then; `look_frame` shows it.
+- **Blink.** `blink.add` on the eyes' slot with `open`, `closed` and optionally `half` (a half-closed drawing for the
+  frame before and after). `every` is the mean gap in seconds, `vary` how uneven it is, `frames` how long the eyes stay
+  closed, `start` / `end` the stretch. A `seed` makes the same blinks every run; change it for others. It never moves
+  or replaces a key that is there, so keep a blink you like and key the rest by hand. Look at a few blink frames.
+- **Lip sync into a slot.** Put the mouth drawings in a swap set and give `lipsync(..., slot=mouth)` (or the operation
+  `lipsync.apply` on the swap set) the shapes as before. The slot's `show` is keyed, one key per change of mouth, in
+  place of an opacity key per layer. A person can move any of those keys on the timeline.
 
 ## Tips
 
