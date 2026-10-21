@@ -4,7 +4,9 @@
 #include <pxr/base/tf/errorMark.h>
 #include <pxr/pxr.h>
 
+#include <cmath>
 #include <functional>
+#include <sstream>
 #include <map>
 #include <memory>
 #include <string>
@@ -19,8 +21,28 @@ PXR_NAMESPACE_USING_DIRECTIVE
 namespace r3d {
 
 namespace {
+// one line per reply (JsWriteToString pretty-prints over several lines)
+void write(JsWriter& w, const JsValue& v) {
+  if (v.IsObject()) {
+    w.BeginObject();
+    for (const auto& [k, x] : v.GetJsObject()) { w.WriteKey(k); write(w, x); }
+    w.EndObject();
+  } else if (v.IsArray()) {
+    w.BeginArray();
+    for (const auto& x : v.GetJsArray()) write(w, x);
+    w.EndArray();
+  } else if (v.IsString()) { w.WriteValue(v.GetString());
+  } else if (v.IsBool()) { w.WriteValue(v.GetBool());
+  } else if (v.IsInt()) { w.WriteValue(v.GetInt64());
+  } else if (v.IsUInt64()) { w.WriteValue(v.GetUInt64());
+  } else if (v.IsReal()) { w.WriteValue(std::isfinite(v.GetReal()) ? v.GetReal() : -1.0);
+  } else { w.WriteValue(nullptr); }
+}
+
 void send(std::FILE* out, const JsObject& o) {
-  std::fputs(JsWriteToString(JsValue(o)).c_str(), out);
+  std::ostringstream s;
+  { JsWriter w(s, JsWriter::Style::Compact); write(w, JsValue(o)); }
+  std::fputs(s.str().c_str(), out);
   std::fputc('\n', out);
   std::fflush(out);
 }
