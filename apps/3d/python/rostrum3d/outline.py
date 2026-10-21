@@ -16,12 +16,27 @@ import numpy as np
 from fontTools.pens.basePen import BasePen
 
 MIN_TOLERANCE = 1e-4          # metres: 0.1 mm, or 0.2% of the size when that is bigger
+# The most a flattened curve turns from one straight piece to the next. Distance alone isn't enough: a polished bevel
+# reflects the turn, not the distance, so a 4 cm circle cut to 0.2% (36 pieces, 10° each) showed every corner as a
+# kink in its highlight and a polygon outline in close-up (H22). 2.5° = 144 pieces round a full circle.
+MAX_TURN = math.radians(2.5)
+
+
+def _turn(*legs) -> float:
+    """How far a control polygon turns along its legs (an upper bound on the curve's own turning), in radians."""
+    legs = [d for d in legs if math.hypot(*d) > 0]
+    return sum(math.atan2(abs(a[0] * b[1] - a[1] * b[0]), a[0] * b[0] + a[1] * b[1]) for a, b in zip(legs, legs[1:]))
 _CACHE: OrderedDict = OrderedDict()
 CACHE_SIZE = 64
 
 
+def _leg(a, b):
+    return (b[0] - a[0], b[1] - a[1])
+
+
 class Flatten(BasePen):
-    """Collects a path's contours as point lists; curves are cut into lines no further than `tol` from the curve."""
+    """Collects a path's contours as point lists; curves are cut into lines no further than `tol` from the curve and
+    turning at most MAX_TURN from one line to the next."""
 
     def __init__(self, tol: float):
         super().__init__(None)
@@ -33,12 +48,12 @@ class Flatten(BasePen):
     def _lineTo(self, pt):
         self._cur.append(pt)
 
-    def _steps(self, flat: float, k: float) -> int:
-        return max(1, min(256, math.ceil(math.sqrt(k * flat / self.tol))))
+    def _steps(self, flat: float, k: float, turn: float) -> int:
+        return max(1, min(256, max(math.ceil(math.sqrt(k * flat / self.tol)), math.ceil(turn / MAX_TURN))))
 
     def _qCurveToOne(self, p1, p2):
         p0 = self._cur[-1]
-        n = self._steps(math.hypot(p0[0] - 2 * p1[0] + p2[0], p0[1] - 2 * p1[1] + p2[1]), 0.25)
+        n = self._steps(math.hypot(p0[0] - 2 * p1[0] + p2[0], p0[1] - 2 * p1[1] + p2[1]), 0.25, _turn(_leg(p0, p1), _leg(p1, p2)))
         for i in range(1, n + 1):
             t = i / n
             a, b, c = (1 - t) ** 2, 2 * t * (1 - t), t * t
@@ -48,7 +63,7 @@ class Flatten(BasePen):
         p0 = self._cur[-1]
         d = max(math.hypot(p0[0] - 2 * p1[0] + p2[0], p0[1] - 2 * p1[1] + p2[1]),
                 math.hypot(p1[0] - 2 * p2[0] + p3[0], p1[1] - 2 * p2[1] + p3[1]))
-        n = self._steps(d, 0.75)
+        n = self._steps(d, 0.75, _turn(_leg(p0, p1), _leg(p1, p2), _leg(p2, p3)))
         for i in range(1, n + 1):
             t = i / n
             a, b, c, e = (1 - t) ** 3, 3 * t * (1 - t) ** 2, 3 * t * t * (1 - t), t ** 3
