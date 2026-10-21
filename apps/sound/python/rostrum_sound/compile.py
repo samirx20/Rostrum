@@ -20,6 +20,8 @@ NOTE_KEYS = ("pitch", "at", "dur", "vel", "pan", *PL.NOTE_KEYS)
 HIT_KEYS = ("drum", "at", "vel", "pan", "tune", "decay")
 CLIP_KEYS = ("media", "in", "length", "at", "volume", "pitch", "pan", "panTo", "fadeIn", "fadeOut", "reverb")
 TRACK_KEYS = ("volume", "pan", "reverb", "tone")
+DUCK_KEYS = ("under", "depth", "attack", "release", "lookahead", "hold", "voice")
+BUS_KEYS = ("volume", "pan", "mute")
 MASTER_MIX = ("volume", "trackReverbSpace")
 MASTERING = ("reverb", "fadeIn", "fadeOut", "truePeak", "glue", "safetyClip")
 
@@ -84,6 +86,25 @@ class _Compiler:
         if clips:
             out["clips"] = clips
         out.update(_nonempty("effects", self.effects(track, w)), **self.lanes(track, w))
+        if track.get("output", names.MASTER_OUT) != names.MASTER_OUT:
+            out["output"] = track["output"]
+        out.update(_nonempty("sends", [self.send(s, w) for s in track.get("sends", [])]),
+                   **_nonempty("ducks", [{k: d[k] for k in DUCK_KEYS if k in d} for d in track.get("ducks", [])]))
+        return out
+
+    def send(self, s, where):
+        """A send: its level is a number, or the points of its `level` lane when it has one."""
+        w = f"{where}.sends[{s['id']}]"
+        lane = next((a["points"] for a in s.get("automation", []) if a["lane"] == "level"), None)
+        level = self.env(lane, f"{w}.level") if lane else s.get("level", 1)
+        return {"bus": s["bus"], "level": level, **{k: s[k] for k in ("pre",) if k in s}}
+
+    def bus(self, b):
+        w = f"buses[{b['id']}]"
+        out = {"id": b["id"], **{k: b[k] for k in BUS_KEYS if k in b}, **_nonempty("effects", self.effects(b, w)),
+               **self.lanes(b, w)}
+        if b.get("output", names.MASTER_OUT) != names.MASTER_OUT:
+            out["output"] = b["output"]
         return out
 
     def master(self, m, full):
@@ -120,4 +141,6 @@ def compile(doc, solo=None, mute=None, master=True) -> dict:
     out["master"] = c.master(root["master"][0], master) if root.get("master") else {}
     out["tracks"] = [c.track(t, t.get("mute") or t["id"] in silent or bool(heard) and t["id"] not in heard)
                      for t in tracks]
+    if root.get("buses"):
+        out["buses"] = [c.bus(b) for b in root["buses"]]
     return out

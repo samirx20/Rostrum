@@ -34,3 +34,8 @@ WAVES = ["saw", "square", "triangle", "sine"]
 EXPRESSION_LANES = ["dynamics", "vibrato"]
 TRACK_LANES = ["volume", "pan", *EXPRESSION_LANES]
 MASTER_LANES = ["volume"]
+BUS_LANES = ["volume", "pan"]
+SEND_LANES = ["level"]
+ALL_LANES = [*TRACK_LANES, *SEND_LANES]
+# A track's or bus's `output` when it feeds the master bus (the default); otherwise a bus id.
+MASTER_OUT = "master"

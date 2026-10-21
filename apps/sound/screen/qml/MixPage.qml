@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// The Mix page: a strip per track left to right, the master at the right end, the listen pictures below.
+// The Mix page: a strip per track, then per bus, left to right, the master at the right end, the listen pictures below.
 Panel {
     id: page
     title: "Mix"
@@ -18,6 +18,11 @@ Panel {
                 height: scroller.height
                 spacing: Theme.gap
                 Repeater { id: strips; model: mixer.tracks; delegate: MixStrip { height: row.height } }
+                Repeater { model: mixer.buses; delegate: MixStrip { height: row.height } }   // buses, before the master
+                Item {
+                    width: addBus.width; height: row.height
+                    Button { id: addBus; text: "+ Bus"; kind: "ghost"; onClicked: mixer.addBus() }
+                }
             }
         }
         Text {

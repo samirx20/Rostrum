@@ -10,6 +10,7 @@ from rostrum_core import Param
 
 from .. import names
 from . import effects
+from . import fields_buses as FB
 from . import playing as PL
 from . import values as V
 
@@ -26,12 +27,13 @@ FIELDS = {
         V.time("length", group="Time", help="How long the mix is (a time); left out = the last sound + 2 s."),
         N("beatsPerBar", 1, 16, "Time", imp="secondary", integer=True, label="Beats per bar"),
         N("sampleRate", 22050, 192000, "Output", "Hz", "deep", integer=True, label="Sample rate"),
+        Param.text("picture", group="Picture", importance="secondary", help="A video file to make the sound to (shown at the playhead on the Timeline)."),
     ],
     "track": [
         Param.text("name", group="Track", importance="secondary"),
         *PL.INSTRUMENT,
         N("volume", 0, 4, "Mix", help="Fader gain (1 = as recorded)."), N("pan", **PAN, group="Mix"),
-        Param.toggle("mute", group="Mix"), Param.toggle("solo", group="Mix"),
+        Param.toggle("mute", group="Mix"), Param.toggle("solo", group="Mix"), FB.OUTPUT,
         N("reverb", 0, 1, "Mix", imp="secondary", help="Send to the master's track reverb."),
         Param.choice("tone", names.TONES, group="Mix", importance="secondary"),
         *PL.EXPRESSION,
@@ -58,6 +60,7 @@ FIELDS = {
         N("fadeIn", 0, 600, "Fades", "s", label="Fade in"), N("fadeOut", 0, 600, "Fades", "s", label="Fade out"),
         N("reverb", 0, 1, "Clip", imp="secondary"),
     ],
+    **FB.FIELDS,
     "effect": [Param.choice("effect", effects.TYPES, group="Effect", label="Effect type"),
                Param.toggle("bypass", group="Effect", importance="secondary"), *effects.params("effect")],
     "marker": [Param.text("name", group="Marker"), V.time("at", group="Marker")],
@@ -78,7 +81,9 @@ FIELDS = {
 # What a new item stores (switch fields always, so valid_when reads a real value).
 DEFAULTS = {
     "doc": dict(tempo=120, beatsPerBar=4, sampleRate=48000),
-    "track": dict(instrument="none", **PL.SWITCHES, volume=0.85, pan=0, mute=False, solo=False, reverb=0, tone="neutral"),
+    "track": dict(instrument="none", **PL.SWITCHES, volume=0.85, pan=0, mute=False, solo=False, reverb=0,
+                  tone="neutral", output=names.MASTER_OUT),
+    **FB.DEFAULTS,
     "note": dict(vel=0.8),
     "hit": dict(vel=0.85),
     "clip": dict(**{"in": 0}, volume=1),
@@ -88,7 +93,7 @@ DEFAULTS = {
 }
 # The field that holds each instrument form's value (the form's name).
 INSTRUMENT_FIELD = {k: k for k in names.INSTRUMENTS if k != "none"}
-REQUIRED = {"note": ["pitch", "at", "dur"], "hit": ["drum", "at"], "clip": ["media", "at"], "marker": ["name", "at"]}
+REQUIRED = {"duck": ["under"], "note": ["pitch", "at", "dur"], "hit": ["drum", "at"], "clip": ["media", "at"], "marker": ["name", "at"]}
 
 
 def params(type_: str, required=False) -> list[Param]:

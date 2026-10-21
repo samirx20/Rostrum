@@ -3,11 +3,11 @@ import QtQuick.Layouts
 import RostrumKit
 import "MixFormat.js" as F
 
-// One track's strip: name, effect chain, pan, mute / solo, fader with its meter, and the numbers.
+// One track's (or bus') strip: name, where it plays to, effect chain, sends (tracks), pan, mute / solo, fader with its meter, and the numbers.
 // Editing selects the track first, so the inspector shows it and the edit is one change on it.
 Rectangle {
     id: s
-    required property var model          // roles: id, name, volume, pan, mute, solo, effects, meter
+    required property var model          // roles: id, name, volume, pan, mute, solo, effects, meter, canSolo, output, outputs, sends, sendTargets
     readonly property bool selected: backend.selected === model.id
     readonly property bool measured: !!model.meter && model.meter.peak !== undefined
     width: 124
@@ -26,7 +26,12 @@ Rectangle {
             font.family: uiFont; font.pixelSize: Theme.title; font.weight: Font.DemiBold
             MouseArea { anchors.fill: parent; onPressed: s.pick() }
         }
-        MixChain { Layout.fillWidth: true; Layout.preferredHeight: 84; chips: s.model.effects; ownerId: s.model.id }
+        MixPick {   // where it plays to: the master or a bus (the choices are the buses it may feed)
+            Layout.fillWidth: true; Layout.preferredHeight: 22
+            text: s.model.output; choices: s.model.outputs; visible: s.model.outputs.length > 1
+            onPicked: (id) => mixer.setOutput(s.model.id, id)
+        }
+        MixChain { Layout.fillWidth: true; Layout.preferredHeight: 52; chips: s.model.effects; ownerId: s.model.id }
         ColumnLayout {  // pan
             Layout.fillWidth: true; spacing: 0
             RowLayout {
@@ -44,11 +49,12 @@ Rectangle {
                 onScrubEnded: backend.endScrub()
             }
         }
+        MixSends { Layout.fillWidth: true; ownerId: s.model.id; sends: s.model.sends; targets: s.model.sendTargets }
         RowLayout {
             Layout.fillWidth: true; spacing: Theme.grid
             MixSwitch { Layout.fillWidth: true; text: "M"; on: s.model.mute; tint: Theme.warn
                         onToggled: (v) => { s.pick(); backend.setValue("mute", v) } }
-            MixSwitch { Layout.fillWidth: true; text: "S"; on: s.model.solo; tint: Theme.accent
+            MixSwitch { Layout.fillWidth: true; visible: s.model.canSolo; text: "S"; on: s.model.solo; tint: Theme.accent
                         onToggled: (v) => { s.pick(); backend.setValue("solo", v) } }
         }
         RowLayout {  // fader and meter

@@ -81,3 +81,44 @@ def test_touch_fields_follow_the_model():
     assert visible(instrument="model", model="marimba") == {"position", "hardness"}     # no damping on bars
     assert visible(instrument="model", model="violin") == set()
     assert visible(instrument="synth") == {"attack"}
+
+
+ROUTED = """
+tempo(120)
+voice = track("voice", builtIn="feltPiano", volume=0.8)
+voice.note("D4", at=0, dur=1.0)
+pad = track("pad", builtIn="warmPad")
+pad.note("D3", at=0, dur=2.0)
+"""
+
+
+def _person(doc, op, target=None, **args):
+    doc.apply({"op": op, **({"target": [target]} if target else {}), "args": args}, Who.person())
+
+
+def test_buses_sends_and_ducks_compile_and_a_rerun_keeps_them():
+    import pytest
+    from rostrum_core import RostrumError
+
+    doc = Document.new(KIND)
+    doc.run_script("r.py", run_source(ROUTED, "r.py"), Who.script("r.py"))
+    _person(doc, "bus.add", id="reverb", name="Reverb")
+    _person(doc, "effect.add", "reverb", effect="reverb")
+    _person(doc, "bus.add", id="music", name="Music")
+    _person(doc, "send.add", "pad", bus="reverb", level=0.4)
+    _person(doc, "track.set", "pad", output="music")
+    _person(doc, "duck.add", "pad", under=["voice"], depth=0.7)
+    _person(doc, "automation.set", "pad.send_reverb", lane="level", points=[[0, 0.1], [2, 0.5]])
+    doc.run_script("r.py", run_source(ROUTED, "r.py"), Who.script("r.py"))          # the script runs again
+
+    s = compile(doc)
+    pad = next(t for t in s["tracks"] if t["id"] == "pad")
+    assert [b["id"] for b in s["buses"]] == ["reverb", "music"] and s["buses"][0]["effects"][0]["type"] == "reverb"
+    assert pad["output"] == "music" and pad["sends"] == [{"bus": "reverb", "level": [[0, 0.1], [2, 0.5]], "pre": False}]
+    assert pad["ducks"][0]["under"] == ["voice"] and pad["ducks"][0]["depth"] == 0.7
+    assert "output" not in next(t for t in s["tracks"] if t["id"] == "voice")
+
+    with pytest.raises(RostrumError, match="still used"):                          # loud, never a silent mute
+        _person(doc, "bus.remove", "reverb")
+    with pytest.raises(RostrumError, match="not master or a bus"):
+        _person(doc, "track.set", "pad", output="nowhere")

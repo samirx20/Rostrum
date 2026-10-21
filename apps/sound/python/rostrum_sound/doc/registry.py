@@ -9,8 +9,10 @@ REGISTRY = Registry()
 
 # Where child items live, per item type (shared/core tree.py).
 LISTS = {
-    "doc": ["tracks", "markers", "master"],
-    "track": ["notes", "hits", "clips", "effects", "automation"],
+    "doc": ["tracks", "buses", "markers", "master"],
+    "track": ["notes", "hits", "clips", "effects", "automation", "sends", "ducks"],
+    "bus": ["effects", "automation"],
+    "send": ["automation"],
     "clip": ["effects"],
     "master": ["effects", "automation"],
 }

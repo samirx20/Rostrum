@@ -8,9 +8,9 @@ from . import effects as FX
 from . import fields as FD
 from . import ids
 from . import values as V
-from .registry import MASTER_ID, REGISTRY, set_fields, taken
+from .registry import REGISTRY, set_fields, taken
 
-INSERTS = ("track", "clip", "master")
+INSERTS = ("track", "clip", "bus", "master")
 
 REGISTRY.operation("master.set", "Change the master bus: level, loudness target, true peak, glue, spaces, fades.",
                    target="master", params=FD.params("master"), label="Edit master", fields=True)(set_fields)
@@ -20,7 +20,7 @@ REGISTRY.operation("marker.set", "Rename or move a marker.", target="marker", pa
                    label="Edit marker", fields=True)(set_fields)
 
 
-@REGISTRY.operation("effect.add", "Add an effect to the end of a track's, clip's or the master's inserts.",
+@REGISTRY.operation("effect.add", "Add an effect to the end of a track's, clip's, bus' or the master's inserts.",
                     target=INSERTS, label="Add effect", params=[
                         Param.choice("effect", FX.TYPES, label="Effect type", required=True),
                         Param.text("id", label="Id", help="Optional; counted per place (pad.eq_1 …)."),
@@ -32,6 +32,9 @@ def effect_add(ctx, targets, args):
         if id_ in taken(ctx):
             ctx.fail(codes.BAD_ARGUMENT, f'id "{id_}"', "is already used in this document")
         ctx.insert(t, "effects", {"id": id_, "type": "effect", "bypass": False, **FX.defaults(args["effect"]), **args})
+
+
+LANES = {"track": names.TRACK_LANES, "master": names.MASTER_LANES, "bus": names.BUS_LANES, "send": names.SEND_LANES}
 
 
 def _point(p, v, where):
@@ -48,12 +51,12 @@ POINTS = V.listof("points", _point, {"type": "array", "minItems": 2, "maxItems":
 
 
 @REGISTRY.operation("automation.set", "Replace an automation lane's points: volume or pan over time, "
-                    "or a track's expression (dynamics 0 … 2, vibrato 0 … 1, like CC 11 / CC 1).",
-                    target=("track", "master"), label="Automate", params=[
-                        Param.choice("lane", names.TRACK_LANES, required=True, label="Value"), POINTS])
+                    "a send's level (0 … 4), or a track's expression (dynamics 0 … 2, vibrato 0 … 1, like CC 11 / CC 1).",
+                    target=("track", "bus", "send", "master"), label="Automate", params=[
+                        Param.choice("lane", names.ALL_LANES, required=True, label="Value"), POINTS])
 def automation_set(ctx, targets, args):
     for t in targets:
-        lanes = names.MASTER_LANES if t == MASTER_ID else names.TRACK_LANES
+        lanes = LANES[ctx.item(t)["type"]]
         if args["lane"] not in lanes:
             ctx.fail(codes.BAD_ARGUMENT, f'lane "{args["lane"]}"', f"can't be automated on {t}", lanes)
         id_ = ids.lane(t, args["lane"])
