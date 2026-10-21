@@ -7,7 +7,7 @@
   precomp's layers, in the group's own px. `clip` becomes a rect mask over the box; otherwise the precomp is made
   huge so nothing is cut. Time inside a precomp is the composition's time.
 - The composition's background becomes the bottom solid layer (Lottie has no background colour).
-- Not exported, always reported: text (so far), drawing, video, tilt, effects, conic gradients, soft mask edges.
+- text: glyph outlines as one shape layer per text (lottie_text.py). Not exported, always reported: drawing, video, tilt, effects, conic gradients, soft mask edges.
 """
 from __future__ import annotations
 
@@ -18,11 +18,11 @@ from .lottie_image import image_layer
 from .lottie_layer import clip_mask, common
 from .lottie_props import Ctx, rgb
 from .lottie_shapes import shapes_of
+from .lottie_text import text_layer
 
 VERSION = "5.12.2"
 BIG = 32768          # a precomp without `clip` is this big, so lottie-web never cuts a child at the group's box
-NOT_EXPORTED = {"text": "text is not exported yet (Lottie draws glyph outlines; the engine's text outlines are not wired in)",
-                "drawing": "frame-by-frame drawings are not exported (Lottie has no brush layers)",
+NOT_EXPORTED = {"drawing": "frame-by-frame drawings are not exported (Lottie has no brush layers)",
                 "video": "video layers are not exported (Lottie holds no video)"}
 
 
@@ -42,6 +42,10 @@ def _layers(children: list[dict], ctx: Ctx, assets: list[dict], start_ind: int =
         if kind in ("shape", "path"):
             layer = common(node, ctx, 4, ind)
             layer["shapes"] = shapes_of(node, ctx)
+        elif kind == "text":
+            layer = text_layer(node, ctx, ind)
+            if not layer:                      # font not found: text_layer said so
+                continue
         elif kind == "image":
             layer = image_layer(node, ctx, assets, ind)
         elif kind == "group":
@@ -55,7 +59,7 @@ def _layers(children: list[dict], ctx: Ctx, assets: list[dict], start_ind: int =
 
 
 def _gradient_note(node: dict, ctx: Ctx, kind: str) -> None:
-    if kind in ("group", "text") and any(e["type"] == "gradient" for e in node.get("effects", [])):
+    if kind == "group" and any(e["type"] == "gradient" for e in node.get("effects", [])):
         ctx.say("gradient on a group's background is not exported")
 
 

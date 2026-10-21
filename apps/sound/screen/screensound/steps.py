@@ -1,7 +1,7 @@
 """Scripted steps for screenshots and checks. Each goes through the same bridge call a click or drag makes.
 
     page instruments|timeline|mix | select <id> | time <s> | set <param> <json value>
-    drag-note <id> <dt s> <d semitones> | drag-clip <id> <dt s> | drag-marker <id> <dt s> |
+    drag-note <id> <dt s> <d semitones> | drag-clip <id> <dt s> | drag-marker <id> <dt s> | drag-project-marker <name> <dt s> |
     drag-section <id> <dt s> (it and everything inside: section.move) | drag-tempo <id> <dt s> | drag-key <id> <dt s> |
     drag-edge <section id> at|end <dt s>   (one gesture each)
     song <start_bpm|add_tempo|set_key|add_key|add_section> [<value>] | song-open (the Song popup) |
@@ -117,6 +117,10 @@ def do_step(bridge, win, step, recorder=None):
         bridge.linkPicture(rest[0])
     elif word == "picture-pick":             # the corner's "From the project…" list, open (for a screenshot)
         QMetaObject.invokeMethod(win, "openPicturePick")
+    elif word == "drag-project-marker":      # drag-project-marker <name> <dt s>: the marker band's release
+        mid = next(m["id"] for m in bridge.markers if m["name"] == rest[0] and m["shared"])
+        if not bridge.moveSharedMarker(mid, float(rest[1]), True):
+            raise RuntimeError(f"step {step!r}: the marker didn't move")
     elif word == "picture-start":            # picture-start <marker name>|none
         bridge.setPictureStart("" if rest[0] == "none" else rest[0])
     elif word == "add-note":

@@ -5,7 +5,7 @@ from __future__ import annotations
 from PySide6.QtCore import Slot
 from rostrum_gui.edits import Drag
 
-from . import moves
+from . import moves, timing
 
 
 class EditSlots:
@@ -64,3 +64,13 @@ class EditSlots:
         d, self._drag, self._grab = self._drag, None, None
         if d is not None:
             self._guard(lambda: d.end(cancel=True))
+
+    @Slot(str, float, bool, result=bool)
+    def moveSharedMarker(self, marker_id, dt, free):
+        """Release of a drag on one of the project's markers: one `marker.move` through the shared marker list
+        (rostrum_gui.markers.MarkerWatch), so it moves for every app and undoes as one step; snapped to a quarter
+        beat unless free. The sound follows on the watch's change like any other marker move."""
+        row = next((m for m in self._marks.rows() if m["id"] == marker_id), None)
+        if row is None or abs(dt) < 1e-6:
+            return False
+        return self._marks.move(marker_id, timing.snap(row["at"] + dt, self.doc.data, free))

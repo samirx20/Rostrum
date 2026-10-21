@@ -22,6 +22,8 @@ TIME_SCHEMA = {"anyOf": [{"type": "number", "minimum": 0},
                          {"type": "string", "pattern": markers.REF.pattern}]}
 LENGTH_SCHEMA = {"anyOf": [{"type": "number", "minimum": 0},
                            {"type": "object", "properties": {"beats": {"type": "number", "minimum": 0}}}]}
+TIED_SCHEMA = {"anyOf": [*LENGTH_SCHEMA["anyOf"], {"type": "object", "properties": {"to": TIME_SCHEMA}, "required": ["to"]},
+                         {"const": "next"}]}
 PITCH_ONE = {"anyOf": [{"type": "string", "pattern": NOTE.pattern}, {"type": "integer", "minimum": 0,
                                                                     "maximum": 127}]}
 
@@ -52,10 +54,10 @@ class Value(Param):
         return _described(self, self.schema)
 
 
-def _time(p, v, where, length=False):
-    why = times.problem(v, length)
+def _time(p, v, where, length=False, tied=False):
+    why = times.problem(v, length, tied)
     if why:
-        _bad(p, v, where, why, times.forms(length))
+        _bad(p, v, where, why, times.forms(length, tied))
     return v
 
 
@@ -99,9 +101,10 @@ def time(name, **kw) -> Value:
     return Value(name, "number", rule=_time, schema=TIME_SCHEMA, unit="s", step=0.01, form="time", **kw)
 
 
-def length(name, **kw) -> Value:
-    return Value(name, "number", rule=lambda p, v, w: _time(p, v, w, True), schema=LENGTH_SCHEMA, unit="s", step=0.01,
-                 form="length", **kw)
+def length(name, tied=False, **kw) -> Value:
+    """A length; `tied` (a note's) may also end on a time (`{"to": "#land"}`) or hold to the next note (`"next"`)."""
+    return Value(name, "number", rule=lambda p, v, w: _time(p, v, w, True, tied),
+                 schema=TIED_SCHEMA if tied else LENGTH_SCHEMA, unit="s", step=0.01, form="length", **kw)
 
 
 def pitch(name, **kw) -> Value:

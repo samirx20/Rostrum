@@ -29,7 +29,7 @@ def shown(item: dict, root: dict) -> dict:
         kind = _time_kind(item, k)
         if kind and not isinstance(v, (int, float)):
             out[k] = round(timing.sec(v, root, item["id"]) if kind == "time" else
-                           timing.length_sec(v, root, _start(item, root)), 3)
+                           timing.length_sec(v, root, _start(item, root), item), 3)
     if item["type"] == "clip" and item.get("length") is None:      # plays to the file's end: show how long that is
         out["length"] = round(timeline.clip_span(item, root)[1], 3)
     return out

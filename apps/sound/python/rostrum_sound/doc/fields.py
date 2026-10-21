@@ -46,7 +46,9 @@ FIELDS = {
     ],
     "note": [
         V.pitch("pitch", group="Note", help='"D4", "F#3", "Bb2", a MIDI number, or a list (a chord).'),
-        V.time("at", group="Note"), V.length("dur", group="Note", label="Length"),
+        V.time("at", group="Note"), V.length("dur", tied=True, group="Note", label="Length",
+                                           help='Seconds, {"beats": n}, or tied: {"to": "#land"} ends it at a time or marker, '
+                                                '"next" holds it until the next note on the track.'),
         N("vel", 0, 1, "Note", label="Velocity"), N("pan", **PAN, group="Note", imp="secondary"),
         *PL.NOTE,
     ],

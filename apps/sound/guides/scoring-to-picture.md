@@ -28,8 +28,28 @@ Put hits, clips, sections, automation points and look-tool checks on markers (`"
 When the cut moves, move the marker once (`marker.set`, or drag it on the Timeline's marker band) and everything on it
 follows. Times keep the form they were written in: a drag on the screen never turns `"#logo+0.5"` into seconds.
 
-Markers shared with other apps (a 2D "logo lands" read by Sound) come through the project service; until it lists them,
-`inspect_markers` answers empty with a warning. Put the same name in both documents and keep one source in mind.
+Markers shared with other apps (a 2D "logo lands" read by Sound) come through the project service (`inspect_markers`
+lists them; a project marker shows dashed on the marker band). Drag one there and it moves for every app, as one undo
+step in the project's marker list; a local marker named like a project one is refused.
+
+### Held parts: tie both ends
+
+A note placed on a marker moves with it, but a fixed length (`"dur": 1.25`) does not: if the marker after it moves
+later, a pad or a string chord that was written to reach the marker now stops short and leaves a gap. Tie the end
+instead:
+
+| Length form | Means |
+|---|---|
+| `1.25` / `{"beats": 2}` | a fixed length (it does not follow anything) |
+| `{"to": "#land"}` | ends at the marker `land` (any time form: `{"to": {"beat": 16}}`, `{"to": "#land-0.1"}`) |
+| `"next"` | holds until the next note on the same track starts (the last note: until the mix's `length`) |
+
+So a pad that swells into "land" and holds to the end is two notes: `at "#spark", dur "next"` and
+`at "#land", dur {"to": "#end"}`. Move "land" and the first note grows, the second shrinks, and there is never a gap.
+A swell (`dynamics`, the `swell` toggle) is drawn across the note's length, so it stretches with it and still peaks
+where the note ends. A tie that would end at or before its note's start (a marker moved past it) fails the check and
+the render, naming the note; it is never played as a silent note. Typing a length in the inspector sets a fixed one
+(the tie is the agent's or the person's choice, kept until someone types over it).
 
 ## 3. Make the grid serve the picture
 

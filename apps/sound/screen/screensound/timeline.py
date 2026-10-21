@@ -53,7 +53,7 @@ def note_block(n, root):
     t = timing.sec(n["at"], root, n["id"])
     key = K.key_at(root, t)                     # spelled in the key playing there (Bb in D minor, not A#)
     label = " ".join(timing.name(k, key) for k in ks)
-    return {"id": n["id"], "type": "note", "t": t, "dur": timing.length_sec(n["dur"], root, t), "keys": ks, "names": [timing.name(k, key) for k in ks], "label": label, "vel": n.get("vel", 0.8)}
+    return {"id": n["id"], "type": "note", "t": t, "dur": timing.length_sec(n["dur"], root, t, n), "keys": ks, "names": [timing.name(k, key) for k in ks], "label": label, "vel": n.get("vel", 0.8)}
 
 
 def hit_block(h, root):
@@ -150,7 +150,7 @@ def markers(root: dict) -> list[dict]:
     section bar already says it, so the marker band draws no second tag (the line through the rows stays)."""
     starts = {(s["name"], round(s["t"], 4)) for s in music_map.sections(root)}
     out = [{"id": m["id"], "name": name, "t": mk.time_of(root, name), "shared": bool(m.get("shared"))}
-           for name, m in mk.items(root)]      # shared: the project's (moved in 2D or with edit_markers, not here)
+           for name, m in mk.items(root)]      # shared: the project's (dragged here, in 2D or with edit_markers)
     return sorted(({**m, "named": (m["name"], round(m["t"], 4)) in starts} for m in out), key=lambda m: m["t"])
 
 

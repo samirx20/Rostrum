@@ -36,6 +36,14 @@ class _Compiler:
     def time(self, value, where):
         return markers.resolve(self.root, value, where)
 
+    def tie(self, note, where):
+        """A note's length as the engine takes it: a tied one (`{"to": …}`, `"next"`) as seconds, else as written."""
+        d = note["dur"]
+        if d != times.NEXT and not (isinstance(d, dict) and "to" in d):
+            return d
+        start = times.seconds(note["at"], self.root, where)
+        return round(times.length_seconds(d, self.root, start, note, where), 6)
+
     def env(self, value, where):
         return [[self.time(t, where), v] for t, v in value] if isinstance(value, list) else value
 
@@ -90,6 +98,8 @@ class _Compiler:
         for key, keys in (("notes", NOTE_KEYS), ("hits", HIT_KEYS), ("sounds", FDS.KEYS)):
             if track.get(key):
                 out[key] = [self.pick(n, keys, f"{w}.{key}[{n['id']}]") for n in track[key]]
+        for n, sent in zip(track.get("notes", ()), out.get("notes", ())):
+            sent["dur"] = self.tie(n, f"{w}.notes[{n['id']}].dur")
         clips = []
         for c in track.get("clips", []):
             cw = f"{w}.clips[{c['id']}]"

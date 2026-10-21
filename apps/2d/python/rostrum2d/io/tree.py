@@ -86,15 +86,33 @@ def _props(node: dict, box: list, parent_box, fonts, report: list) -> dict:
     return {**props, "x": box[0] - ox, "y": box[1] - oy, "anchorX": 0.0, "anchorY": 0.0}
 
 
-def _build(tree: dict, doc_data: dict, into: str, fonts=None, image_dir=None):
-    """→ (calls, files, report); files = [(path, PIL image)] for image nodes that carry pixels."""
-    taken, calls, files, report = set(index(doc_data, KIND.lists)), [], [], list(tree.get("report", []))
+def _effect(kind: str, props: dict, owner: str, taken: set) -> list[dict]:
+    """A node's effect (`{"type": "gradient", "props": {...}}`) → effect.add + <type>.set, values checked against fields.py."""
+    known = {p.name for p in F.FIELDS[kind]}
+    if kind not in F.EFFECTS or not set(props) <= known:
+        raise ValueError(f"layer '{owner}': {kind} {sorted(set(props) - known) or ''} is not an effect field (fields.py)")
+    eid, dflt = _id(f"{owner} {kind}", kind, taken), F.defaults(kind)
+    return [{"op": "effect.add", "target": [owner], "args": {"type": kind, "id": eid}},
+            {"op": f"{kind}.set", "target": [eid], "args": {k: v for k, v in props.items() if v != dflt[k]}}]
+
+
+def _build(tree: dict, doc_data: dict, into: str, fonts=None, image_dir=None, taken: set | None = None):
+    """→ (calls, files, report); files = [(path, PIL image)] for image nodes that carry pixels. `taken` (ids in use) is shared
+    when several trees go into one change; a node's `matte` is the name of a node before it in the same list."""
+    taken = set(index(doc_data, KIND.lists)) if taken is None else taken
+    calls, files, report = [], [], list(tree.get("report", []))
 
     def walk(nodes, parent, parent_box):
+        by_name = {}
         for node in nodes:
             box = _boxes(node)
             id_ = _id(node.get("name"), node["type"], taken)
+            by_name[node.get("name")] = id_
             props = _props(node, box, parent_box, fonts, report)
+            if node.get("matte"):
+                if node["matte"] not in by_name:
+                    raise ValueError(f"layer '{node['name']}': its matte '{node['matte']}' is not a layer before it in the same group")
+                props["matte"] = by_name[node["matte"]]
             if node["type"] == "image" and "image" in node:
                 if image_dir is None:
                     raise ValueError(f"image '{node['name']}' has pixels but there is nowhere to write them")
@@ -103,6 +121,12 @@ def _build(tree: dict, doc_data: dict, into: str, fonts=None, image_dir=None):
             calls.append({"op": "layer.add", "target": [parent],
                           "args": {"type": node["type"], "id": id_, "name": node.get("name") or id_}})
             calls.append({"op": f"{node['type']}.set", "target": [id_], "args": props})
+            for e in node.get("effects", []):
+                calls.extend(_effect(e["type"], e["props"], id_, taken))
+            for m in node.get("masks", []):                  # [{shape, x, y, w, h, invert}], in the layer's own px
+                mid = _id(f"{id_} mask", "mask", taken)
+                calls.extend([{"op": "mask.add", "target": [id_], "args": {"id": mid}},
+                              {"op": "mask.set", "target": [mid], "args": m}])
             if node["type"] == "group":
                 walk(node["layers"], id_, box)
 
@@ -115,11 +139,11 @@ def apply_calls(tree: dict, doc_data: dict, into: str, fonts: set | None = None,
     return _build(tree, doc_data, into, fonts, image_dir)[0]
 
 
-def prepare(doc, tree: dict, into: str, fonts: set | None = None) -> tuple[list[dict], list[str]]:
+def prepare(doc, tree: dict, into: str, fonts: set | None = None, taken: set | None = None) -> tuple[list[dict], list[str]]:
     """The calls that put the tree into `into` and the report; images are written to <doc folder>/imports/<stem>/ first."""
     folder = Path(doc.folder) if doc.folder else None
     image_dir = folder / "imports" / Path(tree["name"]).stem if folder else None
-    calls, files, report = _build(tree, doc.data, into, fonts, image_dir)
+    calls, files, report = _build(tree, doc.data, into, fonts, image_dir, taken)
     for path, img in files:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         img.save(path)
