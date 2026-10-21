@@ -15,9 +15,16 @@ from .lottie_shapes import _subpaths, shape_value
 AFFECTS = ("d", "trimStart", "trimEnd", "strokeWidth", "taperStart", "taperEnd", "widthProfile", "dash", "gap", "dashOffset")
 
 
-def varied(props: dict) -> bool:
-    return bool(props.get("stroke")) and props.get("strokeWidth", 0) > 0 and (
-        props.get("taperStart", 0) > 0 or props.get("taperEnd", 0) > 0 or props.get("widthProfile", "") != "")
+WIDTH = ("taperStart", "taperEnd", "widthProfile")
+
+
+def varied(node: dict) -> bool:
+    """Whether the stroke's width varies at its still values or any key (a profile may live only in its keys)."""
+    props, anim = node["props"], node.get("anim", {})
+    uneven = lambda k: bool(k.get("d")) if "d" in k else k.get("v", 0) > 0  # noqa: E731
+    return bool(props.get("stroke")) and (props.get("strokeWidth", 0) > 0 or "strokeWidth" in anim) and (
+        props.get("taperStart", 0) > 0 or props.get("taperEnd", 0) > 0 or props.get("widthProfile", "") != ""
+        or any(uneven(k) for f in WIDTH for k in anim.get(f, [])))
 
 
 class Outlines:
@@ -49,7 +56,7 @@ class Outlines:
 
     def shapes(self, node: dict, ctx) -> list[dict] | None:
         """The Lottie `sh` items of the node's varied stroke, or None when it has none (or no engine)."""
-        if not varied(node["props"]):
+        if not varied(node):
             return None
         eng = self._engine(ctx)
         if eng is None:
