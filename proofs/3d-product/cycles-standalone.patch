@@ -1,0 +1,47 @@
+diff --git a/src/app/cycles_standalone.cpp b/src/app/cycles_standalone.cpp
+index 5bced51..c865cda 100644
+--- a/src/app/cycles_standalone.cpp
++++ b/src/app/cycles_standalone.cpp
+@@ -46,6 +46,7 @@ struct Options {
+   SceneParams scene_params;
+   SessionParams session_params;
+   bool quiet;
++  bool denoise = false;
+   bool show_help, interactive, pause;
+   string output_filepath;
+   string output_pass;
+@@ -102,6 +103,12 @@ static void scene_init()
+ {
+   options.scene = options.session->scene.get();
+ 
++  /* Rostrum proof: size the camera before reading, so the Hydra camera fits the right aspect. */
++  if (options.width != 0 && options.height != 0) {
++    options.scene->camera->set_full_width(options.width);
++    options.scene->camera->set_full_height(options.height);
++  }
++
+   /* Read XML or USD */
+ #ifdef WITH_USD
+   if (!string_endswith(string_to_lower(options.filepath), ".xml")) {
+@@ -113,6 +120,13 @@ static void scene_init()
+     xml_read_file(options.scene, options.filepath.c_str());
+   }
+ 
++  /* Rostrum proof: optional OpenImageDenoise. */
++  if (options.denoise) {
++    options.scene->integrator->set_use_denoise(true);
++    options.scene->integrator->set_denoiser_type(DENOISER_OPENIMAGEDENOISE);
++    options.scene->integrator->set_denoise_use_gpu(true);
++  }
++
+   /* Camera width/height override? */
+   if (!(options.width == 0 || options.height == 0)) {
+     options.scene->camera->set_full_width(options.width);
+@@ -440,6 +454,7 @@ static void options_parse(const int argc, const char **argv)
+   ap.arg("--tile-size %d:TILE_SIZE").help("Tile size in pixels").action([&](auto argv) {
+     parse_int(argv, &options.session_params.tile_size);
+   });
++  ap.arg("--denoise", &options.denoise).help("Denoise with OpenImageDenoise (Rostrum proof)");
+   ap.arg("--list-devices", &list).help("List information about all available devices");
+   ap.arg("--profile", &profile).help("Enable profile logging");
+   ap.arg("--log-level %s:LEVEL")
