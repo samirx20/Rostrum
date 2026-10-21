@@ -24,6 +24,7 @@ bottom (full)  Timeline: the shot's frames, the playhead, play, and the keys of 
 - **Timeline.** One row per item that moves; the selected item opens into one row per animated setting. Click or
   drag the ruler or a row to move the playhead (the viewport draws that frame). Click a diamond to select the key
   (the inspector shows its time, value and ease); drag it to move it, in whole frames.
+  The project's shared markers show as named flags on the ruler (placed in frames); a key drag lands on a marker's frame within 6 px.
 - **Render** (top bar, or F12). One final picture (Cycles) of the playhead frame through the shot's camera, at the
   shot's size. It runs as a job with its own engine process (the viewport keeps working), through the same code as
   the MCP tool `render_still`: a project render version with its manifest under the project folder, or the render

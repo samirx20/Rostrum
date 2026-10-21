@@ -12,6 +12,7 @@ from rostrum_core.keys import keys_of
 from rostrum3d.compile import describe, shot_info
 from rostrum_gui import DocBridge
 from rostrum_gui.edits import Drag
+from rostrum_gui.markers import MarkerWatch
 
 from . import outline, route
 from .render_job import RenderJob
@@ -26,6 +27,7 @@ class Bridge3D(DocBridge):
     frameChanged = Signal()
     outlineChanged = Signal()
     playingChanged = Signal()
+    markersChanged = Signal()
 
     def __init__(self, doc, shot_id=None, autosave=False, viewport=_viewport, render_engine=None, parent=None):
         shots = doc.data.get("shots", [])
@@ -37,6 +39,8 @@ class Bridge3D(DocBridge):
         super().__init__(doc, parent=parent)
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
+        self.marks = MarkerWatch(doc.folder, self, self.who, self._fail, "3d")   # shared markers: flags, edits, snapping
+        self.marks.changed.connect(self.markersChanged)
         self.render = RenderJob(self, render_engine)
         self.viewport = viewport(self) if viewport else None
 
@@ -60,6 +64,16 @@ class Bridge3D(DocBridge):
     def shotInfo(self):
         s = next((s for s in self.doc.data.get("shots", []) if s["id"] == self.shot_id), {"id": self.shot_id})
         return {**self._info, "label": outline.label_of(s)}
+
+    @Property("QVariantList", notify=markersChanged)
+    def markers(self):
+        """The shared markers for the ruler's flags ({id, name, at seconds, colour}; the Ruler places them in frames)."""
+        return self.marks.rows()
+
+    @Property(QObject, constant=True)
+    def markerEdit(self):
+        """The ruler's marker edits (add at the playhead, move, rename, delete): rostrum_gui.markers.MarkerWatch."""
+        return self.marks
 
     @Property(bool, notify=playingChanged)
     def playing(self):
@@ -149,13 +163,16 @@ class Bridge3D(DocBridge):
             self._drag, self._grab = Drag(self.doc, self.who, "Move key"), key_id
         return self._guard(go)
 
-    @Slot(float)
-    def keyDragTo(self, frame):
-        """Move the dragged key to a frame of the shot, or to its end (whole frames; a frame another key of its field holds is skipped)."""
+    @Slot(float, float)
+    def keyDragTo(self, frame, snap=0.0):
+        """Move the dragged key to a frame of the shot, or to its end (whole frames; a frame another key of its field
+        holds is skipped). `snap`: frames within which the key lands on a shared marker's frame instead."""
         if self._drag is None:
             return
         fps, key = self._info["fps"], self.doc.item(self._grab)
-        t = min(max(round(frame), self._info["start"]), self._info["end"] + 1) / fps   # up to where the shot ends
+        on = self.marks.snap(frame / fps, snap / fps)
+        frame = round(on * fps) if on != frame / fps else round(frame)
+        t = min(max(frame, self._info["start"]), self._info["end"] + 1) / fps   # up to where the shot ends
         owner = self.doc.item(self.doc.parent_of(key["id"])[0])
         if any(k["id"] != key["id"] and abs(k["t"] - t) < 1e-6 for k in keys_of(owner, key["prop"])):
             return
@@ -195,6 +212,7 @@ class Bridge3D(DocBridge):
 
     def close(self):
         self._timer.stop()
+        self.marks.close()
         self.endDrag()
         if self.viewport is not None and hasattr(self.viewport, "close"):
             self.viewport.close()
