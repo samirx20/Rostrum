@@ -12,6 +12,7 @@ import copy
 from . import run
 from .diff import diff
 from .document import Event
+from .errors import RostrumError, codes
 
 
 class Gesture:
@@ -21,7 +22,8 @@ class Gesture:
 
     def __enter__(self):
         if self.doc._gesture is not None:
-            raise RuntimeError("a gesture is already open on this document")
+            raise RostrumError(codes.CONFLICT, "gesture", f'"{self.label}"',
+                               f"can't start: \"{self.doc._gesture.label}\" is still being dragged")
         self.start = copy.deepcopy(self.doc.data)
         self.doc._gesture = self
         return self

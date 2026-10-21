@@ -12,6 +12,7 @@ from .errors import RostrumError, codes, did_you_mean
 from .params import IMPORTANCE, Param
 
 NAME = re.compile(r"^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$")
+ITEM_KEYS = {"id", "type"}       # every item's own keys: never a field a person or agent sets
 
 
 @dataclass
@@ -64,6 +65,8 @@ class Registry:
         names = [p.name for p in op.params]
         if len(set(names)) != len(names):
             problems.append("has two params with the same name")
+        if op.fields and ITEM_KEYS & set(names):
+            problems.append(f"field params can't be named {sorted(ITEM_KEYS & set(names))} (item keys)")
         if op.fields:   # a field op's conditions read its own params; others may read the target's fields
             for p in op.params:
                 problems += [f"{p.name}: {x}" for x in check_refs(p.valid_when, names)]
@@ -86,13 +89,13 @@ class Registry:
         return next((o for o in self._ops.values() if o.fields and o.targets and kind in o.targets), None)
 
     def available(self, doc, target_ids=()) -> list[Operation]:
-        """Operations that can run right now on these targets: the command bar's list (absent, not greyed)."""
+        """Operations that can run right now: those that fit these targets, plus those that need no target
+        (Add layer). The command bar's list (absent, not greyed)."""
         items = [doc.item(i) for i in target_ids]
         out = []
         for op in self._ops.values():
             if op.targets is None:
-                if not items:
-                    out.append(op)
+                out.append(op)
                 continue
             if items and all(it["type"] in op.targets and holds(op.valid_when, it, doc.kind.facts(it))
                              for it in items):

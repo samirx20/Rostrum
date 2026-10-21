@@ -1,0 +1,20 @@
+[project]
+name = "rostrum-gui"
+version = "0.1.0"
+description = "Rostrum's shared GUI kit: the RostrumKit QML module and its Python document bridge."
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = ["PySide6>=6.8", "rostrum-core"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["rostrum_gui*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
