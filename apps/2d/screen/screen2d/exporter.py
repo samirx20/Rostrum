@@ -85,9 +85,9 @@ class Exporter(QObject):
 
     @Property(str, notify=changed)
     def path(self):
-        """The result's file (a png sequence: its folder)."""
+        """The result's file (a sequence: its folder)."""
         f = self._facts.get("files") or []
-        return str(Path(f[0]).parent) if self._fmt == "png" and f else (f[0] if f else "")
+        return str(Path(f[0]).parent) if self._row()["sequence"] and f else (f[0] if f else "")
 
     @Property("QVariantList", notify=changed)
     def facts(self):

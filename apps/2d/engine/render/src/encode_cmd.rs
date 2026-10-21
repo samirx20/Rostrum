@@ -5,7 +5,8 @@
 //!       `color_quant` crates, MIT / Apache-2.0; gifski is AGPL and not used); alpha < 128 → transparent.
 //!   rostrum2d-render encode-png <pattern with {frame}> <w> <h> <8|16> <first frame number>
 //!       RGBA8 or RGBA64LE frames (straight alpha) → one PNG per frame, `{frame}` → the 4-digit frame number.
-//! Both fail loudly (exit 1, the reason on stderr) on a short frame, a bad argument or a write error; a frame
+//!   rostrum2d-render encode-exr …   the Editor hand-off (encode_exr.rs).
+//! All fail loudly (exit 1, the reason on stderr) on a short frame, a bad argument or a write error; a frame
 //! that only partly arrived is an error, never a quietly shorter file.
 
 use std::fs::File;
@@ -14,6 +15,7 @@ use std::io::{BufWriter, Read};
 pub fn run(kind: &str, args: &[String]) {
     let done = match kind {
         "encode-gif" => gif(args),
+        "encode-exr" => crate::encode_exr::exr(args),
         _ => png(args),
     };
     match done {
@@ -30,7 +32,7 @@ fn num(args: &[String], i: usize, what: &str) -> Result<u32, String> {
 }
 
 /// Reads one frame of exactly `buf.len()` bytes: Ok(false) at a clean end, an error for a partial frame.
-fn frame(input: &mut impl Read, buf: &mut [u8], index: u32) -> Result<bool, String> {
+pub(crate) fn frame(input: &mut impl Read, buf: &mut [u8], index: u32) -> Result<bool, String> {
     let mut got = 0;
     while got < buf.len() {
         match input.read(&mut buf[got..]).map_err(|e| e.to_string())? {

@@ -3,7 +3,7 @@
 //!   rostrum2d-render serve                         the renderer process the host drives (serve.rs)
 //!   rostrum2d-render glyphs                        text laid out as outlines for the host (glyphs.rs)
 //!   rostrum2d-render styles                        the computed CSS each class set declares (styles.rs)
-//!   rostrum2d-render encode-gif | encode-png     the renderer's own encoders for exports (encode_cmd.rs)
+//!   rostrum2d-render encode-gif | encode-png | encode-exr   the renderer's own encoders for exports (encode_cmd.rs)
 //!   rostrum2d-render svg-tree <in.svg> <dir>     an SVG as plain JSON for the importer (svg_tree.rs)
 //!   rostrum2d-render cube | sksl | scope           colour helpers: a .cube as a table, view / grade programs, scopes
 
@@ -14,6 +14,7 @@ mod camera;
 mod color;
 mod cube;
 mod encode_cmd;
+mod encode_exr;
 mod glyphs;
 mod gpu_output;
 mod grade_cmd;
@@ -68,13 +69,13 @@ fn main() {
         Some("serve") => serve::run(),
         Some("glyphs") => glyphs::run(),
         Some("styles") => styles::run(),
-        Some(k @ ("encode-gif" | "encode-png")) => encode_cmd::run(k, &args[1..]),
+        Some(k @ ("encode-gif" | "encode-png" | "encode-exr")) => encode_cmd::run(k, &args[1..]),
         Some("svg-tree") => svg_tree::run(&args[1..]),
         Some("cube") => cube::run(&args[1..]),
         Some("sksl") => sksl::run(&args[1..]),
         Some("scope") => scopes::run_cli(&args[1..]),
         _ => {
-            eprintln!("usage: rostrum2d-render serve | glyphs | styles | encode-gif | encode-png | svg-tree | cube <file.cube> <table.f32> | sksl display-in <view> <target> | scope <spec.json>");
+            eprintln!("usage: rostrum2d-render serve | glyphs | styles | encode-gif | encode-png | encode-exr | svg-tree | cube <file.cube> <table.f32> | sksl display-in <view> <target> | scope <spec.json>");
             std::process::exit(2);
         }
     }
