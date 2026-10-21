@@ -14,6 +14,8 @@
 #include "args.h"
 #include "error.h"
 #include "inspect.h"
+#include "outline.h"
+#include "view_camera.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
@@ -160,23 +162,64 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
       {"ramPeakMb", JsValue(r1(ram_peak_mb()))}};
 }
 
+JsObject Core::view(const JsObject& o) {
+  Args a(o, "view", {"camera", "eye", "target", "fov", "frame", "width", "height", "renderer", "exposure", "studio",
+                     "sceneLights", "selected", "view"});
+  need_scene("view");
+  const ViewCamera vc = read_view_camera(a, [&](const std::string& id) { return camera(id, "view"); });
+  const int f = a.whole("frame"), w = a.whole("width"), h = a.whole("height");
+  check_frame(f, "view.frame");
+  if (w < 16 || h < 16 || w > 4096 || h > 4096) throw Error("view.width/height: each must be 16..4096");
+  ViewLook look;
+  look.studio = a.num("studio", 1.0);
+  if (look.studio < 0 || look.studio > 4) throw Error("view.studio: must be 0..4");
+  look.sceneLights = a.flag("sceneLights", true);
+  if (a.has("selected")) {
+    const auto& sel = a.need("selected");
+    if (!sel.IsArray()) throw Error("view.selected: needs a list of item ids");
+    for (const auto& v : sel.GetJsArray()) {
+      if (!v.IsString()) throw Error("view.selected: needs a list of item ids");
+      const SdfPath p = item_path(stage_, v.GetString());
+      if (p.IsEmpty()) throw Error("view.selected: no item \"" + v.GetString() + "\" in the scene");
+      look.selected.push_back(p);
+    }
+  }
+  const std::string view = color_.check_view(a.str("view", ""));
+  const auto t0 = Clock::now();
+  auto& hy = hydra();
+  Picture pic = hy.view(a.str("renderer", "storm"), frustum_of(stage_, vc, f, w, h), f, w, h, look, mem_);
+  const double draw_ms = ms_since(t0);
+  const size_t bytes = size_t(w) * h * 4;
+  if (!shm_ || shm_->slot_bytes() != bytes) {
+    shm_.reset();
+    shm_ = std::make_unique<Shm>(bytes);
+  }
+  JsObject info;
+  uint8_t* slot = shm_->next(w, h, &info);
+  float bg[3];
+  background(stage_, bg);
+  color_.to_rgba8(pic, view, a.num("exposure", 0), bg, slot);
+  draw_outline(pic, slot);
+  return JsObject{{"ok", JsValue(true)}, {"width", JsValue(w)}, {"height", JsValue(h)}, {"shm", JsValue(info)},
+                  {"timing", JsValue(JsObject{{"drawMs", JsValue(r1(draw_ms))}, {"totalMs", JsValue(r1(ms_since(t0)))}})}};
+}
+
 JsObject Core::pick(const JsObject& o) {
-  Args a(o, "pick", {"camera", "frame", "width", "height", "x", "y"});
+  Args a(o, "pick", {"camera", "eye", "target", "fov", "frame", "width", "height", "x", "y"});
   need_scene("pick");
-  const SdfPath cam = camera(a.str("camera"), "pick");
+  const ViewCamera vc = read_view_camera(a, [&](const std::string& id) { return camera(id, "pick"); });
   const int f = a.whole("frame"), w = a.whole("width"), h = a.whole("height");
   check_frame(f, "pick.frame");
   const double x = a.num("x"), y = a.num("y");
   if (x < 0 || y < 0 || x >= w || y >= h) throw Error("pick.x/y: the point is outside the " +
                                                       std::to_string(w) + "x" + std::to_string(h) + " picture");
   GfVec3d point;
-  const SdfPath hit = hydra().pick(cam, f, w, h, x, y, &point);
+  const GfFrustum fr = frustum_of(stage_, vc, f, w, h);
+  const SdfPath hit = hydra().pick(fr, f, w, h, x, y, &point);
   if (hit.IsEmpty()) return JsObject{{"ok", JsValue(true)}, {"hit", JsValue(false)}};
-  const GfVec3d eye =
-      UsdGeomCamera(stage_->GetPrimAtPath(cam)).GetCamera(UsdTimeCode(f)).GetTransform().ExtractTranslation();
   return JsObject{{"ok", JsValue(true)}, {"hit", JsValue(true)}, {"prim", JsValue(hit.GetString())},
                   {"item", JsValue(item_of(stage_, hit))}, {"material", JsValue(material_of(stage_, hit))},
-                  {"point", vec3(point)}, {"distance", JsValue((point - eye).GetLength())}};
+                  {"point", vec3(point)}, {"distance", JsValue((point - fr.GetPosition()).GetLength())}};
 }
 
 JsObject Core::save(const JsObject& o) {

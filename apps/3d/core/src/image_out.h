@@ -11,6 +11,7 @@ namespace r3d {
 struct Picture {
   int width = 0, height = 0;
   std::vector<float> rgba;  // scene-linear, straight from Hydra, top row first
+  std::vector<unsigned char> mask;  // viewport only: 1 where a selected item is (empty = nothing selected)
 };
 
 class ColorOut {
@@ -26,8 +27,13 @@ class ColorOut {
   // exposure in stops; the picture is laid over `background` (linear RGB) where it is transparent
   void write_png(const Picture& p, const std::string& file, const std::string& view, double exposure,
                  const float background[3]) const;
+  // the same picture as write_png, as straight 8-bit RGBA (top row first) into `dst` (width * height * 4 bytes)
+  void to_rgba8(const Picture& p, const std::string& view, double exposure, const float background[3],
+                unsigned char* dst) const;
 
  private:
+  std::vector<float> displayed(const Picture& p, const std::string& view, double exposure,
+                               const float background[3]) const;
   struct Impl;
   std::unique_ptr<Impl> impl_;
   std::string display_;

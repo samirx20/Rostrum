@@ -4,12 +4,14 @@
 #include <pxr/base/tf/errorMark.h>
 #include <pxr/imaging/cameraUtil/conformWindow.h>
 #include <pxr/imaging/cameraUtil/framing.h>
+#include <pxr/imaging/glf/simpleMaterial.h>
 #include <pxr/usd/usdGeom/camera.h>
 
 #include <chrono>
 #include <thread>
 
 #include "error.h"
+#include "studio.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
@@ -39,6 +41,16 @@ UsdGeomCamera camera_at(const UsdStageRefPtr& stage, const SdfPath& path) {
 }
 }  // namespace
 
+// The dome's camera visibility lives on UsdImagingGLEngine's protected members.
+class Hydra::Engine : public UsdImagingGLEngine {
+ public:
+  void hide_domes_from_camera() {
+    if (!_domeLightCameraVisibility) return;
+    _domeLightCameraVisibility = false;  // the studio lights the scene but the background stays the scene's own
+    _UpdateDomeLightCameraVisibility();
+  }
+};
+
 Hydra::Hydra(UsdStageRefPtr stage) : stage_(std::move(stage)) {}
 
 Hydra::~Hydra() {
@@ -66,18 +78,19 @@ std::vector<std::string> Hydra::available() const {
   return v;
 }
 
-UsdImagingGLEngine& Hydra::engine(const std::string& renderer) {
-  auto it = engines_.find(renderer);
+Hydra::Engine& Hydra::engine(const std::string& renderer, bool viewport) {
+  const std::string key = (viewport ? "view:" : "") + renderer;
+  auto it = engines_.find(key);
   if (it != engines_.end()) return *it->second;
   const TfToken id = plugin_for(renderer);
   const auto have = available();
   if (std::find(have.begin(), have.end(), renderer) == have.end())
     throw Error("render.renderer: \"" + renderer + "\" (" + id.GetString() +
                 ") is not installed on this machine. Available: " + join(have));
-  auto e = std::make_unique<UsdImagingGLEngine>();
+  auto e = std::make_unique<Engine>();
   if (!e->SetRendererPlugin(id)) throw Error("render.renderer: Hydra could not start " + id.GetString());
   e->SetEnablePresentation(true);  // composite into the framebuffer we bind
-  return *(engines_[renderer] = std::move(e));
+  return *(engines_[key] = std::move(e));
 }
 
 Framebuffer& Hydra::framebuffer(int w, int h) {
@@ -125,16 +138,59 @@ Picture Hydra::draw(const std::string& renderer, const SdfPath& camera, int fram
   return p;
 }
 
-SdfPath Hydra::pick(const SdfPath& camera, int frame, int w, int h, double x, double y, GfVec3d* point) {
-  GfCamera cam = camera_at(stage_, camera).GetCamera(UsdTimeCode(frame));
-  GfFrustum f = cam.GetFrustum();
-  CameraUtilConformWindow(&f, CameraUtilMatchHorizontally, double(w) / h);
+Picture Hydra::view(const std::string& renderer, const GfFrustum& frustum, int frame, int w, int h,
+                    const ViewLook& look, GpuMemWatch& mem) {
+  if (renderer != "storm" && renderer != "stylized")
+    throw Error("view.renderer: \"" + renderer + "\" is not a live viewport renderer. Accepted: storm, stylized");
+  TfErrorMark mark;
+  auto& e = engine(renderer, true);
+  e.SetCameraState(frustum.ComputeViewMatrix(), frustum.ComputeProjectionMatrix());
+  e.SetRenderBufferSize(GfVec2i(w, h));
+  e.SetFraming(CameraUtilFraming(GfRect2i(GfVec2i(0, 0), w, h)));
+  e.SetLightingState(studio_lights(look.studio), GlfSimpleMaterial(), GfVec4f(0, 0, 0, 1));
+  e.hide_domes_from_camera();
+  UsdImagingGLRenderParams params;
+  params.frame = UsdTimeCode(frame);
+  params.colorCorrectionMode = TfToken("disabled");  // scene-linear out; OpenColorIO makes the picture
+  params.clearColor = GfVec4f(0, 0, 0, 0);
+  params.enableSceneLights = look.sceneLights;
+  auto& fb = framebuffer(w, h);
+  const auto t0 = std::chrono::steady_clock::now();
+  for (bool first = true;; first = false) {
+    fb.bind_and_clear();
+    e.Render(stage_->GetPseudoRoot(), params);
+    gl_.finish();
+    mem.sample();
+    throw_usd_errors(mark, "view (" + renderer + ", frame " + std::to_string(frame) + ")");
+    if (e.IsConverged()) break;
+    if (std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count() > 10)
+      throw Error("view: " + renderer + " did not finish frame " + std::to_string(frame) + " within 10 s");
+    if (!first) std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+  Picture pic{w, h, fb.read_rgba()};
+  // The selection's mask: the selected items alone, unlit, in the same frustum (Storm tints a selection but
+  // draws no outline; the outline is drawn from this mask after the colour transform, in requests.cpp).
+  if (!look.selected.empty()) {
+    UsdImagingGLRenderParams solo = params;
+    solo.enableLighting = false;
+    fb.bind_and_clear();
+    for (const auto& path : look.selected) e.Render(stage_->GetPrimAtPath(path), solo);
+    gl_.finish();
+    throw_usd_errors(mark, "view (selection mask)");
+    const auto px = fb.read_rgba();
+    pic.mask.resize(size_t(w) * h);
+    for (size_t i = 0; i < pic.mask.size(); ++i) pic.mask[i] = px[i * 4 + 3] > 0.5f;
+  }
+  return pic;
+}
+
+SdfPath Hydra::pick(const GfFrustum& f, int frame, int w, int h, double x, double y, GfVec3d* point) {
   const GfVec2d ndc(2.0 * (x + 0.5) / w - 1.0, 1.0 - 2.0 * (y + 0.5) / h);
   GfFrustum narrow = f.ComputeNarrowedFrustum(ndc, GfVec2d(1.0 / w, 1.0 / h));
   UsdImagingGLRenderParams params;
   params.frame = UsdTimeCode(frame);
   TfErrorMark mark;
-  auto& e = engine("storm");  // picking is Storm's; the answer is the same whatever drew the picture
+  auto& e = engine("storm", true);  // picking is the viewport's Storm; the answer is the same whatever drew the picture
   GfVec3d normal;
   SdfPath hit;
   framebuffer(w, h).bind_and_clear();

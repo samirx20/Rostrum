@@ -1,12 +1,14 @@
 # rostrum3d-core: the Rostrum3D engine program (ENGINE_CONTRACT.md). Built against Blender's prebuilt
 # Windows library bundle (OpenUSD with Hydra, OpenImageIO, OpenColorIO, TBB, epoxy): no big source builds.
+# The headers and .lib files come from the library folder's sdk\ (apps/3d/libs/lay_out.py); the DLLs are found at run time
+# through PATH set by rostrum3d/runtime.py.
 cmake_minimum_required(VERSION 3.20)
 project(rostrum3d_core CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(BUNDLE "" CACHE PATH "Blender lib/windows_x64 folder")
+set(BUNDLE "" CACHE PATH "the sdk folder of the library folder (apps/3d/libs/lay_out.py), same layout as Blender's lib/windows_x64")
 if(NOT EXISTS "${BUNDLE}/usd/include/pxr/pxr.h")
-  message(FATAL_ERROR "BUNDLE must point at lib/windows_x64 (no usd/include/pxr/pxr.h in '${BUNDLE}')")
+  message(FATAL_ERROR "BUNDLE must point at the library folder's sdk (no usd/include/pxr/pxr.h in '${BUNDLE}'); run apps/3d/libs/lay_out.py")
 endif()
 
 file(GLOB SRC CONFIGURE_DEPENDS src/*.cpp src/*.h)

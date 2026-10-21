@@ -1,6 +1,7 @@
 // Hydra: one UsdImagingGLEngine per renderer (made on first use, kept warm), all drawing the one stage
 // on the one hidden GL context. The only place pictures are made, for look tools and export alike.
 #pragma once
+#include <pxr/base/gf/frustum.h>
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usdImaging/usdImagingGL/engine.h>
 
@@ -14,6 +15,13 @@
 #include "image_out.h"
 
 namespace r3d {
+
+// what the live viewport adds over a render (viewport only; renders never see these)
+struct ViewLook {
+  double studio = 1.0;      // studio environment strength, 0 = off
+  bool sceneLights = true;  // the scene's own lights
+  PXR_NS::SdfPathVector selected;  // drawn with an outline
+};
 
 struct DrawSettings {
   int samples = 128;      // Cycles
@@ -33,17 +41,21 @@ class Hydra {
 
   Picture draw(const std::string& renderer, const PXR_NS::SdfPath& camera, int frame, int width, int height,
                const DrawSettings& s, GpuMemWatch& mem);
-  // the prim under pixel (x, y) of a width x height picture; empty path when nothing is there
-  PXR_NS::SdfPath pick(const PXR_NS::SdfPath& camera, int frame, int width, int height, double x, double y,
+  // one live viewport picture through `frustum` (a scene camera's or the free camera's)
+  Picture view(const std::string& renderer, const PXR_NS::GfFrustum& frustum, int frame, int width, int height,
+               const ViewLook& look, GpuMemWatch& mem);
+  // the prim under pixel (x, y) of a width x height picture through `frustum`; empty path when nothing is there
+  PXR_NS::SdfPath pick(const PXR_NS::GfFrustum& frustum, int frame, int width, int height, double x, double y,
                        PXR_NS::GfVec3d* point);
 
  private:
-  PXR_NS::UsdImagingGLEngine& engine(const std::string& renderer);
+  class Engine;  // UsdImagingGLEngine plus the selection outline it keeps protected
+  Engine& engine(const std::string& renderer, bool viewport = false);
   Framebuffer& framebuffer(int width, int height);
 
   PXR_NS::UsdStageRefPtr stage_;
   GlContext gl_;  // before the engines: made first, destroyed last
-  std::map<std::string, std::unique_ptr<PXR_NS::UsdImagingGLEngine>> engines_;
+  std::map<std::string, std::unique_ptr<Engine>> engines_;  // renders and the viewport keep separate engines
   std::unique_ptr<Framebuffer> fb_;
 };
 

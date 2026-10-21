@@ -36,6 +36,16 @@ std::string item_of(const UsdStageRefPtr& stage, const SdfPath& path) {
   return "";
 }
 
+SdfPath item_path(const UsdStageRefPtr& stage, const std::string& id) {
+  const auto& layer = stage->GetRootLayer();
+  for (UsdPrim p : stage->Traverse()) {
+    if (p.GetName() != id) continue;
+    SdfPrimSpecHandle spec = layer->GetPrimAtPath(p.GetPath());
+    if (spec && spec->GetSpecifier() == SdfSpecifierDef && p.GetPath().GetPathElementCount() > 1) return p.GetPath();
+  }
+  return SdfPath();
+}
+
 JsObject inspect_usd(const std::string& file) {
   if (!std::filesystem::exists(file)) throw Error("inspect_usd.file: no file " + file);
   TfErrorMark mark;

@@ -101,17 +101,19 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p) {
   mat.CreateSurfaceOutput(TfToken("cycles"))
       .ConnectToSource(c.CreateOutput(TfToken("BSDF"), SdfValueTypeNames->Token));
 
-  // UsdPreviewSurface: the same values where it has them (no anisotropy, thin film or bump);
-  // transmission shows as partial opacity so glass reads as glass in the viewport.
+  // UsdPreviewSurface: the same values where it has them (no anisotropy, thin film or bump).
+  // Glass in Storm: what transmits has no diffuse colour and lets most light through (low opacity), while its
+  // reflections stay whole (UsdPreviewSurface's "transparent" opacity mode keeps the specular), so a clear
+  // cover reads as a clear cover with the studio reflected in it, not as a grey slab.
   UsdShadeShader v = shader(stage, path, "Preview", "UsdPreviewSurface");
-  set(v, "diffuseColor", kColor, base);
+  set(v, "diffuseColor", kColor, base * (1.0f - transmission));
   set(v, "metallic", kFloat, metallic);
   set(v, "roughness", kFloat, roughness);
   set(v, "ior", kFloat, ior);
   set(v, "clearcoat", kFloat, coat);
   set(v, "clearcoatRoughness", kFloat, coat_roughness);
   set(v, "emissiveColor", kColor, emission * emission_strength);
-  set(v, "opacity", kFloat, 1.0f - 0.8f * transmission);
+  set(v, "opacity", kFloat, 1.0f - 0.92f * transmission);
   if (!base_tex.empty() || !rough_tex.empty()) {
     UsdShadeShader st = shader(stage, path, "PreviewUV", "UsdPrimvarReader_float2");
     set(st, "varname", SdfValueTypeNames->String, std::string("st"));

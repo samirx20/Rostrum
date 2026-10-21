@@ -8,6 +8,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <mutex>
+#include <thread>
 
 #include "error.h"
 
@@ -17,7 +19,16 @@ namespace fs = std::filesystem;
 
 struct ColorOut::Impl {
   OIIO::ColorConfig config;
+  std::map<std::string, OIIO::ColorProcessorHandle> views;  // display transforms, made once per view
+  std::mutex lock;
   explicit Impl(const std::string& name) : config(name) {}
+  const OIIO::ColorProcessor& processor(const std::string& display, const std::string& view) {
+    std::lock_guard<std::mutex> g(lock);
+    auto& h = views[view];
+    if (!h) h = config.createDisplayTransform(display, view, "scene_linear");
+    if (!h) throw Error("render: OpenColorIO could not make the view transform for \"" + view + "\": " + config.geterror());
+    return *h;
+  }
 };
 
 ColorOut::ColorOut() {
@@ -81,21 +92,45 @@ void ColorOut::write_exr(const Picture& p, const std::string& file) const {
   write_whole(buf, file, OIIO::TypeDesc::HALF);
 }
 
+// One picture path for files and the live viewport: exposure, the background laid in where the picture is
+// transparent, then the OpenColorIO display view (made once per view, applied in bands on all cores).
+std::vector<float> ColorOut::displayed(const Picture& p, const std::string& view, double exposure,
+                                       const float background[3]) const {
+  const auto& proc = impl_->processor(display_, check_view(view));
+  std::vector<float> lit(p.rgba);
+  const float gain = float(std::pow(2.0, exposure));
+  for (size_t i = 0; i < lit.size(); i += 4) {
+    float a = std::min(std::max(lit[i + 3], 0.0f), 1.0f);
+    for (int c = 0; c < 3; ++c) lit[i + c] = lit[i + c] * gain + background[c] * gain * (1 - a);
+    lit[i + 3] = 1.0f;
+  }
+  const int bands = std::max(1, std::min(int(std::thread::hardware_concurrency()), 8));
+  const int rows = (p.height + bands - 1) / bands;
+  std::vector<std::thread> workers;
+  for (int b = 0; b < bands; ++b) {
+    const int y0 = b * rows, n = std::min(rows, p.height - y0);
+    if (n <= 0) break;
+    workers.emplace_back([&, y0, n] {
+      proc.apply(lit.data() + size_t(y0) * p.width * 4, p.width, n, 4, sizeof(float), 4 * sizeof(float),
+                 OIIO::stride_t(p.width) * 4 * sizeof(float));
+    });
+  }
+  for (auto& w : workers) w.join();
+  return lit;
+}
+
 void ColorOut::write_png(const Picture& p, const std::string& file, const std::string& view, double exposure,
                          const float background[3]) const {
-  Picture lit = p;
-  const float gain = float(std::pow(2.0, exposure));
-  for (size_t i = 0; i < lit.rgba.size(); i += 4) {
-    float a = std::min(std::max(lit.rgba[i + 3], 0.0f), 1.0f);
-    for (int c = 0; c < 3; ++c) lit.rgba[i + c] = lit.rgba[i + c] * gain + background[c] * gain * (1 - a);
-    lit.rgba[i + 3] = 1.0f;
-  }
-  auto src = to_buf(lit);
-  OIIO::ImageBuf shown;
-  if (!OIIO::ImageBufAlgo::ociodisplay(shown, src, display_, check_view(view), "scene_linear", "", false, false,
-                                       "", "", &impl_->config))
-    throw Error("render: the OpenColorIO view transform failed: " + shown.geterror());
-  write_whole(shown, file, OIIO::TypeDesc::UINT8);
+  Picture shown{p.width, p.height, displayed(p, view, exposure, background)};
+  auto buf = to_buf(shown);
+  write_whole(buf, file, OIIO::TypeDesc::UINT8);
+}
+
+void ColorOut::to_rgba8(const Picture& p, const std::string& view, double exposure, const float background[3],
+                        unsigned char* dst) const {
+  const auto shown = displayed(p, view, exposure, background);
+  for (size_t i = 0; i < shown.size(); ++i)  // as OpenImageIO quantizes a PNG: clamp, then round
+    dst[i] = (unsigned char)(std::min(std::max(shown[i], 0.0f), 1.0f) * 255.0f + 0.5f);
 }
 
 std::string frame_path(const std::string& pattern, int frame) {
