@@ -46,3 +46,15 @@ Every third-party library, model, asset source and tool that ships in or is down
 | "FingerTapsWoodLongLoop01.wav" by Otakua | Freesound 219933 | CC-BY-3.0 | proofs/sound-sfx redo | sound file | dev only | Credit "Otakua (freesound.org)" | https://freesound.org/people/Otakua/sounds/219933/ |
 | 19 CC0 recordings (Freesound, BigSoundBank, OpenGameArt; listed in `effects-20s-redo-takes.json`) | — | CC0-1.0 | proofs/sound-sfx redo | sound files | dev only | Nothing (courtesy credit for BigSoundBank) | see SOURCES.md |
 | SciPy | from uv cache | BSD-3-Clause | `proofs/paint/model` (filters) | Python package | dev only | Keep the notice | https://pypi.org/project/scipy/ |
+| Blitz (blitz-dom, blitz-paint, blitz-html, blitz-traits; dom and paint patched) | 0.3.0-beta.3 | MIT OR Apache-2.0 | `apps/2d/engine` (layout and paint) | vendored source (dom, paint) + static | ships | Keep the notice | https://github.com/DioxusLabs/blitz |
+| AnyRender, anyrender_skia (patched) | 0.14.0, 0.12.0 | MIT OR Apache-2.0 | `apps/2d/engine` (paint API, Skia backend) | vendored source | ships | Keep the notice | https://github.com/DioxusLabs/anyrender |
+| Parley (patched), fontique | 0.12.0 | Apache-2.0 OR MIT | `apps/2d/engine` (text layout) | vendored source / static | ships | Keep the notice | https://github.com/linebender/parley |
+| usvg (patched) | 0.48.1 | Apache-2.0 OR MIT | `apps/2d/engine` (SVG) | vendored source | ships | Keep the notice | https://github.com/linebender/resvg |
+| Stylo (stylo, stylo_traits, selectors, cssparser and the Servo crates) | 0.22.0 | MPL-2.0 | `apps/2d/engine` (CSS) | static | ships | Keep the notice; changes to MPL files stay MPL and their source is offered (we ship them unmodified) | https://github.com/servo/stylo |
+| Taffy | 0.15.0 | MIT | `apps/2d/engine` (box layout) | static | ships | Keep the notice | https://github.com/DioxusLabs/taffy |
+| skia-safe / skia-bindings, with Skia's prebuilt binaries | 0.153.3 | MIT (bindings), BSD-3-Clause (Skia) | `apps/2d/engine` (GPU paint) | static | ships | Keep both notices | https://github.com/rust-skia/rust-skia |
+| skrifa, harfrust (fontations) | 0.44.0, 0.12.0 | MIT OR Apache-2.0, MIT | `apps/2d/engine` (font outlines, shaping) | static | ships | Keep the notice | https://github.com/googlefonts/fontations |
+| glutin | 0.32.3 | Apache-2.0 | `apps/2d/engine` (OpenGL context) | static | ships | Keep the notice | https://github.com/rust-windowing/glutin |
+| image, png, jpeg-encoder, exr, half | 0.25.10, 0.18.1, 0.7.1, 1.74.2, 2.7.1 | MIT OR Apache-2.0; jpeg-encoder adds IJG; exr BSD-3-Clause | `apps/2d/engine` (picture files) | static | ships | Keep the notices (IJG: credit the Independent JPEG Group) | https://github.com/image-rs |
+| ICU4X crates (icu_*, zerovec, yoke …) | 2.3.x | Unicode-3.0 | `apps/2d/engine` (text segmentation, via Parley) | static | ships | Keep the notice | https://github.com/unicode-org/icu4x |
+| Roboto Flex | 3.x (archive copy) | SIL OFL 1.1 | `apps/2d/engine/render/tests` (test font) | data | dev only | Keep the OFL text beside it; don't sell the font on its own | https://github.com/googlefonts/roboto-flex |
