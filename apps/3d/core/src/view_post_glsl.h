@@ -25,7 +25,7 @@ bool empty(ivec2 p) { return texelFetch(depthTex, clamp(p, ivec2(0), isize - 1),
 )";
 
 // Contact shading: how much of the hemisphere over each point nearby surfaces hide, within `radius` scene units
-// (16 samples on a spiral turned per pixel; the combine pass smooths the grain). 1 = open, 0 = closed in.
+// (24 samples on a spiral turned per pixel; the combine pass smooths the grain). 1 = open, 0 = closed in.
 constexpr const char* kAo = R"(
 uniform float radius;     // scene units
 uniform float pxPerUnit;  // picture pixels per scene unit at distance 1
@@ -42,13 +42,14 @@ void main() {
   float rpx = min(radius * pxPerUnit / -P.z, 160.0);
   if (rpx < 1.5) { ao = 1.0; return; }
   float turn = 6.2831853 * fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
-  const int n = 16;
+  const int n = 24;
   float occ = 0.0, r2 = radius * radius;
   for (int i = 0; i < n; ++i) {
     float t = (float(i) + 0.5) / float(n), a = float(i) * 2.3999632 + turn;
     vec3 v = viewPos(p + ivec2(round(vec2(cos(a), sin(a)) * rpx * sqrt(t)))) - P;
     float vv = dot(v, v);
-    occ += max(0.0, 1.0 - vv / r2) * max(0.0, dot(v, N) * inversesqrt(vv + 1e-12) - 0.1) / 0.9;
+    float near = vv / r2;
+    occ += max(0.0, 1.0 - near * near) * max(0.0, dot(v, N) * inversesqrt(vv + 1e-12) - 0.05) / 0.95;
   }
   ao = clamp(1.0 - 2.0 * occ / float(n), 0.0, 1.0);
 })";

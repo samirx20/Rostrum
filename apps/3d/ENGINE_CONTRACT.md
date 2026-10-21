@@ -116,18 +116,21 @@ One physically based material type, written as Cycles' `principled_bsdf` (on `ou
           "eye": [0.3, 0.2, 0.5], "target": [0, 0, 0], "fov": 30,  // fov = vertical, degrees; up is +Y
           "frame": 12, "width": 960, "height": 540,
           "renderer": "storm", "exposure": 0, "studio": 1.0, "sceneLights": true,
-          "selected": ["device"], "view": ""}}
+          "selected": ["device"], "view": "", "ao": 1.0, "aoRadius": 0.3, "dof": true}}
 ```
 
 - Give **either** `camera` **or** `eye` + `target` + `fov` (the free camera orbits around `target`). Near/far for the free camera follow its distance.
 - `renderer`: `storm` (default) or `stylized`; Cycles is for `render`.
-- `exposure` (stops) and `view` (OCIO view) as in `render`; the picture goes through OpenColorIO like the PNG does.
+- `exposure` (stops) and `view` (OCIO view) as in `render`; the picture goes through OpenColorIO like the PNG does, on the graphics card (H20, core/src/view_post.* and ocio_gpu.*: the same config, display and view as the PNGs, as a shader; measured within 1/255 of the CPU path).
+- `ao` (H20): contact shading (screen-space ambient occlusion, from Storm's depth) strength 0..2, default 1; `0` = off. `aoRadius`: how far it reaches, in scene units (default 0.3). Viewport-only, because Storm has no ambient occlusion of its own: without it a ball on a floor under an even sky reads flat. It darkens what the camera sees of corners and contacts; what is hidden on screen (the floor under a ball) can't darken anything.
+- `dof` (H20, default true): depth of field when looking through a scene `camera` whose depth of field is on (its f-stop, focus distance, focal length and sensor width; thin-lens blur, matching Cycles' blur behind the focus). A blurred object in front of the focus doesn't spread over the sharp things around it, unlike Cycles. The reply's `cameraDof` says whether the camera looked through has depth of field on (the screen shows its Depth of field switch only then).
 - `studio`: strength of the viewport's studio environment (a soft studio dome made by the core, so metal and glass have something to reflect); `0` = off. `sceneLights`: the scene's own lights on or off. Both are viewport-only: renders never see them. The studio is never seen by the camera. When the scene has its own dome light and `sceneLights` is on, that dome lights the viewport instead of the studio and is seen behind the scene, as in Cycles (core/src/sky.cpp: Storm is handed the dome's picture, or a flat one, × colour × intensity × 2^exposure (× its colour temperature), because Storm reads only a dome's picture; Cycles gets the same picture; Storm draws into its own colour picture so its sky pass runs). The reply's `sceneDome` (true / false) says whether the scene's dome lit this picture, i.e. the studio was not used (the screen hides its Studio light slider then). In Storm, a dome picture whose light sits mostly in one small bright patch (a sun) is split once per picture (core/src/dome_sun.cpp, cached as `%USERPROFILE%\.rostrum\cache\3d\domesun-v1-*`): the patch is painted over with the sky around it, and Storm gets, beside that picture, a distant light with a shadow carrying exactly the light taken out (core/src/storm_sun.cpp), so the total light is unchanged; Cycles and the stylized renderer keep the whole dome. The reply's `sun` is then `{"toward": [x, y, z] (world direction towards the sun), "share": 0..1 (its part of the dome's light), "angleDeg": its apparent size}`, else `null`. A Storm `render` gets the same sun.
-- `selected`: item ids drawn with an outline.
-- The pixels (straight-alpha RGBA8, top row first, background laid in) are written into a named shared-memory block with two slots used in turn, as in Rostrum2D's `pixels` (`Local\rostrum3d-<pid>-<n>`; Python: `mmap.mmap(-1, size, tagname=name, access=mmap.ACCESS_READ)`). The reader must be done with a slot before it asks for the view after next. Windows only for now.
+- `selected`: item ids drawn with an outline (a 2-pixel ring in the kit's accent colour).
+- The pixels (straight-alpha RGBA8, top row first, background laid in; read straight from the graphics card into the slot) are written into a named shared-memory block with two slots used in turn, as in Rostrum2D's `pixels` (`Local\rostrum3d-<pid>-<n>`; Python: `mmap.mmap(-1, size, tagname=name, access=mmap.ACCESS_READ)`). The reader must be done with a slot before it asks for the view after next. Windows only for now.
 - **`pick`** takes the same camera choice: `camera`, or `eye` + `target` + `fov`.
 
 ## 5. Change log
 
 - **v1** (H12): first version.
 - **v1.1** (H13): `view` (live viewport pictures in shared memory, studio light, exposure, selection outline); `pick` with a free camera; glass shows as glass in Storm.
+- **v1.2** (H20): `view` finishes its picture on the graphics card (10 -> 96 pictures a second at 960 x 540); `ao`, `aoRadius`, `dof`; reply `cameraDof`.
