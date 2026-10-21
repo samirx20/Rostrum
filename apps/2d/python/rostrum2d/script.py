@@ -162,10 +162,18 @@ def _reserved(source: str) -> set[str]:
         return set()
 
 
+def _import(name, *args, **kw):
+    """Scripts can't import; `import math` just gives the math that is already there."""
+    if name == "math":
+        return math
+    raise ImportError(f"scripts can't import {name!r}; math, range, len, min, max, abs, round, enumerate, zip, "
+                      "sorted, sum … are already there")
+
+
 def run_source(source: str, name: str) -> dict:
     """Python source -> the document tree it builds. Any error is a loud BAD_ARGUMENT naming the line; nothing is merged."""
     b = Build(_reserved(source))
-    scope = {"__builtins__": SAFE, "math": math, "comp": b.comp,
+    scope = {"__builtins__": {**SAFE, "__import__": _import}, "math": math, "comp": b.comp,
              **{t: (lambda id=None, _t=t, **v: b.layer(_t, id, **v)) for t in F.LAYERS}}
     try:
         exec(compile(source, name, "exec"), scope)
