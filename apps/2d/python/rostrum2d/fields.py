@@ -214,7 +214,7 @@ FIELDS: dict[str, list[Param]] = {
         N("taperStart", "Taper start", "Width", 0, 1, 0.01, "", S, STROKE, help="How much of the line the width takes to grow from 0 at the start (0..1)"),
         N("taperEnd", "Taper end", "Width", 0, 1, 0.01, "", S, STROKE, help="How much of the line the width takes to shrink to 0 at the end (0..1)"),
         Param.text("widthProfile", label="Width along the line", group="Width", importance=S, valid_when=STROKE, default="",
-                   control="curve", help='"position,multiplier" pairs: position 0..1 along the line (increasing), multiplier of the '
+                   control="curve", max=4, help='"position,multiplier" pairs: position 0..1 along the line (increasing), multiplier of the '
                    'stroke width (0 or more). Empty = an even width (path.width sets it)'),
         Param.choice("taperAlong", ["line", "drawn"], label="Measured along", group="Width", default="line", importance=D,
                      valid_when=VARIED, labels={"line": "Whole line", "drawn": "Drawn part"},

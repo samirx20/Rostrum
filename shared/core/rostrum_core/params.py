@@ -50,6 +50,7 @@ class Param:
     max_items: int | None = None
     control: str = ""                # the screen control when the type alone doesn't say which: "curve" for a text of
                                      # "x,y x,y …" points from 0 to 1 (the kit's CurveField); "" = the type's own
+                                     # (a curve's max = the top of its y range; above 1 it is a multiplier, 1 = unchanged)
 
     def __post_init__(self):
         if self.type not in TYPES:

@@ -41,6 +41,11 @@ class HandleSlots:
         """The topmost layer at (x, y) composition px, without selecting it ("" for none)."""
         return bounds.pick(self.comp(), self._t, x, y)
 
+    @Slot(int, int, float, result=str)
+    def resizeCursor(self, hx, hy, rot):
+        """The arrow a resize knob shows on a layer turned `rot` degrees (transform.resize_cursor)."""
+        return T.resize_cursor(hx, hy, rot)
+
     def _handle_grab(self, label, fields_of):
         layer = self.selectedLayer
         if not layer:
@@ -81,16 +86,17 @@ class HandleSlots:
             return
         item, p, b = self.doc.item(g.layer), g.p, g.box
         scaled = item["type"] not in OWN_SIZE
-        r = T.resize({"x": p["x"], "y": p["y"], "w": b["w"], "h": b["h"], "ax": b["ax"], "ay": b["ay"], "rot": b["rot"]},
+        dx, dy = bounds.parent_delta(b, dx, dy)                 # the drag in the layer's parent's px (a turned group)
+        r = T.resize({"x": p["x"], "y": p["y"], "w": b["lw"], "h": b["lh"], "ax": b["ax"], "ay": b["ay"], "rot": b["lrot"]},
                      g.hx, g.hy, dx, dy, shift, alt, uniform=scaled)
         sets = {}
         if scaled and g.hx and g.hy:
-            sets["scale"] = p["scale"] * r["w"] / b["w"]
+            sets["scale"] = p["scale"] * r["w"] / b["lw"]
         elif scaled:
-            sets.update({"scaleX": p["scaleX"] * r["w"] / b["w"]} if g.hx else {"scaleY": p["scaleY"] * r["h"] / b["h"]})
+            sets.update({"scaleX": p["scaleX"] * r["w"] / b["lw"]} if g.hx else {"scaleY": p["scaleY"] * r["h"] / b["lh"]})
         else:
-            sets.update({"w": p["w"] * r["w"] / b["w"]} if g.hx else {})
-            sets.update({"h": p["h"] * r["h"] / b["h"]} if g.hy else {})
+            sets.update({"w": p["w"] * r["w"] / b["lw"]} if g.hx else {})
+            sets.update({"h": p["h"] * r["h"] / b["lh"]} if g.hy else {})
         if not g.placed:
             sets.update({"x": r["x"], "y": r["y"]})
         self._guard(lambda: self._drag.preview([route.value_call(item, k, round(v, 2), self._t) for k, v in sets.items()]))

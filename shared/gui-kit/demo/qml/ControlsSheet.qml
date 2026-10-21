@@ -3,12 +3,12 @@ import QtQuick.Controls as QQC
 import RostrumKit
 
 // Every kit control, in its states, on one page (for looking, not for the app). Local values only.
-// demo/main.py --sheet calls stage() (opens one list) and hovers "hovered" before the screenshot. The third column
+// demo/main.py --sheet calls stage() (opens one list) and hovers "hovered" (or --hover <name>) before the screenshot. The third column
 // is `engaged` (the look a field has while focused, scrubbed or open: the same `active` path).
 QQC.ApplicationWindow {
     id: win
     visible: true
-    width: 1040; height: 700
+    width: 1040; height: 860
     color: Theme.app
     title: "RostrumKit — controls"
     readonly property int colW: 220
@@ -69,7 +69,13 @@ QQC.ApplicationWindow {
                     IconButton { glyph: "+" }
                     IconButton { glyph: "⋯"; kind: "ghost" }
                     IconButton { glyph: "×"; danger: true }
-                    IconButton { glyph: "+"; down: true } } }
+                    IconButton { glyph: "+"; down: true }
+                    IconButton { objectName: "tipped"; glyph: "↗"; tip: "Export" } } }
+            Row { spacing: Theme.groupGap
+                Name { text: "Curve" }
+                CurveField { value: "0,0 0.3,0.2 0.7,0.85 1,1" }
+                CurveField { value: "0,0.4 0.5,2.6 1,0.4"; most: 4 }   // above 1: a multiplier (a stroke's width profile)
+                CurveField { most: 4 } }
             Row { spacing: Theme.groupGap
                 Name { text: "Level meter" }
                 Row { spacing: Theme.gap; height: Theme.row

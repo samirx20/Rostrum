@@ -17,6 +17,14 @@ from .tree import index
 from .who import Who
 
 NUDGE_S = 1.0     # repeated small changes to the same fields by the same person merge within this time
+_last_t = [0.0]
+
+
+def ticking() -> float:
+    """The clock every document stamps its changes with: wall time, but never the same or earlier twice in a process, so
+    two changes made in one tick (a document and the project's markers) still have an order for one undo (desk.py)."""
+    _last_t[0] = max(time.time(), _last_t[0] + 1e-6)
+    return _last_t[0]
 
 
 @dataclass
@@ -26,7 +34,7 @@ class Event:
 
 
 class Document:
-    def __init__(self, kind, data: dict | None = None, folder=None, item=None, clock=time.time):
+    def __init__(self, kind, data: dict | None = None, folder=None, item=None, clock=ticking):
         self.kind, self.folder, self.item_id, self.clock = kind, folder, item, clock
         self.data = data if data is not None else kind.blank()
         index(self.data, kind.lists)                    # a duplicate id fails here, loudly

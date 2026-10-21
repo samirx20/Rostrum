@@ -3,7 +3,7 @@ No Qt.
 
 A layer's box: its anchor sits at (x, y) inside its parent (a group's layers are placed from the group's top-left
 corner); the box is w x h times scale, turned by `rot` degrees about the anchor (the selection outline turns with it;
-picking turns the pointer back the same way). A group's turn is not passed on to its layers; tilt is not taken into account.
+picking turns the pointer back the same way). Tilt is not taken into account.
 A layer's size is rostrum2d/sizes.py's (a text's is the engine's laid-out box, rostrum2d/textsize.py, on a path too).
 A layer in an auto layout is where the layout puts it (rostrum2d/layout.py).
 """
@@ -15,31 +15,72 @@ from rostrum2d import fields as F
 from rostrum2d.evaluate import resolve
 from rostrum2d.layout import solve
 from rostrum2d.sizes import own_size
+from rostrum2d.stepped import FIELD as STEPS
+
+
+def _stepped(t: float, n: int, fps: float) -> float:
+    """The time the engine draws at when timing is on n-frames (rostrum2d/stepped.py holds each pose for n frames)."""
+    return math.floor(t * fps / n + 1e-9) * n / fps if n > 1 else t
+
+
+def _compose(m, a, b, c, d, e, f):
+    """Matrix m (a b c d e f: x' = a x + c y + e, y' = b x + d y + f) followed by the affine given after it."""
+    return (m[0] * a + m[2] * b, m[1] * a + m[3] * b, m[0] * c + m[2] * d, m[1] * c + m[3] * d,
+            m[0] * e + m[2] * f + m[4], m[1] * e + m[3] * f + m[5])
 
 
 def boxes(comp: dict, t: float) -> list[dict]:
-    """[{id, x, y, w, h}] for every layer showing at t, bottom of the stack first (a group before its layers)."""
+    """[{id, x, y, w, h, rot, ax, ay}] for every layer showing at t, bottom of the stack first (a group before its
+    layers), all on screen (composition px): x, y is the unturned top-left of the box about its anchor, w x h the size on
+    screen. A layer inside groups is carried through their whole chain (position, turn, scale, anchor), as the engine
+    does: a layer sits at (x, y) inside its parent and turns and scales about its anchor, and a group's layers live in
+    the group's own px, so they follow the group's turn. Also `lw lh lrot` (the box in its parent's px) and `m` (the
+    parent's matrix, a b c d e f), for drags in the parent's frame. Each layer is read at the stepped time the engine
+    draws it at (Timing > Steps on it, its group or the composition).
+    """
     out: list[dict] = []
-    placed = solve(comp, t)                 # where auto layouts put their layers (rostrum2d/layout.py)
+    fps = comp.get("fps", 30)
+    placed: dict[float, dict] = {}
 
-    def walk(layers, ox, oy):
+    def layout(te):                          # where auto layouts put their layers at time te (rostrum2d/layout.py)
+        if te not in placed:
+            placed[te] = solve(comp, te)
+        return placed[te]
+
+    def walk(layers, m, n):
         for lay in layers:
             if lay["type"] == "camera":         # not drawn: no box (and no scale)
                 continue
-            p = {**resolve(lay, t), **placed.get(lay["id"], {})}
-            if not (p["start"] <= t < p["end"]):
+            own = lay.get(STEPS, "group")
+            ln = n if own == "group" else int(own)
+            te = _stepped(t, ln, fps)
+            p = {**resolve(lay, te), **layout(te).get(lay["id"], {})}
+            if not (p["start"] <= te < p["end"]):
                 continue
             w, h = own_size(lay["type"], p)
             sx, sy = p["scale"] * p["scaleX"], p["scale"] * p["scaleY"]
-            left = ox + p["x"] - p["anchorX"] * w * sx
-            top = oy + p["y"] - p["anchorY"] * h * sy
-            out.append({"id": lay["id"], "type": lay["type"], "x": left, "y": top, "w": w * sx, "h": h * sy,
-                        "rot": p["rotation"], "ax": p["anchorX"], "ay": p["anchorY"]})
+            ang = math.atan2(m[1], m[0])
+            gx, gy = math.hypot(m[0], m[1]), math.hypot(m[2], m[3])
+            ax_s, ay_s = m[0] * p["x"] + m[2] * p["y"] + m[4], m[1] * p["x"] + m[3] * p["y"] + m[5]
+            W, H = w * sx * gx, h * sy * gy
+            out.append({"id": lay["id"], "type": lay["type"], "x": ax_s - p["anchorX"] * W, "y": ay_s - p["anchorY"] * H,
+                        "w": W, "h": H, "rot": p["rotation"] + math.degrees(ang), "ax": p["anchorX"], "ay": p["anchorY"],
+                        "lw": w * sx, "lh": h * sy, "lrot": p["rotation"], "m": m})
             if lay["type"] == "group":
-                walk(lay.get("layers", []), left, top)
+                c, s = math.cos(math.radians(p["rotation"])), math.sin(math.radians(p["rotation"]))
+                inner = _compose(m, c * sx, s * sx, -s * sy, c * sy, p["x"], p["y"])           # parent px -> this layer's px
+                inner = _compose(inner, 1, 0, 0, 1, -p["anchorX"] * w, -p["anchorY"] * h)
+                walk(lay.get("layers", []), inner, ln)
 
-    walk(comp.get("layers", []), 0.0, 0.0)
+    walk(comp.get("layers", []), (1.0, 0.0, 0.0, 1.0, 0.0, 0.0), int(comp.get(STEPS, "1")))
     return out
+
+
+def parent_delta(b: dict, dx: float, dy: float) -> tuple[float, float]:
+    """A drag of (dx, dy) on screen as the same drag in the layer's parent's px (a turned, scaled group)."""
+    a, bb, c, d = b["m"][:4]
+    det = a * d - bb * c or 1.0
+    return (d * dx - c * dy) / det, (-bb * dx + a * dy) / det
 
 
 def corners(b: dict) -> list[tuple[float, float]]:

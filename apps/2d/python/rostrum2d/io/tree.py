@@ -139,11 +139,35 @@ def apply_calls(tree: dict, doc_data: dict, into: str, fonts: set | None = None,
     return _build(tree, doc_data, into, fonts, image_dir)[0]
 
 
-def prepare(doc, tree: dict, into: str, fonts: set | None = None, taken: set | None = None) -> tuple[list[dict], list[str]]:
-    """The calls that put the tree into `into` and the report; images are written to <doc folder>/imports/<stem>/ first."""
+def _fitted(tree: dict) -> dict:
+    """The tree's layers under one root group that is the source's page (width x height). Its `x`, `y`, `scale` (centred in
+    the composition, scaled to fit inside it, in proportion) are set in `_fit_calls`."""
+    return {**tree, "layers": [{"type": "group", "name": Path(tree["name"]).stem, "props": {}, "layers": tree["layers"],
+                                "box": [0.0, 0.0, float(tree["width"]), float(tree["height"])]}]}
+
+
+def _fit_calls(calls: list[dict], tree: dict, size) -> None:
+    k = min(size[0] / tree["width"], size[1] / tree["height"])
+    args = calls[1]["args"]                                  # [layer.add, group.set, …]: the root group
+    args.update(x=(size[0] - tree["width"] * k) / 2, y=(size[1] - tree["height"] * k) / 2)
+    if k != 1.0:
+        args["scale"] = k
+
+
+def prepare(doc, tree: dict, into: str, fonts: set | None = None, taken: set | None = None,
+            fit: tuple[float, float] | None = None) -> tuple[list[dict], list[str]]:
+    """The calls that put the tree into `into` and the report; images are written to <doc folder>/imports/<stem>/ first.
+    `fit` = the composition's (width, height): the tree's page lands centred, scaled to fit, under one root group."""
     folder = Path(doc.folder) if doc.folder else None
     image_dir = folder / "imports" / Path(tree["name"]).stem if folder else None
+    src = tree
+    if fit and tree.get("width") and tree.get("height"):
+        tree = _fitted(tree)
+    else:
+        fit = None
     calls, files, report = _build(tree, doc.data, into, fonts, image_dir, taken)
+    if fit:
+        _fit_calls(calls, src, fit)
     for path, img in files:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         img.save(path)

@@ -17,6 +17,7 @@ class DragSlots(SlotMixin):
         layer = bounds.layer_of(self.doc, self._sel) if self._sel else ""
         if not layer:
             return False
+        self._frames = {b["id"]: b for b in bounds.boxes(self.comp(), self._t)}      # each layer's parent frame, for the drag
         slots = layout_drag.begin(self.doc, self.comp(), layer, self._t)      # in an auto layout: change slot
         label = f"Move {self.label_of(self.doc.item(layer))}"
         if slots:
@@ -48,10 +49,12 @@ class DragSlots(SlotMixin):
         auto layout: layer.arrange to the slot nearest the pointer)."""
         if self._drag is None or not isinstance(self._grab, (dict, tuple, list)):
             return
+        ox, oy = dx, dy
         if isinstance(self._grab, list):
             calls = []
             for lay, x0, y0 in self._grab:
                 item = self.doc.item(lay)
+                dx, dy = self._parent_drag(lay, ox, oy)
                 calls += [route.value_call(item, "x", round(x0 + dx, 2), self._t), route.value_call(item, "y", round(y0 + dy, 2), self._t)]
             self._guard(lambda: self._drag.preview(calls))
             return
@@ -60,8 +63,14 @@ class DragSlots(SlotMixin):
             return
         layer, x0, y0 = self._grab
         item = self.doc.item(layer)
+        dx, dy = self._parent_drag(layer, dx, dy)
         self._guard(lambda: self._drag.preview([route.value_call(item, "x", round(x0 + dx, 2), self._t),
                                                 route.value_call(item, "y", round(y0 + dy, 2), self._t)]))
+
+    def _parent_drag(self, layer, dx, dy):
+        """The drag as the layer's parent sees it: a layer inside a turned or scaled group moves along the group's axes."""
+        b = getattr(self, "_frames", {}).get(layer)
+        return bounds.parent_delta(b, dx, dy) if b else (dx, dy)
 
     @Slot(str, result=bool)
     def beginKeyDrag(self, key_id):

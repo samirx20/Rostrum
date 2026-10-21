@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// A small drawn icon per item kind: rectangle / ellipse shape, text, image, group, effect, mask.
+// A small drawn icon per item kind: rectangle / ellipse shape, text, image, group, drawing, path, effect, mask.
 Canvas {
     id: c
     property string kind: "shape"
@@ -29,6 +29,9 @@ Canvas {
             rr(1.5, 4.5, 8, 8, 1.5); g.stroke(); rr(4.5, 1.5, 8, 8, 1.5); g.stroke()
         } else if (kind === "drawing") {   // a pen stroke
             g.beginPath(); g.moveTo(2, 10.5); g.bezierCurveTo(4, 2, 7, 2, 7, 7); g.bezierCurveTo(7, 12, 10, 11, 12, 3.5); g.stroke()
+        } else if (kind === "path") {      // a Bézier curve between two square points
+            g.beginPath(); g.moveTo(3.5, 10.5); g.bezierCurveTo(3.5, 3, 10.5, 11, 10.5, 3.5); g.stroke()
+            g.fillRect(1.5, 9, 3, 3); g.fillRect(9, 2, 3, 3)
         } else if (kind === "mask") {
             rr(1.5, 1.5, 11, 11, 2); g.stroke(); g.beginPath(); g.ellipse(4.5, 4.5, 5, 5); g.fill()
         } else {   // an effect: a small spark

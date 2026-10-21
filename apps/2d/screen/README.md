@@ -43,9 +43,10 @@ bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (
 
 - **Pen** (`screen2d/pen.py`, `qml/PenOverlay.qml`; button or P): click = corner point, press-drag = smooth point,
   click the first point = close, Enter / Escape = done. The finished path is one change (`layer.add` + `path.set`).
-- With a path layer selected its points (square = corner, round = smooth) and handles show; a drag is one
-  `path.set_point` gesture (handles stay opposite; Alt moves one alone).
-- Steps: `pen <x,y> <x,y,hx,hy> … [close]`, `pointdrag <layer> <i> <dx> <dy> [in|out]`.
+- With a path layer selected its points (square = corner, round = smooth) show; **click a point** and only its in / out
+  handles show (while the pen draws, the newest point's). A drag is one `path.set_point` gesture (handles stay opposite;
+  Alt moves one alone). A path inside a group is not offset by the group yet.
+- Steps: `pen <x,y> <x,y,hx,hy> … [close]`, `pointpick <layer> <i>`, `pointdrag <layer> <i> <dx> <dy> [in|out]`.
 
 ## Handles and multi-select (Design page)
 
@@ -60,8 +61,11 @@ bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (
   are selected (not a layer inside a selected group). **Shift+click** adds / removes one. The first is the inspector's;
   every outline shows, handles only for a single layer. Dragging any one moves them all in one undo step (not layers in
   an auto layout or driven by an expression: refused loudly). A click or the layers panel resets to one.
-- Click-to-pick turns the pointer back by the layer's rotation, so a turned layer picks where it shows. A group's turn isn't passed
-  to its layers' boxes yet.
+- One source for "where a layer's box is on screen": `bounds.boxes` carries each layer through its groups' whole chain (position,
+  turn, scale, anchor), so a layer inside a turned group outlines, picks, resizes and moves where it shows (drags are read in the
+  parent's frame, `bounds.parent_delta`). It reads each layer at the **stepped** time the engine draws (Timing › Steps on it, its
+  group or the composition), so the outline sits on the drawn picture, not the playhead's. A turned group with uneven scale
+  (a skew) is approximated. Resize knobs show the arrow matching their on-screen direction (`transform.resize_cursor`, 45° snaps).
 - Steps: `resize <layer> <nw|n|ne|e|se|s|sw|w> <dx> <dy> [shift] [alt]`, `rotate <layer> <deg> [shift]`,
   `boxselect <x0> <y0> <x1> <y1>`, `shiftpick <layer>`, `movesel <dx> <dy>`.
 
@@ -119,10 +123,16 @@ Steps: `select`, `page`, `time`, `set`, `scrub`, `animate`, `drag <layer> <dx> <
   never stored, printed or sent anywhere but Figma). One change, one undo step; afterwards the layers that came in and the
   list **Didn't come across** (clip paths, filters, shadings, fonts that aren't here, baked PSD effects …). An error shows in
   the panel and the status line and nothing is imported.
-- One door: `rostrum2d.io.importing.run` (file → importer tree → calls → one `doc.apply` → report); the MCP tool `run_import`
-  calls the same function.
-- Steps: `add <type>` (`add image <path>`), `addmenu open|close`, `import <path> [page=<n>] [text=outline]`,
-  `importpanel open [path]|close`.
+- Layers: every path layer (imported or drawn with the pen) has the path icon. Glyph buttons (Export ↗) say what they do
+  under the pointer after half a second (the kit's `HoverTip`).
+- Import runs off the GUI thread (`screen2d/import_job.py`) with a progress bar and **Cancel** ("Cancelled — nothing imported."):
+  the worker only plans (`importing.plan`: read / download / parse / place), the one change (`importing.apply`, one undo step)
+  is made back on the GUI thread. An SVG / PDF page / PSD / Figma frame lands centred in the composition, scaled to fit inside it,
+  under one group; **Keep original size** (only shown for those kinds) puts it in at its own size and place.
+- One door: `rostrum2d.io.importing` (`run` = `plan` + `apply`: file → importer tree → calls → one `doc.apply` → report); the MCP
+  tool `run_import` calls `run` (its `fit` is off by default: the source's own size and place).
+- Steps: `add <type>` (`add image <path>`), `addmenu open|close`, `import <path> [page=<n>] [text=outline] [keep=on]` (waits),
+  `importstart <path>` (doesn't wait), `importpanel open [path]|close`.
 
 ## Problems, steps and curves
 
@@ -133,7 +143,8 @@ Steps: `select`, `page`, `time`, `set`, `scrub`, `animate`, `drag <layer> <dx> <
 - **Steps** (Timing › Steps on a composition, group or layer; `rostrum2d/stepped.py`): on twos / threes / fours is how the
   scene is evaluated, never baked into the keys.
 - **Colour curves**: the kit's curve control (`RostrumKit/CurveField.qml`) for a param marked `control="curve"`: drag a
-  point, press an empty spot to add one, double-click to remove; each drag is one change. Step `inspectorscroll <px>`
+  point, press an empty spot to add one, double-click to remove; each drag is one change. A curve param's `max` is the top of its range: the
+  stroke's **Width along the line** goes 0 to 4 (a multiplier; the dashed line at 1 = unchanged), a colour curve 0 to 1. Step `inspectorscroll <px>`
   scrolls the inspector for screenshots.
 
 ## Not yet

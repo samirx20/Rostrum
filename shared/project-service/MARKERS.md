@@ -54,6 +54,11 @@ file), emits `changed`, gives `rows()` for ruler flags and `snap(t, within_s)` f
 
 - **2D:** ruler flags on every page, a faint line through the Animate timeline, keys dragged within 6 px land on a
   marker, expressions' `marker("drop")` read the project's list (render, look_frame and the screen all pass it).
+- **Sound (P14, P15):** times like `"#drop+0.5"` and note lengths `{"to": "#land"}` read the project's list
+  (`rostrum_sound/doc/markers.py`, the one place Sound reads them), so a marker moved in 2D or by `edit_markers` moves
+  the sound on the next render; a rename is followed as one undo step (`marker.follow`); a deleted marker the song
+  uses fails the check and the render, naming item and field; a local marker named like a project one is refused.
+  On the screen, project markers show dashed on the marker band and drag there (one `marker.move` per release).
 - **Agents:** `inspect_markers` (all, or `name: "drop+0.5"` for one time), `edit_markers` (`ops` as above).
 
 ## Request to Team Priyam: switching `rostrum_sound/doc/markers.py`

@@ -5,6 +5,7 @@ report of what didn't come across. The Import panel and the MCP tool `run_import
     pdf: `page` counts from 1; page 0 = every page, one new composition each
     svg / pdf / psd / figma → the importer's tree → tree.prepare (names, places, checks every field) → doc.apply
     image / video           → one layer of that type, centred in the composition, shrunk to fit if bigger
+    `plan` is the slow part (no change to the document, safe off the GUI thread), `apply` the one change; `run` = both.
 """
 from __future__ import annotations
 
@@ -94,34 +95,50 @@ def tree_of(kind: str, path=None, page: int = 1, text: str = "text", figma: dict
     raise ValueError(f"unknown kind {kind!r}: {', '.join(KINDS)}")
 
 
-def _pages(doc, who, comp, path) -> dict:
+class Cancelled(Exception):
+    """The caller's `cancelled()` said stop: nothing was applied."""
+
+
+def _stage(progress, cancelled, fraction: float, words: str):
+    """Between stages: stop if asked, else say how far along."""
+    if cancelled and cancelled():
+        raise Cancelled("Cancelled: nothing imported.")
+    if progress:
+        progress(fraction, words)
+
+
+def _pages(doc, comp, path, progress=None, cancelled=None) -> dict:
     """pdf page 0: every page into its own new composition (named "Page N" or the page's label, the page's size, the open
-    composition's frame rate and length), all in one change. → the same dict as `run`, with the new comps' ids in "comps"."""
+    composition's frame rate and length), all in one change. → the plan, with the new comps' ids in "comps"."""
     from rostrum_core.tree import index
     from ..kind import KIND
+    _stage(progress, cancelled, 0.1, "Reading the PDF")
     trees, taken = pdf_pages(path), set(index(doc.data, KIND.lists))
     calls, report, comps = [], [], []
-    for tr in trees:
+    for i, tr in enumerate(trees):
+        _stage(progress, cancelled, 0.2 + 0.7 * i / len(trees), f"Page {i + 1} of {len(trees)}")
         cid = T._id(tr["comp"], "comp", taken)
         calls.append({"op": "comp.add", "args": {"id": cid, "name": tr["comp"], "width": round(tr["width"]), "height": round(tr["height"]),
                                                  **{k: comp[k] for k in ("fps", "duration") if k in comp}}})
         page_calls, page_report = T.prepare(doc, tr, cid, app_fonts(), taken)
         calls, report, comps = calls + page_calls, report + page_report, comps + [cid]
-    doc.apply(calls, who, label=f"Import {trees[0]['name']} ({len(trees)} pages)")
-    return {"name": trees[0]["name"], "kind": "pdf", "calls": len(calls), "layers": [], "comps": comps, "report": report}
+    return {"name": trees[0]["name"], "kind": "pdf", "calls": calls, "report": report, "comps": comps, "into": None,
+            "label": f"Import {trees[0]['name']} ({len(trees)} pages)"}
 
 
-def run(doc, who, comp_id: str, path=None, kind: str | None = None, page: int = 1, text: str = "text",
-        figma: dict | None = None, into: str | None = None) -> dict:
-    """Import into `into` (a group of the composition; default the composition). One change, all or nothing.
-    → {"name", "kind", "calls": n, "layers": [new top-level ids in `into`], "report": [what didn't come across]}."""
+def plan(doc, comp_id: str, path=None, kind: str | None = None, page: int = 1, text: str = "text", figma: dict | None = None,
+         into: str | None = None, fit: bool = False, progress=None, cancelled=None) -> dict:
+    """The slow part of an import, with no change to the document (so it may run off the GUI thread): read, download, parse,
+    place. → {"name", "kind", "calls": [ops], "report", "label", "into", "comps"?}; `apply` makes the one change.
+    `fit` (svg / pdf / psd / figma): the source's page is centred in the composition, scaled to fit inside it (both ways).
+    `progress(fraction, words)` and `cancelled()` are called between stages; a True from `cancelled` raises Cancelled."""
     kind = kind or ("figma" if figma else kind_of(path))
     if kind == "pdf" and page == 0:                          # page 0 = every page, a composition each (the open comp only sets fps and length)
         if into and into != comp_id:
             raise ValueError("a whole-PDF import makes its own compositions; `into` is for one page")
         if not Path(path or "").is_file():
             raise ValueError(f"no file at {path}")
-        return _pages(doc, who, doc.item(comp_id), Path(path))
+        return _pages(doc, doc.item(comp_id), Path(path), progress, cancelled)
     into = into or comp_id
     if not doc.has(into) or doc.item(into)["type"] not in ("comp", "group"):
         raise ValueError(f"'{into}' is not a composition or a group to import into")
@@ -130,13 +147,32 @@ def run(doc, who, comp_id: str, path=None, kind: str | None = None, page: int = 
         path = Path(path or "")
         if not path.is_file():
             raise ValueError(f"no file at {path}")
+        _stage(progress, cancelled, 0.3, f"Reading {path.name}")
         calls, report, name = media_calls(doc.data, comp, into, kind, path), [], path.name
     else:
+        _stage(progress, cancelled, 0.1, "Downloading the frame" if kind == "figma" else f"Reading the {kind.upper()}")
         tr = tree_of(kind, path, page, text, figma)
-        calls, report = T.prepare(doc, tr, into, app_fonts())
+        _stage(progress, cancelled, 0.6, "Placing the layers")
+        calls, report = T.prepare(doc, tr, into, app_fonts(), fit=(comp["width"], comp["height"]) if fit else None)
         name = tr["name"]
-    holder = doc.item(into)
-    before = {c["id"] for c in holder.get("layers", [])}
-    doc.apply(calls, who, label=f"Import {name}")
-    layers = [c["id"] for c in doc.item(into).get("layers", []) if c["id"] not in before]
-    return {"name": name, "kind": kind, "calls": len(calls), "layers": layers, "report": report}
+    _stage(progress, cancelled, 0.95, "Ready to put in")
+    return {"name": name, "kind": kind, "calls": calls, "report": report, "into": into, "label": f"Import {name}"}
+
+
+def apply(doc, who, p: dict) -> dict:
+    """The one change (one undo step) of a plan. Call it on the thread that owns the document.
+    → {"name", "kind", "calls": n, "layers": [new top-level ids in `into`], "report"}; a whole PDF also has "comps"."""
+    into = p["into"]
+    before = {c["id"] for c in doc.item(into).get("layers", [])} if into else set()
+    doc.apply(p["calls"], who, label=p["label"])
+    out = {"name": p["name"], "kind": p["kind"], "calls": len(p["calls"]), "report": p["report"]}
+    if p.get("comps"):
+        return {**out, "layers": [], "comps": p["comps"]}
+    return {**out, "layers": [c["id"] for c in doc.item(into).get("layers", []) if c["id"] not in before]}
+
+
+def run(doc, who, comp_id: str, path=None, kind: str | None = None, page: int = 1, text: str = "text",
+        figma: dict | None = None, into: str | None = None, fit: bool = False) -> dict:
+    """Import into `into` (a group of the composition; default the composition). One change, all or nothing: plan + apply.
+    → {"name", "kind", "calls": n, "layers": [new top-level ids in `into`], "report": [what didn't come across]}."""
+    return apply(doc, who, plan(doc, comp_id, path, kind, page, text, figma, into, fit))

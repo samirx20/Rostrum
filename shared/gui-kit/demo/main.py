@@ -54,7 +54,7 @@ def do_step(bridge, win, step):
         raise RuntimeError(f"step {step!r}: {bridge.status}")
 
 
-def stage_sheet(win):
+def stage_sheet(win, hover="hovered"):
     """Put the sheet's marked controls in their states: focused, list open, hovered."""
     def find(name):
         obj = win.findChild(QObject, name)
@@ -62,7 +62,7 @@ def stage_sheet(win):
             raise RuntimeError(f"controls sheet: no control named {name!r}")
         return obj
     QMetaObject.invokeMethod(win, "stage")
-    h = find("hovered")
+    h = find(hover)
     p = h.mapToScene(QPointF(h.width() * 0.6, h.height() / 2))
     for dx in (-6, 0):     # two moves: hover needs a move, not just a position
         QTest.mouseMove(win, QPoint(int(p.x()) + dx, int(p.y())))
@@ -74,12 +74,13 @@ def main():
     a.add_argument("--step", action="append", default=[])
     a.add_argument("--shot")
     a.add_argument("--sheet", action="store_true")
+    a.add_argument("--hover", default="hovered", help="--sheet: the control to rest the pointer on")
     args = a.parse_args()
 
     doc = toy.sample()
     bridge = DocBridge(doc)
     qml = HERE / "qml" / ("ControlsSheet.qml" if args.sheet else "Main.qml")
-    size = (1040, 700) if args.sheet else (1600, 960)
+    size = (1040, 860) if args.sheet else (1600, 960)
     app, engine, win = start(qml, {"backend": bridge}, size)
     code = [0]
 
@@ -93,7 +94,7 @@ def main():
 
     def run_steps():
         if args.sheet:
-            stage_sheet(win)
+            stage_sheet(win, args.hover)
         for s in args.step:
             do_step(bridge, win, s)
         if args.shot:
