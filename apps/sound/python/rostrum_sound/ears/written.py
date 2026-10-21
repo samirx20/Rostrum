@@ -15,7 +15,7 @@ def written_notes(root: dict, track_ids=None) -> list[dict]:
             w = f"tracks[{tr['id']}].notes[{n.get('id', '?')}]"
             start = times.seconds(n["at"], root, w)
             rows.append({"track": tr["id"], "id": n.get("id"), "start": start,
-                         "end": start + times.length_seconds(n["dur"], root, start),
+                         "end": start + times.length_seconds(n["dur"], root, start, n, w),
                          "midis": sorted(keys.midis(n["pitch"])), "vel": n.get("vel")})
     return sorted(rows, key=lambda r: (r["start"], r["midis"]))
 

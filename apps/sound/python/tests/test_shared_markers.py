@@ -58,3 +58,22 @@ def test_a_deleted_used_marker_fails_loudly(doc):
 def test_a_local_marker_named_like_a_project_one_is_refused(doc):
     with pytest.raises(RostrumError, match="Logo Lands"):
         doc.apply({"op": "marker.add", "args": {"name": "Logo Lands", "at": 1.0}}, Who.person())
+
+
+HELD = """
+pad = track("pad", builtIn="warmPad")
+pad.note("D3", at=0.1, dur="next")
+pad.note("A3", at="#logo lands", dur={"to": "#logo lands+1.5"})
+"""
+
+
+def test_a_held_note_follows_a_moved_marker(doc):
+    """A note tied to "next" or to a marker stays continuous when the marker moves (no gap before it)."""
+    doc.run_script("cue.py", run_source(HELD, "cue.py"), Who.script("cue.py"))
+    durs = lambda: [n["dur"] for n in compile(doc)["tracks"][0]["notes"]]   # noqa: E731
+    assert durs() == [2.4, 1.5]
+    project.edit(doc.folder, [{"op": "marker.move", "target": [_id(doc.folder)], "args": {"at": 4.0}}], Who.person())
+    assert durs() == [3.9, 1.5]
+    project.edit(doc.folder, [{"op": "marker.move", "target": [_id(doc.folder)], "args": {"at": 0.05}}], Who.person())
+    with pytest.raises(RostrumError, match="no later note"):
+        compile(doc)

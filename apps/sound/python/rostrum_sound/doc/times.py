@@ -3,17 +3,31 @@
 A time is seconds (a number), `{"beat": n}` (beats from the start), or a marker reference `"#drop"`,
 `"#drop+0.5"`, `"#drop-1"` (seconds after / before the marker named "drop"; a trailing "-<number>" is always
 an offset, so "#big-hit-1" is one second before "big-hit"). A length is seconds or
-`{"beats": n}` (beats from where the thing starts). Marker references are resolved here (the engine never sees
+`{"beats": n}` (beats from where the thing starts). A note's length can also be *tied*: `{"to": <time>}` ends it at
+that time (`{"to": "#land"}` holds it until the marker, wherever the marker moves) and `"next"` holds it until the
+next note on its track starts (the last one: until the mix's end). Ties are resolved here, in
+`length_seconds`, the one place every reader (render, screen, ears, MIDI) turns a length into seconds. Marker references are resolved here (the engine never sees
 them); beats are left to the engine, which gets the same tempo map (`tempo.py`, the one place beats become
 seconds), except where seconds are needed here (ids, order checks, marker references, the screen).
 """
 from __future__ import annotations
 
+from rostrum_core import RostrumError, codes
+
 from . import markers, tempo
 
 
-def problem(value, length=False) -> str | None:
-    """Why `value` is not a time (or a length), or None when it is one. Shapes only: markers are checked later."""
+NEXT = "next"
+
+
+def problem(value, length=False, tied=False) -> str | None:
+    """Why `value` is not a time (or a length), or None when it is one. Shapes only: markers are checked later.
+    `tied`: a note's length, which may also be `{"to": <time>}` or `"next"`."""
+    if tied and value == NEXT:
+        return None
+    if tied and isinstance(value, dict) and set(value) == {"to"}:
+        why = problem(value["to"])
+        return None if why is None else f'"to" {why}'
     if isinstance(value, bool):
         return "is not a time"
     if isinstance(value, (int, float)):
@@ -29,7 +43,9 @@ def problem(value, length=False) -> str | None:
     return "is not a length" if length else "is not a time"
 
 
-def forms(length=False) -> list[str]:
+def forms(length=False, tied=False) -> list[str]:
+    if tied:
+        return ["seconds (2.5)", '{"beats": 2}', '{"to": "#land"}', '{"to": {"beat": 16}}', '"next"']
     return ["seconds (2.5)", '{"beats": 2}'] if length else ["seconds (2.5)", '{"beat": 8}', '"#drop"',
                                                               '"#drop+0.5"']
 
@@ -42,10 +58,36 @@ def seconds(value, root: dict, where: str, seen=()) -> float:
     return float(value)
 
 
-def length_seconds(value, root: dict, start: float = 0.0) -> float:
-    """A length as seconds, for a thing starting at `start` seconds (beats through the tempo map from there)."""
+def length_seconds(value, root: dict, start: float = 0.0, note: dict | None = None, where: str = "length") -> float:
+    """A length as seconds, for a thing starting at `start` seconds (beats through the tempo map from there).
+    A tie ends where it points; `"next"` needs the `note` (to find its track). A tie that ends at or before its
+    start is a loud error, never a silent zero-length note."""
+    if value == NEXT or (isinstance(value, dict) and "to" in value):
+        end = _next_start(root, note, start, where) if value == NEXT else seconds(value["to"], root, where)
+        if end <= start + 1e-6:
+            raise RostrumError(codes.CHECK_FAILED, where, f"length {value!r}",
+                               f"ends at {end:.3f} s, not after its start at {start:.3f} s")
+        return end - start
     if isinstance(value, dict):
         b = tempo.beat_at(root, start)
         return tempo.seconds_at(root, b + float(value["beats"])) - start
     return float(value)
 
+
+
+def _next_start(root: dict, note: dict | None, start: float, where: str) -> float:
+    """Where the next note on `note`'s track starts (notes of the same chord or at the same moment don't count);
+    the last note holds to the mix's end. No later note and no mix length: a loud error."""
+    track = next((t for t in root.get("tracks", []) if note is not None and
+                  any(n is note or (n.get("id") is not None and n.get("id") == note.get("id")) for n in t.get("notes", []))),
+                 None)
+    if track is None:
+        raise RostrumError(codes.CHECK_FAILED, where, 'length "next"', "only a note on a track can hold to the next note")
+    later = [s for s in (seconds(n["at"], root, where) for n in track["notes"]) if s > start + 1e-6]
+    if later:
+        return min(later)
+    if root.get("length") is not None:
+        return seconds(root["length"], root, where)
+    raise RostrumError(codes.CHECK_FAILED, where, 'length "next"',
+                       "has no later note on its track and the mix has no length to hold to",
+                       ['{"to": "#end"}', "seconds (2.5)"])

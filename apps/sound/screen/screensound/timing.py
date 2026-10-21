@@ -17,9 +17,10 @@ def sec(value, root: dict, where="time") -> float:
     return times.seconds(value, root, where)
 
 
-def length_sec(value, root: dict, start: float = 0.0) -> float:
-    """A length as seconds for a thing starting at `start` seconds (beats through the tempo map)."""
-    return times.length_seconds(value, root, start)
+def length_sec(value, root: dict, start: float = 0.0, item: dict | None = None) -> float:
+    """A length as seconds for a thing starting at `start` seconds (beats through the tempo map; a tied note's
+    `"next"` needs the note itself)."""
+    return times.length_seconds(value, root, start, item)
 
 
 def beat(t: float, root: dict) -> float:

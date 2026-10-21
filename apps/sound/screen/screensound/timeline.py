@@ -53,7 +53,7 @@ def note_block(n, root):
     t = timing.sec(n["at"], root, n["id"])
     key = K.key_at(root, t)                     # spelled in the key playing there (Bb in D minor, not A#)
     label = " ".join(timing.name(k, key) for k in ks)
-    return {"id": n["id"], "type": "note", "t": t, "dur": timing.length_sec(n["dur"], root, t), "keys": ks, "names": [timing.name(k, key) for k in ks], "label": label, "vel": n.get("vel", 0.8)}
+    return {"id": n["id"], "type": "note", "t": t, "dur": timing.length_sec(n["dur"], root, t, n), "keys": ks, "names": [timing.name(k, key) for k in ks], "label": label, "vel": n.get("vel", 0.8)}
 
 
 def hit_block(h, root):

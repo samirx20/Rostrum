@@ -71,7 +71,7 @@ def _track(root, track, channel, skipped) -> list:
     ev = [(0, 0, _meta(0x03, (track.get("name") or track["id"]).encode()))]
     for n in track.get("notes", []):
         start = times.seconds(n["at"], root, n["id"])
-        a, b = _tick(root, start), _tick(root, start + times.length_seconds(n["dur"], root, start))
+        a, b = _tick(root, start), _tick(root, start + times.length_seconds(n["dur"], root, start, n, n["id"]))
         for k in K.midis(n["pitch"]):
             ev += [(a, 2, bytes([0x90 | channel, k, _vel(n.get("vel", 0.8))])), (max(b, a + 1), 1,
                                                                                 bytes([0x80 | channel, k, 0]))]
