@@ -1,0 +1,155 @@
+"""The 3D script layer: Python an agent (or a person) writes to build a document. Running it gives a tree;
+rostrum_core merges that tree in (`doc.run_script`), so a re-run never wipes what someone else changed (a light a
+person moved stays where they put it).
+
+    alu = material("alu", baseColor="#c9ccd1", metallic=1, roughness=0.32)
+    with group("device", ry=-12) as device:                  # items made inside go into the group
+        mesh("body", shape="box", width=0.074, height=0.017, depth=0.098, bevel=0.004, material=alu)
+    device.key("ry", {0: -12, 2: 12}, ease="smooth")         # {seconds: value} or {seconds: (value, ease)}
+    light("key", kind="rect", width=0.7, height=0.45, intensity=7, x=0.4, y=0.5, z=0.6).aim(device)
+    cam = camera("cam", focalLength=100, z=0.4).aim((0, 0, 0))
+    with import_usd("phone", file=r"C:/assets/phone.usdc") as phone:
+        phone.part("Body/Screen", material="glass")
+    shot("hero", camera=cam, fps=24, start=0, end=2)
+
+Ids: the first argument; left out, they are counted per type (mesh_1, mesh_2 …), skipping every quoted word in the
+script, so adding one item never renames another. Unknown fields and bad values fail loudly, naming the line.
+"""
+from __future__ import annotations
+
+import ast
+import math
+
+from rostrum_core import ids
+from rostrum_core.errors import RostrumError, codes
+
+from . import build, fields as F
+from .kind import KIND, PRIM_ID
+from .ops_keys import key_id
+
+SAFE = {n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__builtins__, n)
+        for n in ("range", "len", "min", "max", "abs", "round", "enumerate", "zip", "list", "dict", "float", "int",
+                  "str", "sorted", "reversed", "sum", "isinstance", "tuple", "ValueError")}
+REFS = {"material", "camera", "aimItem"}         # fields that name another thing: an Item handle may be passed
+
+
+class Item:
+    """A handle on one thing the script made."""
+
+    def __init__(self, b: "Build", node: dict):
+        self._b, self.node, self.id = b, node, node["id"]
+
+    def set(self, **values) -> "Item":
+        build.fill(self.node, _ids(values), f"script › {self.id}")
+        return self
+
+    def key(self, prop: str, keys: dict, ease: str = "smooth") -> "Item":
+        allowed = F.animatable(self.node["type"])
+        if prop not in allowed:
+            raise ValueError(f'{self.id}: "{prop}" can\'t be animated on a {self.node["type"]}; animatable: '
+                             f"{', '.join(allowed)}")
+        p = F.param(self.node["type"], prop)
+        for t, v in sorted(keys.items()):
+            value, e = v if isinstance(v, tuple) else (v, ease)
+            where = f"{self.id}.{prop} at {t} s"
+            F.param("key", "ease").check(e, where)
+            self.node["keys"].append({"id": key_id(self.id, prop, t), "type": "key", "prop": prop, "t": float(t),
+                                      ("c" if p.type == "color" else "v"): p.check(value, where), "ease": e})
+        return self
+
+    def aim(self, target) -> "Item":
+        """Point −Z at an item (or its id) or at a point (x, y, z), every frame."""
+        if isinstance(target, (tuple, list)):
+            x, y, z = target
+            return self.set(aim="point", aimX=float(x), aimY=float(y), aimZ=float(z))
+        return self.set(aim="item", aimItem=target)
+
+    def part(self, path: str, **values) -> "Item":
+        """An import's part: a prim inside its file that gets its own material or is hidden."""
+        if self.node["type"] != "import":
+            raise ValueError(f"{self.id} is a {self.node['type']}; .part() is for an import")
+        node = build.make("part", self._b.new_id(build.part_id(self.id, path), loose=True),
+                          {"name": path, "path": path, **_ids(values)}, f"script › {self.id}")
+        self.node["parts"].append(node)
+        return Item(self._b, node)
+
+    def __enter__(self):
+        if self.node["type"] not in F.HOLDERS:
+            raise ValueError(f"{self.id} is a {self.node['type']}; only a group or an import holds items")
+        self._b.holders.append(self.node)
+        return self
+
+    def __exit__(self, *exc):
+        self._b.holders.pop()
+
+
+def _ids(values: dict) -> dict:
+    return {k: (v.id if isinstance(v, Item) and k in REFS else v) for k, v in values.items()}
+
+
+class Build:
+    def __init__(self, reserved=()):
+        self.root, self.holders, self.reserved, self.taken = KIND.blank(), [], set(reserved), set()
+
+    def new_id(self, type_or_id: str, id_: str | None = None, loose=False) -> str:
+        if loose:                                        # a part's id from its path: already unique per import
+            id_ = type_or_id
+        elif id_ is None:
+            id_ = ids.counted(self.taken, type_or_id, self.reserved)
+        if not (ids.is_valid(id_) if loose else PRIM_ID.match(id_)):
+            raise ValueError(f'"{id_}" is not a usable id (letters, digits and _, not starting with a digit)')
+        if id_ in self.taken:
+            raise ValueError(f'id "{id_}" is used twice in the script')
+        self.taken.add(id_)
+        return id_
+
+    def add(self, type_: str, id_, values: dict, into: list) -> Item:
+        node = build.make(type_, self.new_id(type_, id_), {"name": F.LABELS[type_], **_ids(values)},
+                          f"script › {type_} {id_ or ''}".strip())
+        into.append(node)
+        return Item(self, node)
+
+    def item(self, type_: str, id_=None, **values) -> Item:
+        into = self.holders[-1]["children"] if self.holders else self.root["items"]
+        parts = values.pop("parts", []) if type_ == "import" else []
+        it = self.add(type_, id_, values, into)
+        for path in parts:
+            it.part(path)
+        return it
+
+
+def _reserved(source: str) -> set[str]:
+    try:
+        return {n.value for n in ast.walk(ast.parse(source)) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
+    except SyntaxError:
+        return set()
+
+
+def _import(name, *args, **kw):
+    if name == "math":
+        return math
+    raise ImportError(f"scripts can't import {name!r}; math, range, len, min, max, abs, round, zip … are already there")
+
+
+API = ["group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, **fields)", "camera(id, **fields)",
+       "import_usd(id, file=, parts=[...])", "material(id, **fields)", "shot(id, camera=, fps=, start=, end=)",
+       "item.set(**fields)", "item.key(field, {seconds: value}, ease=)", "item.aim(item or (x, y, z))",
+       "import.part(path, material=, visible=)", "with group(...): / with import_usd(...):"]
+
+
+def run_source(source: str, name: str) -> dict:
+    """Python source → the document tree it builds. Any error is a loud BAD_ARGUMENT naming the line; nothing merged."""
+    b = Build(_reserved(source))
+    scope = {"__builtins__": {**SAFE, "__import__": _import}, "math": math,
+             "material": lambda id=None, **v: b.add("material", id, v, b.root["materials"]),
+             "shot": lambda id=None, **v: b.add("shot", id, v, b.root["shots"]),
+             "import_usd": lambda id=None, **v: b.item("import", id, **v),
+             **{t: (lambda id=None, _t=t, **v: b.item(_t, id, **v)) for t in ("group", "mesh", "light", "camera")}}
+    try:
+        exec(compile(source, name, "exec"), scope)
+    except Exception as e:
+        import traceback
+        line = next((f" (line {fr.lineno})" for fr in traceback.extract_tb(e.__traceback__) if fr.filename == name), "")
+        raise RostrumError(codes.BAD_ARGUMENT, "", f'script "{name}"', f"failed{line}: {type(e).__name__}: {e}",
+                           API) from e
+    return b.root
