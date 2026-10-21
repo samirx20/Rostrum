@@ -1,6 +1,6 @@
 # Rostrum3D engine contract — the scene description
 
-*Team Hem, brief H12, 2026-10-21. Version **1**. Between the Python layer (`apps/3d/python/rostrum3d/`) and the C++ core (`apps/3d/core/`, program `rostrum3d-core`).*
+*Team Hem, brief H12, 2026-10-21. Version **1.1**. Between the Python layer (`apps/3d/python/rostrum3d/`) and the C++ core (`apps/3d/core/`, program `rostrum3d-core`).*
 
 ## 0. The document and USD: who owns what
 
@@ -28,6 +28,7 @@ One long-lived process. Each request is one line `{"<request>": {…}}`; each re
 | `{"scene": {…scene…}}` | `{"ok": true, "items": N, "prims": N, "frames": [start, end], "timing": {"buildMs"}}` | Load the scene, or replace the one held (Hydra's renderers stay warm). Checked whole: anything unknown fails and the held scene stays as it was. |
 | `{"render": {…}}` | `{"ok": true, "frames": [{"frame", "exr", "png", "ms"}], "renderer", "camera", "timing": {"totalMs", "firstMs", "meanMs"}, "vram": {"processPeakMb", "gpuUsedMb", "gpuTotalMb"}, "ramPeakMb"}` | Render one frame or a range from a named camera (§ 3). With `"progress": true` a line `{"progress": i, "of": n, "frame": f, "ms": m}` comes after each frame, before the reply. |
 | `{"pick": {"camera", "frame", "width", "height", "x", "y"}}` | `{"ok": true, "hit": true, "prim": "/World/device/screen", "item": "screen", "material": "mat_glass", "point": [x, y, z], "distance": d}` or `{"ok": true, "hit": false}` | What is at pixel (x, y), counted from the top-left of a `width × height` picture from that camera at that frame. Same answer whatever renderer drew the picture. `item` is the deepest prim on the path that is a document item; for a part of an import, `prim` names the part. |
+| `{"view": {…}}` | `{"ok": true, "width", "height", "shm": {"name", "size", "offset", "bytes", "stride", "format": "rgba8", "seq", "width", "height"}, "ms"}` | One live viewport picture (§ 4), straight into shared memory for the screen. |
 | `{"inspect_usd": {"file"}}` | `{"ok": true, "defaultPrim", "upAxis", "metersPerUnit", "prims": [{"path", "type", "material", "bounds": [[x,y,z],[x,y,z]]}, …], "truncated": false}` | What a USD file holds, so the Python side can turn an import into items (top-level parts, their materials and sizes). At most 2000 prims. |
 | `{"save": {"file", "flatten"?: false}}` | `{"ok": true, "file"}` | Write the built stage's root layer as `.usda` / `.usdc` (with `flatten`, imports are pulled in). |
 | `{"info": {}}` | `{"ok": true, "renderers": ["storm", "cycles", "stylized"], "displays": […], "views": {display: […]}, "gpu", "usd", "ocio"}` | What this build can do. |
@@ -107,6 +108,25 @@ One physically based material type, written as Cycles' `principled_bsdf` (on `ou
 - The picture is `width × height`; the camera's sensor height follows that aspect.
 - Timings are per frame and in total; video memory is this process's peak (Windows DXGI) plus the whole card's use (NVML), so the agent sees what fits on a 4 GB card.
 
-## 4. Change log
+## 4. The live viewport (`view`, H13)
+
+```json
+{"view": {"camera": "cam",                                        // look through a scene camera, OR a free camera:
+          "eye": [0.3, 0.2, 0.5], "target": [0, 0, 0], "fov": 30,  // fov = vertical, degrees; up is +Y
+          "frame": 12, "width": 960, "height": 540,
+          "renderer": "storm", "exposure": 0, "studio": 1.0, "sceneLights": true,
+          "selected": ["device"], "view": ""}}
+```
+
+- Give **either** `camera` **or** `eye` + `target` + `fov` (the free camera orbits around `target`). Near/far for the free camera follow its distance.
+- `renderer`: `storm` (default) or `stylized`; Cycles is for `render`.
+- `exposure` (stops) and `view` (OCIO view) as in `render`; the picture goes through OpenColorIO like the PNG does.
+- `studio`: strength of the viewport's studio environment (a soft studio dome made by the core, so metal and glass have something to reflect); `0` = off. `sceneLights`: the scene's own lights on or off. Both are viewport-only: renders never see them.
+- `selected`: item ids drawn with an outline.
+- The pixels (straight-alpha RGBA8, top row first, background laid in) are written into a named shared-memory block with two slots used in turn, as in Rostrum2D's `pixels` (`Local\rostrum3d-<pid>-<n>`; Python: `mmap.mmap(-1, size, tagname=name, access=mmap.ACCESS_READ)`). The reader must be done with a slot before it asks for the view after next. Windows only for now.
+- **`pick`** takes the same camera choice: `camera`, or `eye` + `target` + `fov`.
+
+## 5. Change log
 
 - **v1** (H12): first version.
+- **v1.1** (H13): `view` (live viewport pictures in shared memory, studio light, exposure, selection outline); `pick` with a free camera; glass shows as glass in Storm.

@@ -22,40 +22,11 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
 LOG_DIR = Path.home() / ".rostrum" / "logs"
-DEFAULT_LIBS = REPO / "proofs" / "3d-product" / ".build" / "cycles" / "lib" / "windows_x64"
-FIXED_LIBS = Path(r"C:\Users\Sam\.t3\worktrees\Rostrum\team-hem\proofs\3d-product\.build\cycles\lib\windows_x64")
-NEVER_LOAD = ("ffmpeg", "python")                      # GPL FFmpeg must never load; Python folders are not DLL folders
+from .runtime import find_exe, runtime_env             # where the libraries are and how the engine program finds them
 
 
 class EngineError(RuntimeError):
     pass
-
-
-def find_exe() -> Path:
-    """ROSTRUM3D_CORE, else this checkout's install."""
-    if os.environ.get("ROSTRUM3D_CORE"):
-        return Path(os.environ["ROSTRUM3D_CORE"])
-    return REPO / "apps" / "3d" / "core" / ".build" / "install" / "rostrum3d-core.exe"
-
-
-def library_bundle() -> Path:
-    if os.environ.get("ROSTRUM3D_LIBS"):
-        return Path(os.environ["ROSTRUM3D_LIBS"])
-    return DEFAULT_LIBS if DEFAULT_LIBS.is_dir() else FIXED_LIBS
-
-
-def runtime_env(base: dict | None = None) -> dict:
-    """The child's environment: DLL folders on PATH, where Hydra finds the Cycles and stylized plug-ins, the GPU choice."""
-    env = dict(os.environ if base is None else base)
-    bundle = library_bundle()
-    cycles = bundle.parents[1]                         # <cycles>/lib/windows_x64 -> <cycles>
-    stylized = REPO / "proofs" / "3d-stylized" / ".build" / "install"
-    dirs = [bundle / "usd" / "lib", *sorted(bundle.glob("*/bin")), cycles / "install"]
-    dirs = [str(d) for d in dirs if d.is_dir() and not any(s in str(d).lower() for s in NEVER_LOAD)]
-    env["PATH"] = os.pathsep.join(dirs + [env.get("PATH", "")])
-    env["PXR_PLUGINPATH_NAME"] = os.pathsep.join(str(p) for p in (cycles / "install" / "hydra", stylized))
-    env.setdefault("CYCLES_DEVICE", "OPTIX")
-    return env
 
 
 class Engine:
@@ -65,6 +36,7 @@ class Engine:
         self.proc, self.pid, self.log_path = None, None, None
         self._lines: queue.Queue = queue.Queue()
         self._hash, self._lock, self._notices = None, threading.RLock(), []
+        self._shm = None                                # (name, mmap) of the engine's viewport memory (view)
         self.restarts = 0
 
     # --- the process
@@ -159,7 +131,28 @@ class Engine:
         return out
 
     def pick(self, **req) -> dict:
+        """`camera`, or a free camera `eye` + `target` + `fov` (§ 4)."""
         return self._request({"pick": req})
+
+    def view(self, **req) -> tuple[memoryview, int, int, int, dict]:
+        """One live viewport picture (§ 4) as straight-alpha RGBA8 in the engine's shared memory (Windows):
+        (view, width, height, stride, reply). The view is valid until the view after next is asked for; copy it."""
+        import mmap
+        out = self._request({"view": req})
+        shm = out["shm"]
+        if shm["format"] != "rgba8":
+            raise EngineError(f"view: the engine sent {shm['format']}; the viewport reads rgba8")
+        with self._lock:
+            if self._shm is None or self._shm[0] != shm["name"]:   # a new block when the size or the process changes
+                self._close_shm()
+                self._shm = (shm["name"], mmap.mmap(-1, shm["size"], tagname=shm["name"], access=mmap.ACCESS_READ))
+            view = memoryview(self._shm[1])[shm["offset"]:shm["offset"] + shm["bytes"]]
+        return view, shm["width"], shm["height"], shm["stride"], out
+
+    def _close_shm(self):
+        if self._shm is not None:
+            self._shm[1].close()                        # BufferError if a caller still holds a view: release it first
+            self._shm = None
 
     def inspect_usd(self, file: str | Path) -> dict:
         return self._request({"inspect_usd": {"file": str(file)}})
@@ -172,6 +165,7 @@ class Engine:
 
     def close(self):
         with self._lock:
+            self._close_shm()
             if self.proc is not None and self.proc.poll() is None:
                 try:
                     self.proc.stdin.close()

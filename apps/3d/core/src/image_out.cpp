@@ -81,8 +81,10 @@ void ColorOut::write_exr(const Picture& p, const std::string& file) const {
   write_whole(buf, file, OIIO::TypeDesc::HALF);
 }
 
-void ColorOut::write_png(const Picture& p, const std::string& file, const std::string& view, double exposure,
-                         const float background[3]) const {
+namespace {
+// exposure, the background laid in where the picture is transparent, then the OpenColorIO display view
+OIIO::ImageBuf displayed(const Picture& p, OIIO::ColorConfig& config, const std::string& display,
+                         const std::string& view, double exposure, const float background[3]) {
   Picture lit = p;
   const float gain = float(std::pow(2.0, exposure));
   for (size_t i = 0; i < lit.rgba.size(); i += 4) {
@@ -92,10 +94,24 @@ void ColorOut::write_png(const Picture& p, const std::string& file, const std::s
   }
   auto src = to_buf(lit);
   OIIO::ImageBuf shown;
-  if (!OIIO::ImageBufAlgo::ociodisplay(shown, src, display_, check_view(view), "scene_linear", "", false, false,
-                                       "", "", &impl_->config))
+  if (!OIIO::ImageBufAlgo::ociodisplay(shown, src, display, view, "scene_linear", "", false, false, "", "",
+                                       &config))
     throw Error("render: the OpenColorIO view transform failed: " + shown.geterror());
+  return shown;
+}
+}  // namespace
+
+void ColorOut::write_png(const Picture& p, const std::string& file, const std::string& view, double exposure,
+                         const float background[3]) const {
+  auto shown = displayed(p, impl_->config, display_, check_view(view), exposure, background);
   write_whole(shown, file, OIIO::TypeDesc::UINT8);
+}
+
+void ColorOut::to_rgba8(const Picture& p, const std::string& view, double exposure, const float background[3],
+                        unsigned char* dst) const {
+  auto shown = displayed(p, impl_->config, display_, check_view(view), exposure, background);
+  if (!shown.get_pixels(OIIO::ROI(0, p.width, 0, p.height, 0, 1, 0, 4), OIIO::TypeDesc::UINT8, dst))
+    throw Error("view: could not read the displayed picture: " + shown.geterror());
 }
 
 std::string frame_path(const std::string& pattern, int frame) {

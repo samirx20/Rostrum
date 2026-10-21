@@ -9,6 +9,7 @@
 #include "gpu_mem.h"
 #include "hydra.h"
 #include "image_out.h"
+#include "shm.h"
 #include "stage_build.h"
 
 namespace r3d {
@@ -18,6 +19,7 @@ class Core {
   Core();
   PXR_NS::JsObject scene(const PXR_NS::JsObject& a);
   PXR_NS::JsObject render(const PXR_NS::JsObject& a, const std::function<void(const PXR_NS::JsObject&)>& progress);
+  PXR_NS::JsObject view(const PXR_NS::JsObject& a);
   PXR_NS::JsObject pick(const PXR_NS::JsObject& a);
   PXR_NS::JsObject save(const PXR_NS::JsObject& a);
   PXR_NS::JsObject info();
@@ -34,6 +36,7 @@ class Core {
   GpuMemWatch mem_;
   bool loaded_ = false;
   BuildResult built_;
+  std::unique_ptr<Shm> shm_;  // the live viewport's pictures
 };
 
 }  // namespace r3d
