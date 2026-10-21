@@ -15,7 +15,9 @@ def _num(name, label, group, lo, hi, step, unit="", when=None, default=0.0):
 
 
 KEY_FIELDS = [
-    _num("t", "Time", "Key", 0, 36000, 0.001, "s"),
+    Param.number("t", label="Time", group="Key", min=-36000, max=36000, step=0.001, unit="s", importance="primary",
+                 default=0.0, markers=True, help="Seconds in its owner's time, or a shared marker (\"#drop+0.2\", "
+                 "marked.py); before 0 / before the owner's start is a pre-roll"),
     _num("v", "Value", "Key", -1e9, 1e9, 0.01, when={"fact": "number"}),
     Param.color("c", label="Value", group="Key", importance="primary", valid_when={"fact": "color"}, default="#ffffff"),
     Param.text("d", label="Shape", group="Key", importance="primary", valid_when={"fact": "shape"}, default="",

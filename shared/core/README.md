@@ -64,6 +64,13 @@ change now (2D: driven by an expression); `value_params` are the value params a 
 (2D's path morph and curve handles, expressions) stay in the app. The same screen rules for "edit at the playhead goes
 through keys" are `shared/gui-kit/rostrum_gui/route.py` (`KeyRoute`).
 
+**Keys on a marker** (`marked.py`): a key's `t` may be a shared marker reference, `"#drop+0.2"` (read by
+`marker_times.split / seconds`, the one reader Sound uses too). The document keeps it as written; the app turns it
+into seconds once where its document becomes times (`marked.resolve`; 2D: `retime.timed` / `retime.placed`), so a
+moved marker moves the key and a missing one fails loudly naming the key. `track_value` refuses an unplaced marker key
+rather than give a wrong value. Raw readers use `marked.order`, `same_time`, `label`; a drag writes `marked.moved`.
+Key ids: `title.opacity.k1500`, `title.opacity.k_drop_p200`. 3D: call `marked.resolve(owner, times, 0)` in its compile.
+
 ## Modules (each < 200 lines, each the only home of its idea)
 
 | Module | Does |

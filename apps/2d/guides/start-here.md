@@ -57,9 +57,12 @@ with group("reveal_shot", marker="reveal", end=4.0):     # visible from the mark
   reveal starts, wherever either marker moves.
 - **Cuts:** cameras take both fields (`camera("cam_reveal", marker="reveal", endMarker="end")`), so a cut sits on a marker.
 - **Lead-ins:** *Starts at* may be below 0, counted back from the marker (`start=-0.2` appears 0.2 s before it).
-  Keys can't yet sit before their layer's marker; start the layer earlier on another marker for a long anticipation.
-- One layer counts from one marker. A move that belongs to another beat (a flash on "drop" inside the reveal shot)
-  goes on its own layer or group timed from that marker.
+- **A key on its own marker:** a key's time may name a marker, as Sound's times do: `t.key("opacity", {0.0: 0,
+  "#drop-0.1": 0.2, "#drop+0.2": 1})` (or `key.add` with `"t": "#drop+0.2"`). It lands at that moment of the
+  project, whatever its layer counts from, so one layer can hit "drop" and "logo lands" both, and a key may sit
+  before the layer's start (a pre-roll: the move is under way when the layer appears). Moving the marker moves the
+  key; a marker that is gone stops the render naming the key. `inspect_curve`, the curve editor and the inspector
+  show the marker ("drop +0.2 s"); dragging such a key keeps it on its marker with a new offset.
 - Drawings' frames, effects', masks' and a rig's keys move with their layer.
 - `look_motion`, `look_frame` and the export all read the times as they play (marker + time). `inspect_item`
   shows the times as written, from the marker.

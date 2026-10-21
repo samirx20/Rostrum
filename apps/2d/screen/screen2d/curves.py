@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum2d import fields as F
-from rostrum_core.keys import keys_of
+from rostrum_core.keys import keys_of, marked
 from rostrum2d.ops_keys import curve_of, handles_of
 from rostrum_gui.edits import Drag
 
@@ -62,7 +62,7 @@ class Curves(QObject):
         layer = self.b.selectedLayer
         if not layer:
             return []
-        return [(o, p) for o, p in _fields(self.b.doc.item(layer)) if "v" in keys_of(o, p)[0]]
+        return [(o, p) for o, p in _fields(self.b.placed_item(layer)) if "v" in keys_of(o, p)[0]]
 
     @Property("QVariantList", notify=changed)
     def fields(self):
@@ -81,7 +81,8 @@ class Curves(QObject):
                         "lo": (self._frozen.get(fid) or _range(c["samples"], flat))[0],
                         "hi": (self._frozen.get(fid) or _range(c["samples"], flat))[1],
                         "path": c["samples"], "stretches": show if fid not in self._hidden else [],
-                        "keys": [{"id": k["id"], "t": k["t"], "v": k["v"], "sel": k["id"] == sel} for k in c["keys"]]})
+                        "keys": [{"id": k["id"], "t": k["t"], "v": k["v"], "sel": k["id"] == sel,
+                                  "marker": marked.label(k["ref"]) if "ref" in k else ""} for k in ks]})
         return out
 
     # ---- drags: one gesture each ------------------------------------------------------------------------------
@@ -104,21 +105,22 @@ class Curves(QObject):
         if self._drag is None or "which" in self._grab:
             return
         c, doc = self.b.comp(), self.b.doc
-        key = doc.item(self._grab["key"])
-        owner = doc.item(doc.parent_of(key["id"])[0])
+        key = self.b.placed_item(self._grab["key"])
+        owner = self.b.placed_item(doc.parent_of(key["id"])[0])
         t = min(max(round(t * c["fps"]) / c["fps"], 0.0), c["duration"])
         if any(k["id"] != key["id"] and abs(k["t"] - t) < 1e-6 for k in keys_of(owner, key["prop"])):
             t = key["t"]
         p = F.param(owner["type"], key["prop"])
         lo, hi = (p.min if p.min is not None else -1e9), (p.max if p.max is not None else 1e9)
-        args = {"t": t, "v": round(min(max(v, lo), hi), 4)}
+        args = {"t": marked.moved(key["ref"], t - key["t"]) if "ref" in key else t,   # on a marker: stays on it
+                "v": round(min(max(v, lo), hi), 4)}
         self.b.guard(lambda: self._drag.preview([{"op": "key.set", "target": [key["id"]], "args": args}]))
 
     @Slot(str, int, result=bool)
     def beginHandleDrag(self, key_id, which):
         doc = self.b.doc
-        key = doc.item(key_id)
-        nxt = next((k for k in keys_of(doc.item(doc.parent_of(key_id)[0]), key["prop"]) if k["t"] > key["t"]), None)
+        key = self.b.placed_item(key_id)
+        nxt = next((k for k in keys_of(self.b.placed_item(doc.parent_of(key_id)[0]), key["prop"]) if k["t"] > key["t"]), None)
         h = handles_of(key)
         if nxt is None or h is None or nxt["v"] == key["v"]:
             return False
@@ -152,7 +154,7 @@ def steps_curves(bridge, step, rest):
     if word == "curves":
         cv.setOn(rest[0] == "on")
         return
-    key = bridge.doc.item(rest[0])
+    key = bridge.placed_item(rest[0])          # keys on a marker: at their seconds
     if word == "curvedrag":
         cv.beginKeyDrag(key["id"])
         for f in (0.5, 1.0):

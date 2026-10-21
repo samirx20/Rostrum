@@ -17,15 +17,18 @@ from ..params import Param
 from ..tree import index
 from .easing import NAMES as EASES
 from .evaluate import key_value, keys_of, track_value
+from .marked import id_part, marked, order, same_time
 
-TIME = dict(min=0, max=36000, unit="s")
+TIME = dict(min=0, max=36000, unit="s")                         # a moment to read or set a value at
+KEY_TIME = dict(min=-36000, max=36000, unit="s", markers=True)  # where a key sits: seconds or "#drop+0.2" (marked.py)
 V = Param.number("v", label="Value", help="For a number field")
 C = Param.color("c", label="Colour", help="For a colour field")
 EASE = Param.choice("ease", EASES, label="Ease", help="Shapes the way to the next key")
 
 
-def key_id(owner: str, prop: str, t: float) -> str:
-    return ids.from_content(f"{owner}.{prop}", "k", t * 1000)
+def key_id(owner: str, prop: str, t) -> str:
+    """`title.opacity.k1500` (1.5 s), `title.opacity.k_drop_p200` ("#drop+0.2"); before 0: `k-200`."""
+    return f"{owner}.{prop}.{id_part(t)}"
 
 
 def register_key_ops(registry, *, owners, check_key: Callable, check_still: Callable,
@@ -46,7 +49,7 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
         owner = ctx.item(owner_id)
         settable(ctx, owner, prop)
         field, value = check_key(ctx, owner, prop, args)
-        existing = next((k for k in keys_of(owner, prop) if abs(k["t"] - t) < 1e-6), None)
+        existing = next((k for k in keys_of(owner, prop) if same_time(k["t"], t)), None)
         if existing:
             ctx.set(existing["id"], field, value)
             if "ease" in args:
@@ -56,13 +59,13 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
         id_ = key_id(owner_id, prop, t)
         if id_ in taken:                       # a moved key kept this id: count past it
             id_ = ids.counted(taken, id_)
-        after = sum(1 for k in owner.get("keys", []) if (k["prop"], k["t"]) < (prop, t))
+        after = sum(1 for k in owner.get("keys", []) if (k["prop"], order(k["t"])) < (prop, order(t)))
         ctx.insert(owner_id, "keys", {"id": id_, "type": "key", "prop": prop, "t": t, field: value,
                                       "ease": args.get("ease", "smooth")}, after)
 
     @registry.operation("key.add", "Set a field's value at a time (adds a key, or changes the one at that time). "
                         + key_add_help, target=owners, label="Add key",
-                        params=[PROP, Param.number("t", label="Time", required=True, **TIME), *vals, EASE])
+                        params=[PROP, Param.number("t", label="Time", required=True, **KEY_TIME), *vals, EASE])
     def key_add(ctx, targets, args):
         for t in targets:
             put_key(ctx, t, args["prop"], args["t"], args)
@@ -100,6 +103,10 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
             keys = keys_of(ctx.item(t), args["prop"])
             if not keys:
                 ctx.fail(codes.BAD_ARGUMENT, f'prop "{args["prop"]}"', f"is not animated on {t}")
+            if any(marked(k) for k in keys):        # its value at `at` needs the project's markers
+                ctx.fail(codes.BAD_ARGUMENT, f'prop "{args["prop"]}"', f"has keys timed on a marker on {t}; the "
+                         "value they leave depends on where the markers are", hint="Set the still value you want "
+                         "after: key.clear with no marker keys, or key.remove each key, then value.set.")
             ctx.set(t, args["prop"], track_value(keys, args.get("at", 0.0)))
             for k in keys:
                 ctx.remove(k["id"])

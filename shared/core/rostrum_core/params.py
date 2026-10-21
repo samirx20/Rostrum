@@ -47,6 +47,8 @@ class Param:
     kind: str | None = None          # for type "id": the item kind it must point at
     item: str | None = None          # for type "list": the type of each element (min/max/integer/options/kind then apply per element)
     min_items: int = 0
+    markers: bool = False            # for type "number" (a time): may also be a shared marker reference, "#drop+0.2"
+                                     # (marker_times.py reads it; the app turns it into seconds where it plays)
     max_items: int | None = None
     control: str = ""                # the screen control when the type alone doesn't say which: "curve" for a text of
                                      # "x,y x,y …" points from 0 to 1 (the kit's CurveField); "" = the type's own
@@ -107,6 +109,11 @@ class Param:
             raise RostrumError(codes.BAD_ARGUMENT, where, f"{self.name}={value!r}", problem, accepted, hint)
         t = self.type
         if t == "number":
+            if self.markers and isinstance(value, str):
+                from .marker_times import FORMS, REF
+                if not REF.match(value):
+                    bad("is not seconds or a marker reference", ["seconds (1.5)", *FORMS])
+                return value
             if isinstance(value, bool) or not isinstance(value, (int, float)):
                 bad("is not a number")
             if self.integer and value != int(value):
@@ -182,7 +189,12 @@ class Param:
             s["minimum"] = self.min
         if self.type == "number" and self.max is not None:
             s["maximum"] = self.max
+        if self.type == "number" and self.markers:
+            from .marker_times import REF
+            s = {"anyOf": [s, {"type": "string", "pattern": REF.pattern}]}
         desc = self.help or self.label
+        if self.markers:
+            desc += ' (seconds, or a shared marker: "#drop", "#drop+0.2", "#hush-0.5")'
         if self.words:
             desc += " (" + ", ".join(f"{v:g} = {w}" for v, w in self.words.items()) + ")"
         if self.valid_when:
@@ -199,7 +211,7 @@ class Param:
             d.update(item=self.item, min_items=self.min_items, max_items=self.max_items, min=self.min, max=self.max,
                      integer=self.integer, options=list(self.options), kind=self.kind)
         if self.type == "number":
-            d.update(min=self.min, max=self.max, step=self.step, unit=self.unit, integer=self.integer)
+            d.update(min=self.min, max=self.max, step=self.step, unit=self.unit, integer=self.integer, markers=self.markers)
             if self.words:
                 d["words"] = {str(v): w for v, w in self.words.items()}
         if self.type == "time":

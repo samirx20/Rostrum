@@ -21,17 +21,15 @@ operation `marker.follow` rewrites them (doc/ops_mix.py), all in one change.
 """
 from __future__ import annotations
 
-import re
 from contextlib import contextmanager
 
 from rostrum_core import markers as shared
 from rostrum_core.edits import Set
 from rostrum_core.errors import RostrumError, codes
-from rostrum_core.marker_times import _key as key
+from rostrum_core.marker_times import REF, _key as key, ref, split  # the one reader of "#drop+0.5" (every app)
 
 from . import tempo
 
-REF = re.compile(r"^#(\S(?:.*?\S)?)\s*(?:([+-])\s*(\d+(?:\.\d+)?))?$")
 _PROJECT: list = [None]          # the project folder this process works in
 _ROWS: dict = {}                 # folder -> (version, listing): re-read only when the markers file changed
 
@@ -48,12 +46,6 @@ def project(folder):
         yield
     finally:
         _PROJECT[0] = old
-
-
-def ref(value) -> str | None:
-    """The marker a time names ("#drop+0.5" -> "drop"), or None."""
-    m = REF.match(value) if isinstance(value, str) else None
-    return m.group(1) if m else None
 
 
 def project_rows() -> list[dict]:
@@ -109,11 +101,10 @@ def time_of(doc: dict, name: str, where: str = "marker", seen=()) -> float:
 
 def resolve(doc: dict, value, where: str, seen=()):
     """The time with a marker reference made seconds; seconds and beats are kept as written."""
-    name = ref(value)
-    if name is None:
+    parts = split(value)
+    if parts is None:
         return value
-    m = REF.match(value)
-    offset = float(m.group(3) or 0) * (-1 if m.group(2) == "-" else 1)
+    name, offset = parts
     at = time_of(doc, name, where, seen)
     if at + offset < 0:
         raise RostrumError(codes.BAD_ARGUMENT, where, value, "lands before the start of the mix")

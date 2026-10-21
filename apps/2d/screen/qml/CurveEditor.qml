@@ -144,11 +144,19 @@ Item {
                 }
                 Repeater {   // the keys
                     model: fld.modelData.keys
-                    delegate: Rectangle {
+                    delegate: Item {
                         required property var modelData
-                        x: ed.px(modelData.t) - 5; y: ed.py(fld.modelData, modelData.v) - 5; width: 10; height: 10; rotation: 45
-                        radius: 2; color: modelData.sel ? Theme.fg : fld.modelData.color
-                        border { width: 2; color: modelData.sel ? fld.modelData.color : Theme.sunken }
+                        x: ed.px(modelData.t) - 5; y: ed.py(fld.modelData, modelData.v) - 5; width: 10; height: 10
+                        Rectangle {
+                            anchors.fill: parent; rotation: 45
+                            radius: 2; color: modelData.sel ? Theme.fg : fld.modelData.color
+                            border { width: 2; color: modelData.sel ? fld.modelData.color : Theme.sunken }
+                        }
+                        Text {   // a key on a shared marker says which (it moves with the marker)
+                            visible: modelData.marker !== ""; text: modelData.marker
+                            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.top; bottomMargin: 4 }
+                            font.family: uiFont; font.pixelSize: Theme.label; color: Theme.fg2; font.features: { "tnum": 1 }
+                        }
                     }
                 }
             }

@@ -9,10 +9,13 @@ What is app-specific (a field's default when it has no keys: `value_at`, `resolv
 from __future__ import annotations
 
 from .easing import ease
+from .marked import order
 
 
 def keys_of(owner: dict, prop: str) -> list[dict]:
-    return sorted((k for k in owner.get("keys", []) if k.get("prop") == prop), key=lambda k: k["t"])
+    """A field's keys by time. Keys timed on a marker (marked.py) sort after the others until the app resolved
+    them; `track_value` needs resolved keys (seconds only)."""
+    return sorted((k for k in owner.get("keys", []) if k.get("prop") == prop), key=lambda k: order(k["t"]))
 
 
 def animated(owner: dict) -> set[str]:
@@ -42,6 +45,9 @@ def key_value(key: dict):
 def track_value(keys: list[dict], t: float):
     """The value of a sorted, non-empty list of keys at time t. A path's shape (`d`) is morphed by the engine only;
     here it reads as the shape of the key that starts the stretch."""
+    if any(isinstance(k["t"], str) for k in keys):     # never a silent wrong value: place them first (marked.py)
+        raise ValueError(f'key {next(k for k in keys if isinstance(k["t"], str)).get("id", "")} is timed on a marker '
+                         "and was not placed: the app resolves marker keys (keys.marked.resolve) before evaluating")
     field = next(f for f in ("v", "c", "d") if f in keys[0])
     if t <= keys[0]["t"]:
         return keys[0][field]

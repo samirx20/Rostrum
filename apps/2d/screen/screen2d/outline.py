@@ -9,7 +9,7 @@ is held). A group's layers follow it, indented.
 from __future__ import annotations
 
 from rostrum2d import fields as F
-from rostrum_core.keys import animated, keys_of
+from rostrum_core.keys import animated, keys_of, marked
 
 from . import framing
 
@@ -19,7 +19,7 @@ def label_of(item: dict, owner: dict | None = None) -> str:
     id while the name is only the type's ("Text")."""
     if item.get("type") == "key" and owner is not None:
         p = F.param(owner["type"], item["prop"])
-        return f"{label_of(owner)} · {p.label if p else item['prop']} at {item['t']:g} s"
+        return f"{label_of(owner)} · {p.label if p else item['prop']} at {marked.label(item['t'])}"
     name = item.get("name")
     return str(item["id"] if not name or name == F.LABELS.get(item.get("type")) else name)
 
@@ -58,7 +58,9 @@ def _fields(layer: dict) -> list[tuple[dict, str]]:
 
 
 def _keys(owner: dict, prop: str) -> list[dict]:
-    return [{"id": k["id"], "t": k["t"]} for k in keys_of(owner, prop)]
+    """A field's keys for the timeline; a key on a shared marker (placed by retime.placed) carries its words."""
+    return [{"id": k["id"], "t": k["t"], **({"marker": marked.label(k["ref"])} if "ref" in k else {})}
+            for k in keys_of(owner, prop)]
 
 
 def tracks(comp: dict, opened: set[str]) -> list[dict]:
