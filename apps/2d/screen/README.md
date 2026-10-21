@@ -124,8 +124,19 @@ Steps: `select`, `page`, `time`, `set`, `scrub`, `animate`, `drag <layer> <dx> <
 - Steps: `add <type>` (`add image <path>`), `addmenu open|close`, `import <path> [page=<n>] [text=outline]`,
   `importpanel open [path]|close`.
 
+## Problems, steps and curves
+
+- **Problems** (`screen2d/problems.py`, `qml/ProblemsPanel.qml`): half a second after a change, off the GUI thread with an
+  engine of its own, the same list agents get from `inspect_diagnose` (`rostrum2d.diagnose_engine.everything`). The top bar
+  shows "N problems" only while there are any; the panel says each in words with how to fix it, and a click selects the item.
+  Steps: `problems open|close` (waits for the list).
+- **Steps** (Timing › Steps on a composition, group or layer; `rostrum2d/stepped.py`): on twos / threes / fours is how the
+  scene is evaluated, never baked into the keys.
+- **Colour curves**: the kit's curve control (`RostrumKit/CurveField.qml`) for a param marked `control="curve"`: drag a
+  point, press an empty spot to add one, double-click to remove; each drag is one change. Step `inspectorscroll <px>`
+  scrolls the inspector for screenshots.
+
 ## Not yet
 
-Text boxes on the canvas are estimates (from size and character count) until the engine reports laid-out boxes;
-drawing ignores rotation. No adding layers from the screen except through
-Ctrl+K, no live sync between two processes on one file (each saves; reopen to see the other's).
+Text on the canvas is measured by the engine (rostrum2d/textsize.py); drawing ignores rotation. No live sync between two
+processes on one file (each saves; reopen to see the other's).
