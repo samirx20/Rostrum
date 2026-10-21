@@ -3,7 +3,8 @@
 
   move   a whoosh over exactly the move: its speed curve is the sound's speed curve, its pan follows the layer
          across the frame, faster moves are louder and brighter with more air and doppler, bigger layers sound
-         bigger. A layer leaving the frame at speed rings on past the edge. Arriving hard (a snap stop, an
+         bigger. A layer leaving the frame at speed rings on past the edge. A drift slower than AIR_PX_S moves no
+         air: no whoosh (its landing still clicks). Arriving hard (a snap stop, an
          overshoot) adds a click where it first reaches its place, harder for a harder landing.
   snap   a bright click at its most sudden moment, a short air lead-in before it, and a small thump under it
   press  a soft press click at the deepest point and a lighter, higher release click when it comes back
@@ -21,6 +22,7 @@ import math
 BUS = "ui"
 TRACKS = {"move": "ui_whoosh", "land": "ui_clicks", "snap": "ui_clicks", "press": "ui_clicks", "step": "ui_ticks",
           "thump": "ui_low"}
+AIR_PX_S = 300.0          # a move slower than this (about a sixth of a 1080p frame a second) is a drift: no whoosh
 
 
 def _norm_speed(px_s: float) -> float:
@@ -73,7 +75,8 @@ def sounds(events: list[dict], width: float, height: float) -> list[tuple[str, d
     for e in events:
         k = e["kind"]
         if k == "move":
-            out.append((TRACKS["move"], _whoosh(e, width, height)))
+            if e["peak_speed"] >= AIR_PX_S:
+                out.append((TRACKS["move"], _whoosh(e, width, height)))
             land = _landing(e, width, height)
             if land:
                 out.append((TRACKS["land"], land))

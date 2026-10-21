@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
-from . import exporting, render
+from . import exporting
 from .pick import ITEM_COMP, doc_and_comp
 
 tools = Tools()
@@ -14,7 +15,8 @@ tools = Tools()
 @tools.tool("render_export", {"required": ["format"], "properties": {
     **ITEM_COMP,
     "format": {"type": "string", "enum": [r["name"] for r in exporting.formats()],
-               "description": "mp4 | prores4444 (alpha) | webm (alpha) | gif | png (a sequence of pictures in a new folder) | lottie (vector JSON; the reply lists what it couldn't carry)."},
+               "description": "mp4 | prores4444 (alpha) | webm (alpha) | gif | png (a sequence of pictures in a new folder) | lottie (vector JSON; the reply lists what it couldn't carry) | motion (the moving layers' place, scale and opacity 60 times a second: the samples file RostrumSound's edit_sounds_from_motion reads)."},
+    "layers": {"type": "array", "items": {"type": "string"}, "description": "motion only: sample these layer ids (a camera as camera:<id>). Default: every layer and camera that moves on its own."},
     "alpha": {"type": "boolean", "description": "Keep transparency. Default: on for the formats that can carry it (not mp4, not lottie)."},
     "depth": {"type": "integer", "enum": [8, 16], "description": "Bits per channel; png only (default 8)."},
     "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0. Not for lottie."},
@@ -32,7 +34,9 @@ def render_export(ctx, args):
         out = Path(args["path"])
         if not out.is_absolute():
             out = Path(doc.folder or ".") / out
-    scene = render.scene_of(doc, comp["id"])         # the job gets a copy of the scene, never the document
+    if "layers" in args and fmt != "motion":
+        raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"layers"', "is for format motion only")
+    scene = exporting.snapshot(doc, comp["id"], fmt, args.get("layers"))   # the job gets a copy, never the document
     folder, item, seq = ctx.app.folder, doc.item_id, doc.seq
 
     def job_fn(job):
@@ -42,6 +46,9 @@ def render_export(ctx, args):
         if "report" in facts:
             say += "; Lottie could not carry: " + ("; ".join(facts["report"]) if facts["report"] else "nothing")
             data["report"] = facts["report"]
+        if fmt == "motion":
+            say = f'Wrote the motion samples of {comp["id"]}: {len(facts["checked"]["layers"])} moving layers ({", ".join(facts["checked"]["layers"])}), {facts["checked"]["samples"]} samples each at {facts["checked"]["rate"]}/s, to {facts["file"]}. Hand it to RostrumSound: edit_sounds_from_motion samples="{facts["file"]}"'
+            return Reply(say + ".", data)
         return Reply(say + ".", data, [Path(f) for f in facts["files"][:50]])
 
     return ctx.job(f'render_export {comp["id"]} {fmt}', job_fn,

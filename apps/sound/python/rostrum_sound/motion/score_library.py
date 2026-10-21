@@ -20,7 +20,7 @@ from collections import Counter
 from rostrum_core import RostrumError, codes
 
 from ..userlib.search import closest, sound_id
-from .score import TRACKS, _norm_speed, _pan, _size
+from .score import AIR_PX_S, TRACKS, _norm_speed, _pan, _size
 
 REF_LUFS = -18.0                   # every pick is brought to this loudness before its own volume
 CLICKS = ["click", "ui", "hit"]
@@ -70,11 +70,12 @@ def clips(events: list[dict], width: float, height: float, lib: list[dict]) -> l
             size = _size(e["area"], width * height)
             target = {"seconds": dur + 0.35 + 0.6 * size * (1 - n), "brightness": 0.35 + 0.55 * n,
                       "attack_ms": max(20.0, 600 * dur * (1 - n))}
-            s = _pick(lib, ["whoosh"], target, used, "whoosh")
-            loud = min(1.0, 0.45 + 0.55 * math.log10(max(e["peak_speed"], 800) / 800) / math.log10(40))
-            out.append((TRACKS["move"], _clip(s, e["peak_at"], "peak", tail=e["end"] - e["peak_at"] + 0.35,
-                                              volume=_level(s, loud), pan=_pan(e["x"][0], width),
-                                              panTo=_pan(e["x"][-1], width))))
+            if e["peak_speed"] >= AIR_PX_S:                     # a slower drift moves no air: no whoosh
+                s = _pick(lib, ["whoosh"], target, used, "whoosh")
+                loud = min(1.0, 0.45 + 0.55 * math.log10(max(e["peak_speed"], 800) / 800) / math.log10(40))
+                out.append((TRACKS["move"], _clip(s, e["peak_at"], "peak", tail=e["end"] - e["peak_at"] + 0.35,
+                                                  volume=_level(s, loud), pan=_pan(e["x"][0], width),
+                                                  panTo=_pan(e["x"][-1], width))))
             land = e.get("lands")
             if land and land["hardness"] >= 0.15:
                 c = _pick(lib, CLICKS, {"seconds": 0.15, "brightness": 0.85 - 0.3 * size, "attack_ms": 4}, used, "click")

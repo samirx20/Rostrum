@@ -25,7 +25,10 @@ ui.sound("click", at=3.475, material=0.3, pitch=1800, tight=0.7)
 ## Sounds from the picture's motion
 
 `edit_sounds_from_motion samples=<file>` reads the picture's motion as data (per layer x, y, scale and opacity many
-times a second; the 2D app hands it over, read-only) and places a sound on every event:
+times a second; the 2D app hands it over, read-only) and places a sound on every event. Make the file in Rostrum2D:
+`render_export format="motion"` (or Export › Motion samples), `layers=[…]` to choose which layers sound (default:
+every layer and camera that moves on its own; a camera is `camera:<id>`). Several layers making the same gesture at
+the same moment are one event, one sound as big as all of them; a slow drift (under 300 px/s) gets no whoosh.
 
 | Event (read from the motion) | Sound placed |
 |---|---|

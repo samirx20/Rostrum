@@ -84,3 +84,27 @@ Notes:
 `look_frame` at the fastest moments shows the smear, the echoes and the blur; `look_sheet` over the move shows how
 they grow and settle. A smear frame should read as one stretched shape; if the steps of motion blur show, raise
 `shutterSamples`.
+
+## Motion samples (the hand-off to RostrumSound)
+
+`render_export format="motion"` (the Export panel's **Motion samples**) writes where each moving layer is, many times a
+second, as one JSON file. RostrumSound's `edit_sounds_from_motion samples=<file>` reads it and places a whoosh on each
+move, a click where something lands, presses, snaps and ticks. Nothing is rendered; it is read from the composition as
+it plays (`rostrum2d/motion_samples.py`, through the same geometry as the look tools), so layers timed from markers,
+groups and auto layouts are where they show.
+
+```json
+{"format": "rostrum.motion-samples/1", "comp": "film", "rate": 60, "duration": 20.0, "width": 1920, "height": 1080,
+ "layers": {"card0": {"type": "group", "x": [960.0, …], "y": […], "scale": […], "opacity": […], "w": 820.0, "h": 180.0},
+            "camera:cam_ui": {"type": "camera", …}}}
+```
+
+- `x`, `y`: the centre of the layer's box in the frame, in pixels; `scale`: its size against its own (parents
+  included); `opacity`: with its groups', 0 outside its start / end. One value per sample, sample `i` at `i / rate` s.
+  `w`, `h`: the largest box it shows at.
+- Layers are placed in the scene **without the camera**; each camera that moves is its own entry `camera:<id>` (the
+  scene's centre point through that camera, its zoom as `scale`), so a camera whip is one whoosh, not one per layer.
+- Off its time a layer holds still (its nearest place), so a cut is never a move. Cameras never step.
+- Default layers: every layer and camera whose own values change while it shows. `layers=[…]` picks them.
+- Read-only for Sound: change the picture, export again, run `edit_sounds_from_motion` again; it moves its sounds and
+  keeps what a person changed. The sounds land on seconds, not on markers.
