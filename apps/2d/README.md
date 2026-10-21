@@ -11,8 +11,8 @@ Motion design, type, UI animation, drawing, frame-by-frame and 2D characters.
 
 ```
 doc ─ comps ─ comp (width, height, fps, duration, background)
-               └ layers ─ shape | text | image | group (a group holds layers)
-                          each layer ─ effects (blur, glow, gradient, shadow) ─ keys
+               └ layers ─ shape | path | text | image | video | drawing | group (a group holds layers)
+                          each layer ─ effects (blur, glow, gradient, backdrop, shadow) ─ keys
                                      ─ masks ─ keys
                                      ─ keys
 ```
@@ -23,6 +23,11 @@ doc ─ comps ─ comp (width, height, fps, duration, background)
 - **Drawing** (`ops_draw.py`, `drawing.py`, the kit `shared/painting-kit/`): a drawing layer holds drawings (`frame`s),
   each shown from its frame number until the next one (held). Strokes are kit items (`stroke.add`, one call list = one
   undo step). Guide: `skills/drawing.md`.
+- **Vectors** (`pathdata.py`, `ops_path.py`, `ops_boolean.py`): a path layer's `d` (absolute M / L / C / Z) is the one
+  truth; `path.add_point / set_point / remove_point / close / fit`, `shape.to_path`, `path.boolean` (skia-pathops). The
+  pen on the Design page (`screen/screen2d/pen.py`) writes the same `d`.
+- **Video** (`video.py`): decoded once with `ffmpeg` into a cache keyed by the file's content; the engine picks the
+  frame by the frame time, so preview ≡ export.
 - **Script layer** (`script.py`): `comp(...)`, `shape / text / image / group(...)`, `.key(field, {time: value}, ease=)`, `.effect(type, ...)`, `.mask(...)`, `with group(...):`. See its docstring.
 
 ## Use

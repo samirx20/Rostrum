@@ -151,8 +151,8 @@ FIELDS: dict[str, list[Param]] = {
     # A vector path (pathdata.py): `d` is absolute M, L, C, Z in the layer's own px from its box's top-left.
     # trimStart..trimEnd is the part of the stroke drawn (fractions of its length: the "draw on").
     "path": [
-        X("d", "Path data", "Path", "M0 0 L100 0 L100 100 L0 100 Z", D,
-          help="Absolute M x y, L x y, C x1 y1 x2 y2 x y, Z in the layer's own px; the pen tool writes it"),
+        X("d", "Path data", "Path", "", D,
+          help="Absolute M x y, L x y, C x1 y1 x2 y2 x y, Z in the layer's own px; the pen tool writes it. A new path has no points"),
         N("w", "Box width", "Path", 1, 20000, 1, "px", D, default=100.0, help="The box the anchor and gradients use"),
         N("h", "Box height", "Path", 1, 20000, 1, "px", D, default=100.0),
         T("filled", "Fill", "Fill", True),

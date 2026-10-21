@@ -62,19 +62,19 @@ class Engine:
         try:
             self.proc.stdin.write((json.dumps(req) + "\n").encode("utf-8"))
             self.proc.stdin.flush()
-            line = self.proc.stdout.readline()
-            while line.startswith(b'{"progress"'):         # export's per-frame progress lines
-                if progress:
-                    p = json.loads(line)
-                    progress(p["progress"], p["of"])
+            while True:
                 line = self.proc.stdout.readline()
+                if not line:
+                    raise EngineError(f"2D engine (pid {self.pid}) ended without a reply; log {self.log_path}")
+                out = json.loads(line)
+                if set(out) != {"progress", "of"}:           # export's per-frame progress lines (keys in any order)
+                    break
+                if progress:
+                    progress(out["progress"], out["of"])
         except OSError as e:
             raise EngineError(f"2D engine (pid {self.pid}) stopped: {e}; log {self.log_path}") from e
-        if not line:
-            raise EngineError(f"2D engine (pid {self.pid}) ended without a reply; log {self.log_path}")
         if time.perf_counter() - t0 > timeout_s:
             raise EngineError(f"2D engine took over {timeout_s} s for {next(iter(req))}")
-        out = json.loads(line)
         if "error" in out:
             raise EngineError(f"2D engine refused {next(iter(req))}: {out['error']}")
         out["ms"] = (time.perf_counter() - t0) * 1000

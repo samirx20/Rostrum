@@ -42,7 +42,7 @@ def _handles(p, args, mirror=False):
 
 
 @R.operation("path.add_point", "Add a point to a path (a corner, or a smooth point with handles). It goes after "
-             "point `after`, or starts a new subpath with `new`, or ends the last subpath.", target="path",
+             "point `after`, or starts a new subpath with `new`, or ends the last subpath (a new one when that is closed).", target="path",
              label="Add point", params=[N("x", "X", required=True), N("y", "Y", required=True), *HANDLES,
                                         Param.number("after", label="After point", min=0, max=10**6, integer=True, importance="deep"),
                                         Param.toggle("new", label="New subpath", importance="deep")])
@@ -50,13 +50,18 @@ def point_add(ctx, targets, args):
     def add(subs):
         p = PD._pt(args["x"], args["y"])
         _handles(p, args)
-        if args.get("new") or not subs:
+        if args.get("new") or not subs or ("after" not in args and subs[-1]["closed"]):   # a closed shape is never extended
             subs.append({"closed": False, "points": [p]})
         elif "after" in args:
             s, k = _locate(ctx, subs, args["after"])
             subs[s]["points"].insert(k + 1, p)
         else:
             subs[-1]["points"].append(p)
+        sub = next(s for s in subs if any(q is p for q in s["points"]))
+        if p["out"] != [0, 0] and not sub["closed"] and sub["points"][-1] is p:
+            # Path data holds an out handle only as the start of the next curve: kept silently it would be lost.
+            ctx.fail(codes.BAD_ARGUMENT, "outX / outY", "can't be kept on the last point of an open path (path data "
+                     "stores it only once a point follows); add the next point, then path.set_point this one's outX / outY")
     for t in targets:
         _edit(ctx, t, add)
 
