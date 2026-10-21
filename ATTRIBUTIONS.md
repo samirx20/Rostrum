@@ -2,11 +2,19 @@
 
 Every third-party library, model, asset source and tool that ships in or is downloaded by Rostrum, with its licence. Add a row whenever you add one, including its own dependencies when they carry their own licence. The experiment's list (`experiment-final:docs/ATTRIBUTIONS.md`) is the starting point for code carried over.
 
-| Name | Version | Licence | Used by | Ships / downloaded on demand |
-|---|---|---|---|---|
-| Cycles (standalone, with Hydra render delegate) | main @ a456b76 (2026-09) | Apache-2.0 | Rostrum3D renderer; proof P-3D-1 | Proof build; would ship |
-| OpenUSD with Hydra imaging (from Blender's lib-windows_x64) | 26.08 | Apache-2.0 (Pixar modified) | Rostrum3D scene + Hydra; P-3D-1 | Proof build; would ship |
-| OpenImageIO, OpenEXR, Imath, OpenJPH, OpenColorIO, oneTBB, Embree, OpenSubdiv, OpenPGL, MaterialX, OpenImageDenoise, OpenVDB (DLL only), pugixml, zlib, zstd, libpng, libjpeg-turbo, libwebp, FreeType, Vulkan loader, SYCL runtime (Embree dep), Python | see `proofs/3d-product/LICENCES.md` | Apache-2.0 / BSD / MIT / zlib / MPL-2.0 / PSF | Cycles + USD dependencies; P-3D-1 | Proof build; would ship as DLLs |
-| Blender lib-windows_x64 bundle (as a folder) | main, 2026-10 | mixed; contains GPL parts (FFmpeg+x264/x265, FFTW, rubberband, potrace) not linked by Cycles | P-3D-1 build only | Downloaded for the proof; never ships as a folder |
-| NVIDIA CUDA 12.9 redist (nvcc, cudart, cccl) | 12.9.1 | NVIDIA CUDA Toolkit EULA (nvcc internal use only) | Compiling Cycles GPU kernels | Build tool only, never ships; shipping compiled kernels needs NVIDIA's OK |
-| NVIDIA OptiX headers (optix-dev) | 9.1.0 | NVIDIA SDK licence / BSD-3 per file | Cycles OptiX build | Build-time only, never committed |
+- **How it's linked:** `static`, `dynamic` (required for LGPL), `separate program`, `vendored source`, `data` or `model`.
+- **Ships?** `ships` (inside the installer), `on demand` (downloaded when the user asks), or `dev only` (proofs, build tools, tests; never shipped).
+- **What it asks of us:** credit line, keep the notice, offer the LGPL source / allow relinking, and so on.
+
+| Name | Version | Licence | Used by | How it's linked | Ships? | What it asks of us | Source |
+|---|---|---|---|---|---|---|---|
+| Qt for Python (PySide6, Shiboken6) with Qt 6 | 6.12.0 | LGPL-3.0 (Qt modules used: Core, Gui, Qml, Quick, Multimedia) | `proofs/gui-qt` (GUI proof) | dynamic | dev only | Keep Qt dynamically linked and replaceable; ship the LGPL notice and offer the source | https://pypi.org/project/PySide6/ |
+| PyOpenGL | 3.1.10 | BSD-3-Clause | `proofs/gui-qt` (GUI proof) | Python package | dev only | Keep the notice | https://pypi.org/project/PyOpenGL/ |
+| NumPy | 2.5.4 | BSD-3-Clause | `proofs/gui-qt` (GUI proof) | Python package | dev only | Keep the notice | https://pypi.org/project/numpy/ |
+| FFmpeg libraries bundled in the PySide6 wheel (avcodec, avformat, avutil, swscale) | as shipped in PySide6 6.12.0 | LGPL-2.1+ (Qt's LGPL build) | `proofs/gui-qt` video playback (QtMultimedia FFmpeg backend) | dynamic | dev only | Keep them separate, replaceable DLLs; ship the LGPL notice and offer the source | https://doc.qt.io/qt-6/qtmultimedia-attribution-ffmpeg.html |
+| Cycles (standalone, with Hydra render delegate) | main @ a456b76 (2026-09) | Apache-2.0 | Rostrum3D renderer; `proofs/3d-product` | dynamic | dev only (proof); would ship | Keep the notice | https://projects.blender.org/blender/cycles |
+| OpenUSD with Hydra imaging (from Blender's lib-windows_x64) | 26.08 | Apache-2.0 (Pixar modified) | Rostrum3D scene + Hydra; `proofs/3d-product` | dynamic | dev only (proof); would ship | Keep the notice | https://openusd.org |
+| OpenImageIO, OpenEXR, Imath, OpenJPH, OpenColorIO, oneTBB, Embree, OpenSubdiv, OpenPGL, MaterialX, OpenImageDenoise, OpenVDB (DLL only), pugixml, zlib, zstd, libpng, libjpeg-turbo, libwebp, FreeType, Vulkan loader, SYCL runtime (Embree dep), Python | see `proofs/3d-product/LICENCES.md` | Apache-2.0 / BSD / MIT / zlib / MPL-2.0 / PSF | Cycles + USD dependencies; `proofs/3d-product` | dynamic | dev only (proof); would ship as DLLs | Keep each notice | `proofs/3d-product/LICENCES.md` |
+| Blender lib-windows_x64 bundle (as a folder) | main, 2026-10 | mixed; contains GPL parts (FFmpeg+x264/x265, FFTW, rubberband, potrace) not linked by Cycles | `proofs/3d-product` build only | separate download | dev only; never ships as a folder | GPL parts must never reach the apps | https://projects.blender.org/blender/lib-windows_x64 |
+| NVIDIA CUDA 12.9 redist (nvcc, cudart, cccl) | 12.9.1 | NVIDIA CUDA Toolkit EULA (nvcc internal use only) | Compiling Cycles GPU kernels | build tool | dev only; shipping compiled kernels needs NVIDIA's OK (NEEDS_DECISIONS) | Internal use of nvcc only | https://developer.nvidia.com/cuda-toolkit |
+| NVIDIA OptiX headers (optix-dev) | 9.1.0 | NVIDIA SDK licence / BSD-3 per file | Cycles OptiX build | build-time headers | dev only; never committed | Keep out of the repo | https://developer.nvidia.com/optix |
