@@ -3,8 +3,14 @@
 These are published specifications, not taste: each row names where its numbers come from. Choosing one sets the
 master's own `loudness` and `truePeak` in one `master.set`; `verdict` then compares the last render to the master's
 numbers, whatever they were set by.
+
+Only the fields that apply now take part (`applying`: their valid_when on the master, from the field op): the true
+peak ceiling always does (the limiter), the loudness target only while Normalize is on. So the chooser is there
+whenever one of them applies, sets only those, and judges only those.
 """
 from __future__ import annotations
+
+from rostrum_core.conditions import holds
 
 LUFS_TOLERANCE = 1.0          # a mix within ±1 LU of the target meets it (the engine normalizes to the target)
 
@@ -23,41 +29,57 @@ TARGETS = [
 BY_KEY = {t["key"]: t for t in TARGETS}
 
 
-def choices() -> list[dict]:
-    """[{id, label, detail}] for the chooser."""
-    return [{"id": t["key"], "label": t["label"], "detail": f"{_n(t['lufs'])} LUFS · {_n(t['peak'])} dBTP"} for t in TARGETS]
+FIELDS = {"loudness": ("lufs", "LUFS"), "truePeak": ("peak", "dBTP")}     # master field -> (row key, unit)
+ALL = tuple(FIELDS)
 
 
-def key_of(master: dict) -> str:
-    """The row whose numbers the master has now ("" when they match none: a custom target)."""
-    return next((t["key"] for t in TARGETS if t["lufs"] == master.get("loudness") and t["peak"] == master.get("truePeak")), "")
+def applying(field_op, master: dict, facts: dict) -> list[str]:
+    """The master's delivery fields valid right now (by their valid_when), in FIELDS order."""
+    when = {p.name: p.valid_when for p in field_op.params}
+    return [f for f in FIELDS if f in when and holds(when[f], master, facts)]
 
 
-def label_of(master: dict) -> str:
-    t = BY_KEY.get(key_of(master))
-    return t["label"] if t else "Custom"
+def _detail(t: dict, fields) -> str:
+    return " · ".join(f"{_n(t[FIELDS[f][0]])} {FIELDS[f][1]}" for f in fields)
 
 
-def call(key: str, master_id: str = "master") -> dict:
-    """The one operation that sets the target (both numbers at once, so one undo step)."""
+def choices(fields=ALL) -> list[dict]:
+    """[{id, label, detail}] for the chooser: each target's numbers for the fields that apply."""
+    return [{"id": t["key"], "label": t["label"], "detail": _detail(t, fields)} for t in TARGETS]
+
+
+def key_of(master: dict, fields=ALL) -> str:
+    """The one row whose numbers (of the fields that apply) the master has now; "" for none or several."""
+    keys = [t["key"] for t in TARGETS if all(t[FIELDS[f][0]] == master.get(f) for f in fields)]
+    return keys[0] if len(keys) == 1 or (keys and tuple(fields) == ALL) else ""
+
+
+def label_of(master: dict, fields=ALL) -> str:
+    """The row's name, or the numbers themselves when no single row has them ("−1 dBTP" with only the ceiling on)."""
+    t = BY_KEY.get(key_of(master, fields))
+    return t["label"] if t else _detail({FIELDS[f][0]: master.get(f) for f in fields}, fields) or "Custom"
+
+
+def call(key: str, fields=ALL, master_id: str = "master") -> dict:
+    """The one operation that sets the target: every field that applies, at once (one undo step)."""
     t = BY_KEY[key]
-    return {"op": "master.set", "target": [master_id], "args": {"loudness": t["lufs"], "truePeak": t["peak"]}}
+    return {"op": "master.set", "target": [master_id], "args": {f: t[FIELDS[f][0]] for f in fields}}
 
 
 def _n(v: float) -> str:
     return f"{v:g}".replace("-", "−")
 
 
-def verdict(master: dict, render: dict) -> dict:
-    """Pass or miss of `render` (the engine's answer) against the master's target: loudness within ±1 LU and true peak
-    under the ceiling. {} when there is no measurement yet."""
+def verdict(master: dict, render: dict, fields=ALL) -> dict:
+    """Pass or miss of `render` (the engine's answer) against the master's target: loudness within ±1 LU (while it
+    applies) and true peak under the ceiling. {} when there is no measurement yet."""
     lufs, peak = render.get("lufs"), render.get("truePeak")
     if not isinstance(lufs, (int, float)) or not isinstance(peak, (int, float)):
         return {}
     goal, ceiling = master.get("loudness", -16), master.get("truePeak", -1)
     off = lufs - goal
     problems = []
-    if abs(off) > LUFS_TOLERANCE:
+    if "loudness" in fields and abs(off) > LUFS_TOLERANCE:
         problems.append(f"{abs(off):.1f} LU too {'loud' if off > 0 else 'quiet'}")
     if peak > ceiling:
         problems.append(f"true peak {peak - ceiling:.1f} dB over the ceiling")

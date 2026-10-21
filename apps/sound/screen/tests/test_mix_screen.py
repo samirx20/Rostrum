@@ -57,3 +57,12 @@ def test_duck_is_added_and_a_drag_is_one_step():
 def test_plugins_own_bypass_is_not_a_setting():
     rows = plugin_rows.layout([{"id": 1, "name": "Bypass", "min": 0, "max": 1}, {"id": 2, "name": "Mix", "min": 0, "max": 1}])
     assert [r["id"] for r in rows if r["row"] == "param"] == ["2"]
+
+
+def test_delivery_with_normalize_off_sets_only_the_ceiling():
+    doc, _ = setup()
+    m = doc.item("master")
+    fields = delivery.applying(doc.kind.registry.field_op("master"), m, doc.kind.facts(m, doc))
+    assert fields == ["truePeak"]                       # the loudness target is not valid while Normalize is off
+    doc.apply([delivery.call("atsc", fields)], Who.person("sam"))
+    assert doc.item("master")["truePeak"] == -2.0 and doc.item("master")["loudness"] == m["loudness"]

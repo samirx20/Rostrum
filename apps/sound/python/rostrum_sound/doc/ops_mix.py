@@ -50,7 +50,8 @@ POINTS = V.listof("points", _point, {"type": "array", "minItems": 2, "maxItems":
 @REGISTRY.operation("automation.set", "Replace a lane's points: anything that can change over time. On a track, "
                     "bus or the master: volume, pan, expression (dynamics 0 … 2, vibrato 0 … 1, like CC 11 / CC 1); on a "
                     "send: level (0 … 4); on an effect: any setting that takes an envelope (threshold, ratio, makeup, "
-                    "mix, feedback, drive, width …) or a plug-in's parameter as \"param:<id>\".",
+                    "mix, feedback, drive, width …), an EQ band's freq / gain / q as \"band<n>.<setting>\" (\"band1.gain\", "
+                    "bands counted from 1) or a plug-in's parameter as \"param:<id>\".",
                     target=LN.TARGETS, label="Automate", params=[
                         Param.text("lane", required=True, label="Value",
                                    help="What changes: volume, pan, level, an effect setting's name, or param:<id>."),

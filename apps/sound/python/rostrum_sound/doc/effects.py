@@ -54,9 +54,9 @@ TYPES = list(EFFECTS)
 FREEVERB_ONLY = ("decay", "damping", "size")
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 
-_band_params = [Param.choice("shape", names.EQ_SHAPES, required=True), V.env("freq", 20, 24000, required=True),
+BAND_PARAMS = [Param.choice("shape", names.EQ_SHAPES, required=True), V.env("freq", 20, 24000, required=True),
                 V.env("gain", -36, 36), V.env("q", 0.1, 30)]
-_band_rule, _band_schema = V.fields_of(_band_params, "band")
+_band_rule, _band_schema = V.fields_of(BAND_PARAMS, "band")
 
 
 def _when(field_name, kind="effect"):

@@ -25,3 +25,11 @@ def test_clash_same_band_yes_other_band_and_turns_no(tmp_path):
     assert len(same) == 1 and same[0]["band_hz"][0] <= 440 <= same[0]["band_hz"][1] and same[0]["end_s"] - same[0]["start_s"] > 1.5
     assert _spans(tmp_path, dict(f=440), dict(f=2000)) == []
     assert _spans(tmp_path, dict(f=440, end=0.9), dict(f=450, start=1.1)) == []
+
+
+def test_chords_and_keys_are_spelled_in_the_key():
+    from rostrum_sound.ears.theory import key_name, name_chord
+    assert name_chord([58, 62, 65], key="D minor") == "Bb"
+    assert name_chord([62, 65, 70], key="F major") == "Bb/D"
+    assert name_chord([61, 65, 68]) == "C#"
+    assert key_name(3, "major") == "Eb major"
