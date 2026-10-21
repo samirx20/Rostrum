@@ -5,17 +5,36 @@ Fragments show how a tool is called; the numbers are placeholders.
 
 ## Layout
 
-**Not yet:** there is no flex or grid layout, no auto-resize and no constraints. You place every layer yourself:
-a layer's `x`, `y` is where its **anchor** sits, in the parent's pixels (`anchorX` / `anchorY` 0–1 across its box;
+A layer's `x`, `y` is where its **anchor** sits, in the parent's pixels (`anchorX` / `anchorY` 0–1 across its box;
 0 = left / top). A group is the container: its children are placed from the group's own top-left (0, 0).
-Compute positions in the script, so changing one number moves the whole layout:
+
+**Auto layout.** Give a group `layout="row"`, `"column"` or `"grid"` and it places its layers itself, again on every
+frame, so a layer that grows (its `w` / `h` keyed) pushes the others along:
 
 ```python
-gap, w = 24, 360
-with group("cards", x=120, y=200, w=1200, h=400):
-    for i in range(3):
-        shape(f"card_{i}", shape="rect", w=w, h=300, radius=28, x=i * (w + gap), y=0, anchorX=0, anchorY=0, fill="#1c1d24")
+with group("list", x=240, y=180, w=600, anchorX=0, anchorY=0, layout="column", gap=18, padding=0, hugHeight=True):
+    for i in range(4):
+        with group(f"card{i}", w=600, h=116, clip=True) as card:
+            ...                                    # the card's own layers, placed by hand inside it
+    card.key("h", {0.6: 116, 1.5: 372})            # this card opens; the ones under it slide down
 ```
+
+| Setting | What it does |
+|---|---|
+| `gap`, `padding` | space between layers, and inside the group's edge |
+| `justify` | along the line: `start`, `center`, `end`, `between` (row / column) |
+| `align` | across the line (or in a grid cell): `start`, `center`, `end`, `stretch` (fills it) |
+| `wrap`, `rowGap` | a new line when the next layer doesn't fit (row / column), and the space between lines |
+| `columns` | grid: equal columns `gap` apart, rows `rowGap` apart, each as tall as its tallest layer |
+| `hugWidth`, `hugHeight` | the group's size follows what is inside it |
+| a layer's `layoutGrow` | takes this share of the room left along the line (shapes, images, groups) |
+| a layer's `layoutApart` | the layout leaves it alone: placed by its own `x`, `y` (a badge on a card) |
+
+Layout uses each layer's own box (`w` × `h`) before scale and turn: animate `scale` for a pop that doesn't push the
+others, `w` / `h` for one that does. A layer before its start time or after its end takes no room. Text boxes are
+estimated from size and letters, so a row of texts may sit a little off; put text inside a fixed-size group. While
+laid out, a layer's `x` / `y` belong to the layout (setting them is refused, loudly). See it with `inspect_layout`
+(each placed layer's x, y and size at a time) and `look_sheet`.
 
 `clip=True` on a group hides children outside its box (a scrolling list, a window). `layer.arrange` moves a layer in the
 stack or into another group; `inspect_item` with no `id` lists the tree.

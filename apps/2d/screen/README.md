@@ -55,6 +55,17 @@ bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (
   selected key's stretches with a cubic ease. Agents: `inspect_curve`. Steps: `curves on|off`,
   `curvedrag <key> <dt> <dv>`, `handledrag <key> <1|2> <dx> <dy>`.
 
+## Markers and auto layout
+
+- **Shared markers** (in a project folder only; the controls are absent otherwise): **Add marker** (time bar, timeline
+  header) puts one at the playhead's frame. On the ruler a flag drags (one `marker.move` on release, whole frames),
+  renames on double-click (Enter keeps, Esc cancels) and shows × on hover to delete. Each is one marker operation in the
+  project's marker history (`rostrum_gui/markers.py`), the same ones agents call with `edit_markers`. Steps:
+  `marker add <s>`, `marker move|rename|remove <name> …` (`_` for spaces).
+- **Auto layout** (a group's Auto layout field, `rostrum2d/layout.py`): the inspector shows spacing controls only once
+  the group has a layout; a laid-out layer has no X / Y (the layout places it; **Set apart**, behind More, gives them
+  back) and a hugged size is absent. The canvas boxes follow the layout.
+
 ## Run
 
 ```
@@ -66,7 +77,18 @@ bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (
 ```
 Steps: `select`, `page`, `time`, `set`, `scrub`, `animate`, `drag <layer> <dx> <dy>`, `keydrag <key> <t>`,
 `open <layer>`, `fold <layer>`, `pick <x> <y>`, `undo`, `redo`, `more`, `commands`, `run`, `play`, and the Draw steps above
-(`screen2d/steps.py`). Offscreen: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts`.
+`export <format> [alpha=on|off] [depth=8|16] [start=<s>] [end=<s>]`, `exportpanel open [format]|close` (`screen2d/steps.py`). Offscreen: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts`.
+
+## Export
+
+- **Export** in the top bar opens a small panel (`qml/ExportPanel.qml`, `screen2d/exporter.py`): pick a format (mp4, ProRes 4444,
+  WebM, GIF, PNG sequence, Lottie), then only the settings that apply to it (transparency where the format can carry it, bit
+  depth for png, from / to seconds for everything but Lottie), then Export. It runs as a job off the GUI thread with a progress
+  bar, then shows the file, frames, size and what was read back (png / gif: the first frame; Lottie: what it couldn't carry), or
+  the error in red. Where it goes: the project's `renders/<item>/vNNN/` (with a manifest) when the document has a folder, else
+  the render cache.
+- The formats and their settings are data (`rostrum2d.io.formats.FORMATS` + Lottie, listed by `rostrum2d.mcp.exporting`); the
+  MCP tool `render_export` runs the same code (`exporting.run`), so a person and an agent get the same files.
 
 ## Not yet
 

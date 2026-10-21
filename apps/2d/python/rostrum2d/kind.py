@@ -44,9 +44,12 @@ for _type, _params in F.FIELDS.items():
                        label=f"Edit {_label}", fields=True)(_set_fields)
 
 
-def facts(item: dict) -> dict:
+def facts(item: dict, doc=None) -> dict:
     if item.get("type") == "key":
         return {"number": "v" in item, "color": "c" in item, "shape": "d" in item}
+    if item.get("type") in F.LAYERS and doc is not None:      # inside a group with an auto layout (layout.py)
+        parent = doc.parent(item)
+        return {"inLayout": bool(parent) and parent.get("type") == "group" and parent.get("layout", "none") != "none"}
     return {}
 
 
