@@ -357,7 +357,10 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         timing["writeMs"] = json!(t4.elapsed().as_secs_f64() * 1000.0);
         return Ok((json!({ "ok": true, "timing": timing, "boxes": boxes, "scopes": Value::Null }), None));
     }
-    let raw = s.painter.read();
+    // Scopes and samples measure the frame as stored; anything else goes through the output step on the GPU when it can
+    // (`convert`), which reads nothing else back.
+    let analyse = req.get("scopes").is_some() || !req["sample"].is_null();
+    let mut raw = if analyse { Some(s.painter.read()) } else { None };
     // The frame's taps are written while it is read back and converted; on disk before it is answered.
     let taps_done = |s: &mut Session, ms: &mut f64| -> Result<(), String> {
         s.painter.taps_written()?;
@@ -368,7 +371,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
     let scopes_out = match req.get("scopes") {
         Some(sc) => {
             let domain = crate::scopes::domain_of(sc, crate::scopes::is_hdr(&s.color.pipeline))?;
-            let frame = crate::scopes::from_f16(&s.color.pipeline, &raw, w as usize, h as usize, domain);
+            let frame = crate::scopes::from_f16(&s.color.pipeline, raw.as_ref().unwrap(), w as usize, h as usize, domain);
             crate::scopes::run(&frame, sc)?
         }
         None => Value::Null,
@@ -376,7 +379,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
     // Sample (G7): the frame's ACEScg light, for `match` (scopes.rs).
     let sample_out = match req["sample"].as_str() {
         Some(path) => {
-            let frame = crate::scopes::from_f16(&s.color.pipeline, &raw, w as usize, h as usize, rostrum_color::scope::Domain::AcesCg);
+            let frame = crate::scopes::from_f16(&s.color.pipeline, raw.as_ref().unwrap(), w as usize, h as usize, rostrum_color::scope::Domain::AcesCg);
             crate::scopes::write_sample(&frame, path)?;
             json!(path)
         }
@@ -387,25 +390,23 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         taps_done(s, &mut tap_write_ms)?;
         return Ok((json!({ "ok": true, "scopes": scopes_out, "sample": sample_out }), None));
     }
-    let t3 = Instant::now();
     if shared && image.is_none() {
         // Straight into the canvas's shared memory (shm.rs): the same output step as every frame, no pipe.
-        let bytes = raw.len() / 8 * if s.deep { 8 } else { 4 };
+        let bytes = (w * h) as usize * if s.deep { 8 } else { 4 };
         if s.shm.as_ref().map(crate::shm::Shm::slot_bytes) != Some(bytes) {
             s.shm = Some(crate::shm::Shm::new(bytes)?);
         }
         let (slot, info) = s.shm.as_mut().unwrap().next(w, h, s.deep);
-        crate::color::output_into(&s.color, &raw, w, s.deep, false, index, slot);
-        s.painter.last_convert_ms = t3.elapsed().as_secs_f64() * 1000.0;
+        convert(&mut s.painter, &s.color, &mut raw, w, s.deep, false, index, slot)?;
         taps_done(s, &mut tap_write_ms)?;
         paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
         let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "gpuMs": s.painter.last_gpu_ms });
         let boxes = if boxes_wanted { crate::boxes::boxes(&s.doc, w, h) } else { Value::Null };
         return Ok((json!({ "ok": true, "width": w, "height": h, "shm": info, "timing": timing, "boxes": boxes, "scopes": scopes_out }), None));
     }
-    let mut pixels = vec![];
-    crate::color::output(&s.color, &raw, w, s.deep && image.is_none(), fast, index, &mut pixels);
-    s.painter.last_convert_ms = t3.elapsed().as_secs_f64() * 1000.0;
+    let deep = s.deep && image.is_none();
+    let mut pixels = vec![0u8; (w * h) as usize * if deep { 8 } else { 4 }];
+    convert(&mut s.painter, &s.color, &mut raw, w, deep, fast, index, &mut pixels)?;
     taps_done(s, &mut tap_write_ms)?;
     paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
     let mut timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "decodeMs": decode_ms, "pictures": urls.len(), "decoded": decoded, "gpuMs": s.painter.last_gpu_ms, "taps": taps, "tapReadMs": tap_read_ms, "tapWriteMs": tap_write_ms });
@@ -435,6 +436,22 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         return Ok((json!({ "ok": true, "bytes": pixels.len(), "timing": timing, "boxes": boxes, "scopes": scopes_out }), Some(pixels)));
     }
     Err("frame needs image (a .png / .jpg path), rgba: true or pixels: true".into())
+}
+
+/// The last frame through the output step into `out`: on the GPU, exact, when it can and the frame was not read back already
+/// (`raw`), else read and converted on the CPU: the same bytes either way (color.rs `gpu_codes`).
+#[allow(clippy::too_many_arguments)]
+fn convert(p: &mut crate::painter::Painter, spec: &crate::color::Spec, raw: &mut Option<Vec<u8>>, w: u32, deep: bool, fast: bool, index: u32, out: &mut [u8]) -> Result<(), String> {
+    if raw.is_none() {
+        if let Some(done) = p.output_into(spec, deep, out) {
+            return done;
+        }
+        *raw = Some(p.read());
+    }
+    let t = Instant::now();
+    crate::color::output_into(spec, raw.as_ref().unwrap(), w, deep, fast, index, out);
+    p.last_convert_ms = t.elapsed().as_secs_f64() * 1000.0;
+    Ok(())
 }
 
 /// The oldest frame in flight, read back and queued for the encoder (its stored bytes are converted on the

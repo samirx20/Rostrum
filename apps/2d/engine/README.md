@@ -11,6 +11,7 @@ found by the Blitz-vs-Chrome proof (`proofs/2d-renderer/README.md`) fixed.
 |---|---|
 | `render/` | `rostrum2d-render`, the renderer program (was the archive's `native/rostrum-motion`) |
 | `color/` | `rostrum-color`, the one colour library (working spaces, view transforms, LUTs, grades, scopes; archive `native/rostrum-color`) |
+| `stamp/` | `rostrum2d-stamp`, the painting kit's brush dabs laid natively, bit for bit numpy's pixels (H8; `stamp/README.md`) |
 | `vendor/` | **our fork** of blitz-dom, blitz-paint, anyrender, anyrender_skia, parley and usvg (pinned versions, patched; every patch is listed in `vendor/PATCHES.md`) |
 | `fonts/` | the app's fonts (SIL OFL, each with its licence text): Roboto Flex, Recursive, Inter (variable) |
 | `DEPENDENCIES.md` | every crate the engine builds with, and its licence |
@@ -143,9 +144,43 @@ Scrubbing Meridian, round trip per frame as the canvas sees it, median (`…\2d-
 | forward, frame after frame | 30.5 ms (worst 55) | **25.7 ms** (worst 49) |
 | random jumps | 37.7 ms (worst 62) | **33.7 ms** (worst 57) |
 
-**The next big cost:** about 13 ms of every frame is the colour output step on the CPU (F16 → display RGBA).
-Playing frames already do it on the GPU through the checked 3D table (`read_output8`, within 1/255). An exact GPU
-version of the output step would take scrubbing to about 13 ms a frame and keep preview ≡ export.
+The colour output step on the CPU (F16 → display RGBA) was about 13 ms of every frame; H8 moved it to the GPU,
+exactly (below).
+
+## The colour output step on the GPU, exact (H8)
+
+`render/src/gpu_output.rs`, called by `Painter::output_into` (painter.rs). A still, a scrubbed frame, `rgba` and the
+canvas's `pixels` go through it whenever the frame is on the GPU and the output step is one curve per channel (the
+`channel_table` case: display and linear-display working spaces, the default). Its bytes are **the CPU's, bit for
+bit**, so the export (which still converts on its writer thread, off the paint loop) and the preview agree.
+
+- **No float maths on the GPU.** Each channel's half-float bits index a table of integer codes made on the CPU from
+  the output step itself (color.rs `gpu_codes`, 65,536 entries, made once per colour setting). For 8 bits with
+  dither, an entry holds the code at dither offset 0 and the exact dither value from which the code is one more: the
+  CPU's rounding moves a value by at most one code, and only upwards as the offset grows, so one threshold says it
+  all. The dither is the same integer hash on both sides. 16-bit frames: the entry is the code.
+- **Pixels the table can't answer** (partly transparent: the colour is divided by the alpha first; or a channel not
+  finite) are marked by a second small pass (one flag per 32 pixels of a row); the painter reads those rows as stored
+  and converts them on the CPU. A frame with a background has none.
+- Raw OpenGL 3.3 (Skia's runtime shaders have no integers), so a Mac's GL 4.1 can run it too. If it can't be built,
+  frames convert on the CPU (the same bytes); a GL error during a frame fails the frame, loudly.
+- Views that mix channels (AgX, ACES 2.0 on ACEScg) have no channel table: stills, export and scrub keep the exact CPU
+  step there; only playing frames use the 3D table (`read_output8`, within 1/255), as before.
+
+Measured: Meridian 1080p into shared memory, median per frame, before and after run alternately twice while other
+teams used the machine (`C:\Users\Sam\.rostrum\waves\results\stage2\2d-engine\scrub-gpu-output-step-h8.json`,
+driver `proofs/2d-engine-output/scrub.py`):
+
+| | before (CPU step) | after (GPU step) |
+|---|---|---|
+| forward, frame after frame | 54.9 / 60.5 ms (read 15–16, convert 27–29) | **27.4 / 19.0 ms** (read 7–9, convert 0) |
+| random jumps | 80.2 / 71.2 ms | **43.8 / 24.6 ms** |
+| frame bytes | | **all 90 frames identical** to before |
+
+On a quiet machine H7 measured 25.7 ms forward with the CPU step (13 ms of it converting); that step is now 0 ms and
+the read is half the bytes. Test: `painter::tests::exact_gpu_output_step_gives_the_cpus_bytes` (random halves over the
+whole range; opaque, transparent and partly transparent rows; odd width; 8 and 16 bits; dither on and off; two working
+spaces: every byte equal).
 
 **For Team Sam: contract changes proposed** (`ENGINE_CONTRACT.md` is yours):
 1. § 1 `pixels` row: the reply's `shm` object as above (replacing the `…` placeholder).
@@ -230,7 +265,7 @@ Flex (`fonts/`, SIL OFL 1.1) so the glyphs are the same on every machine.
 - Scene: what the stopgap couldn't draw, the engine refuses the same way (feathered or inverted rect masks, a
   gradient on an image); drawing layers (S6) have their place in `scene/fields.rs` and `scene/stage.rs`
   `content`. Paint is not incremental (Blitz repaints the whole page).
-- `pixels` on the Mac (`shm.rs`: `shm_open` + `mmap`); the output step on the GPU, exact (about 13 ms a scrubbed frame).
+- `pixels` on the Mac (`shm.rs`: `shm_open` + `mmap`). The export could take the GPU output step too (half the bytes to read); today it converts on its writer thread.
 - `background-clip: text` on an inline `<span>` (Blitz paints only a span's background colour, never its images).
 - SVG `<text>` with web fonts falls back to a serif.
 - `backface-visibility`; depth sorting of `preserve-3d` siblings (they paint in page order); a perspective parent
