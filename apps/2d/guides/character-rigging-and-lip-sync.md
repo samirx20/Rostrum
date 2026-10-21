@@ -100,9 +100,30 @@ SVG as paths), put them in a `rig`, then add bones at the joints.
 
 ## Poses
 
-Not yet: named poses, pose libraries, mirror pose, copy a pose between frames. A pose today is the keys on the bones' `rotation`
-/ `scale` / `moveX` / `moveY` and the IK `targetX` / `targetY` / `pin` / `mix`. To reuse one, key the same values again at
-another time (a loop in the script).
+A pose library keeps named poses on the rig, so a person or an agent can reuse a pose instead of keying it again.
+
+- **Save.** Pose the rig at some time (keys or still values), then `pose.save target=puppet id=wave_up t=1.2`. With
+  `parts=[...]` it saves only those bones, IK chains and swap sets: a hand shape, a face, one arm.
+- **Apply.** `pose.apply target=puppet pose=wave_up t=2` keys every field the pose holds at that time (one undo step).
+  `amount=0.5` goes half way from what is there; `with=other mix=0.3` keys a blend of two poses (a swap set's drawing
+  jumps at the half, never blends).
+- **Ways to use it:** block a shot with key poses first, then key the in-betweens; keep a library per character
+  (`pose.set` renames, `note` says what one is for); make a variation by blending two poses a little instead of
+  posing a third by hand.
+- Not yet: mirroring a pose, copying poses between rigs.
+
+## Long chains: spines, tails, arms with hands
+
+`ik.add target=puppet bone=hand chain=3` reaches with the hand and its two parents (forearm, upper arm). Any number of
+bones from the lower one up: a tail of 6, a spine of 4. Keys on `targetX` / `targetY`, `mix` and `pin` work as for a
+leg; `bend` says which way a straight chain starts to curl. The turns are worked out per frame in Python and drawn by
+the engine (RIG.md › Long IK chains), so the canvas and the export show the same.
+
+- Fade `mix` from 0 to 1 to lift an arm from its own (FK) swing into a reach, and back down.
+- A long chain spreads the bend over all its joints. For a joint that should stay stiff, shorten the chain or key that
+  bone yourself.
+- Check the tip with `look_frame` / `look_sheet` at the extremes. `look_rig` draws the bones; its IK crosses are
+  two-bone chains only for now.
 
 ## Lip sync
 

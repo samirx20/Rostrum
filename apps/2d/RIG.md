@@ -117,3 +117,36 @@ Operations (`rostrum2d/ops_swap.py`):
 - Script: `slot = group("mouth", swap=True)`, children inside `with slot:`, then `slot.show({0: "open", 1.2: "closed"})`
   (a child, its id or its place; hold keys), or `slot.key("show", {t: n}, ease="hold")`.
 - MCP: `inspect_swaps {time}` lists each set's children (place, id, name) and the one showing then. No rendering.
+
+## Long IK chains (Python, `rostrum2d/rig/chain.py`, P16)
+
+An `ik` with `chain` > 2 (field "Bones in chain", 2..32, not animatable) reaches with the lower bone and its parents,
+`chain` bones in all: a spine, a tail, an arm with a hand bone. `chain` = 2 is the engine's two-bone solve above.
+
+- **Where it is solved.** In the scene description, not the engine: every frame from 0 to the comp's length the bones
+  are posed by FK (`rig/fk.py`, a Python copy of `pose.rs`'s FK; `tests/test_rig_chain.py` checks it against the
+  engine's `bones` answer), FABRIK moves the chain's joints so the last tip reaches the (held) target, each bone's turn
+  is blended with FK by `mix` (shortest angle), and the difference from its parent's turn is added to the bone's own
+  `rotation`. The bones are sent with per-frame linear `rotation` keys (as an expression is); the ik node itself is
+  not sent, so the engine never sees `chain`.
+- **Fields.** `targetX`/`targetY`, `mix`, `mode`, `pin` mean what they mean for two bones (the held target uses the
+  same pin rule). `bend`: a chain that is straight at that frame is curled a little this way before solving (a
+  straight chain has no way to fold otherwise); a bent chain keeps the way it bends.
+- **Several chains** in one rig are solved upper first; a lower chain poses on top of the turns found above it.
+- **Limits.** The chain's base follows FK only: a long chain hanging from bones that a two-bone IK moves sees them at
+  their FK pose. `look_rig` / `inspect_rig_motion` report two-bone chains only (the engine's); check a long chain by
+  its bones' tips. Request to Team Hem: a native N-bone solve in `ik.rs` would remove the bake
+  (`C:\Users\Sam\.rostrum\waves\results\stage2\p16\request-team-hem.md`).
+
+## Poses (Python, `rostrum2d/rig/poses.py`, P16)
+
+A rig holds a `poses` list (`pose` items: `id`, `name`, `note`, and `values` = `{item id: {field: value}}`). A pose
+holds the bones' `rotation`, `scale`, `moveX`, `moveY`, the iks' `targetX`, `targetY`, `mix`, and each swap set's
+`show` (§ Swap sets) inside the rig.
+
+- `pose.save` (target: rig; `id`/`name`, `t`, `parts` = only these bone / ik / swap ids, empty = all): the values at `t`.
+- `pose.apply` (target: rig; `pose`, `t`, `with` + `mix` = blend with a second pose, `amount` = part of the way from
+  what is at `t` now, `ease`): keys every field of the pose at `t`. Numbers blend linearly; a swap choice jumps at the
+  half (`mix` ≥ 0.5 takes the second pose's; `amount` < 0.5 keeps the current one) and is keyed `hold`. A bone deleted
+  since the save is skipped. One operation = one undo step; it only puts keys.
+- `pose.remove`; `pose.set` (rename, note).
