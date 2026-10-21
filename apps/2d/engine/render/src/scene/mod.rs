@@ -14,6 +14,7 @@ pub mod letters;
 pub mod matte;
 pub mod measure;
 pub mod morph;
+pub mod outline_cmd;
 pub mod path_data;
 pub mod stage;
 pub mod stage_type;
@@ -34,7 +35,7 @@ use fields::{Kind, Role};
 pub const FORMAT: &str = "rostrum-2d-scene";
 pub const VERSION: u64 = 1;
 
-/// One key: its time, its value (a number, a colour kept as written and in linear light, or a path's shape) and the ease of
+/// One key: its time, its value (a number, a colour kept as written and in linear light, a path's shape or width profile) and the ease of
 /// the stretch it starts.
 #[derive(Clone, Debug)]
 pub struct Key {
@@ -49,6 +50,8 @@ pub enum KeyValue {
     Color(String, [f64; 3]),
     /// A path's `d`, blended to the next key's by morph.rs.
     Path(String),
+    /// A path's `widthProfile` as written and read, blended to the next key's by width_profile::blend.
+    Profile(String, Vec<(f64, f64)>),
 }
 
 /// One item of the scene: still values (`props`, every field present), keys per animated field (sorted by time),
@@ -273,6 +276,10 @@ fn track(id: &str, kind: &str, f: &fields::Field, keys: &Value) -> Result<Vec<Ke
             Kind::Color => {
                 let c = k["c"].as_str().ok_or_else(|| format!("{id}.{name}: a colour key needs c (#rrggbb) at t={t}"))?;
                 KeyValue::Color(c.to_string(), eval::parse_hex(c).ok_or_else(|| format!("{id}.{name}: {c} is not a colour #rrggbb"))?)
+            }
+            Kind::Text if name == "widthProfile" => {
+                let text = k["d"].as_str().ok_or_else(|| format!("{id}.{name}: a widthProfile key needs d (the profile text, \"pos,mult …\") at t={t}"))?;
+                KeyValue::Profile(text.to_string(), width_profile::read(id, text).map_err(|e| format!("{e} (the key at t={t})"))?)
             }
             Kind::Text => KeyValue::Path(k["d"].as_str().ok_or_else(|| format!("{id}.{name}: a shape key needs d (path data) at t={t}"))?.to_string()),
             _ => KeyValue::Number(k["v"].as_f64().ok_or_else(|| format!("{id}.{name}: a number key needs v at t={t}"))?),

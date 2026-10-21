@@ -66,3 +66,27 @@ pub fn taper(u: f64, start: f64, end: f64) -> f64 {
     let b = if end > 0.0 { ramp((1.0 - u) / end) } else { 1.0 };
     a * b
 }
+
+/// Two profiles blended at eased progress p (a widthProfile key to the next, eval.rs): at every position of either,
+/// both profiles' multipliers (by `at`, so an empty one is 1) mixed by p, never below 0. Same positions mix pair by pair.
+pub fn blend(a: &[(f64, f64)], b: &[(f64, f64)], p: f64) -> Vec<(f64, f64)> {
+    let mut at_pos: Vec<f64> = a.iter().chain(b).map(|q| q.0).collect();
+    at_pos.sort_by(f64::total_cmp);
+    at_pos.dedup();
+    at_pos.into_iter().map(|u| (u, (at(a, u) + (at(b, u) - at(a, u)) * p).max(0.0))).collect()
+}
+
+/// A profile written back as "pos,mult pos,mult …" (what `read` takes).
+pub fn write(pts: &[(f64, f64)]) -> String {
+    pts.iter().map(|(p, m)| format!("{p},{m}")).collect::<Vec<_>>().join(" ")
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn halfway_blend_mixes_at_every_position_of_either() {
+        let (a, b) = (super::read("p", "0,1 1,1").unwrap(), super::read("p", "0,0 0.5,2 1,0").unwrap());
+        assert_eq!(super::write(&super::blend(&a, &b, 0.5)), "0,0.5 0.5,1.5 1,0.5");
+        assert_eq!(super::blend(&[], &[], 0.5), vec![]);
+    }
+}

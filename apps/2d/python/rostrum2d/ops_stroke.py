@@ -44,4 +44,7 @@ def path_width(ctx, targets, args):
             if k in args:
                 ctx.set(t, k, args[k])
         if text is not None:
+            if any(k["prop"] == "widthProfile" for k in ctx.item(t).get("keys", [])):   # its keys decide; a still value shows nothing
+                ctx.fail(codes.BAD_ARGUMENT, f'target "{t}"', "has keys on widthProfile; change a key with key.set (d = the profile "
+                         "text), or remove the keys first")
             ctx.set(t, "widthProfile", text)

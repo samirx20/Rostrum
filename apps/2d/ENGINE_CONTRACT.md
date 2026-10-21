@@ -98,10 +98,12 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
   `shadow` follows the outline. Glow, blur and masks as on any layer.
   - **Varied width** (added H17, same version): `taperStart`, `taperEnd` (0..1, default 0, keyable): the fraction of the
     length over which the width grows from 0 at the start / shrinks to 0 at the end, eased as sin(π/2 · x) (x = how
-    far into the taper; a pointed tip that meets the full width with no kink). `widthProfile` (text, default "", still):
+    far into the taper; a pointed tip that meets the full width with no kink). `widthProfile` (text, default "", keyable: a key keeps its text in `d`):
     `"pos,mult pos,mult …"`, pos 0..1 along the length, each after the one before, mult ≥ 0 times `strokeWidth`; ""
     = an even width; between points a monotone cubic (no overshoot, never below 0), held before the first and after
-    the last point; text the engine can't read is refused when drawn, naming `id.widthProfile`. `taperAlong` (`line`
+    the last point; text the engine can't read is refused when drawn, naming `id.widthProfile` (a key's, at load, with
+    its time). Between two keys the profile is, at every position of either key, both profiles' multipliers (an empty
+    one is 1) mixed by the eased progress, never below 0 (`scene/width_profile.rs` `blend`). `taperAlong` (`line`
     default | `drawn`): u runs over the whole line (the ink stays as drawn while `trimEnd` moves) or over the drawn
     part `trimStart..trimEnd` (the tip stays tapered as it draws on). Width at u = `strokeWidth` × profile(u) ×
     taper(u). With a taper > 0 or a profile the stroke is not an SVG stroke but a filled outline the engine works out

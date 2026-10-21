@@ -16,6 +16,7 @@ from pathlib import Path
 
 from .lottie_image import image_layer
 from .lottie_layer import clip_mask, common
+from .lottie_outline import Outlines
 from .lottie_props import Ctx, rgb
 from .lottie_shapes import shapes_of
 from .lottie_text import text_layer
@@ -65,7 +66,7 @@ def _gradient_note(node: dict, ctx: Ctx, kind: str) -> None:
 
 def _group(node: dict, ctx: Ctx, assets: list[dict], ind: int) -> dict:
     pr, name = node["props"], f'group_{node["id"]}'
-    inner = Ctx(ctx.fps, ctx.duration, ctx.report)
+    inner = Ctx(ctx.fps, ctx.duration, ctx.report, outlines=ctx.outlines)
     kids = _layers(node.get("layers", []), inner, assets)
     ctx.layer = node["id"]
     for k, i in zip(kids, range(len(kids), 0, -1)):      # indices count from the bottom layer
@@ -100,8 +101,12 @@ def to_lottie(scene: dict, background: bool = True) -> tuple[dict, list[str]]:
         raise ValueError(f'not a scene description (format "{scene.get("format")}")')
     comp = scene["comp"]
     pr = comp["props"]
-    ctx, assets = Ctx(float(pr["fps"]), float(pr["duration"])), []
-    layers = _layers(comp.get("layers", []), ctx, assets)
+    outlines = Outlines(scene)
+    ctx, assets = Ctx(float(pr["fps"]), float(pr["duration"]), outlines=outlines), []
+    try:
+        layers = _layers(comp.get("layers", []), ctx, assets)
+    finally:
+        outlines.close()
     for i, layer in enumerate(layers):
         layer["ind"] = len(layers) - i
     if background:

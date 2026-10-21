@@ -105,6 +105,12 @@ class Engine:
         self._props()
         return self._request({"bones": {"t": t}})["rigs"]
 
+    def outline(self, id: str, t: float) -> str | None:
+        """A path layer's varied (tapered / width-profile) stroke at `t` as filled-outline path data in its box's px
+        (the engine's own geometry, what a frame draws); "" when none of the stroke shows, None for an even stroke."""
+        self._props()
+        return self._request({"outline": {"id": id, "t": t}})["d"]
+
     def measure(self, items: list[dict]) -> dict[str, tuple[float, float]]:
         """Each text's laid-out box (w, h) in its own px, by the code that draws it: items are {id, and the text's
         evaluated fields} (ENGINE_CONTRACT.md § 1 `measure`). One round trip for the list; needs no scene loaded.
