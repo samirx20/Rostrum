@@ -76,4 +76,5 @@ doc.save()                                                   # docs/itm_shot.trd
 - An argument whose `valid_when` is false after the call is refused (`BAD_ARGUMENT`: "focusDistance only applies when dof is True"), so agents meet the same rule of individuality as the screen.
 - While a person is dragging, other writers get `CONFLICT` ("try again in a moment") instead of interleaving with the drag.
 - MCP groups: MCP has no "turn" signal, so a group lasts while one client's calls keep coming within 20 s; `group=` always wins.
+- Time arguments are `{"seconds": s}` / `{"beats": b}` / `{"marker": name}` (`Param.time`); `Param.list` holds a list of one item type.
 - Not built yet: times written as `"12f"`, `"#drop"`, `"+=0.5"` (they need the project service's markers); `ctx.fragment` (needs an app's script layer); document locks across processes, the real jobs queue, `inspect_project` / `inspect_markers` beyond the open documents (all project service).

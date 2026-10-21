@@ -45,3 +45,6 @@ a frame should depend on its time alone (rule 5). This is why the two evaluators
 apart instead of identical, while every still is identical.
 
 Memory: one renderer process, as P-2D (about 220 MB); not measured again.
+
+**After (S7):** the Python stopgap (`scene.frame_at`, `stopgap_html.py`) is deleted and `engine.py.patch` is applied, so
+`proof.py` no longer runs on main; it ran at `e0ff5f3`. The engine is the only evaluator now.

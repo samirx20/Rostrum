@@ -48,7 +48,7 @@ class Runtime:
         shared_edit.register(shared)
         self.app, self.tools = app, shared.merged_with(tools) if tools else shared
         self.jobs = jobs or InProcessJobs(log=_log)
-        self.groups = groups or Groups()
+        self.groups = groups or Groups(used=lambda: {c.session for d in app.documents.values() for c in d.history.changes})
         self._one_at_a_time = threading.Lock()          # one writer: tools never overlap on the document
 
     def call(self, name: str, args: dict | None, who: Who) -> tuple[dict, list]:

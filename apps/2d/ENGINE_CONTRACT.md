@@ -6,17 +6,19 @@ The Python layer owns the document (OPERATIONS.md § 1). It sends the engine a *
 
 ## 1. The conversation (`serve`, one JSON object per line each way)
 
-Today's `serve` (from P-2D) takes page markup. Version 1 of this contract adds three requests; the old ones stay until the Python side stops using them.
+The engine holds the scene and evaluates every frame itself. The request header of `render/src/scene_serve.rs` is the full detail.
 
 | Request | Reply | Meaning |
 |---|---|---|
-| `{"scene": {…scene…}}` | `{"ok": true, "items": N}` | Load or replace the scene. Checked whole: anything unknown fails (§ 5). |
-| `{"frame": {"t": 1.25, "image": "C:\\…\\f.png"}}` | `{"ok": true, "timing": {…}}` | Draw the scene at `t` seconds into a PNG. |
-| `{"frame": {"t": 1.25, "pixels": true}}` | `{"ok": true, "width", "height", "shm": …}` | (later) raw RGBA for the live canvas, no PNG. |
-| `{"export": {"file": "…mp4", "start": 0, "end": 3, "encode": {…ffmpeg…}}}` | `{"ok": true, "frames": 90}` | Every frame from start to end at the comp's fps, through ffmpeg. |
-| `{"edit": [{"id": "title", "props": {"x": 700}}, …]}` | `{"ok": true}` | (later) small changes without resending the scene (a drag). |
+| `{"scene": {…scene…}, "cpu"?: true}` | `{"ok": true, "items": N, "width", "height", "fps", "duration"}` | Load or replace the scene. Checked whole: anything unknown or undrawable fails (§ 5). Opens a drawing session at the comp's size if none is open at that size (`cpu`: draw on the CPU, for machines or tests without a GPU). |
+| `{"frame": {"t": 1.25, "image": "C:\…\f.png", "index"?: n}}` | `{"ok": true, "timing": {…, "evalMs"}}` | Draw the scene at `t` seconds into a PNG. `index` (the frame number, used by anything that varies per frame) defaults to round(t · fps), so a still is the same picture as that frame of the export. |
+| `{"frame": {"t": 1.25, "pixels": true}}` | `{"ok": true, "width", "height", "shm": …}` | (Team Hem, H7) raw RGBA for the live canvas, no PNG. |
+| `{"export": {"start"?, "end"?, "encode": {…ffmpeg…}, "file"?, "images"?, "progress"?}}` | `{"ok": true, "frames": 90, "timing"}` | Every frame from `start` (default 0) to `end` (default the comp's duration) at the comp's fps, into the encoder; `file` is checked to exist and not be empty afterwards. Or `"images": "C:\…\f-{frame}.png"`: each frame to a picture. With `"progress": true` a line `{"progress": i, "of": n}` comes after each frame, before the reply. |
+| `{"edit": [{"id": "title", "props"?: {"x": 700}, "anim"?: {"y": [keys] \| null}}, …]}` | `{"ok": true, "edits": n}` | Small changes to the held scene without resending it (a drag). **All or nothing**: the whole list is checked as a load is, and nothing is applied if any part fails. |
 
-Errors are `{"error": "…"}` naming the item id and field. The engine never draws a frame it couldn't fully understand.
+Errors are `{"error": "…"}` naming the item id and field; the process keeps serving. The engine never draws a frame it couldn't fully understand.
+
+The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `serve` for the renderer's own tests and proofs; the Python layer no longer uses them.
 
 ## 2. The scene
 
@@ -43,6 +45,12 @@ Errors are `{"error": "…"}` naming the item id and field. The engine never dra
 - `effects` and `masks` belong to the layer; effects, masks and layers may each have `anim`.
 - Ids are unique in the scene. Times are **seconds**; lengths are **px** in the composition's frame; angles **degrees**; colours `#rrggbb`.
 - Produced by `rostrum2d.scene.describe(doc.data, comp_id)`.
+- **`drawing`** (added S6, same version): a layer drawn frame by frame with the shared painting kit. `props` has `w`, `h`
+  (its box, px) and the usual transform; `frames: [{"at": 0, "src": "C:\…\<key>_800x1000.png"}, …]`, sorted by `at`
+  (a frame number). At time `t` the engine shows the `src` of the last frame with `at <= floor(t · fps)`; nothing
+  before the first. Each `src` is a straight-alpha RGBA PNG of exactly `w × h`, made once by the painting kit and named by
+  its content (never changes under the same name): the engine only reads it, stretched to the box like an image with
+  `fit: stretch`. Masks and effects apply as on any layer.
 
 ## 3. Evaluation (the reference is `rostrum2d/evaluate.py` and `easing.py`)
 
@@ -72,6 +80,8 @@ Errors are `{"error": "…"}` naming the item id and field. The engine never dra
 
 `version` goes up when a field's meaning changes or a required field is added. Adding a new item type or effect with its own fields is a minor addition (same version, the engine refuses it until it knows it). The Python side sends the version it wrote; the engine answers `{"error": "scene version 2; this engine reads 1"}` when it can't read it.
 
-## 7. Today (temporary)
+## 7. History
 
-Until the engine takes `scene`, the Python layer evaluates each frame itself (`rostrum2d.scene.frame_at`) and sends the archive renderer's page markup (`rostrum2d/stopgap_html.py`, marked TEMPORARY) through the same `Engine` handle (`rostrum2d/engine.py`). Callers don't change when the engine takes over. Known limits of the stopgap: gradient letters only with the new engine build (refused on the archive renderer); feathered / inverted rect masks refused; the text box for anchors is the browser's layout box.
+- S5: version 1 written; until the engine took `scene`, Python evaluated each frame and sent page markup (the stopgap).
+- H6: the engine evaluates scenes itself, pixel for pixel as the stopgap did (`proofs/2d-engine-scene/README.md`).
+- S7: the Python stopgap is deleted; drawing layers are drawn by the engine; `scene` takes `cpu`, `frame.index` defaults to round(t · fps), `export` takes `images` and `progress`, `edit` is all or nothing.

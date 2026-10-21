@@ -46,6 +46,8 @@ pub struct Node {
     pub effects: Vec<Node>,
     pub masks: Vec<Node>,
     pub layers: Vec<Node>,
+    /// A drawing layer's drawings: (frame number it appears at, its picture), sorted by frame (contract § 2).
+    pub frames: Vec<(i64, String)>,
 }
 
 #[derive(Clone, Debug)]
@@ -142,8 +144,8 @@ fn node(v: &Value, parent: &str) -> Result<Node, String> {
     let kind = fields::TYPES.iter().copied().find(|t| *t == ty).ok_or_else(|| format!("{id}: unknown item type \"{ty}\"; this engine draws: {}", fields::TYPES.join(", ")))?;
     let (role, fields) = fields::of(kind).unwrap();
     for k in obj.keys() {
-        if !matches!(k.as_str(), "id" | "type" | "props" | "anim" | "effects" | "masks" | "layers") {
-            return Err(format!("{id}: unknown part \"{k}\" (an item has id, type, props, anim, effects, masks, layers)"));
+        if !matches!(k.as_str(), "id" | "type" | "props" | "anim" | "effects" | "masks" | "layers") && !(k == "frames" && kind == "drawing") {
+            return Err(format!("{id}: unknown part \"{k}\" (an item has id, type, props, anim, effects, masks, layers; a drawing also frames)"));
         }
     }
     let props = v["props"].as_object().ok_or_else(|| format!("{id}: no props"))?.clone();
@@ -177,8 +179,25 @@ fn node(v: &Value, parent: &str) -> Result<Node, String> {
         effects: kids("effects", layer, &[Role::Effect])?,
         masks: kids("masks", layer, &[Role::Mask])?,
         layers: kids("layers", role == Role::Comp || kind == "group", &[Role::Layer])?,
+        frames: if kind == "drawing" { drawings(&id, &v["frames"])? } else { vec![] },
         id, kind, role, props, anim,
     })
+}
+
+/// A drawing's `frames: [{"at": n, "src": "…png"}, …]`, sorted by `at`; every picture must exist.
+fn drawings(id: &str, v: &Value) -> Result<Vec<(i64, String)>, String> {
+    let list = v.as_array().ok_or_else(|| format!("{id}: a drawing needs frames: [{{at, src}}, …]"))?;
+    let mut out = vec![];
+    for f in list {
+        let at = f["at"].as_i64().ok_or_else(|| format!("{id}.frames: a drawing without a whole frame number at"))?;
+        let src = f["src"].as_str().ok_or_else(|| format!("{id}.frames: the drawing at frame {at} has no src"))?;
+        if !std::path::Path::new(src).is_file() {
+            return Err(format!("{id}.frames: the picture of the drawing at frame {at} is missing: {src}"));
+        }
+        out.push((at, src.to_string()));
+    }
+    out.sort_by_key(|f| f.0);
+    Ok(out)
 }
 
 fn check_value(id: &str, f: &fields::Field, v: &Value) -> Result<(), String> {

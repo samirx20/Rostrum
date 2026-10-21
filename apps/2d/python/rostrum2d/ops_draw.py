@@ -1,0 +1,103 @@
+"""Frame-by-frame operations on drawing layers: add a drawing at a frame (blank, or copying another to redraw on),
+remove one, hold one for N frames. Painting itself is the shared kit's (`stroke.add`, `paint.clear` …: kind.py
+registers it). A drawing's frames stay sorted by `at` (the kind's check refuses anything else).
+"""
+from __future__ import annotations
+
+import copy
+
+from rostrum_core import Param
+from rostrum_core.errors import codes
+from rostrum_core.tree import index
+from rostrum_paint.ops import build
+
+from .kind import REGISTRY as R
+
+
+def starter_frame(ctx, at: int = 0, id_: str | None = None) -> dict:
+    """A new drawing: one frame holding one paint layer."""
+    frame = {"id": id_ or ctx.new_id("frame"), "type": "frame", "at": at, "paints": [], "paintmasks": []}
+    frame["paints"].append(build("paint", _fresh(ctx, "paint", frame), {"name": "Ink"}))
+    return frame
+
+
+def _fresh(ctx, type_, *pending) -> str:
+    """A counted id not used in the document nor by items about to be inserted."""
+    taken = set(index(ctx.doc, ctx.kind.lists))
+    for item in pending:
+        taken |= {item["id"], *(p["id"] for p in item.get("paints", []))}
+    n = 1
+    while f"{type_}_{n}" in taken:
+        n += 1
+    return f"{type_}_{n}"
+
+
+def _place(frames, at) -> int:
+    return sum(1 for f in frames if f["at"] < at)
+
+
+@R.operation("frame.add", "Add a drawing to a drawing layer at a frame (blank, or a copy of another drawing to "
+             "redraw on). It shows until the next drawing.", target="drawing", label="New drawing",
+             params=[Param.number("at", label="Frame", min=0, max=10**7, integer=True, required=True),
+                     Param.id("copy", kind="frame", label="Copy of", importance="secondary",
+                              help="A frame id whose paint layers are copied"),
+                     Param.text("id", label="Id", importance="deep")])
+def frame_add(ctx, targets, args):
+    for t in targets:
+        frames = ctx.item(t)["frames"]
+        if any(f["at"] == args["at"] for f in frames):
+            ctx.fail(codes.BAD_ARGUMENT, f'at={args["at"]}', f"{t} already has a drawing at that frame")
+        if args.get("copy"):
+            src = ctx.item(args["copy"])
+            if src["type"] != "frame":
+                ctx.fail(codes.BAD_ARGUMENT, f'copy "{args["copy"]}"', f"is a {src['type']}, not a drawing frame")
+            frame = copy.deepcopy(src)
+            frame.update(id=args.get("id") or ctx.new_id("frame"), at=args["at"])
+            _copy_ids(ctx, frame)
+        else:
+            frame = starter_frame(ctx, args["at"], args.get("id"))
+        ctx.insert(t, "frames", frame, _place(frames, args["at"]))
+
+
+def _copy_ids(ctx, frame):
+    taken = set(index(ctx.doc, ctx.kind.lists)) | {frame["id"]}
+
+    def fresh(type_):
+        n = 1
+        while f"{type_}_{n}" in taken:
+            n += 1
+        taken.add(f"{type_}_{n}")
+        return f"{type_}_{n}"
+    for p in frame["paints"]:
+        p["id"] = fresh("paint")
+        for s in p["strokes"]:
+            s["id"] = fresh("stroke")
+    old = {m["id"]: fresh("paintmask") for m in frame["paintmasks"]}
+    for m in frame["paintmasks"]:
+        m["id"] = old[m["id"]]
+    for p in frame["paints"]:
+        for s in p["strokes"]:
+            s["mask"] = old.get(s["mask"], s["mask"])
+
+
+@R.operation("frame.remove", "Delete drawings from a drawing layer (the one before is then held longer).",
+             target="frame", label="Delete drawing", importance="secondary")
+def frame_remove(ctx, targets, args):
+    for t in targets:
+        ctx.remove(t)
+
+
+@R.operation("frame.hold", "Show a drawing for this many frames: every later drawing of the layer moves by the "
+             "difference.", target="frame", label="Hold",
+             params=[Param.number("frames", label="Frames", min=1, max=10**6, integer=True, required=True)])
+def frame_hold(ctx, targets, args):
+    for t in targets:
+        drawing = ctx.item(index(ctx.doc, ctx.kind.lists)[t].parent)
+        frames = drawing["frames"]
+        i = next(n for n, f in enumerate(frames) if f["id"] == t)
+        if i + 1 == len(frames):
+            ctx.fail(codes.BAD_ARGUMENT, f'target "{t}"', "is the last drawing: it is held to the end already",
+                     hint="Add a drawing after it (frame.add) to end the hold.")
+        shift = frames[i]["at"] + args["frames"] - frames[i + 1]["at"]
+        for f in frames[i + 1:]:
+            ctx.set(f["id"], "at", f["at"] + shift)
