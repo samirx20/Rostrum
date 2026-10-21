@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ..evaluate import key_value, track_value
+from rostrum_core.keys import key_value, track_value
 from .lottie_keys import LINEAR, emit, expand
 
 

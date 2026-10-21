@@ -9,7 +9,7 @@ is held). A group's layers follow it, indented.
 from __future__ import annotations
 
 from rostrum2d import fields as F
-from rostrum2d.evaluate import animated, keys_of
+from rostrum_core.keys import animated, keys_of
 
 from . import framing
 

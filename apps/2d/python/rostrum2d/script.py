@@ -24,12 +24,12 @@ import math
 
 from rostrum_core import ids
 from rostrum_core.errors import RostrumError, codes, did_you_mean
+from rostrum_core.keys import key_id
 
 from . import fields as F, pathdata
 from .expr import ExprError, parse
 from .kind import KIND, LISTS
 from .ops_expr import expr_id, link_source
-from .ops_keys import key_id
 from .rig import script as rig_script
 from .lipsync import script as lipsync_script
 

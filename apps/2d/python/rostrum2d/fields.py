@@ -10,8 +10,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 from rostrum_core import Param
-
-from .easing import NAMES as _EASES
+from rostrum_core.keys import KEY_FIELDS
 
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 P = "primary"
@@ -262,21 +261,7 @@ FIELDS: dict[str, list[Param]] = {
         T("invert", "Invert", "Mask", False, S),
         N("angle", "Angle", "Mask", -360, 360, 0.1, "°", S, help="Turns the mask shape around its centre (a feathered rect sweeping across = a soft diagonal wipe)"),
     ],
-    # A key: the value one field has at one time. Its `ease` shapes the stretch to the next key.
-    # A key holds `v` (a number field), `c` (a colour field) or `d` (a path's shape); its `prop` names the field and never changes.
-    "key": [
-        N("t", "Time", "Key", 0, 36000, 0.001, "s"),
-        N("v", "Value", "Key", -1e9, 1e9, 0.01, when={"fact": "number"}),
-        C("c", "Value", "Key", "#ffffff", when={"fact": "color"}),
-        X("d", "Shape", "Key", "", when={"fact": "shape"}, help="Path data; the engine morphs it into the next key's shape"),
-        CH("ease", list(_EASES), "Ease", "Key", "smooth"),
-        N("x1", "Curve x1", "Curve", 0, 1, 0.01, when=IS("ease", "custom"), default=0.25),
-        N("y1", "Curve y1", "Curve", -2, 3, 0.01, when=IS("ease", "custom"), default=0.1),
-        N("x2", "Curve x2", "Curve", 0, 1, 0.01, when=IS("ease", "custom"), default=0.25),
-        N("y2", "Curve y2", "Curve", -2, 3, 0.01, when=IS("ease", "custom"), default=1.0),
-        N("stiffness", "Stiffness", "Spring", 1, 2000, 1, when=IS("ease", "spring"), default=170.0),
-        N("damping", "Damping", "Spring", 0, 200, 0.1, when=IS("ease", "spring"), default=12.0),
-    ],
+    "key": KEY_FIELDS,         # the one key shape (rostrum_core.keys): t, v | c | d, ease and its curve
 }
 
 FIELDS.update(_rig.FIELDS)

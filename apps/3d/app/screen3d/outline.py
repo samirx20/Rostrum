@@ -7,7 +7,7 @@ selected key) opens into one row per animated field, so its keys can be picked a
 """
 from __future__ import annotations
 
-from rostrum2d.evaluate import keys_of
+from rostrum_core.keys import keys_of
 from rostrum3d import fields as F
 
 

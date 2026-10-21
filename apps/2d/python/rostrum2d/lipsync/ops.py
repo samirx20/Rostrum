@@ -5,10 +5,11 @@ from __future__ import annotations
 
 from rostrum_core import Param
 from rostrum_core.errors import codes
+from rostrum_core.keys import key_id
 from rostrum_core.tree import index
 
 from ..kind import REGISTRY as R
-from ..ops_keys import key_id, put_key
+from ..ops_keys import put_key
 from . import visemes as V
 from .phonemes import LANGUAGES
 from .track import TIMING, track

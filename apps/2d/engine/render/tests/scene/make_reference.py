@@ -3,12 +3,13 @@ small scene, so scene/tests.rs can check the engine gives the same numbers and t
 
     .venv\\Scripts\\python.exe apps\\2d\\engine\\render\\tests\\scene\\make_reference.py
 
-Run it again when easing.py, evaluate.py, fields.py or stopgap_html.py change.
+Run it again when rostrum_core/keys/easing.py, evaluate.py, fields.py or stopgap_html.py change.
 """
 import json
 from pathlib import Path
 
-from rostrum2d import easing, fields as F
+from rostrum2d import fields as F
+from rostrum_core.keys import easing
 from rostrum2d.evaluate import resolve
 from rostrum2d.scene import FORMAT, VERSION
 
