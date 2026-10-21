@@ -23,8 +23,8 @@ def _instrument(track) -> list[str]:
     for key, ok in NEEDS.items():
         if track.get(key) and kind not in ok:
             out.append(f"track {tid} has {key} but its instrument is {kind!r} (needs {' or '.join(ok)})")
-    if kind != "none" and not track.get(kind):
-        out.append(f"track {tid}: instrument {kind} needs its {kind} value set")
+    if kind != "none" and not track.get(kind) and (track.get("notes") or track.get("hits")):
+        out.append(f"track {tid}: instrument {kind} needs its {kind} file set before it can play its notes")
     drums = names.SYNTH_DRUMS if kind == "kit" else names.GM_DRUMS
     for h in track.get("hits", []) if kind in ("kit", "kitSfz") else []:
         d = h.get("drum")

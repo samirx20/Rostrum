@@ -13,12 +13,10 @@ from . import effects
 from . import playing as PL
 from . import values as V
 
+N = V.N
+
 IS = PL.IS
 
-
-def N(name, lo, hi, group, unit="", imp="primary", when=None, integer=False, label="", help=""):
-    return Param.number(name, min=lo, max=hi, group=group, unit=unit, importance=imp, valid_when=when,
-                        integer=integer, label=label, help=help)
 
 
 PAN = dict(lo=-1, hi=1)
@@ -65,7 +63,7 @@ FIELDS = {
     "marker": [Param.text("name", group="Marker"), V.time("at", group="Marker")],
     "master": [
         N("volume", 0, 4, "Master"),
-        Param.toggle("normalize", group="Loudness", label="Normalize loudness"),
+        Param.toggle("normalize", group="Loudness", label="Normalize"),
         N("loudness", -60, 0, "Loudness", "LUFS", when=IS("normalize", True), label="Loudness target"),
         N("truePeak", -12, 0, "Loudness", "dBTP", "secondary", label="True peak ceiling"),
         N("glue", 0, 1, "Master", imp="secondary", help="Glue compression."),

@@ -59,7 +59,7 @@ class _Compiler:
 
     def instrument(self, track):
         kind = track.get("instrument", "none")
-        if kind == "none":
+        if kind == "none" or not track.get(kind):   # a sampled kind whose file isn't picked yet plays nothing
             return {}
         inst = {kind: track[kind]}
         if kind == "sfz":

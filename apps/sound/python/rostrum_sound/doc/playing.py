@@ -12,16 +12,13 @@ from rostrum_core import Param
 from .. import names
 from . import values as V
 
+N = V.N
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 MODEL = IS("instrument", "model")
 SYNTH = IS("instrument", "synth")
 STRUCK = {"all": [MODEL, {"not": IS("model", "violin")}]}           # every model but the bowed one
 PLUCKED = {"all": [MODEL, {"any": [IS("model", m) for m in names.PLUCKED]}]}
 
-
-def N(name, lo, hi, group, unit="", imp="primary", when=None, integer=False, default=None, label="", help=""):
-    return Param.number(name, min=lo, max=hi, group=group, unit=unit, importance=imp, valid_when=when,
-                        integer=integer, default=default, label=label, help=help)
 
 
 def touch(track=True, imp="primary", group="Instrument"):
@@ -97,4 +94,4 @@ NOTE = [
 ]
 NOTE_KEYS = [p.name for p in NOTE]
 # What a new track stores so the instrument cards' conditions read real values.
-SWITCHES = dict(model="guitar", synth="saw")
+SWITCHES = dict(builtIn="grandPiano", kit="synth", model="guitar", synth="saw")  # every kind with a choice has one, so switching kind is one change

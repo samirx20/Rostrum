@@ -6,6 +6,8 @@ of Team Sam.) Out of range is an error, never a clamp.
 """
 from __future__ import annotations
 
+import math
+
 import re
 from dataclasses import dataclass
 from typing import Callable
@@ -108,10 +110,26 @@ def drum(name, **kw) -> Value:
     return Value(name, "text", rule=_drum, schema={"anyOf": [{"type": "string"}, {"type": "integer"}]}, **kw)
 
 
+def step(lo, hi, unit="", integer=False) -> float:
+    """The one rule for how finely a number moves on screen (a scrub step, a typed value's decimals): a hundredth of
+    its range's order (0 … 1 -> 0.01, 0 … 20 -> 0.1, 40 … 20000 -> 1), whole numbers 1, seconds at least 0.01."""
+    if integer:
+        return 1
+    span = (hi - lo) if lo is not None and hi is not None else 100
+    s = min(1.0, 10 ** (math.floor(math.log10(span)) - 2)) if span > 0 else 0.01
+    return min(s, 0.01) if unit == "s" else s
+
+
+def N(name, lo, hi, group, unit="", imp="primary", when=None, integer=False, default=None, label="", help=""):
+    """A number field (the Sound document's one way to make one): range, group, importance, validity, step."""
+    return Param.number(name, min=lo, max=hi, step=step(lo, hi, unit, integer), group=group, unit=unit,
+                        importance=imp, valid_when=when, integer=integer, default=default, label=label, help=help)
+
+
 def env(name, lo, hi, **kw) -> Value:
     """A number from lo to hi, or an envelope of such numbers over time."""
     pt = {"type": "array", "items": [TIME_SCHEMA, {"type": "number"}], "minItems": 2, "maxItems": 2}
-    return Value(name, "number", rule=_env, min=lo, max=hi, schema={"anyOf": [
+    return Value(name, "number", rule=_env, min=lo, max=hi, step=step(lo, hi, kw.get("unit", "")), schema={"anyOf": [
         {"type": "number", "minimum": lo, "maximum": hi}, {"type": "array", "items": pt}]}, **kw)
 
 

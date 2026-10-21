@@ -127,7 +127,7 @@ pub fn describe() -> serde_json::Value {
     };
     let fields = |fs: &[Field]| fs.iter().map(field).collect::<Vec<_>>();
     let instrument_fields = json!({ "model": fields(MODEL_FIELDS), "synth": fields(SYNTH_FIELDS), "plucked": PLUCKED,
-        "modelPositions": MODELS.iter().map(|(n, _)| (n.to_string(), json!(model_position(n)))).collect::<serde_json::Map<_, _>>() });
+        "modelPositions": MODELS.iter().filter(|(n, _)| *n != "violin").map(|(n, _)| (n.to_string(), json!(model_position(n)))).collect::<serde_json::Map<_, _>>() });
     let effects: serde_json::Map<String, Value> = EFFECTS.iter().map(|(n, fs)| {
         let fields: Vec<Value> = if *n == "eq" { vec![json!({ "name": "bands", "kind": "list", "of": EQ_BAND.iter().map(field).collect::<Vec<_>>() })] } else { fs.iter().map(field).collect() };
         (n.to_string(), Value::Array(fields))
