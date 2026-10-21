@@ -68,6 +68,7 @@ TRANSFORM = [
 
 SHAPES = ["box", "sphere", "cylinder", "plane", "disc", "torus", *OUTLINE_SHAPES]
 from .light_fields import KINDS as LIGHT_KINDS, LIGHT, STILL as LIGHT_STILL  # noqa: E402  (needs the helpers above)
+from .material_fields import MATERIAL  # noqa: E402  (needs the helpers above)
 DOF = IS("dof", True)
 
 FIELDS: dict[str, list[Param]] = {
@@ -111,27 +112,7 @@ FIELDS: dict[str, list[Param]] = {
         N("near", "Near clip", "Clipping", 0.0001, 1e4, 0.001, "m", D, default=0.01),
         N("far", "Far clip", "Clipping", 0.01, 1e7, 1, "m", D, default=1000.0),
     ] + TRANSFORM,
-    "material": [
-        C("baseColor", "Base colour", "Surface", "#cccccc", when=IS("baseColorTexture", "")),
-        X("baseColorTexture", "Base colour image", "Surface", "", S, help='Absolute path of an sRGB image on the UVs; replaces the base colour'),
-        N("metallic", "Metallic", "Surface", 0, 1, 0.01, help="1 = metal (its colour tints the reflections)"),
-        N("roughness", "Roughness", "Surface", 0, 1, 0.01, default=0.5, when=IS("roughnessTexture", ""),
-          help="0 = mirror, 1 = chalk"),
-        X("roughnessTexture", "Roughness image", "Surface", "", D, help="A grey image read as raw numbers"),
-        N("transmission", "Transmission", "Glass", 0, 1, 0.01, "", S, help="1 = light passes through (glass, water)"),
-        N("ior", "Index of refraction", "Glass", 1, 3, 0.01, "", S, default=1.5,
-          help="How much light bends: water 1.33, glass 1.5, sapphire 1.77, diamond 2.42"),
-        N("coat", "Clear coat", "Coat", 0, 1, 0.01, "", S, help="A thin varnish layer over the surface"),
-        N("coatRoughness", "Coat roughness", "Coat", 0, 1, 0.01, "", S, NOT("coat", 0), default=0.03),
-        N("anisotropy", "Anisotropy", "Brushed", 0, 1, 0.01, "", D, help="Stretches highlights along one direction (brushed metal)"),
-        N("anisotropyRotation", "Brush direction", "Brushed", 0, 1, 0.01, "", D, NOT("anisotropy", 0),
-          help="Turns the brushing: 0..1 = 0..360°"),
-        X("bumpTexture", "Bump image", "Relief", "", D, help="A grey height image: white is raised"),
-        N("bumpStrength", "Bump strength", "Relief", 0, 1, 0.01, "", D, NOT("bumpTexture", ""), default=0.5),
-        C("emissionColor", "Glow colour", "Glow", "#ffffff", D, NOT("emissionStrength", 0)),
-        N("emissionStrength", "Glow strength", "Glow", 0, 1e4, 0.1, "", D, help="The surface gives off light (screens, LEDs)"),
-        N("thinFilm", "Thin film", "Coat", 0, 2000, 1, "nm", D, help="Rainbow coating thickness (anodizing, soap); 0 = off"),
-    ],
+    "material": MATERIAL,               # material_fields.py
     # A shot: a camera, a frame size and a stretch of time. Times are seconds; frames = round(seconds × fps),
     # from round(start × fps) to round(end × fps) − 1 (end is where the shot is over).
     "shot": [

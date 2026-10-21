@@ -59,7 +59,7 @@ BuildResult build_stage(const JsObject& scene, const UsdStageRefPtr& stage) {
   ctx.stage = built;
   ctx.start = start;
   ctx.end = end;
-  ctx.materials = build_materials(built, s.list("materials"));
+  ctx.materials = build_materials(built, s.list("materials"), start, end);
   build_items(ctx, s.list("items"), SdfPath("/World"), "items");
   link_lights(built);  // lightsOnly ids -> UsdLux lightLink collections, once every item exists
   s.finish();
