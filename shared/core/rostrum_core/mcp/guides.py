@@ -23,6 +23,8 @@ START_HERE = """# Start here: how every Rostrum server answers
 - Long work comes back as a job id. Ask with `inspect_job` (`wait_s` up to 25); stop with `run_stop`.
 """
 
+TOOLS_POINTER = "\n\n*Every tool of this server, by verb, with its arguments: call `inspect_tools`.*\n"
+
 
 class Guides:
     """Topic -> markdown text. Add with `add`, or load a folder of `<topic>.md` files."""
@@ -44,7 +46,10 @@ class Guides:
     def get(self, topic: str) -> str:
         if topic not in self._topics:
             raise RostrumError.not_found("", "guide", topic, self._topics, "the guides of this server")
-        return self._topics[topic]
+        text = self._topics[topic]
+        if topic == "start-here" and "inspect_tools" not in text:     # every app's start-here points to the tool list
+            text = text.rstrip() + TOOLS_POINTER
+        return text
 
     def title(self, topic: str) -> str:
         first = self._topics[topic].lstrip().splitlines()[0] if self._topics[topic].strip() else topic

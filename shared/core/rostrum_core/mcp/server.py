@@ -19,7 +19,7 @@ from mcp.server.stdio import stdio_server
 
 from ..errors import RostrumError, codes
 from ..who import Who
-from . import shared_edit, shared_inspect, shared_markers
+from . import shared_edit, shared_inspect, shared_markers, tools_list
 from .context import App, Groups, ToolContext
 from .guides import URI
 from .jobs import InProcessJobs
@@ -47,6 +47,7 @@ class Runtime:
         shared_inspect.register(shared)
         shared_edit.register(shared)
         shared_markers.register(shared)
+        tools_list.register(shared)
         self.app, self.tools = app, shared.merged_with(tools) if tools else shared
         self.jobs = jobs or InProcessJobs(log=_log)
         self.groups = groups or Groups(used=lambda: {c.session for d in app.documents.values() for c in d.history.changes})
