@@ -31,4 +31,8 @@ skia-safe = { version = "0.153.3", features = ["gl"] }
 glutin = "0.32.3"
 raw-window-handle = "0.6"
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_Security", "Win32_UI_WindowsAndMessaging"] }
+# Exports and imports (encode_cmd.rs, svg_tree.rs); all already in the lock. gif + color_quant: MIT / Apache-2.0.
+gif = "0.14"
+png = "0.18"
+usvg = "0.48"
 jpeg-encoder = { version = "0.7.1", features = ["simd"] }

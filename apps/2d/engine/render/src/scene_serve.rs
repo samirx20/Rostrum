@@ -1,7 +1,7 @@
 //! serve's scene requests (ENGINE_CONTRACT.md § 1): the engine holds the scene and evaluates every frame itself.
 //!
-//! - `{"scene": {…scene…}, "cpu"?: bool}` → `{"ok": true, "items": n, "width", "height", "fps", "duration"}`: load or
-//!   replace the scene, checked whole (scene/mod.rs; every layer's stage is written once, so a frame never meets
+//! - `{"scene": {…scene…}, "cpu"?: bool, "depth"?: 8 | 16}` → `{"ok": true, "items": n, "width", "height", "fps", "duration"}`: load or
+//!   replace the scene, checked whole (`depth` 16: frames to an encoder are RGBA64LE, else RGBA8; both straight alpha) (scene/mod.rs; every layer's stage is written once, so a frame never meets
 //!   something it can't draw). Opens a session the comp's size if none is open at that size.
 //! - `{"frame": {"t": 1.25, "image"? | "rgba"? | "boxes"? …}}`: the scene at `t` seconds, drawn as any frame is
 //!   (serve.rs `frame`; `index` defaults to the frame number round(t·fps), so a still equals the exported frame).
@@ -9,6 +9,7 @@
 //! - `{"export": {"start"?, "end"?, "encode": {"program", "args"}, "file"?}}` → `{"ok", "frames", "timing"}`: every
 //!   frame from start (default 0) to end (default the comp's duration) at the comp's fps into the encoder; `file`
 //!   is checked to exist and not be empty after. Or `"images": "C:\\…\\f-{frame}.png"`: each frame to a picture.
+//!   With `"alpha": true` the comp's background is left out, so the frames are transparent where nothing is drawn.
 //!   With `"progress": true`, a line `{"progress": i, "of": n}` after each frame, before the reply.
 //! - `{"edit": [{"id", "props"?: {…}, "anim"?: {field: [keys] | null}}, …]}` → `{"ok": true, "edits": n}`: small
 //!   changes to the held scene (a drag), checked as a load is; the next frame shows them.
@@ -61,9 +62,14 @@ pub fn load(held: &mut Held, session: &mut Option<Session>, warm: &mut Option<Re
     let scene = Scene::load(&req["scene"])?;
     check(&scene)?;
     let (w, h) = (scene.width(), scene.height());
-    let same_size = session.as_ref().is_some_and(|s| (s.width, s.height) == (w, h));
-    if !same_size {
-        let open = json!({ "width": w, "height": h, "html": stage::shell(w, h, &scene.fonts)?, "cpu": req["cpu"].as_bool() == Some(true) });
+    let deep = match req["depth"].as_u64() {
+        None | Some(8) => false,
+        Some(16) => true,
+        Some(d) => return Err(format!("depth is 8 or 16; got {d}")),
+    };
+    let same = session.as_ref().is_some_and(|s| (s.width, s.height, s.deep) == (w, h, deep));
+    if !same {
+        let open = json!({ "width": w, "height": h, "html": stage::shell(w, h, &scene.fonts)?, "cpu": req["cpu"].as_bool() == Some(true), "depth": if deep { 16 } else { 8 } });
         *session = Some(serve::open(&open, warm)?.0);
     } else if held.shell != Some((w, h)) {
         serve::page(session.as_mut().unwrap(), &json!({ "html": stage::shell(w, h, &scene.fonts)? }))?;
@@ -83,9 +89,13 @@ pub fn edit(held: &mut Held, edits: &Value) -> Result<Value, String> {
 }
 
 /// The stage markup at `t`, and the ms it took.
-fn markup(scene: &Scene, t: f64) -> Result<(String, f64), String> {
+/// `alpha`: the comp's background left out (an export with transparency).
+fn markup(scene: &Scene, t: f64, alpha: bool) -> Result<(String, f64), String> {
     let t0 = Instant::now();
-    let comp = eval::at(&scene.comp, t).expect("the comp always shows");
+    let mut comp = eval::at(&scene.comp, t).expect("the comp always shows");
+    if alpha {
+        comp.props.insert("background".into(), Value::String("transparent".into()));
+    }
     let m = stage::stage(&comp)?;
     Ok((m, t0.elapsed().as_secs_f64() * 1000.0))
 }
@@ -97,8 +107,11 @@ pub fn frame(held: &Held, s: &mut Session, req: &Value) -> Result<(Value, Option
     if held.shell != Some((s.width, s.height)) {
         return Err("the open page is not the scene's (an open or page came after the scene); send the scene again".into());
     }
-    let (m, eval_ms) = markup(scene, t)?;
+    let (m, eval_ms) = markup(scene, t, req["alpha"].as_bool() == Some(true))?;
     let mut f = req.clone();
+    if let Some(o) = f.as_object_mut() {
+        o.remove("alpha");
+    }
     f["stage"] = Value::String(m);
     if f.get("index").is_none() {
         f["index"] = json!((t * scene.fps()).round() as u64);
@@ -133,7 +146,7 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
     for i in 0..n {
         let t = start + i as f64 / fps;
         let tf = Instant::now();
-        let mut f = json!({ "t": t, "index": (t * fps).round() as u64 });
+        let mut f = json!({ "t": t, "index": (t * fps).round() as u64, "alpha": req["alpha"].as_bool() == Some(true) });
         match images {
             Some(p) => f["image"] = json!(p.replace("{frame}", &format!("{:04}", (t * fps).round() as u64))),
             None => f["encode"] = json!(true),

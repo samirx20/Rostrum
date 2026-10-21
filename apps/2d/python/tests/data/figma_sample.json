@@ -1,0 +1,35 @@
+{"name": "hand-written sample", "document": {"id": "0:0", "type": "DOCUMENT", "name": "Document", "children": [
+ {"id": "0:1", "type": "CANVAS", "name": "Page 1", "children": [
+  {"id": "1:1", "type": "FRAME", "name": "Poster", "clipsContent": true,
+   "absoluteBoundingBox": {"x": 100, "y": 200, "width": 800, "height": 600},
+   "fills": [{"type": "SOLID", "color": {"r": 0.11, "g": 0.17, "b": 0.33, "a": 1}}],
+   "children": [
+    {"id": "1:2", "type": "RECTANGLE", "name": "Card", "cornerRadius": 24,
+     "absoluteBoundingBox": {"x": 180, "y": 520, "width": 300, "height": 180},
+     "fills": [{"type": "SOLID", "color": {"r": 1, "g": 0.42, "b": 0.42, "a": 1}, "opacity": 0.5}],
+     "strokes": [{"type": "SOLID", "color": {"r": 1, "g": 1, "b": 1, "a": 1}}], "strokeWeight": 6},
+    {"id": "1:3", "type": "ELLIPSE", "name": "Sun", "opacity": 0.8, "blendMode": "MULTIPLY",
+     "absoluteBoundingBox": {"x": 650, "y": 270, "width": 140, "height": 140},
+     "fills": [{"type": "SOLID", "color": {"r": 1, "g": 0.8, "b": 0.2, "a": 1}}]},
+    {"id": "1:4", "type": "TEXT", "name": "Title", "characters": "Hello Rostrum",
+     "absoluteBoundingBox": {"x": 180, "y": 240, "width": 420, "height": 80},
+     "style": {"fontFamily": "Inter", "fontWeight": 700, "fontSize": 64, "textAlignHorizontal": "LEFT",
+               "letterSpacing": 3.2, "lineHeightPx": 70},
+     "fills": [{"type": "SOLID", "color": {"r": 1, "g": 1, "b": 1, "a": 1}}]},
+    {"id": "1:5", "type": "VECTOR", "name": "Wave",
+     "absoluteBoundingBox": {"x": 160, "y": 460, "width": 300, "height": 60},
+     "fillGeometry": [{"path": "M0 30 L100 0 Q200 60 300 30 L300 40 Z", "windingRule": "NONZERO"}],
+     "fills": [{"type": "SOLID", "color": {"r": 0.48, "g": 0.87, "b": 0.95, "a": 1}}]},
+    {"id": "1:6", "type": "GROUP", "name": "Badge",
+     "absoluteBoundingBox": {"x": 600, "y": 600, "width": 180, "height": 120},
+     "children": [
+      {"id": "1:7", "type": "ELLIPSE", "name": "Badge ring",
+       "absoluteBoundingBox": {"x": 600, "y": 600, "width": 180, "height": 120}, "fills": [],
+       "strokes": [{"type": "SOLID", "color": {"r": 0.7, "g": 0.95, "b": 0.9, "a": 1}}], "strokeWeight": 8},
+      {"id": "1:8", "type": "RECTANGLE", "name": "Photo",
+       "absoluteBoundingBox": {"x": 640, "y": 630, "width": 100, "height": 60},
+       "fills": [{"type": "IMAGE", "imageRef": "abc"}]}]},
+    {"id": "1:9", "type": "RECTANGLE", "name": "Hidden", "visible": false,
+     "absoluteBoundingBox": {"x": 0, "y": 0, "width": 10, "height": 10},
+     "fills": [{"type": "SOLID", "color": {"r": 0, "g": 0, "b": 0, "a": 1}}]}
+   ]}]}]}}
