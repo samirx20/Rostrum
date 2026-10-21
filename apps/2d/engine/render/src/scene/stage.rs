@@ -9,13 +9,6 @@ use serde_json::Value;
 
 use super::eval::Item;
 
-/// The engine's font list (contract § 4 `font`): family name → file.
-pub const FONTS: &[(&str, &str)] = &[
-    ("Roboto Flex", r"C:\Users\Sam\Documents\CODE\OLD-EXPERIMENT\public\fonts\variable\RobotoFlex.ttf"),
-    ("Recursive", r"C:\Users\Sam\Documents\CODE\OLD-EXPERIMENT\public\fonts\variable\Recursive.ttf"),
-    ("Inter", r"C:\Users\Sam\Documents\CODE\OLD-EXPERIMENT\public\fonts\Inter-Regular.ttf"),
-];
-
 type R<T> = Result<T, String>;
 
 /// A field's value as written in the scene (numbers as JSON writes them).
@@ -26,15 +19,20 @@ fn v(it: &Item, f: &str) -> String {
     }
 }
 
-/// The page shell: the fonts and an empty stage the comp's size.
-pub fn shell(width: u32, height: u32) -> String {
+/// The page shell: the scene's fonts (fonts.rs; a file that can't be read is an error) and an empty stage the comp's size.
+pub fn shell(width: u32, height: u32, fonts: &[super::fonts::Font]) -> R<String> {
     let mut faces = String::new();
-    for (name, path) in FONTS {
-        if let Ok(bytes) = std::fs::read(path) {
-            let _ = writeln!(faces, "@font-face {{ font-family: \"{name}\"; src: url(\"data:font/ttf;base64,{}\"); }}", base64(&bytes));
+    let mut read: Vec<(&std::path::Path, String)> = vec![];
+    for f in fonts {
+        if !read.iter().any(|(p, _)| *p == f.path) {
+            let bytes = std::fs::read(&f.path).map_err(|e| format!("font {}: {e}", f.path.display()))?;
+            read.push((&f.path, base64(&bytes)));
         }
+        let data = &read.iter().find(|(p, _)| *p == f.path).unwrap().1;
+        let _ = writeln!(faces, "@font-face {{ font-family: \"{}\"; src: url(\"data:font/ttf;base64,{data}\"); }}", f.family);
     }
-    format!("<html><head><style>{faces}html, body {{ margin: 0; background: #000; }}\n#rostrum-stage {{ position: relative; width: {width}px; height: {height}px; overflow: hidden; }}</style></head><body><div id=\"rostrum-stage\"></div></body></html>")
+    Ok(format!("<html><head><style>{faces}html, body {{ margin: 0; background: #000; }}
+#rostrum-stage {{ position: relative; width: {width}px; height: {height}px; overflow: hidden; }}</style></head><body><div id=\"rostrum-stage\"></div></body></html>"))
 }
 
 /// The stage markup of the comp at one time.

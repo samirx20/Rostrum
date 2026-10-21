@@ -5,6 +5,7 @@
 pub mod ease;
 pub mod eval;
 pub mod fields;
+pub mod fonts;
 pub mod stage;
 #[cfg(test)]
 mod tests;
@@ -53,6 +54,8 @@ pub struct Node {
 #[derive(Clone, Debug)]
 pub struct Scene {
     pub comp: Node,
+    /// The fonts its text can name (fonts.rs): the scene's own `fonts`, then the app's.
+    pub fonts: Vec<fonts::Font>,
 }
 
 impl Scene {
@@ -70,7 +73,7 @@ impl Scene {
         }
         let mut seen = HashSet::new();
         comp.walk(&mut |n| if seen.insert(n.id.clone()) { Ok(()) } else { Err(format!("{}: the id is used twice", n.id)) })?;
-        Ok(Scene { comp })
+        Ok(Scene { comp, fonts: fonts::list(&v["fonts"])? })
     }
 
     pub fn width(&self) -> u32 {
@@ -118,7 +121,7 @@ impl Scene {
 }
 
 impl Node {
-    fn walk(&self, f: &mut impl FnMut(&Node) -> Result<(), String>) -> Result<(), String> {
+    pub fn walk(&self, f: &mut impl FnMut(&Node) -> Result<(), String>) -> Result<(), String> {
         f(self)?;
         self.effects.iter().chain(&self.masks).chain(&self.layers).try_for_each(|c| c.walk(f))
     }

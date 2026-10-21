@@ -22,9 +22,12 @@ mod scopes;
 mod serve;
 mod sink;
 mod sksl;
+mod shm;
 mod styles;
 #[cfg(test)]
 mod cliptext_tests;
+#[cfg(test)]
+mod cold_warm_tests;
 #[cfg(test)]
 mod depth_tests;
 #[cfg(test)]

@@ -172,6 +172,9 @@ fn new_surface(gl: Option<&mut Gl>, width: u32, height: u32, space: &Option<Colo
     }
 }
 
+/// Device size (px) from which glyphs are drawn as outlines instead of atlas masks (see `gl_context`).
+pub const GLYPH_OUTLINE_PX: f32 = 32.0;
+
 pub fn gl_context() -> Result<Gl, String> {
     let (hwnd, hinst) = hidden_window();
     let mut wh = Win32WindowHandle::new(NonZeroIsize::new(hwnd).unwrap());
@@ -195,6 +198,19 @@ pub fn gl_context() -> Result<Gl, String> {
     // lost, so the first frame a context drew had garbage in new layers (a CSS mask's layer came out empty).
     let mut opts = gpu::ContextOptions::default();
     opts.use_draw_instead_of_clear = skia_safe::gpu::ganesh::context_options::Enable::Yes;
+    // A frame is a function of its time alone (rule 5, H7): glyph masks in Skia's GPU atlas come out 1–2 levels
+    // different at their edges depending on which glyphs went into the atlas before (only big glyphs: a 250 px
+    // title drifted, 44 px text didn't). Glyphs from GLYPH_OUTLINE_PX device pixels up are drawn as outlines, which
+    // are the same whatever was drawn before, and sit at their exact sub-pixel position (atlas glyphs snap to whole
+    // pixels vertically, a 1 px jitter on slow moves). Small text keeps the atlas and its hinting. Paint time: within
+    // the noise (Meridian). `cold_warm_tests` guards it.
+    opts.glyphs_as_paths_font_size = GLYPH_OUTLINE_PX;
+    // Distance-field text would sit between the two thresholds; with both equal there is none (Skia requires min <= max).
+    opts.min_distance_field_font_size = GLYPH_OUTLINE_PX;
+    // Outlines are filled through Skia's multisampled path atlas (the one path renderer that keeps no shapes between
+    // frames; turning it off brought the drift back through the triangulating renderer's cache). At its default 4
+    // samples a big letter's edge has 3 in-between levels and steps visibly; 16 is as smooth as the glyph atlas was.
+    opts.internal_multisample_count = 16;
     let gr = direct_contexts::make_gl(interface, Some(&opts)).ok_or("Skia GL context failed")?;
     let readback = Readback::new(|name| display.get_proc_address(name));
     Ok(Gl { gr, renderer, readback, _context: (ctx, gl_surface) })

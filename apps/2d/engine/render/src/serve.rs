@@ -13,7 +13,8 @@
 //!   sum with the sum drawn in place of the children of its `data-shutter-held` element (an <Adjust> whose look
 //!   then runs once, after the shutter; painter.rs). Writes a PNG or JPEG (by extension, 8-bit) to
 //!   `image`, or with `rgba` replies `{"ok": true, "bytes": n, …}` followed by n bytes of straight-alpha RGBA on
-//!   stdout. `boxes` adds each layer's laid-out box to the reply (boxes.rs). With `encode: true` the pixels go
+//!   stdout; with `pixels` the same bytes go into shared memory instead and the reply's `shm` says where (shm.rs).
+//!   `boxes` adds each layer's laid-out box to the reply (boxes.rs). With `encode: true` the pixels go
 //!   to the open's encoder instead and the reply is `{"ok": true, …}`.
 //! - `{"page": {"html"}}` — another page shell on the open session (a live preview's next prepared document):
 //!   the document is replaced, the painter (GPU context and surfaces), colour, encoder and scratch parser kept;
@@ -75,6 +76,8 @@ pub(crate) struct Session {
     pub(crate) sink: Option<Sink>,
     /// Each frame's stage markup is parsed here (no styles, no loads) and walked beside the kept page.
     scratch: keep::Scratch,
+    /// The live canvas's shared-memory frames (`pixels`), made on first use and remade at a new frame size.
+    shm: Option<crate::shm::Shm>,
 }
 
 /// `warm`: the GL context made as the process started (taken by the first GPU open).
@@ -114,7 +117,7 @@ pub(crate) fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, Str
         None => None,
     };
     let scratch = keep::Scratch::new(|| DocumentConfig { base_url: Some(BASE_URL.into()), ..Default::default() });
-    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch }, json!({ "ok": true, "gpu": gpu, "adapter": adapter, "depth": if deep { 16 } else { 8 }, "timing": { "pageMs": page_ms, "painterMs": painter_ms } })))
+    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, shm: None }, json!({ "ok": true, "gpu": gpu, "adapter": adapter, "depth": if deep { 16 } else { 8 }, "timing": { "pageMs": page_ms, "painterMs": painter_ms } })))
 }
 
 /// The page document's settings at a frame size, its loads through `assets`.
@@ -379,11 +382,27 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         }
         None => Value::Null,
     };
-    if image.is_none() && req["rgba"].as_bool() != Some(true) && (!scopes_out.is_null() || !sample_out.is_null()) {
+    let shared = req["pixels"].as_bool() == Some(true);
+    if image.is_none() && req["rgba"].as_bool() != Some(true) && !shared && (!scopes_out.is_null() || !sample_out.is_null()) {
         taps_done(s, &mut tap_write_ms)?;
         return Ok((json!({ "ok": true, "scopes": scopes_out, "sample": sample_out }), None));
     }
     let t3 = Instant::now();
+    if shared && image.is_none() {
+        // Straight into the canvas's shared memory (shm.rs): the same output step as every frame, no pipe.
+        let bytes = raw.len() / 8 * if s.deep { 8 } else { 4 };
+        if s.shm.as_ref().map(crate::shm::Shm::slot_bytes) != Some(bytes) {
+            s.shm = Some(crate::shm::Shm::new(bytes)?);
+        }
+        let (slot, info) = s.shm.as_mut().unwrap().next(w, h, s.deep);
+        crate::color::output_into(&s.color, &raw, w, s.deep, false, index, slot);
+        s.painter.last_convert_ms = t3.elapsed().as_secs_f64() * 1000.0;
+        taps_done(s, &mut tap_write_ms)?;
+        paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
+        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "gpuMs": s.painter.last_gpu_ms });
+        let boxes = if boxes_wanted { crate::boxes::boxes(&s.doc, w, h) } else { Value::Null };
+        return Ok((json!({ "ok": true, "width": w, "height": h, "shm": info, "timing": timing, "boxes": boxes, "scopes": scopes_out }), None));
+    }
     let mut pixels = vec![];
     crate::color::output(&s.color, &raw, w, s.deep && image.is_none(), fast, index, &mut pixels);
     s.painter.last_convert_ms = t3.elapsed().as_secs_f64() * 1000.0;
@@ -415,7 +434,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
     if req["rgba"].as_bool() == Some(true) {
         return Ok((json!({ "ok": true, "bytes": pixels.len(), "timing": timing, "boxes": boxes, "scopes": scopes_out }), Some(pixels)));
     }
-    Err("frame needs image (a .png / .jpg path) or rgba: true".into())
+    Err("frame needs image (a .png / .jpg path), rgba: true or pixels: true".into())
 }
 
 /// The oldest frame in flight, read back and queued for the encoder (its stored bytes are converted on the
