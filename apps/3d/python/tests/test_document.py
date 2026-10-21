@@ -1,6 +1,8 @@
 """The two things that would break silently: a script re-run keeping a person's edit, and the scene description
 the C++ core reads (ENGINE_CONTRACT.md § 2: every field present, one value per frame)."""
+import pytest
 from rostrum_core import Document, Who
+from rostrum_core.errors import RostrumError
 
 from rostrum3d import KIND, run_source
 from rostrum3d import fields as F
@@ -34,6 +36,12 @@ def test_rerun_keeps_a_persons_moved_light():
     key = d.item("key")
     assert (key["x"], key["y"], key["intensity"]) == (-0.5, 0.8, 9)      # person's move kept, script's change applied
     assert [h["key"] for h in report.held] == ["key.x"]                  # ... and the agent is told
+
+
+def test_a_taken_id_is_refused_naming_what_holds_it():
+    for op, taken, kind in (("mesh.add", "key", "light"), ("shot.add", "alu", "material"), ("material.add", "cam", "camera")):
+        with pytest.raises(RostrumError, match=f'id "{taken}" is already used by a {kind}'):
+            doc().apply({"op": op, "args": {"id": taken}}, SAM)
 
 
 def _check_node(node, n_frames):
