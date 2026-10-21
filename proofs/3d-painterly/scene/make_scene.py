@@ -5,6 +5,7 @@ hand-painted texture from ../paint/textures/<name>.png through UVs (primvars:st)
 Run:  python -I make_scene.py [--ramp] [--checker] [--out name.usda]   (stdlib only)
   --ramp     key-light colour ramps (raycast shadow test -> rgb_ramp) instead of real shading
   --checker  UV test texture (../paint/textures/_checker.png) on every surface
+  --partial  textures not painted yet fall back to the checker (work-in-progress looks)
 Units: centimetres, Y up. Materials are Cycles nodes (see materials.py).
 """
 import math, os, sys
@@ -15,10 +16,12 @@ from materials import material_usda
 HERE = os.path.dirname(os.path.abspath(__file__))
 CAMERA = dict(pos=(4.0, 30.0, 80.0), target=(1.0, 6.0, 0.0), focal=50.0, fstop=4.0,
               h_aperture=36.0, v_aperture=20.25, focus=(-6.0, 9.0, 0.0))
-SUN = dict(to_sun=norm((-0.8, 0.42, -0.45)), intensity=1.2, kelvin=3500, angle=1.2)
-FILL = dict(intensity=0.3, color=(0.50, 0.64, 1.0))   # cool room light, all directions
+SUN = dict(to_sun=norm((-0.85, 0.48, 0.05)), intensity=2.0, kelvin=3300, angle=1.5)
+FILL = dict(intensity=0.25, color=(0.50, 0.64, 1.0))   # cool room light, all directions
 BOUNCE = dict(pos=(55.0, 10.0, 30.0), size=(60.0, 40.0), intensity=0.6, kelvin=4200)
 BG_DISTANCE = 190.0                                    # painted card behind everything
+# off-frame wall at the left with a window: shapes the sun into a pool of light (y, z in cm)
+WINDOW = dict(x=-70.0, y=(18.0, 80.0), z=(-38.0, 24.0), wall_y=(-10.0, 200.0), wall_z=(-250.0, 150.0))
 
 JUG = [(0, 0), (5.4, 0), (6.0, 0.6), (7.2, 4), (7.6, 8), (7.0, 12), (5.6, 16), (5.0, 18.5),
        (5.4, 20.6), (6.0, 21.6), (5.7, 21.9), (4.8, 20.6), (4.6, 18.5), (5.2, 16), (6.6, 12),
@@ -58,12 +61,24 @@ def parts():
          "Jug": (lathe(smooth(JUG, 4), n=128, v0=0.2, v1=1.0), "Jug") + jug_at,
          "JugHandle": (tube([(x, y, 0.0) for x, y in smooth(HANDLE, 6)], 0.85,
                             uv_rect=(0, 0, 1, 0.18)), "Jug") + jug_at,
-         "Bowl": (lathe(smooth(BOWL, 4), n=128), "Bowl", (11, 0.15, 5), 0, 0, 1)}
+         "Bowl": (lathe(smooth(BOWL, 4), n=128), "Bowl", (11, 0.15, 5), 0, 0, 1),
+         "WindowWall": (window_wall(), "Blocker", (0, 0, 0), 0, 0, 1)}
     for k, at in enumerate([((7.6, 2.6, 3.4), 40, -8, 1.0), ((15.2, 2.6, 7.4), -70, 10, 0.92),
                             ((-2.0, 3.7, 16.0), 125, 84, 1.05)]):
         p[f"Pear{k}"] = (pear, "Pear") + at
         p[f"PearStem{k}"] = (stem, "Pear") + at
     return p
+
+
+def window_wall():
+    """Four quads around the window hole, facing +X (into the room). UVs unused (no texture)."""
+    from geo import Mesh
+    W = WINDOW; x = W["x"]; m = Mesh()
+    (y0, y1), (z0, z1), (wy0, wy1), (wz0, wz1) = W["y"], W["z"], W["wall_y"], W["wall_z"]
+    for (ya, yb, za, zb) in [(wy0, y0, wz0, wz1), (y1, wy1, wz0, wz1), (y0, y1, wz0, z0), (y0, y1, z1, wz1)]:
+        P = [[(x, ya, za), (x, ya, zb)], [(x, yb, za), (x, yb, zb)]]
+        m.grid(P, [[(1.0, 0.0, 0.0)] * 2] * 2, [[(0.0, 0.0)] * 2] * 2)
+    return m
 
 
 def f3(v): return "(%.5g, %.5g, %.5g)" % tuple(v)
@@ -173,8 +188,9 @@ def main():
            'def Xform "World"\n{\n']
     out += [mesh_usda(name, *v) for name, v in parts().items()]
     out += [background_card(), camera_and_lights(), "}\n\n", 'def Scope "Looks"\n{\n']
-    for name in ["Table", "Cloth", "Jug", "Bowl", "Pear", "Background"]:
-        out.append(material_usda(name, ramp=ramp, checker=checker, to_sun=SUN["to_sun"]))
+    for name in ["Table", "Cloth", "Jug", "Bowl", "Pear", "Background", "Blocker"]:
+        out.append(material_usda(name, ramp=ramp, checker=checker, to_sun=SUN["to_sun"],
+                                 partial="--partial" in sys.argv))
     out.append("}\n")
     path = os.path.join(HERE, out_name)
     with open(path, "w", encoding="utf-8", newline="\n") as f:
