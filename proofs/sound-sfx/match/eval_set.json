@@ -1,0 +1,380 @@
+{
+ "labels": {
+  "metal-impact": "a small metal object hitting metal",
+  "wood-impact": "a knock on wood",
+  "glass-clink": "glass clinking against glass",
+  "cloth": "cloth rustling and fabric movement",
+  "whoosh": "a fast whoosh through the air",
+  "door": "a door opening or closing",
+  "footsteps": "footsteps",
+  "paper": "paper rustling, crumpling or tearing",
+  "pour": "water pouring into a glass",
+  "zipper": "a zipper being pulled"
+ },
+ "items": [
+  {
+   "name": "impact.metal-light#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\kenney-impact\\Audio\\impactMetal_light_000.ogg",
+   "offset": 0.0,
+   "length": 0.351,
+   "true_label": "metal-impact"
+  },
+  {
+   "name": "impact.metal-light#2",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\kenney-impact\\Audio\\impactMetal_light_002.ogg",
+   "offset": 0.0,
+   "length": 0.236,
+   "true_label": "metal-impact"
+  },
+  {
+   "name": "impact.metal-medium#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\kenney-impact\\Audio\\impactMetal_medium_000.ogg",
+   "offset": 0.0,
+   "length": 0.272,
+   "true_label": "metal-impact"
+  },
+  {
+   "name": "impact.metal-medium#3",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\kenney-impact\\Audio\\impactMetal_medium_003.ogg",
+   "offset": 0.0,
+   "length": 0.254,
+   "true_label": "metal-impact"
+  },
+  {
+   "name": "impact.metal-heavy#1",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\kenney-impact\\Audio\\impactMetal_heavy_001.ogg",
+   "offset": 0.0,
+   "length": 0.359,
+   "true_label": "metal-impact"
+  },
+  {
+   "name": "impact.tin-medium#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\kenney-impact\\Audio\\impactTin_medium_000.ogg",
+   "offset": 0.0,
+   "length": 0.159,
+   "true_label": "metal-impact"
+  },
+  {
+   "name": "impact.wood-light#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\kenney-impact\\Audio\\impactWood_light_000.ogg",
+   "offset": 0.0,
+   "length": 0.266,
+   "true_label": "wood-impact"
+  },
+  {
+   "name": "impact.wood-light#2",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\kenney-impact\\Audio\\impactWood_light_002.ogg",
+   "offset": 0.0,
+   "length": 0.266,
+   "true_label": "wood-impact"
+  },
+  {
+   "name": "impact.wood-medium#1",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\kenney-impact\\Audio\\impactWood_medium_001.ogg",
+   "offset": 0.0,
+   "length": 0.333,
+   "true_label": "wood-impact"
+  },
+  {
+   "name": "impact.wood-heavy#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\kenney-impact\\Audio\\impactWood_heavy_000.ogg",
+   "offset": 0.0,
+   "length": 0.313,
+   "true_label": "wood-impact"
+  },
+  {
+   "name": "impact.plank-medium#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\kenney-impact\\Audio\\impactPlank_medium_000.ogg",
+   "offset": 0.0,
+   "length": 0.779,
+   "true_label": "wood-impact"
+  },
+  {
+   "name": "impact.plank-medium#3",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\kenney-impact\\Audio\\impactPlank_medium_003.ogg",
+   "offset": 0.0,
+   "length": 0.779,
+   "true_label": "wood-impact"
+  },
+  {
+   "name": "glass.bottle-clink#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\0487.ogg",
+   "offset": 0.14,
+   "length": 0.28,
+   "true_label": "glass-clink"
+  },
+  {
+   "name": "glass.bottle-clink#5",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\0487.ogg",
+   "offset": 3.86,
+   "length": 0.52,
+   "true_label": "glass-clink"
+  },
+  {
+   "name": "glass.toast#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\0472.ogg",
+   "offset": 0.88,
+   "length": 1.43,
+   "true_label": "glass-clink"
+  },
+  {
+   "name": "glass.toast#7",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\0472.ogg",
+   "offset": 30.25,
+   "length": 1.58,
+   "true_label": "glass-clink"
+  },
+  {
+   "name": "impact.glass-light#1",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\kenney-impact\\Audio\\impactGlass_light_001.ogg",
+   "offset": 0.0,
+   "length": 0.21,
+   "true_label": "glass-clink"
+  },
+  {
+   "name": "liquid.ice-clink#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\2123.ogg",
+   "offset": 0.0,
+   "length": 0.5,
+   "true_label": "glass-clink"
+  },
+  {
+   "name": "cloth.blanket#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\owlish\\Cloth, Rustle\\320137__owlstorm__blanket-movement-1.wav",
+   "offset": 0.0,
+   "length": 9.946,
+   "true_label": "cloth"
+  },
+  {
+   "name": "cloth.blanket#2",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\owlish\\Cloth, Rustle\\320141__owlstorm__blanket-movement-3.wav",
+   "offset": 0.0,
+   "length": 3.162,
+   "true_label": "cloth"
+  },
+  {
+   "name": "cloth.blanket#4",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\owlish\\Cloth, Rustle\\320143__owlstorm__blanket-movement-5.wav",
+   "offset": 0.0,
+   "length": 5.0,
+   "true_label": "cloth"
+  },
+  {
+   "name": "whoosh.synthetic-coat-rubbed#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\1104.ogg",
+   "offset": 0.0,
+   "length": 8.394,
+   "true_label": "cloth"
+  },
+  {
+   "name": "foley.shoulder-grab#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\owlish\\Impacts\\shouldergrab.wav",
+   "offset": 0.0,
+   "length": 4.366,
+   "true_label": "cloth"
+  },
+  {
+   "name": "whoosh.basic#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\0572.ogg",
+   "offset": 0.09,
+   "length": 0.32,
+   "true_label": "whoosh"
+  },
+  {
+   "name": "whoosh.basic#10",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\0572.ogg",
+   "offset": 10.62,
+   "length": 0.29,
+   "true_label": "whoosh"
+  },
+  {
+   "name": "whoosh.basic#20",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\0573.ogg",
+   "offset": 10.66,
+   "length": 0.28,
+   "true_label": "whoosh"
+  },
+  {
+   "name": "whoosh.fast#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\freesound\\171321.ogg",
+   "offset": 0.0,
+   "length": 1.852,
+   "true_label": "whoosh"
+  },
+  {
+   "name": "whoosh.sword-through-the-air#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\0128.ogg",
+   "offset": 0.0,
+   "length": 0.549,
+   "true_label": "whoosh"
+  },
+  {
+   "name": "whoosh.slow#1",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\freesound\\369698.ogg",
+   "offset": 0.0,
+   "length": 8.252,
+   "true_label": "whoosh"
+  },
+  {
+   "name": "tech.creaking-door#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\3205.ogg",
+   "offset": 0.0,
+   "length": 3.161,
+   "true_label": "door"
+  },
+  {
+   "name": "tech.door-open#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\0224.ogg",
+   "offset": 0.08,
+   "length": 0.76,
+   "true_label": "door"
+  },
+  {
+   "name": "tech.door-open#5",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\0224.ogg",
+   "offset": 9.3,
+   "length": 1.12,
+   "true_label": "door"
+  },
+  {
+   "name": "tech.door-open#10",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\0377.ogg",
+   "offset": 0.0,
+   "length": 14.76,
+   "true_label": "door"
+  },
+  {
+   "name": "tech.door-close#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\1339.ogg",
+   "offset": 0.0,
+   "length": 0.762,
+   "true_label": "door"
+  },
+  {
+   "name": "tech.door-close#2",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\1704.ogg",
+   "offset": 0.0,
+   "length": 3.828,
+   "true_label": "door"
+  },
+  {
+   "name": "footstep.wood#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\kenney-impact\\Audio\\footstep_wood_000.ogg",
+   "offset": 0.0,
+   "length": 0.25,
+   "true_label": "footsteps"
+  },
+  {
+   "name": "footstep.concrete#1",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\kenney-impact\\Audio\\footstep_concrete_001.ogg",
+   "offset": 0.0,
+   "length": 0.108,
+   "true_label": "footsteps"
+  },
+  {
+   "name": "footstep.heels#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\owlish\\Footsteps\\Womens_shoes_1.wav",
+   "offset": 0.0,
+   "length": 5.868,
+   "true_label": "footsteps"
+  },
+  {
+   "name": "footstep.hard#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\owlish\\Footsteps\\hard-footstep1.wav",
+   "offset": 0.0,
+   "length": 0.58,
+   "true_label": "footsteps"
+  },
+  {
+   "name": "footstep.wood-floor#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\0373.ogg",
+   "offset": 0.0,
+   "length": 9.384,
+   "true_label": "footsteps"
+  },
+  {
+   "name": "paper.crumple#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\1220.ogg",
+   "offset": 0.0,
+   "length": 2.207,
+   "true_label": "paper"
+  },
+  {
+   "name": "paper.page-turn#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\owlish\\Paper\\pageturn1.wav",
+   "offset": 0.0,
+   "length": 0.589,
+   "true_label": "paper"
+  },
+  {
+   "name": "paper.tear#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\3239.ogg",
+   "offset": 0.0,
+   "length": 1.108,
+   "true_label": "paper"
+  },
+  {
+   "name": "paper.newspaper#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\1250.ogg",
+   "offset": 0.03,
+   "length": 3.33,
+   "true_label": "paper"
+  },
+  {
+   "name": "paper.newspaper#9",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\1251.ogg",
+   "offset": 10.29,
+   "length": 3.02,
+   "true_label": "paper"
+  },
+  {
+   "name": "liquid.pour-water-glass#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\1242.ogg",
+   "offset": 0.0,
+   "length": 4.085,
+   "true_label": "pour"
+  },
+  {
+   "name": "liquid.pour-water-glass#1",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\1243.ogg",
+   "offset": 0.0,
+   "length": 4.038,
+   "true_label": "pour"
+  },
+  {
+   "name": "liquid.pour-wine#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\1721.ogg",
+   "offset": 0.0,
+   "length": 5.361,
+   "true_label": "pour"
+  },
+  {
+   "name": "liquid.pour-water-mug#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\bigsoundbank\\1156.ogg",
+   "offset": 0.0,
+   "length": 6.63,
+   "true_label": "pour"
+  },
+  {
+   "name": "cloth.zipper#0",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\owlish\\Cloth, Rustle\\212180__owlstorm__bag-zipper.wav",
+   "offset": 0.57,
+   "length": 2.14,
+   "true_label": "zipper"
+  },
+  {
+   "name": "cloth.zipper#1",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\owlish\\Cloth, Rustle\\212180__owlstorm__bag-zipper.wav",
+   "offset": 2.95,
+   "length": 0.66,
+   "true_label": "zipper"
+  },
+  {
+   "name": "cloth.zipper#2",
+   "path": "C:\\Users\\Sam\\.rostrum\\assets\\sounds\\owlish\\Cloth, Rustle\\212180__owlstorm__bag-zipper.wav",
+   "offset": 4.14,
+   "length": 2.56,
+   "true_label": "zipper"
+  }
+ ]
+}
