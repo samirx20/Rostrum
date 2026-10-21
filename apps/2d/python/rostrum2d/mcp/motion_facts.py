@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import math
 
-from rostrum2d.evaluate import keys_of, value_at
+from rostrum2d.evaluate import key_value, keys_of, value_at
 
 HOLD_MIN_S = 0.5          # a still stretch shorter than this isn't reported as a hold
 
@@ -28,7 +28,7 @@ def moves_of(owner: dict, prefix: str, fps: float) -> list[dict]:
     for prop in sorted({k["prop"] for k in owner.get("keys", [])}):
         keys = keys_of(owner, prop)
         for k0, k1 in zip(keys, keys[1:]):
-            a, b = k0.get("v", k0.get("c")), k1.get("v", k1.get("c"))
+            a, b = key_value(k0), key_value(k1)
             if a == b:
                 continue
             move = {"field": prefix + prop, "start": r(k0["t"]), "end": r(k1["t"]), "from": a, "to": b, "ease": k0.get("ease", "smooth")}

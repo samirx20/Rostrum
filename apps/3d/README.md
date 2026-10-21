@@ -26,7 +26,7 @@ Modelling, painting, materials, lighting, animation, simulation and rendering, b
 ## Open
 
 - Storm has no depth of field and no soft shadows from the studio light; Cycles has both (side by side: `C:\Users\Sam\.rostrum\waves\results\stage2\3d-screen\storm-vs-cycles.png`).
-- The viewport hides dome lights from the camera, so the studio light never shows as the background. A scene's own dome sky therefore shows black in the viewport but shows in Cycles. Next: keep scene domes visible and hide only the studio one.
+- The viewport never shows its studio light. A scene with its own dome light is lit by that dome in the viewport, as in Cycles (H14). Still open: the dome's sky draws black behind the scene. Found so far: camera visibility is on and the dome's lighting arrives (tested with a colour dome and an HDR dome), so the sky is lost either in Storm's sky pass or in the viewport's display path; check the alpha the sky pass writes first.
 - A viewport picture takes ~60–80 ms at 960×540 (drawing 10–20 ms; the rest is reading back floats and the colour transform on the CPU). Fine for clicking and orbiting, short of 60 fps. Next: the colour transform on the GPU, or the native `QQuickRhiItem` viewport planned in `proofs/gui-qt`.
 - The stylized renderer takes no look settings through the contract yet.
 - Imports in other units (e.g. centimetres) are not rescaled; the import's scale must be set.

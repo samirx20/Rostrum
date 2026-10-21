@@ -46,8 +46,11 @@ for _type, _params in F.FIELDS.items():
 
 def facts(item: dict) -> dict:
     if item.get("type") == "key":
-        return {"number": "v" in item, "color": "c" in item}
+        return {"number": "v" in item, "color": "c" in item, "shape": "d" in item}
     return {}
+
+
+_NEEDS = {"v": "v (a number)", "c": "c (a colour)", "d": "d (path data)"}
 
 
 def _check_keys(owner: dict, problems: list):
@@ -58,9 +61,14 @@ def _check_keys(owner: dict, problems: list):
         if prop not in allowed:
             problems.append(f'key {k["id"]}: {owner["type"]} {owner["id"]} has no animatable field "{prop}" '
                             f"(it has: {', '.join(allowed)})")
-        is_color = F.param(owner["type"], prop) is not None and F.param(owner["type"], prop).type == "color"
-        if ("c" if is_color else "v") not in k:
-            problems.append(f'key {k["id"]}: a {prop} key needs {"c (a colour)" if is_color else "v (a number)"}')
+        want = F.key_field(owner["type"], prop) if prop in allowed else "v"
+        if want not in k:
+            problems.append(f'key {k["id"]}: a {prop} key needs {_NEEDS[want]}')
+        elif want == "d":
+            try:
+                pathdata.commands(k["d"])
+            except ValueError as e:
+                problems.append(f'key {k["id"]}: {owner["id"]}.d at {k.get("t")} s: {e}')
         if (prop, k.get("t")) in seen:
             problems.append(f'{owner["id"]}: two {prop} keys at {k.get("t")} s')
         seen.add((prop, k.get("t")))

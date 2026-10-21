@@ -66,6 +66,7 @@ def flatten(comp: dict, t: float) -> list[dict]:
     cam = camera.shot(comp, t)
 
     def walk(layers, parent_m, parent_opacity, parent_in_time, path):
+        mattes = _mattes(layers)
         for layer in layers:
             if layer["type"] == "camera":
                 continue
@@ -81,12 +82,33 @@ def flatten(comp: dict, t: float) -> list[dict]:
             out.append({"id": layer["id"], "type": layer["type"], "name": layer.get("name", ""), "props": p, "opacity": opacity,
                         "in_time": in_time, "matrix": m, "size": (w, h), "within": path,
                         "broken": follow.problem(layer, layers),
+                        "matte_for": mattes.get(layer["id"], []), "matte_missing": _missing_matte(layer, layers),
                         "corners": [_apply(m, x, y) for x, y in ((0, 0), (w, 0), (w, h), (0, h))]})
             if layer["type"] == "group":
                 walk(layer.get("layers", []), m, opacity, in_time, path + (layer["id"],))
 
     walk(comp.get("layers", []), (1, 0, 0, 1, 0, 0), 1.0, True, ())
     return out
+
+
+def _matte_id(layer: dict) -> str:
+    return layer.get("matte", "")
+
+
+def _mattes(layers: list[dict]) -> dict[str, list[str]]:
+    """Layer id -> the sibling layers that use it as their track matte (it is drawn only as their matte)."""
+    out: dict[str, list[str]] = {}
+    for layer in layers:
+        if _matte_id(layer):
+            out.setdefault(_matte_id(layer), []).append(layer["id"])
+    return out
+
+
+def _missing_matte(layer: dict, layers: list[dict]) -> str:
+    """The layer's matte id when no other layer beside it has that id ("" when fine or none)."""
+    m = _matte_id(layer)
+    ok = not m or any(s["id"] == m and s is not layer and s["type"] != "camera" for s in layers)
+    return "" if ok else m
 
 
 def aabb(corners) -> tuple[float, float, float, float]:
@@ -114,6 +136,10 @@ def problems_showing(node: dict, width: float, height: float) -> list[str]:
         why.append(node["broken"])
     if not node["in_time"]:
         why.append("outside its start/end times")
+    if node.get("matte_for"):
+        why.append("drawn only as the track matte of " + ", ".join(node["matte_for"]))
+    if node.get("matte_missing"):
+        why.append(f'its track matte "{node["matte_missing"]}" is not a layer beside it (the engine refuses the scene)')
     if node["opacity"] < VISIBLE_OPACITY:
         why.append("opacity 0")
     if p["scale"] * p["scaleX"] * p["scaleY"] == 0 or node["size"][0] * node["size"][1] == 0:

@@ -109,7 +109,7 @@ fn values<'a>(n: &'a Node, f: &'a str) -> impl Iterator<Item = f64> + 'a {
     let keys = n.anim.iter().filter(move |(p, _)| p == f).flat_map(|(_, ks)| ks.iter());
     std::iter::once(n.props[f].as_f64().unwrap_or(f64::NAN)).chain(keys.filter_map(|k| match k.value {
         KeyValue::Number(v) => Some(v),
-        KeyValue::Color(..) => None,
+        KeyValue::Color(..) | KeyValue::Path(..) => None,
     }))
 }
 

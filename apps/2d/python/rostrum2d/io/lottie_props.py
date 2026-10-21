@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ..evaluate import track_value
+from ..evaluate import key_value, track_value
 from .lottie_keys import LINEAR, emit, expand
 
 
@@ -36,7 +36,7 @@ def frozen(node: dict, names: list[str], ctx: Ctx, why: str) -> dict:
     for n in names:
         if n in node.get("anim", {}):
             keys = sorted(node["anim"][n], key=lambda k: k["t"])
-            props[n] = keys[0].get("c", keys[0].get("v"))
+            props[n] = key_value(keys[0])
             ctx.say(f'"{n}" is keyed but {why}; held at its first value')
     return props
 

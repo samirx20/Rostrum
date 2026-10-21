@@ -5,14 +5,14 @@ Motion design, type, UI animation, drawing, frame-by-frame and 2D characters.
 - **Engine:** Rust (`engine/`, see `engine/README.md`): the Blitz + Skia renderer (moved in and four gaps fixed in H5), and the per-frame evaluation of the scene description ([`ENGINE_CONTRACT.md`](ENGINE_CONTRACT.md)).
 - **Python layer** (`python/rostrum2d/`, on `rostrum_core`): the 2D document, its operations, the script layer, the engine handle, the MCP server `rostrum-2d`.
 - **Screen:** `screen/`, Qt Quick on `shared/gui-kit/`.
-- **Guides:** `skills/`, how-to guides for people and agents (techniques, not styles).
+- **Guides:** `guides/`, how-to guides for people and agents (techniques, not styles).
 
 ## The document
 
 ```
 doc ─ comps ─ comp (width, height, fps, duration, background)
                └ layers ─ shape | path | text | image | video | drawing | group (a group holds layers) | rig
-                          rig = a group that also holds bones, IK chains and binds (`RIG.md`, `skills/rigging.md`)
+                          rig = a group that also holds bones, IK chains and binds (`RIG.md`, `guides/character-rigging-and-lip-sync.md`)
                           each layer ─ effects (blur, glow, gradient, backdrop, shadow) ─ keys
                                      ─ masks ─ keys
                                      ─ keys
@@ -33,7 +33,7 @@ doc ─ comps ─ comp (width, height, fps, duration, background)
   button only on that field (key mark and canvas drag are off for it). Guide: `skills/expressions.md`.
 - **Drawing** (`ops_draw.py`, `drawing.py`, the kit `shared/painting-kit/`): a drawing layer holds drawings (`frame`s),
   each shown from its frame number until the next one (held). Strokes are kit items (`stroke.add`, one call list = one
-  undo step). Guide: `skills/drawing.md`.
+  undo step). Guide: `guides/drawing-and-frame-by-frame.md`.
 - **Vectors** (`pathdata.py`, `ops_path.py`, `ops_boolean.py`): a path layer's `d` (absolute M / L / C / Z) is the one
   truth; `path.add_point / set_point / remove_point / close / fit`, `shape.to_path`, `path.boolean` (skia-pathops). The
   pen on the Design page (`screen/screen2d/pen.py`) writes the same `d`.

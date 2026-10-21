@@ -2,7 +2,8 @@
 the scene description and its defaults all read it. Each field carries `valid_when` and `importance` (rule of
 individuality: a control that doesn't apply right now is absent, never greyed).
 
-Animatable = every number and colour field, except those in STILL (they describe the item, not a moment).
+Animatable = every number and colour field, and a path's shape `d` (the engine morphs it), except those in STILL
+(they describe the item, not a moment).
 """
 from __future__ import annotations
 
@@ -41,6 +42,7 @@ def X(name, label, group, default, imp=P, help="", when=None):
 
 
 BLENDS = ["normal", "screen", "add", "multiply", "overlay", "soft-light"]
+MATTE_MODES = ["alpha", "alphaInverted", "luma", "lumaInverted"]
 
 # Every layer has these (position is where its anchor sits in the composition, in px).
 TRANSFORM = [
@@ -63,6 +65,14 @@ TRANSFORM = [
     N("depth", "Depth", "Camera", -0.99, 1000, 0.01, "", D,
       help="How far behind the camera's plane: 0 = on it, 1 = twice as far (moves half as much), -0.5 = nearer (twice as much)"),
     T("screenLock", "Locked to screen", "Camera", False, D, help="The camera doesn't move it (a title, a frame)"),
+    # A track matte (engine: scene/matte.rs): the layer is seen through another layer beside it, drawn only as the matte.
+    X("matte", "Track matte", "Matte", "", S,
+      help="Id of a layer in the same group or comp; this layer shows only where that one is drawn. Empty = none"),
+    Param.choice("matteMode", MATTE_MODES, label="Matte uses", group="Matte", default="alpha", importance=S,
+                 valid_when={"not": IS("matte", "")},
+                 labels={"alpha": "Its shape", "alphaInverted": "Outside its shape", "luma": "Its brightness",
+                         "lumaInverted": "Its darkness"},
+                 help="Shape = where the matte layer is drawn; brightness = how light it is; the inverted ones swap"),
 ]
 
 STROKE = IS("stroke", True)
@@ -253,11 +263,12 @@ FIELDS: dict[str, list[Param]] = {
         N("angle", "Angle", "Mask", -360, 360, 0.1, "°", S, help="Turns the mask shape around its centre (a feathered rect sweeping across = a soft diagonal wipe)"),
     ],
     # A key: the value one field has at one time. Its `ease` shapes the stretch to the next key.
-    # A key holds `v` (a number field) or `c` (a colour field); its `prop` names the field and never changes.
+    # A key holds `v` (a number field), `c` (a colour field) or `d` (a path's shape); its `prop` names the field and never changes.
     "key": [
         N("t", "Time", "Key", 0, 36000, 0.001, "s"),
         N("v", "Value", "Key", -1e9, 1e9, 0.01, when={"fact": "number"}),
         C("c", "Value", "Key", "#ffffff", when={"fact": "color"}),
+        X("d", "Shape", "Key", "", when={"fact": "shape"}, help="Path data; the engine morphs it into the next key's shape"),
         CH("ease", list(_EASES), "Ease", "Key", "smooth"),
         N("x1", "Curve x1", "Curve", 0, 1, 0.01, when=IS("ease", "custom"), default=0.25),
         N("y1", "Curve y1", "Curve", -2, 3, 0.01, when=IS("ease", "custom"), default=0.1),
@@ -295,4 +306,11 @@ def defaults(kind: str) -> dict:
 def animatable(kind: str) -> list[str]:
     """The fields of `kind` that keys may drive."""
     still = STILL.get(kind, set()) | STILL["*"]
-    return [p.name for p in FIELDS.get(kind, ()) if p.type in ("number", "color") and p.name not in still]
+    return [p.name for p in FIELDS.get(kind, ()) if (p.type in ("number", "color") or (kind, p.name) == ("path", "d"))
+            and p.name not in still]
+
+
+def key_field(kind: str, prop: str) -> str:
+    """Where a key of `kind.prop` keeps its value: `c` (a colour), `d` (a path's shape) or `v` (a number)."""
+    t = param(kind, prop).type
+    return "c" if t == "color" else "d" if t == "text" else "v"

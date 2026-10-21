@@ -57,7 +57,7 @@ class Item:
         for t, v in sorted(keys.items()):
             value, e = v if isinstance(v, tuple) else (v, ease)
             k = {"id": key_id(self.id, prop, t), "type": "key", "prop": prop, "t": float(t),
-                 ("c" if p.type == "color" else "v"): p.check(value, f"{self.id}.{prop} at {t} s"), "ease": e}
+                 F.key_field(self.node["type"], prop): p.check(value, f"{self.id}.{prop} at {t} s"), "ease": e}
             F.param("key", "ease").check(e, f"{self.id}.{prop} at {t} s")
             self.node["keys"].append(k)
         return self

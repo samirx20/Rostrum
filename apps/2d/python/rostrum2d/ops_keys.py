@@ -8,16 +8,19 @@ from rostrum_core import Param, ids
 from rostrum_core.errors import codes
 from rostrum_core.tree import index
 
-from . import fields as F
+from . import fields as F, pathdata
 from .easing import BEZIERS, NAMES as EASES
-from .evaluate import keys_of, track_value
+from .evaluate import key_value, keys_of, track_value
 from .kind import REGISTRY as R
 
 OWNERS = F.ANIMATED_OWNERS
 PROP = Param.text("prop", label="Field", required=True, help="The field to animate (x, opacity, fill …)")
 V = Param.number("v", label="Value", help="For a number field")
 C = Param.color("c", label="Colour", help="For a colour field")
+D = Param.text("d", label="Shape", help="For a path's shape: path data (absolute M, L, C, Z), morphed between keys")
 EASE = Param.choice("ease", EASES, label="Ease", help="Shapes the way to the next key")
+
+_KINDS = {"v": "number", "c": "colour", "d": "shape (path data)"}
 
 
 def key_id(owner: str, prop: str, t: float) -> str:
@@ -29,14 +32,19 @@ def _checked_value(ctx, owner: dict, prop: str, args: dict):
     allowed = F.animatable(owner["type"])
     if prop not in allowed:
         ctx.fail(codes.BAD_ARGUMENT, f'prop "{prop}"', f"is not an animatable field of a {owner['type']}", allowed)
-    p = F.param(owner["type"], prop)
-    want, other = ("c", "v") if p.type == "color" else ("v", "c")
-    if other in args:
-        ctx.fail(codes.BAD_ARGUMENT, f'"{other}"', f"{prop} is a {'colour' if want == 'c' else 'number'} field",
-                 hint=f"Give {want}.")
+    p, want = F.param(owner["type"], prop), F.key_field(owner["type"], prop)
+    for other in _KINDS:
+        if other != want and other in args:
+            ctx.fail(codes.BAD_ARGUMENT, f'"{other}"', f"{prop} is a {_KINDS[want]} field", hint=f"Give {want}.")
     if want not in args:
         ctx.fail(codes.BAD_ARGUMENT, f'"{want}"', "is required", hint=f"The value of {prop} at this time.")
-    return want, p.check(args[want], f"{ctx.where} › {owner['id']}.{prop}")
+    value = p.check(args[want], f"{ctx.where} › {owner['id']}.{prop}")
+    if want == "d":
+        try:
+            pathdata.commands(value)
+        except ValueError as e:
+            ctx.fail(codes.BAD_ARGUMENT, '"d"', str(e), hint="Absolute M x y, L x y, C x1 y1 x2 y2 x y, Z.")
+    return want, value
 
 
 def settable(ctx, owner: dict, prop: str):
@@ -73,7 +81,7 @@ def put_key(ctx, owner_id: str, prop: str, t: float, args: dict):
 
 @R.operation("key.add", "Set a field's value at a time (adds a key, or changes the one at that time). The field is "
              "animated from then on: its keys alone decide its value.", target=OWNERS, label="Add key",
-             params=[PROP, Param.number("t", label="Time", min=0, max=36000, unit="s", required=True), V, C, EASE])
+             params=[PROP, Param.number("t", label="Time", min=0, max=36000, unit="s", required=True), V, C, D, EASE])
 def key_add(ctx, targets, args):
     for t in targets:
         put_key(ctx, t, args["prop"], args["t"], args)
@@ -86,14 +94,14 @@ def key_remove(ctx, targets, args):
         loc = index(ctx.doc, ctx.kind.lists)[t]
         owner, key = ctx.item(loc.parent), loc.item
         if len(keys_of(owner, key["prop"])) == 1:
-            ctx.set(owner["id"], key["prop"], key.get("c", key.get("v")))
+            ctx.set(owner["id"], key["prop"], key_value(key))
         ctx.remove(t)
 
 
 @R.operation("value.set", "Change a field as a person sees it now: a still field changes; an animated field gets a "
              "key at `at`.", target=OWNERS, label="Set value",
              params=[PROP, Param.number("at", label="At", min=0, max=36000, unit="s",
-                                        help="The time (needed when the field is animated)"), V, C])
+                                        help="The time (needed when the field is animated)"), V, C, D])
 def value_set(ctx, targets, args):
     for t in targets:
         owner, prop = ctx.item(t), args["prop"]

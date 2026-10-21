@@ -18,7 +18,7 @@ from rostrum2d import KIND, run_source
 from . import at, curves, draw, look, motion, rig, video
 from . import lipsync
 
-SKILLS = Path(__file__).resolve().parents[3] / "skills"
+GUIDES = Path(__file__).resolve().parents[3] / "guides"
 INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text / image / group layers animated by keys. "
                 "Read inspect_guide 'start-here', build with run_script, then check your work with look_frame, look_sheet and look_motion. "
                 "Draw on drawing layers with stroke.add calls (one call list = one undo step) and check with look_drawing, "
@@ -45,7 +45,7 @@ def open_documents(project: str, items: list[str]) -> dict:
 
 def make_app(project: str | None = None, items: list[str] | None = None, documents: dict | None = None) -> App:
     docs = documents if documents is not None else open_documents(project, items or [])
-    return App("rostrum-2d", docs, run_source=run_source, instructions=INSTRUCTIONS, guides=Guides().load_folder(SKILLS),
+    return App("rostrum-2d", docs, run_source=run_source, instructions=INSTRUCTIONS, guides=Guides().load_folder(GUIDES),
                folder=project)
 
 

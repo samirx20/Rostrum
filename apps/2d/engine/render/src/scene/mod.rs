@@ -8,6 +8,9 @@ pub mod fields;
 pub mod follow;
 pub mod fonts;
 pub mod letters;
+pub mod matte;
+pub mod morph;
+pub mod path_data;
 pub mod stage;
 pub mod stage_type;
 pub mod stage_fx;
@@ -25,7 +28,7 @@ use fields::{Kind, Role};
 pub const FORMAT: &str = "rostrum-2d-scene";
 pub const VERSION: u64 = 1;
 
-/// One key: its time, its value (a number, or a colour kept as written and in linear light) and the ease of
+/// One key: its time, its value (a number, a colour kept as written and in linear light, or a path's shape) and the ease of
 /// the stretch it starts.
 #[derive(Clone, Debug)]
 pub struct Key {
@@ -38,6 +41,8 @@ pub struct Key {
 pub enum KeyValue {
     Number(f64),
     Color(String, [f64; 3]),
+    /// A path's `d`, blended to the next key's by morph.rs.
+    Path(String),
 }
 
 /// One item of the scene: still values (`props`, every field present), keys per animated field (sorted by time),
@@ -83,6 +88,7 @@ impl Scene {
         crate::rig::check(&comp)?;
         crate::camera::check(&comp)?;
         follow::check(&comp)?;
+        matte::check(&comp)?;
         let fonts = fonts::list(&v["fonts"])?;
         type_font::register(&fonts);
         Ok(Scene { comp, fonts })
@@ -130,6 +136,7 @@ impl Scene {
         crate::rig::check(&next)?;
         crate::camera::check(&next)?;
         follow::check(&next)?;
+        matte::check(&next)?;
         self.comp = next;
         Ok(list.len())
     }
@@ -250,7 +257,7 @@ fn track(id: &str, kind: &str, f: &fields::Field, keys: &Value) -> Result<Vec<Ke
     let mut out = vec![];
     for k in list {
         let obj = k.as_object().ok_or_else(|| format!("{id}.{name}: a key must be an object"))?;
-        if let Some(bad) = obj.keys().find(|k| !matches!(k.as_str(), "t" | "v" | "c" | "ease" | "x1" | "y1" | "x2" | "y2" | "stiffness" | "damping")) {
+        if let Some(bad) = obj.keys().find(|k| !matches!(k.as_str(), "t" | "v" | "c" | "d" | "ease" | "x1" | "y1" | "x2" | "y2" | "stiffness" | "damping")) {
             return Err(format!("{id}.{name}: a key has no field \"{bad}\""));
         }
         let t = k["t"].as_f64().ok_or_else(|| format!("{id}.{name}: a key without a time t"))?;
@@ -259,6 +266,7 @@ fn track(id: &str, kind: &str, f: &fields::Field, keys: &Value) -> Result<Vec<Ke
                 let c = k["c"].as_str().ok_or_else(|| format!("{id}.{name}: a colour key needs c (#rrggbb) at t={t}"))?;
                 KeyValue::Color(c.to_string(), eval::parse_hex(c).ok_or_else(|| format!("{id}.{name}: {c} is not a colour #rrggbb"))?)
             }
+            Kind::Text => KeyValue::Path(k["d"].as_str().ok_or_else(|| format!("{id}.{name}: a shape key needs d (path data) at t={t}"))?.to_string()),
             _ => KeyValue::Number(k["v"].as_f64().ok_or_else(|| format!("{id}.{name}: a number key needs v at t={t}"))?),
         };
         let ease_name = match &k["ease"] {
@@ -269,5 +277,15 @@ fn track(id: &str, kind: &str, f: &fields::Field, keys: &Value) -> Result<Vec<Ke
         out.push(Key { t, value, ease });
     }
     out.sort_by(|a, b| a.t.total_cmp(&b.t));
+    for w in out.windows(2) {
+        if let (KeyValue::Path(a), KeyValue::Path(b)) = (&w[0].value, &w[1].value) {
+            morph::blend(id, a, b, 0.5).map_err(|e| format!("{e} (morphing from the key at t={} to the key at t={})", w[0].t, w[1].t))?;
+        }
+    }
+    if let [k] = &out[..] {
+        if let KeyValue::Path(d) = &k.value {
+            path_data::read(id, d).map_err(|e| format!("{e} (the key at t={})", k.t))?;
+        }
+    }
     Ok(out)
 }

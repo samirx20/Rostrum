@@ -1,7 +1,8 @@
-# Rigging: bones, binds and IK
+# Character rigging and lip sync
 
-How to make a figure move from a few joints instead of redrawing every pose. This guide is about the tools; what you
-build, and how it moves, is yours. Design and exact maths: `apps/2d/RIG.md`.
+How to make a figure move from a few joints instead of redrawing every pose, and how to make a mouth follow a voice.
+This guide is about the tools; what you build, and how it moves, is yours. Design and exact maths: `apps/2d/RIG.md`;
+lip sync: `apps/2d/LIPSYNC.md`.
 
 ## The parts
 
@@ -26,8 +27,8 @@ show the same thing.
    `bone.add id=thigh parent=hip length=180`, `bone.add id=shin parent=thigh length=170`.
    Fix a bone's rest place later with `bone.set` (x, y, angle, length). That is the *rest pose*: pivot on the
    real joint of the picture (the knee, the shoulder), not the middle of the part.
-3. Look: the engine's `bones` request (at a time) gives each bone's pivot, tip and angle in comp px. Put a
-   contact sheet next to it and check the pivots sit on the joints.
+3. Look: `look_rig` (at a time) draws each bone's pivot and tip over the frame and gives them in comp px. Check the
+   pivots sit on the joints.
 
 ## 2. Bind pictures to bones
 
@@ -68,7 +69,7 @@ An IK chain makes the lower bone's tip reach a point; the engine finds the two t
   `targetY`) starts at the shin's tip, so nothing jumps.
 - Move the foot by keying `targetX` / `targetY`. A target too far to reach: the leg straightens toward it.
 - `bend` picks the way the knee folds (`clockwise` / `counterclockwise`). Flip it if the knee points the wrong way.
-- Check with the `bones` request: each ik reports its target and `gap`, how far the tip misses it (0 = reached).
+- Check with `look_rig`: each ik reports its target and `gap`, how far the tip misses it (0 = reached).
 
 ### Pin feet in a walk
 
@@ -82,6 +83,54 @@ Key the target through the lift and swing, and the pin catches it when it lands.
 `mode` is `ik` or `fk` per chain. In `fk` the chain follows the bones' own `rotation`, and the target fields are not
 shown. To blend over time keep `mode=ik` and key `mix` (1 = the IK pose, 0 = the FK pose): an arm that swings free,
 then grabs a handle. Key `mix` over a few frames, not one.
+
+## Seeing a rig
+
+- `look_rig time=…` (or `frame=`): the frame with every skeleton drawn over it: each bone a yellow line from pivot to tip, a
+  white dot at the pivot, each IK target a red cross (green square while pinned). It also returns the posed bones in comp px.
+- `inspect_rig_motion start end`: per IK chain, sampled every frame: the tip's path, the largest gap to its target, and for
+  each pinned span how far the tip moved (over 0.5 px = a sliding foot). Facts only.
+- `look_frame`, `look_sheet`, `look_motion` as always. A rig's `x`, `y`, `scale` and so on animate like any layer's.
+
+## Cut-out characters
+
+A cut-out figure is a rig whose layers are separate pictures (shapes, paths, images, drawings), one per moving part, each
+with a rigid bind (or a bend bind at a fold). Bring the parts in with `import-and-export` (PSD layers come in as image layers,
+SVG as paths), put them in a `rig`, then add bones at the joints.
+
+## Poses
+
+Not yet: named poses, pose libraries, mirror pose, copy a pose between frames. A pose today is the keys on the bones' `rotation`
+/ `scale` / `moveX` / `moveY` and the IK `targetX` / `targetY` / `pin` / `mix`. To reuse one, key the same values again at
+another time (a loop in the script).
+
+## Lip sync
+
+A mouth drawn in a few shapes (one layer per shape, X A B C D E F G H; any subset works, the nearest drawn shape stands in
+for a missing one) follows a voice clip. The clip is heard once, the result is stored, and the mouth layers get ordinary
+`opacity` keys with `hold` ease: 1 while their shape shows, 0 otherwise. You can move or change any of them by hand.
+
+Hear it first, changing nothing: `inspect_lipsync source=<wav> text="the words said" at=0.5 shapes={"X": "mouth_X", ...}`.
+It lists every phone, word and mouth cue in composition seconds, and with `shapes` which layer shows when. Timing tools:
+`lead_frames` (shapes start before the sound; default 1), `min_frames` (shorter shapes give their time away; default 1),
+`rest_gap` (a silence longer than this closes the mouth; default 0.25 s), `tail` (how long a sound lasts; default 0.08 s).
+
+Apply it in a script (the mouth layers must be made earlier in the same script; a re-run keeps a person's edited keys):
+
+```python
+with rig("puppet", w=1920, h=1080):
+    rest = path("mouth_X", d="M 0 0 L 40 0")
+    wide = path("mouth_D", d=polygon(6, 24))
+    said = lipsync("take.wav", at=0.5, text="Every city keeps one hour.", shapes={"X": rest, "D": wide}, lead_frames=1)
+```
+
+Or as an operation: `lipsync.apply` with `target` = the rig or group, `source`, `at`, `text`, `shapeX` … `shapeH`, `leadFrames`.
+It only adds keys; to redo a mouth, `key.clear` its opacity first. Words the dictionary lacks need
+`pronounce={"rostrum": "R AA1 S T R AH0 M"}`. Check with `look_frame` on the mouth at a few word starts, then listen to a render.
+The first run on a clip loads a speech model (a GPU job, a few seconds); after that it reads the cache.
+
+Not yet: lip sync from a RostrumSound voice line or a shared marker as `at` (today `source` is a WAV and `at` is seconds),
+languages other than English with words.
 
 ## Tips
 

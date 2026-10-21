@@ -1,7 +1,7 @@
 //! The one animation model (ENGINE_CONTRACT.md § 3), ported from `apps/2d/python/rostrum2d/evaluate.py` and
 //! `scene.py` `frame_at`: a field with keys is decided by its keys alone; between key a and key b,
 //! p = ease_a((t − a.t) / (b.t − a.t)) and the value is a + (b − a)·p; before the first key and after the last the
-//! value holds. Colours mix in linear light. A layer outside start ≤ t < end is left out.
+//! value holds. Colours mix in linear light; a path's shape blends point by point (morph.rs). A layer outside start ≤ t < end is left out.
 
 use serde_json::{Map, Value};
 
@@ -107,7 +107,8 @@ pub fn track_value(keys: &[Key], t: f64) -> Value {
             return match (&k0.value, &k1.value) {
                 (KeyValue::Color(_, a), KeyValue::Color(_, b)) => Value::String(mix(a, b, p.clamp(0.0, 1.0))),
                 (KeyValue::Number(a), KeyValue::Number(b)) => Value::from(a + (b - a) * p),
-                _ => unreachable!("a field's keys are all numbers or all colours (checked at load)"),
+                (KeyValue::Path(a), KeyValue::Path(b)) => Value::String(super::morph::blend("path", a, b, p).unwrap_or_else(|e| panic!("{e} (checked at load)"))),
+                _ => unreachable!("a field's keys are all numbers, all colours or all shapes (checked at load)"),
             };
         }
     }
@@ -118,7 +119,7 @@ impl KeyValue {
     fn as_json(&self) -> Value {
         match self {
             KeyValue::Number(v) => Value::from(*v),
-            KeyValue::Color(written, _) => Value::String(written.clone()),
+            KeyValue::Color(written, _) | KeyValue::Path(written) => Value::String(written.clone()),
         }
     }
 }

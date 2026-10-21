@@ -4,7 +4,7 @@ the numbers; there is no score and no opinion about taste.
 """
 from __future__ import annotations
 
-from rostrum2d.evaluate import keys_of
+from rostrum2d.evaluate import key_value, keys_of
 
 from .geometry import comp_size, flatten, problems_showing
 from .motion_facts import HOLD_MIN_S, all_layers, r, windows
@@ -69,7 +69,7 @@ def dead_keys(comp: dict, duration: float) -> list[dict]:
             label = layer["id"] if owner is layer else f'{layer["id"]}.{owner["id"]}'
             for prop in sorted({k["prop"] for k in owner.get("keys", [])}):
                 keys = keys_of(owner, prop)
-                vals = [k.get("v", k.get("c")) for k in keys]
+                vals = [key_value(k) for k in keys]
                 if len(keys) == 1:
                     out.append(finding("key_does_nothing", f"{label}.{prop} has one key (at {keys[0]['t']} s): a single key never moves; the value is held at {vals[0]} the whole time.", owner=label, field=prop))
                 elif len(set(vals)) == 1:

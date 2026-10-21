@@ -34,14 +34,22 @@ def mix_color(a: str, b: str, p: float) -> str:
     return "#" + "".join(f"{round(_srgb(x + (y - x) * p) * 255):02x}" for x, y in zip(ca, cb))
 
 
+def key_value(key: dict):
+    """A key's value, whichever kind it holds (v, c or d)."""
+    return next(key[f] for f in ("v", "c", "d") if f in key)
+
+
 def track_value(keys: list[dict], t: float):
-    """The value of a sorted, non-empty list of keys at time t."""
-    field = "c" if "c" in keys[0] else "v"
+    """The value of a sorted, non-empty list of keys at time t. A path's shape (`d`) is morphed by the engine only;
+    here it reads as the shape of the key that starts the stretch."""
+    field = next(f for f in ("v", "c", "d") if f in keys[0])
     if t <= keys[0]["t"]:
         return keys[0][field]
     for k0, k1 in zip(keys, keys[1:]):
         if t < k1["t"]:
             p = ease(k0, (t - k0["t"]) / (k1["t"] - k0["t"]))
+            if field == "d":
+                return k0["d"]
             if field == "c":
                 return mix_color(k0["c"], k1["c"], min(1.0, max(0.0, p)))
             return k0["v"] + (k1["v"] - k0["v"]) * p
