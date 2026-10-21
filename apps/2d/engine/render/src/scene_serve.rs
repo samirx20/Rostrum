@@ -16,6 +16,8 @@
 //! - `{"edit": [{"id", "props"?: {…}, "anim"?: {field: [keys] | null}}, …]}` → `{"ok": true, "edits": n}`: small
 //!   changes to the held scene (a drag), checked as a load is; the next frame shows them.
 //! - `{"bones": {"t": 1.25}}` → `{"ok": true, "rigs": {…}}`: every rig's posed bones and IK targets in comp px (rig/bones.rs, RIG.md).
+//! - `{"outline": {"id", "t"}}` → `{"ok": true, "d": "…"|null}`: a path layer's varied (tapered / width-profile) stroke as filled-outline
+//!   path data in the layer's box px, at `t`; `d` null when the stroke is even (scene/outline_cmd.rs; the Lottie export's source).
 //! - `{"measure": {"items": [{"id", "body", "font", "size", "weight", "stretch", "tracking", "lineHeight", "align", "boxWidth", …}]}}`
 //!   → `{"ok": true, "sizes": {id: [w, h]}}`: each text's laid-out box in its own px, by the path that draws it (scene/measure.rs);
 //!   with the loaded scene's fonts, else the app's. Needs no scene and no open page.
@@ -102,6 +104,10 @@ pub fn measure(held: &Held, req: &Value) -> Result<Value, String> {
 pub fn bones(held: &Held, req: &Value) -> Result<Value, String> {
     let t = req["t"].as_f64().ok_or("bones needs t (seconds)")?;
     Ok(crate::rig::bones(&held.scene()?.comp, t))
+}
+
+pub fn outline(held: &Held, req: &Value) -> Result<Value, String> {
+    crate::scene::outline_cmd::outline(&held.scene()?.comp, req)
 }
 
 /// The stage markup at `t`, and the ms it took.

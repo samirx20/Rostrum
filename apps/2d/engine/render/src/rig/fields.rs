@@ -10,7 +10,7 @@ pub const BONE: &[Field] = &[
     ("x", Number), ("y", Number), ("angle", Number), ("length", Number),
 ];
 pub const IK: &[Field] = &[
-    ("bone", Text), ("mode", Choice(&["ik", "fk"])), ("targetX", Number), ("targetY", Number), ("mix", Number),
+    ("bone", Text), ("mode", Choice(&["ik", "fk"])), ("chain", Number), ("targetX", Number), ("targetY", Number), ("mix", Number),
     ("bend", Choice(&["clockwise", "counterclockwise"])), ("pin", Number),
 ];
 pub const BIND: &[Field] = &[("layer", Text), ("bone", Text), ("bone2", Text), ("grid", Number), ("soft", Number)];

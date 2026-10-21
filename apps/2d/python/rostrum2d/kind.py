@@ -53,7 +53,12 @@ def facts(item: dict, doc=None) -> dict:
     return {}
 
 
-_NEEDS = {"v": "v (a number)", "c": "c (a colour)", "d": "d (path data)"}
+_NEEDS = {"v": "v (a number)", "c": "c (a colour)", "d": "d (text: path data, or a width profile \"pos,mult …\")"}
+
+
+def check_text(prop: str, text: str):
+    """A text key's value read by its own parser (a path's `d` or its `widthProfile`); ValueError says what is wrong."""
+    (widthprofile.parse if prop == "widthProfile" else pathdata.commands)(text)
 
 
 def _check_keys(owner: dict, problems: list):
@@ -69,9 +74,9 @@ def _check_keys(owner: dict, problems: list):
             problems.append(f'key {k["id"]}: a {prop} key needs {_NEEDS[want]}')
         elif want == "d":
             try:
-                pathdata.commands(k["d"])
+                check_text(prop, k["d"])
             except ValueError as e:
-                problems.append(f'key {k["id"]}: {owner["id"]}.d at {k.get("t")} s: {e}')
+                problems.append(f'key {k["id"]}: {owner["id"]}.{prop} at {k.get("t")} s: {e}')
         if (prop, k.get("t")) in seen:
             problems.append(f'{owner["id"]}: two {prop} keys at {k.get("t")} s')
         seen.add((prop, k.get("t")))

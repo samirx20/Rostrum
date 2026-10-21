@@ -48,7 +48,7 @@ fn rig(pose: &Pose, m: Aff) -> Value {
     let mut iks = Map::new();
     for ik in &pose.iks {
         let (target, tip) = (m.apply(ik.target), m.apply(ik.tip));
-        iks.insert(ik.id.clone(), json!({ "targetX": target.0, "targetY": target.1, "gap": dist(target, tip) }));
+        iks.insert(ik.id.clone(), json!({ "targetX": target.0, "targetY": target.1, "gap": dist(target, tip), "bones": ik.bones }));
     }
     json!({ "bones": bones, "iks": iks })
 }

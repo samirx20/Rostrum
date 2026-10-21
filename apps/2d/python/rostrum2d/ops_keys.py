@@ -1,5 +1,5 @@
 """Keys: the one way anything moves. The four generic operations (key.add, key.remove, value.set, key.clear) come
-from rostrum_core.keys; this file gives them 2D's field rules (`d` shapes, expressions, valid-when) and adds the
+from rostrum_core.keys; this file gives them 2D's field rules (`d` shapes and width profiles, expressions, valid-when) and adds the
 curve of a field (key.handles). A key's id comes from its owner, field and time (`title.opacity.k1500`).
 Changing a key's time, value or ease is `key.set` (generated in kind.py).
 """
@@ -9,15 +9,16 @@ from rostrum_core import Param
 from rostrum_core.errors import codes
 from rostrum_core.keys import BEZIERS, keys_of, register_key_ops, track_value
 
-from . import fields as F, pathdata
-from .kind import REGISTRY as R
+from . import fields as F
+from .kind import REGISTRY as R, check_text
 
 OWNERS = F.ANIMATED_OWNERS
-D = Param.text("d", label="Shape", help="For a path's shape: path data (absolute M, L, C, Z), morphed between keys")
+D = Param.text("d", label="Shape", help="For a path's shape: path data (absolute M, L, C, Z), morphed between keys; "
+               "for its widthProfile: \"pos,mult …\", blended between keys")
 V = Param.number("v", label="Value", help="For a number field")
 C = Param.color("c", label="Colour", help="For a colour field")
 
-_KINDS = {"v": "number", "c": "colour", "d": "shape (path data)"}
+_KINDS = {"v": "number", "c": "colour", "d": "text (path data or width profile)"}
 
 
 def _checked_value(ctx, owner: dict, prop: str, args: dict):
@@ -34,9 +35,10 @@ def _checked_value(ctx, owner: dict, prop: str, args: dict):
     value = p.check(args[want], f"{ctx.where} › {owner['id']}.{prop}")
     if want == "d":
         try:
-            pathdata.commands(value)
+            check_text(prop, value)
         except ValueError as e:
-            ctx.fail(codes.BAD_ARGUMENT, '"d"', str(e), hint="Absolute M x y, L x y, C x1 y1 x2 y2 x y, Z.")
+            ctx.fail(codes.BAD_ARGUMENT, '"d"', str(e), hint='"pos,mult pos,mult …", positions 0..1 increasing, multipliers 0 or more.'
+                     if prop == "widthProfile" else "Absolute M x y, L x y, C x1 y1 x2 y2 x y, Z.")
     return want, value
 
 

@@ -44,6 +44,18 @@ fn rig(r: &Node) -> R {
         if parent(lo).is_empty() {
             return Err(format!("{}.bone: {} has no parent bone (an ik names the chain's lower bone; its parent is the upper)", ik.id, lo.id));
         }
+        let n = num(&ik.props, "chain");
+        if !(2.0..=32.0).contains(&n) || n.fract() != 0.0 {
+            return Err(format!("{}.chain: {n} is not a whole number of bones from 2 to 32", ik.id));
+        }
+        let (mut have, mut cur) = (1, parent(lo));
+        while !cur.is_empty() && have < n as usize {
+            have += 1;
+            cur = parent(bones[cur.as_str()]);
+        }
+        if have < n as usize {
+            return Err(format!("{}.chain: {n} bones from {} up, but the rig has only {have} there", ik.id, lo.id));
+        }
         if let Some(other) = chains.insert(lo.id.as_str(), ik.id.as_str()) {
             return Err(format!("{}.bone: {} already ends the chain {other}", ik.id, lo.id));
         }

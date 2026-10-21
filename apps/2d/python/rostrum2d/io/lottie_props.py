@@ -18,6 +18,7 @@ class Ctx:
     duration: float
     report: list[str] = field(default_factory=list)
     layer: str = ""
+    outlines: object = None          # lottie_outline.Outlines: asks the engine for varied-stroke outlines
 
     def say(self, text: str) -> None:
         line = f'layer "{self.layer}": {text}'

@@ -5,8 +5,8 @@ up to the composition's (default every frame). Effects, masks and a rig's bones 
 Into the scene (scene.py): every animated field of a stepped item is sent as `hold` keys, one every n frames from 0
 to the composition's length, each holding the value the field has on that frame (its own keys, or the per-frame keys
 of an expression or an auto layout). The engine draws plain keys and never sees the setting; the person's keys stay
-as they are, so turning it back to every frame gives the smooth motion back. A path's shape (`d`) is not stepped
-(its morph is the engine's own); a video's frames and a drawing's held frames are not changed.
+as they are, so turning it back to every frame gives the smooth motion back. A path's shape and width profile (text
+keys, `d`) are not stepped (their blends are the engine's own); a video's frames and a drawing's held frames are not changed.
 """
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ def apply(node: dict, items: dict[str, dict], duration: float, fps: float, n: in
     own = items.get(node["id"], {}).get(FIELD, "group" if n else "1")
     n = n if own == "group" else int(own)
     if n > 1 and node.get("anim"):
-        node["anim"] = {prop: keys if prop == "d" else hold(keys, n, duration, fps) for prop, keys in node["anim"].items()}
+        node["anim"] = {prop: keys if "d" in keys[0] else hold(keys, n, duration, fps) for prop, keys in node["anim"].items()}
     for key in ("effects", "masks", "layers", "rig"):
         for child in node.get(key, []):
             apply(child, items, duration, fps, n)

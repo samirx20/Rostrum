@@ -12,6 +12,7 @@ use super::stage_type;
 
 #[path = "stage_path.rs"]
 mod path;
+pub(crate) use path::outline_d;
 
 type R<T> = Result<T, String>;
 

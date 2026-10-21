@@ -1,13 +1,12 @@
-"""Long IK chains are solved in Python (rig/chain.py) on top of a Python copy of the engine's FK (rig/fk.py): the
-copy must agree with the engine, or a chain's base would be wrong without anything saying so. Poses: save, apply and
-blend keys the rig in one step."""
+"""Long IK chains are the engine's (rig/fabrik.rs): the scene sends the ik with its `chain`, and the engine's `bones`
+answer reports the chain reaching its target, so look_rig and inspect_rig_motion see it. Poses: save, apply and blend
+keys the rig in one step."""
 import os
 
 import pytest
 from rostrum_core import Document, Who
 
 from rostrum2d import KIND, run_source
-from rostrum2d.rig import chain, fk
 from rostrum2d.scene import describe
 
 SAM = Who.person("sam")
@@ -32,29 +31,17 @@ def doc():
     return d
 
 
-def test_a_long_chain_reaches_its_target_and_its_ik_stays_off_the_engine():
-    rig = doc().item("pup")
-    for t in (0, 0.5, 1):
-        posed = fk.pose(rig, t, turns=chain.solve(rig, t, {}))
-        assert fk.tip(posed["d"]) == pytest.approx(chain.target(rig["iks"][0], t), abs=0.05)
-    scene = describe(doc().data)
-    nodes = scene["comp"]["layers"][0]["rig"]
-    assert not [n for n in nodes if n["type"] == "ik"]
-    assert len(next(n for n in nodes if n["id"] == "a")["anim"]["rotation"]) == 11
-
-
 @pytest.mark.skipif(not os.environ.get("ROSTRUM2D_ENGINE"), reason="needs a built engine (ROSTRUM2D_ENGINE)")
-def test_python_fk_matches_the_engine():
+def test_the_engine_solves_a_long_chain_and_reports_it():
     from rostrum2d.engine import Engine
-    d = doc()
-    rig = d.item("pup")
+    scene = describe(doc().data)
+    tail = next(n for n in scene["comp"]["layers"][0]["rig"] if n["id"] == "tail")
+    assert tail["props"]["chain"] == 4
     with Engine() as eng:
-        eng.load(describe(d.data))
-        for t in (0.3, 1.0):
-            got = eng.bones(t)["pup"]["bones"]
-            posed = fk.pose(rig, t, turns=chain.solve(rig, t, {}))
-            for id_ in ("a", "b", "c", "d"):           # rig at x=400, y=400, box 800: rig px = comp px
-                assert (got[id_]["tipX"], got[id_]["tipY"]) == pytest.approx(fk.tip(posed[id_]), abs=0.05)
+        eng.load(scene)
+        for t in (0.0, 0.5, 1.0):
+            ik = eng.bones(t)["pup"]["iks"]["tail"]
+            assert ik["gap"] < 0.05 and ik["bones"] == ["a", "b", "c", "d"]
 
 
 def test_poses_save_apply_and_blend():

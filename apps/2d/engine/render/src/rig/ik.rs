@@ -1,8 +1,10 @@
-//! Two-bone IK (RIG.md › Evaluation 2): the law of cosines turns the upper and lower bone so the lower tip reaches
-//! the target, blended with the FK pose by `mix`; `pin` holds the target from the moment the pin turned on.
+//! IK chains (RIG.md › Evaluation 2): two bones by the law of cosines, turning the upper and lower bone so the lower
+//! tip reaches the target; longer chains by FABRIK (fabrik.rs). Both blend with the pose by `mix`; `pin` holds the
+//! target from the moment the pin turned on.
 
 use serde_json::Value;
 
+use super::fabrik;
 use super::math::{dist, heading, wrap, Pt};
 use super::pose::{num, text, Pose};
 use crate::scene::eval::{props_at, track_value};
@@ -13,25 +15,50 @@ pub struct IkOut {
     pub id: String,
     pub target: Pt,
     pub tip: Pt,
+    /// The chain's bones, top first.
+    pub bones: Vec<String>,
 }
 
-/// Every chain in the order of its upper bone's depth, each re-posing the bones below it.
+/// Every chain in the order of its top bone's depth, each posing on top of the chains above it: two bones by the
+/// law of cosines (`solve`), longer chains by FABRIK (fabrik.rs).
 pub fn apply(pose: &mut Pose, rig: &Node, t: f64) {
-    let mut chains: Vec<(usize, usize, usize, &Node)> = rig.rig.iter().filter(|p| p.kind == "ik").filter_map(|ik| {
+    let mut chains: Vec<(usize, Vec<usize>, &Node)> = rig.rig.iter().filter(|p| p.kind == "ik").filter_map(|ik| {
         let lo = pose.index(ik.props.get("bone").and_then(Value::as_str).unwrap_or(""))?;
-        let up = pose.parent[lo]?;
-        Some((pose.depth(up), up, lo, ik))
+        let bones = bones_of(pose, lo, length(ik));
+        Some((pose.depth(bones[0]), bones, ik))
     }).collect();
     chains.sort_by_key(|c| c.0);
-    for (_, up, lo, ik) in chains {
+    for (_, bones, ik) in chains {
         let p = props_at(ik, t);
         let target = held_target(ik, t, num(&p, "pin") >= 0.5).unwrap_or((num(&p, "targetX"), num(&p, "targetY")));
+        let (clockwise, mix) = (text(&p, "bend") == "clockwise", num(&p, "mix").clamp(0.0, 1.0));
+        let lo = bones[bones.len() - 1];
         if text(&p, "mode") == "ik" {
-            solve(pose, up, lo, target, text(&p, "bend") == "clockwise", num(&p, "mix").clamp(0.0, 1.0));
+            match bones[..] {
+                [up, lo] => solve(pose, up, lo, target, clockwise, mix),
+                _ => fabrik::solve(pose, &bones, target, clockwise, mix),
+            }
         }
         let tip = pose.tip(lo);
-        pose.iks.push(IkOut { id: ik.id.clone(), target, tip });
+        pose.iks.push(IkOut { id: ik.id.clone(), target, tip, bones: bones.iter().map(|&b| pose.ids[b].clone()).collect() });
     }
+}
+
+/// How many bones an ik's chain holds (its `chain`, 2 when unset; check.rs refuses one the rig cannot give).
+pub fn length(ik: &Node) -> usize {
+    ik.props.get("chain").and_then(Value::as_f64).map_or(2, |n| n as usize)
+}
+
+/// The chain's bones, top first: the lower bone and its parents, `n` in all (fewer when the rig runs out).
+fn bones_of(pose: &Pose, lo: usize, n: usize) -> Vec<usize> {
+    let mut out = vec![lo];
+    while out.len() < n {
+        match pose.parent[out[0]] {
+            Some(p) if !out.contains(&p) => out.insert(0, p),
+            _ => break,
+        }
+    }
+    out
 }
 
 /// Turns `up` and `lo` so `lo`'s tip reaches `target` (straight at it when it is out of reach), by `mix` of the way

@@ -74,9 +74,9 @@ fn varied(it: &Item) -> bool {
     it.num("taperStart") > 0.0 || it.num("taperEnd") > 0.0 || !it.str("widthProfile").is_empty()
 }
 
-/// The varied stroke's outline, one `<path>` filled with the stroke's paint. Width at u along the line (or along
-/// the drawn part `s..e`, with taperAlong "drawn") = strokeWidth × profile(u) × taper(u) (width_profile.rs).
-fn varied_stroke(it: &Item, subs: &[Sub], visible: &[Vec<(f64, f64)>], profile: &[(f64, f64)], (s, e): (f64, f64), total: f64, paint: &str) -> String {
+/// The varied stroke's outline as path data. Width at u along the line (or along the drawn part `s..e`, with
+/// taperAlong "drawn") = strokeWidth × profile(u) × taper(u) (width_profile.rs).
+fn varied_d(it: &Item, subs: &[Sub], visible: &[Vec<(f64, f64)>], profile: &[(f64, f64)], (s, e): (f64, f64), total: f64) -> String {
     let (w, ts, te) = (it.num("strokeWidth"), it.num("taperStart").clamp(0.0, 1.0), it.num("taperEnd").clamp(0.0, 1.0));
     let drawn = it.str("taperAlong") == "drawn";
     let mut d = String::new();
@@ -91,7 +91,31 @@ fn varied_stroke(it: &Item, subs: &[Sub], visible: &[Vec<(f64, f64)>], profile: 
         d += &stroke_width::outline(&sub.path, list, it.str("cap"), &width);
         at += sub.len;
     }
+    d
+}
+
+/// The varied stroke's outline, one `<path>` filled with the stroke's paint.
+fn varied_stroke(it: &Item, subs: &[Sub], visible: &[Vec<(f64, f64)>], profile: &[(f64, f64)], window: (f64, f64), total: f64, paint: &str) -> String {
+    let d = varied_d(it, subs, visible, profile, window, total);
     if d.is_empty() { d } else { format!("<path d=\"{d}\" fill=\"{paint}\" fill-rule=\"nonzero\" stroke=\"none\"/>") }
+}
+
+/// A path layer's stroke as filled-outline path data in its box's px (what `content` draws): `Some` only for a
+/// stroke with a taper or a width profile (the Lottie export carries it as a fill, Lottie has no varied stroke).
+/// "" when nothing of the stroke shows (trimmed away, no stroke).
+pub(crate) fn outline_d(it: &Item) -> R<Option<String>> {
+    if !varied(it) {
+        return Ok(None);
+    }
+    let subs = parse(it.id, it.str("d"))?;
+    let (s, e) = (it.num("trimStart").clamp(0.0, 1.0), it.num("trimEnd").clamp(0.0, 1.0));
+    let total: f64 = subs.iter().map(|s| s.len).sum();
+    if !it.on("stroke") || it.num("strokeWidth") <= 0.0 || e <= s || total <= 0.0 {
+        return Ok(Some(String::new()));
+    }
+    let dash = (it.num("dash") > 0.0).then(|| (it.num("dash"), it.num("gap").max(0.0), it.num("dashOffset")));
+    let profile = width_profile::read(it.id, it.str("widthProfile"))?;
+    Ok(Some(varied_d(it, &subs, &visible(it, &subs, (s, e), dash, total)?, &profile, (s, e), total)))
 }
 
 /// The SVG gradient for a gradient effect over a w × h box (CSS geometry: angle 180 = top to bottom; radial =

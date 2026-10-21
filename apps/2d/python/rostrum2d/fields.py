@@ -2,7 +2,8 @@
 the scene description and its defaults all read it. Each field carries `valid_when` and `importance` (rule of
 individuality: a control that doesn't apply right now is absent, never greyed).
 
-Animatable = every number and colour field, and a path's shape `d` (the engine morphs it), except those in STILL
+Animatable = every number and colour field, a path's shape `d` (the engine morphs it) and its `widthProfile` (blended,
+widthprofile.py), except those in STILL
 (they describe the item, not a moment).
 """
 from __future__ import annotations
@@ -290,7 +291,7 @@ for _t in LAYERS:
     FIELDS[_t] += _stepped.LAYER
 EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", *_motion.EFFECTS)
 ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask",) + _rig.OWNED_KEYS
-STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h"}, "path": {"w", "h", "widthProfile"},
+STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h"}, "path": {"w", "h"},
          "group": {"columns"},
          "video": {"w", "h", "offset", "speed"},
          "text": {"letterDelay", "letterSeed"},
@@ -308,14 +309,17 @@ def defaults(kind: str) -> dict:
     return {p.name: p.default for p in FIELDS[kind]}
 
 
+TEXT_KEYED = {("path", "d"), ("path", "widthProfile")}   # text fields keys drive; the key keeps the text in `d`
+
+
 def animatable(kind: str) -> list[str]:
     """The fields of `kind` that keys may drive."""
     still = STILL.get(kind, set()) | STILL["*"]
-    return [p.name for p in FIELDS.get(kind, ()) if (p.type in ("number", "color") or (kind, p.name) == ("path", "d"))
+    return [p.name for p in FIELDS.get(kind, ()) if (p.type in ("number", "color") or (kind, p.name) in TEXT_KEYED)
             and p.name not in still]
 
 
 def key_field(kind: str, prop: str) -> str:
-    """Where a key of `kind.prop` keeps its value: `c` (a colour), `d` (a path's shape) or `v` (a number)."""
+    """Where a key of `kind.prop` keeps its value: `c` (a colour), `d` (text: a path's shape or width profile) or `v` (a number)."""
     t = param(kind, prop).type
     return "c" if t == "color" else "d" if t == "text" else "v"

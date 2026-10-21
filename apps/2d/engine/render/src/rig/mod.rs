@@ -6,6 +6,7 @@ pub mod fields;
 mod bind;
 mod bones;
 mod check;
+mod fabrik;
 mod ik;
 pub mod math;
 mod pose;

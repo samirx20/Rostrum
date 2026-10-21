@@ -72,7 +72,7 @@ const PATH: &[Field] = &[
     ("stroke", Toggle), ("strokeColor", Color), ("strokeWidth", Number), ("cap", Choice(&["butt", "round", "square"])),
     ("join", Choice(&["miter", "round", "bevel"])), ("miter", Number), ("dash", Number), ("gap", Number), ("dashOffset", Number),
     ("trimStart", Number), ("trimEnd", Number),
-    // A varied width (super::width_profile, drawn by super::stroke_width); widthProfile is a still value.
+    // A varied width (super::width_profile, drawn by super::stroke_width); widthProfile keys blend by width_profile::blend.
     ("taperStart", Number), ("taperEnd", Number), ("widthProfile", Text), ("taperAlong", Choice(&["line", "drawn"])),
 ];
 const BLUR: &[Field] = &[("radius", Number)];
@@ -127,10 +127,10 @@ pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
 /// Every type the engine reads (for error messages and the fields.py check).
 pub const TYPES: &[&str] = &["comp", "shape", "text", "image", "video", "group", "drawing", "path", "blur", "glow", "gradient", "backdrop", "shadow", "mask", "rig", "bone", "ik", "bind", "camera", "trail", "smear"];
 
-/// Fields keys may drive: numbers, colours and a path's shape `d`, except those that describe the item rather than a moment
+/// Fields keys may drive: numbers, colours, a path's shape `d` and its `widthProfile`, except those that describe the item rather than a moment
 /// (fields.py `STILL`).
 pub fn animatable(kind: &str, field: &Field) -> bool {
-    (matches!(field.1, Number | Color) || (kind == "path" && field.0 == "d")) && kind != "comp" && !matches!(field.0, "start" | "end" | "boxWidth")
+    (matches!(field.1, Number | Color) || (kind == "path" && matches!(field.0, "d" | "widthProfile"))) && kind != "comp" && !matches!(field.0, "start" | "end" | "boxWidth")
         && !(matches!(kind, "drawing" | "path") && matches!(field.0, "w" | "h"))
         && !(kind == "text" && matches!(field.0, "letterDelay" | "letterSeed"))
         && !(kind == "video" && matches!(field.0, "w" | "h" | "offset" | "speed"))

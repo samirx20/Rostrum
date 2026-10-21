@@ -108,7 +108,8 @@ pub fn track_value(keys: &[Key], t: f64) -> Value {
                 (KeyValue::Color(_, a), KeyValue::Color(_, b)) => Value::String(mix(a, b, p.clamp(0.0, 1.0))),
                 (KeyValue::Number(a), KeyValue::Number(b)) => Value::from(a + (b - a) * p),
                 (KeyValue::Path(a), KeyValue::Path(b)) => Value::String(super::morph::blend("path", a, b, p).unwrap_or_else(|e| panic!("{e} (checked at load)"))),
-                _ => unreachable!("a field's keys are all numbers, all colours or all shapes (checked at load)"),
+                (KeyValue::Profile(_, a), KeyValue::Profile(_, b)) => Value::String(super::width_profile::write(&super::width_profile::blend(a, b, p))),
+                _ => unreachable!("a field's keys are all numbers, all colours, all shapes or all width profiles (checked at load)"),
             };
         }
     }
@@ -119,7 +120,7 @@ impl KeyValue {
     fn as_json(&self) -> Value {
         match self {
             KeyValue::Number(v) => Value::from(*v),
-            KeyValue::Color(written, _) | KeyValue::Path(written) => Value::String(written.clone()),
+            KeyValue::Color(written, _) | KeyValue::Path(written) | KeyValue::Profile(written, _) => Value::String(written.clone()),
         }
     }
 }

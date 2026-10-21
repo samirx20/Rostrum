@@ -109,7 +109,10 @@ def shapes_of(node: dict, ctx: Ctx) -> list[dict]:
         return [*out, group("fill", [*_geometry(node, ctx, False), _fill(node, ctx, grad)])]
     held = frozen(node, ["d"], ctx, "the Lottie export doesn't morph paths yet")["d"]
     subs = [{"ty": "sh", "nm": "path", "ks": _STILL(shape_value(d))} for d in _subpaths(held)]
-    if pr["stroke"]:
+    varied = _varied(node, ctx, grad_fx, grad)
+    if varied:
+        out.append(varied)
+    elif pr["stroke"]:
         trim = _trim(node, ctx, len(subs) > 1)
         sgrad = None if pr["filled"] else gradient(grad_fx, node, ctx, stroke=True)
         out.append(group("stroke", [*subs, *([trim] if trim else []), _stroke(node, ctx, sgrad, True)]))
@@ -117,6 +120,19 @@ def shapes_of(node: dict, ctx: Ctx) -> list[dict]:
         rule = {**_fill(node, ctx, grad), "r": RULE[pr["fillRule"]]}
         out.append(group("fill", [*subs, rule]))
     return out
+
+
+def _varied(node: dict, ctx: Ctx, grad_fx: dict | None, grad: dict | None) -> dict | None:
+    """A taper / width-profile stroke as a filled outline group (Lottie has no varied stroke); None for an even stroke,
+    or when the engine can't give the outline (the report says so, the stroke is then even)."""
+    shapes = ctx.outlines.shapes(node, ctx) if ctx.outlines else None
+    if shapes is None:
+        return None
+    pr = node["props"]
+    sgrad = None if pr["filled"] else gradient(grad_fx, node, ctx)
+    fill = sgrad and {**sgrad, "r": 1} or {"ty": "fl", "nm": "stroke", "o": _STILL(100), "r": 1,
+                                           "c": build(node, ["strokeColor"], lambda p: rgb(p["strokeColor"]), ctx, "stroke colour")}
+    return group("stroke", [*shapes, fill])
 
 
 def _subpaths(d: str) -> list[str]:
