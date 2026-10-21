@@ -15,7 +15,7 @@ import struct
 from pathlib import Path
 
 from ..doc import keys as K
-from ..doc import tempo, times
+from ..doc import markers, tempo, times
 from .song import DRUM_CHANNEL, DRUM_TO_GM
 
 DIVISION = 480
@@ -55,9 +55,8 @@ def _map_track(root) -> list:
         sharps, minor = K.signature(k["key"])
         ev.append((_tick(root, times.seconds(k["at"], root, k["id"])), 1,
                    _meta(0x59, struct.pack("bB", sharps, int(minor)))))
-    for m in root.get("markers", []):
-        ev.append((_tick(root, times.seconds(m["at"], root, m["id"])), 2,
-                   _meta(0x06, m.get("name", m["id"]).encode())))
+    for name, sec in markers.all(root):
+        ev.append((_tick(root, sec), 2, _meta(0x06, name.encode())))
     for s in root.get("sections", []):
         for key, text in (("at", s["name"]), ("end", f"{s['name']}/end")):
             ev.append((_tick(root, times.seconds(s[key], root, s["id"])), 2, _meta(0x07, text.encode())))

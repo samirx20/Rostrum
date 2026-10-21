@@ -121,3 +121,16 @@ fn resampling_keeps_a_tone_at_its_pitch() {
     let ups = out.windows(2).filter(|w| w[0][0] < 0.0 && w[1][0] >= 0.0).count();
     assert!((440..=442).contains(&ups), "{ups}");
 }
+
+#[test]
+fn a_count_in_clicks_at_the_tempo_map_beat_where_it_starts() {
+    // 120 bpm, but from 1.0 s the beats are 0.25 s apart: a count-in from 1.5 s clicks every 250 frames.
+    let (t, c, _n, _o) = rig(120.0);
+    let mut t = t.with_beats(&[0.0, 0.5, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5]);
+    c.send(Cmd::CountIn(1)).unwrap();
+    c.send(Cmd::Play(Some(1.5))).unwrap();
+    let mut frame = 0;
+    let out = run(&mut t, &mut frame, 200);
+    let clicks: Vec<usize> = (0..1000).filter(|&k| out[k] != 0.0 && (k == 0 || out[k - 1] == 0.0)).collect();
+    assert!(clicks.len() >= 4 && clicks.iter().zip([0, 250, 500, 750]).all(|(&a, b)| a.abs_diff(b) <= 1), "{clicks:?}");
+}

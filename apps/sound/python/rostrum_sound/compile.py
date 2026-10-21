@@ -17,7 +17,7 @@ from .doc import effects as FX
 from .doc import fields_design as FDS
 from .doc import playing as PL
 from .doc import plugins
-from .doc import tempo, times
+from .doc import markers, tempo, times
 
 NOTE_KEYS = ("pitch", "at", "dur", "vel", "pan", *PL.NOTE_KEYS)
 HIT_KEYS = ("drum", "at", "vel", "pan", "tune", "decay")
@@ -34,7 +34,7 @@ class _Compiler:
         self.root = root
 
     def time(self, value, where):
-        return times.resolve(value, self.root, where)
+        return markers.resolve(self.root, value, where)
 
     def env(self, value, where):
         return [[self.time(t, where), v] for t, v in value] if isinstance(value, list) else value

@@ -50,4 +50,12 @@ ceiling, the mix is denser than the target allows: turn the loud parts down at t
 
 `render_mix` with `stems: true` writes one WAV per track and per bus (`<bus>.bus.wav`) beside the mix in
 `renders/<item>/vNNN/`. On the screen: Mix › "Render mix and stems" (needs a project folder).
+**The rule, in plain words:** a stem leaves through the master's *volume* (master fader and its automation, the
+fades, and the gain that brings the mix to its loudness target) but not through the master's *glue compressor,
+limiter or master effects* (those can't be split between stems). So the stems add up to the mix exactly wherever
+none of those acted. The manifest (`manifest.json`, `stems_rule`) says how far they can differ:
+`limiter_max_reduction_db` and `glue_max_reduction_db` (the most the limiter / glue turned the mix down, dB),
+`master_effects_on_mix_only` (true if the master has effects, reverb or time warps), `master_gain_db` (already in
+the stems), and `stems_add_up` (true only when all of these are nothing). A limiter reduction of 0.5 dB means the
+stems sum up to 0.5 dB louder than the mix at the worst moment.
 `render_mix` with `master: false` gives the mix before mastering, for someone else to master.

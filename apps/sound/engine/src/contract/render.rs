@@ -89,6 +89,10 @@ pub fn run(job: Job) -> Result<Value, Error> {
             "truePeak": mix.true_peak_series.iter().map(|&v| r2(v)).collect::<Vec<_>>(),
             "correlation": loud.correlation.iter().map(|v| v.map(|c| (c * 1000.0).round() / 1000.0)).collect::<Vec<_>>() },
         "tracks": tracks, "stems": stem_files, "busStems": bus_files, "direct": direct,
+        // What the stems took of the master: its linear gain (they carry it), and what they cannot carry.
+        "master": { "gainDb": r2(mix.master.gain_db), "glueMaxReductionDb": r2(mix.master.glue_db),
+                    "limiterMaxReductionDb": r2(mix.master.limiter_db),
+                    "insertsOnMix": !s.effects.is_empty() || s.master_reverb != "dry" || !s.time_warps.is_empty() },
         "buses": mix.buses.iter().map(|t| json!({ "id": t.name, "peak": t.peak, "rms": t.rms, "lufs": t.lufs })).collect::<Vec<_>>(),
         "ducks": mix.ducks.iter().map(|(t, spans)| json!({ "track": t, "spans": spans.iter().map(|&(a, b, db)| [a, b, db]).collect::<Vec<_>>() })).collect::<Vec<_>>(),
     }))

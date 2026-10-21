@@ -2,7 +2,7 @@
 //! that came in, plays the mix (or the count-in), the metronome and the instrument, and says when it
 //! is heard.
 
-use super::{Out, Transport, CLICK};
+use super::{Out, Transport};
 use crate::live::instrument::Event;
 
 impl crate::live::wasapi::Source for Transport {
@@ -47,12 +47,12 @@ impl crate::live::wasapi::Source for Transport {
         }
         let ch = self.mix.channels;
         let frames = out.len() / ch;
-        let click_len = (CLICK * self.rate) as usize;
+        let click_len = self.click_len();
         for f in 0..frames {
             let k = start as usize + f;
             if self.count_in > 0 {
                 // The count-in: the bar's clicks, then the mix rolls from where it stands.
-                if (self.count_in_total - self.count_in) as f64 >= (self.count_beat as f64 * self.beat).round() {
+                if (self.count_in_total - self.count_in) as f64 >= (self.count_beat as f64 * self.count_beat_len).round() {
                     self.click = Some((k, self.count_beat % self.per_bar as usize == 0));
                     self.count_beat += 1;
                 }

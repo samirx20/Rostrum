@@ -9,7 +9,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
 from rostrum_core import RostrumError, codes, project
-from rostrum_sound.doc import times
+from rostrum_sound.doc import markers, times
 
 LINK = "item:"
 VIDEO = (".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v")
@@ -97,7 +97,7 @@ def start_call(ref: str) -> dict:
 
 def start_marker(root: dict) -> str:
     """The marker the picture starts on ("" when it starts at a plain time)."""
-    return times.marker_ref(root.get("pictureAt")) or ""
+    return markers.ref(root.get("pictureAt")) or ""
 
 
 def link_call(item_id: str) -> dict:

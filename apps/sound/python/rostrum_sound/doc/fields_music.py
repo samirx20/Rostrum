@@ -5,13 +5,13 @@ from __future__ import annotations
 from rostrum_core import Param
 
 from . import keys
-from . import times
+from . import markers
 from . import values as V
 
 
 def _tempo_time(p, v, where):
     """Seconds or {"beat": n}: a tempo change can't sit on a marker (`tempo.py`)."""
-    if times.marker_ref(v) is not None:
+    if markers.ref(v) is not None:
         V._bad(p, v, where, "can't be a marker: a tempo change sits at seconds or a beat", ["2.5", '{"beat": 32}'])
     return V._time(p, v, where)
 

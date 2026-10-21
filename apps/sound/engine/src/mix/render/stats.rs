@@ -26,6 +26,11 @@ pub struct Mix {
     /// Each bus as it leaves (after its effects and fader), kept when any stem is: with the direct tracks' stems
     /// these add up to what reaches the master.
     pub bus_stems: Vec<(String, Vec<Vec<f32>>)>,
+    /// The master's linear gain per sample (fader and its lane, fades, gain to the loudness target): the one
+    /// gain the stems carry (bus.rs computes it; render/ applies it to the stems and empties this). Empty unless asked for.
+    pub master_gain: Vec<f32>,
+    /// What the mastering stage did (fx/master.rs): its gain, and the largest reductions of its glue and limiter.
+    pub master: crate::fx::master::MasterReport,
     /// Energy per band of the file (balance.rs BANDS, dB; a surround bed's stereo fold-down): its tonal balance.
     pub bands: [f64; 5],
 }

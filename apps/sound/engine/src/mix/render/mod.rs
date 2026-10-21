@@ -154,11 +154,21 @@ pub fn render_keep(s: &Schedule, cache: Option<&crate::mix::trackcache::TrackCac
     }
     let (bus_stats, bus_stems) = crate::mix::buses::mix(s, routed, &pres, &mut bus, keep.iter().any(|&k| k))?;
     let t3 = std::time::Instant::now();
-    let mut mix = crate::mix::bus::master(s, bus)?;
+    let keep_stems = keep.iter().any(|&k| k);
+    let mut mix = crate::mix::bus::master(s, bus, keep_stems)?;
     mix.buses = bus_stats;
     prof("master", t3);
     mix.ducks = ducks;
     mix.tracks = stats;
+    // The stems leave through the master's linear gain (fader, lane, fades, loudness gain), the very gain the
+    // mix just took, so they add up to the mix wherever its glue and limiter did not act.
+    let gain = std::mem::take(&mut mix.master_gain);
+    let (mut stems, mut bus_stems) = (stems, bus_stems);
+    for (_, chs) in stems.iter_mut().chain(bus_stems.iter_mut()) {
+        for c in chs.iter_mut() {
+            c.iter_mut().zip(&gain).for_each(|(v, g)| *v *= g);
+        }
+    }
     mix.stems = stems;
     mix.bus_stems = bus_stems;
     Ok(mix)

@@ -17,6 +17,7 @@ pub struct Calibrating {
     pub beat: f64,
     pub device: String,
     pub mic_device: String,
+    pub raw: bool,
 }
 
 pub struct Takes {
@@ -68,12 +69,12 @@ impl Takes {
         let Some(mut t) = self.take.take().filter(|t| !t.samples.is_empty()) else { return };
         if let Some(c) = &self.calibrating {
             match crate::live::calib::measure(&t.samples, self.rate, t.start, c.beat) {
-                Some((_, spread, _)) if spread > 10.0 => println!("{}", serde_json::json!({ "error": format!("the clicks came back {spread:.0} ms apart from each other (noise, or the device fell behind): not stored; calibrate again in a quiet room") })),
-                Some((ms, spread, clicks)) => match crate::live::calib::store(&c.device, &c.mic_device, ms, spread) {
-                    Ok(f) => println!("{}", serde_json::json!({ "calibration": { "offsetMs": (ms * 100.0).round() / 100.0, "spreadMs": (spread * 100.0).round() / 100.0, "clicks": clicks, "file": f } })),
+                Some((_, spread, _)) if spread > 10.0 => println!("{}", serde_json::json!({ "error": format!("the sweeps came back {spread:.0} ms apart from each other (noise, or the device fell behind): not stored; calibrate again in a quiet room") })),
+                Some((ms, spread, clicks)) => match crate::live::calib::store(&c.device, &c.mic_device, c.raw, ms, spread) {
+                    Ok(f) => println!("{}", serde_json::json!({ "calibration": { "offsetMs": (ms * 100.0).round() / 100.0, "spreadMs": (spread * 100.0).round() / 100.0, "sweeps": clicks, "file": f } })),
                     Err(e) => println!("{}", serde_json::json!({ "error": e })),
                 },
-                None => println!("{}", serde_json::json!({ "error": "the microphone did not hear the metronome (fewer than 4 clicks): turn the speakers up, or hold the microphone near them" })),
+                None => println!("{}", serde_json::json!({ "error": "the microphone did not hear the calibration sweeps (fewer than 4 found): turn the speakers up, check the microphone is not muted, or use headphones with the microphone held to them" })),
             }
         }
         t.start -= self.input_offset.unwrap_or(0.0);

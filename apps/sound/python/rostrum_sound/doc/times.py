@@ -9,13 +9,7 @@ seconds), except where seconds are needed here (ids, order checks, marker refere
 """
 from __future__ import annotations
 
-import re
-
-from rostrum_core.errors import RostrumError, codes
-
-from . import tempo
-
-REF = re.compile(r"^#([A-Za-z0-9_.\-]+?)\s*(?:([+-])\s*(\d+(?:\.\d+)?))?$")
+from . import markers, tempo
 
 
 def problem(value, length=False) -> str | None:
@@ -30,7 +24,7 @@ def problem(value, length=False) -> str | None:
         if set(value) != {key} or isinstance(n, bool) or not isinstance(n, (int, float)) or n < 0:
             return f'must be {{"{key}": n}} with n ≥ 0'
         return None
-    if not length and isinstance(value, str) and REF.match(value):
+    if not length and isinstance(value, str) and markers.REF.match(value):
         return None
     return "is not a length" if length else "is not a time"
 
@@ -40,38 +34,9 @@ def forms(length=False) -> list[str]:
                                                               '"#drop+0.5"']
 
 
-def marker_ref(value) -> str | None:
-    """The marker a time names ("#drop+0.5" -> "drop"), or None."""
-    m = REF.match(value) if isinstance(value, str) else None
-    return m.group(1) if m else None
-
-
-def markers(root: dict) -> dict:
-    """name -> the marker item, from a document's root."""
-    return {m.get("name", m["id"]): m for m in root.get("markers", [])}
-
-
-def resolve(value, root: dict, where: str, seen=()):
-    """The time with marker references made seconds; seconds and beats are kept as written."""
-    name = marker_ref(value)
-    if name is None:
-        return value
-    marks = markers(root)
-    if name not in marks:
-        raise RostrumError.not_found(where, "marker", name, marks)
-    if name in seen:
-        raise RostrumError(codes.CHECK_FAILED, where, f'marker "{name}"', "refers to itself through other markers")
-    m = REF.match(value)
-    offset = float(m.group(3) or 0) * (-1 if m.group(2) == "-" else 1)
-    at = seconds(marks[name].get("at", 0), root, f"marker {name}", (*seen, name))
-    if at + offset < 0:
-        raise RostrumError(codes.BAD_ARGUMENT, where, value, "lands before the start of the mix")
-    return round(at + offset, 6)
-
-
 def seconds(value, root: dict, where: str, seen=()) -> float:
-    """Any time as seconds (beats through the tempo map)."""
-    value = resolve(value, root, where, seen)
+    """Any time as seconds (beats through the tempo map); marker references go through `markers.py`."""
+    value = markers.resolve(root, value, where, seen)
     if isinstance(value, dict):
         return tempo.seconds_at(root, float(value["beat"]))
     return float(value)
