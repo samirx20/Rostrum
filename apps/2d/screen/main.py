@@ -44,6 +44,19 @@ def load_doc(args) -> Document:
     return doc
 
 
+def check_shot_path(shot: str):
+    """Fail at once when the picture can't be saved: the folder must exist and be writable, the extension one Qt writes."""
+    from PySide6.QtGui import QImageWriter
+    path = Path(shot).resolve()
+    ext = path.suffix.lstrip(".").lower().encode()
+    if ext not in QImageWriter.supportedImageFormats():
+        sys.exit(f"FAIL: --shot {shot}: Qt cannot write .{ext.decode() or '(no extension)'} files (use .png)")
+    if not path.parent.is_dir():
+        sys.exit(f"FAIL: --shot {shot}: the folder {path.parent} does not exist")
+    if not os.access(path.parent, os.W_OK) or path.is_dir():
+        sys.exit(f"FAIL: --shot {shot}: {path} is not writable")
+
+
 def main():
     a = argparse.ArgumentParser()
     a.add_argument("--doc", nargs=2, metavar=("FOLDER", "ITEM"))
@@ -52,6 +65,8 @@ def main():
     a.add_argument("--step", action="append", default=[])
     a.add_argument("--shot")
     args = a.parse_args()
+    if args.shot:
+        check_shot_path(args.shot)
 
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)

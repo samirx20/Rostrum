@@ -29,6 +29,13 @@ def has_layout(item: dict) -> bool:
     return item.get("type") == "group" and item.get("layout", "none") != "none"
 
 
+def members(group: dict, t: float, p_of=None) -> list[dict]:
+    """The layers of a laid-out group that take a slot at t, in slot order (not cameras, not set apart, showing)."""
+    p_of = p_of or (lambda c: resolve(c, t))
+    return [c for c in group.get("layers", []) if c["type"] != "camera" and not p_of(c).get("layoutApart")
+            and p_of(c)["start"] <= t < p_of(c)["end"]]
+
+
 def solve(comp: dict, t: float, props=None) -> dict[str, dict]:
     """{layer id: {x, y[, w, h]}} for every layer an auto layout places or sizes at time t (others are left out).
     `props(item, t)`: the item's evaluated fields (default evaluate.resolve; the bake passes one that sees
@@ -42,8 +49,7 @@ def solve(comp: dict, t: float, props=None) -> dict[str, dict]:
         return memo_p[item["id"]]
 
     def kids(group):
-        return [c for c in group.get("layers", []) if c["type"] != "camera" and not p_of(c).get("layoutApart")
-                and p_of(c)["start"] <= t < p_of(c)["end"]]
+        return members(group, t, p_of)
 
     def measure(item):
         """The item's own size, with a hugging layout group's size from its layers."""

@@ -5,21 +5,20 @@ one doc.gesture = one undo step. How an edit becomes a call lives in route.py on
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
-from rostrum_core.keys import keys_of
-from rostrum2d.evaluate import resolve
 from rostrum_gui import DocBridge
-from rostrum_gui.edits import Drag
 from rostrum_gui.markers import MarkerWatch
 
-from . import bounds, exprs, outline, route
+from . import bounds, outline
 from .curves import Curves
+from .drags import DragSlots
 from .exporter import Exporter
 from .frames import FrameRenderer
+from .hooks import Hooks2D
 from .painter import Painter
 from .pen import Pen
 
 
-class Bridge2D(DocBridge):
+class Bridge2D(DragSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     pageChanged = Signal()
     frameChanged = Signal()
@@ -46,6 +45,7 @@ class Bridge2D(DocBridge):
         self._timer.timeout.connect(self._tick)
         self.marks = MarkerWatch(doc.folder, self, self.who, self._fail, "2d")   # shared markers: flags, edits, snap
         self.marks.changed.connect(self.markersChanged)
+        self.join_history(self.marks)                       # marker edits undo with the screen's one history
         self.marks.changed.connect(self._render)            # expressions may read marker("…")
         self.selectionChanged.connect(self.outlineChanged)
         self._render()
@@ -118,29 +118,6 @@ class Bridge2D(DocBridge):
         layer = self.selectedLayer
         return next((b for b in bounds.boxes(self.comp(), self._t) if b["id"] == layer), {})
 
-    # ---- the kit's hooks: the 2D animation model (route.py) ---------------------------------------------------
-    def label_of(self, item):
-        owner = self.doc.item(self.doc.parent_of(item["id"])[0]) if item.get("type") == "key" else None
-        return outline.label_of(item, owner)
-
-    def edit_call(self, item_id, param, value):
-        return route.edit_call(self.doc, item_id, param, value, self._t)
-
-    def shown_values(self, item):
-        return route.shown_values(item, self._t)
-
-    def anim_state(self, item, param):
-        return route.anim_state(item, param, self._t, self.comp()["fps"])
-
-    def animate_calls(self, item_id, param):
-        return route.animate_calls(self.doc.item(item_id), param, self._t)
-
-    def expr_state(self, item, param):
-        return exprs.state(item, param)
-
-    def clear_expr_calls(self, item_id, param):
-        return exprs.clear_calls(self.doc.item(item_id), param)
-
     def _first(self):
         rows = outline.layer_rows(self.comp(), set())
         return rows[0]["id"] if rows else self.comp_id
@@ -186,59 +163,6 @@ class Bridge2D(DocBridge):
         if hit != self.selectedLayer:
             self.select(hit or self.comp_id)
         return hit
-
-    # ---- drags: each one doc.gesture = one change --------------------------------------------------------------
-    @Slot(result=bool)
-    def beginMove(self):
-        layer = bounds.layer_of(self.doc, self._sel) if self._sel else ""
-        if not layer:
-            return False
-        if any(exprs.drives(self.doc.item(layer), a) for a in ("x", "y")):
-            self._fail("Error: move: x or y is driven by an expression; clear it first (the cross on its row).")
-            return False
-        p = resolve(self.doc.item(layer), self._t)
-        return self._begin(f"Move {self.label_of(self.doc.item(layer))}", (layer, p["x"], p["y"]))
-
-    @Slot(float, float)
-    def moveBy(self, dx, dy):
-        """Total offset from where the drag started, in composition px: value.set x / y at the playhead."""
-        if self._drag is None or self._grab is None:
-            return
-        layer, x0, y0 = self._grab
-        item = self.doc.item(layer)
-        self._guard(lambda: self._drag.preview([route.value_call(item, "x", round(x0 + dx, 2), self._t),
-                                                route.value_call(item, "y", round(y0 + dy, 2), self._t)]))
-
-    @Slot(str, result=bool)
-    def beginKeyDrag(self, key_id):
-        self.select(key_id)
-        return self._begin("Move key", key_id)
-
-    @Slot(float, float)
-    def keyDragTo(self, t, snap=0.0):
-        """`snap`: seconds within which the key lands on a shared marker instead of the nearest frame."""
-        if self._drag is None or not isinstance(self._grab, str):
-            return
-        c, key = self.comp(), self.doc.item(self._grab)
-        on = self.marks.snap(t, snap)
-        t = min(max(on if on != t else round(t * c["fps"]) / c["fps"], 0.0), c["duration"])
-        owner = self.doc.item(self.doc.parent_of(key["id"])[0])
-        if any(k["id"] != key["id"] and abs(k["t"] - t) < 1e-6 for k in keys_of(owner, key["prop"])):
-            return                       # another key of this field is there: stay at the last free time
-        self._guard(lambda: self._drag.preview([{"op": "key.set", "target": [key["id"]], "args": {"t": t}}]))
-
-    @Slot()
-    def endDrag(self):
-        d, self._drag, self._grab = self._drag, None, None
-        if d is not None:
-            self._guard(lambda: self._done(d.end(), ""))
-
-    def _begin(self, label, grab) -> bool:
-        self.endDrag()
-
-        def go():
-            self._drag, self._grab = Drag(self.doc, self.who, label), grab
-        return self._guard(go)
 
     # ---- for the Painter (screen2d/painter.py) ----------------------------------------------------------------
     def guard(self, fn) -> bool:

@@ -1,6 +1,6 @@
 """A layer's own size (its box before scale and turn), from its evaluated values: the one place, read by the agents'
 geometry (mcp/geometry.py), the screen's boxes and auto layout (layout.py). A text has no size in the document, so
-its box is an ESTIMATE from its size, letter spacing and letters until the engine reports laid-out boxes."""
+its box is an ESTIMATE from its size, letter spacing and letters: the engine has no measure call yet (request for Team Hem: stage2\2d-s13\request-for-hem-text-measure.md)."""
 from __future__ import annotations
 
 import math
