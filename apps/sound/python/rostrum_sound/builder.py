@@ -44,7 +44,7 @@ class Track(Inserts):
         art, position, damping, hardness, dynamics=[(0, 0.6), (1, 1)], vibrato={...}, bend=[(0, -100), (0.1, 0)]."""
         where = f"track {self.id} › note"
         f = checked("note", dict(pitch=pitch, at=at, dur=dur, vel=vel, pan=pan, **playing_), where,
-                    FD.DEFAULTS["note"])
+                    FD.DEFAULTS["note"], item_facts({"type": "track", **self.fields}))    # a note asks its track
         wrong = playing({**self.fields, "id": self.id, "notes": [{"id": f"note at {at!r}", **f}]})
         if wrong:
             raise RostrumError(codes.BAD_ARGUMENT, where, f"note {pitch!r}", "; ".join(wrong))

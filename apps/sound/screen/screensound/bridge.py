@@ -113,13 +113,28 @@ class SoundBridge(DocBridge):
         return self._picture_open
 
     @Property(str, notify=timelineChanged)
-    def picture(self):
-        """The video file the song is made to (the document's `picture` field; "" when none)."""
+    def pictureChoice(self):
+        """The document's `picture` field: a video file or a 2D item's link ("" when none)."""
         return str(self.doc.data.get("picture") or "")
 
     @Property(str, notify=timelineChanged)
+    def picture(self):
+        """The video file to show: the chosen file, or the linked 2D item's newest render ("" when none)."""
+        return picture.resolve(self.pictureChoice, self.doc.folder)[0]
+
+    @Property(str, notify=timelineChanged)
+    def pictureProblem(self):
+        """Why a linked picture shows nothing ("not rendered yet" …); "" when fine or none chosen."""
+        return picture.resolve(self.pictureChoice, self.doc.folder)[1]
+
+    @Property(str, notify=timelineChanged)
     def pictureName(self):
-        return picture.name(self.picture)
+        return picture.name(self.pictureChoice, self.doc.folder)
+
+    @Property("QVariantList", notify=timelineChanged)
+    def pictureItems(self):
+        """The project's 2D items, to link one as the picture: [{id, label}]."""
+        return picture.items(self.doc.folder)
 
     @Property(str, notify=timelineChanged)
     def pictureUrl(self):
@@ -220,6 +235,14 @@ class SoundBridge(DocBridge):
             self._apply([picture.set_call(picture.local(chosen))], "Set picture")
             if chosen:
                 self.setPictureOpen(True)
+        self._guard(go)
+
+    @Slot(str)
+    def linkPicture(self, item_id):
+        """Show a 2D item's newest render as the picture (follows new renders): one operation on the document."""
+        def go():
+            self._apply([picture.link_call(item_id)], "Set picture")
+            self.setPictureOpen(True)
         self._guard(go)
 
     @Slot()

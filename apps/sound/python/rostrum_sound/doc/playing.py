@@ -23,15 +23,15 @@ PLUCKED = {"all": [MODEL, {"any": [IS("model", m) for m in names.PLUCKED]}]}
 
 
 def touch(track=True, imp="primary", group="Instrument"):
-    """position / damping / hardness: a model track's defaults (with their conditions) or a note's own."""
-    def w(cond):
-        return cond if track else None
+    """position / damping / hardness: a model track's defaults (conditions on its fields) or a note's own
+    (conditions on its track, through the kind's facts: doc/kind.py)."""
+    struck, plucked = (STRUCK, PLUCKED) if track else ({"fact": "struck"}, {"fact": "plucked"})
     return [
-        N("position", 0, 0.5, group, imp=imp, when=w(STRUCK), help="Where it is plucked or struck: bridge / bar "
+        N("position", 0, 0.5, group, imp=imp, when=struck, help="Where it is plucked or struck: bridge / bar "
           "end (0) … middle (0.5); plucked strings from 0.03. Not for violin."),
-        N("damping", 0, 1, group, imp=imp, when=w(PLUCKED), default=0,
+        N("damping", 0, 1, group, imp=imp, when=plucked, default=0,
           help="Plucked strings only: 0 rings open … 1 palm-muted."),
-        N("hardness", 0, 1, group, imp="secondary" if imp == "primary" else imp, when=w(STRUCK), default=0.5,
+        N("hardness", 0, 1, group, imp="secondary" if imp == "primary" else imp, when=struck, default=0.5,
           help="Pick / mallet: soft … hard. Not for violin."),
     ]
 
@@ -88,12 +88,11 @@ EXPRESSION = [
 ]
 VIBRATO = [N("rate", 0.1, 20, "Vibrato", "Hz"), N("depth", 0, 200, "Vibrato", "cents"),
            N("delay", 0, 30, "Vibrato", "s")]
-# A note's playing fields. Touch and art depend on the note's track, which a field condition can't see (the
-# shared facts read only the item): the document check refuses them where they don't apply.
+# A note's playing fields. Art and touch show only where the note's track can play them (its facts: kind.py).
 NOTE = [
-    Param.text("art", group="Playing", importance="deep", label="Articulation",
+    Param.text("art", group="Playing", importance="secondary", label="Articulation", valid_when={"fact": "articulated"},
                help="One of the track's articulations; left out = its main SFZ file."),
-    *touch(track=False, imp="deep", group="Playing"),
+    *touch(track=False, imp="secondary", group="Playing"),
     V.curve("dynamics", (0, 1), (0, 2), group="Playing", importance="deep",
             help="Swell / fade across the note: [[fraction of its length, level 0 … 2], …]."),
     V.record("vibrato", VIBRATO, "vibrato", group="Playing", importance="deep",

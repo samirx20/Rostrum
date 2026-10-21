@@ -25,10 +25,10 @@ def test_a_line_is_a_clip_on_its_take_or_fails_loudly(tmp_path, monkeypatch):
         compile(doc)
     assert "vo.line_1" in str(e.value) and "not made yet" in str(e.value) and "voice tool" in str(e.value)
 
-    take = voice.cache_dir() / voice.key(TEXT, "aiden", "calm", "auto", 3) / "take.wav"
-    take.parent.mkdir(parents=True)
-    with wave.open(str(take), "wb") as w:
-        w.setnchannels(1), w.setsampwidth(2), w.setframerate(24000), w.writeframes(b"\0\0" * 24000)
+    def silence(folder):
+        with wave.open(str(folder / "take.wav"), "wb") as w:
+            w.setnchannels(1), w.setsampwidth(2), w.setframerate(24000), w.writeframes(b"\0\0" * 24000)
+    take = voice.store().put("voice", voice.key(TEXT, "aiden", "calm", "auto", 3), silence) / "take.wav"
 
     track = compile(doc)["tracks"][0]
     assert track["clips"] == [{"media": str(take), "at": 2.0, "volume": 1}] and "instrument" not in track

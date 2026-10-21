@@ -28,7 +28,7 @@ FIELDS = {
         V.time("length", group="Time", help="How long the mix is (a time); left out = the last sound + 2 s."),
         N("beatsPerBar", 1, 16, "Time", imp="secondary", integer=True, label="Beats per bar"),
         N("sampleRate", 22050, 192000, "Output", "Hz", "deep", integer=True, label="Sample rate"),
-        Param.text("picture", group="Picture", importance="secondary", help="A video file to make the sound to (shown at the playhead on the Timeline)."),
+        Param.text("picture", group="Picture", importance="secondary", help="What the sound is made to, shown at the playhead on the Timeline: a video file, or \"item:<id>\" for a 2D item of the project (its newest render)."),
     ],
     "track": [
         Param.text("name", group="Track", importance="secondary"),
