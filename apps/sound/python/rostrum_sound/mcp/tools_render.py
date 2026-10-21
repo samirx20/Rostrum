@@ -8,6 +8,7 @@ from rostrum_core.mcp import Reply, Tools
 
 from .. import handoff
 from ..compile import compile as compile_doc
+from ..doc import ops_mix
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
 
@@ -32,6 +33,9 @@ def register(tools: Tools):
         doc = ctx.document(args.get("item"))
         item = doc.item_id
         master = args.get("master", True)
+        follow = ops_mix.follow_calls(doc.data)     # project markers renamed elsewhere: one recorded step first
+        if follow:
+            doc.apply(follow, ctx.who, label="Follow renamed markers")
         schedule = compile_doc(doc.data, solo=args.get("solo"), mute=args.get("mute"), master=master)
         state = ctx.app.state
         stems = "all" if args.get("stems", True) else []

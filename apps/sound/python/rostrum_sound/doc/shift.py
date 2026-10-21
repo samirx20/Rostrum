@@ -15,7 +15,7 @@ def write_like(old, t: float, root: dict):
     """`t` seconds, written in the form `old` was written in."""
     name = markers.ref(old)
     if name is not None:
-        if name in markers.by_name(root):
+        if markers.has(root, name):
             off = round(t - markers.time_of(root, name), 4)
             return f"#{name}" if abs(off) < 1e-6 else f"#{name}{off:+g}"
     if isinstance(old, dict) and "beat" in old:

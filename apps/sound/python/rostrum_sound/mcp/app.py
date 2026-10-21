@@ -15,7 +15,7 @@ from pathlib import Path
 from rostrum_core import Document, RostrumError, codes
 from rostrum_core.mcp import App, Guides
 
-from ..doc import KIND
+from ..doc import KIND, markers
 from ..engine import Engine
 from ..script import run_source
 
@@ -61,6 +61,7 @@ def open_or_new(folder: Path, item: str) -> Document:
 def make_app(folder: str | Path, items: list[str]) -> App:
     folder = Path(folder).resolve()
     folder.mkdir(parents=True, exist_ok=True)
+    markers.use_project(folder)                      # every marker read sees this project's shared markers
     engine = Engine()
     atexit.register(engine.close)
     app = App("rostrum-sound", {i: open_or_new(folder, i) for i in items}, run_source=run_source,

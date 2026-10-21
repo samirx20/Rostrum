@@ -144,7 +144,12 @@ def _ids(given, tracks, what):
 
 
 def compile(doc, solo=None, mute=None, master=True) -> dict:
-    """The schedule for a Document (or its data dict). Pure: the document is not touched."""
+    """The schedule for a Document (or its data dict). Pure: the document is not touched. A Document in a project
+    folder reads that project's shared markers (doc/markers.py)."""
+    folder = getattr(doc, "folder", None)
+    if folder is not None:
+        with markers.project(folder):
+            return compile(doc.data, solo, mute, master)
     root = getattr(doc, "data", doc)
     tracks = root.get("tracks", [])
     heard = _ids(solo, tracks, "solo") | {t["id"] for t in tracks if t.get("solo")}
