@@ -48,6 +48,8 @@ class Param:
     item: str | None = None          # for type "list": the type of each element (min/max/integer/options/kind then apply per element)
     min_items: int = 0
     max_items: int | None = None
+    control: str = ""                # the screen control when the type alone doesn't say which: "curve" for a text of
+                                     # "x,y x,y …" points from 0 to 1 (the kit's CurveField); "" = the type's own
 
     def __post_init__(self):
         if self.type not in TYPES:
