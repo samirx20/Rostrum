@@ -10,7 +10,7 @@ Item {
     property string kind: "normal"
     property bool danger: false
     property bool down: false            // shown pressed (e.g. a toggled-on tool)
-    property string tip: ""              // what it does, for the one place a tooltip is wanted
+    property string tip: ""              // what it does, in words: shown under it while the pointer rests on it
     readonly property bool hovered: hoverHandler.hovered
     signal clicked()
     implicitWidth: Theme.button; implicitHeight: Theme.button
@@ -31,4 +31,5 @@ Item {
         color: b.danger ? Theme.danger : b.hovered || b.down ? Theme.fg : Theme.fg2
     }
     MouseArea { id: area; anchors.fill: parent; onClicked: b.clicked() }
+    HoverTip { text: b.tip; hovered: b.hovered; pressed: area.pressed || b.down }
 }

@@ -115,6 +115,7 @@ Item {
         values: row.model.value || []; choices: row.model.options || []
         minItems: row.model.minItems || 0; maxItems: row.model.maxItems === undefined ? null : row.model.maxItems
         onEdited: (v) => row.set(v) } }
-    Component { id: curve; CurveField { value: row.model.value || ""; onEdited: (v) => row.set(v) } }
+    Component { id: curve; CurveField {   // a curve param's max = the top of its out range (above 1: a multiplier)
+        value: row.model.value || ""; most: row.model.max ? row.model.max : 1; onEdited: (v) => row.set(v) } }
     Component { id: text; TextField { value: row.model.value || ""; onEdited: (v) => row.set(v) } }
 }

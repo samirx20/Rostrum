@@ -1,14 +1,18 @@
 import QtQuick
 import "."
 
-// A brightness curve: points "x,y x,y …" from 0 to 1 (x = going in, y = coming out), drawn as the smooth curve the
-// engine uses (monotone cubic, never overshooting a point; flat beyond the ends). Drag a point to move it (it stays
+// A curve of points "x,y x,y …": x from 0 to 1, y from 0 to `most`. With most = 1 it maps going in to coming out (a
+// brightness curve; unchanged = the diagonal); with most above 1 it is a multiplier along x (a stroke's width profile;
+// unchanged = flat at 1). `neutral` is the curve that changes nothing: drawn dashed, and shown for an empty value.
+// Drawn as the smooth curve the engine uses (monotone cubic, never overshooting a point; flat beyond the ends). Drag a point to move it (it stays
 // between its neighbours); press on an empty spot to add a point there and drag it; double-click a point to remove it
 // (two always stay). Each press-drag-release is one `edited` = one change = one undo step; the readout shows the
 // point while it moves.
 Item {
     id: f
-    property string value: "0,0 1,1"
+    property string value: ""
+    property real most: 1     // the top of the out range
+    property string neutral: most > 1 ? "0,1 1,1" : "0,0 1,1"
     signal edited(string value)
     implicitWidth: Theme.curveBox
     implicitHeight: Theme.curveBox       // fixed: the inspector row sizes itself from it
@@ -24,7 +28,7 @@ Item {
             var xy = parts[i].split(",")
             if (xy.length === 2 && !isNaN(+xy[0]) && !isNaN(+xy[1])) out.push([+xy[0], +xy[1]])
         }
-        return out.length >= 2 ? out : [[0, 0], [1, 1]]
+        return out.length >= 2 ? out : text === f.neutral ? [[0, 0], [1, 1]] : parse(f.neutral)
     }
     function fmt(v) { return (Math.round(v * 1000) / 1000).toString() }
     function text(p) { return p.map(function (q) { return fmt(q[0]) + "," + fmt(q[1]) }).join(" ") }
@@ -47,7 +51,7 @@ Item {
         var h = p[k + 1][0] - p[k][0], t = (x - p[k][0]) / h, t2 = t * t, t3 = t2 * t
         var y = (2 * t3 - 3 * t2 + 1) * p[k][1] + (t3 - 2 * t2 + t) * h * tangent(k)
               + (-2 * t3 + 3 * t2) * p[k + 1][1] + (t3 - t2) * h * tangent(k + 1)
-        return Math.max(0, Math.min(1, y))
+        return Math.max(0, Math.min(f.most, y))
     }
 
     Rectangle {
@@ -57,7 +61,7 @@ Item {
         readonly property real pad: 6
         readonly property real side: width - 2 * pad
         function sx(x) { return pad + x * side }
-        function sy(y) { return pad + (1 - y) * side }
+        function sy(y) { return pad + (1 - y / f.most) * side }
 
         Canvas {
             id: canvas
@@ -72,8 +76,11 @@ Item {
                     g.beginPath(); g.moveTo(o + s * i / 4, o); g.lineTo(o + s * i / 4, o + s); g.stroke()
                     g.beginPath(); g.moveTo(o, o + s * i / 4); g.lineTo(o + s, o + s * i / 4); g.stroke()
                 }
-                g.strokeStyle = Theme.fg4; g.setLineDash([3, 3])                 // unchanged
-                g.beginPath(); g.moveTo(o, o + s); g.lineTo(o + s, o); g.stroke(); g.setLineDash([])
+                var u = f.parse(f.neutral)                                         // unchanged
+                g.strokeStyle = Theme.fg4; g.setLineDash([3, 3]); g.beginPath()
+                for (var j = 0; j < u.length; j++)
+                    if (j === 0) g.moveTo(graph.sx(u[j][0]), graph.sy(u[j][1])); else g.lineTo(graph.sx(u[j][0]), graph.sy(u[j][1]))
+                g.stroke(); g.setLineDash([])
                 g.strokeStyle = Theme.accent; g.lineWidth = 1.5
                 g.beginPath()
                 for (var k = 0; k <= 64; k++) {
@@ -95,7 +102,8 @@ Item {
         Text {  // the moving point's values
             visible: f.active >= 0
             anchors { left: parent.left; top: parent.top; margins: graph.pad + 2 }
-            text: f.active >= 0 ? "in " + f.fmt(f.pts[f.active][0]) + "  out " + f.fmt(f.pts[f.active][1]) : ""
+            text: f.active < 0 ? "" : f.most > 1 ? "at " + f.fmt(f.pts[f.active][0]) + "  × " + f.fmt(f.pts[f.active][1])
+                                                : "in " + f.fmt(f.pts[f.active][0]) + "  out " + f.fmt(f.pts[f.active][1])
             color: Theme.fg2; font.family: monoFont; font.pixelSize: Theme.label
         }
         MouseArea {
@@ -103,7 +111,7 @@ Item {
             preventStealing: true
             function at(m) {
                 return [Math.max(0, Math.min(1, (m.x - graph.pad) / graph.side)),
-                        Math.max(0, Math.min(1, 1 - (m.y - graph.pad) / graph.side))]
+                        Math.max(0, Math.min(f.most, (1 - (m.y - graph.pad) / graph.side) * f.most))]
             }
             function near(m) {
                 for (var i = 0; i < f.pts.length; i++)
