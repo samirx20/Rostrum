@@ -24,14 +24,36 @@ class DragSlots(SlotMixin):
         if any(exprs.drives(self.doc.item(layer), a) for a in ("x", "y")):
             self._fail("Error: move: x or y is driven by an expression; clear it first (the cross on its row).")
             return False
+        more = self._multi.extras()
+        if more:
+            return self._begin_many([layer] + more)
         p = resolve(self.doc.item(layer), self._t)
         return self._begin(label, (layer, p["x"], p["y"]))
+
+    def _begin_many(self, layers) -> bool:
+        """Several selected layers move together: one gesture, one undo step."""
+        grab = []
+        for lay in layers:
+            item = self.doc.item(lay)
+            if layout_drag.begin(self.doc, self.comp(), lay, self._t) or any(exprs.drives(item, a) for a in ("x", "y")):
+                self._fail(f"Error: move: {self.label_of(item)} is placed by an auto layout or an expression; select it alone to move it.")
+                return False
+            p = resolve(item, self._t)
+            grab.append((lay, p["x"], p["y"]))
+        return self._begin(f"Move {len(layers)} layers", grab)
 
     @Slot(float, float)
     def moveBy(self, dx, dy):
         """Total offset from where the drag started, in composition px: value.set x / y at the playhead (in an
         auto layout: layer.arrange to the slot nearest the pointer)."""
-        if self._drag is None or self._grab is None:
+        if self._drag is None or not isinstance(self._grab, (dict, tuple, list)):
+            return
+        if isinstance(self._grab, list):
+            calls = []
+            for lay, x0, y0 in self._grab:
+                item = self.doc.item(lay)
+                calls += [route.value_call(item, "x", round(x0 + dx, 2), self._t), route.value_call(item, "y", round(y0 + dy, 2), self._t)]
+            self._guard(lambda: self._drag.preview(calls))
             return
         if isinstance(self._grab, dict):
             self._guard(lambda: self._drag.preview([layout_drag.call(self.doc, self._grab, dx, dy)]))

@@ -2,11 +2,14 @@
 No Qt.
 
 A layer's box: its anchor sits at (x, y) inside its parent (a group's layers are placed from the group's top-left
-corner); the box is w x h times scale. Rotation and tilt are not taken into account yet (the box stays upright).
+corner); the box is w x h times scale, turned by `rot` degrees about the anchor (the selection outline turns with it;
+picking turns the pointer back the same way). A group's turn is not passed on to its layers; tilt is not taken into account.
 A layer's size is rostrum2d/sizes.py's (a text's is the engine's laid-out box, rostrum2d/textsize.py, on a path too).
 A layer in an auto layout is where the layout puts it (rostrum2d/layout.py).
 """
 from __future__ import annotations
+
+import math
 
 from rostrum2d import fields as F
 from rostrum2d.evaluate import resolve
@@ -21,6 +24,8 @@ def boxes(comp: dict, t: float) -> list[dict]:
 
     def walk(layers, ox, oy):
         for lay in layers:
+            if lay["type"] == "camera":         # not drawn: no box (and no scale)
+                continue
             p = {**resolve(lay, t), **placed.get(lay["id"], {})}
             if not (p["start"] <= t < p["end"]):
                 continue
@@ -28,7 +33,8 @@ def boxes(comp: dict, t: float) -> list[dict]:
             sx, sy = p["scale"] * p["scaleX"], p["scale"] * p["scaleY"]
             left = ox + p["x"] - p["anchorX"] * w * sx
             top = oy + p["y"] - p["anchorY"] * h * sy
-            out.append({"id": lay["id"], "x": left, "y": top, "w": w * sx, "h": h * sy})
+            out.append({"id": lay["id"], "type": lay["type"], "x": left, "y": top, "w": w * sx, "h": h * sy,
+                        "rot": p["rotation"], "ax": p["anchorX"], "ay": p["anchorY"]})
             if lay["type"] == "group":
                 walk(lay.get("layers", []), left, top)
 
@@ -36,9 +42,30 @@ def boxes(comp: dict, t: float) -> list[dict]:
     return out
 
 
+def corners(b: dict) -> list[tuple[float, float]]:
+    """The four corners of a box (turned about its anchor), composition px."""
+    c, s = math.cos(math.radians(b["rot"])), math.sin(math.radians(b["rot"]))
+    ox, oy = b["x"] + b["ax"] * b["w"], b["y"] + b["ay"] * b["h"]
+    return [(ox + c * (px - ox) - s * (py - oy), oy + s * (px - ox) + c * (py - oy))
+            for px, py in ((b["x"], b["y"]), (b["x"] + b["w"], b["y"]), (b["x"] + b["w"], b["y"] + b["h"]), (b["x"], b["y"] + b["h"]))]
+
+
+def extent(b: dict) -> tuple[float, float, float, float]:
+    """x0, y0, x1, y1 of the box's corners."""
+    xs, ys = zip(*corners(b))
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def inside(b: dict, x: float, y: float) -> bool:
+    c, s = math.cos(math.radians(-b["rot"])), math.sin(math.radians(-b["rot"]))
+    ox, oy = b["x"] + b["ax"] * b["w"], b["y"] + b["ay"] * b["h"]
+    lx, ly = ox + c * (x - ox) - s * (y - oy), oy + s * (x - ox) + c * (y - oy)
+    return b["x"] <= lx <= b["x"] + b["w"] and b["y"] <= ly <= b["y"] + b["h"]
+
+
 def pick(comp: dict, t: float, x: float, y: float) -> str:
     """The topmost layer under (x, y), or "" (groups count only where none of their layers is)."""
-    hits = [b for b in boxes(comp, t) if b["x"] <= x <= b["x"] + b["w"] and b["y"] <= y <= b["y"] + b["h"]]
+    hits = [b for b in boxes(comp, t) if inside(b, x, y)]
     return hits[-1]["id"] if hits else ""
 
 
