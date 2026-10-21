@@ -93,6 +93,7 @@ Hydra::Hydra(UsdStageRefPtr stage) : stage_(std::move(stage)) {
 Hydra::~Hydra() {
   engines_.clear();  // release Hydra while the GL context is still there
   fb_.reset();
+  mask_fb_.reset();
 }
 
 TfToken Hydra::plugin_for(const std::string& name) {
@@ -143,6 +144,14 @@ Framebuffer& Hydra::framebuffer(int w, int h) {
   return *fb_;
 }
 
+Framebuffer& Hydra::mask_framebuffer(int w, int h) {
+  if (!mask_fb_ || mask_fb_->width() != w || mask_fb_->height() != h) {
+    mask_fb_.reset();
+    mask_fb_ = std::make_unique<Framebuffer>(w, h);
+  }
+  return *mask_fb_;
+}
+
 Picture Hydra::draw(const std::string& renderer, const SdfPath& camera, int frame, int w, int h,
                     const DrawSettings& s, GpuMemWatch& mem) {
   const UsdGeomCamera cam = camera_at(stage_, camera);
@@ -182,8 +191,8 @@ Picture Hydra::draw(const std::string& renderer, const SdfPath& camera, int fram
   return p;
 }
 
-Picture Hydra::view(const std::string& renderer, const GfFrustum& frustum, int frame, int w, int h,
-                    const ViewLook& look, GpuMemWatch& mem) {
+ViewDrawn Hydra::view(const std::string& renderer, const GfFrustum& frustum, int frame, int w, int h,
+                      const ViewLook& look, GpuMemWatch& mem) {
   if (renderer != "storm" && renderer != "stylized")
     throw Error("view.renderer: \"" + renderer + "\" is not a live viewport renderer. Accepted: storm, stylized");
   TfErrorMark mark;
@@ -212,24 +221,22 @@ Picture Hydra::view(const std::string& renderer, const GfFrustum& frustum, int f
       throw Error("view: " + renderer + " did not finish frame " + std::to_string(frame) + " within 10 s");
     if (!first) std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
-  Picture pic{w, h, fb.read_rgba()};
-  pic.sceneDome = scene_dome;
-  if (sun) pic.sun = SunSeen{{sun->toward[0], sun->toward[1], sun->toward[2]}, sun->share, sun->angleDeg};
-  // The selection's mask: the selected items alone, unlit, in the same frustum (Storm tints a selection but
-  // draws no outline; the outline is drawn from this mask after the colour transform, in requests.cpp).
+  ViewDrawn out{fb.color_texture(), fb.depth_texture()};
+  out.sceneDome = scene_dome;
+  if (sun) out.sun = SunSeen{{sun->toward[0], sun->toward[1], sun->toward[2]}, sun->share, sun->angleDeg};
+  // The selection's mask: the selected items alone, unlit, in the same frustum, in a framebuffer of its own (Storm
+  // tints a selection but draws no outline; view_post.h draws the ring from this mask after the colour transform).
   if (!look.selected.empty()) {
     UsdImagingGLRenderParams solo = params;
     solo.enableLighting = false;
     e.show_sky(false);  // the mask is the selection alone: no sky behind it
-    fb.bind_and_clear();
+    auto& mf = mask_framebuffer(w, h);
+    mf.bind_and_clear();
     for (const auto& path : look.selected) e.Render(stage_->GetPrimAtPath(path), solo);
-    gl_.finish();
     throw_usd_errors(mark, "view (selection mask)");
-    const auto px = fb.read_rgba();
-    pic.mask.resize(size_t(w) * h);
-    for (size_t i = 0; i < pic.mask.size(); ++i) pic.mask[i] = px[i * 4 + 3] > 0.5f;
+    out.mask = mf.color_texture();
   }
-  return pic;
+  return out;
 }
 
 SdfPath Hydra::pick(const GfFrustum& f, int frame, int w, int h, double x, double y, GfVec3d* point) {

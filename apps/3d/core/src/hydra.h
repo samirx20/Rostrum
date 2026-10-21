@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -21,6 +22,21 @@ struct ViewLook {
   double studio = 1.0;      // studio environment strength, 0 = off
   bool sceneLights = true;  // the scene's own lights
   PXR_NS::SdfPathVector selected;  // drawn with an outline
+};
+
+// the sun Storm took out of the scene's dome and drew as a light with a shadow (dome_sun.h)
+struct SunSeen {
+  double toward[3] = {0, 0, 0};  // world direction towards it
+  double share = 0;              // its part of the dome's light
+  double angleDeg = 0;           // its apparent size
+};
+
+// one live viewport picture, left on the graphics card for view_post.h (valid until the next draw)
+struct ViewDrawn {
+  unsigned color = 0, depth = 0;  // scene-linear RGBA32F and Storm's depth, GL rows bottom up
+  unsigned mask = 0;              // the selected items alone (alpha > 0.5 where they are); 0 = nothing selected
+  bool sceneDome = false;         // the scene's own dome lit it (the studio light was not used)
+  std::optional<SunSeen> sun;     // Storm drew the dome's sun as a light
 };
 
 struct DrawSettings {
@@ -42,8 +58,8 @@ class Hydra {
   Picture draw(const std::string& renderer, const PXR_NS::SdfPath& camera, int frame, int width, int height,
                const DrawSettings& s, GpuMemWatch& mem);
   // one live viewport picture through `frustum` (a scene camera's or the free camera's)
-  Picture view(const std::string& renderer, const PXR_NS::GfFrustum& frustum, int frame, int width, int height,
-               const ViewLook& look, GpuMemWatch& mem);
+  ViewDrawn view(const std::string& renderer, const PXR_NS::GfFrustum& frustum, int frame, int width, int height,
+                 const ViewLook& look, GpuMemWatch& mem);
   // the prim under pixel (x, y) of a width x height picture through `frustum`; empty path when nothing is there
   PXR_NS::SdfPath pick(const PXR_NS::GfFrustum& frustum, int frame, int width, int height, double x, double y,
                        PXR_NS::GfVec3d* point);
@@ -52,11 +68,12 @@ class Hydra {
   class Engine;  // UsdImagingGLEngine plus showing or hiding the dome behind the scene
   Engine& engine(const std::string& renderer, bool viewport = false);
   Framebuffer& framebuffer(int width, int height);
+  Framebuffer& mask_framebuffer(int width, int height);
 
   PXR_NS::UsdStageRefPtr stage_;
   GlContext gl_;  // before the engines: made first, destroyed last
   std::map<std::string, std::unique_ptr<Engine>> engines_;  // renders and the viewport keep separate engines
-  std::unique_ptr<Framebuffer> fb_;
+  std::unique_ptr<Framebuffer> fb_, mask_fb_;
 };
 
 }  // namespace r3d

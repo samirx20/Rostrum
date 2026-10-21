@@ -14,7 +14,6 @@
 #include "args.h"
 #include "error.h"
 #include "inspect.h"
-#include "outline.h"
 #include "view_camera.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
@@ -164,7 +163,7 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
 
 JsObject Core::view(const JsObject& o) {
   Args a(o, "view", {"camera", "eye", "target", "fov", "frame", "width", "height", "renderer", "exposure", "studio",
-                     "sceneLights", "selected", "view"});
+                     "sceneLights", "selected", "view", "ao", "aoRadius", "dof"});
   need_scene("view");
   const ViewCamera vc = read_view_camera(a, [&](const std::string& id) { return camera(id, "view"); });
   const int f = a.whole("frame"), w = a.whole("width"), h = a.whole("height");
@@ -184,10 +183,28 @@ JsObject Core::view(const JsObject& o) {
       look.selected.push_back(p);
     }
   }
-  const std::string view = color_.check_view(a.str("view", ""));
+  ViewPostIn post;
+  post.width = w;
+  post.height = h;
+  post.config = color_.config_name();
+  post.display = color_.display();
+  post.view = color_.check_view(a.str("view", ""));
+  post.exposure = a.num("exposure", 0);
+  post.ao = a.num("ao", 1.0);
+  if (post.ao < 0 || post.ao > 2) throw Error("view.ao: contact shading strength must be 0..2 (0 = off)");
+  post.aoRadius = a.num("aoRadius", post.aoRadius);
+  if (post.aoRadius <= 0 || post.aoRadius > 100) throw Error("view.aoRadius: must be more than 0, up to 100 (scene units)");
+  const std::optional<Lens> lens = lens_of(stage_, vc, f);
+  if (a.flag("dof", true)) post.lens = lens;
+  background(stage_, post.background);
+  const GfFrustum frustum = frustum_of(stage_, vc, f, w, h);
+  post.projection = frustum.ComputeProjectionMatrix();
   const auto t0 = Clock::now();
   auto& hy = hydra();
-  Picture pic = hy.view(a.str("renderer", "storm"), frustum_of(stage_, vc, f, w, h), f, w, h, look, mem_);
+  const ViewDrawn pic = hy.view(a.str("renderer", "storm"), frustum, f, w, h, look, mem_);
+  post.color = pic.color;
+  post.depth = pic.depth;
+  post.mask = pic.mask;
   const double draw_ms = ms_since(t0);
   const size_t bytes = size_t(w) * h * 4;
   if (!shm_ || shm_->slot_bytes() != bytes) {
@@ -195,17 +212,14 @@ JsObject Core::view(const JsObject& o) {
     shm_ = std::make_unique<Shm>(bytes);
   }
   JsObject info;
-  uint8_t* slot = shm_->next(w, h, &info);
-  float bg[3];
-  background(stage_, bg);
-  color_.to_rgba8(pic, view, a.num("exposure", 0), bg, slot);
-  draw_outline(pic, slot);
+  if (!post_) post_ = std::make_unique<ViewPost>();
+  post_->run(post, shm_->next(w, h, &info));
   JsValue sun;  // null: no sun light (no scene dome, no sun in its picture, or not Storm)
   if (pic.sun)
     sun = JsValue(JsObject{{"toward", vec3(GfVec3d(pic.sun->toward[0], pic.sun->toward[1], pic.sun->toward[2]))},
                            {"share", JsValue(pic.sun->share)}, {"angleDeg", JsValue(pic.sun->angleDeg)}});
   return JsObject{{"ok", JsValue(true)}, {"width", JsValue(w)}, {"height", JsValue(h)}, {"shm", JsValue(info)},
-                  {"sceneDome", JsValue(pic.sceneDome)}, {"sun", sun},
+                  {"sceneDome", JsValue(pic.sceneDome)}, {"sun", sun}, {"cameraDof", JsValue(bool(lens))},
                   {"timing", JsValue(JsObject{{"drawMs", JsValue(r1(draw_ms))}, {"totalMs", JsValue(r1(ms_since(t0)))}})}};
 }
 

@@ -33,7 +33,8 @@ struct ColorOut::Impl {
 
 ColorOut::ColorOut() {
   const char* env = std::getenv("OCIO");
-  impl_ = std::make_unique<Impl>(env && *env ? std::string(env) : std::string("ocio://cg-config-latest"));
+  name_ = env && *env ? std::string(env) : std::string("ocio://cg-config-latest");
+  impl_ = std::make_unique<Impl>(name_);
   if (impl_->config.has_error() || impl_->config.getNumDisplays() == 0)
     throw Error("colour: could not load the OpenColorIO config '" + impl_->config.configname() +
                 "': " + impl_->config.geterror());
@@ -92,7 +93,7 @@ void ColorOut::write_exr(const Picture& p, const std::string& file) const {
   write_whole(buf, file, OIIO::TypeDesc::HALF);
 }
 
-// One picture path for files and the live viewport: exposure, the background laid in where the picture is
+// The picture path for files (the live viewport does the same on the graphics card: view_post.h): exposure, the background laid in where the picture is
 // transparent, then the OpenColorIO display view (made once per view, applied in bands on all cores).
 std::vector<float> ColorOut::displayed(const Picture& p, const std::string& view, double exposure,
                                        const float background[3]) const {
@@ -124,13 +125,6 @@ void ColorOut::write_png(const Picture& p, const std::string& file, const std::s
   Picture shown{p.width, p.height, displayed(p, view, exposure, background)};
   auto buf = to_buf(shown);
   write_whole(buf, file, OIIO::TypeDesc::UINT8);
-}
-
-void ColorOut::to_rgba8(const Picture& p, const std::string& view, double exposure, const float background[3],
-                        unsigned char* dst) const {
-  const auto shown = displayed(p, view, exposure, background);
-  for (size_t i = 0; i < shown.size(); ++i)  // as OpenImageIO quantizes a PNG: clamp, then round
-    dst[i] = (unsigned char)(std::min(std::max(shown[i], 0.0f), 1.0f) * 255.0f + 0.5f);
 }
 
 std::string frame_path(const std::string& pattern, int frame) {

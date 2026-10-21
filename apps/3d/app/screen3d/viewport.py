@@ -40,6 +40,8 @@ class Viewport(QObject):
         self._serial, self._ms, self._status = 0, 0.0, ""
         self._exposure, self._studio, self._lights = 0.0, 1.0, True
         self._dome = False                           # the engine said the scene's own dome lit the last picture
+        self._ao_on, self._ao, self._dof = True, 1.0, True    # contact shading (on, strength) and depth of field
+        self._cam_dof = False                        # the engine said the camera looked through has depth of field on
         self._size, self._scale = None, 1.0          # request size (picture pixels); picture px per screen px
         self._scene, self._shot, self._started = None, None, False
         self._r.ready.connect(self._on_ready)
@@ -61,6 +63,11 @@ class Viewport(QObject):
     sceneLights = Property(bool, lambda s: s._lights, notify=settingsChanged)
     # the studio light is only used when the scene's own dome isn't (the engine says which, per picture)
     studioInUse = Property(bool, lambda s: not s._dome, notify=settingsChanged)
+    aoOn = Property(bool, lambda s: s._ao_on, notify=settingsChanged)
+    aoStrength = Property(float, lambda s: s._ao, notify=settingsChanged)
+    dof = Property(bool, lambda s: s._dof, notify=settingsChanged)
+    # depth of field only matters when the camera looked through has it on (the engine says which, per picture)
+    cameraDof = Property(bool, lambda s: s._cam_dof, notify=settingsChanged)
 
     # --- the scene and the shot (compiled once per document change, not per mouse move)
     def _on_doc(self, *_):
@@ -102,6 +109,7 @@ class Viewport(QObject):
         w, h, sel = *self._size, self.bridge.selected
         return {**self.cam.request(self.bridge.frame, w, h), "renderer": "storm", "view": "",
                 "exposure": self._exposure, "studio": self._studio, "sceneLights": self._lights,
+                "ao": self._ao if self._ao_on else 0.0, "dof": self._dof,
                 "selected": [sel] if sel in scene_ids(self._scene) else []}    # a material or key has no outline
 
     @Slot()
@@ -165,6 +173,18 @@ class Viewport(QObject):
     def setSceneLights(self, b):
         self._setting("_lights", bool(b))
 
+    @Slot(bool)
+    def setAoOn(self, b):
+        self._setting("_ao_on", bool(b))
+
+    @Slot(float)
+    def setAoStrength(self, v):
+        self._setting("_ao", max(0.05, min(2.0, float(v))))
+
+    @Slot(bool)
+    def setDof(self, b):
+        self._setting("_dof", bool(b))
+
     @Slot(float, float)
     def click(self, x, y):
         """A click at (x, y) device pixels: select what is there."""
@@ -176,10 +196,10 @@ class Viewport(QObject):
         self._r.close()
 
     # --- answers from the worker
-    def _on_ready(self, serial, ms, dome):
+    def _on_ready(self, serial, ms, dome, cam_dof=False):
         self._serial, self._ms = serial, ms
-        if dome != self._dome:
-            self._dome = dome
+        if dome != self._dome or cam_dof != self._cam_dof:
+            self._dome, self._cam_dof = dome, cam_dof
             self.settingsChanged.emit()
         self._set_status("")                         # a picture came: the last failure or restart notice is over
         self.serialChanged.emit()
