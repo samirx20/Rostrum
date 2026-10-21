@@ -259,7 +259,7 @@ FIELDS["comp"] += _motion.COMP
 LAYERS = ("shape", "text", "image", "video", "group", "drawing", "path", "rig", "camera")
 EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", *_motion.EFFECTS)
 ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask",) + _rig.OWNED_KEYS
-STILL = {"comp": {"width", "height", "fps", "duration", "background"}, "drawing": {"w", "h"}, "path": {"w", "h"},
+STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h"}, "path": {"w", "h"},
          "video": {"w", "h", "offset", "speed"},
          "text": {"letterDelay", "letterSeed"},
          **_rig.STILL, **_camera.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth"}}

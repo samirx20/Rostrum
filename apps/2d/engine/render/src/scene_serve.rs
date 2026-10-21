@@ -5,7 +5,9 @@
 //!   something it can't draw). Opens a session the comp's size if none is open at that size.
 //! - `{"frame": {"t": 1.25, "image"? | "rgba"? | "boxes"? …}}`: the scene at `t` seconds, drawn as any frame is
 //!   (serve.rs `frame`; `index` defaults to the frame number round(t·fps), so a still equals the exported frame).
-//!   Adds `timing.evalMs` (keys, easing and the stage markup).
+//!   Adds `timing.evalMs` (keys, easing and the stage markup). With the comp's `shutter` > 0 the frame is motion
+//!   blurred: `samples` are the stages at `shutterSamples` sub-frame times centred on t (crate::motion, MOTION.md);
+//!   the request's own `shutter` / `shutterSamples` override the comp's (e.g. `shutterSamples: 1` for a fast preview).
 //! - `{"export": {"start"?, "end"?, "encode": {"program", "args"}, "file"?}}` → `{"ok", "frames", "timing"}`: every
 //!   frame from start (default 0) to end (default the comp's duration) at the comp's fps into the encoder; `file`
 //!   is checked to exist and not be empty after. Or `"images": "C:\\…\\f-{frame}.png"`: each frame to a picture.
@@ -44,6 +46,7 @@ pub(crate) fn check(scene: &Scene) -> Result<(), String> {
         "text" => fonts::resolve(&scene.fonts, n.props["font"].as_str().unwrap_or("")).map(|_| ()).map_err(|e| format!("{}: {e}", n.id)),
         _ => Ok(()),
     })?;
+    crate::motion::check(&scene.comp)?;
     stage::stage(&eval::whole(&scene.comp, 0.0)).map(|_| ())
 }
 
@@ -98,7 +101,9 @@ pub fn bones(held: &Held, req: &Value) -> Result<Value, String> {
 /// `alpha`: the comp's background left out (an export with transparency).
 fn markup(scene: &Scene, t: f64, alpha: bool) -> Result<(String, f64), String> {
     let t0 = Instant::now();
+    let plan = crate::motion::Plan::of(&scene.comp)?;
     let mut comp = eval::at(&scene.comp, t).expect("the comp always shows");
+    plan.apply(&scene.comp, &mut comp);
     if alpha {
         comp.props.insert("background".into(), Value::String("transparent".into()));
     }
@@ -113,12 +118,26 @@ pub fn frame(held: &Held, s: &mut Session, req: &Value) -> Result<(Value, Option
     if held.shell != Some((s.width, s.height)) {
         return Err("the open page is not the scene's (an open or page came after the scene); send the scene again".into());
     }
-    let (m, eval_ms) = markup(scene, t, req["alpha"].as_bool() == Some(true))?;
+    let alpha = req["alpha"].as_bool() == Some(true);
+    let (m, mut eval_ms) = markup(scene, t, alpha)?;
     let mut f = req.clone();
     if let Some(o) = f.as_object_mut() {
         o.remove("alpha");
+        o.remove("shutter");
+        o.remove("shutterSamples");
     }
     f["stage"] = Value::String(m);
+    // Motion blur (crate::motion, MOTION.md): the stage at each sub-frame of the open shutter, averaged by serve.rs.
+    let (angle, n) = crate::motion::shutter(&scene.comp, req)?;
+    if angle > 0.0 && n > 1 {
+        let mut samples = vec![];
+        for ts in crate::motion::sample_times(t, scene.fps(), angle, n) {
+            let (mk, ms) = markup(scene, ts, alpha)?;
+            eval_ms += ms;
+            samples.push(Value::String(mk));
+        }
+        f["samples"] = Value::Array(samples);
+    }
     if f.get("index").is_none() {
         f["index"] = json!((t * scene.fps()).round() as u64);
     }

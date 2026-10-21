@@ -2,13 +2,16 @@
 estimated from its size and letters, and effects (glow, shadow, blur) are not counted.
 
 A layer's box runs from (0,0) to (w,h) in its own coordinates; its anchor sits at (x,y) in its parent, then it is
-scaled, turned. A group's children live inside the group's own coordinates (top-left of its box is 0,0).
+scaled, turned. A group's children live inside the group's own coordinates (top-left of its box is 0,0). The
+composition's camera (camera/view.py, CAMERA.md) then moves each top-level layer by its depth, so corners and boxes
+are where the layer shows on screen. Cameras themselves are not listed (they are not drawn).
 """
 from __future__ import annotations
 
 import math
 
 from rostrum2d import fields as F
+from rostrum2d.camera import view as camera
 from rostrum2d.evaluate import resolve
 
 TEXT_EM = 0.55            # average letter width in em, for the text box estimate
@@ -60,12 +63,16 @@ def flatten(comp: dict, t: float) -> list[dict]:
     """Every layer of a composition at time t, bottom of the stack first. Each: id, type, name, props (evaluated),
     opacity (with its groups' opacity), in_time, corners (4 points in the comp), matrix, box (w, h own size)."""
     out: list[dict] = []
+    cam = camera.shot(comp, t)
 
     def walk(layers, parent_m, parent_opacity, parent_in_time, path):
         for layer in layers:
+            if layer["type"] == "camera":
+                continue
             p = resolve(layer, t)
             w, h = own_size(layer["type"], p)
-            m = _mul(parent_m, _matrix(p, w, h))
+            outer = parent_m if path else camera.layer_matrix(comp, cam, p)
+            m = _mul(outer, _matrix(p, w, h))
             opacity = parent_opacity * min(1.0, max(0.0, p["opacity"]))
             in_time = parent_in_time and p["start"] <= t < p["end"]
             out.append({"id": layer["id"], "type": layer["type"], "name": layer.get("name", ""), "props": p, "opacity": opacity,

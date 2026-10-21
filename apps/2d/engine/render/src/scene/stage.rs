@@ -43,7 +43,7 @@ pub fn shell(width: u32, height: u32, fonts: &[super::fonts::Font]) -> R<String>
 pub fn stage(comp: &Item) -> R<String> {
     let mut out = format!("<div style=\"position:absolute;left:0;top:0;width:100%;height:100%;background:{};\"></div>", v(comp, "background"));
     // The camera (crate::camera): each top-level layer seen through it, by its depth; the camera itself isn't drawn.
-    let view = crate::camera::View::of(comp);
+    let view = crate::camera::View::of(comp)?;
     for l in comp.layers.iter().filter(|l| l.kind != "camera") {
         out += &view.place(l, layer(l)?);
     }

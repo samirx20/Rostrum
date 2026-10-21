@@ -1,14 +1,31 @@
-//! Motion blur, smears and trails (apps/2d/MOTION.md). STUB written by the lead for the hooks; Team Hem member B replaces it.
+//! Motion blur, smears and trails (apps/2d/MOTION.md). All three read the layer's real motion: the comp evaluated
+//! at other times (eval.rs `at`), so a rig-bound layer's motion is its posed motion. The shutter (shutter.rs) picks
+//! the sub-frame times scene_serve.rs `frame` writes a stage for; trails (trail.rs) and smears (smear.rs) are a
+//! post-pass on the evaluated tree, run by scene_serve.rs `markup` between `eval::at` and `stage::stage`.
+
+mod shutter;
+mod smear;
+mod trail;
+#[cfg(test)]
+mod tests;
+
+use std::collections::HashSet;
 
 use crate::scene::eval::Item;
 use crate::scene::fields::Field;
-use crate::scene::fields::Kind::Number;
+use crate::scene::fields::Kind::{Choice, Number, Toggle};
+use crate::scene::Node;
 
-/// The comp's shutter fields (motion blur).
+pub use shutter::{sample_times, shutter};
+pub use smear::smear_css;
+
+/// The comp's shutter fields (motion blur). The comp is never keyed (fields.rs `animatable`).
 pub const COMP: &[Field] = &[("shutter", Number), ("shutterSamples", Number)];
 
 pub const TRAIL: &[Field] = &[("copies", Number), ("spacing", Number), ("fade", Number)];
-pub const SMEAR: &[Field] = &[("amount", Number), ("max", Number)];
+pub const SMEAR: &[Field] = &[
+    ("amount", Number), ("max", Number), ("minSpeed", Number), ("stretch", Choice(&["behind", "both"])), ("keepArea", Toggle),
+];
 
 /// A motion effect's fields; None for any other type.
 pub fn fields(kind: &str) -> Option<&'static [Field]> {
@@ -19,12 +36,76 @@ pub fn fields(kind: &str) -> Option<&'static [Field]> {
     }
 }
 
-/// Whether keys may drive the field (true for every other type).
-pub fn animatable(_kind: &str, _name: &str) -> bool {
-    true
+/// Whether keys may drive the field (true for every other type): a trail's number of copies describes the
+/// item (the copies' ids are made from it), so it is still.
+pub fn animatable(kind: &str, name: &str) -> bool {
+    !(kind == "trail" && name == "copies")
 }
 
-/// The smear's CSS transform for a layer at its time, if it has a smear that stretches it now.
-pub fn smear_css(_it: &Item) -> Option<String> {
-    None
+/// What the post-pass needs, read once per stage: the trail copies' ids (owned here, so the evaluated tree can
+/// borrow them as it borrows the scene's ids) and whether any layer smears.
+pub struct Plan {
+    names: HashSet<String>,
+    smear: bool,
+}
+
+impl Plan {
+    /// The scene's motion effects, checked: a trail's copies a whole number 1..=32.
+    pub fn of(comp: &Node) -> Result<Plan, String> {
+        let mut names = HashSet::new();
+        let mut smear = false;
+        comp.walk(&mut |n| {
+            for e in &n.effects {
+                match e.kind {
+                    "smear" => smear = true,
+                    "trail" => {
+                        let c = e.props["copies"].as_f64().unwrap_or(0.0);
+                        if c.fract() != 0.0 || !(1.0..=32.0).contains(&c) {
+                            return Err(format!("{}.copies: {c} is not a whole number from 1 to 32", e.id));
+                        }
+                        for i in 1..=c as usize {
+                            n.walk(&mut |d| {
+                                names.insert(trail::copy_id(&d.id, i));
+                                Ok(())
+                            })?;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            Ok(())
+        })?;
+        Ok(Plan { names, smear })
+    }
+
+    /// The comp at its time (`eval::at`) → its trail copies added and its smears measured.
+    pub fn apply<'a>(&'a self, root: &'a Node, comp: &mut Item<'a>) {
+        let fps = fps(root);
+        if self.smear {
+            if let Some(prev) = crate::scene::eval::at(root, comp.t - 1.0 / fps) {
+                smear::measure(comp, &prev);
+            }
+        }
+        if !self.names.is_empty() {
+            trail::add(self, root, comp, fps);
+        }
+    }
+}
+
+/// Load-time check (scene_serve.rs `check`): the trails' copies and the comp's shutter.
+pub fn check(comp: &Node) -> Result<(), String> {
+    Plan::of(comp)?;
+    shutter(comp, &serde_json::Value::Null).map(|_| ())
+}
+
+fn fps(comp: &Node) -> f64 {
+    comp.props.get("fps").and_then(serde_json::Value::as_f64).unwrap_or(30.0)
+}
+
+/// The layer with this id in the evaluated tree (ids are unique in a scene).
+fn find<'t, 'a>(it: &'t Item<'a>, id: &str) -> Option<&'t Item<'a>> {
+    if it.id == id {
+        return Some(it);
+    }
+    it.layers.iter().find_map(|l| find(l, id))
 }

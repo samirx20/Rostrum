@@ -7,6 +7,7 @@ from pathlib import Path
 
 from rostrum_core.errors import RostrumError, codes
 
+from rostrum2d.camera.view import undo
 from rostrum2d.evaluate import value_at
 
 PIN_ON = 0.5                  # RIG.md: a pin is held while its value is >= 0.5
@@ -45,7 +46,8 @@ def posed(eng_rigs: dict, comp: dict, where: str) -> dict:
 
 
 def draw_skeleton(png: Path, rigs: dict, comp: dict, t: float, dest: Path, comp_w: int) -> tuple[int, int]:
-    """Write `png` with every posed bone, IK target and pin drawn on it to `dest`; positions are comp px."""
+    """Write `png` with every posed bone, IK target and pin drawn on it to `dest`; positions are screen px (the engine's,
+    through the camera)."""
     from PIL import Image, ImageDraw
     img = Image.open(png).convert("RGBA")
     k = img.width / comp_w
@@ -76,7 +78,8 @@ def _dist(a, b) -> float:
 
 
 def chain_facts(samples: list[dict], rig: dict, iid: str, rid: str, where: str) -> dict:
-    """One IK chain over the sampled frames ({"t", "rigs"}): the tip's path, its largest gap, and each pinned span's drift."""
+    """One IK chain over the sampled frames ({"t", "rigs"}): the tip's path, its largest gap, and each pinned span's drift,
+    in comp px: the engine's screen px with the camera undone, so a moving camera doesn't make a planted foot slide."""
     ik = iks_of(rig)[iid]
     bone = ik.get("bone")
     pts, gaps, pinned = [], [], []
@@ -85,8 +88,9 @@ def chain_facts(samples: list[dict], rig: dict, iid: str, rid: str, where: str) 
         if bone not in eng["bones"]:
             raise RostrumError(codes.RENDER_FAILED, where, f'bone "{bone}" of ik {iid}', "was not posed by the engine")
         b = eng["bones"][bone]
-        pts.append((b["tipX"], b["tipY"]))
-        gaps.append(eng["iks"][iid]["gap"])
+        cam = eng.get("camera", (1, 0, 0, 1, 0, 0))
+        pts.append(undo(cam, b["tipX"], b["tipY"]))
+        gaps.append(eng["iks"][iid]["gap"] / math.sqrt(abs(cam[0] * cam[3] - cam[1] * cam[2])))
         pinned.append(pin_at(ik, s["t"]) >= PIN_ON)
     step = max(1, len(pts) // 24)
     at = max(range(len(gaps)), key=gaps.__getitem__)

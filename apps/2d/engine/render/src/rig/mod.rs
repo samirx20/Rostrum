@@ -7,7 +7,7 @@ mod bind;
 mod bones;
 mod check;
 mod ik;
-mod math;
+pub mod math;
 mod pose;
 #[cfg(test)]
 mod tests;

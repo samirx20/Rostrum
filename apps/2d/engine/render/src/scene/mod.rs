@@ -80,6 +80,7 @@ impl Scene {
         let mut seen = HashSet::new();
         comp.walk(&mut |n| if seen.insert(n.id.clone()) { Ok(()) } else { Err(format!("{}: the id is used twice", n.id)) })?;
         crate::rig::check(&comp)?;
+        crate::camera::check(&comp)?;
         let fonts = fonts::list(&v["fonts"])?;
         type_font::register(&fonts);
         Ok(Scene { comp, fonts })
@@ -125,6 +126,7 @@ impl Scene {
             n.anim.sort_by(|a, b| a.0.cmp(&b.0));
         }
         crate::rig::check(&next)?;
+        crate::camera::check(&next)?;
         self.comp = next;
         Ok(list.len())
     }

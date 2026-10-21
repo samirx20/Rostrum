@@ -1,0 +1,8 @@
+[{"tool":"run_script","source_file":"motion_film.py","args":{"name":"motion_film.py"}},
+ {"tool":"look_motion","args":{}},
+ {"tool":"look_frame","args":{"time":0.6,"width":1920}},
+ {"tool":"look_frame","args":{"time":0.4,"width":1920}},
+ {"tool":"look_frame","args":{"time":1.5,"width":1920}},
+ {"tool":"look_frame","args":{"time":1.75,"width":1920}},
+ {"tool":"look_sheet","args":{"start":0,"end":2.96,"count":12}},
+ {"tool":"render_video","args":{}}]

@@ -1,5 +1,7 @@
-//! The engine's `bones` request (RIG.md › Agents' eyes): every rig's posed bones and IK targets at t, in comp px
-//! (through the rig's and its parents' 2D transforms; tilt left out).
+//! The engine's `bones` request (RIG.md › Agents' eyes): every rig's posed bones and IK targets at t, in screen px,
+//! where they are drawn: through the rig's and its parents' 2D transforms (tilt left out) and the comp's camera
+//! (crate::camera; without one, screen px are comp px). Each rig also gives `camera`: the matrix [a, b, c, d, e, f] that took its comp px to
+//! the screen (the identity without a camera), so a check that must ignore the camera (a pinned foot) can undo it.
 
 use serde_json::{json, Map, Value};
 
@@ -12,19 +14,26 @@ use crate::scene::Node;
 pub fn bones(comp: &Node, t: f64) -> Value {
     let mut rigs = Map::new();
     let top = eval::whole(comp, t);
-    for l in &top.layers {
-        walk(l, Aff::ID, &mut rigs);
+    let view = match crate::camera::View::of(&top) {
+        Ok(v) => v,
+        Err(e) => return json!({ "error": e }),
+    };
+    for l in top.layers.iter().filter(|l| l.kind != "camera") {
+        let cam = view.map(l);
+        walk(l, cam, cam, &mut rigs);
     }
     json!({ "ok": true, "rigs": rigs })
 }
 
-fn walk(it: &Item, outer: Aff, rigs: &mut Map<String, Value>) {
+fn walk(it: &Item, outer: Aff, cam: Aff, rigs: &mut Map<String, Value>) {
     let m = outer * layer_map(&it.props);
     if it.kind == "rig" {
-        rigs.insert(it.id.to_string(), rig(&Pose::solve(it.node, it.t), m));
+        let mut r = rig(&Pose::solve(it.node, it.t), m);
+        r["camera"] = json!([cam.a, cam.b, cam.c, cam.d, cam.e, cam.f]);
+        rigs.insert(it.id.to_string(), r);
     }
     for l in &it.layers {
-        walk(l, m, rigs);
+        walk(l, m, cam, rigs);
     }
 }
 
