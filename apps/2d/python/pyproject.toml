@@ -7,6 +7,9 @@ dependencies = ["rostrum_core", "skia-pathops>=0.9"]   # skia-pathops: path bool
 
 [project.optional-dependencies]
 mcp = ["rostrum_core[mcp]"]
+lipsync = ["numpy", "scipy", "soundfile",                                  # LIPSYNC.md (all BSD-3)
+           "onnxruntime-directml>=1.24; sys_platform == 'win32'",           # MIT
+           "onnxruntime>=1.24; sys_platform != 'win32'"]                    # MIT
 test = ["pytest"]
 
 [build-system]

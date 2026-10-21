@@ -27,6 +27,7 @@ from . import fields as F, pathdata
 from .kind import KIND, LISTS
 from .ops_keys import key_id
 from .rig import script as rig_script
+from .lipsync import script as lipsync_script
 
 SAFE = {n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__builtins__, n)
         for n in ("range", "len", "min", "max", "abs", "round", "enumerate", "zip", "list", "dict", "float", "int",
@@ -176,7 +177,8 @@ def run_source(source: str, name: str) -> dict:
     b = Build(_reserved(source))
     scope = {"__builtins__": {**SAFE, "__import__": _import}, "math": math, "comp": b.comp,
              **{t: (lambda id=None, _t=t, **v: b.layer(_t, id, **v)) for t in F.LAYERS},
-             **pathdata.for_script(b.layer), **rig_script.for_script(b)}
+             **pathdata.for_script(b.layer), **rig_script.for_script(b),
+             **lipsync_script.for_script(b)}
     try:
         exec(compile(source, name, "exec"), scope)
     except Exception as e:

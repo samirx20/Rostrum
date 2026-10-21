@@ -1,0 +1,9 @@
+[{"tool":"run_script","source_file":"lipsync_film.py","args":{"name":"lipsync_film.py"}},
+ {"tool":"inspect_lipsync","args":{"source":"C:\\Users\\Sam\\.rostrum\\waves\\results\\stage2\\sound-voice\\voice-over-on-cue.stems\\vo.wav","text":"Every city keeps one hour for itself.","start":2.5,"end":9.0,"at":0,
+   "shapes":{"X":"mouth_X","A":"mouth_A","B":"mouth_B","C":"mouth_C","D":"mouth_D","E":"mouth_E","F":"mouth_F","G":"mouth_G","H":"mouth_H"}}},
+ {"tool":"look_frame","args":{"time":0.3,"width":1920}},
+ {"tool":"look_frame","args":{"time":1.5,"width":1920}},
+ {"tool":"look_frame","args":{"time":2.6,"width":1920}},
+ {"tool":"look_frame","args":{"time":4.6,"width":1920}},
+ {"tool":"look_sheet","args":{"start":0.5,"end":3.5,"count":24}},
+ {"tool":"render_video","args":{}}]

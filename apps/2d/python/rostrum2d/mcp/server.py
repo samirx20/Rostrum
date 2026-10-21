@@ -16,6 +16,7 @@ from rostrum_core.storage import paths
 
 from rostrum2d import KIND, run_source
 from . import at, draw, look, motion, rig, video
+from . import lipsync
 
 SKILLS = Path(__file__).resolve().parents[3] / "skills"
 INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text / image / group layers animated by keys. "
@@ -26,7 +27,7 @@ INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text 
 
 def app_tools():
     return (look.tools.merged_with(motion.tools).merged_with(at.tools).merged_with(video.tools)
-            .merged_with(draw.tools).merged_with(rig.tools))
+            .merged_with(draw.tools).merged_with(rig.tools).merged_with(lipsync.tools))
 
 
 def open_documents(project: str, items: list[str]) -> dict:
