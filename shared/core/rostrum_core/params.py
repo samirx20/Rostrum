@@ -42,6 +42,8 @@ class Param:
     integer: bool = False
     options: list = field(default_factory=list)
     labels: dict = field(default_factory=dict)   # for type "choice": value -> the words screens show (else plain_words)
+    words: dict = field(default_factory=dict)    # for type "number": a value that means something, in words
+                                                 # ({36000.0: "End of comp"}): screens show the words, not the number
     kind: str | None = None          # for type "id": the item kind it must point at
     item: str | None = None          # for type "list": the type of each element (min/max/integer/options/kind then apply per element)
     min_items: int = 0
@@ -178,6 +180,8 @@ class Param:
         if self.type == "number" and self.max is not None:
             s["maximum"] = self.max
         desc = self.help or self.label
+        if self.words:
+            desc += " (" + ", ".join(f"{v:g} = {w}" for v, w in self.words.items()) + ")"
         if self.valid_when:
             from .conditions import describe
             desc += f" (only when {describe(self.valid_when)})"
@@ -193,6 +197,8 @@ class Param:
                      integer=self.integer, options=list(self.options), kind=self.kind)
         if self.type == "number":
             d.update(min=self.min, max=self.max, step=self.step, unit=self.unit, integer=self.integer)
+            if self.words:
+                d["words"] = {str(v): w for v, w in self.words.items()}
         if self.type == "time":
             d.update(min=self.min, max=self.max)
         if self.type == "choice":

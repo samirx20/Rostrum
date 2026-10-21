@@ -97,7 +97,8 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
   - **Text on a path:** `path` is SVG path data (as a path layer's `d`) in the layer's own px; empty = normal text. The
     letters' baseline sits on the path, each letter turned to the path's direction, spaced by the font's own advance
     widths plus `tracking` (no kerning). `pathAlign` start / center / end on the path's length, then `pathOffset` px
-    further along (can be keyed). Before the start and past the end the path continues straight. The box runs from
+    further along (can be keyed). A letter whose centre falls before the start or past the end is left out
+    (`pathOverflow` "hide", the default) or carried on in a straight line ("straight"). The box runs from
     (0, 0) to the path's far corner. One line only (a line break is refused).
   - **Letter by letter:** `letterDelay` s ≠ 0: each letter (`letterSplit` letters | words) plays the layer's own keys
     `letterDelay × its place` later; places follow `letterOrder` forward | backward | center | random (`letterSeed`, the
@@ -131,4 +132,5 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - S5: version 1 written; until the engine took `scene`, Python evaluated each frame and sent page markup (the stopgap).
 - H6: the engine evaluates scenes itself, pixel for pixel as the stopgap did (`proofs/2d-engine-scene/README.md`).
 - S7: the Python stopgap is deleted; drawing layers are drawn by the engine; `scene` takes `cpu`, `frame.index` defaults to round(t · fps), `export` takes `images` and `progress`, `edit` is all or nothing.
+- S9 (same version): text `pathOverflow`.
 - S8 (same version): `path` and `video` layers; text features, axes, text on a path, letter by letter; gradient `conic` and centre; `backdrop`; masks feather / invert / `angle` for every shape; scene `fonts` and the `scene` reply's font list; `pixels` written out.

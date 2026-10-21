@@ -4,11 +4,13 @@ No Qt.
 A layer's box: its anchor sits at (x, y) inside its parent (a group's layers are placed from the group's top-left
 corner); the box is w x h times scale. Rotation and tilt are not taken into account yet (the box stays upright).
 A text has no size in the document, so its box is an ESTIMATE from size, line height and character count, until
-the engine reports laid-out boxes.
+the engine reports laid-out boxes. A text on a path has the engine's box for it: from its origin to the path's far
+corner (scene/letters.rs `Placed`).
 """
 from __future__ import annotations
 
 from rostrum2d import fields as F
+from rostrum2d import pathdata
 from rostrum2d.evaluate import resolve
 
 TEXT_ADVANCE = 0.55        # average character width per px of font size (estimate)
@@ -17,6 +19,9 @@ TEXT_ADVANCE = 0.55        # average character width per px of font size (estima
 def size_of(layer: dict, p: dict) -> tuple[float, float]:
     if layer["type"] != "text":
         return p["w"], p["h"]
+    if p.get("path"):
+        _, _, x1, y1 = pathdata.bounds(pathdata.commands(p["path"]))
+        return max(x1, 0.0), max(y1, 0.0)
     lines = str(p["body"]).split("\n") or [""]
     w = p["boxWidth"] or max(len(line) for line in lines) * p["size"] * TEXT_ADVANCE
     return w, len(lines) * p["size"] * p["lineHeight"]

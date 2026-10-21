@@ -3,7 +3,8 @@ import "."
 
 // A number. Drag sideways to scrub (Shift = 10 steps at a time), or click to type; Up / Down step while typing.
 // A scrub is one gesture: scrubStarted, many scrubbed(value), scrubEnded — the app records it as ONE change.
-// A typed value or an arrow step is one edited(value).
+// A typed value or an arrow step is one edited(value). `words` ([{value, label}]): a value that means something
+// ("End of comp") shows as its words, not as a number; it can't be scrubbed from (click and type a number instead).
 FieldFrame {
     id: f
     property real value: 0
@@ -11,6 +12,8 @@ FieldFrame {
     property real to: 1e9
     property real step: 1
     property string unit: ""
+    property var words: []
+    readonly property string word: { for (let w of words) if (w.value === value) return w.label; return "" }
     readonly property bool scrubbing: scrub.scrubbing
     signal edited(real value)
     signal scrubStarted()
@@ -24,12 +27,12 @@ FieldFrame {
 
     editable: true
     engaged: scrub.scrubbing
-    text: format(value)
-    prefix: unitFirst ? unit : ""
-    suffix: unitFirst ? "" : unit
+    text: word || format(value)
+    prefix: unitFirst && !word ? unit : ""
+    suffix: unitFirst || word ? "" : unit
     onCommitted: (t) => {
         var v = parseFloat(t.replace(/[^0-9eE+\-.]/g, ""))
-        if (isNaN(v)) { input.text = text; return }           // not a number: keep the value, change nothing
+        if (isNaN(v)) { input.text = text; return }           // (the words themselves, committed back, are not a number either)           // not a number: keep the value, change nothing
         f.edited(clamp(v))
     }
     onArrow: (d, big) => f.edited(clamp(value + d * (big ? 10 : 1) * step))
@@ -38,7 +41,7 @@ FieldFrame {
         id: scrub
         anchors.fill: parent
         enabled: !f.input.activeFocus
-        cursorShape: Qt.SizeHorCursor
+        cursorShape: f.word ? Qt.IBeamCursor : Qt.SizeHorCursor
         preventStealing: true
         property bool scrubbing: false
         property real startX: 0
@@ -46,7 +49,7 @@ FieldFrame {
         onPressed: (m) => { startX = m.x; startValue = f.value; scrubbing = false }
         onPositionChanged: (m) => {
             var dx = m.x - startX
-            if (!scrubbing && Math.abs(dx) < 3) return
+            if (f.word || (!scrubbing && Math.abs(dx) < 3)) return
             if (!scrubbing) { scrubbing = true; f.scrubStarted() }
             var steps = Math.round(dx / Theme.scrubPixels) * (m.modifiers & Qt.ShiftModifier ? 10 : 1)
             f.scrubbed(f.clamp(startValue + steps * f.step))
