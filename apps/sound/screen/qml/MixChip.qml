@@ -8,9 +8,10 @@ Rectangle {
     property bool selected: false
     property bool dim: false
     property bool plus: false
+    property real maxWidth: 1e6          // the room it has: a longer name is cut with "…", never cut off by the strip
     signal clicked()
     height: 22
-    width: plus ? 22 : label.implicitWidth + Theme.gap * 2
+    width: plus ? 22 : Math.min(maxWidth, label.implicitWidth + Theme.gap * 2)
     radius: 4
     color: selected ? Theme.accentSoft : hover.hovered ? Theme.hover : Theme.raised
     border.width: selected ? 1 : 0; border.color: Theme.accent
@@ -18,6 +19,7 @@ Rectangle {
     Behavior on color { ColorAnimation { duration: Theme.fast } }
     Text {
         id: label; anchors.centerIn: parent; text: chip.text
+        width: Math.min(implicitWidth, chip.width - Theme.gap * 2); elide: Text.ElideRight
         color: chip.selected ? Theme.fg : chip.plus ? Theme.fg2 : Theme.fg
         font.family: uiFont; font.pixelSize: chip.plus ? Theme.title : Theme.label
     }

@@ -109,6 +109,9 @@ class PluginHub(QObject):
     def entry(self, spec: dict) -> dict | None:
         return next((p for p in self.catalog if p["path"] == spec.get("path") and p["id"] == spec.get("id")), None)
 
+    def vendor_of(self, spec: dict) -> str:
+        return (self.entry(spec) or {}).get("vendor", "")
+
     @Slot()
     def scan(self):
         """Ask the engine which plug-ins are installed (once; the lists fill in when it answers)."""

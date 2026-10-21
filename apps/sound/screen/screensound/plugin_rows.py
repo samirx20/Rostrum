@@ -15,14 +15,27 @@ from rostrum_sound.doc import values as V
 SHOWN = 6          # settings on screen before More (the scan lists a plug-in's most important first)
 
 
+def short_name(name: str, vendor: str = "") -> str:
+    """A plug-in's name for small places (a chip): without its vendor's name in front ("Airwindows Consolidated"
+    by Airwindows is "Consolidated"). The full name stays in the settings panel and the inspector."""
+    n, v = (name or "").strip(), (vendor or "").strip()
+    rest = n[len(v):].lstrip(" -_·:") if v and n.lower().startswith(v.lower()) else ""
+    return rest or n
+
+
+def has_name(param: dict) -> bool:
+    """A real name: a plug-in like Airwindows Consolidated names a slot its current effect doesn't use "-"."""
+    return any(ch.isalnum() for ch in str(param.get("name") or ""))
+
+
 def layout(params: list[dict]) -> list[dict]:
-    """Static rows for a scanned parameter list [{id, name, min, max, default}]. Skipped: empty ranges and unused
-    slots (a plug-in like Airwindows Consolidated names a slot its current effect doesn't use "-")."""
+    """Static rows for a scanned parameter list [{id, name, min, max, default}]. Skipped: empty ranges and
+    parameters with no real name (never shown as "-")."""
     ps = []
-    used = (q for q in params if q.get("max", 0) > q.get("min", 0) and any(ch.isalnum() for ch in q.get("name", "x")))
+    used = (q for q in params if q.get("max", 0) > q.get("min", 0) and has_name(q))
     for p in used:
         ps.append(Param.number(str(p["id"]), min=p["min"], max=p["max"], step=V.step(p["min"], p["max"]),
-                               default=p.get("default", p["min"]), label=p.get("name") or str(p["id"]), group="Settings",
+                               default=p.get("default", p["min"]), label=p["name"], group="Settings",
                                importance="primary" if len(ps) < SHOWN else "deep"))
     return [r for r in rows.layout(SimpleNamespace(params=ps)) if r["row"] != "group"]
 

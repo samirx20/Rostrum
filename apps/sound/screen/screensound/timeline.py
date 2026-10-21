@@ -144,8 +144,12 @@ def rows(root: dict, open_lanes: dict | None = None) -> list[dict]:
 
 
 def markers(root: dict) -> list[dict]:
-    return sorted(({"id": m["id"], "name": m.get("name", m["id"]), "t": timing.sec(m.get("at", 0), root, m["id"])}
-                   for m in root.get("markers", [])), key=lambda m: m["t"])
+    """The named markers by time. `named` is true when a section of the same name starts at the marker: the
+    section bar already says it, so the marker band draws no second tag (the line through the rows stays)."""
+    starts = {(s["name"], round(s["t"], 4)) for s in music_map.sections(root)}
+    out = [{"id": m["id"], "name": m.get("name", m["id"]), "t": timing.sec(m.get("at", 0), root, m["id"])}
+           for m in root.get("markers", [])]
+    return sorted(({**m, "named": (m["name"], round(m["t"], 4)) in starts} for m in out), key=lambda m: m["t"])
 
 
 def song(root: dict) -> dict:

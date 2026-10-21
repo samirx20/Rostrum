@@ -11,6 +11,8 @@ import math
 
 from rostrum_gui import rows
 
+from . import plugin_rows
+
 MASTER = "master"
 LOUDNESS = "Loudness"
 EFFECT_NAMES = {"eq": "EQ", "deess": "De-ess", "dehum": "De-hum"}
@@ -24,10 +26,17 @@ def db(linear: float) -> float | None:
     return round(20 * math.log10(linear), 1) if linear and linear > 0 else None
 
 
-def chain(item: dict) -> list[dict]:
+def chip_label(e: dict, vendor_of=None) -> str:
+    """The chip's short text: a plug-in by its own name without the vendor in front, a built-in by its type."""
+    spec = e.get("plugin") or {}
+    if not spec.get("name"):
+        return effect_name(e.get("effect", ""))
+    return plugin_rows.short_name(spec["name"], vendor_of(spec) if vendor_of else "")
+
+
+def chain(item: dict, vendor_of=None) -> list[dict]:
     """The inserts left to right in insert order; a bypassed one is dim (state), not a disabled control."""
-    return [{"id": e["id"], "label": (e.get("plugin") or {}).get("name") or effect_name(e.get("effect", "")),
-             "bypass": bool(e.get("bypass"))}
+    return [{"id": e["id"], "label": chip_label(e, vendor_of), "bypass": bool(e.get("bypass"))}
             for e in item.get("effects", [])]
 
 
@@ -50,10 +59,11 @@ def _num(v):
     return round(float(v), 1) if isinstance(v, (int, float)) and v > -120 else None
 
 
-def strip(item: dict, name: str, meter: dict, routing: dict | None = None) -> dict:
-    """`routing` (tracks and buses, `routing()` below) adds where it plays to and its sends."""
+def strip(item: dict, name: str, meter: dict, routing: dict | None = None, vendor_of=None) -> dict:
+    """`routing` (tracks and buses, `routing()` below) adds where it plays to and its sends; `vendor_of(plugin
+    record)` names the vendor so a plug-in's chip can drop it."""
     return {"id": item["id"], "name": name, "volume": item.get("volume", 1), "pan": item.get("pan", 0),
-            "mute": bool(item.get("mute")), "solo": bool(item.get("solo")), "effects": chain(item), "meter": meter,
+            "mute": bool(item.get("mute")), "solo": bool(item.get("solo")), "effects": chain(item, vendor_of), "meter": meter,
             "canSolo": item["type"] == "track", **(routing or ROUTING_NONE)}
 
 

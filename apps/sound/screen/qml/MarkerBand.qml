@@ -13,7 +13,7 @@ Item {
         var best = ""
         for (var i = 0; i < backend.markers.length; i++) {
             var m = backend.markers[i], mx = ruler.xOf(m.t)
-            if (x >= mx - 4 && x <= mx + tagWidth(m.name)) best = m.id
+            if (!m.named && x >= mx - 4 && x <= mx + tagWidth(m.name)) best = m.id
         }
         return best
     }
@@ -25,7 +25,7 @@ Item {
             required property var modelData
             readonly property bool on: modelData.id === backend.selected
             x: Math.round(band.ruler.xOf(modelData.t)); y: 1
-            visible: x + width > 0 && x < band.width
+            visible: !modelData.named && x + width > 0 && x < band.width
             width: tag.implicitWidth + 12; height: band.height - 2
             radius: 3; color: on ? Theme.accent : Theme.raised
             Rectangle { width: 2; height: parent.height; color: parent.on ? Theme.fg : Theme.fg3; radius: 1 }

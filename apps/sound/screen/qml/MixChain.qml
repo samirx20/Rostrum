@@ -18,7 +18,7 @@ Flickable {
             model: chain.chips
             delegate: MixChip {
                 required property var modelData
-                text: modelData.label; dim: modelData.bypass
+                text: modelData.label; dim: modelData.bypass; maxWidth: chain.width
                 selected: backend.selected === modelData.id
                 onClicked: backend.select(modelData.id)
             }
