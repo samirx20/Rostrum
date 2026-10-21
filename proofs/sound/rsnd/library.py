@@ -4,17 +4,28 @@
     lib = Library()
     lib.take("impact.metal-light", 2)  ->  {"path": ..., "offset": 0.0, "length": 0.236}
     lib.search("door")                 ->  names
-Use with Track.sample(**lib.take(...)) or Track.sound(name, at, ...)."""
+Use with Track.sample(at=..., **lib.take(...))."""
 import json
+import subprocess
 from pathlib import Path
 
 PACKS = Path.home() / ".rostrum" / "assets" / "sounds"
-CATALOG = Path(r"C:\Users\Sam\.rostrum\waves\scratch\priyam-p1\catalog.json")  # experiment-final:src/engine/sound/library/catalog.json
+ARCHIVE = Path(r"C:\Users\Sam\Documents\CODE\OLD-EXPERIMENT")
+CATALOG_AT_TAG = "experiment-final:src/engine/sound/library/catalog.json"
+
+
+def _archive_catalog() -> str:
+    """The catalogue read straight from the archive's tag (read-only)."""
+    p = subprocess.run(["git", "-C", str(ARCHIVE), "show", CATALOG_AT_TAG], capture_output=True, text=True, encoding="utf-8")
+    if p.returncode != 0:
+        raise FileNotFoundError(f"sound catalogue: git show {CATALOG_AT_TAG} failed: {p.stderr.strip()}")
+    return p.stdout
 
 
 class Library:
-    def __init__(self, catalog=CATALOG, packs=PACKS):
-        self.sounds = json.loads(Path(catalog).read_text(encoding="utf-8"))["sounds"]
+    def __init__(self, catalog=None, packs=PACKS):
+        text = Path(catalog).read_text(encoding="utf-8") if catalog else _archive_catalog()
+        self.sounds = json.loads(text)["sounds"]
         self.packs = Path(packs)
 
     def search(self, word):

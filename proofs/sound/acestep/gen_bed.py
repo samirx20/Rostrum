@@ -32,6 +32,11 @@ def main() -> int:
     from acestep.handler import AceStepHandler
     from acestep.llm_inference import LLMHandler
     from acestep.inference import GenerationConfig, GenerationParams, generate_music
+    import acestep.model_downloader as md
+
+    # The 4 GB tier runs without the LM planner; don't let the "main model present" check fetch its 3.8 GB.
+    if "acestep-5Hz-lm-1.7B" in md.MAIN_MODEL_COMPONENTS:
+        md.MAIN_MODEL_COMPONENTS.remove("acestep-5Hz-lm-1.7B")
 
     t0 = time.time()
     dit = AceStepHandler()
