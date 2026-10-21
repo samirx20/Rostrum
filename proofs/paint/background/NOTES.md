@@ -110,3 +110,88 @@ painterly marks (the brush sheet shows it), but I leaned on masks + fills becaus
 tool gaps that held the look back: glows / haze that can't stack (gap 2), the replay cost (gap 1) and no perspective
 plane helper (gap 9). With those fixed and about 3–4× the time, I think a much richer surface is in reach. Whether it
 can reach Arcane's surface quality is not proven by this picture: **today, no.**
+
+## Round 2 (member painter2): a surface / brushwork pass on the same document
+
+**Pictures** (all in `C:\Users\Sam\.rostrum\waves\results\stage1\p-paint\`): `background-round2-step1.png` (after the
+plaster pass), `background-round2-step2.png` (after water, stone, arch, sky, wall detail), final
+`background-round2-1080p.png` (via `export`), and `background-round2-vs-reference.png` (via `ref`, beside
+`arcane-80lv-2.jpg`).
+
+**What I did.** Kept the design (one light, the arch as the focus, value groups, perspective) and painted over it in
+7 new scripts, 16 new batches, each looked at before the next:
+- `08_plaster.py`: 850 strokes on the 8 buildings on a new `plaster` layer: flat / bristle strokes that run along the
+  wall planes toward the vanishing point, chalk rain streaks, broken `block` patches. Colours are picked off the wall
+  layer and pushed warm near the glow, cool toward the roofs, dark and damp at the water. The windows, sills and
+  cornices (strokes 58-225) were then **re-laid on top** from `stroke_info`, so the brushwork never buries them.
+- `09_water_arch.py`: the hard-edged ellipse under the arch broken up: 260 wet drags along its rim (`wet=0.85,
+  sample_all`), 520 dark ripples cutting into the light, 420 warm ripples on a `screen` layer that thin out past the
+  old rim. (Its stone and arch-glow batches were undone, see misses; they are not in the document.)
+- `10_stone_sky_detail.py`: bridge stone in a narrow value range, the canal seen through the arch painted along its
+  planes, 240 broad bristle / flat strokes in the sky.
+- `11_detail_rim.py`: shutters with louvres and lintel shadows beside all 36 near windows (positions **asked from the
+  document**, not guessed), drainpipes with brackets and a lit edge, broken warm lines on corners facing the glow,
+  chimney pots; the arch crown glow (screen dabs that lose the top of the arch into the light); 300 long dark / warm
+  ripples across the lower rim of the reflection so it no longer reads as an oval.
+- `12_bounce_edges.py`: warm light bounced up from the water onto the lower walls and cool sky light on the upper
+  walls (360 screen bristle strokes, they stack), and 70 wet drags that lose the arch's inner edge, the tops of the
+  far canal walls and the far rooflines.
+- `13_windows_clouds.py`: the 17 lit windows (found by colour) get a hot off-centre core, a curtain, mullion and
+  transoms; the thin cloud dashes get painted masses with warm undersides (278 strokes).
+- `14_voussoirs_quay.py`: the arch ring as separate worn stones with dark joints and warm lower faces; quay top,
+  quay face and boat painted along their planes with lamp-warmed colour and paving joints.
+
+**Count and time.** About 4,920 new stroke ids (1556 → ~6480; the document is now 56 batches, ~6,480 ids). About 40
+minutes of painting, of which roughly 13 minutes was waiting on runs and undos.
+
+**Look-loop times now.** `see` / `small` / `values` / `export` / `what` / `landed`: **3-4 s** each, even at 6,000+
+ops (round 1: ~67 s). Undo of the last 1-3 batches: ~10 s. A run costs its strokes: ~15-30 s for 300-800 dry strokes;
+**wet strokes are the slow part** (09 took 3 min 21 s, mostly the 260 `wet + sample_all` drags; 12 took 84 s for 70).
+Undoing a 4th batch in a row replays the whole document: that took **about 9 minutes** at ~6,000 ops (the single
+worst cost of the session).
+
+**`landed` on strokes that matter:** plaster 1556 (mean 0.39 px, 101 px clipped by its mask on purpose), rim drag
+2574 (0.13 px), drainpipe 4576 (0.17 px), rim ripple 5009 (0.33 px), arch edge drag 5669 (0.00 px), arch stone 6102
+(0.97 px), quay stroke 6195 (1.09 px): all landed. The new `landed` wording states both limits clearly (gap 4 of
+round 1 is fixed).
+
+**Misses (all planning, none placement):**
+1. First bridge-stone pass sampled colours off the bridge layer, which already held voussoir and railing paint; the
+   `block` strokes came out as greenish, glitchy rectangles. Undone; redone from the bridge tone in a narrow range.
+2. First shutters were placed from my own guess of the window positions and landed beside nothing as teal stripes.
+   Undone; redone from `stroke_info` of the real window strokes.
+3. First arch-ring stones were too big, too varied in colour, and read as a ring of pebbles. Undone, made smaller,
+   lower in opacity and colour drift. The two undos in a row past the kept states cost the 9-minute replay above.
+4. Early ripples used a sine wobble on 8 points: they read as `~~~` squiggles, a pattern, in the upper water. Left
+   in (they are lost under later strokes in most places), but visible on a close look.
+
+**Remaining tool gaps.**
+1. **Undo past the 3 kept states replays everything** (~9 min now). Needed: more kept states (or one every N
+   batches), or undo of a named batch without a full replay.
+2. **Wet strokes are slow** (~1.3 s each with `sample_all`). Lost edges and blending need hundreds of them.
+3. **No "exclude" mask**: to paint plaster without burying windows I had to re-lay 168 window strokes on top. A mask
+   made of "this mask minus those strokes" (or `mask_from_strokes`) would do it directly.
+4. **No query for strokes by batch / colour / place**: I scanned id ranges with `stroke_info` in a loop. A
+   `doc.strokes(batch=..., layer=...)` would be cleaner.
+5. **No perspective plane helper** still (round 1 gap 9); every along-the-wall stroke needs my own vanishing-point maths.
+6. **No colour sampling helper for scripts**: `layer_pixels` works, but "pick the seen colour at x, y" (composite
+   at one point) would avoid sampling the wrong layer (miss 1).
+
+**Honest judgement against the reference.** Better than round 1, still **not at the reference.** What moved: the
+walls now have visible, plane-following brushwork and colour inside the shadows (warm bounce low, cool sky light
+high); the bright reflection is a broken field of ripples instead of a hard ellipse; the arch ring reads as stones lit
+from under the arch; near walls have shutters, pipes, chimneys; the clouds have mass. At thumbnail size the design is
+unchanged (`values`: 60 / 28 / 10 / 2 %).
+What is left: (a) **rendering of form and material**: Arcane's stones and plaster have planes, chips, stains and
+lit/shadow sides on every block; mine has texture laid over flat shapes, so the buildings still read as boxes with a
+painted skin. (b) **Edges**: the silhouettes (rooflines, bridge, far city, the far-canal trapezoids under the arch)
+are still mostly the round-1 polygon edges; I lost only a few. (c) **The far city** and the view through the arch
+are still flat cut-outs. (d) **Light design inside the forms**: the reference models light across each surface;
+mine tints it.
+**Tools or painting?** Mostly **painting and time**: every mark the reference has could be made with these brushes,
+but it needs thousands of hand-judged strokes per building, form by form, not procedural scatter over a mask (which
+is what I did to cover the frame in 40 minutes, and procedural scatter is exactly what keeps it looking like texture
+on shapes). The tool costs that shape *how* an agent paints: slow wet strokes and the full replay on deep undo push
+toward safe dry scatter; an exclude mask, a plane helper and stroke queries would make careful, observed painting
+much cheaper. My estimate: reaching the reference needs ~4-6x this time spent on form-by-form rendering of the arch,
+near walls and edges, with those tool fixes.
