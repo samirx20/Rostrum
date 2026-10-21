@@ -32,6 +32,8 @@ class ColorOut {
                 unsigned char* dst) const;
 
  private:
+  std::vector<float> displayed(const Picture& p, const std::string& view, double exposure,
+                               const float background[3]) const;
   struct Impl;
   std::unique_ptr<Impl> impl_;
   std::string display_;
