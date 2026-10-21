@@ -11,6 +11,7 @@ mod boxes;
 mod color;
 mod cube;
 mod glyphs;
+mod gpu_output;
 mod grade_cmd;
 mod keep;
 mod painter;

@@ -228,7 +228,12 @@ fn dither(x: u32, y: u32, c: u32) -> f32 {
     h ^= h >> 12;
     h = h.wrapping_mul(0x297A_2D39);
     h ^= h >> 15;
-    (h >> 8) as f32 / (1u32 << 24) as f32 - 0.5
+    offset(h >> 8)
+}
+
+/// The dither offset of a 24-bit hash value `m` (the GPU output step computes the same hash; gpu_output.rs).
+fn offset(m: u32) -> f32 {
+    m as f32 / (1u32 << 24) as f32 - 0.5
 }
 
 /// One channel to 8 bits. A value within 0.2 of a code is that code (a `#hex` colour stays exact through half
@@ -252,6 +257,11 @@ pub fn output(spec: &Spec, src: &[u8], width: u32, deep: bool, fast: bool, frame
 
 /// `output` into a buffer of exactly the frame's size (a shared-memory slot, shm.rs); every byte is written.
 pub fn output_into(spec: &Spec, src: &[u8], width: u32, deep: bool, fast: bool, _frame: u32, out: &mut [u8]) {
+    output_rows(spec, src, width, 0, deep, fast, out);
+}
+
+/// `output_into` for rows of a frame starting at row `y0` (the dither is placed by the pixel's place in the whole frame).
+pub fn output_rows(spec: &Spec, src: &[u8], width: u32, y0: u32, deep: bool, fast: bool, out: &mut [u8]) {
     let table = crate::pixels::halves();
     let chan = channel_table(spec);
     let lut = if fast && !deep && chan.is_none() { output_lut(spec) } else { None };
@@ -281,7 +291,7 @@ pub fn output_into(spec: &Spec, src: &[u8], width: u32, deep: bool, fast: bool, 
                 }
                 _ => spec.output.apply([v(0) / a, v(1) / a, v(2) / a]),
             };
-            let (x, y) = (i as u32 % width, i as u32 / width);
+            let (x, y) = (i as u32 % width, y0 + i as u32 / width);
             for (k, c) in [c[0], c[1], c[2], a].into_iter().enumerate() {
                 if deep {
                     o[k * 2..k * 2 + 2].copy_from_slice(&((c * 65535.0 + 0.5) as u16).to_le_bytes());
@@ -339,6 +349,41 @@ pub fn channel_table(spec: &Spec) -> Option<std::sync::Arc<[f32]>> {
         .filter(|t: &std::sync::Arc<[f32]>| (0..=u16::MAX as usize).step_by(7).filter(|&h| halves[h].is_finite()).all(|h| one(halves[h]).iter().all(|&o| same(o, t[h]))));
     tables.lock().unwrap_or_else(|e| e.into_inner()).push((key, table.clone()));
     table
+}
+
+/// The output step of an opaque channel as integer codes for the GPU (gpu_output.rs), one per half's bits, when the step
+/// has a channel table: `deep`, the 16-bit code; else the 8-bit code at the dither offset 0 in the low byte and, above
+/// it, the first 24-bit dither hash value from which the code is one more (0: never). `quantise8` is monotone in the
+/// offset and moves a value by at most one code, so this threshold is exact: the GPU gives `output`'s bytes, bit for bit.
+pub fn gpu_codes(spec: &Spec, deep: bool) -> Option<std::sync::Arc<[u32]>> {
+    type Codes = Vec<(String, std::sync::Arc<[u32]>)>;
+    static CODES: std::sync::OnceLock<std::sync::Mutex<Codes>> = std::sync::OnceLock::new();
+    let table = channel_table(spec)?;
+    let key = format!("{}|{}|{deep}", spec_key(spec), spec.dither);
+    let codes = CODES.get_or_init(Default::default);
+    if let Some((_, c)) = codes.lock().unwrap_or_else(|e| e.into_inner()).iter().find(|(k, _)| *k == key) {
+        return Some(c.clone());
+    }
+    let code = |c: f32| -> u32 {
+        if deep {
+            return (c * 65535.0 + 0.5) as u16 as u32;
+        }
+        let at = |m: u32| quantise8(c * 255.0, spec.dither, || offset(m)) as u32;
+        let (lo, hi) = (at(0), at((1 << 24) - 1));
+        if lo == hi {
+            return lo;
+        }
+        assert_eq!(hi, lo + 1, "the dither moves a value by one code");
+        let (mut a, mut b) = (0u32, (1 << 24) - 1); // at(a) = lo, at(b) = hi
+        while b - a > 1 {
+            let m = a + (b - a) / 2;
+            if at(m) == lo { a = m } else { b = m }
+        }
+        lo | b << 8
+    };
+    let out: std::sync::Arc<[u32]> = par_fill(table.len(), |h| code(table[h])).into();
+    codes.lock().unwrap_or_else(|e| e.into_inner()).push((key, out.clone()));
+    Some(out)
 }
 
 /// The output step as a 3D table, for a playing preview's frames (`output(.., fast)`) when the step mixes channels (a view

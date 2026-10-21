@@ -31,6 +31,8 @@ pub struct Gl {
     renderer: String,
     /// Pipelined readback (readback.rs), when the driver has pixel buffers and fences.
     readback: Option<Readback>,
+    /// The exact output step on the GPU (gpu_output.rs), or why it can't run here.
+    exact: Result<crate::gpu_output::GpuOutput, String>,
     _context: (PossiblyCurrentContext, GlSurface<WindowSurface>),
 }
 
@@ -211,9 +213,11 @@ pub fn gl_context() -> Result<Gl, String> {
     // frames; turning it off brought the drift back through the triangulating renderer's cache). At its default 4
     // samples a big letter's edge has 3 in-between levels and steps visibly; 16 is as smooth as the glyph atlas was.
     opts.internal_multisample_count = 16;
-    let gr = direct_contexts::make_gl(interface, Some(&opts)).ok_or("Skia GL context failed")?;
+    let mut gr = direct_contexts::make_gl(interface, Some(&opts)).ok_or("Skia GL context failed")?;
     let readback = Readback::new(|name| display.get_proc_address(name));
-    Ok(Gl { gr, renderer, readback, _context: (ctx, gl_surface) })
+    let exact = crate::gpu_output::GpuOutput::new(|name| display.get_proc_address(name));
+    gr.reset(None);
+    Ok(Gl { gr, renderer, readback, exact, _context: (ctx, gl_surface) })
 }
 
 impl Painter {
@@ -403,6 +407,51 @@ impl Painter {
         Some(if ok { Ok(out) } else { Err("frame readback (8-bit output) failed".into()) })
     }
 
+    /// The last picture through the output step on the GPU, exact (gpu_output.rs): into `out` (the frame's size), the same
+    /// bytes `color::output_into` gives from `read`, at a fraction of the time (8-bit read back, no step per pixel on the
+    /// CPU but for rows holding partly transparent pixels, which are read and converted here). None where it can't
+    /// run (on the CPU, or an output step without a channel table): use `read` and `color::output_into`.
+    pub fn output_into(&mut self, spec: &crate::color::Spec, deep: bool, out: &mut [u8]) -> Option<Result<(), String>> {
+        let codes = crate::color::gpu_codes(spec, deep)?;
+        self.gl.as_ref()?.exact.as_ref().ok()?;
+        let (w, h) = (self.width, self.height);
+        let t0 = std::time::Instant::now();
+        let tex = gpu::surfaces::get_backend_texture(self.last_surface(), skia_safe::surface::BackendHandleAccess::FlushRead)
+            .and_then(|t| t.gl_texture_info())
+            .filter(|i| i.target == 0x0DE1)?; // TEXTURE_2D
+        let gl = self.gl.as_mut().unwrap();
+        gl.gr.flush_and_submit();
+        let rows = gl.exact.as_mut().unwrap().run(tex.id, (w, h), &codes, deep, out);
+        gl.gr.reset(None);
+        self.last_gpu_ms = t0.elapsed().as_secs_f64() * 1000.0;
+        self.last_read_ms = self.last_gpu_ms;
+        let rows = match rows {
+            Ok(r) => r,
+            Err(e) => return Some(Err(e)),
+        };
+        // Rows the table can't answer, in runs: read as stored and converted as `output` would.
+        let t1 = std::time::Instant::now();
+        let bpp = if deep { 8 } else { 4 };
+        let mut y = 0;
+        while y < h as usize {
+            if !rows[y] {
+                y += 1;
+                continue;
+            }
+            let n = rows[y..].iter().take_while(|&&r| r).count();
+            let src = info(w, n as u32, self.space.clone());
+            let mut raw = vec![0u8; src.min_row_bytes() * n];
+            if !self.last_surface().read_pixels(&src, &mut raw, src.min_row_bytes(), (0, y as i32)) {
+                return Some(Err("frame readback (rows for the output step) failed".into()));
+            }
+            let at = y * w as usize * bpp;
+            crate::color::output_rows(spec, &raw, w, y as u32, deep, false, &mut out[at..at + n * w as usize * bpp]);
+            y += n;
+        }
+        self.last_convert_ms = t1.elapsed().as_secs_f64() * 1000.0;
+        Some(Ok(()))
+    }
+
     /// The last picture (a frame, the motion-blur sum or a held paint) as stored: premultiplied half floats, row by
     /// row, in the working space (color.rs `output` turns them into the output's pixels). Read as stored (a
     /// converting GPU readback hangs on this driver).
@@ -427,6 +476,60 @@ impl Painter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The exact GPU output step (`output_into`) gives the CPU's bytes (`read` + `color::output`), bit for bit: random halves
+    /// over the whole range (negative, tiny, above 1, not finite), opaque, transparent and partly transparent rows, an odd
+    /// width, 8 and 16 bits, dither on and off, two working spaces.
+    #[test]
+    fn exact_gpu_output_step_gives_the_cpus_bytes() {
+        let (w, h) = (97u32, 61u32);
+        let mut seed = 0x2545_F491u32;
+        let mut rnd = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 17;
+            seed ^= seed << 5;
+            seed
+        };
+        let mut px = vec![0u8; (w * h * 8) as usize];
+        for y in 0..h {
+            for x in 0..w {
+                let r = rnd();
+                // Mostly display-range colours; every 7th any half at all.
+                let mut c = [0u16; 4].map(|_| if r % 7 == 0 { rnd() as u16 } else { half::f16::from_f32((rnd() % 1200) as f32 / 1000.0 - 0.05).to_bits() });
+                c[3] = match y % 10 {
+                    3 if x % 5 == 0 => half::f16::from_f32((rnd() % 1000) as f32 / 1000.0).to_bits(),
+                    7 => 0,
+                    _ => half::f16::ONE.to_bits(),
+                };
+                for (k, v) in c.into_iter().enumerate() {
+                    let o = ((y * w + x) * 8) as usize + k * 2;
+                    px[o..o + 2].copy_from_slice(&v.to_le_bytes());
+                }
+            }
+        }
+        for color in [serde_json::json!({}), serde_json::json!({ "dither": false }), serde_json::json!({ "working": "linear-display" })] {
+            let spec = crate::color::Spec::parse(&color).unwrap();
+            let mut p = Painter::gpu(w, h, spec.surface_space()).expect("GPU");
+            let info = ImageInfo::new((w as i32, h as i32), ColorType::RGBAF16, AlphaType::Premul, spec.surface_space());
+            let img = skia_safe::images::raster_from_data(&info, skia_safe::Data::new_copy(&px), w as usize * 8).unwrap();
+            let mut paint = Paint::default();
+            paint.set_blend_mode(BlendMode::Src);
+            p.surface.canvas().draw_image(&img, (0, 0), Some(&paint));
+            let raw = p.read();
+            for deep in [false, true] {
+                let mut cpu = vec![];
+                crate::color::output(&spec, &raw, w, deep, false, 0, &mut cpu);
+                let mut gpu = vec![0u8; cpu.len()];
+                assert!(crate::color::gpu_codes(&spec, deep).is_some(), "{color}: a channel table");
+                if let Err(e) = &p.gl.as_ref().unwrap().exact {
+                    panic!("{e}");
+                }
+                p.output_into(&spec, deep, &mut gpu).expect("the frame's texture").expect("the GPU output step");
+                let off = gpu.iter().zip(&cpu).position(|(a, b)| a != b);
+                assert!(off.is_none(), "{color} deep {deep}: first different byte {off:?} of {}", gpu.len());
+            }
+        }
+    }
 
     /// The GPU output step (`read_output8`) gives what the CPU's playing frames give (color.rs `output` with `fast`, the same
     /// table): a ramp of colours across the range, painted in ACEScg under AgX, read both ways (no dither on either).
