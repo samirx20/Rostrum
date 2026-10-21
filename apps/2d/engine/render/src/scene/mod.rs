@@ -6,7 +6,11 @@ pub mod ease;
 pub mod eval;
 pub mod fields;
 pub mod fonts;
+pub mod letters;
 pub mod stage;
+pub mod stage_type;
+pub mod stage_fx;
+pub mod type_font;
 #[cfg(test)]
 mod tests;
 
@@ -73,7 +77,9 @@ impl Scene {
         }
         let mut seen = HashSet::new();
         comp.walk(&mut |n| if seen.insert(n.id.clone()) { Ok(()) } else { Err(format!("{}: the id is used twice", n.id)) })?;
-        Ok(Scene { comp, fonts: fonts::list(&v["fonts"])? })
+        let fonts = fonts::list(&v["fonts"])?;
+        type_font::register(&fonts);
+        Ok(Scene { comp, fonts })
     }
 
     pub fn width(&self) -> u32 {
@@ -147,8 +153,8 @@ fn node(v: &Value, parent: &str) -> Result<Node, String> {
     let kind = fields::TYPES.iter().copied().find(|t| *t == ty).ok_or_else(|| format!("{id}: unknown item type \"{ty}\"; this engine draws: {}", fields::TYPES.join(", ")))?;
     let (role, fields) = fields::of(kind).unwrap();
     for k in obj.keys() {
-        if !matches!(k.as_str(), "id" | "type" | "props" | "anim" | "effects" | "masks" | "layers") && !(k == "frames" && kind == "drawing") {
-            return Err(format!("{id}: unknown part \"{k}\" (an item has id, type, props, anim, effects, masks, layers; a drawing also frames)"));
+        if !matches!(k.as_str(), "id" | "type" | "props" | "anim" | "effects" | "masks" | "layers") && !(k == "frames" && matches!(kind, "drawing" | "video")) {
+            return Err(format!("{id}: unknown part \"{k}\" (an item has id, type, props, anim, effects, masks, layers; a drawing or video also frames)"));
         }
     }
     let props = v["props"].as_object().ok_or_else(|| format!("{id}: no props"))?.clone();
@@ -182,7 +188,7 @@ fn node(v: &Value, parent: &str) -> Result<Node, String> {
         effects: kids("effects", layer, &[Role::Effect])?,
         masks: kids("masks", layer, &[Role::Mask])?,
         layers: kids("layers", role == Role::Comp || kind == "group", &[Role::Layer])?,
-        frames: if kind == "drawing" { drawings(&id, &v["frames"])? } else { vec![] },
+        frames: if matches!(kind, "drawing" | "video") { drawings(&id, &v["frames"])? } else { vec![] },
         id, kind, role, props, anim,
     })
 }

@@ -4,7 +4,7 @@ one doc.gesture = one undo step. How an edit becomes a call lives in route.py on
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QTimer, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from rostrum2d.evaluate import keys_of, resolve
 from rostrum_gui import DocBridge
 from rostrum_gui.edits import Drag
@@ -12,6 +12,7 @@ from rostrum_gui.edits import Drag
 from . import bounds, outline, route
 from .frames import FrameRenderer
 from .painter import Painter
+from .pen import Pen
 
 
 class Bridge2D(DocBridge):
@@ -33,6 +34,7 @@ class Bridge2D(DocBridge):
         self.frames.ready.connect(self._on_frame)
         self.frames.failed.connect(self._fail)
         self.painter = Painter(self)
+        self._pen = Pen(self)
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self.selectionChanged.connect(self.outlineChanged)
@@ -41,6 +43,11 @@ class Bridge2D(DocBridge):
     # ---- reads for QML ----------------------------------------------------------------------------------------
     def comp(self) -> dict:
         return self.doc.item(self.comp_id)
+
+    @Property(QObject, constant=True)
+    def pen(self):
+        """The pen tool and path point editing (pen.py)."""
+        return self._pen
 
     @Property(float, notify=timeChanged)
     def time(self):

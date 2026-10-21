@@ -9,9 +9,12 @@ use super::fields::Role;
 use super::{Key, KeyValue, Node};
 
 /// One item at one time: every field's value, and its children that are showing.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Item<'a> {
     pub id: &'a str,
+    /// The item it was evaluated from, and the time (a text animated letter by letter re-evaluates it per letter).
+    pub node: &'a Node,
+    pub t: f64,
     pub kind: &'static str,
     pub props: Map<String, Value>,
     pub effects: Vec<Item<'a>>,
@@ -55,15 +58,17 @@ fn drawing_src(node: &Node, t: f64, fps: f64) -> &str {
 }
 
 fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
-    let mut props = node.props.clone();
-    for (field, keys) in &node.anim {
-        props.insert(field.clone(), track_value(keys, t));
-    }
+    let mut props = props_at(node, t);
     if node.kind == "drawing" {
         props.insert("src".into(), Value::from(drawing_src(node, t, fps)));
     }
+    if node.kind == "video" {
+        props.insert("picture".into(), Value::from(super::stage_fx::video_picture(node, t, fps)));
+    }
     let item = Item {
         id: &node.id,
+        node,
+        t,
         kind: node.kind,
         effects: node.effects.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
         masks: node.masks.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
@@ -74,6 +79,15 @@ fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
         return None;
     }
     Some(item)
+}
+
+/// A node's own field values at time `t` (its still values, keyed fields decided by their keys).
+pub fn props_at(node: &Node, t: f64) -> Map<String, Value> {
+    let mut props = node.props.clone();
+    for (field, keys) in &node.anim {
+        props.insert(field.clone(), track_value(keys, t));
+    }
+    props
 }
 
 /// The value of a sorted, non-empty list of keys at time `t`.

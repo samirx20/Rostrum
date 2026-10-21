@@ -6,6 +6,8 @@
     undo | redo | more | commands [query …] | run <command key> | play
   Draw page (on the selected drawing layer): draw <x> <y> <x> <y> … (one stroke, composition px)
     brush <setting> <value> | newframe [copy] | hold <+n|-n> | frame next|prev | onion on|off
+  Design page, paths: pen <x,y> <x,y,hx,hy> … [close] (one new path: a point, or a press at x,y dragged to hx,hy =
+    a smooth point; composition px) | pointdrag <layer> <i> <dx> <dy> [in|out] (a point, or its handle)
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
@@ -63,6 +65,12 @@ def do_step(bridge, win, step):
         for x, y in zip(xy[2::2], xy[3::2]):
             bridge.painter.strokeTo(x, y, 1.0)
         bridge.painter.endStroke()
+    elif word == "pen":
+        from .pen import steps_pen
+        steps_pen(bridge, step, rest)
+    elif word == "pointdrag":
+        from .pen import steps_pointdrag
+        steps_pointdrag(bridge, step, rest)
     elif word == "brush":
         bridge.painter.setValue(rest[0], value(" ".join(rest[1:])))
     elif word == "newframe":
