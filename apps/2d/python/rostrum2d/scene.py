@@ -2,16 +2,14 @@
 item's still values with defaults filled in, and the keys of its animated fields; the engine evaluates them per
 frame (the evaluation's reference is evaluate.py). A field with an expression (exprbake.py) is sent as linear keys,
 one per frame, in place of its own keys; so is a field an auto layout sets (layoutbake.py), over both. A stepped
-item's ("on twos", stepped.py) animated fields are then sent as hold keys every n frames. A long IK chain (more
-than two bones, rig/chain.py) is solved here and sent as per-frame turns of its bones; a swap set (swap.py) is sent
-as a plain group whose children's opacity shows one at a time. The layout, chain and swap fields themselves stay on
-the Python side (`python_only`): the engine never sees them.
+item's ("on twos", stepped.py) animated fields are then sent as hold keys every n frames. A swap set (swap.py) is
+sent as a plain group whose children's opacity shows one at a time. The layout and swap fields themselves stay on
+the Python side (`python_only`): the engine never sees them. Rigs, long IK chains included, are the engine's.
 """
 from __future__ import annotations
 
 from . import drawing, exprbake, fields as F, layoutbake, stepped, swap, video
 from .layout_fields import py_only
-from .rig import chain
 from rostrum_core.keys import animated, keys_of
 
 FORMAT, VERSION = "rostrum-2d-scene", 1
@@ -21,9 +19,9 @@ KEY_FIELDS = ("t", "v", "c", "d", "ease", "x1", "y1", "x2", "y2", "stiffness", "
 
 
 def python_only(kind: str) -> set[str]:
-    """The fields of an item type the engine never sees: auto layout's, stepped timing's, swap sets' and long IK
-    chains' (all applied here)."""
-    return py_only(kind) | {stepped.FIELD} | swap.PY_ONLY.get(kind, set()) | chain.PY_ONLY.get(kind, set())
+    """The fields of an item type the engine never sees: auto layout's, stepped timing's and swap sets' (all
+    applied here)."""
+    return py_only(kind) | {stepped.FIELD} | swap.PY_ONLY.get(kind, set())
 
 
 def _anim(item: dict) -> dict:
@@ -42,8 +40,7 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None) -> dict:
         if item.get(key):
             node[key] = [_node(child, fps, baked) for child in item[key]]
     if item["type"] == "rig":           # bones, iks and binds are nodes of their own (RIG.md § Scene description)
-        node["rig"] = [_node(c, fps, baked) for key in ("bones", "iks", "binds") for c in item.get(key, [])
-                       if not chain.is_long(c)]      # a long chain is solved here (chain.bake), not by the engine
+        node["rig"] = [_node(c, fps, baked) for key in ("bones", "iks", "binds") for c in item.get(key, [])]
     if item["type"] == "drawing":       # the painting kit makes each drawing's picture once; the engine only reads it
         node["frames"] = [{"at": f["at"], "src": str(drawing.picture(item, f))} for f in item["frames"]]
     if item["type"] == "video":         # decoded once (video.py); the engine picks the frame by the time
@@ -63,8 +60,6 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     fps = comp.get("fps", F.defaults("comp")["fps"])
     baked = exprbake.bake(comp, fps, markers)
     for item_id, fields in layoutbake.bake(comp, fps, baked).items():
-        baked.setdefault(item_id, {}).update(fields)
-    for item_id, fields in chain.bake(comp, fps, baked).items():
         baked.setdefault(item_id, {}).update(fields)
     node = _node(comp, fps, baked)
     swap.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)

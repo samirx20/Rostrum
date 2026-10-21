@@ -21,6 +21,7 @@ fn item(id: &str, ty: &str, props: Value) -> Value {
             ("duration", _) => json!(3.0),
             ("grid", _) => json!(16.0),
             ("soft", _) => json!(20.0),
+            ("chain", _) => json!(2.0),
             (_, Kind::Number) => json!(0.0),
             (_, Kind::Toggle) => json!(false),
             (_, Kind::Text) => json!(""),
@@ -104,6 +105,28 @@ fn a_pinned_target_stays_put_while_its_keys_and_the_body_move() {
     }
     let moved = dist(chain(&Pose::solve(rig, 1.9)).0, chain(&Pose::solve(rig, 1.0)).0);
     assert!(moved > 10.0 && dist(at(1.9), planted) > 10.0, "the check would prove nothing: the body and the keys must move");
+}
+
+#[test]
+fn a_long_chain_reaches_its_target_on_top_of_the_two_bone_chain_above_it() {
+    // Three 60 px bones hang from the shin's tip; the leg's two-bone IK moves the shin, the long chain poses after it.
+    let mut parts: Vec<Value> = ["a", "b", "c"].iter().enumerate().map(|(i, id)| {
+        let parent = if i == 0 { "shin" } else { ["a", "b"][i - 1] };
+        item(id, "bone", json!({ "parent": parent, "x": 300.0 + 60.0 * i as f64, "y": 100.0, "length": 60.0 }))
+    }).collect();
+    parts.push(item("leg", "ik", json!({ "bone": "shin", "targetX": 180.0, "targetY": 120.0 })));
+    let target = (260.0, 200.0);
+    parts.push(item("tail", "ik", json!({ "bone": "c", "chain": 3.0, "targetX": target.0, "targetY": target.1 })));
+    let s = scene(vec![], parts);
+    let pose = Pose::solve(&s.comp.layers[0], 0.0);
+    let ix = |id: &str| pose.index(id).unwrap();
+    assert!(dist(pose.pivot(ix("a")), chain(&pose).2) < 1e-6, "the long chain's base left the shin's tip");
+    assert!(dist(chain(&pose).2, (180.0, 120.0)) < 1e-6, "the leg's IK did not pose first");
+    assert!(dist(pose.tip(ix("c")), target) < 0.05, "the tail's tip is at {:?}", pose.tip(ix("c")));
+    for id in ["a", "b", "c"] {
+        assert!((dist(pose.pivot(ix(id)), pose.tip(ix(id))) - 60.0).abs() < 1e-9, "{id} changed length");
+    }
+    assert_eq!(pose.iks[1].bones, ["a", "b", "c"]);
 }
 
 #[test]
