@@ -96,6 +96,7 @@ pub const EFFECTS: &[(&str, &[Field])] = &[
         Field("attack", Num(0.0001, 1.0), N(0.002)), Field("hold", Num(0.0, 2.0), N(0.05)), Field("release", Num(0.001, 5.0), N(0.12))]),
     ("deess", &[Field("freq", Num(2000.0, 16000.0), N(6000.0)), Field("threshold", Num(-80.0, 0.0), N(-30.0)), Field("range", Num(0.0, 40.0), N(8.0))]),
     ("dehum", &[Field("freq", Num(0.0, 400.0), N(0.0)), Field("harmonics", Int(1.0, 32.0), N(6.0)), Field("width", Num(1.0, 400.0), N(40.0))]),
+    ("dereverb", &[Field("amount", Num(0.0, 1.0), N(0.5)), Field("reduction", Num(0.0, 60.0), N(18.0)), Field("time", Num(0.0, 20.0), N(0.0))]),
 ];
 
 /// An EQ band's fields.

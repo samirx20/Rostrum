@@ -9,6 +9,7 @@ dependencies = ["rostrum-core"]
 [project.optional-dependencies]
 listen = ["numpy", "scipy", "soundfile", "librosa", "pyloudnorm", "matplotlib", "opencv-python-headless"]
 mcp = ["rostrum-core[mcp]"]
+cleanup = ["numpy", "scipy", "soundfile", "onnxruntime-directml; sys_platform == 'win32'", "onnxruntime; sys_platform != 'win32'"]
 test = ["pytest>=8"]
 
 [build-system]

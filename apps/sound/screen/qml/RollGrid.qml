@@ -59,7 +59,8 @@ Item {
                         width: Math.max(4, g.ruler.wOf(b.modelData.dur) - 1); radius: 3
                         color: b.on ? Theme.accent : g.roll.hue
                         border.width: b.on ? 1 : 0; border.color: Theme.fg
-                        Text { visible: parent.width > 34 && g.rowH >= 14; x: 5; anchors.verticalCenter: parent.verticalCenter
+                        Text { visible: parent.width >= implicitWidth + 5 && g.rowH >= 14   // whenever the name fits the bar
+                               x: 3; anchors.verticalCenter: parent.verticalCenter
                                text: g.name(parent.modelData); color: Theme.app; font.family: uiFont
                                font.pixelSize: Theme.label - 1; font.weight: Font.DemiBold }
                     }

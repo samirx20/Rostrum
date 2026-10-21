@@ -32,6 +32,7 @@ class MixPage(QObject):
         self.pics = ListenPics(bridge, pics_folder, self)
         self._plugins = PluginHub(bridge, playback.open_engine, self)
         self._refresh()
+        self._plugins.catalogChanged.connect(self._refresh)      # the scan names the vendors the chips drop
         bridge.docChanged.connect(self._refresh)
         bridge.renderChanged.connect(self._refresh)
 
@@ -109,14 +110,14 @@ class MixPage(QObject):
     def _refresh(self):
         render = dict(self.bridge.lastRender or {})
         label = self.bridge.label_of
-        buses = self._bus_items()
+        buses, vendor = self._bus_items(), self._plugins.vendor_of
         self._tracks.update([strips.strip(t, label(t), strips.meter_of(render, t["id"]),
-                                          strips.routing(t, buses, label))
+                                          strips.routing(t, buses, label), vendor)
                              for t in self.doc.items() if t["type"] == "track"])
-        self._buses.update([strips.strip(b, label(b), strips.meter_of(render, b["id"]), strips.routing(b, buses, label))
+        self._buses.update([strips.strip(b, label(b), strips.meter_of(render, b["id"]), strips.routing(b, buses, label), vendor)
                             for b in buses])
         m = self.doc.item(strips.MASTER)
-        self._master = strips.strip(m, "Master", strips.master_meter(render))
+        self._master = strips.strip(m, "Master", strips.master_meter(render), vendor_of=vendor)
         self.masterChanged.emit()
         evaluated = rows.evaluate(self._master_layout, m, self.doc.kind.facts(m, self.doc), False)
         self._master_rows.update(evaluated) if self._master_rows.rows else self._master_rows.reset(evaluated)

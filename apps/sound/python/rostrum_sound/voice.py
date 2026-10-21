@@ -23,6 +23,8 @@ from pathlib import Path
 from rostrum_core import RostrumError, codes
 from rostrum_core.cache import Cache, cache_key
 
+from . import memory
+
 VOICES = ("ryan", "aiden", "vivian", "serena", "uncle_fu", "dylan", "eric", "ono_anna", "sohee")
 LANGUAGES = ("auto", "english", "chinese", "japanese", "korean", "german", "french", "russian", "portuguese",
              "spanish", "italian")
@@ -118,24 +120,7 @@ def _run(d: Path, out: Path, text, voice, style, language, seed):
 
 
 def _memory_gate(where):
-    free = _free_gb()
-    if free is not None and free < MIN_FREE_GB:
-        raise RostrumError(codes.NO_MEMORY, where, "voice generation",
-                           f"needs about {MIN_FREE_GB} GB of free memory; {free:.1f} GB is free")
-
-
-def _free_gb():
-    if os.name != "nt":
-        return None
-    import ctypes
-
-    class M(ctypes.Structure):
-        _fields_ = [("len", ctypes.c_ulong), ("load", ctypes.c_ulong), ("total", ctypes.c_ulonglong),
-                    ("avail", ctypes.c_ulonglong), *[(f"x{i}", ctypes.c_ulonglong) for i in range(5)]]
-    m = M()
-    m.len = ctypes.sizeof(M)
-    ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m))
-    return m.avail / 2 ** 30
+    memory.gate(where, "voice generation", MIN_FREE_GB)
 
 
 def _seconds(f: Path) -> float:

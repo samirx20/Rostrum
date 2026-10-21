@@ -11,6 +11,7 @@ from rostrum_core import Param
 from .. import names
 from . import effects
 from . import fields_buses as FB
+from . import fields_cleanup as FC
 from . import fields_design as FDS
 from . import fields_music as FM
 from . import playing as PL
@@ -20,8 +21,6 @@ from . import values as V
 N = V.N
 
 IS = PL.IS
-
-
 
 PAN = dict(lo=-1, hi=1)
 FIELDS = {
@@ -65,6 +64,7 @@ FIELDS = {
         N("panTo", **PAN, group="Clip", imp="deep", label="Pan to", help="Pan at the clip's end."),
         N("fadeIn", 0, 600, "Fades", "s", label="Fade in"), N("fadeOut", 0, 600, "Fades", "s", label="Fade out"),
         N("reverb", 0, 1, "Clip", imp="secondary"),
+        *FC.PARAMS,
     ],
     "line": [
         Param.text("text", group="Line", help="What is said."), V.time("at", group="Line", help="When the line "
@@ -104,7 +104,7 @@ DEFAULTS = {
     **FM.DEFAULTS,
     "note": dict(vel=0.8),
     "hit": dict(vel=0.85),
-    "clip": dict(**{"in": 0}, volume=1),
+    "clip": dict(**{"in": 0}, volume=1, **FC.DEFAULTS),
     "sound": dict(design="whoosh"),
     "line": dict(seed=1, volume=1),
     "marker": {},
