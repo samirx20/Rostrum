@@ -29,11 +29,13 @@ FIELDS = {
     "ik": [
         X("bone", "Lower bone", "Chain", "", help="The shin or forearm; its parent is the upper bone"),
         CH("mode", ["ik", "fk"], "Pose by", "Chain", "ik", help="IK reaches the target; FK follows the bones' own turns"),
+        N("chain", "Bones in chain", "Chain", 2, 32, 1, "", S, integer=True, default=2,
+          help="2 = upper and lower bone (a leg); more = a spine, tail or arm with a hand, from the lower bone up"),
         N("targetX", "Target X", "Target", -20000, 20000, 1, "px", when=IK_ON, help="Where the lower bone's tip reaches to"),
         N("targetY", "Target Y", "Target", -20000, 20000, 1, "px", when=IK_ON),
         N("mix", "IK amount", "Target", 0, 1, 0.01, "", when=IK_ON, default=1.0, help="1 = reach the target, 0 = the FK pose"),
         CH("bend", ["clockwise", "counterclockwise"], "Knee bends", "Target", "clockwise", S, IK_ON,
-           help="Which way the middle joint (knee, elbow) bends"),
+           help="Which way the middle joint (knee, elbow) bends; a longer chain that starts straight curls this way"),
         N("pin", "Pin", "Target", 0, 1, 0.01, "", S, IK_ON, help="1 holds the target where it was when the pin turned on (a planted foot)"),
     ],
     "bind": [
@@ -43,7 +45,9 @@ FIELDS = {
         N("grid", "Mesh", "Bend", 4, 64, 1, "", S, BENDING, integer=True, default=24, help="Divisions along each side"),
         N("soft", "Soft joint", "Bend", 0, 5000, 1, "px", S, BENDING, default=40.0, help="Half-width of the blend; 0 = a hard crease"),
     ],
+    # A saved pose (poses.py): its values {item id: {field: value}} are data, not fields.
+    "pose": [X("note", "Note", "Pose", "", S, help="What the pose is for")],
 }
-LABELS = {"rig": "Rig", "bone": "Bone", "ik": "IK chain", "bind": "Bind"}
+LABELS = {"rig": "Rig", "bone": "Bone", "ik": "IK chain", "bind": "Bind", "pose": "Pose"}
 OWNED_KEYS = ("bone", "ik")                 # these hold keys (their animatable fields)
-STILL = {"bone": {"x", "y", "angle", "length"}, "bind": {"grid", "soft"}}
+STILL = {"bone": {"x", "y", "angle", "length"}, "ik": {"chain"}, "bind": {"grid", "soft"}}

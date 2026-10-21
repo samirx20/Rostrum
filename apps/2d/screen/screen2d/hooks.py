@@ -1,7 +1,7 @@
 """Rostrum2D's hooks into the kit's DocBridge: the 2D animation model (route.py, exprs.py). A mix-in for Bridge2D."""
 from __future__ import annotations
 
-from . import exprs, outline, route
+from . import exprs, outline, route, swap_rows
 
 
 class Hooks2D:
@@ -10,7 +10,10 @@ class Hooks2D:
         return outline.label_of(item, owner)
 
     def edit_call(self, item_id, param, value):
-        return route.edit_call(self.doc, item_id, param, value, self._t)
+        return route.edit_call(self.doc, item_id, param, swap_rows.edit_value(self.doc.item(item_id), param, value), self._t)
+
+    def _rows(self):          # a swap set's "Shows" is a choice among its children (swap_rows.py)
+        return swap_rows.rows(super()._rows(), self.doc.item(self._sel) if self._sel else None, self._t)
 
     def shown_values(self, item):
         return route.shown_values(item, self._t)

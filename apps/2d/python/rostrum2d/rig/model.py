@@ -64,6 +64,13 @@ def problems_of(rig: dict) -> list[str]:
         who = f'ik {k["id"]}'
         if _pick("bone", k["bone"], "bone", list(bones), out, who) and not bones[k["bone"]]["parent"]:
             out.append(f'{who}: bone "{k["bone"]}" has no parent; a chain needs an upper bone above it')
+        elif k["bone"] in bones and int(k.get("chain", 2)) > 2:
+            have, cur = 0, k["bone"]
+            while cur in bones and have <= len(bones):
+                have, cur = have + 1, bones[cur]["parent"]
+            if have < int(k["chain"]):
+                out.append(f'{who}: a chain of {int(k["chain"])} bones needs {int(k["chain"])} bones from "{k["bone"]}" '
+                           f"up; there are {have}")
     bound = {}
     for b in rig.get("binds", []):
         who = f'bind {b["id"]}'

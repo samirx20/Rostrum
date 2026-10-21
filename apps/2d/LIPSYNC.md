@@ -103,6 +103,12 @@ key that is already there (at the same time, or with the same id after a person 
 mouth from scratch, delete its opacity keys first (`key.clear`). For re-runs that update everything except a person's
 edits, use the script call.
 
+**Into a swap set.** When the target is a **swap set** (RIG.md › Swap sets) and every mouth layer you name is one of its
+children, the operation keys the set's `show` (hold, one key where the mouth changes) instead of each layer's opacity;
+the same in a script with `lipsync(..., slot=mouth)` (the slot must be made earlier in the script, with `swap=True`).
+Same rule as above: it only adds keys, and a `show` key moved by a person stays. A group that is not a swap set keeps
+the opacity keys.
+
 ### An agent's ears: `inspect_lipsync`
 
 `inspect_lipsync {"source": …, "text": …, "start": …, "end": …, "at": …, "shapes": {"X": "mouth_X", …}}` answers, in
