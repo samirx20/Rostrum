@@ -124,7 +124,8 @@ def kind_of(track: dict) -> str:
 def rows(root: dict, open_lanes: dict | None = None) -> list[dict]:
     """One row per track for the arrangement: name, hue, mute / solo, kind, and its blocks with lanes 0..1 (top to
     bottom: notes by pitch, one per key of a chord; hits by drum row) so a row reads like a small piano roll.
-    `open_lanes` (track id -> (item id, lane)) adds `auto`: the automation lane drawn under that track's row."""
+    `open_lanes` (track id -> (item id, lane)) adds `auto`: the automation lane drawn under that track's row.
+    The buses and the master follow as compact rows (`mix`: true) that hold only their automation lanes."""
     out = []
     for i, t in enumerate(root.get("tracks", [])):
         bl = blocks(t, root)
@@ -140,7 +141,7 @@ def rows(root: dict, open_lanes: dict | None = None) -> list[dict]:
                     "mute": bool(t.get("mute")), "solo": bool(t.get("solo")), "kind": kind_of(t), "blocks": bl,
                     "autoUsed": lanes.used(t),
                     "auto": lanes.lane_data(t, root, *open_lanes[t["id"]]) if t["id"] in (open_lanes or {}) else None})
-    return out
+    return out + lanes.mix_rows(root, open_lanes or {})
 
 
 def markers(root: dict) -> list[dict]:

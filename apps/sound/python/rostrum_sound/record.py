@@ -6,7 +6,8 @@
     wav = rec.stop()                     # the WAV's path; raises when the engine failed or sent no `done`
     doc.apply([take_call("voice", wav, at)], "agent")      # the take is a clip: one operation, one undo step
 
-`record_take(doc, track, at, seconds)` does all of it for a script. Nothing here captures audio itself.
+`place_take` places a screen take (its lead trimmed off, a punch range kept). `record_take(doc, track, at, seconds)`
+does all of it for a script. Nothing here captures audio itself.
 Takes go in `<project folder>/media/` (a document without a folder: `./takes/`), named `<track>-take-<n>.wav`.
 """
 from __future__ import annotations
@@ -44,6 +45,36 @@ def take_path(doc, track_id: str) -> Path:
 def take_call(track_id: str, wav, at) -> dict:
     """The one operation that puts a take on a track at time `at`."""
     return {"op": "clip.add", "target": [track_id], "args": {"media": str(wav), "at": at}}
+
+
+def place_take(track_id: str, wav, at: float, seconds: float, lead: float = 0.0, punch=None) -> dict | None:
+    """The one `clip.add` for a take recorded from `at` on the timeline. `lead`: how much of the file came before the
+    moment `at` was heard (the microphone ran before playback started, the count-in, the input delay); that part is
+    trimmed off with the clip's in-point, so the take lands where it was played. `punch` (in, out seconds): only
+    that range is kept. None when the take holds nothing of the range (a punch the take never reached)."""
+    zero = at - lead                                 # the timeline time of the file's first sample
+    start, end = at, zero + seconds
+    if punch is not None:
+        start, end = max(start, float(punch[0])), min(end, float(punch[1]))
+    if end - start < 0.01:
+        return None
+    args = {"media": str(wav), "at": round(start, 3), "in": round(start - zero, 4)}
+    if punch is not None:
+        args["length"] = round(end - start, 4)
+    return {"op": "clip.add", "target": [track_id], "args": args}
+
+
+def input_offset(mic: str) -> float:
+    """The microphone's own delay in seconds as measured by `rostrum-sound play --calibrate` (live/calib.rs keeps it
+    per output | microphone pair); 0 when this microphone was never calibrated."""
+    import os
+    f = Path(os.environ.get("LOCALAPPDATA", "")) / "rostrum" / "audio-calibration.json"
+    try:
+        stored = json.loads(f.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return 0.0
+    found = [v.get("offsetMs", 0) for k, v in stored.items() if mic and k.endswith(f" | {mic}")]
+    return float(found[0]) / 1000.0 if found else 0.0
 
 
 class Recorder:

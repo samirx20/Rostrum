@@ -63,7 +63,7 @@ def main():
     instruments, mixer, recorder = InstrumentsPage(bridge), MixPage(bridge), Recording(bridge)
     keys = KeysRecording(bridge, recorder)
     _, engine, win = start(HERE / "qml" / "Main.qml", {"backend": bridge, "instruments": instruments, "mixer": mixer,
-                                       "recorder": recorder, "keys": keys},
+                                       "recorder": recorder, "keys": keys, "takeSetup": recorder.setup},
                            (1600, 960))
     code = [0]
 

@@ -145,17 +145,22 @@ class Take:
         return _fail(f"{what} (exit code {self._proc.returncode}): {said}")
 
 
-def take_call(track: dict, notes: list[dict], at: float, root: dict) -> dict | None:
-    """The one call that puts a take on `track`, starting `at` seconds: notes in beats (they follow the tempo map),
-    or drum hits on a drum track (keys the synth kit has no drum for are left out). None when nothing was played."""
+def take_call(track: dict, notes: list[dict], at: float, root: dict, grid: float | None = None) -> dict | None:
+    """The one call that puts a take on `track`, a note's time `at + start` seconds (`at` = the timeline time of the
+    engine's stream start): notes in beats (they follow the tempo map), or drum hits on a drum track (keys the synth
+    kit has no drum for are left out). `grid` (beats): starts and ends snap to it (quantize). Notes before the song's
+    start are left out. None when nothing was played."""
+    notes = [n for n in notes if at + n["start"] >= 0]
+
     def beat(sec):
-        return round(tempo.beat_at(root, at + sec), 4)
+        b = tempo.beat_at(root, at + sec)
+        return round(round(b / grid) * grid if grid else b, 4)
     if track.get("instrument") in ("kit", "kitSfz"):
         hits = [{"drum": GM_TO_SYNTH[n["key"]] if track["instrument"] == "kit" else n["key"],
                  "at": {"beat": beat(n["start"])}, "vel": round(min(1.0, n["velocity"]), 3)}
                 for n in notes if track["instrument"] == "kitSfz" or n["key"] in GM_TO_SYNTH]
         return {"op": "hit.add_many", "target": [track["id"]], "args": {"hits": hits}} if hits else None
     out = [{"pitch": int(n["key"]), "at": {"beat": beat(n["start"])},
-            "dur": {"beats": max(0.01, round(beat(n["end"]) - beat(n["start"]), 4))},
+            "dur": {"beats": max(grid or 0.01, round(beat(n["end"]) - beat(n["start"]), 4))},
             "vel": round(min(1.0, n["velocity"]), 3)} for n in notes]
     return {"op": "note.add_many", "target": [track["id"]], "args": {"notes": out}} if out else None

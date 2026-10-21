@@ -14,6 +14,8 @@ AppShell {
     bottomHeight: backend.page === "timeline" ? 300 + Math.min(2, backend.tracks.filter(r => r.auto).length) * 78 : 156
     Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
 
+    function openSong() { readout.open() }      // (the scripted `song-open` step)
+    function openPicturePick() { backend.setPictureOpen(true); picture.openItems() }     // (`picture-pick`)
     Shortcut { sequence: "Space"; onActivated: backend.togglePlay() }
     Shortcut { sequence: "R"; enabled: recorder.armed !== ""; onActivated: recorder.toggleRecord() }
     Shortcut { sequences: [StandardKey.Delete, "Backspace"]; onActivated: backend.removeSelected() }
@@ -31,7 +33,7 @@ AppShell {
         Item { width: Theme.gap; height: 1 },
         PlayButton { playing: backend.playing; onClicked: backend.togglePlay() },
         RecordControls { anchors.verticalCenter: parent.verticalCenter },
-        SongReadout { anchors.verticalCenter: parent.verticalCenter }
+        SongReadout { id: readout; anchors.verticalCenter: parent.verticalCenter }
     ]
     centre: [
         InstrumentsPage { anchors.fill: parent; visible: backend.page === "instruments" },
