@@ -72,6 +72,10 @@ def params() -> list:
         _, _, _, imp, lab, h = row
         lo = min(r[1] for d in designs for r in OWN[d] if r[0] == name)
         hi = max(r[2] for d in designs for r in OWN[d] if r[0] == name)
+        if name == "dur":               # a length, which may end on a time or marker as a note's can
+            out.append(V.length("dur", tied=True, group="Design", importance=imp, label=lab, valid_when=_when(designs),
+                                help=h + ' Or tied: {"to": "#drop"} ends it there (a riser peaks on the marker, wherever it moves).'))
+            continue
         out.append(N(name, lo, hi, "Design", imp=imp, label=lab, help=h, when=_when(designs)))
     out.append(V.curve("speed", (0, 1), (0, 1), group="Motion", importance="primary", label="Speed curve",
                        valid_when=IS("design", "whoosh"), help="[[fraction of the length, speed 0 … 1], …]: the "

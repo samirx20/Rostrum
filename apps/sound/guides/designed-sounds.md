@@ -13,7 +13,7 @@ library. Each is a `sound` item on a track with its own controls, so one sound f
 | `hit` | `pitch`, `size`, `brightness`, `tail`, `drive` |
 | `subDrop` | `dur`, `pitch` (where it lands), `drop` (octaves), `drive` |
 | all | `volume`, `pan`, `width`, `seed` (another take of the same design) |
-
+`inspect_operations` lists every field with its range; a field shows only for the designs that have it. `dur` may also end on a time or marker, as a note's can: `fx.sound("riser", at="#drop-2", dur={"to": "#drop"})` peaks on "drop" wherever it moves.
 `inspect_operations` lists every field with its range; a field shows only for the designs that have it.
 
 ```python
