@@ -52,7 +52,7 @@ def note_block(n, root):
     t = timing.sec(n["at"], root, n["id"])
     key = K.key_at(root, t)                     # spelled in the key playing there (Bb in D minor, not A#)
     label = " ".join(timing.name(k, key) for k in ks)
-    return {"id": n["id"], "type": "note", "t": t, "dur": timing.length_sec(n["dur"], root, t), "keys": ks, "label": label, "vel": n.get("vel", 0.8)}
+    return {"id": n["id"], "type": "note", "t": t, "dur": timing.length_sec(n["dur"], root, t), "keys": ks, "names": [timing.name(k, key) for k in ks], "label": label, "vel": n.get("vel", 0.8)}
 
 
 def hit_block(h, root):
@@ -167,12 +167,16 @@ def roll(track: dict | None, root: dict, hue: str = HUES[0]) -> dict:
     """The piano roll of one track: its kind, the key range (notes: at least two octaves around what's there)
     or the drum rows, and its blocks."""
     if track is None:
-        return {"id": "", "name": "", "kind": "none", "blocks": [], "lo": 48, "hi": 72, "drums": [], "hue": hue}
+        return {"id": "", "name": "", "kind": "none", "blocks": [], "lo": 48, "hi": 72, "names": [], "drums": [], "hue": hue}
     bl = blocks(track, root)
     ks = [k for b in bl if b["type"] == "note" for k in b["keys"]] or [60]
     lo, hi = min(ks) - 4, max(ks) + 4
     if hi - lo < 24:
         mid = (lo + hi) // 2
         lo, hi = mid - 12, mid + 12
+    lo, hi = max(0, lo), min(127, hi)
+    notes = [b["t"] for b in bl if b["type"] == "note"]
+    key = K.key_at(root, min(notes, default=0.0))      # the rows' names: the one speller, in the key the notes start in
+    names = [timing.name(k, key) for k in range(hi, lo - 1, -1)]
     return {"id": track["id"], "name": track.get("name") or track["id"], "kind": kind_of(track), "blocks": bl,
-            "lo": max(0, lo), "hi": min(127, hi), "drums": drums_of(track), "hue": hue}
+            "lo": lo, "hi": hi, "names": names, "drums": drums_of(track), "hue": hue}

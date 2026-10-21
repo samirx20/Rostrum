@@ -27,12 +27,11 @@ ColumnLayout {
         choices: (l.target.choices || []).map(c => ({ id: c.id, label: c.label + "   " + c.detail }))
         onPicked: (id) => l.meter.choose(id)
     }
-    Item { Layout.fillHeight: true }
-    Text { visible: !l.measured; Layout.fillWidth: true; wrapMode: Text.WordWrap
+    Text { visible: !l.measured; Layout.fillWidth: true; Layout.fillHeight: true; verticalAlignment: Text.AlignTop; wrapMode: Text.WordWrap
            text: "Render to measure loudness"; color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.body }
-    ColumnLayout {
+    ColumnLayout {   // the curve takes the height that is left: no dead space in the strip
         visible: l.measured
-        Layout.fillWidth: true; spacing: 2
+        Layout.fillWidth: true; Layout.fillHeight: true; spacing: 2
         Text { text: "Short-term loudness"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
         Row {
             spacing: Theme.grid + 2
@@ -41,7 +40,7 @@ ColumnLayout {
             Text { anchors.baseline: big.baseline; text: "LUFS-S"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body }
         }
         LoudnessCurve {
-            Layout.fillWidth: true; Layout.preferredHeight: 64
+            Layout.fillWidth: true; Layout.fillHeight: true; Layout.minimumHeight: 64; Layout.topMargin: Theme.grid
             values: l.meter.curve; hop: l.meter.axis.hop; window: l.meter.axis.window; seconds: l.meter.axis.seconds
             target: l.target.shown && l.target.lufs != null ? l.target.lufs : null
             now: backend.time

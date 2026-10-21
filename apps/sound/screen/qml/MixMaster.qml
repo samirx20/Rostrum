@@ -33,7 +33,8 @@ Rectangle {
             font.family: uiFont; font.pixelSize: Theme.title; font.weight: Font.DemiBold
             MouseArea { anchors.fill: parent; onPressed: m.pick() }
         }
-        MixChain { Layout.fillWidth: true; Layout.preferredHeight: 56; chips: m.info.effects; ownerId: "master" }
+        MixChain { id: chain; Layout.fillWidth: true; Layout.preferredHeight: contentHeight;   // as tall as its chips, no reserve
+                   chips: m.info.effects; ownerId: "master" }
         RowLayout {
             Layout.fillWidth: true; Layout.fillHeight: true; spacing: Theme.pad
             ColumnLayout {  // fader, meter, level
