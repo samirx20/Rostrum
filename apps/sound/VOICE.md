@@ -28,8 +28,9 @@ language, or a line's seed means that line needs making again (its old audio sta
 
 ## Where things are
 
-- Takes: `~/.rostrum/cache/voice/<key>/take.wav` and `entry.json` (text, voice, style, language, seed, length, how
-  long it took). The key is a hash of the recipe and the engine version, so the same recipe is never made twice.
+- Takes: in the shared cache (`rostrum_core.cache`): `~/.rostrum/cache/voice/<key>/take.wav` and `entry.json` (the
+  recipe, size, how long it took). The key is a hash of the recipe and the engine version, so the same recipe is never
+  made twice; over the cache's size cap, the least recently used takes go first.
 - Model: Qwen3-TTS 1.7B (CustomVoice, Q6_K) in `~/.rostrum/models/qwentts` (`ROSTRUM_QWENTTS_DIR` to move it),
   run by `qwen-tts.exe` (qwentts.cpp). The model loads for the line and is released when it ends.
   `ROSTRUM_TTS_DEVICE` picks the device (`Vulkan0`, `CPU`).
