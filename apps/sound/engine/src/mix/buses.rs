@@ -148,10 +148,12 @@ fn fader(bus: &Bus, chs: &mut [Vec<f32>], sr: f64) {
 }
 
 /// The buses mixed and their outputs added into `master` (the summed direct tracks): `outs[k]` is track k's
-/// output when it feeds a bus, `pres[k]` its pre-fader tap. Returns each bus' figures, in schedule order.
-pub fn mix(s: &Schedule, outs: Vec<Option<Vec<Vec<f32>>>>, pres: &[Option<Vec<Vec<f32>>>], master: &mut [Vec<f32>]) -> Result<Vec<TrackStats>, String> {
+/// output when it feeds a bus, `pres[k]` its pre-fader tap. Returns each bus' figures, in schedule order, and
+/// (when `keep`) each bus' output as a stem, `total` long.
+pub type BusStems = Vec<(String, Vec<Vec<f32>>)>;
+pub fn mix(s: &Schedule, outs: Vec<Option<Vec<Vec<f32>>>>, pres: &[Option<Vec<Vec<f32>>>], master: &mut [Vec<f32>], keep: bool) -> Result<(Vec<TrackStats>, BusStems), String> {
     if s.buses.is_empty() || matches!(s.tap, Some(Tap { bus: None })) {
-        return Ok(vec![]);
+        return Ok((vec![], vec![]));
     }
     let (sr, layout, buf) = (s.sample_rate as f64, s.layout, master[0].len());
     let order = order(s)?;
@@ -167,6 +169,7 @@ pub fn mix(s: &Schedule, outs: Vec<Option<Vec<Vec<f32>>>>, pres: &[Option<Vec<Ve
         }
     }
     let mut stats: Vec<Option<TrackStats>> = s.buses.iter().map(|_| None).collect();
+    let mut stems = vec![];
     for b in order {
         let bus = &s.buses[b];
         let mut chs = std::mem::take(&mut inputs[b]);
@@ -177,6 +180,9 @@ pub fn mix(s: &Schedule, outs: Vec<Option<Vec<Vec<f32>>>>, pres: &[Option<Vec<Ve
             fader(bus, &mut chs, sr);
         }
         stats[b] = Some(track_stats(&bus.name, &chs, s.total_samples, sr, layout));
+        if keep {
+            stems.push((bus.name.clone(), chs.iter().map(|c| c[..s.total_samples.min(c.len())].to_vec()).collect()));
+        }
         match (s.tap, bus.output) {
             (Some(Tap { bus: Some(tapped) }), _) if tapped == b => add(master, &chs, None, sr),
             (Some(_), None) => {}
@@ -184,5 +190,5 @@ pub fn mix(s: &Schedule, outs: Vec<Option<Vec<Vec<f32>>>>, pres: &[Option<Vec<Ve
             (_, Some(parent)) => add(&mut inputs[parent], &chs, None, sr),
         }
     }
-    Ok(stats.into_iter().flatten().collect())
+    Ok((stats.into_iter().flatten().collect(), stems))
 }

@@ -65,6 +65,16 @@ pub fn run(job: Job) -> Result<Value, Error> {
             stem_files.insert(id.clone(), json!(f.to_string_lossy()));
         }
     }
+    // Bus stems beside them, `<bus>.bus.wav`: with the stems of the tracks that play straight to the master they
+    // add up to what reaches the master (`direct` lists those tracks).
+    let mut bus_files = serde_json::Map::new();
+    for (id, chs) in &mix.bus_stems {
+        std::fs::create_dir_all(&stems_dir).map_err(|e| Error::render(format!("{}: {e}", stems_dir.display())))?;
+        let f = stems_dir.join(format!("{id}.bus.wav"));
+        write(&f, &wavio::write(chs, mix.layout, sr))?;
+        bus_files.insert(id.clone(), json!(f.to_string_lossy()));
+    }
+    let direct: Vec<&str> = s.tracks.iter().filter(|t| t.into.is_none() && crate::mix::buses::direct(&s, t)).map(|t| t.name.as_str()).collect();
     let refs: Vec<&[f32]> = mix.channels.iter().map(|c| c.as_slice()).collect();
     let loud = crate::analysis::loudstats::stats_n(&refs, &mix.layout.weights(), sr as f64);
     let r2 = |v: f64| (v * 100.0).round() / 100.0;
@@ -77,7 +87,7 @@ pub fn run(job: Job) -> Result<Value, Error> {
             "shortTerm": loud.short_term.iter().map(|&v| r2(v)).collect::<Vec<_>>(),
             "truePeak": mix.true_peak_series.iter().map(|&v| r2(v)).collect::<Vec<_>>(),
             "correlation": loud.correlation.iter().map(|v| v.map(|c| (c * 1000.0).round() / 1000.0)).collect::<Vec<_>>() },
-        "tracks": tracks, "stems": stem_files,
+        "tracks": tracks, "stems": stem_files, "busStems": bus_files, "direct": direct,
         "buses": mix.buses.iter().map(|t| json!({ "id": t.name, "peak": t.peak, "rms": t.rms, "lufs": t.lufs })).collect::<Vec<_>>(),
         "ducks": mix.ducks.iter().map(|(t, spans)| json!({ "track": t, "spans": spans.iter().map(|&(a, b, db)| [a, b, db]).collect::<Vec<_>>() })).collect::<Vec<_>>(),
     }))

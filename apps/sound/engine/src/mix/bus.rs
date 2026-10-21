@@ -67,7 +67,7 @@ pub fn master(s: &Schedule, mut bus: Vec<Vec<f32>>) -> Result<Mix, String> {
         crate::fx::master::master_n(&mut out, &weights, m, sr);
     }
     let nch = out.len();
-    let mut mix = Mix { layout, channels: vec![vec![0.0; total]; nch], peak: 0.0001, sum_sq: 0.0, sums: vec![0.0; nch], clipped: 0, lufs: -70.0, true_peak: -120.0, true_peak_series: vec![], ducks: vec![], tracks: vec![], buses: vec![], stems: vec![], bands: [-140.0; 5] };
+    let mut mix = Mix { layout, channels: vec![vec![0.0; total]; nch], peak: 0.0001, sum_sq: 0.0, sums: vec![0.0; nch], clipped: 0, lufs: -70.0, true_peak: -120.0, true_peak_series: vec![], ducks: vec![], tracks: vec![], buses: vec![], stems: vec![], bus_stems: vec![], bands: [-140.0; 5] };
     for i in 0..total {
         let (mut hot, mut sq) = (false, 0.0);
         for c in 0..nch {
@@ -171,7 +171,7 @@ mod tests {
         let mut channels = vec![vec![0.0f32; n]; 6];
         channels[0] = tone.clone();
         channels[4] = tone.iter().enumerate().map(|(i, v)| if i >= 48000 { -v / std::f32::consts::FRAC_1_SQRT_2 } else { 0.0 }).collect();
-        let mix = Mix { layout: Layout::Surround51, channels, peak: 0.5, sum_sq: 0.0, sums: vec![0.0; 6], clipped: 0, lufs: -20.0, true_peak: -6.0, true_peak_series: vec![], ducks: vec![], tracks: vec![], buses: vec![], stems: vec![], bands: [-140.0; 5] };
+        let mix = Mix { layout: Layout::Surround51, channels, peak: 0.5, sum_sq: 0.0, sums: vec![0.0; 6], clipped: 0, lufs: -20.0, true_peak: -6.0, true_peak_series: vec![], ducks: vec![], tracks: vec![], buses: vec![], stems: vec![], bus_stems: vec![], bands: [-140.0; 5] };
         let r = surround_report(&mix, sr);
         let losses = r["foldDown"]["cancellations"].as_array().unwrap();
         assert!(!losses.is_empty() && losses.iter().all(|l| l["at"].as_f64().unwrap() >= 0.8), "{losses:?}");
