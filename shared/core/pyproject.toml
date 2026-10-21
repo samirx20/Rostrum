@@ -1,0 +1,21 @@
+[project]
+name = "rostrum-core"
+version = "0.1.0"
+description = "Rostrum's shared Python core: documents, operations, one history, MCP plumbing."
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.0"]
+test = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["rostrum_core*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

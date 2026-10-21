@@ -1,0 +1,106 @@
+"""The one list of operations. MCP's inspect_operations, the CLI help, the command bar and the inspector all
+read it; there is no second list anywhere (OPERATIONS.md § 4).
+"""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field
+from typing import Callable
+
+from .conditions import check_refs, holds
+from .errors import RostrumError, codes, did_you_mean
+from .params import IMPORTANCE, Param
+
+NAME = re.compile(r"^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$")
+
+
+@dataclass
+class Operation:
+    name: str
+    summary: str
+    fn: Callable
+    targets: tuple | None                 # item kinds it acts on; None = no target
+    params: list[Param] = field(default_factory=list)
+    label: str = ""
+    importance: str = "primary"
+    valid_when: dict | None = None        # on the target item's fields / facts
+    fields: bool = False                  # its params ARE the target kind's fields (the inspector reads it)
+
+    def param(self, name) -> Param | None:
+        return next((p for p in self.params if p.name == name), None)
+
+    def schema(self) -> dict:
+        props = {p.name: p.json_schema() for p in self.params}
+        required = [p.name for p in self.params if p.required]
+        return {"name": self.name, "summary": self.summary, "label": self.label,
+                "target": list(self.targets) if self.targets else None,
+                "arguments": {"type": "object", "properties": props, "required": required,
+                              "additionalProperties": False},
+                "params": [p.to_dict() for p in self.params],
+                "importance": self.importance, "valid_when": self.valid_when, "fields": self.fields}
+
+
+class Registry:
+    def __init__(self):
+        self._ops: dict[str, Operation] = {}
+
+    def operation(self, name, summary, target=None, params=(), label="", importance="primary",
+                  valid_when=None, fields=False):
+        """Decorator: @reg.operation("camera.set", "Change a camera.", target="camera", params=[...])."""
+        def register(fn):
+            self.add(Operation(name, summary, fn, _kinds(target), list(params), label or name, importance,
+                               valid_when, fields))
+            return fn
+        return register
+
+    def add(self, op: Operation):
+        problems = []
+        if not NAME.match(op.name):
+            problems.append("name must be area.verb, lower case")
+        if op.name in self._ops:
+            problems.append("is already registered")
+        if op.importance not in IMPORTANCE:
+            problems.append(f"importance {op.importance!r}")
+        names = [p.name for p in op.params]
+        if len(set(names)) != len(names):
+            problems.append("has two params with the same name")
+        if op.fields:   # a field op's conditions read its own params; others may read the target's fields
+            for p in op.params:
+                problems += [f"{p.name}: {x}" for x in check_refs(p.valid_when, names)]
+        if op.fields and (not op.targets or any(self.field_op(k) for k in op.targets)):
+            problems.append("fields=True needs a target kind that has no field op yet")
+        if problems:
+            raise ValueError(f"operation {op.name}: " + "; ".join(problems))
+        self._ops[op.name] = op
+
+    def ops(self) -> list[Operation]:
+        return list(self._ops.values())
+
+    def get(self, name, where="") -> Operation:
+        if name not in self._ops:
+            raise RostrumError(codes.UNKNOWN_OPERATION, where, f'"{name}"', "is not an operation in this app",
+                               sorted(self._ops), did_you_mean(name, self._ops))
+        return self._ops[name]
+
+    def field_op(self, kind) -> Operation | None:
+        return next((o for o in self._ops.values() if o.fields and o.targets and kind in o.targets), None)
+
+    def available(self, doc, target_ids=()) -> list[Operation]:
+        """Operations that can run right now on these targets: the command bar's list (absent, not greyed)."""
+        items = [doc.item(i) for i in target_ids]
+        out = []
+        for op in self._ops.values():
+            if op.targets is None:
+                if not items:
+                    out.append(op)
+                continue
+            if items and all(it["type"] in op.targets and holds(op.valid_when, it, doc.kind.facts(it))
+                             for it in items):
+                out.append(op)
+        return out
+
+
+def _kinds(target):
+    if target is None:
+        return None
+    return (target,) if isinstance(target, str) else tuple(target)
