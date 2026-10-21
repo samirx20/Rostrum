@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from .errors import RostrumError, codes, did_you_mean
 
 IMPORTANCE = ("primary", "secondary", "deep")
-TYPES = ("number", "toggle", "choice", "text", "color", "id")
+TYPES = ("number", "toggle", "choice", "text", "color", "id", "points")
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 _UNSET = object()
 
@@ -55,6 +55,8 @@ class Param:
     def color(cls, name, **kw): return cls(name, "color", **kw)
     @classmethod
     def id(cls, name, kind=None, **kw): return cls(name, "id", kind=kind, **kw)
+    @classmethod
+    def points(cls, name, **kw): return cls(name, "points", **kw)   # [[x, y, extra…], …]: min/max = values per point
 
     def check(self, value, where: str):
         """The value, checked (and an integer number made an int). Out of range is an error, never a clamp."""
@@ -78,18 +80,35 @@ class Param:
         elif t == "color":
             if not isinstance(value, str) or not HEX.match(value):
                 bad("is not a colour", ["#rrggbb"])
+        elif t == "points":
+            return self._check_points(value, bad)
         elif t in ("text", "id"):
             if not isinstance(value, str) or (t == "id" and not value):
                 bad("must be text" if t == "text" else "must be an id")
         return value
 
+    def _check_points(self, value, bad):
+        """A list of points, each [x, y, extra…] with between min and max numbers (default 2 to 4); kept as floats."""
+        lo, hi = int(self.min if self.min is not None else 2), int(self.max if self.max is not None else 4)
+        if not isinstance(value, (list, tuple)) or not value:
+            bad("must be a list of points", ["[[x, y], …]"])
+        out = []
+        for n, q in enumerate(value):
+            if (not isinstance(q, (list, tuple)) or not lo <= len(q) <= hi
+                    or any(isinstance(v, bool) or not isinstance(v, (int, float)) or v != v for v in q)):
+                bad(f"point {n} is not {lo} to {hi} numbers", ["[x, y]" if lo == 2 else f"{lo} numbers"])
+            out.append([float(v) for v in q])
+        return out
+
     def json_schema(self) -> dict:
         s = {"number": {"type": "integer" if self.integer else "number"}, "toggle": {"type": "boolean"},
              "choice": {"enum": list(self.options)}, "text": {"type": "string"},
-             "color": {"type": "string", "pattern": HEX.pattern}, "id": {"type": "string"}}[self.type]
-        if self.min is not None:
+             "color": {"type": "string", "pattern": HEX.pattern}, "id": {"type": "string"},
+             "points": {"type": "array", "minItems": 1, "items": {"type": "array", "items": {"type": "number"},
+                        "minItems": int(self.min or 2), "maxItems": int(self.max or 4)}}}[self.type]
+        if self.type == "number" and self.min is not None:
             s["minimum"] = self.min
-        if self.max is not None:
+        if self.type == "number" and self.max is not None:
             s["maximum"] = self.max
         desc = self.help or self.label
         if self.valid_when:
