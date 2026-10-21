@@ -1,6 +1,6 @@
-# P-GUI · Qt shell proof (part 1)
+# P-GUI · Qt shell proof (parts 1 and 2)
 
-**Status:** part 1 done, 2026-10-21 (Team Sam, brief S1). Verdict: **pass with conditions** (below).
+**Status:** part 1 done, 2026-10-21 (Team Sam, brief S1); vsync check and part 2 (USD's Hydra viewport in the window) done in S2. Verdict: **pass with conditions** (below).
 
 ## The question
 
@@ -70,12 +70,76 @@ QtMultimedia (`MediaPlayer` + `VideoOutput`), **FFmpeg backend** (Qt 6's default
 
 **Pass with conditions.** On this laptop, one Qt Quick window driven from Python holds a live GPU viewport (~125 fps, no hitches while clicking around and resizing) and a 1080p60 video that decodes and shows at a steady 60 fps, next to panels that look calm and uncrowded. The look is the experiment's design carried over almost one-to-one; nothing in Qt fought it. Conditions:
 
-1. **Screen-synced drawing (vsync) still has to be checked with Sam at the laptop.** With vsync on, every run (both graphics chips, window on top or not) crawled at ~6 fps. The runs were unattended with the laptop idle for 35 minutes, so the screen was most likely off, and Windows holds back screen-synced drawing then. The proof's default (vsync off, Qt paces frames) is smooth. One attended run settles it: `python main.py --vsync` and watch the FPS readout.
-2. **The real viewport is native code.** Drawing GL in Python works but forces Qt's one-thread mode (see Threading). Real apps draw in Rust / C++ (`QQuickRhiItem`), which the Hydra plan below follows.
+1. ~~Screen-synced drawing (vsync) still has to be checked.~~ **Cleared in S2** (see "Vsync, settled" below): with the screen awake, vsync on holds a locked 60 fps on both chips, viewport and video. The 4–6 fps seen in S1 is Windows holding back drawing while the screen is off.
+2. **The real viewport is native code.** Drawing GL in Python works but forces Qt's one-thread mode (see Threading). Real apps draw in Rust / C++ (`QQuickRhiItem`), which the Hydra plan below follows. **S2:** USD's Hydra (Storm, and Cycles as a bonus) now draws in the same slot, still through Python, at ~120 fps uncapped and a locked 60 with vsync (see "Part 2" below).
 3. **The app must ask Windows for the fast graphics chip** (`NvOptimusEnablement` export in our own `.exe`); Python runs on the AMD built-in chip by default.
 4. **Mac not run yet.**
 
 Is Qt simple enough to look the way Sam wants? From these screenshots, yes: generous spacing, one accent colour, sharp type, panels set apart by shade rather than lines. Sam judges the screenshots below.
+
+## Vsync, settled (S2, 2026-10-21)
+
+The laptop had had no keyboard or mouse input for ~40 minutes and Windows turns the screen off after 5 minutes (Balanced plan, on mains), so before each run a small script (`C:\Users\Sam\.rostrum\waves\scratch\sam-S2-lead\vsync_run.py`, deleted after) woke the screen with a 0-pixel mouse nudge, asked Windows to keep the display on (`SetThreadExecutionState`), and recorded how long the machine had been idle. One run was made first with the screen left as it was, as the control.
+
+| Run (vsync on, 15 s, 1600×960) | GPU | Screen | Window fps | Frame ms p50 / p95 / p99 / max | > 33 ms | Video fps | Memory MB start / peak / end |
+|---|---|---|---|---|---|---|---|
+| viewport (control, 12 s) | AMD built-in | off (idle 40 min) | **3.8** | 262 / 271 / 453 / 453 | all | — | 270 / 270 / 270 |
+| viewport churn | AMD built-in | woken | **60.0** | 16.7 / 17.4 / 23.6 / 27 | 0 | — | 269 / 269 / 266 |
+| video churn | AMD built-in | woken | 55 | 16.7 / 32.3 / 40.3 / 63 | 10 of 826 | **60.1** | 382 / 711 / 525 |
+| viewport churn | RTX 3050 | woken | **59.7** | 16.6 / 18.4 / 25.7 / 112 | 4 of 896 | — | 341 / 344 / 329 |
+| video churn | RTX 3050 | woken | **59.8** | 16.7 / 20.0 / 28.4 / 79 | 3 of 897 | **60.0** | 365 / 370 / 355 |
+
+JSON: `C:\Users\Sam\.rostrum\waves\results\stage1\p-gui\measure-vsync-*.json` (each has a `screen` block: woken or as-is, idle seconds before).
+
+Reading it: the same command gives 3.8 fps with the screen off and a locked 60 fps the moment the screen is on, so the S1 crawl was the dark screen, not Qt or the drivers. With vsync on, frames land on the display's 60 Hz beat (p50 16.7 ms), the few slow frames come with the window resizes in churn, and video is shown frame for frame. The built-in chip shows 10 late frames out of 826 in video churn (resizing a playing 1080p video window); the RTX is steadier.
+
+**What it means for the apps:** draw with vsync on (it also stops the wasted ~125 fps of the vsync-off runs). Never time anything by the window: exports and agent frame grabs render offscreen, so a sleeping screen can't slow them (preview ≡ export still holds: same render path, only the presentation differs). Caveat: the screen was woken by a script, not by Sam at the keyboard; the numbers are what a watched screen gets.
+
+## Part 2 · USD's Hydra viewport in the window (S2, 2026-10-21)
+
+**Verdict: pass with conditions.** USD's own viewport engine (Hydra Storm) draws a real USD stage, Team Hem's product scene, live inside our Qt window, in the same spot as the test viewport, with orbit, pan, zoom and click-to-pick by mouse. It holds ~120 fps uncapped and a locked 60 fps with vsync on both chips while the camera turns every frame, picks run, the selection changes 4× a second and the window resizes, using ~470–660 MB. The same viewport switches to Cycles (Hem's Hydra plug-in) and refines a path-traced picture in the window. Conditions: Storm's default look needs work (Findings); the real app does this in C++, not Python; Mac not run.
+
+**Route.** Blender's Windows library bundle that Team Hem downloaded for Cycles (`C:\Users\Sam\.t3\worktrees\Rostrum\team-hem\proofs\3d-product\.build\cycles\lib\windows_x64\`) has OpenUSD (namespace `pxrBlender_v26_03`, one DLL `usd_ms.dll`) **with Python 3.13 bindings** (`usd\lib\python\pxr`, incl. `UsdImagingGL`). So no native helper and no build were needed: a second venv of our own, `C:\Users\Sam\.t3\worktrees\Rostrum\team-sam\.venv-usd\` (Python 3.13.4 from `C:\Python313`, PySide6 6.12.0, PyOpenGL, numpy, pefile), imports `pxr` straight from the bundle. Read-only: `hydra_viewport.load_usd()` adds the bundle's DLL folders to the DLL search **and** to `PATH` (USD loads Hydra plug-ins with plain `LoadLibrary`, which ignores Python's DLL folders), skips the bundle's own Python and its GPL FFmpeg, and turns off `.pyc` writing.
+
+**How it is built** (`hydra_viewport.py`, ~240 lines). `HydraViewport` is a `QQuickFramebufferObject` with the same `time` / `tint` properties as `GLViewport`, registered under the same QML name, so `Viewer.qml` didn't change (only the readout now shows the picked prim). It follows the plug-in plan above:
+1. The renderer creates `UsdImagingGL.Engine()` in the first `render()`, on Qt's current GL context (Hgi = HgiGL).
+2. `synchronize()` hands over the GUI's pending camera operations (orbit / pan / zoom / home / pick) and the time, and hands back the picked prim path. Mouse events never touch the engine; they queue operations, the operation-first shape the apps need.
+3. `render()` applies the operations to a turntable camera (it starts from the stage's first camera: position, aim, focus distance, field of view), sets render-buffer size, framing and camera, and calls `engine.Render()`; HgiInterop composites into the framebuffer Qt bound. Picking is `engine.TestIntersection()` through a 4-pixel frustum around the click (usdview's way).
+4. A failure inside `render()` prints the error and exits with code 3 (fail loudly, no blank viewport).
+
+Mouse: left drag orbit, middle drag or Shift + left drag pan, wheel or right drag zoom, click pick, double-click home. The Turn speed slider turns the view slowly (off for progressive renderers, which restart on every camera move).
+
+**Run** (from `C:\Users\Sam\.t3\worktrees\Rostrum\team-sam\proofs\gui-qt\`):
+```
+C:\Users\Sam\.t3\worktrees\Rostrum\team-sam\.venv-usd\Scripts\python.exe main.py --stage ..\3d-product\scene\product.usda
+   [--hydra-lights camera|scene]   camera = a head light (default); scene = the stage's own lights
+   [--hydra-renderer HdCyclesPlugin --hydra-plugins C:\Users\Sam\.t3\worktrees\Rostrum\team-hem\proofs\3d-product\.build\cycles\install\hydra]
+   [--measure 15 --churn --out x.json] [--screenshot x.png --shot-delay 25] [--usd-bundle <folder>]
+```
+The stage comes from Hem's script: `python -I ..\3d-product\scene\make_scene.py` writes the ignored `product.usda` (51 prims, 2 MB). With `--stage`, `--measure --churn` also orbits and picks through the same operations the mouse uses; the JSON lists the prims it picked.
+
+**Measurements** (15 s, 1600×960 window, screen woken as in "Vsync, settled"; churn = camera turning every frame + an orbit step every 250 ms + a pick every second + project selection every 250 ms + a resize every 1.5 s):
+
+| Run | GPU | Window fps | Frame ms p50 / p95 / p99 / max | > 33 ms | Memory MB start / peak / end | Picked |
+|---|---|---|---|---|---|---|
+| Storm, vsync off | AMD built-in | **122** | 6.6 / 13.5 / 18.3 / 191 | 3 of 1831 | 530 / 661 / 657 | (pick result misread; fixed before the RTX runs) |
+| Storm, vsync on | AMD built-in | **58.6** | 16.7 / 17.4 / 32.6 / 99 | 8 of 879 | 521 / 643 / 643 | (same) |
+| Storm, vsync off | RTX 3050 | **119** | 5.7 / 14.9 / 18.8 / 461 | 4 of 1777 | 462 / 537 / 522 | TopGlass, Dial/Lens, Dial/DialKnurl |
+| Storm, vsync on | RTX 3050 | **59.8** | 16.7 / 19.5 / 27.8 / 84 | 8 of 897 | 467 / 476 / 461 | TopGlass, Dial/Lens, Dial/DialBezel |
+
+JSON: `C:\Users\Sam\.rostrum\waves\results\stage1\p-gui\measure-hydra-*.json`. The slow frames come at the first frame and at window resizes (Hydra reallocates its render buffers), not while orbiting. The RTX runs used the same temporary per-program GPU setting as S1, for `C:\Python313\python.exe` and the venv's python, removed right after.
+
+**Screenshots** (RTX 3050):
+- `C:\Users\Sam\.rostrum\waves\results\stage1\p-gui\window-hydra.png`: Storm with the head light. Plain but readable.
+- `C:\Users\Sam\.rostrum\waves\results\stage1\p-gui\window-hydra-scene-lights.png`: Storm with the stage's own studio lights: blown out.
+- `C:\Users\Sam\.rostrum\waves\results\stage1\p-gui\window-hydra-cycles.png`: bonus, the same viewport on **Cycles** (`HdCyclesPlugin`), 25 s into a progressive render with the scene's lights. Grainy (default device, no denoiser), but it is the real product shot refining inside our window. Compare Hem's finished still `C:\Users\Sam\.rostrum\waves\results\stage1\p-3d-1\product-still-1080p.png`.
+
+**Findings:**
+- **Storm's out-of-the-box look is not good enough for a product scene.** With the scene's lights, Storm treats the big soft studio lights (rect lights tuned for Cycles) as bright small lights and the picture blows out. With a head light, metal looks black and the glass top hides the dial, because Storm has no environment to reflect. Fix in the real app: a default studio environment (dome light with an HDR image) and an exposure control in the viewport, as usdview and Blender's viewport have. These are viewport settings, not a new route.
+- **Cycles in the viewport works as is.** A 3D viewport can offer "fast (Storm) / final (Cycles)" as one switch. To be usable live, Cycles needs the GPU device (OptiX) and the denoiser on; not tried (time box).
+- **The bundle's USD is a Blender build** (`pxrBlender_v26_03` namespace, one big `usd_ms.dll`). Fine for a proof; the app should ship its own OpenUSD build (or vcpkg's) so we choose the version and plug-ins.
+- **Python on the render thread again.** Same limit as part 1: this viewport is driven from Python, so it runs on Qt's one-thread loop. In Rostrum3D it is the C++ `QQuickRhiItem` from the plan; `hydra_viewport.py` is a 1:1 sketch of it (engine calls, operation queue, framing, picking).
+- **Read-only use of Hem's build:** my first import, before `.pyc` writing was off, left three `__pycache__` folders in Hem's bundle (`…\windows_x64\usd\lib\python\pxr\__pycache__`, `…\pxr\Tf\__pycache__`, `…\pxr\Usd\__pycache__`, made 2026-10-21 16:09). Harmless bytecode caches; deleting inside Hem's worktree is not ours to do, so they are left for Team Hem.
 
 ## Results
 
@@ -116,12 +180,12 @@ How these were run (lead, through `heavy.ps1` gpu slots): `python main.py --meas
 
 ## What's left
 
-- One attended run with vsync on (`python main.py --vsync`, read the FPS readout) to clear condition 1.
 - Mac run.
+- Hydra: studio environment + exposure for Storm; Cycles on the GPU with the denoiser in the viewport; the C++ `QQuickRhiItem` version (Rostrum3D).
 - Command bar drop shadow; playhead line stops at the last track.
 - Not built: real panel resizing (splitters), tabs for several documents, hover tooltips, light theme. Icons are letters in chips; a real icon set is a GUI-kit job.
 - HiDPI: with this screen's display scaling a 1600×906 window grabs at 1867×1057 pixels; text stays sharp. (The 1080p screen also clamps a 960 px-tall window to 906.)
 
 ## Files
 
-`main.py` (start-up, flags), `viewport.py` (the GL viewport), `measure.py` (readout, memory, measure and screenshot drivers), `check_input.py` (keys and clicks check), `qml/` (`Main.qml` state and commands, `Theme.qml` look tokens, `TopBar`, `Panel`, `ProjectPanel`, `Viewer`, `Inspector`, `Timeline`, `CommandBar`).
+`main.py` (start-up, flags), `viewport.py` (the GL viewport), `hydra_viewport.py` (USD's Hydra in the same slot), `measure.py` (readout, memory, measure and screenshot drivers), `check_input.py` (keys and clicks check), `qml/` (`Main.qml` state and commands, `Theme.qml` look tokens, `TopBar`, `Panel`, `ProjectPanel`, `Viewer`, `Inspector`, `Timeline`, `CommandBar`).

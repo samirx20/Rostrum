@@ -91,6 +91,12 @@ class Measurer(QObject):
         k = len(self.mem)
         self.root.setProperty("selectedIndex", k % 6)  # "click" a new project item every 250 ms
         self.events.append(("select", k % 6))
+        if hasattr(self.vp, "_op"):  # Hydra viewport: drag-orbit and click-pick through the same camera operations
+            self.vp._op("orbit", 12.0, 3.0 if k % 2 else -3.0)
+            if k % 4 == 0:
+                dpr = self.win.devicePixelRatio()
+                self.vp._op("pick", self.vp.width() * 0.6 * dpr, self.vp.height() * 0.5 * dpr)
+            self.events.append(("orbit+pick", self.vp.property("picked")))
         if k % 6 == 0:  # resize every 1.5 s
             w, h = self.SIZES[(k // 6) % len(self.SIZES)]
             self.win.resize(w, h); self.events.append(("resize", f"{w}x{h}"))
@@ -114,7 +120,8 @@ class Measurer(QObject):
                           "peak_ws": round(max(m["working_set"] for m in self.mem), 1),
                           "end_ws": round(self.mem[-1]["working_set"], 1),
                           "end_private": round(self.mem[-1]["private"], 1)},
-            "events": len(self.events), "final_size": [self.win.width(), self.win.height()],
+            "events": len(self.events),
+            "picked": sorted({str(e[1]) for e in self.events if e[0] == "orbit+pick" and e[1]}), "final_size": [self.win.width(), self.win.height()],
             "gl": getattr(self.vp, "glInfo", {}) if self.vp is not None else {},
         }
         with open(self.args.out, "w", encoding="utf-8") as f:
