@@ -104,12 +104,10 @@ def main():
     settings = look_settings(stage)
     for k, v in settings.items():
         engine.SetRendererSetting(k, v)
-    if os.environ.get("ROSTRUM_CAMSTATE"):
-        f = UsdGeom.Camera(stage.GetPrimAtPath(cam)).GetCamera(Usd.TimeCode.Default()).frustum
-        CameraUtil.ConformWindow(f, CameraUtil.MatchVertically, a.width / a.height)
-        engine.SetCameraState(f.ComputeViewMatrix(), f.ComputeProjectionMatrix())
-    else:
-        engine.SetCameraPath(Sdf.Path(cam))
+    prim = stage.GetPrimAtPath(cam)
+    if not prim or not prim.IsA(UsdGeom.Camera):
+        sys.exit(f"no camera at {cam}")
+    engine.SetCameraPath(Sdf.Path(cam))  # the delegate sees this camera (per-camera bend needs it)
     engine.SetRenderBufferSize(Gf.Vec2i(a.width, a.height))
     engine.SetFraming(CameraUtil.Framing(Gf.Rect2i(Gf.Vec2i(0, 0), a.width, a.height)))
     engine.SetOverrideWindowPolicy(CameraUtil.MatchVertically)
