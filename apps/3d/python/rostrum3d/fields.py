@@ -11,7 +11,7 @@ import dataclasses
 
 from rostrum_core import Param
 from rostrum_core.conditions import holds
-from rostrum2d import fields as _f2d
+from rostrum_core.keys import KEY_FIELDS
 
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 ANY = lambda name, *values: {"any": [IS(name, v) for v in values]}  # noqa: E731
@@ -155,7 +155,7 @@ FIELDS: dict[str, list[Param]] = {
         N("height", "Height", "Frame", 16, 16384, 1, "px", S, integer=True, default=1080),
         C("background", "Background", "Frame", "#000000", S, help="What shows where nothing is (not a light)"),
     ],
-    "key": _f2d.FIELDS["key"],            # the one key shape (t in seconds, v or c, ease) and easing, shared with 2D
+    "key": KEY_FIELDS,                   # the one key shape (t in seconds, v or c, ease), shared with 2D
 }
 
 ITEMS = ("group", "mesh", "import", "light", "camera")      # scene items (USD prims)

@@ -8,7 +8,7 @@ from PySide6.QtGui import QGuiApplication
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from rostrum_core import Document  # noqa: E402
-from rostrum2d.evaluate import keys_of  # noqa: E402
+from rostrum_core.keys import keys_of  # noqa: E402
 from rostrum3d import KIND  # noqa: E402
 from rostrum3d.script import run_source  # noqa: E402
 from screen3d.bridge3d import Bridge3D  # noqa: E402

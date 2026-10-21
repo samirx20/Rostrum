@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum2d import fields as F
-from rostrum2d.evaluate import keys_of
+from rostrum_core.keys import keys_of
 from rostrum2d.ops_keys import curve_of, handles_of
 from rostrum_gui.edits import Drag
 

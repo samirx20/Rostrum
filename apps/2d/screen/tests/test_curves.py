@@ -8,8 +8,8 @@ from PySide6.QtGui import QGuiApplication
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from rostrum2d.easing import BEZIERS  # noqa: E402
-from rostrum2d.evaluate import keys_of  # noqa: E402
+from rostrum_core.keys import BEZIERS  # noqa: E402
+from rostrum_core.keys import keys_of  # noqa: E402
 from screen2d.bridge2d import Bridge2D  # noqa: E402
 from screen2d.steps import do_step  # noqa: E402
 from test_screen import FakeEngine, frames, Document, KIND, run_source, SRC  # noqa: E402,F401

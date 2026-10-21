@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import math
 
-from rostrum2d.evaluate import key_value, keys_of, value_at
+from rostrum_core.keys import key_value, keys_of
+from rostrum2d.evaluate import value_at
 
 HOLD_MIN_S = 0.5          # a still stretch shorter than this isn't reported as a hold
 

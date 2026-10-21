@@ -7,12 +7,11 @@ from __future__ import annotations
 import numpy as np
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
+from rostrum_core.mcp.files import look_path
 from rostrum_core.tree import index, subtree_ids
 from rostrum_paint import canvas, see, where
 
 from rostrum2d import drawing as D
-
-from .files import look_path
 
 tools = Tools()
 ITEM = {"item": {"type": "string", "description": "The document's project item id. Optional when only one document is open."}}

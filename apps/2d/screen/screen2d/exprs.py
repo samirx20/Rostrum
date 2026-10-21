@@ -3,7 +3,7 @@ be, with a clear button; every other field shows nothing extra (rule of individu
 from __future__ import annotations
 
 from rostrum2d import fields as F
-from rostrum2d.evaluate import keys_of
+from rostrum_core.keys import keys_of
 from rostrum2d.exprbake import source_of
 
 

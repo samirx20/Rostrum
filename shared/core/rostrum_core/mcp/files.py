@@ -1,4 +1,4 @@
-"""Where look and render files go, and keeping the look folder small (the same places as 2D's look tools)."""
+"""Where look and render files go (one place for every app's look and render tools), and keeping the look folder small."""
 from __future__ import annotations
 
 import time
@@ -16,6 +16,11 @@ def look_path(stem: str, ext: str = "png") -> Path:
     for p in old[:max(0, len(old) - LOOK_KEEP + 1)]:
         p.unlink(missing_ok=True)
     return LOOK_DIR / f"{stem}_{time.strftime('%H%M%S')}_{int(time.time() * 1000) % 1000:03d}.{ext}"
+
+
+def render_path(stem: str, ext: str = "mp4") -> Path:
+    RENDER_DIR.mkdir(parents=True, exist_ok=True)
+    return RENDER_DIR / f"{stem}_{time.strftime('%Y%m%d_%H%M%S')}.{ext}"
 
 
 def render_cache_folder(stem: str) -> Path:

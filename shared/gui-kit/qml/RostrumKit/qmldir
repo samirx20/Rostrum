@@ -5,6 +5,9 @@ ListField 1.0 ListField.qml
 Chevron 1.0 Chevron.qml
 KeyHint 1.0 KeyHint.qml
 Button 1.0 Button.qml
+IconButton 1.0 IconButton.qml
+LevelMeter 1.0 LevelMeter.qml
+VScrollBar 1.0 VScrollBar.qml
 Toggle 1.0 Toggle.qml
 NumberField 1.0 NumberField.qml
 TextField 1.0 TextField.qml
@@ -21,3 +24,5 @@ ItemList 1.0 ItemList.qml
 CommandBar 1.0 CommandBar.qml
 TopBar 1.0 TopBar.qml
 AppShell 1.0 AppShell.qml
+Ruler 1.0 Ruler.qml
+KeyRows 1.0 KeyRows.qml

@@ -38,7 +38,7 @@ An **item** is one thing in the Project panel:
 
 Lining things up by copying numbers breaks the moment one thing moves. So every document **publishes its named moments**, and anything can tie a time to one by name (AGENTS.md rule 8).
 
-- **Each document keeps its own markers** (Sam's choice, 2026-10-12: no separate project marker file, so there is one source of truth). 2D publishes its timeline labels (`logo_lands`), Sound its labels (`drop`), 3D its contacts (`hit:can>table`), the Editor its markers plus every clip's start and end.
+- **Named markers live once, in the project** (S11, 2026-10-21; this replaces "each document keeps its own markers"): one list, `docs/markers.mkr`, changed only through its operations, read by every app. How to use it: [`MARKERS.md`](MARKERS.md). Derived markers (3D contacts `hit:can>table`, Editor clip starts and ends) are still worked out from their documents, never stored twice.
 - The **music's beat grid** works as markers too (`music#bar:9`, `music#beat:9:3`), worked out from tempo and time signature, never stored.
 - A reference is **item and marker**, with an optional offset: `music#drop`, `ui#press+0.5`, `music#bar:9`. The document stores the reference next to the time it last resolved to:
 

@@ -14,7 +14,7 @@ import re
 
 from . import fields as F
 from .evaluate import value_at
-from .expr import ExprError, find, parse, refs
+from .expr import ExprError, parse, refs
 from .expr_run import run
 
 CHILDREN = ("layers", "effects", "masks", "bones", "iks", "binds")
@@ -51,9 +51,7 @@ def _own(items, exprs, key) -> list[str]:
         tree = parse_cached(src)
     except ExprError as e:
         return [e.at(where, src)]
-    out = [ExprError(f'marker("{n[2]}"): 2D documents keep no markers yet (the shared marker list of '
-                     "shared/project-service is not wired into the 2D document)", n[1]).at(where, src)
-           for n in find(tree, "marker")]
+    out = []        # marker("…") names are the project's (rostrum_core.markers): checked when baked, loudly
     for (item, field), col in sorted(refs(tree).items()):
         q = F.param(items[item]["type"], field) if item in items else None
         why = (f'no item "{item}" to read {item}.{field} from' if item not in items
@@ -112,8 +110,8 @@ def comp_of(data: dict, item_id: str) -> dict:
 class _Env:
     __slots__ = ("time", "frame", "fps", "duration", "markers", "get")
 
-    def __init__(self, t, fps, duration, get):
-        self.time, self.frame, self.fps, self.duration, self.markers, self.get = t, round(t * fps), fps, duration, None, get
+    def __init__(self, t, fps, duration, get, markers):
+        self.time, self.frame, self.fps, self.duration, self.markers, self.get = t, round(t * fps), fps, duration, markers, get
 
 
 def _final(owner: dict, prop: str, v):
@@ -129,8 +127,9 @@ def _final(owner: dict, prop: str, v):
     return float(round(v)) if p.integer else v
 
 
-def bake(comp: dict, fps: float) -> dict[str, dict[str, list]]:
-    """{item id: {field: linear keys at every frame}} for every field of the composition with an expression."""
+def bake(comp: dict, fps: float, markers: dict | None = None) -> dict[str, dict[str, list]]:
+    """{item id: {field: linear keys at every frame}} for every field of the composition with an expression.
+    `markers`: the project's {name: seconds} (rostrum_core.markers.times); None = not in a project folder."""
     items = items_of(comp)
     exprs = exprs_of(items)
     if not exprs:
@@ -144,7 +143,7 @@ def bake(comp: dict, fps: float) -> dict[str, dict[str, list]]:
     def at(key, t):
         if (key, t) not in memo:
             try:
-                memo[key, t] = _final(items[key[0]], key[1], run(trees[key], _Env(t, fps, duration, get)))
+                memo[key, t] = _final(items[key[0]], key[1], run(trees[key], _Env(t, fps, duration, get, markers)))
             except ExprError as e:
                 raise ValueError(e.at(f"{key[0]}.{key[1]}", exprs[key])) from None
         return memo[key, t]

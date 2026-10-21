@@ -2,12 +2,13 @@ import QtQuick
 import "."
 
 // A button: "normal" (raised), "primary" (accent) or "ghost" (no box until hovered). Optional key hint at the
-// right ("Ctrl K"). Click, Space or Enter: one clicked().
+// right ("Ctrl K"). `danger` colours the text red (delete, discard). Click, Space or Enter: one clicked().
 Item {
     id: b
     property string text: ""
     property string kind: "normal"
     property string hint: ""
+    property bool danger: false
     property bool down: false            // shown pressed (e.g. a panel that is open)
     readonly property bool hovered: hoverHandler.hovered
     signal clicked()
@@ -33,7 +34,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         text: b.text; font.pixelSize: Theme.body; font.family: uiFont
         font.weight: b.kind === "primary" ? Font.DemiBold : Font.Normal
-        color: b.kind === "primary" ? "white" : Theme.fg
+        color: b.kind === "primary" ? "white" : b.danger ? Theme.danger : Theme.fg
     }
     KeyHint { id: hintBox; visible: b.hint !== ""; text: b.hint
               anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter }

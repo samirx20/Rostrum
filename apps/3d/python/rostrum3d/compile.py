@@ -1,11 +1,11 @@
 """The compiler: one shot of the document → the scene description the C++ core builds its USD stage from
 (ENGINE_CONTRACT.md § 2). Every field is present (defaults filled in), colours are linear, aims are turned into
 rx ry rz, and every animated field is baked to one value per frame, start..end inclusive, at the shot's fps.
-Frame n is at n / fps seconds; the one evaluator and easing are rostrum2d's (the same keys as 2D).
+Frame n is at n / fps seconds; the one evaluator and easing are rostrum_core.keys' (the same keys as 2D).
 """
 from __future__ import annotations
 
-from rostrum2d.evaluate import keys_of, track_value
+from rostrum_core.keys import keys_of, track_value
 
 from . import aim, fields as F
 from .colors import linear

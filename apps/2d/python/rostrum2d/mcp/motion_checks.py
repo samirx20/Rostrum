@@ -4,7 +4,7 @@ the numbers; there is no score and no opinion about taste.
 """
 from __future__ import annotations
 
-from rostrum2d.evaluate import key_value, keys_of
+from rostrum_core.keys import key_value, keys_of
 
 from .geometry import comp_size, flatten, problems_showing
 from .motion_facts import HOLD_MIN_S, all_layers, r, windows

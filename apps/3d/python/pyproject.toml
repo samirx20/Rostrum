@@ -3,7 +3,7 @@ name = "rostrum3d"
 version = "0.1.0"
 description = "Rostrum3D's Python layer: document, operations, script layer, scene compiler, engine client, MCP server"
 requires-python = ">=3.11"
-dependencies = ["rostrum_core", "rostrum2d", "Pillow>=10.1"]   # rostrum2d: the one easing table and key evaluator (until they move to rostrum_core)
+dependencies = ["rostrum_core", "Pillow>=10.1"]
 
 [project.scripts]
 rostrum-3d = "rostrum3d.mcp.server:main"

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 from pathlib import Path
 
 from .errors import RostrumError, codes
@@ -103,3 +104,26 @@ def finish_render(partial: Path, manifest: dict) -> Path:
     partial.rename(done)
     return done
 
+
+
+def save_beside(folder, item_id: str, render_dir, dest) -> Path:
+    """Copy the project a render came from to `dest` (next to a render copied out of the project), so another app
+    can open the film as a project: project.json, docs/, data/, media/, colour/, .rostrum/ and this render's
+    version folder only (other items' renders and exports stay behind). Written whole: `dest.partial`, then
+    renamed; an older copy at `dest` is replaced."""
+    folder, render_dir, dest = Path(folder), Path(render_dir), Path(dest)
+    if not (folder / "docs").is_dir():
+        raise RostrumError(codes.NOT_FOUND, "render", str(folder), "is not a project folder (no docs/)")
+    part = dest.with_name(dest.name + ".partial")
+    shutil.rmtree(part, ignore_errors=True)
+    for name in ("docs", "data", "media", "colour", ".rostrum"):
+        if (folder / name).is_dir():
+            shutil.copytree(folder / name, part / name, ignore=shutil.ignore_patterns("*.partial", "*.lock"))
+    for name in ("project.json",):
+        if (folder / name).is_file():
+            shutil.copy2(folder / name, part / name)
+    shutil.copytree(render_dir, part / "renders" / item_id / render_dir.name)
+    if dest.exists():
+        shutil.rmtree(dest)
+    part.rename(dest)
+    return dest

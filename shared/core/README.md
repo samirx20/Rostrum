@@ -47,6 +47,23 @@ doc.save()                                                   # docs/itm_shot.trd
 
 `rostrum_core.toy` is a small stand-in document (camera, light, rectangle, text with the S3 mockup's controls) shared by the tests, the MCP demo server and the GUI kit demo.
 
+## Keys (`rostrum_core.keys`)
+
+The one animation model, shared by every app: `easing.py` (the easing table), `evaluate.py` (`keys_of`, `track_value`,
+`mix_color`, `key_value`, `animated`), `fields.py` (`KEY_FIELDS`, the fields table of a "key" item: use it as your
+`FIELDS["key"]`) and `ops.py`. An app gets `key.add`, `key.remove`, `value.set` and `key.clear` with one call:
+
+```python
+put_key = register_key_ops(REGISTRY, owners=ITEMS, check_key=..., check_still=...,
+                           settable=None, value_params=[V, C])
+```
+
+`check_key(ctx, owner, prop, args)` returns `(key field "v"|"c"|"d", checked value)`; `check_still(...)` returns the
+checked value of a field with no keys (and refuses one that doesn't apply now); `settable` refuses a field that can't
+change now (2D: driven by an expression); `value_params` are the value params a key takes (2D adds `d`). Extras
+(2D's path morph and curve handles, expressions) stay in the app. The same screen rules for "edit at the playhead goes
+through keys" are `shared/gui-kit/rostrum_gui/route.py` (`KeyRoute`).
+
 ## Modules (each < 200 lines, each the only home of its idea)
 
 | Module | Does |

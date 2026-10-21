@@ -22,10 +22,10 @@ import math
 
 from rostrum_core import ids
 from rostrum_core.errors import RostrumError, codes
+from rostrum_core.keys import key_id
 
 from . import build, fields as F
 from .kind import KIND, PRIM_ID
-from .ops_keys import key_id
 
 SAFE = {n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__builtins__, n)
         for n in ("range", "len", "min", "max", "abs", "round", "enumerate", "zip", "list", "dict", "float", "int",

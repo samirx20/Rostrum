@@ -6,7 +6,7 @@ one per frame, in place of its own keys.
 from __future__ import annotations
 
 from . import drawing, exprbake, fields as F, video
-from .evaluate import animated, keys_of
+from rostrum_core.keys import animated, keys_of
 
 FORMAT, VERSION = "rostrum-2d-scene", 1
 KEY_FIELDS = ("t", "v", "c", "d", "ease", "x1", "y1", "x2", "y2", "stiffness", "damping")
@@ -35,8 +35,9 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None) -> dict:
     return node
 
 
-def describe(doc_data: dict, comp_id: str | None = None) -> dict:
-    """The scene description of one composition (the first when not named)."""
+def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = None) -> dict:
+    """The scene description of one composition (the first when not named). `markers`: the project's shared
+    markers {name: seconds} (rostrum_core.markers.times(folder)), for expressions' marker("…")."""
     comps = doc_data.get("comps", [])
     if not comps:
         raise ValueError("the document has no composition yet (comp.add)")
@@ -44,5 +45,5 @@ def describe(doc_data: dict, comp_id: str | None = None) -> dict:
     if comp is None:
         raise ValueError(f'no composition "{comp_id}"; there are: {", ".join(c["id"] for c in comps)}')
     fps = comp.get("fps", F.defaults("comp")["fps"])
-    return {"format": FORMAT, "version": VERSION, "comp": _node(comp, fps, exprbake.bake(comp, fps))}
+    return {"format": FORMAT, "version": VERSION, "comp": _node(comp, fps, exprbake.bake(comp, fps, markers))}
 

@@ -8,9 +8,9 @@ from pathlib import Path
 from rostrum_core import project
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
+from rostrum_core.mcp.files import render_path
 
 from . import render
-from .files import render_path
 from .geometry import comp_size
 from .pick import ITEM_COMP, doc_and_comp
 
@@ -31,7 +31,7 @@ def manifest(item: str, doc, comp: dict, partial: Path, info: dict, start: float
 
 @tools.tool("render_video", {"properties": {**ITEM_COMP, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
                                             "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition."},
-                                            "path": {"type": "string", "description": "Also copy the .mp4 here (absolute, or relative to the project folder). Default: only the project's renders folder."}}})
+                                            "path": {"type": "string", "description": "Also copy the .mp4 here (absolute, or relative to the project folder), with the project saved beside it as <name>.project/ so other apps can open the film. Default: only the project's renders folder."}}})
 def render_video(ctx, args):
     """Export an mp4 (H.264, bt709) of a composition through the same engine as look_frame. Always a job: it returns a job id at once;
     ask with inspect_job (wait_s up to 25). With a project folder it is a project render, renders/<item>/vNNN/ (the mp4 and a
@@ -70,7 +70,10 @@ def render_video(ctx, args):
                 shutil.copyfile(files[0], tmp)
                 tmp.replace(copy_to)
                 files.append(copy_to)
-        return Reply(f'Rendered {comp["id"]}: {info["frames"]} frames at {info["fps"]} fps, {start:g}–{end:g} s.',
-                     {"frames": info["frames"], "fps": info["fps"], "start": start, "end": end}, files)
+                beside = project.save_beside(folder, item, files[0].parent, copy_to.with_name(copy_to.stem + ".project"))
+        said = f" The project is saved beside the copy: {beside}." if partial and copy_to else ""
+        return Reply(f'Rendered {comp["id"]}: {info["frames"]} frames at {info["fps"]} fps, {start:g}–{end:g} s.{said}',
+                     {"frames": info["frames"], "fps": info["fps"], "start": start, "end": end,
+                      "project_copy": str(beside) if said else None}, files)
 
     return ctx.job(f'render_video {comp["id"]} {start:g}-{end:g}s', job_fn, key=f"video|{doc.item_id}|{comp['id']}|{start}|{end}|{doc.seq}|{out}")

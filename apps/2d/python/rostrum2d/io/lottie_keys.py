@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import math
 
-from ..easing import BEZIERS, ease
-from ..evaluate import mix_color
+from rostrum_core.keys import BEZIERS, ease
+from rostrum_core.keys import mix_color
 
 LINEAR = (0.0, 0.0, 1.0, 1.0)
 

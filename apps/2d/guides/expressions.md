@@ -52,7 +52,7 @@ with the item, the field and the **column** where it went wrong.
 - **A loop is refused**: `a.x` reading `b.x` which reads `a.x` (even with a time shift). Say which one leads.
 - Results are held inside the field's range, as a key would be (opacity stays 0..1); a colour field needs a colour
   result, a number field a number.
-- `marker("name")` is not available yet: 2D documents keep no markers. Use `time` with a number for now.
+- `marker("name")` is the time, in seconds, of one of the project's shared markers (the flags on the ruler; agents list them with `inspect_markers`). Case does not matter. A name the project doesn't have stops the render with a message naming the markers that exist. Example: `1 if time > marker("drop") else 0.2`.
 - Check the result by looking: scrub the playhead, or `look` frames at a few times. The bake is the same on canvas and
   in the export (one key per frame).
 - Dragging a layer on the canvas does not move a field an expression drives; clear the expression first.

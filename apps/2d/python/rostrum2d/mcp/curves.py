@@ -4,7 +4,7 @@ from __future__ import annotations
 from rostrum_core.errors import RostrumError
 from rostrum_core.mcp import Reply, Tools
 
-from ..evaluate import animated
+from rostrum_core.keys import animated
 from ..ops_keys import curve_of
 from .pick import ITEM_COMP
 
