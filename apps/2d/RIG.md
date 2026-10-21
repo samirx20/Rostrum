@@ -35,8 +35,8 @@ degrees, clockwise on screen (as a layer's rotation); 0 = pointing right, 90 = p
 | **bind** | `layer` | text | no | Id of a layer directly in this rig's `layers` (not inside a group in it). A layer has at most one bind. |
 | | `bone` | text | no | The bone it follows. |
 | | `bone2` | text | no | "" = **rigid** (the layer follows `bone` as one piece). A child bone of `bone` = **bend**: the layer is drawn through a mesh skinned to both bones (a bent arm or leg in one picture). |
-| | `grid` | number 4..64 | no | Bend only: mesh divisions along each side. Default 16. |
-| | `soft` | number px | no | Bend only: half-width of the blend zone around the joint (0 = a hard crease). Default 20. |
+| | `grid` | number 4..64 | no | Bend only: mesh divisions along each side. Default 24. |
+| | `soft` | number px | no | Bend only: half-width of the blend zone around the joint (0 = a hard crease). Default 40 (about the limb's width or more reads as a bend, less as a crease). |
 
 Rest pose = every animated bone field at its still value (rotation 0, scale 1, moves 0), iks ignored. A layer is
 placed by the person at rest; its bind makes it follow its bone's motion **from rest**: its own keys still work on top.

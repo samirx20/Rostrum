@@ -40,8 +40,8 @@ FIELDS = {
         X("layer", "Layer", "Bind", "", help="A layer inside the rig"),
         X("bone", "Bone", "Bind", "", help="The bone it follows"),
         X("bone2", "Bends to", "Bind", "", help="A child bone of Bone: the layer bends across the joint; empty = rigid"),
-        N("grid", "Mesh", "Bend", 4, 64, 1, "", S, BENDING, integer=True, default=16, help="Divisions along each side"),
-        N("soft", "Soft joint", "Bend", 0, 5000, 1, "px", S, BENDING, default=20.0, help="Half-width of the blend; 0 = a hard crease"),
+        N("grid", "Mesh", "Bend", 4, 64, 1, "", S, BENDING, integer=True, default=24, help="Divisions along each side"),
+        N("soft", "Soft joint", "Bend", 0, 5000, 1, "px", S, BENDING, default=40.0, help="Half-width of the blend; 0 = a hard crease"),
     ],
 }
 LABELS = {"rig": "Rig", "bone": "Bone", "ik": "IK chain", "bind": "Bind"}
