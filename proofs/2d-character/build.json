@@ -1,0 +1,9 @@
+[{"tool":"run_script","source_file":"film.py","args":{"name":"film.py"}},
+ {"tool":"look_motion","args":{}},
+ {"tool":"look_frame","args":{"time":0.0,"width":1920}},
+ {"tool":"look_frame","args":{"time":0.5,"width":1920}},
+ {"tool":"look_frame","args":{"time":1.0,"width":1920}},
+ {"tool":"look_frame","args":{"time":1.5,"width":1920}},
+ {"tool":"look_rig","args":{"time":0.5}},
+ {"tool":"look_sheet","args":{"start":0,"end":1.96,"count":12}},
+ {"tool":"inspect_rig_motion","args":{}}]

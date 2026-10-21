@@ -1,0 +1,10 @@
+[{"tool":"edit_document","args":{"label":"Person: landing a little shorter","ops":[
+   {"op":"value.set","target":["near_foot_ik"],"args":{"prop":"targetX","at":1.0,"v":1030}}]}},
+ {"tool":"look_frame","args":{"time":0.75,"width":1920}},
+ {"tool":"inspect_rig_motion","args":{}},
+ {"tool":"run_script","source_file":"film_lift40.py","args":{"name":"film.py"}},
+ {"tool":"run_script","source_file":"film.py","args":{"name":"film.py"}},
+ {"tool":"look_frame","args":{"time":0.75,"width":1920}},
+ {"tool":"look_frame","args":{"time":1.0,"width":1920}},
+ {"tool":"inspect_item","args":{"id":"near_foot_ik"}},
+ {"tool":"inspect_rig_motion","args":{}}]

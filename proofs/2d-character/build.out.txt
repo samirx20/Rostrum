@@ -1,0 +1,918 @@
+== run_script (0.1 s)
+{
+ "ok": true,
+ "summary": "Script film.py: 207 change(s) applied.",
+ "data": {
+  "held": [],
+  "seq": 1
+ },
+ "files": [],
+ "warnings": [],
+ "changed": {
+  "seq": 1,
+  "ops": [
+   "run_script"
+  ],
+  "group": "mcp-run-1"
+ }
+}
+== look_motion (0.0 s)
+{
+ "ok": true,
+ "summary": "13 layers, 1 finding.\nfloor: still (no keys).\nmark0: still (no keys).\nmark1: still (no keys).\nmark2: still (no keys).\nmark3: still (no keys).\nmark4: still (no keys).\nmark5: still (no keys).\nmark6: still (no keys).\nmark7: still (no keys).\nmark8: still (no keys).\nmark9: still (no keys).\nshadow: moves 0.0–2.0 s; animates x. Path (0.0–2.0 s): [580.0, 902.0] → [1340.0, 902.0] px, peak 380.0 px/s at 1.35 s. x 0.0–2.0 s 580 → 1340 (linear).\npuppet: still (no keys).\nshadow.x has a key at 2.0 s, at or after the composition ends (2.0 s); it is never reached.",
+ "data": {
+  "time": {
+   "duration": 2.0,
+   "fps": 30
+  },
+  "layers": [
+   {
+    "id": "floor",
+    "type": "shape",
+    "within": [],
+    "animated_fields": [],
+    "moves": [],
+    "moving": [],
+    "entrance": null,
+    "holds": [],
+    "path": null
+   },
+   {
+    "id": "mark0",
+    "type": "shape",
+    "within": [],
+    "animated_fields": [],
+    "moves": [],
+    "moving": [],
+    "entrance": null,
+    "holds": [],
+    "path": null
+   },
+   {
+    "id": "mark1",
+    "type": "shape",
+    "within": [],
+    "animated_fields": [],
+    "moves": [],
+    "moving": [],
+    "entrance": null,
+    "holds": [],
+    "path": null
+   },
+   {
+    "id": "mark2",
+    "type": "shape",
+    "within": [],
+    "animated_fields": [],
+    "moves": [],
+    "moving": [],
+    "entrance": null,
+    "holds": [],
+    "path": null
+   },
+   {
+    "id": "mark3",
+    "type": "shape",
+    "within": [],
+    "animated_fields": [],
+    "moves": [],
+    "moving": [],
+    "entrance": null,
+    "holds": [],
+    "path": null
+   },
+   {
+    "id": "mark4",
+    "type": "shape",
+    "within": [],
+    "animated_fields": [],
+    "moves": [],
+    "moving": [],
+    "entrance": null,
+    "holds": [],
+    "path": null
+   },
+   {
+    "id": "mark5",
+    "type": "shape",
+    "within": [],
+    "animated_fields": [],
+    "moves": [],
+    "moving": [],
+    "entrance": null,
+    "holds": [],
+    "path": null
+   },
+   {
+    "id": "mark6",
+    "type": "shape",
+    "within": [],
+    "animated_fields": [],
+    "moves": [],
+    "moving": [],
+    "entrance": null,
+    "holds": [],
+    "path": null
+   },
+   {
+    "id": "mark7",
+    "type": "shape",
+    "within": [],
+    "animated_fields": [],
+    "moves": [],
+    "moving": [],
+    "entrance": null,
+    "holds": [],
+    "path": null
+   },
+   {
+    "id": "mark8",
+    "type": "shape",
+    "within": [],
+    "animated_fields": [],
+    "moves": [],
+    "moving": [],
+    "entrance": null,
+    "holds": [],
+    "path": null
+   },
+   {
+    "id": "mark9",
+    "type": "shape",
+    "within": [],
+    "animated_fields": [],
+    "moves": [],
+    "moving": [],
+    "entrance": null,
+    "holds": [],
+    "path": null
+   },
+   {
+    "id": "shadow",
+    "type": "shape",
+    "within": [],
+    "animated_fields": [
+     "x"
+    ],
+    "moves": [
+     {
+      "field": "x",
+      "start": 0.0,
+      "end": 2.0,
+      "from": 580,
+      "to": 1340,
+      "ease": "linear",
+      "peak_rate": 380.0,
+      "peak_at": 1.35
+     }
+    ],
+    "moving": [
+     [
+      0.0,
+      2.0
+     ]
+    ],
+    "entrance": [
+     0.0,
+     2.0
+    ],
+    "holds": [],
+    "path": {
+     "from": [
+      580.0,
+      902.0
+     ],
+     "to": [
+      1340.0,
+      902.0
+     ],
+     "start": 0.0,
+     "end": 2.0,
+     "length_px": 760.0,
+     "peak_speed_px_s": 380.0,
+     "peak_at": 1.35
+    }
+   },
+   {
+    "id": "puppet",
+    "type": "rig",
+    "within": [],
+    "animated_fields": [],
+    "moves": [],
+    "moving": [],
+    "entrance": null,
+    "holds": [],
+    "path": null
+   }
+  ],
+  "findings": [
+   {
+    "kind": "key_after_end",
+    "text": "shadow.x has a key at 2.0 s, at or after the composition ends (2.0 s); it is never reached.",
+    "owner": "shadow",
+    "field": "x",
+    "at": 2.0
+   }
+  ]
+ },
+ "files": [],
+ "warnings": []
+}
+== look_frame (0.9 s)
+{
+ "ok": true,
+ "summary": "Frame 0 (0.000 s) of walk, 1920×1080. On screen: floor, mark0, mark1, mark2, mark3, mark4, mark5, mark6, mark7, mark8, mark9, shadow, puppet.",
+ "data": {
+  "job_id": "job_b248",
+  "label": "look_frame walk f0",
+  "status": "done",
+  "note": "",
+  "result": {
+   "time": 0.0,
+   "frame": 0,
+   "width": 1920,
+   "height": 1080,
+   "on_screen": [
+    "floor",
+    "mark0",
+    "mark1",
+    "mark2",
+    "mark3",
+    "mark4",
+    "mark5",
+    "mark6",
+    "mark7",
+    "mark8",
+    "mark9",
+    "shadow",
+    "puppet"
+   ]
+  }
+ },
+ "files": [
+  "C:\\Users\\Sam\\.rostrum\\cache\\look\\walk_walk_f0_205124_047.png"
+ ],
+ "warnings": []
+}
+== look_frame (0.8 s)
+{
+ "ok": true,
+ "summary": "Frame 15 (0.500 s) of walk, 1920×1080. On screen: floor, mark0, mark1, mark2, mark3, mark4, mark5, mark6, mark7, mark8, mark9, shadow, puppet.",
+ "data": {
+  "job_id": "job_014c",
+  "label": "look_frame walk f15",
+  "status": "done",
+  "note": "",
+  "result": {
+   "time": 0.5,
+   "frame": 15,
+   "width": 1920,
+   "height": 1080,
+   "on_screen": [
+    "floor",
+    "mark0",
+    "mark1",
+    "mark2",
+    "mark3",
+    "mark4",
+    "mark5",
+    "mark6",
+    "mark7",
+    "mark8",
+    "mark9",
+    "shadow",
+    "puppet"
+   ]
+  }
+ },
+ "files": [
+  "C:\\Users\\Sam\\.rostrum\\cache\\look\\walk_walk_f15_205124_965.png"
+ ],
+ "warnings": []
+}
+== look_frame (0.8 s)
+{
+ "ok": true,
+ "summary": "Frame 30 (1.000 s) of walk, 1920×1080. On screen: floor, mark0, mark1, mark2, mark3, mark4, mark5, mark6, mark7, mark8, mark9, shadow, puppet.",
+ "data": {
+  "job_id": "job_7485",
+  "label": "look_frame walk f30",
+  "status": "done",
+  "note": "",
+  "result": {
+   "time": 1.0,
+   "frame": 30,
+   "width": 1920,
+   "height": 1080,
+   "on_screen": [
+    "floor",
+    "mark0",
+    "mark1",
+    "mark2",
+    "mark3",
+    "mark4",
+    "mark5",
+    "mark6",
+    "mark7",
+    "mark8",
+    "mark9",
+    "shadow",
+    "puppet"
+   ]
+  }
+ },
+ "files": [
+  "C:\\Users\\Sam\\.rostrum\\cache\\look\\walk_walk_f30_205125_788.png"
+ ],
+ "warnings": []
+}
+== look_frame (0.8 s)
+{
+ "ok": true,
+ "summary": "Frame 45 (1.500 s) of walk, 1920×1080. On screen: floor, mark0, mark1, mark2, mark3, mark4, mark5, mark6, mark7, mark8, mark9, shadow, puppet.",
+ "data": {
+  "job_id": "job_9f60",
+  "label": "look_frame walk f45",
+  "status": "done",
+  "note": "",
+  "result": {
+   "time": 1.5,
+   "frame": 45,
+   "width": 1920,
+   "height": 1080,
+   "on_screen": [
+    "floor",
+    "mark0",
+    "mark1",
+    "mark2",
+    "mark3",
+    "mark4",
+    "mark5",
+    "mark6",
+    "mark7",
+    "mark8",
+    "mark9",
+    "shadow",
+    "puppet"
+   ]
+  }
+ },
+ "files": [
+  "C:\\Users\\Sam\\.rostrum\\cache\\look\\walk_walk_f45_205126_600.png"
+ ],
+ "warnings": []
+}
+== look_rig (0.7 s)
+{
+ "ok": true,
+ "summary": "Frame 15 (0.500 s) of walk with 13 bones in 1 rig drawn, 1920×1080.",
+ "data": {
+  "job_id": "job_ac3b",
+  "label": "look_rig walk f15",
+  "status": "done",
+  "note": "",
+  "result": {
+   "time": 0.5,
+   "frame": 15,
+   "width": 1920,
+   "height": 1080,
+   "rigs": {
+    "puppet": {
+     "bones": {
+      "far_arm_l": {
+       "angle": 106.00000000000122,
+       "tipX": 712.4514400483118,
+       "tipY": 644.8076854118766,
+       "x": 737.2588020718417,
+       "y": 558.2941327774279
+      },
+      "far_arm_u": {
+       "angle": 117.99999999999892,
+       "tipX": 737.2588020718416,
+       "tipY": 558.2941327774279,
+       "x": 781.8586005365013,
+       "y": 474.4141114558298
+      },
+      "far_foot_b": {
+       "angle": -3.784360590964266,
+       "tipX": 929.847366483295,
+       "tipY": 865.3798922795818,
+       "x": 859.9999999999999,
+       "y": 870.0
+      },
+      "far_shin_b": {
+       "angle": 89.80563940903617,
+       "tipX": 859.9999999999998,
+       "tipY": 870.0,
+       "x": 859.5759717821791,
+       "y": 745.000719201787
+      },
+      "far_thigh_b": {
+       "angle": 48.430678420343256,
+       "tipX": 859.5759717821792,
+       "tipY": 745.0007192017871,
+       "x": 770.0,
+       "y": 644.0
+      },
+      "hip": {
+       "angle": 90.0,
+       "tipX": 770.0,
+       "tipY": 644.0,
+       "x": 770.0,
+       "y": 644.0
+      },
+      "near_arm_l": {
+       "angle": 27.99999999999892,
+       "tipX": 896.9115102683163,
+       "tipY": 604.7490182904047,
+       "x": 817.4462269110129,
+       "y": 562.4965776396746
+      },
+      "near_arm_u": {
+       "angle": 67.99999999999928,
+       "tipX": 817.4462269110129,
+       "tipY": 562.4965776396746,
+       "x": 781.8586005365013,
+       "y": 474.4141114558298
+      },
+      "near_foot_b": {
+       "angle": 11.60191436454644,
+       "tipX": 738.5697971450953,
+       "tipY": 884.0777455396968,
+       "x": 669.9999999999998,
+       "y": 870.0
+      },
+      "near_shin_b": {
+       "angle": 132.701914364545,
+       "tipX": 670.0,
+       "tipY": 870.0000000000001,
+       "x": 754.7730280537285,
+       "y": 778.1385079883755
+      },
+      "near_thigh_b": {
+       "angle": 96.47630950112794,
+       "tipX": 754.7730280537286,
+       "tipY": 778.1385079883754,
+       "x": 770.0,
+       "y": 644.0
+      },
+      "neck": {
+       "angle": -90.0,
+       "tipX": 781.8586005365013,
+       "tipY": 434.4141114558298,
+       "x": 781.8586005365013,
+       "y": 474.4141114558298
+      },
+      "spine": {
+       "angle": -85.99999999999699,
+       "tipX": 781.8586005365013,
+       "tipY": 474.4141114558299,
+       "x": 770.0,
+       "y": 644.0
+      }
+     },
+     "iks": {
+      "far_foot_ik": {
+       "gap": 2.2737367544323206e-13,
+       "targetX": 860.0,
+       "targetY": 870.0
+      },
+      "near_foot_ik": {
+       "gap": 1.1368683772161603e-13,
+       "targetX": 670.0,
+       "targetY": 870.0
+      }
+     }
+    }
+   }
+  }
+ },
+ "files": [
+  "C:\\Users\\Sam\\.rostrum\\cache\\look\\walk_walk_rig_f15_205127_392.png"
+ ],
+ "warnings": []
+}
+== look_sheet (1.3 s)
+{
+ "ok": true,
+ "summary": "Contact sheet of walk: 12 frames from 0.00 to 1.97 s, 1964×924.",
+ "data": {
+  "job_id": "job_e421",
+  "label": "look_sheet walk",
+  "status": "done",
+  "note": "",
+  "progress": {
+   "done": 12,
+   "total": 12
+  },
+  "result": {
+   "frames": [
+    0,
+    5,
+    11,
+    16,
+    21,
+    27,
+    32,
+    37,
+    43,
+    48,
+    53,
+    59
+   ],
+   "times": [
+    0.0,
+    0.1667,
+    0.3667,
+    0.5333,
+    0.7,
+    0.9,
+    1.0667,
+    1.2333,
+    1.4333,
+    1.6,
+    1.7667,
+    1.9667
+   ],
+   "width": 1964,
+   "height": 924,
+   "cols": 4
+  }
+ },
+ "files": [
+  "C:\\Users\\Sam\\.rostrum\\cache\\look\\walk_walk_sheet_205128_099.png"
+ ],
+ "warnings": []
+}
+== inspect_rig_motion (0.8 s)
+{
+ "ok": true,
+ "summary": "2 IK chains over 0.000–1.967 s (60 frames). No pinned tip slid.",
+ "data": {
+  "job_id": "job_b539",
+  "label": "inspect_rig_motion walk",
+  "status": "done",
+  "note": "",
+  "progress": {
+   "done": 60,
+   "total": 60
+  },
+  "result": {
+   "start": 0.0,
+   "end": 1.9666666666666666,
+   "fps": 30,
+   "chains": [
+    {
+     "rig": "puppet",
+     "ik": "near_foot_ik",
+     "bone": "near_shin_b",
+     "tip_path": [
+      [
+       0.0,
+       670.0,
+       870.0
+      ],
+      [
+       0.0667,
+       670.0,
+       870.0
+      ],
+      [
+       0.1333,
+       670.0,
+       870.0
+      ],
+      [
+       0.2,
+       670.0,
+       870.0
+      ],
+      [
+       0.2667,
+       670.0,
+       870.0
+      ],
+      [
+       0.3333,
+       670.0,
+       870.0
+      ],
+      [
+       0.4,
+       670.0,
+       870.0
+      ],
+      [
+       0.4667,
+       670.0,
+       870.0
+      ],
+      [
+       0.5333,
+       689.1,
+       864.2
+      ],
+      [
+       0.6,
+       782.2,
+       844.1
+      ],
+      [
+       0.6667,
+       888.8,
+       834.9
+      ],
+      [
+       0.7333,
+       961.5,
+       832.1
+      ],
+      [
+       0.8,
+       1006.4,
+       843.2
+      ],
+      [
+       0.8667,
+       1032.7,
+       861.2
+      ],
+      [
+       0.9333,
+       1046.1,
+       868.3
+      ],
+      [
+       1.0,
+       1050.0,
+       870.0
+      ],
+      [
+       1.0667,
+       1050.0,
+       870.0
+      ],
+      [
+       1.1333,
+       1050.0,
+       870.0
+      ],
+      [
+       1.2,
+       1050.0,
+       870.0
+      ],
+      [
+       1.2667,
+       1050.0,
+       870.0
+      ],
+      [
+       1.3333,
+       1050.0,
+       870.0
+      ],
+      [
+       1.4,
+       1050.0,
+       870.0
+      ],
+      [
+       1.4667,
+       1050.0,
+       870.0
+      ],
+      [
+       1.5333,
+       1069.1,
+       864.2
+      ],
+      [
+       1.6,
+       1162.2,
+       844.1
+      ],
+      [
+       1.6667,
+       1268.8,
+       834.9
+      ],
+      [
+       1.7333,
+       1341.5,
+       832.1
+      ],
+      [
+       1.8,
+       1386.4,
+       843.2
+      ],
+      [
+       1.8667,
+       1412.7,
+       861.2
+      ],
+      [
+       1.9333,
+       1426.1,
+       868.3
+      ]
+     ],
+     "tip_travelled_px": 785.9,
+     "largest_gap_px": 0.0,
+     "largest_gap_at": 1.1333,
+     "pinned_spans": [
+      {
+       "start": 0.0,
+       "end": 0.4667,
+       "tip_moved_px": 0.0,
+       "sliding": false
+      },
+      {
+       "start": 1.0,
+       "end": 1.4667,
+       "tip_moved_px": 0.0,
+       "sliding": false
+      }
+     ]
+    },
+    {
+     "rig": "puppet",
+     "ik": "far_foot_ik",
+     "bone": "far_shin_b",
+     "tip_path": [
+      [
+       0.0,
+       480.0,
+       870.0
+      ],
+      [
+       0.0667,
+       537.9,
+       853.1
+      ],
+      [
+       0.1333,
+       649.0,
+       838.3
+      ],
+      [
+       0.2,
+       739.4,
+       832.9
+      ],
+      [
+       0.2667,
+       796.8,
+       833.9
+      ],
+      [
+       0.3333,
+       831.4,
+       853.9
+      ],
+      [
+       0.4,
+       850.7,
+       865.6
+      ],
+      [
+       0.4667,
+       859.1,
+       869.6
+      ],
+      [
+       0.5333,
+       860.0,
+       870.0
+      ],
+      [
+       0.6,
+       860.0,
+       870.0
+      ],
+      [
+       0.6667,
+       860.0,
+       870.0
+      ],
+      [
+       0.7333,
+       860.0,
+       870.0
+      ],
+      [
+       0.8,
+       860.0,
+       870.0
+      ],
+      [
+       0.8667,
+       860.0,
+       870.0
+      ],
+      [
+       0.9333,
+       860.0,
+       870.0
+      ],
+      [
+       1.0,
+       860.0,
+       870.0
+      ],
+      [
+       1.0667,
+       917.9,
+       853.1
+      ],
+      [
+       1.1333,
+       1029.0,
+       838.3
+      ],
+      [
+       1.2,
+       1119.4,
+       832.9
+      ],
+      [
+       1.2667,
+       1176.8,
+       833.9
+      ],
+      [
+       1.3333,
+       1211.4,
+       853.9
+      ],
+      [
+       1.4,
+       1230.7,
+       865.6
+      ],
+      [
+       1.4667,
+       1239.1,
+       869.6
+      ],
+      [
+       1.5333,
+       1240.0,
+       870.0
+      ],
+      [
+       1.6,
+       1240.0,
+       870.0
+      ],
+      [
+       1.6667,
+       1240.0,
+       870.0
+      ],
+      [
+       1.7333,
+       1240.0,
+       870.0
+      ],
+      [
+       1.8,
+       1240.0,
+       870.0
+      ],
+      [
+       1.8667,
+       1240.0,
+       870.0
+      ],
+      [
+       1.9333,
+       1240.0,
+       870.0
+      ]
+     ],
+     "tip_travelled_px": 787.0,
+     "largest_gap_px": 0.0,
+     "largest_gap_at": 0.3,
+     "pinned_spans": [
+      {
+       "start": 0.5,
+       "end": 0.9667,
+       "tip_moved_px": 0.0,
+       "sliding": false
+      },
+      {
+       "start": 1.5,
+       "end": 1.9667,
+       "tip_moved_px": 0.0,
+       "sliding": false
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "files": [],
+ "warnings": []
+}
