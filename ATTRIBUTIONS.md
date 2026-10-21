@@ -45,3 +45,4 @@ Every third-party library, model, asset source and tool that ships in or is down
 | "247 - Acoustic Memory - FabricFoley_08.wav" by AcousticMemory | Freesound 371676 | CC-BY-3.0 | proofs/sound-sfx redo | sound file | dev only | Credit "AcousticMemory (freesound.org)" | https://freesound.org/people/AcousticMemory/sounds/371676/ |
 | "FingerTapsWoodLongLoop01.wav" by Otakua | Freesound 219933 | CC-BY-3.0 | proofs/sound-sfx redo | sound file | dev only | Credit "Otakua (freesound.org)" | https://freesound.org/people/Otakua/sounds/219933/ |
 | 19 CC0 recordings (Freesound, BigSoundBank, OpenGameArt; listed in `effects-20s-redo-takes.json`) | — | CC0-1.0 | proofs/sound-sfx redo | sound files | dev only | Nothing (courtesy credit for BigSoundBank) | see SOURCES.md |
+| SciPy | from uv cache | BSD-3-Clause | `proofs/paint/model` (filters) | Python package | dev only | Keep the notice | https://pypi.org/project/scipy/ |
