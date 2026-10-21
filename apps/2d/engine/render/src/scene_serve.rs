@@ -13,6 +13,7 @@
 //!   With `"progress": true`, a line `{"progress": i, "of": n}` after each frame, before the reply.
 //! - `{"edit": [{"id", "props"?: {…}, "anim"?: {field: [keys] | null}}, …]}` → `{"ok": true, "edits": n}`: small
 //!   changes to the held scene (a drag), checked as a load is; the next frame shows them.
+//! - `{"bones": {"t": 1.25}}` → `{"ok": true, "rigs": {…}}`: every rig's posed bones and IK targets in comp px (rig/bones.rs, RIG.md).
 
 use std::time::Instant;
 
@@ -55,7 +56,7 @@ fn fonts_of(scene: &Scene) -> Vec<&str> {
 }
 
 fn count(n: &crate::scene::Node) -> usize {
-    1 + n.effects.iter().chain(&n.masks).chain(&n.layers).map(count).sum::<usize>()
+    1 + n.effects.iter().chain(&n.masks).chain(&n.layers).chain(&n.rig).map(count).sum::<usize>()
 }
 
 pub fn load(held: &mut Held, session: &mut Option<Session>, warm: &mut Option<Result<Gl, String>>, req: &Value) -> Result<Value, String> {
@@ -86,6 +87,11 @@ pub fn edit(held: &mut Held, edits: &Value) -> Result<Value, String> {
     check(&next)?;
     held.scene = Some(next);
     Ok(json!({ "ok": true, "edits": n }))
+}
+
+pub fn bones(held: &Held, req: &Value) -> Result<Value, String> {
+    let t = req["t"].as_f64().ok_or("bones needs t (seconds)")?;
+    Ok(crate::rig::bones(&held.scene()?.comp, t))
 }
 
 /// The stage markup at `t`, and the ms it took.

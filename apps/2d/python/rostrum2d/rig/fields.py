@@ -46,4 +46,4 @@ FIELDS = {
 }
 LABELS = {"rig": "Rig", "bone": "Bone", "ik": "IK chain", "bind": "Bind"}
 OWNED_KEYS = ("bone", "ik")                 # these hold keys (their animatable fields)
-STILL = {"bone": {"x", "y", "angle", "length"}}
+STILL = {"bone": {"x", "y", "angle", "length"}, "bind": {"grid", "soft"}}

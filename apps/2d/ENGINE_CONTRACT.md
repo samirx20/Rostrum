@@ -15,6 +15,7 @@ The engine holds the scene and evaluates every frame itself. The request header 
 | `{"frame": {"t": 1.25, "pixels": true}}` | `{"ok": true, "width", "height", "timing", "shm": {"name": "Local\rostrum2d-<pid>-<n>", "size", "offset", "bytes", "stride", "format": "rgba8", "seq", "width", "height"}}` | The frame for the live canvas, written into one of two alternating slots of a named block of shared memory (no PNG, no pipe): the same straight-alpha bytes as an image would hold (`rgba64le` at depth 16). The reader is done with a slot before it asks for the frame after next; a new block (new `name`) comes when the frame size changes. Python: `mmap.mmap(-1, size, tagname=name)` (`Engine.pixels`). Windows now; Mac (`shm_open`, name `/rostrum2d-<pid>-<n>`) still refused with a message. |
 | `{"export": {"start"?, "end"?, "encode": {…ffmpeg…}, "file"?, "images"?, "progress"?}}` | `{"ok": true, "frames": 90, "timing"}` | Every frame from `start` (default 0) to `end` (default the comp's duration) at the comp's fps, into the encoder; `file` is checked to exist and not be empty afterwards. Or `"images": "C:\…\f-{frame}.png"`: each frame to a picture. With `"progress": true` a line `{"progress": i, "of": n}` comes after each frame, before the reply. |
 | `{"edit": [{"id": "title", "props"?: {"x": 700}, "anim"?: {"y": [keys] \| null}}, …]}` | `{"ok": true, "edits": n}` | Small changes to the held scene without resending it (a drag). **All or nothing**: the whole list is checked as a load is, and nothing is applied if any part fails. |
+| `{"bones": {"t": 1.25}}` | `{"ok": true, "rigs": {"<rig id>": {"bones": {"<id>": {"x", "y", "tipX", "tipY", "angle"}}, "iks": {"<id>": {"targetX", "targetY", "gap"}}}}}` | Every rig's posed bones (pivot, tip, angle) and each IK's (held) target and how far its tip misses it, at `t`, in comp px (tilt left out). The agents' eyes on a character ([`RIG.md`](RIG.md)). |
 
 Errors are `{"error": "…"}` naming the item id and field; the process keeps serving. The engine never draws a frame it couldn't fully understand.
 
@@ -64,6 +65,10 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
   (`rem_euclid(count)`), otherwise it is held at 0..count−1. Python decodes once with the `ffmpeg` program into a cache
   folder keyed by the file's content, size, w × h, fit, fps and decoder version (`rostrum2d/video.py`). `w`, `h`,
   `offset`, `speed` can't be animated. No frames, or a missing picture, is an error. The video's own sound is not read.
+- **`rig`** (added H10, same version): a layer with a group's fields (`w`, `h`, `clip`) and `layers`, plus `rig: [...]`,
+  its `bone`, `ik` and `bind` items (every field present, `anim` on bone and ik fields). The engine poses the bones and
+  moves or bends the bound layers every frame; a bend bind is drawn through a warp mesh. Fields, evaluation and load
+  checks: [`RIG.md`](RIG.md).
 
 ## 3. Evaluation (the reference is `rostrum2d/evaluate.py` and `easing.py`)
 
@@ -133,4 +138,5 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - H6: the engine evaluates scenes itself, pixel for pixel as the stopgap did (`proofs/2d-engine-scene/README.md`).
 - S7: the Python stopgap is deleted; drawing layers are drawn by the engine; `scene` takes `cpu`, `frame.index` defaults to round(t · fps), `export` takes `images` and `progress`, `edit` is all or nothing.
 - S9 (same version): text `pathOverflow`.
+- H10 (same version): rig layers, bones, IK, binds; the `bones` request.
 - S8 (same version): `path` and `video` layers; text features, axes, text on a path, letter by letter; gradient `conic` and centre; `backdrop`; masks feather / invert / `angle` for every shape; scene `fonts` and the `scene` reply's font list; `pixels` written out.

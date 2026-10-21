@@ -56,6 +56,13 @@ placed by the person at rest; its bind makes it follow its bone's motion **from 
    renderer's `<fewarp>` primitive, `vendor/blitz-paint/src/warp.rs`). Each mesh point, taken to rig px through the
    layer's rest transform, is `w·D_bone(p) + (1−w)·D_bone2(p)`, w from its distance past `bone2`'s pivot along the
    bones (smoothstep over `±soft`), then back to the layer's px.
+   "Along the bones" is the mean of the two bones' rest directions. The mesh covers the layer's box plus 15 % of its
+   longer side on every edge (so strokes and shadows bend with it); only a layer with a box (`w`, `h`) can be bent
+   (not text). The warp is its own filter on the layer's outer box; the layer's blur, glow and shadow are drawn
+   inside it, so they bend too.
+6. **Pin:** the held target is the target's value at the start of the current stretch where `pin` ≥ 0.5 (found
+   from the pin keys alone, so any frame can be drawn on its own); an unkeyed pin that is on holds the target's
+   first value.
 
 ## Agents' eyes: the engine's `bones` request
 

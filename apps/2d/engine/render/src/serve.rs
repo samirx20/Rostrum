@@ -509,6 +509,11 @@ pub fn run() {
                 Ok(r) => reply(&mut out, &r),
                 Err(e) => reply(&mut out, &json!({ "error": e })),
             }
+        } else if let Some(b) = req.get("bones") {
+            match crate::scene_serve::bones(&held, b) {
+                Ok(r) => reply(&mut out, &r),
+                Err(e) => reply(&mut out, &json!({ "error": e })),
+            }
         } else if let Some(x) = req.get("export") {
             let mut progress = |i: u64, n: u64| {
                 reply(&mut out, &json!({ "progress": i, "of": n }));

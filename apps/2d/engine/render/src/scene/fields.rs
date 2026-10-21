@@ -76,6 +76,8 @@ pub enum Role {
     Layer,
     Effect,
     Mask,
+    /// A rig's part: bone, ik or bind (crate::rig::fields).
+    Rig,
 }
 
 /// An item type's role and fields (a layer's are its own, then the transform's); None for an unknown type.
@@ -87,7 +89,7 @@ pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
         "text" => layer(TEXT),
         "image" => layer(IMAGE),
         "video" => layer(VIDEO),
-        "group" => layer(GROUP),
+        "group" | "rig" => layer(GROUP),
         "drawing" => layer(DRAWING),
         "path" => layer(PATH),
         "blur" => Some((Role::Effect, BLUR.to_vec())),
@@ -96,12 +98,13 @@ pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
         "backdrop" => Some((Role::Effect, BACKDROP.to_vec())),
         "shadow" => Some((Role::Effect, SHADOW.to_vec())),
         "mask" => Some((Role::Mask, MASK.to_vec())),
+        "bone" | "ik" | "bind" => crate::rig::fields::of(kind).map(|f| (Role::Rig, f.to_vec())),
         _ => None,
     }
 }
 
 /// Every type the engine reads (for error messages and the fields.py check).
-pub const TYPES: &[&str] = &["comp", "shape", "text", "image", "video", "group", "drawing", "path", "blur", "glow", "gradient", "backdrop", "shadow", "mask"];
+pub const TYPES: &[&str] = &["comp", "shape", "text", "image", "video", "group", "drawing", "path", "blur", "glow", "gradient", "backdrop", "shadow", "mask", "rig", "bone", "ik", "bind"];
 
 /// Fields keys may drive: numbers and colours, except those that describe the item rather than a moment
 /// (fields.py `STILL`).
@@ -110,4 +113,5 @@ pub fn animatable(kind: &str, field: &Field) -> bool {
         && !(matches!(kind, "drawing" | "path") && matches!(field.0, "w" | "h"))
         && !(kind == "text" && matches!(field.0, "letterDelay" | "letterSeed"))
         && !(kind == "video" && matches!(field.0, "w" | "h" | "offset" | "speed"))
+        && crate::rig::fields::animatable(kind, field.0)
 }
