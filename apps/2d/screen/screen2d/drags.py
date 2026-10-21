@@ -28,7 +28,7 @@ class DragSlots(SlotMixin):
         more = self._multi.extras()
         if more:
             return self._begin_many([layer] + more)
-        p = resolve(self.doc.item(layer), self._t)
+        p = resolve(self.doc.item(layer), self.own_t(layer))
         return self._begin(label, (layer, p["x"], p["y"]))
 
     def _begin_many(self, layers) -> bool:
@@ -39,7 +39,7 @@ class DragSlots(SlotMixin):
             if layout_drag.begin(self.doc, self.placed(), lay, self._t) or any(exprs.drives(item, a) for a in ("x", "y")):
                 self._fail(f"Error: move: {self.label_of(item)} is placed by an auto layout or an expression; select it alone to move it.")
                 return False
-            p = resolve(item, self._t)
+            p = resolve(item, self.own_t(lay))
             grab.append((lay, p["x"], p["y"]))
         return self._begin(f"Move {len(layers)} layers", grab)
 
@@ -55,7 +55,7 @@ class DragSlots(SlotMixin):
             for lay, x0, y0 in self._grab:
                 item = self.doc.item(lay)
                 dx, dy = self._parent_drag(lay, ox, oy)
-                calls += [route.value_call(item, "x", round(x0 + dx, 2), self._t), route.value_call(item, "y", round(y0 + dy, 2), self._t)]
+                calls += [route.value_call(item, "x", round(x0 + dx, 2), self.own_t(lay)), route.value_call(item, "y", round(y0 + dy, 2), self.own_t(lay))]
             self._guard(lambda: self._drag.preview(calls))
             return
         if isinstance(self._grab, dict):
@@ -64,8 +64,8 @@ class DragSlots(SlotMixin):
         layer, x0, y0 = self._grab
         item = self.doc.item(layer)
         dx, dy = self._parent_drag(layer, dx, dy)
-        self._guard(lambda: self._drag.preview([route.value_call(item, "x", round(x0 + dx, 2), self._t),
-                                                route.value_call(item, "y", round(y0 + dy, 2), self._t)]))
+        self._guard(lambda: self._drag.preview([route.value_call(item, "x", round(x0 + dx, 2), self.own_t(layer)),
+                                                route.value_call(item, "y", round(y0 + dy, 2), self.own_t(layer))]))
 
     def _parent_drag(self, layer, dx, dy):
         """The drag as the layer's parent sees it: a layer inside a turned or scaled group moves along the group's axes."""
@@ -88,7 +88,7 @@ class DragSlots(SlotMixin):
         owner = self.placed_item(self.doc.parent_of(key["id"])[0])
         if any(k["id"] != key["id"] and abs(k["t"] - t) < 1e-6 for k in keys_of(owner, key["prop"])):
             return                       # another key of this field is there: stay at the last free time
-        to = marked.moved(key["ref"], t - key["t"]) if "ref" in key else t       # a key on a marker stays on it
+        to = marked.moved(key["ref"], t - key["t"]) if "ref" in key else t - self.offset(owner["id"])   # on a marker: stays on it; else own seconds
         self._guard(lambda: self._drag.preview([{"op": "key.set", "target": [key["id"]], "args": {"t": to}}]))
 
     @Slot()

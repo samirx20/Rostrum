@@ -112,7 +112,7 @@ class Curves(QObject):
             t = key["t"]
         p = F.param(owner["type"], key["prop"])
         lo, hi = (p.min if p.min is not None else -1e9), (p.max if p.max is not None else 1e9)
-        args = {"t": marked.moved(key["ref"], t - key["t"]) if "ref" in key else t,   # on a marker: stays on it
+        args = {"t": marked.moved(key["ref"], t - key["t"]) if "ref" in key else t - self.b.offset(owner["id"]),   # on a marker: stays on it
                 "v": round(min(max(v, lo), hi), 4)}
         self.b.guard(lambda: self._drag.preview([{"op": "key.set", "target": [key["id"]], "args": args}]))
 

@@ -38,7 +38,7 @@ class Painter(QObject):
         return item if item and item["type"] == "drawing" else None
 
     def _n(self) -> int:
-        return frame_number(self.b._t, self.b.comp()["fps"])
+        return frame_number(self.b.own_t(self.b.selectedLayer), self.b.comp()["fps"])
 
     @Property(str, notify=changed)
     def drawingId(self):
@@ -54,7 +54,7 @@ class Painter(QObject):
     @Property("QVariantList", notify=changed)
     def frameMarks(self):
         d = self.drawing()
-        return framing.marks(d, self.b.comp()["fps"], self.b.comp()["duration"]) if d else []
+        return framing.marks(self.b.placed_item(d["id"]), self.b.comp()["fps"], self.b.comp()["duration"]) if d else []     # composition seconds
 
     @Property(bool, notify=changed)
     def onionOn(self):
@@ -119,7 +119,7 @@ class Painter(QObject):
         c = self.b.comp()
 
         def go():
-            self._stroke = StrokeDrag(self.b.doc, self.b.who, d["id"], self.b._t, c["fps"], self.brush.stroke_args(),
+            self._stroke = StrokeDrag(self.b.doc, self.b.who, d["id"], self.b.own_t(d["id"]), c["fps"], self.brush.stroke_args(),
                                       x, y, pressure)
         return self.b.guard(go)
 
@@ -164,7 +164,7 @@ class Painter(QObject):
         d = self.drawing()
         at = framing.state(d, self._n())["prev" if direction < 0 else "next"] if d else None
         if at is not None:
-            self.b.setTime(at / self.b.comp()["fps"])
+            self.b.setTime(at / self.b.comp()["fps"] + self.b.offset(d["id"]))
 
     @Slot(bool)
     def setOnion(self, on):
