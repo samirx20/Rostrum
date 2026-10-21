@@ -1,0 +1,87 @@
+"""The mix: effects (on a track, a clip or the master), automation lanes, markers and the master bus."""
+from __future__ import annotations
+
+from rostrum_core import Param, codes
+
+from .. import names
+from . import effects as FX
+from . import fields as FD
+from . import ids
+from . import values as V
+from .registry import MASTER_ID, REGISTRY, set_fields, taken
+
+INSERTS = ("track", "clip", "master")
+
+REGISTRY.operation("master.set", "Change the master bus: level, loudness target, true peak, glue, spaces, fades.",
+                   target="master", params=FD.params("master"), label="Edit master", fields=True)(set_fields)
+REGISTRY.operation("effect.set", "Change an effect's settings.", target="effect", params=FD.params("effect"),
+                   label="Edit effect", fields=True)(set_fields)
+REGISTRY.operation("marker.set", "Rename or move a marker.", target="marker", params=FD.params("marker"),
+                   label="Edit marker", fields=True)(set_fields)
+
+
+@REGISTRY.operation("effect.add", "Add an effect to the end of a track's, clip's or the master's inserts.",
+                    target=INSERTS, label="Add effect", params=[
+                        Param.choice("effect", FX.TYPES, label="Effect type", required=True),
+                        Param.text("id", label="Id", help="Optional; counted per place (pad.eq_1 …)."),
+                        *FD.params("effect")[1:]])
+def effect_add(ctx, targets, args):
+    args = dict(args)
+    for t in targets:
+        id_ = args.pop("id", None) or ids.effect(t, args["effect"], taken(ctx))
+        if id_ in taken(ctx):
+            ctx.fail(codes.BAD_ARGUMENT, f'id "{id_}"', "is already used in this document")
+        ctx.insert(t, "effects", {"id": id_, "type": "effect", "bypass": False, **FX.defaults(args["effect"]), **args})
+
+
+def _point(p, v, where):
+    if not (isinstance(v, (list, tuple)) and len(v) == 2):
+        V._bad(p, v, where, "is not a point", ["[time, value]"])
+    V._time(p, v[0], where)
+    if isinstance(v[1], bool) or not isinstance(v[1], (int, float)):
+        V._bad(p, v, where, "needs a number value")
+    return list(v)
+
+
+POINTS = V.listof("points", _point, {"type": "array", "minItems": 2, "maxItems": 2}, required=True,
+                  help="[[time, value], …] in time order; an empty list removes the lane.")
+
+
+@REGISTRY.operation("automation.set", "Replace an automation lane's points (volume or pan over time).",
+                    target=("track", "master"), label="Automate", params=[
+                        Param.choice("lane", names.TRACK_LANES, required=True, label="Value"), POINTS])
+def automation_set(ctx, targets, args):
+    for t in targets:
+        lanes = names.MASTER_LANES if t == MASTER_ID else names.TRACK_LANES
+        if args["lane"] not in lanes:
+            ctx.fail(codes.BAD_ARGUMENT, f'lane "{args["lane"]}"', f"can't be automated on {t}", lanes)
+        id_ = ids.lane(t, args["lane"])
+        if id_ in taken(ctx):
+            if args["points"]:
+                ctx.set(id_, "points", args["points"])
+            else:
+                ctx.remove(id_)
+        elif args["points"]:
+            ctx.insert(t, "automation", {"id": id_, "type": "automation", "lane": args["lane"],
+                                         "points": args["points"]})
+
+
+@REGISTRY.operation("marker.add", "Add a named time (\"drop\") that times elsewhere can name as \"#drop\".",
+                    label="Add marker", params=[Param.text("id", label="Id"), *FD.params("marker", required=True)])
+def marker_add(ctx, targets, args):
+    id_ = args.get("id") or ids.marker(args["name"])
+    if id_ in taken(ctx):
+        ctx.fail(codes.BAD_ARGUMENT, f'marker "{args["name"]}"', "already exists")
+    ctx.insert("root", "markers", {"id": id_, "type": "marker", "name": args["name"], "at": args["at"]})
+
+
+def _remover(kind):
+    def remove(ctx, targets, args):
+        for t in targets:
+            ctx.remove(t)
+    REGISTRY.operation(f"{kind}.remove", f"Delete {kind}s.", target=kind, label=f"Delete {kind}",
+                       importance="secondary")(remove)
+
+
+_remover("effect")
+_remover("marker")

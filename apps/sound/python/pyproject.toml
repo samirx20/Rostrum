@@ -1,0 +1,28 @@
+[project]
+name = "rostrum-sound"
+version = "0.1.0"
+description = "RostrumSound's Python layer: the Sound document, its script layer, the engine schedule, listening tools."
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = ["rostrum-core"]
+
+[project.optional-dependencies]
+listen = ["numpy", "scipy", "soundfile", "librosa", "pyloudnorm", "matplotlib", "opencv-python-headless"]
+mcp = ["rostrum-core[mcp]"]
+test = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["rostrum_sound*"]
+
+[project.scripts]
+rostrum-sound-mcp = "rostrum_sound.mcp.server:main"
+
+[tool.setuptools.package-data]
+rostrum_sound = ["mcp/guides/*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,110 @@
+//! Every name the contract accepts, in one place: what `describe` answers, what the reader checks, and so
+//! what the Python side reads instead of copying lists. When a DSP module learns a new name, add it here
+//! (the module's own match arms fall back silently, which is why the contract gates them).
+
+/// Track and clip tones (fx/dsp.rs ToneFilter).
+pub const TONES: &[&str] = &["neutral", "muffled", "warm", "sub-boost", "bright", "voice-clarity", "radio"];
+/// Reverb spaces (fx/reverb.rs: the comb spaces and the Freeverb ones).
+pub const SPACES: &[&str] = &["dry", "room", "hall", "cathedral", "shimmer", "freeverb.room", "freeverb.hall", "freeverb.cathedral"];
+/// EQ band shapes (fx/eq.rs biquad).
+pub const EQ_SHAPES: &[&str] = &["lowshelf", "highshelf", "peak", "lowpass", "highpass", "notch"];
+/// Synthesized instruments (instruments/voices/tones.rs).
+pub const BUILT_INS: &[&str] = &["feltPiano", "grandPiano", "warmPad", "analogStrings", "spiccatoStrings", "choirPad", "cinematicBrass", "subBass", "shepardRiser", "glassMarimba"];
+/// The synthesized drum kit (instruments/voices/tones.rs drum voices).
+pub const SYNTH_DRUMS: &[&str] = &["kick", "snare", "clap", "hat", "openHat", "cymbal", "tom", "rim"];
+/// General MIDI percussion keys an SFZ kit on GM keys answers to.
+pub const GM_DRUMS: &[(&str, u8)] = &[
+    ("kick", 36), ("rim", 37), ("snare", 38), ("clap", 39), ("hat", 42), ("pedalHat", 44), ("openHat", 46), ("tomLow", 45),
+    ("tom", 47), ("tomHigh", 50), ("crash", 49), ("cymbal", 49), ("ride", 51), ("china", 52), ("rideBell", 53), ("splash", 55),
+    ("crash2", 57), ("ride2", 59),
+];
+pub const MEDIA_FORMATS: &[&str] = &["wav", "flac", "ogg", "mp3", "mp4", "m4a", "mov"];
+
+/// How one effect field is read.
+#[derive(Clone, Copy)]
+pub enum Kind {
+    /// A number in a range.
+    Num(f64, f64),
+    /// A whole number in a range.
+    Int(f64, f64),
+    /// A number in a range, or an envelope [[time, value], …].
+    Env(f64, f64),
+    Bool,
+    /// One of a closed list.
+    Name(&'static [&'static str]),
+    /// A number, or absent (null): the engine decides.
+    OptNum(f64, f64),
+}
+
+/// A field: its name (the same in the contract and the engine's job), how it is read, its default.
+pub struct Field(pub &'static str, pub Kind, pub Def);
+
+#[derive(Clone, Copy)]
+pub enum Def {
+    N(f64),
+    B(bool),
+    S(&'static str),
+    None,
+}
+
+use Def::{B, N, S};
+use Kind::{Bool, Env, Int, Name, Num, OptNum};
+
+/// The insert effects (schedule/effect.rs), with the defaults the engine fills in. `eq` reads its bands apart.
+pub const EFFECTS: &[(&str, &[Field])] = &[
+    ("eq", &[]),
+    ("compressor", &[Field("threshold", Env(-80.0, 0.0), N(-18.0)), Field("ratio", Env(1.0, 50.0), N(3.0)), Field("attack", Num(0.0001, 1.0), N(0.01)),
+        Field("release", Num(0.001, 5.0), N(0.15)), Field("makeup", Env(-24.0, 48.0), N(0.0)), Field("knee", Num(0.0, 24.0), N(6.0))]),
+    ("reverb", &[Field("space", Name(SPACES), S("hall")), Field("mix", Env(0.0, 1.0), N(0.25)), Field("decay", OptNum(0.1, 30.0), Def::None),
+        Field("damping", OptNum(0.0, 1.0), Def::None), Field("size", OptNum(0.0, 1.0), Def::None)]),
+    ("delay", &[Field("time", Num(0.001, 4.0), N(0.375)), Field("feedback", Env(0.0, 0.98), N(0.35)), Field("mix", Env(0.0, 1.0), N(0.2)),
+        Field("pingPong", Bool, B(false)), Field("damp", Num(0.0, 1.0), N(0.3))]),
+    ("saturate", &[Field("drive", Env(0.0, 1.0), N(0.3)), Field("mix", Env(0.0, 1.0), N(1.0))]),
+    ("tape", &[Field("wow", Env(0.0, 1.0), N(0.2)), Field("flutter", Env(0.0, 1.0), N(0.2)), Field("age", Env(0.0, 1.0), N(0.2))]),
+    ("limiter", &[Field("ceiling", Num(-24.0, 0.0), N(-1.0)), Field("release", Num(0.001, 2.0), N(0.1))]),
+    ("width", &[Field("width", Env(0.0, 2.0), N(1.0)), Field("monoBelow", Num(0.0, 1000.0), N(120.0))]),
+    ("gate", &[Field("threshold", Num(-100.0, 0.0), N(-45.0)), Field("ratio", Num(1.0, 100.0), N(4.0)), Field("range", Num(0.0, 100.0), N(30.0)),
+        Field("attack", Num(0.0001, 1.0), N(0.002)), Field("hold", Num(0.0, 2.0), N(0.05)), Field("release", Num(0.001, 5.0), N(0.12))]),
+    ("deess", &[Field("freq", Num(2000.0, 16000.0), N(6000.0)), Field("threshold", Num(-80.0, 0.0), N(-30.0)), Field("range", Num(0.0, 40.0), N(8.0))]),
+    ("dehum", &[Field("freq", Num(0.0, 400.0), N(0.0)), Field("harmonics", Int(1.0, 32.0), N(6.0)), Field("width", Num(1.0, 400.0), N(40.0))]),
+];
+
+/// An EQ band's fields.
+pub const EQ_BAND: &[Field] = &[Field("shape", Name(EQ_SHAPES), Def::None), Field("freq", Env(10.0, 24000.0), Def::None),
+    Field("gain", Env(-48.0, 48.0), N(0.0)), Field("q", Env(0.05, 40.0), N(0.707))];
+
+pub fn effect_names() -> Vec<&'static str> {
+    EFFECTS.iter().map(|(n, _)| *n).collect()
+}
+
+pub fn gm_drum(name: &str) -> Option<u8> {
+    GM_DRUMS.iter().find(|(n, _)| *n == name).map(|(_, k)| *k)
+}
+
+pub fn gm_names() -> Vec<&'static str> {
+    GM_DRUMS.iter().map(|(n, _)| *n).collect()
+}
+
+/// The names as `describe` answers them.
+pub fn describe() -> serde_json::Value {
+    use serde_json::{json, Value};
+    let field = |f: &Field| {
+        let (kind, range) = match f.1 {
+            Num(a, b) => ("number", json!([a, b])),
+            Int(a, b) => ("whole number", json!([a, b])),
+            Env(a, b) => ("number or envelope", json!([a, b])),
+            OptNum(a, b) => ("number or null", json!([a, b])),
+            Bool => ("bool", Value::Null),
+            Name(n) => ("name", json!(n)),
+        };
+        let default = match f.2 { N(x) => json!(x), B(b) => json!(b), S(s) => json!(s), Def::None => Value::Null };
+        json!({ "name": f.0, "kind": kind, "accepts": range, "default": default })
+    };
+    let effects: serde_json::Map<String, Value> = EFFECTS.iter().map(|(n, fs)| {
+        let fields: Vec<Value> = if *n == "eq" { vec![json!({ "name": "bands", "kind": "list", "of": EQ_BAND.iter().map(field).collect::<Vec<_>>() })] } else { fs.iter().map(field).collect() };
+        (n.to_string(), Value::Array(fields))
+    }).collect();
+    json!({ "tones": TONES, "spaces": SPACES, "eqShapes": EQ_SHAPES, "builtIns": BUILT_INS, "synthDrums": SYNTH_DRUMS,
+            "gmDrums": GM_DRUMS.iter().map(|(n, k)| json!({ "name": n, "key": k })).collect::<Vec<_>>(),
+            "mediaFormats": MEDIA_FORMATS, "effects": effects })
+}
