@@ -11,6 +11,13 @@ Panel {
     property int labelWidth: 236
     readonly property real duration: backend.frameInfo.duration
     headerRight: [
+        Segmented {   // Keys: a row per layer / field; Curves: the value curves inside this same area
+            anchors.verticalCenter: parent.verticalCenter; implicitHeight: 26
+            options: [{ value: "keys", label: "Keys" }, { value: "curves", label: "Curves" }]
+            current: backend.curves.on ? "curves" : "keys"
+            onPicked: (v) => backend.curves.setOn(v === "curves")
+        },
+        Item { width: Theme.gap; height: 1 },
         FrameTools { anchors.verticalCenter: parent.verticalCenter },
         Item { width: Theme.gap; height: 1 },
         TimeReadout { anchors.verticalCenter: parent.verticalCenter },
@@ -23,8 +30,14 @@ Panel {
         x: panel.labelWidth + Theme.gap + 8; width: parent.width - x - Theme.gap - 8; height: 22   // 8: room for a key at 0
         duration: panel.duration; fps: backend.frameInfo.fps; time: backend.time
     }
+    CurveEditor {
+        visible: backend.curves.on
+        ruler: ruler; labelWidth: panel.labelWidth
+        anchors { left: parent.left; right: parent.right; top: ruler.bottom; bottom: parent.bottom; topMargin: Theme.grid }
+    }
     ListView {
         id: rows
+        visible: !backend.curves.on
         anchors { left: parent.left; right: parent.right; top: ruler.bottom; bottom: parent.bottom; topMargin: Theme.grid }
         model: backend.tracks
         spacing: 2
