@@ -38,7 +38,7 @@ Timings were not measured on this run (each MCP batch, engine start included, fi
 3. **The engine handle mistook a progress line for the export's reply** when the keys came in another order
    (`{"of":…,"progress":…}`): `render_video` failed (loudly). The handle now reads each line as JSON.
 
-## Also checked (S8 test renders, `C:\Users\Sam\.rostrum\waves\results\S8\sam\`, `…\scratch\sam-S8-fx\out\`)
+## Also checked (S8 test renders; the type and path pictures are kept in `C:\Users\Sam\.rostrum\waves\results\S8\sam\`)
 
 Tabular vs proportional figures, a stylistic set, slant + grade + XTRA, text on a curve, letters from the centre; a
 star with gradient and outline shadow, rounded dashes, draw-on at half way, boolean subtract; conic disc, frosted card,
