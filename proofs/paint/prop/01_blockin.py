@@ -28,17 +28,6 @@ def s():
 with doc.batch("enamel ground", author="agent:prop"):
     doc.fill("enamel", CREAM, mask="jug")
 
-def light_edge(y):
-    """Where the sun plane ends across the jug (0 = left edge, 1 = right) at row y: the shoulder
-    faces up into the low sun and takes light far round; the belly turns down toward the table and
-    gives it up early, so the light / shadow edge is a curve, not a straight band."""
-    pts = [(60, 0.40), (160, 0.50), (280, 0.52), (400, 0.44), (520, 0.34), (620, 0.24), (712, 0.18)]
-    for (y0, t0), (y1, t1) in zip(pts, pts[1:]):
-        if y <= y1:
-            return t0 + (t1 - t0) * max(0.0, (y - y0) / (y1 - y0))
-    return pts[-1][1]
-
-
 with doc.batch("rings: sun, middle, cool", author="agent:prop"):
     y = 60
     while y < 700:

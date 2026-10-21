@@ -29,7 +29,7 @@ def main():
     ap.add_argument("doc"); ap.add_argument("ids", nargs="+", type=int); ap.add_argument("--out")
     a = ap.parse_args()
     if len(a.ids) > len(CODES):
-        raise SystemExit(f"at most {len(CODES)} strokes per run")
+        raise SystemExit(f"at most {len(CODES)} strokes per run; strokes that overlap each other should go in separate runs")
     d = Doc.open(a.doc)
     g = GBuffer()
     on = np.isin(g.obj, [scene.object_index(g.sc, o) for o in OBJECTS])
@@ -49,15 +49,17 @@ def main():
         os.remove(coded)
     finally:
         os.remove(grey)
+    # each frame pixel goes to the nearest code colour or the grey ground (a small mark's edge is
+    # blended with the grey by texture filtering; an exact colour match would miss it)
+    palette = np.array([[0.5, 0.5, 0.5]] + [c for _, c in covs.values()])
+    best = np.full(after.shape[:2], np.inf, np.float32); label = np.zeros(after.shape[:2], np.int32)
+    for i, p in enumerate(palette):
+        dist = ((after - p) ** 2).sum(-1)
+        label[dist < best] = i; best = np.minimum(best, dist)
     rows = []
-    for sid, (cov, c) in covs.items():
+    for idx, (sid, (cov, c)) in enumerate(covs.items(), 1):
         want = cov & on
-        # how far each pixel moved from the grey ground toward this stroke's code colour (texture
-        # filtering blends a small mark's edge with the grey, so an exact colour match would miss it)
-        k = c - 0.5
-        f = ((after - 0.5) * k).sum(-1) / (k * k).sum()
-        resid = np.abs((after - 0.5) - f[..., None] * k).max(-1)
-        got = (f > 0.5) & (resid < 0.12) & on
+        got = (label == idx) & on
         r = dict(stroke=sid, painted_px=int(cov.sum()), on_object_px=int(want.sum()), landed_px=int(got.sum()))
         if got.any() and want.any():
             gy, gx = np.argwhere(got).mean(0); wy, wx = np.argwhere(want).mean(0)
