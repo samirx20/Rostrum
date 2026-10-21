@@ -115,7 +115,7 @@ def register(tools: Tools):
         return Reply(said + ".", r, [str(png)], [str(png)])
 
     @tools.tool("look_clash", {"properties": {**ITEM, **DETAIL,
-        "tracks": {"type": "array", "items": {"type": "string"}, "description": "Only these tracks' stems (default all, up to 12)."},
+        "tracks": {"type": "array", "items": {"type": "string"}, "description": "Only these tracks' stems (up to 12; default all, or the 12 loudest when there are more)."},
         "within_db": {"type": "number", "default": 6, "description": "Two stems clash where both are loud and within this many dB of each other."},
         "floor_db": {"type": "number", "default": -45, "description": "Band level (dB, a full-scale sine is about -3) under which a stem doesn't count as there."},
         "min_length": {"type": "number", "default": 0.3, "description": "Shortest clash to report, seconds."}}})
@@ -124,13 +124,19 @@ def register(tools: Tools):
         doc, _, stems = _source(ctx, args, "look_clash")
         if not stems:
             raise RostrumError(codes.NOT_FOUND, "look_clash", "stems", "were not rendered", hint="render_mix with stems: true.")
-        want = args.get("tracks") or list(stems)
+        want, left_out = args.get("tracks"), []
+        if want and len(want) > C.MAX_STEMS:
+            raise RostrumError(codes.BAD_ARGUMENT, "look_clash", f"{len(want)} tracks", f"is more than the {C.MAX_STEMS} the clash finder reads at once",
+                               hint="Split them over two calls, or leave `tracks` out to read the loudest ones.")
+        if not want:
+            want = C.loudest(stems) if len(stems) > C.MAX_STEMS else list(stems)
+            left_out = [t for t in stems if t not in want]
         levels, hop = C.stem_levels({t: _pick(stems, t, "look_clash") for t in want})
         spans, maps = C.find_clashes(levels, args.get("within_db", 6), args.get("floor_db", -45), args.get("min_length", 0.3), hop)
         png = ctx.app.state.look_dir(doc.item_id) / "clash.png"
         clash_picture(png, maps, spans, hop)
         r = {"clashes": _cap(spans, args, 30), "total": len(spans), "tracks": list(levels), "within_db": args.get("within_db", 6),
-             "floor_db": args.get("floor_db", -45), "note": "a clash is both stems loud in one band; `<a>_over_<b>_db` > 0 means a stands over b by that much (b is the one buried)"}
+             "floor_db": args.get("floor_db", -45), "left_out_quietest": left_out, "note": "a clash is both stems loud in one band; `<a>_over_<b>_db` > 0 means a stands over b by that much (b is the one buried)"}
         return Reply(f"{len(spans)} clashes among {len(levels)} tracks" + (f"; worst: {C.line(spans[0])}" if spans else "") + ".", r, [str(png)], [str(png)])
 
     @tools.tool("inspect_harmony", {"properties": {**ITEM, **WAV, **TRACK,
