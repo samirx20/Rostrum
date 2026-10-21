@@ -6,12 +6,14 @@ from __future__ import annotations
 
 from rostrum_core import RostrumError, codes
 
-from . import timing
+from . import song_edit, timing
 
-MOVABLE = ("note", "hit", "clip", "line", "marker", "section")
-REMOVABLE = ("note", "hit", "clip", "line", "marker", "track", "effect", "automation", "bus", "send", "duck")
+MOVABLE = ("note", "hit", "clip", "line", "marker", "section", "tempo", "key")
+REMOVABLE = ("note", "hit", "clip", "line", "marker", "track", "effect", "automation", "bus", "send", "duck",
+             "tempo", "key", "section")
 LABELS = {"note": "Move note", "hit": "Move drum hit", "clip": "Move clip", "line": "Move line", "marker": "Move marker",
-          "section": "Move section"}
+          "section": "Move section", "tempo": "Move tempo change", "key": "Move key change",
+          "edge": "Resize section"}
 
 
 def grab(doc, item_id) -> dict:
@@ -29,6 +31,8 @@ def drag_calls(doc, g: dict, dt: float, dsemi: int = 0, free: bool = False) -> l
     root = doc.data
     if g["type"] == "section":
         return section_calls(doc, g, dt, free)
+    if g["type"] in song_edit.TYPES:
+        return song_edit.drag_calls(doc, g, dt, free)
     args = {"at": timing.write_time(g["at"], timing.snap(g["t"] + dt, root, free), root)}
     if g["type"] == "note" and dsemi:
         args["pitch"] = timing.shift_pitch(g["pitch"], int(dsemi))

@@ -12,6 +12,7 @@ from rostrum_core.mcp import Reply, Tools
 from ..doc import tempo
 from ..ears import beats as B
 from ..ears import clash as C
+from ..ears import engine_ears
 from ..ears import harmony as H
 from ..ears import pitch as P
 from ..ears import voicing as V
@@ -150,13 +151,15 @@ def register(tools: Tools):
             if not notes:
                 raise RostrumError(codes.NOT_FOUND, "inspect_harmony", "notes", "none written in the document" + (f" for track {tid}" if tid else ""))
             end = max(n["end"] for n in notes)
-            est, rows = H.key_from_notes(notes), H.chart_from_notes(notes, H.windows(doc.data, end, per))
+            est = H.key_from_notes(notes)
+            rows = H.chart_from_notes(notes, H.windows(doc.data, end, per), H.speller(doc.data, args.get("key"), est))
         else:
             _, wav, stems = _source(ctx, args, "inspect_harmony")
             src = _pick(stems, tid, "inspect_harmony") if tid else wav
             chroma, ct = H.chroma_of(src)
             y, sr = load(src)
-            est, rows = H.key_from_chroma(chroma), H.chart_from_audio(chroma, ct, H.windows(doc.data, len(y) / sr, per))
+            est = engine_ears.key_of_audio(src)        # the engine's key: the one source for audio (ears/engine_ears.py)
+            rows = H.chart_from_audio(chroma, ct, H.windows(doc.data, len(y) / sr, per), H.speller(doc.data, args.get("key"), est))
         r["key_estimate"], r["chords"] = est, rows
         used = args.get("key") or (est["key"] if est["key"] else None)
         r["key_used_for_checks"] = used

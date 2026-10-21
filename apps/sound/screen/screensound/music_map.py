@@ -17,6 +17,12 @@ def tempos(root: dict) -> list[dict]:
     return [{"t": round(s, 6), "bpm": bpm} for _, bpm, s in tempo.segments(root)]
 
 
+def tempo_marks(root: dict) -> list[dict]:
+    """The tempo changes as items the screen can select and drag (the start tempo is the document's own)."""
+    return _sorted({"id": c["id"], "t": timing.sec(c["at"], root, c["id"]), "bpm": c["bpm"]}
+                   for c in root.get("tempos", []) if "at" in c and "bpm" in c)
+
+
 def key_changes(root: dict) -> list[dict]:
     return _sorted({"id": k["id"], "t": timing.sec(k.get("at", 0), root, k["id"]), "key": k.get("key", "")}
                    for k in root.get("keys", []))
@@ -33,5 +39,5 @@ def sections(root: dict) -> list[dict]:
 
 def grid(root: dict, length: float) -> dict:
     """What song() adds for the ruler, grid, readout and section band."""
-    return {"beats": tempo.beats(root, length), "tempos": tempos(root), "keys": key_changes(root),
+    return {"beats": tempo.beats(root, length), "tempos": tempos(root), "tempoMarks": tempo_marks(root), "keys": key_changes(root),
             "sections": sections(root), "key": keys.key_at(root, 0.0) or ""}

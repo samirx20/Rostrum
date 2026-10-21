@@ -20,9 +20,11 @@ def windows(root: dict, end: float, per: str) -> list[tuple[float, float, int, i
             for i in range(0, len(b) - 1, step) if b[i] < end]
 
 
-def chart_from_notes(notes, wins) -> list[dict]:
+def chart_from_notes(notes, wins, key_at=lambda s: None) -> list[dict]:
+    """The chord per window, chords and notes spelled in the key playing there (`key_at(seconds)`)."""
     rows = []
     for s, e, bar, beat in wins:
+        key = key_at(s)
         weight: dict = {}
         for n in notes:
             over = min(e, n["end"]) - max(s, n["start"])
@@ -32,10 +34,10 @@ def chart_from_notes(notes, wins) -> list[dict]:
         span = max(e - s, 1e-9)
         sounding = [m for m, w in weight.items() if w / span >= MIN_SHARE]
         low = min(sounding) if sounding else None
-        chord = name_chord(sounding, low) if sounding else None
+        chord = name_chord(sounding, low, key) if sounding else None
         rows.append({"bar": bar, "beat": beat, "start_s": num(s, 2),
-                     "chord": chord or ("?" if len({m % 12 for m in sounding}) > 1 else keys.pitch_name(low) if sounding else "—"),
-                     "notes": [keys.pitch_name(m) for m in sorted(sounding)]})
+                     "chord": chord or ("?" if len({m % 12 for m in sounding}) > 1 else keys.pitch_name(low, key) if sounding else "—"),
+                     "notes": [keys.pitch_name(m, key) for m in sorted(sounding)]})
     return rows
 
 
@@ -47,13 +49,19 @@ def chroma_of(wav):
     return c, librosa.times_like(c, sr=22050, hop_length=2048)
 
 
-def chart_from_audio(chroma, t, wins) -> list[dict]:
+def chart_from_audio(chroma, t, wins, key_at=lambda s: None) -> list[dict]:
     rows = []
     for s, e, bar, beat in wins:
         sel = (t >= s) & (t < e)
-        name, conf = chord_from_chroma(np.median(chroma[:, sel], axis=1) if sel.any() else np.zeros(12))
+        name, conf = chord_from_chroma(np.median(chroma[:, sel], axis=1) if sel.any() else np.zeros(12), key=key_at(s))
         rows.append({"bar": bar, "beat": beat, "start_s": num(s, 2), "chord": name, "confidence": conf})
     return rows
+
+
+def speller(root: dict, given: str | None, est: dict):
+    """seconds -> the key chords are spelled in there: the one asked for, else the document's key map, else the
+    estimate."""
+    return lambda s: given or keys.key_at(root, s) or est.get("key")
 
 
 def key_from_notes(notes) -> dict:
@@ -62,10 +70,6 @@ def key_from_notes(notes) -> dict:
         for m in n["midis"]:
             w[m % 12] += n["end"] - n["start"]
     return estimate_key(w)
-
-
-def key_from_chroma(chroma) -> dict:
-    return estimate_key(chroma.sum(axis=1))
 
 
 def key_line(est: dict, source: str) -> str:

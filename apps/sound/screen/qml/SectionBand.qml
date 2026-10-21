@@ -4,6 +4,7 @@ import RostrumKit
 // The song's sections (intro, verse, drop) under the markers: each a bar from its start to its end with its name.
 // Click selects the section (the inspector edits its name, start and end); drag moves it and everything that
 // starts inside it (one `section.move` per step, the whole drag one undo step; a quarter beat grid, Shift = free).
+// Drag the left or right edge: that edge only moves (`section.set`, one undo step), the section's contents stay.
 // Absent when the song has no sections. The clicks are taken here in one place, as in MarkerBand.
 Item {
     id: band
@@ -18,6 +19,13 @@ Item {
             if (x >= ruler.xOf(s.t) && x <= ruler.xOf(s.end)) best = s.id
         }
         return best
+    }
+
+    function edgeAt(id, x) {   // "at" / "end" when x is on that edge of section `id` (a few px; the middle stays a move)
+        var s = sections.find(s => s.id === id)
+        if (!s) return ""
+        var l = ruler.xOf(s.t), r = ruler.xOf(s.end), grip = Math.min(6, (r - l) / 3)
+        return x <= l + grip ? "at" : x >= r - grip ? "end" : ""
     }
 
     Repeater {
@@ -40,10 +48,11 @@ Item {
         property real x0: 0
         property bool dragging: false
         hoverEnabled: true
-        cursorShape: band.sectionAt(mouseX) !== "" ? Qt.SizeHorCursor : Qt.ArrowCursor
+        cursorShape: { var id = band.sectionAt(mouseX), e = band.edgeAt(id, mouseX)
+                       return e !== "" ? Qt.SplitHCursor : id !== "" ? Qt.SizeHorCursor : Qt.ArrowCursor }
         onPressed: (m) => {
-            var id = band.sectionAt(m.x)
-            dragging = id !== "" && backend.beginDrag(id)
+            var id = band.sectionAt(m.x), e = band.edgeAt(id, m.x)
+            dragging = id !== "" && (e !== "" ? backend.beginEdge(id, e) : backend.beginDrag(id))
             x0 = m.x
             if (!dragging) m.accepted = false
         }

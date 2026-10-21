@@ -7,17 +7,22 @@ quarter beat unless free, and stays inside the lane's range.
 """
 from __future__ import annotations
 
-from rostrum_sound import names
 from rostrum_sound.doc import lanes as LN
 
 from . import timing
 
 LABELS = {"volume": "Volume", "pan": "Pan", "dynamics": "Dynamics", "vibrato": "Vibrato", "level": "Send level"}
 MELODIC_ONLY = ("dynamics", "vibrato")      # expression lanes: for a track that plays notes
+BAND_WORDS = {"freq": "frequency", "gain": "gain", "q": "width (Q)"}
 GAIN_LANES = ("volume", "level")            # 0 … 4, drawn 0 … 2 unless a point is higher
+EFFECT_NAMES = {"eq": "EQ", "deess": "De-ess", "dehum": "De-hum"}
+BUS_HUE, MASTER_HUE = "#9aa1aa", "#d9dde2"  # bus and master rows: greys, apart from the tracks' hues
 
 
 def label(lane: str) -> str:
+    if LN.band_lane(lane):
+        i, key = LN.band_lane(lane)
+        return f"Band {i + 1} {BAND_WORDS[key]}"
     lane = lane[len(LN.PARAM):] if lane.startswith(LN.PARAM) else lane
     return LABELS.get(lane, lane[:1].upper() + lane[1:])
 
@@ -28,16 +33,17 @@ def raw_points(owner: dict, lane: str) -> list[list]:
 
 
 def owner_of(track: dict, target: str) -> dict:
-    """The track itself, one of its sends, or one of its effects, by id."""
+    """The row's item itself (a track, a bus or the master), one of its sends, or one of its effects, by id."""
     return next((s for s in [*track.get("sends", []), *track.get("effects", [])] if s["id"] == target), track)
 
 
 def applicable(track: dict, root: dict) -> list[tuple[str, str]]:
-    """(item id, lane) the track offers: its volume and pan always, expression only for a track that plays notes
-    (or that already has the lane), the level of each of its sends, and every envelope setting of its effects
-    (a plug-in: the parameters it has changed)."""
-    notes = track.get("instrument") not in (None, "none", "kit", "kitSfz")
-    out = [(track["id"], ln) for ln in names.TRACK_LANES
+    """(item id, lane) a row offers (a track, a bus or the master: the catalogue's mix lanes for its type):
+    volume and pan, expression only for a track that plays notes (or that already has the lane), the level of
+    each of its sends, and every envelope setting of its effects (an EQ: each band's settings; a plug-in: the
+    parameters it has changed)."""
+    notes = track.get("type") == "track" and track.get("instrument") not in (None, "none", "kit", "kitSfz")
+    out = [(track["id"], ln) for ln in LN.offered(track)
            if ln in LN.MIX_RANGE and (ln not in MELODIC_ONLY or notes or raw_points(track, ln))]
     out += [(s["id"], "level") for s in track.get("sends", [])]
     return out + [(fx["id"], ln) for fx in track.get("effects", []) for ln in LN.offered(fx)]
@@ -48,7 +54,7 @@ def choice_label(track: dict, root: dict, target: str, lane: str) -> str:
         return label(lane)
     owner = owner_of(track, target)
     if owner.get("type") == "effect":
-        name = (owner.get("plugin") or {}).get("name") or owner["effect"].capitalize()
+        name = (owner.get("plugin") or {}).get("name") or EFFECT_NAMES.get(owner["effect"], owner["effect"].capitalize())
         return f"{name}: {label(lane)}"
     bus = owner.get("bus", "")
     name = next((b.get("name") for b in root.get("buses", []) if b["id"] == bus), None) or bus
@@ -77,6 +83,19 @@ def lane_data(track: dict, root: dict, target: str, lane: str) -> dict:
             "base": LN.base(owner, lane),
             "choices": [{"target": tg, "lane": ln, "label": choice_label(track, root, tg, ln),
                          "used": bool(raw_points(owner_of(track, tg), ln))} for tg, ln in applicable(track, root)]}
+
+
+def mix_rows(root: dict, open_lanes: dict) -> list[dict]:
+    """Compact rows at the bottom of the arrangement, one per bus and the master: no blocks, only their
+    automation lanes (`mix`: true; same keys as a track's row)."""
+    out = []
+    for item in [*root.get("buses", []), *root.get("master", [])]:
+        master = item["type"] == "master"
+        out.append({"id": item["id"], "name": "Master" if master else item.get("name") or item["id"], "mix": True,
+                    "hue": MASTER_HUE if master else BUS_HUE, "mute": bool(item.get("mute")), "solo": False,
+                    "kind": item["type"], "blocks": [], "autoUsed": used(item),
+                    "auto": lane_data(item, root, *open_lanes[item["id"]]) if item["id"] in open_lanes else None})
+    return out
 
 
 def used(track: dict) -> bool:

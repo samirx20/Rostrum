@@ -11,7 +11,8 @@ import RostrumKit
 // than a frame. The video's own sound is not played (the engine's render is the one audio).
 Panel {
     id: pc
-    readonly property real playheadMs: backend.time * 1000
+    readonly property real playheadMs: Math.max(0, backend.time - backend.pictureStart) * 1000   // the video's own time
+    readonly property bool before: backend.time < backend.pictureStart                           // not started yet: its first frame
     readonly property real frameMs: {
         var f = mp.metaData.value(MediaMetaData.VideoFrameRate)
         return f > 0 ? 1000 / f : 40
@@ -19,23 +20,25 @@ Panel {
     property real lastSeek: 0
     title: "Picture"
     height: Theme.header + Math.round((width - 2 * bodyPad) * 9 / 16) + Theme.gap + Theme.button + bodyPad
+            + (startRow.visible ? Theme.gap + Theme.field : 0)
     headerRight: [
         Text { anchors.verticalCenter: parent.verticalCenter; visible: backend.pictureChoice !== ""
                text: backend.pictureName; elide: Text.ElideMiddle
                width: Math.min(implicitWidth, pc.width - 140); color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
     ]
 
+    function openItems() { items.open() }
     function seek() { mp.position = Math.min(playheadMs, Math.max(0, mp.duration)) }
     function follow() {
         if (mp.source == "") return
-        if (!backend.playing) { seek(); return }
+        if (!backend.playing || before) { if (before && mp.playbackState === MediaPlayer.PlayingState) mp.pause(); seek(); return }
         if (mp.playbackState !== MediaPlayer.PlayingState && playheadMs < mp.duration) mp.play()
         else if (Math.abs(mp.position - playheadMs) > frameMs && Date.now() - lastSeek > 250) { seek(); lastSeek = Date.now() }
     }
     function transport() {
         if (mp.source == "") return
         seek()
-        if (backend.playing) mp.play(); else mp.pause()
+        if (backend.playing && !before) mp.play(); else mp.pause()
     }
 
     MediaPlayer {
@@ -47,6 +50,7 @@ Panel {
     Connections {
         target: backend
         function onTimeChanged() { pc.follow() }
+        function onTimelineChanged() { pc.follow() }       // the start marker moved
         function onPlayingChanged() { pc.transport() }
     }
     Rectangle {
@@ -63,7 +67,9 @@ Panel {
                    font.family: uiFont; font.pixelSize: Theme.body }
             Text { visible: backend.picture === ""; width: parent.width; horizontalAlignment: Text.AlignHCenter
                    wrapMode: Text.Wrap; color: Theme.fg4
-                   text: backend.pictureProblem !== "" ? backend.pictureProblem : "Choose a video or a 2D item to make the sound to."
+                   text: backend.pictureProblem !== "" ? backend.pictureProblem
+                         : backend.pictureItems.length > 0 ? "Choose a video, or a 2D item of the project: its newest render shows here."
+                         : "Choose a video to make the sound to. " + backend.pictureItemsNote
                    font.family: uiFont; font.pixelSize: Theme.label }
         }
     }
@@ -75,6 +81,20 @@ Panel {
         Button { id: fromProject; visible: backend.pictureItems.length > 0; text: "From the project…"
                  onClicked: items.open() }
         Button { visible: backend.pictureChoice !== ""; text: "Remove"; kind: "ghost"; onClicked: backend.setPicture("") }
+    }
+    Row {   // where the picture starts: the song's start, or a shared marker ("logo lands"): follows the marker
+        id: startRow
+        visible: backend.pictureChoice !== ""
+        anchors { left: parent.left; top: well.bottom; topMargin: Theme.gap + Theme.button + Theme.gap }
+        spacing: Theme.gap; height: Theme.field
+        Text { text: "Starts at"; anchors.verticalCenter: parent.verticalCenter; color: Theme.fg2
+               font.family: uiFont; font.pixelSize: Theme.body }
+        ChoiceField {
+            width: 170
+            options: [{ value: "", label: "Start of the song" }].concat(backend.markers.map(m => ({ value: m.name, label: m.name })))
+            current: backend.pictureMarker
+            onPicked: (v) => backend.setPictureStart(v)
+        }
     }
     QQC.Popup {     // the project's 2D items: picking one links its newest render
         id: items

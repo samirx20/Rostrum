@@ -43,3 +43,14 @@ def test_unknown_lane_is_refused_loudly():
         assert "attack" in str(e)
     else:
         raise AssertionError("attack lane was accepted")
+
+
+def test_eq_band_lane_reaches_the_engine_and_empties_back_to_its_start():
+    doc = _doc()
+    doc.apply({"op": "effect.add", "target": ["pad"], "args": {"effect": "eq", "id": "pad.eq",
+               "bands": [{"shape": "peak", "freq": 800, "gain": 0, "q": 1}]}}, Who.person())
+    _lane(doc, "pad.eq", "band1.gain", [[0, -6], [2, 6]])
+    eq = next(f for f in compile(doc)["tracks"][0]["effects"] if f["type"] == "eq")
+    assert eq["bands"][0] == {"shape": "peak", "freq": 800, "gain": [[0, -6], [2, 6]], "q": 1}
+    _lane(doc, "pad.eq", "band1.gain", [])
+    assert doc.item("pad.eq")["bands"][0]["gain"] == -6

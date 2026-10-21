@@ -10,26 +10,32 @@ import RostrumKit
 // on screen. The view is backend.viewStart / viewSpan, shared by the ruler, markers, rows and the piano roll.
 // A track's "Auto" chip opens its automation lane under the row (AutomationLane): click adds a point, drag moves
 // it, Delete removes it; each is one `automation.set`. Tall on the Timeline page, `slim` on the others.
+// Under the tracks, compact rows for the buses and the master carry their lanes (Timeline page only); a ducked
+// track's row shows where its ducks pull it down (DuckDips).
 Rectangle {
     id: tl
     property bool slim: false
     readonly property int headerWidth: 200
-    readonly property var rows: backend.tracks
+    readonly property var rows: slim ? backend.tracks.filter(r => !r.mix) : backend.tracks   // buses + master: lanes only
+    readonly property real mixH: 20          // a bus's or the master's compact row
+    readonly property int mixRows: rows.filter(r => r.mix).length
     readonly property real rowGap: 2
     readonly property real laneH: 76         // an open automation lane
     readonly property real laneGap: 2
     readonly property int openLanes: slim ? 0 : rows.filter(r => r.auto).length
-    readonly property real rowH: rows.length === 0 ? 24
+    readonly property real rowH: rows.length === mixRows ? 24
         : Math.max(slim ? 18 : 24, Math.min(slim ? 26 : 52,
-              (list.height - openLanes * (laneH + laneGap) - rowGap * (rows.length - 1)) / rows.length))
+              (list.height - openLanes * (laneH + laneGap) - mixRows * mixH - rowGap * (rows.length - 1)) / (rows.length - mixRows)))
     function autoOf(r) { return slim ? null : r.auto }
+    function hOf(r) { return r.mix ? mixH : rowH }
     function slot(y) {   // which row is at height y of the list: its index, whether y is in its automation lane, where that starts
         var top = 0
         for (var i = 0; i < rows.length; i++) {
             var lane = autoOf(rows[i]) ? laneGap + laneH : 0
-            if (y < top + rowH + lane + rowGap / 2)
-                return { i: i, top: top, lane: lane > 0 && y >= top + rowH + laneGap, laneTop: top + rowH + laneGap }
-            top += rowH + lane + rowGap
+            var h = hOf(rows[i])
+            if (y < top + h + lane + rowGap / 2)
+                return { i: i, top: top, lane: lane > 0 && y >= top + h + laneGap, laneTop: top + h + laneGap }
+            top += h + lane + rowGap
         }
         return { i: -1, top: 0, lane: false, laneTop: 0 }
     }
@@ -57,10 +63,15 @@ Rectangle {
         id: sectionBand
         x: bars.x; width: bars.width; y: band.y + band.height + 2; height: visible ? 18 : 0; ruler: bars
     }
+    SongBand {   // tempo and key changes (when the song has any)
+        id: songBand
+        x: bars.x; width: bars.width; y: sectionBand.y + sectionBand.height + (sectionBand.visible ? 2 : 0)
+        height: visible ? 16 : 0; ruler: bars
+    }
     BarRuler {
         id: bars
         x: tl.headerWidth + Theme.gap * 2; width: tl.width - x - Theme.pad
-        y: sectionBand.y + sectionBand.height + (sectionBand.visible ? 2 : 0); height: 22
+        y: songBand.y + songBand.height + (songBand.visible ? 2 : 0); height: 22
     }
     Flickable {
         id: list
@@ -78,19 +89,22 @@ Rectangle {
                     id: row
                     required property var modelData
                     readonly property var auto: tl.autoOf(modelData)
-                    width: column.width; height: tl.rowH + (auto ? tl.laneGap + tl.laneH : 0)
-                    TrackHeader { width: tl.headerWidth; height: tl.rowH; track: row.modelData }
+                    readonly property real h: tl.hOf(modelData)
+                    width: column.width; height: h + (auto ? tl.laneGap + tl.laneH : 0)
+                    TrackHeader { visible: !row.modelData.mix; width: tl.headerWidth; height: row.h; track: row.modelData }
+                    MixRowHeader { visible: !!row.modelData.mix; width: tl.headerWidth; height: row.h; track: row.modelData }
                     Rectangle {
-                        x: bars.x - list.x; width: bars.width; height: tl.rowH
+                        x: bars.x - list.x; width: bars.width; height: row.h
                         radius: Theme.radiusCtl - 2; color: Theme.sunken; clip: true
                         BeatGrid { anchors.fill: parent; ruler: bars }
                         LaneBlocks { anchors.fill: parent; track: row.modelData; ruler: bars }
+                        DuckDips { anchors.fill: parent; trackId: row.modelData.id; ruler: bars }
                         LaneToggle { visible: !tl.slim; track: row.modelData
                                      anchors { right: parent.right; rightMargin: 4; verticalCenter: parent.verticalCenter } }
                     }
                     AutomationLane {
                         visible: !!row.auto
-                        y: tl.rowH + tl.laneGap; width: parent.width; height: tl.laneH
+                        y: row.h + tl.laneGap; width: parent.width; height: tl.laneH
                         row: row.modelData; ruler: bars; plotX: bars.x - list.x
                     }
                 }
@@ -121,7 +135,7 @@ Rectangle {
                                       (m.modifiers & Qt.ShiftModifier) !== 0)
                     return
                 }
-                var lane = Math.max(0, Math.min(1, (m.y - s.top - 3) / Math.max(1, tl.rowH - 8)))
+                var lane = Math.max(0, Math.min(1, (m.y - s.top - 3) / Math.max(1, tl.hOf(r) - 8)))
                 var id = backend.blockAt(r.id, t, lane, 6 / bars.perSec)
                 if (id !== "" && backend.beginDrag(id)) { mode = "drag"; return }
                 mode = "seek"
@@ -147,6 +161,7 @@ Rectangle {
             width: 1; height: list.y + list.height - y; color: Theme.fg4; opacity: 0.6
         }
     }
+    PunchBand { ruler: bars; y: bars.y + bars.height; height: list.y + list.height - y }   // the take's punch range
     Rectangle {  // the playhead, across every row
         visible: bars.visibleX(x - bars.x)
         x: bars.x + Math.round(bars.xOf(backend.time)); y: bars.y + bars.height

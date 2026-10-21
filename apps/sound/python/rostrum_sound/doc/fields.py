@@ -30,6 +30,10 @@ FIELDS = {
         N("beatsPerBar", 1, 16, "Time", imp="secondary", integer=True, label="Beats per bar"),
         N("sampleRate", 22050, 192000, "Output", "Hz", "deep", integer=True, label="Sample rate"),
         Param.text("picture", group="Picture", importance="secondary", help="What the sound is made to, shown at the playhead on the Timeline: a video file, or \"item:<id>\" for a 2D item of the project (its newest render)."),
+        V.time("pictureAt", group="Picture", importance="secondary", label="Picture starts",
+               valid_when={"not": {"any": [IS("picture", None), IS("picture", "")]}},
+               help='When the picture\'s first frame is at: seconds, a beat, or a shared marker ("#logo"); left out = 0. '
+                    "A marker moves the picture with it."),
     ],
     "track": [
         Param.text("name", group="Track", importance="secondary"),

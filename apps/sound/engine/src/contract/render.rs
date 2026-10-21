@@ -83,7 +83,8 @@ pub fn run(job: Job) -> Result<Value, Error> {
     Ok(json!({
         "file": out.to_string_lossy(), "seconds": c.seconds, "renderSeconds": took, "sampleRate": sr,
         "lufs": mix.lufs, "truePeak": mix.true_peak, "peak": mix.peak, "lra": loud.lra, "clipped": mix.clipped, "bands": mix.bands,
-        "series": { "hop": 0.1, "shortTermWindow": 3.0, "correlationWindow": 0.4,
+        "series": { "hop": 0.1, "shortTermWindow": 3.0, "correlationWindow": 0.4, "momentaryWindow": 0.4,
+            "momentary": loud.momentary.iter().map(|&v| (v * 1000.0).round() / 1000.0).collect::<Vec<_>>(),
             "shortTerm": loud.short_term.iter().map(|&v| r2(v)).collect::<Vec<_>>(),
             "truePeak": mix.true_peak_series.iter().map(|&v| r2(v)).collect::<Vec<_>>(),
             "correlation": loud.correlation.iter().map(|v| v.map(|c| (c * 1000.0).round() / 1000.0)).collect::<Vec<_>>() },

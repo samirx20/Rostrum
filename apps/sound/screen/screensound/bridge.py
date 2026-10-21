@@ -12,7 +12,7 @@ from rostrum_gui import DocBridge
 from rostrum_gui.edits import Drag
 from rostrum_sound import compile as compile_doc
 
-from . import inspect, lanes, moves, pick, picture, timeline
+from . import inspect, lanes, moves, onpage, pick, picture, song_edit, timeline
 from .transport import Transport
 from .view import STEP, View
 
@@ -42,6 +42,8 @@ class SoundBridge(DocBridge):
         self._picture_open = False
         super().__init__(doc, parent=parent)
         self._picture_open = bool(self.doc.data.get("picture"))     # the corner opens by itself on a song with a picture
+        self._follow_render = picture.Follow(lambda: (self.pictureChoice, self.doc.folder), self)
+        self._follow_render.changed.connect(self.timelineChanged)       # the linked item has a newer render
         self.selectionChanged.connect(self._follow_selection)
         self.selectionChanged.connect(self._drop_point)
         self._follow_selection()
@@ -125,7 +127,17 @@ class SoundBridge(DocBridge):
     @Property(str, notify=timelineChanged)
     def pictureProblem(self):
         """Why a linked picture shows nothing ("not rendered yet" …); "" when fine or none chosen."""
-        return picture.resolve(self.pictureChoice, self.doc.folder)[1]
+        return picture.resolve(self.pictureChoice, self.doc.folder)[1] or picture.start(self.doc.data)[1]
+
+    @Property(float, notify=timelineChanged)
+    def pictureStart(self):
+        """When the picture's first frame is (seconds): a marker's time, so it follows the marker."""
+        return picture.start(self.doc.data)[0]
+
+    @Property(str, notify=timelineChanged)
+    def pictureMarker(self):
+        """The shared marker the picture starts on ("" when a plain time)."""
+        return picture.start_marker(self.doc.data)
 
     @Property(str, notify=timelineChanged)
     def pictureName(self):
@@ -135,6 +147,11 @@ class SoundBridge(DocBridge):
     def pictureItems(self):
         """The project's 2D items, to link one as the picture: [{id, label}]."""
         return picture.items(self.doc.folder)
+
+    @Property(str, notify=timelineChanged)
+    def pictureItemsNote(self):
+        """Why there are no project items to pick ("" when there are some)."""
+        return picture.items_note(self.doc.folder)
 
     @Property(str, notify=timelineChanged)
     def pictureUrl(self):
@@ -170,12 +187,17 @@ class SoundBridge(DocBridge):
     def edit_call(self, item_id, param, value):
         return inspect.edit_call(self.doc, item_id, param, value)
 
+    def _rows(self):    # the inspector leaves out what the page's own controls show (onpage.py)
+        it = self.doc.item(self._sel) if self._sel and self.doc.has(self._sel) else {}
+        return onpage.omit(super()._rows(), onpage.fields(self._page, it.get("type", ""), self.doc.kind.registry))
+
     # ---- screen state -----------------------------------------------------------------------------------------
     @Slot(str)
     def setPage(self, page):
         if page not in PAGES:
             return self._fail(f'Error: page: "{page}" is not a page ({", ".join(PAGES)}).')
         self._page = page
+        self.model.reset(self._rows())
         self.pageChanged.emit()
 
     @Slot(float)
@@ -244,6 +266,49 @@ class SoundBridge(DocBridge):
             self._apply([picture.link_call(item_id)], "Set picture")
             self.setPictureOpen(True)
         self._guard(go)
+
+    @Slot(str)
+    def setPictureStart(self, marker):
+        """The picture's first frame sits on a shared marker (its name), or at the song's start ("")."""
+        self._guard(lambda: self._apply([picture.start_call(marker)], "Set picture start"))
+
+    # ---- the song's music map: tempo, key, sections (song_edit.py) ---------------------------------------------
+    @Slot(result="QVariantMap")
+    def songEdit(self):
+        """What the Song popup shows now: only what is valid at the playhead with this selection."""
+        sel = self.doc.item(self._sel) if self._sel and self.doc.has(self._sel) else None
+        return song_edit.state(self.doc.data, sel, self._t)
+
+    @Slot(str, str)
+    def songDo(self, action, arg):
+        """One music-map edit from the popup: start_bpm, add_tempo, set_key, add_key, add_section (one undo step each)."""
+        t, root = self._t, self.doc.data
+        make = {"start_bpm": lambda: (song_edit.start_tempo_call(float(arg)), "Set tempo"),
+                "add_tempo": lambda: (song_edit.add_tempo_call(root, t), "Add tempo change"),
+                "set_key": lambda: (song_edit.key_call(root, t, *arg.split(" ", 1), False), "Set key"),
+                "add_key": lambda: (song_edit.key_call(root, t, *arg.split(" ", 1), True), "Add key change"),
+                "add_section": lambda: (song_edit.add_section_call(root, t), "Add section")}
+        if action not in make:
+            return self._fail(f'Error: song edit: "{action}" is not one ({", ".join(make)}).')
+
+        def go():
+            call, label = make[action]()
+            self._apply([call], label)
+            if action in ("add_tempo", "add_section"):
+                kind = {"add_tempo": "tempos", "add_section": "sections"}[action]
+                self.select(self.doc.data[kind][-1]["id"])
+        self._guard(go)
+
+    @Slot(str, str, result=bool)
+    def beginEdge(self, section_id, edge):
+        """Press on a section's left ("at") or right ("end") edge: select it and start one gesture."""
+        self.endDrag()
+        self.select(section_id)
+
+        def go():
+            self._grab = song_edit.edge_grab(self.doc, section_id, edge)
+            self._drag = Drag(self.doc, self.who, moves.LABELS["edge"])
+        return self._guard(go)
 
     @Slot()
     def togglePlay(self):

@@ -43,10 +43,16 @@ def midi(p) -> int:
 FLATS = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
 
 
+def pc_name(k: int, key: str | None = None) -> str:
+    """A pitch class's name ("F#"): the one speller for notes, chords and keys. Flats in a flat key ("Bb" in
+    D minor), sharps otherwise."""
+    flat = key is not None and parse(key) is not None and signature(key)[0] < 0
+    return (FLATS if flat else NAMES)[k % 12]
+
+
 def pitch_name(k: int, key: str | None = None) -> str:
     """"F#3"; spelled with flats in a flat key ("Bb4" in D minor), sharps otherwise."""
-    flat = key is not None and parse(key) is not None and signature(key)[0] < 0
-    return f"{(FLATS if flat else NAMES)[k % 12]}{k // 12 - 1}"
+    return f"{pc_name(k, key)}{k // 12 - 1}"
 
 
 def midis(p) -> list[int]:

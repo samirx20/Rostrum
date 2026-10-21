@@ -13,7 +13,7 @@ What is here and works (checked on the 106 Sonniss evaluation files, not listene
   run from the cache in ~0.02 s.
 - `search.py`: search by kind, words, shape words (short / bright / sharp …) or number ranges.
 - MCP: `inspect_library` (`folder`, `kind`, shape filters); `edit_sounds_from_motion source="library"`
-  (`motion/score_library.py`). Guide: `mcp/guides/library.md`.
+  (`motion/score_library.py`). Guide: `apps/sound/guides/library.md`.
 - Screen: `screen/screensound/library_panel.py` + `screen/qml/LibraryPanel.qml`. **Not wired into
   `screen/main.py`** (the Instruments page shows it only when a `soundLibrary` context object exists), so it is not
   on screen yet.

@@ -7,8 +7,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import QObject, QTimer, QUrl, Signal
 from rostrum_core import RostrumError, codes, project
+from rostrum_sound.doc import times
 
 LINK = "item:"
 VIDEO = (".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v")
@@ -20,6 +21,13 @@ def items(folder) -> list[dict]:
         return []
     return [{"id": it["id"], "label": it["name"] + ("" if _video(it["renders"]) else " (not rendered yet)")}
             for it in project.items(folder, "2d")]
+
+
+def items_note(folder) -> str:
+    """Why the project's items can't be listed, in plain words ("" when there are some)."""
+    if not folder or not Path(folder).is_dir():
+        return "This song is not in a project folder, so there are no 2D items to pick from."
+    return "" if items(folder) else "The project has no 2D items yet."
 
 
 def _video(renders: list[dict]) -> str:
@@ -44,6 +52,51 @@ def resolve(value: str, folder) -> tuple[str, str]:
         return "", f"{found[0]['name']} is not rendered yet."
     video = _video([r])
     return (video, "") if video else ("", f"{found[0]['name']} v{r['version']:03d} has frames only, no video to show.")
+
+
+class Follow(QObject):
+    """Says when a linked item's newest render changes (a new one finished): the corner then loads it. Looks every
+    2 s, and only while the picture is a link (a chosen file never changes by itself)."""
+    changed = Signal()
+
+    def __init__(self, get, parent=None):
+        super().__init__(parent)
+        self._get, self._last = get, None
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._tick)
+        self._timer.start(2000)
+
+    def _tick(self):
+        value, folder = self._get()
+        if not value.startswith(LINK):
+            self._last = None
+            return
+        now = resolve(value, folder)
+        if self._last is not None and now != self._last:
+            self.changed.emit()
+        self._last = now
+
+
+def start(root: dict) -> tuple[float, str]:
+    """(when the picture's first frame is, in seconds; why it can't be worked out). The doc's `pictureAt` in any time
+    form: a marker ("#logo") moves the picture when the marker moves."""
+    at = root.get("pictureAt")
+    if at is None:
+        return 0.0, ""
+    try:
+        return times.seconds(at, root, "pictureAt"), ""
+    except RostrumError as e:
+        return 0.0, f"The picture's start can't be found: {e}"
+
+
+def start_call(ref: str) -> dict:
+    """Start the picture at a shared marker ("logo"), or at the start of the song ("")."""
+    return {"op": "doc.set", "target": ["root"], "args": {"pictureAt": f"#{ref}" if ref else 0}}
+
+
+def start_marker(root: dict) -> str:
+    """The marker the picture starts on ("" when it starts at a plain time)."""
+    return times.marker_ref(root.get("pictureAt")) or ""
 
 
 def link_call(item_id: str) -> dict:

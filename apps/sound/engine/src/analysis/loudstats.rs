@@ -10,6 +10,9 @@ pub struct Stats {
     /// Short-term loudness (LUFS, 3 s window) at the end of each 100 ms hop from the first full window on (hop `k` ends
     /// at `(k + 30) / 10` s); a file under 3 s has its one window over everything there is.
     pub short_term: Vec<f64>,
+    /// Momentary loudness (LUFS) of each 400 ms block, 100 ms hop (block `k` ends at `(k + 4) / 10` s): the BS.1770
+    /// gating blocks, so the integrated loudness of any stretch from the start is the gated mean of its blocks.
+    pub momentary: Vec<f64>,
     /// L/R correlation (Pearson, 400 ms windows, 100 ms hop; window `k` ends at `(k + 4) / 10` s) of the first two
     /// channels, None for a window under -70 dBFS or a mono file.
     pub correlation: Vec<Option<f64>>,
@@ -80,5 +83,5 @@ pub fn stats_n(chs: &[&[f32]], weights: &[f64], sr: f64) -> Stats {
             })
             .collect()
     };
-    Stats { max_momentary: max(&momentary), max_short_term: max(&short), lra, short_term, correlation }
+    Stats { max_momentary: max(&momentary), max_short_term: max(&short), lra, short_term, momentary, correlation }
 }

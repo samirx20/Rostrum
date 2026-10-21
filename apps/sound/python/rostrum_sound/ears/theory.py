@@ -6,7 +6,7 @@ import math
 
 import numpy as np
 
-from ..doc.keys import NAMES, parse, pitch_name
+from ..doc.keys import NAMES, from_signature, parse, pc_name, pitch_name, signature
 
 # Chord shapes as semitones above the root, most specific first (a tie goes to the earlier one).
 SHAPES = [("maj7", (0, 4, 7, 11)), ("m7", (0, 3, 7, 10)), ("7", (0, 4, 7, 10)), ("m7b5", (0, 3, 6, 10)),
@@ -37,9 +37,15 @@ def interval_name(semitones: int) -> str:
     return INTERVALS[s] if s <= 12 else f"{INTERVALS[s % 12]} + {s // 12} octave{'s' if s >= 24 else ''}"
 
 
-def name_chord(midis, bass: int | None = None) -> str | None:
-    """A chord's name from the MIDI notes sounding ("Am7", "C/E", "G5"), None when it is not a chord (one note,
-    or a cluster no shape fits). The root is the one whose shape fits with the fewest notes over or missing."""
+def key_name(tonic: int, mode: str) -> str:
+    """A major or minor key by its usual spelling: "Bb major", "G# minor" (the signature with fewer accidentals)."""
+    return from_signature(signature(f"{NAMES[tonic]} {mode}")[0], mode == "minor")
+
+
+def name_chord(midis, bass: int | None = None, key: str | None = None) -> str | None:
+    """A chord's name from the MIDI notes sounding ("Am7", "C/E", "G5"), spelled in `key` ("Bb" in D minor), None
+    when it is not a chord (one note, or a cluster no shape fits). The root is the one whose shape fits with the
+    fewest notes over or missing."""
     pcs = sorted({int(m) % 12 for m in midis})
     if len(pcs) < 2:
         return None
@@ -53,14 +59,14 @@ def name_chord(midis, bass: int | None = None) -> str | None:
             cost = miss * 2 + extra
             if miss > 1 or cost > 2 or len(rel) < 2:
                 continue
-            key = (cost, root != bass_pc, order)
-            if best is None or key < best[0]:
-                best = (key, root, suffix)
+            rank = (cost, root != bass_pc, order)
+            if best is None or rank < best[0]:
+                best = (rank, root, suffix)
     if best is None:
         return None
     _, root, suffix = best
-    name = NAMES[root] + suffix
-    return name if root == bass_pc else f"{name}/{NAMES[bass_pc]}"
+    name = pc_name(root, key) + suffix
+    return name if root == bass_pc else f"{name}/{pc_name(bass_pc, key)}"
 
 
 def _chroma_templates():
@@ -71,22 +77,22 @@ def _chroma_templates():
                 continue
             v = np.zeros(12)
             v[[(root + s) % 12 for s in shape]] = 1.0
-            out.append((NAMES[root] + suffix, v / np.linalg.norm(v)))
+            out.append((root, suffix, v / np.linalg.norm(v)))
     return out
 
 
 _TEMPLATES = _chroma_templates()
 
 
-def chord_from_chroma(c, silent: float = 1e-3) -> tuple[str, float]:
-    """(name, confidence 0 … 1) of the chord a 12-bin chroma vector looks most like; ("N", 0) when it is silent."""
+def chord_from_chroma(c, silent: float = 1e-3, key: str | None = None) -> tuple[str, float]:
+    """(name spelled in `key`, confidence 0 … 1) of the chord a 12-bin chroma vector looks most like; ("N", 0) when
+    it is silent."""
     c = np.asarray(c, dtype=float)
     if c.max() < silent:
         return "N", 0.0
     c = c / np.linalg.norm(c)
-    scores = [(float(c @ t), n) for n, t in _TEMPLATES]
-    s, n = max(scores)
-    return n, round(s, 3)
+    s, root, suffix = max((float(c @ t), root, suffix) for root, suffix, t in _TEMPLATES)
+    return pc_name(root, key) + suffix, round(s, 3)
 
 
 def estimate_key(weights, top: int = 3) -> dict:
@@ -99,7 +105,7 @@ def estimate_key(weights, top: int = 3) -> dict:
     for mode, prof in (("major", MAJOR), ("minor", MINOR)):
         for tonic in range(12):
             r = float(np.corrcoef(w, np.roll(prof, tonic))[0, 1])
-            ranked.append((f"{NAMES[tonic]} {mode}", round(r, 3)))
+            ranked.append((key_name(tonic, mode), round(r, 3)))
     ranked.sort(key=lambda kv: -kv[1])
     return {"key": ranked[0][0], "margin": round(ranked[0][1] - ranked[1][1], 3), "ranked": ranked[:top]}
 

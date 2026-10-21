@@ -24,7 +24,7 @@ ColumnLayout {
         Layout.fillWidth: true; Layout.preferredHeight: 22
         popupWidth: 200
         text: "Deliver to: " + l.target.label
-        choices: l.meter.choices.map(c => ({ id: c.id, label: c.label + "   " + c.detail }))
+        choices: (l.target.choices || []).map(c => ({ id: c.id, label: c.label + "   " + c.detail }))
         onPicked: (id) => l.meter.choose(id)
     }
     Item { Layout.fillHeight: true }
@@ -43,7 +43,7 @@ ColumnLayout {
         LoudnessCurve {
             Layout.fillWidth: true; Layout.preferredHeight: 64
             values: l.meter.curve; hop: l.meter.axis.hop; window: l.meter.axis.window; seconds: l.meter.axis.seconds
-            target: l.target.shown ? l.target.lufs : null
+            target: l.target.shown && l.target.lufs != null ? l.target.lufs : null
             now: backend.time
         }
         RowLayout {
@@ -51,7 +51,9 @@ ColumnLayout {
             Repeater {
                 model: [{ what: backend.playing ? "True peak so far" : "True peak", unit: "dBTP",
                           v: backend.playing && l.meter.peakNow !== null ? l.meter.peakNow : l.info.meter.truePeak },
-                        { what: "Integrated (whole mix)", unit: "LUFS", v: l.info.meter.lufs }]
+                        backend.playing && l.meter.integratedNow != null
+                            ? { what: "Integrated so far", unit: "LUFS", v: l.meter.integratedNow }
+                            : { what: "Integrated (whole mix)", unit: "LUFS", v: l.info.meter.lufs }]
                 delegate: Column {
                     required property var modelData
                     Layout.fillWidth: true; Layout.preferredWidth: 1

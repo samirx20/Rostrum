@@ -2,10 +2,13 @@
 
     page instruments|timeline|mix | select <id> | time <s> | set <param> <json value>
     drag-note <id> <dt s> <d semitones> | drag-clip <id> <dt s> | drag-marker <id> <dt s> |
-    drag-section <id> <dt s> (it and everything inside: section.move)   (one gesture each)
+    drag-section <id> <dt s> (it and everything inside: section.move) | drag-tempo <id> <dt s> | drag-key <id> <dt s> |
+    drag-edge <section id> at|end <dt s>   (one gesture each)
+    song <start_bpm|add_tempo|set_key|add_key|add_section> [<value>] | song-open (the Song popup) |
+    picture-start <marker name|none> | picture-link <item id> | picture-pick (the project list, open)
     add-note <t s> <midi key> | delete | mute <track> | solo <track>
     arm <track> | record (start / stop, the real microphone) | record-fake <source.wav> (TEST SEAM: a WAV stands in
-    for the microphone; the take stays running for the shot)
+    for the microphone; the take stays running for the shot) | take-panel | take-set | midi-fake | keys (steps_record.py)
     undo | redo | play | render (wait for the newest render) | more | commands [query …] | run <command key> |
     wait <seconds>
     zoom <factor> | scroll <s> | fit | lane <track> <lane> | lane-point <track> <t> <v> [<t2> <v2>] | lane-delete |
@@ -24,6 +27,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject
 
+from .steps_record import WORDS as RECORD_WORDS, do_record_step
 from .steps_view import WORDS as VIEW_WORDS, do_view_step
 
 RENDER_WAIT_S = 120
@@ -100,8 +104,23 @@ def do_step(bridge, win, step, recorder=None):
         bridge.setValue(rest[0], value(" ".join(rest[1:])))
     elif word == "drag-note":
         drag(bridge, rest[0], float(rest[1]), int(rest[2]) if len(rest) > 2 else 0)
-    elif word in ("drag-clip", "drag-marker", "drag-section"):
+    elif word in ("drag-clip", "drag-marker", "drag-section", "drag-tempo", "drag-key"):
         drag(bridge, rest[0], float(rest[1]))
+    elif word == "drag-edge":                 # drag-edge <section id> at|end <dt s>
+        bridge.beginEdge(rest[0], rest[1])
+        for f in (0.5, 1.0):
+            bridge.dragBy(float(rest[2]) * f, 0, False)
+        bridge.endDrag()
+    elif word == "song":                      # song <start_bpm|add_tempo|set_key|add_key|add_section> [<value>]
+        bridge.songDo(rest[0], " ".join(rest[1:]))
+    elif word == "song-open":                 # the Song popup, open (for a screenshot)
+        QMetaObject.invokeMethod(win, "openSong")
+    elif word == "picture-link":              # picture-link <item id> (a 2D item's newest render)
+        bridge.linkPicture(rest[0])
+    elif word == "picture-pick":             # the corner's "From the project…" list, open (for a screenshot)
+        QMetaObject.invokeMethod(win, "openPicturePick")
+    elif word == "picture-start":            # picture-start <marker name>|none
+        bridge.setPictureStart("" if rest[0] == "none" else rest[0])
     elif word == "add-note":
         bridge.addNote(float(rest[0]), int(rest[1]))
     elif word == "delete":
@@ -118,6 +137,8 @@ def do_step(bridge, win, step, recorder=None):
         for _ in range(15):                     # let a second of levels arrive
             QCoreApplication.processEvents()
             time.sleep(0.1)
+    elif word in RECORD_WORDS:
+        do_record_step(recorder, word, rest)
     elif word in VIEW_WORDS:
         do_view_step(bridge, word, rest)
     elif word in MIX_WORDS:
