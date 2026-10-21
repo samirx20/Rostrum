@@ -66,7 +66,11 @@ pub struct Transport {
     count_in_total: usize,
     count_in_bars: u32,
     count_beat: usize,
+    /// The count-in's beat (frames): the song's beat where it starts.
+    count_beat_len: f64,
     click: Option<(usize, bool)>,
+    /// Calibrating: the calibration sweep (calib.rs) plays on each beat instead of the click.
+    chirp: bool,
     last_beat: i64,
     /// Armed: Some(punch).
     armed: Option<Option<(f64, f64)>>,
@@ -89,7 +93,7 @@ impl Transport {
     #[allow(clippy::too_many_arguments)]
     pub fn new(mix: Arc<Frames>, rate: u32, bpm: f64, per_bar: u32, inst: Option<(Instrument, Sender<Event>)>, cmds: Receiver<Cmd>, notes: Receiver<Event>, out: Sender<Out>) -> Transport {
         Transport {
-            mix, rate: rate as f64, pos: 0, playing: false, looped: None, metronome: false, beat: 60.0 / bpm.max(20.0) * rate as f64, beat_frames: vec![], per_bar: per_bar.max(1), count_in: 0, count_in_total: 0, count_in_bars: 0, count_beat: 0, click: None, last_beat: -1,
+            mix, rate: rate as f64, pos: 0, playing: false, looped: None, metronome: false, beat: 60.0 / bpm.max(20.0) * rate as f64, beat_frames: vec![], per_bar: per_bar.max(1), count_in: 0, count_in_total: 0, count_in_bars: 0, count_beat: 0, count_beat_len: 0.0, click: None, chirp: false, last_beat: -1,
             armed: None, held: vec![], inst, scratch: vec![], cmds, notes, out, blocks: Default::default(), hear: None,
         }
     }
@@ -97,6 +101,12 @@ impl Transport {
     /// Beat times (seconds) for a song whose tempo changes: the metronome clicks on them.
     pub fn with_beats(mut self, seconds: &[f64]) -> Transport {
         self.beat_frames = seconds.iter().map(|s| (s * self.rate).round() as usize).collect();
+        self
+    }
+
+    /// Calibrating: the sweep instead of the click.
+    pub fn with_chirp(mut self, on: bool) -> Transport {
+        self.chirp = on;
         self
     }
 
@@ -109,6 +119,22 @@ impl Transport {
     /// Which beat (from 0) a frame falls in.
     fn beat_of(&self, pos: f64) -> i64 {
         if self.beat_frames.is_empty() { (pos / self.beat).floor() as i64 } else { self.beat_frames.partition_point(|&f| f as f64 <= pos) as i64 - 1 }
+    }
+
+    /// The beat's length (frames) at a frame: the tempo map's beat that holds it (before the first
+    /// beat, the first; after the last, the last), else the fixed tempo. The count-in clicks at it.
+    fn beat_len_at(&self, pos: usize) -> f64 {
+        let b = &self.beat_frames;
+        if b.len() < 2 {
+            return self.beat;
+        }
+        let i = b.partition_point(|&f| f <= pos).clamp(1, b.len() - 1);
+        (b[i] - b[i - 1]) as f64
+    }
+
+    /// Frames of the click (or the calibration sweep).
+    fn click_len(&self) -> usize {
+        ((if self.chirp { crate::live::calib::CHIRP } else { CLICK }) * self.rate) as usize
     }
 
     fn t(&self) -> f64 {
@@ -142,7 +168,8 @@ impl Transport {
                     self.pos = 0;
                 }
                 self.last_beat = self.beat_of(self.pos as f64 - 0.5);
-                self.count_in = (self.count_in_bars as f64 * self.per_bar as f64 * self.beat).round() as usize;
+                self.count_beat_len = self.beat_len_at(self.pos);
+                self.count_in = (self.count_in_bars as f64 * self.per_bar as f64 * self.count_beat_len).round() as usize;
                 self.count_in_total = self.count_in;
                 self.count_beat = 0;
                 self.playing = self.count_in == 0;
@@ -187,6 +214,7 @@ impl Transport {
 
     fn click(&self, k: usize) -> f32 {
         match self.click {
+            Some((at, _)) if k >= at && self.chirp => crate::live::calib::chirp((k - at) as f64 / self.rate),
             Some((at, accent)) if k >= at => {
                 let t = (k - at) as f64 / self.rate;
                 let f = if accent { 1760.0 } else { 1320.0 };

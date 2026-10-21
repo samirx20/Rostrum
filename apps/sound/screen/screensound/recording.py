@@ -10,6 +10,7 @@ the take ends by itself past it. A microphone that cannot open is said loudly an
 """
 from __future__ import annotations
 
+import json
 import time
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from .playback import SCRATCH
 from .record_setup import RecordSetup
 from .take_clock import TakeClock
 
+BEATS_UNTIL = 3600.0             # beat times handed to the engine reach an hour into the song
 TAKES = SCRATCH / "takes"           # where the engine writes takes before they move to the project's media folder
 SETTLE_MS = 500                     # after stop: the engine's last take line arrives well within this
 
@@ -79,14 +81,18 @@ class Recording(QObject):
             self.armedChanged.emit()
 
     def configure(self, at=None):
-        """The player's set-up for what is armed: the microphone, the keyboard (keys_record.py), and the tempo the
-        count-in clicks at (the tempo at `at`, else at the playhead)."""
+        """The player's set-up for what is armed: the microphone, the keyboard (keys_record.py), and the song's
+        beats the metronome and count-in click on: its tempo, or, when the tempo changes, every beat's time from
+        the tempo map (tempo.beats, the one beat-to-seconds place), so a count-in anywhere clicks at that tempo."""
         opts = {}
         if self._armed:
             TAKES.mkdir(parents=True, exist_ok=True)
             root = self.bridge.doc.data
-            spb = tempo.beat_seconds(root, self.bridge.time if at is None else at)
-            opts = {"mic": str(TAKES), "bpm": round(60.0 / spb, 4), "beats": int(root.get("beatsPerBar", 4))}
+            opts = {"mic": str(TAKES), "bpm": round(tempo.start_bpm(root), 4), "beats": int(root.get("beatsPerBar", 4))}
+            if len(tempo.segments(root)) > 1:
+                beats = TAKES.parent / "beat-times.json"
+                beats.write_text(json.dumps(tempo.beats(root, BEATS_UNTIL)), encoding="utf-8")
+                opts.update(beat_times=str(beats), tempo=json.dumps(tempo.contract(root)))   # a new tempo reopens the player
             if self.keys is not None:
                 opts.update(self.keys.player_opts())
         self.player.configure(**opts)
