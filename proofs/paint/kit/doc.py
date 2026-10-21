@@ -320,8 +320,9 @@ class Doc:
         if sid not in self.s.info:
             raise KeyError(f"no stroke {sid} (undone, or never made)")
         b, i = self.s.info[sid]
-        return {**self.batches[b]["ops"][i], "id": sid, "bbox": list(self.s.covs[sid][0]), "batch": b,
-                "label": self.batches[b]["label"], "author": self.batches[b]["author"]}
+        bt = self.batches[b] if b < len(self.batches) else self._open  # may be the batch still open
+        return {**bt["ops"][i], "id": sid, "bbox": list(self.s.covs[sid][0]), "batch": b,
+                "label": bt["label"], "author": bt["author"]}
 
     def stroke_coverage(self, sid):
         self.stroke_info(sid)

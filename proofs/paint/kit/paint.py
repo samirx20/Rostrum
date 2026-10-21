@@ -6,6 +6,7 @@ Image commands write a PNG (default: the `_look/` folder beside the document), p
 (message on stderr, exit code 2) on bad arguments.
 """
 import argparse
+import json
 import os
 import sys
 
@@ -83,6 +84,8 @@ def run(a):
         sys.path.insert(0, os.path.dirname(os.path.abspath(a.script)))
         exec(code, scope)
         doc.save(a.doc)
+        if os.path.exists(a.doc + ".redo"):
+            os.remove(a.doc + ".redo")  # a new batch drops the redo
         new = doc.history()[before:]
         print(f"ran {a.script}: {len(new)} new batch(es); saved {os.path.abspath(a.doc)}")
         for e in new:
@@ -120,8 +123,17 @@ def run(a):
         print(history_text(doc))
     elif c in ("undo", "redo"):
         before = len(doc.history())
+        side = a.doc + ".redo"  # the undone batches wait here between commands, so `redo` works in a later run
+        if c == "redo" and os.path.exists(side):
+            with open(side, encoding="utf-8") as f:
+                doc._redo = json.load(f)
         getattr(doc, c)()
         doc.save(a.doc)
+        if doc._redo:
+            with open(side, "w", encoding="utf-8") as f:
+                json.dump(doc._redo, f)
+        elif os.path.exists(side):
+            os.remove(side)
         print(f"{c} done; {len(doc.history())} batch(es) now (was {before}); saved")
 
 
