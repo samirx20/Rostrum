@@ -10,9 +10,10 @@ from rostrum_core import Param
 
 from .. import names
 from . import effects
+from . import playing as PL
 from . import values as V
 
-IS = lambda name, value: {"is": [name, value]}  # noqa: E731
+IS = PL.IS
 
 
 def N(name, lo, hi, group, unit="", imp="primary", when=None, integer=False, label="", help=""):
@@ -21,16 +22,6 @@ def N(name, lo, hi, group, unit="", imp="primary", when=None, integer=False, lab
 
 
 PAN = dict(lo=-1, hi=1)
-INSTRUMENT = [
-    Param.choice("instrument", names.INSTRUMENTS, group="Instrument", label="Instrument",
-                 help="What plays the track's notes / hits; none = recorded clips only."),
-    Param.choice("builtIn", names.BUILT_INS, group="Instrument", label="Built-in", valid_when=IS("instrument", "builtIn")),
-    Param.text("sfz", group="Instrument", label="SFZ file", valid_when=IS("instrument", "sfz")),
-    Param.toggle("legato", group="Instrument", importance="secondary", valid_when=IS("instrument", "sfz")),
-    Param.toggle("swell", group="Instrument", importance="secondary", valid_when=IS("instrument", "sfz")),
-    Param.choice("kit", names.KITS, group="Instrument", label="Drum kit", valid_when=IS("instrument", "kit")),
-    Param.text("kitSfz", group="Instrument", label="SFZ drum kit", valid_when=IS("instrument", "kitSfz")),
-]
 FIELDS = {
     "doc": [
         N("tempo", 20, 400, "Time", "bpm"),
@@ -40,16 +31,18 @@ FIELDS = {
     ],
     "track": [
         Param.text("name", group="Track", importance="secondary"),
-        *INSTRUMENT,
+        *PL.INSTRUMENT,
         N("volume", 0, 4, "Mix", help="Fader gain (1 = as recorded)."), N("pan", **PAN, group="Mix"),
         Param.toggle("mute", group="Mix"), Param.toggle("solo", group="Mix"),
         N("reverb", 0, 1, "Mix", imp="secondary", help="Send to the master's track reverb."),
         Param.choice("tone", names.TONES, group="Mix", importance="secondary"),
+        *PL.EXPRESSION,
     ],
     "note": [
         V.pitch("pitch", group="Note", help='"D4", "F#3", "Bb2", a MIDI number, or a list (a chord).'),
         V.time("at", group="Note"), V.length("dur", group="Note", label="Length"),
         N("vel", 0, 1, "Note", label="Velocity"), N("pan", **PAN, group="Note", imp="secondary"),
+        *PL.NOTE,
     ],
     "hit": [
         V.drum("drum", group="Hit", help="A drum name or a GM key number."), V.time("at", group="Hit"),
@@ -87,7 +80,7 @@ FIELDS = {
 # What a new item stores (switch fields always, so valid_when reads a real value).
 DEFAULTS = {
     "doc": dict(tempo=120, beatsPerBar=4, sampleRate=48000),
-    "track": dict(instrument="none", volume=0.85, pan=0, mute=False, solo=False, reverb=0, tone="neutral"),
+    "track": dict(instrument="none", **PL.SWITCHES, volume=0.85, pan=0, mute=False, solo=False, reverb=0, tone="neutral"),
     "note": dict(vel=0.8),
     "hit": dict(vel=0.85),
     "clip": dict(**{"in": 0}, volume=1),
@@ -95,7 +88,8 @@ DEFAULTS = {
     "master": dict(volume=1, normalize=False, loudness=-16, truePeak=-1, glue=0, reverb="dry",
                    trackReverbSpace="hall", fadeIn=0, fadeOut=0, safetyClip=True),
 }
-INSTRUMENT_FIELD = {"builtIn": "builtIn", "sfz": "sfz", "kit": "kit", "kitSfz": "kitSfz"}
+# The field that holds each instrument form's value (the form's name).
+INSTRUMENT_FIELD = {k: k for k in names.INSTRUMENTS if k != "none"}
 REQUIRED = {"note": ["pitch", "at", "dur"], "hit": ["drum", "at"], "clip": ["media", "at"], "marker": ["name", "at"]}
 
 

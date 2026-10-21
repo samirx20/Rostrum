@@ -47,7 +47,8 @@ POINTS = V.listof("points", _point, {"type": "array", "minItems": 2, "maxItems":
                   help="[[time, value], …] in time order; an empty list removes the lane.")
 
 
-@REGISTRY.operation("automation.set", "Replace an automation lane's points (volume or pan over time).",
+@REGISTRY.operation("automation.set", "Replace an automation lane's points: volume or pan over time, "
+                    "or a track's expression (dynamics 0 … 2, vibrato 0 … 1, like CC 11 / CC 1).",
                     target=("track", "master"), label="Automate", params=[
                         Param.choice("lane", names.TRACK_LANES, required=True, label="Value"), POINTS])
 def automation_set(ctx, targets, args):

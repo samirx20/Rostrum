@@ -8,6 +8,12 @@
     v = track("door"); v.clip(r"C:\\...\\door.wav", at=3.0, in_=0.42, length=1.2).effect("eq", bands=[...])
     s.effect("reverb", space="hall", mix=0.3); s.automate("volume", [(0, 0.2), ("#drop", 0.9)])
     master(loudness=-16); master.effect("limiter", ceiling=-1)
+    g = track("gtr", model="guitar", position=0.2); pad = track("pad", synth="saw", attack=1.2, brightness=1800)
+    s.set(legato=True, articulations={"spic": r"C:\\...\\spic.sfz"}); s.note("D4", 0, 1, art="spic")
+    s.note("A4", at=bar(2), dur=beats(4), dynamics=[(0, 0.6), (1, 1.0)], vibrato={"rate": 5, "depth": 20})
+    s.dynamics([(0, 0.5), ("#drop", 1.2)]); s.vibrato([(0, 0), (bar(3), 0.6)], rate=5.5, depth=25)
+    s.humanize(seed=1, timing=0.012, velocity=0.06); s.phrase(bar(1), bar(5), vel=[(0, 0.5), (1, 0.9)])
+    f = vel_curve([(0, 0.5), (1, 0.9)], bar(1), bar(5)); s.note("D3", at=beat(2), dur=1, vel=f(beat(2)) + 0.1)
 
 A script error is a loud BAD_ARGUMENT naming the script and line; nothing is merged.
 """
@@ -18,13 +24,14 @@ import sys
 from rostrum_core import RostrumError, codes
 from rostrum_core.merge import check_output
 
+from . import expression as EX
 from .builder import Song
 from .doc import KIND
 
 SAFE_BUILTINS = {f.__name__: f for f in (range, len, min, max, abs, round, enumerate, zip, list, dict, tuple,
                                           float, int, str, sorted, sum, reversed)}
 API = ["tempo(bpm)", "length(time)", "beats_per_bar(n)", "sample_rate(hz)", "track(id, **fields)",
-       "marker(name, at)", "master(**fields)", "beat(n)", "beats(n)", "bar(n)"]
+       "marker(name, at)", "master(**fields)", "beat(n)", "beats(n)", "bar(n)", "vel_curve(points, start, end)"]
 
 
 def scope(song: Song) -> dict:
@@ -33,13 +40,19 @@ def scope(song: Song) -> dict:
         if n < 1:
             raise ValueError("bars count from 1")
         return {"beat": (n - 1) * song.root.get("beatsPerBar", 4)}
+
+    def vel_curve(points, start, end):
+        """f(time) -> the velocity a phrase curve gives at that time (for accents on top of a phrase)."""
+        ph = EX.phrase(start, end, points, "vel_curve")
+
+        return lambda t: ph.velocity(t, {**song.root, "markers": song.markers}, "vel_curve", hold=True)
     return {
         "tempo": lambda bpm: song.set(tempo=bpm),
         "length": lambda t: song.set(length=t),
         "beats_per_bar": lambda n: song.set(beatsPerBar=n),
         "sample_rate": lambda hz: song.set(sampleRate=hz),
         "track": song.track, "marker": song.marker, "master": song.master,
-        "beat": lambda n: {"beat": n}, "beats": lambda n: {"beats": n}, "bar": bar,
+        "beat": lambda n: {"beat": n}, "beats": lambda n: {"beats": n}, "bar": bar, "vel_curve": vel_curve,
     }
 
 

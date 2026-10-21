@@ -16,6 +16,35 @@ s.automate("volume", [(0, 0.2), ("#drop", 0.9)])
 master(loudness=-16); master.effect("limiter", ceiling=-1)
 ```
 
+## Playing: instruments, articulations, expression
+
+```python
+g = track("gtr", model="guitar", position=0.2, damping=0.3)   # guitar, nylonGuitar, marimba, vibraphone,
+                                                              # glockenspiel, tubularBell, violin
+pad = track("pad", synth="saw", attack=1.2, brightness=1800)  # saw, square, triangle, sine (+ release, voices …)
+vln = track("vln", sfz=r"C:\...\ViolinSus.sfz", legato=True, swell=True,
+            articulations={"spiccato": r"C:\...\ViolinSpic.sfz", "tremolo": r"C:\...\ViolinTrem.sfz"})
+vln.note("D5", at=bar(3), dur=beats(4), dynamics=[(0, 0.6), (1, 1.0)], vibrato={"rate": 5, "depth": 20, "delay": 0.3})
+vln.note("A4", at=beat(2), dur=beats(0.5), art="spiccato")    # a named articulation; none = the main file
+g.note("E3", at=0, dur=1, position=0.4, bend=[(0, -100), (0.08, 0)])   # this note's touch; a scoop up
+vln.dynamics([(bar(13), 0.5), (bar(17), 1.3)])     # CC 11 over the track (0 … 2, multiplies every note)
+vln.vibrato([(0, 0), (bar(3), 0.6)], rate=5.5, depth=25)   # mod wheel 0 … 1 (1 = depth cents at rate Hz)
+vln.phrase(bar(5), bar(9), vel=[(0, 0.5), (1, 0.9)])  # velocity along the phrase, for notes that wrote no vel
+f = vel_curve([(0, 0.5), (1, 0.9)], bar(5), bar(9)); vln.note("D4", at=bar(6), dur=1, vel=f(bar(6)) + 0.15)
+vln.humanize(seed=3, timing=0.012, velocity=0.06)   # every note / hit on the track, ±12 ms, ±0.06
+```
+
+- `legato`: overlapping notes glide as one line (write each note slightly longer than its gap). `swell`: long
+  notes swell in. Both are per track, sampled tracks only.
+- Touch fields (`position`, `damping`, `hardness`) are a model track's defaults; a note may override them.
+  `damping` is plucked strings only; `position` / `hardness` not for violin. Wrong ones fail with the reason.
+- `humanize` and `phrase` write plain numbers into the notes when the script runs. Offsets come from the seed and
+  each note's id (made from its written time), so a re-run gives the same values and keeps a person's edit;
+  another seed gives another draw. The `dynamics` / `vibrato` lanes are the same `automation.set` operation as
+  volume / pan (lane `dynamics` / `vibrato`).
+
+## Notes
+
 - Times: seconds (`2.5`), `beat(n)` (from the start, 0-based), `bar(n)` (1-based), or a marker (`"#drop"`).
   Lengths: seconds or `beats(n)`.
 - Pitches: `"C4"` = MIDI 60, `"F#3"`, `"Bb2"`, or a MIDI number.
