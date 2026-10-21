@@ -33,10 +33,14 @@ def band_levels(wav, sr_to: int | None = None):
     return 10 * np.log10(bank @ (amp ** 2) / 2 + 1e-12), sr
 
 
+def loudest(stems: dict, n: int = MAX_STEMS) -> list:
+    """The `n` loudest stems' tracks (whole-file RMS), loudest first: what the clash finder reads when none are picked."""
+    rms = {t: float(np.sqrt(np.mean(np.square(mono(load(w)[0]))))) for t, w in stems.items()}
+    return sorted(rms, key=rms.get, reverse=True)[:n]
+
+
 def stem_levels(stems: dict):
     """({track: band levels}, seconds per frame), every stem at the first one's sample rate and cut to the shortest length."""
-    if len(stems) > MAX_STEMS:
-        raise ValueError(f"{len(stems)} stems: the clash finder reads up to {MAX_STEMS}; pass `tracks` to pick")
     out, sr = {}, None
     for tid, wav in stems.items():
         out[tid], sr = band_levels(wav, sr)

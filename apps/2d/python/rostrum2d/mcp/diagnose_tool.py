@@ -19,7 +19,7 @@ def inspect_diagnose(ctx, args):
     outside the layer's time, under an expression or auto layout, or all one value). Read-only. An empty list = nothing
     found; it does not judge how the piece looks (look_frame, look_sheet and look_motion do the seeing)."""
     from .. import diagnose, diagnose_engine      # here: diagnose reads mcp/geometry.py, which this package imports
-    doc, comp = doc_and_comp(ctx, args)
+    doc, comp = doc_and_comp(ctx, args, as_written=True)   # diagnose times it itself and reports a missing marker
     times = markers.times(doc.folder) if doc.folder else None
     found = (diagnose_engine.everything(doc.data, comp["id"], doc.folder, times) if args.get("engine", True)
              else diagnose.problems(comp, doc.folder, times))

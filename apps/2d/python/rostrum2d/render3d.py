@@ -161,19 +161,13 @@ def picture(exr: Path, w: int, h: int, fit: str) -> Path:
     return out
 
 
-def node(node: dict, item: dict, fps: float, folder, markers: dict | None) -> dict:
+def node(node: dict, item: dict, fps: float, folder) -> dict:
     """The scene node: the engine's `video` layer over the render's frames, resampled to the comp's fps."""
     r = find(item, folder)
     props = dict(node["props"])
     w, h, fit = int(props["w"]), int(props["h"]), props.get("fit", "cover")
     if w < 2 or h < 2:
         raise RostrumError(codes.BAD_ARGUMENT, f'{item["id"]}.w', f"{w}×{h}", "must be at least 2 px each way")
-    mark = props.pop("marker", "")
-    if mark:
-        if markers is None or mark not in markers:
-            raise RostrumError(codes.NOT_FOUND, f'{item["id"]}.marker', f'marker "{mark}"', "is not in the project",
-                               hint=f'Markers: {", ".join(sorted(markers or {})) or "none"}.')
-        props["start"] = markers[mark]
     for k in ("item", "version"):
         props.pop(k, None)
     pngs = [picture(Path(r["path"]) / f, w, h, fit) for f in r["exrs"]]
