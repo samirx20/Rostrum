@@ -55,6 +55,20 @@ Item {
                     }
                 }
             }
+            Canvas {      // a clip's fades: the corner each one takes off is shaded
+                id: fades
+                readonly property real fi: b.isClip ? Math.min(width, lane.ruler.wOf(b.modelData.fadeIn || 0)) : 0
+                readonly property real fo: b.isClip ? Math.min(width, lane.ruler.wOf(b.modelData.fadeOut || 0)) : 0
+                visible: fi > 0 || fo > 0
+                anchors.fill: parent
+                onFiChanged: requestPaint(); onFoChanged: requestPaint()
+                onWidthChanged: requestPaint(); onHeightChanged: requestPaint()
+                onPaint: {
+                    var c = getContext("2d"); c.reset(); c.fillStyle = "rgba(0, 0, 0, 0.4)"
+                    if (fi > 0) { c.beginPath(); c.moveTo(0, 0); c.lineTo(fi, 0); c.lineTo(0, height); c.closePath(); c.fill() }
+                    if (fo > 0) { c.beginPath(); c.moveTo(width, 0); c.lineTo(width - fo, 0); c.lineTo(width, height); c.closePath(); c.fill() }
+                }
+            }
             Text {
                 id: label
                 visible: b.isClip && lane.height >= 30

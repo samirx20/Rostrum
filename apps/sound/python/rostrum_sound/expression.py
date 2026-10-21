@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from rostrum_core import RostrumError, codes
 
 from .doc import times
+from .doc.shift import write_like
 
 
 def curve_at(points, x: float) -> float:
@@ -40,15 +41,7 @@ def draw(seed, key: str, n: int = 2) -> list[float]:
 
 def shift(at, dt: float, root: dict, where: str):
     """`at` moved by dt seconds, kept in its own form (seconds, beats or a marker reference); never before 0."""
-    dt = max(dt, -times.seconds(at, root, where))
-    if isinstance(at, dict):
-        return {"beat": round(at["beat"] + dt * times.bpm(root) / 60.0, 6)}
-    name = times.marker_ref(at)
-    if name is None:
-        return round(at + dt, 6)
-    m = times.REF.match(at)
-    off = float(m.group(3) or 0) * (-1 if m.group(2) == "-" else 1) + dt
-    return f"#{name}{'-' if off < 0 else '+'}{f'{abs(off):.6f}'.rstrip('0').rstrip('.')}"
+    return write_like(at, max(0.0, times.seconds(at, root, where) + dt), root)
 
 
 @dataclass

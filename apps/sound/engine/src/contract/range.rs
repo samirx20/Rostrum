@@ -9,8 +9,13 @@ use super::read::Obj;
 use serde_json::{json, Value};
 
 pub fn range(v: &Value, at: &str) -> Result<Value, Error> {
+    if v.get("plugin").is_some() {
+        let (_, resolved) = super::instrument::read(Some(v), at, &super::time::Tempo::read(None, at)?.0)?;
+        return Ok(json!({ "instrument": resolved, "low": name(0), "high": name(127), "lowKey": 0, "highKey": 127, "gaps": [], "layers": 1,
+                          "drums": [], "note": "a plugin: it is sent any MIDI key; which keys sound is the plugin's own" }));
+    }
     if v.get("model").is_some() || v.get("synth").is_some() {
-        let (_, resolved) = super::instrument::read(Some(v), at)?;
+        let (_, resolved) = super::instrument::read(Some(v), at, &super::time::Tempo::read(None, at)?.0)?;
         return Ok(json!({ "instrument": resolved, "low": name(21), "high": name(108), "lowKey": 21, "highKey": 108, "gaps": [], "layers": 1,
                           "drums": [], "note": "procedural / synthesized: plays any key; the piano's range is shown" }));
     }

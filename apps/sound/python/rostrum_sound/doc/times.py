@@ -3,14 +3,17 @@
 A time is seconds (a number), `{"beat": n}` (beats from the start), or a marker reference `"#drop"`,
 `"#drop+0.5"`, `"#drop-1"` (seconds after / before the marker named "drop"; a trailing "-<number>" is always
 an offset, so "#big-hit-1" is one second before "big-hit"). A length is seconds or
-`{"beats": n}`. Marker references are resolved here (the engine never sees them); beats are left to the
-engine's tempo map, except where seconds are needed (ids, order checks, marker references).
+`{"beats": n}` (beats from where the thing starts). Marker references are resolved here (the engine never sees
+them); beats are left to the engine, which gets the same tempo map (`tempo.py`, the one place beats become
+seconds), except where seconds are needed here (ids, order checks, marker references, the screen).
 """
 from __future__ import annotations
 
 import re
 
 from rostrum_core.errors import RostrumError, codes
+
+from . import tempo
 
 REF = re.compile(r"^#([A-Za-z0-9_.\-]+?)\s*(?:([+-])\s*(\d+(?:\.\d+)?))?$")
 
@@ -48,10 +51,6 @@ def markers(root: dict) -> dict:
     return {m.get("name", m["id"]): m for m in root.get("markers", [])}
 
 
-def bpm(root: dict) -> float:
-    return float(root.get("tempo", 120))
-
-
 def resolve(value, root: dict, where: str, seen=()):
     """The time with marker references made seconds; seconds and beats are kept as written."""
     name = marker_ref(value)
@@ -71,14 +70,17 @@ def resolve(value, root: dict, where: str, seen=()):
 
 
 def seconds(value, root: dict, where: str, seen=()) -> float:
-    """Any time as seconds (beats through the document's tempo)."""
+    """Any time as seconds (beats through the tempo map)."""
     value = resolve(value, root, where, seen)
     if isinstance(value, dict):
-        return float(value["beat"]) * 60.0 / bpm(root)
+        return tempo.seconds_at(root, float(value["beat"]))
     return float(value)
 
 
-def length_seconds(value, root: dict) -> float:
+def length_seconds(value, root: dict, start: float = 0.0) -> float:
+    """A length as seconds, for a thing starting at `start` seconds (beats through the tempo map from there)."""
     if isinstance(value, dict):
-        return float(value["beats"]) * 60.0 / bpm(root)
+        b = tempo.beat_at(root, start)
+        return tempo.seconds_at(root, b + float(value["beats"])) - start
     return float(value)
+

@@ -1,7 +1,7 @@
 """The Sound script layer for `run_script`: Python source -> the document tree it describes.
 
     tempo(96); length(bar(9)); beats_per_bar(4)
-    marker("drop", at=bar(5))
+    marker("drop", at=bar(5)); tempo_change(bar(5), 132); key("D minor"); section("verse", bar(1), bar(5))
     s = track("strings", sfz=r"C:\\...\\Violins.sfz", volume=0.8)      # instrument inferred from sfz= / builtIn= / kit=
     s.note("D4", at=beat(0), dur=beats(4), vel=0.7); s.chord(["D3", "A3", "F4"], at="#drop", dur=beats(2))
     d = track("drums", kit="synth"); d.hit("kick", at=beat(0)); d.hit("snare", at="#drop+0.5")
@@ -31,7 +31,8 @@ from .doc import KIND
 SAFE_BUILTINS = {f.__name__: f for f in (range, len, min, max, abs, round, enumerate, zip, list, dict, tuple,
                                           float, int, str, sorted, sum, reversed)}
 API = ["tempo(bpm)", "length(time)", "beats_per_bar(n)", "sample_rate(hz)", "track(id, **fields)",
-       "marker(name, at)", "master(**fields)", "beat(n)", "beats(n)", "bar(n)", "vel_curve(points, start, end)"]
+       "marker(name, at)", "tempo_change(at, bpm)", "key(key, at)", "section(name, at, end)", "import_midi(path)",
+       "master(**fields)", "beat(n)", "beats(n)", "bar(n)", "vel_curve(points, start, end)"]
 
 
 def scope(song: Song) -> dict:
@@ -52,6 +53,7 @@ def scope(song: Song) -> dict:
         "beats_per_bar": lambda n: song.set(beatsPerBar=n),
         "sample_rate": lambda hz: song.set(sampleRate=hz),
         "track": song.track, "marker": song.marker, "master": song.master,
+        "tempo_change": song.tempo_change, "key": song.key, "section": song.section, "import_midi": song.import_midi,
         "beat": lambda n: {"beat": n}, "beats": lambda n: {"beats": n}, "bar": bar, "vel_curve": vel_curve,
     }
 

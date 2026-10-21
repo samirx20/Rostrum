@@ -1,5 +1,6 @@
 //! Insert effects: read against names.rs EFFECTS (closed list of types and fields, defaults filled), written
-//! as the engine's job form (schedule/effect.rs). Envelope times go through the tempo map.
+//! as the engine's job form (schedule/effect.rs; `job` turns a plugin into it). Envelope times go through
+//! the tempo map.
 
 use super::error::Error;
 use super::names::{self, Def, Field, Kind};
@@ -19,6 +20,9 @@ pub fn list(v: Option<&Value>, at: &str, tempo: &Tempo) -> Result<Vec<Value>, Er
 fn effect(v: &Value, at: &str, tempo: &Tempo) -> Result<Value, Error> {
     let mut o = Obj::new(v, at)?;
     let kind = o.name("type", &names::effect_names(), None)?;
+    if kind == "plugin" {
+        return super::plugin::read(o, tempo, Some("effect")).map(|p| Value::Object(p.resolved));
+    }
     let fields = names::EFFECTS.iter().find(|(n, _)| *n == kind).map(|(_, f)| *f).unwrap_or(&[]);
     if kind == "eq" {
         let tempo_ref = tempo;
@@ -40,6 +44,15 @@ fn effect(v: &Value, at: &str, tempo: &Tempo) -> Result<Value, Error> {
         }
     }
     Ok(Value::Object(out))
+}
+
+/// A resolved list as the job reads it: the same, but a plugin as `{"type": "plugin", "plugin": PluginSpec}`,
+/// its envelopes read from song second `at` (where what it processes starts: 0 for a track, a clip's start).
+pub fn job(fx: &[Value], at: f64) -> Vec<Value> {
+    fx.iter().map(|e| match e.as_object() {
+        Some(m) if m.get("type").and_then(Value::as_str) == Some("plugin") => json!({ "type": "plugin", "plugin": super::plugin::spec(m, at) }),
+        _ => e.clone(),
+    }).collect()
 }
 
 /// An object made only of `fields` (an EQ band).

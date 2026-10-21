@@ -8,9 +8,10 @@ from rostrum_core import RostrumError, codes
 
 from . import timing
 
-MOVABLE = ("note", "hit", "clip", "line", "marker")
+MOVABLE = ("note", "hit", "clip", "line", "marker", "section")
 REMOVABLE = ("note", "hit", "clip", "line", "marker", "track", "effect", "automation", "bus", "send", "duck")
-LABELS = {"note": "Move note", "hit": "Move drum hit", "clip": "Move clip", "line": "Move line", "marker": "Move marker"}
+LABELS = {"note": "Move note", "hit": "Move drum hit", "clip": "Move clip", "line": "Move line", "marker": "Move marker",
+          "section": "Move section"}
 
 
 def grab(doc, item_id) -> dict:
@@ -26,10 +27,24 @@ def grab(doc, item_id) -> dict:
 def drag_calls(doc, g: dict, dt: float, dsemi: int = 0, free: bool = False) -> list[dict]:
     """The calls for a drag `dt` seconds (and `dsemi` semitones, notes only) from where it started."""
     root = doc.data
+    if g["type"] == "section":
+        return section_calls(doc, g, dt, free)
     args = {"at": timing.write_time(g["at"], timing.snap(g["t"] + dt, root, free), root)}
     if g["type"] == "note" and dsemi:
         args["pitch"] = timing.shift_pitch(g["pitch"], int(dsemi))
     return [{"op": f"{g['type']}.set", "target": [g["id"]], "args": args}]
+
+
+def section_calls(doc, g: dict, dt: float, free: bool = False) -> list[dict]:
+    """A section dragged: one `section.move` (it and everything inside), by what is left to go from where it is
+    now (a drag previews on top of itself), in beats when the section is written in beats."""
+    root = doc.data
+    at = doc.item(g["id"])["at"]
+    now, to = timing.sec(at, root, g["id"]), timing.snap(g["t"] + dt, root, free)
+    by = {"beats": round(timing.beat(to, root) - timing.beat(now, root), 4)} if isinstance(at, dict)         else round(to - now, 4)
+    if abs(by["beats"] if isinstance(by, dict) else by) < 1e-6:
+        return []
+    return [{"op": "section.move", "target": [g["id"]], "args": {"by": by}}]
 
 
 def add_note_call(doc, track_id, t: float, key: int, free: bool = False) -> dict:
@@ -40,9 +55,9 @@ def add_note_call(doc, track_id, t: float, key: int, free: bool = False) -> dict
     at = timing.snap(t, root, free)
     pitch = key if first is not None and isinstance(first["pitch"], int) else timing.name(key)
     if secs:
-        args = {"at": round(at, 4), "dur": round(timing.spb(root), 4)}
+        args = {"at": round(at, 4), "dur": round(timing.spb(root, at), 4)}
     else:
-        args = {"at": {"beat": round(at / timing.spb(root), 4)}, "dur": {"beats": 1}}
+        args = {"at": {"beat": round(timing.beat(at, root), 4)}, "dur": {"beats": 1}}
     return {"op": "note.add", "target": [track_id], "args": {"pitch": pitch, **args}}
 
 

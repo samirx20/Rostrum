@@ -1,5 +1,5 @@
-//! A contract track: instrument, notes, hits, recorded clips, fader, inserts, automation and ducks, read
-//! strictly (read.rs) and written as the engine's job track (schedule/mod.rs Track, Clip, Voice).
+//! A contract track: instrument, notes, hits, recorded clips (clip.rs), fader, inserts, automation and ducks,
+//! read strictly (read.rs) and written as the engine's job track (schedule/mod.rs Track, Clip, Voice).
 
 use super::error::Error;
 use super::instrument::{self, Inst};
@@ -7,7 +7,7 @@ use super::names::{self, SYNTH_DRUMS, TONES};
 use super::pitch;
 use super::read::{Obj, number};
 use super::time::Tempo;
-use super::{buses, designed, effects, expression, media};
+use super::{buses, clip, designed, effects, expression};
 use serde_json::{json, Map, Value};
 
 pub struct Track {
@@ -43,7 +43,7 @@ pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String], bus_ids
     let mut o = Obj::new(v, at)?;
     let id = o.str("id", None)?;
     let inst_at = o.at("instrument");
-    let (inst, inst_resolved) = instrument::read(o.raw("instrument"), &inst_at)?;
+    let (inst, inst_resolved) = instrument::read(o.raw("instrument"), &inst_at, tempo)?;
     o.put("instrument", inst_resolved);
     let volume = o.num("volume", 0.0, 4.0, Some(0.85))?;
     let pan = o.num("pan", -1.0, 1.0, Some(0.0))?;
@@ -80,6 +80,9 @@ pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String], bus_ids
         let mut voice = json!({ "kind": "note", "freqs": freqs, "startIdx": sri(at_s), "duration": dur, "velocity": vel, "pan": npan });
         inst.note(&mut no, &mut voice)?;
         if let Some(e) = expression::note(&mut no, &lanes, at_s, dur)? {
+            if matches!(inst, Inst::Plugin(_)) {
+                return Err(Error::new("BAD_ARGUMENT", &no.path, "this note's expression", "is not sent to a plugin instrument (it is sent notes only)").hint("Leave out dynamics, vibrato, bend and the track's expression lanes, or set the plugin's own parameters."));
+            }
             voice["expression"] = e;
         }
         end = end.max(at_s + dur);
@@ -96,7 +99,7 @@ pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String], bus_ids
     o.put("hits", json!(hits));
     let mut clips = vec![];
     let clip_list = o.list("clips", |c, p| {
-        let (resolved, job, t) = clip(c, &p, tempo, sr)?;
+        let (resolved, job, t) = clip::read(c, &p, tempo, sr)?;
         end = end.max(t);
         clips.push(job);
         Ok(resolved)
@@ -111,7 +114,7 @@ pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String], bus_ids
     o.put("sounds", json!(sound_list));
     let resolved = Value::Object(o.done()?);
     let head = json!({ "name": id, "tone": tone, "volume": volume, "pan": pan, "reverb": reverb, "mix": !mute,
-        "ducks": ducks.into_iter().map(|d| d.1).collect::<Vec<_>>(), "effects": fx, "automation": auto,
+        "ducks": ducks.into_iter().map(|d| d.1).collect::<Vec<_>>(), "effects": effects::job(&fx, 0.0), "automation": auto,
         "output": output, "sends": sends });
     Ok(Track { resolved, end, head, voices, clips })
 }
@@ -159,33 +162,6 @@ fn hit(v: &Value, at: &str, inst: &Inst, tempo: &Tempo, sr: u32) -> Result<(Valu
         _ => return Err(Error::new("BAD_ARGUMENT", at, "a hit", "needs a drum kit on its track").hint("Give the track {\"kit\": \"synth\"} or {\"kitSfz\": …}.")),
     };
     Ok((Value::Object(o.done()?), voice, t))
-}
-
-/// A recorded clip; returns (resolved, job clip, where it ends).
-fn clip(v: &Value, at: &str, tempo: &Tempo, sr: u32) -> Result<(Value, Value, f64), Error> {
-    let mut o = Obj::new(v, at)?;
-    let path = o.str("media", None)?;
-    let start = o.num("in", 0.0, 86400.0, Some(0.0))?;
-    let t = tempo.time(o.required("at")?, &o.at("at"))?;
-    o.put("at", json!(t));
-    let length = match o.raw("length") { Some(l) => Some(tempo.length(l, &o.at("length"), t)?), None => None };
-    let volume = o.num("volume", 0.0, 4.0, Some(1.0))?;
-    let semis = o.num("pitch", -24.0, 24.0, Some(0.0))?;
-    let pan = o.num("pan", -1.0, 1.0, Some(0.0))?;
-    let pan_to = o.num("panTo", -1.0, 1.0, Some(pan))?;
-    let fade_in = o.num("fadeIn", 0.0, 600.0, Some(0.0))?;
-    let fade_out = o.num("fadeOut", 0.0, 600.0, Some(0.0))?;
-    let reverb = o.num("reverb", 0.0, 1.0, Some(0.0))?;
-    let fx_at = o.at("effects");
-    let fx = effects::list(o.raw("effects"), &fx_at, tempo)?;
-    o.put("effects", json!(fx));
-    let slice = media::slice(&path, sr, start, length, &o.at("media"))?;
-    o.put("length", json!(slice.seconds));
-    let dur = slice.seconds / 2f64.powf(semis / 12.0);
-    let content = json!({ "kind": "sample", "pcm": slice.pcm, "duration": dur, "volume": 1.0, "pitch": semis, "panFrom": pan, "panTo": pan_to });
-    let samples = ((dur * sr as f64).ceil() as usize).max(16);
-    let job = clip_job(content, (t * sr as f64).round() as usize, samples, dur, volume, fade_in, fade_out, reverb, fx);
-    Ok((Value::Object(o.done()?), job, t + dur))
 }
 
 #[allow(clippy::too_many_arguments)]

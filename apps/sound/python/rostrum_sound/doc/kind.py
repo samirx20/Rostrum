@@ -6,6 +6,7 @@ a fresh document, and the whole-document check.
       buses[]    bus: effects[] automation[]   (a track's `output` and a send's `bus` name a bus id)
       markers[]  marker: name, at
       master[]   the one master (id "master"): effects[] automation[]
+      tempos[]   tempo: at, bpm (the tempo map with doc tempo: tempo.py)   keys[]  key: at, key   sections[]  section: name, at, end
 """
 from __future__ import annotations
 
@@ -13,13 +14,13 @@ from rostrum_core import DocKind
 
 from .. import names
 from . import fields as FD
-from . import ops_buses, ops_mix, ops_timed, ops_tracks, ops_voice  # noqa: F401  (they register the operations)
+from . import ops_buses, ops_mix, ops_music, ops_timed, ops_tracks, ops_voice  # noqa: F401  (they register the operations)
 from .check import check
 from .registry import LISTS, MASTER_ID, REGISTRY
 
 
 def blank() -> dict:
-    return {"id": "root", "type": "doc", **FD.DEFAULTS["doc"], "tracks": [], "buses": [], "markers": [],
+    return {"id": "root", "type": "doc", **FD.DEFAULTS["doc"], "tracks": [], "buses": [], "markers": [], "tempos": [], "keys": [], "sections": [],
             "master": [{"id": MASTER_ID, "type": "master", **FD.DEFAULTS["master"], "effects": [], "automation": []}]}
 
 

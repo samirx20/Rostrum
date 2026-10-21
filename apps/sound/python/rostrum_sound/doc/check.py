@@ -11,12 +11,13 @@ from . import effects as FX
 from . import fields_design as FDS
 from . import check_mix
 from . import playing as PL
+from . import sections
 from . import times
 from .registry import LISTS
 
 TRACK_ID = re.compile(r"^[A-Za-z0-9_.\-]{1,64}$")
 LANE_RANGE = {"volume": (0, 4), "pan": (-1, 1), "level": (0, 4), "dynamics": (0, 2), "vibrato": (0, 1)}
-NEEDS = {"notes": ("builtIn", "sfz", "model", "synth"), "hits": ("kit", "kitSfz"), "lines": ("voice",)}
+NEEDS = {"notes": ("builtIn", "sfz", "model", "synth", "plugin"), "hits": ("kit", "kitSfz", "plugin"), "lines": ("voice",)}
 STRING_POSITION = 0.03   # plucked strings are not plucked on the bridge itself (contract § 2a)
 
 
@@ -100,6 +101,7 @@ def check(data: dict) -> list[str]:
     marks = [m.get("name") for m in data.get("markers", [])]
     out += [f"two markers are named {n!r}" for n in set(marks) if marks.count(n) > 1]
     out += check_mix.problems(data)
+    out += sections.problems(data)
     for track in data.get("tracks", []):
         if not TRACK_ID.match(track["id"]):
             out.append(f"track id {track['id']!r} must be 1–64 letters, digits, _ . -")

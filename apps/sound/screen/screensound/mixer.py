@@ -10,8 +10,9 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
-from . import strips
+from . import playback, strips
 from .listen_pics import ListenPics
+from .plugins import PluginHub
 
 ROLES = ("id", "name", "volume", "pan", "mute", "solo", "effects", "meter", "canSolo", "output", "outputId", "outputs",
          "sends", "sendTargets")
@@ -29,12 +30,18 @@ class MixPage(QObject):
         self._master_layout = strips.master_layout(self.doc.kind.registry.field_op("master"))
         self._master: dict = {}
         self.pics = ListenPics(bridge, pics_folder, self)
+        self._plugins = PluginHub(bridge, playback.open_engine, self)
         self._refresh()
         bridge.docChanged.connect(self._refresh)
         bridge.renderChanged.connect(self._refresh)
 
     def close(self):
         self.pics.close()
+        self._plugins.close()
+
+    @Property(QObject, constant=True)
+    def plugins(self):
+        return self._plugins
 
     @Property(QObject, constant=True)
     def tracks(self):
@@ -58,7 +65,8 @@ class MixPage(QObject):
 
     @Property("QVariantList", constant=True)
     def effectTypes(self):
-        return list(self.doc.kind.registry.get("effect.add").param("effect").options)
+        """The built-in effect types; a plug-in is chosen from the scan (`plugins`), not from this list."""
+        return [t for t in self.doc.kind.registry.get("effect.add").param("effect").options if t != "plugin"]
 
     @Slot(str, str, result=bool)
     def addEffect(self, item_id, effect_type):

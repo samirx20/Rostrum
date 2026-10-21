@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls as QQC
 import RostrumKit
 
 // One instrument card: the track's name, what it is in plain words, and the generic inspector rows of its
@@ -8,7 +9,8 @@ Rectangle {
     id: card
     required property var model          // roles: id, name, what, controls, moreOpen
     readonly property bool selected: backend.selected === model.id
-    implicitHeight: head.height + list.height + (voice.visible ? voice.height + Theme.gap : 0) + Theme.pad
+    implicitHeight: head.height + list.height + (voice.visible ? voice.height + Theme.gap : 0)
+                    + (plug.visible ? plug.height + Theme.gap : 0) + Theme.pad
     color: Theme.app
     radius: Theme.radiusPanel
     border.width: selected ? 1 : 0; border.color: Theme.accent
@@ -41,6 +43,33 @@ Rectangle {
         Repeater {
             model: card.model.controls
             delegate: InspectorRow { bridge: proxy }
+        }
+    }
+    Column {   // a plug-in instrument: its settings once chosen, and the choice from the scanned plug-ins
+        id: plug
+        visible: card.model.isPlugin
+        x: Theme.pad; y: head.height + list.height + Theme.pad; width: parent.width - 2 * Theme.pad
+        spacing: Theme.gap
+        PluginSettings {
+            id: plugSettings
+            ownerId: card.model.id
+            visible: info.chosen; height: visible ? implicitHeight : 0
+        }
+        Button {
+            text: plugSettings.info.chosen ? "Change plug-in…" : "Choose plug-in…"; kind: "ghost"
+            onClicked: { mixer.plugins.scan(); instMenu.open() }
+        }
+    }
+    QQC.Popup {
+        id: instMenu
+        parent: plug
+        y: plug.height + 2
+        width: 220; padding: Theme.grid
+        background: Rectangle { color: Theme.raised; radius: Theme.radiusCtl; border.color: Theme.popupEdge }
+        contentItem: PluginList {
+            width: instMenu.width - 2 * Theme.grid
+            choices: mixer.plugins.instruments
+            onPicked: (key) => { instMenu.close(); card.pick(); mixer.plugins.setInstrument(card.model.id, key) }
         }
     }
     VoiceLines {

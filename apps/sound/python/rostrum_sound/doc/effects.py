@@ -12,6 +12,7 @@ from typing import NamedTuple
 from rostrum_core import Param
 
 from .. import names
+from . import plugins
 from . import values as V
 
 
@@ -47,6 +48,7 @@ EFFECTS = {
               "range": F(8, 0, 40, unit="dB")},
     "dehum": {"freq": F(0, 0, 60, unit="Hz", importance="secondary"), "harmonics": F(6, 1, 16, importance="deep"),
               "width": F(40, 1, 200, importance="deep")},
+    "plugin": {},               # a CLAP / VST3 plug-in: its one `plugin` record, doc/plugins.py
 }
 TYPES = list(EFFECTS)
 FREEVERB_ONLY = ("decay", "damping", "size")
@@ -113,7 +115,7 @@ def active(item: dict) -> dict:
 
 def problems(item: dict) -> list[str]:
     """Per-type ranges a shared Param can't hold (gate threshold vs compressor threshold …)."""
-    out = []
+    out = plugins.problems(item, item["id"]) if item["effect"] == "plugin" else []
     for k, v in active(item).items():
         s = EFFECTS[item["effect"]][k]
         if s.lo is None or isinstance(v, bool):

@@ -39,9 +39,11 @@ def _described(p, schema):
 
 @dataclass
 class Value(Param):
-    """A Param with its own checker `rule(param, value, where) -> value` and JSON schema."""
+    """A Param with its own checker `rule(param, value, where) -> value` and JSON schema. `form` is "time" or
+    "length" for a field that holds one (what the screen reads in seconds and writes back in the same form)."""
     rule: Callable | None = None
     schema: dict | None = None
+    form: str = ""
 
     def check(self, value, where):
         return self.rule(self, value, where)
@@ -94,12 +96,12 @@ def _env(p, v, where):
 
 
 def time(name, **kw) -> Value:
-    return Value(name, "number", rule=_time, schema=TIME_SCHEMA, unit="s", step=0.01, **kw)
+    return Value(name, "number", rule=_time, schema=TIME_SCHEMA, unit="s", step=0.01, form="time", **kw)
 
 
 def length(name, **kw) -> Value:
     return Value(name, "number", rule=lambda p, v, w: _time(p, v, w, True), schema=LENGTH_SCHEMA, unit="s", step=0.01,
-                 **kw)
+                 form="length", **kw)
 
 
 def pitch(name, **kw) -> Value:

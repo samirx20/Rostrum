@@ -1,0 +1,76 @@
+"""MIDI files in and out of a Sound document, and a MIDI keyboard take (`keyboard.py`).
+
+    calls, skipped = import_calls(doc.data, "song.mid")        # the operations an import is: apply as one change
+    doc.apply(calls, who, label="Import MIDI")                  # one undo step
+    skipped = export(doc.data, "renders/cue/cue.mid")           # what MIDI can't hold is listed, never dropped quietly
+
+An import adds tracks (one per MIDI track; drums on channel 10 become drum hits), markers and sections; with
+`song_map=True` (the default) the file's tempo map, time signature and key changes replace the document's. All in
+beats, so the notes follow the tempo map. Our own reader and writer (smf_in.py / smf_out.py): no dependency.
+"""
+from __future__ import annotations
+
+import re
+
+from rostrum_core.tree import index
+
+from ..doc.registry import LISTS
+from . import smf_in, smf_out
+from .song import from_events
+
+SAFE = re.compile(r"[^A-Za-z0-9_.\-]+")
+
+
+def read(path) -> dict:
+    """The file as a song in beats (`song.py`)."""
+    return from_events(*smf_in.read_events(path))
+
+
+def _free(word: str, taken: set, fallback: str) -> str:
+    base = SAFE.sub("_", word).strip("_.-")[:48] or fallback
+    out, n = base, 1
+    while out in taken:
+        n += 1
+        out = f"{base}_{n}"
+    taken.add(out)
+    return out
+
+
+def calls_for(root: dict, song: dict, song_map: bool = True) -> list[dict]:
+    """The operation calls that put `song` into the document whose data is `root`."""
+    taken = set(index(root, LISTS))
+    calls = []
+    if song_map:
+        calls.append({"op": "doc.set", "target": ["root"], "args": {"tempo": song["tempo"],
+                                                                    "beatsPerBar": song["beatsPerBar"]}})
+        old = [i for k in ("tempos", "keys") for i in root.get(k, [])]
+        calls += [{"op": f"{i['type']}.remove", "target": [i["id"]]} for i in old]
+        calls += [{"op": "tempo.add", "args": {"at": {"beat": b}, "bpm": bpm}} for b, bpm in song["tempos"]]
+        calls += [{"op": "key.add", "args": {"at": {"beat": b}, "key": k}} for b, k in song["keys"]]
+    names = {m.get("name") for m in root.get("markers", [])}
+    for b, name in song["markers"]:
+        calls.append({"op": "marker.add", "args": {"name": _free(name, names, "marker"), "at": {"beat": b}}})
+    parts = {s.get("name") for s in root.get("sections", [])}
+    for name, b0, b1 in song["sections"]:
+        calls.append({"op": "section.add", "args": {"name": _free(name, parts, "section"), "at": {"beat": b0},
+                                                    "end": {"beat": b1}}})
+    for t in song["tracks"]:
+        tid = _free(t["name"].lower(), taken, "midi")
+        kind = "builtIn" if "builtIn" in t else "kit"
+        calls.append({"op": "track.add", "args": {"id": tid, "name": t["name"], "instrument": kind, kind: t[kind]}})
+        if t["notes"]:
+            calls.append({"op": "note.add_many", "target": [tid], "args": {"notes": t["notes"]}})
+        if t["hits"]:
+            calls.append({"op": "hit.add_many", "target": [tid], "args": {"hits": t["hits"]}})
+    return calls
+
+
+def import_calls(root: dict, path, song_map: bool = True) -> tuple[list[dict], list[str]]:
+    """(calls, what was skipped and why) for importing the MIDI file at `path`."""
+    song = read(path)
+    return calls_for(root, song, song_map), song["skipped"]
+
+
+def export(root: dict, path) -> list[str]:
+    """Write the document's notes, hits, tempo map, keys, markers and sections as a .mid; returns what was skipped."""
+    return smf_out.write(root, path)

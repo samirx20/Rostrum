@@ -113,20 +113,24 @@ pub fn scan() -> Vec<serde_json::Value> {
     for dir in folders() {
         let Ok(items) = std::fs::read_dir(&dir) else { continue };
         for bundle in items.flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x.eq_ignore_ascii_case("vst3"))) {
-            let path = bundle.to_string_lossy().into_owned();
-            let f = match factory(&bundle) {
-                Ok(f) => f,
-                Err(e) => {
-                    out.push(serde_json::json!({ "format": "vst3", "path": path, "error": e }));
-                    continue;
-                }
-            };
-            for c in classes(&f) {
-                let params = Plugin::new(&f, &c.cid, &c.name).map(|p| p.params()).unwrap_or_default();
-                let id: String = c.cid.iter().map(|b| format!("{:02X}", *b as u8)).collect();
-                out.push(serde_json::json!({ "format": "vst3", "path": path, "id": id, "name": c.name, "vendor": c.vendor, "kind": if c.instrument { "instrument" } else { "effect" }, "features": [], "params": params }));
+            match describe(&bundle) {
+                Ok(list) => out.extend(list),
+                Err(e) => out.push(serde_json::json!({ "format": "vst3", "path": bundle.to_string_lossy(), "error": e })),
             }
         }
     }
     out
+}
+
+/// The plugins in one VST3 bundle (what `scan` lists for each; the contract's `plugins` request).
+pub fn describe(bundle: &Path) -> Result<Vec<serde_json::Value>, String> {
+    let path = bundle.to_string_lossy().into_owned();
+    let f = factory(bundle)?;
+    Ok(classes(&f).into_iter().map(|c| {
+        let plugin = Plugin::new(&f, &c.cid, &c.name).ok();
+        let params = plugin.as_ref().map(|p| p.params()).unwrap_or_default();
+        let has_window = plugin.as_ref().is_some_and(|p| p.has_editor());
+        let id: String = c.cid.iter().map(|b| format!("{:02X}", *b as u8)).collect();
+        serde_json::json!({ "format": "vst3", "path": path, "id": id, "name": c.name, "vendor": c.vendor, "kind": if c.instrument { "instrument" } else { "effect" }, "features": [], "params": params, "hasWindow": has_window })
+    }).collect())
 }

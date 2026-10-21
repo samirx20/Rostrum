@@ -7,6 +7,7 @@ from rostrum_core import Param, codes
 from . import fields as FD
 from . import ids
 from . import values as V
+from .ops_group import clip_set
 from .registry import REGISTRY, set_fields, taken
 
 ID = Param.text("id", label="Id", help="Optional; made from where it starts when left out.")
@@ -59,8 +60,9 @@ def register(type_, key, many=False):
                 for one in args[f"{type_}s"]:
                     add(ctx, t, one)
 
-    REGISTRY.operation(f"{type_}.set", f"Change {label}s.", target=type_, params=FD.params(type_),
-                       label=f"Edit {label}", fields=True)(set_fields)
+    REGISTRY.operation(f"{type_}.set", f"Change {label}s." + (" A layered clip carries its group." if type_ == "clip" else ""),
+                       target=type_, params=FD.params(type_), label=f"Edit {label}", fields=True)(
+        clip_set if type_ == "clip" else set_fields)
 
     @REGISTRY.operation(f"{type_}.remove", f"Delete {label}s.", target=type_, label=f"Delete {label}",
                         importance="secondary")
