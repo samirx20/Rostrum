@@ -10,9 +10,9 @@ The engine holds the scene and evaluates every frame itself. The request header 
 
 | Request | Reply | Meaning |
 |---|---|---|
-| `{"scene": {…scene…}, "cpu"?: true}` | `{"ok": true, "items": N, "width", "height", "fps", "duration"}` | Load or replace the scene. Checked whole: anything unknown or undrawable fails (§ 5). Opens a drawing session at the comp's size if none is open at that size (`cpu`: draw on the CPU, for machines or tests without a GPU). |
+| `{"scene": {…scene…}, "cpu"?: true}` | `{"ok": true, "items": N, "width", "height", "fps", "duration", "fonts": ["Inter", "Recursive", …]}` | Load or replace the scene. Checked whole: anything unknown or undrawable fails (§ 5). Opens a drawing session at the comp's size if none is open at that size (`cpu`: draw on the CPU, for machines or tests without a GPU). |
 | `{"frame": {"t": 1.25, "image": "C:\…\f.png", "index"?: n}}` | `{"ok": true, "timing": {…, "evalMs"}}` | Draw the scene at `t` seconds into a PNG. `index` (the frame number, used by anything that varies per frame) defaults to round(t · fps), so a still is the same picture as that frame of the export. |
-| `{"frame": {"t": 1.25, "pixels": true}}` | `{"ok": true, "width", "height", "shm": …}` | (Team Hem, H7) raw RGBA for the live canvas, no PNG. |
+| `{"frame": {"t": 1.25, "pixels": true}}` | `{"ok": true, "width", "height", "timing", "shm": {"name": "Local\rostrum2d-<pid>-<n>", "size", "offset", "bytes", "stride", "format": "rgba8", "seq", "width", "height"}}` | The frame for the live canvas, written into one of two alternating slots of a named block of shared memory (no PNG, no pipe): the same straight-alpha bytes as an image would hold (`rgba64le` at depth 16). The reader is done with a slot before it asks for the frame after next; a new block (new `name`) comes when the frame size changes. Python: `mmap.mmap(-1, size, tagname=name)` (`Engine.pixels`). Windows now; Mac (`shm_open`, name `/rostrum2d-<pid>-<n>`) still refused with a message. |
 | `{"export": {"start"?, "end"?, "encode": {…ffmpeg…}, "file"?, "images"?, "progress"?}}` | `{"ok": true, "frames": 90, "timing"}` | Every frame from `start` (default 0) to `end` (default the comp's duration) at the comp's fps, into the encoder; `file` is checked to exist and not be empty afterwards. Or `"images": "C:\…\f-{frame}.png"`: each frame to a picture. With `"progress": true` a line `{"progress": i, "of": n}` comes after each frame, before the reply. |
 | `{"edit": [{"id": "title", "props"?: {"x": 700}, "anim"?: {"y": [keys] \| null}}, …]}` | `{"ok": true, "edits": n}` | Small changes to the held scene without resending it (a drag). **All or nothing**: the whole list is checked as a load is, and nothing is applied if any part fails. |
 
@@ -45,12 +45,25 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - `effects` and `masks` belong to the layer; effects, masks and layers may each have `anim`.
 - Ids are unique in the scene. Times are **seconds**; lengths are **px** in the composition's frame; angles **degrees**; colours `#rrggbb`.
 - Produced by `rostrum2d.scene.describe(doc.data, comp_id)`.
+- **`fonts`** (optional, top level, beside `comp`): `{"Family": "D:/My Film/fonts/Display.ttf", …}` (absolute paths), the project's own fonts. They win over the app's; each file is checked when the scene loads. The `scene` reply lists every family the text may name (`fonts`), for agents and the font picker.
 - **`drawing`** (added S6, same version): a layer drawn frame by frame with the shared painting kit. `props` has `w`, `h`
   (its box, px) and the usual transform; `frames: [{"at": 0, "src": "C:\…\<key>_800x1000.png"}, …]`, sorted by `at`
   (a frame number). At time `t` the engine shows the `src` of the last frame with `at <= floor(t · fps)`; nothing
   before the first. Each `src` is a straight-alpha RGBA PNG of exactly `w × h`, made once by the painting kit and named by
   its content (never changes under the same name): the engine only reads it, stretched to the box like an image with
   `fit: stretch`. Masks and effects apply as on any layer.
+- **`path`** (added S8, same version): a vector path. `props.d` is SVG path data with absolute commands only — `M x y`,
+  `L x y`, `C x1 y1 x2 y2 x y`, `Z` (numbers separated by spaces or commas; a command's numbers may repeat; extra pairs
+  after `M` are lines; after `Z` a new `M` is needed) — in the layer's own px from its box's top-left. `w × h` is its box
+  (at least 1 px; the anchor and gradients use it; the curve may reach outside it and is still drawn). A `d` the engine
+  can't read is refused, naming `id.d`. `d`, `w`, `h`, `fillRule`, `cap`, `join` are still.
+- **`video`** (added S8, same version): a layer with `src`, `w`, `h`, `fit`, `radius`, `offset` (s into the clip),
+  `speed`, `loop` and the transform. Like a drawing it carries `frames: [{"at": i, "src": png}, …]`, `i` = 0..n−1 over
+  the clip decoded at the comp's fps and at `w × h` (the fit applied at decode). At frame `n = floor(t·fps)` the picture
+  is `frames[k]`, `k = floor((n − start·fps)·speed + 1e-6) + round_ties_even(offset·fps)`; with `loop` k wraps
+  (`rem_euclid(count)`), otherwise it is held at 0..count−1. Python decodes once with the `ffmpeg` program into a cache
+  folder keyed by the file's content, size, w × h, fit, fps and decoder version (`rostrum2d/video.py`). `w`, `h`,
+  `offset`, `speed` can't be animated. No frames, or a missing picture, is an error. The video's own sound is not read.
 
 ## 3. Evaluation (the reference is `rostrum2d/evaluate.py` and `easing.py`)
 
@@ -65,11 +78,44 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - **Transform:** the layer's anchor (`anchorX`, `anchorY`, fractions of its box; 0.5 = centre) sits at (`x`, `y`) in its parent's space. Order: tilt (`tiltX`, `tiltY`, 2.5D, perspective 1600 px per layer), then `rotation`, then scale (`scale·scaleX`, `scale·scaleY`), all about the anchor. Then `opacity`, then `blend` (`normal`, `screen`, `add`, `multiply`, `overlay`, `soft-light`).
 - **Box:** shape and image `w × h`; group `w × h` (`clip` hides children outside it); text: its laid-out size (one line, or `boxWidth` wide and wrapped).
 - **shape:** `rect` (corner `radius`) or `ellipse`; `fill`; optional outline (`stroke`, `strokeColor`, `strokeWidth`), drawn inside the box.
-- **text:** `body`, `font` (family name; the engine's font list), `size` px, `weight` and `stretch` (variable-font axes), optical size = font size automatically, `tracking` (em), `lineHeight`, `align`, `color`, optional outline.
-- **image:** `src` (absolute path), `fit` (`cover`, `contain`, `stretch`), corner `radius`.
+- **path:** `filled` → `fill` with `fillRule` (`nonzero`, `evenodd`); `stroke` → `strokeColor`, `strokeWidth`, centred on
+  the line, `cap` (`butt`, `round`, `square`), `join` (`miter`, `round`, `bevel`), `miter` (limit, ≥ 1). Dashes: `dash` px
+  drawn, `gap` px skipped (`dash` 0 = solid), shifted by `dashOffset`; they start again at each subpath. Trim: only
+  `trimStart..trimEnd` (fractions 0..1 of the whole length, subpath after subpath) of the stroke is drawn — keying
+  `trimEnd` 0 → 1 draws it on; dashes are cut to the trimmed part (more than 20,000 dash pieces is refused). A `gradient`
+  fills the path (with `filled` off it colours the stroke), `linear` and `radial` only (a conic one is refused). A
+  `shadow` follows the outline. Glow, blur and masks as on any layer.
+- **text:** `body`, `font` (family name: first the scene's `fonts`, then the app's folder `apps/2d/engine/fonts/` (installed: `fonts\` beside the program; `ROSTRUM2D_FONTS` overrides); each file is listed under its family name and also without a trailing " Variable". A family found in neither is refused when the scene loads or is edited: `subtitle: font "Helvetica Neue" not found; there is: …`), `size` px, `weight` and `stretch` (variable-font axes), optical size = font size automatically, `tracking` (em), `lineHeight`, `align`, `color`, optional outline.
+  - **Type:** `ligatures` (default on; off writes `liga 0, clig 0`), `figures` (`default` | `proportional lining` |
+    `tabular lining` | `proportional old-style` | `tabular old-style`), `smallCaps` (`smcp`) and `features` (OpenType
+    tags: `"ss01 ss03 salt"`, `"cv05=2"`, `"-kern"`; a later tag wins), all written as `font-feature-settings`. A feature
+    the font doesn't have is refused, naming the layer, the field and the features it has (proportional and lining
+    figures excepted: most fonts' own).
+  - **Axes:** `weight` → `wght`, `stretch` → `wdth`; `opsz` = size, held to 8…144; `slant` → `slnt` and `grade` →
+    `GRAD` when not 0 (both can be keyed); `axes` names any axis by tag (`"XTRA 468, CASL 1"`) and wins over the named
+    ones. An axis the font doesn't have is refused; a value outside the axis's range is clamped (as CSS).
+  - **Text on a path:** `path` is SVG path data (as a path layer's `d`) in the layer's own px; empty = normal text. The
+    letters' baseline sits on the path, each letter turned to the path's direction, spaced by the font's own advance
+    widths plus `tracking` (no kerning). `pathAlign` start / center / end on the path's length, then `pathOffset` px
+    further along (can be keyed). Before the start and past the end the path continues straight. The box runs from
+    (0, 0) to the path's far corner. One line only (a line break is refused).
+  - **Letter by letter:** `letterDelay` s ≠ 0: each letter (`letterSplit` letters | words) plays the layer's own keys
+    `letterDelay × its place` later; places follow `letterOrder` forward | backward | center | random (`letterSeed`, the
+    same order on every machine). Keyed x / y move each letter from the layer's still x / y; keyed rotation, scale,
+    stretch, tilt and opacity apply to each letter about its own centre; keyed colour, outline colour and width are per
+    letter. A gradient spans the whole text. On a path or letter by letter, `boxWidth` ≠ 0 is refused (no wrapping
+    yet); a letter the font can't measure is refused.
+- **image** and **video:** `src` (absolute path), `fit` (`cover`, `contain`, `stretch`), corner `radius`. A gradient on an image, drawing or video is refused.
 - **Order inside a layer:** content → masks → effects. A mask cuts the content; a glow or blur works on what the mask left.
-- **mask:** `rect` / `ellipse` at (`x`, `y`, `w`, `h`) in the layer's own px from its top-left; `radius`, `feather` (soft edge, px), `invert`. Several masks intersect.
-- **Effects, in list order:** `gradient` fills the layer instead of its colour (a shape's fill, **a text's letters**, a group's background): `linear` at `angle` (CSS convention: 180 = top to bottom) or `radial`; `color1` → (`color3` at `mid` when `middle`) → `color2`. `blur` (`radius` px). `glow`: a blurred copy (`radius`) added behind, `strength` 0..4, the layer's own colours or `color`. `shadow`: offset `dx`, `dy`, softness `radius`, `color`, `strength`.
+- **mask:** `rect` / `ellipse` at (`x`, `y`, `w`, `h`) in the layer's own px from its top-left; `radius`, `feather` (soft
+  edge, px, centred on the shape's edge), `invert`, `angle` (the mask turned about its centre: a feathered rect sweeping
+  across at an angle is a soft wipe). Several masks intersect. A plain one is a `clip-path`; a feathered, inverted or
+  turned one is an SVG alpha `<mask>` built from gradient pieces (solid core, linear edge bands, radial corners,
+  smoothstep ramps; a hard turned or inverted edge gets 1 px), because the renderer draws no filters inside a mask.
+- **Effects, in list order:** `gradient` fills the layer instead of its colour (a shape's fill, **a text's letters**, a group's background): `linear` at `angle` (CSS convention: 180 = top to bottom), `radial` (closest side, at `cx`, `cy`) or `conic` (from `angle`, 0 = up, clockwise, at `cx`, `cy`; `cx`, `cy` fractions of the box); `color1` → (`color3` at `mid` when `middle`) → `color2`. `blur` (`radius` px). `glow`: a blurred copy (`radius`) added behind, `strength` 0..4, the layer's own colours or `color`. `shadow`: offset `dx`, `dy`, softness `radius`, `color`, `strength`. `backdrop` (frosted glass): blurs what is behind the layer inside its box and corner
+  radius (`radius` blur σ px, `saturate`, `brightness`), drawn before the content; the layer's fill shows over it at
+  `fillAmount`; the layer's opacity applies to the glass and the content. Refused with a non-normal blend or with a
+  feathered, inverted or turned mask.
 
 ## 5. Failing loudly
 
@@ -85,3 +131,4 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - S5: version 1 written; until the engine took `scene`, Python evaluated each frame and sent page markup (the stopgap).
 - H6: the engine evaluates scenes itself, pixel for pixel as the stopgap did (`proofs/2d-engine-scene/README.md`).
 - S7: the Python stopgap is deleted; drawing layers are drawn by the engine; `scene` takes `cpu`, `frame.index` defaults to round(t · fps), `export` takes `images` and `progress`, `edit` is all or nothing.
+- S8 (same version): `path` and `video` layers; text features, axes, text on a path, letter by letter; gradient `conic` and centre; `backdrop`; masks feather / invert / `angle` for every shape; scene `fonts` and the `scene` reply's font list; `pixels` written out.

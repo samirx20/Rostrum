@@ -39,6 +39,14 @@ bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (
 - Steps: `draw <x> <y> <x> <y> …` (one stroke, composition px), `brush <setting> <value>`, `newframe [copy]`,
   `hold <+n|-n>`, `frame next|prev`, `onion on|off`.
 
+## Paths (Design page)
+
+- **Pen** (`screen2d/pen.py`, `qml/PenOverlay.qml`; button or P): click = corner point, press-drag = smooth point,
+  click the first point = close, Enter / Escape = done. The finished path is one change (`layer.add` + `path.set`).
+- With a path layer selected its points (square = corner, round = smooth) and handles show; a drag is one
+  `path.set_point` gesture (handles stay opposite; Alt moves one alone).
+- Steps: `pen <x,y> <x,y,hx,hy> … [close]`, `pointdrag <layer> <i> <dx> <dy> [in|out]`.
+
 ## Run
 
 ```

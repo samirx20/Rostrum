@@ -2,7 +2,9 @@
 thread, newest request wins (a request made while one renders replaces any waiting one; stale frames are never
 queued). The newest picture is served to QML as image://frame/<n>.
 
-One worker thread owns one long-lived engine process (rostrum2d.engine.Engine); `close` ends it.
+One worker thread owns one long-lived engine process (rostrum2d.engine.Engine); `close` ends it. The scene is
+sent again only when it changed. On Windows the frame comes through the engine's shared memory (`pixels`, no PNG);
+elsewhere, until the engine has it there, through a PNG.
 A failed frame is reported (`failed`), never shown as if it worked; the next request tries again.
 """
 from __future__ import annotations
@@ -40,6 +42,16 @@ class FrameProvider(QQuickImageProvider):
             return self._image
 
 
+def _frame(eng, t: float, png: Path) -> QImage:
+    if sys.platform == "win32":
+        view, w, h, stride = eng.pixels(t)
+        image = QImage(view, w, h, stride, QImage.Format.Format_RGBA8888).copy()   # copied: the slot is reused
+        view.release()
+        return image
+    eng.still(t, png)
+    return QImage(str(png))
+
+
 class FrameRenderer(QObject):
     ready = Signal(int)          # serial of the newest frame
     failed = Signal(str)
@@ -63,7 +75,7 @@ class FrameRenderer(QObject):
             return self._pending is None and not self._busy
 
     def _run(self):
-        eng = None
+        eng, loaded = None, None
         png = SCRATCH / "frame.png"
         try:
             while True:
@@ -75,9 +87,10 @@ class FrameRenderer(QObject):
                     (scene, t), self._pending, self._busy = self._pending, None, True
                 try:
                     eng = eng or open_engine()
-                    eng.load(scene)
-                    eng.still(t, png)
-                    image = QImage(str(png))
+                    if scene != loaded:
+                        eng.load(scene)
+                        loaded = scene
+                    image = _frame(eng, t, png)
                     if image.isNull():
                         raise RuntimeError(f"the engine's frame could not be read: {png}")
                     self.provider.put(image)

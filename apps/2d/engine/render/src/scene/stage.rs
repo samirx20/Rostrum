@@ -8,11 +8,15 @@ use std::fmt::Write;
 use serde_json::Value;
 
 use super::eval::Item;
+use super::stage_type;
+
+#[path = "stage_path.rs"]
+mod path;
 
 type R<T> = Result<T, String>;
 
 /// A field's value as written in the scene (numbers as JSON writes them).
-fn v(it: &Item, f: &str) -> String {
+pub(super) fn v(it: &Item, f: &str) -> String {
     match &it.props[f] {
         Value::String(s) => s.clone(),
         other => other.to_string(),
@@ -50,11 +54,7 @@ fn gradient(e: &Item) -> String {
         stops.push(format!("{} {:.1}%", v(e, "color3"), e.num("mid") * 100.0));
     }
     stops.push(v(e, "color2"));
-    if e.str("style") == "radial" {
-        format!("radial-gradient(closest-side, {})", stops.join(", "))
-    } else {
-        format!("linear-gradient({}deg, {})", v(e, "angle"), stops.join(", "))
-    }
+    super::stage_fx::gradient(e, &stops.join(", "))
 }
 
 fn transform(p: &Item) -> String {
@@ -93,12 +93,15 @@ fn content(it: &Item, look: Look) -> R<(String, String)> {
             Ok((s, String::new()))
         }
         "text" => {
-            let size = it.num("size");
             let mut s = format!(
-                "font-family:'{}';font-size:{}px;font-weight:{:.0};font-stretch:{}%;letter-spacing:{}em;line-height:{};text-align:{};font-variation-settings:'opsz' {:.0};",
-                it.str("font"), v(it, "size"), it.num("weight"), v(it, "stretch"), v(it, "tracking"), v(it, "lineHeight"), it.str("align"), size.clamp(8.0, 144.0)
+                "font-family:'{}';font-size:{}px;font-weight:{:.0};font-stretch:{}%;letter-spacing:{}em;line-height:{};text-align:{};",
+                it.str("font"), v(it, "size"), it.num("weight"), v(it, "stretch"), v(it, "tracking"), v(it, "lineHeight"), it.str("align")
             );
+            s += &stage_type::font_css(it)?;
             s += &if it.num("boxWidth") != 0.0 { format!("width:{}px;white-space:pre-wrap;", v(it, "boxWidth")) } else { "white-space:pre;".into() };
+            if stage_type::by_letter(it) {
+                return stage_type::letters(it, s, grad, look.color);
+            }
             if let Some(c) = look.color {
                 let _ = write!(s, "color:{c};");
             } else if let Some(g) = grad {
@@ -111,6 +114,7 @@ fn content(it: &Item, look: Look) -> R<(String, String)> {
             }
             Ok((s, escape(it.str("body"))))
         }
+        "video" => super::stage_fx::video(it, grad.is_some()),
         "image" => {
             if grad.is_some() {
                 return Err(format!("{}: a gradient on an image is not drawn by this engine yet", it.id));
@@ -148,27 +152,9 @@ fn content(it: &Item, look: Look) -> R<(String, String)> {
                 src => Ok((s, format!("<img src=\"/__local_asset?p={}\" style=\"width:100%;height:100%;object-fit:fill;\">", percent(src)))),
             }
         }
+        "path" => path::content(it, look),
         k => Err(format!("{}: a {k} layer is not drawn by this engine yet", it.id)),
     }
-}
-
-fn mask(m: &Item) -> R<String> {
-    let (x, y, w, h) = (m.num("x"), m.num("y"), m.num("w"), m.num("h"));
-    let ellipse = m.str("shape") == "ellipse";
-    if m.num("feather") != 0.0 || m.on("invert") {
-        if !ellipse {
-            return Err(format!("{}: a feathered or inverted rect mask is not drawn by this engine yet", m.id));
-        }
-        let (cx, cy, rx, ry) = (x + w / 2.0, y + h / 2.0, w / 2.0, h / 2.0);
-        let (inner, outer) = if m.on("invert") { ("transparent", "#000") } else { ("#000", "transparent") };
-        let soft = (100.0 - m.num("feather") / rx.max(ry).max(1.0) * 100.0).max(0.0);
-        let g = format!("radial-gradient({rx}px {ry}px at {cx}px {cy}px, {inner} {soft:.1}%, {outer} 100%)");
-        return Ok(format!("mask-image:{g};-webkit-mask-image:{g};"));
-    }
-    if ellipse {
-        return Ok(format!("clip-path:ellipse({}px {}px at {}px {}px);", w / 2.0, h / 2.0, x + w / 2.0, y + h / 2.0));
-    }
-    Ok(format!("clip-path:inset({}px calc(100% - {}px) calc(100% - {}px) {}px round {}px);", v(m, "y"), x + w, y + h, v(m, "x"), v(m, "radius")))
 }
 
 fn boxed(style: &str, inner: &str, full: bool) -> String {
@@ -178,6 +164,8 @@ fn boxed(style: &str, inner: &str, full: bool) -> String {
 
 /// One layer: content → masks → effects (contract § 4), positioned by its transform.
 fn layer(it: &Item) -> R<String> {
+    let held;
+    let it = if stage_type::animated(it) { held = stage_type::container(it); &held } else { it };
     let grad = it.effects.iter().find(|e| e.kind == "gradient").map(gradient);
     let look = Look { gradient: grad.as_deref(), color: None };
     let (mut style, inner) = content(it, look)?;
@@ -188,9 +176,15 @@ fn layer(it: &Item) -> R<String> {
         let ch = |i: usize| u8::from_str_radix(&c[i..i + 2], 16).unwrap_or(0);
         let rgba = format!("rgba({},{},{},{})", ch(1), ch(3), ch(5), v(s, "strength"));
         let prop = if it.kind == "text" { "text-shadow" } else { "box-shadow" };
-        let _ = write!(style, "{prop}:{}px {}px {}px {rgba};", v(s, "dx"), v(s, "dy"), v(s, "radius"));
+        if it.kind == "path" {
+            // A path's shadow follows its outline, not its box.
+            let _ = write!(style, "filter:drop-shadow({}px {}px {}px {rgba});", v(s, "dx"), v(s, "dy"), v(s, "radius"));
+        } else {
+            let _ = write!(style, "{prop}:{}px {}px {}px {rgba};", v(s, "dx"), v(s, "dy"), v(s, "radius"));
+        }
     }
-    let masks = it.masks.iter().map(mask).collect::<R<Vec<_>>>()?;
+    let mut defs = String::new();
+    let masks = it.masks.iter().enumerate().map(|(i, m)| super::stage_fx::mask(it, i, m, &mut defs)).collect::<R<Vec<_>>>()?;
     // Masks cut the content first; effects see the cut result.
     let masked = |content_style: &str, extra: &str| {
         let mut html = boxed(content_style, &inner, false);
@@ -206,17 +200,18 @@ fn layer(it: &Item) -> R<String> {
         let (gs, _) = content(it, Look { color, ..look })?;
         body = masked(&gs, &format!("filter:blur({}px);opacity:{};mix-blend-mode:plus-lighter;", v(g, "radius"), g.num("strength").min(1.0))) + &body;
     }
+    let (glass, opacity, body) = super::stage_fx::glass(it, !defs.is_empty(), body)?;
     let size = if it.props.contains_key("w") { format!("width:{}px;height:{}px;", v(it, "w"), v(it, "h")) } else { String::new() };
     let sizer = if it.kind == "text" { format!("<div style=\"visibility:hidden;{style}\">{inner}</div>") } else { String::new() };
     let blend = match it.str("blend") { "add" => "plus-lighter", b => b };
     Ok(format!(
-        "<div id=\"{}\" style=\"position:absolute;left:{}px;top:{}px;{size}transform-origin:{}% {}%;transform:{};opacity:{};mix-blend-mode:{blend};\">{sizer}{body}</div>",
-        escape(it.id), v(it, "x"), v(it, "y"), it.num("anchorX") * 100.0, it.num("anchorY") * 100.0, transform(it), v(it, "opacity")
+        "<div id=\"{}\" style=\"position:absolute;left:{}px;top:{}px;{size}transform-origin:{}% {}%;transform:{};opacity:{opacity};mix-blend-mode:{blend};\">{defs}{sizer}{glass}{body}</div>",
+        escape(it.id), v(it, "x"), v(it, "y"), it.num("anchorX") * 100.0, it.num("anchorY") * 100.0, transform(it)
     ))
 }
 
 /// As Python's `html.escape`.
-fn escape(s: &str) -> String {
+pub(super) fn escape(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for c in s.chars() {
         match c {
@@ -231,7 +226,7 @@ fn escape(s: &str) -> String {
     out
 }
 
-fn percent(s: &str) -> String {
+pub(super) fn percent(s: &str) -> String {
     s.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-._~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect()
 }
 
