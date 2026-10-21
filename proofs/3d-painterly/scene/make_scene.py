@@ -14,9 +14,9 @@ from geo import lathe, tube, heightfield, box, norm, sub, cross, dist
 from materials import material_usda
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-CAMERA = dict(pos=(4.0, 30.0, 80.0), target=(1.0, 6.0, 0.0), focal=50.0, fstop=4.0,
-              h_aperture=36.0, v_aperture=20.25, focus=(-6.0, 9.0, 0.0))
-SUN = dict(to_sun=norm((-0.85, 0.48, 0.05)), intensity=2.0, kelvin=3300, angle=1.5)
+CAMERA = dict(pos=(4.0, 30.0, 80.0), target=(1.0, 6.0, 0.0), focal=50.0, fstop=8.0,
+              h_aperture=36.0, v_aperture=20.25, focus=(-2.0, 7.0, 6.0))
+SUN = dict(to_sun=norm((-0.85, 0.48, 0.05)), intensity=1.6, kelvin=3300, angle=1.5)
 FILL = dict(intensity=0.25, color=(0.50, 0.64, 1.0))   # cool room light, all directions
 BOUNCE = dict(pos=(55.0, 10.0, 30.0), size=(60.0, 40.0), intensity=0.6, kelvin=4200)
 BG_DISTANCE = 190.0                                    # painted card behind everything
