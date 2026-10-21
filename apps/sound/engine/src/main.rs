@@ -1,6 +1,8 @@
-//! rostrum-sound: Rostrum's native sound engine (docs/NATIVE_ENGINE.md § Sound engine).
-//!   rostrum-sound render <schedule.json> <out.wav>   the mix, offline: 32-bit float WAV of its bed (stereo, 5.1,
-//!                                                    7.1: bed/) + stats (JSON)
+//! rostrum-sound: RostrumSound's engine. The way in is the contract (apps/sound/ENGINE_CONTRACT.md, contract/):
+//!   rostrum-sound serve                              long-lived: one JSON request per stdin line, one answer per line
+//!   rostrum-sound request <request.json>             one request, its answer on stdout
+//!   rostrum-sound render <schedule.json> <out.wav>   a `rostrum-sound-schedule/1` rendered, meters on stdout
+//!   rostrum-sound render-job <job.json> <out.wav>    the internal job (mix/schedule/) rendered: for engine work only
 //!   rostrum-sound layouts                           the channel layouts (names, azimuths) as JSON
 //!   rostrum-sound fold <bed.wav> <stereo|5.1|binaural> <out.wav> [--master <json>]
 //!                                                    a bed folded to a delivery layout (bed/fold.rs)
@@ -28,6 +30,7 @@
 
 mod analysis;
 mod bed;
+mod contract;
 mod dialogue;
 mod fx;
 mod instruments;
@@ -41,7 +44,10 @@ mod stretch;
 fn run() -> Result<(), String> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match (args.first().map(String::as_str), args.len()) {
-        (Some("render"), 3) => mix::render_cmd(&args),
+        (Some("serve"), 1) => contract::serve::serve(),
+        (Some("request"), 2) => contract::serve::request(&args[1]),
+        (Some("render"), 3) => contract::serve::render(&args[1], &args[2]),
+        (Some("render-job"), 3) => mix::render_cmd(&args),
         (Some("fold"), n) if n >= 4 => bed::fold::run(&args),
         (Some("layouts"), 1) => bed::layouts_cmd(),
         #[cfg(windows)]
@@ -63,7 +69,7 @@ fn run() -> Result<(), String> {
         (Some("midi"), 1) => live::midi::list_cmd(),
         #[cfg(windows)]
         (Some("latency"), 1) => live::perform::latency_cmd(),
-        _ => Err("usage: rostrum-sound render <schedule.json> <out.wav> | fold <bed.wav> <stereo|5.1|binaural> <out.wav> [--master <json>] | play <schedule.json> | model-samples <model.name> <dir> | live <instrument.json> [--shared] [--midi <n>] [--measure <notes>] | record <out.wav> [--seconds <s>] | midi | latency".into()),
+        _ => Err("usage: rostrum-sound serve | request <request.json> | render <schedule.json> <out.wav> | render-job <job.json> <out.wav> | fold <bed.wav> <stereo|5.1|binaural> <out.wav> [--master <json>] | play <schedule.json> | model-samples <model.name> <dir> | live <instrument.json> [--shared] [--midi <n>] [--measure <notes>] | record <out.wav> [--seconds <s>] | midi | latency".into()),
     }
 }
 

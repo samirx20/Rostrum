@@ -21,6 +21,8 @@ pub struct Mix {
     pub tracks: Vec<TrackStats>,
     /// Each bus as it leaves (buses.rs), in schedule order; empty without buses.
     pub buses: Vec<TrackStats>,
+    /// Tracks kept as stems (render_keep): each as it reaches the master, in the layout's channels, `total` long.
+    pub stems: Vec<(String, Vec<Vec<f32>>)>,
     /// Energy per band of the file (balance.rs BANDS, dB; a surround bed's stereo fold-down): its tonal balance.
     pub bands: [f64; 5],
 }

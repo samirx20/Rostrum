@@ -1,0 +1,141 @@
+"""Sound values the shared parameter types don't cover: times, lengths, pitches, drums, envelopes and lists.
+
+Each is a `rostrum_core.Param` with its own `check` and schema, so operations, the script merge and the MCP
+schema treat them like any other parameter. (A shared "time" / "list" type would make these smaller; asked
+of Team Sam.) Out of range is an error, never a clamp.
+"""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from typing import Callable
+
+from rostrum_core import Param, RostrumError, codes
+
+from . import times
+
+NOTE = re.compile(r"^[A-Ga-g](#|b)?-?\d$")
+TIME_SCHEMA = {"anyOf": [{"type": "number", "minimum": 0},
+                         {"type": "object", "properties": {"beat": {"type": "number", "minimum": 0}}},
+                         {"type": "string", "pattern": times.REF.pattern}]}
+LENGTH_SCHEMA = {"anyOf": [{"type": "number", "minimum": 0},
+                           {"type": "object", "properties": {"beats": {"type": "number", "minimum": 0}}}]}
+PITCH_ONE = {"anyOf": [{"type": "string", "pattern": NOTE.pattern}, {"type": "integer", "minimum": 0,
+                                                                    "maximum": 127}]}
+
+
+def _bad(p, value, where, problem, accepted=()):
+    raise RostrumError(codes.BAD_ARGUMENT, where, f"{p.name}={value!r}", problem, accepted)
+
+
+def _described(p, schema):
+    schema = dict(schema)
+    base = Param.json_schema(p)
+    schema["description"] = base["description"]
+    return schema
+
+
+@dataclass
+class Value(Param):
+    """A Param with its own checker `rule(param, value, where) -> value` and JSON schema."""
+    rule: Callable | None = None
+    schema: dict | None = None
+
+    def check(self, value, where):
+        return self.rule(self, value, where)
+
+    def json_schema(self):
+        return _described(self, self.schema)
+
+
+def _time(p, v, where, length=False):
+    why = times.problem(v, length)
+    if why:
+        _bad(p, v, where, why, times.forms(length))
+    return v
+
+
+def _pitch_one(p, v, where):
+    if isinstance(v, bool) or not (isinstance(v, int) and 0 <= v <= 127 or isinstance(v, str) and NOTE.match(v)):
+        _bad(p, v, where, "is not a note", ['"D4"', '"F#3"', '"Bb2"', "a MIDI number 0 … 127"])
+    return v
+
+
+def _pitch(p, v, where):
+    if isinstance(v, list):
+        if not v:
+            _bad(p, v, where, "is an empty chord")
+        return [_pitch_one(p, x, where) for x in v]
+    return _pitch_one(p, v, where)
+
+
+def _drum(p, v, where):
+    if isinstance(v, bool) or not (isinstance(v, str) and v or isinstance(v, int) and 0 <= v <= 127):
+        _bad(p, v, where, "is not a drum", ["a drum name", "a GM key number"])
+    return v
+
+
+def _number(p, v, where):
+    return Param.check(Param.number(p.name, min=p.min, max=p.max), v, where)
+
+
+def _env(p, v, where):
+    """A number, or an envelope [[time, value], …] in time order."""
+    if not isinstance(v, list):
+        return _number(p, v, where)
+    for pt in v:
+        if not (isinstance(pt, (list, tuple)) and len(pt) == 2):
+            _bad(p, v, where, "is not an envelope", ["a number", "[[time, value], …]"])
+        _time(p, pt[0], where)
+        _number(p, pt[1], where)
+    return [list(pt) for pt in v]
+
+
+def time(name, **kw) -> Value:
+    return Value(name, "number", rule=_time, schema=TIME_SCHEMA, unit="s", **kw)
+
+
+def length(name, **kw) -> Value:
+    return Value(name, "number", rule=lambda p, v, w: _time(p, v, w, True), schema=LENGTH_SCHEMA, unit="s", **kw)
+
+
+def pitch(name, **kw) -> Value:
+    return Value(name, "text", rule=_pitch, schema={"anyOf": [PITCH_ONE, {"type": "array", "items": PITCH_ONE}]},
+                 **kw)
+
+
+def drum(name, **kw) -> Value:
+    return Value(name, "text", rule=_drum, schema={"anyOf": [{"type": "string"}, {"type": "integer"}]}, **kw)
+
+
+def env(name, lo, hi, **kw) -> Value:
+    """A number from lo to hi, or an envelope of such numbers over time."""
+    pt = {"type": "array", "items": [TIME_SCHEMA, {"type": "number"}], "minItems": 2, "maxItems": 2}
+    return Value(name, "number", rule=_env, min=lo, max=hi, schema={"anyOf": [
+        {"type": "number", "minimum": lo, "maximum": hi}, {"type": "array", "items": pt}]}, **kw)
+
+
+def listof(name, item_rule: Callable, item_schema: dict, **kw) -> Value:
+    """A list whose every entry passes `item_rule(param, entry, where) -> entry`."""
+    def rule(p, v, where):
+        if not isinstance(v, list):
+            _bad(p, v, where, "must be a list")
+        return [item_rule(p, x, f"{where} › {p.name}[{n}]") for n, x in enumerate(v)]
+    return Value(name, "text", rule=rule, schema={"type": "array", "items": item_schema}, **kw)
+
+
+def fields_of(params: list[Param], what: str):
+    """An item rule for listof(): a dict whose keys are these params, checked by them (required ones present)."""
+    by = {p.name: p for p in params}
+
+    def rule(p, v, where):
+        if not isinstance(v, dict):
+            _bad(p, v, where, f"is not a {what}", [f"{{{', '.join(by)}}}"])
+        for k in v:
+            if k not in by:
+                _bad(p, v, where, f'has no field "{k}"', list(by))
+        for q in params:
+            if q.required and q.name not in v:
+                _bad(p, v, where, f'needs "{q.name}"')
+        return {k: by[k].check(x, where) for k, x in v.items()}
+    return rule, {"type": "object", "properties": {q.name: q.json_schema() for q in params}}

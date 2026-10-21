@@ -1,0 +1,72 @@
+"""Shared helpers for the listening tools: read audio once, mono, dB, sections, JSON-safe numbers."""
+import math
+import os
+
+import numpy as np
+import soundfile as sf
+
+BANDS = [("sub", 0, 60), ("low", 60, 250), ("low_mid", 250, 2000),
+         ("high_mid", 2000, 6000), ("air", 6000, None)]
+BAND_NAMES = [b[0] for b in BANDS]
+LOW_END_HZ = 150.0
+
+
+def load(src):
+    """-> (samples [n, channels] float32, sample rate). `src` is a path or an already
+    loaded (samples, sr) pair (so a caller reads a file once and runs several tools)."""
+    if isinstance(src, tuple):
+        y, sr = src
+        return (y[:, None] if y.ndim == 1 else y), sr
+    path = os.fspath(src)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"{path}: audio file not found")
+    try:
+        y, sr = sf.read(path, dtype="float32", always_2d=True)
+    except Exception as e:
+        raise ValueError(f"{path}: cannot read audio ({e})") from e
+    if y.shape[0] == 0:
+        raise ValueError(f"{path}: file has no audio")
+    return y, sr
+
+
+def name_of(src):
+    return os.path.basename(os.fspath(src)) if not isinstance(src, tuple) else "audio"
+
+
+def mono(y):
+    return y.mean(axis=1)
+
+
+def duration(y, sr):
+    return y.shape[0] / sr
+
+
+def db(power, floor=-120.0):
+    """Linear power -> dB, clamped (silence reads as the floor, not -inf)."""
+    return float(max(floor, 10 * math.log10(max(float(power), 1e-30))))
+
+
+def peak_db(y):
+    return db(float(np.max(np.abs(y))) ** 2)
+
+
+def num(x, nd=2):
+    """JSON-safe number: -inf / nan -> None."""
+    x = float(x)
+    return None if (math.isnan(x) or math.isinf(x)) else round(x, nd)
+
+
+def sections(dur, length):
+    """[(t0, t1)] covering the file in `length`-second pieces (the last may be short)."""
+    if length <= 0:
+        raise ValueError("section length must be > 0 seconds")
+    n = max(1, math.ceil(dur / length - 1e-9))
+    return [(i * length, min(dur, (i + 1) * length)) for i in range(n)]
+
+
+def band_share(m, sr, bands=BANDS):
+    """Share of a mono signal's energy per band, from one FFT -> {name: fraction}."""
+    spec = np.abs(np.fft.rfft(m.astype(np.float64))) ** 2
+    f = np.fft.rfftfreq(m.size, 1 / sr)
+    total = max(spec.sum(), 1e-30)
+    return {n: float(spec[(f >= lo) & ((f < hi) if hi else True)].sum() / total) for n, lo, hi in bands}

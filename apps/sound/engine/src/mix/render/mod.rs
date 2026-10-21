@@ -34,6 +34,12 @@ pub fn render(s: &Schedule) -> Result<Mix, String> {
 
 /// The mix, each track read back from `cache` when its content was rendered before (trackcache.rs).
 pub fn render_with(s: &Schedule, cache: Option<&crate::mix::trackcache::TrackCache>) -> Result<Mix, String> {
+    render_keep(s, cache, &[])
+}
+
+/// The mix, and the tracks marked in `keep` (by schedule index) kept as stems: each as it reaches the master
+/// (after its effects, fader and ducks), cut to the mix's length.
+pub fn render_keep(s: &Schedule, cache: Option<&crate::mix::trackcache::TrackCache>, keep: &[bool]) -> Result<Mix, String> {
     let sr = s.sample_rate as f64;
     let total = s.total_samples;
     let buf = total + s.tail_samples;
@@ -116,11 +122,14 @@ pub fn render_with(s: &Schedule, cache: Option<&crate::mix::trackcache::TrackCac
     prof("ducks and track stats", t2);
     // The tracks summed into the master bus in schedule order (the same sum every run).
     let mut bus = vec![vec![0.0f32; buf]; s.layout.channels()];
-    let (mut ducks, mut stats) = (vec![], vec![]);
+    let (mut ducks, mut stats, mut stems) = (vec![], vec![], vec![]);
     // What the buses take (buses.rs): the outputs of the tracks that route or send to one.
     let mut routed: Vec<Option<Vec<Vec<f32>>>> = s.tracks.iter().map(|_| None).collect();
     for (k, (track, chs, duck, st)) in placed.into_iter().enumerate() {
         ducks.extend(duck);
+        if keep.get(k).copied().unwrap_or(false) {
+            stems.push((track.name.clone(), chs.iter().map(|c| c[..total.min(c.len())].to_vec()).collect()));
+        }
         let Some(st) = st else { continue };
         stats.push(st);
         // A feeder reaches the master through its bus.
@@ -150,5 +159,6 @@ pub fn render_with(s: &Schedule, cache: Option<&crate::mix::trackcache::TrackCac
     prof("master", t3);
     mix.ducks = ducks;
     mix.tracks = stats;
+    mix.stems = stems;
     Ok(mix)
 }
