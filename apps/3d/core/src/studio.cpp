@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 
@@ -69,18 +70,40 @@ std::string studio_texture(double strength) {
   return file.string();
 }
 
-GlfSimpleLightVector studio_lights(double strength) {
-  if (strength <= 0) return {};
+std::string flat_texture(const GfVec3f& rgb) {
+  char name[96];
+  std::snprintf(name, sizeof name, "flat-v1-%.4f-%.4f-%.4f.exr", rgb[0], rgb[1], rgb[2]);
+  const fs::path file = cache_dir() / name;
+  if (fs::exists(file)) return file.string();
+  fs::create_directories(file.parent_path());
+  constexpr int w = 8, h = 4;
+  OIIO::ImageBuf buf(OIIO::ImageSpec(w, h, 3, OIIO::TypeDesc::FLOAT));
+  std::vector<float> px(size_t(w) * h * 3);
+  for (size_t i = 0; i < px.size(); ++i) px[i] = rgb[int(i % 3)];
+  buf.set_pixels(OIIO::ROI::All(), OIIO::TypeDesc::FLOAT, px.data());
+  const fs::path partial = file.parent_path() / (file.stem().string() + ".partial.exr");
+  if (!buf.write(partial.string())) throw Error("view.sky: could not write " + partial.string() + ": " + buf.geterror());
+  std::error_code ec;
+  fs::rename(partial, file, ec);
+  if (ec) throw Error("view.sky: could not rename " + partial.string() + ": " + ec.message());
+  return file.string();
+}
+
+GlfSimpleLight dome_light(const std::string& texture, const char* id) {
   GlfSimpleLight dome;
   dome.SetIsDomeLight(true);
-  dome.SetID(SdfPath("/RostrumViewport/studio"));
-  const std::string tex = studio_texture(strength);
-  dome.SetDomeLightTextureFile(SdfAssetPath(tex, tex));
+  dome.SetID(SdfPath(id));
+  dome.SetDomeLightTextureFile(SdfAssetPath(texture, texture));
   dome.SetDiffuse(GfVec4f(1));
   dome.SetSpecular(GfVec4f(1));
   dome.SetAmbient(GfVec4f(0));
   dome.SetTransform(GfMatrix4d(1));
-  return {dome};
+  return dome;
+}
+
+GlfSimpleLightVector studio_lights(double strength) {
+  if (strength <= 0) return {};
+  return {dome_light(studio_texture(strength), "/RostrumViewport/studio")};
 }
 
 }  // namespace r3d

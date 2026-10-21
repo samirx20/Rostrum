@@ -13,5 +13,9 @@ namespace r3d {
 std::string studio_texture(double strength);
 // the lights to give Hydra for the viewport: the studio dome, or none when strength is 0
 PXR_NS::GlfSimpleLightVector studio_lights(double strength);
+// a small lat-long picture of one linear colour (made when missing), for a dome that has only a colour
+std::string flat_texture(const PXR_NS::GfVec3f& rgb);
+// a viewport dome light showing `texture`
+PXR_NS::GlfSimpleLight dome_light(const std::string& texture, const char* id);
 
 }  // namespace r3d
