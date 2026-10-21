@@ -5,9 +5,10 @@ and lottie-web, Skottie and rlottie each lay it out differently; outlines are pl
 draws the same. The layer keeps its transform, opacity, blend, masks, colour keys and gradient like any other layer.
 
 Layout: the engine only measures a text's box (textsize.py); the glyph positions are not reachable from Python. So this
-module lays the glyphs out itself: the font's own advance widths (at the weight / width / optical size the text asks
-for), `tracking`, `lineHeight`, line breaks, wrapping at `boxWidth`, `align`; baseline from the font's ascent / descent
-(CSS line box). Kerning, ligatures, small caps, figure styles and OpenType `features` are NOT applied (reported). When
+module lays the glyphs out itself, shaped by HarfBuzz (uharfbuzz, Apache-2.0, the shaper the engine's text uses) at the
+weight / width / optical size the text asks for: kerning, ligatures, small caps, figure styles and `features` applied;
+`tracking`, `lineHeight`, line breaks, wrapping at `boxWidth`, `align`; baseline from the font's ascent / descent
+(CSS line box). When
 the engine is built, its box is used for the layer's box and the report says how far our line lengths are from it.
 """
 from __future__ import annotations
@@ -21,13 +22,13 @@ from fontTools.pens.basePen import BasePen
 from fontTools.ttLib import TTFont
 
 from .. import textsize
+from .lottie_glyphs import lines as _lines, shaper
 from .lottie_layer import common
 from .lottie_props import Ctx, build, frozen, rgb
 from .lottie_shapes import _STILL, _stroke, gradient, group
 
 FONTS = Path(__file__).resolve().parents[3] / "engine" / "fonts"
 HELD = ["body", "font", "size", "weight", "stretch", "tracking", "lineHeight", "align", "boxWidth", "slant", "grade", "stroke"]
-UNDONE = {"ligatures": True, "smallCaps": False, "figures": "default", "features": "", "axes": ""}
 
 
 class _Pen(BasePen):
@@ -98,28 +99,6 @@ def _location(font: TTFont, p: dict, axes: str) -> tuple:
     return tuple(sorted((t, min(max(v, ax[t].minValue), ax[t].maxValue)) for t, v in want.items() if t in ax))
 
 
-def _lines(p: dict, gs, cmap: dict, k: float, lost: set) -> list[tuple[list, float]]:
-    """[(glyph names with their pen x, line width)] per line: breaks at a new line, wrapped at boxWidth when it is set."""
-    adv = lambda ch: gs[cmap[ord(ch)]].width * k + p["tracking"] * p["size"]  # noqa: E731
-    lines = []
-    for para in p["body"].splitlines() or [""]:
-        for ch in {c for c in para if ord(c) not in cmap and not c.isspace()}:
-            lost.add(ch)
-        para = "".join(c for c in para if ord(c) in cmap)
-        cur, x, end = [], 0.0, 0.0                  # end: where the last visible letter's advance ends
-        for w in re.findall(r"\s*\S+|\s+", para):
-            vis = sum(adv(c) for c in w.rstrip())
-            if p["boxWidth"] and cur and w.strip() and x + vis > p["boxWidth"]:
-                lines.append((cur, end))
-                cur, x, end, w = [], 0.0, 0.0, w.lstrip()
-            for c in w:
-                cur.append((cmap[ord(c)], x))
-                x += adv(c)
-                end = x if not c.isspace() else end
-        lines.append((cur, end))
-    return lines
-
-
 def outlines(p: dict, ctx: Ctx) -> tuple[list[dict], float, float] | None:
     """(Lottie contours in the text's own px from its box's top-left, own width, own height); None: font not found."""
     fam = _catalog()
@@ -131,16 +110,17 @@ def outlines(p: dict, ctx: Ctx) -> tuple[list[dict], float, float] | None:
     gs, upm = font.getGlyphSet(location=dict(loc)), font["head"].unitsPerEm
     k, hh = p["size"] / upm, font["hhea"]
     lost: set = set()
-    lines = _lines(p, gs, font.getBestCmap(), k, lost)
+    hb_font = shaper(fam[p["font"]], loc)
+    lines = _lines(p, hb_font, font.getBestCmap(), k, lost)
     width = p["boxWidth"] or max((w for _, w in lines), default=0.0)
     lh = p["lineHeight"] * p["size"]
     lead = (lh - (hh.ascent - hh.descent) * k) / 2
     out = []
     for n, (glyphs, w) in enumerate(lines):
         x0 = {"left": 0.0, "center": (width - w) / 2, "right": width - w}[p["align"]]
-        for name, x in glyphs:
+        for gid, x in glyphs:
             pen = _Pen(gs, k, x0 + x, n * lh + lead + hh.ascent * k)
-            gs[name].draw(pen)
+            gs[font.getGlyphName(gid)].draw(pen)
             out += pen.out
     if lost:
         ctx.say(f'letters the font has no glyph for are left out: {" ".join(sorted(lost))}')
@@ -148,10 +128,6 @@ def outlines(p: dict, ctx: Ctx) -> tuple[list[dict], float, float] | None:
 
 
 def _say_undone(node: dict, p: dict, ctx: Ctx, own: tuple, engine) -> None:
-    for name, default in UNDONE.items():
-        if p[name] != default:
-            ctx.say(f'font feature "{name}" is not applied (the letters are the font\'s plain ones)')
-    ctx.say("kerning pairs are not applied: letter spacing is the plain advance widths, so pairs like AV sit looser than on screen")
     if p["path"] or p["pathLayer"]:
         ctx.say("text on a path is drawn as a straight line")
     if p["letterDelay"]:

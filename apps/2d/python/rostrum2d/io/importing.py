@@ -2,6 +2,7 @@
 report of what didn't come across. The Import panel and the MCP tool `run_import` both call `run`.
 
     kind (by the extension when not given): svg | pdf | psd | figma | image | video
+    pdf: `page` counts from 1; page 0 = every page, one new composition each
     svg / pdf / psd / figma → the importer's tree → tree.prepare (names, places, checks every field) → doc.apply
     image / video           → one layer of that type, centred in the composition, shrunk to fit if bigger
 """
@@ -18,7 +19,7 @@ from PIL import Image, ImageFont
 from .. import engine
 from . import tree as T
 from .figma import figma_tree
-from .pdf import pdf_tree
+from .pdf import pdf_pages, pdf_tree
 from .psd import psd_tree
 from .svg import svg_tree
 
@@ -93,11 +94,34 @@ def tree_of(kind: str, path=None, page: int = 1, text: str = "text", figma: dict
     raise ValueError(f"unknown kind {kind!r}: {', '.join(KINDS)}")
 
 
+def _pages(doc, who, comp, path) -> dict:
+    """pdf page 0: every page into its own new composition (named "Page N" or the page's label, the page's size, the open
+    composition's frame rate and length), all in one change. → the same dict as `run`, with the new comps' ids in "comps"."""
+    from rostrum_core.tree import index
+    from ..kind import KIND
+    trees, taken = pdf_pages(path), set(index(doc.data, KIND.lists))
+    calls, report, comps = [], [], []
+    for tr in trees:
+        cid = T._id(tr["comp"], "comp", taken)
+        calls.append({"op": "comp.add", "args": {"id": cid, "name": tr["comp"], "width": round(tr["width"]), "height": round(tr["height"]),
+                                                 **{k: comp[k] for k in ("fps", "duration") if k in comp}}})
+        page_calls, page_report = T.prepare(doc, tr, cid, app_fonts(), taken)
+        calls, report, comps = calls + page_calls, report + page_report, comps + [cid]
+    doc.apply(calls, who, label=f"Import {trees[0]['name']} ({len(trees)} pages)")
+    return {"name": trees[0]["name"], "kind": "pdf", "calls": len(calls), "layers": [], "comps": comps, "report": report}
+
+
 def run(doc, who, comp_id: str, path=None, kind: str | None = None, page: int = 1, text: str = "text",
         figma: dict | None = None, into: str | None = None) -> dict:
     """Import into `into` (a group of the composition; default the composition). One change, all or nothing.
     → {"name", "kind", "calls": n, "layers": [new top-level ids in `into`], "report": [what didn't come across]}."""
     kind = kind or ("figma" if figma else kind_of(path))
+    if kind == "pdf" and page == 0:                          # page 0 = every page, a composition each (the open comp only sets fps and length)
+        if into and into != comp_id:
+            raise ValueError("a whole-PDF import makes its own compositions; `into` is for one page")
+        if not Path(path or "").is_file():
+            raise ValueError(f"no file at {path}")
+        return _pages(doc, who, doc.item(comp_id), Path(path))
     into = into or comp_id
     if not doc.has(into) or doc.item(into)["type"] not in ("comp", "group"):
         raise ValueError(f"'{into}' is not a composition or a group to import into")
