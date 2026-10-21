@@ -48,14 +48,29 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | 
     if item["type"] == "video":         # decoded once (video.py); the engine picks the frame by the time
         node["frames"] = video.frames({**node["props"], "id": item["id"]}, fps)
     if item["type"] == "render3d":      # the 3D item's render, from the project (render3d.py)
-        node = render3d.node(node, item, fps, (where or {}).get("folder"))
+        node = _render3d(node, item, fps, where or {})
     return node
 
 
-def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = None, folder=None) -> dict:
+def _render3d(node: dict, item: dict, fps: float, where: dict) -> dict:
+    """The render's frames; a layer whose item isn't rendered yet is left out (an empty group) only when it is off
+    screen for all of `span`, the times about to be drawn. Anywhere it shows, and for a whole-film render, it fails loudly."""
+    try:
+        return render3d.node(node, item, fps, where.get("folder"))
+    except render3d.NotRendered:
+        span = where.get("span")
+        if span is None or (item.get("start", 0.0) <= span[1] and item.get("end", retime.END_OF_COMP) > span[0]):
+            raise
+        return {"id": item["id"], "type": "group", "props": {**{p.name: p.default for p in F.FIELDS["group"] if p.name not in python_only("group")},
+                                                              "opacity": 0.0}}
+
+
+def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = None, folder=None,
+             span: tuple[float, float] | None = None) -> dict:
     """The scene description of one composition (the first when not named). `markers`: the project's shared
     markers {name: seconds} (rostrum_core.markers.times(folder)), for expressions' marker("…"). `folder`: the
-    project folder, where 3D render layers find their item's renders."""
+    project folder, where 3D render layers find their item's renders. `span`: (first, last) seconds that will be drawn,
+    when not the whole composition (looks, a part of a video): a 3D layer not rendered yet may then be off screen."""
     comps = doc_data.get("comps", [])
     if not comps:
         raise ValueError("the document has no composition yet (comp.add)")
@@ -67,7 +82,7 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     baked = exprbake.bake(comp, fps, markers)
     for item_id, fields in layoutbake.bake(comp, fps, baked).items():
         baked.setdefault(item_id, {}).update(fields)
-    node = _node(comp, fps, baked, {"folder": folder, "markers": markers})
+    node = _node(comp, fps, baked, {"folder": folder, "markers": markers, "span": span})
     swap.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)
     stepped.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)
     return {"format": FORMAT, "version": VERSION, "comp": node}

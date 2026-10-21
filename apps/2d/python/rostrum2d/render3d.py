@@ -33,6 +33,11 @@ CONVERTER = "1"              # bump when the conversion changes (it is in every 
 _FRAME_NO = re.compile(r"\.(\d+)\.exr$", re.I)
 
 
+class NotRendered(RostrumError):
+    """The layer's 3D item has no render (or not the pinned one) yet: scene.py may leave the layer out of frames
+    where it isn't on screen, so the rest of a film can be looked at while its 3D shot renders."""
+
+
 def _where(item: dict) -> str:
     return f'{item.get("id", "?")}.item'
 
@@ -54,7 +59,7 @@ def find(item: dict, folder) -> dict:
     if r is None:
         have = ", ".join(f'v{p["version"]:03d}' for p in pictures) or "none"
         what = f"has no render v{pin:03d}" if pin else "is not rendered yet"
-        raise RostrumError(codes.NOT_FOUND, _where(item), f'{it["name"]} ({ref})', f"{what} (renders: {have})",
+        raise NotRendered(codes.NOT_FOUND, _where(item), f'{it["name"]} ({ref})', f"{what} (renders: {have})",
                            hint="Render it in Rostrum3D (render_still or render_video with EXR frames), or set Version to 0 for the newest.")
     exrs = sorted((f for f in r["files"] if f.lower().endswith(".exr")),
                   key=lambda f: int(m.group(1)) if (m := _FRAME_NO.search(f)) else 0)

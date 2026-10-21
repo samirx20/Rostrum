@@ -54,7 +54,7 @@ def render_video(ctx, args):
         copy_to.parent.mkdir(parents=True, exist_ok=True)
         if not (folder and item):
             out = copy_to
-    scene = render.scene_of(doc, comp["id"])         # the job gets a copy of the scene, never the document
+    scene = render.scene_of(doc, comp["id"], (start, end))     # the job gets a copy of the scene, never the document
 
     def job_fn(job):
         partial = project.begin_render(folder, item) if folder and item else None
