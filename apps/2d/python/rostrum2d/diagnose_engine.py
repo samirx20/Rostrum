@@ -7,17 +7,19 @@ from __future__ import annotations
 
 from . import diagnose, fields as F, textsize
 from .diagnose import _p
+from rostrum_core import RostrumError
+
 from .engine import Engine, EngineError
 from .exprbake import items_of
 from .scene import describe
 
-SAID_BEFORE = ("broken-link", "missing-marker", "expression", "missing-file")    # kinds the engine may refuse for too
+SAID_BEFORE = ("broken-link", "missing-marker", "expression", "missing-file", "missing-render")    # kinds the engine may refuse for too
 
 
 def everything(doc_data: dict, comp_id: str, folder=None, markers: dict | None = None, engine: Engine | None = None) -> list[dict]:
     """Every problem of one composition: the engine's first (it can't draw the scene), then the document's."""
     comp = next(c for c in doc_data["comps"] if c["id"] == comp_id)
-    found = problems(doc_data, comp_id, markers, engine)
+    found = problems(doc_data, comp_id, markers, engine, folder)
     own = diagnose.problems(comp, folder, markers)
     if any(p["kind"] == "missing-font" for p in found):     # "can't measure every text" is that font again
         own = [p for p in own if p["kind"] != "refused"]
@@ -25,15 +27,15 @@ def everything(doc_data: dict, comp_id: str, folder=None, markers: dict | None =
     return [p for p in found if not (p["kind"] == "refused" and p["item"] in said)] + own
 
 
-def problems(doc_data: dict, comp_id: str, markers: dict | None = None, engine: Engine | None = None) -> list[dict]:
+def problems(doc_data: dict, comp_id: str, markers: dict | None = None, engine: Engine | None = None, folder=None) -> list[dict]:
     comp = next(c for c in doc_data["comps"] if c["id"] == comp_id)
     own = engine is None
     engine = engine or Engine()
     try:
         out = _fonts(comp, engine)
         try:
-            engine.load(describe(doc_data, comp_id, markers))
-        except (EngineError, ValueError) as e:
+            engine.load(describe(doc_data, comp_id, markers, folder))
+        except (EngineError, ValueError, RostrumError) as e:
             msg = str(e)
             if not (out and "not found" in msg and "font" in msg):     # that font is listed already
                 item = msg.split(".", 1)[0].split(":")[-1].strip()

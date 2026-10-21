@@ -13,7 +13,8 @@ from rostrum_gui.frames import PictureWorker
 
 WORDS = {"refused": "Can't be drawn", "missing-font": "Missing font", "missing-file": "Missing file",
          "broken-link": "Broken link", "missing-marker": "Missing marker", "expression": "Expression",
-         "invisible": "Never seen", "off-canvas": "Off the frame", "unused-keys": "Keys that do nothing"}
+         "invisible": "Never seen", "off-canvas": "Off the frame", "unused-keys": "Keys that do nothing",
+         "missing-render": "No 3D render", "stale-render": "3D render out of date"}
 
 
 class Problems(PictureWorker):

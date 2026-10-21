@@ -15,7 +15,7 @@ from rostrum_core import ids
 from rostrum_core.tree import index
 
 ENTRIES = {
-    "design": ["shape", "text", "path", "image", "video", "group", "camera"],
+    "design": ["shape", "text", "path", "image", "video", "render3d", "group", "camera"],
     "draw": ["drawing"],
     "animate": ["camera", "rig", "group"],
 }

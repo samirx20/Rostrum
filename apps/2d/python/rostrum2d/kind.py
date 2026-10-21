@@ -20,7 +20,7 @@ OWNED = ["effects", "masks", "keys"]
 LISTS = {"doc": ["comps"], "comp": ["layers"], "group": ["layers", *OWNED], "drawing": ["frames", *OWNED],
          "frame": rostrum_paint.CANVAS_LISTS, **rostrum_paint.LISTS,
          "rig": ["layers", "bones", "iks", "binds", "poses", *OWNED], "bone": ["keys"], "ik": ["keys"], "camera": ["keys"],
-         **{t: OWNED for t in ("shape", "text", "image", "video", "path")},
+         **{t: OWNED for t in ("shape", "text", "image", "video", "render3d", "path")},
          **{t: ["keys"] for t in (*F.EFFECTS, "mask")}}
 for _t, _owned in LISTS.items():       # whatever animates a field may also hold its expression (ops_expr.py)
     if _t in F.ANIMATED_OWNERS and "exprs" not in _owned:
