@@ -14,6 +14,7 @@ from .frames import FrameRenderer
 from .handle_slots import HandleSlots
 from .hooks import Hooks2D
 from .painter import Painter
+from .render3d_watch import Render3DWatch
 from .tools2d import ToolSlots
 
 
@@ -45,6 +46,9 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
         self.join_history(self.marks)                       # marker edits undo with the screen's one history
         self.marks.changed.connect(self._render)            # expressions may read marker("…")
         self.marks.changed.connect(self._problems.touch)
+        self.r3d = Render3DWatch(self, self)                # a 3D render layer follows its item's newest render
+        self.r3d.changed.connect(self._render)
+        self.r3d.changed.connect(self._problems.touch)
         self.selectionChanged.connect(self.outlineChanged)
         self._render()
         self._problems.touch()
@@ -163,7 +167,12 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
 
     def _render(self):
         from rostrum2d.scene import describe
-        self.frames.request(describe(self.doc.data, self.comp_id, self.marks.times), self._t)
+        try:            # a 3D render layer's render missing, a video file gone …: said on screen, no frame drawn
+            scene = describe(self.doc.data, self.comp_id, self.marks.times, self.doc.folder)
+        except Exception as e:  # noqa: BLE001
+            self._fail(str(e))
+            return
+        self.frames.request(scene, self._t)
 
     def _on_frame(self, serial):
         self._frame = serial

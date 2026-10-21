@@ -3,12 +3,13 @@ item's still values with defaults filled in, and the keys of its animated fields
 frame (the evaluation's reference is evaluate.py). A field with an expression (exprbake.py) is sent as linear keys,
 one per frame, in place of its own keys; so is a field an auto layout sets (layoutbake.py), over both. A stepped
 item's ("on twos", stepped.py) animated fields are then sent as hold keys every n frames. A swap set (swap.py) is
-sent as a plain group whose children's opacity shows one at a time. The layout and swap fields themselves stay on
+sent as a plain group whose children's opacity shows one at a time; a 3D render layer (render3d.py) is
+sent as a video layer over the render's frames. The layout and swap fields themselves stay on
 the Python side (`python_only`): the engine never sees them. Rigs, long IK chains included, are the engine's.
 """
 from __future__ import annotations
 
-from . import drawing, exprbake, fields as F, layoutbake, stepped, swap, video
+from . import drawing, exprbake, fields as F, layoutbake, render3d, stepped, swap, video
 from .layout_fields import py_only
 from rostrum_core.keys import animated, keys_of
 
@@ -29,7 +30,7 @@ def _anim(item: dict) -> dict:
             for prop in sorted(animated(item)) if prop not in python_only(item["type"])}
 
 
-def _node(item: dict, fps: float = 30, baked: dict | None = None) -> dict:
+def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | None = None) -> dict:
     node = {"id": item["id"], "type": item["type"],
             "props": {p.name: item.get(p.name, p.default) for p in F.FIELDS[item["type"]]
                        if p.name not in python_only(item["type"])}}
@@ -38,19 +39,22 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None) -> dict:
         node["anim"] = anim
     for key in ("effects", "masks", "layers"):
         if item.get(key):
-            node[key] = [_node(child, fps, baked) for child in item[key]]
+            node[key] = [_node(child, fps, baked, where) for child in item[key]]
     if item["type"] == "rig":           # bones, iks and binds are nodes of their own (RIG.md § Scene description)
-        node["rig"] = [_node(c, fps, baked) for key in ("bones", "iks", "binds") for c in item.get(key, [])]
+        node["rig"] = [_node(c, fps, baked, where) for key in ("bones", "iks", "binds") for c in item.get(key, [])]
     if item["type"] == "drawing":       # the painting kit makes each drawing's picture once; the engine only reads it
         node["frames"] = [{"at": f["at"], "src": str(drawing.picture(item, f))} for f in item["frames"]]
     if item["type"] == "video":         # decoded once (video.py); the engine picks the frame by the time
         node["frames"] = video.frames({**node["props"], "id": item["id"]}, fps)
+    if item["type"] == "render3d":      # the 3D item's render, from the project (render3d.py)
+        node = render3d.node(node, item, fps, (where or {}).get("folder"), (where or {}).get("markers"))
     return node
 
 
-def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = None) -> dict:
+def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = None, folder=None) -> dict:
     """The scene description of one composition (the first when not named). `markers`: the project's shared
-    markers {name: seconds} (rostrum_core.markers.times(folder)), for expressions' marker("…")."""
+    markers {name: seconds} (rostrum_core.markers.times(folder)), for expressions' marker("…"). `folder`: the
+    project folder, where 3D render layers find their item's renders."""
     comps = doc_data.get("comps", [])
     if not comps:
         raise ValueError("the document has no composition yet (comp.add)")
@@ -61,7 +65,7 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     baked = exprbake.bake(comp, fps, markers)
     for item_id, fields in layoutbake.bake(comp, fps, baked).items():
         baked.setdefault(item_id, {}).update(fields)
-    node = _node(comp, fps, baked)
+    node = _node(comp, fps, baked, {"folder": folder, "markers": markers})
     swap.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)
     stepped.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)
     return {"format": FORMAT, "version": VERSION, "comp": node}

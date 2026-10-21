@@ -16,7 +16,7 @@ from rostrum_core.storage import paths
 
 from rostrum2d import KIND, run_source
 from . import at, curves, diagnose_tool, draw, export_tool, import_tool, layout_tool, look, motion, rig, video
-from . import lipsync, swap_tool
+from . import background_tool, lipsync, swap_tool
 
 GUIDES = Path(__file__).resolve().parents[3] / "guides"
 INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text / image / group layers animated by keys. "
@@ -28,7 +28,8 @@ INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text 
 def app_tools():
     return (look.tools.merged_with(motion.tools).merged_with(at.tools).merged_with(video.tools)
             .merged_with(draw.tools).merged_with(rig.tools).merged_with(lipsync.tools).merged_with(curves.tools).merged_with(export_tool.tools)
-            .merged_with(layout_tool.tools).merged_with(swap_tool.tools).merged_with(import_tool.tools).merged_with(diagnose_tool.tools))
+            .merged_with(layout_tool.tools).merged_with(swap_tool.tools).merged_with(import_tool.tools).merged_with(diagnose_tool.tools)
+            .merged_with(background_tool.tools))
 
 
 def open_documents(project: str, items: list[str]) -> dict:

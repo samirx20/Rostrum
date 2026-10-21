@@ -91,6 +91,8 @@ it lists what would have worked. Edits are all or nothing, so nothing changed.
 | `colour-and-blending` | you mix layers with blend modes (screen, multiply, overlay …) or grade a layer: exposure, levels, curves, a .cube LUT |
 | `shape-and-path-animation` | you draw with the pen, combine shapes, draw a stroke on, dash it |
 | `drawing-and-frame-by-frame` | you paint brush strokes and draw one picture per frame |
+| `painted-backgrounds` | you paint a big background in depth layers (far / mid / near) for camera moves and parallax |
+| `3d-renders-in-2d` | you place a Rostrum3D item's render (product shot) in a comp, following new renders |
 | `character-rigging-and-lip-sync` | you make a figure move from bones and IK, or make a mouth follow a voice |
 | `camera-parallax-motion-blur` | you want a camera, depth between layers, motion blur, smears, trails |
 | `import-and-export` | you bring in SVG, PDF, PSD, Figma, or hand over MP4, WebM, GIF, ProRes 4444, PNG sequence, Lottie |

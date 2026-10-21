@@ -20,7 +20,7 @@ def scene_of(doc, comp_id: str) -> dict:
     comp = next((c for c in doc.data.get("comps", []) if c["id"] == comp_id), None)
     if comp and (broken := follow.problems(comp)):
         raise RostrumError(codes.RENDER_FAILED, comp_id, "the composition", "can't be drawn: " + " ".join(broken))
-    return describe(doc.data, comp_id, markers.times(doc.folder))
+    return describe(doc.data, comp_id, markers.times(doc.folder), doc.folder)
 
 
 def stills(where: str, scene: dict, items: list[tuple[float, Path]], progress=None) -> None:

@@ -180,6 +180,21 @@ FIELDS: dict[str, list[Param]] = {
         N("speed", "Speed", "Video", 0, 100, 0.01, "×", S, default=1.0),
         T("loop", "Loop", "Video", False, S, help="Start again when the clip ends (otherwise the last frame is held)"),
     ] + TRANSFORM,
+    # A Rostrum3D item's finished render, placed read-only (render3d.py): its EXR frames with their transparency, shown
+    # as a video layer. Version 0 follows the newest render; a marker times its first frame (Starts at is then absent).
+    "render3d": [
+        X("item", "3D item", "3D render", "", help="Id of a Rostrum3D item of this project"),
+        N("version", "Version", "3D render", 0, 100000, 1, "", S, integer=True, words={0: "Newest"},
+          help="0 = always the newest render (follows new renders); a number keeps that version"),
+        N("w", "Width", "3D render", 2, 8192, 1, "px", integer=True, default=1920),
+        N("h", "Height", "3D render", 2, 8192, 1, "px", integer=True, default=1080),
+        CH("fit", ["cover", "contain", "stretch"], "Fit", "3D render", "contain", S),
+        N("radius", "Corner radius", "3D render", 0, 10000, 1, "px", D),
+        X("marker", "Starts at marker", "Timing", "", S, help="A shared marker's name: the render's first frame lands there"),
+        N("offset", "Render starts at", "3D render", 0, 36000, 0.01, "s", D, help="Seconds into the render where the layer's first frame is taken"),
+        N("speed", "Speed", "3D render", 0, 100, 0.01, "×", D, default=1.0),
+        T("loop", "Loop", "3D render", False, D, help="Start again when the render ends (otherwise the last frame is held)"),
+    ] + [replace(p, valid_when=IS("marker", "")) if p.name == "start" else p for p in TRANSFORM],
     "group": [      # a size the auto layout hugs is absent: the layout sets it (layout_fields.py)
         N("w", "Width", "Group", 0, 20000, 1, "px", when=_layout.SIZE_SET["w"], default=1920.0),
         N("h", "Height", "Group", 0, 20000, 1, "px", when=_layout.SIZE_SET["h"], default=1080.0),
@@ -284,7 +299,7 @@ FIELDS.update(_rig.FIELDS)
 FIELDS.update(_camera.FIELDS)
 FIELDS.update(_motion.FIELDS)
 FIELDS["comp"] += _motion.COMP + _stepped.COMP     # stepped timing (stepped.py): Python-side, applied in the scene
-LAYERS = ("shape", "text", "image", "video", "group", "drawing", "path", "rig", "camera")
+LAYERS = ("shape", "text", "image", "video", "render3d", "group", "drawing", "path", "rig", "camera")
 for _t in LAYERS:
     if _t != "camera":
         FIELDS[_t] += _layout.CHILD + ([_layout.CHILD_GROW] if _t in _layout.SIZED else [])
@@ -294,9 +309,10 @@ ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask",) + _rig.OWNED_KEYS
 STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h"}, "path": {"w", "h"},
          "group": {"columns"},
          "video": {"w", "h", "offset", "speed"},
+         "render3d": {"w", "h", "offset", "speed", "version"},
          "text": {"letterDelay", "letterSeed"},
          **_rig.STILL, **_camera.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth"}}
-LABELS = {"comp": "Composition", "shape": "Shape", "text": "Text", "image": "Image", "video": "Video", "group": "Group", "drawing": "Drawing", "path": "Path", "frame": "Drawing frame",
+LABELS = {"comp": "Composition", "shape": "Shape", "text": "Text", "image": "Image", "video": "Video", "render3d": "3D render", "group": "Group", "drawing": "Drawing", "path": "Path", "frame": "Drawing frame",
           "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "mask": "Mask", "key": "Key",
           **_rig.LABELS, **_camera.LABELS, **_motion.LABELS}
 

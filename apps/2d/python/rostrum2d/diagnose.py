@@ -13,7 +13,7 @@ from pathlib import Path
 
 from rostrum_core.keys import animated, key_value, keys_of
 
-from . import fields as F, follow
+from . import fields as F, follow, render3d
 from .engine import EngineError
 from .expr import ExprError, find
 from .exprbake import exprs_of, items_of, parse_cached, problems as expr_problems
@@ -21,7 +21,7 @@ from .layoutbake import uses_layout
 from .mcp.geometry import comp_size, flatten, problems_showing
 
 KINDS = ("refused", "missing-font", "missing-file", "broken-link", "missing-marker", "expression",
-         "invisible", "off-canvas", "unused-keys")
+         "invisible", "off-canvas", "unused-keys", "missing-render", "stale-render")
 SAMPLES = 24          # moments looked at across the composition's length for "never seen"
 
 
@@ -34,7 +34,7 @@ def problems(comp: dict, folder=None, markers: dict | None = None) -> list[dict]
     items = items_of(comp)
     exprs = exprs_of(items)
     out = [_p("broken-link", "", m, "Point it at a path layer beside it, or clear its Path field") for m in follow.problems(comp)]
-    out += _links(items) + _files(items, folder) + _markers(exprs, markers)
+    out += _links(items) + _files(items, folder) + _markers(exprs, markers) + _renders(items, folder)
     out += [_p("expression", e.split(":", 1)[0], e, "Fix or clear the expression") for e in expr_problems(items, exprs)]
     try:
         out += _unseen(comp)
@@ -64,6 +64,19 @@ def _files(items: dict, folder) -> list[dict]:
             if path and not (Path(path) if Path(path).is_absolute() else Path(folder or ".") / path).exists():
                 out.append(_p("missing-file", item["id"], f'{item["id"]}.{field}: no file at "{path}"',
                               "Point it at the file again (absolute, or relative to the project folder)"))
+    return out
+
+
+def _renders(items: dict, folder) -> list[dict]:
+    """3D render layers whose render can't be shown, or is older than its 3D document (render3d.py)."""
+    out = []
+    for item in items.values():
+        if item["type"] == "render3d":
+            st = render3d.status(item, folder)
+            if not st["ok"]:
+                out.append(_p("missing-render", item["id"], st["message"], "Render the 3D item (with EXR frames), or fix 3D item / Version"))
+            elif st["stale"]:
+                out.append(_p("stale-render", item["id"], f'{item["id"]}: {st["message"]}', "Render it again in Rostrum3D; this layer follows the newest render"))
     return out
 
 

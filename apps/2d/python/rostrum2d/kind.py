@@ -20,7 +20,7 @@ OWNED = ["effects", "masks", "keys"]
 LISTS = {"doc": ["comps"], "comp": ["layers"], "group": ["layers", *OWNED], "drawing": ["frames", *OWNED],
          "frame": rostrum_paint.CANVAS_LISTS, **rostrum_paint.LISTS,
          "rig": ["layers", "bones", "iks", "binds", "poses", *OWNED], "bone": ["keys"], "ik": ["keys"], "camera": ["keys"],
-         **{t: OWNED for t in ("shape", "text", "image", "video", "path")},
+         **{t: OWNED for t in ("shape", "text", "image", "video", "render3d", "path")},
          **{t: ["keys"] for t in (*F.EFFECTS, "mask")}}
 for _t, _owned in LISTS.items():       # whatever animates a field may also hold its expression (ops_expr.py)
     if _t in F.ANIMATED_OWNERS and "exprs" not in _owned:
@@ -123,3 +123,4 @@ from . import ops_path, ops_stroke  # noqa: E402,F401  (vector paths, booleans, 
 from .rig import ops as _rig_ops, poses as _rig_poses  # noqa: E402,F401  (bones, IK chains, binds, poses)
 from .lipsync import ops as _lipsync_ops  # noqa: E402,F401  (lipsync.apply)
 from . import ops_swap  # noqa: E402,F401  (swap.show, blink.add)
+from . import ops_background  # noqa: E402,F401  (background.add, background.fit, background.move: painted backgrounds)
