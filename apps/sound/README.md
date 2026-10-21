@@ -18,7 +18,7 @@ Hands over WAV stems (see `shared/HANDOFFS.md`).
 ```
 cd apps\sound\engine
 pwsh -File C:\Users\Sam\.rostrum\waves\heavy.ps1 run "<team>: sound engine" build cargo build --profile agent -j 4
-uv pip install --python <worktree>\.venv\Scripts\python.exe -e "shared\core[mcp]" -e "apps\sound\python[listen,mcp,test]"
+uv pip install --python <worktree>\.venv\Scripts\python.exe -e "shared\core[mcp]" -e "apps\sound\python[listen,mcp,cleanup,test]"
 <worktree>\.venv\Scripts\python.exe -m rostrum_sound.mcp.server --folder <project folder> --item cue
 ```
 
