@@ -37,7 +37,7 @@ Item {
             Rectangle { width: g.keysWidth - 6; height: parent.height - 1; x: 0
                         color: g.notes && g.black(parent.key) ? Theme.app : Theme.panel }
             Text {
-                visible: g.notes ? parent.key % 12 === 0 || g.rowH >= 16 && !g.black(parent.key) : true
+                visible: g.notes ? parent.key % 12 === 0 || g.rowH >= 16 : true
                 x: Theme.gap; anchors.verticalCenter: parent.verticalCenter
                 text: g.notes ? g.rowNames[parent.index] : g.roll.drums[parent.index] || ""
                 color: g.notes && parent.key % 12 !== 0 ? Theme.fg4 : Theme.fg3
