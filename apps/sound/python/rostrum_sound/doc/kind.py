@@ -14,7 +14,7 @@ from rostrum_core import DocKind
 
 from .. import names
 from . import fields as FD
-from . import ops_buses, ops_mix, ops_music, ops_timed, ops_tracks, ops_voice  # noqa: F401  (they register the operations)
+from . import ops_buses, ops_cleanup, ops_mix, ops_music, ops_timed, ops_tracks, ops_voice  # noqa: F401  (they register the operations)
 from .check import check
 from .registry import LISTS, MASTER_ID, REGISTRY
 

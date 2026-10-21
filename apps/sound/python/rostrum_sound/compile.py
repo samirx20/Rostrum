@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from rostrum_core import RostrumError
 
-from . import names, voice_lines
+from . import clean_clips, names, voice_lines
 from .doc import effects as FX
 from .doc import fields_design as FDS
 from .doc import playing as PL
@@ -93,7 +93,9 @@ class _Compiler:
         clips = []
         for c in track.get("clips", []):
             cw = f"{w}.clips[{c['id']}]"
-            clips.append({**self.pick(c, CLIP_KEYS, cw), **_nonempty("effects", self.effects(c, cw))})
+            clip = {**self.pick(c, CLIP_KEYS, cw), **_nonempty("effects", self.effects(c, cw))}
+            clip["media"] = clean_clips.media_of(c, cw)   # its cleaned take while it has one (none made yet: loud error)
+            clips.append(clip)
         for ln in track.get("lines", []):   # a voice line plays its cached take as a clip (none made yet: loud error)
             clips.append(voice_lines.clip_of(track, ln, self.time(ln["at"], f"{w}.lines[{ln['id']}].at")))
         if clips:

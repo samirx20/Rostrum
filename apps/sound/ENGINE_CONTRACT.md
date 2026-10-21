@@ -167,6 +167,7 @@ Every effect is `{"type": <name>, …}`. A parameter marked *env* takes a number
 | `gate` | `threshold` (−45 dB), `ratio` (4), `range` (30 dB), `attack` (0.002 s), `hold` (0.05 s), `release` (0.12 s) |
 | `deess` | `freq` (6000 Hz), `threshold` (−30 dB), `range` (8 dB) |
 | `dehum` | `freq` (0 = found in the clip; else 50 / 60), `harmonics` (6), `width` (40) |
+| `dereverb` | `amount` (0.5: how much of the modelled late reverb is taken out), `reduction` (18 dB at most), `time` (0 = the room's decay time measured from the clip, else RT60 in s). Statistical late-reverb suppression, no model (`dialogue/dereverb.rs`); offline only (not on live play) |
 | `plugin` | `format` (`clap` / `vst3`), `path`, `id`, `params` ({}), `state` (none): a CLAP / VST3 effect plugin (§ Plugins) |
 
 Clip `stretch` and `shift` (added 2026-10-21, P8) use the engine's stretcher (Signalsmith Stretch for music, PSOLA when the engine hears a voice in the clip); both may be set together, and with `pitch`. `check` writes `null` for the ones not set.
