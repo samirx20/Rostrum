@@ -92,16 +92,35 @@ Rectangle {
             }
         }
         QtObject { id: figma; property string key: ""; property string frame: ""; property string token: "" }
+        Row {   // only for a page that is fitted into the composition (svg, pdf, psd, figma)
+            visible: job.canKeepSize; height: visible ? Theme.row : 0; spacing: 0
+            Text { width: panel.labelW; height: parent.height; verticalAlignment: Text.AlignVCenter
+                   text: "Keep original size"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body
+                   elide: Text.ElideRight }
+            Item {
+                width: col.width - panel.labelW; height: parent.height
+                Toggle { anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: Theme.gap }
+                         checked: job.keepSize
+                         enabled: job.state !== "running"; onToggled: (v) => job.setKeepSize(v) }
+            }
+        }
         Row {
             spacing: Theme.gap
-            Button { visible: job.ready; text: "Import"; kind: "primary"
+            Button { visible: job.ready && job.state !== "running"; text: "Import"; kind: "primary"
                      onClicked: { if (job.source === "figma") { job.runFigma(figma.key, figma.frame, figma.token); figma.token = "" } else job.run() } }
+            Button { visible: job.state === "running"; text: "Cancel"; onClicked: job.cancel() }
             Button { text: "Close"; kind: "ghost"; onClicked: panel.shown = false }
         }
-        Text {   // the error line
-            visible: job.state === "failed"
+        Rectangle {   // progress
+            visible: job.state === "running"
+            width: col.width; height: 4; radius: 2; color: Theme.raised
+            Rectangle { width: parent.width * job.progress; height: parent.height; radius: 2; color: Theme.accent }
+        }
+        Text {   // what is happening, the error line, or that it was stopped (neither an error nor a success)
+            visible: job.state === "running" || job.state === "failed" || job.state === "cancelled"
             width: col.width; wrapMode: Text.Wrap
-            text: job.note; font.family: uiFont; font.pixelSize: Theme.body; color: Theme.danger
+            text: job.note; font.family: uiFont; font.pixelSize: Theme.body
+            color: job.state === "failed" ? Theme.danger : Theme.fg2
         }
         Column {   // what came in, and what didn't
             visible: job.state === "done"

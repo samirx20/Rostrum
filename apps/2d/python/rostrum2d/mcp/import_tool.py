@@ -21,7 +21,8 @@ tools = Tools()
     "text": {"type": "string", "enum": ["text", "outline"], "description": "svg only: text as editable text layers (default) or as paths that look exactly like the source."},
     "figma": {"type": "object", "properties": {"key": {"type": "string"}, "frame": {"type": "string"}, "token": {"type": "string"}},
               "required": ["key"], "description": "A Figma frame: the file key, the frame's name (default: the first) and your own token (or set FIGMA_TOKEN). The token is never stored."},
-    "into": {"type": "string", "description": "A group's id to import into. Default: the composition."}}})
+    "into": {"type": "string", "description": "A group's id to import into. Default: the composition."},
+    "fit": {"type": "boolean", "description": "svg / pdf (a page) / psd / figma: true = the source's page lands centred in the composition, scaled to fit inside it, under one group. Default false: the source's own size and place."}}})
 def run_import(ctx, args):
     """Import a file or a Figma frame into a composition as new layers: svg, pdf (a page, or every page as its own composition), psd, figma → layers with their own names,
     groups and places (text stays text, paths stay paths); an image or a video → one layer, centred, shrunk to fit. One change, all
@@ -33,7 +34,7 @@ def run_import(ctx, args):
         path = Path(doc.folder or ".") / path
     try:
         r = importing.run(_Applying(ctx, doc), ctx.who, comp["id"], path, args.get("kind"), args.get("page", 1), args.get("text", "text"),
-                          args.get("figma"), args.get("into"))
+                          args.get("figma"), args.get("into"), bool(args.get("fit", False)))
     except ValueError as e:                 # a wrong file, kind or id: the caller's to fix, said plainly
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, "the import", str(e)) from None
     say = f'Imported {r["name"]} into {args.get("into") or comp["id"]}: {r["calls"]} operations, {"compositions" if r.get("comps") else "layers"} {", ".join(r.get("comps") or r["layers"])}.'
