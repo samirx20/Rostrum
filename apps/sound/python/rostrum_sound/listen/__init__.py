@@ -3,8 +3,8 @@ from .cleanup import clean_compare, stems_check
 from .levels import levels
 from .loudness import loudness
 from .low_end import low_end
-from .onsets import onsets
+from .onsets import onsets, which_stem
 from .spectrogram import spectrogram
 from .stereo import stereo
 
-__all__ = ["loudness", "levels", "onsets", "spectrogram", "stereo", "low_end", "clean_compare", "stems_check"]
+__all__ = ["loudness", "levels", "onsets", "which_stem", "spectrogram", "stereo", "low_end", "clean_compare", "stems_check"]

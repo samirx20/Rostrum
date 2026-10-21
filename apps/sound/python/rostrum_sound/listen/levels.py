@@ -2,7 +2,8 @@
 import numpy as np
 import pyloudnorm as pyln
 
-from .core import db, duration, load, num, peak_db, sections
+from .core import db, duration, is_float_file, load, num, peak_db, sections
+from .loudness import CLIP_LEVEL
 
 ACTIVE_DB = -70.0     # a section quieter than this counts as "stem not playing"
 
@@ -19,10 +20,11 @@ def _lufs(y, sr):
 def levels(stems, mix=None, section_s=2.0, buried_db=18.0):
     """stems: {id: wav path}; mix: its rendered wav (default: the stems summed).
     Per stem: LUFS, peak, RMS, dB under the loudest stem and dB against the mix.
-    flags: a stem peaking above 0 dBFS; a stem more than `buried_db` under the loudest other stem in every section it plays."""
+    flags: a float stem above 0 dBFS ("over full scale": held, not clipped); a fixed-point stem at full scale ("clips"); a stem more than `buried_db` under the loudest other stem in every section it plays."""
     if not stems:
         raise ValueError("levels: no stems given")
     data = {k: load(p) for k, p in stems.items()}
+    floats = {k: is_float_file(p) for k, p in stems.items()}
     sr = next(iter(data.values()))[1]
     for k, (_, s) in data.items():
         if s != sr:
@@ -50,9 +52,16 @@ def levels(stems, mix=None, section_s=2.0, buried_db=18.0):
                    "rms_dbfs": num(db(np.mean(ys[k].astype(np.float64) ** 2))),
                    "db_under_loudest": num(top - lufs[k], 1),
                    "db_vs_mix": num(lufs[k] - mix_lufs, 1)}
-    flags = [{"flag": "over full scale", "stem": k, "peak_dbfs": r["peak_dbfs"],
-              "detail": "the stem peaks above 0 dBFS: it clips once written at fixed point, and pushes the master's limiter"}
-             for k, r in rows.items() if r["peak_dbfs"] > 0.0]
+    flags = []
+    for k, r in rows.items():
+        r["format"] = "32-bit float" if floats[k] else "fixed-point"
+        if floats[k] and r["peak_dbfs"] > 0.0:
+            flags.append({"flag": "over full scale", "stem": k, "peak_dbfs": r["peak_dbfs"], "clips": False,
+                          "detail": "this float file holds the peak above 0 dBFS without clipping; it would clip only if "
+                                    "converted to a fixed-point file (16 or 24-bit) without turning it down first"})
+        elif not floats[k] and r["peak_dbfs"] >= db(CLIP_LEVEL ** 2):
+            flags.append({"flag": "clips", "stem": k, "peak_dbfs": r["peak_dbfs"], "clips": True,
+                          "detail": "this fixed-point file reaches full scale: the peaks are cut flat in the file"})
     for i, k in enumerate(ids):
         gaps = [np.delete(sec_db[:, s], i).max() - sec_db[i, s]
                 for s in range(len(secs)) if sec_db[i, s] > ACTIVE_DB and len(ids) > 1]

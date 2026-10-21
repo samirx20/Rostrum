@@ -32,6 +32,14 @@ def load(src):
     return y, sr
 
 
+def is_float_file(src):
+    """True when the file stores floating-point samples (they hold levels over 0 dBFS); False for fixed-point PCM
+    (16/24/32-bit integer, which cannot) and for an already loaded (samples, sr) pair, which carries no format."""
+    if isinstance(src, tuple):
+        return False
+    return sf.info(os.fspath(src)).subtype in ("FLOAT", "DOUBLE")
+
+
 def name_of(src):
     return os.path.basename(os.fspath(src)) if not isinstance(src, tuple) else "audio"
 

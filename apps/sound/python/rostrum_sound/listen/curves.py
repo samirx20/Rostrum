@@ -28,8 +28,21 @@ def band_curves(y, sr, step=0.5):
     return np.array(ts), np.array(rows).T
 
 
-def draw_loudness(y, sr, t, st, png, title):
-    fig, (a1, a2) = plt.subplots(2, 1, figsize=(16, 9), dpi=100, sharex=True)
+def draw_loudness(y, sr, t, st, png, title, limiter=None):
+    """`limiter` = (hop seconds, dB reduced per hop, worst moments): a third panel under the other two."""
+    fig, axes = plt.subplots(3 if limiter else 2, 1, figsize=(16, 12 if limiter else 9), dpi=100, sharex=True)
+    a1, a2 = axes[0], axes[1]
+    if limiter:
+        hop, red, worst = limiter
+        a3 = axes[2]
+        a3.fill_between(np.arange(len(red)) * hop, 0, -np.asarray(red), color="#d62728", alpha=0.6, step="mid")
+        for w in worst:
+            a3.annotate(f"{w['reduced_db']:.1f} dB", (w["time_s"], -w["reduced_db"]), textcoords="offset points",
+                        xytext=(0, -14), ha="center", fontsize=11)
+        a3.set_ylabel("limiter gain (dB)")
+        a3.set_ylim(min(-1.0, -max(red, default=0) * 1.3), 0.3)
+        a3.set_xlabel("time (seconds)")
+        a2.set_xlabel("")
     a1.plot(t, np.where(st > -70, st, np.nan), lw=3, color="#1f77b4")
     a1.set_ylabel("short-term loudness (LUFS)")
     a1.set_title(title)
@@ -37,10 +50,11 @@ def draw_loudness(y, sr, t, st, png, title):
     for k, (name, _, _) in enumerate(BANDS):
         a2.plot(ts, b[k], lw=2.5, color=BAND_COLORS[k], label=name)
     a2.set_ylabel("band energy (dB)")
-    a2.set_xlabel("time (seconds)")
+    if not limiter:
+        a2.set_xlabel("time (seconds)")
     a2.set_ylim(max(-100, np.nanmin(b)), np.nanmax(b) + 3)
     a2.legend(ncol=5, loc="lower center")
-    for a in (a1, a2):
+    for a in axes:
         a.grid(alpha=0.3)
         a.xaxis.label.set_fontsize(14)
         a.yaxis.label.set_fontsize(14)

@@ -54,10 +54,12 @@ def clip_moments(y, sr):
             for s, e in runs]
 
 
-def loudness(wav, out_png=None, step=1.0, series=None):
+def loudness(wav, out_png=None, step=1.0, series=None, limiter=None):
     """Facts about how loud `wav` is. `series` = the engine's own short-term values
     [(time_s, lufs)] (e.g. its 100 ms series), used for the curve instead of computing one.
-    `out_png` writes the loudness + band-energy picture and returns its path under "png"."""
+    `out_png` writes the loudness + band-energy picture and returns its path under "png".
+    `limiter` = {"stems": {track: wav}, "caveat": str}: adds where the master limiter worked and which tracks
+    drove it (listen/limiter.py) to the facts and a third panel to the picture."""
     y, sr = load(wav)
     meter = pyln.Meter(sr)
     if series is not None:
@@ -75,7 +77,14 @@ def loudness(wav, out_png=None, step=1.0, series=None):
            "short_term_lufs": [num(v, 1) if v > -70 else None for v in st],
            "note": "short-term = 3 s window ending at each step; null = silence or under 0.4 s of audio; "
                    f"clip_moments are samples within {abs(NEAR_CLIP_DB):g} dB of full scale"}
+    panel = None
+    if limiter:
+        from .limiter import HOP_S, limiter as measure
+        lim = measure(wav, limiter["stems"], limiter.get("caveat", ""), engine_max_db=limiter.get("engine_max_db"))
+        curve = lim.pop("_curve")
+        out["limiter"] = lim
+        panel = (HOP_S, curve.tolist(), lim["worst"])
     if out_png:
         from .curves import draw_loudness
-        out["png"] = draw_loudness(y, sr, t, st, out_png, name_of(wav))
+        out["png"] = draw_loudness(y, sr, t, st, out_png, name_of(wav), limiter=panel)
     return out
