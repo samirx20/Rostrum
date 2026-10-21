@@ -52,8 +52,21 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
   where you meant it to go.
 - `look_frame`, `look_sheet`, `render_video`: the whole composition, drawn by the engine exactly as it exports.
 
+## Stepped timing
+
+- **Drawings:** each drawing is held until the next, so "on twos" is drawings at frames 0, 2, 4 …; "on threes" is 0, 3, 6.
+  `frame.hold frames=N` changes how long one shows and shifts the later ones. The last drawing is held to the layer's end
+  (`end`); add a drawing after it to end a hold.
+- **Other layers:** the `hold` ease makes any field jump at the next key instead of travelling: `layer.key("x", {0: 100, 0.2: 300}, ease="hold")`
+  steps a layer; keys every 2 frames with `hold` give a stepped move. `linear` between keys is smooth motion.
+- A drawing layer's own keys (opacity, position, scale) work like any layer's.
+
 ## Frame-by-frame working method
 
 1. Block the motion first: a few key drawings (the extremes), checked with `look_sheet`.
 2. Fill the in-betweens with `onion=true`, so each drawing sits between its neighbours.
 3. Check the loop: the last drawing must lead into the first. `render_video` and watch it.
+
+## Not yet
+
+Auto in-betweening of drawings, and animating a single stroke's own path with keys.

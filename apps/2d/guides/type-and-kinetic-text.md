@@ -1,89 +1,113 @@
-# Building a title animation with the script API
+# Type and kinetic text
 
-Techniques, one at a time. These fragments show how the API is used; the words, sizes, times and eases are placeholders for
-your own decisions. Read `start-here` first; ease behaviour is in `easing-and-overlap`.
+How to set type and make it move with the tools Rostrum2D has. Read `start-here` first (ids, keys, `run_script`).
+Fragments show how a tool is called; words, sizes, times and eases are placeholders for your own decisions.
+Ease behaviour is in `easing-and-overlap`.
 
-## 1. Stage it before you animate it
+## A text layer's controls
 
-Decide, in order: what is on screen first, what the eye should land on, what supports it, how long each stays. Write this as a
-list of times (`# 0.0 bg in; 0.3 headline lands; 1.4 subtitle; hold to 3.2`) at the top of the script, then write keys to
-match. Then compose the **final frame first**: place every layer where it ends up, with its final values, and look at that
-(`look_frame` at the last second). Animation is how it gets there; if the end state is wrong, easing won't fix it.
+Make one with `text("title", body="…")` in a script, or `layer.add type=text`. Change it with `text.set`. Every control
+below is a field (`inspect_item id=title` lists them with what is valid right now).
 
-```python
-comp("main", width=1920, height=1080, fps=30, duration=4, background="#0b0b10")
-head = text("headline", body="…", size=180, weight=700, x=960, y=500)    # final position
-sub = text("subtitle", body="…", size=48, x=960, y=660)
-```
+| Field | What it does |
+|---|---|
+| `body`, `size` (px), `color` | The words, how big, what colour. |
+| `font` | A family name. An unknown one is refused when the scene loads, and the reply names the families that exist. |
+| `weight`, `stretch` | The variable font's weight (`wght`) and width (`wdth`, in %). |
+| `slant`, `grade` | The font's `slnt` and `GRAD` axes, set only when not 0. |
+| `axes` | Any other axis by tag: `"XTRA 468, CASL 1"`. It wins over the named fields. An axis the font lacks is refused; a value out of range is clamped. |
+| `tracking` (em), `lineHeight`, `align`, `boxWidth` | Spacing between letters, line spacing, left / center / right, wrap width (0 = one line). |
+| `stroke`, `strokeColor`, `strokeWidth` | An outline on the letters. |
 
-## 2. Entrances: pick what moves and from where
+**Optical size** (`opsz`) is set for you: it follows `size`, held to 8–144, so a big title uses the font's display design
+and small text its text design. To pin it, name it yourself in `axes`: `axes="opsz 14"`.
 
-An entrance is a field going from "not there" to its final value: `opacity` 0 → 1, a position offset to its place, `scale` from
-small, a mask opening, a gradient moving. Animate **toward the final value you already placed**: copy it as the last key.
-
-```python
-head.key("opacity", {0.3: 0, 0.8: 1}, ease="easeOut")
-head.key("y", {0.3: 540, 0.9: 500}, ease="snappy")          # 40 px below its place, travelling up into it
-```
-
-Different fields on one layer can have different times and eases: a quick fade with a longer travel is two keys per field.
-Keys of one field are written as `{time: value}`; `{time: (value, ease)}` changes the ease per key.
-
-## 3. Reveal with a mask instead of a fade
-
-A mask is the part of the layer that shows, in the layer's own pixels from its top-left. Animate its width or position:
+**Animatable:** every number and colour field above (`size`, `weight`, `stretch`, `slant`, `grade`, `tracking`,
+`lineHeight`, `color`, `strokeWidth` and the transform). Not animatable: `body`, `font`, the type switches, `letterDelay`,
+`letterSeed`, `boxWidth`. `inspect_operations name=key.add` lists them.
 
 ```python
-head.mask("reveal", x=0, y=0, w=0, h=300).key("w", {0.3: 0, 1.0: 1400})
+t = text("head", body="Words", size=180, weight=300, x=960, y=500)
+t.key("weight", {0.0: 300, 0.8: 800}, ease="easeInOut")      # a variable-font weight change on a held headline
+t.key("tracking", {0.0: 0.1, 0.8: 0.0}, ease="easeOut")
 ```
 
-Check the layer's own box size with `look_at` at a time when it is visible (it reports the approximate box).
+## OpenType features
 
-A mask travels with its layer: move the layer and the mask moves too. For a reveal where the layer moves *through*
-a fixed edge (a word rising out of a line), put the layer in a group with `clip=True` and let the group's box be the
-edge; animate the layer inside it. Masks cut before effects, so a glow can't spill past a mask, and a clipped group
-cuts its children's glow too: grow the group's box once the edge no longer needs to hide anything.
+| Field | What it does |
+|---|---|
+| `ligatures` | Joined letters such as fi, fl, where the font has them (on by default). |
+| `figures` | `default`, `proportional lining`, `tabular lining`, `proportional old-style`, `tabular old-style`. Tabular numbers all have one width (they line up in columns, and a changing number does not jiggle). |
+| `smallCaps` | The font's own small capitals (`smcp`). Refused if the font has none. |
+| `features` | Any OpenType tags: `"ss01 ss03 salt"`, `"cv05=2"`, `"-kern"` (a later tag wins). A tag the font lacks is refused, naming the layer, the field and the features the font has. |
 
-`look_frame` draws 960 px wide unless you pass `width: 1920`; check spacing and soft edges at full size.
+Check a feature by looking: `look_frame` at full width (`width=1920`) on the glyphs it should change.
 
-## 4. Per-word entrances: one layer per word, one loop
+## Per-letter animation
 
-For staggered type, make a text layer per word and drive start times from the loop index. Positions come from your layout
-decision; compute them, don't eyeball.
+`letterDelay` (seconds, not animatable) makes each letter (or word) play the layer's own keys that much later than the one
+before. 0 = the layer moves as one.
+
+| Field | What it does |
+|---|---|
+| `letterDelay` | Seconds between one letter's start and the next. |
+| `letterSplit` | `letters` or `words`. |
+| `letterOrder` | `forward`, `backward`, `center`, `random`. |
+| `letterSeed` | Which random order (same on every machine). |
+
+What the keys do per letter: keyed `x` / `y` move each letter from the layer's still `x` / `y`; keyed `rotation`, `scale`,
+`stretch`, tilt and `opacity` apply about each letter's own centre; keyed colour, outline colour and width are per letter.
+A gradient spans the whole text. With letter animation on, a `boxWidth` other than 0 is refused (no wrapping yet).
 
 ```python
-words = ["one", "two", "three"]
-for i, w in enumerate(words):
-    t = text(f"word_{i}", body=w, size=140, x=480 + i * 480, y=540)    # explicit ids so a re-run finds them
-    t.key("opacity", {0.3 + i * 0.12: 0, 0.7 + i * 0.12: 1}, ease="easeOut")
+t = text("head", body="Rostrum", size=200, x=960, y=540, letterDelay=0.04, letterOrder="forward")
+t.key("opacity", {0.2: 0, 0.6: 1}, ease="easeOut")
+t.key("y", {0.2: 580, 0.8: 540}, ease="snappy")          # each letter plays these 0.04 s after the one before
 ```
 
-The step (`0.12`) against the move length (`0.4`) decides how much the words overlap. `look_motion` prints the overlap.
+For different timing per word you can also make one text layer per word and drive the start from a loop
+(`0.3 + i * step`, explicit ids so a re-run finds them); `look_motion` prints how much the entrances overlap.
 
-## 5. Exits and holds
+## Gradient-filled letters
 
-- A hold is time where nothing animates. It is how long the viewer gets to read. `look_motion` reports "Nothing moves from X to Y"
-  for such stretches; check it is as long as the text needs, and that a hold at the very end is intended.
-- An exit is an entrance run backwards. Pair it with an ease that starts slow and ends fast (`easeIn`) if leaving should
-  accelerate away.
-- A layer that has finished its exit but still sits at `opacity` 0 is fine. A layer whose opacity ends at 1 but is positioned
-  off the frame is "not on screen at the end" in `look_motion`: that finding tells you which.
+A `gradient` effect on a text layer fills its letters instead of the plain colour: `style` linear / radial / conic, `angle`,
+`cx`, `cy`, `color1`, `color2`, optional `middle` with `color3` at `mid`. Numbers and colours animate.
 
-## 6. Type that changes while it is on screen
+```python
+t.effect("gradient", id="fill", style="linear", angle=90, color1="#ffffff", color2="#8899ff")
+```
 
-Text fields `size`, `weight`, `tracking`, `stretch` (variable-font width) are animatable numbers; `color` is an animatable
-colour. A weight change from light to bold over 0.8 s on a held headline is a single `key("weight", {…})`. Effects have keys
-too: `head.effect("glow", id="halo", radius=0).key("radius", {1.0: 0, 1.6: 60})` (the key belongs to the effect; `look_motion`
-names it `halo.radius`).
+Other effects work on text too: `glow`, `blur`, `shadow`, `backdrop` (see `ui-and-product-animation`). Effects have keys:
+`t.effect("glow", id="halo", radius=0).key("radius", {1.0: 0, 1.6: 60})`; `look_motion` names it `halo.radius`.
 
-## 7. The check loop (every pass)
+## Reveal with a mask
 
-1. `run_script` (same `name` every time so it merges, and with explicit ids).
-2. `look_motion`: read the moves; fix findings that are mistakes (entrances overlap that you meant to be sequential, keys that do
-   nothing, layers not on screen at the end).
-3. `look_sheet` over the whole thing: is the order right? Is the end frame right?
-4. `look_frame` at the landing times and at a hold: type crisp and where you placed it? Anything cut off or crowded?
-5. `look_at` on any point you doubt: which layers are there and in what order?
-6. Only then `render_video`.
+A mask is the part of the layer that shows, in the layer's own pixels from its top-left (`mask.add`, or `t.mask(...)` in
+a script): `shape` rect / ellipse, `x`, `y`, `w`, `h`, `radius`, `feather`, `invert`, `angle`. All numbers animate.
 
-If a person has moved something, your re-run reports it as held back. Leave it unless they asked you to put it back.
+```python
+t.mask("reveal", x=0, y=0, w=0, h=300).key("w", {0.3: 0, 1.0: 1400})
+```
+
+A mask moves with its layer. To move a layer *through* a fixed edge, put it in a group with `clip=True` and animate the
+layer inside it. Masks cut before effects, so a glow cannot spill past a mask.
+
+## Text on a path
+
+The fields `path`, `pathOffset`, `pathAlign`, `pathOverflow` exist on a text layer; the guide for them is
+`text-on-a-path` (not yet: S10, Team Sam).
+
+## Fonts
+
+A scene can name project fonts (absolute file paths), which win over the app's fonts. Not yet: a tool that lists the
+installed families. The list comes back in the engine's scene reply and in the refusal when a name is wrong.
+
+## Check loop (every pass)
+
+1. `run_script` (same `name`, explicit ids).
+2. `look_motion`: moves, overlaps, holds, layers not on screen at the end, keys that do nothing.
+3. `look_sheet` over the whole thing; `look_frame` at the landing times and at a hold (`width=1920` for type edges).
+4. `look_at x y time`: which layers cover a point, top first (boxes are approximate; text width is estimated).
+5. Then `render_video`.
+
+If a person moved something, a re-run reports it as held back. Leave it unless they asked you to put it back.

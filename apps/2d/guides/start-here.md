@@ -82,6 +82,19 @@ same engine as export, so what you see is what the file will be.
 A failed call says `ok: false` and the one line `Error: <where>: <subject> <what is wrong>. Accepted: … <hint>`. Read **Accepted**:
 it lists what would have worked. Edits are all or nothing, so nothing changed.
 
-## Next guide
+## The guides (one line each: when to read it)
 
-`title-animation`: building type that animates with the script API, technique by technique.
+| Guide | Read it when |
+|---|---|
+| `type-and-kinetic-text` | you set type: fonts, variable axes, OpenType features, per-letter animation, gradient letters, building a title in steps |
+| `ui-and-product-animation` | you build screens and product shots: boxes, masks, frosted glass, shadows, tilt and depth |
+| `shape-and-path-animation` | you draw with the pen, combine shapes, draw a stroke on, dash it |
+| `drawing-and-frame-by-frame` | you paint brush strokes and draw one picture per frame |
+| `character-rigging-and-lip-sync` | you make a figure move from bones and IK, or make a mouth follow a voice |
+| `camera-parallax-motion-blur` | you want a camera, depth between layers, motion blur, smears, trails |
+| `import-and-export` | you bring in SVG, PDF, PSD, Figma, or hand over MP4, WebM, GIF, ProRes 4444, PNG sequence, Lottie |
+| `easing-and-overlap` | you choose how a move travels (ease curves) and check that moves overlap as you meant |
+| `text-on-a-path`, `curve-editor`, `expressions` | not yet: S10 (Team Sam) |
+
+Each guide says what exists today, with the tool, operation or field name. Where something is planned but missing, it says
+"not yet".

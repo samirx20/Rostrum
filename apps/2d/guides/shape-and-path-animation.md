@@ -1,0 +1,90 @@
+# Shape and path animation
+
+How to make vector shapes, edit them point by point, combine them, and animate how they are drawn. Read `start-here` first.
+A person uses the pen on the Design page and writes the same path data the operations below write.
+
+## Two layers for vectors
+
+- **`shape`**: a rect or ellipse (`w`, `h`, `radius`, `fill`, outline). Simple, and its size and radius animate.
+- **`path`**: any outline. Its one truth is `d`: SVG path data with **absolute** commands only: `M x y`, `L x y`,
+  `C x1 y1 x2 y2 x y`, `Z`, in the layer's own px from its box's top-left. `w` and `h` are the box (anchor and gradients use
+  it). Bad data is refused, naming what is wrong.
+
+`shape.to_path` turns a shape into a path (same id, place, look, effects, masks, keys; keys on fields a path cannot animate
+must be removed first).
+
+## Making a path
+
+In a script:
+
+```python
+path("mark", d="M 0 0 L 200 0 L 100 160 Z", fill="#ffffff", x=960, y=540)     # box taken from d
+path("burst", d=star(5, 120, 50), x=700, y=500)                                # star(points, outer, inner, rotation)
+path("hex", d=polygon(6, 100), x=1200, y=500)                                  # polygon(sides, radius, rotation)
+```
+
+`star` and `polygon` give `d` fitted to its box (first tip straight up). With operations (`edit_document`, or what the pen
+calls): `layer.add type=path`, then `path.add_point`, `path.set_point`, `path.remove_point`, `path.close`.
+
+| Operation | Does |
+|---|---|
+| `path.add_point x y` | A corner, or a smooth point with handles `inX inY outX outY` (offsets from the point). Goes after point `after`, or starts a new subpath with `new`, or ends the last open subpath. |
+| `path.set_point i` | Moves point `i` and/or its handles. `mirror` keeps the two handles opposite (a smooth point). Points are counted over all subpaths from 0. |
+| `path.remove_point i` | Removes it. |
+| `path.close` | Closes (or opens, `closed=false`) the subpath of point `i` (the last one by default). |
+| `path.fit` | Fits the box to the points; the drawing stays where it is. Refused when `x` or `y` has keys (it would move them). |
+
+Point edits never move the box; run `path.fit` when the drawing has grown past it. A path with no points has no `d` yet.
+
+## Look of a path
+
+| Fields | Does |
+|---|---|
+| `filled`, `fill`, `fillRule` | Fill on or off, its colour, `nonzero` or `evenodd` (holes). |
+| `stroke`, `strokeColor`, `strokeWidth` | The outline, centred on the edge. |
+| `cap` butt / round / square, `join` miter / round / bevel, `miter` | Line ends and corners. |
+| `dash`, `gap`, `dashOffset` | Dashes in px (`dash` 0 = solid). Animate `dashOffset` to march them. |
+| `trimStart`, `trimEnd` | The part of the stroke that is drawn, as fractions 0–1 of its length (subpath after subpath). |
+
+A `gradient` effect fills the path (with `filled` off it colours the stroke), linear and radial; conic is refused on a path.
+
+## Draw on (trim)
+
+Animate `trimEnd` from 0 to 1 with `stroke` on:
+
+```python
+line = path("line", d="M 0 0 C 150 -120 350 120 500 0", filled=False, stroke=True, strokeWidth=10, x=960, y=540)
+line.key("trimEnd", {0.2: 0, 1.2: 1}, ease="easeInOut")
+line.key("trimStart", {1.6: 0, 2.4: 1}, ease="easeIn")       # then take it off from the other end
+```
+
+## Combining shapes (booleans)
+
+`path.boolean` combines two or more `path` or `shape` layers (same group or comp) into **one new path**:
+
+```json
+{"op": "path.boolean", "target": ["circle", "square"], "args": {"mode": "subtract", "id": "cut"}}
+```
+
+`mode`: `union`, `subtract` (the first minus the others), `intersect`, `exclude`. The inputs are removed (one undo step
+brings them back); the result sits where they were, with the first one's fill and stroke. A tilted layer cannot be
+combined (refused). The curves stay curves.
+
+## Keys on paths
+
+A path layer's transform, opacity, `fill`, `strokeColor`, `strokeWidth`, `dash`, `gap`, `dashOffset`, `trimStart`,
+`trimEnd` and `miter` animate. `d`, `w` and `h` do **not**: **not yet: morphing one outline into another** (path keys).
+Until then, change a shape over time with `scale` / `scaleX` / `scaleY`, `rotation`, a mask, or a rig bind (a path bound
+to two bones bends; see `character-rigging-and-lip-sync`).
+
+## Seeing and checking
+
+- `look_frame` at the extremes, `look_sheet` over a draw-on (the spacing of tiles is the ease).
+- `inspect_item id=mark` shows `d`, the box and the operations that fit it now.
+- `look_motion layers=[line]` lists `trimEnd` / `dashOffset` moves, peak rates, holds.
+- `look_at x y time` tells which layers' boxes cover a point (boxes only, not the curve).
+
+## Not yet
+
+Morphing between paths, offset or stroke-to-outline, text to outlines (only through SVG import `text="outline"`), a
+path-following layer.
