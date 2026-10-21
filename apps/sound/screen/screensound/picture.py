@@ -16,18 +16,19 @@ VIDEO = (".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v")
 
 
 def items(folder) -> list[dict]:
-    """The project's 2D items to pick from: [{id, label}] (label says when one has no render yet)."""
+    """The 2D items of the project that have a picture render to show: [{id, label}] (the rest can't be used yet)."""
     if not folder or not Path(folder).is_dir():
         return []
-    return [{"id": it["id"], "label": it["name"] + ("" if _video(it["renders"]) else " (not rendered yet)")}
-            for it in project.items(folder, "2d")]
+    return [{"id": it["id"], "label": it["name"]} for it in project.items(folder, "2d") if _video(it["renders"])]
 
 
 def items_note(folder) -> str:
     """Why the project's items can't be listed, in plain words ("" when there are some)."""
     if not folder or not Path(folder).is_dir():
         return "This song is not in a project folder, so there are no 2D items to pick from."
-    return "" if items(folder) else "The project has no 2D items yet."
+    if items(folder):
+        return ""
+    return "No 2D item in the project has a render yet." if project.items(folder, "2d") else "The project has no 2D items yet."
 
 
 def _video(renders: list[dict]) -> str:
@@ -116,8 +117,8 @@ def local(chosen: str) -> str:
 
 def name(value: str, folder=None) -> str:
     if value.startswith(LINK):
-        found = [it for it in items(folder) if it["id"] == value[len(LINK):]]
-        return found[0]["label"] if found else value[len(LINK):]
+        found = [it for it in project.items(folder, "2d") if it["id"] == value[len(LINK):]] if folder else []
+        return found[0]["name"] if found else value[len(LINK):]
     return Path(value).name
 
 

@@ -46,7 +46,7 @@ def register(tools: Tools):
         """Tempo (BPM, steady or drifting), the beat grid and a downbeat guess, each onset's distance in ms from the nearest beat or sixteenth, against the audio's own beats and the document's tempo map, with a waveform picture."""
         doc, wav, stems = _source(ctx, args, "look_beats")
         src = _pick(stems, args["track"], "look_beats") if args.get("track") else wav
-        r = B.analyse_beats(src, args.get("beats_per_bar") or int(doc.data.get("beatsPerBar", 4)))
+        r = engine_ears.beats(src, args.get("beats_per_bar") or int(doc.data.get("beatsPerBar", 4)))
         div, tol = args.get("division", 4), args.get("tolerance", 0.04) * 1000
         sources = {args["track"]: src} if args.get("track") else {"mix": wav, **(stems if args.get("stems") else {})}
         audio_pos = B.audio_grid(r["beats_s"]) if len(r["beats_s"]) >= 2 else None
@@ -93,8 +93,8 @@ def register(tools: Tools):
         hi = max((m for w in written for m in w["midis"]), default=None)
         fmin = args.get("fmin") or (float(np.clip(440 * 2 ** ((lo - 12 - 69) / 12), 40, 2000)) if lo is not None else 65.0)
         fmax = args.get("fmax") or (float(np.clip(440 * 2 ** ((hi + 12 - 69) / 12), 80, 4000)) if hi is not None else 1500.0)
-        t, midi, _ = P.pitch_track(src, fmin, fmax)
-        heard = P.segment_notes(t, midi)
+        t, midi, frame_s, found = engine_ears.pitch(src, fmin, fmax)
+        heard = P.describe_notes(t, midi, frame_s, found)
         r = {"notes": _cap(heard, args, 60), "notes_total": len(heard), "tuning_offset_cents": P.tuning_offset(heard),
              "vibrato_notes": [n["note"] + f"@{n['start']}" for n in heard if n["vibrato"]],
              "drifting_notes": [f"{n['note']}@{n['start']} ({n['drift_cents']:+g} cents)" for n in heard if n["drift_cents"] and abs(n["drift_cents"]) >= 25],

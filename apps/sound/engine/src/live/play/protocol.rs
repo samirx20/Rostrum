@@ -55,6 +55,13 @@ pub fn parse(v: &serde_json::Value, rate: f64, notes: &Sender<Event>, monitoring
             serde_json::Value::Bool(false) | serde_json::Value::Null => None,
             r => Some(pair(&r["punch"])),
         })
+    } else if v.get("hear").is_some() {
+        // Hearing the microphone: true (gain 1), false, or {"gain": g}; play.rs fills in the microphone's rate.
+        let gain = match &v["hear"] {
+            serde_json::Value::Bool(on) => if *on { 1.0 } else { 0.0 },
+            h => h["gain"].as_f64().ok_or(format!("hear takes true, false or {{\"gain\": g}}; got {h}"))?.clamp(0.0, 4.0),
+        };
+        Cmd::Hear(gain as f32, 0.0)
     } else if let Some(f) = v["load"].as_str() {
         let (mix, from) = crate::live::play::mix::read(f)?;
         Cmd::Load(Arc::new(monitoring.again(&mix, from, rate as u32)?))

@@ -1,26 +1,15 @@
-"""The start of a take, shared by microphone and keyboard takes: the count-in clicks, then playback from the take's
-start, and how much of the input came before the moment playback was heard (`lead`), so the take is placed where it
-was played. The input (microphone or keyboard) starts first and says when it is ready; playback starts after the
-count-in, once the screen's player actually plays (it may wait for a render). Screen playback is Qt's player, so
-what is left is its output delay (a few tens of ms); headphones keep the speakers out of a microphone take.
+"""The start and end of a take, shared by microphone and keyboard takes, on the engine's live transport
+(live_transport.py): the count-in is the engine's own ({"countIn"}: its clicks, then the mix rolls on the frame), the
+recording is armed there ({"record": true}, or with the punch range), and the engine places what it records at the
+mix time heard with it. So nothing is guessed here: no clicks of our own, no timing of when playback was heard.
 """
 from __future__ import annotations
 
+import math
 import time
 
-import numpy as np
-import soundfile as sf
-from PySide6.QtCore import Property, QObject, QTimer, QUrl, Signal
-
-from .playback import SCRATCH
-
-
-def _click_file():
-    f = SCRATCH / "count-in-click.wav"
-    if not f.is_file():
-        t = np.arange(int(48000 * 0.03)) / 48000
-        sf.write(f, (np.sin(2 * np.pi * 1500 * t) * np.exp(-t * 160) * 0.8).astype("float32"), 48000)
-    return f
+from PySide6.QtCore import Property, QObject, Signal
+from rostrum_sound.doc import tempo
 
 
 class TakeClock(QObject):
@@ -29,78 +18,42 @@ class TakeClock(QObject):
     def __init__(self, bridge, setup, parent=None):
         super().__init__(parent)
         self.bridge, self.setup = bridge, setup
-        self.at, self.ready, self.played, self._left, self._per_bar, self._started_play = 0.0, 0.0, None, 0, 4, False
-        self._beat = QTimer(self, timeout=self._click)
-        self._sound, self._connected = None, False
+        self.player = bridge.transport.player
+        self.at, self._beats, self._t0, self._started_play = 0.0, 0, 0.0, False
 
     @Property(int, notify=countChanged)
     def counting(self):
-        """Count-in clicks still to come (0 = none, or the take is running)."""
-        return self._left
+        """Count-in clicks still to come (0 = none, or the mix is rolling)."""
+        if not self._beats or self.player.rolled or not self.player.playing:
+            return 0
+        beat = tempo.beat_seconds(self.bridge.doc.data, self.at)
+        return max(0, min(self._beats, math.ceil(self._beats - (time.monotonic() - self._t0) / beat)))
+
+    def start_time(self) -> float:
+        """Where the take starts playing: the playhead, or a bar before the punch-in when it is past it."""
+        return self.bridge.time if self.bridge.playing else self.setup.start_at(self.bridge.time)
 
     def begin(self):
-        """Before the input starts: move the playhead to where this take starts playing."""
-        if not self.bridge.playing:
-            t = self.setup.start_at(self.bridge.time)
-            if abs(t - self.bridge.time) > 1e-6:
-                self.bridge.setTime(t)
-
-    def start(self):
-        """The input is ready now: count in, then play. `at` is the timeline time the take starts from."""
-        self.ready, self.played, self.at = time.monotonic(), None, self.bridge.time
-        self._started_play = False
-        clicks, beat = (0, 0) if self.bridge.playing else self.setup.count_in(self.at)
-        if self.bridge.playing:
-            self.played = self.ready                         # already playing: the input runs along from here
-        elif clicks:
-            self._left, self._per_bar = clicks, int(self.bridge.doc.data.get("beatsPerBar", 4))
-            self._beat.setInterval(round(beat * 1000))
-            self._click()
-            self._beat.start()
-        else:
-            self._play()
+        """Arm the engine's recording (with the punch), set its count-in, and play from the take's start."""
+        p = self.setup.punch()
+        playing = self.bridge.playing
+        self.at = self.start_time()
+        beats, _ = self.setup.count_in(self.at)
+        self._beats = 0 if playing else beats
+        self.player.set_state(countIn=self.setup.values["countInBars"] if self._beats else 0,
+                              record={"punch": [p[0], p[1]]} if p else True)
+        self._started_play = not playing
+        if not playing:
+            if abs(self.at - self.bridge.time) > 1e-6:
+                self.bridge.setTime(self.at)
+            self._t0 = time.monotonic()
+            self.bridge.togglePlay()
         self.countChanged.emit()
-
-    def _click(self):
-        if self._left <= 0:
-            self._beat.stop()
-            self._play()
-            return
-        if self._sound is None:
-            from PySide6.QtMultimedia import QSoundEffect
-            self._sound = QSoundEffect(self)
-            self._sound.setSource(QUrl.fromLocalFile(str(_click_file())))
-        self._sound.setVolume(1.0 if self._left % self._per_bar == 0 else 0.55)    # the bar's first beat louder
-        self._sound.play()
-        self._left -= 1
-        self.countChanged.emit()
-
-    def _play(self):
-        self._left = 0
-        if not self._connected:
-            self.bridge.transport.playingChanged.connect(self._heard)
-            self._connected = True
-        self._started_play = True
-        self.bridge.togglePlay()
-        self._heard()
-        self.countChanged.emit()
-
-    def _heard(self):
-        if self.played is None and self.bridge.playing:
-            self.played = time.monotonic()
-
-    @property
-    def lead(self) -> float:
-        """Seconds of input before the take's start was heard (the count-in and the wait for playback)."""
-        return (self.played if self.played is not None else time.monotonic()) - self.ready
 
     def stop(self):
-        self._beat.stop()
-        self._left = 0
-        if self._connected:
-            self.bridge.transport.playingChanged.disconnect(self._heard)
-            self._connected = False
+        """End the take: the engine writes what it recorded ({"take"} / {"note"}), then the recording is disarmed."""
         if self._started_play and self.bridge.playing:
             self.bridge.togglePlay()
-        self._started_play = False
+        self.player.set_state(record=False, countIn=0)
+        self._started_play, self._beats = False, 0
         self.countChanged.emit()

@@ -24,7 +24,7 @@ def register(tools: Tools):
         "what": {"type": "string", "enum": ["frames", "sheet", "motion"],
                  "description": "frames: a labelled strip around `at`; sheet: a contact sheet; motion: movement and sudden-stop candidates."},
         "at": {"type": "number", "description": "frames: the time to look around (seconds)."},
-        "span": {"type": "number", "default": 2, "description": "frames: seconds shown around `at`."},
+        "span": {"type": "integer", "default": 2, "description": "frames: how many frames are shown on each side of `at` (a whole number, not seconds)."},
         "every": {"type": "number", "default": 0.5, "description": "sheet: seconds between tiles."},
         "min_confidence": {"type": "number", "default": 0.5, "description": "motion: drop weaker stop candidates (0 … 1)."}}})
     def look_video(ctx, args):
@@ -36,7 +36,7 @@ def register(tools: Tools):
         if what == "frames":
             if "at" not in args:
                 raise RostrumError(codes.BAD_ARGUMENT, "look_video", "at", "is needed for frames")
-            r = sfx.frames(video, args["at"], span=args.get("span", 2), out_dir=str(out))
+            r = sfx.frames(video, args["at"], span=int(args.get("span", 2)), out_dir=str(out))
             line = f"Frames around {args['at']:.2f} s ({r['fps']:.2f} fps)."
         elif what == "sheet":
             r = sfx.sheet(video, str(out / f"{Path(video).stem}-sheet.png"), every=args.get("every", 0.5))

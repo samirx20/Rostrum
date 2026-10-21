@@ -6,14 +6,15 @@
     wav = rec.stop()                     # the WAV's path; raises when the engine failed or sent no `done`
     doc.apply([take_call("voice", wav, at)], "agent")      # the take is a clip: one operation, one undo step
 
-`place_take` places a screen take (its lead trimmed off, a punch range kept). `record_take(doc, track, at, seconds)`
-does all of it for a script. Nothing here captures audio itself.
+`land_take` puts a take of the engine's live transport (the screen's, sample-placed) on a track.
+`record_take(doc, track, at, seconds)` does all of it for a script. Nothing here captures audio itself.
 Takes go in `<project folder>/media/` (a document without a folder: `./takes/`), named `<track>-take-<n>.wav`.
 """
 from __future__ import annotations
 
 import json
 import queue
+import shutil
 import subprocess
 import threading
 import time
@@ -47,34 +48,21 @@ def take_call(track_id: str, wav, at) -> dict:
     return {"op": "clip.add", "target": [track_id], "args": {"media": str(wav), "at": at}}
 
 
-def place_take(track_id: str, wav, at: float, seconds: float, lead: float = 0.0, punch=None) -> dict | None:
-    """The one `clip.add` for a take recorded from `at` on the timeline. `lead`: how much of the file came before the
-    moment `at` was heard (the microphone ran before playback started, the count-in, the input delay); that part is
-    trimmed off with the clip's in-point, so the take lands where it was played. `punch` (in, out seconds): only
-    that range is kept. None when the take holds nothing of the range (a punch the take never reached)."""
-    zero = at - lead                                 # the timeline time of the file's first sample
-    start, end = at, zero + seconds
-    if punch is not None:
-        start, end = max(start, float(punch[0])), min(end, float(punch[1]))
-    if end - start < 0.01:
-        return None
-    args = {"media": str(wav), "at": round(start, 3), "in": round(start - zero, 4)}
-    if punch is not None:
-        args["length"] = round(end - start, 4)
+def land_take(doc, track_id: str, take: dict) -> dict:
+    """The one `clip.add` for a take the engine's live transport recorded (its `{"take": {file, start, …}}` line,
+    `rostrum-sound play --mic`): the file moves to the project's media folder (`take_path`) and the clip starts at
+    the take's `start`, already the mix time heard with it (the engine's clock, minus the microphone's calibrated
+    delay). A take whose start the delay put before the song's start is trimmed with the in-point."""
+    src = Path(take.get("file", ""))
+    if not src.is_file():
+        raise _fail(f"the engine reported a take at {src} but there is no file there")
+    dest = take_path(doc, track_id)
+    shutil.move(str(src), dest)
+    start = float(take["start"])
+    args = {"media": str(dest), "at": round(max(0.0, start), 4)}
+    if start < 0:
+        args["in"] = round(-start, 4)
     return {"op": "clip.add", "target": [track_id], "args": args}
-
-
-def input_offset(mic: str) -> float:
-    """The microphone's own delay in seconds as measured by `rostrum-sound play --calibrate` (live/calib.rs keeps it
-    per output | microphone pair); 0 when this microphone was never calibrated."""
-    import os
-    f = Path(os.environ.get("LOCALAPPDATA", "")) / "rostrum" / "audio-calibration.json"
-    try:
-        stored = json.loads(f.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return 0.0
-    found = [v.get("offsetMs", 0) for k, v in stored.items() if mic and k.endswith(f" | {mic}")]
-    return float(found[0]) / 1000.0 if found else 0.0
 
 
 class Recorder:

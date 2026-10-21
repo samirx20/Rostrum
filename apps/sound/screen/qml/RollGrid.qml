@@ -16,7 +16,6 @@ Item {
                                : roll.kind === "drums" ? Math.min(40, viewHeight / count) : viewHeight
     function rowAt(y) { var i = Math.floor(y / rowH); return notes ? roll.hi - i : roll.kind === "drums" ? i : 0 }
     function black(k) { return [1, 3, 6, 8, 10].indexOf(k % 12) >= 0 }
-    function name(k) { return ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"][k % 12] + (Math.floor(k / 12) - 1) }
     height: count * rowH
 
     Repeater {   // rows and their names
@@ -34,7 +33,7 @@ Item {
             Text {
                 visible: g.notes ? parent.key % 12 === 0 || g.rowH >= 16 && !g.black(parent.key) : true
                 x: Theme.gap; anchors.verticalCenter: parent.verticalCenter
-                text: g.notes ? g.name(parent.key) : g.roll.drums[parent.index] || ""
+                text: g.notes ? g.roll.names[parent.index] : g.roll.drums[parent.index] || ""
                 color: g.notes && parent.key % 12 !== 0 ? Theme.fg4 : Theme.fg3
                 font.family: uiFont; font.pixelSize: Theme.label - (g.notes ? 1 : 0); font.features: { "tnum": 1 }
             }
@@ -61,7 +60,7 @@ Item {
                         border.width: b.on ? 1 : 0; border.color: Theme.fg
                         Text { visible: parent.width >= implicitWidth + 5 && g.rowH >= 14   // whenever the name fits the bar
                                x: 3; anchors.verticalCenter: parent.verticalCenter
-                               text: g.name(parent.modelData); color: Theme.app; font.family: uiFont
+                               text: b.modelData.names[b.modelData.keys.indexOf(parent.modelData)]; color: Theme.app; font.family: uiFont
                                font.pixelSize: Theme.label - 1; font.weight: Font.DemiBold }
                     }
                 }

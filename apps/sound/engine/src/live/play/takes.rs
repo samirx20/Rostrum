@@ -48,9 +48,14 @@ impl Takes {
                 }
                 continue;
             }
-            // A jump (the loop came round, a seek): the pass so far is a take of its own.
-            if self.take.as_ref().is_some_and(|k| t < k.last - 0.05 || t > k.last + 0.25) {
-                self.finish();
+            // A jump of the mix (a seek, the loop coming round) starts a take of its own. A smaller step is the
+            // output's clock settling (it fell behind and reopened, usually just after play starts): the
+            // microphone ran on without a gap, so its samples stay one take, placed by the settled clock (what
+            // the player hears from then on), never two overlapping takes.
+            match self.take.as_mut() {
+                Some(k) if (t - k.last).abs() > 0.5 => self.finish(),
+                Some(k) if (t - k.last - 1.0 / self.rate).abs() > 0.002 => k.start = t - k.samples.len() as f64 / self.rate,
+                _ => {}
             }
             let k = self.take.get_or_insert(Take { start: t, last: t, samples: vec![] });
             k.samples.push(*x);

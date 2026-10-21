@@ -20,6 +20,8 @@ pub struct Tempo {
     pub beats: Vec<f64>,
     pub alternatives: Vec<(f64, f64)>,
     pub unsure: Option<f64>,
+    /// Which beat (0 … per_bar−1) the bars start on, and how much stronger it lands than the average (1 = no lead).
+    pub downbeat: (usize, f64),
 }
 
 /// Spectral flux of the frames (bins `lo .. hi`): the onset strength. The first frame counts from silence.
@@ -137,7 +139,7 @@ impl Onsets {
 }
 
 /// Tempo from the fine spectra (`frame_rate` frames a second, `bin_hz` per bin).
-pub fn tempo(spec: &[Vec<f64>], frame_rate: f64, bin_hz: f64) -> Tempo {
+pub fn tempo(spec: &[Vec<f64>], frame_rate: f64, bin_hz: f64, per_bar: usize) -> Tempo {
     let on = Onsets::new(spec, frame_rate, bin_hz);
     let zero = on.o.iter().map(|v| v * v).sum::<f64>().max(1e-12);
     let pref = |bpm: f64| if (70.0..=180.0).contains(&bpm) { 1.0 } else { (-0.5 * ((bpm / bpm.clamp(70.0, 180.0)).log2() / 0.35).powi(2)).exp() };
@@ -171,7 +173,11 @@ pub fn tempo(spec: &[Vec<f64>], frame_rate: f64, bin_hz: f64) -> Tempo {
     }
     // 4. The phase: the beats on the most onset strength, the lows counting double. A grid point just
     //    before the end of the first period is the beat at 0 s (a slightly long period drifts).
-    let at = |t: f64| { let i = t.round() as usize; if i < on.len() { on.o[i] + 2.0 * on.low[i] } else { 0.0 } };
+    //    Under 4 kHz (`body`): hats on the off-beats are not the beat (a song that opens on off-beat hats
+    //    read every beat half a beat late). A piece with nothing under 4 kHz uses all of it.
+    let (sum_o, sum_body) = (on.o.iter().sum::<f64>(), on.body.iter().sum::<f64>());
+    let base = if sum_body > 0.05 * sum_o { &on.body } else { &on.o };
+    let at = |t: f64| { let i = t.round() as usize; if i < on.len() { base[i] + 2.0 * on.low[i] } else { 0.0 } };
     let strength = |p: usize| on.grid(p as f64, period).map(at).sum::<f64>();
     let phase = (0..period.round().max(1.0) as usize).max_by(|&p, &q| strength(p).total_cmp(&strength(q))).unwrap_or(0) as f64;
     let phase = if phase > 0.8 * period { 0.0 } else { phase };
@@ -183,8 +189,29 @@ pub fn tempo(spec: &[Vec<f64>], frame_rate: f64, bin_hz: f64) -> Tempo {
         let peak = (i - 2..=i + 2).filter(|&j| j >= 1).map(|j| j as usize).filter(|&j| at(j as f64) > 0.15 * loud && at(j as f64) >= at(j as f64 - 1.0) && at(j as f64) >= at(j as f64 + 1.0)).max_by(|&a, &b| at(a as f64).total_cmp(&at(b as f64)));
         peak.map_or(t, |j| { let (a, b, c) = (at(j as f64 - 1.0), at(j as f64), at(j as f64 + 1.0)); j as f64 + if a - 2.0 * b + c < 0.0 { (0.5 * (a - c) / (a - 2.0 * b + c)).clamp(-0.5, 0.5) } else { 0.0 } })
     };
-    let beats: Vec<f64> = on.grid(phase, period).map(|t| (if t < 0.5 { t } else { snap(t) }) / frame_rate).collect();
-    Tempo { bpm, first: phase / frame_rate, clarity: (on.ac(period) / zero).clamp(0.0, 1.0), beats, alternatives, unsure }
+    // The beats follow a tempo that drifts: each one is looked for a period after the last one found, and
+    // the period leans a quarter of the way to each interval that lands near it (a steady piece stays a grid).
+    let (mut beats, mut t, mut p, mut last) = (vec![], phase, period, None::<f64>);
+    while t < on.len() as f64 {
+        let s = if t < 0.5 { t } else { snap(t) };
+        if let Some(l) = last.filter(|_| s != t) {
+            if ((s - l) / p - 1.0).abs() < 0.08 {
+                p = 0.75 * p + 0.25 * (s - l);
+            }
+        }
+        beats.push(s / frame_rate);
+        last = Some(s);
+        t = s + p;
+    }
+    // The downbeat: the beat of the bar where the lows land strongest (kicks, and the bass and chords
+    // changing at the bar; a backbeat snare is not the bar's start).
+    let per_bar = per_bar.max(1);
+    let low = |t: f64| on.low.get(t.round() as usize).copied().unwrap_or(0.0);
+    let hit: Vec<f64> = beats.iter().map(|b| { let i = (b * frame_rate).round(); (-2..=2).map(|o| low((i + o as f64).max(0.0))).fold(0.0, f64::max) }).collect();
+    let mean = |k: usize| { let v: Vec<f64> = hit.iter().skip(k).step_by(per_bar).cloned().collect(); v.iter().sum::<f64>() / v.len().max(1) as f64 };
+    let best = (0..per_bar.min(beats.len().max(1))).max_by(|&a, &b| mean(a).total_cmp(&mean(b))).unwrap_or(0);
+    let all = (0..per_bar).map(mean).sum::<f64>() / per_bar as f64;
+    Tempo { bpm, first: phase / frame_rate, clarity: (on.ac(period) / zero).clamp(0.0, 1.0), beats, alternatives, unsure, downbeat: (best, mean(best) / all.max(1e-12)) }
 }
 
 #[cfg(test)]

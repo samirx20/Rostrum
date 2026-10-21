@@ -23,7 +23,10 @@ def load(src):
     try:
         y, sr = sf.read(path, dtype="float32", always_2d=True)
     except Exception as e:
-        raise ValueError(f"{path}: cannot read audio ({e})") from e
+        from rostrum_core import RostrumError, codes
+        raise RostrumError(codes.BAD_ARGUMENT, "listen", path, f"is not an audio file the ears read ({e})",
+                           ["WAV", "FLAC", "OGG", "AIFF"],
+                           "A video's sound: render_mix's WAV, or take the audio out of the video first.") from e
     if y.shape[0] == 0:
         raise ValueError(f"{path}: file has no audio")
     return y, sr

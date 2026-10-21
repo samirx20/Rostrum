@@ -18,6 +18,9 @@ impl crate::live::wasapi::Source for Transport {
         while let Ok(c) = self.cmds.try_recv() {
             self.command(c);
         }
+        if let Some(h) = self.hear.as_mut() {
+            h.pull();
+        }
         let rolling = self.playing.then(|| self.t());
         while let Ok(e) = self.notes.try_recv() {
             match e {
@@ -86,6 +89,12 @@ impl crate::live::wasapi::Source for Transport {
                     }
                     _ => {}
                 }
+            }
+            if let Some(h) = self.hear.as_mut() {
+                // The microphone, heard on the front pair (L / R) like the click.
+                let v = h.next();
+                out[f * ch] += v;
+                out[f * ch + 1] += v;
             }
             if let Some((at, _)) = self.click {
                 if k >= at + click_len {

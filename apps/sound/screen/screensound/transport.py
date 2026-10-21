@@ -1,14 +1,17 @@
 """Play / stop and keeping the sound current: the document is re-rendered (debounced) after each change, the
-newest render plays, and the playhead follows the player.
+newest render goes to the engine's live transport (live_transport.py: the first one waits for the first play, later
+ones are loaded while it plays on), and the playhead follows the speaker's position the engine reports.
 
 Play waits for a render that is on its way (never plays a stale one silently). A failed render is loud: `failed`
-carries the error, the state line says so, and only then is the last good render played, saying that it is.
+carries the error, the state line says so, and only then is the last good render played, saying that it is. When the
+engine's player cannot open (no sound output) or dies, that is loud too and the playhead runs on a clock.
 """
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
-from .playback import Player, Renderer
+from .live_transport import LivePlay
+from .playback import Renderer
 
 DEBOUNCE_MS = 300
 
@@ -24,12 +27,14 @@ class Transport(QObject):
         super().__init__(parent)
         self._schedule, self._length = schedule_fn, length_fn
         self.last: dict = {}
-        self.state, self.stale, self._want, self._at = "Rendering…", True, False, 0.0
+        self.state, self.stale, self._want, self._at, self._render_failed = "Rendering…", True, False, 0.0, False
         self.renderer = Renderer(self)
         self.renderer.rendered.connect(self._rendered)
         self.renderer.failed.connect(self._failed)
-        self.player = Player(self)
+        self.player = LivePlay(self)
         self.player.problem.connect(self.failed)
+        self.player.changed.connect(self._show_state)
+        self.player.ended.connect(self._ended)
         self._tick = QTimer(self, interval=33, timeout=self._advance)
         self._debounce = QTimer(self, singleShot=True, interval=DEBOUNCE_MS, timeout=self.render)
 
@@ -69,39 +74,55 @@ class Transport(QObject):
 
     def seek(self, t: float):
         if self.player.playing:
-            self._play(t)
+            self.player.seek(t)
 
     def _play(self, t):
-        self.player.play(self.last["file"], t)
+        self.player.play(t)
         self._tick.start()
         self.playingChanged.emit()
 
     def _rendered(self, result):
-        self.last, self.stale = dict(result), False
+        self.last, self.stale, self._render_failed = dict(result), False, False
+        self.player.load(self.last["file"])
         self.renderChanged.emit()
-        self._set_state("" if self.player.has_output else "No sound output on this machine: rendered, not heard")
-        if self.player.playing or self._want:
+        self._show_state()
+        if self._want:
             self._want = False
-            self._play(self.player.position() if self.player.playing else self._at)
+            self._play(self._at)
 
     def _failed(self, line):
-        self.stale = False
+        self.stale, self._render_failed = False, True
         self.failed.emit(line)
-        self._set_state("Render failed" + (": playing the last good render" if self.last else ""))
+        self._show_state()
         if self._want and self.last:
             self._want = False
             self._play(self._at)
 
+    def _show_state(self):
+        if self._render_failed:
+            text = "Render failed" + (": playing the last good render" if self.last else "")
+        elif not self.player.alive:
+            text = "No sound output: the playhead runs on a clock (the reason is in the status line)"
+        else:
+            text = ""
+        self._set_state(text)
+
+    def _ended(self, t):
+        self._tick.stop()
+        self.moved.emit(t)
+        self.playingChanged.emit()
+
     def _advance(self):
         t = self.player.position()
-        if t >= self._length():
+        if t >= self._length():                # on the clock (no player), the song's end stops it
             self.toggle(t)
             t = self._length()
         self.moved.emit(t)
 
     def _set_state(self, text):
-        self.state = text
-        self.stateChanged.emit()
+        if text != self.state:
+            self.state = text
+            self.stateChanged.emit()
 
     def close(self):
         self._tick.stop()

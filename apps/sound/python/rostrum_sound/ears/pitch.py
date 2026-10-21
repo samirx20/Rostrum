@@ -1,66 +1,41 @@
-"""Pitch of one melodic line (librosa pyin): the notes it plays with times and cents off, vibrato and drift, and a
-comparison with the notes the document wrote. pyin follows one note at a time: use it on a single-voice stem."""
+"""Notes of one melodic line, described: cents off, vibrato and drift from the pitch curve, the line's tuning, and
+a comparison with the notes the document wrote. The pitch curve and the notes come from the engine (one pitch finder:
+ears/engine_ears.py `pitch`); this file only reads them."""
 from __future__ import annotations
 
-import librosa
 import numpy as np
-from scipy.ndimage import median_filter
 
-from ..listen.core import load, mono, num
 from ..doc.keys import pitch_name
-from .theory import hz_to_midi
-
-SR = 22050
-HOP = 441                      # 20 ms per pitch frame
-FRAME_S = HOP / SR
+from ..listen.core import num
 
 
-def pitch_track(wav, fmin: float = 65.0, fmax: float = 1500.0):
-    """(times, midi per frame with nan where nothing is voiced, voiced probability)."""
-    y, sr = load(wav)
-    m = librosa.resample(mono(y), orig_sr=sr, target_sr=SR) if sr != SR else mono(y)
-    f0, _, prob = librosa.pyin(m, fmin=fmin, fmax=fmax, sr=SR, frame_length=2048, hop_length=HOP)
-    midi = np.where(np.isnan(f0), np.nan, hz_to_midi(np.nan_to_num(f0, nan=440.0)))
-    return librosa.times_like(f0, sr=SR, hop_length=HOP), midi, prob
+def describe_notes(t, midi, frame_s: float, found) -> list[dict]:
+    """The engine's notes ([start, length, midi, name, cents]) with what the curve under each shows: start, end,
+    note, cents (median, + sharp), vibrato {rate_hz, depth_cents} or None, drift_cents (change over the note,
+    + rising)."""
+    out = []
+    for start, length, k, _name, cents in found:
+        seg = midi[(t >= start) & (t < start + length)]
+        d = _describe(start, start + length, int(k), seg, frame_s)
+        d["cents"] = num(cents, 1)
+        out.append(d)
+    return out
 
 
-def segment_notes(t, midi, min_len: float = 0.08, max_gap: int = 2) -> list[dict]:
-    """Notes from a pitch track: runs of frames that stay on one nearest semitone (a median filter ignores blips).
-    Each: start, end, note, cents (median, + sharp), vibrato {rate_hz, depth_cents} or None, drift_cents (change over
-    the note, + rising), `contour` (the frame values the picture draws)."""
-    voiced = ~np.isnan(midi)
-    near = np.where(voiced, np.round(median_filter(np.nan_to_num(midi, nan=0.0), 5)), -1)
-    notes, i, n = [], 0, len(midi)
-    while i < n:
-        if not voiced[i]:
-            i += 1
-            continue
-        j, gap = i, 0
-        while j + 1 < n and (near[j + 1] == near[i] or (not voiced[j + 1] and gap < max_gap)):
-            gap = gap + 1 if not voiced[j + 1] else 0
-            j += 1
-        seg = midi[i:j + 1]
-        seg = seg[~np.isnan(seg)]
-        if len(seg) * FRAME_S >= min_len:
-            notes.append(_describe(t[i], t[j] + FRAME_S, int(near[i]), midi[i:j + 1]))
-        i = j + 1
-    return notes
-
-
-def _describe(start, end, k, seg):
+def _describe(start, end, k, seg, frame_s):
     ok = ~np.isnan(seg)
     cents = (seg[ok] - k) * 100
     out = {"start": num(start, 3), "end": num(end, 3), "note": pitch_name(k), "midi": k, "cents": num(np.median(cents), 1),
            "vibrato": None, "drift_cents": None}
     cents = cents[2:-2] if len(cents) > 8 else cents           # the first and last frames are the move between notes
     if len(cents) >= 12:
-        x = np.arange(len(cents)) * FRAME_S
+        x = np.arange(len(cents)) * frame_s
         slope, icpt = np.polyfit(x, cents, 1)
         out["drift_cents"] = num(slope * x[-1], 0)
         if len(cents) >= 15:                                   # vibrato: a 4–8 Hz wobble left after the slope
             res = cents - (slope * x + icpt)
             spec = np.abs(np.fft.rfft(res * np.hanning(len(res)), 512))
-            f = np.fft.rfftfreq(512, FRAME_S)
+            f = np.fft.rfftfreq(512, frame_s)
             band = (f >= 3.5) & (f <= 8.5)
             sinus = band.any() and np.sum(spec[band] ** 2) >= 0.5 * np.sum(spec[f >= 1.0] ** 2)    # a wobble, not a blip
             if sinus and np.std(res) * 2 ** 0.5 >= 12:

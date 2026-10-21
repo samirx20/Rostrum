@@ -1,7 +1,8 @@
-"""How the next take is made (screen state, not a document edit): count-in, punch in / out, checking the input level,
-which MIDI keyboard, quantize. `controls` is built from ROWS, each with its "valid when": a row shows only while it
-can be used (count-in bars only with count-in on, the punch times only with punch on, the keyboard rows only on a
-notes or drum track), most important first. The take panel (qml/RecordSetup.qml) draws exactly these rows.
+"""How the next take is made (screen state, not a document edit): count-in, punch in / out, hearing the input, which
+MIDI keyboard, quantize. `controls` is built from ROWS, each with its "valid when": a row shows only while it can be
+used (count-in bars only with count-in on, the punch range only with punch on, hearing the input only while the
+microphone is open, the keyboard rows only on a notes or drum track), most important first. The take panel
+(qml/RecordSetup.qml) draws exactly these rows. The punch range is dragged on the ruler (`setPunch`, BarRuler.qml).
 """
 from __future__ import annotations
 
@@ -9,6 +10,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_sound.doc import tempo
 
 from .timeline import kind_of
+from .timing import snap
 
 GRIDS = [{"value": "1", "label": "Beat"}, {"value": "0.5", "label": "1/8 note"}, {"value": "0.25", "label": "1/16 note"}]
 KEYS_KINDS = ("notes", "drums")
@@ -18,14 +20,23 @@ def _keys(s):
     return s.kind in KEYS_KINDS
 
 
-# (key, kind, label, valid when (setup → bool), extra). Order = importance.
+def _mic_line(s):
+    mic = s.mic or {}
+    delay = mic.get("inputOffsetMs")
+    return (mic.get("name") or "Microphone") + " open: " + (f"its delay ({delay:.0f} ms) is taken off each take" if delay is not None else
+                                  "its delay is not measured yet (rostrum-sound play --calibrate)")
+
+
+# (key, kind, label (str, or setup → str), valid when (setup → bool), extra). Order = importance.
 ROWS = [
     ("countIn", "toggle", "Count-in", lambda s: True, {}),
     ("countInBars", "number", "Bars", lambda s: s.values["countIn"], {"from": 1, "to": 8, "step": 1}),
     ("punch", "toggle", "Punch in", lambda s: True, {}),
-    ("punchIn", "number", "From", lambda s: s.values["punch"], {"from": 0, "to": 3600, "step": 0.01, "unit": " s"}),
-    ("punchOut", "number", "To", lambda s: s.values["punch"], {"from": 0, "to": 3600, "step": 0.01, "unit": " s"}),
-    ("checkInput", "toggle", "Input level", lambda s: not s.recording, {}),
+    ("punchRange", "text", lambda s: f"{s.values['punchIn']:.2f} – {s.values['punchOut']:.2f} s · drag on the ruler",
+     lambda s: s.values["punch"], {}),
+    ("hear", "toggle", "Hear input", lambda s: bool(s.mic), {}),
+    ("hearGain", "number", "Volume", lambda s: bool(s.mic) and s.values["hear"], {"from": 0, "to": 2, "step": 0.05}),
+    ("micLine", "text", _mic_line, lambda s: bool(s.mic), {}),
     ("midiDevice", "choice", "Keyboard", lambda s: _keys(s) and bool(s.devices), {}),
     ("noKeyboard", "text", "No MIDI keyboard found", lambda s: _keys(s) and not s.devices, {}),
     ("quantize", "toggle", "Quantize", lambda s: _keys(s), {}),
@@ -41,9 +52,9 @@ class RecordSetup(QObject):
         super().__init__(parent)
         self.bridge = bridge
         self.values = {"countIn": False, "countInBars": 1, "punch": False, "punchIn": 0.0, "punchOut": 0.0,
-                       "checkInput": False, "midiDevice": "0", "quantize": False, "quantizeGrid": "0.25"}
-        self.armed, self.devices, self.recording, self._open = "", [], False, False
-        self.on_check = None                 # recording.py: start / stop the input level check
+                       "hear": False, "hearGain": 1.0, "midiDevice": "0", "quantize": False, "quantizeGrid": "0.25"}
+        self.armed, self.devices, self.recording, self.mic, self._open = "", [], False, None, False
+        self.on_set = None                   # recording.py: what a change means for the engine (hear, keyboard)
 
     @property
     def kind(self) -> str:
@@ -60,7 +71,8 @@ class RecordSetup(QObject):
         out = []
         for key, kind, label, valid, extra in ROWS:
             if valid(self):
-                row = {"key": key, "kind": kind, "label": label, "value": self.values.get(key), **extra}
+                row = {"key": key, "kind": kind, "label": label(self) if callable(label) else label,
+                       "value": self.values.get(key), **extra}
                 if key == "midiDevice":
                     row["options"] = [{"value": str(i), "label": n} for i, n in enumerate(self.devices)]
                 out.append(row)
@@ -68,7 +80,7 @@ class RecordSetup(QObject):
 
     @Property("QVariantList", notify=changed)
     def punchRange(self):
-        """[in, out] seconds while a track is armed with punch on (the timeline shades it); [] otherwise."""
+        """[in, out] seconds while a track is armed with punch on (the ruler and the rows shade it); [] otherwise."""
         p = self.punch()
         return list(p) if p and self.armed else []
 
@@ -85,15 +97,22 @@ class RecordSetup(QObject):
     @Slot(str, "QVariant")
     def set(self, key, value):
         if key == "punch" and value and self.values["punchOut"] <= self.values["punchIn"]:
-            t = self.bridge.time                  # a fresh range: from the playhead, two bars long
-            self.values["punchIn"], self.values["punchOut"] = round(t, 2), round(t + 2 * self.bar_seconds(t), 2)
-        if key == "punchIn":
-            value = min(float(value), self.values["punchOut"])
-        if key == "punchOut":
-            value = max(float(value), self.values["punchIn"])
-        self.values[key] = int(value) if key == "countInBars" else value
-        if key == "checkInput" and self.on_check:
-            self.on_check(bool(value))
+            t = snap(self.bridge.time, self.bridge.doc.data, False)     # a fresh range: from the playhead, two bars
+            self.values["punchIn"], self.values["punchOut"] = t, round(t + 2 * self.bar_seconds(t), 6)
+        self.values[key] = int(value) if key == "countInBars" else float(value) if key == "hearGain" else value
+        if self.on_set:
+            self.on_set(key)
+        self.changed.emit()
+
+    @Slot(float, float, bool)
+    def setPunch(self, a, b, free=False):
+        """The punch range from a drag on the ruler (either way round), snapped to a quarter beat unless free;
+        never shorter than a quarter beat."""
+        root = self.bridge.doc.data
+        a, b = sorted((snap(a, root, free), snap(b, root, free)))
+        if b - a < 1e-3:
+            b = round(a + tempo.beat_seconds(root, a) / 4, 6)
+        self.values.update(punch=True, punchIn=a, punchOut=b)
         self.changed.emit()
 
     # ---- what a take reads ----------------------------------------------------------------------------------------

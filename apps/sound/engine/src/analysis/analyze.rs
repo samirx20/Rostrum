@@ -47,8 +47,54 @@ fn chroma_in(mag: &[f64], sr: f64, n: usize, lo: f64, hi: f64) -> [f64; 12] {
     c
 }
 
-pub fn analyze(x: &[f32], sr: f64, with_notes: bool) -> serde_json::Value {
+/// What `analyze` is asked for: the notes and pitch track of a single-line part (between `range` Hz),
+/// only those (`pitch_only`: no tempo, key or timbre), and the beats in a bar (for the downbeats).
+pub struct Ask {
+    pub notes: bool,
+    pub pitch_only: bool,
+    pub range: (f64, f64),
+    pub per_bar: usize,
+}
+
+impl Ask {
+    pub fn from_args(args: &[String]) -> Result<Ask, String> {
+        let num = |name: &str, k: usize| -> Result<Option<f64>, String> {
+            match args.iter().position(|a| a == name) {
+                None => Ok(None),
+                Some(i) => args.get(i + 1 + k).ok_or(format!("{name} takes a value"))?.parse().map(Some).map_err(|_| format!("{name}: not a number")),
+            }
+        };
+        let flag = |n: &str| args.iter().any(|a| a == n);
+        Ok(Ask {
+            notes: flag("--notes") || flag("--pitch-only"),
+            pitch_only: flag("--pitch-only"),
+            range: (num("--range", 0)?.unwrap_or(40.0), num("--range", 1)?.unwrap_or(2000.0)),
+            per_bar: num("--beats-per-bar", 0)?.unwrap_or(4.0).max(1.0) as usize,
+        })
+    }
+}
+
+/// The notes of a single-line part and its pitch track, as JSON (`notes`: [start, length, midi, name, cents]).
+fn pitch_json(x: &[f32], sr: f64, range: (f64, f64)) -> (serde_json::Value, serde_json::Value) {
     let r = |v: f64, d: i32| (v * 10f64.powi(d)).round() / 10f64.powi(d);
+    let (tr, found) = notes(x, sr, range.0, range.1);
+    let list = found.iter().map(|(s, d, m, c)| serde_json::json!([r(*s, 3), r(*d, 3), m, format!("{}{}", NAMES[m.rem_euclid(12) as usize], m.div_euclid(12) - 1), r(*c, 1)])).collect();
+    let track = serde_json::json!({ "hop": tr.hop, "first": tr.first, "midi": tr.midi.iter().map(|m| m.map(|m| r(m, 3))).collect::<Vec<_>>() });
+    (list, track)
+}
+
+/// The whole analysis with the defaults (the tests' way in).
+#[cfg(test)]
+pub fn analyze(x: &[f32], sr: f64, with_notes: bool) -> serde_json::Value {
+    analyze_asked(x, sr, &Ask { notes: with_notes, pitch_only: false, range: (40.0, 2000.0), per_bar: 4 })
+}
+
+pub fn analyze_asked(x: &[f32], sr: f64, ask: &Ask) -> serde_json::Value {
+    let r = |v: f64, d: i32| (v * 10f64.powi(d)).round() / 10f64.powi(d);
+    if ask.pitch_only {
+        let (notes, pitch) = pitch_json(x, sr, ask.range);
+        return serde_json::json!({ "seconds": r(x.len() as f64 / sr, 2), "notes": notes, "pitch": pitch });
+    }
     // Fine frames (2048 / 512) for onsets and timbre; long ones (8192 / 2048) for pitch classes.
     let (n1, h1, n2, h2) = (2048, 512, 8192, 2048);
     let fine = stft(x, n1, h1);
@@ -58,7 +104,7 @@ pub fn analyze(x: &[f32], sr: f64, with_notes: bool) -> serde_json::Value {
     // (measured on a click train: beats read 63 ms early without it).
     let lead = n1 - (1.2 * h1 as f64) as usize;
     let led: Vec<f32> = std::iter::repeat(0.0).take(lead).chain(x.iter().cloned()).collect();
-    let Tempo { bpm, first, clarity, beats, alternatives, unsure } = tempo(&stft(&led, n1, h1), sr / h1 as f64, sr / n1 as f64);
+    let Tempo { bpm, first, clarity, beats, alternatives, unsure, downbeat } = tempo(&stft(&led, n1, h1), sr / h1 as f64, sr / n1 as f64, ask.per_bar);
     let chromas: Vec<[f64; 12]> = long.iter().map(|m| chroma(m, sr, n2)).collect();
     // Chords from the register they are voiced in (from A2 up): a loud bass note would read a triad as its root and fifth.
     let voiced: Vec<[f64; 12]> = long.iter().map(|m| chroma_in(m, sr, n2, 110.0, 2000.0)).collect();
@@ -125,15 +171,19 @@ pub fn analyze(x: &[f32], sr: f64, with_notes: bool) -> serde_json::Value {
     let mut out = serde_json::json!({
         "seconds": r(x.len() as f64 / sr, 2),
         "tempo": { "bpm": r(bpm, 1), "firstBeat": r(first, 2), "clarity": r(clarity, 2), "halfAndDouble": [r(bpm / 2.0, 1), r(bpm * 2.0, 1)], "alternatives": alternatives.iter().map(|(b, s)| serde_json::json!([r(*b, 1), r(*s, 2)])).collect::<Vec<_>>(), "unsure": unsure.map(|u| r(u, 1)) },
-        "beats": beats.iter().map(|b| r(*b, 2)).collect::<Vec<_>>(),
+        "beats": beats.iter().map(|b| r(*b, 3)).collect::<Vec<_>>(),
+        "downbeats": beats.iter().skip(downbeat.0).step_by(ask.per_bar).map(|b| r(*b, 3)).collect::<Vec<_>>(),
+        "downbeatConfidence": r(downbeat.1, 2),
         "key": { "name": key_name, "margin": r(key_margin, 3), "alternative": key_rival, "unsure": key_margin < 0.1 || x.len() as f64 / sr < 4.0 },
         "chords": chords.iter().map(|(a, b, c)| serde_json::json!([r(*a, 2), r(*b, 2), c])).collect::<Vec<_>>(),
         "speech": { "alone": speech_alone, "inMix": speech_in_mix },
         "bandNames": bands.iter().map(|b| b.0).collect::<Vec<_>>(),
         "timbre": timbre,
     });
-    if with_notes {
-        out["notes"] = notes(x, sr).iter().map(|(s, d, m)| serde_json::json!([r(*s, 3), r(*d, 3), m, format!("{}{}", NAMES[m.rem_euclid(12) as usize], m.div_euclid(12) - 1)])).collect();
+    if ask.notes {
+        let (notes, pitch) = pitch_json(x, sr, ask.range);
+        out["notes"] = notes;
+        out["pitch"] = pitch;
     }
     out
 }
