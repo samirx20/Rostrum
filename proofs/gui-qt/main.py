@@ -4,6 +4,7 @@ a live OpenGL viewport and 1080p video playback.
     python main.py [--video <mp4>] [--mode viewport|video]
     python main.py --measure 20 --mode viewport|video [--churn] --out result.json
     python main.py --screenshot shot.png [--mode viewport|video] [--size 1600x960]
+    python main.py --stage scene.usda [--hydra-renderer HdCyclesPlugin]   # USD's Hydra in the viewport
 """
 import argparse
 import os
@@ -21,6 +22,8 @@ from measure import Measurer, Stats, screenshot_later
 from viewport import GLViewport
 
 HERE = Path(__file__).resolve().parent
+# Blender's Windows library bundle (OpenUSD 26.08 with Hydra, Python 3.13 bindings), built by Team Hem (H1). Read-only.
+USD_BUNDLE = Path(r"C:\Users\Sam\.t3\worktrees\Rostrum\team-hem\proofs\3d-product\.build\cycles\lib\windows_x64")
 DEFAULT_VIDEO = Path(r"C:\Users\Sam\.rostrum\waves\scratch\sam-S1\test_1080p60.mp4")
 # First installed family wins. Segoe UI Variable ships with Windows 11; Segoe UI with every Windows; SF on Mac.
 UI_FONTS = ["Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", "SF Pro Text", "Helvetica Neue"]
@@ -40,6 +43,12 @@ def parse_args():
     p.add_argument("--threaded", action="store_true", help="Qt's threaded render loop (see README: can deadlock here)")
     p.add_argument("--vsync", action="store_true", help="swap interval 1 (see README: throttles a covered window)")
     p.add_argument("--on-top", action="store_true", help="keep the window above others (Windows slows covered windows)")
+    p.add_argument("--stage", help="draw this USD stage with Hydra in the viewport (needs Python 3.13, see README)")
+    p.add_argument("--hydra-renderer", default="HdStormRendererPlugin", help="Hydra render delegate")
+    p.add_argument("--hydra-plugins", default="", help="extra Hydra plug-in folders (PXR_PLUGINPATH_NAME), ; separated")
+    p.add_argument("--hydra-lights", choices=["camera", "scene"], default="camera", help="viewport light or the stage's")
+    p.add_argument("--shot-delay", type=float, default=2.0, help="seconds before --screenshot grabs")
+    p.add_argument("--usd-bundle", type=Path, default=USD_BUNDLE)
     a = p.parse_args()
     if not a.video.exists():
         sys.exit(f"video not found: {a.video} (make one with ffmpeg, see README)")
@@ -69,7 +78,15 @@ def main():
     app = QGuiApplication(sys.argv)
     app.setApplicationName("Rostrum GUI proof")
     families = set(QFontDatabase.families())
-    qmlRegisterType(GLViewport, "Rostrum", 1, 0, "GLViewport")
+    viewport_type = GLViewport
+    if args.stage:  # USD's Hydra takes the same QML slot
+        import hydra_viewport
+        hydra_viewport.load_usd(str(args.usd_bundle), [d for d in args.hydra_plugins.split(";") if d])
+        hydra_viewport.HydraViewport.stage_path = str(Path(args.stage).resolve())
+        hydra_viewport.HydraViewport.renderer_name = args.hydra_renderer
+        hydra_viewport.HydraViewport.lights = args.hydra_lights
+        viewport_type = hydra_viewport.HydraViewport
+    qmlRegisterType(viewport_type, "Rostrum", 1, 0, "GLViewport")
 
     engine = QQmlApplicationEngine()
     ctx = engine.rootContext()
@@ -94,7 +111,7 @@ def main():
     stats.attach(win)
     video_out = win.findChild(object, "videoOut")
     video_out.property("videoSink").videoFrameChanged.connect(stats.on_video_frame)
-    viewport = win.findChild(GLViewport, "viewport")
+    viewport = win.findChild(viewport_type, "viewport")
     print(f"font: {pick(families, UI_FONTS)} / {pick(families, MONO_FONTS)}; "
           f"graphics: {win.rendererInterface().graphicsApi()}; video: {args.video}")
 
@@ -103,9 +120,9 @@ def main():
         keep = Measurer(app, win, win, stats, viewport, args)
     elif args.screenshot:
         win.setProperty("viewMode", args.mode)
-        screenshot_later(app, win, args.screenshot, args.threaded)
+        screenshot_later(app, win, args.screenshot, args.threaded, int(args.shot_delay * 1000))
     if args.measure or args.screenshot:  # fail loudly instead of hanging
-        limit = int(((args.measure or 0) + 15) * 1000)
+        limit = int(((args.measure or 0) + args.shot_delay + 13) * 1000)
         QTimer.singleShot(limit, lambda: (print(f"TIMEOUT after {limit} ms", file=sys.stderr), app.exit(4)))
     code = app.exec()
     del keep

@@ -66,7 +66,8 @@ Panel {
                 text: {
                     var s = stats, w = s.windowFps.toFixed(0) + " fps"
                     var v = panel.app.viewMode === "video" ? "video " + s.videoFps.toFixed(0) + " fps · window " + w : w
-                    return v + " · " + s.memoryMb.toFixed(0) + " MB"
+                    var picked = viewport.picked ? " · " + viewport.picked : ""  // Hydra viewport: clicked prim
+                    return v + " · " + s.memoryMb.toFixed(0) + " MB" + picked
                 }
             }
         }
