@@ -88,6 +88,7 @@ it lists what would have worked. Edits are all or nothing, so nothing changed.
 |---|---|
 | `type-and-kinetic-text` | you set type: fonts, variable axes, OpenType features, per-letter animation, gradient letters, building a title in steps |
 | `ui-and-product-animation` | you build screens and product shots: boxes, masks, frosted glass, shadows, tilt and depth |
+| `colour-and-blending` | you mix layers with blend modes (screen, multiply, overlay …) or grade a layer: exposure, levels, curves, a .cube LUT |
 | `shape-and-path-animation` | you draw with the pen, combine shapes, draw a stroke on, dash it |
 | `drawing-and-frame-by-frame` | you paint brush strokes and draw one picture per frame |
 | `character-rigging-and-lip-sync` | you make a figure move from bones and IK, or make a mouth follow a voice |

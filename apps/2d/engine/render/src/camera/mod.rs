@@ -66,11 +66,7 @@ impl View {
             return markup;
         }
         let m = self.map(layer);
-        let blend = match layer.str("blend") {
-            "normal" => String::new(),
-            "add" => "mix-blend-mode:plus-lighter;".into(),
-            b => format!("mix-blend-mode:{b};"),
-        };
+        let blend = crate::scene::blends::style(layer.str("blend"));
         format!(
             "<div id=\"cam~{}\" style=\"position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:0 0;transform:matrix({:.6}, {:.6}, {:.6}, {:.6}, {:.3}, {:.3});{blend}\">{markup}</div>",
             escape(layer.id), m.a, m.b, m.c, m.d, m.e, m.f

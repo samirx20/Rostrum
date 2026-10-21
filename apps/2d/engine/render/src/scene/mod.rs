@@ -2,13 +2,17 @@
 //! the item and field), then evaluated per frame (eval.rs) and written as the stage the renderer draws (stage.rs).
 //! serve's `scene`, `frame {t}`, `export` and `edit` requests are in scene_serve.rs.
 
+pub mod blends;
 pub mod ease;
 pub mod eval;
 pub mod fields;
 pub mod follow;
 pub mod fonts;
+pub mod grade;
+pub mod grade_curve;
 pub mod letters;
 pub mod matte;
+pub mod measure;
 pub mod morph;
 pub mod path_data;
 pub mod stage;
@@ -89,6 +93,7 @@ impl Scene {
         crate::camera::check(&comp)?;
         follow::check(&comp)?;
         matte::check(&comp)?;
+        grade::check(&comp)?;
         let fonts = fonts::list(&v["fonts"])?;
         type_font::register(&fonts);
         Ok(Scene { comp, fonts })
@@ -137,6 +142,7 @@ impl Scene {
         crate::camera::check(&next)?;
         follow::check(&next)?;
         matte::check(&next)?;
+        grade::check(&next)?;
         self.comp = next;
         Ok(list.len())
     }

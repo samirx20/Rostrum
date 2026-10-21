@@ -1,0 +1,22 @@
+# The one list of 2D blend modes: how a layer mixes with the layers under it. Read by the Python layer
+# (rostrum2d/blends.py: the `blend` field's options, its inspector labels, the Lottie export) and by the engine
+# at compile time (engine/render/src/scene/blends.rs: the field check and the CSS the painter reads).
+# Columns, separated by " | ": name in the document | CSS mix-blend-mode the painter draws | Lottie `bm` | label.
+# Every CSS value here reaches Skia (vendor/blitz-paint/src/blend.rs → anyrender_skia scene.rs `SkBlendMode`).
+normal | normal | 0 | Normal
+multiply | multiply | 1 | Multiply (darkens)
+screen | screen | 2 | Screen (lightens)
+add | plus-lighter | 16 | Add (light adds up)
+overlay | overlay | 3 | Overlay (contrast)
+soft-light | soft-light | 9 | Soft light
+hard-light | hard-light | 8 | Hard light
+darken | darken | 4 | Darker of the two
+lighten | lighten | 5 | Lighter of the two
+color-dodge | color-dodge | 6 | Colour dodge (burns bright)
+color-burn | color-burn | 7 | Colour burn (burns dark)
+difference | difference | 10 | Difference
+exclusion | exclusion | 11 | Exclusion (softer difference)
+hue | hue | 12 | Hue only
+saturation | saturation | 13 | Colour strength only
+color | color | 14 | Colour only (keeps brightness)
+luminosity | luminosity | 15 | Brightness only

@@ -13,12 +13,11 @@ import urllib.request
 
 from PIL import Image
 
-from .. import pathdata as PD
+from .. import blends, pathdata as PD
 from . import figma_path as FP
 
 API = "https://api.figma.com/v1"
-BLEND = {"NORMAL": "normal", "PASS_THROUGH": "normal", "SCREEN": "screen", "LINEAR_DODGE": "add", "MULTIPLY": "multiply",
-         "OVERLAY": "overlay", "SOFT_LIGHT": "soft-light"}
+BLEND = blends.DESIGN_APPS        # Figma's blend names → ours (the one list, blends.txt)
 GROUPS = {"FRAME", "GROUP", "COMPONENT", "COMPONENT_SET", "INSTANCE", "SECTION"}
 SHAPES = {"RECTANGLE": "rect", "ELLIPSE": "ellipse"}
 

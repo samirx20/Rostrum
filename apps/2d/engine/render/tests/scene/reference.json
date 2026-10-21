@@ -151,11 +151,22 @@
     "choice",
     [
      "normal",
+     "multiply",
      "screen",
      "add",
-     "multiply",
      "overlay",
-     "soft-light"
+     "soft-light",
+     "hard-light",
+     "darken",
+     "lighten",
+     "color-dodge",
+     "color-burn",
+     "difference",
+     "exclusion",
+     "hue",
+     "saturation",
+     "color",
+     "luminosity"
     ]
    ],
    [
@@ -182,6 +193,106 @@
      "luma",
      "lumaInverted"
     ]
+   ],
+   [
+    "adjust",
+    "toggle",
+    null
+   ],
+   [
+    "exposure",
+    "number",
+    null
+   ],
+   [
+    "contrast",
+    "number",
+    null
+   ],
+   [
+    "saturation",
+    "number",
+    null
+   ],
+   [
+    "temperature",
+    "number",
+    null
+   ],
+   [
+    "tint",
+    "number",
+    null
+   ],
+   [
+    "hue",
+    "number",
+    null
+   ],
+   [
+    "levels",
+    "toggle",
+    null
+   ],
+   [
+    "inBlack",
+    "number",
+    null
+   ],
+   [
+    "inWhite",
+    "number",
+    null
+   ],
+   [
+    "gamma",
+    "number",
+    null
+   ],
+   [
+    "outBlack",
+    "number",
+    null
+   ],
+   [
+    "outWhite",
+    "number",
+    null
+   ],
+   [
+    "curves",
+    "toggle",
+    null
+   ],
+   [
+    "curve",
+    "text",
+    null
+   ],
+   [
+    "curveR",
+    "text",
+    null
+   ],
+   [
+    "curveG",
+    "text",
+    null
+   ],
+   [
+    "curveB",
+    "text",
+    null
+   ],
+   [
+    "lut",
+    "text",
+    null
+   ],
+   [
+    "lutMix",
+    "number",
+    null
    ]
   ],
   "text": [
@@ -425,11 +536,22 @@
     "choice",
     [
      "normal",
+     "multiply",
      "screen",
      "add",
-     "multiply",
      "overlay",
-     "soft-light"
+     "soft-light",
+     "hard-light",
+     "darken",
+     "lighten",
+     "color-dodge",
+     "color-burn",
+     "difference",
+     "exclusion",
+     "hue",
+     "saturation",
+     "color",
+     "luminosity"
     ]
    ],
    [
@@ -456,6 +578,106 @@
      "luma",
      "lumaInverted"
     ]
+   ],
+   [
+    "adjust",
+    "toggle",
+    null
+   ],
+   [
+    "exposure",
+    "number",
+    null
+   ],
+   [
+    "contrast",
+    "number",
+    null
+   ],
+   [
+    "saturation",
+    "number",
+    null
+   ],
+   [
+    "temperature",
+    "number",
+    null
+   ],
+   [
+    "tint",
+    "number",
+    null
+   ],
+   [
+    "hue",
+    "number",
+    null
+   ],
+   [
+    "levels",
+    "toggle",
+    null
+   ],
+   [
+    "inBlack",
+    "number",
+    null
+   ],
+   [
+    "inWhite",
+    "number",
+    null
+   ],
+   [
+    "gamma",
+    "number",
+    null
+   ],
+   [
+    "outBlack",
+    "number",
+    null
+   ],
+   [
+    "outWhite",
+    "number",
+    null
+   ],
+   [
+    "curves",
+    "toggle",
+    null
+   ],
+   [
+    "curve",
+    "text",
+    null
+   ],
+   [
+    "curveR",
+    "text",
+    null
+   ],
+   [
+    "curveG",
+    "text",
+    null
+   ],
+   [
+    "curveB",
+    "text",
+    null
+   ],
+   [
+    "lut",
+    "text",
+    null
+   ],
+   [
+    "lutMix",
+    "number",
+    null
    ]
   ],
   "image": [
@@ -558,11 +780,22 @@
     "choice",
     [
      "normal",
+     "multiply",
      "screen",
      "add",
-     "multiply",
      "overlay",
-     "soft-light"
+     "soft-light",
+     "hard-light",
+     "darken",
+     "lighten",
+     "color-dodge",
+     "color-burn",
+     "difference",
+     "exclusion",
+     "hue",
+     "saturation",
+     "color",
+     "luminosity"
     ]
    ],
    [
@@ -589,6 +822,106 @@
      "luma",
      "lumaInverted"
     ]
+   ],
+   [
+    "adjust",
+    "toggle",
+    null
+   ],
+   [
+    "exposure",
+    "number",
+    null
+   ],
+   [
+    "contrast",
+    "number",
+    null
+   ],
+   [
+    "saturation",
+    "number",
+    null
+   ],
+   [
+    "temperature",
+    "number",
+    null
+   ],
+   [
+    "tint",
+    "number",
+    null
+   ],
+   [
+    "hue",
+    "number",
+    null
+   ],
+   [
+    "levels",
+    "toggle",
+    null
+   ],
+   [
+    "inBlack",
+    "number",
+    null
+   ],
+   [
+    "inWhite",
+    "number",
+    null
+   ],
+   [
+    "gamma",
+    "number",
+    null
+   ],
+   [
+    "outBlack",
+    "number",
+    null
+   ],
+   [
+    "outWhite",
+    "number",
+    null
+   ],
+   [
+    "curves",
+    "toggle",
+    null
+   ],
+   [
+    "curve",
+    "text",
+    null
+   ],
+   [
+    "curveR",
+    "text",
+    null
+   ],
+   [
+    "curveG",
+    "text",
+    null
+   ],
+   [
+    "curveB",
+    "text",
+    null
+   ],
+   [
+    "lut",
+    "text",
+    null
+   ],
+   [
+    "lutMix",
+    "number",
+    null
    ]
   ],
   "video": [
@@ -706,11 +1039,22 @@
     "choice",
     [
      "normal",
+     "multiply",
      "screen",
      "add",
-     "multiply",
      "overlay",
-     "soft-light"
+     "soft-light",
+     "hard-light",
+     "darken",
+     "lighten",
+     "color-dodge",
+     "color-burn",
+     "difference",
+     "exclusion",
+     "hue",
+     "saturation",
+     "color",
+     "luminosity"
     ]
    ],
    [
@@ -737,6 +1081,106 @@
      "luma",
      "lumaInverted"
     ]
+   ],
+   [
+    "adjust",
+    "toggle",
+    null
+   ],
+   [
+    "exposure",
+    "number",
+    null
+   ],
+   [
+    "contrast",
+    "number",
+    null
+   ],
+   [
+    "saturation",
+    "number",
+    null
+   ],
+   [
+    "temperature",
+    "number",
+    null
+   ],
+   [
+    "tint",
+    "number",
+    null
+   ],
+   [
+    "hue",
+    "number",
+    null
+   ],
+   [
+    "levels",
+    "toggle",
+    null
+   ],
+   [
+    "inBlack",
+    "number",
+    null
+   ],
+   [
+    "inWhite",
+    "number",
+    null
+   ],
+   [
+    "gamma",
+    "number",
+    null
+   ],
+   [
+    "outBlack",
+    "number",
+    null
+   ],
+   [
+    "outWhite",
+    "number",
+    null
+   ],
+   [
+    "curves",
+    "toggle",
+    null
+   ],
+   [
+    "curve",
+    "text",
+    null
+   ],
+   [
+    "curveR",
+    "text",
+    null
+   ],
+   [
+    "curveG",
+    "text",
+    null
+   ],
+   [
+    "curveB",
+    "text",
+    null
+   ],
+   [
+    "lut",
+    "text",
+    null
+   ],
+   [
+    "lutMix",
+    "number",
+    null
    ]
   ],
   "group": [
@@ -825,11 +1269,22 @@
     "choice",
     [
      "normal",
+     "multiply",
      "screen",
      "add",
-     "multiply",
      "overlay",
-     "soft-light"
+     "soft-light",
+     "hard-light",
+     "darken",
+     "lighten",
+     "color-dodge",
+     "color-burn",
+     "difference",
+     "exclusion",
+     "hue",
+     "saturation",
+     "color",
+     "luminosity"
     ]
    ],
    [
@@ -856,6 +1311,106 @@
      "luma",
      "lumaInverted"
     ]
+   ],
+   [
+    "adjust",
+    "toggle",
+    null
+   ],
+   [
+    "exposure",
+    "number",
+    null
+   ],
+   [
+    "contrast",
+    "number",
+    null
+   ],
+   [
+    "saturation",
+    "number",
+    null
+   ],
+   [
+    "temperature",
+    "number",
+    null
+   ],
+   [
+    "tint",
+    "number",
+    null
+   ],
+   [
+    "hue",
+    "number",
+    null
+   ],
+   [
+    "levels",
+    "toggle",
+    null
+   ],
+   [
+    "inBlack",
+    "number",
+    null
+   ],
+   [
+    "inWhite",
+    "number",
+    null
+   ],
+   [
+    "gamma",
+    "number",
+    null
+   ],
+   [
+    "outBlack",
+    "number",
+    null
+   ],
+   [
+    "outWhite",
+    "number",
+    null
+   ],
+   [
+    "curves",
+    "toggle",
+    null
+   ],
+   [
+    "curve",
+    "text",
+    null
+   ],
+   [
+    "curveR",
+    "text",
+    null
+   ],
+   [
+    "curveG",
+    "text",
+    null
+   ],
+   [
+    "curveB",
+    "text",
+    null
+   ],
+   [
+    "lut",
+    "text",
+    null
+   ],
+   [
+    "lutMix",
+    "number",
+    null
    ]
   ],
   "drawing": [
@@ -939,11 +1494,22 @@
     "choice",
     [
      "normal",
+     "multiply",
      "screen",
      "add",
-     "multiply",
      "overlay",
-     "soft-light"
+     "soft-light",
+     "hard-light",
+     "darken",
+     "lighten",
+     "color-dodge",
+     "color-burn",
+     "difference",
+     "exclusion",
+     "hue",
+     "saturation",
+     "color",
+     "luminosity"
     ]
    ],
    [
@@ -970,6 +1536,106 @@
      "luma",
      "lumaInverted"
     ]
+   ],
+   [
+    "adjust",
+    "toggle",
+    null
+   ],
+   [
+    "exposure",
+    "number",
+    null
+   ],
+   [
+    "contrast",
+    "number",
+    null
+   ],
+   [
+    "saturation",
+    "number",
+    null
+   ],
+   [
+    "temperature",
+    "number",
+    null
+   ],
+   [
+    "tint",
+    "number",
+    null
+   ],
+   [
+    "hue",
+    "number",
+    null
+   ],
+   [
+    "levels",
+    "toggle",
+    null
+   ],
+   [
+    "inBlack",
+    "number",
+    null
+   ],
+   [
+    "inWhite",
+    "number",
+    null
+   ],
+   [
+    "gamma",
+    "number",
+    null
+   ],
+   [
+    "outBlack",
+    "number",
+    null
+   ],
+   [
+    "outWhite",
+    "number",
+    null
+   ],
+   [
+    "curves",
+    "toggle",
+    null
+   ],
+   [
+    "curve",
+    "text",
+    null
+   ],
+   [
+    "curveR",
+    "text",
+    null
+   ],
+   [
+    "curveG",
+    "text",
+    null
+   ],
+   [
+    "curveB",
+    "text",
+    null
+   ],
+   [
+    "lut",
+    "text",
+    null
+   ],
+   [
+    "lutMix",
+    "number",
+    null
    ]
   ],
   "path": [
@@ -1139,11 +1805,22 @@
     "choice",
     [
      "normal",
+     "multiply",
      "screen",
      "add",
-     "multiply",
      "overlay",
-     "soft-light"
+     "soft-light",
+     "hard-light",
+     "darken",
+     "lighten",
+     "color-dodge",
+     "color-burn",
+     "difference",
+     "exclusion",
+     "hue",
+     "saturation",
+     "color",
+     "luminosity"
     ]
    ],
    [
@@ -1170,6 +1847,106 @@
      "luma",
      "lumaInverted"
     ]
+   ],
+   [
+    "adjust",
+    "toggle",
+    null
+   ],
+   [
+    "exposure",
+    "number",
+    null
+   ],
+   [
+    "contrast",
+    "number",
+    null
+   ],
+   [
+    "saturation",
+    "number",
+    null
+   ],
+   [
+    "temperature",
+    "number",
+    null
+   ],
+   [
+    "tint",
+    "number",
+    null
+   ],
+   [
+    "hue",
+    "number",
+    null
+   ],
+   [
+    "levels",
+    "toggle",
+    null
+   ],
+   [
+    "inBlack",
+    "number",
+    null
+   ],
+   [
+    "inWhite",
+    "number",
+    null
+   ],
+   [
+    "gamma",
+    "number",
+    null
+   ],
+   [
+    "outBlack",
+    "number",
+    null
+   ],
+   [
+    "outWhite",
+    "number",
+    null
+   ],
+   [
+    "curves",
+    "toggle",
+    null
+   ],
+   [
+    "curve",
+    "text",
+    null
+   ],
+   [
+    "curveR",
+    "text",
+    null
+   ],
+   [
+    "curveG",
+    "text",
+    null
+   ],
+   [
+    "curveB",
+    "text",
+    null
+   ],
+   [
+    "lut",
+    "text",
+    null
+   ],
+   [
+    "lutMix",
+    "number",
+    null
    ]
   ],
   "blur": [
@@ -1437,11 +2214,22 @@
     "choice",
     [
      "normal",
+     "multiply",
      "screen",
      "add",
-     "multiply",
      "overlay",
-     "soft-light"
+     "soft-light",
+     "hard-light",
+     "darken",
+     "lighten",
+     "color-dodge",
+     "color-burn",
+     "difference",
+     "exclusion",
+     "hue",
+     "saturation",
+     "color",
+     "luminosity"
     ]
    ],
    [
@@ -1468,6 +2256,106 @@
      "luma",
      "lumaInverted"
     ]
+   ],
+   [
+    "adjust",
+    "toggle",
+    null
+   ],
+   [
+    "exposure",
+    "number",
+    null
+   ],
+   [
+    "contrast",
+    "number",
+    null
+   ],
+   [
+    "saturation",
+    "number",
+    null
+   ],
+   [
+    "temperature",
+    "number",
+    null
+   ],
+   [
+    "tint",
+    "number",
+    null
+   ],
+   [
+    "hue",
+    "number",
+    null
+   ],
+   [
+    "levels",
+    "toggle",
+    null
+   ],
+   [
+    "inBlack",
+    "number",
+    null
+   ],
+   [
+    "inWhite",
+    "number",
+    null
+   ],
+   [
+    "gamma",
+    "number",
+    null
+   ],
+   [
+    "outBlack",
+    "number",
+    null
+   ],
+   [
+    "outWhite",
+    "number",
+    null
+   ],
+   [
+    "curves",
+    "toggle",
+    null
+   ],
+   [
+    "curve",
+    "text",
+    null
+   ],
+   [
+    "curveR",
+    "text",
+    null
+   ],
+   [
+    "curveG",
+    "text",
+    null
+   ],
+   [
+    "curveB",
+    "text",
+    null
+   ],
+   [
+    "lut",
+    "text",
+    null
+   ],
+   [
+    "lutMix",
+    "number",
+    null
    ]
   ],
   "bone": [
@@ -1687,7 +2575,19 @@
    "scaleY",
    "tiltX",
    "tiltY",
-   "depth"
+   "depth",
+   "exposure",
+   "contrast",
+   "saturation",
+   "temperature",
+   "tint",
+   "hue",
+   "inBlack",
+   "inWhite",
+   "gamma",
+   "outBlack",
+   "outWhite",
+   "lutMix"
   ],
   "text": [
    "size",
@@ -1712,7 +2612,19 @@
    "scaleY",
    "tiltX",
    "tiltY",
-   "depth"
+   "depth",
+   "exposure",
+   "contrast",
+   "saturation",
+   "temperature",
+   "tint",
+   "hue",
+   "inBlack",
+   "inWhite",
+   "gamma",
+   "outBlack",
+   "outWhite",
+   "lutMix"
   ],
   "image": [
    "w",
@@ -1729,7 +2641,19 @@
    "scaleY",
    "tiltX",
    "tiltY",
-   "depth"
+   "depth",
+   "exposure",
+   "contrast",
+   "saturation",
+   "temperature",
+   "tint",
+   "hue",
+   "inBlack",
+   "inWhite",
+   "gamma",
+   "outBlack",
+   "outWhite",
+   "lutMix"
   ],
   "video": [
    "radius",
@@ -1744,7 +2668,19 @@
    "scaleY",
    "tiltX",
    "tiltY",
-   "depth"
+   "depth",
+   "exposure",
+   "contrast",
+   "saturation",
+   "temperature",
+   "tint",
+   "hue",
+   "inBlack",
+   "inWhite",
+   "gamma",
+   "outBlack",
+   "outWhite",
+   "lutMix"
   ],
   "group": [
    "w",
@@ -1760,7 +2696,19 @@
    "scaleY",
    "tiltX",
    "tiltY",
-   "depth"
+   "depth",
+   "exposure",
+   "contrast",
+   "saturation",
+   "temperature",
+   "tint",
+   "hue",
+   "inBlack",
+   "inWhite",
+   "gamma",
+   "outBlack",
+   "outWhite",
+   "lutMix"
   ],
   "drawing": [
    "x",
@@ -1774,7 +2722,19 @@
    "scaleY",
    "tiltX",
    "tiltY",
-   "depth"
+   "depth",
+   "exposure",
+   "contrast",
+   "saturation",
+   "temperature",
+   "tint",
+   "hue",
+   "inBlack",
+   "inWhite",
+   "gamma",
+   "outBlack",
+   "outWhite",
+   "lutMix"
   ],
   "path": [
    "d",
@@ -1798,7 +2758,19 @@
    "scaleY",
    "tiltX",
    "tiltY",
-   "depth"
+   "depth",
+   "exposure",
+   "contrast",
+   "saturation",
+   "temperature",
+   "tint",
+   "hue",
+   "inBlack",
+   "inWhite",
+   "gamma",
+   "outBlack",
+   "outWhite",
+   "lutMix"
   ],
   "blur": [
    "radius"
@@ -1853,7 +2825,19 @@
    "scaleY",
    "tiltX",
    "tiltY",
-   "depth"
+   "depth",
+   "exposure",
+   "contrast",
+   "saturation",
+   "temperature",
+   "tint",
+   "hue",
+   "inBlack",
+   "inWhite",
+   "gamma",
+   "outBlack",
+   "outWhite",
+   "lutMix"
   ],
   "bone": [
    "rotation",
@@ -3011,7 +3995,27 @@
       "depth": 0.0,
       "screenLock": false,
       "matte": "",
-      "matteMode": "alpha"
+      "matteMode": "alpha",
+      "adjust": false,
+      "exposure": 0.0,
+      "contrast": 1.0,
+      "saturation": 1.0,
+      "temperature": 0.0,
+      "tint": 0.0,
+      "hue": 0.0,
+      "levels": false,
+      "inBlack": 0.0,
+      "inWhite": 1.0,
+      "gamma": 1.0,
+      "outBlack": 0.0,
+      "outWhite": 1.0,
+      "curves": false,
+      "curve": "0,0 1,1",
+      "curveR": "0,0 1,1",
+      "curveG": "0,0 1,1",
+      "curveB": "0,0 1,1",
+      "lut": "",
+      "lutMix": 1.0
      },
      "anim": {
       "x": [
@@ -3139,7 +4143,27 @@
       "depth": 0.0,
       "screenLock": false,
       "matte": "",
-      "matteMode": "alpha"
+      "matteMode": "alpha",
+      "adjust": false,
+      "exposure": 0.0,
+      "contrast": 1.0,
+      "saturation": 1.0,
+      "temperature": 0.0,
+      "tint": 0.0,
+      "hue": 0.0,
+      "levels": false,
+      "inBlack": 0.0,
+      "inWhite": 1.0,
+      "gamma": 1.0,
+      "outBlack": 0.0,
+      "outWhite": 1.0,
+      "curves": false,
+      "curve": "0,0 1,1",
+      "curveR": "0,0 1,1",
+      "curveG": "0,0 1,1",
+      "curveB": "0,0 1,1",
+      "lut": "",
+      "lutMix": 1.0
      },
      "anim": {
       "weight": [
@@ -3255,7 +4279,27 @@
       "depth": 0.0,
       "screenLock": false,
       "matte": "",
-      "matteMode": "alpha"
+      "matteMode": "alpha",
+      "adjust": false,
+      "exposure": 0.0,
+      "contrast": 1.0,
+      "saturation": 1.0,
+      "temperature": 0.0,
+      "tint": 0.0,
+      "hue": 0.0,
+      "levels": false,
+      "inBlack": 0.0,
+      "inWhite": 1.0,
+      "gamma": 1.0,
+      "outBlack": 0.0,
+      "outWhite": 1.0,
+      "curves": false,
+      "curve": "0,0 1,1",
+      "curveR": "0,0 1,1",
+      "curveG": "0,0 1,1",
+      "curveB": "0,0 1,1",
+      "lut": "",
+      "lutMix": 1.0
      },
      "anim": {
       "scale": [
@@ -3301,7 +4345,27 @@
       "depth": 0.0,
       "screenLock": false,
       "matte": "",
-      "matteMode": "alpha"
+      "matteMode": "alpha",
+      "adjust": false,
+      "exposure": 0.0,
+      "contrast": 1.0,
+      "saturation": 1.0,
+      "temperature": 0.0,
+      "tint": 0.0,
+      "hue": 0.0,
+      "levels": false,
+      "inBlack": 0.0,
+      "inWhite": 1.0,
+      "gamma": 1.0,
+      "outBlack": 0.0,
+      "outWhite": 1.0,
+      "curves": false,
+      "curve": "0,0 1,1",
+      "curveR": "0,0 1,1",
+      "curveG": "0,0 1,1",
+      "curveB": "0,0 1,1",
+      "lut": "",
+      "lutMix": 1.0
      },
      "anim": {
       "h": [
@@ -3347,7 +4411,27 @@
         "depth": 0.0,
         "screenLock": false,
         "matte": "",
-        "matteMode": "alpha"
+        "matteMode": "alpha",
+        "adjust": false,
+        "exposure": 0.0,
+        "contrast": 1.0,
+        "saturation": 1.0,
+        "temperature": 0.0,
+        "tint": 0.0,
+        "hue": 0.0,
+        "levels": false,
+        "inBlack": 0.0,
+        "inWhite": 1.0,
+        "gamma": 1.0,
+        "outBlack": 0.0,
+        "outWhite": 1.0,
+        "curves": false,
+        "curve": "0,0 1,1",
+        "curveR": "0,0 1,1",
+        "curveG": "0,0 1,1",
+        "curveB": "0,0 1,1",
+        "lut": "",
+        "lutMix": 1.0
        },
        "anim": {
         "y": [
@@ -3447,7 +4531,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -3513,7 +4617,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -3567,7 +4691,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "masks": [
        {
@@ -3616,7 +4760,27 @@
          "depth": 0.0,
          "screenLock": false,
          "matte": "",
-         "matteMode": "alpha"
+         "matteMode": "alpha",
+         "adjust": false,
+         "exposure": 0.0,
+         "contrast": 1.0,
+         "saturation": 1.0,
+         "temperature": 0.0,
+         "tint": 0.0,
+         "hue": 0.0,
+         "levels": false,
+         "inBlack": 0.0,
+         "inWhite": 1.0,
+         "gamma": 1.0,
+         "outBlack": 0.0,
+         "outWhite": 1.0,
+         "curves": false,
+         "curve": "0,0 1,1",
+         "curveR": "0,0 1,1",
+         "curveG": "0,0 1,1",
+         "curveB": "0,0 1,1",
+         "lut": "",
+         "lutMix": 1.0
         }
        }
       ]
@@ -3670,7 +4834,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -3736,7 +4920,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -3790,7 +4994,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "masks": [
        {
@@ -3839,7 +5063,27 @@
          "depth": 0.0,
          "screenLock": false,
          "matte": "",
-         "matteMode": "alpha"
+         "matteMode": "alpha",
+         "adjust": false,
+         "exposure": 0.0,
+         "contrast": 1.0,
+         "saturation": 1.0,
+         "temperature": 0.0,
+         "tint": 0.0,
+         "hue": 0.0,
+         "levels": false,
+         "inBlack": 0.0,
+         "inWhite": 1.0,
+         "gamma": 1.0,
+         "outBlack": 0.0,
+         "outWhite": 1.0,
+         "curves": false,
+         "curve": "0,0 1,1",
+         "curveR": "0,0 1,1",
+         "curveG": "0,0 1,1",
+         "curveB": "0,0 1,1",
+         "lut": "",
+         "lutMix": 1.0
         }
        }
       ]
@@ -3893,7 +5137,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -3959,7 +5223,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -4013,7 +5297,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "masks": [
        {
@@ -4062,7 +5366,27 @@
          "depth": 0.0,
          "screenLock": false,
          "matte": "",
-         "matteMode": "alpha"
+         "matteMode": "alpha",
+         "adjust": false,
+         "exposure": 0.0,
+         "contrast": 1.0,
+         "saturation": 1.0,
+         "temperature": 0.0,
+         "tint": 0.0,
+         "hue": 0.0,
+         "levels": false,
+         "inBlack": 0.0,
+         "inWhite": 1.0,
+         "gamma": 1.0,
+         "outBlack": 0.0,
+         "outWhite": 1.0,
+         "curves": false,
+         "curve": "0,0 1,1",
+         "curveR": "0,0 1,1",
+         "curveG": "0,0 1,1",
+         "curveB": "0,0 1,1",
+         "lut": "",
+         "lutMix": 1.0
         }
        }
       ]
@@ -4116,7 +5440,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -4182,7 +5526,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -4241,7 +5605,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       }
      },
      {
@@ -4268,7 +5652,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "masks": [
        {
@@ -4317,7 +5721,27 @@
          "depth": 0.0,
          "screenLock": false,
          "matte": "",
-         "matteMode": "alpha"
+         "matteMode": "alpha",
+         "adjust": false,
+         "exposure": 0.0,
+         "contrast": 1.0,
+         "saturation": 1.0,
+         "temperature": 0.0,
+         "tint": 0.0,
+         "hue": 0.0,
+         "levels": false,
+         "inBlack": 0.0,
+         "inWhite": 1.0,
+         "gamma": 1.0,
+         "outBlack": 0.0,
+         "outWhite": 1.0,
+         "curves": false,
+         "curve": "0,0 1,1",
+         "curveR": "0,0 1,1",
+         "curveG": "0,0 1,1",
+         "curveB": "0,0 1,1",
+         "lut": "",
+         "lutMix": 1.0
         }
        }
       ]
@@ -4371,7 +5795,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -4437,7 +5881,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -4496,7 +5960,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       }
      },
      {
@@ -4523,7 +6007,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "masks": [
        {
@@ -4572,7 +6076,27 @@
          "depth": 0.0,
          "screenLock": false,
          "matte": "",
-         "matteMode": "alpha"
+         "matteMode": "alpha",
+         "adjust": false,
+         "exposure": 0.0,
+         "contrast": 1.0,
+         "saturation": 1.0,
+         "temperature": 0.0,
+         "tint": 0.0,
+         "hue": 0.0,
+         "levels": false,
+         "inBlack": 0.0,
+         "inWhite": 1.0,
+         "gamma": 1.0,
+         "outBlack": 0.0,
+         "outWhite": 1.0,
+         "curves": false,
+         "curve": "0,0 1,1",
+         "curveR": "0,0 1,1",
+         "curveG": "0,0 1,1",
+         "curveB": "0,0 1,1",
+         "lut": "",
+         "lutMix": 1.0
         }
        }
       ]
@@ -4626,7 +6150,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -4692,7 +6236,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -4751,7 +6315,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       }
      },
      {
@@ -4778,7 +6362,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "masks": [
        {
@@ -4827,7 +6431,27 @@
          "depth": 0.0,
          "screenLock": false,
          "matte": "",
-         "matteMode": "alpha"
+         "matteMode": "alpha",
+         "adjust": false,
+         "exposure": 0.0,
+         "contrast": 1.0,
+         "saturation": 1.0,
+         "temperature": 0.0,
+         "tint": 0.0,
+         "hue": 0.0,
+         "levels": false,
+         "inBlack": 0.0,
+         "inWhite": 1.0,
+         "gamma": 1.0,
+         "outBlack": 0.0,
+         "outWhite": 1.0,
+         "curves": false,
+         "curve": "0,0 1,1",
+         "curveR": "0,0 1,1",
+         "curveG": "0,0 1,1",
+         "curveB": "0,0 1,1",
+         "lut": "",
+         "lutMix": 1.0
         }
        }
       ]
@@ -4881,7 +6505,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -4947,7 +6591,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -5006,7 +6670,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       }
      },
      {
@@ -5033,7 +6717,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "masks": [
        {
@@ -5082,7 +6786,27 @@
          "depth": 0.0,
          "screenLock": false,
          "matte": "",
-         "matteMode": "alpha"
+         "matteMode": "alpha",
+         "adjust": false,
+         "exposure": 0.0,
+         "contrast": 1.0,
+         "saturation": 1.0,
+         "temperature": 0.0,
+         "tint": 0.0,
+         "hue": 0.0,
+         "levels": false,
+         "inBlack": 0.0,
+         "inWhite": 1.0,
+         "gamma": 1.0,
+         "outBlack": 0.0,
+         "outWhite": 1.0,
+         "curves": false,
+         "curve": "0,0 1,1",
+         "curveR": "0,0 1,1",
+         "curveG": "0,0 1,1",
+         "curveB": "0,0 1,1",
+         "lut": "",
+         "lutMix": 1.0
         }
        }
       ]
@@ -5136,7 +6860,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -5202,7 +6946,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -5261,7 +7025,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       }
      },
      {
@@ -5288,7 +7072,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "masks": [
        {
@@ -5337,7 +7141,27 @@
          "depth": 0.0,
          "screenLock": false,
          "matte": "",
-         "matteMode": "alpha"
+         "matteMode": "alpha",
+         "adjust": false,
+         "exposure": 0.0,
+         "contrast": 1.0,
+         "saturation": 1.0,
+         "temperature": 0.0,
+         "tint": 0.0,
+         "hue": 0.0,
+         "levels": false,
+         "inBlack": 0.0,
+         "inWhite": 1.0,
+         "gamma": 1.0,
+         "outBlack": 0.0,
+         "outWhite": 1.0,
+         "curves": false,
+         "curve": "0,0 1,1",
+         "curveR": "0,0 1,1",
+         "curveG": "0,0 1,1",
+         "curveB": "0,0 1,1",
+         "lut": "",
+         "lutMix": 1.0
         }
        }
       ]
@@ -5391,7 +7215,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -5457,7 +7301,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -5511,7 +7375,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "masks": [
        {
@@ -5560,7 +7444,27 @@
          "depth": 0.0,
          "screenLock": false,
          "matte": "",
-         "matteMode": "alpha"
+         "matteMode": "alpha",
+         "adjust": false,
+         "exposure": 0.0,
+         "contrast": 1.0,
+         "saturation": 1.0,
+         "temperature": 0.0,
+         "tint": 0.0,
+         "hue": 0.0,
+         "levels": false,
+         "inBlack": 0.0,
+         "inWhite": 1.0,
+         "gamma": 1.0,
+         "outBlack": 0.0,
+         "outWhite": 1.0,
+         "curves": false,
+         "curve": "0,0 1,1",
+         "curveR": "0,0 1,1",
+         "curveG": "0,0 1,1",
+         "curveB": "0,0 1,1",
+         "lut": "",
+         "lutMix": 1.0
         }
        }
       ]
@@ -5614,7 +7518,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -5680,7 +7604,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "effects": [
        {
@@ -5734,7 +7678,27 @@
        "depth": 0.0,
        "screenLock": false,
        "matte": "",
-       "matteMode": "alpha"
+       "matteMode": "alpha",
+       "adjust": false,
+       "exposure": 0.0,
+       "contrast": 1.0,
+       "saturation": 1.0,
+       "temperature": 0.0,
+       "tint": 0.0,
+       "hue": 0.0,
+       "levels": false,
+       "inBlack": 0.0,
+       "inWhite": 1.0,
+       "gamma": 1.0,
+       "outBlack": 0.0,
+       "outWhite": 1.0,
+       "curves": false,
+       "curve": "0,0 1,1",
+       "curveR": "0,0 1,1",
+       "curveG": "0,0 1,1",
+       "curveB": "0,0 1,1",
+       "lut": "",
+       "lutMix": 1.0
       },
       "masks": [
        {
@@ -5783,7 +7747,27 @@
          "depth": 0.0,
          "screenLock": false,
          "matte": "",
-         "matteMode": "alpha"
+         "matteMode": "alpha",
+         "adjust": false,
+         "exposure": 0.0,
+         "contrast": 1.0,
+         "saturation": 1.0,
+         "temperature": 0.0,
+         "tint": 0.0,
+         "hue": 0.0,
+         "levels": false,
+         "inBlack": 0.0,
+         "inWhite": 1.0,
+         "gamma": 1.0,
+         "outBlack": 0.0,
+         "outWhite": 1.0,
+         "curves": false,
+         "curve": "0,0 1,1",
+         "curveR": "0,0 1,1",
+         "curveG": "0,0 1,1",
+         "curveB": "0,0 1,1",
+         "lut": "",
+         "lutMix": 1.0
         }
        }
       ]

@@ -8,9 +8,10 @@ from pathlib import Path
 from psd_tools import PSDImage
 from psd_tools.constants import BlendMode as B
 
+from .. import blends
+
 # Photoshop blend mode → ours; anything else is drawn normal and reported.
-BLEND = {B.NORMAL: "normal", B.PASS_THROUGH: "normal", B.SCREEN: "screen", B.LINEAR_DODGE: "add",
-         B.MULTIPLY: "multiply", B.OVERLAY: "overlay", B.SOFT_LIGHT: "soft-light"}
+BLEND = {B[k]: v for k, v in blends.DESIGN_APPS.items()}     # the one list (blends.txt), by Photoshop's names
 _RENDERED = {"type": "text", "shape": "shape", "smartobject": "smart object", "adjustment": "adjustment",
              "fill": "fill", "solidcolorfill": "fill", "gradientfill": "fill", "patternfill": "fill"}
 

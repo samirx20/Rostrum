@@ -12,7 +12,7 @@ from dataclasses import replace
 from rostrum_core import Param
 from rostrum_core.keys import KEY_FIELDS
 
-from . import layout_fields as _layout
+from . import blends as _blends, grade_fields as _grade, layout_fields as _layout
 
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 P = "primary"
@@ -42,7 +42,7 @@ def X(name, label, group, default, imp=P, help="", when=None):
     return Param.text(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help)
 
 
-BLENDS = ["normal", "screen", "add", "multiply", "overlay", "soft-light"]
+BLENDS = _blends.BLENDS          # the one list (blends.txt), shared with the engine
 MATTE_MODES = ["alpha", "alphaInverted", "luma", "lumaInverted"]
 
 # Every layer has these (position is where its anchor sits in the composition, in px).
@@ -61,7 +61,8 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
     N("start", "Starts at", "Timing", 0, 36000, 0.01, "s", S, help="The layer appears at this time"),
     N("end", "Ends at", "Timing", 0, 36000, 0.01, "s", S, default=36000.0, help="The layer is gone from this time",
       words={36000.0: "End of comp"}),
-    CH("blend", BLENDS, "Blend", "Look", "normal", D),
+    Param.choice("blend", BLENDS, label="Blend", group="Look", default="normal", importance=D, labels=_blends.LABELS,
+                 help="How the layer mixes with the layers under it"),
     # The camera (camera/, apps/2d/CAMERA.md): only a composition's own layers use these.
     N("depth", "Depth", "Camera", -0.99, 1000, 0.01, "", D,
       help="How far behind the camera's plane: 0 = on it, 1 = twice as far (moves half as much), -0.5 = nearer (twice as much)"),
@@ -74,7 +75,7 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
                  labels={"alpha": "Its shape", "alphaInverted": "Outside its shape", "luma": "Its brightness",
                          "lumaInverted": "Its darkness"},
                  help="Shape = where the matte layer is drawn; brightness = how light it is; the inverted ones swap"),
-]
+] + _grade.COLOUR  # colour effects: adjust, levels, curves, LUT (grade_fields.py; engine: scene/grade.rs)
 
 STROKE = IS("stroke", True)
 

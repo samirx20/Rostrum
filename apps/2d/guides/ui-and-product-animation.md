@@ -49,7 +49,7 @@ stack or into another group; `inspect_item` with no `id` lists the tree.
 | `group` | `w`, `h`, `clip`. A group's opacity, blend, masks and effects apply to it as a whole. |
 
 Every layer also has the transform (`x`, `y`, `scale`, `scaleX`, `scaleY`, `rotation`, `opacity`, anchor), `start` / `end`
-(when it exists) and `blend`: `normal`, `screen`, `add`, `multiply`, `overlay`, `soft-light`.
+(when it exists), `blend` (17 modes) and colour effects (adjust, levels, curves, LUT): see the guide `colour-and-blending`.
 
 ## Masks
 
