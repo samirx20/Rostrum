@@ -108,7 +108,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     println!(
         "{}",
         serde_json::json!({ "ready": { "mode": opened.mode, "rate": opened.rate, "periodMs": opened.period_frames as f64 * 1000.0 / rate, "format": opened.format, "device": opened.device, "exclusiveRefused": opened.fallback, "seconds": seconds, "mixRate": mix_rate, "resampled": opened.rate as f64 != mix_rate,
-            "monitor": monitoring.report(Some(opened.channels as usize)), "midiDevices": devices, "mic": mic.as_ref().map(|(m, _)| serde_json::json!({ "rate": m.rate, "device": m.device, "inputOffsetMs": input_offset.map(|o| (o * 1e5).round() / 100.0) })) } })
+            "monitor": monitoring.report(Some(opened.channels as usize)), "midiDevices": devices, "mic": mic.as_ref().map(|(m, _)| serde_json::json!({ "rate": m.rate, "device": m.device, "name": m.name, "inputOffsetMs": input_offset.map(|o| (o * 1e5).round() / 100.0) })) } })
     );
     let until_end = flag("--until-end") || calibrate;
     let input = protocol::read_input(mtx.clone(), ntx.clone(), rate, monitoring.clone(), arg::<usize>(args, "--measure", 0)?, until_end);

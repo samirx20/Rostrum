@@ -47,7 +47,9 @@ pub struct Packet {
 pub struct Mic {
     pub rate: u32,
     pub channels: usize,
+    /// Windows' id for it (what calibrations are kept under) and its name as Windows shows it.
     pub device: String,
+    pub name: String,
 }
 
 /// Opens the default microphone (WASAPI shared mode, its own rate, folded to mono) on a thread of
@@ -89,7 +91,7 @@ pub fn run(out: &str, seconds: Option<f64>) -> Result<(), String> {
     let (mic, thread) = open(stop.clone(), move |p| {
         let _ = ptx.send(p);
     })?;
-    println!("{}", serde_json::json!({ "ready": { "rate": mic.rate, "channels": mic.channels, "device": mic.device } }));
+    println!("{}", serde_json::json!({ "ready": { "rate": mic.rate, "channels": mic.channels, "device": mic.device, "name": mic.name } }));
     let rate = mic.rate as usize;
     let started = Instant::now();
     let mut take: Vec<f32> = Vec::with_capacity(rate * 60);
@@ -148,7 +150,8 @@ unsafe fn capture(stop: &AtomicBool, mut sink: impl FnMut(Packet), ready: &std::
     }
     let cap: IAudioCaptureClient = client.GetService().map_err(|e| e.message())?;
     client.Start().map_err(|e| e.message())?;
-    let _ = ready.send(Ok(Mic { rate, channels, device: id }));
+    let name = crate::live::wasapi::device::name(&device);
+    let _ = ready.send(Ok(Mic { rate, channels, device: id, name }));
     let width = if float { 4 } else { 2 };
     let mut result = Ok(());
     'run: while !stop.load(Ordering::Relaxed) {

@@ -83,6 +83,8 @@ fn pitch_json(x: &[f32], sr: f64, range: (f64, f64)) -> (serde_json::Value, serd
     (list, track)
 }
 
+/// The whole analysis with the defaults (the tests' way in).
+#[cfg(test)]
 pub fn analyze(x: &[f32], sr: f64, with_notes: bool) -> serde_json::Value {
     analyze_asked(x, sr, &Ask { notes: with_notes, pitch_only: false, range: (40.0, 2000.0), per_bar: 4 })
 }

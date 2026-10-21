@@ -21,8 +21,11 @@ bottom (full)    the arrangement: bars / beats ruler, named markers, a row per t
   Times keep the form they were written in (beats stay beats, `"#drop+0.5"` stays on its marker); drags snap to a
   quarter beat (Shift: free).
 - **Preview ≡ export.** Playback is the engine's own render of the compiled document (`screensound/playback.py`,
-  the long-lived engine, newest request wins, re-rendered ~300 ms after a change), played with Qt Multimedia. A failed
-  render is red in the status; the last good render plays only with "playing the last good render".
+  the long-lived engine, newest request wins, re-rendered ~300 ms after a change), played by the engine's own live
+  transport (`screensound/live_transport.py`: one `rostrum-sound play --shared` process per screen, started on the first
+  play or arm, each new render sent with `{"load"}`; the playhead is the speaker's position it reports). A failed
+  render is red in the status; the last good render plays only with "playing the last good render". When the player
+  cannot open (no sound output) it is said in red and the playhead runs on a clock.
 - The Mix page's meters, loudness numbers and listen pictures (`screensound/listen_pics.py`, made with
   `rostrum_sound.listen`) come from the same render (`backend.lastRender`).
 
@@ -66,28 +69,28 @@ Steps (`screensound/steps.py`): `page`, `select`, `time`, `set`, `drag-note <id>
 
 ## Recording
 
-Arm a track (round button on its header), press the red Record button or R: the microphone starts
-(`rostrum_sound.record`, the engine's `record`), the count-in clicks if it is on, the mix plays from the playhead,
-levels show live, and the take becomes one clip at the start time (one undo step) in
-`<project>/media/<track>-take-<n>.wav`. The take is placed where it was played: what the microphone heard before
-playback was heard (its start-up, the count-in) and the microphone's own delay (when `rostrum-sound play --calibrate`
-measured it for this microphone) are cut off with the clip's in-point (`record.place_take`, `take_clock.py`).
+Everything goes through the engine's live transport, the same process that plays the song, so a take is placed
+against what was heard, to the sample. Arm a track (round button on its header): the microphone opens in the player
+(`--mic`), its level shows in the record cluster of the top bar. Press the red Record button or R: the engine counts
+in if asked (its own clicks), plays from the playhead and records; Stop and the take becomes one clip (one undo step)
+in `<project>/media/<track>-take-<n>.wav` at the engine's `start` (its clock, minus the microphone's delay when
+`rostrum-sound play --calibrate` measured it; `rostrum_sound.record.land_take`).
 
-- **Take panel** ("Take" beside Record, `RecordSetup.qml` / `record_setup.py`; screen state, not an edit). Its rows show
-  only when usable: **Count-in** (Bars only while on: that many bars of clicks before playback), **Punch in** (From /
-  To only while on; turning it on starts a two-bar range at the playhead; the range is shaded on the timeline; only it
-  is kept: the clip is trimmed to it, and the take stops by itself past the To time; a playhead already past From
-  starts a bar before it), **Input level** (the microphone runs for the meter alone, before a take).
-- **Keyboard takes** (`keys_record.py`): on an armed notes or drum track with a MIDI keyboard connected, "Record keys"
-  records what is played (the engine's `live --midi`); the panel picks the **Keyboard** when one or more are connected
-  ("No MIDI keyboard found" otherwise; the list is read again on every arm) and **Quantize** (off by default; To: beat,
-  1/8 or 1/16 note). Stop puts the take on the track as one `note.add_many` (drums: `hit.add_many`), one undo step, at
-  the beats played relative to playback, and the piano roll shows that track. Count-in works here too.
-- Steps: `arm <track>`, `record`, `record-fake <wav>` (a WAV stands in for the microphone), `take-panel`,
-  `take-set <row> <value>`, `midi-fake <file.mid | note list>` (`fake_midi.py` stands in for two keyboards), `keys`.
-- Use headphones: a take made against speakers hears them. What is left of the timing is the screen player's own
-  output delay (tens of ms). Hearing yourself through the app (input monitoring) is not there: the engine's `record`
-  only captures.
+- **Take panel** ("Take" in the record cluster, `RecordSetup.qml` / `record_setup.py`; screen state, not an edit). Rows
+  show only when usable: **Count-in** (Bars only while on), **Punch in** (the range is dragged on the ruler: drag
+  across it, or drag either red edge; a quarter beat grid, Shift free; turning punch on starts a two-bar range at the
+  playhead; the engine keeps only the range and the take stops by itself past it; a playhead already past the
+  punch-in starts a bar before it), **Hear input** (only while the microphone is open, off by default: the microphone
+  mixed into the output, with its **Volume**), a line saying whether the microphone's delay was measured.
+- **Keyboard takes** (`keys_record.py`): on an armed notes or drum track with a MIDI keyboard connected, the player also
+  opens the keyboard (`--midi`, with a monitor instrument), and "Record keys" records what is played; the engine
+  reports each note at its mix time. The panel picks the **Keyboard** ("No MIDI keyboard found" otherwise; the list is
+  read again on every arm) and **Quantize** (off by default; beat, 1/8 or 1/16). Stop puts the take on the track as one
+  `note.add_many` (drums: `hit.add_many`), one undo step, and the piano roll shows that track.
+- Steps: `arm <track>`, `record`, `take-panel`, `take-set <row> <value>`, `punch <from> <to>`, `fake-player [options]`,
+  `record-fake <wav>`, `midi-fake <file.mid | note list>`, `keys` (`fake_play.py` stands in for the engine's player,
+  microphone and keyboard).
+- Use headphones (or Hear input off): a take made against speakers hears them.
 
 ## Zoom, automation lanes, picture (Timeline)
 
@@ -125,8 +128,8 @@ with everything inside. Times keep their written form. Steps: `song <action> [va
 
 ## Not yet
 
-No sample-exact overdub (takes are placed by measured start times; the screen player's own output delay, tens of ms,
-remains; use headphones), no input monitoring (hearing yourself), keyboard takes not tried with a real keyboard. Bus / master rows have no mute or fader on the Timeline (those are
+Takes not yet checked against a real microphone for sample-exactness (needs a loopback test), keyboard takes not tried
+with a real keyboard. The library's audition still plays through Qt Multimedia (its files are any format). Bus / master rows have no mute or fader on the Timeline (those are
 on the Mix page).
 Choices show their stored names ("builtIn", "warmPad") until the kit can show labels; a bus output is typed in the inspector
 (the Mix page has a picker). `screensound/bridge.py` is ~390 lines: it should be split once the kit allows slots outside the bridge class.

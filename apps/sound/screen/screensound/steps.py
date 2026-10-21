@@ -7,8 +7,8 @@
     song <start_bpm|add_tempo|set_key|add_key|add_section> [<value>] | song-open (the Song popup) |
     picture-start <marker name|none> | picture-link <item id> | picture-pick (the project list, open)
     add-note <t s> <midi key> | delete | mute <track> | solo <track>
-    arm <track> | record (start / stop, the real microphone) | record-fake <source.wav> (TEST SEAM: a WAV stands in
-    for the microphone; the take stays running for the shot) | take-panel | take-set | midi-fake | keys (steps_record.py)
+    arm <track> | record (start / stop, the real microphone) | record-fake | take-panel | take-set | punch | midi-fake |
+    keys (steps_record.py)
     undo | redo | play | render (wait for the newest render) | more | commands [query …] | run <command key> |
     wait <seconds>
     zoom <factor> | scroll <s> | fit | lane <track> <lane> | lane-point <track> <t> <v> [<t2> <v2>] | lane-delete |
@@ -21,9 +21,7 @@ A step that leaves an error in the status fails (nonzero exit).
 from __future__ import annotations
 
 import json
-import sys
 import time
-from pathlib import Path
 
 from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject
 
@@ -131,12 +129,6 @@ def do_step(bridge, win, step, recorder=None):
         recorder.arm(rest[0])
     elif word == "record":
         recorder.toggleRecord()
-    elif word == "record-fake":
-        recorder.command = [sys.executable, "-I", str(Path(__file__).with_name("fake_mic.py")), "{out}", rest[0]]
-        recorder.toggleRecord()
-        for _ in range(15):                     # let a second of levels arrive
-            QCoreApplication.processEvents()
-            time.sleep(0.1)
     elif word in RECORD_WORDS:
         do_record_step(recorder, word, rest)
     elif word in VIEW_WORDS:

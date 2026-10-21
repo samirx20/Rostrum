@@ -1,12 +1,12 @@
 """What you hear: the document rendered by the sound engine (the same path as export: preview ≡ export), off the
-GUI thread, newest request wins, then played with Qt Multimedia.
+GUI thread, newest request wins. The render file is what the engine's live transport plays (live_transport.py).
 
 `Renderer`: one worker thread owns one long-lived engine process (rostrum_sound.engine.Engine, which reuses each
 unchanged track's render, so a re-render after a small edit is quick); each render goes to a new numbered file
 (the player may still hold the last one open), with stems for every track so the Mix page has meters. A failed
 render is reported (`failed`), never passed off as the new sound; the last good render stays playable.
-`Player`: QMediaPlayer + QAudioOutput. With no sound output on the machine it says so and the playhead still runs
-on a clock, so the screen behaves the same.
+`Player`: QMediaPlayer + QAudioOutput, only for auditioning a library sound in its own format (library_panel.py);
+the song itself plays through the engine. With no sound output it says so and runs on a clock.
 """
 from __future__ import annotations
 

@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// The punch range (the take panel's From / To) shaded across the rows: only that part of the next take is kept.
+// The punch range (dragged on the ruler, BarRuler.qml) shaded across the rows: only that part of the next take is kept.
 // Absent unless a track is armed with punch on.
 Rectangle {
     property var ruler                     // the BarRuler the rows are drawn against
