@@ -1,0 +1,20 @@
+import argparse
+from . import motion, frames, sheet, events
+
+ap = argparse.ArgumentParser(prog="eyes", description="Video -> facts for sound work. One JSON line per command.")
+sp = ap.add_subparsers(dest="cmd", required=True)
+m = sp.add_parser("motion", help="optical flow, moving region, contact candidates")
+m.add_argument("video"); m.add_argument("--outdir", default="eyes_out"); m.set_defaults(f=motion.run)
+f = sp.add_parser("frames", help="frame strips around times")
+f.add_argument("video"); f.add_argument("--at", required=True); f.add_argument("--window", type=int, default=2)
+f.add_argument("--step", type=int, default=1); f.add_argument("--motion", help="motion.json for zoom crops")
+f.add_argument("--outdir", default="eyes_out"); f.set_defaults(f=frames.run)
+s = sp.add_parser("sheet", help="contact sheet")
+s.add_argument("video"); s.add_argument("--every", type=float, default=0.5); s.add_argument("--cols", type=int, default=6)
+s.add_argument("--start", type=float, default=0.0); s.add_argument("--end", type=float, default=None)
+s.add_argument("--out", default="eyes_out/sheet.png"); s.set_defaults(f=sheet.run)
+e = sp.add_parser("events", help="check a written event sheet and render it as one picture")
+e.add_argument("video"); e.add_argument("--events", required=True); e.add_argument("--out", required=True)
+e.set_defaults(f=events.run)
+a = ap.parse_args()
+a.f(a)
