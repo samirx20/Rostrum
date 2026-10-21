@@ -21,7 +21,7 @@ class Multi(QObject):
     def boxes(self):
         """The box of every selected layer (the primary first): the outlines the canvas draws."""
         ids = self.layers()
-        by = {x["id"]: x for x in bounds.boxes(self.b.comp(), self.b._t)}
+        by = {x["id"]: x for x in bounds.boxes(self.b.placed(), self.b._t)}
         return [by[i] for i in ids if i in by]
 
     @Property(int, notify=changed)
@@ -66,7 +66,7 @@ class Multi(QObject):
         """The rubber band (composition px): select every layer whose box touches it; a layer inside a selected
         group is left out (the group moves it). Returns how many."""
         lo_x, hi_x, lo_y, hi_y = min(x0, x1), max(x0, x1), min(y0, y1), max(y0, y1)
-        hit = [x["id"] for x in bounds.boxes(self.b.comp(), self.b._t)
+        hit = [x["id"] for x in bounds.boxes(self.b.placed(), self.b._t)
                if (e := bounds.extent(x)) and e[0] <= hi_x and e[2] >= lo_x and e[1] <= hi_y and e[3] >= lo_y]
         hit = [i for i in reversed(hit) if not set(self._above(i)) & set(hit)]        # topmost first
         if hit:

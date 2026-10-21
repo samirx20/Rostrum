@@ -39,6 +39,18 @@ def comp_add(ctx, targets, args):
     ctx.insert("root", "comps", item)
 
 
+@R.operation("comp.remove", "Delete compositions with everything in them. Never the last one.",
+             target=("comp",), label="Delete composition", importance="secondary")
+def comp_remove(ctx, targets, args):
+    comps = ctx.doc.get("comps", [])
+    left = [c["id"] for c in comps if c["id"] not in targets]
+    if not left:
+        ctx.fail(codes.BAD_ARGUMENT, "the composition(s) " + ", ".join(f'"{t}"' for t in targets),
+                 "would leave the document with no composition", hint="Add the new one first (comp.add), then remove the old.")
+    for t in targets:
+        ctx.remove(t)
+
+
 @R.operation("layer.add", "Add a shape, text, image, group or drawing to a composition or group (on top unless index is given).",
              target=LAYER_HOLDERS, label="Add layer",
              params=[Param.choice("type", list(F.LAYERS), label="Type", required=True), ID, NAME, INDEX])

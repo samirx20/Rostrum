@@ -24,7 +24,7 @@ import math
 
 from rostrum_core import ids
 from rostrum_core.errors import RostrumError, codes, did_you_mean
-from rostrum_core.keys import key_id
+from rostrum_core.keys import key_id, marked
 
 from . import fields as F, pathdata
 from .expr import ExprError, parse
@@ -55,9 +55,10 @@ class Item:
             raise ValueError(f'{self.id}: "{prop}" can\'t be animated on a {self.node["type"]}; animatable: '
                              f"{', '.join(allowed)}" + _hint(prop, allowed))
         p = F.param(self.node["type"], prop)
-        for t, v in sorted(keys.items()):
+        for t, v in sorted(keys.items(), key=lambda kv: marked.order(kv[0])):   # a time: seconds or "#drop+0.2"
             value, e = v if isinstance(v, tuple) else (v, ease)
-            k = {"id": key_id(self.id, prop, t), "type": "key", "prop": prop, "t": float(t),
+            t = F.param("key", "t").check(t, f"{self.id}.{prop} key time")
+            k = {"id": key_id(self.id, prop, t), "type": "key", "prop": prop, "t": t if isinstance(t, str) else float(t),
                  F.key_field(self.node["type"], prop): p.check(value, f"{self.id}.{prop} at {t} s"), "ease": e}
             F.param("key", "ease").check(e, f"{self.id}.{prop} at {t} s")
             self.node["keys"].append(k)

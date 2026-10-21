@@ -16,13 +16,13 @@ class Hooks2D:
         return swap_rows.rows(super()._rows(), self.doc.item(self._sel) if self._sel else None, self._t)
 
     def shown_values(self, item):
-        return route.shown_values(item, self._t)
+        return route.shown_values(self.placed_item(item["id"]), self._t)     # keys on a marker read as seconds
 
     def anim_state(self, item, param):
-        return route.anim_state(item, param, self._t, self.comp()["fps"])
+        return route.anim_state(self.placed_item(item["id"]), param, self._t, self.comp()["fps"])
 
     def animate_calls(self, item_id, param):
-        return route.animate_calls(self.doc.item(item_id), param, self._t)
+        return route.animate_calls(self.placed_item(item_id), param, self._t)
 
     def expr_state(self, item, param):
         return exprs.state(item, param)

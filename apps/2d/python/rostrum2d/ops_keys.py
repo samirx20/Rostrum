@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from rostrum_core import Param
 from rostrum_core.errors import codes
-from rostrum_core.keys import BEZIERS, keys_of, register_key_ops, track_value
+from rostrum_core.keys import BEZIERS, keys_of, marked, register_key_ops, track_value
 
 from . import fields as F
 from .kind import REGISTRY as R, check_text
@@ -82,10 +82,14 @@ def handles_of(key: dict) -> dict | None:
     return None
 
 
-def curve_of(owner: dict, prop: str, per_stretch: int = 24) -> dict:
-    """{"keys": [{id, t, v, ease, handles}], "samples": [[t, v] …]} of a number field, the samples from the one
-    evaluation (track_value). Colour fields have no value curve: they raise ValueError."""
-    keys = keys_of(owner, prop)
+def curve_of(owner: dict, prop: str, per_stretch: int = 24, markers: dict | None = None, origin: float = 0.0) -> dict:
+    """{"keys": [{id, t, v, ease, handles, marker?}], "samples": [[t, v] …]} of a number field in the owner's own
+    seconds, the samples from the one evaluation (track_value). A key on a shared marker is placed through `markers`
+    (`origin`: where the owner's time 0 sits, retime.offset_of) and carries `marker`, its words ("drop +0.2 s").
+    Colour fields have no value curve: they raise ValueError."""
+    keys = [dict(k) for k in keys_of(owner, prop)]
+    marked.resolve({"keys": keys}, markers, origin)
+    keys.sort(key=lambda k: k["t"])
     if keys and "c" in keys[0]:
         raise ValueError(f"{owner['id']}.{prop} is a colour field: it has no value curve")
     samples: list[list[float]] = []
@@ -99,7 +103,8 @@ def curve_of(owner: dict, prop: str, per_stretch: int = 24) -> dict:
     if keys:
         samples.append([keys[-1]["t"], keys[-1]["v"]])
     return {"keys": [{"id": k["id"], "t": k["t"], "v": k["v"], "ease": k.get("ease", "smooth"),
-                      "handles": handles_of(k) if i < len(keys) - 1 else None} for i, k in enumerate(keys)],
+                      "handles": handles_of(k) if i < len(keys) - 1 else None,
+                      **({"marker": marked.label(k["ref"])} if "ref" in k else {})} for i, k in enumerate(keys)],
             "samples": samples}
 
 

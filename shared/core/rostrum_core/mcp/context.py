@@ -62,6 +62,13 @@ class ToolContext:
     jobs: Jobs
     tool: str                   # the tool being run, for error messages
     tools: object = None        # the server's Tools (for inspect_operations-style lookups)
+    notes: list = field(default_factory=list)   # `note`: choices the tool made for the caller, sent as warnings
+
+    def note(self, text: str):
+        """Tell the caller about a choice made for them ("Composition \"film\" (the longest of 2)"); the server
+        adds it to the reply's warnings, once, whatever tool made it."""
+        if text not in self.notes:
+            self.notes.append(text)
 
     def document(self, item: str | None = None):
         """The document a call is about: `item`, or the only open one."""

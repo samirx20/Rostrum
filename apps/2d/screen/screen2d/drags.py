@@ -3,7 +3,7 @@ timeline. Each is one doc.gesture = one undo step. A slot mix-in for Bridge2D (s
 from __future__ import annotations
 
 from PySide6.QtCore import Slot
-from rostrum_core.keys import keys_of
+from rostrum_core.keys import keys_of, marked
 from rostrum2d.evaluate import resolve
 from rostrum_gui.edits import Drag
 from rostrum_gui.parts import SlotMixin
@@ -17,8 +17,8 @@ class DragSlots(SlotMixin):
         layer = bounds.layer_of(self.doc, self._sel) if self._sel else ""
         if not layer:
             return False
-        self._frames = {b["id"]: b for b in bounds.boxes(self.comp(), self._t)}      # each layer's parent frame, for the drag
-        slots = layout_drag.begin(self.doc, self.comp(), layer, self._t)      # in an auto layout: change slot
+        self._frames = {b["id"]: b for b in bounds.boxes(self.placed(), self._t)}      # each layer's parent frame, for the drag
+        slots = layout_drag.begin(self.doc, self.placed(), layer, self._t)      # in an auto layout: change slot
         label = f"Move {self.label_of(self.doc.item(layer))}"
         if slots:
             return self._begin(label, slots)
@@ -36,7 +36,7 @@ class DragSlots(SlotMixin):
         grab = []
         for lay in layers:
             item = self.doc.item(lay)
-            if layout_drag.begin(self.doc, self.comp(), lay, self._t) or any(exprs.drives(item, a) for a in ("x", "y")):
+            if layout_drag.begin(self.doc, self.placed(), lay, self._t) or any(exprs.drives(item, a) for a in ("x", "y")):
                 self._fail(f"Error: move: {self.label_of(item)} is placed by an auto layout or an expression; select it alone to move it.")
                 return False
             p = resolve(item, self._t)
@@ -82,13 +82,14 @@ class DragSlots(SlotMixin):
         """`snap`: seconds within which the key lands on a shared marker instead of the nearest frame."""
         if self._drag is None or not isinstance(self._grab, str):
             return
-        c, key = self.comp(), self.doc.item(self._grab)
+        c, key = self.comp(), self.placed_item(self._grab)
         on = self.marks.snap(t, snap)
         t = min(max(on if on != t else round(t * c["fps"]) / c["fps"], 0.0), c["duration"])
-        owner = self.doc.item(self.doc.parent_of(key["id"])[0])
+        owner = self.placed_item(self.doc.parent_of(key["id"])[0])
         if any(k["id"] != key["id"] and abs(k["t"] - t) < 1e-6 for k in keys_of(owner, key["prop"])):
             return                       # another key of this field is there: stay at the last free time
-        self._guard(lambda: self._drag.preview([{"op": "key.set", "target": [key["id"]], "args": {"t": t}}]))
+        to = marked.moved(key["ref"], t - key["t"]) if "ref" in key else t       # a key on a marker stays on it
+        self._guard(lambda: self._drag.preview([{"op": "key.set", "target": [key["id"]], "args": {"t": to}}]))
 
     @Slot()
     def endDrag(self):

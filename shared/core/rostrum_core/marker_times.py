@@ -1,13 +1,18 @@
 """Cheap reads of the project's shared markers (markers.py): {name: seconds}, re-read only when the file changed,
-plus the helpers apps use around it: lookup by name, a change stamp, refusing local/shared name clashes, and the
-used-markers subset for render cache keys."""
+plus the helpers apps use around it: lookup by name, a change stamp, refusing local/shared name clashes, the
+used-markers subset for render cache keys, and the one reader of a time written on a marker (`"#drop"`,
+`"#drop+0.2"`, `"#hush-0.5"`: seconds after / before it; a trailing "-<number>" is always an offset, so
+"#big-hit-1" is one second before "big-hit"). Every app reads marker times through `REF` / `split` / `seconds`."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from .errors import RostrumError, codes
 
 ITEM, EXT = "markers", ".mkr"
+REF = re.compile(r"^#(\S(?:.*?\S)?)\s*(?:([+-])\s*(\d+(?:\.\d+)?))?$")
+FORMS = ['"#drop"', '"#drop+0.2"', '"#hush-0.5"']
 
 
 def _key(name: str) -> str:
@@ -73,3 +78,36 @@ def used(times_: dict[str, float], names) -> dict[str, float]:
             raise RostrumError.not_found("markers", "marker", n, list(times_), "the project's markers")
         out[n] = at_
     return out
+
+
+def split(value) -> tuple[str, float] | None:
+    """("drop", 0.2) for "#drop+0.2"; None when the value is not a marker reference."""
+    m = REF.match(value) if isinstance(value, str) else None
+    if not m:
+        return None
+    return m.group(1), float(m.group(3) or 0) * (-1 if m.group(2) == "-" else 1)
+
+
+def ref(value) -> str | None:
+    """The marker a time names ("#drop+0.5" -> "drop"), or None."""
+    parts = split(value)
+    return parts[0] if parts else None
+
+
+def write(name: str, offset: float = 0.0) -> str:
+    """The reference for `offset` seconds from marker `name`: "#drop", "#drop+0.2", "#hush-0.5"."""
+    return f"#{name}" if abs(offset) < 1e-6 else f"#{name}{round(offset, 6):+g}"
+
+
+def seconds(value, times_: dict[str, float], where: str) -> float:
+    """A time as seconds: a number as written; a marker reference through `times_` (times()). A marker that isn't
+    there is a loud error naming `where` (the key or field that names it) and the markers that exist."""
+    parts = split(value)
+    if parts is None:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise RostrumError(codes.BAD_ARGUMENT, where, f"time {value!r}", "is not seconds or a marker", FORMS)
+        return float(value)
+    at_ = lookup(times_, parts[0])
+    if at_ is None:
+        raise RostrumError.not_found(where, "marker", parts[0], list(times_), "the project's markers")
+    return round(at_ + parts[1], 6)

@@ -39,7 +39,7 @@ class HandleSlots:
     @Slot(float, float, result=str)
     def layerAt(self, x, y):
         """The topmost layer at (x, y) composition px, without selecting it ("" for none)."""
-        return bounds.pick(self.comp(), self._t, x, y)
+        return bounds.pick(self.placed(), self._t, x, y)
 
     @Slot(int, int, float, result=str)
     def resizeCursor(self, hx, hy, rot):
@@ -51,11 +51,11 @@ class HandleSlots:
         if not layer:
             return None
         item = self.doc.item(layer)
-        box = next((b for b in bounds.boxes(self.comp(), self._t) if b["id"] == layer), None)
+        box = next((b for b in bounds.boxes(self.placed(), self._t) if b["id"] == layer), None)
         if box is None or box["w"] <= 0 or box["h"] <= 0:
             self._fail(f"Error: {label}: this layer has no box to {label}.")
             return None
-        placed = layout_drag.begin(self.doc, self.comp(), layer, self._t) is not None
+        placed = layout_drag.begin(self.doc, self.placed(), layer, self._t) is not None
         p = resolve(item, self._t)
         g = Grab(layer, p, box, placed=placed)
         for prop in fields_of(g, item):

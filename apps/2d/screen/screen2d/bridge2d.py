@@ -7,6 +7,9 @@ from __future__ import annotations
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from rostrum_gui import DocBridge
 from rostrum_gui.markers import MarkerWatch
+from rostrum_core import marker_times
+from rostrum_core.tree import index
+from rostrum2d import retime
 
 from . import bounds, outline
 from .drags import DragSlots
@@ -57,6 +60,19 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     def comp(self) -> dict:
         return self.doc.item(self.comp_id)
 
+    def times(self) -> dict:
+        """The project's shared markers {name: seconds} (keys timed on a marker are placed through them)."""
+        return marker_times.times(self.doc.folder) if self.doc.folder else {}
+
+    def placed(self) -> dict:
+        """The composition as the timeline and curve editor show it: keys on a marker at their seconds (retime.placed)."""
+        return retime.placed(self.comp(), self.times())
+
+    def placed_item(self, id_: str) -> dict:
+        """One item of `placed()` (a layer, effect or mask), so its keys on markers read as seconds."""
+        found = index(self.placed(), self.doc.kind.lists).get(id_)
+        return found.item if found else self.doc.item(id_)
+
     @Property(float, notify=timeChanged)
     def time(self):
         return self._t
@@ -94,7 +110,7 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
 
     @Property("QVariantList", notify=outlineChanged)
     def tracks(self):
-        return outline.tracks(self.comp(), self._opened)
+        return outline.tracks(self.placed(), self._opened)
 
     @Property(str, notify=outlineChanged)
     def selectedLayer(self):
@@ -104,7 +120,7 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     @Property("QVariantMap", notify=outlineChanged)
     def selBox(self):
         layer = self.selectedLayer
-        return next((b for b in bounds.boxes(self.comp(), self._t) if b["id"] == layer), {})
+        return next((b for b in bounds.boxes(self.placed(), self._t) if b["id"] == layer), {})
 
     def _first(self):
         rows = outline.layer_rows(self.comp(), set())
@@ -147,7 +163,7 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     def pickAt(self, x, y):
         """A click on the canvas (composition px): select the topmost layer there; on empty canvas, the
         composition (its frame size, rate, length, background)."""
-        hit = bounds.pick(self.comp(), self._t, x, y)
+        hit = bounds.pick(self.placed(), self._t, x, y)
         if hit != self.selectedLayer:
             self.select(hit or self.comp_id)
         return hit
