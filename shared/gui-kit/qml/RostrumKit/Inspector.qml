@@ -17,6 +17,7 @@ Panel {
            anchors.top: name.bottom; anchors.topMargin: 2 }
     Flickable {      // a long inspector scrolls (wheel or touch, thin bar in the panel's margin); a short one never moves
         id: scroller
+        objectName: "inspectorScroll"    // scripted steps scroll it (an app's `inspectorscroll` step)
         anchors { left: parent.left; right: parent.right; top: kind.bottom; bottom: parent.bottom }
         contentHeight: list.height; clip: true; boundsBehavior: Flickable.StopAtBounds
         Column {

@@ -15,10 +15,12 @@ Item {
     property bool keyMarks: false
     readonly property int gutter: keyMarks ? 22 : 0
     readonly property bool driven: model.row === "param" && !!model.expr      // an expression decides (model.expr)
+    readonly property bool tall: model.type === "list" || model.control === "curve"    // a widget taller than a field (top-aligned)
     readonly property int full: model.row === "group" ? Theme.groupGap + Theme.rowDense
                               : model.row === "more" ? Theme.row + Theme.grid
                               : driven ? Theme.row + exprBox.height + Theme.grid
-                              : model.type === "list" && widget.item ? Math.max(Theme.row, widget.item.implicitHeight + Theme.row - Theme.field) : Theme.row
+                              : model.control === "curve" ? Theme.curveBox + Theme.row - Theme.field
+                              : tall && widget.item ? Math.max(Theme.row, widget.item.implicitHeight + Theme.row - Theme.field) : Theme.row
     property real reveal: model.valid ? 1 : 0
     Behavior on reveal { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
     width: parent ? parent.width : 0
@@ -46,20 +48,21 @@ Item {
     Item {  // a param: label column, then the widget
         visible: row.model.row === "param"
         anchors.left: parent.left; anchors.right: parent.right
-        anchors.verticalCenter: row.driven || row.model.type === "list" ? undefined : parent.verticalCenter
-        anchors.top: row.driven || row.model.type === "list" ? parent.top : undefined
+        anchors.verticalCenter: row.driven || row.tall ? undefined : parent.verticalCenter
+        anchors.top: row.driven || row.tall ? parent.top : undefined
         height: Theme.row
         Text { id: label; width: Theme.labelColumn - Theme.gap; anchors.verticalCenter: parent.verticalCenter
                text: row.model.label; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont; elide: Text.ElideRight }
         Loader {
             id: widget
             x: Theme.labelColumn
-            anchors.verticalCenter: row.model.type === "list" ? undefined : parent.verticalCenter
-            y: row.model.type === "list" ? (Theme.row - Theme.field) / 2 : 0
+            anchors.verticalCenter: row.tall ? undefined : parent.verticalCenter
+            y: row.tall ? (Theme.row - Theme.field) / 2 : 0
             width: row.model.type === "toggle" ? (item ? item.implicitWidth : 0) : parent.width - Theme.labelColumn - row.gutter
-            height: row.model.type === "list" && item ? item.implicitHeight : Theme.field
+            height: row.tall && item ? item.implicitHeight : Theme.field
             active: row.model.row === "param" && !row.driven
-            sourceComponent: ({ toggle: toggle, number: number, choice: choice, color: colour, text: text, list: list })[row.model.type] || text
+            sourceComponent: row.model.control === "curve" ? curve
+                           : ({ toggle: toggle, number: number, choice: choice, color: colour, text: text, list: list })[row.model.type] || text
         }
         // A param driven by an expression or binding (model.expr = {text, note}): in place of the widget a note
         // and a clear button on the label line, the expression on its own full-width line under it.
@@ -112,5 +115,6 @@ Item {
         values: row.model.value || []; choices: row.model.options || []
         minItems: row.model.minItems || 0; maxItems: row.model.maxItems === undefined ? null : row.model.maxItems
         onEdited: (v) => row.set(v) } }
+    Component { id: curve; CurveField { value: row.model.value || ""; onEdited: (v) => row.set(v) } }
     Component { id: text; TextField { value: row.model.value || ""; onEdited: (v) => row.set(v) } }
 }

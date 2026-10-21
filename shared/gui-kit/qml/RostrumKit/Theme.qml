@@ -47,6 +47,7 @@ QtObject {
     readonly property int rowDense: 24    // lists
     readonly property int field: 24       // every field box (number, text, choice, colour)
     readonly property int button: 28
+    readonly property int curveBox: 132     // the inspector's curve control (CurveField), a square
     readonly property int labelColumn: 104  // inspector label column ("Shadow softness" fits)
     readonly property int sidePanel: 280
     readonly property int timeline: 184

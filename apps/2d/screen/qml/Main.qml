@@ -23,7 +23,10 @@ AppShell {
     Shortcut { sequence: "Alt+Down"; onActivated: painter.holdBy(-1) }
     Shortcut { sequence: "Alt+O"; onActivated: painter.setOnion(!painter.onionOn) }
 
-    function setExportOpen(open) { exportPanel.shown = open }
+    function setExportOpen(open) { exportPanel.shown = open; if (open) { importPanel.shown = false; problemsPanel.shown = false } }
+    function setImportOpen(open) { importPanel.shown = open; if (open) { exportPanel.shown = false; problemsPanel.shown = false } }
+    function setProblemsOpen(open) { problemsPanel.shown = open; if (open) { exportPanel.shown = false; importPanel.shown = false } }
+    function setAddOpen(open) { if (open) addMenu.menuOpen = true; else addMenu.menuOpen = false }
 
     tools: [
         Segmented {
@@ -34,13 +37,28 @@ AppShell {
         }
     ]
     actions: [
-        IconButton { glyph: "↗"; tip: "Export"; down: exportPanel.shown; onClicked: exportPanel.shown = !exportPanel.shown }
+        Button {        // only while something is wrong (screen2d/problems.py)
+            visible: backend.problems.count > 0
+            text: backend.problems.count + (backend.problems.count === 1 ? " problem" : " problems")
+            down: problemsPanel.shown; onClicked: shell.setProblemsOpen(!problemsPanel.shown)
+        },
+        AddMenu { id: addMenu },
+        Button { text: "Import"; down: importPanel.shown; onClicked: shell.setImportOpen(!importPanel.shown) },
+        IconButton { glyph: "↗"; tip: "Export"; down: exportPanel.shown; onClicked: shell.setExportOpen(!exportPanel.shown) }
     ]
     left: LayersPanel { anchors.fill: parent }
     centre: [
         Stage { anchors.fill: parent },
         ExportPanel {   // opened by the Export button; docked on the canvas's right edge, beside the inspector (never over it)
             id: exportPanel
+            anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
+        },
+        ImportPanel {   // opened by the Import button; same place as the export panel (one open at a time)
+            id: importPanel
+            anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
+        },
+        ProblemsPanel { // opened by the Problems button; same place again
+            id: problemsPanel
             anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
         }
     ]

@@ -12,7 +12,7 @@ from dataclasses import replace
 from rostrum_core import Param
 from rostrum_core.keys import KEY_FIELDS
 
-from . import blends as _blends, grade_fields as _grade, layout_fields as _layout
+from . import blends as _blends, grade_fields as _grade, layout_fields as _layout, stepped as _stepped
 
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 P = "primary"
@@ -271,11 +271,12 @@ FIELDS["group"] += _layout.GROUP           # auto layout (layout.py): Python-sid
 FIELDS.update(_rig.FIELDS)
 FIELDS.update(_camera.FIELDS)
 FIELDS.update(_motion.FIELDS)
-FIELDS["comp"] += _motion.COMP
+FIELDS["comp"] += _motion.COMP + _stepped.COMP     # stepped timing (stepped.py): Python-side, applied in the scene
 LAYERS = ("shape", "text", "image", "video", "group", "drawing", "path", "rig", "camera")
 for _t in LAYERS:
     if _t != "camera":
         FIELDS[_t] += _layout.CHILD + ([_layout.CHILD_GROW] if _t in _layout.SIZED else [])
+    FIELDS[_t] += _stepped.LAYER
 EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", *_motion.EFFECTS)
 ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask",) + _rig.OWNED_KEYS
 STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h"}, "path": {"w", "h"},

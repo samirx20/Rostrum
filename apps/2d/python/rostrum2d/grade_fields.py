@@ -4,7 +4,7 @@ file), and its controls are absent until then (rule of individuality).
 
 The engine turns them into one grade (engine/render/src/scene/grade.rs → the rostrum-color grade → one SkSL colour
 filter on the layer); a bad curve or .cube file is refused when the scene loads, naming the layer, field and line.
-Curve points are text, "x,y x,y …" from 0 to 1 (the shared `points` field type has no inspector control yet).
+Curve points are text, "x,y x,y …" from 0 to 1, what agents write; on screen the kit's curve control (CurveField) edits them.
 """
 from __future__ import annotations
 
@@ -28,7 +28,8 @@ def _t(name, label, help):
 
 
 def _curve(name, label, imp="secondary"):
-    return Param.text(name, label=label, group=G, importance=imp, valid_when=CURVES, default=STRAIGHT, help=POINTS_HELP)
+    return Param.text(name, label=label, group=G, importance=imp, valid_when=CURVES, default=STRAIGHT, help=POINTS_HELP,
+                      control="curve")
 
 
 COLOUR = [

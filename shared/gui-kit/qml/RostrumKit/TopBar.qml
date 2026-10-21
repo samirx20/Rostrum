@@ -33,8 +33,9 @@ Item {
             Text { id: tabLabel; anchors.centerIn: parent; text: bar.documentName; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
         }
         Item { Layout.fillWidth: true }
-        Text {  // history: how many changes, and the last thing that happened (or what failed)
-            Layout.maximumWidth: 420
+        Text {  // history: how many changes, and the last thing that happened (or what failed); never under the tools
+            Layout.maximumWidth: Math.max(0, Math.min(420, bar.width / 2 - toolsSlot.width / 2 - actionsSlot.width - 280
+                                                      - 3 * Theme.groupGap - Theme.gap))
             elide: Text.ElideRight
             text: bar.bridge.historyCount + (bar.bridge.historyCount === 1 ? " change" : " changes")
                   + (bar.bridge.status ? "  ·  " + bar.bridge.status : "")

@@ -2,7 +2,9 @@ import QtQuick
 import RostrumKit
 
 // The canvas: the engine's frame at the playhead (image://frame, rendered off the GUI thread), fitted on a
-// neutral backdrop, with the selected layer's box. Press on a layer selects it; dragging moves it
+// neutral backdrop, with the selected layers' outlines (Handles.qml: a single layer also gets resize + turn handles). Press on a layer
+// selects it (Shift+click adds / removes); dragging moves it (all selected layers together); dragging on empty canvas draws a rubber band that
+// selects the layers it touches (boxSelect). One gesture = one undo step
 // (backend.beginMove / moveBy / endDrag: one gesture = one undo step; an animated x / y gets a key at the playhead).
 // On the Draw page with a drawing layer selected, a press draws instead: one stroke = one gesture = one undo step
 // (painter.beginStroke / strokeTo / endStroke). A pen reports its pressure; a mouse is 1. The onion skin lies over
@@ -42,21 +44,6 @@ Panel {
                 anchors.fill: parent; anchors.margins: -1
                 color: "transparent"; border.width: 1; border.color: Theme.popupEdge
             }
-            Rectangle {  // the selected layer
-                readonly property var b: backend.selBox
-                visible: b.w !== undefined
-                x: (b.x || 0) * well.fit - 1; y: (b.y || 0) * well.fit - 1
-                width: (b.w || 0) * well.fit + 2; height: (b.h || 0) * well.fit + 2
-                color: "transparent"; border.width: 1; border.color: Theme.accent
-                Repeater {
-                    model: 4
-                    delegate: Rectangle {
-                        required property int index
-                        width: 7; height: 7; color: "white"; border.width: 1; border.color: Theme.accent
-                        x: (index % 2) * parent.width - 3.5; y: Math.floor(index / 2) * parent.height - 3.5
-                    }
-                }
-            }
         }
         Text {  // Draw page, nothing to draw on
             visible: backend.page === "draw" && painter.drawingId === ""
@@ -81,26 +68,61 @@ Panel {
             }
         }
         MouseArea {
+            id: canvas
             anchors.fill: parent
             enabled: !well.drawing
             preventStealing: true
             property bool moving: false
+            property bool band: false
             property real sx: 0
             property real sy: 0
+            property point b0
+            property point b1
             function comp(m) { return Qt.point((m.x - frame.x) / well.fit, (m.y - frame.y) / well.fit) }
+            function stop() { if (moving) backend.endDrag(); moving = false; band = false }
             onPressed: (m) => {
-                var p = comp(m)
-                moving = backend.pickAt(p.x, p.y) !== "" && backend.beginMove()
-                sx = m.x; sy = m.y
+                var p = comp(m), hit = backend.layerAt(p.x, p.y)
+                sx = m.x; sy = m.y; band = false; moving = false
+                if (hit === "") { band = true; b0 = p; b1 = p; return }                         // empty canvas: a rubber band
+                if (m.modifiers & Qt.ShiftModifier) backend.multi.toggle(hit)                   // Shift+click: add / remove
+                else if (!backend.multi.has(hit)) backend.pickAt(p.x, p.y)                      // else keep the selection and move it
+                moving = backend.multi.has(hit) && backend.beginMove()
             }
-            onPositionChanged: (m) => { if (moving) backend.moveBy((m.x - sx) / well.fit, (m.y - sy) / well.fit) }
-            onReleased: { if (moving) backend.endDrag(); moving = false }
-            onCanceled: { if (moving) backend.endDrag(); moving = false }
+            onPositionChanged: (m) => {
+                if (moving) backend.moveBy((m.x - sx) / well.fit, (m.y - sy) / well.fit)
+                else if (band) b1 = comp(m)
+            }
+            onReleased: (m) => {
+                if (band) {
+                    if (Math.abs(m.x - sx) + Math.abs(m.y - sy) < 4) backend.pickAt(b0.x, b0.y)   // a click: the composition
+                    else backend.multi.boxSelect(b0.x, b0.y, b1.x, b1.y)
+                }
+                stop()
+            }
+            onCanceled: stop()
         }
         PenOverlay {  // Design page: the pen tool and the selected path's points
             anchors.fill: parent
             visible: backend.page === "design"
             fit: well.fit; ox: frame.x; oy: frame.y
+        }
+        Item {  // outlines of the selected layers (turned with them) and the handles of a single one; over the pen's overlay
+            id: marks
+            x: frame.x; y: frame.y
+            Repeater {
+                model: backend.multi.boxes
+                delegate: Handles {
+                    required property var modelData
+                    box: modelData; fit: well.fit; space: marks
+                    editable: backend.multi.count === 1 && !well.drawing && modelData.type !== "path" && !backend.pen.on
+                }
+            }
+            Rectangle {  // the rubber band
+                visible: canvas.band && (canvas.b0.x !== canvas.b1.x || canvas.b0.y !== canvas.b1.y)
+                x: Math.min(canvas.b0.x, canvas.b1.x) * well.fit; y: Math.min(canvas.b0.y, canvas.b1.y) * well.fit
+                width: Math.abs(canvas.b1.x - canvas.b0.x) * well.fit; height: Math.abs(canvas.b1.y - canvas.b0.y) * well.fit
+                color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.12); border.width: 1; border.color: Theme.accent
+            }
         }
     }
 }

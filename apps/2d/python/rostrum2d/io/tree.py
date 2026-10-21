@@ -115,14 +115,19 @@ def apply_calls(tree: dict, doc_data: dict, into: str, fonts: set | None = None,
     return _build(tree, doc_data, into, fonts, image_dir)[0]
 
 
-def import_into(doc, tree: dict, into: str, who, fonts: set | None = None) -> list[str]:
-    """Apply the tree to the document in one step; images are written to <doc folder>/imports/<stem>/. → the report."""
-    if doc.folder is None:
-        raise ValueError("the document has no folder to keep imported images in")
-    image_dir = Path(doc.folder) / "imports" / Path(tree["name"]).stem
+def prepare(doc, tree: dict, into: str, fonts: set | None = None) -> tuple[list[dict], list[str]]:
+    """The calls that put the tree into `into` and the report; images are written to <doc folder>/imports/<stem>/ first."""
+    folder = Path(doc.folder) if doc.folder else None
+    image_dir = folder / "imports" / Path(tree["name"]).stem if folder else None
     calls, files, report = _build(tree, doc.data, into, fonts, image_dir)
     for path, img in files:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         img.save(path)
+    return calls, report
+
+
+def import_into(doc, tree: dict, into: str, who, fonts: set | None = None) -> list[str]:
+    """Apply the tree to the document in one step. → the report."""
+    calls, report = prepare(doc, tree, into, fonts)
     doc.apply(calls, who, label=f"Import {tree['name']}")
     return report
