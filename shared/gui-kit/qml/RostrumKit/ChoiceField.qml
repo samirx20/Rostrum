@@ -6,13 +6,16 @@ import "."
 // not a font glyph), and our own list under it. Click, Space or Enter opens; Up / Down move; Enter picks; Esc closes.
 FieldFrame {
     id: f
-    property var options: []
+    property var options: []              // [{value, label}] or plain strings: the field shows the label, sends the value
     property string current: ""
     readonly property bool opened: menu.opened
     signal picked(string value)
-    function open() { menu.highlighted = Math.max(0, options.indexOf(current)); menu.open() }
+    function valueAt(i) { const o = options[i]; return typeof o === "string" ? o : o.value }
+    function labelAt(i) { const o = options[i]; return typeof o === "string" ? o : o.label }
+    function indexOf(v) { for (let i = 0; i < options.length; i++) if (valueAt(i) === v) return i; return -1 }
+    function open() { menu.highlighted = Math.max(0, indexOf(current)); menu.open() }
 
-    text: current
+    text: indexOf(current) >= 0 ? labelAt(indexOf(current)) : current
     engaged: menu.opened
     activeFocusOnTab: true
     Keys.onSpacePressed: open()
@@ -38,24 +41,23 @@ FieldFrame {
             Keys.onDownPressed: menu.highlighted = Math.min(f.options.length - 1, menu.highlighted + 1)
             Keys.onReturnPressed: pick(menu.highlighted)
             Keys.onEnterPressed: pick(menu.highlighted)
-            function pick(i) { menu.close(); if (f.options[i] !== f.current) f.picked(f.options[i]) }
+            function pick(i) { menu.close(); if (f.valueAt(i) !== f.current) f.picked(f.valueAt(i)) }
             Repeater {
                 model: f.options
                 delegate: Rectangle {
                     id: opt
-                    required property string modelData
                     required property int index
                     width: menu.availableWidth; height: Theme.popupRow; radius: 4
                     color: index === menu.highlighted ? Theme.hover : "transparent"
                     Text {  // same left inset as the field's own text, so the list lines up with it
                         anchors.left: parent.left; anchors.leftMargin: Theme.gap - menu.padding
                         anchors.right: tick.left; anchors.verticalCenter: parent.verticalCenter
-                        text: opt.modelData; elide: Text.ElideRight
+                        text: f.labelAt(opt.index); elide: Text.ElideRight
                         color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont
                     }
                     Rectangle {  // the current option: a small accent dot at the right
                         id: tick
-                        visible: opt.modelData === f.current
+                        visible: f.valueAt(opt.index) === f.current
                         anchors.right: parent.right; anchors.rightMargin: Theme.gap - menu.padding + 2
                         anchors.verticalCenter: parent.verticalCenter
                         width: 6; height: 6; radius: 3; color: Theme.accent

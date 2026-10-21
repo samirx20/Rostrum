@@ -16,9 +16,9 @@ S = "secondary"
 D = "deep"
 
 
-def N(name, label, group, lo, hi, step, unit="", imp=P, when=None, integer=False, default=0.0, help=""):
+def N(name, label, group, lo, hi, step, unit="", imp=P, when=None, integer=False, default=0.0, help="", words=None):
     return Param.number(name, label=label, group=group, min=lo, max=hi, step=step, unit=unit, importance=imp,
-                        valid_when=when, integer=integer, default=default, help=help)
+                        valid_when=when, integer=integer, default=default, help=help, words=words or {})
 
 
 def C(name, label, group, default, imp=P, when=None):
@@ -54,7 +54,8 @@ TRANSFORM = [
     N("tiltX", "Tilt X", "Depth", -180, 180, 0.1, "°", D, help="Turn around the horizontal axis (2.5D)"),
     N("tiltY", "Tilt Y", "Depth", -180, 180, 0.1, "°", D, help="Turn around the vertical axis (2.5D)"),
     N("start", "Starts at", "Timing", 0, 36000, 0.01, "s", S, help="The layer appears at this time"),
-    N("end", "Ends at", "Timing", 0, 36000, 0.01, "s", S, default=36000.0, help="The layer is gone from this time"),
+    N("end", "Ends at", "Timing", 0, 36000, 0.01, "s", S, default=36000.0, help="The layer is gone from this time",
+      words={36000.0: "End of comp"}),
     CH("blend", BLENDS, "Blend", "Look", "normal", D),
 ]
 
@@ -77,6 +78,9 @@ TYPE = [
     N("pathOffset", "Start along path", "Path", -100000, 100000, 1, "px", S, ON_PATH,
       help="Moves the text along the path from where its alignment puts it"),
     CH("pathAlign", ["start", "center", "end"], "Align on path", "Path", "start", S, ON_PATH),
+    Param.choice("pathOverflow", ["hide", "straight"], label="Off the path", group="Path", default="hide",
+                 importance=S, valid_when=ON_PATH, labels={"straight": "Carry on straight"},
+                 help="Letters that don't fit on the path: left out, or carried on in a straight line"),
     N("letterDelay", "Letter delay", "Letters", 0, 10, 0.005, "s", S,
       help="Each letter (or word) plays the layer's keys this much later than the one before; 0 = the layer moves as one"),
     CH("letterOrder", ["forward", "backward", "center", "random"], "Letter order", "Letters", "forward", S, BY_LETTER),

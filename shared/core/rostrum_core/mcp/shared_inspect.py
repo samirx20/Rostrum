@@ -1,13 +1,14 @@
 """The shared `inspect_*` tools every server has (CONVENTIONS § 2). They never change anything."""
 from __future__ import annotations
 
+from .. import project
 from ..errors import RostrumError, codes, did_you_mean
 from .reply import Reply
 from .tools import Tools
 
 _ITEM = {"item": {"type": "string", "description": "The document's project item id. Optional when only one document is open."}}
 _DETAIL = {"detail": {"enum": ["short", "full"], "default": "short", "description": "full adds the structured data behind the summary."}}
-NO_SERVICE = "The project service is not built yet, so this shows the open document(s) only."
+NO_FOLDER = "This server was started without a project folder, so this shows the open document(s) only."
 
 
 def _kind_name(doc) -> str:
@@ -40,13 +41,21 @@ def _brief(change, full: bool) -> dict:
 
 
 def register(tools: Tools):
-    @tools.tool("inspect_project", {"properties": {**_DETAIL}})
+    @tools.tool("inspect_project", {"properties": {"kind": {"enum": ["2d", "sound", "3d", "edit"], "description": "Only items of this kind."}, **_DETAIL}})
     def inspect_project(ctx, args):
-        """The project: what is open (documents, their kind and latest history step)."""
+        """The project: every item (any app's: kind, name, finished renders, newest first) and what is open here."""
         docs = [{"item": i, "kind": _kind_name(d), "seq": d.seq, "items": sum(1 for _ in d.items())} for i, d in ctx.app.documents.items()]
         names = ", ".join(f'{d["item"]} ({d["kind"]}, step {d["seq"]})' for d in docs) or "nothing"
-        return Reply(f"{ctx.app.name}: open: {names}. {NO_SERVICE}", {"app": ctx.app.name, "open": docs, "project_service": False},
-                     warnings=[NO_SERVICE])
+        if not ctx.app.folder:
+            return Reply(f"{ctx.app.name}: open: {names}. {NO_FOLDER}", {"app": ctx.app.name, "open": docs, "items": None},
+                         warnings=[NO_FOLDER])
+        found = project.items(ctx.app.folder, args.get("kind"))
+        if args.get("detail") != "full":
+            found = [{**it, "renders": [{k: r[k] for k in ("version", "kind", "path", "files")} for r in it["renders"]]}
+                     for it in found]
+        listed = "; ".join(f'{it["name"]} ({it["kind"]}, {len(it["renders"])} render(s))' for it in found) or "no items"
+        return Reply(f"{ctx.app.name}: project items: {listed}. Open here: {names}.",
+                     {"app": ctx.app.name, "folder": str(ctx.app.folder), "items": found, "open": docs})
 
     @tools.tool("inspect_item", {"properties": {**_ITEM, "id": {"type": "string", "description": "A part's id inside the document. Without it, the whole document outline."}, **_DETAIL}})
     def inspect_item(ctx, args):

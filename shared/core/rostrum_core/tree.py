@@ -34,6 +34,27 @@ def index(data: dict, lists: dict) -> dict[str, Loc]:
     return out
 
 
+class View:
+    """A read-only look at a whole document, handed to a kind's facts(item, doc): an item's parent, or any item by
+    id (a note's valid_when can ask about its track's instrument). The index is built once, on first use."""
+
+    def __init__(self, data: dict, lists: dict, idx: dict[str, Loc] | None = None):
+        self.data, self.lists, self._idx = data, lists, idx
+
+    def locs(self) -> dict[str, Loc]:
+        if self._idx is None:
+            self._idx = index(self.data, self.lists)
+        return self._idx
+
+    def item(self, id_) -> dict | None:
+        loc = self.locs().get(id_)
+        return loc.item if loc else None
+
+    def parent(self, item: dict) -> dict | None:
+        loc = self.locs().get(item.get("id"))
+        return self.item(loc.parent) if loc and loc.parent else None
+
+
 def walk(item: dict, lists: dict):
     """Items in tree order (pre-order), the given one first."""
     yield item

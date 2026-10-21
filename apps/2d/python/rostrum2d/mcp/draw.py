@@ -97,7 +97,8 @@ def look_drawing(ctx, args):
     pic.save(dest)
     return Reply(f'{drawing["id"]} at frame {n} shows drawing {frame["id"]} (at {frame["at"]}): {stroke_count(frame)} strokes on {len(frame.get("paints", []))} paint layer(s), canvas {w}×{h}.',
                  {"drawing": drawing["id"], "frame_item": frame["id"], "at": frame["at"], "strokes": stroke_count(frame), "canvas": [w, h],
-                  "zoom": args.get("zoom"), "picture": [pic.width, pic.height]}, [dest], [dest])
+                  "zoom": args.get("zoom"), "picture": [pic.width, pic.height], "stamper": canvas.STAMPER}, [dest], [dest],
+                 warnings=[n for n in [canvas.slow_note()] if n])
 
 
 def last_change_touching(doc, frame):

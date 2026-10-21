@@ -28,6 +28,7 @@ class App:
     instructions: str = ""                                  # the handshake's "start here" for this app
     guides: Guides = field(default_factory=Guides)
     version: str = "0.1.0"
+    folder: str | None = None                               # the project folder: inspect_project lists its items
 
 
 class Groups:

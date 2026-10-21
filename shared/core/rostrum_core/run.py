@@ -9,7 +9,7 @@ from . import edits as E
 from . import ids
 from .conditions import describe, holds
 from .errors import RostrumError, codes, did_you_mean
-from .tree import fields, index
+from .tree import View, fields, index
 
 
 class Context:
@@ -72,8 +72,8 @@ def _check_args(op, args, where):
     return {k: op.param(k).check(v, where) for k, v in args.items()}
 
 
-def _check_targets(kind, op, targets, idx, where):
-    items = []
+def _check_targets(kind, op, targets, view, where):
+    idx, items = view.locs(), []
     if op.targets is None:
         if targets:
             raise RostrumError(codes.BAD_ARGUMENT, where, f"target {targets}", f"{op.name} takes no target")
@@ -90,18 +90,18 @@ def _check_targets(kind, op, targets, idx, where):
                                f"{' or '.join(op.targets)}")
         if it.get("locked") and not op.name.endswith(".unlock"):
             raise RostrumError(codes.CHECK_FAILED, where, f'target "{t}"', "is locked", hint="Unlock it first.")
-        if not holds(op.valid_when, fields(it, kind.lists), kind.facts(it)):
+        if not holds(op.valid_when, fields(it, kind.lists), kind.facts(it, view)):
             raise RostrumError(codes.BAD_ARGUMENT, where, f'target "{t}"',
                                f"can't take {op.name} now: it needs {describe(op.valid_when)}")
         items.append(it)
     return items
 
 
-def _check_valid_when(kind, op, items, args, where):
+def _check_valid_when(kind, op, items, args, view, where):
     """An argument that only applies sometimes must apply after this call (a value plus its switch is fine)."""
     for it in items or [{}]:
         values = {**fields(it, kind.lists), **args}
-        facts = kind.facts(it) if it else {}
+        facts = kind.facts(it, view) if it else {}
         for name in args:
             p = op.param(name)
             if not holds(p.valid_when, values, facts):
@@ -117,9 +117,10 @@ def plan(kind, data: dict, calls) -> tuple[dict, list, list[dict]]:
     for n, call in enumerate(calls, 1):
         where = f"op {n} of {len(calls)} ({call['op']})"
         op = kind.registry.get(call["op"], f"op {n} of {len(calls)}")
-        items = _check_targets(kind, op, call["target"], index(work, kind.lists), where)
+        view = View(work, kind.lists)
+        items = _check_targets(kind, op, call["target"], view, where)
         args = _check_args(op, call["args"], where)
-        _check_valid_when(kind, op, items, args, where)
+        _check_valid_when(kind, op, items, args, view, where)
         ctx = Context(kind, work, where)
         try:
             op.fn(ctx, call["target"], args)

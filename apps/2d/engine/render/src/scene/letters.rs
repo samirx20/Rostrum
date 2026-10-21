@@ -62,10 +62,13 @@ pub fn place(it: &Item) -> R<Placed> {
         return Err(format!("{}.body: text on a path is one line (no line breaks)", it.id));
     }
     let along = Along::new(it, path)?;
+    // Past either end of the path a letter is left out ("hide", the default), or the path goes on straight.
+    let straight = it.str("pathOverflow") == "straight";
     let mut pen = match it.str("pathAlign") { "end" => along.total - widths[0], "center" => (along.total - widths[0]) / 2.0, _ => 0.0 } + it.num("pathOffset");
     for (ch, adv) in lines[0].chars().zip(&measures[0].advances) {
-        if let Some(unit) = units.next(ch) {
-            let (p, angle) = along.at(pen + adv / 2.0);
+        let centre = pen + adv / 2.0;
+        if let Some(unit) = units.next(ch).filter(|_| straight || (0.0..=along.total).contains(&centre)) {
+            let (p, angle) = along.at(centre);
             letters.push(Letter { ch, unit, x: p.x, y: p.y, angle, advance: *adv });
         }
         pen += adv;

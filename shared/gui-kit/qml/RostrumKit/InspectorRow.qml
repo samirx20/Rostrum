@@ -76,6 +76,7 @@ Item {
         to: row.model.max === null || row.model.max === undefined ? 1e9 : row.model.max
         step: row.model.step ? row.model.step : 1
         unit: row.model.unit || ""
+        words: row.model.words || []
         onEdited: (v) => row.set(v)
         onScrubStarted: row.bridge.beginScrub(row.model.id)
         onScrubbed: (v) => row.bridge.scrub(row.model.id, v)

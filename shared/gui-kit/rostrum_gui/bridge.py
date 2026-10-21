@@ -202,7 +202,7 @@ class DocBridge(QObject):
         if not self._sel:
             return []
         it = self.doc.item(self._sel)
-        return rows.evaluate(self._static, self.shown_values(it), self.doc.kind.facts(it), self._more,
+        return rows.evaluate(self._static, self.shown_values(it), self.doc.kind.facts(it, self.doc), self._more,
                              lambda name: self.anim_state(it, name))
 
     def _on_doc(self, event):

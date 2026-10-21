@@ -61,7 +61,8 @@ FocusScope {
         anchors.right: trailingSlot.left; anchors.rightMargin: Theme.gap
         anchors.verticalCenter: parent.verticalCenter
         horizontalAlignment: TextInput.AlignLeft
-        color: Theme.fg; selectionColor: Theme.accent; selectedTextColor: "white"
+        color: activeFocus ? Theme.fg : "transparent"     // at rest the elided copy below shows it, from the start
+        selectionColor: Theme.accent; selectedTextColor: "white"
         font.pixelSize: Theme.body
         font.family: uiFont
         font.features: { "tnum": 1 }        // digits all one width, so numbers do not wobble while scrubbing
@@ -83,6 +84,11 @@ FocusScope {
         target: input; property: "text"; value: f.text
         when: !input.activeFocus
         restoreMode: Binding.RestoreNone
+    }
+    Text {  // at rest: the text from its start, "…" where it doesn't fit (TextInput would show its end)
+        visible: !input.activeFocus
+        anchors { left: input.left; right: input.right; verticalCenter: parent.verticalCenter }
+        text: input.text; elide: Text.ElideRight; color: Theme.fg; font: input.font
     }
     Text {  // the unit sits right after the value, dim
         visible: f.suffix !== "" && input.text !== ""

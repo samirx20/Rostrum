@@ -14,7 +14,7 @@ from rostrum_core.conditions import holds
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
 ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit",
-         "valid", "value", "anim")
+         "valid", "value", "anim", "words")
 # anim: "" (can't be animated), "still" (could be), "keyed" (has keys), "onkey" (has a key at the playhead).
 
 
@@ -38,8 +38,9 @@ def layout(op) -> list[dict]:
 
 def _param_row(p) -> dict:
     return {"row": "param", "id": p.name, "label": p.label, "type": p.type, "group": p.group,
-            "importance": p.importance, "help": p.help, "options": list(p.options), "min": p.min, "max": p.max,
-            "step": p.step, "unit": p.unit, "valid_when": p.valid_when, "default": p.default}
+            "importance": p.importance, "help": p.help, "options": p.choices(), "min": p.min, "max": p.max,
+            "step": p.step, "unit": p.unit, "valid_when": p.valid_when, "default": p.default,
+            "words": [{"value": v, "label": w} for v, w in p.words.items()]}
 
 
 def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=None) -> list[dict]:
