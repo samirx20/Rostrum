@@ -1,0 +1,11 @@
+[package]
+name = "rostrum2d-stamp"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "The painting kit's dabs, native: the same pixels as its numpy engine, bit for bit (apps/2d/engine/stamp/README.md)."
+publish = false
+
+# A library the kit's Python side loads (ctypes): `rostrum2d_stamp.dll` / `.dylib`. No dependencies.
+[lib]
+crate-type = ["cdylib", "rlib"]

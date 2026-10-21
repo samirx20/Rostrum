@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["render", "color"]
+members = ["render", "color", "stamp"]
 
 [profile.dev]
 opt-level = 1

@@ -11,6 +11,7 @@ found by the Blitz-vs-Chrome proof (`proofs/2d-renderer/README.md`) fixed.
 |---|---|
 | `render/` | `rostrum2d-render`, the renderer program (was the archive's `native/rostrum-motion`) |
 | `color/` | `rostrum-color`, the one colour library (working spaces, view transforms, LUTs, grades, scopes; archive `native/rostrum-color`) |
+| `stamp/` | `rostrum2d-stamp`, the painting kit's brush dabs laid natively, bit for bit numpy's pixels (H8; `stamp/README.md`) |
 | `vendor/` | **our fork** of blitz-dom, blitz-paint, anyrender, anyrender_skia, parley and usvg (pinned versions, patched; every patch is listed in `vendor/PATCHES.md`) |
 | `fonts/` | the app's fonts (SIL OFL, each with its licence text): Roboto Flex, Recursive, Inter (variable) |
 | `DEPENDENCIES.md` | every crate the engine builds with, and its licence |

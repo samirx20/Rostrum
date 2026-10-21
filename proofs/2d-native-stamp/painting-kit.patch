@@ -1,0 +1,336 @@
+diff --git a/shared/painting-kit/rostrum_paint/brush.py b/shared/painting-kit/rostrum_paint/brush.py
+index 3b0b806..453c24f 100644
+--- a/shared/painting-kit/rostrum_paint/brush.py
++++ b/shared/painting-kit/rostrum_paint/brush.py
+@@ -3,8 +3,12 @@
+ `stamp_stroke` changes the layer in place and returns the stroke's `Coverage` (the most alpha any stamp laid on each
+ pixel, before wet / mode, inside its bbox), so the canvas knows which stroke last touched each pixel and `landed` can
+ check where it went. Same inputs + seed = same pixels: that is what makes replay and the pixel cache exact.
++
++Two halves: `plan` (the path, the random draws, the tip profiles, every dab's numbers) and the dabs laid with it,
++by `dabs` here or by the 2D engine's native stamper (`native.py`), which gives the same pixels, bit for bit.
+ """
+ import colorsys, math
++from types import SimpleNamespace
+ import numpy as np
+ 
+ from .marks import ALONG, K, MODES, PARAMS, TIPS, Coverage, Paper, _noise1, _ss, _up, apply_paint
+@@ -20,18 +24,24 @@ def check(brush, params):
+         raise ValueError(f"mode must be one of {MODES}, got {params['mode']!r}")
+ 
+ 
+-def stamp_stroke(layer, points, color, size, brush="round", *, mask=None, under=None, paper=None, **params):
++def stamp_stroke(layer, points, color, size, brush="round", *, mask=None, under=None, paper=None, lay=None, **params):
+     """Paint one stroke into `layer` (HxWx4 premultiplied float32, changed in place).
+ 
+     points: (x, y[, pressure[, tilt]]) in layer pixels. mask: HxW 0..1 or None. under: HxWx3
+-    composite below this layer, needed for `sample_all=True`. Returns Coverage (or None if the
+-    stroke is entirely off the layer)."""
++    composite below this layer, needed for `sample_all=True`. lay: what lays the dabs (`dabs`, or the native
++    stamper's). Returns Coverage (or None if the stroke is entirely off the layer)."""
+     check(brush, params)
+-    p = {**PARAMS, **params}
+-    wet, cj, sp, tip = float(p["wet"]), p["color_jitter"], p["size_pressure"], brush
+-    if p["sample_all"] and under is None:
++    if params.get("sample_all") and under is None:
+         raise ValueError("sample_all=True needs the composite below the layer (under=...)")
+-    H, W = layer.shape[:2]
++    P = plan(layer.shape[:2], points, color, size, brush, paper, params)
++    return None if P is None else (lay or dabs)(layer, P, mask, under)
++
++
++def plan(shape, points, color, size, tip, paper, params):
++    """Everything a stroke's dabs need, drawn from its seed; None if the stroke is entirely off the layer."""
++    p = {**PARAMS, **params}
++    wet, cj, sp = float(p["wet"]), p["color_jitter"], p["size_pressure"]
++    H, W = shape
+     rng = np.random.default_rng(p["seed"])
+     pts = np.array([(q[0], q[1], q[2] if len(q) > 2 else 1.0) for q in points], float)
+     if not len(pts):
+@@ -77,25 +87,58 @@ def stamp_stroke(layer, points, color, size, brush="round", *, mask=None, under=
+     hn, sn, vn = ((_noise1(n, max(2, size / step), rng) - 0.5) * 2 for _ in range(3))
+     wv = 1 - 0.05 * _noise1(n, max(2, size / step), rng) if tip == "block" else None
+     h0, s0, v0 = colorsys.rgb_to_hsv(*np.clip(color, 0, 1))
+-    cols = np.array([colorsys.hsv_to_rgb((h0 + p["hue_jitter"] / 360 * a) % 1, np.clip(s0 * (1 + cj * b), 0, 1),
+-                                         np.clip(v0 * (1 + cj * c), 0, 1)) for a, b, c in zip(hn, sn, vn)], np.float32)
++    cols = _hsv_to_rgb((h0 + p["hue_jitter"] / 360 * hn) % 1, np.clip(s0 * (1 + cj * sn), 0, 1),
++                       np.clip(v0 * (1 + cj * vn), 0, 1)).astype(np.float32)
+     G, F = (paper or Paper(H, W)).fields() if p["grain"] > 0 or tip == "chalk" else (None, None)
+     soft = max(1 - p["hardness"], 0.03)
+     bx0 = int(max(0, np.floor((X - R).min()) - 1)); bx1 = int(min(W, np.ceil((X + R).max()) + 2))
+     by0 = int(max(0, np.floor((Y - R).min()) - 1)); by1 = int(min(H, np.ceil((Y + R).max()) + 2))
+     if bx1 <= bx0 or by1 <= by0:
+         return None
++    D = int(2 * R.max()) + 6
++    # each dab's box (empty: skipped), turn, and wet carry (the reservoir's place, how much it lays and takes up)
++    box = np.stack([np.maximum(bx0, np.trunc(X - R).astype(int) - 1), np.minimum(bx1, np.trunc(X + R).astype(int) + 2),
++                    np.maximum(by0, np.trunc(Y - R).astype(int) - 1), np.minimum(by1, np.trunc(Y + R).astype(int) + 2)], 1)
++    cs = [(math.cos(v), math.sin(v)) for v in th.tolist()]
++    wetk, at = [(0.0, 0.0)] * n, np.zeros((n, 2), int)
++    if wet > 0:
++        wetk = []
++        for i in range(n):
++            lt = math.hypot(X[i] - X[i - 1], Y[i] - Y[i - 1]) / (2 * R[i] * ALONG[tip]) if i else 0
++            wetk.append((1 - (1 - 0.97 * wet) ** max(lt, 0.05), 1 - (0.6 * wet) ** max(lt, 0.05)))
++        at = np.stack([np.round(Y).astype(int) - D // 2, np.round(X).astype(int) - D // 2], 1)
++    return SimpleNamespace(tip=tip, mode=p["mode"], wet=wet, cj=cj, sample_all=bool(p["sample_all"]),
++                           grain=p["grain"], soft=soft, n=n, X=X, Y=Y, R=R, A=A, t=t, S=S, L=L, Kr=Kr, prof=prof,
++                           start=start, end=end, streak=streak, wv=wv, cols=cols, G=G, F=F,
++                           bbox=(bx0, by0, bx1, by1), D=D, box=box, cs=cs, wetk=wetk, at=at)
++
++
++def _hsv_to_rgb(h, s, v):
++    """colorsys.hsv_to_rgb over arrays, step for step (the same numbers)."""
++    i = np.trunc(h * 6.0)
++    f = (h * 6.0) - i
++    p, q, t = v * (1.0 - s), v * (1.0 - s * f), v * (1.0 - s * (1.0 - f))
++    i = i.astype(int) % 6
++    pick = lambda *c: np.choose(i, c)  # noqa: E731
++    return np.stack([pick(v, q, p, p, t, v), pick(t, v, v, q, p, p), pick(p, p, t, v, v, q)], 1)
++
++
++def dabs(layer, P, mask=None, under=None):
++    """Lays a planned stroke's dabs into `layer` (numpy); its Coverage."""
++    H, W = layer.shape[:2]
++    tip, wet, cj, soft, G, F, R, t, S = P.tip, P.wet, P.cj, P.soft, P.G, P.F, P.R, P.t, P.S
++    prof, start, end, streak, Kr = P.prof, P.start, P.end, P.streak, P.Kr
++    bx0, by0, bx1, by1 = P.bbox
+     cov = np.zeros((by1 - by0, bx1 - bx0), np.float32)  # max coverage so far in this stroke
+-    D, res = int(2 * R.max()) + 6, None
+-    for i in range(n):
++    D, res = P.D, None
++    for i in range(P.n):
+         r = R[i]
+-        x0, x1 = max(bx0, int(X[i] - r) - 1), min(bx1, int(X[i] + r) + 2)
+-        y0, y1 = max(by0, int(Y[i] - r) - 1), min(by1, int(Y[i] + r) + 2)
++        x0, x1, y0, y1 = P.box[i].tolist()
+         if x1 <= x0 or y1 <= y0:
+             continue
+-        dx = (np.arange(x0, x1, dtype=np.float32) - np.float32(X[i]))[None, :]
+-        dy = (np.arange(y0, y1, dtype=np.float32) - np.float32(Y[i]))[:, None]
+-        c, s = math.cos(th[i]), math.sin(th[i])
++        dx = (np.arange(x0, x1, dtype=np.float32) - np.float32(P.X[i]))[None, :]
++        dy = (np.arange(y0, y1, dtype=np.float32) - np.float32(P.Y[i]))[:, None]
++        c, s = P.cs[i]
+         u, vv = (dx * c + dy * s) / r, (dy * c - dx * s) / r
+         idx = ((np.clip(vv, -1, 1) + 1) * (Kr - 1) / 2).astype(np.int32)
+         if tip in ("round", "chalk"):
+@@ -111,37 +154,37 @@ def stamp_stroke(layer, points, color, size, brush="round", *, mask=None, under=
+         else:  # block: crisp rectangle, square ends with slight raggedness
+             ew = max(1.0, soft * r * 0.15)
+             al = t[i] + u * r  # distance along the stroke
+-            a = (_ss((wv[i] - np.abs(vv)) * r / ew) * _ss((ALONG[tip] - np.abs(u)) * r / ew)
++            a = (_ss((P.wv[i] - np.abs(vv)) * r / ew) * _ss((ALONG[tip] - np.abs(u)) * r / ew)
+                  * _ss((al + ALONG[tip] * R[0] - start[idx] * R[0]) / ew)
+-                 * _ss((L[-1] + ALONG[tip] * R[-1] - end[idx] * R[-1] - al) / ew) * prof[idx])
++                 * _ss((P.L[-1] + ALONG[tip] * R[-1] - end[idx] * R[-1] - al) / ew) * prof[idx])
+         if tip in ("bristle", "flat"):
+             a = a * (prof * _ss((S[i] - start) / 0.06) * _ss((1 - end - S[i]) / 0.06))[idx]
+-        a = a * A[i]
+-        if G is not None and p["grain"] > 0:
+-            tg = p["grain"] * (1 - G[y0:y1, x0:x1])
++        a = a * P.A[i]
++        if G is not None and P.grain > 0:
++            tg = P.grain * (1 - G[y0:y1, x0:x1])
+             a = np.clip((a - tg) / (1.001 - tg), 0, 1)
+         if mask is not None:
+             a = a * mask[y0:y1, x0:x1]
+         cv = cov[y0 - by0:y1 - by0, x0 - bx0:x1 - bx0]
+         c0, c1 = cv.copy(), np.maximum(cv, a)
+         cv[...] = c1
+-        col = cols[i] * (1 + cj * 0.6 * streak[idx])[..., None]
++        col = P.cols[i] * (1 + cj * 0.6 * streak[idx])[..., None]
+         region = layer[y0:y1, x0:x1]
+         if wet > 0:  # smudge: the brush carries a reservoir of the paint it passed over
+-            oy, ox = int(round(Y[i])) - D // 2, int(round(X[i])) - D // 2
++            oy, ox = P.at[i].tolist()
+             win = (slice(y0 - oy, y1 - oy), slice(x0 - ox, x1 - ox))
+             if 0 <= oy and oy + D <= H and 0 <= ox and ox + D <= W:
+                 ix = (slice(oy, oy + D), slice(ox, ox + D))
+             else:  # near the edge: clamp, the canvas edge repeats
+                 ix = np.ix_(np.clip(np.arange(oy, oy + D), 0, H - 1), np.clip(np.arange(ox, ox + D), 0, W - 1))
+             pick = layer[ix].copy()
+-            if p["sample_all"]:  # what the eye sees: this layer over the composite below
++            if P.sample_all:  # what the eye sees: this layer over the composite below
+                 pick[..., :3] += (1 - pick[..., 3:]) * under[ix]
+                 pick[..., 3] = 1
+             if res is None:
+                 res = pick
+-            lt = math.hypot(X[i] - X[i - 1], Y[i] - Y[i - 1]) / (2 * r * ALONG[tip]) if i else 0
+-            region += (a * (1 - (1 - 0.97 * wet) ** max(lt, 0.05)))[..., None] * (res[win] - region)
+-            res += (1 - (0.6 * wet) ** max(lt, 0.05)) * (pick - res)
+-        apply_paint(region, c0, c1, col, p["mode"], 1 - wet)
+-    return Coverage(cov, (bx0, by0, bx1, by1))
++            lay, take = P.wetk[i]
++            region += (a * lay)[..., None] * (res[win] - region)
++            res += take * (pick - res)
++        apply_paint(region, c0, c1, col, P.mode, 1 - wet)
++    return Coverage(cov, P.bbox)
+diff --git a/shared/painting-kit/rostrum_paint/canvas.py b/shared/painting-kit/rostrum_paint/canvas.py
+index 150b883..115935f 100644
+--- a/shared/painting-kit/rostrum_paint/canvas.py
++++ b/shared/painting-kit/rostrum_paint/canvas.py
+@@ -18,7 +18,7 @@ from pathlib import Path
+ 
+ import numpy as np
+ 
+-from . import brush, compose, marks
++from . import brush, compose, marks, native
+ 
+ CACHE_DIR = Path.home() / ".rostrum" / "cache" / "paint"
+ PNG_BYTES = 1 << 30              # size of CACHE_DIR before the oldest pictures go
+@@ -58,6 +58,10 @@ class _Kept:
+             self.bytes -= a.nbytes + b.nbytes
+ 
+ 
++# Who lays the dabs: the 2D engine's native stamper when it is built (the same pixels as numpy, bit for bit; its
++# test: tests/test_native.py), else numpy. `STAMPER` says which.
++LAY = native.lay if native.available() else None
++STAMPER = "native" if LAY else "numpy"
+ KEPT = _Kept(BUDGET)
+ _PAPER: dict = {}
+ 
+@@ -84,7 +88,7 @@ def stamp(layer_px, s: dict, w, h, masks: dict, under=None):
+                   sample_all=bool(s["smudge"] and s["pickup"]))
+     mask = compose.mask_array(masks[s["mask"]], w, h) if s.get("mask") else None
+     return brush.stamp_stroke(layer_px, s["points"], rgb, s["size"], s["brush"], mask=mask,
+-                              under=under if params["sample_all"] else None, paper=_paper(w, h), **params)
++                              under=under if params["sample_all"] else None, paper=_paper(w, h), lay=LAY, **params)
+ 
+ 
+ def _chain(paint, w, h, masks, below_key) -> list[str]:
+diff --git a/shared/painting-kit/rostrum_paint/native.py b/shared/painting-kit/rostrum_paint/native.py
+new file mode 100644
+index 0000000..2369e56
+--- /dev/null
++++ b/shared/painting-kit/rostrum_paint/native.py
+@@ -0,0 +1,94 @@
++"""The native stamper (the 2D engine's `rostrum2d_stamp` library, `apps/2d/engine/stamp/`): lays a planned stroke's
++dabs (`brush.plan`) with the same pixels as `brush.dabs`, bit for bit, many times faster. `lay` has `brush.dabs`'s
++signature, so `brush.stamp_stroke(..., lay=native.lay)` uses it.
++
++The library: `ROSTRUM_STAMP_LIB`, else the engine's working build in this checkout. `available()` says whether it
++loads; `lay` fails loudly when it doesn't.
++"""
++from __future__ import annotations
++
++import ctypes
++import os
++from pathlib import Path
++
++import numpy as np
++
++from .marks import ALONG, MODES, TIPS, Coverage
++
++LAYOUT, PARAMS, DAB = 1.0, 20, 21           # apps/2d/engine/stamp/src/lib.rs: the same numbers
++_NAME = {"nt": "rostrum2d_stamp.dll", "posix": "librostrum2d_stamp.dylib"}[os.name]
++_LIB = None
++
++
++def _path() -> Path:
++    env = os.environ.get("ROSTRUM_STAMP_LIB")
++    return Path(env) if env else Path(__file__).resolve().parents[3] / "apps" / "2d" / "engine" / "target" / "agent" / _NAME
++
++
++def _lib():
++    global _LIB
++    if _LIB is None:
++        path = _path()
++        if not path.is_file():
++            raise RuntimeError(f"the native stamper is not built: {path} (cargo build -p rostrum2d-stamp, or set "
++                               f"ROSTRUM_STAMP_LIB)")
++        lib = ctypes.CDLL(str(path))
++        f = lib.rostrum2d_stamp_dabs
++        f.restype = ctypes.c_int32
++        f.argtypes = [ctypes.c_void_p] * 2 + [ctypes.c_size_t] + [ctypes.c_void_p] * 7 + [ctypes.c_size_t,
++                                                                                         ctypes.c_char_p, ctypes.c_size_t]
++        _LIB = lib
++    return _LIB
++
++
++def available() -> bool:
++    try:
++        _lib()
++        return True
++    except (RuntimeError, OSError):
++        return False
++
++
++def _ptr(a):
++    return None if a is None else a.ctypes.data
++
++
++def _f32(a, shape):
++    if a is None:
++        return None
++    if a.dtype != np.float32 or a.shape != shape or not a.flags.c_contiguous:
++        raise ValueError(f"the native stamper takes C-ordered float32 {shape}, got {a.dtype} {a.shape}")
++    return a
++
++
++def lay(layer, P, mask=None, under=None):
++    """`brush.dabs`, native: lays P's dabs into `layer` (in place); its Coverage."""
++    H, W = layer.shape[:2]
++    _f32(layer, (H, W, 4))
++    if not layer.flags.writeable:
++        raise ValueError("the layer must be writeable")
++    bx0, by0, bx1, by1 = P.bbox
++    grain = float(P.grain) if P.G is not None and P.grain > 0 else 0.0
++    params = np.array([LAYOUT, TIPS.index(P.tip), MODES.index(P.mode), P.Kr, P.soft, ALONG[P.tip], P.cj, P.wet,
++                       P.sample_all, grain, P.R[0], P.R[-1], P.L[-1], bx0, by0, bx1, by1, P.D, H, W], np.float64)
++    col = lambda a: np.asarray(a, np.float64).reshape(P.n, -1)  # noqa: E731
++    weak = [type(k[1]) is float for k in P.wetk]                    # numpy takes up a Python float in f32
++    rows = np.ascontiguousarray(np.hstack([col(P.X), col(P.Y), col(P.R), col(P.A), col(P.cs), col(P.t), col(P.S),
++                                           col(P.wetk), col(weak), col(P.wv if P.wv is not None else np.zeros(P.n)),
++                                           col(P.box), col(P.at), col(P.cols)]))
++    assert rows.shape == (P.n, DAB)
++    prof = np.ascontiguousarray(np.stack([P.prof, P.start, P.end, P.streak]), np.float64)
++    cov = np.zeros((by1 - by0, bx1 - bx0), np.float32)
++    under_row = 0
++    if P.sample_all:
++        if under is None or under.dtype != np.float32 or under.strides[1:] != (16, 4) or under.shape != (H, W, 3):
++            raise ValueError("sample_all needs the composite below as an HxWx3 float32 view of RGBA rows")
++        under_row = under.strides[0] // 4
++    err = ctypes.create_string_buffer(512)
++    code = _lib().rostrum2d_stamp_dabs(_ptr(params), _ptr(rows), P.n, _ptr(prof), _ptr(layer), _ptr(cov),
++                                       _ptr(_f32(mask, (H, W))), _ptr(_f32(P.G, (H, W)) if grain else None),
++                                       _ptr(_f32(P.F, (H, W)) if P.tip == "chalk" else None),
++                                       _ptr(under) if P.sample_all else None, under_row, err, len(err))
++    if code:
++        raise RuntimeError(f"the native stamper refused a stroke: {err.value.decode('utf-8', 'replace')}")
++    return Coverage(cov, P.bbox)
+diff --git a/shared/painting-kit/tests/test_native.py b/shared/painting-kit/tests/test_native.py
+new file mode 100644
+index 0000000..ca0e789
+--- /dev/null
++++ b/shared/painting-kit/tests/test_native.py
+@@ -0,0 +1,29 @@
++"""The native stamper lays the same pixels as numpy, bit for bit: what keeps the replay and the pixel cache exact
++when one machine has it and another doesn't. Every tip in every mode, wet with and without pick-up, grain, a mask,
++a stroke off the edge."""
++import numpy as np
++import pytest
++
++from rostrum_paint import brush as B, compose, marks, native
++
++pytestmark = pytest.mark.skipif(not native.available(), reason="the native stamper is not built (apps/2d/engine/stamp)")
++H, W = 120, 200
++
++
++def test_native_dabs_equal_numpy():
++    rng = np.random.default_rng(0)
++    base = (rng.random((H, W, 4)) * 0.6).astype(np.float32)
++    base[..., :3] = np.minimum(base[..., :3], base[..., 3:])
++    under = np.ascontiguousarray(rng.random((H, W, 4)), np.float32)[..., :3]
++    paper, ours, theirs = marks.Paper(H, W), base.copy(), base.copy()
++    mask = compose.mask_array({"points": [[20, 10], [190, 30], [120, 115]], "feather": 2, "invert": False}, W, H)
++    for k, tip in enumerate(marks.TIPS):
++        for m, mode in enumerate(marks.MODES):
++            s = dict(mode=mode, seed=k * 5 + m, grain=0.4 * (m % 2), wet=0.5 * (k % 2), sample_all=bool(m % 2),
++                     hardness=0.2 + 0.15 * m)
++            pts = [[-10 + 30 * k, 10 + 20 * m, 0.3], [60 + 20 * k, 40 + 15 * m, 1.0], [150 + 12 * k, 20 * m]]
++            got = [B.stamp_stroke(layer, pts, (0.8, 0.2 + 0.1 * m, 0.4), 8 + 4 * k, tip, paper=paper, lay=lay,
++                                  mask=mask if k == 2 else None, under=under, **s) for layer, lay in
++                   ((ours, native.lay), (theirs, B.dabs))]
++            assert got[0].bbox == got[1].bbox and got[0].a.tobytes() == got[1].a.tobytes(), f"{tip} {mode}: coverage"
++            assert ours.tobytes() == theirs.tobytes(), f"{tip} {mode}: pixels"
