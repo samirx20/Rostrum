@@ -7,6 +7,7 @@
 - The bundle is a **shared Blender folder**, ~7.0 GB on disk, 58 library folders. **Cycles uses only part of it.**
 - The bundle **contains GPL code** (x264, x265, FFTW, potrace, rubberband), and LGPL code (GMP, FFmpeg, libsndfile, OpenAL, LAME, libheif, fribidi). **Cycles' own CMake never asks for any of them** (no FFmpeg, FFTW, GMP, potrace or rubberband option in `CMakeLists.txt` or `src\cmake\*.cmake`). They are Blender-only. So a Cycles build does not link them, as far as the CMake shows. One open question: OpenImageIO's own build may pull in LGPL image libraries (libheif) or FFmpeg. See "To verify".
 - For the proof, we use the bundle as it is. Nothing is shipped from a proof.
+- **As built (lead, 2026-10-21):** OSL, Alembic and OpenVDB volumes were turned off, so OSL/LLVM/Alembic were not downloaded. USD still loads `openvdb.dll` and `vulkan-1.dll`; Embree loads the SYCL runtime (`sycl8.dll`, Apache-2.0 with LLVM exception). Checked `install`: no FFmpeg, x264/x265, FFTW, GMP, libheif, sndfile, potrace or rubberband DLL.
 - **NVIDIA pieces are the real licence risk for an MIT app** (OptiX headers, CUDA compiler). See below.
 
 ## What Cycles links or ships (from the CMake files)

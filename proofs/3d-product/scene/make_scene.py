@@ -14,20 +14,19 @@ DIAL_POS = (0.0, -1.2)                      # dial centre on the top (x, z)
 DIAL_R_OUT, DIAL_R_IN, DIAL_H, DIAL_C = 2.15, 1.55, 0.32, 0.05
 KNURL_COUNT, KNURL_DEPTH = 120, 0.018
 LENS_SAG = 0.26                             # lens dome height
-YAW_DEG = 28.0                              # device rotation on the floor
+YAW_DEG = -12.0                              # device rotation on the floor
 
 MATERIALS = {  # name: cycles principled_bsdf inputs
-    "Anodized":  dict(base_color=(0.16, 0.17, 0.19), metallic=1.0, roughness=0.32),
+    "Anodized":  dict(base_color=(0.30, 0.37, 0.48), metallic=1.0, roughness=0.3),
     "Chamfer":   dict(base_color=(0.86, 0.86, 0.88), metallic=1.0, roughness=0.05),
     "Ink":       dict(base_color=(0.008, 0.008, 0.01), roughness=0.35),
     "Glass":     dict(base_color=(0.97, 0.99, 0.98), transmission_weight=1.0, roughness=0.0, ior=1.52),
-    "Lens":      dict(base_color=(1.0, 1.0, 1.0), transmission_weight=1.0, roughness=0.0, ior=1.77,
-                      thin_film_thickness=280.0, thin_film_ior=1.38),
+    "Lens":      dict(base_color=(1.0, 1.0, 1.0), transmission_weight=1.0, roughness=0.0, ior=1.77),
     "Steel":     dict(base_color=(0.66, 0.64, 0.62), metallic=1.0, roughness=0.06),
     "Knurl":     dict(base_color=(0.62, 0.60, 0.58), metallic=1.0, roughness=0.2),
-    "Sensor":    dict(base_color=(0.05, 0.04, 0.07), metallic=1.0, roughness=0.08,
-                      thin_film_thickness=520.0, thin_film_ior=1.6),
-    "Backdrop":  dict(base_color=(0.03, 0.031, 0.034), roughness=0.42),
+    "Sensor":    dict(base_color=(0.02, 0.02, 0.03), metallic=1.0, roughness=0.12,
+                      thin_film_thickness=380.0, thin_film_ior=1.6),
+    "Backdrop":  dict(base_color=(0.005, 0.005, 0.006), roughness=0.5),
 }
 
 CAMERA = dict(pos=(15.0, 13.0, 31.0), target=(0.3, 1.2, -0.2), focal=100.0, fstop=4.0,
@@ -39,7 +38,9 @@ LIGHTS = [
     ("KeyTop",    "Rect", (-6.0, 48.0, -26.0), (0, 0, 0), (70.0, 45.0), 7.0, 5600),
     ("StripLeft", "Rect", (-34.0, 14.0, -18.0), (0, 2, 0), (8.0, 90.0), 30.0, 6500),
     ("StripRight", "Rect", (32.0, 12.0, -22.0), (0, 2, 0), (8.0, 90.0), 22.0, 6500),
-    ("FrontFill", "Rect", (6.0, 6.0, 55.0), (0, 1, 0), (60.0, 20.0), 0.6, 7000),
+    ("FrontFill", "Rect", (6.0, 6.0, 55.0), (0, 1, 0), (60.0, 20.0), 0.3, 7000),
+    ("SideSoft",  "Rect", (-32.0, 12.0, 24.0), (0, 1, 0), (40.0, 60.0), 6.0, 6000),
+    ("SideStrip", "Rect", (36.0, 8.0, 14.0), (0, 1, 0), (6.0, 70.0), 25.0, 6500),
     ("WallGlow",  "Rect", (0.0, 6.0, -12.0), (0, 22, -48), (80.0, 30.0), 2.5, 4800),
     ("Ambient",   "Dome", None, None, None, 0.02, 6500),
 ]
