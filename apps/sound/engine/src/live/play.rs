@@ -5,7 +5,7 @@
 //!   {"on": 60, "velocity": 0.8} {"off": 60} {"load": "<new mix.wav>"} {"quit": true}
 //! Out on stdout, one JSON object per line: {"ready": …}, {"pos": {t, playing}} every 50 ms while it
 //! changes (the mix time at the speaker), {"rolling": t}, {"wrapped": t}, {"end": t}, {"note": {key,
-//! velocity, start, end}} (recorded, in mix seconds), {"take": {file, start, seconds, rate, peakDb}}
+//! velocity, start, end}} (recorded, in mix seconds), {"input": {peakDb}} every 100 ms with --mic (the input level), {"take": {file, start, seconds, rate, peakDb}}
 //! (a microphone take, one per pass), {"heard": …} per played note, {"error": …}, and {"done": …}.
 //! Options: --shared, --midi <n>, --instrument <live.json>, --mic <takes dir>, --bpm <b>, --beats <n>,
 //! --beat-times <file.json> (the beats in seconds, when the tempo changes: the metronome follows them),
@@ -54,6 +54,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let (rtx, rrx) = channel::<Report>();
     let (mtx, mrx) = channel::<Msg>();
     let stop = Arc::new(AtomicBool::new(false));
+    // The microphone heard through the output (hear.rs): its packets go to the audio thread as well.
+    let (htx, hrx) = std::sync::mpsc::sync_channel::<Vec<f32>>(64);
+    let hear = takes_dir.as_ref().map(|_| crate::live::hear::Hear::new(hrx));
     let devices = midi::devices();
     let _midi = match arg::<u32>(args, "--midi", 0)? {
         Some(i) => Some(midi::open(i, ntx.clone())?),
@@ -82,7 +85,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
             }
             None => None,
         };
-        Ok(Transport::new(Arc::new(chosen.first(&mix, mix_rate, dev)?), rate, bpm, beats, inst, crx, nrx, otx).with_beats(&beat_times))
+        Ok(Transport::new(Arc::new(chosen.first(&mix, mix_rate, dev)?), rate, bpm, beats, inst, crx, nrx, otx).with_beats(&beat_times).with_hear(hear))
     };
     let (opened, audio) = wasapi::start_on(make, stop.clone(), !flag("--shared"), Some(mix_rate as u32))?;
     if let Some(p) = plugin.as_mut() {
@@ -95,6 +98,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
             std::fs::create_dir_all(dir).map_err(|e| format!("{dir}: {e}"))?;
             let tx = mtx.clone();
             Some(record::open(mic_stop.clone(), move |p| {
+                crate::live::hear::send(&htx, &p.samples);
                 let _ = tx.send(Msg::Packet(p));
             })?)
         }
@@ -112,6 +116,8 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let calibrating = calibrate.then(|| Calibrating { beat: 60.0 / bpm, device: opened.device.clone(), mic_device: mic.as_ref().map(|(m, _)| m.device.clone()).unwrap_or_default() });
     let mut takes = Takes::new(takes_dir.clone().unwrap_or_else(|| ".".into()), mic_rate, input_offset, calibrating);
     let mut clock = Clock::default();
+    let mic_open = mic.is_some();
+    let (mut input_peak, mut input_shown) = (0f32, Instant::now());
     let (mut latencies, mut notes, mut last_pos, mut shown) = (vec![], 0usize, None::<f64>, Instant::now());
     'main: loop {
         if let Some(p) = plugin.as_mut() {
@@ -119,6 +125,13 @@ pub fn run(args: &[String]) -> Result<(), String> {
         }
         match mrx.recv_timeout(Duration::from_millis(5)) {
             Ok(Msg::Quit) => break 'main,
+            Ok(Msg::Cmd(Cmd::Hear(gain, _))) => {
+                if mic_open {
+                    let _ = ctx.send(Cmd::Hear(gain, mic_rate));
+                } else {
+                    println!("{}", serde_json::json!({ "error": "hear: no microphone is open (start play with --mic <takes folder>)" }));
+                }
+            }
             Ok(Msg::Cmd(c)) => {
                 if let Cmd::Record(r) = &c {
                     armed = *r;
@@ -131,7 +144,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 }
                 let _ = ctx.send(c);
             }
-            Ok(Msg::Packet(p)) => takes.packet(&p, armed, &clock),
+            Ok(Msg::Packet(p)) => {
+                input_peak = p.samples.iter().fold(input_peak, |m, v| m.max(v.abs()));
+                takes.packet(&p, armed, &clock);
+            }
             Err(_) => {}
         }
         while let Ok(o) = orx.try_recv() {
@@ -162,6 +178,11 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 Report::Failed { what } => println!("{}", serde_json::json!({ "error": what })),
                 _ => {} // its own notes: the transport records them, in mix time
             }
+        }
+        if mic_open && input_shown.elapsed() >= Duration::from_millis(100) {
+            input_shown = Instant::now();
+            println!("{}", serde_json::json!({ "input": { "peakDb": (200.0 * (input_peak.max(1e-6) as f64).log10()).round() / 10.0 } }));
+            input_peak = 0.0;
         }
         if shown.elapsed() >= Duration::from_millis(50) {
             shown = Instant::now();

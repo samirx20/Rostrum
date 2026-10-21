@@ -23,7 +23,7 @@ pub fn analyze_cmd(args: &[String]) -> Result<(), String> {
     let bytes = std::fs::read(&args[1]).map_err(|e| format!("{}: {e}", args[1]))?;
     let x = crate::mix::wavio::f32_le(&bytes);
     let rate: f64 = args[2].parse().map_err(|_| format!("analyze: the rate is a number; got {}", args[2]))?;
-    println!("{}", analyze::analyze(&x, rate, args.iter().any(|a| a == "--notes")));
+    println!("{}", analyze::analyze_asked(&x, rate, &analyze::Ask::from_args(args)?));
     Ok(())
 }
 

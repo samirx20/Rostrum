@@ -31,6 +31,8 @@ pub enum Cmd {
     Record(Option<Option<(f64, f64)>>),
     /// A new render of the mix (an edit elsewhere): playback carries on from where it is.
     Load(Arc<Frames>),
+    /// Hear the microphone through the output (hear.rs): its gain (0 = off) and the microphone's rate.
+    Hear(f32, f64),
 }
 
 #[derive(Debug, PartialEq)]
@@ -77,6 +79,8 @@ pub struct Transport {
     out: Sender<Out>,
     /// (stream frame, mix time) of recent blocks, for `heard`.
     blocks: std::collections::VecDeque<(u64, Option<f64>)>,
+    /// The microphone heard through the output, when one is open (play.rs --mic).
+    hear: Option<crate::live::hear::Hear>,
 }
 
 const CLICK: f64 = 0.03;
@@ -86,13 +90,19 @@ impl Transport {
     pub fn new(mix: Arc<Frames>, rate: u32, bpm: f64, per_bar: u32, inst: Option<(Instrument, Sender<Event>)>, cmds: Receiver<Cmd>, notes: Receiver<Event>, out: Sender<Out>) -> Transport {
         Transport {
             mix, rate: rate as f64, pos: 0, playing: false, looped: None, metronome: false, beat: 60.0 / bpm.max(20.0) * rate as f64, beat_frames: vec![], per_bar: per_bar.max(1), count_in: 0, count_in_total: 0, count_in_bars: 0, count_beat: 0, click: None, last_beat: -1,
-            armed: None, held: vec![], inst, scratch: vec![], cmds, notes, out, blocks: Default::default(),
+            armed: None, held: vec![], inst, scratch: vec![], cmds, notes, out, blocks: Default::default(), hear: None,
         }
     }
 
     /// Beat times (seconds) for a song whose tempo changes: the metronome clicks on them.
     pub fn with_beats(mut self, seconds: &[f64]) -> Transport {
         self.beat_frames = seconds.iter().map(|s| (s * self.rate).round() as usize).collect();
+        self
+    }
+
+    /// The microphone's packets, for hearing it through the output (off until `Cmd::Hear`).
+    pub fn with_hear(mut self, hear: Option<crate::live::hear::Hear>) -> Transport {
+        self.hear = hear;
         self
     }
 
@@ -165,6 +175,13 @@ impl Transport {
                 self.pos = self.pos.min(self.mix.len());
             }
             Cmd::Load(_) => {}
+            Cmd::Hear(gain, mic_rate) => {
+                let rate = self.rate;
+                if let Some(h) = self.hear.as_mut() {
+                    h.rates(mic_rate, rate);
+                    h.gain = gain.max(0.0);
+                }
+            }
         }
     }
 

@@ -7,6 +7,8 @@ pub mod frames;
 #[cfg(not(windows))]
 pub mod graph;
 #[cfg(windows)]
+pub mod hear;
+#[cfg(windows)]
 pub mod instrument;
 #[cfg(windows)]
 pub mod layers;
