@@ -43,6 +43,12 @@ Errors are `{"error": "…"}` naming the item id and field. The engine never dra
 - `effects` and `masks` belong to the layer; effects, masks and layers may each have `anim`.
 - Ids are unique in the scene. Times are **seconds**; lengths are **px** in the composition's frame; angles **degrees**; colours `#rrggbb`.
 - Produced by `rostrum2d.scene.describe(doc.data, comp_id)`.
+- **`drawing`** (added S6, same version): a layer drawn frame by frame with the shared painting kit. `props` has `w`, `h`
+  (its box, px) and the usual transform; `frames: [{"at": 0, "src": "C:\…\<key>_800x1000.png"}, …]`, sorted by `at`
+  (a frame number). At time `t` the engine shows the `src` of the last frame with `at <= floor(t · fps)`; nothing
+  before the first. Each `src` is a straight-alpha RGBA PNG of exactly `w × h`, made once by the painting kit and named by
+  its content (never changes under the same name): the engine only reads it, stretched to the box like an image with
+  `fit: stretch`. Masks and effects apply as on any layer.
 
 ## 3. Evaluation (the reference is `rostrum2d/evaluate.py` and `easing.py`)
 

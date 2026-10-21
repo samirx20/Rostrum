@@ -149,6 +149,13 @@ def render(canvas: dict, w: int, h: int) -> Pixels:
     return pix
 
 
+def forget():
+    """Drop every pixel kept in memory (the next render stamps from the strokes alone)."""
+    KEPT.items.clear()
+    KEPT.bytes = 0
+    _SEEN.clear()
+
+
 def _render(canvas, w, h) -> Pixels:
     layers, _ = _layers(canvas, w, h)
     rgba = compose.over([(p, px) for p, px, _, _ in layers], w, h)

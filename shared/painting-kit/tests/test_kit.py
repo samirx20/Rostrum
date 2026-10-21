@@ -30,12 +30,11 @@ def strokes(layer, n, y0=40, **brush):
 
 
 def test_cached_pixels_equal_full_replay(doc):
-    doc.apply(strokes("ink", 6, brush="bristle"), AGENT)
-    doc.apply(strokes("glaze", 3, y0=80, brush="chalk", grain=0.4), AGENT)
-    doc.apply(strokes("ink", 2, y0=120, smudge=True, wet=0.6, pickup=True), AGENT)
-    live = C.render(doc.item("c"), *WH).rgba.copy()          # built up stroke by stroke from kept states
-    C.KEPT.items.clear()
-    C.KEPT.bytes = 0
+    for batch in (strokes("ink", 6, brush="bristle"), strokes("glaze", 3, y0=80, brush="chalk", grain=0.4),
+                  strokes("ink", 2, y0=120, smudge=True, wet=0.6, pickup=True)):
+        doc.apply(batch, AGENT)
+        live = C.render(doc.item("c"), *WH).rgba.copy()      # each look stamps only the new strokes
+    C.forget()
     assert np.array_equal(C.render(doc.item("c"), *WH).rgba, live)
 
 
@@ -44,6 +43,8 @@ def test_undo_of_a_batch_is_exact(doc):
     before_data, before_px = doc.data["canvases"], C.render(doc.item("c"), *WH).rgba.copy()
     change = doc.apply(strokes("ink", 5, y0=90) + strokes("glaze", 2), AGENT)
     assert len(change.edits) == 7 and change.who == AGENT    # one batch = one change, with who painted it
+    C.render(doc.item("c"), *WH)
+    C._SEEN.clear()                                          # undo must rebuild from kept states, not a memo
     doc.undo(AGENT)
     assert doc.data["canvases"] == before_data
     assert np.array_equal(C.render(doc.item("c"), *WH).rgba, before_px)

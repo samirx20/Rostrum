@@ -67,6 +67,8 @@ def do_step(bridge, win, step):
         bridge.painter.setValue(rest[0], value(" ".join(rest[1:])))
     elif word == "newframe":
         bridge.painter.newFrame(rest[:1] == ["copy"])
+    elif word == "clear":
+        bridge.painter.clearDrawing()
     elif word == "hold":
         bridge.painter.holdBy(int(rest[0]))
     elif word == "frame":

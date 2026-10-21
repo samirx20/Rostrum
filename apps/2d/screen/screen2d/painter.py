@@ -146,6 +146,14 @@ class Painter(QObject):
     def newFrame(self, copy):
         self._frame_edit(lambda d: framing.new_frame(d, self._n(), copy))
 
+    @Slot()
+    def clearDrawing(self):
+        """Wipe the drawing at the playhead (every paint layer's strokes) to redraw it: one change."""
+        def calls(d):
+            here = frame_at(d, self._n())
+            return [{"op": "paint.clear", "target": [p["id"] for p in here["paints"]]}] if here else [], "Clear drawing"
+        self._frame_edit(calls)
+
     @Slot(int)
     def holdBy(self, delta):
         self._frame_edit(lambda d: framing.hold(d, self._n(), delta))
