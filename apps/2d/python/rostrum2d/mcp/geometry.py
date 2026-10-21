@@ -13,21 +13,10 @@ import math
 from rostrum2d import fields as F, follow
 from rostrum2d.camera import view as camera
 from rostrum2d.evaluate import resolve
+from rostrum2d.layout import solve
+from rostrum2d.sizes import TEXT_EM, own_size  # noqa: F401  (own_size: the one size rule)
 
-TEXT_EM = 0.55            # average letter width in em, for the text box estimate
 VISIBLE_OPACITY = 0.01
-
-
-def own_size(layer_type: str, p: dict) -> tuple[float, float]:
-    if layer_type == "text":
-        lines = (p["body"] or " ").split("\n")
-        longest = max(len(line) for line in lines)
-        width = longest * p["size"] * (TEXT_EM + p["tracking"])
-        if p["boxWidth"]:
-            wrapped = sum(max(1, math.ceil(len(line) * p["size"] * TEXT_EM / p["boxWidth"])) for line in lines)
-            return p["boxWidth"], wrapped * p["size"] * p["lineHeight"]
-        return max(width, p["size"] * 0.5), len(lines) * p["size"] * p["lineHeight"]
-    return p["w"], p["h"]
 
 
 def _mul(m, n):
@@ -64,13 +53,14 @@ def flatten(comp: dict, t: float) -> list[dict]:
     opacity (with its groups' opacity), in_time, corners (4 points in the comp), matrix, box (w, h own size)."""
     out: list[dict] = []
     cam = camera.shot(comp, t)
+    placed = solve(comp, t)                 # where auto layouts put their layers (rostrum2d/layout.py)
 
     def walk(layers, parent_m, parent_opacity, parent_in_time, path):
         mattes = _mattes(layers)
         for layer in layers:
             if layer["type"] == "camera":
                 continue
-            p = resolve(layer, t)
+            p = {**resolve(layer, t), **placed.get(layer["id"], {})}
             w, h = own_size(layer["type"], p)
             if took := follow.taken(layer, layers, t):     # a text on a path layer: the path's place and box
                 w, h = took.pop("w"), took.pop("h")

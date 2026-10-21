@@ -1,10 +1,21 @@
 """The project's shared markers on a screen (rostrum_core.markers): a list QML can draw as flags, kept fresh when
-another app or an agent changes them, and the one snap rule for anything dragged along time."""
+another app or an agent changes them, the one snap rule for anything dragged along time, and the ruler's marker
+edits (add at the playhead, move, rename, delete). Each edit is one marker operation through
+rostrum_core.markers.edit, recorded with the person's name in the project's marker history: the same operations
+agents call (edit_markers).
+
+A document outside a project folder has no shared markers: `available` is false and the screen shows no marker
+controls (rule of individuality). A refused edit (a name taken, a bad time) is reported through `fail`, never
+swallowed.
+"""
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, QTimer, Signal
+import sys
 
-from rostrum_core.markers import times
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
+
+from rostrum_core import RostrumError, Who
+from rostrum_core.markers import edit, listing, times, version
 
 POLL_MS = 500          # another process (an agent, Sound) may move a marker: look at the file this often (cheap)
 
@@ -12,23 +23,24 @@ POLL_MS = 500          # another process (an agent, Sound) may move a marker: lo
 class MarkerWatch(QObject):
     changed = Signal()
 
-    def __init__(self, folder, parent=None):
+    def __init__(self, folder, parent=None, who=None, fail=None, owner=""):
         super().__init__(parent)
-        self.folder, self.times = folder, times(folder)
+        self.folder, self.who, self.owner = folder, who or Who.person("sam"), owner
+        self._fail = fail or (lambda line: print(line, file=sys.stderr))
+        self._stamp, self.times, self._rows = None, {}, []
+        self._read()
         self._timer = QTimer(self)
         self._timer.timeout.connect(self.refresh)
         if folder is not None:
             self._timer.start(POLL_MS)
 
     def refresh(self):
-        now = times(self.folder)
-        if now != self.times:
-            self.times = now
+        if self._read():
             self.changed.emit()
 
     def rows(self) -> list[dict]:
-        """[{name, at}] by time, for the ruler's flags."""
-        return [{"name": n, "at": t} for n, t in self.times.items()]
+        """[{id, name, at, colour}] by time, for the ruler's flags."""
+        return self._rows
 
     def snap(self, t: float, within: float) -> float:
         """t moved onto the nearest marker when one is within `within` seconds; else t unchanged."""
@@ -37,3 +49,54 @@ class MarkerWatch(QObject):
 
     def close(self):
         self._timer.stop()
+
+    # ---- edits from the ruler: each one marker operation, one change ------------------------------------------
+    @Property(bool, constant=True)
+    def available(self):
+        return self.folder is not None
+
+    @Slot(float, result=str)
+    def add(self, at):
+        """A new marker at `at` seconds, named "Marker n" (the first free n); returns its id ("" if refused)."""
+        taken = {n.strip().lower() for n in self.times}
+        n = next(i for i in range(1, len(taken) + 2) if f"marker {i}" not in taken)
+        args = {"name": f"Marker {n}", "at": round(max(at, 0.0), 6), **({"owner": self.owner} if self.owner else {})}
+        before = {m["id"] for m in self._rows}
+        if not self._edit([{"op": "marker.add", "args": args}], "Add marker"):
+            return ""
+        return next((m["id"] for m in self._rows if m["id"] not in before), "")
+
+    @Slot(str, float, result=bool)
+    def move(self, marker_id, at):
+        return self._edit([{"op": "marker.move", "target": [marker_id], "args": {"at": round(max(at, 0.0), 6)}}],
+                          "Move marker")
+
+    @Slot(str, str, result=bool)
+    def rename(self, marker_id, name):
+        return self._edit([{"op": "marker.rename", "target": [marker_id], "args": {"name": name}}], "Rename marker")
+
+    @Slot(str, result=bool)
+    def remove(self, marker_id):
+        return self._edit([{"op": "marker.remove", "target": [marker_id]}], "Delete marker")
+
+    # ---- inside -----------------------------------------------------------------------------------------------
+    def _read(self) -> bool:
+        """Re-read when the marker file changed (any edit: time, name, colour); True when it did."""
+        stamp = version(self.folder) if self.folder is not None else 0
+        if stamp == self._stamp:
+            return False
+        self._stamp, self.times = stamp, times(self.folder)
+        self._rows = [{k: m[k] for k in ("id", "name", "at", "colour")} for m in listing(self.folder)] if stamp else []
+        return True
+
+    def _edit(self, calls, label) -> bool:
+        if self.folder is None:
+            self._fail("Error: markers: this document is not in a project folder; shared markers belong to a project.")
+            return False
+        try:
+            edit(self.folder, calls, self.who, label=label)
+        except RostrumError as e:
+            self._fail(e.line())
+            return False
+        self.refresh()
+        return True

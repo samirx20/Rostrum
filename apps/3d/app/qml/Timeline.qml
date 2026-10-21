@@ -17,6 +17,9 @@ Panel {
         Text { anchors.verticalCenter: parent.verticalCenter; text: backend.time.toFixed(2) + " s"; color: Theme.fg3
                font.family: uiFont; font.pixelSize: Theme.label; font.features: { "tnum": 1 } },
         Item { width: Theme.gap; height: 1 },
+        Button { visible: backend.markerEdit.available; text: "Add marker"; kind: "ghost"; implicitHeight: 24
+                 onClicked: backend.markerEdit.add(backend.time) },
+        Item { width: Theme.grid; height: 1; visible: backend.markerEdit.available },
         PlayButton { playing: backend.playing; onClicked: backend.togglePlay(); implicitHeight: 24; implicitWidth: 24 }
     ]
 
@@ -25,6 +28,12 @@ Panel {
         unit: "frames"
         x: panel.labelWidth + Theme.gap + 8; width: parent.width - x - Theme.gap - 8; height: 22   // 8: room for a key at the ends
         first: panel.shot.start; last: panel.shot.end; value: backend.frame
+        fps: panel.shot.fps
+        markers: backend.markers        // the project's shared markers (seconds; the ruler places them in frames)
+        editMarkers: backend.markerEdit.available
+        onMarkerMoved: (id, at) => backend.markerEdit.move(id, at)
+        onMarkerRenamed: (id, name) => backend.markerEdit.rename(id, name)
+        onMarkerRemoved: (id) => backend.markerEdit.remove(id)
         onScrubbed: (f) => backend.setFrame(Math.round(f))
     }
     KeyRows {
@@ -37,7 +46,7 @@ Panel {
         onRowSelected: (owner) => backend.select(owner)
         onTrackScrubbed: (f) => backend.setFrame(Math.round(f))
         keyBegin: (id) => backend.beginKeyDrag(id)
-        onKeyDragged: (f) => backend.keyDragTo(f)
+        onKeyDragged: (f) => backend.keyDragTo(f, 6 / ruler.perUnit)   // lands on a marker within 6 px
         onKeyReleased: backend.endDrag()
     }
     Rectangle {  // the playhead line, across every row

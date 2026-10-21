@@ -3,8 +3,8 @@ No Qt.
 
 A layer's box: its anchor sits at (x, y) inside its parent (a group's layers are placed from the group's top-left
 corner); the box is w x h times scale. Rotation and tilt are not taken into account yet (the box stays upright).
-A text has no size in the document, so its box is an ESTIMATE from size, line height and character count, until
-the engine reports laid-out boxes. A text on a path has the engine's box for it: from its origin to the path's far
+A text has no size in the document, so its box is an ESTIMATE (rostrum2d/sizes.py) until the engine reports
+laid-out boxes. A layer in an auto layout is where the layout puts it (rostrum2d/layout.py). A text on a path has the engine's box for it: from its origin to the path's far
 corner (scene/letters.rs `Placed`).
 """
 from __future__ import annotations
@@ -12,6 +12,8 @@ from __future__ import annotations
 from rostrum2d import fields as F
 from rostrum2d import pathdata
 from rostrum2d.evaluate import resolve
+from rostrum2d.layout import solve
+from rostrum2d.sizes import own_size
 
 TEXT_ADVANCE = 0.55        # average character width per px of font size (estimate)
 
@@ -30,10 +32,11 @@ def size_of(layer: dict, p: dict) -> tuple[float, float]:
 def boxes(comp: dict, t: float) -> list[dict]:
     """[{id, x, y, w, h}] for every layer showing at t, bottom of the stack first (a group before its layers)."""
     out: list[dict] = []
+    placed = solve(comp, t)                 # where auto layouts put their layers (rostrum2d/layout.py)
 
     def walk(layers, ox, oy):
         for lay in layers:
-            p = resolve(lay, t)
+            p = {**resolve(lay, t), **placed.get(lay["id"], {})}
             if not (p["start"] <= t < p["end"]):
                 continue
             w, h = size_of(lay, p)

@@ -12,6 +12,8 @@ from dataclasses import replace
 from rostrum_core import Param
 from rostrum_core.keys import KEY_FIELDS
 
+from . import layout_fields as _layout
+
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 P = "primary"
 S = "secondary"
@@ -44,9 +46,9 @@ BLENDS = ["normal", "screen", "add", "multiply", "overlay", "soft-light"]
 MATTE_MODES = ["alpha", "alphaInverted", "luma", "lumaInverted"]
 
 # Every layer has these (position is where its anchor sits in the composition, in px).
-TRANSFORM = [
-    N("x", "X", "Transform", -20000, 20000, 1, "px", default=960.0),
-    N("y", "Y", "Transform", -20000, 20000, 1, "px", default=540.0),
+TRANSFORM = [      # x, y are absent while a group's auto layout places the layer (layout_fields.py)
+    N("x", "X", "Transform", -20000, 20000, 1, "px", when=_layout.FREE_XY, default=960.0),
+    N("y", "Y", "Transform", -20000, 20000, 1, "px", when=_layout.FREE_XY, default=540.0),
     N("scale", "Scale", "Transform", 0, 100, 0.01, "×", default=1.0),
     N("rotation", "Rotation", "Transform", -36000, 36000, 0.1, "°"),
     N("opacity", "Opacity", "Transform", 0, 1, 0.01, default=1.0),
@@ -174,9 +176,9 @@ FIELDS: dict[str, list[Param]] = {
         N("speed", "Speed", "Video", 0, 100, 0.01, "×", S, default=1.0),
         T("loop", "Loop", "Video", False, S, help="Start again when the clip ends (otherwise the last frame is held)"),
     ] + TRANSFORM,
-    "group": [
-        N("w", "Width", "Group", 0, 20000, 1, "px", default=1920.0),
-        N("h", "Height", "Group", 0, 20000, 1, "px", default=1080.0),
+    "group": [      # a size the auto layout hugs is absent: the layout sets it (layout_fields.py)
+        N("w", "Width", "Group", 0, 20000, 1, "px", when=_layout.SIZE_SET["w"], default=1920.0),
+        N("h", "Height", "Group", 0, 20000, 1, "px", when=_layout.SIZE_SET["h"], default=1080.0),
         T("clip", "Clip to box", "Group", False, S, help="Hide children outside the group's box"),
     ] + TRANSFORM,
     # A drawing: painted strokes (the shared painting kit), one drawing per frame or held for several. Its canvas
@@ -264,14 +266,19 @@ FIELDS: dict[str, list[Param]] = {
     "key": KEY_FIELDS,         # the one key shape (rostrum_core.keys): t, v | c | d, ease and its curve
 }
 
+FIELDS["group"] += _layout.GROUP           # auto layout (layout.py): Python-side, baked into the children's keys
 FIELDS.update(_rig.FIELDS)
 FIELDS.update(_camera.FIELDS)
 FIELDS.update(_motion.FIELDS)
 FIELDS["comp"] += _motion.COMP
 LAYERS = ("shape", "text", "image", "video", "group", "drawing", "path", "rig", "camera")
+for _t in LAYERS:
+    if _t != "camera":
+        FIELDS[_t] += _layout.CHILD + ([_layout.CHILD_GROW] if _t in _layout.SIZED else [])
 EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", *_motion.EFFECTS)
 ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask",) + _rig.OWNED_KEYS
 STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h"}, "path": {"w", "h"},
+         "group": {"columns"},
          "video": {"w", "h", "offset", "speed"},
          "text": {"letterDelay", "letterSeed"},
          **_rig.STILL, **_camera.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth"}}

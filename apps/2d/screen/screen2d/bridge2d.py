@@ -13,6 +13,7 @@ from rostrum_gui.markers import MarkerWatch
 
 from . import bounds, exprs, outline, route
 from .curves import Curves
+from .exporter import Exporter
 from .frames import FrameRenderer
 from .painter import Painter
 from .pen import Pen
@@ -40,9 +41,10 @@ class Bridge2D(DocBridge):
         self.painter = Painter(self)
         self._pen = Pen(self)
         self._curves = Curves(self)
+        self._exporter = Exporter(self)
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
-        self.marks = MarkerWatch(doc.folder, self)          # the project's shared markers: ruler flags, snapping
+        self.marks = MarkerWatch(doc.folder, self, self.who, self._fail, "2d")   # shared markers: flags, edits, snap
         self.marks.changed.connect(self.markersChanged)
         self.marks.changed.connect(self._render)            # expressions may read marker("…")
         self.selectionChanged.connect(self.outlineChanged)
@@ -56,6 +58,11 @@ class Bridge2D(DocBridge):
     def pen(self):
         """The pen tool and path point editing (pen.py)."""
         return self._pen
+
+    @Property(QObject, constant=True)
+    def exporter(self):
+        """The Export button's job (exporter.py)."""
+        return self._exporter
 
     @Property(QObject, constant=True)
     def curves(self):
@@ -87,6 +94,11 @@ class Bridge2D(DocBridge):
     @Property("QVariantList", notify=markersChanged)
     def markers(self):
         return self.marks.rows()
+
+    @Property(QObject, constant=True)
+    def markerEdit(self):
+        """The ruler's marker edits (add at the playhead, move, rename, delete): rostrum_gui.markers.MarkerWatch."""
+        return self.marks
 
     @Property("QVariantList", notify=outlineChanged)
     def layers(self):

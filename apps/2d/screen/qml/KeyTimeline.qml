@@ -21,6 +21,8 @@ Panel {
         Item { width: Theme.gap; height: 1 },
         FrameTools { anchors.verticalCenter: parent.verticalCenter },
         Item { width: Theme.gap; height: 1 },
+        AddMarker { anchors.verticalCenter: parent.verticalCenter },
+        Item { width: Theme.grid; height: 1; visible: backend.markerEdit.available },
         TimeReadout { anchors.verticalCenter: parent.verticalCenter },
         Item { width: Theme.gap; height: 1 },
         PlayButton { playing: backend.playing; onClicked: backend.togglePlay(); implicitHeight: 24; implicitWidth: 24 }
