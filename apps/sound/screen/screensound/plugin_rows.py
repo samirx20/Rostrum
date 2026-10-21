@@ -28,11 +28,16 @@ def has_name(param: dict) -> bool:
     return any(ch.isalnum() for ch in str(param.get("name") or ""))
 
 
+def is_bypass(param: dict) -> bool:
+    """The plug-in's own bypass switch (our own bypass sits next to the settings): flagged by the scan, or named so."""
+    return bool(param.get("bypass") or param.get("isBypass")) or str(param.get("name") or "").strip().lower() == "bypass"
+
+
 def layout(params: list[dict]) -> list[dict]:
-    """Static rows for a scanned parameter list [{id, name, min, max, default}]. Skipped: empty ranges and
-    parameters with no real name (never shown as "-")."""
+    """Static rows for a scanned parameter list [{id, name, min, max, default}]. Skipped: empty ranges, the
+    plug-in's own bypass, and parameters with no real name (never shown as "-")."""
     ps = []
-    used = (q for q in params if q.get("max", 0) > q.get("min", 0) and has_name(q))
+    used = (q for q in params if q.get("max", 0) > q.get("min", 0) and has_name(q) and not is_bypass(q))
     for p in used:
         ps.append(Param.number(str(p["id"]), min=p["min"], max=p["max"], step=V.step(p["min"], p["max"]),
                                default=p.get("default", p["min"]), label=p["name"], group="Settings",

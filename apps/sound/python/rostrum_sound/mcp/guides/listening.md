@@ -11,6 +11,14 @@ You cannot hear the render, so each look tool turns one aspect of it into number
 | Is there hum, a whistle, or masking? | `look_spectrum` (with `marks`) | `hum_lines` are the steady lines that are unwanted (flat level, on 50 / 60 Hz multiples or still there when the music stops); `tones` lists every steady line with its note name, so a held note shows as a note, not hum; marks show where events should be |
 | Does it lean left or right, or fall apart in mono? | `look_stereo` | balance per section, correlation, mono warnings |
 | Is there boom where the picture has none? | `look_low_end` | each track's share under 150 Hz and 60 Hz |
+| What is the tempo, is it steady, do sounds sit on the beat or the document's tempo map? | `look_beats` (`stems: true` for every stem) | BPM and `steadiness`, beat and downbeat guess, per onset the ms from the nearest 1/4 beat (+ = late) against the audio's own beats and the document's grid; picture: waveform, beats, onsets coloured green / orange / red |
+| Is a melody on the right notes, in time and in tune? | `look_pitch` with `track` | notes heard (name, cents off, vibrato, drift) and each written note marked ok / wrong_note / wrong_octave / late / early / out_of_tune / missing; picture: curve over the written notes. One line at a time: use a single-voice stem |
+| Do two tracks fight for the same frequencies? | `look_clash` (needs stems) | spans: when, which Hz band, which two tracks, dB each stands over the other; picture: time × band map coloured by pair. Tighten with `within_db` 3 and `floor_db` -35 if a dense mix lights up everywhere |
+| What key and chords is it in, and are the written notes playable and clean? | `inspect_harmony` | key (document key map, notes or audio), chord per bar or beat, and plain-fact checks on the written notes: out of the instrument's range, close intervals under the low limit, voices crossing, upper voices over an octave apart, notes out of key |
+
+Read the numbers as measurements: onset detection itself reads a soft sound 10–30 ms after it starts, the chord from audio is a best
+match to common shapes (a mix with drums and a melody on top reads rougher than the notes written in the document), and a
+key estimate cannot always tell a major key from its relative minor (the tool says when both fit).
 
 What these cannot tell you: whether an instrument sounds real or sampled, whether phrasing is musical, whether a
 recording sounds like the object on screen. Say so in your report; a person decides those by listening.

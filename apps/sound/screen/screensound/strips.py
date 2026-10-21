@@ -67,7 +67,7 @@ def strip(item: dict, name: str, meter: dict, routing: dict | None = None, vendo
             "canSolo": item["type"] == "track", **(routing or ROUTING_NONE)}
 
 
-ROUTING_NONE = {"output": "", "outputId": "", "outputs": [], "sends": [], "sendTargets": []}
+ROUTING_NONE = {"output": "", "outputId": "", "outputs": [], "sends": [], "sendTargets": [], "ducks": [], "duckTargets": []}
 
 
 def _feeds(buses: dict, start: str, goal: str) -> bool:
@@ -94,7 +94,7 @@ def routing(item: dict, buses: list[dict], label) -> dict:
     sends = [{"id": s["id"], "name": label(by_id[s["bus"]]) if s["bus"] in by_id else s["bus"],
               "level": s.get("level", 1) if not isinstance(s.get("level"), list) else 1} for s in item.get("sends", [])]
     used = {s["bus"] for s in item.get("sends", [])}
-    return {"output": to, "outputId": now, "outputs": choices, "sends": sends,
+    return {**ROUTING_NONE, "output": to, "outputId": now, "outputs": choices, "sends": sends,
             "sendTargets": [] if item["type"] != "track" else [{"id": b["id"], "name": label(b)} for b in buses
                                                                if b["id"] not in used]}
 

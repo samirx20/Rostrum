@@ -8,7 +8,7 @@ quarter beat unless free, and stays inside the lane's range.
 from __future__ import annotations
 
 from rostrum_sound import names
-from rostrum_sound.doc.check import LANE_RANGE
+from rostrum_sound.doc import lanes as LN
 
 from . import timing
 
@@ -18,38 +18,49 @@ GAIN_LANES = ("volume", "level")            # 0 … 4, drawn 0 … 2 unless a po
 
 
 def label(lane: str) -> str:
+    lane = lane[len(LN.PARAM):] if lane.startswith(LN.PARAM) else lane
     return LABELS.get(lane, lane[:1].upper() + lane[1:])
 
 
 def raw_points(owner: dict, lane: str) -> list[list]:
     """The lane's points as stored ([time, value], times in whatever form they were written)."""
-    return next(([list(p) for p in a.get("points", [])] for a in owner.get("automation", []) if a["lane"] == lane), [])
+    return LN.points(owner, lane)
 
 
 def owner_of(track: dict, target: str) -> dict:
-    """The track itself, or one of its sends, by id."""
-    return next((s for s in track.get("sends", []) if s["id"] == target), track)
+    """The track itself, one of its sends, or one of its effects, by id."""
+    return next((s for s in [*track.get("sends", []), *track.get("effects", [])] if s["id"] == target), track)
 
 
 def applicable(track: dict, root: dict) -> list[tuple[str, str]]:
     """(item id, lane) the track offers: its volume and pan always, expression only for a track that plays notes
-    (or that already has the lane), and the level of each of its sends."""
+    (or that already has the lane), the level of each of its sends, and every envelope setting of its effects
+    (a plug-in: the parameters it has changed)."""
     notes = track.get("instrument") not in (None, "none", "kit", "kitSfz")
     out = [(track["id"], ln) for ln in names.TRACK_LANES
-           if ln in LANE_RANGE and (ln not in MELODIC_ONLY or notes or raw_points(track, ln))]
-    return out + [(s["id"], "level") for s in track.get("sends", [])]
+           if ln in LN.MIX_RANGE and (ln not in MELODIC_ONLY or notes or raw_points(track, ln))]
+    out += [(s["id"], "level") for s in track.get("sends", [])]
+    return out + [(fx["id"], ln) for fx in track.get("effects", []) for ln in LN.offered(fx)]
 
 
 def choice_label(track: dict, root: dict, target: str, lane: str) -> str:
     if target == track["id"]:
         return label(lane)
-    bus = owner_of(track, target).get("bus", "")
+    owner = owner_of(track, target)
+    if owner.get("type") == "effect":
+        name = (owner.get("plugin") or {}).get("name") or owner["effect"].capitalize()
+        return f"{name}: {label(lane)}"
+    bus = owner.get("bus", "")
     name = next((b.get("name") for b in root.get("buses", []) if b["id"] == bus), None) or bus
     return f"Send: {name}"
 
 
-def display_range(lane: str, pts: list) -> tuple[float, float]:
-    lo, hi = LANE_RANGE[lane]
+def display_range(owner: dict, lane: str, pts: list) -> tuple[float, float]:
+    rng = LN.range_of(owner, lane)
+    if rng is None:     # a plug-in parameter: the plug-in's own range is in the scan; show what the points span
+        vals = [float(p[1]) for p in pts] + [v for v in [LN.base(owner, lane)] if v is not None]
+        return float(min(0.0, *vals)), float(max(1.0, *vals))
+    lo, hi = rng
     if lane in GAIN_LANES:
         hi = min(hi, max(2.0, *(float(p[1]) for p in pts))) if pts else 2.0
     return float(lo), float(hi)
@@ -60,16 +71,17 @@ def lane_data(track: dict, root: dict, target: str, lane: str) -> dict:
     on offer (`used`: holds points)."""
     owner = owner_of(track, target)
     raw = raw_points(owner, lane)
-    lo, hi = display_range(lane, raw)
+    lo, hi = display_range(owner, lane, raw)
     return {"target": target, "lane": lane, "label": choice_label(track, root, target, lane), "lo": lo, "hi": hi,
             "points": [{"t": timing.sec(t, root), "v": float(v)} for t, v in raw],
-            "base": owner.get(lane) if isinstance(owner.get(lane), (int, float)) else None,
+            "base": LN.base(owner, lane),
             "choices": [{"target": tg, "lane": ln, "label": choice_label(track, root, tg, ln),
                          "used": bool(raw_points(owner_of(track, tg), ln))} for tg, ln in applicable(track, root)]}
 
 
 def used(track: dict) -> bool:
-    return any(a.get("points") for o in [track, *track.get("sends", [])] for a in o.get("automation", []))
+    return any(LN.points(o, ln) for o in [track, *track.get("sends", []), *track.get("effects", [])]
+               for ln in LN.offered(o))
 
 
 class PointEdit:
@@ -78,7 +90,7 @@ class PointEdit:
     def __init__(self, target: str, owner: dict, root: dict, lane: str):
         self.target, self.lane, self.root = target, lane, root
         raw = raw_points(owner, lane)
-        self.lo, self.hi = display_range(lane, raw)
+        self.lo, self.hi = display_range(owner, lane, raw)
         self.pts = [[t, float(v), timing.sec(t, root)] for t, v in raw]      # [raw time, value, seconds]
         self.beats = bool(raw) and all(isinstance(t, dict) for t, _ in raw)
         self.index = -1

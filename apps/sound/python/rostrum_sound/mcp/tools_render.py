@@ -16,7 +16,8 @@ def summary(r: dict) -> str:
     quiet = sorted(r["tracks"], key=lambda t: t["lufs"])[:1]
     q = f" Quietest track: {quiet[0]['id']} at {quiet[0]['lufs']:.1f} LUFS." if quiet else ""
     return (f"Rendered {r['seconds']:.1f} s in {r['renderSeconds']:.1f} s: {r['lufs']:.1f} LUFS, true peak {r['truePeak']:.1f} dBTP, "
-            f"{len(r['tracks'])} tracks, {len(r['stems'])} stems.{q}")
+            f"{len(r['tracks'])} tracks, {len(r['stems'])} stems" + (f" + {len(r['busStems'])} bus stems" if r.get("busStems") else "")
+            + f".{q}")
 
 
 def register(tools: Tools):
@@ -24,7 +25,7 @@ def register(tools: Tools):
         "solo": {"type": "array", "items": {"type": "string"}, "description": "Only these track ids are heard."},
         "mute": {"type": "array", "items": {"type": "string"}, "description": "These track ids are not heard."},
         "master": {"type": "boolean", "default": True, "description": "False: the mix before mastering (no loudness target, glue or master effects)."},
-        "stems": {"type": "boolean", "default": True, "description": "Also write one WAV per track."}}})
+        "stems": {"type": "boolean", "default": True, "description": "Also write one WAV per track and one per bus (`<bus>.bus.wav`)."}}})
     def render_mix(ctx, args):
         """Render the document to a WAV (and stems) as its next version (renders/<item>/vNNN/), with loudness, true
         peak and per-track meters. Returns a job."""
@@ -46,7 +47,7 @@ def register(tools: Tools):
             else:
                 r = handoff.render(state.folder, doc, state.engine, schedule, who, stems=stems, master=master)
             state.remember(item, r)
-            files = [r["file"], *r["stems"].values()]
-            return Reply(summary(r), {**{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "ducks")}}, files)
+            files = [r["file"], *r["stems"].values(), *r.get("busStems", {}).values()]
+            return Reply(summary(r), {**{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")}}, files)
 
         return ctx.job(f"render {item}", work, key=f"render:{item}:{hash(str(schedule))}")

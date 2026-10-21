@@ -54,8 +54,9 @@ def draw_compare(before, after, b_facts, a_facts, png) -> str:
     return str(png)
 
 
-def draw_stems(envs: dict, png, title) -> str:
-    """envs: {stem: (linear level per 50 ms frame, rate)}; one row per stem, same dB scale."""
+def draw_stems(envs: dict, png, title, clip=None) -> str:
+    """envs: {stem: (linear level per 50 ms frame, rate)}; one row per stem, same dB scale. The title says which clip
+    (`clip`, else `title`: the file the stems came from) and which stems are drawn."""
     fig, axes = plt.subplots(len(envs), 1, figsize=(16, 2.6 * len(envs)), dpi=100, sharex=True, squeeze=False)
     for ax, (name, (env, _)) in zip(axes[:, 0], envs.items()):
         d = 20 * np.log10(np.maximum(env, 1e-6))
@@ -64,7 +65,7 @@ def draw_stems(envs: dict, png, title) -> str:
         ax.set_ylim(LEVEL_LO, 0)
         ax.set_ylabel(f"{name}\n(dB)", fontsize=13)
         ax.grid(alpha=0.3)
-    axes[0, 0].set_title(f"stems of {title}: level over time (50 ms)", fontsize=15)
+    axes[0, 0].set_title(f"Stems of {clip or title}: {', '.join(envs)}  (level over time, 50 ms frames)", fontsize=15)
     axes[-1, 0].set_xlabel("time (seconds)", fontsize=13)
     fig.tight_layout()
     fig.savefig(png)

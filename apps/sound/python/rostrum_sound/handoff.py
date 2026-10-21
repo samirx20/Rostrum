@@ -24,14 +24,19 @@ def _file(name: str, meters: dict) -> dict:
 def manifest(item: str, version: int, r: dict, doc, who: str, master: bool) -> dict:
     tracks = {t["id"]: t for t in r.get("tracks", [])}
     stems = {tid: Path(p).name for tid, p in r.get("stems", {}).items()}
+    buses = {b["id"]: b for b in r.get("buses", [])}
+    bus_stems = {bid: Path(p).name for bid, p in r.get("busStems", {}).items()}
     return {"item": item, "version": version, "kind": "sound", "made_by": who,
             "made_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "source": {"document": doc.item_id, "history_entry": doc.seq}, "engine": ENGINE,
             "sample_rate": doc.data.get("sampleRate", 48000), "bit_depth": "32-bit float",
             "seconds": r.get("seconds"), "mastered": master,
-            # Master processing is on the mix only, and buses / sends sit between: the stems need not add up to it.
-            "stems_add_up": not master and not doc.data.get("buses"),
-            "mix": _file(Path(r["file"]).name, r), "stems": {tid: _file(n, tracks.get(tid, {})) for tid, n in stems.items()}}
+            # Master processing is on the mix only. Without buses the track stems add up to the mix; with buses,
+            # the stems of the tracks in `direct` plus the bus stems do (a track feeding a bus is inside its bus).
+            "stems_add_up": not master,
+            "direct": r.get("direct", list(stems)),
+            "mix": _file(Path(r["file"]).name, r), "stems": {tid: _file(n, tracks.get(tid, {})) for tid, n in stems.items()},
+            "bus_stems": {bid: _file(n, buses.get(bid, {})) for bid, n in bus_stems.items()}}
 
 
 def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: bool = True) -> dict:
@@ -51,4 +56,5 @@ def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: b
     done = finish_render(part, manifest(item, version, r, doc, who, master))
     moved = lambda p: str(done / Path(p).name)   # noqa: E731
     return {**r, "file": moved(r["file"]), "stems": {k: moved(p) for k, p in r.get("stems", {}).items()},
+            "busStems": {k: moved(p) for k, p in r.get("busStems", {}).items()},
             "version": version, "folder": str(done)}

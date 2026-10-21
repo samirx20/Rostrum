@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from rostrum_core import Param, codes
 
-from .. import names
 from . import effects as FX
 from . import fields as FD
 from . import ids
+from . import lanes as LN
 from . import values as V
 from .registry import REGISTRY, set_fields, taken
 
@@ -34,9 +34,6 @@ def effect_add(ctx, targets, args):
         ctx.insert(t, "effects", {"id": id_, "type": "effect", "bypass": False, **FX.defaults(args["effect"]), **args})
 
 
-LANES = {"track": names.TRACK_LANES, "master": names.MASTER_LANES, "bus": names.BUS_LANES, "send": names.SEND_LANES}
-
-
 def _point(p, v, where):
     if not (isinstance(v, (list, tuple)) and len(v) == 2):
         V._bad(p, v, where, "is not a point", ["[time, value]"])
@@ -50,24 +47,32 @@ POINTS = V.listof("points", _point, {"type": "array", "minItems": 2, "maxItems":
                   help="[[time, value], …] in time order; an empty list removes the lane.")
 
 
-@REGISTRY.operation("automation.set", "Replace an automation lane's points: volume or pan over time, "
-                    "a send's level (0 … 4), or a track's expression (dynamics 0 … 2, vibrato 0 … 1, like CC 11 / CC 1).",
-                    target=("track", "bus", "send", "master"), label="Automate", params=[
-                        Param.choice("lane", names.ALL_LANES, required=True, label="Value"), POINTS])
+@REGISTRY.operation("automation.set", "Replace a lane's points: anything that can change over time. On a track, "
+                    "bus or the master: volume, pan, expression (dynamics 0 … 2, vibrato 0 … 1, like CC 11 / CC 1); on a "
+                    "send: level (0 … 4); on an effect: any setting that takes an envelope (threshold, ratio, makeup, "
+                    "mix, feedback, drive, width …) or a plug-in's parameter as \"param:<id>\".",
+                    target=LN.TARGETS, label="Automate", params=[
+                        Param.text("lane", required=True, label="Value",
+                                   help="What changes: volume, pan, level, an effect setting's name, or param:<id>."),
+                        POINTS])
 def automation_set(ctx, targets, args):
+    lane, pts = args["lane"], args["points"]
     for t in targets:
-        lanes = LANES[ctx.item(t)["type"]]
-        if args["lane"] not in lanes:
-            ctx.fail(codes.BAD_ARGUMENT, f'lane "{args["lane"]}"', f"can't be automated on {t}", lanes)
-        id_ = ids.lane(t, args["lane"])
+        item = ctx.item(t)
+        if not LN.accepts(item, lane):
+            ctx.fail(codes.BAD_ARGUMENT, f'lane "{lane}"', f"can't be automated on {t}", LN.offered(item))
+        if item["type"] == "effect":
+            if pts or LN.points(item, lane):
+                ctx.set(t, *LN.effect_value(item, lane, pts))
+            continue
+        id_ = ids.lane(t, lane)
         if id_ in taken(ctx):
-            if args["points"]:
-                ctx.set(id_, "points", args["points"])
+            if pts:
+                ctx.set(id_, "points", pts)
             else:
                 ctx.remove(id_)
-        elif args["points"]:
-            ctx.insert(t, "automation", {"id": id_, "type": "automation", "lane": args["lane"],
-                                         "points": args["points"]})
+        elif pts:
+            ctx.insert(t, "automation", {"id": id_, "type": "automation", "lane": lane, "points": pts})
 
 
 @REGISTRY.operation("marker.add", "Add a named time (\"drop\") that times elsewhere can name as \"#drop\".",

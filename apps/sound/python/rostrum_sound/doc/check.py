@@ -10,13 +10,13 @@ from .. import names
 from . import effects as FX
 from . import fields_design as FDS
 from . import check_mix
+from . import lanes as LN
 from . import playing as PL
 from . import sections
 from . import times
 from .registry import LISTS
 
 TRACK_ID = re.compile(r"^[A-Za-z0-9_.\-]{1,64}$")
-LANE_RANGE = {"volume": (0, 4), "pan": (-1, 1), "level": (0, 4), "dynamics": (0, 2), "vibrato": (0, 1)}
 NEEDS = {"notes": ("builtIn", "sfz", "model", "synth", "plugin"), "hits": ("kit", "kitSfz", "plugin"), "lines": ("voice",)}
 STRING_POSITION = 0.03   # plucked strings are not plucked on the bridge itself (contract § 2a)
 
@@ -72,17 +72,24 @@ def playing(track) -> list[str]:
 
 
 def _lane(item, root) -> list[str]:
-    lo, hi = LANE_RANGE[item["lane"]]
+    """Points in time order and inside the lane's range: an automation child, or an effect's envelope settings."""
+    if item["type"] == "automation":
+        return _points(item["id"], item["lane"], item.get("points", []), LN.MIX_RANGE[item["lane"]], root)
+    return [p for lane in LN.offered(item) for p in        # (an effect's ranges: FX.problems)
+            _points(item["id"], lane, LN.points(item, lane), None, root)]
+
+
+def _points(who, lane, pts, rng, root) -> list[str]:
     out, last = [], -1.0
-    for t, v in item.get("points", []):
+    for t, v in pts:
         try:
-            s = times.seconds(t, root, item["id"])
+            s = times.seconds(t, root, who)
         except RostrumError as e:
-            return [f"{item['id']}: {e.subject} {e.problem}"]
+            return [f"{who}: {e.subject} {e.problem}"]
         if s < last:
-            out.append(f"{item['id']}: points are not in time order (at {t!r})")
-        if not lo <= v <= hi:
-            out.append(f"{item['id']}: {item['lane']} {v} is outside {lo} … {hi}")
+            out.append(f"{who}: {lane} points are not in time order (at {t!r})")
+        if rng and not rng[0] <= v <= rng[1]:
+            out.append(f"{who}: {lane} {v} is outside {rng[0]} … {rng[1]}")
         last = s
     return out
 
@@ -109,7 +116,7 @@ def check(data: dict) -> list[str]:
     for item in walk(data, LISTS):
         t = item.get("type")
         if t == "effect":
-            out += FX.problems(item)
+            out += FX.problems(item) + _lane(item, data)
         elif t == "sound":
             out += FDS.problems(item)
         elif t == "automation":

@@ -152,7 +152,7 @@ pub fn render_keep(s: &Schedule, cache: Option<&crate::mix::trackcache::TrackCac
             }
         }
     }
-    let bus_stats = crate::mix::buses::mix(s, routed, &pres, &mut bus)?;
+    let (bus_stats, bus_stems) = crate::mix::buses::mix(s, routed, &pres, &mut bus, keep.iter().any(|&k| k))?;
     let t3 = std::time::Instant::now();
     let mut mix = crate::mix::bus::master(s, bus)?;
     mix.buses = bus_stats;
@@ -160,5 +160,6 @@ pub fn render_keep(s: &Schedule, cache: Option<&crate::mix::trackcache::TrackCac
     mix.ducks = ducks;
     mix.tracks = stats;
     mix.stems = stems;
+    mix.bus_stems = bus_stems;
     Ok(mix)
 }

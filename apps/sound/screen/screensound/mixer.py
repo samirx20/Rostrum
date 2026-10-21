@@ -10,12 +10,15 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
-from . import playback, strips
+from . import ducks, playback, strips
+from .cleaning import CleanedTake
+from .export import RenderExport
 from .listen_pics import ListenPics
+from .loudness import LoudnessMeter
 from .plugins import PluginHub
 
 ROLES = ("id", "name", "volume", "pan", "mute", "solo", "effects", "meter", "canSolo", "output", "outputId", "outputs",
-         "sends", "sendTargets")
+         "sends", "sendTargets", "ducks", "duckTargets")
 
 
 class MixPage(QObject):
@@ -31,6 +34,9 @@ class MixPage(QObject):
         self._master: dict = {}
         self.pics = ListenPics(bridge, pics_folder, self)
         self._plugins = PluginHub(bridge, playback.open_engine, self)
+        self._ducks, self._loudness = ducks.DuckHub(bridge, self), LoudnessMeter(bridge, self)
+        self._export, self._cleaning = RenderExport(bridge, parent=self), CleanedTake(bridge, self)
+        bridge.mix = self                                 # the scripted steps (steps.py) reach these through the bridge
         self._refresh()
         self._plugins.catalogChanged.connect(self._refresh)      # the scan names the vendors the chips drop
         bridge.docChanged.connect(self._refresh)
@@ -39,10 +45,28 @@ class MixPage(QObject):
     def close(self):
         self.pics.close()
         self._plugins.close()
+        self._export.close()
+        self._cleaning.close()
 
     @Property(QObject, constant=True)
     def plugins(self):
         return self._plugins
+
+    @Property(QObject, constant=True)
+    def ducks(self):
+        return self._ducks
+
+    @Property(QObject, constant=True)
+    def loudness(self):
+        return self._loudness
+
+    @Property(QObject, constant=True)
+    def export(self):
+        return self._export
+
+    @Property(QObject, constant=True)
+    def cleaning(self):
+        return self._cleaning
 
     @Property(QObject, constant=True)
     def tracks(self):
@@ -111,9 +135,10 @@ class MixPage(QObject):
         render = dict(self.bridge.lastRender or {})
         label = self.bridge.label_of
         buses, vendor = self._bus_items(), self._plugins.vendor_of
+        tracks = [t for t in self.doc.items() if t["type"] == "track"]
         self._tracks.update([strips.strip(t, label(t), strips.meter_of(render, t["id"]),
-                                          strips.routing(t, buses, label), vendor)
-                             for t in self.doc.items() if t["type"] == "track"])
+                                          {**strips.routing(t, buses, label), **ducks.strip_ducks(t, tracks, label)}, vendor)
+                             for t in tracks])
         self._buses.update([strips.strip(b, label(b), strips.meter_of(render, b["id"]), strips.routing(b, buses, label), vendor)
                             for b in buses])
         m = self.doc.item(strips.MASTER)

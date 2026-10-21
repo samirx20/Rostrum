@@ -37,13 +37,13 @@ def _channel(s, x: np.ndarray, limit: float) -> np.ndarray:
     return out[DELAY:DELAY + len(x)]               # the model's delay removed: the take stays in time
 
 
-def clean(x: np.ndarray, strength: float = 1.0) -> np.ndarray:
-    """[channels, n] at 48 kHz -> the same, denoised (a mono take is run once)."""
+def clean(x: np.ndarray, strength: float = 1.0, side_db: float = audio.MONO_SIDE_DB) -> np.ndarray:
+    """[channels, n] at 48 kHz -> the same, denoised (a mono or near-mono take, such as a separated voice, is run once)."""
     s = models.session(models.DFN3)
     try:
         lim = limit_db(strength)
-        if audio.is_mono(x):
-            y = _channel(s, x[0], lim)
+        if audio.is_mono(x, side_db):
+            y = _channel(s, audio.middle(x), lim)
             return np.vstack([y] * x.shape[0])
         return np.vstack([_channel(s, c, lim) for c in x])
     finally:
