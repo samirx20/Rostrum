@@ -12,8 +12,8 @@
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
-#include <functional>
 
+#include "dome_sun.h"
 #include "error.h"
 #include "studio.h"
 
@@ -27,15 +27,9 @@ constexpr float kPi = 3.14159265358979323846f;
 
 // `source` (a lat-long picture; "" = a flat white one) × `gain`, as an EXR in the cache, named by what made it
 std::string sky_picture(const std::string& source, const GfVec3f& gain) {
-  std::string stamp = "flat";
-  if (!source.empty()) {
-    std::error_code ec;
-    const auto when = fs::last_write_time(source, ec);
-    if (ec) throw Error("view.sky: the dome's picture can't be read: " + source + " (" + ec.message() + ")");
-    stamp = std::to_string(std::hash<std::string>{}(source)) + "-" + std::to_string(when.time_since_epoch().count());
-  }
-  char name[160];
-  std::snprintf(name, sizeof name, "sky-v2-%s-%.5f-%.5f-%.5f.exr", stamp.c_str(), gain[0], gain[1], gain[2]);
+  const std::string stamp = source.empty() ? "flat" : picture_stamp(source);
+  char name[200];
+  std::snprintf(name, sizeof name, "sky-v3-%s-%.5f-%.5f-%.5f.exr", stamp.c_str(), gain[0], gain[1], gain[2]);
   const fs::path file = cache_dir() / name;
   if (fs::exists(file)) return file.string();
   fs::create_directories(file.parent_path());
@@ -61,21 +55,37 @@ std::string sky_picture(const std::string& source, const GfVec3f& gain) {
 }
 }  // namespace
 
-std::optional<GlfSimpleLight> scene_sky(const UsdStageRefPtr& stage, int frame) {
+std::optional<SceneSky> scene_sky(const UsdStageRefPtr& stage, int frame, bool take_sun) {
   for (const UsdPrim& p : stage->Traverse()) {
     if (!p.IsA<UsdLuxDomeLight>() && !p.IsA<UsdLuxDomeLight_1>()) continue;
     const UsdTimeCode t(frame);
     SdfAssetPath tex;
     p.GetAttribute(UsdLuxTokens->inputsTextureFile).Get(&tex, t);
-    const std::string source = tex.GetResolvedPath().empty() ? tex.GetAssetPath() : tex.GetResolvedPath();
+    std::string source = tex.GetResolvedPath().empty() ? tex.GetAssetPath() : tex.GetResolvedPath();
     UsdLuxLightAPI l(p);
     GfVec3f colour(1);
     float intensity = 1, exposure = 0;
     l.GetColorAttr().Get(&colour, t);
     l.GetIntensityAttr().Get(&intensity, t);
     l.GetExposureAttr().Get(&exposure, t);
-    GlfSimpleLight sky = dome_light(sky_picture(source, colour * intensity * std::exp2(exposure) * kPi), "/RostrumViewport/sky");
-    sky.SetTransform(UsdGeomXformable(p).ComputeLocalToWorldTransform(t));
+    const GfVec3f gain = colour * intensity * std::exp2(exposure);  // the picture's units -> Cycles' units
+    const GfVec3f storm = gain * kPi;  // -> Storm's units: its dome and its sun both read light π times Cycles' numbers
+    const GfMatrix4d turn = UsdGeomXformable(p).ComputeLocalToWorldTransform(t);
+    SceneSky sky;
+    if (take_sun && !source.empty()) {
+      const DomeSplit split = split_dome_sun(source);
+      source = split.picture;
+      if (split.sun) {
+        StormSun sun;
+        sun.toward = turn.TransformDir(split.sun->toward).GetNormalized();
+        sun.irradiance = GfCompMult(split.sun->irradiance, storm);
+        sun.angleDeg = 2 * std::acos(1 - split.sun->solidAngle / (2 * kPi)) * 180 / kPi;  // the cone of that size
+        sun.share = split.sun->share;
+        sky.sun = sun;
+      }
+    }
+    sky.dome = dome_light(sky_picture(source, storm), "/RostrumViewport/sky");
+    sky.dome.SetTransform(turn);
     return sky;
   }
   return std::nullopt;

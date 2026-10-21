@@ -200,8 +200,12 @@ JsObject Core::view(const JsObject& o) {
   background(stage_, bg);
   color_.to_rgba8(pic, view, a.num("exposure", 0), bg, slot);
   draw_outline(pic, slot);
+  JsValue sun;  // null: no sun light (no scene dome, no sun in its picture, or not Storm)
+  if (pic.sun)
+    sun = JsValue(JsObject{{"toward", vec3(GfVec3d(pic.sun->toward[0], pic.sun->toward[1], pic.sun->toward[2]))},
+                           {"share", JsValue(pic.sun->share)}, {"angleDeg", JsValue(pic.sun->angleDeg)}});
   return JsObject{{"ok", JsValue(true)}, {"width", JsValue(w)}, {"height", JsValue(h)}, {"shm", JsValue(info)},
-                  {"sceneDome", JsValue(pic.sceneDome)},
+                  {"sceneDome", JsValue(pic.sceneDome)}, {"sun", sun},
                   {"timing", JsValue(JsObject{{"drawMs", JsValue(r1(draw_ms))}, {"totalMs", JsValue(r1(ms_since(t0)))}})}};
 }
 

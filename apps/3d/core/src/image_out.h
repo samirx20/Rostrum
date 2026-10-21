@@ -3,16 +3,25 @@
 #pragma once
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace r3d {
+
+// the sun Storm took out of the scene's dome and drew as a light with a shadow (dome_sun.h)
+struct SunSeen {
+  double toward[3] = {0, 0, 0};  // world direction towards it
+  double share = 0;              // its part of the dome's light
+  double angleDeg = 0;           // its apparent size
+};
 
 struct Picture {
   int width = 0, height = 0;
   std::vector<float> rgba;  // scene-linear, straight from Hydra, top row first
   std::vector<unsigned char> mask;  // viewport only: 1 where a selected item is (empty = nothing selected)
   bool sceneDome = false;  // viewport only: the scene's own dome lit it (the studio light was not used)
+  std::optional<SunSeen> sun;  // viewport only: Storm drew the dome's sun as a light
 };
 
 class ColorOut {
