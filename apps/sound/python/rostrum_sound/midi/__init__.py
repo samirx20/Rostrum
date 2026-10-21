@@ -14,6 +14,7 @@ import re
 
 from rostrum_core.tree import index
 
+from ..doc import markers
 from ..doc.registry import LISTS
 from . import smf_in, smf_out
 from .song import from_events
@@ -47,7 +48,7 @@ def calls_for(root: dict, song: dict, song_map: bool = True) -> list[dict]:
         calls += [{"op": f"{i['type']}.remove", "target": [i["id"]]} for i in old]
         calls += [{"op": "tempo.add", "args": {"at": {"beat": b}, "bpm": bpm}} for b, bpm in song["tempos"]]
         calls += [{"op": "key.add", "args": {"at": {"beat": b}, "key": k}} for b, k in song["keys"]]
-    names = {m.get("name") for m in root.get("markers", [])}
+    names = {n for n, _ in markers.items(root)}
     for b, name in song["markers"]:
         calls.append({"op": "marker.add", "args": {"name": _free(name, names, "marker"), "at": {"beat": b}}})
     parts = {s.get("name") for s in root.get("sections", [])}

@@ -14,12 +14,12 @@ from typing import Callable
 
 from rostrum_core import Param, RostrumError, codes
 
-from . import times
+from . import markers, times
 
 NOTE = re.compile(r"^[A-Ga-g](#|b)?-?\d$")
 TIME_SCHEMA = {"anyOf": [{"type": "number", "minimum": 0},
                          {"type": "object", "properties": {"beat": {"type": "number", "minimum": 0}}},
-                         {"type": "string", "pattern": times.REF.pattern}]}
+                         {"type": "string", "pattern": markers.REF.pattern}]}
 LENGTH_SCHEMA = {"anyOf": [{"type": "number", "minimum": 0},
                            {"type": "object", "properties": {"beats": {"type": "number", "minimum": 0}}}]}
 PITCH_ONE = {"anyOf": [{"type": "string", "pattern": NOTE.pattern}, {"type": "integer", "minimum": 0,

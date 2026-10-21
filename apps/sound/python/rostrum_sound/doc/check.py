@@ -13,7 +13,7 @@ from . import check_mix
 from . import lanes as LN
 from . import playing as PL
 from . import sections
-from . import times
+from . import markers, times
 from .registry import LISTS
 
 TRACK_ID = re.compile(r"^[A-Za-z0-9_.\-]{1,64}$")
@@ -96,7 +96,7 @@ def _points(who, lane, pts, rng, root) -> list[str]:
 
 def _refs(value):
     """Every marker reference anywhere inside a value."""
-    if isinstance(value, str) and times.marker_ref(value):
+    if isinstance(value, str) and markers.ref(value):
         yield value
     elif isinstance(value, list):
         for v in value:
@@ -105,7 +105,7 @@ def _refs(value):
 
 def check(data: dict) -> list[str]:
     out = []
-    marks = [m.get("name") for m in data.get("markers", [])]
+    marks = [n for n, _ in markers.items(data)]
     out += [f"two markers are named {n!r}" for n in set(marks) if marks.count(n) > 1]
     out += check_mix.problems(data)
     out += sections.problems(data)
@@ -123,6 +123,6 @@ def check(data: dict) -> list[str]:
             out += _lane(item, data)
         for k, v in item.items():
             for ref in _refs(v):
-                if times.marker_ref(ref) not in times.markers(data):
-                    out.append(f"{item['id']}.{k}: no marker {times.marker_ref(ref)!r} for {ref!r}")
+                if markers.ref(ref) not in marks:
+                    out.append(f"{item['id']}.{k}: no marker {markers.ref(ref)!r} for {ref!r}")
     return out

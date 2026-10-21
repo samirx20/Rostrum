@@ -3,7 +3,7 @@ one on a marker stays on that marker ("#drop+0.25"). The one place that rule liv
 layered sound's group move both use it)."""
 from __future__ import annotations
 
-from . import tempo, times
+from . import markers, tempo
 
 
 def spb(root: dict, at: float = 0.0) -> float:
@@ -13,11 +13,10 @@ def spb(root: dict, at: float = 0.0) -> float:
 
 def write_like(old, t: float, root: dict):
     """`t` seconds, written in the form `old` was written in."""
-    name = times.marker_ref(old)
+    name = markers.ref(old)
     if name is not None:
-        m = times.markers(root).get(name)
-        if m is not None:
-            off = round(t - times.seconds(m.get("at", 0), root, f"marker {name}"), 4)
+        if name in markers.by_name(root):
+            off = round(t - markers.time_of(root, name), 4)
             return f"#{name}" if abs(off) < 1e-6 else f"#{name}{off:+g}"
     if isinstance(old, dict) and "beat" in old:
         return {"beat": round(tempo.beat_at(root, t), 4)}

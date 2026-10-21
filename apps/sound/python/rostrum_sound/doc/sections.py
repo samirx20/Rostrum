@@ -12,7 +12,7 @@ from __future__ import annotations
 from rostrum_core import RostrumError, codes
 from rostrum_core.tree import walk
 
-from . import tempo, times
+from . import markers, tempo, times
 from .registry import LISTS
 from .shift import write_like
 
@@ -46,10 +46,10 @@ def moves(root: dict, section: dict, by) -> list[tuple[str, str, object]]:
     def inside(sec):
         return lo - 1e-9 <= sec < hi - 1e-9
 
-    moved_marks = {m.get("name") for m in root.get("markers", []) if inside(times.seconds(m["at"], root, m["id"]))}
+    moved_marks = {name for name, sec in markers.all(root) if inside(sec)}
 
     def follows(value):
-        return times.marker_ref(value) in moved_marks
+        return markers.ref(value) in moved_marks
 
     def new(value, w):
         s = times.seconds(value, root, w)
