@@ -1,0 +1,205 @@
+#include "requests.h"
+
+#include <windows.h>
+#include <psapi.h>
+
+#include <pxr/base/gf/vec3d.h>
+#include <pxr/base/gf/vec3f.h>
+#include <pxr/usd/usd/primRange.h>
+#include <pxr/usd/usdGeom/camera.h>
+
+#include <chrono>
+#include <cmath>
+
+#include "args.h"
+#include "error.h"
+#include "inspect.h"
+
+PXR_NAMESPACE_USING_DIRECTIVE
+
+namespace r3d {
+
+namespace {
+using Clock = std::chrono::steady_clock;
+double ms_since(Clock::time_point t) { return std::chrono::duration<double, std::milli>(Clock::now() - t).count(); }
+double r1(double v) { return std::round(v * 10) / 10; }
+JsValue vec3(const GfVec3d& v) { return JsValue(JsArray{JsValue(v[0]), JsValue(v[1]), JsValue(v[2])}); }
+
+double ram_peak_mb() {
+  PROCESS_MEMORY_COUNTERS c{};
+  GetProcessMemoryInfo(GetCurrentProcess(), &c, sizeof(c));
+  return double(c.PeakWorkingSetSize) / (1 << 20);
+}
+
+// world.background, which the stage builder keeps on /World as rostrum:background (linear RGB)
+void background(const UsdStageRefPtr& stage, float rgb[3]) {
+  rgb[0] = rgb[1] = rgb[2] = 0;
+  UsdPrim world = stage->GetPrimAtPath(SdfPath("/World"));
+  VtValue v;
+  if (!world || !world.GetAttribute(TfToken("rostrum:background")).Get(&v)) return;
+  if (v.IsHolding<GfVec3f>()) {
+    auto c = v.UncheckedGet<GfVec3f>();
+    for (int i = 0; i < 3; ++i) rgb[i] = c[i];
+  } else if (v.IsHolding<GfVec3d>()) {
+    auto c = v.UncheckedGet<GfVec3d>();
+    for (int i = 0; i < 3; ++i) rgb[i] = float(c[i]);
+  }
+}
+}  // namespace
+
+Core::Core() : stage_(UsdStage::CreateInMemory()) {}
+
+Hydra& Core::hydra() {
+  if (!hydra_) hydra_ = std::make_unique<Hydra>(stage_);
+  return *hydra_;
+}
+
+void Core::need_scene(const char* request) const {
+  if (!loaded_) throw Error(std::string(request) + ": no scene loaded yet; send {\"scene\": {...}} first");
+}
+
+SdfPath Core::camera(const std::string& id, const char* request) const {
+  std::string list;
+  for (UsdPrim p : stage_->Traverse()) {
+    if (!p.IsA<UsdGeomCamera>()) continue;
+    if (p.GetName() == id) return p.GetPath();
+    list += (list.empty() ? "" : ", ") + p.GetName().GetString();
+  }
+  throw Error(std::string(request) + ".camera: no camera \"" + id + "\". Accepted: " + (list.empty() ? "(none)" : list));
+}
+
+void Core::check_frame(int f, const char* where) const {
+  if (f < built_.start || f > built_.end)
+    throw Error(std::string(where) + ": frame " + std::to_string(f) + " is outside the shot (" +
+                std::to_string(built_.start) + ".." + std::to_string(built_.end) + ")");
+}
+
+JsObject Core::scene(const JsObject& a) {
+  const auto t0 = Clock::now();
+  built_ = build_stage(a, stage_);  // throws with the held stage untouched
+  loaded_ = true;
+  return JsObject{{"ok", JsValue(true)}, {"items", JsValue(built_.items)}, {"prims", JsValue(built_.prims)},
+                  {"frames", JsValue(JsArray{JsValue(built_.start), JsValue(built_.end)})},
+                  {"timing", JsValue(JsObject{{"buildMs", JsValue(r1(ms_since(t0)))}})}};
+}
+
+JsObject Core::render(const JsObject& o, const std::function<void(const JsObject&)>& progress) {
+  Args a(o, "render", {"camera", "renderer", "frame", "frames", "width", "height", "samples", "denoise", "exr",
+                       "png", "view", "exposure", "timeoutS", "progress"});
+  need_scene("render");
+  const std::string renderer = a.str("renderer");
+  Hydra::plugin_for(renderer);  // an unknown name fails before anything else
+  const SdfPath cam = camera(a.str("camera"), "render");
+  if (a.has("frame") == a.has("frames")) throw Error("render: give exactly one of frame or frames");
+  int first, last;
+  if (a.has("frame")) {
+    first = last = a.whole("frame");
+  } else {
+    const auto& fr = a.need("frames");
+    if (!fr.IsArray() || fr.GetJsArray().size() != 2 || !fr.GetJsArray()[0].IsInt() || !fr.GetJsArray()[1].IsInt())
+      throw Error("render.frames: needs [first, last], two whole numbers");
+    first = fr.GetJsArray()[0].GetInt();
+    last = fr.GetJsArray()[1].GetInt();
+    if (last < first) throw Error("render.frames: last is before first");
+  }
+  check_frame(first, "render.frame");
+  check_frame(last, "render.frames");
+  const int w = a.whole("width"), h = a.whole("height");
+  if (w < 16 || h < 16 || w > 8192 || h > 8192) throw Error("render.width/height: each must be 16..8192");
+  const std::string exr = a.str("exr", ""), png = a.str("png", "");
+  if (exr.empty() && png.empty()) throw Error("render: give exr, png or both (file paths)");
+  for (const auto& p : {exr, png})
+    if (!p.empty() && last > first && p.find("{frame}") == std::string::npos)
+      throw Error("render: a frame range needs {frame} in each file name, got " + p);
+  const std::string view = png.empty() ? "" : color_.check_view(a.str("view", ""));
+  const double exposure = a.num("exposure", 0);
+  DrawSettings s;
+  s.samples = a.whole("samples", s.samples);
+  s.denoise = a.flag("denoise", s.denoise);
+  s.timeoutS = a.num("timeoutS", s.timeoutS);
+  if (s.samples < 1 || s.samples > 65536) throw Error("render.samples: must be 1..65536");
+  const bool report = a.flag("progress", false);
+  float bg[3];
+  background(stage_, bg);
+
+  auto& hy = hydra();
+  mem_.reset_peak();
+  JsArray frames;
+  const auto t0 = Clock::now();
+  double first_ms = 0;
+  for (int f = first; f <= last; ++f) {
+    const auto tf = Clock::now();
+    Picture pic = hy.draw(renderer, cam, f, w, h, s, mem_);
+    JsObject fo{{"frame", JsValue(f)}};
+    if (!exr.empty()) {
+      color_.write_exr(pic, frame_path(exr, f));
+      fo["exr"] = JsValue(frame_path(exr, f));
+    }
+    if (!png.empty()) {
+      color_.write_png(pic, frame_path(png, f), view, exposure, bg);
+      fo["png"] = JsValue(frame_path(png, f));
+    }
+    const double ms = ms_since(tf);
+    if (f == first) first_ms = ms;
+    fo["ms"] = JsValue(r1(ms));
+    frames.push_back(JsValue(fo));
+    if (report)
+      progress(JsObject{{"progress", JsValue(f - first + 1)}, {"of", JsValue(last - first + 1)},
+                        {"frame", JsValue(f)}, {"ms", JsValue(r1(ms))}});
+  }
+  const double total = ms_since(t0);
+  const GpuMem now = mem_.sample();
+  return JsObject{
+      {"ok", JsValue(true)}, {"frames", JsValue(frames)}, {"renderer", JsValue(renderer)},
+      {"camera", JsValue(cam.GetString())}, {"view", JsValue(view)}, {"gpu", JsValue(hy.gl_renderer())},
+      {"timing", JsValue(JsObject{{"totalMs", JsValue(r1(total))}, {"firstMs", JsValue(r1(first_ms))},
+                                  {"meanMs", JsValue(r1(total / (last - first + 1)))}})},
+      {"vram", JsValue(JsObject{{"processPeakMb", JsValue(r1(mem_.peak_mb()))},
+                                {"gpuUsedMb", JsValue(r1(now.gpuUsedMb))},
+                                {"gpuTotalMb", JsValue(r1(now.gpuTotalMb))}})},
+      {"ramPeakMb", JsValue(r1(ram_peak_mb()))}};
+}
+
+JsObject Core::pick(const JsObject& o) {
+  Args a(o, "pick", {"camera", "frame", "width", "height", "x", "y"});
+  need_scene("pick");
+  const SdfPath cam = camera(a.str("camera"), "pick");
+  const int f = a.whole("frame"), w = a.whole("width"), h = a.whole("height");
+  check_frame(f, "pick.frame");
+  const double x = a.num("x"), y = a.num("y");
+  if (x < 0 || y < 0 || x >= w || y >= h) throw Error("pick.x/y: the point is outside the " +
+                                                      std::to_string(w) + "x" + std::to_string(h) + " picture");
+  GfVec3d point;
+  const SdfPath hit = hydra().pick(cam, f, w, h, x, y, &point);
+  if (hit.IsEmpty()) return JsObject{{"ok", JsValue(true)}, {"hit", JsValue(false)}};
+  const GfVec3d eye =
+      UsdGeomCamera(stage_->GetPrimAtPath(cam)).GetCamera(UsdTimeCode(f)).GetTransform().ExtractTranslation();
+  return JsObject{{"ok", JsValue(true)}, {"hit", JsValue(true)}, {"prim", JsValue(hit.GetString())},
+                  {"item", JsValue(item_of(stage_, hit))}, {"material", JsValue(material_of(stage_, hit))},
+                  {"point", vec3(point)}, {"distance", JsValue((point - eye).GetLength())}};
+}
+
+JsObject Core::save(const JsObject& o) {
+  Args a(o, "save", {"file", "flatten"});
+  need_scene("save");
+  const std::string file = a.str("file");
+  save_stage(stage_, file, a.flag("flatten", false));
+  return JsObject{{"ok", JsValue(true)}, {"file", JsValue(file)}};
+}
+
+JsObject Core::info() {
+  JsArray renderers;
+  for (const auto& n : hydra().available()) renderers.push_back(JsValue(n));
+  JsObject vmap;
+  for (const auto& [d, vs] : color_.views()) {
+    JsArray arr;
+    for (const auto& v : vs) arr.push_back(JsValue(v));
+    vmap[d] = JsValue(arr);
+  }
+  return JsObject{{"ok", JsValue(true)}, {"renderers", JsValue(renderers)}, {"display", JsValue(color_.display())},
+                  {"views", JsValue(vmap)}, {"gpu", JsValue(hydra().gl_renderer())},
+                  {"adapter", JsValue(mem_.adapter())}, {"usd", JsValue(int(PXR_VERSION))},
+                  {"ocio", JsValue(color_.config())}};
+}
+
+}  // namespace r3d
