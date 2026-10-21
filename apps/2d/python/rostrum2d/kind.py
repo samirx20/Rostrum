@@ -13,12 +13,12 @@ from __future__ import annotations
 import rostrum_paint
 from rostrum_core import DocKind, Registry
 
-from . import fields as F
+from . import fields as F, pathdata
 
 OWNED = ["effects", "masks", "keys"]
 LISTS = {"doc": ["comps"], "comp": ["layers"], "group": ["layers", *OWNED], "drawing": ["frames", *OWNED],
          "frame": rostrum_paint.CANVAS_LISTS, **rostrum_paint.LISTS,
-         **{t: OWNED for t in ("shape", "text", "image")},
+         **{t: OWNED for t in ("shape", "text", "image", "video", "path")},
          **{t: ["keys"] for t in (*F.EFFECTS, "mask")}}
 HOLDS = {"comps": ("comp",), "layers": F.LAYERS, "effects": F.EFFECTS, "masks": ("mask",), "keys": ("key",),
          "frames": ("frame",), **rostrum_paint.HOLDS}
@@ -73,6 +73,11 @@ def check(data: dict) -> list[str]:
                 stack.append(child)
         if item.get("type") in F.ANIMATED_OWNERS:
             _check_keys(item, problems)
+        if item.get("type") == "path":
+            try:
+                pathdata.commands(item["d"])
+            except ValueError as e:
+                problems.append(f'{item["id"]}.d: {e}')
         if item.get("type") == "drawing":
             ats = [f["at"] for f in item["frames"]]
             if ats != sorted(set(ats)):
@@ -85,3 +90,4 @@ KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts,
 
 rostrum_paint.register(REGISTRY, canvas_types=("frame",))
 from . import ops_draw, ops_items, ops_keys  # noqa: E402,F401  (they register on REGISTRY)
+from . import ops_path  # noqa: E402,F401  (vector paths, booleans)

@@ -29,6 +29,9 @@ class FakeEngine:
     def still(self, t, png):
         QImage(4, 4, QImage.Format.Format_RGB32).save(str(png))
 
+    def pixels(self, t):
+        return memoryview(bytearray(4 * 4 * 4)), 4, 4, 16
+
     def close(self):
         pass
 

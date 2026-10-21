@@ -23,7 +23,7 @@ import math
 from rostrum_core import ids
 from rostrum_core.errors import RostrumError, codes, did_you_mean
 
-from . import fields as F
+from . import fields as F, pathdata
 from .kind import KIND, LISTS
 from .ops_keys import key_id
 
@@ -174,7 +174,8 @@ def run_source(source: str, name: str) -> dict:
     """Python source -> the document tree it builds. Any error is a loud BAD_ARGUMENT naming the line; nothing is merged."""
     b = Build(_reserved(source))
     scope = {"__builtins__": {**SAFE, "__import__": _import}, "math": math, "comp": b.comp,
-             **{t: (lambda id=None, _t=t, **v: b.layer(_t, id, **v)) for t in F.LAYERS}}
+             **{t: (lambda id=None, _t=t, **v: b.layer(_t, id, **v)) for t in F.LAYERS},
+             **pathdata.for_script(b.layer)}
     try:
         exec(compile(source, name, "exec"), scope)
     except Exception as e:
@@ -182,7 +183,7 @@ def run_source(source: str, name: str) -> dict:
         raise RostrumError(codes.BAD_ARGUMENT, "", f'script "{name}"', f"failed{line}: {type(e).__name__}: {e}",
                            ["comp(id, **fields)", "shape / text / image / group(id, **fields)",
                             "item.key(field, {time: value}, ease=)", "item.effect(type, id, **fields)",
-                            "item.mask(id, **fields)", "item.set(**fields)", "drawing.frame(at)", "frame.paint(id)",
+                            "item.mask(id, **fields)", "item.set(**fields)", "path(id, d=star(5, 100, 45))", "drawing.frame(at)", "frame.paint(id)",
                             "paint.stroke(points, **brush)", "frame.paintmask(points)"]) from e
     return b.root
 

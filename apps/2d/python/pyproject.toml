@@ -3,7 +3,7 @@ name = "rostrum2d"
 version = "0.1.0"
 description = "Rostrum2D's Python layer: document, operations, script layer, engine contract, MCP server"
 requires-python = ">=3.11"
-dependencies = ["rostrum_core"]
+dependencies = ["rostrum_core", "skia-pathops>=0.9"]   # skia-pathops: path booleans (BSD-3-Clause)
 
 [project.optional-dependencies]
 mcp = ["rostrum_core[mcp]"]

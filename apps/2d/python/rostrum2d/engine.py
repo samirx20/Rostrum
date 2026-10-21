@@ -11,6 +11,7 @@ The engine holds the scene and evaluates every frame itself (keys, easing, drawi
 from __future__ import annotations
 
 import json
+import mmap
 import os
 import subprocess
 import time
@@ -54,25 +55,26 @@ class Engine:
         self.proc = subprocess.Popen([str(exe), "serve"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                      stderr=self._log)
         self.pid, self.scene = self.proc.pid, None
+        self._shm = None                             # (name, mmap) of the engine's frame memory (pixels)
 
     def _request(self, req: dict, timeout_s: float = 60.0, progress=None) -> dict:
         t0 = time.perf_counter()
         try:
             self.proc.stdin.write((json.dumps(req) + "\n").encode("utf-8"))
             self.proc.stdin.flush()
-            line = self.proc.stdout.readline()
-            while line.startswith(b'{"progress"'):         # export's per-frame progress lines
-                if progress:
-                    p = json.loads(line)
-                    progress(p["progress"], p["of"])
+            while True:
                 line = self.proc.stdout.readline()
+                if not line:
+                    raise EngineError(f"2D engine (pid {self.pid}) ended without a reply; log {self.log_path}")
+                out = json.loads(line)
+                if set(out) != {"progress", "of"}:           # export's per-frame progress lines (keys in any order)
+                    break
+                if progress:
+                    progress(out["progress"], out["of"])
         except OSError as e:
             raise EngineError(f"2D engine (pid {self.pid}) stopped: {e}; log {self.log_path}") from e
-        if not line:
-            raise EngineError(f"2D engine (pid {self.pid}) ended without a reply; log {self.log_path}")
         if time.perf_counter() - t0 > timeout_s:
             raise EngineError(f"2D engine took over {timeout_s} s for {next(iter(req))}")
-        out = json.loads(line)
         if "error" in out:
             raise EngineError(f"2D engine refused {next(iter(req))}: {out['error']}")
         out["ms"] = (time.perf_counter() - t0) * 1000
@@ -97,6 +99,20 @@ class Engine:
             raise EngineError(f"2D engine said done but wrote no file: {png}")
         return out
 
+    def pixels(self, t: float) -> tuple[memoryview, int, int, int]:
+        """The frame at `t` as straight-alpha RGBA8 in the engine's shared memory (no PNG, no pipe; Windows):
+        (view, width, height, stride). The view is valid until the frame after next is asked for; copy it."""
+        self._props()
+        shm = self._request({"frame": {"t": t, "pixels": True}})["shm"]
+        if shm["format"] != "rgba8":
+            raise EngineError(f"pixels: the engine sent {shm['format']}; the canvas reads rgba8")
+        if self._shm is None or self._shm[0] != shm["name"]:   # a new block when the frame size changes
+            if self._shm is not None:
+                self._shm[1].close()
+            self._shm = (shm["name"], mmap.mmap(-1, shm["size"], tagname=shm["name"], access=mmap.ACCESS_READ))
+        view = memoryview(self._shm[1])[shm["offset"]:shm["offset"] + shm["bytes"]]
+        return view, shm["width"], shm["height"], shm["stride"]
+
     def video(self, mp4: Path, start: float = 0.0, end: float | None = None, progress=None) -> dict:
         p = self._props()
         fps, end = p["fps"], p["duration"] if end is None else end
@@ -110,6 +126,9 @@ class Engine:
         return {"file": str(mp4), "frames": out["frames"], "fps": fps, "timing": out["timing"]}
 
     def close(self):
+        if self._shm is not None:
+            self._shm[1].close()
+            self._shm = None
         if self.proc.poll() is None:
             self.proc.stdin.close()
             try:

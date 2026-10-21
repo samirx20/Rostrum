@@ -97,5 +97,10 @@ Panel {
             onReleased: { if (moving) backend.endDrag(); moving = false }
             onCanceled: { if (moving) backend.endDrag(); moving = false }
         }
+        PenOverlay {  // Design page: the pen tool and the selected path's points
+            anchors.fill: parent
+            visible: backend.page === "design"
+            fit: well.fit; ox: frame.x; oy: frame.y
+        }
     }
 }
