@@ -46,6 +46,9 @@ bottom (full)  Timeline: the shot's frames, the playhead, play, and the keys of 
 
 - **Every change is an operation** in the document's one history, recorded as the person: an edit, a key mark,
   a key drag. A drag (a number scrub, a key drag) is one `doc.gesture` = one undo step. Ctrl+Z / Ctrl+Shift+Z.
+- **Viewport bar** (top right of the viewport): Shot camera, Exposure, Studio light (only while the studio lights the view),
+  Scene lights, Contact shadows with its strength (only while on; H20), Depth of field (only through a shot camera whose
+  depth of field is on; H20).
 - **Screen state is not the document:** selection, playhead, folding, the viewport's camera and light settings.
 - **Rule of individuality:** controls that don't apply are absent, never greyed out (the inspector from
   `valid_when`; Render turns into "Rendering frame n…" while it runs).

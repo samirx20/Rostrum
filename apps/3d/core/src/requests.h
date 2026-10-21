@@ -11,6 +11,7 @@
 #include "image_out.h"
 #include "shm.h"
 #include "stage_build.h"
+#include "view_post.h"
 
 namespace r3d {
 
@@ -37,6 +38,7 @@ class Core {
   bool loaded_ = false;
   BuildResult built_;
   std::unique_ptr<Shm> shm_;  // the live viewport's pictures
+  std::unique_ptr<ViewPost> post_;  // after hydra_: released while its GL context is still there
 };
 
 }  // namespace r3d

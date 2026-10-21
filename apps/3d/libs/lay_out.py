@@ -60,9 +60,9 @@ FROM_CYCLES = ["python313", "OpenImageDenoise_device_cpu", "vcruntime140", "vcru
 
 # What apps\3d\core\CMakeLists.txt names (include folders and .lib files), relative to the bundle.
 SDK_DIRS = ["usd/include", "tbb/include", "epoxy/include", "python/313/include", "python/313/libs", "OpenImageIO/include",
-            "imath/include", "openexr/include", "fmt/include"]
+            "imath/include", "openexr/include", "fmt/include", "opencolorio/include"]
 SDK_FILES = ["usd/lib/usd_ms.lib", "tbb/lib/tbb.lib", "tbb/lib/tbb12.lib", "epoxy/lib/epoxy.lib", "OpenImageIO/lib/OpenImageIO.lib",
-             "OpenImageIO/lib/OpenImageIO_Util.lib"]
+             "OpenImageIO/lib/OpenImageIO_Util.lib", "opencolorio/lib/OpenColorIO.lib"]
 
 SKIP_DIRS = {"python", "__pycache__"}
 SKIP_SUFFIX = {".pyc", ".h", ".hpp"}

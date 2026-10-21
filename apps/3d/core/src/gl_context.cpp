@@ -73,25 +73,32 @@ std::string GlContext::renderer() const {
 
 void GlContext::finish() const { glFinish(); }
 
+unsigned Framebuffer::texture(int inner, unsigned format, unsigned type) const {
+  unsigned t = 0;
+  glGenTextures(1, &t);
+  glBindTexture(GL_TEXTURE_2D, t);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexImage2D(GL_TEXTURE_2D, 0, inner, w_, h_, 0, format, type, nullptr);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  return t;
+}
+
 Framebuffer::Framebuffer(int width, int height) : w_(width), h_(height) {
   glGenFramebuffers(1, &fbo_);
   glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
-  glGenRenderbuffers(1, &color_);
-  glBindRenderbuffer(GL_RENDERBUFFER, color_);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA32F, w_, h_);
-  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, color_);
-  glGenRenderbuffers(1, &depth_);
-  glBindRenderbuffer(GL_RENDERBUFFER, depth_);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w_, h_);
-  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depth_);
+  color_ = texture(GL_RGBA32F, GL_RGBA, GL_FLOAT);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color_, 0);
+  depth_ = texture(GL_DEPTH24_STENCIL8, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depth_, 0);
   if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
     throw Error("gl: the " + std::to_string(w_) + "x" + std::to_string(h_) + " float framebuffer is incomplete");
 }
 
 Framebuffer::~Framebuffer() {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glDeleteRenderbuffers(1, &depth_);
-  glDeleteRenderbuffers(1, &color_);
+  glDeleteTextures(1, &depth_);
+  glDeleteTextures(1, &color_);
   glDeleteFramebuffers(1, &fbo_);
 }
 

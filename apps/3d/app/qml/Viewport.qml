@@ -95,6 +95,26 @@ Rectangle {
                 checked: viewport.sceneLights
                 onToggled: (v) => viewport.setSceneLights(v)
             }
+            Label { text: "Contact shadows" }
+            Toggle {
+                anchors.verticalCenter: parent.verticalCenter
+                checked: viewport.aoOn
+                onToggled: (v) => viewport.setAoOn(v)
+            }
+            Slider {
+                visible: viewport.aoOn
+                width: 96; anchors.verticalCenter: parent.verticalCenter
+                from: 0.05; to: 2; step: 0.05; value: viewport.aoStrength
+                onScrubbed: (v) => viewport.setAoStrength(v)
+                onEdited: (v) => viewport.setAoStrength(v)
+            }
+            Label { text: "Depth of field"; visible: !vp.free && viewport.cameraDof }
+            Toggle {
+                visible: !vp.free && viewport.cameraDof   // only a scene camera with depth of field on makes it matter
+                anchors.verticalCenter: parent.verticalCenter
+                checked: viewport.dof
+                onToggled: (v) => viewport.setDof(v)
+            }
             Button {
                 visible: vp.free && viewport.hasShot
                 anchors.verticalCenter: parent.verticalCenter

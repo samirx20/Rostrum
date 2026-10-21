@@ -23,7 +23,8 @@ def open_engine():
 
 
 class ViewRenderer(PictureWorker):
-    ready = Signal(int, float, bool)  # serial of the newest picture, its time in ms, whether the scene's dome lit it
+    ready = Signal(int, float, bool, bool)  # serial of the newest picture, its time in ms, whether the scene's dome lit it,
+    #                                        whether the camera looked through has depth of field
     picked = Signal(str)         # item id under the click, "" for empty space
     notice = Signal(str)         # the engine was started again (never silent)
 
@@ -55,7 +56,8 @@ class ViewRenderer(PictureWorker):
             image = image_from_pixels(*pixels)
             if image.isNull():
                 raise RuntimeError("the engine's picture could not be read from its shared memory")
-            self.ready.emit(self.publish(image), float(reply.get("ms", 0.0)), bool(reply.get("sceneDome", False)))
+            self.ready.emit(self.publish(image), float(reply.get("ms", 0.0)), bool(reply.get("sceneDome", False)),
+                            bool(reply.get("cameraDof", False)))
         for line in eng.take_notices():
             self.notice.emit(line)
 

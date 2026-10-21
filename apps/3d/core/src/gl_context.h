@@ -21,7 +21,8 @@ class GlContext {
   void* rc_ = nullptr;
 };
 
-// RGBA32F colour + depth/stencil, bound as the draw framebuffer by bind().
+// RGBA32F colour + depth/stencil textures (the live viewport's passes read both: view_post.h), bound as the draw
+// framebuffer by bind_and_clear().
 class Framebuffer {
  public:
   Framebuffer(int width, int height);
@@ -32,8 +33,11 @@ class Framebuffer {
   int height() const { return h_; }
   void bind_and_clear() const;          // clear to transparent black, depth 1
   std::vector<float> read_rgba() const;  // top row first
+  unsigned color_texture() const { return color_; }
+  unsigned depth_texture() const { return depth_; }
 
  private:
+  unsigned texture(int inner, unsigned format, unsigned type) const;
   int w_, h_;
   unsigned fbo_ = 0, color_ = 0, depth_ = 0;
 };
