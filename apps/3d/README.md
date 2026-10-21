@@ -9,8 +9,9 @@ Modelling, painting, materials, lighting, animation, simulation and rendering, b
 
 ## Build and run (H12)
 
-- **Build** (about a minute, through the lock): `pwsh -File C:\Users\Sam\.rostrum\waves\heavy.ps1 run "hem: 3d core build" build cmd.exe /c <worktree>\apps\3d\core\build.bat` → `apps\3d\core\.build\install\rostrum3d-core.exe`.
-- **Libraries at run time:** the bundle (`ROSTRUM3D_LIBS`, default H1's download in `proofs\3d-product\.build\cycles\lib\windows_x64`), Cycles' Hydra plug-in (`proofs\3d-product\.build\cycles\install\hydra`) and our stylized plug-in (`proofs\3d-stylized\.build\install`). `rostrum3d/engine.py` sets `PATH` and `PXR_PLUGINPATH_NAME` for the child process, never loading the bundle's GPL FFmpeg or its Python. Moving these out of `proofs\` into one library folder is a next step.
+- **Build** (needs the libraries below first; about a minute, through the lock): `pwsh -File C:\Users\Sam\.rostrum\waves\heavy.ps1 run "hem: 3d core build" build cmd.exe /c <worktree>\apps\3d\core\build.bat` → `apps\3d\core\.build\install\rostrum3d-core.exe`.
+- **Libraries (one folder, outside `proofs\`):** `C:\Users\Sam\.rostrum\libs\3d\5.2.2-cycles-a456b76\` (about 262 MB, about 3,500 files). Make it once with `python -I apps\3d\libs\lay_out.py` — it copies from the proofs' downloads (nothing is downloaded), only what is missing or changed, so a second run takes seconds; `--check` shows what it would copy; it stops loudly if anything is missing. Inside: `runtime\` (the DLLs the engine really loads, Blender's USD resources, Cycles' Hydra plug-in with its GPU kernels, our stylized plug-in), `sdk\` (headers and `.lib` files the core builds against) and `VERSION.json` (which library versions, which commit of our stylized plug-in, date, size). The GPL FFmpeg is never copied. A different folder: set `ROSTRUM3D_LIBS` (run time) or `ROSTRUM3D_SDK` (build).
+- **How the engine finds them:** `rostrum3d/runtime.py` puts `runtime\bin` and `runtime\usd\lib` on `PATH` and sets `PXR_PLUGINPATH_NAME` for the child process; a missing folder is a clear error that says to run `lay_out.py`.
 - **MCP server:** `python -m rostrum3d.mcp --project <folder> --item <id>` (or the `rostrum-3d` script). Tools: the shared ones plus `look_frame`, `look_sheet`, `look_at`, `render_still`, `render_video`, `inspect_usd_file`, `inspect_shot`. Agents' guide: `python/rostrum3d/guides/agents.md`.
 
 ## Layout
@@ -33,3 +34,7 @@ Modelling, painting, materials, lighting, animation, simulation and rendering, b
 The document, its operations, the script layer and the compiler to the engine's scene description: see [`DOCUMENT.md`](DOCUMENT.md) and [`ENGINE_CONTRACT.md`](ENGINE_CONTRACT.md). Install: `uv pip install --python <worktree>\.venv\Scripts\python.exe -e apps\3d\python`.
 
 **Shared-layer request (for Team Sam):** the key model's easing table and evaluator (`rostrum2d/easing.py`, `rostrum2d/evaluate.py`) and the key operations (`key.add`, `key.remove`, `value.set`, `key.clear`, now written once per app in `rostrum2d/ops_keys.py` and `rostrum3d/ops_keys.py`) should move to `rostrum_core`, so every app shares one copy. Until then `rostrum3d` imports the easing and evaluator from `rostrum2d`.
+
+## Attribution rows
+
+Nothing new: the library folder holds the same libraries already recorded in `ATTRIBUTIONS.md` (rows from `proofs/3d-app-start/README.md` and `proofs/3d-product/README.md`): Blender's library bundle `v5.2.2` (commit 60d6e96: OpenUSD, OpenImageIO, OpenColorIO, OpenEXR, Imath, MaterialX, OpenVDB, TBB, Embree, OpenImageDenoise, OpenJPH, libaom, SYCL runtime, epoxy, fmt) and Cycles (commit a456b76). Its GPL FFmpeg is never copied into the folder. Cycles' `license\` folder is copied next to its plug-in (`runtime\hydra\cycles\license`). The Visual C++ runtime DLLs and `python313.dll` (PSF) are copied as fallbacks.
