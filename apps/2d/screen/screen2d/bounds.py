@@ -3,30 +3,15 @@ No Qt.
 
 A layer's box: its anchor sits at (x, y) inside its parent (a group's layers are placed from the group's top-left
 corner); the box is w x h times scale. Rotation and tilt are not taken into account yet (the box stays upright).
-A text has no size in the document, so its box is an ESTIMATE (rostrum2d/sizes.py) until the engine reports
-laid-out boxes. A layer in an auto layout is where the layout puts it (rostrum2d/layout.py). A text on a path has the engine's box for it: from its origin to the path's far
-corner (scene/letters.rs `Placed`).
+A layer's size is rostrum2d/sizes.py's (a text's is the engine's laid-out box, rostrum2d/textsize.py, on a path too).
+A layer in an auto layout is where the layout puts it (rostrum2d/layout.py).
 """
 from __future__ import annotations
 
 from rostrum2d import fields as F
-from rostrum2d import pathdata
 from rostrum2d.evaluate import resolve
 from rostrum2d.layout import solve
 from rostrum2d.sizes import own_size
-
-TEXT_ADVANCE = 0.55        # average character width per px of font size (estimate)
-
-
-def size_of(layer: dict, p: dict) -> tuple[float, float]:
-    if layer["type"] != "text":
-        return p["w"], p["h"]
-    if p.get("path"):
-        _, _, x1, y1 = pathdata.bounds(pathdata.commands(p["path"]))
-        return max(x1, 0.0), max(y1, 0.0)
-    lines = str(p["body"]).split("\n") or [""]
-    w = p["boxWidth"] or max(len(line) for line in lines) * p["size"] * TEXT_ADVANCE
-    return w, len(lines) * p["size"] * p["lineHeight"]
 
 
 def boxes(comp: dict, t: float) -> list[dict]:
@@ -39,7 +24,7 @@ def boxes(comp: dict, t: float) -> list[dict]:
             p = {**resolve(lay, t), **placed.get(lay["id"], {})}
             if not (p["start"] <= t < p["end"]):
                 continue
-            w, h = size_of(lay, p)
+            w, h = own_size(lay["type"], p)
             sx, sy = p["scale"] * p["scaleX"], p["scale"] * p["scaleY"]
             left = ox + p["x"] - p["anchorX"] * w * sx
             top = oy + p["y"] - p["anchorY"] * h * sy

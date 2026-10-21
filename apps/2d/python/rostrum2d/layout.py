@@ -2,7 +2,7 @@
 solver: the scene bake (layoutbake.py), the screen's boxes and the agents' geometry all read `solve`.
 
 The rules, like a design tool's auto layout (fields: layout_fields.py):
-- Sizes are the layers' own boxes (w × h; a text's estimated box, sizes.py), before scale and turn: animating
+- Sizes are the layers' own boxes (w × h; a text's laid-out box from the engine, sizes.py), before scale and turn: animating
   scale is a pop that doesn't push the others; animating w or h re-flows them.
 - Row / column: layers one after another, `gap` apart, inside `padding`. `justify` spreads them along the line,
   `align` places them across it (stretch fills it). `layoutGrow` shares out the room left along the line. `wrap`
@@ -18,7 +18,9 @@ from __future__ import annotations
 
 import math
 
+from . import textsize
 from .evaluate import resolve
+from .exprbake import items_of
 from .layout_fields import SIZED
 from .sizes import own_size
 
@@ -87,6 +89,7 @@ def solve(comp: dict, t: float, props=None) -> dict[str, dict]:
             for child in item.get("layers", []):
                 place(child, measure(child))
 
+    textsize.prime([p_of(i) for i in items_of(comp).values() if i["type"] == "text"])    # the frame's texts, one engine trip
     for layer in comp.get("layers", []):
         size = measure(layer)
         if has_layout(layer) and size != own_size(layer["type"], p_of(layer)):

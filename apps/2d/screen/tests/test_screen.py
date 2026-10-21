@@ -1,6 +1,6 @@
 """What would break silently on the 2D screen: an inspector edit on an animated field must key it at the playhead
 (never change the hidden still value); a canvas drag or key drag is one undo step; the key mark toggles keys.
-The engine is replaced by a stand-in that writes a blank frame (pictures are checked by looking)."""
+The engine is replaced by a stand-in that writes a blank frame and sizes texts (pictures are checked by looking)."""
 import sys
 from pathlib import Path
 
@@ -9,7 +9,7 @@ from PySide6.QtGui import QGuiApplication, QImage
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from rostrum_core import Document  # noqa: E402
-from rostrum2d import KIND, run_source  # noqa: E402
+from rostrum2d import KIND, run_source, textsize  # noqa: E402
 from rostrum_core.keys import keys_of  # noqa: E402
 from screen2d import frames  # noqa: E402
 from screen2d.bridge2d import Bridge2D  # noqa: E402
@@ -35,6 +35,9 @@ class FakeEngine:
     def pixels(self, t):
         return memoryview(bytearray(4 * 4 * 4)), 4, 4, 16
 
+    def measure(self, items):
+        return {i["id"]: (0.5 * i["size"] * len(i["body"]), i["size"] * i["lineHeight"]) for i in items}
+
     def close(self):
         pass
 
@@ -43,6 +46,8 @@ class FakeEngine:
 def bridge(monkeypatch):
     QGuiApplication.instance() or QGuiApplication([])
     monkeypatch.setattr(frames, "open_engine", FakeEngine)
+    monkeypatch.setattr(textsize, "open_engine", FakeEngine)     # the texts' boxes, measured by the stand-in
+    monkeypatch.setattr(textsize, "_own", None)
     doc = Document.new(KIND)
     doc.run_script("s.py", run_source(SRC, "s.py"))
     b = Bridge2D(doc)
