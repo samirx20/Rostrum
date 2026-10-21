@@ -94,11 +94,12 @@ def _env(p, v, where):
 
 
 def time(name, **kw) -> Value:
-    return Value(name, "number", rule=_time, schema=TIME_SCHEMA, unit="s", **kw)
+    return Value(name, "number", rule=_time, schema=TIME_SCHEMA, unit="s", step=0.01, **kw)
 
 
 def length(name, **kw) -> Value:
-    return Value(name, "number", rule=lambda p, v, w: _time(p, v, w, True), schema=LENGTH_SCHEMA, unit="s", **kw)
+    return Value(name, "number", rule=lambda p, v, w: _time(p, v, w, True), schema=LENGTH_SCHEMA, unit="s", step=0.01,
+                 **kw)
 
 
 def pitch(name, **kw) -> Value:
@@ -116,7 +117,7 @@ def step(lo, hi, unit="", integer=False) -> float:
     if integer:
         return 1
     span = (hi - lo) if lo is not None and hi is not None else 100
-    s = min(1.0, 10 ** (math.floor(math.log10(span)) - 2)) if span > 0 else 0.01
+    s = min(1.0, 10 ** (math.floor(math.log10(span) + 0.31) - 2)) if span > 0 else 0.01
     return min(s, 0.01) if unit == "s" else s
 
 

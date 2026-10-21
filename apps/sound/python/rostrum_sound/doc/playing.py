@@ -70,11 +70,13 @@ INSTRUMENT = [
     *[N(n, lo, hi, "Instrument", unit, imp, SYNTH, whole, default) for n, lo, hi, default, unit, imp, whole
       in SYNTH_FIELDS],
 ]
-# The track's CC-style expression settings (its dynamics / vibrato lanes are automation lanes).
+# The track's CC-style expression settings (its dynamics / vibrato lanes are automation lanes); shown only
+# while the track has a vibrato lane (the kind's fact, kind.py).
+HAS_VIBRATO = {"fact": "vibratoLane"}
 EXPRESSION = [
-    N("vibratoRate", 0.1, 20, "Expression", "Hz", "secondary", default=5.5, label="Vibrato rate",
+    N("vibratoRate", 0.1, 20, "Expression", "Hz", "secondary", when=HAS_VIBRATO, default=5.5, label="Vibrato rate",
       help="Speed of the vibrato lane's wobble."),
-    N("vibratoDepth", 0, 200, "Expression", "cents", "secondary", default=25, label="Vibrato depth",
+    N("vibratoDepth", 0, 200, "Expression", "cents", "secondary", when=HAS_VIBRATO, default=25, label="Vibrato depth",
       help="How wide the vibrato lane's wobble is at 1."),
 ]
 VIBRATO = [N("rate", 0.1, 20, "Vibrato", "Hz"), N("depth", 0, 200, "Vibrato", "cents"),
@@ -82,10 +84,10 @@ VIBRATO = [N("rate", 0.1, 20, "Vibrato", "Hz"), N("depth", 0, 200, "Vibrato", "c
 # A note's playing fields. Touch and art depend on the note's track, which a field condition can't see (the
 # shared facts read only the item): the document check refuses them where they don't apply.
 NOTE = [
-    Param.text("art", group="Playing", importance="secondary", label="Articulation",
+    Param.text("art", group="Playing", importance="deep", label="Articulation",
                help="One of the track's articulations; left out = its main SFZ file."),
     *touch(track=False, imp="deep", group="Playing"),
-    V.curve("dynamics", (0, 1), (0, 2), group="Playing", importance="secondary",
+    V.curve("dynamics", (0, 1), (0, 2), group="Playing", importance="deep",
             help="Swell / fade across the note: [[fraction of its length, level 0 … 2], …]."),
     V.record("vibrato", VIBRATO, "vibrato", group="Playing", importance="deep",
              help='Steady vibrato: {"rate": Hz, "depth": cents, "delay": s}.'),

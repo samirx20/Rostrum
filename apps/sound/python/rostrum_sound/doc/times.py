@@ -1,7 +1,8 @@
 """Times in a Sound document: the one place they are read and turned into seconds.
 
 A time is seconds (a number), `{"beat": n}` (beats from the start), or a marker reference `"#drop"`,
-`"#drop+0.5"`, `"#drop-1"` (seconds after / before the marker named "drop"). A length is seconds or
+`"#drop+0.5"`, `"#drop-1"` (seconds after / before the marker named "drop"; a trailing "-<number>" is always
+an offset, so "#big-hit-1" is one second before "big-hit"). A length is seconds or
 `{"beats": n}`. Marker references are resolved here (the engine never sees them); beats are left to the
 engine's tempo map, except where seconds are needed (ids, order checks, marker references).
 """
@@ -11,7 +12,7 @@ import re
 
 from rostrum_core.errors import RostrumError, codes
 
-REF = re.compile(r"^#([A-Za-z0-9_.\-]+)\s*(?:([+-])\s*(\d+(?:\.\d+)?))?$")
+REF = re.compile(r"^#([A-Za-z0-9_.\-]+?)\s*(?:([+-])\s*(\d+(?:\.\d+)?))?$")
 
 
 def problem(value, length=False) -> str | None:
