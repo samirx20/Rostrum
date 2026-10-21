@@ -38,6 +38,7 @@ async def call(server: list[str], name: str, tool: str, args: dict) -> int:
 
 
 def main(argv=None) -> int:
+    sys.stdout.reconfigure(encoding="utf-8")       # replies carry non-ASCII (─, →); Windows consoles default to cp1252
     argv = list(sys.argv[1:] if argv is None else argv)
     if "--" not in argv or "::" not in argv:
         print(__doc__)

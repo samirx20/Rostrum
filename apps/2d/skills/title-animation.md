@@ -39,6 +39,13 @@ head.mask("reveal", x=0, y=0, w=0, h=300).key("w", {0.3: 0, 1.0: 1400})
 
 Check the layer's own box size with `look_at` at a time when it is visible (it reports the approximate box).
 
+A mask travels with its layer: move the layer and the mask moves too. For a reveal where the layer moves *through*
+a fixed edge (a word rising out of a line), put the layer in a group with `clip=True` and let the group's box be the
+edge; animate the layer inside it. Masks cut before effects, so a glow can't spill past a mask, and a clipped group
+cuts its children's glow too: grow the group's box once the edge no longer needs to hide anything.
+
+`look_frame` draws 960 px wide unless you pass `width: 1920`; check spacing and soft edges at full size.
+
 ## 4. Per-word entrances: one layer per word, one loop
 
 For staggered type, make a text layer per word and drive start times from the loop index. Positions come from your layout
