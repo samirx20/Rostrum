@@ -1,0 +1,117 @@
+"""Cycles shader graphs for the still life, written as UsdShade (info:id = "cycles_<node>").
+
+Each material reads paint/textures/<name>.png (albedo, sRGB) and, when present,
+<name>_height.png (bump, raw) and <name>_rough.png (roughness, raw), <name>_normal.png
+(tangent-space normal map, raw). The background card is emissive (a matte painting, not lit).
+--ramp mode swaps real shading for a key-light colour ramp built from Cycles nodes:
+lit = max(N.L, 0) * (1 - raycast(P, L).is_hit)  ->  rgb_ramp  ->  multiply albedo  ->  emission.
+"""
+import os, re
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+TEX = os.path.normpath(os.path.join(HERE, "..", "paint", "textures"))
+
+SURFACE = {  # principled_bsdf extras per material; bump = (strength, distance cm)
+    "Table": dict(bsdf=dict(roughness=0.55), bump=(0.6, 0.15)),
+    "Cloth": dict(bsdf=dict(roughness=0.95, sheen_weight=0.4), bump=(0.4, 0.08)),
+    "Jug":   dict(bsdf=dict(roughness=0.2, coat_weight=0.4, coat_roughness=0.08), bump=(0.25, 0.04)),
+    "Bowl":  dict(bsdf=dict(roughness=0.35), bump=(0.3, 0.05)),
+    "Pear":  dict(bsdf=dict(roughness=0.5, subsurface_weight=0.15, subsurface_scale=0.4),
+                  bump=(0.35, 0.03)),
+}
+# key-light ramp (dark -> lit), 16 steps; painted-light colours, multiplied with the albedo
+RAMP = [(0.20, 0.22, 0.42)] * 6 + [(0.55, 0.45, 0.55)] * 2 + [(1.25, 1.0, 0.78)] * 8
+
+
+def tex_path(name):
+    return os.path.join(TEX, name + ".png").replace("\\", "/")
+
+
+def fmt(v):
+    if isinstance(v, bool):
+        return "bool", "true" if v else "false"
+    if isinstance(v, (int, float)):
+        return "float", repr(float(v))
+    if isinstance(v, str) and v.startswith("@"):
+        return "asset", v
+    if isinstance(v, str):
+        return "token", f'"{v}"'
+    if isinstance(v, tuple):
+        return ("color3f" if len(v) == 3 else "float2"), "(" + ", ".join("%.5g" % x for x in v) + ")"
+    if isinstance(v, list) and isinstance(v[0], tuple):
+        return "color3f[]", "[" + ", ".join("(%.5g, %.5g, %.5g)" % c for c in v) + "]"
+    return "float[]", "[" + ", ".join("%.5g" % x for x in v) + "]"
+
+
+def shader(mat, name, node, params=(), links=()):
+    """links: (input, 'Node.output'). Outputs are declared by the consumers' connections."""
+    lines = [f'        def Shader "{name}"', "        {", f'            uniform token info:id = "cycles_{node}"']
+    for k, v in dict(params).items():
+        t, s = fmt(v)
+        lines.append(f"            {t} inputs:{k} = {s}")
+    for k, src in links:
+        n, o = src.split(".")
+        lines.append(f"            float inputs:{k}.connect = </Looks/{mat}/{n}.outputs:{o}>")
+    return "\n".join(lines + ["        }"])
+
+
+def image(mat, name, file, raw):
+    if not os.path.exists(file):
+        raise SystemExit(f"missing texture: {file}")
+    return shader(mat, name, "image_texture",
+                  {"filename": f"@{file}@", "colorspace": "Raw" if raw else "sRGB Encoded Rec.709 (sRGB)"})
+
+
+def material_usda(mat, ramp=False, checker=False, to_sun=(0, 1, 0)):
+    stem = "_checker" if checker else mat.lower()
+    nodes = [image(mat, "Albedo", tex_path(stem), raw=False)]
+    if mat == "Background":
+        nodes.append(shader(mat, "Out", "emission", {"strength": 1.0}, [("color", "Albedo.color")]))
+    elif ramp:
+        nodes += [shader(mat, "Geo", "geometry"),
+                  shader(mat, "Ray", "raycast", {"direction": to_sun, "length": 2000.0},
+                         [("position", "Geo.position")]),
+                  shader(mat, "NdotL", "vector_math", {"math_type": "dot_product", "vector2": to_sun},
+                         [("vector1", "Geo.normal")]),
+                  shader(mat, "Open", "math", {"math_type": "subtract", "value1": 1.0},
+                         [("value2", "Ray.is_hit")]),
+                  shader(mat, "Lit", "math", {"math_type": "multiply", "use_clamp": True},
+                         [("value1", "NdotL.value"), ("value2", "Open.value")]),
+                  shader(mat, "Ramp", "rgb_ramp", {"ramp": RAMP, "ramp_alpha": [1.0] * len(RAMP),
+                                                   "interpolate": False}, [("fac", "Lit.value")]),
+                  shader(mat, "Tint", "mix_color", {"blend_type": "multiply", "fac": 1.0},
+                         [("a", "Albedo.color"), ("b", "Ramp.color")]),
+                  shader(mat, "Out", "emission", {"strength": 1.0}, [("color", "Tint.result")])]
+    else:
+        spec = SURFACE[mat]
+        links = [("base_color", "Albedo.color")]
+        for kind, socket in [("rough", "roughness"), ("height", None), ("normal", None)]:
+            f = tex_path(f"{stem}_{kind}")
+            if checker or not os.path.exists(f):
+                continue
+            nodes.append(image(mat, kind.capitalize(), f, raw=True))
+            if socket:
+                links.append((socket, f"{kind.capitalize()}.color"))
+        names = {n.split('"')[1] for n in nodes}
+        if "Normal" in names:
+            nodes.append(shader(mat, "NormalMap", "normal_map", {"space": "tangent", "attribute": "st"},
+                                [("color", "Normal.color")]))
+        if "Height" in names:
+            s, d = spec["bump"]
+            nodes.append(shader(mat, "Bump", "bump", {"strength": s, "distance": d},
+                                [("height", "Height.color")]
+                                + ([("normal", "NormalMap.normal")] if "Normal" in names else [])))
+            links.append(("normal", "Bump.normal"))
+        elif "Normal" in names:
+            links.append(("normal", "NormalMap.normal"))
+        nodes.append(shader(mat, "Out", "principled_bsdf", spec["bsdf"], links))
+    out = "Out.Emission" if (mat == "Background" or ramp) else "Out.BSDF"
+    n, o = out.split(".")
+    used = set(re.findall(r"/(\w+)\.outputs:(\w+)>", "\n".join(nodes))) | {(n, o)}
+    for i, text in enumerate(nodes):  # declare every output something connects to
+        name = text.split('"')[1]
+        decl = [f"            token outputs:{oo}\n" for nn, oo in sorted(used) if nn == name]
+        nodes[i] = text[:-len("        }")] + "".join(decl) + "        }"
+    return (f'    def Material "{mat}"\n    {{\n'
+            f'        token outputs:cycles:surface.connect = </Looks/{mat}/{n}.outputs:{o}>\n'
+            + "\n".join(nodes) + "\n    }\n")
