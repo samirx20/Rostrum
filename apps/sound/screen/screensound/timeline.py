@@ -10,6 +10,7 @@ from functools import lru_cache
 
 from rostrum_sound import names, voice_lines
 from rostrum_sound.doc import keys as K
+from rostrum_sound.doc import markers as mk
 
 from . import lanes, music_map, timing
 
@@ -148,8 +149,7 @@ def markers(root: dict) -> list[dict]:
     """The named markers by time. `named` is true when a section of the same name starts at the marker: the
     section bar already says it, so the marker band draws no second tag (the line through the rows stays)."""
     starts = {(s["name"], round(s["t"], 4)) for s in music_map.sections(root)}
-    out = [{"id": m["id"], "name": m.get("name", m["id"]), "t": timing.sec(m.get("at", 0), root, m["id"])}
-           for m in root.get("markers", [])]
+    out = [{"id": m["id"], "name": name, "t": mk.time_of(root, name)} for name, m in mk.items(root)]
     return sorted(({**m, "named": (m["name"], round(m["t"], 4)) in starts} for m in out), key=lambda m: m["t"])
 
 
@@ -167,7 +167,7 @@ def roll(track: dict | None, root: dict, hue: str = HUES[0]) -> dict:
     """The piano roll of one track: its kind, the key range (notes: at least two octaves around what's there)
     or the drum rows, and its blocks."""
     if track is None:
-        return {"id": "", "name": "", "kind": "none", "blocks": [], "lo": 48, "hi": 72, "names": [], "drums": [], "hue": hue}
+        return {"id": "", "name": "", "kind": "none", "blocks": [], "lo": 48, "hi": 72, "rowNames": [], "drums": [], "hue": hue}
     bl = blocks(track, root)
     ks = [k for b in bl if b["type"] == "note" for k in b["keys"]] or [60]
     lo, hi = min(ks) - 4, max(ks) + 4
@@ -175,8 +175,10 @@ def roll(track: dict | None, root: dict, hue: str = HUES[0]) -> dict:
         mid = (lo + hi) // 2
         lo, hi = mid - 12, mid + 12
     lo, hi = max(0, lo), min(127, hi)
-    notes = [b["t"] for b in bl if b["type"] == "note"]
-    key = K.key_at(root, min(notes, default=0.0))      # the rows' names: the one speller, in the key the notes start in
-    names = [timing.name(k, key) for k in range(hi, lo - 1, -1)]
+    # The rows' names, by the one speller, once per key in force: [{t, names}] from time 0 (the key before the
+    # first change, or none) and at each key change. The screen reads the entry at the view's left edge.
+    spell = lambda key: [timing.name(k, key) for k in range(hi, lo - 1, -1)]   # noqa: E731
+    row_names = [{"t": 0.0, "names": spell(K.key_at(root, 0.0))}]
+    row_names += [{"t": c["t"], "names": spell(c["key"])} for c in music_map.key_changes(root) if c["t"] > 0]
     return {"id": track["id"], "name": track.get("name") or track["id"], "kind": kind_of(track), "blocks": bl,
-            "lo": lo, "hi": hi, "names": names, "drums": drums_of(track), "hue": hue}
+            "lo": lo, "hi": hi, "rowNames": row_names, "drums": drums_of(track), "hue": hue}

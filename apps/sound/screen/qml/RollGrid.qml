@@ -15,6 +15,12 @@ Item {
     readonly property real rowH: notes ? Math.max(12, viewHeight / count)
                                : roll.kind === "drums" ? Math.min(40, viewHeight / count) : viewHeight
     function rowAt(y) { var i = Math.floor(y / rowH); return notes ? roll.hi - i : roll.kind === "drums" ? i : 0 }
+    // The row names follow the key in force at the view's left edge: scrolling past a key change renames the keys.
+    readonly property var rowNames: {
+        var list = roll.rowNames, at = ruler.start + 1e-6, hit = list.length ? list[0].names : []
+        for (var i = 0; i < list.length; i++) if (list[i].t <= at) hit = list[i].names
+        return hit
+    }
     function black(k) { return [1, 3, 6, 8, 10].indexOf(k % 12) >= 0 }
     height: count * rowH
 
@@ -33,7 +39,7 @@ Item {
             Text {
                 visible: g.notes ? parent.key % 12 === 0 || g.rowH >= 16 && !g.black(parent.key) : true
                 x: Theme.gap; anchors.verticalCenter: parent.verticalCenter
-                text: g.notes ? g.roll.names[parent.index] : g.roll.drums[parent.index] || ""
+                text: g.notes ? g.rowNames[parent.index] : g.roll.drums[parent.index] || ""
                 color: g.notes && parent.key % 12 !== 0 ? Theme.fg4 : Theme.fg3
                 font.family: uiFont; font.pixelSize: Theme.label - (g.notes ? 1 : 0); font.features: { "tnum": 1 }
             }
