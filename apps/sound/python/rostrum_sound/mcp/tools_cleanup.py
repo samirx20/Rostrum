@@ -97,7 +97,8 @@ def register(tools: Tools):
         if stems:
             name = args.get("clip") or Path(next(iter(stems.values()))).stem
             r = listen.stems_check({k: _file(v, where) for k, v in stems.items()}, str(look / f"{name}-stems.png"),
-                                   {k: _file(v, where) for k, v in (args.get("reference") or {}).items()} or None)
+                                   {k: _file(v, where) for k, v in (args.get("reference") or {}).items()} or None,
+                                   args.get("clip"))
             facts["stems"] = r
             pngs.append(r["png"])
             worst = max(r["leakage"], key=lambda x: x["correlation"] or 0)

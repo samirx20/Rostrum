@@ -39,6 +39,27 @@ Steps (`screensound/steps.py`): `page`, `select`, `time`, `set`, `drag-note <id>
 `drag-marker`, `add-note`, `delete`, `mute`, `solo`, `undo`, `redo`, `play`, `render`, `wait <s>`, `more`,
 `commands`, `run`, `zoom`, `scroll`, `fit`, `lane`, `lane-point`, `lane-delete`, `picture`. Offscreen: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts`.
 
+## Mix page: loudness, delivery, export, ducks, cleaned takes
+
+- **Master loudness, live** (`loudness.py`, `MixLoudness.qml`, `LoudnessCurve.qml`): the short-term loudness (LUFS-S) and the
+  true peak follow the playhead, read from the series of the render that plays (preview ≡ export); the integrated loudness
+  is the whole mix's, from the engine. The curve shows the short-term series with the target as a dashed line. The first
+  3 s show "—" (the first short-term window ends at 3 s).
+- **Delivery target** (`delivery.py`: a small table of published specs with a source per row; streaming −14 / −1,
+  Apple Music −16 / −1, EBU R128 −23 / −1, ATSC A/85 −24 / −2, podcast −16 / −1). Only while the master's Normalize is
+  on: "Deliver to" sets `loudness` and `truePeak` in one `master.set`, and a Pass / Miss line compares the last render to the
+  master's own numbers (within ±1 LU, true peak under the ceiling).
+- **Render mix and stems** (`export.py`, `MixExport.qml`): the same versioned render as the MCP `render_mix`
+  (`handoff.render`, stems "all"), in the background on its own engine process; status, the `vNNN` folder and "Show folder".
+  Needs a project folder (`--doc`); without one it says so in red.
+- **Ducks** (`ducks.py`, `MixDucks.qml`, `DuckPanel.qml`): "+ Duck" on a track strip adds a duck under another track
+  (`duck.add`); its chip opens a panel: which tracks it is under (`duck.set` with the list) and the settings from `duck.set`'s
+  own params (depth, attack, release, hold, voice, lookahead behind More). A drag is one undo step.
+- **Make cleaned take** (`cleaning.py`, `CleanTakeBar.qml`, under the inspector): only while the selected clip has a cleanup
+  step and no cleaned take yet; runs `clean_clips.make_clips` (what `render_cleanup` runs) in the background, then re-renders.
+- A plug-in's own "Bypass" setting is not listed (our bypass switch is beside it).
+- Steps: `deliver <key>`, `export`, `duck-add <track> <under>`, `duck-open <id>`, `duck-set <param> <value>`.
+
 ## Recording
 
 Arm a track (round button on its header), press the red Record button or R: the mix plays from the playhead, the

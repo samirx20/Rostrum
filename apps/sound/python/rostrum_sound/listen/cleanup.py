@@ -88,7 +88,7 @@ def sdr(estimate, reference) -> float | None:
     return num(10 * np.log10(max(np.sum(r ** 2), 1e-12) / max(np.sum((r - e) ** 2), 1e-12)), 1)
 
 
-def stems_check(stems: dict, png=None, reference: dict | None = None) -> dict:
+def stems_check(stems: dict, png=None, reference: dict | None = None, clip: str | None = None) -> dict:
     """Each stem's level (dB RMS over the whole file, and its 90th-percentile frame), leakage = the correlation of
     every pair's 50 ms level envelopes (near 1 = they rise and fall together: one leaks into the other), and per
     stem the SDR against `reference` stems when given."""
@@ -113,5 +113,5 @@ def stems_check(stems: dict, png=None, reference: dict | None = None) -> dict:
         out["sdr_db"] = {k: sdr(read[k][0], mono(load(v)[0])) for k, v in reference.items()}
     if png:
         from .cleanup_draw import draw_stems
-        out["png"] = draw_stems({k: (env, sr) for k, (_, sr, env) in read.items()}, png, name_of(next(iter(stems.values()))))
+        out["png"] = draw_stems({k: (env, sr) for k, (_, sr, env) in read.items()}, png, name_of(next(iter(stems.values()))), clip)
     return out

@@ -10,6 +10,9 @@
     wait <seconds>
     zoom <factor> | scroll <s> | fit | lane <track> <lane> | lane-point <track> <t> <v> [<t2> <v2>] | lane-delete |
     picture <file|none>     (see steps_view.py)
+    deliver <streaming|apple|ebu|atsc|podcast> (master target, one change) | export (Render mix and stems, waits) |
+    clean-take (Make cleaned take on the selected clip, waits) |
+    duck-add <track> <under track> | duck-open <duck id> | duck-set <param> <json value> (the open duck)
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
@@ -53,6 +56,38 @@ def wait_render(bridge):
         raise RuntimeError(f"render failed: {bridge.status}")
 
 
+def wait_job(job, start, what):
+    """Start a background job (Render mix and stems, Make cleaned take) and wait for it to land (or fail, loudly)."""
+    if not start():
+        raise RuntimeError(f"{what}: {job.status or 'did not start'}")
+    end = time.monotonic() + 3 * RENDER_WAIT_S
+    while job.busy:
+        if time.monotonic() > end:
+            raise RuntimeError(f"{what}: nothing after {3 * RENDER_WAIT_S} s")
+        QCoreApplication.processEvents()
+        time.sleep(0.02)
+    if job.status.startswith("Error"):
+        raise RuntimeError(job.status)
+
+
+def do_mix_step(mix, word, rest):
+    if word == "deliver":
+        mix.loudness.choose(rest[0])
+    elif word == "export":
+        wait_job(mix.export, mix.export.start, "export")
+    elif word == "clean-take":
+        wait_job(mix.cleaning, mix.cleaning.make, "cleaned take")
+    elif word == "duck-add":
+        mix.ducks.add(rest[0], rest[1])
+    elif word == "duck-open":
+        mix.ducks.select(rest[0])
+    elif word == "duck-set":
+        mix.ducks.setValue(rest[0], value(" ".join(rest[1:])))
+
+
+MIX_WORDS = ("deliver", "export", "clean-take", "duck-add", "duck-open", "duck-set")
+
+
 def do_step(bridge, win, step, recorder=None):
     word, *rest = step.split()
     if word == "page":
@@ -85,6 +120,8 @@ def do_step(bridge, win, step, recorder=None):
             time.sleep(0.1)
     elif word in VIEW_WORDS:
         do_view_step(bridge, word, rest)
+    elif word in MIX_WORDS:
+        do_mix_step(bridge.mix, word, rest)
     elif word in ("undo", "redo"):
         getattr(bridge, word)()
     elif word == "play":

@@ -41,6 +41,11 @@ AppShell {
                         visible: backend.page === "timeline" && backend.pictureOpen },
         MixPage { anchors.fill: parent; visible: backend.page === "mix" }
     ]
-    right: Inspector { anchors.fill: parent; bridge: backend }
+    right: Item {
+        anchors.fill: parent
+        Inspector { anchors { left: parent.left; right: parent.right; top: parent.top; bottom: clean.top
+                              bottomMargin: clean.visible ? Theme.gap : 0 } bridge: backend }
+        CleanTakeBar { id: clean; anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: implicitHeight }
+    }
     bottom: Timeline { anchors.fill: parent; slim: backend.page !== "timeline" }
 }

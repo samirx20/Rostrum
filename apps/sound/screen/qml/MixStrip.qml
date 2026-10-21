@@ -50,6 +50,7 @@ Rectangle {
             }
         }
         MixSends { Layout.fillWidth: true; ownerId: s.model.id; sends: s.model.sends; targets: s.model.sendTargets }
+        MixDucks { Layout.fillWidth: true; ownerId: s.model.id; ducks: s.model.ducks; targets: s.model.duckTargets }
         RowLayout {
             Layout.fillWidth: true; spacing: Theme.grid
             MixSwitch { Layout.fillWidth: true; text: "M"; on: s.model.mute; tint: Theme.warn

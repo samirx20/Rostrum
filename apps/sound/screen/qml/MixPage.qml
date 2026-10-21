@@ -11,7 +11,7 @@ Panel {
         Flickable {   // the track strips (scroll sideways when there are many)
             id: scroller
             anchors { left: parent.left; top: parent.top; bottom: listen.top; bottomMargin: Theme.gap }
-            width: Math.min(parent.width - master.width - Theme.gap - (plug.visible ? plug.width + Theme.gap : 0), row.width)
+            width: Math.min(parent.width - master.width - Theme.gap - (plug.visible || duck.visible ? plug.width + Theme.gap : 0), row.width)
             contentWidth: row.width; clip: true; boundsBehavior: Flickable.StopAtBounds
             Row {
                 id: row
@@ -41,6 +41,17 @@ Panel {
                 anchors { fill: parent; margins: Theme.gap + 2 }
                 contentHeight: settings.height; clip: true; boundsBehavior: Flickable.StopAtBounds
                 PluginSettings { id: settings; ownerId: plug.panel ? plug.panel.owner : "" }
+            }
+        }
+        Rectangle {   // the open duck's settings (only while a duck is open; the panel closes with the track's selection)
+            id: duck
+            visible: !!mixer.ducks.panel.id
+            width: plug.width; color: Theme.app; radius: Theme.radiusPanel
+            anchors { right: master.left; rightMargin: Theme.gap; top: parent.top; bottom: listen.top; bottomMargin: Theme.gap }
+            Flickable {
+                anchors { fill: parent; margins: Theme.gap + 2 }
+                contentHeight: duckSettings.height; clip: true; boundsBehavior: Flickable.StopAtBounds
+                DuckPanel { id: duckSettings }
             }
         }
         MixMaster { id: master; anchors { right: parent.right; top: parent.top; bottom: listen.top; bottomMargin: Theme.gap } }
