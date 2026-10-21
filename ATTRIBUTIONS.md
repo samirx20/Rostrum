@@ -96,3 +96,4 @@ Every third-party library, model, asset source and tool that ships in or is down
 | uharfbuzz (HarfBuzz) | 0.56.3 | Apache-2.0 (HarfBuzz: MIT-style "Old MIT") | 2D Lottie export (text shaping) | static (Python package) | ships | keep the notices | https://github.com/harfbuzz/uharfbuzz |
 | pypdf | 6.21.2 | BSD-3-Clause | 2D PDF import (shadings, clips) | static (Python package) | ships | keep the notice | https://github.com/py-pdf/pypdf |
 | OpenColorIO (Python) | 2.5.2 | BSD-3-Clause | 2D 3D render layers (the 3D app's display view, pinned to the 3D core's 2.5) | static (Python package, ~12 MB) | ships | keep the notice | https://github.com/AcademySoftwareFoundation/OpenColorIO |
+| earcut.hpp (mapbox) | master 177bd66 (2026-10) | ISC | `apps/3d/core` (Rostrum3D core: triangulating outline caps) | header-only, compiled in | yes | Keep the copyright and licence notice | https://github.com/mapbox/earcut.hpp |
