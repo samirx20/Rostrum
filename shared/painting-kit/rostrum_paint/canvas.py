@@ -21,7 +21,7 @@ import numpy as np
 
 from rostrum_core.cache import CACHE, cache_key
 
-from . import brush, compose, marks
+from . import brush, compose, marks, native
 
 BUDGET = 1200 << 20              # bytes of kept layer states in memory
 CHECKPOINT = 24                  # during a long replay, keep a state every N strokes
@@ -59,6 +59,29 @@ class _Kept:
             self.bytes -= a.nbytes + b.nbytes
 
 
+# Who lays the dabs: the 2D engine's native stamper when it is built (the same pixels as numpy, bit for bit; its
+# test: tests/test_native.py), else numpy. `STAMPER` says which; when it is numpy, `slow_note` says so once.
+LAY = native.lay if native.available() else None
+STAMPER = "native" if LAY else "numpy"
+_told = False
+
+
+def status() -> dict:
+    """The kit's state for screens and agents: which stamper lays the dabs, and why if it is the slow one."""
+    return {"stamper": STAMPER, "note": None if LAY else (
+        "Brushes are running the slow way (same pixels, about 10x slower): the native stamper is not built at "
+        f"{native.lib_path()}. Build it: cargo build -p rostrum2d-stamp --profile agent (in apps/2d/engine).")}
+
+
+def slow_note() -> str | None:
+    """The slow-brushes note the first time it is asked for in this process, else None (said once, not every reply)."""
+    global _told
+    if LAY or _told:
+        return None
+    _told = True
+    return status()["note"]
+
+
 KEPT = _Kept(BUDGET)
 _PAPER: dict = {}
 
@@ -85,7 +108,7 @@ def stamp(layer_px, s: dict, w, h, masks: dict, under=None):
                   sample_all=bool(s["smudge"] and s["pickup"]))
     mask = compose.mask_array(masks[s["mask"]], w, h) if s.get("mask") else None
     return brush.stamp_stroke(layer_px, s["points"], rgb, s["size"], s["brush"], mask=mask,
-                              under=under if params["sample_all"] else None, paper=_paper(w, h), **params)
+                              under=under if params["sample_all"] else None, paper=_paper(w, h), lay=LAY, **params)
 
 
 def _chain(paint, w, h, masks, below_key) -> list[str]:

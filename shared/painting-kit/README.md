@@ -111,3 +111,10 @@ No new dependencies. numpy and Pillow are already used by other parts and proofs
 |---|---|---|---|---|---|---|---|
 | NumPy | from uv cache | BSD-3-Clause | `shared/painting-kit` (brush engine, compositing) | Python package | yes | Keep the notice | https://pypi.org/project/numpy/ |
 | Pillow | from uv cache | MIT-CMU | `shared/painting-kit` (masks, PNG files, look images) | Python package | yes | Keep the notice | https://pypi.org/project/pillow/ |
+
+## Native brushes (S9)
+
+Dabs are laid by the 2D engine's native stamper (`apps/2d/engine/stamp/`, Hem H8) when it is built: the same pixels
+as the numpy path, bit for bit, about 10–12× faster. Build it with `cargo build -p rostrum2d-stamp --profile agent`
+in `apps/2d/engine` (or point `ROSTRUM_STAMP_LIB` at the library). Without it the kit still paints, the slow way, and
+says so: `canvas.status()` always, and the first `look_drawing` reply carries the note as a warning.
