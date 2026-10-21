@@ -158,8 +158,10 @@ def check(g, layer, material, new, objects, out_dir):
     p = os.path.join(out_dir, "_projected_tmp.png"); tex.save(p, new)
     after = view.shade(g, "flat", {material.lower(): p})
     os.remove(p)
-    changed = np.abs(after - before).max(-1) > 0.04
-    want = (layer[..., 3] > 0.5) & np.isin(g.obj, [scene.object_index(g.sc, o) for o in objects])
+    changed_all = np.abs(after - before).max(-1) > 0.04
+    on = np.isin(g.obj, [scene.object_index(g.sc, o) for o in objects])
+    changed = changed_all & on                      # shared material: other objects reported apart
+    want = (layer[..., 3] > 0.5) & on
     dist_to_want = distance_transform_edt(~want)
     dist_to_changed = distance_transform_edt(~changed)
     cy, cx = np.argwhere(changed).mean(0); wy, wx = np.argwhere(want).mean(0)
@@ -167,10 +169,13 @@ def check(g, layer, material, new, objects, out_dir):
                centre_offset_px=[round(cx - wx, 2), round(cy - wy, 2)],
                changed_outside_intended_mean_px=round(float(dist_to_want[changed].mean()), 2),
                changed_outside_intended_max_px=round(float(dist_to_want[changed].max()), 2),
-               intended_not_changed_mean_px=round(float(dist_to_changed[want].mean()), 2))
+               intended_not_changed_mean_px=round(float(dist_to_changed[want].mean()), 2),
+               changed_px_on_other_objects={g.sc["objects"][o]: int((changed_all & (g.obj == o)).sum())
+                                            for o in np.unique(g.obj[changed_all & ~on])})
     tex.save(os.path.join(out_dir, "check_before.png"), before)
     tex.save(os.path.join(out_dir, "check_after.png"), after)
     ov = after.copy(); ov[changed & ~want] = [1, 0, 1]; ov[want & ~changed] = [0, 1, 1]
+    ov[changed_all & ~on] = [1, 0.6, 0]             # orange: same texels showing on another object
     tex.save(os.path.join(out_dir, "check_overlay.png"), ov)
     return res
 
@@ -187,6 +192,10 @@ def main():
     layer = load_layer(a.png, a.doc, a.layer)
     g = GBuffer(layer.shape[1])
     new, rep = project(layer, a.material, g, a.object, a.tex, a.grazing, a.ss, a.opacity)
+    if rep["texels_changed"] == 0:
+        print(json.dumps(rep, indent=1))
+        raise SystemExit("no texel changed (nothing written): the paint missed every visible part of "
+                         + ", ".join(rep["objects"]))
     tex.save(a.out, new)
     rep["out"] = os.path.abspath(a.out)
     if a.check:
@@ -194,8 +203,6 @@ def main():
         rep["check"] = check(g, layer, rep["material"], new, rep["objects"], a.check)
         rep["check"]["images"] = os.path.abspath(a.check)
     print(json.dumps(rep, indent=1))
-    if rep["texels_changed"] == 0:
-        raise SystemExit("no texel changed: the paint missed every visible part of " + ", ".join(rep["objects"]))
 
 
 if __name__ == "__main__":

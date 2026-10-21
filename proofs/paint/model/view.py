@@ -119,6 +119,8 @@ def main():
         m, _, p = s.partition("=")
         if not os.path.exists(p):
             raise SystemExit(f"--tex {s}: file not found")
+        if m.lower() not in [x.lower() for x in scene.load()["materials"]]:
+            raise SystemExit(f"--tex {s}: unknown material {m!r}")
         ov[m.lower()] = p
     render(a.out, a.mode, a.zoom, a.size, a.grid, ov, a.checker)
 
