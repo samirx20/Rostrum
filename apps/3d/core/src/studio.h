@@ -4,7 +4,9 @@
 // %USERPROFILE%\.rostrum\cache\3d\ (strength is baked into the picture, quantized to 0.1).
 #pragma once
 #include <pxr/imaging/glf/simpleLight.h>
+#include <pxr/usd/usd/stage.h>
 
+#include <filesystem>
 #include <string>
 
 namespace r3d {
@@ -13,9 +15,9 @@ namespace r3d {
 std::string studio_texture(double strength);
 // the lights to give Hydra for the viewport: the studio dome, or none when strength is 0
 PXR_NS::GlfSimpleLightVector studio_lights(double strength);
-// a small lat-long picture of one linear colour (made when missing), for a dome that has only a colour
-std::string flat_texture(const PXR_NS::GfVec3f& rgb);
 // a viewport dome light showing `texture`
 PXR_NS::GlfSimpleLight dome_light(const std::string& texture, const char* id);
+// the folder of the pictures the core makes for the viewport (%USERPROFILE%/.rostrum/cache/3d)
+std::filesystem::path cache_dir();
 
 }  // namespace r3d

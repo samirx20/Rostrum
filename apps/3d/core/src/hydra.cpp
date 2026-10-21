@@ -5,19 +5,15 @@
 #include <pxr/imaging/cameraUtil/conformWindow.h>
 #include <pxr/imaging/cameraUtil/framing.h>
 #include <pxr/imaging/glf/simpleMaterial.h>
+#include <pxr/imaging/hd/tokens.h>
 #include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/usdGeom/camera.h>
-#include <pxr/usd/usdLux/domeLight.h>
-#include <pxr/usd/usdLux/domeLight_1.h>
-#include <pxr/usd/usdLux/lightAPI.h>
-#include <pxr/usd/usdLux/tokens.h>
 
 #include <chrono>
-#include <cmath>
-#include <optional>
 #include <thread>
 
 #include "error.h"
+#include "sky.h"
 #include "studio.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
@@ -41,27 +37,6 @@ void throw_usd_errors(const TfErrorMark& mark, const std::string& where) {
   throw Error(where + ": USD/Hydra reported errors: " + msg);
 }
 
-// Storm lights and draws the sky from one dome only, and only from a picture: the scene's first dome is handed
-// to it as that one dome (a colour-only dome as a flat picture of its colour x intensity x 2^exposure)
-std::optional<GlfSimpleLight> scene_sky(const UsdStageRefPtr& stage, int frame) {
-  for (const UsdPrim& p : stage->Traverse()) {
-    if (!p.IsA<UsdLuxDomeLight>() && !p.IsA<UsdLuxDomeLight_1>()) continue;
-    const UsdTimeCode t(frame);
-    SdfAssetPath tex;
-    p.GetAttribute(UsdLuxTokens->inputsTextureFile).Get(&tex, t);
-    if (!tex.GetResolvedPath().empty() || !tex.GetAssetPath().empty())
-      return dome_light(tex.GetResolvedPath().empty() ? tex.GetAssetPath() : tex.GetResolvedPath(), "/RostrumViewport/sky");
-    UsdLuxLightAPI l(p);
-    GfVec3f colour(1);
-    float intensity = 1, exposure = 0;
-    l.GetColorAttr().Get(&colour, t);
-    l.GetIntensityAttr().Get(&intensity, t);
-    l.GetExposureAttr().Get(&exposure, t);
-    return dome_light(flat_texture(colour * intensity * std::exp2(exposure)), "/RostrumViewport/sky");
-  }
-  return std::nullopt;
-}
-
 UsdGeomCamera camera_at(const UsdStageRefPtr& stage, const SdfPath& path) {
   UsdGeomCamera cam(stage->GetPrimAtPath(path));
   if (!cam) throw Error("render.camera: no camera at " + path.GetString());
@@ -69,13 +44,12 @@ UsdGeomCamera camera_at(const UsdStageRefPtr& stage, const SdfPath& path) {
 }
 }  // namespace
 
-// The dome's camera visibility lives on UsdImagingGLEngine's protected members.
 class Hydra::Engine : public UsdImagingGLEngine {
  public:
-  void set_dome_camera_visibility(bool visible) {
-    if (_domeLightCameraVisibility == visible) return;
-    _domeLightCameraVisibility = visible;
-    _UpdateDomeLightCameraVisibility();
+  // Whether the dome is seen behind the scene. Storm's sky task reads only this render setting (hdx/skydomeTask.cpp,
+  // Prepare); the engine copies it to the scene's own domes for the other renderers. Changing it re-syncs nothing else.
+  void show_sky(bool visible) {
+    SetRendererSetting(HdRenderSettingsTokens->domeLightCameraVisibility, VtValue(visible));
   }
 };
 
@@ -117,7 +91,11 @@ Hydra::Engine& Hydra::engine(const std::string& renderer, bool viewport) {
                 ") is not installed on this machine. Available: " + join(have));
   auto e = std::make_unique<Engine>();
   if (!e->SetRendererPlugin(id)) throw Error("render.renderer: Hydra could not start " + id.GetString());
-  e->SetEnablePresentation(true);  // composite into the framebuffer we bind
+  // Draw into Hydra's own colour picture, then composite it into the framebuffer we bind. Storm starts without one
+  // (hdx/taskController.cpp: "AOVs are OFF by default for Storm"), and its sky task draws only into a colour picture
+  // (hdx/skydomeTask.cpp: no colour AOV -> it only clears), so without this the dome lights the scene but is never seen.
+  if (!e->SetRendererAov(HdAovTokens->color)) throw Error("render.renderer: " + id.GetString() + " has no colour output");
+  e->SetEnablePresentation(true);
   return *(engines_[key] = std::move(e));
 }
 
@@ -179,7 +157,7 @@ Picture Hydra::view(const std::string& renderer, const GfFrustum& frustum, int f
   const auto sky = look.sceneLights ? scene_sky(stage_, frame) : std::nullopt;
   e.SetLightingState(sky ? GlfSimpleLightVector{*sky} : studio_lights(look.studio), GlfSimpleMaterial(),
                      GfVec4f(0, 0, 0, 1));
-  e.set_dome_camera_visibility(bool(sky));
+  e.show_sky(bool(sky));
   UsdImagingGLRenderParams params;
   params.frame = UsdTimeCode(frame);
   params.colorCorrectionMode = TfToken("disabled");  // scene-linear out; OpenColorIO makes the picture
@@ -204,6 +182,7 @@ Picture Hydra::view(const std::string& renderer, const GfFrustum& frustum, int f
   if (!look.selected.empty()) {
     UsdImagingGLRenderParams solo = params;
     solo.enableLighting = false;
+    e.show_sky(false);  // the mask is the selection alone: no sky behind it
     fb.bind_and_clear();
     for (const auto& path : look.selected) e.Render(stage_->GetPrimAtPath(path), solo);
     gl_.finish();
