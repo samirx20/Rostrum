@@ -35,6 +35,8 @@ FIELDS = {
         Param.choice("lightType", ["Point", "Spot", "Area", "Sun"], label="Type", group="Light"),
         N("brightness", "Brightness", "Light", 0, 100, 0.5),
         Param.color("color", label="Colour", group="Light"),
+        Param.list("lights", "choice", options=["Hero", "Background", "Props"], label="Lights these", group="Light",
+                   importance="secondary", min_items=1, default=["Hero"], help="Which parts of the scene it lights"),
         N("radius", "Size", "Shape", 0, 5, 0.05, "m", "secondary", IS("lightType", "Point")),
         N("cone", "Cone angle", "Shape", 1, 180, 1, "°", when=IS("lightType", "Spot")),
         N("coneSoftness", "Cone softness", "Shape", 0, 1, 0.01, "", "secondary", IS("lightType", "Spot")),

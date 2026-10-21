@@ -14,8 +14,12 @@ from rostrum_core.conditions import holds
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
 ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit",
-         "valid", "value", "anim", "words")
+         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems")
 # anim: "" (can't be animated), "still" (could be), "keyed" (has keys), "onkey" (has a key at the playhead).
+# expr: "" for most rows; a param driven by an expression or binding has {"text", "note"}: the row shows them (and a
+# way to clear it) instead of its widget.
+# A "list" param (item, minItems, maxItems): `options` are what may be added — its own choices for a list of choices,
+# else what the app's `choices(name)` gives (e.g. the tracks a duck may dip under), [{value, label}].
 
 
 def layout(op) -> list[dict]:
@@ -40,12 +44,14 @@ def _param_row(p) -> dict:
     return {"row": "param", "id": p.name, "label": p.label, "type": p.type, "group": p.group,
             "importance": p.importance, "help": p.help, "options": p.choices(), "min": p.min, "max": p.max,
             "step": p.step, "unit": p.unit, "valid_when": p.valid_when, "default": p.default,
-            "words": [{"value": v, "label": w} for v, w in p.words.items()]}
+            "words": [{"value": v, "label": w} for v, w in p.words.items()],
+            "item": p.item or "", "minItems": p.min_items, "maxItems": p.max_items}
 
 
-def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=None) -> list[dict]:
-    """The rows with `valid`, `value` and `anim` filled in for these values (`item`: the item's values as the
-    screen shows them, e.g. at the playhead). `anim(name)` gives a param's key state; none: no keys."""
+def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=None, expr=None, choices=None) -> list[dict]:
+    """The rows with `valid`, `value`, `anim` and `expr` filled in for these values (`item`: the item's values as
+    the screen shows them, e.g. at the playhead). `anim(name)` gives a param's key state; none: no keys.
+    `expr(name)` gives {"text", "note"} for a param driven by an expression or binding; none: no param is."""
     ok = {r["id"]: holds(r["valid_when"], item, facts) for r in static if r["row"] == "param"}
     out = []
     for r in static:
@@ -53,10 +59,13 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
         if r["row"] == "param":
             r["value"] = item.get(r["id"], r["default"])
             r["anim"] = anim(r["id"]) if anim else ""
+            r["expr"] = expr(r["id"]) if expr else ""
+            if r["type"] == "list" and r["item"] != "choice":
+                r["options"] = choices(r["id"]) if choices else []
             r["holds"] = ok[r["id"]]
             r["valid"] = ok[r["id"]] and (r["importance"] != "deep" or more_open)
         else:
-            r["value"], r["anim"] = None, ""
+            r["value"], r["anim"], r["expr"] = None, "", ""
             r["holds"] = r["valid"] = any(ok[m] for m in r["members"])
         out.append(r)
     return out

@@ -40,13 +40,15 @@ fn keyed(it: &Item, f: &str) -> bool {
 /// from there) and the other keyed transform fields their neutral ones (each letter plays them).
 pub fn container<'a>(it: &Item<'a>) -> Item<'a> {
     let mut base = it.clone();
+    // A text following a path layer takes its place and transform from the path (follow.rs); its own keys play per letter.
+    let taken = |f: &str| super::follow::window(it).is_some() && super::follow::TAKEN.contains(&f);
     for f in ["x", "y"] {
-        if keyed(it, f) {
+        if keyed(it, f) && !taken(f) {
             base.props.insert(f.into(), it.node.props[f].clone());
         }
     }
     for (f, neutral) in PLAYED {
-        if keyed(it, f) {
+        if keyed(it, f) && !taken(f) {
             base.props.insert((*f).into(), Value::from(*neutral));
         }
     }
@@ -64,6 +66,13 @@ pub fn letters(it: &Item, mut style: String, gradient: Option<&str>, color: Opti
     let ranks = letters::ranks(it, &placed.letters);
     let (line, base) = (placed.line, placed.baseline);
     let _ = write!(style, "width:{:.3}px;height:{:.3}px;", placed.w, placed.h);
+    // The layer's own colour and outline, which every letter inherits unless it plays its own (below).
+    if color.is_none() && gradient.is_none() {
+        let _ = write!(style, "color:{};", it.str("color"));
+    }
+    if it.on("stroke") {
+        let _ = write!(style, "-webkit-text-stroke:{}px {};", it.num("strokeWidth"), it.str("strokeColor"));
+    }
     let mut inner = String::new();
     for (l, rank) in placed.letters.iter().zip(ranks) {
         let (left, top) = (l.x - l.advance / 2.0, l.y - base);
@@ -71,7 +80,7 @@ pub fn letters(it: &Item, mut style: String, gradient: Option<&str>, color: Opti
         let mut tf = vec![];
         let own = animated(it).then(|| eval::props_at(it.node, it.t - it.num("letterDelay") * rank));
         if let Some(p) = &own {
-            let (dx, dy) = (num(p, "x") - it.num("x"), num(p, "y") - it.num("y"));
+            let (dx, dy) = (num(p, "x") - num(&it.node.props, "x"), num(p, "y") - num(&it.node.props, "y"));
             if (dx, dy) != (0.0, 0.0) {
                 tf.push(format!("translate({dx:.3}px, {dy:.3}px)"));
             }

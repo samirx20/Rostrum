@@ -9,7 +9,8 @@ from rostrum2d.evaluate import keys_of, resolve
 from rostrum_gui import DocBridge
 from rostrum_gui.edits import Drag
 
-from . import bounds, outline, route
+from . import bounds, exprs, outline, route
+from .curves import Curves
 from .frames import FrameRenderer
 from .painter import Painter
 from .pen import Pen
@@ -35,6 +36,7 @@ class Bridge2D(DocBridge):
         self.frames.failed.connect(self._fail)
         self.painter = Painter(self)
         self._pen = Pen(self)
+        self._curves = Curves(self)
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self.selectionChanged.connect(self.outlineChanged)
@@ -48,6 +50,11 @@ class Bridge2D(DocBridge):
     def pen(self):
         """The pen tool and path point editing (pen.py)."""
         return self._pen
+
+    @Property(QObject, constant=True)
+    def curves(self):
+        """The timeline's curve editor (curves.py)."""
+        return self._curves
 
     @Property(float, notify=timeChanged)
     def time(self):
@@ -106,6 +113,12 @@ class Bridge2D(DocBridge):
     def animate_calls(self, item_id, param):
         return route.animate_calls(self.doc.item(item_id), param, self._t)
 
+    def expr_state(self, item, param):
+        return exprs.state(item, param)
+
+    def clear_expr_calls(self, item_id, param):
+        return exprs.clear_calls(self.doc.item(item_id), param)
+
     def _first(self):
         rows = outline.layer_rows(self.comp(), set())
         return rows[0]["id"] if rows else self.comp_id
@@ -157,6 +170,9 @@ class Bridge2D(DocBridge):
     def beginMove(self):
         layer = bounds.layer_of(self.doc, self._sel) if self._sel else ""
         if not layer:
+            return False
+        if any(exprs.drives(self.doc.item(layer), a) for a in ("x", "y")):
+            self._fail("Error: move: x or y is driven by an expression; clear it first (the cross on its row).")
             return False
         p = resolve(self.doc.item(layer), self._t)
         return self._begin(f"Move {self.label_of(self.doc.item(layer))}", (layer, p["x"], p["y"]))

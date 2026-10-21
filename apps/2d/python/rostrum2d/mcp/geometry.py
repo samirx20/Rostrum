@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 
-from rostrum2d import fields as F
+from rostrum2d import fields as F, follow
 from rostrum2d.camera import view as camera
 from rostrum2d.evaluate import resolve
 
@@ -71,12 +71,16 @@ def flatten(comp: dict, t: float) -> list[dict]:
                 continue
             p = resolve(layer, t)
             w, h = own_size(layer["type"], p)
+            if took := follow.taken(layer, layers, t):     # a text on a path layer: the path's place and box
+                w, h = took.pop("w"), took.pop("h")
+                p.update(took)
             outer = parent_m if path else camera.layer_matrix(comp, cam, p)
             m = _mul(outer, _matrix(p, w, h))
             opacity = parent_opacity * min(1.0, max(0.0, p["opacity"]))
             in_time = parent_in_time and p["start"] <= t < p["end"]
             out.append({"id": layer["id"], "type": layer["type"], "name": layer.get("name", ""), "props": p, "opacity": opacity,
                         "in_time": in_time, "matrix": m, "size": (w, h), "within": path,
+                        "broken": follow.problem(layer, layers),
                         "corners": [_apply(m, x, y) for x, y in ((0, 0), (w, 0), (w, h), (0, h))]})
             if layer["type"] == "group":
                 walk(layer.get("layers", []), m, opacity, in_time, path + (layer["id"],))
@@ -106,6 +110,8 @@ def on_screen(node: dict, width: float, height: float) -> bool:
 def problems_showing(node: dict, width: float, height: float) -> list[str]:
     """Why a layer can't be seen at this moment (empty list = it can)."""
     p, why = node["props"], []
+    if node.get("broken"):
+        why.append(node["broken"])
     if not node["in_time"]:
         why.append("outside its start/end times")
     if node["opacity"] < VISIBLE_OPACITY:

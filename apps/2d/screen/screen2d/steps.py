@@ -2,6 +2,7 @@
 
     select <id> | page design|draw|animate | time <s> | set <param> <json value> | scrub <param> <v> <v> …
     animate <param> (the key mark's toggle) | drag <layer> <dx> <dy> (canvas drag, composition px)
+    curves on|off | curvedrag <key> <dt> <dv> | handledrag <key> <1|2> <dx> <dy> (the curve editor)
     keydrag <key id> <t> | open <layer> (timeline rows) | fold <layer> (layers panel) | pick <x> <y>
     undo | redo | more | commands [query …] | run <command key> | play
   Draw page (on the selected drawing layer): draw <x> <y> <x> <y> … (one stroke, composition px)
@@ -65,6 +66,9 @@ def do_step(bridge, win, step):
         for x, y in zip(xy[2::2], xy[3::2]):
             bridge.painter.strokeTo(x, y, 1.0)
         bridge.painter.endStroke()
+    elif word in ("curves", "curvedrag", "handledrag"):
+        from .curves import steps_curves
+        steps_curves(bridge, step, rest)
     elif word == "pen":
         from .pen import steps_pen
         steps_pen(bridge, step, rest)

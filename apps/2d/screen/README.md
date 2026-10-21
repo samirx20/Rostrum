@@ -47,6 +47,14 @@ bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (
   `path.set_point` gesture (handles stay opposite; Alt moves one alone).
 - Steps: `pen <x,y> <x,y,hx,hy> … [close]`, `pointdrag <layer> <i> <dx> <dy> [in|out]`.
 
+## Curves (Animate page)
+
+- The timeline's **Keys / Curves** switch shows the selected layer's animated number fields as value curves, overlaid,
+  one colour each (the legend names them; click one to hide it). Drag a key (time and value, `key.set`) or a Bézier
+  handle (`key.handles`: the stretch's ease becomes `custom`); each drag is one undo step. Handles show only for the
+  selected key's stretches with a cubic ease. Agents: `inspect_curve`. Steps: `curves on|off`,
+  `curvedrag <key> <dt> <dv>`, `handledrag <key> <1|2> <dx> <dy>`.
+
 ## Run
 
 ```

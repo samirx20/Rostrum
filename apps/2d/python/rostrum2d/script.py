@@ -6,6 +6,8 @@ rostrum_core merges that tree in (`run_script`), so a re-run never wipes what so
     title.key("opacity", {0.2: 0, 0.9: 1}, ease="snappy")            # {time: value} or {time: (value, ease)}
     title.effect("gradient", color1="#ffffff", color2="#ff7a59")    # gradient letters
     title.mask("title_wipe", w=0).key("w", {0.2: 0, 1.0: 1400})
+    title.expr("y", "540 + sin(time * 3) * 12")                      # a field driven by a small safe expression
+    subtitle.link("x", of="title", field="x", offset=300)            # bound: value = title.x · scale + offset
     with group("lockup", x=960, y=700):                               # layers made inside go into the group
         shape("dot", shape="ellipse", w=24, h=24)
     flame = drawing("flame", w=800, h=1000)                           # frame-by-frame: one drawing per frame or held
@@ -24,7 +26,9 @@ from rostrum_core import ids
 from rostrum_core.errors import RostrumError, codes, did_you_mean
 
 from . import fields as F, pathdata
+from .expr import ExprError, parse
 from .kind import KIND, LISTS
+from .ops_expr import expr_id, link_source
 from .ops_keys import key_id
 from .rig import script as rig_script
 from .lipsync import script as lipsync_script
@@ -57,6 +61,24 @@ class Item:
             F.param("key", "ease").check(e, f"{self.id}.{prop} at {t} s")
             self.node["keys"].append(k)
         return self
+
+    def expr(self, prop: str, source: str) -> "Item":
+        """Drive a field by an expression: `title.expr("x", "sin(time * 3) * 40 + 960")` (expr.py)."""
+        allowed = F.animatable(self.node["type"])
+        if prop not in allowed:
+            raise ValueError(f'{self.id}: "{prop}" can\'t take an expression on a {self.node["type"]}; fields: '
+                             f"{', '.join(allowed)}" + _hint(prop, allowed))
+        try:
+            parse(source)
+        except ExprError as e:
+            raise ValueError(e.at(f"{self.id}.{prop}", source)) from None
+        self.node["exprs"] = [e for e in self.node["exprs"] if e["prop"] != prop]
+        self.node["exprs"].append({"id": expr_id(self.id, prop), "type": "expr", "prop": prop, "source": source})
+        return self
+
+    def link(self, prop: str, of: str, field: str, scale: float = 1.0, offset: float = 0.0) -> "Item":
+        """Bind a field to another item's field: value = other · scale + offset."""
+        return self.expr(prop, link_source(of, field, scale, offset))
 
     def effect(self, type_: str, id: str | None = None, **values) -> "Item":
         if type_ not in F.EFFECTS:

@@ -14,8 +14,11 @@ Item {
     property var bridge
     property bool keyMarks: false
     readonly property int gutter: keyMarks ? 22 : 0
+    readonly property bool driven: model.row === "param" && !!model.expr      // an expression decides (model.expr)
     readonly property int full: model.row === "group" ? Theme.groupGap + Theme.rowDense
-                              : model.row === "more" ? Theme.row + Theme.grid : Theme.row
+                              : model.row === "more" ? Theme.row + Theme.grid
+                              : driven ? Theme.row + exprBox.height + Theme.grid
+                              : model.type === "list" && widget.item ? Math.max(Theme.row, widget.item.implicitHeight + Theme.row - Theme.field) : Theme.row
     property real reveal: model.valid ? 1 : 0
     Behavior on reveal { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
     width: parent ? parent.width : 0
@@ -42,18 +45,40 @@ Item {
     }
     Item {  // a param: label column, then the widget
         visible: row.model.row === "param"
-        anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+        anchors.left: parent.left; anchors.right: parent.right
+        anchors.verticalCenter: row.driven || row.model.type === "list" ? undefined : parent.verticalCenter
+        anchors.top: row.driven || row.model.type === "list" ? parent.top : undefined
         height: Theme.row
         Text { id: label; width: Theme.labelColumn - Theme.gap; anchors.verticalCenter: parent.verticalCenter
                text: row.model.label; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont; elide: Text.ElideRight }
         Loader {
             id: widget
             x: Theme.labelColumn
-            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenter: row.model.type === "list" ? undefined : parent.verticalCenter
+            y: row.model.type === "list" ? (Theme.row - Theme.field) / 2 : 0
             width: row.model.type === "toggle" ? (item ? item.implicitWidth : 0) : parent.width - Theme.labelColumn - row.gutter
-            height: Theme.field
-            active: row.model.row === "param"
-            sourceComponent: ({ toggle: toggle, number: number, choice: choice, color: colour, text: text })[row.model.type] || text
+            height: row.model.type === "list" && item ? item.implicitHeight : Theme.field
+            active: row.model.row === "param" && !row.driven
+            sourceComponent: ({ toggle: toggle, number: number, choice: choice, color: colour, text: text, list: list })[row.model.type] || text
+        }
+        // A param driven by an expression or binding (model.expr = {text, note}): in place of the widget a note
+        // and a clear button on the label line, the expression on its own full-width line under it.
+        Text { visible: row.driven; anchors.right: clearMark.left; anchors.rightMargin: Theme.gap
+               anchors.verticalCenter: parent.verticalCenter; text: row.driven ? row.model.expr.note : ""
+               color: Theme.fg3; font.pixelSize: Theme.label; font.family: uiFont }
+        Text { id: clearMark; visible: row.driven; anchors.right: parent.right; anchors.rightMargin: Theme.grid
+               anchors.verticalCenter: parent.verticalCenter; text: "×"; font.pixelSize: Theme.heading
+               color: clearArea.containsMouse ? Theme.fg : Theme.fg3
+               MouseArea { id: clearArea; anchors.fill: parent; anchors.margins: -Theme.grid; hoverEnabled: true
+                           cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.clearExpression(row.model.id) } }
+        Rectangle {
+            id: exprBox
+            visible: row.driven
+            y: Theme.row; width: parent.width; height: exprText.implicitHeight + 2 * Theme.gap
+            radius: Theme.radiusCtl; color: Theme.accentSoft
+            Text { id: exprText; x: Theme.gap; y: Theme.gap; width: parent.width - 2 * Theme.gap
+                   text: row.driven ? "= " + row.model.expr.text : ""; color: Theme.fg; font.pixelSize: Theme.body
+                   font.family: monoFont; wrapMode: Text.WrapAnywhere }
         }
         HoverHandler { id: rowHover }
         Item {  // the key mark
@@ -83,5 +108,9 @@ Item {
         onScrubEnded: row.bridge.endScrub() } }
     Component { id: choice; ChoiceField { options: row.model.options; current: row.model.value || ""; onPicked: (v) => row.set(v) } }
     Component { id: colour; ColorField { hex: row.model.value || "#000000"; onEdited: (v) => row.set(v) } }
+    Component { id: list; ListField {
+        values: row.model.value || []; choices: row.model.options || []
+        minItems: row.model.minItems || 0; maxItems: row.model.maxItems === undefined ? null : row.model.maxItems
+        onEdited: (v) => row.set(v) } }
     Component { id: text; TextField { value: row.model.value || ""; onEdited: (v) => row.set(v) } }
 }

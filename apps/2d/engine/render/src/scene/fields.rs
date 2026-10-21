@@ -39,7 +39,7 @@ const TEXT: &[Field] = &[
     // Type (stage_type.rs): OpenType features, variable axes, text on a path, letter by letter.
     ("ligatures", Toggle), ("figures", Choice(FIGURES)), ("smallCaps", Toggle), ("features", Text),
     ("slant", Number), ("grade", Number), ("axes", Text),
-    ("path", Text), ("pathOffset", Number), ("pathAlign", Choice(&["start", "center", "end"])),
+    ("pathLayer", Text), ("path", Text), ("pathOffset", Number), ("pathAlign", Choice(&["start", "center", "end"])),
     ("pathOverflow", Choice(&["hide", "straight"])),
     ("letterDelay", Number), ("letterOrder", Choice(&["forward", "backward", "center", "random"])), ("letterSeed", Number),
     ("letterSplit", Choice(&["letters", "words"])),

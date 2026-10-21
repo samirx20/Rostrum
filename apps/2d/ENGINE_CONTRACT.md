@@ -105,6 +105,13 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
     further along (can be keyed). A letter whose centre falls before the start or past the end is left out
     (`pathOverflow` "hide", the default) or carried on in a straight line ("straight"). The box runs from
     (0, 0) to the path's far corner. One line only (a line break is refused).
+  - **Following a path layer:** `pathLayer` names a `path` layer beside the text (same composition or group). At
+    every time the text takes that layer's `d`, its box (`w × h`) and its transform (x, y, anchor, rotation, scale,
+    stretch, tilt) as they are then, and sits only on its drawn part: `pathAlign` and `pathOffset` work within
+    `trimStart..trimEnd`, and letters on the trimmed-off part are left out (keying `trimEnd` draws the letters on with
+    the line). The text's own transform is not used; its opacity, blend, colour and letter keys are. A `pathLayer` that
+    names nothing beside it, or a layer that isn't a path, or one set together with `path`, is refused at load and at
+    `edit` (resolved in `scene/follow.rs`, the one place).
   - **Letter by letter:** `letterDelay` s ≠ 0: each letter (`letterSplit` letters | words) plays the layer's own keys
     `letterDelay × its place` later; places follow `letterOrder` forward | backward | center | random (`letterSeed`, the
     same order on every machine). Keyed x / y move each letter from the layer's still x / y; keyed rotation, scale,
@@ -138,5 +145,6 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - H6: the engine evaluates scenes itself, pixel for pixel as the stopgap did (`proofs/2d-engine-scene/README.md`).
 - S7: the Python stopgap is deleted; drawing layers are drawn by the engine; `scene` takes `cpu`, `frame.index` defaults to round(t · fps), `export` takes `images` and `progress`, `edit` is all or nothing.
 - S9 (same version): text `pathOverflow`.
+- S10 (same version): text `pathLayer` (a text follows a path layer, per frame); a text on a path now takes its colour and outline when not played letter by letter.
 - H10 (same version): rig layers, bones, IK, binds; the `bones` request.
 - S8 (same version): `path` and `video` layers; text features, axes, text on a path, letter by letter; gradient `conic` and centre; `backdrop`; masks feather / invert / `angle` for every shape; scene `fonts` and the `scene` reply's font list; `pixels` written out.

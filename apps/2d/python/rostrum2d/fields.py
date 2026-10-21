@@ -6,6 +6,8 @@ Animatable = every number and colour field, except those in STILL (they describe
 """
 from __future__ import annotations
 
+from dataclasses import replace
+
 from rostrum_core import Param
 
 from .easing import NAMES as _EASES
@@ -66,7 +68,8 @@ TRANSFORM = [
 STROKE = IS("stroke", True)
 
 # A text layer's type controls (engine: scene/stage_type.rs, letters.rs, type_font.rs).
-ON_PATH = {"not": IS("path", "")}
+NOT_FOLLOWING = IS("pathLayer", "")
+ON_PATH = {"any": [{"not": IS("path", "")}, {"not": NOT_FOLLOWING}]}
 BY_LETTER = {"not": IS("letterDelay", 0)}
 FIGURES = ["default", "proportional lining", "tabular lining", "proportional old-style", "tabular old-style"]
 TYPE = [
@@ -78,7 +81,10 @@ TYPE = [
     N("slant", "Slant", "Font", -90, 90, 0.1, "°", D, help="Variable font slant axis (slnt); negative leans right"),
     N("grade", "Grade", "Font", -1000, 1000, 1, "", D, help="Variable font grade axis (GRAD): heavier without getting wider"),
     X("axes", "Other axes", "Font", "", D, help='Any variable font axis by tag, e.g. "XTRA 468, CASL 1"'),
-    X("path", "Path", "Path", "", D, help="SVG path data (M L C Z) in the layer's own px; the letters sit on it. Empty = a normal line"),
+    X("pathLayer", "Follows path", "Path", "", S, help="The id of a path layer beside it (same group): the letters sit on that path as it is "
+      "reshaped, moved or drawn on, and the text takes its place and turn. Empty = not following one (text.follow sets it)"),
+    X("path", "Path", "Path", "", D, when=NOT_FOLLOWING,
+      help="SVG path data (M L C Z) in the layer's own px; the letters sit on it. Empty = a normal line"),
     N("pathOffset", "Start along path", "Path", -100000, 100000, 1, "px", S, ON_PATH,
       help="Moves the text along the path from where its alignment puts it"),
     CH("pathAlign", ["start", "center", "end"], "Align on path", "Path", "start", S, ON_PATH),
@@ -96,6 +102,16 @@ TYPE = [
 from .rig import fields as _rig  # noqa: E402  (rigs: the table is in rig/fields.py, merged below)
 from .camera import fields as _camera  # noqa: E402  (the camera: camera/fields.py, merged below)
 from .motion import fields as _motion  # noqa: E402  (shutter, trails, smears: motion/fields.py, merged below)
+
+# A text following a path layer takes these from the path (engine: scene/follow.rs TAKEN; rostrum2d/follow.py).
+TAKEN = ("x", "y", "anchorX", "anchorY", "rotation", "scale", "scaleX", "scaleY", "tiltX", "tiltY")
+
+
+def _unless_following(p: Param) -> Param:
+    if p.name not in TAKEN:
+        return p
+    return replace(p, valid_when=NOT_FOLLOWING if p.valid_when is None else {"all": [p.valid_when, NOT_FOLLOWING]})
+
 
 FIELDS: dict[str, list[Param]] = {
     "comp": [
@@ -129,7 +145,7 @@ FIELDS: dict[str, list[Param]] = {
         T("stroke", "Outline", "Outline", False, D),
         C("strokeColor", "Outline colour", "Outline", "#ffffff", D, STROKE),
         N("strokeWidth", "Outline width", "Outline", 0, 100, 0.5, "px", D, STROKE, default=1.0),
-    ] + TYPE + TRANSFORM,
+    ] + TYPE + [_unless_following(p) for p in TRANSFORM],
     "image": [
         X("src", "File", "Image", "", help="Absolute path, or relative to the project folder"),
         N("w", "Width", "Image", 0, 20000, 1, "px", default=640.0),

@@ -107,6 +107,11 @@ class DocBridge(QObject):
         self._guard(lambda: self._apply(*self.animate_calls(self._sel, param)))
 
     @Slot(str)
+    def clearExpression(self, param):
+        """The clear button on a row driven by an expression: the app's clear_expr_calls, as one change."""
+        self._guard(lambda: self._apply(*self.clear_expr_calls(self._sel, param)))
+
+    @Slot(str)
     def beginScrub(self, param):
         self.endScrub()
         def go():
@@ -165,8 +170,19 @@ class DocBridge(QObject):
     def anim_state(self, item: dict, param: str) -> str:
         return ""
 
+    def list_choices(self, item: dict, param: str) -> list[dict]:
+        """What a list param may hold, [{value, label}] (a list of choices uses its own options)."""
+        return []
+
     def animate_calls(self, item_id, param) -> tuple[list[dict], str]:
         raise RostrumError(codes.UNKNOWN_OPERATION, "inspector", f'"{param}"', "can't be animated in this app")
+
+    def expr_state(self, item: dict, param: str):
+        """{"text", "note"} of the expression or binding driving this param; "" = none (the row shows its widget)."""
+        return ""
+
+    def clear_expr_calls(self, item_id, param) -> tuple[list[dict], str]:
+        raise RostrumError(codes.UNKNOWN_OPERATION, "inspector", f'"{param}"', "has no expression in this app")
 
     # ---- inside ---------------------------------------------------------------------------------------------
     def _items(self):
@@ -203,7 +219,8 @@ class DocBridge(QObject):
             return []
         it = self.doc.item(self._sel)
         return rows.evaluate(self._static, self.shown_values(it), self.doc.kind.facts(it, self.doc), self._more,
-                             lambda name: self.anim_state(it, name))
+                             lambda name: self.anim_state(it, name), lambda name: self.expr_state(it, name),
+                             lambda name: self.list_choices(it, name))
 
     def _on_doc(self, event):
         if self._sel and not self.doc.has(self._sel):      # the selected item went away (e.g. undo of an add)

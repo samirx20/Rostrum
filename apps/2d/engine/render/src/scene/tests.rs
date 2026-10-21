@@ -156,3 +156,52 @@ fn an_unknown_font_is_refused() {
     let err = crate::scene_serve::check(&scene).unwrap_err();
     assert!(err.starts_with(&format!("{id}: font \"No Such Sans\" not found")) && err.contains("Roboto Flex") && err.contains("Inter"), "{err}");
 }
+
+/// A text following a path layer (follow.rs) takes the path's transform and trim window at every time, and a
+/// missing path is refused at load (never drawn as a straight line).
+#[test]
+fn a_text_follows_its_path_layer_on_every_frame() {
+    let mut s = reference()["scene"].clone();
+    let layers = s["comp"]["layers"].as_array_mut().unwrap();
+    let mut text = layers.iter().find(|l| l["type"] == "text").expect("a text layer in the reference").clone();
+    let mut path = serde_json::Map::new();
+    for (name, kind) in fields::of("path").unwrap().1 {
+        let v = match (name, kind) {
+            ("d", _) => Value::from("M 0 200 L 900 200"),
+            ("w", _) => Value::from(900.0),
+            ("h", _) | ("x", _) | ("y", _) => Value::from(400.0),
+            ("trimEnd" | "scale" | "scaleX" | "scaleY" | "opacity" | "miter" | "anchorX" | "anchorY", _) => Value::from(if name.starts_with("anchor") { 0.5 } else { 1.0 }),
+            ("end", _) => Value::from(36000.0),
+            (_, fields::Kind::Number) => Value::from(0.0),
+            (_, fields::Kind::Color) => Value::from("#ffffff"),
+            (_, fields::Kind::Toggle) => Value::from(false),
+            (_, fields::Kind::Text) => Value::from(""),
+            (_, fields::Kind::Choice(o)) => Value::from(o[0]),
+        };
+        path.insert(name.into(), v);
+    }
+    text["id"] = "rider".into();
+    text["props"]["body"] = "ABCDEFGH".into();
+    text["props"]["letterDelay"] = 0.0.into();
+    text["props"]["size"] = 60.0.into();
+    text["props"]["path"] = "".into();
+    text["props"]["pathAlign"] = "start".into();
+    text["props"]["pathLayer"] = "rail".into();
+    for k in ["anim", "effects", "masks"] {
+        text.as_object_mut().unwrap().remove(k);
+    }
+    let rail = serde_json::json!({"id": "rail", "type": "path", "props": path,
+        "anim": {"x": [{"t": 0.0, "v": 400.0, "ease": "linear"}, {"t": 1.0, "v": 800.0, "ease": "linear"}],
+                 "trimEnd": [{"t": 0.0, "v": 0.0, "ease": "linear"}, {"t": 1.0, "v": 1.0, "ease": "linear"}]}});
+    layers.push(text);
+    let gone = s.clone();
+    s["comp"]["layers"].as_array_mut().unwrap().push(rail);
+    let err = Scene::load(&gone).unwrap_err();
+    assert!(err.contains("rider.pathLayer") && err.contains("rail"), "{err}");
+    let scene = Scene::load(&s).unwrap();
+    let rider = |t: f64| eval::at(&scene.comp, t).unwrap().layers.into_iter().find(|l| l.id == "rider").unwrap();
+    assert_eq!(rider(0.5).num("x"), 600.0, "the text takes the path's keyed x at that time");
+    let shown = |t: f64| super::letters::place(&rider(t)).unwrap().letters.len();
+    assert_eq!(shown(0.0), 0, "nothing of the path is drawn yet, so no letter shows");
+    assert!(shown(0.2) > 0 && shown(0.2) < 8 && shown(1.0) == 8, "letters show as the path is drawn on: {} {} {}", shown(0.0), shown(0.2), shown(1.0));
+}

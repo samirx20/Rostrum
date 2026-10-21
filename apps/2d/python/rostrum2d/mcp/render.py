@@ -14,6 +14,11 @@ def _fail(where: str, what: str, e: Exception) -> RostrumError:
 
 
 def scene_of(doc, comp_id: str) -> dict:
+    """The scene to draw; a text whose path layer is gone is refused here, in words (rostrum2d/follow.py)."""
+    from rostrum2d import follow
+    comp = next((c for c in doc.data.get("comps", []) if c["id"] == comp_id), None)
+    if comp and (broken := follow.problems(comp)):
+        raise RostrumError(codes.RENDER_FAILED, comp_id, "the composition", "can't be drawn: " + " ".join(broken))
     return describe(doc.data, comp_id)
 
 
