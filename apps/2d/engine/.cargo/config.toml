@@ -1,0 +1,4 @@
+# Link with rust-lld (ships with the Rust toolchain): faster and lighter than the MSVC linker on the big engine
+# binaries (Sam, 2026-10-19). Remove these two lines to go back to link.exe.
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld.exe"

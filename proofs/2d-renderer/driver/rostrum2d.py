@@ -1,17 +1,20 @@
-"""A thin Python handle on the archive's 2D renderer (`rostrum-motion serve`).
+"""A thin Python handle on Rostrum2D's renderer (`rostrum2d-render serve`).
 
 The renderer is one long-lived process: one JSON request per stdin line, one JSON reply per stdout line
-(archive `native/rostrum-motion/src/serve.rs`). Python opens a page shell (styles, fonts, an empty
+(`apps/2d/engine/render/src/serve.rs`). Python opens a page shell (styles, fonts, an empty
 `<div id="rostrum-stage">`), then sends each frame's stage markup; Rust applies it to the kept page as edits,
 lays it out (Blitz), paints it (Skia on the GPU) and writes a PNG or hands the pixels to ffmpeg itself.
 Stdlib only.
 """
 import json
+import os
 import subprocess
 import time
 from pathlib import Path
 
-EXE = Path(r"C:\Users\Sam\Documents\CODE\OLD-EXPERIMENT\native\target\release\rostrum-motion.exe")
+# The renderer built in this checkout (`cargo build --profile agent` in apps/2d/engine), or ROSTRUM2D_RENDER.
+_TARGET = Path(__file__).resolve().parents[3] / "apps" / "2d" / "engine" / "target"
+EXE = Path(os.environ.get("ROSTRUM2D_RENDER") or _TARGET / "agent" / "rostrum2d-render.exe")
 
 
 class RendererError(RuntimeError):
@@ -19,7 +22,7 @@ class RendererError(RuntimeError):
 
 
 class Renderer:
-    """One `rostrum-motion serve` process. Use as a context manager so the process always ends (by its own handle)."""
+    """One `rostrum2d-render serve` process. Use as a context manager so the process always ends (by its own handle)."""
 
     def __init__(self, log: Path, exe: Path = EXE):
         if not exe.exists():

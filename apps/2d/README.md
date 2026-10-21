@@ -2,7 +2,7 @@
 
 Motion design, type, UI animation, drawing, frame-by-frame and 2D characters.
 
-- **Engine:** Rust (`engine/`, Team Hem): the Blitz + Skia renderer, and the per-frame evaluation of the scene description ([`ENGINE_CONTRACT.md`](ENGINE_CONTRACT.md)).
+- **Engine:** Rust (`engine/`, see `engine/README.md`): the Blitz + Skia renderer (moved in and four gaps fixed in H5), and the per-frame evaluation of the scene description ([`ENGINE_CONTRACT.md`](ENGINE_CONTRACT.md)).
 - **Python layer** (`python/rostrum2d/`, on `rostrum_core`): the 2D document, its operations, the script layer, the engine handle, the MCP server `rostrum-2d`.
 - **Screen:** `screen/`, Qt Quick on `shared/gui-kit/`.
 - **Guides:** `skills/`, how-to guides for people and agents (techniques, not styles).
