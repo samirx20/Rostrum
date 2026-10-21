@@ -87,3 +87,8 @@ Every third-party library, model, asset source and tool that ships in or is down
 | psd-tools | current | MIT | `apps/2d/python/rostrum2d/io/psd.py` (PSD import) | Python package | ships | Keep the notice; check its optional dependencies before shipping | https://github.com/psd-tools/psd-tools |
 | gif + color_quant (Rust) | 0.14 / 1.x | MIT OR Apache-2.0 / MIT | `apps/2d/engine/render` (GIF export; not gifski, which is AGPL) | static | ships | Keep the notice | https://github.com/image-rs/image-gif |
 | png (Rust) | 0.18 | MIT OR Apache-2.0 | `apps/2d/engine/render` (PNG export, 8 and 16 bit) | static | ships | Keep the notice | https://github.com/image-rs/image-png |
+| ONNX Runtime (DirectML build) | 1.24.4 | MIT | apps/sound/python (cleanup models) | Python package | yes | Keep the notice | https://github.com/microsoft/onnxruntime |
+| DeepFilterNet 3 weights (torchDF ONNX export) | kimtos-labs/denoiser-dfn3 @ 888f33c | MIT OR Apache-2.0 | apps/sound/python (noise reduction, dialogue isolation) | data, downloaded | yes (download) | Keep the notice | https://github.com/Rikorose/DeepFilterNet |
+| Open-Unmix UMX-HQ weights (our ONNX export) | Zenodo 3370489 | MIT (trained on MUSDB18-HQ, academic-only data) | apps/sound/python (stems, dialogue isolation) | data | yes (download, hosting tbd) | Keep the notice | https://github.com/sigsep/open-unmix-pytorch |
+| onnx | (venv) | Apache-2.0 | proofs only (8-bit test) | Python package | no | None | https://github.com/onnx/onnx |
+| PyTorch (CPU), openunmix | 2.14.1, (pip) | BSD-3-Clause, MIT | proofs only (export, scratch venv) | build tool | no | None | https://pytorch.org |
