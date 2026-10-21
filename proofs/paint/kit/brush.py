@@ -170,7 +170,6 @@ def stamp_stroke(layer, points, color, size, brush="round", *, mask=None, under=
         return None
     cov = np.zeros((by1 - by0, bx1 - bx0), np.float32)  # max coverage so far in this stroke
     D, res = int(2 * R.max()) + 6, None
-    src = layer
     for i in range(n):
         r = R[i]
         x0, x1 = max(bx0, int(X[i] - r) - 1), min(bx1, int(X[i] + r) + 2)
@@ -215,8 +214,11 @@ def stamp_stroke(layer, points, color, size, brush="round", *, mask=None, under=
         if wet > 0:  # smudge: the brush carries a reservoir of the paint it passed over
             oy, ox = int(round(Y[i])) - D // 2, int(round(X[i])) - D // 2
             win = (slice(y0 - oy, y1 - oy), slice(x0 - ox, x1 - ox))
-            ix = np.ix_(np.clip(np.arange(oy, oy + D), 0, H - 1), np.clip(np.arange(ox, ox + D), 0, W - 1))
-            pick = src[ix].copy()
+            if 0 <= oy and oy + D <= H and 0 <= ox and ox + D <= W:
+                ix = (slice(oy, oy + D), slice(ox, ox + D))
+            else:  # near the edge: clamp, the canvas edge repeats
+                ix = np.ix_(np.clip(np.arange(oy, oy + D), 0, H - 1), np.clip(np.arange(ox, ox + D), 0, W - 1))
+            pick = layer[ix].copy()
             if p["sample_all"]:  # what the eye sees: this layer over the composite below
                 pick[..., :3] += (1 - pick[..., 3:]) * under[ix]
                 pick[..., 3] = 1

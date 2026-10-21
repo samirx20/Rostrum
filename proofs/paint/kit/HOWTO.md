@@ -131,3 +131,35 @@ Undo works by batch, so label batches by idea ("hill edge", "window light"), not
 - **Say what you could not check.** If a view looks off (labels hidden, grid crowded), change `--zoom` / `--grid` / `--size` instead of guessing.
 
 <!-- BRUSHES: member engine writes the "Brushes" section below this line. Do not overwrite. -->
+
+## Brushes
+
+`doc.stroke(layer, points, color, size, brush="round", mask=None, **settings)`. `points` are `(x, y, pressure)` in canvas pixels; use `curve((x0, y0), (x1, y1), ..., n=32, pressure=(start, mid, end))` from `brush.py` for smooth paths. A wrong brush or setting name is refused, with the list of the right ones. A picture of every brush: `C:\Users\Sam\.rostrum\waves\results\stage1\p-paint\brush-sheet.png` (rows = brushes; columns = even pressure, tapered, small 10 and 3 px, wet 0.5, smudge, grain).
+
+| Brush / setting | What you see |
+|---|---|
+| `round` | Clean, even mark. `hardness=0.9` gives a crisp edge (never sharper than about 1 px, so no jaggies); `0.1` a soft airbrush. |
+| `bristle` | Many thin streaks along the stroke; the bristles run dry at different points, so the end breaks into hairs. Under ~6 px it turns into a broken dry line. |
+| `chalk` | Round mark whose edge breaks into dry speckle, like pastel or dry brush. |
+| `flat` | Wide band with faint streaks and ragged, fading start and end. With a fixed `angle` it makes chisel marks that go thick and thin as the stroke turns. |
+| `block` | Square-ended block-in: a crisp-edged band with slightly ragged square ends and faint streaks. Use `size_pressure=0` for an even width (with pressure taper it becomes a wedge). For laying in shapes without leaf or flame tips. |
+| `line` | Crisp thin line, antialiased, usable from 1 to 6 px. Pressure tapers it; below 1 px it fades instead of breaking into dots. Ignores `hardness`. |
+| `size` | Width in pixels at full pressure. |
+| `size_pressure` | How much low pressure thins the stroke. `0` = even width, `1` = tapers to a point. Default `0.8`. |
+| `opacity`, `opacity_pressure` | Highest coverage, and how much low pressure fades it. A stroke never covers itself twice, so `0.5` stays an even 50 % where it overlaps itself. |
+| `angle` | `None` = the tip follows the stroke; a number fixes the tip angle in degrees. |
+| `color_jitter` | Value and saturation drift along the stroke, plus light / dark streaks across the bristles. Hue stays put. `0` = one flat colour, try `0.04`–`0.2`. |
+| `hue_jitter` | Hue drift along the stroke, in degrees either way (`8` = up to ±8°). Separate from `color_jitter`; default `0`. |
+| `wet` | `0` lays plain paint. Higher values pick up the paint already on **this layer** and drag it along, mixing it in; `1` is a pure smudge with no new paint. Smudging over transparent parts of the layer drags transparency in (it thins the paint). |
+| `sample_all=True` | With `wet`, pick up what you **see** (this layer over everything below it) instead of this layer only. Lets you smudge colour from lower layers into an empty layer without touching them. |
+| `grain` | Paper tooth: thin paint (low pressure, low opacity, edges) breaks up on it, thick paint stays solid. `0.3`–`0.6` reads as textured paint. The tooth pattern is the document's (`Doc.new(..., paper_seed, paper_size)`). |
+| `mode="multiply"` | Darkens and tints paint **already on this layer** (nothing happens on an empty part). For a glaze over everything below, make a layer with `add_layer(name, mode="multiply")` and paint on it normally. |
+| `mode="erase"` | Removes paint from this layer by the stroke's coverage (any tip, so a `block` erase gives a square-ended cut). |
+| `mask` | A mask name (`"road"`) or its inverse (`"!road"`): paint stays inside. |
+| `jitter` | Scatters stamp positions (share of `size`) for a wobbly edge. |
+| `spacing` | Distance between stamps as a share of the tip. Leave it; raise it only for speed. |
+| `seed` | Picks the bristle pattern, ragged ends and colour drift. Give each stroke its own seed so strokes don't repeat. |
+
+Other paint ops: `doc.fill(layer, color, mask=None, opacity=1, mode="normal")`; `doc.gradient(layer, (x0, y0), (x1, y1), c0, c1, mask=None, opacity=1, mode="normal", shape="linear" or "radial")` for soft value areas; `doc.fill_region(layer, mask, color, size, angle=0, gap=0.7, length=4, bend=0.15, pressure=(0.5, 1, 0.3), seed=0, brush="flat", **settings)` hatches a masked area with many strokes in one op (one stroke id). Each returns a stroke id.
+
+Speed (1920×1080, strokes 20–90 px wide and 150–500 px long, grain on): about 37 strokes a second dry, about 9 wet. Undo of a recent batch is instant (states are kept in memory); older ones replay from the nearest kept state.

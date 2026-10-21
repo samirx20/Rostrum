@@ -108,7 +108,8 @@ def uv_to_screen(material, u, v, g, objects=None):
                     r["why"] = "faces away"
             else:
                 r["visible"] = False
-                r["why"] = "behind " + (sc["objects"][front_obj] if front_obj >= 0 else "nothing?")
+                r["why"] = ("on the far side of its own object" if front_obj == oi else
+                            "behind " + (sc["objects"][front_obj] if front_obj >= 0 else "nothing?"))
         out.append(r)
     return sorted(out, key=lambda r: (not r["visible"], r["object"]))
 
