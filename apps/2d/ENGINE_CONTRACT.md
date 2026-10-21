@@ -10,9 +10,9 @@ The engine holds the scene and evaluates every frame itself. The request header 
 
 | Request | Reply | Meaning |
 |---|---|---|
-| `{"scene": {…scene…}, "cpu"?: true}` | `{"ok": true, "items": N, "width", "height", "fps", "duration"}` | Load or replace the scene. Checked whole: anything unknown or undrawable fails (§ 5). Opens a drawing session at the comp's size if none is open at that size (`cpu`: draw on the CPU, for machines or tests without a GPU). |
+| `{"scene": {…scene…}, "cpu"?: true}` | `{"ok": true, "items": N, "width", "height", "fps", "duration", "fonts": ["Inter", "Recursive", …]}` | Load or replace the scene. Checked whole: anything unknown or undrawable fails (§ 5). Opens a drawing session at the comp's size if none is open at that size (`cpu`: draw on the CPU, for machines or tests without a GPU). |
 | `{"frame": {"t": 1.25, "image": "C:\…\f.png", "index"?: n}}` | `{"ok": true, "timing": {…, "evalMs"}}` | Draw the scene at `t` seconds into a PNG. `index` (the frame number, used by anything that varies per frame) defaults to round(t · fps), so a still is the same picture as that frame of the export. |
-| `{"frame": {"t": 1.25, "pixels": true}}` | `{"ok": true, "width", "height", "shm": …}` | (Team Hem, H7) raw RGBA for the live canvas, no PNG. |
+| `{"frame": {"t": 1.25, "pixels": true}}` | `{"ok": true, "width", "height", "timing", "shm": {"name": "Local\rostrum2d-<pid>-<n>", "size", "offset", "bytes", "stride", "format": "rgba8", "seq", "width", "height"}}` | The frame for the live canvas, written into one of two alternating slots of a named block of shared memory (no PNG, no pipe): the same straight-alpha bytes as an image would hold (`rgba64le` at depth 16). The reader is done with a slot before it asks for the frame after next; a new block (new `name`) comes when the frame size changes. Python: `mmap.mmap(-1, size, tagname=name)` (`Engine.pixels`). Windows now; Mac (`shm_open`, name `/rostrum2d-<pid>-<n>`) still refused with a message. |
 | `{"export": {"start"?, "end"?, "encode": {…ffmpeg…}, "file"?, "images"?, "progress"?}}` | `{"ok": true, "frames": 90, "timing"}` | Every frame from `start` (default 0) to `end` (default the comp's duration) at the comp's fps, into the encoder; `file` is checked to exist and not be empty afterwards. Or `"images": "C:\…\f-{frame}.png"`: each frame to a picture. With `"progress": true` a line `{"progress": i, "of": n}` comes after each frame, before the reply. |
 | `{"edit": [{"id": "title", "props"?: {"x": 700}, "anim"?: {"y": [keys] \| null}}, …]}` | `{"ok": true, "edits": n}` | Small changes to the held scene without resending it (a drag). **All or nothing**: the whole list is checked as a load is, and nothing is applied if any part fails. |
 
@@ -45,6 +45,7 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - `effects` and `masks` belong to the layer; effects, masks and layers may each have `anim`.
 - Ids are unique in the scene. Times are **seconds**; lengths are **px** in the composition's frame; angles **degrees**; colours `#rrggbb`.
 - Produced by `rostrum2d.scene.describe(doc.data, comp_id)`.
+- **`fonts`** (optional, top level, beside `comp`): `{"Family": "D:/My Film/fonts/Display.ttf", …}` (absolute paths), the project's own fonts. They win over the app's; each file is checked when the scene loads. The `scene` reply lists every family the text may name (`fonts`), for agents and the font picker.
 - **`drawing`** (added S6, same version): a layer drawn frame by frame with the shared painting kit. `props` has `w`, `h`
   (its box, px) and the usual transform; `frames: [{"at": 0, "src": "C:\…\<key>_800x1000.png"}, …]`, sorted by `at`
   (a frame number). At time `t` the engine shows the `src` of the last frame with `at <= floor(t · fps)`; nothing
@@ -65,7 +66,7 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - **Transform:** the layer's anchor (`anchorX`, `anchorY`, fractions of its box; 0.5 = centre) sits at (`x`, `y`) in its parent's space. Order: tilt (`tiltX`, `tiltY`, 2.5D, perspective 1600 px per layer), then `rotation`, then scale (`scale·scaleX`, `scale·scaleY`), all about the anchor. Then `opacity`, then `blend` (`normal`, `screen`, `add`, `multiply`, `overlay`, `soft-light`).
 - **Box:** shape and image `w × h`; group `w × h` (`clip` hides children outside it); text: its laid-out size (one line, or `boxWidth` wide and wrapped).
 - **shape:** `rect` (corner `radius`) or `ellipse`; `fill`; optional outline (`stroke`, `strokeColor`, `strokeWidth`), drawn inside the box.
-- **text:** `body`, `font` (family name; the engine's font list), `size` px, `weight` and `stretch` (variable-font axes), optical size = font size automatically, `tracking` (em), `lineHeight`, `align`, `color`, optional outline.
+- **text:** `body`, `font` (family name: first the scene's `fonts`, then the app's folder `apps/2d/engine/fonts/` (installed: `fonts\` beside the program; `ROSTRUM2D_FONTS` overrides); each file is listed under its family name and also without a trailing " Variable". A family found in neither is refused when the scene loads or is edited: `subtitle: font "Helvetica Neue" not found; there is: …`), `size` px, `weight` and `stretch` (variable-font axes), optical size = font size automatically, `tracking` (em), `lineHeight`, `align`, `color`, optional outline.
 - **image:** `src` (absolute path), `fit` (`cover`, `contain`, `stretch`), corner `radius`.
 - **Order inside a layer:** content → masks → effects. A mask cuts the content; a glow or blur works on what the mask left.
 - **mask:** `rect` / `ellipse` at (`x`, `y`, `w`, `h`) in the layer's own px from its top-left; `radius`, `feather` (soft edge, px), `invert`. Several masks intersect.
