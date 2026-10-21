@@ -55,10 +55,8 @@ def register(tools: Tools):
         tree = ctx.app.run_source(args["source"], name)
         report = ctx.run_script(doc, name, tree, args.get("force", False))
         held = [dict(h) for h in report.held]
-        warn = [f'Held back "{h.get("key")}": {h.get("who")} set it to {h.get("kept")!r}, the script wanted {h.get("script")!r}. '
-                f'Pass force: ["{h.get("key")}"] to overwrite.' for h in held]
         changed = {"seq": report.change.seq, "ops": [c["op"] for c in report.change.calls], "group": report.change.session} if report.change else None
-        return Reply(report.summary(), {"held": held, "seq": doc.seq}, warnings=warn, changed=changed)
+        return Reply(report.summary(), {"held": held, "removed": report.removed, "seq": doc.seq}, warnings=report.warnings(), changed=changed)
 
     @tools.tool("inspect_job", {"required": ["job_id"], "properties": {
         "job_id": {"type": "string"}, "wait_s": {"type": "number", "minimum": 0, "maximum": MAX_WAIT_S, "default": 0}}})

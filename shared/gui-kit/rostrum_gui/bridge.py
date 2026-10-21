@@ -132,7 +132,7 @@ class DocBridge(EditSlots, Parts, QObject):
         return ""
 
     def list_choices(self, item: dict, param: str) -> list[dict]:
-        """What a list param may hold, [{value, label}] (a list of choices uses its own options)."""
+        """What a list param may hold, or a pick param may name, [{value, label}] (a list of choices uses its own options)."""
         return []
 
     def animate_calls(self, item_id, param) -> tuple[list[dict], str]:

@@ -20,6 +20,9 @@ ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options",
 # way to clear it) instead of its widget.
 # A "list" param (item, minItems, maxItems): `options` are what may be added — its own choices for a list of choices,
 # else what the app's `choices(name)` gives (e.g. the tracks a duck may dip under), [{value, label}].
+# A "pick" param (control "pick", a text naming one other item, "" = none) shows as a choice: "None" first, then what
+# the app's `choices(name)` gives (e.g. the layers a track matte may use). Never a bare text box of ids; with nothing
+# to pick (and nothing picked) the row is absent.
 
 
 def layout(op) -> list[dict]:
@@ -52,7 +55,10 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
     """The rows with `valid`, `value`, `anim` and `expr` filled in for these values (`item`: the item's values as
     the screen shows them, e.g. at the playhead). `anim(name)` gives a param's key state; none: no keys.
     `expr(name)` gives {"text", "note"} for a param driven by an expression or binding; none: no param is."""
-    ok = {r["id"]: holds(r["valid_when"], item, facts) for r in static if r["row"] == "param"}
+    picks = {r["id"]: choices(r["id"]) if choices else [] for r in static if r.get("control") == "pick"}
+    ok = {r["id"]: holds(r["valid_when"], item, facts) and (r["id"] not in picks or bool(picks[r["id"]])
+                                                            or bool(item.get(r["id"], r["default"])))
+          for r in static if r["row"] == "param"}
     out = []
     for r in static:
         r = dict(r)
@@ -62,6 +68,9 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
             r["expr"] = expr(r["id"]) if expr else ""
             if r["type"] == "list" and r["item"] != "choice":
                 r["options"] = choices(r["id"]) if choices else []
+            if r["id"] in picks:
+                r["type"], r["control"] = "choice", ""
+                r["options"] = [{"value": "", "label": "None"}] + picks[r["id"]]
             r["holds"] = ok[r["id"]]
             r["valid"] = ok[r["id"]] and (r["importance"] != "deep" or more_open)
         else:

@@ -64,6 +64,7 @@ def test_person_added_and_deleted_things_survive_a_rerun():
     r = doc.run_script("intro.py", produce(title__body="Changed"), SCRIPT)
     assert doc.has("sticker") and not doc.has("title")      # not re-added, not wiped
     assert [h["key"] for h in r.held] == ["title.body"]
+    assert r.removed == []                                     # a person's sticker is never taken out
 
 
 def test_script_delete_of_an_edited_item_is_held():
@@ -85,8 +86,10 @@ def test_untouched_items_follow_the_script_including_delete_and_reorder():
     assert [l["id"] for l in doc.data["layers"]] == ["title", "card", "logo"] and doc.item("card")["x"] == 620
     out = copy.deepcopy(out)
     out["layers"] = [l for l in out["layers"] if l["id"] != "logo"]
-    doc.run_script("intro.py", out, SCRIPT)
+    r = doc.run_script("intro.py", out, SCRIPT)
     assert not doc.has("logo")
+    assert r.removed == [{"id": "logo", "type": "rect"}] and "removed: logo (rect)" in r.summary()     # the reply names what went
+    assert any("Removed \"logo\"" in w for w in r.warnings())
 
 
 def test_bad_script_value_is_refused_whole():

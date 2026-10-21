@@ -39,8 +39,9 @@ def T(name, label, group, default, imp=P, when=None, help=""):
     return Param.toggle(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help)
 
 
-def X(name, label, group, default, imp=P, help="", when=None):
-    return Param.text(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help)
+def X(name, label, group, default, imp=P, help="", when=None, control=""):
+    return Param.text(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help,
+                      control=control)
 
 
 BLENDS = _blends.BLENDS          # the one list (blends.txt), shared with the engine
@@ -49,9 +50,9 @@ MATTE_MODES = ["alpha", "alphaInverted", "luma", "lumaInverted"]
 # When a layer shows, on the project's shared markers (retime.py); cameras have these too (a cut on a marker).
 TIMED = {"not": IS("marker", "")}
 MARKER_TIMING = [
-    X("marker", "Timed from marker", "Timing", "", S,
+    X("marker", "Timed from marker", "Timing", "", S, control="pick",
       help="A shared marker's name: this layer's start, end and keys (and its children's) count from it, so moving the marker moves the layer (retime.py)"),
-    X("endMarker", "Ends at marker", "Timing", "", S, help="A shared marker's name: the layer is gone from that marker (Ends at is then absent)"),
+    X("endMarker", "Ends at marker", "Timing", "", S, control="pick", help="A shared marker's name: the layer is gone from that marker (Ends at is then absent)"),
 ]
 
 
@@ -83,7 +84,7 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
       help="How far behind the camera's plane: 0 = on it, 1 = twice as far (moves half as much), -0.5 = nearer (twice as much)"),
     T("screenLock", "Locked to screen", "Camera", False, D, help="The camera doesn't move it (a title, a frame)"),
     # A track matte (engine: scene/matte.rs): the layer is seen through another layer beside it, drawn only as the matte.
-    X("matte", "Track matte", "Matte", "", S,
+    X("matte", "Track matte", "Matte", "", S, control="pick",       # screens: a choice of the layer's siblings
       help="Id of a layer in the same group or comp; this layer shows only where that one is drawn. Empty = none"),
     Param.choice("matteMode", MATTE_MODES, label="Matte uses", group="Matte", default="alpha", importance=S,
                  valid_when={"not": IS("matte", "")},
@@ -110,7 +111,7 @@ TYPE = [
     N("slant", "Slant", "Font", -90, 90, 0.1, "°", D, help="Variable font slant axis (slnt); negative leans right"),
     N("grade", "Grade", "Font", -1000, 1000, 1, "", D, help="Variable font grade axis (GRAD): heavier without getting wider"),
     X("axes", "Other axes", "Font", "", D, help='Any variable font axis by tag, e.g. "XTRA 468, CASL 1"'),
-    X("pathLayer", "Follows path", "Path", "", S, help="The id of a path layer beside it (same group): the letters sit on that path as it is "
+    X("pathLayer", "Follows path", "Path", "", S, control="pick", help="The id of a path layer beside it (same group): the letters sit on that path as it is "
       "reshaped, moved or drawn on, and the text takes its place and turn. Empty = not following one (text.follow sets it)"),
     X("path", "Path", "Path", "", D, when=NOT_FOLLOWING,
       help="SVG path data (M L C Z) in the layer's own px; the letters sit on it. Empty = a normal line"),

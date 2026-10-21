@@ -59,4 +59,5 @@ def register(tools: Tools):
                 f"{'library recordings' if kind == 'library' else 'designed sounds'} on {', '.join(tracks)}."
                 + (f" Kept a person's changes: {', '.join(held)}." if held else ""))
         return Reply(text, {"events": [{k: v for k, v in e.items() if k not in ("speed", "x")} for e in evs],
-                            "tracks": tracks, "held": held, "source": kind})
+                            "tracks": tracks, "held": held, "removed": report.removed, "source": kind},
+                     warnings=report.warnings())

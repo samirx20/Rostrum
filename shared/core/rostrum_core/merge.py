@@ -25,9 +25,19 @@ class MergeReport:
     change: object = None                       # the Change, or None when nothing new applied
     applied: int = 0
     held: list = field(default_factory=list)    # {"key", "script", "kept", "who", "label"}
+    removed: list = field(default_factory=list) # {"id", "type"}: the items the run took out (topmost ones)
+
+    def warnings(self) -> list:
+        """One line per thing a caller must not miss: each held-back value, and what the run took out."""
+        held = [f'Held back "{h["key"]}": {h["who"]} set it to {h["kept"]!r}, the script wanted {h["script"]!r}. '
+                f'Pass force: ["{h["key"]}"] to overwrite.' for h in self.held]
+        gone = [f'Removed "{r["id"]}" ({r["type"]}): the script no longer makes it.' for r in self.removed]
+        return held + gone
 
     def summary(self) -> str:
         text = f"Script {self.script}: {self.applied} change(s) applied"
+        if self.removed:
+            text += "; removed: " + ", ".join(f"{r['id']} ({r['type']})" for r in self.removed)
         if not self.held:
             return text + "."
         lines = [f"  {h['key']}: script says {h['script']!r}, kept {h['kept']!r} ({h['who']}, \"{h['label']}\")"
@@ -119,6 +129,7 @@ def merge_script(doc, name, output: dict, who, force=False, session=None) -> Mer
                            "would break its check: " + "; ".join(problems))
     doc.script_bases[name] = new_base
     report.applied = len(applied)
+    report.removed = [{"id": a.id, "type": a.item.get("type", "item")} for a in applied if isinstance(a, E.Remove)]
     if applied:
         call = {"op": "run_script", "target": [], "args": {"script": name, "force": force}}
         report.change = doc.commit(work, applied, who, f"Run {name}", [call], session)

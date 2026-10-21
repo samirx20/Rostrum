@@ -51,7 +51,8 @@ class Param:
                                      # (marker_times.py reads it; the app turns it into seconds where it plays)
     max_items: int | None = None
     control: str = ""                # the screen control when the type alone doesn't say which: "curve" for a text of
-                                     # "x,y x,y …" points from 0 to 1 (the kit's CurveField); "" = the type's own
+                                     # "x,y x,y …" points from 0 to 1 (the kit's CurveField); "pick" for a text naming one
+                                     # other item ("" = none; the screen offers the app's choices); "" = the type's own
                                      # (a curve's max = the top of its y range; above 1 it is a multiplier, 1 = unchanged)
 
     def __post_init__(self):
