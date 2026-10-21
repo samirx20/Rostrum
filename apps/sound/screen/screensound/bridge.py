@@ -46,8 +46,9 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, D
         self._picture_open = bool(self.doc.data.get("picture"))     # the corner opens by itself on a song with a picture
         self._follow_render = picture.Follow(lambda: (self.pictureChoice, self.doc.folder), self)
         self._follow_render.changed.connect(self.timelineChanged)       # the linked item has a newer render
-        self._marks = MarkerWatch(self.doc.folder, self)
+        self._marks = MarkerWatch(self.doc.folder, self, self.who, self._fail, "sound")
         self._marks.changed.connect(self._markers_changed)
+        self.join_history(self._marks)                      # marker edits undo with the screen's one history
         self.selectionChanged.connect(self._follow_selection)
         self.selectionChanged.connect(self._drop_point)
         self._follow_selection()

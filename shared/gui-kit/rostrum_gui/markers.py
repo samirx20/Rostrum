@@ -2,7 +2,8 @@
 another app or an agent changes them, the one snap rule for anything dragged along time, and the ruler's marker
 edits (add at the playhead, move, rename, delete). Each edit is one marker operation through
 rostrum_core.markers.edit, recorded with the person's name in the project's marker history: the same operations
-agents call (edit_markers).
+agents call (edit_markers). The watch joins the screen's one undo history (DocBridge.join_history): the screen's
+undo takes back a marker edit like any other, and an agent's marker edit shows as who changed what.
 
 A document outside a project folder has no shared markers: `available` is false and the screen shows no marker
 controls (rule of individuality). A refused edit (a name taken, a bad time) is reported through `fail`, never
@@ -15,7 +16,7 @@ import sys
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from rostrum_core import RostrumError, Who
-from rostrum_core.markers import edit, listing, times, version
+from rostrum_core.markers import edit, listing, open_markers, times, version
 
 POLL_MS = 500          # another process (an agent, Sound) may move a marker: look at the file this often (cheap)
 
@@ -27,7 +28,7 @@ class MarkerWatch(QObject):
         super().__init__(parent)
         self.folder, self.who, self.owner = folder, who or Who.person("sam"), owner
         self._fail = fail or (lambda line: print(line, file=sys.stderr))
-        self._stamp, self.times, self._rows = None, {}, []
+        self._stamp, self.times, self._rows, self._count, self._last = None, {}, [], 0, None
         self._read()
         self._timer = QTimer(self)
         self._timer.timeout.connect(self.refresh)
@@ -49,6 +50,22 @@ class MarkerWatch(QObject):
 
     def close(self):
         self._timer.stop()
+
+    # ---- one history with the screen's document (DocBridge.join_history) ------------------------------------
+    def history_doc(self):
+        """The marker document as it is on disk now (None outside a project)."""
+        return open_markers(self.folder) if self.folder is not None else None
+
+    def stepped(self, doc):
+        """An undo or redo landed in `doc` (from history_doc): save it and show it."""
+        doc.save()
+        self.refresh()
+
+    def change_count(self) -> int:
+        return self._count
+
+    def last_change(self):
+        return self._last
 
     # ---- edits from the ruler: each one marker operation, one change ------------------------------------------
     @Property(bool, constant=True)
@@ -86,7 +103,10 @@ class MarkerWatch(QObject):
         if stamp == self._stamp:
             return False
         self._stamp, self.times = stamp, times(self.folder)
-        self._rows = [{k: m[k] for k in ("id", "name", "at", "colour")} for m in listing(self.folder)] if stamp else []
+        doc = open_markers(self.folder) if stamp else None
+        self._rows = [{k: m[k] for k in ("id", "name", "at", "colour")} for m in listing(self.folder, doc)] if doc else []
+        changes = doc.history.changes if doc else []
+        self._count, self._last = len(changes), (changes[-1] if changes else None)
         return True
 
     def _edit(self, calls, label) -> bool:

@@ -7,7 +7,7 @@ The mix-in reaches the bridge through `self` (`self.doc`, `self.who`, `self._sel
 from __future__ import annotations
 
 from PySide6.QtCore import Slot
-from rostrum_core import RostrumError
+from rostrum_core import RostrumError, desk
 
 from . import commands
 from .edits import Scrub, edit_label
@@ -71,11 +71,22 @@ class EditSlots(SlotMixin):
 
     @Slot()
     def undo(self):
-        self._guard(lambda: self._done(self.doc.undo(self.who), "Nothing to undo"))
+        """The person's newest change in this document or a joined one (the markers): one history (desk.py)."""
+        self._guard(lambda: self._step(desk.undo, "Nothing to undo"))
 
     @Slot()
     def redo(self):
-        self._guard(lambda: self._done(self.doc.redo(self.who), "Nothing to redo"))
+        self._guard(lambda: self._step(desk.redo, "Nothing to redo"))
+
+    def _step(self, fn, nothing):
+        pairs = [(self.doc, None)] + [(p.history_doc(), p) for p in self._partners]
+        pairs = [(d, p) for d, p in pairs if d is not None]
+        hit = fn([d for d, _ in pairs], self.who)
+        if hit is not None:
+            partner = next(p for d, p in pairs if d is hit[0])
+            if partner is not None:
+                partner.stepped(hit[0])
+        self._done(hit[1] if hit else None, nothing)
 
     def _apply(self, calls, label):
         self._done(self.doc.apply(calls, self.who, label=label), "")

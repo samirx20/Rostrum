@@ -40,6 +40,7 @@ class DocBridge(EditSlots, Parts, QObject):
         self.doc, self.who = doc, who or Who.person("sam")
         self._sel, self._more, self._status = "", False, ""
         self._scrub: Scrub | None = None
+        self._partners: list = []           # other documents in this person's one history (join_history)
         self._static: list[dict] = []
         self._parts_init()
         self.model = RowsModel(rows.ROLES, self)
@@ -72,7 +73,8 @@ class DocBridge(EditSlots, Parts, QObject):
 
     @Property(int, notify=docChanged)
     def historyCount(self):
-        return len(self.doc.history.changes)
+        """Changes in this person's one history: the document's and every joined partner's (e.g. the markers)."""
+        return len(self.doc.history.changes) + sum(p.change_count() for p in self._partners)
 
     @Property(str, notify=statusChanged)
     def status(self):
@@ -103,6 +105,13 @@ class DocBridge(EditSlots, Parts, QObject):
     def invoke(self, name, args):
         """Call a handler registered with `handle` (parts.py)."""
         return self._invoke(name, args)
+
+    def join_history(self, partner):
+        """Another document edited from this screen joins the one undo history and the change count (AGENTS.md
+        rule 3; rostrum_core.desk). `partner`: `history_doc()` (its Document now, or None), `stepped(doc)` (save and
+        re-read after an undo / redo there), `change_count()`, `last_change()` and a `changed` signal."""
+        self._partners.append(partner)
+        partner.changed.connect(lambda: self._heard(partner.last_change()))
 
     # ---- hooks (override in an app) -------------------------------------------------------------------------
     def label_of(self, item: dict) -> str:
@@ -155,13 +164,19 @@ class DocBridge(EditSlots, Parts, QObject):
                                   lambda name: self.list_choices(it, name))
         return rows.omit(evaluated, self.on_page(it))
 
+    def _heard(self, change):
+        """A change made by someone else (an agent, a script, another app) shows in the status as who did what."""
+        if change is not None and change.who != self.who:
+            self._set_status(f"{change.who}: {change.label}")
+        self.docChanged.emit()
+
     def _on_doc(self, event):
         if self._sel and not self.doc.has(self._sel):      # the selected item went away (e.g. undo of an add)
             self.select(self._first())
         else:
             self.model.update(self._rows())
             self.selectionChanged.emit()                   # its name may have changed (an agent's rename)
-        self.docChanged.emit()
+        self._heard(event.change if event.kind == "change" else None)
 
     def _set_status(self, text):
         self._status = text
