@@ -5,9 +5,9 @@ You cannot hear the render, so each look tool turns one aspect of it into number
 
 | Question | Tool | What to read |
 |---|---|---|
-| How loud is it, and does it build where it should? | `look_loudness` | integrated LUFS, true peak, the short-term curve (a sag or dip shows as a valley in the picture), clipped moments |
-| Is one track buried or too loud? | `look_levels` | each stem's LUFS and dB under the loudest / the mix; flags |
-| Do sounds land on time (a hit on a cut, a footstep on a frame)? | `look_events` with `expect` | each expected time's nearest onset and offset in ms; pass within `tolerance` |
+| How loud is it, and does it build where it should? | `look_loudness` | integrated LUFS, true peak, the short-term curve (a sag or dip shows as a valley in the picture), clipped moments, where the limiter worked and which tracks drove it |
+| Is one track buried or too loud? | `look_levels` | each stem's LUFS and dB under the loudest / the mix; flags (a float stem over 0 dBFS is held, not clipped) |
+| Do sounds land on time (a hit on a cut, a footstep on a frame)? | `look_events` with `expect` | each expected time's nearest onset and offset in ms; pass within `tolerance`; with `by_stem`, which stem hits each time |
 | Is there hum, a whistle, or masking? | `look_spectrum` (with `marks`) | `hum_lines` are the steady lines that are unwanted (flat level, on 50 / 60 Hz multiples or still there when the music stops); `tones` lists every steady line with its note name, so a held note shows as a note, not hum; marks show where events should be |
 | Does it lean left or right, or fall apart in mono? | `look_stereo` | balance per section, correlation, mono warnings |
 | Is there boom where the picture has none? | `look_low_end` | each track's share under 150 Hz and 60 Hz |

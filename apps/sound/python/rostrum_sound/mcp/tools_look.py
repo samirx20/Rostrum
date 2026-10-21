@@ -9,6 +9,7 @@ from rostrum_core.mcp import Reply, Tools
 
 from .. import listen
 from ..doc.times import seconds
+from ..handoff import LIMITER_SLACK_DB
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
 WAV = {"wav": {"type": "string", "description": "A WAV to read instead of the last render's mix (absolute path)."}}
@@ -26,6 +27,23 @@ def _source(ctx, args, where):
     return doc, r["file"], r["stems"]
 
 
+def _limiter_inputs(ctx, doc):
+    """What the limiter look needs from the last render: the stems that add up to the mix (the tracks that feed
+    it directly, plus its bus stems), and a caveat when the glue or master effects also changed the mix."""
+    try:
+        r = ctx.app.state.last_render(doc.item_id, "look_loudness")
+    except RostrumError:
+        return None
+    direct = r.get("direct") or list(r["stems"])
+    stems = {k: r["stems"][k] for k in direct if k in r["stems"]} | dict(r.get("busStems") or {})
+    m = r.get("master") or {}
+    if not stems:
+        return None
+    caveat = ("the glue compressor or master effects also acted, so this includes their change"
+              if m.get("glueMaxReductionDb", 0) > LIMITER_SLACK_DB or m.get("insertsOnMix") else "")
+    return {"stems": stems, "caveat": caveat, "engine_max_db": m.get("limiterMaxReductionDb")}
+
+
 def _resolve(doc, t, where):
     """A time for a look: seconds, {"beat": n} or "#marker", as the document resolves it."""
     return seconds(t, doc.data, where)
@@ -34,17 +52,22 @@ def _resolve(doc, t, where):
 def register(tools: Tools):
     @tools.tool("look_loudness", {"properties": {**ITEM, **WAV}})
     def look_loudness(ctx, args):
-        """Integrated loudness (LUFS), true peak, loudness range, the short-term loudness curve and every clipped moment, with a curve picture."""
+        """Integrated loudness (LUFS), true peak, loudness range, the short-term loudness curve and every clipped moment, with a curve picture. On a render's mix it also shows where the master limiter turned the sound down (a curve in the picture, the worst moments with the dB reduced) and which tracks drove each moment, measured from the stems (an estimate, close to the engine's own gain)."""
         doc, wav, _ = _source(ctx, args, "look_loudness")
         png = ctx.app.state.look_dir(doc.item_id) / f"{Path(wav).stem}-loudness.png"
-        r = listen.loudness(wav, out_png=str(png))
+        lim = None if args.get("wav") else _limiter_inputs(ctx, doc)
+        r = listen.loudness(wav, out_png=str(png), limiter=lim)
         clips = r.get("clip_moments", [])
-        return Reply(f"{r['integrated_lufs']:.1f} LUFS, true peak {r['true_peak_dbtp']:.1f} dBTP, range {r['lra_lu']:.1f} LU, {len(clips)} clipped moments.",
-                     r, [r["png"]], [r["png"]])
+        said = f"{r['integrated_lufs']:.1f} LUFS, true peak {r['true_peak_dbtp']:.1f} dBTP, range {r['lra_lu']:.1f} LU, {len(clips)} clipped moments."
+        if "limiter" in r:
+            w = r["limiter"]["worst"]
+            said += (f" Limiter: up to {r['limiter']['max_db']:.1f} dB down for {r['limiter']['seconds_working']:.1f} s"
+                     + (f"; worst at {w[0]['time_s']:.2f} s, driven by {', '.join(d['track'] for d in w[0]['drivers'][:3])}." if w else "."))
+        return Reply(said, r, [r["png"]], [r["png"]])
 
     @tools.tool("look_levels", {"properties": {**ITEM}})
     def look_levels(ctx, args):
-        """Each track's level from its stem (last render): LUFS, peak, how far under the loudest and the mix; flags buried tracks."""
+        """Each track's level from its stem (last render): LUFS, peak, file format, how far under the loudest and the mix; flags buried tracks. A float stem above 0 dBFS is held, not clipped (flag "over full scale", clips false); only a fixed-point stem at full scale "clips"."""
         _, wav, stems = _source(ctx, args, "look_levels")
         if not stems:
             raise RostrumError(codes.NOT_FOUND, "look_levels", "stems", "were not rendered", hint="render_mix with stems: true.")
@@ -55,10 +78,24 @@ def register(tools: Tools):
         "track": {"type": "string", "description": "Read one track's stem instead of the mix."},
         "expect": {"type": "array", "description": "Times the sounds should start at: seconds, {\"beat\": n} or \"#marker\"."},
         "tolerance": {"type": "number", "default": 0.04, "description": "Seconds a sound may be off (one frame at 25 fps = 0.04)."},
+        "by_stem": {"type": "boolean", "default": False, "description": "With expect: for each time, which track's stem starts nearest it (and the next two), how far off, and the mix's nearest onset: one call for every marker."},
         "detail": {"type": "string", "enum": ["short", "full"], "default": "short", "description": "short lists the first 40 onsets; full lists all."}}})
     def look_events(ctx, args):
-        """Where sounds start (onsets). With expect, each expected time's nearest onset, how early or late, pass or fail."""
+        """Where sounds start (onsets). With expect, each expected time's nearest onset, how early or late, pass or fail. With expect and by_stem, which track hits each time (all stems of the last render, plus the mix's nearest onset)."""
         doc, wav, stems = _source(ctx, args, "look_events")
+        if args.get("by_stem"):
+            if not args.get("expect"):
+                raise RostrumError(codes.BAD_ARGUMENT, "look_events", "by_stem", "needs expect", hint="Give expect: times or #markers.")
+            if not stems:
+                raise RostrumError(codes.NOT_FOUND, "look_events", "stems", "were not rendered", hint="render_mix with stems: true.")
+            tol = args.get("tolerance", 0.04)
+            expect = [_resolve(doc, t, f"look_events › expect[{i}]") for i, t in enumerate(args["expect"])]
+            r = listen.which_stem(wav, stems, expect, tol)
+            for row, name in zip(r["expected"], args["expect"]):
+                row["at"] = name
+            ok = sum(row["pass"] for row in r["expected"])
+            return Reply(f"{ok} of {len(expect)} expected times have a stem starting within {tol * 1000:.0f} ms: "
+                         + "; ".join(f"{row['at']} → {row['stem']} ({row['offset_ms']:+.0f} ms)" for row in r["expected"] if row["stem"]) + ".", r)
         if args.get("track"):
             if args["track"] not in stems:
                 raise RostrumError.not_found("look_events", "stem", args["track"], stems, "the last render's stems")

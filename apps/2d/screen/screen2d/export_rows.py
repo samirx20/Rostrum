@@ -24,6 +24,9 @@ def facts(row: dict, f: dict, path: str) -> list[dict]:
     c = f.get("checked") or {}
     if c.get("size"):
         out.append({"label": "Size", "text": "×".join(str(n) for n in c["size"])})
+    if isinstance(c.get("layers"), list):                     # motion samples: which layers, how often
+        out.append({"label": "Moving layers", "text": ", ".join(c["layers"])})
+        out.append({"label": "Samples", "text": f'{c["samples"]} each, {c["rate"]:g} a second'})
     if row["alpha"]:
         out.append({"label": "Transparency", "text": "kept" if f["alpha"] else "not kept"})
     if len(row["depths"]) > 1:

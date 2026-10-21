@@ -67,7 +67,8 @@ the render, naming the note; it is never played as a silent note. Typing a lengt
 1. `render_mix` (stems on), then `inspect_job` until done.
 2. `look_events` with `expect` = the markers that should have a sound (`["#logo", "#door"]`) and `tolerance` (0.04 s =
    one frame at 25 fps). It answers each expected time's nearest onset and how many ms off. Use `track` to read one stem
-   when the mix is busy.
+   when the mix is busy, or `by_stem: true` to get, for every marker at once, which stem starts nearest it, how far off,
+   and the mix's own nearest onset.
 3. `look_beats` shows whether the music's own beats sit on the document's grid (per onset, ms from the nearest grid line).
 4. `look_spectrum` with `marks` (`{"logo": "#logo"}`) draws the moments on the spectrogram, so a late or missing hit shows.
 

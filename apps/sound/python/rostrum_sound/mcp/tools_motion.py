@@ -14,11 +14,13 @@ from .. import userlib
 from ..motion import read, score
 from ..script import run_source
 
+FORMAT = "rostrum.motion-samples/1"      # the 2D app's motion samples (apps/2d/MOTION.md › Motion samples)
+
 
 def register(tools: Tools):
     @tools.tool("edit_sounds_from_motion", {"required": ["samples"], "properties": {
         "item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."},
-        "samples": {"type": "string", "description": "Absolute path to the motion samples JSON (per layer x, y, scale, "
+        "samples": {"type": "string", "description": "Absolute path to the motion samples JSON from Rostrum2D render_export format=motion (per layer x, y, scale, "
                     "opacity at `rate` per second; see inspect_guide 'designed-sounds')."},
         "glue": {"type": "boolean", "default": True, "description": "Route the UI tracks into the ui bus (short "
                  "room + light compressor), made if missing."},
@@ -36,6 +38,11 @@ def register(tools: Tools):
         if not p.is_file():
             raise RostrumError(codes.NOT_FOUND, "edit_sounds_from_motion", f'samples "{p}"', "is not a file")
         samples = json.loads(p.read_text(encoding="utf-8"))
+        missing = [k for k in ("rate", "width", "height", "layers") if k not in samples]
+        if missing or samples.get("format", FORMAT) != FORMAT:
+            raise RostrumError(codes.BAD_ARGUMENT, "edit_sounds_from_motion", f'samples "{p}"',
+                               f'is not a {FORMAT} file' + (f' (no {", ".join(missing)})' if missing else ""),
+                               hint='Write one with Rostrum2D: render_export format="motion" (or Export › Motion samples).')
         doc = ctx.document(args.get("item"))
         evs = read.events(samples)
         kind = args.get("source", "designed")

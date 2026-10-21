@@ -1,6 +1,7 @@
-"""The one export path for every format (mp4, prores4444, webm, gif, png and exr sequences, lottie): the `render_export` tool and the
-screen's Export button both run `run()`. The formats and what each takes come from `io/formats.py` (FORMATS) plus Lottie
-here; nothing per format is written anywhere else. Nothing is reported as done unless the file read back right."""
+"""The one export path for every format (mp4, prores4444, webm, gif, png and exr sequences, lottie, motion): the `render_export`
+tool and the screen's Export button both take `snapshot()` and run `run()`. The formats and what each takes come from
+`io/formats.py` (FORMATS) plus the two data formats here (Lottie; motion: the samples RostrumSound places sounds from,
+rostrum2d/motion_samples.py); nothing per format is written anywhere else. Nothing is reported as done unless the file read back right."""
 from __future__ import annotations
 
 import json
@@ -16,7 +17,9 @@ from rostrum2d.io import formats as table
 
 from .render import _fail
 
-LABELS = {"mp4": "MP4 (H.264)", "prores4444": "ProRes 4444", "webm": "WebM (VP9)", "gif": "GIF", "png": "PNG sequence", "exr": "EXR sequence (for the Editor)", "lottie": "Lottie (JSON)"}
+LABELS = {"mp4": "MP4 (H.264)", "prores4444": "ProRes 4444", "webm": "WebM (VP9)", "gif": "GIF", "png": "PNG sequence", "exr": "EXR sequence (for the Editor)", "lottie": "Lottie (JSON)",
+          "motion": "Motion samples (for RostrumSound)"}
+DATA = ("lottie", "motion")                # not pictures: no engine, never a versioned picture render
 
 
 def formats() -> list[dict]:
@@ -25,7 +28,25 @@ def formats() -> list[dict]:
     rows = [{"name": n, "label": LABELS.get(n, n), "ext": f.ext, "alpha": f.alpha, "depths": list(f.depths), "range": True,
              "sequence": not f.video}
             for n, f in table.FORMATS.items()]
-    return rows + [{"name": "lottie", "label": LABELS["lottie"], "ext": ".json", "alpha": False, "depths": [], "range": False, "sequence": False}]
+    return rows + [{"name": n, "label": LABELS[n], "ext": ".json", "alpha": False, "depths": [], "range": False, "sequence": False}
+                   for n in DATA]
+
+
+def snapshot(doc, comp_id: str, fmt: str, layers: list[str] | None = None) -> dict:
+    """What a job exports, taken now (edits made while it runs are not in the file): the engine's scene, or for motion
+    the samples themselves (read from the composition as it plays)."""
+    from . import render
+    if fmt != "motion":
+        return render.scene_of(doc, comp_id)
+    import copy
+    from rostrum_core import markers
+    from rostrum2d import motion_samples, retime
+    comp = next((c for c in doc.data.get("comps", []) if c["id"] == comp_id), None)
+    if comp is None:
+        raise RostrumError(codes.NOT_FOUND, "export", f'composition "{comp_id}"', "is not in the document")
+    timed = copy.deepcopy(retime.timed(comp, markers.times(doc.folder) if doc.folder else None, comp.get("fps", 30)))
+    data = motion_samples.sample(timed, only=layers, where="export motion")
+    return {"comp": {"id": comp_id, "props": {"fps": comp.get("fps", 30), "duration": comp.get("duration", 5.0)}}, "samples": data}
 
 
 def info(where: str, fmt: str) -> dict:
@@ -54,6 +75,16 @@ def settings(where: str, fmt: str, duration: float, alpha=None, depth=None, star
 
 def _to_file(where: str, scene: dict, fmt: str, s: dict, target: Path, progress, engine_factory) -> dict:
     """Draw into `target` (a file; for a sequence the base its frames are named from). Facts read back, or RENDER_FAILED."""
+    if fmt == "motion":
+        data, p = scene["samples"], scene["comp"]["props"]
+        try:
+            target.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
+            back = json.loads(target.read_text(encoding="utf-8"))
+        except Exception as e:  # noqa: BLE001
+            raise _fail(where, f"the motion samples {target.name}", e) from e
+        n = len(next(iter(back["layers"].values()))["x"])
+        return {"file": str(target), "frames": round(p["duration"] * p["fps"]), "fps": p["fps"], "alpha": False, "depth": None,
+                "checked": {"layers": list(back["layers"]), "samples": n, "rate": back["rate"]}}
     if fmt == "lottie":
         from rostrum2d.io.lottie import write_lottie
         try:
@@ -90,14 +121,14 @@ def _manifest(item, doc_seq, comp_id, fmt, s, facts, version, names, size) -> di
 
 def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_seq=0, out=None, progress=None, engine_factory=None) -> dict:
     """Export `scene` as `fmt` with settings `s` (from settings()). Where it goes: `out` (a file; for a sequence a folder), else the
-    project's renders folder (folder + item; not for Lottie, which is not a picture hand-off), else the render cache.
+    project's renders folder (folder + item; not for Lottie or motion, which are not pictures), else the render cache.
     Written under a .partial name and renamed when read back right; a failed or cancelled run removes what it wrote. Returns the facts: file, frames, fps, alpha, depth, checked,
     files (what was written), report (Lottie: what it couldn't carry)."""
     row, comp = info(where, fmt), scene["comp"]
     stem = f'{item or "doc"}_{comp["id"]}'
     png = fmt in table.FORMATS and not table.FORMATS[fmt].video     # a sequence: one file per frame, in a folder
     seq_name = lambda base: table.pattern(table.FORMATS[fmt], base)
-    if out is None and folder and item and fmt != "lottie":       # a project render: renders/<item>/vNNN/
+    if out is None and folder and item and fmt not in DATA:       # a project render: renders/<item>/vNNN/
         part = project.begin_render(folder, item)
         name = f"{stem}{row['ext']}"
         try:

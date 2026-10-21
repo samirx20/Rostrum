@@ -33,3 +33,14 @@ def test_chords_and_keys_are_spelled_in_the_key():
     assert name_chord([62, 65, 70], key="F major") == "Bb/D"
     assert name_chord([61, 65, 68]) == "C#"
     assert key_name(3, "major") == "Eb major"
+
+
+def test_over_full_scale_clips_only_in_a_fixed_point_file(tmp_path):
+    """Guard: a stem above 0 dBFS is held by a float file and cut flat by a fixed-point one; the flag must say which."""
+    from rostrum_sound import listen
+    y = (1.5 * np.sin(2 * np.pi * 440 * np.arange(SR) / SR)).astype("float32")
+    sf.write(tmp_path / "f.wav", y, SR, subtype="FLOAT")
+    sf.write(tmp_path / "i.wav", y, SR, subtype="PCM_16")     # written clipped: reaches full scale
+    flags = {f["stem"]: f for f in listen.levels({"f": str(tmp_path / "f.wav"), "i": str(tmp_path / "i.wav")})["flags"]}
+    assert flags["f"]["flag"] == "over full scale" and flags["f"]["clips"] is False
+    assert flags["i"]["flag"] == "clips" and flags["i"]["clips"] is True

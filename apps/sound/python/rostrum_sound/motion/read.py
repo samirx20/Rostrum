@@ -8,6 +8,9 @@ and opacity at `rate` samples a second. Out come the events a sound can follow, 
   snap   the scale jumps to its resting value (a title snapping in): its most sudden moment
   step   the opacity jumps on (a counter's digit, a cut-in): the time
 
+Several layers making the same gesture at the same moment (a row of cards landing together, a group's children moving
+as one) are ONE event: one sound, as big as all of them (`layers` lists them, `area` adds up), never a stack of copies.
+
 Facts only; what they sound like is `score.py`'s starting point, every value editable after.
 """
 from __future__ import annotations
@@ -17,6 +20,7 @@ import math
 MOVING_PX_S = 40.0        # slower than this is standing still
 SCALING_PER_S = 0.25      # a scale changing slower than this is still
 SPEED_POINTS = 24         # points in a move's speed curve
+TOGETHER_S = 0.034        # the same gesture from several layers starts and ends within this (about a frame)
 
 
 def _segments(v: list[float], floor: float) -> list[tuple[int, int]]:
@@ -100,12 +104,32 @@ def _steps(lid: str, o: list[float], rate: float) -> list[dict]:
     return [{"layer": lid, "kind": "step", "at": (i + 1) / rate} for i in range(len(o) - 1) if o[i + 1] - o[i] > 0.5]
 
 
+def _same(a: dict, b: dict) -> bool:
+    return a["kind"] == b["kind"] and all(abs(a.get(k, 0.0) - b.get(k, 0.0)) <= TOGETHER_S
+                                          for k in ("at", "end", "release", "start"))
+
+
+def _together(evs: list[dict]) -> list[dict]:
+    """One event per gesture: the biggest layer's event, carrying every layer that made it and their summed area."""
+    out: list[dict] = []
+    for e in sorted(evs, key=lambda e: -(e.get("area") or 0)):
+        same = next((o for o in out if _same(o, e)), None)
+        if same is None:
+            out.append({**e, "layers": [e["layer"]]})
+        else:
+            same["layers"].append(e["layer"])
+            if "area" in same:
+                same["area"] += e.get("area") or 0
+    return out
+
+
 def events(samples: dict) -> list[dict]:
-    """Every event of every layer, in time order."""
+    """Every event of every layer, in time order; one gesture made by several layers together is one event."""
     rate, W, H = samples["rate"], samples["width"], samples["height"]
     out = []
     for lid, L in samples["layers"].items():
         out += _moves(lid, L, rate, W, H) + _scales(lid, L["scale"], rate) + _steps(lid, L["opacity"], rate)
+    out = _together(out)
     for e in out:
         for k in ("at", "end", "peak_at", "release", "start"):
             if k in e:

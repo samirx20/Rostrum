@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Property, QCoreApplication, QObject, QUrl, Signal, Slot
-from rostrum2d.mcp import exporting, render
+from rostrum2d.mcp import exporting
 
 from . import export_rows
 from .export_job import Job
@@ -149,7 +149,7 @@ class Exporter(QObject):
         try:
             v = self._values
             s = exporting.settings("export", self._fmt, self._duration(), v["alpha"], v["depth"], v["start"], v["end"])
-            scene = render.scene_of(b.doc, self._comp_id)        # the snapshot: edits made while it runs are not in the file
+            scene = exporting.snapshot(b.doc, self._comp_id, self._fmt)   # the snapshot: edits made while it runs are not in the file
         except Exception as e:  # noqa: BLE001
             return self._finish({}, e.line() if hasattr(e, "line") else f"Error: export: {e}")
         fmt, doc = self._fmt, b.doc
