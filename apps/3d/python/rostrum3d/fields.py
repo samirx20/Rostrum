@@ -37,8 +37,9 @@ def T(name, label, group, default, imp=P, when=None, help=""):
     return Param.toggle(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help)
 
 
-def X(name, label, group, default="", imp=P, when=None, help=""):
-    return Param.text(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help)
+def X(name, label, group, default="", imp=P, when=None, help="", refers=None):
+    """A text field. `refers`: the item type its text is the id of ("material", "camera"); screens offer those items."""
+    return Param.text(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help, kind=refers)
 
 
 NO_AIM = IS("aim", "none")
@@ -81,17 +82,17 @@ FIELDS: dict[str, list[Param]] = {
         N("segments", "Segments", "Shape", 1, 256, 1, "", D, NOT("shape", "plane"), integer=True, default=24,
           help="Box: steps around each bevel. Round shapes: steps around"),
         T("smooth", "Smooth shading", "Shape", True, S, help="Smooth normals; off = flat facets"),
-        X("material", "Material", "Material", "", help='A material id, or "" for none'),
+        X("material", "Material", "Material", "", help='A material id, or "" for none', refers="material"),
     ] + TRANSFORM,
     "import": [
         X("file", "File", "File", "", help="Absolute path of a .usd / .usda / .usdc / .usdz; the file is never rewritten"),
         X("prim", "Prim", "File", "", D, help='Path inside the file; "" = its default prim'),
-        X("material", "Material", "Material", "", S, help='One material over the whole import, or "" to keep the file\'s'),
+        X("material", "Material", "Material", "", S, help='One material over the whole import, or "" to keep the file\'s', refers="material"),
     ] + TRANSFORM,
     # A part of an import: an override on a prim inside the file (path relative to the import's prim).
     "part": [
         X("path", "Path", "Part", "", D, help="Prim path relative to the import's prim, e.g. Body/Screen"),
-        X("material", "Material", "Part", "", help='A material id, or "" to keep the file\'s'),
+        X("material", "Material", "Part", "", help='A material id, or "" to keep the file\'s', refers="material"),
         T("visible", "Visible", "Part", True),
     ],
     "light": [
@@ -147,7 +148,7 @@ FIELDS: dict[str, list[Param]] = {
     # A shot: a camera, a frame size and a stretch of time. Times are seconds; frames = round(seconds × fps),
     # from round(start × fps) to round(end × fps) − 1 (end is where the shot is over).
     "shot": [
-        X("camera", "Camera", "Shot", "", help="The id of the camera this shot looks through"),
+        X("camera", "Camera", "Shot", "", help="The id of the camera this shot looks through", refers="camera"),
         N("fps", "Frame rate", "Shot", 1, 120, 1, "fps", integer=True, default=24),
         N("start", "Starts at", "Shot", 0, 36000, 0.001, "s"),
         N("end", "Ends at", "Shot", 0.001, 36000, 0.001, "s", default=2.0),

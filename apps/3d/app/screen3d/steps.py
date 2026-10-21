@@ -2,6 +2,9 @@
 
     select <id> | frame <n> | set <param> <json value> | scrub <param> <v> <v> … | animate <param> (the key mark)
     keydrag <key id> <frame> | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
+    add <menu value, e.g. mesh:sphere | light:distant | camera | material | shot> | duplicate | delete
+    wait <ms> | snap <png path> (a screenshot now, the run goes on)
+    addmenu (opens the Add menu) | mouse <x> <y> (a click on the window) | renderstart | cancelrender (both don't wait)
     render (Cycles, the playhead frame; waits for the job, up to 10 min) | closerender
   Viewport (screen state, never the document): orbit <dx> <dy> | pan <dx> <dy> | zoom <steps> | mode shot|free
     exposure <stops> | studio <amount> | lights on|off | home | click <x> <y> (viewport pixels: selects what is there)
@@ -11,7 +14,8 @@ from __future__ import annotations
 
 import json
 
-from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject
+from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject, QPoint, Qt
+from PySide6.QtTest import QTest
 
 RENDER_WAIT_S = 600
 VIEW = {"orbit": lambda v, a: v.orbit(float(a[0]), float(a[1])), "pan": lambda v, a: v.pan(float(a[0]), float(a[1])),
@@ -59,6 +63,24 @@ def do_step(bridge, win, step):
         QMetaObject.invokeMethod(win, "openCommands", Q_ARG("QVariant", " ".join(rest)))
     elif word == "run":
         bridge.run(rest[0])
+    elif word == "add":
+        bridge.adder.add(rest[0])
+    elif word in ("duplicate", "delete"):
+        bridge.adder.duplicate() if word == "duplicate" else bridge.adder.remove()
+    elif word == "addmenu":
+        QMetaObject.invokeMethod(win, "openAddMenu")
+    elif word == "mouse":
+        QTest.qWait(400)                              # let the last step lay out
+        QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, QPoint(int(rest[0]), int(rest[1])))
+    elif word == "wait":
+        QTest.qWait(int(rest[0]))
+    elif word == "snap":
+        if not win.grabWindow().save(rest[0]):
+            raise RuntimeError(f"step {step!r}: could not save {rest[0]}")
+    elif word == "renderstart":
+        bridge.renderStill()
+    elif word == "cancelrender":
+        bridge.render.cancel()
     elif word == "render":
         bridge.renderStill()
         if not bridge.render.wait(RENDER_WAIT_S):
