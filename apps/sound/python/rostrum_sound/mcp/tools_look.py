@@ -54,7 +54,8 @@ def register(tools: Tools):
     @tools.tool("look_events", {"properties": {**ITEM, **WAV,
         "track": {"type": "string", "description": "Read one track's stem instead of the mix."},
         "expect": {"type": "array", "description": "Times the sounds should start at: seconds, {\"beat\": n} or \"#marker\"."},
-        "tolerance": {"type": "number", "default": 0.04, "description": "Seconds a sound may be off (one frame at 25 fps = 0.04)."}}})
+        "tolerance": {"type": "number", "default": 0.04, "description": "Seconds a sound may be off (one frame at 25 fps = 0.04)."},
+        "detail": {"type": "string", "enum": ["short", "full"], "default": "short", "description": "short lists the first 40 onsets; full lists all."}}})
     def look_events(ctx, args):
         """Where sounds start (onsets). With expect, each expected time's nearest onset, how early or late, pass or fail."""
         doc, wav, stems = _source(ctx, args, "look_events")
@@ -64,6 +65,8 @@ def register(tools: Tools):
             wav = stems[args["track"]]
         expect = [_resolve(doc, t, f"look_events › expect[{i}]") for i, t in enumerate(args.get("expect") or [])] or None
         r = listen.onsets(wav, expect=expect, tolerance=args.get("tolerance", 0.04))
+        if args.get("detail", "short") == "short" and len(r["onsets_s"]) > 40:
+            r = {**r, "onsets_s": r["onsets_s"][:40], "onsets_total": len(r["onsets_s"])}
         if expect:
             bad = [e for e in r["expected"] if not e["pass"]]
             line = f"{len(expect) - len(bad)} of {len(expect)} expected sounds within {args.get('tolerance', 0.04) * 1000:.0f} ms."

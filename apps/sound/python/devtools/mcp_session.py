@@ -34,6 +34,7 @@ async def session(folder: str, items: list[str], calls: list[dict], client: str)
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8")       # replies hold en dashes and arrows; a Windows console is not UTF-8
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("calls")
     p.add_argument("--folder", required=True)

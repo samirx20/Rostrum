@@ -19,7 +19,7 @@ def _lufs(y, sr):
 def levels(stems, mix=None, section_s=2.0, buried_db=18.0):
     """stems: {id: wav path}; mix: its rendered wav (default: the stems summed).
     Per stem: LUFS, peak, RMS, dB under the loudest stem and dB against the mix.
-    flags: a stem more than `buried_db` under the loudest other stem in every section it plays."""
+    flags: a stem peaking above 0 dBFS; a stem more than `buried_db` under the loudest other stem in every section it plays."""
     if not stems:
         raise ValueError("levels: no stems given")
     data = {k: load(p) for k, p in stems.items()}
@@ -50,7 +50,9 @@ def levels(stems, mix=None, section_s=2.0, buried_db=18.0):
                    "rms_dbfs": num(db(np.mean(ys[k].astype(np.float64) ** 2))),
                    "db_under_loudest": num(top - lufs[k], 1),
                    "db_vs_mix": num(lufs[k] - mix_lufs, 1)}
-    flags = []
+    flags = [{"flag": "over full scale", "stem": k, "peak_dbfs": r["peak_dbfs"],
+              "detail": "the stem peaks above 0 dBFS: it clips once written at fixed point, and pushes the master's limiter"}
+             for k, r in rows.items() if r["peak_dbfs"] > 0.0]
     for i, k in enumerate(ids):
         gaps = [np.delete(sec_db[:, s], i).max() - sec_db[i, s]
                 for s in range(len(secs)) if sec_db[i, s] > ACTIVE_DB and len(ids) > 1]

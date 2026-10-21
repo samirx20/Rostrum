@@ -47,10 +47,8 @@ def register(tools: Tools):
             raise RostrumError(codes.NOT_FOUND, "inspect_library", str(LIBRARY), "is not installed")
         words = (args.get("find") or "").lower().split()
         want = {".sfz"} if args.get("kind", "instruments") == "instruments" else AUDIO
-        hits = []
-        for p in LIBRARY.rglob("*"):
-            if p.suffix.lower() in want and all(w in str(p).lower() for w in words):
-                hits.append(str(p))
-                if len(hits) >= args.get("limit", 40):
-                    break
-        return Reply(f"{len(hits)} found" + (f" for \"{args['find']}\"" if words else "") + f" under {LIBRARY}.", {"paths": hits})
+        found = sorted(str(p) for p in LIBRARY.rglob("*") if p.suffix.lower() in want and all(w in str(p).lower() for w in words))
+        limit = args.get("limit", 40)
+        shown = f", showing the first {limit} (raise limit or narrow find)" if len(found) > limit else ""
+        return Reply(f"{len(found)} found" + (f" for \"{args['find']}\"" if words else "") + f" under {LIBRARY}{shown}.",
+                     {"paths": found[:limit], "total": len(found), "more": len(found) > limit})
