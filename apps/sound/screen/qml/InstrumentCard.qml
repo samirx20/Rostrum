@@ -8,7 +8,7 @@ Rectangle {
     id: card
     required property var model          // roles: id, name, what, controls, moreOpen
     readonly property bool selected: backend.selected === model.id
-    implicitHeight: head.height + list.height + Theme.pad
+    implicitHeight: head.height + list.height + (voice.visible ? voice.height + Theme.gap : 0) + Theme.pad
     color: Theme.app
     radius: Theme.radiusPanel
     border.width: selected ? 1 : 0; border.color: Theme.accent
@@ -42,5 +42,12 @@ Rectangle {
             model: card.model.controls
             delegate: InspectorRow { bridge: proxy }
         }
+    }
+    VoiceLines {
+        id: voice
+        visible: card.model.isVoice
+        x: Theme.pad; y: head.height + list.height + Theme.pad; width: parent.width - 2 * Theme.pad
+        trackId: card.model.id; lines: card.model.lines; missing: card.model.missing
+        status: card.model.voiceStatus; busy: card.model.voiceBusy; failed: card.model.voiceFailed
     }
 }

@@ -11,8 +11,10 @@ from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
 from . import cards
+from .voice_card import VoiceMaker, card_roles
 
-ROLES = ("id", "name", "what", "controls", "moreOpen")
+ROLES = ("id", "name", "what", "controls", "moreOpen", "isVoice", "lines", "missing", "voiceStatus", "voiceBusy",
+         "voiceFailed")
 
 
 class InstrumentsPage(QObject):
@@ -25,6 +27,8 @@ class InstrumentsPage(QObject):
         self._more: set[str] = set()
         self._controls: dict[str, RowsModel] = {}
         self._cards = RowsModel(ROLES, self)
+        self.voice = VoiceMaker(bridge, self)
+        self.voice.changed.connect(self._refresh)
         self._refresh()
         bridge.docChanged.connect(self._refresh)
 
@@ -41,6 +45,11 @@ class InstrumentsPage(QObject):
         self._more ^= {track_id}
         self._refresh()
 
+    @Slot(str)
+    def makeVoice(self, track_id):
+        """Make the missing takes of the track's lines (off the screen's thread; the document is not edited)."""
+        self.voice.start(track_id)
+
     def _refresh(self):
         had = bool(self._cards.rows)
         tracks = [t for t in self.doc.items() if t["type"] == "track" and cards.has_instrument(t)]
@@ -51,7 +60,8 @@ class InstrumentsPage(QObject):
             evaluated = cards.evaluate(self.doc, self._layout, t, t["id"] in self._more)
             model.update(evaluated) if model.rows else model.reset(evaluated)
             out.append({"id": t["id"], "name": self.bridge.label_of(t), "what": cards.what_it_is(t),
-                        "controls": model, "moreOpen": t["id"] in self._more})
+                        "controls": model, "moreOpen": t["id"] in self._more,
+                        **card_roles(t, self.voice.state(t["id"]))})
         self._cards.update(out)
         if had != bool(out):
             self.emptyChanged.emit()

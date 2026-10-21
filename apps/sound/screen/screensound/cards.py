@@ -55,6 +55,8 @@ def what_it_is(track: dict) -> str:
         return f"{FAMILY.get(m, 'Instrument')} · {spaced(m).lower()}"
     if kind == "synth":
         return "Synth · " + str(track.get("synth") or "saw")
+    if kind == "voice":
+        return "Voice · " + spaced(track.get("voice") or "ryan")
     return spaced(kind)
 
 

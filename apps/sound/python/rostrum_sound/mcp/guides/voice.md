@@ -1,0 +1,10 @@
+# Voice lines: speaking with a voice track
+
+A voice track (`instrument: "voice"`, with `voice`, `language`, `style`) holds `lines`: words and a start time. Add them
+with `line.add` (`text`, `at` as seconds, `{"beat": n}` or a marker such as `"#drop+0.5"`; `seed` = another take of the
+same words), change with `line.set`, delete with `line.remove`.
+
+The audio is not made by editing: call the `render_voice` tool (optional `ids`). It makes each missing take, one at a time (a
+job: ask `inspect_job` if it did not finish), and answers per line with `file`, `seconds`, `generated` or cached, and
+`start` / `end` in seconds, so the next line can be placed after this one. Then `render_mix` and listen with the look
+tools. Rendering with an unmade line fails and names the line. Words, voice, style, language or seed changed = make again.

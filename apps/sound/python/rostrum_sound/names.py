@@ -21,8 +21,8 @@ GM_DRUMS = ["kick", "rim", "snare", "clap", "hat", "pedalHat", "openHat", "tomLo
             "cymbal", "ride", "china", "rideBell", "splash", "crash2", "ride2"]
 GM_KEYS = (27, 87)
 
-# The forms a track's instrument takes ("none": a track of recorded clips only).
-INSTRUMENTS = ["none", "builtIn", "sfz", "kit", "kitSfz", "model", "synth"]
+# The forms a track's instrument takes ("none": a track of recorded clips only; "voice": a track of spoken lines, `doc/ops_voice.py`).
+INSTRUMENTS = ["none", "builtIn", "sfz", "kit", "kitSfz", "model", "synth", "voice"]
 # Procedural instruments (`{"model": …}`, contract § 2a) by how they are played: the touch fields follow from it.
 PLUCKED = ["guitar", "nylonGuitar"]
 BARS = ["marimba", "vibraphone", "glockenspiel", "tubularBell"]

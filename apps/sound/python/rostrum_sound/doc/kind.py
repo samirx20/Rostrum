@@ -2,7 +2,7 @@
 a fresh document, and the whole-document check.
 
     root (doc: tempo, length, beatsPerBar, sampleRate)
-      tracks[]   track: notes[] hits[] clips[] (clip: effects[]) effects[] automation[] sends[] ducks[]
+      tracks[]   track: notes[] hits[] clips[] (clip: effects[]) lines[] (a voice track) effects[] automation[] sends[] ducks[]
       buses[]    bus: effects[] automation[]   (a track's `output` and a send's `bus` name a bus id)
       markers[]  marker: name, at
       master[]   the one master (id "master"): effects[] automation[]
@@ -12,7 +12,7 @@ from __future__ import annotations
 from rostrum_core import DocKind
 
 from . import fields as FD
-from . import ops_buses, ops_mix, ops_timed, ops_tracks  # noqa: F401  (they register the operations)
+from . import ops_buses, ops_mix, ops_timed, ops_tracks, ops_voice  # noqa: F401  (they register the operations)
 from .check import check
 from .registry import LISTS, MASTER_ID, REGISTRY
 

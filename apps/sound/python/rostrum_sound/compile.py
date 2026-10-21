@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from rostrum_core import RostrumError
 
-from . import names
+from . import names, voice_lines
 from .doc import effects as FX
 from .doc import playing as PL
 from .doc import times
@@ -61,7 +61,7 @@ class _Compiler:
 
     def instrument(self, track):
         kind = track.get("instrument", "none")
-        if kind == "none" or not track.get(kind):   # a sampled kind whose file isn't picked yet plays nothing
+        if kind in ("none", "voice") or not track.get(kind):   # a sampled kind whose file isn't picked yet plays nothing
             return {}
         inst = {kind: track[kind]}
         if kind == "sfz":
@@ -83,6 +83,8 @@ class _Compiler:
         for c in track.get("clips", []):
             cw = f"{w}.clips[{c['id']}]"
             clips.append({**self.pick(c, CLIP_KEYS, cw), **_nonempty("effects", self.effects(c, cw))})
+        for ln in track.get("lines", []):   # a voice line plays its cached take as a clip (none made yet: loud error)
+            clips.append(voice_lines.clip_of(track, ln, self.time(ln["at"], f"{w}.lines[{ln['id']}].at")))
         if clips:
             out["clips"] = clips
         out.update(_nonempty("effects", self.effects(track, w)), **self.lanes(track, w))

@@ -8,7 +8,9 @@ Rectangle {
     id: l
     readonly property var pics: mixer.listen
     property bool open: false
-    implicitHeight: open ? 292 : 36
+    // Open, at most a quarter of the page: the strips' faders keep their travel (buses and sends made them taller).
+    readonly property real openHeight: Math.max(150, Math.min(292, (parent ? parent.height : 1000) * 0.25))
+    implicitHeight: open ? openHeight : 36
     color: Theme.app; radius: Theme.radiusPanel
     clip: true
     Behavior on implicitHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
@@ -30,7 +32,7 @@ Rectangle {
         MouseArea { id: tap; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: l.open = !l.open }
     }
     Row {
-        x: Theme.pad; y: bar.height; width: parent.width - 2 * Theme.pad; height: 292 - bar.height - Theme.pad
+        x: Theme.pad; y: bar.height; width: parent.width - 2 * Theme.pad; height: l.openHeight - bar.height - Theme.pad
         spacing: Theme.gap
         Repeater {
             model: [{ src: l.pics.loudness, what: "Loudness" }, { src: l.pics.spectrum, what: "Spectrum" }]

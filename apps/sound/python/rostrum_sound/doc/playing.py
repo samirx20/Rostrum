@@ -9,13 +9,14 @@ from __future__ import annotations
 
 from rostrum_core import Param
 
-from .. import names
+from .. import names, voice
 from . import values as V
 
 N = V.N
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 MODEL = IS("instrument", "model")
 SYNTH = IS("instrument", "synth")
+VOICE = IS("instrument", "voice")
 STRUCK = {"all": [MODEL, {"not": IS("model", "violin")}]}           # every model but the bowed one
 PLUCKED = {"all": [MODEL, {"any": [IS("model", m) for m in names.PLUCKED]}]}
 
@@ -66,6 +67,12 @@ INSTRUMENT = [
     Param.choice("model", names.MODELS, group="Instrument", label="Model", valid_when=MODEL,
                  help="A played (procedural) instrument: plucked strings, struck bars or a bowed violin."),
     *touch(),
+    Param.choice("voice", voice.VOICES, group="Instrument", label="Voice", valid_when=VOICE,
+                 help="Who speaks the track's lines (a preset voice)."),
+    Param.choice("language", voice.LANGUAGES, group="Instrument", label="Language", valid_when=VOICE,
+                 help="The language the lines are spoken in; auto = from the text."),
+    Param.text("style", group="Instrument", label="Style", valid_when=VOICE,
+               help='How the voice speaks, in plain words: "warm, confident", "low and close to the microphone".'),
     Param.choice("synth", names.WAVES, group="Instrument", label="Wave", valid_when=SYNTH),
     *[N(n, lo, hi, "Instrument", unit, imp, SYNTH, whole, default) for n, lo, hi, default, unit, imp, whole
       in SYNTH_FIELDS],
@@ -96,4 +103,4 @@ NOTE = [
 ]
 NOTE_KEYS = [p.name for p in NOTE]
 # What a new track stores so the instrument cards' conditions read real values.
-SWITCHES = dict(builtIn="grandPiano", kit="synth", model="guitar", synth="saw")  # every kind with a choice has one, so switching kind is one change
+SWITCHES = dict(builtIn="grandPiano", kit="synth", model="guitar", synth="saw", voice="ryan", language="auto")  # every kind with a choice has one, so switching kind is one change

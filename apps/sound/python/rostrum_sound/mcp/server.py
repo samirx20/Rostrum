@@ -10,13 +10,13 @@ import argparse
 
 from rostrum_core.mcp import Tools, run_stdio
 
-from . import tools_inspect, tools_look, tools_render, tools_sfx
+from . import tools_inspect, tools_look, tools_render, tools_sfx, tools_voice
 from .app import make_app
 
 
 def sound_tools() -> Tools:
     tools = Tools()
-    for m in (tools_render, tools_look, tools_inspect, tools_sfx):
+    for m in (tools_render, tools_look, tools_inspect, tools_sfx, tools_voice):
         m.register(tools)
     return tools
 

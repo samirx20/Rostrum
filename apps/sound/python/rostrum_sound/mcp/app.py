@@ -22,7 +22,8 @@ GUIDES = Path(__file__).with_name("guides")
 INSTRUCTIONS = ("rostrum-sound makes music, effects and mixes. A Sound document holds tracks (an instrument, notes, "
                 "drum hits, recorded clips), effects, automation, markers and the master. Write with run_script (the "
                 "Python script API in inspect_guide 'script'), adjust with edit_document, render with render_mix, then "
-                "listen with the look_* tools.")
+                "listen with the look_* tools. A voice track speaks lines: add them with line.add, make their audio "
+                "with render_voice, then render.")
 
 
 @dataclass

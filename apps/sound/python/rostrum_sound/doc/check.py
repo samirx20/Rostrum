@@ -15,7 +15,7 @@ from .registry import LISTS
 
 TRACK_ID = re.compile(r"^[A-Za-z0-9_.\-]{1,64}$")
 LANE_RANGE = {"volume": (0, 4), "pan": (-1, 1), "level": (0, 4), "dynamics": (0, 2), "vibrato": (0, 1)}
-NEEDS = {"notes": ("builtIn", "sfz", "model", "synth"), "hits": ("kit", "kitSfz")}
+NEEDS = {"notes": ("builtIn", "sfz", "model", "synth"), "hits": ("kit", "kitSfz"), "lines": ("voice",)}
 STRING_POSITION = 0.03   # plucked strings are not plucked on the bridge itself (contract § 2a)
 
 
@@ -24,7 +24,7 @@ def _instrument(track) -> list[str]:
     for key, ok in NEEDS.items():
         if track.get(key) and kind not in ok:
             out.append(f"track {tid} has {key} but its instrument is {kind!r} (needs {' or '.join(ok)})")
-    if kind != "none" and not track.get(kind) and (track.get("notes") or track.get("hits")):
+    if kind not in ("none", "voice") and not track.get(kind) and (track.get("notes") or track.get("hits")):
         out.append(f"track {tid}: instrument {kind} needs its {kind} file set before it can play its notes")
     drums = names.SYNTH_DRUMS if kind == "kit" else names.GM_DRUMS
     for h in track.get("hits", []) if kind in ("kit", "kitSfz") else []:

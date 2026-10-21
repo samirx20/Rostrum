@@ -60,6 +60,14 @@ FIELDS = {
         N("fadeIn", 0, 600, "Fades", "s", label="Fade in"), N("fadeOut", 0, 600, "Fades", "s", label="Fade out"),
         N("reverb", 0, 1, "Clip", imp="secondary"),
     ],
+    "line": [
+        Param.text("text", group="Line", help="What is said."), V.time("at", group="Line", help="When the line "
+                   "starts: seconds, {\"beat\": n} or a marker (\"#drop+0.5\")."),
+        N("seed", 1, 999999, "Line", imp="secondary", integer=True, label="Take",
+          help="Another whole number makes another reading of the same words."),
+        N("volume", 0, 4, "Line"), N("fadeIn", 0, 600, "Fades", "s", "secondary", label="Fade in"),
+        N("fadeOut", 0, 600, "Fades", "s", "secondary", label="Fade out"),
+    ],
     **FB.FIELDS,
     "effect": [Param.choice("effect", effects.TYPES, group="Effect", label="Effect type"),
                Param.toggle("bypass", group="Effect", importance="secondary"), *effects.params("effect")],
@@ -87,13 +95,14 @@ DEFAULTS = {
     "note": dict(vel=0.8),
     "hit": dict(vel=0.85),
     "clip": dict(**{"in": 0}, volume=1),
+    "line": dict(seed=1, volume=1),
     "marker": {},
     "master": dict(volume=1, normalize=False, loudness=-16, truePeak=-1, glue=0, reverb="dry",
                    trackReverbSpace="hall", fadeIn=0, fadeOut=0, safetyClip=True),
 }
 # The field that holds each instrument form's value (the form's name).
 INSTRUMENT_FIELD = {k: k for k in names.INSTRUMENTS if k != "none"}
-REQUIRED = {"duck": ["under"], "note": ["pitch", "at", "dur"], "hit": ["drum", "at"], "clip": ["media", "at"], "marker": ["name", "at"]}
+REQUIRED = {"duck": ["under"], "note": ["pitch", "at", "dur"], "hit": ["drum", "at"], "clip": ["media", "at"], "line": ["text", "at"], "marker": ["name", "at"]}
 
 
 def params(type_: str, required=False) -> list[Param]:
