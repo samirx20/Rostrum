@@ -2,7 +2,8 @@ import QtQuick
 import RostrumKit
 
 // A track's header in the arrangement: its colour, its name (click selects the track), and the two quick
-// toggles, mute and solo (each a track.set operation; lit when on).
+// toggles, mute and solo (each a track.set operation; lit when on), and the round arm button for recording
+// (red when armed; arming is screen state, not an edit).
 Rectangle {
     id: h
     property var track
@@ -23,6 +24,16 @@ Rectangle {
         id: toggles
         anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter
         spacing: 2
+        Rectangle {
+            id: arm
+            readonly property bool lit: recorder.armed === h.track.id
+            width: 20; height: 18; radius: 4; color: armArea.containsMouse ? Theme.hover : "transparent"
+            Rectangle { anchors.centerIn: parent; width: 10; height: 10; radius: 5
+                        color: arm.lit ? Theme.danger : "transparent"
+                        border.width: 1.5; border.color: arm.lit ? Theme.danger : armArea.containsMouse ? Theme.fg : Theme.fg3 }
+            MouseArea { id: armArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: recorder.arm(h.track.id) }
+        }
         Repeater {
             model: [{ field: "mute", letter: "M", lit: Theme.warn }, { field: "solo", letter: "S", lit: Theme.ok }]
             delegate: Rectangle {
