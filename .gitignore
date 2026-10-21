@@ -1,0 +1,31 @@
+# dependencies and builds
+node_modules/
+target/
+build/
+out/
+dist/
+vcpkg_installed/
+*.tsbuildinfo
+__pycache__/
+*.pyc
+
+# renders, caches, scratch
+*.exr
+*.mp4
+*.mov
+*.wav
+cache/
+scratch/
+tmp/
+
+# the reference set is private and never committed
+references/
+
+# team progress files are deleted before merging
+PROGRESS.md
+
+# editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
