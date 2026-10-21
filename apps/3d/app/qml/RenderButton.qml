@@ -29,5 +29,6 @@ Item {
         }
         Text { text: backend.renderJob.note; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body
                anchors.verticalCenter: parent.verticalCenter }
+        Button { text: "Cancel"; kind: "ghost"; onClicked: backend.renderJob.cancel() }
     }
 }

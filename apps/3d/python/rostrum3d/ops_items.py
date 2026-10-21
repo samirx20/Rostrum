@@ -4,9 +4,11 @@ materials and shots are ops_scene.py.
 """
 from __future__ import annotations
 
-from rostrum_core import Param
+import copy
+
+from rostrum_core import Param, ids
 from rostrum_core.errors import codes
-from rostrum_core.tree import index, subtree_ids
+from rostrum_core.tree import child_keys, index, subtree_ids
 
 from . import build, fields as F
 from .kind import REGISTRY as R
@@ -87,6 +89,42 @@ def item_remove(ctx, targets, args):
     for t in targets:
         if t in index(ctx.doc, ctx.kind.lists):     # already gone with a removed parent: fine
             ctx.remove(t)
+
+
+def _reid(item: dict, new_id: str, taken: set, lists: dict):
+    """Give a copy of `item` (and everything inside it) new ids: counted per type, a key's and a part's id from its
+    new owner (the same rule as their own adders), so a copy never shares an id with the original."""
+    old, item["id"] = item["id"], new_id
+    taken.add(new_id)
+    for key in child_keys(item, lists):
+        for child in item[key]:
+            if key == "keys":
+                child["id"] = new_id + child["id"][len(old):] if child["id"].startswith(old) else ids.from_content(new_id, "k", child["t"] * 1000)
+                taken.add(child["id"])
+            elif key == "parts":
+                child["id"] = build.part_id(new_id, child["path"])
+                taken.add(child["id"])
+            else:
+                _reid(child, ids.counted(taken, child["type"]), taken, lists)
+
+
+@R.operation("item.duplicate", "Copy an item, material or shot with its keys, children and parts, under new ids, right "
+             "after the original (same list, same parent). Its transform and references stay as written.",
+             target=(*F.ITEMS, "material", "shot"), label="Duplicate", importance="secondary",
+             params=[ID, Param.toggle("rename", label="Name it “… copy”", default=True, importance="deep")])
+def item_duplicate(ctx, targets, args):
+    if args.get("id") and len(targets) != 1:
+        ctx.fail(codes.BAD_ARGUMENT, '"id"', "can only be given when one item is copied")
+    taken = set(index(ctx.doc, ctx.kind.lists))
+    for t in targets:
+        loc = index(ctx.doc, ctx.kind.lists)[t]
+        if args.get("id") and args["id"] in taken:
+            ctx.fail(codes.BAD_ARGUMENT, f'id "{args["id"]}"', "is already used in this document")
+        new = copy.deepcopy(loc.item)
+        _reid(new, args.get("id") or ids.counted(taken, new["type"]), taken, ctx.kind.lists)
+        if args.get("rename", True):
+            new["name"] = f'{new.get("name") or t} copy'
+        ctx.insert(loc.parent, loc.key, new, loc.index + 1)
 
 
 @R.operation("item.rename", "Rename an item, material or shot (the id stays).",

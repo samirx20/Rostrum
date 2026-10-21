@@ -31,6 +31,17 @@ bottom (full)  Timeline: the shot's frames, the playhead, play, and the keys of 
   cache (`%USERPROFILE%\.rostrum\cache\render\`) when the screen has no project folder. The picture then shows over
   the viewport with its file path and time; Close or Esc hides it. A failure shows in red, never as a picture.
 
+- **Add, Duplicate, Delete** (top bar). **+ Add** lists what applies now: mesh shapes, lights, camera, group, material and
+  shot (Shot only once a camera exists). A new item goes into the selected group (or the group holding the selected item),
+  gets selected, and is one undo step. **Duplicate** (Ctrl D) copies the selected item, material or shot with its keys,
+  children and parts under new ids (`item.duplicate`); **Delete** (Del) removes it (`item.remove`, `material.remove`,
+  `shot.remove`). Both show only while something they work on is selected; the shot the screen shows has no Delete.
+- **Pickers.** A field that names another item (a mesh's, import's or part's material; a shot's camera) shows as a
+  drop-down of those items by name. The field says so itself (`kind` on its param in `fields.py`); `Bridge3D._rows`
+  turns such a text row into a choice, the write is still the field's own operation with the id.
+- **Cancel** (top bar while a render runs, or Esc): ends the render's own engine process by its handle, the screen goes back
+  to idle and says "Render cancelled". No picture, nothing red; the half-made render folder stays `.partial` (never listed).
+
 ## Rules it keeps
 
 - **Every change is an operation** in the document's one history, recorded as the person: an edit, a key mark,
@@ -47,12 +58,13 @@ bottom (full)  Timeline: the shot's frames, the playhead, play, and the keys of 
 ... main.py --script my_set.py                                         # on what a script builds
 ... main.py --doc <project folder> <item>                              # a saved document (made if missing), saved after every change
 ... main.py --step "select cam" --step "frame 24" --step "orbit 40 0" --shot out.png    # scripted, quits by itself
-.venv\Scripts\python.exe -m pytest -q apps\3d\app\tests                # two tests, about two seconds
+.venv\Scripts\python.exe -m pytest -q apps\3d\app\tests                # four tests, about two seconds
 ```
 
 Steps (`screen3d/steps.py`): `select <id>`, `frame <n>`, `set <setting> <value>`, `scrub <setting> <v> <v> …`,
 `animate <setting>`, `keydrag <key id> <frame>`, `fold <id>`, `undo`, `redo`, `more`, `commands [text]`,
-`run <command key>`, `play`, `render` (waits for the job), `closerender`; viewport: `orbit dx dy`, `pan dx dy`,
+`run <command key>`, `play`, `add <mesh:sphere|light:sun…|camera|material|shot>`, `duplicate`, `delete`, `addmenu`, `mouse x y`, `wait ms`,
+`snap path`, `renderstart` / `cancelrender` (don't wait), `render` (waits for the job), `closerender`; viewport: `orbit dx dy`, `pan dx dy`,
 `zoom n`, `mode shot|free`, `exposure v`, `studio v`, `lights on|off`, `home`, `click x y`.
 Offscreen screenshots: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts`. The kit must be importable
 (`uv pip install -e shared/gui-kit`, or `PYTHONPATH=shared/gui-kit`).
@@ -68,17 +80,16 @@ screen3d/render_job.py  the Render button's job (rostrum3d.mcp.render.still, its
 screen3d/steps.py       scripted steps
 screen3d/sample.py      the small sample document (not a template)
 screen3d/viewport.py, viewcam.py, frames.py, qml/Viewport.qml    the live viewport
-qml/                    Main, Outliner, KindIcon, Timeline, RenderButton, RenderView
+screen3d/adding.py      the Add menu, Duplicate, Delete (operation calls, one undo step each)
+qml/                    Main, AddMenu, Outliner, KindIcon, Timeline, RenderButton, RenderView
 ```
 
 ## Not yet
 
-- Adding, deleting, renaming, grouping or reordering items from the screen (the operations exist; the command bar
-  runs the ones that need no input). No drag-and-drop in the outliner.
-- Moving items in the viewport (no move / turn handles yet); picking a material or camera from a list instead of
-  typing its id; a colour picker popup (the kit's).
-- Render settings (samples, size, png / exr) on screen: it uses `render_still`'s defaults. One render at a time;
-  no cancel. No video render button yet (`render_video` exists for agents).
+- Renaming, grouping or reordering items from the screen (the operations exist; the command bar runs the ones that need
+  no input). No drag-and-drop in the outliner. An aim target (`aimItem`) is still a typed id.
+- Moving items in the viewport (no move / turn handles yet); a colour picker popup (the kit's).
+- Render settings (samples, size, png / exr) on screen: it uses `render_still`'s defaults. One render at a time. No video render button yet (`render_video` exists for agents).
 - More than one shot on screen at a time (`--shot-id` picks one); keys of materials and shots (they don't animate
   in v1).
 - Polish seen in the H13 screenshots: a long inspector (e.g. a mesh with Aim) clips its last row (More) instead of

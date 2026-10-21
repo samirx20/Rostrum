@@ -17,6 +17,7 @@
 #include <pxr/usd/usdGeom/tokens.h>
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include <memory>
 #include <vector>
@@ -37,8 +38,37 @@ State& state() {
   return s;
 }
 
+constexpr int kResolution = 2048;
+constexpr double kBlur = 0.01;  // metres (eye space, simpleLighting.glslfx): a slightly soft edge, like the sun's half degree
+// Storm's shadow test has one constant depth bias (simpleLighting.glslfx shadowCompare), no slope bias. Its filter
+// reaches `kBlur` (plus a texel) to each side, and on a surface tilted θ from the sun that is that reach × tan θ
+// deeper or shallower; a smaller bias lets a lit floor shadow part of itself (H19: a plane lit 40° off upright came
+// out 24% dark, evenly). The bias covers surfaces up to ~70° off the sun.
+constexpr double kSlope = 2.75;
+
 // The shadow map's view: orthographic, from the sun, a square just covering `seen`, from the far side of `scene`
 // (things outside the camera's view still cast into it). Read when Storm draws, so it follows the camera.
+struct ShadowBox {
+  GfFrustum view;
+  double bias = 0;  // of the box's depth
+};
+std::optional<ShadowBox> shadow_box(const State& s) {
+  if (!s.sun || s.shadow.seen.IsEmpty()) return std::nullopt;
+  const GfVec3d d = s.sun->toward, c = s.shadow.seen.GetMidpoint();
+  const double r = std::max(s.shadow.seen.GetSize().GetLength() / 2, 1e-3);
+  double lo = -r, hi = r;
+  for (int i = 0; i < 8; ++i) {
+    const double t = GfDot(s.shadow.scene.GetCorner(i) - c, d);
+    lo = std::min(lo, t), hi = std::max(hi, t);
+  }
+  const double margin = 0.01 * r + 1e-3, depth = hi - lo + 2 * margin;
+  const double reach = kBlur + 2 * (2 * r / kResolution);
+  return ShadowBox{GfFrustum(c + d * (hi + margin), GfRotation(GfVec3d(0, 0, 1), d),
+                             GfRange2d(GfVec2d(-r, -r), GfVec2d(r, r)), GfRange1d(margin * 0.5, depth),
+                             GfFrustum::Orthographic),
+                   reach * kSlope / depth};
+}
+
 class SunShadowMatrix final : public HdxShadowMatrixComputation {
  public:
   std::vector<GfMatrix4d> Compute(const GfVec4f&, CameraUtilConformWindowPolicy) override { return compute(); }
@@ -46,34 +76,22 @@ class SunShadowMatrix final : public HdxShadowMatrixComputation {
 
  private:
   static std::vector<GfMatrix4d> compute() {
-    const State& s = state();
-    if (!s.sun || s.shadow.seen.IsEmpty()) return {};  // no matrix: Storm draws the light without a shadow
-    const GfVec3d d = s.sun->toward, c = s.shadow.seen.GetMidpoint();
-    const double r = std::max(s.shadow.seen.GetSize().GetLength() / 2, 1e-3);
-    double lo = -r, hi = r;
-    for (int i = 0; i < 8; ++i) {
-      const double t = GfDot(s.shadow.scene.GetCorner(i) - c, d);
-      lo = std::min(lo, t), hi = std::max(hi, t);
-    }
-    const double margin = 0.01 * r + 1e-3;
-    const GfFrustum f(c + d * (hi + margin), GfRotation(GfVec3d(0, 0, 1), d), GfRange2d(GfVec2d(-r, -r), GfVec2d(r, r)),
-                      GfRange1d(margin * 0.5, hi - lo + 2 * margin), GfFrustum::Orthographic);
-    return {f.ComputeViewMatrix() * f.ComputeProjectionMatrix()};
+    const auto box = shadow_box(state());
+    if (!box) return {};  // no matrix: Storm draws the light without a shadow
+    return {box->view.ComputeViewMatrix() * box->view.ComputeProjectionMatrix()};
   }
 };
 
 // The light as Storm reads it (hdSt/light.cpp, distant light): colour × intensity with `normalize` on is the light
 // on a facing surface, which UsdPreviewSurface turns into albedo / π × that × cos (previewSurface.glslfx).
 HdContainerDataSourceHandle sun_prim(const StormSun& sun) {
-  static const HdxShadowParams shadow = [] {
-    HdxShadowParams p;
-    p.shadowMatrix = std::make_shared<SunShadowMatrix>();
-    p.enabled = true;
-    p.resolution = 2048;
-    p.bias = -0.002;  // of the shadow map's depth range: keeps surfaces from shadowing themselves
-    p.blur = 0.01;    // metres: a slightly soft edge, like the sun's half degree
-    return p;
-  }();
+  HdxShadowParams shadow;
+  shadow.shadowMatrix = std::make_shared<SunShadowMatrix>();
+  shadow.enabled = true;
+  shadow.resolution = kResolution;
+  const auto box = shadow_box(state());
+  shadow.bias = -(box ? box->bias : 0.002);  // towards the sun: keeps surfaces from shadowing themselves
+  shadow.blur = kBlur;
   static const HdRprimCollection casters(HdTokens->geometry, HdReprSelector(HdReprTokens->smoothHull));
   using F = HdRetainedTypedSampledDataSource<float>;
   using B = HdRetainedTypedSampledDataSource<bool>;
@@ -155,9 +173,13 @@ void register_storm_sun() {
 void set_storm_sun(const std::optional<StormSun>& sun, const SunShadow& shadow) {
   State& s = state();
   const bool had = bool(s.sun), has = bool(sun);
-  const bool changed = had != has || (has && !(*sun == *s.sun));
+  const auto bias_of = [](const State& st) { const auto b = shadow_box(st); return b ? b->bias : 0.0; };
+  const double old_bias = bias_of(s);
+  bool changed = had != has || (has && !(*sun == *s.sun));
   s.sun = sun;
-  s.shadow = shadow;  // read by the shadow matrix at draw time: no re-sync needed when only the camera moved
+  s.shadow = shadow;  // read by the shadow matrix at draw time: no re-sync when only the camera moved ...
+  const double new_bias = bias_of(s);  // ... unless the box's depth changed enough to need another bias
+  if (has && std::abs(new_bias - old_bias) > 0.1 * std::max(new_bias, old_bias)) changed = true;
   if (changed)
     for (SunScene* scene : scenes()) scene->changed(had, has);
 }

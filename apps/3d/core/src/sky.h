@@ -1,7 +1,8 @@
-// The scene's own dome as the viewport's sky and light (Storm). Storm reads a dome only as a picture and shows it
-// in units π smaller than Cycles (measured H15: a flat dome and the floor it lights both came out exactly 1/π, i.e.
-// −1.65 stops), and ignores a dome's colour, intensity and exposure. So Storm is handed a picture in Cycles' units:
-// the dome's picture (or a flat one) × colour × intensity × 2^exposure × π, made once into the core's cache.
+// The scene's own dome as the viewport's sky and light (Storm). Lights follow UsdLux's units (H19, light check): a
+// dome's light is its picture × colour × intensity × 2^exposure (× its colour temperature), so a dome of intensity 1
+// is seen as its picture's own values. Storm reads a dome only as a picture, in those units, and ignores the dome's
+// colour, intensity and exposure; so it is handed the picture already multiplied, made once into the core's cache.
+// (Cycles gets the same picture; cycles_lights.h says why.)
 // For Storm the picture's sun is first taken out and handed over as a distant light with a shadow (dome_sun.h,
 // storm_sun.h); the stylized renderer has no such light, so it keeps the whole picture.
 #pragma once
@@ -18,6 +19,10 @@ struct SceneSky {
   PXR_NS::GlfSimpleLight dome;  // a viewport dome light, turned as the scene turns it
   std::optional<StormSun> sun;  // the sun taken out of its picture (only when asked for, and found)
 };
+
+// `source` (a lat-long picture; "" = a flat white one) × `gain`, as an EXR in the core's cache (named by what made
+// it, so it is made once); returns its path
+std::string dome_picture(const std::string& source, const PXR_NS::GfVec3f& gain);
 
 // the scene's first dome; none when the scene has no dome. `take_sun`: split the sun off its picture (Storm)
 std::optional<SceneSky> scene_sky(const PXR_NS::UsdStageRefPtr& stage, int frame, bool take_sun);

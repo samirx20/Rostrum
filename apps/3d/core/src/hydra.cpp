@@ -14,6 +14,7 @@
 #include <chrono>
 #include <thread>
 
+#include "cycles_lights.h"
 #include "dome_cycles.h"
 #include "error.h"
 #include "sky.h"
@@ -85,6 +86,7 @@ class Hydra::Engine : public UsdImagingGLEngine {
 
 Hydra::Hydra(UsdStageRefPtr stage) : stage_(std::move(stage)) {
   register_cycles_dome_fix();
+  register_cycles_lights();
   register_storm_sun();
 }
 

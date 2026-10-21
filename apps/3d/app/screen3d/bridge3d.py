@@ -14,7 +14,10 @@ from rostrum_gui import DocBridge
 from rostrum_gui.edits import Drag
 from rostrum_gui.markers import MarkerWatch
 
+from rostrum3d import fields as F
+
 from . import outline, route
+from .adding import Adder
 from .render_job import RenderJob
 
 
@@ -43,6 +46,7 @@ class Bridge3D(DocBridge):
         self.marks.changed.connect(self.markersChanged)
         self.join_history(self.marks)                       # marker edits undo with the screen's one history
         self.render = RenderJob(self, render_engine)
+        self.add = Adder(self)
         self.viewport = viewport(self) if viewport else None
 
     # ---- what the viewport and QML read -----------------------------------------------------------------------
@@ -99,6 +103,11 @@ class Bridge3D(DocBridge):
         return self._sel if it["type"] in route.F.ITEMS else ""
 
     @Property(QObject, constant=True)
+    def adder(self):
+        """The Add menu, Delete and Duplicate (adding.py)."""
+        return self.add
+
+    @Property(QObject, constant=True)
     def renderJob(self):
         return self.render
 
@@ -118,6 +127,21 @@ class Bridge3D(DocBridge):
 
     def animate_calls(self, item_id, param):
         return route.animate_calls(self.doc.item(item_id), param, self.time)
+
+    def _rows(self):
+        """The inspector's rows, with a field that names another item (its `kind`: a mesh's material, a shot's camera)
+        shown as a choice of those items by name. Still the same field, written through the same operation."""
+        rows = super()._rows()
+        if not self._sel:
+            return rows
+        type_, doc_items = self.doc.item(self._sel)["type"], None
+        for r in rows:
+            p = F.param(type_, r["id"]) if r["row"] == "param" else None
+            if p is not None and p.type == "text" and p.kind:
+                doc_items = doc_items or list(self.doc.items())
+                named = [{"value": i["id"], "label": outline.label_of(i)} for i in doc_items if i.get("type") == p.kind]
+                r["type"], r["options"] = "choice", ([{"value": "", "label": "None"}] if p.kind == "material" else []) + named
+        return rows
 
     def _first(self):
         return next((i["id"] for i in self.doc.data.get("items", [])), "")

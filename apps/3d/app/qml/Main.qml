@@ -4,7 +4,7 @@ import RostrumKit
 // Rostrum3D. Left: the outliner (scene items, materials, shots). Centre: the live viewport, and over it the last
 // render while one is shown. Right: the inspector (the selected thing's field operation, values at the playhead,
 // key marks). Bottom, full width: the shot's timeline (frames, playhead, the keys of what moves).
-// Top bar: Render (Cycles, the shot's camera, the playhead frame), a job off the GUI thread.
+// Top bar: Add (with Duplicate / Delete on the selection), Render (Cycles, the shot's camera, the playhead frame), a job off the GUI thread.
 AppShell {
     id: shell
     bridge: backend
@@ -21,7 +21,12 @@ AppShell {
     Shortcut { sequence: "Escape"; enabled: backend.renderJob.state === "done" || backend.renderJob.state === "failed"
                onActivated: backend.renderJob.dismiss() }
 
-    tools: RenderButton {}
+    Shortcut { sequence: "Escape"; enabled: backend.renderJob.state === "running"; onActivated: backend.renderJob.cancel() }
+    function openAddMenu() { addMenu.open() }
+    Shortcut { sequence: "Delete"; enabled: backend.adder.canDelete; onActivated: backend.adder.remove() }
+    Shortcut { sequence: "Ctrl+D"; enabled: backend.adder.canDuplicate; onActivated: backend.adder.duplicate() }
+
+    tools: [AddMenu { id: addMenu }, RenderButton {}]
     left: Outliner { anchors.fill: parent }
     centre: [
         Viewport { anchors.fill: parent },

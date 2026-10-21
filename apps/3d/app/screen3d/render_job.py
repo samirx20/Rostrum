@@ -4,7 +4,9 @@ GUI thread with its own engine process (never the viewport's), through the same 
 (png + exr) and manifest. The engine process is ended when the job is over, so its GPU memory goes back.
 
 A render reads a snapshot taken on press (scene, shot, history step), so edits made while it runs are not in it, and
-its manifest says exactly which step it shows. A failure is reported (red status, the error line), never as success.
+its manifest says exactly which step it shows. Cancel ends that process by its own handle (never by name); the job then says "Render cancelled", shows no picture and
+leaves no finished render (the half-made folder stays `.partial`, which render_still never lists as a version).
+A failure is reported (red status, the error line), never as success.
 """
 from __future__ import annotations
 
@@ -21,6 +23,7 @@ from rostrum3d.mcp.render import still
 
 SETTINGS = {"samples": 128, "denoise": True}     # render_still's defaults
 FORMATS = ["png", "exr"]
+CANCELLED = "Render cancelled"
 
 
 class RenderJob(QObject):
@@ -31,6 +34,7 @@ class RenderJob(QObject):
         super().__init__(parent or bridge)
         self._bridge, self._make_engine, self._at = bridge, engine_factory or Engine, 0
         self._state, self._picture, self._note, self._thread = "", "", "", None
+        self._engine, self._stop = None, threading.Event()
         self._landed.connect(self._on_landed)
 
     @Property(str, notify=changed)
@@ -62,7 +66,8 @@ class RenderJob(QObject):
             info, scene = shot_info(b.doc.data, b.shot_id), describe(b.doc.data, b.shot_id)
         except ValueError as e:
             return self._finish("", 0.0, f"Error: render: {e}")
-        frame = self._at = b.frame
+        frame, self._at = b.frame, b.frame
+        self._stop = stop = threading.Event()
         snap = SimpleNamespace(item_id=b.doc.item_id, seq=b.doc.seq)     # what the manifest records
         size, folder = (info["width"], info["height"]), b.doc.folder
         self._state, self._note = "running", f"Rendering frame {frame} with Cycles…"
@@ -72,19 +77,36 @@ class RenderJob(QObject):
         def work():
             t0, engine = time.monotonic(), None
             try:
-                engine = self._make_engine()
+                engine = self._engine = self._make_engine()
+                if stop.is_set():
+                    raise RuntimeError(CANCELLED)
                 _, files, _ = still("render", snap, info, scene, engine, frame, "cycles", size, FORMATS, 0, SETTINGS, folder)
                 png = next(str(f) for f in files if f.suffix == ".png")
                 self._landed.emit(png, time.monotonic() - t0, "")
             except Exception as e:  # noqa: BLE001  fail loudly, whatever it was
+                if stop.is_set():                       # the engine was ended on purpose: that is not a failure
+                    return self._landed.emit("", time.monotonic() - t0, CANCELLED)
                 line = e.line() if hasattr(e, "line") else f"Error: render: {type(e).__name__}: {e}"
                 self._landed.emit("", time.monotonic() - t0, line)
             finally:
+                self._engine = None
                 if engine is not None:
                     engine.close()
 
         self._thread = threading.Thread(target=work, name="render-still", daemon=True)
         self._thread.start()
+
+    @Slot()
+    def cancel(self):
+        """Stop the running render: end its engine process (our own child, by handle). The worker then lands as cancelled."""
+        if not self.running():
+            return
+        self._stop.set()
+        engine = self._engine
+        if engine is not None and engine.proc is not None and engine.proc.poll() is None:
+            engine.proc.kill()                          # by the Popen handle; the reply loop sees the process end
+        self._note = "Cancelling…"
+        self.changed.emit()
 
     @Slot()
     def dismiss(self):
@@ -102,6 +124,10 @@ class RenderJob(QObject):
         self._finish(png, secs, error)
 
     def _finish(self, png, secs, error):
+        if error == CANCELLED:                      # back to idle; never a picture, never red
+            self._state, self._picture, self._note = "", "", CANCELLED
+            self._bridge.say(CANCELLED)
+            return self.changed.emit()
         if error or not png or not Path(png).is_file():
             self._state, self._picture = "failed", ""
             self._note = error or f"Error: render: the picture {png or '(none)'} was not written"
