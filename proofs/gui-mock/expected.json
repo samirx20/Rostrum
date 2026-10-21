@@ -1,0 +1,43 @@
+{
+  "camera-dof-off": {
+    "item": "cam1",
+    "shown": [
+      "focal",
+      "dof",
+      "motionBlur"
+    ],
+    "more": [
+      "sensor"
+    ]
+  },
+  "camera-dof-on": {
+    "item": "cam1",
+    "shown": [
+      "focal",
+      "dof",
+      "focusDistance",
+      "aperture",
+      "bokeh",
+      "motionBlur"
+    ],
+    "more": [
+      "sensor"
+    ]
+  },
+  "text-animate-on": {
+    "item": "title",
+    "shown": [
+      "text",
+      "size",
+      "color",
+      "tracking",
+      "animateOn",
+      "letterDelay",
+      "direction",
+      "outline"
+    ],
+    "more": [
+      "baselineShift"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "about": "The same scripted interactions for both mockups: three screenshot moments and one screen recording. Each step is an operation (select an item, set a value), the same ones a click makes.",
+  "size": [1600, 960],
+  "moments": {
+    "camera-dof-off": [{ "op": "select", "item": "cam1" }],
+    "camera-dof-on": [{ "op": "select", "item": "cam1" }, { "op": "set", "item": "cam1", "param": "dof", "value": true }],
+    "text-animate-on": [{ "op": "select", "item": "title" }, { "op": "set", "item": "title", "param": "animateOn", "value": true }]
+  },
+  "recording": [
+    { "at": 0.0, "op": "select", "item": "cam1" },
+    { "at": 0.8, "op": "set", "item": "cam1", "param": "dof", "value": true },
+    { "at": 2.0, "op": "set", "item": "cam1", "param": "bokeh", "value": "Blades" },
+    { "at": 3.2, "op": "set", "item": "cam1", "param": "dof", "value": false },
+    { "at": 4.2, "op": "select", "item": "key" },
+    { "at": 5.0, "op": "set", "item": "key", "param": "type", "value": "Spot" },
+    { "at": 6.0, "op": "set", "item": "key", "param": "type", "value": "Area" },
+    { "at": 7.0, "op": "select", "item": "title" },
+    { "at": 7.6, "op": "set", "item": "title", "param": "animateOn", "value": true },
+    { "at": 9.0, "op": "end" }
+  ]
+}
