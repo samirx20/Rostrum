@@ -11,7 +11,8 @@ Motion design, type, UI animation, drawing, frame-by-frame and 2D characters.
 
 ```
 doc ─ comps ─ comp (width, height, fps, duration, background)
-               └ layers ─ shape | path | text | image | video | drawing | group (a group holds layers)
+               └ layers ─ shape | path | text | image | video | drawing | group (a group holds layers) | rig
+                          rig = a group that also holds bones, IK chains and binds (`RIG.md`, `skills/rigging.md`)
                           each layer ─ effects (blur, glow, gradient, backdrop, shadow) ─ keys
                                      ─ masks ─ keys
                                      ─ keys

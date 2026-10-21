@@ -32,7 +32,7 @@ degrees, clockwise on screen (as a layer's rotation); 0 = pointing right, 90 = p
 | | `targetX`, `targetY` | number | yes | Where the lower bone's tip reaches to, rig px. |
 | | `bend` | choice `clockwise` / `counterclockwise` | no | Which way the middle joint (knee, elbow) bends. |
 | | `pin` | number 0..1 | yes | While ≥ 0.5 the target is **held** where it was when the pin turned on (a planted foot), whatever the target keys or the body do. Key it with `hold`: 1 at the contact, 0 at the lift. |
-| **bind** | `layer` | text | no | Id of a layer in this rig's `layers`. A layer has at most one bind. |
+| **bind** | `layer` | text | no | Id of a layer directly in this rig's `layers` (not inside a group in it). A layer has at most one bind. |
 | | `bone` | text | no | The bone it follows. |
 | | `bone2` | text | no | "" = **rigid** (the layer follows `bone` as one piece). A child bone of `bone` = **bend**: the layer is drawn through a mesh skinned to both bones (a bent arm or leg in one picture). |
 | | `grid` | number 4..64 | no | Bend only: mesh divisions along each side. Default 16. |

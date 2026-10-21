@@ -26,6 +26,7 @@ from rostrum_core.errors import RostrumError, codes, did_you_mean
 from . import fields as F, pathdata
 from .kind import KIND, LISTS
 from .ops_keys import key_id
+from .rig import script as rig_script
 
 SAFE = {n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__builtins__, n)
         for n in ("range", "len", "min", "max", "abs", "round", "enumerate", "zip", "list", "dict", "float", "int",
@@ -92,8 +93,8 @@ class Item:
             raise ValueError(f"{self.id} is a {self.node['type']}; .{what}() is for a {type_}")
 
     def __enter__(self):
-        if self.node["type"] != "group":
-            raise ValueError(f"{self.id} is a {self.node['type']}; only a group holds layers")
+        if self.node["type"] not in ("group", "rig"):
+            raise ValueError(f"{self.id} is a {self.node['type']}; only a group or a rig holds layers")
         self._b.holders.append(self.node)
         return self
 
@@ -175,7 +176,7 @@ def run_source(source: str, name: str) -> dict:
     b = Build(_reserved(source))
     scope = {"__builtins__": {**SAFE, "__import__": _import}, "math": math, "comp": b.comp,
              **{t: (lambda id=None, _t=t, **v: b.layer(_t, id, **v)) for t in F.LAYERS},
-             **pathdata.for_script(b.layer)}
+             **pathdata.for_script(b.layer), **rig_script.for_script(b)}
     try:
         exec(compile(source, name, "exec"), scope)
     except Exception as e:
@@ -183,7 +184,7 @@ def run_source(source: str, name: str) -> dict:
         raise RostrumError(codes.BAD_ARGUMENT, "", f'script "{name}"', f"failed{line}: {type(e).__name__}: {e}",
                            ["comp(id, **fields)", "shape / text / image / group(id, **fields)",
                             "item.key(field, {time: value}, ease=)", "item.effect(type, id, **fields)",
-                            "item.mask(id, **fields)", "item.set(**fields)", "path(id, d=star(5, 100, 45))", "drawing.frame(at)", "frame.paint(id)",
+                            "item.mask(id, **fields)", "item.set(**fields)", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)", "path(id, d=star(5, 100, 45))", "drawing.frame(at)", "frame.paint(id)",
                             "paint.stroke(points, **brush)", "frame.paintmask(points)"]) from e
     return b.root
 
