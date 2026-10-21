@@ -156,6 +156,10 @@ def resample_path(pts, step):
     return xy, tan, total
 
 
+END_SHARE = 0.08  # share of the path at each end left out of "got paint": brushes taper and fray there
+MAX_FACTOR = 3.0  # the max may be this many times the mean limit (corners round off) before it counts as a miss
+
+
 def landed(doc, sid, path=None):
     """Did the stroke's paint land on its path? `path` overrides the recorded path (to test a shifted one).
 
@@ -198,20 +202,25 @@ def landed(doc, sid, path=None):
     if mask is not None:
         outside_share = float((cov * (1 - mask)).sum() / cov.sum())
     use = expected & painted
+    u = np.linspace(0, 1, len(xy))
+    body = expected & (u >= END_SHARE) & (u <= 1 - END_SHARE)  # every brush may taper or fray its ends on purpose
+    body = body if body.any() else expected
     res = {"stroke": sid, "size": size, "length": length, "samples": int(len(xy)),
            "clipped_length": clipped_len, "outside_mask_share": outside_share,
-           "painted_share": float(use.sum() / max(1, expected.sum()))}
+           "painted_share": float((body & painted).sum() / max(1, body.sum()))}
     if not use.any():
         res.update(verdict=f"missed: no paint near the path of stroke {sid}", landed=False, mean=None, max=None)
         return res
     d = np.abs(cen[use])
     res.update(mean=float(d.mean()), max=float(d.max()))
     tol = max(2.0, 0.10 * size)
-    res["tolerance"] = tol
+    res.update(tolerance=tol, max_tolerance=MAX_FACTOR * tol)
     if res["painted_share"] < 0.5:
         res.update(landed=False, verdict=f"missed: only {res['painted_share'] * 100:.0f}% of the path got paint")
     elif res["mean"] > tol:
-        res.update(landed=False, verdict=f"missed by {res['mean']:.1f} px")
+        res.update(landed=False, verdict=f"missed by {res['mean']:.1f} px on average")
+    elif res["max"] > MAX_FACTOR * tol:
+        res.update(landed=False, verdict=f"missed in one place by {res['max']:.1f} px")
     else:
         res.update(landed=True, verdict="landed")
     return res
@@ -222,8 +231,10 @@ def landed_text(r):
         return r["verdict"]
     lines = [f"stroke {r['stroke']}: {r['verdict']}",
              f"  centre line vs path: mean {r['mean']:.2f} px, max {r['max']:.2f} px "
-             f"(a miss is more than {r['tolerance']:.1f} px = max(2, 10% of size {r['size']:.0f}))",
-             f"  path length {r['length']:.0f} px, {r['painted_share'] * 100:.0f}% of it got paint, "
+             f"(landed means mean <= {r['tolerance']:.1f} px = max(2, 10% of size {r['size']:.0f}) "
+             f"and max <= {r['max_tolerance']:.1f} px = {MAX_FACTOR:g}x that; corners and frayed ends raise the max)",
+             f"  path length {r['length']:.0f} px, {r['painted_share'] * 100:.0f}% of it got paint "
+             f"(first and last {END_SHARE * 100:.0f}% left out), "
              f"clipped length {r['clipped_length']:.0f} px (off the canvas or outside the mask)"]
     if r["outside_mask_share"] is not None:
         lines.append(f"  paint outside the stroke's mask: {r['outside_mask_share'] * 100:.1f}% of its coverage")

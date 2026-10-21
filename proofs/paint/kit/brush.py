@@ -12,7 +12,7 @@ import numpy as np
 from PIL import Image
 
 TIPS = ("round", "bristle", "chalk", "flat", "block", "line")
-MODES = ("normal", "multiply", "erase")
+MODES = ("normal", "multiply", "erase", "screen", "add")
 K = 64  # samples across the tip for per-bristle profiles (upsampled for wide tips)
 ALONG = {"round": 1.0, "chalk": 1.0, "line": 1.0, "bristle": 0.4, "flat": 0.3, "block": 0.5}
 PARAMS = dict(opacity=1.0, hardness=0.5, spacing=0.1, jitter=0.0, seed=0, angle=None, wet=0.0,
@@ -80,7 +80,8 @@ def curve(*pts, n=32, pressure=(1.0, 1.0, 1.0)):
 
 def apply_paint(region, inc, col, mode):
     """The one place paint meets a layer. region: hxwx4 premultiplied view; inc: hxw 0..1;
-    col: straight sRGB (3,) or hxwx3. normal = paint over, multiply = glaze, erase = remove."""
+    col: straight sRGB (3,) or hxwx3. normal = paint over, multiply = glaze, erase = remove,
+    screen / add = light (glows and haze stack instead of replacing each other)."""
     inc = inc[..., None]
     if mode == "normal":
         region[..., :3] += inc * (col - region[..., :3])
@@ -89,6 +90,10 @@ def apply_paint(region, inc, col, mode):
         region[..., :3] *= 1 - inc * (1 - col)
     elif mode == "erase":
         region *= 1 - inc
+    elif mode in ("screen", "add"):  # paint s = inc * col (premultiplied) over the layer; screen never passes 1
+        s, rgb = inc * col, region[..., :3]
+        region[..., 3:] += inc * (1 - region[..., 3:])
+        rgb[...] = rgb + s - rgb * s if mode == "screen" else np.minimum(rgb + s, region[..., 3:])
     else:
         raise ValueError(f"mode must be one of {MODES}, got {mode!r}")
 

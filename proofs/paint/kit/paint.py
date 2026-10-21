@@ -2,8 +2,8 @@
 
     python paint.py <doc.paint.json> <command> ...
 
-Image commands write a PNG (default: the `_look/` folder beside the document), print its path, and fail loudly
-(message on stderr, exit code 2) on bad arguments.
+Image commands write a PNG (default: LOOK_ROOT/<document name>/, outside the worktree), print its path, and fail
+loudly (message on stderr, exit code 2) on bad arguments.
 """
 import argparse
 import json
@@ -14,14 +14,16 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import see  # noqa: E402
 import where  # noqa: E402
 
-KEEP = 40  # newest _look images kept per command
+KEEP = 40  # newest look pictures kept per command
+LOOK_ROOT = os.path.join(os.path.expanduser("~"), ".rostrum", "waves", "scratch", "paint-look")
 
 
 def out_path(docpath, cmd, out):
     if out:
         os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
         return os.path.abspath(out)
-    d = os.path.join(os.path.dirname(os.path.abspath(docpath)), "_look")
+    name = os.path.basename(docpath)
+    d = os.path.join(LOOK_ROOT, name[:-len(".paint.json")] if name.endswith(".paint.json") else name)
     os.makedirs(d, exist_ok=True)
     mine = sorted(f for f in os.listdir(d) if f.startswith(cmd + "-") and f.endswith(".png"))
     n = int(mine[-1][len(cmd) + 1:-4]) + 1 if mine else 1
@@ -52,6 +54,7 @@ def build():
     p = sub.add_parser("small", help="as seen small"); p.add_argument("--width", type=int, default=480); p.add_argument("--out")
     p = sub.add_parser("what", help="what is at this pixel"); p.add_argument("x", type=int); p.add_argument("y", type=int)
     p = sub.add_parser("landed", help="did this stroke land on its path"); p.add_argument("stroke", type=int)
+    p = sub.add_parser("export", help="the finished picture, full size, no grid"); p.add_argument("out")
     sub.add_parser("history"); sub.add_parser("undo"); sub.add_parser("redo")
     p = sub.add_parser("run", help="run a stroke script against the document, then save"); p.add_argument("script")
     p.add_argument("--new", nargs=2, type=int, metavar=("W", "H"), help="start a new document of this size if the file does not exist")
@@ -84,8 +87,6 @@ def run(a):
         sys.path.insert(0, os.path.dirname(os.path.abspath(a.script)))
         exec(code, scope)
         doc.save(a.doc)
-        if os.path.exists(a.doc + ".redo"):
-            os.remove(a.doc + ".redo")  # a new batch drops the redo
         new = doc.history()[before:]
         print(f"ran {a.script}: {len(new)} new batch(es); saved {os.path.abspath(a.doc)}")
         for e in new:
@@ -95,6 +96,10 @@ def run(a):
         raise FileNotFoundError(f"{a.doc} does not exist")
     doc = Doc.open(a.doc)
     c = a.cmd
+    old_redo = a.doc + ".redo"  # older kit versions kept the redo list in this side file
+    if os.path.exists(old_redo) and not doc._redo:
+        with open(old_redo, encoding="utf-8") as f:
+            doc._redo = json.load(f)
     if c in ("see", "before-after", "ref", "values", "small"):
         if c == "see":
             img = see.layer_view(doc, a.layer, a.zoom, a.grid, a.size) if a.layer else \
@@ -121,19 +126,16 @@ def run(a):
         print(where.landed_text(where.landed(doc, a.stroke)))
     elif c == "history":
         print(history_text(doc))
+    elif c == "export":
+        os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
+        doc.export_png(a.out)
+        print(os.path.abspath(a.out))
     elif c in ("undo", "redo"):
         before = len(doc.history())
-        side = a.doc + ".redo"  # the undone batches wait here between commands, so `redo` works in a later run
-        if c == "redo" and os.path.exists(side):
-            with open(side, encoding="utf-8") as f:
-                doc._redo = json.load(f)
         getattr(doc, c)()
-        doc.save(a.doc)
-        if doc._redo:
-            with open(side, "w", encoding="utf-8") as f:
-                json.dump(doc._redo, f)
-        elif os.path.exists(side):
-            os.remove(side)
+        doc.save(a.doc)  # the redo list is saved in the document
+        if os.path.exists(old_redo):
+            os.remove(old_redo)
         print(f"{c} done; {len(doc.history())} batch(es) now (was {before}); saved")
 
 

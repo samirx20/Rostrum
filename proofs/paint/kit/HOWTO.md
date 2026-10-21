@@ -6,7 +6,9 @@ You paint by writing small stroke scripts, then **looking** at what landed. Neve
 uv run --with numpy --with pillow python paint.py <doc.paint.json> <command> ...
 ```
 
-(`paint.py` lives in the `kit/` folder; give the full path to it.) Every picture command writes a PNG, prints its path, and you open it with your Read tool. Bad arguments (a zoom box off the canvas, a stroke id that does not exist) stop with `error: ...` and exit code 2. They never produce a half result.
+(`paint.py` lives in the `kit/` folder; give the full path to it.) Every picture command writes a PNG, prints its path, and you open it with your Read tool. Pictures go to `C:\Users\Sam\.rostrum\waves\scratch\paint-look\<document name>\` (outside the worktree, the newest 40 per command are kept); `--out file.png` puts one somewhere else.
+
+**Pixel cache.** Saving also writes `<doc>.paint.json.cache.npz` beside the document: the finished layer pixels, masks, which-stroke map, every stroke's coverage, and the last few states for undo. The next command loads that (about 2-3 s for a 1080p painting with 13 layers and 1,555 strokes) instead of replaying every op (about 66 s). The cache is only a copy: it is used only when it matches the document's op list *and* the kit's own code, otherwise the command replays, prints `note: ... replaying N batches` on stderr, and writes a fresh cache. Deleting it is always safe. Don't commit it. Bad arguments (a zoom box off the canvas, a stroke id that does not exist) stop with `error: ...` and exit code 2. They never produce a half result.
 
 All coordinates are **canvas pixels**: the grid labels, zoom boxes, `what` and the outlines in before / after all use the same numbers you put in your strokes.
 
@@ -48,6 +50,7 @@ Running a script twice paints twice. If you want a redo, `undo` the batch first,
 | `what x y` | Everything about one pixel. |
 | `landed id` | Did a stroke land on the path you gave it? |
 | `history`, `undo`, `redo` | The batches, and stepping back and forward. |
+| `export out.png` | The finished picture, full size, no grid. |
 | `run script.py` | Paint. |
 
 ### see
@@ -109,7 +112,8 @@ stroke 2: landed
   centre line vs path: mean 0.22 px, max 4.13 px (a miss is more than 2.0 px = max(2, 10% of size 10))
   path length 286 px, 100% of it got paint, clipped length 0 px (off the canvas or outside the mask)
 ```
-It walks along the path you gave the stroke and, across the stroke, finds where its paint actually centres. "landed" or "missed by N px". It also says how much of the path got no paint (a mask or the canvas edge ate it) and how much coverage fell outside the stroke's mask. Sharp corners show a large `max` with a small `mean`; that is the brush rounding the corner, not a miss. Get stroke ids from your script's `doc.stroke(...)` return value, from `history`, or from `what`.
+It walks along the path you gave the stroke and, across the stroke, finds where its paint actually centres.
+**The rule:** a stroke *landed* when the **mean** distance from its path is at most the limit (2 px, or 10 % of the brush size if bigger) **and** the **max** is at most 3 times that limit; otherwise it says "missed by N px on average" or "missed in one place by N px". At least half of the path must get paint. "Got paint" leaves out the first and last 8 % of the path, because every brush may taper or fray its ends on purpose (`flat` and `bristle` fade them by design). It also says how much of the path got no paint (a mask or the canvas edge ate it) and how much coverage fell outside the stroke's mask. Sharp corners show a larger `max` with a small `mean`; that is the brush rounding the corner, and the 3x allowance is for it. Get stroke ids from your script's `doc.stroke(...)` return value, from `history`, or from `what`.
 
 ### history, undo, redo
 ```
@@ -117,7 +121,9 @@ paint.py doc history     # #batch  'label'  author  ops, stroke ids
 paint.py doc undo        # remove the last batch (saved)
 paint.py doc redo
 ```
-Undo works by batch, so label batches by idea ("hill edge", "window light"), not "fix 3". A new batch after an undo drops the redo.
+Undo works by batch, so label batches by idea ("hill edge", "window light"), not "fix 3". A new batch after an undo drops the redo. The redo list is saved inside the document, so `redo` works in a later command.
+Setup ops made outside a `with doc.batch(...)` (`add_layer`, `set_layer`, `mask_polygon`, `mask_from_layer`) join the **next** batch, so they undo together with the painting that needed them. If no batch follows, they become one `setup` batch when the document is saved. Paint ops outside a batch are still one batch each.
+Undo and redo are fast for the last 3 batches (kept in the cache); a fourth undo in a row replays the painting once (and says so), after which the next 3 are fast again.
 
 ## Working tips (technique, not looks)
 
@@ -155,11 +161,12 @@ Undo works by batch, so label batches by idea ("hill edge", "window light"), not
 | `grain` | Paper tooth: thin paint (low pressure, low opacity, edges) breaks up on it, thick paint stays solid. `0.3`–`0.6` reads as textured paint. The tooth pattern is the document's (`Doc.new(..., paper_seed, paper_size)`). |
 | `mode="multiply"` | Darkens and tints paint **already on this layer** (nothing happens on an empty part). For a glaze over everything below, make a layer with `add_layer(name, mode="multiply")` and paint on it normally. |
 | `mode="erase"` | Removes paint from this layer by the stroke's coverage (any tip, so a `block` erase gives a square-ended cut). |
+| `mode="screen"`, `mode="add"` | Light: the paint brightens what is already on this layer and on empty parts lays itself down, so glows and haze **stack** instead of replacing each other. `screen` never goes past white and keeps colours soft; `add` is stronger and burns to white where light piles up. Put light on its own layer made with `add_layer(name, mode="screen")` (or `"add"`) to brighten everything below. |
 | `mask` | A mask name (`"road"`) or its inverse (`"!road"`): paint stays inside. |
 | `jitter` | Scatters stamp positions (share of `size`) for a wobbly edge. |
 | `spacing` | Distance between stamps as a share of the tip. Leave it; raise it only for speed. |
 | `seed` | Picks the bristle pattern, ragged ends and colour drift. Give each stroke its own seed so strokes don't repeat. |
 
-Other paint ops: `doc.fill(layer, color, mask=None, opacity=1, mode="normal")`; `doc.gradient(layer, (x0, y0), (x1, y1), c0, c1, mask=None, opacity=1, mode="normal", shape="linear" or "radial")` for soft value areas; `doc.fill_region(layer, mask, color, size, angle=0, gap=0.7, length=4, bend=0.15, pressure=(0.5, 1, 0.3), seed=0, brush="flat", **settings)` hatches a masked area with many strokes in one op (one stroke id). Each returns a stroke id.
+Other paint ops: `doc.fill(layer, color, mask=None, opacity=1, mode="normal")`; `doc.gradient(layer, (x0, y0), (x1, y1), c0, c1, mask=None, opacity=1, mode="normal", shape="linear" or "radial", alpha0=None, alpha1=None)` for soft value areas and glows. A gradient paints **over** the layer by its own alpha: `c0` / `c1` may be RGBA, or give `alpha0` / `alpha1` (default 1). Fade `alpha1` to 0 for a glow that leaves the rest of the layer alone. A radial gradient (centre `(x0, y0)`, edge at `(x1, y1)`) paints nothing outside its circle; a linear one keeps its end colour and alpha beyond the end point. With `mode="screen"` many glows stack on one layer. (Gradients in documents saved before this have no `v` field and replay the old way, covering the whole layer, so old paintings keep their pixels.) `doc.fill_region(layer, mask, color, size, angle=0, gap=0.7, length=4, bend=0.15, pressure=(0.5, 1, 0.3), seed=0, brush="flat", **settings)` hatches a masked area with many strokes in one op (one stroke id). Each returns a stroke id.
 
-Speed (1920×1080, strokes 20–90 px wide and 150–500 px long, grain on): about 37 strokes a second dry, about 9 wet. Undo of a recent batch is instant (states are kept in memory); older ones replay from the nearest kept state.
+Speed (1920×1080, strokes 20–90 px wide and 150–500 px long, grain on): about 37 strokes a second dry, about 9 wet. Undo of a recent batch is instant (kept states share the layers a batch did not touch, so many fit in memory); older ones replay from the nearest kept state.
