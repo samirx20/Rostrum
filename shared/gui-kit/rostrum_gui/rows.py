@@ -38,7 +38,7 @@ def layout(op) -> list[dict]:
 
 def _param_row(p) -> dict:
     return {"row": "param", "id": p.name, "label": p.label, "type": p.type, "group": p.group,
-            "importance": p.importance, "help": p.help, "options": list(p.options), "min": p.min, "max": p.max,
+            "importance": p.importance, "help": p.help, "options": p.choices(), "min": p.min, "max": p.max,
             "step": p.step, "unit": p.unit, "valid_when": p.valid_when, "default": p.default}
 
 

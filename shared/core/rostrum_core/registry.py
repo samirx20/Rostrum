@@ -97,7 +97,7 @@ class Registry:
             if op.targets is None:
                 out.append(op)
                 continue
-            if items and all(it["type"] in op.targets and holds(op.valid_when, it, doc.kind.facts(it))
+            if items and all(it["type"] in op.targets and holds(op.valid_when, it, doc.kind.facts(it, doc))
                              for it in items):
                 out.append(op)
         return out

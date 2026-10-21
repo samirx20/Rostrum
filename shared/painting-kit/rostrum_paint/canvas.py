@@ -5,7 +5,8 @@ Each paint layer's state after its first i strokes has a **chain key** (the key 
 JSON + what it reads: its mask, and the layers below when it picks them up). A render finds the longest prefix it
 already holds and stamps only the strokes after it: a new stroke costs one stroke, undo / redo / a redrawn frame
 cost the strokes after the nearest kept state. Kept states live in memory (LRU, `BUDGET` bytes); finished canvases
-are PNG files keyed by their content (`png`), which is all the 2D engine reads. Keys include `ENGINE_VERSION`
+are PNG files in the shared cache (rostrum_core.cache, kind "paint"), keyed by their content (`png`), which is all
+the 2D engine reads. Keys include `ENGINE_VERSION`
 (a hash of the brush code), so a brush change never serves stale pixels.
 """
 from __future__ import annotations
@@ -18,10 +19,10 @@ from pathlib import Path
 
 import numpy as np
 
+from rostrum_core.cache import CACHE, cache_key
+
 from . import brush, compose, marks
 
-CACHE_DIR = Path.home() / ".rostrum" / "cache" / "paint"
-PNG_BYTES = 1 << 30              # size of CACHE_DIR before the oldest pictures go
 BUDGET = 1200 << 20              # bytes of kept layer states in memory
 CHECKPOINT = 24                  # during a long replay, keep a state every N strokes
 _HERE = Path(__file__).resolve().parent
@@ -184,7 +185,7 @@ def rgba8(canvas: dict, w: int, h: int) -> np.ndarray:
     if got is not None and got[1] is not None:
         return got[1]
     path = _png_path(key[0], w, h)
-    if path.is_file():
+    if CACHE.get("paint", _png_key(key[0], w, h)):
         from PIL import Image
         with Image.open(path) as im:
             u8 = np.asarray(im.convert("RGBA"))
@@ -203,8 +204,12 @@ def _remember(key, pix, u8):
         _SEEN.popitem(last=False)
 
 
+def _png_key(key: str, w: int, h: int) -> str:
+    return cache_key("paint.canvas", f"rostrum-paint@{ENGINE_VERSION}", [key], {"w": w, "h": h})
+
+
 def _png_path(key: str, w: int, h: int) -> Path:
-    return CACHE_DIR / f"{key}_{w}x{h}.png"
+    return CACHE.path("paint", _png_key(key, w, h)) / "canvas.png"
 
 
 def content_key(canvas: dict, w: int, h: int) -> str:
@@ -219,22 +224,11 @@ def content_key(canvas: dict, w: int, h: int) -> str:
 
 def png(canvas: dict, w: int, h: int) -> Path:
     """The canvas as a PNG (straight-alpha RGBA, w×h), named by its content: made once, then only read."""
-    path = _png_path(content_key(canvas, w, h), w, h)
-    if path.is_file():
-        return path
+    key = content_key(canvas, w, h)
+    if CACHE.get("paint", _png_key(key, w, h)):
+        return _png_path(key, w, h)
     from PIL import Image
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".partial.png")
-    Image.fromarray(rgba8(canvas, w, h), "RGBA").save(tmp, compress_level=1)
-    tmp.replace(path)
-    _trim()
-    return path
 
-
-def _trim():
-    files = sorted(((p.stat().st_mtime, p.stat().st_size, p) for p in CACHE_DIR.glob("*.png")), reverse=True)
-    total = 0
-    for _, size, p in files:                       # newest kept first; past the cap the rest go
-        total += size
-        if total > PNG_BYTES:
-            p.unlink(missing_ok=True)
+    def make(tmp: Path):
+        Image.fromarray(rgba8(canvas, w, h), "RGBA").save(tmp / "canvas.png", compress_level=1)
+    return CACHE.put("paint", _png_key(key, w, h), make, {"w": w, "h": h, "content": key}) / "canvas.png"

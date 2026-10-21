@@ -90,6 +90,8 @@ key = cache_key(kind="track", engine="rostrum-track@3", inputs=[clip_hash], sett
 ```
 
   A new engine version means a new key, so an old result is never used by mistake.
+- **Built (S9):** `rostrum_core.cache` — `cache_key`, `file_hash`, and `CACHE.get(kind, key)` / `CACHE.put(kind, key, make)` /
+  `CACHE.trim()` / `CACHE.stats()`. In-process only for now: "runs once" across apps waits for the service.
 - **Where:** `C:\Users\<user>\.rostrum\cache\` on Windows, `~/Library/Caches/Rostrum/` on Mac; one folder per kind, one entry per key, each with a small `entry.json` (what made it, inputs, when, size, how long it took).
 - **Written safely:** an entry is written under a temporary name and renamed when complete, so a half-made entry is never visible. A failed or cancelled job leaves nothing.
 - **Size cap:** one cap for the whole cache, set in settings (default 20 GB). When over the cap, the **least recently used** entries go first. An entry used in the last 15 minutes, or used by a running job, is never removed.
@@ -132,6 +134,11 @@ Over the client in `rostrum_core.project`, and the same through each app's MCP s
 | `context(item, time_range, quality="fast")` | read-only frames or sound for showing context |
 | `job.submit(...)` / `job.status(id)` / `job.cancel(id)` / `jobs()` | the queue |
 | `cache.get(key)` / `cache.stats()` | a cached result; the cache's size and cap |
+
+**Built (S9), before the service:** `rostrum_core.project` reads the folder directly — `items(folder, kind)`,
+`item`, `renders(folder, item)` (finished `vNNN/` only, newest first), `latest_render(folder, item, "pictures")`,
+and `begin_render` / `finish_render` for writers (`vNNN.partial/` renamed when done). Every server's
+`inspect_project` lists them when the app is started with its project folder (`App(folder=…)`).
 
 How renders are handed between apps (EXR layers, WAV stems, frame numbering) is in `shared/HANDOFFS.md`.
 

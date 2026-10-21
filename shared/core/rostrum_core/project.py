@@ -1,0 +1,105 @@
+"""A project's items and their renders, read from the project folder (project-service CONTRACT.md § 1, § 7;
+shared/HANDOFFS.md § 1, § 5). The minimal first piece of the project service: enough for one app to list the
+others' items and pick a finished render (Sound picking a 2D render as its picture).
+
+An item is a document in `docs/` (its kind from the file's extension) or a row in `project.json`'s "items".
+Its renders are the finished version folders `renders/<item>/vNNN/`, each with a `manifest.json`;
+`vNNN.partial/` (in progress or failed) is never listed. Writers use begin_render / finish_render.
+"""
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+
+from .errors import RostrumError, codes
+
+KIND_OF_EXT = {".mtn": "2d", ".trk": "sound", ".trd": "3d", ".rsm": "edit"}
+_VERSION = re.compile(r"^v(\d{3,})$")
+_SAFE_ID = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+def _read_json(path: Path, where: str) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        raise RostrumError(codes.CHECK_FAILED, where, str(path), f"can't be read: {e}") from e
+
+
+def _doc_name(path: Path, item_id: str) -> str:
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8")).get("doc", {})
+    except (OSError, ValueError):
+        return item_id
+    return doc.get("name") or item_id
+
+
+def renders(folder, item_id: str) -> list[dict]:
+    """Finished renders of one item, newest first: {version, kind, path, files, manifest}."""
+    base = Path(folder) / "renders" / item_id
+    out = []
+    for d in base.iterdir() if base.is_dir() else ():
+        m = _VERSION.match(d.name)
+        if not m or not d.is_dir() or not (d / "manifest.json").is_file():
+            continue
+        manifest = _read_json(d / "manifest.json", f"render {item_id}/{d.name}")
+        out.append({"version": int(m.group(1)), "kind": manifest.get("kind", ""), "path": str(d),
+                    "files": sorted(p.name for p in d.iterdir() if p.name != "manifest.json"), "manifest": manifest})
+    return sorted(out, key=lambda r: -r["version"])
+
+
+def items(folder, kind: str | None = None) -> list[dict]:
+    """Every item of the project: {id, kind, name, file, renders}, sorted by name. `kind` filters ("2d" …)."""
+    folder = Path(folder)
+    if not folder.is_dir():
+        raise RostrumError(codes.NOT_FOUND, "project", str(folder), "is not a project folder")
+    found: dict[str, dict] = {}
+    for f in sorted((folder / "docs").glob("*")) if (folder / "docs").is_dir() else ():
+        if f.suffix in KIND_OF_EXT:
+            found[f.stem] = {"id": f.stem, "kind": KIND_OF_EXT[f.suffix], "name": _doc_name(f, f.stem),
+                             "file": f"docs/{f.name}"}
+    if (folder / "project.json").is_file():
+        for row in _read_json(folder / "project.json", "project").get("items", []):
+            found[row["id"]] = {**found.get(row["id"], {}), **{k: row[k] for k in ("id", "kind", "name", "file")
+                                                              if k in row}}
+    out = [{**it, "name": it.get("name") or it["id"], "renders": renders(folder, it["id"])} for it in found.values()]
+    return sorted((it for it in out if kind is None or it["kind"] == kind), key=lambda it: it["name"].lower())
+
+
+def item(folder, item_id: str) -> dict:
+    every = items(folder)
+    for it in every:
+        if it["id"] == item_id:
+            return it
+    raise RostrumError.not_found("project", "item", item_id, [it["id"] for it in every])
+
+
+def latest_render(folder, item_id: str, kind: str | None = None) -> dict | None:
+    """The newest finished render of an item ("pictures" / "sound" to pick one kind), or None."""
+    return next((r for r in renders(folder, item_id) if kind is None or r["kind"] == kind), None)
+
+
+def begin_render(folder, item_id: str) -> Path:
+    """A new, empty `renders/<item>/vNNN.partial/` (the next version number) for a render to write into."""
+    if not _SAFE_ID.match(item_id):
+        raise RostrumError(codes.BAD_ARGUMENT, "render", f'item "{item_id}"', "may use only letters, digits, _ and -")
+    base = Path(folder) / "renders" / item_id
+    base.mkdir(parents=True, exist_ok=True)
+    taken = [int(m.group(1)) for d in base.iterdir() if (m := re.match(r"^v(\d{3,})(\.partial)?$", d.name))]
+    part = base / f"v{max(taken, default=0) + 1:03d}.partial"
+    part.mkdir()
+    return part
+
+
+def finish_render(partial: Path, manifest: dict) -> Path:
+    """Write the manifest and rename `vNNN.partial/` to `vNNN/`. A render with no files is refused (loud)."""
+    partial = Path(partial)
+    if not partial.name.endswith(".partial") or not partial.is_dir():
+        raise RostrumError(codes.BAD_ARGUMENT, "render", str(partial), "is not a vNNN.partial folder")
+    if not any(p.name != "manifest.json" for p in partial.iterdir()):
+        raise RostrumError(codes.JOB_FAILED, "render", str(partial), "has no files: nothing was rendered")
+    (partial / "manifest.json").write_text(json.dumps(manifest, indent=1), encoding="utf-8")
+    done = partial.with_name(partial.name[:-len(".partial")])
+    partial.rename(done)
+    return done
+

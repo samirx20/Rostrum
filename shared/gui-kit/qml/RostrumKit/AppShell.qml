@@ -18,8 +18,8 @@ QQC.ApplicationWindow {
     property alias right: rightSlot.data
     property alias bottom: bottomSlot.data
     property alias tools: topBar.tools          // the app's own top-bar tools (centred)
-    property int leftWidth: Theme.sidePanel - 32
-    property int rightWidth: Theme.sidePanel
+    property int leftWidth: Theme.sidePanel - 32   // 0: no left panel (the centre takes its place, no gap)
+    property int rightWidth: Theme.sidePanel       // 0: no right panel
     property int bottomHeight: Theme.timeline
     readonly property alias commandBar: commandBar
     function openCommands(query) { commandBar.open(); if (query) commandBar.query(query) }
@@ -43,9 +43,10 @@ QQC.ApplicationWindow {
         id: body
         anchors { left: parent.left; right: parent.right; top: topBar.bottom; bottom: parent.bottom
                   leftMargin: Theme.gap; rightMargin: Theme.gap; bottomMargin: Theme.gap }
-        Item { id: leftSlot; x: 0; width: win.leftWidth; height: bottomSlot.y - Theme.gap }
-        Item { id: centreSlot; x: leftSlot.width + Theme.gap; width: rightSlot.x - x - Theme.gap; height: leftSlot.height }
-        Item { id: rightSlot; x: body.width - width; width: win.rightWidth; height: leftSlot.height }
+        Item { id: leftSlot; x: 0; width: Math.max(0, win.leftWidth); visible: width > 0; height: bottomSlot.y - Theme.gap }
+        Item { id: centreSlot; x: leftSlot.visible ? leftSlot.width + Theme.gap : 0; height: leftSlot.height
+               width: (rightSlot.visible ? rightSlot.x - Theme.gap : body.width) - x }
+        Item { id: rightSlot; x: body.width - width; width: Math.max(0, win.rightWidth); visible: width > 0; height: leftSlot.height }
         Item { id: bottomSlot; y: body.height - height; width: body.width; height: win.bottomHeight }
     }
     CommandBar { id: commandBar; bridge: win.bridge }

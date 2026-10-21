@@ -33,7 +33,13 @@ tests/                  test_bridge.py (one scrub = one change; one edit = one c
 
 - **Rule of individuality.** The inspector is one generic `InspectorRow` per param of the selected item's field
   operation (`registry.field_op(kind)`). A row is shown only while its `valid_when` holds
-  (`rostrum_core.conditions.holds(valid_when, item, kind.facts(item))`); otherwise it is **absent**, never greyed.
+  (`rostrum_core.conditions.holds(valid_when, item, kind.facts(item, doc))`; `doc` lets a child ask its parent, e.g.
+  a note its track's instrument); otherwise it is **absent**, never greyed.
+- **Choices show plain words.** A choice row's `options` is `[{value, label}]`: the label is the param's
+  `labels={value: words}` if given, else the value in plain words ("warmPad" → "Warm pad"). ChoiceField shows the
+  label and sends the value (plain strings still work).
+- **No side panel:** `AppShell { leftWidth: 0 }` (or `rightWidth: 0`) removes that panel and its gap; the centre
+  takes the room.
   Groups with nothing valid vanish. `deep` params sit behind a More row. Order: groups as they first appear,
   primary before secondary, then data order. A row appearing or leaving eases height + opacity over 160 ms;
   a new selection swaps the list at once.

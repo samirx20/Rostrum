@@ -158,6 +158,10 @@ Small modules, each under ~200 lines, each the only home of its idea:
 | `history` | the history file, safe saving, outside changes, undo / redo, versions, who |
 | `merge` | script re-run (three-way) and late changes (`based_on`) |
 | `errors` | the one error type and its plain-language messages |
+| `kind` | a document kind: its lists, check, and `facts(item, doc)` for valid_when (doc: a read-only `View`, so a child can ask its parent) |
+| `params` | parameters: type, range, help, importance, valid_when; a choice's plain-word labels |
+| `cache` | the shared content-keyed cache (project-service contract § 5) |
+| `project` | a project's items and their finished renders (contract § 7, read from the folder until the service exists) |
 
 Each app adds only its own operations, its table of where items live, and its whole-document check.
 

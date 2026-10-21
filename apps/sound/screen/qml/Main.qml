@@ -4,14 +4,13 @@ import RostrumKit
 // RostrumSound: Instruments | Timeline | Mix. Centre: the page (Timeline: the piano roll of the selection's
 // track). Right: the inspector of the selected item on every page. Bottom, full width: the arrangement
 // (tall on Timeline, slim elsewhere: the tracks stay in sight so sound is always made in context).
-// No left panel yet: no page has a job for one. (leftWidth -gap: the kit puts a gap after the left panel even at
-// width 0, so this lines the centre up with the timeline; asked of the kit as a "no left panel" option.)
+// No left panel yet: no page has a job for one.
 AppShell {
     id: shell
     bridge: backend
     appName: "RostrumSound"
     documentName: backend.docName
-    leftWidth: -Theme.gap
+    leftWidth: 0
     bottomHeight: backend.page === "timeline" ? 300 + Math.min(2, backend.tracks.filter(r => r.auto).length) * 78 : 156
     Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
 

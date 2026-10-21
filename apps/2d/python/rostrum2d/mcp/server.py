@@ -44,7 +44,8 @@ def open_documents(project: str, items: list[str]) -> dict:
 
 def make_app(project: str | None = None, items: list[str] | None = None, documents: dict | None = None) -> App:
     docs = documents if documents is not None else open_documents(project, items or [])
-    return App("rostrum-2d", docs, run_source=run_source, instructions=INSTRUCTIONS, guides=Guides().load_folder(SKILLS))
+    return App("rostrum-2d", docs, run_source=run_source, instructions=INSTRUCTIONS, guides=Guides().load_folder(SKILLS),
+               folder=project)
 
 
 def main(argv=None):

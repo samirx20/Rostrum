@@ -12,6 +12,15 @@ IMPORTANCE = ("primary", "secondary", "deep")
 TYPES = ("number", "toggle", "choice", "text", "color", "id", "points", "time", "list")
 TIME_UNITS = ("seconds", "beats", "marker")     # a time value is {"seconds": 1.5}, {"beats": 4} or {"marker": "drop"}
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+_WORD_BREAK = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|[_\-]+")
+
+
+def plain_words(value) -> str:
+    """A choice value in plain words for screens: "warmPad" -> "Warm pad", "built_in" -> "Built in"."""
+    words = [w for w in _WORD_BREAK.split(str(value)) if w]
+    words = [w if w.isupper() and len(w) > 1 else w.lower() for w in words]   # keep "LFO", "HDR"
+    text = " ".join(words)
+    return text[:1].upper() + text[1:]
 _UNSET = object()
 
 
@@ -32,6 +41,7 @@ class Param:
     unit: str = ""
     integer: bool = False
     options: list = field(default_factory=list)
+    labels: dict = field(default_factory=dict)   # for type "choice": value -> the words screens show (else plain_words)
     kind: str | None = None          # for type "id": the item kind it must point at
     item: str | None = None          # for type "list": the type of each element (min/max/integer/options/kind then apply per element)
     min_items: int = 0
@@ -49,6 +59,16 @@ class Param:
         if self.type == "time" and self.default is None:
             self.default = {"seconds": 0}
         self.label = self.label or self.name.replace("_", " ").capitalize()
+        unknown = [v for v in self.labels if v not in self.options]
+        if unknown:
+            raise ValueError(f"param {self.name}: labels for {unknown} which are not options")
+
+    def option_label(self, value) -> str:
+        return self.labels.get(value) or plain_words(value)
+
+    def choices(self) -> list[dict]:
+        """[{value, label}] of a choice (or a list of choices), in order: what screens show."""
+        return [{"value": o, "label": self.option_label(o)} for o in self.options]
 
     # constructors, one per type
     @classmethod
@@ -56,7 +76,7 @@ class Param:
     @classmethod
     def toggle(cls, name, **kw): return cls(name, "toggle", **kw)
     @classmethod
-    def choice(cls, name, options, **kw): return cls(name, "choice", options=list(options), **kw)
+    def choice(cls, name, options, **kw): return cls(name, "choice", options=list(options), **kw)   # labels={value: words}
     @classmethod
     def text(cls, name, **kw): return cls(name, "text", **kw)
     @classmethod
@@ -177,6 +197,7 @@ class Param:
             d.update(min=self.min, max=self.max)
         if self.type == "choice":
             d["options"] = list(self.options)
+            d["option_labels"] = [self.option_label(o) for o in self.options]
         if self.type == "id":
             d["kind"] = self.kind
         return d

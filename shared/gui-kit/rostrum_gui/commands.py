@@ -30,7 +30,7 @@ def build(doc, selection: list[str], name_of) -> list[dict]:
             out.append(_cmd(op.name, op.label, hint, op.name, target, {}))
         elif len(missing) == 1 and missing[0].type == "choice":
             p = missing[0]
-            out += [_cmd(f"{op.name}:{o}", f"{op.label}: {o}", hint, op.name, target, {p.name: o})
+            out += [_cmd(f"{op.name}:{o}", f"{op.label}: {p.option_label(o)}", hint, op.name, target, {p.name: o})
                     for o in p.options]
     for it in doc.items():
         if it["id"] != doc.data["id"] and it["id"] not in selection:
@@ -43,7 +43,7 @@ def _field_commands(doc, op, selection, name_of):
     if len(selection) != 1:
         return []
     item = doc.item(selection[0])
-    facts = doc.kind.facts(item)
+    facts = doc.kind.facts(item, doc)
     out = []
     for p in op.params:
         if not holds(p.valid_when, item, facts):
@@ -54,7 +54,7 @@ def _field_commands(doc, op, selection, name_of):
             out.append(_cmd(f"{op.name}:{p.name}", f"{word} {p.label}", name_of(item), op.name, selection,
                             {p.name: not now}))
         elif p.type == "choice":
-            out += [_cmd(f"{op.name}:{p.name}={o}", f"{p.label}: {o}", name_of(item), op.name, selection, {p.name: o})
+            out += [_cmd(f"{op.name}:{p.name}={o}", f"{p.label}: {p.option_label(o)}", name_of(item), op.name, selection, {p.name: o})
                     for o in p.options if o != now]
     return out
 
