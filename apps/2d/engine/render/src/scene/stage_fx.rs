@@ -81,8 +81,8 @@ pub fn glass(it: &Item, soft_masks: bool, body: String) -> R<(String, String, St
 }
 
 /// One mask as the style of a box that covers the layer (nesting boxes intersects masks). A plain rect or ellipse is a
-/// clip-path; a feathered, inverted or turned one is an SVG `<mask>` (alpha) of the shape blurred by `feather` (σ = feather/4,
-/// so the soft edge is `feather` px wide, centred on the edge), whose `<svg>` is added to `defs`.
+/// clip-path; a feathered, inverted or turned one is an SVG `<mask>` (alpha) built from gradient pieces (below), whose
+/// `<svg>` is added to `defs`.
 pub fn mask(layer: &Item, index: usize, m: &Item, defs: &mut String) -> R<String> {
     let (x, y, w, h, r) = (m.num("x"), m.num("y"), m.num("w"), m.num("h"), m.num("radius"));
     let ellipse = m.str("shape") == "ellipse";
@@ -94,34 +94,63 @@ pub fn mask(layer: &Item, index: usize, m: &Item, defs: &mut String) -> R<String
         return Ok(format!("clip-path:inset({y}px calc(100% - {}px) calc(100% - {}px) {x}px round {r}px);", x + w, y + h));
     }
     let id: String = format!("rm-{}-{index}", layer.id.chars().map(|c| if c.is_ascii_alphanumeric() || c == '_' { c.to_string() } else { format!("-{:x}-", c as u32) }).collect::<String>());
-    let sigma = feather / 4.0;
-    let pad = 4.0 * sigma + 8.0;
-    let (bw, bh) = if layer.props.contains_key("w") { (layer.num("w"), layer.num("h")) } else { (8192.0, 8192.0) };
-    let (cx, cy, a) = (x + w / 2.0, y + h / 2.0, angle.to_radians());
-    let rot = |px: f64, py: f64| (cx + (px - cx) * a.cos() - (py - cy) * a.sin(), cy + (px - cx) * a.sin() + (py - cy) * a.cos());
-    let mut d = String::new();
-    if invert {
-        let _ = write!(d, "M{} {}H{}V{}H{}Z", -pad, -pad, bw + pad, bh + pad, -pad);
-    }
-    if ellipse {
-        let (rx, ry) = (w / 2.0, h / 2.0);
-        let (p0, p1) = (rot(cx - rx, cy), rot(cx + rx, cy));
-        let _ = write!(d, "M{} {}A{rx} {ry} {angle} 1 0 {} {}A{rx} {ry} {angle} 1 0 {} {}Z", p0.0, p0.1, p1.0, p1.1, p0.0, p0.1);
-    } else {
-        let r = r.min(w / 2.0).min(h / 2.0).max(0.0);
-        let q = |px: f64, py: f64| { let p = rot(px, py); format!("{} {}", p.0, p.1) };
-        let arc = |px: f64, py: f64| if r > 0.0 { format!("A{r} {r} 0 0 1 {}", q(px, py)) } else { String::new() };
-        let _ = write!(d, "M{}L{}{}L{}{}L{}{}L{}{}Z", q(x + r, y), q(x + w - r, y), arc(x + w, y + r), q(x + w, y + h - r),
-            arc(x + w - r, y + h), q(x + r, y + h), arc(x, y + h - r), q(x, y + r), arc(x + r, y));
-    }
-    let shape = format!("<path d=\"{d}\" fill=\"#000\" fill-rule=\"evenodd\"/>");
-    let (filter, body) = if sigma > 0.0 {
-        // The blur's region follows the content's box: a faint pad rect makes it the layer's box plus the blur's reach.
-        let pad_rect = format!("<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"#000\" fill-opacity=\"0.001\"/>", -pad, -pad, bw + 2.0 * pad, bh + 2.0 * pad);
-        (format!("<filter id=\"{id}-f\"><feGaussianBlur stdDeviation=\"{sigma}\"/></filter>"), format!("<g filter=\"url(#{id}-f)\">{pad_rect}{shape}</g>"))
-    } else {
-        (String::new(), shape)
+    // The renderer draws a mask's shapes and gradients but not its filters, so the soft edge is built from gradient
+    // pieces (vendor/PATCHES.md › Transition masks; the gradients live inside the <mask>, the only part the renderer reads): a solid core, four edge bands with linear ramps and four corner
+    // squares with radial ramps, never overlapping. The edge fades over `feather` px centred on the shape's edge (a hard
+    // turned or inverted edge gets 1 px so it antialiases). Inverted: each piece's ramp reversed, plus everything outside.
+    let f = feather.max(1.0);
+    let hf = f / 2.0;
+    let (cx, cy) = (x + w / 2.0, y + h / 2.0);
+    let (x0, y0, x1, y1) = (x - hf, y - hf, x + w + hf, y + h + hf);
+    let mut grads = String::new();
+    let mut body = String::new();
+    let rect = |b: &mut String, (ax, ay, bx, by): (f64, f64, f64, f64), fill: &str| {
+        // Each piece reaches 0.5 px into its neighbours: abutting antialiased edges would leave a faint seam.
+        if bx - ax > 1e-6 && by - ay > 1e-6 {
+            let _ = write!(b, "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{fill}\"/>", ax - 0.5, ay - 0.5, bx - ax + 1.0, by - ay + 1.0);
+        }
     };
-    let _ = write!(defs, "<svg width=\"0\" height=\"0\" style=\"position:absolute;left:0;top:0;\"><defs>{filter}<mask id=\"{id}\" style=\"mask-type:alpha\">{body}</mask></defs></svg>");
+    // A ramp's stops from `from` (offset where the fade starts, alpha 1) to `to` (alpha 0), smoothstep-shaped.
+    let stops = |from: f64, to: f64| -> String {
+        (0..=6).map(|i| {
+            let s = i as f64 / 6.0;
+            let a = 1.0 - s * s * (3.0 - 2.0 * s);
+            format!("<stop offset=\"{:.5}\" stop-color=\"#000\" stop-opacity=\"{:.5}\"/>", (from + (to - from) * s).clamp(0.0, 1.0), if invert { 1.0 - a } else { a })
+        }).collect()
+    };
+    if ellipse {
+        let (rx, ry) = (w / 2.0 + hf, h / 2.0 + hf);
+        let inner = ((rx.min(ry) - f) / rx.min(ry)).max(0.0) * 0.5;
+        let _ = write!(grads, "<radialgradient id=\"{id}-e\" cx=\"0.5\" cy=\"0.5\" r=\"0.5\">{}</radialgradient>", stops(inner * 2.0, 1.0));
+        rect(&mut body, (x0, y0, x1, y1), &format!("url(#{id}-e)"));
+    } else {
+        let c = r.max(hf).min(w / 2.0 + hf).min(h / 2.0 + hf);
+        let edge = (f / c).min(1.0);
+        let solid = ((c - f) / c).max(0.0);
+        for (n, (ax, ay, bx, by)) in [("t", (0, 1, 0, 0)), ("b", (0, 0, 0, 1)), ("l", (1, 0, 0, 0)), ("r", (0, 0, 1, 0))] {
+            // Linear ramps run from the outer edge (alpha 0) inward; written as alpha-1-to-0 from the inner side.
+            let _ = write!(grads, "<lineargradient id=\"{id}-{n}\" x1=\"{ax}\" y1=\"{ay}\" x2=\"{bx}\" y2=\"{by}\">{}</lineargradient>", stops(1.0 - edge, 1.0));
+        }
+        for (n, gx, gy) in [("tl", 1, 1), ("tr", 0, 1), ("bl", 1, 0), ("br", 0, 0)] {
+            let _ = write!(grads, "<radialgradient id=\"{id}-{n}\" cx=\"{gx}\" cy=\"{gy}\" r=\"1\">{}</radialgradient>", stops(solid, 1.0));
+        }
+        let (ix0, iy0, ix1, iy1) = (x0 + c, y0 + c, x1 - c, y1 - c);
+        if !invert {
+            rect(&mut body, (ix0, iy0, ix1, iy1), "#000");
+        }
+        for (n, b) in [("t", (ix0, y0, ix1, iy0)), ("b", (ix0, iy1, ix1, y1)), ("l", (x0, iy0, ix0, iy1)), ("r", (ix1, iy0, x1, iy1)),
+            ("tl", (x0, y0, ix0, iy0)), ("tr", (ix1, y0, x1, iy0)), ("bl", (x0, iy1, ix0, y1)), ("br", (ix1, iy1, x1, y1))] {
+            rect(&mut body, b, &format!("url(#{id}-{n})"));
+        }
+    }
+    if invert {
+        // Everything outside the shape's soft box, far enough to cover the layer however the mask is turned.
+        let (bw, bh) = if layer.props.contains_key("w") { (layer.num("w"), layer.num("h")) } else { (8192.0, 8192.0) };
+        let far = bw.abs() + bh.abs() + x.abs() + y.abs() + w + h + 1000.0;
+        for b in [(x0 - far, y0 - far, x1 + far, y0), (x0 - far, y1, x1 + far, y1 + far), (x0 - far, y0, x0, y1), (x1, y0, x1 + far, y1)] {
+            rect(&mut body, b, "#000");
+        }
+    }
+    let _ = write!(defs, "<svg width=\"0\" height=\"0\" style=\"position:absolute;left:0;top:0;\"><defs><mask id=\"{id}\" style=\"mask-type:alpha\">{grads}<g transform=\"rotate({angle} {cx} {cy})\">{body}</g></mask></defs></svg>");
     Ok(format!("mask-image:url(#{id});"))
 }
