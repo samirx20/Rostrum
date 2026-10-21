@@ -35,7 +35,7 @@ pub fn shell(width: u32, height: u32, fonts: &[super::fonts::Font]) -> R<String>
         let data = &read.iter().find(|(p, _)| *p == f.path).unwrap().1;
         let _ = writeln!(faces, "@font-face {{ font-family: \"{}\"; src: url(\"data:font/ttf;base64,{data}\"); }}", f.family);
     }
-    Ok(format!("<html><head><style>{faces}html, body {{ margin: 0; background: #000; }}
+    Ok(format!("<html><head><style>{faces}html, body {{ margin: 0; background: transparent; }}
 #rostrum-stage {{ position: relative; width: {width}px; height: {height}px; overflow: hidden; }}</style></head><body><div id=\"rostrum-stage\"></div></body></html>"))
 }
 

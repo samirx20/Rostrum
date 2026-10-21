@@ -69,7 +69,7 @@ pub(crate) struct Session {
     pub(crate) width: u32,
     pub(crate) height: u32,
     /// rgba frames are 16-bit.
-    deep: bool,
+    pub(crate) deep: bool,
     /// The working space, view and output (color.rs).
     color: Spec,
     /// Where `encode` frames go (open.encode).
