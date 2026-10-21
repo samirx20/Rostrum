@@ -19,8 +19,8 @@ tools = Tools()
     "layers": {"type": "array", "items": {"type": "string"}, "description": "motion only: sample these layer ids (a camera as camera:<id>). Default: every layer and camera that moves on its own."},
     "alpha": {"type": "boolean", "description": "Keep transparency. Default: on for the formats that can carry it (not mp4, not lottie)."},
     "depth": {"type": "integer", "enum": [8, 16], "description": "Bits per channel; png only (default 8)."},
-    "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0. Not for lottie."},
-    "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition. Not for lottie."},
+    "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0. Not for lottie or motion (both always hold the whole composition)."},
+    "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition. Not for lottie or motion."},
     "path": {"type": "string", "description": "Write here (absolute, or relative to the project folder; for png a new folder). Default: the project's renders folder (a versioned render with a manifest), or the render cache."}}})
 def render_export(ctx, args):
     """Export a composition in one of the formats the Export button offers, through the same engine as look_frame. Always a job: it
