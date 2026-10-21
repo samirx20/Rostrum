@@ -43,6 +43,8 @@ mod incremental_tests;
 #[cfg(test)]
 mod opsz_tests;
 #[cfg(test)]
+mod round_clip_tests;
+#[cfg(test)]
 mod seam_tests;
 #[cfg(test)]
 mod shader_tests;
