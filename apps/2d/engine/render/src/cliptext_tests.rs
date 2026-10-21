@@ -10,8 +10,8 @@ use blitz_html::HtmlDocument;
 use blitz_traits::shell::{ColorScheme, Viewport};
 use parley::fontique::Blob;
 
-/// Roboto Flex (SIL OFL 1.1, tests/fonts/RobotoFlex-OFL.txt), so the glyphs are the same on every machine.
-const FONT: &[u8] = include_bytes!("../tests/fonts/RobotoFlex.ttf");
+/// Roboto Flex (SIL OFL 1.1, apps/2d/engine/fonts/RobotoFlex-OFL.txt), so the glyphs are the same on every machine.
+const FONT: &[u8] = include_bytes!("../../fonts/RobotoFlex.ttf");
 const W: u32 = 400;
 const H: u32 = 160;
 const TEXT: &str = "font-family:'Roboto Flex';font-size:120px;font-weight:900;line-height:160px;white-space:nowrap";

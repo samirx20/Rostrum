@@ -11,8 +11,8 @@ use blitz_html::HtmlDocument;
 use blitz_traits::shell::{ColorScheme, Viewport};
 use parley::fontique::Blob;
 
-/// Roboto Flex (SIL OFL 1.1, tests/fonts/RobotoFlex-OFL.txt): `opsz` 8–144 (default 14), `wdth` 25–151.
-const FONT: &[u8] = include_bytes!("../tests/fonts/RobotoFlex.ttf");
+/// Roboto Flex (SIL OFL 1.1, apps/2d/engine/fonts/RobotoFlex-OFL.txt): `opsz` 8–144 (default 14), `wdth` 25–151.
+const FONT: &[u8] = include_bytes!("../../fonts/RobotoFlex.ttf");
 
 /// The laid-out width of one word in Roboto Flex at 140 px under `style`.
 fn width(style: &str) -> f32 {

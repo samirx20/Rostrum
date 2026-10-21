@@ -11,8 +11,8 @@ use parley::fontique::Blob;
 
 use crate::painter::Painter;
 
-/// Roboto Flex (SIL OFL 1.1, tests/fonts/RobotoFlex-OFL.txt), a variable font: each weight is its own glyph set.
-const FONT: &[u8] = include_bytes!("../tests/fonts/RobotoFlex.ttf");
+/// Roboto Flex (SIL OFL 1.1, apps/2d/engine/fonts/RobotoFlex-OFL.txt), a variable font: each weight is its own glyph set.
+const FONT: &[u8] = include_bytes!("../../fonts/RobotoFlex.ttf");
 const W: u32 = 1280;
 const H: u32 = 720;
 

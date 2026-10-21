@@ -12,6 +12,7 @@ found by the Blitz-vs-Chrome proof (`proofs/2d-renderer/README.md`) fixed.
 | `render/` | `rostrum2d-render`, the renderer program (was the archive's `native/rostrum-motion`) |
 | `color/` | `rostrum-color`, the one colour library (working spaces, view transforms, LUTs, grades, scopes; archive `native/rostrum-color`) |
 | `vendor/` | **our fork** of blitz-dom, blitz-paint, anyrender, anyrender_skia, parley and usvg (pinned versions, patched; every patch is listed in `vendor/PATCHES.md`) |
+| `fonts/` | the app's fonts (SIL OFL, each with its licence text): Roboto Flex, Recursive, Inter (variable) |
 | `DEPENDENCIES.md` | every crate the engine builds with, and its licence |
 
 **What moved, what stayed behind.** From the archive (tag `experiment-final`): the renderer's source and our
@@ -89,6 +90,81 @@ Python evaluators give identical frames, all 90 of Meridian and all 180 of the P
 Evaluation is now well under 1 % of a frame; the rest is Skia painting the blurs and glows. The scrub numbers
 include sending 8 MB of RGBA through the pipe (the contract's later `pixels` / shared memory frame removes that).
 
+## Same frame whatever came before, pixels to the canvas, the app's fonts (H7)
+
+**A frame is a function of its time alone (rule 5).** Measured first: the same Meridian frame drawn in a fresh
+process and after other frames differed by 1–2 levels in up to 100 bytes; on the CPU never; drawing one frame
+twice in a row never. Narrowed down step by step (`painter.rs` `gl_context`): clearing every GPU resource each
+frame fixed it, clearing the resource cache or the font cache did not; removing every effect did not; removing
+the text did. Skia's GPU **glyph atlas** was the source, and only for big letters (a 250 px title drifted; 44 px
+text didn't): where a glyph landed in the atlas depended on what was drawn before, and its edge pixels with it.
+Turning off distance-field text, padding atlas glyphs, a bigger atlas or the path-renderer switches changed nothing.
+
+The fix: glyphs from 32 px on screen up (`GLYPH_OUTLINE_PX`) are drawn as **outlines** instead of atlas masks.
+Two details mattered:
+
+- The outlines are filled by Skia's multisampled path atlas, which keeps nothing between frames. At its default
+  4 samples a big letter's edge had 3 in-between levels and stepped visibly, so it is set to **16 samples**: about
+  as smooth as the glyph atlas was, and identical cold and warm. (Turning that renderer off gave smooth edges, but
+  the drift came back through the triangulating renderer's own cache.)
+- Outlines sit at their exact sub-pixel position. Atlas glyphs snapped to whole pixels vertically, which gave a
+  1 px jitter on slow moves.
+
+Small text keeps the atlas and its hinting. Paint time changed by less than the run-to-run noise.
+
+- Proof: `render/src/cold_warm_tests.rs` draws text from 14 to 230 px cold, and warm after six other weights and
+  positions, and compares bytes. It failed with Skia's old threshold (1,625 bytes differed) and passes now.
+  Meridian: all 90 frames drawn fresh and after 40 random jumps are byte-identical.
+- Look: `C:\Users\Sam\.rostrum\waves\results\stage2\2d-engine\meridian-title-before-after-h7.png` (before / after,
+  zoom ×2). The letters are a hair truer to the font: square stem tops, no grey fringe.
+
+**`pixels`: frames for the live canvas in shared memory** (`render/src/shm.rs`). `{"frame": {"t": 1.25, "pixels": true}}`
+writes the frame's output pixels straight into one of two slots of a named block of memory and replies:
+
+```json
+{"ok": true, "width": 1920, "height": 1080, "timing": {…},
+ "shm": {"name": "Local\rostrum2d-<pid>-<n>", "size": 16588800, "offset": 8294400, "bytes": 8294400,
+         "stride": 7680, "format": "rgba8", "seq": 7, "width": 1920, "height": 1080}}
+```
+
+- Same bytes as `rgba` (straight-alpha RGBA, or `rgba64le` at depth 16; the same output step as stills and export).
+- The slots alternate, so the canvas can read frame n while frame n + 1 is drawn. It must be done with a slot
+  before it asks for the frame after next.
+- A new block (a new `name`) is made when the frame size changes.
+- Reading it: Python `mmap.mmap(-1, size, tagname=name)`; Qt `OpenFileMappingW` + `MapViewOfFile`, or a
+  `QImage` over the mapped pointer (no copy).
+- Windows now. **Mac route:** `shm_open` + `mmap`, the same layout, name `/rostrum2d-<pid>-<n>`; until then the
+  request fails with a message asking for `rgba` instead.
+
+Scrubbing Meridian, round trip per frame as the canvas sees it, median (`…\2d-engine\scrub-pipe-vs-shared-memory-h7.json`):
+
+| | pipe (`rgba`) | shared memory (`pixels`) |
+|---|---|---|
+| forward, frame after frame | 30.5 ms (worst 55) | **25.7 ms** (worst 49) |
+| random jumps | 37.7 ms (worst 62) | **33.7 ms** (worst 57) |
+
+**The next big cost:** about 13 ms of every frame is the colour output step on the CPU (F16 → display RGBA).
+Playing frames already do it on the GPU through the checked 3D table (`read_output8`, within 1/255). An exact GPU
+version of the output step would take scrubbing to about 13 ms a frame and keep preview ≡ export.
+
+**For Team Sam: contract changes proposed** (`ENGINE_CONTRACT.md` is yours):
+1. § 1 `pixels` row: the reply's `shm` object as above (replacing the `…` placeholder).
+2. § 2 scene: an optional top-level `"fonts": {"Family": "C:\…\file.ttf"}`, the project's own fonts. They win
+   over the app's; each file is checked when the scene loads.
+3. § 4 text `font`: resolved by family name. First the scene's `fonts`, then the app's folder
+   (`apps/2d/engine/fonts/`; installed: `fonts\` beside the program; `ROSTRUM2D_FONTS` overrides). A font found in
+   neither is refused when the scene loads or is edited: `subtitle: font "Helvetica Neue" not found; there is: …`.
+4. The `scene` reply gains `"fonts": [family names]`, for agents and the font picker.
+
+**The app's fonts** (`fonts/`, `render/src/scene/fonts.rs`). Each file is listed under its family name (the
+typographic family if it has one), and also under that name without a trailing " Variable" ("Inter Variable" is
+also "Inter").
+
+- The archive's static Inter Regular is replaced by Inter's **variable** font, so `weight` works on Inter too.
+- Roboto Flex moved here from `render/tests/fonts/`; the tests use this copy.
+- The page shell embeds the listed fonts. A font file that can't be read is an error; before, it was skipped
+  silently.
+
 ## The `serve` interface (what Python talks to)
 
 `rostrum2d-render serve`: one JSON request per line on stdin, one JSON reply per line on stdout. The process
@@ -147,19 +223,14 @@ The fixes, each at the one place it belongs (details in `vendor/PATCHES.md` › 
 
 Tests (one small check per gap, a second each): `render/src/cliptext_tests.rs`, `opsz_tests.rs`,
 `depth_tests.rs`, plus the kept `incremental_tests`, `seam_tests`, `shader_tests`, `tilt_tests`. They use Roboto
-Flex (`render/tests/fonts/`, SIL OFL 1.1) so the glyphs are the same on every machine.
+Flex (`fonts/`, SIL OFL 1.1) so the glyphs are the same on every machine.
 
 ## What's left
 
-- **Open (H6): a frame can depend on what the page drew before.** Meridian exported right after stills at
-  0.4–2.9 s differs from a fresh export by 1–2 levels (of 255) in up to 222 of 2 million pixels per frame, from
-  frame 17 (the word appears) on; the stage markup is identical, so it is a cache in the paint (most likely
-  Skia's glyph cache on the GPU). Invisible, but a frame should be a function of its time alone (rule 5). Seen
-  as 55–57 dB PSNR between the two evaluators' videos while every still is identical.
 - Scene: what the stopgap couldn't draw, the engine refuses the same way (feathered or inverted rect masks, a
   gradient on an image); drawing layers (S6) have their place in `scene/fields.rs` and `scene/stage.rs`
-  `content`. Paint is not incremental (Blitz repaints the whole page). The font list (`scene/stage.rs` `FONTS`)
-  still points at the archive's font files.
+  `content`. Paint is not incremental (Blitz repaints the whole page).
+- `pixels` on the Mac (`shm.rs`: `shm_open` + `mmap`); the output step on the GPU, exact (about 13 ms a scrubbed frame).
 - `background-clip: text` on an inline `<span>` (Blitz paints only a span's background colour, never its images).
 - SVG `<text>` with web fonts falls back to a serif.
 - `backface-visibility`; depth sorting of `preserve-3d` siblings (they paint in page order); a perspective parent
@@ -189,4 +260,6 @@ GPL / AGPL / LGPL crate; Stylo and its Servo crates are MPL-2.0 (file-level; we 
 | glutin | 0.32.3 | Apache-2.0 | `apps/2d/engine` (OpenGL context) | static | ships | Keep the notice | https://github.com/rust-windowing/glutin |
 | image, png, jpeg-encoder, exr, half | 0.25.10, 0.18.1, 0.7.1, 1.74.2, 2.7.1 | MIT OR Apache-2.0; jpeg-encoder adds IJG; exr BSD-3-Clause | `apps/2d/engine` (picture files) | static | ships | Keep the notices (IJG: credit the Independent JPEG Group) | https://github.com/image-rs |
 | ICU4X crates (icu_*, zerovec, yoke …) | 2.3.x | Unicode-3.0 | `apps/2d/engine` (text segmentation, via Parley) | static | ships | Keep the notice | https://github.com/unicode-org/icu4x |
-| Roboto Flex | 3.x (archive copy) | SIL OFL 1.1 | `apps/2d/engine/render/tests` (test font) | data | dev only | Keep the OFL text beside it; don't sell the font on its own | https://github.com/googlefonts/roboto-flex |
+| Roboto Flex | 3.x (archive copy) | SIL OFL 1.1 | `apps/2d/engine/fonts` (app font; also the tests' font) | data | ships | Keep the OFL text beside it; don't sell the font on its own | https://github.com/googlefonts/roboto-flex |
+| Recursive | 1.x (archive copy) | SIL OFL 1.1 | `apps/2d/engine/fonts` (app font) | data | ships | Keep the OFL text beside it; don't sell the font on its own | https://github.com/arrowtype/recursive |
+| Inter (variable, InterVariable.ttf) | 4.1 | SIL OFL 1.1 | `apps/2d/engine/fonts` (app font) | data | ships | Keep the OFL text beside it; don't sell the font on its own | https://github.com/rsms/inter |

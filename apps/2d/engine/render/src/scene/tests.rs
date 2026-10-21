@@ -99,8 +99,8 @@ fn unknown_names_are_refused() {
 }
 
 /// The frame's display RGBA, the stage markup drawn in the scene shell on the CPU.
-fn draw(markup: &str, w: u32, h: u32) -> Vec<u8> {
-    let html = stage::shell(w, h).replace("<div id=\"rostrum-stage\"></div>", &format!("<div id=\"rostrum-stage\">{markup}</div>"));
+fn draw(markup: &str, w: u32, h: u32, fonts: &[super::fonts::Font]) -> Vec<u8> {
+    let html = stage::shell(w, h, fonts).unwrap().replace("<div id=\"rostrum-stage\"></div>", &format!("<div id=\"rostrum-stage\">{markup}</div>"));
     let assets = crate::assets::Assets::new(crate::color::Spec::default());
     let mut doc = blitz_html::HtmlDocument::from_html(&html, crate::serve::page_config(w, h, &assets));
     doc.handle_messages();
@@ -118,8 +118,8 @@ fn a_frame_draws_as_the_python_stopgap_drew_it() {
     let scene = Scene::load(&r["scene"]).unwrap();
     let (w, h) = (scene.width(), scene.height());
     let t = r["stage_t"].as_f64().unwrap();
-    let ours = draw(&stage::stage(&eval::at(&scene.comp, t).unwrap()).unwrap(), w, h);
-    let py = draw(r["stage"].as_str().unwrap(), w, h);
+    let ours = draw(&stage::stage(&eval::at(&scene.comp, t).unwrap()).unwrap(), w, h, &scene.fonts);
+    let py = draw(r["stage"].as_str().unwrap(), w, h, &scene.fonts);
     let differing = ours.chunks(4).zip(py.chunks(4)).filter(|(a, b)| a.iter().zip(b.iter()).any(|(x, y)| x.abs_diff(*y) > 2)).count();
     assert!(differing == 0, "{differing} pixels differ between the engine's frame and the Python stopgap's at t={t}");
     let lit = ours.chunks(4).filter(|p| p[0] > 60 || p[1] > 60 || p[2] > 60).count();
@@ -142,4 +142,17 @@ fn a_drawing_shows_the_drawing_of_its_frame() {
     assert_eq!(src(0.0).as_deref(), Some(""));                              // fps 30: frame 0, before the first drawing
     assert_eq!(src(2.0 / 30.0).as_deref(), Some(pic));                      // frame 2 exactly
     assert_eq!(src(0.199).as_deref(), Some(pic));                           // frame 5, held
+}
+
+/// A text layer naming a font that is neither the project's nor the app's is refused when the scene loads (never
+/// drawn in a fallback face), and the message says which fonts there are.
+#[test]
+fn an_unknown_font_is_refused() {
+    let mut s = reference()["scene"].clone();
+    let text = s["comp"]["layers"].as_array_mut().unwrap().iter_mut().find(|l| l["type"] == "text").expect("a text layer in the reference");
+    let id = text["id"].as_str().unwrap().to_string();
+    text["props"]["font"] = "No Such Sans".into();
+    let scene = Scene::load(&s).unwrap();
+    let err = crate::scene_serve::check(&scene).unwrap_err();
+    assert!(err.starts_with(&format!("{id}: font \"No Such Sans\" not found")) && err.contains("Roboto Flex") && err.contains("Inter"), "{err}");
 }

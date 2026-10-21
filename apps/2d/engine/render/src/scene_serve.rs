@@ -18,7 +18,7 @@ use std::time::Instant;
 use serde_json::{json, Value};
 
 use crate::painter::Gl;
-use crate::scene::{eval, stage, Scene};
+use crate::scene::{eval, fonts, stage, Scene};
 use crate::serve::{self, Session};
 use crate::sink::Sink;
 
@@ -37,8 +37,20 @@ impl Held {
 }
 
 /// Every layer's stage written once (showing or not), so what can't be drawn is refused now.
-fn check(scene: &Scene) -> Result<(), String> {
+pub(crate) fn check(scene: &Scene) -> Result<(), String> {
+    scene.comp.walk(&mut |n| match n.kind {
+        "text" => fonts::resolve(&scene.fonts, n.props["font"].as_str().unwrap_or("")).map(|_| ()).map_err(|e| format!("{}: {e}", n.id)),
+        _ => Ok(()),
+    })?;
     stage::stage(&eval::whole(&scene.comp, 0.0)).map(|_| ())
+}
+
+/// The font families the scene can name (the load reply's `fonts`, for agents and the font picker).
+fn fonts_of(scene: &Scene) -> Vec<&str> {
+    let mut names: Vec<&str> = scene.fonts.iter().map(|f| f.family.as_str()).collect();
+    names.sort();
+    names.dedup();
+    names
 }
 
 fn count(n: &crate::scene::Node) -> usize {
@@ -51,13 +63,13 @@ pub fn load(held: &mut Held, session: &mut Option<Session>, warm: &mut Option<Re
     let (w, h) = (scene.width(), scene.height());
     let same_size = session.as_ref().is_some_and(|s| (s.width, s.height) == (w, h));
     if !same_size {
-        let open = json!({ "width": w, "height": h, "html": stage::shell(w, h), "cpu": req["cpu"].as_bool() == Some(true) });
+        let open = json!({ "width": w, "height": h, "html": stage::shell(w, h, &scene.fonts)?, "cpu": req["cpu"].as_bool() == Some(true) });
         *session = Some(serve::open(&open, warm)?.0);
     } else if held.shell != Some((w, h)) {
-        serve::page(session.as_mut().unwrap(), &json!({ "html": stage::shell(w, h) }))?;
+        serve::page(session.as_mut().unwrap(), &json!({ "html": stage::shell(w, h, &scene.fonts)? }))?;
     }
     held.shell = Some((w, h));
-    let reply = json!({ "ok": true, "items": count(&scene.comp), "width": w, "height": h, "fps": scene.fps(), "duration": scene.duration() });
+    let reply = json!({ "ok": true, "items": count(&scene.comp), "width": w, "height": h, "fps": scene.fps(), "duration": scene.duration(), "fonts": fonts_of(&scene) });
     held.scene = Some(scene);
     Ok(reply)
 }
