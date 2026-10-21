@@ -23,25 +23,33 @@ from .errors import RostrumError, codes
 from .kind import DocKind
 from .params import Param
 from .registry import Registry
+from .marker_times import EXT, _key, lookup, refuse_clashes, times, used, version  # noqa: F401  (one import for apps)
 
-ITEM = "markers"                    # docs/markers.mkr, .rostrum/markers.history.jsonl
+ITEM = "markers"                    # docs/markers.mkr, .rostrum/markers.history.jsonl (marker_times.py reads it)
 REGISTRY = Registry()
 _AT = dict(label="Time", unit="s", min=0, max=86400, step=0.01, group="Marker")
 _REF = re.compile(r"^(?P<name>.+?)\s*(?P<off>[+-]\s*\d+(\.\d+)?)?$")
 
 
-def _key(name: str) -> str:
-    return " ".join(str(name).split()).lower()
-
-
 @REGISTRY.operation("marker.add", "Add a named marker at a time (seconds on the project timeline).", params=[
     Param.text("name", label="Name", required=True, group="Marker"),
     Param.number("at", required=True, **_AT),
-    Param.text("id", label="Id", help="Optional; made from the name when left out.")], label="Add marker")
+    Param.text("id", label="Id", help="Optional; made from the name when left out."),
+    Param.choice("owner", ["2d", "sound", "3d", "edit"], label="Made in", help="The app it belongs to (optional)."),
+    Param.color("colour", label="Colour", group="Marker", importance="secondary")], label="Add marker")
 def marker_add(ctx, targets, args):
     slug = re.sub(r"[^a-z0-9]+", "_", _key(args["name"])).strip("_") or "marker"
     id_ = args.get("id") or ctx.new_id(f"mk_{slug}")
-    ctx.insert("root", "markers", {"id": id_, "type": "marker", "name": args["name"].strip(), "at": args["at"]})
+    extra = {k: args[k] for k in ("owner", "colour") if args.get(k)}
+    ctx.insert("root", "markers", {"id": id_, "type": "marker", "name": args["name"].strip(), "at": args["at"],
+                                   **extra})
+
+
+@REGISTRY.operation("marker.colour", "Change markers' colour.", target="marker", label="Marker colour",
+                    importance="secondary", params=[Param.color("colour", label="Colour", required=True)])
+def marker_colour(ctx, targets, args):
+    for t in targets:
+        ctx.set(t, "colour", args["colour"])
 
 
 @REGISTRY.operation("marker.move", "Move markers to a new time.", target="marker", label="Move marker",
@@ -79,7 +87,7 @@ def _check(data) -> list[str]:
     return out
 
 
-KIND = DocKind("markers", ".mkr", REGISTRY, lists={"doc": ["markers"]}, check=_check,
+KIND = DocKind(ITEM, EXT, REGISTRY, lists={"doc": ["markers"]}, check=_check,
                new=lambda: {"id": "root", "type": "doc", "markers": []})
 
 
@@ -118,7 +126,8 @@ def listing(folder, doc: Document | None = None) -> list[dict]:
     out = []
     for m in doc.data["markers"]:
         last = doc.who_changed(m["id"])
-        out.append({"id": m["id"], "name": m["name"], "at": m["at"], "by": _made_by(doc, m["id"]),
+        out.append({"id": m["id"], "name": m["name"], "at": m["at"], "owner": m.get("owner", ""),
+                    "colour": m.get("colour", ""), "by": _made_by(doc, m["id"]),
                     "changed_by": str(last.who) if last else "outside"})
     return sorted(out, key=lambda m: (m["at"], m["name"].lower()))
 
@@ -146,29 +155,3 @@ def at(folder, ref: str, markers: list[dict] | None = None) -> float:
         if off:
             raise
         return float(find(markers, ref.strip())["at"])      # a name that itself ends in "-2" or "+1"
-
-
-_TIMES: dict = {}       # path -> (file time, {name: seconds}); a frame-by-frame reader re-reads only on change
-
-
-def times(folder) -> dict[str, float]:
-    """{name: seconds} for every marker, by time; what expressions, flags and snapping read. Cheap to call often:
-    the file is read again only when it changed. No project folder or no markers yet = {}."""
-    if folder is None:
-        return {}
-    path = Path(folder) / "docs" / f"{ITEM}{KIND.ext}"
-    try:
-        stamp = path.stat().st_mtime_ns
-    except OSError:
-        return {}
-    if _TIMES.get(path, (None,))[0] != stamp:
-        data = open_markers(folder).data
-        rows = sorted(data.get("markers", []), key=lambda m: m["at"])
-        _TIMES[path] = (stamp, {m["name"]: float(m["at"]) for m in rows})
-    return dict(_TIMES[path][1])
-
-
-def lookup(times_: dict[str, float], name: str) -> float | None:
-    """A name's seconds in a times() dict, case and outer spaces ignored; None when there is none."""
-    want = _key(name)
-    return next((t for n, t in times_.items() if _key(n) == want), None)

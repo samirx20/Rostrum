@@ -24,3 +24,5 @@ ItemList 1.0 ItemList.qml
 CommandBar 1.0 CommandBar.qml
 TopBar 1.0 TopBar.qml
 AppShell 1.0 AppShell.qml
+Ruler 1.0 Ruler.qml
+KeyRows 1.0 KeyRows.qml

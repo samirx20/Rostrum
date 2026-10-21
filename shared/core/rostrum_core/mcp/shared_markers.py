@@ -13,9 +13,9 @@ from .reply import Reply
 from .tools import Tools
 
 _CALL = {"type": "object", "required": ["op"], "additionalProperties": False, "properties": {
-    "op": {"enum": ["marker.add", "marker.move", "marker.rename", "marker.remove"]},
+    "op": {"enum": ["marker.add", "marker.move", "marker.rename", "marker.colour", "marker.remove"]},
     "target": {"type": "array", "items": {"type": "string"}, "description": "Marker ids (from inspect_markers)."},
-    "args": {"type": "object", "description": 'marker.add {"name", "at"}; marker.move {"at"}; marker.rename {"name"}.'}}}
+    "args": {"type": "object", "description": 'marker.add {"name", "at", optional "owner", "colour"}; marker.move {"at"}; marker.rename {"name"}; marker.colour {"colour"}.'}}}
 
 
 def _folder(ctx):
