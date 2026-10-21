@@ -3,7 +3,7 @@ mod.rs `FIELDS`), so change both together. Merged into `rostrum2d.fields.FIELDS`
 transform of its own: its x, y are where it looks, not where it is placed. Every field can be keyed except start/end."""
 from __future__ import annotations
 
-from ..fields import N, P, S  # noqa: F401  (the table helpers)
+from ..fields import N, P, S, timing  # noqa: F401  (the table helpers)
 
 FIELDS = {
     "camera": [
@@ -13,9 +13,7 @@ FIELDS = {
         N("zoom", "Zoom", "Camera", 0.01, 100, 0.01, "×", P, default=1.0,
           help="2 = twice as close; far layers (depth) grow less"),
         N("rotation", "Roll", "Camera", -36000, 36000, 0.1, "°", S, help="Turns the camera clockwise, so the picture turns the other way"),
-        N("start", "Starts at", "Timing", 0, 36000, 0.01, "s", S, help="From this time this camera is the one used (a cut)"),
-        N("end", "Ends at", "Timing", 0, 36000, 0.01, "s", S, default=36000.0, help="From this time it isn't",
-          words={36000.0: "End of comp"}),
+        *timing("From this time this camera is the one used (a cut)", "From this time it isn't"),
     ],
 }
 LABELS = {"camera": "Camera"}

@@ -52,6 +52,13 @@ with group("reveal_shot", marker="reveal", end=4.0):     # visible from the mark
 ```
 
 - A layer inside a timed group with its own `marker` counts from its own marker.
+- **Ends at marker** (`endMarker="reveal"`) ends a layer on another marker: the phone shot is gone exactly when the
+  reveal starts, wherever either marker moves.
+- **Cuts:** cameras take both fields (`camera("cam_reveal", marker="reveal", endMarker="end")`), so a cut sits on a marker.
+- **Lead-ins:** *Starts at* may be below 0, counted back from the marker (`start=-0.2` appears 0.2 s before it).
+  Keys can't yet sit before their layer's marker; start the layer earlier on another marker for a long anticipation.
+- One layer counts from one marker. A move that belongs to another beat (a flash on "drop" inside the reveal shot)
+  goes on its own layer or group timed from that marker.
 - Drawings' frames, effects', masks' and a rig's keys move with their layer.
 - `look_motion`, `look_frame` and the export all read the times as they play (marker + time). `inspect_item`
   shows the times as written, from the marker.

@@ -1,7 +1,10 @@
 """Choosing what a tool call is about: the document, the composition, the time (a number of seconds or a frame)."""
 from __future__ import annotations
 
+from rostrum_core import markers
 from rostrum_core.errors import RostrumError, codes
+
+from rostrum2d import retime
 
 ITEM_COMP = {
     "item": {"type": "string", "description": "The document's project item id. Optional when only one document is open."},
@@ -13,7 +16,17 @@ TIME = {
 }
 
 
-def doc_and_comp(ctx, args: dict):
+def doc_and_comp(ctx, args: dict, as_written: bool = False):
+    """(document, composition). Every look and inspect tool reads the composition as it plays: layers timed from a
+    shared marker have their times in composition seconds (retime.py). `as_written`: the document's own times."""
+    comp = _written(ctx, args)[1]
+    if as_written:
+        return ctx.document(args.get("item")), comp
+    doc = ctx.document(args.get("item"))
+    return doc, retime.timed(comp, markers.times(doc.folder) if doc.folder else None, comp.get("fps", 30))
+
+
+def _written(ctx, args: dict):
     doc = ctx.document(args.get("item"))
     comps = doc.data.get("comps", [])
     if not comps:

@@ -31,3 +31,14 @@ def test_layers_follow_their_marker():
 def test_missing_marker_fails_loudly():
     with pytest.raises(RostrumError, match='marker "drop"'):
         retime.timed(_comp(), {"reveal": 1.0}, 30)
+
+
+def test_ends_on_a_marker_and_cameras_cut_on_markers():
+    comp = {"id": "main", "type": "comp", "layers": [{"id": "phone", "type": "group", "marker": "ui", "start": -0.2, "endMarker": "reveal"},
+                                                     {"id": "cam", "type": "camera", "marker": "reveal", "endMarker": "end"}]}
+    out = retime.timed(comp, {"ui": 6.4, "reveal": 11.6, "end": 20.0}, 30)
+    phone, cam = out["layers"]
+    assert (phone["start"], phone["end"]) == (pytest.approx(6.2), pytest.approx(11.6))   # a lead-in, and gone on reveal
+    assert (cam["start"], cam["end"]) == (11.6, 20.0)
+    moved = retime.timed(comp, {"ui": 6.4, "reveal": 11.9, "end": 20.0}, 30)
+    assert moved["layers"][0]["end"] == pytest.approx(11.9) and moved["layers"][1]["start"] == 11.9

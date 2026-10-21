@@ -23,7 +23,7 @@ KEY_FIELDS = ("t", "v", "c", "d", "ease", "x1", "y1", "x2", "y2", "stiffness", "
 def python_only(kind: str) -> set[str]:
     """The fields of an item type the engine never sees: auto layout's, stepped timing's and swap sets' (all
     applied here)."""
-    return py_only(kind) | {stepped.FIELD, retime.FIELD} | swap.PY_ONLY.get(kind, set())
+    return py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END} | swap.PY_ONLY.get(kind, set())
 
 
 def _anim(item: dict) -> dict:

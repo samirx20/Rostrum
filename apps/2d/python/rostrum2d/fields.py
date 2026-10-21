@@ -46,6 +46,22 @@ def X(name, label, group, default, imp=P, help="", when=None):
 BLENDS = _blends.BLENDS          # the one list (blends.txt), shared with the engine
 MATTE_MODES = ["alpha", "alphaInverted", "luma", "lumaInverted"]
 
+# When a layer shows, on the project's shared markers (retime.py); cameras have these too (a cut on a marker).
+TIMED = {"not": IS("marker", "")}
+MARKER_TIMING = [
+    X("marker", "Timed from marker", "Timing", "", S,
+      help="A shared marker's name: this layer's start, end and keys (and its children's) count from it, so moving the marker moves the layer (retime.py)"),
+    X("endMarker", "Ends at marker", "Timing", "", S, help="A shared marker's name: the layer is gone from that marker (Ends at is then absent)"),
+]
+
+
+def timing(start_help: str, end_help: str) -> list:
+    """Starts at (before 0 is allowed: a lead-in before the layer's marker), Ends at (absent while it ends at a marker), and the markers."""
+    return [N("start", "Starts at", "Timing", -36000, 36000, 0.01, "s", S, help=start_help + "; counted from Timed from marker when set, so -0.2 = just before it"),
+            N("end", "Ends at", "Timing", 0, 36000, 0.01, "s", S, IS("endMarker", ""), default=36000.0, help=end_help,
+              words={36000.0: "End of comp"}), *MARKER_TIMING]
+
+
 # Every layer has these (position is where its anchor sits in the composition, in px).
 TRANSFORM = [      # x, y are absent while a group's auto layout places the layer (layout_fields.py)
     N("x", "X", "Transform", -20000, 20000, 1, "px", when=_layout.FREE_XY, default=960.0),
@@ -59,11 +75,7 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
     N("scaleY", "Stretch Y", "Transform", 0, 100, 0.01, "×", D, default=1.0),
     N("tiltX", "Tilt X", "Depth", -180, 180, 0.1, "°", D, help="Turn around the horizontal axis (2.5D)"),
     N("tiltY", "Tilt Y", "Depth", -180, 180, 0.1, "°", D, help="Turn around the vertical axis (2.5D)"),
-    N("start", "Starts at", "Timing", 0, 36000, 0.01, "s", S, help="The layer appears at this time"),
-    N("end", "Ends at", "Timing", 0, 36000, 0.01, "s", S, default=36000.0, help="The layer is gone from this time",
-      words={36000.0: "End of comp"}),
-    X("marker", "Timed from marker", "Timing", "", S,
-      help="A shared marker's name: this layer's start, end and keys (and its children's) count from it, so moving the marker moves the layer (retime.py)"),
+    *timing("The layer appears at this time", "The layer is gone from this time"),
     Param.choice("blend", BLENDS, label="Blend", group="Look", default="normal", importance=D, labels=_blends.LABELS,
                  help="How the layer mixes with the layers under it"),
     # The camera (camera/, apps/2d/CAMERA.md): only a composition's own layers use these.
