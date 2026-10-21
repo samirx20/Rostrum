@@ -93,7 +93,7 @@ class Pen(QObject):
             subs = PD.to_points(item["d"])
         except ValueError:
             return []
-        fn = to_parent(resolve(item, self.b._t))
+        fn = to_parent(resolve(item, self.b.own_t(item["id"])))
         out = []
         for p in (p for s in subs for p in s["points"]):
             x, y = fn(p["x"], p["y"])
@@ -157,7 +157,7 @@ class Pen(QObject):
             return False
         subs = PD.to_points(item["d"])
         s, k = PD.locate(subs, i)
-        props = resolve(item, self.b._t)
+        props = resolve(item, self.b.own_t(item["id"]))
 
         def go():
             self._drag = Drag(self.b.doc, self.b.who, "Move point" if part == "point" else "Move handle")

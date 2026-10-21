@@ -56,7 +56,7 @@ class HandleSlots:
             self._fail(f"Error: {label}: this layer has no box to {label}.")
             return None
         placed = layout_drag.begin(self.doc, self.placed(), layer, self._t) is not None
-        p = resolve(item, self._t)
+        p = resolve(item, self.own_t(layer))
         g = Grab(layer, p, box, placed=placed)
         for prop in fields_of(g, item):
             if exprs.drives(item, prop):
@@ -99,7 +99,7 @@ class HandleSlots:
             sets.update({"h": p["h"] * r["h"] / b["lh"]} if g.hy else {})
         if not g.placed:
             sets.update({"x": r["x"], "y": r["y"]})
-        self._guard(lambda: self._drag.preview([route.value_call(item, k, round(v, 2), self._t) for k, v in sets.items()]))
+        self._guard(lambda: self._drag.preview([route.value_call(item, k, round(v, 2), self.own_t(item["id"])) for k, v in sets.items()]))
 
     @Slot(result=bool)
     def beginRotate(self):
@@ -116,4 +116,4 @@ class HandleSlots:
         g.turned += 0.0 if g.last is None else T.short(a - g.last)
         g.last = a
         item = self.doc.item(g.layer)
-        self._guard(lambda: self._drag.preview([route.value_call(item, "rotation", round(T.rotate(g.p["rotation"], g.turned, shift), 2), self._t)]))
+        self._guard(lambda: self._drag.preview([route.value_call(item, "rotation", round(T.rotate(g.p["rotation"], g.turned, shift), 2), self.own_t(g.layer))]))

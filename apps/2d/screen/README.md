@@ -84,6 +84,9 @@ bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (
   renames on double-click (Enter keeps, Esc cancels) and shows × on hover to delete. Each is one marker operation in the
   project's marker history (`rostrum_gui/markers.py`), the same ones agents call with `edit_markers`. Steps:
   `marker add <s>`, `marker move|rename|remove <name> …` (`_` for spaces).
+- **Layers timed from a marker:** the timeline, curve editor, drawing frames, inspector values and key marks show every
+  time where it plays (composition seconds, like the playhead); a drag or edit writes it back in the layer's own seconds
+  (`Bridge2D.placed()` / `own_t()` / `offset()` are the one way across; a key on its own marker stays on it).
 - **Auto layout** (a group's Auto layout field, `rostrum2d/layout.py`): the inspector shows spacing controls only once
   the group has a layout; a laid-out layer has no X / Y (the layout places it; **Set apart**, behind More, gives them
   back) and a hugged size is absent. The canvas boxes follow the layout.

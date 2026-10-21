@@ -10,7 +10,7 @@ class Hooks2D:
         return outline.label_of(item, owner)
 
     def edit_call(self, item_id, param, value):
-        return route.edit_call(self.doc, item_id, param, swap_rows.edit_value(self.doc.item(item_id), param, value), self._t)
+        return route.edit_call(self.doc, item_id, param, swap_rows.edit_value(self.doc.item(item_id), param, value), self.own_t(item_id))
 
     def _rows(self):          # a swap set's "Shows" is a choice among its children (swap_rows.py)
         return swap_rows.rows(super()._rows(), self.doc.item(self._sel) if self._sel else None, self._t)
@@ -22,8 +22,13 @@ class Hooks2D:
         return route.anim_state(self.placed_item(item["id"]), param, self._t, self.comp()["fps"])
 
     def animate_calls(self, item_id, param):
-        return route.animate_calls(self.placed_item(item_id), param, self._t)
-
+        calls, label = route.animate_calls(self.placed_item(item_id), param, self._t)      # built in composition seconds
+        off = self.offset(item_id)
+        for c in calls:                                  # the document writes the layer's own seconds
+            for k in ("at", "t"):
+                if k in c["args"]:
+                    c["args"][k] -= off
+        return calls, label
     def expr_state(self, item, param):
         return exprs.state(item, param)
 

@@ -65,13 +65,23 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
         return marker_times.times(self.doc.folder) if self.doc.folder else {}
 
     def placed(self) -> dict:
-        """The composition as the timeline and curve editor show it: keys on a marker at their seconds (retime.placed)."""
-        return retime.placed(self.comp(), self.times())
+        """The composition as the screen shows it: every time in composition seconds, where it plays (retime.timed:
+        a layer timed from a marker, keys on a marker). The playhead is in these seconds; keys on a marker keep `ref`."""
+        return retime.timed(self.comp(), self.times(), self.comp()["fps"])
 
     def placed_item(self, id_: str) -> dict:
-        """One item of `placed()` (a layer, effect or mask), so its keys on markers read as seconds."""
+        """One item of `placed()` (a layer, effect, mask or key owner), its times in composition seconds."""
         found = index(self.placed(), self.doc.kind.lists).get(id_)
         return found.item if found else self.doc.item(id_)
+
+    def offset(self, id_: str) -> float:
+        """Where the item's own time 0 sits in composition seconds (0 unless it or a parent is timed from a marker)."""
+        return retime.offset_of(self.doc.data, id_, self.times())
+
+    def own_t(self, id_: str, t: float | None = None) -> float:
+        """A screen time (the playhead by default) as the item's document writes it: its own seconds. The one way back
+        from composition seconds; every write at a time (key.add, value.set, key drag, frame add, stroke) uses it."""
+        return (self._t if t is None else t) - self.offset(id_)
 
     @Property(float, notify=timeChanged)
     def time(self):
