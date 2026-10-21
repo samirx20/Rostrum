@@ -14,7 +14,7 @@ from . import cards
 from .voice_card import VoiceMaker, card_roles
 
 ROLES = ("id", "name", "what", "controls", "moreOpen", "isVoice", "lines", "missing", "voiceStatus", "voiceBusy",
-         "voiceFailed")
+         "voiceFailed", "isPlugin")
 
 
 class InstrumentsPage(QObject):
@@ -61,6 +61,7 @@ class InstrumentsPage(QObject):
             model.update(evaluated) if model.rows else model.reset(evaluated)
             out.append({"id": t["id"], "name": self.bridge.label_of(t), "what": cards.what_it_is(t),
                         "controls": model, "moreOpen": t["id"] in self._more,
+                        "isPlugin": t.get("instrument") == "plugin",
                         **card_roles(t, self.voice.state(t["id"]))})
         self._cards.update(out)
         if had != bool(out):

@@ -26,7 +26,8 @@ def db(linear: float) -> float | None:
 
 def chain(item: dict) -> list[dict]:
     """The inserts left to right in insert order; a bypassed one is dim (state), not a disabled control."""
-    return [{"id": e["id"], "label": effect_name(e.get("effect", "")), "bypass": bool(e.get("bypass"))}
+    return [{"id": e["id"], "label": (e.get("plugin") or {}).get("name") or effect_name(e.get("effect", "")),
+             "bypass": bool(e.get("bypass"))}
             for e in item.get("effects", [])]
 
 

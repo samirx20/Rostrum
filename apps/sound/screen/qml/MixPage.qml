@@ -11,7 +11,7 @@ Panel {
         Flickable {   // the track strips (scroll sideways when there are many)
             id: scroller
             anchors { left: parent.left; top: parent.top; bottom: listen.top; bottomMargin: Theme.gap }
-            width: Math.min(parent.width - master.width - Theme.gap, row.width)
+            width: Math.min(parent.width - master.width - Theme.gap - (plug.visible ? plug.width + Theme.gap : 0), row.width)
             contentWidth: row.width; clip: true; boundsBehavior: Flickable.StopAtBounds
             Row {
                 id: row
@@ -30,6 +30,18 @@ Panel {
             anchors.centerIn: scroller
             text: "No tracks yet — add one with Ctrl+K"
             color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.title
+        }
+        Rectangle {   // the selected plug-in effect's settings (only while one is selected)
+            id: plug
+            readonly property var panel: mixer.plugins.selectedPanel
+            visible: !!panel
+            width: 280; color: Theme.app; radius: Theme.radiusPanel
+            anchors { right: master.left; rightMargin: Theme.gap; top: parent.top; bottom: listen.top; bottomMargin: Theme.gap }
+            Flickable {
+                anchors { fill: parent; margins: Theme.gap + 2 }
+                contentHeight: settings.height; clip: true; boundsBehavior: Flickable.StopAtBounds
+                PluginSettings { id: settings; ownerId: plug.panel ? plug.panel.owner : "" }
+            }
         }
         MixMaster { id: master; anchors { right: parent.right; top: parent.top; bottom: listen.top; bottomMargin: Theme.gap } }
         MixListen { id: listen; anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: implicitHeight }

@@ -98,6 +98,18 @@ class Engine:
             raise RostrumError(code, f"sound engine › {e['where']}", e["subject"], e["problem"], e.get("accepted") or (), e.get("hint") or None)
         return reply["result"]
 
+    def plugins(self, path: str | None = None) -> dict:
+        """The CLAP / VST3 plug-ins installed (or those in `path`, a file or folder): {folders, plugins: [{format,
+        path, id, name, vendor, kind: "effect" | "instrument", hasWindow, params: [{id, name, min, max, default}]}],
+        failed: [{format, path, error}]}."""
+        return self.request("plugins", **({"path": str(path)} if path else {}))
+
+    def plugin_window(self, spec: dict, timeout: float = 3600) -> dict:
+        """Open the plug-in's own window; returns {state, params} when the person closes it (waits that long:
+        run it off the screen's thread). `spec` is the document's plugin record."""
+        from .doc import plugins
+        return self.request("pluginWindow", timeout=timeout, plugin=plugins.engine_form(spec))
+
     def close(self):
         """Ends the engine process this object started (by its own handle, never by name)."""
         p, self._proc = self._proc, None
