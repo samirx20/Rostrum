@@ -19,7 +19,7 @@ from .rig import model as rig_model
 OWNED = ["effects", "masks", "keys"]
 LISTS = {"doc": ["comps"], "comp": ["layers"], "group": ["layers", *OWNED], "drawing": ["frames", *OWNED],
          "frame": rostrum_paint.CANVAS_LISTS, **rostrum_paint.LISTS,
-         "rig": ["layers", "bones", "iks", "binds", *OWNED], "bone": ["keys"], "ik": ["keys"],
+         "rig": ["layers", "bones", "iks", "binds", *OWNED], "bone": ["keys"], "ik": ["keys"], "camera": ["keys"],
          **{t: OWNED for t in ("shape", "text", "image", "video", "path")},
          **{t: ["keys"] for t in (*F.EFFECTS, "mask")}}
 HOLDS = {"comps": ("comp",), "layers": F.LAYERS, "effects": F.EFFECTS, "masks": ("mask",), "keys": ("key",),

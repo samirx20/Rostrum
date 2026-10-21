@@ -23,6 +23,8 @@ const TRANSFORM: &[Field] = &[
     ("x", Number), ("y", Number), ("scale", Number), ("rotation", Number), ("opacity", Number),
     ("anchorX", Number), ("anchorY", Number), ("scaleX", Number), ("scaleY", Number),
     ("tiltX", Number), ("tiltY", Number), ("start", Number), ("end", Number), ("blend", Choice(BLENDS)),
+    // The camera (crate::camera; CAMERA.md): how far behind the camera's plane a top-level layer sits, or locked to the screen.
+    ("depth", Number), ("screenLock", Toggle),
 ];
 
 const COMP: &[Field] = &[("width", Number), ("height", Number), ("fps", Number), ("duration", Number), ("background", Color)];
@@ -84,7 +86,8 @@ pub enum Role {
 pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
     let layer = |own: &[Field]| Some((Role::Layer, own.iter().chain(TRANSFORM).copied().collect()));
     match kind {
-        "comp" => Some((Role::Comp, COMP.to_vec())),
+        "comp" => Some((Role::Comp, COMP.iter().chain(crate::motion::COMP).copied().collect())),
+        "camera" => Some((Role::Layer, crate::camera::FIELDS.to_vec())),
         "shape" => layer(SHAPE),
         "text" => layer(TEXT),
         "image" => layer(IMAGE),
@@ -98,13 +101,14 @@ pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
         "backdrop" => Some((Role::Effect, BACKDROP.to_vec())),
         "shadow" => Some((Role::Effect, SHADOW.to_vec())),
         "mask" => Some((Role::Mask, MASK.to_vec())),
+        "trail" | "smear" => crate::motion::fields(kind).map(|f| (Role::Effect, f.to_vec())),
         "bone" | "ik" | "bind" => crate::rig::fields::of(kind).map(|f| (Role::Rig, f.to_vec())),
         _ => None,
     }
 }
 
 /// Every type the engine reads (for error messages and the fields.py check).
-pub const TYPES: &[&str] = &["comp", "shape", "text", "image", "video", "group", "drawing", "path", "blur", "glow", "gradient", "backdrop", "shadow", "mask", "rig", "bone", "ik", "bind"];
+pub const TYPES: &[&str] = &["comp", "shape", "text", "image", "video", "group", "drawing", "path", "blur", "glow", "gradient", "backdrop", "shadow", "mask", "rig", "bone", "ik", "bind", "camera", "trail", "smear"];
 
 /// Fields keys may drive: numbers and colours, except those that describe the item rather than a moment
 /// (fields.py `STILL`).
@@ -114,4 +118,5 @@ pub fn animatable(kind: &str, field: &Field) -> bool {
         && !(kind == "text" && matches!(field.0, "letterDelay" | "letterSeed"))
         && !(kind == "video" && matches!(field.0, "w" | "h" | "offset" | "speed"))
         && crate::rig::fields::animatable(kind, field.0)
+        && crate::motion::animatable(kind, field.0)
 }

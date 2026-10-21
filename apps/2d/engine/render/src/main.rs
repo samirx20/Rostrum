@@ -10,6 +10,7 @@
 mod asset_cache;
 mod assets;
 mod boxes;
+mod camera;
 mod color;
 mod cube;
 mod encode_cmd;
@@ -17,6 +18,7 @@ mod glyphs;
 mod gpu_output;
 mod grade_cmd;
 mod keep;
+mod motion;
 mod painter;
 mod pixels;
 mod readback;

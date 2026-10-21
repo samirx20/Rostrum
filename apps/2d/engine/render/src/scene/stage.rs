@@ -42,8 +42,10 @@ pub fn shell(width: u32, height: u32, fonts: &[super::fonts::Font]) -> R<String>
 /// The stage markup of the comp at one time.
 pub fn stage(comp: &Item) -> R<String> {
     let mut out = format!("<div style=\"position:absolute;left:0;top:0;width:100%;height:100%;background:{};\"></div>", v(comp, "background"));
-    for l in &comp.layers {
-        out += &layer(l)?;
+    // The camera (crate::camera): each top-level layer seen through it, by its depth; the camera itself isn't drawn.
+    let view = crate::camera::View::of(comp);
+    for l in comp.layers.iter().filter(|l| l.kind != "camera") {
+        out += &view.place(l, layer(l)?);
     }
     Ok(out)
 }
@@ -59,6 +61,8 @@ fn gradient(e: &Item) -> String {
 
 fn transform(p: &Item) -> String {
     let mut parts = vec![format!("translate({:.3}%, {:.3}%)", -p.num("anchorX") * 100.0, -p.num("anchorY") * 100.0)];
+    // A smear (crate::motion): a stretch along the layer's velocity, in its parent's space about the anchor.
+    parts.extend(crate::motion::smear_css(p));
     if p.num("tiltX") != 0.0 || p.num("tiltY") != 0.0 {
         parts.push(format!("perspective(1600px) rotateX({}deg) rotateY({}deg)", v(p, "tiltX"), v(p, "tiltY")));
     }
