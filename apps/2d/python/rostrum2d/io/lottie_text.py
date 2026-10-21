@@ -7,8 +7,8 @@ draws the same. The layer keeps its transform, opacity, blend, masks, colour key
 Layout: the engine only measures a text's box (textsize.py); the glyph positions are not reachable from Python. So this
 module lays the glyphs out itself, shaped by HarfBuzz (uharfbuzz, Apache-2.0, the shaper the engine's text uses) at the
 weight / width / optical size the text asks for: kerning, ligatures, small caps, figure styles and `features` applied;
-`tracking`, `lineHeight`, line breaks, wrapping at `boxWidth`, `align`; baseline from the font's ascent / descent
-(CSS line box). When
+`tracking`, `lineHeight`, line breaks, wrapping at `boxWidth`, `align`; baseline by the engine's line-box rule (lottie_glyphs.baseline: ascent / descent
+rounded to px, half-leading floored, line top rounded). When
 the engine is built, its box is used for the layer's box and the report says how far our line lengths are from it.
 """
 from __future__ import annotations
@@ -22,7 +22,7 @@ from fontTools.pens.basePen import BasePen
 from fontTools.ttLib import TTFont
 
 from .. import textsize
-from .lottie_glyphs import lines as _lines, shaper
+from .lottie_glyphs import baseline, lines as _lines, metrics, shaper
 from .lottie_layer import common
 from .lottie_props import Ctx, build, frozen, rgb
 from .lottie_shapes import _STILL, _stroke, gradient, group
@@ -108,18 +108,17 @@ def outlines(p: dict, ctx: Ctx) -> tuple[list[dict], float, float] | None:
     font = _font(fam[p["font"]])
     loc = _location(font, p, p["axes"])
     gs, upm = font.getGlyphSet(location=dict(loc)), font["head"].unitsPerEm
-    k, hh = p["size"] / upm, font["hhea"]
+    k, (asc, desc) = p["size"] / upm, metrics(font, p["size"])
     lost: set = set()
     hb_font = shaper(fam[p["font"]], loc)
     lines = _lines(p, hb_font, font.getBestCmap(), k, lost)
     width = p["boxWidth"] or max((w for _, w in lines), default=0.0)
     lh = p["lineHeight"] * p["size"]
-    lead = (lh - (hh.ascent - hh.descent) * k) / 2
     out = []
     for n, (glyphs, w) in enumerate(lines):
         x0 = {"left": 0.0, "center": (width - w) / 2, "right": width - w}[p["align"]]
         for gid, x in glyphs:
-            pen = _Pen(gs, k, x0 + x, n * lh + lead + hh.ascent * k)
+            pen = _Pen(gs, k, x0 + x, baseline(n, lh, asc, desc))
             gs[font.getGlyphName(gid)].draw(pen)
             out += pen.out
     if lost:

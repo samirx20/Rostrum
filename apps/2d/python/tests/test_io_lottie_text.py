@@ -19,3 +19,10 @@ def test_text_becomes_glyph_outlines():
 def test_a_missing_font_is_reported_not_dropped_silently():
     layer, report = _export(font="No Such Font")
     assert layer is None and any('"title"' in r and "No Such Font" in r for r in report)
+
+
+def test_a_lines_baseline_follows_the_engines_rule():
+    from rostrum2d.io.lottie_glyphs import baseline
+    # engine (parley, quantized): top rounds, ascent / descent round, half-leading floors: 96px Inter, 1.1x
+    assert baseline(0, 105.6, 93.1, 23.2) == 93 - 6 and baseline(1, 105.6, 93.1, 23.2) == 106 + 93 - 6
+    assert baseline(1, 20.5, 14.5, 4.0) == 21 + 15 + 0           # half-up rounding like Rust, not banker's

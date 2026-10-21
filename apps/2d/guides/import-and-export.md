@@ -21,7 +21,7 @@ report = import_into(doc, svg_tree("logo.svg", text="text"), into="main", who="a
 | Source | Call | What comes in |
 |---|---|---|
 | **SVG** | `svg_tree(path, text="text" \| "outline")` | Shapes → `path` layers; groups → groups; images → `image`. Text → editable `text` layers (`"text"`) or paths that look exactly like the source (`"outline"`). CSS, `use`, units are resolved by the engine's reader. |
-| **PDF** | `pdf_tree(path, page=0, scale=1.0)` | One page: paths → `path` layers, text → `text`, images → `image`, forms → groups. 1 pt = 1 px unless `scale`. Shadings and clip paths are reported, not carried. |
+| **PDF** | `pdf_tree(path, page=0, scale=1.0)` | One page: paths → `path` layers, text → `text`, images → `image`, forms → groups. 1 pt = 1 px unless `scale`. Shadings and clip paths are reported, not carried. Text keeps its bold (weight) and italic (slant) from the font's name, flags and angle. |
 | **PSD** | `psd_tree(path)` | Pixel layers → `image` layers, groups → groups. Text, shape, smart-object and adjustment layers arrive as rendered pixels; masks and effects are baked in; unsupported blend modes become `normal` and are reported. |
 | **Figma** | `figma_tree(file_key, frame=None, token=None)` | One frame (by name, else the first): frames and groups → groups, rectangles / ellipses → shapes, vectors → paths, text → `text`, nodes with image fills → `image`. Needs the user's own token (the `token` argument or `FIGMA_TOKEN`); never stored or logged. Built from the API docs, **not yet tested against the live API**. |
 
@@ -55,6 +55,7 @@ ProRes go through FFmpeg; GIF and PNG are written by the engine. In the shipped 
 
 - Carried: shapes, paths, images (embedded), groups (as precomps, `clip` as a mask), keys with ease, the background as the
   bottom solid.
+- Text is exported as glyph outlines, with line baselines placed by the engine's own line-box rule (whole-pixel ascent, descent and line tops), so a wrapped paragraph sits where the engine draws it.
 - Not exported, always listed in the report: text, drawings, video, tilt, effects, conic gradients, soft mask edges.
 
 ## Seeing and checking an export

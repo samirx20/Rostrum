@@ -46,3 +46,10 @@ def test_each_page_is_a_composition_and_nothing_is_dropped_unsaid(tmp_path):
     doc.apply([{"op": "comp.add", "args": {"id": "c", "width": 200, "height": 100}}], ME)
     r = importing.run(doc, ME, "c", tmp_path / "t.pdf", page=0)
     assert r["comps"] == ["page_1", "page_2", "page_3"] and len(doc.data["comps"]) == 4
+
+
+def test_bold_and_italic_come_from_the_font_name_or_descriptor():
+    from rostrum2d.io.pdf_font import style_of
+    assert style_of("ABCDEF+Inter-SemiBoldItalic", 0, 0, 0) == ("Inter", 600.0, -12.0)
+    assert style_of("Arial,Bold", 0, 0, 435) == ("Arial", 700.0, 0.0)              # a stem-derived 435 is not read as a weight
+    assert style_of("Unnamed", 1 << 18, 0, 0)[1] == 700.0 and style_of("Unnamed", 64, -9, 400)[2] == -9.0
