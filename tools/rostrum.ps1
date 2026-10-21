@@ -8,6 +8,7 @@
 
   -Doc <folder> <item>   open another project instead of the sample
   -Shot <file.png>       save a picture of the window and close it (to check that the app opens)
+  -Step "<a>; <b>"       scripted steps before the picture, as the app's own --step (e.g. -Step "page mix; time 14.9")
   -FromShortcut          problems show in a message box (the desktop shortcuts use this)
 
   It uses the one Python environment (C:\Users\Sam\.rostrum\venv; made by tools\setup-python.ps1 when missing) and
@@ -18,6 +19,7 @@ param(
     [Parameter(Position = 0)][ValidateSet("2d", "sound", "3d")][string]$App,
     [string[]]$Doc,
     [string]$Shot,
+    [string[]]$Step,
     [switch]$FromShortcut,
     [string]$Repo = (Split-Path $PSScriptRoot -Parent)
 )
@@ -99,6 +101,7 @@ if ($Doc) {
 }
 $argv = @((Join-Path $Repo $a.Main), "--doc", $folder, $item)
 if ($script) { $argv += @("--script", $script) }      # used only the first time, to make the document
+foreach ($s in ($Step -join ";") -split ";") { if ($s.Trim()) { $argv += @("--step", $s.Trim()) } }
 if ($Shot) { $argv += @("--shot", $Shot) }
 
 # 4. Open it. The window stays until you close it; this prompt waits for it.

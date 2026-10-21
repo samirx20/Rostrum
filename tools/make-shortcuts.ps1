@@ -13,7 +13,7 @@ $shell = New-Object -ComObject WScript.Shell
 $ps = (Get-Command pwsh -ErrorAction SilentlyContinue)
 $ps = if ($ps) { $ps.Source } else { (Get-Command powershell).Source }
 $launcher = Join-Path $Repo "tools\rostrum.ps1"
-if (-not (Test-Path $launcher)) { Write-Host "Can't find the launcher: $launcher" -ForegroundColor Red; exit 1 }
+if (-not (Test-Path $launcher)) { Write-Host "Note: $launcher isn't there yet; the shortcuts work once it is." -ForegroundColor Yellow }
 
 foreach ($s in @(@("Rostrum2D", "2d"), @("RostrumSound", "sound"), @("Rostrum3D", "3d"))) {
     $lnk = $shell.CreateShortcut((Join-Path $desktop "$($s[0]).lnk"))
