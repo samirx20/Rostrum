@@ -72,6 +72,8 @@ const PATH: &[Field] = &[
     ("stroke", Toggle), ("strokeColor", Color), ("strokeWidth", Number), ("cap", Choice(&["butt", "round", "square"])),
     ("join", Choice(&["miter", "round", "bevel"])), ("miter", Number), ("dash", Number), ("gap", Number), ("dashOffset", Number),
     ("trimStart", Number), ("trimEnd", Number),
+    // A varied width (super::width_profile, drawn by super::stroke_width); widthProfile is a still value.
+    ("taperStart", Number), ("taperEnd", Number), ("widthProfile", Text), ("taperAlong", Choice(&["line", "drawn"])),
 ];
 const BLUR: &[Field] = &[("radius", Number)];
 const GLOW: &[Field] = &[("radius", Number), ("strength", Number), ("ownColor", Toggle), ("color", Color)];

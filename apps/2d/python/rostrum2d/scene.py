@@ -15,15 +15,20 @@ FORMAT, VERSION = "rostrum-2d-scene", 1
 KEY_FIELDS = ("t", "v", "c", "d", "ease", "x1", "y1", "x2", "y2", "stiffness", "damping")
 
 
+def python_only(kind: str) -> set[str]:
+    """The fields of an item type the engine never sees: auto layout's and stepped timing's (both applied here)."""
+    return py_only(kind) | {stepped.FIELD}
+
+
 def _anim(item: dict) -> dict:
     return {prop: [{k: key[k] for k in KEY_FIELDS if k in key} for key in keys_of(item, prop)]
-            for prop in sorted(animated(item)) if prop not in py_only(item["type"])}
+            for prop in sorted(animated(item)) if prop not in python_only(item["type"])}
 
 
 def _node(item: dict, fps: float = 30, baked: dict | None = None) -> dict:
     node = {"id": item["id"], "type": item["type"],
             "props": {p.name: item.get(p.name, p.default) for p in F.FIELDS[item["type"]]
-                       if p.name not in py_only(item["type"]) and p.name != stepped.FIELD}}
+                       if p.name not in python_only(item["type"])}}
     anim = {**_anim(item), **(baked or {}).get(item["id"], {})}
     if anim:
         node["anim"] = anim

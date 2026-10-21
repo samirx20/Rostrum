@@ -46,6 +46,8 @@ Point edits never move the box; run `path.fit` when the drawing has grown past i
 | `dash`, `gap`, `dashOffset` | Dashes in px (`dash` 0 = solid). Animate `dashOffset` to march them. |
 | `trimStart`, `trimEnd` | The part of the stroke that is drawn, as fractions 0–1 of its length (subpath after subpath). |
 
+| `taperStart`, `taperEnd`, `widthProfile`, `taperAlong` | A stroke whose width varies (below). |
+
 A `gradient` effect fills the path (with `filled` off it colours the stroke), linear and radial; conic is refused on a path.
 
 ## Draw on (trim)
@@ -57,6 +59,31 @@ line = path("line", d="M 0 0 C 150 -120 350 120 500 0", filled=False, stroke=Tru
 line.key("trimEnd", {0.2: 0, 1.2: 1}, ease="easeInOut")
 line.key("trimStart", {1.6: 0, 2.4: 1}, ease="easeIn")       # then take it off from the other end
 ```
+
+## Variable width (taper and profile)
+
+An even stroke looks mechanical; a pen or brush line is thin where it starts or lifts and fat where it pushes. With `stroke` on:
+
+- **`taperStart`** 0..1: how much of the line's length the width takes to grow from 0 up to full at the start. **`taperEnd`**
+  does the same, shrinking to 0 at the end. `0` = no taper. Both can be keyed.
+- **`widthProfile`**: text `"pos,mult pos,mult …"`. `pos` is 0..1 along the line (increasing), `mult` times `strokeWidth`
+  (0 or more; above 1 is fatter than `strokeWidth`). Between points the width is smooth. Empty = even. It is a still value (not keyed).
+- **`taperAlong`**: `line` = positions measure the whole line; `drawn` = only the part the trim shows, so the taper rides along
+  with a draw-on. It only matters once a taper or a profile is set.
+
+Set them in one undoable step with `path.width` (it refuses a stroke that is off, positions that don't increase, a negative
+multiplier):
+
+```json
+{"op": "path.width", "target": ["swash"], "args": {"taperStart": 0.15, "taperEnd": 0.4, "profile": [[0, 0.6], [0.45, 1.8], [1, 0.3]]}}
+```
+
+`even: true` removes the profile. In a script, pass the fields: `path("swash", d=…, stroke=True, strokeWidth=12, taperEnd=0.4)`.
+
+**A calligraphic draw-on:** give the line `taperStart` (a soft entry) and key `trimEnd` 0 → 1 with `taperAlong="drawn"` and
+`taperEnd` about 0.2, so the head of the stroke is always a thin point while it travels and the line stays fat behind it.
+To lift the pen at the end instead, leave `taperAlong="line"` and key `taperEnd` from 0 up as the draw finishes. Look at frames
+mid-draw (`look_frame`) to check the head and the tail read the way you want.
 
 ## Combining shapes (booleans)
 
@@ -73,7 +100,7 @@ combined (refused). The curves stay curves.
 ## Keys on paths
 
 A path layer's transform, opacity, `fill`, `strokeColor`, `strokeWidth`, `dash`, `gap`, `dashOffset`, `trimStart`,
-`trimEnd`, `miter` and its shape `d` animate. `w` and `h` do not (the box stays; the curve may reach outside it).
+`trimEnd`, `taperStart`, `taperEnd`, `miter` and its shape `d` animate (`widthProfile` does not). `w` and `h` do not (the box stays; the curve may reach outside it).
 
 ## Morphing a path
 
