@@ -75,3 +75,22 @@ def shown(rows: list[dict]) -> tuple[list[str], list[str]]:
     """(on screen, behind More): the names of the valid params, in screen order. For screenshots and agents."""
     return ([r["id"] for r in rows if r["row"] == "param" and r["importance"] != "deep" and r["valid"]],
             [r["id"] for r in rows if r["row"] == "param" and r["importance"] == "deep" and r["holds"]])
+
+
+def omit(rows: list[dict], gone: set[str]) -> list[dict]:
+    """The evaluated rows without the params in `gone` (shown elsewhere on the page); a group whose members all
+    went goes too."""
+    if not gone:
+        return rows
+    kept = [r for r in rows if not (r["row"] == "param" and r["id"] in gone)]
+    holds = {r["id"]: r["holds"] for r in kept if r["row"] == "param"}
+    out = []
+    for r in kept:
+        if r["row"] != "param":
+            members = [m for m in r.get("members", []) if m in holds]
+            if not members:
+                continue
+            r = {**r, "members": members}
+            r["holds"] = r["valid"] = any(holds[m] for m in members)
+        out.append(r)
+    return out

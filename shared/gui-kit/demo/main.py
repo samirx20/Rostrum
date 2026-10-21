@@ -79,7 +79,7 @@ def main():
     doc = toy.sample()
     bridge = DocBridge(doc)
     qml = HERE / "qml" / ("ControlsSheet.qml" if args.sheet else "Main.qml")
-    size = (1040, 600) if args.sheet else (1600, 960)
+    size = (1040, 700) if args.sheet else (1600, 960)
     app, engine, win = start(qml, {"backend": bridge}, size)
     code = [0]
 

@@ -5,10 +5,10 @@ import tempfile
 from pathlib import Path
 
 from rostrum_core.errors import RostrumError, codes
-from rostrum_core.mcp import Reply, Tools
+from rostrum_core.mcp import Reply, Tools, sheet
+from rostrum_core.mcp.files import look_path
 
-from . import draw, sheet
-from .files import look_path
+from . import draw
 from .shot import ITEM_SHOT, LOOK, TIME, check_frame, doc_and_shot, frame_of, renderer_of, seconds, size_of
 
 tools = Tools()

@@ -16,9 +16,9 @@ from pathlib import Path
 from rostrum_core import project
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
+from rostrum_core.mcp.files import render_cache_folder
 
 from . import draw
-from .files import render_cache_folder
 from .shot import ITEM_SHOT, QUALITY, RENDERERS, TIME, check_frame, doc_and_shot, frame_of, renderer_of, seconds, size_of
 
 tools = Tools()

@@ -8,7 +8,7 @@ import RostrumKit
 QQC.ApplicationWindow {
     id: win
     visible: true
-    width: 1040; height: 600
+    width: 1040; height: 700
     color: Theme.app
     title: "RostrumKit — controls"
     readonly property int colW: 220
@@ -61,7 +61,21 @@ QQC.ApplicationWindow {
                     Button { text: "Render"; kind: "primary" }
                     Button { text: "Add layer" }
                     Button { text: "Cancel"; kind: "ghost" }
-                    Button { text: "Commands"; hint: "Ctrl K" } } }
+                    Button { text: "Commands"; hint: "Ctrl K" }
+                    Button { text: "Delete layer"; danger: true } } }
+            Row { spacing: Theme.groupGap
+                Name { text: "Icon button" }
+                Row { spacing: Theme.gap
+                    IconButton { glyph: "+" }
+                    IconButton { glyph: "⋯"; kind: "ghost" }
+                    IconButton { glyph: "×"; danger: true }
+                    IconButton { glyph: "+"; down: true } } }
+            Row { spacing: Theme.groupGap
+                Name { text: "Level meter" }
+                Row { spacing: Theme.gap; height: Theme.row
+                    LevelMeter { width: 100; value: 0.35; peak: 0.5; anchors.verticalCenter: parent.verticalCenter }
+                    LevelMeter { width: 100; value: 0.8; peak: 0.85; anchors.verticalCenter: parent.verticalCenter }
+                    LevelMeter { width: 100; value: 0.97; peak: 0.99; anchors.verticalCenter: parent.verticalCenter } } }
         }
     }
 }

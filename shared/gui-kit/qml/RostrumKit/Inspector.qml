@@ -15,7 +15,8 @@ Panel {
     Text { id: kind; text: panel.bridge.selectedItem.kind; color: Theme.fg3; font.family: uiFont
            font.pixelSize: Theme.body; font.capitalization: Font.Capitalize
            anchors.top: name.bottom; anchors.topMargin: 2 }
-    Flickable {
+    Flickable {      // a long inspector scrolls (wheel or touch, thin bar in the panel's margin); a short one never moves
+        id: scroller
         anchors { left: parent.left; right: parent.right; top: kind.bottom; bottom: parent.bottom }
         contentHeight: list.height; clip: true; boundsBehavior: Flickable.StopAtBounds
         Column {
@@ -27,4 +28,5 @@ Panel {
             }
         }
     }
+    VScrollBar { flick: scroller }
 }

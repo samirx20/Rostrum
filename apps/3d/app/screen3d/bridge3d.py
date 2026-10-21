@@ -8,7 +8,7 @@ docChanged, frameChanged, selectionChanged.
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
-from rostrum2d.evaluate import keys_of
+from rostrum_core.keys import keys_of
 from rostrum3d.compile import describe, shot_info
 from rostrum_gui import DocBridge
 from rostrum_gui.edits import Drag

@@ -6,9 +6,9 @@ from pathlib import Path
 
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
+from rostrum_core.mcp.files import look_path
 
 from . import render, rig_view
-from .files import look_path
 from .geometry import comp_size
 from .pick import ITEM_COMP, TIME, doc_and_comp, time_of
 
