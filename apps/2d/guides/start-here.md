@@ -38,6 +38,32 @@ its value and the layer's own value is ignored.
 an animated field it adds or changes the key at `at`. `key.add` always writes a key at time `t`. `key.clear` stops animating a
 field and keeps its value at a time. When a person says "make the title bigger", use `value.set` (with `at` if animated).
 
+## Timing to the story: layers timed from a marker
+
+Cuts, entrances and beats that other apps also use (the music's drop, the 3D product landing) go on the project's
+**shared markers** (`inspect_markers`, `edit_markers`), never copied as numbers. Give a layer or a whole group
+**Timed from marker** (`marker="reveal"`): its *Starts at*, *Ends at* and keys, and everything inside it, count
+from that marker. Move the marker in any app and the shot moves with it; Sound's music follows the same marker.
+
+```python
+with group("reveal_shot", marker="reveal", end=4.0):     # visible from the marker for 4 s
+    t = text("name", body="Lull", size=180)
+    t.key("opacity", {0.0: 0, 0.4: 1})                     # 0.0 = the moment of the marker
+```
+
+- A layer inside a timed group with its own `marker` counts from its own marker.
+- **Ends at marker** (`endMarker="reveal"`) ends a layer on another marker: the phone shot is gone exactly when the
+  reveal starts, wherever either marker moves.
+- **Cuts:** cameras take both fields (`camera("cam_reveal", marker="reveal", endMarker="end")`), so a cut sits on a marker.
+- **Lead-ins:** *Starts at* may be below 0, counted back from the marker (`start=-0.2` appears 0.2 s before it).
+  Keys can't yet sit before their layer's marker; start the layer earlier on another marker for a long anticipation.
+- One layer counts from one marker. A move that belongs to another beat (a flash on "drop" inside the reveal shot)
+  goes on its own layer or group timed from that marker.
+- Drawings' frames, effects', masks' and a rig's keys move with their layer.
+- `look_motion`, `look_frame` and the export all read the times as they play (marker + time). `inspect_item`
+  shows the times as written, from the marker.
+- A marker the project doesn't have stops the render with a message, and `inspect_diagnose` lists it.
+
 ## Scripts (`run_script`)
 
 Write Python with the script API (below). The script builds the whole document tree; the server **merges** it in. Run it
