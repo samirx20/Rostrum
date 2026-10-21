@@ -37,5 +37,17 @@ def write(path, x: np.ndarray, rate: int):
     sf.write(str(path), x.T, rate, subtype="FLOAT")
 
 
-def is_mono(x: np.ndarray) -> bool:
-    return x.shape[0] == 1 or float(np.max(np.abs(x[0] - x[1]))) < 1e-6
+MONO_SIDE_DB = -40.0     # side (L-R) this far under the middle (L+R) is not heard as stereo
+
+
+def is_mono(x: np.ndarray, side_db: float = MONO_SIDE_DB) -> bool:
+    """One channel, or two so alike (a separated voice stem, a mono take panned) that their difference is under
+    `side_db`: a model is then run once on the middle instead of twice on nearly the same signal."""
+    if x.shape[0] == 1:
+        return True
+    mid, side = float(np.sum((x[0] + x[1]) ** 2)), float(np.sum((x[0] - x[1]) ** 2))
+    return side <= mid * 10 ** (side_db / 10)
+
+
+def middle(x: np.ndarray) -> np.ndarray:
+    return x[0] if x.shape[0] == 1 else 0.5 * (x[0] + x[1])
