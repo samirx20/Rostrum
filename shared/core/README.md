@@ -1,13 +1,79 @@
 # shared/core — `rostrum_core`, the shared Python core
 
-What all four apps' Python layers share, so each idea has one source of truth:
+What all four apps' Python layers share, so each idea has one source of truth. Contract: [`OPERATIONS.md`](OPERATIONS.md).
 
-- **Operations:** one format for every change, from the GUI, a script or an agent.
-- **History:** one history per document: undo, versions, who changed what.
-- **Registry:** every operation is registered once with its description and arguments; the GUI inspector, the command bar, the CLI and the MCP tool lists are all built from it.
-- **MCP plumbing:** the server loop, errors, jobs and the "look" helpers each app's MCP server builds on (conventions: `../mcp/CONVENTIONS.md`).
-- **Project-service client:** markers, links, the cache and the jobs queue (`../project-service/CONTRACT.md`).
+- **Documents** of items with stable ids; each app says where its child lists live (`DocKind.lists`).
+- **Operations** in one registry, with parameters that carry `valid_when` and `importance`; the MCP tool list, the command bar and the inspector all read it.
+- **One door in:** `Document.apply(calls, who)`, all or nothing, loud errors naming the operation.
+- **One history:** undo / redo per author (new steps, never a rewind), a drag is one step, quick nudges merge, named versions, who changed what.
+- **Script re-runs merge** and never wipe what a person changed (§ 7). A script's values obey the same parameter rules as operation arguments.
+- **MCP plumbing** in `rostrum_core.mcp` (conventions: `../mcp/CONVENTIONS.md`; demo server: `../mcp/demo/`).
+- Later: the project-service client (`../project-service/CONTRACT.md`).
 
-Layout once code starts (Stage 2): `shared/core/rostrum_core/` (the package) and `shared/core/tests/`. Each app depends on it as a local package.
+## Install and test
 
-Contract: [`OPERATIONS.md`](OPERATIONS.md). No code yet.
+```
+uv pip install --python <worktree>\.venv\Scripts\python.exe -e "shared\core[mcp,test]"
+<worktree>\.venv\Scripts\python.exe -m pytest -q shared\core\tests
+```
+
+## Using it (an app's view)
+
+```python
+from rostrum_core import DocKind, Document, Param, Registry, Who
+
+ops = Registry()
+
+@ops.operation("camera.set", "Change a camera's settings.", target="camera", fields=True, params=[
+    Param.toggle("dof", label="Depth of field", group="Lens"),
+    Param.number("focusDistance", min=0.1, max=50, unit="m", group="Lens",
+                 valid_when={"is": ["dof", True]}),          # on screen, and accepted, only when dof is on
+])
+def camera_set(ctx, targets, args):                          # pure: reads ctx, records edits through it
+    for t in targets:
+        for k, v in args.items():
+            ctx.set(t, k, v)
+
+KIND = DocKind("3d", ".trd", ops, lists={"doc": ["layers"]})  # where child items live, per item type
+
+doc = Document.new(KIND, folder=r"C:\...\My Film", item="itm_shot")
+doc.apply({"op": "camera.set", "target": ["cam_1"], "args": {"dof": True}}, Who.person())
+doc.undo(Who.person())                                       # a person's Ctrl+Z never undoes an agent's work
+with doc.gesture("Focus", Who.person()) as g:                # a scrub: many previews, one undo step
+    g.preview({"op": "camera.set", "target": ["cam_1"], "args": {"focusDistance": 3.2}})
+report = doc.run_script("shot.py", produced_tree, Who.script("shot.py"))   # merges; report.held = kept values
+doc.save()                                                   # docs/itm_shot.trd + .rostrum/itm_shot.history.jsonl
+```
+
+`rostrum_core.toy` is a small stand-in document (camera, light, rectangle, text with the S3 mockup's controls) shared by the tests, the MCP demo server and the GUI kit demo.
+
+## Modules (each < 200 lines, each the only home of its idea)
+
+| Module | Does |
+|---|---|
+| `errors` | the one error type, its codes and the one-line message; "did you mean" |
+| `who` | person / agent / script / outside |
+| `conditions` | the `valid_when` language: `is / not / all / any / fact` |
+| `params` | parameter types, ranges, checking (out of range is an error, never a clamp), JSON schema |
+| `registry` | `@operation`, the one list, `field_op(kind)` for the inspector, `available()` for the command bar |
+| `tree` | finding items through the kind's list table |
+| `edits` | the four edits (Set, Insert, Remove, Move): apply, reverse, what each touches |
+| `diff` | the edits that turn one tree into another |
+| `run` | checking and planning a call: targets, arguments, `valid_when`, the app's whole-document check |
+| `document` | the door (`apply`), undo / redo, versions, listeners |
+| `gesture` | a drag or scrub as one step |
+| `history` | the change list, per-author undo state, conflicts, who changed what |
+| `merge` | the script re-run three-way merge |
+| `storage` | atomic save, open, outside changes, damaged-line errors |
+| `ids` | written, counted, from-content and random ids |
+| `toy` | the stand-in document kind |
+| `mcp/` | the MCP server every app's server builds on: tools, replies, errors, who / group, jobs stand-in, guides |
+
+## Where the code differs from the contract's sketches
+
+- Operations are registered as **functions** (`def plan(ctx, targets, args)`) with a list of `Param`s, not classes: same facts, less code.
+- Insert and Move carry `after` (the sibling they follow) as well as an index, so an edit replayed onto a document others changed still lands in the right place.
+- An argument whose `valid_when` is false after the call is refused (`BAD_ARGUMENT`: "focusDistance only applies when dof is True"), so agents meet the same rule of individuality as the screen.
+- While a person is dragging, other writers get `CONFLICT` ("try again in a moment") instead of interleaving with the drag.
+- MCP groups: MCP has no "turn" signal, so a group lasts while one client's calls keep coming within 20 s; `group=` always wins.
+- Not built yet: times written as `"12f"`, `"#drop"`, `"+=0.5"` (they need the project service's markers); `ctx.fragment` (needs an app's script layer); document locks across processes, the real jobs queue, `inspect_project` / `inspect_markers` beyond the open documents (all project service).

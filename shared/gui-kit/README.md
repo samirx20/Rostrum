@@ -1,5 +1,65 @@
 # shared/gui-kit
 
-The one Qt Quick UI kit all four apps use, so they look and behave alike and stay Figma-simple: colours, type, spacing, panels (project, inspector, history, AI), the timeline strip, the Ctrl+K command bar, Fast / Final viewers, and the slot where each app's native viewport (Hydra, the 2D renderer, video) sits.
+The one Qt Quick UI kit all four apps use, so they look and behave alike and stay Figma-simple. Qt is LGPL,
+dynamically linked (PySide6); no GPL-only Qt add-ons, and no Qt Quick Controls styles: every control is drawn
+here (`QtQuick.Controls` is used only for `Popup` and the window, under the Basic style, fully covered by our drawing).
+Shaped by the GUI proofs (`proofs/gui-qt/`, `proofs/gui-mock/`) and the experiment's `docs/GUI_DESIGN.md`.
 
-Qt is LGPL, dynamically linked; no GPL-only Qt add-ons. The kit is shaped by the GUI proof (`proofs/gui-qt/`) and the experiment's design (`experiment-final:docs/GUI_DESIGN.md`). No code yet.
+**First layer (S4):** tokens, controls, the inspector built from operation schemas, the Ctrl+K command bar, the
+app shell, a demo. Not yet: history / AI panels, Fast / Final viewers, the native viewport slot, a colour picker
+popup, a real timeline.
+
+## Layout
+
+```
+qml/RostrumKit/         the QML module (import RostrumKit; add shared/gui-kit/qml to the import path)
+  Theme.qml             every token: colours, type sizes, spacing, sizes, radii, motion (160 ms reveal)
+  FieldFrame.qml        THE field box: background, underline, hover/focus look, padding, text style and alignment
+  NumberField / TextField / ChoiceField / ColorField   all a FieldFrame; nothing else draws a field
+  Toggle / Slider / Button / KeyHint / Chevron         the other controls (Chevron = the drawn dropdown arrow)
+  Panel / ItemList / Inspector / InspectorRow / CommandBar / TopBar / AppShell
+rostrum_gui/            the Python side (uv pip install -e shared/gui-kit)
+  rows.py               the inspector's rows from a field operation: order, groups, More, validity (no Qt)
+  edits.py              screen edit -> operation call, its history label, the scrub gesture (no Qt)
+  commands.py           the command bar's list from the registry, and search (no Qt)
+  model.py              list model for QML; values change in place so rows animate
+  bridge.py             DocBridge: selection, rows, edits, scrubs, undo / redo, commands, status
+  app.py                start(): Qt app, import path, fonts, the bridge as `backend`
+demo/                   main.py (the kit on rostrum_core.toy.sample()), qml/ stand-ins, make_shots.sh
+tests/                  test_bridge.py (one scrub = one change; one edit = one change; undo reverts)
+```
+
+## The rules it builds in
+
+- **Rule of individuality.** The inspector is one generic `InspectorRow` per param of the selected item's field
+  operation (`registry.field_op(kind)`). A row is shown only while its `valid_when` holds
+  (`rostrum_core.conditions.holds(valid_when, item, kind.facts(item))`); otherwise it is **absent**, never greyed.
+  Groups with nothing valid vanish. `deep` params sit behind a More row. Order: groups as they first appear,
+  primary before secondary, then data order. A row appearing or leaving eases height + opacity over 160 ms;
+  a new selection swaps the list at once.
+- **Every control drawn once.** Number, text, choice and colour fields are all `FieldFrame`: same box, same
+  underline (grey, lighter on hover, accent when in use), same 8 px padding, same left-aligned text with
+  tabular digits, unit dim after the value. The dropdown arrow is drawn (not a font glyph), centred at the right.
+- **Every GUI action is an operation.** An edit calls `doc.apply([...], Who.person(...))`; a scrub (number drag,
+  slider drag) is one `doc.gesture` = one change; Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y) are `doc.undo / redo` for
+  the person. The command bar lists `registry.available(...)`; running a command is an operation. The bridge
+  subscribes to the document, so agent and script changes show up in place. A refused edit fails loudly
+  (console + red status in the top bar).
+- **Layout.** Top bar; left panel | centre viewer | right inspector; the timeline runs the **full width** under both.
+
+## Run
+
+```
+.venv\Scripts\python.exe shared\gui-kit\demo\main.py                    # the window
+... main.py --step "select cam_1" --step "set dof true" --shot out.png  # scripted, quits by itself
+... main.py --sheet --shot controls.png                                 # every control in its states
+sh shared/gui-kit/demo/make_shots.sh [folder]                           # all screenshots
+.venv\Scripts\python.exe -m pytest -q shared\gui-kit\tests              # under a second
+```
+Steps: `select <id>`, `set <param> <value>`, `scrub <param> <v> <v> …`, `undo`, `redo`, `more`,
+`commands [text]`, `run <command key>`. Screenshots render offscreen with `QT_QPA_FONTDIR=C:/Windows/Fonts`
+(without it the offscreen platform has no fonts); the controls sheet uses a real window because hover needs a pointer.
+
+## Attribution rows
+
+Nothing new: PySide6 / Qt (LGPL-3.0, dynamically linked) is already recorded.
