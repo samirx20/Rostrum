@@ -21,4 +21,11 @@ def blank() -> dict:
             "master": [{"id": MASTER_ID, "type": "master", **FD.DEFAULTS["master"], "effects": [], "automation": []}]}
 
 
-KIND = DocKind("sound", ".trk", REGISTRY, lists=LISTS, check=check, new=blank)
+def facts(item: dict) -> dict:
+    """What valid_when can ask about an item beyond its own fields: a track's lanes (its children)."""
+    if item.get("type") != "track":
+        return {}
+    return {"vibratoLane": any(a.get("lane") == "vibrato" for a in item.get("automation", []))}
+
+
+KIND = DocKind("sound", ".trk", REGISTRY, lists=LISTS, check=check, new=blank, facts=facts)

@@ -18,6 +18,31 @@ pub const GM_DRUMS: &[(&str, u8)] = &[
     ("tom", 47), ("tomHigh", 50), ("crash", 49), ("cymbal", 49), ("ride", 51), ("china", 52), ("rideBell", 53), ("splash", 55),
     ("crash2", 57), ("ride2", 59),
 ];
+/// Procedural instruments (instruments/model/): the contract's name -> the engine's.
+pub const MODELS: &[(&str, &str)] = &[("guitar", "model.guitar"), ("nylonGuitar", "model.nylonGuitar"), ("marimba", "model.marimba"),
+    ("vibraphone", "model.vibraphone"), ("glockenspiel", "model.glockenspiel"), ("tubularBell", "model.tubularBell"), ("violin", "ddsp.violin")];
+/// Plucked strings (they take `damping`); the bowed violin takes no touch at all.
+pub const PLUCKED: &[&str] = &["guitar", "nylonGuitar"];
+/// The synth's oscillator waves (instruments/synth/mod.rs osc).
+pub const WAVES: &[&str] = &["saw", "square", "triangle", "sine"];
+/// A model's touch fields (default None: the instrument's own, `model_default`).
+pub const MODEL_FIELDS: &[Field] = &[Field("position", Num(0.0, 0.5), Def::None), Field("damping", Num(0.0, 1.0), N(0.0)), Field("hardness", Num(0.0, 1.0), N(0.5))];
+/// The synth's settings, contract names (`brightness` is the engine's `cutoff`).
+pub const SYNTH_FIELDS: &[Field] = &[Field("voices", Int(1.0, 16.0), N(3.0)), Field("detune", Num(0.0, 100.0), N(12.0)),
+    Field("brightness", Num(40.0, 20000.0), N(2400.0)), Field("resonance", Num(0.0, 1.0), N(0.2)), Field("envAmount", Num(0.0, 8.0), N(0.0)),
+    Field("attack", Num(0.001, 20.0), N(0.3)), Field("decay", Num(0.001, 20.0), N(0.5)), Field("sustain", Num(0.0, 1.0), N(0.8)),
+    Field("release", Num(0.001, 20.0), N(0.8)), Field("octave", Int(-3.0, 3.0), N(0.0)), Field("drive", Num(0.0, 10.0), N(0.0)),
+    Field("width", Num(0.0, 1.0), N(1.0)), Field("drift", Num(0.0, 30.0), N(0.0)), Field("noise", Num(0.0, 1.0), N(0.0)), Field("sub", Num(0.0, 1.0), N(0.0))];
+
+/// Where a model is plucked or struck when the track does not say (guitar.rs, mallet.rs).
+pub fn model_position(model: &str) -> f64 {
+    match model { "guitar" => 0.13, "nylonGuitar" => 0.2, "marimba" => 0.42, "tubularBell" => 0.05, _ => 0.4 }
+}
+
+pub fn model_names() -> Vec<&'static str> {
+    MODELS.iter().map(|(n, _)| *n).collect()
+}
+
 pub const MEDIA_FORMATS: &[&str] = &["wav", "flac", "ogg", "mp3", "mp4", "m4a", "mov"];
 
 /// How one effect field is read.
@@ -100,11 +125,15 @@ pub fn describe() -> serde_json::Value {
         let default = match f.2 { N(x) => json!(x), B(b) => json!(b), S(s) => json!(s), Def::None => Value::Null };
         json!({ "name": f.0, "kind": kind, "accepts": range, "default": default })
     };
+    let fields = |fs: &[Field]| fs.iter().map(field).collect::<Vec<_>>();
+    let instrument_fields = json!({ "model": fields(MODEL_FIELDS), "synth": fields(SYNTH_FIELDS), "plucked": PLUCKED,
+        "modelPositions": MODELS.iter().filter(|(n, _)| *n != "violin").map(|(n, _)| (n.to_string(), json!(model_position(n)))).collect::<serde_json::Map<_, _>>() });
     let effects: serde_json::Map<String, Value> = EFFECTS.iter().map(|(n, fs)| {
         let fields: Vec<Value> = if *n == "eq" { vec![json!({ "name": "bands", "kind": "list", "of": EQ_BAND.iter().map(field).collect::<Vec<_>>() })] } else { fs.iter().map(field).collect() };
         (n.to_string(), Value::Array(fields))
     }).collect();
     json!({ "tones": TONES, "spaces": SPACES, "eqShapes": EQ_SHAPES, "builtIns": BUILT_INS, "synthDrums": SYNTH_DRUMS,
             "gmDrums": GM_DRUMS.iter().map(|(n, k)| json!({ "name": n, "key": k })).collect::<Vec<_>>(),
-            "mediaFormats": MEDIA_FORMATS, "effects": effects })
+            "mediaFormats": MEDIA_FORMATS, "effects": effects, "models": model_names(), "waves": WAVES,
+            "instrumentFields": instrument_fields })
 }

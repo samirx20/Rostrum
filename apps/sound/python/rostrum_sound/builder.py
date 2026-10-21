@@ -5,125 +5,102 @@ the rest come from content (`doc/ids.py`) when the tree is made, after tempo and
 """
 from __future__ import annotations
 
-from rostrum_core import RostrumError, codes, did_you_mean
-from rostrum_core.conditions import describe, holds
+from rostrum_core import RostrumError, codes
 
+from . import expression as EX
+from . import names
+from .builder_parts import Clip, Inserts, checked
 from .doc import blank
-from .doc import effects as FX
 from .doc import fields as FD
 from .doc import ids
+from .doc.check import playing
 from .doc.registry import MASTER_ID
 
-INSTRUMENT_KEYS = ("builtIn", "sfz", "kit", "kitSfz")
+INSTRUMENT_KEYS = tuple(FD.INSTRUMENT_FIELD)
 
 
-def _checked(type_, given: dict, where: str, base: dict | None = None) -> dict:
-    """`given` checked against the type's fields (unknown names and bad values fail), merged onto `base`."""
-    params = {p.name: p for p in FD.params(type_)}
-    out = dict(base or {})
-    for k, v in given.items():
-        if v is None:
-            continue
-        if k not in params:
-            raise RostrumError(codes.BAD_ARGUMENT, where, f'"{k}"', f"is not a {type_} field", list(params),
-                               did_you_mean(k, params))
-        out[k] = params[k].check(v, where)
-    for k in given:
-        p = params.get(k)
-        if p and given[k] is not None and not holds(p.valid_when, out):
-            raise RostrumError(codes.BAD_ARGUMENT, where, f'"{k}"', f"only applies when {describe(p.valid_when)}")
-    return out
+class Track(Inserts):
+    LANES = tuple(names.TRACK_LANES)
 
-
-class _Inserts:
-    """Something that takes effects and automation: a track, a clip, the master."""
-    LANES = ("volume", "pan")
-
-    def _init_inserts(self, where):
-        self.where, self.effects, self.lanes = where, [], {}
-
-    def effect(self, type_, id=None, **fields):
-        """Add an effect at the end of this one's inserts: effect("eq", bands=[...]), effect("reverb", mix=0.3)."""
-        if type_ not in FX.TYPES:
-            raise RostrumError(codes.BAD_ARGUMENT, self.where, f'effect "{type_}"', "is not an effect type",
-                               FX.TYPES, did_you_mean(type_, FX.TYPES))
-        item = _checked("effect", {"effect": type_, **fields}, f"{self.where} › effect {type_}",
-                        {"bypass": False, **FX.defaults(type_)})
-        self.effects.append((id, item))
-        return self
-
-    def automate(self, lane, points):
-        """Replace a lane's points: automate("volume", [(0, 0.2), (bar(9), 1.0)])."""
-        if lane not in self.LANES:
-            raise RostrumError(codes.BAD_ARGUMENT, self.where, f'lane "{lane}"', "can't be automated here",
-                               self.LANES)
-        self.lanes[lane] = [list(p) for p in points]
-        return self
-
-    def _insert_items(self, own_id, taken):
-        fx = []
-        for id_, item in self.effects:
-            id_ = id_ or ids.effect(own_id, item["effect"], taken)
-            taken.add(id_)
-            fx.append({"id": id_, "type": "effect", **item})
-        lanes = [{"id": ids.lane(own_id, k), "type": "automation", "lane": k, "points": v}
-                 for k, v in self.lanes.items()]
-        return {"effects": fx, "automation": lanes}
-
-
-class Clip(_Inserts):
-    LANES = ()
-
-    def __init__(self, fields, id_):
-        self.fields, self.id = fields, id_
-        self._init_inserts(f"clip {fields['media']}")
-
-
-class Track(_Inserts):
     def __init__(self, song, id_, fields):
         self.song, self.id, self.notes, self.hits, self.clips = song, id_, [], [], []
+        self.human, self.phrases = None, []
         given = dict(fields)
         if "instrument" not in given:
             kinds = [k for k in INSTRUMENT_KEYS if given.get(k) is not None]
             given["instrument"] = kinds[0] if len(kinds) == 1 else "none"
-        self.fields = _checked("track", given, f"track {id_}", {"name": id_, **FD.DEFAULTS["track"]})
-        self._init_inserts(f"track {id_}")
+        self.fields = checked("track", given, f"track {id_}", {"name": id_, **FD.DEFAULTS["track"]})
+        self.init_inserts(f"track {id_}")
 
     def set(self, **fields):
-        self.fields = _checked("track", fields, f"track {self.id}", self.fields)
+        self.fields = checked("track", fields, f"track {self.id}", self.fields)
         return self
 
-    def note(self, pitch, at, dur, vel=None, pan=None, id=None):
-        """One note: note("D4", at=beat(0), dur=beats(2), vel=0.7). A list of pitches is a chord."""
-        self.notes.append((id, _checked("note", dict(pitch=pitch, at=at, dur=dur, vel=vel, pan=pan),
-                                        f"track {self.id} › note", FD.DEFAULTS["note"])))
+    def note(self, pitch, at, dur, vel=None, pan=None, id=None, **playing_):
+        """One note: note("D4", at=beat(0), dur=beats(2), vel=0.7). A list of pitches is a chord. Playing fields:
+        art, position, damping, hardness, dynamics=[(0, 0.6), (1, 1)], vibrato={...}, bend=[(0, -100), (0.1, 0)]."""
+        where = f"track {self.id} › note"
+        f = checked("note", dict(pitch=pitch, at=at, dur=dur, vel=vel, pan=pan, **playing_), where,
+                    FD.DEFAULTS["note"])
+        wrong = playing({**self.fields, "id": self.id, "notes": [{"id": f"note at {at!r}", **f}]})
+        if wrong:
+            raise RostrumError(codes.BAD_ARGUMENT, where, f"note {pitch!r}", "; ".join(wrong))
+        self.notes.append((id, f, vel is not None))
         return self
 
-    def chord(self, pitches, at, dur, vel=None, pan=None, id=None):
-        return self.note(list(pitches), at, dur, vel, pan, id)
+    def chord(self, pitches, at, dur, vel=None, pan=None, id=None, **playing_):
+        return self.note(list(pitches), at, dur, vel, pan, id, **playing_)
 
     def hit(self, drum, at, vel=None, pan=None, tune=None, decay=None, id=None):
         """One drum hit: hit("kick", at=beat(0))."""
-        self.hits.append((id, _checked("hit", dict(drum=drum, at=at, vel=vel, pan=pan, tune=tune, decay=decay),
-                                       f"track {self.id} › hit", FD.DEFAULTS["hit"])))
+        self.hits.append((id, checked("hit", dict(drum=drum, at=at, vel=vel, pan=pan, tune=tune, decay=decay),
+                                      f"track {self.id} › hit", FD.DEFAULTS["hit"]), vel is not None))
         return self
 
     def clip(self, media, at, in_=None, id=None, **fields) -> Clip:
         """Recorded audio: clip(r"C:\\...\\door.wav", at=3.0, in_=0.4, length=1.2). Returns the clip (for .effect)."""
-        c = Clip(_checked("clip", {"media": media, "at": at, "in": in_, **fields}, f"track {self.id} › clip",
-                          FD.DEFAULTS["clip"]), id)
+        c = Clip(checked("clip", {"media": media, "at": at, "in": in_, **fields}, f"track {self.id} › clip",
+                         FD.DEFAULTS["clip"]), id)
         self.clips.append(c)
         return c
 
+    def dynamics(self, points):
+        """The track's expression lane (CC 11): [(time, level 0 … 2), …], multiplied into every note."""
+        return self.automate("dynamics", points)
+
+    def vibrato(self, points, rate=None, depth=None):
+        """The mod-wheel lane (CC 1): [(time, amount 0 … 1), …]; 1 = `depth` cents at `rate` Hz."""
+        self.automate("vibrato", points)
+        return self.set(vibratoRate=rate, vibratoDepth=depth)
+
+    def humanize(self, seed, timing=0.012, velocity=0.06):
+        """Every note and hit on this track (added before or after) moved by up to ±timing s and ±velocity,
+        drawn from (seed, its id): the same every run (`expression.py`)."""
+        self.human = EX.humanize(seed, timing, velocity, f"track {self.id} › humanize")
+        return self
+
+    def phrase(self, start, end, vel):
+        """Velocity along start … end from a curve [(0, 0.5), (1, 0.9)] (0 = start, 1 = end), for the notes and
+        hits there that wrote no vel of their own. A later phrase over the same notes wins."""
+        self.phrases.append(EX.phrase(start, end, vel, f"track {self.id} › phrase"))
+        return self
+
+    def _shaped(self, id_, f, own_vel, root, where):
+        for ph in [] if own_vel else self.phrases:
+            v = ph.velocity(f["at"], root, where)
+            f = f if v is None else {**f, "vel": v}
+        return self.human.apply(id_, f, root, where) if self.human else f
+
     def item(self, root, taken) -> dict:
+        where = f"track {self.id}"
+
         def place(type_, key, entries, make):
             out = []
-            for id_, f in entries:
+            for id_, f, own_vel in entries:
                 id_ = id_ or make(f)
                 taken.add(id_)
-                out.append({"id": id_, "type": type_, **f})
+                out.append({"id": id_, "type": type_, **self._shaped(id_, f, own_vel, root, where)})
             return {key: out}
-        where = f"track {self.id}"
         out = {"id": self.id, "type": "track", **self.fields}
         out |= place("note", "notes", self.notes, lambda f: ids.note(self.id, f["at"], root, taken, where))
         out |= place("hit", "hits", self.hits, lambda f: ids.hit(self.id, f["drum"], f["at"], root, taken, where))
@@ -131,22 +108,22 @@ class Track(_Inserts):
         for c in self.clips:
             cid = c.id or ids.clip(self.id, c.fields["at"], root, taken, where)
             taken.add(cid)
-            clips.append({"id": cid, "type": "clip", **c.fields, "effects": c._insert_items(cid, taken)["effects"]})
-        return {**out, "clips": clips, **self._insert_items(self.id, taken)}
+            clips.append({"id": cid, "type": "clip", **c.fields, "effects": c.insert_items(cid, taken)["effects"]})
+        return {**out, "clips": clips, **self.insert_items(self.id, taken)}
 
 
-class Master(_Inserts):
+class Master(Inserts):
     LANES = ("volume",)
 
     def __init__(self):
         self.fields = dict(FD.DEFAULTS["master"])
-        self._init_inserts("master")
+        self.init_inserts("master")
 
     def __call__(self, **fields):
         """master(loudness=-16, truePeak=-1, glue=0.2): giving a loudness target turns normalize on."""
         if fields.get("loudness") is not None and "normalize" not in fields:
             fields["normalize"] = True
-        self.fields = _checked("master", fields, "master", self.fields)
+        self.fields = checked("master", fields, "master", self.fields)
         return self
 
 
@@ -158,7 +135,7 @@ class Song:
         self.master = Master()
 
     def set(self, **fields):
-        self.root = _checked("doc", fields, "song", self.root)
+        self.root = checked("doc", fields, "song", self.root)
 
     def track(self, id, **fields) -> Track:
         if any(t.id == id for t in self.tracks):
@@ -168,16 +145,16 @@ class Song:
 
     def marker(self, name, at, id=None):
         self.markers.append({"id": id or ids.marker(name), "type": "marker",
-                             **_checked("marker", {"name": name, "at": at}, f"marker {name}")})
+                             **checked("marker", {"name": name, "at": at}, f"marker {name}")})
 
     def tree(self) -> dict:
         root = {**self.root, "markers": self.markers}
         taken = {m["id"] for m in self.markers} | {t.id for t in self.tracks} | {MASTER_ID}
         holders = [*self.tracks, self.master, *(c for t in self.tracks for c in t.clips)]
-        taken |= {i for h in holders for i, _ in getattr(h, "notes", []) + getattr(h, "hits", []) + h.effects if i}
+        taken |= {e[0] for h in holders for e in getattr(h, "notes", []) + getattr(h, "hits", []) + h.effects if e[0]}
         taken |= {c.id for t in self.tracks for c in t.clips if c.id}
         tracks = [t.item(root, taken) for t in self.tracks]
         master = {"id": MASTER_ID, "type": "master", **self.master.fields,
-                  **self.master._insert_items(MASTER_ID, taken)}
+                  **self.master.insert_items(MASTER_ID, taken)}
         return {"id": "root", "type": "doc", **self.root, "tracks": tracks, "markers": self.markers,
                 "master": [master]}

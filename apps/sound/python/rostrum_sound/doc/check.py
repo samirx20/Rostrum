@@ -3,17 +3,19 @@ from __future__ import annotations
 
 import re
 
-from rostrum_core import RostrumError
+from rostrum_core import RostrumError, did_you_mean
 from rostrum_core.tree import walk
 
 from .. import names
 from . import effects as FX
+from . import playing as PL
 from . import times
 from .registry import LISTS
 
 TRACK_ID = re.compile(r"^[A-Za-z0-9_.\-]{1,64}$")
-LANE_RANGE = {"volume": (0, 4), "pan": (-1, 1)}
-NEEDS = {"notes": ("builtIn", "sfz"), "hits": ("kit", "kitSfz")}
+LANE_RANGE = {"volume": (0, 4), "pan": (-1, 1), "dynamics": (0, 2), "vibrato": (0, 1)}
+NEEDS = {"notes": ("builtIn", "sfz", "model", "synth"), "hits": ("kit", "kitSfz")}
+STRING_POSITION = 0.03   # plucked strings are not plucked on the bridge itself (contract § 2a)
 
 
 def _instrument(track) -> list[str]:
@@ -21,8 +23,8 @@ def _instrument(track) -> list[str]:
     for key, ok in NEEDS.items():
         if track.get(key) and kind not in ok:
             out.append(f"track {tid} has {key} but its instrument is {kind!r} (needs {' or '.join(ok)})")
-    if kind in ("builtIn", "sfz", "kitSfz", "kit") and not track.get(kind):
-        out.append(f"track {tid}: instrument {kind} needs its {kind} value set")
+    if kind != "none" and not track.get(kind) and (track.get("notes") or track.get("hits")):
+        out.append(f"track {tid}: instrument {kind} needs its {kind} file set before it can play its notes")
     drums = names.SYNTH_DRUMS if kind == "kit" else names.GM_DRUMS
     for h in track.get("hits", []) if kind in ("kit", "kitSfz") else []:
         d = h.get("drum")
@@ -30,6 +32,39 @@ def _instrument(track) -> list[str]:
             continue
         if d not in drums:
             out.append(f"{h['id']}: drum {d!r} is not on a {kind} kit (accepted: {', '.join(drums)})")
+    return out + playing(track)
+
+
+def _touch(who, holder, model) -> list[str]:
+    out = []
+    if model in names.BOWED:
+        out += [f"{who}: {k} is not for {model} (a bowed voice)" for k in ("position", "hardness") if k in holder]
+    if "damping" in holder and model not in names.PLUCKED:
+        out.append(f"{who}: damping is for plucked strings only ({', '.join(names.PLUCKED)}), not {model}")
+    if model in names.PLUCKED and holder.get("position", 1) < STRING_POSITION:
+        out.append(f"{who}: position {holder['position']} is below {STRING_POSITION} for plucked strings")
+    return out
+
+
+def playing(track) -> list[str]:
+    """Playing fields that only some instruments take (a note's field condition can't see its track)."""
+    tid, model, kind = track["id"], track.get("model"), track.get("instrument", "none")
+    arts = track.get("articulations") or {}
+    out = _touch(f"track {tid}", track, model) if kind == "model" else []
+    for n in track.get("notes", []):
+        art, who = n.get("art"), n["id"]
+        if art is not None and kind != "sfz":
+            out.append(f"{who}: art {art!r} needs an sfz track with articulations (track {tid} is {kind})")
+        elif art is not None and art not in arts:
+            hint = did_you_mean(art, arts)
+            out.append(f"{who}: art {art!r} is not one of track {tid}'s articulations "
+                       f"(accepted: {', '.join(arts) or 'none set'})" + (f". {hint}" if hint else ""))
+        touched = [k for k in PL.TOUCH_KEYS if k in n]
+        if touched and kind != "model":
+            verb = "applies" if len(touched) == 1 else "apply"
+            out.append(f"{who}: {', '.join(touched)} only {verb} on a model track (track {tid} is {kind})")
+        elif touched:
+            out += _touch(who, n, model)
     return out
 
 

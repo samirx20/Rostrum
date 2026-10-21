@@ -63,6 +63,7 @@ The engine's code for this page lives in `engine/src/contract/`. Anything not on
 | `effects` | list | `[]` | Inserts after the tone, before the fader (§ Effects) |
 | `automation` | object | none | `{"volume": [[time, gain], …], "pan": [[time, pan], …]}`, points in time order; replaces `volume` / `pan` where set |
 | `ducks` | list | `[]` | Dips under other tracks (§ Ducks) |
+| `expression` | object | none | CC-style dynamics and vibrato lanes (§ Track expression) |
 
 ### Instrument (one key)
 
@@ -72,6 +73,30 @@ The engine's code for this page lives in `engine/src/contract/`. Anything not on
 | `{"sfz": "<path>", "legato": false, "swell": false}` | A sampled instrument (SFZ file). A note outside its samples fails and names the range |
 | `{"kit": "synth"}` | The engine's synthesized drum kit: `kick`, `snare`, `clap`, `hat`, `openHat`, `cymbal`, `tom`, `rim` |
 | `{"kitSfz": "<path>"}` | An SFZ drum kit on General MIDI keys; hits name a GM drum (`kick`, `snare`, `hat`, `openHat`, `crash`, `ride`, `tom`, …) or a key number |
+| `{"model": "guitar", "position": 0.13, "damping": 0, "hardness": 0.5}` | A procedural instrument (§ 2a): `guitar`, `nylonGuitar` (plucked strings), `marimba`, `vibraphone`, `glockenspiel`, `tubularBell` (struck bars), `violin` (a bowed solo voice, learned model). The touch fields are the track's defaults; a note may override them |
+| `{"synth": "saw", "attack": 0.3, "brightness": 2400, …}` | A subtractive synth (§ 2a): the value is the wave (`saw`, `square`, `triangle`, `sine`) |
+
+An `sfz` instrument may also name **articulations**: `{"sfz": "<sustain.sfz>", "articulations": {"spiccato": "<spic.sfz>", "tremolo": "<trem.sfz>"}}`. A note picks one with `"art": "spiccato"`; without `art` it plays the main file. This is the keyswitch for libraries that ship one file per playing style (VSCO 2, most CC0 libraries); SFZ files with `sw_*` keyswitch opcodes are still refused with that message.
+
+### 2a. Instrument settings (added 2026-10-21, P4)
+
+| Form | Field | Range | Default | Meaning |
+|---|---|---|---|---|
+| `model` | `position` | 0 … 0.5 (strings play at least 0.03) | the instrument's own (guitar 0.13, nylonGuitar 0.2, marimba 0.42, vibraphone / glockenspiel 0.4, tubularBell 0.05) | Where it is plucked or struck: bridge / bar end (0) … middle (0.5). Not for `violin` |
+| `model` | `damping` | 0 … 1 | 0 | Plucked strings only: 0 rings open … 1 palm-muted |
+| `model` | `hardness` | 0 … 1 | 0.5 | Pick / mallet: soft … hard. Not for `violin` |
+| `synth` | `voices` | 1 … 16 (whole) | 3 | Oscillators per note (detuned) |
+| `synth` | `detune` | 0 … 100 cents | 12 | Spread of the voices |
+| `synth` | `brightness` | 40 … 20000 Hz | 2400 | Filter cutoff |
+| `synth` | `resonance` | 0 … 1 | 0.2 | Filter resonance |
+| `synth` | `envAmount` | 0 … 8 octaves | 0 | How far the filter opens with the envelope |
+| `synth` | `attack`, `decay`, `release` | 0.001 … 20 s | 0.3, 0.5, 0.8 | The envelope |
+| `synth` | `sustain` | 0 … 1 | 0.8 | The envelope's held level |
+| `synth` | `octave` | −3 … 3 (whole) | 0 | Octave shift |
+| `synth` | `drive` | 0 … 10 | 0 | Saturation after the filter |
+| `synth` | `width` | 0 … 1 | 1 | Stereo spread of the voices |
+| `synth` | `drift` | 0 … 30 cents | 0 | Analog wander |
+| `synth` | `noise`, `sub` | 0 … 1 | 0, 0 | Noise and a sine an octave below |
 
 ### Note
 
@@ -82,6 +107,15 @@ The engine's code for this page lives in `engine/src/contract/`. Anything not on
 | `dur` | length | required | How long it is held (the release rings after it) |
 | `vel` | 0 … 1 | 0.8 | Velocity |
 | `pan` | −1 … 1 | 0 | Within the track |
+| `art` | an articulation name of the track's `sfz` | none (the main file) | Playing style (see Instrument) |
+| `position`, `damping`, `hardness` | as the `model` form | the track's | The touch of this note (`model` tracks only) |
+| `dynamics` | `[[fraction 0 … 1, level 0 … 2], …]` | none | The note's own swell / fade across its length (fraction of `dur`), straight lines between, multiplied into its level |
+| `vibrato` | `{"rate": 5.5, "depth": 20, "delay": 0.2}` (Hz, cents, seconds) | none | Steady vibrato, fading in over a quarter second after `delay` |
+| `bend` | `[[seconds into the note, cents], …]` | none | Pitch bend (a slide, a fall, a scoop) |
+
+### Track expression (CC-style lanes; added 2026-10-21, P4)
+
+A track may carry `expression`: `{"dynamics": [[time, level 0 … 2], …], "vibrato": [[time, amount 0 … 1], …], "vibratoRate": 5.5, "vibratoDepth": 25}`. Times are times (seconds or beats). Like a MIDI player's CC 11 (expression) and CC 1 (mod wheel): the lanes run across notes, straight lines between points, held before the first and after the last. `dynamics` multiplies every note's level (with the note's own `dynamics`); `vibrato` is the mod wheel, 1 = `vibratoDepth` cents at `vibratoRate` Hz, 0 = none (a note's own `vibrato` adds to it). Works on every pitched instrument (sampled, built-in, synth, model).
 
 ### Hit
 
@@ -168,5 +202,5 @@ Files: the mix and the stems are 32-bit float WAV at `sampleRate`, stereo. A ste
 ## 4. How far this version goes (2026-10-21)
 
 - Done: everything above.
-- Not in version 1 yet (the engine can do them; a later version adds them to the contract): buses and sends, surround beds and objects, clip speed with pitch kept, time warps, glitch, filter sweeps, reverse, spectral repair, tone match, CLAP / VST3 plugins, note expression (glides, vibrato), the procedural instruments (`model.*`), speech.
+- Not in version 1 yet (the engine can do them; a later version adds them to the contract): buses and sends, surround beds and objects, clip speed with pitch kept, time warps, glitch, filter sweeps, reverse, spectral repair, tone match, CLAP / VST3 plugins, the procedural drum kit (`model.kit`), speech. (Note expression, articulations, the procedural instruments and the synth were added on 2026-10-21, P4.)
 - Not done: progress lines during a long render, and rendering only the changed part of a track (today the smallest unit that re-renders is a whole track).

@@ -9,7 +9,7 @@ Music, sound effects, voice, recording and mixing. The one audio engine: every s
 | Python layer | `python/rostrum_sound/` | The Sound document on `rostrum_core` (items, 23 operations with `valid_when` / `importance`), its script layer, the compiler to the contract, the engine client |
 | Listening and effects helpers | `python/rostrum_sound/listen/`, `sfx/` | Loudness, stem levels, onsets vs expected, marked spectrogram with hum lines, stereo, low end; eyes on the picture, the cut pool (cached), level from force, the event sheet |
 | MCP server `rostrum-sound` | `python/rostrum_sound/mcp/` | 22 tools on `rostrum_core.mcp` (below) |
-| Screens | — | Next brief (Qt Quick from `shared/gui-kit/`) |
+| Screen | `screen/` | Instruments → Timeline → Mix on `shared/gui-kit/` (P4): cards built from `valid_when` / `importance`, arrangement + piano roll + markers + engine playback, mixer with effect chains, meters, loudness and listen pictures ([`screen/README.md`](screen/README.md)) |
 
 Hands over WAV stems (see `shared/HANDOFFS.md`).
 
@@ -37,7 +37,7 @@ Tests (minimal): `cargo test --profile agent -j 4 contract::` (unknown names ref
 
 - Done: every item in P1's list. Versioned and documented; unknown names refused loudly (an unknown field, effect, tone, space, EQ shape, instrument, drum or note name); defaults filled in the engine (a note is `pitch`, `at`, `dur`); seconds or beats through a tempo map; the engine decodes media itself (WAV, FLAC, OGG, MP3, MP4 / MOV audio) into a content-keyed cache; one render request returns the mix, stems and every track's meters; `range` answers what an instrument plays; `describe` lists every accepted name, which the Python side checks itself against.
 - **The long-lived process works:** `rostrum-sound serve` keeps instruments, samples and decoded media loaded between requests; each track's render is cached by its content, so after a small edit only the changed tracks render. The MCP server keeps one engine process per session.
-- Not yet: progress lines during a long render; re-rendering only the changed part of a track; buses, surround, plugins, stretch, expression and the other engine features the contract does not expose yet (ENGINE_CONTRACT.md § 4); `play` (the live transport) still takes the internal job.
+- Not yet: progress lines during a long render; re-rendering only the changed part of a track; buses, surround, plugins, stretch and the other engine features the contract does not expose yet (ENGINE_CONTRACT.md § 4); `play` (the live transport) still takes the internal job.
 
 ## Attribution rows
 

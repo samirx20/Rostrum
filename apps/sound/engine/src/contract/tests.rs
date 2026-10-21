@@ -26,7 +26,15 @@ fn unknown_names_fail_loudly() {
         ({ let mut s = base(); s["tracks"][0]["instrument"] = json!({ "builtIn": "grandpiano" }); s }, "schedule.tracks[0].instrument.builtIn", "grandPiano"),
         ({ let mut s = base(); s["tracks"][0]["notes"][0]["pitch"] = json!("H4"); s }, "schedule.tracks[0].notes[0].pitch", ""),
         ({ let mut s = base(); s["master"] = json!({ "reverb": "hal" }); s }, "schedule.master.reverb", "hall"),
+        ({ let mut s = base(); s["tracks"][0]["instrument"] = json!({ "model": "guitarr" }); s }, "schedule.tracks[0].instrument.model", "guitar"),
+        ({ let mut s = base(); s["tracks"][0]["instrument"] = json!({ "synth": "saww" }); s }, "schedule.tracks[0].instrument.synth", "saw"),
+        ({ let mut s = base(); s["tracks"][0]["expression"] = json!({ "vibratoo": [[0, 1]] }); s }, "schedule.tracks[0].expression.vibratoo", "vibrato"),
     ];
+    // A touch the instrument doesn't play is refused, never ignored (a marimba isn't damped; only model tracks take touch).
+    let e = error_of(check({ let mut s = base(); s["tracks"][0]["instrument"] = json!({ "model": "marimba", "damping": 0.5 }); s }));
+    assert_eq!(e["where"], json!("schedule.tracks[0].instrument.damping"), "{e}");
+    let e = error_of(check({ let mut s = base(); s["tracks"][0]["notes"][0]["position"] = json!(0.2); s }));
+    assert_eq!(e["where"], json!("schedule.tracks[0].notes[0].position"), "{e}");
     for (s, at, hint) in cases {
         let e = error_of(check(s));
         assert_eq!(e["where"], json!(at), "{e}");

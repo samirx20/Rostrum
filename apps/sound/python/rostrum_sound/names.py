@@ -22,7 +22,15 @@ GM_DRUMS = ["kick", "rim", "snare", "clap", "hat", "pedalHat", "openHat", "tomLo
 GM_KEYS = (27, 87)
 
 # The forms a track's instrument takes ("none": a track of recorded clips only).
-INSTRUMENTS = ["none", "builtIn", "sfz", "kit", "kitSfz"]
-# Which track / master values an automation lane may drive.
-TRACK_LANES = ["volume", "pan"]
+INSTRUMENTS = ["none", "builtIn", "sfz", "kit", "kitSfz", "model", "synth"]
+# Procedural instruments (`{"model": …}`, contract § 2a) by how they are played: the touch fields follow from it.
+PLUCKED = ["guitar", "nylonGuitar"]
+BARS = ["marimba", "vibraphone", "glockenspiel", "tubularBell"]
+BOWED = ["violin"]
+MODELS = [*PLUCKED, *BARS, *BOWED]
+WAVES = ["saw", "square", "triangle", "sine"]
+# Which track / master values an automation lane may drive. The expression lanes (CC-style) compile into the
+# track's `expression`; the others into its `automation`.
+EXPRESSION_LANES = ["dynamics", "vibrato"]
+TRACK_LANES = ["volume", "pan", *EXPRESSION_LANES]
 MASTER_LANES = ["volume"]

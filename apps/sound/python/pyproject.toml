@@ -22,7 +22,7 @@ include = ["rostrum_sound*"]
 rostrum-sound-mcp = "rostrum_sound.mcp.server:main"
 
 [tool.setuptools.package-data]
-rostrum_sound = ["mcp/guides/*.md"]
+rostrum_sound = ["mcp/guides/*.md", "library_data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

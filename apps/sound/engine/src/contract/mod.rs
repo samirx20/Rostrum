@@ -4,6 +4,8 @@
 
 mod effects;
 mod error;
+mod expression;
+mod instrument;
 mod media;
 pub mod names;
 mod pitch;

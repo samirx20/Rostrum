@@ -13,9 +13,10 @@ from rostrum_core import RostrumError
 
 from . import names
 from .doc import effects as FX
+from .doc import playing as PL
 from .doc import times
 
-NOTE_KEYS = ("pitch", "at", "dur", "vel", "pan")
+NOTE_KEYS = ("pitch", "at", "dur", "vel", "pan", *PL.NOTE_KEYS)
 HIT_KEYS = ("drum", "at", "vel", "pan", "tune", "decay")
 CLIP_KEYS = ("media", "in", "length", "at", "volume", "pitch", "pan", "panTo", "fadeIn", "fadeOut", "reverb")
 TRACK_KEYS = ("volume", "pan", "reverb", "tone")
@@ -49,17 +50,23 @@ class _Compiler:
         return out
 
     def lanes(self, holder, where):
+        """`automation` (volume, pan) and `expression` (dynamics, vibrato lanes + the vibrato's rate / depth)."""
         lanes = {a["lane"]: self.env(a["points"], f"{where}.automation.{a['lane']}")
                  for a in holder.get("automation", [])}
-        return {"automation": lanes} if lanes else {}
+        expr = {k: lanes.pop(k) for k in names.EXPRESSION_LANES if k in lanes}
+        expr |= {k: holder[k] for k in ("vibratoRate", "vibratoDepth") if k in holder}
+        return {**_nonempty("automation", lanes), **_nonempty("expression", expr)}
 
     def instrument(self, track):
         kind = track.get("instrument", "none")
-        if kind == "none":
+        if kind == "none" or not track.get(kind):   # a sampled kind whose file isn't picked yet plays nothing
             return {}
         inst = {kind: track[kind]}
         if kind == "sfz":
-            inst.update(legato=bool(track.get("legato")), swell=bool(track.get("swell")))
+            inst.update(legato=bool(track.get("legato")), swell=bool(track.get("swell")),
+                        **_nonempty("articulations", track.get("articulations")))
+        settings = {"model": PL.TOUCH_KEYS, "synth": PL.SYNTH_KEYS}.get(kind, ())
+        inst.update({k: track[k] for k in settings if k in track})
         return {"instrument": inst}
 
     def track(self, track, muted):

@@ -6,6 +6,8 @@ of Team Sam.) Out of range is an error, never a clamp.
 """
 from __future__ import annotations
 
+import math
+
 import re
 from dataclasses import dataclass
 from typing import Callable
@@ -92,11 +94,12 @@ def _env(p, v, where):
 
 
 def time(name, **kw) -> Value:
-    return Value(name, "number", rule=_time, schema=TIME_SCHEMA, unit="s", **kw)
+    return Value(name, "number", rule=_time, schema=TIME_SCHEMA, unit="s", step=0.01, **kw)
 
 
 def length(name, **kw) -> Value:
-    return Value(name, "number", rule=lambda p, v, w: _time(p, v, w, True), schema=LENGTH_SCHEMA, unit="s", **kw)
+    return Value(name, "number", rule=lambda p, v, w: _time(p, v, w, True), schema=LENGTH_SCHEMA, unit="s", step=0.01,
+                 **kw)
 
 
 def pitch(name, **kw) -> Value:
@@ -108,10 +111,26 @@ def drum(name, **kw) -> Value:
     return Value(name, "text", rule=_drum, schema={"anyOf": [{"type": "string"}, {"type": "integer"}]}, **kw)
 
 
+def step(lo, hi, unit="", integer=False) -> float:
+    """The one rule for how finely a number moves on screen (a scrub step, a typed value's decimals): a hundredth of
+    its range's order (0 … 1 -> 0.01, 0 … 20 -> 0.1, 40 … 20000 -> 1), whole numbers 1, seconds at least 0.01."""
+    if integer:
+        return 1
+    span = (hi - lo) if lo is not None and hi is not None else 100
+    s = min(1.0, 10 ** (math.floor(math.log10(span) + 0.31) - 2)) if span > 0 else 0.01
+    return min(s, 0.01) if unit == "s" else s
+
+
+def N(name, lo, hi, group, unit="", imp="primary", when=None, integer=False, default=None, label="", help=""):
+    """A number field (the Sound document's one way to make one): range, group, importance, validity, step."""
+    return Param.number(name, min=lo, max=hi, step=step(lo, hi, unit, integer), group=group, unit=unit,
+                        importance=imp, valid_when=when, integer=integer, default=default, label=label, help=help)
+
+
 def env(name, lo, hi, **kw) -> Value:
     """A number from lo to hi, or an envelope of such numbers over time."""
     pt = {"type": "array", "items": [TIME_SCHEMA, {"type": "number"}], "minItems": 2, "maxItems": 2}
-    return Value(name, "number", rule=_env, min=lo, max=hi, schema={"anyOf": [
+    return Value(name, "number", rule=_env, min=lo, max=hi, step=step(lo, hi, kw.get("unit", "")), schema={"anyOf": [
         {"type": "number", "minimum": lo, "maximum": hi}, {"type": "array", "items": pt}]}, **kw)
 
 
@@ -139,3 +158,47 @@ def fields_of(params: list[Param], what: str):
                 _bad(p, v, where, f'needs "{q.name}"')
         return {k: by[k].check(x, where) for k, x in v.items()}
     return rule, {"type": "object", "properties": {q.name: q.json_schema() for q in params}}
+
+
+def curve(name, x: tuple, y: tuple, **kw) -> Value:
+    """Points [[x, y], …] in x order, x in x = (lo, hi), y in y = (lo, hi) (hi None = no top): a note's
+    dynamics (fraction of its length -> level) or bend (seconds into it -> cents)."""
+    def rule(p, v, where):
+        if not isinstance(v, list) or not v:
+            _bad(p, v, where, "is not a list of points", ["[[x, y], …]"])
+        last = None
+        for pt in v:
+            if not (isinstance(pt, (list, tuple)) and len(pt) == 2) or any(
+                    isinstance(c, bool) or not isinstance(c, (int, float)) for c in pt):
+                _bad(p, v, where, "is not a list of points", ["[[x, y], …]"])
+            for c, (lo, hi), axis in ((pt[0], x, "x"), (pt[1], y, "y")):
+                if c < lo or hi is not None and c > hi:
+                    _bad(p, v, where, f"has {axis} {c} outside {lo} … {hi if hi is not None else '∞'}")
+            if last is not None and pt[0] < last:
+                _bad(p, v, where, "is not in order", ["points sorted by their first number"])
+            last = pt[0]
+        return [list(pt) for pt in v]
+    pt = {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}
+    return Value(name, "text", rule=rule, schema={"type": "array", "items": pt, "minItems": 1}, **kw)
+
+
+def record(name, params: list[Param], what: str, **kw) -> Value:
+    """A small object whose fields are `params` (a note's vibrato {rate, depth, delay})."""
+    rule, schema = fields_of(params, what)
+    return Value(name, "text", rule=rule, schema=schema, **kw)
+
+
+NAME = re.compile(r"^[A-Za-z0-9_.\-]{1,64}$")
+
+
+def mapping(name, what: str, **kw) -> Value:
+    """{name: text, …}: an sfz track's articulations (articulation name -> its SFZ file)."""
+    def rule(p, v, where):
+        if not isinstance(v, dict):
+            _bad(p, v, where, f"is not a list of {what}", ['{"spiccato": "C:\\…\\spic.sfz"}'])
+        for k, x in v.items():
+            if not (isinstance(k, str) and NAME.match(k)) or not (isinstance(x, str) and x):
+                _bad(p, v, where, f"entry {k!r}: needs a name (letters, digits, _ . -) and a file path")
+        return dict(v)
+    return Value(name, "text", rule=rule, schema={"type": "object", "additionalProperties": {"type": "string"}},
+                 **kw)

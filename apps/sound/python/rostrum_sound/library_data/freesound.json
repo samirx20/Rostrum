@@ -1,0 +1,437 @@
+{
+ "about": "What each freesound recording is (from the experiment's hand-picked list, licences checked 2026-10-12).",
+ "files": [
+  {
+   "path": "685256.ogg",
+   "title": "Riser sound effect short.wav",
+   "name": "cinematic.riser",
+   "author": "syntheffects",
+   "page": "https://freesound.org/people/syntheffects/sounds/685256/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "244249.ogg",
+   "title": "impact riser 01",
+   "name": "cinematic.riser",
+   "author": "soramoosic",
+   "page": "https://freesound.org/people/soramoosic/sounds/244249/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "354172.ogg",
+   "title": "Long Panned Riser v2",
+   "name": "cinematic.riser",
+   "author": "gerainsan",
+   "page": "https://freesound.org/people/gerainsan/sounds/354172/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "561207.ogg",
+   "title": "Riser",
+   "name": "cinematic.riser",
+   "author": "Rizzard",
+   "page": "https://freesound.org/people/Rizzard/sounds/561207/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "503818.ogg",
+   "title": "riser 3.wav",
+   "name": "cinematic.riser",
+   "author": "reathance",
+   "page": "https://freesound.org/people/reathance/sounds/503818/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "683667.ogg",
+   "title": "dark riser buildup",
+   "name": "cinematic.riser",
+   "author": "CogFireStudios",
+   "page": "https://freesound.org/people/CogFireStudios/sounds/683667/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "715353.ogg",
+   "title": "Riser Hit sfx 062",
+   "name": "cinematic.riser",
+   "author": "AudioPapkin",
+   "page": "https://freesound.org/people/AudioPapkin/sounds/715353/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "647712.ogg",
+   "title": "Braam",
+   "name": "cinematic.braam",
+   "author": "unfa",
+   "page": "https://freesound.org/people/unfa/sounds/647712/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "431316.ogg",
+   "title": "BRAAM-HIT",
+   "name": "cinematic.braam",
+   "author": "vykroft",
+   "page": "https://freesound.org/people/vykroft/sounds/431316/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "856173.ogg",
+   "title": "Apocalyptic Cinematic Brass Braam Impact",
+   "name": "cinematic.braam",
+   "author": "brktkrgll",
+   "page": "https://freesound.org/people/brktkrgll/sounds/856173/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "428073.ogg",
+   "title": "Sub Drop Smooth.wav",
+   "name": "cinematic.sub-drop",
+   "author": "newagesoup",
+   "page": "https://freesound.org/people/newagesoup/sounds/428073/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "212768.ogg",
+   "title": "Bass Drop",
+   "name": "cinematic.sub-drop",
+   "author": "qubodup",
+   "page": "https://freesound.org/people/qubodup/sounds/212768/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "475005.ogg",
+   "title": "Synth Bass Drop Impact",
+   "name": "cinematic.sub-drop",
+   "author": "AlexLane",
+   "page": "https://freesound.org/people/AlexLane/sounds/475005/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "346316.ogg",
+   "title": "Ramon's Sexy Sub Drop 6000",
+   "name": "cinematic.sub-drop",
+   "author": "IV_Studios_666",
+   "page": "https://freesound.org/people/IV_Studios_666/sounds/346316/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "222517.ogg",
+   "title": "Dramatic Hit",
+   "name": "cinematic.impact-big",
+   "author": "qubodup",
+   "page": "https://freesound.org/people/qubodup/sounds/222517/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "408141.ogg",
+   "title": "Cinematic Low Pitch Impact",
+   "name": "cinematic.impact-big",
+   "author": "Jofae",
+   "page": "https://freesound.org/people/Jofae/sounds/408141/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "430977.ogg",
+   "title": "Big impact.wav",
+   "name": "cinematic.impact-big",
+   "author": "AudioPapkin",
+   "page": "https://freesound.org/people/AudioPapkin/sounds/430977/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "255111.ogg",
+   "title": "Cinematic_Boom_Rhapsodize.wav",
+   "name": "cinematic.impact-big",
+   "author": "rhapsodize",
+   "page": "https://freesound.org/people/rhapsodize/sounds/255111/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "165109.ogg",
+   "title": "Low Movie Boom.mp3",
+   "name": "cinematic.impact-big",
+   "author": "rickeyc",
+   "page": "https://freesound.org/people/rickeyc/sounds/165109/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "671306.ogg",
+   "title": "Cinematic Hit Bass (title)",
+   "name": "cinematic.impact-big",
+   "author": "xkeril",
+   "page": "https://freesound.org/people/xkeril/sounds/671306/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "189779.ogg",
+   "title": "Big Boom",
+   "name": "cinematic.impact-big",
+   "author": "unfa",
+   "page": "https://freesound.org/people/unfa/sounds/189779/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "110218.ogg",
+   "title": "reverse crash.wav",
+   "name": "cinematic.reverse-cymbal",
+   "author": "genocidalguitar",
+   "page": "https://freesound.org/people/genocidalguitar/sounds/110218/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "23127.ogg",
+   "title": "reverse cymbal.wav",
+   "name": "cinematic.reverse-cymbal",
+   "author": "John Rayson",
+   "page": "https://freesound.org/people/John%20Rayson/sounds/23127/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "165154.ogg",
+   "title": "Rpeople_RevCrash2.wav",
+   "name": "cinematic.reverse-cymbal",
+   "author": "rhythmpeople",
+   "page": "https://freesound.org/people/rhythmpeople/sounds/165154/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "244868.ogg",
+   "title": "Rev Cymb 18 reverb.wav",
+   "name": "cinematic.reverse-cymbal",
+   "author": "JarredGibb",
+   "page": "https://freesound.org/people/JarredGibb/sounds/244868/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "203119.ogg",
+   "title": "TenseSurrealDrone.wav",
+   "name": "cinematic.drone",
+   "author": "Sclolex",
+   "page": "https://freesound.org/people/Sclolex/sounds/203119/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "371194.ogg",
+   "title": "Cinematic Monster Drone in C",
+   "name": "cinematic.drone",
+   "author": "EphJayMusic",
+   "page": "https://freesound.org/people/EphJayMusic/sounds/371194/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "332246.ogg",
+   "title": "Drone - 15.12.2015",
+   "name": "cinematic.drone",
+   "author": "cabled_mess",
+   "page": "https://freesound.org/people/cabled_mess/sounds/332246/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "617518.ogg",
+   "title": "Tension Ambience",
+   "name": "cinematic.drone",
+   "author": "neilraouf",
+   "page": "https://freesound.org/people/neilraouf/sounds/617518/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "397091.ogg",
+   "title": "Soft Tonal Wind_01",
+   "name": "cinematic.drone",
+   "author": "janbezouska",
+   "page": "https://freesound.org/people/janbezouska/sounds/397091/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "60013.ogg",
+   "title": "Whoosh",
+   "name": "whoosh.fast",
+   "author": "qubodup",
+   "page": "https://freesound.org/people/qubodup/sounds/60013/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "683101.ogg",
+   "title": "quick woosh",
+   "name": "whoosh.fast",
+   "author": "florianreichelt",
+   "page": "https://freesound.org/people/florianreichelt/sounds/683101/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "171321.ogg",
+   "title": "Fast Swoosh.wav",
+   "name": "whoosh.fast",
+   "author": "swidmark",
+   "page": "https://freesound.org/people/swidmark/sounds/171321/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "369698.ogg",
+   "title": "Whoosh.wav",
+   "name": "whoosh.slow",
+   "author": "crackles04",
+   "page": "https://freesound.org/people/crackles04/sounds/369698/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "27281.ogg",
+   "title": "Epic whoosh.wav",
+   "name": "whoosh.slow",
+   "author": "EcoDTR",
+   "page": "https://freesound.org/people/EcoDTR/sounds/27281/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "649445.ogg",
+   "title": "Cinematic Woosh SFX-015.wav",
+   "name": "whoosh.slow",
+   "author": "AudioPapkin",
+   "page": "https://freesound.org/people/AudioPapkin/sounds/649445/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "495390.ogg",
+   "title": "Foley_Whoosh_Clothes.wav",
+   "name": "whoosh.cloth",
+   "author": "Nox_Sound",
+   "page": "https://freesound.org/people/Nox_Sound/sounds/495390/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "391448.ogg",
+   "title": "Shirt Whoosh 1.wav",
+   "name": "whoosh.cloth",
+   "author": "saturdaysoundguy",
+   "page": "https://freesound.org/people/saturdaysoundguy/sounds/391448/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "203306.ogg",
+   "title": "Room Tone Office 13",
+   "name": "ambience.room-tone-office",
+   "author": "mzui",
+   "page": "https://freesound.org/people/mzui/sounds/203306/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "135097.ogg",
+   "title": "Room Tone Office Quiet Distant Traffic.wav",
+   "name": "ambience.room-tone-office",
+   "author": "mzui",
+   "page": "https://freesound.org/people/mzui/sounds/135097/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "750799.ogg",
+   "title": "Empty Office Ambience",
+   "name": "ambience.room-tone-office",
+   "author": "simonjeffery13",
+   "page": "https://freesound.org/people/simonjeffery13/sounds/750799/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "200273.ogg",
+   "title": "Rain light 2 (rural)",
+   "name": "ambience.rain-light",
+   "author": "jmbphilmes",
+   "page": "https://freesound.org/people/jmbphilmes/sounds/200273/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "607070.ogg",
+   "title": "Light rain",
+   "name": "ambience.rain-light",
+   "author": "morsine",
+   "page": "https://freesound.org/people/morsine/sounds/607070/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "167034.ogg",
+   "title": "Light Rain",
+   "name": "ambience.rain-light",
+   "author": "soundrecorder7",
+   "page": "https://freesound.org/people/soundrecorder7/sounds/167034/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "568758.ogg",
+   "title": "Cup and Saucer 2.wav",
+   "name": "glass.cup-saucer",
+   "author": "bowlingballout",
+   "page": "https://freesound.org/people/bowlingballout/sounds/568758/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "11580.ogg",
+   "title": "cup on sauce.WAV",
+   "name": "glass.cup-saucer",
+   "author": "samplecat",
+   "page": "https://freesound.org/people/samplecat/sounds/11580/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "460241.ogg",
+   "title": "Tea cup set down 2.mp3",
+   "name": "glass.cup-saucer",
+   "author": "TheHiraHira",
+   "page": "https://freesound.org/people/TheHiraHira/sounds/460241/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "206171.ogg",
+   "title": "TeaCup44.wav",
+   "name": "glass.cup-saucer",
+   "author": "ahill86",
+   "page": "https://freesound.org/people/ahill86/sounds/206171/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "61392.ogg",
+   "title": "BeerCanOpening.aif",
+   "name": "kitchen.can-open",
+   "author": "gleepglop",
+   "page": "https://freesound.org/people/gleepglop/sounds/61392/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "119917.ogg",
+   "title": "Ice Cubes Dropped in a Glass.aif",
+   "name": "liquid.ice-drop",
+   "author": "ftpalad",
+   "page": "https://freesound.org/people/ftpalad/sounds/119917/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "464451.ogg",
+   "title": "Ice moving in glass",
+   "name": "liquid.ice-clink",
+   "author": "Rvgerxini",
+   "page": "https://freesound.org/people/Rvgerxini/sounds/464451/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "272037.ogg",
+   "title": "Sipping coffee",
+   "name": "liquid.sip",
+   "author": "aldenroth2",
+   "page": "https://freesound.org/people/aldenroth2/sounds/272037/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "320139.ogg",
+   "title": "Drink Sip and Swallow",
+   "name": "liquid.sip",
+   "author": "OwlStorm",
+   "page": "https://freesound.org/people/OwlStorm/sounds/320139/",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "447388.ogg",
+   "title": "sipping a coffee",
+   "name": "liquid.sip",
+   "author": "florianreichelt",
+   "page": "https://freesound.org/people/florianreichelt/sounds/447388/",
+   "licence": "CC0-1.0"
+  }
+ ]
+}

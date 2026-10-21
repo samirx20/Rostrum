@@ -1,4 +1,4 @@
-"""spectrogram: a marked, labelled picture, plus the steady hum lines found in it."""
+"""spectrogram: a marked, labelled picture, plus the steady tones found in it and which of them are hum (tones.py)."""
 import matplotlib
 
 matplotlib.use("Agg")
@@ -7,12 +7,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .core import duration, load, mono, name_of, num
+from .tones import N_FFT, steady_tones
 
 FMIN = 30.0
-N_FFT, HOP = 4096, 1024
-HUM_MIN_HZ, HUM_MAX_HZ = 40.0, 1200.0
-HUM_PROMINENCE_DB = 12.0     # a line this far above its neighbours...
-HUM_STEADY = 0.8             # ...in at least this share of the frames
+HOP = 1024
 
 
 def _stft_db(m):
@@ -20,30 +18,11 @@ def _stft_db(m):
     return S
 
 
-def hum_lines(S, sr, max_lines=6):
-    """Steady narrow lines: bins that stand HUM_PROMINENCE_DB over the bins around them, in
-    most frames -> [{freq_hz, strength_db, steady_pct}] strongest first."""
-    f = librosa.fft_frequencies(sr=sr, n_fft=N_FFT)
-    sel = (f >= HUM_MIN_HZ) & (f <= HUM_MAX_HZ)
-    D = 10 * np.log10(np.maximum(S[sel], 1e-20))
-    ff = f[sel]
-    k = 8                                                   # neighbour bins each side
-    pad = np.pad(D, ((k, k), (0, 0)), mode="edge")
-    around = np.median(np.stack([pad[i:i + D.shape[0]] for i in range(0, 2 * k + 1) if i != k]), axis=0)
-    lift = D - around
-    steady = (lift >= HUM_PROMINENCE_DB).mean(axis=1)
-    strength = np.median(lift, axis=1)
-    cand = [i for i in range(len(ff)) if steady[i] >= HUM_STEADY
-            and (i == 0 or strength[i] >= strength[i - 1]) and (i == len(ff) - 1 or strength[i] >= strength[i + 1])]
-    cand.sort(key=lambda i: -strength[i])
-    return [{"freq_hz": num(ff[i], 1), "strength_db": num(strength[i], 1), "steady_pct": num(100 * steady[i], 0)}
-            for i in cand[:max_lines]]
-
-
 def spectrogram(wav, out_png, marks=None, range=None):
     """Writes a log-frequency spectrogram PNG (axes: seconds, Hz; colour: dB under the loudest point).
     `marks` {label: time_s} draws labelled cyan lines; `range` (a, b) shows only that time span.
-    Facts: the png path and `hum_lines` (steady lines, e.g. mains hum on a bed)."""
+    Facts: the png path, `tones` (every steady narrow line, with its note name and why it is or isn't hum)
+    and `hum_lines` (the tones that are hum: flat level, and on the mains series or still there in the quiet)."""
     y, sr = load(wav)
     m = mono(y)
     dur = duration(y, sr)
@@ -55,6 +34,7 @@ def spectrogram(wav, out_png, marks=None, range=None):
     t = a + librosa.frames_to_time(np.arange(S.shape[1]), sr=sr, hop_length=HOP)
     D = librosa.power_to_db(S, ref=np.max, top_db=80)
     keep = f >= FMIN
+    tones = steady_tones(S, sr)
     fig, ax = plt.subplots(figsize=(16, 8), dpi=100)
     im = ax.pcolormesh(t, f[keep], D[keep], shading="auto", cmap="magma", vmin=-80, vmax=0)
     ax.set_yscale("log")
@@ -76,6 +56,7 @@ def spectrogram(wav, out_png, marks=None, range=None):
     fig.savefig(out_png)
     plt.close(fig)
     return {"png": str(out_png), "range_s": [num(a, 3), num(b, 3)],
-            "marks_s": {k: v for k, v in (marks or {}).items()}, "hum_lines": hum_lines(S, sr),
-            "note": "hum_lines: narrow lines standing 12 dB over their neighbours in 80% of frames; "
-                    "strength_db is the median lift"}
+            "marks_s": {k: v for k, v in (marks or {}).items()}, "tones": tones, "hum_lines": [t for t in tones if t["is_hum"]],
+            "note": "tones: narrow lines standing 12 dB over their neighbours in 80% of frames (held notes and hum); "
+                    "hum_lines: those whose level is flat (under 3 dB spread) and that sit on 50 / 60 Hz multiples or stay "
+                    "in the quietest moments; a held note's level moves and it stops with the music"}

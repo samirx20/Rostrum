@@ -1,0 +1,60 @@
+"""What would break silently on the Sound screen: a note drag is one undo step (and undo puts it back), it keeps
+the time's form (beats stay beats), and re-running the song's script keeps what a person moved.
+The engine is replaced by a stand-in that writes an empty file (sound is checked by listening)."""
+import sys
+from pathlib import Path
+
+import pytest
+from PySide6.QtGui import QGuiApplication
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rostrum_core import Document  # noqa: E402
+from rostrum_sound import KIND, run_source  # noqa: E402
+from screensound import playback  # noqa: E402
+from screensound.bridge import SoundBridge  # noqa: E402
+from screensound.steps import drag  # noqa: E402
+
+SRC = '''
+tempo(120); beats_per_bar(4)
+lead = track("lead", builtIn="feltPiano")
+lead.note("C4", at=beat(4), dur=beats(1))
+lead.note("E4", at=beat(6), dur=beats(1))
+'''
+
+
+class FakeEngine:
+    def request(self, do, schedule=None, out=None, **kw):
+        Path(out).write_bytes(b"")
+        return {"file": out, "lufs": -20.0, "tracks": [], "stems": {}}
+
+    def close(self):
+        pass
+
+
+@pytest.fixture
+def bridge(monkeypatch):
+    QGuiApplication.instance() or QGuiApplication([])
+    monkeypatch.setattr(playback, "open_engine", FakeEngine)
+    doc = Document.new(KIND)
+    doc.run_script("song.py", run_source(SRC, "song.py"))
+    b = SoundBridge(doc)
+    yield b
+    b.close()
+
+
+def test_note_drag_is_one_undo_step_and_keeps_beats(bridge):
+    doc, before = bridge.doc, len(bridge.doc.history.changes)
+    drag(bridge, "lead.n2000", 0.5, 2)                   # +1 beat (0.5 s at 120 bpm), +2 semitones
+    note = doc.item("lead.n2000")
+    assert (note["at"], note["pitch"]) == ({"beat": 5.0}, "D4")
+    assert len(doc.history.changes) == before + 1
+    bridge.undo()
+    note = doc.item("lead.n2000")
+    assert (note["at"], note["pitch"]) == ({"beat": 4}, "C4")
+
+
+def test_script_rerun_keeps_a_persons_note_move(bridge):
+    drag(bridge, "lead.n2000", 0.25, 0)                  # half a beat later
+    bridge.doc.run_script("song.py", run_source(SRC, "song.py"))
+    assert bridge.doc.item("lead.n2000")["at"] == {"beat": 4.5}
+    assert bridge.doc.item("lead.n3000")["at"] == {"beat": 6}

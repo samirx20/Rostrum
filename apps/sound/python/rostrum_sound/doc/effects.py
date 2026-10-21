@@ -77,7 +77,7 @@ def _param(field_name, specs, kind):
     lo, hi = min(s.lo for s in specs), max(s.hi for s in specs)
     if any(s.env for s in specs):
         return V.env(field_name, lo, hi, unit=first.unit, default=first.default, **kw)
-    return Param.number(field_name, min=lo, max=hi, unit=first.unit, default=first.default, **kw)
+    return Param.number(field_name, min=lo, max=hi, step=V.step(lo, hi, first.unit), unit=first.unit, default=first.default, **kw)
 
 
 def params(kind="effect") -> list[Param]:

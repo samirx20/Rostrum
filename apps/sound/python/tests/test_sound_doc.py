@@ -42,3 +42,42 @@ def test_compile_has_the_contract_shape():
     assert pad["notes"][1]["at"] == 4.5                           # "#drop+0.5": bar 3 at 120 bpm = 4 s, + 0.5
     assert drums["instrument"] == {"kit": "synth"} and drums["hits"][0]["drum"] == "kick"
     assert s["master"]["loudness"] == -16 and s["master"]["truePeak"] == -1
+
+
+PLAYED = """
+tempo(120)
+s = track("vln", builtIn="analogStrings")
+for i in range(8):
+    s.note("D4", at=i * 0.5, dur=0.4)
+s.phrase(0, 3.5, vel=[(0, 0.4), (1, 0.9)])
+s.humanize(seed=5, timing=0.01, velocity=0.05)
+"""
+
+
+def test_humanize_is_the_same_every_run_and_keeps_a_persons_move():
+    first, again = run_source(PLAYED, "p.py"), run_source(PLAYED, "p.py")
+    notes = first["tracks"][0]["notes"]
+    assert notes == again["tracks"][0]["notes"]                                # same seed -> same ids and values
+    assert len({n["at"] for n in notes}) == 8 and any(n["at"] != i * 0.5 for i, n in enumerate(notes))
+
+    doc = Document.new(KIND)
+    doc.run_script("p.py", first, Who.script("p.py"))
+    moved = notes[3]["id"]
+    doc.apply({"op": "note.set", "target": [moved], "args": {"at": 9.0, "vel": 0.2}}, Who.person())
+    doc.run_script("p.py", run_source(PLAYED.replace("range(8)", "range(9)"), "p.py"), Who.script("p.py"))
+    assert doc.item(moved)["at"] == 9.0 and doc.item(moved)["vel"] == 0.2     # the person's move is kept
+    assert len(doc.item("vln")["notes"]) == 9                                  # the script's new note lands
+
+
+def test_touch_fields_follow_the_model():
+    from rostrum_core.conditions import holds
+    from rostrum_sound.doc import fields as FD
+    shown = {p.name: p.valid_when for p in FD.params("track")}
+
+    def visible(**track):
+        values = {**FD.DEFAULTS["track"], **track}
+        return {k for k in ("position", "damping", "hardness", "attack") if holds(shown[k], values)}
+    assert visible(instrument="model", model="guitar") == {"position", "damping", "hardness"}
+    assert visible(instrument="model", model="marimba") == {"position", "hardness"}     # no damping on bars
+    assert visible(instrument="model", model="violin") == set()
+    assert visible(instrument="synth") == {"attack"}
