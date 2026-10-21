@@ -1,0 +1,50 @@
+/* Inspector: the generic list. Rows stay mounted; .c collapses/reveals them (README rule 5). */
+.inspect .pb { padding-bottom: var(--pad); }
+.iname { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ikind { margin-top: 2px; color: var(--fg3); }
+
+.c { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 160ms ease-out, opacity 160ms ease-out; }
+.c.open { grid-template-rows: 1fr; opacity: 1; }
+.ci { min-height: 0; overflow: hidden; }
+.inspector > .c > .ci > .c > .ci { margin: 0 -2px; padding: 0 2px; }  /* room for focus rings inside the clip */
+
+.group { padding: var(--group-gap) 0 var(--grid); color: var(--fg3); font-size: var(--label); font-weight: 600; }
+.row { height: var(--row); display: flex; align-items: center; gap: var(--gap); }
+.lbl { width: 88px; flex: none; color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.more { height: var(--row); margin-top: var(--gap); display: flex; align-items: center; gap: var(--gap); color: var(--fg3); cursor: pointer; }
+.more:hover { color: var(--fg2); }
+.chev { width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+  transform: translateY(-1px) rotate(-45deg); transition: transform 160ms ease-out; margin: 0 2px; }
+.more.open .chev { transform: translateY(-2px) rotate(45deg); }
+
+.field { flex: 1; min-width: 0; height: 24px; background: var(--raised); border-radius: var(--r-ctl); transition: background var(--fast); }
+.field:hover { background: var(--hover); }
+.num { position: relative; display: flex; align-items: center; gap: 4px; padding: 0 var(--gap); overflow: hidden; cursor: ew-resize; }
+.num .unit { color: var(--fg3); font-size: var(--label); }
+.num i { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--accent); opacity: 0.55; transition: width var(--fast); }
+input.num, input.text { cursor: text; padding: 0 var(--gap); user-select: text; font-family: var(--mono); }
+input.text { font-family: var(--ui); }
+input.num:focus, input.text:focus { box-shadow: inset 0 0 0 1px var(--accent); }
+
+.select { position: relative; }
+.select select { appearance: none; width: 100%; height: 100%; padding: 0 24px 0 var(--gap); background: transparent; cursor: pointer; }
+.select select option { background: var(--raised); color: var(--fg); }
+.select::after { content: ""; position: absolute; right: 10px; top: 8px; width: 5px; height: 5px; pointer-events: none;
+  border-right: 1.5px solid var(--fg3); border-bottom: 1.5px solid var(--fg3); transform: rotate(45deg); }
+
+.seg { flex: 1; display: flex; height: 24px; padding: 2px; gap: 2px; background: var(--raised); border-radius: var(--r-ctl); }
+.seg button { flex: 1; text-align: center; border-radius: 4px; color: var(--fg2); cursor: pointer; transition: background var(--fast), color var(--fast); white-space: nowrap; }
+.seg button:hover { color: var(--fg); }
+.seg button.on { background: var(--active); color: var(--fg); }
+
+.switch { width: 28px; height: 16px; border-radius: 8px; background: var(--active); position: relative; cursor: pointer; transition: background var(--fast); }
+.switch span { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 6px; background: var(--fg2); transition: transform var(--fast), background var(--fast); }
+.switch.on { background: var(--accent); }
+.switch.on span { transform: translateX(12px); background: #fff; }
+
+.colour { position: relative; display: flex; align-items: center; gap: var(--gap); cursor: pointer; }
+.swatch { width: 20px; height: 20px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
+.colour .mono { color: var(--fg); }
+.colour input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.text { padding: 0 var(--gap); }

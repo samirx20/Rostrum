@@ -1,0 +1,102 @@
+{
+  "about": "One shared description of the controls. Both mockups (gui-mock-qt, gui-mock-web) build their inspector from this file only. Rules: README.md in this folder.",
+  "importance": ["primary", "secondary", "deep"],
+  "kinds": {
+    "camera": {
+      "label": "Camera",
+      "params": [
+        { "id": "focal", "label": "Focal length", "group": "Lens", "type": "number", "min": 12, "max": 200, "step": 1, "unit": "mm", "importance": "primary" },
+        { "id": "dof", "label": "Depth of field", "group": "Lens", "type": "toggle", "importance": "primary" },
+        { "id": "focusDistance", "label": "Focus distance", "group": "Lens", "type": "number", "min": 0.1, "max": 50, "step": 0.1, "unit": "m", "importance": "primary",
+          "validWhen": { "is": ["dof", true] } },
+        { "id": "aperture", "label": "Aperture", "group": "Lens", "type": "number", "min": 1.2, "max": 22, "step": 0.1, "unit": "f/", "importance": "secondary",
+          "validWhen": { "is": ["dof", true] } },
+        { "id": "bokeh", "label": "Bokeh shape", "group": "Lens", "type": "choice", "options": ["Round", "Blades"], "importance": "secondary",
+          "validWhen": { "is": ["dof", true] } },
+        { "id": "blades", "label": "Blade count", "group": "Lens", "type": "number", "min": 3, "max": 12, "step": 1, "unit": "", "importance": "secondary",
+          "validWhen": { "all": [{ "is": ["dof", true] }, { "is": ["bokeh", "Blades"] }] } },
+        { "id": "motionBlur", "label": "Motion blur", "group": "Shutter", "type": "toggle", "importance": "secondary" },
+        { "id": "shutter", "label": "Shutter angle", "group": "Shutter", "type": "number", "min": 1, "max": 360, "step": 1, "unit": "°", "importance": "secondary",
+          "validWhen": { "is": ["motionBlur", true] } },
+        { "id": "sensor", "label": "Sensor width", "group": "Shutter", "type": "number", "min": 8, "max": 70, "step": 0.1, "unit": "mm", "importance": "deep" }
+      ]
+    },
+    "light": {
+      "label": "Light",
+      "params": [
+        { "id": "type", "label": "Type", "group": "Light", "type": "choice", "options": ["Point", "Spot", "Area", "Sun"], "importance": "primary" },
+        { "id": "brightness", "label": "Brightness", "group": "Light", "type": "number", "min": 0, "max": 100, "step": 0.5, "unit": "", "importance": "primary" },
+        { "id": "color", "label": "Colour", "group": "Light", "type": "color", "importance": "primary" },
+        { "id": "radius", "label": "Size", "group": "Shape", "type": "number", "min": 0, "max": 5, "step": 0.05, "unit": "m", "importance": "secondary",
+          "validWhen": { "is": ["type", "Point"] } },
+        { "id": "cone", "label": "Cone angle", "group": "Shape", "type": "number", "min": 1, "max": 180, "step": 1, "unit": "°", "importance": "primary",
+          "validWhen": { "is": ["type", "Spot"] } },
+        { "id": "coneSoftness", "label": "Cone softness", "group": "Shape", "type": "number", "min": 0, "max": 1, "step": 0.01, "unit": "", "importance": "secondary",
+          "validWhen": { "is": ["type", "Spot"] } },
+        { "id": "width", "label": "Width", "group": "Shape", "type": "number", "min": 0.01, "max": 10, "step": 0.01, "unit": "m", "importance": "primary",
+          "validWhen": { "is": ["type", "Area"] } },
+        { "id": "height", "label": "Height", "group": "Shape", "type": "number", "min": 0.01, "max": 10, "step": 0.01, "unit": "m", "importance": "primary",
+          "validWhen": { "is": ["type", "Area"] } },
+        { "id": "sunAngle", "label": "Sun size", "group": "Shape", "type": "number", "min": 0, "max": 10, "step": 0.1, "unit": "°", "importance": "secondary",
+          "validWhen": { "is": ["type", "Sun"] } },
+        { "id": "shadows", "label": "Shadows", "group": "Shadows", "type": "toggle", "importance": "secondary" },
+        { "id": "shadowSoftness", "label": "Shadow softness", "group": "Shadows", "type": "number", "min": 0, "max": 1, "step": 0.01, "unit": "", "importance": "secondary",
+          "validWhen": { "all": [{ "is": ["shadows", true] }, { "not": { "is": ["type", "Sun"] } }] } },
+        { "id": "samples", "label": "Shadow samples", "group": "Shadows", "type": "number", "min": 1, "max": 64, "step": 1, "unit": "", "importance": "deep",
+          "validWhen": { "is": ["shadows", true] } }
+      ]
+    },
+    "text": {
+      "label": "Text layer",
+      "params": [
+        { "id": "text", "label": "Text", "group": "Text", "type": "text", "importance": "primary" },
+        { "id": "size", "label": "Size", "group": "Text", "type": "number", "min": 6, "max": 400, "step": 1, "unit": "px", "importance": "primary" },
+        { "id": "color", "label": "Colour", "group": "Text", "type": "color", "importance": "primary" },
+        { "id": "tracking", "label": "Letter spacing", "group": "Text", "type": "number", "min": -100, "max": 400, "step": 1, "unit": "", "importance": "secondary" },
+        { "id": "animateOn", "label": "Animate on", "group": "Animate", "type": "toggle", "importance": "primary" },
+        { "id": "letterDelay", "label": "Delay per letter", "group": "Animate", "type": "number", "min": 0, "max": 500, "step": 5, "unit": "ms", "importance": "primary",
+          "validWhen": { "is": ["animateOn", true] } },
+        { "id": "direction", "label": "Direction", "group": "Animate", "type": "choice", "options": ["Left to right", "Right to left", "From centre", "Random"], "importance": "primary",
+          "validWhen": { "is": ["animateOn", true] } },
+        { "id": "seed", "label": "Random seed", "group": "Animate", "type": "number", "min": 0, "max": 9999, "step": 1, "unit": "", "importance": "secondary",
+          "validWhen": { "all": [{ "is": ["animateOn", true] }, { "is": ["direction", "Random"] }] } },
+        { "id": "outline", "label": "Outline", "group": "Outline", "type": "toggle", "importance": "secondary" },
+        { "id": "outlineWidth", "label": "Outline width", "group": "Outline", "type": "number", "min": 0, "max": 20, "step": 0.5, "unit": "px", "importance": "secondary",
+          "validWhen": { "is": ["outline", true] } },
+        { "id": "baselineShift", "label": "Baseline shift", "group": "Outline", "type": "number", "min": -100, "max": 100, "step": 1, "unit": "px", "importance": "deep" }
+      ]
+    },
+    "clip": {
+      "label": "Clip",
+      "params": [
+        { "id": "speed", "label": "Speed", "group": "Clip", "type": "number", "min": 0.1, "max": 4, "step": 0.05, "unit": "×", "importance": "primary" },
+        { "id": "frameBlend", "label": "Frame blending", "group": "Clip", "type": "toggle", "importance": "secondary",
+          "validWhen": { "not": { "is": ["speed", 1] } } },
+        { "id": "opacity", "label": "Opacity", "group": "Clip", "type": "number", "min": 0, "max": 100, "step": 1, "unit": "%", "importance": "primary" },
+        { "id": "volume", "label": "Volume", "group": "Audio", "type": "number", "min": -60, "max": 12, "step": 0.5, "unit": "dB", "importance": "primary",
+          "validWhen": { "fact": "hasAudio" } },
+        { "id": "mute", "label": "Mute", "group": "Audio", "type": "toggle", "importance": "secondary",
+          "validWhen": { "fact": "hasAudio" } },
+        { "id": "fadeIn", "label": "Fade in", "group": "Audio", "type": "number", "min": 0, "max": 5, "step": 0.1, "unit": "s", "importance": "secondary",
+          "validWhen": { "all": [{ "fact": "hasAudio" }, { "is": ["mute", false] }] } },
+        { "id": "fadeOut", "label": "Fade out", "group": "Audio", "type": "number", "min": 0, "max": 5, "step": 0.1, "unit": "s", "importance": "secondary",
+          "validWhen": { "all": [{ "fact": "hasAudio" }, { "is": ["mute", false] }] } },
+        { "id": "timecodeOffset", "label": "Timecode offset", "group": "Clip", "type": "number", "min": -100, "max": 100, "step": 1, "unit": "fr", "importance": "deep" }
+      ]
+    }
+  },
+  "items": [
+    { "id": "cam1", "name": "Main camera", "kind": "camera", "facts": {},
+      "values": { "focal": 50, "dof": false, "focusDistance": 2.4, "aperture": 2.8, "bokeh": "Round", "blades": 7, "motionBlur": false, "shutter": 180, "sensor": 36 } },
+    { "id": "key", "name": "Key light", "kind": "light", "facts": {},
+      "values": { "type": "Area", "brightness": 12, "color": "#ffe2c4", "radius": 0.1, "cone": 45, "coneSoftness": 0.2, "width": 1.2, "height": 0.8, "sunAngle": 0.5, "shadows": true, "shadowSoftness": 0.6, "samples": 16 } },
+    { "id": "rim", "name": "Rim light", "kind": "light", "facts": {},
+      "values": { "type": "Spot", "brightness": 30, "color": "#c4d8ff", "radius": 0.1, "cone": 30, "coneSoftness": 0.15, "width": 1, "height": 1, "sunAngle": 0.5, "shadows": false, "shadowSoftness": 0.3, "samples": 8 } },
+    { "id": "title", "name": "Title", "kind": "text", "facts": {},
+      "values": { "text": "Launch", "size": 120, "color": "#ececec", "tracking": 20, "animateOn": false, "letterDelay": 40, "direction": "Left to right", "seed": 7, "outline": false, "outlineWidth": 2, "baselineShift": 0 } },
+    { "id": "interview", "name": "Interview A", "kind": "clip", "facts": { "hasAudio": true },
+      "values": { "speed": 1, "frameBlend": false, "opacity": 100, "volume": -6, "mute": false, "fadeIn": 0.2, "fadeOut": 0.5, "timecodeOffset": 0 } },
+    { "id": "drone", "name": "Drone shot", "kind": "clip", "facts": { "hasAudio": false },
+      "values": { "speed": 1, "frameBlend": false, "opacity": 100, "volume": 0, "mute": false, "fadeIn": 0, "fadeOut": 0, "timecodeOffset": 0 } }
+  ]
+}
