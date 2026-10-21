@@ -8,7 +8,7 @@ from rostrum2d import retime
 
 ITEM_COMP = {
     "item": {"type": "string", "description": "The document's project item id. Optional when only one document is open."},
-    "comp": {"type": "string", "description": "The composition's id. Default: the first one."},
+    "comp": {"type": "string", "description": "The composition's id. Default: the longest one (the reply says which, when there are several)."},
 }
 TIME = {
     "time": {"type": "number", "minimum": 0, "description": "Seconds."},
@@ -33,7 +33,10 @@ def _written(ctx, args: dict):
         raise RostrumError(codes.NOT_FOUND, ctx.tool, "composition", "the document has no composition yet", hint="Add one with the comp() script call or comp.add.")
     want = args.get("comp")
     if want is None:
-        return doc, comps[0]
+        best = max(comps, key=lambda c: c.get("duration", 5.0))      # max keeps the first of equals
+        if len(comps) > 1:
+            ctx.note(f'Composition "{best["id"]}" (the longest of {len(comps)}; pass comp to choose)')
+        return doc, best
     comp = next((c for c in comps if c["id"] == want), None)
     if comp is None:
         raise RostrumError.not_found(ctx.tool, "composition", want, [c["id"] for c in comps], "the compositions of this document")

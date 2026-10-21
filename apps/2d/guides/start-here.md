@@ -16,6 +16,7 @@ document ─ comps ─ comp ─ layers ─ shape | text | image | group (a group
   lists them; with an `id` it shows one part's values and the operations that fit it right now.
 - `inspect_operations` lists everything you can do (`text.set`, `shape.set`, `key.add`, `value.set`, `layer.arrange` …) with
   arguments. `edit_document` applies a list of them, all or nothing.
+- Delete a throw-away comp with `comp.remove` (never the last one). Look and inspect tools called without `comp` read the **longest** comp and say so in their warnings; pass `comp` to choose.
 - A **comp** has `width`, `height`, `fps`, `duration` (seconds), `background`. A layer's `x`, `y` is where its **anchor** sits
   in the comp, in pixels (0,0 is top-left). The anchor is `anchorX`/`anchorY`, 0 to 1 across the box, default 0.5 = centre.
   A group's children are placed inside the group's own box (its top-left is 0,0).
