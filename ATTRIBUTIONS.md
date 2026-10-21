@@ -23,3 +23,15 @@ Every third-party library, model, asset source and tool that ships in or is down
 | ASWF OCIO "CG config" (`ocio://cg-config-latest`, built into OpenColorIO) | v5.0.0, ACES 2.1, OCIO 2.6 | BSD-3-Clause | Colour management in Cycles and views (`proofs/3d-painterly`) | inside OpenColorIO | would ship | Keep the notice | https://github.com/AcademySoftwareFoundation/OpenColorIO-Config-ACES |
 | OpenEXR Python bindings (pip `openexr`) | 3.5.2 | BSD-3-Clause | Reading renders in proof tools (`proofs/3d-product`, `proofs/3d-painterly`) | Python package | dev only | Keep the notice | https://pypi.org/project/OpenEXR/ |
 | Pillow | 13.0.0 | MIT-CMU (HPND) | Brush engine and proof tools (`proofs/3d-painterly`) | Python package | dev only | Keep the notice | https://pypi.org/project/pillow/ |
+| VSCO 2 Community Edition (Versilian Studios, Sam Gossner) — strings, brass, woodwinds, timpani | 2.x | CC0 1.0 (courtesy credit given) | proofs/sound (P-SND cue) | data | on demand | Keep the notice | see `proofs/sound/LIBRARIES.md` |
+| Salamander Grand Piano (Alexander Holm) | V3 | CC BY 3.0 — credit shown | proofs/sound (P-SND cue) | data | on demand | Credit line | see `proofs/sound/LIBRARIES.md` |
+| MuldjordKit (DrumGizmo, Lars Muldjord) | 2020-10-18 | CC BY 4.0 — credit shown | proofs/sound (P-SND cue) | data | on demand | Credit line | see `proofs/sound/LIBRARIES.md` |
+| Kenney impact / interface / UI / digital sounds | — | CC0 1.0 | proofs/sound (effects pass) | data | on demand | Keep the notice | see `proofs/sound/LIBRARIES.md` |
+| Owlish Media sound effects pack | — | CC0 1.0 | proofs/sound (effects pass) | data | on demand | Keep the notice | see `proofs/sound/LIBRARIES.md` |
+| BigSoundBank (Joseph Sardin) picks | — | CC0 1.0 (chosen of CC0 / WTFPL / PD) | proofs/sound | data | on demand | Keep the notice | see `proofs/sound/LIBRARIES.md` |
+| Freesound CC0 picks (authors in experiment `picks.json`) | — | CC0 1.0 per file | proofs/sound | data | on demand | Keep the notice | see `proofs/sound/LIBRARIES.md` |
+| numpy / scipy / soundfile | current | BSD-3-Clause; soundfile bundles libsndfile (LGPL-2.1, dynamic) | proofs/sound (rsnd, listen) | Python package | dev only | Keep LGPL parts dynamic | see `proofs/sound/LIBRARIES.md` |
+| librosa | current | ISC (pulls numba BSD, llvmlite BSD+Apache-LLVM, scikit-learn BSD, soxr LGPL-2.1 dynamic, audioread MIT) | proofs/sound/listen | Python package | dev only | Keep LGPL parts dynamic | see `proofs/sound/LIBRARIES.md` |
+| pyloudnorm | current | MIT | proofs/sound/listen | Python package | dev only | Keep the notice | see `proofs/sound/LIBRARIES.md` |
+| matplotlib | current | PSF-based (BSD-compatible) | proofs/sound/listen | Python package | dev only | Keep the notice | see `proofs/sound/LIBRARIES.md` |
+| ACE-Step 1.5 (code; weights acestep-v15-turbo, VAE, text encoder) | 1.5 | MIT (code); weights tagged MIT on Hugging Face (no LICENSE file in the weights repo) | proofs/sound/acestep (tested, not shipped) | model | on demand | Keep the notice | see `proofs/sound/LIBRARIES.md` |
