@@ -81,9 +81,10 @@ class Track:
 
     # --- recorded audio ----------------------------------------------------------------------
     def sample(self, path, at, volume=1.0, pitch=0.0, pan=0.0, pan_to=None, fade_in=0.0, fade_out=0.0,
-               duration=None, reverb=0.0):
-        """A recorded take played like tape (pitch in semitones changes speed), cut at `duration` s."""
-        pcm = decode(path, self.s.sample_rate, self.s.cache_dir)
+               duration=None, reverb=0.0, offset=0.0, length=None):
+        """A recorded take played like tape (pitch in semitones changes speed), cut at `duration` s.
+        `offset` / `length`: the take's in-point and length inside a longer recording (library takes)."""
+        pcm = decode(path, self.s.sample_rate, self.s.cache_dir, offset, length)
         length = pcm.frames / self.s.sample_rate / (2.0 ** (pitch / 12.0))
         dur = min(length, float(duration)) if duration else length
         self.clips.append(self.s.clip({"kind": "sample", "pcm": pcm.to_json(), "duration": dur, "volume": 1.0,

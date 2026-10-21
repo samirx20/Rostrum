@@ -2,6 +2,7 @@
 from . import effects
 from .pitch import freq, midi
 from .session import RenderError, Session
+from .library import Library
 from .track import BUILT_IN, TONES, Track
 
-__all__ = ["Session", "Track", "RenderError", "effects", "freq", "midi", "BUILT_IN", "TONES"]
+__all__ = ["Session", "Track", "RenderError", "effects", "freq", "midi", "BUILT_IN", "TONES", "Library"]

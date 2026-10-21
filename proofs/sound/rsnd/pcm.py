@@ -30,8 +30,19 @@ def _key(path: Path, rate: int) -> str:
     return hashlib.sha1(raw.encode()).hexdigest()[:20]
 
 
-def decode(src, rate: int, cache_dir) -> Pcm:
-    """The file at `src` as stereo f32 PCM at `rate` Hz, in `cache_dir` (decoded on first use)."""
+def decode(src, rate: int, cache_dir, offset: float = 0.0, length: float | None = None) -> Pcm:
+    """The file at `src` as stereo f32 PCM at `rate` Hz, in `cache_dir` (decoded on first use).
+    `offset` / `length` (seconds) cut one take out of a longer recording."""
+    if offset or length:
+        whole = decode(src, rate, cache_dir)
+        a = int(round(offset * rate))
+        b = whole.frames if length is None else min(whole.frames, a + int(round(length * rate)))
+        if not 0 <= a < b:
+            raise ValueError(f"{src}: take {offset} s + {length} s is outside the file ({whole.frames / rate:.2f} s)")
+        out = Path(whole.file).with_name(f"{Path(whole.file).stem}-{a}-{b}.f32")
+        if not out.is_file():
+            np.fromfile(whole.file, dtype="<f4").reshape(-1, 2)[a:b].tofile(out)
+        return Pcm(str(out), 2, b - a)
     path = Path(src)
     if not path.is_file():
         raise FileNotFoundError(f"sample file not found: {path}")
