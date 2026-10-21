@@ -2,16 +2,18 @@
 tool render_export (rostrum2d.mcp.exporting.run): the same formats, the same files, the same manifest.
 
 The formats, and the settings each one takes, come from that code's data (io/formats.py FORMATS + Lottie); a setting that
-doesn't apply to the chosen format is not in `settings` at all. A press takes a snapshot of the scene, so edits made while
-it runs are not in the file. A failure is reported (red status, the error line), never as success.
+doesn't apply is not in `settings` (export_rows.py). A press snapshots the scene: edits made while it runs are not in the
+file. A failure is reported (red status, the error line), never as success; Cancel stops the job (export_job.py).
 """
 from __future__ import annotations
 
-import threading
 from pathlib import Path
 
-from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
+from PySide6.QtCore import Property, QCoreApplication, QObject, QUrl, Signal, Slot
 from rostrum2d.mcp import exporting, render
+
+from . import export_rows
+from .export_job import Job
 
 
 class Exporter(QObject):
@@ -21,12 +23,12 @@ class Exporter(QObject):
 
     def __init__(self, bridge, engine_factory=None, parent=None):
         super().__init__(parent or bridge)
-        self._bridge, self._engine_factory = bridge, engine_factory
-        self._state, self._note, self._progress, self._facts, self._thread = "", "", 0.0, {}, None
+        self._bridge, self.job = bridge, Job(engine_factory)
+        self._state, self._note, self._progress, self._facts = "", "", 0.0, {}
         self._fmt, self._values = "mp4", {}
-        self._comp_id, self._engine, self._cancelled = bridge.comp_id, None, False    # the comp shown, until another is picked
+        self._comp_id = bridge.comp_id          # the comp shown, until another is picked
         self._reset()
-        self._landed.connect(self._on_landed)
+        self._landed.connect(self._finish)
         self._progressed.connect(self._on_progress)
 
     def _row(self) -> dict:
@@ -65,19 +67,8 @@ class Exporter(QObject):
 
     @Property("QVariantList", notify=changed)
     def settings(self):
-        """The rows for the chosen format, only the ones that apply: {key, kind toggle|choice|number, label, value, …}."""
-        r, v = self._row(), self._values
-        rows = []
-        if r["alpha"]:
-            rows.append({"key": "alpha", "kind": "toggle", "label": "Transparency", "value": v["alpha"]})
-        if len(r["depths"]) > 1:
-            rows.append({"key": "depth", "kind": "choice", "label": "Bit depth", "value": str(v["depth"]),
-                         "options": [{"value": str(d), "label": f"{d}-bit"} for d in r["depths"]]})
-        if r["range"]:
-            d = self._duration()
-            rows.append({"key": "start", "kind": "number", "label": "From", "value": v["start"], "from": 0.0, "to": d, "unit": "s"})
-            rows.append({"key": "end", "kind": "number", "label": "To", "value": v["end"], "from": 0.0, "to": d, "unit": "s"})
-        return rows
+        """The rows for the chosen format, only the ones that apply (export_rows.py)."""
+        return export_rows.settings(self._row(), self._values, self._duration())
 
     @Property(str, notify=changed)
     def state(self):
@@ -116,37 +107,26 @@ class Exporter(QObject):
         return list(self._facts.get("report") or [])
 
     def _facts_rows(self):
-        f = self._facts
-        if self._state != "done" or not f:
-            return []
-        rows = [{"label": "File", "text": self.path}, {"label": "Frames", "text": f'{f["frames"]} at {f["fps"]:g} fps'}]
-        c = f.get("checked") or {}
-        if c.get("size"):
-            rows.append({"label": "Size", "text": "×".join(str(n) for n in c["size"])})
-        if self._row()["alpha"]:
-            rows.append({"label": "Transparency", "text": "kept" if f["alpha"] else "not kept"})
-        if len(self._row()["depths"]) > 1:
-            rows.append({"label": "Bit depth", "text": f'{f["depth"]}-bit'})
-        return rows
+        return export_rows.facts(self._row(), self._facts, self.path) if self._state == "done" and self._facts else []
 
     def running(self) -> bool:
-        return self._thread is not None and self._thread.is_alive()
+        return self.job.running()
 
     # ---- what a person does -------------------------------------------------------------------------------
     @Slot(str)
     def setFormat(self, name):
-        if self.running() or name == self._fmt:
-            return
-        self._fmt = name
-        self._reset()
-        self._state, self._note, self._facts = "", "", {}
-        self.changed.emit()
+        self._choose(name, self._comp_id)
 
     @Slot(str)
     def setComp(self, comp_id):
-        if self.running() or comp_id == self._comp_id or not self._bridge.doc.has(comp_id):
+        if self._bridge.doc.has(comp_id):
+            self._choose(self._fmt, comp_id)
+
+    def _choose(self, fmt, comp_id):
+        """A new format or composition: its default settings, the last result cleared."""
+        if self.running() or (fmt, comp_id) == (self._fmt, self._comp_id):
             return
-        self._comp_id = comp_id
+        self._fmt, self._comp_id = fmt, comp_id
         self._reset()
         self._state, self._note, self._facts = "", "", {}
         self.changed.emit()
@@ -165,7 +145,7 @@ class Exporter(QObject):
         b = self._bridge
         if self.running():
             return b._fail("Error: export: one is already running; wait for it.")
-        self._facts, self._progress, self._cancelled = {}, 0.0, False
+        self._facts, self._progress = {}, 0.0
         try:
             v = self._values
             s = exporting.settings("export", self._fmt, self._duration(), v["alpha"], v["depth"], v["start"], v["end"])
@@ -178,32 +158,17 @@ class Exporter(QObject):
         self.changed.emit()
         b._set_status(self._note)
 
-        def make_engine():                      # remembered, so Cancel can stop it
-            self._engine = (self._engine_factory or exporting._engine)()
-            return self._engine
-
-        def work():
-            try:
-                facts = exporting.run("export", scene, fmt, s, folder, item, seq, None,
-                                      lambda done, total: self._progressed.emit(done / total if total else 0.0), make_engine)
-                self._landed.emit(facts, "")
-            except Exception as e:  # noqa: BLE001  fail loudly, whatever it was (a cancel is the one expected stop)
-                self._landed.emit({}, "" if self._cancelled else e.line() if hasattr(e, "line") else f"Error: export: {type(e).__name__}: {e}")
-
-        self._thread = threading.Thread(target=work, name="export", daemon=True)
-        self._thread.start()
+        def export(make_engine):
+            return exporting.run("export", scene, fmt, s, folder, item, seq, None,
+                                 lambda done, total: self._progressed.emit(done / total if total else 0.0), make_engine)
+        self.job.start(export, self._landed.emit)
 
     @Slot()
     def cancel(self):
-        """Stop a running export: the engine is stopped by its own handle, the unfinished files are removed by run()."""
-        eng = self._engine
-        if not self.running() or eng is None or self._cancelled:
-            return
-        self._cancelled = True
-        self._note = "Cancelling…"
-        self.changed.emit()
-        if eng.proc.poll() is None:
-            eng.proc.kill()
+        """Stop a running export (export_job.py): no file is left, the panel says Cancelled."""
+        if self.job.cancel():
+            self._note = "Cancelling…"
+            self.changed.emit()
 
     @Slot()
     def dismiss(self):
@@ -213,9 +178,7 @@ class Exporter(QObject):
 
     def wait(self, timeout_s: float) -> bool:
         """For scripted steps: block until the job is over (True) or the time is up (False). Land the result on this thread."""
-        if self._thread is not None:
-            self._thread.join(timeout_s)
-        from PySide6.QtCore import QCoreApplication
+        self.job.wait(timeout_s)
         QCoreApplication.processEvents()
         return not self.running()
 
@@ -224,11 +187,8 @@ class Exporter(QObject):
             self._progress = p
             self.changed.emit()
 
-    def _on_landed(self, facts, error):
-        self._finish(facts, error)
-
     def _finish(self, facts, error):
-        if self._cancelled and not facts.get("files") and not error:
+        if self.job.cancelled and not facts.get("files") and not error:
             self._state, self._facts, self._note, self._progress = "cancelled", {}, "Cancelled", 0.0
             self._bridge._set_status("Export cancelled")
         elif error or not facts.get("files"):
