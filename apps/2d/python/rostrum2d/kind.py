@@ -13,7 +13,7 @@ from __future__ import annotations
 import rostrum_paint
 from rostrum_core import DocKind, Registry
 
-from . import exprbake, fields as F, pathdata, widthprofile
+from . import exprbake, fields as F, fontcheck, pathdata, widthprofile
 from .rig import model as rig_model
 
 OWNED = ["effects", "masks", "keys"]
@@ -110,7 +110,7 @@ def check(data: dict) -> list[str]:
             ats = [f["at"] for f in item["frames"]]
             if ats != sorted(set(ats)):
                 problems.append(f'{item["id"]}: drawings must be at different frames, in order (they are at {ats})')
-    return problems + exprbake.problems_of_doc(data)
+    return problems + exprbake.problems_of_doc(data) + fontcheck.problems_of_doc(data)
 
 
 KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts,

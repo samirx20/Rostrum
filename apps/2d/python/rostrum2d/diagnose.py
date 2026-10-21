@@ -115,18 +115,29 @@ def _markers(exprs: dict, markers: dict | None) -> list[dict]:
 
 
 def _unseen(comp: dict) -> list[dict]:
-    """Layers that can't be seen at any moment looked at: why, in words (the commonest reason first)."""
+    """Layers that can't be seen at any moment looked at: why, in words (the commonest reason first). The moments are
+    spread over the composition, its last frame included; a layer not yet seen is then looked at again at its own
+    moments (start, end, each key), so a short pop or an end fade between two even samples is not "never seen"."""
     duration, (w, h) = comp.get("duration", F.defaults("comp")["duration"]), comp_size(comp)
+    last = max(0.0, duration - 1.0 / comp.get("fps", 30))
     seen, why = set(), {}
-    for i in range(SAMPLES):
-        t = duration * i / SAMPLES
-        for node in flatten(comp, t):
-            reasons = problems_showing(node, w, h)
-            if not reasons:
-                seen.add(node["id"])
-            for r in reasons:
-                why.setdefault(node["id"], {}).setdefault(r, 0)
-                why[node["id"]][r] += 1
+
+    def look(times, only=None):
+        for t in times:
+            for node in flatten(comp, t):
+                if only is not None and node["id"] not in only:
+                    continue
+                reasons = problems_showing(node, w, h)
+                if not reasons:
+                    seen.add(node["id"])
+                for r in reasons:
+                    why.setdefault(node["id"], {}).setdefault(r, 0)
+                    why[node["id"]][r] += 1
+
+    look([duration * i / SAMPLES for i in range(SAMPLES)] + [last])
+    own = _own_moments(comp, set(why) - seen, duration, last)
+    for t in sorted({t for ts in own.values() for t in ts}):
+        look([t], only={i for i, ts in own.items() if t in ts})
     out = []
     for lay_id, reasons in why.items():
         if lay_id in seen or any(r.startswith(("drawn only as the track matte", "its track matte")) for r in reasons):
@@ -135,6 +146,22 @@ def _unseen(comp: dict) -> list[dict]:
         kind = "off-canvas" if top == "outside the frame" else "invisible"
         out.append(_p(kind, lay_id, f"{lay_id} is never seen: {top}" + ("" if len(reasons) == 1 else f" (also: {', '.join(r for r in reasons if r != top)})"),
                       "Move it into the frame" if kind == "off-canvas" else "Check its opacity, size and start / end times"))
+    return out
+
+
+def _own_moments(comp: dict, ids: set, duration: float, last: float) -> dict[str, set]:
+    """For each layer id: its start, end and key times (composition seconds, after retime.py) and those of the groups
+    around it (they show or hide it), the moment after each, kept inside the composition."""
+    out: dict[str, set] = {}
+
+    def walk(layers, above):
+        for item in layers:
+            marks = above | {item.get("start", 0.0), item.get("end", math.inf)} | {k["t"] for p in animated(item) for k in keys_of(item, p)}
+            if item["id"] in ids:
+                out[item["id"]] = {round(min(max(t + d, 0.0), last), 4) for t in marks if math.isfinite(t) and t < duration for d in (0.0, 1e-3)}
+            walk(item.get("layers", []), marks)
+
+    walk(comp.get("layers", []), set())
     return out
 
 
