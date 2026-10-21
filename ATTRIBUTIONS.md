@@ -78,3 +78,5 @@ Every third-party library, model, asset source and tool that ships in or is down
 | DDSP violin weights (data) | ours, 2026-10-15 | MIT (ours; trained on VSCO 2 CE, CC0) | apps/sound/engine (`ddsp.violin`) | data | yes | None | experiment-final:docs/AI_MODELS.md |
 | opencv-python-headless | 5.0.0.93 | Apache-2.0 | apps/sound/python (sfx eyes) | Python package | yes | Keep the notice | https://opencv.org |
 | numpy, scipy, soundfile, librosa, pyloudnorm, matplotlib | (venv) | BSD-3 / BSD-3 / BSD-3 / ISC / MIT / PSF-style (matplotlib) | apps/sound/python (listen, sfx) | Python package | yes | Keep the notices (libsndfile under soundfile is LGPL-2.1, dynamically loaded) | https://pypi.org |
+| Recursive | 1.x (archive copy) | SIL OFL 1.1 | `apps/2d/engine/fonts` (app font) | data | ships | Keep the OFL text beside it; don't sell the font on its own | https://github.com/arrowtype/recursive |
+| Inter (variable, InterVariable.ttf) | 4.1 | SIL OFL 1.1 | `apps/2d/engine/fonts` (app font) | data | ships | Keep the OFL text beside it; don't sell the font on its own | https://github.com/rsms/inter |
