@@ -9,6 +9,11 @@ use super::read::Obj;
 use serde_json::{json, Value};
 
 pub fn range(v: &Value, at: &str) -> Result<Value, Error> {
+    if v.get("model").is_some() || v.get("synth").is_some() {
+        let (_, resolved) = super::instrument::read(Some(v), at)?;
+        return Ok(json!({ "instrument": resolved, "low": name(21), "high": name(108), "lowKey": 21, "highKey": 108, "gaps": [], "layers": 1,
+                          "drums": [], "note": "procedural / synthesized: plays any key; the piano's range is shown" }));
+    }
     let mut o = Obj::new(v, at)?;
     let out = if o.has("builtIn") {
         let n = o.name("builtIn", names::BUILT_INS, None)?;
@@ -36,7 +41,7 @@ pub fn range(v: &Value, at: &str) -> Result<Value, Error> {
         json!({ "instrument": file, "low": name(lo), "high": name(hi), "lowKey": lo, "highKey": hi,
                 "gaps": gaps.iter().map(|&k| name(k)).collect::<Vec<_>>(), "layers": vel_edges.len(), "drums": drums })
     } else {
-        return Err(Error::bad(at, v, "is not an instrument", &["builtIn", "sfz", "kit", "kitSfz"]));
+        return Err(Error::bad(at, v, "is not an instrument", &super::instrument::FORMS));
     };
     o.done()?;
     Ok(out)

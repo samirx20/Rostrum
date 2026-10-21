@@ -2,11 +2,12 @@
 //! strictly (read.rs) and written as the engine's job track (schedule/mod.rs Track, Clip, Voice).
 
 use super::error::Error;
-use super::names::{self, BUILT_INS, SYNTH_DRUMS, TONES};
+use super::instrument::{self, Inst};
+use super::names::{self, SYNTH_DRUMS, TONES};
 use super::pitch;
 use super::read::{Obj, number};
 use super::time::Tempo;
-use super::{effects, media};
+use super::{effects, expression, media};
 use serde_json::{json, Map, Value};
 
 pub struct Track {
@@ -38,19 +39,11 @@ pub fn ids(v: &Value, at: &str) -> Result<Vec<String>, Error> {
     Ok(out)
 }
 
-enum Inst {
-    None,
-    BuiltIn(String),
-    Sfz(Value),
-    Synth,
-    KitSfz(Value),
-}
-
 pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String]) -> Result<Track, Error> {
     let mut o = Obj::new(v, at)?;
     let id = o.str("id", None)?;
     let inst_at = o.at("instrument");
-    let (inst, inst_resolved) = instrument(o.raw("instrument"), &inst_at)?;
+    let (inst, inst_resolved) = instrument::read(o.raw("instrument"), &inst_at)?;
     o.put("instrument", inst_resolved);
     let volume = o.num("volume", 0.0, 4.0, Some(0.85))?;
     let pan = o.num("pan", -1.0, 1.0, Some(0.0))?;
@@ -62,6 +55,7 @@ pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String]) -> Resu
     o.put("effects", json!(fx));
     let auto = automation(&mut o, tempo, true)?;
     let ducks = o.list("ducks", |d, p| duck(d, &p, ids))?;
+    let lanes = expression::lanes(&mut o, tempo)?;
     o.put("ducks", json!(ducks.iter().map(|d| d.0.clone()).collect::<Vec<_>>()));
 
     let sri = |t: f64| (t * sr as f64).round() as usize;
@@ -83,10 +77,9 @@ pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String]) -> Resu
         let npan = no.num("pan", -1.0, 1.0, Some(0.0))?;
         let freqs: Vec<f64> = keys.iter().map(|&k| pitch::freq(k)).collect();
         let mut voice = json!({ "kind": "note", "freqs": freqs, "startIdx": sri(at_s), "duration": dur, "velocity": vel, "pan": npan });
-        match &inst {
-            Inst::BuiltIn(name) => voice["instrument"] = json!(name),
-            Inst::Sfz(spec) => { voice["instrument"] = json!("sampled"); voice["sfz"] = spec.clone(); }
-            _ => return Err(Error::new("BAD_ARGUMENT", &no.path, "a note", "needs a pitched instrument on its track").hint("Give the track {\"builtIn\": …} or {\"sfz\": …}; drum kits take hits.")),
+        inst.note(&mut no, &mut voice)?;
+        if let Some(e) = expression::note(&mut no, &lanes, at_s, dur)? {
+            voice["expression"] = e;
         }
         end = end.max(at_s + dur);
         voices.push(voice);
@@ -128,33 +121,6 @@ impl Track {
     }
 }
 
-fn instrument(v: Option<&Value>, at: &str) -> Result<(Inst, Value), Error> {
-    let Some(v) = v else { return Ok((Inst::None, Value::Null)) };
-    let forms = ["builtIn", "sfz", "kit", "kitSfz"];
-    let key = v.as_object().and_then(|m| forms.iter().find(|f| m.contains_key(**f)).copied())
-        .ok_or_else(|| Error::bad(at, v, "is not an instrument", &forms))?;
-    let mut o = Obj::new(v, at)?;
-    let inst = match key {
-        "builtIn" => Inst::BuiltIn(o.name("builtIn", BUILT_INS, None)?),
-        "kit" => { o.name("kit", &["synth"], None)?; Inst::Synth }
-        "sfz" => {
-            let file = file_arg(&mut o, "sfz")?;
-            let (legato, swell) = (o.bool("legato", false)?, o.bool("swell", false)?);
-            Inst::Sfz(json!({ "file": file, "legato": legato, "swell": swell }))
-        }
-        _ => Inst::KitSfz(json!({ "file": file_arg(&mut o, "kitSfz")?, "legato": false, "swell": false })),
-    };
-    Ok((inst, Value::Object(o.done()?)))
-}
-
-fn file_arg(o: &mut Obj, key: &'static str) -> Result<String, Error> {
-    let f = o.str(key, None)?;
-    if !std::path::Path::new(&f).is_file() {
-        return Err(Error::not_found(&o.at(key), &format!("\"{f}\""), "is not a file"));
-    }
-    Ok(f)
-}
-
 fn hit(v: &Value, at: &str, inst: &Inst, tempo: &Tempo, sr: u32) -> Result<(Value, Value, f64), Error> {
     let mut o = Obj::new(v, at)?;
     let drum = o.required("drum")?;
@@ -167,7 +133,7 @@ fn hit(v: &Value, at: &str, inst: &Inst, tempo: &Tempo, sr: u32) -> Result<(Valu
     let idx = (t * sr as f64).round() as usize;
     let da = o.at("drum");
     let voice = match inst {
-        Inst::Synth => {
+        Inst::Kit => {
             let name = drum.as_str().ok_or_else(|| Error::bad(&da, drum, "is not a drum name", SYNTH_DRUMS))?;
             super::read::one_of(name, &da, SYNTH_DRUMS)?;
             o.put("drum", json!(name));
