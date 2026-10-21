@@ -123,8 +123,7 @@ def stamp_stroke(layer, points, color, size, brush="round", *, mask=None, under=
         if mask is not None:
             a = a * mask[y0:y1, x0:x1]
         cv = cov[y0 - by0:y1 - by0, x0 - bx0:x1 - bx0]
-        c1 = np.maximum(cv, a)
-        inc = (c1 - cv) / (1.0001 - cv)
+        c0, c1 = cv.copy(), np.maximum(cv, a)
         cv[...] = c1
         col = cols[i] * (1 + cj * 0.6 * streak[idx])[..., None]
         region = layer[y0:y1, x0:x1]
@@ -144,5 +143,5 @@ def stamp_stroke(layer, points, color, size, brush="round", *, mask=None, under=
             lt = math.hypot(X[i] - X[i - 1], Y[i] - Y[i - 1]) / (2 * r * ALONG[tip]) if i else 0
             region += (a * (1 - (1 - 0.97 * wet) ** max(lt, 0.05)))[..., None] * (res[win] - region)
             res += (1 - (0.6 * wet) ** max(lt, 0.05)) * (pick - res)
-        apply_paint(region, inc * (1 - wet), col, p["mode"])
+        apply_paint(region, c0, c1, col, p["mode"], 1 - wet)
     return Coverage(cov, (bx0, by0, bx1, by1))
