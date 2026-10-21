@@ -61,7 +61,7 @@ behind `canvas.stamp`, the only function that turns a stroke item into brush cal
   prefix it holds in memory and stamps only the strokes after it. A new stroke costs one stroke; undo / redo / a
   redrawn drawing cost the strokes after the nearest kept state (every 24 strokes during a replay, plus every state
   looked at; memory capped at 1.2 GB, oldest first). Finished canvases are PNG files named by their content in
-  `C:\Users\<you>\.rostrum\cache\paint\` (capped at 3,000 files): the engine only reads them, and an unchanged drawing
+  `C:\Users\<you>\.rostrum\cache\paint\` (capped at 1 GB, oldest first): the engine only reads them, and an unchanged drawing
   is never drawn again. Keys include a hash of the brush code, so a brush change never serves stale pixels.
 
 Measured on the laptop (1920×1080 canvas; "look" = make the picture file + a 1200 px look image with grid):

@@ -21,7 +21,7 @@ import numpy as np
 from . import brush, compose, marks
 
 CACHE_DIR = Path.home() / ".rostrum" / "cache" / "paint"
-PNG_KEEP = 3000                  # files in CACHE_DIR before the oldest go
+PNG_BYTES = 1 << 30              # size of CACHE_DIR before the oldest pictures go
 BUDGET = 1200 << 20              # bytes of kept layer states in memory
 CHECKPOINT = 24                  # during a long replay, keep a state every N strokes
 _HERE = Path(__file__).resolve().parent
@@ -232,6 +232,9 @@ def png(canvas: dict, w: int, h: int) -> Path:
 
 
 def _trim():
-    files = sorted(CACHE_DIR.glob("*.png"), key=lambda p: p.stat().st_mtime)
-    for p in files[:max(0, len(files) - PNG_KEEP)]:
-        p.unlink(missing_ok=True)
+    files = sorted(((p.stat().st_mtime, p.stat().st_size, p) for p in CACHE_DIR.glob("*.png")), reverse=True)
+    total = 0
+    for _, size, p in files:                       # newest kept first; past the cap the rest go
+        total += size
+        if total > PNG_BYTES:
+            p.unlink(missing_ok=True)
