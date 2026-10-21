@@ -12,8 +12,10 @@
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/usdLux/blackbody.h>
 
+#include <algorithm>
 #include <cmath>
 #include <iterator>
+#include <set>
 #include <vector>
 
 #include "error.h"
@@ -81,9 +83,14 @@ HdContainerDataSourceHandle with_light(const HdContainerDataSourceHandle& prim, 
   return HdOverlayContainerDataSource::New(HdRetainedContainerDataSource::New(HdLightSchemaTokens->light, params), prim);
 }
 
+class CyclesLights;
+std::vector<CyclesLights*> g_live;  // every Cycles engine's filter, for announce_light_extras()
+
 class CyclesLights final : public HdSingleInputFilteringSceneIndexBase {
  public:
   static HdSceneIndexBaseRefPtr New(const HdSceneIndexBaseRefPtr& in) { return TfCreateRefPtr(new CyclesLights(in)); }
+  ~CyclesLights() override { g_live.erase(std::remove(g_live.begin(), g_live.end(), this), g_live.end()); }
+  void announce(const HdSceneIndexObserver::DirtiedPrimEntries& e) { _SendPrimsDirtied(e); }
 
   HdSceneIndexPrim GetPrim(const SdfPath& path) const override {
     HdSceneIndexPrim prim = _GetInputSceneIndex()->GetPrim(path);
@@ -131,9 +138,32 @@ class CyclesLights final : public HdSingleInputFilteringSceneIndexBase {
   }
 
  private:
-  explicit CyclesLights(const HdSceneIndexBaseRefPtr& in) : HdSingleInputFilteringSceneIndexBase(in) {}
+  explicit CyclesLights(const HdSceneIndexBaseRefPtr& in) : HdSingleInputFilteringSceneIndexBase(in) { g_live.push_back(this); }
 };
+
+// The paths whose product lighting a filter hands over: lights (their params) and linked items (re-synced geometry).
+std::pair<std::set<SdfPath>, std::set<SdfPath>> extras_paths(const LightExtras& x) {
+  std::set<SdfPath> lights(x.cards.begin(), x.cards.end()), items;
+  for (const auto& [p, v] : x.coneDeg) lights.insert(p);
+  for (const auto& [p, v] : x.domeSeen) lights.insert(p);
+  for (const auto& [p, v] : x.membership) lights.insert(p);
+  for (const auto& [p, v] : x.receivers) items.insert(p);
+  return {lights, items};
+}
 }  // namespace
+
+void announce_light_extras() {
+  static std::set<SdfPath> was_lights, was_items;
+  auto [lights, items] = extras_paths(light_extras());
+  HdSceneIndexObserver::DirtiedPrimEntries e;
+  for (const auto* set : {&lights, &was_lights})
+    for (const SdfPath& p : *set) e.emplace_back(p, HdDataSourceLocatorSet{HdLightSchema::GetDefaultLocator()});
+  for (const auto* set : {&items, &was_items})
+    for (const SdfPath& p : *set) e.emplace_back(p, HdDataSourceLocatorSet{HdVisibilitySchema::GetDefaultLocator()});
+  if (!e.empty())
+    for (CyclesLights* f : g_live) f->announce(e);
+  was_lights = std::move(lights), was_items = std::move(items);
+}
 
 void register_cycles_lights() {
   static const bool once = [] {

@@ -14,6 +14,7 @@
 #include "args.h"
 #include "error.h"
 #include "inspect.h"
+#include "cycles_lights.h"
 #include "light_extras.h"
 #include "view_camera.h"
 
@@ -79,6 +80,7 @@ void Core::check_frame(int f, const char* where) const {
 JsObject Core::scene(const JsObject& a) {
   const auto t0 = Clock::now();
   built_ = build_stage(a, stage_);  // throws with the held stage untouched
+  announce_light_extras();
   loaded_ = true;
   return JsObject{{"ok", JsValue(true)}, {"items", JsValue(built_.items)}, {"prims", JsValue(built_.prims)},
                   {"frames", JsValue(JsArray{JsValue(built_.start), JsValue(built_.end)})},

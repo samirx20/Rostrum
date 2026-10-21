@@ -23,7 +23,7 @@ index 9c1f3e4..0ee21e5 100644
    // based on it (e.g. check whether an attribute is actually needed)
    bool rebuild = false;
 diff --git a/src/hydra/light.cpp b/src/hydra/light.cpp
-index 1457e77..194ad17 100644
+index 1457e77..0d8201a 100644
 --- a/src/hydra/light.cpp
 +++ b/src/hydra/light.cpp
 @@ -31,6 +31,7 @@ TF_DEFINE_PRIVATE_TOKENS(_tokens,
@@ -61,17 +61,22 @@ index 1457e77..194ad17 100644
        SpotLight *spot_light = static_cast<SpotLight *>(_light);
        const bool treatAsPoint = GetTypedValue<bool>(lightDs, _tokens->treatAsPoint, false);
        if (treatAsPoint) {
-@@ -184,6 +203,9 @@ void HdCyclesLight::Sync(HdSceneDelegate *sceneDelegate,
+@@ -184,6 +203,14 @@ void HdCyclesLight::Sync(HdSceneDelegate *sceneDelegate,
    if (_light->is_modified()) {
      _light->tag_update(lock.scene);
    }
++  if (_lightType == HdPrimTypeTokens->domeLight && _object->visibility_is_modified()) {
++    /* Rostrum: the background follows the dome's camera visibility (session.cpp), which only runs when the
++     * light manager needs an update; a change of visibility alone wouldn't trigger it. */
++    lock.scene->light_manager->tag_update(lock.scene, LightManager::LIGHT_MODIFIED);
++  }
 +  if (_object->is_modified()) {
 +    _object->tag_update(lock.scene); /* Rostrum: camera visibility and light sets live on the object */
 +  }
  
    *dirtyBits = DirtyBits::Clean;
  }
-@@ -396,7 +418,10 @@ void HdCyclesLight::Initialize(HdRenderParam *renderParam)
+@@ -396,7 +423,10 @@ void HdCyclesLight::Initialize(HdRenderParam *renderParam)
  
    _object->set_geometry(_light);
    _object->set_random_id(hash_uint2(hash_string(_light->name.c_str()), 0));
