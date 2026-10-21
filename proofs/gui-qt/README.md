@@ -1,6 +1,6 @@
 # P-GUI · Qt shell proof (part 1)
 
-**Status:** part 1 done, 2026-10-21 (Team Sam, brief S1). Verdict: **pass with conditions** (below).
+**Status:** part 1 done, 2026-10-21 (Team Sam, brief S1); vsync check done in S2. Verdict: **pass with conditions** (below).
 
 ## The question
 
@@ -70,12 +70,30 @@ QtMultimedia (`MediaPlayer` + `VideoOutput`), **FFmpeg backend** (Qt 6's default
 
 **Pass with conditions.** On this laptop, one Qt Quick window driven from Python holds a live GPU viewport (~125 fps, no hitches while clicking around and resizing) and a 1080p60 video that decodes and shows at a steady 60 fps, next to panels that look calm and uncrowded. The look is the experiment's design carried over almost one-to-one; nothing in Qt fought it. Conditions:
 
-1. **Screen-synced drawing (vsync) still has to be checked with Sam at the laptop.** With vsync on, every run (both graphics chips, window on top or not) crawled at ~6 fps. The runs were unattended with the laptop idle for 35 minutes, so the screen was most likely off, and Windows holds back screen-synced drawing then. The proof's default (vsync off, Qt paces frames) is smooth. One attended run settles it: `python main.py --vsync` and watch the FPS readout.
+1. ~~Screen-synced drawing (vsync) still has to be checked.~~ **Cleared in S2** (see "Vsync, settled" below): with the screen awake, vsync on holds a locked 60 fps on both chips, viewport and video. The 4–6 fps seen in S1 is Windows holding back drawing while the screen is off.
 2. **The real viewport is native code.** Drawing GL in Python works but forces Qt's one-thread mode (see Threading). Real apps draw in Rust / C++ (`QQuickRhiItem`), which the Hydra plan below follows.
 3. **The app must ask Windows for the fast graphics chip** (`NvOptimusEnablement` export in our own `.exe`); Python runs on the AMD built-in chip by default.
 4. **Mac not run yet.**
 
 Is Qt simple enough to look the way Sam wants? From these screenshots, yes: generous spacing, one accent colour, sharp type, panels set apart by shade rather than lines. Sam judges the screenshots below.
+
+## Vsync, settled (S2, 2026-10-21)
+
+The laptop had had no keyboard or mouse input for ~40 minutes and Windows turns the screen off after 5 minutes (Balanced plan, on mains), so before each run a small script (`C:\Users\Sam\.rostrum\waves\scratch\sam-S2-lead\vsync_run.py`, deleted after) woke the screen with a 0-pixel mouse nudge, asked Windows to keep the display on (`SetThreadExecutionState`), and recorded how long the machine had been idle. One run was made first with the screen left as it was, as the control.
+
+| Run (vsync on, 15 s, 1600×960) | GPU | Screen | Window fps | Frame ms p50 / p95 / p99 / max | > 33 ms | Video fps | Memory MB start / peak / end |
+|---|---|---|---|---|---|---|---|
+| viewport (control, 12 s) | AMD built-in | off (idle 40 min) | **3.8** | 262 / 271 / 453 / 453 | all | — | 270 / 270 / 270 |
+| viewport churn | AMD built-in | woken | **60.0** | 16.7 / 17.4 / 23.6 / 27 | 0 | — | 269 / 269 / 266 |
+| video churn | AMD built-in | woken | 55 | 16.7 / 32.3 / 40.3 / 63 | 10 of 826 | **60.1** | 382 / 711 / 525 |
+| viewport churn | RTX 3050 | woken | **59.7** | 16.6 / 18.4 / 25.7 / 112 | 4 of 896 | — | 341 / 344 / 329 |
+| video churn | RTX 3050 | woken | **59.8** | 16.7 / 20.0 / 28.4 / 79 | 3 of 897 | **60.0** | 365 / 370 / 355 |
+
+JSON: `C:\Users\Sam\.rostrum\waves\results\stage1\p-gui\measure-vsync-*.json` (each has a `screen` block: woken or as-is, idle seconds before).
+
+Reading it: the same command gives 3.8 fps with the screen off and a locked 60 fps the moment the screen is on, so the S1 crawl was the dark screen, not Qt or the drivers. With vsync on, frames land on the display's 60 Hz beat (p50 16.7 ms), the few slow frames come with the window resizes in churn, and video is shown frame for frame. The built-in chip shows 10 late frames out of 826 in video churn (resizing a playing 1080p video window); the RTX is steadier.
+
+**What it means for the apps:** draw with vsync on (it also stops the wasted ~125 fps of the vsync-off runs). Never time anything by the window: exports and agent frame grabs render offscreen, so a sleeping screen can't slow them (preview ≡ export still holds: same render path, only the presentation differs). Caveat: the screen was woken by a script, not by Sam at the keyboard; the numbers are what a watched screen gets.
 
 ## Results
 
@@ -116,7 +134,6 @@ How these were run (lead, through `heavy.ps1` gpu slots): `python main.py --meas
 
 ## What's left
 
-- One attended run with vsync on (`python main.py --vsync`, read the FPS readout) to clear condition 1.
 - Mac run.
 - Command bar drop shadow; playhead line stops at the last track.
 - Not built: real panel resizing (splitters), tabs for several documents, hover tooltips, light theme. Icons are letters in chips; a real icon set is a GUI-kit job.
