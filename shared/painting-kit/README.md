@@ -1,5 +1,104 @@
-# shared/painting-kit
+# shared/painting-kit — `rostrum_paint`, the shared painting kit
 
-One brush engine and one set of painting tools, used by 2D Draw, 3D texture and projection painting, and the Editor's paint-over. People paint with pen pressure and tilt; agents paint with the same brushes and get tools to see the canvas and know exactly where each stroke lands (see `docs/PLAN.md` › Tools for agents to paint).
+One brush engine and one set of painting tools, used by 2D Draw (now), 3D texture and projection painting and the
+Editor's paint-over (later). People paint with a pen (pressure); agents paint with the same brushes and get tools to
+see the canvas and know where each stroke landed (`docs/PLAN.md` › Tools for agents to paint). Shaped by P-PAINT
+(Team Priyam, `proofs/paint/`) and Hem's painters' notes (`proofs/3d-painterly/README.md`).
 
-Shaped by the P-PAINT proof (Team Priyam). No code yet.
+## The idea
+
+- **Strokes are items in the app's one document.** A host app puts a kit **canvas** in one of its own item types
+  (2D: a drawing's `frame`). A canvas holds `paints` (paint layers, bottom first) and `paintmasks`; a paint layer
+  holds `strokes` in painting order. So painting goes through `Document.apply` like every other change: one history,
+  undo / redo per author, who painted what, script re-runs that never wipe a person's strokes.
+- **A stroke batch is one call list**: `doc.apply([stroke.add, stroke.add, …], who)` = one change = one undo step,
+  labelled and recorded with its author. A live pen stroke is one gesture (`stroke.add` once, then `stroke.set
+  {points}` while drawing; release = one change).
+- **Brushes are data**: every brush setting is a `Param` with range, importance and `valid_when` (`fields.BRUSH`).
+  The brush panel, the stroke inspector, the MCP schema and `stroke.add`'s checks all read it; a setting that doesn't
+  apply right now is absent (wetness only with smudge, tip angle only when the tip doesn't turn with the stroke).
+- **Pixels are a cache of the strokes**, never the truth: an agent or a person never waits for a full replay to look.
+
+```python
+import rostrum_paint
+rostrum_paint.register(REGISTRY, canvas_types=("frame",))      # paint.add/set/clear/unlock, stroke.add/set/remove,
+                                                               # paintmask.add/set
+KIND = DocKind(..., lists={..., "frame": rostrum_paint.CANVAS_LISTS, **rostrum_paint.LISTS})
+
+doc.apply([{"op": "stroke.add", "target": "ink", "args": {"points": [[x, y, pressure], …], "color": "#ffb040",
+            "size": 40, "brush": "bristle"}}, …], Who.agent("painter"))           # one batch, one undo step
+from rostrum_paint import canvas, where, see
+canvas.png(frame, w, h)                     # the picture (content-keyed file), what the 2D engine draws
+where.what(frame, w, h, x, y)               # colour, each layer's colour, top stroke, masks there
+where.landed(frame, w, h, "stroke_12")      # did the paint land on the path (mean / worst px off)
+see.view(canvas.rgba8(frame, w, h), zoom=(x0, y0, x1, y1), grid=50)   # a look with a labelled pixel grid
+```
+
+## Modules (each < 200 lines)
+
+| Module | Does |
+|---|---|
+| `fields` | the item types and their fields: paint layer, stroke (the brush), paint mask; `BRUSH` |
+| `ops` | the operations on a host's registry; `build`, the one item builder (also used by an app's script layer) |
+| `marks`, `brush` | the brush engine (carried over from P-PAINT): tips round, bristle, chalk, flat, block, line; pressure; colour and hue drift; paper grain; wet smudge and pick-up; modes normal, multiply, erase, screen, add. Seeded: same stroke, same pixels |
+| `canvas` | where pixels are made: chain-keyed layer states, content-keyed PNGs |
+| `compose` | layers together (normal, multiply, screen, add over transparency); masks as pixels |
+| `where` | `what` is at a pixel; `landed` (P-PAINT's measure) |
+| `see` | the looks on arrays: zoom with a labelled grid and a checkerboard under transparency, before / after, values, small, side by side, onion skin |
+
+## Where pixels are made: numpy now, behind one door (decision, S6)
+
+**Decision: keep the numpy brush engine for now, with a cache that never replays to look; move stamping to Rust later
+behind `canvas.stamp`, the only function that turns a stroke item into brush calls.**
+
+- Why not Rust / Skia now: the 2D engine (`apps/2d/engine/`) is Team Hem's and is being moved in (H5); a second
+  native build in `shared/` needs its own build and binding work, more than this brief's time. Measured below, the
+  cache alone already brings a look under a second for a stroke or an undo; what stays slow is stamping many big or
+  wet strokes, which is exactly what a native engine speeds up. The brush maths (`marks`, `brush`) is small and
+  deterministic, so a port is straightforward and the replay test checks it pixel for pixel.
+- How the cache works: each paint layer's state after its first *i* strokes has a key (the key after *i − 1* strokes +
+  stroke *i*'s JSON + what it reads: its mask, and the layers below when it picks them up). A render takes the longest
+  prefix it holds in memory and stamps only the strokes after it. A new stroke costs one stroke; undo / redo / a
+  redrawn drawing cost the strokes after the nearest kept state (every 24 strokes during a replay, plus every state
+  looked at; memory capped at 1.2 GB, oldest first). Finished canvases are PNG files named by their content in
+  `C:\Users\<you>\.rostrum\cache\paint\` (capped at 1 GB, oldest first): the engine only reads them, and an unchanged drawing
+  is never drawn again. Keys include a hash of the brush code, so a brush change never serves stale pixels.
+
+Measured on the laptop (1920×1080 canvas; "look" = make the picture file + a 1200 px look image with grid):
+
+| | empty canvas | 1,000 strokes already |
+|---|---|---|
+| one round stroke: apply + look | 0.001 + 0.47 s | 0.05 + 0.73 s |
+| one wet (smudge + pick-up) stroke | 0.001 + 0.52 s | 0.05 + 0.83 s |
+| a batch of 20 bristle strokes (8–40 px) | 0.00 + 1.02 s | 0.10 + 1.25 s |
+| undo of two batches + look | 0.46 s | 0.32 s |
+| full replay with no cache (what P-PAINT round 1 did on every look) | — | 32 s |
+
+So: **a look is under a second for a stroke, a pen stroke and an undo; a 20-stroke batch takes about 1.2 s**, of which
+~0.45 s is the fixed cost of a look at 1080p (compositing, converting, writing the PNG, the look image) and the rest is
+stamping. Next, in order of gain: native stamping (Rust, behind `canvas.stamp`); composite and convert only the
+changed box; keep layer states on disk so a reopened document doesn't restamp.
+
+## Tests
+
+`.venv\Scripts\python.exe -m pytest -q shared\painting-kit\tests` (about 1.5 s): cached pixels equal a full replay
+(bristle, chalk with grain, wet pick-up, a multiply layer); undo of a batch gives back the exact document and pixels;
+`landed` reports a 6 px miss as 6 px.
+
+## Not yet
+
+- Pen tilt is stored with a point but not used by the brush; no eraser end of the pen.
+- A stroke on a locked paint layer is refused; editing an existing stroke (`stroke.set`) inside a locked layer is not.
+- Masks made from strokes or layers, perspective guides, image / underpaint layers, one stroke into several maps
+  (colour + roughness + height), 3D camera painting: P-PAINT's list, for the 3D and Editor stages.
+- `rostrum_core` copies the whole document once per call: fine at a few thousand strokes (0.05–0.1 s), to fix in the
+  core (structural sharing) before 10,000-stroke paintings.
+
+## Attribution rows
+
+No new dependencies. numpy and Pillow are already used by other parts and proofs.
+
+| Name | Version | Licence | Used by | How it's linked | Ships? | What it asks of us | Source |
+|---|---|---|---|---|---|---|---|
+| NumPy | from uv cache | BSD-3-Clause | `shared/painting-kit` (brush engine, compositing) | Python package | yes | Keep the notice | https://pypi.org/project/numpy/ |
+| Pillow | from uv cache | MIT-CMU | `shared/painting-kit` (masks, PNG files, look images) | Python package | yes | Keep the notice | https://pypi.org/project/pillow/ |

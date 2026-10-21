@@ -3,12 +3,15 @@
 Both list layers top of the stack first (as they look: the last drawn is on top). The layers panel puts a
 layer's effects and masks under it, then a group's own layers; a folded layer hides all of that. The timeline
 has one row per layer (all its keys, its effects' and masks' too, as one summary line); an opened layer shows
-one row per animated field. A group's layers follow it, indented.
+one row per animated field. A drawing's row also carries its frames (`frames`: where each starts and how long it
+is held). A group's layers follow it, indented.
 """
 from __future__ import annotations
 
 from rostrum2d import fields as F
 from rostrum2d.evaluate import animated, keys_of
+
+from . import framing
 
 
 def label_of(item: dict, owner: dict | None = None) -> str:
@@ -68,14 +71,15 @@ def tracks(comp: dict, opened: set[str]) -> list[dict]:
             is_open = lay["id"] in opened and bool(fields)
             out.append({"row": "layer", "id": lay["id"], "label": label_of(lay), "kind": lay["type"],
                         "depth": depth, "fold": "" if not fields else ("open" if is_open else "closed"),
-                        "keys": summary, "owner": lay["id"], "prop": ""})
+                        "keys": summary, "owner": lay["id"], "prop": "",
+                        "frames": framing.marks(lay, comp["fps"], comp["duration"]) if lay["type"] == "drawing" else []})
             if is_open:
                 for owner, prop in fields:
                     name = F.param(owner["type"], prop).label
                     if owner is not lay:
                         name = f"{label_of(owner)} · {name}"
                     out.append({"row": "field", "id": f"{owner['id']}.{prop}", "label": name, "kind": owner["type"],
-                                "depth": depth + 1, "fold": "", "keys": _keys(owner, prop),
+                                "depth": depth + 1, "fold": "", "keys": _keys(owner, prop), "frames": [],
                                 "owner": owner["id"], "prop": prop})
             walk(lay.get("layers", []), depth + 1)
 

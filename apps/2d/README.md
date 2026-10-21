@@ -20,6 +20,9 @@ doc ─ comps ─ comp (width, height, fps, duration, background)
 - **One fields table** (`fields.py`): every field's type, range, group, importance and `valid_when`. The field operations (`text.set`, `glow.set`, `key.set` …), the inspector, the script layer's checks and the scene's defaults all read it.
 - **One animation model** (`evaluate.py`, `easing.py`, `ops_keys.py`): a field is still, or animated by keys. Keys are items (`title.opacity.k1500`: id from owner, field and time; kept when moved), so a script re-run merges key by key and field by field. `value.set` is "change it as I see it now": a still field changes, an animated one gets a key at `at`.
 - **Operations:** `comp.add`, `layer.add / remove / arrange`, `item.rename`, `effect.add / remove`, `mask.add`, `key.add / remove / clear`, `value.set`, and one `<type>.set` per item type.
+- **Drawing** (`ops_draw.py`, `drawing.py`, the kit `shared/painting-kit/`): a drawing layer holds drawings (`frame`s),
+  each shown from its frame number until the next one (held). Strokes are kit items (`stroke.add`, one call list = one
+  undo step). Guide: `skills/drawing.md`.
 - **Script layer** (`script.py`): `comp(...)`, `shape / text / image / group(...)`, `.key(field, {time: value}, ease=)`, `.effect(type, ...)`, `.mask(...)`, `with group(...):`. See its docstring.
 
 ## Use

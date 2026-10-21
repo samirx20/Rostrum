@@ -1,9 +1,11 @@
 """Scripted steps for screenshots and checks. Each goes through the same bridge call a click or drag makes.
 
-    select <id> | page design|animate | time <s> | set <param> <json value> | scrub <param> <v> <v> …
+    select <id> | page design|draw|animate | time <s> | set <param> <json value> | scrub <param> <v> <v> …
     animate <param> (the key mark's toggle) | drag <layer> <dx> <dy> (canvas drag, composition px)
     keydrag <key id> <t> | open <layer> (timeline rows) | fold <layer> (layers panel) | pick <x> <y>
     undo | redo | more | commands [query …] | run <command key> | play
+  Draw page (on the selected drawing layer): draw <x> <y> <x> <y> … (one stroke, composition px)
+    brush <setting> <value> | newframe [copy] | hold <+n|-n> | frame next|prev | onion on|off
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
@@ -54,6 +56,25 @@ def do_step(bridge, win, step):
         bridge.toggleFold(rest[0])
     elif word == "pick":
         bridge.pickAt(float(rest[0]), float(rest[1]))
+    elif word == "draw":
+        xy = [float(v) for v in rest]
+        if len(xy) < 2 or len(xy) % 2 or not bridge.painter.beginStroke(xy[0], xy[1], 1.0):
+            raise RuntimeError(f"step {step!r}: needs x y pairs and a selected drawing layer")
+        for x, y in zip(xy[2::2], xy[3::2]):
+            bridge.painter.strokeTo(x, y, 1.0)
+        bridge.painter.endStroke()
+    elif word == "brush":
+        bridge.painter.setValue(rest[0], value(" ".join(rest[1:])))
+    elif word == "newframe":
+        bridge.painter.newFrame(rest[:1] == ["copy"])
+    elif word == "clear":
+        bridge.painter.clearDrawing()
+    elif word == "hold":
+        bridge.painter.holdBy(int(rest[0]))
+    elif word == "frame":
+        bridge.painter.goFrame(1 if rest[0] == "next" else -1)
+    elif word == "onion":
+        bridge.painter.setOnion(rest[0] == "on")
     elif word in ("undo", "redo"):
         getattr(bridge, word)()
     elif word == "more":

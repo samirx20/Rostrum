@@ -83,3 +83,24 @@ def test_key_drag_is_one_step_and_keeps_the_key(bridge):
     bridge.endDrag()
     assert len(bridge.doc.history.changes) == n + 1
     assert bridge.doc.item(key)["t"] == 1.5 and bridge.selected == key
+
+
+def test_pen_stroke_is_one_undo_step_and_one_change(bridge):
+    doc = bridge.doc
+    doc.apply([{"op": "layer.add", "target": ["c"], "args": {"type": "drawing", "id": "pad"}},
+               {"op": "drawing.set", "target": ["pad"], "args": {"w": 320, "h": 180}}],
+              bridge.who)
+    bridge.select("pad")
+    bridge.setTime(0.5)
+    n = len(doc.history.changes)
+    assert bridge.painter.beginStroke(20, 20, 1.0)
+    for x in (40, 80, 120):
+        bridge.painter.strokeTo(x, 60, 0.6)
+    bridge.painter.endStroke()
+
+    def strokes():
+        return [s for f in doc.item("pad")["frames"] for p in f["paints"] for s in p["strokes"]]
+    assert len(doc.history.changes) == n + 1 and len(strokes()) == 1
+    assert len(strokes()[0]["points"]) == 4 and strokes()[0]["points"][-1][2] == 0.6
+    bridge.undo()
+    assert not strokes() and not any(f["at"] == 5 for f in doc.item("pad")["frames"])   # the frame it added went too

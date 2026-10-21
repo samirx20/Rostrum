@@ -2,21 +2,26 @@
 operation per item type (`text.set`, `glow.set`, `key.set` …) generated from the fields table.
 
     doc ─ comps ─ comp ─ layers ─ shape | text | image | group (group ─ layers …)
+                                  | drawing ─ frames ─ frame ─ paints ─ paint ─ strokes (painting kit)
+                                                                   ─ paintmasks
                                   each layer ─ effects (blur, glow, gradient, shadow) ─ keys
                                              ─ masks ─ keys
                                              ─ keys
 """
 from __future__ import annotations
 
+import rostrum_paint
 from rostrum_core import DocKind, Registry
 
 from . import fields as F
 
 OWNED = ["effects", "masks", "keys"]
-LISTS = {"doc": ["comps"], "comp": ["layers"], "group": ["layers", *OWNED],
+LISTS = {"doc": ["comps"], "comp": ["layers"], "group": ["layers", *OWNED], "drawing": ["frames", *OWNED],
+         "frame": rostrum_paint.CANVAS_LISTS, **rostrum_paint.LISTS,
          **{t: OWNED for t in ("shape", "text", "image")},
          **{t: ["keys"] for t in (*F.EFFECTS, "mask")}}
-HOLDS = {"comps": ("comp",), "layers": F.LAYERS, "effects": F.EFFECTS, "masks": ("mask",), "keys": ("key",)}
+HOLDS = {"comps": ("comp",), "layers": F.LAYERS, "effects": F.EFFECTS, "masks": ("mask",), "keys": ("key",),
+         "frames": ("frame",), **rostrum_paint.HOLDS}
 
 REGISTRY = Registry()
 
@@ -68,10 +73,15 @@ def check(data: dict) -> list[str]:
                 stack.append(child)
         if item.get("type") in F.ANIMATED_OWNERS:
             _check_keys(item, problems)
+        if item.get("type") == "drawing":
+            ats = [f["at"] for f in item["frames"]]
+            if ats != sorted(set(ats)):
+                problems.append(f'{item["id"]}: drawings must be at different frames, in order (they are at {ats})')
     return problems
 
 
 KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts,
                new=lambda: {"id": "root", "type": "doc", "comps": []})
 
-from . import ops_items, ops_keys  # noqa: E402,F401  (they register on REGISTRY)
+rostrum_paint.register(REGISTRY, canvas_types=("frame",))
+from . import ops_draw, ops_items, ops_keys  # noqa: E402,F401  (they register on REGISTRY)

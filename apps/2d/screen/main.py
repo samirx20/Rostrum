@@ -56,8 +56,8 @@ def main():
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
     bridge = Bridge2D(load_doc(args), args.comp, autosave=bool(args.doc))
-    _, engine, win = start(HERE / "qml" / "Main.qml", {"backend": bridge}, (1600, 960),
-                           providers={"frame": bridge.frames.provider})
+    _, engine, win = start(HERE / "qml" / "Main.qml", {"backend": bridge, "painter": bridge.painter}, (1600, 960),
+                           providers={"frame": bridge.frames.provider, "onion": bridge.painter.provider})
     code = [0]
 
     def guarded(fn):

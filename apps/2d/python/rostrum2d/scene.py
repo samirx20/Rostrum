@@ -4,7 +4,7 @@ frame. `frame_at` is the same evaluation in Python (the reference, and the tempo
 """
 from __future__ import annotations
 
-from . import fields as F
+from . import drawing, fields as F
 from .evaluate import animated, keys_of, resolve
 
 FORMAT, VERSION = "rostrum-2d-scene", 1
@@ -25,6 +25,8 @@ def _node(item: dict) -> dict:
     for key in ("effects", "masks", "layers"):
         if item.get(key):
             node[key] = [_node(child) for child in item[key]]
+    if item["type"] == "drawing":       # the painting kit makes each drawing's picture once; the engine only reads it
+        node["frames"] = [{"at": f["at"], "src": str(drawing.picture(item, f))} for f in item["frames"]]
     return node
 
 
@@ -55,6 +57,10 @@ def frame_at(scene: dict, t: float) -> dict:
         props = out["props"]
         if node["type"] in F.LAYERS and not (props["start"] <= t < props["end"]):
             return None
+        if node["type"] == "drawing":
+            shown = drawing.frame_at(node, drawing.frame_number(t, fps))
+            props["src"] = shown["src"] if shown else ""
         return out
 
+    fps = scene["comp"]["props"]["fps"]
     return {"format": FORMAT, "version": VERSION, "t": t, "comp": at(scene["comp"])}
