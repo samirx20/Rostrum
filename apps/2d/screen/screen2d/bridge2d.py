@@ -9,20 +9,15 @@ from rostrum_gui import DocBridge
 from rostrum_gui.markers import MarkerWatch
 
 from . import bounds, outline
-from .adding import Adder
-from .curves import Curves
 from .drags import DragSlots
-from .exporter import Exporter
 from .frames import FrameRenderer
 from .handle_slots import HandleSlots
 from .hooks import Hooks2D
-from .importer import Importer
-from .multi import Multi
 from .painter import Painter
-from .pen import Pen
+from .tools2d import ToolSlots
 
 
-class Bridge2D(DragSlots, HandleSlots, Hooks2D, DocBridge):
+class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     pageChanged = Signal()
     frameChanged = Signal()
@@ -42,48 +37,21 @@ class Bridge2D(DragSlots, HandleSlots, Hooks2D, DocBridge):
         self.frames.ready.connect(self._on_frame)
         self.frames.failed.connect(self._fail)
         self.painter = Painter(self)
-        self._pen = Pen(self)
-        self._curves = Curves(self)
-        self._multi = Multi(self)                           # several layers selected (multi.py): backend.multi
-        self._exporter = Exporter(self)
-        self._importer, self._adder = Importer(self), Adder(self)
+        self._make_tools()                                  # pen, curves, export, import, add, problems (tools2d.py)
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self.marks = MarkerWatch(doc.folder, self, self.who, self._fail, "2d")   # shared markers: flags, edits, snap
         self.marks.changed.connect(self.markersChanged)
         self.join_history(self.marks)                       # marker edits undo with the screen's one history
         self.marks.changed.connect(self._render)            # expressions may read marker("…")
+        self.marks.changed.connect(self._problems.touch)
         self.selectionChanged.connect(self.outlineChanged)
         self._render()
+        self._problems.touch()
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
     def comp(self) -> dict:
         return self.doc.item(self.comp_id)
-
-    @Property(QObject, constant=True)
-    def pen(self):
-        """The pen tool and path point editing (pen.py)."""
-        return self._pen
-
-    @Property(QObject, constant=True)
-    def exporter(self):
-        """The Export button's job (exporter.py)."""
-        return self._exporter
-
-    @Property(QObject, constant=True)
-    def importer(self):
-        """The Import panel's job (importer.py)."""
-        return self._importer
-
-    @Property(QObject, constant=True)
-    def adder(self):
-        """The Add menu (adding.py)."""
-        return self._adder
-
-    @Property(QObject, constant=True)
-    def curves(self):
-        """The timeline's curve editor (curves.py)."""
-        return self._curves
 
     @Property(float, notify=timeChanged)
     def time(self):
@@ -205,6 +173,7 @@ class Bridge2D(DragSlots, HandleSlots, Hooks2D, DocBridge):
         super()._on_doc(event)
         self.outlineChanged.emit()
         self._render()
+        self._problems.touch()
         if self.autosave and event.kind == "change":
             self._guard(self.doc.save)
 
@@ -213,3 +182,4 @@ class Bridge2D(DragSlots, HandleSlots, Hooks2D, DocBridge):
         self.marks.close()
         self.endDrag()
         self.frames.close()
+        self._problems.close()

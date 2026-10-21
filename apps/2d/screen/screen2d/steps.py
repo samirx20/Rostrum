@@ -15,6 +15,7 @@
     degrees) | boxselect <x0> <y0> <x1> <y1> (the rubber band) | shiftpick <layer> (add / remove) | movesel <dx> <dy> (move all selected)
   Add and import: add <type> (the Add menu's entry; image / video: add image <path>) | addmenu open|close |
     import <path> [page=<n>] [text=outline] (the Import panel's job, fails like it) | importpanel open [path]|close
+    problems open|close (the Problems panel, after the list is worked out) | inspectorscroll <px>
   Export: export <mp4|prores4444|webm|gif|png|lottie> [alpha=on|off] [depth=8|16] [start=<s>] [end=<s>] (the Export button's
     job; waits for it) | exportpanel open [format]|close | exportcancel [format] (start one, then Cancel it)
 A step that leaves an error in the status fails (nonzero exit).
@@ -188,6 +189,18 @@ def do_step(bridge, win, step):
         if rest[1:]:
             bridge.importer.setFile(rest[1])
         QMetaObject.invokeMethod(win, "setImportOpen", Q_ARG("QVariant", rest[0] == "open"))
+    elif word == "problems":                     # the Problems panel, once the list is worked out
+        if not bridge.problems.wait(30):
+            raise RuntimeError(f"step {step!r}: the problems list was not ready in 30 s")
+        QMetaObject.invokeMethod(win, "setProblemsOpen", Q_ARG("QVariant", rest[0] == "open"))
+    elif word == "inspectorscroll":              # scroll the (visible) inspector to <px> from its top
+        from PySide6.QtCore import QObject
+        end = time.time() + 0.4                  # rows that just appeared ease in (Theme.reveal): let them finish
+        while time.time() < end:
+            QCoreApplication.processEvents()
+        for f in win.findChildren(QObject, "inspectorScroll"):
+            if f.property("visible"):
+                f.setProperty("contentY", min(float(rest[0]), max(0.0, f.property("contentHeight") - f.property("height"))))
     elif word == "exportpanel":
         if rest[1:]:
             bridge.exporter.setFormat(rest[1])
