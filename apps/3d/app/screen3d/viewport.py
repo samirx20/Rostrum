@@ -1,0 +1,188 @@
+"""The live 3D viewport, for QML as `viewport`: the camera (viewcam.ViewCam), the viewport-only light settings and
+the picture (frames.ViewRenderer, image://view/<serial>). Everything here is screen state: orbiting, exposure or
+the studio light never touch the document or its history. Clicking picks through the engine and selects the item
+(empty space selects nothing, as clicking the empty 2D canvas selects the composition).
+
+It starts looking through the shot camera; orbiting, panning or zooming there switches to the free camera from
+the shot camera's view. It draws again when the document, the playhead frame or the selection changes.
+"""
+from __future__ import annotations
+
+import sys
+
+from PySide6.QtCore import Property, QObject, Signal, Slot
+
+from .frames import ViewRenderer
+from .viewcam import ViewCam
+
+MAX_WIDTH = 1600             # pictures wider than this are drawn smaller and scaled up on screen
+
+
+def scene_ids(scene: dict) -> set[str]:
+    out, stack = set(), list(scene.get("items", []))
+    while stack:
+        node = stack.pop()
+        out.add(node["id"])
+        stack += node.get("children", [])
+    return out
+
+
+class Viewport(QObject):
+    serialChanged = Signal()
+    settingsChanged = Signal()
+    statusChanged = Signal()
+
+    def __init__(self, bridge, parent=None):
+        super().__init__(parent or bridge)
+        self.bridge, self.cam = bridge, ViewCam()
+        self._r = ViewRenderer(self)
+        self.provider = self._r.provider
+        self._serial, self._ms, self._status = 0, 0.0, ""
+        self._exposure, self._studio, self._lights = 0.0, 1.0, True
+        self._size, self._scale = None, 1.0          # request size (picture pixels); picture px per screen px
+        self._scene, self._shot, self._started = None, None, False
+        self._r.ready.connect(self._on_ready)
+        self._r.picked.connect(self._on_picked)
+        self._r.failed.connect(self._set_status)
+        self._r.notice.connect(self._set_status)
+        bridge.docChanged.connect(self._on_doc)
+        bridge.frameChanged.connect(self.redraw)
+        bridge.selectionChanged.connect(self.redraw)
+
+    # --- QML properties
+    serial = Property(int, lambda s: s._serial, notify=serialChanged)
+    ms = Property(float, lambda s: s._ms, notify=serialChanged)
+    status = Property(str, lambda s: s._status, notify=statusChanged)
+    mode = Property(str, lambda s: s.cam.mode, notify=settingsChanged)
+    hasShot = Property(bool, lambda s: bool(s.cam.camera), notify=settingsChanged)
+    exposure = Property(float, lambda s: s._exposure, notify=settingsChanged)
+    studio = Property(float, lambda s: s._studio, notify=settingsChanged)
+    sceneLights = Property(bool, lambda s: s._lights, notify=settingsChanged)
+
+    # --- the scene and the shot (compiled once per document change, not per mouse move)
+    def _on_doc(self, *_):
+        self._scene = self._shot = None
+        self.redraw()
+
+    def _compiled(self):
+        if self._scene is None:
+            self._shot, self._scene = self.bridge.shot_info(), self.bridge.scene()
+            if self.cam.camera and self.cam.camera != self._shot["camera"]:
+                self.cam.camera = ""                 # the shot's camera changed: start from the new one
+                self._started = False
+            if not self._started:
+                self._home()
+                self.cam.mode, self._started = "shot", True
+                self.settingsChanged.emit()
+        return self._scene
+
+    def _home(self):
+        w, h = self._size or (16, 9)
+        self.cam.home(self._scene, self._shot["camera"], self.bridge.frame, w / h)
+
+    def _leave_shot(self):
+        """A camera move while looking through the shot camera: continue freely from its view."""
+        if self.cam.mode == "shot":
+            self._home()
+            self.settingsChanged.emit()
+
+    def _guard(self, fn) -> bool:
+        try:
+            fn()
+            return True
+        except Exception as e:  # noqa: BLE001  a viewport that can't draw says why, loudly
+            self._set_status(f"Error: viewport: {e}")
+            print(self._status, file=sys.stderr)
+            return False
+
+    def _request(self) -> dict:
+        w, h, sel = *self._size, self.bridge.selected
+        return {**self.cam.request(self.bridge.frame, w, h), "renderer": "storm", "view": "",
+                "exposure": self._exposure, "studio": self._studio, "sceneLights": self._lights,
+                "selected": [sel] if sel in scene_ids(self._scene) else []}    # a material or key has no outline
+
+    @Slot()
+    def redraw(self):
+        if self._size is not None:
+            self._guard(lambda: self._r.request(self._compiled(), self._request()))
+
+    # --- slots for QML
+    @Slot(float, float)
+    def setSize(self, w, h):
+        """The viewport's size in device pixels; the picture is drawn at that size, at most MAX_WIDTH wide."""
+        self._scale = min(1.0, MAX_WIDTH / max(w, 1.0))
+        size = (max(16, round(w * self._scale)), max(16, round(h * self._scale)))
+        if size != self._size:
+            self._size = size
+            self.redraw()
+
+    def _move(self, fn):
+        if self._guard(lambda: (self._compiled(), self._leave_shot(), fn())):
+            self.redraw()
+
+    @Slot(float, float)
+    def orbit(self, dx, dy):
+        self._move(lambda: self.cam.orbit(dx, dy))
+
+    @Slot(float, float)
+    def pan(self, dx, dy):
+        self._move(lambda: self.cam.pan(dx * self._scale, dy * self._scale, self._size[1]))
+
+    @Slot(float)
+    def zoom(self, steps):
+        self._move(lambda: self.cam.zoom(steps))
+
+    @Slot()
+    def home(self):
+        if self._guard(lambda: (self._compiled(), self._home())):
+            self.settingsChanged.emit()
+            self.redraw()
+
+    @Slot(str)
+    def setMode(self, m):
+        if m != self.cam.mode and self._guard(lambda: (self._compiled(), self.cam.set_mode(m))):
+            self.settingsChanged.emit()
+            self.redraw()
+
+    def _setting(self, name, value):
+        if getattr(self, name) != value:
+            setattr(self, name, value)
+            self.settingsChanged.emit()
+            self.redraw()
+
+    @Slot(float)
+    def setExposure(self, v):
+        self._setting("_exposure", max(-4.0, min(4.0, float(v))))
+
+    @Slot(float)
+    def setStudio(self, v):
+        self._setting("_studio", max(0.0, min(2.0, float(v))))
+
+    @Slot(bool)
+    def setSceneLights(self, b):
+        self._setting("_lights", bool(b))
+
+    @Slot(float, float)
+    def click(self, x, y):
+        """A click at (x, y) device pixels: select what is there."""
+        if self._size is not None:
+            self._guard(lambda: self._r.pick(self._compiled(), {**self.cam.request(self.bridge.frame, *self._size),
+                                                                "x": round(x * self._scale), "y": round(y * self._scale)}))
+
+    def close(self):
+        self._r.close()
+
+    # --- answers from the worker
+    def _on_ready(self, serial, ms):
+        self._serial, self._ms = serial, ms
+        self._set_status("")                         # a picture came: the last failure or restart notice is over
+        self.serialChanged.emit()
+
+    def _on_picked(self, item):
+        if item != self.bridge.selected:
+            self.bridge.select(item)
+
+    def _set_status(self, text):
+        if text != self._status:
+            self._status = text
+            self.statusChanged.emit()

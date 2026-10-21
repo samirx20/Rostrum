@@ -48,10 +48,10 @@ def _manifest(item, doc, info, partial: Path, renderer: str, size, frames: list[
             "files": files, "checks": {"frame_count": "ok", "readable": "ok"}}
 
 
-def _folder(ctx, doc, info) -> tuple[Path, bool]:
+def _folder(folder, doc, info) -> tuple[Path, bool]:
     """A new empty .partial folder: the project's next version, or the render cache. (path, is a project version)"""
-    if ctx.app.folder and doc.item_id:
-        return project.begin_render(ctx.app.folder, doc.item_id), True
+    if folder and doc.item_id:
+        return project.begin_render(folder, doc.item_id), True
     return render_cache_folder(f'{doc.item_id or "doc"}_{info["id"]}'), False
 
 
@@ -70,6 +70,21 @@ def _renumber(folder: Path, name: str, ext: str, start: int, first_file: int):
         f.rename(f.with_name(f"{name}.{first_file + n - start:04d}.{ext}"))
 
 
+def still(where: str, doc, info: dict, scene: dict, engine, frame: int, renderer: str, size: tuple[int, int], formats: list[str],
+          exposure: float = 0, settings: dict | None = None, folder=None) -> tuple[Path, list[Path], dict]:
+    """One picture of a shot frame through its camera, as a whole project render version (or in the render cache without a
+    project folder). The one code path of the render_still tool and the 3D screen's Render button. Blocking: call it from a job.
+    Returns (the finished folder, its files, the engine's reply); a failure raises RENDER_FAILED and leaves only a .partial."""
+    partial, is_version = _folder(folder, doc, info)
+    item, (w, h) = doc.item_id, size
+    name = f'{item or "doc"}_{info["id"]}_f{frame:04d}'
+    req = {f: str(partial / f"{name}.{f}") for f in formats}
+    out = draw.render(where, f"frame {frame} of {info['id']}", engine, scene, camera=info["camera"], renderer=renderer, frame=frame,
+                      width=w, height=h, exposure=exposure, **req, **(settings or {}))
+    done = _finish(partial, is_version, _manifest(item, doc, info, partial, renderer, (w, h), [frame], [Path(p).name for p in req.values()], FIRST))
+    return done, [done / Path(p).name for p in req.values()], out
+
+
 @tools.tool("render_still", {"properties": {**ITEM_SHOT, **TIME, "quality": QUALITY_ARG, **SETTINGS,
                                              "formats": {"type": "array", "items": {"enum": ["png", "exr"]}, "minItems": 1, "uniqueItems": True,
                                                          "default": ["png", "exr"], "description": "png = 8-bit sRGB picture, exr = scene-linear half-float for the Editor."}}})
@@ -83,13 +98,8 @@ def render_still(ctx, args):
     scene, engine, item = draw.scene_of(doc, info["id"]), draw.engine_of(ctx), doc.item_id
 
     def job_fn(job):
-        partial, is_version = _folder(ctx, doc, info)
-        name = f'{item or "doc"}_{info["id"]}_f{frame:04d}'
-        req = {f: str(partial / f"{name}.{f}") for f in formats}
-        out = draw.render(ctx.tool, f"frame {frame} of {info['id']}", engine, scene, camera=info["camera"], renderer=renderer, frame=frame,
-                          width=w, height=h, exposure=args.get("exposure", 0), **req, **_cycles(args, renderer))
-        done = _finish(partial, is_version, _manifest(item, doc, info, partial, renderer, (w, h), [frame], [Path(p).name for p in req.values()], FIRST))
-        files = [done / Path(p).name for p in req.values()]
+        done, files, out = still(ctx.tool, doc, info, scene, engine, frame, renderer, (w, h), formats, args.get("exposure", 0),
+                                 _cycles(args, renderer), ctx.app.folder)
         return Reply(f'Rendered frame {frame} ({seconds(info, frame):.3f} s) of {info["id"]}: {w}×{h}, {renderer}, {out["frames"][0]["ms"] / 1000:.1f} s.',
                      {"frame": frame, "time": seconds(info, frame), "renderer": out.get("renderer", renderer), "timing": out.get("timing", {}),
                       "vram": out.get("vram", {}), "folder": str(done)}, files, warnings=engine.take_notices())
@@ -121,7 +131,7 @@ def render_video(ctx, args):
     keep_exr = args.get("exr", False)
 
     def job_fn(job):
-        partial, is_version = _folder(ctx, doc, info)
+        partial, is_version = _folder(ctx.app.folder, doc, info)
         name, mp4 = f'{item or "doc"}_{info["id"]}', partial / f'{item or "doc"}_{info["id"]}.mp4'
         pngs = partial / "_png"
         pngs.mkdir()

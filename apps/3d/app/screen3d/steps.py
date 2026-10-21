@@ -1,0 +1,78 @@
+"""Scripted steps for screenshots and checks. Each goes through the same bridge (or viewport) call a click or drag makes.
+
+    select <id> | frame <n> | set <param> <json value> | scrub <param> <v> <v> … | animate <param> (the key mark)
+    keydrag <key id> <frame> | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
+    render (Cycles, the playhead frame; waits for the job, up to 10 min) | closerender
+  Viewport (screen state, never the document): orbit <dx> <dy> | pan <dx> <dy> | zoom <steps> | mode shot|free
+    exposure <stops> | studio <amount> | lights on|off | home | click <x> <y> (viewport pixels: selects what is there)
+A step that leaves an error in the status fails (nonzero exit).
+"""
+from __future__ import annotations
+
+import json
+
+from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject
+
+RENDER_WAIT_S = 600
+VIEW = {"orbit": lambda v, a: v.orbit(float(a[0]), float(a[1])), "pan": lambda v, a: v.pan(float(a[0]), float(a[1])),
+        "zoom": lambda v, a: v.zoom(float(a[0])), "mode": lambda v, a: v.setMode(a[0]),
+        "exposure": lambda v, a: v.setExposure(float(a[0])), "studio": lambda v, a: v.setStudio(float(a[0])),
+        "lights": lambda v, a: v.setSceneLights(a[0] == "on"), "home": lambda v, a: v.home(),
+        "click": lambda v, a: v.click(float(a[0]), float(a[1]))}
+
+
+def value(text):
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return text            # a bare word is a string: set shape sphere
+
+
+def do_step(bridge, win, step):
+    word, *rest = step.split()
+    if word == "select":
+        bridge.select(rest[0])
+    elif word == "frame":
+        bridge.setFrame(int(rest[0]))
+    elif word == "set":
+        bridge.setValue(rest[0], value(" ".join(rest[1:])))
+    elif word == "scrub":
+        for v in rest[1:]:
+            bridge.scrub(rest[0], value(v))
+        bridge.endScrub()
+    elif word == "animate":
+        bridge.toggleAnimate(rest[0])
+    elif word == "keydrag":
+        if not bridge.beginKeyDrag(rest[0]):
+            raise RuntimeError(f"step {step!r}: {bridge.status}")
+        bridge.keyDragTo(float(rest[1]))
+        bridge.endDrag()
+    elif word == "fold":
+        bridge.toggleFold(rest[0])
+    elif word in ("undo", "redo"):
+        getattr(bridge, word)()
+    elif word == "more":
+        bridge.toggleMore()
+    elif word == "play":
+        bridge.togglePlay()
+    elif word == "commands":
+        QMetaObject.invokeMethod(win, "openCommands", Q_ARG("QVariant", " ".join(rest)))
+    elif word == "run":
+        bridge.run(rest[0])
+    elif word == "render":
+        bridge.renderStill()
+        if not bridge.render.wait(RENDER_WAIT_S):
+            raise RuntimeError(f"step {step!r}: the render did not finish in {RENDER_WAIT_S} s")
+        QCoreApplication.processEvents()          # deliver the job's result to the GUI thread
+        if bridge.render.state != "done":
+            raise RuntimeError(f"step {step!r}: {bridge.render.note}")
+    elif word == "closerender":
+        bridge.render.dismiss()
+    elif word in VIEW:
+        if bridge.viewport is None:
+            raise RuntimeError(f"step {step!r}: no viewport")
+        VIEW[word](bridge.viewport, rest)
+    else:
+        raise ValueError(f"unknown step {step!r}")
+    if bridge.status.startswith("Error"):
+        raise RuntimeError(f"step {step!r}: {bridge.status}")
