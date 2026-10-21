@@ -8,6 +8,8 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools, sheet
 from rostrum_core.mcp.files import look_path
 
+from rostrum3d import through as thru
+
 from . import draw
 from .shot import ITEM_SHOT, LOOK, TIME, check_frame, doc_and_shot, frame_of, renderer_of, seconds, size_of
 
@@ -19,14 +21,34 @@ def _settings(renderer: str) -> dict:
     return {"samples": LOOK_SAMPLES, "denoise": True} if renderer == "cycles" else {}
 
 
-@tools.tool("look_frame", {"properties": {**ITEM_SHOT, **TIME, **LOOK}})
+THROUGH = {"through": {"type": "string", "description": "A light's id (rect, disk, strip, sphere, distant): look from where it stands along "
+                                                         "the way it shines (60° tall view, level) instead of through the shot camera, to aim it."}}
+
+
+def _through(ctx, scene: dict, light: str, frame: int, aspect: float) -> str:
+    """Add a camera standing where `light` looks from; its id."""
+    try:
+        cam = thru.as_camera(scene, light, frame, aspect)
+    except ValueError as e:
+        raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f'through "{light}"', str(e)) from None
+    if any(n["id"] == cam["id"] for n in scene["items"]):
+        raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, "through", f'an item is already called "{cam["id"]}"; rename it')
+    scene["items"].append(cam)
+    return cam["id"]
+
+
+@tools.tool("look_frame", {"properties": {**ITEM_SHOT, **TIME, **LOOK, **THROUGH}})
 def look_frame(ctx, args):
     """One rendered frame of a shot, seen through the SHOT's camera by the same render path as export: a PNG file and an image you
-    can see. quality fast = Storm, final = Cycles (slower); renderer picks one by name (storm, cycles, stylized)."""
+    can see. quality fast = Storm, final = Cycles (slower); renderer picks one by name (storm, cycles, stylized). through = a light's
+    id: see from the light instead (what it shines on is the middle of the picture)."""
     doc, info = doc_and_shot(ctx, args)
     frame, renderer = frame_of(ctx, info, args), renderer_of(args)
     w, h = size_of(info, args)
     scene, engine = draw.scene_of(doc, info["id"]), draw.engine_of(ctx)
+    if args.get("through"):
+        scene = {**scene, "items": list(scene["items"])}       # the document's compiled scene stays as it was
+        info = {**info, "camera": _through(ctx, scene, args["through"], frame, w / h)}
     dest = look_path(f'{doc.item_id or "doc"}_{info["id"]}_f{frame}_{renderer}')
 
     def job_fn(job):

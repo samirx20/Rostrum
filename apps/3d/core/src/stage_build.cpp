@@ -9,6 +9,7 @@
 #include <pxr/usd/usdGeom/xform.h>
 
 #include "json_read.h"
+#include "light_extras.h"
 #include "materials.h"
 #include "stage_items.h"
 
@@ -60,6 +61,7 @@ BuildResult build_stage(const JsObject& scene, const UsdStageRefPtr& stage) {
   ctx.end = end;
   ctx.materials = build_materials(built, s.list("materials"));
   build_items(ctx, s.list("items"), SdfPath("/World"), "items");
+  link_lights(built);  // lightsOnly ids -> UsdLux lightLink collections, once every item exists
   s.finish();
 
   BuildResult result;
@@ -70,6 +72,7 @@ BuildResult build_stage(const JsObject& scene, const UsdStageRefPtr& stage) {
   result.start = start;
   result.end = end;
   result.fps = fps;
+  publish_light_extras(built);  // what the Hydra filters hand the renderers (light_extras.h); same paths once moved
   stage->GetRootLayer()->TransferContent(layer);
   return result;
 }

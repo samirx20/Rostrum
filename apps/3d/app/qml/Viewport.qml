@@ -4,7 +4,8 @@ import RostrumKit
 // The live 3D viewport: the engine's Storm picture (image://view, drawn off the GUI thread at this item's size),
 // with a small bar of viewport-only settings. Left drag orbits, middle drag or Shift + left drag pans, the wheel
 // zooms, a click (press and release without dragging) selects what is there, a double click goes home. In the shot
-// camera any camera move continues freely from its view. None of this touches the document or its history.
+// camera, or looking through a light, any camera move continues freely from its view. None of this touches the
+// document or its history.
 Rectangle {
     id: vp
     color: Theme.sunken
@@ -12,6 +13,7 @@ Rectangle {
     clip: true
     readonly property real dpr: Screen.devicePixelRatio
     readonly property bool free: viewport.mode === "free"
+    readonly property bool throughLight: viewport.mode === "light"
 
     function resize() { if (width > 0 && height > 0) viewport.setSize(width * dpr, height * dpr) }
     onWidthChanged: resize()
@@ -71,8 +73,15 @@ Rectangle {
             Toggle {
                 visible: viewport.hasShot
                 anchors.verticalCenter: parent.verticalCenter
-                checked: !vp.free
+                checked: viewport.mode === "shot"
                 onToggled: (v) => viewport.setMode(v ? "shot" : "free")
+            }
+            Label { text: "Look through light"; visible: viewport.canThroughLight }
+            Toggle {
+                visible: viewport.canThroughLight   // a panel, bulb or sun is selected (or already looked through)
+                anchors.verticalCenter: parent.verticalCenter
+                checked: vp.throughLight
+                onToggled: (v) => viewport.setMode(v ? "light" : "free")
             }
             Label { text: "Exposure" }
             Slider {
@@ -124,6 +133,12 @@ Rectangle {
         }
     }
 
+    Text {  // which light is looked through
+        visible: vp.throughLight
+        anchors { left: parent.left; bottom: parent.bottom; margins: Theme.pad }
+        text: "Through light " + viewport.throughLight + "  ·  where it shines is the middle  ·  drag to look around freely"
+        color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label
+    }
     Text {  // how to move, only while the free camera is in use
         visible: vp.free
         anchors { left: parent.left; bottom: parent.bottom; margins: Theme.pad }

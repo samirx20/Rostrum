@@ -38,8 +38,10 @@ def material_assign(ctx, targets, args):
              "one undo brings both back).", target="material", label="Delete", importance="secondary")
 def material_remove(ctx, targets, args):
     for item in list(walk(ctx.doc, ctx.kind.lists)):
-        if item.get("type") in USERS and item.get("material") in targets:
-            ctx.set(item["id"], "material", "")
+        if item.get("type") in USERS:
+            for field in ("material", "frontMaterial", "bevelMaterial", "sideMaterial", "backMaterial"):
+                if item.get(field) and item[field] in targets:
+                    ctx.set(item["id"], field, "")
     for t in targets:
         ctx.remove(t)
 

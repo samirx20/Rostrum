@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from rostrum_core.keys import keys_of, track_value
 
-from . import aim, fields as F
+from . import aim, fields as F, outline as outlines, rigs
+from .outline_fields import FIELDS as _OUTLINE_PARAMS, OUTLINE_SHAPES
 from .colors import linear
+from .light_fields import DOC_ONLY as LIGHT_DOC_ONLY
 
 FORMAT, VERSION = "rostrum-3d-scene", 1
 AIM_FIELDS = {"aim", "aimX", "aimY", "aimZ", "aimItem"}      # document-only: the compiler resolves them
 ROTATION = ("rx", "ry", "rz")
+DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"}      # words, font, file … never sent
 
 
 def _shot(data: dict, shot_id: str) -> dict:
@@ -39,8 +42,8 @@ class _Frames:
     """Every item's resolved values and world transform, per frame; aims resolved lazily (an aim at an item needs
     that item's world position, which may need its parent's aim first)."""
 
-    def __init__(self, data: dict, frames: range, fps: float):
-        self.frames, self.fps, self.items, self.parent = frames, fps, {}, {}
+    def __init__(self, data: dict, frames: range, fps: float, folder=None):
+        self.frames, self.fps, self.items, self.parent, self.folder = frames, fps, {}, {}, folder
         stack = [(i, None) for i in data.get("items", [])]
         while stack:
             item, parent = stack.pop()
@@ -54,7 +57,11 @@ class _Frames:
             v = {p.name: item.get(p.name, p.default) for p in F.FIELDS[item["type"]]}
             for prop in {k["prop"] for k in item.get("keys", [])}:
                 v[prop] = track_value(keys_of(item, prop), t)
-            if v["aim"] != "none":
+            if item["type"] == "rig":
+                v.update(rigs.transform(v, t))
+            elif item["type"] == "light" and v["kind"] == "dome":     # a dome only turns around up (light_fields.py)
+                v["rx"], v["ry"], v["rz"] = 0.0, v["turn"], 0.0
+            elif v["aim"] != "none":
                 v["rx"], v["ry"], v["rz"] = self._aim(id_, v, f)
             self._values[(id_, f)] = v
         return self._values[(id_, f)]
@@ -94,12 +101,47 @@ def _out(p, value):
     return round(value, 6) if isinstance(value, float) else value
 
 
+def _rig_node(item: dict, fr: _Frames) -> dict:
+    """A rig goes to the core as a group whose transform is baked per frame (rigs.py)."""
+    params = [p for p in F.FIELDS["group"] if p.name not in AIM_FIELDS]
+    per_frame = {p.name: [fr.values(item["id"], f)[p.name] for f in fr.frames] for p in params}
+    turns = rigs.continuous(list(zip(*(per_frame[r] for r in ROTATION))))
+    for i, r in enumerate(ROTATION):
+        per_frame[r] = [t[i] for t in turns]
+    node = {"id": item["id"], "type": "group", "props": {p.name: _out(p, per_frame[p.name][0]) for p in params}}
+    anim = {k: [_out(F.param("group", k), x) for x in vals] for k, vals in per_frame.items()
+            if k != "visible" and max(vals) - min(vals) > 1e-9}
+    if anim:
+        node["anim"] = anim
+    node["children"] = [_node(c, fr) for c in item.get("children", [])]
+    return node
+
+
+def _outline_props(id_: str, values: dict, props: dict, folder):
+    """A text / svg / path2d mesh goes to the core as shape "outline": the flattened outline in metres, and none of the
+    fields that only the document needs (the words, the font, the file …)."""
+    outline = outlines.for_item({**values, "id": id_}, folder)
+    for name in DOCUMENT_ONLY:
+        props.pop(name, None)
+    props["shape"], props["outline"] = "outline", outline
+
+
 def _node(item: dict, fr: _Frames) -> dict:
+    if item["type"] == "rig":
+        return _rig_node(item, fr)
     type_, first = item["type"], fr.frames[0]
-    params = [p for p in F.FIELDS[type_] if p.name not in AIM_FIELDS]
+    params = [p for p in F.FIELDS[type_] if p.name not in AIM_FIELDS
+              and not (type_ == "light" and p.name in LIGHT_DOC_ONLY)]
     v0 = fr.values(item["id"], first)
     node = {"id": item["id"], "type": type_, "props": {p.name: _out(p, v0[p.name]) for p in params}}
+    if type_ == "mesh" and v0["shape"] in OUTLINE_SHAPES:
+        _outline_props(item["id"], v0, node["props"], fr.folder)
+    elif type_ == "mesh":
+        for name in DOCUMENT_ONLY:
+            node["props"].pop(name)
     animated = {k["prop"] for k in item.get("keys", [])} - AIM_FIELDS
+    if type_ == "light" and v0["kind"] == "dome" and "turn" in animated:
+        animated.add("ry")
     per_frame = {}
     if item.get("aim", "none") != "none":
         per_frame = {r: [fr.values(item["id"], f)[r] for f in fr.frames] for r in ROTATION}
@@ -119,11 +161,11 @@ def _node(item: dict, fr: _Frames) -> dict:
     return node
 
 
-def describe(data: dict, shot_id: str) -> dict:
-    """The contract § 2 scene of one shot."""
+def describe(data: dict, shot_id: str, folder=None) -> dict:
+    """The contract § 2 scene of one shot. `folder`: the project folder (a path2d mesh reads its 2D document there)."""
     info, shot = shot_info(data, shot_id), _shot(data, shot_id)
     frames = range(info["start"], info["end"] + 1)
-    fr = _Frames(data, frames, info["fps"])
+    fr = _Frames(data, frames, info["fps"], folder)
     cam = fr.items.get(info["camera"])
     if cam is None or cam["type"] != "camera":
         raise ValueError(f'shot "{shot_id}": its camera "{info["camera"]}" is not a camera in this document')

@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// A small drawn icon per 3D thing: mesh (a cube), group, import (a file), part, light (a bulb), camera,
+// A small drawn icon per 3D thing: mesh (a cube), group, import (a file), part, light (a bulb), camera, rig (a camera on an arc),
 // material (a shaded ball), shot (a frame with a play mark).
 Canvas {
     id: c
@@ -32,6 +32,9 @@ Canvas {
         } else if (kind === "camera") {  // a body and its lens
             rr(1.5, 4, 8, 7, 1.5); g.stroke()
             g.beginPath(); g.moveTo(9.5, 6.5); g.lineTo(12.5, 4.5); g.lineTo(12.5, 10.5); g.lineTo(9.5, 8.5); g.stroke()
+        } else if (kind === "rig") {     // a small camera riding an arc
+            g.beginPath(); g.arc(7, 13, 6, Math.PI * 1.1, Math.PI * 1.9); g.stroke()
+            rr(4.5, 1.5, 5, 4, 1); g.fill()
         } else if (kind === "material") {  // a ball with a highlight
             g.beginPath(); g.ellipse(2, 2, 10, 10); g.stroke()
             g.beginPath(); g.ellipse(4.5, 4.5, 2.6, 2.6); g.fill()

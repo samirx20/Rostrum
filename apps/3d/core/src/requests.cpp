@@ -14,6 +14,7 @@
 #include "args.h"
 #include "error.h"
 #include "inspect.h"
+#include "light_extras.h"
 #include "view_camera.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
@@ -218,8 +219,11 @@ JsObject Core::view(const JsObject& o) {
   if (pic.sun)
     sun = JsValue(JsObject{{"toward", vec3(GfVec3d(pic.sun->toward[0], pic.sun->toward[1], pic.sun->toward[2]))},
                            {"share", JsValue(pic.sun->share)}, {"angleDeg", JsValue(pic.sun->angleDeg)}});
+  JsArray missing;  // product lighting the quick view can't show (light_extras.h): said, never faked
+  for (const std::string& note : light_extras().stormNotes) missing.push_back(JsValue(note));
   return JsObject{{"ok", JsValue(true)}, {"width", JsValue(w)}, {"height", JsValue(h)}, {"shm", JsValue(info)},
                   {"sceneDome", JsValue(pic.sceneDome)}, {"sun", sun}, {"cameraDof", JsValue(bool(lens))},
+                  {"notInQuickView", JsValue(missing)},
                   {"timing", JsValue(JsObject{{"drawMs", JsValue(r1(draw_ms))}, {"totalMs", JsValue(r1(ms_since(t0)))}})}};
 }
 

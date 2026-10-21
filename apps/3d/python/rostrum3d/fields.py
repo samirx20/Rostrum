@@ -13,6 +13,9 @@ from rostrum_core import Param
 from rostrum_core.conditions import holds
 from rostrum_core.keys import KEY_FIELDS
 
+from .outline_fields import FIELDS as OUTLINE_FIELDS, OUTLINE_SHAPES
+from .rig_fields import RIG
+
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 ANY = lambda name, *values: {"any": [IS(name, v) for v in values]}  # noqa: E731
 NOT = lambda name, value: {"not": IS(name, value)}  # noqa: E731
@@ -63,8 +66,8 @@ TRANSFORM = [
     X("aimItem", "Aim at item", "Aim", "", S, IS("aim", "item"), help="The id of the item to look at (its origin)"),
 ]
 
-SHAPES = ["box", "sphere", "cylinder", "plane", "disc", "torus"]
-LIGHT_KINDS = ["rect", "disk", "sphere", "distant", "dome"]
+SHAPES = ["box", "sphere", "cylinder", "plane", "disc", "torus", *OUTLINE_SHAPES]
+from .light_fields import KINDS as LIGHT_KINDS, LIGHT, STILL as LIGHT_STILL  # noqa: E402  (needs the helpers above)
 DOF = IS("dof", True)
 
 FIELDS: dict[str, list[Param]] = {
@@ -73,11 +76,13 @@ FIELDS: dict[str, list[Param]] = {
         CH("shape", SHAPES, "Shape", "Shape", "box"),
         N("width", "Width", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "plane"), default=1.0),
         N("height", "Height", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "cylinder"), default=1.0),
-        N("depth", "Depth", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "plane"), default=1.0),
+        N("depth", "Depth", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "plane", *OUTLINE_SHAPES), default=1.0,
+          help="Text, svg, path2d: how far the flat outline is pushed out (try 0.02)"),
         N("radius", "Radius", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "sphere", "cylinder", "disc", "torus"),
           default=0.5, help="Torus: from its centre to the middle of the ring"),
         N("tube", "Tube radius", "Shape", 0, 1e4, 0.001, "m", when=IS("shape", "torus"), default=0.15),
-        N("bevel", "Bevel", "Shape", 0, 1e3, 0.0005, "m", S, ANY("shape", "box", "cylinder"),
+        *OUTLINE_FIELDS,
+        N("bevel", "Bevel", "Shape", 0, 1e3, 0.0005, "m", S, ANY("shape", "box", "cylinder", *OUTLINE_SHAPES),
           help="Rounded edges this wide; real products almost never have razor edges"),
         N("segments", "Segments", "Shape", 1, 256, 1, "", D, NOT("shape", "plane"), integer=True, default=24,
           help="Box: steps around each bevel. Round shapes: steps around"),
@@ -95,25 +100,7 @@ FIELDS: dict[str, list[Param]] = {
         X("material", "Material", "Part", "", help='A material id, or "" to keep the file\'s', refers="material"),
         T("visible", "Visible", "Part", True),
     ],
-    "light": [
-        CH("kind", LIGHT_KINDS, "Kind", "Light", "rect",
-           help="rect / disk: soft panels shining along their −Z; sphere: a bulb; distant: the sun; dome: the sky "
-                "or an HDR around everything"),
-        N("width", "Width", "Shape", 0, 1e3, 0.01, "m", when=IS("kind", "rect"), default=1.0),
-        N("height", "Height", "Shape", 0, 1e3, 0.01, "m", when=IS("kind", "rect"), default=1.0),
-        N("radius", "Radius", "Shape", 0, 1e3, 0.001, "m", when=ANY("kind", "disk", "sphere"), default=0.5),
-        N("angle", "Angle", "Shape", 0, 180, 0.01, "°", when=IS("kind", "distant"), default=0.53,
-          help="How wide the sun looks; bigger = softer shadows (the real sun is 0.53°)"),
-        X("texture", "HDR image", "Shape", "", when=IS("kind", "dome"), help='Absolute .hdr / .exr path, or "" for a flat colour'),
-        C("color", "Colour", "Light", "#ffffff"),
-        N("intensity", "Intensity", "Light", 0, 1e6, 0.01, default=1.0),
-        N("exposure", "Exposure", "Light", -20, 20, 0.1, "stops", S, help="Each +1 doubles the light"),
-        N("temperature", "Temperature", "Light", 0, 20000, 10, "K", S,
-          help="Colour of the light in kelvin (2700 warm bulb, 5600 daylight, 7500 shade); 0 = off, use Colour only"),
-        T("normalize", "Same brightness at any size", "Light", False, D,
-          help="On: resizing the light changes its softness, not its brightness"),
-        T("shadows", "Casts shadows", "Light", True, D),
-    ] + TRANSFORM,
+    "light": LIGHT,                     # light_fields.py
     "camera": [
         N("focalLength", "Focal length", "Lens", 1, 2000, 0.1, "mm", default=50.0,
           help="Longer = narrower view and flatter perspective (product shots often 85–150)"),
@@ -156,16 +143,21 @@ FIELDS: dict[str, list[Param]] = {
         N("height", "Height", "Frame", 16, 16384, 1, "px", S, integer=True, default=1080),
         C("background", "Background", "Frame", "#000000", S, help="What shows where nothing is (not a light)"),
     ],
+    # A camera rig (rigs.py): holds the camera; its own transform is the base, without aim or scale.
+    "rig": RIG + [dataclasses.replace(p, valid_when=None) for p in TRANSFORM
+                  if p.name in ("x", "y", "z", "rx", "ry", "rz", "visible")],
     "key": KEY_FIELDS,                   # the one key shape (t in seconds, v or c, ease), shared with 2D
 }
 
-ITEMS = ("group", "mesh", "import", "light", "camera")      # scene items (USD prims)
-HOLDERS = ("group", "import")
+ITEMS = ("group", "mesh", "import", "light", "camera", "rig")      # scene items (USD prims)
+HOLDERS = ("group", "import", "rig")
 LISTS = {"doc": ["items", "materials", "shots"], "group": ["children", "keys"],     # where child items live
-         "import": ["children", "parts", "keys"], "mesh": ["keys"], "light": ["keys"], "camera": ["keys"]}
+         "import": ["children", "parts", "keys"], "mesh": ["keys"], "light": ["keys"], "camera": ["keys"],
+         "rig": ["children", "keys"]}
 STILL = {"mesh": {p.name for p in FIELDS["mesh"] if p.group == "Shape"},     # a mesh's shape is built once
+         "light": LIGHT_STILL,
          "*": {"aim"}}
-LABELS = {"group": "Group", "mesh": "Mesh", "import": "Import", "part": "Part", "light": "Light", "camera": "Camera",
+LABELS = {"group": "Group", "mesh": "Mesh", "import": "Import", "part": "Part", "light": "Light", "camera": "Camera", "rig": "Camera rig",
           "material": "Material", "shot": "Shot", "key": "Key"}
 
 

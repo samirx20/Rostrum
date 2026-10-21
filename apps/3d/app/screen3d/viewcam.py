@@ -3,6 +3,7 @@
 - "shot": look through the shot's own camera (the request names it: `camera`).
 - "free": a turntable camera, `eye` looking at `target` with a vertical `fov`, Y up (ENGINE_CONTRACT.md § 4).
   Left drag orbits around the target, pan slides both, zoom moves the eye along its line.
+- "light": through a light (rostrum3d.through), from where it stands along the way it shines, following it as it moves.
 
 `home` starts the free camera where the shot camera stands and looks, from the compiled scene (its world transform
 at the frame, animated values taken from `anim`), orbiting the camera's focus point. No Qt.
@@ -11,7 +12,7 @@ from __future__ import annotations
 
 import math
 
-from rostrum3d import aim
+from rostrum3d import aim, through
 
 ORBIT_DEG = 0.3              # degrees per mouse pixel
 ZOOM_STEP = 0.88             # distance factor per wheel step
@@ -37,30 +38,19 @@ def _cross(a, b):
 
 def find_camera(scene: dict, camera: str, frame: int):
     """(world transform, props at `frame`) of the scene item `camera`; ValueError when it is not there."""
-    first = scene["shot"]["start"]
-
-    def at(node):
-        v = dict(node["props"])
-        for k, vals in node.get("anim", {}).items():
-            v[k] = vals[max(0, min(len(vals) - 1, frame - first))]
-        return v
-
-    stack = [(n, aim.IDENTITY) for n in scene.get("items", [])]
-    while stack:
-        node, parent = stack.pop()
-        v = at(node)
-        world = aim.compose(parent, aim.local(v))
-        if node["id"] == camera:
-            if node["type"] != "camera":
-                raise ValueError(f'viewport: "{camera}" is a {node["type"]}, not a camera')
-            return world, v
-        stack += [(c, world) for c in node.get("children", [])]
-    raise ValueError(f'viewport: no camera "{camera}" in the scene')
+    try:
+        world, v, node = through.find_item(scene, camera, frame)
+    except ValueError:
+        raise ValueError(f'viewport: no camera "{camera}" in the scene') from None
+    if node["type"] != "camera":
+        raise ValueError(f'viewport: "{camera}" is a {node["type"]}, not a camera')
+    return world, v
 
 
 class ViewCam:
     def __init__(self):
         self.mode, self.camera = "free", ""          # camera: the shot camera's id ("" = no shot)
+        self.light = ""                              # the light looked through in "light" mode
         self.eye, self.target, self.fov = list(DEFAULT["eye"]), list(DEFAULT["target"]), DEFAULT["fov"]
 
     # --- the shot camera
@@ -77,9 +67,20 @@ class ViewCam:
         self.fov = math.degrees(2 * math.atan(sensor_h / (2 * v["focalLength"])))
         self.mode = "free"
 
+    # --- through a light
+    def look_through(self, scene: dict, light: str, frame: int):
+        self.light = light
+        self.follow(scene, frame)
+        self.mode = "light"
+
+    def follow(self, scene: dict, frame: int):
+        """Stand where the light is at `frame` (it may have moved since)."""
+        view = through.light_view(scene, self.light, frame)
+        self.eye, self.target, self.fov = view["eye"], view["target"], view["fov"]
+
     def set_mode(self, mode: str):
         if mode not in ("free", "shot"):
-            raise ValueError(f'viewport mode "{mode}": use "free" or "shot"')
+            raise ValueError(f'viewport mode "{mode}": use "free" or "shot" (or look_through a light)')
         if mode == "shot" and not self.camera:
             raise ValueError("viewport: this shot has no camera to look through")
         self.mode = mode

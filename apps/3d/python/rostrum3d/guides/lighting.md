@@ -6,9 +6,10 @@ Lights are items (`light.add`, `light.set`). This guide explains the kinds of li
 
 - **`rect`** — a rectangular panel (`width`, `height` in metres) shining along its −Z. The softbox and the strip light of a photo studio. The workhorse of product lighting.
 - **`disk`** — a round panel (`radius`), also shining along −Z. Gives round highlights (a beauty dish).
+- **`strip`** — a long thin panel: `length` along its X, `width` across it (along its Y), shining along −Z. The strip softbox of a product studio (a `rect` with its own two sizes, so you think in length and width).
 - **`sphere`** — a ball of light (`radius`) shining every way: a bulb, a candle flame, a practical lamp in the scene.
 - **`distant`** — parallel light from far away: the sun. Only its rotation matters; **`angle`** is how wide the sun looks (0.53° is the real sun; bigger = softer shadows).
-- **`dome`** — light from all around, an infinitely large sphere. With **`texture`** (an HDR or EXR image) it lights and reflects a real place; without, an even sky in `color`.
+- **`dome`** — light from all around, an infinitely large sphere. With **`texture`** (an HDR or EXR image) it lights and reflects a real place; without, an even sky in `color`. **`turn`** spins it around the up axis (moves the sun and the horizon's features; a dome has no other rotation or position). **`seenByCamera`** off: the dome still lights the scene and shows in reflections, but behind the object the camera sees the shot's `background` colour (Cycles needs the patched plug-in, see the contract; Storm: yes).
 
 ## Fields
 
@@ -29,9 +30,32 @@ These are the jobs a light does; a shot may need some, all, or others.
 - **Key** — the main light, which decides where light comes from and where shadows fall. Usually a large `rect` or `disk` to one side and above.
 - **Fill** — lifts the shadow side so it isn't black. Large, soft, much weaker than the key (try 2–3 stops less). Often a big `rect` or a `dome`.
 - **Rim / back light** — behind the object, pointing towards the camera, drawing a bright edge that separates it from the background. Narrow `rect`s work well; check that it doesn't shine straight into the lens.
-- **Strip lights** — long thin `rect`s (e.g. 0.1 × 1.5 m) placed so their *reflection* runs along a glossy or metal edge. On polished metal and glass you light what the surface reflects, not the surface: move the strip until its reflection lands where the edge should glow.
+- **Strip lights** — `strip` lights placed so their *reflection* runs along a glossy or metal edge. On polished metal and glass you light what the surface reflects, not the surface: move the strip until its reflection lands where the edge should glow.
 - **Background / kicker** — light on the background or floor alone, to shape the space behind the object (a gradient, a pool of light).
 - **Practicals** — lights that are part of the scene (a lamp, a screen); use `sphere` lights or emissive materials.
+
+## Panel tools
+
+- **`spread`** (rect, disk, strip; degrees, 180 by default) — how wide the panel throws its light. 180 is a bare softbox: light all around its front, so it spills onto the floor and background. Smaller is a honeycomb grid on the box: a tighter pool, less spill, while the panel keeps its size, so shadows stay soft and reflections keep their shape. Use it when a light must reach the object and not the backdrop. **Cycles only** (with the patched plug-in): the quick view throws the light all around, and its reply says so (`notInQuickView`).
+- **`card`** (rect, disk, strip; off by default) — the panel itself shows to the camera as a bright card of the light's own brightness. Off, a panel is invisible to the camera (it still lights, and in Cycles still shows in glossy and metal reflections). Turn it on when the light is in frame on purpose, or to see in the quick view where a panel stands. In Storm the card is drawn but not reflected (Storm reflects only the dome).
+
+## Strip reflections along a curved edge
+
+A strip reflected in a curved, polished edge becomes a thin line of light that follows the curve. To place one:
+
+1. Make the surface reflective: low `roughness` (and `metallic` 1 for metal, or `coat` for paint and plastic).
+2. Add a `strip` whose `length` is along the edge and aim it at the object (`aim` = `item`).
+3. Find where it must stand: a reflection is seen where the angle from the camera to the surface equals the angle from the surface to the light. Put the strip roughly where the camera's view would bounce off the edge (opposite the camera across the edge's normal).
+4. Render from the shot's camera in Cycles (`look_frame quality=final`) and move the strip in small steps until its reflection lies along the edge. Moving it sideways slides the line across the curve; making `width` smaller thins the line; `length` sets how far along the curve it runs. Storm doesn't show reflections of panels, so judge this in Cycles.
+5. A rounder edge needs the strip closer or longer for the line to run the whole way.
+
+## Light linking: lighting only some items
+
+**`lightsOnly`**: item ids separated by spaces (`"bottle label"`); the light then lights only those items and what is inside them (a group's or an import's children). `""` lights everything. Use it to put a highlight on the product without lighting the floor, or to give one part its own rim. Every id must be a real item; a wrong id is an error, never a light quietly lighting everything. **Cycles only** (with the patched plug-in): the quick view lights every item with every light, and its reply names the linked lights (`notInQuickView`). The saved `.usda` carries it as UsdLux light linking, which other USD programs read.
+
+## Aiming through the light
+
+To see what a light sees, look through it: in the screen's viewport select a rect, disk, strip, sphere or sun light and switch **Look through light** on; the view stands where the light is and looks the way it shines, and follows the light when it is moved or aimed. What lies in the middle of the view is what the light points at. Dragging in that view continues freely from it (the light stays). Agents: `look_frame` with `through` = the light's id. The view is level with the horizon (it ignores a light's roll).
 
 ## Working method
 

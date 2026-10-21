@@ -4,7 +4,7 @@ from rostrum_core import Document, Who
 
 from rostrum3d import KIND, run_source
 from rostrum3d import fields as F
-from rostrum3d.compile import describe
+from rostrum3d.compile import DOCUMENT_ONLY, describe
 
 SAM = Who.person()
 SRC = '''
@@ -39,6 +39,8 @@ def test_rerun_keeps_a_persons_moved_light():
 def _check_node(node, n_frames):
     type_ = node["type"]
     want = {p.name for p in F.FIELDS[type_]} - {"aim", "aimX", "aimY", "aimZ", "aimItem"} | ({"parts"} if type_ == "import" else set())
+    want -= {"turn"} if type_ == "light" else set()                          # a dome's turn is sent as its ry
+    want -= DOCUMENT_ONLY if type_ == "mesh" else set()                      # words, fonts, files: compiled to the outline
     assert set(node["props"]) == want, node["id"]
     assert all(len(v) == n_frames for v in node.get("anim", {}).values()), node["id"]
     for child in node.get("children", []):

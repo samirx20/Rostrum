@@ -13,6 +13,7 @@
 #include <pxr/usd/usdLux/sphereLight.h>
 
 #include "item_track.h"
+#include "light_extras.h"
 #include "materials.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
@@ -26,9 +27,14 @@ void write_float(Item& it, const UsdAttribute& attr, const std::string& key, dou
   it.write<float>(attr, v.size(), [&](size_t i) { return float(pick(v, i) * scale); });
 }
 
-UsdPrim define_light(Item& it, const SdfPath& path) {
+UsdPrim define_light(Item& it, const SdfPath& path, const std::string& kind) {
   const UsdStageRefPtr& stage = it.ctx.stage;
-  const std::string kind = it.props.one_of("kind", {"rect", "disk", "sphere", "distant", "dome"});
+  if (kind == "strip") {  // a long thin rect: its length along X, its width along Y
+    UsdLuxRectLight l = UsdLuxRectLight::Define(stage, path);
+    write_float(it, l.CreateWidthAttr(), "length");
+    write_float(it, l.CreateHeightAttr(), "width");
+    return l.GetPrim();
+  }
   if (kind == "rect") {
     UsdLuxRectLight l = UsdLuxRectLight::Define(stage, path);
     write_float(it, l.CreateWidthAttr(), "width");
@@ -60,7 +66,8 @@ UsdPrim define_light(Item& it, const SdfPath& path) {
 }  // namespace
 
 void build_light(Item& it, const SdfPath& path) {
-  const UsdPrim prim = define_light(it, path);
+  const std::string kind = it.props.one_of("kind", {"rect", "disk", "strip", "sphere", "distant", "dome"});
+  const UsdPrim prim = define_light(it, path, kind);
   author_transform(it, prim);
   UsdLuxLightAPI light(prim);
   const auto colour = it.colours("color");
@@ -75,6 +82,7 @@ void build_light(Item& it, const SdfPath& path) {
   });
   light.CreateNormalizeAttr().Set(it.props.flag("normalize"));
   UsdLuxShadowAPI::Apply(prim).CreateShadowEnableAttr().Set(it.props.flag("shadows"));
+  build_light_extras(it, prim, kind);  // spread, card, links, a dome's camera visibility (light_extras.h)
 }
 
 // USD measures focal length and apertures in tenths of a scene unit (usdGeom/camera.h, "Units of

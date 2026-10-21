@@ -4,13 +4,16 @@ the studio light never touch the document or its history. Clicking picks through
 (empty space selects nothing, as clicking the empty 2D canvas selects the composition).
 
 It starts looking through the shot camera; orbiting, panning or zooming there switches to the free camera from
-the shot camera's view. It draws again when the document, the playhead frame or the selection changes.
+the shot camera's view. With a panel, bulb or sun light selected it can look through that light (to aim it by eye),
+following the light while it moves; moving the view there continues freely from it (the light stays where it is). It draws again when the document, the playhead frame or the selection changes.
 """
 from __future__ import annotations
 
 import sys
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
+
+from rostrum3d import through
 
 from .frames import ViewRenderer
 from .viewcam import ViewCam
@@ -51,6 +54,7 @@ class Viewport(QObject):
         bridge.docChanged.connect(self._on_doc)
         bridge.frameChanged.connect(self.redraw)
         bridge.selectionChanged.connect(self.redraw)
+        bridge.selectionChanged.connect(lambda *_: self.settingsChanged.emit())   # canThroughLight follows it
 
     # --- QML properties
     serial = Property(int, lambda s: s._serial, notify=serialChanged)
@@ -58,6 +62,9 @@ class Viewport(QObject):
     status = Property(str, lambda s: s._status, notify=statusChanged)
     mode = Property(str, lambda s: s.cam.mode, notify=settingsChanged)
     hasShot = Property(bool, lambda s: bool(s.cam.camera), notify=settingsChanged)
+    # the selection is a light that can be looked through (rect, disk, strip, sphere, distant), or we already are
+    canThroughLight = Property(bool, lambda s: s.cam.mode == "light" or s._selected_light() != "", notify=settingsChanged)
+    throughLight = Property(str, lambda s: s.cam.light if s.cam.mode == "light" else "", notify=settingsChanged)
     exposure = Property(float, lambda s: s._exposure, notify=settingsChanged)
     studio = Property(float, lambda s: s._studio, notify=settingsChanged)
     sceneLights = Property(bool, lambda s: s._lights, notify=settingsChanged)
@@ -91,10 +98,21 @@ class Viewport(QObject):
         self.cam.home(self._scene, self._shot["camera"], self.bridge.frame, w / h)
 
     def _leave_shot(self):
-        """A camera move while looking through the shot camera: continue freely from its view."""
+        """A camera move while looking through the shot camera or a light: continue freely from its view."""
         if self.cam.mode == "shot":
             self._home()
             self.settingsChanged.emit()
+        elif self.cam.mode == "light":
+            self.cam.mode = "free"
+            self.settingsChanged.emit()
+
+    def _selected_light(self) -> str:
+        try:
+            scene = self._compiled()
+        except Exception:  # noqa: BLE001  no scene yet: nothing to look through (the draw says why)
+            return ""
+        sel = self.bridge.selected
+        return sel if sel and through.aimable(scene, sel) else ""
 
     def _guard(self, fn) -> bool:
         try:
@@ -107,6 +125,12 @@ class Viewport(QObject):
 
     def _request(self) -> dict:
         w, h, sel = *self._size, self.bridge.selected
+        if self.cam.mode == "light":
+            if through.aimable(self._scene, self.cam.light):
+                self.cam.follow(self._scene, self.bridge.frame)             # the light may have moved
+            else:                                                           # deleted, or no longer a panel or bulb
+                self.cam.mode = "free"
+                self.settingsChanged.emit()
         return {**self.cam.request(self.bridge.frame, w, h), "renderer": "storm", "view": "",
                 "exposure": self._exposure, "studio": self._studio, "sceneLights": self._lights,
                 "ao": self._ao if self._ao_on else 0.0, "dof": self._dof,
@@ -151,6 +175,13 @@ class Viewport(QObject):
 
     @Slot(str)
     def setMode(self, m):
+        """"free", "shot", or "light" (through the selected light)."""
+        if m == "light":
+            light = self._selected_light()
+            if light and self._guard(lambda: self.cam.look_through(self._compiled(), light, self.bridge.frame)):
+                self.settingsChanged.emit()
+                self.redraw()
+            return
         if m != self.cam.mode and self._guard(lambda: (self._compiled(), self.cam.set_mode(m))):
             self.settingsChanged.emit()
             self.redraw()
