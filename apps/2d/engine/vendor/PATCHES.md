@@ -222,3 +222,8 @@ Not crates (`render/src`): `depth_tests.rs` — a parent's `perspective: 800px` 
 | Crate | Patch | Why |
 |---|---|---|
 | blitz-paint | `track_matte.rs` + `render.rs` hook: an element with `data-track-matte` (alpha, alphaInverted, luma, lumaInverted) draws its children after the first into an isolated layer, then the first child (the matte) as usual into a `DestIn` / `DestOut` layer; luma over opaque black through a `luminanceToAlpha` colour matrix | a track matte drawn by the same painting as every layer, so any layer type is a matte (the SVG `<mask>` copy of layer drawing drew nothing and is gone) |
+
+## H17 (rounded masks; 2026-10-22)
+| Crate | Patch | Why |
+|---|---|---|
+| blitz-paint | `render/clip_path.rs`: `clip-path: inset(… round r)` honours its corner radii (per corner, resolved against the inset box, shrunk together when two corners would overlap, as CSS says; an elliptical corner takes its mean radius) | upstream left a `TODO` and drew every rounded inset as a square, so every rounded rect mask (`mask(shape="rect", radius=…)`) on any layer was square: the H16 phone's screen corners stuck out of its body |

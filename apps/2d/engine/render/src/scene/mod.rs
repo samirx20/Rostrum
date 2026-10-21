@@ -18,7 +18,9 @@ pub mod path_data;
 pub mod stage;
 pub mod stage_type;
 pub mod stage_fx;
+pub mod stroke_width;
 pub mod type_font;
+pub mod width_profile;
 #[cfg(test)]
 mod tests;
 

@@ -78,6 +78,8 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
 ] + _grade.COLOUR  # colour effects: adjust, levels, curves, LUT (grade_fields.py; engine: scene/grade.rs)
 
 STROKE = IS("stroke", True)
+# A path's stroke is varied when it has a taper or a width profile (ops_stroke.py; engine reads these fields).
+VARIED = {"all": [STROKE, {"any": [{"not": IS("taperStart", 0)}, {"not": IS("taperEnd", 0)}, {"not": IS("widthProfile", "")}]}]}
 
 # A text layer's type controls (engine: scene/stage_type.rs, letters.rs, type_font.rs).
 NOT_FOLLOWING = IS("pathLayer", "")
@@ -209,6 +211,14 @@ FIELDS: dict[str, list[Param]] = {
         N("dashOffset", "Dash offset", "Dashes", -100000, 100000, 0.5, "px", D, STROKE, help="Animate it to march the dashes"),
         N("trimStart", "Trim start", "Draw on", 0, 1, 0.001, "", S, STROKE, help="Where the drawn part of the stroke starts (0..1)"),
         N("trimEnd", "Trim end", "Draw on", 0, 1, 0.001, "", S, STROKE, default=1.0, help="Animate 0 → 1 to draw the stroke on"),
+        N("taperStart", "Taper start", "Width", 0, 1, 0.01, "", S, STROKE, help="How much of the line the width takes to grow from 0 at the start (0..1)"),
+        N("taperEnd", "Taper end", "Width", 0, 1, 0.01, "", S, STROKE, help="How much of the line the width takes to shrink to 0 at the end (0..1)"),
+        Param.text("widthProfile", label="Width along the line", group="Width", importance=S, valid_when=STROKE, default="",
+                   control="curve", help='"position,multiplier" pairs: position 0..1 along the line (increasing), multiplier of the '
+                   'stroke width (0 or more). Empty = an even width (path.width sets it)'),
+        Param.choice("taperAlong", ["line", "drawn"], label="Measured along", group="Width", default="line", importance=D,
+                     valid_when=VARIED, labels={"line": "Whole line", "drawn": "Drawn part"},
+                     help="Taper and profile follow the whole line, or only the part the trim shows"),
     ] + TRANSFORM,
     # One drawing of a drawing layer: shown from frame `at` until the next drawing (held), none before the first.
     # It is a painting-kit canvas: it holds paint layers (`paints`) and paint masks.
@@ -280,7 +290,7 @@ for _t in LAYERS:
     FIELDS[_t] += _stepped.LAYER
 EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", *_motion.EFFECTS)
 ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask",) + _rig.OWNED_KEYS
-STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h"}, "path": {"w", "h"},
+STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h"}, "path": {"w", "h", "widthProfile"},
          "group": {"columns"},
          "video": {"w", "h", "offset", "speed"},
          "text": {"letterDelay", "letterSeed"},

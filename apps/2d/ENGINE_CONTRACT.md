@@ -96,6 +96,19 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
   `trimEnd` 0 → 1 draws it on; dashes are cut to the trimmed part (more than 20,000 dash pieces is refused). A `gradient`
   fills the path (with `filled` off it colours the stroke), `linear` and `radial` only (a conic one is refused). A
   `shadow` follows the outline. Glow, blur and masks as on any layer.
+  - **Varied width** (added H17, same version): `taperStart`, `taperEnd` (0..1, default 0, keyable): the fraction of the
+    length over which the width grows from 0 at the start / shrinks to 0 at the end, eased as sin(π/2 · x) (x = how
+    far into the taper; a pointed tip that meets the full width with no kink). `widthProfile` (text, default "", still):
+    `"pos,mult pos,mult …"`, pos 0..1 along the length, each after the one before, mult ≥ 0 times `strokeWidth`; ""
+    = an even width; between points a monotone cubic (no overshoot, never below 0), held before the first and after
+    the last point; text the engine can't read is refused when drawn, naming `id.widthProfile`. `taperAlong` (`line`
+    default | `drawn`): u runs over the whole line (the ink stays as drawn while `trimEnd` moves) or over the drawn
+    part `trimStart..trimEnd` (the tip stays tapered as it draws on). Width at u = `strokeWidth` × profile(u) ×
+    taper(u). With a taper > 0 or a profile the stroke is not an SVG stroke but a filled outline the engine works out
+    (`scene/stroke_width.rs`): each visible piece (trim and dashes as above) sampled every ≤ 2 px and ≤ 4° of turn,
+    offset ± half the width along the normal, closed with its `cap` (round = a half circle as wide as the stroke there,
+    `butt`, `square`); corners turning more than 10° get a round join whatever `join` says; a closed subpath shown
+    whole is a ring with no caps. It is filled (nonzero) with the stroke's colour, gradient or glow colour.
 - **text:** `body`, `font` (family name: first the scene's `fonts`, then the app's folder `apps/2d/engine/fonts/` (installed: `fonts\` beside the program; `ROSTRUM2D_FONTS` overrides); each file is listed under its family name and also without a trailing " Variable". A family found in neither is refused when the scene loads or is edited: `subtitle: font "Helvetica Neue" not found; there is: …`), `size` px, `weight` and `stretch` (variable-font axes), optical size = font size automatically, `tracking` (em), `lineHeight`, `align`, `color`, optional outline.
   - **Type:** `ligatures` (default on; off writes `liga 0, clig 0`), `figures` (`default` | `proportional lining` |
     `tabular lining` | `proportional old-style` | `tabular old-style`), `smallCaps` (`smcp`) and `features` (OpenType

@@ -164,8 +164,21 @@ impl ElementCx<'_, '_> {
                     return None;
                 }
 
-                // TODO: Support border-radius on inset()
-                Some(kurbo::Rect::new(x0, y0, x1, y1).into_path(0.1))
+                // Rostrum patch (H17): `inset(... round r)`. Radii resolve against the inset box and shrink together
+                // when two corners would overlap (CSS's corner-radius rule). Elliptical corners take their mean radius.
+                let (bw, bh) = (x1 - x0, y1 - y0);
+                type Corner = style::values::generics::border::GenericBorderCornerRadius<
+                    style::values::generics::NonNegative<LengthPercentage>,
+                >;
+                let corner = |c: &Corner| -> f64 { (resolve_lp(&c.0.width.0, bw) + resolve_lp(&c.0.height.0, bh)) / 2.0 };
+                let r = &inset_rect.round;
+                let (tl, tr, br, bl) = (corner(&r.top_left), corner(&r.top_right), corner(&r.bottom_right), corner(&r.bottom_left));
+                let f = [bw / (tl + tr), bw / (bl + br), bh / (tl + bl), bh / (tr + br)]
+                    .into_iter()
+                    .filter(|f| f.is_finite())
+                    .fold(1.0f64, f64::min);
+                let radii = kurbo::RoundedRectRadii::new(tl * f, tr * f, br * f, bl * f);
+                Some(kurbo::RoundedRect::new(x0, y0, x1, y1, radii).into_path(0.1))
             }
             GenericBasicShape::PathOrShape(path_or_shape) => match path_or_shape {
                 GenericPathOrShapeFunction::Path(path) => svg_path_to_bezpath(

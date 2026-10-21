@@ -1736,6 +1736,29 @@
     null
    ],
    [
+    "taperStart",
+    "number",
+    null
+   ],
+   [
+    "taperEnd",
+    "number",
+    null
+   ],
+   [
+    "widthProfile",
+    "text",
+    null
+   ],
+   [
+    "taperAlong",
+    "choice",
+    [
+     "line",
+     "drawn"
+    ]
+   ],
+   [
     "x",
     "number",
     null
@@ -2747,6 +2770,8 @@
    "dashOffset",
    "trimStart",
    "trimEnd",
+   "taperStart",
+   "taperEnd",
    "x",
    "y",
    "scale",

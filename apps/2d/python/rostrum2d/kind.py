@@ -13,7 +13,7 @@ from __future__ import annotations
 import rostrum_paint
 from rostrum_core import DocKind, Registry
 
-from . import exprbake, fields as F, pathdata
+from . import exprbake, fields as F, pathdata, widthprofile
 from .rig import model as rig_model
 
 OWNED = ["effects", "masks", "keys"]
@@ -97,6 +97,10 @@ def check(data: dict) -> list[str]:
                 pathdata.commands(item["d"])
             except ValueError as e:
                 problems.append(f'{item["id"]}.d: {e}')
+            try:
+                widthprofile.parse(item.get("widthProfile", ""))
+            except ValueError as e:
+                problems.append(f'{item["id"]}.widthProfile: {e}')
         if item.get("type") == "drawing":
             ats = [f["at"] for f in item["frames"]]
             if ats != sorted(set(ats)):
@@ -110,7 +114,7 @@ KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts,
 rostrum_paint.register(REGISTRY, canvas_types=("frame",))
 from . import ops_draw, ops_expr, ops_items, ops_keys  # noqa: E402,F401  (they register on REGISTRY)
 from . import follow  # noqa: E402,F401  (text.follow: a text on a path layer)
-from . import ops_path  # noqa: E402,F401  (vector paths, booleans)
+from . import ops_path, ops_stroke  # noqa: E402,F401  (vector paths, booleans, stroke width)
 from .rig import ops as _rig_ops, poses as _rig_poses  # noqa: E402,F401  (bones, IK chains, binds, poses)
 from .lipsync import ops as _lipsync_ops  # noqa: E402,F401  (lipsync.apply)
 from . import ops_swap  # noqa: E402,F401  (swap.show, blink.add)

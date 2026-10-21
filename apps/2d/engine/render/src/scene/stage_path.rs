@@ -4,26 +4,29 @@
 //!
 //! Dashes and trim are worked out here from the path's real length (kurbo), one `<path>` per subpath: dashes
 //! start again at each subpath, and trim takes `trimStart..trimEnd` of the whole length, subpath after subpath.
-//! The visible pieces become an explicit dash list, so dashes and trim combine with no special case.
+//! The visible pieces become an explicit dash list, so dashes and trim combine with no special case. A stroke
+//! with a taper or a width profile takes the same pieces and is drawn as a filled outline (stroke_width.rs).
 
 use std::fmt::Write;
 
 use kurbo::ParamCurveArclen;
 
 use super::{escape, v, Item, Look, R};
+use crate::scene::{stroke_width, width_profile};
 
 /// More visible dash pieces than this in one frame is refused (a dash of 0.01 px over a long path).
 const MAX_PIECES: usize = 20_000;
 
-/// One subpath: its path data written back (absolute M L C Z) and its length in px.
+/// One subpath: its curve, its path data written back (absolute M L C Z) and its length in px.
 struct Sub {
+    path: kurbo::BezPath,
     d: String,
     len: f64,
 }
 
 /// `d` read (path_data.rs) and split into subpaths with their lengths. Errors name `id.d`.
 fn parse(id: &str, d: &str) -> R<Vec<Sub>> {
-    Ok(crate::scene::path_data::read(id, d)?.into_iter().map(|s| Sub { len: s.segments().map(|g| g.arclen(1e-3)).sum(), d: s.to_svg() }).collect())
+    Ok(crate::scene::path_data::read(id, d)?.into_iter().map(|s| Sub { len: s.segments().map(|g| g.arclen(1e-3)).sum(), d: s.to_svg(), path: s }).collect())
 }
 
 /// The visible pieces `[a, b]` of one subpath of length `len`: its share of the trim window, cut into dashes.
@@ -48,6 +51,47 @@ fn pieces(window: (f64, f64), dash: Option<(f64, f64, f64)>, out: &mut Vec<(f64,
         }
         k += 1.0;
     }
+}
+
+/// Each subpath's visible pieces `[a, b]` (px from its start): its share of the trim window `s..e` of the whole
+/// length `total`, cut into dashes.
+fn visible(it: &Item, subs: &[Sub], (s, e): (f64, f64), dash: Option<(f64, f64, f64)>, total: f64) -> R<Vec<Vec<(f64, f64)>>> {
+    let mut at = 0.0;
+    subs.iter().map(|sub| {
+        let window = ((s * total - at).max(0.0), (e * total - at).min(sub.len));
+        at += sub.len;
+        let mut list = vec![];
+        if window.1 > window.0 {
+            pieces(window, dash, &mut list).map_err(|why| format!("{}.dash: {why}; use longer dashes", it.id))?;
+            list.retain(|(a, b)| b - a > 1e-3);
+        }
+        Ok(list)
+    }).collect()
+}
+
+/// A stroke with a taper or a width profile is drawn as a filled outline (stroke_width.rs), not an SVG stroke.
+fn varied(it: &Item) -> bool {
+    it.num("taperStart") > 0.0 || it.num("taperEnd") > 0.0 || !it.str("widthProfile").is_empty()
+}
+
+/// The varied stroke's outline, one `<path>` filled with the stroke's paint. Width at u along the line (or along
+/// the drawn part `s..e`, with taperAlong "drawn") = strokeWidth × profile(u) × taper(u) (width_profile.rs).
+fn varied_stroke(it: &Item, subs: &[Sub], visible: &[Vec<(f64, f64)>], profile: &[(f64, f64)], (s, e): (f64, f64), total: f64, paint: &str) -> String {
+    let (w, ts, te) = (it.num("strokeWidth"), it.num("taperStart").clamp(0.0, 1.0), it.num("taperEnd").clamp(0.0, 1.0));
+    let drawn = it.str("taperAlong") == "drawn";
+    let mut d = String::new();
+    let mut at = 0.0;
+    for (sub, list) in subs.iter().zip(visible) {
+        let base = at;
+        let width = |x: f64| {
+            let g = (base + x) / total;
+            let u = if drawn { (g - s) / (e - s) } else { g }.clamp(0.0, 1.0);
+            w * width_profile::at(profile, u) * width_profile::taper(u, ts, te)
+        };
+        d += &stroke_width::outline(&sub.path, list, it.str("cap"), &width);
+        at += sub.len;
+    }
+    if d.is_empty() { d } else { format!("<path d=\"{d}\" fill=\"{paint}\" fill-rule=\"nonzero\" stroke=\"none\"/>") }
 }
 
 /// The SVG gradient for a gradient effect over a w × h box (CSS geometry: angle 180 = top to bottom; radial =
@@ -113,20 +157,16 @@ pub fn content(it: &Item, look: Look) -> R<(String, String)> {
         let (s, e) = (it.num("trimStart").clamp(0.0, 1.0), it.num("trimEnd").clamp(0.0, 1.0));
         let dash = (it.num("dash") > 0.0).then(|| (it.num("dash"), it.num("gap").max(0.0), it.num("dashOffset")));
         let total: f64 = subs.iter().map(|s| s.len).sum();
-        if (s, e) == (0.0, 1.0) && dash.is_none() {
+        if varied(it) {
+            let profile = width_profile::read(it.id, it.str("widthProfile"))?;
+            if e > s && total > 0.0 {
+                svg += &varied_stroke(it, &subs, &visible(it, &subs, (s, e), dash, total)?, &profile, (s, e), total, &paint(v(it, "strokeColor"), !filled));
+            }
+        } else if (s, e) == (0.0, 1.0) && dash.is_none() {
             let _ = write!(svg, "<path d=\"{all}\" {common}/>");
         } else if e > s && total > 0.0 {
             common += " stroke-dasharray=\"";
-            let mut at = 0.0;
-            for sub in &subs {
-                let window = ((s * total - at).max(0.0), (e * total - at).min(sub.len));
-                at += sub.len;
-                if window.1 <= window.0 {
-                    continue;
-                }
-                let mut list = vec![];
-                pieces(window, dash, &mut list).map_err(|why| format!("{}.dash: {why}; use longer dashes", it.id))?;
-                list.retain(|(a, b)| b - a > 1e-3);
+            for (sub, list) in subs.iter().zip(visible(it, &subs, (s, e), dash, total)?) {
                 let Some(&(first, _)) = list.first() else { continue };
                 // Dash i, gap to dash i+1, …, then a gap longer than the subpath; the offset starts the list at `first`.
                 let mut arr = vec![];

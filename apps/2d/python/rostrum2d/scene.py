@@ -5,7 +5,7 @@ one per frame, in place of its own keys; so is a field an auto layout sets (layo
 item's ("on twos", stepped.py) animated fields are then sent as hold keys every n frames. A long IK chain (more
 than two bones, rig/chain.py) is solved here and sent as per-frame turns of its bones; a swap set (swap.py) is sent
 as a plain group whose children's opacity shows one at a time. The layout, chain and swap fields themselves stay on
-the Python side (`_py_only`): the engine never sees them.
+the Python side (`python_only`): the engine never sees them.
 """
 from __future__ import annotations
 
@@ -17,22 +17,24 @@ from rostrum_core.keys import animated, keys_of
 FORMAT, VERSION = "rostrum-2d-scene", 1
 
 
-def _py_only(kind: str) -> set[str]:
-    return py_only(kind) | swap.PY_ONLY.get(kind, set()) | chain.PY_ONLY.get(kind, set())
-
-
 KEY_FIELDS = ("t", "v", "c", "d", "ease", "x1", "y1", "x2", "y2", "stiffness", "damping")
+
+
+def python_only(kind: str) -> set[str]:
+    """The fields of an item type the engine never sees: auto layout's, stepped timing's, swap sets' and long IK
+    chains' (all applied here)."""
+    return py_only(kind) | {stepped.FIELD} | swap.PY_ONLY.get(kind, set()) | chain.PY_ONLY.get(kind, set())
 
 
 def _anim(item: dict) -> dict:
     return {prop: [{k: key[k] for k in KEY_FIELDS if k in key} for key in keys_of(item, prop)]
-            for prop in sorted(animated(item)) if prop not in _py_only(item["type"])}
+            for prop in sorted(animated(item)) if prop not in python_only(item["type"])}
 
 
 def _node(item: dict, fps: float = 30, baked: dict | None = None) -> dict:
     node = {"id": item["id"], "type": item["type"],
             "props": {p.name: item.get(p.name, p.default) for p in F.FIELDS[item["type"]]
-                       if p.name not in _py_only(item["type"]) and p.name != stepped.FIELD}}
+                       if p.name not in python_only(item["type"])}}
     anim = {**_anim(item), **(baked or {}).get(item["id"], {})}
     if anim:
         node["anim"] = anim

@@ -12,15 +12,6 @@ def _engine_request(eng: Engine, req: dict, **kw) -> dict:
     return eng._request(req, **kw)
 
 
-def _png_pattern(out: Path) -> str:
-    """A png export writes many files: `out` is a pattern holding {frame}, or a folder / stem it is made from."""
-    s = str(out)
-    if "{frame}" in s:
-        return s
-    stem = out.with_suffix("") if out.suffix.lower() == ".png" else out
-    return f"{stem}_{{frame}}.png"
-
-
 def export(eng: Engine, fmt: str, out, alpha: bool | None = None, depth: int | None = None,
            start: float = 0.0, end: float | None = None, progress=None) -> dict:
     """Export the engine's loaded scene (seconds `start`..`end`) as `fmt`; returns the facts read back from the file."""
@@ -38,9 +29,9 @@ def export(eng: Engine, fmt: str, out, alpha: bool | None = None, depth: int | N
     w, h, fps = p["width"], p["height"], p["fps"]
     end = p["duration"] if end is None else end
     out = Path(out)
-    target = _png_pattern(out) if fmt == "png" else str(out)
+    target = str(out) if f.video else formats.pattern(f, out)
     Path(target).parent.mkdir(parents=True, exist_ok=True)
-    first = round(start * fps)
+    first = f.first + round(start * fps)
     req = {"start": start, "end": end, "alpha": alpha, "progress": progress is not None,
            "encode": f.build(target, w, h, fps, depth, first)}
     if f.video:

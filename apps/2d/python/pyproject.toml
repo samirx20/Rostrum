@@ -7,7 +7,7 @@ dependencies = ["rostrum_core", "skia-pathops>=0.9"]   # skia-pathops: path bool
 
 [project.optional-dependencies]
 mcp = ["rostrum_core[mcp]"]
-io = ["pypdfium2>=4", "pypdf>=5", "psd-tools>=1.9", "pillow", "numpy", "fonttools>=4.40", "uharfbuzz>=0.40"]   # file import / export: Apache-2.0 / BSD-3, BSD-3 (pypdf: PDF shadings + clips), MIT, MIT-CMU, BSD-3, MIT, Apache-2.0 (uharfbuzz: Lottie text shaping)
+io = ["pypdfium2>=4", "pypdf>=5", "psd-tools>=1.9", "pillow", "numpy", "fonttools>=4.40", "uharfbuzz>=0.40", "OpenEXR>=3.3"]   # file import / export: Apache-2.0 / BSD-3, BSD-3 (pypdf: PDF shadings + clips), MIT, MIT-CMU, BSD-3, MIT, Apache-2.0 (uharfbuzz: Lottie text shaping); EXR read-back: BSD-3
 lipsync = ["numpy", "scipy", "soundfile",                                  # LIPSYNC.md (all BSD-3)
            "onnxruntime-directml>=1.24; sys_platform == 'win32'",           # MIT
            "onnxruntime>=1.24; sys_platform != 'win32'"]                    # MIT

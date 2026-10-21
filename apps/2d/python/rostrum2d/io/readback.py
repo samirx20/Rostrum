@@ -70,6 +70,30 @@ def _png_facts(out: Path) -> dict:
     return facts
 
 
+def _exr_facts(out: Path) -> dict:
+    """The hand-off EXR sequence (HANDOFFS § 2): part `rgba`, half R G B A, ACEScg. Reads the first and last frames."""
+    import OpenEXR                                   # BSD-3 (ASWF); only needed to check an EXR export
+    rx = re.compile(re.escape(out.name).replace(re.escape("{frame}"), r"(\d+)") + "$")
+    hits = sorted((int(m.group(1)), p) for p in out.parent.iterdir() if (m := rx.match(p.name)))
+    nums = [n for n, _ in hits]
+    facts = {"frames": len(hits), "size": None, "min_alpha": 255, "first": nums[0] if nums else None,
+             "gaps": nums != list(range(nums[0], nums[0] + len(nums))) if nums else False}
+    for _, p in (hits[0], hits[-1]) if hits else ():
+        with OpenEXR.File(str(p)) as f:
+            part = f.parts[0]
+            h = part.header
+            rgba = part.channels.get("RGBA")
+            if rgba is None or rgba.pixels.dtype != np.float16 or h.get("name") != "rgba":
+                raise ExportError(f"{p.name} has no half-float rgba part", {"channels": list(part.channels), "name": h.get("name")})
+            px = rgba.pixels
+            facts["size"] = (px.shape[1], px.shape[0])
+            a = px[..., 3].astype(np.float32)
+            if not np.isfinite(px.astype(np.float32)).all():
+                raise ExportError(f"{p.name} holds NaN or infinite pixels", facts)
+            facts["min_alpha"] = min(facts["min_alpha"], int(round(float(a.min()) * 255)))
+    return facts
+
+
 def check(fmt: str, out: str | Path, frames: int, w: int, h: int, alpha: bool, depth: int = 8) -> dict:
     """Facts about the exported file(s); raises ExportError when they don't match what was asked for.
     `out` is the file, or for png the pattern holding {frame}."""
@@ -78,6 +102,10 @@ def check(fmt: str, out: str | Path, frames: int, w: int, h: int, alpha: bool, d
         facts = _png_facts(out)
         if facts["bits"] is not None and facts["bits"] != depth:
             raise ExportError(f"PNG is {facts['bits']}-bit, asked {depth}", facts)
+    elif fmt == "exr":
+        facts = _exr_facts(out)
+        if facts["gaps"]:
+            raise ExportError("the EXR sequence has missing frame numbers", facts)
     elif fmt == "gif":
         facts = _gif_facts(out)
     else:
