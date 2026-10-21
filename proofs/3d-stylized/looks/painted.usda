@@ -1,0 +1,47 @@
+#usda 1.0
+(
+    doc = "P-3D-3 look layer: painted. Overrides only rostrum:* controls; the scene is untouched."
+)
+
+over "World"
+{
+    over "Sun"
+    {
+        float primvars:rostrum:gain = 0.75
+        float primvars:rostrum:wrap = 0.1
+        float[] primvars:rostrum:ramp:positions = [0, 0.12, 0.35, 0.75]
+        color3f[] primvars:rostrum:ramp:colors = [(0, 0, 0), (0.45, 0.32, 0.3), (0.9, 0.85, 0.78), (1.1, 1.05, 0.95)]
+        float primvars:rostrum:ramp:smooth = 0.06
+    }
+    over "RoomFill"
+    {
+        float primvars:rostrum:gain = 0.9
+        float[] primvars:rostrum:ramp:positions = [0, 0.45, 0.8]
+        color3f[] primvars:rostrum:ramp:colors = [(0.28, 0.22, 0.36), (0.42, 0.42, 0.52), (0.55, 0.58, 0.66)]
+        float primvars:rostrum:ramp:smooth = 0.25
+    }
+    over "WarmBounce"
+    {
+        float primvars:rostrum:gain = 0.5
+        bool primvars:rostrum:shadow = false
+        float[] primvars:rostrum:ramp:positions = [0, 0.5]
+        color3f[] primvars:rostrum:ramp:colors = [(0, 0, 0), (0.35, 0.28, 0.22)]
+        float primvars:rostrum:ramp:smooth = 0.3
+    }
+}
+
+def "RostrumLook"
+{
+    custom float rostrum:brush:amount = 0.16
+    custom float rostrum:brush:length = 40
+    custom float rostrum:brush:width = 11
+    custom float rostrum:brush:follow = 0.1
+    custom float rostrum:shadow:soft = 2.5
+    custom float rostrum:ink:width = 1.5
+    custom float rostrum:ink:albedoMix = 0.85
+    custom float rostrum:ink:albedoDark = 0.35
+    custom float rostrum:ink:lightTaper = 0.8
+    custom float rostrum:ink:wobble = 0.6
+    custom float rostrum:ink:opacity = 0.85
+    custom float rostrum:paper:amount = 0.05
+}

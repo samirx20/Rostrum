@@ -127,6 +127,8 @@ void HdRostrumMesh::Sync(HdSceneDelegate *sd, HdRenderParam *, HdDirtyBits *bits
     d.bend.squash = Constant<float>(sd, id, "rostrum:bend:squash", 1.0f);
     d.bend.lean = Constant<GfVec2f>(sd, id, "rostrum:bend:lean", GfVec2f(0));
     d.bend.swell = Constant<float>(sd, id, "rostrum:bend:swell", 0.0f);
+    // parts bent together (a jug and its handle) share one pivot, a world-space point
+    d.pivot = Constant<GfVec3f>(sd, id, "rostrum:bend:pivot", d.pivot);
     static std::atomic<unsigned> counter{0};
     d.version = ++counter;  // unique across meshes, so a re-created prim is re-uploaded
 

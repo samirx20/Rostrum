@@ -1,0 +1,39 @@
+#usda 1.0
+(
+    doc = "P-3D-3 look layer: cel. Overrides only rostrum:* controls; the scene is untouched."
+)
+
+over "World"
+{
+    over "Sun"
+    {
+        float primvars:rostrum:gain = 0.6
+        float[] primvars:rostrum:ramp:positions = [0, 0.3]
+        color3f[] primvars:rostrum:ramp:colors = [(0, 0, 0), (1, 1, 1)]
+        float primvars:rostrum:ramp:smooth = 0
+    }
+    over "RoomFill"
+    {
+        float primvars:rostrum:gain = 1.0
+        float[] primvars:rostrum:ramp:positions = [0]
+        color3f[] primvars:rostrum:ramp:colors = [(0.5, 0.5, 0.55)]
+    }
+    over "WarmBounce"
+    {
+        bool primvars:rostrum:enable = false
+    }
+}
+
+def "RostrumLook"
+{
+    custom float rostrum:brush:amount = 0
+    custom float rostrum:shadow:soft = 0.6
+    custom float rostrum:ink:width = 2.4
+    custom float rostrum:ink:crease = 1.0
+    custom float rostrum:ink:albedoMix = 0.15
+    custom float rostrum:ink:lightTaper = 0
+    custom float rostrum:ink:depthTaper = 0.3
+    custom float rostrum:ink:wobble = 0
+    custom float rostrum:ink:opacity = 1
+    custom float rostrum:paper:amount = 0
+}

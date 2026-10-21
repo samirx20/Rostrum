@@ -95,7 +95,6 @@ void MeshUniforms(GLuint p, RostrumMeshData const &m, std::string const &camera)
     U(p, "u_model", m.xform);
     U(p, "u_bendOn", int(!m.bend.camera.empty() && m.bend.camera == camera));
     U(p, "u_bendPivot", m.pivot);
-    U(p, "u_bendRadius", std::max(m.radius, 1e-4f));
     U(p, "u_bendSquash", m.bend.squash);
     U(p, "u_bendLean", m.bend.lean);
     U(p, "u_bendSwell", m.bend.swell);

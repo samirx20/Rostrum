@@ -59,7 +59,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("stage"); ap.add_argument("out")
     ap.add_argument("--renderer", default="rostrum")
-    ap.add_argument("--look", default=None)
+    ap.add_argument("--look", action="append", default=[], help="look / shot layer (repeatable; later ones win)")
     ap.add_argument("--width", type=int, default=1920); ap.add_argument("--height", type=int, default=1080)
     ap.add_argument("--camera", default=None)
     ap.add_argument("--frames", type=int, default=0)
@@ -90,8 +90,10 @@ def main():
 
     mark = Tf.Error.Mark()
     stage = Usd.Stage.Open(a.stage)
-    if a.look:
-        stage.GetSessionLayer().subLayerPaths.append(os.path.abspath(a.look))
+    for layer in reversed(a.look):  # subLayerPaths: strongest first
+        if not os.path.exists(layer):
+            sys.exit(f"look layer not found: {layer}")
+        stage.GetSessionLayer().subLayerPaths.append(os.path.abspath(layer))
     cam = a.camera or next((str(p.GetPath()) for p in stage.Traverse() if p.IsA(UsdGeom.Camera)), None)
     if not cam:
         sys.exit("the stage has no camera")

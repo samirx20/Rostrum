@@ -8,7 +8,7 @@ layout(location = 2) in vec2 aUV;
 uniform mat4 u_model, u_camView, u_camViewInv, u_viewProj;
 uniform int u_bendOn;
 uniform vec3 u_bendPivot;
-uniform float u_bendRadius, u_bendSquash, u_bendSwell;
+uniform float u_bendSquash, u_bendSwell;
 uniform vec2 u_bendLean;
 out vec3 vWorld;
 out vec3 vNormal;

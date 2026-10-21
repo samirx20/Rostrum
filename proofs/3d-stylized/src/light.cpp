@@ -1,7 +1,7 @@
 // P-3D-3: light -> type, transform, colour, and the stylized controls authored on the light
 // (rostrum:ramp:positions / :colors / :smooth, rostrum:gain, rostrum:wrap, rostrum:shadow,
-// rostrum:hemiUp, rostrum:enable). Each is read as a light input (inputs:rostrum:...) or, failing
-// that, as a constant primvar (primvars:rostrum:...).
+// rostrum:hemiUp, rostrum:enable), authored as constant primvars on the light (primvars:rostrum:...).
+// Custom light inputs (inputs:rostrum:...) are asked for first, but UsdImaging 26.03 does not pass them.
 #include "prims.h"
 
 #include <pxr/base/tf/getenv.h>
