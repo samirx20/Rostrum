@@ -5,13 +5,17 @@ recorded with the person's name, so undo, history and "who changed what" work th
 The bridge listens to the document (doc.subscribe), so an agent's or script's change shows up in place too.
 Selection and the More row are screen state, not document changes. A refused edit fails loudly: the error
 line goes to the console and to `status` (the top bar shows it in red).
+
+An app adapts it by overriding the hooks (the one place each decision lives): `label_of` (an item's name),
+`edit_call` (a screen edit -> its operation call), `shown_values` (the values the inspector shows),
+`anim_state` / `animate_calls` (an app with keys: the key mark on a row and what its toggle does).
 """
 from __future__ import annotations
 
 import sys
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_core import RostrumError, Who
+from rostrum_core import RostrumError, Who, codes
 
 from . import commands, rows
 from .edits import Scrub, edit_label, field_call
@@ -47,11 +51,11 @@ class DocBridge(QObject):
         if not self._sel:
             return {"id": "", "label": "", "kind": ""}
         it = self.doc.item(self._sel)
-        return {"id": it["id"], "label": name_of(it), "kind": it["type"]}
+        return {"id": it["id"], "label": self.label_of(it), "kind": it["type"]}
 
     @Property("QVariantList", notify=docChanged)
     def items(self):
-        return [{"id": i["id"], "label": name_of(i), "kind": i["type"]} for i in self._items()]
+        return [{"id": i["id"], "label": self.label_of(i), "kind": i["type"]} for i in self._items()]
 
     @Property(QObject, constant=True)
     def rows(self):
@@ -94,14 +98,19 @@ class DocBridge(QObject):
     @Slot(str, "QVariant", result=bool)
     def setValue(self, param, value):
         """One inspector edit = one change (quick repeats of the same field merge: the core's nudge)."""
-        return self._guard(lambda: self._apply([field_call(self.doc, self._sel, param, value)],
+        return self._guard(lambda: self._apply([self.edit_call(self._sel, param, value)],
                                                edit_label(self.doc, self._sel, param, value)))
+
+    @Slot(str)
+    def toggleAnimate(self, param):
+        """The key mark's toggle on a row: the app's animate_calls, as one change."""
+        self._guard(lambda: self._apply(*self.animate_calls(self._sel, param)))
 
     @Slot(str)
     def beginScrub(self, param):
         self.endScrub()
         def go():
-            self._scrub = Scrub(self.doc, self.who, self._sel, param)
+            self._scrub = Scrub(self.doc, self.who, self._sel, param, self.edit_call)
         self._guard(go)
 
     @Slot(str, "QVariant")
@@ -143,6 +152,22 @@ class DocBridge(QObject):
     def redo(self):
         self._guard(lambda: self._done(self.doc.redo(self.who), "Nothing to redo"))
 
+    # ---- hooks (override in an app) -------------------------------------------------------------------------
+    def label_of(self, item: dict) -> str:
+        return name_of(item)
+
+    def edit_call(self, item_id, param, value) -> dict:
+        return field_call(self.doc, item_id, param, value)
+
+    def shown_values(self, item: dict) -> dict:
+        return item
+
+    def anim_state(self, item: dict, param: str) -> str:
+        return ""
+
+    def animate_calls(self, item_id, param) -> tuple[list[dict], str]:
+        raise RostrumError(codes.UNKNOWN_OPERATION, "inspector", f'"{param}"', "can't be animated in this app")
+
     # ---- inside ---------------------------------------------------------------------------------------------
     def _items(self):
         return [i for i in self.doc.items() if i["id"] != self.doc.data["id"]]
@@ -151,7 +176,7 @@ class DocBridge(QObject):
         return next((i["id"] for i in self._items()), "")
 
     def _commands(self):
-        return commands.build(self.doc, [self._sel] if self._sel else [], name_of)
+        return commands.build(self.doc, [self._sel] if self._sel else [], self.label_of)
 
     def _apply(self, calls, label):
         self._done(self.doc.apply(calls, self.who, label=label), "")
@@ -177,13 +202,15 @@ class DocBridge(QObject):
         if not self._sel:
             return []
         it = self.doc.item(self._sel)
-        return rows.evaluate(self._static, it, self.doc.kind.facts(it), self._more)
+        return rows.evaluate(self._static, self.shown_values(it), self.doc.kind.facts(it), self._more,
+                             lambda name: self.anim_state(it, name))
 
     def _on_doc(self, event):
         if self._sel and not self.doc.has(self._sel):      # the selected item went away (e.g. undo of an add)
             self.select(self._first())
         else:
             self.model.update(self._rows())
+            self.selectionChanged.emit()                   # its name may have changed (an agent's rename)
         self.docChanged.emit()
 
     def _set_status(self, text):

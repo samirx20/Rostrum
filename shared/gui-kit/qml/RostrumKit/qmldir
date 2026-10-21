@@ -10,6 +10,9 @@ TextField 1.0 TextField.qml
 ChoiceField 1.0 ChoiceField.qml
 ColorField 1.0 ColorField.qml
 Slider 1.0 Slider.qml
+KeyMark 1.0 KeyMark.qml
+Segmented 1.0 Segmented.qml
+PlayButton 1.0 PlayButton.qml
 Panel 1.0 Panel.qml
 InspectorRow 1.0 InspectorRow.qml
 Inspector 1.0 Inspector.qml

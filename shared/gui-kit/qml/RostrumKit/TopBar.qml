@@ -2,15 +2,23 @@ import QtQuick
 import QtQuick.Layouts
 import "."
 
-// Wordmark, the open document's tab, the history status (small), and the command-bar button.
+// Wordmark, the open document's tab, the app's own tools (`tools`: e.g. a page switch, centred), the history
+// status (small), and the command-bar button.
 Item {
     id: bar
     property var bridge
     property string appName: "Rostrum"
     property string documentName: ""
+    property alias tools: toolsSlot.data
     signal commandClicked()
     implicitHeight: Theme.topBar
 
+    Row {  // the app's tools sit in the middle of the window
+        id: toolsSlot
+        anchors.centerIn: parent
+        spacing: Theme.gap
+        z: 1
+    }
     RowLayout {
         anchors.fill: parent
         anchors.leftMargin: Theme.pad + Theme.gap; anchors.rightMargin: Theme.gap

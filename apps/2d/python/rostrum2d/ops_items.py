@@ -1,0 +1,109 @@
+"""Operations that add, remove, rename and arrange compositions, layers, effects and masks. Field changes are
+the generated `<type>.set` operations (kind.py); keys are in ops_keys.py.
+"""
+from __future__ import annotations
+
+from rostrum_core import Param
+from rostrum_core.errors import codes
+
+from . import fields as F
+from .kind import LISTS, REGISTRY as R
+
+ID = Param.text("id", label="Id", help="Optional; counted per type when left out (text_1, text_2 …)")
+NAME = Param.text("name", label="Name")
+INDEX = Param.number("index", label="Position", min=0, max=100000, integer=True, importance="deep",
+                     help="Place in the list (0 = bottom of the stack); end when left out")
+LAYER_HOLDERS = ("comp", "group")
+
+
+def new_item(ctx, type_, args, **extra) -> dict:
+    id_ = args.get("id") or ctx.new_id(type_)
+    if id_ in _all_ids(ctx):
+        ctx.fail(codes.BAD_ARGUMENT, f'id "{id_}"', "is already used in this document")
+    item = {"id": id_, "type": type_, "name": args.get("name") or F.LABELS[type_], **F.defaults(type_), **extra}
+    for key in LISTS.get(type_, []):
+        item[key] = []
+    return item
+
+
+def _all_ids(ctx):
+    from rostrum_core.tree import index
+    return index(ctx.doc, ctx.kind.lists)
+
+
+@R.operation("comp.add", "Add a composition (one shot: its frame size, frame rate and length).", label="Add composition",
+             params=[ID, NAME, *F.FIELDS["comp"]])
+def comp_add(ctx, targets, args):
+    item = new_item(ctx, "comp", args)
+    item.update({k: v for k, v in args.items() if k not in ("id", "name")})
+    ctx.insert("root", "comps", item)
+
+
+@R.operation("layer.add", "Add a shape, text, image or group to a composition or group (on top unless index is given).",
+             target=LAYER_HOLDERS, label="Add layer",
+             params=[Param.choice("type", list(F.LAYERS), label="Type", required=True), ID, NAME, INDEX])
+def layer_add(ctx, targets, args):
+    for t in targets:
+        ctx.insert(t, "layers", new_item(ctx, args["type"], args if len(targets) == 1 else {**args, "id": None}),
+                   args.get("index"))
+
+
+@R.operation("layer.remove", "Delete layers (with their effects, masks and keys).", target=F.LAYERS, label="Delete",
+             importance="secondary")
+def layer_remove(ctx, targets, args):
+    for t in targets:
+        ctx.remove(t)
+
+
+@R.operation("item.rename", "Rename a composition, layer, effect or mask.", target=("comp", *F.LAYERS, *F.EFFECTS, "mask"),
+             label="Rename", params=[Param.text("name", label="Name", required=True)], importance="secondary")
+def item_rename(ctx, targets, args):
+    for t in targets:
+        ctx.set(t, "name", args["name"])
+
+
+@R.operation("layer.arrange", "Move a layer in the stack, or into another group or composition.", target=F.LAYERS,
+             label="Arrange", importance="secondary",
+             params=[Param.id("into", label="Into", help="A group or composition; the layer's own when left out"),
+                     Param.number("index", label="Position", min=0, max=100000, integer=True, required=True,
+                                  help="0 = bottom of the stack")])
+def layer_arrange(ctx, targets, args):
+    from rostrum_core.tree import index
+    for t in targets:
+        loc = index(ctx.doc, ctx.kind.lists)[t]
+        into = args.get("into") or loc.parent
+        holder = ctx.item(into)
+        if holder["type"] not in LAYER_HOLDERS:
+            ctx.fail(codes.BAD_ARGUMENT, f'into "{into}"', f"is a {holder['type']}, not a group or composition")
+        if t == into or into in _descendants(ctx, t):
+            ctx.fail(codes.BAD_ARGUMENT, f'into "{into}"', "is the layer itself or inside it")
+        ctx.move(t, into, "layers", args["index"])
+
+
+def _descendants(ctx, id_):
+    from rostrum_core.tree import subtree_ids
+    return subtree_ids(ctx.item(id_), ctx.kind.lists)
+
+
+@R.operation("effect.add", "Add an effect to layers: blur, glow, gradient (fills a shape, or a text's letters), shadow.",
+             target=F.LAYERS, label="Add effect",
+             params=[Param.choice("type", list(F.EFFECTS), label="Effect", required=True), ID, NAME, INDEX])
+def effect_add(ctx, targets, args):
+    for t in targets:
+        ctx.insert(t, "effects", new_item(ctx, args["type"], args if len(targets) == 1 else {**args, "id": None}),
+                   args.get("index"))
+
+
+@R.operation("mask.add", "Add a mask to layers: only the part inside it shows (or outside, inverted).",
+             target=F.LAYERS, label="Add mask", params=[ID, NAME])
+def mask_add(ctx, targets, args):
+    for t in targets:
+        ctx.insert(t, "masks", new_item(ctx, "mask", args if len(targets) == 1 else {**args, "id": None}))
+
+
+@R.operation("effect.remove", "Delete effects or masks.", target=(*F.EFFECTS, "mask"), label="Delete",
+             importance="secondary")
+def effect_remove(ctx, targets, args):
+    for t in targets:
+        ctx.remove(t)
+

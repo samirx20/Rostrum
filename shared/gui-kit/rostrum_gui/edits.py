@@ -32,19 +32,31 @@ def edit_label(doc, item_id, name, value) -> str:
     return f"Change {label}"
 
 
-class Scrub:
-    """One drag on a number or slider: begin, preview each move, end (one change) or cancel (nothing)."""
+class Drag:
+    """One press-drag-release = one change: preview each move's calls, then end (one change) or cancel (nothing)."""
 
-    def __init__(self, doc, who, item_id, name):
-        self.doc, self.item_id, self.name = doc, item_id, name
-        self._ctx = doc.gesture(edit_label(doc, item_id, name, None), who)
+    def __init__(self, doc, who, label):
+        self._ctx = doc.gesture(label, who)
         self._ctx.__enter__()              # a second open drag raises CONFLICT
 
-    def preview(self, value):
-        self._ctx.preview([field_call(self.doc, self.item_id, self.name, value)])
+    def preview(self, calls):
+        self._ctx.preview(calls)
 
     def end(self, cancel=False):
         if cancel:
             self._ctx.cancel()
         self._ctx.__exit__(None, None, None)
         return self._ctx.change
+
+
+class Scrub(Drag):
+    """One drag on a number or slider. `call(item_id, name, value)` makes each move's call (default field_call;
+    an app with keys routes it through its own value operation)."""
+
+    def __init__(self, doc, who, item_id, name, call=None):
+        super().__init__(doc, who, edit_label(doc, item_id, name, None))
+        self.item_id, self.name = item_id, name
+        self._call = call or (lambda i, n, v: field_call(doc, i, n, v))
+
+    def preview(self, value):
+        super().preview([self._call(self.item_id, self.name, value)])

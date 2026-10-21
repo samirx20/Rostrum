@@ -6,6 +6,7 @@ import "."
 Panel {
     id: panel
     property var bridge
+    property bool keyMarks: false        // an app with keys: rows show key marks (see InspectorRow)
     title: "Inspector"
 
     Text { id: name; text: panel.bridge.selectedItem.label; color: Theme.fg; font.family: uiFont
@@ -22,7 +23,7 @@ Panel {
             width: parent.width
             Repeater {
                 model: panel.bridge.rows
-                delegate: InspectorRow { bridge: panel.bridge }
+                delegate: InspectorRow { bridge: panel.bridge; keyMarks: panel.keyMarks }
             }
         }
     }
