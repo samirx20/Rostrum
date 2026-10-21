@@ -502,6 +502,9 @@ impl BaseDocument {
             text_selection: TextSelection::default(),
         };
 
+        // Rostrum patch (round 14): the property shim's custom properties, with their real inheritance.
+        crate::css_shim::register(&mut doc.stylist, &doc.url.url_extra_data());
+
         // Initialise document with root Document node
         doc.root_node_id = doc.create_node(NodeData::Document(Box::default()));
         doc.root_node_mut().flags.insert(NodeFlags::IS_IN_DOCUMENT);
@@ -1155,7 +1158,8 @@ impl BaseDocument {
 
     pub fn make_stylesheet(&self, css: impl AsRef<str>, origin: Origin) -> DocumentStyleSheet {
         let data = Stylesheet::from_str(
-            css.as_ref(),
+            // Rostrum patch (round 14): declarations Stylo for Servo drops, copied into custom properties.
+            &crate::css_shim::rewrite_stylesheet(css.as_ref()),
             self.url.url_extra_data(),
             origin,
             ServoArc::new(self.guard.wrap(MediaList::empty())),

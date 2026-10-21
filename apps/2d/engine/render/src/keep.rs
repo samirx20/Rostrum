@@ -28,11 +28,6 @@ fn same_shape(a: &Node, b: &Node) -> bool {
     }
 }
 
-/// The edits that turn `old` (kept) into `new` (this frame's parse), walking both trees together.
-pub fn diff(old: &BaseDocument, new: &BaseDocument) -> Edits {
-    diff_from(old, new, old.root_node().id, new.root_node().id)
-}
-
 /// The edits that turn the subtree at `o` (kept) into the one at `n` (this frame's parse).
 pub fn diff_from(old: &BaseDocument, new: &BaseDocument, o: NodeId, n: NodeId) -> Edits {
     let mut edits = Edits::default();

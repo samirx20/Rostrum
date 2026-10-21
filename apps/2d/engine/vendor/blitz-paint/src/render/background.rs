@@ -3,6 +3,7 @@ use crate::color::{Color, ToColorColor};
 use crate::gradient::to_peniko_gradient;
 use anyrender::PaintScene;
 use blitz_dom::NodeId;
+use blitz_dom::css_shim::{self, Shim};
 use blitz_dom::node::{ImageData, ImageResourceData, SpecialElementData};
 use kurbo::{self, Affine, BezPath, Point, Rect, Shape, Size, Vec2};
 use peniko::{self, Fill};
@@ -52,6 +53,35 @@ impl From<StyloBackgroundClip> for BoxModelBox {
             // TODO: support BorderArea
             StyloBackgroundClip::BorderArea => Self::BorderBox,
         }
+    }
+}
+
+/// Rostrum patch (round 14): how a background layer (or the colour) is clipped: to a box, or to the
+/// element's text (`background-clip: text`, which Stylo for Servo does not parse; read from the
+/// property shim, blitz_dom::css_shim). A text-clipped layer's painting area is the border box.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum LayerClip {
+    Box(BoxModelBox),
+    Text,
+}
+
+impl LayerClip {
+    fn box_model(self) -> BoxModelBox {
+        match self {
+            Self::Box(b) => b,
+            Self::Text => BoxModelBox::BorderBox,
+        }
+    }
+
+    /// A `background-clip` keyword (`border-area` as the border box, as Stylo's value is mapped).
+    fn parse(keyword: &str) -> Option<Self> {
+        Some(match keyword.trim().to_ascii_lowercase().as_str() {
+            "text" => Self::Text,
+            "border-box" | "border-area" => Self::Box(BoxModelBox::BorderBox),
+            "padding-box" => Self::Box(BoxModelBox::PaddingBox),
+            "content-box" => Self::Box(BoxModelBox::ContentBox),
+            _ => return None,
+        })
     }
 }
 
@@ -137,20 +167,25 @@ impl ElementCx<'_, '_> {
         let bg_styles = &self.style.get_background();
         let image_data = &self.element.background_images;
         let layer_count = bg_styles.background_image.0.len();
+        // Rostrum patch (round 14): each layer's clip, `text` included; text-clipped layers are drawn
+        // in a group masked by the element's glyphs (`text_clip_group`).
+        let clips = self.background_clips(layer_count);
+        let mut text_group = false;
 
         // The background color is clipped by the clip of the last layer in the list
-        let background_clip: BoxModelBox =
-            (*get_cyclic(&bg_styles.background_clip.0, layer_count - 1)).into();
-        let background_clip_path = self.box_path(background_clip);
-
-        // Draw background color (if any)
-        self.draw_solid_bg(scene, &background_clip_path);
+        let color_clip = clips[layer_count - 1];
+        if self.background_color() != Color::TRANSPARENT {
+            self.text_clip_group(scene, &mut text_group, color_clip == LayerClip::Text);
+            self.draw_solid_bg(scene, &self.box_path(color_clip.box_model()));
+        }
 
         for idx in (0..layer_count).rev() {
-            let layer = ImageLayerStyles::from_background(bg_styles, image_data, idx);
+            let mut layer = ImageLayerStyles::from_background(bg_styles, image_data, idx);
+            layer.clip = clips[idx].box_model();
             if layer_paints_nothing(&layer) {
                 continue;
             }
+            self.text_clip_group(scene, &mut text_group, clips[idx] == LayerClip::Text);
             let background_clip_path = self.box_path(layer.clip);
 
             self.context.layer_manager.maybe_with_layer(
@@ -165,6 +200,72 @@ impl ElementCx<'_, '_> {
                     self.draw_image_layer(scene, &layer);
                 },
             );
+        }
+        self.text_clip_group(scene, &mut text_group, false);
+    }
+
+    /// Rostrum patch (round 14): each background layer's clip. The property shim's value is the cascaded
+    /// `background-clip` (it mirrors every declaration, so it wins where set); where it is unset (or a
+    /// keyword is unknown) Stylo's own value stands.
+    fn background_clips(&self, layer_count: usize) -> Vec<LayerClip> {
+        let stylo = &self.style.get_background().background_clip.0;
+        let shim: Vec<&str> = css_shim::value(&self.style, Shim::BackgroundClip).map(|v| v.split(',').collect()).unwrap_or_default();
+        (0..layer_count)
+            .map(|i| {
+                let from_shim = (!shim.is_empty()).then(|| *get_cyclic(&shim, i)).and_then(LayerClip::parse);
+                from_shim.unwrap_or_else(|| LayerClip::Box((*get_cyclic(stylo, i)).into()))
+            })
+            .collect()
+    }
+
+    /// Rostrum patch (round 14): open (`text`) or close the group that text-clipped background layers
+    /// are drawn in. Closing draws the element's glyphs as the group's mask (`Compose::DestIn` keeps the
+    /// group where the glyphs are), so a gradient spans the whole box, across every line, and shows only
+    /// through the letters. The group is clipped to the border box, where backgrounds paint.
+    fn text_clip_group(&self, scene: &mut impl PaintScene, open: &mut bool, text: bool) {
+        if *open == text {
+            return;
+        }
+        let area = self.frame.border_box;
+        if text {
+            scene.push_layer(Fill::NonZero, peniko::Mix::Normal, 1.0, self.transform, &area, None, None);
+        } else {
+            scene.push_layer(Fill::NonZero, peniko::Compose::DestIn, 1.0, self.transform, &area, None, None);
+            self.draw_text_mask(scene, self.node, self.transform);
+            scene.pop_layer();
+            scene.pop_layer();
+        }
+        *open = text;
+    }
+
+    /// Rostrum patch (round 14): the text of `node` (drawn with `transform`, its border box's, as
+    /// render_element places it) and of its in-flow descendants (anonymous blocks, block children), as
+    /// draw_inline_layout and draw_children place them, in opaque glyphs (text::draw_text_clip_mask).
+    fn draw_text_mask(&self, scene: &mut impl PaintScene, node: &blitz_dom::Node, transform: Affine) {
+        let layout = node.final_layout();
+        let scroll = node.scroll_offset();
+        // The contents are scrolled (render_element): the transform, and the inline layout's position.
+        let transform = transform.then_translate(Vec2 { x: -scroll.x * self.scale, y: -scroll.y * self.scale });
+        if node.flags.is_inline_root() {
+            if let Some(text) = node.element_data().and_then(|e| e.inline_layout_data.as_ref()) {
+                let x = (layout.border.left + layout.padding.left) as f64 - scroll.x;
+                let y = (layout.border.top + layout.padding.top) as f64 - scroll.y + text.block_offset as f64;
+                let transform = transform * Affine::translate((x * self.scale, y * self.scale));
+                crate::text::draw_text_clip_mask(scene, text.layout.lines(), self.context.dom, transform, self.scale, node.id);
+            }
+        }
+        if let Some(children) = &*node.paint_children.borrow() {
+            for child_id in children {
+                let child = &self.context.dom.as_ref().tree()[*child_id];
+                if matches!(child.taffy_display(), taffy::Display::None) {
+                    continue;
+                }
+                let location = child.final_layout().location;
+                let child_transform = transform
+                    * Affine::translate((location.x as f64 * self.scale, location.y as f64 * self.scale))
+                    * child.transform().as_deref().copied().unwrap_or_default();
+                self.draw_text_mask(scene, child, child_transform);
+            }
         }
     }
 
@@ -330,12 +431,16 @@ impl ElementCx<'_, '_> {
         }
     }
 
-    fn draw_solid_bg(&self, scene: &mut impl PaintScene, shape: &BezPath) {
+    fn background_color(&self) -> Color {
         let current_color = self.style.clone_color();
         let background_color = &self.style.get_background().background_color;
-        let bg_color = background_color
+        background_color
             .resolve_to_absolute(&current_color)
-            .as_srgb_color();
+            .as_srgb_color()
+    }
+
+    fn draw_solid_bg(&self, scene: &mut impl PaintScene, shape: &BezPath) {
+        let bg_color = self.background_color();
 
         if bg_color != Color::TRANSPARENT {
             // Fill the color

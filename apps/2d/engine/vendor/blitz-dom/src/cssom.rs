@@ -477,7 +477,8 @@ impl BaseDocument {
                     let parse_relative_rule_type = ancestors.last().map(|rule| rule.rule_type());
                     rules.read_with(&guard).parse_rule_for_insert(
                         lock,
-                        rule,
+                        // Rostrum patch (round 14): declarations Stylo for Servo drops, copied into custom properties.
+                        &crate::css_shim::rewrite_stylesheet(rule),
                         contents,
                         index,
                         containing_rule_types,
@@ -947,7 +948,8 @@ impl BaseDocument {
             return Err(CssomError::NotSupported);
         };
         let new_block = style::properties::declaration_block::parse_style_attribute(
-            css,
+            // Rostrum patch (round 14): declarations Stylo for Servo drops, copied into custom properties.
+            &crate::css_shim::rewrite_declarations(css),
             &self.url.url_extra_data(),
             None,
             QuirksMode::NoQuirks,

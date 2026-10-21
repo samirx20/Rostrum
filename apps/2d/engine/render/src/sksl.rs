@@ -1,11 +1,9 @@
 //! `sksl grade …` and `sksl lut …` (grade_cmd.rs) and `rostrum2d-render sksl display-in <view> <target>`: the colour filter a display-referred clip gets in a linear
 //! edit (rostrum-color `View::sksl_display_in`), as `{"code", "uniforms": [[name, [values]]]}` for the host to put
-//! in the clip's `<feshader>` (the compositor's linear blend, C5). `filter` builds the same filter here (tests).
+//! in the clip's `<feshader>` (the compositor's linear blend, C5).
 
 use rostrum_color::view::{Target, View};
 use serde_json::json;
-#[cfg(test)]
-use skia_safe::{ColorFilter, Data, RuntimeEffect};
 
 pub fn program(view: &str, target: &str) -> Result<rostrum_color::view::Sksl, String> {
     let t = Target::from_id(target).ok_or_else(|| format!("target is sdr or hdr1000; got `{target}`"))?;
@@ -59,17 +57,3 @@ pub fn run(args: &[String]) {
     }
 }
 
-/// The program as a Skia colour filter, its uniform arrays packed at their offsets.
-#[cfg(test)]
-pub fn filter(s: &rostrum_color::view::Sksl) -> Result<ColorFilter, String> {
-    let effect = RuntimeEffect::make_for_color_filter(&s.code, None)?;
-    let size = effect.uniforms().iter().map(|u| u.offset() + u.size_in_bytes()).max().unwrap_or(0);
-    let mut bytes = vec![0u8; size];
-    for (name, values) in &s.uniforms {
-        let u = effect.uniforms().iter().find(|u| u.name() == *name).ok_or_else(|| format!("no uniform {name}"))?;
-        for (i, v) in values.iter().enumerate() {
-            bytes[u.offset() + 4 * i..u.offset() + 4 * i + 4].copy_from_slice(&v.to_le_bytes());
-        }
-    }
-    effect.make_color_filter(Data::new_copy(&bytes), None).ok_or_else(|| "color filter".into())
-}

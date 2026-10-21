@@ -674,7 +674,8 @@ impl ElementData {
     pub fn flush_style_attribute(&mut self, guard: &SharedRwLock, url_extra_data: &UrlExtraData) {
         self.style_attribute = self.attr(local_name!("style")).map(|style_str| {
             ServoArc::new(guard.wrap(parse_style_attribute(
-                style_str,
+                // Rostrum patch (round 14): declarations Stylo for Servo drops, copied into custom properties.
+                &crate::css_shim::rewrite_declarations(style_str),
                 url_extra_data,
                 None,
                 QuirksMode::NoQuirks,
@@ -690,6 +691,20 @@ impl ElementData {
         guard: &SharedRwLock,
         url_extra_data: UrlExtraData,
     ) -> bool {
+        // Rostrum patch (round 14): a property the shim watches (crate::css_shim) goes through a
+        // declaration list, so its custom-property copy is set too (and Stylo's own, where it parses it).
+        if crate::css_shim::watches(name) {
+            let css = crate::css_shim::rewrite_declarations(&format!("{name}:{value}")).into_owned();
+            let block = parse_style_attribute(&css, &url_extra_data, None, QuirksMode::NoQuirks, CssRuleType::Style);
+            let target = self.mutable_style_attribute(guard);
+            let mut lock = guard.write();
+            let target = target.write_with(&mut lock);
+            for (declaration, importance) in block.declaration_importance_iter() {
+                target.push(declaration.clone(), importance);
+            }
+            return block.len() > 0;
+        }
+
         let context = ParserContext::new(
             Origin::Author,
             &url_extra_data,

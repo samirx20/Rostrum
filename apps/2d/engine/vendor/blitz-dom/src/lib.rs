@@ -40,6 +40,8 @@ mod document;
 pub mod node;
 
 mod config;
+/// Rostrum patch (round 14): properties Stylo for Servo does not parse, cascaded as custom properties.
+pub mod css_shim;
 /// CSSOM stylesheet access (`document.styleSheets`, `CSSStyleSheet`, `CSSRule`)
 mod cssom;
 mod debug;
@@ -75,7 +77,7 @@ pub use cssom::{CssRuleInfo, CssomError};
 pub use resolved_style::{
     css_property_is_supported, parse_transform_matrix, resolved_style_property_names,
 };
-pub use stylo_to_kurbo::{mul4, resolve_2d_transform, resolve_3d_transform};
+pub use stylo_to_kurbo::{affine4, mul4, node_3d_transform, resolve_2d_transform, resolve_3d_transform, resolve_perspective};
 
 pub mod net;
 pub mod util;

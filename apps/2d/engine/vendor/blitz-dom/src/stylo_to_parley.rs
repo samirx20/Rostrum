@@ -9,6 +9,7 @@ use crate::node::TextBrush;
 // Module of type aliases so we can refer to stylo types with nicer names
 pub(crate) mod stylo {
     pub(crate) use style::computed_values::direction::T as Direction;
+    pub(crate) use style::computed_values::font_optical_sizing::T as FontOpticalSizing;
     pub(crate) use style::computed_values::font_variant_caps::T as FontVariantCaps;
     pub(crate) use style::computed_values::font_variant_position::T as FontVariantPosition;
     pub(crate) use style::computed_values::text_wrap_mode::T as TextWrapMode;
@@ -26,7 +27,6 @@ pub(crate) mod stylo {
     pub(crate) use style::values::computed::font::FontVariantEastAsian;
     pub(crate) use style::values::computed::font::FontVariantLigatures;
     pub(crate) use style::values::computed::font::FontVariantNumeric;
-    pub(crate) use style::values::computed::font::FontVariationSettings;
     pub(crate) use style::values::computed::font::FontWeight;
     pub(crate) use style::values::computed::font::FontWidth;
     pub(crate) use style::values::computed::font::GenericFontFamily;
@@ -100,15 +100,31 @@ pub(crate) fn font_style(input: stylo::FontStyle) -> parley::FontStyle {
     }
 }
 
-pub(crate) fn font_variations(input: &stylo::FontVariationSettings) -> Vec<parley::FontVariation> {
-    input
+/// Rostrum patch (H5): the font's variation axes for a computed font style at `font_size` (CSS px): the
+/// `font-variation-settings` list, plus `opsz` = `font_size` under `font-optical-sizing: auto` (the initial value)
+/// unless the list sets `opsz` itself (explicit wins; <https://drafts.csswg.org/css-fonts-4/#font-optical-sizing-def>).
+/// A font without an `opsz` axis ignores it and skrifa clamps it to the axis range, as Chrome does. Layout
+/// (`style`) and Stylo's font metrics (`ch` / `ic` / `ex`) both read this one list.
+pub(crate) fn font_variations(font_styles: &stylo::Font, font_size: f32) -> Vec<parley::FontVariation> {
+    let opsz = parley::Tag::from_bytes(*b"opsz");
+    let mut variations: Vec<parley::FontVariation> = font_styles
+        .font_variation_settings
         .0
         .iter()
         .map(|v| parley::FontVariation {
             tag: parley::Tag::from_bytes(v.tag.0.to_be_bytes()),
             value: v.value,
         })
-        .collect()
+        .collect();
+    if font_styles.font_optical_sizing == stylo::FontOpticalSizing::Auto
+        && !variations.iter().any(|v| v.tag == opsz)
+    {
+        variations.push(parley::FontVariation {
+            tag: opsz,
+            value: font_size,
+        });
+    }
+    variations
 }
 
 #[inline]
@@ -427,7 +443,7 @@ pub(crate) fn style(
     let font_weight = self::font_weight(font_styles.font_weight);
     let font_style = self::font_style(font_styles.font_style);
     let font_width = self::font_width(font_styles.font_width);
-    let font_variations = self::font_variations(&font_styles.font_variation_settings);
+    let font_variations = self::font_variations(font_styles, font_size);
     let font_features = self::font_features(font_styles);
 
     // Convert font family

@@ -1,4 +1,6 @@
+mod avar; // Rostrum patch (H5): undo `avar` before Skia sees variation coords
 mod image_renderer;
+mod plane; // Rostrum patch (round 14, H5): what part of a tilted plane is on screen / in front
 mod scene;
 mod window_renderer;
 pub mod working_space;

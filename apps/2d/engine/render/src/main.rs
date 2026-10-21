@@ -22,7 +22,13 @@ mod sink;
 mod sksl;
 mod styles;
 #[cfg(test)]
+mod cliptext_tests;
+#[cfg(test)]
+mod depth_tests;
+#[cfg(test)]
 mod incremental_tests;
+#[cfg(test)]
+mod opsz_tests;
 #[cfg(test)]
 mod seam_tests;
 #[cfg(test)]

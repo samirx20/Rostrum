@@ -49,6 +49,9 @@ pub struct SkiaSceneCache {
     /// its content is drawn into a layer under a hard clip to the pixels the edge touches, and the soft edge is
     /// applied once to the finished layer at pop (see `push_clip_layer`).
     soft_clips: Vec<Option<SoftClip>>,
+    /// Rostrum patch (round 14, H5): one entry per open layer, `Some` for a filtered layer drawn in its own plane
+    /// because the base matrix has perspective (see `FlatLayer`).
+    flats: Vec<Option<FlatLayer>>,
     /// Rostrum patch (G6): tapped buffers drawn in this paint, read back and written by `finish_taps` once it is submitted.
     pending_taps: Vec<PendingTap>,
     /// Rostrum patch (G6): tapped buffers being written to disk (`finish_taps`), joined by `taps_written`.
@@ -70,6 +73,27 @@ struct SoftClip {
     transform: kurbo::Affine,
     fill: peniko::Fill,
     path: kurbo::BezPath,
+}
+
+/// Rostrum patch (round 14, H5): a filtered layer under a perspective base matrix, drawn as CSS (and Chrome) draw a
+/// filtered 3D element: its content and filter into an offscreen picture of its own, untilted plane (an affine
+/// matrix, where Skia's filters are exact and fast), then that picture drawn through the 3D matrix. Skia run under
+/// perspective cut the layer to a sliver or left a sharp inner rectangle, and blurred slowly (~160 ms).
+struct FlatLayer {
+    surface: skia_safe::Surface,
+    /// The canvas drawing went to before (the painter's, or an enclosing layer's surface's).
+    prev: usize,
+    /// The base matrices set aside while the layer draws (its own base is the plane -> picture map).
+    base_3d: Vec<skia_safe::M44>,
+    alpha: f32,
+    blend: peniko::BlendMode,
+    /// Picture px -> plane (the coordinates the base matrix maps to the screen).
+    to_plane: kurbo::Affine,
+}
+
+/// Rostrum patch (round 14, H5): a device IRect as a kurbo rect.
+fn irect_to_kurbo(r: skia_safe::IRect) -> kurbo::Rect {
+    kurbo::Rect::new(r.left as f64, r.top as f64, r.right as f64, r.bottom as f64)
 }
 
 /// Rostrum patch (X6): a layer whose filter taps buffers (`Filter::taps`). Its content is drawn into a surface of the
@@ -161,6 +185,7 @@ impl Default for SkiaSceneCache {
             held: None,
             captures: Vec::new(),
             soft_clips: Vec::new(),
+            flats: Vec::new(),
             pending_taps: Vec::new(),
             tap_writes: Vec::new(),
         }
@@ -299,7 +324,88 @@ impl SkiaScenePainter<'_> {
         [dev.x0, dev.y0, dev.x1, dev.y1].iter().all(|v| (v - v.round()).abs() < 1e-3)
     }
 
+    /// Rostrum patch (round 14, H5): a rect (in the current matrix's local coordinates) limited to what that matrix
+    /// can project: the part of its plane on screen and in front of the viewer (plane.rs). None when the matrix has
+    /// no perspective or the rect needs no cut.
+    fn in_front(&self, rect: kurbo::Rect) -> Option<kurbo::BezPath> {
+        let device = self.inner.device_clip_bounds().map(irect_to_kurbo);
+        crate::plane::in_front(&self.inner.local_to_device(), rect, device)
+    }
+
+    /// Rostrum patch (round 14, H5): the innermost base matrix when it has perspective.
+    fn perspective_base(&self) -> Option<skia_safe::M44> {
+        self.cache.base_3d.last().filter(|b| crate::plane::has_perspective(b)).cloned()
+    }
+
+    /// Rostrum patch (round 14, H5): opens a `FlatLayer` when the base matrix has perspective: drawing goes to an
+    /// offscreen picture of the layer's plane, inside a layer that runs `filter` there. The picture covers the
+    /// layer's clip on the plane (where `transform` maps `clip`), cut to the part of the plane on screen grown by
+    /// `grow` (what the filter pulls in from outside: its expansion rect). False (nothing pushed) without a
+    /// perspective base, or when neither the clip nor the visible plane is bounded (the caller layers on screen).
+    #[allow(clippy::too_many_arguments)]
+    fn push_flat_layer(&mut self, fill: peniko::Fill, blend: peniko::BlendMode, alpha: f32, transform: kurbo::Affine, clip: &impl kurbo::Shape, filter: Option<ImageFilter>, grow: kurbo::Rect) -> bool {
+        let Some(base) = self.perspective_base() else { return false };
+        let mut region = transform.transform_rect_bbox(clip.bounding_box());
+        if let Some(v) = self.inner.device_clip_bounds().and_then(|d| crate::plane::visible_in_plane(&base, irect_to_kurbo(d))) {
+            let s = transform.determinant().abs().sqrt();
+            region = region.intersect(kurbo::Rect::new(v.x0 - grow.x1 * s, v.y0 - grow.y1 * s, v.x1 - grow.x0 * s, v.y1 - grow.y0 * s));
+        }
+        if !region.is_finite() || region.width().max(region.height()) > 16384.0 {
+            return false;
+        }
+        // Picture px per plane unit: the plane's largest on-screen magnification (sharp at the near edge), bounded.
+        let k = crate::plane::magnification(&base, region).unwrap_or(1.0).clamp(0.5, 2.0).min(4096.0 / region.width().max(region.height()).max(1.0));
+        let (w, h) = ((region.width() * k).ceil().max(1.0) as i32, (region.height() * k).ceil().max(1.0) as i32);
+        let info = self.inner.image_info();
+        let info = skia_safe::ImageInfo::new((w, h), info.color_type(), skia_safe::AlphaType::Premul, info.color_space());
+        let Some(mut surface) = self.inner.new_surface(&info, None) else { return false };
+        let canvas = surface.canvas() as *const Canvas;
+        let to_plane = kurbo::Affine::translate((region.x0, region.y0)) * kurbo::Affine::scale(1.0 / k);
+        let base_3d = std::mem::replace(&mut self.cache.base_3d, vec![sk_kurbo::m44_from_affine(to_plane.inverse())]);
+        self.cache.flats.push(Some(FlatLayer { surface, prev: self.inner as *const Canvas as usize, base_3d, alpha, blend, to_plane }));
+        self.cache.captures.push(None);
+        self.cache.soft_clips.push(None);
+        // SAFETY: the canvas belongs to the surface, which the flat layer keeps alive until its pop_layer switches back.
+        self.inner = unsafe { &*canvas };
+        self.inner.clear(Color::TRANSPARENT);
+        self.reset_paint();
+        if let Some(f) = filter {
+            self.set_paint_filter(f);
+        }
+        self.inner.save();
+        self.set_matrix(transform);
+        self.clip(fill, clip);
+        self.inner.save_layer(&SaveLayerRec::default().paint(&self.cache.paint));
+        true
+    }
+
+    /// Rostrum patch (round 14, H5): closes a `FlatLayer`: its filtered picture drawn through the base matrix, with
+    /// the layer's opacity and blend mode.
+    fn pop_flat_layer(&mut self, flat: FlatLayer) {
+        self.inner.restore();
+        self.inner.restore();
+        let mut surface = flat.surface;
+        let image = surface.image_snapshot();
+        // SAFETY: `prev` is the canvas in use when the layer was pushed, alive for longer than the layer.
+        self.inner = unsafe { &*(flat.prev as *const Canvas) };
+        self.cache.base_3d = flat.base_3d;
+        self.reset_paint();
+        self.set_paint_alpha(flat.alpha);
+        self.set_paint_blend_mode(flat.blend);
+        self.inner.save();
+        self.set_matrix(flat.to_plane);
+        let sampling = skia_safe::SamplingOptions::new(skia_safe::FilterMode::Linear, skia_safe::MipmapMode::None);
+        self.inner.draw_image_with_sampling_options(&image, (0, 0), sampling, Some(&self.cache.paint));
+        self.inner.restore();
+    }
+
     fn clip(&self, fill: peniko::Fill, shape: &impl kurbo::Shape) {
+        // Rostrum patch (round 14, H5): under perspective a rect is first cut to what can be projected: one reaching
+        // behind the viewer (an `overflow: visible` layer's unbounded clip) folded over the horizon into a sliver.
+        if let Some(front) = shape.as_rect().and_then(|r| self.in_front(r)) {
+            self.inner.clip_path(&sk_kurbo::path_from_shape(&front), None, true);
+            return;
+        }
         if let Some(rect) = shape.as_rect() {
             self.inner.clip_rect(sk_kurbo::rect_from(rect), None, true);
         } else if let Some(rrect) = shape.as_rounded_rect() {
@@ -512,13 +618,23 @@ impl SkiaScenePainter<'_> {
             return Some(typeface);
         }
 
+        // Rostrum patch (H5): Parley's coords are past the font's `avar`; Skia applies `avar` to design values
+        // itself, so undo it first (crate::avar) or shaping and drawing use different instances.
+        let avar = typeface
+            .copy_table_data(u32::from_be_bytes(*b"avar"))
+            .map(|data| crate::avar::segment_maps(&data))
+            .unwrap_or_default();
         let coordinates: Vec<Coordinate> = axes
             .iter()
             .zip(normalized_coords.iter().map(|c| f2dot14_to_f32(*c)))
+            .enumerate()
+            .map(|(i, (axis, factor))| (axis, avar.get(i).map_or(factor, |map| crate::avar::unmap(map, factor))))
             .filter(|(_, value)| *value != 0.0)
             .map(|(axis, factor)| {
+                // Rostrum patch (H5): below the default a coordinate runs from the default towards the minimum
+                // (upstream lerped from the minimum, so `font-stretch: 88%` on Roboto Flex drew as wdth ~37).
                 let value = if factor < 0.0 {
-                    lerp_f32(axis.min, axis.def, -factor)
+                    lerp_f32(axis.def, axis.min, -factor)
                 } else {
                     lerp_f32(axis.def, axis.max, factor)
                 };
@@ -723,6 +839,16 @@ impl PaintScene for SkiaScenePainter<'_> {
     ) {
         let blend: peniko::BlendMode = blend.into();
 
+        // Rostrum patch (round 14, H5): every layer under a perspective base (filter, opacity, blend, isolation) is
+        // drawn in its own plane (`FlatLayer`), then projected: a `saveLayer` opened under perspective came out
+        // empty (an `opacity: .9` or a blending child made a tilted card vanish), and filters ran wrong and slowly.
+        if backdrop_filter.is_none() && self.perspective_base().is_some() {
+            let grow = filter.as_ref().map_or(kurbo::Rect::ZERO, |f| f.expansion_rect());
+            if self.push_flat_layer(fill, blend, alpha, transform, clip, filter.as_ref().and_then(|f| convert_filter(f)), grow) {
+                return;
+            }
+        }
+
         // Rostrum patch (X6): a filter with taps draws its content offscreen (see `Capture`).
         if let Some(f) = filter.as_ref().filter(|f| !f.taps.is_empty() && backdrop_filter.is_none()) {
             let info = self.inner.image_info();
@@ -742,11 +868,13 @@ impl PaintScene for SkiaScenePainter<'_> {
                 self.clip(fill, clip);
                 self.cache.captures.push(Some(cap));
                 self.cache.soft_clips.push(None);
+                self.cache.flats.push(None);
                 return;
             }
         }
         self.cache.captures.push(None);
         self.cache.soft_clips.push(None);
+        self.cache.flats.push(None);
 
         self.reset_paint();
         self.set_paint_alpha(alpha);
@@ -777,9 +905,12 @@ impl PaintScene for SkiaScenePainter<'_> {
         clip: &impl kurbo::Shape,
     ) {
         self.cache.captures.push(None);
+        self.cache.flats.push(None);
         self.inner.save(); // we need to do two saves because of pop_layer
 
         self.set_matrix(transform);
+        // Rostrum patch (round 14, H5): the clip as it can be projected (`in_front`), for the soft edge too.
+        let front = clip.as_rect().and_then(|r| self.in_front(r));
         // Rostrum patch (F7 seam, R19): an anti-aliased clip edge applied to every draw on its own lets what is drawn
         // first show through what is drawn over it at the edge pixels (coverage conflation): a video layer's dark
         // background under its frame made each rolling-shutter band's clipped top edge a dark hairline (10-20 % on
@@ -798,7 +929,7 @@ impl PaintScene for SkiaScenePainter<'_> {
         self.inner.restore();
         self.inner.reset_matrix();
         self.inner.clip_irect(bounds.unwrap_or_default(), None);
-        self.cache.soft_clips.push(Some(SoftClip { transform, fill, path: clip.to_path(0.01) }));
+        self.cache.soft_clips.push(Some(SoftClip { transform, fill, path: front.unwrap_or_else(|| clip.to_path(0.01)) }));
         self.inner.save_layer(&SaveLayerRec::default());
     }
 
@@ -815,9 +946,16 @@ impl PaintScene for SkiaScenePainter<'_> {
             paint.set_blend_mode(SkBlendMode::Clear);
             self.inner.draw_path(&p, &paint);
         }
+        let flat = self.cache.flats.pop().flatten();
         let Some(cap) = self.cache.captures.pop().flatten() else {
-            self.inner.restore();
-            self.inner.restore();
+            match flat {
+                // Rostrum patch (round 14, H5): a layer drawn in its own plane, now drawn through the 3D matrix.
+                Some(flat) => self.pop_flat_layer(flat),
+                None => {
+                    self.inner.restore();
+                    self.inner.restore();
+                }
+            }
             return;
         };
         // Rostrum patch (X6): the captured layer's content is its filter's source: write the taps, then draw it filtered.
@@ -944,6 +1082,12 @@ impl PaintScene for SkiaScenePainter<'_> {
         radius: f64,
         std_dev: f64,
     ) {
+        // Rostrum patch (round 14, H5): under a perspective base the shadow is drawn in its own plane (a `FlatLayer`,
+        // as filtered layers are), where the mask blur below is affine, then that picture through the 3D matrix.
+        let reach = 3.0 * std_dev;
+        let flat = std_dev > 0.0
+            && self.push_flat_layer(peniko::Fill::NonZero, peniko::Mix::Normal.into(), 1.0, transform, &rect.inflate(reach, reach), None, kurbo::Rect::new(-reach, -reach, reach, reach));
+
         self.set_matrix(transform);
 
         self.reset_paint();
@@ -952,6 +1096,7 @@ impl PaintScene for SkiaScenePainter<'_> {
 
         // Rostrum patch: under perspective (a rotateX / rotateY tilt) Skia blurs a mask filter's coverage on
         // the CPU; the shape is drawn sharp into a layer that a (downscaled, GPU) blur filter blurs instead.
+        // (Round 14: only left when no flat layer could be made.)
         let perspective = std_dev > 0.0 && self.inner.local_to_device_as_3x3().has_perspective();
         if std_dev > 0.0 && !perspective {
             self.cache.paint.set_mask_filter(
@@ -980,6 +1125,9 @@ impl PaintScene for SkiaScenePainter<'_> {
         self.inner.draw_rrect(rrect, &self.cache.paint);
         if perspective {
             self.inner.restore();
+        }
+        if flat {
+            self.pop_layer();
         }
     }
 }

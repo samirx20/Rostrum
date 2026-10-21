@@ -408,21 +408,6 @@ impl Painter {
     }
 }
 
-/// Tests: draws on a GPU F16 render target (a GL context of its own; Ganesh cannot render to F32) and reads it back
-/// as f32 RGBA: shader maths measured on the GPU, to half-float precision (~5e-4 relative).
-#[cfg(test)]
-pub fn gpu_f16(width: u32, height: u32, space: Option<ColorSpace>, draw: impl FnOnce(&skia_safe::Canvas)) -> Vec<f32> {
-    let mut gl = gl_context().expect("GL context");
-    let info = ImageInfo::new((width as i32, height as i32), ColorType::RGBAF16, AlphaType::Premul, space);
-    let mut surface = gpu::surfaces::render_target(&mut gl.gr, Budgeted::Yes, &info, None, SurfaceOrigin::TopLeft, None, false, None).expect("F16 render target");
-    draw(surface.canvas());
-    let mut out = vec![0u8; width as usize * height as usize * 8];
-    assert!(surface.read_pixels(&info, &mut out, width as usize * 8, (0, 0)), "F16 readback");
-    drop(surface);
-    let table = crate::pixels::halves();
-    out.chunks(2).map(|b| table[u16::from_le_bytes([b[0], b[1]]) as usize]).collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

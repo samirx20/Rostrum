@@ -15,34 +15,20 @@ pub(crate) fn convert_filters(filters: &[StyloFilter]) -> Option<Filter> {
 }
 
 /// The id in an element's `filter: url(#id)` (Rostrum proof patch). Stylo built for Servo cannot hold
-/// a url() filter (its Url variant is uninhabited), so it is read from the element's inline style.
+/// a url() filter (its Url variant is uninhabited), so it is read from the property shim.
 pub(crate) fn url_filter_id(node: &blitz_dom::Node) -> Option<String> {
     url_ref_id(node, "filter")
 }
 
-/// The id in an inline-style `<property>: url(#id)` (Rostrum proof patch; see url_filter_id).
+/// The id in an element's cascaded `<property>: url(#id)` (`filter`, `backdrop-filter`, `mask-image`).
+/// Rostrum patch (round 14): from the property shim (blitz_dom::css_shim: stylesheets and the style
+/// attribute, cascaded by Stylo); it was read from the inline style only.
 pub(crate) fn url_ref_id(node: &blitz_dom::Node, property: &str) -> Option<String> {
-    let style = node.attrs()?.iter().find(|a| &*a.name.local == "style")?.value.to_string();
-    let at = style.match_indices(property).find(|(i, _)| *i == 0 || matches!(style.as_bytes()[i - 1], b';' | b' '))?.0;
-    let rest = &style[at..];
-    let rest = &rest[..rest.find(';').unwrap_or(rest.len())];
-    let url = &rest[rest.find("url(")? + 4..];
+    let styles = node.primary_styles()?;
+    let value = blitz_dom::css_shim::value(&styles, blitz_dom::css_shim::Shim::of(property)?)?;
+    let url = &value[value.find("url(")? + 4..];
     let id = url.trim_start_matches(|c| c == '"' || c == '\'' || c == ' ').strip_prefix('#')?;
     Some(id.chars().take_while(|c| c.is_alphanumeric() || *c == '_' || *c == '-').collect())
-}
-
-/// The value of `<property>` in an element's inline style (Rostrum patch, round 6): for properties
-/// Stylo built for Servo does not parse (`-webkit-text-stroke`, `paint-order`). The name must stand
-/// alone (`-webkit-text-stroke` does not match `-webkit-text-stroke-width`).
-pub(crate) fn inline_style_value(node: &blitz_dom::Node, property: &str) -> Option<String> {
-    let style: &str = &node.attrs()?.iter().find(|a| &*a.name.local == "style")?.value;
-    if !style.contains(property) {
-        return None;
-    }
-    style.split(';').rev().find_map(|decl| {
-        let (name, value) = decl.split_once(':')?;
-        name.trim().eq_ignore_ascii_case(property).then(|| value.trim().trim_end_matches("!important").trim().to_string())
-    })
 }
 
 /// The Gaussian sigma of a CSS shadow blur radius (box-shadow, text-shadow), in device px, as Chromium

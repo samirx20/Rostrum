@@ -1374,15 +1374,10 @@ fn create_css_rect(style: &ComputedValues, layout: &Layout, scale: f64) -> CssBo
 
 /// Rostrum proof patch: an element's 3D transform (scale: device pixels per CSS px) as the base matrix its draws are mapped by. Draws use P
 /// (the element's 2D placement, `placement`); the base P * M * P^-1 makes each P * local land at P * M * local.
+/// Rostrum patch (round 14, H5): M is `blitz_dom::node_3d_transform`, which includes the containing block's
+/// `perspective` / `perspective-origin` and CSS flattening, so paint, culling and boxes.rs see one matrix.
 pub fn element_3d(node: &blitz_dom::Node, placement: Affine, scale: f64) -> Option<[f64; 16]> {
-    let m = node.primary_styles().and_then(|s| {
-        let size = node.final_layout().size;
-        let reference_box = euclid::default::Rect::new(
-            euclid::default::Point2D::new(style::values::computed::CSSPixelLength::new(0.0), style::values::computed::CSSPixelLength::new(0.0)),
-            euclid::default::Size2D::new(style::values::computed::CSSPixelLength::new(size.width), style::values::computed::CSSPixelLength::new(size.height)),
-        );
-        blitz_dom::resolve_3d_transform(s.get_box(), reference_box)
-    })?;
+    let m = blitz_dom::node_3d_transform(node)?;
     let s = scale;
     // Device pixels: S * M * S^-1 (only the x / y rows and columns scale).
     let sm = [s, 0.0, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0];

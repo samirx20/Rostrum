@@ -124,12 +124,6 @@ pub fn run(spec: &str, lut_dir: &str) -> Result<Value, String> {
     Ok(out)
 }
 
-/// The matte view of layer `id` as a program (tests).
-#[cfg(test)]
-pub fn view_program(g: &Grade, id: &str) -> Result<Sksl, String> {
-    program_of(g.sksl_matte_view(id)?, true)
-}
-
 /// `rostrum2d-render sksl lut <spec.json> <out.cube> [--size N] [--in space] [--out space] [--view id [--target sdr|hdr1000]] [--note text]…`:
 /// the one grade (the same spec as `sksl grade`) baked into a `.cube` (rostrum-color `Grade::bake`), for Resolve and
 /// other tools. Prints `{"file", "size", "in", "out", "view", "target"}`. The notes go into the header comments

@@ -1,6 +1,8 @@
 use anyrender::PaintScene;
 use blitz_dom::{BaseDocument, NodeId, node::TextBrush, util::ToColorColor};
 use kurbo::{Affine, BezPath, Cap, Circle, Rect, Stroke};
+use blitz_dom::css_shim::{self, Shim};
+use parley::layout::GlyphRun;
 use parley::{Affinity, Cursor, Layout, Line, PositionedLayoutItem, Selection};
 use peniko::Fill;
 use std::collections::HashMap;
@@ -661,8 +663,7 @@ pub(crate) fn stroke_text<'a>(
 
     // Rostrum patch (round 6): every run's text-shadows first, under all of the element's text.
     let lines: Vec<Line<'a, TextBrush>> = lines.collect();
-    let root_outline = outline_decls(doc, inline_root_id, None);
-    draw_text_shadows(scene, lines.iter().cloned(), doc, transform, scale, inline_root_id, &root_outline);
+    draw_text_shadows(scene, lines.iter().cloned(), doc, transform, scale, inline_root_id);
 
     // Persistent stack mirroring the ancestor path (inline root -> current run's
     // node) as we walk the runs. The `text-decoration-*` properties are *not*
@@ -685,10 +686,6 @@ pub(crate) fn stroke_text<'a>(
                 let font_size = run.font_size();
                 let metrics = run.font_metrics();
                 let style = glyph_run.style();
-                let synthesis = run.synthesis();
-                let glyph_xform = synthesis
-                    .skew()
-                    .map(|angle| Affine::skew(angle.to_radians().tan() as f64, 0.0));
 
                 let css_font_size = font_size as f64 / scale;
 
@@ -720,22 +717,14 @@ pub(crate) fn stroke_text<'a>(
                 // inherits, so the innermost inline element already carries the right value.
                 let text_color = stack.last().map(|e| e.text_color).unwrap_or(Color::BLACK);
 
-                let embolden = if FONT_EMBOLDEN_ENABLED {
-                    let fs = font_size as f64 / scale;
-                    kurbo::Vec2::new((0.015125 * fs).min(0.3), (0.0121 * fs).min(0.3))
-                } else {
-                    kurbo::Vec2::default()
-                };
-
                 let normalized_coords: &[i16] = bytemuck::cast_slice(run.normalized_coords());
-                let (rx, ry) = blitz_dom::util::inline_relative_offset(doc, Some(style.brush.id), inline_root_id);
-                let transform = transform * Affine::translate((rx * scale, ry * scale));
+                let (transform, glyph_xform, embolden) = run_placement(doc, &glyph_run, transform, scale, inline_root_id);
                 // Rostrum patch (round 6): the run's spans' `opacity` / `visibility`, and its
-                // `-webkit-text-stroke` (inline style; Stylo for Servo does not parse it) in `paint-order`.
+                // `-webkit-text-stroke` in `paint-order` (round 14: cascaded, through the property shim).
                 let Some(alpha) = inline_paint(doc, style.brush.id, inline_root_id) else {
                     continue;
                 };
-                let outline = text_stroke(doc, style.brush.id, inline_root_id, &root_outline);
+                let outline = text_stroke(doc, style.brush.id);
                 let glyphs = || {
                     glyph_run.positioned_glyphs().map(|glyph| anyrender::Glyph {
                         id: glyph.id as _,
@@ -872,58 +861,87 @@ pub(crate) fn inline_paint(doc: &BaseDocument, node_id: NodeId, inline_root_id: 
     (alpha > 0.0).then_some(alpha)
 }
 
-/// `-webkit-text-stroke: <width> <color>` (and `paint-order`), inherited: read from the inline style of
-/// the run's node or its nearest ancestor that sets it.
+/// `-webkit-text-stroke: <width> <color>` and `paint-order` of a run.
 struct TextOutline {
     width: f32,
     color: Color,
     stroke_first: bool,
 }
 
-/// The `-webkit-text-stroke` and `paint-order` declarations nearest to `from`, walking up to (not
-/// including) `stop`, or to the document root.
-type OutlineDecls = (Option<String>, Option<String>);
-fn outline_decls(doc: &BaseDocument, from: NodeId, stop: Option<NodeId>) -> OutlineDecls {
-    let (mut found, mut order) = (None, None);
-    let mut cur = Some(from);
-    while let Some(id) = cur {
-        if Some(id) == stop {
-            break;
-        }
-        let Some(node) = doc.get_node(id) else { break };
-        if found.is_none() {
-            found = crate::filters::inline_style_value(node, "-webkit-text-stroke");
-        }
-        if order.is_none() {
-            order = crate::filters::inline_style_value(node, "paint-order");
-        }
-        if found.is_some() && order.is_some() {
-            break;
-        }
-        cur = node.parent;
+/// The run's outline. Rostrum patch (round 14): the run's node's cascaded `-webkit-text-stroke` and
+/// `paint-order`, inherited by Stylo through the property shim (blitz_dom::css_shim), so stylesheet rules
+/// count; round 6 walked the inline styles of the node's ancestors.
+fn text_stroke(doc: &BaseDocument, node_id: NodeId) -> Option<TextOutline> {
+    let styles = doc.get_node(node_id)?.primary_styles()?;
+    let value = css_shim::value(&styles, Shim::TextStroke)?;
+    // `<width> <color>` in either order; the colour may hold spaces (`rgb(0 0 0)`).
+    let px = |s: &str| s.trim().strip_suffix("px").unwrap_or(s.trim()).parse::<f32>().ok();
+    let (width, c) = match value.split_once(char::is_whitespace) {
+        None => (px(value)?, ""),
+        Some((first, rest)) => match px(first) {
+            Some(w) => (w, rest.trim()),
+            None => {
+                let (rest, last) = value.rsplit_once(char::is_whitespace)?;
+                (px(last)?, rest.trim())
+            }
+        },
+    };
+    if width <= 0.0 {
+        return None;
     }
-    (found, order)
-}
-
-/// The run's outline: declarations between its node and the inline root first, then the root's own
-/// (inherited ones, `root_decls`, resolved once per inline layout).
-fn text_stroke(doc: &BaseDocument, node_id: NodeId, inline_root_id: NodeId, root_decls: &OutlineDecls) -> Option<TextOutline> {
-    let (found, order) = if node_id == inline_root_id { (None, None) } else { outline_decls(doc, node_id, Some(inline_root_id)) };
-    let found = found.or_else(|| root_decls.0.clone());
-    let order = order.or_else(|| root_decls.1.clone());
-    let value = found?;
-    let value = value.trim();
-    let split = value.find(|c: char| c.is_whitespace()).unwrap_or(value.len());
-    let (w, c) = value.split_at(split);
-    let width = w.trim_end_matches("px").parse::<f32>().ok().filter(|w| *w > 0.0)?;
-    let c = c.trim();
     let color = if c.is_empty() || c.eq_ignore_ascii_case("currentcolor") {
-        doc.get_node(node_id)?.primary_styles()?.get_inherited_text().color.as_color_color()
+        styles.get_inherited_text().color.as_color_color()
     } else {
         color::parse_color(c).ok()?.to_alpha_color::<color::Srgb>()
     };
-    let stroke_first = order.is_some_and(|o| o.trim_start().starts_with("stroke"));
+    let stroke_first = css_shim::value(&styles, Shim::PaintOrder).is_some_and(|o| o.starts_with("stroke"));
     Some(TextOutline { width, color, stroke_first })
+}
+
+/// Where a run's glyphs are drawn: the inline layout's transform moved by the run's spans' relative
+/// offset, the synthetic-italic skew, and the synthetic-bold embolden (as stroke_text draws them).
+fn run_placement(doc: &BaseDocument, glyph_run: &GlyphRun<'_, TextBrush>, transform: Affine, scale: f64, inline_root_id: NodeId) -> (Affine, Option<Affine>, kurbo::Vec2) {
+    let run = glyph_run.run();
+    let glyph_xform = run.synthesis().skew().map(|angle| Affine::skew(angle.to_radians().tan() as f64, 0.0));
+    let embolden = if FONT_EMBOLDEN_ENABLED {
+        let fs = run.font_size() as f64 / scale;
+        kurbo::Vec2::new((0.015125 * fs).min(0.3), (0.0121 * fs).min(0.3))
+    } else {
+        kurbo::Vec2::default()
+    };
+    let (rx, ry) = blitz_dom::util::inline_relative_offset(doc, Some(glyph_run.style().brush.id), inline_root_id);
+    (transform * Affine::translate((rx * scale, ry * scale)), glyph_xform, embolden)
+}
+
+/// Rostrum patch (round 14): an inline layout's text as an alpha mask, for `background-clip: text`
+/// (render/background.rs). Every visible run's glyphs and their `-webkit-text-stroke`, in opaque black
+/// times the spans' opacity, exactly where stroke_text draws them (Chrome's text-clip paint: all colours
+/// black, no shadows). Decorations are not part of it.
+pub(crate) fn draw_text_clip_mask<'a>(
+    scene: &mut impl PaintScene,
+    lines: impl Iterator<Item = Line<'a, TextBrush>>,
+    doc: &BaseDocument,
+    transform: Affine,
+    scale: f64,
+    inline_root_id: NodeId,
+) {
+    let black = anyrender::Paint::from(Color::BLACK);
+    for line in lines {
+        for item in line.items() {
+            let PositionedLayoutItem::GlyphRun(glyph_run) = item else { continue };
+            let node_id = glyph_run.style().brush.id;
+            let Some(alpha) = inline_paint(doc, node_id, inline_root_id) else { continue };
+            let run = glyph_run.run();
+            let normalized_coords: &[i16] = bytemuck::cast_slice(run.normalized_coords());
+            let (t, glyph_xform, embolden) = run_placement(doc, &glyph_run, transform, scale, inline_root_id);
+            let glyphs = || glyph_run.positioned_glyphs().map(|g| anyrender::Glyph { id: g.id as _, x: g.x, y: g.y });
+            scene.draw_glyphs(run.font(), run.font_size(), !FONT_EMBOLDEN_ENABLED, normalized_coords, embolden, Fill::NonZero, &black, alpha, t, glyph_xform, glyphs());
+            if let Some(o) = text_stroke(doc, node_id) {
+                let pen = Stroke::new(o.width as f64 * scale);
+                scene.draw_glyphs(run.font(), run.font_size(), false, normalized_coords, embolden, &pen, &black, alpha, t, glyph_xform, glyphs());
+            }
+        }
+    }
 }
 
 /// CSS `text-shadow` (inherited, so each run's own node carries it): the run's glyphs (and outline) in
@@ -935,7 +953,6 @@ fn draw_text_shadows<'a>(
     transform: Affine,
     scale: f64,
     inline_root_id: NodeId,
-    root_outline: &OutlineDecls,
 ) {
     for line in lines {
         for item in line.items() {
@@ -951,7 +968,7 @@ fn draw_text_shadows<'a>(
             let run = glyph_run.run();
             let normalized_coords: &[i16] = bytemuck::cast_slice(run.normalized_coords());
             let glyph_xform = run.synthesis().skew().map(|angle| Affine::skew(angle.to_radians().tan() as f64, 0.0));
-            let outline = text_stroke(doc, node_id, inline_root_id, &root_outline);
+            let outline = text_stroke(doc, node_id);
             let (rx, ry) = blitz_dom::util::inline_relative_offset(doc, Some(node_id), inline_root_id);
             for shadow in shadows.iter().rev() {
                 let color = shadow.color.resolve_to_absolute(&current_color).as_srgb_color();
