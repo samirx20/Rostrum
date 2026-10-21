@@ -6,13 +6,14 @@ import re
 import secrets
 
 
-def counted(taken, type_: str, reserved=()) -> str:
-    """The next `type_N` not taken and not reserved (every quoted word in a script is reserved)."""
+def counted(taken, type_: str, reserved=(), sep: str = "_") -> str:
+    """The next `type_N` not taken and not reserved (every quoted word in a script is reserved). The one source
+    of counted ids, for items (`layer_2`) and for change groups (`agent-run-2`, `sep="-"`)."""
     taken = set(taken) | set(reserved)
     n = 1
-    while f"{type_}_{n}" in taken:
+    while f"{type_}{sep}{n}" in taken:
         n += 1
-    return f"{type_}_{n}"
+    return f"{type_}{sep}{n}"
 
 
 def from_content(parent: str, kind: str, ms: int | float) -> str:
