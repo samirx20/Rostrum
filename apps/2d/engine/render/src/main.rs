@@ -26,6 +26,8 @@ mod styles;
 #[cfg(test)]
 mod cliptext_tests;
 #[cfg(test)]
+mod cold_warm_tests;
+#[cfg(test)]
 mod depth_tests;
 #[cfg(test)]
 mod incremental_tests;
