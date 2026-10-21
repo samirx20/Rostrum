@@ -87,3 +87,22 @@ fn render_request_round_trip() {
     assert!(r["lufs"].as_f64().unwrap() > -30.0, "{r}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn buses_and_sends_route_or_fail_loudly() {
+    let s = || json!({ "contract": "rostrum-sound-schedule/1", "length": 1.0,
+        "buses": [{ "id": "music", "output": "verb" }, { "id": "verb", "effects": [{ "type": "reverb", "mix": 1.0 }] }],
+        "tracks": [{ "id": "pad", "instrument": { "builtIn": "warmPad" }, "notes": [{ "pitch": "A3", "at": 0, "dur": 0.5 }],
+            "output": "music", "sends": [{ "bus": "verb", "level": [[0, 0.2], [0.5, 0.8]] }] }] });
+    let e = error_of(check({ let mut x = s(); x["tracks"][0]["sends"][0]["bus"] = json!("verbb"); x }));
+    assert_eq!(e["where"], json!("schedule.tracks[0].sends[0].bus"), "{e}");
+    let e = error_of(check({ let mut x = s(); x["buses"][1]["output"] = json!("music"); x }));
+    assert_eq!(e["where"], json!("schedule.buses[0].output"), "{e}");
+    let dir = std::env::temp_dir().join(format!("rostrum-sound-buses-{}", std::process::id()));
+    let a = answer(&json!({ "do": "render", "out": dir.join("mix.wav"), "schedule": s() }));
+    assert_eq!(a["ok"], json!(true), "{a}");
+    let ids: Vec<&str> = a["result"]["buses"].as_array().unwrap().iter().map(|b| b["id"].as_str().unwrap()).collect();
+    assert_eq!(ids, ["music", "verb"]);
+    assert!(a["result"]["buses"][1]["peak"].as_f64().unwrap() > 0.01, "the pad reaches the reverb bus: {a}");
+    let _ = std::fs::remove_dir_all(&dir);
+}

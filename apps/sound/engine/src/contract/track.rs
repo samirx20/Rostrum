@@ -7,7 +7,7 @@ use super::names::{self, SYNTH_DRUMS, TONES};
 use super::pitch;
 use super::read::{Obj, number};
 use super::time::Tempo;
-use super::{effects, expression, media};
+use super::{buses, effects, expression, media};
 use serde_json::{json, Map, Value};
 
 pub struct Track {
@@ -19,27 +19,27 @@ pub struct Track {
     clips: Vec<Value>,
 }
 
-/// Every track's id, checked (pattern, unique), before the tracks are read.
-pub fn ids(v: &Value, at: &str) -> Result<Vec<String>, Error> {
+/// Every track's (or bus') id, checked (pattern, unique), before the tracks are read.
+pub fn ids(v: &Value, at: &str, what: &str) -> Result<Vec<String>, Error> {
     let Some(a) = v.as_array() else {
-        return Err(Error::bad(at, v, "is not a list of tracks", &["[{\"id\": \"strings\", …}]"]));
+        return Err(Error::bad(at, v, &format!("is not a list of {what}s"), &["[{\"id\": \"strings\", …}]"]));
     };
     let mut out: Vec<String> = vec![];
     for (i, t) in a.iter().enumerate() {
         let p = format!("{at}[{i}].id");
         let id = t.get("id").and_then(Value::as_str).ok_or_else(|| Error::missing(&p))?;
         if id.is_empty() || id.len() > 64 || !id.chars().all(|c| c.is_ascii_alphanumeric() || "_.-".contains(c)) {
-            return Err(Error::new("BAD_ARGUMENT", &p, format!("\"{id}\""), "is not a track id (1–64 letters, digits, _ . -)"));
+            return Err(Error::new("BAD_ARGUMENT", &p, format!("\"{id}\""), format!("is not a {what} id (1–64 letters, digits, _ . -)")));
         }
         if out.iter().any(|o| o == id) {
-            return Err(Error::new("BAD_ARGUMENT", &p, format!("\"{id}\""), "is used by two tracks"));
+            return Err(Error::new("BAD_ARGUMENT", &p, format!("\"{id}\""), format!("is used by two {what}s")));
         }
         out.push(id.to_string());
     }
     Ok(out)
 }
 
-pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String]) -> Result<Track, Error> {
+pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String], bus_ids: &[String]) -> Result<Track, Error> {
     let mut o = Obj::new(v, at)?;
     let id = o.str("id", None)?;
     let inst_at = o.at("instrument");
@@ -56,6 +56,7 @@ pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String]) -> Resu
     let auto = automation(&mut o, tempo, true)?;
     let ducks = o.list("ducks", |d, p| duck(d, &p, ids))?;
     let lanes = expression::lanes(&mut o, tempo)?;
+    let (output, sends) = buses::route(&mut o, tempo, bus_ids)?;
     o.put("ducks", json!(ducks.iter().map(|d| d.0.clone()).collect::<Vec<_>>()));
 
     let sri = |t: f64| (t * sr as f64).round() as usize;
@@ -103,7 +104,8 @@ pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String]) -> Resu
     o.put("clips", json!(clip_list));
     let resolved = Value::Object(o.done()?);
     let head = json!({ "name": id, "tone": tone, "volume": volume, "pan": pan, "reverb": reverb, "mix": !mute,
-        "ducks": ducks.into_iter().map(|d| d.1).collect::<Vec<_>>(), "effects": fx, "automation": auto });
+        "ducks": ducks.into_iter().map(|d| d.1).collect::<Vec<_>>(), "effects": fx, "automation": auto,
+        "output": output, "sends": sends });
     Ok(Track { resolved, end, head, voices, clips })
 }
 

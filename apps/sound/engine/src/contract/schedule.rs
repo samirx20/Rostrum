@@ -6,7 +6,7 @@ use super::error::Error;
 use super::names::SPACES;
 use super::read::Obj;
 use super::time::Tempo;
-use super::{effects, track};
+use super::{buses, effects, track};
 use serde_json::{json, Value};
 
 pub const CONTRACT: &str = "rostrum-sound-schedule/1";
@@ -38,9 +38,11 @@ pub fn compile(v: &Value, at: &str) -> Result<Compiled, Error> {
 
     // Track ids first, so ducks can name tracks that come later.
     let raw_tracks = o.required("tracks")?;
-    let ids = track::ids(raw_tracks, &o.at("tracks"))?;
+    let ids = track::ids(raw_tracks, &o.at("tracks"), "track")?;
+    let bus_ids = buses::ids(o.raw("buses"), &o.at("buses"), &ids)?;
+    let (buses_resolved, buses_job) = buses::read(&mut o, &tempo, &bus_ids)?;
     let tracks_at = o.at("tracks");
-    let tracks: Vec<track::Track> = o.list("tracks", |t, p| track::read(t, &p, &tempo, sr, &ids))?;
+    let tracks: Vec<track::Track> = o.list("tracks", |t, p| track::read(t, &p, &tempo, sr, &ids, &bus_ids))?;
     let end = tracks.iter().map(|t| t.end).fold(0.0, f64::max);
     let seconds = match length_given {
         Some(l) if l > 0.0 => l,
@@ -56,6 +58,9 @@ pub fn compile(v: &Value, at: &str) -> Result<Compiled, Error> {
     let master = master(o.raw("master").unwrap_or(&empty), &master_at, &tempo, sr)?;
     o.put("master", master.resolved);
     o.put("tracks", Value::Array(tracks.iter().map(|t| t.resolved.clone()).collect()));
+    if !bus_ids.is_empty() {
+        o.put("buses", Value::Array(buses_resolved));
+    }
     let resolved = Value::Object(o.done()?);
 
     let mut job = master.job;
@@ -65,6 +70,7 @@ pub fn compile(v: &Value, at: &str) -> Result<Compiled, Error> {
     job["tailSamples"] = json!(0);
     job["timeWarps"] = json!([]);
     job["tracks"] = Value::Array(tracks.into_iter().map(|t| t.job(total)).collect());
+    job["buses"] = Value::Array(buses_job);
     Ok(Compiled { resolved, job, seconds, ids })
 }
 

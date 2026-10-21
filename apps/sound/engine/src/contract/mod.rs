@@ -2,6 +2,7 @@
 //! strictly (read.rs, names.rs) and compiled to the engine's internal job (schedule.rs, track.rs), which
 //! the renderer reads; requests come one per line (`serve`) or one per run (`request`, `render`).
 
+mod buses;
 mod effects;
 mod error;
 mod expression;

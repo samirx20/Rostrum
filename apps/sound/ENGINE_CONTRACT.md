@@ -45,6 +45,7 @@ The engine's code for this page lives in `engine/src/contract/`. Anything not on
 | `tempo` | number or list | 120 | A number (bpm), or tempo segments `[{"beat": b, "bpm": x}, …]` sorted by beat, the first at beat 0; tempo is constant inside a segment |
 | `master` | object | see below | The master bus |
 | `tracks` | list | required (may be empty only with `length`) | Tracks, summed in this order |
+| `buses` | list | `[]` | Buses tracks feed and send to (§ Buses and sends) |
 
 ### Track
 
@@ -63,6 +64,8 @@ The engine's code for this page lives in `engine/src/contract/`. Anything not on
 | `effects` | list | `[]` | Inserts after the tone, before the fader (§ Effects) |
 | `automation` | object | none | `{"volume": [[time, gain], …], "pan": [[time, pan], …]}`, points in time order; replaces `volume` / `pan` where set |
 | `ducks` | list | `[]` | Dips under other tracks (§ Ducks) |
+| `output` | bus id | none (the master) | The bus this track feeds instead of the master (§ Buses and sends) |
+| `sends` | list | `[]` | Copies of the track into buses (§ Buses and sends) |
 | `expression` | object | none | CC-style dynamics and vibrato lanes (§ Track expression) |
 
 ### Instrument (one key)
@@ -165,6 +168,14 @@ Every effect is `{"type": <name>, …}`. A parameter marked *env* takes a number
 
 `{"under": ["voice"], "depth": 0.5, "attack": 0.02, "release": 0.3, "lookahead": 0.01, "hold": 0.0, "voice": false}`: the track dips by up to `depth` (0 … 1 of its gain) while the named tracks sound. `voice: true` keeps the bass and lets the music swell back (for dialogue).
 
+### Buses and sends (added 2026-10-21, P5)
+
+A bus: `{"id": "verb", "volume": 1, "pan": 0, "mute": false, "effects": […], "automation": {"volume": […], "pan": […]}, "output": "<bus id>"}`. It sums what feeds it, runs its `effects` (the same inserts as tracks), then its fader and pan, then goes to the master, or to another bus named by `output`. Bus ids follow the track id pattern and differ from every track id; an `output` that loops back (`a → b → a`) is refused, naming the loop.
+
+A track's `output` names the bus it feeds instead of the master. Its `sends`: `[{"bus": "verb", "level": 0.3, "pre": false}]`, a copy of the track into a bus; `level` 0 … 4 is a number or an automation lane `[[time, level], …]`; `pre: true` takes the copy before the track's fader (and its volume lane). A send to the bus the track already feeds is refused (it would play twice).
+
+The render answer adds `buses` (per bus: `id`, `peak`, `rms`, `lufs`, measured after its fader). A stem is still its track's own output, so with buses the stems no longer add up to the mix; a bus' sound is its bus meter. Ducks stay on tracks: to duck a music bus under the voice, duck each track feeding it.
+
 ### Master
 
 | Field | Default | Meaning |
@@ -202,5 +213,5 @@ Files: the mix and the stems are 32-bit float WAV at `sampleRate`, stereo. A ste
 ## 4. How far this version goes (2026-10-21)
 
 - Done: everything above.
-- Not in version 1 yet (the engine can do them; a later version adds them to the contract): buses and sends, surround beds and objects, clip speed with pitch kept, time warps, glitch, filter sweeps, reverse, spectral repair, tone match, CLAP / VST3 plugins, the procedural drum kit (`model.kit`), speech. (Note expression, articulations, the procedural instruments and the synth were added on 2026-10-21, P4.)
+- Not in version 1 yet (the engine can do them; a later version adds them to the contract): surround beds and objects, clip speed with pitch kept, time warps, glitch, filter sweeps, reverse, spectral repair, tone match, CLAP / VST3 plugins, the procedural drum kit (`model.kit`), speech. (Note expression, articulations, the procedural instruments and the synth were added on 2026-10-21, P4; buses and sends on 2026-10-21, P5.)
 - Not done: progress lines during a long render, and rendering only the changed part of a track (today the smallest unit that re-renders is a whole track).
