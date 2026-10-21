@@ -4,12 +4,13 @@ frame (the evaluation's reference is evaluate.py). A field with an expression (e
 one per frame, in place of its own keys; so is a field an auto layout sets (layoutbake.py), over both. A stepped
 item's ("on twos", stepped.py) animated fields are then sent as hold keys every n frames. A swap set (swap.py) is
 sent as a plain group whose children's opacity shows one at a time; a 3D render layer (render3d.py) is
-sent as a video layer over the render's frames. The layout and swap fields themselves stay on
+sent as a video layer over the render's frames. A layer timed from a shared marker (retime.py) has its times
+made composition times first. The layout and swap fields themselves stay on
 the Python side (`python_only`): the engine never sees them. Rigs, long IK chains included, are the engine's.
 """
 from __future__ import annotations
 
-from . import drawing, exprbake, fields as F, layoutbake, render3d, stepped, swap, video
+from . import drawing, exprbake, fields as F, layoutbake, render3d, retime, stepped, swap, video
 from .layout_fields import py_only
 from rostrum_core.keys import animated, keys_of
 
@@ -22,7 +23,7 @@ KEY_FIELDS = ("t", "v", "c", "d", "ease", "x1", "y1", "x2", "y2", "stiffness", "
 def python_only(kind: str) -> set[str]:
     """The fields of an item type the engine never sees: auto layout's, stepped timing's and swap sets' (all
     applied here)."""
-    return py_only(kind) | {stepped.FIELD} | swap.PY_ONLY.get(kind, set())
+    return py_only(kind) | {stepped.FIELD, retime.FIELD} | swap.PY_ONLY.get(kind, set())
 
 
 def _anim(item: dict) -> dict:
@@ -47,7 +48,7 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | 
     if item["type"] == "video":         # decoded once (video.py); the engine picks the frame by the time
         node["frames"] = video.frames({**node["props"], "id": item["id"]}, fps)
     if item["type"] == "render3d":      # the 3D item's render, from the project (render3d.py)
-        node = render3d.node(node, item, fps, (where or {}).get("folder"), (where or {}).get("markers"))
+        node = render3d.node(node, item, fps, (where or {}).get("folder"))
     return node
 
 
@@ -62,6 +63,7 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     if comp is None:
         raise ValueError(f'no composition "{comp_id}"; there are: {", ".join(c["id"] for c in comps)}')
     fps = comp.get("fps", F.defaults("comp")["fps"])
+    comp = retime.timed(comp, markers, fps)          # layers timed from a marker: every time in comp seconds from here
     baked = exprbake.bake(comp, fps, markers)
     for item_id, fields in layoutbake.bake(comp, fps, baked).items():
         baked.setdefault(item_id, {}).update(fields)

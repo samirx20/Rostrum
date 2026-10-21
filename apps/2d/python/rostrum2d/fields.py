@@ -62,6 +62,8 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
     N("start", "Starts at", "Timing", 0, 36000, 0.01, "s", S, help="The layer appears at this time"),
     N("end", "Ends at", "Timing", 0, 36000, 0.01, "s", S, default=36000.0, help="The layer is gone from this time",
       words={36000.0: "End of comp"}),
+    X("marker", "Timed from marker", "Timing", "", S,
+      help="A shared marker's name: this layer's start, end and keys (and its children's) count from it, so moving the marker moves the layer (retime.py)"),
     Param.choice("blend", BLENDS, label="Blend", group="Look", default="normal", importance=D, labels=_blends.LABELS,
                  help="How the layer mixes with the layers under it"),
     # The camera (camera/, apps/2d/CAMERA.md): only a composition's own layers use these.
@@ -181,7 +183,7 @@ FIELDS: dict[str, list[Param]] = {
         T("loop", "Loop", "Video", False, S, help="Start again when the clip ends (otherwise the last frame is held)"),
     ] + TRANSFORM,
     # A Rostrum3D item's finished render, placed read-only (render3d.py): its EXR frames with their transparency, shown
-    # as a video layer. Version 0 follows the newest render; a marker times its first frame (Starts at is then absent).
+    # as a video layer. Version 0 follows the newest render; Timed from marker puts its first frame on a marker (retime.py).
     "render3d": [
         X("item", "3D item", "3D render", "", help="Id of a Rostrum3D item of this project"),
         N("version", "Version", "3D render", 0, 100000, 1, "", S, integer=True, words={0: "Newest"},
@@ -190,11 +192,10 @@ FIELDS: dict[str, list[Param]] = {
         N("h", "Height", "3D render", 2, 8192, 1, "px", integer=True, default=1080),
         CH("fit", ["cover", "contain", "stretch"], "Fit", "3D render", "contain", S),
         N("radius", "Corner radius", "3D render", 0, 10000, 1, "px", D),
-        X("marker", "Starts at marker", "Timing", "", S, help="A shared marker's name: the render's first frame lands there"),
         N("offset", "Render starts at", "3D render", 0, 36000, 0.01, "s", D, help="Seconds into the render where the layer's first frame is taken"),
         N("speed", "Speed", "3D render", 0, 100, 0.01, "×", D, default=1.0),
         T("loop", "Loop", "3D render", False, D, help="Start again when the render ends (otherwise the last frame is held)"),
-    ] + [replace(p, valid_when=IS("marker", "")) if p.name == "start" else p for p in TRANSFORM],
+    ] + TRANSFORM,
     "group": [      # a size the auto layout hugs is absent: the layout sets it (layout_fields.py)
         N("w", "Width", "Group", 0, 20000, 1, "px", when=_layout.SIZE_SET["w"], default=1920.0),
         N("h", "Height", "Group", 0, 20000, 1, "px", when=_layout.SIZE_SET["h"], default=1080.0),

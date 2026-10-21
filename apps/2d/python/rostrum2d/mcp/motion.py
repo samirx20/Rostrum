@@ -1,12 +1,15 @@
 """look_motion: what moves and how, computed from the document's keys (nothing is rendered)."""
 from __future__ import annotations
 
+from rostrum_core import markers
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
+from rostrum2d import retime
+
 from . import motion_checks as C
 from .motion_facts import all_layers, layer_facts, r
-from .pick import ITEM_COMP, comp_of
+from .pick import ITEM_COMP, doc_and_comp
 
 tools = Tools()
 
@@ -59,7 +62,8 @@ def look_motion(ctx, args):
     """What moves and how, from the document's keys (no rendering): per layer when it moves, its path's start and end, peak speed,
     which fields animate, ease and overshoot, holds; plus facts: entrances that overlap, stretches where nothing moves,
     layers not on screen at the end or ever, keys that do nothing. Facts only, no scores."""
-    comp = comp_of(ctx, args)
+    doc, comp = doc_and_comp(ctx, args)
+    comp = retime.timed(comp, markers.times(doc.folder) if doc.folder else None, comp.get("fps", 30))   # times as they play
     a = analyse(comp, args.get("layers"))
     n = len(a["findings"])
     return Reply(f'{len(a["layers"])} layers, {n} finding{"s" * (n != 1)}.\n{describe(a)}', a)

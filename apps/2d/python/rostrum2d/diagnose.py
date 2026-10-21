@@ -13,7 +13,7 @@ from pathlib import Path
 
 from rostrum_core.keys import animated, key_value, keys_of
 
-from . import fields as F, follow, render3d
+from . import fields as F, follow, render3d, retime
 from .engine import EngineError
 from .expr import ExprError, find
 from .exprbake import exprs_of, items_of, parse_cached, problems as expr_problems
@@ -35,13 +35,29 @@ def problems(comp: dict, folder=None, markers: dict | None = None) -> list[dict]
     exprs = exprs_of(items)
     out = [_p("broken-link", "", m, "Point it at a path layer beside it, or clear its Path field") for m in follow.problems(comp)]
     out += _links(items) + _files(items, folder) + _markers(exprs, markers) + _renders(items, folder)
-    out += [_p("expression", e.split(":", 1)[0], e, "Fix or clear the expression") for e in expr_problems(items, exprs)]
+    timing = _timed_from(items, markers)
+    out += timing + [_p("expression", e.split(":", 1)[0], e, "Fix or clear the expression") for e in expr_problems(items, exprs)]
+    if not timing:                      # where and when layers show is read in composition time (retime.py)
+        comp = retime.timed(comp, markers, comp.get("fps", 30))
+        items = items_of(comp)
     try:
         out += _unseen(comp)
     except EngineError as e:            # a text the engine can't measure (its font, most often): no boxes to check
         out.append(_p("refused", "", f"Where the layers are can't be checked until every text can be measured: {e}",
                       "Fix the font (or what it names) first"))
     return out + _unused_keys(comp, items, exprs)
+
+
+def _timed_from(items: dict, markers: dict | None) -> list[dict]:
+    """A layer timed from a marker the project doesn't have (retime.py): it can't be placed in time."""
+    out = []
+    for item in items.values():
+        name = item.get(retime.FIELD)
+        if name and (markers is None or name not in markers):
+            have = ", ".join(sorted(markers or {})) or "none yet"
+            out.append(_p("missing-marker", item["id"], f'{item["id"]} is timed from marker "{name}", which the project has not got (it has: {have})',
+                          "Add the marker on the timeline, or pick another in Timed from marker"))
+    return out
 
 
 def _links(items: dict) -> list[dict]:

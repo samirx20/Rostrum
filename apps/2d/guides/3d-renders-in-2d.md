@@ -17,8 +17,9 @@ and time it like any layer; you change the product itself in Rostrum3D.
 
 ## Timing it to the story
 
-Give it a **Starts at marker**: a shared marker's name ("product lands"). The render's first frame lands on that
-marker, and moves when someone moves the marker in any app. *Starts at* (seconds) is used only without a marker.
+Give it a **Timed from marker**: a shared marker's name ("product lands"). The render's first frame lands on that
+marker, and moves when someone moves the marker in any app. *Starts at* and *Ends at* then count from the marker
+(Starts at 0.5 = half a second after it). Every layer has this field; see `start-here` › Timing to the story.
 
 ## When something is wrong, it says so
 
