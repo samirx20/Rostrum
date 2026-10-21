@@ -52,14 +52,16 @@ pub fn stage(comp: &Item) -> R<String> {
 fn siblings(parent: &Item, mut place: impl FnMut(&Item, String) -> String) -> R<String> {
     let mut out = String::new();
     for l in parent.layers.iter().filter(|l| l.kind != "camera" && !super::matte::used(l, parent)) {
-        out += &place(l, super::matte::apply(l, parent, layer(l)?)?);
+        let own = place(l, layer(l)?);
+        out += &match super::matte::of(l, parent) {
+            None => own,
+            Some(m) => {
+                let matte = m.map(|m| layer(m).map(|markup| place(m, markup))).transpose()?.unwrap_or_default();
+                super::matte::wrap(l, &matte, own)
+            }
+        };
     }
     Ok(out)
-}
-
-/// A path layer's own `<svg>` (stage_path.rs), for a path drawn as a matte.
-pub(super) fn path_svg(it: &Item) -> R<String> {
-    path::content(it, Look::default()).map(|(_, svg)| svg)
 }
 
 fn gradient(e: &Item) -> String {

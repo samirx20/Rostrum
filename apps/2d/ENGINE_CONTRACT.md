@@ -130,16 +130,14 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
   across at an angle is a soft wipe). Several masks intersect. A plain one is a `clip-path`; a feathered, inverted or
   turned one is an SVG alpha `<mask>` built from gradient pieces (solid core, linear edge bands, radial corners,
   smoothstep ramps; a hard turned or inverted edge gets 1 px), because the renderer draws no filters inside a mask.
-- **Track matte** (KNOWN OPEN, H14: refused at draw time until the renderer applies it): `matte` = the id of a layer beside it (same group or comp; "" = none), `matteMode` `alpha` |
+- **Track matte:** `matte` = the id of a layer beside it (same group or comp; "" = none), `matteMode` `alpha` |
   `alphaInverted` | `luma` | `lumaInverted`. The layer (after its own masks and effects, with its blend) shows only where
   the matte layer is drawn (`alpha`: its coverage; `luma`: luminance × coverage), or only where it isn't (inverted), at
-  the same frame. The matte layer is drawn only as the matte, never on its own, with its own keys, transform and opacity;
-  outside its own times it is empty (the layer hidden; inverted: whole). Refused when the scene loads or is edited: a
-  matte that is no layer beside it, the layer itself, the camera, or a layer that has a matte of its own. Written
-  (scene/matte.rs) as two nested SVG masks around the layer, the matte layer as SVG in the parent's space: shape, path,
-  text (one style, measured by its font, no wrapping, not on a path or letter by letter), image / video / drawing (no
-  corner radius; the picture read as it is on disk), group of these. A matte layer with effects, masks, tilt or a
-  clipped group is refused.
+  the same frame. The matte layer is drawn only as the matte, never on its own, with its own keys, transform, opacity,
+  effects and masks; outside its own times it is empty (the layer hidden; inverted: whole). Any layer type is a matte:
+  the painter draws the matte layer's own markup (`data-track-matte`, vendor/blitz-paint/src/track_matte.rs) as the
+  mask, so a matte looks exactly as that layer would on its own. Refused when the scene loads or is edited: a matte that
+  is no layer beside it, the layer itself, the camera, or a layer that has a matte of its own.
 - **Effects, in list order:** `gradient` fills the layer instead of its colour (a shape's fill, **a text's letters**, a group's background): `linear` at `angle` (CSS convention: 180 = top to bottom), `radial` (closest side, at `cx`, `cy`) or `conic` (from `angle`, 0 = up, clockwise, at `cx`, `cy`; `cx`, `cy` fractions of the box); `color1` → (`color3` at `mid` when `middle`) → `color2`. `blur` (`radius` px). `glow`: a blurred copy (`radius`) added behind, `strength` 0..4, the layer's own colours or `color`. `shadow`: offset `dx`, `dy`, softness `radius`, `color`, `strength`. `backdrop` (frosted glass): blurs what is behind the layer inside its box and corner
   radius (`radius` blur σ px, `saturate`, `brightness`), drawn before the content; the layer's fill shows over it at
   `fillAmount`; the layer's opacity applies to the glass and the content. Refused with a non-normal blend or with a
