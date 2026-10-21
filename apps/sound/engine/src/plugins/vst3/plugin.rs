@@ -89,6 +89,11 @@ impl Plugin {
         }
     }
 
+    /// Whether it has an editor of its own (a view is made and let go at once).
+    pub(super) fn has_editor(&self) -> bool {
+        self.controller.as_ref().is_some_and(|c| unsafe { ComPtr::<IPlugView>::from_raw(c.createView(ViewType::kEditor)).is_some() })
+    }
+
     pub(super) fn params(&self) -> Vec<serde_json::Value> {
         let Some(c) = &self.controller else { return vec![] };
         unsafe {

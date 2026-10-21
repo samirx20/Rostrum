@@ -68,7 +68,8 @@ fn unit_of(text: &str) -> Option<&'static str> {
     ["dB", "Hz", "kHz", "ms", "%", "s"].into_iter().find(|u| t.strip_suffix(u).is_some_and(|n| n.trim_end().ends_with(|c: char| c.is_ascii_digit())))
 }
 
-fn describe(path: &Path) -> Result<Vec<serde_json::Value>, String> {
+/// The plugins in one CLAP file (what `scan` lists for each file; the contract's `plugins` request).
+pub fn describe(path: &Path) -> Result<Vec<serde_json::Value>, String> {
     let entry = unsafe { PluginEntry::load(path) }.map_err(|e| format!("cannot load: {e:?}"))?;
     let factory = entry.get_plugin_factory().ok_or("no plugin factory")?;
     let info = host_info()?;
@@ -97,8 +98,9 @@ fn describe(path: &Path) -> Result<Vec<serde_json::Value>, String> {
                 }
             }
         }
+        let has_window = handle.get_extension::<clack_extensions::gui::PluginGui>().is_some();
         out.push(serde_json::json!({
-            "format": "clap", "path": path.to_string_lossy(), "id": id.to_string_lossy(),
+            "format": "clap", "path": path.to_string_lossy(), "id": id.to_string_lossy(), "hasWindow": has_window,
             "name": d.name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
             "vendor": d.vendor().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
             "kind": kind, "features": features, "params": params,

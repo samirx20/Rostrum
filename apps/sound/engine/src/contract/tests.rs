@@ -121,3 +121,48 @@ fn designed_sounds_fill_defaults_and_refuse_loudly() {
     let e = error_of(check(s(json!({ "design": "click", "at": 0, "speed": [[0, 1]] }))));
     assert_eq!(e["where"], json!("schedule.tracks[0].sounds[0].speed"), "{e}");
 }
+
+#[test]
+fn plugin_names_fail_loudly_before_the_plugin_loads() {
+    let dir = std::env::temp_dir().join(format!("rostrum-sound-plugin-names-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let fake = dir.join("fake.clap");
+    std::fs::write(&fake, b"not a plugin").unwrap();
+    let s = |fx: Value| json!({ "contract": "rostrum-sound-schedule/1", "length": 1.0, "tracks": [{ "id": "fx", "effects": [fx] }] });
+    let e = error_of(check(s(json!({ "type": "plugin", "format": "clapp", "path": fake, "id": "x" }))));
+    assert_eq!((e["where"].clone(), e["hint"].clone()), (json!("schedule.tracks[0].effects[0].format"), json!("Did you mean clap?")), "{e}");
+    let e = error_of(check(s(json!({ "type": "plugin", "format": "clap", "path": fake, "id": "x", "preset": "warm" }))));
+    assert_eq!(e["where"], json!("schedule.tracks[0].effects[0].preset"), "{e}");
+    let e = error_of(check(s(json!({ "type": "plugin", "format": "vst3", "path": fake, "id": "x" }))));
+    assert_eq!(e["where"], json!("schedule.tracks[0].effects[0].path"), "a .clap file is not a VST3: {e}");
+    let inst = json!({ "contract": "rostrum-sound-schedule/1", "tracks": [{ "id": "keys", "instrument": { "plugin": { "format": "clap", "path": fake, "id": "x", "volume": 1 } },
+        "notes": [{ "pitch": "C4", "at": 0, "dur": 1 }] }] });
+    assert_eq!(error_of(check(inst))["where"], json!("schedule.tracks[0].instrument.plugin.volume"));
+    assert_eq!(error_of(json!({ "do": "plugins", "path": "relative/folder" }))["where"], json!("path"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn stretch_keeps_the_pitch_and_shift_keeps_the_length() {
+    let dir = std::env::temp_dir().join(format!("rostrum-sound-stretch-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let tone: Vec<f32> = (0..24000).map(|i| (i as f32 * 440.0 * std::f32::consts::TAU / 48000.0).sin() * 0.3).collect();
+    let take = dir.join("take.wav");
+    std::fs::write(&take, crate::mix::wavio::write(&[tone.clone(), tone], crate::bed::Layout::Stereo, 48000)).unwrap();
+    // (stretch, shift) → (seconds on the timeline, Hz)
+    for (k, (stretch, shift, secs, hz)) in [(json!(2.0), json!(null), 1.0, 440.0), (json!(null), json!(12.0), 0.5, 880.0)].into_iter().enumerate() {
+        let out = dir.join(format!("mix{k}.wav"));
+        let a = answer(&json!({ "do": "render", "out": out, "stems": "all", "master": false, "schedule": { "contract": "rostrum-sound-schedule/1", "length": 1.5,
+            "tracks": [{ "id": "take", "volume": 1.0, "clips": [{ "media": take, "at": 0, "stretch": stretch, "shift": shift }] }] } }));
+        assert_eq!(a["ok"], json!(true), "{a}");
+        let span = &a["result"]["tracks"][0]["span"];
+        let len = span[1].as_f64().unwrap() - span[0].as_f64().unwrap();
+        assert!((len - secs).abs() < 0.06, "stretch {stretch} shift {shift}: lasts {len} s, expected {secs}");
+        let w = crate::instruments::sfz::read_wav(std::path::Path::new(a["result"]["stems"]["take"].as_str().unwrap())).unwrap();
+        let mid: Vec<f32> = w.frames[(0.1 * w.rate) as usize..(0.4 * w.rate) as usize].iter().map(|f| f[0]).collect();
+        let crossings = mid.windows(2).filter(|p| (p[0] < 0.0) != (p[1] < 0.0)).count() as f64;
+        let measured = crossings / 2.0 / 0.3;
+        assert!((measured - hz).abs() < hz * 0.03, "stretch {stretch} shift {shift}: {measured} Hz, expected {hz}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}

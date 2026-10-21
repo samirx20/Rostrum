@@ -44,6 +44,8 @@ pub fn model_names() -> Vec<&'static str> {
 }
 
 pub const MEDIA_FORMATS: &[&str] = &["wav", "flac", "ogg", "mp3", "mp4", "m4a", "mov"];
+/// Plugin formats the engine hosts (plugins/clap, plugins/vst3), each its file extension.
+pub const PLUGIN_FORMATS: &[&str] = &["clap", "vst3"];
 
 /// How one effect field is read.
 #[derive(Clone, Copy)]
@@ -75,9 +77,11 @@ pub enum Def {
 use Def::{B, N, S};
 use Kind::{Bool, Env, Int, Name, Num, OptNum};
 
-/// The insert effects (schedule/effect.rs), with the defaults the engine fills in. `eq` reads its bands apart.
+/// The insert effects (schedule/effect.rs), with the defaults the engine fills in. `eq` reads its bands apart,
+/// `plugin` its fields (contract/plugin.rs).
 pub const EFFECTS: &[(&str, &[Field])] = &[
     ("eq", &[]),
+    ("plugin", &[]),
     ("compressor", &[Field("threshold", Env(-80.0, 0.0), N(-18.0)), Field("ratio", Env(1.0, 50.0), N(3.0)), Field("attack", Num(0.0001, 1.0), N(0.01)),
         Field("release", Num(0.001, 5.0), N(0.15)), Field("makeup", Env(-24.0, 48.0), N(0.0)), Field("knee", Num(0.0, 24.0), N(6.0))]),
     ("reverb", &[Field("space", Name(SPACES), S("hall")), Field("mix", Env(0.0, 1.0), N(0.25)), Field("decay", OptNum(0.1, 30.0), Def::None),
@@ -129,11 +133,25 @@ pub fn describe() -> serde_json::Value {
     let instrument_fields = json!({ "model": fields(MODEL_FIELDS), "synth": fields(SYNTH_FIELDS), "plucked": PLUCKED,
         "modelPositions": MODELS.iter().filter(|(n, _)| *n != "violin").map(|(n, _)| (n.to_string(), json!(model_position(n)))).collect::<serde_json::Map<_, _>>() });
     let effects: serde_json::Map<String, Value> = EFFECTS.iter().map(|(n, fs)| {
-        let fields: Vec<Value> = if *n == "eq" { vec![json!({ "name": "bands", "kind": "list", "of": EQ_BAND.iter().map(field).collect::<Vec<_>>() })] } else { fs.iter().map(field).collect() };
+        let fields: Vec<Value> = match *n {
+            "eq" => vec![json!({ "name": "bands", "kind": "list", "of": EQ_BAND.iter().map(field).collect::<Vec<_>>() })],
+            "plugin" => plugin_fields(),
+            _ => fs.iter().map(field).collect(),
+        };
         (n.to_string(), Value::Array(fields))
     }).collect();
     json!({ "tones": TONES, "spaces": SPACES, "eqShapes": EQ_SHAPES, "builtIns": BUILT_INS, "synthDrums": SYNTH_DRUMS,
             "gmDrums": GM_DRUMS.iter().map(|(n, k)| json!({ "name": n, "key": k })).collect::<Vec<_>>(),
-            "mediaFormats": MEDIA_FORMATS, "effects": effects, "models": model_names(), "waves": WAVES,
+            "mediaFormats": MEDIA_FORMATS, "pluginFormats": PLUGIN_FORMATS, "effects": effects, "models": model_names(), "waves": WAVES,
             "instrumentFields": instrument_fields })
+}
+
+/// A plugin's fields (an effect's, and an instrument's `plugin` object), as `describe` answers them.
+fn plugin_fields() -> Vec<serde_json::Value> {
+    use serde_json::json;
+    vec![json!({ "name": "format", "kind": "name", "accepts": PLUGIN_FORMATS, "default": null }),
+         json!({ "name": "path", "kind": "absolute path to a .clap / .vst3", "accepts": null, "default": null }),
+         json!({ "name": "id", "kind": "text (the plugin's id in the file)", "accepts": null, "default": null }),
+         json!({ "name": "params", "kind": "map of parameter id or name to number or envelope", "accepts": null, "default": {} }),
+         json!({ "name": "state", "kind": "base64 text or null", "accepts": null, "default": null })]
 }

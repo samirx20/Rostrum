@@ -1,12 +1,14 @@
 //! A track's instrument (exactly one key), read strictly, and how each of its notes becomes an engine voice:
-//! sampled (with named articulations), built-in, procedural model (with its touch), synth, or a drum kit.
+//! sampled (with named articulations), built-in, procedural model (with its touch), synth, a CLAP / VST3
+//! plugin (contract/plugin.rs; one instance plays the track's notes), or a drum kit.
 
 use super::error::Error;
 use super::names::{self, Def, Field, Kind, BUILT_INS, MODEL_FIELDS, PLUCKED, SYNTH_FIELDS, WAVES};
 use super::read::Obj;
+use super::time::Tempo;
 use serde_json::{json, Map, Value};
 
-pub const FORMS: [&str; 6] = ["builtIn", "sfz", "model", "synth", "kit", "kitSfz"];
+pub const FORMS: [&str; 7] = ["builtIn", "sfz", "model", "synth", "plugin", "kit", "kitSfz"];
 const TOUCH: [&str; 3] = ["position", "damping", "hardness"];
 
 pub enum Inst {
@@ -18,12 +20,14 @@ pub enum Inst {
     Model { name: String, engine: &'static str, touch: [Option<f64>; 3] },
     /// The engine's synth spec.
     Synth(Value),
+    /// The job's PluginSpec (song time 0: the notes are one clip over the whole mix).
+    Plugin(Value),
     Kit,
     KitSfz(Value),
 }
 
 /// The instrument and its resolved form (every default written in).
-pub fn read(v: Option<&Value>, at: &str) -> Result<(Inst, Value), Error> {
+pub fn read(v: Option<&Value>, at: &str, tempo: &Tempo) -> Result<(Inst, Value), Error> {
     let Some(v) = v else { return Ok((Inst::None, Value::Null)) };
     let key = v.as_object().and_then(|m| FORMS.iter().find(|f| m.contains_key(**f)).copied())
         .ok_or_else(|| Error::bad(at, v, "is not an instrument", &FORMS))?;
@@ -45,6 +49,13 @@ pub fn read(v: Option<&Value>, at: &str) -> Result<(Inst, Value), Error> {
             Inst::Model { name, engine, touch }
         }
         "synth" => synth(&mut o)?,
+        "plugin" => {
+            let pa = o.at("plugin");
+            let p = super::plugin::read(Obj::new(o.required("plugin")?, pa)?, tempo, Some("instrument"))?;
+            let job = super::plugin::spec(&p.resolved, 0.0);
+            o.put("plugin", Value::Object(p.resolved));
+            Inst::Plugin(job)
+        }
         _ => Inst::KitSfz(json!({ "file": file_arg(&mut o, "kitSfz")?, "legato": false, "swell": false })),
     };
     Ok((inst, Value::Object(o.done()?)))
@@ -120,6 +131,9 @@ impl Inst {
                 return Err(Error::new("BAD_ARGUMENT", &no.at(f), *f, "needs a model instrument on its track").hint("Touch (position, damping, hardness) is how a procedural instrument is played: {\"model\": \"guitar\"}."));
             }
         }
+        if matches!(self, Inst::Plugin(_)) && no.has("pan") {
+            return Err(Error::new("BAD_ARGUMENT", &no.at("pan"), "pan", "is not sent to a plugin instrument (it plays in its own stereo)").hint("Pan the track instead."));
+        }
         if !matches!(self, Inst::Sfz { .. }) && no.has("art") {
             return Err(Error::new("BAD_ARGUMENT", &no.at("art"), "art", "needs an sfz track with articulations"));
         }
@@ -149,7 +163,11 @@ impl Inst {
                 voice["instrument"] = json!("synth");
                 voice["synth"] = spec.clone();
             }
-            _ => return Err(Error::new("BAD_ARGUMENT", &no.path, "a note", "needs a pitched instrument on its track").hint("Give the track {\"builtIn\": …}, {\"sfz\": …}, {\"model\": …} or {\"synth\": …}; drum kits take hits.")),
+            Inst::Plugin(spec) => {
+                voice["instrument"] = json!("plugin");
+                voice["plugin"] = spec.clone();
+            }
+            _ => return Err(Error::new("BAD_ARGUMENT", &no.path, "a note", "needs a pitched instrument on its track").hint("Give the track {\"builtIn\": …}, {\"sfz\": …}, {\"model\": …}, {\"synth\": …} or {\"plugin\": …}; drum kits take hits.")),
         }
         Ok(())
     }

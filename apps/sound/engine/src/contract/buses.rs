@@ -33,7 +33,7 @@ pub fn read(o: &mut Obj, tempo: &Tempo, ids: &[String]) -> Result<(Vec<Value>, V
         let auto = track::automation(&mut bo, tempo, true)?;
         let output = output(&mut bo, ids)?;
         outputs.push(output);
-        let job = json!({ "name": id, "volume": volume, "pan": pan, "effects": fx, "automation": auto, "output": output, "muted": mute });
+        let job = json!({ "name": id, "volume": volume, "pan": pan, "effects": effects::job(&fx, 0.0), "automation": auto, "output": output, "muted": mute });
         Ok((Value::Object(bo.done()?), job))
     })?;
     for start in 0..outputs.len() {

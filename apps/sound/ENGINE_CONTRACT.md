@@ -79,6 +79,7 @@ The engine's code for this page lives in `engine/src/contract/`. Anything not on
 | `{"kitSfz": "<path>"}` | An SFZ drum kit on General MIDI keys; hits name a GM drum (`kick`, `snare`, `hat`, `openHat`, `crash`, `ride`, `tom`, …) or a key number |
 | `{"model": "guitar", "position": 0.13, "damping": 0, "hardness": 0.5}` | A procedural instrument (§ 2a): `guitar`, `nylonGuitar` (plucked strings), `marimba`, `vibraphone`, `glockenspiel`, `tubularBell` (struck bars), `violin` (a bowed solo voice, learned model). The touch fields are the track's defaults; a note may override them |
 | `{"synth": "saw", "attack": 0.3, "brightness": 2400, …}` | A subtractive synth (§ 2a): the value is the wave (`saw`, `square`, `triangle`, `sine`) |
+| `{"plugin": {"format": "clap", "path": "C:\\…\\Synth.clap", "id": "<id>", "params": {…}, "state": "<base64>"}}` | A CLAP / VST3 instrument plugin (§ Plugins). One instance plays all the track's notes (its own polyphony and releases) |
 
 An `sfz` instrument may also name **articulations**: `{"sfz": "<sustain.sfz>", "articulations": {"spiccato": "<spic.sfz>", "tremolo": "<trem.sfz>"}}`. A note picks one with `"art": "spiccato"`; without `art` it plays the main file. This is the keyswitch for libraries that ship one file per playing style (VSCO 2, most CC0 libraries); SFZ files with `sw_*` keyswitch opcodes are still refused with that message.
 
@@ -138,10 +139,12 @@ A track may carry `expression`: `{"dynamics": [[time, level 0 … 2], …], "vib
 |---|---|---|---|
 | `media` | path | required | The file; the engine decodes it |
 | `in` | seconds ≥ 0 | 0 | In-point inside the file |
-| `length` | length | to the file's end | How much of the file plays |
+| `length` | length | to the file's end | How much of the file plays (the file's own time, before `pitch` and `stretch`; a length in beats is counted from `at`). On the timeline the clip lasts `length` ÷ 2^(`pitch`/12) × `stretch` |
 | `at` | time | required | Where it starts in the mix |
 | `volume` | 0 … 4 | 1 | Clip gain |
 | `pitch` | −24 … 24 semitones | 0 | Played like tape (pitch changes speed and length) |
+| `stretch` | 0.25 … 4 | none | Length factor with the pitch kept: 2 plays twice as long, 0.5 twice as fast. Applied after `pitch` |
+| `shift` | −24 … 24 semitones (fractions are cents) | none | Pitch change with the length kept. Adds to `pitch` |
 | `pan`, `panTo` | −1 … 1 | 0, = `pan` | Pan, moving from `pan` to `panTo` over the clip |
 | `fadeIn`, `fadeOut` | seconds ≥ 0 | 0 | Equal-power fades |
 | `reverb` | 0 … 1 | 0 | The clip's own reverb send |
@@ -164,6 +167,9 @@ Every effect is `{"type": <name>, …}`. A parameter marked *env* takes a number
 | `gate` | `threshold` (−45 dB), `ratio` (4), `range` (30 dB), `attack` (0.002 s), `hold` (0.05 s), `release` (0.12 s) |
 | `deess` | `freq` (6000 Hz), `threshold` (−30 dB), `range` (8 dB) |
 | `dehum` | `freq` (0 = found in the clip; else 50 / 60), `harmonics` (6), `width` (40) |
+| `plugin` | `format` (`clap` / `vst3`), `path`, `id`, `params` ({}), `state` (none): a CLAP / VST3 effect plugin (§ Plugins) |
+
+Clip `stretch` and `shift` (added 2026-10-21, P8) use the engine's stretcher (Signalsmith Stretch for music, PSOLA when the engine hears a voice in the clip); both may be set together, and with `pitch`. `check` writes `null` for the ones not set.
 
 ### Designed sounds (added 2026-10-21, P6)
 
@@ -185,6 +191,20 @@ an accident of its settings. The field table in `design/mod.rs` is the one sourc
 Unmarked ranges are 0 … 1. A whoosh's **`speed`** is `[[fraction of dur, speed 0 … 1], …]` (fractions rising; default a
 bell peaking at 0.55): level, the sweep's centre and the air follow it, so the sound has the move's own shape.
 **`panPath`** `[[fraction, pan], …]` moves it with the object (it overrides `pan`). Both are refused on other designs.
+
+### Plugins (added 2026-10-21, P8)
+
+A plugin is `{"format": "clap" | "vst3", "path": "<absolute path to the .clap file or .vst3 bundle>", "id": "<the plugin's id in that file>", "params": {…}, "state": "<base64>"}`: as an effect, these fields with `"type": "plugin"`; as an instrument, inside `{"plugin": {…}}`. The engine loads the plugin once to check it (kept per file and modified time), so each of these fails naming where it is: a format other than `clap` / `vst3`; a path that is not absolute, does not exist or has the other format's extension; an id the file does not hold (the ids it holds are listed); an instrument plugin in an effect slot, or an effect plugin as an instrument; a parameter the plugin does not have (with "did you mean"); a value outside the parameter's range; a `state` that is not base64.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `format` | required | `clap` or `vst3` (VST3 on Windows only) |
+| `path` | required | The `.clap` file or `.vst3` bundle |
+| `id` | required | The plugin's id inside the file, as the `plugins` request lists it (a CLAP id like `org.surge-synth-team.surge-xt`; a VST3 class id in hex) |
+| `params` | `{}` | `{"<parameter id or name>": value}`. A value is a number in the parameter's range (CLAP: the plugin's own range; VST3: 0 … 1, normalized) or an envelope `[[time, value], …]` (times are seconds or beats). A name two parameters share is refused: use the id. `check` keys them by id |
+| `state` | none | The plugin's saved state (its own bytes, base64), as `pluginWindow` answers it. Loaded first, so `params` win over it |
+
+A plugin instrument is sent notes only: a note's `pan`, `dynamics`, `vibrato`, `bend` and the track's `expression` lanes are refused on its track (pan the track; use the plugin's own parameters). A track render with a plugin is cached like any other (the key holds the plugin file's stamp, its state and its parameters).
 
 ### Ducks
 
@@ -225,15 +245,17 @@ Every answer is `{"id": …, "ok": true, "result": {…}}` or `{"id": …, "ok":
 
 | `do` | Fields | Answer |
 |---|---|---|
-| `describe` | — | `contract`, `engine` (version), and every accepted name: `tones`, `spaces`, `eqShapes`, `effects` (each with its fields and defaults), `builtIns`, `synthDrums`, `gmDrums`, `mediaFormats` |
+| `describe` | — | `contract`, `engine` (version), and every accepted name: `tones`, `spaces`, `eqShapes`, `effects` (each with its fields and defaults), `builtIns`, `synthDrums`, `gmDrums`, `mediaFormats`, `pluginFormats`. Installed plugins are not listed here (that loads each one): ask `plugins` |
 | `check` | `schedule` | The schedule with every default filled in and every time in seconds (`resolved`), plus `length` and `tracks` count. Nothing is rendered |
 | `render` | `schedule`, `out` (WAV path), optional `stems` (`"all"` or a list of track ids), `stemsDir` (default: beside `out`, named `<out stem>.stems`), `master` (true; false skips mastering) | `file`, `seconds`, `renderSeconds`, `lufs`, `truePeak`, `peak`, `lra`, `clipped`, `bands`, `series` (short-term loudness, true peak and stereo correlation every 100 ms), `tracks` (per track: `id`, `peak`, `rms`, `lufs`, `span`, `onsets`, `bands`), `stems` (`{id: path}`), `ducks` (where each duck dipped) |
 | `range` | `instrument` (as in a track) | `low`, `high` (note names), `lowKey`, `highKey` (MIDI), `gaps` (keys inside the range with no sample), `layers` (velocity layers), `drums` (names a kit answers to) |
+| `plugins` | optional `path` (a `.clap` / `.vst3`, or a folder, searched 4 levels deep) | Without `path`: the standard folders (`CLAP_PATH`, `VST3_PATH`, `%LOCALAPPDATA%\Programs\Common\CLAP` and `…\VST3`, `C:\Program Files\Common Files\CLAP` and `…\VST3`) and `%USERPROFILE%\.rostrum\assets\plugins`. Answers `folders` (searched), `plugins` (each: `format`, `path`, `id`, `name`, `vendor`, `kind` (`effect` / `instrument`), `hasWindow`, `params`: `[{id, name, min, max, default, steps?, unit?, plainMin?, plainMax?}]`; `steps` only on stepped parameters; `plainMin` / `plainMax` the VST3 range the 0 … 1 value stands for) and `failed` (files that would not load, each with its `error`). Each plugin is loaded in the engine's own process to read it |
+| `pluginWindow` | `plugin`: a plugin (§ Plugins; `params` and `state` optional) | Opens the plugin's own window for a person and answers when they close it: `state` (base64, for the document), `params` (`{id: value}`: the current values of the parameters the request named; everything else is in `state`), `errors` (anything the plugin reported meanwhile). Nothing else is answered while the window is open. The window runs in its own process (`rostrum-sound plugin`), so a plugin crash fails the request (`JOB_FAILED`), not the engine |
 
 Files: the mix and the stems are 32-bit float WAV at `sampleRate`, stereo. A stem is its track as it reaches the master (after its effects, fader and ducks, before master effects and mastering), so the stems add up to the mix before the master bus. Meters are measured on the same signal.
 
 ## 4. How far this version goes (2026-10-21)
 
 - Done: everything above.
-- Not in version 1 yet (the engine can do them; a later version adds them to the contract): surround beds and objects, clip speed with pitch kept, time warps, glitch, filter sweeps, reverse, spectral repair, tone match, CLAP / VST3 plugins, the procedural drum kit (`model.kit`), speech. (Note expression, articulations, the procedural instruments and the synth were added on 2026-10-21, P4; buses and sends on 2026-10-21, P5.)
+- Not in version 1 yet (the engine can do them; a later version adds them to the contract): surround beds and objects, speed ramps and warp markers, formant control, time warps, glitch, filter sweeps, reverse, spectral repair, tone match, plugin presets and MIDI controller lanes to plugins, the procedural drum kit (`model.kit`), speech. (Note expression, articulations, the procedural instruments and the synth were added on 2026-10-21, P4; buses and sends on 2026-10-21, P5; clip `stretch` / `shift`, CLAP / VST3 effects and instruments and the `plugins` / `pluginWindow` requests on 2026-10-21, P8. Each addition only adds optional fields and requests, so the contract name stays `rostrum-sound-schedule/1`.)
 - Not done: progress lines during a long render, and rendering only the changed part of a track (today the smallest unit that re-renders is a whole track).
