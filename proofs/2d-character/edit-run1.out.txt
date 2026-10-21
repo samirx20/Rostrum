@@ -1,0 +1,1166 @@
+== look_frame (1.0 s)
+{
+ "ok": true,
+ "summary": "Frame 22 (0.750 s) of walk, 1920×1080. On screen: floor, mark0, mark1, mark2, mark3, mark4, mark5, mark6, mark7, mark8, mark9, shadow, puppet.",
+ "data": {
+  "job_id": "job_d5df",
+  "label": "look_frame walk f22",
+  "status": "done",
+  "note": "",
+  "result": {
+   "time": 0.75,
+   "frame": 22,
+   "width": 1920,
+   "height": 1080,
+   "on_screen": [
+    "floor",
+    "mark0",
+    "mark1",
+    "mark2",
+    "mark3",
+    "mark4",
+    "mark5",
+    "mark6",
+    "mark7",
+    "mark8",
+    "mark9",
+    "shadow",
+    "puppet"
+   ]
+  }
+ },
+ "files": [
+  "C:\\Users\\Sam\\.rostrum\\cache\\look\\walk_walk_f22_205211_244.png"
+ ],
+ "warnings": []
+}
+== inspect_item (0.0 s)
+{
+ "ok": true,
+ "summary": "ik \"near_foot_ik\": 8 values, 0 check problems. keys: 17 (near_foot_ik.targetX.k0, near_foot_ik.targetX.k500, near_foot_ik.targetX.k1000, near_foot_ik.targetX.k1500, near_foot_ik.targetX.k2000, …). Operations that fit now: ik.set, comp.add, key.add, value.set, key.clear, ik.remove.",
+ "data": {
+  "id": "near_foot_ik",
+  "type": "ik",
+  "values": {
+   "id": "near_foot_ik",
+   "type": "ik",
+   "name": "IK chain",
+   "bone": "near_shin_b",
+   "mode": "ik",
+   "targetX": 580.0,
+   "targetY": 870.0,
+   "mix": 1.0,
+   "bend": "clockwise",
+   "pin": 0.0
+  },
+  "children": {
+   "keys": {
+    "count": 17,
+    "children": [
+     {
+      "id": "near_foot_ik.targetX.k0",
+      "type": "key",
+      "summary": "prop=targetX, t=0.0, v=670.0"
+     },
+     {
+      "id": "near_foot_ik.targetX.k500",
+      "type": "key",
+      "summary": "prop=targetX, t=0.5, v=670.0"
+     },
+     {
+      "id": "near_foot_ik.targetX.k1000",
+      "type": "key",
+      "summary": "prop=targetX, t=1.0, v=1050.0"
+     },
+     {
+      "id": "near_foot_ik.targetX.k1500",
+      "type": "key",
+      "summary": "prop=targetX, t=1.5, v=1050.0"
+     },
+     {
+      "id": "near_foot_ik.targetX.k2000",
+      "type": "key",
+      "summary": "prop=targetX, t=2.0, v=1430.0"
+     },
+     {
+      "id": "near_foot_ik.targetY.k0",
+      "type": "key",
+      "summary": "prop=targetY, t=0.0, v=870"
+     },
+     {
+      "id": "near_foot_ik.targetY.k500",
+      "type": "key",
+      "summary": "prop=targetY, t=0.5, v=870"
+     },
+     {
+      "id": "near_foot_ik.targetY.k750",
+      "type": "key",
+      "summary": "prop=targetY, t=0.75, v=832"
+     },
+     {
+      "id": "near_foot_ik.targetY.k1000",
+      "type": "key",
+      "summary": "prop=targetY, t=1.0, v=870"
+     },
+     {
+      "id": "near_foot_ik.targetY.k1500",
+      "type": "key",
+      "summary": "prop=targetY, t=1.5, v=870"
+     },
+     {
+      "id": "near_foot_ik.targetY.k1750",
+      "type": "key",
+      "summary": "prop=targetY, t=1.75, v=832"
+     },
+     {
+      "id": "near_foot_ik.targetY.k2000",
+      "type": "key",
+      "summary": "prop=targetY, t=2.0, v=870"
+     },
+     {
+      "id": "near_foot_ik.pin.k0",
+      "type": "key",
+      "summary": "prop=pin, t=0.0, v=1"
+     },
+     {
+      "id": "near_foot_ik.pin.k500",
+      "type": "key",
+      "summary": "prop=pin, t=0.5, v=0"
+     },
+     {
+      "id": "near_foot_ik.pin.k1000",
+      "type": "key",
+      "summary": "prop=pin, t=1.0, v=1"
+     },
+     {
+      "id": "near_foot_ik.pin.k1500",
+      "type": "key",
+      "summary": "prop=pin, t=1.5, v=0"
+     },
+     {
+      "id": "near_foot_ik.pin.k2000",
+      "type": "key",
+      "summary": "prop=pin, t=2.0, v=1"
+     }
+    ]
+   }
+  },
+  "operations": [
+   "ik.set",
+   "comp.add",
+   "key.add",
+   "value.set",
+   "key.clear",
+   "ik.remove"
+  ],
+  "checks": []
+ },
+ "files": [],
+ "warnings": []
+}
+== edit_document (0.0 s)
+{
+ "ok": true,
+ "summary": "Applied 2 operations (value.set, value.set) as change 2, group mcp-run-2.",
+ "data": {
+  "seq": 2
+ },
+ "files": [],
+ "warnings": [],
+ "changed": {
+  "seq": 2,
+  "ops": [
+   "value.set",
+   "value.set"
+  ],
+  "group": "mcp-run-2",
+  "new_check_failures": []
+ }
+}
+== look_frame (0.8 s)
+{
+ "ok": true,
+ "summary": "Frame 22 (0.750 s) of walk, 1920×1080. On screen: floor, mark0, mark1, mark2, mark3, mark4, mark5, mark6, mark7, mark8, mark9, shadow, puppet.",
+ "data": {
+  "job_id": "job_3a75",
+  "label": "look_frame walk f22",
+  "status": "done",
+  "note": "",
+  "result": {
+   "time": 0.75,
+   "frame": 22,
+   "width": 1920,
+   "height": 1080,
+   "on_screen": [
+    "floor",
+    "mark0",
+    "mark1",
+    "mark2",
+    "mark3",
+    "mark4",
+    "mark5",
+    "mark6",
+    "mark7",
+    "mark8",
+    "mark9",
+    "shadow",
+    "puppet"
+   ]
+  }
+ },
+ "files": [
+  "C:\\Users\\Sam\\.rostrum\\cache\\look\\walk_walk_f22_205212_291.png"
+ ],
+ "warnings": []
+}
+== inspect_rig_motion (0.7 s)
+{
+ "ok": true,
+ "summary": "2 IK chains over 0.000–1.967 s (60 frames). Pinned tips that moved over 0.5 px: near_foot_ik 1–1.4667 s (4.6 px).",
+ "data": {
+  "job_id": "job_4155",
+  "label": "inspect_rig_motion walk",
+  "status": "done",
+  "note": "",
+  "progress": {
+   "done": 60,
+   "total": 60
+  },
+  "result": {
+   "start": 0.0,
+   "end": 1.9666666666666666,
+   "fps": 30,
+   "chains": [
+    {
+     "rig": "puppet",
+     "ik": "near_foot_ik",
+     "bone": "near_shin_b",
+     "tip_path": [
+      [
+       0.0,
+       670.0,
+       870.0
+      ],
+      [
+       0.0667,
+       670.0,
+       870.0
+      ],
+      [
+       0.1333,
+       670.0,
+       870.0
+      ],
+      [
+       0.2,
+       670.0,
+       870.0
+      ],
+      [
+       0.2667,
+       670.0,
+       870.0
+      ],
+      [
+       0.3333,
+       670.0,
+       870.0
+      ],
+      [
+       0.4,
+       670.0,
+       870.0
+      ],
+      [
+       0.4667,
+       670.0,
+       870.0
+      ],
+      [
+       0.5333,
+       686.6,
+       854.8
+      ],
+      [
+       0.6,
+       767.4,
+       801.7
+      ],
+      [
+       0.6667,
+       860.0,
+       777.5
+      ],
+      [
+       0.7333,
+       923.2,
+       770.2
+      ],
+      [
+       0.8,
+       962.1,
+       799.5
+      ],
+      [
+       0.8667,
+       985.0,
+       846.7
+      ],
+      [
+       0.9333,
+       996.6,
+       865.4
+      ],
+      [
+       1.0,
+       1000.0,
+       870.0
+      ],
+      [
+       1.0667,
+       1000.0,
+       870.0
+      ],
+      [
+       1.1333,
+       1000.0,
+       870.0
+      ],
+      [
+       1.2,
+       1000.0,
+       870.0
+      ],
+      [
+       1.2667,
+       1000.0,
+       870.0
+      ],
+      [
+       1.3333,
+       1000.0,
+       870.0
+      ],
+      [
+       1.4,
+       1000.0,
+       870.0
+      ],
+      [
+       1.4667,
+       1002.4,
+       866.1
+      ],
+      [
+       1.5333,
+       1069.1,
+       864.2
+      ],
+      [
+       1.6,
+       1162.2,
+       844.1
+      ],
+      [
+       1.6667,
+       1268.8,
+       834.9
+      ],
+      [
+       1.7333,
+       1341.5,
+       832.1
+      ],
+      [
+       1.8,
+       1386.4,
+       843.2
+      ],
+      [
+       1.8667,
+       1412.7,
+       861.2
+      ],
+      [
+       1.9333,
+       1426.1,
+       868.3
+      ]
+     ],
+     "tip_travelled_px": 856.6,
+     "largest_gap_px": 4.6,
+     "largest_gap_at": 1.4667,
+     "pinned_spans": [
+      {
+       "start": 0.0,
+       "end": 0.4667,
+       "tip_moved_px": 0.0,
+       "sliding": false
+      },
+      {
+       "start": 1.0,
+       "end": 1.4667,
+       "tip_moved_px": 4.6,
+       "sliding": true
+      }
+     ]
+    },
+    {
+     "rig": "puppet",
+     "ik": "far_foot_ik",
+     "bone": "far_shin_b",
+     "tip_path": [
+      [
+       0.0,
+       480.0,
+       870.0
+      ],
+      [
+       0.0667,
+       537.9,
+       853.1
+      ],
+      [
+       0.1333,
+       649.0,
+       838.3
+      ],
+      [
+       0.2,
+       739.4,
+       832.9
+      ],
+      [
+       0.2667,
+       796.8,
+       833.9
+      ],
+      [
+       0.3333,
+       831.4,
+       853.9
+      ],
+      [
+       0.4,
+       850.7,
+       865.6
+      ],
+      [
+       0.4667,
+       859.1,
+       869.6
+      ],
+      [
+       0.5333,
+       860.0,
+       870.0
+      ],
+      [
+       0.6,
+       860.0,
+       870.0
+      ],
+      [
+       0.6667,
+       860.0,
+       870.0
+      ],
+      [
+       0.7333,
+       860.0,
+       870.0
+      ],
+      [
+       0.8,
+       860.0,
+       870.0
+      ],
+      [
+       0.8667,
+       860.0,
+       870.0
+      ],
+      [
+       0.9333,
+       860.0,
+       870.0
+      ],
+      [
+       1.0,
+       860.0,
+       870.0
+      ],
+      [
+       1.0667,
+       917.9,
+       853.1
+      ],
+      [
+       1.1333,
+       1029.0,
+       838.3
+      ],
+      [
+       1.2,
+       1119.4,
+       832.9
+      ],
+      [
+       1.2667,
+       1176.8,
+       833.9
+      ],
+      [
+       1.3333,
+       1211.4,
+       853.9
+      ],
+      [
+       1.4,
+       1230.7,
+       865.6
+      ],
+      [
+       1.4667,
+       1239.1,
+       869.6
+      ],
+      [
+       1.5333,
+       1240.0,
+       870.0
+      ],
+      [
+       1.6,
+       1240.0,
+       870.0
+      ],
+      [
+       1.6667,
+       1240.0,
+       870.0
+      ],
+      [
+       1.7333,
+       1240.0,
+       870.0
+      ],
+      [
+       1.8,
+       1240.0,
+       870.0
+      ],
+      [
+       1.8667,
+       1240.0,
+       870.0
+      ],
+      [
+       1.9333,
+       1240.0,
+       870.0
+      ]
+     ],
+     "tip_travelled_px": 787.0,
+     "largest_gap_px": 0.0,
+     "largest_gap_at": 0.3,
+     "pinned_spans": [
+      {
+       "start": 0.5,
+       "end": 0.9667,
+       "tip_moved_px": 0.0,
+       "sliding": false
+      },
+      {
+       "start": 1.5,
+       "end": 1.9667,
+       "tip_moved_px": 0.0,
+       "sliding": false
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "files": [],
+ "warnings": []
+}
+== run_script (0.0 s)
+{
+ "ok": true,
+ "summary": "Script film.py: 0 change(s) applied.",
+ "data": {
+  "held": [],
+  "seq": 2
+ },
+ "files": [],
+ "warnings": []
+}
+== look_frame (0.8 s)
+{
+ "ok": true,
+ "summary": "Frame 22 (0.750 s) of walk, 1920×1080. On screen: floor, mark0, mark1, mark2, mark3, mark4, mark5, mark6, mark7, mark8, mark9, shadow, puppet.",
+ "data": {
+  "job_id": "job_dd7d",
+  "label": "look_frame walk f22",
+  "status": "done",
+  "note": "",
+  "result": {
+   "time": 0.75,
+   "frame": 22,
+   "width": 1920,
+   "height": 1080,
+   "on_screen": [
+    "floor",
+    "mark0",
+    "mark1",
+    "mark2",
+    "mark3",
+    "mark4",
+    "mark5",
+    "mark6",
+    "mark7",
+    "mark8",
+    "mark9",
+    "shadow",
+    "puppet"
+   ]
+  }
+ },
+ "files": [
+  "C:\\Users\\Sam\\.rostrum\\cache\\look\\walk_walk_f22_205213_811.png"
+ ],
+ "warnings": []
+}
+== look_frame (0.7 s)
+{
+ "ok": true,
+ "summary": "Frame 30 (1.000 s) of walk, 1920×1080. On screen: floor, mark0, mark1, mark2, mark3, mark4, mark5, mark6, mark7, mark8, mark9, shadow, puppet.",
+ "data": {
+  "job_id": "job_6a5c",
+  "label": "look_frame walk f30",
+  "status": "done",
+  "note": "",
+  "result": {
+   "time": 1.0,
+   "frame": 30,
+   "width": 1920,
+   "height": 1080,
+   "on_screen": [
+    "floor",
+    "mark0",
+    "mark1",
+    "mark2",
+    "mark3",
+    "mark4",
+    "mark5",
+    "mark6",
+    "mark7",
+    "mark8",
+    "mark9",
+    "shadow",
+    "puppet"
+   ]
+  }
+ },
+ "files": [
+  "C:\\Users\\Sam\\.rostrum\\cache\\look\\walk_walk_f30_205214_615.png"
+ ],
+ "warnings": []
+}
+== inspect_item (0.0 s)
+{
+ "ok": true,
+ "summary": "ik \"near_foot_ik\": 8 values, 0 check problems. keys: 17 (near_foot_ik.targetX.k0, near_foot_ik.targetX.k500, near_foot_ik.targetX.k1000, near_foot_ik.targetX.k1500, near_foot_ik.targetX.k2000, …). Operations that fit now: ik.set, comp.add, key.add, value.set, key.clear, ik.remove.",
+ "data": {
+  "id": "near_foot_ik",
+  "type": "ik",
+  "values": {
+   "id": "near_foot_ik",
+   "type": "ik",
+   "name": "IK chain",
+   "bone": "near_shin_b",
+   "mode": "ik",
+   "targetX": 580.0,
+   "targetY": 870.0,
+   "mix": 1.0,
+   "bend": "clockwise",
+   "pin": 0.0
+  },
+  "children": {
+   "keys": {
+    "count": 17,
+    "children": [
+     {
+      "id": "near_foot_ik.targetX.k0",
+      "type": "key",
+      "summary": "prop=targetX, t=0.0, v=670.0"
+     },
+     {
+      "id": "near_foot_ik.targetX.k500",
+      "type": "key",
+      "summary": "prop=targetX, t=0.5, v=670.0"
+     },
+     {
+      "id": "near_foot_ik.targetX.k1000",
+      "type": "key",
+      "summary": "prop=targetX, t=1.0, v=1000"
+     },
+     {
+      "id": "near_foot_ik.targetX.k1500",
+      "type": "key",
+      "summary": "prop=targetX, t=1.5, v=1050.0"
+     },
+     {
+      "id": "near_foot_ik.targetX.k2000",
+      "type": "key",
+      "summary": "prop=targetX, t=2.0, v=1430.0"
+     },
+     {
+      "id": "near_foot_ik.targetY.k0",
+      "type": "key",
+      "summary": "prop=targetY, t=0.0, v=870"
+     },
+     {
+      "id": "near_foot_ik.targetY.k500",
+      "type": "key",
+      "summary": "prop=targetY, t=0.5, v=870"
+     },
+     {
+      "id": "near_foot_ik.targetY.k750",
+      "type": "key",
+      "summary": "prop=targetY, t=0.75, v=770"
+     },
+     {
+      "id": "near_foot_ik.targetY.k1000",
+      "type": "key",
+      "summary": "prop=targetY, t=1.0, v=870"
+     },
+     {
+      "id": "near_foot_ik.targetY.k1500",
+      "type": "key",
+      "summary": "prop=targetY, t=1.5, v=870"
+     },
+     {
+      "id": "near_foot_ik.targetY.k1750",
+      "type": "key",
+      "summary": "prop=targetY, t=1.75, v=832"
+     },
+     {
+      "id": "near_foot_ik.targetY.k2000",
+      "type": "key",
+      "summary": "prop=targetY, t=2.0, v=870"
+     },
+     {
+      "id": "near_foot_ik.pin.k0",
+      "type": "key",
+      "summary": "prop=pin, t=0.0, v=1"
+     },
+     {
+      "id": "near_foot_ik.pin.k500",
+      "type": "key",
+      "summary": "prop=pin, t=0.5, v=0"
+     },
+     {
+      "id": "near_foot_ik.pin.k1000",
+      "type": "key",
+      "summary": "prop=pin, t=1.0, v=1"
+     },
+     {
+      "id": "near_foot_ik.pin.k1500",
+      "type": "key",
+      "summary": "prop=pin, t=1.5, v=0"
+     },
+     {
+      "id": "near_foot_ik.pin.k2000",
+      "type": "key",
+      "summary": "prop=pin, t=2.0, v=1"
+     }
+    ]
+   }
+  },
+  "operations": [
+   "ik.set",
+   "comp.add",
+   "key.add",
+   "value.set",
+   "key.clear",
+   "ik.remove"
+  ],
+  "checks": []
+ },
+ "files": [],
+ "warnings": []
+}
+== inspect_rig_motion (0.7 s)
+{
+ "ok": true,
+ "summary": "2 IK chains over 0.000–1.967 s (60 frames). Pinned tips that moved over 0.5 px: near_foot_ik 1–1.4667 s (4.6 px).",
+ "data": {
+  "job_id": "job_997a",
+  "label": "inspect_rig_motion walk",
+  "status": "done",
+  "note": "",
+  "progress": {
+   "done": 60,
+   "total": 60
+  },
+  "result": {
+   "start": 0.0,
+   "end": 1.9666666666666666,
+   "fps": 30,
+   "chains": [
+    {
+     "rig": "puppet",
+     "ik": "near_foot_ik",
+     "bone": "near_shin_b",
+     "tip_path": [
+      [
+       0.0,
+       670.0,
+       870.0
+      ],
+      [
+       0.0667,
+       670.0,
+       870.0
+      ],
+      [
+       0.1333,
+       670.0,
+       870.0
+      ],
+      [
+       0.2,
+       670.0,
+       870.0
+      ],
+      [
+       0.2667,
+       670.0,
+       870.0
+      ],
+      [
+       0.3333,
+       670.0,
+       870.0
+      ],
+      [
+       0.4,
+       670.0,
+       870.0
+      ],
+      [
+       0.4667,
+       670.0,
+       870.0
+      ],
+      [
+       0.5333,
+       686.6,
+       854.8
+      ],
+      [
+       0.6,
+       767.4,
+       801.7
+      ],
+      [
+       0.6667,
+       860.0,
+       777.5
+      ],
+      [
+       0.7333,
+       923.2,
+       770.2
+      ],
+      [
+       0.8,
+       962.1,
+       799.5
+      ],
+      [
+       0.8667,
+       985.0,
+       846.7
+      ],
+      [
+       0.9333,
+       996.6,
+       865.4
+      ],
+      [
+       1.0,
+       1000.0,
+       870.0
+      ],
+      [
+       1.0667,
+       1000.0,
+       870.0
+      ],
+      [
+       1.1333,
+       1000.0,
+       870.0
+      ],
+      [
+       1.2,
+       1000.0,
+       870.0
+      ],
+      [
+       1.2667,
+       1000.0,
+       870.0
+      ],
+      [
+       1.3333,
+       1000.0,
+       870.0
+      ],
+      [
+       1.4,
+       1000.0,
+       870.0
+      ],
+      [
+       1.4667,
+       1002.4,
+       866.1
+      ],
+      [
+       1.5333,
+       1069.1,
+       864.2
+      ],
+      [
+       1.6,
+       1162.2,
+       844.1
+      ],
+      [
+       1.6667,
+       1268.8,
+       834.9
+      ],
+      [
+       1.7333,
+       1341.5,
+       832.1
+      ],
+      [
+       1.8,
+       1386.4,
+       843.2
+      ],
+      [
+       1.8667,
+       1412.7,
+       861.2
+      ],
+      [
+       1.9333,
+       1426.1,
+       868.3
+      ]
+     ],
+     "tip_travelled_px": 856.6,
+     "largest_gap_px": 4.6,
+     "largest_gap_at": 1.4667,
+     "pinned_spans": [
+      {
+       "start": 0.0,
+       "end": 0.4667,
+       "tip_moved_px": 0.0,
+       "sliding": false
+      },
+      {
+       "start": 1.0,
+       "end": 1.4667,
+       "tip_moved_px": 4.6,
+       "sliding": true
+      }
+     ]
+    },
+    {
+     "rig": "puppet",
+     "ik": "far_foot_ik",
+     "bone": "far_shin_b",
+     "tip_path": [
+      [
+       0.0,
+       480.0,
+       870.0
+      ],
+      [
+       0.0667,
+       537.9,
+       853.1
+      ],
+      [
+       0.1333,
+       649.0,
+       838.3
+      ],
+      [
+       0.2,
+       739.4,
+       832.9
+      ],
+      [
+       0.2667,
+       796.8,
+       833.9
+      ],
+      [
+       0.3333,
+       831.4,
+       853.9
+      ],
+      [
+       0.4,
+       850.7,
+       865.6
+      ],
+      [
+       0.4667,
+       859.1,
+       869.6
+      ],
+      [
+       0.5333,
+       860.0,
+       870.0
+      ],
+      [
+       0.6,
+       860.0,
+       870.0
+      ],
+      [
+       0.6667,
+       860.0,
+       870.0
+      ],
+      [
+       0.7333,
+       860.0,
+       870.0
+      ],
+      [
+       0.8,
+       860.0,
+       870.0
+      ],
+      [
+       0.8667,
+       860.0,
+       870.0
+      ],
+      [
+       0.9333,
+       860.0,
+       870.0
+      ],
+      [
+       1.0,
+       860.0,
+       870.0
+      ],
+      [
+       1.0667,
+       917.9,
+       853.1
+      ],
+      [
+       1.1333,
+       1029.0,
+       838.3
+      ],
+      [
+       1.2,
+       1119.4,
+       832.9
+      ],
+      [
+       1.2667,
+       1176.8,
+       833.9
+      ],
+      [
+       1.3333,
+       1211.4,
+       853.9
+      ],
+      [
+       1.4,
+       1230.7,
+       865.6
+      ],
+      [
+       1.4667,
+       1239.1,
+       869.6
+      ],
+      [
+       1.5333,
+       1240.0,
+       870.0
+      ],
+      [
+       1.6,
+       1240.0,
+       870.0
+      ],
+      [
+       1.6667,
+       1240.0,
+       870.0
+      ],
+      [
+       1.7333,
+       1240.0,
+       870.0
+      ],
+      [
+       1.8,
+       1240.0,
+       870.0
+      ],
+      [
+       1.8667,
+       1240.0,
+       870.0
+      ],
+      [
+       1.9333,
+       1240.0,
+       870.0
+      ]
+     ],
+     "tip_travelled_px": 787.0,
+     "largest_gap_px": 0.0,
+     "largest_gap_at": 0.3,
+     "pinned_spans": [
+      {
+       "start": 0.5,
+       "end": 0.9667,
+       "tip_moved_px": 0.0,
+       "sliding": false
+      },
+      {
+       "start": 1.5,
+       "end": 1.9667,
+       "tip_moved_px": 0.0,
+       "sliding": false
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "files": [],
+ "warnings": []
+}

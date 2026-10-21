@@ -130,7 +130,7 @@ fn content(it: &Item, look: Look) -> R<(String, String)> {
             }
             Ok((s, format!("<img src=\"/__local_asset?p={}\" style=\"width:100%;height:100%;object-fit:{fit};\">", percent(src))))
         }
-        "group" => {
+        "group" | "rig" => {
             let mut s = format!("width:{}px;height:{}px;", v(it, "w"), v(it, "h")) + if it.on("clip") { "overflow:hidden;" } else { "" };
             if let Some(g) = grad {
                 let _ = write!(s, "background:{g};");
@@ -201,11 +201,12 @@ fn layer(it: &Item) -> R<String> {
         body = masked(&gs, &format!("filter:blur({}px);opacity:{};mix-blend-mode:plus-lighter;", v(g, "radius"), g.num("strength").min(1.0))) + &body;
     }
     let (glass, opacity, body) = super::stage_fx::glass(it, !defs.is_empty(), body)?;
+    let (warp, warp_defs) = crate::rig::warp_markup(it);
     let size = if it.props.contains_key("w") { format!("width:{}px;height:{}px;", v(it, "w"), v(it, "h")) } else { String::new() };
     let sizer = if it.kind == "text" { format!("<div style=\"visibility:hidden;{style}\">{inner}</div>") } else { String::new() };
     let blend = match it.str("blend") { "add" => "plus-lighter", b => b };
     Ok(format!(
-        "<div id=\"{}\" style=\"position:absolute;left:{}px;top:{}px;{size}transform-origin:{}% {}%;transform:{};opacity:{opacity};mix-blend-mode:{blend};\">{defs}{sizer}{glass}{body}</div>",
+        "<div id=\"{}\" style=\"position:absolute;left:{}px;top:{}px;{size}transform-origin:{}% {}%;transform:{};opacity:{opacity};mix-blend-mode:{blend};{warp}\">{defs}{warp_defs}{sizer}{glass}{body}</div>",
         escape(it.id), v(it, "x"), v(it, "y"), it.num("anchorX") * 100.0, it.num("anchorY") * 100.0, transform(it)
     ))
 }

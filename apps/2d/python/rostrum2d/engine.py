@@ -99,6 +99,11 @@ class Engine:
             raise EngineError(f"2D engine said done but wrote no file: {png}")
         return out
 
+    def bones(self, t: float) -> dict:
+        """The posed rigs at `t`, in comp px: {rig id: {"bones": {id: {x, y, tipX, tipY, angle}}, "iks": {id: {targetX, targetY, gap}}}}."""
+        self._props()
+        return self._request({"bones": {"t": t}})["rigs"]
+
     def pixels(self, t: float) -> tuple[memoryview, int, int, int]:
         """The frame at `t` as straight-alpha RGBA8 in the engine's shared memory (no PNG, no pipe; Windows):
         (view, width, height, stride). The view is valid until the frame after next is asked for; copy it."""

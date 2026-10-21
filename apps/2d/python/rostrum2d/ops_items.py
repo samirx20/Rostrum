@@ -13,7 +13,7 @@ ID = Param.text("id", label="Id", help="Optional; counted per type when left out
 NAME = Param.text("name", label="Name")
 INDEX = Param.number("index", label="Position", min=0, max=100000, integer=True, importance="deep",
                      help="Place in the list (0 = bottom of the stack); end when left out")
-LAYER_HOLDERS = ("comp", "group")
+LAYER_HOLDERS = ("comp", "group", "rig")
 
 
 def new_item(ctx, type_, args, **extra) -> dict:
@@ -54,6 +54,8 @@ def layer_add(ctx, targets, args):
 @R.operation("layer.remove", "Delete layers (with their effects, masks and keys).", target=F.LAYERS, label="Delete",
              importance="secondary")
 def layer_remove(ctx, targets, args):
+    from .rig.ops import drop_binds
+    drop_binds(ctx, targets)
     for t in targets:
         ctx.remove(t)
 
@@ -72,6 +74,7 @@ def item_rename(ctx, targets, args):
                                   help="0 = bottom of the stack")])
 def layer_arrange(ctx, targets, args):
     from rostrum_core.tree import index
+    from .rig.ops import drop_binds
     for t in targets:
         loc = index(ctx.doc, ctx.kind.lists)[t]
         into = args.get("into") or loc.parent
@@ -80,6 +83,8 @@ def layer_arrange(ctx, targets, args):
             ctx.fail(codes.BAD_ARGUMENT, f'into "{into}"', f"is a {holder['type']}, not a group or composition")
         if t == into or into in _descendants(ctx, t):
             ctx.fail(codes.BAD_ARGUMENT, f'into "{into}"', "is the layer itself or inside it")
+        if into != loc.parent:
+            drop_binds(ctx, [t])           # a layer leaving its rig leaves its bind behind
         ctx.move(t, into, "layers", args["index"])
 
 

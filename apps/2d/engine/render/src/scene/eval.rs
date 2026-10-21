@@ -65,7 +65,7 @@ fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
     if node.kind == "video" {
         props.insert("picture".into(), Value::from(super::stage_fx::video_picture(node, t, fps)));
     }
-    let item = Item {
+    let mut item = Item {
         id: &node.id,
         node,
         t,
@@ -75,6 +75,9 @@ fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
         layers: node.layers.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
         props,
     };
+    if node.kind == "rig" {
+        crate::rig::pose(&mut item);
+    }
     if !all && node.role == Role::Layer && !(item.num("start") <= t && t < item.num("end")) {
         return None;
     }

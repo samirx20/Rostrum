@@ -25,6 +25,8 @@ def _node(item: dict, fps: float = 30) -> dict:
     for key in ("effects", "masks", "layers"):
         if item.get(key):
             node[key] = [_node(child, fps) for child in item[key]]
+    if item["type"] == "rig":           # bones, iks and binds are nodes of their own (RIG.md § Scene description)
+        node["rig"] = [_node(c, fps) for key in ("bones", "iks", "binds") for c in item.get(key, [])]
     if item["type"] == "drawing":       # the painting kit makes each drawing's picture once; the engine only reads it
         node["frames"] = [{"at": f["at"], "src": str(drawing.picture(item, f))} for f in item["frames"]]
     if item["type"] == "video":         # decoded once (video.py); the engine picks the frame by the time

@@ -89,6 +89,8 @@ TYPE = [
     CH("letterSplit", ["letters", "words"], "Split by", "Letters", "letters", S, BY_LETTER),
 ]
 
+from .rig import fields as _rig  # noqa: E402  (rigs: the table is in rig/fields.py, merged below)
+
 FIELDS: dict[str, list[Param]] = {
     "comp": [
         N("width", "Width", "Frame", 16, 8192, 1, "px", integer=True, default=1920),
@@ -244,15 +246,17 @@ FIELDS: dict[str, list[Param]] = {
     ],
 }
 
-LAYERS = ("shape", "text", "image", "video", "group", "drawing", "path")
+FIELDS.update(_rig.FIELDS)
+LAYERS = ("shape", "text", "image", "video", "group", "drawing", "path", "rig")
 EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow")
-ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask",)
+ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask",) + _rig.OWNED_KEYS
 STILL = {"comp": {"width", "height", "fps", "duration", "background"}, "drawing": {"w", "h"}, "path": {"w", "h"},
          "video": {"w", "h", "offset", "speed"},
          "text": {"letterDelay", "letterSeed"},
-         "*": {"start", "end", "boxWidth"}}
+         **_rig.STILL, "*": {"start", "end", "boxWidth"}}
 LABELS = {"comp": "Composition", "shape": "Shape", "text": "Text", "image": "Image", "video": "Video", "group": "Group", "drawing": "Drawing", "path": "Path", "frame": "Drawing frame",
-          "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "mask": "Mask", "key": "Key"}
+          "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "mask": "Mask", "key": "Key",
+          **_rig.LABELS}
 
 
 def param(kind: str, name: str) -> Param | None:

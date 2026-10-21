@@ -20,6 +20,7 @@ mod keep;
 mod painter;
 mod pixels;
 mod readback;
+mod rig;
 mod scene;
 mod scene_serve;
 mod scopes;

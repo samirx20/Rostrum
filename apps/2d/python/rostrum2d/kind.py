@@ -14,14 +14,16 @@ import rostrum_paint
 from rostrum_core import DocKind, Registry
 
 from . import fields as F, pathdata
+from .rig import model as rig_model
 
 OWNED = ["effects", "masks", "keys"]
 LISTS = {"doc": ["comps"], "comp": ["layers"], "group": ["layers", *OWNED], "drawing": ["frames", *OWNED],
          "frame": rostrum_paint.CANVAS_LISTS, **rostrum_paint.LISTS,
+         "rig": ["layers", "bones", "iks", "binds", *OWNED], "bone": ["keys"], "ik": ["keys"],
          **{t: OWNED for t in ("shape", "text", "image", "video", "path")},
          **{t: ["keys"] for t in (*F.EFFECTS, "mask")}}
 HOLDS = {"comps": ("comp",), "layers": F.LAYERS, "effects": F.EFFECTS, "masks": ("mask",), "keys": ("key",),
-         "frames": ("frame",), **rostrum_paint.HOLDS}
+         "frames": ("frame",), "bones": ("bone",), "iks": ("ik",), "binds": ("bind",), **rostrum_paint.HOLDS}
 
 REGISTRY = Registry()
 
@@ -73,6 +75,8 @@ def check(data: dict) -> list[str]:
                 stack.append(child)
         if item.get("type") in F.ANIMATED_OWNERS:
             _check_keys(item, problems)
+        if item.get("type") == "rig":
+            problems += rig_model.problems_of(item)
         if item.get("type") == "path":
             try:
                 pathdata.commands(item["d"])
@@ -91,3 +95,4 @@ KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts,
 rostrum_paint.register(REGISTRY, canvas_types=("frame",))
 from . import ops_draw, ops_items, ops_keys  # noqa: E402,F401  (they register on REGISTRY)
 from . import ops_path  # noqa: E402,F401  (vector paths, booleans)
+from .rig import ops as _rig_ops  # noqa: E402,F401  (bones, IK chains, binds)

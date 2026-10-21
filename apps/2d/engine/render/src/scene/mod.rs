@@ -53,6 +53,8 @@ pub struct Node {
     pub layers: Vec<Node>,
     /// A drawing layer's drawings: (frame number it appears at, its picture), sorted by frame (contract § 2).
     pub frames: Vec<(i64, String)>,
+    /// A rig's bones, iks and binds (crate::rig; RIG.md).
+    pub rig: Vec<Node>,
 }
 
 #[derive(Clone, Debug)]
@@ -77,6 +79,7 @@ impl Scene {
         }
         let mut seen = HashSet::new();
         comp.walk(&mut |n| if seen.insert(n.id.clone()) { Ok(()) } else { Err(format!("{}: the id is used twice", n.id)) })?;
+        crate::rig::check(&comp)?;
         let fonts = fonts::list(&v["fonts"])?;
         type_font::register(&fonts);
         Ok(Scene { comp, fonts })
@@ -121,6 +124,7 @@ impl Scene {
             }
             n.anim.sort_by(|a, b| a.0.cmp(&b.0));
         }
+        crate::rig::check(&next)?;
         self.comp = next;
         Ok(list.len())
     }
@@ -129,14 +133,14 @@ impl Scene {
 impl Node {
     pub fn walk(&self, f: &mut impl FnMut(&Node) -> Result<(), String>) -> Result<(), String> {
         f(self)?;
-        self.effects.iter().chain(&self.masks).chain(&self.layers).try_for_each(|c| c.walk(f))
+        self.effects.iter().chain(&self.masks).chain(&self.layers).chain(&self.rig).try_for_each(|c| c.walk(f))
     }
 
     fn find_mut(&mut self, id: &str) -> Option<&mut Node> {
         if self.id == id {
             return Some(self);
         }
-        self.effects.iter_mut().chain(&mut self.masks).chain(&mut self.layers).find_map(|c| c.find_mut(id))
+        self.effects.iter_mut().chain(&mut self.masks).chain(&mut self.layers).chain(&mut self.rig).find_map(|c| c.find_mut(id))
     }
 }
 
@@ -153,8 +157,8 @@ fn node(v: &Value, parent: &str) -> Result<Node, String> {
     let kind = fields::TYPES.iter().copied().find(|t| *t == ty).ok_or_else(|| format!("{id}: unknown item type \"{ty}\"; this engine draws: {}", fields::TYPES.join(", ")))?;
     let (role, fields) = fields::of(kind).unwrap();
     for k in obj.keys() {
-        if !matches!(k.as_str(), "id" | "type" | "props" | "anim" | "effects" | "masks" | "layers") && !(k == "frames" && matches!(kind, "drawing" | "video")) {
-            return Err(format!("{id}: unknown part \"{k}\" (an item has id, type, props, anim, effects, masks, layers; a drawing or video also frames)"));
+        if !matches!(k.as_str(), "id" | "type" | "props" | "anim" | "effects" | "masks" | "layers") && !(k == "frames" && matches!(kind, "drawing" | "video")) && !(k == "rig" && kind == "rig") {
+            return Err(format!("{id}: unknown part \"{k}\" (an item has id, type, props, anim, effects, masks, layers; a drawing or video also frames; a rig also rig)"));
         }
     }
     let props = v["props"].as_object().ok_or_else(|| format!("{id}: no props"))?.clone();
@@ -187,7 +191,8 @@ fn node(v: &Value, parent: &str) -> Result<Node, String> {
     Ok(Node {
         effects: kids("effects", layer, &[Role::Effect])?,
         masks: kids("masks", layer, &[Role::Mask])?,
-        layers: kids("layers", role == Role::Comp || kind == "group", &[Role::Layer])?,
+        layers: kids("layers", role == Role::Comp || matches!(kind, "group" | "rig"), &[Role::Layer])?,
+        rig: kids("rig", kind == "rig", &[Role::Rig])?,
         frames: if matches!(kind, "drawing" | "video") { drawings(&id, &v["frames"])? } else { vec![] },
         id, kind, role, props, anim,
     })
