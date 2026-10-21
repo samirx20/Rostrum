@@ -9,6 +9,7 @@ Steps: see screen2d/steps.py. With --shot the window quits by itself; a failed s
 Offscreen screenshots: QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
 """
 import argparse
+import math
 import os
 import sys
 from pathlib import Path
@@ -19,6 +20,8 @@ from PySide6.QtGui import QGuiApplication
 from rostrum_core import Document
 from rostrum_core.storage import paths
 from rostrum2d import KIND, run_source
+from rostrum2d.engine import EngineError
+from rostrum2d.seen import first_seen
 from rostrum_gui import start
 from screen2d.bridge2d import Bridge2D
 from screen2d.sample import SOURCE
@@ -42,6 +45,18 @@ def load_doc(args) -> Document:
     if args.doc:
         doc.save()
     return doc
+
+
+def opening_time(bridge) -> float:
+    """Open on a frame worth seeing: the first moment something can be seen (rostrum2d.seen, the same rule as the
+    Problems "never seen" check), on the frame at or after it; 0 when nothing is ever seen or a text can't be measured
+    (the Problems list says why)."""
+    try:
+        t = first_seen(bridge.placed())
+    except EngineError:
+        return 0.0
+    fps = bridge.comp()["fps"]
+    return math.ceil((t or 0.0) * fps - 1e-6) / fps
 
 
 def check_shot_path(shot: str):
@@ -71,6 +86,7 @@ def main():
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
     bridge = Bridge2D(load_doc(args), args.comp, autosave=bool(args.doc))
+    bridge.setTime(opening_time(bridge))
     _, engine, win = start(HERE / "qml" / "Main.qml", {"backend": bridge, "painter": bridge.painter}, (1600, 960),
                            providers={"frame": bridge.frames.provider, "onion": bridge.painter.provider})
     code = [0]
