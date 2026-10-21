@@ -1,12 +1,13 @@
 """The scene description: what the Python layer sends the engine (ENGINE_CONTRACT.md). One composition, every
 item's still values with defaults filled in, and the keys of its animated fields; the engine evaluates them per
 frame (the evaluation's reference is evaluate.py). A field with an expression (exprbake.py) is sent as linear keys,
-one per frame, in place of its own keys; so is a field an auto layout sets (layoutbake.py), over both. The layout
+one per frame, in place of its own keys; so is a field an auto layout sets (layoutbake.py), over both. A stepped
+item's ("on twos", stepped.py) animated fields are then sent as hold keys every n frames. The layout
 fields themselves stay on the Python side (layout_fields.py_only): the engine never sees them.
 """
 from __future__ import annotations
 
-from . import drawing, exprbake, fields as F, layoutbake, video
+from . import drawing, exprbake, fields as F, layoutbake, stepped, video
 from .layout_fields import py_only
 from rostrum_core.keys import animated, keys_of
 
@@ -22,7 +23,7 @@ def _anim(item: dict) -> dict:
 def _node(item: dict, fps: float = 30, baked: dict | None = None) -> dict:
     node = {"id": item["id"], "type": item["type"],
             "props": {p.name: item.get(p.name, p.default) for p in F.FIELDS[item["type"]]
-                       if p.name not in py_only(item["type"])}}
+                       if p.name not in py_only(item["type"]) and p.name != stepped.FIELD}}
     anim = {**_anim(item), **(baked or {}).get(item["id"], {})}
     if anim:
         node["anim"] = anim
@@ -51,5 +52,7 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     baked = exprbake.bake(comp, fps, markers)
     for item_id, fields in layoutbake.bake(comp, fps, baked).items():
         baked.setdefault(item_id, {}).update(fields)
-    return {"format": FORMAT, "version": VERSION, "comp": _node(comp, fps, baked)}
+    node = _node(comp, fps, baked)
+    stepped.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)
+    return {"format": FORMAT, "version": VERSION, "comp": node}
 
