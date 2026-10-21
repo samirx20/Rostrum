@@ -110,5 +110,5 @@ class MixPage(QObject):
         m = self.doc.item(strips.MASTER)
         self._master = strips.strip(m, "Master", strips.master_meter(render))
         self.masterChanged.emit()
-        evaluated = rows.evaluate(self._master_layout, m, self.doc.kind.facts(m), False)
+        evaluated = rows.evaluate(self._master_layout, m, self.doc.kind.facts(m, self.doc), False)
         self._master_rows.update(evaluated) if self._master_rows.rows else self._master_rows.reset(evaluated)

@@ -1,9 +1,12 @@
 """render_mix: the document compiled to the engine contract and rendered (always a job). One request gives
-the mix, every track's stem and every track's meters."""
+the mix, every track's stem and every track's meters, written as the item's next versioned render
+(`renders/<item>/vNNN/` with its manifest, handoff.py), so the Editor and the project list see it. A render with
+solo / mute is a listening check: it goes to `renders/<item>/check/` (replaced each time), never a version."""
 from __future__ import annotations
 
 from rostrum_core.mcp import Reply, Tools
 
+from .. import handoff
 from ..compile import compile as compile_doc
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
@@ -21,22 +24,29 @@ def register(tools: Tools):
         "solo": {"type": "array", "items": {"type": "string"}, "description": "Only these track ids are heard."},
         "mute": {"type": "array", "items": {"type": "string"}, "description": "These track ids are not heard."},
         "master": {"type": "boolean", "default": True, "description": "False: the mix before mastering (no loudness target, glue or master effects)."},
-        "stems": {"type": "boolean", "default": True, "description": "Also write one WAV per track."},
-        "name": {"type": "string", "default": "mix", "description": "File name (no extension) under the project's renders/<item>/."}}})
+        "stems": {"type": "boolean", "default": True, "description": "Also write one WAV per track."}}})
     def render_mix(ctx, args):
-        """Render the document to a WAV (and stems), with loudness, true peak and per-track meters. Returns a job."""
+        """Render the document to a WAV (and stems) as its next version (renders/<item>/vNNN/), with loudness, true
+        peak and per-track meters. Returns a job."""
         doc = ctx.document(args.get("item"))
         item = doc.item_id
-        schedule = compile_doc(doc.data, solo=args.get("solo"), mute=args.get("mute"), master=args.get("master", True))
+        master = args.get("master", True)
+        schedule = compile_doc(doc.data, solo=args.get("solo"), mute=args.get("mute"), master=master)
         state = ctx.app.state
-        out = state.renders(item) / f"{args.get('name', 'mix')}.wav"
         stems = "all" if args.get("stems", True) else []
+        who = f"{ctx.who.kind}:{ctx.who.name}"
+        partial = bool(args.get("solo") or args.get("mute"))
 
         def work(job):
             job.progress(note="rendering")
-            r = state.engine.request("render", schedule=schedule, out=str(out), stems=stems, stemsDir=str(out.with_suffix("")) + "-stems")
+            if partial:     # a listening check, not the item's sound: never a version the Editor could pick up
+                out = state.renders(item) / "check" / "check.wav"
+                r = state.engine.request("render", schedule=schedule, out=str(out), stems=stems,
+                                         stemsDir=str(out.parent / "stems"))
+            else:
+                r = handoff.render(state.folder, doc, state.engine, schedule, who, stems=stems, master=master)
             state.remember(item, r)
             files = [r["file"], *r["stems"].values()]
-            return Reply(summary(r), {k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "ducks")}, files)
+            return Reply(summary(r), {**{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "ducks")}}, files)
 
         return ctx.job(f"render {item}", work, key=f"render:{item}:{hash(str(schedule))}")

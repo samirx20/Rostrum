@@ -61,4 +61,4 @@ def what_it_is(track: dict) -> str:
 
 
 def evaluate(doc, layout_rows: list[dict], track: dict, more_open: bool) -> list[dict]:
-    return rows.evaluate(layout_rows, track, doc.kind.facts(track), more_open)
+    return rows.evaluate(layout_rows, track, doc.kind.facts(track, doc), more_open)

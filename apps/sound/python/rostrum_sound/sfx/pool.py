@@ -2,14 +2,13 @@
 
 A long recording ("padlock handling", 11 s) holds dozens of small sounds; the agent needs each on
 its own, starting on its transient, to place it on a frame. Analysis runs once per file and is
-stored (content-keyed cache), so later calls only read JSON."""
-import hashlib
+stored in the shared content-keyed cache (rostrum_core.cache), so later calls only read JSON."""
 import json
 import os
-from pathlib import Path
 
 import librosa
 import numpy as np
+from rostrum_core.cache import Cache, cache_key, file_hash
 
 from ..listen.core import LOW_END_HZ, band_share
 
@@ -17,7 +16,7 @@ ANALYSIS_VERSION = 1
 SR, HOP = 48000, 128
 LEAD_S = 0.005                      # a cut starts 5 ms before its transient
 DEFAULTS = {"mode": "hits", "max_s": 0.6, "min_s": 0.04, "per_file": 25, "min_snr": 18.0, "length": 0.5}
-CACHE_DIR = Path(os.path.expanduser("~")) / ".rostrum" / "cache" / "sound-pool"
+ENGINE = f"rostrum-sound-cuts@{ANALYSIS_VERSION}"
 
 
 def _db(x):
@@ -77,18 +76,13 @@ def _analyse(path, o):
     return sorted(cuts, key=lambda c: -c["peak_db"])[:o["per_file"]]
 
 
-def _key(path, o):
-    st = os.stat(path)
-    raw = json.dumps([os.path.abspath(path), st.st_size, st.st_mtime_ns, ANALYSIS_VERSION, o], sort_keys=True)
-    return hashlib.sha1(raw.encode()).hexdigest()
-
-
 def cut(recording, cache_dir=None, **options):
     """Cut `recording` into single sounds. options: mode ("hits" one cut per transient | "beds"
     windows of `length` s over the loud stretches), max_s, min_s, per_file, min_snr (dB over the
     file's noise floor), length. Returns {"file", "cached", "cuts": [{start, end, peak_db,
     floor_db, snr_db, attack_ms, centroid_hz, low_end_pct}]} (times in seconds, loudest first).
-    Cached under ~/.rostrum/cache/sound-pool/ keyed by path, size, mtime and analysis version."""
+    Kept in the shared cache (kind "sound-pool"), keyed by the file's content, the options and the analysis
+    version; `cache_dir` = another cache root (tests)."""
     path = os.fspath(recording)
     if not os.path.isfile(path):
         raise FileNotFoundError(f"{path}: recording not found")
@@ -98,13 +92,13 @@ def cut(recording, cache_dir=None, **options):
     o = {**DEFAULTS, **options}
     if o["mode"] not in ("hits", "beds"):
         raise ValueError(f"cut: mode must be 'hits' or 'beds', not '{o['mode']}'")
-    store = Path(cache_dir or CACHE_DIR)
-    f = store / f"{_key(path, o)}.json"
-    if f.is_file():
-        return {"file": path, "cached": True, "cuts": json.loads(f.read_text(encoding="utf-8"))}
+    store, key = Cache(cache_dir), cache_key("sound-pool", ENGINE, [file_hash(path)], o)
+    entry = store.get("sound-pool", key)
+    if entry:
+        return {"file": path, "cached": True, "cuts": json.loads((entry / "cuts.json").read_text(encoding="utf-8"))}
     cuts = _analyse(path, o)
-    store.mkdir(parents=True, exist_ok=True)
-    f.write_text(json.dumps(cuts), encoding="utf-8")
+    store.put("sound-pool", key, lambda d: (d / "cuts.json").write_text(json.dumps(cuts), encoding="utf-8"),
+              {"engine": ENGINE, "file": path, "options": o})
     return {"file": path, "cached": False, "cuts": cuts}
 
 

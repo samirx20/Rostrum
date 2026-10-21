@@ -1,8 +1,9 @@
 """The `rostrum-sound` app as the MCP server sees it: the open Sound documents (saved after every change),
 the one engine process, and where renders and looks are written.
 
-Renders go to `<project folder>/renders/<item>/` (mix.wav + stems/); look pictures to `.../look/`. The last
-render of each item is remembered (`renders/<item>/last.json`, so it survives a restart), and look tools default to it.
+Renders are the item's versions, `<project folder>/renders/<item>/vNNN/` (mix, stems, manifest: handoff.py); a solo /
+mute listening check goes to `.../check/`, look pictures to `.../look/`. The last render of each item is remembered
+(`renders/<item>/last.json`, so it survives a restart), and look tools default to it.
 """
 from __future__ import annotations
 
@@ -63,6 +64,6 @@ def make_app(folder: str | Path, items: list[str]) -> App:
     engine = Engine()
     atexit.register(engine.close)
     app = App("rostrum-sound", {i: open_or_new(folder, i) for i in items}, run_source=run_source,
-              instructions=INSTRUCTIONS, guides=Guides().load_folder(GUIDES))
+              instructions=INSTRUCTIONS, guides=Guides().load_folder(GUIDES), folder=str(folder))
     app.state = SoundState(folder, engine)
     return app
