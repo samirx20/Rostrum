@@ -28,7 +28,7 @@ class Change:
     hash_after: str = ""
     undoes: list = field(default_factory=list)     # seqs of originals this step undid
     redoes: list = field(default_factory=list)     # seqs of originals this step re-did
-    t: float = 0.0                                 # clock time, for merging nudges (not saved)
+    t: float = 0.0                                 # clock time: merging nudges, ordering undo across documents
 
     @property
     def original(self) -> bool:
@@ -38,13 +38,13 @@ class Change:
         return {"seq": self.seq, "based_on": self.based_on, "who": self.who.to_dict(), "label": self.label,
                 "when": self.when, "session": self.session, "calls": self.calls,
                 "edits": [E.to_dict(e) for e in self.edits], "hash_after": self.hash_after,
-                "undoes": self.undoes, "redoes": self.redoes}
+                "undoes": self.undoes, "redoes": self.redoes, "t": self.t}
 
     @classmethod
     def from_dict(cls, d) -> "Change":
         return cls(d["seq"], d["based_on"], Who.from_dict(d["who"]), d["label"], d["when"],
                    [E.from_dict(e) for e in d["edits"]], d.get("calls", []), d.get("session"),
-                   d.get("hash_after", ""), d.get("undoes", []), d.get("redoes", []))
+                   d.get("hash_after", ""), d.get("undoes", []), d.get("redoes", []), d.get("t", 0.0))
 
 
 class History:
@@ -67,6 +67,10 @@ class History:
             self.done[s], self.at[s] = False, c.seq
         for s in c.redoes:
             self.done[s], self.at[s] = True, c.seq
+
+    def acted(self, c: Change) -> float:
+        """Clock time of the step that last did or undid original `c` (desk.py orders undo across documents by it)."""
+        return self.get(self.at[c.seq]).t
 
     def get(self, seq) -> Change:
         return self.changes[seq - 1]

@@ -18,6 +18,7 @@ QQC.ApplicationWindow {
     property alias right: rightSlot.data
     property alias bottom: bottomSlot.data
     property alias tools: topBar.tools          // the app's own top-bar tools (centred)
+    property alias actions: topBar.actions      // the app's action buttons (right, before the command bar)
     property int leftWidth: Theme.sidePanel - 32   // 0: no left panel (the centre takes its place, no gap)
     property int rightWidth: Theme.sidePanel       // 0: no right panel
     property int bottomHeight: Theme.timeline

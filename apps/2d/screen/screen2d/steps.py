@@ -1,7 +1,8 @@
 """Scripted steps for screenshots and checks. Each goes through the same bridge call a click or drag makes.
 
     select <id> | page design|draw|animate | time <s> | set <param> <json value> | scrub <param> <v> <v> …
-    animate <param> (the key mark's toggle) | drag <layer> <dx> <dy> (canvas drag, composition px)
+    animate <param> (the key mark's toggle) | drag <layer> <dx> <dy> (canvas drag, composition px; in an auto layout it
+    changes the layer's slot: the same drag slots, so <dx> <dy> moves the pointer)
     curves on|off | curvedrag <key> <dt> <dv> | handledrag <key> <1|2> <dx> <dy> (the curve editor)
     keydrag <key id> <t> | open <layer> (timeline rows) | fold <layer> (layers panel) | pick <x> <y>
     undo | redo | more | commands [query …] | run <command key> | play
@@ -11,14 +12,15 @@
   Design page, paths: pen <x,y> <x,y,hx,hy> … [close] (one new path: a point, or a press at x,y dragged to hx,hy =
     a smooth point; composition px) | pointdrag <layer> <i> <dx> <dy> [in|out] (a point, or its handle)
   Export: export <mp4|prores4444|webm|gif|png|lottie> [alpha=on|off] [depth=8|16] [start=<s>] [end=<s>] (the Export button's
-    job; waits for it) | exportpanel open [format]|close
+    job; waits for it) | exportpanel open [format]|close | exportcancel [format] (start one, then Cancel it)
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
 
 import json
+import time
 
-from PySide6.QtCore import Q_ARG, QMetaObject
+from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject
 
 
 def value(text):
@@ -44,10 +46,27 @@ def steps_export(bridge, step, rest):
     print(f"export {job.format}: {job.path} {job.facts}")
 
 
+def steps_cancel(bridge, step, rest):
+    """Start an export and press Cancel once its engine runs: the panel must end on "cancelled"."""
+    job = bridge.exporter
+    job.setFormat(rest[0] if rest else "png")
+    job.start()
+    t0 = time.time()
+    while job.job.engine is None and job.running() and time.time() - t0 < 20:
+        QCoreApplication.processEvents()
+    time.sleep(0.4)
+    job.cancel()
+    job.wait(60)
+    if job.state != "cancelled":
+        raise RuntimeError(f"step {step!r}: expected the export to be cancelled, it is {job.state!r}: {job.note}")
+
+
 def do_step(bridge, win, step):
     word, *rest = step.split()
     if word == "select":
         bridge.select(rest[0])
+    elif word == "exportcancel":
+        steps_cancel(bridge, step, rest)
     elif word == "page":
         bridge.setPage(rest[0])
     elif word == "time":

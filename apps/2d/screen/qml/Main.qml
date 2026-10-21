@@ -31,15 +31,19 @@ AppShell {
                       { value: "animate", label: "Animate" }]
             current: backend.page
             onPicked: (v) => backend.setPage(v)
-        },
-        Button { text: "Export"; down: exportPanel.shown; onClicked: exportPanel.shown = !exportPanel.shown }
+        }
     ]
-    ExportPanel {   // opened by the Export button, under the top bar at the right
-        id: exportPanel
-        anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.topBar }
-    }
+    actions: [
+        IconButton { glyph: "↗"; tip: "Export"; down: exportPanel.shown; onClicked: exportPanel.shown = !exportPanel.shown }
+    ]
     left: LayersPanel { anchors.fill: parent }
-    centre: Stage { anchors.fill: parent }
+    centre: [
+        Stage { anchors.fill: parent },
+        ExportPanel {   // opened by the Export button; docked on the canvas's right edge, beside the inspector (never over it)
+            id: exportPanel
+            anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
+        }
+    ]
     right: [
         Inspector { anchors.fill: parent; bridge: backend; keyMarks: true; visible: backend.page !== "draw" },
         Inspector { anchors.fill: parent; bridge: painter; title: "Brush"; visible: backend.page === "draw" }

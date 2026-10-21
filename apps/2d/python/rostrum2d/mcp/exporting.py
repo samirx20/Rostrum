@@ -89,7 +89,7 @@ def _manifest(item, doc_seq, comp_id, fmt, s, facts, version, names, size) -> di
 def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_seq=0, out=None, progress=None, engine_factory=None) -> dict:
     """Export `scene` as `fmt` with settings `s` (from settings()). Where it goes: `out` (a file; for png a folder), else the
     project's renders folder (folder + item; not for Lottie, which is not a picture hand-off), else the render cache.
-    Written under a .partial name and renamed when read back right. Returns the facts: file, frames, fps, alpha, depth, checked,
+    Written under a .partial name and renamed when read back right; a failed or cancelled run removes what it wrote. Returns the facts: file, frames, fps, alpha, depth, checked,
     files (what was written), report (Lottie: what it couldn't carry)."""
     row, comp = info(where, fmt), scene["comp"]
     stem = f'{item or "doc"}_{comp["id"]}'
@@ -97,10 +97,14 @@ def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_
     if out is None and folder and item and fmt != "lottie":       # a project render: renders/<item>/vNNN/
         part = project.begin_render(folder, item)
         name = f"{stem}{row['ext']}"
-        facts = _to_file(where, scene, fmt, s, part / (stem if png else name), progress, engine_factory)
-        names = sorted(p.name for p in part.iterdir())
-        done = project.finish_render(part, _manifest(item, doc_seq, comp["id"], fmt, s, facts, int(part.name[1:].split(".")[0]),
-                                                     names, (comp["props"]["width"], comp["props"]["height"])))
+        try:
+            facts = _to_file(where, scene, fmt, s, part / (stem if png else name), progress, engine_factory)
+            names = sorted(p.name for p in part.iterdir())
+            done = project.finish_render(part, _manifest(item, doc_seq, comp["id"], fmt, s, facts, int(part.name[1:].split(".")[0]),
+                                                         names, (comp["props"]["width"], comp["props"]["height"])))
+        except BaseException:                        # a failed or stopped (cancelled) render leaves no unfinished version behind
+            shutil.rmtree(part, ignore_errors=True)
+            raise
         facts["files"] = [str(done / n) for n in names]
         facts["file"] = str(done / (f"{stem}_{{frame}}.png" if png else name))
         return facts
@@ -115,9 +119,13 @@ def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_
         shutil.rmtree(part, ignore_errors=True)
     else:
         part.unlink(missing_ok=True)
-    facts = _to_file(where, scene, fmt, s, part / final.name if png else part, progress, engine_factory)
-    if not png and (not part.is_file() or part.stat().st_size == 0):
-        raise _fail(where, f"the {fmt} export {final.name}", RuntimeError(f"no file at {part}"))
+    try:
+        facts = _to_file(where, scene, fmt, s, part / final.name if png else part, progress, engine_factory)
+        if not png and (not part.is_file() or part.stat().st_size == 0):
+            raise _fail(where, f"the {fmt} export {final.name}", RuntimeError(f"no file at {part}"))
+    except BaseException:                            # a failed or stopped (cancelled) export leaves no .partial behind
+        shutil.rmtree(part, ignore_errors=True) if png else part.unlink(missing_ok=True)
+        raise
     if png:
         part.rename(final)
     else:

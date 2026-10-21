@@ -19,6 +19,9 @@ comp("c", width=320, height=180, fps=10, duration=2)
 t = text("title", body="Hi", size=40, x=100, y=90)
 t.key("opacity", {0.0: 0, 1.0: 1})
 shape("box", w=40, h=40, x=200, y=90)
+with group("row", w=300, h=60, layout="row", gap=10, hugWidth=False):
+    for n in ("ra", "rb", "rc"):
+        shape(n, w=60, h=60)
 '''
 
 
@@ -75,6 +78,20 @@ def test_canvas_drag_is_one_undo_step_and_keys_an_animated_field(bridge):
     assert [(k["t"], k["v"]) for k in keys_of(box, "x")] == [(0.3, 200)] and box["y"] == 90
     bridge.toggleAnimate("x")                                                         # key mark: stop animating
     assert not keys_of(bridge.doc.item("box"), "x") and bridge.doc.item("box")["x"] == 200
+
+
+def test_drag_in_an_auto_layout_reorders_in_one_undo_step(bridge):
+    ids = lambda: [c["id"] for c in bridge.doc.item("row")["layers"]]  # noqa: E731
+    assert ids() == ["ra", "rb", "rc"]
+    n = len(bridge.doc.history.changes)
+    bridge.select("ra")
+    assert bridge.beginMove()
+    for dx in (40, 90, 150):
+        bridge.moveBy(dx, 0)
+    bridge.endDrag()
+    assert ids() == ["rb", "rc", "ra"] and len(bridge.doc.history.changes) == n + 1
+    bridge.undo()
+    assert ids() == ["ra", "rb", "rc"]
 
 
 def test_key_drag_is_one_step_and_keeps_the_key(bridge):

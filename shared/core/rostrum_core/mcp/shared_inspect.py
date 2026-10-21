@@ -1,7 +1,7 @@
 """The shared `inspect_*` tools every server has (CONVENTIONS § 2). They never change anything."""
 from __future__ import annotations
 
-from .. import project
+from .. import desk, project
 from ..errors import RostrumError, codes, did_you_mean
 from .reply import Reply
 from .tools import Tools
@@ -38,6 +38,12 @@ def _brief(change, full: bool) -> dict:
     d = change.to_dict() if full else {}
     ops = [c.get("op") for c in change.calls]
     return {**d, "seq": change.seq, "who": change.who.to_dict(), "label": change.label, "when": change.when, "group": change.session, "ops": ops}
+
+
+def _markers(folder):
+    """The project's marker document when it has one (its changes join every item's history)."""
+    from ..markers import _exists, open_markers
+    return open_markers(folder) if folder and _exists(folder) else None
 
 
 def register(tools: Tools):
@@ -80,12 +86,15 @@ def register(tools: Tools):
 
     @tools.tool("inspect_history", {"properties": {**_ITEM, "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 20}, "group": {"type": "string"}, **_DETAIL}})
     def inspect_history(ctx, args):
-        """Recent changes, newest last: step, who (kind and name), label, when, group, operations."""
+        """Recent changes, newest last: step, who (kind and name), label, when, group, operations, and which
+        document (`doc`): the item's own, or the project's shared markers, which share one history (desk.py)."""
         doc = ctx.document(args.get("item"))
-        changes = [c for c in doc.history.changes if not args.get("group") or c.session == args["group"]]
-        shown = [_brief(c, args.get("detail") == "full") for c in changes[-args.get("limit", 20):]]
+        docs = [doc] + [m for m in [_markers(ctx.app.folder)] if m is not None and m.item_id != doc.item_id]
+        changes = [(d, c) for d, c in desk.changes(docs) if not args.get("group") or c.session == args["group"]]
+        shown = [{**_brief(c, args.get("detail") == "full"), "doc": d.item_id or "open document"}
+                 for d, c in changes[-args.get("limit", 20):]]
         last = shown[-1] if shown else None
-        tail = f" Latest: step {last['seq']} by {last['who']['kind']}:{last['who']['name']} ({last['label'] or ', '.join(last['ops'])})." if last else ""
+        tail = f" Latest: {last['doc']} step {last['seq']} by {last['who']['kind']}:{last['who']['name']} ({last['label'] or ', '.join(last['ops'])})." if last else ""
         return Reply(f"{len(shown)} of {len(changes)} changes shown.{tail}", {"seq": doc.seq, "changes": shown})
 
     @tools.tool("inspect_operations", {"properties": {**_ITEM, "name": {"type": "string", "description": "One operation, for its full argument schema."}, **_DETAIL}})

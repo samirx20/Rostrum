@@ -41,6 +41,7 @@ class Bridge3D(DocBridge):
         self._timer.timeout.connect(self._tick)
         self.marks = MarkerWatch(doc.folder, self, self.who, self._fail, "3d")   # shared markers: flags, edits, snapping
         self.marks.changed.connect(self.markersChanged)
+        self.join_history(self.marks)                       # marker edits undo with the screen's one history
         self.render = RenderJob(self, render_engine)
         self.viewport = viewport(self) if viewport else None
 
