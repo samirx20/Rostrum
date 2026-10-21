@@ -63,5 +63,7 @@ at the start time (one undo step) in `<project>/media/<track>-take-<n>.wav`. Ste
 
 ## Not yet
 
-No Voice card, no MIDI keyboard input, no picture from the project's items, no automation on buses / master lanes.
-Choices show their stored names ("builtIn", "warmPad") until the kit can show labels.
+No MIDI keyboard input, no overdub with exact timing (a take is recorded beside the screen's playback; use headphones), no picture from the project's items, no automation on buses / master lanes.
+Choices show their stored names ("builtIn", "warmPad") until the kit can show labels; a bus output is typed in the inspector
+(the Mix page has a picker). `screensound/bridge.py` is ~390 lines: it should be split once the kit allows slots outside the bridge class.
+Voice: see `apps/sound/VOICE.md`.
