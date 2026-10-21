@@ -23,11 +23,20 @@ AppShell {
     Shortcut { sequence: "Alt+Down"; onActivated: painter.holdBy(-1) }
     Shortcut { sequence: "Alt+O"; onActivated: painter.setOnion(!painter.onionOn) }
 
-    tools: Segmented {
-        options: [{ value: "design", label: "Design" }, { value: "draw", label: "Draw" },
-                  { value: "animate", label: "Animate" }]
-        current: backend.page
-        onPicked: (v) => backend.setPage(v)
+    function setExportOpen(open) { exportPanel.shown = open }
+
+    tools: [
+        Segmented {
+            options: [{ value: "design", label: "Design" }, { value: "draw", label: "Draw" },
+                      { value: "animate", label: "Animate" }]
+            current: backend.page
+            onPicked: (v) => backend.setPage(v)
+        },
+        Button { text: "Export"; down: exportPanel.shown; onClicked: exportPanel.shown = !exportPanel.shown }
+    ]
+    ExportPanel {   // opened by the Export button, under the top bar at the right
+        id: exportPanel
+        anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.topBar }
     }
     left: LayersPanel { anchors.fill: parent }
     centre: Stage { anchors.fill: parent }

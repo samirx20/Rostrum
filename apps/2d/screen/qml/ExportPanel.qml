@@ -1,0 +1,110 @@
+import QtQuick
+import RostrumKit
+
+// Export: one format choice, the settings that apply to it (from exporter.settings: nothing is placed per format here),
+// the Export button, then progress, the result read back from the file, or the error. Opened from the top bar's Export button.
+Rectangle {
+    id: panel
+    property var job: backend.exporter
+    property bool shown: false
+    readonly property int labelW: 92
+    width: 320
+    height: Theme.header + col.implicitHeight + Theme.pad
+    visible: shown
+    color: Theme.panel; radius: Theme.radiusPanel
+    border.color: Theme.popupEdge
+    z: 20
+
+    Text {
+        anchors { left: parent.left; leftMargin: Theme.pad; top: parent.top }
+        height: Theme.header; verticalAlignment: Text.AlignVCenter
+        text: "EXPORT"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
+        font.weight: Font.DemiBold; font.letterSpacing: 0.4
+    }
+    Column {
+        id: col
+        anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: Theme.header
+                  leftMargin: Theme.pad; rightMargin: Theme.pad }
+        spacing: Theme.gap
+
+        Row {
+            height: Theme.row; spacing: 0
+            Text { width: panel.labelW; height: parent.height; verticalAlignment: Text.AlignVCenter
+                   text: "Format"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
+            ChoiceField {
+                anchors.verticalCenter: parent.verticalCenter
+                width: col.width - panel.labelW
+                options: job.formats; current: job.format
+                onPicked: (v) => job.setFormat(v)
+            }
+        }
+        Repeater {
+            model: job.settings
+            delegate: Row {
+                id: srow
+                required property var modelData
+                height: Theme.row; spacing: 0
+                Text { width: panel.labelW; height: parent.height; verticalAlignment: Text.AlignVCenter
+                       text: srow.modelData.label; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
+                Item {
+                    width: col.width - panel.labelW; height: parent.height
+                    Toggle { visible: srow.modelData.kind === "toggle"; anchors.verticalCenter: parent.verticalCenter
+                             checked: !!srow.modelData.value; onToggled: (v) => job.setSetting(srow.modelData.key, v) }
+                    ChoiceField { visible: srow.modelData.kind === "choice"; anchors.verticalCenter: parent.verticalCenter; width: parent.width
+                                  options: srow.modelData.options || []; current: String(srow.modelData.value)
+                                  onPicked: (v) => job.setSetting(srow.modelData.key, v) }
+                    NumberField { visible: srow.modelData.kind === "number"; anchors.verticalCenter: parent.verticalCenter; width: parent.width
+                                  value: srow.modelData.value; from: srow.modelData.from || 0; to: srow.modelData.to || 0
+                                  step: 0.1; unit: srow.modelData.unit || ""
+                                  onEdited: (v) => job.setSetting(srow.modelData.key, v) }
+                }
+            }
+        }
+        Row {
+            spacing: Theme.gap
+            Button { text: job.state === "running" ? "Exporting…" : "Export"; kind: "primary"
+                     onClicked: if (job.state !== "running") job.start() }
+            Button { text: "Close"; kind: "ghost"; onClicked: panel.shown = false }
+        }
+        Rectangle {   // progress
+            visible: job.state === "running"
+            width: col.width; height: 4; radius: 2; color: Theme.raised
+            Rectangle { width: parent.width * job.progress; height: parent.height; radius: 2; color: Theme.accent }
+        }
+        Text {   // what is happening, or the error line
+            visible: job.state === "running" || job.state === "failed"
+            width: col.width; wrapMode: Text.Wrap
+            text: job.note; font.family: uiFont; font.pixelSize: Theme.body
+            color: job.state === "failed" ? Theme.danger : Theme.fg2
+        }
+        Column {   // the result, read back from the file
+            visible: job.state === "done"
+            width: col.width; spacing: Theme.grid
+            Text { text: "Done"; color: Theme.ok; font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold }
+            Repeater {
+                model: job.facts
+                delegate: Row {
+                    required property var modelData
+                    width: col.width; spacing: 0
+                    Text { id: fl; width: panel.labelW; text: modelData.label; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+                    Text { width: col.width - panel.labelW; text: modelData.text; color: Theme.fg; font.family: uiFont
+                           font.pixelSize: Theme.label; wrapMode: Text.WrapAnywhere; maximumLineCount: 3; elide: Text.ElideMiddle }
+                }
+            }
+            Image {
+                visible: job.picture !== ""
+                width: col.width; height: visible ? 120 : 0
+                source: job.picture; fillMode: Image.PreserveAspectFit; asynchronous: true; cache: false
+            }
+            Text { visible: job.report.length > 0; width: col.width; topPadding: Theme.grid
+                   text: "Lottie couldn't carry"; color: Theme.warn; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
+            Repeater {
+                model: job.report
+                delegate: Text { required property var modelData; width: col.width; wrapMode: Text.Wrap
+                                 text: "· " + modelData; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label }
+            }
+            Text { visible: job.format === "lottie" && job.report.length === 0; text: "Everything was carried."
+                   color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+        }
+    }
+}

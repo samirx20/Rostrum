@@ -5,10 +5,13 @@
     curves on|off | curvedrag <key> <dt> <dv> | handledrag <key> <1|2> <dx> <dy> (the curve editor)
     keydrag <key id> <t> | open <layer> (timeline rows) | fold <layer> (layers panel) | pick <x> <y>
     undo | redo | more | commands [query …] | run <command key> | play
+    marker add <s> | marker move <name> <s> | marker rename <name> <new name> | marker remove <name> (ruler flags; _ for spaces)
   Draw page (on the selected drawing layer): draw <x> <y> <x> <y> … (one stroke, composition px)
     brush <setting> <value> | newframe [copy] | hold <+n|-n> | frame next|prev | onion on|off
   Design page, paths: pen <x,y> <x,y,hx,hy> … [close] (one new path: a point, or a press at x,y dragged to hx,hy =
     a smooth point; composition px) | pointdrag <layer> <i> <dx> <dy> [in|out] (a point, or its handle)
+  Export: export <mp4|prores4444|webm|gif|png|lottie> [alpha=on|off] [depth=8|16] [start=<s>] [end=<s>] (the Export button's
+    job; waits for it) | exportpanel open [format]|close
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
@@ -23,6 +26,22 @@ def value(text):
         return json.loads(text)
     except json.JSONDecodeError:
         return text            # a bare word is a string: set align left
+
+
+def steps_export(bridge, step, rest):
+    job = bridge.exporter
+    job.setFormat(rest[0])
+    for kv in rest[1:]:
+        key, _, v = kv.partition("=")
+        if key not in ("alpha", "depth", "start", "end"):
+            raise ValueError(f"step {step!r}: unknown setting {key!r}")
+        job.setSetting(key, v in ("on", "true", "1") if key == "alpha" else float(v))
+    job.start()
+    if job.state == "running" and not job.wait(600):
+        raise RuntimeError(f"step {step!r}: the export did not finish in 10 minutes")
+    if job.state != "done":
+        raise RuntimeError(f"step {step!r}: {job.note}")
+    print(f"export {job.format}: {job.path} {job.facts}")
 
 
 def do_step(bridge, win, step):
@@ -87,6 +106,20 @@ def do_step(bridge, win, step):
         bridge.painter.goFrame(1 if rest[0] == "next" else -1)
     elif word == "onion":
         bridge.painter.setOnion(rest[0] == "on")
+    elif word == "marker":                       # the ruler's flag edits, through the same MarkerWatch slots
+        from rostrum_core.markers import find
+        m = bridge.marks
+        ref = rest[1].replace("_", " ") if len(rest) > 1 else ""            # a marker's name, _ for spaces
+        mid = find(m.rows(), ref)["id"] if rest[0] != "add" else ""
+        if rest[0] == "add":
+            bridge.setTime(float(rest[1]))
+            m.add(bridge.time)
+        elif rest[0] == "move":
+            m.move(mid, float(rest[2]))
+        elif rest[0] == "rename":
+            m.rename(mid, " ".join(rest[2:]))
+        elif rest[0] == "remove":
+            m.remove(mid)
     elif word in ("undo", "redo"):
         getattr(bridge, word)()
     elif word == "more":
@@ -97,6 +130,12 @@ def do_step(bridge, win, step):
         QMetaObject.invokeMethod(win, "openCommands", Q_ARG("QVariant", " ".join(rest)))
     elif word == "run":
         bridge.run(rest[0])
+    elif word == "export":
+        steps_export(bridge, step, rest)
+    elif word == "exportpanel":
+        if rest[1:]:
+            bridge.exporter.setFormat(rest[1])
+        QMetaObject.invokeMethod(win, "setExportOpen", Q_ARG("QVariant", rest[0] == "open"))
     else:
         raise ValueError(f"unknown step {step!r}")
     if bridge.status.startswith("Error"):
