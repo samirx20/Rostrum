@@ -16,7 +16,9 @@ My Film/
   docs/               each app's documents: <item>.mtn (2D) · .trk (Sound) · .trd (3D, USD) · .rsm (Editor)
   data/               analyses stored as editable data (tracks, transcripts, beat grids, masks a person touched up)
   media/              footage, pictures and sounds brought in
-  renders/            the latest hand-off render of each item (EXR sequences, WAV stems — see shared/HANDOFFS.md)
+  renders/            hand-off renders, one folder per item and version: renders/<item>/v003/ (see shared/HANDOFFS.md)
+  exports/            final deliveries from the Editor's Deliver page
+  colour/             the project's one OpenColorIO config (shared/HANDOFFS.md › Colour)
   .rostrum/           history and script records per document (see OPERATIONS.md), document locks
 ```
 
@@ -38,7 +40,7 @@ Lining things up by copying numbers breaks the moment one thing moves. So every 
 
 - **Each document keeps its own markers** (Sam's choice, 2026-10-12: no separate project marker file, so there is one source of truth). 2D publishes its timeline labels (`logo_lands`), Sound its labels (`drop`), 3D its contacts (`hit:can>table`), the Editor its markers plus every clip's start and end.
 - The **music's beat grid** works as markers too (`music#bar:9`, `music#beat:9:3`), worked out from tempo and time signature, never stored.
-- A reference is **item and marker**, with an optional offset: `music#drop`, `ui#press+=0.5`, `music#bar:9`. The document stores the reference next to the time it last resolved to:
+- A reference is **item and marker**, with an optional offset: `music#drop`, `ui#press+0.5`, `music#bar:9`. The document stores the reference next to the time it last resolved to:
 
 ```json
 { "at": 12.5, "ref": "itm_music#drop" }
@@ -135,5 +137,5 @@ How renders are handed between apps (EXR layers, WAV stems, frame numbering) is 
 
 ## Settled defaults (lead, 2026-10-21)
 
-- **Projects carry their renders.** Each project keeps the latest hand-off render of every item in `renders/`, so it opens on another computer (or after the cache is cleared) without re-rendering everything. Bigger folders, but nothing breaks when a project moves.
+- **Projects carry their renders.** Each project keeps its finished hand-off renders in `renders/` (old versions are cleared by the service's clean-up, never by an app), so it opens on another computer (or after the cache is cleared) without re-rendering everything. Bigger folders, but nothing breaks when a project moves.
 - **Default cache cap: 20 GB** (the experiment used 10 GB). A setting; change it in settings.

@@ -58,7 +58,7 @@ An **operation** is a named, checked action. Every GUI button, menu item and dra
 
 - **Name** is `area.verb` (`layer.move`, `clip.trim`, `marker.add`, `key.ease`).
 - **Target** is the id(s) it acts on. **Args** are everything else.
-- Times may be written the way scripts write them: seconds, `"12f"` (frames), `"bar:9"`, `"#drop"` (a marker), `"music#drop+=0.5"` (another item's marker), `"+=0.5"` (relative to the current value).
+- Times may be written the way scripts write them: seconds, `"12f"` (frames), `"bar:9"`, `"#drop"` (a marker), `"music#drop+0.5"` (another item's marker, half a second after it), `"+=0.5"` (relative to the current value).
 
 An app registers its operations once, in Python:
 
@@ -85,11 +85,11 @@ A call is a **list** of operations, run in order against the document as the one
 4. If **anything** fails, **nothing** is applied or saved. The error says which operation (its place in the list), which argument, what was given, and what would work:
 
 ```json
-{ "error": "not_found", "op_index": 1, "op": "layer.move", "arg": "target",
-  "message": "No layer \"logoo\" in this document. Closest: logo, logo_glow. info(target=\"stage\") lists every id." }
+{ "code": "NOT_FOUND", "where": "op 2 of 2 (layer.move)", "subject": "target \"logoo\"",
+  "problem": "no layer \"logoo\" in this document", "accepted": ["logo", "logo_glow"], "hint": "Did you mean logo?" }
 ```
 
-The shape of errors and replies over MCP is in `shared/mcp/CONVENTIONS.md`. There is no "warn and carry on": a value out of range is an error, not a clamp.
+The error codes and the one-line message format are defined once, in `shared/mcp/CONVENTIONS.md` › Errors; the GUI, CLI and MCP all show the same error. There is no "warn and carry on": a value out of range is an error, not a clamp.
 
 ## 6. One history per document
 
