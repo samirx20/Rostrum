@@ -87,3 +87,12 @@ def test_untouched_items_follow_the_script_including_delete_and_reorder():
     out["layers"] = [l for l in out["layers"] if l["id"] != "logo"]
     doc.run_script("intro.py", out, SCRIPT)
     assert not doc.has("logo")
+
+
+def test_bad_script_value_is_refused_whole():
+    import pytest
+    from rostrum_core import RostrumError
+    doc = fresh()
+    with pytest.raises(RostrumError, match="out of range"):
+        doc.run_script("intro.py", produce(card__x=10**9, title__body="New"), SCRIPT)
+    assert doc.item("title")["body"] == "Hi" and doc.seq == 1

@@ -171,9 +171,9 @@ class Document:
         from .gesture import Gesture
         return Gesture(self, label, who)
 
-    def run_script(self, name, output: dict, who: Who | None = None, force=False):
+    def run_script(self, name, output: dict, who: Who | None = None, force=False, session=None):
         from .merge import merge_script
-        return merge_script(self, name, output, who or Who.script(name), force)
+        return merge_script(self, name, output, who or Who.script(name), force, session)
 
     def subscribe(self, fn):
         self._subs.append(fn)

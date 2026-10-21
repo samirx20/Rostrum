@@ -1,0 +1,88 @@
+"""The shared `inspect_*` tools every server has (CONVENTIONS § 2). They never change anything."""
+from __future__ import annotations
+
+from ..errors import RostrumError, codes, did_you_mean
+from .reply import Reply
+from .tools import Tools
+
+_ITEM = {"item": {"type": "string", "description": "The document's project item id. Optional when only one document is open."}}
+_DETAIL = {"detail": {"enum": ["short", "full"], "default": "short", "description": "full adds the structured data behind the summary."}}
+NO_SERVICE = "The project service is not built yet, so this shows the open document(s) only."
+
+
+def _kind_name(doc) -> str:
+    return getattr(getattr(doc, "kind", None), "name", "document")
+
+
+def _brief(change, full: bool) -> dict:
+    d = change.to_dict() if full else {}
+    ops = [c.get("op") for c in change.calls]
+    return {**d, "seq": change.seq, "who": change.who.to_dict(), "label": change.label, "when": change.when, "group": change.session, "ops": ops}
+
+
+def register(tools: Tools):
+    @tools.tool("inspect_project", {"properties": {**_DETAIL}})
+    def inspect_project(ctx, args):
+        """The project: what is open (documents, their kind and latest history step)."""
+        docs = [{"item": i, "kind": _kind_name(d), "seq": d.seq, "items": sum(1 for _ in d.items())} for i, d in ctx.app.documents.items()]
+        names = ", ".join(f'{d["item"]} ({d["kind"]}, step {d["seq"]})' for d in docs) or "nothing"
+        return Reply(f"{ctx.app.name}: open: {names}. {NO_SERVICE}", {"app": ctx.app.name, "open": docs, "project_service": False},
+                     warnings=[NO_SERVICE])
+
+    @tools.tool("inspect_item", {"properties": {**_ITEM, "id": {"type": "string", "description": "A part's id inside the document. Without it, the whole document outline."}, **_DETAIL}})
+    def inspect_item(ctx, args):
+        """One document, or one part of it by id: its values, who last changed it, the operations that fit it now."""
+        doc = ctx.document(args.get("item"))
+        if "id" not in args:
+            outline = [{"id": it["id"], "type": it.get("type")} for it in doc.items()]
+            return Reply(f"{len(outline)} items in {_kind_name(doc)} document, history step {doc.seq}.", {"seq": doc.seq, "items": outline})
+        part = doc.item(args["id"])
+        lists = {k for ks in getattr(doc.kind, "lists", {}).values() for k in ks}
+        values = {k: v for k, v in part.items() if k not in lists}
+        ops = [o.name for o in doc.kind.registry.available(doc, [args["id"]])]
+        who = {f: (c.who.to_dict() if (c := doc.who_changed(args["id"], f)) else None) for f in values if f not in ("id", "type")}
+        checks = [str(p) for p in doc.kind.check(doc.data) if args["id"] in str(p)]
+        data = {"id": args["id"], "type": part.get("type"), "values": values, "operations": ops, "checks": checks}
+        if args.get("detail") == "full":
+            data["last_changed_by"] = who
+        return Reply(f'{part.get("type")} "{args["id"]}": {len(values) - 2} values, {len(checks)} check problems. '
+                     f"Operations that fit now: {', '.join(ops) or 'none'}.", data)
+
+    @tools.tool("inspect_markers")
+    def inspect_markers(ctx, args):
+        """Every marker the document can reach. Needs the project service (not built yet): answers empty, with a warning."""
+        msg = "Markers live in the project service, which is not built yet; no markers are available."
+        return Reply(msg, {"markers": [], "built": False}, warnings=[msg])
+
+    @tools.tool("inspect_history", {"properties": {**_ITEM, "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 20}, "group": {"type": "string"}, **_DETAIL}})
+    def inspect_history(ctx, args):
+        """Recent changes, newest last: step, who (kind and name), label, when, group, operations."""
+        doc = ctx.document(args.get("item"))
+        changes = [c for c in doc.history.changes if not args.get("group") or c.session == args["group"]]
+        shown = [_brief(c, args.get("detail") == "full") for c in changes[-args.get("limit", 20):]]
+        last = shown[-1] if shown else None
+        tail = f" Latest: step {last['seq']} by {last['who']['kind']}:{last['who']['name']} ({last['label'] or ', '.join(last['ops'])})." if last else ""
+        return Reply(f"{len(shown)} of {len(changes)} changes shown.{tail}", {"seq": doc.seq, "changes": shown})
+
+    @tools.tool("inspect_operations", {"properties": {**_ITEM, "name": {"type": "string", "description": "One operation, for its full argument schema."}, **_DETAIL}})
+    def inspect_operations(ctx, args):
+        """The operations this app accepts, read from the one registry (name, arguments, what it does)."""
+        docs = [ctx.document(args["item"])] if "item" in args else list(ctx.app.documents.values())
+        ops = {o.name: o for d in docs for o in d.kind.registry.ops()}
+        if "name" in args:
+            if args["name"] not in ops:
+                raise RostrumError(codes.UNKNOWN_OPERATION, "", f'"{args["name"]}"', "is not an operation of this app", sorted(ops),
+                                   did_you_mean(args["name"], ops))
+            op = ops[args["name"]]
+            return Reply(f"{op.name}: {op.summary}", {"operations": [op.schema()]})
+        full = args.get("detail") == "full"
+        rows = [o.schema() if full else {"name": o.name, "summary": o.summary, "target": o.targets and list(o.targets)} for o in ops.values()]
+        return Reply(f"{len(ops)} operations: {', '.join(ops)}. Ask with name for one's arguments.", {"operations": rows})
+
+    @tools.tool("inspect_guide", {"properties": {"topic": {"type": "string"}}})
+    def inspect_guide(ctx, args):
+        """A how-to guide by topic. With no topic, the list of topics (also served as MCP resources rostrum://guide/<topic>)."""
+        g = ctx.app.guides
+        if "topic" not in args:
+            return Reply(f"{len(g.topics())} guides: {', '.join(g.topics())}.", {"topics": [{"topic": t, "title": g.title(t)} for t in g.topics()]})
+        return Reply(g.get(args["topic"]), {"topic": args["topic"]})

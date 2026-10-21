@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from . import edits as E
 from .diff import diff
 from .errors import RostrumError, codes
-from .tree import index
+from .tree import fields, index, walk
 
 
 @dataclass
@@ -63,10 +63,20 @@ def _script_value(e):
     return {E.Remove: "(remove)", E.Insert: "(add)", E.Move: "(move)"}[type(e)]
 
 
-def merge_script(doc, name, output: dict, who, force=False) -> MergeReport:
+def check_output(kind, output: dict, where: str):
+    """A script's values obey the same parameter rules as operation arguments (no side door)."""
+    index(output, kind.lists)                             # duplicate ids: loud
+    for item in walk(output, kind.lists):
+        op = kind.registry.field_op(item.get("type"))
+        for k, v in (fields(item, kind.lists).items() if op else ()):
+            if op.param(k):
+                op.param(k).check(v, f"{where} › {item['id']}")
+
+
+def merge_script(doc, name, output: dict, who, force=False, session=None) -> MergeReport:
     lists = doc.kind.lists
     base = doc.script_bases.get(name) or doc.kind.blank()
-    index(output, lists)                                  # duplicate ids in the script's output: loud
+    check_output(doc.kind, output, f"run_script {name}")
     others = diff(base, doc.data, lists)
     other_keys = set().union(*(E.keys(e, lists) for e in others)) if others else set()
     work, new_base = copy.deepcopy(doc.data), copy.deepcopy(base)
@@ -101,5 +111,5 @@ def merge_script(doc, name, output: dict, who, force=False) -> MergeReport:
     report.applied = len(applied)
     if applied:
         call = {"op": "run_script", "target": [], "args": {"script": name, "force": force}}
-        report.change = doc.commit(work, applied, who, f"Run {name}", [call])
+        report.change = doc.commit(work, applied, who, f"Run {name}", [call], session)
     return report
