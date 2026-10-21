@@ -14,7 +14,8 @@ from rostrum_core.conditions import holds
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
 ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit",
-         "valid", "value")
+         "valid", "value", "anim")
+# anim: "" (can't be animated), "still" (could be), "keyed" (has keys), "onkey" (has a key at the playhead).
 
 
 def layout(op) -> list[dict]:
@@ -41,18 +42,20 @@ def _param_row(p) -> dict:
             "step": p.step, "unit": p.unit, "valid_when": p.valid_when, "default": p.default}
 
 
-def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool) -> list[dict]:
-    """The rows with `valid` and `value` filled in for this item's current values."""
+def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=None) -> list[dict]:
+    """The rows with `valid`, `value` and `anim` filled in for these values (`item`: the item's values as the
+    screen shows them, e.g. at the playhead). `anim(name)` gives a param's key state; none: no keys."""
     ok = {r["id"]: holds(r["valid_when"], item, facts) for r in static if r["row"] == "param"}
     out = []
     for r in static:
         r = dict(r)
         if r["row"] == "param":
             r["value"] = item.get(r["id"], r["default"])
+            r["anim"] = anim(r["id"]) if anim else ""
             r["holds"] = ok[r["id"]]
             r["valid"] = ok[r["id"]] and (r["importance"] != "deep" or more_open)
         else:
-            r["value"] = None
+            r["value"], r["anim"] = None, ""
             r["holds"] = r["valid"] = any(ok[m] for m in r["members"])
         out.append(r)
     return out

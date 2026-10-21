@@ -5,10 +5,15 @@ import "."
 // The widget comes from the param's `type` only. The row owns its reveal: when `valid` changes, height and
 // opacity ease over Theme.reveal (160 ms); the Column below just follows. A new selection builds fresh rows
 // at their final state (a Behavior does not animate the first value), so the list swaps at once.
+// With `keyMarks` (an app with keys) every param row keeps a gutter at the right for its key mark (model.anim):
+// a filled diamond = a key at the playhead, outlined = animated, faint on hover only = could be animated.
+// Clicking the mark is bridge.toggleAnimate (the app decides what that does).
 Item {
     id: row
     required property var model           // roles from rostrum_gui.rows.ROLES
     property var bridge
+    property bool keyMarks: false
+    readonly property int gutter: keyMarks ? 22 : 0
     readonly property int full: model.row === "group" ? Theme.groupGap + Theme.rowDense
                               : model.row === "more" ? Theme.row + Theme.grid : Theme.row
     property real reveal: model.valid ? 1 : 0
@@ -45,10 +50,21 @@ Item {
             id: widget
             x: Theme.labelColumn
             anchors.verticalCenter: parent.verticalCenter
-            width: row.model.type === "toggle" ? (item ? item.implicitWidth : 0) : parent.width - Theme.labelColumn
+            width: row.model.type === "toggle" ? (item ? item.implicitWidth : 0) : parent.width - Theme.labelColumn - row.gutter
             height: Theme.field
             active: row.model.row === "param"
             sourceComponent: ({ toggle: toggle, number: number, choice: choice, color: colour, text: text })[row.model.type] || text
+        }
+        HoverHandler { id: rowHover }
+        Item {  // the key mark
+            visible: row.keyMarks && !!row.model.anim && (row.model.anim !== "still" || rowHover.hovered)
+            anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+            width: row.gutter - 4; height: Theme.field
+            KeyMark { anchors.centerIn: parent; filled: row.model.anim === "onkey"
+                      color: row.model.anim === "still" ? (markArea.containsMouse ? Theme.fg2 : Theme.fg4)
+                           : markArea.containsMouse ? Theme.accentHover : Theme.accent }
+            MouseArea { id: markArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: row.bridge.toggleAnimate(row.model.id) }
         }
     }
 
