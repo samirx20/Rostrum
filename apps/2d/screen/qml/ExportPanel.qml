@@ -2,7 +2,9 @@ import QtQuick
 import RostrumKit
 
 // Export: one format choice, the settings that apply to it (from exporter.settings: nothing is placed per format here),
-// the Export button, then progress, the result read back from the file, or the error. Opened from the top bar's Export button.
+// the Export button (Cancel while it runs), then progress, the result read back from the file, "Cancelled", or the error.
+// Opened from the top bar's Export action; sits on the canvas beside the inspector. The composition choice is only there when
+// the document has more than one.
 Rectangle {
     id: panel
     property var job: backend.exporter
@@ -27,6 +29,17 @@ Rectangle {
                   leftMargin: Theme.pad; rightMargin: Theme.pad }
         spacing: Theme.gap
 
+        Row {
+            visible: job.comps.length > 0; height: visible ? Theme.row : 0; spacing: 0
+            Text { width: panel.labelW; height: parent.height; verticalAlignment: Text.AlignVCenter
+                   text: "Composition"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
+            ChoiceField {
+                anchors.verticalCenter: parent.verticalCenter
+                width: col.width - panel.labelW
+                options: job.comps; current: job.comp
+                onPicked: (v) => job.setComp(v)
+            }
+        }
         Row {
             height: Theme.row; spacing: 0
             Text { width: panel.labelW; height: parent.height; verticalAlignment: Text.AlignVCenter
@@ -62,8 +75,8 @@ Rectangle {
         }
         Row {
             spacing: Theme.gap
-            Button { text: job.state === "running" ? "Exporting…" : "Export"; kind: "primary"
-                     onClicked: if (job.state !== "running") job.start() }
+            Button { visible: job.state !== "running"; text: "Export"; kind: "primary"; onClicked: job.start() }
+            Button { visible: job.state === "running"; text: "Cancel"; onClicked: job.cancel() }
             Button { text: "Close"; kind: "ghost"; onClicked: panel.shown = false }
         }
         Rectangle {   // progress
@@ -71,8 +84,8 @@ Rectangle {
             width: col.width; height: 4; radius: 2; color: Theme.raised
             Rectangle { width: parent.width * job.progress; height: parent.height; radius: 2; color: Theme.accent }
         }
-        Text {   // what is happening, or the error line
-            visible: job.state === "running" || job.state === "failed"
+        Text {   // what is happening, the error line, or that it was stopped (neither an error nor a success)
+            visible: job.state === "running" || job.state === "failed" || job.state === "cancelled"
             width: col.width; wrapMode: Text.Wrap
             text: job.note; font.family: uiFont; font.pixelSize: Theme.body
             color: job.state === "failed" ? Theme.danger : Theme.fg2

@@ -3,13 +3,14 @@ import QtQuick.Layouts
 import "."
 
 // Wordmark, the open document's tab, the app's own tools (`tools`: e.g. a page switch, centred), the history
-// status (small), and the command-bar button.
+// status (small), the app's action buttons (`actions`: e.g. Export, right side), and the command-bar button.
 Item {
     id: bar
     property var bridge
     property string appName: "Rostrum"
     property string documentName: ""
     property alias tools: toolsSlot.data
+    property alias actions: actionsSlot.data
     signal commandClicked()
     implicitHeight: Theme.topBar
 
@@ -39,6 +40,10 @@ Item {
                   + (bar.bridge.status ? "  ·  " + bar.bridge.status : "")
             color: /^Error/.test(bar.bridge.status) ? Theme.danger : Theme.fg3
             font.family: uiFont; font.pixelSize: Theme.label
+        }
+        Row {  // the app's action buttons: things to do, not pages to be on
+            id: actionsSlot
+            spacing: Theme.gap
         }
         Rectangle {
             implicitHeight: Theme.button; implicitWidth: 280

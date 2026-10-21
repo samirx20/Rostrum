@@ -24,6 +24,7 @@ class Exporter(QObject):
         self._bridge, self._engine_factory = bridge, engine_factory
         self._state, self._note, self._progress, self._facts, self._thread = "", "", 0.0, {}, None
         self._fmt, self._values = "mp4", {}
+        self._comp_id, self._engine, self._cancelled = bridge.comp_id, None, False    # the comp shown, until another is picked
         self._reset()
         self._landed.connect(self._on_landed)
         self._progressed.connect(self._on_progress)
@@ -31,8 +32,11 @@ class Exporter(QObject):
     def _row(self) -> dict:
         return exporting.info("export", self._fmt)
 
+    def _comp(self) -> dict:
+        return self._bridge.doc.item(self._comp_id)
+
     def _duration(self) -> float:
-        return float(self._bridge.comp().get("duration", 5.0))
+        return float(self._comp().get("duration", 5.0))
 
     def _reset(self):
         """The chosen format's defaults: transparency on where it can be carried, its first bit depth, the whole composition."""
@@ -43,6 +47,17 @@ class Exporter(QObject):
     @Property("QVariantList", constant=True)
     def formats(self):
         return [{"value": r["name"], "label": r["label"]} for r in exporting.formats()]
+
+    @Property("QVariantList", notify=changed)
+    def comps(self):
+        """The document's compositions to choose from; empty when there is only one (nothing to choose)."""
+        rows = self._bridge.doc.data.get("comps", [])
+        return [{"value": c["id"], "label": c.get("name") or c["id"]} for c in rows] if len(rows) > 1 else []
+
+    @Property(str, notify=changed)
+    def comp(self):
+        """The composition that will be exported (the one on screen until another is picked)."""
+        return self._comp_id
 
     @Property(str, notify=changed)
     def format(self):
@@ -66,7 +81,7 @@ class Exporter(QObject):
 
     @Property(str, notify=changed)
     def state(self):
-        """"" (nothing started) | "running" | "done" | "failed"."""
+        """"" (nothing started) | "running" | "done" | "failed" | "cancelled"."""
         return self._state
 
     @Property(float, notify=changed)
@@ -127,13 +142,22 @@ class Exporter(QObject):
         self._state, self._note, self._facts = "", "", {}
         self.changed.emit()
 
+    @Slot(str)
+    def setComp(self, comp_id):
+        if self.running() or comp_id == self._comp_id or not self._bridge.doc.has(comp_id):
+            return
+        self._comp_id = comp_id
+        self._reset()
+        self._state, self._note, self._facts = "", "", {}
+        self.changed.emit()
+
     @Slot(str, "QVariant")
     def setSetting(self, key, value):
         if self.running() or key not in self._values:
             return
         self._values[key] = int(value) if key == "depth" else bool(value) if key == "alpha" else float(value)
         if key == "start":
-            self._values["end"] = max(self._values["end"], self._values["start"] + 1 / self._bridge.comp()["fps"])
+            self._values["end"] = max(self._values["end"], self._values["start"] + 1 / self._comp()["fps"])
         self.changed.emit()
 
     @Slot()
@@ -141,11 +165,11 @@ class Exporter(QObject):
         b = self._bridge
         if self.running():
             return b._fail("Error: export: one is already running; wait for it.")
-        self._facts, self._progress = {}, 0.0
+        self._facts, self._progress, self._cancelled = {}, 0.0, False
         try:
             v = self._values
             s = exporting.settings("export", self._fmt, self._duration(), v["alpha"], v["depth"], v["start"], v["end"])
-            scene = render.scene_of(b.doc, b.comp_id)        # the snapshot: edits made while it runs are not in the file
+            scene = render.scene_of(b.doc, self._comp_id)        # the snapshot: edits made while it runs are not in the file
         except Exception as e:  # noqa: BLE001
             return self._finish({}, e.line() if hasattr(e, "line") else f"Error: export: {e}")
         fmt, doc = self._fmt, b.doc
@@ -154,16 +178,32 @@ class Exporter(QObject):
         self.changed.emit()
         b._set_status(self._note)
 
+        def make_engine():                      # remembered, so Cancel can stop it
+            self._engine = (self._engine_factory or exporting._engine)()
+            return self._engine
+
         def work():
             try:
                 facts = exporting.run("export", scene, fmt, s, folder, item, seq, None,
-                                      lambda done, total: self._progressed.emit(done / total if total else 0.0), self._engine_factory)
+                                      lambda done, total: self._progressed.emit(done / total if total else 0.0), make_engine)
                 self._landed.emit(facts, "")
-            except Exception as e:  # noqa: BLE001  fail loudly, whatever it was
-                self._landed.emit({}, e.line() if hasattr(e, "line") else f"Error: export: {type(e).__name__}: {e}")
+            except Exception as e:  # noqa: BLE001  fail loudly, whatever it was (a cancel is the one expected stop)
+                self._landed.emit({}, "" if self._cancelled else e.line() if hasattr(e, "line") else f"Error: export: {type(e).__name__}: {e}")
 
         self._thread = threading.Thread(target=work, name="export", daemon=True)
         self._thread.start()
+
+    @Slot()
+    def cancel(self):
+        """Stop a running export: the engine is stopped by its own handle, the unfinished files are removed by run()."""
+        eng = self._engine
+        if not self.running() or eng is None or self._cancelled:
+            return
+        self._cancelled = True
+        self._note = "Cancelling…"
+        self.changed.emit()
+        if eng.proc.poll() is None:
+            eng.proc.kill()
 
     @Slot()
     def dismiss(self):
@@ -188,7 +228,10 @@ class Exporter(QObject):
         self._finish(facts, error)
 
     def _finish(self, facts, error):
-        if error or not facts.get("files"):
+        if self._cancelled and not facts.get("files") and not error:
+            self._state, self._facts, self._note, self._progress = "cancelled", {}, "Cancelled", 0.0
+            self._bridge._set_status("Export cancelled")
+        elif error or not facts.get("files"):
             self._state, self._facts, self._note = "failed", {}, error or "Error: export: nothing was written"
             self._bridge._fail(self._note)
         else:
