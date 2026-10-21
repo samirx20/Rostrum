@@ -1,0 +1,34 @@
+[package]
+license = "MIT"
+name = "rostrum2d-render"
+version = "0.1.0"
+edition = "2021"
+description = "Rostrum2D's renderer: the stage page laid out by Blitz (Stylo + Taffy + Parley) and painted by Skia on the GPU. apps/2d/engine/README.md"
+publish = false
+
+[dependencies]
+blitz-dom = "=0.3.0-beta.3"
+blitz-html = "=0.3.0-beta.3"
+blitz-paint = { version = "=0.3.0-beta.3", features = ["svg"] }
+blitz-traits = "=0.3.0-beta.3"
+anyrender = "0.14"
+anyrender_skia = "0.12"
+serde_json = "1"
+kurbo = "0.13"
+parley = { version = "0.12", default-features = false, features = ["std"] }
+# Glyph outlines for `glyphs` (the version parley shapes with; already in the lock).
+skrifa = "=0.44.0"
+# Computed values for `styles` (the Stylo Blitz is built on; already in the lock).
+style = { package = "stylo", version = "=0.22.0" }
+image = { version = "0.25.6", default-features = false, features = ["png", "jpeg", "exr"] }
+# The one colour library (working spaces, views, the output step: color.rs).
+rostrum-color = { path = "../color" }
+# Half floats for RHALF images (already in the lock).
+half = "2"
+exr = "1.74"
+# Skia on the GPU (OpenGL via WGL; a hidden window carries the context). Same versions anyrender_skia uses.
+skia-safe = { version = "0.153.3", features = ["gl"] }
+glutin = "0.32.3"
+raw-window-handle = "0.6"
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_System_LibraryLoader", "Win32_UI_WindowsAndMessaging"] }
+jpeg-encoder = { version = "0.7.1", features = ["simd"] }
