@@ -18,6 +18,7 @@ namespace r3d {
 struct SceneSky {
   PXR_NS::GlfSimpleLight dome;  // a viewport dome light, turned as the scene turns it
   std::optional<StormSun> sun;  // the sun taken out of its picture (only when asked for, and found)
+  bool seen = true;             // the camera sees it (rostrum:seenByCamera, light_extras.h); off = it only lights
 };
 
 // `source` (a lat-long picture; "" = a flat white one) × `gain`, as an EXR in the core's cache (named by what made

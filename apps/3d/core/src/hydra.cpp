@@ -65,7 +65,7 @@ class Hydra::Engine : public UsdImagingGLEngine {
     const auto sky = scene_lights ? scene_sky(stage, frame, storm) : std::nullopt;
     SetLightingState(sky ? GlfSimpleLightVector{sky->dome} : std::move(fallback), GlfSimpleMaterial(),
                      GfVec4f(0, 0, 0, 1));
-    show_sky(bool(sky));
+    show_sky(sky && sky->seen);  // a dome the camera doesn't see still lights (its seenByCamera)
     if (storm) {
       const std::optional<StormSun> sun = sky ? sky->sun : std::nullopt;
       set_storm_sun(sun, sun ? sun_shadow(stage, frame, view) : SunShadow{});

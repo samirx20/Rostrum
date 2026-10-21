@@ -86,8 +86,14 @@ def check(data: dict) -> list[str]:
                 elif item["aimItem"] == item["id"]:
                     problems.append(f'{item["id"]}: can\'t aim at itself')
                 _ref(problems, item, "aimItem", item.get("aimItem"), items, "item")
+        if t == "light" and item.get("kind") != "dome":     # light linking: every named id a real item, not itself
+            for linked in item.get("lightsOnly", "").split():
+                _ref(problems, item, "lightsOnly", linked, items - {item["id"]}, "item")
         if t in ("mesh", "import", "part"):
             _ref(problems, item, "material", item.get("material"), materials, "material")
+        if t == "mesh":
+            for face in ("frontMaterial", "bevelMaterial", "sideMaterial", "backMaterial"):
+                _ref(problems, item, face, item.get(face), materials, "material")
         if t == "shot":
             _ref(problems, item, "camera", item.get("camera"), cameras, "camera")
             if item.get("end", 0) <= item.get("start", 0):

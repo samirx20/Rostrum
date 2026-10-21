@@ -12,6 +12,7 @@ from rostrum_core import ids
 from rostrum_core.tree import index
 from rostrum3d import fields as F
 from rostrum3d.kind import KIND
+from rostrum3d.outline_fields import OUTLINE_SHAPES
 
 LIGHT_NAMES = {"rect": "Rect panel", "disk": "Disk panel", "sphere": "Sphere bulb", "distant": "Sun", "dome": "Sky dome"}
 START = {"camera": {"z": 5}, "light": {"y": 3}}          # where a new camera / light starts (an item starts at the origin)
@@ -21,8 +22,8 @@ COPIES = (*F.ITEMS, "material", "shot")
 
 def _entries(cameras: bool) -> list[dict]:
     out = [{"value": f"mesh:{s}", "label": f"Mesh · {s.capitalize()}"} for s in F.SHAPES]
-    out += [{"value": f"light:{k}", "label": f"Light · {LIGHT_NAMES[k]}"} for k in F.LIGHT_KINDS]
-    out += [{"value": t, "label": F.LABELS[t]} for t in ("camera", "group", "material")]
+    out += [{"value": f"light:{k}", "label": f"Light · {LIGHT_NAMES.get(k, k.capitalize())}"} for k in F.LIGHT_KINDS]
+    out += [{"value": t, "label": F.LABELS[t]} for t in ("camera", "rig", "group", "material")]
     return out + ([{"value": "shot", "label": "Shot"}] if cameras else [])
 
 
@@ -66,9 +67,11 @@ class Adder(QObject):
         if type_ == "mesh":
             args["shape"] = detail
             args["name"] = detail.capitalize()
+            if detail in OUTLINE_SHAPES:      # a flat outline pushed out: a slab 1 m deep would hide the word
+                args.update(depth=0.02, bevel=0.002)
         elif type_ == "light":
             args["kind"] = detail
-            args["name"] = LIGHT_NAMES[detail]
+            args["name"] = LIGHT_NAMES.get(detail, detail.capitalize())
         elif type_ == "shot":
             args["camera"] = self._camera()
         if type_ in F.ITEMS and (into := self._holder()):

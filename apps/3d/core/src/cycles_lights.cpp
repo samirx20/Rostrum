@@ -8,13 +8,16 @@
 #include <pxr/imaging/hd/retainedDataSource.h>
 #include <pxr/imaging/hd/sceneIndexPluginRegistry.h>
 #include <pxr/imaging/hd/tokens.h>
+#include <pxr/imaging/hd/visibilitySchema.h>
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/usdLux/blackbody.h>
 
 #include <cmath>
 #include <iterator>
+#include <vector>
 
 #include "error.h"
+#include "light_extras.h"
 #include "sky.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
@@ -32,6 +35,7 @@ T value(const HdContainerDataSourceHandle& ds, const TfToken& name, T fallback) 
 }
 
 using F = HdRetainedTypedSampledDataSource<float>;
+using F0 = HdRetainedTypedSampledDataSource<bool>;
 
 // the dome's light as the picture alone (strength 1): see cycles_lights.h
 HdContainerDataSourceHandle dome_params(const HdContainerDataSourceHandle& light) {
@@ -56,14 +60,50 @@ HdContainerDataSourceHandle distant_params(const HdContainerDataSourceHandle& li
       HdLightTokens->intensity, F::New(value(light, HdLightTokens->intensity, 1.0f) / kCyclesDistant));
 }
 
+// product lighting (light_extras.h): what our patch on Cycles' Hydra plug-in reads; none of it for a plain light
+HdContainerDataSourceHandle extras_params(const SdfPath& path, const TfToken& type, const LightExtras& x) {
+  std::vector<TfToken> names;
+  std::vector<HdDataSourceBaseHandle> values;
+  auto add = [&](const TfToken& n, HdDataSourceBaseHandle v) { names.push_back(n), values.push_back(std::move(v)); };
+  if (type == HdPrimTypeTokens->domeLight) {
+    const auto seen = x.domeSeen.find(path);  // Cycles: the background's camera visibility (patch: session.cpp)
+    add(TfToken("visibleInPrimaryRay"), HdRetainedTypedSampledDataSource<bool>::New(seen == x.domeSeen.end() || seen->second));
+  }
+  if (x.cards.count(path)) add(TfToken("visibleInPrimaryRay"), HdRetainedTypedSampledDataSource<bool>::New(true));
+  if (const auto c = x.coneDeg.find(path); c != x.coneDeg.end()) add(HdLightTokens->shapingConeAngle, F::New(c->second));
+  if (const auto m = x.membership.find(path); m != x.membership.end())
+    add(TfToken("rostrumLightSets"), HdRetainedTypedSampledDataSource<int64_t>::New(int64_t(m->second)));
+  if (names.empty()) return nullptr;
+  return HdRetainedContainerDataSource::New(names.size(), names.data(), values.data());
+}
+
+HdContainerDataSourceHandle with_light(const HdContainerDataSourceHandle& prim, HdContainerDataSourceHandle params) {
+  return HdOverlayContainerDataSource::New(HdRetainedContainerDataSource::New(HdLightSchemaTokens->light, params), prim);
+}
+
 class CyclesLights final : public HdSingleInputFilteringSceneIndexBase {
  public:
   static HdSceneIndexBaseRefPtr New(const HdSceneIndexBaseRefPtr& in) { return TfCreateRefPtr(new CyclesLights(in)); }
 
   HdSceneIndexPrim GetPrim(const SdfPath& path) const override {
     HdSceneIndexPrim prim = _GetInputSceneIndex()->GetPrim(path);
+    if (!prim.dataSource) return prim;
+    const LightExtras& x = light_extras();
+    if (!HdPrimTypeIsLight(prim.primType)) {
+      if (path.GetName() == kCardName)  // Storm's card: in Cycles the light itself is seen (visibleInPrimaryRay)
+        prim.dataSource = HdOverlayContainerDataSource::New(
+            HdRetainedContainerDataSource::New(HdVisibilitySchemaTokens->visibility,
+                                               HdVisibilitySchema::BuildRetained(F0::New(false))),
+            prim.dataSource);
+      else if (const int set = x.receiver_set(path))  // light linking: the receiver set (patch: geometry.inl)
+        prim.dataSource = HdOverlayContainerDataSource::New(
+            HdRetainedContainerDataSource::New(TfToken("rostrumLightSet"), HdRetainedTypedSampledDataSource<int>::New(set)),
+            prim.dataSource);
+      return prim;
+    }
     const bool dome = prim.primType == HdPrimTypeTokens->domeLight;
-    if ((!dome && prim.primType != HdPrimTypeTokens->distantLight) || !prim.dataSource) return prim;
+    if (const auto extras = extras_params(path, prim.primType, x)) prim.dataSource = with_light(prim.dataSource, extras);
+    if (!dome && prim.primType != HdPrimTypeTokens->distantLight) return prim;
     const HdContainerDataSourceHandle light = HdLightSchema::GetFromParent(prim.dataSource).GetContainer();
     HdContainerDataSourceHandle params;
     try {
@@ -72,8 +112,7 @@ class CyclesLights final : public HdSingleInputFilteringSceneIndexBase {
       TF_RUNTIME_ERROR("%s: %s", path.GetText(), e.what());
       return prim;
     }
-    prim.dataSource = HdOverlayContainerDataSource::New(
-        HdRetainedContainerDataSource::New(HdLightSchemaTokens->light, params), prim.dataSource);
+    prim.dataSource = with_light(prim.dataSource, params);
     return prim;
   }
   SdfPathVector GetChildPrimPaths(const SdfPath& path) const override {

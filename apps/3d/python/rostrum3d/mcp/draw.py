@@ -8,7 +8,7 @@ from rostrum3d.compile import describe
 
 
 def scene_of(doc, shot_id: str) -> dict:
-    return describe(doc.data, shot_id)
+    return describe(doc.data, shot_id, getattr(doc, "folder", None))
 
 
 def engine_of(ctx):

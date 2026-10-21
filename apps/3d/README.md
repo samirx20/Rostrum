@@ -33,6 +33,11 @@ Modelling, painting, materials, lighting, animation, simulation and rendering, b
 - The stylized renderer takes no look settings through the contract yet.
 - Imports in other units (e.g. centimetres) are not rescaled; the import's scale must be set.
 
+- **H21, product tools** (results: `C:\Users\Sam\.rostrum\waves\results\stage2\h21\`: `extrude.png`, `strip-reflection.png`, `turntable.mp4`).
+  - *Text and logos:* mesh shapes `text` (shared fonts or a .ttf/.otf, weight, tracking, lines), `svg` (file or path data) and `path2d` (a 2D path layer, read from the saved `.mtn`) become one scene shape `outline` that the core extrudes with a rounded bevel and front / bevel / side / back materials (`core/src/extrude.*`, `outline_offset.*`; Python `outline*.py`). A bevel too big for the outline fails loudly with the largest that fits; the bevel is an inset along each corner's direction, so acute tips (the end of an "s") limit it more than a true rounded offset would (Inter Bold at 0.1 m: about 1.9 mm). Stray short edges are merged first (an SVG's closing nub had made every round dot refuse a bevel).
+  - *Lights:* `strip` softbox, `spread`, visible `card`, `lightsOnly` linking, dome `turn` and `seenByCamera`, "Look through light" in the viewport and `look_frame through=<light>`. In Cycles today: strip, card and dome turn work. **Spread, light linking and hiding a dome from the camera do nothing in Cycles yet**: its Hydra plug-in doesn't read them. A patch for it is written (`libs/cycles-rostrum-lights.patch`, checked with `git apply --check`, not built); it needs a Cycles rebuild into a **new** library folder, because the current one is shared by every worktree. Storm: spread and linking don't apply (the view reply lists such lights in `notInQuickView`); the card shows to the camera but Storm reflects only the dome.
+  - *Camera rigs:* `rig` items (orbit / crane / dolly, pan and tilt head, seeded handheld drift) hold the camera and compile to a group baked per frame (`rigs.py`); guide `guides/camera-rigs.md`.
+
 ## Python layer (`python/rostrum3d/`, H12)
 
 The document, its operations, the script layer and the compiler to the engine's scene description: see [`DOCUMENT.md`](DOCUMENT.md) and [`ENGINE_CONTRACT.md`](ENGINE_CONTRACT.md). Install: `uv pip install --python <worktree>\.venv\Scripts\python.exe -e apps\3d\python`.
@@ -40,5 +45,9 @@ The document, its operations, the script layer and the compiler to the engine's 
 **Done (S11):** the key model's easing table, evaluator and the four key operations (`key.add`, `key.remove`, `value.set`, `key.clear`) live in `rostrum_core.keys`; `rostrum3d` no longer imports `rostrum2d`.
 
 ## Attribution rows
+
+H21:
+
+| earcut.hpp (mapbox) | master 177bd66 (2026-10) | ISC | `apps/3d/core` (Rostrum3D core: triangulating outline caps) | header-only, compiled in | yes | Keep the copyright and licence notice | https://github.com/mapbox/earcut.hpp |
 
 Nothing new: the library folder holds the same libraries already recorded in `ATTRIBUTIONS.md` (rows from `proofs/3d-app-start/README.md` and `proofs/3d-product/README.md`): Blender's library bundle `v5.2.2` (commit 60d6e96: OpenUSD, OpenImageIO, OpenColorIO, OpenEXR, Imath, MaterialX, OpenVDB, TBB, Embree, OpenImageDenoise, OpenJPH, libaom, SYCL runtime, epoxy, fmt) and Cycles (commit a456b76). Its GPL FFmpeg is never copied into the folder. Cycles' `license\` folder is copied next to its plug-in (`runtime\hydra\cycles\license`). The Visual C++ runtime DLLs and `python313.dll` (PSF) are copied as fallbacks. H20: the core now also links OpenColorIO (BSD-3-Clause, the bundle's 2.5, already recorded) directly for the viewport's graphics-card colour transform; `lay_out.py` copies its headers and `OpenColorIO.lib` into `sdk\` (about 1 MB).

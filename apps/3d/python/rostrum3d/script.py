@@ -30,7 +30,7 @@ from .kind import KIND, PRIM_ID
 SAFE = {n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__builtins__, n)
         for n in ("range", "len", "min", "max", "abs", "round", "enumerate", "zip", "list", "dict", "float", "int",
                   "str", "sorted", "reversed", "sum", "isinstance", "tuple", "ValueError")}
-REFS = {"material", "camera", "aimItem"}         # fields that name another thing: an Item handle may be passed
+REFS = {"material", "camera", "aimItem", "frontMaterial", "bevelMaterial", "sideMaterial", "backMaterial"}       # fields that name another thing: an Item handle may be passed
 
 
 class Item:
@@ -131,10 +131,10 @@ def _import(name, *args, **kw):
     raise ImportError(f"scripts can't import {name!r}; math, range, len, min, max, abs, round, zip … are already there")
 
 
-API = ["group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, **fields)", "camera(id, **fields)",
+API = ["group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
        "import_usd(id, file=, parts=[...])", "material(id, **fields)", "shot(id, camera=, fps=, start=, end=)",
        "item.set(**fields)", "item.key(field, {seconds: value}, ease=)", "item.aim(item or (x, y, z))",
-       "import.part(path, material=, visible=)", "with group(...): / with import_usd(...):"]
+       "import.part(path, material=, visible=)", "with group(...): / with rig(...): / with import_usd(...):"]
 
 
 def run_source(source: str, name: str) -> dict:
@@ -144,7 +144,7 @@ def run_source(source: str, name: str) -> dict:
              "material": lambda id=None, **v: b.add("material", id, v, b.root["materials"]),
              "shot": lambda id=None, **v: b.add("shot", id, v, b.root["shots"]),
              "import_usd": lambda id=None, **v: b.item("import", id, **v),
-             **{t: (lambda id=None, _t=t, **v: b.item(_t, id, **v)) for t in ("group", "mesh", "light", "camera")}}
+             **{t: (lambda id=None, _t=t, **v: b.item(_t, id, **v)) for t in ("group", "mesh", "light", "camera", "rig")}}
     try:
         exec(compile(source, name, "exec"), scope)
     except Exception as e:

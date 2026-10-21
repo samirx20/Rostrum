@@ -9,6 +9,8 @@
 // multiplied (sky.h dome_picture, the same picture Storm gets) with a strength of exactly 1 (intensity 1/π, colour 1,
 // exposure 0, no colour temperature), so strength² = strength; a distant light's intensity ÷ 4. The stage keeps the
 // UsdLux values, so a saved .usda means the same in any renderer that follows UsdLux.
+// The same filter hands over product lighting (light_extras.h: a panel's card and spread, light links, a dome's camera
+// visibility) in the tokens our patch on the plug-in reads, and hides the card mesh Storm uses.
 #pragma once
 
 namespace r3d {

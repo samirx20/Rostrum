@@ -75,6 +75,7 @@ std::optional<SceneSky> scene_sky(const UsdStageRefPtr& stage, int frame, bool t
     const GfVec3f gain = colour * intensity * std::exp2(exposure);  // UsdLux: the picture × this is the sky's light
     const GfMatrix4d turn = UsdGeomXformable(p).ComputeLocalToWorldTransform(t);
     SceneSky sky;
+    if (const UsdAttribute seen = p.GetAttribute(TfToken("rostrum:seenByCamera"))) seen.Get(&sky.seen, t);
     if (take_sun && !source.empty()) {
       const DomeSplit split = split_dome_sun(source);
       source = split.picture;
