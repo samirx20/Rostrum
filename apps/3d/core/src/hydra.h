@@ -49,7 +49,7 @@ class Hydra {
                        PXR_NS::GfVec3d* point);
 
  private:
-  class Engine;  // UsdImagingGLEngine plus the selection outline it keeps protected
+  class Engine;  // UsdImagingGLEngine plus showing or hiding the dome behind the scene
   Engine& engine(const std::string& renderer, bool viewport = false);
   Framebuffer& framebuffer(int width, int height);
 

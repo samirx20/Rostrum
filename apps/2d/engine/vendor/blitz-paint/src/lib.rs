@@ -12,6 +12,7 @@ mod gradient;
 mod kurbo_css;
 mod layers;
 mod particles;
+mod track_matte;
 mod render;
 mod warp;
 mod sizing;

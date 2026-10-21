@@ -659,7 +659,8 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
                                 cx.draw_marker(scene, content_position);
                                 // Rostrum patch (round 8): an emitter stamps its children as particle sprites (particles.rs);
                                 // round 10: a held element draws the painter's held picture instead (particles.rs draw_held).
-                                if !cx.draw_particles(scene) && !cx.draw_held(scene) {
+                                // H15: a track matte draws its content through its first child (track_matte.rs).
+                                if !cx.draw_particles(scene) && !cx.draw_held(scene) && !cx.draw_track_matte(scene) {
                                     cx.draw_children(scene, cx.transform, child_clip_rect);
                                 }
                             },

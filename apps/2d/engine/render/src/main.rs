@@ -48,6 +48,8 @@ mod seam_tests;
 mod shader_tests;
 #[cfg(test)]
 mod tilt_tests;
+#[cfg(test)]
+mod track_matte_tests;
 
 /// Hybrid-GPU laptops: paint on the discrete GPU (read by the NVIDIA / AMD drivers; exported by build.rs).
 /// On Sam's laptop (AMD Radeon integrated + RTX 3050) GL otherwise opens on the integrated GPU.

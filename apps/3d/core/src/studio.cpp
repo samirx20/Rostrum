@@ -41,11 +41,12 @@ float studio(double az, double el) {
   return float(v);
 }
 
+}  // namespace
+
 fs::path cache_dir() {
   const char* home = std::getenv("USERPROFILE");
   return fs::path(home && *home ? home : ".") / ".rostrum" / "cache" / "3d";
 }
-}  // namespace
 
 std::string studio_texture(double strength) {
   const int tenth = int(std::lround(std::clamp(strength, 0.0, 4.0) * 10));
@@ -67,25 +68,6 @@ std::string studio_texture(double strength) {
   std::error_code ec;
   fs::rename(partial, file, ec);
   if (ec) throw Error("view.studio: could not rename " + partial.string() + ": " + ec.message());
-  return file.string();
-}
-
-std::string flat_texture(const GfVec3f& rgb) {
-  char name[96];
-  std::snprintf(name, sizeof name, "flat-v1-%.4f-%.4f-%.4f.exr", rgb[0], rgb[1], rgb[2]);
-  const fs::path file = cache_dir() / name;
-  if (fs::exists(file)) return file.string();
-  fs::create_directories(file.parent_path());
-  constexpr int w = 8, h = 4;
-  OIIO::ImageBuf buf(OIIO::ImageSpec(w, h, 3, OIIO::TypeDesc::FLOAT));
-  std::vector<float> px(size_t(w) * h * 3);
-  for (size_t i = 0; i < px.size(); ++i) px[i] = rgb[int(i % 3)];
-  buf.set_pixels(OIIO::ROI::All(), OIIO::TypeDesc::FLOAT, px.data());
-  const fs::path partial = file.parent_path() / (file.stem().string() + ".partial.exr");
-  if (!buf.write(partial.string())) throw Error("view.sky: could not write " + partial.string() + ": " + buf.geterror());
-  std::error_code ec;
-  fs::rename(partial, file, ec);
-  if (ec) throw Error("view.sky: could not rename " + partial.string() + ": " + ec.message());
   return file.string();
 }
 
