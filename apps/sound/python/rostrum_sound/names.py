@@ -15,9 +15,10 @@ BUILT_INS = ["feltPiano", "grandPiano", "warmPad", "analogStrings", "spiccatoStr
              "cinematicBrass", "subBass", "shepardRiser", "glassMarimba"]
 KITS = ["synth"]
 SYNTH_DRUMS = ["kick", "snare", "clap", "hat", "openHat", "cymbal", "tom", "rim"]
-# Only the names the contract spells out; the engine's `describe` (gmDrums) has the full list. A GM key
+# General MIDI drum names an SFZ kit on GM keys answers to (the engine's `describe` gmDrums); a GM key
 # number (27 … 87) is always accepted.
-GM_DRUMS = ["kick", "snare", "hat", "openHat", "crash", "ride", "tom"]
+GM_DRUMS = ["kick", "rim", "snare", "clap", "hat", "pedalHat", "openHat", "tomLow", "tom", "tomHigh", "crash",
+            "cymbal", "ride", "china", "rideBell", "splash", "crash2", "ride2"]
 GM_KEYS = (27, 87)
 
 # The forms a track's instrument takes ("none": a track of recorded clips only).

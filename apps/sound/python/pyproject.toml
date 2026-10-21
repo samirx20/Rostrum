@@ -18,5 +18,11 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["rostrum_sound*"]
 
+[project.scripts]
+rostrum-sound-mcp = "rostrum_sound.mcp.server:main"
+
+[tool.setuptools.package-data]
+rostrum_sound = ["mcp/guides/*.md"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
