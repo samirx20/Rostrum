@@ -5,9 +5,11 @@ one doc.gesture = one undo step. How an edit becomes a call lives in route.py on
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
-from rostrum2d.evaluate import keys_of, resolve
+from rostrum_core.keys import keys_of
+from rostrum2d.evaluate import resolve
 from rostrum_gui import DocBridge
 from rostrum_gui.edits import Drag
+from rostrum_gui.markers import MarkerWatch
 
 from . import bounds, exprs, outline, route
 from .curves import Curves
@@ -22,6 +24,7 @@ class Bridge2D(DocBridge):
     frameChanged = Signal()
     outlineChanged = Signal()
     playingChanged = Signal()
+    markersChanged = Signal()
 
     def __init__(self, doc, comp_id=None, autosave=False, parent=None):
         comps = doc.data.get("comps", [])
@@ -39,6 +42,9 @@ class Bridge2D(DocBridge):
         self._curves = Curves(self)
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
+        self.marks = MarkerWatch(doc.folder, self)          # the project's shared markers: ruler flags, snapping
+        self.marks.changed.connect(self.markersChanged)
+        self.marks.changed.connect(self._render)            # expressions may read marker("…")
         self.selectionChanged.connect(self.outlineChanged)
         self._render()
 
@@ -77,6 +83,10 @@ class Bridge2D(DocBridge):
     @Property(int, notify=frameChanged)
     def frame(self):
         return self._frame
+
+    @Property("QVariantList", notify=markersChanged)
+    def markers(self):
+        return self.marks.rows()
 
     @Property("QVariantList", notify=outlineChanged)
     def layers(self):
@@ -192,12 +202,14 @@ class Bridge2D(DocBridge):
         self.select(key_id)
         return self._begin("Move key", key_id)
 
-    @Slot(float)
-    def keyDragTo(self, t):
+    @Slot(float, float)
+    def keyDragTo(self, t, snap=0.0):
+        """`snap`: seconds within which the key lands on a shared marker instead of the nearest frame."""
         if self._drag is None or not isinstance(self._grab, str):
             return
         c, key = self.comp(), self.doc.item(self._grab)
-        t = min(max(round(t * c["fps"]) / c["fps"], 0.0), c["duration"])
+        on = self.marks.snap(t, snap)
+        t = min(max(on if on != t else round(t * c["fps"]) / c["fps"], 0.0), c["duration"])
         owner = self.doc.item(self.doc.parent_of(key["id"])[0])
         if any(k["id"] != key["id"] and abs(k["t"] - t) < 1e-6 for k in keys_of(owner, key["prop"])):
             return                       # another key of this field is there: stay at the last free time
@@ -231,7 +243,7 @@ class Bridge2D(DocBridge):
 
     def _render(self):
         from rostrum2d.scene import describe
-        self.frames.request(describe(self.doc.data, self.comp_id), self._t)
+        self.frames.request(describe(self.doc.data, self.comp_id, self.marks.times), self._t)
 
     def _on_frame(self, serial):
         self._frame = serial
@@ -246,5 +258,6 @@ class Bridge2D(DocBridge):
 
     def close(self):
         self._timer.stop()
+        self.marks.close()
         self.endDrag()
         self.frames.close()

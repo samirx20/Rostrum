@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from rostrum_core import markers
 from rostrum_core.errors import RostrumError, codes
 
 from rostrum2d.scene import describe
@@ -19,7 +20,7 @@ def scene_of(doc, comp_id: str) -> dict:
     comp = next((c for c in doc.data.get("comps", []) if c["id"] == comp_id), None)
     if comp and (broken := follow.problems(comp)):
         raise RostrumError(codes.RENDER_FAILED, comp_id, "the composition", "can't be drawn: " + " ".join(broken))
-    return describe(doc.data, comp_id)
+    return describe(doc.data, comp_id, markers.times(doc.folder))
 
 
 def stills(where: str, scene: dict, items: list[tuple[float, Path]], progress=None) -> None:

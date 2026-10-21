@@ -78,12 +78,6 @@ def register(tools: Tools):
         return Reply(f'{part.get("type")} "{args["id"]}": {len(values) - 2} values, {len(checks)} check problems.{lists_said} '
                      f"Operations that fit now: {', '.join(ops) or 'none'}.", data)
 
-    @tools.tool("inspect_markers")
-    def inspect_markers(ctx, args):
-        """Every marker the document can reach. Needs the project service (not built yet): answers empty, with a warning."""
-        msg = "Markers live in the project service, which is not built yet; no markers are available."
-        return Reply(msg, {"markers": [], "built": False}, warnings=[msg])
-
     @tools.tool("inspect_history", {"properties": {**_ITEM, "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 20}, "group": {"type": "string"}, **_DETAIL}})
     def inspect_history(ctx, args):
         """Recent changes, newest last: step, who (kind and name), label, when, group, operations."""

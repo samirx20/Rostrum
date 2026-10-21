@@ -36,7 +36,8 @@ Every tool starts with one of five verbs. The verb tells the agent what the tool
 |---|---|
 | `inspect_project` | The project: its items, its frame rate, colour settings, what is open |
 | `inspect_item` | One item, by id: its parts, values and checks |
-| `inspect_markers` | Every marker the document can reach: its own, its sources', and other files' markers |
+| `inspect_markers` | The project's named markers (one shared list, `shared/project-service/MARKERS.md`): id, name, seconds, who made it; `name: "drop+0.5"` gives one time |
+| `edit_markers` | Add, move, rename or delete the project's markers (`marker.add` / `.move` / `.rename` / `.remove`), all or nothing, one step in their history |
 | `inspect_history` | Recent changes: who, what, when, and which group they belong to |
 | `inspect_operations` | The operations this app accepts, read from the one registry (name, arguments, what it does) |
 | `inspect_guide` | A how-to guide by topic. With no topic, the list of topics |

@@ -2,7 +2,7 @@ import QtQuick
 import RostrumKit
 
 // Seconds along a width: ticks, labels and the playhead's head. Press or drag sets the time (screen state).
-// xOf(t) / tOf(x) are the one mapping the timeline rows use too.
+// xOf(t) / tOf(x) are the one mapping the timeline rows use too. The project's shared markers show as flags.
 Item {
     id: r
     property real duration: 1
@@ -28,6 +28,22 @@ Item {
             Text { visible: parent.big && r.xOf(index * r.minor) < r.width - 24; x: 4; y: -r.height + 5 + parent.height
                    text: r.label(index * r.minor); color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
                    font.features: { "tnum": 1 } }
+        }
+    }
+    Repeater {   // the project's shared markers (rostrum_core.markers): a flag with its name
+        model: backend.markers
+        delegate: Item {
+            required property var modelData
+            x: Math.round(r.xOf(modelData.at)); width: 1; height: r.height
+            Rectangle { width: 1; height: parent.height; color: Theme.warn }
+            Rectangle {
+                id: flag
+                x: 1; y: 0; height: 16; radius: 2; color: Theme.panel; border.color: Theme.warn
+                width: Math.min(name.implicitWidth + 8, Math.max(r.width - parent.x - 1, 14))
+                clip: true
+                Text { id: name; x: 4; anchors.verticalCenter: parent.verticalCenter; text: modelData.name
+                       color: Theme.warn; font.family: uiFont; font.pixelSize: Theme.label - 1 }
+            }
         }
     }
     Rectangle {  // the playhead: a line through the ruler, its head at the top

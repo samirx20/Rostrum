@@ -28,8 +28,8 @@ doc ─ comps ─ comp (width, height, fps, duration, background)
   items (`title.x.expr`, one history, script re-runs merge); `expr.clear` takes it off. **`scene.describe` bakes each
   one into linear keys, one per frame from 0 to the length** (exact at every frame, a few expressions on 10 s at
   30 fps ≈ 30 ms), so the engine, canvas, look tools and export see plain keys; the expression overrides the field's
-  own keys and value. Loops (`a.x <- b.x <- a.x`) are refused when set and again when drawn. `marker("name")` is refused
-  with a clear message: 2D documents keep no markers yet. The inspector shows a driven field's expression and a clear
+  own keys and value. Loops (`a.x <- b.x <- a.x`) are refused when set and again when drawn. `marker("name")` reads the
+  project's shared markers (`shared/project-service/MARKERS.md`); an unknown name stops the render, naming the ones there are. The inspector shows a driven field's expression and a clear
   button only on that field (key mark and canvas drag are off for it). Guide: `skills/expressions.md`.
 - **Drawing** (`ops_draw.py`, `drawing.py`, the kit `shared/painting-kit/`): a drawing layer holds drawings (`frame`s),
   each shown from its frame number until the next one (held). Strokes are kit items (`stroke.add`, one call list = one

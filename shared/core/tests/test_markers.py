@@ -1,0 +1,39 @@
+"""The project's shared markers: every app reads them, so saving, history and loud errors must hold."""
+import pytest
+
+from rostrum_core import RostrumError, Who
+from rostrum_core import markers as M
+from rostrum_core.mcp.context import App
+from rostrum_core.mcp.server import Runtime
+
+
+def test_markers_saved_with_history_and_authors(tmp_path):
+    sam, agent = Who.person("sam"), Who.agent("claude")
+    assert M.listing(tmp_path) == []
+    M.edit(tmp_path, [{"op": "marker.add", "args": {"name": "logo lands", "at": 2.5}}], sam)
+    mid = M.listing(tmp_path)[0]["id"]
+    M.edit(tmp_path, [{"op": "marker.move", "target": [mid], "args": {"at": 3.0}},
+                      {"op": "marker.rename", "target": [mid], "args": {"name": "Logo lands"}}], agent)
+    (m,) = M.listing(tmp_path)
+    assert (m["id"], m["name"], m["at"], m["by"], m["changed_by"]) == (mid, "Logo lands", 3.0, "person:sam", "agent:claude")
+    assert M.at(tmp_path, "logo LANDS+0.5") == 3.5
+    doc = M.open_markers(tmp_path)
+    doc.undo(agent)
+    assert doc.data["markers"][0]["at"] == 2.5
+
+
+def test_markers_fail_loudly(tmp_path):
+    who = Who.person()
+    M.edit(tmp_path, [{"op": "marker.add", "args": {"name": "drop", "at": 1}}], who)
+    with pytest.raises(RostrumError, match="drop"):
+        M.edit(tmp_path, [{"op": "marker.add", "args": {"name": " Drop ", "at": 4}}], who)
+    with pytest.raises(RostrumError, match="drop"):
+        M.at(tmp_path, "drpo")
+
+
+def test_marker_tools(tmp_path):
+    rt = Runtime(App("rostrum-test", {}, folder=str(tmp_path)))
+    reply, _ = rt.call("edit_markers", {"ops": [{"op": "marker.add", "args": {"name": "hit", "at": 1.25}}]}, Who.agent("a"))
+    assert reply["data"]["markers"][0]["by"] == "agent:a"
+    reply, _ = rt.call("inspect_markers", {"name": "hit-0.25"}, Who.agent("a"))
+    assert reply["data"]["at"] == 1.0

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import math
 
-from .evaluate import mix_color
+from rostrum_core.keys import mix_color
+from rostrum_core.markers import lookup
 from .expr_lib import CMPS, CONSTS, FUNCS, ExprError
 
 
@@ -36,7 +37,7 @@ def _arith(op, a, b):
 
 
 def run(node, env):
-    """`env`: time, frame, fps, duration, markers (dict | None) and get(item, field, t) -> value."""
+    """`env`: time, frame, fps, duration, markers ({name: seconds} | None) and get(item, field, t) -> value."""
     k, col = node[0], node[1]
     if k == "num":
         return node[2]
@@ -46,11 +47,12 @@ def run(node, env):
         return env.get(node[2], node[3], env.time if node[4] is None else _num(run(node[4], env), col))
     if k == "marker":
         if env.markers is None:
-            raise ExprError(f'marker("{node[2]}"): 2D documents keep no markers yet (the shared marker list of '
-                            "shared/project-service is not wired into the 2D document)", col)
-        if node[2] not in env.markers:
-            raise ExprError(f'no marker "{node[2]}"; there are: {", ".join(env.markers) or "none"}', col)
-        return float(env.markers[node[2]])
+            raise ExprError(f'marker("{node[2]}"): this document is not in a project folder, so it has no '
+                            "shared markers to read", col)
+        at = lookup(env.markers, node[2])
+        if at is None:
+            raise ExprError(f'no marker "{node[2]}" in the project; there are: {", ".join(env.markers) or "none"}', col)
+        return at
     if k == "if":
         return run(node[3] if _truth(node[2], env) else node[4], env)
     if k == "not":

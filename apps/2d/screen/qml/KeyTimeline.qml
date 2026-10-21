@@ -3,7 +3,8 @@ import RostrumKit
 
 // Animate page, bottom, full width: one row per layer (a summary of all its keys), opened by its arrow into one
 // row per animated field. Diamonds sit at key times. Click a diamond: the key is selected (the inspector shows
-// its time, value and ease). Drag it: key.set t, one gesture = one undo step. The ruler scrubs the playhead.
+// its time, value and ease). Drag it: key.set t, one gesture = one undo step; near a shared marker it lands on it.
+// The ruler scrubs the playhead.
 // A drawing layer's row also shows its frames (a mark per drawing, a bar for its hold); its buttons are in the header.
 Panel {
     id: panel
@@ -96,13 +97,22 @@ Panel {
                             id: keyArea; anchors.fill: parent; hoverEnabled: true; preventStealing: true
                             cursorShape: Qt.SizeHorCursor
                             onPressed: backend.beginKeyDrag(key.modelData.id)
-                            onPositionChanged: (m) => backend.keyDragTo(ruler.tOf(mapToItem(track, m.x, 0).x - 8))
+                            onPositionChanged: (m) => backend.keyDragTo(ruler.tOf(mapToItem(track, m.x, 0).x - 8),
+                                                                        6 / ruler.perSec)   // lands on a marker within 6 px
                             onReleased: backend.endDrag()
                             onCanceled: backend.endDrag()
                         }
                     }
                 }
             }
+        }
+    }
+    Repeater {   // the project's shared markers, a faint line across every row (their flags are on the ruler)
+        model: backend.markers
+        delegate: Rectangle {
+            required property var modelData
+            x: ruler.x + Math.round(ruler.xOf(modelData.at)); y: ruler.y + ruler.height
+            width: 1; height: panel.height - y; color: Theme.warn; opacity: 0.35
         }
     }
     Rectangle {  // the playhead line, across every row
