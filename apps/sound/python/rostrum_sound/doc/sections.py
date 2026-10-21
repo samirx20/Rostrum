@@ -46,7 +46,7 @@ def moves(root: dict, section: dict, by) -> list[tuple[str, str, object]]:
     def inside(sec):
         return lo - 1e-9 <= sec < hi - 1e-9
 
-    moved_marks = {name for name, sec in markers.all(root) if inside(sec)}
+    moved_marks = {name for name, sec in markers.all(root, own=True) if inside(sec)}   # project markers stay put
 
     def follows(value):
         return markers.ref(value) in moved_marks

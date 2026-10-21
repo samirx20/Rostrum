@@ -2,7 +2,8 @@ import QtQuick
 import RostrumKit
 
 // The named markers above the ruler, each a small tag at its time. Click selects the marker; drag moves it
-// (marker.set at, one gesture = one undo step; snapped to a quarter beat, Shift = free).
+// (marker.set at, one gesture = one undo step; snapped to a quarter beat, Shift = free). The project's shared
+// markers show with a dashed edge and are not dragged here: they move in 2D or with edit_markers, for every app.
 // The clicks are taken here in one place, so a drag keeps going while the tags are redrawn.
 Item {
     id: band
@@ -13,7 +14,7 @@ Item {
         var best = ""
         for (var i = 0; i < backend.markers.length; i++) {
             var m = backend.markers[i], mx = ruler.xOf(m.t)
-            if (!m.named && x >= mx - 4 && x <= mx + tagWidth(m.name)) best = m.id
+            if (!m.named && !m.shared && x >= mx - 4 && x <= mx + tagWidth(m.name)) best = m.id
         }
         return best
     }
@@ -28,7 +29,10 @@ Item {
             visible: !modelData.named && x + width > 0 && x < band.width
             width: tag.implicitWidth + 12; height: band.height - 2
             radius: 3; color: on ? Theme.accent : Theme.raised
-            Rectangle { width: 2; height: parent.height; color: parent.on ? Theme.fg : Theme.fg3; radius: 1 }
+            Rectangle { width: 2; height: parent.height; color: parent.on ? Theme.fg : Theme.fg3; radius: 1
+                        visible: !modelData.shared }
+            Column { visible: modelData.shared; spacing: 2; Repeater { model: Math.ceil(band.height / 4)
+                     Rectangle { width: 2; height: 2; color: Theme.accent } } }
             Text { id: tag; x: 7; anchors.verticalCenter: parent.verticalCenter; text: modelData.name
                    color: parent.on ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label }
         }

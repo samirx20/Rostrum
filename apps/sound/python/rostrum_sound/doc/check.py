@@ -105,7 +105,10 @@ def _refs(value):
 
 def check(data: dict) -> list[str]:
     out = []
-    marks = [n for n, _ in markers.items(data)]
+    try:
+        marks = [markers.key(n) for n, _ in markers.items(data)]
+    except RostrumError as e:                           # a local marker named like a project one
+        return [str(e)]
     out += [f"two markers are named {n!r}" for n in set(marks) if marks.count(n) > 1]
     out += check_mix.problems(data)
     out += sections.problems(data)
@@ -123,6 +126,6 @@ def check(data: dict) -> list[str]:
             out += _lane(item, data)
         for k, v in item.items():
             for ref in _refs(v):
-                if markers.ref(ref) not in marks:
+                if markers.key(markers.ref(ref)) not in marks:
                     out.append(f"{item['id']}.{k}: no marker {markers.ref(ref)!r} for {ref!r}")
     return out

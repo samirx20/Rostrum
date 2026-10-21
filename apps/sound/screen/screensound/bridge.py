@@ -2,34 +2,35 @@
 (timeline.py), what is under the pointer (pick.py), the drags (one doc.gesture = one undo step) and the sound
 (transport.py: rendered by the engine after each change, played from the playhead).
 
-Every change is an operation (moves.py builds the calls). The Mix page reads `lastRender` (the engine's render
-answer, with stems for every track) and listens to `renderChanged`.
+The slots live in small mix-ins (gui-kit README › parts.py): view_slots (playhead, zoom), picture_slots, song_slots
+(music map), lane_slots (automation), edit_slots (edits and drags); the signals in signals.py. Every change is an
+operation (moves.py builds the calls). The Mix page reads `lastRender` (the engine's render answer, with stems for
+every track) and listens to `renderChanged`. The project's shared markers are watched (MarkerWatch): one moved or
+renamed in another app re-renders the sound, and a rename is followed as one recorded step (marker.follow).
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, Signal, Slot
+from PySide6.QtCore import Property, Slot
 from rostrum_gui import DocBridge
-from rostrum_gui.edits import Drag
+from rostrum_gui.markers import MarkerWatch
 from rostrum_sound import compile as compile_doc
+from rostrum_sound.doc import markers as MK
+from rostrum_sound.doc import ops_mix
 
-from . import inspect, lanes, moves, onpage, pick, picture, song_edit, timeline
+from . import inspect, lanes, onpage, picture, pick, timeline
+from .edit_slots import EditSlots
+from .lane_slots import LaneSlots
+from .picture_slots import PictureSlots
+from .signals import SoundSignals as S
+from .song_slots import SongSlots
 from .transport import Transport
-from .view import STEP, View
+from .view import View
+from .view_slots import ViewSlots
 
 PAGES = ("instruments", "timeline", "mix")
 
 
-class SoundBridge(DocBridge):
-    pageChanged = Signal()
-    timeChanged = Signal()
-    playingChanged = Signal()
-    timelineChanged = Signal()
-    renderChanged = Signal()
-    soundChanged = Signal()
-    viewChanged = Signal()
-    pictureOpenChanged = Signal()
-    pointChanged = Signal()
-
+class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, DocBridge):
     def __init__(self, doc, name="Untitled song", autosave=False, parent=None):
         self.name, self.autosave = name, autosave
         self._page, self._t, self._track = "timeline", 0.0, ""
@@ -40,10 +41,13 @@ class SoundBridge(DocBridge):
         self._edit = None                   # the automation point being dragged (lanes.PointEdit)
         self._apt: tuple | None = None      # the selected automation point: (track id, item id, lane, index)
         self._picture_open = False
+        MK.use_project(doc.folder)          # the screen works in this document's project (its shared markers)
         super().__init__(doc, parent=parent)
         self._picture_open = bool(self.doc.data.get("picture"))     # the corner opens by itself on a song with a picture
         self._follow_render = picture.Follow(lambda: (self.pictureChoice, self.doc.folder), self)
         self._follow_render.changed.connect(self.timelineChanged)       # the linked item has a newer render
+        self._marks = MarkerWatch(self.doc.folder, self)
+        self._marks.changed.connect(self._markers_changed)
         self.selectionChanged.connect(self._follow_selection)
         self.selectionChanged.connect(self._drop_point)
         self._follow_selection()
@@ -61,107 +65,40 @@ class SoundBridge(DocBridge):
     def docName(self):
         return self.name
 
-    @Property(str, notify=pageChanged)
+    @Property(str, notify=S.pageChanged)
     def page(self):
         return self._page
 
-    @Property(float, notify=timeChanged)
+    @Property(float, notify=S.timeChanged)
     def time(self):
         return self._t
 
-    @Property(bool, notify=playingChanged)
+    @Property(bool, notify=S.playingChanged)
     def playing(self):
         return self.transport.playing
 
-    @Property("QVariantMap", notify=timelineChanged)
+    @Property("QVariantMap", notify=S.timelineChanged)
     def song(self):
         return self._view["song"]
 
-    @Property("QVariantList", notify=timelineChanged)
+    @Property("QVariantList", notify=S.timelineChanged)
     def tracks(self):
         return self._view["rows"]
 
-    @Property("QVariantList", notify=timelineChanged)
+    @Property("QVariantList", notify=S.timelineChanged)
     def markers(self):
         return self._view["markers"]
 
-    @Property("QVariantMap", notify=timelineChanged)
+    @Property("QVariantMap", notify=S.timelineChanged)
     def roll(self):
         """The piano roll of the selection's track (or the last one picked)."""
         return self._view["roll"]
 
-    @Property(float, notify=viewChanged)
-    def viewStart(self):
-        """The time (seconds) at the left edge of every timeline: ruler, rows, markers, playhead, piano roll."""
-        return self._zoom.start
-
-    @Property(float, notify=viewChanged)
-    def viewSpan(self):
-        """How many seconds those timelines show across their width."""
-        return self._zoom.span(self._length())
-
-    @Property(bool, notify=viewChanged)
-    def viewFit(self):
-        return self._zoom.fit
-
-    @Property("QVariantMap", notify=pointChanged)
-    def point(self):
-        """The selected automation point: track, item, lane, index ({} when none)."""
-        a = self._apt
-        return {"track": a[0], "item": a[1], "lane": a[2], "index": a[3]} if a else {}
-
-    @Property(bool, notify=pictureOpenChanged)
-    def pictureOpen(self):
-        return self._picture_open
-
-    @Property(str, notify=timelineChanged)
-    def pictureChoice(self):
-        """The document's `picture` field: a video file or a 2D item's link ("" when none)."""
-        return str(self.doc.data.get("picture") or "")
-
-    @Property(str, notify=timelineChanged)
-    def picture(self):
-        """The video file to show: the chosen file, or the linked 2D item's newest render ("" when none)."""
-        return picture.resolve(self.pictureChoice, self.doc.folder)[0]
-
-    @Property(str, notify=timelineChanged)
-    def pictureProblem(self):
-        """Why a linked picture shows nothing ("not rendered yet" …); "" when fine or none chosen."""
-        return picture.resolve(self.pictureChoice, self.doc.folder)[1] or picture.start(self.doc.data)[1]
-
-    @Property(float, notify=timelineChanged)
-    def pictureStart(self):
-        """When the picture's first frame is (seconds): a marker's time, so it follows the marker."""
-        return picture.start(self.doc.data)[0]
-
-    @Property(str, notify=timelineChanged)
-    def pictureMarker(self):
-        """The shared marker the picture starts on ("" when a plain time)."""
-        return picture.start_marker(self.doc.data)
-
-    @Property(str, notify=timelineChanged)
-    def pictureName(self):
-        return picture.name(self.pictureChoice, self.doc.folder)
-
-    @Property("QVariantList", notify=timelineChanged)
-    def pictureItems(self):
-        """The project's 2D items, to link one as the picture: [{id, label}]."""
-        return picture.items(self.doc.folder)
-
-    @Property(str, notify=timelineChanged)
-    def pictureItemsNote(self):
-        """Why there are no project items to pick ("" when there are some)."""
-        return picture.items_note(self.doc.folder)
-
-    @Property(str, notify=timelineChanged)
-    def pictureUrl(self):
-        return picture.url(self.picture)
-
-    @Property("QVariantMap", notify=renderChanged)
+    @Property("QVariantMap", notify=S.renderChanged)
     def lastRender(self):
         return self.transport.last
 
-    @Property(str, notify=soundChanged)
+    @Property(str, notify=S.soundChanged)
     def soundState(self):
         """A short line about the sound: rendering, no output on this machine, or that the render failed."""
         return self.transport.state
@@ -177,7 +114,7 @@ class SoundBridge(DocBridge):
         """The note / hit / clip under the pointer in the piano roll ("" when none)."""
         return pick.roll_at(self._view["roll"], t, row, tol)
 
-    # ---- the kit's hooks: names, and times shown in seconds but written in the item's own form ------------------
+    # ---- the kit's hooks: names, times shown in seconds but written in the item's own form, fields on the page --
     def label_of(self, item):
         return inspect.label(item)
 
@@ -187,9 +124,8 @@ class SoundBridge(DocBridge):
     def edit_call(self, item_id, param, value):
         return inspect.edit_call(self.doc, item_id, param, value)
 
-    def _rows(self):    # the inspector leaves out what the page's own controls show (onpage.py)
-        it = self.doc.item(self._sel) if self._sel and self.doc.has(self._sel) else {}
-        return onpage.omit(super()._rows(), onpage.fields(self._page, it.get("type", ""), self.doc.kind.registry))
+    def on_page(self, item):        # the inspector leaves out what the page's own controls show (onpage.py)
+        return onpage.fields(self._page, item.get("type", ""), self.doc.kind.registry)
 
     # ---- screen state -----------------------------------------------------------------------------------------
     @Slot(str)
@@ -200,223 +136,9 @@ class SoundBridge(DocBridge):
         self.model.reset(self._rows())
         self.pageChanged.emit()
 
-    @Slot(float)
-    def setTime(self, t):
-        self._t = min(max(float(t), 0.0), self._view["song"]["length"])
-        self.transport.seek(self._t)
-        if self._zoom.follow(self._t, self._length()):
-            self.viewChanged.emit()
-        self.timeChanged.emit()
-
-    @Slot(float, float, bool, bool, float, bool, result=bool)
-    def viewWheel(self, dx, dy, ctrl, shift, frac, vertical):
-        """A wheel turn over a timeline. Ctrl: zoom around the pointer (`frac` across the width). Shift or a sideways
-        swipe: scroll in time. A plain turn scrolls in time only when the caller has nothing to scroll up and down
-        (`vertical` false). Returns false when the caller should scroll up and down."""
-        if ctrl:
-            self.zoomAt(STEP ** (dy / 120.0), frac)
-        elif dx or shift or not vertical:
-            self._zoom.scroll(-(dx or dy) / 120.0 * self.viewSpan * 0.1, self._length())
-            self.viewChanged.emit()
-        else:
-            return False
-        return True
-
-    @Slot(float, float)
-    def zoomAt(self, factor, frac):
-        """Zoom in by `factor` (a pinch's scale, a wheel notch) keeping the moment at `frac` across the width."""
-        self._zoom.zoom(factor, frac, self._length())
-        self.viewChanged.emit()
-
-    @Slot(float)
-    def zoomStep(self, factor):
-        """A key's zoom: around the playhead when it is on screen, else the middle."""
-        z = self._zoom
-        frac = (self._t - z.start) / z.span(self._length())
-        self.zoomAt(factor, frac if 0 <= frac <= 1 else 0.5)
-
-    @Slot()
-    def fitView(self):
-        self._zoom.show_all()
-        self.viewChanged.emit()
-
-    @Slot(float)
-    def setViewStart(self, t):
-        self._zoom.set_start(t, self._length())
-        self.viewChanged.emit()
-
-    @Slot(bool)
-    def setPictureOpen(self, on):
-        self._picture_open = bool(on)
-        self.pictureOpenChanged.emit()
-
-    @Slot(str)
-    def setPicture(self, chosen):
-        """Choose the video (a path or file:// URL; "" clears it): one operation on the document."""
-        def go():
-            self._apply([picture.set_call(picture.local(chosen))], "Set picture")
-            if chosen:
-                self.setPictureOpen(True)
-        self._guard(go)
-
-    @Slot(str)
-    def linkPicture(self, item_id):
-        """Show a 2D item's newest render as the picture (follows new renders): one operation on the document."""
-        def go():
-            self._apply([picture.link_call(item_id)], "Set picture")
-            self.setPictureOpen(True)
-        self._guard(go)
-
-    @Slot(str)
-    def setPictureStart(self, marker):
-        """The picture's first frame sits on a shared marker (its name), or at the song's start ("")."""
-        self._guard(lambda: self._apply([picture.start_call(marker)], "Set picture start"))
-
-    # ---- the song's music map: tempo, key, sections (song_edit.py) ---------------------------------------------
-    @Slot(result="QVariantMap")
-    def songEdit(self):
-        """What the Song popup shows now: only what is valid at the playhead with this selection."""
-        sel = self.doc.item(self._sel) if self._sel and self.doc.has(self._sel) else None
-        return song_edit.state(self.doc.data, sel, self._t)
-
-    @Slot(str, str)
-    def songDo(self, action, arg):
-        """One music-map edit from the popup: start_bpm, add_tempo, set_key, add_key, add_section (one undo step each)."""
-        t, root = self._t, self.doc.data
-        make = {"start_bpm": lambda: (song_edit.start_tempo_call(float(arg)), "Set tempo"),
-                "add_tempo": lambda: (song_edit.add_tempo_call(root, t), "Add tempo change"),
-                "set_key": lambda: (song_edit.key_call(root, t, *arg.split(" ", 1), False), "Set key"),
-                "add_key": lambda: (song_edit.key_call(root, t, *arg.split(" ", 1), True), "Add key change"),
-                "add_section": lambda: (song_edit.add_section_call(root, t), "Add section")}
-        if action not in make:
-            return self._fail(f'Error: song edit: "{action}" is not one ({", ".join(make)}).')
-
-        def go():
-            call, label = make[action]()
-            self._apply([call], label)
-            if action in ("add_tempo", "add_section"):
-                kind = {"add_tempo": "tempos", "add_section": "sections"}[action]
-                self.select(self.doc.data[kind][-1]["id"])
-        self._guard(go)
-
-    @Slot(str, str, result=bool)
-    def beginEdge(self, section_id, edge):
-        """Press on a section's left ("at") or right ("end") edge: select it and start one gesture."""
-        self.endDrag()
-        self.select(section_id)
-
-        def go():
-            self._grab = song_edit.edge_grab(self.doc, section_id, edge)
-            self._drag = Drag(self.doc, self.who, moves.LABELS["edge"])
-        return self._guard(go)
-
     @Slot()
     def togglePlay(self):
         self.transport.toggle(self._t)
-
-    # ---- edits: every one an operation ------------------------------------------------------------------------
-    @Slot(str, str)
-    def toggleTrack(self, track_id, field):
-        def go():
-            call, label = moves.toggle_call(self.doc, track_id, field)
-            self._apply([call], label)
-        self._guard(go)
-
-    @Slot(float, int)
-    def addNote(self, t, key):
-        if not self._track:
-            return
-
-        def go():
-            before = {n["id"] for n in self.doc.item(self._track).get("notes", [])}
-            self._apply([moves.add_note_call(self.doc, self._track, t, key)], "Add note")
-            new = [n["id"] for n in self.doc.item(self._track)["notes"] if n["id"] not in before]
-            if new:
-                self.select(new[0])
-        self._guard(go)
-
-    @Slot(str)
-    def toggleLanes(self, track_id):
-        """Open (or close) the automation lane under a track's row; it opens on the track's volume."""
-        self.openLane(track_id, "" if track_id in self._open else track_id, "volume")
-
-    @Slot(str, str, str)
-    def openLane(self, track_id, target, lane):
-        """Show `lane` of `target` (the track or one of its sends) under the track's row; "" closes."""
-        if not target:
-            self._open.pop(track_id, None)
-        elif (target, lane) in lanes.applicable(self.doc.item(track_id), self.doc.data):
-            self._open[track_id] = (target, lane)
-        else:
-            return self._fail(f'Error: lane: "{lane}" of "{target}" is not a lane on {track_id}.')
-        self._rebuild()
-
-    @Slot(str, str, str, float, float, float, float, bool)
-    def laneBegin(self, track_id, target, lane, t, yfrac, tol_t, tol_y, free):
-        """Press in a lane (`yfrac` 0 top .. 1 bottom, tolerances: seconds and a fraction of the height): grab
-        the point there or add one, and start one gesture."""
-        self.endDrag()
-        self.select(track_id)
-
-        def go():
-            track = self.doc.item(track_id)
-            e = lanes.PointEdit(target, lanes.owner_of(track, target), self.doc.data, lane)
-            span = e.hi - e.lo
-            call = e.press(t, e.lo + (1 - yfrac) * span, tol_t, tol_y * span, free)
-            self._edit, self._drag = e, Drag(self.doc, self.who, "Automate")
-            if call:
-                self._drag.preview([call])
-            self._apt = (track_id, target, lane, e.index)
-            self.pointChanged.emit()
-        self._guard(go)
-
-    @Slot(float, float, bool)
-    def laneDrag(self, t, yfrac, free):
-        e = self._edit
-        if e is not None and self._drag is not None:
-            self._guard(lambda: self._drag.preview([e.move(t, e.lo + (1 - yfrac) * (e.hi - e.lo), free)]))
-
-    @Slot()
-    def clearPoint(self):
-        if self._apt:
-            self._apt = None
-            self.pointChanged.emit()
-
-    @Slot()
-    def removeSelected(self):
-        if self._apt:
-            return self._remove_point()
-        if self._sel and self.doc.has(self._sel):
-            self._guard(lambda: self._apply([moves.remove_call(self.doc, self._sel)], "Delete"))
-
-    @Slot(str, result=bool)
-    def beginDrag(self, item_id):
-        """Press on a note, hit, clip or marker: select it and start one gesture."""
-        self.endDrag()
-        self.select(item_id)
-
-        def go():
-            self._grab = moves.grab(self.doc, item_id)
-            self._drag = Drag(self.doc, self.who, moves.LABELS[self._grab["type"]])
-        return self._guard(go)
-
-    @Slot(float, int, bool)
-    def dragBy(self, dt, dsemi, free):
-        """Total move from the press: dt seconds, dsemi semitones (notes), snapped to 1/4 beat unless free."""
-        if self._drag is not None:
-            self._guard(lambda: self._drag.preview(moves.drag_calls(self.doc, self._grab, dt, dsemi, free)))
-
-    @Slot()
-    def endDrag(self):
-        d, self._drag, self._grab = self._drag, None, None
-        if d is not None:
-            self._guard(lambda: self._done(d.end(), ""))
-
-    @Slot()
-    def cancelDrag(self):
-        d, self._drag, self._grab = self._drag, None, None
-        if d is not None:
-            self._guard(lambda: d.end(cancel=True))
 
     # ---- inside -----------------------------------------------------------------------------------------------
     def _follow_selection(self):
@@ -434,17 +156,17 @@ class SoundBridge(DocBridge):
     def _length(self) -> float:
         return self._view["song"]["length"]
 
-    def _drop_point(self):
-        if self._apt and self._sel != self._apt[0]:
-            self.clearPoint()
-
-    def _remove_point(self):
-        track_id, target, lane, i = self._apt
-        e = lanes.PointEdit(target, lanes.owner_of(self.doc.item(track_id), target), self.doc.data, lane)
-        e.index = i
-        self._apt = None
-        self.pointChanged.emit()
-        self._guard(lambda: self._apply([e.remove()], "Delete point"))
+    def _markers_changed(self):
+        """A project marker moved, was renamed or deleted (in 2D, by an agent …): follow renames as one recorded
+        step, then redraw and render again. A deleted marker the song uses is reported loudly by the render."""
+        def go():
+            follow = ops_mix.follow_calls(self.doc.data)
+            if follow:
+                self._apply(follow, "Follow renamed markers")       # a change: _on_doc redraws and re-renders
+            else:
+                self._rebuild()
+                self.transport.changed()
+        self._guard(go)
 
     def _rebuild(self):
         root = self.doc.data
@@ -467,12 +189,7 @@ class SoundBridge(DocBridge):
         if self.autosave and event.kind == "change":
             self._guard(self.doc.save)
 
-    def _moved(self, t):
-        self._t = t
-        if self._zoom.follow(t, self._length()):
-            self.viewChanged.emit()
-        self.timeChanged.emit()
-
     def close(self):
         self.endDrag()
+        self._marks.close()
         self.transport.close()

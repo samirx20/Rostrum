@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 from rostrum_core import Param, codes
+from rostrum_core.tree import walk
 
 from . import effects as FX
 from . import fields as FD
 from . import ids
 from . import lanes as LN
+from . import markers as MK
 from . import values as V
-from .registry import REGISTRY, set_fields, taken
+from .registry import LISTS, REGISTRY, set_fields, taken
 
 INSERTS = ("track", "clip", "bus", "master")
 
@@ -85,6 +87,19 @@ def marker_add(ctx, targets, args):
     ctx.insert("root", "markers", {"id": id_, "type": "marker", "name": args["name"], "at": args["at"]})
 
 
+@REGISTRY.operation("marker.follow", "Point every time on marker `old` at marker `new` (offsets kept): how a project "
+                    "marker renamed elsewhere is followed (markers.renames(doc) lists them), as one undo step.",
+                    label="Follow renamed marker", importance="secondary", params=[
+                        Param.text("old", label="Old name", required=True),
+                        Param.text("new", label="New name", required=True)])
+def marker_follow(ctx, targets, args):
+    for item in walk(ctx.doc, LISTS):
+        children = set(LISTS.get(item.get("type"), ()))
+        for k, v in item.items():
+            if k not in children and k != "id" and (to := MK.renamed(v, args["old"], args["new"])) != v:
+                ctx.set(item["id"], k, to)
+
+
 def _remover(kind):
     def remove(ctx, targets, args):
         for t in targets:
@@ -95,3 +110,8 @@ def _remover(kind):
 
 _remover("effect")
 _remover("marker")
+
+
+def follow_calls(root: dict) -> list[dict]:
+    """The `marker.follow` calls that catch the document up with project markers renamed elsewhere ([]: none)."""
+    return [{"op": "marker.follow", "args": {"old": o, "new": n}} for o, n in MK.renames(root).items()]

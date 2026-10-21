@@ -13,6 +13,8 @@ from pathlib import Path
 from rostrum_core import RostrumError, codes
 from rostrum_core.project import begin_render, finish_render
 
+from .doc import markers
+
 ENGINE = "rostrum-sound-schedule/1"     # the contract the schedule was rendered through (names.CONTRACT)
 
 
@@ -47,6 +49,7 @@ def manifest(item: str, version: int, r: dict, doc, who: str, master: bool) -> d
     return {"item": item, "version": version, "kind": "sound", "made_by": who,
             "made_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "source": {"document": doc.item_id, "history_entry": doc.seq}, "engine": ENGINE,
+            "markers": markers.used(doc.data),          # the project / own marker times this render was made for
             "sample_rate": doc.data.get("sampleRate", 48000), "bit_depth": "32-bit float",
             "seconds": r.get("seconds"), "mastered": master,
             # Without buses the track stems add up to the mix; with buses, the stems of the tracks in `direct` plus

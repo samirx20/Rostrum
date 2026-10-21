@@ -149,7 +149,8 @@ def markers(root: dict) -> list[dict]:
     """The named markers by time. `named` is true when a section of the same name starts at the marker: the
     section bar already says it, so the marker band draws no second tag (the line through the rows stays)."""
     starts = {(s["name"], round(s["t"], 4)) for s in music_map.sections(root)}
-    out = [{"id": m["id"], "name": name, "t": mk.time_of(root, name)} for name, m in mk.items(root)]
+    out = [{"id": m["id"], "name": name, "t": mk.time_of(root, name), "shared": bool(m.get("shared"))}
+           for name, m in mk.items(root)]      # shared: the project's (moved in 2D or with edit_markers, not here)
     return sorted(({**m, "named": (m["name"], round(m["t"], 4)) in starts} for m in out), key=lambda m: m["t"])
 
 
