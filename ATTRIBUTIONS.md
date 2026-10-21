@@ -58,3 +58,23 @@ Every third-party library, model, asset source and tool that ships in or is down
 | image, png, jpeg-encoder, exr, half | 0.25.10, 0.18.1, 0.7.1, 1.74.2, 2.7.1 | MIT OR Apache-2.0; jpeg-encoder adds IJG; exr BSD-3-Clause | `apps/2d/engine` (picture files) | static | ships | Keep the notices (IJG: credit the Independent JPEG Group) | https://github.com/image-rs |
 | ICU4X crates (icu_*, zerovec, yoke …) | 2.3.x | Unicode-3.0 | `apps/2d/engine` (text segmentation, via Parley) | static | ships | Keep the notice | https://github.com/unicode-org/icu4x |
 | Roboto Flex | 3.x (archive copy) | SIL OFL 1.1 | `apps/2d/engine/render/tests` (test font) | data | dev only | Keep the OFL text beside it; don't sell the font on its own | https://github.com/googlefonts/roboto-flex |
+| Firewheel (+ cpal 0.18, Apache-2.0) | 0.14.0 | MIT OR Apache-2.0 | apps/sound/engine (audio output) | static | yes | Keep the notice | https://github.com/BillyDM/firewheel |
+| rustysynth (vendored, patched) | 1.3.7 | MIT | apps/sound/engine (SoundFont player) | vendored source | yes | Keep `vendor/rustysynth/LICENSE.txt` | https://github.com/sinshu/rustysynth |
+| Signalsmith Stretch + Signalsmith Linear (vendored) | 1.3.1 | MIT | apps/sound/engine (time stretch) | vendored source | yes | Keep the two LICENSE.txt files | https://github.com/Signalsmith-Audio/signalsmith-stretch |
+| clack-host, clack-extensions | 0.2.0 | MIT OR Apache-2.0 | apps/sound/engine (CLAP hosting) | static | yes | Keep the notice | https://github.com/prokopyl/clack |
+| vst3 (bindings) | 0.3.0 | MIT OR Apache-2.0 | apps/sound/engine (VST3 hosting) | static | yes | Keep the notice | https://github.com/coupler-rs/vst3-rs |
+| symphonia (wav, pcm, flac, ogg, vorbis, mp3, isomp4, aac) | 0.5.5 | MPL-2.0 | apps/sound/engine (media decoding, contract/media.rs) | static (unmodified) | yes | Keep the notice; changes to its files would have to be published (we change none) | https://github.com/pdeljanov/Symphonia |
+| rubato | 5.0.1 | MIT OR Apache-2.0 | apps/sound/engine (resampling) | static | yes | Keep the notice | https://github.com/HEnquist/rubato |
+| rustfft, realfft | 6.4.1, 3.5.0 | MIT OR Apache-2.0, MIT | apps/sound/engine (analysis, convolution) | static | yes | Keep the notice | https://github.com/ejmahler/RustFFT |
+| ebur128 | 0.1.10 | MIT | apps/sound/engine (loudness) | static | yes | Keep the notice | https://github.com/sdroege/ebur128 |
+| freeverb | 0.2.0 | MIT | apps/sound/engine (reverb) | static | yes | Keep the notice | https://crates.io/crates/freeverb |
+| claxon | 0.4.3 | Apache-2.0 | apps/sound/engine (FLAC samples) | static | yes | Keep the notice | https://github.com/ruuda/claxon |
+| png | 0.18.1 | MIT OR Apache-2.0 | apps/sound/engine (spectrogram) | static | yes | Keep the notice | https://github.com/image-rs/image-png |
+| blake3 | 1.8.7 | CC0-1.0 OR Apache-2.0 | apps/sound/engine (cache keys) | static | yes | None (CC0) | https://github.com/BLAKE3-team/BLAKE3 |
+| audioadapter-buffers | 5.2.0 | MIT OR Apache-2.0 | apps/sound/engine | static | yes | Keep the notice | https://crates.io/crates/audioadapter-buffers |
+| windows | 0.62.2 | MIT OR Apache-2.0 | apps/sound/engine (WASAPI, plugin windows) | static | yes | Keep the notice | https://github.com/microsoft/windows-rs |
+| serde, serde_json, cc | 1.x, 1.7.0 | MIT OR Apache-2.0 | apps/sound/engine | static / build tool | yes / build only | Keep the notice | https://serde.rs |
+| SADIE II HRIR, subject D2 (data) | Zenodo 12092466 | Apache-2.0 | apps/sound/engine (binaural fold) | data | yes | Keep `data/SADIE-II-NOTICE.txt` (changes listed there) | https://www.york.ac.uk/sadie-project/database.html |
+| DDSP violin weights (data) | ours, 2026-10-15 | MIT (ours; trained on VSCO 2 CE, CC0) | apps/sound/engine (`ddsp.violin`) | data | yes | None | experiment-final:docs/AI_MODELS.md |
+| opencv-python-headless | 5.0.0.93 | Apache-2.0 | apps/sound/python (sfx eyes) | Python package | yes | Keep the notice | https://opencv.org |
+| numpy, scipy, soundfile, librosa, pyloudnorm, matplotlib | (venv) | BSD-3 / BSD-3 / BSD-3 / ISC / MIT / PSF-style (matplotlib) | apps/sound/python (listen, sfx) | Python package | yes | Keep the notices (libsndfile under soundfile is LGPL-2.1, dynamically loaded) | https://pypi.org |
