@@ -47,6 +47,24 @@ bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (
   `path.set_point` gesture (handles stay opposite; Alt moves one alone).
 - Steps: `pen <x,y> <x,y,hx,hy> … [close]`, `pointdrag <layer> <i> <dx> <dy> [in|out]`.
 
+## Handles and multi-select (Design page)
+
+- A selected layer's outline turns with it. With one layer selected (not a path, whose points show instead) it has 4 corner +
+  4 edge knobs (`qml/Handles.qml`; an edge knob is absent on a small box) and a turn zone just outside each corner (open-hand
+  cursor). Resize: the opposite side stays put; **Shift** keeps the proportion, **Alt** resizes from the centre. Turn: about the
+  anchor, **Shift** snaps to 15°. Maths: `screen2d/transform.py`; slots: `screen2d/handle_slots.py`.
+- What a resize changes: shapes, images, groups -> Width / Height (and X / Y); every other type (text, video, drawing, ...) ->
+  Scale from a corner, Stretch X / Y from an edge. An animated field gets a key at the playhead; an expression-driven one refuses
+  loudly; a layer in an auto layout changes size only (the layout places it). Each drag is one undo step.
+- **Several layers** (`screen2d/multi.py`, `backend.multi`): drag on empty canvas = a rubber band; layers whose boxes touch it
+  are selected (not a layer inside a selected group). **Shift+click** adds / removes one. The first is the inspector's;
+  every outline shows, handles only for a single layer. Dragging any one moves them all in one undo step (not layers in
+  an auto layout or driven by an expression: refused loudly). A click or the layers panel resets to one.
+- Click-to-pick turns the pointer back by the layer's rotation, so a turned layer picks where it shows. A group's turn isn't passed
+  to its layers' boxes yet.
+- Steps: `resize <layer> <nw|n|ne|e|se|s|sw|w> <dx> <dy> [shift] [alt]`, `rotate <layer> <deg> [shift]`,
+  `boxselect <x0> <y0> <x1> <y1>`, `shiftpick <layer>`, `movesel <dx> <dy>`.
+
 ## Curves (Animate page)
 
 - The timeline's **Keys / Curves** switch shows the selected layer's animated number fields as value curves, overlaid,
@@ -90,8 +108,24 @@ Steps: `select`, `page`, `time`, `set`, `scrub`, `animate`, `drag <layer> <dx> <
 - The formats and their settings are data (`rostrum2d.io.formats.FORMATS` + Lottie, listed by `rostrum2d.mcp.exporting`); the
   MCP tool `render_export` runs the same code (`exporting.run`), so a person and an agent get the same files.
 
+## Add and import
+
+- **+ Add** (top bar, `qml/AddMenu.qml`, `screen2d/adding.py`): a small menu of only what applies on this page, most important
+  first. Design: shape, text, path (turns the pen on), image, video (each asks for a file), group, camera. Draw: drawing.
+  Animate: camera, rig, group. A choice is one change (`layer.add` + the type's field operation, centred in the
+  composition), selected, one undo step. The list is data (`adding.ENTRIES`); the popup is the kit's `Menu`.
+- **Import** (top bar, `qml/ImportPanel.qml`, `screen2d/importer.py`): from a file (SVG, PDF with its page, PSD, image,
+  video; what the file is decides which settings show) or a Figma file key + frame + your own token (typed into the panel,
+  never stored, printed or sent anywhere but Figma). One change, one undo step; afterwards the layers that came in and the
+  list **Didn't come across** (clip paths, filters, shadings, fonts that aren't here, baked PSD effects …). An error shows in
+  the panel and the status line and nothing is imported.
+- One door: `rostrum2d.io.importing.run` (file → importer tree → calls → one `doc.apply` → report); the MCP tool `run_import`
+  calls the same function.
+- Steps: `add <type>` (`add image <path>`), `addmenu open|close`, `import <path> [page=<n>] [text=outline]`,
+  `importpanel open [path]|close`.
+
 ## Not yet
 
 Text boxes on the canvas are estimates (from size and character count) until the engine reports laid-out boxes;
-boxes ignore rotation (so does drawing). No canvas handles for resize / rotate, no adding layers from the screen except through
+drawing ignores rotation. No adding layers from the screen except through
 Ctrl+K, no live sync between two processes on one file (each saves; reopen to see the other's).

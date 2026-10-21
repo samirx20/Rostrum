@@ -11,6 +11,10 @@
     brush <setting> <value> | newframe [copy] | hold <+n|-n> | frame next|prev | onion on|off
   Design page, paths: pen <x,y> <x,y,hx,hy> … [close] (one new path: a point, or a press at x,y dragged to hx,hy =
     a smooth point; composition px) | pointdrag <layer> <i> <dx> <dy> [in|out] (a point, or its handle)
+  Handles: resize <layer> <nw|n|ne|e|se|s|sw|w> <dx> <dy> [shift] [alt] | rotate <layer> <deg> [shift] (turn by that many
+    degrees) | boxselect <x0> <y0> <x1> <y1> (the rubber band) | shiftpick <layer> (add / remove) | movesel <dx> <dy> (move all selected)
+  Add and import: add <type> (the Add menu's entry; image / video: add image <path>) | addmenu open|close |
+    import <path> [page=<n>] [text=outline] (the Import panel's job, fails like it) | importpanel open [path]|close
   Export: export <mp4|prores4444|webm|gif|png|lottie> [alpha=on|off] [depth=8|16] [start=<s>] [end=<s>] (the Export button's
     job; waits for it) | exportpanel open [format]|close | exportcancel [format] (start one, then Cancel it)
 A step that leaves an error in the status fails (nonzero exit).
@@ -44,6 +48,23 @@ def steps_export(bridge, step, rest):
     if job.state != "done":
         raise RuntimeError(f"step {step!r}: {job.note}")
     print(f"export {job.format}: {job.path} {job.facts}")
+
+
+def steps_import(bridge, step, rest):
+    job = bridge.importer
+    job.setFile(rest[0])
+    for kv in rest[1:]:
+        key, _, v = kv.partition("=")
+        if key == "page":
+            job.setPage(int(v))
+        elif key == "text":
+            job.setText(v)
+        else:
+            raise ValueError(f"step {step!r}: unknown setting {key!r}")
+    job.run()
+    if job.state != "done":
+        raise RuntimeError(f"step {step!r}: {job.note}")
+    print(f"import: {job.note}; not carried over: {job.report}")
 
 
 def steps_cancel(bridge, step, rest):
@@ -87,6 +108,9 @@ def do_step(bridge, win, step):
         for f in (0.25, 0.5, 0.75, 1.0):             # a few moves, as a hand would make
             bridge.moveBy(dx * f, dy * f)
         bridge.endDrag()
+    elif word in ("resize", "rotate", "boxselect", "shiftpick", "movesel"):
+        from .handle_steps import steps_handles
+        steps_handles(bridge, step, rest)
     elif word == "keydrag":
         bridge.beginKeyDrag(rest[0])
         bridge.keyDragTo(float(rest[1]))
@@ -151,6 +175,19 @@ def do_step(bridge, win, step):
         bridge.run(rest[0])
     elif word == "export":
         steps_export(bridge, step, rest)
+    elif word == "add":
+        if rest[0] in ("image", "video") and rest[1:]:
+            bridge.adder.addFile(rest[0], rest[1])
+        else:
+            bridge.adder.add(rest[0])
+    elif word == "addmenu":
+        QMetaObject.invokeMethod(win, "setAddOpen", Q_ARG("QVariant", rest[0] == "open"))
+    elif word == "import":
+        steps_import(bridge, step, rest)
+    elif word == "importpanel":
+        if rest[1:]:
+            bridge.importer.setFile(rest[1])
+        QMetaObject.invokeMethod(win, "setImportOpen", Q_ARG("QVariant", rest[0] == "open"))
     elif word == "exportpanel":
         if rest[1:]:
             bridge.exporter.setFormat(rest[1])

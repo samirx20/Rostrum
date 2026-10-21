@@ -23,7 +23,9 @@ AppShell {
     Shortcut { sequence: "Alt+Down"; onActivated: painter.holdBy(-1) }
     Shortcut { sequence: "Alt+O"; onActivated: painter.setOnion(!painter.onionOn) }
 
-    function setExportOpen(open) { exportPanel.shown = open }
+    function setExportOpen(open) { exportPanel.shown = open; if (open) importPanel.shown = false }
+    function setImportOpen(open) { importPanel.shown = open; if (open) exportPanel.shown = false }
+    function setAddOpen(open) { if (open) addMenu.menuOpen = true; else addMenu.menuOpen = false }
 
     tools: [
         Segmented {
@@ -34,13 +36,19 @@ AppShell {
         }
     ]
     actions: [
-        IconButton { glyph: "↗"; tip: "Export"; down: exportPanel.shown; onClicked: exportPanel.shown = !exportPanel.shown }
+        AddMenu { id: addMenu },
+        Button { text: "Import"; down: importPanel.shown; onClicked: shell.setImportOpen(!importPanel.shown) },
+        IconButton { glyph: "↗"; tip: "Export"; down: exportPanel.shown; onClicked: shell.setExportOpen(!exportPanel.shown) }
     ]
     left: LayersPanel { anchors.fill: parent }
     centre: [
         Stage { anchors.fill: parent },
         ExportPanel {   // opened by the Export button; docked on the canvas's right edge, beside the inspector (never over it)
             id: exportPanel
+            anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
+        },
+        ImportPanel {   // opened by the Import button; same place as the export panel (one open at a time)
+            id: importPanel
             anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
         }
     ]

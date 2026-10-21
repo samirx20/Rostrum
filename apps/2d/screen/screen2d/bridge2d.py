@@ -9,16 +9,20 @@ from rostrum_gui import DocBridge
 from rostrum_gui.markers import MarkerWatch
 
 from . import bounds, outline
+from .adding import Adder
 from .curves import Curves
 from .drags import DragSlots
 from .exporter import Exporter
 from .frames import FrameRenderer
+from .handle_slots import HandleSlots
 from .hooks import Hooks2D
+from .importer import Importer
+from .multi import Multi
 from .painter import Painter
 from .pen import Pen
 
 
-class Bridge2D(DragSlots, Hooks2D, DocBridge):
+class Bridge2D(DragSlots, HandleSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     pageChanged = Signal()
     frameChanged = Signal()
@@ -40,7 +44,9 @@ class Bridge2D(DragSlots, Hooks2D, DocBridge):
         self.painter = Painter(self)
         self._pen = Pen(self)
         self._curves = Curves(self)
+        self._multi = Multi(self)                           # several layers selected (multi.py): backend.multi
         self._exporter = Exporter(self)
+        self._importer, self._adder = Importer(self), Adder(self)
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self.marks = MarkerWatch(doc.folder, self, self.who, self._fail, "2d")   # shared markers: flags, edits, snap
@@ -63,6 +69,16 @@ class Bridge2D(DragSlots, Hooks2D, DocBridge):
     def exporter(self):
         """The Export button's job (exporter.py)."""
         return self._exporter
+
+    @Property(QObject, constant=True)
+    def importer(self):
+        """The Import panel's job (importer.py)."""
+        return self._importer
+
+    @Property(QObject, constant=True)
+    def adder(self):
+        """The Add menu (adding.py)."""
+        return self._adder
 
     @Property(QObject, constant=True)
     def curves(self):
