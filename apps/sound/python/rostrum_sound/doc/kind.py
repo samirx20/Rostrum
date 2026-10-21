@@ -2,7 +2,7 @@
 a fresh document, and the whole-document check.
 
     root (doc: tempo, length, beatsPerBar, sampleRate)
-      tracks[]   track: notes[] hits[] clips[] (clip: effects[]) lines[] (a voice track) effects[] automation[] sends[] ducks[]
+      tracks[]   track: notes[] hits[] clips[] sounds[] (designed sounds) (clip: effects[]) lines[] (a voice track) effects[] automation[] sends[] ducks[]
       buses[]    bus: effects[] automation[]   (a track's `output` and a send's `bus` name a bus id)
       markers[]  marker: name, at
       master[]   the one master (id "master"): effects[] automation[]

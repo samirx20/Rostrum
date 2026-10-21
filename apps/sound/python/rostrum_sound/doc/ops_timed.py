@@ -10,7 +10,7 @@ from . import values as V
 from .registry import REGISTRY, set_fields, taken
 
 ID = Param.text("id", label="Id", help="Optional; made from where it starts when left out.")
-LABELS = {"note": "note", "hit": "drum hit", "clip": "clip"}
+LABELS = {"note": "note", "hit": "drum hit", "clip": "clip", "sound": "designed sound"}
 
 
 def _new_id(type_, track, args, ctx):
@@ -23,6 +23,8 @@ def _new_id(type_, track, args, ctx):
         return ids.note(track, args["at"], ctx.doc, have, ctx.where)
     if type_ == "hit":
         return ids.hit(track, args["drum"], args["at"], ctx.doc, have, ctx.where)
+    if type_ == "sound":
+        return ids.sound(track, args["design"], args["at"], ctx.doc, have, ctx.where)
     return ids.clip(track, args["at"], ctx.doc, have, ctx.where)
 
 
@@ -70,3 +72,4 @@ def register(type_, key, many=False):
 register("note", "notes", many=True)
 register("hit", "hits", many=True)
 register("clip", "clips")
+register("sound", "sounds", many=True)

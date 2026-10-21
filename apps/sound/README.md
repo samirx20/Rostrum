@@ -29,8 +29,8 @@ Tests (minimal): `cargo test --profile agent -j 4 contract::` (unknown names ref
 ## MCP tools
 
 - Shared (`rostrum_core`): `inspect_project`, `inspect_item`, `inspect_markers`, `inspect_history`, `inspect_operations`, `inspect_guide`, `inspect_job`, `edit_document`, `run_script`, `run_stop`.
-- Sound: `render_mix` (job: mix + every stem + per-track meters), `look_loudness`, `look_levels`, `look_events`, `look_spectrum`, `look_stereo`, `look_low_end`, `inspect_engine`, `inspect_instrument`, `inspect_library`, `look_video` (frames / contact sheet / motion), `inspect_cuts` (the cut pool).
-- Guides: `start-here`, `script` (the script API), `listening` (which look tool answers which question).
+- Sound: `render_mix` (job: mix + every stem + per-track meters), `look_loudness`, `look_levels`, `look_events`, `look_spectrum`, `look_stereo`, `look_low_end`, `inspect_engine`, `inspect_instrument`, `inspect_library`, `look_video` (frames / contact sheet / motion), `inspect_cuts` (the cut pool), `render_voice`, `edit_sounds_from_motion` (designed sounds placed from the picture's motion, P6).
+- Guides: `start-here`, `script` (the script API), `listening` (which look tool answers which question), `designed-sounds` (motion-design effects: the designs, their controls, sounds from motion).
 - `python/devtools/mcp_session.py` runs a list of tool calls over stdio as a plain MCP client; `python/devtools/person_edit.py` stands in for the Sound screen (an edit recorded as a person's) until the screen exists.
 
 ## How far the engine contract got (P3)

@@ -8,6 +8,7 @@ from rostrum_core.tree import walk
 
 from .. import names
 from . import effects as FX
+from . import fields_design as FDS
 from . import check_mix
 from . import playing as PL
 from . import times
@@ -107,6 +108,8 @@ def check(data: dict) -> list[str]:
         t = item.get("type")
         if t == "effect":
             out += FX.problems(item)
+        elif t == "sound":
+            out += FDS.problems(item)
         elif t == "automation":
             out += _lane(item, data)
         for k, v in item.items():

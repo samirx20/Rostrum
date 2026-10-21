@@ -7,7 +7,7 @@ use super::names::{self, SYNTH_DRUMS, TONES};
 use super::pitch;
 use super::read::{Obj, number};
 use super::time::Tempo;
-use super::{buses, effects, expression, media};
+use super::{buses, designed, effects, expression, media};
 use serde_json::{json, Map, Value};
 
 pub struct Track {
@@ -102,6 +102,13 @@ pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String], bus_ids
         Ok(resolved)
     })?;
     o.put("clips", json!(clip_list));
+    let sound_list = o.list("sounds", |c, p| {
+        let (resolved, job, t) = designed::read(c, &p, tempo, sr)?;
+        end = end.max(t);
+        clips.push(job);
+        Ok(resolved)
+    })?;
+    o.put("sounds", json!(sound_list));
     let resolved = Value::Object(o.done()?);
     let head = json!({ "name": id, "tone": tone, "volume": volume, "pan": pan, "reverb": reverb, "mix": !mute,
         "ducks": ducks.into_iter().map(|d| d.1).collect::<Vec<_>>(), "effects": fx, "automation": auto,
@@ -182,7 +189,7 @@ fn clip(v: &Value, at: &str, tempo: &Tempo, sr: u32) -> Result<(Value, Value, f6
 }
 
 #[allow(clippy::too_many_arguments)]
-fn clip_job(content: Value, start: usize, samples: usize, dur: f64, volume: f64, fade_in: f64, fade_out: f64, reverb: f64, fx: Vec<Value>) -> Value {
+pub(super) fn clip_job(content: Value, start: usize, samples: usize, dur: f64, volume: f64, fade_in: f64, fade_out: f64, reverb: f64, fx: Vec<Value>) -> Value {
     json!({ "startSample": start, "samples": samples, "duration": dur, "content": content, "rate": null, "reverse": null,
             "glitch": null, "filterSweep": null, "tone": "neutral", "fadeIn": fade_in, "fadeOut": fade_out, "volume": volume,
             "pan": 0.0, "reverb": reverb, "effects": fx })
