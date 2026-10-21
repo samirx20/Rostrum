@@ -14,6 +14,7 @@ ListView {
     property bool foldable: false        // rows with a fold arrow (and a gap for it) in the label
     property var keyValue: (k) => k.t    // a key's place in the ruler's unit
     property var dragClamp: null
+    property var keyBegin: (id) => true  // starts a key drag; false (refused) = the key stays put
     property Component trackExtras
     signal rowSelected(string owner)
     signal folded(string id)
@@ -82,15 +83,17 @@ ListView {
                     MouseArea {
                         id: keyArea; anchors.fill: parent; hoverEnabled: true; preventStealing: true
                         cursorShape: Qt.SizeHorCursor
-                        onPressed: { if (rows.dragClamp) { key.dragV = rows.keyValue(key.modelData); key.dragging = true }
-                                     rows.keyPressed(key.modelData.id) }
+                        property bool held: false
+                        onPressed: { held = rows.keyBegin(key.modelData.id) !== false; rows.keyPressed(key.modelData.id)
+                                     if (held && rows.dragClamp) { key.dragV = rows.keyValue(key.modelData); key.dragging = true } }
                         onPositionChanged: (m) => {
+                            if (!held) return
                             var v = rows.ruler.tOf(mapToItem(track, m.x, 0).x - 8)
                             if (rows.dragClamp) key.dragV = rows.dragClamp(v)
                             rows.keyDragged(v)
                         }
-                        onReleased: { key.dragging = false; rows.keyReleased() }
-                        onCanceled: { key.dragging = false; rows.keyReleased() }
+                        onReleased: { key.dragging = false; held = false; rows.keyReleased() }
+                        onCanceled: { key.dragging = false; held = false; rows.keyReleased() }
                     }
                 }
             }

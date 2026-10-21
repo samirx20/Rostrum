@@ -67,7 +67,7 @@ screen3d/render_job.py  the Render button's job (rostrum3d.mcp.render.still, its
 screen3d/steps.py       scripted steps
 screen3d/sample.py      the small sample document (not a template)
 screen3d/viewport.py, viewcam.py, frames.py, qml/Viewport.qml    the live viewport
-qml/                    Main, Outliner, KindIcon, Timeline, FrameRuler, RenderButton, RenderView
+qml/                    Main, Outliner, KindIcon, Timeline, RenderButton, RenderView
 ```
 
 ## Not yet
