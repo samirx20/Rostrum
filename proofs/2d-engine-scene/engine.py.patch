@@ -1,0 +1,105 @@
+diff --git a/apps/2d/python/rostrum2d/engine.py b/apps/2d/python/rostrum2d/engine.py
+index b2b7b0e..259059d 100644
+--- a/apps/2d/python/rostrum2d/engine.py
++++ b/apps/2d/python/rostrum2d/engine.py
+@@ -6,8 +6,8 @@ look tools and exports all render through it, the same way (preview ≡ export).
+         eng.still(1.2, png)             # one frame at 1.2 s
+         eng.video(mp4)                  # the whole comp (or start=, end=)
+ 
+-Evaluation: the contract says the engine evaluates the scene per frame. Until the Rust side does (Team Hem),
+-`evaluator="python"` (the default) evaluates here (scene.frame_at) and sends page markup (stopgap_html, TEMPORARY).
++Evaluation: the engine evaluates the scene per frame (`evaluator="engine"`, the default; ENGINE_CONTRACT.md § 1).
++`evaluator="python"` is the stopgap (scene.frame_at + stopgap_html, TEMPORARY) until it is deleted.
+ """
+ from __future__ import annotations
+ 
+@@ -33,8 +33,9 @@ def find_exe() -> Path:
+     """ROSTRUM2D_ENGINE, else this repo's engine build, else the archive's renderer."""
+     if os.environ.get("ROSTRUM2D_ENGINE"):
+         return Path(os.environ["ROSTRUM2D_ENGINE"])
+-    for p in (HERE / "engine" / "target" / "release").glob("rostrum*.exe"):
+-        return p
++    for profile in ("release", "agent"):
++        for p in (HERE / "engine" / "target" / profile).glob("rostrum*.exe"):
++            return p
+     return ARCHIVE_EXE
+ 
+ 
+@@ -47,12 +48,15 @@ def h264(out: Path, w: int, h: int, fps: int) -> dict:
+ 
+ 
+ class Engine:
+-    def __init__(self, exe: Path | None = None, evaluator: str = "python"):
++    def __init__(self, exe: Path | None = None, evaluator: str = "engine"):
+         exe = exe or find_exe()
+         if not exe.exists():
+             raise EngineError(f"2D engine not found: {exe} (set ROSTRUM2D_ENGINE)")
+-        if evaluator != "python":
+-            raise EngineError("the engine's own scene evaluation isn't available yet; use evaluator='python'")
++        if evaluator not in ("engine", "python"):
++            raise EngineError(f"evaluator is 'engine' or 'python', not {evaluator!r}")
++        if evaluator == "engine" and exe == ARCHIVE_EXE:
++            raise EngineError("the archive renderer can't evaluate scenes; build apps/2d/engine or use evaluator='python'")
++        self.evaluator = evaluator
+         LOG_DIR.mkdir(parents=True, exist_ok=True)
+         self.log_path = LOG_DIR / f"engine2d-{os.getpid()}-{int(time.time())}.log"
+         self._log = open(self.log_path, "wb")
+@@ -61,12 +65,17 @@ class Engine:
+         self.pid, self.scene, self._opened = self.proc.pid, None, None
+         self.caps = frozenset() if exe == ARCHIVE_EXE else frozenset({"gradient-text"})
+ 
+-    def _request(self, req: dict, timeout_s: float = 60.0) -> dict:
++    def _request(self, req: dict, timeout_s: float = 60.0, progress=None) -> dict:
+         t0 = time.perf_counter()
+         try:
+             self.proc.stdin.write((json.dumps(req) + "\n").encode("utf-8"))
+             self.proc.stdin.flush()
+             line = self.proc.stdout.readline()
++            while line.startswith(b'{"progress"'):         # export's per-frame progress lines
++                if progress:
++                    p = json.loads(line)
++                    progress(p["progress"], p["of"])
++                line = self.proc.stdout.readline()
+         except OSError as e:
+             raise EngineError(f"2D engine (pid {self.pid}) stopped: {e}; log {self.log_path}") from e
+         if not line:
+@@ -92,7 +101,10 @@ class Engine:
+         self._opened = None if encode else key
+ 
+     def load(self, scene: dict):
+-        frame_at(scene, 0.0)                         # a bad scene fails here, loudly
++        if self.evaluator == "engine":
++            self._request({"scene": scene})          # checked whole by the engine; a bad scene fails here, loudly
++        else:
++            frame_at(scene, 0.0)
+         self.scene = scene
+ 
+     def _stage(self, t: float) -> str:
+@@ -101,10 +113,13 @@ class Engine:
+         return stopgap_html.stage(frame_at(self.scene, t), self.caps)
+ 
+     def still(self, t: float, png: Path) -> dict:
+-        self._open()
+         png = Path(png)
+         png.parent.mkdir(parents=True, exist_ok=True)
+-        out = self._request({"frame": {"stage": self._stage(t), "image": str(png)}})
++        if self.evaluator == "engine":
++            out = self._request({"frame": {"t": t, "image": str(png)}})
++        else:
++            self._open()
++            out = self._request({"frame": {"stage": self._stage(t), "image": str(png)}})
+         if not png.is_file():
+             raise EngineError(f"2D engine said done but wrote no file: {png}")
+         return out
+@@ -114,6 +129,11 @@ class Engine:
+         fps, end = p["fps"], p["duration"] if end is None else end
+         mp4 = Path(mp4)
+         mp4.parent.mkdir(parents=True, exist_ok=True)
++        if self.evaluator == "engine":
++            out = self._request({"export": {"start": start, "end": end, "file": str(mp4), "progress": progress is not None,
++                                            "encode": h264(mp4, p["width"], p["height"], fps)}},
++                                timeout_s=3600.0, progress=progress)
++            return {"file": str(mp4), "frames": out["frames"], "fps": fps, "timing": out["timing"]}
+         self._open(h264(mp4, p["width"], p["height"], fps))
+         n = max(1, round((end - start) * fps))
+         for i in range(n):

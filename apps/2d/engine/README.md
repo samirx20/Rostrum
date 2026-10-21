@@ -38,6 +38,57 @@ pwsh -File C:\Users\Sam\.rostrum\waves\heavy.ps1 run "<team>: 2d engine build" b
   `cargo clean --profile agent -p blitz-dom -p blitz-paint -p anyrender -p anyrender_skia -p parley -p usvg` fixes it.
 - Tests (fast, about 1 s once built): `cargo test --manifest-path apps\2d\engine\Cargo.toml --profile agent -p rostrum2d-render`.
 
+## The scene: the engine evaluates every frame (H6)
+
+The engine takes the scene description itself (`../ENGINE_CONTRACT.md` v1) and evaluates keys, easing and
+timing per frame in Rust, so the canvas, the look tools and the export draw the same way (rule 5) and Python sends
+the scene once. Code: `render/src/scene/` and `render/src/scene_serve.rs`.
+
+| Module | Job |
+|---|---|
+| `scene/mod.rs` | loads and checks a scene whole: format, version, item types, every field present with the right kind of value, keys, ease names, unique ids, children only where allowed; `edit` |
+| `scene/fields.rs` | the item types' field names and kinds (the meaning and defaults stay in `python/rostrum2d/fields.py`; a test checks the two agree) |
+| `scene/ease.rs` | the easing curves, ported step for step from `easing.py` |
+| `scene/eval.rs` | the animation model from `evaluate.py` / `scene.frame_at`: keys alone decide an animated field; colours mix in linear light (rounded half to even, as Python); layers outside start ≤ t < end are left out |
+| `scene/stage.rs` | an evaluated frame → the stage markup (the Python stopgap's `stopgap_html.py`, moved here); images load by path through the asset cache instead of inline copies |
+| `scene_serve.rs` | the serve requests below |
+
+| Request | Does | Reply |
+|---|---|---|
+| `{"scene": {…}, "cpu"?: true}` | load or replace the scene; refused whole if anything is unknown (the error names the item and field); every layer's stage is written once at load so a later frame never meets something it can't draw; opens a session the comp's size if none is open at that size | `{"ok": true, "items", "width", "height", "fps", "duration"}` |
+| `{"frame": {"t": 1.25, "image"? / "rgba"? / "boxes"? …}}` | the scene at `t` seconds, drawn as any frame (all of `frame`'s outputs); `index` defaults to round(t·fps) so a still equals the exported frame; `timing.evalMs` = keys + easing + markup | as `frame` |
+| `{"export": {"start"?, "end"?, "encode": {"program", "args"}, "file"?, "progress"?}}` | every frame start..end at the comp's fps into the encoder (`file` checked to exist and not be empty after); or `"images": "C:\\…\\f-{frame}.png"` for one picture per frame; `progress: true` sends `{"progress": i, "of": n}` lines first | `{"ok": true, "frames", "fps", "code", "timing"}` |
+| `{"edit": [{"id", "props"?: {…}, "anim"?: {field: [keys] \| null}}]}` | small changes to the held scene (a drag), checked as a load is, all or nothing | `{"ok": true, "edits": n}` |
+
+The page requests (`open`, `page`, `frame {stage}`) still work; after an `open` or `page`, send the scene again.
+
+**Incremental.** A frame's stage is applied to the kept page as edits (keep.rs): only the attributes that changed
+are restyled and laid out again. Scrubbing Meridian forward: 5 edits a frame; moving one layer (`edit`) and
+drawing the same time again: 1 edit. Paint is still the whole frame (Skia redraws every layer); that is where
+the time goes (below).
+
+**Tests** (`cargo test … -p rostrum2d-render scene::`, under a second): `render/tests/scene/reference.json` is
+written by `make_reference.py` from the Python layer's own evaluator; the engine must give the same ease values
+(1e-12), the same field table, the same values for a keyed scene at ten times (1e-9) and the same drawn frame
+(pixel for pixel), and must refuse unknown names. **Re-run `make_reference.py` when `fields.py`, `easing.py`,
+`evaluate.py` or the stage writer change** (S6's drawing layers will then fail the field-table test until the
+engine draws them: on purpose).
+
+**Measured (H6, 1920×1080, RTX 3050 shared, `C:\Users\Sam\.rostrum\waves\results\stage2\2d-engine\timings.json`).** Pixels: the Rust and
+Python evaluators give identical frames, all 90 of Meridian and all 180 of the P-2D shot. Per frame, median:
+
+| | Meridian (30 fps) | P-2D shot as a scene (60 fps) |
+|---|---|---|
+| evaluate + write the stage: Rust / Python | 0.18 / 0.46 ms | 0.19 / 0.57 ms |
+| scrub forward, raw RGBA round trip (Rust) | 35.6 ms (diff 0.44, layout 0.38, paint 31.5) | 39.1 ms (paint 34.4) |
+| scrub, random jumps (Rust) | 38.4 ms, worst 61 | 45.7 ms, worst 87 |
+| one layer dragged (`edit` + frame) | 37.9 ms, 1 edit | 31.0 ms, 1 edit |
+| export to H.264 (Rust / Python) | 40.4 / 46.0 ms a frame | 35.1 / 39.0 ms a frame |
+| scene load (opens the GPU session and page) | 390 ms | 376 ms |
+
+Evaluation is now well under 1 % of a frame; the rest is Skia painting the blurs and glows. The scrub numbers
+include sending 8 MB of RGBA through the pipe (the contract's later `pixels` / shared memory frame removes that).
+
 ## The `serve` interface (what Python talks to)
 
 `rostrum2d-render serve`: one JSON request per line on stdin, one JSON reply per line on stdout. The process
@@ -56,7 +107,7 @@ Errors reply `{"error": "…"}` and the process keeps serving. A frame whose sha
 never a frame drawn without it (rule 6). Other commands: `glyphs` (text as outlines), `styles` (computed CSS per
 element), `cube`, `sksl`, `scope` (colour helpers).
 
-The Python handle is `proofs/2d-renderer/driver/rostrum2d.py` (stdlib only). It runs the renderer built in this
+The Python layer's handle is `apps/2d/python/rostrum2d/engine.py` (scene requests: `proofs/2d-engine-scene/engine.py.patch`). The proof driver `proofs/2d-renderer/driver/rostrum2d.py` (stdlib only) runs the renderer built in this
 checkout, or the one `ROSTRUM2D_RENDER` names. Team Sam's Python layer builds on it.
 
 ## What was fixed (H5)
@@ -100,6 +151,15 @@ Flex (`render/tests/fonts/`, SIL OFL 1.1) so the glyphs are the same on every ma
 
 ## What's left
 
+- **Open (H6): a frame can depend on what the page drew before.** Meridian exported right after stills at
+  0.4–2.9 s differs from a fresh export by 1–2 levels (of 255) in up to 222 of 2 million pixels per frame, from
+  frame 17 (the word appears) on; the stage markup is identical, so it is a cache in the paint (most likely
+  Skia's glyph cache on the GPU). Invisible, but a frame should be a function of its time alone (rule 5). Seen
+  as 55–57 dB PSNR between the two evaluators' videos while every still is identical.
+- Scene: what the stopgap couldn't draw, the engine refuses the same way (feathered or inverted rect masks, a
+  gradient on an image); drawing layers (S6) have their place in `scene/fields.rs` and `scene/stage.rs`
+  `content`. Paint is not incremental (Blitz repaints the whole page). The font list (`scene/stage.rs` `FONTS`)
+  still points at the archive's font files.
 - `background-clip: text` on an inline `<span>` (Blitz paints only a span's background colour, never its images).
 - SVG `<text>` with web fonts falls back to a serif.
 - `backface-visibility`; depth sorting of `preserve-3d` siblings (they paint in page order); a perspective parent

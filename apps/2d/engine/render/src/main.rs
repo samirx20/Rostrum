@@ -16,6 +16,8 @@ mod keep;
 mod painter;
 mod pixels;
 mod readback;
+mod scene;
+mod scene_serve;
 mod scopes;
 mod serve;
 mod sink;
