@@ -35,3 +35,4 @@ Every third-party library, model, asset source and tool that ships in or is down
 | pyloudnorm | current | MIT | proofs/sound/listen | Python package | dev only | Keep the notice | see `proofs/sound/LIBRARIES.md` |
 | matplotlib | current | PSF-based (BSD-compatible) | proofs/sound/listen | Python package | dev only | Keep the notice | see `proofs/sound/LIBRARIES.md` |
 | ACE-Step 1.5 (code; weights acestep-v15-turbo, VAE, text encoder) | 1.5 | MIT (code); weights tagged MIT on Hugging Face (no LICENSE file in the weights repo) | proofs/sound/acestep (tested, not shipped) | model | on demand | Keep the notice | see `proofs/sound/LIBRARIES.md` |
+| libepoxy | from Blender lib-windows_x64 (already downloaded in H1) | MIT | `proofs/3d-stylized` (hdRostrum.dll, OpenGL loading) | dynamic (`epoxy-0.dll`) | yes, with Rostrum3D | Keep the MIT notice | https://github.com/anholt/libepoxy |
