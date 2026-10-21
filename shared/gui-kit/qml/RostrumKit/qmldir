@@ -1,6 +1,7 @@
 module RostrumKit
 singleton Theme 1.0 Theme.qml
 FieldFrame 1.0 FieldFrame.qml
+ListField 1.0 ListField.qml
 Chevron 1.0 Chevron.qml
 KeyHint 1.0 KeyHint.qml
 Button 1.0 Button.qml

@@ -170,6 +170,10 @@ class DocBridge(QObject):
     def anim_state(self, item: dict, param: str) -> str:
         return ""
 
+    def list_choices(self, item: dict, param: str) -> list[dict]:
+        """What a list param may hold, [{value, label}] (a list of choices uses its own options)."""
+        return []
+
     def animate_calls(self, item_id, param) -> tuple[list[dict], str]:
         raise RostrumError(codes.UNKNOWN_OPERATION, "inspector", f'"{param}"', "can't be animated in this app")
 
@@ -215,7 +219,8 @@ class DocBridge(QObject):
             return []
         it = self.doc.item(self._sel)
         return rows.evaluate(self._static, self.shown_values(it), self.doc.kind.facts(it, self.doc), self._more,
-                             lambda name: self.anim_state(it, name), lambda name: self.expr_state(it, name))
+                             lambda name: self.anim_state(it, name), lambda name: self.expr_state(it, name),
+                             lambda name: self.list_choices(it, name))
 
     def _on_doc(self, event):
         if self._sel and not self.doc.has(self._sel):      # the selected item went away (e.g. undo of an add)
