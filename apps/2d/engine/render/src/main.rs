@@ -22,6 +22,7 @@ mod scopes;
 mod serve;
 mod sink;
 mod sksl;
+mod shm;
 mod styles;
 #[cfg(test)]
 mod cliptext_tests;

@@ -244,14 +244,20 @@ fn quantise8(q: f32, dither_on: bool, d: impl Fn() -> f32) -> u8 {
 /// dither; the pattern is static today). `fast`: a playing preview's frame (a JPEG): when the step mixes channels (no
 /// channel table), 8-bit pixels go through the checked 3D table (`output_lut`, within 1/255 of `apply`); a still, an
 /// export, a deep frame never do.
-pub fn output(spec: &Spec, src: &[u8], width: u32, deep: bool, fast: bool, _frame: u32, out: &mut Vec<u8>) {
+pub fn output(spec: &Spec, src: &[u8], width: u32, deep: bool, fast: bool, frame: u32, out: &mut Vec<u8>) {
+    out.clear();
+    out.resize(src.len() / 8 * if deep { 8 } else { 4 }, 0);
+    output_into(spec, src, width, deep, fast, frame, out);
+}
+
+/// `output` into a buffer of exactly the frame's size (a shared-memory slot, shm.rs); every byte is written.
+pub fn output_into(spec: &Spec, src: &[u8], width: u32, deep: bool, fast: bool, _frame: u32, out: &mut [u8]) {
     let table = crate::pixels::halves();
     let chan = channel_table(spec);
     let lut = if fast && !deep && chan.is_none() { output_lut(spec) } else { None };
     let px = src.len() / 8;
     let bpp = if deep { 8 } else { 4 };
-    out.clear();
-    out.resize(px * bpp, 0);
+    assert_eq!(out.len(), px * bpp, "output buffer size");
     crate::pixels::bands(px, |range, dst: &mut [u8]| {
         for (i, o) in range.zip(dst.chunks_exact_mut(bpp)) {
             let p = &src[i * 8..i * 8 + 8];
@@ -259,6 +265,7 @@ pub fn output(spec: &Spec, src: &[u8], width: u32, deep: bool, fast: bool, _fram
             let v = |k: usize| table[bits(k)];
             let a = if v(3).is_finite() { v(3).clamp(0.0, 1.0) } else { 0.0 };
             if a == 0.0 {
+                o.fill(0);
                 continue;
             }
             // An opaque pixel's channels are its stored halves as they are (÷ 1): through the channel table when the output
