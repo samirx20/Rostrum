@@ -139,13 +139,12 @@ SEEN_KEEP = 6
 
 def render(canvas: dict, w: int, h: int) -> Pixels:
     key = (content_key(canvas, w, h), w, h)
-    if key in _SEEN:
+    got = _SEEN.get(key)
+    if got is not None and got[0] is not None:
         _SEEN.move_to_end(key)
-        return _SEEN[key][0]
+        return got[0]
     pix = _render(canvas, w, h)
-    _SEEN[key] = (pix, None)
-    while len(_SEEN) > SEEN_KEEP:
-        _SEEN.popitem(last=False)
+    _remember(key, pix, got[1] if got else None)
     return pix
 
 
@@ -178,12 +177,34 @@ def layer_rgba(canvas: dict, paint_id: str, w: int, h: int) -> np.ndarray:
 
 
 def rgba8(canvas: dict, w: int, h: int) -> np.ndarray:
-    """The canvas as HxWx4 uint8 straight alpha (shared with the memo: copy before changing it)."""
-    pix = render(canvas, w, h)
+    """The canvas as HxWx4 uint8 straight alpha (shared with the memo: copy before changing it). Read back from its
+    content-keyed PNG when one exists (the file holds exactly these bytes), so a fresh process never restamps to look."""
     key = (content_key(canvas, w, h), w, h)
-    if _SEEN.get(key, (None, None))[1] is None:
-        _SEEN[key] = (pix, compose.straight8(pix.rgba))
-    return _SEEN[key][1]
+    got = _SEEN.get(key)
+    if got is not None and got[1] is not None:
+        return got[1]
+    path = _png_path(key[0], w, h)
+    if path.is_file():
+        from PIL import Image
+        with Image.open(path) as im:
+            u8 = np.asarray(im.convert("RGBA"))
+        _remember(key, got[0] if got else None, u8)
+        return u8
+    pix = render(canvas, w, h)
+    u8 = compose.straight8(pix.rgba)
+    _remember(key, pix, u8)
+    return u8
+
+
+def _remember(key, pix, u8):
+    _SEEN[key] = (pix, u8)
+    _SEEN.move_to_end(key)
+    while len(_SEEN) > SEEN_KEEP:
+        _SEEN.popitem(last=False)
+
+
+def _png_path(key: str, w: int, h: int) -> Path:
+    return CACHE_DIR / f"{key}_{w}x{h}.png"
 
 
 def content_key(canvas: dict, w: int, h: int) -> str:
@@ -198,7 +219,7 @@ def content_key(canvas: dict, w: int, h: int) -> str:
 
 def png(canvas: dict, w: int, h: int) -> Path:
     """The canvas as a PNG (straight-alpha RGBA, w×h), named by its content: made once, then only read."""
-    path = CACHE_DIR / f"{content_key(canvas, w, h)}_{w}x{h}.png"
+    path = _png_path(content_key(canvas, w, h), w, h)
     if path.is_file():
         return path
     from PIL import Image

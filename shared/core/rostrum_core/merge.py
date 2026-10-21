@@ -63,6 +63,16 @@ def _script_value(e):
     return {E.Remove: "(remove)", E.Insert: "(add)", E.Move: "(move)"}[type(e)]
 
 
+def _record(base, lists, e, name):
+    """Move B forward by one edit. An edit inside an item B doesn't hold (its insert was held back) can't be
+    recorded and isn't: it is simply compared again on the next run."""
+    try:
+        E.apply(base, lists, e, f"run_script {name} (record)")
+    except RostrumError as err:
+        if err.code != codes.NOT_FOUND:
+            raise
+
+
 def check_output(kind, output: dict, where: str):
     """A script's values obey the same parameter rules as operation arguments (no side door)."""
     index(output, kind.lists)                             # duplicate ids: loud
@@ -84,7 +94,7 @@ def merge_script(doc, name, output: dict, who, force=False, session=None) -> Mer
     for e in diff(base, output, lists):
         ks = E.keys(e, lists)
         if isinstance(e, E.Set) and _current(work, lists, (e.id, *e.path)) == e.value:
-            E.apply(new_base, lists, e, f"run_script {name} (record)")   # everyone already agrees
+            _record(new_base, lists, e, name)                              # everyone already agrees
             continue
         hit = E.overlap(ks, other_keys)
         if hit and not _forced(force, ks):
@@ -102,7 +112,7 @@ def merge_script(doc, name, output: dict, who, force=False, session=None) -> Mer
             report.held.append({"key": E.key_text(sorted(ks)[0]), "script": _script_value(e),
                                 "kept": "(its place is gone)", "who": "?", "label": err.problem})
             continue
-        E.apply(new_base, lists, e, f"run_script {name} (record)")
+        _record(new_base, lists, e, name)
     problems = doc.kind.check(work)
     if problems:
         raise RostrumError(codes.CHECK_FAILED, f"run_script {name}", "the merged document",
