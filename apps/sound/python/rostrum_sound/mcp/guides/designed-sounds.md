@@ -39,6 +39,13 @@ These are a **starting point**: change any sound with `sound.set` (or the screen
 picture changes moves the sounds with it, and keeps what a person changed. The tracks play into a `ui` bus with a short
 shared room and a light compressor, so the layers sit as one piece; change or bypass those effects like any other.
 
+## Or recordings from your own library
+
+`edit_sounds_from_motion` with `source="library"` places the same events with recordings from the user's own sound
+folders instead (a Sonniss bundle, BOOM, their recordings), chosen by kind and shape for each event, as `clip`s.
+Add a folder first with `inspect_library folder=…`. How the picks and placement work, and how to search the library
+yourself: `inspect_guide 'library'`.
+
 ## Check it
 
 - `look_events` with the sharp events' times (`expect`): clicks and ticks should sit within a frame. Check them on

@@ -11,6 +11,8 @@
 
 Plus `glue_ops`: the "ui" bus every one of these tracks plays into: a short shared room and a light compressor,
 so the layers sit as one piece.
+
+With source="library" the same events get recordings from the user's own sound library instead (score_library.py).
 """
 from __future__ import annotations
 
@@ -100,12 +102,25 @@ def sounds(events: list[dict], width: float, height: float) -> list[tuple[str, d
 LEVELS = {"ui_whoosh": 0.8, "ui_clicks": 0.9, "ui_ticks": 0.7, "ui_low": 0.8}
 
 
-def script(events: list[dict], width: float, height: float) -> tuple[str, list[str]]:
-    """The sounds as a Sound script (run with run_script, so a re-run keeps what a person changed) and its track ids."""
-    placed = sounds(events, width, height)
+def script(events: list[dict], width: float, height: float, source: str = "designed",
+           library: list[dict] | None = None) -> tuple[str, list[str]]:
+    """The sounds as a Sound script (run with run_script, so a re-run keeps what a person changed) and its track ids.
+    source "designed": designed `sound`s (above); "library": recordings from the user's own sound library
+    (`library` = userlib.search.library()), placed as `clip`s by score_library.py."""
+    if source == "library":
+        from .score_library import clips
+        placed = clips(events, width, height, library or [])
+    elif source == "designed":
+        placed = sounds(events, width, height)
+    else:
+        raise ValueError(f"source must be 'designed' or 'library', not {source!r}")
     tracks = list(dict.fromkeys(t for t, _ in placed))
     lines = [f"{t} = track({t!r}, volume={LEVELS.get(t, 0.8)})" for t in tracks]
     for t, f in placed:
+        if "media" in f:
+            args = ", ".join(f"{k}={v!r}" for k, v in f.items() if k != "media")
+            lines.append(f"{t}.clip({f['media']!r}, {args})")
+            continue
         args = ", ".join(f"{k}={v!r}" for k, v in f.items() if k != "design")
         lines.append(f"{t}.sound({f['design']!r}, {args})")
     return "\n".join(lines), tracks
