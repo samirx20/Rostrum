@@ -22,6 +22,7 @@ from rostrum_gui import start
 from rostrum_sound import KIND, run_source
 from screensound.bridge import SoundBridge
 from screensound.instruments import InstrumentsPage
+from screensound.keys_record import KeysRecording
 from screensound.mixer import MixPage
 from screensound.recording import Recording
 from screensound.sample import SOURCE
@@ -60,8 +61,9 @@ def main():
     name = args.doc[1] if args.doc else Path(args.script).stem if args.script else "Sample song"
     bridge = SoundBridge(load_doc(args), name, autosave=bool(args.doc))
     instruments, mixer, recorder = InstrumentsPage(bridge), MixPage(bridge), Recording(bridge)
+    keys = KeysRecording(bridge, recorder)
     _, engine, win = start(HERE / "qml" / "Main.qml", {"backend": bridge, "instruments": instruments, "mixer": mixer,
-                                       "recorder": recorder},
+                                       "recorder": recorder, "keys": keys},
                            (1600, 960))
     code = [0]
 
@@ -94,6 +96,7 @@ def main():
     if args.shot:
         QTimer.singleShot(180000, lambda: (print("FAIL: timeout", file=sys.stderr), app.exit(4)))
     app.exec()
+    keys.close()
     recorder.close()
     mixer.close()
     bridge.close()

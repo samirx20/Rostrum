@@ -12,7 +12,9 @@ from .. import names
 from . import effects
 from . import fields_buses as FB
 from . import fields_design as FDS
+from . import fields_music as FM
 from . import playing as PL
+from . import plugins
 from . import values as V
 
 N = V.N
@@ -55,7 +57,10 @@ FIELDS = {
         Param.text("media", group="Clip", label="File"), V.time("at", group="Clip"),
         N("in", 0, None, "Clip", "s", label="In-point"),
         V.length("length", group="Clip", help="How much of the file plays; left out = to its end."),
-        N("volume", 0, 4, "Clip"), N("pitch", -24, 24, "Clip", "st", "secondary"),
+        N("volume", 0, 4, "Clip"), N("pitch", -24, 24, "Clip", "st", "secondary", help="Tape-style: pitch and speed change together."),
+        N("shift", -24, 24, "Clip", "st", "secondary", help="Pitch shift keeping the length."),
+        N("stretch", 0.25, 4, "Clip", "×", "secondary", help="Length factor keeping the pitch (2 = twice as long); the clip lasts length × stretch."),
+        Param.text("group", group="Clip", importance="secondary", label="Layer group", help="Clips of one track with the same group name are one layered sound: moving or re-levelling one moves them all (clip.set_one changes just one)."),
         N("pan", **PAN, group="Clip", imp="secondary"),
         N("panTo", **PAN, group="Clip", imp="deep", label="Pan to", help="Pan at the clip's end."),
         N("fadeIn", 0, 600, "Fades", "s", label="Fade in"), N("fadeOut", 0, 600, "Fades", "s", label="Fade out"),
@@ -71,8 +76,10 @@ FIELDS = {
     ],
     "sound": FDS.params(),
     **FB.FIELDS,
+    **FM.FIELDS,
     "effect": [Param.choice("effect", effects.TYPES, group="Effect", label="Effect type"),
-               Param.toggle("bypass", group="Effect", importance="secondary"), *effects.params("effect")],
+               Param.toggle("bypass", group="Effect", importance="secondary"), *effects.params("effect"),
+               plugins.record(IS("effect", "plugin"))],
     "marker": [Param.text("name", group="Marker"), V.time("at", group="Marker")],
     "master": [
         N("volume", 0, 4, "Master"),
@@ -94,6 +101,7 @@ DEFAULTS = {
     "track": dict(instrument="none", **PL.SWITCHES, volume=0.85, pan=0, mute=False, solo=False, reverb=0,
                   tone="neutral", output=names.MASTER_OUT),
     **FB.DEFAULTS,
+    **FM.DEFAULTS,
     "note": dict(vel=0.8),
     "hit": dict(vel=0.85),
     "clip": dict(**{"in": 0}, volume=1),
@@ -105,7 +113,7 @@ DEFAULTS = {
 }
 # The field that holds each instrument form's value (the form's name).
 INSTRUMENT_FIELD = {k: k for k in names.INSTRUMENTS if k != "none"}
-REQUIRED = {"duck": ["under"], "note": ["pitch", "at", "dur"], "hit": ["drum", "at"], "clip": ["media", "at"], "sound": ["design", "at"], "line": ["text", "at"], "marker": ["name", "at"]}
+REQUIRED = {"duck": ["under"], "note": ["pitch", "at", "dur"], "hit": ["drum", "at"], "clip": ["media", "at"], "sound": ["design", "at"], "line": ["text", "at"], "marker": ["name", "at"], **FM.REQUIRED}
 
 
 def params(type_: str, required=False) -> list[Param]:

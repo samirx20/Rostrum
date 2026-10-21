@@ -9,8 +9,9 @@ from __future__ import annotations
 from functools import lru_cache
 
 from rostrum_sound import names, voice_lines
+from rostrum_sound.doc import keys as K
 
-from . import lanes, timing
+from . import lanes, music_map, timing
 
 # no blues: blue is the selection (Theme.accent)
 HUES = ["#4fb5a5", "#e0a458", "#d27aa8", "#a0c167", "#b48ce0", "#c98c6b", "#d6c86c", "#e07a6b"]
@@ -39,7 +40,7 @@ def media(path: str) -> tuple[float, tuple[float, ...]]:
 def clip_span(c: dict, root: dict) -> tuple[float, float, tuple]:
     """(start, seconds, peaks) of a clip, as it plays."""
     total, peaks = media(c["media"])
-    dur = timing.length_sec(c["length"], root) if c.get("length") is not None else max(total - c.get("in", 0), 0)
+    dur = timing.length_sec(c["length"], root, timing.sec(c["at"], root, c["id"])) if c.get("length") is not None else max(total - c.get("in", 0), 0)
     if total and peaks:
         a, b = c.get("in", 0) / total, min(1.0, (c.get("in", 0) + dur) / total)
         peaks = peaks[int(a * len(peaks)):max(int(a * len(peaks)) + 1, int(b * len(peaks)))]
@@ -48,9 +49,10 @@ def clip_span(c: dict, root: dict) -> tuple[float, float, tuple]:
 
 def note_block(n, root):
     ks = timing.keys(n["pitch"])
-    label = " ".join(timing.name(k) for k in ks)
-    return {"id": n["id"], "type": "note", "t": timing.sec(n["at"], root, n["id"]),
-            "dur": timing.length_sec(n["dur"], root), "keys": ks, "label": label, "vel": n.get("vel", 0.8)}
+    t = timing.sec(n["at"], root, n["id"])
+    key = K.key_at(root, t)                     # spelled in the key playing there (Bb in D minor, not A#)
+    label = " ".join(timing.name(k, key) for k in ks)
+    return {"id": n["id"], "type": "note", "t": t, "dur": timing.length_sec(n["dur"], root, t), "keys": ks, "label": label, "vel": n.get("vel", 0.8)}
 
 
 def hit_block(h, root):
@@ -61,7 +63,9 @@ def hit_block(h, root):
 def clip_block(c, root):
     t, dur, peaks = clip_span(c, root)
     label = c["media"].replace("\\", "/").rsplit("/", 1)[-1]
-    return {"id": c["id"], "type": "clip", "t": t, "dur": dur, "label": label, "peaks": list(peaks)}
+    dur *= c.get("stretch", 1)      # a stretched clip lasts length × stretch
+    return {"id": c["id"], "type": "clip", "t": t, "dur": dur, "label": label, "peaks": list(peaks),
+            "fadeIn": min(c.get("fadeIn", 0), dur), "fadeOut": min(c.get("fadeOut", 0), dur)}
 
 
 def line_block(track, ln, root):
@@ -76,10 +80,26 @@ def line_block(track, ln, root):
     return {"id": ln["id"], "type": "line", "t": t, "dur": max(total, 0.05), "label": ln["text"], "peaks": list(peaks)}
 
 
+def layered(clips: list[dict]) -> list[dict]:
+    """A layer group reads as one sound: its earliest clip is labelled "<group> · n layers", the others carry no
+    label (they lie under it), and every block knows its group."""
+    groups: dict[str, list[dict]] = {}
+    for b in clips:
+        if b.get("group"):
+            groups.setdefault(b["group"], []).append(b)
+    for g, members in groups.items():
+        first = min(members, key=lambda b: b["t"])
+        for b in members:
+            b["label"] = f"{g} · {len(members)} layers" if b is first else ""
+    return clips
+
+
 def blocks(track: dict, root: dict) -> list[dict]:
+    clips = layered([{**clip_block(c, root), **({"group": c["group"]} if c.get("group") else {})}
+                     for c in track.get("clips", [])])
     return ([note_block(n, root) for n in track.get("notes", [])]
             + [hit_block(h, root) for h in track.get("hits", [])]
-            + [clip_block(c, root) for c in track.get("clips", [])]
+            + clips
             + [line_block(track, ln, root) for ln in track.get("lines", [])])
 
 
@@ -131,10 +151,11 @@ def markers(root: dict) -> list[dict]:
 def song(root: dict) -> dict:
     """The grid and length: what the ruler draws. Without a set length: the last sound + 2 s (as the mix)."""
     ends = [b["t"] + b["dur"] for t in root.get("tracks", []) for b in blocks(t, root)]
-    ends += [m["t"] for m in markers(root)]
+    ends += [m["t"] for m in markers(root)] + [s["end"] for s in music_map.sections(root)]
     length = timing.sec(root["length"], root) if root.get("length") is not None else max(ends, default=0) + 2
-    return {"length": max(length, 1.0), "spb": timing.spb(root), "beatsPerBar": int(root.get("beatsPerBar", 4)),
-            "tempo": float(root.get("tempo", 120))}
+    length = max(length, 1.0)
+    return {"length": length, "spb": timing.spb(root), "beatsPerBar": int(root.get("beatsPerBar", 4)),
+            "tempo": float(root.get("tempo", 120)), **music_map.grid(root, length)}
 
 
 def roll(track: dict | None, root: dict, hue: str = HUES[0]) -> dict:

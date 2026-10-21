@@ -10,6 +10,7 @@ from __future__ import annotations
 from rostrum_core import Param
 
 from .. import names, voice
+from . import plugins
 from . import values as V
 
 N = V.N
@@ -76,6 +77,7 @@ INSTRUMENT = [
     Param.choice("synth", names.WAVES, group="Instrument", label="Wave", valid_when=SYNTH),
     *[N(n, lo, hi, "Instrument", unit, imp, SYNTH, whole, default) for n, lo, hi, default, unit, imp, whole
       in SYNTH_FIELDS],
+    plugins.record(IS("instrument", "plugin")),
 ]
 # The track's CC-style expression settings (its dynamics / vibrato lanes are automation lanes); shown only
 # while the track has a vibrato lane (the kind's fact, kind.py).

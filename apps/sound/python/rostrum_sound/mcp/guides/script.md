@@ -43,6 +43,63 @@ vln.humanize(seed=3, timing=0.012, velocity=0.06)   # every note / hit on the tr
   another seed gives another draw. The `dynamics` / `vibrato` lanes are the same `automation.set` operation as
   volume / pan (lane `dynamics` / `vibrato`).
 
+## Editing recorded sounds: stretch, shift, layers, plug-ins
+
+```python
+d = track("door")
+d.clip(r"C:\...\slam.wav", at=3.0, stretch=1.5, shift=-3, fadeOut=0.2)   # 1.5× longer, 3 semitones down, same pitch / same length
+d.layer("door", [r"C:\...\thud.wav", {"media": r"C:\...\creak.wav", "volume": 0.4, "at": 3.1}], at=3.0)
+d.clip(r"C:\...\latch.wav", at=3.4, group="door")                          # the same thing, one clip at a time
+d.effect("plugin", plugin={"format": "clap", "path": r"C:\...\Tape.clap", "id": "org.x.tape", "name": "Tape",
+                           "params": {"drive": 0.4, "mix": [(0, 0), (bar(5), 1)]}})   # a list = that setting's lane
+synth = track("lead", instrument="plugin", plugin={"format": "vst3", "path": r"C:\...\Synth.vst3", "id": "…"})
+```
+
+- `pitch` is tape-style (pitch and speed together); `shift` changes pitch only, `stretch` speed only (a clip lasts
+  `length × stretch`). Use both for a re-pitched sound at its own length.
+- **Layers are a name, not a list.** Clips of one track with the same `group` are one sound. `clip.set` on one of
+  them moves the others with it (`at`, each keeping its own timing form: seconds, beats, a marker) and scales their
+  `volume` by the same factor; the layer stops at the start of the mix. `clip.set_one` changes only that clip, to
+  balance a layer inside its group. `clip.remove` and every other field stay per clip. One call = one undo step.
+- A plug-in is one `plugin` record: `{format: "clap"|"vst3", path, id, name?, params?, state?}`. `params` holds the
+  settings you changed, `{param id: number or [[time, value], …]}`; a list is that setting's automation lane
+  (`param:<id>`). `inspect_plugins` lists what is installed with each setting's id, range and default. `state` is
+  what the plug-in's own window saved (the Mix page's "Open window" writes it). We bundle no plug-ins.
+
+## The song's map: tempo changes, key, sections, MIDI
+
+```python
+tempo(96)                                   # the starting tempo
+tempo_change(bar(9), 132)                   # from bar 9 on (a beat: it stays on its beat), until the next change
+tempo_change(42.0, 100)                     # or at seconds: it stays at that moment
+key("D minor"); key("F major", at=bar(17))  # the key from a time on ("F# major", "Bb dorian" …): data, not heard
+section("intro", bar(1), bar(5)); section("drop", bar(9), bar(17))
+tracks = import_midi(r"C:\...\sketch.mid")  # its tracks, markers, sections, tempo map and keys; returns the tracks
+tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
+```
+
+- **One tempo map.** Every beat time (`beat(n)`, `bar(n)`, `beats(n)`) goes through the tempo map: the doc's `tempo`
+  to the first change, then each change's bpm (no ramps: a ramp is several changes). The screen's ruler, the ids,
+  the checks and the engine's render all read the same map. A tempo change can't sit on a marker.
+- **What follows a tempo change:** things written in beats stay on their beat (they move in seconds); things in
+  seconds stay at their moment (their beat moves). Markers follow the same rule: a marker at `bar(5)` stays on bar 5,
+  a marker at `12.0` stays at 12 s. Write in beats what belongs to the music, in seconds what belongs to the picture.
+- **Moving a section:** `edit_document` `{"op": "section.move", "target": ["section.drop"], "args": {"by": {"beats": 8}}}`
+  (or `"by": -2.5` seconds) moves the section and everything that starts inside it (notes, hits, clips, designed
+  sounds, voice lines, markers, tempo and key changes, other sections, automation points) in one undo step. Each
+  time keeps its form; a time on a marker that moves with it follows it. Effect envelopes inside effects don't move.
+  On the Timeline: drag the section's bar (Shift = off the grid).
+- **Keys** are for you and the screen (the readout shows the key at the playhead): `doc/keys.py` has `scale`,
+  `in_key`, `snap` (nearest note of the key). They change nothing in the sound.
+- **MIDI:** `edit_import_midi` `{path, song_map}` imports a .mid as one undo step (channel 10 becomes drum hits on
+  the synth kit; other channels a built-in instrument from the GM program family, to change after); `render_midi`
+  writes the document's notes, hits, tempo map, time signature, keys, markers and sections (as cue points) to
+  `renders/<item>/midi/<item>.mid`. What MIDI can't carry comes back as a warning. Clips, designed sounds and
+  voice lines are audio and are not written.
+- **A MIDI keyboard** (screen): arm a track, "Record keys" (shown only with a keyboard connected) records while the
+  mix plays; Stop puts the take on the armed track in beats, one undo step. The sound you hear while playing is a
+  monitor (an SFZ track plays its file, others a plain synth); the render plays the track's instrument.
+
 ## Notes
 
 - Times: seconds (`2.5`), `beat(n)` (from the start, 0-based), `bar(n)` (1-based), or a marker (`"#drop"`).

@@ -1,8 +1,9 @@
 """Sound document -> the engine's schedule (`rostrum-sound-schedule/1`, apps/sound/ENGINE_CONTRACT.md).
 
 Marker references ("#drop", "#drop+0.5") are resolved here to seconds (a missing marker is a loud error naming
-it); seconds and beats are passed as written, the engine owns the tempo map. Engine defaults are not written
-out: only what the document holds. Options:
+it); seconds and beats are passed as written, with the tempo map (doc tempo + tempo changes: doc/tempo.py) as the
+engine's tempo segments. Key changes and sections are not sent (data for agents and the screen). Engine defaults
+are not written out: only what the document holds. Options:
   solo=[ids]   these tracks (plus any whose `solo` is on) are heard; every other track gets mute: true
   mute=[ids]   these tracks get mute: true
   master=False the mix as it reaches the master bus: no master inserts, reverb, glue, fades or loudness target
@@ -15,11 +16,12 @@ from . import names, voice_lines
 from .doc import effects as FX
 from .doc import fields_design as FDS
 from .doc import playing as PL
-from .doc import times
+from .doc import plugins
+from .doc import tempo, times
 
 NOTE_KEYS = ("pitch", "at", "dur", "vel", "pan", *PL.NOTE_KEYS)
 HIT_KEYS = ("drum", "at", "vel", "pan", "tune", "decay")
-CLIP_KEYS = ("media", "in", "length", "at", "volume", "pitch", "pan", "panTo", "fadeIn", "fadeOut", "reverb")
+CLIP_KEYS = ("media", "in", "length", "at", "volume", "pitch", "shift", "stretch", "pan", "panTo", "fadeIn", "fadeOut", "reverb")
 TRACK_KEYS = ("volume", "pan", "reverb", "tone")
 DUCK_KEYS = ("under", "depth", "attack", "release", "lookahead", "hold", "voice")
 BUS_KEYS = ("volume", "pan", "mute")
@@ -49,8 +51,16 @@ class _Compiler:
             vals = {k: self.env(v, f"{w}.{k}") if k != "bands" else
                     [{bk: self.env(bv, f"{w}.bands.{bk}") for bk, bv in b.items()} for b in v]
                     for k, v in FX.active(fx).items()}
-            out.append({"type": fx["effect"], **vals})
+            out.append({"type": fx["effect"], **vals, **self.plugin(fx, w)})
         return out
+
+    def plugin(self, holder, where):
+        """A plug-in effect's fields, or `{"plugin": …}` for a plug-in instrument: the contract's plug-in object."""
+        spec = holder.get("plugin")
+        if not spec:
+            return {}
+        form = plugins.engine_form(spec, self.env, where)
+        return form if holder.get("effect") == "plugin" else {"plugin": form}
 
     def lanes(self, holder, where):
         """`automation` (volume, pan) and `expression` (dynamics, vibrato lanes + the vibrato's rate / depth)."""
@@ -64,7 +74,7 @@ class _Compiler:
         kind = track.get("instrument", "none")
         if kind in ("none", "voice") or not track.get(kind):   # a sampled kind whose file isn't picked yet plays nothing
             return {}
-        inst = {kind: track[kind]}
+        inst = self.plugin(track, f"tracks[{track['id']}]") if kind == "plugin" else {kind: track[kind]}
         if kind == "sfz":
             inst.update(legato=bool(track.get("legato")), swell=bool(track.get("swell")),
                         **_nonempty("articulations", track.get("articulations")))
@@ -138,7 +148,7 @@ def compile(doc, solo=None, mute=None, master=True) -> dict:
     heard = _ids(solo, tracks, "solo") | {t["id"] for t in tracks if t.get("solo")}
     silent = _ids(mute, tracks, "mute")
     c = _Compiler(root)
-    out = {"contract": names.CONTRACT, "sampleRate": root.get("sampleRate", 48000), "tempo": root.get("tempo", 120)}
+    out = {"contract": names.CONTRACT, "sampleRate": root.get("sampleRate", 48000), "tempo": tempo.contract(root)}
     if root.get("length") is not None:
         out["length"] = c.time(root["length"], "length")
     out["master"] = c.master(root["master"][0], master) if root.get("master") else {}

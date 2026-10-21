@@ -1,7 +1,8 @@
 """Scripted steps for screenshots and checks. Each goes through the same bridge call a click or drag makes.
 
     page instruments|timeline|mix | select <id> | time <s> | set <param> <json value>
-    drag-note <id> <dt s> <d semitones> | drag-clip <id> <dt s> | drag-marker <id> <dt s>   (one gesture each)
+    drag-note <id> <dt s> <d semitones> | drag-clip <id> <dt s> | drag-marker <id> <dt s> |
+    drag-section <id> <dt s> (it and everything inside: section.move)   (one gesture each)
     add-note <t s> <midi key> | delete | mute <track> | solo <track>
     arm <track> | record (start / stop, the real microphone) | record-fake <source.wav> (TEST SEAM: a WAV stands in
     for the microphone; the take stays running for the shot)
@@ -64,7 +65,7 @@ def do_step(bridge, win, step, recorder=None):
         bridge.setValue(rest[0], value(" ".join(rest[1:])))
     elif word == "drag-note":
         drag(bridge, rest[0], float(rest[1]), int(rest[2]) if len(rest) > 2 else 0)
-    elif word in ("drag-clip", "drag-marker"):
+    elif word in ("drag-clip", "drag-marker", "drag-section"):
         drag(bridge, rest[0], float(rest[1]))
     elif word == "add-note":
         bridge.addNote(float(rest[0]), int(rest[1]))

@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// Bottom, full width: the arrangement. Markers and a bars/beats ruler on top; one row per track: its header
+// Bottom, full width: the arrangement. Markers, the song's sections (when it has any) and a bars/beats ruler on top; one row per track: its header
 // (name, mute, solo) and its notes, hits and clips; the playhead and marker lines across every row.
 // Click a block: select it (the inspector shows it); drag: move it in time (one gesture = one undo step;
 // a quarter beat grid, Shift = free). Click empty lane: select the track and put the playhead there.
@@ -38,6 +38,7 @@ Rectangle {
     Text {   // the song's grid, where the headers are
         x: Theme.pad; y: bars.y + (bars.height - height) / 2
         text: Math.round(backend.song.tempo) + " bpm  ·  " + backend.song.beatsPerBar + "/4"
+              + (backend.song.key ? "  ·  " + backend.song.key : "")
         color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.features: { "tnum": 1 }
     }
     Text {   // while zoomed in: how far, and the way back
@@ -52,9 +53,14 @@ Rectangle {
         id: band
         x: bars.x; width: bars.width; y: Theme.gap; height: 18; ruler: bars
     }
+    SectionBand {
+        id: sectionBand
+        x: bars.x; width: bars.width; y: band.y + band.height + 2; height: visible ? 18 : 0; ruler: bars
+    }
     BarRuler {
         id: bars
-        x: tl.headerWidth + Theme.gap * 2; width: tl.width - x - Theme.pad; y: band.y + band.height + 2; height: 22
+        x: tl.headerWidth + Theme.gap * 2; width: tl.width - x - Theme.pad
+        y: sectionBand.y + sectionBand.height + (sectionBand.visible ? 2 : 0); height: 22
     }
     Flickable {
         id: list

@@ -1,6 +1,6 @@
-"""What a Sound script builds with: a song, its tracks (notes, chords, hits, clips, effects, automation), markers
-and the master. Every value is checked by the same Params the operations use, so a script can't write what an
-operation would refuse; an unknown name fails at once. Ids are stable (same script, same ids): written ids win,
+"""What a Sound script builds with: a song, its tracks (notes, chords, hits, clips, effects, automation), markers,
+the music map (tempo and key changes, sections: builder_music.py) and the master. Every value is checked by the
+same Params the operations use, so a script can't write what an operation would refuse; an unknown name fails at once. Ids are stable (same script, same ids): written ids win,
 the rest come from content (`doc/ids.py`) when the tree is made, after tempo and markers are known.
 """
 from __future__ import annotations
@@ -9,6 +9,7 @@ from rostrum_core import RostrumError, codes
 
 from . import expression as EX
 from . import names
+from .builder_music import MusicMap
 from .builder_parts import Clip, Inserts, checked
 from .doc import blank
 from .doc import fields as FD
@@ -66,6 +67,13 @@ class Track(Inserts):
                          FD.DEFAULTS["clip"]), id)
         self.clips.append(c)
         return c
+
+    def layer(self, group, takes, at, **fields) -> list[Clip]:
+        """Several takes layered as one sound: layer("door", [r"C:\\...\\thud.wav", {"media": r"C:\\...\\creak.wav", "volume": 0.4}], at=3.0).
+        Each take is a file, or a dict with its own clip fields; `fields` are shared. They get group="door": moving or
+        re-levelling one clip in the document moves the whole layer."""
+        return [self.clip(**{"at": at, **fields, **(t if isinstance(t, dict) else {"media": t}), "group": group})
+                for t in takes]
 
     def sound(self, design, at, id=None, **fields):
         """A designed sound: sound("whoosh", at=1.0, dur=0.8, speed=[[0, 0], [0.4, 1], [1, 0]], panPath=[[0, -0.8], [1, 0.2]]),
@@ -142,7 +150,7 @@ class Master(Inserts):
         return self
 
 
-class Song:
+class Song(MusicMap):
     def __init__(self):
         self.root = {k: v for k, v in blank().items() if k not in ("tracks", "markers", "master")}
         self.tracks: list[Track] = []
@@ -165,6 +173,7 @@ class Song:
     def tree(self) -> dict:
         root = {**self.root, "markers": self.markers}
         taken = {m["id"] for m in self.markers} | {t.id for t in self.tracks} | {MASTER_ID}
+        taken |= {i["id"] for k in ("tempos", "keys", "sections") for i in self.root.get(k, [])}
         holders = [*self.tracks, self.master, *(c for t in self.tracks for c in t.clips)]
         taken |= {e[0] for h in holders for e in getattr(h, "notes", []) + getattr(h, "hits", []) + h.effects if e[0]}
         taken |= {c.id for t in self.tracks for c in t.clips if c.id}

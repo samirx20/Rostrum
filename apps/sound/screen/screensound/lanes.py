@@ -91,7 +91,7 @@ class PointEdit:
             self.index = i
             return {}
         at = timing.snap(t, self.root, free)
-        raw = {"beat": round(at / timing.spb(self.root), 4)} if self.beats else round(at, 4)
+        raw = {"beat": round(timing.beat(at, self.root), 4)} if self.beats else round(at, 4)
         i = sum(1 for p in self.pts if p[2] <= at)
         self.pts.insert(i, [raw, self._v(v), at])
         self.index = i
