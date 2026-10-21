@@ -27,6 +27,8 @@ Canvas {
             g.beginPath(); g.moveTo(3, 10); g.lineTo(6, 6.5); g.lineTo(8, 8.5); g.lineTo(9.5, 7); g.lineTo(11, 10); g.stroke()
         } else if (kind === "group") {
             rr(1.5, 4.5, 8, 8, 1.5); g.stroke(); rr(4.5, 1.5, 8, 8, 1.5); g.stroke()
+        } else if (kind === "drawing") {   // a pen stroke
+            g.beginPath(); g.moveTo(2, 10.5); g.bezierCurveTo(4, 2, 7, 2, 7, 7); g.bezierCurveTo(7, 12, 10, 11, 12, 3.5); g.stroke()
         } else if (kind === "mask") {
             rr(1.5, 1.5, 11, 11, 2); g.stroke(); g.beginPath(); g.ellipse(4.5, 4.5, 5, 5); g.fill()
         } else {   // an effect: a small spark

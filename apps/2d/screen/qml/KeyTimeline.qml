@@ -4,12 +4,15 @@ import RostrumKit
 // Animate page, bottom, full width: one row per layer (a summary of all its keys), opened by its arrow into one
 // row per animated field. Diamonds sit at key times. Click a diamond: the key is selected (the inspector shows
 // its time, value and ease). Drag it: key.set t, one gesture = one undo step. The ruler scrubs the playhead.
+// A drawing layer's row also shows its frames (a mark per drawing, a bar for its hold); its buttons are in the header.
 Panel {
     id: panel
     title: "Timeline"
     property int labelWidth: 236
     readonly property real duration: backend.frameInfo.duration
     headerRight: [
+        FrameTools { anchors.verticalCenter: parent.verticalCenter },
+        Item { width: Theme.gap; height: 1 },
         TimeReadout { anchors.verticalCenter: parent.verticalCenter },
         Item { width: Theme.gap; height: 1 },
         PlayButton { playing: backend.playing; onClicked: backend.togglePlay(); implicitHeight: 24; implicitWidth: 24 }
@@ -63,6 +66,7 @@ Panel {
                 color: row.isField ? Qt.darker(Theme.panel, 1.15) : Theme.sunken
                 MouseArea { anchors.fill: parent; onPressed: (m) => backend.setTime(ruler.tOf(m.x - 8))
                             onPositionChanged: (m) => backend.setTime(ruler.tOf(m.x - 8)) }
+                FrameMarks { anchors.fill: parent; frames: row.modelData.frames; timeRuler: ruler }   // a drawing's frames
                 Repeater {
                     model: row.modelData.keys
                     delegate: Item {

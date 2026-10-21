@@ -21,7 +21,7 @@ class Unsupported(ValueError):
     pass
 
 
-@lru_cache(maxsize=32)
+@lru_cache(maxsize=128)
 def _data_url(path: str) -> str:
     p = Path(path)
     if not p.is_file():
@@ -93,6 +93,11 @@ def _content(node: dict, look: dict, caps) -> tuple[str, str]:
         style = f"width:{p['w']}px;height:{p['h']}px;border-radius:{p['radius']}px;overflow:hidden;"
         return style, f'<img src="{_data_url(p["src"])}" style="width:100%;height:100%;object-fit:{fit};">' \
             if p["src"] else ""
+    if t == "drawing":       # the painting kit's picture of the drawing shown at this frame (scene.frame_at)
+        if grad:
+            raise Unsupported(f"{node['id']}: a gradient on a drawing is not drawn by the temporary evaluator yet")
+        style = f"width:{p['w']}px;height:{p['h']}px;"
+        return style, f'<img src="{_data_url(p["src"])}" style="width:100%;height:100%;">' if p["src"] else ""
     if t == "group":
         style = f"width:{p['w']}px;height:{p['h']}px;" + ("overflow:hidden;" if p["clip"] else "")
         if grad:

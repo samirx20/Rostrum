@@ -104,6 +104,17 @@ FIELDS: dict[str, list[Param]] = {
         N("h", "Height", "Group", 0, 20000, 1, "px", default=1080.0),
         T("clip", "Clip to box", "Group", False, S, help="Hide children outside the group's box"),
     ] + TRANSFORM,
+    # A drawing: painted strokes (the shared painting kit), one drawing per frame or held for several. Its canvas
+    # is w × h px; untransformed it covers that box with the canvas's px = the composition's px.
+    "drawing": [
+        N("w", "Canvas width", "Drawing", 16, 8192, 1, "px", S, integer=True, default=1920),
+        N("h", "Canvas height", "Drawing", 16, 8192, 1, "px", S, integer=True, default=1080),
+    ] + TRANSFORM,
+    # One drawing of a drawing layer: shown from frame `at` until the next drawing (held), none before the first.
+    # It is a painting-kit canvas: it holds paint layers (`paints`) and paint masks.
+    "frame": [
+        N("at", "Frame", "Drawing", 0, 10**7, 1, "f", integer=True, help="The frame number this drawing appears at"),
+    ],
     # Effects: a layer's look, in order (a gradient fills the shape, or the letters of a text).
     "blur": [N("radius", "Blur", "Blur", 0, 1000, 0.5, "px", default=12.0)],
     "glow": [
@@ -155,11 +166,12 @@ FIELDS: dict[str, list[Param]] = {
     ],
 }
 
-LAYERS = ("shape", "text", "image", "group")
+LAYERS = ("shape", "text", "image", "group", "drawing")
 EFFECTS = ("blur", "glow", "gradient", "shadow")
 ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask",)
-STILL = {"comp": {"width", "height", "fps", "duration", "background"}, "*": {"start", "end", "boxWidth"}}
-LABELS = {"comp": "Composition", "shape": "Shape", "text": "Text", "image": "Image", "group": "Group",
+STILL = {"comp": {"width", "height", "fps", "duration", "background"}, "drawing": {"w", "h"},
+         "*": {"start", "end", "boxWidth"}}
+LABELS = {"comp": "Composition", "shape": "Shape", "text": "Text", "image": "Image", "group": "Group", "drawing": "Drawing", "frame": "Drawing frame",
           "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "shadow": "Shadow", "mask": "Mask", "key": "Key"}
 
 

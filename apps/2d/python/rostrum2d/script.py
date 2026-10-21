@@ -8,6 +8,9 @@ rostrum_core merges that tree in (`run_script`), so a re-run never wipes what so
     title.mask("title_wipe", w=0).key("w", {0.2: 0, 1.0: 1400})
     with group("lockup", x=960, y=700):                               # layers made inside go into the group
         shape("dot", shape="ellipse", w=24, h=24)
+    flame = drawing("flame", w=800, h=1000)                           # frame-by-frame: one drawing per frame or held
+    ink = flame.frame(0).paint("ink")                                 # drawing at frame 0, its paint layer
+    ink.stroke([(400, 900), (380, 600, 0.6), (420, 300, 0.2)], color="#ffb040", size=40, brush="bristle")
 
 Ids: the first argument; left out, they are counted per type (text_1, text_2 …), skipping every quoted word in
 the script, so adding one item never renames another. Unknown fields and bad values fail loudly.
@@ -61,6 +64,33 @@ class Item:
     def mask(self, id: str | None = None, **values) -> "Item":
         return self._b.add("mask", id, values, self.node["masks"])
 
+    # drawing layers (painting kit): drawing.frame(at) -> frame.paint() -> paint.stroke(points, **brush)
+    def frame(self, at: int, id: str | None = None) -> "Item":
+        self._need("drawing", "frame")
+        node = {"id": self._b.new_id("frame", id), "type": "frame", "at": F.param("frame", "at").check(at, "frame"),
+                "paints": [], "paintmasks": []}
+        frames = self.node["frames"]
+        if any(f["at"] == node["at"] for f in frames):
+            raise ValueError(f"{self.id} already has a drawing at frame {node['at']}")
+        frames.insert(sum(1 for f in frames if f["at"] < node["at"]), node)
+        return Item(self._b, node)
+
+    def paint(self, id: str | None = None, **values) -> "Item":
+        self._need("frame", "paint")
+        return self._b.add_kit("paint", id, values, self.node["paints"])
+
+    def paintmask(self, points, id: str | None = None, **values) -> "Item":
+        self._need("frame", "paintmask")
+        return self._b.add_kit("paintmask", id, {"points": points, **values}, self.node["paintmasks"])
+
+    def stroke(self, points, id: str | None = None, **brush) -> "Item":
+        self._need("paint", "stroke")
+        return self._b.add_kit("stroke", id, {"points": points, **brush}, self.node["strokes"])
+
+    def _need(self, type_, what):
+        if self.node["type"] != type_:
+            raise ValueError(f"{self.id} is a {self.node['type']}; .{what}() is for a {type_}")
+
     def __enter__(self):
         if self.node["type"] != "group":
             raise ValueError(f"{self.id} is a {self.node['type']}; only a group holds layers")
@@ -103,6 +133,12 @@ class Build:
         into.append(node)
         return Item(self, node)
 
+    def add_kit(self, type_, id_, values, into: list) -> Item:
+        from rostrum_paint.ops import build
+        node = build(type_, self.new_id(type_, id_), values, f"{type_} {id_ or ''}".strip())
+        into.append(node)
+        return Item(self, node)
+
     def comp(self, id=None, **values) -> Item:
         item = self.add("comp", id, values, self.root["comps"])
         self.holders = [item.node]
@@ -138,7 +174,8 @@ def run_source(source: str, name: str) -> dict:
         raise RostrumError(codes.BAD_ARGUMENT, "", f'script "{name}"', f"failed{line}: {type(e).__name__}: {e}",
                            ["comp(id, **fields)", "shape / text / image / group(id, **fields)",
                             "item.key(field, {time: value}, ease=)", "item.effect(type, id, **fields)",
-                            "item.mask(id, **fields)", "item.set(**fields)"]) from e
+                            "item.mask(id, **fields)", "item.set(**fields)", "drawing.frame(at)", "frame.paint(id)",
+                            "paint.stroke(points, **brush)", "frame.paintmask(points)"]) from e
     return b.root
 
 

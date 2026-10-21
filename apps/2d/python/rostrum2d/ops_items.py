@@ -39,13 +39,16 @@ def comp_add(ctx, targets, args):
     ctx.insert("root", "comps", item)
 
 
-@R.operation("layer.add", "Add a shape, text, image or group to a composition or group (on top unless index is given).",
+@R.operation("layer.add", "Add a shape, text, image, group or drawing to a composition or group (on top unless index is given).",
              target=LAYER_HOLDERS, label="Add layer",
              params=[Param.choice("type", list(F.LAYERS), label="Type", required=True), ID, NAME, INDEX])
 def layer_add(ctx, targets, args):
+    from .ops_draw import starter_frame
     for t in targets:
-        ctx.insert(t, "layers", new_item(ctx, args["type"], args if len(targets) == 1 else {**args, "id": None}),
-                   args.get("index"))
+        item = new_item(ctx, args["type"], args if len(targets) == 1 else {**args, "id": None})
+        ctx.insert(t, "layers", item, args.get("index"))
+        if item["type"] == "drawing":            # a new drawing starts with one drawing at frame 0, ready to paint
+            ctx.insert(item["id"], "frames", starter_frame(ctx))
 
 
 @R.operation("layer.remove", "Delete layers (with their effects, masks and keys).", target=F.LAYERS, label="Delete",

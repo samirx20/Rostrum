@@ -1,5 +1,5 @@
-"""Rostrum2D's document bridge: the kit's DocBridge plus time, pages, the layer tree, the canvas frame and the
-two drags (move a layer on the canvas, move a key on the timeline). Every change is an operation; each drag is
+"""Rostrum2D's document bridge: the kit's DocBridge plus time, pages (design, draw, animate), the layer tree, the
+canvas frame and the two drags (move a layer on the canvas, move a key on the timeline). Every change is an operation; each drag is
 one doc.gesture = one undo step. How an edit becomes a call lives in route.py only.
 """
 from __future__ import annotations
@@ -11,6 +11,7 @@ from rostrum_gui.edits import Drag
 
 from . import bounds, outline, route
 from .frames import FrameRenderer
+from .painter import Painter
 
 
 class Bridge2D(DocBridge):
@@ -31,6 +32,7 @@ class Bridge2D(DocBridge):
         self.frames = FrameRenderer(self)
         self.frames.ready.connect(self._on_frame)
         self.frames.failed.connect(self._fail)
+        self.painter = Painter(self)
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self.selectionChanged.connect(self.outlineChanged)
@@ -190,6 +192,13 @@ class Bridge2D(DocBridge):
         def go():
             self._drag, self._grab = Drag(self.doc, self.who, label), grab
         return self._guard(go)
+
+    # ---- for the Painter (screen2d/painter.py) ----------------------------------------------------------------
+    def guard(self, fn) -> bool:
+        return self._guard(fn)
+
+    def done(self, change, nothing):
+        self._done(change, nothing)
 
     # ---- inside -----------------------------------------------------------------------------------------------
     def _tick(self):

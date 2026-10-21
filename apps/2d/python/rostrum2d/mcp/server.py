@@ -15,15 +15,18 @@ from rostrum_core.mcp import App, Guides, run_stdio
 from rostrum_core.storage import paths
 
 from rostrum2d import KIND, run_source
-from . import at, look, motion, video
+from . import at, draw, look, motion, video
 
 SKILLS = Path(__file__).resolve().parents[3] / "skills"
 INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text / image / group layers animated by keys. "
-                "Read inspect_guide 'start-here', build with run_script, then check your work with look_frame, look_sheet and look_motion.")
+                "Read inspect_guide 'start-here', build with run_script, then check your work with look_frame, look_sheet and look_motion. "
+                "Draw on drawing layers with stroke.add calls (one call list = one undo step) and check with look_drawing, "
+                "inspect_drawing_at and inspect_stroke_landed; read inspect_guide 'drawing'.")
 
 
 def app_tools():
-    return look.tools.merged_with(motion.tools).merged_with(at.tools).merged_with(video.tools)
+    return (look.tools.merged_with(motion.tools).merged_with(at.tools).merged_with(video.tools)
+            .merged_with(draw.tools))
 
 
 def open_documents(project: str, items: list[str]) -> dict:
