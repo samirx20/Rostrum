@@ -39,6 +39,7 @@ class Viewport(QObject):
         self.provider = self._r.provider
         self._serial, self._ms, self._status = 0, 0.0, ""
         self._exposure, self._studio, self._lights = 0.0, 1.0, True
+        self._dome = False                           # the engine said the scene's own dome lit the last picture
         self._size, self._scale = None, 1.0          # request size (picture pixels); picture px per screen px
         self._scene, self._shot, self._started = None, None, False
         self._r.ready.connect(self._on_ready)
@@ -58,6 +59,8 @@ class Viewport(QObject):
     exposure = Property(float, lambda s: s._exposure, notify=settingsChanged)
     studio = Property(float, lambda s: s._studio, notify=settingsChanged)
     sceneLights = Property(bool, lambda s: s._lights, notify=settingsChanged)
+    # the studio light is only used when the scene's own dome isn't (the engine says which, per picture)
+    studioInUse = Property(bool, lambda s: not s._dome, notify=settingsChanged)
 
     # --- the scene and the shot (compiled once per document change, not per mouse move)
     def _on_doc(self, *_):
@@ -173,8 +176,11 @@ class Viewport(QObject):
         self._r.close()
 
     # --- answers from the worker
-    def _on_ready(self, serial, ms):
+    def _on_ready(self, serial, ms, dome):
         self._serial, self._ms = serial, ms
+        if dome != self._dome:
+            self._dome = dome
+            self.settingsChanged.emit()
         self._set_status("")                         # a picture came: the last failure or restart notice is over
         self.serialChanged.emit()
 

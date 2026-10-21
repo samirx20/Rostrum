@@ -12,6 +12,7 @@ struct Picture {
   int width = 0, height = 0;
   std::vector<float> rgba;  // scene-linear, straight from Hydra, top row first
   std::vector<unsigned char> mask;  // viewport only: 1 where a selected item is (empty = nothing selected)
+  bool sceneDome = false;  // viewport only: the scene's own dome lit it (the studio light was not used)
 };
 
 class ColorOut {

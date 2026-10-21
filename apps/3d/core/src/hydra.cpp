@@ -12,6 +12,7 @@
 #include <chrono>
 #include <thread>
 
+#include "dome_cycles.h"
 #include "error.h"
 #include "sky.h"
 #include "studio.h"
@@ -51,9 +52,18 @@ class Hydra::Engine : public UsdImagingGLEngine {
   void show_sky(bool visible) {
     SetRendererSetting(HdRenderSettingsTokens->domeLightCameraVisibility, VtValue(visible));
   }
+  // Storm and the stylized renderer read a dome only as a picture handed over as a viewport light (sky.h), for the
+  // quick view and a final render alike; without a scene dome, `fallback` lights (the studio, or none for a render).
+  // Returns whether a scene dome is in use.
+  bool light_raster(const UsdStageRefPtr& stage, int frame, bool scene_lights, GlfSimpleLightVector fallback) {
+    const auto sky = scene_lights ? scene_sky(stage, frame) : std::nullopt;
+    SetLightingState(sky ? GlfSimpleLightVector{*sky} : std::move(fallback), GlfSimpleMaterial(), GfVec4f(0, 0, 0, 1));
+    show_sky(bool(sky));
+    return bool(sky);
+  }
 };
 
-Hydra::Hydra(UsdStageRefPtr stage) : stage_(std::move(stage)) {}
+Hydra::Hydra(UsdStageRefPtr stage) : stage_(std::move(stage)) { register_cycles_dome_fix(); }
 
 Hydra::~Hydra() {
   engines_.clear();  // release Hydra while the GL context is still there
@@ -116,6 +126,7 @@ Picture Hydra::draw(const std::string& renderer, const SdfPath& camera, int fram
     e.SetRendererSetting(TfToken("cycles:samples"), VtValue(s.samples));
     e.SetRendererSetting(TfToken("cycles:integrator:use_denoise"), VtValue(s.denoise));
   }
+  if (renderer != "cycles") e.light_raster(stage_, frame, true, {});  // a render never sees the studio
   e.SetCameraPath(camera);
   e.SetRenderBufferSize(GfVec2i(w, h));
   e.SetFraming(CameraUtilFraming(GfRect2i(GfVec2i(0, 0), w, h)));
@@ -154,10 +165,7 @@ Picture Hydra::view(const std::string& renderer, const GfFrustum& frustum, int f
   e.SetRenderBufferSize(GfVec2i(w, h));
   e.SetFraming(CameraUtilFraming(GfRect2i(GfVec2i(0, 0), w, h)));
   // the scene's own dome is its sky and light; without one the studio lights the scene and is never seen
-  const auto sky = look.sceneLights ? scene_sky(stage_, frame) : std::nullopt;
-  e.SetLightingState(sky ? GlfSimpleLightVector{*sky} : studio_lights(look.studio), GlfSimpleMaterial(),
-                     GfVec4f(0, 0, 0, 1));
-  e.show_sky(bool(sky));
+  const bool scene_dome = e.light_raster(stage_, frame, look.sceneLights, studio_lights(look.studio));
   UsdImagingGLRenderParams params;
   params.frame = UsdTimeCode(frame);
   params.colorCorrectionMode = TfToken("disabled");  // scene-linear out; OpenColorIO makes the picture
@@ -177,6 +185,7 @@ Picture Hydra::view(const std::string& renderer, const GfFrustum& frustum, int f
     if (!first) std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
   Picture pic{w, h, fb.read_rgba()};
+  pic.sceneDome = scene_dome;
   // The selection's mask: the selected items alone, unlit, in the same frustum (Storm tints a selection but
   // draws no outline; the outline is drawn from this mask after the colour transform, in requests.cpp).
   if (!look.selected.empty()) {

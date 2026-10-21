@@ -201,6 +201,7 @@ JsObject Core::view(const JsObject& o) {
   color_.to_rgba8(pic, view, a.num("exposure", 0), bg, slot);
   draw_outline(pic, slot);
   return JsObject{{"ok", JsValue(true)}, {"width", JsValue(w)}, {"height", JsValue(h)}, {"shm", JsValue(info)},
+                  {"sceneDome", JsValue(pic.sceneDome)},
                   {"timing", JsValue(JsObject{{"drawMs", JsValue(r1(draw_ms))}, {"totalMs", JsValue(r1(ms_since(t0)))}})}};
 }
 
