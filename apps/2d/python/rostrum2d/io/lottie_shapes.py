@@ -107,7 +107,8 @@ def shapes_of(node: dict, ctx: Ctx) -> list[dict]:
         if pr["stroke"]:
             out.append(group("outline", [*_geometry(node, ctx, True), _stroke(node, ctx, None, False)]))
         return [*out, group("fill", [*_geometry(node, ctx, False), _fill(node, ctx, grad)])]
-    subs = [{"ty": "sh", "nm": "path", "ks": _STILL(shape_value(d))} for d in _subpaths(pr["d"])]
+    held = frozen(node, ["d"], ctx, "the Lottie export doesn't morph paths yet")["d"]
+    subs = [{"ty": "sh", "nm": "path", "ks": _STILL(shape_value(d))} for d in _subpaths(held)]
     if pr["stroke"]:
         trim = _trim(node, ctx, len(subs) > 1)
         sgrad = None if pr["filled"] else gradient(grad_fx, node, ctx, stroke=True)

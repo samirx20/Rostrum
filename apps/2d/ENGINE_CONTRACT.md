@@ -57,7 +57,8 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
   `L x y`, `C x1 y1 x2 y2 x y`, `Z` (numbers separated by spaces or commas; a command's numbers may repeat; extra pairs
   after `M` are lines; after `Z` a new `M` is needed) — in the layer's own px from its box's top-left. `w × h` is its box
   (at least 1 px; the anchor and gradients use it; the curve may reach outside it and is still drawn). A `d` the engine
-  can't read is refused, naming `id.d`. `d`, `w`, `h`, `fillRule`, `cap`, `join` are still.
+  can't read is refused, naming `id.d`. `d` may be keyed (keys carry `d`, path data; § 3 Shapes); `w`, `h`, `fillRule`,
+  `cap`, `join` are still.
 - **`video`** (added S8, same version): a layer with `src`, `w`, `h`, `fit`, `radius`, `offset` (s into the clip),
   `speed`, `loop` and the transform. Like a drawing it carries `frames: [{"at": i, "src": png}, …]`, `i` = 0..n−1 over
   the clip decoded at the comp's fps and at `w × h` (the fit applied at decode). At frame `n = floor(t·fps)` the picture
@@ -75,6 +76,10 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - A field with an `anim` list is **animated**: its keys alone decide its value; the value in `props` is ignored. Otherwise it is still.
 - Keys are sorted by `t`. Before the first key and after the last, the value holds. Between key *a* and key *b*, progress `p = ease_a((t − a.t) / (b.t − a.t))` and the value is `a + (b − a) · p`. `p` may leave 0..1 (spring, custom curves overshoot).
 - Numbers: `v`. Colours: `c`, mixed in **linear light** (sRGB decoded, mixed, encoded).
+- Shapes (a path's `d`): `d`, path data, blended point by point (`scene/morph.rs`): both become cubic segments; subpaths
+  pair in order and must be as many; the one with fewer segments has its longest segment halved until the counts
+  match; a closed pair is turned so the start points are nearest. A pair that can't be matched is refused at load,
+  naming `id.d` and the two key times. `p` outside 0..1 carries the blend on.
 - **Easing** (`ease` on the key that starts the stretch): `linear`; `hold` (stays at *a* until *b*); cubic-beziers `smooth (.25,.1,.25,1)`, `snappy (.16,1,.3,1)`, `natural (.4,0,.2,1)`, `heavy (.25,1,.5,1)`, `easeIn (.42,0,1,1)`, `easeOut (0,0,.58,1)`, `easeInOut (.65,0,.35,1)`; `custom` with `x1 y1 x2 y2`; `spring` with `stiffness`, `damping` (mass 1, the stretch read as one second, released at 0, settling on 1); `bounce` (the standard four-arc bounce).
 - A layer is drawn only while `start ≤ t < end`.
 
@@ -118,6 +123,16 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
   across at an angle is a soft wipe). Several masks intersect. A plain one is a `clip-path`; a feathered, inverted or
   turned one is an SVG alpha `<mask>` built from gradient pieces (solid core, linear edge bands, radial corners,
   smoothstep ramps; a hard turned or inverted edge gets 1 px), because the renderer draws no filters inside a mask.
+- **Track matte** (KNOWN OPEN, H14: refused at draw time until the renderer applies it): `matte` = the id of a layer beside it (same group or comp; "" = none), `matteMode` `alpha` |
+  `alphaInverted` | `luma` | `lumaInverted`. The layer (after its own masks and effects, with its blend) shows only where
+  the matte layer is drawn (`alpha`: its coverage; `luma`: luminance × coverage), or only where it isn't (inverted), at
+  the same frame. The matte layer is drawn only as the matte, never on its own, with its own keys, transform and opacity;
+  outside its own times it is empty (the layer hidden; inverted: whole). Refused when the scene loads or is edited: a
+  matte that is no layer beside it, the layer itself, the camera, or a layer that has a matte of its own. Written
+  (scene/matte.rs) as two nested SVG masks around the layer, the matte layer as SVG in the parent's space: shape, path,
+  text (one style, measured by its font, no wrapping, not on a path or letter by letter), image / video / drawing (no
+  corner radius; the picture read as it is on disk), group of these. A matte layer with effects, masks, tilt or a
+  clipped group is refused.
 - **Effects, in list order:** `gradient` fills the layer instead of its colour (a shape's fill, **a text's letters**, a group's background): `linear` at `angle` (CSS convention: 180 = top to bottom), `radial` (closest side, at `cx`, `cy`) or `conic` (from `angle`, 0 = up, clockwise, at `cx`, `cy`; `cx`, `cy` fractions of the box); `color1` → (`color3` at `mid` when `middle`) → `color2`. `blur` (`radius` px). `glow`: a blurred copy (`radius`) added behind, `strength` 0..4, the layer's own colours or `color`. `shadow`: offset `dx`, `dy`, softness `radius`, `color`, `strength`. `backdrop` (frosted glass): blurs what is behind the layer inside its box and corner
   radius (`radius` blur σ px, `saturate`, `brightness`), drawn before the content; the layer's fill shows over it at
   `fillAmount`; the layer's opacity applies to the glass and the content. Refused with a non-normal blend or with a

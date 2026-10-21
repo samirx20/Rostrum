@@ -25,6 +25,8 @@ const TRANSFORM: &[Field] = &[
     ("tiltX", Number), ("tiltY", Number), ("start", Number), ("end", Number), ("blend", Choice(BLENDS)),
     // The camera (crate::camera; CAMERA.md): how far behind the camera's plane a top-level layer sits, or locked to the screen.
     ("depth", Number), ("screenLock", Toggle),
+    // A track matte (super::matte): a sibling layer's id ("" = none) and how its drawing is read.
+    ("matte", Text), ("matteMode", Choice(super::matte::MODES)),
 ];
 
 const COMP: &[Field] = &[("width", Number), ("height", Number), ("fps", Number), ("duration", Number), ("background", Color)];
@@ -110,10 +112,10 @@ pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
 /// Every type the engine reads (for error messages and the fields.py check).
 pub const TYPES: &[&str] = &["comp", "shape", "text", "image", "video", "group", "drawing", "path", "blur", "glow", "gradient", "backdrop", "shadow", "mask", "rig", "bone", "ik", "bind", "camera", "trail", "smear"];
 
-/// Fields keys may drive: numbers and colours, except those that describe the item rather than a moment
+/// Fields keys may drive: numbers, colours and a path's shape `d`, except those that describe the item rather than a moment
 /// (fields.py `STILL`).
 pub fn animatable(kind: &str, field: &Field) -> bool {
-    matches!(field.1, Number | Color) && kind != "comp" && !matches!(field.0, "start" | "end" | "boxWidth")
+    (matches!(field.1, Number | Color) || (kind == "path" && field.0 == "d")) && kind != "comp" && !matches!(field.0, "start" | "end" | "boxWidth")
         && !(matches!(kind, "drawing" | "path") && matches!(field.0, "w" | "h"))
         && !(kind == "text" && matches!(field.0, "letterDelay" | "letterSeed"))
         && !(kind == "video" && matches!(field.0, "w" | "h" | "offset" | "speed"))

@@ -24,7 +24,10 @@ HANDLES = [N("inX", "In handle X", importance="secondary"), N("inY", "In handle 
 
 
 def _edit(ctx, t, fn):
-    """Run fn(subs) on the path's points and write its d back."""
+    """Run fn(subs) on the path's points and write its d back. A morphing path (keys on d) is refused: its own d is
+    ignored, so a point edit there would silently show nothing."""
+    if any(k["prop"] == "d" for k in ctx.item(t).get("keys", [])):
+        ctx.fail(codes.BAD_ARGUMENT, f'target "{t}"', "has shape keys on d (it morphs); change a shape with key.set on its key, or remove the keys first")
     subs = PD.to_points(ctx.item(t)["d"])
     fn(subs)
     ctx.set(t, "d", PD.from_points(subs))

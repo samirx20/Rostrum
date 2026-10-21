@@ -8,7 +8,7 @@ from . import drawing, fields as F, video
 from .evaluate import animated, keys_of
 
 FORMAT, VERSION = "rostrum-2d-scene", 1
-KEY_FIELDS = ("t", "v", "c", "ease", "x1", "y1", "x2", "y2", "stiffness", "damping")
+KEY_FIELDS = ("t", "v", "c", "d", "ease", "x1", "y1", "x2", "y2", "stiffness", "damping")
 
 
 def _anim(item: dict) -> dict:

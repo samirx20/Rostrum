@@ -167,6 +167,21 @@
     "screenLock",
     "toggle",
     null
+   ],
+   [
+    "matte",
+    "text",
+    null
+   ],
+   [
+    "matteMode",
+    "choice",
+    [
+     "alpha",
+     "alphaInverted",
+     "luma",
+     "lumaInverted"
+    ]
    ]
   ],
   "text": [
@@ -421,6 +436,21 @@
     "screenLock",
     "toggle",
     null
+   ],
+   [
+    "matte",
+    "text",
+    null
+   ],
+   [
+    "matteMode",
+    "choice",
+    [
+     "alpha",
+     "alphaInverted",
+     "luma",
+     "lumaInverted"
+    ]
    ]
   ],
   "image": [
@@ -539,6 +569,21 @@
     "screenLock",
     "toggle",
     null
+   ],
+   [
+    "matte",
+    "text",
+    null
+   ],
+   [
+    "matteMode",
+    "choice",
+    [
+     "alpha",
+     "alphaInverted",
+     "luma",
+     "lumaInverted"
+    ]
    ]
   ],
   "video": [
@@ -672,6 +717,21 @@
     "screenLock",
     "toggle",
     null
+   ],
+   [
+    "matte",
+    "text",
+    null
+   ],
+   [
+    "matteMode",
+    "choice",
+    [
+     "alpha",
+     "alphaInverted",
+     "luma",
+     "lumaInverted"
+    ]
    ]
   ],
   "group": [
@@ -776,6 +836,21 @@
     "screenLock",
     "toggle",
     null
+   ],
+   [
+    "matte",
+    "text",
+    null
+   ],
+   [
+    "matteMode",
+    "choice",
+    [
+     "alpha",
+     "alphaInverted",
+     "luma",
+     "lumaInverted"
+    ]
    ]
   ],
   "drawing": [
@@ -875,6 +950,21 @@
     "screenLock",
     "toggle",
     null
+   ],
+   [
+    "matte",
+    "text",
+    null
+   ],
+   [
+    "matteMode",
+    "choice",
+    [
+     "alpha",
+     "alphaInverted",
+     "luma",
+     "lumaInverted"
+    ]
    ]
   ],
   "path": [
@@ -1060,6 +1150,21 @@
     "screenLock",
     "toggle",
     null
+   ],
+   [
+    "matte",
+    "text",
+    null
+   ],
+   [
+    "matteMode",
+    "choice",
+    [
+     "alpha",
+     "alphaInverted",
+     "luma",
+     "lumaInverted"
+    ]
    ]
   ],
   "blur": [
@@ -1343,6 +1448,21 @@
     "screenLock",
     "toggle",
     null
+   ],
+   [
+    "matte",
+    "text",
+    null
+   ],
+   [
+    "matteMode",
+    "choice",
+    [
+     "alpha",
+     "alphaInverted",
+     "luma",
+     "lumaInverted"
+    ]
    ]
   ],
   "bone": [
@@ -1652,6 +1772,7 @@
    "depth"
   ],
   "path": [
+   "d",
    "fill",
    "strokeColor",
    "strokeWidth",
@@ -2883,7 +3004,9 @@
       "end": 36000.0,
       "blend": "normal",
       "depth": 0.0,
-      "screenLock": false
+      "screenLock": false,
+      "matte": "",
+      "matteMode": "alpha"
      },
      "anim": {
       "x": [
@@ -3008,7 +3131,9 @@
       "end": 36000.0,
       "blend": "normal",
       "depth": 0.0,
-      "screenLock": false
+      "screenLock": false,
+      "matte": "",
+      "matteMode": "alpha"
      },
      "anim": {
       "weight": [
@@ -3122,7 +3247,9 @@
       "end": 1.1,
       "blend": "normal",
       "depth": 0.0,
-      "screenLock": false
+      "screenLock": false,
+      "matte": "",
+      "matteMode": "alpha"
      },
      "anim": {
       "scale": [
@@ -3166,7 +3293,9 @@
       "end": 36000.0,
       "blend": "normal",
       "depth": 0.0,
-      "screenLock": false
+      "screenLock": false,
+      "matte": "",
+      "matteMode": "alpha"
      },
      "anim": {
       "h": [
@@ -3210,7 +3339,9 @@
         "end": 36000.0,
         "blend": "normal",
         "depth": 0.0,
-        "screenLock": false
+        "screenLock": false,
+        "matte": "",
+        "matteMode": "alpha"
        },
        "anim": {
         "y": [
@@ -3308,7 +3439,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -3371,7 +3504,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -3423,7 +3558,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "masks": [
        {
@@ -3470,7 +3607,9 @@
          "end": 36000.0,
          "blend": "normal",
          "depth": 0.0,
-         "screenLock": false
+         "screenLock": false,
+         "matte": "",
+         "matteMode": "alpha"
         }
        }
       ]
@@ -3522,7 +3661,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -3585,7 +3726,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -3637,7 +3780,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "masks": [
        {
@@ -3684,7 +3829,9 @@
          "end": 36000.0,
          "blend": "normal",
          "depth": 0.0,
-         "screenLock": false
+         "screenLock": false,
+         "matte": "",
+         "matteMode": "alpha"
         }
        }
       ]
@@ -3736,7 +3883,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -3799,7 +3948,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -3851,7 +4002,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "masks": [
        {
@@ -3898,7 +4051,9 @@
          "end": 36000.0,
          "blend": "normal",
          "depth": 0.0,
-         "screenLock": false
+         "screenLock": false,
+         "matte": "",
+         "matteMode": "alpha"
         }
        }
       ]
@@ -3950,7 +4105,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -4013,7 +4170,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -4070,7 +4229,9 @@
        "end": 1.1,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       }
      },
      {
@@ -4095,7 +4256,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "masks": [
        {
@@ -4142,7 +4305,9 @@
          "end": 36000.0,
          "blend": "normal",
          "depth": 0.0,
-         "screenLock": false
+         "screenLock": false,
+         "matte": "",
+         "matteMode": "alpha"
         }
        }
       ]
@@ -4194,7 +4359,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -4257,7 +4424,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -4314,7 +4483,9 @@
        "end": 1.1,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       }
      },
      {
@@ -4339,7 +4510,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "masks": [
        {
@@ -4386,7 +4559,9 @@
          "end": 36000.0,
          "blend": "normal",
          "depth": 0.0,
-         "screenLock": false
+         "screenLock": false,
+         "matte": "",
+         "matteMode": "alpha"
         }
        }
       ]
@@ -4438,7 +4613,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -4501,7 +4678,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -4558,7 +4737,9 @@
        "end": 1.1,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       }
      },
      {
@@ -4583,7 +4764,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "masks": [
        {
@@ -4630,7 +4813,9 @@
          "end": 36000.0,
          "blend": "normal",
          "depth": 0.0,
-         "screenLock": false
+         "screenLock": false,
+         "matte": "",
+         "matteMode": "alpha"
         }
        }
       ]
@@ -4682,7 +4867,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -4745,7 +4932,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -4802,7 +4991,9 @@
        "end": 1.1,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       }
      },
      {
@@ -4827,7 +5018,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "masks": [
        {
@@ -4874,7 +5067,9 @@
          "end": 36000.0,
          "blend": "normal",
          "depth": 0.0,
-         "screenLock": false
+         "screenLock": false,
+         "matte": "",
+         "matteMode": "alpha"
         }
        }
       ]
@@ -4926,7 +5121,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -4989,7 +5186,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -5046,7 +5245,9 @@
        "end": 1.1,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       }
      },
      {
@@ -5071,7 +5272,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "masks": [
        {
@@ -5118,7 +5321,9 @@
          "end": 36000.0,
          "blend": "normal",
          "depth": 0.0,
-         "screenLock": false
+         "screenLock": false,
+         "matte": "",
+         "matteMode": "alpha"
         }
        }
       ]
@@ -5170,7 +5375,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -5233,7 +5440,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -5285,7 +5494,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "masks": [
        {
@@ -5332,7 +5543,9 @@
          "end": 36000.0,
          "blend": "normal",
          "depth": 0.0,
-         "screenLock": false
+         "screenLock": false,
+         "matte": "",
+         "matteMode": "alpha"
         }
        }
       ]
@@ -5384,7 +5597,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -5447,7 +5662,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "effects": [
        {
@@ -5499,7 +5716,9 @@
        "end": 36000.0,
        "blend": "normal",
        "depth": 0.0,
-       "screenLock": false
+       "screenLock": false,
+       "matte": "",
+       "matteMode": "alpha"
       },
       "masks": [
        {
@@ -5546,7 +5765,9 @@
          "end": 36000.0,
          "blend": "normal",
          "depth": 0.0,
-         "screenLock": false
+         "screenLock": false,
+         "matte": "",
+         "matteMode": "alpha"
         }
        }
       ]

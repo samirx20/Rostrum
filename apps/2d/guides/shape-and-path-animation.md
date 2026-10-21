@@ -73,8 +73,35 @@ combined (refused). The curves stay curves.
 ## Keys on paths
 
 A path layer's transform, opacity, `fill`, `strokeColor`, `strokeWidth`, `dash`, `gap`, `dashOffset`, `trimStart`,
-`trimEnd` and `miter` animate. `d`, `w` and `h` do **not**: **not yet: morphing one outline into another** (path keys).
-Until then, change a shape over time with `scale` / `scaleX` / `scaleY`, `rotation`, a mask, or a rig bind (a path bound
+`trimEnd`, `miter` and its shape `d` animate. `w` and `h` do not (the box stays; the curve may reach outside it).
+
+## Morphing a path
+
+Key `d` with path data at two or more times; between two keys the engine blends the shapes point by point, shaped by
+the first key's ease (a spring or bounce overshoots the shape too).
+
+```json
+{"op": "key.add", "target": ["mark"], "args": {"prop": "d", "t": 0.5, "d": "M0 0 L100 0 L100 100 L0 100 Z"}}
+{"op": "key.add", "target": ["mark"], "args": {"prop": "d", "t": 1.5, "d": "M50 0 L100 100 L0 100 Z", "ease": "snappy"}}
+```
+
+In a script: `item.key("d", {0.5: polygon(4, 100, 45), 1.5: star(5, 100, 45)})`.
+
+How the shapes are paired, so you can steer the in-between:
+
+- **Pieces (subpaths) pair in order** and must be as many in both shapes; otherwise the key is refused, naming the
+  layer and the two key times. Give a shape an extra tiny piece to match, or morph each piece as its own layer.
+- **Segments** are paired one to one. Lines count as straight curves. When one shape has fewer segments, its longest
+  segment is halved until the counts match. To choose where the shape bends first, give that key's path data more
+  points there (write them in, or add them with `path.add_point` before the shape is keyed and copy its `d`).
+- **A closed piece starts where the other's start is nearest**: the start points are lined up to travel the least.
+  Draw both shapes in the **same direction** (both clockwise): opposite directions turn the shape inside out half way.
+- Open and closed pieces may be paired; the piece closes from half way.
+
+Check the in-between with `look_sheet` over the stretch; the inspector's "value now" shows the shape of the key that
+starts the stretch (the engine draws the blend). The Lottie export holds a morphing path at its first shape and says so.
+
+Other ways to change a shape over time: `scale` / `scaleX` / `scaleY`, `rotation`, a mask, or a rig bind (a path bound
 to two bones bends; see `character-rigging-and-lip-sync`).
 
 ## Seeing and checking
@@ -86,5 +113,5 @@ to two bones bends; see `character-rigging-and-lip-sync`).
 
 ## Not yet
 
-Morphing between paths, offset or stroke-to-outline, text to outlines (only through SVG import `text="outline"`), a
+Offset or stroke-to-outline, text to outlines (only through SVG import `text="outline"`), a
 path-following layer.

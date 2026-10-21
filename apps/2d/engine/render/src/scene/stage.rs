@@ -44,10 +44,22 @@ pub fn stage(comp: &Item) -> R<String> {
     let mut out = format!("<div style=\"position:absolute;left:0;top:0;width:100%;height:100%;background:{};\"></div>", v(comp, "background"));
     // The camera (crate::camera): each top-level layer seen through it, by its depth; the camera itself isn't drawn.
     let view = crate::camera::View::of(comp)?;
-    for l in comp.layers.iter().filter(|l| l.kind != "camera") {
-        out += &view.place(l, layer(l)?);
+    out += &siblings(comp, |l, markup| view.place(l, markup))?;
+    Ok(out)
+}
+
+/// A comp's or group's layers in order, each seen through its track matte (matte.rs); a layer used as a matte isn't drawn on its own.
+fn siblings(parent: &Item, mut place: impl FnMut(&Item, String) -> String) -> R<String> {
+    let mut out = String::new();
+    for l in parent.layers.iter().filter(|l| l.kind != "camera" && !super::matte::used(l, parent)) {
+        out += &place(l, super::matte::apply(l, parent, layer(l)?)?);
     }
     Ok(out)
+}
+
+/// A path layer's own `<svg>` (stage_path.rs), for a path drawn as a matte.
+pub(super) fn path_svg(it: &Item) -> R<String> {
+    path::content(it, Look::default()).map(|(_, svg)| svg)
 }
 
 fn gradient(e: &Item) -> String {
@@ -139,11 +151,7 @@ fn content(it: &Item, look: Look) -> R<(String, String)> {
             if let Some(g) = grad {
                 let _ = write!(s, "background:{g};");
             }
-            let mut inner = String::new();
-            for l in &it.layers {
-                inner += &layer(l)?;
-            }
-            Ok((s, inner))
+            Ok((s, siblings(it, |_, markup| markup)?))
         }
         "drawing" => {
             if grad.is_some() {

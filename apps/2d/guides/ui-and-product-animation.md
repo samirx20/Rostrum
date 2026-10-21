@@ -45,6 +45,30 @@ panel.mask("open", x=0, y=0, w=0, h=300, radius=24).key("w", {0.2: 0, 0.9: 640},
 A mask travels with its layer. For a layer that moves through a fixed edge, put it in a `clip` group and animate the layer
 inside.
 
+### Track mattes
+
+**Not drawn yet (KNOWN OPEN, H14):** the fields and checks below exist, but the engine refuses a layer with a `matte` when it draws, because the renderer does not apply the matte yet. Use a mask meanwhile.
+
+A track matte uses another whole layer as the mask: its shape, letters or picture, animated with its own keys. Set
+`matte` on the layer to show (the id of a layer in the same group or comp) and `matteMode`:
+
+| `matteMode` | The layer shows |
+|---|---|
+| `alpha` | where the matte layer is drawn |
+| `alphaInverted` | where it isn't |
+| `luma` | as bright as the matte layer is (white = fully, black = not) |
+| `lumaInverted` | as dark as it is |
+
+The matte layer is not drawn on its own; it moves, scales and fades like any layer, and the matted layer follows that.
+Two layers may share one matte. A matte layer can be a shape, path, text, image, video, drawing or a group of these, but
+has no effects, masks or tilt of its own (refused by name). `look_at` and the motion checks list it as "drawn only as
+the track matte of …", and a `matte` id that is no layer beside it is named there and refused by the engine.
+
+```python
+picture.set(matte="title", matteMode="alpha")          # the picture seen through the title's letters
+title.key("scale", {0.0: 0.9, 1.2: 1.0}, ease="easeOut")    # the matte animates as usual
+```
+
 ## Glass, blur, shadow, glow
 
 Effects are a layer's look, in order (`effect.add`, or `item.effect(type, id, ...)`).
