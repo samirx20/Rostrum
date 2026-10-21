@@ -92,3 +92,6 @@ Every third-party library, model, asset source and tool that ships in or is down
 | Open-Unmix UMX-HQ weights (our ONNX export) | Zenodo 3370489 | MIT (trained on MUSDB18-HQ, academic-only data) | apps/sound/python (stems, dialogue isolation) | data | yes (download, hosting tbd) | Keep the notice | https://github.com/sigsep/open-unmix-pytorch |
 | onnx | (venv) | Apache-2.0 | proofs only (8-bit test) | Python package | no | None | https://github.com/onnx/onnx |
 | PyTorch (CPU), openunmix | 2.14.1, (pip) | BSD-3-Clause, MIT | proofs only (export, scratch venv) | build tool | no | None | https://pytorch.org |
+| fontTools | 4.67.0 | MIT | 2D Lottie export (glyph outlines) | static (Python package) | ships | keep the notice | https://github.com/fonttools/fonttools |
+| uharfbuzz (HarfBuzz) | 0.56.3 | Apache-2.0 (HarfBuzz: MIT-style "Old MIT") | 2D Lottie export (text shaping) | static (Python package) | ships | keep the notices | https://github.com/harfbuzz/uharfbuzz |
+| pypdf | 6.21.2 | BSD-3-Clause | 2D PDF import (shadings, clips) | static (Python package) | ships | keep the notice | https://github.com/py-pdf/pypdf |
