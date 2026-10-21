@@ -50,6 +50,9 @@ pub struct Mic {
     /// Windows' id for it (what calibrations are kept under) and its name as Windows shows it.
     pub device: String,
     pub name: String,
+    /// Opened raw: Windows' own processing (automatic gain, noise suppression, a mic array's beam) is off,
+    /// so the level and the delay stay put. False when the device refused raw.
+    pub raw: bool,
 }
 
 /// Opens the default microphone (WASAPI shared mode, its own rate, folded to mono) on a thread of
@@ -133,6 +136,13 @@ pub fn main(args: &[String]) -> Result<(), String> {
     run(&args[1], seconds)
 }
 
+/// Asks for the raw stream (before Initialize): a laptop microphone otherwise turns itself up and down
+/// (automatic gain) and its processing adds a delay of its own, which break calibration and level.
+unsafe fn open_raw(client: &IAudioClient) -> bool {
+    let props = AudioClientProperties { cbSize: std::mem::size_of::<AudioClientProperties>() as u32, bIsOffload: false.into(), eCategory: AudioCategory_Other, Options: AUDCLNT_STREAMOPTIONS_RAW };
+    windows::core::Interface::cast::<IAudioClient2>(client).and_then(|c| c.SetClientProperties(&props)).is_ok()
+}
+
 unsafe fn capture(stop: &AtomicBool, mut sink: impl FnMut(Packet), ready: &std::sync::mpsc::Sender<Result<Mic, String>>) -> Result<(), String> {
     let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
     let devices: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|e| e.message())?;
@@ -142,6 +152,7 @@ unsafe fn capture(stop: &AtomicBool, mut sink: impl FnMut(Packet), ready: &std::
     let mix = client.GetMixFormat().map_err(|e| e.message())?;
     let (rate, channels, bits, tag) = ((*mix).nSamplesPerSec, (*mix).nChannels as usize, (*mix).wBitsPerSample, (*mix).wFormatTag);
     let float = tag == 3 || (tag == 0xFFFE && std::ptr::addr_of!((*(mix as *const WAVEFORMATEXTENSIBLE)).SubFormat).read_unaligned() == SUBTYPE_FLOAT);
+    let raw = open_raw(&client);
     let r = client.Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 2_000_000, 0, mix, None);
     CoTaskMemFree(Some(mix as *const _ as *const _));
     r.map_err(|e| format!("the microphone would not open: {}", e.message()))?;
@@ -151,7 +162,7 @@ unsafe fn capture(stop: &AtomicBool, mut sink: impl FnMut(Packet), ready: &std::
     let cap: IAudioCaptureClient = client.GetService().map_err(|e| e.message())?;
     client.Start().map_err(|e| e.message())?;
     let name = crate::live::wasapi::device::name(&device);
-    let _ = ready.send(Ok(Mic { rate, channels, device: id, name }));
+    let _ = ready.send(Ok(Mic { rate, channels, device: id, name, raw }));
     let width = if float { 4 } else { 2 };
     let mut result = Ok(());
     'run: while !stop.load(Ordering::Relaxed) {

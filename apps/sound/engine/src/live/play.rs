@@ -85,7 +85,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
             }
             None => None,
         };
-        Ok(Transport::new(Arc::new(chosen.first(&mix, mix_rate, dev)?), rate, bpm, beats, inst, crx, nrx, otx).with_beats(&beat_times).with_hear(hear))
+        Ok(Transport::new(Arc::new(chosen.first(&mix, mix_rate, dev)?), rate, bpm, beats, inst, crx, nrx, otx).with_beats(&beat_times).with_hear(hear).with_chirp(calibrate))
     };
     let (opened, audio) = wasapi::start_on(make, stop.clone(), !flag("--shared"), Some(mix_rate as u32))?;
     if let Some(p) = plugin.as_mut() {
@@ -104,16 +104,16 @@ pub fn run(args: &[String]) -> Result<(), String> {
         }
         None => None,
     };
-    let input_offset = mic.as_ref().and_then(|(m, _)| if calibrate { None } else { crate::live::calib::offset(&opened.device, &m.device) });
+    let input_offset = mic.as_ref().and_then(|(m, _)| if calibrate { None } else { crate::live::calib::offset(&opened.device, &m.device, m.raw) });
     println!(
         "{}",
         serde_json::json!({ "ready": { "mode": opened.mode, "rate": opened.rate, "periodMs": opened.period_frames as f64 * 1000.0 / rate, "format": opened.format, "device": opened.device, "exclusiveRefused": opened.fallback, "seconds": seconds, "mixRate": mix_rate, "resampled": opened.rate as f64 != mix_rate,
-            "monitor": monitoring.report(Some(opened.channels as usize)), "midiDevices": devices, "mic": mic.as_ref().map(|(m, _)| serde_json::json!({ "rate": m.rate, "device": m.device, "name": m.name, "inputOffsetMs": input_offset.map(|o| (o * 1e5).round() / 100.0) })) } })
+            "monitor": monitoring.report(Some(opened.channels as usize)), "midiDevices": devices, "mic": mic.as_ref().map(|(m, _)| serde_json::json!({ "rate": m.rate, "device": m.device, "name": m.name, "raw": m.raw, "inputOffsetMs": input_offset.map(|o| (o * 1e5).round() / 100.0) })) } })
     );
     let until_end = flag("--until-end") || calibrate;
     let input = protocol::read_input(mtx.clone(), ntx.clone(), rate, monitoring.clone(), arg::<usize>(args, "--measure", 0)?, until_end);
     let mic_rate = mic.as_ref().map_or(48000.0, |(m, _)| m.rate as f64);
-    let calibrating = calibrate.then(|| Calibrating { beat: 60.0 / bpm, device: opened.device.clone(), mic_device: mic.as_ref().map(|(m, _)| m.device.clone()).unwrap_or_default() });
+    let calibrating = calibrate.then(|| Calibrating { beat: 60.0 / bpm, device: opened.device.clone(), mic_device: mic.as_ref().map(|(m, _)| m.device.clone()).unwrap_or_default(), raw: mic.as_ref().is_some_and(|(m, _)| m.raw) });
     let mut takes = Takes::new(takes_dir.clone().unwrap_or_else(|| ".".into()), mic_rate, input_offset, calibrating);
     let mut clock = Clock::default();
     let mic_open = mic.is_some();
