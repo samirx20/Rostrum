@@ -1,0 +1,17 @@
+.pragma library
+// Numbers and the fader's taper, in one place. The fader runs -60 dB .. +12 dB (gain 0 .. ~3.98; the field's
+// range is 0 .. 4); 0 dB (gain 1) sits at 5/6 of the travel. Minus signs are real minus signs.
+
+var FLOOR = -60, SPAN = 72
+
+function num(v, d) {
+    if (v === null || v === undefined || isNaN(v)) return "—"
+    var s = Math.abs(v).toFixed(d)
+    return (v < 0 && Number(s) !== 0 ? "−" : "") + s
+}
+function dbOf(gain) { return gain > 0 ? 20 * Math.log(gain) / Math.LN10 : -Infinity }
+function posOfDb(db) { return Math.max(0, Math.min(1, (db - FLOOR) / SPAN)) }
+function posOf(gain) { return posOfDb(dbOf(gain)) }
+function gainOf(pos) { return pos <= 0.001 ? 0 : Math.pow(10, (FLOOR + SPAN * Math.min(1, pos)) / 20) }
+function faderText(gain) { return gain <= 0.001 ? "−∞ dB" : (dbOf(gain) >= 0.05 ? "+" : "") + num(dbOf(gain), 1) + " dB" }
+function panText(p) { var n = Math.round(Math.abs(p) * 100); return n === 0 ? "C" : (p < 0 ? "L " : "R ") + n }
