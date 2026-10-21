@@ -1,6 +1,11 @@
 """Seeing: the painter's eyes. Arrays in (HxWx3 or HxWx4 uint8, straight alpha), PIL images out.
 
 Canvas pixels are the only coordinates anywhere: grid labels, zoom boxes and outlines are all canvas pixels.
+
+Enlarging (`sampling`): "pixels" blows each canvas pixel up into a sharp square, to place strokes on the pixel grid;
+"smooth" resamples (bicubic up, Lanczos down), to judge texture, edges and gradients as they will be seen. "auto"
+(the default) is pixels when a grid is drawn and smooth when it isn't (grid=0): the grid is for placing, no grid
+is for looking.
 """
 from __future__ import annotations
 
@@ -9,6 +14,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 GRIDS = (1, 2, 5, 10, 16, 25, 32, 50, 64, 100, 128, 200, 256, 500, 512, 1000, 1024, 4096)
 BG = (28, 28, 28)
+SAMPLINGS = ("auto", "pixels", "smooth")
 
 def _font(px):
     try:
@@ -45,11 +51,12 @@ def _u8(a):
     return (np.clip(a, 0, 1) * 255 + 0.5).astype(np.uint8)
 
 
-def _scaled(rgb, zoom, size):
+def _scaled(rgb, zoom, size, sampling="smooth"):
     x, y, zw, zh = zoom
     s = size / zw
     img = Image.fromarray(_u8(rgb[y:y + zh, x:x + zw]))
-    return img.resize((size, max(1, round(zh * s))), Image.NEAREST if s >= 3 else Image.LANCZOS), s
+    how = Image.LANCZOS if s < 1.5 else Image.NEAREST if sampling == "pixels" and s >= 3 else Image.BICUBIC
+    return img.resize((size, max(1, round(zh * s))), how), s
 
 
 def _grid(img, zoom, s, grid):
@@ -89,18 +96,21 @@ def _hstack(imgs, gap=10):
     return can
 
 
-def _panel(rgb, zoom, size, grid):
-    img, s = _scaled(rgb, zoom, size)
+def _panel(rgb, zoom, size, grid, sampling="auto"):
+    if sampling not in SAMPLINGS:
+        raise ValueError(f"sampling must be one of {SAMPLINGS}, got {sampling!r}")
+    img, s = _scaled(rgb, zoom, size, ("pixels" if grid != 0 else "smooth") if sampling == "auto" else sampling)
     return _grid(img, zoom, s, grid) if grid != 0 else img, s
 
 
-def view(img, zoom=None, grid=None, size=1200, label=None, checker=True):
-    """Crop `zoom` (x0, y0, x1, y1 canvas px), scale to `size` px wide, label a grid in canvas px (grid=0: none)."""
+def view(img, zoom=None, grid=None, size=1200, label=None, checker=True, sampling="auto"):
+    """Crop `zoom` (x0, y0, x1, y1 canvas px), scale to `size` px wide, label a grid in canvas px (grid=0: none).
+    sampling: "pixels" | "smooth" | "auto" (pixels with a grid, smooth without; module doc)."""
     if size < 16:
         raise ValueError("size must be at least 16 px")
     rgb = _flat(img, checker)
     zoom = check_zoom(zoom, rgb.shape[1], rgb.shape[0])
-    out = _panel(rgb, zoom, size, grid)[0]
+    out = _panel(rgb, zoom, size, grid, sampling)[0]
     return _titled(out, label) if label else out
 
 
@@ -124,7 +134,7 @@ def _diff(a, b):
     return base * (1 - k) + hot * k
 
 
-def before_after(a, b, zoom=None, grid=None, size=600):
+def before_after(a, b, zoom=None, grid=None, size=600, sampling="auto"):
     """before | after | difference, the changed box outlined in all three and its coordinates written on top."""
     if a.shape[:2] != b.shape[:2]:
         raise ValueError(f"before is {a.shape[1]}x{a.shape[0]} but after is {b.shape[1]}x{b.shape[0]}: they must be the same size")
@@ -133,7 +143,7 @@ def before_after(a, b, zoom=None, grid=None, size=600):
     zoom_t = check_zoom(zoom, fa.shape[1], fa.shape[0])
     panels = []
     for name, arr in (("BEFORE", fa), ("AFTER", fb), ("DIFFERENCE", _diff(fa, fb))):
-        img, s = _panel(arr, zoom_t, size, grid)
+        img, s = _panel(arr, zoom_t, size, grid, sampling)
         if box:
             x0, y0, x1, y1 = box
             ImageDraw.Draw(img).rectangle([(x0 - zoom_t[0]) * s - 2, (y0 - zoom_t[1]) * s - 2,

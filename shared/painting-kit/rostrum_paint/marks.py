@@ -74,21 +74,32 @@ def curve(*pts, n=32, pressure=(1.0, 1.0, 1.0)):
     return [(float(x), float(y), float(p)) for (x, y), p in zip(xy, pr)]
 
 
-def apply_paint(region, inc, col, mode):
-    """The one place paint meets a layer. region: hxwx4 premultiplied view; inc: hxw 0..1;
-    col: straight sRGB (3,) or hxwx3. normal = paint over, multiply = glaze, erase = remove,
-    screen / add = light (glows and haze stack instead of replacing each other)."""
-    inc = inc[..., None]
+def apply_paint(region, c0, c1, col, mode, k=1.0):
+    """The one place paint meets a layer. region: hxwx4 premultiplied view; c0 -> c1: the stroke's coverage there
+    before and after this dab (hxw 0..1, c1 >= c0); k: the share of it that is paint (1 - wetness); col: straight
+    sRGB (3,) or hxwx3. normal = paint over, multiply = glaze, erase = remove, screen / add = light (glows and haze
+    stack instead of replacing each other).
+
+    A stroke is one mark, not a pile of dabs: each mode lays the step c0 -> c1 so that all of a stroke's dabs
+    together equal laying its final coverage once (dabs overlap many times along a stroke, so a per-dab error shows
+    as ridges at dab spacing). Strokes do stack: two light strokes give twice the light."""
+    inc = (k * (c1 - c0) / (1.0001 - c0))[..., None]          # the over-step: 1 - (1-c0)(1-inc) = c1
+    lo, hi = (k * c0)[..., None], (k * c1)[..., None]
     if mode == "normal":
         region[..., :3] += inc * (col - region[..., :3])
         region[..., 3:] += inc * (1 - region[..., 3:])
-    elif mode == "multiply":
-        region[..., :3] *= 1 - inc * (1 - col)
+    elif mode == "multiply":                                  # times 1 - c(1-col), once per stroke
+        region[..., :3] *= (1 - hi * (1 - col)) / (1 - lo * (1 - col))
     elif mode == "erase":
         region *= 1 - inc
-    elif mode in ("screen", "add"):  # paint s = inc * col (premultiplied) over the layer; screen never passes 1
-        s, rgb = inc * col, region[..., :3]
-        region[..., 3:] += inc * (1 - region[..., 3:])
-        rgb[...] = rgb + s - rgb * s if mode == "screen" else np.minimum(rgb + s, region[..., 3:])
+    elif mode in ("screen", "add"):
+        rgb, a = region[..., :3], region[..., 3:]
+        a += inc * (1 - a)
+        if mode == "screen":                                  # screens c*col once per stroke; never passes 1
+            s = (hi - lo) * col / (1 - lo * col)
+            rgb[...] = rgb + s - rgb * s
+        else:                                                 # adds c*col once per stroke; strokes sum. Light is
+            rgb[...] = np.minimum(rgb + (hi - lo) * col, 1)   # never cut down to the alpha: the alpha grows to
+            a[...] = np.maximum(a, rgb.max(axis=-1, keepdims=True))   # carry it (premultiplied rgb <= a)
     else:
         raise ValueError(f"mode must be one of {MODES}, got {mode!r}")

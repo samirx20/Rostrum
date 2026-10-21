@@ -22,6 +22,9 @@ FRAME = {"frame": {"type": "integer", "minimum": 0, "default": 0,
 ZOOM = {"zoom": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4,
                  "description": "[x0, y0, x1, y1] box in canvas pixels. Default: the whole canvas."}}
 GRID = {"grid": {"type": "integer", "minimum": 0, "description": "Grid spacing in canvas px (labels are canvas px). 0 = no grid. Default: chosen to fit."}}
+SAMPLING = {"sampling": {"type": "string", "enum": list(see.SAMPLINGS), "default": "auto",
+                         "description": "How a zoom enlarges: pixels = sharp squares, to place strokes on the grid; smooth = resampled, "
+                                        "to judge texture and edges. auto = pixels with a grid, smooth with grid 0."}}
 
 
 def drawing_of(ctx, doc, layer):
@@ -66,7 +69,7 @@ def blank(w, h):
 
 
 @tools.tool("look_drawing", {"required": ["layer"], "properties": {
-    **ITEM, **LAYER, **FRAME, **ZOOM, **GRID,
+    **ITEM, **LAYER, **FRAME, **ZOOM, **GRID, **SAMPLING,
     "paint": {"type": "string", "description": "Show only this paint layer of the frame (its id). Default: all paint layers together."},
     "onion": {"type": "boolean", "default": False, "description": "Also show the 2 drawings before (red) and 2 after (green), faint, under this one."},
     "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": 1200, "description": "Picture width in px."}}})
@@ -87,9 +90,9 @@ def look_drawing(ctx, args):
         img = see.onion(img, [canvas.rgba8(f, w, h) for f in before], [canvas.rgba8(f, w, h) for f in after])
     note = f'{drawing["id"]} frame {n} (drawing {frame["id"]} at {frame["at"]})' + (f", paint {paint}" if paint else "") + (", onion skin" if args.get("onion") else "")
     try:
-        pic = see.view(img, args.get("zoom"), args.get("grid"), args.get("width", 1200), label=note)
+        pic = see.view(img, args.get("zoom"), args.get("grid"), args.get("width", 1200), label=note, sampling=args.get("sampling", "auto"))
     except ValueError as e:
-        raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"zoom" or "width"', str(e)) from e
+        raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"zoom", "width" or "sampling"', str(e)) from e
     dest = look_path(f'{doc.item_id or "doc"}_{drawing["id"]}_f{n}')
     pic.save(dest)
     return Reply(f'{drawing["id"]} at frame {n} shows drawing {frame["id"]} (at {frame["at"]}): {stroke_count(frame)} strokes on {len(frame.get("paints", []))} paint layer(s), canvas {w}×{h}.',
@@ -107,7 +110,7 @@ def last_change_touching(doc, frame):
     return None
 
 
-@tools.tool("look_drawing_change", {"required": ["layer"], "properties": {**ITEM, **LAYER, **FRAME, **ZOOM, **GRID}})
+@tools.tool("look_drawing_change", {"required": ["layer"], "properties": {**ITEM, **LAYER, **FRAME, **ZOOM, **GRID, **SAMPLING}})
 def look_drawing_change(ctx, args):
     """Before | after | difference of the last change that touched one drawing of a layer (a stroke, an undo, a clear …),
     with the changed box outlined and its canvas-pixel coordinates written."""
@@ -122,7 +125,7 @@ def look_drawing_change(ctx, args):
     old = index(doc.at_step(c.seq - 1), doc.kind.lists).get(frame["id"])
     before = canvas.rgba8(old.item, w, h) if old else blank(w, h)
     try:
-        pic = see.before_after(before, canvas.rgba8(frame, w, h), args.get("zoom"), args.get("grid"))
+        pic = see.before_after(before, canvas.rgba8(frame, w, h), args.get("zoom"), args.get("grid"), sampling=args.get("sampling", "auto"))
     except ValueError as e:
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"zoom"', str(e)) from e
     box = see.changed_box(before, canvas.rgba8(frame, w, h))

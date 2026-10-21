@@ -14,6 +14,25 @@ def _kind_name(doc) -> str:
     return getattr(getattr(doc, "kind", None), "name", "document")
 
 
+def _summary(child: dict, lists: set) -> str:
+    """A child in a few words: its name or label if it has one, else its first plain value."""
+    name = child.get("name") or child.get("label")
+    if name:
+        return str(name)
+    vals = [f"{k}={v}" for k, v in child.items() if k not in lists | {"id", "type"} and not isinstance(v, (dict, list))]
+    return ", ".join(vals[:3])
+
+
+def _children(part: dict, lists: set, full: bool) -> dict:
+    """The part's child lists, generic from the kind's `lists`: name -> count and each child's id, type, summary."""
+    out = {}
+    for key in (k for k in part if k in lists and isinstance(part[k], list)):
+        kids = [{"id": c.get("id"), "type": c.get("type"), "summary": _summary(c, lists), **({"values": c} if full else {})}
+                for c in part[key]]
+        out[key] = {"count": len(kids), "children": kids}
+    return out
+
+
 def _brief(change, full: bool) -> dict:
     d = change.to_dict() if full else {}
     ops = [c.get("op") for c in change.calls]
@@ -42,10 +61,12 @@ def register(tools: Tools):
         ops = [o.name for o in doc.kind.registry.available(doc, [args["id"]])]
         who = {f: (c.who.to_dict() if (c := doc.who_changed(args["id"], f)) else None) for f in values if f not in ("id", "type")}
         checks = [str(p) for p in doc.kind.check(doc.data) if args["id"] in str(p)]
-        data = {"id": args["id"], "type": part.get("type"), "values": values, "operations": ops, "checks": checks}
+        children = _children(part, lists, args.get("detail") == "full")
+        data = {"id": args["id"], "type": part.get("type"), "values": values, "children": children, "operations": ops, "checks": checks}
         if args.get("detail") == "full":
             data["last_changed_by"] = who
-        return Reply(f'{part.get("type")} "{args["id"]}": {len(values) - 2} values, {len(checks)} check problems. '
+        lists_said = "".join(f" {k}: {v['count']} ({', '.join(c['id'] or '?' for c in v['children'][:5])}{', …' * (v['count'] > 5)})." for k, v in children.items())
+        return Reply(f'{part.get("type")} "{args["id"]}": {len(values) - 2} values, {len(checks)} check problems.{lists_said} '
                      f"Operations that fit now: {', '.join(ops) or 'none'}.", data)
 
     @tools.tool("inspect_markers")

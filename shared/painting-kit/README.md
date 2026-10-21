@@ -32,7 +32,15 @@ canvas.png(frame, w, h)                     # the picture (content-keyed file), 
 where.what(frame, w, h, x, y)               # colour, each layer's colour, top stroke, masks there
 where.landed(frame, w, h, "stroke_12")      # did the paint land on the path (mean / worst px off)
 see.view(canvas.rgba8(frame, w, h), zoom=(x0, y0, x1, y1), grid=50)   # a look with a labelled pixel grid
+see.view(canvas.rgba8(frame, w, h), zoom=(x0, y0, x1, y1), grid=0)    # the same, smooth: to judge texture
 ```
+
+**Zooming in: pixels or smooth** (`sampling` on `see.view` / `see.before_after`, and on the 2D tools `look_drawing` /
+`look_drawing_change`). `"pixels"` blows each canvas pixel up into a sharp square: use it to place strokes on the
+pixel grid. `"smooth"` resamples (bicubic up, Lanczos down), so bristle streaks, grain and soft edges look as they
+will on screen: use it to judge texture. The default `"auto"` is pixels when a grid is drawn and smooth when it isn't
+(`grid=0`), because the grid is for placing and no grid is for looking. Under 3× (and every look that shrinks the
+canvas) both resample smoothly.
 
 ## Modules (each < 200 lines)
 
@@ -40,11 +48,11 @@ see.view(canvas.rgba8(frame, w, h), zoom=(x0, y0, x1, y1), grid=50)   # a look w
 |---|---|
 | `fields` | the item types and their fields: paint layer, stroke (the brush), paint mask; `BRUSH` |
 | `ops` | the operations on a host's registry; `build`, the one item builder (also used by an app's script layer) |
-| `marks`, `brush` | the brush engine (carried over from P-PAINT): tips round, bristle, chalk, flat, block, line; pressure; colour and hue drift; paper grain; wet smudge and pick-up; modes normal, multiply, erase, screen, add. Seeded: same stroke, same pixels |
+| `marks`, `brush` | the brush engine (carried over from P-PAINT): tips round, bristle, chalk, flat, block, line; pressure; colour and hue drift; paper grain; wet smudge and pick-up; modes normal, multiply, erase, screen, add. Seeded: same stroke, same pixels. A stroke is one mark: its dabs together lay its coverage once in every mode, and light strokes (add) sum without being cut down to the alpha (`marks.apply_paint`) |
 | `canvas` | where pixels are made: chain-keyed layer states, content-keyed PNGs |
 | `compose` | layers together (normal, multiply, screen, add over transparency); masks as pixels |
 | `where` | `what` is at a pixel; `landed` (P-PAINT's measure) |
-| `see` | the looks on arrays: zoom with a labelled grid and a checkerboard under transparency, before / after, values, small, side by side, onion skin |
+| `see` | the looks on arrays: zoom (sharp pixels or smooth) with a labelled grid and a checkerboard under transparency, before / after, values, small, side by side, onion skin |
 
 ## Where pixels are made: numpy now, behind one door (decision, S6)
 
@@ -81,9 +89,10 @@ changed box; keep layer states on disk so a reopened document doesn't restamp.
 
 ## Tests
 
-`.venv\Scripts\python.exe -m pytest -q shared\painting-kit\tests` (about 1.5 s): cached pixels equal a full replay
+`.venv\Scripts\python.exe -m pytest -q shared\painting-kit\tests` (about 2 s): cached pixels equal a full replay
 (bristle, chalk with grain, wet pick-up, a multiply layer); undo of a batch gives back the exact document and pixels;
-`landed` reports a 6 px miss as 6 px.
+`landed` reports a 6 px miss as 6 px; a script re-run removes a stroke it no longer makes, but keeps one a person
+changed (and says so).
 
 ## Not yet
 

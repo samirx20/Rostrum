@@ -9,7 +9,8 @@ from dataclasses import dataclass, field
 from .errors import RostrumError, codes, did_you_mean
 
 IMPORTANCE = ("primary", "secondary", "deep")
-TYPES = ("number", "toggle", "choice", "text", "color", "id", "points")
+TYPES = ("number", "toggle", "choice", "text", "color", "id", "points", "time", "list")
+TIME_UNITS = ("seconds", "beats", "marker")     # a time value is {"seconds": 1.5}, {"beats": 4} or {"marker": "drop"}
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 _UNSET = object()
 
@@ -32,6 +33,9 @@ class Param:
     integer: bool = False
     options: list = field(default_factory=list)
     kind: str | None = None          # for type "id": the item kind it must point at
+    item: str | None = None          # for type "list": the type of each element (min/max/integer/options/kind then apply per element)
+    min_items: int = 0
+    max_items: int | None = None
 
     def __post_init__(self):
         if self.type not in TYPES:
@@ -40,6 +44,10 @@ class Param:
             raise ValueError(f"param {self.name}: importance {self.importance!r} not one of {IMPORTANCE}")
         if self.type == "choice" and not self.options:
             raise ValueError(f"param {self.name}: a choice needs options")
+        if self.type == "list" and (self.item not in TYPES or self.item in ("list", "points")):
+            raise ValueError(f"param {self.name}: a list needs an item type, one of {[t for t in TYPES if t not in ('list', 'points')]}")
+        if self.type == "time" and self.default is None:
+            self.default = {"seconds": 0}
         self.label = self.label or self.name.replace("_", " ").capitalize()
 
     # constructors, one per type
@@ -57,6 +65,16 @@ class Param:
     def id(cls, name, kind=None, **kw): return cls(name, "id", kind=kind, **kw)
     @classmethod
     def points(cls, name, **kw): return cls(name, "points", **kw)   # [[x, y, extra…], …]: min/max = values per point
+
+    @classmethod
+    def time(cls, name, **kw): return cls(name, "time", **kw)       # {"seconds": s} | {"beats": b} | {"marker": "name"}; min/max bound seconds/beats
+    @classmethod
+    def list(cls, name, item, **kw): return cls(name, "list", item=item, **kw)   # [value, …] of one item type, each checked
+
+    def _element(self, n) -> "Param":
+        """The param each list element is checked against."""
+        return Param(f"{self.name}[{n}]", self.item, min=self.min, max=self.max, integer=self.integer,
+                     options=self.options, kind=self.kind, unit=self.unit)
 
     def check(self, value, where: str):
         """The value, checked (and an integer number made an int). Out of range is an error, never a clamp."""
@@ -82,10 +100,34 @@ class Param:
                 bad("is not a colour", ["#rrggbb"])
         elif t == "points":
             return self._check_points(value, bad)
+        elif t == "time":
+            return self._check_time(value, bad)
+        elif t == "list":
+            if not isinstance(value, (list, tuple)):
+                bad("must be a list", ["[value, …]"])
+            if len(value) < self.min_items or (self.max_items is not None and len(value) > self.max_items):
+                bad(f"has {len(value)} values", [f"{self.min_items} to {self.max_items if self.max_items is not None else 'any number of'} values"])
+            return [self._element(n).check(v, where) for n, v in enumerate(value)]
         elif t in ("text", "id"):
             if not isinstance(value, str) or (t == "id" and not value):
                 bad("must be text" if t == "text" else "must be an id")
         return value
+
+    def _check_time(self, value, bad):
+        """A time: exactly one of seconds / beats (a number, within min and max) or marker (a marker name)."""
+        accepted = ['{"seconds": 1.5}', '{"beats": 4}', '{"marker": "drop"}']
+        if not isinstance(value, dict) or len(value) != 1 or next(iter(value)) not in TIME_UNITS:
+            bad("is not a time", accepted, did_you_mean(next(iter(value), ""), TIME_UNITS) if isinstance(value, dict) else None)
+        (unit, v), = value.items()
+        if unit == "marker":
+            if not isinstance(v, str) or not v:
+                bad("marker must be a marker name", ['{"marker": "drop"}'])
+            return {"marker": v}
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or v != v or v < 0:
+            bad(f"{unit} must be a number, 0 or more", accepted)
+        if unit == "seconds" and ((self.min is not None and v < self.min) or (self.max is not None and v > self.max)):
+            bad("is out of range", [f"{self.min} to {self.max} seconds"])
+        return {unit: v}
 
     def _check_points(self, value, bad):
         """A list of points, each [x, y, extra…] with between min and max numbers (default 2 to 4); kept as floats."""
@@ -104,6 +146,11 @@ class Param:
         s = {"number": {"type": "integer" if self.integer else "number"}, "toggle": {"type": "boolean"},
              "choice": {"enum": list(self.options)}, "text": {"type": "string"},
              "color": {"type": "string", "pattern": HEX.pattern}, "id": {"type": "string"},
+             "time": {"type": "object", "minProperties": 1, "maxProperties": 1, "properties": {
+                 "seconds": {"type": "number", "minimum": 0}, "beats": {"type": "number", "minimum": 0},
+                 "marker": {"type": "string", "minLength": 1}}, "additionalProperties": False},
+             "list": {"type": "array", "minItems": self.min_items, **({"maxItems": self.max_items} if self.max_items is not None else {}),
+                      "items": self._element(0).json_schema() if self.type == "list" else {}},
              "points": {"type": "array", "minItems": 1, "items": {"type": "array", "items": {"type": "number"},
                         "minItems": int(self.min or 2), "maxItems": int(self.max or 4)}}}[self.type]
         if self.type == "number" and self.min is not None:
@@ -121,8 +168,13 @@ class Param:
         d = {"name": self.name, "type": self.type, "label": self.label, "group": self.group,
              "importance": self.importance, "valid_when": self.valid_when, "help": self.help,
              "default": self.default, "required": self.required}
+        if self.type == "list":
+            d.update(item=self.item, min_items=self.min_items, max_items=self.max_items, min=self.min, max=self.max,
+                     integer=self.integer, options=list(self.options), kind=self.kind)
         if self.type == "number":
             d.update(min=self.min, max=self.max, step=self.step, unit=self.unit, integer=self.integer)
+        if self.type == "time":
+            d.update(min=self.min, max=self.max)
         if self.type == "choice":
             d["options"] = list(self.options)
         if self.type == "id":

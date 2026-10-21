@@ -125,3 +125,21 @@ fn a_frame_draws_as_the_python_stopgap_drew_it() {
     let lit = ours.chunks(4).filter(|p| p[0] > 60 || p[1] > 60 || p[2] > 60).count();
     assert!(lit > 2000, "the frame is nearly empty ({lit} lit pixels): the check would prove nothing");
 }
+
+/// A drawing layer shows the last drawing with at ≤ floor(t·fps), nothing before the first (drawing.py `frame_at`).
+#[test]
+fn a_drawing_shows_the_drawing_of_its_frame() {
+    let mut s = reference()["scene"].clone();
+    let pic = concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml");          // any file: the engine only checks it exists
+    let props: serde_json::Map<String, Value> = s["comp"]["layers"][0]["props"].as_object().unwrap().iter()
+        .filter(|(k, _)| fields::of("drawing").unwrap().1.iter().any(|f| f.0 == k.as_str())).map(|(k, v)| (k.clone(), v.clone())).collect();
+    s["comp"]["layers"].as_array_mut().unwrap().push(serde_json::json!({"id": "doodle", "type": "drawing", "props": props,
+        "frames": [{"at": 6, "src": format!("{pic}?b")}, {"at": 2, "src": pic}]}));
+    assert!(Scene::load(&s).unwrap_err().contains("doodle.frames"), "a missing picture must be refused");
+    s["comp"]["layers"][4]["frames"][0]["src"] = pic.into();
+    let scene = Scene::load(&s).unwrap();
+    let src = |t: f64| eval::at(&scene.comp, t).unwrap().layers.iter().find(|l| l.id == "doodle").map(|l| l.str("src").to_string());
+    assert_eq!(src(0.0).as_deref(), Some(""));                              // fps 30: frame 0, before the first drawing
+    assert_eq!(src(2.0 / 30.0).as_deref(), Some(pic));                      // frame 2 exactly
+    assert_eq!(src(0.199).as_deref(), Some(pic));                           // frame 5, held
+}

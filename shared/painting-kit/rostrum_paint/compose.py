@@ -29,6 +29,9 @@ def over(layers, w, h) -> np.ndarray:
         else:
             raise ValueError(f"paint layer {paint['id']}: unknown blend {mode!r}")
         a = sa + ba - sa * ba
+        if mode == "add":       # light sums; where it is brighter than the coverage, the alpha grows to carry it
+            rgb = np.minimum(rgb, 1)
+            a = np.maximum(a, rgb.max(axis=2, keepdims=True))
         out = np.concatenate([np.minimum(rgb, a), a], axis=2)
     return out
 

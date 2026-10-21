@@ -73,6 +73,7 @@ class Move(Args):                      # typed arguments: types, ranges, default
 
 - `plan` never writes files and never builds an item by hand: a new item comes from a small piece of script run through the app's own script layer (`ctx.fragment(...)`), so new items look exactly like scripted ones.
 - An operation that needs heavy work (a track, a mask, a measurement) sends a job to the project service's queue first and plans with its result. It never blocks the GUI.
+- **Argument types:** `number`, `toggle`, `choice`, `text`, `color`, `id`, `points`, plus two for lists and timing. `time` is exactly one of `{"seconds": 1.5}`, `{"beats": 4}` or `{"marker": "drop"}` (seconds and beats are 0 or more; `min`/`max` bound seconds; default `{"seconds": 0}`). `list` (`Param.list("gains", "number", min=-60, max=12)`) is `[value, …]` of one item type, each element checked like that type (`min_items` / `max_items` bound the count). A bad value is refused with the element's position, never clamped. `inspect_item` also lists each item's child lists (name, count, each child's id, type and a short summary).
 - **One registry, many readers.** The same list feeds: the MCP server (`ops.list` and the schema an agent builds calls from — see `shared/mcp/CONVENTIONS.md`), the CLI help, the GUI command bar (Ctrl+K), the inspector (built from the argument types), and the guides. There is no second list anywhere.
 
 ## 5. Running a call: all or nothing, and loud

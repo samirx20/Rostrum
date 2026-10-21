@@ -2,8 +2,8 @@
 keys alone decide its value and the item's own value is ignored). Between two keys the first key's ease shapes
 the way; before the first key and after the last the value holds. Colours travel in linear light.
 
-This is the reference the Rust engine implements (ENGINE_CONTRACT.md › Evaluation); Python uses it for the
-inspector's "value now" and the temporary evaluator.
+This is the reference the Rust engine implements (ENGINE_CONTRACT.md › Evaluation; checked by the engine's
+scene tests); Python uses it for the inspector's "value now" and the motion facts. Frames are drawn by the engine only.
 """
 from __future__ import annotations
 

@@ -9,6 +9,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Callable
 
+from .. import ids
 from ..errors import RostrumError, codes
 from ..who import Who
 from .guides import Guides
@@ -31,10 +32,11 @@ class App:
 
 class Groups:
     """One group (session) per agent turn. MCP has no turn marker, so a group lasts while calls from the
-    same client keep coming within `idle_s`; a quiet gap starts a new one. `group=` always wins."""
+    same client keep coming within `idle_s`; a quiet gap starts a new one. `group=` always wins. A new group is
+    never one already in a saved history (`used()` lists those), so ids stay unique across restarts."""
 
-    def __init__(self, idle_s: float = 20.0, clock=time.monotonic):
-        self.idle_s, self._clock, self._n = idle_s, clock, 0
+    def __init__(self, idle_s: float = 20.0, clock=time.monotonic, used=lambda: ()):
+        self.idle_s, self._clock, self._used, self._minted = idle_s, clock, used, set()
         self._last: dict[str, tuple[str, float]] = {}
 
     def current(self, who: Who, asked: str | None = None) -> str:
@@ -45,8 +47,8 @@ class Groups:
         elif last and now - last[1] <= self.idle_s:
             group = last[0]
         else:
-            self._n += 1
-            group = f"{who.name}-run-{self._n}"
+            group = ids.counted(self._minted | set(self._used()), f"{who.name}-run", sep="-")
+            self._minted.add(group)
         self._last[who.name] = (group, now)
         return group
 

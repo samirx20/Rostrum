@@ -1,11 +1,12 @@
-"""The three things agents and people rely on that would break silently: cached pixels equal a full replay, undo of
-a stroke batch is exact, and `landed` reports a miss of the right size."""
+"""The things agents and people rely on that would break silently: cached pixels equal a full replay, undo of
+a stroke batch is exact, `landed` reports a miss of the right size, and a script re-run removes the strokes it no
+longer makes but never a stroke a person changed."""
 import numpy as np
 import pytest
 
 import rostrum_paint as RP
 from rostrum_core import DocKind, Document, Registry, Who
-from rostrum_paint import canvas as C, where as W
+from rostrum_paint import canvas as C, ops, where as W
 
 REG = Registry()
 RP.register(REG, ("canvas",))
@@ -56,3 +57,26 @@ def test_landed_reports_the_miss(doc):
     assert W.landed(doc.item("c"), *WH, "s")["landed"]
     r = W.landed(doc.item("c"), *WH, "s", path=[[30, 106], [290, 106]])
     assert not r["landed"] and r["mean"] == pytest.approx(6, abs=0.5)
+
+
+def painted_by_script(*stroke_ids):
+    """What a painting script outputs: one canvas, one paint layer, the strokes it makes this run (built by the
+    kit's one builder, as an app's script layer does)."""
+    out = KIND.blank()
+    paint = ops.build("paint", "ink", {})
+    paint["strokes"] = [ops.build("stroke", s, {"points": [[20, 30 + 40 * n], [300, 30 + 40 * n]], "size": 10})
+                        for n, s in enumerate(stroke_ids)]
+    out["canvases"] = [{"id": "c", "type": "canvas", "paints": [paint], "paintmasks": []}]
+    return out
+
+
+def test_script_rerun_removes_its_dropped_strokes_but_keeps_a_persons_edit():
+    d = Document.new(KIND)
+    d.run_script("strokes.py", painted_by_script("s1", "s2", "s3"))
+    d.apply({"op": "stroke.set", "target": "s2", "args": {"color": "#ff0000"}}, Who.person("sam"))
+    report = d.run_script("strokes.py", painted_by_script("s3"))      # the new run no longer makes s1 or s2
+    left = [s["id"] for s in d.item("ink")["strokes"]]
+    assert "s1" not in left                                             # the script's own stroke goes
+    assert "s2" in left and d.item("s2")["color"] == "#ff0000"          # the person's stroke stays, as they left it
+    assert [h["key"] for h in report.held] == ["s2"]                    # and the script says it kept it
+    assert C.render(d.item("c"), *WH).order == left                     # the pixels follow the document

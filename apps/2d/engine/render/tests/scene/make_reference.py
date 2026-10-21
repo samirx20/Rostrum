@@ -8,8 +8,12 @@ Run it again when easing.py, evaluate.py, fields.py or stopgap_html.py change.
 import json
 from pathlib import Path
 
-from rostrum2d import easing, fields as F, stopgap_html
-from rostrum2d.scene import FORMAT, VERSION, frame_at
+from rostrum2d import easing, fields as F
+from rostrum2d.evaluate import resolve
+from rostrum2d.scene import FORMAT, VERSION
+
+HERE = Path(__file__).with_name("reference.json")
+SCENE_TYPES = [t for t in F.FIELDS if t not in ("key", "frame")]     # "frame" is a drawing's document item, not a scene one
 
 
 def item(id, type, anim=None, **props):
@@ -60,15 +64,27 @@ def kinds(p):
     return [p.name, {"number": "number", "color": "color", "toggle": "toggle", "text": "text"}[p.type], None]
 
 
-STAGE_T = 0.8
+def frame_at(node, t):
+    """The scene at time t through evaluate.resolve: every value evaluated, layers outside start..end dropped."""
+    item = {"id": node["id"], "type": node["type"], **node["props"],
+            "keys": [{"prop": p, **k} for p, ks in node.get("anim", {}).items() for k in ks]}
+    out = {"id": node["id"], "type": node["type"], "props": resolve(item, t)}
+    for part in ("effects", "masks", "layers"):
+        if part in node:
+            out[part] = [k for k in (frame_at(c, t) for c in node[part]) if k is not None]
+    p = out["props"]
+    return None if node["type"] in F.LAYERS and not (p["start"] <= t < p["end"]) else out
+
+
+old = json.loads(HERE.read_text(encoding="utf-8"))
 out = {
-    "fields": {t: [kinds(p) for p in ps] for t, ps in F.FIELDS.items() if t != "key"},
-    "animatable": {t: F.animatable(t) for t in F.FIELDS if t != "key"},
+    "fields": {t: [kinds(p) for p in F.FIELDS[t]] for t in SCENE_TYPES},
+    "animatable": {t: F.animatable(t) for t in SCENE_TYPES},
     "eases": eases,
     "scene": scene,
-    "frames": [frame_at(scene, t) for t in times],
-    "stage_t": STAGE_T,
-    "stage": stopgap_html.stage(frame_at(scene, STAGE_T), frozenset({"gradient-text"})),
+    "frames": [{"format": FORMAT, "version": VERSION, "t": t, "comp": frame_at(comp, t)} for t in times],
+    "stage_t": old["stage_t"],
+    "stage": old["stage"],
 }
-Path(__file__).with_name("reference.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
+HERE.write_text(json.dumps(out, indent=1), encoding="utf-8")
 print(f"{len(eases)} ease values, {len(times)} frames")

@@ -33,27 +33,41 @@ impl Item<'_> {
     }
 }
 
-/// `node` at time `t`; None for a layer that isn't showing.
-pub fn at(node: &Node, t: f64) -> Option<Item<'_>> {
-    eval(node, t, false)
+/// `comp` at time `t`; None for a layer that isn't showing.
+pub fn at(comp: &Node, t: f64) -> Option<Item<'_>> {
+    eval(comp, t, false, fps(comp))
 }
 
-/// `node` at time `t` with every layer kept, showing or not (the stage written from it checks the whole scene).
-pub fn whole(node: &Node, t: f64) -> Item<'_> {
-    eval(node, t, true).unwrap()
+/// `comp` at time `t` with every layer kept, showing or not (the stage written from it checks the whole scene).
+pub fn whole(comp: &Node, t: f64) -> Item<'_> {
+    eval(comp, t, true, fps(comp)).unwrap()
 }
 
-fn eval(node: &Node, t: f64, all: bool) -> Option<Item<'_>> {
+fn fps(comp: &Node) -> f64 {
+    comp.props.get("fps").and_then(Value::as_f64).unwrap_or(30.0)
+}
+
+/// The picture of the drawing showing at time `t`: the last with at ≤ floor(t·fps); "" before the first
+/// (rostrum2d/drawing.py `frame_at`, `frame_number`).
+fn drawing_src(node: &Node, t: f64, fps: f64) -> &str {
+    let n = (t * fps + 1e-6).floor() as i64;
+    node.frames.iter().take_while(|f| f.0 <= n).last().map_or("", |f| f.1.as_str())
+}
+
+fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
     let mut props = node.props.clone();
     for (field, keys) in &node.anim {
         props.insert(field.clone(), track_value(keys, t));
     }
+    if node.kind == "drawing" {
+        props.insert("src".into(), Value::from(drawing_src(node, t, fps)));
+    }
     let item = Item {
         id: &node.id,
         kind: node.kind,
-        effects: node.effects.iter().filter_map(|c| eval(c, t, all)).collect(),
-        masks: node.masks.iter().filter_map(|c| eval(c, t, all)).collect(),
-        layers: node.layers.iter().filter_map(|c| eval(c, t, all)).collect(),
+        effects: node.effects.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
+        masks: node.masks.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
+        layers: node.layers.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
         props,
     };
     if !all && node.role == Role::Layer && !(item.num("start") <= t && t < item.num("end")) {
