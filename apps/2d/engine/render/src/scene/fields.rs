@@ -37,6 +37,7 @@ const TEXT: &[Field] = &[
 ];
 const IMAGE: &[Field] = &[("src", Text), ("w", Number), ("h", Number), ("fit", Choice(&["cover", "contain", "stretch"])), ("radius", Number)];
 const GROUP: &[Field] = &[("w", Number), ("h", Number), ("clip", Toggle)];
+const DRAWING: &[Field] = &[("w", Number), ("h", Number)];
 const BLUR: &[Field] = &[("radius", Number)];
 const GLOW: &[Field] = &[("radius", Number), ("strength", Number), ("ownColor", Toggle), ("color", Color)];
 const GRADIENT: &[Field] = &[
@@ -59,8 +60,6 @@ pub enum Role {
 }
 
 /// An item type's role and fields (a layer's are its own, then the transform's); None for an unknown type.
-/// Drawing layers (painting-kit strokes, brief S6) are a layer type to add here, with their fields, and their
-/// content in stage.rs `content`.
 pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
     let layer = |own: &[Field]| Some((Role::Layer, own.iter().chain(TRANSFORM).copied().collect()));
     match kind {
@@ -69,6 +68,7 @@ pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
         "text" => layer(TEXT),
         "image" => layer(IMAGE),
         "group" => layer(GROUP),
+        "drawing" => layer(DRAWING),
         "blur" => Some((Role::Effect, BLUR.to_vec())),
         "glow" => Some((Role::Effect, GLOW.to_vec())),
         "gradient" => Some((Role::Effect, GRADIENT.to_vec())),
@@ -79,10 +79,11 @@ pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
 }
 
 /// Every type the engine reads (for error messages and the fields.py check).
-pub const TYPES: &[&str] = &["comp", "shape", "text", "image", "group", "blur", "glow", "gradient", "shadow", "mask"];
+pub const TYPES: &[&str] = &["comp", "shape", "text", "image", "group", "drawing", "blur", "glow", "gradient", "shadow", "mask"];
 
 /// Fields keys may drive: numbers and colours, except those that describe the item rather than a moment
 /// (fields.py `STILL`).
 pub fn animatable(kind: &str, field: &Field) -> bool {
     matches!(field.1, Number | Color) && kind != "comp" && !matches!(field.0, "start" | "end" | "boxWidth")
+        && !(kind == "drawing" && matches!(field.0, "w" | "h"))
 }

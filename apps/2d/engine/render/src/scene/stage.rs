@@ -139,7 +139,17 @@ fn content(it: &Item, look: Look) -> R<(String, String)> {
             }
             Ok((s, inner))
         }
-        // A drawing layer (S6) is drawn here once the contract has it.
+        "drawing" => {
+            if grad.is_some() {
+                return Err(format!("{}: a gradient on a drawing is not drawn by this engine yet", it.id));
+            }
+            // The painting kit's picture of the drawing showing now (eval.rs), stretched to the canvas box.
+            let s = format!("width:{}px;height:{}px;", v(it, "w"), v(it, "h"));
+            match it.str("src") {
+                "" => Ok((s, String::new())),
+                src => Ok((s, format!("<img src=\"/__local_asset?p={}\" style=\"width:100%;height:100%;object-fit:fill;\">", percent(src)))),
+            }
+        }
         k => Err(format!("{}: a {k} layer is not drawn by this engine yet", it.id)),
     }
 }

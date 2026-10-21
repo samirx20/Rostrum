@@ -499,6 +499,95 @@
     ]
    ]
   ],
+  "drawing": [
+   [
+    "w",
+    "number",
+    null
+   ],
+   [
+    "h",
+    "number",
+    null
+   ],
+   [
+    "x",
+    "number",
+    null
+   ],
+   [
+    "y",
+    "number",
+    null
+   ],
+   [
+    "scale",
+    "number",
+    null
+   ],
+   [
+    "rotation",
+    "number",
+    null
+   ],
+   [
+    "opacity",
+    "number",
+    null
+   ],
+   [
+    "anchorX",
+    "number",
+    null
+   ],
+   [
+    "anchorY",
+    "number",
+    null
+   ],
+   [
+    "scaleX",
+    "number",
+    null
+   ],
+   [
+    "scaleY",
+    "number",
+    null
+   ],
+   [
+    "tiltX",
+    "number",
+    null
+   ],
+   [
+    "tiltY",
+    "number",
+    null
+   ],
+   [
+    "start",
+    "number",
+    null
+   ],
+   [
+    "end",
+    "number",
+    null
+   ],
+   [
+    "blend",
+    "choice",
+    [
+     "normal",
+     "screen",
+     "add",
+     "multiply",
+     "overlay",
+     "soft-light"
+    ]
+   ]
+  ],
   "blur": [
    [
     "radius",
@@ -702,6 +791,19 @@
   "group": [
    "w",
    "h",
+   "x",
+   "y",
+   "scale",
+   "rotation",
+   "opacity",
+   "anchorX",
+   "anchorY",
+   "scaleX",
+   "scaleY",
+   "tiltX",
+   "tiltY"
+  ],
+  "drawing": [
    "x",
    "y",
    "scale",

@@ -1,11 +1,11 @@
 """The scene description: what the Python layer sends the engine (ENGINE_CONTRACT.md). One composition, every
 item's still values with defaults filled in, and the keys of its animated fields; the engine evaluates them per
-frame. `frame_at` is the same evaluation in Python (the reference, and the temporary evaluator's input).
+frame (the evaluation's reference is evaluate.py).
 """
 from __future__ import annotations
 
 from . import drawing, fields as F
-from .evaluate import animated, keys_of, resolve
+from .evaluate import animated, keys_of
 
 FORMAT, VERSION = "rostrum-2d-scene", 1
 KEY_FIELDS = ("t", "v", "c", "ease", "x1", "y1", "x2", "y2", "stiffness", "damping")
@@ -40,27 +40,3 @@ def describe(doc_data: dict, comp_id: str | None = None) -> dict:
         raise ValueError(f'no composition "{comp_id}"; there are: {", ".join(c["id"] for c in comps)}')
     return {"format": FORMAT, "version": VERSION, "comp": _node(comp)}
 
-
-def frame_at(scene: dict, t: float) -> dict:
-    """The scene at one time: every node's props evaluated, `anim` gone; nodes outside start..end dropped."""
-    if scene.get("format") != FORMAT or scene.get("version") != VERSION:
-        raise ValueError(f"not a {FORMAT} v{VERSION} scene: {scene.get('format')} v{scene.get('version')}")
-
-    def at(node):
-        item = {"id": node["id"], "type": node["type"], **node["props"],
-                "keys": [{"prop": p, **k} for p, ks in node.get("anim", {}).items() for k in ks]}
-        out = {"id": node["id"], "type": node["type"], "props": resolve(item, t)}
-        for key in ("effects", "masks", "layers"):
-            if key in node:
-                kids = [at(c) for c in node[key]]
-                out[key] = [k for k in kids if k is not None]
-        props = out["props"]
-        if node["type"] in F.LAYERS and not (props["start"] <= t < props["end"]):
-            return None
-        if node["type"] == "drawing":
-            shown = drawing.frame_at(node, drawing.frame_number(t, fps))
-            props["src"] = shown["src"] if shown else ""
-        return out
-
-    fps = scene["comp"]["props"]["fps"]
-    return {"format": FORMAT, "version": VERSION, "t": t, "comp": at(scene["comp"])}

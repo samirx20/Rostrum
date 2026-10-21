@@ -6,8 +6,7 @@ look tools and exports all render through it, the same way (preview ≡ export).
         eng.still(1.2, png)             # one frame at 1.2 s
         eng.video(mp4)                  # the whole comp (or start=, end=)
 
-Evaluation: the contract says the engine evaluates the scene per frame. Until the Rust side does (Team Hem),
-`evaluator="python"` (the default) evaluates here (scene.frame_at) and sends page markup (stopgap_html, TEMPORARY).
+The engine holds the scene and evaluates every frame itself (keys, easing, drawing); Python only describes it.
 """
 from __future__ import annotations
 
@@ -17,11 +16,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from . import stopgap_html
-from .scene import frame_at
-
 HERE = Path(__file__).resolve().parents[2]                         # apps/2d
-ARCHIVE_EXE = Path(r"C:\Users\Sam\Documents\CODE\OLD-EXPERIMENT\native\target\release\rostrum-motion.exe")
 LOG_DIR = Path.home() / ".rostrum" / "logs"
 
 
@@ -30,12 +25,14 @@ class EngineError(RuntimeError):
 
 
 def find_exe() -> Path:
-    """ROSTRUM2D_ENGINE, else this repo's engine build, else the archive's renderer."""
+    """ROSTRUM2D_ENGINE, else this checkout's engine build (release, then the agents' `agent` profile)."""
     if os.environ.get("ROSTRUM2D_ENGINE"):
         return Path(os.environ["ROSTRUM2D_ENGINE"])
-    for p in (HERE / "engine" / "target" / "release").glob("rostrum*.exe"):
-        return p
-    return ARCHIVE_EXE
+    for profile in ("release", "agent"):
+        for p in (HERE / "engine" / "target" / profile).glob("rostrum*.exe"):
+            return p
+    raise EngineError(f"2D engine not built: no rostrum*.exe in {HERE / 'engine' / 'target'} (release or agent); "
+                      "build apps/2d/engine or set ROSTRUM2D_ENGINE")
 
 
 def h264(out: Path, w: int, h: int, fps: int) -> dict:
@@ -47,26 +44,28 @@ def h264(out: Path, w: int, h: int, fps: int) -> dict:
 
 
 class Engine:
-    def __init__(self, exe: Path | None = None, evaluator: str = "python"):
+    def __init__(self, exe: Path | None = None):
         exe = exe or find_exe()
         if not exe.exists():
             raise EngineError(f"2D engine not found: {exe} (set ROSTRUM2D_ENGINE)")
-        if evaluator != "python":
-            raise EngineError("the engine's own scene evaluation isn't available yet; use evaluator='python'")
         LOG_DIR.mkdir(parents=True, exist_ok=True)
         self.log_path = LOG_DIR / f"engine2d-{os.getpid()}-{int(time.time())}.log"
         self._log = open(self.log_path, "wb")
         self.proc = subprocess.Popen([str(exe), "serve"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                      stderr=self._log)
-        self.pid, self.scene, self._opened = self.proc.pid, None, None
-        self.caps = frozenset() if exe == ARCHIVE_EXE else frozenset({"gradient-text"})
+        self.pid, self.scene = self.proc.pid, None
 
-    def _request(self, req: dict, timeout_s: float = 60.0) -> dict:
+    def _request(self, req: dict, timeout_s: float = 60.0, progress=None) -> dict:
         t0 = time.perf_counter()
         try:
             self.proc.stdin.write((json.dumps(req) + "\n").encode("utf-8"))
             self.proc.stdin.flush()
             line = self.proc.stdout.readline()
+            while line.startswith(b'{"progress"'):         # export's per-frame progress lines
+                if progress:
+                    p = json.loads(line)
+                    progress(p["progress"], p["of"])
+                line = self.proc.stdout.readline()
         except OSError as e:
             raise EngineError(f"2D engine (pid {self.pid}) stopped: {e}; log {self.log_path}") from e
         if not line:
@@ -79,51 +78,36 @@ class Engine:
         out["ms"] = (time.perf_counter() - t0) * 1000
         return out
 
-    def _open(self, encode: dict | None = None):
-        comp = self.scene["comp"]
-        key = (comp["props"]["width"], comp["props"]["height"], json.dumps(encode))
-        if self._opened == key and encode is None:
-            return
-        req = {"width": comp["props"]["width"], "height": comp["props"]["height"],
-               "html": stopgap_html.shell(comp)}
-        if encode:
-            req["encode"] = encode
-        self._request({"open": req})
-        self._opened = None if encode else key
-
     def load(self, scene: dict):
-        frame_at(scene, 0.0)                         # a bad scene fails here, loudly
+        """Load or replace the scene; the engine checks it whole, so a bad scene fails here, loudly."""
+        self._request({"scene": scene})
         self.scene = scene
 
-    def _stage(self, t: float) -> str:
+    def _props(self) -> dict:
         if self.scene is None:
             raise EngineError("no scene loaded (Engine.load)")
-        return stopgap_html.stage(frame_at(self.scene, t), self.caps)
+        return self.scene["comp"]["props"]
 
     def still(self, t: float, png: Path) -> dict:
-        self._open()
+        self._props()
         png = Path(png)
         png.parent.mkdir(parents=True, exist_ok=True)
-        out = self._request({"frame": {"stage": self._stage(t), "image": str(png)}})
+        out = self._request({"frame": {"t": t, "image": str(png)}})
         if not png.is_file():
             raise EngineError(f"2D engine said done but wrote no file: {png}")
         return out
 
     def video(self, mp4: Path, start: float = 0.0, end: float | None = None, progress=None) -> dict:
-        p = self.scene["comp"]["props"]
+        p = self._props()
         fps, end = p["fps"], p["duration"] if end is None else end
         mp4 = Path(mp4)
         mp4.parent.mkdir(parents=True, exist_ok=True)
-        self._open(h264(mp4, p["width"], p["height"], fps))
-        n = max(1, round((end - start) * fps))
-        for i in range(n):
-            self._request({"frame": {"stage": self._stage(start + i / fps), "index": i, "encode": True}})
-            if progress:
-                progress(i + 1, n)
-        self._request({"finish": {}}, timeout_s=300.0)
+        out = self._request({"export": {"start": start, "end": end, "file": str(mp4), "progress": progress is not None,
+                                        "encode": h264(mp4, p["width"], p["height"], fps)}},
+                            timeout_s=3600.0, progress=progress)
         if not mp4.is_file() or mp4.stat().st_size == 0:
             raise EngineError(f"export wrote no video: {mp4}; log {self.log_path}")
-        return {"file": str(mp4), "frames": n, "fps": fps}
+        return {"file": str(mp4), "frames": out["frames"], "fps": fps, "timing": out["timing"]}
 
     def close(self):
         if self.proc.poll() is None:

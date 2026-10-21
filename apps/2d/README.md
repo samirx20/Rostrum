@@ -46,4 +46,4 @@ with Engine() as eng:                      # one renderer process, ended on exit
     eng.video(r"C:\...\intro.mp4")
 ```
 
-The engine handle finds the renderer in `ROSTRUM2D_ENGINE`, else `engine/target/release/rostrum*.exe`, else the archive's `rostrum-motion.exe`. Until the engine evaluates scenes itself, Python evaluates each frame and sends page markup (`stopgap_html.py`, TEMPORARY; limits in ENGINE_CONTRACT.md § 7).
+The engine handle finds the engine in `ROSTRUM2D_ENGINE`, else `engine/target/release/` or `engine/target/agent/` `rostrum*.exe`, and fails loudly if there is none. Python only describes the scene (`scene.describe`); the engine evaluates and draws every frame (ENGINE_CONTRACT.md), for the canvas, the look tools and export alike.
