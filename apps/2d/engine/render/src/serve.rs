@@ -35,6 +35,9 @@
 //! - `{"finish": {}}` — closes the encoder's input and waits for it: `{"ok": true, "code": 0}`, or an error
 //!   with what it said.
 //!
+//! - `{"scene"}`, `{"frame": {"t"}}`, `{"export"}`, `{"edit"}` — the engine holds the scene description and evaluates every
+//!   frame itself (ENGINE_CONTRACT.md; scene_serve.rs).
+//!
 //! Errors reply `{"error": "…"}` (an asset that failed to load names its URL); the process keeps serving.
 
 use std::collections::VecDeque;
@@ -57,25 +60,25 @@ use crate::sink::{Pixels, Sink};
 
 const STAGE: &str = "#rostrum-stage";
 
-struct Session {
+pub(crate) struct Session {
     doc: HtmlDocument,
     stage: NodeId,
     assets: Assets,
     painter: Painter,
-    width: u32,
-    height: u32,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
     /// rgba frames are 16-bit.
     deep: bool,
     /// The working space, view and output (color.rs).
     color: Spec,
     /// Where `encode` frames go (open.encode).
-    sink: Option<Sink>,
+    pub(crate) sink: Option<Sink>,
     /// Each frame's stage markup is parsed here (no styles, no loads) and walked beside the kept page.
     scratch: keep::Scratch,
 }
 
 /// `warm`: the GL context made as the process started (taken by the first GPU open).
-fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, String>>) -> Result<(Session, Value), String> {
+pub(crate) fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, String>>) -> Result<(Session, Value), String> {
     let width = req["width"].as_u64().ok_or("open needs width")? as u32;
     let height = req["height"].as_u64().ok_or("open needs height")? as u32;
     let html = req["html"].as_str().ok_or("open needs html")?;
@@ -115,7 +118,7 @@ fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, String>>) -> R
 }
 
 /// The page document's settings at a frame size, its loads through `assets`.
-fn page_config(width: u32, height: u32, assets: &Assets) -> DocumentConfig {
+pub(crate) fn page_config(width: u32, height: u32, assets: &Assets) -> DocumentConfig {
     DocumentConfig {
         viewport: Some(Viewport::new(width, height, 1.0, ColorScheme::Light)),
         base_url: Some(BASE_URL.into()),
@@ -142,7 +145,7 @@ fn shell(html: &str, config: DocumentConfig, assets: &Assets) -> Result<(HtmlDoc
 
 /// `page`: another page shell on the open session (a live preview's next prepared document): the document is
 /// replaced; the painter (its GPU context and surfaces), the colour spec, the encoder and the scratch parser stay.
-fn page(s: &mut Session, req: &Value) -> Result<Value, String> {
+pub(crate) fn page(s: &mut Session, req: &Value) -> Result<Value, String> {
     let html = req["html"].as_str().ok_or("page needs html")?;
     let t0 = Instant::now();
     let (doc, stage) = shell(html, page_config(s.width, s.height, &s.assets), &s.assets)?;
@@ -259,7 +262,8 @@ fn warm_ahead(s: &Session, req: &Value) -> Result<Value, String> {
     Ok(json!({ "ok": true, "queued": queued }))
 }
 
-fn frame(s: &mut Session, req: &Value, out: &mut impl Write) -> Result<Option<Vec<u8>>, String> {
+/// One frame: the reply, and the rgba bytes that follow it when asked for.
+pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u8>>), String> {
     let markup = req["stage"].as_str().ok_or("frame needs stage")?;
     let samples: Vec<&str> = req["samples"].as_array().map(|a| a.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
     // The frame's pictures not kept yet, decoded side by side now, so layout and paint (which load one after another) only hit the cache.
@@ -329,8 +333,7 @@ fn frame(s: &mut Session, req: &Value, out: &mut impl Write) -> Result<Option<Ve
         s.painter.taps_written()?;
         tap_write_ms += s.painter.last_tap_write_ms;
         let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "encodeWaitMs": wait_ms, "decodeMs": decode_ms, "pictures": urls.len(), "decoded": decoded, "gpuMs": s.painter.last_gpu_ms, "taps": taps, "tapReadMs": tap_read_ms, "tapWriteMs": tap_write_ms });
-        reply(out, &json!({ "ok": true, "timing": timing, "boxes": boxes }));
-        return Ok(None);
+        return Ok((json!({ "ok": true, "timing": timing, "boxes": boxes }), None));
     }
     let image = req["image"].as_str();
     // A playing frame (the app server asks for a .jpg only while playing) goes through the output step's checked 3D table:
@@ -349,8 +352,7 @@ fn frame(s: &mut Session, req: &Value, out: &mut impl Write) -> Result<Option<Ve
         let path = image.unwrap();
         jpeg_encoder::Encoder::new_file(path, 75).and_then(|e| e.encode(&pixels, w as u16, h as u16, jpeg_encoder::ColorType::Rgba)).map_err(|e| format!("writing {path}: {e}"))?;
         timing["writeMs"] = json!(t4.elapsed().as_secs_f64() * 1000.0);
-        reply(out, &json!({ "ok": true, "timing": timing, "boxes": boxes, "scopes": Value::Null }));
-        return Ok(None);
+        return Ok((json!({ "ok": true, "timing": timing, "boxes": boxes, "scopes": Value::Null }), None));
     }
     let raw = s.painter.read();
     // The frame's taps are written while it is read back and converted; on disk before it is answered.
@@ -379,8 +381,7 @@ fn frame(s: &mut Session, req: &Value, out: &mut impl Write) -> Result<Option<Ve
     };
     if image.is_none() && req["rgba"].as_bool() != Some(true) && (!scopes_out.is_null() || !sample_out.is_null()) {
         taps_done(s, &mut tap_write_ms)?;
-        reply(out, &json!({ "ok": true, "scopes": scopes_out, "sample": sample_out }));
-        return Ok(None);
+        return Ok((json!({ "ok": true, "scopes": scopes_out, "sample": sample_out }), None));
     }
     let t3 = Instant::now();
     let mut pixels = vec![];
@@ -409,12 +410,10 @@ fn frame(s: &mut Session, req: &Value, out: &mut impl Write) -> Result<Option<Ve
         saved.map_err(|e| format!("writing {path}: {e}"))?;
         // The picture's encode and write (after `paintMs`; the host waits for it all the same).
         timing["writeMs"] = json!(t4.elapsed().as_secs_f64() * 1000.0);
-        reply(out, &json!({ "ok": true, "timing": timing, "boxes": boxes, "scopes": scopes_out }));
-        return Ok(None);
+        return Ok((json!({ "ok": true, "timing": timing, "boxes": boxes, "scopes": scopes_out }), None));
     }
     if req["rgba"].as_bool() == Some(true) {
-        reply(out, &json!({ "ok": true, "bytes": pixels.len(), "timing": timing, "boxes": boxes, "scopes": scopes_out }));
-        return Ok(Some(pixels));
+        return Ok((json!({ "ok": true, "bytes": pixels.len(), "timing": timing, "boxes": boxes, "scopes": scopes_out }), Some(pixels)));
     }
     Err("frame needs image (a .png / .jpg path) or rgba: true".into())
 }
@@ -430,7 +429,7 @@ fn collect(s: &mut Session) -> Result<f64, String> {
 }
 
 /// Every frame in flight to the encoder, then the encoder closed and waited for.
-fn finish(s: &mut Session) -> Result<i32, String> {
+pub(crate) fn finish(s: &mut Session) -> Result<i32, String> {
     while s.painter.reads_in_flight() > 0 {
         collect(s)?;
     }
@@ -449,6 +448,8 @@ pub fn run() {
     // The GL context, made now: the driver takes ~0.2 s to load, overlapping the host's preparation of the
     // render (the host starts this process before it needs it).
     let mut warm = Some(crate::painter::gl_context());
+    // The scene the engine holds (scene_serve.rs).
+    let mut held = crate::scene_serve::Held::default();
     for line in stdin.lock().lines() {
         let Ok(line) = line else { break };
         if line.trim().is_empty() {
@@ -462,7 +463,28 @@ pub fn run() {
                 continue;
             }
         };
-        if let Some(o) = req.get("open") {
+        if req.get("scene").is_some() {
+            match crate::scene_serve::load(&mut held, &mut session, &mut warm, &req) {
+                Ok(r) => reply(&mut out, &r),
+                Err(e) => reply(&mut out, &json!({ "error": e })),
+            }
+        } else if let Some(e) = req.get("edit") {
+            match crate::scene_serve::edit(&mut held, e) {
+                Ok(r) => reply(&mut out, &r),
+                Err(e) => reply(&mut out, &json!({ "error": e })),
+            }
+        } else if let Some(x) = req.get("export") {
+            let mut progress = |i: u64, n: u64| {
+                reply(&mut out, &json!({ "progress": i, "of": n }));
+                out.flush().unwrap();
+            };
+            let r = session.as_mut().ok_or_else(|| "export before scene".to_string()).and_then(|s| crate::scene_serve::export(&held, s, x, &mut progress));
+            match r {
+                Ok(r) => reply(&mut out, &r),
+                Err(e) => reply(&mut out, &json!({ "error": e })),
+            }
+        } else if let Some(o) = req.get("open") {
+            held.shell = None;
             match open(o, &mut warm) {
                 Ok((s, r)) => {
                     session = Some(s);
@@ -473,13 +495,19 @@ pub fn run() {
         } else if let Some(f) = req.get("frame") {
             match session.as_mut() {
                 None => reply(&mut out, &json!({ "error": "frame before open" })),
-                Some(s) => match frame(s, f, &mut out) {
-                    Ok(Some(pixels)) => out.write_all(&pixels).unwrap(),
-                    Ok(None) => {}
+                // A frame of the held scene (`t`), or of the stage markup the host wrote (`stage`).
+                Some(s) => match if f.get("stage").is_none() && f.get("t").is_some() { crate::scene_serve::frame(&held, s, f) } else { frame(s, f) } {
+                    Ok((r, pixels)) => {
+                        reply(&mut out, &r);
+                        if let Some(px) = pixels {
+                            out.write_all(&px).unwrap();
+                        }
+                    }
                     Err(e) => reply(&mut out, &json!({ "error": e })),
                 },
             }
         } else if let Some(p) = req.get("page") {
+            held.shell = None;
             match session.as_mut().ok_or_else(|| "page before open".to_string()).and_then(|s| page(s, p)) {
                 Ok(r) => reply(&mut out, &r),
                 Err(e) => reply(&mut out, &json!({ "error": e })),
@@ -502,7 +530,7 @@ pub fn run() {
         } else if req.get("close").is_some() {
             break;
         } else {
-            reply(&mut out, &json!({ "error": "unknown request (open, page, frame, warm, match, finish or close)" }));
+            reply(&mut out, &json!({ "error": "unknown request (scene, frame, export, edit, open, page, warm, match, finish or close)" }));
         }
         out.flush().unwrap();
     }
