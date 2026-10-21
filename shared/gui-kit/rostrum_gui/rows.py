@@ -14,8 +14,10 @@ from rostrum_core.conditions import holds
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
 ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit",
-         "valid", "value", "anim", "words")
+         "valid", "value", "anim", "words", "expr")
 # anim: "" (can't be animated), "still" (could be), "keyed" (has keys), "onkey" (has a key at the playhead).
+# expr: "" for most rows; a param driven by an expression or binding has {"text", "note"}: the row shows them (and a
+# way to clear it) instead of its widget.
 
 
 def layout(op) -> list[dict]:
@@ -43,9 +45,10 @@ def _param_row(p) -> dict:
             "words": [{"value": v, "label": w} for v, w in p.words.items()]}
 
 
-def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=None) -> list[dict]:
-    """The rows with `valid`, `value` and `anim` filled in for these values (`item`: the item's values as the
-    screen shows them, e.g. at the playhead). `anim(name)` gives a param's key state; none: no keys."""
+def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=None, expr=None) -> list[dict]:
+    """The rows with `valid`, `value`, `anim` and `expr` filled in for these values (`item`: the item's values as
+    the screen shows them, e.g. at the playhead). `anim(name)` gives a param's key state; none: no keys.
+    `expr(name)` gives {"text", "note"} for a param driven by an expression or binding; none: no param is."""
     ok = {r["id"]: holds(r["valid_when"], item, facts) for r in static if r["row"] == "param"}
     out = []
     for r in static:
@@ -53,10 +56,11 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
         if r["row"] == "param":
             r["value"] = item.get(r["id"], r["default"])
             r["anim"] = anim(r["id"]) if anim else ""
+            r["expr"] = expr(r["id"]) if expr else ""
             r["holds"] = ok[r["id"]]
             r["valid"] = ok[r["id"]] and (r["importance"] != "deep" or more_open)
         else:
-            r["value"], r["anim"] = None, ""
+            r["value"], r["anim"], r["expr"] = None, "", ""
             r["holds"] = r["valid"] = any(ok[m] for m in r["members"])
         out.append(r)
     return out

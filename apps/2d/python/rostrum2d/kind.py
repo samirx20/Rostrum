@@ -13,7 +13,7 @@ from __future__ import annotations
 import rostrum_paint
 from rostrum_core import DocKind, Registry
 
-from . import fields as F, pathdata
+from . import exprbake, fields as F, pathdata
 from .rig import model as rig_model
 
 OWNED = ["effects", "masks", "keys"]
@@ -22,7 +22,11 @@ LISTS = {"doc": ["comps"], "comp": ["layers"], "group": ["layers", *OWNED], "dra
          "rig": ["layers", "bones", "iks", "binds", *OWNED], "bone": ["keys"], "ik": ["keys"], "camera": ["keys"],
          **{t: OWNED for t in ("shape", "text", "image", "video", "path")},
          **{t: ["keys"] for t in (*F.EFFECTS, "mask")}}
+for _t, _owned in LISTS.items():       # whatever animates a field may also hold its expression (ops_expr.py)
+    if _t in F.ANIMATED_OWNERS and "exprs" not in _owned:
+        _owned.append("exprs")
 HOLDS = {"comps": ("comp",), "layers": F.LAYERS, "effects": F.EFFECTS, "masks": ("mask",), "keys": ("key",),
+         "exprs": ("expr",),
          "frames": ("frame",), "bones": ("bone",), "iks": ("ik",), "binds": ("bind",), **rostrum_paint.HOLDS}
 
 REGISTRY = Registry()
@@ -86,14 +90,15 @@ def check(data: dict) -> list[str]:
             ats = [f["at"] for f in item["frames"]]
             if ats != sorted(set(ats)):
                 problems.append(f'{item["id"]}: drawings must be at different frames, in order (they are at {ats})')
-    return problems
+    return problems + exprbake.problems_of_doc(data)
 
 
 KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts,
                new=lambda: {"id": "root", "type": "doc", "comps": []})
 
 rostrum_paint.register(REGISTRY, canvas_types=("frame",))
-from . import ops_draw, ops_items, ops_keys  # noqa: E402,F401  (they register on REGISTRY)
+from . import ops_draw, ops_expr, ops_items, ops_keys  # noqa: E402,F401  (they register on REGISTRY)
+from . import follow  # noqa: E402,F401  (text.follow: a text on a path layer)
 from . import ops_path  # noqa: E402,F401  (vector paths, booleans)
 from .rig import ops as _rig_ops  # noqa: E402,F401  (bones, IK chains, binds)
 from .lipsync import ops as _lipsync_ops  # noqa: E402,F401  (lipsync.apply)

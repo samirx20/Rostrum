@@ -21,6 +21,16 @@ doc ─ comps ─ comp (width, height, fps, duration, background)
 - **One fields table** (`fields.py`): every field's type, range, group, importance and `valid_when`. The field operations (`text.set`, `glow.set`, `key.set` …), the inspector, the script layer's checks and the scene's defaults all read it.
 - **One animation model** (`evaluate.py`, `easing.py`, `ops_keys.py`): a field is still, or animated by keys. Keys are items (`title.opacity.k1500`: id from owner, field and time; kept when moved), so a script re-run merges key by key and field by field. `value.set` is "change it as I see it now": a still field changes, an animated one gets a key at `at`.
 - **Operations:** `comp.add`, `layer.add / remove / arrange`, `item.rename`, `effect.add / remove`, `mask.add`, `key.add / remove / clear`, `value.set`, and one `<type>.set` per item type.
+- **Expressions and bindings** (`expr.py` parser, `expr_run.py`, `expr_lib.py`, `exprbake.py`, `ops_expr.py`): one number
+  or colour field can be driven by a small safe expression (`expr.set`: `sin(time * 3) * 40 + logo.x`) or bound to
+  another item's field (`link.set`: value = other · scale + offset, the same thing written as an expression;
+  `bind.set` is the rig's). No Python `eval`: a fixed tokenizer, parser and function list. Stored as the owner's `exprs`
+  items (`title.x.expr`, one history, script re-runs merge); `expr.clear` takes it off. **`scene.describe` bakes each
+  one into linear keys, one per frame from 0 to the length** (exact at every frame, a few expressions on 10 s at
+  30 fps ≈ 30 ms), so the engine, canvas, look tools and export see plain keys; the expression overrides the field's
+  own keys and value. Loops (`a.x <- b.x <- a.x`) are refused when set and again when drawn. `marker("name")` is refused
+  with a clear message: 2D documents keep no markers yet. The inspector shows a driven field's expression and a clear
+  button only on that field (key mark and canvas drag are off for it). Guide: `skills/expressions.md`.
 - **Drawing** (`ops_draw.py`, `drawing.py`, the kit `shared/painting-kit/`): a drawing layer holds drawings (`frame`s),
   each shown from its frame number until the next one (held). Strokes are kit items (`stroke.add`, one call list = one
   undo step). Guide: `skills/drawing.md`.
@@ -29,7 +39,7 @@ doc ─ comps ─ comp (width, height, fps, duration, background)
   pen on the Design page (`screen/screen2d/pen.py`) writes the same `d`.
 - **Video** (`video.py`): decoded once with `ffmpeg` into a cache keyed by the file's content; the engine picks the
   frame by the frame time, so preview ≡ export.
-- **Script layer** (`script.py`): `comp(...)`, `shape / text / image / group(...)`, `.key(field, {time: value}, ease=)`, `.effect(type, ...)`, `.mask(...)`, `with group(...):`. See its docstring.
+- **Script layer** (`script.py`): `comp(...)`, `shape / text / image / group(...)`, `.key(field, {time: value}, ease=)`, `.expr(field, "…")`, `.link(field, of=, field=, scale=, offset=)`, `.effect(type, ...)`, `.mask(...)`, `with group(...):`. See its docstring.
 
 ## Use
 

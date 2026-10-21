@@ -14,6 +14,8 @@ from rostrum2d import fields as F
 from rostrum2d.evaluate import keys_of, resolve, value_at
 from rostrum_gui.edits import field_call
 
+from . import exprs
+
 
 def drives(item: dict, prop: str) -> bool:
     """Keys may drive this field of this item."""
@@ -45,7 +47,7 @@ def shown_values(item: dict, t: float) -> dict:
 
 
 def anim_state(item: dict, prop: str, t: float, fps: float) -> str:
-    if not drives(item, prop):
+    if not drives(item, prop) or exprs.drives(item, prop):     # an expression decides: no key mark
         return ""
     keys = keys_of(item, prop)
     if not keys:
