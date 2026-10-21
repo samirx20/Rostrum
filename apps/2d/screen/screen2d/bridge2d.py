@@ -36,6 +36,7 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
         self.comp_id = comp_id or comps[0]["id"]
         self._t, self._page, self._frame, self.autosave = 0.0, "design", 0, autosave
         self._folded, self._opened, self._drag, self._grab = set(), set(), None, None
+        self.marks = None                                   # made below (it needs this QObject); the first rows have none
         super().__init__(doc, parent=parent)
         self.frames = FrameRenderer(self)
         self.frames.ready.connect(self._on_frame)
@@ -46,7 +47,9 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
         self._timer.timeout.connect(self._tick)
         self.marks = MarkerWatch(doc.folder, self, self.who, self._fail, "2d")   # shared markers: flags, edits, snap
         self.marks.changed.connect(self.markersChanged)
+        self.marks.changed.connect(lambda: self.model.update(self._rows()))   # the marker picks list them
         self.join_history(self.marks)                       # marker edits undo with the screen's one history
+        self.model.update(self._rows())
         self.marks.changed.connect(self._render)            # expressions may read marker("…")
         self.marks.changed.connect(self._problems.touch)
         self.r3d = Render3DWatch(self, self)                # a 3D render layer follows its item's newest render

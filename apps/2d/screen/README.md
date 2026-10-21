@@ -149,6 +149,9 @@ Steps: `select`, `page`, `time`, `set`, `scrub`, `animate`, `drag <layer> <dx> <
   point, press an empty spot to add one, double-click to remove; each drag is one change. A curve param's `max` is the top of its range: the
   stroke's **Width along the line** goes 0 to 4 (a multiplier; the dashed line at 1 = unchanged), a colour curve 0 to 1. Step `inspectorscroll <px>`
   scrolls the inspector for screenshots.
+- **Picks** (a text field naming one other thing, `control="pick"`): Track matte and Follows path are a choice of the
+  layers beside it (a path layer for Follows path), Timed from / Ends at marker a choice of the project's markers, each with
+  **None** first. With nothing to pick the row is absent. Long labels wrap to two lines instead of being cut.
 
 ## Not yet
 

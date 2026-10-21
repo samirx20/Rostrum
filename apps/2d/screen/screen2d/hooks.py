@@ -3,6 +3,9 @@ from __future__ import annotations
 
 from . import exprs, outline, route, swap_rows
 
+SIBLING_PICKS = {"matte": lambda s: True,                          # any layer beside it can be its track matte
+                 "pathLayer": lambda s: s.get("type") == "path"}   # text follows a path layer beside it
+
 
 class Hooks2D:
     def label_of(self, item):
@@ -29,6 +32,15 @@ class Hooks2D:
                 if k in c["args"]:
                     c["args"][k] -= off
         return calls, label
+    def list_choices(self, item, param):   # the picks (control "pick"): a shared marker by name, or a sibling layer
+        if param in ("marker", "endMarker"):
+            return [{"value": m["name"], "label": m["name"]} for m in (self.marks.rows() if self.marks else [])]
+        if param not in SIBLING_PICKS:
+            return []
+        parent, key, _ = self.doc.parent_of(item["id"])
+        return [{"value": s["id"], "label": outline.label_of(s, None)} for s in self.doc.item(parent).get(key, [])
+                if s["id"] != item["id"] and SIBLING_PICKS[param](s)]
+
     def expr_state(self, item, param):
         return exprs.state(item, param)
 

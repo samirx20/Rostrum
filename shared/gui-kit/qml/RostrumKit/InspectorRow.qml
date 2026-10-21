@@ -20,7 +20,8 @@ Item {
                               : model.row === "more" ? Theme.row + Theme.grid
                               : driven ? Theme.row + exprBox.height + Theme.grid
                               : model.control === "curve" ? Theme.curveBox + Theme.row - Theme.field
-                              : tall && widget.item ? Math.max(Theme.row, widget.item.implicitHeight + Theme.row - Theme.field) : Theme.row
+                              : tall && widget.item ? Math.max(Theme.row, widget.item.implicitHeight + Theme.row - Theme.field)
+                              : Math.max(Theme.row, label.implicitHeight + 2 * Theme.grid)    // a long label wraps
     property real reveal: model.valid ? 1 : 0
     Behavior on reveal { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
     width: parent ? parent.width : 0
@@ -52,7 +53,8 @@ Item {
         anchors.top: row.driven || row.tall ? parent.top : undefined
         height: Theme.row
         Text { id: label; width: Theme.labelColumn - Theme.gap; anchors.verticalCenter: parent.verticalCenter
-               text: row.model.label; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont; elide: Text.ElideRight }
+               text: row.model.label; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
+               wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; lineHeight: 0.9 }   // never cut to "Width along the…"
         Loader {
             id: widget
             x: Theme.labelColumn
