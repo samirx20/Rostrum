@@ -1,13 +1,10 @@
 """Sound's own inspect tools: what the engine accepts, what an instrument can play, what sounds are installed."""
 from __future__ import annotations
 
-from pathlib import Path
-
 from rostrum_core import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
-LIBRARY = Path.home() / ".rostrum" / "assets" / "sounds"
-AUDIO = {".wav", ".flac", ".ogg", ".mp3"}
+from .. import library
 
 
 def _instrument(args) -> dict:
@@ -38,17 +35,18 @@ def register(tools: Tools):
         return Reply(f"Drums: {', '.join(r['drums'])}.", r)
 
     @tools.tool("inspect_library", {"properties": {
-        "find": {"type": "string", "description": "Words that must appear in the path (case-insensitive), e.g. \"cello\" or \"door\"."},
+        "find": {"type": "string", "description": "Words that must appear in the path or the description (case-insensitive), e.g. \"cello\" or \"door slam\"."},
         "kind": {"type": "string", "enum": ["instruments", "recordings"], "default": "instruments"},
         "limit": {"type": "integer", "default": 40, "minimum": 1, "maximum": 400}}})
     def inspect_library(ctx, args):
-        """Installed sounds under ~/.rostrum/assets/sounds: SFZ instruments, or recordings (WAV / FLAC / OGG / MP3), as absolute paths."""
-        if not LIBRARY.is_dir():
-            raise RostrumError(codes.NOT_FOUND, "inspect_library", str(LIBRARY), "is not installed")
-        words = (args.get("find") or "").lower().split()
-        want = {".sfz"} if args.get("kind", "instruments") == "instruments" else AUDIO
-        found = sorted(str(p) for p in LIBRARY.rglob("*") if p.suffix.lower() in want and all(w in str(p).lower() for w in words))
+        """Installed sounds under ~/.rostrum/assets/sounds: SFZ instruments or recordings (WAV / FLAC / OGG / MP3), each with its absolute path, what it is (`about`: the pack's own title, else its folder and file words), its category when the pack has one, and for recordings its length in seconds."""
+        kind, words = args.get("kind", "instruments"), args.get("find") or ""
+        try:
+            found = library.find(kind, words)
+        except FileNotFoundError as e:
+            raise RostrumError(codes.NOT_FOUND, "inspect_library", str(library.LIBRARY), "is not installed") from e
         limit = args.get("limit", 40)
         shown = f", showing the first {limit} (raise limit or narrow find)" if len(found) > limit else ""
-        return Reply(f"{len(found)} found" + (f" for \"{args['find']}\"" if words else "") + f" under {LIBRARY}{shown}.",
-                     {"paths": found[:limit], "total": len(found), "more": len(found) > limit})
+        sounds = [library.describe(p) for p in found[:limit]]
+        return Reply(f"{len(found)} {kind} found" + (f" for \"{words}\"" if words else "") + f" under {library.LIBRARY}{shown}.",
+                     {"sounds": sounds, "total": len(found), "more": len(found) > limit})

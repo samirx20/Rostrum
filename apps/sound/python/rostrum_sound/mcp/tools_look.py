@@ -79,7 +79,7 @@ def register(tools: Tools):
         "marks": {"type": "object", "description": "Labels to draw at times: {\"hit\": 12.5, \"drop\": \"#drop\"}."},
         "start": {"type": "number"}, "end": {"type": "number"}}})
     def look_spectrum(ctx, args):
-        """A spectrogram picture (time and frequency labelled, marks drawn) and any steady hum lines found."""
+        """A spectrogram picture (time and frequency labelled, marks drawn), the steady tones in it (held notes, with their note names) and which of those are hum (flat level, on the mains series or still there when the music stops)."""
         doc, wav, stems = _source(ctx, args, "look_spectrum")
         if args.get("track"):
             wav = stems.get(args["track"]) or wav
@@ -88,7 +88,10 @@ def register(tools: Tools):
         png = ctx.app.state.look_dir(doc.item_id) / f"{Path(wav).stem}-spectrum.png"
         r = listen.spectrogram(wav, str(png), marks=marks, range=rng)
         hum = r.get("hum_lines", [])
-        return Reply(f"Spectrogram written; {len(hum)} steady hum lines" + (f" (lowest {hum[0]['freq_hz']:.0f} Hz)." if hum else "."), r, [r["png"]], [r["png"]])
+        held = [t for t in r.get("tones", []) if not t["is_hum"]]
+        said = f"{len(hum)} hum lines" + (f" (lowest {min(h['freq_hz'] for h in hum):.0f} Hz)" if hum else "")
+        said += f"; {len(held)} held tones (" + ", ".join(t["note"] for t in held[:6]) + ")" if held else ""
+        return Reply(f"Spectrogram written; {said}.", r, [r["png"]], [r["png"]])
 
     @tools.tool("look_stereo", {"properties": {**ITEM, **WAV, "section": {"type": "number", "default": 5}}})
     def look_stereo(ctx, args):

@@ -1,0 +1,1685 @@
+{
+ "about": "What each bigsoundbank recording is (from the experiment's hand-picked list, licences checked 2026-10-12).",
+ "files": [
+  {
+   "path": "3312.ogg",
+   "title": "Hot Water in Mug #2",
+   "name": "liquid.pour-hot-water",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/hot-water-in-mug-2-s3312.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1155.ogg",
+   "title": "Hot water in mug #1",
+   "name": "liquid.pour-hot-water",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/hot-water-in-mug-s1155.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1156.ogg",
+   "title": "Cold water in mug #1",
+   "name": "liquid.pour-water-mug",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/cold-water-in-mug-s1156.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3314.ogg",
+   "title": "Cold Water in a Mug #2",
+   "name": "liquid.pour-water-mug",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/cold-water-in-a-mug-2-s3314.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3313.ogg",
+   "title": "Room-temperature water in a mug #1",
+   "name": "liquid.pour-water-mug",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/room-temperature-water-in-a-mug-1-s3313.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1242.ogg",
+   "title": "Glass of water, filling #1",
+   "name": "liquid.pour-water-glass",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/glass-of-water-filling-1-s1242.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1243.ogg",
+   "title": "Glass of water, filling #2",
+   "name": "liquid.pour-water-glass",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/glass-of-water-filling-2-s1243.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0003.ogg",
+   "title": "Glass",
+   "name": "liquid.glass",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/glass-s0003.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1933.ogg",
+   "title": "Beer service #2",
+   "name": "liquid.pour-beer",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/beer-service-2-s1933.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1391.ogg",
+   "title": "Beer service #1",
+   "name": "liquid.pour-beer",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/beer-service-s1391.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1934.ogg",
+   "title": "Beer service #3",
+   "name": "liquid.pour-beer",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/beer-service-3-s1934.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1721.ogg",
+   "title": "Serving Wine #1",
+   "name": "liquid.pour-wine",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/serving-wine-1-s1721.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1722.ogg",
+   "title": "Serving wine #2",
+   "name": "liquid.pour-wine",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/serving-wine-2-s1722.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1723.ogg",
+   "title": "Serving wine #3",
+   "name": "liquid.pour-wine",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/serving-wine-3-s1723.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0117.ogg",
+   "title": "Glass of Soda",
+   "name": "liquid.pour-soda",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/glass-of-soda-s0117.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0230.ogg",
+   "title": "Sparkling water",
+   "name": "liquid.sparkling-water",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/sparkling-water-s0230.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0811.ogg",
+   "title": "Opening a bottle of sparkling water",
+   "name": "liquid.bottle-open-sparkling",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/opening-a-bottle-of-sparkling-water-s0811.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0012.ogg",
+   "title": "Bottle",
+   "name": "liquid.bottle",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/bottle-s0012.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1390.ogg",
+   "title": "Bottle of beer, opening #1",
+   "name": "liquid.bottle-open-beer",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/bottle-of-beer-opening-s1390.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1931.ogg",
+   "title": "Bottle of beer, opening #2",
+   "name": "liquid.bottle-open-beer",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/bottle-of-beer-opening-2-s1931.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1932.ogg",
+   "title": "Bottle of beer, opening #3",
+   "name": "liquid.bottle-open-beer",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/bottle-of-beer-opening-3-s1932.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0211.ogg",
+   "title": "Champagne Cork #1",
+   "name": "liquid.champagne-cork",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/champagne-cork-s0211.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0648.ogg",
+   "title": "Champagne cork #2",
+   "name": "liquid.champagne-cork",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/champagne-cork-2-s0648.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1719.ogg",
+   "title": "Wine Stopper #3",
+   "name": "liquid.wine-stopper",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/wine-stopper-3-s1719.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2123.ogg",
+   "title": "Ice cubes in a glass #1",
+   "name": "liquid.ice-clink",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/ice-cubes-in-a-glass-1-s2123.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2124.ogg",
+   "title": "Ice cubes in a glass #2",
+   "name": "liquid.ice-clink",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/ice-cubes-in-a-glass-2-s2124.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2125.ogg",
+   "title": "Ice cubes in a glass #3",
+   "name": "liquid.ice-clink",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/ice-cubes-in-a-glass-3-s2125.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2126.ogg",
+   "title": "Ice cubes in a glass #4",
+   "name": "liquid.ice-clink",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/ice-cubes-in-a-glass-4-s2126.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2127.ogg",
+   "title": "Ice cubes in a glass #5",
+   "name": "liquid.ice-clink",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/ice-cubes-in-a-glass-5-s2127.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2128.ogg",
+   "title": "Ice cubes in a glass #6",
+   "name": "liquid.ice-clink",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/ice-cubes-in-a-glass-6-s2128.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2209.ogg",
+   "title": "Ice cubes that melt",
+   "name": "liquid.ice-cubes-that-melt",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/ice-cubes-that-melt-s2209.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1519.ogg",
+   "title": "Splash, Big #1",
+   "name": "liquid.splash-big",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/splash-big-1-s1519.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1520.ogg",
+   "title": "Splash, big #2",
+   "name": "liquid.splash-big",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/splash-big-2-s1520.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1521.ogg",
+   "title": "Splash, Big #3",
+   "name": "liquid.splash-big",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/splash-big-3-s1521.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1529.ogg",
+   "title": "Splash, Small #1",
+   "name": "liquid.splash-small",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/splash-small-1-s1529.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1530.ogg",
+   "title": "Splash, small #2",
+   "name": "liquid.splash-small",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/splash-small-2-s1530.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1531.ogg",
+   "title": "Splash, small #3",
+   "name": "liquid.splash-small",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/splash-small-3-s1531.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0150.ogg",
+   "title": "Water bubbles",
+   "name": "liquid.water-bubbles",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/water-bubbles-s0150.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0183.ogg",
+   "title": "Water Bubble #2",
+   "name": "liquid.water-bubble",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/water-bubble-2-s0183.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1244.ogg",
+   "title": "Straw, suction #1",
+   "name": "liquid.straw-suction",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/straw-suction-1-s1244.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0508.ogg",
+   "title": "Straw, end of glass",
+   "name": "liquid.straw-end-of-glass",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/straw-end-of-glass-s0508.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3247.ogg",
+   "title": "Drink from the gourd #1",
+   "name": "liquid.drink-from-the-gourd",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/drink-from-the-gourd-1-s3247.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1204.ogg",
+   "title": "Glass, Placed on Table",
+   "name": "glass.set-down",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/glass-placed-on-table-s1204.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1205.ogg",
+   "title": "3 Glasses, on Table",
+   "name": "glass.set-down",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/3-glasses-on-table-s1205.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0214.ogg",
+   "title": "Bottle on a table",
+   "name": "glass.bottle-on-a-table",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/bottle-on-a-table-s0214.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1323.ogg",
+   "title": "Cheers, table glass #1",
+   "name": "glass.toast",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/cheers-table-glass-1-s1323.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1324.ogg",
+   "title": "Cheers, table glass #2",
+   "name": "glass.toast",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/cheers-table-glass-2-s1324.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1325.ogg",
+   "title": "Cheers, small wineglass #1",
+   "name": "glass.toast",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/cheers-small-wineglass-1-s1325.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1328.ogg",
+   "title": "Cheers, red wine glass #1",
+   "name": "glass.toast",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/cheers-red-wine-glass-1-s1328.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1330.ogg",
+   "title": "Cheers, red wine glass #3",
+   "name": "glass.toast",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/cheers-red-wine-glass-3-s1330.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1332.ogg",
+   "title": "Cheers, big red wine glass #1",
+   "name": "glass.toast",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/cheers-big-red-wine-glass-1-s1332.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1335.ogg",
+   "title": "Cheers, Champagne Flute #1",
+   "name": "glass.toast",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/cheers-champagne-flute-1-s1335.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1336.ogg",
+   "title": "Cheers, champagne flute #2",
+   "name": "glass.toast",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/cheers-champagne-flute-2-s1336.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0472.ogg",
+   "title": "Clinking of full glass (Toast)",
+   "name": "glass.toast",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/clinking-of-full-glass-toast-s0472.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2888.ogg",
+   "title": "Clink of glass, Toast #3",
+   "name": "glass.toast",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/clink-of-glass-toast-3-s2888.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0487.ogg",
+   "title": "Bottle clink",
+   "name": "glass.bottle-clink",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/bottle-clink-s0487.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1394.ogg",
+   "title": "Bottles of beer, shocks #2",
+   "name": "glass.bottles-of-beer-shocks",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/bottles-of-beer-shocks-2-s1394.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0148.ogg",
+   "title": "Glass Burst",
+   "name": "glass.break",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/glass-burst-s0148.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1591.ogg",
+   "title": "Broken Glass of Champagne",
+   "name": "glass.break",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/broken-glass-of-champagne-s1591.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0771.ogg",
+   "title": "Broken glass",
+   "name": "glass.break",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/broken-glass-s0771.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0387.ogg",
+   "title": "A Mirror Explodes",
+   "name": "glass.break",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/mirror-explodes-s0387.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1643.ogg",
+   "title": "Broken Plate #1",
+   "name": "glass.plate-break",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/broken-plate-1-s1643.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1644.ogg",
+   "title": "Broken plate #2",
+   "name": "glass.plate-break",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/broken-plate-2-s1644.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1190.ogg",
+   "title": "Small plate, set on table",
+   "name": "glass.small-plate-set-on-table",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/small-plate-set-on-table-s1190.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1194.ogg",
+   "title": "Teaspoon, placed on a plate",
+   "name": "glass.teaspoon-placed-on-a-plate",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/teaspoon-placed-on-a-plate-s1194.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1196.ogg",
+   "title": "Teaspoon, handled on a plate",
+   "name": "glass.teaspoon-handled-on-a-plate",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/teaspoon-handled-on-a-plate-s1196.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0410.ogg",
+   "title": "Spoon into a Mug of Coffee",
+   "name": "glass.spoon-into-a-mug-of-coffee",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/spoon-into-a-mug-of-coffee-s0410.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0116.ogg",
+   "title": "Can of soda (opening)",
+   "name": "kitchen.can-open",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/can-of-soda-opening-s0116.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3047.ogg",
+   "title": "Nespresso coffee maker #1",
+   "name": "kitchen.coffee-maker",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/nespresso-coffee-maker-1-s3047.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3049.ogg",
+   "title": "Nespresso coffee maker #3",
+   "name": "kitchen.coffee-maker",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/nespresso-coffee-maker-3-s3049.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0301.ogg",
+   "title": "Senseo Coffee Maker: Service #1",
+   "name": "kitchen.coffee-maker",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/senseo-service-s0301.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0469.ogg",
+   "title": "Italian coffee maker",
+   "name": "kitchen.coffee-maker",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/italian-coffee-maker-s0469.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1351.ogg",
+   "title": "Whistling kettle #1",
+   "name": "kitchen.kettle",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/whistling-kettle-1-s1351.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0660.ogg",
+   "title": "Electric kettle #1",
+   "name": "kitchen.kettle",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/electric-kettle-s0660.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3130.ogg",
+   "title": "Electric kettle #3",
+   "name": "kitchen.kettle",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/electric-kettle-3-s3130.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0144.ogg",
+   "title": "Frying pan #2",
+   "name": "kitchen.frying",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/frying-pan-2-s0144.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0145.ogg",
+   "title": "Frying pan #3",
+   "name": "kitchen.frying",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/frying-pan-3-s0145.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2507.ogg",
+   "title": "Frying bath #3",
+   "name": "kitchen.frying",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/frying-bath-3-s2507.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2509.ogg",
+   "title": "Frying bath #5",
+   "name": "kitchen.frying",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/frying-bath-5-s2509.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0491.ogg",
+   "title": "Big broth in a pot",
+   "name": "kitchen.big-broth-in-a-pot",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/big-broth-in-a-pot-s0491.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0149.ogg",
+   "title": "Boiling water",
+   "name": "kitchen.boiling-water",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/boiling-water-s0149.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1193.ogg",
+   "title": "Cutlery, Manipulations on Plate",
+   "name": "kitchen.cutlery-manipulations-on-plate",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/cutlery-manipulations-on-plate-s1193.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0652.ogg",
+   "title": "Faucet #3",
+   "name": "kitchen.faucet",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/faucet-3-s0652.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1158.ogg",
+   "title": "Fridge door",
+   "name": "kitchen.fridge-door",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/fridge-door-s1158.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0572.ogg",
+   "title": "Whoosh #1",
+   "name": "whoosh.basic",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/whoosh-1-s0572.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0573.ogg",
+   "title": "Whoosh #2",
+   "name": "whoosh.basic",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/whoosh-2-s0573.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0128.ogg",
+   "title": "Sword Through the Air",
+   "name": "whoosh.sword-through-the-air",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/sword-through-the-air-s0128.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1795.ogg",
+   "title": "Whoosh #3",
+   "name": "whoosh.basic",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/whoosh-3-s1795.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1796.ogg",
+   "title": "Whoosh #4",
+   "name": "whoosh.basic",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/whoosh-4-s1796.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1797.ogg",
+   "title": "Whoosh #5",
+   "name": "whoosh.basic",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/whoosh-5-s1797.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1798.ogg",
+   "title": "Whoosh #10",
+   "name": "whoosh.basic",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/whoosh-10-s1798.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1799.ogg",
+   "title": "Whoosh #6",
+   "name": "whoosh.basic",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/whoosh-6-s1799.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1802.ogg",
+   "title": "Whoosh #9",
+   "name": "whoosh.basic",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/whoosh-9-s1802.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1800.ogg",
+   "title": "Whoosh #7",
+   "name": "whoosh.basic",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/whoosh-7-s1800.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1801.ogg",
+   "title": "Whoosh #8",
+   "name": "whoosh.basic",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/whoosh-8-s1801.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1787.ogg",
+   "title": "Flag #1",
+   "name": "whoosh.flag",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/flag-1-s1787.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1788.ogg",
+   "title": "Flag #2",
+   "name": "whoosh.flag",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/flag-2-s1788.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1789.ogg",
+   "title": "Flag #3",
+   "name": "whoosh.flag",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/flag-3-s1789.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1790.ogg",
+   "title": "Flag #4",
+   "name": "whoosh.flag",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/flag-4-s1790.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1104.ogg",
+   "title": "Synthetic Coat Rubbed",
+   "name": "whoosh.synthetic-coat-rubbed",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/synthetic-coat-rubbed-s1104.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1807.ogg",
+   "title": "Explosion #1",
+   "name": "cinematic.explosion",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/explosion-1-s1807.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1808.ogg",
+   "title": "Explosion #2",
+   "name": "cinematic.explosion",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/explosion-2-s1808.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1023.ogg",
+   "title": "Explosion far Away #1",
+   "name": "cinematic.explosion-far",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/explosion-far-away-s1023.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1485.ogg",
+   "title": "Gong, very strong",
+   "name": "cinematic.gong",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/gong-very-strong-s1485.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1483.ogg",
+   "title": "Gong, strong #1",
+   "name": "cinematic.gong",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/gong-strong-1-s1483.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2314.ogg",
+   "title": "Cymbale 16\" #4",
+   "name": "cinematic.crash-cymbal",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/cymbale-16-4-s2314.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2313.ogg",
+   "title": "Cymbale 16\" #3",
+   "name": "cinematic.crash-cymbal",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/cymbale-16-3-s2313.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1388.ogg",
+   "title": "Tinnitus",
+   "name": "cinematic.tinnitus",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/tinnitus-s1388.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0124.ogg",
+   "title": "Rain and Thunder #1",
+   "name": "ambience.rain-and-thunder",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/rain-and-storm-s0124.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1019.ogg",
+   "title": "Summer Rain on Terrace",
+   "name": "ambience.summer-rain-on-terrace",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/summer-rain-on-terrace-s1019.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1294.ogg",
+   "title": "Big rain on car roof",
+   "name": "ambience.big-rain-on-car-roof",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/big-rain-on-car-roof-s1294.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1290.ogg",
+   "title": "Rain on Puddle",
+   "name": "ambience.rain-on-puddle",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/rain-on-puddle-s1290.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1289.ogg",
+   "title": "Rain on concrete",
+   "name": "ambience.rain-on-concrete",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/rain-on-concrete-s1289.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0820.ogg",
+   "title": "Rain and thunder in a tent",
+   "name": "ambience.rain-and-thunder-in-a-tent",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/rain-and-storm-in-a-tent-s0820.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0595.ogg",
+   "title": "Wind",
+   "name": "ambience.wind",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/wind-s0595.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0908.ogg",
+   "title": "Wind in Tall Grass",
+   "name": "ambience.wind",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/wind-in-tall-grass-s0908.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0904.ogg",
+   "title": "Wind in the Trees",
+   "name": "ambience.wind",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/forest-wind-in-the-trees-s0904.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0146.ogg",
+   "title": "Strong Wind #1",
+   "name": "ambience.wind",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/strong-wind-1-s0146.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0147.ogg",
+   "title": "Whistling of the Wind #1",
+   "name": "ambience.wind",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/whistling-of-the-wind-1-s0147.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2722.ogg",
+   "title": "Aubervilliers Street",
+   "name": "ambience.street",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/rue-d-aubervilliers-s2722.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1713.ogg",
+   "title": "Little Parisian Street",
+   "name": "ambience.street",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/little-parisian-street-s1713.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0608.ogg",
+   "title": "Street and Roads",
+   "name": "ambience.street",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/street-and-roads-s0608.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0641.ogg",
+   "title": "London Street",
+   "name": "ambience.street",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/london-street-s0641.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3189.ogg",
+   "title": "City Center of Nogent le Rotrou, France #2",
+   "name": "ambience.street",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/city-center-of-nogent-le-rotrou-france-2-s3189.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0624.ogg",
+   "title": "Restaurant",
+   "name": "ambience.cafe",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/restaurant-s0624.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3377.ogg",
+   "title": "Restaurant #3",
+   "name": "ambience.cafe",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/restaurant-3-s3377.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3542.ogg",
+   "title": "Small Restaurant Conversations",
+   "name": "ambience.cafe",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/small-restaurant-conversations-s3542.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2561.ogg",
+   "title": "Coffee Shop at the Capucins",
+   "name": "ambience.cafe",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/coffee-shop-at-the-capucins-s2561.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2458.ogg",
+   "title": "Sound Atmosphere in a House",
+   "name": "ambience.sound-atmosphere-in-a-house",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/sound-atmosphere-in-a-house-s2458.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0080.ogg",
+   "title": "Paris Apartment. Closed Window.",
+   "name": "ambience.paris-apartment-closed-window",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/paris-apartment-closed-window-s0080.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0100.ogg",
+   "title": "Forest",
+   "name": "ambience.forest",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/forest-s0100.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2749.ogg",
+   "title": "Forest #4",
+   "name": "ambience.forest",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/forest-4-s2749.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0222.ogg",
+   "title": "Birds Waking #1",
+   "name": "ambience.birds-waking",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/awakening-birds-s0222.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0698.ogg",
+   "title": "Sea Waves",
+   "name": "ambience.sea",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/sea-waves-s0698.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1446.ogg",
+   "title": "Small waves and beach #1",
+   "name": "ambience.sea",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/small-waves-and-beach-1-s1446.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2565.ogg",
+   "title": "Sea of the Beach of Dellec #2",
+   "name": "ambience.sea",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/sea-of-the-beach-of-dellec-2-s2565.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1447.ogg",
+   "title": "Small Waves, Froth and Beach",
+   "name": "ambience.sea",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/small-waves-froth-and-beach-s1447.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0684.ogg",
+   "title": "Walla Group: Averages Discussions",
+   "name": "ambience.crowd",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/walla-group-averages-discussions-s0684.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3515.ogg",
+   "title": "Crowd of 50-60 People #1",
+   "name": "ambience.crowd",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/crowd-of-50-60-people-1-s3515.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2969.ogg",
+   "title": "Outside Talks #2",
+   "name": "ambience.crowd",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/outside-talks-2-s2969.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0526.ogg",
+   "title": "Pedestrian Place",
+   "name": "ambience.street",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/pedestrian-place-s0526.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2394.ogg",
+   "title": "Trigger of Camera #1",
+   "name": "tech.camera-shutter",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/trigger-of-camera-1-s2394.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0011.ogg",
+   "title": "Camera",
+   "name": "tech.camera-shutter",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/camera-s0011.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2392.ogg",
+   "title": "SLR camera in burst mode #3",
+   "name": "tech.camera-shutter",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/slr-camera-in-burst-mode-3-s2392.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0448.ogg",
+   "title": "iPhone - Camera",
+   "name": "tech.camera-shutter",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/iphone-camera-s0448.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2821.ogg",
+   "title": "Instamatic, Triggering #1",
+   "name": "tech.camera-shutter",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/instamatic-triggering-1-s2821.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0229.ogg",
+   "title": "Computer Keyboard",
+   "name": "tech.keyboard",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/computer-keyboard-s0229.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1733.ogg",
+   "title": "Slow Keyboard",
+   "name": "tech.keyboard",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/slow-keyboard-s1733.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1734.ogg",
+   "title": "Quick Keyboard",
+   "name": "tech.keyboard",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/quick-keyboard-s1734.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1731.ogg",
+   "title": "Quick iMac Keyboard",
+   "name": "tech.keyboard",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/quick-imac-keyboard-s1731.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1726.ogg",
+   "title": "Slow MacBook keyboard #1",
+   "name": "tech.keyboard",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/slow-macbook-keyboard-1-s1726.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1735.ogg",
+   "title": "Raspberry Mouse, Single Click",
+   "name": "tech.mouse-click",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/raspberry-mouse-single-click-s1735.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1742.ogg",
+   "title": "Apple Magic Mouse, Single Click",
+   "name": "tech.mouse-click",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/apple-magic-mouse-single-click-s1742.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0029.ogg",
+   "title": "Computer mouse",
+   "name": "tech.mouse-click",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/computer-mouse-s0029.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1738.ogg",
+   "title": "MacBook Pro trackpad, single click",
+   "name": "tech.mouse-click",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/macbook-pro-trackpad-single-click-s1738.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1033.ogg",
+   "title": "Mobile vibrator in protective shell",
+   "name": "tech.phone-vibrate",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/mobile-vibrator-in-protective-shell-s1033.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1034.ogg",
+   "title": "Mobile vibrator without protective shell",
+   "name": "tech.phone-vibrate",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/mobile-vibrator-without-protective-shell-s1034.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0023.ogg",
+   "title": "Mobile phone vibrator #2",
+   "name": "tech.phone-vibrate",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/mobile-phone-vibrator-2-s0023.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1035.ogg",
+   "title": "Mobile Vibrator in a Hand",
+   "name": "tech.phone-vibrate",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/mobile-vibrator-in-a-hand-s1035.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2059.ogg",
+   "title": "Notification, \"LaSoMarie\" #1",
+   "name": "tech.notification",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/notification-lasomarie-1-s2059.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2060.ogg",
+   "title": "Notification, \"LaSoMarie\" #2",
+   "name": "tech.notification",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/notification-lasomarie-2-s2060.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2063.ogg",
+   "title": "Notification, \"LaSoLisa\" #1",
+   "name": "tech.notification",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/notification-lasolisa-1-s2063.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2064.ogg",
+   "title": "Notification, \"LaSoLisa\" #2",
+   "name": "tech.notification",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/notification-lasolisa-2-s2064.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1111.ogg",
+   "title": "Message #1",
+   "name": "tech.notification",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/message-1-s1111.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1313.ogg",
+   "title": "Message Sent",
+   "name": "tech.notification",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/message-sent-s1313.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1417.ogg",
+   "title": "Beep of a Cash Register #1",
+   "name": "tech.cash-register",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/beep-of-a-cash-register-s1417.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3527.ogg",
+   "title": "Beep of a Cash Register #2",
+   "name": "tech.cash-register",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/beep-of-a-cash-register-2-s3527.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0579.ogg",
+   "title": "Supermarket cash registers",
+   "name": "tech.cash-register",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/supermarket-cash-registers-s0579.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0224.ogg",
+   "title": "Light door",
+   "name": "tech.door-open",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/light-door-s0224.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0377.ogg",
+   "title": "Opening and Closing Light Door",
+   "name": "tech.door-open",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/opening-and-closing-light-door-s0377.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1702.ogg",
+   "title": "Apartment Door, Opening #1",
+   "name": "tech.door-open",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/apartment-door-opening-1-s1702.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1704.ogg",
+   "title": "Apartment Door, Closing #1",
+   "name": "tech.door-close",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/apartment-door-closing-1-s1704.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3205.ogg",
+   "title": "Creaking Door #2",
+   "name": "tech.creaking-door",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/creaking-door-2-s3205.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1320.ogg",
+   "title": "Open a Entrance Door with a Key",
+   "name": "tech.door-open",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/open-a-entrance-door-with-a-key-s1320.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0376.ogg",
+   "title": "Footsteps, Shoe on Parquet",
+   "name": "footstep.wood-floor",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/footsteps-shoe-on-parquet-s0376.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1517.ogg",
+   "title": "Steps on a wooden floor #3",
+   "name": "footstep.wood-floor",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/steps-on-a-wooden-floor-3-s1517.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0373.ogg",
+   "title": "feet (slipper on floor)",
+   "name": "footstep.wood-floor",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/feet-slipper-on-floor-s0373.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1250.ogg",
+   "title": "News paper, pages",
+   "name": "paper.newspaper",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/news-paper-pages-s1250.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1251.ogg",
+   "title": "News Paper, Manipulations",
+   "name": "paper.newspaper",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/news-paper-manipulations-s1251.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1220.ogg",
+   "title": "Ball paper #1",
+   "name": "paper.crumple",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/ball-paper-1-s1220.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3239.ogg",
+   "title": "Torn paper #2",
+   "name": "paper.tear",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/torn-paper-2-s3239.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0009.ogg",
+   "title": "Office stapler",
+   "name": "tech.office-stapler",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/stapler-s0009.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2718.ogg",
+   "title": "Thunder #1",
+   "name": "nature.thunder",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/thunder-s2718.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3113.ogg",
+   "title": "Thunder #2",
+   "name": "nature.thunder",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/thunder-2-s3113.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3114.ogg",
+   "title": "Thunder #3",
+   "name": "nature.thunder",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/thunder-3-s3114.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3115.ogg",
+   "title": "Thunder #4",
+   "name": "nature.thunder",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/thunder-4-s3115.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3116.ogg",
+   "title": "Thunder #5",
+   "name": "nature.thunder",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/thunder-5-s3116.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3179.ogg",
+   "title": "Thunder #6",
+   "name": "nature.thunder",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/thunder-6-s3179.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2855.ogg",
+   "title": "Fireplace #3",
+   "name": "nature.fireplace",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/fireplace-3-s2855.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0031.ogg",
+   "title": "Fireplace #2",
+   "name": "nature.fireplace",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/fireplace-2-s0031.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0987.ogg",
+   "title": "Big Branching Fire #1",
+   "name": "nature.big-branching-fire",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/big-branching-fire-1-s0987.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3322.ogg",
+   "title": "Fire, Foley",
+   "name": "nature.fire-foley",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/fire-foley-s3322.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0004.ogg",
+   "title": "Match #1",
+   "name": "nature.match",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/match-s0004.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1667.ogg",
+   "title": "Robin #1",
+   "name": "nature.robin",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/robin-1-s1667.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1670.ogg",
+   "title": "Robin #4",
+   "name": "nature.robin",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/robin-4-s1670.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1068.ogg",
+   "title": "50 birds are sleeping",
+   "name": "nature.birds-are-sleeping",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/50-birds-are-sleeping-s1068.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3087.ogg",
+   "title": "Common Nightingale #2",
+   "name": "nature.common-nightingale",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/common-nightingale-2-s3087.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0840.ogg",
+   "title": "Flight of a Pigeon",
+   "name": "nature.flight-of-a-pigeon",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/flight-of-a-pigeon-s0840.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3048.ogg",
+   "title": "Nespresso coffee maker #2",
+   "name": "kitchen.coffee-maker",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/nespresso-coffee-maker-2-s3048.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3050.ogg",
+   "title": "Nespresso coffee maker #4",
+   "name": "kitchen.coffee-maker",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/nespresso-coffee-maker-4-s3050.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "0834.ogg",
+   "title": "Coffee grinder #2",
+   "name": "kitchen.coffee-grinder",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/old-coffee-grinder-s0834.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2539.ogg",
+   "title": "Coffee grinder #3",
+   "name": "kitchen.coffee-grinder",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/coffee-grinder-3-s2539.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1047.ogg",
+   "title": "Small Waves Back to the Ocean",
+   "name": "ambience.sea",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/small-waves-back-to-the-ocean-s1047.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1448.ogg",
+   "title": "Small waves and beach #2",
+   "name": "ambience.sea",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/small-waves-and-beach-2-s1448.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "3376.ogg",
+   "title": "Restaurant #2",
+   "name": "ambience.cafe",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/restaurant-2-s3376.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1439.ogg",
+   "title": "Forest, France #1",
+   "name": "ambience.forest",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/senonches-forest-france-s1439.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "2395.ogg",
+   "title": "Trigger of camera #2",
+   "name": "tech.camera-shutter",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/trigger-of-camera-2-s2395.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1501.ogg",
+   "title": "Door Slamming #4",
+   "name": "tech.door-close",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/door-slamming-4-s1501.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1339.ogg",
+   "title": "Door Slamming #3",
+   "name": "tech.door-close",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/door-slamming-3-s1339.html",
+   "licence": "CC0-1.0"
+  },
+  {
+   "path": "1669.ogg",
+   "title": "Robin #3",
+   "name": "nature.robin",
+   "author": "Joseph Sardin",
+   "page": "https://bigsoundbank.com/robin-3-s1669.html",
+   "licence": "CC0-1.0"
+  }
+ ]
+}

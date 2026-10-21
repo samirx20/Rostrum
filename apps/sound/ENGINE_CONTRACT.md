@@ -82,7 +82,7 @@ An `sfz` instrument may also name **articulations**: `{"sfz": "<sustain.sfz>", "
 
 | Form | Field | Range | Default | Meaning |
 |---|---|---|---|---|
-| `model` | `position` | 0.03 … 0.5 (strings), 0 … 0.5 (bars) | the instrument's own (guitar 0.13, nylonGuitar 0.2, marimba 0.42, vibraphone / glockenspiel 0.4, tubularBell 0.05) | Where it is plucked or struck: bridge / bar end (0) … middle (0.5). Not for `violin` |
+| `model` | `position` | 0 … 0.5 (strings play at least 0.03) | the instrument's own (guitar 0.13, nylonGuitar 0.2, marimba 0.42, vibraphone / glockenspiel 0.4, tubularBell 0.05) | Where it is plucked or struck: bridge / bar end (0) … middle (0.5). Not for `violin` |
 | `model` | `damping` | 0 … 1 | 0 | Plucked strings only: 0 rings open … 1 palm-muted |
 | `model` | `hardness` | 0 … 1 | 0.5 | Pick / mallet: soft … hard. Not for `violin` |
 | `synth` | `voices` | 1 … 16 (whole) | 3 | Oscillators per note (detuned) |
