@@ -4,7 +4,7 @@ import RostrumKit
 
 // The pen tool and a path's points, over the canvas (Design page only; screen2d/pen.py does the work).
 // Pen on: click = corner point, press-drag = smooth point, click the first point = close, Enter / Escape = done.
-// A selected path layer shows its points (square = corner, round = smooth) and handles; dragging one is one
+// A selected path layer shows its points (square = corner, round = smooth); click a point to select it and its handles show; dragging one is one
 // change (Alt: move one handle alone). `ox`, `oy`, `fit`: where the frame sits in this item and its scale.
 Item {
     id: ov
@@ -15,12 +15,13 @@ Item {
     readonly property var pts: pen.on ? pen.draft : pen.points
     function sx(x) { return ox + x * fit }
     function sy(y) { return oy + y * fit }
+    readonly property int sel: pen.selected      // the one point whose handles show
     function svgOf(p, handles) {
         var d = ""
         for (var i = 0; i < p.length; i++) {
             var a = p[i]
             if (handles) {
-                if (a.smooth) d += "M " + sx(a.inX) + " " + sy(a.inY) + " L " + sx(a.x) + " " + sy(a.y) + " L " + sx(a.outX) + " " + sy(a.outY) + " "
+                if (i === sel && a.smooth) d += "M " + sx(a.inX) + " " + sy(a.inY) + " L " + sx(a.x) + " " + sy(a.y) + " L " + sx(a.outX) + " " + sy(a.outY) + " "
             } else if (i === 0) {
                 d = "M " + sx(a.x) + " " + sy(a.y)
             } else {
@@ -57,8 +58,8 @@ Item {
             id: knobs
             required property int index
             readonly property var p: ov.pts[index] || ({})
-            Knob { i: knobs.index; part: "in"; px: knobs.p.inX; py: knobs.p.inY; visible: knobs.p.smooth === true; round: true; small: true }
-            Knob { i: knobs.index; part: "out"; px: knobs.p.outX; py: knobs.p.outY; visible: knobs.p.smooth === true; round: true; small: true }
+            Knob { i: knobs.index; part: "in"; px: knobs.p.inX; py: knobs.p.inY; visible: knobs.index === ov.sel && knobs.p.smooth === true; round: true; small: true }
+            Knob { i: knobs.index; part: "out"; px: knobs.p.outX; py: knobs.p.outY; visible: knobs.index === ov.sel && knobs.p.smooth === true; round: true; small: true }
             Knob { i: knobs.index; part: "point"; px: knobs.p.x; py: knobs.p.y; round: knobs.p.smooth === true }
         }
     }
@@ -82,7 +83,7 @@ Item {
             preventStealing: true
             property point start
             property bool dragging: false
-            onPressed: (m) => { start = mapToItem(ov, m.x, m.y); dragging = ov.pen.beginPointDrag(k.i, k.part) }
+            onPressed: (m) => { start = mapToItem(ov, m.x, m.y); if (k.part === "point") ov.pen.selectPoint(k.i); dragging = ov.pen.beginPointDrag(k.i, k.part) }
             onPositionChanged: (m) => {
                 if (!dragging) return
                 var q = mapToItem(ov, m.x, m.y)

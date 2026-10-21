@@ -55,8 +55,8 @@ Item {
             x: (hx + 1) / 2 * h.bw - width / 2; y: (hy + 1) / 2 * h.bh - height / 2
             MouseArea {
                 anchors.fill: parent; anchors.margins: -4
-                cursorShape: knob.edge ? (knob.hx === 0 ? Qt.SizeVerCursor : Qt.SizeHorCursor)
-                                       : (knob.hx === knob.hy ? Qt.SizeFDiagCursor : Qt.SizeBDiagCursor)
+                cursorShape: ({"hor": Qt.SizeHorCursor, "ver": Qt.SizeVerCursor, "fdiag": Qt.SizeFDiagCursor,
+                               "bdiag": Qt.SizeBDiagCursor})[backend.resizeCursor(knob.hx, knob.hy, h.box.rot || 0)]
                 preventStealing: true
                 property bool on: false
                 property point p0

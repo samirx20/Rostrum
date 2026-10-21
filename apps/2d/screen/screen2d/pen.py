@@ -3,7 +3,7 @@
 Drawing a new path: click = a corner point, press-drag = a smooth point (symmetric handles), click the first point
 = close; Enter or Escape ends. The points live here (screen state) until the path ends; then one gesture adds the
 path layer: `layer.add` (type path) + `path.set` (its d, box and place). A path needs two points or more.
-Editing: with a path layer selected its points and handles show; dragging one is one gesture of `path.set_point`
+Editing: with a path layer selected its points show, and the handles of the selected point (click one); dragging one is one gesture of `path.set_point`
 (handles move together unless Alt breaks the symmetry).
 Coordinates from QML are composition px; a path's points are in its own box px (ops_path.to_parent, its inverse
 here). A path inside a group is not offset by the group yet (as drawing and the selection box).
@@ -52,6 +52,7 @@ class Pen(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.b, self._on, self._draft, self._press, self._drag, self._grab = bridge, False, [], None, None, None
+        self._pick = ("", -1)         # (path layer, its selected point): only that point shows its handles
         bridge.outlineChanged.connect(self.changed)
         bridge.timeChanged.connect(self.changed)
         bridge.pageChanged.connect(lambda: self.setOn(False) if bridge.page != "design" and self._on else None)
@@ -64,6 +65,18 @@ class Pen(QObject):
     @Property("QVariantList", notify=changed)
     def draft(self):
         return [_flat(p, i) for i, p in enumerate(self._draft)]
+
+    @Property(int, notify=changed)
+    def selected(self):
+        """The selected path's selected point (-1: none); the point just drawn while the pen is on."""
+        if self._on:
+            return len(self._draft) - 1
+        return self._pick[1] if self._pick[0] == self.b.selectedLayer else -1
+
+    @Slot(int)
+    def selectPoint(self, i):
+        self._pick = (self.b.selectedLayer, i)
+        self.changed.emit()
 
     def _layer(self) -> dict | None:
         lid = self.b.selectedLayer
@@ -209,3 +222,11 @@ def steps_pointdrag(bridge, step, rest):
     for f in (0.5, 1.0):
         pen.dragBy(float(rest[2]) * f, float(rest[3]) * f, False)
     pen.endPointDrag()
+
+
+def steps_pointpick(bridge, step, rest):
+    """pointpick <layer> <i>: select a path layer's point, so its handles show."""
+    bridge.select(rest[0])
+    if bridge.pen._layer() is None:
+        raise RuntimeError(f"step {step!r}: {rest[0]} is not a path layer")
+    bridge.pen.selectPoint(int(rest[1]))

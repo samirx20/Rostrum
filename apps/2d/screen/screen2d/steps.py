@@ -10,11 +10,12 @@
   Draw page (on the selected drawing layer): draw <x> <y> <x> <y> … (one stroke, composition px)
     brush <setting> <value> | newframe [copy] | hold <+n|-n> | frame next|prev | onion on|off
   Design page, paths: pen <x,y> <x,y,hx,hy> … [close] (one new path: a point, or a press at x,y dragged to hx,hy =
-    a smooth point; composition px) | pointdrag <layer> <i> <dx> <dy> [in|out] (a point, or its handle)
+    a smooth point; composition px) | pointpick <layer> <i> (select a point: its handles show) | pointdrag <layer> <i> <dx> <dy> [in|out] (a point, or its handle)
   Handles: resize <layer> <nw|n|ne|e|se|s|sw|w> <dx> <dy> [shift] [alt] | rotate <layer> <deg> [shift] (turn by that many
     degrees) | boxselect <x0> <y0> <x1> <y1> (the rubber band) | shiftpick <layer> (add / remove) | movesel <dx> <dy> (move all selected)
   Add and import: add <type> (the Add menu's entry; image / video: add image <path>) | addmenu open|close |
-    import <path> [page=<n>] [text=outline] (the Import panel's job, fails like it) | importpanel open [path]|close
+    import <path> [page=<n>] [text=outline] [keep=on] (the Import panel's job, waits, fails like it) | importstart <path> … (starts it,
+    doesn't wait) | importpanel open [path]|close
     problems open|close (the Problems panel, after the list is worked out) | inspectorscroll <px>
   Export: export <mp4|prores4444|webm|gif|png|exr|lottie> [alpha=on|off] [depth=8|16] [start=<s>] [end=<s>] (the Export button's
     job; waits for it) | exportpanel open [format]|close | exportcancel [format] (start one, then Cancel it)
@@ -60,9 +61,15 @@ def steps_import(bridge, step, rest):
             job.setPage(int(v))
         elif key == "text":
             job.setText(v)
+        elif key == "keep":
+            job.setKeepSize(v in ("on", "true", "1"))
         else:
             raise ValueError(f"step {step!r}: unknown setting {key!r}")
     job.run()
+    if step.startswith("importstart"):               # leave it running (for a picture of the progress)
+        return
+    if job.state == "running" and not job.wait(600):
+        raise RuntimeError(f"step {step!r}: the import did not finish in 10 minutes")
     if job.state != "done":
         raise RuntimeError(f"step {step!r}: {job.note}")
     print(f"import: {job.note}; not carried over: {job.report}")
@@ -135,6 +142,9 @@ def do_step(bridge, win, step):
     elif word == "pen":
         from .pen import steps_pen
         steps_pen(bridge, step, rest)
+    elif word == "pointpick":
+        from .pen import steps_pointpick
+        steps_pointpick(bridge, step, rest)
     elif word == "pointdrag":
         from .pen import steps_pointdrag
         steps_pointdrag(bridge, step, rest)
@@ -183,7 +193,7 @@ def do_step(bridge, win, step):
             bridge.adder.add(rest[0])
     elif word == "addmenu":
         QMetaObject.invokeMethod(win, "setAddOpen", Q_ARG("QVariant", rest[0] == "open"))
-    elif word == "import":
+    elif word in ("import", "importstart"):
         steps_import(bridge, step, rest)
     elif word == "importpanel":
         if rest[1:]:

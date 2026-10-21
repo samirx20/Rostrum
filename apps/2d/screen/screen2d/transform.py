@@ -49,3 +49,10 @@ def rotate(rot0: float, turned: float, shift: bool = False) -> float:
     """The new rotation after the pointer swept `turned` degrees (Shift: a multiple of 15°)."""
     r = rot0 + turned
     return round(r / 15) * 15 if shift else r
+
+
+def resize_cursor(hx: int, hy: int, rot: float) -> str:
+    """Which two-way arrow a resize knob shows: "hor", "ver", "fdiag" (top-left / bottom-right) or "bdiag", by the
+    direction the knob points on screen (its side of the box turned by `rot`), snapped to 45 degrees."""
+    octant = round((math.degrees(math.atan2(hy, hx)) + rot) / 45) % 4       # a line, so 180 degrees apart is the same
+    return ("hor", "fdiag", "ver", "bdiag")[octant]
