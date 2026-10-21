@@ -42,6 +42,10 @@ These are a **starting point**: change any sound with `sound.set` (or the screen
 picture changes moves the sounds with it, and keeps what a person changed. The tracks play into a `ui` bus with a short
 shared room and a light compressor, so the layers sit as one piece; change or bypass those effects like any other.
 
+A busy picture (a storm of 70 cards) makes a crowd: sounds that overlap on one track are each turned down by
+1/√(how many overlap), so together they play at about one sound's loudness, not many times it. The reply says the
+largest cut; turn the track up (`track.set volume`) when the crowd should be bigger.
+
 ## Or recordings from your own library
 
 `edit_sounds_from_motion` with `source="library"` places the same events with recordings from the user's own sound

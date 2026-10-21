@@ -10,6 +10,10 @@
   press  a soft press click at the deepest point and a lighter, higher release click when it comes back
   step   a tight tick, each a little different (another take, a hair of pitch), never a copy-paste
 
+A crowd: sounds on one track that overlap in time are each turned down by 1/sqrt(how many overlap) (`crowd`), so
+uncorrelated sounds that sum in power play together at about one sound's loudness. A storm of 70 cards is then
+as loud as a few, not 10 LU over the film; turn the track up for a bigger crowd.
+
 Plus `glue_ops`: the "ui" bus every one of these tracks plays into: a short shared room and a light compressor,
 so the layers sit as one piece.
 
@@ -102,14 +106,31 @@ def sounds(events: list[dict], width: float, height: float) -> list[tuple[str, d
     return out
 
 
+CROWD_MIN_S = 0.1          # a click's span for overlap: what is heard as "at the same time"
+
+
+def crowd(placed: list[tuple[str, dict]]) -> float:
+    """In place: each sound's volume times 1/sqrt(the sounds on its track overlapping it, itself included). Returns
+    the largest cut in dB (0 when nothing overlapped)."""
+    spans = [(t, f.get("at", 0.0), f.get("at", 0.0) + max(f.get("dur", f.get("length", 0.0)), CROWD_MIN_S)) for t, f in placed]
+    worst = 1
+    for (t, a, b), (_, f) in zip(spans, placed):
+        n = sum(1 for t2, a2, b2 in spans if t2 == t and a2 < b and a < b2)
+        worst = max(worst, n)
+        if n > 1 and "volume" in f:
+            f["volume"] = round(f["volume"] / math.sqrt(n), 4)
+    return round(10 * math.log10(worst), 1)
+
+
 LEVELS = {"ui_whoosh": 0.8, "ui_clicks": 0.9, "ui_ticks": 0.7, "ui_low": 0.8}
 
 
 def script(events: list[dict], width: float, height: float, source: str = "designed",
-           library: list[dict] | None = None) -> tuple[str, list[str]]:
+           library: list[dict] | None = None) -> tuple[str, list[str], float]:
     """The sounds as a Sound script (run with run_script, so a re-run keeps what a person changed) and its track ids.
     source "designed": designed `sound`s (above); "library": recordings from the user's own sound library
-    (`library` = userlib.search.library()), placed as `clip`s by score_library.py."""
+    (`library` = userlib.search.library()), placed as `clip`s by score_library.py. Also returns the crowd's largest
+    cut in dB (`crowd`)."""
     if source == "library":
         from .score_library import clips
         placed = clips(events, width, height, library or [])
@@ -117,6 +138,7 @@ def script(events: list[dict], width: float, height: float, source: str = "desig
         placed = sounds(events, width, height)
     else:
         raise ValueError(f"source must be 'designed' or 'library', not {source!r}")
+    cut_db = crowd(placed)
     tracks = list(dict.fromkeys(t for t, _ in placed))
     lines = [f"{t} = track({t!r}, volume={LEVELS.get(t, 0.8)})" for t in tracks]
     for t, f in placed:
@@ -126,7 +148,7 @@ def script(events: list[dict], width: float, height: float, source: str = "desig
             continue
         args = ", ".join(f"{k}={v!r}" for k, v in f.items() if k != "design")
         lines.append(f"{t}.sound({f['design']!r}, {args})")
-    return "\n".join(lines), tracks
+    return "\n".join(lines), tracks, cut_db
 
 
 def glue_ops(doc: dict, tracks: list[str]) -> list[dict]:
