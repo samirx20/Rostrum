@@ -40,8 +40,6 @@ tmp/
 # the reference set is private and never committed
 references/
 
-# team progress files are deleted before merging
-PROGRESS.md
 
 # editors and OS
 .vscode/
