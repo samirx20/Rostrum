@@ -31,6 +31,7 @@
 mod analysis;
 mod bed;
 mod contract;
+mod design;
 mod dialogue;
 mod fx;
 mod instruments;

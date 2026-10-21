@@ -24,7 +24,7 @@ class Track(Inserts):
     LANES = tuple(names.TRACK_LANES)
 
     def __init__(self, song, id_, fields):
-        self.song, self.id, self.notes, self.hits, self.clips = song, id_, [], [], []
+        self.song, self.id, self.notes, self.hits, self.clips, self.sounds = song, id_, [], [], [], []
         self.human, self.phrases = None, []
         given = dict(fields)
         if "instrument" not in given:
@@ -66,6 +66,13 @@ class Track(Inserts):
                          FD.DEFAULTS["clip"]), id)
         self.clips.append(c)
         return c
+
+    def sound(self, design, at, id=None, **fields):
+        """A designed sound: sound("whoosh", at=1.0, dur=0.8, speed=[[0, 0], [0.4, 1], [1, 0]], panPath=[[0, -0.8], [1, 0.2]]),
+        sound("click", at=3.8, material=0.5, pitch=2400). Fields: inspect_guide 'designed-sounds'."""
+        self.sounds.append((id, checked("sound", {"design": design, "at": at, **fields}, f"track {self.id} › sound",
+                                        FD.DEFAULTS["sound"])))
+        return self
 
     def dynamics(self, points):
         """The track's expression lane (CC 11): [(time, level 0 … 2), …], multiplied into every note."""
@@ -112,7 +119,12 @@ class Track(Inserts):
             cid = c.id or ids.clip(self.id, c.fields["at"], root, taken, where)
             taken.add(cid)
             clips.append({"id": cid, "type": "clip", **c.fields, "effects": c.insert_items(cid, taken)["effects"]})
-        return {**out, "clips": clips, **self.insert_items(self.id, taken)}
+        sounds = []
+        for sid, f in self.sounds:
+            sid = sid or ids.sound(self.id, f["design"], f["at"], root, taken, where)
+            taken.add(sid)
+            sounds.append({"id": sid, "type": "sound", **f})
+        return {**out, "clips": clips, "sounds": sounds, **self.insert_items(self.id, taken)}
 
 
 class Master(Inserts):

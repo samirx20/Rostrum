@@ -13,6 +13,7 @@ from rostrum_core import RostrumError
 
 from . import names, voice_lines
 from .doc import effects as FX
+from .doc import fields_design as FDS
 from .doc import playing as PL
 from .doc import times
 
@@ -76,7 +77,7 @@ class _Compiler:
         out = {"id": track["id"], **self.instrument(track), **{k: track[k] for k in TRACK_KEYS if k in track}}
         if muted:
             out["mute"] = True
-        for key, keys in (("notes", NOTE_KEYS), ("hits", HIT_KEYS)):
+        for key, keys in (("notes", NOTE_KEYS), ("hits", HIT_KEYS), ("sounds", FDS.KEYS)):
             if track.get(key):
                 out[key] = [self.pick(n, keys, f"{w}.{key}[{n['id']}]") for n in track[key]]
         clips = []

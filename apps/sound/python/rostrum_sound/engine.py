@@ -19,6 +19,7 @@ from pathlib import Path
 from rostrum_core import RostrumError, codes
 
 from . import names
+from .doc import fields_design as FDS
 
 ENGINE_DIR = Path(__file__).resolve().parents[2] / "engine" / "target"
 EXE = "rostrum-sound.exe" if os.name == "nt" else "rostrum-sound"
@@ -94,7 +95,7 @@ class Engine:
         if not reply["ok"]:
             e = reply["error"]
             code = e["code"] if e["code"] in vars(codes).values() else codes.INTERNAL
-            raise RostrumError(code, f"sound engine › {e['where']}", e["subject"], e["problem"], e.get("accepted") or None, e.get("hint") or None)
+            raise RostrumError(code, f"sound engine › {e['where']}", e["subject"], e["problem"], e.get("accepted") or (), e.get("hint") or None)
         return reply["result"]
 
     def close(self):
@@ -119,6 +120,7 @@ class Engine:
             theirs = [g["name"] for g in d[key]] if key == "gmDrums" else d[key]
             if sorted(ours) != sorted(theirs):
                 out.append(f"{key}: python {sorted(set(ours) ^ set(theirs))} differ from the engine")
+        out += FDS.differences(d.get("designs", {}))
         if d["contract"] != names.CONTRACT:
             out.append(f"contract: python {names.CONTRACT}, engine {d['contract']}")
         return out

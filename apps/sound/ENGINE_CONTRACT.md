@@ -56,6 +56,7 @@ The engine's code for this page lives in `engine/src/contract/`. Anything not on
 | `notes` | list | `[]` | Pitched notes and chords |
 | `hits` | list | `[]` | Drum hits |
 | `clips` | list | `[]` | Recorded audio |
+| `sounds` | list | `[]` | Designed sounds: whoosh, click, riser, hit, sub drop (§ Designed sounds) |
 | `volume` | 0 … 4 (gain) | 0.85 | Fader |
 | `pan` | −1 … 1 | 0 | Left … right |
 | `reverb` | 0 … 1 | 0 | Send to the master's track reverb |
@@ -163,6 +164,27 @@ Every effect is `{"type": <name>, …}`. A parameter marked *env* takes a number
 | `gate` | `threshold` (−45 dB), `ratio` (4), `range` (30 dB), `attack` (0.002 s), `hold` (0.05 s), `release` (0.12 s) |
 | `deess` | `freq` (6000 Hz), `threshold` (−30 dB), `range` (8 dB) |
 | `dehum` | `freq` (0 = found in the clip; else 50 / 60), `harmonics` (6), `width` (40) |
+
+### Designed sounds (added 2026-10-21, P6)
+
+A track's `sounds`: `[{"design": "whoosh", "at": 1.0, "dur": 0.8, …}, …]`. Each is built from layers in the engine
+(`engine/src/design/`), peak-normalized to its design's own level times `volume`, so a sound's level is a choice, never
+an accident of its settings. The field table in `design/mod.rs` is the one source of truth; `describe` answers it under
+`designs` (`common`, `designs`, `lanes`) and the Python side checks itself against it. Every field is optional except
+`design`, `at` and a whoosh's or riser's `dur`.
+
+| Design | Its own fields (default) | What it is |
+|---|---|---|
+| all | `volume` 0 … 4 (1), `pan` −1 … 1 (0), `width` 0 … 1 (0.5), `seed` 1 … 999999 (1) | `seed`: another take of the same design |
+| `whoosh` | `dur` 0.04 … 10 (required), `brightness` (0.5), `size` (0.5), `doppler` (0.3), `tone` (0.25), `air` (0.4), `texture` (0.2); lanes `speed`, `panPath` | Band-passed noise body, low weight (size), high air at the fastest moment, a tuned whistle, flutter; the pitch falls past the fastest point |
+| `click` | `pitch` 100 … 12000 Hz (1800), `material` (0.3: plastic 0, glass 0.5, metal 1), `tight` (0.6), `body` (0.6), `transient` (0.7), `air` (0.3), `bend` −1 … 1 (0) | Transient + tuned body (partials from the material) + knock + air; also tick, tap, pop (`bend` < 0) |
+| `riser` | `dur` 0.1 … 20 (required), `pitch` 40 … 2000 (220), `brightness` (0.5), `curve` (0.5), `tone` (0.4), `air` (0.4), `texture` (0.5) | Noise sweep + detuned stack climbing two octaves to its end, accelerating flutter |
+| `hit` | `pitch` 25 … 200 (50), `size` (0.6), `brightness` (0.5), `tail` 0.05 … 6 s (1.2), `drive` (0.3) | Sub thump falling into its pitch, mid body, crack, tail, saturated together |
+| `subDrop` | `dur` 0.1 … 8 (1.2), `pitch` 25 … 200 (40), `drop` 0 … 4 octaves (1.5), `drive` (0.2) | A sine falling into its pitch |
+
+Unmarked ranges are 0 … 1. A whoosh's **`speed`** is `[[fraction of dur, speed 0 … 1], …]` (fractions rising; default a
+bell peaking at 0.55): level, the sweep's centre and the air follow it, so the sound has the move's own shape.
+**`panPath`** `[[fraction, pan], …]` moves it with the object (it overrides `pan`). Both are refused on other designs.
 
 ### Ducks
 

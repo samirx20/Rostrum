@@ -106,3 +106,18 @@ fn buses_and_sends_route_or_fail_loudly() {
     assert!(a["result"]["buses"][1]["peak"].as_f64().unwrap() > 0.01, "the pad reaches the reverb bus: {a}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn designed_sounds_fill_defaults_and_refuse_loudly() {
+    let s = |sound: Value| json!({ "contract": "rostrum-sound-schedule/1", "tracks": [{ "id": "ui", "sounds": [sound] }] });
+    let a = answer(&check(s(json!({ "design": "click", "at": 1.0 }))));
+    assert_eq!(a["ok"], json!(true), "{a}");
+    let c = &a["result"]["resolved"]["tracks"][0]["sounds"][0];
+    assert_eq!((c["material"].clone(), c["volume"].clone()), (json!(0.3), json!(1.0)), "{c}");
+    let e = error_of(check(s(json!({ "design": "wooosh", "at": 0 }))));
+    assert_eq!(e["where"], json!("schedule.tracks[0].sounds[0].design"), "{e}");
+    let e = error_of(check(s(json!({ "design": "whoosh", "at": 0 }))));
+    assert_eq!(e["where"], json!("schedule.tracks[0].sounds[0].dur"), "{e}");
+    let e = error_of(check(s(json!({ "design": "click", "at": 0, "speed": [[0, 1]] }))));
+    assert_eq!(e["where"], json!("schedule.tracks[0].sounds[0].speed"), "{e}");
+}

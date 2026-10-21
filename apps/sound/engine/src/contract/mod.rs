@@ -3,6 +3,7 @@
 //! the renderer reads; requests come one per line (`serve`) or one per run (`request`, `render`).
 
 mod buses;
+mod designed;
 mod effects;
 mod error;
 mod expression;
@@ -43,6 +44,7 @@ fn handle(req: &Value) -> Result<Value, Error> {
             let mut d = names::describe();
             d["contract"] = json!(schedule::CONTRACT);
             d["engine"] = json!(env!("CARGO_PKG_VERSION"));
+            d["designs"] = designed::describe();
             d
         }
         "check" => {

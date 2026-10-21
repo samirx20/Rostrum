@@ -46,6 +46,7 @@ fn render_clip(c: &Clip, sr: f64) -> Result<(Vec<f32>, Vec<f32>), String> {
         Content::Speech { pcm, pitch_ratio } => speech::render_speech(pcm, *pitch_ratio, &mut l, &mut r, sr)?,
         Content::VoiceSketch { tokens, base_f0 } => speech::render_voice_sketch(tokens, *base_f0, &mut l, &mut r, sr),
         Content::Waveform { peaks } => speech::render_waveform(peaks, c.duration, &mut l, &mut r, sr),
+        Content::Designed { spec } => crate::design::render(spec, &mut l, &mut r, sr)?,
         Content::Silence => {}
     }
     if let (false, Some(rate)) = (stretched, &c.rate) {

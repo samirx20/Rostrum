@@ -11,6 +11,7 @@ from rostrum_core import Param
 from .. import names
 from . import effects
 from . import fields_buses as FB
+from . import fields_design as FDS
 from . import playing as PL
 from . import values as V
 
@@ -68,6 +69,7 @@ FIELDS = {
         N("volume", 0, 4, "Line"), N("fadeIn", 0, 600, "Fades", "s", "secondary", label="Fade in"),
         N("fadeOut", 0, 600, "Fades", "s", "secondary", label="Fade out"),
     ],
+    "sound": FDS.params(),
     **FB.FIELDS,
     "effect": [Param.choice("effect", effects.TYPES, group="Effect", label="Effect type"),
                Param.toggle("bypass", group="Effect", importance="secondary"), *effects.params("effect")],
@@ -95,6 +97,7 @@ DEFAULTS = {
     "note": dict(vel=0.8),
     "hit": dict(vel=0.85),
     "clip": dict(**{"in": 0}, volume=1),
+    "sound": dict(design="whoosh"),
     "line": dict(seed=1, volume=1),
     "marker": {},
     "master": dict(volume=1, normalize=False, loudness=-16, truePeak=-1, glue=0, reverb="dry",
@@ -102,7 +105,7 @@ DEFAULTS = {
 }
 # The field that holds each instrument form's value (the form's name).
 INSTRUMENT_FIELD = {k: k for k in names.INSTRUMENTS if k != "none"}
-REQUIRED = {"duck": ["under"], "note": ["pitch", "at", "dur"], "hit": ["drum", "at"], "clip": ["media", "at"], "line": ["text", "at"], "marker": ["name", "at"]}
+REQUIRED = {"duck": ["under"], "note": ["pitch", "at", "dur"], "hit": ["drum", "at"], "clip": ["media", "at"], "sound": ["design", "at"], "line": ["text", "at"], "marker": ["name", "at"]}
 
 
 def params(type_: str, required=False) -> list[Param]:
