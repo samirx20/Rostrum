@@ -4,6 +4,7 @@
 #include <OpenImageIO/imagebufalgo.h>
 #include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/usdGeom/xformable.h>
+#include <pxr/usd/usdLux/blackbody.h>
 #include <pxr/usd/usdLux/domeLight.h>
 #include <pxr/usd/usdLux/domeLight_1.h>
 #include <pxr/usd/usdLux/lightAPI.h>
@@ -25,11 +26,12 @@ namespace {
 namespace fs = std::filesystem;
 constexpr float kPi = 3.14159265358979323846f;
 
-// `source` (a lat-long picture; "" = a flat white one) × `gain`, as an EXR in the cache, named by what made it
-std::string sky_picture(const std::string& source, const GfVec3f& gain) {
+}  // namespace
+
+std::string dome_picture(const std::string& source, const GfVec3f& gain) {
   const std::string stamp = source.empty() ? "flat" : picture_stamp(source);
   char name[200];
-  std::snprintf(name, sizeof name, "sky-v3-%s-%.5f-%.5f-%.5f.exr", stamp.c_str(), gain[0], gain[1], gain[2]);
+  std::snprintf(name, sizeof name, "sky-v4-%s-%.5f-%.5f-%.5f.exr", stamp.c_str(), gain[0], gain[1], gain[2]);
   const fs::path file = cache_dir() / name;
   if (fs::exists(file)) return file.string();
   fs::create_directories(file.parent_path());
@@ -53,7 +55,6 @@ std::string sky_picture(const std::string& source, const GfVec3f& gain) {
   if (ec) throw Error("view.sky: could not rename " + partial.string() + ": " + ec.message());
   return file.string();
 }
-}  // namespace
 
 std::optional<SceneSky> scene_sky(const UsdStageRefPtr& stage, int frame, bool take_sun) {
   for (const UsdPrim& p : stage->Traverse()) {
@@ -64,12 +65,14 @@ std::optional<SceneSky> scene_sky(const UsdStageRefPtr& stage, int frame, bool t
     std::string source = tex.GetResolvedPath().empty() ? tex.GetAssetPath() : tex.GetResolvedPath();
     UsdLuxLightAPI l(p);
     GfVec3f colour(1);
-    float intensity = 1, exposure = 0;
+    float intensity = 1, exposure = 0, kelvin = 6500;
+    bool on = false;
     l.GetColorAttr().Get(&colour, t);
     l.GetIntensityAttr().Get(&intensity, t);
     l.GetExposureAttr().Get(&exposure, t);
-    const GfVec3f gain = colour * intensity * std::exp2(exposure);  // the picture's units -> Cycles' units
-    const GfVec3f storm = gain * kPi;  // -> Storm's units: its dome and its sun both read light π times Cycles' numbers
+    if (l.GetEnableColorTemperatureAttr().Get(&on, t) && on && l.GetColorTemperatureAttr().Get(&kelvin, t))
+      colour = GfCompMult(colour, UsdLuxBlackbodyTemperatureAsRgb(kelvin));
+    const GfVec3f gain = colour * intensity * std::exp2(exposure);  // UsdLux: the picture × this is the sky's light
     const GfMatrix4d turn = UsdGeomXformable(p).ComputeLocalToWorldTransform(t);
     SceneSky sky;
     if (take_sun && !source.empty()) {
@@ -78,13 +81,13 @@ std::optional<SceneSky> scene_sky(const UsdStageRefPtr& stage, int frame, bool t
       if (split.sun) {
         StormSun sun;
         sun.toward = turn.TransformDir(split.sun->toward).GetNormalized();
-        sun.irradiance = GfCompMult(split.sun->irradiance, storm);
+        sun.irradiance = GfCompMult(split.sun->irradiance, gain);
         sun.angleDeg = 2 * std::acos(1 - split.sun->solidAngle / (2 * kPi)) * 180 / kPi;  // the cone of that size
         sun.share = split.sun->share;
         sky.sun = sun;
       }
     }
-    sky.dome = dome_light(sky_picture(source, storm), "/RostrumViewport/sky");
+    sky.dome = dome_light(dome_picture(source, gain), "/RostrumViewport/sky");
     sky.dome.SetTransform(turn);
     return sky;
   }

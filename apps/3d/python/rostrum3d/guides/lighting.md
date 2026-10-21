@@ -12,7 +12,7 @@ Lights are items (`light.add`, `light.set`). This guide explains the kinds of li
 
 ## Fields
 
-- **`intensity`** and **`exposure`** — brightness. `exposure` is in stops: +1 doubles, −1 halves. Use `exposure` to balance lights against each other, so the ratios read in stops like a photographer's.
+- **`intensity`** and **`exposure`** — brightness, in USD's units (the same in Storm and Cycles): an HDR dome at intensity 1, exposure 0 lights the scene with the photo's own values; a sun (`distant`, `normalize` on) gives `intensity` lux, so a white floor facing it reads intensity ÷ π — daylight floors near 1 need a sun of about 3, a real midday sun is far brighter and is brought down with the render's `exposure`. `exposure` is in stops: +1 doubles, −1 halves. Use `exposure` to balance lights against each other, so the ratios read in stops like a photographer's.
 - **`color`** and **`temperature`** — `temperature` in kelvin (2700 a warm bulb, 4000 neutral, 5600 daylight, 7500 cool shade) gives physically right white light; 0 turns it off and only `color` counts. A little warm/cool contrast between two lights separates forms.
 - **`normalize`** — off (default): a bigger light gives more light. On: the size changes only the softness, so you can resize without rebalancing.
 - **`shadows`** — whether it casts shadows. Leave it on unless a fill light's shadows clutter the picture.

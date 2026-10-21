@@ -16,7 +16,7 @@ namespace r3d {
 
 struct StormSun {
   PXR_NS::GfVec3d toward;      // world unit direction towards the sun
-  PXR_NS::GfVec3f irradiance;  // light on a surface facing it, in Storm's units (sky.cpp: π × Cycles')
+  PXR_NS::GfVec3f irradiance;  // light on a surface facing it, in UsdLux units (lux: a white floor facing it shows this / π)
   double angleDeg = 0.53;      // the sun's apparent size
   double share = 0;            // its part of the dome's light (reported, not used for drawing)
 
