@@ -173,10 +173,10 @@ QQC.ApplicationWindow {
             width: Math.max(win.rightWidth, Theme.sidePanel); x: body.width - width; height: leftSlot.height
             model: win.exporter
         }
-        Rectangle {     // the focused area's accent edge
+        Rectangle {     // the focused area's accent edge, only when keys go somewhere other than the main view (home)
             readonly property Item at: ({ guides: guidesDrawer, left: leftSlot, centre: centreSlot, bottom: bottomSlot,
                                           right: win.rightItem() })[win.focusArea] || centreSlot
-            visible: at.visible && at.width > 0
+            visible: at !== centreSlot && at.visible && at.width > 0
             x: at.x + Theme.radiusPanel; width: Math.max(0, at.width - 2 * Theme.radiusPanel); y: at.y; height: 2
             radius: 1; color: Theme.accent; opacity: 0.8; z: 6
         }

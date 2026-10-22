@@ -103,10 +103,12 @@ Item {
                           hovered: labelHover.hovered } }   // hover help: the setting's name and its one sentence
         Loader {
             id: widget
-            x: row.labelColumn
+            // an amount's slider starts right after its label's words, so it gets the row's length (the value
+            // box still ends where every field ends); every other widget starts at the label column
+            x: row.amount ? Math.min(row.labelColumn, Math.ceil(label.implicitWidth) + 2 * Theme.gap) : row.labelColumn
             anchors.verticalCenter: row.tall ? undefined : parent.verticalCenter
             y: row.tall ? (Theme.row - Theme.field) / 2 : 0
-            width: row.model.type === "toggle" ? (item ? item.implicitWidth : 0) : parent.width - row.labelColumn - row.gutter
+            width: row.model.type === "toggle" ? (item ? item.implicitWidth : 0) : parent.width - x - row.gutter
             height: row.tall && item ? item.implicitHeight : Theme.field
             active: row.model.row === "param" && !row.driven
             sourceComponent: row.model.control === "curve" ? curve
@@ -170,7 +172,7 @@ Item {
     Component { id: amountRow; Item {   // an amount: the slider, then the value in its kind's words (typed there)
         readonly property var input: amountField.item ? amountField.item.input : null      // focusWidget types here
         readonly property bool editable: true
-        Slider { anchors.left: parent.left; anchors.right: amountField.left; anchors.rightMargin: Theme.gap
+        Slider { anchors.left: parent.left; anchors.right: amountField.left; anchors.rightMargin: Theme.gap + 2
                  anchors.verticalCenter: parent.verticalCenter
                  value: row.model.value ?? 0; from: row.model.min ?? 0; to: row.model.max ?? 1
                  step: row.model.step ? row.model.step : 0.01; display: row.model.display || ""
@@ -179,7 +181,7 @@ Item {
                  onScrubStarted: row.bridge.beginScrub(row.model.id)
                  onScrubbed: (v) => row.bridge.scrub(row.model.id, v)
                  onScrubEnded: row.bridge.endScrub() }
-        Loader { id: amountField; anchors.right: parent.right; width: Theme.amountField; height: parent.height
+        Loader { id: amountField; anchors.right: parent.right; width: row.model.display === "db" ? Theme.amountField : Theme.amountFieldShort; height: parent.height
                  sourceComponent: number }
     } }
     Component { id: number; NumberField {
