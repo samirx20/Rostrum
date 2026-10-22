@@ -67,7 +67,7 @@ class EditorSide(QObject):
 
     @Slot(str, str, result=bool)
     def typeLine(self, track_id, text):
-        """Enter in "Type what she says": a line at the playhead (or just after the last line when the playhead is
+        """Enter in the Lines box ("Type a line"): a line at the playhead (or just after the last line when the playhead is
         before its end), one step, selected; its speech is made at once (DESIGN.md §10 #1: made when you finish
         typing; once, kept)."""
         b = self.bridge

@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// Under the inspector of a clip with a clean-up (DESIGN.md §3.10): "Make cleaned take" while its take is not made yet,
+// In the inspector of a clip with a clean-up, under its rows (the Cleanup group is last) (DESIGN.md §3.10): "Make cleaned take" while its take is not made yet,
 // Cancel while a clean-up runs (it stops the job and keeps nothing; the clip plays its original), and once the take is
 // made the line that says what the clean-up did ("Background noise −18 dB · voice level unchanged"), measured once.
 // Each part shows only when it can be used. The job is the same as the render_cleanup tool; the status line follows it.
@@ -9,12 +9,12 @@ Rectangle {
     id: bar
     readonly property var job: mixer.cleaning
     visible: job.shown
-    implicitHeight: visible ? col.height + 2 * Theme.pad : 0
+    implicitHeight: visible ? col.height + Theme.gap : 0
     color: "transparent"
     Keys.onEscapePressed: (e) => { if (job.cancellable) job.cancel(); else e.accepted = false }
     Column {
         id: col
-        anchors { left: parent.left; right: parent.right; top: parent.top; margins: Theme.pad }
+        anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: Theme.gap }
         spacing: Theme.gap
         Text {
             visible: bar.job.clip !== ""

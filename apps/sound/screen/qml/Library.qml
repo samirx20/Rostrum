@@ -10,7 +10,7 @@ import RostrumKit
 // (LibraryPanel.qml: a sound goes on the selected recordings track at the playhead). Picking an entry (click, ↑ / ↓) plays it
 // through the engine (soundLibrary.auditionEntry: an instrument plays the selected track's notes); Esc or ■ Stop ends it. On a track that plays that kind of sound the pick is a try (nothing is written: "Trying Pad
 // on Strings"): Enter / double-click / Keep makes it the track's sound (one undo step), Esc / Revert / another track puts the
-// original back. Loop (shown while something plays) repeats what you hear. Closes with × or Ctrl+L; on a narrow window it floats and closes after each use (`used`).
+// original back. Loop (↻ beside ▶ on the row that plays) repeats what you hear. Closes with × or Ctrl+L; on a narrow window it floats and closes after each use (`used`).
 Panel {
     id: p
     title: "Library"
@@ -26,6 +26,9 @@ Panel {
     Connections { target: workspace; function onChanged() { if (!workspace.library) { soundLibrary.swapBack(); soundLibrary.stopAudition() } } }   // closed: it stops
     Connections { target: backend; function onLibraryWanted(chip) { p.chip = chip } }   // "Place a sound here"
     onFoundChanged: current = 0
+    // the row of the sound being tried, however the try started (a click, an agent, a step); -1 when none
+    readonly property int triedAt: soundLibrary.trying.key === undefined ? -1 : found.findIndex(e => e.key === soundLibrary.trying.key)
+    readonly property int shownAt: triedAt >= 0 ? triedAt : current
 
     function pick(i) {                                   // click or arrow: select it and hear it
         current = i
@@ -71,6 +74,7 @@ Panel {
         visible: p.chip !== "mine"
         anchors { left: parent.left; right: parent.right; top: chips.bottom; bottom: heard.top; topMargin: Theme.gap; bottomMargin: Theme.gap }
         clip: true; spacing: 2; boundsBehavior: Flickable.StopAtBounds
+        footer: Item { width: list.width; height: Theme.pad }   // the last row scrolls fully into view
         model: p.found
         currentIndex: p.current
         delegate: Rectangle {
@@ -78,12 +82,19 @@ Panel {
             required property var modelData
             required property int index
             width: list.width; height: row.modelData.note !== "" ? 44 : 32; radius: Theme.radiusCtl
-            color: p.current === index ? Theme.accentSoft : hover.hovered ? Theme.hover : "transparent"
+            color: p.shownAt === index ? Theme.accentSoft : hover.hovered ? Theme.hover : "transparent"
             HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: p.pick(row.index); onDoubleTapped: p.use(row.index) }
-            IconButton { id: hear; glyph: "▶"; kind: "ghost"; tip: "Hear it"; visible: hover.hovered && row.modelData.kind !== "record"
-                         anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
-                         onClicked: p.pick(row.index) }
+            readonly property bool heard: p.shownAt === index && (soundLibrary.auditioning !== "" || p.triedAt >= 0)
+            Row {   // ▶ on the row under the pointer and on the one being heard; Loop beside it, only while it plays
+                id: hear
+                visible: (hover.hovered || row.heard) && row.modelData.kind !== "record"
+                anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
+                spacing: 2
+                IconButton { glyph: "↻"; kind: "ghost"; tip: "Repeat what you hear"; visible: row.heard; down: soundLibrary.loop
+                             onClicked: soundLibrary.setLoop(!soundLibrary.loop) }
+                IconButton { glyph: "▶"; kind: "ghost"; tip: "Hear it"; onClicked: p.pick(row.index) }
+            }
             Column {
                 anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: Theme.gap; rightMargin: Theme.gap + (hear.visible ? hear.width : 0) }
                 spacing: 2
@@ -131,9 +142,6 @@ Panel {
                    color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
             Row { spacing: Theme.grid; layoutDirection: Qt.RightToLeft; width: parent.width
                   Button { visible: !heard.trying; text: "■ Stop"; kind: "ghost"; onClicked: soundLibrary.stopAudition() }
-                  Button { text: "Loop"; kind: "ghost"; down: soundLibrary.loop; onClicked: soundLibrary.setLoop(!soundLibrary.loop)
-                           HoverTip { text: "Repeat what you hear"; hovered: loopHover.hovered }
-                           HoverHandler { id: loopHover } }
                   Button { visible: heard.trying; text: "Keep"; kind: "primary"; onClicked: { if (soundLibrary.keep()) p.used() } }
                   Button { visible: heard.trying; text: "Revert"; kind: "ghost"; onClicked: soundLibrary.revert() } }
         }

@@ -20,7 +20,7 @@ bridge call a click, a box, a key or a menu makes.
       clean <voice 0|1> <noise 0|1> <echo 0|1> (Clean: the steps on the selected clips, then their cleaned takes)
     tool select|draw (the Editor's tool) | add-hit <t s> <drum row> (a double-click on an empty drum row) |
       draw <t s> <key or drum row> (a click with the Draw tool)
-    line-type <words …> (Enter in the Editor's "Type what she says" on its voice track) | speak-again (on the
+    line-type <words …> (Enter in the Editor's Lines box on its voice track) | speak-again (on the
       selected lines) | velocity-line <t0 s> <v0> <t1 s> <v1> (draw a line across the velocity strip) |
       velocity-bar <id> <v> (drag that bar) | audition <entry key> (pick it in the Library: rendered by the engine,
       played on the fake player) | grid auto|bar|1/2|beat|1/8|1/16|1/32|1/8T|1/16T | snap on|off

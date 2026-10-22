@@ -11,6 +11,7 @@ Rectangle {
     radius: Theme.radiusCtl
     color: on ? Theme.accentSoft : area.containsMouse ? Theme.raised : "transparent"
 
+    HoverHandler { id: hover }   // kept while the pointer is on the Auto chip itself
     MouseArea { id: area; anchors.fill: parent; hoverEnabled: true; onClicked: backend.select(h.track.id) }
     Rectangle { x: Theme.gap; anchors.verticalCenter: parent.verticalCenter; width: 3; radius: 1.5
                 height: Math.min(parent.height - 6, 14); color: h.track.hue }
@@ -20,6 +21,6 @@ Rectangle {
         font.pixelSize: Theme.label
         color: h.track.mute ? Theme.fg3 : Theme.fg2
     }
-    LaneToggle { id: autoChip; visible: h.showAuto; track: h.track
+    LaneToggle { id: autoChip; visible: h.showAuto && (hover.hovered || h.track.autoUsed || !!h.track.auto); track: h.track   // on hover or in use
                  anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter } }
 }
