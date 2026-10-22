@@ -34,7 +34,7 @@ def problems(doc_data: dict, comp_id: str, markers: dict | None = None, engine: 
     try:
         out = _fonts(comp, engine)
         try:
-            engine.load(describe(doc_data, comp_id, markers, folder))
+            engine.load(describe(doc_data, comp_id, markers, folder, (0.0, comp.get("duration", 5.0))))    # a 3D layer not rendered yet is reported by `_renders`, not refused here
         except (EngineError, ValueError, RostrumError) as e:
             msg = str(e)
             if not (out and "not found" in msg and "font" in msg):     # that font is listed already

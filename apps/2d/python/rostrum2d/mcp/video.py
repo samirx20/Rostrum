@@ -54,7 +54,8 @@ def render_video(ctx, args):
         copy_to.parent.mkdir(parents=True, exist_ok=True)
         if not (folder and item):
             out = copy_to
-    scene = render.scene_of(doc, comp["id"], (start, end))     # the job gets a copy of the scene, never the document
+    whole = start <= 0 and end >= duration - 1e-9        # the whole film is a deliverable: a 3D layer not rendered yet refuses (scene.describe)
+    scene = render.scene_of(doc, comp["id"], None if whole else (start, end))     # the job gets a copy of the scene, never the document
 
     def job_fn(job):
         partial = project.begin_render(folder, item) if folder and item else None
@@ -74,6 +75,6 @@ def render_video(ctx, args):
         said = f" The project is saved beside the copy: {beside}." if partial and copy_to else ""
         return Reply(f'Rendered {comp["id"]}: {info["frames"]} frames at {info["fps"]} fps, {start:g}–{end:g} s.{said}',
                      {"frames": info["frames"], "fps": info["fps"], "start": start, "end": end,
-                      "project_copy": str(beside) if said else None}, files)
+                      "project_copy": str(beside) if said else None}, files, warnings=scene.get("warnings", []))
 
     return ctx.job(f'render_video {comp["id"]} {start:g}-{end:g}s', job_fn, key=f"video|{doc.item_id}|{comp['id']}|{start}|{end}|{doc.seq}|{out}")

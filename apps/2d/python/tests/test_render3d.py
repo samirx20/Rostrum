@@ -34,3 +34,19 @@ def test_follows_newest_and_fails_loudly(tmp_path):
     r = render3d.find(layer, tmp_path)
     png = render3d.picture(tmp_path / "renders" / "product" / "v002" / r["exrs"][0], 4, 4, "stretch")
     assert np.asarray(Image.open(png))[..., 3].mean() == pytest.approx(128, abs=1)    # half see-through, kept
+
+
+def test_out_of_date_is_by_content_not_by_steps(tmp_path):
+    from rostrum_core import storage
+    (tmp_path / "docs").mkdir()
+    trd, doc = tmp_path / "docs" / "product.trd", {"name": "Product", "light": 1}
+
+    def save(d):
+        trd.write_text(json.dumps({"doc": d}), encoding="utf-8")
+    render = {"item": "product", "source_seq": 1, "source_hash": storage.doc_hash(doc)}
+    save(doc)
+    assert not render3d.is_stale(render, tmp_path)
+    save({**doc, "light": 2})                                       # changed …
+    assert render3d.is_stale(render, tmp_path)
+    save(doc)                                                       # … and changed back: same content, not stale
+    assert not render3d.is_stale(render, tmp_path)

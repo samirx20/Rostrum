@@ -12,6 +12,8 @@ passes and frames from several apps stays the Editor's job.
   default view: core/src/image_out.cpp), so the picture matches the 3D app's PNG, with its alpha kept. Each frame is
   made at the layer's w × h and fit, in a content-keyed cache. The engine draws them as a `video` layer.
 - A new 3D render is picked up by the next scene description (the screen's watch asks for one: render3d_watch.py).
+- Out of date is told by content: the render's manifest `source.doc_hash` against the 3D document's hash now (older
+  renders without one: by history step).
 - Loud: no project folder, no such item, not a 3D item, not rendered yet, a pinned version that isn't there, a
   render with no EXR frames, a marker that isn't in the project. Out of date (the 3D document changed after the
   render) is not an error: `status` says so, and inspect_diagnose / the Problems list show it.
@@ -25,7 +27,7 @@ import os
 import re
 from pathlib import Path
 
-from rostrum_core import RostrumError, codes, project
+from rostrum_core import RostrumError, codes, project, storage
 
 CACHE_DIR = Path.home() / ".rostrum" / "cache" / "2d-render3d"
 CACHE_BYTES = 4 << 30
@@ -69,7 +71,8 @@ def find(item: dict, folder) -> dict:
     num, _, den = str(r["manifest"].get("frames", {}).get("fps", "24/1")).partition("/")
     return {"item": ref, "name": it["name"], "version": r["version"], "path": r["path"], "exrs": exrs,
             "fps": float(num) / float(den or 1), "made_at": r["manifest"].get("made_at", ""),
-            "source_seq": r["manifest"].get("source", {}).get("history_entry")}
+            "source_seq": r["manifest"].get("source", {}).get("history_entry"),
+            "source_hash": r["manifest"].get("source", {}).get("doc_hash")}
 
 
 def document_seq(folder, ref: str) -> int | None:
@@ -81,6 +84,24 @@ def document_seq(folder, ref: str) -> int | None:
     return max((e["seq"] for e in map(json.loads, lines[1:]) if "seq" in e), default=0)
 
 
+def document_hash(folder, ref: str) -> str | None:
+    """The 3D document's content hash (as in a render's manifest `source.doc_hash`), or None when it can't be read."""
+    try:
+        text = storage.paths(folder, ref, ".trd")["doc"].read_text(encoding="utf-8")
+        return storage.doc_hash(json.loads(text)["doc"])
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def is_stale(r: dict, folder) -> bool:
+    """Whether the 3D scene changed after this render. By content when the render recorded its hash (a re-run that
+    changed nothing, or changed and changed back, is not out of date); older renders by history step."""
+    if r["source_hash"] and (now := document_hash(folder, r["item"])):
+        return now != r["source_hash"]
+    now_seq = document_seq(folder, r["item"])
+    return r["source_seq"] is not None and now_seq is not None and now_seq > r["source_seq"]
+
+
 def status(item: dict, folder) -> dict:
     """What the layer shows and whether it is current: {ok, version, newest, stale, message}. Never raises."""
     try:
@@ -88,11 +109,10 @@ def status(item: dict, folder) -> dict:
         newest = find({**item, "version": 0}, folder)["version"]
     except RostrumError as e:
         return {"ok": False, "stale": False, "message": str(e)}
-    now = document_seq(folder, r["item"])
-    stale = r["source_seq"] is not None and now is not None and now > r["source_seq"]
+    stale = is_stale(r, folder)
     words = f'{r["name"]} v{r["version"]:03d}' + (f" (pinned; newest is v{newest:03d})" if newest != r["version"] else "")
     if stale:
-        words += f": out of date, the 3D document changed after this render (step {r['source_seq']}, now {now})"
+        words += ": out of date: the 3D scene changed after this render"
     return {"ok": True, "version": r["version"], "newest": newest, "stale": stale, "message": words}
 
 
