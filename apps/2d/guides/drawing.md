@@ -20,32 +20,65 @@ When Draw is on, the timeline shrinks to its compact height: the top strip, the 
 
 ## 2. Choose your brush
 
-With Draw on, the **bar at the top-centre of the canvas** holds the brush controls you change most: the **tip**, **Size**, the **colour**, **Opacity** and **Eraser**. **E** turns the eraser on and off, and **[** and **]** make the brush smaller or bigger.
+Every brush setting lives in **one** place, never two.
 
-The right-hand panel is called **Brush** and has every setting. It sets how the next stroke looks.
+**The bar at the top-centre of the canvas** holds what you change while painting: the **tip**, **Size**, the
+**colour**, **Opacity**, **Eraser** (**E**), **Fill** (**G**, see part 4), **+ Paint layer** and **Painting on**.
+**[** and **]** make the brush smaller or bigger. On a narrow window, Opacity, then Eraser, then Fill move under the
+bar's own **⋯** button; Size and the colour always stay.
 
-1. **Colour**: click the swatch or type a colour.
-2. **Size**: how wide the stroke is, in pixels.
-3. **Tip**: the shape of the brush.
-4. **Opacity**: how solid the stroke is.
-5. **Hardness**: how crisp or soft its edge is.
-6. **Mode**: how the stroke meets what is already there.
-7. Under **Pen**, **Size from pressure** and **Opacity from pressure** say how much a pressure-sensitive pen changes the stroke. A mouse has no pressure.
-8. **More** opens the rest. Only the settings that apply to the tip you chose are shown.
+**The right-hand panel, Brush,** holds the rest: how the next stroke is laid.
+
+1. **Hardness**: how crisp or soft its edge is.
+2. **Mode**: how the stroke meets what is already there (multiply darkens like a glaze, screen and add light it up).
+   It is not shown while the eraser is on: an eraser only takes paint away.
+3. Under **Pen**, **Size from pressure** and **Opacity from pressure** say how much a pressure-sensitive pen changes
+   the stroke. A mouse has no pressure.
+4. **More** opens the rest (spacing, scatter, paper grain, colour drift, wet paint). Only the settings that apply to
+   the tip you chose are shown.
+
+Under the brush, the panel shows **Paint on** and the name of what you paint on (part 5).
 
 ## 3. Draw a stroke
 
 1. Press and drag on the picture, then let go. That is one stroke.
 2. Each stroke is one change, so **Ctrl+Z** takes back the last stroke.
 
-## 4. Paint settings of a painted thing
+## 4. Fill a closed shape
 
-Once a shape, text or picture has paint, its settings panel (Move tool) gains a folded **Paint** group:
+1. Draw the lines around an area, closed or nearly closed.
+2. Press **G**, or click **Fill** in the bar. The bar now shows the colour, Opacity and **Close gaps**.
+3. Click inside the area. It fills with the colour, right up to the lines and a little under them, so no thin light
+   edge shows between line and colour.
+4. Lines that don't quite meet: pick **Medium** or **Large** under **Close gaps** and click again.
+5. A click on a line, or in an area that is open to the edge of the painting, fills nothing and says why at the bottom.
+6. The fill finds its edges in **all** the paint layers of the thing, so you can fill on a colour layer under the
+   lines of your line layer.
+7. Press **G** again (or click **Fill**) to go back to the brush.
 
-1. **Keep inside the outline**: on by default. Turn it off and the paint can spill over the whole box around the thing.
-2. **Draw each frame**: off means the thing has one painting that holds for the whole time. On means each frame can have its own drawing, as in the next part. **Alt+N** turns it on by itself when you start a new drawing.
+A fill is kept as a shape, not as dots of colour, so it stays as sharp as your strokes. Each fill is one change:
+**Ctrl+Z** takes it back.
 
-## 5. Frames: one drawing after another
+## 5. Paint on: layers and settings of what you paint on
+
+Under the brush, **Paint on Card** (the name of what you paint on) shows:
+
+1. **The paint layers**, the top one first. A thing starts with one, called "Paint". To keep lines above colour, press
+   **+ Paint layer** in the bar: your next stroke or fill starts a new layer on top.
+   - Click a layer's name to paint on it; it is highlighted.
+   - The eye hides or shows it.
+   - Drag a name up or down to change the order.
+   - Right-click a name and pick **Delete** to remove it and its strokes.
+   - **Opacity** and **Blend** under the list belong to the highlighted layer.
+2. **Keep inside the outline**: on by default. Turn it off and the paint can spill over the whole box around the
+   thing. (A drawing has no outline, so it does not have this switch.)
+3. **Draw each frame**: off means the thing has one painting that holds for the whole time. On means each frame can
+   have its own drawing, as in the next part. **Alt+N** turns it on by itself when you start a new drawing.
+4. **Onion skin**, while Draw each frame is on (part 7).
+
+The same switches are in the thing's settings panel with the Move tool, under its folded **Paint** group.
+
+## 6. Frames: one drawing after another
 
 The drawing's row in the timeline shows its frames as marks on its bar. A drawing starts at a mark and is held until the next one. The number on a mark is the frame where it starts.
 
@@ -57,17 +90,18 @@ The drawing's row in the timeline shows its frames as marks on its bar. A drawin
 6. **Clear** empties the current picture.
 7. These buttons show only when they can apply. For example, there is no **New drawing** where a drawing already starts.
 
-## 6. Onion skin
+## 7. Onion skin
 
-1. Click **Onion skin** (or press **Alt+O**). The neighbouring drawings show faintly over the picture, so you can see where the last one was. The ones before are tinted red and the ones after are tinted green.
+1. Turn on **Onion skin** under the brush (with Draw each frame on), or press **Alt+O**. With the Move tool it is a
+   button above the timeline. The neighbouring drawings show faintly over the picture, so you can see where the last one was. The ones before are tinted red and the ones after are tinted green.
 2. Click it again to turn it off. The faint pictures are for you only; they do not appear in an export.
 
-## 7. Play it
+## 8. Play it
 
 Press **Space**. The pictures play in order at the project's speed. **Preview size** makes playback lighter.
 
-## 8. More than one drawing layer
+## 9. More than one drawing layer
 
-Lines on top, colour below: pick **+ Add**, **Drawing** again for a second layer, then drag its name under the first in the timeline. Both are in the same list, and each keeps its own frames. Strokes go onto the drawing layer that is picked, so click the name of the one you want to paint on.
+Lines on top, colour below works best with paint layers (part 5). For two separate things you move apart, pick **+ Add**, **Drawing** again for a second layer, then drag its name under the first in the timeline. Both are in the same list, and each keeps its own frames. Strokes go onto the drawing layer that is picked, so click the name of the one you want to paint on.
 
 Next: [the-screen.md](the-screen.md), and [exporting.md](exporting.md) to get a video file out.

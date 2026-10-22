@@ -1,0 +1,113 @@
+import QtQuick
+import RostrumKit
+
+// The settings panel's "Paint on <element>" group, under the brush while Draw is on (UX_SPEC 3.8; backend.paintLayers).
+// The paint layers, top first: the eye, the name (click: strokes and fills go on it; drag: reorder; right-click ›
+// Delete); under the list the highlighted layer's Opacity and Blend; then the element's paint switches (Keep inside
+// the outline, Draw each frame) and Onion skin while drawing each frame. Absent while the pen paints on a new drawing.
+Column {
+    id: po
+    readonly property var pl: backend.paintLayers
+    readonly property var cur: { for (const l of pl.layers) if (l.current) return l; return null }
+    width: parent ? parent.width : 0
+    visible: pl.title !== ""
+
+    component Label: Text {
+        width: Theme.labelColumn - Theme.gap; anchors.verticalCenter: parent.verticalCenter
+        color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont; elide: Text.ElideRight
+    }
+    component Line: Item { width: po.width; height: Theme.row }
+
+    Item {  // the heading, like a group's
+        width: po.width; height: Theme.groupGap + Theme.rowDense
+        Text {
+            anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.bottomMargin: Theme.grid + 2
+            id: heading
+            text: po.pl.title; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold
+            elide: Text.ElideRight
+            HoverHandler { id: headHover }
+            HoverTip { hovered: headHover.hovered && heading.truncated; text: heading.text }   // a long name, whole
+        }
+    }
+    Repeater {      // the paint layers, top first
+        id: layerRows
+        model: po.pl.layers
+        delegate: Rectangle {
+            id: lr
+            required property var modelData
+            required property int index
+            width: po.width; height: Theme.rowDense; radius: Theme.radiusCtl
+            color: modelData.current ? Theme.accentSoft : rowArea.containsMouse ? Theme.hover : "transparent"
+            z: drag.active ? 2 : 0
+            Item {      // the eye (the layers panel's own; crossed out when hidden)
+                id: eye
+                x: Theme.grid; width: 18; height: parent.height
+                LayerSwitchIcon { anchors.centerIn: parent; kind: "hidden"; on: !lr.modelData.visible; hot: eyeArea.containsMouse }
+                MouseArea { id: eyeArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onClicked: po.pl.setLayer(lr.modelData.id, "visible", !lr.modelData.visible) }
+                HoverTip { hovered: eyeArea.containsMouse; text: lr.modelData.visible ? "Hide" : "Show" }
+            }
+            Text {
+                id: nameText
+                anchors.left: eye.right; anchors.leftMargin: Theme.grid; anchors.right: parent.right; anchors.rightMargin: Theme.gap
+                anchors.verticalCenter: parent.verticalCenter
+                text: lr.modelData.name; color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont; elide: Text.ElideRight
+            }
+            MouseArea {
+                id: rowArea
+                anchors.fill: nameText; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onClicked: (ev) => ev.button === Qt.RightButton ? rowMenu.open() : po.pl.pick(lr.modelData.id)
+            }
+            HoverTip { hovered: rowArea.containsMouse && nameText.truncated; text: lr.modelData.name }
+            DragHandler {   // reorder: drop on another row's place
+                id: drag
+                target: null; yAxis.enabled: true; xAxis.enabled: false
+                onActiveChanged: if (!active) {
+                    const to = Math.max(0, Math.min(layerRows.count - 1, lr.index + Math.round(translation.y / lr.height)))
+                    if (to !== lr.index) po.pl.moveTo(lr.modelData.id, to)
+                }
+            }
+            transform: Translate { y: drag.active ? drag.translation.y : 0 }
+            Menu { id: rowMenu; y: lr.height; entries: [{ value: "delete", label: "Delete" }]
+                   onPicked: (v) => po.pl.remove(lr.modelData.id) }
+        }
+    }
+    Line {      // the highlighted layer's opacity and blend
+        visible: po.cur !== null
+        Label { text: "Opacity" }
+        NumberField {
+            x: Theme.labelColumn; width: parent.width - Theme.labelColumn; anchors.verticalCenter: parent.verticalCenter
+            value: po.cur ? po.cur.opacity : 1; from: 0; to: 1; step: 0.01
+            onEdited: (v) => po.pl.setLayer(po.cur.id, "opacity", v)
+            onScrubStarted: po.pl.beginScrub(po.cur.id); onScrubbed: (v) => po.pl.scrub(v); onScrubEnded: po.pl.endScrub()
+        }
+    }
+    Line {
+        visible: po.cur !== null
+        Label { text: "Blend" }
+        ChoiceField {
+            x: Theme.labelColumn; width: parent.width - Theme.labelColumn; anchors.verticalCenter: parent.verticalCenter
+            options: po.pl.modes; current: po.cur ? po.cur.mode : "normal"
+            onPicked: (v) => po.pl.setLayer(po.cur.id, "mode", v)
+        }
+    }
+    Repeater {      // the element's paint switches (paint_fields)
+        model: po.pl.toggles
+        delegate: Line {
+            id: tl
+            required property var modelData
+            height: Math.max(Theme.row, tlab.implicitHeight + 2 * Theme.grid)
+            Label { id: tlab; text: tl.modelData.label; wrapMode: Text.WordWrap; maximumLineCount: 2; lineHeight: 0.9 }
+            Toggle { x: Theme.labelColumn; anchors.verticalCenter: parent.verticalCenter; checked: tl.modelData.value
+                     onToggled: (v) => po.pl.setToggle(tl.modelData.id, v) }
+            HoverHandler { id: tHover }
+            HoverTip { hovered: tHover.hovered; text: tl.modelData.help || "" }
+        }
+    }
+    Line {
+        visible: po.pl.onionApplies
+        Label { text: "Onion skin" }
+        Toggle { x: Theme.labelColumn; anchors.verticalCenter: parent.verticalCenter; checked: painter.onionOn
+                 onToggled: (v) => painter.setOnion(v) }
+    }
+}
