@@ -1,10 +1,13 @@
 //!   rostrum2d-render encode-mp4 <out.mp4> <w> <h> <fps> <bitrate kbps>
+//!   rostrum2d-render encode-mp4 --check     exit 0 when this computer can write MP4, else the reason on stderr
 //! RGBA8 frames (straight alpha, the framing of encode_cmd.rs) → an H.264 MP4 through the operating system's own
 //! encoder, never libx264 (GPL). Windows: Media Foundation's sink writer, the GPU's encoder when there is one, else
 //! Microsoft's software H.264 encoder. High profile, the bitrate given (variable), BT.709 limited range tagged on input
 //! and output; frames turn into NV12 here (nv12.rs). The Mac (AVFoundation) is not built yet and says so.
 //! Fails loudly: odd sizes are refused before anything is written; any failed step is named; a frame that only partly
 //! arrived is an error; on any failure the unfinished file is deleted.
+//! Media Foundation's DLLs are delay-loaded (build.rs): nothing loads them until `available` has found each one in
+//! System32, so a Windows without them still runs the engine and gets a plain reason here instead of a crash.
 
 #[cfg(not(windows))]
 pub fn mp4(_args: &[String]) -> Result<u32, String> {
@@ -12,8 +15,30 @@ pub fn mp4(_args: &[String]) -> Result<u32, String> {
 }
 
 #[cfg(windows)]
+const NO_MF: &str = "MP4 export needs Windows Media Foundation, which this Windows doesn't have (Windows N editions: \
+install the Media Feature Pack from Settings › Apps › Optional features). WebM, PNG and GIF still work.";
+
+/// Loads each delay-loaded Media Foundation DLL from System32 only, and keeps it loaded: the delay-load helper then
+/// finds that copy (never one planted beside the program), and a missing one is reported before any call needs it.
+#[cfg(windows)]
+fn available() -> Result<(), String> {
+    use windows_sys::Win32::System::LibraryLoader::{LoadLibraryExW, LOAD_LIBRARY_SEARCH_SYSTEM32};
+    for dll in env!("ROSTRUM_DELAYED_DLLS").split(';') {
+        let wide: Vec<u16> = dll.encode_utf16().chain(Some(0)).collect();
+        if unsafe { LoadLibraryExW(wide.as_ptr(), std::ptr::null_mut(), LOAD_LIBRARY_SEARCH_SYSTEM32) }.is_null() {
+            return Err(NO_MF.into());
+        }
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
 pub fn mp4(args: &[String]) -> Result<u32, String> {
     use crate::encode_cmd::num;
+    available()?;
+    if args.first().map(String::as_str) == Some("--check") {
+        return Ok(0);
+    }
     let out = args.first().ok_or("usage: encode-mp4 <out.mp4> <w> <h> <fps> <bitrate kbps>")?;
     let (w, h) = (num(args, 1, "width")?, num(args, 2, "height")?);
     let (fps, kbps) = (num(args, 3, "fps")?, num(args, 4, "bitrate (kbps)")?);

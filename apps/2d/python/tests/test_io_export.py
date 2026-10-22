@@ -1,14 +1,22 @@
 """Export read-back must fail loudly on a wrong frame count and on missing alpha (tiny files made on the fly)."""
-import shutil
 import subprocess
 
 import numpy as np
 import pytest
 from PIL import Image
 
+from rostrum2d import settings
 from rostrum2d.io import formats, readback
 
-pytestmark = pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg missing")
+
+def _has_ffmpeg() -> bool:
+    try:
+        return bool(settings.ffmpeg())
+    except RuntimeError:
+        return False
+
+
+pytestmark = pytest.mark.skipif(not _has_ffmpeg(), reason="Rostrum2D's FFmpeg missing (apps/2d/ffmpeg)")
 W, H = 32, 16
 
 

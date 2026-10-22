@@ -5,6 +5,7 @@ agent calls (layer.arrange, layer.remove, item.rename) in one batch = one undo s
 from __future__ import annotations
 
 from PySide6.QtCore import Slot
+from rostrum_core.tree import subtree_ids
 from rostrum_gui.parts import SlotMixin
 
 ORDER = {"front": ("Bring to front", "Ctrl+Shift+]"), "forward": ("Bring forward", "Ctrl+]"),
@@ -63,6 +64,8 @@ class LayerOrder(SlotMixin):
                 out.append({"key": f"layer:{how}", "label": label, "hint": f"Layer order ({keys})", "calls": calls})
         out.append({"key": "layer:delete", "label": "Delete layer" + ("s" if len(layers) > 1 else ""), "hint": "Layer (Delete)",
                     "calls": [{"op": "layer.remove", "target": layers, "args": {}}]})
+        out.append({"key": "layer:duplicate", "label": "Duplicate layer" + ("s" if len(layers) > 1 else ""), "hint": "Layer (Ctrl+D)",
+                    "calls": [{"op": "layer.duplicate", "target": layers, "args": {}}]})
         if len(layers) == 1:
             out.append({"key": "layer:rename", "label": "Rename layer", "hint": "Layer (F2)", "rename": layers[0]})
         return out
@@ -76,7 +79,56 @@ class LayerOrder(SlotMixin):
         if key == "layer:rename" and any(c["key"] == key for c in self._layer_commands()):
             self.renameRequested.emit(self._selected_layers()[0])
             return True
+        if key == "layer:duplicate":
+            return self._duplicate()
         return super().run(key)
+
+    def _duplicate(self) -> bool:
+        """layer.duplicate on the selected layers; the copies (each just above its original) become the selection."""
+        layers = self._selected_layers()
+        if not super().run("layer:duplicate"):
+            return False
+        copies = []
+        for layer in layers:
+            parent, key, at = self.doc.parent_of(layer)
+            copies.append(self.doc.item(parent)[key][at + 1]["id"])
+        self._multi._set(copies)
+        return True
+
+    @Slot(str, str, str, result=bool)
+    def moveLayer(self, layer_id, target_id, where):
+        """Drag-to-reorder in the Layers panel: put the layer above / below the target row, or (a group) inside it on top.
+        One layer.arrange = one undo step; dropping on itself or inside itself changes nothing."""
+        doc = self.doc
+        if layer_id == target_id or not (doc.has(layer_id) and doc.has(target_id)):
+            return False
+        types = self._layer_types()
+        if doc.item(layer_id)["type"] not in types or doc.item(target_id)["type"] not in types:
+            return False
+        if where == "into":
+            if doc.item(target_id)["type"] not in ("group", "rig"):
+                return False
+            into, rest = target_id, [c["id"] for c in doc.item(target_id)["layers"] if c["id"] != layer_id]
+            at = len(rest)
+        else:
+            into = doc.parent_of(target_id)[0]
+            rest = [c["id"] for c in doc.item(into)["layers"] if c["id"] != layer_id]
+            at = rest.index(target_id) + (1 if where == "above" else 0)       # the panel lists the top of the stack first
+        if into == layer_id or into in subtree_ids(doc.item(layer_id), doc.kind.lists):
+            return False
+        if into == doc.parent_of(layer_id)[0] and rest[:at] + [layer_id] + rest[at:] == [c["id"] for c in doc.item(into)["layers"]]:
+            return False                                                      # dropped where it already is
+        return self._guard(lambda: self._apply([{"op": "layer.arrange", "target": [layer_id], "args": {"into": into, "index": at}}],
+                                               f"Move {self.label_of(doc.item(layer_id))}"))
+
+    @Slot(str, result="QVariantList")
+    def layerMenu(self, layer_id):
+        """The right-click menu of a layer row: selects it (unless it is already picked), then lists what applies."""
+        if layer_id not in self._multi.layers():
+            self.select(layer_id)
+        want = ("rename", "duplicate", "forward", "backward", "delete")
+        cmds = {c["key"].split(":")[1]: c for c in self._layer_commands()}
+        return [{"value": cmds[w]["key"], "label": cmds[w]["label"]} for w in want if w in cmds]
 
     @Slot(str, str, result=bool)
     def renameLayer(self, layer_id, name):

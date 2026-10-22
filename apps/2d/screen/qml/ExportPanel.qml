@@ -1,8 +1,9 @@
 import QtQuick
+import QtQuick.Dialogs
 import RostrumKit
 
 // Export: one format choice, the settings that apply to it (from exporter.settings: nothing is placed per format here),
-// the Export button (Cancel while it runs), then progress, the result read back from the file, "Cancelled", or the error.
+// where the file goes and what it is called (before, during and after), the Export button (Cancel while it runs), then progress, the result read back from the file, "Cancelled", or the error.
 // Opened from the top bar's Export action; sits on the canvas beside the inspector. The composition choice is only there when
 // the document has more than one.
 Rectangle {
@@ -22,6 +23,27 @@ Rectangle {
         height: Theme.header; verticalAlignment: Text.AlignVCenter
         text: "EXPORT"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
         font.weight: Font.DemiBold; font.letterSpacing: 0.4
+    }
+    FileDialog {
+        id: saveDialog
+        title: "Save the export as"
+        fileMode: FileDialog.SaveFile
+        options: FileDialog.DontConfirmOverwrite          // the panel asks (below), in its own words
+        currentFolder: "file:///" + files.projectsFolder.replace(/[\\]/g, "/")
+        onAccepted: job.setTarget(selectedFile.toString())
+    }
+    AskDialog {
+        id: taken
+        objectName: "exportQuestion"
+        onAnswered: (value) => job.answer(value)
+    }
+    Connections {
+        target: job
+        function onTaken(name, canReplace) {
+            taken.ask("Replace " + name + "?", "A file with that name is already there.",
+                      [{ value: "cancel", label: "Cancel" }, { value: "both", label: "Keep both" }]
+                      .concat(canReplace ? [{ value: "replace", label: "Replace", danger: true }] : []))
+        }
     }
     Column {
         id: col
@@ -51,6 +73,23 @@ Rectangle {
                 onPicked: (v) => job.setFormat(v)
             }
         }
+        Row {
+            height: Theme.row; spacing: Theme.gap
+            Text { width: panel.labelW - Theme.gap; height: parent.height; verticalAlignment: Text.AlignVCenter
+                   text: "Save to"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
+            Button { anchors.verticalCenter: parent.verticalCenter; text: "Choose…"; enabled: job.state !== "running"
+                     onClicked: { saveDialog.currentFile = "file:///" + (job.target || (files.projectsFolder + "/" + job.fileName)).replace(/[\\]/g, "/"); saveDialog.open() } }
+            Button { anchors.verticalCenter: parent.verticalCenter; visible: job.target !== ""; text: "Default"; kind: "ghost"
+                     onClicked: job.setTarget("") }
+        }
+        Column {   // where it will go and what it will be called: before it starts, while it runs, and after
+            visible: job.state !== "done"
+            width: col.width; spacing: 2
+            Text { width: parent.width; text: job.fileName; elide: Text.ElideMiddle; color: Theme.fg
+                   font.family: uiFont; font.pixelSize: Theme.body }
+            Text { width: parent.width; text: "Saved in " + job.destination; wrapMode: Text.WrapAnywhere; maximumLineCount: 4
+                   elide: Text.ElideMiddle; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+        }
         Repeater {
             model: job.settings
             delegate: Row {
@@ -75,7 +114,7 @@ Rectangle {
         }
         Row {
             spacing: Theme.gap
-            Button { visible: job.state !== "running"; text: "Export"; kind: "primary"; onClicked: job.start() }
+            Button { visible: job.state !== "running"; text: "Export"; kind: "primary"; onClicked: job.request() }
             Button { visible: job.state === "running"; text: "Cancel"; onClicked: job.cancel() }
             Button { text: "Close"; kind: "ghost"; onClicked: panel.shown = false }
         }
@@ -94,6 +133,7 @@ Rectangle {
             visible: job.state === "done"
             width: col.width; spacing: Theme.grid
             Text { text: "Done"; color: Theme.ok; font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold }
+            Button { text: "Show in folder"; onClicked: job.showInFolder() }
             Repeater {
                 model: job.facts
                 delegate: Row {
@@ -101,7 +141,7 @@ Rectangle {
                     width: col.width; spacing: 0
                     Text { id: fl; width: panel.labelW; text: modelData.label; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
                     Text { width: col.width - panel.labelW; text: modelData.text; color: Theme.fg; font.family: uiFont
-                           font.pixelSize: Theme.label; wrapMode: Text.WrapAnywhere; maximumLineCount: 3; elide: Text.ElideMiddle }
+                           font.pixelSize: Theme.label; wrapMode: Text.WrapAnywhere; maximumLineCount: 6; elide: Text.ElideMiddle }
                 }
             }
             Image {

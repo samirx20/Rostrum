@@ -180,6 +180,18 @@ fn new_surface(gl: Option<&mut Gl>, width: u32, height: u32, space: &Option<Colo
 /// Device size (px) from which glyphs are drawn as outlines instead of atlas masks (see `gl_context`).
 pub const GLYPH_OUTLINE_PX: f32 = 32.0;
 
+/// Skia's GPU resource budget for a comp of this size. A busy frame's layers, blur passes and pictures need about
+/// 20 frame-sized half-float textures; under Skia's default 256 MB they were thrown away and made again every frame
+/// (H25: Lull's 13-18 s at 1080p, 37 ms a frame of which 20 ms was that, 18 ms with room). 32 frames' worth, at least
+/// 512 MB and at most 1.5 GB (the laptop's GPU has 4 GB, shared with the 3D app); what goes unused is freed (`paint`).
+fn gpu_budget(width: u32, height: u32) -> usize {
+    let frame = width as usize * height as usize * 8;
+    (32 * frame).clamp(512 << 20, 1536 << 20)
+}
+
+/// GPU resources not used for this long are freed after a paint, so a budget filled by an earlier scene goes back.
+const GPU_UNUSED: std::time::Duration = std::time::Duration::from_secs(5);
+
 pub fn gl_context() -> Result<Gl, String> {
     let (hwnd, hinst) = hidden_window();
     let mut wh = Win32WindowHandle::new(NonZeroIsize::new(hwnd).unwrap());
@@ -232,6 +244,7 @@ impl Painter {
 
     /// A GPU painter on a context made beforehand (gl_context).
     pub fn gpu_on(mut gl: Gl, width: u32, height: u32, space: Option<ColorSpace>) -> Result<Self, String> {
+        gl.gr.set_resource_cache_limit(gpu_budget(width, height));
         let surface = new_surface(Some(&mut gl), width, height, &space)?;
         Ok(Self { gl: Some(gl), surface, acc: None, held: None, last: Last::Frame, width, height, scale: 1.0, space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0 })
     }
@@ -264,6 +277,13 @@ impl Painter {
     /// The size of the pictures it paints (the comp's times `set_scale`'s scale).
     pub fn size(&self) -> (u32, u32) {
         (self.width, self.height)
+    }
+
+    /// The GPU resource cache: (resources kept, their MB, the budget MB, MB of them unused now); `timing.gpuCache`.
+    pub fn gpu_cache(&self) -> Option<(usize, f64, f64, f64)> {
+        let gl = self.gl.as_ref()?;
+        let u = gl.gr.resource_cache_usage();
+        Some((u.resource_count, u.resource_bytes as f64 / 1048576.0, gl.gr.resource_cache_limit() as f64 / 1048576.0, gl.gr.resource_cache_purgeable_bytes() as f64 / 1048576.0))
     }
 
     pub fn is_gpu(&self) -> bool {
@@ -305,6 +325,7 @@ impl Painter {
         let t1 = std::time::Instant::now();
         if let Some(gl) = self.gl.as_mut() {
             gl.gr.flush_and_submit();
+            gl.gr.perform_deferred_cleanup(GPU_UNUSED, None);
         }
         self.last_draw_ms = (t1 - t0).as_secs_f64() * 1000.0;
         self.last_flush_ms = t1.elapsed().as_secs_f64() * 1000.0;

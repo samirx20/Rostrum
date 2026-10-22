@@ -4,15 +4,22 @@ import RostrumKit
 
 // Import: a file (SVG, PDF page, PSD, image, video) or a Figma frame into the open composition, as one change. Only the
 // settings that apply to what was chosen are here (a page for a PDF, text handling for an SVG, key / frame / token for Figma).
-// Afterwards: what came in, and the list of what didn't come across. Opened from the top bar's Import action.
+// Afterwards the settings go: only what came in and the list of what didn't come across stay (and the panel closes by
+// itself when everything came across: the top bar says what was imported). Opened from the top bar's Import action.
 Rectangle {
     id: panel
     property var job: backend.importer
     property bool shown: false
+    readonly property bool done: job.state === "done"
     readonly property int labelW: 92
     width: 320
     height: Theme.header + col.implicitHeight + Theme.pad
     visible: shown
+    onShownChanged: if (shown && done) job.clearResult()      // opened again: the last result goes, the settings return
+    Connections {
+        target: job
+        function onChanged() { if (panel.done && job.report.length === 0) panel.shown = false }
+    }
     color: Theme.panel; radius: Theme.radiusPanel
     border.color: Theme.popupEdge
     z: 20
@@ -35,6 +42,9 @@ Rectangle {
                   leftMargin: Theme.pad; rightMargin: Theme.pad }
         spacing: Theme.gap
 
+        Column {   // the settings: gone once an import is done
+            id: settings
+            visible: !panel.done; width: col.width; spacing: Theme.gap
         Row {
             height: Theme.row; spacing: 0
             Text { width: panel.labelW; height: parent.height; verticalAlignment: Text.AlignVCenter
@@ -63,7 +73,7 @@ Rectangle {
                           value: job.page; from: 1; to: 9999; step: 1; onEdited: (v) => job.setPage(v) }
         }
         Row {
-            visible: job.kind === "svg"; height: visible ? Theme.row : 0; spacing: 0
+            visible: job.hasText; height: visible ? Theme.row : 0; spacing: 0
             Text { width: panel.labelW; height: parent.height; verticalAlignment: Text.AlignVCenter
                    text: "Text in file"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
             ChoiceField {
@@ -104,9 +114,10 @@ Rectangle {
                          enabled: job.state !== "running"; onToggled: (v) => job.setKeepSize(v) }
             }
         }
+        }
         Row {
             spacing: Theme.gap
-            Button { visible: job.ready && job.state !== "running"; text: "Import"; kind: "primary"
+            Button { visible: job.ready && !panel.done && job.state !== "running"; text: "Import"; kind: "primary"
                      onClicked: { if (job.source === "figma") { job.runFigma(figma.key, figma.frame, figma.token); figma.token = "" } else job.run() } }
             Button { visible: job.state === "running"; text: "Cancel"; onClicked: job.cancel() }
             Button { text: "Close"; kind: "ghost"; onClicked: panel.shown = false }
