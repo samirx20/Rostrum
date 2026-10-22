@@ -24,7 +24,7 @@ $pyw = Join-Path $Install "runtime\python\pythonw.exe"
 $launcher = Join-Path $Install "runtime\rostrum.pyw"
 foreach ($f in @($pyw, $launcher)) { if (-not (Test-Path $f)) { Write-Host "FAIL: $f is missing"; exit 1 } }
 
-New-Item -ItemType Directory -Force (Join-Path $UserHome "AppData\Local"), (Join-Path $UserHome "AppData\Roaming"), (Join-Path $UserHome "Documents") | Out-Null
+New-Item -ItemType Directory -Force (Join-Path $UserHome "AppData\Local"), (Join-Path $UserHome "AppData\Roaming"), (Join-Path $UserHome "Documents"), (Join-Path $UserHome ".rostrum") | Out-Null
 $start = @($launcher, $App)
 if ($Lnk) {
     $l = (New-Object -ComObject WScript.Shell).CreateShortcut($Lnk)
@@ -46,6 +46,10 @@ $psi.Environment["HOMEPATH"] = $UserHome.Substring(2)
 $psi.Environment["LOCALAPPDATA"] = Join-Path $UserHome "AppData\Local"
 $psi.Environment["APPDATA"] = Join-Path $UserHome "AppData\Roaming"
 $psi.Environment["ROSTRUM_NO_MESSAGE_BOX"] = "1"          # this check reads the log instead of waiting on a box
+# A --shot run is "scripted" (rostrum_core.userhome) and would keep settings, Open recent and new projects in a temp
+# folder removed at exit. Here the "person" is the fresh scratch user, so the app runs as their normal start: settings
+# in their ~\.rostrum, projects in their Documents, and the next start can reopen the file.
+$psi.Environment["ROSTRUM_REAL_HOME"] = "1"
 # 2D asks Windows for the Documents folder (not USERPROFILE), which would be the real user's: keep its projects in the
 # scratch home's Documents, where a new user's own would be.
 $psi.Environment["ROSTRUM2D_PROJECTS"] = Join-Path $UserHome "Documents\Rostrum2D"

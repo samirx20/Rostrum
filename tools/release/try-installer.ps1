@@ -34,11 +34,11 @@ function Problem([string]$m) { $problems.Add($m); Write-Host "PROBLEM: $m" -Fore
 # Each app's walk: its steps (the same calls the screen's buttons make), and the files a New → Save and an export leave.
 $walk = @{
     "2d"    = @{ name = "Rostrum2D"; ext = ".mtn"; docs = "Documents\Rostrum2D"
-                 save = @("--step", "new Fresh test", "--step", "add text", "--step", "save")
+                 save = @("--step", "new Fresh test", "--step", "add text")      # 2D saves every change itself
                  export = @(@("mp4", @("--step", "export mp4")), @("webm", @("--step", "export webm")))
                  own = @("apps\2d", "rostrum-2d-mcp.cmd") }
-    "sound" = @{ name = "RostrumSound"; ext = ".trk"; docs = "Documents\Rostrum"
-                 save = @("--step", "file-new", "--step", "add-track piano", "--step", "add-note 0 60", "--step", "file-save-as {home}\Documents\Rostrum\Fresh song")
+    "sound" = @{ name = "RostrumSound"; ext = ".trk"; docs = "Documents\Rostrum Sound"
+                 save = @("--step", "new Fresh_song", "--step", "add-track piano", "--step", "add-note 0 60")   # saves itself
                  export = @(@("wav", @("--step", "export-as wav24", "--step", "export")), @("flac", @("--step", "export-as flac", "--step", "export")))
                  own = @("apps\sound\screen", "apps\sound\site-packages", "rostrum-sound-mcp.cmd") }
 }
@@ -122,10 +122,12 @@ try {
     }
     if ("2d" -in $Apps) {
         # The Lull sample's MP4 with the project's sound: mixed by Sound's engine, which a 2D-only install has too.
-        $userHome = Join-Path $Scratch "user-2d"; $lull = Join-Path $userHome "Documents\Rostrum\Samples\Lull"; $before = Get-Date
-        Open-App "2d" "export-mp4-with-sound" $userHome @("--open-sample", "--step", "export mp4") -wait 600 | Out-Null
-        $out = Get-ChildItem $lull -Recurse -Filter "*.mp4" -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -ge $before } | Select-Object -Last 1
-        if (-not $out) { Problem "Rostrum2D: no MP4 of the Lull sample under $lull" }
+        # The step prints where the MP4 went (Documents\Rostrum\Samples\Lull\renders\…). The range (drop → logo lands,
+        # 3.4 s) keeps the run inside 2D's 30 s limit for scripted runs.
+        $userHome = Join-Path $Scratch "user-2d"
+        $log = Open-App "2d" "export-mp4-with-sound" $userHome @("--open-sample", "--step", "export mp4 range=drop→logo_lands")
+        $out = if ($log -match "export mp4: (.+?\.mp4) \[") { Get-Item $Matches[1] -ErrorAction SilentlyContinue }
+        if (-not $out) { Problem "Rostrum2D: the Lull sample's MP4 export named no file that exists (log above)" }
         else {
             Copy-Item $out.FullName (Join-Path $Results "installed-2d-lull-with-sound.mp4")
             $ffprobe = (Get-Command ffprobe -ErrorAction SilentlyContinue).Source
