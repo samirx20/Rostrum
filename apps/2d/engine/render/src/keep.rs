@@ -35,6 +35,19 @@ pub fn diff_from(old: &BaseDocument, new: &BaseDocument, o: NodeId, n: NodeId) -
     edits
 }
 
+/// The edits that turn each kept node into its new one, pair by pair (restage.rs); None when a pair isn't the same kind
+/// of node (the caller stages the whole page instead).
+pub fn diff_pairs(old: &BaseDocument, new: &BaseDocument, pairs: impl IntoIterator<Item = (NodeId, NodeId)>) -> Option<Edits> {
+    let mut edits = Edits::default();
+    for (o, n) in pairs {
+        if !same_shape(old.get_node(o)?, new.get_node(n)?) {
+            return None;
+        }
+        walk(old, new, o, n, &mut edits);
+    }
+    Some(edits)
+}
+
 fn walk(old: &BaseDocument, new: &BaseDocument, o: NodeId, n: NodeId, edits: &mut Edits) {
     let (on, nn) = (old.get_node(o).unwrap(), new.get_node(n).unwrap());
     match (&on.data, &nn.data) {

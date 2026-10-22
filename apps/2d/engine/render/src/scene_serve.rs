@@ -129,13 +129,16 @@ fn placed(held: &Held, s: &mut Session, t: f64, ids: &Value, strict: bool) -> Re
     if held.shell != Some((s.width, s.height)) {
         return Err("the open page is not the scene's (an open or page came after the scene); send the scene again".into());
     }
-    serve::apply(s, &markup(scene, t, false)?.0)?;
+    let pieces = markup(scene, t, false)?.0;
+    let whole = pieces.concat();
+    s.next_pieces = Some(pieces);
+    serve::apply(s, &whole)?;
     crate::place::places(&s.doc, s.width, s.height, &eval::whole(&scene.comp, t), &ids, strict)
 }
 
-/// The stage markup at `t`, and the ms it took.
+/// The stage markup at `t`, one piece per top-level element (restage.rs), and the ms it took.
 /// `alpha`: the comp's background left out (an export with transparency).
-fn markup(scene: &Scene, t: f64, alpha: bool) -> Result<(String, f64), String> {
+fn markup(scene: &Scene, t: f64, alpha: bool) -> Result<(Vec<String>, f64), String> {
     let t0 = Instant::now();
     let plan = crate::motion::Plan::of(&scene.comp)?;
     let mut comp = eval::at(&scene.comp, t).expect("the comp always shows");
@@ -143,7 +146,7 @@ fn markup(scene: &Scene, t: f64, alpha: bool) -> Result<(String, f64), String> {
     if alpha {
         comp.props.insert("background".into(), Value::String("transparent".into()));
     }
-    let m = stage::stage(&comp)?;
+    let m = stage::parts(&comp)?;
     Ok((m, t0.elapsed().as_secs_f64() * 1000.0))
 }
 
@@ -155,7 +158,8 @@ pub fn frame(held: &Held, s: &mut Session, req: &Value) -> Result<(Value, Option
         return Err("the open page is not the scene's (an open or page came after the scene); send the scene again".into());
     }
     let alpha = req["alpha"].as_bool() == Some(true);
-    let (m, mut eval_ms) = markup(scene, t, alpha)?;
+    let (pieces, mut eval_ms) = markup(scene, t, alpha)?;
+    let m = pieces.concat();
     let mut f = req.clone();
     if let Some(o) = f.as_object_mut() {
         o.remove("alpha");
@@ -170,13 +174,14 @@ pub fn frame(held: &Held, s: &mut Session, req: &Value) -> Result<(Value, Option
         for ts in crate::motion::sample_times(t, scene.fps(), angle, n) {
             let (mk, ms) = markup(scene, ts, alpha)?;
             eval_ms += ms;
-            samples.push(Value::String(mk));
+            samples.push(Value::String(mk.concat()));
         }
         f["samples"] = Value::Array(samples);
     }
     if f.get("index").is_none() {
         f["index"] = json!((t * scene.fps()).round() as u64);
     }
+    s.next_pieces = Some(pieces);              // for the frame's own stage (serve.rs `apply`, restage.rs)
     let (mut reply, px) = serve::frame(s, &f)?;
     if let Some(timing) = reply.get_mut("timing") {
         timing["evalMs"] = json!(eval_ms);
