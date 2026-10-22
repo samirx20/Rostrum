@@ -48,7 +48,10 @@ $psi.Environment["ROSTRUM_NO_MESSAGE_BOX"] = "1"          # this check reads the
 # 2D asks Windows for the Documents folder (not USERPROFILE), which would be the real user's: keep its projects in the
 # scratch home's Documents, where a new user's own would be.
 $psi.Environment["ROSTRUM2D_PROJECTS"] = Join-Path $UserHome "Documents\Rostrum2D"
-$p = [System.Diagnostics.Process]::Start($psi)
+# Qt's threaded drawing doesn't run a dialog's fade-in before a scripted picture is taken (the picture showed only the
+# dimmed screen); drawing on the app's own thread does. A person's window is not affected.
+$psi.Environment["QSG_RENDER_LOOP"] = "basic"
+$p =[System.Diagnostics.Process]::Start($psi)
 if (-not $p.WaitForExit(120000)) { $p.Kill(); Write-Host "FAIL: $App did not finish in 2 minutes (PID $($p.Id) ended)"; exit 1 }
 $log = Get-ChildItem (Join-Path $UserHome "AppData\Local\Rostrum\logs") -Filter "$App-*.log" -ErrorAction SilentlyContinue |
     Sort-Object LastWriteTime | Select-Object -Last 1
