@@ -34,8 +34,8 @@ Sounds panel).
   play or arm, each new render sent with `{"load"}`; the playhead is the speaker's position it reports). A failed
   render is red in the status; the last good render plays only with "playing the last good render". When the player
   cannot open (no sound output) it is said in red and the playhead runs on a clock.
-- The Mixer's meters and loudness numbers, and the listen pictures (`screensound/listen_pics.py`, made with
-  `rostrum_sound.listen`) come from the same render (`backend.lastRender`).
+- The Mixer's meters and loudness numbers come from the same render (`backend.lastRender`). The screen draws no listen
+  pictures after a render (a whole-song read nothing on screen showed); agents ask `rostrum_sound.listen` for them.
 
 ## Run
 

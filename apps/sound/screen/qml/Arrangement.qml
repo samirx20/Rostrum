@@ -2,7 +2,8 @@ import QtQuick
 import QtQuick.Dialogs
 import RostrumKit
 
-// The arrangement, always in the middle (DESIGN.md §2.2, INTERACTION.md §1.1): a header strip — + Add, ⏮ ▶, Record
+// The arrangement, always in the middle (DESIGN.md §2.2, INTERACTION.md §1.1): a header strip — + Add, ⏮ ▶, ⟳ (only
+// with a time range), Record
 // (while a track is armed), the position and tempo · beats · key (click: the tempo / key popover), then at the right
 // the picture's switch (while the song has one) and the zoom (− + Fit) — then the Timeline (ruler, sections,
 // markers, track headers and lanes, + Track, the Master row last). A new song says what to do first (W1): "Start with
@@ -52,6 +53,11 @@ Rectangle {
                        color: toStart.hovered ? Theme.fg : Theme.fg2 }
             }
             PlayButton { playing: backend.playing; onClicked: backend.togglePlay(); anchors.verticalCenter: parent.verticalCenter }
+            IconButton {   // ⟳ loop: only while a time range exists (Shift+L)
+                visible: backend.timeRange.length === 2; glyph: "⟳"; kind: "ghost"; down: backend.looping
+                tip: backend.looping ? "Looping the time range (Shift+L)" : "Loop the time range (Shift+L)"
+                anchors.verticalCenter: parent.verticalCenter; onClicked: backend.toggleLoop()
+            }
             RecordControls { anchors.verticalCenter: parent.verticalCenter }
             Item { width: Theme.gap; height: 1 }
             SongReadout { id: readout; compact: a.compact; anchors.verticalCenter: parent.verticalCenter }

@@ -13,8 +13,6 @@ Column {
     property bool failed: false
     spacing: Theme.grid
 
-    Text { text: "Lines"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold
-           bottomPadding: 2 }
     Repeater {
         model: v.lines
         delegate: Rectangle {
