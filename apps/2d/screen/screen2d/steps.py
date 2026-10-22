@@ -57,6 +57,7 @@ from .paint_steps import WORDS as PAINT_WORDS, do_paint_step
 from .stroke_steps import WORDS as STROKE_WORDS, do_stroke_step
 from .view_steps import WORDS as VIEW_WORDS, do_view_step
 from .soundtrack_steps import WORDS as SOUND_WORDS, do_sound_step
+from .rig_steps import WORDS as RIG_WORDS, do_rig_step
 
 
 def value(text):
@@ -362,6 +363,8 @@ def do_step(bridge, win, step):
         do_sound_step(bridge, win, word, rest, step)
     elif word in STROKE_WORDS:                   # Alt picks a colour, the lasso, the focused area (stroke_steps.py)
         do_stroke_step(bridge, win, word, rest, step)
+    elif word in RIG_WORDS:                      # bones, posing, poses, Lip sync…, Add blinks… (rig_steps.py)
+        do_rig_step(bridge, word, rest, step)
     else:
         raise ValueError(f"unknown step {step!r}")
     if bridge.status.startswith("Error"):

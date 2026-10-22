@@ -21,7 +21,7 @@ from .retime import END, END_OF_COMP, FIELD
 
 AS = {"group": "Group", "clip": "Clip", "layout": "Layout", "swap": "Swap set"}
 AS_SET = {"clip": {"clip": True}, "layout": {"layout": "row"}, "swap": {"swap": True}}
-HOLDERS = ("comp", "group")
+HOLDERS = ("comp", "group", "rig")          # what layers can be wrapped inside (in a rig, the new group takes over their bind)
 PLACE = ("x", "y", "scale", "rotation", "opacity", "anchorX", "anchorY", "scaleX", "scaleY")
 PLAIN = {"blend": "normal", "matte": "", "depth": 0.0, "screenLock": False, "clip": False, "layout": "none", "swap": False,
          "start": 0.0, "end": END_OF_COMP, FIELD: "", END: "", "tiltX": 0.0, "tiltY": 0.0,
@@ -83,7 +83,22 @@ def make_group(ctx, ids: list[str], type_: str, name: str, args: dict) -> str:
                 if k["prop"] == prop:
                     ctx.set(k["id"], "v", round(k["v"] - off, 6))
         ctx.move(it["id"], group["id"], "layers")
+    if parent["type"] == "rig":
+        _rebind(ctx, parent, ids, group["id"])
     return group["id"]
+
+
+def _rebind(ctx, rig: dict, ids: list[str], group: str) -> None:
+    """Layers wrapped inside a rig leave its own list, so their binds go; the new group follows the bone most of them
+    followed (rigid), so the set still moves with the character."""
+    gone = [b for b in rig.get("binds", []) if b["layer"] in ids]
+    for b in gone:
+        ctx.remove(b["id"])
+    bones = [b["bone"] for b in gone]
+    if bones:
+        bind = new_item(ctx, "bind", {"name": f"{ctx.item(group)['name']} → bone"})
+        bind.update(layer=group, bone=max(set(bones), key=bones.count))
+        ctx.insert(rig["id"], "binds", bind)
 
 
 @R.operation("group.make", "Select layers, then wrap them in a new group (they must be in the same group or composition). "
@@ -101,10 +116,18 @@ def group_make(ctx, targets, args):
 
 
 @R.operation("rig.make", "Select layers (the parts of a character), then wrap them in a new rig; add its bones, IK chains and "
-             "binds afterwards. The rig is sized to their combined box and every layer stays exactly where it is.",
+             "binds afterwards. The rig is sized to their combined box and every layer stays exactly where it is. One "
+             "plain group (a PSD's parts) becomes the rig itself: its layers go straight into the rig, which takes its name.",
              target=F.LAYERS, label="Make rig", importance="secondary", params=[ID, AT])
 def rig_make(ctx, targets, args):
-    make_group(ctx, targets, "rig", "Rig", args)
+    name = "Rig"
+    if len(targets) == 1 and ctx.item(targets[0])["type"] == "group" and not ctx.item(targets[0]).get("swap"):
+        g = ctx.item(targets[0])
+        if _why_not(g, ctx.item(index(ctx.doc, ctx.kind.lists)[g["id"]].parent)) is None:
+            name, kids = g.get("name") or name, [k["id"] for k in g.get("layers", [])]
+            group_release(ctx, [g["id"]], {})
+            targets = kids
+    make_group(ctx, targets, "rig", name, args)
 
 
 # ---- taking a group apart -------------------------------------------------------------------------------------------
@@ -117,7 +140,7 @@ def _why_not(g: dict, parent: dict) -> str | None:
             return f'has "{prop}" set ({_value(g, prop)!r}), which would be lost'
     if any(k["prop"] in PLACE for k in g.get("keys", [])) or any(source_of(g, p) for p in PLACE):
         return "is animated (keys or an expression on its place, scale, turn or opacity); its layers would jump"
-    if parent["type"] not in HOLDERS or parent.get("layout", "none") != "none":
+    if parent["type"] not in ("comp", "group") or parent.get("layout", "none") != "none":
         return "is inside something that holds it specially (a rig or an auto layout)"
     if any(s.get("matte") == g["id"] for s in parent["layers"]):
         return "is the matte of another layer"

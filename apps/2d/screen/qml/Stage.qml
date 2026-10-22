@@ -209,6 +209,7 @@ Panel {
                     editable: backend.multi.count === 1 && !well.drawing && modelData.type !== "path" && !backend.pen.on
                 }
             }
+            BoneOverlay { fit: view.zoom; space: marks }   // a rig in hand: its bones and joints, posing and fixing drags (rig_view.py)
             Shape {  // painting: the target's true edge, the limit its paint stays inside (backend.paintEdge, composition px)
                 visible: well.drawing && backend.paintEdge.path !== ""
                 scale: view.zoom; transformOrigin: Item.TopLeft

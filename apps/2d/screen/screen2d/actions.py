@@ -57,6 +57,11 @@ DATA = [
     _a("swap", "Make swap set", rank=60, group="make", bar="Make", min_targets=2, when=FACT("groupable"),
        calls=_op("group.make", "stack", id="$new:group", **{"as": "swap"})),
     _a("rig", "Make rig", rank=60, group="make", bar="Make", when=FACT("groupable"), calls=_op("rig.make", "stack", id="$new:rig")),
+    # a character (UX_SPEC 3.23): a rig with no bones named like a body; a mouth or an eyes swap set
+    _a("guess_bones", "Bones from part names", rank=8, importance="primary", group="make", max_targets=1,
+       when=FACT("bones_guessable"), calls=_op("rig.guess_bones", "ids")),
+    _a("lipsync", "Lip sync…", rank=8, importance="primary", group="make", max_targets=1, when=FACT("mouth_set"), do="lipsync"),
+    _a("blinks", "Add blinks…", rank=8, importance="primary", group="make", max_targets=1, when=FACT("eyes_set"), do="blinks"),
     _a("mask", "Mask with top layer", rank=20, importance="primary", group="mask", bar="Mask", job="mask", min_targets=2,
        when=FACT("maskable"), calls=_MASK("alpha")),
     *[_a(f"mask_{m}", f"Mask: {words.lower()}", rank=70, group="mask", bar="Mask", min_targets=2, when=FACT("maskable"),
@@ -79,6 +84,8 @@ DATA = [
          why="Set depth needs a camera: + › Camera (drawings of the composition, not inside a group).")
       for k, v in _DEPTHS.items()],
     _a("stagger", "Stagger…", rank=35, importance="primary", group="arrange", min_targets=2, do="stagger"),
+    _a("sound_here", "Add a sound here…", rank=40, group="arrange", max_targets=1, when=FACT("has_sound"), do="sound_here",
+       why="Ties a sound from Sound's library to the layer's start; RostrumSound mixes it"),
     _a("key_here", "Key here", rank=45, group="animate", job="key_here", calls={"rule": "pose"}),
     *[_a(f"ease_{e['value']}", f"Ease: {e['label']}", rank=50, group="animate", bar="Ease", job=e["job"],
          when=FACT("keys_picked"), calls=_op("key.set", "keys", ease=e["value"])) for e in EASES if e["value"] != "custom"],

@@ -147,3 +147,23 @@ holds the bones' `rotation`, `scale`, `moveX`, `moveY`, the iks' `targetX`, `tar
   half (`mix` ≥ 0.5 takes the second pose's; `amount` < 0.5 keeps the current one) and is keyed `hold`. A bone deleted
   since the save is skipped. One operation = one undo step; it only puts keys.
 - `pose.remove`; `pose.set` (rename, note).
+
+## Bones from part names, joints, K and pins (Python, `rostrum2d/rig/guess.py`, `joints.py`, `bodynames.py`; H32)
+
+- `rig.make` on **one plain group** (a PSD's parts) turns that group into the rig: its layers go straight into the rig,
+  which takes the group's name (any other selection is wrapped as before).
+- `rig.guess_bones` (target: a rig with no bones; `ik` default on): reads the parts' names (`bodynames.part`: torso /
+  body, hip, neck, head, upper arm, forearm, hand, thigh, shin, foot, with L / R or left / right; face words → head) and
+  proposes a skeleton from their rest boxes: a root "body" bone from the hip to the neck, a head bone, and per limb a
+  bone per part from the shoulder or hip out (a joint is halfway between the two parts' long axes, nearest each other).
+  An IK chain on each limb of two or more parts (its bend follows the drawn bend, else outwards). Every part is bound
+  rigid to its bone; face parts to the head; others to the nearest bone. Refused, saying why, on a rig with bones or with
+  fewer than two body-named parts.
+- `rig.move_joint` (target: bone; `x`, `y` rig px, `end` pivot / tip): fixes a joint at rest. The parent's tip and
+  bones starting at the same joint follow; the bone's own tip stays.
+- `rig.key` (target: rig; `t`): K on a rig keys every bone's turn, scale and move and every IK chain's target and amount.
+- `ik.pin` (target: ik; `t`, `on`): a hold key on `pin` (right-click a chain's end › Pin on the canvas).
+- `group.make` inside a rig (Make swap set on mouth drawings after the bones exist): the drawings' binds go and the new
+  group is bound to the bone most of them followed.
+- On the screen (`screen2d/rig_view.py`, `rig_drag.py`, `qml/BoneOverlay.qml`): the posed bones and joints come from the
+  engine's `bones` and `place` answers (the canvas's own engine, `frames.ask`), so the overlay is the pose the export draws.

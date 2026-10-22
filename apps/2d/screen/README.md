@@ -319,6 +319,11 @@ Steps: `select`, `selectmany`, `act`, `nudge`, `tool move|pen|draw`, `time`, `se
   couldn't carry), and the document gets a version "Exported v003". A failure is red, in words; no unfinished file is left.
 - The formats and their settings are data (`rostrum2d.io.formats.FORMATS` + Lottie, listed by `rostrum2d.mcp.exporting`); the
   MCP tool `render_export` runs the same code (`exporting.run`), so a person and an agent get the same files.
+- **Include the project's sound** (a switch, only for MP4 and only when the project has sound; on by default): the scene's
+  soundtrack, else the project's main mix (`rostrum2d/project_sound.py`), mixed by RostrumSound's engine, cut to the
+  export's range and put under the picture by the bundled LGPL FFmpeg (`rostrum2d/io/export_sound.py`) before the file is
+  renamed. If the mix or the muxing fails, the export fails: never a silent MP4 when sound was asked. Agents:
+  `render_export {format: "mp4", sound: true|false}` (default as on the screen).
 
 ## Add and import
 
@@ -362,3 +367,19 @@ Steps: `select`, `selectmany`, `act`, `nudge`, `tool move|pen|draw`, `time`, `se
 
 Text on the canvas is measured by the engine (rostrum2d/textsize.py); drawing ignores rotation. No live sync between two
 processes on one file (each saves; reopen to see the other's).
+
+## Characters (H32: `rig_view.py`, `rig_drag.py`, `rig_poses.py`, `rig_lipsync.py`, `rig_blinks.py`, `rig_mouths.py`, `rig_voice.py`)
+
+- **Bones from part names** on the context bar for a rig with no bones whose parts are named like a body (`rig.guess_bones`).
+- **Bone overlay** (`qml/BoneOverlay.qml`, `backend.rig`) while a rig, or anything inside one, is selected with Move: posed
+  bones from the canvas's engine (`frames.ask` → `bones`, `place`). Drag a circle = fix the joint (`rig.move_joint`); drag a
+  bone = turn it (FK, `value.set rotation`) or, in an IK chain (orange), pull the chain (`value.set targetX/Y`); a click picks
+  the bone; right-click a chain's end › Pin / Unpin (`ik.pin`). One drag = one undo step. K on a rig = `rig.key`.
+- **Poses** under the settings (`qml/RigPoses.qml`, `backend.poses`): Save pose, click = apply at the playhead, slider = part
+  of the way (one change on release), right-click › Delete.
+- **Lip sync…** on a mouth swap set (`qml/LipSyncSheet.qml`, `backend.lipsync`): the project's voice lines from RostrumSound
+  (`rig_voice.lines`), a row per mouth shape guessed from the drawings' names, Apply = one `lipsync.apply` (a line not heard
+  before is listened to off the screen's thread first). **Add blinks…** on an eyes swap set (`qml/BlinkSheet.qml`): Every,
+  Varies by, open / closed / half, Apply = one `blink.add`.
+- Steps (`rig_steps.py`): `bones`, `jointdrag`, `posedrag`, `bonepick`, `pin`, `posesave`, `poseapply`, `poseblend`,
+  `lipsync open|line|shape|apply|close`, `blinks open|every|vary|pick|apply|close`. Test character: `rig_sample.py`.

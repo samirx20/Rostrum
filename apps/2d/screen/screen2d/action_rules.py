@@ -17,8 +17,11 @@ from __future__ import annotations
 
 from rostrum2d import fields as F
 from rostrum2d.ops_group import HOLDERS, _why_not
+from rostrum2d.rig.guess import guessable
 from rostrum_core.ids import counted
 from rostrum_core.tree import index
+
+from .rig_mouths import is_eyes, is_mouth
 
 SHAPES = ("shape", "path")
 
@@ -59,6 +62,11 @@ class Facts:
             "any_hidden": bool(self.lists["hidden"]), "any_shown": bool(self.lists["shown"]),
             "style_copied": bool(self.copied) and any(i != self.copied for i in ids),
             "clipboard": bool(self.state["clipboard"]), "keys_picked": bool(self.state["keys"]),
+            "has_sound": bool(self.state.get("sound")) and "camera" not in self.kinds,   # Add a sound here (sound_cue_pick.py)
+            # a character (rig/guess.py, rig_mouths.py): Bones from part names, Lip sync…, Add blinks…
+            "bones_guessable": self.count == 1 and guessable(self.items[0]),
+            "mouth_set": self.count == 1 and is_mouth(self.items[0]),
+            "eyes_set": self.count == 1 and is_eyes(self.items[0]),
             "depth_ok": self.kinds == {"drawing"} and bool(p) and p["type"] == "comp"
             and any(c["type"] == "camera" for c in p.get("layers", []))}      # Set depth: drawings of a comp with a camera
 
@@ -120,7 +128,8 @@ def _order(f: Facts, how: str) -> list[dict]:
 
 def _pose(f: Facts) -> list[dict]:
     """K: key.add fields "pose" on each selected layer at the playhead in its own seconds (one call per layer)."""
-    return [{"op": "key.add", "target": [i], "args": {"fields": "pose", "t": round(f.at(i), 6)}} for i in f.ids]
+    return [{"op": "rig.key", "target": [i], "args": {"t": round(f.at(i), 6)}} if f.doc.item(i)["type"] == "rig"   # a rig: its bones' pose (rig/joints.py)
+            else {"op": "key.add", "target": [i], "args": {"fields": "pose", "t": round(f.at(i), 6)}} for i in f.ids]
 
 
 POSE_WORDS = {"x": "position", "y": "position", "scale": "scale", "rotation": "rotation", "opacity": "opacity"}

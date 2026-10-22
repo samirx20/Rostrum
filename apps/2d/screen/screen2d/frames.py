@@ -85,6 +85,11 @@ class FrameRenderer(PictureWorker):
             raise box["error"]
         return box["places"]
 
+    def ask(self, scene: dict, fn, done) -> None:
+        """Ask the canvas's engine something with `scene` loaded (`fn(eng)`, e.g. the posed bones: rig_view.py), off the
+        GUI thread; `done(answer, error)` is called on the worker thread (emit a signal from it)."""
+        self.post_ordered(("ask", scene, fn, done))
+
     def open_engine(self):
         return open_engine()
 
@@ -107,6 +112,14 @@ class FrameRenderer(PictureWorker):
                 box["error"] = e
             box["done"].set()
             return
+        if job[0] == "ask":
+            _, scene, fn, done = job
+            try:
+                self._load(eng, scene)
+                answer = fn(eng)
+            except Exception as e:  # noqa: BLE001  handed to the asker, who says it
+                return done(None, e)
+            return done(answer, None)
         scene, t, samples, scale, tag, crop, place = job
         self._load(eng, scene)
         image = _frame(eng, t, SCRATCH / "frame.png", samples, scale, place)

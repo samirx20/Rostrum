@@ -34,7 +34,7 @@ class ActionSlots(SlotMixin):
         self._hub.refresh()
 
     def _facts(self) -> Facts:
-        return Facts(self.doc, self.selected_layers(), {"at": self.own_t, "copied": self._copied, "keys": self._keys.ids,
+        return Facts(self.doc, self.selected_layers(), {"at": self.own_t, "copied": self._copied, "keys": self._keys.ids, "sound": self._soundtrack.present,
                                                          "clipboard": bool(self.keys_copied() or self._clip_text() or self._strokes.has_clip())})
 
     def _what(self, f) -> str:
@@ -74,6 +74,10 @@ class ActionSlots(SlotMixin):
             {"clip_copy": self.copyLayers, "clip_cut": self.cutLayers, "paste": self.pasteLayers}[name]()
         elif name == "stagger":
             self._stagger.start()
+        elif name == "sound_here":
+            self._cuepick.start()
+        elif name in ("lipsync", "blinks"):                              # the character sheets (rig_lipsync.py, rig_blinks.py)
+            (self._lipsync if name == "lipsync" else self._blinks).start()
         elif name == "copy_style":
             self._copied = self.selected_layers()[0]
             self._set_status(f"Copied the style of {self.label_of(self.doc.item(self._copied))}")
