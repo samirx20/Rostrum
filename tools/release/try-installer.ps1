@@ -1,13 +1,15 @@
 <#
 .SYNOPSIS
-  Installs a RostrumSetup-*.exe into a scratch folder (silently, both apps, desktop shortcuts) and walks each app as a
-  brand-new user (check.ps1: only Windows on the PATH, a fresh home folder):
+  Installs a RostrumSetup-*.exe into a scratch folder (silently, the apps in -Apps, desktop shortcuts) and walks each
+  installed app as a brand-new user (check.ps1: only Windows on the PATH, a fresh home folder):
     plain start from the Start menu and the desktop (must open a new empty file, never the sample) · New → add one
     thing → Save · plain start again (must reopen that file) · the saved file double-clicked · export (2D: MP4 and WebM;
-    Sound: WAV and FLAC), each file read back · Help › About and licences · Sound's clean-up library loads
-  then uninstalls and checks that nothing is left but the person's own files. Pictures go to -Results.
+    Sound: WAV and FLAC), each file read back · 2D: the Lull sample's MP4 with the project's sound (Sound's engine part
+    comes with 2D alone too) · Help › About and licences · Sound's clean-up library loads
+  checks that an app not picked left nothing of its own (shortcuts, file type, folders, agent server), then uninstalls
+  and checks that nothing is left but the person's own files. Pictures go to -Results.
 
-  pwsh -File tools\release\try-installer.ps1 -Setup <RostrumSetup.exe> -Scratch <empty folder> -Results <folder>
+  pwsh -File tools\release\try-installer.ps1 -Setup <RostrumSetup.exe> -Scratch <empty folder> -Results <folder> [-Apps 2d,sound]
 
   The test shortcuts use the real desktop and Start menu (same names as the dev launchers' shortcuts), so any existing
   Rostrum2D / RostrumSound desktop shortcuts are copied aside first and put back at the end, whatever happens.
@@ -15,7 +17,8 @@
 param(
     [Parameter(Mandatory)][string]$Setup,
     [Parameter(Mandatory)][string]$Scratch,
-    [Parameter(Mandatory)][string]$Results
+    [Parameter(Mandatory)][string]$Results,
+    [ValidateSet("2d", "sound")][string[]]$Apps = @("2d", "sound")
 )
 $ErrorActionPreference = "Stop"
 $check = Join-Path $PSScriptRoot "check.ps1"
@@ -23,6 +26,7 @@ $dir = Join-Path $Scratch "install dir"                  # a space in the path, 
 $desk = [Environment]::GetFolderPath("Desktop")
 $menu = Join-Path ([Environment]::GetFolderPath("Programs")) "Rostrum"
 $names = @("Rostrum2D", "RostrumSound")
+$component = @{ "2d" = "app2d"; "sound" = "appsound" }; $desktopTask = @{ "2d" = "desktop2d"; "sound" = "desktopsound" }
 $saved = Join-Path $Scratch "desktop-shortcuts-before"
 $problems = [System.Collections.Generic.List[string]]::new()
 function Problem([string]$m) { $problems.Add($m); Write-Host "PROBLEM: $m" -ForegroundColor Red }
@@ -31,15 +35,17 @@ function Problem([string]$m) { $problems.Add($m); Write-Host "PROBLEM: $m" -Fore
 $walk = @{
     "2d"    = @{ name = "Rostrum2D"; ext = ".mtn"; docs = "Documents\Rostrum2D"
                  save = @("--step", "new Fresh test", "--step", "add text", "--step", "save")
-                 export = @(@("mp4", @("--step", "export mp4")), @("webm", @("--step", "export webm"))) }
+                 export = @(@("mp4", @("--step", "export mp4")), @("webm", @("--step", "export webm")))
+                 own = @("apps\2d", "rostrum-2d-mcp.cmd") }
     "sound" = @{ name = "RostrumSound"; ext = ".trk"; docs = "Documents\Rostrum"
                  save = @("--step", "file-new", "--step", "add-track piano", "--step", "add-note 0 60", "--step", "file-save-as {home}\Documents\Rostrum\Fresh song")
-                 export = @(@("wav", @("--step", "export-as wav24", "--step", "export")), @("flac", @("--step", "export-as flac", "--step", "export"))) }
+                 export = @(@("wav", @("--step", "export-as wav24", "--step", "export")), @("flac", @("--step", "export-as flac", "--step", "export")))
+                 own = @("apps\sound\screen", "apps\sound\site-packages", "rostrum-sound-mcp.cmd") }
 }
 
-function Open-App($app, $shotName, $userHome, [string[]]$extra = @(), [string]$lnk = "") {
+function Open-App($app, $shotName, $userHome, [string[]]$extra = @(), [string]$lnk = "", [int]$wait = 120) {
     $shot = Join-Path $Results "installed-$app-$shotName.png"
-    $a = @{ Install = $dir; App = $app; Shot = $shot; UserHome = $userHome; Extra = $extra }
+    $a = @{ Install = $dir; App = $app; Shot = $shot; UserHome = $userHome; Extra = $extra; Wait = $wait }
     if ($lnk) { $a.Lnk = $lnk }
     & $check @a | Out-Host
     if ($LASTEXITCODE) { Problem "$app $shotName failed (lines above)" }
@@ -59,15 +65,27 @@ for a in agents.AGENTS:
 $realAgentFiles = @(& $agentState)
 $realHashes = @{}; foreach ($f in $realAgentFiles) { $p = ($f -split " \| ")[0]; $realHashes[$p] = if (Test-Path $p) { (Get-FileHash $p).Hash } else { "absent" } }
 New-Item -ItemType Directory -Force $saved, $Results | Out-Null
-foreach ($n in $names) { $l = Join-Path $desk "$n.lnk"; if (Test-Path $l) { Copy-Item $l $saved } }
+# Aside, then off the desktop, so a not-picked app's dev shortcut isn't taken for the installer's (put back at the end).
+foreach ($n in $names) { $l = Join-Path $desk "$n.lnk"; if (Test-Path $l) { Copy-Item $l $saved; Remove-Item $l } }
 try {
     $p = Start-Process $Setup -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=`"$dir`"",
-        "/COMPONENTS=app2d,appsound", "/TASKS=desktop2d,desktopsound", "/LOG=`"$Scratch\install.log`"" -Wait -PassThru
+        "/COMPONENTS=$(($Apps | ForEach-Object { $component[$_] }) -join ',')", "/TASKS=$(($Apps | ForEach-Object { $desktopTask[$_] }) -join ',')", "/LOG=`"$Scratch\install.log`"" -Wait -PassThru
     if ($p.ExitCode) { throw "the installer exited with $($p.ExitCode) (log: $Scratch\install.log)" }
     $mb = (Get-ChildItem $dir -Recurse -File | Measure-Object Length -Sum).Sum / 1MB
-    Write-Host ("installed into {0} ({1:N0} MB)" -f $dir, $mb)
+    Write-Host ("installed into {0} ({1:N0} MB): {2}" -f $dir, $mb, ($Apps -join " + "))
 
-    foreach ($app in $walk.Keys) {
+    # An app not picked leaves nothing of its own; Sound's engine part comes with either app (rostrum.iss).
+    foreach ($app in @($walk.Keys | Where-Object { $_ -notin $Apps })) {
+        $w = $walk[$app]
+        foreach ($f in $w.own) { if (Test-Path (Join-Path $dir $f)) { Problem "$($w.name) was not picked, but $dir\$f is installed" } }
+        foreach ($l in @((Join-Path $menu "$($w.name).lnk"), (Join-Path $desk "$($w.name).lnk"))) { if (Test-Path $l) { Problem "$($w.name) was not picked, but $l exists" } }
+        if (Test-Path "HKCU:\Software\Classes\$($w.ext)") { Problem "$($w.name) was not picked, but $($w.ext) is registered" }
+    }
+    foreach ($f in @("apps\sound\engine\target\agent\rostrum-sound.exe", "apps\sound\python\rostrum_sound\__init__.py")) {
+        if (-not (Test-Path (Join-Path $dir $f))) { Problem "Sound's engine part is missing: $dir\$f" }
+    }
+
+    foreach ($app in $Apps) {
         $w = $walk[$app]; $userHome = Join-Path $Scratch "user-$app"
         foreach ($where in @(@("start-menu", (Join-Path $menu "$($w.name).lnk")), @("desktop", (Join-Path $desk "$($w.name).lnk")))) {
             if (-not (Test-Path $where[1])) { Problem "no $($where[0]) shortcut $($where[1])"; continue }
@@ -102,9 +120,26 @@ try {
         }
         Open-App $app "licences" $userHome @("--step", "about") | Out-Null
     }
+    if ("2d" -in $Apps) {
+        # The Lull sample's MP4 with the project's sound: mixed by Sound's engine, which a 2D-only install has too.
+        $userHome = Join-Path $Scratch "user-2d"; $lull = Join-Path $userHome "Documents\Rostrum\Samples\Lull"; $before = Get-Date
+        Open-App "2d" "export-mp4-with-sound" $userHome @("--open-sample", "--step", "export mp4") -wait 600 | Out-Null
+        $out = Get-ChildItem $lull -Recurse -Filter "*.mp4" -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -ge $before } | Select-Object -Last 1
+        if (-not $out) { Problem "Rostrum2D: no MP4 of the Lull sample under $lull" }
+        else {
+            Copy-Item $out.FullName (Join-Path $Results "installed-2d-lull-with-sound.mp4")
+            $ffprobe = (Get-Command ffprobe -ErrorAction SilentlyContinue).Source
+            $audio = if ($ffprobe) { & $ffprobe -v error -select_streams a -show_entries "stream=codec_name,sample_rate,channels" -of compact $out.FullName } else { "(no ffprobe here)" }
+            Write-Host ("exported {0} ({1:N1} MB), sound: {2}" -f $out.FullName, ($out.Length / 1MB), ($audio -join " | "))
+            if ($ffprobe -and -not ($audio -match "codec_name=aac")) { Problem "the Lull MP4 has no sound stream: $audio" }
+        }
+    }
     $py = Join-Path $dir "runtime\python\python.exe"
-    $ort = & $py -c "import onnxruntime as o; print(o.__version__, o.get_available_providers())" 2>&1
-    if ($LASTEXITCODE) { Problem "onnxruntime (Make cleaned take) doesn't load in the installed Python: $ort" } else { Write-Host "onnxruntime loads: $ort" }
+    if ("sound" -in $Apps) {
+        $ort = & $py -c "import onnxruntime as o; print(o.__version__, o.get_available_providers())" 2>&1
+        if ($LASTEXITCODE) { Problem "onnxruntime (Make cleaned take) doesn't load in the installed Python: $ort" } else { Write-Host "onnxruntime loads: $ort" }
+    }
+    $agentApp = $Apps[0]                                 # the agent walk uses the first installed app
 
     # Connect an AI agent, as a new user: Codex in a scratch home (CODEX_HOME), so no real agent settings are touched.
     # From here to the uninstall, this script and what it starts (the uninstaller too) see the scratch user's folders.
@@ -117,25 +152,25 @@ try {
     $env:USERPROFILE = $agentUser; $env:HOME = $agentUser; $env:CODEX_HOME = $codexHome
     $env:APPDATA = Join-Path $agentUser "AppData\Roaming"; $env:LOCALAPPDATA = Join-Path $agentUser "AppData\Local"
     $env:ROSTRUM2D_PROJECTS = Join-Path $agentUser "Documents\Rostrum2D"
-    $hand = (& $py -m rostrum_connect hand --agent codex --app 2d) -join "`n"
+    $hand = (& $py -m rostrum_connect hand --agent codex --app $agentApp) -join "`n"
     $hand | Set-Content (Join-Path $Results "installed-codex-by-hand.txt") -Encoding utf8
     if ($hand -notmatch [regex]::Escape("$dir\runtime\python\python.exe") -or $hand -match "PYTHONPATH|\.rostrum\\venv") {
         Problem "the by-hand text doesn't use the installed Python, or names PYTHONPATH / the dev venv:`n$hand" }
-    Open-App "2d" "connect-codex-by-hand" $agentUser @("--step", "agents codex") | Out-Null
+    Open-App $agentApp "connect-codex-by-hand" $agentUser @("--step", "agents codex") | Out-Null
     $list = Join-Path $PSScriptRoot "list_tools.py"
-    foreach ($app in @("2d", "sound")) {
+    foreach ($app in $Apps) {
         $out = & $py $list (Join-Path $dir "rostrum-$app-mcp.cmd") 2>&1
         Write-Host "rostrum-$app-mcp.cmd: $($out -join ' | ')"
         if ($LASTEXITCODE) { Problem "rostrum-$app-mcp.cmd didn't start a server that lists its tools: $out" }
     }
-    $add = & $py -m rostrum_connect add --agent codex --app 2d --yes 2>&1
+    $add = & $py -m rostrum_connect add --agent codex --app $agentApp --yes 2>&1
     Write-Host "add: $add"
-    if ($LASTEXITCODE) { Problem "adding Rostrum2D to Codex failed: $add" }
+    if ($LASTEXITCODE) { Problem "adding $($walk[$agentApp].name) to Codex failed: $add" }
     Copy-Item $toml (Join-Path $Results "installed-codex-config-after-add.toml")
-    $out = & $py $list --codex $toml rostrum-2d 2>&1
+    $out = & $py $list --codex $toml "rostrum-$agentApp" 2>&1
     Write-Host "Codex's entry: $($out -join ' | ')"
     if ($LASTEXITCODE) { Problem "the server Codex's entry starts didn't list its tools: $out" }
-    Open-App "2d" "connect-codex-added" $agentUser @("--step", "agents") | Out-Null
+    Open-App $agentApp "connect-codex-added" $agentUser @("--step", "agents") | Out-Null
 
     $p = Start-Process (Join-Path $dir "unins000.exe") -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait -PassThru
     if ($p.ExitCode) { Problem "the uninstaller exited with $($p.ExitCode)" }
@@ -153,7 +188,7 @@ try {
         if (Test-Path "HKCU:\Software\Classes\$k") { $left += "registry HKCU\Software\Classes\$k" }
     }
     if ($left) { Problem "left behind after uninstall: $($left -join '; ')" } else { Write-Host "uninstall left nothing behind" }
-    foreach ($app in $walk.Keys) {
+    foreach ($app in $Apps) {
         if (-not (Get-ChildItem (Join-Path $Scratch "user-$app\$($walk[$app].docs)") -Recurse -Filter "*$($walk[$app].ext)" -ErrorAction SilentlyContinue)) {
             Problem "the person's own $($walk[$app].name) files are gone after uninstall" }
     }
@@ -172,4 +207,4 @@ try {
     Write-Host "desktop shortcuts put back: $((Get-ChildItem $saved -Filter *.lnk).Name -join ', ')"
 }
 if ($problems.Count) { Write-Host "FAIL: $($problems.Count) problem(s)" -ForegroundColor Red; exit 1 }
-Write-Host "OK: installed, walked both apps as a new user (plain start, New → Save → reopen, double-click, export, licences), uninstalled clean" -ForegroundColor Green
+Write-Host "OK: installed $($Apps -join ' + '), walked as a new user (plain start, New → Save → reopen, double-click, export, licences), uninstalled clean" -ForegroundColor Green

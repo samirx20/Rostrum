@@ -4,7 +4,7 @@
   PATH holds only Windows itself, no PYTHON* variables, and the home / AppData folders are a fresh scratch folder
   (so no C:\Users\Sam\.rostrum\venv, no uv, no Rust, no dev checkout can be found).
 
-  pwsh -File tools\release\check.ps1 -Install <folder> -App 2d|sound -Shot <file.png> -UserHome <empty folder> [-Lnk <x.lnk>] [-Extra <args>]
+  pwsh -File tools\release\check.ps1 -Install <folder> -App 2d|sound -Shot <file.png> -UserHome <empty folder> [-Lnk <x.lnk>] [-Extra <args>] [-Wait <s, 120>]
 
   -Lnk: start exactly what this shortcut starts (its target and arguments) instead of the install's
         pythonw.exe + runtime\rostrum.pyw <app>. -Extra: more arguments (e.g. a .mtn file, as a double-click passes).
@@ -16,7 +16,8 @@ param(
     [Parameter(Mandatory)][string]$Shot,
     [Parameter(Mandatory)][string]$UserHome,
     [string]$Lnk,
-    [string[]]$Extra = @()
+    [string[]]$Extra = @(),
+    [int]$Wait = 120
 )
 $ErrorActionPreference = "Stop"
 $pyw = Join-Path $Install "runtime\python\pythonw.exe"
@@ -52,7 +53,7 @@ $psi.Environment["ROSTRUM2D_PROJECTS"] = Join-Path $UserHome "Documents\Rostrum2
 # dimmed screen); drawing on the app's own thread does. A person's window is not affected.
 $psi.Environment["QSG_RENDER_LOOP"] = "basic"
 $p =[System.Diagnostics.Process]::Start($psi)
-if (-not $p.WaitForExit(120000)) { $p.Kill($true); Write-Host "FAIL: $App did not finish in 2 minutes (PID $($p.Id) and the app it watches ended)"; exit 1 }
+if (-not $p.WaitForExit($Wait * 1000)) { $p.Kill($true); Write-Host "FAIL: $App did not finish in $Wait s (PID $($p.Id) and the app it watches ended)"; exit 1 }
 $log = Get-ChildItem (Join-Path $UserHome "AppData\Local\Rostrum\logs") -Filter "$App-*.log" -ErrorAction SilentlyContinue |
     Sort-Object LastWriteTime | Select-Object -Last 1
 if ($p.ExitCode -ne 0 -or -not (Test-Path $Shot)) {
