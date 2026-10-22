@@ -12,7 +12,8 @@ So every place below is the same in both; an environment variable, when set, is 
 Folders for the person's things:
     projects      ROSTRUM2D_PROJECTS, else Documents/Rostrum2D (made on first use)
     user data     ROSTRUM_DATA, else ~/.rostrum: logs/, cache/, models/
-    settings      <user data>/2d/settings.json (plain JSON: recent projects …)
+    settings      <user data>/2d/settings.json (plain JSON: recent projects …); with no ROSTRUM_DATA, in
+                  rostrum_core.userhome.home(): ~/.rostrum, or a scratch home for a scripted run (never the person's)
 """
 from __future__ import annotations
 
@@ -112,7 +113,11 @@ def models_dir() -> Path:
 
 # ---- the user settings file ---------------------------------------------------------------------------------------
 def settings_path() -> Path:
-    return data_dir() / "2d" / "settings.json"
+    """ROSTRUM_DATA's 2d/settings.json when set, else userhome.home()/2d/settings.json (scratch when scripted)."""
+    if _env_path("ROSTRUM_DATA"):
+        return data_dir() / "2d" / "settings.json"
+    from rostrum_core import userhome
+    return userhome.home() / "2d" / "settings.json"
 
 
 def read_settings() -> dict:

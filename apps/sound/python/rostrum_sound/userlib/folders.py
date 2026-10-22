@@ -7,7 +7,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from rostrum_core import RostrumError, codes
+from rostrum_core import RostrumError, codes, userhome
+from rostrum_core.storage import write_atomic
 
 from .. import settings
 
@@ -32,11 +33,7 @@ def folders() -> list[str]:
 
 
 def _write(items: list[str]):
-    f = settings_file()
-    f.parent.mkdir(parents=True, exist_ok=True)
-    tmp = f.with_suffix(".tmp")
-    tmp.write_text(json.dumps({"folders": items}, indent=1), encoding="utf-8")
-    tmp.replace(f)
+    write_atomic(settings_file(), json.dumps({"folders": items}, indent=1))
 
 
 def add(folder) -> str:
@@ -47,17 +44,19 @@ def add(folder) -> str:
     if not p.is_dir():
         raise RostrumError(codes.NOT_FOUND, "sound library", f'folder "{p}"', "is not a folder")
     path = str(p.resolve())
-    have = folders()
-    if path not in have:
-        _write(have + [path])
+    with userhome.locked(settings_file()):
+        have = folders()
+        if path not in have:
+            _write(have + [path])
     return path
 
 
 def remove(folder) -> bool:
     """Forget a folder (its files are not touched). True when it was listed."""
     path = str(Path(folder).expanduser().resolve())
-    have = folders()
-    if path not in have:
-        return False
-    _write([f for f in have if f != path])
+    with userhome.locked(settings_file()):
+        have = folders()
+        if path not in have:
+            return False
+        _write([f for f in have if f != path])
     return True
