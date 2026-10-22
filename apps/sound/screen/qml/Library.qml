@@ -10,7 +10,7 @@ import RostrumKit
 // (LibraryPanel.qml: a sound goes on the selected recordings track at the playhead). Picking an entry (click, ↑ / ↓) plays it
 // through the engine (soundLibrary.auditionEntry: an instrument plays the selected track's notes); Esc or ■ Stop ends it. On a track that plays that kind of sound the pick is a try (nothing is written: "Trying Pad
 // on Strings"): Enter / double-click / Keep makes it the track's sound (one undo step), Esc / Revert / another track puts the
-// original back. Loop (↻ beside ▶ on the row that plays) repeats what you hear. Closes with × or Ctrl+L; on a narrow window it floats and closes after each use (`used`).
+// original back. Loop (the loop mark beside ▶ on the row that plays) repeats what you hear. Closes with × or Ctrl+L; on a narrow window it floats and closes after each use (`used`).
 Panel {
     id: p
     title: "Library"
@@ -91,7 +91,7 @@ Panel {
                 visible: (hover.hovered || row.heard) && row.modelData.kind !== "record"
                 anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
                 spacing: 2
-                IconButton { glyph: "↻"; kind: "ghost"; tip: "Repeat what you hear"; visible: row.heard; down: soundLibrary.loop
+                IconButton { mark: "loop"; kind: "ghost"; tip: "Repeat what you hear"; visible: row.heard; down: soundLibrary.loop
                              onClicked: soundLibrary.setLoop(!soundLibrary.loop) }
                 IconButton { glyph: "▶"; kind: "ghost"; tip: "Hear it"; onClicked: p.pick(row.index) }
             }

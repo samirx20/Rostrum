@@ -31,8 +31,7 @@ Item {
         anchors { left: parent.left; right: browse.left; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
         value: f.value
         placeholder: "Default"            // empty means the setting's default (its help says which)
-        atRest: f.value.replace(/[\\/]+$/, "").split(/[\\/]/).pop()   // at rest the file's (folder's) own name; a click shows the whole path
-        elide: Text.ElideMiddle
+        elide: Text.ElideMiddle           // the whole path, cut in the middle when too long; hover shows all of it
         onEdited: (v) => f.edited(v)
     }
     IconButton {  // small, so the name keeps the room in a narrow inspector; its tip says what it does
