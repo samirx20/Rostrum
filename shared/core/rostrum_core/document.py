@@ -99,10 +99,10 @@ class Document:
     def _door(self):
         return self.live.door() if self.live is not None else contextlib.nullcontext([])
 
-    def locked_by(self, id_) -> str | None:
-        """Who locked item `id_` last ("Sam", "Claude"), for the plain refusal; None when nobody did through an op."""
+    def locked_by(self, id_) -> Who | None:
+        """Who set item `id_`'s lock last (the lock rule and its plain refusal); None when nobody did through an op."""
         c = self.history.who_changed(id_, "locked")
-        return c.who.name.capitalize() if c is not None and c.who.kind == "person" else c.who.name if c else None
+        return c.who if c is not None else None
 
     @_through_door
     def apply(self, calls, who: Who, label=None, session=None, based_on=None) -> Change | None:
@@ -110,7 +110,7 @@ class Document:
         if self._gesture is not None:
             raise RostrumError(codes.CONFLICT, "apply", "the document", "is being dragged by a person right now",
                                hint="Try again in a moment.")
-        work, edits, calls = run.plan(self.kind, self.data, calls, self.locked_by)
+        work, edits, calls = run.plan(self.kind, self.data, calls, self.locked_by, who)
         if based_on is not None:
             self._check_based_on(edits, based_on)
         label = label or ", ".join(dict.fromkeys(self.kind.registry.get(c["op"]).label for c in calls))
