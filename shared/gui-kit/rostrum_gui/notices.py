@@ -41,7 +41,7 @@ def generate(app: str) -> dict:
     spec.loader.exec_module(mod)
     with tempfile.TemporaryDirectory(prefix="rostrum-notices-") as tmp:
         out = Path(tmp) / "notices.json"
-        args = Namespace(app=app, attributions=str(attributions), site_packages=sysconfig.get_paths()["purelib"],
+        args = Namespace(app=app, attributions=str(attributions), site_packages=[sysconfig.get_paths()["purelib"]],
                          engine_deps=[str(REPO / "apps" / app / "engine" / "DEPENDENCIES.md")], out=str(out), text=None)
         with contextlib.redirect_stdout(io.StringIO()):
             failed = mod.build(args) != 0

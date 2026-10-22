@@ -71,11 +71,11 @@ Name: "{userdesktop}\RostrumSound"; Filename: "{#Pyw}"; Parameters: """{#Launch}
 
 [Registry]
 ; Double-click a .mtn (2D) or .trk (Sound) document to open it in its app (current user only).
-Root: HKCU; Subkey: "Software\Classes\.mtn"; ValueType: string; ValueData: "Rostrum.Document2D"; Flags: uninsdeletevalue; Components: app2d
+Root: HKCU; Subkey: "Software\Classes\.mtn"; ValueType: string; ValueData: "Rostrum.Document2D"; Flags: uninsdeletevalue uninsdeletekeyifempty; Components: app2d
 Root: HKCU; Subkey: "Software\Classes\Rostrum.Document2D"; ValueType: string; ValueData: "Rostrum2D document"; Flags: uninsdeletekey; Components: app2d
 Root: HKCU; Subkey: "Software\Classes\Rostrum.Document2D\DefaultIcon"; ValueType: string; ValueData: "{app}\runtime\icons\document2d.ico"; Components: app2d
 Root: HKCU; Subkey: "Software\Classes\Rostrum.Document2D\shell\open\command"; ValueType: string; ValueData: """{#Pyw}"" ""{#Launch}"" 2d ""%1"""; Components: app2d
-Root: HKCU; Subkey: "Software\Classes\.trk"; ValueType: string; ValueData: "Rostrum.DocumentSound"; Flags: uninsdeletevalue; Components: appsound
+Root: HKCU; Subkey: "Software\Classes\.trk"; ValueType: string; ValueData: "Rostrum.DocumentSound"; Flags: uninsdeletevalue uninsdeletekeyifempty; Components: appsound
 Root: HKCU; Subkey: "Software\Classes\Rostrum.DocumentSound"; ValueType: string; ValueData: "RostrumSound document"; Flags: uninsdeletekey; Components: appsound
 Root: HKCU; Subkey: "Software\Classes\Rostrum.DocumentSound\DefaultIcon"; ValueType: string; ValueData: "{app}\runtime\icons\documentsound.ico"; Components: appsound
 Root: HKCU; Subkey: "Software\Classes\Rostrum.DocumentSound\shell\open\command"; ValueType: string; ValueData: """{#Pyw}"" ""{#Launch}"" sound ""%1"""; Components: appsound

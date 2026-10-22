@@ -4,9 +4,10 @@
   PATH holds only Windows itself, no PYTHON* variables, and the home / AppData folders are a fresh scratch folder
   (so no C:\Users\Sam\.rostrum\venv, no uv, no Rust, no dev checkout can be found).
 
-  pwsh -File tools\release\check.ps1 -Install <folder> -App 2d|sound -Shot <file.png> -Home <empty scratch folder> [-Exe <target>]
+  pwsh -File tools\release\check.ps1 -Install <folder> -App 2d|sound -Shot <file.png> -UserHome <empty folder> [-Lnk <x.lnk>] [-Extra <args>]
 
-  -Exe: what to start (default: the install's pythonw.exe + runtime\rostrum.pyw, exactly as the shortcuts do).
+  -Lnk: start exactly what this shortcut starts (its target and arguments) instead of the install's
+        pythonw.exe + runtime\rostrum.pyw <app>. -Extra: more arguments (e.g. a .mtn file, as a double-click passes).
   Exits non-zero, printing the app's log, when the app fails or no picture is saved.
 #>
 param(
@@ -14,6 +15,7 @@ param(
     [Parameter(Mandatory)][ValidateSet("2d", "sound")][string]$App,
     [Parameter(Mandatory)][string]$Shot,
     [Parameter(Mandatory)][string]$UserHome,
+    [string]$Lnk,
     [string[]]$Extra = @()
 )
 $ErrorActionPreference = "Stop"
@@ -22,8 +24,16 @@ $launcher = Join-Path $Install "runtime\rostrum.pyw"
 foreach ($f in @($pyw, $launcher)) { if (-not (Test-Path $f)) { Write-Host "FAIL: $f is missing"; exit 1 } }
 
 New-Item -ItemType Directory -Force (Join-Path $UserHome "AppData\Local"), (Join-Path $UserHome "AppData\Roaming"), (Join-Path $UserHome "Documents") | Out-Null
+$start = @($launcher, $App)
+if ($Lnk) {
+    $l = (New-Object -ComObject WScript.Shell).CreateShortcut($Lnk)
+    if ($l.Arguments -notmatch '^"([^"]+)"\s+(\S+)$') { Write-Host "FAIL: $Lnk has unexpected arguments: $($l.Arguments)"; exit 1 }
+    $pyw, $start = $l.TargetPath, @($Matches[1], $Matches[2])
+    if ($Matches[2] -ne $App) { Write-Host "FAIL: $Lnk opens '$($Matches[2])', not $App"; exit 1 }
+    Write-Host "shortcut $Lnk -> $pyw $($l.Arguments)"
+}
 $psi = [System.Diagnostics.ProcessStartInfo]::new($pyw)
-foreach ($a in @($launcher, $App) + $Extra + @("--shot", $Shot)) { $psi.ArgumentList.Add($a) }
+foreach ($a in $start + $Extra + @("--shot", $Shot)) { $psi.ArgumentList.Add($a) }
 $psi.UseShellExecute = $false
 $keep = @("SystemRoot", "windir", "SystemDrive", "COMPUTERNAME", "NUMBER_OF_PROCESSORS", "PROCESSOR_ARCHITECTURE", "OS", "TEMP", "TMP")
 $psi.Environment.Clear()
