@@ -79,10 +79,7 @@ def _decode(id_: str, path: Path, folder: Path, w: int, h: int, fit: str, fps: f
     vf = f"fps={fps:g}," + _FIT[fit].format(w=w, h=h)
     cmd = [settings.ffmpeg(), "-hide_banner", "-loglevel", "error", "-y", "-i", str(path), "-an", "-vf", vf,
            "-start_number", "0", "-compression_level", "1", str(tmp / "f%06d.png")]
-    try:
-        run = subprocess.run(cmd, capture_output=True, text=True)
-    except FileNotFoundError as e:
-        raise RuntimeError(f"{id_}: the ffmpeg program was not found; a video layer needs it on the PATH") from e
+    run = subprocess.run(cmd, capture_output=True, text=True, creationflags=settings.NO_WINDOW)
     pictures = list(tmp.glob("f*.png"))
     if run.returncode != 0 or not pictures:
         shutil.rmtree(tmp, ignore_errors=True)

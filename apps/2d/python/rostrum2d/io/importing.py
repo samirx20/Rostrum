@@ -55,7 +55,7 @@ def _size_of(kind: str, path: Path) -> tuple[int, int]:
             return im.size
     exe = settings.ffmpeg("ffprobe")              # fails loudly when there is none
     out = subprocess.run([exe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "json",
-                          str(path)], capture_output=True, timeout=60)
+                          str(path)], capture_output=True, timeout=60, creationflags=settings.NO_WINDOW)
     streams = json.loads(out.stdout or b"{}").get("streams") or []
     if out.returncode != 0 or not streams:
         raise ValueError(f"{path.name} is not a video ffprobe can read")

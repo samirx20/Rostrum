@@ -8,6 +8,7 @@ premultiplied, the beauty as part `rgba`.
 """
 from __future__ import annotations
 
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -65,7 +66,19 @@ def kbps(f: Format, w: int, h: int, fps: int, quality: str | None = None, bitrat
 
 
 def _mp4(out, w, h, fps, depth, first, kbps):
-    return {"program": str(find_exe()), "args": ["encode-mp4", out, str(w), str(h), str(fps), str(kbps)]}
+    exe = str(find_exe())
+    _can_write_mp4(exe)
+    return {"program": exe, "args": ["encode-mp4", out, str(w), str(h), str(fps), str(kbps)]}
+
+
+def _can_write_mp4(exe: str):
+    """The engine's own check, before any frame is rendered: on a Windows without Media Foundation (N editions) its
+    plain reason is raised as it is."""
+    r = subprocess.run([exe, "encode-mp4", "--check"], capture_output=True, text=True, timeout=60,
+                       creationflags=settings.NO_WINDOW)
+    if r.returncode:
+        said = r.stderr.strip().removeprefix("encode-mp4: ")
+        raise RuntimeError(said or f"{exe} encode-mp4 --check failed (exit {r.returncode}) and said nothing")
 
 
 def _prores(out, w, h, fps, depth, first, kbps):   # prores_ks: native FFmpeg encoder, LGPL build
