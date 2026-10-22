@@ -4,6 +4,7 @@
 //! (plugin.rs) are listed and opened for a person by plugin_requests.rs.
 
 mod buses;
+mod channel;
 mod clip;
 mod designed;
 mod effects;

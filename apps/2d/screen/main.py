@@ -21,7 +21,7 @@ from pathlib import Path
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QGuiApplication
 
-from rostrum_core import Document, Who
+from rostrum_core import Document, RostrumError, Who
 from rostrum_core.storage import paths
 from rostrum2d import KIND, run_source
 from screen2d import projects, recent
@@ -31,11 +31,21 @@ from screen2d.session import Session
 from screen2d.steps import do_step
 
 
+REFUSED = []      # why the last project didn't open on a plain launch (said in the status line once shown)
+
+
 def first_doc() -> Document:
-    """What a plain launch opens: the newest project in Open recent still on disk, else a new Untitled project."""
+    """What a plain launch opens: the newest project in Open recent still on disk, else a new Untitled project.
+    A last project that can't be opened (damaged, a newer version's) never stops the app from starting: a new
+    Untitled project opens instead and the window says why."""
     last = recent.rows()
     if last:
-        return Document.open(last[0]["folder"], last[0]["item"], KIND)
+        try:
+            return Document.open(last[0]["folder"], last[0]["item"], KIND)
+        except (RostrumError, KeyError, TypeError, ValueError, AttributeError, IndexError) as e:
+            why = f"{e.problem}{(' ' + e.hint) if e.hint else ''}" if isinstance(e, RostrumError) else f"is damaged ({type(e).__name__}: {e})"
+            REFUSED.append(f"Error: your last project {Path(last[0]['folder']).name} didn't open: it {why}")
+            print(f"FAIL: {REFUSED[-1]}", file=sys.stderr)
     return projects.new_project(projects.untitled(), Who.person("sam"))
 
 
@@ -90,6 +100,8 @@ def main():
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
     session = Session((1600, 960))
     session.show(load_doc(args), live=bool(args.doc), comp_id=args.comp)
+    for line in REFUSED:
+        session.fail(line)
     code = [0]
 
     def guarded(fn):

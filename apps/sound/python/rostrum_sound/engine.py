@@ -82,13 +82,20 @@ class Engine:
                 tail = "\n".join(self._stderr[-10:]) if hasattr(self, "_stderr") else ""
                 self._proc = None
                 raise RostrumError(codes.INTERNAL, f"sound engine › {do}", "the engine", f"stopped unexpectedly: {tail or locals().get('err', 'no output')}")
-        reply = json.loads(line)
+        try:
+            reply = json.loads(line)
+        except json.JSONDecodeError:
+            raise RostrumError(codes.INTERNAL, f"sound engine › {do}", "the engine",
+                               f"answered with something that is not an answer: {line.strip()[:160]!r}") from None
         if reply.get("id") != req["id"]:
             raise RostrumError(codes.INTERNAL, f"sound engine › {do}", "the engine", f"answered request {reply.get('id')} instead of {req['id']}")
         if not reply["ok"]:
             e = reply["error"]
             code = e["code"] if e["code"] in vars(codes).values() else codes.INTERNAL
             raise RostrumError(code, f"sound engine › {e['where']}", e["subject"], e["problem"], e.get("accepted") or (), e.get("hint") or None)
+        if do == "render":                   # the engine's cache files grew: keep the one cache under its cap
+            from . import cache_cap
+            cache_cap.after_render()
         return reply["result"]
 
     def plugins(self, path: str | None = None) -> dict:
