@@ -126,9 +126,7 @@ class LayerOrder(SlotMixin):
         """The right-click menu of a layer row: selects it (unless it is already picked), then lists what applies."""
         if layer_id not in self._multi.layers():
             self.select(layer_id)
-        want = ("rename", "duplicate", "forward", "backward", "delete")
-        cmds = {c["key"].split(":")[1]: c for c in self._layer_commands()}
-        return [{"value": cmds[w]["key"], "label": cmds[w]["label"]} for w in want if w in cmds]
+        return [{"value": c["key"], "label": c["label"]} for c in self._layer_commands()]       # the same list as Ctrl+K's
 
     @Slot(str, str, result=bool)
     def renameLayer(self, layer_id, name):

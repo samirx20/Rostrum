@@ -12,8 +12,8 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Property, QCoreApplication, QObject, QUrl, Signal, Slot
+from rostrum2d import settings
 from rostrum2d.mcp import export_name, exporting
-from rostrum_core.mcp.files import RENDER_DIR
 
 from . import export_rows
 from .export_job import Job
@@ -109,7 +109,7 @@ class Exporter(QObject):
         folder = self._bridge.doc.folder
         if folder and self._fmt not in exporting.DATA:
             return f"{Path(folder) / 'renders' / self._bridge.doc.item_id} (in a new version folder)"
-        return f"{RENDER_DIR} (the render cache)"
+        return str(settings.videos_dir())
 
     @Property(str, notify=changed)
     def path(self):

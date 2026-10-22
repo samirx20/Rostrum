@@ -11,8 +11,8 @@ from pathlib import Path
 
 from rostrum_core import project
 from rostrum_core.errors import RostrumError, codes
-from rostrum_core.mcp.files import RENDER_DIR
 
+from rostrum2d import settings
 from rostrum2d.io import formats as table
 
 from .render import _fail
@@ -133,7 +133,7 @@ def _manifest(item, doc_seq, comp_id, fmt, s, facts, version, names, size) -> di
 def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_seq=0, out=None, progress=None, engine_factory=None,
         name=None, overwrite=False) -> dict:
     """Export `scene` as `fmt` with settings `s` (from settings()). Where it goes: `out` (a file; for a sequence a folder), else the
-    project's renders folder (folder + item; not for Lottie or motion, which are not pictures), else the render cache.
+    project's renders folder (folder + item; not for Lottie or motion, which are not pictures), else the person's Videos folder.
     Written under a .partial name and renamed when read back right; a failed or cancelled run removes what it wrote. Returns the facts: file, frames, fps, alpha, depth, checked,
     files (what was written), report (Lottie: what it couldn't carry).
     `name`: the file's name without its extension (export_name.stem_of: the project's and the composition's); default item_composition.
@@ -156,7 +156,7 @@ def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_
         facts["files"] = [str(done / n) for n in names]
         facts["file"] = str(done / (Path(seq_name(stem)).name if png else name))
         return facts
-    final = Path(out) if out else RENDER_DIR / f"{stem}_{time.strftime('%Y%m%d_%H%M%S')}{'' if png else row['ext']}"
+    final = Path(out) if out else settings.videos_dir() / f"{stem}_{time.strftime('%Y%m%d_%H%M%S')}{'' if png else row['ext']}"
     if not png and final.suffix.lower() != row["ext"]:
         raise RostrumError(codes.BAD_ARGUMENT, where, f'path "{final}"', f"must end in {row['ext']} for {fmt}")
     if png and final.exists():

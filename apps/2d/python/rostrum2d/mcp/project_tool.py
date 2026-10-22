@@ -25,6 +25,8 @@ NO_PROJECT = "No project is open. Open one in Rostrum2D, or call run_open_projec
 
 def open_documents(project: str, items: list[str]) -> dict:
     """Open each item from the project folder (or start it empty when it has no file yet), saving after every change."""
+    from ..ops_timing import use_project
+    use_project(project)                     # layer.shift / layer.trim read this project's markers
     docs = {}
     for item in items:
         exists = paths(project, item, KIND.ext)["doc"].exists()

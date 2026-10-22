@@ -6,9 +6,9 @@ import RostrumKit
 // selects it (Shift+click adds / removes); dragging moves it (all selected layers together); dragging on empty canvas draws a rubber band that
 // selects the layers it touches (boxSelect). One gesture = one undo step
 // (backend.beginMove / moveBy / endDrag: one gesture = one undo step; an animated x / y gets a key at the playhead).
-// On the Draw page with a drawing layer selected, a press draws instead: one stroke = one gesture = one undo step
-// (painter.beginStroke / strokeTo / endStroke). A pen reports its pressure; a mouse is 1. The onion skin lies over
-// the drawing's box.
+// With the Draw tool on (backend.tool, the tool strip at the top-left), a press draws instead: one stroke = one gesture =
+// one undo step (painter.beginStroke / strokeTo / endStroke; on no drawing the first stroke makes one). A pen reports
+// its pressure; a mouse is 1. The onion skin lies over the drawing's box. With the Pen tool on, PenOverlay takes the clicks.
 Panel {
     id: panel
     title: "Canvas"
@@ -20,7 +20,7 @@ Panel {
         id: well
         anchors.fill: parent
         radius: Theme.radiusCtl; color: Theme.sunken
-        readonly property bool drawing: backend.page === "draw" && painter.drawingId !== ""
+        readonly property bool drawing: backend.tool === "draw"
         readonly property real fit: Math.min((width - 48) / panel.info.width, (height - 48) / panel.info.height)
 
         Item {
@@ -44,11 +44,6 @@ Panel {
                 anchors.fill: parent; anchors.margins: -1
                 color: "transparent"; border.width: 1; border.color: Theme.popupEdge
             }
-        }
-        Text {  // Draw page, nothing to draw on
-            visible: backend.page === "draw" && painter.drawingId === ""
-            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: Theme.pad }
-            text: "Select a drawing layer to draw on it"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
         }
         Item {  // the pen
             anchors.fill: parent
@@ -101,9 +96,9 @@ Panel {
             }
             onCanceled: stop()
         }
-        PenOverlay {  // Design page: the pen tool and the selected path's points (not while playing: they'd lag)
+        PenOverlay {  // the pen tool and the selected path's points (not while playing: they'd lag)
             anchors.fill: parent
-            visible: backend.page === "design" && !backend.playing
+            visible: !backend.playing && !well.drawing
             fit: well.fit; ox: frame.x; oy: frame.y
         }
         Item {  // outlines of the selected layers (turned with them) and the handles of a single one; over the pen's overlay
@@ -125,5 +120,6 @@ Panel {
                 color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.12); border.width: 1; border.color: Theme.accent
             }
         }
+        ToolStrip { anchors { left: parent.left; top: parent.top; margins: Theme.gap } }   // over everything on the canvas
     }
 }

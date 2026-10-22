@@ -107,6 +107,7 @@ def main():
     a.add_argument("--comp")
     a.add_argument("--step", action="append", default=[])
     a.add_argument("--shot")
+    a.add_argument("--lookcheck", action="store_true", help="after the steps: words that overlap or run off the window (screen2d/look_check.py); nonzero exit")
     a.add_argument("--size", default="1600x960", help="the window's size in logical px, WxH (screenshots at a person's screen size)")
     args = a.parse_args()
     if args.shot:
@@ -131,7 +132,7 @@ def main():
     def run_steps():
         for s in args.step:
             do_step(session.bridge, session.win, s)        # a file step may open another window
-        if args.shot:
+        if args.shot or args.lookcheck:
             wait_frame(0)
 
     def wait_frame(n):       # the newest frame has landed, then the 160 ms reveals have finished
@@ -145,15 +146,28 @@ def main():
         bridge = session.bridge
         if bridge.status.startswith("Error"):
             raise RuntimeError(bridge.status)
+        if args.lookcheck:
+            from screen2d.look_check import check
+            problems, notes = check(session.win)
+            for n in notes:
+                print(f"note: {n}")
+            for p in problems:
+                print(f"LOOK: {p}", file=sys.stderr)
+            print(f"look check {args.size}: {len(problems)} problems, {len(notes)} cut short")
+            if problems:
+                code[0] = 5
+            if not args.shot:
+                app.exit(code[0])
+                return
         img = session.win.grabWindow()
         if img.isNull() or not img.save(args.shot):
             raise RuntimeError(f"could not save {args.shot}")
         print(f"saved {args.shot} {img.width()}x{img.height()}  history={bridge.historyCount}  "
               f"selected={bridge.selected}  shown={bridge.shown()}")
-        app.exit(0)          # not quit(): that asks each window to close, and one with unsaved changes asks first
+        app.exit(code[0])    # not quit(): that asks each window to close, and one with unsaved changes asks first
 
     QTimer.singleShot(400, lambda: guarded(run_steps))
-    if args.shot:
+    if args.shot or args.lookcheck:
         QTimer.singleShot(30000, lambda: (print("FAIL: timeout", file=sys.stderr), app.exit(4)))
     app.exec()
     session.close()

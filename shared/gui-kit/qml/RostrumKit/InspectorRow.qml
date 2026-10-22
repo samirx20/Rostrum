@@ -1,7 +1,10 @@
 import QtQuick
 import "."
 
-// One generic inspector row: a group header, a param, or the More row — nothing placed per control.
+// One generic inspector row: a group header, a param, the More row or a fold row — nothing placed per control.
+// A fold row (model.fold, rows by importance) is a group's name with a chevron: click opens or closes the group
+// (bridge.toggleGroup). A param row carrying its group's fold (model.open is true / false) has the chevron before
+// its label. `flash()` briefly marks the row and `focusWidget()` puts the keys in its widget (revealField).
 // The widget comes from the param's `type` only. The row owns its reveal: when `valid` changes, height and
 // opacity ease over Theme.reveal (160 ms); the Column below just follows. A new selection builds fresh rows
 // at their final state (a Behavior does not animate the first value), so the list swaps at once.
@@ -16,8 +19,10 @@ Item {
     readonly property int gutter: keyMarks ? 22 : 0
     readonly property bool driven: model.row === "param" && !!model.expr      // an expression decides (model.expr)
     readonly property bool tall: model.type === "list" || model.control === "curve"    // a widget taller than a field (top-aligned)
+    readonly property bool folds: model.open === true || model.open === false          // a chevron: this row opens a group
     readonly property int full: model.row === "group" ? Theme.groupGap + (model.label ? Theme.rowDense : 0)   // "": a gap only
                               : model.row === "more" ? Theme.row + Theme.grid
+                              : model.row === "fold" ? Theme.row
                               : driven ? Theme.row + exprBox.height + Theme.grid
                               : model.control === "curve" ? Theme.curveBox + Theme.row - Theme.field
                               : tall && widget.item ? Math.max(Theme.row, widget.item.implicitHeight + Theme.row - Theme.field)
@@ -46,13 +51,38 @@ Item {
         MouseArea { id: moreArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: row.bridge.toggleMore() }
     }
+    Rectangle {  // the flash after a jump to this field (revealField)
+        id: flashMark
+        anchors.fill: parent; anchors.leftMargin: -Theme.grid; anchors.rightMargin: -Theme.grid
+        radius: Theme.radiusCtl; color: Theme.accentSoft; opacity: 0
+        SequentialAnimation on opacity { id: flashAnim; running: false
+            NumberAnimation { to: 1; duration: Theme.fast } PauseAnimation { duration: 700 }
+            NumberAnimation { to: 0; duration: 400 } }
+    }
+    Item {  // the fold chevron: a fold row's (with its group's name) or a param row's that carries its group's fold
+        id: fold
+        visible: row.model.row === "fold" || (row.model.row === "param" && !!row.model.fold)
+        anchors.left: parent.left; anchors.verticalCenter: row.model.row === "fold" ? parent.verticalCenter : undefined
+        y: row.model.row === "fold" ? 0 : (Theme.row - height) / 2
+        width: row.model.row === "fold" ? parent.width : Theme.labelColumn - Theme.gap; height: Theme.row
+        Chevron { id: foldChev; visible: row.folds; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                  rotation: row.model.open ? 0 : -90; color: foldArea.containsMouse ? Theme.fg : Theme.fg3
+                  Behavior on rotation { NumberAnimation { duration: Theme.fast; easing.type: Theme.revealEasing } } }
+        Text { visible: row.model.row === "fold"; anchors.left: foldChev.right; anchors.leftMargin: Theme.grid + 2
+               anchors.verticalCenter: parent.verticalCenter; text: row.model.label
+               color: foldArea.containsMouse ? Theme.fg : Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
+               font.weight: Font.DemiBold }
+        MouseArea { id: foldArea; anchors.fill: parent; hoverEnabled: true; enabled: row.folds
+                    cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.toggleGroup(row.model.fold) }
+    }
     Item {  // a param: label column, then the widget
         visible: row.model.row === "param"
         anchors.left: parent.left; anchors.right: parent.right
         anchors.verticalCenter: row.driven || row.tall ? undefined : parent.verticalCenter
         anchors.top: row.driven || row.tall ? parent.top : undefined
         height: Theme.row
-        Text { id: label; width: Theme.labelColumn - Theme.gap; anchors.verticalCenter: parent.verticalCenter
+        Text { id: label; x: row.model.fold ? foldChev.width + Theme.grid + 2 : 0    // in line with the fold rows
+               width: Theme.labelColumn - Theme.gap - x; anchors.verticalCenter: parent.verticalCenter
                text: row.model.label; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
                wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; lineHeight: 0.9 }   // never cut to "Width along the…"
         Loader {
@@ -100,6 +130,12 @@ Item {
     }
 
     function set(v) { bridge.setValue(model.id, v) }
+    function flash() { flashAnim.restart() }
+    function focusWidget() {
+        const w = widget.item
+        if (!w) return
+        if (w.input && w.editable) { w.input.forceActiveFocus(); w.input.selectAll() } else w.forceActiveFocus()
+    }
     Component { id: toggle; Toggle { checked: !!row.model.value; onToggled: (v) => row.set(v) } }
     Component { id: number; NumberField {
         value: row.model.value === null || row.model.value === undefined ? 0 : row.model.value

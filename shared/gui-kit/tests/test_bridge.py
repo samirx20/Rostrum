@@ -37,3 +37,23 @@ def test_toggle_edit_is_one_change_and_shows_its_rows(bridge):
     bridge.undo()
     assert bridge.doc.item("cam_1")["dof"] is False
     assert "focusDistance" not in bridge.shown()[0]
+
+
+def test_rows_by_importance_never_show_what_does_not_apply(bridge):
+    """Opt-in only (the More row stays for every other bridge); a search or an opened group never brings back a
+    setting that doesn't apply now, and open groups outlive a selection."""
+    assert "more" in [r["id"] for r in bridge.model.rows]
+    class Sectioned(DocBridge):
+        sections = True
+    b = Sectioned(toy.sample())
+    b.select("cam_1")
+    assert "more" not in [r["id"] for r in b.model.rows] and "shutter" not in b.shown()[0]
+    b.setSearch("aper")                              # Aperture applies only with depth of field on
+    assert b.shown()[0] == [] and b.nothingFound
+    b.setValue("dof", True)
+    assert b.shown()[0] == ["aperture"]
+    b.setSearch("")
+    b.toggleGroup("Shutter")
+    b.select("cam_1")
+    assert "motionBlur" in b.shown()[0] and "shutter" not in b.shown()[0]
+    assert b.revealField("sensor") and "sensor" in b.shown()[0]

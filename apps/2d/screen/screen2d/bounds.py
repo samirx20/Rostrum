@@ -110,6 +110,33 @@ def pick(comp: dict, t: float, x: float, y: float) -> str:
     return hits[-1]["id"] if hits else ""
 
 
+def mask_box(comp: dict, t: float, mask_id: str) -> dict:
+    """The box of a selected mask at t, like a layer's box (its x, y, w, h are in the layer's own px from its top-left
+    corner, so it turns and scales with the layer). {} while the mask has no width or height (a wipe that has not
+    started): nothing to outline, never the layer's whole box."""
+    for lay in boxes(comp, t):
+        item = next((i for i in _layers(comp) if i["id"] == lay["id"]), None)
+        mask = next((m for m in item.get("masks", []) if m["id"] == mask_id), None) if item else None
+        if mask is None:
+            continue
+        m, ow = resolve(mask, t), own_size(item["type"], resolve(item, t))[0]
+        k = lay["w"] / ow if ow else 1.0
+        w, h = m["w"] * k, m["h"] * k
+        if w <= 0 or h <= 0:
+            return {}
+        x, y = lay["x"] + m["x"] * k, lay["y"] + m["y"] * k
+        px, py = lay["x"] + lay["ax"] * lay["w"], lay["y"] + lay["ay"] * lay["h"]      # the layer's pivot: the mask turns about it
+        return {**lay, "x": x, "y": y, "w": w, "h": h, "ax": (px - x) / w, "ay": (py - y) / h}
+    return {}
+
+
+def _layers(comp: dict):
+    for lay in comp.get("layers", []):
+        yield lay
+        if lay["type"] == "group":
+            yield from _layers(lay)
+
+
 def layer_of(doc, item_id: str) -> str:
     """The layer an effect, mask or key belongs to (itself for a layer); "" for a composition."""
     while item_id and doc.item(item_id)["type"] not in F.LAYERS:

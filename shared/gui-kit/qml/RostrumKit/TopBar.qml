@@ -1,14 +1,14 @@
 import QtQuick
-import QtQuick.Layouts
 import "."
 
 // Wordmark, the app's leading buttons (`leading`: the File button, on the left as in every desktop app), the open
-// document's tab, the app's own tools (`tools`: e.g. a page switch, centred), the history status (small), the app's
-// action buttons (`actions`: e.g. Export, right side), and the command-bar button.
-// Room rules, not fixed widths: the tools stay centred; the left group owns the space up to the tools' left edge (the
-// document tab gives way first), the right group the space after the tools' right edge (the status keeps up to 220 px
-// while the command button shrinks to its minimum, then the status gives way). Nothing runs into
-// anything else, whatever an app puts in its slots.
+// document's tab, the app's own tools (`tools`: e.g. a page switch, centred), what just happened and the change
+// count, the app's action buttons (`actions`: e.g. Export), the command box and Help.
+// Room rules, so nothing ever runs under anything else, whatever an app puts in its slots: the wordmark, the leading
+// buttons, the change count, the actions and Help never shrink. When room runs out, things give way in one fixed
+// order: first the "what just happened" message (cut with "…", down to nothing; hover shows all of it), then the
+// document tab, then the command box (280 px, then 150, then just its search icon). The tools stay centred while
+// that collides with nothing; otherwise they slide toward the left group, never under it.
 Item {
     id: bar
     property var bridge
@@ -30,78 +30,126 @@ Item {
     implicitHeight: Theme.topBar
     function openHelp() { helpMenu.open() }
 
-    Row {  // the app's tools sit in the middle of the window
-        id: toolsSlot
-        anchors.centerIn: parent
-        spacing: Theme.gap
-        z: 1
-    }
-    RowLayout {  // left group: up to the tools
-        anchors { left: parent.left; right: toolsSlot.left; top: parent.top; bottom: parent.bottom
-                  leftMargin: Theme.pad + Theme.gap; rightMargin: Theme.groupGap }
-        spacing: Theme.groupGap
+    // ---- the room each part gets (widths only; the rows below just place them) ----------------------------------
+    readonly property int sp: Theme.groupGap
+    readonly property int edgeLeft: Theme.pad + Theme.gap
+    readonly property int edgeRight: Theme.gap
+    readonly property real toolsWidth: toolsSlot.children.length ? toolsSlot.implicitWidth : 0
+    readonly property real fixedWidth: edgeLeft + wordmark.implicitWidth + (leadingSlot.children.length ? sp + leadingSlot.implicitWidth : 0)
+                                     + (toolsWidth ? 2 * sp + toolsWidth : sp)
+                                     + count.implicitWidth + (actionsSlot.children.length ? sp + actionsSlot.implicitWidth : 0)
+                                     + sp + Theme.button + sp + help.width + edgeRight      // the command box as its icon
+    readonly property real room: width - fixedWidth                            // what may still be handed out
+    // handed out in the reverse of the give-way order: the command box first, then the tab, then the message
+    readonly property real commandWidth: room >= 150 - Theme.button ? Math.min(280, Theme.button + room) : Theme.button
+    readonly property real afterCommand: room - (commandWidth - Theme.button)
+    readonly property real tabWidth: fit(tab.implicitWidth, afterCommand - sp, 48)
+    readonly property real afterTab: afterCommand - (tabWidth ? tabWidth + sp : 0)
+    // the message never pushes the tools off centre (they'd jump about with every message): with tools, only the
+    // room right of the centred tools
+    readonly property real rightOfTools: toolsWidth ? width - edgeRight - (width + toolsWidth) / 2 - sp
+                                                      - count.implicitWidth - (actionsSlot.children.length ? sp + actionsSlot.implicitWidth : 0)
+                                                      - sp - commandWidth - sp - help.width
+                                                    : afterTab
+    readonly property real messageWidth: fit(message.implicitWidth, Math.min(afterTab, rightOfTools) - Theme.gap, 24)
+    function fit(natural, there, least) { const w = Math.min(natural, Math.max(0, there)); return w >= least ? w : 0 }
 
-        Text { text: bar.appName; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.title; font.weight: Font.DemiBold }
+    Row {  // left group: wordmark, leading buttons, the document tab
+        id: leftGroup
+        x: bar.edgeLeft; anchors.verticalCenter: parent.verticalCenter
+        spacing: bar.sp
+        Text { id: wordmark; anchors.verticalCenter: parent.verticalCenter; text: bar.appName; color: Theme.fg
+               font.family: uiFont; font.pixelSize: Theme.title; font.weight: Font.DemiBold }
         Row {  // the app's leading buttons (File)
             id: leadingSlot
+            anchors.verticalCenter: parent.verticalCenter
             spacing: Theme.gap
             visible: children.length > 0
         }
         Rectangle {
-            visible: bar.documentName !== ""
-            Layout.fillWidth: true; Layout.minimumWidth: 0
-            Layout.maximumWidth: tabLabel.implicitWidth + 2 * Theme.pad
-            implicitHeight: Theme.button; implicitWidth: tabLabel.implicitWidth + 2 * Theme.pad
+            id: tab
+            visible: bar.documentName !== "" && bar.tabWidth > 0
+            anchors.verticalCenter: parent.verticalCenter
+            implicitWidth: bar.documentName !== "" ? tabLabel.implicitWidth + 2 * Theme.pad : 0
+            width: bar.tabWidth; height: Theme.button
             radius: Theme.radiusCtl; color: Theme.panel
             Text { id: tabLabel; anchors.fill: parent; anchors.leftMargin: Theme.pad; anchors.rightMargin: Theme.pad
                    verticalAlignment: Text.AlignVCenter; elide: Text.ElideMiddle
                    text: bar.documentName; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
         }
-        Item { Layout.fillWidth: true }
     }
-    RowLayout {  // right group: after the tools
+    Row {  // the app's tools: centred while that collides with nothing, else as far toward the centre as fits
+        id: toolsSlot
+        anchors.verticalCenter: parent.verticalCenter
+        x: Math.max(leftGroup.x + leftGroup.width + bar.sp,
+                    Math.min((bar.width - width) / 2, rightGroup.x - bar.sp - width))
+        spacing: Theme.gap
+        z: 1
+    }
+    Row {  // right group: what just happened, the change count, the actions, the command box, Help
         id: rightGroup
-        anchors { left: toolsSlot.right; right: parent.right; top: parent.top; bottom: parent.bottom
-                  leftMargin: Theme.groupGap; rightMargin: Theme.gap }
-        spacing: Theme.groupGap
-
-        Text {  // the last thing that happened (or what failed), then how many changes: a cut drops the count first
-            id: history
-            // first claim on up to 220 px (the command button shrinks before this does), never more than there is
-            Layout.minimumWidth: Math.max(0, Math.min(implicitWidth, 220, rightGroup.width - actionsSlot.width
-                                                      - command.Layout.minimumWidth - help.width - 3 * rightGroup.spacing))
-            Layout.fillWidth: true; Layout.preferredWidth: implicitWidth
-            horizontalAlignment: Text.AlignRight
-            elide: Text.ElideRight
-            readonly property string count: bar.bridge.historyCount + (bar.bridge.historyCount === 1 ? " change" : " changes")
-            text: bar.bridge.status ? bar.bridge.status + "  ·  " + count : count
-            color: /^Error/.test(bar.bridge.status) ? Theme.danger : Theme.fg3
-            font.family: uiFont; font.pixelSize: Theme.label
-            HoverHandler { id: historyHover }
-            HoverTip { text: history.truncated ? history.text : ""; hovered: historyHover.hovered }  // the whole line when cut
+        anchors.right: parent.right; anchors.rightMargin: bar.edgeRight; anchors.verticalCenter: parent.verticalCenter
+        spacing: bar.sp
+        Row {
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: Theme.gap
+            Text {  // the last thing that happened (or what failed): gives way first, hover shows all of it
+                id: message
+                visible: bar.messageWidth > 0
+                width: bar.messageWidth
+                anchors.verticalCenter: parent.verticalCenter
+                text: bar.bridge.status ? bar.bridge.status + "  ·" : ""
+                elide: Text.ElideRight
+                color: /^Error/.test(bar.bridge.status) ? Theme.danger : Theme.fg3
+                font.family: uiFont; font.pixelSize: Theme.label
+                HoverHandler { id: messageHover }
+                HoverTip { text: message.truncated ? bar.bridge.status : ""; hovered: messageHover.hovered }
+            }
+            Text {  // how many changes: never shrinks
+                id: count
+                anchors.verticalCenter: parent.verticalCenter
+                text: bar.bridge.historyCount + (bar.bridge.historyCount === 1 ? " change" : " changes")
+                color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+            }
         }
         Row {  // the app's action buttons: things to do, not pages to be on
             id: actionsSlot
+            anchors.verticalCenter: parent.verticalCenter
             spacing: Theme.gap
+            visible: children.length > 0
         }
-        Rectangle {
+        Rectangle {  // the command box; with little room just its search icon (still the same button)
             id: command
-            Layout.preferredWidth: 280; Layout.minimumWidth: 150; Layout.maximumWidth: 280; Layout.fillWidth: true
-            implicitHeight: Theme.button
+            readonly property bool iconOnly: width < 150
+            anchors.verticalCenter: parent.verticalCenter
+            width: bar.commandWidth; height: Theme.button
             radius: Theme.radiusCtl
             color: cmdHover.containsMouse ? Theme.hover : Theme.raised
             Behavior on color { ColorAnimation { duration: Theme.fast } }
+            Item {  // a drawn magnifier (a font glyph differs per font)
+                id: lens
+                width: 14; height: 14
+                x: command.iconOnly ? (command.width - width) / 2 : Theme.pad - 2
+                anchors.verticalCenter: parent.verticalCenter
+                Rectangle { width: 10; height: 10; radius: 5; color: "transparent"; border.width: 1.5; border.color: Theme.fg3 }
+                Rectangle { x: 8; y: 10; width: 6; height: 1.5; radius: 1; rotation: 45; color: Theme.fg3 }
+            }
             Text {
-                anchors { left: parent.left; leftMargin: Theme.pad; right: cmdKey.left; rightMargin: Theme.grid
+                visible: !command.iconOnly
+                anchors { left: lens.right; leftMargin: Theme.gap; right: cmdKey.left; rightMargin: Theme.grid
                           verticalCenter: parent.verticalCenter }
                 elide: Text.ElideRight
                 text: "Search or run a command"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
             }
-            KeyHint { id: cmdKey; text: "Ctrl K"; anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter }
+            KeyHint { id: cmdKey; visible: !command.iconOnly; text: "Ctrl K"
+                      anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter }
             MouseArea { id: cmdHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: bar.commandClicked() }
+            HoverTip { text: command.iconOnly ? "Search or run a command  Ctrl K" : ""; hovered: cmdHover.containsMouse
+                       pressed: cmdHover.pressed }
         }
         IconButton {  // Help: the app's guides, Connect an AI agent, then About and licences (F1 opens that screen)
             id: help
+            anchors.verticalCenter: parent.verticalCenter
             glyph: "?"; kind: "ghost"; tip: "Help"; down: helpMenu.opened
             onClicked: helpMenu.open()
             Menu {

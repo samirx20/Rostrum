@@ -22,7 +22,7 @@ Rectangle {
         anchors { left: parent.left; leftMargin: Theme.pad; top: parent.top }
         height: Theme.header; verticalAlignment: Text.AlignVCenter
         text: "EXPORT"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
-        font.weight: Font.DemiBold; font.letterSpacing: 0.4
+        font.weight: Font.DemiBold; font.letterSpacing: Theme.capsSpacing
     }
     FileDialog {
         id: saveDialog
@@ -87,7 +87,7 @@ Rectangle {
             width: col.width; spacing: 2
             Text { width: parent.width; text: job.fileName; elide: Text.ElideMiddle; color: Theme.fg
                    font.family: uiFont; font.pixelSize: Theme.body }
-            Text { width: parent.width; text: "Saved in " + job.destination; wrapMode: Text.WrapAnywhere; maximumLineCount: 4
+            Text { width: parent.width; text: "Saved in " + job.destination.replace(/\\/g, "\\\u200b"); wrapMode: Text.Wrap; maximumLineCount: 4
                    elide: Text.ElideMiddle; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
         }
         Repeater {
@@ -140,8 +140,8 @@ Rectangle {
                     required property var modelData
                     width: col.width; spacing: 0
                     Text { id: fl; width: panel.labelW; text: modelData.label; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
-                    Text { width: col.width - panel.labelW; text: modelData.text; color: Theme.fg; font.family: uiFont
-                           font.pixelSize: Theme.label; wrapMode: Text.WrapAnywhere; maximumLineCount: 6; elide: Text.ElideMiddle }
+                    Text { width: col.width - panel.labelW; text: modelData.text.replace(/\\/g, "\\\u200b"); color: Theme.fg; font.family: uiFont
+                           font.pixelSize: Theme.label; wrapMode: Text.Wrap; maximumLineCount: 6; elide: Text.ElideMiddle }
                 }
             }
             Image {

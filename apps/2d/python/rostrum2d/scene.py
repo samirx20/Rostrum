@@ -23,7 +23,7 @@ KEY_FIELDS = ("t", "v", "c", "d", "ease", "x1", "y1", "x2", "y2", "stiffness", "
 def python_only(kind: str) -> set[str]:
     """The fields of an item type the engine never sees: auto layout's, stepped timing's and swap sets' (all
     applied here)."""
-    return py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END} | swap.PY_ONLY.get(kind, set())
+    return py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END, "locked", "hidden"} | swap.PY_ONLY.get(kind, set())
 
 
 def _anim(item: dict) -> dict:
@@ -40,7 +40,7 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | 
         node["anim"] = anim
     for key in ("effects", "masks", "layers"):
         if item.get(key):
-            node[key] = [_node(child, fps, baked, where) for child in item[key]]
+            node[key] = [_node(child, fps, baked, where) for child in item[key] if not child.get("hidden")]   # hidden: not drawn
     if item["type"] == "rig":           # bones, iks and binds are nodes of their own (RIG.md § Scene description)
         node["rig"] = [_node(c, fps, baked, where) for key in ("bones", "iks", "binds") for c in item.get(key, [])]
     if item["type"] == "drawing":       # the painting kit makes each drawing's picture once; the engine only reads it

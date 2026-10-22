@@ -8,7 +8,7 @@ from ..fields import D, IS, N, P, S, T  # noqa: F401  (the table helpers)
 
 # The composition's shutter. Never keyed (a composition's fields describe it, not a moment).
 COMP = [
-    N("shutter", "Motion blur", "Motion blur", 0, 720, 1, "°", S,
+    N("shutter", "Motion blur", "Motion blur", 0, 720, 1, "°", S, words={0.0: "Off"},
       help="Shutter angle: how long each frame's shutter stays open, in degrees of a frame. 0 = no blur, "
            "180 = half a frame (the film look), 360 = a whole frame"),
     N("shutterSamples", "Blur steps", "Motion blur", 2, 64, 1, "", D, {"not": IS("shutter", 0)}, integer=True, default=8,

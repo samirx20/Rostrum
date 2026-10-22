@@ -1,14 +1,17 @@
-"""Rostrum2D's two drags: move a layer on the canvas (or, in an auto layout, change its slot) and move a key on the
-timeline. Each is one doc.gesture = one undo step. A slot mix-in for Bridge2D (see rostrum_gui/parts.py)."""
+"""Rostrum2D's drags: move a layer on the canvas (or, in an auto layout, change its slot), move a key on the
+timeline, and move or trim a layer's bar on the timeline. Each is one doc.gesture = one undo step. A slot mix-in for Bridge2D (see rostrum_gui/parts.py)."""
 from __future__ import annotations
 
 from PySide6.QtCore import Slot
 from rostrum_core.keys import keys_of, marked
+from rostrum2d import fields as F, ops_timing
 from rostrum2d.evaluate import resolve
+from rostrum2d.retime import END_OF_COMP
 from rostrum_gui.edits import Drag
 from rostrum_gui.parts import SlotMixin
 
 from . import bounds, exprs, layout_drag, route
+from .bar_drag import PARTS, BarGrab
 
 
 class DragSlots(SlotMixin):
@@ -91,9 +94,38 @@ class DragSlots(SlotMixin):
         to = marked.moved(key["ref"], t - key["t"]) if "ref" in key else t - self.offset(owner["id"])   # on a marker: stays on it; else own seconds
         self._guard(lambda: self._drag.preview([{"op": "key.set", "target": [key["id"]], "args": {"t": to}}]))
 
+    @Slot(str, str, float, result=bool)
+    def beginBarDrag(self, layer_id, part, t0):
+        """Press on a layer bar of the timeline: part "move" (the bar), "start" or "end" (its edges); t0 = the time under
+        the pointer, composition seconds. False (and the status says why) for what can't move."""
+        item = self.placed_item(layer_id) if self.doc.has(layer_id) else None
+        if item is None or item.get("type") not in F.LAYERS or part not in PARTS:
+            self._fail(f"Error: bar drag: {layer_id!r} is not a layer bar I can {part}.")
+            return False
+        if item.get("locked"):
+            self._fail(f"Error: {self.label_of(item)} is locked; unlock it to move it in time.")
+            return False
+        ops_timing.use_project(self.doc.folder)
+        fps, end = self.comp()["fps"], item.get("end", END_OF_COMP)
+        grab = BarGrab(layer_id, part, t0, item.get("start", 0.0), end if end < END_OF_COMP else self.comp()["duration"], fps)
+        self.select(layer_id)
+        return self._begin({"move": "Move in time", "start": "Trim start", "end": "Trim end"}[part], grab)
+
+    @Slot(float, float)
+    def barDragTo(self, t, snap_seconds=0.0):
+        """The pointer is at `t` (composition seconds): the edge snaps to a shared marker or the playhead within
+        `snap_seconds`, else to a whole frame."""
+        if self._drag is None or not isinstance(self._grab, BarGrab):
+            return
+        calls = self._grab.calls(t, self.times(), self._t, snap_seconds)
+        if calls:
+            self._guard(lambda: self._drag.preview(calls))
+
     @Slot()
     def endDrag(self):
-        d, self._drag, self._grab = self._drag, None, None
+        d, g, self._drag, self._grab = self._drag, self._grab, None, None
+        if d is not None and isinstance(g, BarGrab) and g.tie_calls():      # let go on a marker: the layer is tied to it
+            self._guard(lambda: d.preview(g.tie_calls()))
         if d is not None:
             self._guard(lambda: self._done(d.end(), ""))
 

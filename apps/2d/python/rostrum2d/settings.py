@@ -86,6 +86,19 @@ def documents_dir() -> Path:
     return Path.home() / "Documents"
 
 
+def videos_dir() -> Path:
+    """Where an export with no project goes: the person's Videos (Movies on a Mac) folder, else their Documents."""
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+        buf = ctypes.create_unicode_buffer(wintypes.MAX_PATH)
+        if ctypes.windll.shell32.SHGetFolderPathW(None, 14, None, 0, buf) == 0 and buf.value and Path(buf.value).is_dir():   # 14 = CSIDL_MYVIDEO
+            return Path(buf.value)
+        return documents_dir()
+    d = Path.home() / ("Movies" if sys.platform == "darwin" else "Videos")
+    return d if d.is_dir() else documents_dir()
+
+
 def projects_dir() -> Path:
     """Where New puts projects: ROSTRUM2D_PROJECTS, else <Documents>/Rostrum2D."""
     d = _env_path("ROSTRUM2D_PROJECTS") or documents_dir() / "Rostrum2D"

@@ -1,10 +1,11 @@
 import QtQuick
 import RostrumKit
 
-// Rostrum2D: Design | Draw | Animate. Left: the composition's layers. Centre: the canvas (the engine's frame).
-// Right: the inspector (from the selected item's field operation, values at the playhead, key marks); on Draw the
-// brush (the next stroke's settings, from the brush settings' own rules).
-// Bottom, full width: on Design a slim time bar, on Draw the drawing's frames, on Animate the keyframe timeline.
+// Rostrum2D, one workspace (apps/2d/DESIGN.md). Centre: the canvas (the engine's frame) with the tool strip (Move,
+// Pen, Draw). Right: the inspector (from the selected item's field operation, values at the playhead, key marks); while
+// the Draw tool is on, the brush (the next stroke's settings, from the brush settings' own rules).
+// Bottom, full width, always there: the timeline, which is also the layers list (a row and a bar per layer). Its top
+// edge drags to make it taller or shorter.
 AppShell {
     id: shell
     bridge: backend
@@ -13,9 +14,16 @@ AppShell {
     documentName: files.label           // the project, and a dot while there are unsaved changes (screen2d/files.py)
     property bool leaving: false        // closing without asking (session.py replaces the window, or the answer was given)
     onClosing: (close) => fileFlow.closing(close)
-    leftWidth: 248
-    bottomHeight: backend.page === "animate" ? 300 : backend.page === "draw" ? 132 : 52
-    Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
+    leftWidth: 0
+    property real timelineAsked: -1     // the height the edge was dragged to (-1: the default for this window)
+    bottomHeight: Math.round(Math.max(150, Math.min(height * 0.6, timelineAsked >= 0 ? timelineAsked
+                                                                 : Math.max(220, Math.min(380, height * 0.32)))))
+
+    // the tools: V move, P pen, B draw, Esc back to move (screen state, backend.setTool)
+    Shortcut { sequence: "V"; onActivated: backend.setTool("move") }
+    Shortcut { sequence: "P"; onActivated: backend.setTool(backend.tool === "pen" ? "move" : "pen") }
+    Shortcut { sequence: "B"; onActivated: backend.setTool("draw") }
+    Shortcut { sequence: "Escape"; enabled: backend.tool === "draw"; onActivated: backend.setTool("move") }
 
     Shortcut { sequence: "Space"; onActivated: backend.togglePlay() }
     Shortcut { sequence: "Alt+Left"; onActivated: painter.goFrame(-1) }       // frame by frame, on the selected drawing
@@ -39,17 +47,9 @@ AppShell {
     function setProblemsOpen(open) { problemsPanel.shown = open; if (open) { exportPanel.shown = false; importPanel.shown = false } }
     function setFileMenuOpen(open) { fileMenu.menuOpen = open }
     function askClose() { shell.close() }
-    function openLayerMenu(id) { layersPanel.openMenu(id) }
+    function openLayerMenu(id) { timeline.openMenu(id) }
     function setAddOpen(open) { if (open) addMenu.menuOpen = true; else addMenu.menuOpen = false }
 
-    tools: [
-        Segmented {
-            options: [{ value: "design", label: "Design" }, { value: "draw", label: "Draw" },
-                      { value: "animate", label: "Animate" }]
-            current: backend.page
-            onPicked: (v) => backend.setPage(v)
-        }
-    ]
     actions: [
         UndoRedo { },
         Button {        // only while something is wrong (screen2d/problems.py)
@@ -62,7 +62,6 @@ AppShell {
         IconButton { glyph: "↗"; tip: "Export"; down: exportPanel.shown; onClicked: shell.setExportOpen(!exportPanel.shown) }
     ]
     FileFlow { id: fileFlow; window: shell }
-    left: LayersPanel { id: layersPanel; anchors.fill: parent }
     centre: [
         Stage { anchors.fill: parent },
         ExportPanel {   // opened by the Export button; docked on the canvas's right edge, beside the inspector (never over it)
@@ -80,12 +79,12 @@ AppShell {
     ]
     leading: FileMenu { id: fileMenu; onAct: (key) => fileFlow.act(key) }
     right: [
-        Inspector { anchors.fill: parent; bridge: backend; keyMarks: true; visible: backend.page !== "draw" },
-        Inspector { anchors.fill: parent; bridge: painter; title: "Brush"; visible: backend.page === "draw" }
+        Inspector { anchors.fill: parent; bridge: backend; keyMarks: true; visible: backend.tool !== "draw" },
+        Inspector { anchors.fill: parent; bridge: painter; title: "Brush"; visible: backend.tool === "draw" }
     ]
-    bottom: [
-        TimeBar { anchors.fill: parent; visible: backend.page === "design" },
-        FrameBar { anchors.fill: parent; visible: backend.page === "draw"; labelWidth: shell.leftWidth - Theme.pad },
-        KeyTimeline { anchors.fill: parent; visible: backend.page === "animate"; labelWidth: shell.leftWidth - Theme.pad }
-    ]
+    bottom: LayerTimeline {
+        id: timeline
+        anchors.fill: parent
+        onResized: (h) => shell.timelineAsked = h       // its top edge, dragged (clamped above)
+    }
 }

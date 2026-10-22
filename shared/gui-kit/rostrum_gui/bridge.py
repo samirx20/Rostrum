@@ -3,14 +3,15 @@
 Every edit is an operation through doc.apply (a scrub through doc.gesture: one change for the whole drag),
 recorded with the person's name, so undo, history and "who changed what" work the same as for agents.
 The bridge listens to the document (doc.subscribe), so an agent's or script's change shows up in place too.
-Selection and the More row are screen state, not document changes. A refused edit fails loudly: the error
+Selection, the More row, open groups and the search are screen state, not document changes. A refused edit fails loudly: the error
 line goes to the console and to `status` (the top bar shows it in red).
 
 An app adapts it by overriding the hooks (the one place each decision lives): `label_of` (an item's name),
 `edit_call` (a screen edit -> its operation call), `shown_values` (the values the inspector shows),
 `anim_state` / `animate_calls` (an app with keys: the key mark on a row and what its toggle does),
 `on_page` (fields the page's own controls already show, which the inspector leaves out).
-Edit slots: bridge_edits.py. Slots from other modules: parts.py (mix-ins, `attach`, `handle` / `invoke`).
+Edit slots: bridge_edits.py. The settings panel by importance (opt-in `sections = True`): bridge_sections.py.
+Slots from other modules: parts.py (mix-ins, `attach`, `handle` / `invoke`).
 """
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ from rostrum_core.history import History
 
 from . import commands, rows
 from .bridge_edits import EditSlots
+from .bridge_sections import SectionSlots
 from .edits import Scrub, field_call
 from .model import RowsModel
 from .parts import Parts
@@ -34,10 +36,13 @@ def name_of(item: dict) -> str:
     return str(item.get("name") or item["id"])
 
 
-class DocBridge(EditSlots, Parts, QObject):
+class DocBridge(SectionSlots, EditSlots, Parts, QObject):
     selectionChanged = Signal()
     docChanged = Signal()
     statusChanged = Signal()
+    searchChanged = Signal()
+    rowsChanged = Signal()                  # the rows' values or validity changed (nothingFound follows it)
+    fieldRevealed = Signal(str)             # revealField: the Inspector scrolls to the row and focuses it
 
     def __init__(self, doc, who=None, parent=None):
         super().__init__(parent)
@@ -48,6 +53,7 @@ class DocBridge(EditSlots, Parts, QObject):
         self._opened = [doc.history.mark()]  # where each history stood when this window opened (historyCount)
         self._static: list[dict] = []
         self._parts_init()
+        self._sections_init()
         self.model = RowsModel(rows.ROLES, self)
         self._unsubscribe = doc.subscribe(self._on_doc)
         self.select(self._first())
@@ -75,6 +81,20 @@ class DocBridge(EditSlots, Parts, QObject):
     @Property(bool, notify=selectionChanged)
     def moreOpen(self):
         return self._more
+
+    @Property(bool, constant=True)
+    def sectioned(self):
+        """The Inspector shows the "Find a setting" box and fold rows (rows by importance, `sections = True`)."""
+        return self.sections
+
+    @Property(str, notify=searchChanged)
+    def search(self):
+        return self._search
+
+    @Property(bool, notify=rowsChanged)
+    def nothingFound(self):
+        """A search is typed and no setting that applies matches it ("No setting matches")."""
+        return bool(self._search.strip()) and not any(r["valid"] for r in self.model.rows if r["row"] == "param")
 
     @Property(int, notify=docChanged)
     def historyCount(self):
@@ -107,14 +127,16 @@ class DocBridge(EditSlots, Parts, QObject):
             return self._fail(f'Error: select: no item "{item_id}".')
         self._sel = item_id
         kind = self.doc.item(item_id)["type"] if item_id else ""
-        self._static = rows.layout(self.doc.kind.registry.field_op(kind) if item_id else None, kind)
+        self._op_kind = (self.doc.kind.registry.field_op(kind) if item_id else None, kind)
+        self._static = self._layout()
         self.model.reset(self._rows())      # a new selection swaps the list at once (no reveal animation)
+        self.rowsChanged.emit()
         self.selectionChanged.emit()
 
     @Slot()
     def toggleMore(self):
         self._more = not self._more
-        self.model.update(self._rows())
+        self._refresh()
         self.selectionChanged.emit()
 
     @Slot(str, "QVariantList", result="QVariant")
@@ -179,8 +201,13 @@ class DocBridge(EditSlots, Parts, QObject):
         it = self.doc.item(self._sel)
         evaluated = rows.evaluate(self._static, self.shown_values(it), self.doc.kind.facts(it, self.doc), self._more,
                                   lambda name: self.anim_state(it, name), lambda name: self.expr_state(it, name),
-                                  lambda name: self.list_choices(it, name))
+                                  lambda name: self.list_choices(it, name), self._open_groups, self._search)
         return rows.omit(evaluated, self.on_page(it))
+
+    def _refresh(self):
+        """The same rows with new values or validity: changed in place, so each row animates its own reveal."""
+        self.model.update(self._rows())
+        self.rowsChanged.emit()
 
     def _heard(self, change):
         """A change made by someone else (an agent, a script, another app) shows in the status as who did what."""
@@ -192,7 +219,7 @@ class DocBridge(EditSlots, Parts, QObject):
         if self._sel and not self.doc.has(self._sel):      # the selected item went away (e.g. undo of an add)
             self.select(self._first())
         else:
-            self.model.update(self._rows())
+            self._refresh()
             self.selectionChanged.emit()                   # its name may have changed (an agent's rename)
         self._heard(event.change if event.kind == "change" else None)
 
