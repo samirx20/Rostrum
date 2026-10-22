@@ -25,6 +25,10 @@ Item {
             width: modelData.type === "hit" ? (on ? 3 : 2) : Math.max(2, lane.ruler.wOf(modelData.dur) - 1)
             z: on ? 2 : isClip ? 0 : 1
 
+            Repeater {   // an agent just changed this block: the 1-second outline
+                model: backend.agent.flash.indexOf(b.modelData.id) >= 0 ? 1 : 0
+                ChangeOutline { anchors.fill: parent }
+            }
             Repeater {   // notes and hits: a bar per lane
                 model: b.isClip ? [] : b.modelData.lanes
                 delegate: Rectangle {

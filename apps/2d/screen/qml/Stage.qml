@@ -125,6 +125,17 @@ Panel {
                     editable: backend.multi.count === 1 && !well.drawing && modelData.type !== "path" && !backend.pen.on
                 }
             }
+            Repeater {  // what an agent just changed: a 1-second outline in the agent colour (never moves the selection or the view)
+                model: backend.agent.flash.filter(id => backend.rectOf(id).w !== undefined)
+                delegate: ChangeOutline {
+                    id: change
+                    required property string modelData
+                    readonly property var b: backend.rectOf(modelData)
+                    x: (b.x || 0) * well.fit; y: (b.y || 0) * well.fit
+                    width: (b.w || 0) * well.fit; height: (b.h || 0) * well.fit
+                    transform: Rotation { origin.x: (change.b.ax || 0) * change.width; origin.y: (change.b.ay || 0) * change.height; angle: change.b.rot || 0 }
+                }
+            }
             Rectangle {  // the rubber band
                 visible: canvas.band && (canvas.b0.x !== canvas.b1.x || canvas.b0.y !== canvas.b1.y)
                 x: Math.min(canvas.b0.x, canvas.b1.x) * well.fit; y: Math.min(canvas.b0.y, canvas.b1.y) * well.fit

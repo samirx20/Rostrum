@@ -15,6 +15,7 @@ AppShell {
     property bool leaving: false        // closing without asking (session.py replaces the window, or the answer was given)
     onClosing: (close) => fileFlow.closing(close)
     leftWidth: 0
+    saveWord: backend.isLive ? "Saved" : ""      // live (--doc): every change is already on disk; else the title's own dot
     // The timeline's height is remembered per tool (DESIGN.md › two heights): Move and Pen want every row, Draw a big
     // canvas with only the drawing's own row (compact). {compact, asked}: asked = the height its edge was dragged to
     // (-1: the default for this window). Screen state, never the document.
@@ -85,7 +86,6 @@ AppShell {
     function setAddOpen(open) { if (open) addMenu.menuOpen = true; else addMenu.menuOpen = false }
 
     actions: [
-        UndoRedo { },
         Button {        // only while something is wrong (screen2d/problems.py)
             visible: backend.problems.count > 0
             text: backend.problems.count + (backend.problems.count === 1 ? " problem" : " problems")

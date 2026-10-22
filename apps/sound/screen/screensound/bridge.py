@@ -20,6 +20,7 @@ from rostrum_sound.doc import markers as MK
 from rostrum_sound.doc import ops_mix
 
 from . import inspect, lanes, onpage, output_pick, picture, pick, screen_seen, timeline
+from .agent_demo import AgentDemo
 from .edit_slots import EditSlots
 from .lane_slots import LaneSlots
 from .picture_slots import PictureSlots
@@ -33,7 +34,7 @@ PAGES = ("instruments", "timeline", "mix")
 SOUNDING = ("notes", "hits", "clips", "sounds")       # what makes a compiled track last (engine contract/track.rs)
 
 
-class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, DocBridge):
+class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, DocBridge):
     def __init__(self, doc, name="Untitled song", autosave=False, parent=None):
         self.name, self.autosave = name, autosave
         self._page, self._t, self._track = "timeline", 0.0, ""
@@ -74,6 +75,8 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, D
     @Property(str, constant=True)
     def docName(self):
         return self.name
+
+    isLive = Property(bool, lambda self: self.link is not None, constant=True)   # saved after every change: the top bar says "Saved"
 
     @Property(str, notify=S.pageChanged)
     def page(self):

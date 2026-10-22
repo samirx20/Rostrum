@@ -9,6 +9,7 @@ from pathlib import Path
 from .sample import SOURCE
 
 LONG_TRACK = "lead_guitar_line_for_the_second_verse_and_bridge"
+LONG_AGENT = "Claude: moved the title card, softened the door knock, and rebalanced the whole second verse against the drums"
 LONG_STATUS = "No graphics driver, so drawing is slower"
 TWELVE = [f"select {LONG_TRACK}"] + [f"set volume {0.5 + n / 100}" if n % 2 else f"set pan {n / 100}" for n in range(12)]
 IGNORE = ()
@@ -34,6 +35,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("long-mix", long_project(), [*busy, "page mix"]),
         ("file-menu", long_project(), [*busy, "file-menu"]),
         ("song", ["--sample"], ["page timeline", "song-open"]),
+        ("history-agent-run", ["--sample"], ["page timeline", "agent-run 6", "history open"]),
+        ("agent-chip-long", long_project(), [*busy, "agent-run 3", f"agent-say {LONG_AGENT}"]),
         ("settings", ["--sample"], ["settings"]),
         ("commands", ["--sample"], ["commands"]),
         ("help-menu", ["--sample"], ["help"]),

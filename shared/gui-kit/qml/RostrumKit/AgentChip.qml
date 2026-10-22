@@ -37,6 +37,7 @@ Rectangle {
     component Act: Text {                     // a word to click: Review, Keep, Undo all
         signal clicked()
         anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+        height: Math.max(implicitHeight, 16); verticalAlignment: Text.AlignVCenter     // a click target of at least 16 px
         color: hover.hovered ? Theme.fg : Theme.agent
         font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }

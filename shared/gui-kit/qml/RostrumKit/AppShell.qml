@@ -76,8 +76,9 @@ QQC.ApplicationWindow {
                   leftMargin: Theme.gap; rightMargin: Theme.gap; bottomMargin: Theme.gap }
         Item { id: leftSlot; x: 0; width: Math.max(0, win.leftWidth); visible: width > 0; height: bottomSlot.y - Theme.gap }
         Item { id: centreSlot; x: leftSlot.visible ? leftSlot.width + Theme.gap : 0; height: leftSlot.height
-               width: (rightSlot.visible ? rightSlot.x - Theme.gap : body.width) - x }
-        Item { id: rightSlot; x: body.width - width; width: Math.max(0, win.rightWidth); visible: width > 0; height: leftSlot.height }
+               width: (win.rightWidth > 0 ? rightSlot.x - Theme.gap : body.width) - x }
+        Item { id: rightSlot; x: body.width - width; width: Math.max(0, win.rightWidth); height: leftSlot.height
+               visible: width > 0 && !win.historyOpen }   // History takes this column's place: what it hides is not on screen
         Item { id: bottomSlot; y: body.height - height; width: body.width; height: win.bottomHeight }
         HistorySheet {  // in the settings panel's place (the right column; its width at least a side panel's)
             id: historySheet

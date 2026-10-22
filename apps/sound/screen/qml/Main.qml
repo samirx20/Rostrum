@@ -11,6 +11,7 @@ AppShell {
     appName: "RostrumSound"
     documentName: backend.docName
     leftWidth: 0
+    saveWord: backend.isLive ? "Saved" : ""      // a song in a project folder is saved after every change
     helpEntries: guides
     bottomHeight: backend.page === "timeline" ? 300 + Math.min(2, backend.tracks.filter(r => r.auto).length) * 78 : 156
     Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }

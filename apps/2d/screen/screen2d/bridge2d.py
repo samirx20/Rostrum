@@ -20,6 +20,7 @@ from .frames import FrameRenderer
 from .handle_slots import HandleSlots
 from .hooks import Hooks2D
 from .action_slots import ActionSlots
+from .agent_view import AgentView
 from .layer_order import LayerOrder
 from .painter import Painter
 from .playback import Playback, size_offered
@@ -31,7 +32,7 @@ from .tools2d import ToolSlots
 from .undo_state import UndoState
 
 
-class Bridge2D(ShownState, ClipboardSlots, UndoState, ActionSlots, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
+class Bridge2D(AgentView, ShownState, ClipboardSlots, UndoState, ActionSlots, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     toolChanged = Signal()
     frameChanged = Signal()
@@ -39,7 +40,6 @@ class Bridge2D(ShownState, ClipboardSlots, UndoState, ActionSlots, LayerOrder, F
     outlineChanged = Signal()
     playingChanged = Signal()
     markersChanged = Signal()
-    historyChanged = Signal()                               # the kit's docChanged, for the history properties below
     renameRequested = Signal(str)                           # F2 / Ctrl+K "Rename layer": the layer row's name box
     sections = True                                         # settings panel: essentials, folded groups, search (kit)
 
@@ -54,7 +54,6 @@ class Bridge2D(ShownState, ClipboardSlots, UndoState, ActionSlots, LayerOrder, F
         self.marks = None                                   # made below (it needs this QObject); the first rows have none
         self._shown_init()
         super().__init__(doc, parent=parent)
-        self.docChanged.connect(self.historyChanged)
         self.frames = FrameRenderer(self)
         self._scene = None                                  # the engine's scene, described once per change (_render)
         self.frames.ready.connect(self._on_frame)
@@ -86,10 +85,7 @@ class Bridge2D(ShownState, ClipboardSlots, UndoState, ActionSlots, LayerOrder, F
         self._render()
         self._problems.touch()
 
-    # ---- the history, as the top bar and the Undo / Redo buttons read it (undo_state.py) ----------------------------
-    historyCount = Property(int, lambda self: self.changes_since_open(), notify=historyChanged)   # since it opened
-    undoLabel = Property(str, UndoState.undo_label, notify=historyChanged)         # "" = nothing to undo
-    redoLabel = Property(str, UndoState.redo_label, notify=historyChanged)
+    isLive = Property(bool, lambda self: self.link is not None, constant=True)   # saved after every change: the top bar says "Saved"
 
     actions = Property(QObject, lambda self: self._hub, constant=True)   # the context bar, menus, keys (action_slots.py)
 

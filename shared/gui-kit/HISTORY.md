@@ -65,6 +65,27 @@ column and opens it on `Connections { target: backend.agent; function onHistoryA
 Words: the message line reads "Claude: Moved title" (`who_name`), "Undid: Move title", "Undid: Claude's 12 changes",
 "Saved version "First look"". A refusal is the core's own sentence, in red.
 
+## The core under it (shared/core, S32)
+
+| Piece | File | Does |
+|---|---|---|
+| One live file | `rostrum_core/live.py` | `live.keep(doc)`: the window and an agent's server each hold a copy of the document; every change now locks the file, takes in the other program's new steps, makes the change and saves, so nobody's steps are wiped. `doc.live.catch_up()` takes in new steps between changes (as ordinary change events). A person's drag that ends after an agent's step is put on top of it. |
+| The door | `rostrum_core/document.py` | Every change-making method (`apply`, `undo`, `redo`, `undo_session`, `redo_session`, `undo_changes`, `restore_version`, `mark_version`, `run_script`, `commit`) runs through `doc.live`'s door when there is one. `redo_session` is new (History's Bring back). `locked_by(id)` names who locked an item. |
+| Locks | `rostrum_core/run.py` | A locked item refuses every operation on itself and on everything inside it (a locked track holds its notes and clips), for people and agents alike, except its own `*.unlock`. The words: `"Background" (bg) is locked by Sam. Unlock it first, then try again.` / `"lead.n2000" (lead.n2000) is inside "lead" (lead), which is locked by Sam. …` |
+| Refused undo | `rostrum_core/history.py` | `"Move chorus" can't be taken back or brought back: Claude changed chorus.x since ("Move", step 5). Undo that first, in History.` |
+| Who in words | `rostrum_core/who.py` | `Who.words()`: "Sam", "Claude", "logo.py", "Outside Rostrum". The kit's `who_name` adds "You". |
+| What the person sees | `rostrum_core/screen_state.py`, kit `rostrum_gui/live_link.py` | `LiveLink(bridge, app, state_fn)` (every 0.3 s: catch up, and write the app's `state_fn(bridge)` when it changes); `link.close()` removes it. |
+| Agent tools | `rostrum_core/mcp/shared_screen.py` | Every server: `inspect_screen` (selection with ids, kind, name, time; playhead; range; scene or song; focus; view; what the person is dragging) and `edit_undo {group?}` (takes back only the calling agent's own steps). The server catches up every open document before each tool call. |
+
+Rules for an app:
+- **Open a live document once with `live.keep(doc)`**, in the window when it edits a project file directly and in the
+  MCP server. Never `doc.subscribe(... doc.save())` again: a second save path outside the lock is what wiped work.
+- **Never cache `doc.history`**: a catch-up that had to read the whole file makes a new History object.
+- **Lock is data**: an item with `"locked": true`, set by `<kind>.lock` / `<kind>.unlock` operations. Nothing else to do.
+
+Proof: `shared/gui-kit/demo/s32_agent_proof.py` (both apps, scratch projects; output in
+`C:\Users\Sam\.rostrum\waves\results\kit\s32\proof.txt`). Test: `shared/core/tests/test_live.py`.
+
 ## Notes for Team Hem (Rostrum2D)
 
 TODO (Member B and the lead fill in the 2D specifics).

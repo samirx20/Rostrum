@@ -13,6 +13,10 @@ Rectangle {
     color: on ? Theme.accentSoft : area.containsMouse ? Theme.raised : "transparent"
     Behavior on color { ColorAnimation { duration: Theme.fast } }
 
+    Repeater {   // an agent just changed this track: the 1-second outline
+        model: backend.agent.flash.indexOf(h.track.id) >= 0 ? 1 : 0
+        ChangeOutline { anchors.fill: parent }
+    }
     MouseArea { id: area; anchors.fill: parent; hoverEnabled: true; onClicked: backend.select(h.track.id) }
     Rectangle { x: Theme.gap; anchors.verticalCenter: parent.verticalCenter; width: 3; radius: 1.5
                 height: Math.min(parent.height - 8, 18); color: h.track.hue }

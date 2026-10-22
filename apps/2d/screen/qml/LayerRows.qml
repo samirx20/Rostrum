@@ -73,6 +73,10 @@ ListView {
             x: Theme.gap; width: list.labelWidth - Theme.gap; height: parent.height
             rowData: row.modelData; rows: list
         }
+        Repeater {   // an agent just changed this row's item: the 1-second outline
+            model: backend.agent.flash.indexOf(row.modelData.id) >= 0 ? 1 : 0
+            ChangeOutline { x: Theme.gap; width: list.labelWidth - Theme.gap; height: row.height }
+        }
         LayerTrack {
             x: list.ruler.x - 8; width: list.ruler.width + 16; height: parent.height
             rowData: row.modelData; ruler: list.ruler

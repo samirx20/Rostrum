@@ -121,6 +121,7 @@ Item {
                 id: count
                 anchors.verticalCenter: parent.verticalCenter
                 readonly property int n: bar.bridge.historyCount
+                height: Math.max(implicitHeight, 16); verticalAlignment: Text.AlignVCenter     // a click target of at least 16 px
                 text: (bar.saveWord ? bar.saveWord + " · " : "") + n + (n === 1 ? " change" : " changes")
                 color: countHover.hovered ? Theme.fg : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
                 HoverHandler { id: countHover; cursorShape: Qt.PointingHandCursor }
