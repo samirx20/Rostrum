@@ -147,7 +147,7 @@ def main():
     (py / "python312._pth").write_text("\n".join(PTH) + "\n", encoding="utf-8")
     site = py / "Lib" / "site-packages"
     wheels(SHARED[1], site)
-    saved = trim(site / "PySide6")
+    saved = trim(site / "PySide6", REPO)
     shared = set(dists(site))
     per_app = {}
     for app in args.apps:
