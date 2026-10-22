@@ -17,9 +17,11 @@ Item {
     property alias leading: leadingSlot.data
     property alias tools: toolsSlot.data
     property alias actions: actionsSlot.data
+    property var helpEntries: []          // the app's own Help entries ({value: a file:// address, label}: guides), above About
     signal commandClicked()
     signal aboutClicked()
     implicitHeight: Theme.topBar
+    function openHelp() { helpMenu.open() }
 
     Row {  // the app's tools sit in the middle of the window
         id: toolsSlot
@@ -91,15 +93,16 @@ Item {
             KeyHint { id: cmdKey; text: "Ctrl K"; anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter }
             MouseArea { id: cmdHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: bar.commandClicked() }
         }
-        IconButton {  // Help: About and licences (F1 opens the same screen)
+        IconButton {  // Help: the app's guides, then About and licences (F1 opens that screen)
             id: help
             glyph: "?"; kind: "ghost"; tip: "Help"; down: helpMenu.opened
             onClicked: helpMenu.open()
             Menu {
                 id: helpMenu
                 x: parent.width - width
-                entries: [{ value: "about", label: "About and licences" }]
-                onPicked: bar.aboutClicked()
+                width: 240
+                entries: bar.helpEntries.concat([{ value: "about", label: "About and licences" }])
+                onPicked: (v) => v === "about" ? bar.aboutClicked() : Qt.openUrlExternally(v)
             }
         }
     }

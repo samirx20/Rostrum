@@ -20,6 +20,7 @@ QQC.ApplicationWindow {
     property alias leading: topBar.leading      // the app's left top-bar buttons (File), after the wordmark
     property alias tools: topBar.tools          // the app's own top-bar tools (centred)
     property alias actions: topBar.actions      // the app's action buttons (right, before the command bar)
+    property alias helpEntries: topBar.helpEntries   // the app's guides in Help (rostrum_gui.guides.entries)
     property int leftWidth: Theme.sidePanel - 32   // 0: no left panel (the centre takes its place, no gap)
     property int rightWidth: Theme.sidePanel       // 0: no right panel
     property int bottomHeight: Theme.timeline
@@ -32,6 +33,7 @@ QQC.ApplicationWindow {
     color: Theme.app
 
     function openAbout() { noticesDialog.open() }
+    function openHelp() { topBar.openHelp() }
     Shortcut { sequence: "Ctrl+K"; onActivated: commandBar.open() }
     Shortcut { sequence: "F1"; onActivated: noticesDialog.open() }
     Shortcut { sequence: StandardKey.Undo; enabled: !commandBar.opened; onActivated: win.bridge.undo() }
