@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
-  Puts three shortcuts on the desktop: Rostrum2D, RostrumSound, Rostrum3D. Each opens its app on its sample project
-  through tools\rostrum.ps1 (problems show in a message box). Running it again replaces them.
+  Puts three shortcuts on the desktop: Rostrum2D, RostrumSound, Rostrum3D. Each opens its app (2D / Sound: your last file,
+  else a new one; 3D: its sample project) through tools\rostrum.ps1 (problems show in a message box). Running it again replaces them.
 
   pwsh -File tools\make-shortcuts.ps1
 #>

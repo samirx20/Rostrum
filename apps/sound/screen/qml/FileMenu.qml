@@ -19,13 +19,15 @@ Button {
     Menu {
         id: menu
         width: 260
-        entries: [{ value: "new", label: "New song" }, { value: "open", label: "Open…" }]
+        entries: [{ value: "new", label: "New song" }, { value: "open", label: "Open…" },
+                  { value: "sample", label: "Open sample (Lull)" }]
                  .concat(songs.recent.slice(0, 6).map((r, i) => ({ value: "recent:" + i, label: "Open " + r.name })))
                  .concat([{ value: "saveas", label: songs.untitled ? "Save…" : "Save a copy as…" },
                           { value: "settings", label: "Settings…" }])
         onPicked: (v) => {
             if (v === "new") songs.newSong()
             else if (v === "open") openDialog.open()
+            else if (v === "sample") songs.openSample()
             else if (v === "saveas") saveDialog.open()
             else if (v === "settings") file.settingsPanel.open()
             else if (v.indexOf("recent:") === 0) { const r = songs.recent[Number(v.slice(7))]; songs.openRecent(r.folder, r.item) }

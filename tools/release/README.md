@@ -11,7 +11,7 @@ install (no admin prompt) into `%LOCALAPPDATA%\Programs\Rostrum`. The checklist 
 | `bundle.py` | Makes the folder the installer packs (below) |
 | `qt_trim.py` | Leaves out the Qt parts no app uses (web engine, 3D, charts, PDF, dev tools, translations): 494 MB saved |
 | `icons.py` | Placeholder app and document icons (until real ones are designed) |
-| `rostrum.pyw` | What every shortcut and double-clicked file runs: picks the app, turns `<project>\docs\<item>.mtn` into the project, copies the Lull sample to `Documents\Rostrum\Samples` on first start, writes everything to `%LOCALAPPDATA%\Rostrum\logs`, shows a message box naming the log on a crash |
+| `rostrum.pyw` | What every shortcut and double-clicked file runs: picks the app, turns `<project>\docs\<item>.mtn` into the project, with no file lets the app open its last file or a new one, with `--open-sample` (Start menu › Samples) opens the person's copy of the Lull sample in `Documents\Rostrum\Samples` (`rostrum_core.samples`), writes everything to `%LOCALAPPDATA%\Rostrum\logs`, shows a message box naming the log on a crash |
 | `notices.py` | The About / Licences screen's data (`apps/<app>/notices.json`) and full texts (`NOTICES.txt`) from `ATTRIBUTIONS.md` + what the bundle really holds; refuses any GPL / AGPL item |
 | `rostrum.iss` | The Inno Setup script: components, shortcuts, `.mtn` / `.trk` file types, uninstall |
 | `build-installer.ps1` | Bundle + Inno Setup, inside one build slot of the job lock |

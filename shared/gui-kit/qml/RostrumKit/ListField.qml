@@ -13,8 +13,8 @@ Flow {
     signal edited(var values)
     spacing: Theme.grid
 
-    function labelOf(v) { for (const c of choices) if (c.value === v) return c.label; return String(v) }
-    readonly property var addable: choices.filter(c => values.indexOf(c.value) < 0)
+    function labelOf(v) { for (const c of choices) if (String(c.value) === String(v)) return c.label; return String(v) }
+    readonly property var addable: choices.filter(c => !values.some(v => String(v) === String(c.value)))
     readonly property bool full: maxItems !== null && maxItems !== undefined && values.length >= maxItems
 
     Repeater {

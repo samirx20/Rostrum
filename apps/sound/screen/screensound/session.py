@@ -113,6 +113,12 @@ class Songs(QObject):
     def openRecent(self, folder, item):
         self._go(lambda: self._put(projects.open_song(folder, item)))
 
+    @Slot()
+    def openSample(self):
+        """File › Open sample: the person's own copy of the Lull score (rostrum_core.samples copies it once)."""
+        from rostrum_core import samples
+        self._go(lambda: self._put(projects.open_song(*samples.open_copy("lull", "sound"))))
+
     @Slot(str)
     def recover(self, folder):
         def go():
