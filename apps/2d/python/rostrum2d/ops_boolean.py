@@ -3,7 +3,7 @@ with Skia's PathOps (skia-pathops, BSD-3-Clause), which keeps curves as curves.
 
 Each input is first placed as the stage draws it (its x, y, anchor, scale, rotation), in the parent's px; the
 result's box hugs the result, so it sits exactly where the inputs were. The inputs are removed (one undo step brings
-them back): a hidden copy would still be drawn work, keyed and edited by mistake, and Rostrum has no "hidden" switch.
+them back): a hidden copy would still be drawn work, keyed and edited by mistake.
 The result takes the first input's look (fill and stroke) and its place in the stack is the lowest input's.
 """
 from __future__ import annotations
@@ -73,6 +73,20 @@ def commands_of(p: pathops.Path) -> list[tuple]:
              target=("path", "shape"), label="Combine",
              params=[Param.choice("mode", list(MODES), label="Mode", required=True), ID])
 def path_boolean(ctx, targets, args):
+    combine(ctx, targets, args["mode"], args)
+
+
+@R.operation("shape.boolean", "Select two or more shapes or paths, then combine them into one path layer: union, subtract (the "
+             "first minus the others), intersect or exclude. The result is baked when applied: the originals are removed and "
+             "the new path sits where they were, with the first one's fill and outline (no live, still-editable combination). "
+             "They must be in the same group or composition.",
+             target=("path", "shape"), label="Combine shapes",
+             params=[Param.choice("op", list(MODES), label="Combine", required=True), ID])
+def shape_boolean(ctx, targets, args):
+    combine(ctx, targets, args["op"], args)
+
+
+def combine(ctx, targets, mode, args):
     if len(targets) < 2:
         ctx.fail(codes.BAD_ARGUMENT, f"target {targets}", "a boolean needs two or more layers")
     idx = index(ctx.doc, ctx.kind.lists)
@@ -86,12 +100,12 @@ def path_boolean(ctx, targets, args):
         for it in items:
             cmds = PD.transformed(PD.commands(outline(it)), to_parent(it))
             p = skia_path(cmds, it.get("fillRule") == "evenodd")
-            result = p if result is None else pathops.op(result, p, MODES[args["mode"]])
+            result = p if result is None else pathops.op(result, p, MODES[mode])
         cmds = commands_of(result)
     except (ValueError, pathops.PathOpsError) as e:
         ctx.fail(codes.BAD_ARGUMENT, f"target {targets}", f"can't be combined: {e}")
     if not cmds:
-        ctx.fail(codes.BAD_ARGUMENT, f"target {targets}", f"{args['mode']} leaves nothing")
+        ctx.fail(codes.BAD_ARGUMENT, f"target {targets}", f"{mode} leaves nothing")
     first, parent, key = items[0], idx[targets[0]].parent, idx[targets[0]].key
     place = min(idx[t].index for t in targets)
     moved, (x0, y0, w, h) = PD.fit(cmds)

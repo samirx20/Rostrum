@@ -6,10 +6,15 @@ import RostrumKit
 // frame buttons. Under it the ruler (it scrubs; the project's marker flags sit on it) and one row per layer: its name
 // on the left (LayerName.qml), its bar, keys and frames on the right (LayerTrack.qml). Curves shows the selected
 // layer's value curves in the same place. The thin strip above the top edge drags to make the timeline taller.
+// Compact (DESIGN.md › two heights): only the selected layer's row; its name opens a list of every layer, so another
+// is one click away. The button at the header's right end switches; Main.qml remembers it per tool.
 Rectangle {
     id: tl
     property int labelWidth: 240
     signal resized(real height)                 // the top edge dragged to this height (Main.qml clamps it)
+    property bool compact: false
+    signal compactAsked(bool on)
+    readonly property real compactHeight: rowsTop + Theme.rowDense + 2 * Theme.gap
     function openMenu(id, px, py) { rows.openMenu(id, px, py) }
     color: Theme.panel; radius: Theme.radiusPanel
 
@@ -43,10 +48,18 @@ Rectangle {
         }
         FrameTools { anchors.verticalCenter: parent.verticalCenter }
     }
+    IconButton {  // every row, or only the selected layer's
+        id: compactSwitch
+        anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: header.verticalCenter }
+        implicitWidth: 26; implicitHeight: 26; kind: "ghost"
+        glyph: tl.compact ? "⌃" : "⌄"
+        tip: tl.compact ? "Show every layer" : "Show only the selected layer"
+        onClicked: tl.compactAsked(!tl.compact)
+    }
     Text {   // how to reach the Ease choice (it shows once a key is selected)
-        visible: !backend.curves.on && backend.selectedItem.kind !== "key" && backend.layers.some(r => r.keys.length > 0)
+        visible: !tl.compact && !backend.curves.on && backend.selectedItem.kind !== "key" && backend.layers.some(r => r.keys.length > 0)
                  && x > header.x + header.width + Theme.pad
-        anchors { right: parent.right; rightMargin: Theme.pad; verticalCenter: header.verticalCenter }
+        anchors { right: compactSwitch.left; rightMargin: Theme.pad; verticalCenter: header.verticalCenter }
         text: "Click a diamond to change its ease"
         color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
     }
@@ -72,11 +85,20 @@ Rectangle {
     LayerRows {
         id: rows
         visible: !backend.curves.on
-        ruler: ruler; labelWidth: tl.labelWidth
+        ruler: ruler; labelWidth: tl.labelWidth; compact: tl.compact
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; top: parent.top
                   topMargin: tl.rowsTop; rightMargin: Theme.gap; bottomMargin: Theme.gap }   // x as the ruler's
     }
     VScrollBar { flick: rows; visible: rows.visible && needed }
+    MouseArea {  // compact: the one row's name is a list of every layer
+        visible: tl.compact && !backend.curves.on && backend.layers.length > 0
+        x: 0; y: tl.rowsTop; width: tl.labelWidth; height: Theme.rowDense
+        cursorShape: Qt.PointingHandCursor
+        onClicked: { picker.entries = backend.layers.filter(r => r.row === "layer")
+                         .map(r => ({ value: r.id, label: " ".repeat(r.depth) + r.label })); picker.open() }
+        Chevron { anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter } }
+        Menu { id: picker; y: parent.height; width: tl.labelWidth; onPicked: (id) => backend.select(id) }
+    }
     Text {
         visible: backend.layers.length === 0
         x: Theme.pad; y: tl.rowsTop + Theme.gap; width: tl.labelWidth - Theme.pad

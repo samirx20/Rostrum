@@ -10,7 +10,7 @@
     rename <layer> <name> | undo | redo | more | commands [query …] | run <command key> | play | play <seconds> [blur] [full|half|quarter]
     (plays, with full motion blur or not, at that Preview size, then prints the frames shown per second and each stage's time: screen2d/playstats.py)
     marker add <s> | marker move <name> <s> | marker rename <name> <new name> | marker remove <name> (ruler flags; _ for spaces)
-  Draw tool (tool draw; paints on the selected drawing layer, or makes one): draw <x> <y> <x> <y> … (one stroke, composition px)
+  timeline compact|full (this tool's timeline height) | Draw tool (tool draw; paints on the selected drawing layer, or makes one): draw <x> <y> <x> <y> … (one stroke, composition px)
     brush <setting> <value> | newframe [copy] | hold <+n|-n> | frame next|prev | onion on|off
   Paths (tool pen): pen <x,y> <x,y,hx,hy> … [close] (one new path: a point, or a press at x,y dragged to hx,hy =
     a smooth point; composition px) | pointpick <layer> <i> (select a point: its handles show) | pointdrag <layer> <i> <dx> <dy> [in|out] (a point, or its handle)
@@ -144,6 +144,8 @@ def do_step(bridge, win, step):
         steps_cancel(bridge, step, rest)
     elif word == "tool":
         bridge.setTool(rest[0])
+    elif word == "timeline":                     # timeline compact|full: the button at the timeline header's right end
+        QMetaObject.invokeMethod(win, "setTimeline", Q_ARG("QVariant", rest[0] == "compact"), Q_ARG("QVariant", None))
     elif word == "find":
         bridge.setSearch(" ".join(rest))
     elif word == "group":

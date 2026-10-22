@@ -30,16 +30,23 @@ def times() -> dict:
     return markers.times(_PROJECT[0])
 
 
+def _times(ctx) -> dict:
+    """The markers of the document being edited: its own folder when the operation context carries one (`ctx.folder`),
+    else the project `use_project` named."""
+    folder = getattr(ctx, "folder", None)
+    return markers.times(folder) if folder is not None else times()
+
+
 def _marker(ctx, ref: str, what: str) -> tuple[str, float]:
     """(marker name, its seconds) for a bare "#name"; anything else, or a marker the project doesn't have, fails."""
     parts = split(ref)
     if parts is None or parts[1]:
         ctx.fail(codes.BAD_ARGUMENT, f'{what}="{ref}"', "is not a marker reference", ['"#drop"'],
                  "A marker alone, e.g. \"#logo lands\"; a time on a marker is not allowed here.")
-    at = lookup(times(), parts[0])
+    at = lookup(_times(ctx), parts[0])
     if at is None:
         ctx.fail(codes.NOT_FOUND, f'{what}="{ref}"', f'marker "{parts[0]}"', "is not in the project",
-                 hint=f'Markers: {", ".join(sorted(times())) or "none"}. Add it (edit_markers) first.')
+                 hint=f'Markers: {", ".join(sorted(_times(ctx))) or "none"}. Add it (edit_markers) first.')
     return parts[0], at
 
 
@@ -97,7 +104,7 @@ def layer_shift(ctx, targets, args):
 
 def _ends(ctx, layer_id: str) -> tuple[float, float]:
     """(start, end) of a layer in composition seconds; end is infinity while it ends at the end of the composition."""
-    layer, off = ctx.item(layer_id), offset_of(ctx.doc, layer_id, times())
+    layer, off = ctx.item(layer_id), offset_of(ctx.doc, layer_id, _times(ctx))
     end = _marker(ctx, "#" + layer[END], END)[1] if layer.get(END) else \
         (off + layer["end"] if layer.get("end", END_OF_COMP) < END_OF_COMP else float("inf"))
     return off + layer.get("start", 0.0), end
@@ -128,7 +135,7 @@ def layer_trim(ctx, targets, args):
 
 
 def _trim_start(ctx, layer: dict, value) -> None:
-    off = offset_of(ctx.doc, layer["id"], times())
+    off = offset_of(ctx.doc, layer["id"], _times(ctx))
     if isinstance(value, str):
         name, at = _marker(ctx, value, "start")
         _tie(ctx, layer, name, off - at)        # same seen times, counted from the marker; the layer starts on it
@@ -143,4 +150,4 @@ def _trim_end(ctx, layer: dict, value) -> None:
         return
     if layer.get(END):
         ctx.set(layer["id"], END, "")
-    ctx.set(layer["id"], "end", round(value - offset_of(ctx.doc, layer["id"], times()), 6))
+    ctx.set(layer["id"], "end", round(value - offset_of(ctx.doc, layer["id"], _times(ctx)), 6))

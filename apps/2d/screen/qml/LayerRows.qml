@@ -11,7 +11,10 @@ ListView {
     objectName: "layersList"            // (the scripted steps show a drop in progress through it)
     property Item ruler
     property int labelWidth: 240
-    model: backend.layers
+    property bool compact: false        // only the selected layer's row (or the first layer's, when none is selected)
+    readonly property string shownLayer: backend.selectedLayer || (backend.layers.length ? backend.layers[0].id : "")
+    model: compact ? backend.layers.filter(r => r.row === "layer" && r.id === shownLayer) : backend.layers
+    interactive: !compact
     spacing: 2
     clip: true
     boundsBehavior: Flickable.StopAtBounds
