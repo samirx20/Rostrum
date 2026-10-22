@@ -88,8 +88,48 @@ Proof: `shared/gui-kit/demo/s32_agent_proof.py` (both apps, scratch projects; ou
 
 ## Notes for Team Hem (Rostrum2D)
 
-TODO (Member B and the lead fill in the 2D specifics).
+2D runs on all of this on `team/sam` (commits c096c36, 20fcc4b). When you merge main into H29, keep these, and build on
+them instead of beside them:
+- **Saving:** a live window (`--doc`, the launchers) calls `live.keep(doc)` and makes a `LiveLink(self, "2d",
+  screen_seen.state)` in `Bridge2D.__init__`, closed in `close()`. The old `autosave` save in `_on_doc` is gone, and so
+  is the `subscribe(... save)` in `python/rostrum2d/mcp/project_tool.py`. Never add a save after a change again. Open
+  recent / Save / Save as windows (not live) still keep their unsaved dot; folding them into "always saved" is piece 13.
+- **Undo / redo:** 2D's `UndoRedo.qml` and `undo_state.py`'s labels are gone; the kit's ↶ ↷ in the top bar follow the
+  same one-history rule (document + markers). `undo_state.py` keeps only `_marker_saved`. `historyCount` comes from
+  the kit. `Main.qml`: `saveWord: backend.isLive ? "Saved" : ""`.
+- **Outlines:** `screen2d/agent_view.py` (`rectOf(id)`: a layer's canvas box, an effect / mask / key's layer;
+  `agent_demo_calls(n)`). `Stage.qml` has a `Repeater` over `backend.agent.flash` inside `marks` (turned like
+  `Handles`); `LayerRows.qml` outlines the row. When H29 adds zoom / pan, the outline must sit inside the same
+  transformed item as the handles so it follows the view.
+- **What the person sees:** `screen2d/screen_seen.py` (`state(bridge)`). Two gaps for Hem: **focus** reports
+  "canvas" always (set `bridge._focus_area` to "canvas" / "layers" / "timeline" from `Main.qml` when the focused area
+  changes, piece 20), and **view** has no zoom / scroll until H29's zoom / pan: add `"zoom"` and the visible rect then.
+  `dragging` is the selection while `_drag` is on.
+- **Lock:** `layer.lock` already refuses agents and people, now with who locked it, and covers everything inside
+  the layer (its keys, effects, masks, children of a group).
+- **Layout states:** `history-agent-run`, `agent-chip-long` in `layout_states.py`.
 
 ## Notes for Team Priyam (RostrumSound)
 
-TODO (Member B and the lead fill in the Sound specifics).
+Sound runs on all of this on `team/sam` (commits c096c36, 20fcc4b). When you merge main into P27:
+- **Saving:** `SoundBridge.__init__` calls `live.keep(doc)` and makes `LiveLink(self, "sound", screen_seen.state)` when
+  the song has a folder (every song but a scratch one); `close()` closes it. The save in `_on_doc` is gone, and so is
+  `subscribe(lambda ev: doc.save())` in `python/rostrum_sound/mcp/app.py` (`open_or_new` now `live.keep`s). Ctrl+S in
+  `session.py` still calls `doc.save()`: make it "Save a version" (piece 13, `bridge.saveVersion(name)`).
+- **Lock (new):** tracks have a `locked` switch (`doc/fields.py`) and operations `track.lock` / `track.unlock`
+  (`doc/ops_tracks.py`). The core refuses every operation on a locked track **and on its notes, hits, clips, lines,
+  effects, automation, sends and ducks**. Still to do in the screen: a lock on the track header (Ctrl+Shift+L is the
+  shared key) and the locked look.
+- **Top bar:** `Main.qml` sets `saveWord`. Your `tools` (pages, transport, song readout) now sit right after the change
+  count, not centred. INTERACTION 1.1 moves transport into the arrangement header; when you do, drop `tools`.
+- **Outlines:** `TrackHeader.qml` and `LaneBlocks.qml` each have a `Repeater` on `backend.agent.flash` with a
+  `ChangeOutline`. Not yet in the piano roll (`PianoRoll.qml` / `RollGrid.qml`) or the mixer strips: add the same
+  three lines there.
+- **What the person sees:** `screensound/screen_seen.py`. Focus reports the page ("timeline", "mix", "instruments");
+  set `bridge._focus_area` to "arrangement" / "editor" / "mixer" from `Main.qml` for the real focused area. There is
+  no time range on the bridge yet; when there is, return it as `range`.
+- **Layout check:** `history-agent-run`, `agent-chip-long` in `layout_states.py`, with `agent_demo.py`
+  (`agent_demo_calls(n)` turns the first track down a little per step). Sound's check still has 47 faults that were
+  there before S32 (long track names cut in the track header, mix strip and instrument card without a hover, the
+  "2.4 s" ruler label cut by `BarRuler`, "+ Group channel"): yours in P27. The check needs `ROSTRUM_SOUND_ENGINE`
+  pointed at a built engine when run from a worktree.
