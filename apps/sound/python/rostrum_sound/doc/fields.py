@@ -8,7 +8,7 @@ import dataclasses
 
 from rostrum_core import Param
 
-from .. import names
+from .. import deliver, names
 from . import effects
 from . import fields_buses as FB
 from . import fields_cleanup as FC
@@ -28,7 +28,9 @@ FIELDS = {
         N("tempo", 20, 400, "Time", "bpm"),
         V.time("length", group="Time", help="How long the mix is (a time); left out = the last sound + 2 s."),
         N("beatsPerBar", 1, 16, "Time", imp="secondary", integer=True, label="Beats per bar"),
-        N("sampleRate", 22050, 192000, "Output", "Hz", "deep", integer=True, label="Sample rate"),
+        Param.choice("sampleRate", list(deliver.RATE_LABELS), group="Output", importance="deep", label="Sample rate",
+                     labels=deliver.RATE_LABELS, help="How finely this song's sound is stored; export uses it unless "
+                                                      "you pick another."),
         Param.text("picture", group="Picture", importance="secondary", help="What the sound is made to, shown at the playhead on the Timeline: a video file, or \"item:<id>\" for a 2D item of the project (its newest render)."),
         V.time("pictureAt", group="Picture", importance="secondary", label="Picture starts",
                valid_when={"not": {"any": [IS("picture", None), IS("picture", "")]}},

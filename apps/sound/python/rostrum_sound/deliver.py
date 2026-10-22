@@ -29,6 +29,7 @@ FORMATS = [
 RATES = [{"id": 44100, "label": "44.1 kHz", "detail": "music"},
          {"id": 48000, "label": "48 kHz", "detail": "video"},
          {"id": 96000, "label": "96 kHz", "detail": "high resolution"}]
+RATE_LABELS = {r["id"]: f'{r["label"]} ({r["detail"]})' for r in RATES}   # one wording for Settings, the song and export
 BY_FORMAT = {f["id"]: f for f in FORMATS}
 MP3_RATES = (44100, 48000)              # the MP3 encoder inside libsndfile makes these two of ours
 DEFAULT_FORMAT = "wav24"
