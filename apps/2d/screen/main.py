@@ -20,6 +20,11 @@ import os
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+import checkout_paths  # noqa: E402  (this checkout's code first, before any Rostrum import)
+
+checkout_paths.use_this_checkout()
+
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QGuiApplication
 
