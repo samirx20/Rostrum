@@ -15,6 +15,7 @@ from pathlib import Path
 from rostrum_core import Document, RostrumError, codes
 from rostrum_core.mcp import App, Guides
 
+from .. import opening
 from ..doc import KIND, markers
 from ..engine import Engine
 from ..script import run_source
@@ -52,7 +53,7 @@ class SoundState:
 
 def open_or_new(folder: Path, item: str) -> Document:
     doc_file = folder / "docs" / f"{item}{KIND.ext}"
-    doc = Document.open(folder, item, KIND) if doc_file.is_file() else Document.new(KIND, folder=folder, item=item)
+    doc = opening.open_whole(folder, item) if doc_file.is_file() else Document.new(KIND, folder=folder, item=item)
     doc.save()
     doc.subscribe(lambda ev: doc.save())             # every change is on disk at once
     return doc

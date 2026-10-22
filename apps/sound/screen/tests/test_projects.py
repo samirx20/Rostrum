@@ -52,3 +52,25 @@ def test_recent_drops_missing_songs(here):
     projects.remember(dest, projects.ITEM)
     projects.remember(here / "gone", "song")
     assert [r["name"] for r in projects.recent()] == ["Kept"]
+
+
+@pytest.mark.parametrize("damage", ["cut short", "wrong shape", "another app", "newer version"])
+def test_damaged_song_is_refused_whole(here, damage):
+    """RELEASE.md line 13: a damaged song never opens half-read, and nothing is written over it."""
+    doc = projects.new_song()
+    _add_track(doc)
+    f = doc.folder / "docs" / "song.trk"
+    text = f.read_text(encoding="utf-8")
+    head = json.loads(text)
+    if damage == "cut short":
+        f.write_text(text[:200], encoding="utf-8")
+    else:
+        head.update({"wrong shape": {"doc": {"tracks": [{"name": "no id"}]}}, "another app": {"format": "rostrum-2d"},
+                     "newer version": {"version": 99}}[damage])
+        f.write_text(json.dumps(head), encoding="utf-8")
+        (doc.folder / ".rostrum" / "song.history.jsonl").unlink()
+    before = f.read_bytes()
+    with pytest.raises(RostrumError) as e:
+        projects.open_song(doc.folder, projects.ITEM)
+    assert '"' + doc.folder.name + '"' in str(e.value)
+    assert f.read_bytes() == before
