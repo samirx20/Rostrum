@@ -1,9 +1,10 @@
 import QtQuick
 import RostrumKit
 
-// Timeline page, centre: the selection's track up close. Notes: bars on a keyboard (drag = time and pitch,
+// The Editor (bottom dock): the selection's track up close. Notes: bars on a keyboard (drag = time and pitch,
 // double-click empty space = a new note, Delete removes). Drums: one row per drum. Recorded clips: their
-// waveforms. One gesture per drag = one undo step; a quarter beat grid, Shift = free.
+// waveforms. Select first, then act (RollInput): click, Ctrl / Shift+click, a box; a drag moves every selected one
+// (one undo step; Ctrl = no snapping, Shift = only in time, Alt = a copy). The context bar sits at the top centre.
 Panel {
     id: p
     readonly property var roll: backend.roll
@@ -11,10 +12,9 @@ Panel {
     readonly property int keysWidth: kind === "drums" ? 76 : 52     // drum names ("Open hat") are longer than note names
     title: roll.name !== "" ? roll.name : "Piano roll"
     headerRight: [
-        PictureToggle { anchors.verticalCenter: parent.verticalCenter },
         Text { anchors.verticalCenter: parent.verticalCenter; rightPadding: Theme.grid
-               text: p.kind === "notes" ? "Double-click to add a note  ·  Shift drags freely  ·  Ctrl + wheel zooms"
-                   : p.kind === "drums" || p.kind === "audio" ? "Shift drags freely" : ""
+               text: p.kind === "notes" ? "Double-click to add a note  ·  Ctrl drags freely  ·  Ctrl + wheel zooms"
+                   : p.kind === "drums" || p.kind === "audio" ? "Ctrl drags freely" : ""
                color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label }
     ]
 
@@ -34,29 +34,11 @@ Panel {
             anchors.fill: parent
             contentHeight: grid.height; boundsBehavior: Flickable.StopAtBounds; interactive: false
             RollGrid { id: grid; width: view.width; viewHeight: view.height; roll: p.roll; ruler: bars; keysWidth: p.keysWidth }
-            MouseArea {   // every click and drag on the roll, in one place
+            RollInput {   // every click, drag, box and right-click on the roll (select first, then act)
+                id: input
                 x: p.keysWidth; width: grid.width - x; height: grid.height
-                preventStealing: true
-                property real x0: 0
-                property real y0: 0
-                property bool dragging: false
-                onWheel: (w) => {   // Ctrl zooms, Shift / sideways scrolls in time (the Timeline's view); else up and down
-                    if (!backend.viewWheel(w.angleDelta.x, w.angleDelta.y, (w.modifiers & Qt.ControlModifier) !== 0,
-                                           (w.modifiers & Qt.ShiftModifier) !== 0, w.x / width, true))
-                        view.contentY = Math.max(0, Math.min(view.contentHeight - view.height, view.contentY - w.angleDelta.y / 2))
-                }
-                PinchGrow {}
-                onPressed: (m) => {
-                    var id = backend.rollAt(bars.tOf(m.x), grid.rowAt(m.y), 6 / bars.perSec)
-                    x0 = m.x; y0 = m.y
-                    dragging = id !== "" && backend.beginDrag(id)
-                }
-                onPositionChanged: (m) => { if (dragging) backend.dragBy((m.x - x0) / bars.perSec,
-                    p.kind === "notes" ? -Math.round((m.y - y0) / grid.rowH) : 0, (m.modifiers & Qt.ShiftModifier) !== 0) }
-                onReleased: { if (dragging) backend.endDrag(); dragging = false }
-                onCanceled: { if (dragging) backend.cancelDrag(); dragging = false }
-                onDoubleClicked: (m) => { if (p.kind === "notes" && backend.rollAt(bars.tOf(m.x), grid.rowAt(m.y), 0) === "")
-                                              backend.addNote(bars.tOf(m.x), Math.round(grid.rowAt(m.y))) }
+                grid: grid; bars: bars; flick: view; kind: p.kind; trackId: p.roll.id
+                onMenuAt: (entries, px, py) => { rollMenu.entries = entries; var q = input.mapToItem(p, px, py); rollMenu.openAt(q.x, q.y) }
             }
             Component.onCompleted: centre()
             function centre() {   // the notes in view
@@ -76,15 +58,44 @@ Panel {
         }
         Rectangle { x: p.keysWidth + Math.round(bars.xOf(backend.time)); width: 1; height: well.height
                     visible: bars.visibleX(x - p.keysWidth); color: Theme.accent; opacity: 0.9 }
+        Rectangle {   // the time range, shaded
+            readonly property var r: backend.timeRange
+            visible: r.length === 2
+            x: visible ? p.keysWidth + Math.max(0, bars.xOf(r[0])) : 0; height: well.height
+            width: visible ? Math.max(1, Math.min(bars.width, bars.xOf(r[1])) - Math.max(0, bars.xOf(r[0]))) : 0
+            color: Theme.accentSoft
+        }
+        Rectangle {   // what a drag snapped to
+            readonly property var s: backend.snapLine
+            visible: s.t !== undefined && input.busy && bars.visibleX(bars.xOf(s.t))
+            x: visible ? p.keysWidth + Math.round(bars.xOf(s.t)) : 0; width: 1; height: well.height
+            color: "#ff4fd8"; opacity: s.name ? 0.95 : 0.5          // magenta: what it caught (INTERACTION.md §1.11)
+            Text { visible: !!parent.s.name; x: 4; y: 2; text: parent.s.name || ""; color: "#ff4fd8"
+                   font.family: uiFont; font.pixelSize: Theme.label }
+        }
+        ContextBar {   // at a fixed place: the top centre of the Editor (INTERACTION.md §1.2)
+            id: rollBar
+            x: p.keysWidth; width: well.width - p.keysWidth; y: Theme.grid
+            active: backend.area === "roll"
+            busy: input.busy || rollMenu.opened
+        }
+    }
+    ActionMenu { id: rollMenu; parent: p; onPicked: (key) => key.startsWith("menu:") ? p.openSub(key) : backend.runAction(key) }
+    function openSub(key) { rollMenu.entries = backend.subMenu(key); rollMenu.openAt(rollMenu.x, rollMenu.y) }
+    function menuFor(id) {   // the right-click menu on an item (a scripted step: steps_select.py)
+        rollMenu.entries = backend.itemMenu(id)
+        var e = backend.selectionExtent()
+        var q = well.mapToItem(p, p.keysWidth + Math.max(0, bars.xOf(e.t1 || 0)) + 8, well.height / 3)
+        rollMenu.openAt(q.x, q.y)
     }
     Column {   // nothing to draw: say what to do, calmly
         visible: !bars.visible
         anchors.centerIn: parent; spacing: Theme.gap
         Text { anchors.horizontalCenter: parent.horizontalCenter; font.family: uiFont; font.pixelSize: Theme.title
-               color: Theme.fg2; text: p.kind === "none" ? "No track yet" : "Nothing on this track yet" }
+               color: Theme.fg2; text: p.kind === "none" ? "Nothing selected" : "Nothing on this track yet" }
         Text { anchors.horizontalCenter: parent.horizontalCenter; font.family: uiFont; font.pixelSize: Theme.body
                color: Theme.fg3
-               text: p.kind === "none" ? "Add a track with + Track at the top, then select it to see its notes here."
+               text: p.kind === "none" ? "Select a track or something on it to edit it here."
                      : recorder.armed !== "" ? "Press Record (R) to record a take on this track."
                      : "To record: press Rec on the track's row, then press R.
 To write notes: choose an instrument in the inspector." 

@@ -4,9 +4,9 @@ For a person using the RostrumSound app: record your voice or an instrument onto
 
 ## 1. Choose the microphone
 
-1. **File**, then **Settings…** (or Ctrl+,).
+1. **≡**, then **Preferences…** (or Ctrl+,).
 2. Under **Sound device**, set **Microphone**. Empty means Windows' default microphone.
-3. Click **Done**. Changes are saved at once.
+3. Click **Done**. Preferences are kept at once.
 
 ## 2. Put on headphones
 
@@ -15,9 +15,11 @@ If you must use speakers, leave **Hear input** off (see below).
 
 ## 3. Arm a track
 
-1. Pick the track you want to record on. A good choice is an **Audio** track (**+ Track**, then **Audio (recordings, sound files)**).
+1. Pick the track you want to record on. The quickest: open the **Library** (Ctrl+L), click the **Record** chip and
+   double-click **Microphone**. The new track comes armed, ready to record.
 2. Click the **Rec** pill on the track's row. It turns red when armed. Click it again to disarm. Hovering over it explains it.
-3. Once a track is armed, a group of controls appears at the top: **Record**, **Take**, a small level bar and (with a keyboard) **Record keys**. With nothing armed it is not shown.
+3. Once a track is armed, a group of controls appears in the arrangement's header strip, after ⏮ ▶: **Record**,
+   **Take**, a small level bar and (with a keyboard) **Record keys**. With nothing armed it is not shown.
 
 ## 4. Check the level
 
@@ -47,14 +49,14 @@ Click **Take**. The panel shows only what can be used now:
 
 If a take has hiss, hum or room echo:
 
-1. Click the clip. The inspector on the right has a **Cleanup** group: **Noise reduction** and **Reverb reduction** (0 to 1; start low, too much sounds watery), **Keep only the dialogue**, **Play one stem**.
-2. Once cleanup is set, a box appears under the inspector: "This clip has cleanup set, but its cleaned take is not made yet."
+1. Click the clip. The settings panel on the right has a **Cleanup** group: **Noise reduction** and **Reverb reduction** (0 to 1; start low, too much sounds watery), **Keep only the dialogue**, **Play one stem**.
+2. Once cleanup is set, a box appears under the settings panel: "This clip has cleanup set, but its cleaned take is not made yet."
 3. Click **Make cleaned take**. The first time, a model may be missing. The box then asks first, giving its size and licence. Click **Download** to continue or **Not now**. You see progress, with **Cancel**; it is checked when done ("Downloaded and checked."). If it fails, use **Try again** or **Close**.
 4. When it is made, the song plays again and the clip uses the cleaned take (the **Use cleaned take** switch turns it on and off).
-5. The model is downloaded only once. Where it is kept is under **AI models folder** in Settings.
+5. The model is downloaded only once. Where it is kept is under **AI models folder** in Preferences.
 
 ## If something is wrong
 
-- No level bar: the microphone did not open. Check **Microphone** in Settings.
+- No level bar: the microphone did not open. Check **Microphone** in Preferences.
 - Level bar stuck red with nothing playing: the microphone's input level in Windows is too high.
 - Take a little late against the music: the microphone's delay was not measured. The Take panel says so.

@@ -1,10 +1,11 @@
-"""RostrumSound's document bridge: the kit's DocBridge plus pages, the playhead, the arrangement and piano roll
+"""RostrumSound's document bridge: the kit's DocBridge plus the workspace (workspace.py: the bottom dock, the Sounds
+panel), the playhead, the arrangement and piano roll
 (timeline.py), what is under the pointer (pick.py), the drags (one doc.gesture = one undo step) and the sound
 (transport.py: rendered by the engine after each change, played from the playhead).
 
 The slots live in small mix-ins (gui-kit README › parts.py): view_slots (playhead, zoom), picture_slots, song_slots
 (music map), lane_slots (automation), edit_slots (edits and drags); the signals in signals.py. Every change is an
-operation (moves.py builds the calls). The Mix page reads `lastRender` (the engine's render answer, with stems for
+operation (moves.py builds the calls). The Mixer reads `lastRender` (the engine's render answer, with stems for
 every track) and listens to `renderChanged`. The project's shared markers are watched (MarkerWatch): one moved or
 renamed in another app re-renders the sound, and a rename is followed as one recorded step (marker.follow).
 """
@@ -18,23 +19,28 @@ from rostrum_sound.doc import markers as MK
 from rostrum_sound.doc import ops_mix
 
 from . import inspect, lanes, onpage, output_pick, picture, pick, timeline
+from .action_slots import ActionSlots
 from .edit_slots import EditSlots
+from .handle_slots import HandleSlots
+from .key_slots import KeySlots
 from .lane_slots import LaneSlots
 from .picture_slots import PictureSlots
+from .select_slots import SelectSlots
 from .signals import SoundSignals as S
 from .song_slots import SongSlots
 from .transport import Transport
 from .view import View
 from .view_slots import ViewSlots
+from .workspace import Workspace
 
-PAGES = ("instruments", "timeline", "mix")
 SOUNDING = ("notes", "hits", "clips", "sounds")       # what makes a compiled track last (engine contract/track.rs)
 
 
-class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, DocBridge):
+class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, HandleSlots, ActionSlots, KeySlots, SelectSlots, S, DocBridge):
     def __init__(self, doc, name="Untitled song", autosave=False, parent=None):
         self.name, self.autosave = name, autosave
-        self._page, self._t, self._track = "timeline", 0.0, ""
+        self._t, self._track = 0.0, ""
+        self.workspace = Workspace(lambda line: self._fail(line), lambda: self.model.reset(self._rows()))
         self._drag = self._grab = None
         self._view: dict = {}
         self._fitted: set[str] = set()      # tracks the piano roll has already framed once
@@ -68,10 +74,6 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, D
     @Property(str, constant=True)
     def docName(self):
         return self.name
-
-    @Property(str, notify=S.pageChanged)
-    def page(self):
-        return self._page
 
     @Property(float, notify=S.timeChanged)
     def time(self):
@@ -128,8 +130,11 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, D
     def edit_call(self, item_id, param, value):
         return inspect.edit_call(self.doc, item_id, param, value)
 
-    def on_page(self, item):        # the inspector leaves out what the page's own controls show (onpage.py)
-        return onpage.fields(self._page, item.get("type", ""), self.doc.kind.registry)
+    def on_page(self, item):        # the inspector leaves out what the workspace's own controls show (onpage.py)
+        return onpage.fields(self.workspace.dock, item.get("type", ""))
+
+    def _first(self):       # nothing selected at first: the settings panel shows the song (DESIGN.md decision 4)
+        return ""
 
     def list_choices(self, item, param):      # a track's / bus' Output: Master and the buses it may feed
         return output_pick.choices(self.doc, item, self.label_of) if param == output_pick.FIELD else []
@@ -138,14 +143,6 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, D
         return output_pick.without_none(super()._rows())
 
     # ---- screen state -----------------------------------------------------------------------------------------
-    @Slot(str)
-    def setPage(self, page):
-        if page not in PAGES:
-            return self._fail(f'Error: page: "{page}" is not a page ({", ".join(PAGES)}).')
-        self._page = page
-        self.model.reset(self._rows())
-        self.pageChanged.emit()
-
     @Slot()
     def togglePlay(self):
         self.transport.toggle(self._t)

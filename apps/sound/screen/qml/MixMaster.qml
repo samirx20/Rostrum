@@ -3,34 +3,22 @@ import QtQuick.Layouts
 import RostrumKit
 import "MixFormat.js" as F
 
-// The master strip: name, its insert chain, the fader, the loudness (MixLoudness: target only while normalize is on,
-// live short-term loudness and true peak at the playhead, pass / miss) and "Render mix and stems" (MixExport).
+// The master strip, pinned at the Mixer's right: its name, its effects, the fader with its meter and the loudness
+// (MixLoudness: live short-term loudness and true peak at the playhead, the curve with the target, pass / miss).
+// Delivering (target, file, stems) is the Deliver dialog (DeliverDialog.qml).
 Rectangle {
     id: m
     readonly property var info: mixer.master          // id, name, volume, effects, meter
     readonly property real minBody: Math.max(140, loud.implicitHeight)   // fader travel, the loudness at its smallest curve
-    readonly property real need: 22 + chain.height + minBody + 2 * Theme.gap     // the least it can do with (MixPage)
-                                 + export_.height + 2 * (Theme.gap + 2) + Theme.gap   // the height it can't do without (MixPage)
     width: 330
     color: Theme.app
     radius: Theme.radiusPanel
     border.width: backend.selected === "master" ? 1 : 0; border.color: Theme.accent
 
     function pick() { if (backend.selected !== "master") backend.select("master") }
-    QtObject {   // what an InspectorRow calls on its "bridge": the master, whatever is selected
-        id: masterBridge
-        readonly property bool moreOpen: false
-        function setValue(p, v) { m.pick(); return backend.setValue(p, v) }
-        function beginScrub(p) { m.pick(); backend.beginScrub(p) }
-        function scrub(p, v) { m.pick(); backend.scrub(p, v) }
-        function endScrub() { backend.endScrub() }
-        function toggleMore() {}
-    }
-
     Flickable {      // a short window: the card scrolls instead of laying its parts over each other
         id: flick
-        anchors { left: parent.left; right: parent.right; top: parent.top; bottom: export_.top
-                  margins: Theme.gap + 2; bottomMargin: Theme.gap }
+        anchors { fill: parent; margins: Theme.gap + 2 }
         contentHeight: col.height; clip: true; boundsBehavior: Flickable.StopAtBounds
         interactive: contentHeight > height
     ColumnLayout {
@@ -64,12 +52,8 @@ Rectangle {
                 Text { Layout.alignment: Qt.AlignHCenter; text: F.faderText(m.info.volume); color: Theme.fg
                        font.family: uiFont; font.pixelSize: Theme.body; font.features: { "tnum": 1 } }
             }
-            MixLoudness { id: loud; Layout.fillWidth: true; Layout.fillHeight: true; proxy: masterBridge }
+            MixLoudness { id: loud; Layout.fillWidth: true; Layout.fillHeight: true }
         }
     }
-    }
-    MixExport {      // Render always in sight: the fader and loudness above give way first
-        id: export_
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: Theme.gap + 2 }
     }
 }

@@ -30,6 +30,9 @@ def shown(item: dict, root: dict) -> dict:
         if kind and not isinstance(v, (int, float)):
             out[k] = round(timing.sec(v, root, item["id"]) if kind == "time" else
                            timing.length_sec(v, root, _start(item, root), item), 3)
+    if item["type"] == "track" and not item.get("colour"):          # the colour it is drawn in (timeline.hue)
+        i = next((n for n, t in enumerate(root.get("tracks", [])) if t["id"] == item["id"]), 0)
+        out["colour"] = timeline.hue(item, i)
     if item["type"] == "clip" and item.get("length") is None:      # plays to the file's end: show how long that is
         out["length"] = round(timeline.clip_span(item, root)[1], 3)
     return out

@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// A voice card's lines (text + when) and Make voice, which shows only while a line has no audio yet.
+// A voice track's lines (text + when) and Make voice (beside the Editor), which shows only while a line has no audio yet.
 // Clicking a line selects it, so the inspector shows its fields (words, time, take, level, fades).
 Column {
     id: v
@@ -32,7 +32,7 @@ Column {
                    color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
         }
     }
-    Text { visible: v.lines.length === 0; text: "No lines yet — add one with line.add"
+    Text { visible: v.lines.length === 0; text: "No lines yet."
            color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body }
     Item {
         width: v.width; height: visible ? Theme.button + Theme.gap : 0
@@ -41,7 +41,7 @@ Column {
             id: make
             y: Theme.gap; visible: v.missing > 0 && !v.busy
             text: "Make voice"; kind: "primary"
-            onClicked: instruments.makeVoice(v.trackId)
+            onClicked: editorSide.makeVoice(v.trackId)
         }
         Text {
             anchors.left: make.visible ? make.right : parent.left; anchors.leftMargin: make.visible ? Theme.gap : 0

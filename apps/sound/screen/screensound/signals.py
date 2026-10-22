@@ -6,7 +6,6 @@ from PySide6.QtCore import Signal
 
 
 class SoundSignals:
-    pageChanged = Signal()
     timeChanged = Signal()
     playingChanged = Signal()
     timelineChanged = Signal()

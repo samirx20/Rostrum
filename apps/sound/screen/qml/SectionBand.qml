@@ -3,7 +3,7 @@ import RostrumKit
 
 // The song's sections (intro, verse, drop) under the markers: each a bar from its start to its end with its name.
 // Click selects the section (the inspector edits its name, start and end); drag moves it and everything that
-// starts inside it (one `section.move` per step, the whole drag one undo step; a quarter beat grid, Shift = free).
+// starts inside it (one `section.move` per step, the whole drag one undo step; a quarter beat grid, Ctrl = free).
 // Drag the left or right edge: that edge only moves (`section.set`, one undo step), the section's contents stay.
 // Absent when the song has no sections. The clicks are taken here in one place, as in MarkerBand.
 Item {
@@ -57,7 +57,7 @@ Item {
             if (!dragging) m.accepted = false
         }
         onPositionChanged: (m) => { if (dragging && pressed)
-            backend.dragBy((m.x - x0) / band.ruler.perSec, 0, (m.modifiers & Qt.ShiftModifier) !== 0) }
+            backend.dragBy((m.x - x0) / band.ruler.perSec, 0, (m.modifiers & Qt.ControlModifier) !== 0) }
         onWheel: (w) => backend.viewWheel(w.angleDelta.x, w.angleDelta.y, (w.modifiers & Qt.ControlModifier) !== 0,
                                           (w.modifiers & Qt.ShiftModifier) !== 0, w.x / band.width, false)
         onReleased: { if (dragging) backend.endDrag(); dragging = false }

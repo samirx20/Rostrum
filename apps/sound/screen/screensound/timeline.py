@@ -1,7 +1,8 @@
 """What the Timeline shows, as plain data from the document's root (no Qt): one row per track with its notes,
 hits and clips as blocks (seconds), the markers, the song's length and grid, and the piano roll of one track.
 
-A track's hue comes from HUES (the one per-track colour list on the screen), by its place in the song.
+A track's hue is its own `colour` when set, else HUES (the one per-track colour list on the screen) by its place in
+the song: `hue`, the one place every screen part (arrangement, piano roll, inspector) reads it from.
 A clip without a length plays to the end of its file: the file's length is read once (and cached).
 """
 from __future__ import annotations
@@ -14,9 +15,17 @@ from rostrum_sound.doc import keys as K
 from rostrum_sound.doc import markers as mk
 
 from . import lanes, music_map, timing
+from .handles import level_y
 
 # no blues: blue is the selection (Theme.accent)
 HUES = ["#4fb5a5", "#e0a458", "#d27aa8", "#a0c167", "#b48ce0", "#c98c6b", "#d6c86c", "#e07a6b"]
+
+
+def hue(track: dict, index: int) -> str:
+    """The colour a track is drawn in: its own `colour`, else its place's hue."""
+    return track.get("colour") or HUES[index % len(HUES)]
+
+
 HIT_SECONDS = 0.12          # how long a drum hit's block is drawn
 PEAKS = 48                  # waveform points per clip
 
@@ -67,7 +76,8 @@ def clip_block(c, root):
     label = c["media"].replace("\\", "/").rsplit("/", 1)[-1]
     dur *= c.get("stretch", 1)      # a stretched clip lasts length × stretch
     return {"id": c["id"], "type": "clip", "t": t, "dur": dur, "label": label, "peaks": list(peaks),
-            "fadeIn": min(c.get("fadeIn", 0), dur), "fadeOut": min(c.get("fadeOut", 0), dur)}
+            "fadeIn": min(c.get("fadeIn", 0), dur), "fadeOut": min(c.get("fadeOut", 0), dur),
+            "volume": c.get("volume", 1), "levelY": level_y(c.get("volume", 1))}      # the level line (handles.py)
 
 
 def line_block(track, ln, root):
@@ -146,8 +156,8 @@ def rows(root: dict, open_lanes: dict | None = None) -> list[dict]:
                 b["lanes"] = [0.5 if hi == lo else 1 - (k - lo) / (hi - lo) for k in b["keys"]]
             elif b["type"] == "hit":
                 b["lanes"] = [drums.index(b["drum"]) / max(len(drums) - 1, 1)]
-        out.append({"id": t["id"], "name": t.get("name") or t["id"], "hue": HUES[i % len(HUES)],
-                    "mute": bool(t.get("mute")), "solo": bool(t.get("solo")), "kind": kind_of(t), "blocks": bl,
+        out.append({"id": t["id"], "name": t.get("name") or t["id"], "hue": hue(t, i),
+                    "mute": bool(t.get("mute")), "solo": bool(t.get("solo")), "locked": bool(t.get("locked")), "kind": kind_of(t), "blocks": bl,
                     "autoUsed": lanes.used(t),
                     "auto": lanes.lane_data(t, root, *open_lanes[t["id"]]) if t["id"] in (open_lanes or {}) else None})
     return out + lanes.mix_rows(root, open_lanes or {})

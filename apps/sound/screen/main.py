@@ -1,15 +1,16 @@
-"""RostrumSound's screen: Instruments, Timeline and Mix pages on one Sound document.
+"""RostrumSound's screen: one workspace on one Sound document (the arrangement, the Editor / Mixer dock, the Sounds
+panel, the settings panel; apps/sound/DESIGN.md §2).
 
-    python apps/sound/screen/main.py                                  # the last song, or a new untitled one
+    python apps/sound/screen/main.py                                  # the last song, or a new one
     python apps/sound/screen/main.py <song file or project folder>    # open that song
-    python apps/sound/screen/main.py --new                            # a new untitled song
+    python apps/sound/screen/main.py --new                            # a new song ("Untitled song" in the projects folder)
     python apps/sound/screen/main.py --sample                         # a small sample song (not saved)
     python apps/sound/screen/main.py --script my_song.py              # on what a script builds (not saved)
     python apps/sound/screen/main.py --doc <project folder> <item>    # open a saved document (made if missing)
     python apps/sound/screen/main.py --step "select melody.n9600" --step "drag-note melody.n9600 0.6 2" --shot out.png
 Every song with a folder is saved after every change. Steps: see screensound/steps.py, plus the file steps here
-(`file-new`, `file-open <path>`, `file-save-as <folder>`, `file-menu`, `settings`, `about`, `help`, `guide <file.md>`,
-`add-track <kind>`). With --shot the window quits by
+(`file-new`, `file-open <path>`, `file-duplicate <folder>`, `file-menu`, `settings`, `about`, `help`, `guide <file.md>`,
+`add-track <sound>`, `library`, `export-open`, `file-in <path>`). With --shot the window quits by
 itself once the sound has rendered; a failed step, render or save exits nonzero. Offscreen screenshots:
 QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
     python apps/sound/screen/main.py --check-layout <folder>          # the layout check: every screen state at every
@@ -31,13 +32,16 @@ from rostrum_sound.opening import said
 from screensound import projects
 from screensound.adder import Adder
 from screensound.bridge import SoundBridge
-from screensound.instruments import InstrumentsPage
+from screensound.editor_side import EditorSide
+from screensound.file_in import FileIn
 from screensound.keys_record import KeysRecording
+from screensound.library_panel import LibraryPanel
 from screensound.mixer import MixPage
 from screensound.recording import Recording
 from screensound.sample import SOURCE
 from screensound.session import Songs
 from screensound.settings_page import SettingsPage
+from screensound.song_panel import SongPanel
 
 GUIDES = guides.entries(Path(__file__).resolve().parents[1] / "guides", [
     ("first-song.md", "Making your first song"), ("recording.md", "Recording"), ("exporting.md", "Exporting"),
@@ -50,7 +54,7 @@ MAIN_QML = HERE / "qml" / "Main.qml"
 
 def first_song(args) -> tuple[Document, str]:
     """(the first document, why the asked-for song was refused or ""). A song that can't be opened whole (a double-
-    clicked damaged file, a last song saved by a newer version) is never shown half-read: a new untitled song opens
+    clicked damaged file, a last song saved by a newer version) is never shown half-read: a new song opens
     instead and the screen says why, in words."""
     try:
         return first_doc(args), ""
@@ -95,19 +99,20 @@ class Screen:
         self.songs = Songs(self.show)
         self.settings = SettingsPage()
 
-    def show(self, doc, name, untitled=False):
+    def show(self, doc, name):
         old_win, old_parts = self.win, self.parts
         if old_win is not None:
             old_win.close()
         if old_parts:
             self._close(old_parts)
         bridge = SoundBridge(doc, name, autosave=doc.folder is not None)
-        instruments, mixer, recorder = InstrumentsPage(bridge), MixPage(bridge), Recording(bridge)
-        keys = KeysRecording(bridge, recorder)
-        context = {"backend": bridge, "instruments": instruments, "mixer": mixer, "recorder": recorder,
+        mixer, recorder, side = MixPage(bridge), Recording(bridge), EditorSide(bridge)
+        keys, library = KeysRecording(bridge, recorder), LibraryPanel(bridge)
+        context = {"backend": bridge, "workspace": bridge.workspace, "mixer": mixer, "recorder": recorder,
                    "keys": keys, "takeSetup": recorder.setup, "songs": self.songs, "settingsPage": self.settings,
-                   "adder": Adder(bridge), "guides": GUIDES}
-        self.ctx_adder = context["adder"]
+                   "adder": Adder(bridge), "songPanel": SongPanel(bridge), "editorSide": side, "fileIn": FileIn(bridge),
+                   "soundLibrary": library, "guides": GUIDES}
+        self.ctx_adder, self.ctx_file_in = context["adder"], context["fileIn"]
         if self.engine is None:
             _, self.engine, self.win = start(MAIN_QML, context, self.size)
         else:
@@ -119,11 +124,12 @@ class Screen:
             self.win.resize(*self.size)
         if old_win is not None:
             old_win.deleteLater()
-        self.parts = {"bridge": bridge, "instruments": instruments, "mixer": mixer, "recorder": recorder, "keys": keys}
+        self.parts = {"bridge": bridge, "mixer": mixer, "recorder": recorder, "keys": keys, "side": side,
+                      "library": library}
 
     @staticmethod
     def _close(parts):
-        for k in ("keys", "recorder", "mixer", "bridge"):
+        for k in ("keys", "recorder", "library", "side", "mixer", "bridge"):
             parts[k].close()
 
     @property
@@ -143,12 +149,18 @@ def file_step(screen, step) -> bool:
         screen.songs.newSong()
     elif word == "file-open":
         screen.songs.openPath(rest)
-    elif word == "file-save-as":
-        screen.songs.saveAs(rest)
+    elif word in ("file-duplicate", "file-save-as"):     # ≡ › Duplicate… (the old name still works)
+        screen.songs.duplicate(rest)
     elif word == "file-menu":
         QMetaObject.invokeMethod(screen.win, "openFileMenu")
-    elif word == "add-track":                 # add-track <piano|strings|…|audio> (the + Track menu)
+    elif word == "add-track":                 # add-track <sound key> (the Sounds panel: adder.py; old names still work)
         screen.ctx_adder.add(rest)
+    elif word in ("library", "sounds"):       # the Library, open (Ctrl+L)
+        QMetaObject.invokeMethod(screen.win, "openLibrary")
+    elif word in ("export-open", "deliver-open"):     # the Export sheet, open (Ctrl+E)
+        screen.parts["mixer"].export.setDialogOpen(True)
+    elif word == "file-in":                   # + Add › From a file… (a sound, a MIDI file or a video)
+        screen.ctx_file_in.add(rest)
     elif word == "settings":
         QMetaObject.invokeMethod(screen.win, "openSettings")
     elif word in ("about", "help"):           # Help › About and licences / the Help menu, open
@@ -220,7 +232,7 @@ def main():
             raise RuntimeError(f"could not save {args.shot}")
         print(f"saved {args.shot} {img.width()}x{img.height()}  history={bridge.historyCount}  "
               f"selected={bridge.selected}  sound={bridge.soundState!r}  lufs={bridge.lastRender.get('lufs')}")
-        app.exit(0)              # not quit(): that asks the window, and an untitled song with changes would ask back
+        app.exit(0)
 
     QTimer.singleShot(400, lambda: guarded(run_steps))
     if args.shot or args.check_layout:

@@ -64,7 +64,7 @@ synth = track("lead", instrument="plugin", plugin={"format": "vst3", "path": r"C
 - A plug-in is one `plugin` record: `{format: "clap"|"vst3", path, id, name?, params?, state?}`. `params` holds the
   settings you changed, `{param id: number or [[time, value], …]}`; a list is that setting's automation lane
   (`param:<id>`). `inspect_plugins` lists what is installed with each setting's id, range and default. `state` is
-  what the plug-in's own window saved (the Mix page's "Open window" writes it). We bundle no plug-ins.
+  what the plug-in's own window saved (the Mixer's "Open window" writes it). We bundle no plug-ins.
 
 ## The song's map: tempo changes, key, sections, MIDI
 
@@ -88,7 +88,7 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   (or `"by": -2.5` seconds) moves the section and everything that starts inside it (notes, hits, clips, designed
   sounds, voice lines, markers, tempo and key changes, other sections, automation points) in one undo step. Each
   time keeps its form; a time on a marker that moves with it follows it. Effect envelopes inside effects don't move.
-  On the Timeline: drag the section's bar (Shift = off the grid).
+  In the arrangement: drag the section's bar (Ctrl = off the grid).
 - **Keys** are for you and the screen (the readout shows the key at the playhead): `doc/keys.py` has `scale`,
   `in_key`, `snap` (nearest note of the key). They change nothing in the sound.
 - **MIDI:** `edit_import_midi` `{path, song_map}` imports a .mid as one undo step (channel 10 becomes drum hits on

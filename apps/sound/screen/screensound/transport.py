@@ -29,6 +29,7 @@ class Transport(QObject):
         self._schedule, self._length = schedule_fn, length_fn
         self.last: dict = {}
         self.state, self.stale, self._want, self._at, self._render_failed = "Rendering…", True, False, 0.0, False
+        self.loop: tuple[float, float] | None = None      # ⟳ Loop: (start, end) of the time range while on
         self.renderer = Renderer(self)
         self.renderer.rendered.connect(self._rendered)
         self.renderer.failed.connect(self._failed)
@@ -78,6 +79,8 @@ class Transport(QObject):
             self.player.seek(t)
 
     def _play(self, t):
+        if self.loop and not self.loop[0] <= t < self.loop[1]:
+            t = self.loop[0]                    # looping: play starts inside the loop
         self.player.play(t)
         self._tick.start()
         self.playingChanged.emit()
@@ -117,6 +120,9 @@ class Transport(QObject):
 
     def _advance(self):
         t = self.player.position()
+        if self.loop and self.player.playing and t >= self.loop[1]:   # ⟳ Loop: back to the range's start
+            self.player.seek(self.loop[0])
+            t = self.loop[0]
         if t >= self._length():                # on the clock (no player), the song's end stops it
             self.toggle(t)
             t = self._length()

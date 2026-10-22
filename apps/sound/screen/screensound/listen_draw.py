@@ -50,12 +50,13 @@ def _save(plt, fig, png) -> str:
     return str(png)
 
 
-def loudness_panel(y, sr, t, st, png) -> str:
-    """Left: short-term loudness with the integrated level dashed. Right: energy per band over time."""
+def loudness_panel(y, sr, t, st, png, whole=None) -> str:
+    """Left: short-term loudness with the integrated level dashed (`whole`: the engine's own figure for it; measured
+    here only when it is not given). Right: energy per band over time."""
     plt = pyplot()
     with plt.rc_context(_rc()):
         fig, (a1, a2) = _figure(plt, 2, [1, 1.6])
-        whole = bs1770.integrated(y, sr)
+        whole = bs1770.integrated(y, sr) if whole is None else whole
         a1.plot(t, np.where(st > -70, st, np.nan), lw=1.6, color=ACCENT)
         if np.isfinite(whole):
             a1.axhline(whole, color=FG2, lw=0.9, ls="--")

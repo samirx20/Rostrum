@@ -3,7 +3,7 @@ import RostrumKit
 
 // One track's things in an arrangement row, drawn only (clicks are the Timeline's): notes as thin bars placed
 // by pitch (a chord: one per key), drum hits as ticks placed by drum, recorded clips as blocks with their
-// waveform. The selected one is drawn in the accent colour. `ruler` gives the time mapping.
+// waveform. Every selected one is drawn in the accent colour (backend.picked). `ruler` gives the time mapping.
 Item {
     id: lane
     property var track
@@ -17,7 +17,7 @@ Item {
         delegate: Item {
             id: b
             required property var modelData
-            readonly property bool on: modelData.id === backend.selected
+            readonly property bool on: !!backend.picked[modelData.id]
             readonly property bool isClip: modelData.type === "clip" || modelData.type === "line"
             readonly property real barH: modelData.type === "hit" ? lane.mark * 1.8 : lane.mark
             x: Math.round(lane.ruler.xOf(modelData.t))
@@ -68,6 +68,19 @@ Item {
                     if (fi > 0) { c.beginPath(); c.moveTo(0, 0); c.lineTo(fi, 0); c.lineTo(0, height); c.closePath(); c.fill() }
                     if (fo > 0) { c.beginPath(); c.moveTo(width, 0); c.lineTo(width - fo, 0); c.lineTo(width, height); c.closePath(); c.fill() }
                 }
+            }
+            Item {        // a selected clip's handles (handles.py): edges, fade corners, stretch corner, level line
+                visible: b.on && b.modelData.type === "clip"
+                anchors.fill: parent
+                Rectangle { y: Math.round(b.modelData.levelY * (parent.height - 1)); width: parent.width; height: 1
+                            color: Theme.fg; opacity: 0.75 }
+                Rectangle { width: 3; height: parent.height; color: Theme.accent }
+                Rectangle { x: parent.width - 3; width: 3; height: parent.height; color: Theme.accent }
+                Rectangle { x: Math.min(parent.width - 7, lane.ruler.wOf(b.modelData.fadeIn || 0)); width: 7; height: 7
+                            radius: 2; color: Theme.fg; border.color: Theme.accent }
+                Rectangle { x: Math.max(0, parent.width - 7 - lane.ruler.wOf(b.modelData.fadeOut || 0)); width: 7; height: 7
+                            radius: 2; color: Theme.fg; border.color: Theme.accent }
+                Rectangle { x: parent.width - 7; y: parent.height - 7; width: 7; height: 7; radius: 1; color: Theme.accent }
             }
             Text {
                 id: label

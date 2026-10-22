@@ -3,7 +3,7 @@ import RostrumKit
 
 // The song's tempo changes and key changes on the ruler, each a small flag at its time ("♩ 96", "D minor").
 // Click selects it (the inspector edits it; Delete removes it); drag moves it (one gesture = one undo step; a tempo
-// change on its beat, a quarter beat grid, Shift = free). Absent while the song has neither. Clicks are taken here in
+// change on its beat, a quarter beat grid, Ctrl = free). Absent while the song has neither. Clicks are taken here in
 // one place, as in MarkerBand.
 Item {
     id: band
@@ -53,7 +53,7 @@ Item {
             if (!dragging) m.accepted = false
         }
         onPositionChanged: (m) => { if (dragging && pressed)
-            backend.dragBy((m.x - x0) / band.ruler.perSec, 0, (m.modifiers & Qt.ShiftModifier) !== 0) }
+            backend.dragBy((m.x - x0) / band.ruler.perSec, 0, (m.modifiers & Qt.ControlModifier) !== 0) }
         onWheel: (w) => backend.viewWheel(w.angleDelta.x, w.angleDelta.y, (w.modifiers & Qt.ControlModifier) !== 0,
                                           (w.modifiers & Qt.ShiftModifier) !== 0, w.x / band.width, false)
         onReleased: { if (dragging) backend.endDrag(); dragging = false }

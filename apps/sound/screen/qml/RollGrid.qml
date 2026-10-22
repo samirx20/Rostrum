@@ -44,7 +44,9 @@ Item {
                         color: g.notes && g.black(parent.key) ? Theme.app : Theme.panel }
             Text {
                 visible: g.notes ? parent.key % 12 === 0 || g.rowH >= 16 : true
-                x: Theme.gap; anchors.verticalCenter: parent.verticalCenter
+                x: Theme.gap; width: g.keysWidth - Theme.gap - 6; height: parent.height     // fits its row: a short row
+                verticalAlignment: Text.AlignVCenter; fontSizeMode: Text.Fit; minimumPixelSize: 7  // shrinks the name
+                elide: Text.ElideRight
                 text: g.notes ? g.rowNames[parent.index] : g.drumName(g.roll.drums[parent.index])
                 color: g.notes && parent.key % 12 !== 0 ? Theme.fg4 : Theme.fg3
                 font.family: uiFont; font.pixelSize: Theme.label - (g.notes ? 1 : 0); font.features: { "tnum": 1 }
@@ -60,7 +62,7 @@ Item {
             delegate: Item {
                 id: b
                 required property var modelData
-                readonly property bool on: modelData.id === backend.selected
+                readonly property bool on: !!backend.picked[modelData.id]
                 x: Math.round(g.ruler.xOf(modelData.t)); width: g.width; height: g.height
                 Repeater {
                     model: b.modelData.type === "note" ? b.modelData.keys : []
@@ -68,8 +70,8 @@ Item {
                         required property int modelData
                         y: (g.roll.hi - modelData) * g.rowH + 1; height: g.rowH - 2
                         width: Math.max(4, g.ruler.wOf(b.modelData.dur) - 1); radius: 3
-                        color: b.on ? Theme.accent : g.roll.hue
-                        border.width: b.on ? 1 : 0; border.color: Theme.fg
+                        color: b.on ? Qt.lighter(g.roll.hue, 1.25) : g.roll.hue      // selected: a lighter fill, the accent outline
+                        border.width: b.on ? 2 : 0; border.color: Theme.accent
                         Text { visible: parent.width >= implicitWidth + 5 && g.rowH >= 14   // whenever the name fits the bar
                                x: 3; anchors.verticalCenter: parent.verticalCenter
                                text: b.modelData.names[b.modelData.keys.indexOf(parent.modelData)]; color: Theme.app; font.family: uiFont
@@ -81,8 +83,8 @@ Item {
                     readonly property real s: Math.min(12, g.rowH * 0.5)
                     x: -s / 2; y: g.roll.drums.indexOf(b.modelData.drum) * g.rowH + (g.rowH - s) / 2
                     width: s; height: s; rotation: 45; radius: 2
-                    color: b.on ? Theme.accent : g.roll.hue; opacity: b.on ? 1 : 0.5 + 0.5 * (b.modelData.vel || 0)
-                    border.width: b.on ? 1 : 0; border.color: Theme.fg
+                    color: b.on ? Qt.lighter(g.roll.hue, 1.25) : g.roll.hue; opacity: b.on ? 1 : 0.5 + 0.5 * (b.modelData.vel || 0)
+                    border.width: b.on ? 2 : 0; border.color: Theme.accent
                 }
                 Rectangle {   // a clip: its waveform
                     visible: b.modelData.type === "clip" || b.modelData.type === "line"

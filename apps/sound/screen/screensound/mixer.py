@@ -1,4 +1,4 @@
-"""The Mix page: one strip per track, one per bus, then the master. Exposed to QML as `mixer`.
+"""The Mixer (bottom dock): one strip per track, one per bus, then the master. Exposed to QML as `mixer`.
 
 Strips come from the document (`strips.py`) and the last render's meters; every edit is the bridge's edit on the
 strip's item (the strip selects it first), so a fader drag is one scrub = one change. Adding an effect is the
@@ -7,7 +7,6 @@ strip's item (the strip selects it first), so a fader drag is one scrub = one ch
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
 from . import ducks, playback, strips
@@ -29,8 +28,6 @@ class MixPage(QObject):
         self.bridge, self.doc = bridge, bridge.doc
         self._tracks = RowsModel(ROLES, self)
         self._buses = RowsModel(ROLES, self)
-        self._master_rows = RowsModel(rows.ROLES, self)
-        self._master_layout = strips.master_layout(self.doc.kind.registry.field_op("master"))
         self._master: dict = {}
         self.pics = ListenPics(bridge, pics_folder, self)
         self._plugins = PluginHub(bridge, playback.open_engine, self)
@@ -75,10 +72,6 @@ class MixPage(QObject):
     @Property(QObject, constant=True)
     def buses(self):
         return self._buses
-
-    @Property(QObject, constant=True)
-    def masterRows(self):
-        return self._master_rows
 
     @Property("QVariantMap", notify=masterChanged)
     def master(self):
@@ -144,5 +137,3 @@ class MixPage(QObject):
         m = self.doc.item(strips.MASTER)
         self._master = strips.strip(m, "Master", strips.master_meter(render), vendor_of=vendor)
         self.masterChanged.emit()
-        evaluated = rows.evaluate(self._master_layout, m, self.doc.kind.facts(m, self.doc), False)
-        self._master_rows.update(evaluated) if self._master_rows.rows else self._master_rows.reset(evaluated)

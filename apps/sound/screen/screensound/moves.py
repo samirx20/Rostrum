@@ -1,13 +1,17 @@
 """The Timeline's edits as operation calls (no Qt): moving a note / hit / clip / marker in time (and a note in
 pitch), adding a note, deleting the selection, a track's quick mute / solo. Times are written in the form the
-item used (timing.write_time); a drag snaps to a quarter beat unless free.
+item used (timing.write_time). A drag snaps (DESIGN.md §5) unless free (Ctrl): to a marker or the playhead when
+the grabbed item's start is within a few pixels of one, else to the grid. Several selected items move together
+(`grab_many` / `many_calls`): each by the same amount, the one grabbed decides the snap.
 """
 from __future__ import annotations
 
 from rostrum_core import RostrumError, codes
 
 from . import song_edit, timing
+from .timeline import kind_of
 
+MANY = ("note", "hit", "clip", "line")          # what moves together when several are selected
 MOVABLE = ("note", "hit", "clip", "line", "marker", "section", "tempo", "key")
 REMOVABLE = ("note", "hit", "clip", "line", "marker", "track", "effect", "automation", "bus", "send", "duck",
              "tempo", "key", "section")
@@ -37,6 +41,59 @@ def drag_calls(doc, g: dict, dt: float, dsemi: int = 0, free: bool = False) -> l
     if g["type"] == "note" and dsemi:
         args["pitch"] = timing.shift_pitch(g["pitch"], int(dsemi))
     return [{"op": f"{g['type']}.set", "target": [g["id"]], "args": args}]
+
+
+def grab_many(doc, ids, primary) -> dict:
+    """A drag of every selected note / hit / clip / line, held by `primary` (the one under the pointer)."""
+    return {"primary": grab(doc, primary), "items": [grab(doc, i) for i in ids if doc.item(i)["type"] in MANY]}
+
+
+def snap_to(t: float, root: dict, free: bool, targets: list[dict], tol: float) -> tuple[float, dict]:
+    """(where `t` lands, what it caught: {"t", "name"}, {} when free). Markers and the playhead catch within `tol`
+    seconds (a few pixels at any zoom), nearest first; otherwise the grid."""
+    if free:
+        return max(0.0, round(t, 4)), {}
+    near = [m for m in targets if abs(m["t"] - t) <= tol]
+    if near:
+        m = min(near, key=lambda m: abs(m["t"] - t))
+        return m["t"], m
+    g = timing.snap(t, root, False)
+    return g, {"t": g, "name": ""}
+
+
+def many_calls(doc, g: dict, dt: float, dsemi: int, free: bool, only_time: bool, targets: list[dict], tol: float):
+    """(calls, what it snapped to) for moving every grabbed item by the same amount: the grabbed one snaps, the rest
+    follow; never before the song's start. Shift (`only_time`): no pitch change."""
+    root, p = doc.data, g["primary"]
+    to, caught = snap_to(p["t"] + dt, root, free, targets, tol)
+    d = max(to - p["t"], -min(x["t"] for x in g["items"]))
+    calls = []
+    for x in g["items"]:
+        args = {"at": timing.write_time(x["at"], max(0.0, x["t"] + d), root)}
+        if x["type"] == "note" and dsemi and not only_time:
+            args["pitch"] = timing.shift_pitch(x["pitch"], int(dsemi))
+        calls.append({"op": f"{x['type']}.set", "target": [x["id"]], "args": args})
+    return calls, caught
+
+
+def track_calls(doc, g: dict, dest: str) -> list[dict]:
+    """Clips and designed sounds dragged onto another row: one `clip.to_track` when that track can hold them (an
+    audio or empty track, not a voice track); none otherwise (they stay on their own tracks)."""
+    movers = [x["id"] for x in g["items"] if x["type"] in ("clip", "sound")]
+    if not movers or not dest or not doc.has(dest) or doc.item(dest)["type"] != "track":
+        return []
+    if kind_of(doc.item(dest)) not in ("audio", "empty") or doc.item(dest).get("instrument") == "voice":
+        return []
+    return [{"op": "clip.to_track", "target": movers, "args": {"track": dest}}]
+
+
+def copy_calls(g: dict) -> list[dict]:
+    """Alt-drag: copies left where the items were (each kind's `.duplicate` by 0), the originals move on."""
+    by: dict[str, list[str]] = {}
+    for x in g["items"]:
+        if x["type"] != "line":
+            by.setdefault(x["type"], []).append(x["id"])
+    return [{"op": f"{k}.duplicate", "target": ids, "args": {"by": 0}} for k, ids in by.items()]
 
 
 def section_calls(doc, g: dict, dt: float, free: bool = False) -> list[dict]:

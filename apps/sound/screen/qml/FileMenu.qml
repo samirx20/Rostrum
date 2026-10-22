@@ -2,45 +2,46 @@ import QtQuick
 import QtQuick.Dialogs
 import RostrumKit
 
-// The File button in the top bar and everything about the song as a file (screensound/session.py, `songs`):
-// New song, Open, the recent songs, Save (an untitled song: asks for a name and a place) or Save As, Settings.
-// A named song is saved after every change, so it has no Save; Ctrl+S on it just says so.
-// The prompts: leaving an untitled song with changes (Save… / Don't keep / Cancel), and untitled songs a crash
-// left behind (Open it / Throw away), and a song that was refused (damaged, another app's, a newer version's).
+// The ≡ menu (INTERACTION.md §1.19; it was "File"): everything about the song as a file (screensound/session.py,
+// `songs`). Saving is automatic, so there is no Save: New, Open…, the sample, the recent songs, Duplicate… (a separate
+// copy; this window stays on the original), Save a version (Ctrl+S; named versions come with the History sheet),
+// Show folder, Preferences…, Quit. The prompts: a refused open in words, and untitled songs a crash left behind.
 Button {
     id: file
     property var settingsPanel
-    text: "File"
+    text: "≡"
     down: menu.visible
     onClicked: menu.visible ? menu.close() : openMenu()
+    HoverTip { text: "Menu: new, open, duplicate, preferences"; hovered: file.hovered && !menu.visible }
     function openMenu() { menu.open() }
-    function saveNow() { const t = songs.save(); if (t) backend.say(t) }
-
+    function saveNow() { backend.say(songs.saveVersion()) }
     function newNow() { songs.newSong() }
     function openNow() { openDialog.open() }
-    function saveAsNow() { saveDialog.open() }
+    function duplicateNow() { duplicateDialog.open() }
 
     HintMenu {
         id: menu
         entries: [{ value: "new", label: "New song", hint: "Ctrl N" }, { value: "open", label: "Open…", hint: "Ctrl O" },
                   { value: "sample", label: "Open sample (Lull)" }]
                  .concat(songs.recent.slice(0, 6).map((r, i) => ({ value: "recent:" + i, label: "Open " + r.name })))
-                 .concat(songs.untitled ? [{ value: "saveas", label: "Save…", hint: "Ctrl S" }]
-                                         : [{ value: "save", label: "Save", hint: "Ctrl S" },
-                                            { value: "saveas", label: "Save a copy as…", hint: "Ctrl Shift S" }])
-                 .concat([{ value: "settings", label: "Settings…", hint: "Ctrl ," }])
+                 .concat([{ value: "duplicate", label: "Duplicate…", hint: "Ctrl Shift S" },
+                          { value: "version", label: "Save a version", hint: "Ctrl S" },
+                          { value: "folder", label: "Show folder" },
+                          { value: "settings", label: "Preferences…", hint: "Ctrl ," },
+                          { value: "quit", label: "Quit", hint: "Ctrl Q" }])
         onPicked: (v) => {
             if (v === "new") songs.newSong()
             else if (v === "open") openDialog.open()
-            else if (v === "save") file.saveNow()
             else if (v === "sample") songs.openSample()
-            else if (v === "saveas") saveDialog.open()
+            else if (v === "duplicate") duplicateDialog.open()
+            else if (v === "version") file.saveNow()
+            else if (v === "folder") songs.showFolder()
             else if (v === "settings") file.settingsPanel.open()
+            else if (v === "quit") Qt.quit()
             else if (v.indexOf("recent:") === 0) { const r = songs.recent[Number(v.slice(7))]; songs.openRecent(r.folder, r.item) }
         }
     }
-    // What a save said, and a refused open / save in words: in the top bar's status line, like every other
-    // "what just happened" (a line starting "Error" shows red).
+    // A refused open or duplicate, in words: in the top bar's message line (a line starting "Error" shows red).
     Connections {
         target: songs
         property string said: ""
@@ -54,18 +55,15 @@ Button {
         onAccepted: songs.openPath(selectedFolder.toString())
     }
     FileDialog {
-        id: saveDialog
-        title: songs.untitled ? "Save the song: name it and choose where" : "Save a copy of the song as"
+        id: duplicateDialog
+        title: "Duplicate the song: name the copy and choose where"
         fileMode: FileDialog.SaveFile
         currentFolder: songs.projectsFolder
         nameFilters: ["A song folder (*)"]
-        onAccepted: songs.saveAs(selectedFile.toString())
-        onRejected: if (keep.visible === false) songs.answer("cancel")
+        onAccepted: { const t = songs.duplicate(selectedFile.toString()); if (t) backend.say(t) }
     }
     Connections {
         target: songs
-        function onWantSaveAs() { saveDialog.open() }
-        function onAskKeep() { keep.open() }
         function onRecoverOffered() { recover.open() }
         function onRefused() { refused.open() }
     }
@@ -77,14 +75,6 @@ Button {
         Button { text: "OK"; kind: "primary"; onClicked: refused.close() }
     }
 
-    Prompt {
-        id: keep
-        heading: "Keep this song?"
-        message: "This song has no name yet. Save it to keep it, or leave it and it is thrown away."
-        Button { text: "Save…"; kind: "primary"; onClicked: { keep.close(); songs.answer("save") } }
-        Button { text: "Don't keep"; danger: true; onClicked: { keep.close(); songs.answer("discard") } }
-        Button { text: "Cancel"; kind: "ghost"; onClicked: { keep.close(); songs.answer("cancel") } }
-    }
     Prompt {
         id: recover
         heading: songs.recoverable.length > 1 ? "RostrumSound closed unexpectedly: " + songs.recoverable.length + " songs were kept"
