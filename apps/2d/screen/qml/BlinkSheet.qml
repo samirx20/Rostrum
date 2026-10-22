@@ -18,8 +18,7 @@ Panel {
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close  Esc"; onClicked: pop.close() }
     component Words: Text { width: 110; anchors.verticalCenter: parent.verticalCenter; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
     component Line: Row { spacing: Theme.grid; height: Theme.row }
-    Column {
-        width: pop.availableWidth
+    SheetScroll {
         spacing: Theme.grid
         Line {
             Words { text: "Every" }
