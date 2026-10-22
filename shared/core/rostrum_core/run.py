@@ -103,9 +103,10 @@ def _check_targets(kind, op, targets, view, where, locked_by=None):
         held = _locked_holder(idx, t)
         if held is not None and not (held["id"] == t and op.name.endswith(".unlock")):
             by = locked_by(held["id"]) if locked_by else None
-            inside = "" if held["id"] == t else f'"{it.get("name") or t}" is inside '
-            raise RostrumError(codes.CHECK_FAILED, where, f'{inside}"{held.get("name") or held["id"]}" ({held["id"]})',
-                               "is locked" + (f" by {by}" if by else ""), hint="Unlock it first, then try again.")
+            whose = f'"{held.get("name") or held["id"]}" ({held["id"]})'
+            subject, problem = (whose, "is locked") if held["id"] == t else (f'"{it.get("name") or t}" ({t})', f"is inside {whose}, which is locked")
+            raise RostrumError(codes.CHECK_FAILED, where, subject, problem + (f" by {by}" if by else ""),
+                               hint="Unlock it first, then try again.")
         if not holds(op.valid_when, fields(it, kind.lists), kind.facts(it, view)):
             raise RostrumError(codes.BAD_ARGUMENT, where, f'target "{t}"',
                                f"can't take {op.name} now: it needs {describe(op.valid_when)}")
