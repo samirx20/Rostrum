@@ -23,8 +23,8 @@ marker, and moves when someone moves the marker in any app. *Starts at* and *End
 
 ## When something is wrong, it says so
 
-- No render yet, a version that isn't there, a render without EXR frames, a 3D item that doesn't exist, a marker
-  that isn't in the project: the picture is not drawn, and the message says what to do. An export stops.
+- A version that isn't there, a render without EXR frames, a 3D item that doesn't exist, a marker that isn't in the
+  project: the picture is not drawn, and the message says what to do. An export stops. No render yet: see below.
 - **Out of date**: the 3D document changed after the render. The layer keeps showing the render it has (it is still
   a true render) and the Problems list (agents: `inspect_diagnose`) says "3D render out of date" until 3D renders again.
 

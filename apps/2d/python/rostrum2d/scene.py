@@ -66,19 +66,24 @@ def _render3d(node: dict, item: dict, fps: float, where: dict) -> dict:
         return _placeholder(node, item, e.subject)
 
 
+def _engine_props(type_: str, given: dict) -> dict:
+    """A node's props as the engine takes them: every field the engine knows (default unless given), none of the
+    document-only ones (timing from markers, ids …)."""
+    return {p.name: given.get(p.name, p.default) for p in F.FIELDS[type_] if p.name not in python_only(type_)}
+
+
 def _placeholder(node: dict, item: dict, name: str) -> dict:
     """A flat grey card with a thin border and a centred label, from ordinary nodes, in the layer's box, transform and timing."""
     props = node["props"]
     w, h = props["w"], props["h"]
-    group = {p.name: props.get(p.name, p.default) for p in F.FIELDS["group"] if p.name not in python_only("group")}
+    group = _engine_props("group", props)
     anim = {k: v for k, v in node.get("anim", {}).items() if k in group}
-    card = {"id": f'{item["id"]}.card', "type": "shape", "props": {
-        **{p.name: p.default for p in F.FIELDS["shape"]}, "shape": "rect", "w": w, "h": h, "x": w / 2, "y": h / 2,
-        "fill": "#808080", "stroke": True, "strokeColor": "#d0d0d0", "strokeWidth": 2.0}}
-    label = {"id": f'{item["id"]}.label', "type": "text", "props": {
-        **{p.name: p.default for p in F.FIELDS["text"]}, "body": f"3D: {name} — not rendered yet",
-        "size": max(12.0, min(h * 0.08, w * 0.05, 64.0)), "weight": 500.0, "color": "#ffffff", "boxWidth": w * 0.9,
-        "x": w / 2, "y": h / 2}}
+    card = {"id": f'{item["id"]}.card', "type": "shape", "props": _engine_props("shape", {
+        "shape": "rect", "w": w, "h": h, "x": w / 2, "y": h / 2, "fill": "#808080", "stroke": True, "strokeColor": "#d0d0d0",
+        "strokeWidth": 2.0})}
+    label = {"id": f'{item["id"]}.label', "type": "text", "props": _engine_props("text", {
+        "body": f"3D: {name} — not rendered yet", "size": max(12.0, min(h * 0.08, w * 0.05, 64.0)), "weight": 500.0,
+        "color": "#ffffff", "boxWidth": w * 0.9, "x": w / 2, "y": h / 2})}
     return {"id": node["id"], "type": "group", "props": group, **({"anim": anim} if anim else {}), "layers": [card, label]}
 
 
