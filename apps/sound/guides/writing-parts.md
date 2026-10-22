@@ -14,12 +14,18 @@ instrument can use are offered (the screen hides the rest). Drum tracks use hits
 
 ## On the screen
 
-- **Piano roll** (Timeline, the selected track): click to add, drag to move (snaps to a quarter beat; Shift = free),
-  drag the end to lengthen, Delete removes. Each drag is one undo step. Drum tracks show a row per drum.
+- **A new track** starts from a sound in the **Library** (Ctrl+L): double-click an instrument. With a notes track
+  selected the Library offers to change its instrument instead (the notes stay).
+- **Editor** (the dock under the arrangement, E; the selected track): double-click to add, or the **Draw** tool (B)
+  where every click adds; drag to move (it snaps to the grid set by **Grid ▾**, with **Snap** on; Ctrl = no snapping,
+  Alt = a copy, Shift = only in time), drag the end to lengthen, Delete removes. Each drag
+  is one undo step. Drum tracks show a row per drum. Select several (Ctrl+click, Shift+click, a box) and act on them
+  from the context bar, the right-click menu or keys: Q quantise, Ctrl+D duplicate, ↑ / ↓ a half step.
 - **MIDI keyboard:** choose the input device (shown only when one is connected), arm the track, record: what you play
   lands in the selected track's piano roll as one undo step for the whole take.
-- The song's tempo, key and sections are set from the readout above the Timeline; notes written in beats follow
-  tempo changes.
+- The song's tempo, beats per bar and key are in the settings panel while nothing is selected; tempo and key changes
+  at the playhead come from the tempo · beats · key readout in the arrangement's header strip. Notes written in beats
+  follow tempo changes.
 
 ## From a file and back
 

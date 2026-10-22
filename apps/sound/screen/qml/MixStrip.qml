@@ -10,6 +10,7 @@ Rectangle {
     required property var model          // roles: id, name, volume, pan, mute, solo, effects, meter, canSolo, output, outputs, sends, sendTargets
     readonly property bool selected: backend.selected === model.id
     readonly property bool measured: !!model.meter && model.meter.peak !== undefined
+    readonly property bool low: height < 330          // a low dock: one row of effects, sends / ducks and numbers fold away
     width: 124
     color: Theme.app
     radius: Theme.radiusPanel
@@ -22,16 +23,18 @@ Rectangle {
         spacing: Theme.gap
         Text {
             Layout.fillWidth: true; Layout.preferredHeight: 22
+            id: stripName
             text: s.model.name; elide: Text.ElideRight; color: Theme.fg; verticalAlignment: Text.AlignVCenter
             font.family: uiFont; font.pixelSize: Theme.title; font.weight: Font.DemiBold
-            MouseArea { anchors.fill: parent; onPressed: s.pick() }
+            MouseArea { id: nameArea; anchors.fill: parent; hoverEnabled: true; onPressed: s.pick() }
+            HoverTip { text: stripName.truncated ? s.model.name : ""; hovered: nameArea.containsMouse }   // a cut name, whole
         }
         MixPick {   // where it plays to: the master or a bus (the choices are the buses it may feed)
             Layout.fillWidth: true; Layout.preferredHeight: 22
             text: s.model.output; choices: s.model.outputs; visible: s.model.outputs.length > 1
             onPicked: (id) => mixer.setOutput(s.model.id, id)
         }
-        MixChain { Layout.fillWidth: true; Layout.preferredHeight: 52; chips: s.model.effects; ownerId: s.model.id }
+        MixChain { Layout.fillWidth: true; Layout.preferredHeight: s.low ? 26 : 52; chips: s.model.effects; ownerId: s.model.id }
         ColumnLayout {  // pan
             Layout.fillWidth: true; spacing: 0
             RowLayout {
@@ -49,8 +52,8 @@ Rectangle {
                 onScrubEnded: backend.endScrub()
             }
         }
-        MixSends { Layout.fillWidth: true; ownerId: s.model.id; sends: s.model.sends; targets: s.model.sendTargets }
-        MixDucks { Layout.fillWidth: true; ownerId: s.model.id; ducks: s.model.ducks; targets: s.model.duckTargets }
+        MixSends { visible: !s.low; Layout.fillWidth: true; ownerId: s.model.id; sends: s.model.sends; targets: s.model.sendTargets }
+        MixDucks { visible: !s.low; Layout.fillWidth: true; ownerId: s.model.id; ducks: s.model.ducks; targets: s.model.duckTargets }
         RowLayout {
             Layout.fillWidth: true; spacing: Theme.grid
             MixSwitch { Layout.fillWidth: true; text: "M"; on: s.model.mute; tint: Theme.warn
@@ -78,7 +81,7 @@ Rectangle {
         }
         Text {   // measured by the last render; absent until there is one
             Layout.fillWidth: true; Layout.preferredHeight: 28; horizontalAlignment: Text.AlignHCenter
-            visible: s.measured
+            visible: s.measured && !s.low
             text: "Peak " + F.num(s.model.meter.peak, 1) + " dB\nLoudness " + F.num(s.model.meter.lufs, 1) + " LUFS"
             color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.features: { "tnum": 1 }
             HoverHandler { id: numsHover }

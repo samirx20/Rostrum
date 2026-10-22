@@ -30,7 +30,7 @@ def clip_of(track: dict, line: dict, at) -> dict:
     take = take_of(track, line)
     if take is None:
         raise RostrumError(codes.NOT_FOUND, f"tracks[{track['id']}].lines[{line['id']}]", f'voice line "{line["id"]}"',
-                           "is not made yet", hint="Run the render_voice tool (Make voice on the Instruments page).")
+                           "is not made yet", hint="Run the render_voice tool, or type the line in the Editor (it is spoken at once).")
     return {"media": take.file, "at": at, **{k: line[k] for k in CLIP_KEYS if k in line}}
 
 

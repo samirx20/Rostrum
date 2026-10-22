@@ -1,8 +1,8 @@
-# Settings
+# Preferences
 
-For a person using the RostrumSound app. Open with **File**, then **Settings…**, or Ctrl+,. Changes are saved the moment you make them. Click **Done** to close.
+For a person using the RostrumSound app. Open with **≡**, then **Preferences…**, or Ctrl+,. These are your machine's choices, kept the moment you make them (they are not part of any song or its history). Click **Done** to close.
 
-Settings show only what applies now, most important first. Below the list, the panel shows where models and projects are kept and how much room models take.
+Preferences show only what applies now, most important first. Below the list, the panel shows where models and projects are kept and how much room models take.
 
 ## Sound device
 
@@ -21,11 +21,11 @@ These apply to songs you make from now on. A song keeps its own once made.
 
 ## Files
 
-- **Projects folder**: where new projects are made. Empty means `Documents\Rostrum Sound` in your home folder.
+- **Projects folder**: where new songs are made (as "Untitled song", saved as you go). Empty means `Documents\Rostrum Sound` in your home folder.
 - **AI models folder** (an advanced setting): where the voice and clean-up models are kept. Empty means `.rostrum\models` in your home folder.
 - **Sound engine program** (an advanced setting): the `rostrum-sound` program to use. Empty means it is found automatically, the one installed with the app. Leave it empty unless someone tells you otherwise.
 
 ## A few notes
 
 - A change to Speakers or Microphone may need a moment, or the next time you play or arm a track.
-- Some settings can also be overridden by environment variables set on the computer; that is for experts.
+- Some preferences can also be overridden by environment variables set on the computer; that is for experts.

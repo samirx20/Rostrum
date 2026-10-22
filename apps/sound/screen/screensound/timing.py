@@ -2,7 +2,11 @@
 
 Reading goes through the document's own `times` (seconds, `{"beat": n}`, `"#drop+0.5"`). Writing keeps the form
 the item already used: a note placed in beats is moved in beats, one placed on a marker stays on that marker
-(`"#drop+0.25"`), seconds stay seconds. A drag snaps to a quarter beat unless it is free (Shift).
+(`"#drop+0.25"`), seconds stay seconds. A drag snaps to the grid unless it is free (Ctrl) or Snap is off.
+
+A `Grid` is a window's grid setting (Grid ▾ and Snap in the arrangement's header; screen state, never saved): the
+bridge holds one and passes it to every snap (drags, ends, the ruler's range, Draw, nudges); without one, the
+default (1/16, Snap on) is used.
 """
 from __future__ import annotations
 
@@ -10,7 +14,38 @@ from rostrum_sound.doc import keys as K
 from rostrum_sound.doc import tempo, times
 from rostrum_sound.doc.shift import spb, write_like
 
-SNAP_BEATS = 0.25
+SNAP_BEATS = 0.25          # the music map's own snap (tempo / key changes, sections): a quarter beat
+
+
+class Grid:
+    """Grid ▾: "bar", "beat", "1/8", "1/16", "1/32", "1/8T", "1/16T" (triplets) or "auto" (follows the zoom);
+    Snap on / off."""
+    STEPS = {"beat": 1.0, "1/8": 0.5, "1/16": 0.25, "1/32": 0.125, "1/8T": 1 / 3, "1/16T": 1 / 6}
+    CHOICES = ["auto", "bar", "beat", "1/8", "1/16", "1/32", "1/8T", "1/16T"]
+
+    def __init__(self):
+        self.value, self.on, self.auto_beats = "1/16", True, 0.25
+
+    def beats(self, root: dict) -> float:
+        if self.value == "bar":
+            return float(root.get("beatsPerBar", 4))
+        return self.auto_beats if self.value == "auto" else self.STEPS[self.value]
+
+    def follow_zoom(self, span_beats: float, width_px: float = 1200.0, min_px: float = 16.0):
+        """Auto: the finest step at least `min_px` wide at this zoom (1/32 … 4 beats)."""
+        for b in (0.125, 0.25, 0.5, 1.0, 2.0, 4.0):
+            if b * width_px / max(span_beats, 1e-6) >= min_px:
+                self.auto_beats = b
+                return
+        self.auto_beats = 4.0
+
+
+DEFAULT = Grid()             # never changed: what a caller without a window's grid gets
+
+
+def step_beats(root: dict, grid: Grid | None = None) -> float:
+    """One grid step in beats (nudges, Draw's note length, Ctrl+arrows)."""
+    return (grid or DEFAULT).beats(root)
 
 
 def sec(value, root: dict, where="time") -> float:
@@ -28,11 +63,13 @@ def beat(t: float, root: dict) -> float:
     return tempo.beat_at(root, t)
 
 
-def snap(t: float, root: dict, free: bool) -> float:
-    """To the nearest quarter beat (through the tempo map), unless free."""
-    if free:
+def snap(t: float, root: dict, free: bool, grid: Grid | None = None) -> float:
+    """To the nearest step of `grid` (the window's; through the tempo map), unless free or its Snap is off."""
+    grid = grid or DEFAULT
+    if free or not grid.on:
         return max(0.0, round(t, 4))
-    b = round(tempo.beat_at(root, t) / SNAP_BEATS) * SNAP_BEATS
+    step = grid.beats(root)
+    b = round(tempo.beat_at(root, t) / step) * step
     return max(0.0, round(tempo.seconds_at(root, b), 6))
 
 

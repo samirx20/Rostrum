@@ -42,3 +42,32 @@ def roll_at(roll: dict, t: float, row: float, tol: float) -> str:
         if s is not None and (key is None or (s, -b["t"]) < key):
             best, key = b["id"], (s, -b["t"])
     return best
+
+
+STACKED = ("clip", "line", "sound")
+
+
+def stack(blocks: list[dict]) -> None:
+    """Clips, lines and designed sounds that overlap in time on one lane share it in rows (each its own `row` of
+    `rows`, labels readable) instead of drawing over each other; `lanes` = the middle of its row, so a click picks
+    the one under the pointer (block_at). Each overlapping group takes as few rows as it needs."""
+    items = sorted((b for b in blocks if b["type"] in STACKED), key=lambda b: (b["t"], b["id"]))
+    group, ends, group_end = [], [], -1.0
+    for b in items + [None]:
+        if b is None or b["t"] >= group_end - 1e-6:          # a new group: close the last one
+            for g in group:
+                g["rows"] = max(len(ends), 1)
+                if g["rows"] > 1:
+                    g["lanes"] = [(g["row"] + 0.5) / g["rows"]]
+            if b is None:
+                return
+            group, ends = [], []
+        row = next((i for i, e in enumerate(ends) if e <= b["t"] + 1e-6), None)
+        if row is None:
+            ends.append(b["t"] + b["dur"])
+            row = len(ends) - 1
+        else:
+            ends[row] = b["t"] + b["dur"]
+        b["row"] = row
+        group.append(b)
+        group_end = max(group_end, b["t"] + b["dur"])

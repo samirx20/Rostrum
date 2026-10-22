@@ -106,8 +106,8 @@ def used(track: dict) -> bool:
 class PointEdit:
     """One press-drag-release on a lane: grabs the point under the pointer or adds one, then moves it."""
 
-    def __init__(self, target: str, owner: dict, root: dict, lane: str):
-        self.target, self.lane, self.root = target, lane, root
+    def __init__(self, target: str, owner: dict, root: dict, lane: str, grid=None):
+        self.target, self.lane, self.root, self.grid = target, lane, root, grid      # grid: the window's (timing.Grid)
         raw = raw_points(owner, lane)
         self.lo, self.hi = display_range(owner, lane, raw)
         self.pts = [[t, float(v), timing.sec(t, root)] for t, v in raw]      # [raw time, value, seconds]
@@ -121,7 +121,7 @@ class PointEdit:
         if d <= 1.0:
             self.index = i
             return {}
-        at = timing.snap(t, self.root, free)
+        at = timing.snap(t, self.root, free, self.grid)
         raw = {"beat": round(timing.beat(at, self.root), 4)} if self.beats else round(at, 4)
         i = sum(1 for p in self.pts if p[2] <= at)
         self.pts.insert(i, [raw, self._v(v), at])
@@ -132,7 +132,7 @@ class PointEdit:
         p, i = self.pts[self.index], self.index
         lo_t = self.pts[i - 1][2] if i > 0 else 0.0
         hi_t = self.pts[i + 1][2] if i + 1 < len(self.pts) else float("inf")
-        at = min(max(timing.snap(t, self.root, free), lo_t), hi_t)
+        at = min(max(timing.snap(t, self.root, free, self.grid), lo_t), hi_t)
         p[0], p[1], p[2] = timing.write_time(p[0], at, self.root), self._v(v), at
         return self.call()
 

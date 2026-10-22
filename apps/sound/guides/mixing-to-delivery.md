@@ -17,7 +17,7 @@ track (instrument, notes / clips) → its effect chain → its fader and pan →
 - **Ducks:** `duck.add` on a track with `under` = the tracks that push it down (music under dialogue), and `depth`,
   `attack`, `release`, `hold`. The `voice` setting listens for speech only. On the screen: "+ Duck" on a strip.
 - **Automation:** `automation.set` with `lane` and the whole `points` list. Mix values, effect settings and plug-in
-  parameters can be automated (inspect_operations lists the lanes). On the Timeline: a row's "Auto" chip opens its lanes;
+  parameters can be automated (inspect_operations lists the lanes). In the arrangement: a row's "Auto" chip opens its lanes;
   click adds a point, drag moves it, Delete removes it; one drag = one undo step.
 
 ## Loudness words, briefly
@@ -30,9 +30,10 @@ track (instrument, notes / clips) → its effect chain → its fader and pan →
 
 ## Setting the target
 
-`master.set` with `normalize` on, `loudness` (LUFS) and `truePeak` (dBTP ceiling). The screen's Mix page has a
-"Deliver to" chooser with published targets (streaming, Apple Music, EBU R128, ATSC A/85, podcast; each row cites its
-source in `screensound/delivery.py`) that sets both in one step, and a Pass / Miss line from the last render.
+`master.set` with `normalize` on, `loudness` (LUFS) and `truePeak` (dBTP ceiling). On the screen, the Export sheet
+(Ctrl+E) has a "What for" chooser with published targets (streaming, Apple Music, EBU R128, ATSC A/85, podcast; each
+row cites its source in `screensound/delivery.py`) that sets both in one step, and a Pass / Miss line from the sound
+that plays now. The top bar's Loudness chip shows the song's loudness against the target; it opens the Mixer.
 
 Normalizing makes the number right; it does not make the mix right. If the master limiter is working hard to hold the
 ceiling, the mix is denser than the target allows: turn the loud parts down at the source rather than squeezing harder.
@@ -49,7 +50,7 @@ ceiling, the mix is denser than the target allows: turn the loud parts down at t
 ## Stems and handoff
 
 `render_mix` with `stems: true` writes one WAV per track and per bus (`<bus>.bus.wav`) beside the mix in
-`renders/<item>/vNNN/`. On the screen: Mix › "Render mix and stems" (needs a project folder).
+`renders/<item>/vNNN/`. On the screen: the Export sheet (Ctrl+E) with **Stems** on, then **Export**.
 **The rule, in plain words:** a stem leaves through the master's *volume* (master fader and its automation, the
 fades, and the gain that brings the mix to its loudness target) but not through the master's *glue compressor,
 limiter or master effects* (those can't be split between stems). So the stems add up to the mix exactly wherever
