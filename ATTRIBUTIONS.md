@@ -151,3 +151,4 @@ Every third-party library, model, asset source and tool that ships in or is down
 | mpmath | 1.3.0 | BSD-3-Clause | Sound: sympy's dependency | Python package | ships | Keep the notice | https://github.com/mpmath/mpmath |
 | protobuf | 7.36.2 | BSD-3-Clause | Sound: onnxruntime's dependency | Python package | ships | Keep the notice | https://github.com/protocolbuffers/protobuf |
 | flatbuffers | 25.12.19 | Apache-2.0 | Sound: onnxruntime's dependency | Python package | ships | Keep the notice | https://github.com/google/flatbuffers |
+| tomlkit | 0.15.2 | MIT | rostrum_connect (shared/mcp): edits Codex's config.toml keeping the person's comments and layout | Python import | ships | Keep the MIT notice | https://github.com/python-poetry/tomlkit |
