@@ -4,7 +4,9 @@ import QtQuick.Dialogs
 import "."
 
 // The ≡ button and menu, the same in every app (INTERACTION.md 1.19 item 2, kit piece 13): New, Open…, Open recent ▸,
-// Open sample, Duplicate…, Save a version, Show folder, Start screen…, then the app's own rows (`extra`). Saving is
+// Open sample, Duplicate…, Save a version, Show folder, Start screen…, then the app's own rows (`extra`). Two more
+// rows appear only when they apply: "Find missing files…" (asks for a folder, links every file found in it again as one
+// change) while something is missing, and "Open the last version that works" after a refused damaged file. Saving is
 // automatic, so there is no Save. Its keys come from the key map (files.keys: Ctrl+N, Ctrl+O, Ctrl+Shift+S, Ctrl+S).
 // Reads the app's `files` (rostrum_gui/project_files.py). In the top bar: AppShell { menu: FilesMenu { … } }
 //     extra: [{ value: "settings", label: "Preferences…", keys: "Ctrl+,", group: "app" }]; onPicked: (v) => …
@@ -27,6 +29,7 @@ IconButton {
     function closeMenu() { menu.close() }
     function ask(v) {           // the file actions that need the window: a dialog, or History's name field
         if (v === "open") openDialog.open()
+        else if (v === "find") findDialog.open()
         else if (v === "duplicate") {
             duplicateDialog.selectedFile = source.projectsUrl + "/" + encodeURIComponent(source.name + " copy")
             duplicateDialog.open()
@@ -63,6 +66,12 @@ IconButton {
         title: "Open a " + (root.source ? root.source.noun : "project") + ": choose its folder"
         currentFolder: root.source ? root.source.projectsUrl : ""
         onAccepted: root.source.openPath(selectedFolder.toString())
+    }
+    FolderDialog {
+        id: findDialog
+        title: "Find missing files: choose the folder they are in"
+        currentFolder: root.source ? root.source.projectsUrl : ""
+        onAccepted: root.source.findMissing(selectedFolder.toString())
     }
     FileDialog {
         id: duplicateDialog

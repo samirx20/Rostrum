@@ -120,14 +120,71 @@ What changed in Sound on `team/sam`:
 - Steps: `new`, `openproject`, `duplicate`, `version`, `startscreen` (the old `file-new`, `file-open`,
   `file-duplicate` still work; `file-save-as` is gone).
 
+## Reopen at the same place, Find…, Open the last version that works (S36)
+
+Three more pieces of INTERACTION 1.19, in the kit; the app gives `AppFiles` a few optional hooks and gets them all.
+
+| Piece | Where | The app gives (`AppFiles`) |
+|---|---|---|
+| **Reopen at the same place** | `rostrum_core/places.py` (data, in the person's home: `<userhome>/places/<app>.json`, never in the document; a scripted run's home is its scratch one), `rostrum_gui/place_keeper.py` (`files.places`) | `place(bridge) -> dict`, `restore_place(bridge, dict)` |
+| **Find…** | `rostrum_gui/find_files.py` (no Qt), `file_repairs.py` (≡ row, `files.findMissing(folderUrl)`, `files.missingRows()`, `files.missing`) | `refs(doc) -> [(item id, field, path)]`, `ref_op(doc, item id) -> "layer.set"` |
+| **Open the last version that works** | `rostrum_core/rescue.py` (`plan`, `rebuild`), `file_repairs.py` (`files.rescue`, `files.openRescued()`, `files.dismissRescue()`), StartScreen's banner, a ≡ row | `doc_kind=KIND` |
+
+**Place.** A place is a plain dict the app fills: `scene`, `selection` (ids), `playhead`, `range`, the canvas view
+(`CanvasView.place()` gives `{zoom, panX, panY, fitted}`; a fitted view fits again at the new window size), the time view
+(`TimeView`'s start and span) … whatever it can put back. The kit saves it when the project is left, renamed (it follows the
+new name) or the app closes, and a moment after the app calls `files.places.note()` (put it where the selection, playhead,
+scene or view change; it is throttled, 0.6 s). It restores right after `host.show(doc)`. `places.keep_existing` drops what no
+longer exists one item at a time (`scene` and `focus_item` are single ids; `selection` is a list): a deleted layer leaves the
+rest of the place as it was. It is screen state: no change, no undo step, and an agent never moves it.
+
+**Find…** The project opens with missing items marked "missing" (the app's own look). ≡ › **Find missing files…** is there only
+while something is missing (rule of individuality): it asks for a folder and `find_files.relink` finds each missing file by its
+name, else by its name ignoring capitals (several of one name: the one whose folders match the old path's the most; folders
+starting "." are not searched), and returns every "set this field" call. `files.findMissing` applies them with ONE
+`doc.apply` (one change, one undo step, "Find 3 missing files") and says what it found and what is still missing.
+`files.missingRows()` gives the app's Problems list its rows (label "Missing file", message, fix, `find: True`): an app's
+`jump_to(row)` for a row with `find` calls `files.pick("find")`.
+
+**Open the last version that works.** `open_whole` still refuses a damaged or newer file in plain words. When the file's own
+history can rebuild it, `files.rescue` is filled (what is wrong, "Its history can rebuild … up to step 12 of 14") and the start
+screen opens with a banner: **Open the last version that works** and Not now (also a ≡ row). `rescue.rebuild` replays the history
+up to the last step that applies cleanly (its edits apply, its recorded hash matches, the document check passes), keeps the
+damaged document and history beside as `<name>.damaged-<time>` (never overwritten), saves the rebuilt one and says which step
+it stopped at. A history that is gone or unreadable offers nothing (the refusal's words stand).
+
+### Notes for Team Hem (Rostrum2D)
+
+In `apps/2d/screen/screen2d/files2d.py` (I did not touch it), add to `FILES2D = AppFiles(...)`:
+
+```python
+doc_kind=KIND,                                              # Open the last version that works
+place=lambda bridge: {...},                                 # scene id, selection ids, playhead, the canvas's CanvasView.place()
+restore_place=lambda bridge, p: ...,                        # open the scene, select, move the playhead, view.restore_place(p["view"])
+refs=lambda doc: [(it["id"], "src", it["src"]) for it in doc.items() if it.get("src")],      # imported files, as layers hold them
+ref_op=lambda doc, item_id: f"{doc.item(item_id)['type']}.set",                              # the same call `repoint` makes
+```
+
+Then: call `bridge.files.places.note()` where the selection, playhead, scene or view change (one throttled call; the kit saves
+it); feed `files.missingRows()` into 2D's `problems.py` rows and make `jump_to` call `files.pick("find")` for a row with `find`;
+show an item whose file is missing as "missing" (its own look). Put `ViewControl { view: <the CanvasView> }` bottom-right of the stage
+(replacing the hand-made `ViewControls.qml` once the lead has added the type to qmldir) and `markerSource: <MarkerWatch>` on the Ruler
+for the marker menu (TIMELINE.md); handle `onMarkerShareToggled` (own ↔ shared).
+
+### Notes for Team Priyam (RostrumSound)
+
+Same hooks in `apps/sound/screen/screensound/files_sound.py`: `doc_kind=KIND`; `place` = the open song, selection, playhead, the
+time range and `TimeView`'s start / span; `refs` = each clip's audio file (`[(clip id, "file", path), …]`), `ref_op` = the
+clip operation that sets it. Call `files.places.note()` from the playhead and selection changes. Sound's own "missing" look for a
+clip stays Sound's; the Problems list gets `files.missingRows()`.
+
 ## Left open
 
 - Rename by clicking the project name (S35): `files.rename(name)` renames the folder beside itself and reopens it
   live; the top bar's name tab opens a field in place (AppShell wires it to the kit's `files`, no app code). An agent
   that had the old folder open is refused on its next step (its folder is gone); it opens the new one. Layout state
   `rename-name` (step `name edit`) in both apps. Report a problem (? menu): `rostrum_gui/report.py`.
-- "Exactly where you left it" covers the project only; scene, selection, playhead and zoom are not restored yet.
-- Missing files' **Find…** (1.19 item 6) and **Open the last version that works** on a damaged file (item 7) are not
-  built; the refusal offers nothing but its words.
+- "Exactly where you left it", Find… and Open the last version that works are built in the kit (S36, above); the apps' hooks
+  (`place`, `restore_place`, `refs`, `ref_op`, `doc_kind`) are written up for Hem and Priyam, not yet wired in their apps.
 - The guides drawer opens under the start screen when no project is open; StartScreen moves aside by
   `shell.guidesWidth` if AppShell exposes it (it doesn't yet).

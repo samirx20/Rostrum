@@ -54,6 +54,19 @@ naming, compact) at the four sizes, with long texts. Results: `C:\Users\Sam\.ros
 - Remove the fixed `height: markers ? 34 : 22`: the Ruler's `implicitHeight` now adds the bands it shows.
 - The rows (`LayerRows`, `FrameMarks`, `CurveEditor`) keep using `ruler.xOf` / `tOf`, which now follow the view.
 
+## Marker right-click menu and the view control (S36)
+
+- **Marker menu.** Right-click a flag (the ruler's `editMarkers` on, and `markerSource: <the screen's MarkerWatch>`): **Rename marker**
+  (starts the flag's name field), **Move to playhead**, **Colour ▸**, **Keep it only here / Share with the project** (only when the
+  document is in a project), **Delete marker**. It is built from the marker operations (`marker.rename / move / colour / remove`)
+  through the one action list (`rostrum_gui/marker_menu.py` → `ActionList`, drawn by `ActionMenu`), so only what applies shows
+  (Move to playhead is absent when the marker already stands there). `MarkerWatch.menu(id, playhead, shared)` gives the rows and
+  `MarkerWatch.choose(id, row, playhead, shared)` runs the choice as ONE marker change (undo takes it back with the rest). Share / own
+  is the app's data: the ruler emits `markerShareToggled(id, nowShared)`.
+- **View control.** `ViewControl { view: <CanvasView> }`, bottom-right of the main view: "Fit · 50 % ▾"; its menu is Fit, 50 %, 100 %,
+  200 %, Zoom in, Zoom out with the key map's keys (a step already on is absent). `CanvasView.menu()` / `pick(value)` /
+  `zoomTo(percent)` (`view_menu.py`, `view_place.py`). Screen state only.
+
 ## Not built yet
 - The marker right-click menu (Rename · Share with the project / Keep it here only · Colour · Delete, with "3 things
   tied") and "the same name as a shared and an own marker is refused" (core marker operations).

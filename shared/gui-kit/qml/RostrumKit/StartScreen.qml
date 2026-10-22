@@ -6,6 +6,8 @@ import "."
 // up to three guide cards. Shown when there is nothing to reopen, or from ≡ › Start screen… (then Back returns).
 // Reads the app's `files` (rostrum_gui/project_files.py). Put it last in the window, filling it:
 //     StartScreen { anchors.fill: parent; z: 100; onGuideAsked: (url) => shell.openGuide(url) }
+// A file refused as damaged or newer, whose history can rebuild it, shows a banner on top: what is wrong, and "Open the
+// last version that works" (files.openRescued(); the damaged file is kept beside, never overwritten).
 // Nothing is greyed: what can't be used now is absent.
 Rectangle {
     id: start
@@ -45,6 +47,27 @@ Rectangle {
                      text: "Back to your " + (start.source ? start.source.noun : "project")
                      onClicked: start.source.setStart(false)
                      HoverTip { text: start.source ? "Back to " + start.source.name : ""; help: "Esc"; hovered: parent.hovered } }
+        }
+
+        Rectangle {     // a refused file the history can rebuild
+            id: banner
+            readonly property var r: start.source ? start.source.rescue : ({})
+            visible: !!r.said
+            width: parent.width; height: visible ? bannerBody.implicitHeight + 2 * Theme.pad : 0
+            radius: Theme.radiusPanel; color: Theme.panel; border.color: Theme.warn
+            Column {
+                id: bannerBody
+                x: Theme.pad; y: Theme.pad; width: parent.width - 2 * Theme.pad; spacing: Theme.gap
+                Text { width: parent.width; text: banner.r.said || ""; wrapMode: Text.Wrap; color: Theme.fg
+                       font.family: uiFont; font.pixelSize: Theme.body }
+                Text { width: parent.width; text: (banner.r.words || "") + " The damaged file stays beside it, untouched."
+                       wrapMode: Text.Wrap; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label }
+                Row {
+                    spacing: Theme.gap
+                    Button { text: "Open the last version that works"; kind: "primary"; onClicked: start.source.openRescued() }
+                    Button { text: "Not now"; onClicked: start.source.dismissRescue() }
+                }
+            }
         }
 
         Row {       // New (big), then the other ways in

@@ -10,6 +10,7 @@ What it does, in the focused view:
 - Space+drag and middle-drag: pan (`pans(button)` says whether a press pans; tapping Space still plays: the app's).
 - The key map's view jobs (keymap.py; never key strings here): `zoom_in` / `zoom_out` a step, `fit_all` (Ctrl+0: the
   whole content), `actual_size` (Ctrl+1: 100 %), `fit` (F: the selection; nothing selected: everything).
+- `place()` / `restore_place()` (view_place.py) and `menu()` / `pick()` (view_menu.py: the "Fit · 50 % ▾" control).
 - `label` for the view controls: "Fit · 50 %" right after a fit, else "50 %".
 
 Zoom stays within MIN_ZOOM .. MAX_ZOOM. A fit before the view has a size, or an empty box, fails loudly.
@@ -21,6 +22,7 @@ import math
 from PySide6.QtCore import Property, QObject, QPointF, Qt, Signal, Slot
 
 from .keymap import SHARED
+from .view_place import ViewPlace
 
 MIN_ZOOM, MAX_ZOOM = 0.01, 64.0           # 1 % .. 6400 %
 STEPS = (0.01, 0.02, 0.05, 0.1, 0.125, 0.25, 1 / 3, 0.5, 2 / 3, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 32.0, 64.0)
@@ -39,7 +41,7 @@ def _clamp(z: float) -> float:
     return min(MAX_ZOOM, max(MIN_ZOOM, z))
 
 
-class CanvasView(QObject):
+class CanvasView(ViewPlace, QObject):
     changed = Signal()
 
     def __init__(self, parent=None):
@@ -49,6 +51,7 @@ class CanvasView(QObject):
         self._content = None                             # (x, y, w, h) canvas px: what Ctrl+0 fits
         self._selection = None                           # (x, y, w, h) canvas px: what F fits; None = nothing
         self._space, self._grab, self._fit_box = False, None, None   # _fit_box: the box last fitted to
+        self._want_fit = False                           # a fitted place restored: fit once size and content are known (view_place.py)
 
     zoom = Property(float, lambda self: self._z, notify=changed)
     panX = Property(float, lambda self: self._px, notify=changed)
@@ -68,11 +71,13 @@ class CanvasView(QObject):
         self._w, self._h = float(w), float(h)
         if self._fitted and self._fit_box is not None and w > 0 and h > 0:
             self.fit_box(self._fit_box)
+        self._refit()
 
     @Slot(float, float, float, float)
     def setContent(self, x, y, w, h):
         """The whole content in canvas px (the frame, the cut): what Ctrl+0 fits."""
         self._content = (x, y, w, h)
+        self._refit()
 
     @Slot(float, float, float, float)
     def setSelection(self, x, y, w, h):

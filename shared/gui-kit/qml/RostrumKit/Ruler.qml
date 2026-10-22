@@ -11,6 +11,9 @@ import "."
 // Press or drag on the scale emits scrubbed(value), in the ruler's unit: the app's playhead op does the seeking.
 // newMarker() (the app's M key) opens a name field at the playhead with a Shared switch when canShare; Enter emits
 // markerAdded(name, shared, at seconds) and the app's marker operation adds it. The kit never edits on its own.
+// Right-click on a flag (editMarkers, and `markerSource`: the screen's MarkerWatch, rostrum_gui/markers.py): its menu,
+// built from the marker operations. Rename, Move to playhead, Colour and Delete are done there as one change each;
+// "Shared / Only here" is the app's (markerShareToggled(id, nowShared)), shown only when canShare.
 // `view` (a rostrum_gui.timeview.TimeViewObject, seconds): zoom and scroll, and the wheel over the ruler (Ctrl zooms
 // at the pointer, Shift scrolls); without it the ruler shows the whole length. xOf(v) / tOf(x) (alias fOf) are the
 // one mapping the rows use too.
@@ -29,11 +32,13 @@ Item {
     property var range: null           // {start, end} in seconds, or null
     property var upper: []             // the scale's upper line: [{at, text}] in seconds; empty: one line
     property bool canShare: false      // the document is in a project: new markers may be shared
+    property var markerSource: null    // a MarkerWatch: gives the right-click menu and runs its choices
     signal scrubbed(real t)
     signal markerMoved(string id, real at)        // seconds, on whole frames
     signal markerRenamed(string id, string name)
     signal markerRemoved(string id)
     signal markerAdded(string name, bool shared, real at)
+    signal markerShareToggled(string id, bool shared)    // the menu's "Shared / Only here": the app flips it
     signal rangeSet(real a, real b)               // seconds, a < b, on whole frames
     signal rangeCleared()
 
@@ -62,6 +67,13 @@ Item {
     function label(v) {
         if (frames) return v
         return v >= 60 ? Math.floor(v / 60) + ":" + ("0" + Math.round(v % 60)).slice(-2) : (Math.round(v * 100) / 100) + "s"
+    }
+    function openMarkerMenu(flag, marker, x, y) {
+        if (!markerSource) return
+        const sec = frames ? value / fps : value
+        mm.flag = flag; mm.marker = marker; mm.sec = sec
+        mm.entries = markerSource.menu(marker.id, sec, marker.shared !== false)
+        if (mm.entries.length) mm.openAt(x, y)
     }
     function newMarker() { namer.x = Math.max(0, Math.min(xOf(value) - 8, width - namer.width))
                            namer.ask("Marker " + (markers.length + 1)) }
@@ -135,6 +147,18 @@ Item {
         x: Math.round(r.xOf(r.value)); width: 1; height: r.height; color: Theme.accent
         visible: x >= 0 && x <= r.width
         Rectangle { x: -4; y: 0; width: 9; height: 8; radius: 2; color: Theme.accent }
+    }
+    ActionMenu {
+        id: mm
+        property Item flag: null
+        property var marker: null
+        property real sec: 0
+        onPicked: (v) => {
+            const shared = marker.shared !== false
+            const d = r.markerSource.choose(marker.id, v, sec, shared)
+            if (d === "rename" && flag) flag.startRename()
+            else if (d === "share") r.markerShareToggled(marker.id, !shared)
+        }
     }
     MarkerNamer { id: namer; y: r.height + 2; canShare: r.canShare
                   onAccepted: (name, shared) => r.markerAdded(name, shared, r.frames ? r.value / r.fps : r.value) }
