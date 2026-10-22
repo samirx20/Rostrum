@@ -231,20 +231,22 @@ Painted background. Group and Rig are gone from it.
 
 | Expectation | What Rostrum2D does | When |
 |---|---|---|
-| **Select, multi-select** | Click; Shift click adds / removes on the canvas; Ctrl click / Shift click in the layers list; drag a box on empty canvas; Ctrl A all; Esc clears. Click a group selects the group; double-click goes in; Ctrl click picks the piece under the pointer | H28 |
+| **Select, multi-select** | Click; Shift click adds / removes on the canvas; Ctrl click / Shift click in the layers list; drag a box on empty canvas; Ctrl A all; Esc clears. Click a group selects the group; double-click goes in; Ctrl click picks the piece under the pointer. Ctrl K, the menus and the settings panel act on **every** selected layer | H28 |
 | **Settings of several** | The settings panel shows what the selected layers share; a value that differs says "Mixed"; a change sets it on all, as one change | H28 |
 | **Group / ungroup** | Select → Ctrl G; Ctrl Shift G | H28 |
 | **Align and distribute** | In the action bar, right-click and Ctrl K | H28 |
-| **Snapping and guides** | Layer bars and keys snap to markers and the playhead (H28). On the canvas: snapping to the frame's centre and edges and to other layers' edges and centres, with a thin line showing what it snapped to | canvas: H29 |
-| **Copy / paste / duplicate** | Ctrl D duplicates (with keys). Ctrl C / Ctrl V of layers, also between projects | Ctrl D: now · copy / paste: H29 |
+| **Snapping and guides** | Layer bars and keys snap to markers and the playhead. On the canvas: a dragged layer snaps to the frame's centre and edges and to other layers' edges and centres, with a thin line showing what it snapped to; Ctrl while dragging turns snapping off | H28 |
+| **Copy / paste / duplicate** | Ctrl D duplicates (with keys); Ctrl C / Ctrl X / Ctrl V copy, cut and paste layers (in place, also into another project); Alt drag drags a copy | H28 |
 | **Nudge with the arrow keys** | 1 px; Shift 10 px; every selected layer; one change per key press | H28 |
-| **Zoom and pan the canvas** | Ctrl wheel zooms at the pointer, Space drag or middle drag pans, Ctrl 0 fits, Ctrl 1 shows 100 % | H29 (painting needs it most) |
+| **Zoom and pan the canvas** | Ctrl wheel zooms at the pointer, Space drag or middle drag pans, Ctrl 0 fits, Ctrl 1 shows 100 %; the zoom shows in the canvas corner. On Sam's screen a 1080p frame is fitted at about half size, so this is needed for any detail | H28 |
 | **Right-click menus** | On a layer row, on the selection on the canvas, on a key (ease) — all from the one action list | layers and canvas: H28 · keys: H29 |
 | **Keyboard shortcuts** | V Move, P Pen, B Draw, Space play, Ctrl Z / Ctrl Shift Z, Ctrl D, Delete, F2 rename, Ctrl ] / [ order, Ctrl G / Ctrl Shift G, arrows nudge, Ctrl F find a setting, Ctrl K everything, Alt + arrows / Alt N / Alt O frames. A list of them in Help | list in Help: H29 |
 | **Renaming** | Double-click a name, or F2 | now |
 | **Locking and hiding** | A lock and an eye on each layer row (on hover, or always when on); hidden layers don't export | H28 |
 | **Undo of every gesture as one step** | Every drag (move, resize, turn, a point, a key, a bar), every action, every nudge is one change in the person's history; an agent's changes are in the agent's own | now (kept) |
-| **Drag feel and lag** | The box and the picture move together (below) | H28 |
+| **Drag feel and lag** | The box and the picture move together (below); Shift while dragging keeps the move straight, Alt resizes from the centre | H28 |
+| **Make things where you want them** | Tools in the strip: Rectangle (R), Ellipse (O), Text (T). Drag on the canvas to draw a shape at that place and size; with Text, click (or drag a box) and type straight on the canvas; double-click any text to edit it there. + Add stays for pictures, video, camera and the rest | H28 if time, else H29 |
+| **Clicks go to what is painted** | A click picks the layer whose picture is under the pointer: an empty group or the empty part of a drawing never catches it (it was catching every click) | H28 |
 
 ## Drag feel: the box and the picture move as one
 
@@ -428,19 +430,21 @@ H28 as built. Every step of every flow is pictured in `C:\Users\Sam\.rostrum\wav
 
 ## Built in H28, and left for later
 
-**Built in H28:** the one workspace; the timeline as the layers list with bars, keys and the two heights; animating in
-place; the settings panel (essentials, folded groups, search, jump to a setting, several layers at once); the top
-bar that never overlaps; the tool strip; select-then-act for group, ungroup, mask and track matte, boolean (baked),
-clip, auto layout, swap set, align, distribute, match size, paste style, effects, lock and hide, make rig (if small);
-multi-select on the canvas and in the list; nudge; the action bar and one action list for the bar, the right-click
-menu and Ctrl K; drag feel (box and picture as one).
+**Order of work in H28** (the manager's order, after the fresh-eyes check
+`C:\Users\Sam\.rostrum\waves\results\2d-redesign\audit\FINDINGS.md`): the design; the core structure (one workspace,
+the timeline as the layers list with bars and two heights, animating in place, the settings panel, the top bar, the
+tool strip); three bugs (a timeline row that wouldn't open because the shared code and the app used the same internal
+name; Ctrl K acting on the first selected layer only; empty groups and drawings catching every click); drag feel;
+select first, then act, with real multi-select; the everyday keys; zoom and pan; snapping, guides, align and
+distribute; creation tools. Whatever doesn't fit is listed in the H28 report.
 
-**H29 (painting, with the canvas basics it needs):** one painting model; zoom and pan; quick brush size and colour on
-the canvas; snapping and guides on the canvas; copy / paste of layers; + Add › Painted background; a key's
-right-click ease menu; the shortcut list in Help.
+**H29 (painting, and what it needs):** one painting model (paint on any element); quick brush size and colour on the
+canvas; + Add › Painted background and "Set depth" on selected drawings; a key's right-click ease menu, selecting
+several keys and moving or easing them together; the shortcut list in Help; sizes by name for a new composition
+(16:9, 4K, 9:16, 1:1, 4:5); Opacity in %, weights by name; a font list.
 
-**Later:** the live boolean group with Flatten; parenting (follow another layer); the character tools (Bone tool on a
-selected rig, IK drag, poses, Lip sync on a swap set: H30); hearing the project's music while playing, with its
-waveform under the ruler (through Sound's engine); a history list by who; position as one setting and X / Y side by
-side; a fade handle on a bar's corner; Sound and Rostrum3D moving to the same settings panel (the kit has it; each app
-turns it on with one line).
+**Later:** the character on screen (H30): Bone tool on a selected rig, attach parts, IK drag, poses, lip sync and
+blinks on a swap set; **hearing the project's music in 2D** while playing and scrubbing, through Sound's engine (the
+one-audio-engine rule), with its waveform under the ruler; the live boolean group with Flatten; parenting (follow
+another layer); a history list by who; a fade handle on a bar's corner; Sound and Rostrum3D moving to the same
+settings panel (the kit has it; each app turns it on with one line).
