@@ -232,3 +232,8 @@ Not crates (`render/src`): `depth_tests.rs` — a parent's `perspective: 800px` 
 | Crate | Patch | Why |
 |---|---|---|
 | anyrender_skia | `SkiaSceneCache::set_root_scale(scale)` (scene.rs): a scale pushed as the bottom entry of `base_3d`, so `set_matrix`, `push_transform_3d`, captures, soft clips and flat layers all draw through it; 1 clears it. `write_tap` already skips any base, so no comp-cache buffer is written from a scaled paint. Under a scale, pixel-grid clips take the soft-clip path (`clip_on_pixel_grid` needs no base) | `frame` with `scale` 0.5 / 0.25 (the live canvas while playing, rostrum-motion painter.rs `set_scale`): the same laid-out page drawn smaller, blur / glow / shadow radii scaling with it, without laying the page out again at another size |
+
+## H27 (big comps play faster; 2026-10-22)
+| Crate | Patch | Why |
+|---|---|---|
+| blitz-paint | `ink.rs` + `render.rs`: an opacity / filter layer on an element whose children may overflow it (overflow: visible) covers where its subtree paints (its boxes, grown by box / text shadows, CSS filters, outlines and a font size of glyph overhang), plus 2 device pixels so the clip's edge never meets an edge inside; unbounded as before when that can't be known (a transformed, fixed or SVG descendant, a filter by `url(#id)`) | the round-4 patch made such layers unbounded, so Skia sized each to the whole frame: a 1080p comp of 200 half-transparent layers cleared and composited 200 full frames, ≈ 26 ms of GPU a frame (now ≈ 5 ms); pictures unchanged (≤ 1/255 in blurred shadows, 6/255 on a few pixels) |

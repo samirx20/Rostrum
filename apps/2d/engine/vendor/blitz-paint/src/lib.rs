@@ -9,6 +9,7 @@ mod debug_overlay;
 mod filters;
 mod svg_filter;
 mod gradient;
+mod ink;
 mod kurbo_css;
 mod layers;
 mod particles;

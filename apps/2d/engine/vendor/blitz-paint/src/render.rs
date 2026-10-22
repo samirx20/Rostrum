@@ -596,9 +596,18 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
                 // (overflow: visible) covers what they paint outside its box (their shadows, blurs, moved
                 // children), as in Chromium: a blurred or fading group no longer cuts its children's
                 // shadows to its own box. Leaf elements keep the tight box (cheap layers for text spans).
+                // Rostrum patch (H27): the layer covers where the subtree paints (ink.rs), not the whole frame,
+                // when that can be known; a few device pixels wider, so its clip's edge never meets an edge it holds.
                 let has_element_children = node.children.iter().any(|&id| self.dom.tree()[id].is_element());
                 if effect && !should_clip && has_element_children {
-                    effect_layer_clip = Rect::new(-1e7, -1e7, 1e7, 1e7);
+                    effect_layer_clip = match crate::ink::subtree_ink(self.dom.as_ref(), node, self.scale) {
+                        Some(ink) => {
+                            let grow = crate::ink::device_px(cx.transform, 2.0);
+                            let ink = Rect::new(ink.x0 + filter_expansion_area.x0, ink.y0 + filter_expansion_area.y0, ink.x1 + filter_expansion_area.x1, ink.y1 + filter_expansion_area.y1);
+                            effect_layer_clip.union(ink).inflate(grow, grow)
+                        }
+                        None => Rect::new(-1e7, -1e7, 1e7, 1e7),
+                    };
                 }
 
                 // Opacity/Filter layer if box has opacity or a filter.
