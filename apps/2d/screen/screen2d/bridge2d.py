@@ -10,7 +10,7 @@ from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
 from rostrum_core import live, marker_times
 from rostrum_core.tree import index
-from rostrum2d import fields as F, retime
+from rostrum2d import fields as F, placement, retime
 
 from . import bounds, outline, screen_seen
 from .drags import DragSlots
@@ -37,7 +37,7 @@ from .tools2d import ToolSlots
 from .undo_state import UndoState
 
 
-TOOLS = ("move", "pen", "draw", "rect", "ellipse", "text", "camera")      # what the mouse does on the canvas (setTool)
+TOOLS = ("move", "pen", "draw", "rect", "ellipse", "text", "camera", "bone")      # what the mouse does on the canvas (setTool)
 
 
 class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, ActionSlots, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
@@ -79,6 +79,8 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
         self._marker_saved()                                # (remembers the last change: only later ones are announced)
         self.marks.changed.connect(self._marker_saved)
         self.join_history(self.marks)                       # marker edits undo with the screen's one history
+        self._host = placement.Host(self.frames.place, lambda: self.marks.times, lambda: doc.folder)
+        placement.use(self._host)                           # comp-px strokes and spatial staggers ask the canvas's engine
         self.model.update(self._rows())
         self.marks.changed.connect(self._render)            # expressions may read marker("…")
         self.marks.changed.connect(self._problems.touch)
@@ -217,6 +219,8 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
             return self._fail(f"Error: tool: {tool!r} is not a tool ({', '.join(TOOLS)}).")
         if tool == "camera" and not self._camera.available:
             return self._fail("Error: camera: this scene has no camera; + Add › Camera first.")
+        if tool == "bone" and not self._bone_tool.available:
+            return self._fail("Error: bone: select a rig first (Make rig on a character's parts).")
         if tool != self._tool:
             if self._tool == "pen":
                 self._pen.finish()
@@ -302,6 +306,7 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
         self.play.stop()
         self.marks.close()
         self.endDrag()
+        placement.drop(self._host)
         self.frames.close()
         self._problems.close()
         self._cuepick.close()

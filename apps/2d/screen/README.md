@@ -184,6 +184,22 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   wav <path> | pick <item|-> | menu | open [dry] | problem <png>`, `rulermenu`. Layout states: `sound-row`,
   `sound-beats`, `sound-compact`, `sound-menu` (a project made by `soundtrack_steps.sound_project`).
 
+## H33 (rig): the Bone tool, Mirror pose, faint marks past the keys, beat words
+
+- **The Bone tool J** (`screen2d/bone_tool.py` as `backend.boneTool`, `qml/BoneTool.qml`; RIG.md › Drawing bones by hand):
+  in the tool strip and on J only while a rig is in hand; draws bones joint by joint with `bone.draw`; the bones overlay
+  stays visible but does not take the pointer while it is on. Leaving the rig ends it (back to Move).
+- **Mirror pose ▾** on the context bar (actions.py `mirror_*`, fact `mirrorable`): `pose.mirror` at the playhead.
+- **Faint marks past the keys** (`screen2d/key_ghosts.py`, rows' `ghosts` / `tails` from `outline.rows`, drawn in
+  `qml/LayerTrack.qml`): Repeat and Back and forth show faint copies of the keys after the last one, read from
+  `rostrum_core.keys.after.extend` (what playback and the export read); a spring still moving at its next key shows a faint
+  tail to where it would have settled (`easing.spring` with the key's own physics), with a hover tip.
+- **Beat words** (`screen2d/beat_words.py`, the one place): with a tempo in the project's music, a key's label says
+  "… at bar 5" / "bar 5 beat 3" (hooks.label_of), the key bar shows "bar 5 beat 3" beside one key's Time, and the time
+  drag's snap label names bars and beats the same way. A time within half a frame of a beat is on it.
+- Steps: `bonedrag`, `boneclick`, `bonehover`, `boneend`, `bonerealclick <bone> [ctrl]` (a real mouse click; Ctrl held).
+  Layout states: `bone-tool`, `mirror-pose-menu`, `key-faint-copies`, `key-beat-words`.
+
 ## The rules it builds in
 
 - **One animation model** (`screen2d/route.py`, the only place): a number or colour field keys may drive is edited

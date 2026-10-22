@@ -41,6 +41,6 @@ def edit_sound_cue(ctx, args):
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f'sound "{args["sound"]}"', "must be an absolute path",
                            hint="Find one with inspect_sounds.")
     r = sound_cues.cue(doc.folder, doc, args["layer"], args["sound"], ctx.who, float(args.get("at", 0.0)),
-                       comp.get("soundtrack", ""))
+                       comp.get("soundtrack", ""), group=ctx.group)          # in the agent's group: its Undo takes it too
     return Reply(f'Tied {Path(r["file"]).name} to {args["layer"]}: clip {r["clip"]} on "{sound_cues.TRACK_NAME}" in the '
                  f'Sound item {r["song"]}, at {r["at"]} (the marker follows the layer). RostrumSound mixes it.', r)

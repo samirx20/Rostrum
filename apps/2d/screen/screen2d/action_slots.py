@@ -75,6 +75,8 @@ class ActionSlots(SlotMixin):
             {"clip_copy": self.copyLayers, "clip_cut": self.cutLayers, "paste": self.pasteLayers}[name]()
         elif name == "stagger":
             self._stagger.start()
+        elif name == "depth":                                            # Set depth ▾ › Other depth… (depth_typed.py)
+            self._depth_typed.start()
         elif name == "sound_here":
             self._cuepick.start()
         elif name in ("lipsync", "blinks"):                              # the character sheets (rig_lipsync.py, rig_blinks.py)

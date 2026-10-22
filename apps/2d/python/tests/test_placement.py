@@ -40,3 +40,29 @@ def test_a_stroke_lands_under_its_point(tmp_path):
             assert red, "the stroke left no paint"
             cx, cy = sum(p[0] for p in red) / len(red), sum(p[1] for p in red) / len(red)
             assert abs(cx - x) < 1 and abs(cy - y) < 1, (cx, cy, x, y)
+
+
+def test_comp_px_strokes_use_the_running_programs_engine():
+    """With a host registered (the screen's canvas engine, the MCP server's project), paint.stroke in composition px
+    asks that host, with the project's markers and folder, and starts no engine of its own."""
+    from rostrum_core import Document, Who
+    from rostrum2d import KIND, placement
+    asked, marks = [], []
+
+    def place(scene, t, ids):
+        asked.append((t, ids))
+        return {i: {"m": [1, 0, 100, 0, 1, 50, 0, 0, 1], "w": 200, "h": 100, "edge": ""} for i in ids}
+    host = placement.Host(place, markers=lambda: marks.append(1) or {"drop": 0.5}, folder=lambda: None)
+    placement.use(host)
+    try:
+        d = Document.new(KIND)
+        sam = Who.person("sam")
+        d.apply([{"op": "comp.add", "args": {"id": "film"}},
+                 {"op": "layer.add", "target": "film", "args": {"type": "shape", "id": "egg"}},
+                 {"op": "shape.set", "target": "egg", "args": {"w": 200, "h": 100}}], sam)
+        d.apply({"op": "paint.stroke", "target": "egg", "args": {"points": [[110, 60], [150, 60]]}}, sam)
+    finally:
+        placement.drop(host)
+    assert asked == [(0.0, ["egg"])] and marks                       # the host's engine, with the project's markers
+    pts = d.item("egg")["frames"][0]["paints"][0]["strokes"][0]["points"]
+    assert [p[:2] for p in pts] == [[9.5, 9.5], [49.5, 9.5]]        # own px (10, 10) / (50, 10) -> pixel centres

@@ -62,8 +62,8 @@ def _size_of(kind: str, path: Path) -> tuple[int, int]:
     return streams[0]["width"], streams[0]["height"]
 
 
-def media_calls(doc_data: dict, comp: dict, into: str, kind: str, path: Path) -> list[dict]:
-    """layer.add + image.set / video.set: the file's own size (shrunk to fit the frame), centred."""
+def media_calls(doc_data: dict, comp: dict, into: str, kind: str, path: Path, at=None) -> list[dict]:
+    """layer.add + image.set / video.set: the file's own size (shrunk to fit the frame), centred (or centred on `at`, (x, y))."""
     from rostrum_core import ids
     from rostrum_core.tree import index
     from ..kind import KIND
@@ -72,7 +72,8 @@ def media_calls(doc_data: dict, comp: dict, into: str, kind: str, path: Path) ->
     lid = ids.counted(index(doc_data, KIND.lists), kind)
     return [{"op": "layer.add", "target": [into], "args": {"type": kind, "id": lid, "name": path.stem}},
             {"op": f"{kind}.set", "target": [lid], "args": {"src": str(path), "w": round(w * k), "h": round(h * k),
-                                                           "x": comp["width"] / 2, "y": comp["height"] / 2}}]
+                                                           "x": at[0] if at else comp["width"] / 2,
+                                                           "y": at[1] if at else comp["height"] / 2}}]
 
 
 def tree_of(kind: str, path=None, page: int = 1, text: str = "text", figma: dict | None = None) -> dict:
@@ -125,11 +126,12 @@ def _pages(doc, comp, path, progress=None, cancelled=None) -> dict:
 
 
 def plan(doc, comp_id: str, path=None, kind: str | None = None, page: int = 1, text: str = "text", figma: dict | None = None,
-         into: str | None = None, fit: bool = False, progress=None, cancelled=None) -> dict:
+         into: str | None = None, fit: bool = False, progress=None, cancelled=None, at=None) -> dict:
     """The slow part of an import, with no change to the document (so it may run off the GUI thread): read, download, parse,
     place. → {"name", "kind", "calls": [ops], "report", "label", "into", "comps"?}; `apply` makes the one change.
     `fit` (svg / pdf / psd / figma): the picture's visible content box is centred in the composition at its own size, scaled
     down to fit inside it (with a margin) only when it is bigger; a whole-PDF import (page 0) makes comps of the page's size.
+    `at` (x, y): where a picture or clip lands (dropped on the canvas); a page is always fitted.
     `progress(fraction, words)` and `cancelled()` are called between stages; a True from `cancelled` raises Cancelled."""
     kind = kind or ("figma" if figma else kind_of(path))
     if kind == "pdf" and page == 0:                          # page 0 = every page, a composition each (the open comp only sets fps and length)
@@ -147,7 +149,7 @@ def plan(doc, comp_id: str, path=None, kind: str | None = None, page: int = 1, t
         if not path.is_file():
             raise ValueError(f"no file at {path}")
         _stage(progress, cancelled, 0.3, f"Reading {path.name}")
-        calls, report, name = media_calls(doc.data, comp, into, kind, path), [], path.name
+        calls, report, name = media_calls(doc.data, comp, into, kind, path, at), [], path.name
     else:
         _stage(progress, cancelled, 0.1, "Downloading the frame" if kind == "figma" else f"Reading the {kind.upper()}")
         tr = tree_of(kind, path, page, text, figma)

@@ -21,6 +21,7 @@ from rostrum2d.names import display_name
 from rostrum2d.ops_group import HOLDERS, _why_not
 from rostrum2d.rig.bodynames import bodylike
 from rostrum2d.rig.guess import guessable
+from rostrum2d.rig.mirror import pairs as mirror_pairs
 from rostrum_core.ids import counted
 from rostrum_core.tree import index
 
@@ -73,6 +74,7 @@ class Facts:
             "has_sound": bool(self.state.get("sound")) and "camera" not in self.kinds,   # Add a sound here (sound_cue_pick.py)
             # a character (rig/guess.py, rig_mouths.py): Bones from part names, Lip sync…, Add blinks…
             "bones_guessable": self.count == 1 and guessable(self.items[0]),
+            "mirrorable": self.count == 1 and self.items[0]["type"] == "rig" and bool(mirror_pairs(self.items[0])),   # Mirror pose ▾ (rig/mirror.py)
             "attachable": rig_attach.pair(doc, list(self.state.get("picked", []))) is not None,   # a part + a bone
             "body_parts": groupable and p["type"] != "rig" and "rig" not in self.kinds and bodylike(_part_names(self.items)),   # Make rig first
             "mouth_set": self.count == 1 and is_mouth(self.items[0]),

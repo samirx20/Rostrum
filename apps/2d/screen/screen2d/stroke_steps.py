@@ -7,6 +7,8 @@ through the calls the pointer and keys make.
     selectstrokes on|off           the bar's Select strokes (the next drag is a lasso)
     strokesmove <dx> <dy>          drag the picked strokes by that much | strokesturn <deg> [scale] | strokesdelete |
     strokescopy | strokespaste | strokesclear (Esc)
+    strokeshandle scale|turn <x> <y> [steps]    drag a corner handle / the turn knob to (x, y) (composition px); steps = Shift
+    grabhandle scale|turn <x> <y>  the same with the real pointer: press on the handle where it is drawn, drag, release
     clickarea canvas|timeline|settings    a real click in that part of the window (the focused area follows it)
     key <combo>                    a real key press (B, V, Escape, Ctrl+C) | keydown Alt | keyup Alt (held across steps)
     cmove <x> <y>                  move the real pointer there (a hover)
@@ -16,6 +18,7 @@ through the calls the pointer and keys make.
     clickbtn <label>               a real click on the context-bar button with that label
     clickstarts <text>             the same for an item whose text starts with that (a name that changes)
     clicktext <text>               a real click on the visible item whose text or label is that (menus, buttons)
+    dragtext <dy> <text>           a real press on that item, dragged dy window px up (-) or down, released (a paint layer's row)
     shot <png>                     wait for the newest frame, then save a picture of the window (a walk takes one per step)
     windowsize <W>x<H>             resize the window now (a picture of an open menu needs the final size before it opens)
     barbutton <label>              open that context-bar button's ▾ menu (Set depth)
@@ -27,8 +30,8 @@ from PySide6.QtCore import Q_ARG, QObject, QCoreApplication, QMetaObject, QPoint
 from PySide6.QtGui import QKeySequence
 from PySide6.QtTest import QTest
 
-WORDS = ("altpick", "altoff", "lasso", "selectstrokes", "strokesmove", "strokesturn", "strokesdelete", "strokescopy",
-         "strokespaste", "strokesclear", "clickarea", "clickat", "barbutton", "windowsize", "key", "keydown", "keyup", "cclick", "cpath", "clickbtn", "clicktext", "clickstarts", "reston", "shot", "cmove")
+WORDS = ("altpick", "altoff", "lasso", "selectstrokes", "strokesmove", "strokesturn", "strokeshandle", "grabhandle", "strokesdelete", "strokescopy",
+         "strokespaste", "strokesclear", "clickarea", "clickat", "barbutton", "windowsize", "key", "keydown", "keyup", "cclick", "cpath", "clickbtn", "clicktext", "clickstarts", "dragtext", "reston", "shot", "cmove")
 
 # where an empty spot of each area is, as fractions of the window (width, height)
 AREAS = {"canvas": (0.45, 0.30), "timeline": (0.60, 0.93), "settings": (0.93, 0.55)}
@@ -160,6 +163,20 @@ def do_stroke_step(bridge, win, word, rest, step):
         if not hits:
             raise RuntimeError(f"step {step!r}: nothing visible is called {' '.join(rest)!r}; near it: {_texts(win, rest[0])}")
         _click_item(win, hits[0])
+    elif word == "dragtext":
+        hits = _find(win, " ".join(rest[1:]))
+        if not hits:
+            raise RuntimeError(f"step {step!r}: nothing visible is called {' '.join(rest[1:])!r}")
+        c = hits[0].mapToScene(QPointF(hits[0].width() / 2, hits[0].height() / 2))
+        a, dy = QPoint(int(c.x()), int(c.y())), int(rest[0])
+        QTest.mouseMove(win, a)
+        QTest.qWait(60)
+        QTest.mousePress(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, a)
+        for k in range(1, 9):
+            QTest.mouseMove(win, QPoint(a.x(), a.y() + dy * k // 8))
+            QTest.qWait(20)
+        QTest.mouseRelease(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, QPoint(a.x(), a.y() + dy))
+        QTest.qWait(300)
     elif word == "altpick":
         pick.setAlt(True)
         x, y = float(rest[0]), float(rest[1])
@@ -180,6 +197,27 @@ def do_stroke_step(bridge, win, word, rest, step):
     elif word == "strokesmove":
         if not sel.move(float(rest[0]), float(rest[1])):
             raise RuntimeError(f"step {step!r}: no strokes picked")
+    elif word == "strokeshandle":
+        if not sel.drag_handle(rest[0], (float(rest[1]), float(rest[2])), rest[3:4] == ["steps"]):
+            raise RuntimeError(f"step {step!r}: no strokes picked")
+    elif word == "grabhandle":
+        from .stroke_geom import handle_point
+        if not sel.box:
+            raise RuntimeError(f"step {step!r}: no strokes picked")
+        zoom = win.findChild(QObject, "stage").property("compScale")
+        a, b = handle_point(rest[0], sel.box, zoom), (float(rest[1]), float(rest[2]))
+        pts = [_scene_of(win, a[0] + (b[0] - a[0]) * k / 8, a[1] + (b[1] - a[1]) * k / 8) for k in range(9)]
+        print("DEBUG grab", rest[0], sel.box, zoom, a, pts[0])
+        QTest.mouseMove(win, pts[0])
+        QTest.qWait(60)
+        QTest.mousePress(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, pts[0])
+        for q in pts[1:]:
+            QTest.mouseMove(win, q)
+            QTest.qWait(20)
+        QTest.mouseRelease(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, pts[-1])
+        QTest.qWait(300)
+        if bridge.status not in ("Scale strokes", "Turn strokes"):
+            raise RuntimeError(f"step {step!r}: the drag did not take the handle (status: {bridge.status})")
     elif word == "strokesturn":
         if not sel.transform(float(rest[1]) if rest[1:] else 1.0, float(rest[0])):
             raise RuntimeError(f"step {step!r}: no strokes picked")

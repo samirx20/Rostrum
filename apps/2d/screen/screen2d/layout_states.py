@@ -32,9 +32,15 @@ def long_project() -> list[str]:
 
 
 def with_sound() -> list[str]:
-    """Start args for a project with sound (soundtrack_steps.sound_project), made fresh in the temp folder."""
-    from .soundtrack_steps import sound_project
+    """Start args for a project with sound (sound_sample.sound_project), made fresh in the temp folder."""
+    from .sound_sample import sound_project
     return sound_project(Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "With sound")
+
+
+def with_video_sound() -> list[str]:
+    """The sound project plus a video with its own sound (sound_sample.video_sound_project): the Video sound row."""
+    from .sound_sample import video_sound_project
+    return video_sound_project(Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "Video sound")
 
 
 def with_character() -> list[str]:
@@ -67,6 +73,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("sound-menu", with_sound(), ["sound wait", "sound menu"]),           # Open in RostrumSound
         ("sound-cue-picker", with_sound(), ["sound wait", "select logo", "sound cue whoosh"]),   # H32: Add a sound here…
         ("export-sheet-sound", with_sound(), ["sound wait", "exportsheet open mp4"]),          # H32: Include the project's sound
+        ("video-sound-row", with_video_sound(), ["sound wait", "select talk", "sound video"]),  # H33: a video's own sound
+        ("video-sound-muted", with_video_sound(), ["sound wait", "sound video talk on", "timeline compact"]),
         ("rows-open", ["--sample"], ["select title", "open title"]),
         ("two-selected", ["--sample"], ["selectmany title card"]),
         ("action-menu", ["--sample"], ["selectmany dot rule", "actionmenu"]),
@@ -135,4 +143,16 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("scene-size", ["--sample"], ["select screen_sample", "set size vertical"]),
         ("camera-tool", ["--sample"], ["add camera", "tool camera"]),
         ("effects-menu", ["--sample"], ["select card", "clickbtn Effects", "wait 300"]),
+        # H33: Set depth ▾ › Other depth… open (a typed number); picked strokes turned by their knob (handles on the box)
+        ("depth-typed", ["--sample"], ["tool draw", "draw 300 300 500 320 700 300", "tool move", "add camera",
+                                       "select drawing_1", "depthtyped 2.5 open"]),
+        ("paint-strokes-turned", ["--sample"], [*PAINTED, "lasso 500,200 1300,200 1300,400 500,400",
+                                                "strokeshandle turn 1100 120"]),
+        # H33 (rig): the Bone tool mid-chain; Mirror pose ▾ open; faint copies of Repeat; a key's beat words on the bar
+        ("bone-tool", with_character(), ["select max", "run layer:rig", "bonedrag 640 420 640 240", "boneclick 640 130",
+                                         "bonehover 600 150"]),
+        ("mirror-pose-menu", with_character(), [*RIGGED, "clickbtn Mirror pose", "wait 300"]),
+        ("key-faint-copies", ["--sample"], ["select dot", "keypick dot.x.k2200", "keyafter repeat"]),
+        ("key-beat-words", with_sound(), ["sound wait", "select logo", "time 1.0", "keyhere", "showanim",
+                                          "keypick logo.x.k1000"]),
     ]

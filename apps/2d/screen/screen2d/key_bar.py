@@ -9,7 +9,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_core.keys import after as last_key, ease as ease_at, keys_of, springs
 from rostrum_gui.edits import Drag
 
-from . import eases
+from . import beat_words, eases
 
 
 class KeyBar(QObject):
@@ -78,6 +78,12 @@ class KeyBar(QObject):
     @Property(float, notify=changed)
     def time(self):
         return float(self._first().get("t", 0.0))
+
+    @Property(str, notify=changed)
+    def beat(self):
+        """One key on a beat of the music: "bar 5 beat 3" beside its Time ("" otherwise; beat_words.py)."""
+        k = self._first()
+        return beat_words.say(self.b, k["t"]) if self.one and isinstance(k.get("t"), (int, float)) else ""
 
     @Property(bool, notify=changed)
     def hasValue(self):

@@ -6,12 +6,13 @@
     paintset <paint id> visible|opacity|mode|name <json value>    its eye, Opacity, Blend
     paintmove <paint id> <row>       drag it to that row of the list (0 = top) | paintremove <paint id> (right-click › Delete)
     painttoggle <field> on|off       Keep inside the outline (paintInside), Draw each frame (eachFrame)
+    depthtyped <depth> [open|cancel]  Set depth ▾ › Other depth…, type the number, Enter (open: leave the popover open)
 """
 from __future__ import annotations
 
 import json
 
-WORDS = ("fill", "fillmode", "gap", "paintpick", "paintset", "paintmove", "paintremove", "painttoggle")
+WORDS = ("fill", "fillmode", "gap", "paintpick", "paintset", "paintmove", "paintremove", "painttoggle", "depthtyped")
 
 
 def do_paint_step(bridge, word, rest, step):
@@ -32,5 +33,12 @@ def do_paint_step(bridge, word, rest, step):
         layers.moveTo(rest[0], int(rest[1]))
     elif word == "paintremove":
         layers.remove(rest[0])
+    elif word == "depthtyped":
+        dt = bridge.depthTyped
+        if not bridge.run("layer:depth_typed") or not dt.open:
+            raise RuntimeError(f"step {step!r}: Other depth… is not offered here: {bridge.status}")
+        dt.setValue(float(rest[0]))
+        if rest[1:] != ["open"]:
+            dt.cancel() if rest[1:] == ["cancel"] else dt.end()
     elif word == "painttoggle":
         layers.setToggle(rest[0], rest[1] == "on")

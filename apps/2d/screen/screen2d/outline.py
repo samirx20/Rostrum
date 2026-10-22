@@ -17,15 +17,17 @@ from rostrum_core.keys import animated, keys_of, marked
 
 from .eases import shape_of
 
-from . import framing
+from . import framing, key_ghosts
 
 
-def label_of(item: dict, owner: dict | None = None) -> str:
-    """A key reads as its layer, field and time ("title · Opacity at 0.9 s"); everything else by its name, or its
-    id while the name is only the type's ("Text")."""
+def label_of(item: dict, owner: dict | None = None, beats=None) -> str:
+    """A key reads as its layer, field and time ("title · Opacity at 0.9 s", or "… at bar 5" on a beat of the music:
+    `beats(t)` gives the beat words of the key's own time, beat_words.py); everything else by its name, or its id while
+    the name is only the type's ("Text")."""
     if item.get("type") == "key" and owner is not None:
         p = F.param(owner["type"], item["prop"])
-        return f"{label_of(owner)} · {p.label if p else item['prop']} at {marked.label(item['t'])}"
+        on = beats(item["t"]) if beats and isinstance(item["t"], (int, float)) else ""
+        return f"{label_of(owner)} · {p.label if p else item['prop']} at {on or marked.label(item['t'])}"
     return display_name(item)
 
 
@@ -54,7 +56,8 @@ def _row(kind: str, owner: dict, depth: int, label: str, keys: list, prop: str =
     """kind: "layer", "field" (one animated setting of the layer) or "owned" (an effect or mask)."""
     return {"row": kind, "id": owner["id"] if kind != "field" else f"{owner['id']}.{prop}", "owner": owner["id"],
             "prop": prop, "label": label, "kind": owner["type"], "shape": owner.get("shape", "") if kind == "layer" else "",
-            "depth": depth, "owned": kind != "layer", "fold": "", "keys": keys, "frames": [], "bar": False}
+            "depth": depth, "owned": kind != "layer", "fold": "", "keys": keys, "frames": [], "bar": False,
+            "ghosts": [], "tails": []}
 
 
 def _one_per_frame(keys: list[dict], fps: float) -> list[dict]:
@@ -76,6 +79,10 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset()) -> li
     out: list[dict] = []
     duration = comp["duration"]
 
+    def past(pairs) -> dict:
+        """The faint marks past the keys (Repeat, Back and forth, a spring's tail) of these (owner, prop) fields."""
+        return key_ghosts.marks([(keys_of(o, p), duration) for o, p in pairs], comp["fps"])
+
     def walk(layers, depth):
         for lay in reversed(layers):
             fields = _fields(lay)
@@ -84,6 +91,7 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset()) -> li
             only = lay["id"] in anim_only
             is_open = bool(fields) if only else inside and (bool(lay.get("layers")) != (lay["id"] in flipped))
             row = _row("layer", lay, depth, label_of(lay), summary)
+            row.update(past(fields))
             if F.param(lay["type"], "start") is not None:   # a camera, a shape …: when it shows, as a bar
                 row.update(bar=True, start=min(max(lay.get("start", 0.0), 0.0), duration),
                            end=min(max(lay.get("end", duration), 0.0), duration),
@@ -95,12 +103,12 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset()) -> li
             out.append(row)
             if not is_open:
                 continue
-            out.extend(_row("field", lay, depth + 1, F.param(lay["type"], p).label, _keys(lay, p), p)
+            out.extend({**_row("field", lay, depth + 1, F.param(lay["type"], p).label, _keys(lay, p), p), **past([(lay, p)])}
                        for o, p in fields if o is lay)
             for o in _owned(lay):
                 keys = sorted((k for p in animated(o) for k in _keys(o, p)), key=lambda k: k["t"])
                 if keys or not (only or o["type"] in ("bone", "ik")):   # unkeyed bones would only crowd the list
-                    out.append(_row("owned", o, depth + 1, label_of(o), keys))
+                    out.append({**_row("owned", o, depth + 1, label_of(o), keys), **past((o, p) for p in animated(o))})
             if not only:
                 walk(lay.get("layers", []), depth + 1)
 

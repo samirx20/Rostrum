@@ -105,19 +105,26 @@ ListView {
         id: row
         required property var modelData
         width: ListView.view.width
-        height: modelData.row === "layer" ? Theme.row : Theme.rowDense - 2
+        readonly property real own: modelData.row === "layer" ? Theme.row : Theme.rowDense - 2
+        readonly property var sound: modelData.row === "layer" ? backend.soundtrack.videos.rows[modelData.id] : undefined
+        height: own + (sound ? Theme.rowDense - 2 : 0)     // a video with sound: its sound's row under it (VideoSoundRow)
         opacity: list.dragId === modelData.id ? 0.45 : 1
         LayerName {
-            x: Theme.gap; width: list.labelWidth - Theme.gap; height: parent.height
+            x: Theme.gap; width: list.labelWidth - Theme.gap; height: row.own
             rowData: row.modelData; rows: list
         }
         Repeater {   // an agent just changed this row's item: the 1-second outline
             model: backend.agent.flash.indexOf(row.modelData.id) >= 0 ? 1 : 0
-            ChangeOutline { x: Theme.gap; width: list.labelWidth - Theme.gap; height: row.height }
+            ChangeOutline { x: Theme.gap; width: list.labelWidth - Theme.gap; height: row.own }
         }
         LayerTrack {
-            x: list.ruler.x - 8; width: list.ruler.width + 16; height: parent.height
+            x: list.ruler.x - 8; width: list.ruler.width + 16; height: row.own
             rowData: row.modelData; ruler: list.ruler; rows: list
+        }
+        Loader {   // the video's own sound, tied to the bar above (screen2d/video_sound.py)
+            active: row.sound !== undefined
+            y: row.own; width: parent.width; height: Theme.rowDense - 2
+            sourceComponent: VideoSoundRow { rowData: row.modelData; info: row.sound; ruler: list.ruler; labelWidth: list.labelWidth }
         }
     }
 }

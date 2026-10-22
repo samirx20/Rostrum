@@ -52,3 +52,25 @@ def transformed(points: list, around: tuple[float, float], scale: float = 1.0, t
 def outline(points: list) -> str:
     """A stroke's path as SVG path data (composition px), for the selection's outline."""
     return "M " + " L ".join(f"{p[0]:.1f} {p[1]:.1f}" for p in points) if points else ""
+
+
+KNOB = 28.0                 # screen px: the turn knob sits this far above the box (QML divides by the zoom)
+
+
+def handle_point(kind: str, box: dict, zoom: float = 1.0) -> tuple[float, float]:
+    """Where a handle is (composition px): "scale" the box's bottom-right corner, "turn" the knob above its top centre."""
+    if kind == "turn":
+        return box["x"] + box["w"] / 2, box["y"] - KNOB / zoom
+    return box["x"] + box["w"], box["y"] + box["h"]
+
+
+def handle_amount(kind: str, centre, press, now, steps: bool = False) -> tuple[float, float]:
+    """(scale, turn in degrees) for a handle pressed at `press` and dragged to `now`, about `centre`: a corner scales
+    by how much farther from the centre the pointer is; the knob turns by the angle swept round it (`steps`: 15°)."""
+    (cx, cy), (px, py), (nx, ny) = centre, press, now
+    if kind == "scale":
+        d0 = math.hypot(px - cx, py - cy)
+        return (max(math.hypot(nx - cx, ny - cy), 1e-3) / d0 if d0 > 1e-6 else 1.0), 0.0
+    turn = math.degrees(math.atan2(ny - cy, nx - cx) - math.atan2(py - cy, px - cx))
+    turn = (turn + 180.0) % 360.0 - 180.0
+    return 1.0, float(round(turn / 15.0) * 15.0) if steps else turn

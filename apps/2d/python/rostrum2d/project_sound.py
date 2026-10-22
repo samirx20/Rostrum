@@ -38,7 +38,28 @@ def for_export(folder, chosen: str, fmt: str, asked: bool | None) -> str | None:
     return s["id"] if s else None
 
 
-_BEATS: dict = {}       # (song's stamp, seconds) -> beat times: describe() runs on every edit, the song's file rarely changes
+_SONGS: dict = {}       # (folder, item) -> the song's live Document: one copy per process (cues, video sound, Undo)
+
+
+def open_song(folder, item: str):
+    """The song `item` as a live Document (rostrum_core.live: every change locked, caught up and saved at once; one
+    door with Sound's own window). One copy per process, caught up on each call, so 2D's cues, the video sound and the
+    screen's Undo all see the same history. Its check reads the project's shared markers ("#Logo · sound")."""
+    from rostrum_core import live
+    from rostrum_sound.doc import markers as song_markers
+    from rostrum_sound.opening import open_whole
+    song_markers.use_project(folder)                 # this process works in this project (Undo checks the song too)
+    key = (str(folder), item)
+    doc = _SONGS.get(key)
+    if doc is None:
+        doc = _SONGS[key] = open_whole(folder, item)
+        live.keep(doc)
+    else:
+        doc.live.catch_up()
+    return doc
+
+
+_BEATS: dict = {}     # (song's stamp, seconds) -> beat times: describe() runs on every edit, the song's file rarely changes
 
 
 def beats(folder, chosen: str, seconds: float) -> list[float] | None:

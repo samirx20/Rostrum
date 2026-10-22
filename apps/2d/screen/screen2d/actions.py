@@ -67,6 +67,10 @@ DATA = [
        when=FACT("bones_guessable"), calls=_op("rig.guess_bones", "ids")),
     _a("attach", "Attach to bone", rank=8, importance="primary", group="make", when=FACT("attachable"), calls={"rule": "attach"},
        why="Select a part of a rig, then Ctrl+click the bone it should follow"),
+    *[_a(f"mirror_{how}", words, rank=65, importance="primary", group="make", bar="Mirror pose", max_targets=1, when=FACT("mirrorable"),
+         calls=_op("pose.mirror", "ids", how=how, t="$at"))
+      for how, words in (("left_to_right", "Left side onto the right"), ("right_to_left", "Right side onto the left"),
+                         ("swap", "Swap left and right"))],
     _a("lipsync", "Lip sync…", rank=8, importance="primary", group="make", max_targets=1, when=FACT("mouth_set"), do="lipsync"),
     _a("blinks", "Add blinks…", rank=8, importance="primary", group="make", max_targets=1, when=FACT("eyes_set"), do="blinks"),
     _a("mask", "Mask with top layer", rank=20, importance="primary", group="mask", bar="Mask", job="mask", min_targets=2,
@@ -94,6 +98,8 @@ DATA = [
          kinds=("drawing",), when=FACT("depth_ok"), calls={"rule": "depth", "value": v},
          why="Set depth needs a camera: + › Camera (drawings of the composition, not inside a group).")
       for k, v in _DEPTHS.items()],
+    _a("depth_typed", "Other depth…", rank=76, importance="primary", group="arrange", bar="Set depth", kinds=("drawing",),
+       when=FACT("depth_ok"), do="depth", why="Set depth needs a camera: + › Camera (drawings of the composition, not inside a group)."),
     _a("stagger", "Stagger…", rank=35, importance="primary", group="arrange", min_targets=2, do="stagger"),
     _a("sound_here", "Add a sound here…", rank=40, group="arrange", max_targets=1, when=FACT("has_sound"), do="sound_here",
        why="Ties a sound from Sound's library to the layer's start; RostrumSound mixes it"),

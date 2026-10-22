@@ -97,7 +97,7 @@ class RigView(QObject):
     @Slot()
     def refresh(self):
         doc = self.b.doc
-        rig = rig_around(doc, list(self.b._kit.selection)) if self.b.tool == "move" else ""
+        rig = rig_around(doc, list(self.b._kit.selection)) if self.b.tool in ("move", "bone") else ""
         if rig != self._rig:
             self._rig, self._posed, self._place = rig, {}, None
             self._picked = self._picked if rig else ""

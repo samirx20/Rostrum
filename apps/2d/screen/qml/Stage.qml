@@ -192,10 +192,11 @@ Panel {
         }
         PenOverlay {  // the pen tool and the selected path's points (not while playing: they'd lag)
             anchors.fill: parent
-            visible: !backend.playing && !well.drawing && ["rect", "ellipse", "text", "camera"].indexOf(backend.tool) < 0   // one input layer per tool
+            visible: !backend.playing && !well.drawing && ["rect", "ellipse", "text", "camera", "bone"].indexOf(backend.tool) < 0   // one input layer per tool
             fit: view.zoom; ox: view.ox; oy: view.oy
         }
         CameraOverlay { anchors.fill: parent; stage: panel }   // C: drag pans the camera, Alt+drag pushes in
+        BoneTool { anchors.fill: parent; stage: panel }        // J: draw a rig's bones joint by joint (bone_tool.py)
         CreateOverlay { anchors.fill: parent; stage: panel }   // R / O / T: drag a shape, click or drag and type
         Item {  // outlines of the selected layers (turned with them) and the handles of a single one; over the pen's overlay
             id: marks
@@ -207,7 +208,7 @@ Panel {
                     required property var modelData
                     box: modelData; fit: view.zoom; space: marks
                     visible: !(well.drawing && backend.paintEdge.layer === modelData.id)   // painting: its true edge instead
-                    editable: backend.multi.count === 1 && !well.drawing && modelData.type !== "path" && !backend.pen.on
+                    editable: backend.multi.count === 1 && !well.drawing && backend.tool !== "bone" && modelData.type !== "path" && !backend.pen.on
                 }
             }
             BoneOverlay { fit: view.zoom; space: marks }   // a rig in hand: its bones and joints, posing and fixing drags (rig_view.py)
@@ -293,5 +294,16 @@ Panel {
         const g = well.mapToItem(null, x, y)
         canvasMenu.entries = entries
         canvasMenu.openAt(g.x, g.y)
+    }
+    // Files dragged in from the desktop: imported where they are let go (importer.dropFiles; the Import panel's one job).
+    DropArea {
+        id: fileDrop
+        anchors.fill: parent
+        keys: ["text/uri-list"]
+        onEntered: (drag) => drag.accept(Qt.CopyAction)
+        onDropped: (drop) => {
+            const w = fileDrop.mapToItem(panel, drop.x, drop.y), p = panel.toComp(w.x, w.y)
+            if (backend.importer.dropFiles(drop.urls, p.x, p.y)) drop.accept(Qt.CopyAction)
+        }
     }
 }

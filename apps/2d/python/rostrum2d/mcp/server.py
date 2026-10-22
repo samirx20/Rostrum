@@ -49,6 +49,9 @@ def make_app(project: str | None = None, items: list[str] | None = None, documen
 
 
 def make_runtime(app: App) -> Runtime:
+    from rostrum_core import markers
+    from rostrum2d import placement
+    placement.use(placement.Host(markers=lambda: markers.times(app.folder) if app.folder else None, folder=lambda: app.folder))   # comp-px strokes see the project's markers and renders
     runtime = Runtime(app, app_tools())
     with_no_project_sentence(runtime)
     return runtime

@@ -7,6 +7,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -37,8 +38,17 @@ def _get(url: str, token: str | None, raw: bool = False):
     return body if raw else json.loads(body)
 
 
+_LINK = re.compile(r"figma\.com/(?:file|design|proto|board)/([A-Za-z0-9]+)[^?#\s]*(?:\?[^#\s]*?node-id=(\d+)(?:-|:|%3A)(\d+))?", re.I)
+
+
+def link_parts(text: str) -> tuple[str, str] | None:
+    """A Figma link (copied from Figma's Share or the address bar) → (file key, frame id "12:34" or ""); None if it isn't one."""
+    m = _LINK.search(text or "")
+    return (m[1], f"{m[2]}:{m[3]}" if m[2] else "") if m else None
+
+
 def figma_tree(key: str, frame: str | None = None, token: str | None = None) -> dict:
-    """Fetch file `key` and map one frame (by name; the first when None)."""
+    """Fetch file `key` and map one frame (by name or node id "12:34", as a link names it; the first when None)."""
     file = _get(f"{API}/files/{urllib.parse.quote(key)}?geometry=paths", token)
 
     def render(node_id: str) -> Image.Image:
@@ -54,7 +64,7 @@ def figma_tree(key: str, frame: str | None = None, token: str | None = None) -> 
 def _find_frame(file: dict, name: str | None) -> dict:
     frames = [c for page in file["document"]["children"] for c in page.get("children", []) if c["type"] == "FRAME"]
     for f in frames:
-        if name is None or f["name"] == name:
+        if name is None or name in (f["name"], f["id"]):
             return f
     raise ValueError(f"no frame {name!r} in the file" if name else "the file has no frames")
 

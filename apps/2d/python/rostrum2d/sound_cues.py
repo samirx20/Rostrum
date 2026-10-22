@@ -4,21 +4,26 @@ scene: project_sound.py), on a track "Cues from 2D", made through Sound's own op
 marker ("Logo · sound", rule 8) that `follow` keeps on the layer's start, so when the layer moves the cue moves and
 Sound mixes it where it now is. The marker's id names the 2D item and the layer (`mk_cue_<item>_<layer>`). No Qt.
 
-    cue(folder, doc, "logo", "C:/…/whoosh.wav", who, at=0.1)     # the clip, its marker, its track
-    follow(folder, doc, who)                                      # after any 2D change: markers back on their layers
+The person's step is the clip alone (one change, in the song: Ctrl+Z takes the cue back in one step). The marker is
+kept by LINK, 2D's sound link, never the person: made when first needed, moved with its layer, left in place when the
+cue is undone (so Redo finds it), never an Undo step of its own.
+
+    cue(folder, doc, "logo", "C:/…/whoosh.wav", who, at=0.1)     # the clip (and the link's marker, its track)
+    follow(folder, doc)                                           # after any 2D change: markers back on their layers
     choices("whoosh")                                             # sounds to pick from: Sound's library + your folders
 """
 from __future__ import annotations
 
 from pathlib import Path
 
-from rostrum_core import RostrumError, codes, markers
+from rostrum_core import RostrumError, Who, codes, markers
 
 from . import fields as F
 from . import project_sound, retime
 from .names import display_name
 
 TRACK, TRACK_NAME = "cues_2d", "Cues from 2D"
+LINK = Who.script("Rostrum2D")      # who keeps 2D's markers and video sound in step: never a person's Undo step
 
 
 def marker_id(item: str, layer: str) -> str:
@@ -31,7 +36,7 @@ def layer_start(folder, doc, layer_id: str) -> float:
     return round(off + float(doc.item(layer_id).get("start", 0.0)), 6)
 
 
-def _marker(folder, doc, layer_id: str, who) -> str:
+def _marker(folder, doc, layer_id: str) -> str:
     """The cue marker's name, made at the layer's start when it is not there yet (names are unique: "Logo · sound 2")."""
     mid, rows = marker_id(doc.item_id, layer_id), markers.listing(folder)
     mine = next((m for m in rows if m["id"] == mid), None)
@@ -41,13 +46,15 @@ def _marker(folder, doc, layer_id: str, who) -> str:
     base, taken = f'{display_name(layer)} · sound', {m["name"].lower() for m in rows}
     name = next(n for n in (base if i == 1 else f"{base} {i}" for i in range(1, 1000)) if n.lower() not in taken)
     markers.edit(folder, [{"op": "marker.add", "args": {"name": name, "at": layer_start(folder, doc, layer_id),
-                                                        "id": mid, "owner": "2d"}}], who, label="Sound cue marker")
+                                                        "id": mid, "owner": "2d"}}], LINK, label="Sound cue marker")
     return name
 
 
-def cue(folder, doc, layer_id: str, sound, who, at: float = 0.0, chosen: str = "") -> dict:
+def cue(folder, doc, layer_id: str, sound, who, at: float = 0.0, chosen: str = "", about: str = "",
+        group: str | None = None) -> dict:
     """Put `sound` (a file) under layer `layer_id`, `at` seconds after its start, in the song that plays (`chosen`: the
-    scene's soundtrack; empty = the main mix). Returns {song, track, clip, marker, file}. Loud on any missing piece."""
+    scene's soundtrack; empty = the main mix). `about`: the sound's name in the step's label (default: the file's).
+    Returns {song, track, clip, marker, file}. Loud on any missing piece."""
     if not folder:
         raise RostrumError(codes.BAD_ARGUMENT, "sound.cue", "the document", "is not in a project folder")
     if not doc.has(layer_id) or doc.item(layer_id)["type"] not in F.LAYERS:
@@ -60,19 +67,14 @@ def cue(folder, doc, layer_id: str, sound, who, at: float = 0.0, chosen: str = "
     if song is None:
         raise RostrumError(codes.BAD_ARGUMENT, "sound.cue", "the project", "has no RostrumSound item to put the sound in",
                            hint="Make the project's sound in RostrumSound first (it owns every sound and mixes it).")
-    name = _marker(folder, doc, layer_id, who)
-    from rostrum_core import live
-    from rostrum_sound.opening import open_whole
-    snd = open_whole(folder, song["id"])
-    live.keep(snd)                                   # one door with Sound's own window, if it has the song open
+    name = _marker(folder, doc, layer_id)
+    snd = project_sound.open_song(folder, song["id"])   # live: one door with Sound's own window and 2D's Undo
     ids = {t["id"] for t in snd.data.get("tracks", [])}
     clip_id = _free_id(snd, f"cue_{layer_id}")
     calls = [] if TRACK in ids else [{"op": "track.add", "args": {"id": TRACK, "name": TRACK_NAME}}]
     when = f"#{name}" + (f"{at:+g}" if at else "")
     calls.append({"op": "clip.add", "target": [TRACK], "args": {"id": clip_id, "media": str(file), "at": when}})
-    from rostrum_sound.doc import markers as song_markers
-    with song_markers.project(folder):               # Sound's check reads the project's shared markers ("#Logo · sound")
-        snd.apply(calls, who, label=f"Sound cue from 2D: {name}")
+    snd.apply(calls, who, label=f"Add a sound here: {about or file.stem} at {name}", session=group)
     return {"song": song["id"], "track": TRACK, "clip": clip_id, "marker": name, "at": when, "file": str(file)}
 
 
@@ -82,9 +84,9 @@ def _free_id(snd, base: str) -> str:
     return next(i for i in (base if n == 1 else f"{base}_{n}" for n in range(1, 10000)) if i not in taken)
 
 
-def follow(folder, doc, who) -> list[str]:
-    """Every cue marker of this document back on its layer's start (one change; none when all are in place). A cue
-    whose layer is gone stays where it was. Returns the names moved."""
+def follow(folder, doc) -> list[str]:
+    """Every cue marker of this document back on its layer's start (one change by LINK; none when all are in place). A
+    cue whose layer is gone stays where it was. Returns the names moved."""
     if not folder:
         return []
     prefix, calls, moved = marker_id(doc.item_id, ""), [], []
@@ -96,7 +98,7 @@ def follow(folder, doc, who) -> list[str]:
                 calls.append({"op": "marker.move", "target": [m["id"]], "args": {"at": max(0.0, t)}})
                 moved.append(m["name"])
     if calls:
-        markers.edit(folder, calls, who, label="Sound cues follow their layers")
+        markers.edit(folder, calls, LINK, label="Sound cues follow their layers")
     return moved
 
 
@@ -119,14 +121,18 @@ def choices(words: str = "", limit: int = 40) -> list[dict]:
 
 
 def watch(doc, said) -> callable:
-    """Keep this document's cue markers on their layers after every change (the screen's window and the agent server
-    both watch the document they hold). A failure is handed to `said` (the status line, the server's log) in plain
-    words; the 2D change itself stands. Returns the unsubscribe."""
-    def on(ev):
-        if ev.kind != "change" or ev.change is None or not doc.folder:
+    """Keep this document's cue markers on their layers and its videos' own sound in Sound's song (sync_sound.py) after
+    every change (the screen's window and the agent server both watch the document they hold). A failure is handed to
+    `said` (the status line, the server's log) in plain words; the 2D change itself stands. Once at the start too (a
+    video placed while no window was open). Returns the unsubscribe."""
+    def keep():
+        if not doc.folder:
             return
         try:
-            follow(doc.folder, doc, ev.change.who)
+            follow(doc.folder, doc)
+            from . import sync_sound
+            sync_sound.sync(doc.folder, doc)
         except Exception as e:  # noqa: BLE001  never silent: said where the person or the agent reads it
-            said(e.line() if hasattr(e, "line") else f"Error: sound cues: could not follow their layers: {e}")
-    return doc.subscribe(on)
+            said(e.line() if hasattr(e, "line") else f"Error: 2D's sound in Sound: {e}")
+    keep()
+    return doc.subscribe(lambda ev: keep() if ev.kind in ("change", "reset") else None)

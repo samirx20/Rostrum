@@ -13,6 +13,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Property, QCoreApplication, QObject, QUrl, Signal, Slot
 from rostrum2d.io import importing
+from rostrum2d.io.figma import link_parts
 
 from .import_job import Job
 
@@ -30,12 +31,14 @@ class Importer(QObject):
     changed = Signal()
     _landed = Signal(object, str, bool)           # (plan, error line, cancelled): from the worker thread
     _progressed = Signal(float, str)
+    wantPanel = Signal()                          # a pasted Figma link: the Import panel opens on it (Main.qml)
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent or bridge)
         self.b, self.job = bridge, Job()
         self._source, self._file, self._page, self._text, self._keep = "file", "", 1, "text", False
         self._state, self._note, self._progress, self._layers, self._report = "", "", 0.0, [], []
+        self._queue, self._at, self._figma = [], None, ("", "")     # dropped / pasted files waiting; where they land; a link's key, frame
         self._landed.connect(self._finish)
         self._progressed.connect(self._on_progress)
 
@@ -70,6 +73,15 @@ class Importer(QObject):
     def hasText(self):
         """Whether the picked SVG has any text in it: only then is "Text in file" worth asking."""
         return self.kind == "svg" and _svg_has_text(self._file)
+
+    @Property(str, notify=changed)
+    def figmaKey(self):
+        """The file key a pasted Figma link named ("" = none): the panel's Figma fields start from it."""
+        return self._figma[0]
+
+    @Property(str, notify=changed)
+    def figmaFrame(self):
+        return self._figma[1]
 
     @Property(int, notify=changed)
     def page(self):
@@ -141,6 +153,48 @@ class Importer(QObject):
     def runFigma(self, key, frame, token):
         self._go(dict(figma={"key": key, "frame": frame, "token": token}))
 
+    @Slot("QVariantList", float, float, result=bool)
+    def dropFiles(self, urls, x, y):
+        """Files dropped on the canvas (or pasted: Ctrl+V of files copied in Explorer / Finder), imported one after another
+        as the Import panel would, each one change; a picture or clip lands centred where it was dropped (x, y in
+        composition px; NaN = centred). False (and said) when none of them is a file the importer reads."""
+        files = [QUrl(u).toLocalFile() if str(u).startswith("file:") else str(u) for u in urls]
+        known = [f for f in files if self._readable(f)]
+        if not known:
+            self.b._fail(f"Error: import: {Path(files[0]).name if files else 'nothing'} is not a file Rostrum2D imports "
+                         f"(SVG, PDF, PSD, a picture or a video)")
+            return False
+        self._at = None if x != x or y != y else (float(x), float(y))
+        self._queue += known
+        if not self.running():
+            self._next()
+        return True
+
+    @Slot(str, result=bool)
+    def takeLink(self, text):
+        """A pasted Figma link: the panel goes to Figma with the file key and the frame filled in (the token is still
+        typed by the person: never kept). False when the text is not a Figma link."""
+        parts = link_parts(text)
+        if not parts:
+            return False
+        self._source, self._figma = "figma", parts
+        self._clear()
+        self.b._set_status("Figma link pasted: type your token in Import and press Import")
+        return True
+
+    @staticmethod
+    def _readable(path: str) -> bool:
+        try:
+            return Path(path).is_file() and bool(importing.kind_of(path))
+        except ValueError:
+            return False
+
+    def _next(self):
+        if self._queue:
+            f = self._queue.pop(0)
+            self._file, self._source = f, "file"
+            self._go(dict(path=f, page=self._page, text=self._text, at=self._at))
+
     @Slot()
     def cancel(self):
         """Stop a running import at its next stage (import_job.py): nothing is put in."""
@@ -179,6 +233,7 @@ class Importer(QObject):
         if stopped or (plan and self.job.cancelled):
             self._state, self._note, self._progress = "cancelled", "Cancelled — nothing imported.", 0.0
             b._set_status("Import cancelled")
+            self._queue = []                         # a cancel stops the dropped files still waiting too
             return self.changed.emit()
         try:
             if plan is None:
@@ -188,6 +243,7 @@ class Importer(QObject):
             line = line or (e.line() if hasattr(e, "line") else f"Error: import: {e}")
             self._state, self._note, self._layers, self._report, self._progress = "failed", line, [], [], 0.0
             b._fail(line)
+            self._queue = []                         # loud, and the rest of a drop waits for the person
             return self.changed.emit()
         self._state, self._layers, self._report, self._progress = "done", r["layers"], r["report"], 1.0
         self._note = f'Imported {r["name"]}: {len(r["layers"])} layer{"" if len(r["layers"]) == 1 else "s"}'
@@ -195,6 +251,7 @@ class Importer(QObject):
         if r["layers"]:
             b.select(r["layers"][-1])
         self.changed.emit()
+        self._next()                                 # the next dropped file, if any
 
     @Slot()
     def clearResult(self):

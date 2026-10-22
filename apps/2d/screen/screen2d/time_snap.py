@@ -16,6 +16,8 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum2d import fields as F
 from rostrum2d.retime import END_OF_COMP
 
+from . import beat_words
+
 RANK = {"marker": 0, "playhead": 1, "edge": 2, "key": 2, "measure": 3, "beat": 4}   # INTERACTION 1.11; bars over beats (UX_SPEC 3.28)
 
 
@@ -56,8 +58,10 @@ def targets(bridge, skip_keys=(), skip_layers=(), carried=()) -> list[Target]:
     sound = getattr(bridge, "soundtrack", None)          # the project's music (member "sound": soundtrack*.py)
     bars = sound.bar_times() if sound is not None else []
     beats = sound.beat_times() if sound is not None else []
-    out.extend(Target("measure", f"bar {n + 1}", t) for n, t in enumerate(bars))
-    out.extend(Target("beat", f"beat {n + 1}", t) for n, t in enumerate(beats) if not any(abs(t - b) < 1e-6 for b in bars))
+    fps = bridge.comp()["fps"]                           # their names are the one beat wording (beat_words.py)
+    out.extend(Target("measure", beat_words.words(t, beats, bars, fps) or f"bar {n + 1}", t) for n, t in enumerate(bars))
+    out.extend(Target("beat", beat_words.words(t, beats, bars, fps) or f"beat {n + 1}", t) for n, t in enumerate(beats)
+               if not any(abs(t - b) < 1e-6 for b in bars))
     return out
 
 
