@@ -96,7 +96,7 @@ def _stream(m: Model, partial: Path, progress, cancel) -> None:
         raise _fail(m, "not available for download yet (the server answered 404)" if e.code == 404
                     else f"the server answered {e.code} {e.reason}") from e
     except (urllib.error.URLError, OSError) as e:
-        raise _fail(m, f"no connection ({getattr(e, 'reason', e)})") from e
+        raise _fail(m, f"no internet connection; connect, then press Download again ({getattr(e, 'reason', e)})") from e
     total = int(resp.headers.get("Content-Length") or m.size)
     done = 0
     with resp, open(partial, "wb") as out:

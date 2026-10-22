@@ -22,7 +22,7 @@ from pathlib import Path
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QGuiApplication
 
-from rostrum_core import Document, Who
+from rostrum_core import Document, RostrumError, Who
 from rostrum_core.storage import paths
 from rostrum2d import KIND, run_source
 from screen2d import projects, recent
@@ -32,18 +32,47 @@ from screen2d.session import Session
 from screen2d.steps import do_step
 
 
+REFUSED = []      # why the last project didn't open on a plain launch (said in the status line once shown)
+
+
 def first_doc() -> Document:
-    """What a plain launch opens: the newest project in Open recent still on disk, else a new Untitled project."""
+    """What a plain launch opens: the newest project in Open recent still on disk, else a new Untitled project.
+    A last project that can't be opened (damaged, a newer version's) never stops the app from starting: a new
+    Untitled project opens instead and the window says why."""
     last = recent.rows()
-    if last:
-        return Document.open(last[0]["folder"], last[0]["item"], KIND)
-    return projects.new_project(projects.untitled(), Who.person("sam"))
+    doc = open_or_say(last[0]["folder"], last[0]["item"], "your last project") if last else None
+    return doc or projects.new_project(projects.untitled(), Who.person("sam"))
+
+
+def open_or_say(folder, item, what) -> Document | None:
+    """The project, or None with the reason kept for the status line (a damaged file never stops the app)."""
+    try:
+        doc = Document.open(folder, item, KIND)
+        problems = KIND.check(doc.data)          # opened whole or not at all: a project that doesn't hold together
+        if problems:                             # would fail later, half on screen
+            raise ValueError(f"it doesn't hold together: {problems[0]}")
+        return doc
+    except (RostrumError, KeyError, TypeError, ValueError, AttributeError, IndexError) as e:
+        why = f"{e.problem}{(' ' + e.hint) if e.hint else ''}" if isinstance(e, RostrumError) else f"is damaged ({type(e).__name__}: {e})"
+        REFUSED.append(f"Error: {what} {Path(folder).name} didn't open: it {why}")
+        print(f"FAIL: {REFUSED[-1]}", file=sys.stderr)
+        return None
 
 
 def load_doc(args) -> Document:
     if args.open:
+<<<<<<< HEAD
         return Document.open(*resolve(args.open), KIND)
     if not (args.doc or args.script or args.sample):
+=======
+        try:
+            folder, item = resolve(args.open)
+        except RostrumError as e:
+            REFUSED.append(e.line())
+            return projects.new_project(projects.untitled(), Who.person("sam"))
+        return open_or_say(folder, item, "the project") or projects.new_project(projects.untitled(), Who.person("sam"))
+    if not (args.doc or args.script or args.sample or args.step or args.shot):
+>>>>>>> team/priyam
         return first_doc()
     source, name = SOURCE, "sample.py"
     if args.script:
@@ -91,6 +120,8 @@ def main():
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
     session = Session((1600, 960))
     session.show(load_doc(args), live=bool(args.doc), comp_id=args.comp)
+    for line in REFUSED:
+        session.fail(line)
     code = [0]
 
     def guarded(fn):

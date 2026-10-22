@@ -11,6 +11,8 @@ from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 
+from rostrum_sound import opening
+
 from . import projects
 
 
@@ -23,6 +25,7 @@ class Songs(QObject):
     askKeep = Signal()                 # an untitled song with changes is about to be left: Save… / Don't keep / Cancel
     wantSaveAs = Signal()              # open the Save As dialog
     recoverOffered = Signal()          # untitled songs left by a crash are waiting (`recoverable`)
+    refused = Signal()                 # an open or save was refused: `error` says why
 
     def __init__(self, show, parent=None):
         """`show(doc, name, untitled)` puts a document on screen (main.py: bridge, pages, window)."""
@@ -62,9 +65,14 @@ class Songs(QObject):
         return self.untitled and projects.changed(self._doc)
 
     # ---- opening --------------------------------------------------------------------------------------------------
-    def start(self, doc):
-        """The first song on screen; then offer back any untitled song a crash left behind."""
+    def start(self, doc, refused: str = ""):
+        """The first song on screen (`refused`: why the asked-for song didn't open); then offer back any untitled
+        song a crash left behind."""
         self._put(doc)
+        if refused:
+            self._error = refused
+            self.changed.emit()
+            self.refused.emit()
         self._recoverable = [f for f in projects.to_recover() if f != Path(doc.folder)]
         if self._recoverable:
             self.changed.emit()
@@ -96,8 +104,9 @@ class Songs(QObject):
         try:
             action()
         except Exception as e:  # noqa: BLE001  shown on screen, in words
-            self._error = str(e)
+            self._error = opening.said(e)
             self.changed.emit()
+            self.refused.emit()
 
     @Slot()
     def newSong(self):

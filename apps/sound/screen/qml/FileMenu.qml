@@ -6,7 +6,7 @@ import RostrumKit
 // New song, Open, the recent songs, Save (an untitled song: asks for a name and a place) or Save As, Settings.
 // A named song is saved after every change, so it has no Save; Ctrl+S on it just says so.
 // The prompts: leaving an untitled song with changes (Save… / Don't keep / Cancel), and untitled songs a crash
-// left behind (Open it / Throw away).
+// left behind (Open it / Throw away), and a song that was refused (damaged, another app's, a newer version's).
 Button {
     id: file
     property var settingsPanel
@@ -61,6 +61,14 @@ Button {
         function onWantSaveAs() { saveDialog.open() }
         function onAskKeep() { keep.open() }
         function onRecoverOffered() { recover.open() }
+        function onRefused() { refused.open() }
+    }
+
+    Prompt {    // a refused open / save, in words: the sentence, then its details
+        id: refused
+        heading: songs.error.split(" Details: ")[0]
+        message: songs.error.indexOf(" Details: ") < 0 ? "" : songs.error.split(" Details: ")[1]
+        Button { text: "OK"; kind: "primary"; onClicked: refused.close() }
     }
 
     Prompt {

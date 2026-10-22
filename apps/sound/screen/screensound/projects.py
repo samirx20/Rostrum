@@ -26,6 +26,8 @@ from rostrum_core import project
 from rostrum_core.storage import paths, write_atomic
 from rostrum_sound import KIND, settings
 
+from rostrum_sound import opening
+
 ITEM = "song"                      # a new song's item id inside its project folder
 LOCK = Path(".rostrum") / "sound-open.json"
 RECENT_MAX = 10
@@ -90,7 +92,7 @@ def resolve(path) -> tuple[Path, str]:
 def open_song(folder, item) -> Document:
     if not paths(folder, item, KIND.ext)["doc"].is_file():
         raise RostrumError(codes.NOT_FOUND, "open", f"{folder} ({item})", "is not there any more")
-    return Document.open(folder, item, KIND)
+    return opening.open_whole(folder, item)
 
 
 def title(folder, item) -> str:

@@ -8,8 +8,12 @@
     python apps/sound/screen/main.py --doc <project folder> <item>    # open a saved document (made if missing)
     python apps/sound/screen/main.py --step "select melody.n9600" --step "drag-note melody.n9600 0.6 2" --shot out.png
 Every song with a folder is saved after every change. Steps: see screensound/steps.py, plus the file steps here
+<<<<<<< HEAD
 (`file-new`, `file-open <path>`, `file-save-as <folder>`, `file-menu`, `settings`, `about`, `help`, `guide <file.md>`,
 `add-track <kind>`). With --shot the window quits by
+=======
+(`file-new`, `file-open <path>`, `file-save-as <folder>`, `file-menu`, `settings`, `about`, `add-track <kind>`). With --shot the window quits by
+>>>>>>> team/priyam
 itself once the sound has rendered; a failed step, render or save exits nonzero. Offscreen screenshots:
 QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
 """
@@ -21,10 +25,11 @@ from pathlib import Path
 from PySide6.QtCore import QMetaObject, QTimer, QUrl
 from PySide6.QtGui import QGuiApplication
 
-from rostrum_core import Document
+from rostrum_core import Document, RostrumError
 from rostrum_core.storage import paths
 from rostrum_gui import guides, start
 from rostrum_sound import KIND, run_source
+from rostrum_sound.opening import said
 from screensound import projects
 from screensound.adder import Adder
 from screensound.bridge import SoundBridge
@@ -45,12 +50,25 @@ HERE = Path(__file__).resolve().parent
 MAIN_QML = HERE / "qml" / "Main.qml"
 
 
+def first_song(args) -> tuple[Document, str]:
+    """(the first document, why the asked-for song was refused or ""). A song that can't be opened whole (a double-
+    clicked damaged file, a last song saved by a newer version) is never shown half-read: a new untitled song opens
+    instead and the screen says why, in words."""
+    try:
+        return first_doc(args), ""
+    except RostrumError as e:
+        if args.script or args.sample:
+            raise
+        print(f"FAIL: {e}", file=sys.stderr)
+        return projects.new_song(), said(e)
+
+
 def first_doc(args) -> Document:
     """What opens first: --doc / --script / --sample as asked, a path given, else the last song, else a new one."""
     if args.doc:
         folder, item = args.doc
         if paths(folder, item, KIND.ext)["doc"].is_file():
-            return Document.open(folder, item, KIND)
+            return projects.open_song(folder, item)
         doc = Document.new(KIND, folder=folder, item=item)
         doc.run_script(*_script(args))
         doc.save()
@@ -135,10 +153,15 @@ def file_step(screen, step) -> bool:
         screen.ctx_adder.add(rest)
     elif word == "settings":
         QMetaObject.invokeMethod(screen.win, "openSettings")
+<<<<<<< HEAD
     elif word in ("about", "help"):           # Help › About and licences / the Help menu, open
         QMetaObject.invokeMethod(screen.win, "openAbout" if word == "about" else "openHelp")
     elif word == "guide":                     # guide <file.md>: Help › that guide, in the guide viewer
         guides.open_named(screen.win, rest)
+=======
+    elif word == "about":                     # Help › About and licences
+        QMetaObject.invokeMethod(screen.win, "openAbout")
+>>>>>>> team/priyam
     else:
         return False
     if screen.songs.error:
@@ -160,11 +183,11 @@ def main():
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
     screen = Screen()
-    doc = first_doc(args)
+    doc, refused = first_song(args)
     if doc.folder is None:            # --script / --sample: shown as before, not a song on disk
         screen.show(doc, Path(args.script).stem if args.script else "Sample song")
     else:
-        screen.songs.start(doc)
+        screen.songs.start(doc, refused)
     code = [0]
 
     def guarded(fn):

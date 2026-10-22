@@ -4,7 +4,7 @@
 //! ducks and "heard" flag left out: they act later), the files it names (size and time) and its feeders'
 //! keys — so a one-track change re-renders that track alone and the rest is read back, bit for bit.
 //! Stored trimmed to the span that is not silent, in Rostrum's one cache (cache.rs: `sound/tracks`), which
-//! the host caps as a whole.
+//! the host caps as a whole (rostrum_sound/cache_cap.py).
 
 use serde_json::Value;
 use std::path::{Path, PathBuf};

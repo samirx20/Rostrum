@@ -6,8 +6,8 @@ use serde_json::{json, Value};
 use std::io::{BufRead, Write};
 
 pub fn serve() -> Result<(), String> {
+    let mut out = super::channel::answers();
     let stdin = std::io::stdin();
-    let mut out = std::io::stdout().lock();
     for line in stdin.lock().lines() {
         let line = line.map_err(|e| format!("stdin: {e}"))?;
         if line.trim().is_empty() {
@@ -49,6 +49,7 @@ pub fn render(schedule: &str, out: &str) -> Result<(), String> {
 }
 
 fn finish(reply: Value) -> Result<(), String> {
-    println!("{reply}");
+    let mut out = super::channel::answers();
+    writeln!(out, "{reply}").and_then(|_| out.flush()).map_err(|e| format!("stdout: {e}"))?;
     if reply["ok"] == json!(true) { Ok(()) } else { Err(reply["error"]["line"].as_str().unwrap_or("failed").to_string()) }
 }

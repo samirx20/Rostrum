@@ -1,6 +1,7 @@
 //! The sound engine's share of Rostrum's one cache (src/engine/cache/cache.ts): `<root>/sound/<sub>/`, the
 //! root being ROSTRUM_CACHE_DIR, else ~/.rostrum/cache. Nothing is kept with ROSTRUM_CACHE_MB=0, nor in
-//! tests (they pass their own folder). The host caps the root as a whole after each job (cacheTrim.ts,
+//! tests (they pass their own folder). The host caps the root as a whole after each render
+//! (python rostrum_sound/cache_cap.py,
 //! least recently used first); here a hit renews its file's time and a write lands whole or not at all.
 
 use std::path::{Path, PathBuf};

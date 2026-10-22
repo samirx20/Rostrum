@@ -87,6 +87,13 @@ def do_mix_step(mix, word, rest):
     elif word == "model-panel":
         from rostrum_sound.cleanup import models
         mix.cleaning.download.ask([models.UMXHQ, models.DFN3])
+    elif word == "model-download":            # press Download on the open model question; wait for it to end
+        d = mix.cleaning.download
+        d.start()
+        end = time.monotonic() + 3 * RENDER_WAIT_S
+        while d.state == "downloading" and time.monotonic() < end:
+            QCoreApplication.processEvents()
+            time.sleep(0.02)
     elif word == "duck-add":
         mix.ducks.add(rest[0], rest[1])
     elif word == "duck-open":
@@ -95,7 +102,7 @@ def do_mix_step(mix, word, rest):
         mix.ducks.setValue(rest[0], value(" ".join(rest[1:])))
 
 
-MIX_WORDS = ("deliver", "export-as", "export", "clean-take", "model-panel", "duck-add", "duck-open", "duck-set")
+MIX_WORDS = ("deliver", "export-as", "export", "clean-take", "model-panel", "model-download", "duck-add", "duck-open", "duck-set")
 
 
 def find_choice(item, shown):
