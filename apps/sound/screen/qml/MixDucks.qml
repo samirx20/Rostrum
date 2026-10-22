@@ -23,7 +23,7 @@ Column {
     MixPick {
         visible: c.targets.length > 0
         width: parent.width; height: 22
-        text: "+ Duck"; choices: c.targets.map(t => ({ id: t.id, label: "under " + t.name }))
+        text: "+ Duck"; tip: "Dip this track whenever another one plays (a voice over music)"; choices: c.targets.map(t => ({ id: t.id, label: "under " + t.name }))
         onPicked: (id) => mixer.ducks.add(c.ownerId, id)
     }
 }

@@ -12,15 +12,21 @@ from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
 from rostrum_core import RostrumError
 from rostrum_sound import compile as compile_doc
-from rostrum_sound import handoff
+from rostrum_sound import deliver, handoff
 
 from . import playback
 
 
 def summary(r: dict) -> str:
     n_bus = len(r.get("busStems") or {})
-    parts = [f"version {r['version']}", f"{len(r.get('stems') or {})} track stems"] + ([f"{n_bus} bus stems"] if n_bus else [])
-    return "Rendered " + ", ".join(parts)
+    stems = f"{len(r.get('stems') or {})} track stems" + (f" + {n_bus} bus stems" if n_bus else "")
+    cut = f", {r['songSeconds'] - r['seconds']:.1f} s of silence trimmed" if r.get("trimmed") else ""
+    return (f"Version {r['version']} · {r.get('format', {}).get('label', '')}, {r.get('sampleRate', 0) / 1000:g} kHz · "
+            f"{r['seconds']:.1f} s{cut} · {stems}")
+
+
+def option_label(c: dict) -> str:
+    return f"{c['label']} — {c['detail']}"
 
 
 def files_of(r: dict) -> list[dict]:
@@ -38,8 +44,54 @@ class RenderExport(QObject):
         super().__init__(parent)
         self.bridge, self._open_engine = bridge, open_engine
         self._busy, self._status, self._result = False, "", {}
+        self._format, self._rate, self._trim = deliver.DEFAULT_FORMAT, 0, True      # rate 0: the song's own (48 kHz when not one of ours)
         self._thread: threading.Thread | None = None
         self._done.connect(self._finish)
+
+    # ---- what to deliver: the choices are `deliver`'s data (the same list render_mix offers); a rate the format cannot
+    # ---- have is not offered, and a chosen one it cannot have falls back to the song's own
+    @Property("QVariantList", constant=True)
+    def formats(self):
+        return [{"value": c["id"], "label": option_label(c)} for c in deliver.choices()["formats"]]
+
+    @Property("QVariantList", notify=changed)
+    def rates(self):
+        return [{"value": str(c["id"]), "label": option_label(c)} for c in deliver.rates_for(self._format)]
+
+    @Property(str, notify=changed)
+    def format(self):
+        return self._format
+
+    @Property(str, notify=changed)
+    def rate(self):
+        return str(self.options().sample_rate)
+
+    @Property(bool, notify=changed)
+    def trim(self):
+        return self._trim
+
+    def options(self) -> deliver.Options:
+        """The choices as the render takes them; a rate the format cannot have gives way to the song's own."""
+        doc_rate = self.bridge.doc.data.get("sampleRate", 48000)
+        rate = self._rate or doc_rate
+        if rate not in [r["id"] for r in deliver.rates_for(self._format)]:
+            rate = 0
+        return deliver.Options.read({"format": self._format, "sampleRate": rate or None, "trim": self._trim}, doc_rate)
+
+    @Slot(str)
+    def setFormat(self, value):
+        self._format = value
+        self.changed.emit()
+
+    @Slot(str)
+    def setRate(self, value):
+        self._rate = int(value)
+        self.changed.emit()
+
+    @Slot(bool)
+    def setTrim(self, on):
+        self._trim = bool(on)
+        self.changed.emit()
 
     @Property(bool, notify=changed)
     def busy(self):
@@ -72,7 +124,7 @@ class RenderExport(QObject):
         self._busy, self._status, self._result = True, "Rendering the mix and stems…", {}
         self.changed.emit()
         who = f"{self.bridge.who.kind}:{self.bridge.who.name}"
-        self._thread = threading.Thread(target=self._work, args=(doc, schedule, who), daemon=True)
+        self._thread = threading.Thread(target=self._work, args=(doc, schedule, who, self.options()), daemon=True)
         self._thread.start()
         return True
 
@@ -86,11 +138,12 @@ class RenderExport(QObject):
         if self._thread is not None:
             self._thread.join(timeout=120)
 
-    def _work(self, doc, schedule, who):
+    def _work(self, doc, schedule, who, opts):
         eng = None
         try:
             eng = self._open_engine()
-            r = handoff.render(doc.folder, doc, eng, schedule, who)
+            r = handoff.render(doc.folder, doc, eng, schedule, who,
+                               options={"format": opts.format, "sampleRate": opts.sample_rate, "trim": opts.trim})
             if not Path(r["file"]).is_file():
                 raise RuntimeError(f"the mix is not at {r['file']}")
             out = (r, "")
