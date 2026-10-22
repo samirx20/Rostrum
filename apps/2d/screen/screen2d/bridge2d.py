@@ -11,6 +11,7 @@ from rostrum_core import marker_times
 from rostrum_core.tree import index
 from rostrum2d import fields as F, retime
 
+from .command_words import CommandWords
 from . import bounds, outline
 from .drags import DragSlots
 from .file_commands import FileCommands
@@ -26,7 +27,7 @@ from .tools2d import ToolSlots
 from .undo_state import UndoState
 
 
-class Bridge2D(UndoState, LayerOrder, FileCommands, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
+class Bridge2D(UndoState, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     pageChanged = Signal()
     frameChanged = Signal()

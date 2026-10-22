@@ -10,12 +10,30 @@ from rostrum_gui import rows
 from rostrum_paint.fields import BRUSH
 
 
+LIGHT_INK = "#f2f2f2"          # the starting colour on a dark background (a light one keeps the setting's own default)
+
+
+def starting_colour(background: str, default: str) -> str:
+    """The first stroke has to show on the drawing: the brush setting's default on a light background, a light ink on
+    a dark one. (Only where the brush starts; later it is whatever the person picked.)"""
+    h = background.lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    try:
+        r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    except ValueError:
+        return default
+    return LIGHT_INK if 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.5 else default
+
+
 class Brush:
-    def __init__(self):
+    def __init__(self, background: str = ""):
         params = [p for p in getattr(BRUSH, "params", BRUSH) if p.type not in ("id", "points")]
         self._by_name = {p.name: p for p in params}
         self._static = rows.layout(SimpleNamespace(params=params))
         self.values = {p.name: p.default for p in params}
+        if "color" in self.values and background:
+            self.values["color"] = starting_colour(background, self.values["color"])
         self.more = False
 
     def rows(self) -> list[dict]:
