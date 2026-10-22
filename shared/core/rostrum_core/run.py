@@ -9,23 +9,24 @@ from . import edits as E
 from . import ids
 from .conditions import describe, holds
 from .errors import RostrumError, codes, did_you_mean
-from .tree import View, fields, index
+from .tree import View, fields, index, subtree_ids
 
 
 class Context:
     """What a plan gets: a read view of the working copy, and the four edits as calls."""
 
-    def __init__(self, kind, work: dict, where: str):
+    def __init__(self, kind, work: dict, where: str, idx: dict | None = None):
         self.kind, self.doc, self.where, self.edits = kind, work, where, []
+        self.idx = idx if idx is not None else index(work, kind.lists)    # kept up to date by every edit
 
     def item(self, id_) -> dict:
-        idx = index(self.doc, self.kind.lists)
+        idx = self.idx
         if id_ not in idx:
             raise RostrumError.not_found(self.where, "item", id_, idx)
         return idx[id_].item
 
     def _do(self, edit):
-        self.edits.append(E.apply(self.doc, self.kind.lists, edit, self.where))
+        self.edits.append(E.apply(self.doc, self.kind.lists, edit, self.where, self.idx))
 
     def set(self, id_, path, value):
         path = [path] if isinstance(path, str) else list(path)
@@ -41,7 +42,7 @@ class Context:
         self._do(E.Move(id_, (), (parent, key, 10**9 if index is None else index)))
 
     def new_id(self, type_) -> str:
-        return ids.counted(index(self.doc, self.kind.lists), type_)
+        return ids.counted(self.idx, type_)
 
     def fail(self, code, subject, problem, accepted=(), hint=None):
         raise RostrumError(code, self.where, subject, problem, accepted, hint)
@@ -112,18 +113,26 @@ def _check_valid_when(kind, op, items, args, view, where):
                                    hint=f"Set that in the same call to use {name}.")
 
 
+def _changed(edits, idx, lists) -> list[dict]:
+    """The items whose own values these edits set or brought in (still in the document)."""
+    ids = dict.fromkeys(i for e in edits if isinstance(e, (E.Set, E.Insert))
+                        for i in ([e.id] if isinstance(e, E.Set) else subtree_ids(e.item, lists)))
+    return [idx[i].item for i in ids if i in idx]
+
+
 def plan(kind, data: dict, calls) -> tuple[dict, list, list[dict]]:
     """(the new document, the applied edits, the normalized calls). Pure: `data` is not touched."""
     calls = normalize(calls)
     work, applied = copy.deepcopy(data), []
+    idx = index(work, kind.lists)                       # one index for the whole call, kept up to date by its edits
     for n, call in enumerate(calls, 1):
         where = f"op {n} of {len(calls)} ({call['op']})"
         op = kind.registry.get(call["op"], f"op {n} of {len(calls)}")
-        view = View(work, kind.lists)
+        view = View(work, kind.lists, idx)
         items = _check_targets(kind, op, call["target"], view, where)
         args = _check_args(op, call["args"], where)
         _check_valid_when(kind, op, items, args, view, where)
-        ctx = Context(kind, work, where)
+        ctx = Context(kind, work, where, idx)
         try:
             op.fn(ctx, call["target"], args)
         except RostrumError:
@@ -132,7 +141,7 @@ def plan(kind, data: dict, calls) -> tuple[dict, list, list[dict]]:
             raise RostrumError(codes.INTERNAL, where, op.name, f"failed: {type(e).__name__}: {e}") from e
         call["args"] = args
         applied += ctx.edits
-    problems = kind.check(work)
+    problems = kind.problems(work, _changed(applied, idx, kind.lists))
     if problems:
         raise RostrumError(codes.CHECK_FAILED, f"{len(calls)} op(s)", "the document", "would break its check: "
                            + "; ".join(problems))

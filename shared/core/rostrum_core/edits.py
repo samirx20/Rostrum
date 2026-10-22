@@ -11,7 +11,7 @@ import copy
 from dataclasses import asdict, dataclass, field
 
 from .errors import RostrumError, codes
-from .tree import child_keys, index, subtree_ids
+from .tree import Loc, child_keys, index, subtree_ids
 
 MISSING = "<missing>"     # a Set whose value is MISSING removes the field; before=MISSING: it wasn't there
 NO_AFTER = "<index>"      # place by index, not after a sibling
@@ -103,40 +103,65 @@ def _set(item, lists, e, where):
     return Set(e.id, list(e.path), copy.deepcopy(e.value), before)
 
 
-def apply(data: dict, lists: dict, e, where: str = "edit"):
-    idx = index(data, lists)
+def apply(data: dict, lists: dict, e, where: str = "edit", idx: dict | None = None):
+    """`idx`: the document's index (tree.index), used and kept up to date, so a run of edits (opening a file's
+    history, a script's merge, one call's plan) indexes the tree once instead of once per edit."""
+    if idx is None:
+        idx = index(data, lists)
     target = e.parent if isinstance(e, Insert) else e.id
     if target not in idx:
         raise _missing(where, target, idx)
     if isinstance(e, Set):
-        return _set(idx[e.id].item, lists, e, where)
+        done = _set(idx[e.id].item, lists, e, where)
+        if e.path[0] == "type":                     # its kind (so its child lists) may have changed
+            idx.clear()
+            idx.update(index(data, lists))
+        return done
     if isinstance(e, Insert):
-        if set(subtree_ids(e.item, lists)) & set(idx):
+        if any(i in idx for i in subtree_ids(e.item, lists)):
             raise RostrumError(codes.CONFLICT, where, f'"{e.id}"', "is already in this document")
         lst = idx[e.parent].item.setdefault(e.key, [])
         pos = _place(lst, e.after, e.index)
         lst.insert(pos, copy.deepcopy(e.item))
+        _add(idx, lst[pos], e.parent, e.key, pos, lists)
         return Insert(e.id, e.parent, e.key, pos, copy.deepcopy(e.item), _prev(lst, pos))
     loc = idx[e.id]
     if loc.parent is None:
         raise RostrumError(codes.BAD_ARGUMENT, where, '"root"', "can't be removed or moved")
     src = idx[loc.parent].item[loc.key]
-    prev = _prev(src, loc.index)
+    at = _position(src, loc)
+    prev = _prev(src, at)
     if isinstance(e, Remove):
-        item = src.pop(loc.index)
-        return Remove(e.id, loc.parent, loc.key, loc.index, item, prev)
+        item = src.pop(at)
+        for i in subtree_ids(item, lists):
+            del idx[i]
+        return Remove(e.id, loc.parent, loc.key, at, item, prev)
     if isinstance(e, Move):
         parent, key, i = e.to
         if parent not in idx:
             raise _missing(where, parent, idx)
         if parent in subtree_ids(loc.item, lists):
             raise RostrumError(codes.CHECK_FAILED, where, f'"{e.id}"', f"can't move into its own child {parent!r}")
-        item = src.pop(loc.index)
+        item = src.pop(at)
         dst = idx[parent].item.setdefault(key, [])
         pos = _place(dst, e.after, i)
         dst.insert(pos, item)
-        return Move(e.id, (loc.parent, loc.key, loc.index), (parent, key, pos), _prev(dst, pos), prev)
+        idx[e.id] = Loc(item, parent, key, pos)
+        return Move(e.id, (loc.parent, loc.key, at), (parent, key, pos), _prev(dst, pos), prev)
     raise TypeError(f"not an edit: {e!r}")
+
+
+def _position(lst: list, loc: Loc) -> int:
+    """Where the item sits now: a kept index's positions go stale when siblings come and go, so check, then look."""
+    if loc.index is not None and loc.index < len(lst) and lst[loc.index] is loc.item:
+        return loc.index
+    return next(n for n, c in enumerate(lst) if c is loc.item)
+
+
+def _add(idx: dict, item: dict, parent: str, key: str, pos: int, lists: dict):
+    sub = index(item, lists)
+    sub[item["id"]] = Loc(item, parent, key, pos)
+    idx.update(sub)
 
 
 def reverse(e):
