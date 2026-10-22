@@ -8,9 +8,9 @@ are where the layer shows on screen. Cameras themselves are not listed (they are
 """
 from __future__ import annotations
 
-import math
 
-from rostrum2d import fields as F, follow
+from rostrum2d import boxes, fields as F, follow
+from rostrum2d.drawing import frame_number
 from rostrum2d.camera import view as camera
 from rostrum2d.evaluate import resolve
 from rostrum2d.layout import solve
@@ -23,17 +23,6 @@ def _mul(m, n):
     a, b, c, d, e, f = m
     A, B, C, D, E, Fv = n
     return (a * A + c * B, b * A + d * B, a * C + c * D, b * C + d * D, a * E + c * Fv + e, b * E + d * Fv + f)
-
-
-def _matrix(p: dict, w: float, h: float):
-    r = math.radians(p["rotation"])
-    cos, sin = math.cos(r), math.sin(r)
-    sx, sy = p["scale"] * p["scaleX"], p["scale"] * p["scaleY"]
-    place = (1, 0, 0, 1, p["x"], p["y"])
-    turn = (cos, sin, -sin, cos, 0, 0)
-    size = (sx, 0, 0, sy, 0, 0)
-    anchor = (1, 0, 0, 1, -p["anchorX"] * w, -p["anchorY"] * h)
-    return _mul(_mul(_mul(place, turn), size), anchor)
 
 
 def _apply(m, x, y):
@@ -50,7 +39,8 @@ def _invert(m):
 
 def flatten(comp: dict, t: float) -> list[dict]:
     """Every layer of a composition at time t, bottom of the stack first. Each: id, type, name, props (evaluated),
-    opacity (with its groups' opacity), in_time, corners (4 points in the comp), matrix, box (w, h own size)."""
+    opacity (with its groups' opacity), in_time, corners (4 points in the comp), matrix, box (w, h own size), paint (the
+    part of the box it paints itself, own px, or None: boxes.painted)."""
     out: list[dict] = []
     cam = camera.shot(comp, t)
     placed = solve(comp, t)                 # where auto layouts put their layers (rostrum2d/layout.py)
@@ -66,11 +56,12 @@ def flatten(comp: dict, t: float) -> list[dict]:
                 w, h = took.pop("w"), took.pop("h")
                 p.update(took)
             outer = parent_m if path else camera.layer_matrix(comp, cam, p)
-            m = _mul(outer, _matrix(p, w, h))
+            m = _mul(outer, boxes.matrix(p, w, h))
             opacity = parent_opacity * min(1.0, max(0.0, p["opacity"]))
             in_time = parent_in_time and p["start"] <= t < p["end"]
             out.append({"id": layer["id"], "type": layer["type"], "name": layer.get("name", ""), "props": p, "opacity": opacity,
                         "in_time": in_time, "matrix": m, "size": (w, h), "within": path,
+                        "paint": boxes.painted(layer, w, h, frame_number(t, comp.get("fps", 30))),
                         "broken": follow.problem(layer, layers),
                         "matte_for": mattes.get(layer["id"], []), "matte_missing": _missing_matte(layer, layers),
                         "corners": [_apply(m, x, y) for x, y in ((0, 0), (w, 0), (w, h), (0, h))]})
@@ -107,11 +98,14 @@ def aabb(corners) -> tuple[float, float, float, float]:
 
 
 def covers(node: dict, x: float, y: float) -> bool:
-    inv = _invert(node["matrix"])
+    """The layer paints at (x, y) itself (boxes.painted: not a group's empty box, not a drawing's empty canvas): the
+    rule the screen's clicks pick by too."""
+    inv = _invert(node["matrix"]) if node["paint"] else None
     if inv is None:
         return False
     lx, ly = _apply(inv, x, y)
-    return 0 <= lx <= node["size"][0] and 0 <= ly <= node["size"][1]
+    x0, y0, x1, y1 = node["paint"]
+    return x0 <= lx <= x1 and y0 <= ly <= y1
 
 
 def on_screen(node: dict, width: float, height: float) -> bool:

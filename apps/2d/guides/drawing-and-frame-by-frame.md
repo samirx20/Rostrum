@@ -1,7 +1,7 @@
 # Drawing and frame-by-frame
 
 How to draw in Rostrum2D with the shared painting kit: real brush strokes in the document, the same ones a person draws
-with a pen on the Draw page. This guide is about the tools; what you draw is yours.
+with a pen when the Draw tool is on. This guide is about the tools; what you draw is yours.
 
 ## The parts
 

@@ -64,7 +64,8 @@ def _walk(item, out):
     for c in item.childItems():
         if not c.isVisible():
             continue
-        if _is_text(c) and str(c.property("text") or "").strip() and _shown(c):
+        ink = c.property("color") if _is_text(c) else None
+        if _is_text(c) and str(c.property("text") or "").strip() and _shown(c) and (ink is None or ink.alpha() > 0):
             r = _visible(c, _painted(c))
             if r.width() > 1 and r.height() > 1:
                 out.append((c, r))

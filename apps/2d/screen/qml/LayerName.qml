@@ -2,15 +2,17 @@ import QtQuick
 import RostrumKit
 
 // A timeline row's name side (LayerRows.qml): the fold arrow, the layer's icon and name, indented by depth. Click
-// selects; double-click (or F2, Ctrl+K "Rename layer") renames; right-click opens the layer menu; pulling a layer
-// row up or down moves it (not a setting, effect or mask row). A setting row selects its layer; it has no icon.
+// selects; Ctrl+click adds or removes it, Shift+click selects the range from the first selected (as any Windows list);
+// every selected layer's row is lit. Double-click (or F2, Ctrl+K "Rename layer") renames; right-click opens the
+// layer menu; pulling a layer row up or down moves it (not a setting, effect or mask row). A setting row selects its
+// layer; it has no icon.
 Rectangle {
     id: name
     property var rowData
     property ListView rows
     readonly property bool isLayer: rowData.row === "layer"
-    readonly property bool selected: rowData.id === backend.selected
-    readonly property bool inSelected: !selected && isLayer && rowData.id === backend.selectedLayer   // a key of it is selected
+    readonly property bool selected: rowData.id === backend.selected || isLayer && backend.multi.ids.indexOf(rowData.id) >= 0 && backend.multi.count > 1
+    readonly property bool inSelected: !selected && isLayer && backend.multi.ids.indexOf(rowData.id) >= 0   // a key, effect or mask of it is selected
     readonly property int indent: Theme.gap + rowData.depth * 16
     radius: Theme.radiusCtl
     color: selected ? Theme.accentSoft : hover.containsMouse || inSelected ? Theme.hover : "transparent"
@@ -38,7 +40,9 @@ Rectangle {
             if (dropped) return
             if (m.button === Qt.RightButton) {
                 if (name.isLayer) { const p = mapToItem(name.rows, m.x, m.y); name.rows.openMenu(name.rowData.id, p.x, p.y) }
-            } else backend.select(name.rowData.owner)
+            } else if (name.isLayer && (m.modifiers & Qt.ControlModifier)) backend.multi.toggle(name.rowData.id)   // add / remove
+            else if (name.isLayer && (m.modifiers & Qt.ShiftModifier)) backend.multi.selectRange(name.rowData.id)   // a range
+            else backend.select(name.rowData.owner)
         }
         onDoubleClicked: name.beginRename()
     }

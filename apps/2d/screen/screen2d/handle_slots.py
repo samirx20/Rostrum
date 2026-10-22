@@ -38,8 +38,8 @@ class HandleSlots:
 
     @Slot(float, float, result=str)
     def layerAt(self, x, y):
-        """The topmost layer at (x, y) composition px, without selecting it ("" for none)."""
-        return bounds.pick(self.placed(), self._t, x, y)
+        """What a click at (x, y) composition px would select (picking.py), without selecting it ("" for none)."""
+        return self._multi.target(x, y, "click")
 
     @Slot(int, int, float, result=str)
     def resizeCursor(self, hx, hy, rot):

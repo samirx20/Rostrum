@@ -13,7 +13,7 @@ Rectangle {
     property var rowData
     property Item ruler
     readonly property bool isLayer: rowData.row === "layer"
-    readonly property bool lit: rowData.owner === backend.selectedLayer || rowData.owner === backend.selected
+    readonly property bool lit: rowData.owner === backend.selected || backend.multi.ids.indexOf(rowData.owner) >= 0   // every selected layer's bar
     function xOf(t) { return 8 + Math.round(ruler.xOf(t)) }
     function tAt(item, x) { return ruler.tOf(item.mapToItem(track, x, 0).x - 8) }
     radius: Theme.radiusCtl
@@ -37,9 +37,9 @@ Rectangle {
             cursorShape: pressed ? (held === "move" ? Qt.ClosedHandCursor : Qt.SizeHorCursor)
                        : part(mouseX) === "move" ? Qt.OpenHandCursor : Qt.SizeHorCursor
             property string held: ""
-            onPressed: (m) => {
-                backend.select(track.rowData.id)
+            onPressed: (m) => {          // a selected bar's middle moves every selected bar (drags.py); else it is selected alone
                 const p = part(m.x)
+                if (!(p === "move" && backend.multi.has(track.rowData.id))) backend.select(track.rowData.id)
                 held = backend.beginBarDrag(track.rowData.id, p, track.tAt(barArea, m.x)) === false ? "" : p
             }
             onPositionChanged: (m) => { if (held) backend.barDragTo(track.tAt(barArea, m.x), 6 / track.ruler.perSec) }

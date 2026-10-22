@@ -132,7 +132,7 @@ def steps_bardrag(bridge, step, rest):
         name, times = to[1:], bridge.times()
         name = name if name in times else name.replace("_", " ")
         item = bridge.placed_item(layer)
-        edge = item.get("end", 0.0) if part == "end" else item.get("start", 0.0)
+        edge = (item["end"] if item.get("end", 36000.0) < 36000.0 else bridge.comp()["duration"]) if part == "end" else item.get("start", 0.0)
         snap, to = 0.1, t0 + times[name] - edge
     for f in (0.25, 0.5, 0.75, 1.0):
         bridge.barDragTo(t0 + (float(to) - t0) * f, snap)

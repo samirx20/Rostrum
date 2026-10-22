@@ -107,8 +107,10 @@ class DragSlots(SlotMixin):
             return False
         ops_timing.use_project(self.doc.folder)
         fps, end = self.comp()["fps"], item.get("end", END_OF_COMP)
-        grab = BarGrab(layer_id, part, t0, item.get("start", 0.0), end if end < END_OF_COMP else self.comp()["duration"], fps)
-        self.select(layer_id)
+        others = [i for i in self.selected_layers() if i != layer_id and not self.doc.item(i).get("locked")]             if part == "move" and layer_id in self.selected_layers() else []      # a selected bar takes the others along
+        grab = BarGrab(layer_id, part, t0, item.get("start", 0.0), end if end < END_OF_COMP else self.comp()["duration"], fps, others)
+        if not others:
+            self.select(layer_id)
         return self._begin({"move": "Move in time", "start": "Trim start", "end": "Trim end"}[part], grab)
 
     @Slot(float, float)

@@ -29,6 +29,15 @@ def shared_op(ops: list):
     return SimpleNamespace(params=[p for p in ops[0].params if all(k.get(p.name) == p.type for k in kinds)])
 
 
+def own_rules(static: list[dict], op) -> list[dict]:
+    """Mixed kinds: the shared layout with THIS item's own rules for when a setting applies, and its own default. A
+    text's X applies "while it doesn't follow a path"; a shape has no such field, so judging the shape by the text's
+    rule hid X, Y, Scale and Rotation for a text and a shape selected together."""
+    own = {p.name: p for p in op.params}
+    return [{**r, "valid_when": own[r["id"]].valid_when, "default": own[r["id"]].default}
+            if r["row"] == "param" and r["id"] in own else r for r in static]
+
+
 def merge(each: list[list[dict]]) -> list[dict]:
     """One row list from each item's evaluated rows (all from one static layout; rows an item lacks are dropped)."""
     others = [{r["id"]: r for r in rows} for rows in each[1:]]

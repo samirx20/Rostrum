@@ -25,18 +25,17 @@ class LayerOrder(SlotMixin):
 
     # ---- the selection (the one place that reads it) ------------------------------------------------------------
     def selected_layers(self) -> list[str]:
-        """The selected layers, the primary first: the kit's selection (`selection`) with whatever else the canvas's
-        Shift+click holds (multi.py). When the kit's selection holds them all, delete the `_multi` part."""
+        """The selected layers, the primary first, from the kit's one selection (`selection`; an effect, mask or key
+        counts as its layer)."""
         types, out = self._layer_types(), []
-        for i in [*(getattr(self, "selection", None) or []), *self._multi.extras()]:
+        for i in self.selection:
             layer = bounds.layer_of(self.doc, i) if self.doc.has(i) else ""
             if layer and layer not in out and self.doc.item(layer)["type"] in types:
                 out.append(layer)
         return out
 
     def _select(self, ids: list[str]):
-        self._multi._set(ids)           # the outlines on the canvas read multi.py ...
-        self.selectMany(ids)            # ... and the kit's selection (the settings panel, Ctrl+K) reads this
+        self.selectMany(ids)            # the one selection (the canvas, the list, the settings panel, Ctrl+K)
 
     def _layer_types(self):
         return self.doc.kind.registry.get("layer.remove").targets
@@ -50,11 +49,16 @@ class LayerOrder(SlotMixin):
 
     def _commands(self):
         out = [c for c in super()._commands() if not any(c["key"] == o or c["key"].startswith(o + ":") for o in COVERED)]
-        return self._layer_commands() + [self._select_all_command()] + out
+        return self._layer_commands() + [self._select_all_command(), self._paste_command()] + out
 
     @staticmethod
     def _select_all_command() -> dict:
         return {"key": "layer:selectall", "label": "Select all layers", "hint": "Layer (Ctrl+A)", "calls": [], "do": "selectall"}
+
+    @staticmethod
+    def _paste_command() -> dict:
+        """Paste layers from the clipboard (clipboard.py): offered with or without a selection."""
+        return {"key": "layer:paste", "label": "Paste", "hint": "Layer (Ctrl+V)", "calls": [], "do": "paste"}
 
     @staticmethod
     def _entry(a: dict) -> dict:
@@ -98,12 +102,16 @@ class LayerOrder(SlotMixin):
         if key == "layer:selectall":
             self.selectAllLayers()
             return True
+        if key == "layer:paste":
+            return self.pasteLayers()
         cmd = next((c for c in self._layer_commands() if c["key"] == key), None) if key.startswith("layer:") else None
         if cmd is None:
             return super().run(key)
         if cmd["do"] == "rename":
             self.renameRequested.emit(self.selected_layers()[0])
             return True
+        if cmd["do"] in ("clip_copy", "clip_cut"):
+            return self.copyLayers() if cmd["do"] == "clip_copy" else self.cutLayers()
         if cmd["do"] == "copy":
             self._copied = self.selected_layers()[0]
             self._set_status(f"Copied the style of {self.label_of(self.doc.item(self._copied))}")

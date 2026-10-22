@@ -5,7 +5,8 @@ always agree and nothing is greyed: an action is listed only when the selection 
 
 An action: key (`layer:<name>`), label, shortcut, importance ("bar" = on the action bar, else "menu"), group (a divider
 in menus), `bar` (the bar button it sits under, e.g. "Boolean"), valid(Facts), calls(Facts, state) -> operation calls.
-`do` marks the two that are not document changes: "copy" (remember the layer whose style is pasted) and "rename".
+`do` marks those that are not document changes: "copy" (remember the layer whose style is pasted), "rename", and
+"clip_copy" / "clip_cut" (the system clipboard: clipboard.py; Cut also removes, one change). Paste is layer_order's.
 """
 from __future__ import annotations
 
@@ -137,6 +138,8 @@ ACTIONS = [
     _act("unlock", "Unlock", lambda f: bool(f.locked), lambda f, st: [_call("layer.unlock", f.locked)], group="state"),
     _act("hide", "Hide", lambda f: len(f.hidden) < len(f.plain), lambda f, st: [_call("layer.hide", [i for i in f.plain if i not in f.hidden], on=True)], group="state"),
     _act("show", "Show", lambda f: bool(f.hidden), lambda f, st: [_call("layer.hide", f.hidden, on=False)], group="state"),
+    _act("copy", "Copy", lambda f: True, shortcut="Ctrl+C", group="edit", do="clip_copy"),
+    _act("cut", "Cut", lambda f: True, shortcut="Ctrl+X", group="edit", do="clip_cut"),
     _act("duplicate", "Duplicate", lambda f: True, lambda f, st: [_call("layer.duplicate", f.ids)], "Ctrl+D", group="edit"),
     _act("delete", "Delete", lambda f: True, lambda f, st: [_call("layer.remove", f.ids)], "Delete", group="edit"),
     *[_act(k, label, lambda f: True, _reorder(k), keys, group="order") for k, (label, keys) in _ORDER.items()],

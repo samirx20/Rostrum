@@ -59,6 +59,11 @@ AppShell {
     Shortcut { sequence: "Ctrl+G"; onActivated: backend.layerCommand("group") }
     Shortcut { sequence: "Ctrl+Shift+G"; onActivated: backend.layerCommand("ungroup") }
     Shortcut { sequence: "Ctrl+A"; enabled: shell.canvasKeys; onActivated: backend.selectAllLayers() }
+    // copy, cut and paste layers (screen2d/clipboard.py; the system clipboard, so also into another project). Not while
+    // typing: a text box keeps its own Ctrl+C / X / V
+    Shortcut { sequence: StandardKey.Copy; enabled: shell.canvasKeys; onActivated: backend.copyLayers() }
+    Shortcut { sequence: StandardKey.Cut; enabled: shell.canvasKeys; onActivated: backend.cutLayers() }
+    Shortcut { sequence: StandardKey.Paste; enabled: shell.canvasKeys; onActivated: backend.pasteLayers() }
     Shortcut { sequence: "Escape"; enabled: shell.canvasKeys && backend.selectedLayer !== "" && !exportPanel.shown && !importPanel.shown
                                             && !problemsPanel.shown && !fileMenu.menuOpen && !addMenu.menuOpen
                onActivated: backend.clearSelection() }
@@ -93,7 +98,7 @@ AppShell {
     FileFlow { id: fileFlow; window: shell }
     centre: [
         Stage { id: stage; anchors.fill: parent },
-        ActionBar { anchors.fill: parent; canvas: stage.canvasFrame },       // select, then act: under the selection
+        ActionBar { anchors.fill: parent; stage: stage },       // select, then act: under the selection
         ExportPanel {   // opened by the Export button; docked on the canvas's right edge, beside the inspector (never over it)
             id: exportPanel
             anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }

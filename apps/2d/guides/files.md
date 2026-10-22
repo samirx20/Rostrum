@@ -1,6 +1,6 @@
 # Files and settings
 
-For a person using the Rostrum2D app: starting, saving and opening projects, and what happens when you close with changes not saved.
+Starting, saving and opening projects, and what happens when you close with changes not saved.
 
 ## 1. The File menu
 
@@ -10,6 +10,7 @@ Click **File** at the top left.
 
 - **New project** (Ctrl+N): a fresh, empty project.
 - **Open…** (Ctrl+O): pick a project to open.
+- **Open sample**: a small example project to look around in. It is made fresh each time and is not saved until you save it.
 - **Save** (Ctrl+S): keeps your changes. It is in the menu only while there is something to save.
 - **Save as…** (Ctrl+Shift+S): keeps a copy of the project under a name you type.
 - **Recent**: under this heading are the projects you opened last. Click one to open it.
@@ -47,7 +48,7 @@ The same actions are in the command box (**Ctrl+K**).
 
 ## 7. Closing with unsaved changes
 
-When you close the window, or use **New project** or **Open…**, with unsaved changes, the app asks **Save changes to** your project's name:
+When you close the window, or use **New project**, **Open…** or **Open sample**, with unsaved changes, the app asks **Save changes to** your project's name:
 
 - **Save**: keeps the changes, then carries on.
 - **Don't save**: throws the changes away, then carries on.
@@ -55,6 +56,6 @@ When you close the window, or use **New project** or **Open…**, with unsaved c
 
 ## 8. If someone else saved it first
 
-If an agent or another window saved the same project after you opened it, **Save** will not write over theirs. It says so. Use **Save as…** to keep your version as a new project.
+If an agent or another window saved the same project after you opened it, **Save** will not write over theirs. It says so. Use **Save as…** to keep your version as a new project. An agent's changes and yours are kept apart: **Ctrl+Z** takes back only your own steps.
 
 Next: [first-animation.md](first-animation.md), [exporting.md](exporting.md).

@@ -22,13 +22,14 @@ from .layer_order import LayerOrder
 from .painter import Painter
 from .playback import Playback, size_offered
 from .playstats import STATS
+from .clipboard import ClipboardSlots
 from .render3d_watch import Render3DWatch
 from .shown import ShownState
 from .tools2d import ToolSlots
 from .undo_state import UndoState
 
 
-class Bridge2D(ShownState, UndoState, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
+class Bridge2D(ShownState, ClipboardSlots, UndoState, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     toolChanged = Signal()
     frameChanged = Signal()
@@ -211,12 +212,10 @@ class Bridge2D(ShownState, UndoState, LayerOrder, FileCommands, CommandWords, Dr
 
     @Slot(float, float, result=str)
     def pickAt(self, x, y):
-        """A click on the canvas (composition px): select the topmost layer there; on empty canvas, the
-        composition (its frame size, rate, length, background)."""
-        hit = bounds.pick(self.placed(), self._t, x, y)
-        if hit != self.selectedLayer:
-            self.select(hit or self.comp_id)
-        return hit
+        """A click on the canvas (composition px): select what is painted there by the click rule (picking.py: the
+        outermost group, or the piece once inside it); on empty canvas, the composition (its frame size, rate,
+        length, background)."""
+        return self._multi.pick(x, y, "click")
 
     # ---- for the Painter (screen2d/painter.py) ----------------------------------------------------------------
     def guard(self, fn) -> bool:

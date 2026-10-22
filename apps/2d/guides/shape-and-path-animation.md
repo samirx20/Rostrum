@@ -1,7 +1,7 @@
 # Shape and path animation
 
 How to make vector shapes, edit them point by point, combine them, and animate how they are drawn. Read `start-here` first.
-A person uses the pen on the Design page and writes the same path data the operations below write.
+A person uses the Pen tool and writes the same path data the operations below write.
 
 ## Two layers for vectors
 

@@ -17,6 +17,11 @@ class Hooks2D:
     def kind_label(self, item):          # the panel's subtitle and Ctrl+K hints: "Composition", never the raw "Comp"
         return F.LABELS.get(item.get("type", ""), super().kind_label(item))
 
+    def selection_label(self, ids):      # several selected: "2 layers" (any other mix: the kit's "N items")
+        if len(ids) > 1 and all(self.doc.item(i)["type"] in F.LAYERS for i in ids):
+            return f"{len(ids)} layers"
+        return super().selection_label(ids)
+
     def edit_call(self, item_id, param, value):
         return route.edit_call(self.doc, item_id, param, swap_rows.edit_value(self.doc.item(item_id), param, value), self.own_t(item_id))
 

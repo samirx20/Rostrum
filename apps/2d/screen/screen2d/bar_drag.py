@@ -7,9 +7,11 @@ PARTS = ("move", "start", "end")
 
 
 class BarGrab:
-    def __init__(self, layer: str, part: str, t0: float, start: float, end: float, fps: float):
-        """`start` / `end` are the bar's edges when the drag began, `t0` the time under the pointer then (composition seconds)."""
+    def __init__(self, layer: str, part: str, t0: float, start: float, end: float, fps: float, others=()):
+        """`start` / `end` are the bar's edges when the drag began, `t0` the time under the pointer then (composition
+        seconds). `others`: more selected layers a move takes along (each layer.shift by the same amount, one call)."""
         self.layer, self.part, self.t0, self.start, self.end, self.fps = layer, part, t0, start, end, fps
+        self.others = list(others)
         self.applied = 0.0           # how far a move has been previewed so far (a shift is relative, previews pile up)
         self.on: str | None = None   # the shared marker the dragged edge sits on now
 
@@ -29,7 +31,7 @@ class BarGrab:
         if self.part == "move":
             total = edge - self.start
             by, self.applied = round(total - self.applied, 6), total
-            return [self._call("layer.shift", by=by)] if by else []
+            return [{**self._call("layer.shift", by=by), "target": [self.layer, *self.others]}] if by else []
         if self.part == "start":
             if edge > self.end - one:
                 edge, self.on = self.end - one, None
@@ -40,7 +42,7 @@ class BarGrab:
 
     def tie_calls(self) -> list[dict]:
         """On release with the edge on a marker: tie the layer to it (nothing seen moves)."""
-        if self.on is None:
+        if self.on is None or self.others:          # several bars: each keeps its own place (no one marker for all)
             return []
         ref = "#" + self.on
         return [self._call("layer.shift", to=ref) if self.part == "move" else self._call("layer.trim", **{self.part: ref})]

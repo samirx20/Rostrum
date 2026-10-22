@@ -1,14 +1,16 @@
 import QtQuick
 import RostrumKit
 
-// The action bar: a small bar on the canvas just under the selected layers (above them when there is no room), with
+// The action bar: a small bar on the canvas under the selected layers, clear of their handles and a path's points
+// (above them when there is no room), with
 // only the actions this selection allows that people reach for most (backend.actionBar, screen2d/actions.py): Group,
 // Mask, Boolean, Align, Distribute … and "⋯" for the full list. Move tool only; hidden while playing and while the
-// pointer is down on the canvas (a drag). Also the right-click menu on the canvas: the full list. Sits over the canvas
-// (`canvas` = the canvas frame of Stage.qml), under the tool strip.
+// pointer is down on the canvas (a drag). Also the right-click menu on the canvas: the full list. Sits over the canvas,
+// under the tool strip; places itself through the canvas's one mapping (`stage`: Stage.qml's compScale / fromComp /
+// toComp / compView, in the px of the item both fill).
 Item {
     id: bar
-    property Item canvas
+    property Item stage
     readonly property int most: 5
     property var items: []
     property var ext: ({})
@@ -20,11 +22,16 @@ Item {
         function onSelectionChanged() { bar.refresh() }
         function onShownChanged() { bar.refresh() }
     }
-    readonly property real fit: canvas && backend.frameInfo.width > 0 ? canvas.width / backend.frameInfo.width : 1
-    readonly property point origin: { if (!canvas) return Qt.point(0, 0); canvas.x; canvas.y; canvas.width; width; height; return canvas.mapToItem(bar, 0, 0) }
+    readonly property real clearance: 28        // below the box: past the resize knobs and the turn zones (Handles.qml)
+    readonly property real lowest: {             // the lowest thing drawn for the selection: its box, a path's handles
+        let y = ext.y1 === undefined ? 0 : ext.y1
+        for (const p of backend.pen.points) y = Math.max(y, p.y, p.inY, p.outY)
+        return y
+    }
+    readonly property rect view: stage ? stage.compView : Qt.rect(0, 0, 0, 0)
     PointHandler { id: press; acceptedButtons: Qt.LeftButton; onActiveChanged: if (!active) bar.refresh() }
     readonly property bool dragging: press.active && !strip.hovered
-    readonly property bool showing: canvas && backend.tool === "move" && !backend.playing && items.length > 0 && ext.x0 !== undefined && !dragging
+    readonly property bool showing: stage && backend.tool === "move" && !backend.playing && items.length > 0 && ext.x0 !== undefined && !dragging
 
     ActionMenu { id: choices; parent: bar; onPicked: (key) => backend.run(key) }
     function openMenu(entries, px, py) { choices.entries = entries; choices.openAt(px, py) }
@@ -36,13 +43,13 @@ Item {
         z: 3
         height: Theme.button; width: row.width + Theme.grid * 2
         radius: Theme.radiusCtl; color: Theme.raised; border.color: Theme.popupEdge
-        readonly property real cx: bar.origin.x + (bar.ext.x0 + bar.ext.x1) / 2 * bar.fit
-        readonly property real below: bar.origin.y + bar.ext.y1 * bar.fit + Theme.gap
-        readonly property real above: bar.origin.y + bar.ext.y0 * bar.fit - height - Theme.gap
-        readonly property real lo: bar.canvas ? bar.origin.y + Theme.grid : 0
-        readonly property real hi: bar.canvas ? bar.origin.y + bar.canvas.height - height - Theme.grid : 0
-        x: Math.max(bar.origin.x + Theme.grid, Math.min(cx - width / 2, bar.origin.x + (bar.canvas ? bar.canvas.width : 0) - width - Theme.grid))
-        y: Math.max(lo, Math.min(below <= hi ? below : above, hi))
+        readonly property real cx: bar.stage ? bar.stage.fromComp((bar.ext.x0 + bar.ext.x1) / 2, 0).x : 0
+        readonly property real below: bar.stage ? bar.stage.fromComp(0, bar.lowest).y + bar.clearance : 0
+        readonly property real above: bar.stage ? bar.stage.fromComp(0, bar.ext.y0).y - bar.clearance - height : 0
+        readonly property real lo: bar.view.y + Theme.grid
+        readonly property real hi: bar.view.y + bar.view.height - height - Theme.grid
+        x: Math.max(bar.view.x + Theme.grid, Math.min(cx - width / 2, bar.view.x + bar.view.width - width - Theme.grid))
+        y: Math.max(lo, Math.min(below <= hi ? below : above >= lo ? above : hi, hi))
         HoverHandler { id: hover }
         Row {
             id: row
@@ -64,11 +71,11 @@ Item {
 
     TapHandler {   // right-click on the canvas: the full list for the selection (the layer under the pointer first, unless picked)
         acceptedButtons: Qt.RightButton
-        enabled: bar.canvas && backend.tool === "move"
+        enabled: bar.stage && backend.tool === "move"
         onTapped: (ev) => {
-            const p = bar.canvas.mapFromItem(bar, ev.position.x, ev.position.y)
-            const hit = backend.layerAt(p.x / bar.fit, p.y / bar.fit)
-            if (hit !== "" && !backend.multi.has(hit)) backend.pickAt(p.x / bar.fit, p.y / bar.fit)
+            const p = bar.stage.toComp(ev.position.x, ev.position.y)
+            const hit = backend.layerAt(p.x, p.y)
+            if (hit !== "" && !backend.multi.has(hit)) backend.pickAt(p.x, p.y)
             bar.openMenu(backend.actionMenu(), ev.position.x, ev.position.y)
         }
     }
