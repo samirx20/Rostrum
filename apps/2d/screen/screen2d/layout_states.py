@@ -108,4 +108,6 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("paint-strokes-picked", ["--sample"], [*PAINTED, "lasso 500,200 1000,200 1000,400 500,400"]),
         ("paint-alt-pick", ["--sample"], [*PAINTED, "altpick 750 310"]),
         ("set-depth", ["--sample"], ["tool draw", "draw 300 300 500 320 700 300", "tool move", "add camera", "select drawing_1"]),
+        ("rename-name", long(), ["name edit"]),                               # S35: the name clicked, the kit's rename field
+        ("show-only-kinds", ["--sample"], ["selectmany title card dot"]),     # S35: mixed kinds, the panel's Show only lines
     ]

@@ -8,13 +8,14 @@ is found among the app's windows (the one with AppShell's functions).
     panels fold               Ctrl+\: the side panels fold away
     area <name>               the accent edge on that area (guides, left, centre, right, bottom)
     hover <objectName>        the pointer rests on that control (its hover help shows after 500 ms)
+    name edit                 the project's name on the top bar, clicked: its rename field is open
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Q_ARG, QMetaObject, QObject
 from PySide6.QtGui import QGuiApplication
 
-WORDS = ("guides", "keylist", "panels", "area", "hover")
+WORDS = ("guides", "keylist", "panels", "area", "hover", "name")
 
 
 def window():
@@ -46,6 +47,11 @@ def do(step: str) -> bool:
         win.setProperty("focusArea", verb)
     elif word == "hover" and verb:
         _hover(win, verb)
+    elif step == "name edit":
+        tab = win.findChild(QObject, "projectName")
+        if tab is None or not tab.property("visible"):
+            raise RuntimeError("name edit: no project name on the top bar (no project open?)")
+        QMetaObject.invokeMethod(tab, "rename")
     else:
         raise ValueError(f"unknown step {step!r}: the shell's steps are {', '.join(WORDS)} (rostrum_gui/shell_steps.py)")
     return True
