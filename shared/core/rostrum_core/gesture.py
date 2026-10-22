@@ -7,8 +7,6 @@
 """
 from __future__ import annotations
 
-import copy
-
 from . import run
 from .diff import diff
 from .document import Event
@@ -24,14 +22,15 @@ class Gesture:
         if self.doc._gesture is not None:
             raise RostrumError(codes.CONFLICT, "gesture", f'"{self.label}"',
                                f"can't start: \"{self.doc._gesture.label}\" is still being dragged")
-        self.start = copy.deepcopy(self.doc.data)
+        self.start, self._start_idx = self.doc.data, self.doc._index()   # never changed in place: no copy needed
         self.doc._gesture = self
         return self
 
     def preview(self, calls):
         """Run the calls on top of the drag so far. A bad step raises and leaves the last good state showing."""
-        work, _, calls = run.plan(self.doc.kind, self.doc.data, calls)
+        work, _, calls, idx = run.plan_indexed(self.doc.kind, self.doc.data, calls, idx=self.doc._index())
         self.doc.data = work
+        self.doc._indexed(work, idx)
         self._calls = calls          # the last step says where the drag ended
         self.doc._emit(Event("preview"))
 
@@ -40,13 +39,15 @@ class Gesture:
 
     def __exit__(self, exc_type, exc, tb):
         self.doc._gesture = None
-        end, self.doc.data = self.doc.data, self.start
+        end, end_idx = self.doc.data, self.doc._index()
+        self.doc.data = self.start
+        self.doc._indexed(self.start, self._start_idx)
         if exc_type or self.cancelled:
             self.doc._emit(Event("reset"))
             return False
-        edits = diff(self.start, end, self.doc.kind.lists)
+        edits = diff(self.start, end, self.doc.kind.lists, self._start_idx, end_idx)
         if edits:
-            self.change = self.doc.commit(end, edits, self.who, self.label, self._calls)
+            self.change = self.doc.commit(end, edits, self.who, self.label, self._calls, idx=end_idx)
         else:
             self.doc._emit(Event("reset"))
         return False

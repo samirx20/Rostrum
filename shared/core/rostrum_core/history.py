@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from .storage import doc_hash
+
 from . import edits as E
 from .errors import RostrumError, codes
 from .who import Who
@@ -25,11 +27,29 @@ class Change:
     edits: list
     calls: list = field(default_factory=list)
     session: str | None = None
-    hash_after: str = ""
+    _hash: str = ""                                # hash_after: the document's hash after this change
     undoes: list = field(default_factory=list)     # seqs of originals this step undid
     redoes: list = field(default_factory=list)     # seqs of originals this step re-did
     t: float = 0.0                                 # clock time: merging nudges, ordering undo across documents
     step: str | None = None                        # one step across documents (joint.py): undone / redone together
+
+    _after: dict | None = field(default=None, repr=False, compare=False)
+
+    @property
+    def hash_after(self) -> str:
+        """Worked out from the document after this change on first read (saving, comparing): hashing a big
+        document on every change was most of a change's time."""
+        if self._after is not None:
+            self._hash, self._after = doc_hash(self._after), None
+        return self._hash
+
+    @hash_after.setter
+    def hash_after(self, value: str):
+        self._hash, self._after = value, None
+
+    def hash_of(self, data: dict):
+        """hash_after will be data's hash; data must not change in place afterwards (edits.fork)."""
+        self._hash, self._after = "", data
 
     @property
     def original(self) -> bool:

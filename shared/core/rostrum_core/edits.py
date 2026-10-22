@@ -4,6 +4,10 @@ reversed without an old copy of the document.
 `apply(data, lists, edit)` changes `data` in place and returns the edit as it really happened (actual
 before-values and positions), which is what history stores. Positions use `after` (the sibling it follows)
 when given, so an edit still lands right when other people inserted things meanwhile.
+
+`fork(data)` starts a new version of a document without copying it: edits through the fork's index copy only
+the items they change and the items above them (copy on write); everything else, values included, is shared
+with the old version, which therefore must never be changed in place.
 """
 from __future__ import annotations
 
@@ -88,11 +92,49 @@ def _prev(lst: list, pos: int):
     return lst[pos - 1]["id"] if pos > 0 else None
 
 
+class Fork(dict):
+    """A version's index (id -> Loc) that also knows which items this version owns (may change in place). Owned
+    items are kept here by object, so a dropped one's id() can never be taken for a shared item's."""
+
+    def __init__(self, idx: dict):
+        super().__init__(idx)
+        self.owned: dict[int, dict] = {}
+
+
+def fork(data: dict, lists: dict, idx: dict | None = None) -> tuple[dict, Fork]:
+    """(a new version of `data`, its index) sharing everything with `data` until edited. `idx`: data's index,
+    when already known (its positions may be stale; edits look them up)."""
+    f = Fork(idx if idx is not None else index(data, lists))
+    return _own(f, data["id"], lists), f
+
+
+def _own(idx: dict, id_: str, lists: dict) -> dict:
+    """The item `id_` as this version's own copy (shallow, child lists copied), its parents first."""
+    loc = idx[id_]
+    owned = getattr(idx, "owned", None)
+    if owned is None or id(loc.item) in owned:
+        return loc.item
+    item = dict(loc.item)
+    for key in child_keys(item, lists):
+        if key in item:
+            item[key] = list(item[key])
+    pos = None
+    if loc.parent is not None:
+        src = _own(idx, loc.parent, lists)[loc.key]
+        pos = _position(src, loc)
+        src[pos] = item
+    owned[id(item)] = item
+    idx[id_] = Loc(item, loc.parent, loc.key, pos)
+    return item
+
+
 def _set(item, lists, e, where):
     if not e.path or e.path[0] == "id" or e.path[0] in child_keys(item, lists):
         raise RostrumError(codes.INTERNAL, where, f"{e.id}.{e.path}", "is not a field a Set may change")
     node = item
-    for k in e.path[:-1]:
+    for k in e.path[:-1]:                           # nested values may be shared with other versions: copy the way
+        if isinstance(node.get(k), dict):
+            node[k] = dict(node[k])
         node = node.setdefault(k, {})
     last = e.path[-1]
     before = copy.deepcopy(node.get(last, MISSING))
@@ -112,7 +154,7 @@ def apply(data: dict, lists: dict, e, where: str = "edit", idx: dict | None = No
     if target not in idx:
         raise _missing(where, target, idx)
     if isinstance(e, Set):
-        done = _set(idx[e.id].item, lists, e, where)
+        done = _set(_own(idx, e.id, lists), lists, e, where)
         if e.path[0] == "type":                     # its kind (so its child lists) may have changed
             idx.clear()
             idx.update(index(data, lists))
@@ -120,7 +162,7 @@ def apply(data: dict, lists: dict, e, where: str = "edit", idx: dict | None = No
     if isinstance(e, Insert):
         if any(i in idx for i in subtree_ids(e.item, lists)):
             raise RostrumError(codes.CONFLICT, where, f'"{e.id}"', "is already in this document")
-        lst = idx[e.parent].item.setdefault(e.key, [])
+        lst = _own(idx, e.parent, lists).setdefault(e.key, [])
         pos = _place(lst, e.after, e.index)
         lst.insert(pos, copy.deepcopy(e.item))
         _add(idx, lst[pos], e.parent, e.key, pos, lists)
@@ -128,7 +170,7 @@ def apply(data: dict, lists: dict, e, where: str = "edit", idx: dict | None = No
     loc = idx[e.id]
     if loc.parent is None:
         raise RostrumError(codes.BAD_ARGUMENT, where, '"root"', "can't be removed or moved")
-    src = idx[loc.parent].item[loc.key]
+    src = _own(idx, loc.parent, lists)[loc.key]
     at = _position(src, loc)
     prev = _prev(src, at)
     if isinstance(e, Remove):
@@ -143,7 +185,7 @@ def apply(data: dict, lists: dict, e, where: str = "edit", idx: dict | None = No
         if parent in subtree_ids(loc.item, lists):
             raise RostrumError(codes.CHECK_FAILED, where, f'"{e.id}"', f"can't move into its own child {parent!r}")
         item = src.pop(at)
-        dst = idx[parent].item.setdefault(key, [])
+        dst = _own(idx, parent, lists).setdefault(key, [])
         pos = _place(dst, e.after, i)
         dst.insert(pos, item)
         idx[e.id] = Loc(item, parent, key, pos)
@@ -162,6 +204,8 @@ def _add(idx: dict, item: dict, parent: str, key: str, pos: int, lists: dict):
     sub = index(item, lists)
     sub[item["id"]] = Loc(item, parent, key, pos)
     idx.update(sub)
+    if getattr(idx, "owned", None) is not None:     # a fresh copy: this version's own
+        idx.owned.update((id(loc.item), loc.item) for loc in sub.values())
 
 
 def reverse(e):
