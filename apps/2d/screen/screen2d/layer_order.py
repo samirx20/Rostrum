@@ -53,12 +53,12 @@ class LayerOrder(SlotMixin):
 
     @staticmethod
     def _select_all_command() -> dict:
-        return {"key": "layer:selectall", "label": "Select all layers", "hint": "Layer (Ctrl+A)", "calls": [], "do": "selectall"}
+        return {"key": "layer:selectall", "label": "Select all layers", "hint": "Layer (Ctrl+A)", "calls": [], "special": "selectall"}
 
     @staticmethod
     def _paste_command() -> dict:
         """Paste layers from the clipboard (clipboard.py): offered with or without a selection."""
-        return {"key": "layer:paste", "label": "Paste", "hint": "Layer (Ctrl+V)", "calls": [], "do": "paste"}
+        return {"key": "layer:paste", "label": "Paste", "hint": "Layer (Ctrl+V)", "calls": [], "special": "paste"}
 
     @staticmethod
     def _entry(a: dict) -> dict:
@@ -107,12 +107,12 @@ class LayerOrder(SlotMixin):
         cmd = next((c for c in self._layer_commands() if c["key"] == key), None) if key.startswith("layer:") else None
         if cmd is None:
             return super().run(key)
-        if cmd["do"] == "rename":
+        if cmd["special"] == "rename":
             self.renameRequested.emit(self.selected_layers()[0])
             return True
-        if cmd["do"] in ("clip_copy", "clip_cut"):
-            return self.copyLayers() if cmd["do"] == "clip_copy" else self.cutLayers()
-        if cmd["do"] == "copy":
+        if cmd["special"] in ("clip_copy", "clip_cut"):
+            return self.copyLayers() if cmd["special"] == "clip_copy" else self.cutLayers()
+        if cmd["special"] == "copy":
             self._copied = self.selected_layers()[0]
             self._set_status(f"Copied the style of {self.label_of(self.doc.item(self._copied))}")
             return True

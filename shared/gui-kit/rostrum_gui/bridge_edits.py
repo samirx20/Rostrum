@@ -74,6 +74,9 @@ class EditSlots(SlotMixin):
             self.select(cmd["select"])
             return True
         if "do" in cmd:                     # an app's own command that isn't an operation (extra_commands)
+            if not callable(cmd["do"]):     # a word where a function belongs: say so, never "'str' is not callable"
+                self._fail(f'Error: command bar: "{key}" has "do" = {cmd["do"]!r}; it must be a function (extra_commands).')
+                return False
             return self._guard(cmd["do"])
         return self._guard(lambda: self._apply(cmd["calls"], cmd["label"]))
 

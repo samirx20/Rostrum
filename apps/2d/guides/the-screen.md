@@ -18,12 +18,11 @@ A tour of the window, from the top and round the edges. There is one workspace: 
 
 1. The big rectangle in the middle is your picture, as it will come out. Its size and speed show at the top right of the canvas.
 2. The **tool strip** at the top left of the canvas has three tools: **Move** (V), **Pen** (P) and **Draw** (B). Move picks, moves and resizes. Pen draws shapes point by point. Draw paints by hand (see [drawing.md](drawing.md)). The tool you pick changes what the mouse does and what the right-hand panel shows.
-3. Click a thing to pick it. **Shift+click** adds it to, or takes it out of, what is picked. Drag a box on empty canvas to pick everything it touches. **Ctrl+A** picks every layer, and **Esc** lets go of the picking.
+3. **Picking.** A click on a thing picks it. It goes to what is painted: the empty part of a drawing, or an empty group, does not catch the click. If the thing is inside a group, the click picks the outermost group (so the whole logo moves); **double-click** goes one level in; **Ctrl+click** picks the piece under the pointer straight away. **Shift+click** adds a thing to what is picked or takes it out. Drag a box on empty canvas to pick everything it touches. **Ctrl+A** picks every layer, and **Esc** lets go of the picking.
 4. Drag a picked thing to move it, or drag a small square on its edge to resize it. The box and the picture move together. While you drag, the picture is drawn a little smaller so it keeps up; one full-size picture follows when you let go.
 5. **Nudge** with the arrow keys: 1 pixel, or 10 with **Shift**, for every picked layer. Each press is one change.
-6. **Snapping**: a dragged layer snaps to the picture's centre and edges and to the edges and centres of other layers, with a thin line showing what it snapped to. Hold **Ctrl** while dragging to turn snapping off.
-7. **Zoom and move the view**: **Ctrl+wheel** zooms at the pointer, holding **Space** and dragging (or dragging with the middle button) moves the view, **Ctrl+0** fits the whole picture, and **Ctrl+1** shows it at 100 %. The zoom shows in the canvas corner. It changes only what you see, never the picture.
-8. With nothing picked, the right-hand panel shows the picture's own settings: **Width**, **Height**, **Frame rate**, **Length** and **Background**.
+6. **Copy, cut and paste**: **Ctrl+C** copies the picked layers, **Ctrl+X** cuts them and **Ctrl+V** pastes them, in the same place and in the same project or another one. **Ctrl+D** makes a copy next to the original.
+7. With nothing picked, the right-hand panel shows the picture's own settings: **Width**, **Height**, **Frame rate**, **Length** and **Background**.
 
 ## 3. Select first, then act
 
@@ -32,7 +31,7 @@ Anything that relates layers to each other starts from what you have picked: you
 1. The **action bar**: a small bar just under the picked layers on the canvas, with the most used: **Group**, **Ungroup**, **Mask with top layer**, **Boolean** (two or more shapes), **Align** and **Distribute** (three or more layers). **⋯** opens the whole list.
 2. A **right-click** on the picked layers on the canvas, or on a layer's name in the timeline, opens the whole list.
 3. **Ctrl+K**, by name.
-4. Shortcuts: **Ctrl+G** group, **Ctrl+Shift+G** ungroup, **Ctrl+D** duplicate, **Delete**, **F2** rename, **Ctrl+]** and **Ctrl+[** bring forward and send backward (with **Shift**: to the front, to the back).
+4. Shortcuts: **Ctrl+G** group, **Ctrl+Shift+G** ungroup, **Ctrl+D** duplicate, **Ctrl+C** / **Ctrl+X** / **Ctrl+V** copy, cut and paste, **Delete**, **F2** rename, **Ctrl+]** and **Ctrl+[** bring forward and send backward (with **Shift**: to the front, to the back).
 
 The whole list: Group, Ungroup, Clip to a box, Auto layout, Make swap set, Make rig, Mask with top layer (and the other ways a mask can cut), Release mask, Union, Subtract, Intersect, Exclude, Align (left, centre, right, top, middle, bottom), Distribute, Match width, height or size, Copy style and Paste style, Lock, Hide, Duplicate, Delete, the four order moves and Rename. Each is one step, so **Ctrl+Z** takes back the whole thing. Nothing is made empty to be filled afterwards: you do not add an empty group and drag things into it, you pick the things and group them.
 
@@ -50,9 +49,9 @@ The whole list: Group, Ungroup, Clip to a box, Auto layout, Make swap set, Make 
 1. Along the bottom: a top strip, a ruler, and a row for each layer. The names on the left are your layers, newest on top; the bar beside each name shows when the layer is on screen, with its keys as diamonds.
 2. The top strip has the play button, the time, **Preview size** (**Full**, **Half**, **Quarter**), **Add marker**, and **Keys** / **Curves**. **Space** plays and stops.
 3. A name's small arrow folds or opens what is inside a layer: a group's layers, its keyed settings, its effects and masks.
-4. Click a name to pick the layer. Double-click it (or press **F2**) to rename. Drag it up or down to change what sits in front, or onto a group to put it inside. A line shows where it will land.
+4. Click a name to pick the layer. **Ctrl+click** adds a layer to what is picked or takes it out, and **Shift+click** picks every layer from the last one you clicked to this one; every picked row and bar is lit. Double-click a name (or press **F2**) to rename it. A long name is cut short in the list; point at it to read it whole. Drag it up or down to change what sits in front, or onto a group to put it inside. A line shows where it will land.
 5. At the right of a name sit a **lock** and an **eye**. They show when you point at the row, and stay visible while they are on. A **locked** layer cannot be picked or moved on the canvas, and everything refuses it until you unlock it. A **hidden** layer is not drawn, in the preview or in an export, and its name and bar fade. Click to switch; it is one step.
-6. Drag the middle of a bar to move the layer in time, and an end to trim it. Drag a diamond to move a key. They snap to the playhead and to markers. Click a diamond to change how that key eases; **Curves** shows the curves.
+6. Drag the middle of a bar to move the layer in time, and an end to trim it. When several layers are picked, dragging one picked bar moves all the picked bars together. Drag a diamond to move a key. They snap to the playhead and to markers. Click a diamond to change how that key eases; **Curves** shows the curves.
 7. **The timeline has two heights.** The full height shows every layer. The **compact** height shows only the top strip, the ruler and the picked layer's row, to give the picture the room; the name there is a menu of all your layers. Switch with the button at the right end of the top strip, or drag the timeline's top edge. Each tool remembers its own height: Move and Pen the full one, Draw the compact one, so picking a tool gives you the right amount of picture.
 
 ## 6. Markers

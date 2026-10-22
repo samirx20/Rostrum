@@ -5,7 +5,7 @@ always agree and nothing is greyed: an action is listed only when the selection 
 
 An action: key (`layer:<name>`), label, shortcut, importance ("bar" = on the action bar, else "menu"), group (a divider
 in menus), `bar` (the bar button it sits under, e.g. "Boolean"), valid(Facts), calls(Facts, state) -> operation calls.
-`do` marks those that are not document changes: "copy" (remember the layer whose style is pasted), "rename", and
+`special` marks those that are not document changes: "copy" (remember the layer whose style is pasted), "rename", and
 "clip_copy" / "clip_cut" (the system clipboard: clipboard.py; Cut also removes, one change). Paste is layer_order's.
 """
 from __future__ import annotations
@@ -100,9 +100,9 @@ def arrange_calls(doc, layers: list[str], how: str) -> list[dict]:
     return calls
 
 
-def _act(key, label, valid, calls=None, shortcut="", importance="menu", group="", bar="", do=""):
+def _act(key, label, valid, calls=None, shortcut="", importance="menu", group="", bar="", special=""):
     return {"key": f"layer:{key}", "label": label, "shortcut": shortcut, "importance": importance, "group": group,
-            "bar": bar, "valid": valid, "calls": calls, "do": do}
+            "bar": bar, "valid": valid, "calls": calls, "special": special}
 
 
 _MATTES = {"luma": "Use its brightness", "alphaInverted": "Outside its shape", "lumaInverted": "Use its darkness"}
@@ -132,23 +132,23 @@ ACTIONS = [
       for a, words in (("x", "Even gaps across"), ("y", "Even gaps down"))],
     *[_act(f"match_{d}", words, lambda f: f.count >= 2 and f.same_parent and "text" not in f.kinds and "camera" not in f.kinds, _match(d), group="arrange")
       for d, words in (("w", "Match width"), ("h", "Match height"), ("both", "Match size"))],
-    _act("copy_style", "Copy style", lambda f: f.count == 1, group="look", do="copy"),
+    _act("copy_style", "Copy style", lambda f: f.count == 1, group="look", special="copy"),
     _act("paste_style", "Paste style", lambda f: False, group="look"),          # valid only with a copied layer: see available()
     _act("lock", "Lock", lambda f: len(f.locked) < len(f.plain), lambda f, st: [_call("layer.lock", [i for i in f.plain if i not in f.locked])], group="state"),
     _act("unlock", "Unlock", lambda f: bool(f.locked), lambda f, st: [_call("layer.unlock", f.locked)], group="state"),
     _act("hide", "Hide", lambda f: len(f.hidden) < len(f.plain), lambda f, st: [_call("layer.hide", [i for i in f.plain if i not in f.hidden], on=True)], group="state"),
     _act("show", "Show", lambda f: bool(f.hidden), lambda f, st: [_call("layer.hide", f.hidden, on=False)], group="state"),
-    _act("copy", "Copy", lambda f: True, shortcut="Ctrl+C", group="edit", do="clip_copy"),
-    _act("cut", "Cut", lambda f: True, shortcut="Ctrl+X", group="edit", do="clip_cut"),
+    _act("copy", "Copy", lambda f: True, shortcut="Ctrl+C", group="edit", special="clip_copy"),
+    _act("cut", "Cut", lambda f: True, shortcut="Ctrl+X", group="edit", special="clip_cut"),
     _act("duplicate", "Duplicate", lambda f: True, lambda f, st: [_call("layer.duplicate", f.ids)], "Ctrl+D", group="edit"),
     _act("delete", "Delete", lambda f: True, lambda f, st: [_call("layer.remove", f.ids)], "Delete", group="edit"),
     *[_act(k, label, lambda f: True, _reorder(k), keys, group="order") for k, (label, keys) in _ORDER.items()],
-    _act("rename", "Rename", lambda f: f.count == 1, shortcut="F2", group="order", do="rename"),
+    _act("rename", "Rename", lambda f: f.count == 1, shortcut="F2", group="order", special="rename"),
 ]
 
 
 def available(doc, ids: list[str], state: dict) -> list[dict]:
-    """The actions this selection allows, in menu order (each: key, label, shortcut, importance, group, bar, calls, do).
+    """The actions this selection allows, in menu order (each: key, label, shortcut, importance, group, bar, calls, special).
     A selection holding a locked layer is offered only Unlock. `state`: {"at": id -> own seconds of the playhead, "copied": the layer whose style is copied ("" for none)}."""
     if not ids:
         return []
@@ -166,7 +166,7 @@ def available(doc, ids: list[str], state: dict) -> list[dict]:
         else:
             continue
         cs = calls(f, state) if calls else []
-        if (calls and not cs) or (a["do"] == "" and not calls):
+        if (calls and not cs) or (a["special"] == "" and not calls):
             continue                                    # a reorder that would move nothing
         out.append({**{k: v for k, v in a.items() if k not in ("valid", "calls")}, "calls": cs})
     return out
