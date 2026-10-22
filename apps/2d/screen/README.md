@@ -102,9 +102,10 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - **Lasso** (`stroke_select.py` as `backend.strokeSelect`, geometry in `stroke_geom.py`, `StrokeOverlay.qml`, `StrokeBar.qml`):
   Ctrl+drag, or **Select strokes** in the bar then drag, picks the strokes (of what the pen paints on, unlocked paint
   layers) with more than half their points inside; they are outlined, the bar swaps to "N strokes · drag to move · Copy ·
-  Paste · Delete · Done Esc". A press in their box and drag moves them (one `stroke.set {points}` per stroke in ONE change),
-  Delete = `stroke.remove`, Copy / Paste = `paint.stroke` of the same brush (24 px down and right). Esc clears. Scale /
-  turn exist as `strokeSelect.transform(scale, turn)` (steps and agents), without handles yet. Fills are not picked yet.
+  Paste · Delete · Done Esc". A press in their box and drag moves them; a corner of the box scales them, the knob above
+  it turns them (below the box when the context bar would cover it). Each drag previews `stroke.set {points}` and records
+  ONE `stroke.transform {dx, dy | scale | turn}`: the call an agent types (rostrum2d/paint_transform.py). Delete =
+  `stroke.remove`, Copy / Paste = `paint.stroke` of the same brush (24 px down and right). Esc clears.
   Steps: `lasso x,y … [open]`, `selectstrokes on|off`, `strokesmove`, `strokesturn`, `strokesdelete`, `strokescopy`,
   `strokespaste`, `strokesclear`, `clickarea`, `clickat` (`stroke_steps.py`).
 - **Set depth ▾** (actions.py `depth_far|middle|near`, rule `depth` in action_rules.py): on drawings of a composition that

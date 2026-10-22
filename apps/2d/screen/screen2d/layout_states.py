@@ -148,6 +148,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                        "select drawing_1", "depthtyped 2.5 open"]),
         ("paint-strokes-turned", ["--sample"], [*PAINTED, "lasso 500,200 1300,200 1300,400 500,400",
                                                 "strokeshandle turn 1100 120"]),
+        # H33 r2: strokes at the top of the canvas: their turn knob sits below the box, clear of the context bar
+        ("paint-knob-below", ["--sample"], ["tool draw", "draw 760 30 960 70 1160 30",
+                                            "lasso 700,0 1220,0 1220,140 700,140"]),
         # H33 (rig): the Bone tool mid-chain; Mirror pose ▾ open; faint copies of Repeat; a key's beat words on the bar
         ("bone-tool", with_character(), ["select max", "run layer:rig", "bonedrag 640 420 640 240", "boneclick 640 130",
                                          "bonehover 600 150"]),

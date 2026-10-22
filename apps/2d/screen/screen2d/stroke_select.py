@@ -26,6 +26,7 @@ from .stroke_handles import StrokeHandles
 
 class StrokeSelect(StrokeClip, StrokeHandles, QObject):
     changed = Signal()
+    knobChanged = Signal()                              # its own: QML sets it from the box, which `changed` moves
 
     def __init__(self, bridge):
         super().__init__(bridge)
@@ -56,8 +57,8 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
     def _set_knob_below(self, on):
         if on != self._knob_below:
             self._knob_below = on
-            self.changed.emit()
-    knobBelow = Property(bool, lambda self: self._knob_below, _set_knob_below, notify=changed)
+            self.knobChanged.emit()
+    knobBelow = Property(bool, lambda self: self._knob_below, _set_knob_below, notify=knobChanged)
     canPaste = Property(bool, lambda self: bool(self._clip) and self._target() is not None, notify=changed)
 
     @Property(str, notify=changed)
