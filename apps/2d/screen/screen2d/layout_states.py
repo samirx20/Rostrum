@@ -10,6 +10,7 @@ from pathlib import Path
 from .sample import SOURCE
 
 LONG_LAYER = "Title card for the summer launch film, second take"
+LONG_AGENT = "Claude: moved the title card, changed its colour, and re-timed the whole opening against the music"
 LONG_STATUS = "No graphics driver, so drawing is slower"
 PAINTED = ["select card", "tool draw", "draw 600 300 900 330 1200 300"]
 LONG_PAINT = 'paint_3 name "Line art for the summer launch film, cleaned up"'     # the third paint layer, renamed
@@ -47,6 +48,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("long-rows-open", long(), [*busy, "open card"]),
         ("long-draw", long(), [*busy, "tool draw"]),
         ("file-menu", long(), [*busy, "filemenu open"]),
+        ("history-agent-run", ["--sample"], ["select title", "agent-run 6", "history open"]),
+        ("agent-chip-long", long(), [*busy, "agent-run 3", f"agent-say {LONG_AGENT}"]),
         ("add-menu", ["--sample"], ["addmenu open"]),
         ("export-panel", long(), [*busy, "exportpanel open"]),
         ("import-panel", ["--sample"], ["importpanel open"]),

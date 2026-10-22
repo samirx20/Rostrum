@@ -11,7 +11,7 @@ from __future__ import annotations
 import dataclasses
 from pathlib import Path
 
-from rostrum_core import Document
+from rostrum_core import Document, live
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 from rostrum_core.storage import paths
@@ -31,9 +31,7 @@ def open_documents(project: str, items: list[str]) -> dict:
     for item in items:
         exists = paths(project, item, KIND.ext)["doc"].exists()
         doc = Document.open(project, item, KIND) if exists else Document.new(KIND, project, item)
-        doc.subscribe(lambda ev, d=doc: d.save() if ev.kind == "change" else None)
-        if not exists:
-            doc.save()
+        live.keep(doc)                       # one door for every save, shared with the person's window (rostrum_core.live)
         docs[item] = doc
     return docs
 

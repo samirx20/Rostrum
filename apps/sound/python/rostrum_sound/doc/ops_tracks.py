@@ -1,5 +1,5 @@
 """Tracks and the document's own settings: track.add / set / remove / lock / unlock, doc.set. A locked track
-(`locked`) refuses every change to it and its items (the core refuses a locked target; locks.py the rest)."""
+(`locked`) refuses every change to it and its items (rostrum_core/locks.py: one lock check for every app)."""
 from __future__ import annotations
 
 from rostrum_core import Param, codes

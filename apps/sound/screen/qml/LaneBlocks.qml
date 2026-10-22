@@ -114,4 +114,13 @@ Item {
             }
         }
     }
+
+    Repeater {   // what an agent just changed here: the 1-second outline (only the flashed blocks get an item)
+        model: (lane.track.blocks || []).filter(b => backend.agent.flash.indexOf(b.id) >= 0)
+        ChangeOutline {
+            required property var modelData
+            x: Math.round(lane.ruler.xOf(modelData.t)); y: lane.pad; height: lane.height - 2 * lane.pad
+            width: modelData.type === "hit" ? 3 : Math.max(3, lane.ruler.wOf(modelData.dur) - 1)
+        }
+    }
 }

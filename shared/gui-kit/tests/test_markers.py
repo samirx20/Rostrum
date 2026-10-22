@@ -49,5 +49,5 @@ def test_screen_undo_takes_back_marker_edits_in_one_history(tmp_path):
     assert b.doc.item("cam_1")["focal"] == 60 and len(w.rows()) == 1   # redone in order, across both
     edit(tmp_path, [{"op": "marker.move", "target": [w.rows()[0]["id"]], "args": {"at": 2.0}}], Who.agent("claude"))
     w.refresh()
-    assert b.status == "agent:claude: Move marker"                     # an agent's marker edit: who changed what
+    assert b.status == "Claude: Move marker"                           # an agent's marker edit: who changed what
     w.close()

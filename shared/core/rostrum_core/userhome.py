@@ -89,7 +89,7 @@ def _unlock(fh) -> None:
 
 
 @contextlib.contextmanager
-def locked(path):
+def locked(path, where="settings", who="another Rostrum window"):
     """Exclusive lock on `<path>.lock` while the block runs; waits up to ~5 s, then fails loudly naming the file.
     Not re-entrant: take it once, around the whole read-modify-write."""
     path = Path(path)
@@ -102,8 +102,8 @@ def locked(path):
         deadline = time.monotonic() + WAIT_S
         while not _try_lock(fh):
             if time.monotonic() > deadline:
-                raise RostrumError(codes.INTERNAL, "settings", str(path), "is being changed by another Rostrum window",
-                                   hint=f"Waited {WAIT_S:.0f} s for {lock}; close the other window or delete that file.")
+                raise RostrumError(codes.INTERNAL, where, str(path), f"is being changed by {who}",
+                                   hint=f"Waited {WAIT_S:.0f} s for {lock}; close the other program or delete that file.")
             time.sleep(0.05)
         try:
             yield

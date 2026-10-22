@@ -6,7 +6,7 @@ from __future__ import annotations
 import copy
 
 from . import edits as E
-from . import ids
+from . import ids, locks
 from .conditions import describe, holds
 from .errors import RostrumError, codes, did_you_mean
 from .tree import View, fields, index, subtree_ids
@@ -91,8 +91,6 @@ def _check_targets(kind, op, targets, view, where):
         if it.get("type") not in op.targets:
             raise RostrumError(codes.BAD_ARGUMENT, where, f'target "{t}"', f"is a {it.get('type')}, not a "
                                f"{' or '.join(op.targets)}")
-        if it.get("locked") and not op.name.endswith(".unlock"):
-            raise RostrumError(codes.CHECK_FAILED, where, f'target "{t}"', "is locked", hint="Unlock it first.")
         if not holds(op.valid_when, fields(it, kind.lists), kind.facts(it, view)):
             raise RostrumError(codes.BAD_ARGUMENT, where, f'target "{t}"',
                                f"can't take {op.name} now: it needs {describe(op.valid_when)}")
@@ -120,8 +118,9 @@ def _changed(edits, idx, lists) -> list[dict]:
     return [idx[i].item for i in ids if i in idx]
 
 
-def plan(kind, data: dict, calls) -> tuple[dict, list, list[dict]]:
-    """(the new document, the applied edits, the normalized calls). Pure: `data` is not touched."""
+def plan(kind, data: dict, calls, locked_by=None) -> tuple[dict, list, list[dict]]:
+    """(the new document, the applied edits, the normalized calls). Pure: `data` is not touched. `locked_by(id)`: who
+    locked an item, for the refusal's words (Document.locked_by)."""
     calls = normalize(calls)
     work, applied = copy.deepcopy(data), []
     idx = index(work, kind.lists)                       # one index for the whole call, kept up to date by its edits
@@ -139,6 +138,7 @@ def plan(kind, data: dict, calls) -> tuple[dict, list, list[dict]]:
             raise
         except Exception as e:  # a bug in an operation is loud, never half-applied
             raise RostrumError(codes.INTERNAL, where, op.name, f"failed: {type(e).__name__}: {e}") from e
+        locks.check(ctx.edits, idx, kind.lists, where, locked_by)
         call["args"] = args
         applied += ctx.edits
     problems = kind.problems(work, _changed(applied, idx, kind.lists))

@@ -6,12 +6,13 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui import DocBridge
+from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
-from rostrum_core import marker_times
+from rostrum_core import live, marker_times
 from rostrum_core.tree import index
 from rostrum2d import fields as F, retime
 
-from . import bounds, outline
+from . import bounds, outline, screen_seen
 from .drags import DragSlots
 from .command_words import CommandWords
 from .file_commands import FileCommands
@@ -19,6 +20,7 @@ from .frames import FrameRenderer
 from .handle_slots import HandleSlots
 from .hooks import Hooks2D
 from .action_slots import ActionSlots
+from .agent_view import AgentView
 from .layer_order import LayerOrder
 from .painter import Painter
 from .paint_edge import PaintEdge
@@ -36,7 +38,7 @@ from .undo_state import UndoState
 TOOLS = ("move", "pen", "draw", "rect", "ellipse", "text")      # what the mouse does on the canvas (setTool)
 
 
-class Bridge2D(ShownState, KeyEdits, ClipboardSlots, UndoState, ActionSlots, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
+class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, ActionSlots, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     toolChanged = Signal()
     frameChanged = Signal()
@@ -44,7 +46,6 @@ class Bridge2D(ShownState, KeyEdits, ClipboardSlots, UndoState, ActionSlots, Lay
     outlineChanged = Signal()
     playingChanged = Signal()
     markersChanged = Signal()
-    historyChanged = Signal()                               # the kit's docChanged, for the history properties below
     renameRequested = Signal(str)                           # F2 / Ctrl+K "Rename layer": the layer row's name box
     sections = True                                         # settings panel: essentials, folded groups, search (kit)
 
@@ -60,7 +61,6 @@ class Bridge2D(ShownState, KeyEdits, ClipboardSlots, UndoState, ActionSlots, Lay
         self.marks = None                                   # made below (it needs this QObject); the first rows have none
         self._shown_init()
         super().__init__(doc, parent=parent)
-        self.docChanged.connect(self.historyChanged)
         self.frames = FrameRenderer(self)
         self._scene = None                                  # the engine's scene, described once per change (_render)
         self.frames.ready.connect(self._on_frame)
@@ -85,14 +85,15 @@ class Bridge2D(ShownState, KeyEdits, ClipboardSlots, UndoState, ActionSlots, Lay
         self.r3d.changed.connect(self._problems.touch)
         self.selectionChanged.connect(self.outlineChanged)
         self.selectionChanged.connect(self.shownChanged)
+        self.link = None
+        if autosave and doc.folder:                         # live (--doc): one door for every save, shared with agents' servers
+            live.keep(doc)
+            self.link = LiveLink(self, "2d", screen_seen.state)
         self._make_actions()                                # the one action list's hub: bar, menus, Ctrl+K, keys
         self._render()
         self._problems.touch()
 
-    # ---- the history, as the top bar and the Undo / Redo buttons read it (undo_state.py) ----------------------------
-    historyCount = Property(int, lambda self: self.changes_since_open(), notify=historyChanged)   # since it opened
-    undoLabel = Property(str, UndoState.undo_label, notify=historyChanged)         # "" = nothing to undo
-    redoLabel = Property(str, UndoState.redo_label, notify=historyChanged)
+    isLive = Property(bool, lambda self: self.link is not None, constant=True)   # saved after every change: the top bar says "Saved"
 
     paintEdge = Property(QObject, lambda self: self._paint_edge, constant=True)   # the paint target's edge (paint_edge.py)
     sharp = Property(QObject, lambda self: self._sharp, constant=True)           # past Full, drawn sharp (sharp.py)
@@ -286,10 +287,10 @@ class Bridge2D(ShownState, KeyEdits, ClipboardSlots, UndoState, ActionSlots, Lay
         self.outlineChanged.emit()
         self._render()
         self._problems.touch()
-        if self.autosave and event.kind == "change":
-            self._guard(self.doc.save)
 
     def close(self):
+        if self.link:
+            self.link.close()
         self.play.stop()
         self.marks.close()
         self.endDrag()

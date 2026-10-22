@@ -16,7 +16,7 @@ import sys
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from rostrum_core import RostrumError, Who
-from rostrum_core.markers import edit, listing, open_markers, times, version
+from rostrum_core.markers import _exists as exists, edit, listing, open_markers, open_to_change, times, version
 
 POLL_MS = 500          # another process (an agent, Sound) may move a marker: look at the file this often (cheap)
 
@@ -53,12 +53,15 @@ class MarkerWatch(QObject):
 
     # ---- one history with the screen's document (DocBridge.join_history) ------------------------------------
     def history_doc(self):
-        """The marker document as it is on disk now (None outside a project)."""
-        return open_markers(self.folder) if self.folder is not None else None
+        """The marker document as it is on disk now (None outside a project); live once it exists, so an undo in it
+        goes through the one door (rostrum_core.live) like every other save."""
+        if self.folder is None:
+            return None
+        return open_to_change(self.folder) if exists(self.folder) else open_markers(self.folder)
 
     def stepped(self, doc):
-        """An undo or redo landed in `doc` (from history_doc): save it and show it."""
-        doc.save()
+        """An undo or redo landed in `doc` (from history_doc, saved by its door): show it."""
+        doc.save()                                       # (a live document: only catches up; never writes over others)
         self.refresh()
 
     def last_change(self):

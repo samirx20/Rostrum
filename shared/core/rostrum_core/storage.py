@@ -111,28 +111,36 @@ def open_doc(cls, folder, item, kind):
     return doc
 
 
-def _read_doc(cls, folder, item, kind, p):
+def read_history(path: Path, kind):
+    """(base, changes, versions) from a history file, or loudly refused line by line (live.py reads it too)."""
     from .history import Change
+    base, changes, versions = None, [], {}
+    for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        try:
+            entry = json.loads(line)
+            if n == 1:
+                _check_format(kind, entry, path)
+                base = entry["base"]
+            elif "version" in entry and "seq" not in entry:
+                versions[entry["version"]] = entry["at"]
+            else:
+                changes.append(Change.from_dict(entry))
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            raise RostrumError(codes.CHECK_FAILED, "open", f"{path} line {n}",
+                               f"is damaged ({type(e).__name__}: {e})", hint="Nothing was saved over it.") from e
+    return base, changes, versions
+
+
+def _read_doc(cls, folder, item, kind, p):
     file = _read_json(p["doc"], "open")
     _check_format(kind, file, p["doc"])
     doc = cls(kind, file["doc"], folder, item)
     doc.saved_by = file.get("saved_by")         # None: saved before files recorded it
     if not p["history"].exists():
         return doc
-    raw = p["history"].read_text(encoding="utf-8").splitlines()
-    for n, line in enumerate(raw, 1):
-        try:
-            entry = json.loads(line)
-            if n == 1:
-                _check_format(kind, entry, p["history"])
-                doc.base = entry["base"]
-            elif "version" in entry and "seq" not in entry:
-                doc.history.versions[entry["version"]] = entry["at"]
-            else:
-                doc.history.add(Change.from_dict(entry))
-        except (json.JSONDecodeError, KeyError, TypeError) as e:
-            raise RostrumError(codes.CHECK_FAILED, "open", f"{p['history']} line {n}",
-                               f"is damaged ({type(e).__name__}: {e})", hint="Nothing was saved over it.") from e
+    doc.base, changes, doc.history.versions = read_history(p["history"], kind)
+    for c in changes:
+        doc.history.add(c)
     if p["script"].exists():
         doc.script_bases = _read_json(p["script"], "open")
     replayed = doc.at_step(doc.seq)

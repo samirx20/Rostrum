@@ -8,6 +8,7 @@ AppShell {
     bridge: backend
     appName: "Rostrum"
     documentName: "Kit demo"
+    saveWord: "Saved"
 
     left: ItemList { anchors.fill: parent; bridge: backend }
     centre: Viewer { anchors.fill: parent }
