@@ -17,7 +17,7 @@ from rostrum_sound import compile as compile_doc
 from rostrum_sound.doc import markers as MK
 from rostrum_sound.doc import ops_mix
 
-from . import inspect, lanes, onpage, picture, pick, timeline
+from . import inspect, lanes, onpage, output_pick, picture, pick, timeline
 from .edit_slots import EditSlots
 from .lane_slots import LaneSlots
 from .picture_slots import PictureSlots
@@ -60,6 +60,7 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, D
         self.transport.renderChanged.connect(self.renderChanged)
         self.transport.stateChanged.connect(self.soundChanged)
         self.transport.failed.connect(self._fail)
+        self.transport.said.connect(self.say)
         self.transport.moved.connect(self._moved)
         self.transport.render()
 
@@ -129,6 +130,12 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, D
 
     def on_page(self, item):        # the inspector leaves out what the page's own controls show (onpage.py)
         return onpage.fields(self._page, item.get("type", ""), self.doc.kind.registry)
+
+    def list_choices(self, item, param):      # a track's / bus' Output: Master and the buses it may feed
+        return output_pick.choices(self.doc, item, self.label_of) if param == output_pick.FIELD else []
+
+    def _rows(self):
+        return output_pick.without_none(super()._rows())
 
     # ---- screen state -----------------------------------------------------------------------------------------
     @Slot(str)

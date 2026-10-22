@@ -27,6 +27,9 @@ class FakeEngine:
         Path(out).write_bytes(b"")
         return {"file": out, "lufs": -20.0, "tracks": [], "stems": {}}
 
+    def take_restarted(self):
+        return ""
+
     def close(self):
         pass
 

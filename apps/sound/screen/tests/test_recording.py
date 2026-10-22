@@ -29,6 +29,9 @@ class FakeEngine:
         sf.write(out, np.zeros((48000 * 6, 2), "float32"), 48000)
         return {"file": out, "lufs": -20.0, "tracks": [], "stems": {}}
 
+    def take_restarted(self):
+        return ""
+
     def close(self):
         pass
 

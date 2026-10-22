@@ -69,7 +69,8 @@ class Renderer(QObject):
                     if not Path(result.get("file", "")).is_file():
                         raise RuntimeError(f"the engine answered but wrote no file at {out}")
                     self._tidy()
-                    self.rendered.emit(result)
+                    note = eng.take_restarted()          # the engine died during it and was started again
+                    self.rendered.emit({**result, "restarted": note} if note else result)
                 except Exception as e:  # noqa: BLE001  any failure is reported, loudly
                     line = f"Error: render: {getattr(e, 'line', lambda: e)()}"
                     print(line, file=sys.stderr)

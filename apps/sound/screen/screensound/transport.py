@@ -22,6 +22,7 @@ class Transport(QObject):
     stateChanged = Signal()
     moved = Signal(float)          # the playhead while playing (seconds)
     failed = Signal(str)
+    said = Signal(str)             # a plain one-line notice for the status (not an error)
 
     def __init__(self, schedule_fn, length_fn, parent=None):
         super().__init__(parent)
@@ -82,6 +83,8 @@ class Transport(QObject):
         self.playingChanged.emit()
 
     def _rendered(self, result):
+        if result.get("restarted"):
+            self.said.emit(result["restarted"])
         self.last, self.stale, self._render_failed = dict(result), False, False
         self.player.load(self.last["file"])
         self.renderChanged.emit()
