@@ -67,5 +67,45 @@ The engine's direct dependencies (228 crates in all, checked with `cargo metadat
 | serde, serde_json, cc | 1.x, 1.7.0 | MIT OR Apache-2.0 | apps/sound/engine | static / build tool | yes / build only | Keep the notice | https://serde.rs |
 | SADIE II HRIR, subject D2 (data) | Zenodo 12092466 | Apache-2.0 | apps/sound/engine (binaural fold) | data | yes | Keep `data/SADIE-II-NOTICE.txt` (changes listed there) | https://www.york.ac.uk/sadie-project/database.html |
 | DDSP violin weights (data) | ours, 2026-10-15 | MIT (ours; trained on VSCO 2 CE, CC0) | apps/sound/engine (`ddsp.violin`) | data | yes | None | experiment-final:docs/AI_MODELS.md |
-| opencv-python-headless | 5.0.0.93 | Apache-2.0 | apps/sound/python (sfx eyes) | Python package | yes | Keep the notice | https://opencv.org |
-| numpy, scipy, soundfile, librosa, pyloudnorm, matplotlib | (venv) | BSD-3 / BSD-3 / BSD-3 / ISC / MIT / PSF-style (matplotlib) | apps/sound/python (listen, sfx) | Python package | yes | Keep the notices (libsndfile under soundfile is LGPL-2.1, dynamically loaded) | https://pypi.org |
+| numpy, soundfile, matplotlib (shipped); scipy, librosa, pyloudnorm (`listen-dev` extra, comparison checks only) | (venv) | BSD-3 / BSD-3 / PSF-style; BSD-3 / ISC / MIT | apps/sound/python | Python package | numpy, soundfile, matplotlib ship; scipy, librosa, pyloudnorm dev only (P22) | Keep the notices | https://pypi.org |
+| annotated-types | 0.8.0 | MIT | MCP servers (through pydantic) | Python package | ships | Keep the notice | https://github.com/annotated-types/annotated-types |
+| anyio | 4.15.1 | MIT | MCP servers | Python package | ships | Keep the notice | https://github.com/agronholm/anyio |
+| attrs | 26.1.0 | MIT | MCP servers (through jsonschema) | Python package | ships | Keep the notice | https://github.com/python-attrs/attrs |
+| cffi | 2.1.1 | MIT-0 | soundfile, cryptography | Python package | ships | — | https://github.com/python-cffi/cffi |
+| click | 8.5.0 | BSD-3-Clause | MCP servers (through uvicorn) | Python package | ships | Keep the notice | https://github.com/pallets/click |
+| cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause (bundles OpenSSL, Apache-2.0) | MCP servers (through PyJWT) | Python package | ships | Keep the notice | https://github.com/pyca/cryptography |
+| h11 | 0.16.0 | MIT | MCP servers | Python package | ships | Keep the notice | https://github.com/python-hyper/h11 |
+| httpcore2 | 2.16.0 | BSD-3-Clause | MCP servers | Python package | ships | Keep the notice | https://github.com/pydantic/httpx2 |
+| httpx2 | 2.16.0 | BSD-3-Clause | MCP servers | Python package | ships | Keep the notice | https://github.com/pydantic/httpx2 |
+| idna | 3.20 | BSD-3-Clause | MCP servers | Python package | ships | Keep the notice | https://github.com/kjd/idna |
+| jsonschema | 4.26.0 | MIT | MCP servers | Python package | ships | Keep the notice | https://github.com/python-jsonschema/jsonschema |
+| jsonschema-specifications | 2025.9.1 | MIT | MCP servers | Python package | ships | Keep the notice | https://github.com/python-jsonschema/jsonschema-specifications |
+| mcp | 2.3.0 | MIT | MCP servers | Python package | ships | Keep the notice | https://github.com/modelcontextprotocol/python-sdk |
+| mcp-types | 2.3.0 | MIT | MCP servers | Python package | ships | Keep the notice | https://github.com/modelcontextprotocol/python-sdk |
+| opentelemetry-api | 1.45.1 | Apache-2.0 | MCP servers | Python package | ships | Keep the notice | https://github.com/open-telemetry/opentelemetry-python |
+| pycparser | 3.11 | BSD-3-Clause | cffi | Python package | ships | Keep the notice | https://github.com/eliben/pycparser |
+| pydantic | 2.14.1 | MIT | MCP servers | Python package | ships | Keep the notice | https://github.com/pydantic/pydantic |
+| pydantic_core | 2.50.1 | MIT | MCP servers | Python package | ships | Keep the notice | https://github.com/pydantic/pydantic-core |
+| PyJWT | 2.15.1 | MIT | MCP servers | Python package | ships | Keep the notice | https://github.com/jpadilla/pyjwt |
+| python-multipart | 0.0.32 | Apache-2.0 | MCP servers | Python package | ships | Keep the notice | https://github.com/Kludex/python-multipart |
+| pywin32 | 312 | PSF-2.0 | MCP servers (Windows) | Python package | ships | Keep the notice | https://github.com/mhammond/pywin32 |
+| referencing | 0.37.0 | MIT | MCP servers (through jsonschema) | Python package | ships | Keep the notice | https://github.com/python-jsonschema/referencing |
+| rpds-py | 2026.9.1 | MIT | MCP servers (through jsonschema) | Python package | ships | Keep the notice | https://github.com/crate-py/rpds |
+| sse-starlette | 3.5.0 | BSD-3-Clause | MCP servers | Python package | ships | Keep the notice | https://github.com/sysid/sse-starlette |
+| starlette | 1.9.0 | BSD-3-Clause | MCP servers | Python package | ships | Keep the notice | https://github.com/Kludex/starlette |
+| truststore | 0.10.5 | MIT | MCP servers | Python package | ships | Keep the notice | https://github.com/sethmlarson/truststore |
+| typing_extensions | 4.16.0 | PSF-2.0 | pydantic, MCP | Python package | ships | Keep the notice | https://github.com/python/typing_extensions |
+| typing-inspection | 0.4.4 | MIT | pydantic | Python package | ships | Keep the notice | https://github.com/pydantic/typing-inspection |
+| uvicorn | 0.54.0 | BSD-3-Clause | MCP servers | Python package | ships | Keep the notice | https://github.com/Kludex/uvicorn |
+| matplotlib | 3.11.2 | PSF-based (matplotlib licence, BSD-compatible) | Sound: the listen pictures (Mix page and agent looks), loaded only to draw | Python package | ships (replaces the "dev only" row) | Keep the notice | https://matplotlib.org |
+| contourpy | 1.4.0 | BSD-3-Clause | matplotlib | Python package | ships | Keep the notice | https://github.com/contourpy/contourpy |
+| cycler | 0.12.1 | BSD-3-Clause | matplotlib | Python package | ships | Keep the notice | https://github.com/matplotlib/cycler |
+| kiwisolver | 1.5.1 | BSD-3-Clause | matplotlib | Python package | ships | Keep the notice | https://github.com/nucleic/kiwi |
+| packaging | 26.3 | Apache-2.0 OR BSD-2-Clause | matplotlib | Python package | ships | Keep the notice | https://github.com/pypa/packaging |
+| pyparsing | 3.3.3 | MIT | matplotlib | Python package | ships | Keep the notice | https://github.com/pyparsing/pyparsing |
+| python-dateutil | 3.0.0 | Apache-2.0 AND BSD-3-Clause (dual) | matplotlib | Python package | ships | Keep the notice | https://github.com/dateutil/dateutil |
+| six | 1.17.0 | MIT | python-dateutil | Python package | ships | Keep the notice | https://github.com/benjaminp/six |
+| tzdata | 2026.5 | Apache-2.0 | python-dateutil (time zones) | Python package | ships | Keep the notice | https://github.com/python/tzdata |
+| soundfile with libsndfile 1.2.2 (inside: LAME, mpg123, FLAC, Ogg/Vorbis/Opus) | 0.14.0 | BSD-3-Clause (soundfile); LGPL-2.1+ (libsndfile, LAME, mpg123; BSD for FLAC / Xiph) | Sound: reading audio, delivery files (WAV, FLAC, MP3 export) | dynamic (libsndfile_x64.dll, loaded through cffi) | ships (replaces the "dev only" part of the numpy / scipy / soundfile row) | Keep the DLL separate and replaceable; ship the LGPL notice; offer the source | https://github.com/bastibe/python-soundfile |
+| opencv-python-headless (bundles FFmpeg, LGPL) | 5.0.0.93 | Apache-2.0 (OpenCV); LGPL-2.1+ (its FFmpeg DLL) | Sound: the video looks (`look_video`, motion), downloaded on first use by `python -m rostrum_sound.sfx.opencv` | dynamic (downloaded wheel, unpacked into the models folder) | downloaded on first use, not in the installer | Keep the notices; FFmpeg stays a separate DLL | https://github.com/opencv/opencv-python |
+| Rostrum Sound engine crates | see `apps/sound/engine/DEPENDENCIES.md` | 173 crates, none GPL / AGPL / LGPL (MIT / Apache-2.0 mostly; MPL-2.0 Symphonia; Zlib, ISC, BSD, Unicode-3.0) | `rostrum-sound.exe` | static (Rust) | ships | Keep the notices; MPL files unmodified | `apps/sound/engine/deps.py` (regenerate; `--check` refuses GPL) |
