@@ -38,7 +38,7 @@ def test_verdict_passes_within_a_unit_and_under_the_ceiling():
     m = {"loudness": -14, "truePeak": -1}
     assert delivery.verdict(m, {"lufs": -14.6, "truePeak": -1.4})["ok"]
     miss = delivery.verdict(m, {"lufs": -11.0, "truePeak": 0.3})
-    assert not miss["ok"] and "too loud" in miss["text"] and "over the ceiling" in miss["text"]
+    assert not miss["ok"] and "too loud" in miss["text"] and "over the limit" in miss["text"]
 
 
 def test_duck_is_added_and_a_drag_is_one_step():

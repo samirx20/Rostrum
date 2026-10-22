@@ -21,7 +21,8 @@ Panel {
                 Repeater { model: mixer.buses; delegate: MixStrip { height: row.height } }   // buses, before the master
                 Item {
                     width: addBus.width; height: row.height
-                    Button { id: addBus; text: "+ Bus"; kind: "ghost"; onClicked: mixer.addBus() }
+                    Button { id: addBus; text: "+ Group channel"; kind: "ghost"; onClicked: mixer.addBus()
+                             HoverTip { text: "New bus: a shared channel. Send several tracks to it to mix them together"; hovered: addBus.hovered } }
                 }
             }
         }
@@ -55,6 +56,7 @@ Panel {
             }
         }
         MixMaster { id: master; anchors { right: parent.right; top: parent.top; bottom: listen.top; bottomMargin: Theme.gap } }
-        MixListen { id: listen; anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: implicitHeight }
+        MixListen { id: listen; anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: implicitHeight
+                    room: parent.height - master.need - Theme.gap }       // the master card keeps what it needs
     }
 }

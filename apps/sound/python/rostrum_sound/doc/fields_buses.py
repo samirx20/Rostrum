@@ -14,7 +14,7 @@ from . import values as V
 N = V.N
 PAN = dict(lo=-1, hi=1)
 
-OUTPUT = Param.text("output", group="Mix", importance="secondary", label="Output",
+OUTPUT = Param.text("output", group="Mix", importance="secondary", label="Output", control="pick",   # screens: Master / the buses
                     help='Where it plays to: "master" or a bus id (the bus takes the whole track after its fader).')
 
 FIELDS = {
@@ -22,7 +22,7 @@ FIELDS = {
         Param.text("name", group="Bus", importance="secondary"),
         N("volume", 0, 4, "Mix", help="Bus fader gain (1 = unchanged)."), N("pan", **PAN, group="Mix"),
         Param.toggle("mute", group="Mix"),
-        Param.text("output", group="Mix", importance="secondary", label="Output",
+        Param.text("output", group="Mix", importance="secondary", label="Output", control="pick",
                    help='"master" or another bus id (a bus can feed a bus, never in a loop).'),
     ],
     "send": [

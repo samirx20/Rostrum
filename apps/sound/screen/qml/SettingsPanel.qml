@@ -9,11 +9,27 @@ QQC.Popup {
     id: pop
     parent: QQC.Overlay.overlay
     anchors.centerIn: parent
-    width: 440; height: Math.min(parent.height - 80, 600); padding: 0
+    width: 440; padding: 0
+    // as tall as its rows need (no empty band under More), up to what the window leaves
+    property real rowsHeight: 0
+    function recount() { let h = 0; for (let i = 0; i < measure.count; i++) h += measure.itemAt(i) ? measure.itemAt(i).h : 0; rowsHeight = h }
+    height: Math.min(parent.height - 80, rowsHeight + Theme.header + 64 + foot.height + 2 * Theme.pad)
     modal: true; closePolicy: QQC.Popup.CloseOnEscape | QQC.Popup.CloseOnPressOutside
     QQC.Overlay.modal: Rectangle { color: Theme.scrim }
     onAboutToShow: settingsPage.reload()
     background: Rectangle { color: Theme.panel; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
+    Repeater {   // the height each kit row takes now (what InspectorRow works out), to size the popup to them
+        id: measure
+        model: settingsPage.rows
+        onItemAdded: pop.recount()
+        onItemRemoved: pop.recount()
+        delegate: Item {
+            required property var model
+            onHChanged: pop.recount()
+            readonly property real h: !model.valid ? 0 : model.row === "group" ? Theme.groupGap + (model.label ? Theme.rowDense : 0)
+                                                        : model.row === "more" ? Theme.row + Theme.grid : Theme.row
+        }
+    }
     contentItem: Item {
         Inspector {
             anchors { left: parent.left; right: parent.right; top: parent.top; bottom: foot.top }

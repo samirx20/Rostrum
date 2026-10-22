@@ -30,7 +30,7 @@ PARAMS = [
                help="Where you hear the song. Empty: whatever Windows uses as its default output."),
     Param.text("input", group=DEVICE, label="Microphone", control="pick", default="",
                help="What records a voice or an instrument. Empty: Windows' default microphone."),
-    Param.toggle("exclusive", group=DEVICE, importance="secondary", label="Take over the speakers", default=False,
+    Param.toggle("exclusive", group=DEVICE, importance="secondary", label="Use speakers alone (fastest)", default=False,
                  help="On: RostrumSound alone uses the speakers, for the shortest delay between a key and its sound. "
                       "Other programs go quiet while it plays. Off: it shares them with everything else."),
     Param.choice("buffer", BUFFERS, group=DEVICE, importance="secondary", label="Buffer", default=0,
@@ -45,7 +45,7 @@ PARAMS = [
     Param.number("loudness", group=SONGS, label="Loudness target", default=-14, min=-30, max=-5, step=0.5,
                  unit=" LUFS", help="How loud a new song is made when you export it with loudness matching. "
                                     "-14 suits streaming sites; -23 is broadcast TV."),
-    Param.number("truePeak", group=SONGS, importance="secondary", label="Peak ceiling", default=-1, min=-12, max=0,
+    Param.number("truePeak", group=SONGS, importance="secondary", label="Loudest peak allowed", default=-1, min=-12, max=0,
                  step=0.1, unit=" dBTP", help="The loudest any moment of a new song may reach, so it never distorts "
                                               "after a video site re-encodes it."),
     Param.text("projects", group=FILES, label="Projects folder", control="folder", default="",

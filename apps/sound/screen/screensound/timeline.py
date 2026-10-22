@@ -112,6 +112,13 @@ def drums_of(track: dict) -> list[str]:
     return list(dict.fromkeys(known + sorted(used - set(known))))
 
 
+def roll_drums(track: dict) -> list[str]:
+    """The rows of a drum track's piano roll: a synth drum kit shows all its drums (so the area is the kit, not three
+    thin rows), then any other drum the track has hit."""
+    used = drums_of(track)
+    return list(dict.fromkeys([*names.SYNTH_DRUMS, *used])) if track.get("instrument") == "kit" else used
+
+
 def kind_of(track: dict) -> str:
     """What the piano roll draws for a track: "notes", "drums", "audio" (clips, voice lines) or "empty"."""
     if track.get("instrument") == "voice":
@@ -192,4 +199,4 @@ def roll(track: dict | None, root: dict, hue: str = HUES[0]) -> dict:
     row_names = [{"t": 0.0, "names": spell(K.key_at(root, 0.0))}]
     row_names += [{"t": c["t"], "names": spell(c["key"])} for c in music_map.key_changes(root) if c["t"] > 0]
     return {"id": track["id"], "name": track.get("name") or track["id"], "kind": kind_of(track), "blocks": bl,
-            "lo": lo, "hi": hi, "rowNames": row_names, "drums": drums_of(track), "hue": hue}
+            "lo": lo, "hi": hi, "rowNames": row_names, "drums": roll_drums(track), "hue": hue}

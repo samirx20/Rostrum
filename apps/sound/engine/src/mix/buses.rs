@@ -5,10 +5,12 @@
 //! master). A schedule without buses never comes here (the master sum in render/ is the old one).
 
 use serde::Deserialize;
+use std::sync::Arc;
 
 use crate::bed::{self, Layout};
 use crate::mix::render::stats::{track_stats, TrackStats};
 use crate::mix::schedule::{Automation, Effect, Param, Schedule, Track};
+use crate::mix::tape::Tape;
 
 #[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -112,11 +114,6 @@ pub fn invert(chs: &mut [Vec<f32>]) {
     chs.iter_mut().for_each(|c| c.iter_mut().for_each(|v| *v = -*v));
 }
 
-/// A track's output summed into the master, as the master sum does it.
-pub fn add_into(master: &mut [Vec<f32>], chs: &[Vec<f32>]) {
-    add(master, chs, None, 0.0);
-}
-
 fn add(into: &mut [Vec<f32>], from: &[Vec<f32>], level: Option<&Param>, sr: f64) {
     for (dst, src) in into.iter_mut().zip(from) {
         match level {
@@ -148,10 +145,10 @@ fn fader(bus: &Bus, chs: &mut [Vec<f32>], sr: f64) {
 }
 
 /// The buses mixed and their outputs added into `master` (the summed direct tracks): `outs[k]` is track k's
-/// output when it feeds a bus, `pres[k]` its pre-fader tap. Returns each bus' figures, in schedule order, and
-/// (when `keep`) each bus' output as a stem, `total` long.
-pub type BusStems = Vec<(String, Vec<Vec<f32>>)>;
-pub fn mix(s: &Schedule, outs: Vec<Option<Vec<Vec<f32>>>>, pres: &[Option<Vec<Vec<f32>>>], master: &mut [Vec<f32>], keep: bool) -> Result<(Vec<TrackStats>, BusStems), String> {
+/// output when it feeds a bus, `pres[k]` its pre-fader tap (both on disk, read one track at a time). Returns
+/// each bus' figures, in schedule order, and (when `keep`) each bus' output as a stem, `total` long, on disk.
+pub type BusStems = Vec<(String, Arc<Tape>)>;
+pub fn mix(s: &Schedule, outs: Vec<Option<Arc<Tape>>>, pres: &[Option<Tape>], master: &mut [Vec<f32>], keep: bool) -> Result<(Vec<TrackStats>, BusStems), String> {
     if s.buses.is_empty() || matches!(s.tap, Some(Tap { bus: None })) {
         return Ok((vec![], vec![]));
     }
@@ -159,13 +156,14 @@ pub fn mix(s: &Schedule, outs: Vec<Option<Vec<Vec<f32>>>>, pres: &[Option<Vec<Ve
     let order = order(s)?;
     let mut inputs: Vec<Vec<Vec<f32>>> = s.buses.iter().map(|_| vec![vec![0.0f32; buf]; layout.channels()]).collect();
     for (k, t) in s.tracks.iter().enumerate() {
-        let Some(chs) = &outs[k] else { continue };
+        let Some(tape) = &outs[k] else { continue };
+        let chs = tape.whole()?;
         if let Some(b) = t.output {
-            add(&mut inputs[b], chs, None, sr);
+            add(&mut inputs[b], &chs, None, sr);
         }
         for x in &t.sends {
-            let src = if x.pre { pres[k].as_ref().ok_or_else(|| format!("track \"{}\": its pre-fader send has no tap", t.name))? } else { chs };
-            add(&mut inputs[x.bus], src, Some(&x.level), sr);
+            let pre = if x.pre { Some(pres[k].as_ref().ok_or_else(|| format!("track \"{}\": its pre-fader send has no tap", t.name))?.whole()?) } else { None };
+            add(&mut inputs[x.bus], pre.as_ref().unwrap_or(&chs), Some(&x.level), sr);
         }
     }
     let mut stats: Vec<Option<TrackStats>> = s.buses.iter().map(|_| None).collect();
@@ -181,7 +179,8 @@ pub fn mix(s: &Schedule, outs: Vec<Option<Vec<Vec<f32>>>>, pres: &[Option<Vec<Ve
         }
         stats[b] = Some(track_stats(&bus.name, &chs, s.total_samples, sr, layout));
         if keep {
-            stems.push((bus.name.clone(), chs.iter().map(|c| c[..s.total_samples.min(c.len())].to_vec()).collect()));
+            let cut: Vec<Vec<f32>> = chs.iter().map(|c| c[..s.total_samples.min(c.len())].to_vec()).collect();
+            stems.push((bus.name.clone(), Arc::new(Tape::spill(&cut)?)));
         }
         match (s.tap, bus.output) {
             (Some(Tap { bus: Some(tapped) }), _) if tapped == b => add(master, &chs, None, sr),

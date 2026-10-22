@@ -37,6 +37,7 @@ DEFAULT_FORMAT = "wav24"
 AUDIBLE = 1e-4          # -80 dBFS: below this nothing is heard, even a reverb tail in a quiet room
 TAIL = 0.25             # seconds kept after the last audible sound
 MIN_SECONDS = 0.5       # never a shorter file than this
+BLOCK = 1 << 18         # frames read and written at a time (2 MB of stereo float)
 
 
 def rates_for(fmt: str) -> list[dict]:
@@ -127,21 +128,35 @@ def _tpdf(shape, rng):
     return rng.random(shape, dtype="float32") - rng.random(shape, dtype="float32")
 
 
-def write(path: Path, data, rate: int, spec: dict, sf) -> int:
-    """Write float `data` (frames × channels, nominally ±1) as `spec`. Returns how many samples went past full scale
-    (they are clipped; the master's limiter normally keeps a mastered render under it)."""
+def _convert(block, spec, rng):
+    """One block of float data (frames × channels, nominally ±1) as what the file takes; also how many samples of it
+    went past full scale (they are clipped; the master's limiter normally keeps a mastered render under it)."""
     import numpy as np
-    over = int(np.count_nonzero(np.abs(data) > 1.0)) if spec["subtype"] != "FLOAT" else 0
+    over = int(np.count_nonzero(np.abs(block) > 1.0)) if spec["subtype"] != "FLOAT" else 0
     if spec["subtype"] == "PCM_16":
-        rng = np.random.default_rng(16)
-        q = np.round(np.clip(data, -1.0, 1.0) * 32767 + _tpdf(data.shape, rng))
-        data = np.clip(q, -32768, 32767).astype("int16")
+        q = np.round(np.clip(block, -1.0, 1.0) * 32767 + _tpdf(block.shape, rng))
+        block = np.clip(q, -32768, 32767).astype("int16")
     elif spec["subtype"] != "FLOAT":
-        data = np.clip(data, -1.0, 1.0)
+        block = np.clip(block, -1.0, 1.0)
+    return block, over
+
+
+def write(path: Path, src: Path, keep: int, rate: int, spec: dict, sf) -> int:
+    """Write the first `keep` frames of the engine's float file `src` as `spec`, a block at a time (a stem is never
+    held whole; one is much bigger than a block). A file shorter than `keep` is padded with silence so every file is
+    the same length. Returns how many samples went past full scale."""
+    import numpy as np
+    rng = np.random.default_rng(16)
     kw = {"compression_level": 0.0, "bitrate_mode": "CONSTANT"} if spec["format"] == "MP3" else {}     # 0.0 = best quality (320 kbps)
-    with sf.SoundFile(str(path), "w", samplerate=rate, channels=data.shape[1] if data.ndim > 1 else 1,
-                      format=spec["format"], subtype=spec["subtype"], **kw) as f:
-        f.write(data)
+    over = done = 0
+    with sf.SoundFile(str(src)) as r, sf.SoundFile(str(path), "w", samplerate=rate, channels=r.channels,
+                                                   format=spec["format"], subtype=spec["subtype"], **kw) as f:
+        for block in r.blocks(blocksize=BLOCK, dtype="float32", always_2d=True, frames=keep):
+            data, n = _convert(block, spec, rng)
+            f.write(data); over += n; done += len(block)
+        while done < keep:
+            n = min(BLOCK, keep - done)
+            f.write(_convert(np.zeros((n, r.channels), "float32"), spec, rng)[0]); done += n
     return over
 
 
@@ -151,7 +166,6 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dic
     Returns `r` with the new paths, `seconds` (the delivered length), `songSeconds` (the song's own), `files` (what
     each id became) and what was written (`format`, `sampleRate`, `trimmedTo`, `clippedSamples`)."""
     sf = _soundfile()
-    import numpy as np
     spec = opts.spec
     jobs = [("mix", None, Path(r["file"]), f"{item}_mix")]
     taken = {f"{item}_mix".lower()}
@@ -169,13 +183,12 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dic
         keep = min(frames, max(heard + int(TAIL * rate), int(MIN_SECONDS * rate)))
     over, files = 0, {}
     for kind, key, src, stem in jobs:
-        data = sf.read(str(src), dtype="float32", always_2d=True, frames=keep)[0]
-        if len(data) < keep:              # a stem shorter than the mix: pad so every file is the same length
-            data = np.vstack([data, np.zeros((keep - len(data), data.shape[1]), "float32")])
         dest = folder / f"{stem}.{spec['ext']}"
-        over += write(dest, data, rate, spec, sf)         # the engine's file is already in memory: same name is fine
+        part = dest.with_name(dest.name + ".part")        # the engine's file may have the final name: write beside it, then swap
+        over += write(part, src, keep, rate, spec, sf)
         if dest != src:
             src.unlink()
+        part.replace(dest)
         files[(kind, key)] = dest
     mix = files[("mix", None)]
     return {**r, "file": str(mix), "seconds": keep / rate, "songSeconds": frames / rate,

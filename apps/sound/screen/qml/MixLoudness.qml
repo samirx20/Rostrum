@@ -32,12 +32,14 @@ ColumnLayout {
     ColumnLayout {   // the curve takes the height that is left: no dead space in the strip
         visible: l.measured
         Layout.fillWidth: true; Layout.fillHeight: true; spacing: 2
-        Text { text: "Short-term loudness"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+        Text { text: "Loudness right now"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
         Row {
             spacing: Theme.grid + 2
+            HoverHandler { id: nowHover }
+            HoverTip { y: parent.height + 2; text: "Short-term loudness (LUFS-S): how loud the last 3 seconds were"; hovered: nowHover.hovered }
             Text { id: big; text: F.num(l.meter.shortTerm, 1); color: Theme.fg; font.family: uiFont; font.pixelSize: 28
                    font.weight: Font.DemiBold; font.features: { "tnum": 1 } }
-            Text { anchors.baseline: big.baseline; text: "LUFS-S"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body }
+            Text { anchors.baseline: big.baseline; text: "LUFS"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body }
         }
         LoudnessCurve {
             Layout.fillWidth: true; Layout.fillHeight: true; Layout.minimumHeight: 64; Layout.topMargin: Theme.grid
@@ -48,14 +50,17 @@ ColumnLayout {
         RowLayout {
             Layout.fillWidth: true; Layout.topMargin: Theme.grid; spacing: Theme.gap
             Repeater {
-                model: [{ what: backend.playing ? "True peak so far" : "True peak", unit: "dBTP",
+                model: [{ what: backend.playing ? "Loudest peak so far" : "Loudest peak", unit: "dBTP",
+                          tip: "True peak (dBTP): the highest level the sound reaches between samples",
                           v: backend.playing && l.meter.peakNow !== null ? l.meter.peakNow : l.info.meter.truePeak },
                         backend.playing && l.meter.integratedNow != null
-                            ? { what: "Integrated so far", unit: "LUFS", v: l.meter.integratedNow }
-                            : { what: "Integrated (whole mix)", unit: "LUFS", v: l.info.meter.lufs }]
+                            ? { what: "Loudness so far", unit: "LUFS", tip: "Integrated loudness (LUFS) from the start up to now", v: l.meter.integratedNow }
+                            : { what: "Loudness (whole mix)", unit: "LUFS", tip: "Integrated loudness (LUFS) of the whole mix", v: l.info.meter.lufs }]
                 delegate: Column {
                     required property var modelData
                     Layout.fillWidth: true; Layout.preferredWidth: 1
+                    HoverHandler { id: numHover }
+                    HoverTip { text: modelData.tip; hovered: numHover.hovered }
                     Text { text: modelData.what; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
                     Row {
                         spacing: Theme.grid

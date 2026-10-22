@@ -13,7 +13,9 @@ import json
 import os
 import queue
 import subprocess
+import sys
 import threading
+import time
 from pathlib import Path
 
 from rostrum_core import RostrumError, codes
@@ -22,6 +24,8 @@ from . import names, settings
 from .doc import fields_design as FDS
 
 TIMEOUT_S = 600
+NOT_TWICE = ("pluginWindow",)        # a request that shows the person something is not repeated behind their back
+WORDS = {"render": "a render", "play": "playback"}
 
 
 def find_engine() -> Path:
@@ -36,6 +40,7 @@ class Engine:
         self._lines: queue.Queue = queue.Queue()
         self._lock = threading.Lock()
         self._n = 0
+        self._err, self.restarted = "", ""
 
     @property
     def pid(self) -> int | None:
@@ -62,26 +67,24 @@ class Engine:
             del keep[:-40]
 
     def request(self, do: str, timeout: float = TIMEOUT_S, **fields) -> dict:
-        """One request; its `result`, or the engine's error raised as a RostrumError."""
+        """One request; its `result`, or the engine's error raised as a RostrumError. An engine found dead is
+        started again (one log line); one that dies during a request is started again and asked once more."""
         with self._lock:
-            if self._proc is None or self._proc.poll() is not None:
-                self._start()
+            if self._proc is not None and self._proc.poll() is not None:
+                self._log(f"the sound engine stopped (exit code {self._proc.returncode}) and was restarted")
             self._n += 1
             req = {"id": self._n, "do": do, **fields}
-            try:
-                self._proc.stdin.write(json.dumps(req, default=str) + "\n")
-                self._proc.stdin.flush()
-                line = self._lines.get(timeout=timeout)
-            except queue.Empty:
-                self.close()
-                raise RostrumError(codes.RENDER_FAILED, f"sound engine › {do}", "the engine", f"did not answer within {timeout:.0f} s; it was stopped") from None
-            except OSError as e:
-                line = None
-                err = e
+            line = self._ask(req, timeout)
+            if line is None and do not in NOT_TWICE:
+                self._log(f"the sound engine stopped (exit code {self._code()}) during {do!r} and was restarted; "
+                          "asked again")
+                self.restarted = f"The sound engine stopped during {WORDS.get(do, 'its work')} and was restarted. Nothing was lost."
+                line = self._ask(req, timeout)
             if line is None:
                 tail = "\n".join(self._stderr[-10:]) if hasattr(self, "_stderr") else ""
-                self._proc = None
-                raise RostrumError(codes.INTERNAL, f"sound engine › {do}", "the engine", f"stopped unexpectedly: {tail or locals().get('err', 'no output')}")
+                code, self._proc = self._code(), None
+                raise RostrumError(codes.INTERNAL, f"sound engine › {do}", "the engine",
+                                   f"stopped unexpectedly (exit code {code}): {tail or self._err or 'no output'}")
         try:
             reply = json.loads(line)
         except json.JSONDecodeError:
@@ -97,6 +100,38 @@ class Engine:
             from . import cache_cap
             cache_cap.after_render()
         return reply["result"]
+
+    def _ask(self, req: dict, timeout: float):
+        """Send one request (starting the engine if needed) and wait for its line; None if the engine died."""
+        if self._proc is None or self._proc.poll() is not None:
+            self._start()
+        self._err = ""
+        try:
+            self._proc.stdin.write(json.dumps(req, default=str) + "\n")
+            self._proc.stdin.flush()
+            return self._lines.get(timeout=timeout)
+        except queue.Empty:
+            self.close()
+            raise RostrumError(codes.RENDER_FAILED, f"sound engine › {req['do']}", "the engine",
+                               f"did not answer within {timeout:.0f} s; it was stopped") from None
+        except OSError as e:
+            self._err = str(e)
+            return None
+
+    def _code(self):
+        try:
+            return self._proc.wait(timeout=2) if self._proc else None
+        except subprocess.TimeoutExpired:
+            return "still running"
+
+    def take_restarted(self) -> str:
+        """The plain sentence about a restart during the last requests (once), else ""."""
+        note, self.restarted = self.restarted, ""
+        return note
+
+    @staticmethod
+    def _log(line: str):
+        print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {line}", file=sys.stderr, flush=True)   # the app's log
 
     def plugins(self, path: str | None = None) -> dict:
         """The CLAP / VST3 plug-ins installed (or those in `path`, a file or folder): {folders, plugins: [{format,

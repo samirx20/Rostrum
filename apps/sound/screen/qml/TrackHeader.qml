@@ -7,6 +7,7 @@ import RostrumKit
 Rectangle {
     id: h
     property var track
+    property bool showAuto: true            // off while the arrangement is slim (its lanes cannot open there)
     readonly property bool on: backend.selected === track.id
     radius: Theme.radiusCtl
     color: on ? Theme.accentSoft : area.containsMouse ? Theme.raised : "transparent"
@@ -24,6 +25,7 @@ Rectangle {
         id: toggles
         anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter
         spacing: 2
+        LaneToggle { visible: h.showAuto; track: h.track }
         Rectangle {   // "Rec": arm this track for recording (lit red when armed)
             id: arm
             readonly property bool lit: recorder.armed === h.track.id

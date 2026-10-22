@@ -3,11 +3,13 @@
 //! build, the rate, the bed layout, the buffer length, the track-reverb space, the track itself (its name,
 //! ducks and "heard" flag left out: they act later), the files it names (size and time) and its feeders'
 //! keys — so a one-track change re-renders that track alone and the rest is read back, bit for bit.
-//! Stored trimmed to the span that is not silent, in Rostrum's one cache (cache.rs: `sound/tracks`), which
-//! the host caps as a whole (rostrum_sound/cache_cap.py).
+//! Stored as a tape (tape.rs: trimmed to the span that is not silent, read in blocks), in Rostrum's one cache
+//! (cache.rs: `sound/tracks`), which the host caps as a whole (rostrum_sound/cache_cap.py).
 
 use serde_json::Value;
 use std::path::{Path, PathBuf};
+
+use crate::mix::tape::Tape;
 
 /// What a stored file holds; bump on any change to the layout of the file or to what is keyed.
 const FORMAT: &str = "track-cache-1";
@@ -27,38 +29,21 @@ impl TrackCache {
         TrackCache { dir }
     }
 
-    /// A stored track: its channels, `len` long, or None (absent or not this length).
-    pub fn load(&self, key: &str, len: usize) -> Option<Vec<Vec<f32>>> {
-        let bytes = crate::mix::cache::read(&self.dir, &format!("{key}.f32"))?;
-        let word = |i: usize| u64::from_le_bytes(bytes.get(8 * i..8 * i + 8)?.try_into().ok()?).try_into().ok();
-        let (chs, total, from, n): (usize, usize, usize, usize) = (word(0)?, word(1)?, word(2)?, word(3)?);
-        if chs == 0 || total != len || from + n > len || bytes.len() != 32 + chs * n * 4 {
-            return None;
-        }
-        let body = &bytes[32..];
-        Some((0..chs).map(|c| {
-            let mut v = vec![0.0f32; len];
-            for (i, s) in body[c * n * 4..(c + 1) * n * 4].chunks_exact(4).enumerate() {
-                v[from + i] = f32::from_le_bytes([s[0], s[1], s[2], s[3]]);
-            }
-            v
-        }).collect())
+    /// A stored track, `len` frames long, as a tape (marked as just used), or None (absent or not this length).
+    pub fn tape(&self, key: &str, len: usize) -> Option<Tape> {
+        let name = format!("{key}.f32");
+        crate::mix::cache::touch(&self.dir, &name);
+        Tape::open(&self.dir.join(name), len)
     }
 
-    /// Stores a track (a cache that cannot be written only costs the next render the same work).
-    pub fn store(&self, key: &str, chs: &[Vec<f32>]) {
-        let len = chs.first().map_or(0, Vec::len);
-        let sounding = |i: &usize| chs.iter().any(|c| c[*i].to_bits() != 0);
-        let from = (0..len).find(sounding).unwrap_or(len);
-        let to = (from..len).rev().find(sounding).map_or(from, |i| i + 1);
-        let mut bytes = Vec::with_capacity(32 + chs.len() * (to - from) * 4);
-        for w in [chs.len(), len, from, to - from] {
-            bytes.extend_from_slice(&(w as u64).to_le_bytes());
+    /// Stores a track and hands back its tape; None when the cache cannot be written (the render then keeps
+    /// the track in a scratch tape of its own, and the next render does the same work).
+    pub fn store(&self, key: &str, chs: &[Vec<f32>]) -> Option<Tape> {
+        let name = format!("{key}.f32");
+        if !crate::mix::cache::write_with(&self.dir, &name, |w| crate::mix::tape::write_to(w, chs)) {
+            return None;
         }
-        for c in chs {
-            c[from..to].iter().for_each(|s| bytes.extend_from_slice(&s.to_le_bytes()));
-        }
-        crate::mix::cache::write(&self.dir, &format!("{key}.f32"), &bytes);
+        Tape::open(&self.dir.join(name), chs.first().map_or(0, Vec::len))
     }
 }
 

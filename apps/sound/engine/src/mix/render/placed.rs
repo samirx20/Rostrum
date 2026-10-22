@@ -1,0 +1,63 @@
+//! Each track as it reaches the mix: ducked under the levels of the tracks its ducks name (duck.rs) and
+//! measured (stats.rs). One track at a time per job, a few jobs at once (par.rs budget); a ducked track
+//! goes back to a tape of its own.
+
+use std::sync::Arc;
+
+use super::stats::{track_stats, TrackStats};
+use crate::mix::duck::{self, DuckSpan};
+use crate::mix::schedule::Schedule;
+use crate::mix::tape::{Tape, BLOCK};
+
+pub(super) struct Placed {
+    pub duck: Option<(String, Vec<DuckSpan>)>,
+    pub stats: Option<TrackStats>,
+    /// The track after its ducks, when it has any (else its output tape is what reaches the mix).
+    pub ducked: Option<Arc<Tape>>,
+}
+
+/// The loudest of the `from` tracks at each frame (before anything ducks): what a duck follows.
+fn level(outs: &[Arc<Tape>], from: &[usize], buf: usize) -> Result<Vec<f32>, String> {
+    let mut t = vec![0.0f32; buf];
+    for tape in from.iter().filter_map(|&k| outs.get(k)) {
+        for at in (0..buf).step_by(BLOCK) {
+            let n = BLOCK.min(buf - at);
+            for c in tape.read(at, n)? {
+                t[at..at + n].iter_mut().zip(&c).for_each(|(d, s)| *d = d.max(s.abs()));
+            }
+        }
+    }
+    Ok(t)
+}
+
+fn place(s: &Schedule, outs: &[Arc<Tape>], k: usize, keep: bool, buf: usize) -> Result<Placed, String> {
+    let track = &s.tracks[k];
+    if track.ducks.is_empty() && !track.mix {
+        return Ok(Placed { duck: None, stats: None, ducked: None });
+    }
+    let sr = s.sample_rate as f64;
+    let mut chs = outs[k].whole()?;
+    let mut dips: Vec<DuckSpan> = vec![];
+    let mut report = false;
+    for d in &track.ducks {
+        let trigger = level(outs, &d.from, buf)?;
+        let spans = duck::duck_n(&mut crate::bed::slices(&mut chs), &trigger, sr, d);
+        if d.report {
+            report = true;
+            dips.extend(spans);
+        }
+    }
+    let duck = report.then(|| {
+        dips.sort_by(|a, b| a.0.total_cmp(&b.0));
+        (track.name.clone(), dips)
+    });
+    let stats = track.mix.then(|| track_stats(&track.name, &chs, s.total_samples, sr, s.layout));
+    let ducked = if !track.ducks.is_empty() && (track.mix || keep) { Some(Arc::new(Tape::spill(&chs)?)) } else { None };
+    Ok(Placed { duck, stats, ducked })
+}
+
+/// Every track placed, in schedule order (`keep`: the tracks kept as stems).
+pub(super) fn place_all(s: &Schedule, outs: &[Arc<Tape>], keep: &[bool], buf: usize) -> Result<Vec<Placed>, String> {
+    let threads = crate::mix::par::threads_for(super::tracks::job_bytes(s, buf)).min(super::MEASURE_THREADS);
+    crate::mix::par::map_n((0..s.tracks.len()).collect(), threads, |k| place(s, outs, k, keep.get(k).copied().unwrap_or(false), buf)).into_iter().collect()
+}

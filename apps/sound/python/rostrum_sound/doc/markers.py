@@ -112,12 +112,17 @@ def resolve(doc: dict, value, where: str, seen=()):
 
 
 def refs_in(node):
-    """Every marker reference string anywhere inside a value (a whole document, an item, a field)."""
+    """Every marker reference string anywhere inside a value (a whole document, an item, a field). A colour
+    ("#4aa3ff") is not one."""
     if isinstance(node, str):
         if ref(node):
             yield node
-    elif isinstance(node, (dict, list)):
-        for v in node.values() if isinstance(node, dict) else node:
+    elif isinstance(node, dict):
+        for k, v in node.items():
+            if k != "colour":
+                yield from refs_in(v)
+    elif isinstance(node, list):
+        for v in node:
             yield from refs_in(v)
 
 

@@ -20,10 +20,14 @@ pub fn dir(sub: &str) -> Option<PathBuf> {
 
 /// A stored file's bytes, marked as just used; None when absent.
 pub fn read(dir: &Path, name: &str) -> Option<Vec<u8>> {
-    let file = dir.join(name);
-    let bytes = std::fs::read(&file).ok()?;
-    let _ = std::fs::File::options().write(true).open(&file).and_then(|f| f.set_modified(std::time::SystemTime::now()));
+    let bytes = std::fs::read(dir.join(name)).ok()?;
+    touch(dir, name);
     Some(bytes)
+}
+
+/// Marks a stored file as just used (the host's cap removes the least recently used first).
+pub fn touch(dir: &Path, name: &str) {
+    let _ = std::fs::File::options().write(true).open(dir.join(name)).and_then(|f| f.set_modified(std::time::SystemTime::now()));
 }
 
 /// Removes its file when dropped (a write that did not finish, on any path, panics included).
@@ -38,11 +42,21 @@ impl Drop for Scratch {
 /// Stores a file under its name: written beside it, then renamed into place, so a reader never sees half a
 /// file. A cache that cannot be written only costs the next render the same work.
 pub fn write(dir: &Path, name: &str, bytes: &[u8]) {
+    use std::io::Write;
+    write_with(dir, name, |w| w.write_all(bytes));
+}
+
+/// The same, the file written through `fill` (streamed: nothing gathered whole first). True when it landed.
+pub fn write_with(dir: &Path, name: &str, fill: impl FnOnce(&mut std::io::BufWriter<std::fs::File>) -> std::io::Result<()>) -> bool {
+    use std::io::Write;
     let file = dir.join(name);
     let tmp = Scratch(dir.join(format!("{name}.{}.tmp", std::process::id())));
-    if std::fs::create_dir_all(dir).is_ok() && std::fs::write(&tmp.0, bytes).is_ok() {
-        let _ = std::fs::rename(&tmp.0, &file);
-    }
+    let written = std::fs::create_dir_all(dir).and_then(|_| std::fs::File::create(&tmp.0)).and_then(|f| {
+        let mut w = std::io::BufWriter::new(f);
+        fill(&mut w)?;
+        w.flush()
+    });
+    written.is_ok() && std::fs::rename(&tmp.0, &file).is_ok()
 }
 
 #[cfg(test)]

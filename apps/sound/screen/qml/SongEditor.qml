@@ -12,7 +12,8 @@ QQC.Popup {
     readonly property var st: { backend.time; backend.selected; backend.song; return backend.songEdit() }
     readonly property string key: st.tonic + " " + st.mode
     width: 292; padding: Theme.pad
-    background: Rectangle { color: Theme.raised; radius: Theme.radiusCtl; border.color: Theme.popupEdge }
+    background: Rectangle { color: Theme.panel;   // under the raised buttons: they read as buttons
+                            radius: Theme.radiusCtl; border.color: Theme.popupEdge }
     component Head: Text { color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
     component Line: Row {
         property string caption: ""
@@ -34,10 +35,11 @@ QQC.Popup {
               Button { visible: backend.time > 0.01; text: "Tempo change here"; onClicked: backend.songDo("add_tempo", "") }
               Button { visible: pop.st.selected === "tempo"; text: "Delete"; kind: "ghost"; onClicked: backend.removeSelected() } }
         Head { text: "Key" }
-        Line { caption: "Key"
+        Row { spacing: Theme.gap; height: Theme.field          // the heading says "Key": tonic and mode, no second caption
                ChoiceField { width: 74; options: ["C", "C#", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"]
                              current: pop.st.tonic; onPicked: (v) => backend.songDo("set_key", v + " " + pop.st.mode) }
-               ChoiceField { width: 104; options: ["major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "locrian"]
+               ChoiceField { width: 120; options: ["major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "locrian"]
+                                            .map(m => ({ value: m, label: m.charAt(0).toUpperCase() + m.slice(1) }))
                              current: pop.st.mode; onPicked: (v) => backend.songDo("set_key", pop.st.tonic + " " + v) } }
         Row { spacing: Theme.gap
               Button { visible: pop.st.hasKey && !pop.st.keyAtPlayhead; text: "Key change here"

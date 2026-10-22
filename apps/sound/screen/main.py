@@ -173,6 +173,7 @@ def main():
     a.add_argument("--new", action="store_true")
     a.add_argument("--step", action="append", default=[])
     a.add_argument("--shot")
+    a.add_argument("--size", default="1600x960", help="window size, WxH (for pictures; the layout check sets its own)")
     a.add_argument("--check-layout", metavar="FOLDER")
     a.add_argument("--check-name")
     args = a.parse_args()
@@ -182,7 +183,7 @@ def main():
 
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
-    screen = Screen()
+    screen = Screen(tuple(int(n) for n in args.size.lower().split("x")))
     doc, refused = first_song(args)
     if doc.folder is None:            # --script / --sample: shown as before, not a song on disk
         screen.show(doc, Path(args.script).stem if args.script else "Sample song")

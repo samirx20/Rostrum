@@ -34,6 +34,10 @@ cc = "1"
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", features = ["Win32_Media_Audio", "Win32_System_Com", "Win32_System_Console", "Win32_Foundation", "Win32_System_Threading", "Win32_Security", "Win32_System_Performance", "Win32_System_LibraryLoader", "Win32_UI_Shell_PropertiesSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi"] }
 
+[target.'cfg(unix)'.dependencies]
+# Whether a process still runs (mix/sweep.rs; MIT OR Apache-2.0; already in the lock through other crates).
+libc = "0.2"
+
 # The engine is its own workspace (its own Cargo.lock and target folder under apps/sound/engine/).
 [workspace]
 

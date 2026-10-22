@@ -110,20 +110,17 @@ fn render_bed_clip(c: &Clip, layout: Layout, sr: f64) -> Result<Vec<Vec<f32>>, S
     Ok(chs)
 }
 
-/// Every clip of the tracks `want` names, rendered on all cores; results in schedule order.
-pub(super) fn render_clips(s: &Schedule, want: &[bool]) -> Result<Vec<Vec<Vec<Vec<f32>>>>, String> {
+/// Every clip of track `t`, rendered on all cores; results in the track's order.
+pub(super) fn render_track_clips(s: &Schedule, t: usize) -> Result<Vec<Vec<Vec<f32>>>, String> {
     let sr = s.sample_rate as f64;
-    let jobs: Vec<(usize, usize)> = s.tracks.iter().enumerate().filter(|(t, _)| want[*t]).flat_map(|(t, tr)| (0..tr.clips.len()).map(move |c| (t, c))).collect();
-    let done = crate::mix::par::map(jobs.clone(), |(t, c)| {
-        let (track, clip) = (&s.tracks[t], &s.tracks[t].clips[c]);
+    let track = &s.tracks[t];
+    crate::mix::par::map((0..track.clips.len()).collect(), |c| {
+        let clip = &track.clips[c];
         let t0 = std::time::Instant::now();
         let r = if track.bed { render_bed_clip(clip, s.layout, sr) } else { render_clip(clip, sr).map(|(l, r)| vec![l, r]) };
         prof(&format!("clip {} #{c}", track.name), t0);
         r
-    });
-    let mut out: Vec<Vec<Vec<Vec<f32>>>> = s.tracks.iter().map(|_| vec![]).collect();
-    for (k, r) in done.into_iter().enumerate() {
-        out[jobs[k].0].push(r?);
-    }
-    Ok(out)
+    })
+    .into_iter()
+    .collect()
 }
