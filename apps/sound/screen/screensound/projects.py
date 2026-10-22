@@ -22,7 +22,7 @@ from datetime import datetime
 from pathlib import Path
 
 from rostrum_core import Document, RostrumError, codes
-from rostrum_core import project
+from rostrum_core import project, userhome
 from rostrum_core.storage import paths, write_atomic
 from rostrum_sound import KIND, settings
 
@@ -136,8 +136,9 @@ def remember(folder, item):
     if is_untitled(folder):
         return
     row = {"folder": str(Path(folder).resolve()), "item": item, "name": title(folder, item)}
-    rows = [row] + [r for r in recent() if (r["folder"], r["item"]) != (row["folder"], item)]
-    write_atomic(recent_file(), json.dumps(rows[:RECENT_MAX], indent=1, ensure_ascii=False))
+    with userhome.locked(recent_file()):                     # two windows at once never lose each other's row
+        rows = [row] + [r for r in recent() if (r["folder"], r["item"]) != (row["folder"], item)]
+        write_atomic(recent_file(), json.dumps(rows[:RECENT_MAX], indent=1, ensure_ascii=False))
 
 
 # ---- open lock and recovery -------------------------------------------------------------------------------------
