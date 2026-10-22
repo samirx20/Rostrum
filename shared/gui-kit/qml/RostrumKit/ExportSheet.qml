@@ -21,10 +21,6 @@ Panel {
     Keys.onEscapePressed: model.setOpen(false)
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close  Esc"; onClicked: sheet.model.setOpen(false) }
 
-    component Caption: Text {
-        color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
-        font.weight: Font.DemiBold; font.letterSpacing: Theme.capsSpacing; font.capitalization: Font.AllUppercase
-    }
     component Line: Text {                // one line that shortens in the middle; hover shows all of it
         id: line
         width: parent.width; elide: Text.ElideMiddle
@@ -77,16 +73,14 @@ Panel {
             Column { id: settingsSlot; width: parent.width; spacing: Theme.gap; visible: children.length > 0 }
 
             Item { width: 1; height: Theme.grid }
-            Column {        // only when the document has more than "everything" (markers, a time range)
+            Column {        // only when the document has more than "everything" (markers, a time range); the choice says it, no heading
                 visible: sheet.model && sheet.model.ranges.length > 1
                 width: parent.width; spacing: Theme.grid
-                Caption { text: "Range" }
                 ChoiceField { width: parent.width; options: sheet.model ? sheet.model.ranges : []
                               current: sheet.model ? sheet.model.range : ""; onPicked: (v) => sheet.model.setRange(v) }
             }
-            Column {
+            Column {        // where: the file's name, its folder, Browse (they say it; no heading)
                 width: parent.width; spacing: Theme.grid
-                Caption { text: "Where" }
                 Line { text: sheet.model ? sheet.model.fileName : ""; objectName: "exportFileName" }
                 Line { text: sheet.model ? sheet.model.where : ""; color: Theme.fg3; font.pixelSize: Theme.label }
                 Row {

@@ -34,6 +34,6 @@ Rectangle {
     }
     MouseArea { id: area; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                 onClicked: workspace.setDock("mixer") }
-    HoverTip { text: "Loudness (LUFS) of the whole song" + (r.hasTarget ? ", against the delivery target" : "")
+    HoverTip { text: "Loudness (LUFS) of the whole song" + (r.hasTarget ? ", against " + r.target.label : "")
                      + ". Click: the Mixer"; hovered: area.containsMouse }
 }
