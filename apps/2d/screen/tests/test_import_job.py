@@ -50,8 +50,8 @@ def test_import_applies_once_on_the_gui_thread_and_fits(tmp_path):
     imp.run()
     assert imp.wait(30) and imp.state == "done"
     assert b.applied_on == [threading.main_thread()]
-    (root,) = b.doc.item("c")["layers"]                       # one group = the fitted page, centred (4:3 in 16:9)
-    assert (root["scale"], root["x"], root["y"]) == (3.6, 240, 0)
+    (root,) = b.doc.item("c")["layers"]                       # one group = the picture's content box (400x300), own size, centred
+    assert (root.get("scale", 1.0), root["x"], root["y"]) == (1.0, 760, 390)
     b.doc.undo(b.who)
     assert b.doc.item("c")["layers"] == []                    # one undo step
 

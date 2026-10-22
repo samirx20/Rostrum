@@ -139,17 +139,33 @@ def apply_calls(tree: dict, doc_data: dict, into: str, fonts: set | None = None,
     return _build(tree, doc_data, into, fonts, image_dir)[0]
 
 
+FIT_MARGIN = 0.9        # a picture bigger than the frame is scaled to this share of it (a margin all round)
+
+
 def _fitted(tree: dict) -> dict:
-    """The tree's layers under one root group that is the source's page (width x height). Its `x`, `y`, `scale` (centred in
-    the composition, scaled to fit inside it, in proportion) are set in `_fit_calls`."""
+    """The tree's layers under one root group whose box is the picture's visible content (the union of its layers' boxes,
+    not the source page with its margins). Its `x`, `y`, `scale` are set in `_fit_calls`."""
+    box = _content_box(tree)
     return {**tree, "layers": [{"type": "group", "name": Path(tree["name"]).stem, "props": {}, "layers": tree["layers"],
-                                "box": [0.0, 0.0, float(tree["width"]), float(tree["height"])]}]}
+                                "box": box}]}
 
 
-def _fit_calls(calls: list[dict], tree: dict, size) -> None:
-    k = min(size[0] / tree["width"], size[1] / tree["height"])
+def _content_box(tree: dict) -> list[float]:
+    """[x, y, w, h] of everything the tree draws; the source page when it draws nothing."""
+    boxes = [_boxes(n) for n in tree["layers"]]
+    if not boxes:
+        return [0.0, 0.0, float(tree["width"]), float(tree["height"])]
+    x0, y0 = min(b[0] for b in boxes), min(b[1] for b in boxes)
+    return [x0, y0, max(b[0] + b[2] for b in boxes) - x0, max(b[1] + b[3] for b in boxes) - y0]
+
+
+def _fit_calls(calls: list[dict], box: list[float], size) -> None:
+    """The one placement rule for every imported picture (svg, pdf, psd, figma): its content box lands centred on the
+    composition at its own size, or scaled down in proportion to fit inside it (with a margin) when it is bigger."""
+    w, h = max(box[2], 1.0), max(box[3], 1.0)
+    k = 1.0 if w <= size[0] and h <= size[1] else min(FIT_MARGIN * size[0] / w, FIT_MARGIN * size[1] / h)
     args = calls[1]["args"]                                  # [layer.add, group.set, …]: the root group
-    args.update(x=(size[0] - tree["width"] * k) / 2, y=(size[1] - tree["height"] * k) / 2)
+    args.update(x=(size[0] - w * k) / 2, y=(size[1] - h * k) / 2)
     if k != 1.0:
         args["scale"] = k
 
@@ -157,17 +173,17 @@ def _fit_calls(calls: list[dict], tree: dict, size) -> None:
 def prepare(doc, tree: dict, into: str, fonts: set | None = None, taken: set | None = None,
             fit: tuple[float, float] | None = None) -> tuple[list[dict], list[str]]:
     """The calls that put the tree into `into` and the report; images are written to <doc folder>/imports/<stem>/ first.
-    `fit` = the composition's (width, height): the tree's page lands centred, scaled to fit, under one root group."""
+    `fit` = the composition's (width, height): the picture's content box lands centred under one root group, at its own
+    size or shrunk to fit with a margin (`_fit_calls`)."""
     folder = Path(doc.folder) if doc.folder else None
     image_dir = folder / "imports" / Path(tree["name"]).stem if folder else None
-    src = tree
+    box = None
     if fit and tree.get("width") and tree.get("height"):
         tree = _fitted(tree)
-    else:
-        fit = None
+        box = tree["layers"][0]["box"]
     calls, files, report = _build(tree, doc.data, into, fonts, image_dir, taken)
-    if fit:
-        _fit_calls(calls, src, fit)
+    if box:
+        _fit_calls(calls, box, fit)
     for path, img in files:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         img.save(path)

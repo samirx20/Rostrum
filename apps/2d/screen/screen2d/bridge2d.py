@@ -17,6 +17,7 @@ from .file_commands import FileCommands
 from .frames import FrameRenderer
 from .handle_slots import HandleSlots
 from .hooks import Hooks2D
+from .layer_order import LayerOrder
 from .painter import Painter
 from .playback import Playback, size_offered
 from .playstats import STATS
@@ -24,13 +25,14 @@ from .render3d_watch import Render3DWatch
 from .tools2d import ToolSlots
 
 
-class Bridge2D(FileCommands, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
+class Bridge2D(LayerOrder, FileCommands,DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     pageChanged = Signal()
     frameChanged = Signal()
     outlineChanged = Signal()
     playingChanged = Signal()
     markersChanged = Signal()
+    renameRequested = Signal(str)                           # F2 / Ctrl+K "Rename layer": the Layers panel's name box
 
     def __init__(self, doc, comp_id=None, autosave=False, parent=None):
         comps = doc.data.get("comps", [])

@@ -128,7 +128,8 @@ def plan(doc, comp_id: str, path=None, kind: str | None = None, page: int = 1, t
          into: str | None = None, fit: bool = False, progress=None, cancelled=None) -> dict:
     """The slow part of an import, with no change to the document (so it may run off the GUI thread): read, download, parse,
     place. → {"name", "kind", "calls": [ops], "report", "label", "into", "comps"?}; `apply` makes the one change.
-    `fit` (svg / pdf / psd / figma): the source's page is centred in the composition, scaled to fit inside it (both ways).
+    `fit` (svg / pdf / psd / figma): the picture's visible content box is centred in the composition at its own size, scaled
+    down to fit inside it (with a margin) only when it is bigger; a whole-PDF import (page 0) makes comps of the page's size.
     `progress(fraction, words)` and `cancelled()` are called between stages; a True from `cancelled` raises Cancelled."""
     kind = kind or ("figma" if figma else kind_of(path))
     if kind == "pdf" and page == 0:                          # page 0 = every page, a composition each (the open comp only sets fps and length)

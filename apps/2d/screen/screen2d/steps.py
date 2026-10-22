@@ -5,7 +5,8 @@
     changes the layer's slot: the same drag slots, so <dx> <dy> moves the pointer)
     curves on|off | curvedrag <key> <dt> <dv> | handledrag <key> <1|2> <dx> <dy> (the curve editor)
     keydrag <key id> <t> | open <layer> (timeline rows) | fold <layer> (layers panel) | pick <x> <y>
-    undo | redo | more | commands [query …] | run <command key> | play | play <seconds> [blur] [full|half|quarter]
+    front | back | forward | backward | delete (the selected layer(s): Ctrl+Shift+] / Ctrl+Shift+[ / Ctrl+] / Ctrl+[ / Delete) |
+    rename <layer> <name> | undo | redo | more | commands [query …] | run <command key> | play | play <seconds> [blur] [full|half|quarter]
     (plays, with full motion blur or not, at that Preview size, then prints the frames shown per second and each stage's time: screen2d/playstats.py)
     marker add <s> | marker move <name> <s> | marker rename <name> <new name> | marker remove <name> (ruler flags; _ for spaces)
   Draw page (on the selected drawing layer): draw <x> <y> <x> <y> … (one stroke, composition px)
@@ -211,6 +212,12 @@ def do_step(bridge, win, step):
         QMetaObject.invokeMethod(win, "openCommands", Q_ARG("QVariant", " ".join(rest)))
     elif word == "run":
         bridge.run(rest[0])
+    elif word in ("front", "back", "forward", "backward", "delete"):    # the layer-order shortcuts (layer_order.py)
+        if not bridge.layerCommand(word):
+            raise RuntimeError(f"step {step!r}: not available for the selection")
+    elif word == "rename":                       # rename <layer> <new name> (the Layers panel's name box)
+        if not bridge.renameLayer(rest[0], " ".join(rest[1:])):
+            raise RuntimeError(f"step {step!r}: nothing renamed")
     elif word == "export":
         steps_export(bridge, step, rest)
     elif word == "add":

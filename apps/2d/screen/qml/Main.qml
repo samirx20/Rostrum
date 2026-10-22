@@ -24,6 +24,13 @@ AppShell {
     Shortcut { sequence: "Alt+Up"; onActivated: painter.holdBy(1) }
     Shortcut { sequence: "Alt+Down"; onActivated: painter.holdBy(-1) }
     Shortcut { sequence: "Alt+O"; onActivated: painter.setOnion(!painter.onionOn) }
+    // layer order, delete and rename: the same commands Ctrl+K lists (screen2d/layer_order.py); quiet when they can't apply
+    Shortcut { sequence: "Ctrl+]"; onActivated: backend.layerCommand("forward") }
+    Shortcut { sequence: "Ctrl+["; onActivated: backend.layerCommand("backward") }
+    Shortcut { sequence: "Ctrl+Shift+]"; onActivated: backend.layerCommand("front") }
+    Shortcut { sequence: "Ctrl+Shift+["; onActivated: backend.layerCommand("back") }
+    Shortcut { sequence: "Delete"; onActivated: backend.layerCommand("delete") }
+    Shortcut { sequence: "F2"; onActivated: backend.layerCommand("rename") }
 
     function setExportOpen(open) { exportPanel.shown = open; if (open) { importPanel.shown = false; problemsPanel.shown = false } }
     function setImportOpen(open) { importPanel.shown = open; if (open) { exportPanel.shown = false; problemsPanel.shown = false } }
