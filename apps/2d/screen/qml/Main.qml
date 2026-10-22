@@ -45,28 +45,27 @@ AppShell {
     Shortcut { sequence: "Alt+Up"; onActivated: painter.holdBy(1) }
     Shortcut { sequence: "Alt+Down"; onActivated: painter.holdBy(-1) }
     Shortcut { sequence: "Alt+O"; onActivated: painter.setOnion(!painter.onionOn) }
-    // layer order, delete and rename: the same commands Ctrl+K lists (screen2d/layer_order.py); quiet when they can't apply
-    Shortcut { sequence: "Ctrl+]"; onActivated: backend.layerCommand("forward") }
-    Shortcut { sequence: "Ctrl+["; onActivated: backend.layerCommand("backward") }
-    Shortcut { sequence: "Ctrl+Shift+]"; onActivated: backend.layerCommand("front") }
-    Shortcut { sequence: "Ctrl+Shift+["; onActivated: backend.layerCommand("back") }
-    Shortcut { sequence: "Delete"; onActivated: backend.layerCommand("delete") }
-    Shortcut { sequence: "F2"; onActivated: backend.layerCommand("rename") }
-    Shortcut { sequence: "Ctrl+D"; onActivated: backend.layerCommand("duplicate") }
-    // select, then act (screen2d/actions.py): the keys of the one list of actions, and the keyboard's select all, clear, nudge
+    // select, then act: every action's key comes from the one key map (screen2d/keys2d.py) and runs through the one
+    // action list (backend.actions): only when valid now, else the status line says why. Not while typing.
     readonly property bool typing: Window.activeFocusItem !== null && typeof Window.activeFocusItem.selectAll === "function"
     readonly property bool canvasKeys: backend.tool === "move" && !typing
-    Shortcut { sequence: "Ctrl+G"; onActivated: backend.layerCommand("group") }
-    Shortcut { sequence: "Ctrl+Shift+G"; onActivated: backend.layerCommand("ungroup") }
+    KeyMap {
+        hub: backend.actions
+        enabled: !shell.typing
+        skip: backend.actions.keys.map(k => k.job).filter(j => backend.actions.jobs.indexOf(j) < 0)   // keys run here
+    }
     Shortcut { sequence: "Ctrl+A"; enabled: shell.canvasKeys; onActivated: backend.selectAllLayers() }
-    // copy, cut and paste layers (screen2d/clipboard.py; the system clipboard, so also into another project). Not while
-    // typing: a text box keeps its own Ctrl+C / X / V
-    Shortcut { sequence: StandardKey.Copy; enabled: shell.canvasKeys; onActivated: backend.copyLayers() }
-    Shortcut { sequence: StandardKey.Cut; enabled: shell.canvasKeys; onActivated: backend.cutLayers() }
-    Shortcut { sequence: StandardKey.Paste; enabled: shell.canvasKeys; onActivated: backend.pasteLayers() }
-    Shortcut { sequence: "Escape"; enabled: shell.canvasKeys && backend.selectedLayer !== "" && !exportPanel.shown && !importPanel.shown
-                                            && !problemsPanel.shown && !fileMenu.menuOpen && !addMenu.menuOpen
-               onActivated: backend.clearSelection() }
+    // Esc steps back one level (the kit's ladder, selection_rules.esc_step): close an open panel, else clear
+    Shortcut {
+        sequence: "Escape"; enabled: shell.canvasKeys
+        onActivated: {
+            const open = exportPanel.shown || importPanel.shown || problemsPanel.shown || fileMenu.menuOpen || addMenu.menuOpen
+            if (backend.stepBack({ popover: open }) === "close") {
+                shell.setExportOpen(false); shell.setImportOpen(false); shell.setProblemsOpen(false)
+                fileMenu.menuOpen = false; addMenu.menuOpen = false
+            }
+        }
+    }
     Shortcut { sequence: "Left"; enabled: shell.canvasKeys; onActivated: backend.nudge(-1, 0) }
     Shortcut { sequence: "Right"; enabled: shell.canvasKeys; onActivated: backend.nudge(1, 0) }
     Shortcut { sequence: "Up"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, -1) }
@@ -82,6 +81,7 @@ AppShell {
     function setFileMenuOpen(open) { fileMenu.menuOpen = open }
     function askClose() { shell.close() }
     function openLayerMenu(id) { timeline.openMenu(id) }
+    function openCanvasMenu() { stage.openMenu() }
     function setAddOpen(open) { if (open) addMenu.menuOpen = true; else addMenu.menuOpen = false }
 
     actions: [
@@ -98,7 +98,6 @@ AppShell {
     FileFlow { id: fileFlow; window: shell }
     centre: [
         Stage { id: stage; anchors.fill: parent },
-        ActionBar { anchors.fill: parent; stage: stage },       // select, then act: under the selection
         ExportPanel {   // opened by the Export button; docked on the canvas's right edge, beside the inspector (never over it)
             id: exportPanel
             anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }

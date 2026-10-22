@@ -39,6 +39,11 @@ class ActionHub(QObject):
         """Every key of this app (shared first): {job, keys, label, area, where}, for Shortcuts and Ctrl+/."""
         return self.list.keymap.entries()
 
+    @Property("QVariantList", constant=True)
+    def jobs(self):
+        """The key map jobs some action runs: the shortcuts the hub answers (KeyMap.qml's `skip` is the rest)."""
+        return sorted({j for j in (self.list.job_of(a) for a in self.list.actions) if j})
+
     @Slot()
     def refresh(self):
         """Call after the selection or the document changed."""

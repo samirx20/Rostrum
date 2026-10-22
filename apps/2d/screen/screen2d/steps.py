@@ -272,11 +272,15 @@ def do_step(bridge, win, step):
         bridge._select(rest)
     elif word == "act":
         if not bridge.layerCommand(rest[0]):
-            raise RuntimeError(f"step {step!r}: not available for the selection ({', '.join(e['value'][6:] for e in bridge.actionMenu())})")
+            raise RuntimeError(f"step {step!r}: {bridge.status or 'not available for the selection'}")   # the why
     elif word == "nudge":
         bridge.nudge(float(rest[0]), float(rest[1]))
-    elif word in ("actionmenu", "actionbar"):
-        print(word, [(e["value"] if word == "actionmenu" else e["label"]) for e in getattr(bridge, "actionMenu" if word == "actionmenu" else "actionBar")()])
+    elif word == "actionmenu":                   # print the right-click menu's entries
+        print(word, [e["value"] for e in bridge.actionMenu()])
+    elif word == "actionbar":                    # print the context bar's buttons
+        print(word, [e["label"] for e in bridge.actions.bar["items"]])
+    elif word == "canvasmenu":                   # the canvas's right-click menu, opened on the selection
+        QMetaObject.invokeMethod(win, "openCanvasMenu")
     elif word in ("front", "back", "forward", "backward", "delete", "duplicate"):    # the layer-order shortcuts (layer_order.py)
         if not bridge.layerCommand(word):
             raise RuntimeError(f"step {step!r}: not available for the selection")

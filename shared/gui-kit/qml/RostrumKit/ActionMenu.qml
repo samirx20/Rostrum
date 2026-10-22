@@ -26,15 +26,23 @@ QQC.Popup {
     enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
     exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }
 
+    property var at: null                    // where openAt asked for: placed again when the size settles
     function openAt(px, py, flippedX) {
-        const ov = parent
+        at = { px: px, py: py, fx: flippedX }
+        place()
+        open()
+    }
+    function place() {
+        if (!at) return
+        const ov = parent, px = at.px, py = at.py, flippedX = at.fx
         let x0 = px, y0 = py
         if (x0 + width > ov.width - Theme.grid) x0 = (flippedX !== undefined ? flippedX : px) - width
         if (y0 + height > ov.height - Theme.grid)
             y0 = (flippedX === undefined && py - height > Theme.grid) ? py - height : ov.height - height - Theme.grid
         x = Math.max(Theme.grid, x0); y = Math.max(Theme.grid, y0)
-        open()
     }
+    onHeightChanged: place()                 // the entries were set just before openAt: their size comes a moment later
+    onWidthChanged: place()
     function hasSub(i) { return !!(entries[i] && entries[i].sub && entries[i].sub.length) }
     function pick(i) {
         const e = entries[i]

@@ -132,6 +132,33 @@ Panel {
                 color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.12); border.width: 1; border.color: Theme.accent
             }
         }
-        ToolStrip { anchors { left: parent.left; top: parent.top; margins: Theme.gap } }   // over everything on the canvas
+        TapHandler {   // right-click: an unselected layer is selected alone first, a selected one keeps the selection
+            acceptedButtons: Qt.RightButton
+            enabled: backend.tool === "move"
+            onTapped: (ev) => panel.openMenu(ev.position.x, ev.position.y)
+        }
+        ToolStrip { id: tools; anchors { left: parent.left; top: parent.top; margins: Theme.gap } }   // over everything on the canvas
+        ContextBar {   // select, then act: the kit's bar at the top-centre, clear of the tool strip (backend.actions)
+            hub: backend.actions
+            anchors { top: parent.top; topMargin: Theme.gap; horizontalCenter: parent.horizontalCenter }
+            maxWidth: well.width - 2 * (tools.width + 2 * Theme.gap)
+            dragging: canvas.pressed || backend.tool !== "move" || backend.playing     // hidden while dragging or drawing
+        }
+    }
+    ActionMenu { id: canvasMenu; onPicked: (v) => backend.run(v) }
+    // The canvas's right-click menu at (x, y) in the well's px (default: the middle of the selection, for scripts).
+    function openMenu(x, y) {
+        if (x === undefined) {
+            const b = backend.multi.boxes[0]
+            const c = b ? Qt.point(frame.x + (b.x + b.w / 2) * well.fit, frame.y + (b.y + b.h / 2) * well.fit)
+                        : Qt.point(well.width / 2, well.height / 2)
+            x = c.x; y = c.y
+        }
+        const hit = backend.multi.target((x - frame.x) / well.fit, (y - frame.y) / well.fit, "click")
+        const entries = backend.layerMenu(hit)
+        if (!entries.length) return
+        const g = well.mapToItem(null, x, y)
+        canvasMenu.entries = entries
+        canvasMenu.openAt(g.x, g.y)
     }
 }

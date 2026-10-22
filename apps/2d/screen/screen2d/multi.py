@@ -5,6 +5,7 @@ Shift+click on the canvas, Ctrl+click / Shift+click in the layers list, the rubb
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
+from rostrum_gui.selection_rules import click
 
 from . import bounds, picking
 
@@ -56,18 +57,15 @@ class Multi(QObject):
     @Slot(str)
     def toggle(self, layer_id):
         """Shift+click on the canvas, Ctrl+click in the list: add the layer to the selection, or take it out."""
-        ids = self.layers()
-        self._set([i for i in ids if i != layer_id] if layer_id in ids else ids + [layer_id])
+        self._set(click(self.layers(), None, layer_id, {"ctrl"}, "list")[0])      # the kit's rule (INTERACTION 1.3)
 
     @Slot(str)
     def selectRange(self, layer_id):
         """Shift+click in the layers list: every layer row from the primary to this one, as the list shows them."""
         rows = [r["id"] for r in self.b.layers if r["row"] == "layer"]
         here = self.layers()[0] if self.layers() else layer_id
-        if here not in rows or layer_id not in rows:
-            return self._set([layer_id])
-        a, z = sorted((rows.index(here), rows.index(layer_id)))
-        self._set([here] + [i for i in rows[a:z + 1] if i != here])
+        run = click(self.layers(), here, layer_id, {"shift"}, "list", rows)[0]      # the kit's rule (INTERACTION 1.3)
+        self._set([here] + [i for i in run if i != here] if here in run else run)     # the primary stays first
 
     @Slot(float, float, str, result=str)
     def target(self, x, y, mode):

@@ -12,19 +12,21 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
                  with its keys and frames under a ruler with the markers; two heights (full / compact), remembered per tool
 ```
 
-## Select first, then act (`screen2d/actions.py`, `layer_order.py`, `qml/ActionBar.qml`, `qml/ActionMenu.qml`)
+## Select first, then act (`screen2d/actions.py`, `keys2d.py`, `action_slots.py`; the kit's ContextBar, ActionMenu, KeyMap)
 
-- **One list of actions on the selected layers** (`actions.ACTIONS`, data): Group, Ungroup, Clip, Auto layout, Make swap
-  set, Make rig, Mask with top layer (and the other mattes), Release mask, Union / Subtract / Intersect / Exclude, Align,
-  Distribute, Match size, Copy / Paste style, Lock / Unlock, Hide / Show, Duplicate, Delete, the four order moves, Rename.
-  Each has a key (`layer:<name>`), label, shortcut, importance (`bar` = on the action bar), group (menu dividers) and
-  `valid(Facts)`; `available(doc, ids, state)` returns only what the selection allows (nothing is greyed). Each action is
-  one change: all its operation calls in one apply. The operations are the ones agents call (`group.make`, `mask.make`,
-  `shape.boolean`, `layer.align`, `style.apply`, `layer.lock` …, `python/rostrum2d/ops_*.py`).
-- Four places read it: the **action bar** (a floating bar just under the selection; Move tool only, hidden while playing or
-  dragging; its buttons and "⋯" for the whole list), the **right-click menus** (a layer's name in the timeline, and the
-  selection on the canvas), **Ctrl+K** and the **shortcuts** (Ctrl+G, Ctrl+Shift+G, Ctrl+D, Delete, F2, Ctrl+], Ctrl+[,
-  Ctrl+A, Esc, arrows nudge 1 px, Shift 10 px, one change per press).
+- **2D's entries in the kit's one action list** (`actions.ACTIONS`, kit `Action`s; `LIST = ActionList(ACTIONS, KEYS2D)`):
+  Group, Ungroup, Clip, Auto layout, Make swap set, Make rig, Mask with top layer (and the other mattes), Release mask,
+  Union / Subtract / Intersect / Exclude, Align, Distribute, Match size, Copy / Paste style, Lock / Unlock, Hide / Show,
+  the four order moves, and the kit's edit block (Copy, Cut, Paste, Duplicate, Rename, Delete). Each has an id
+  (`layer:<name>`), label, importance (`primary` = on the context bar), group (menu dividers), `valid(Facts)`,
+  `min_targets`, and its key through `job` (shared keys) or 2D's own keys (`keys2d.py`, refused at start-up if one takes
+  a shared key). The kit's guard leaves out what the selection doesn't allow (nothing is greyed). Each action is one
+  change: all its operation calls in one apply; the operations are the ones agents call (`python/rostrum2d/ops_*.py`).
+- One `ActionHub` (`backend.actions`, `action_slots.py`) feeds four doors: the **context bar** (the kit's ContextBar at
+  the top-centre of the canvas; Move tool only, hidden while playing or dragging), the **right-click menus** (a layer's
+  name in the timeline, and the canvas: an unselected layer is selected alone first), **Ctrl+K**'s Do group and the
+  **keys** (the kit's KeyMap: a key does its action only when valid, else the status line says why). Esc steps back one
+  level (the kit's `selection_rules.esc_step`); arrows nudge 1 px, Shift 10 px, one change per press.
 - The selection is read in one place, `LayerOrder.selected_layers()` (the kit's `selection`, plus whatever the canvas's
   Shift+click holds in `multi.py`). A selection holding a locked layer is offered only Unlock.
 - Lock and the eye on each layer row (`qml/LayerName.qml`): fields `locked` / `hidden`. A hidden layer is not drawn in the
