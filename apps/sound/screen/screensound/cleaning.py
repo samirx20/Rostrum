@@ -59,6 +59,8 @@ class CleanedTake(QObject):
             return False
         missing = fetch.needed(cleanup.recipe_of(self.bridge.doc.item(self._clip)))
         if missing:                                         # ask before the first download; "Download" carries on
+            self._status = ""                               # a new question: an old "cancelled" line no longer holds
+            self.changed.emit()
             self._download.ask(missing)
             return False
         self._busy, self._status = True, "Making the cleaned take…"
