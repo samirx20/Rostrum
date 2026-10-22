@@ -100,7 +100,8 @@ MIX_WORDS = ("deliver", "export-as", "export", "clean-take", "model-panel", "duc
 
 def find_choice(item, shown):
     """The first visible choice field (the kit's ChoiceField) that shows `shown`."""
-    if item.isVisible() and item.property("options") is not None and item.property("current") is not None \n            and item.property("text") == shown:
+    if (item.isVisible() and item.property("options") is not None and item.property("current") is not None
+            and item.property("text") == shown):
         return item
     for child in item.childItems():
         found = find_choice(child, shown)
