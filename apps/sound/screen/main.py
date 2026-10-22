@@ -12,6 +12,8 @@ Every song with a folder is saved after every change. Steps: see screensound/ste
 `add-track <kind>`). With --shot the window quits by
 itself once the sound has rendered; a failed step, render or save exits nonzero. Offscreen screenshots:
 QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
+    python apps/sound/screen/main.py --check-layout <folder>          # the layout check: every screen state at every
+                                                                      # real window size (rostrum_gui/layout_run.py)
 """
 import argparse
 import os
@@ -23,10 +25,10 @@ from PySide6.QtGui import QGuiApplication
 
 from rostrum_core import Document, RostrumError
 from rostrum_core.storage import paths
-from rostrum_gui import guides, start
+from rostrum_gui import guides, layout_run, start
 from rostrum_sound import KIND, run_source
 from rostrum_sound.opening import said
-from screensound import look_check, projects
+from screensound import projects
 from screensound.adder import Adder
 from screensound.bridge import SoundBridge
 from screensound.instruments import InstrumentsPage
@@ -134,18 +136,6 @@ class Screen:
         self.songs.close()
 
 
-def press_keys(win, text):
-    """A key chord ("Ctrl+N", "Ctrl+Shift+S", "R") sent to the window, to check the shortcuts work."""
-    from PySide6.QtCore import Qt
-    from PySide6.QtTest import QTest
-    *mods, key = text.split("+")
-    mod = Qt.KeyboardModifier.NoModifier
-    for m in mods:
-        mod |= {"ctrl": Qt.KeyboardModifier.ControlModifier, "shift": Qt.KeyboardModifier.ShiftModifier,
-                "alt": Qt.KeyboardModifier.AltModifier}[m.lower()]
-    QTest.keyClick(win, Qt.Key[f"Key_{key.upper()}"] if len(key) == 1 else Qt.Key[f"Key_{key}"], mod)
-
-
 def file_step(screen, step) -> bool:
     """The steps that switch songs or open the song menu / Settings (they live here, beside the session)."""
     word, _, rest = step.partition(" ")
@@ -157,8 +147,6 @@ def file_step(screen, step) -> bool:
         screen.songs.saveAs(rest)
     elif word == "file-menu":
         QMetaObject.invokeMethod(screen.win, "openFileMenu")
-    elif word == "press":                     # press Ctrl+Shift+S: the key as a person types it, into the window
-        press_keys(screen.win, rest)
     elif word == "add-track":                 # add-track <piano|strings|…|audio> (the + Track menu)
         screen.ctx_adder.add(rest)
     elif word == "settings":
@@ -185,10 +173,13 @@ def main():
     a.add_argument("--new", action="store_true")
     a.add_argument("--step", action="append", default=[])
     a.add_argument("--shot")
-    a.add_argument("--look", action="store_true", help="after the steps, list words cut off or on top of each other "
-                   "(screensound/look_check.py); nonzero exit when there is one")
-    a.add_argument("--size", default="1600x960", help="window size, WxH (look checks at 1280x720 … 1920x1080)")
+    a.add_argument("--size", default="1600x960", help="window size, WxH (for pictures; the layout check sets its own)")
+    a.add_argument("--check-layout", metavar="FOLDER")
+    a.add_argument("--check-name")
     args = a.parse_args()
+    if args.check_layout and not args.check_name:
+        from screensound.layout_states import states
+        sys.exit(layout_run.run_all(Path(__file__), states(), args.check_layout))
 
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
@@ -210,9 +201,13 @@ def main():
 
     def run_steps():
         for s in args.step:
-            if not file_step(screen, s):
+            if not (layout_run.kit_step(screen.bridge, s) or file_step(screen, s)):
                 do_step(screen.bridge, screen.win, s, screen.parts["recorder"])
-        if args.shot:
+        if args.check_layout:
+            from screensound.layout_states import IGNORE
+            layout_run.sweep(app, screen.win, args.check_layout, args.check_name,
+                             lambda: not screen.bridge.transport.busy(), IGNORE)
+        elif args.shot:
             wait_render(screen.bridge)
             QTimer.singleShot(600, lambda: guarded(shoot))     # the 160 ms reveals have finished
 
@@ -223,18 +218,12 @@ def main():
         img = screen.win.grabWindow()
         if img.isNull() or not img.save(args.shot):
             raise RuntimeError(f"could not save {args.shot}")
-        if args.look:
-            problems = look_check.check(screen.win)
-            for line in problems:
-                print(f"LOOK: {line}")
-            if problems:
-                code[0] = 5
         print(f"saved {args.shot} {img.width()}x{img.height()}  history={bridge.historyCount}  "
               f"selected={bridge.selected}  sound={bridge.soundState!r}  lufs={bridge.lastRender.get('lufs')}")
-        app.exit(code[0])        # not quit(): that asks the window, and an untitled song with changes would ask back
+        app.exit(0)              # not quit(): that asks the window, and an untitled song with changes would ask back
 
     QTimer.singleShot(400, lambda: guarded(run_steps))
-    if args.shot:
+    if args.shot or args.check_layout:
         QTimer.singleShot(180000, lambda: (print("FAIL: timeout", file=sys.stderr), app.exit(4)))
     app.exec()
     screen.close()

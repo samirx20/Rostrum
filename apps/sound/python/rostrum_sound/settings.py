@@ -17,8 +17,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from rostrum_core import RostrumError, codes, did_you_mean
+from rostrum_core import RostrumError, codes, did_you_mean, userhome
 from rostrum_core.cache import default_root
+from rostrum_core.storage import write_atomic
 
 from .settings_fields import DEFAULTS, FIELDS, MODELS, PROJECTS
 
@@ -35,8 +36,9 @@ def _env_path(var: str) -> Path | None:
 
 
 def settings_dir() -> Path:
-    """Every Rostrum settings file lives here (userlib/folders.py too). ROSTRUM_SETTINGS_DIR moves it."""
-    return _env_path("ROSTRUM_SETTINGS_DIR") or Path.home() / ".rostrum" / "settings"
+    """Every Rostrum settings file lives here (userlib/folders.py too). ROSTRUM_SETTINGS_DIR moves it; else
+    userhome.home()/settings (~/.rostrum, or a scratch home for a scripted run)."""
+    return _env_path("ROSTRUM_SETTINGS_DIR") or userhome.home() / "settings"
 
 
 def _param(name: str):
@@ -63,15 +65,19 @@ def load() -> dict:
 def save(values: dict):
     """Write all the settings at once (each checked first; written under a temporary name, then renamed)."""
     clean = {k: _param(k).check(v, "settings") for k, v in values.items()}
-    f = settings_dir() / FILE
-    f.parent.mkdir(parents=True, exist_ok=True)
-    tmp = f.with_suffix(".tmp")
-    tmp.write_text(json.dumps({**DEFAULTS, **clean}, indent=1), encoding="utf-8")
-    tmp.replace(f)
+    with userhome.locked(settings_dir() / FILE):
+        _write({**DEFAULTS, **clean})
+
+
+def _write(values: dict):
+    write_atomic(settings_dir() / FILE, json.dumps(values, indent=1))
 
 
 def set(name: str, value):  # noqa: A001 (the API's name)
-    save({**load(), name: _param(name).check(value, "settings")})
+    """Change one setting: read, change and write under one lock, so two windows never undo each other."""
+    new = _param(name).check(value, "settings")
+    with userhome.locked(settings_dir() / FILE):
+        _write({**load(), name: new})
 
 
 def choices(name: str) -> list[dict]:
