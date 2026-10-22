@@ -42,3 +42,12 @@ def test_ends_on_a_marker_and_cameras_cut_on_markers():
     assert (cam["start"], cam["end"]) == (11.6, 20.0)
     moved = retime.timed(comp, {"ui": 6.4, "reveal": 11.9, "end": 20.0}, 30)
     assert moved["layers"][0]["end"] == pytest.approx(11.9) and moved["layers"][1]["start"] == 11.9
+
+
+def test_diagnose_lists_every_missing_marker_instead_of_failing():
+    """P20 friction 9: a key on a missing marker made inspect_diagnose crash; it now lists each one by name."""
+    from rostrum2d import diagnose
+    comp = _comp()
+    comp["layers"][1]["keys"].append({"id": "bg.x.k_logo_m150", "prop": "x", "t": "#logo-0.15", "v": 3})
+    found = [p["item"] for p in diagnose.problems(comp, None, {"reveal": 1.0}) if p["kind"] == "missing-marker"]
+    assert sorted(found) == ["bg.x.k_logo_m150", "own"]

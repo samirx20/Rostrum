@@ -28,7 +28,7 @@ def look_frame(ctx, args):
     Also lists which layers are on screen then (approximate: judged from their values, not from pixels)."""
     doc, comp = doc_and_comp(ctx, args)
     t, frame = time_of(ctx, comp, args)
-    scene, width = render.scene_of(doc, comp["id"]), args.get("width", FRAME_WIDTH)
+    scene, width = render.scene_of(doc, comp["id"], (t, t)), args.get("width", FRAME_WIDTH)
     dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_f{frame}')
     seen = shown_ids(comp, t)
 
@@ -58,7 +58,7 @@ def look_sheet(ctx, args):
     if not 0 <= start < end <= last + 1e-9:
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f'range {start}–{end} s', f"must satisfy 0 <= start < end <= {last:.3f} (the last frame)")
     frames = sorted({round((start + (end - start) * i / (count - 1)) * fps) for i in range(count)})
-    scene, tile_w = render.scene_of(doc, comp["id"]), args.get("width", 480)
+    scene, tile_w = render.scene_of(doc, comp["id"], (frames[0] / fps, frames[-1] / fps)), args.get("width", 480)
     cols = args.get("cols", min(4, len(frames)))
     dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_sheet')
 

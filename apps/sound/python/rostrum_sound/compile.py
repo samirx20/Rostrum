@@ -37,7 +37,8 @@ class _Compiler:
         return markers.resolve(self.root, value, where)
 
     def tie(self, note, where):
-        """A note's length as the engine takes it: a tied one (`{"to": …}`, `"next"`) as seconds, else as written."""
+        """A note's (or a designed sound's) length as the engine takes it: a tied one (`{"to": …}`, `"next"`) as
+        seconds, else as written."""
         d = note["dur"]
         if d != times.NEXT and not (isinstance(d, dict) and "to" in d):
             return d
@@ -98,8 +99,10 @@ class _Compiler:
         for key, keys in (("notes", NOTE_KEYS), ("hits", HIT_KEYS), ("sounds", FDS.KEYS)):
             if track.get(key):
                 out[key] = [self.pick(n, keys, f"{w}.{key}[{n['id']}]") for n in track[key]]
-        for n, sent in zip(track.get("notes", ()), out.get("notes", ())):
-            sent["dur"] = self.tie(n, f"{w}.notes[{n['id']}].dur")
+        for key in ("notes", "sounds"):
+            for n, sent in zip(track.get(key, ()), out.get(key, ())):
+                if "dur" in n:
+                    sent["dur"] = self.tie(n, f"{w}.{key}[{n['id']}].dur")
         clips = []
         for c in track.get("clips", []):
             cw = f"{w}.clips[{c['id']}]"

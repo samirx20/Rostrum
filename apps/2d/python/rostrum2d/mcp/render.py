@@ -14,13 +14,14 @@ def _fail(where: str, what: str, e: Exception) -> RostrumError:
     return RostrumError(codes.RENDER_FAILED, where, what, f"could not be drawn: {e}", hint="The engine's log path, if any, is in the message.")
 
 
-def scene_of(doc, comp_id: str) -> dict:
-    """The scene to draw; a text whose path layer is gone is refused here, in words (rostrum2d/follow.py)."""
+def scene_of(doc, comp_id: str, span: tuple[float, float] | None = None) -> dict:
+    """The scene to draw; a text whose path layer is gone is refused here, in words (rostrum2d/follow.py).
+    `span`: the (first, last) seconds that will be drawn, when not the whole composition (scene.describe)."""
     from rostrum2d import follow
     comp = next((c for c in doc.data.get("comps", []) if c["id"] == comp_id), None)
     if comp and (broken := follow.problems(comp)):
         raise RostrumError(codes.RENDER_FAILED, comp_id, "the composition", "can't be drawn: " + " ".join(broken))
-    return describe(doc.data, comp_id, markers.times(doc.folder), doc.folder)
+    return describe(doc.data, comp_id, markers.times(doc.folder), doc.folder, span)
 
 
 def stills(where: str, scene: dict, items: list[tuple[float, Path]], progress=None) -> None:

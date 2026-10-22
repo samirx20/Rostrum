@@ -13,7 +13,7 @@ library. Each is a `sound` item on a track with its own controls, so one sound f
 | `hit` | `pitch`, `size`, `brightness`, `tail`, `drive` |
 | `subDrop` | `dur`, `pitch` (where it lands), `drop` (octaves), `drive` |
 | all | `volume`, `pan`, `width`, `seed` (another take of the same design) |
-
+`inspect_operations` lists every field with its range; a field shows only for the designs that have it. `dur` may also end on a time or marker, as a note's can: `fx.sound("riser", at="#drop-2", dur={"to": "#drop"})` peaks on "drop" wherever it moves.
 `inspect_operations` lists every field with its range; a field shows only for the designs that have it.
 
 ```python
@@ -41,6 +41,10 @@ the same moment are one event, one sound as big as all of them; a slow drift (un
 These are a **starting point**: change any sound with `sound.set` (or the screen). Running the tool again after the
 picture changes moves the sounds with it, and keeps what a person changed. The tracks play into a `ui` bus with a short
 shared room and a light compressor, so the layers sit as one piece; change or bypass those effects like any other.
+
+A busy picture (a storm of 70 cards) makes a crowd: sounds that overlap on one track are each turned down by
+1/√(how many overlap), so together they play at about one sound's loudness, not many times it. The reply says the
+largest cut; turn the track up (`track.set volume`) when the crowd should be bigger.
 
 ## Or recordings from your own library
 

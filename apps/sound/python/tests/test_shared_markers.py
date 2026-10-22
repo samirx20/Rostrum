@@ -77,3 +77,18 @@ def test_a_held_note_follows_a_moved_marker(doc):
     project.edit(doc.folder, [{"op": "marker.move", "target": [_id(doc.folder)], "args": {"at": 0.05}}], Who.person())
     with pytest.raises(RostrumError, match="no later note"):
         compile(doc)
+
+
+RISER = """
+fx = track("fx")
+fx.sound("riser", at=1.0, dur={"to": "#logo lands"})
+"""
+
+
+def test_a_riser_tied_to_a_marker_peaks_on_it_when_it_moves(doc):
+    """P20 friction 13: a designed sound's length may end on a marker, so a riser keeps peaking on the cut."""
+    doc.run_script("cue.py", run_source(RISER, "cue.py"), Who.script("cue.py"))
+    assert compile(doc)["tracks"][0]["sounds"][0]["dur"] == 1.5
+    project.edit(doc.folder, [{"op": "marker.move", "target": [_id(doc.folder)], "args": {"at": 4.0}}], Who.person())
+    s = compile(doc)["tracks"][0]["sounds"][0]
+    assert (s["at"], s["dur"]) == (1.0, 3.0)

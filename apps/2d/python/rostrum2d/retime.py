@@ -21,6 +21,7 @@ import copy
 
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.keys import marked
+from rostrum_core.marker_times import lookup
 
 from . import fields as F
 
@@ -36,10 +37,11 @@ def _any_timed(node: dict) -> bool:
 
 def _at(item: dict, field: str, markers: dict | None) -> float:
     name = item[field]
-    if not markers or name not in markers:
+    at = lookup(markers or {}, name)            # names match as keys' markers do: case and spaces ignored
+    if at is None:
         raise RostrumError(codes.NOT_FOUND, f'{item["id"]}.{field}', f'marker "{name}"', "is not in the project",
                            hint=f'Markers: {", ".join(sorted(markers or {})) or "none"}. Add it (edit_markers) or clear the field.')
-    return float(markers[name])
+    return float(at)
 
 
 def _offset(item: dict, inherited: float, markers: dict | None) -> float:

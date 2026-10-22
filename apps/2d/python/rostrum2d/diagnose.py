@@ -11,7 +11,8 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
-from rostrum_core.keys import animated, key_value, keys_of
+from rostrum_core.keys import animated, key_value, keys_of, marked
+from rostrum_core.marker_times import lookup
 
 from . import fields as F, follow, render3d, retime
 from .engine import EngineError
@@ -36,9 +37,10 @@ def problems(comp: dict, folder=None, markers: dict | None = None) -> list[dict]
     out += _links(items) + _files(items, folder) + _markers(exprs, markers) + _renders(items, folder)
     timing = _timed_from(items, markers)
     out += timing + [_p("expression", e.split(":", 1)[0], e, "Fix or clear the expression") for e in expr_problems(items, exprs)]
-    if not timing:                      # where and when layers show is read in composition time (retime.py)
-        comp = retime.timed(comp, markers, comp.get("fps", 30))
-        items = items_of(comp)
+    if timing:                          # when layers show can't be told until every marker they name is there
+        return out
+    comp = retime.timed(comp, markers, comp.get("fps", 30))     # where and when layers show: composition time
+    items = items_of(comp)
     try:
         out += _unseen(comp)
     except EngineError as e:            # a text the engine can't measure (its font, most often): no boxes to check
@@ -48,14 +50,23 @@ def problems(comp: dict, folder=None, markers: dict | None = None) -> list[dict]
 
 
 def _timed_from(items: dict, markers: dict | None) -> list[dict]:
-    """A layer timed from a marker the project doesn't have (retime.py): it can't be placed in time."""
+    """Every marker the composition's times name that the project hasn't got (retime.py): a layer's Timed from /
+    Ends at marker, or a key on a marker. Until they are there, nothing can be placed in time."""
+    have = ", ".join(sorted(markers or {})) or "none yet"
     out = []
+
+    def missing(item_id, name, what, fix):
+        if lookup(markers or {}, name) is None:
+            out.append(_p("missing-marker", item_id, f'{item_id} {what} marker "{name}", which the project has not got (it has: {have})',
+                          f"Add the marker on the timeline (edit_markers), or {fix}"))
     for item in items.values():
-        name = item.get(retime.FIELD)
-        if name and (markers is None or name not in markers):
-            have = ", ".join(sorted(markers or {})) or "none yet"
-            out.append(_p("missing-marker", item["id"], f'{item["id"]} is timed from marker "{name}", which the project has not got (it has: {have})',
-                          "Add the marker on the timeline, or pick another in Timed from marker"))
+        if item.get(retime.FIELD):
+            missing(item["id"], item[retime.FIELD], "is timed from", "pick another in Timed from marker")
+        if item.get(retime.END):
+            missing(item["id"], item[retime.END], "ends at", "pick another in Ends at marker")
+        for k in item.get("keys", []):
+            if marked.marked(k):
+                missing(k.get("id", item["id"]), marked.ref(k["t"]), "is a key on", "time the key in seconds")
     return out
 
 

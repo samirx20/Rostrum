@@ -47,7 +47,7 @@ def register(tools: Tools):
         evs = read.events(samples)
         kind = args.get("source", "designed")
         lib = userlib.library() if kind == "library" else None
-        source, tracks = score.script(evs, samples["width"], samples["height"], kind, lib)
+        source, tracks, cut_db = score.script(evs, samples["width"], samples["height"], kind, lib)
         report = ctx.run_script(doc, "sounds-from-motion.py", run_source(source, "sounds-from-motion.py"))
         if args.get("glue", True):
             ops = score.glue_ops(doc.data, tracks)
@@ -57,7 +57,9 @@ def register(tools: Tools):
         held = [h["key"] for h in report.held]
         text = (f"{len(evs)} motion events ({', '.join(f'{n} {k}' for k, n in kinds.items() if n)}) -> "
                 f"{'library recordings' if kind == 'library' else 'designed sounds'} on {', '.join(tracks)}."
+                + (f" Sounds that overlap on a track are each turned down (a crowd plays at about one sound's "
+                   f"loudness; up to -{cut_db} dB here): turn the track up for a bigger crowd." if cut_db else "")
                 + (f" Kept a person's changes: {', '.join(held)}." if held else ""))
         return Reply(text, {"events": [{k: v for k, v in e.items() if k not in ("speed", "x")} for e in evs],
-                            "tracks": tracks, "held": held, "removed": report.removed, "source": kind},
+                            "tracks": tracks, "held": held, "removed": report.removed, "source": kind, "crowd_cut_db": cut_db},
                      warnings=report.warnings())
