@@ -15,6 +15,7 @@ Item {
     property var bridge
     property string appName: "Rostrum"
     property string documentName: ""
+    property bool renamable: false           // click the name to rename the project in place (renameAsked)
     property string saveWord: ""             // the app's save state in a word ("Saved"): "Saved · 14 changes"
     property string historyFocus: ""         // the run History should show (the agent chip's Review), "" = all
     property alias menu: menuSlot.data
@@ -37,6 +38,11 @@ Item {
     signal guidesClicked()               // ? › Guides (F1): the guides drawer
     signal keysClicked()                 // ? › Keys (Ctrl+/): the key list
     signal helpPicked(string value)
+    signal renameAsked(string name)
+    function reportProblem() {           // ? › Report a problem: the log folder, the details copied, said in the message bar
+        const line = notices.reportProblem()
+        if (bar.bridge && bar.bridge.say) bar.bridge.say(line); else console.log(line)
+    }      // the project's new name, typed on its tab (Enter or leaving the field)
     signal historyClicked()
     implicitHeight: Theme.topBar
     function openHelp() { helpMenu.open() }
@@ -110,12 +116,28 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             implicitWidth: bar.documentName !== "" ? tabLabel.implicitWidth + 2 * Theme.pad : 0
             width: bar.tabWidth; height: Theme.button
-            radius: Theme.radiusCtl; color: Theme.panel
+            radius: Theme.radiusCtl
+            objectName: "projectName"
+            property bool editing: false
+            function rename() { editing = true; nameField.input.forceActiveFocus(); nameField.input.selectAll() }
+            color: !editing && tabArea.containsMouse ? Theme.hover : Theme.panel
             Text { id: tabLabel; anchors.fill: parent; anchors.leftMargin: Theme.pad; anchors.rightMargin: Theme.pad
-                   verticalAlignment: Text.AlignVCenter; elide: Text.ElideMiddle
+                   visible: !tab.editing; verticalAlignment: Text.AlignVCenter; elide: Text.ElideMiddle
                    text: bar.documentName; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
                    HoverHandler { id: tabHover }
-                   HoverTip { text: tabLabel.truncated ? bar.documentName : ""; hovered: tabHover.hovered } }   // a long name, whole
+                   HoverTip { text: tabLabel.truncated ? bar.documentName : bar.renamable ? "Rename" : ""
+                              help: bar.renamable ? "Click to rename the project." : ""; hovered: tabHover.hovered } }
+            MouseArea { id: tabArea; anchors.fill: parent; enabled: bar.renamable && !tab.editing; hoverEnabled: true
+                        cursorShape: Qt.IBeamCursor
+                        onClicked: tab.rename() }
+            TextField {   // the name, typed in place: Enter or leaving the field renames, Esc keeps it
+                id: nameField
+                anchors.fill: parent; visible: tab.editing; value: bar.documentName
+                onEdited: (v) => { tab.editing = false; if (v.trim() && v.trim() !== bar.documentName) bar.renameAsked(v.trim()) }
+                onEscaped: tab.editing = false
+                Connections { target: nameField.input
+                              function onActiveFocusChanged() { if (!nameField.input.activeFocus) tab.editing = false } }
+            }
         }
     }
     Row {  // right group: message, the change count, tools, chips, ↶ ↷, the command box, actions, Help
@@ -229,7 +251,7 @@ Item {
             id: help
             objectName: "helpButton"
             anchors.verticalCenter: parent.verticalCenter
-            glyph: "?"; kind: "ghost"; tip: "Help"; help: "Guides, keys, connecting an AI agent, About."; down: helpMenu.opened
+            glyph: "?"; kind: "ghost"; tip: "Help"; help: "Guides, keys, connecting an AI agent, reporting a problem, About."; down: helpMenu.opened
             onClicked: helpMenu.open()
             Menu {
                 id: helpMenu
@@ -238,8 +260,10 @@ Item {
                 entries: [{ value: "guides", label: "Guides   F1" }, { value: "keys", label: "Keys   Ctrl /" }]
                     .concat(typeof agents !== "undefined" && agents ? [{ value: "agents", label: "Connect an AI agent…" }] : [])
                     .concat(bar.helpEntries.filter(e => !/^file:.*\.md$/i.test(e.value)))
+                    .concat(typeof notices !== "undefined" && notices ? [{ value: "report", label: "Report a problem…" }] : [])
                     .concat([{ value: "about", label: "About and licences" }])
                 onPicked: (v) => v === "about" ? bar.aboutClicked() : v === "agents" ? bar.connectAgentClicked()
+                                : v === "report" ? bar.reportProblem()
                                 : v === "guides" ? bar.guidesClicked() : v === "keys" ? bar.keysClicked()
                                 : /^file:.*\.md$/i.test(v) ? bar.guideClicked(v) : bar.helpPicked(v)
             }

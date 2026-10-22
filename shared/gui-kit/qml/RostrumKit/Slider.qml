@@ -3,12 +3,17 @@ import "."
 
 // A slider. Pressing on it jumps there and dragging follows: the whole press-to-release is one gesture
 // (scrubStarted, scrubbed(value)…, scrubEnded), recorded by the app as ONE change. Left / Right step: edited(value).
+// Keys held while dragging: Alt = fine (the drag moves the value at a tenth of the speed, from where Alt went down; no
+// jump on press), Shift = coarse (the value lands on every 10th step). Same for Left / Right and the wheel.
+// Double-click puts it back to `defaultValue` (edited(default); none set: nothing happens). The wheel changes it only
+// while it has keyboard focus, so the panel scrolls past it otherwise.
 Item {
     id: s
     property real value: 0
     property real from: 0
     property real to: 1
     property real step: 0.01
+    property var defaultValue: null                  // the setting's own default; null = none (no reset)
     readonly property bool hovered: hoverHandler.hovered
     readonly property bool pressed: drag.pressed
     readonly property real ratio: to > from ? (Math.max(from, Math.min(to, value)) - from) / (to - from) : 0
@@ -19,10 +24,17 @@ Item {
     implicitWidth: 140; implicitHeight: Theme.field
     activeFocusOnTab: true
 
-    function clamp(v) { return Math.max(from, Math.min(to, Math.round((v - from) / step) * step + from)) }
-    function at(x) { return clamp(from + (to - from) * Math.max(0, Math.min(1, (x - knob.width / 2) / (width - knob.width)))) }
-    Keys.onLeftPressed: edited(clamp(value - step))
-    Keys.onRightPressed: edited(clamp(value + step))
+    function clamp(v, unit) { const u = unit || step; return Math.max(from, Math.min(to, Math.round((v - from) / u) * u + from)) }
+    function ratioAt(x) { return Math.max(0, Math.min(1, (x - knob.width / 2) / (width - knob.width))) }
+    function unitFor(mods) { return mods & Qt.AltModifier ? step / 10 : mods & Qt.ShiftModifier ? step * 10 : step }
+    function nudge(n, mods) { const u = unitFor(mods); edited(clamp(value + n * u, u)) }
+    Keys.onLeftPressed: (e) => nudge(-1, e.modifiers)
+    Keys.onRightPressed: (e) => nudge(1, e.modifiers)
+    WheelHandler {
+        enabled: s.activeFocus
+        acceptedModifiers: Qt.NoModifier | Qt.ShiftModifier | Qt.AltModifier
+        onWheel: (e) => s.nudge((e.angleDelta.y || e.angleDelta.x) / 120, e.modifiers)
+    }
 
     HoverHandler { id: hoverHandler }
     Rectangle {  // track
@@ -48,8 +60,23 @@ Item {
         anchors.fill: parent
         preventStealing: true
         cursorShape: Qt.PointingHandCursor
-        onPressed: (m) => { s.forceActiveFocus(); s.scrubStarted(); s.scrubbed(s.at(m.x)) }
-        onPositionChanged: (m) => s.scrubbed(s.at(m.x))
+        property real anchorX: 0              // where the current speed began (a key went down or up): its value and place
+        property real anchorValue: 0
+        property int mode: 0                  // 0 normal, 1 fine, 2 coarse
+        function follow(m) {
+            const now = m.modifiers & Qt.AltModifier ? 1 : m.modifiers & Qt.ShiftModifier ? 2 : 0
+            if (now !== mode) { mode = now; anchorX = m.x; anchorValue = s.value }
+            const span = s.width - knob.width
+            const v = mode === 1 ? anchorValue + (m.x - anchorX) / span * (s.to - s.from) / 10
+                    : s.from + (s.to - s.from) * s.ratioAt(m.x)
+            s.scrubbed(s.clamp(v, mode === 2 ? s.step * 10 : mode === 1 ? s.step / 10 : s.step))
+        }
+        onPressed: (m) => {
+            s.forceActiveFocus(); s.scrubStarted()
+            mode = -1; follow(m)              // -1: the first move sets the mode; Alt on press doesn't jump to the pointer
+        }
+        onPositionChanged: (m) => follow(m)
+        onDoubleClicked: if (s.defaultValue !== null && s.defaultValue !== undefined) s.edited(s.clamp(Number(s.defaultValue)))
         onReleased: s.scrubEnded()
         onCanceled: s.scrubEnded()
     }

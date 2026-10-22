@@ -73,4 +73,5 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("guides-find", ["--sample"], ["guides find a_word_no_guide_has_anywhere_in_its_text_at_all"]),
         ("key-list", ["--sample"], ["keylist open"]),                          # Ctrl+/
         ("panels-folded", ["--sample"], ["panels fold"]),                      # Ctrl+\
+        ("rename-name", long_project(), ["name edit"]),                       # S35: the name clicked, the kit's rename field
     ]

@@ -60,9 +60,9 @@ def register(type_, key, many=False):
                 for one in args[f"{type_}s"]:
                     add(ctx, t, one)
 
-    REGISTRY.operation(f"{type_}.set", f"Change {label}s." + (" A layered clip carries its group." if type_ == "clip" else ""),
+    REGISTRY.operation(f"{type_}.set", f"Change {label}s." + (" A layered one carries its group." if type_ in ("clip", "sound") else ""),
                        target=type_, params=FD.params(type_), label=f"Edit {label}", fields=True)(
-        clip_set if type_ == "clip" else set_fields)
+        clip_set if type_ in ("clip", "sound") else set_fields)
 
     @REGISTRY.operation(f"{type_}.remove", f"Delete {label}s.", target=type_, label=f"Delete {label}",
                         importance="secondary")

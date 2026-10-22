@@ -126,6 +126,8 @@ QQC.ApplicationWindow {
         id: topBar
         anchors { left: parent.left; right: parent.right; top: parent.top }
         bridge: win.bridge; appName: win.appName; documentName: win.documentName
+        renamable: typeof files !== "undefined" && !!files && files.hasProject     // the kit's files (project_files.py)
+        onRenameAsked: (name) => files.rename(name)
         job: win.exporter
         onCommandClicked: commandBar.open()
         onAboutClicked: noticesDialog.open()

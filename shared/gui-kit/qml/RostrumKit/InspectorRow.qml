@@ -106,11 +106,14 @@ Item {
         Text { visible: row.driven; anchors.right: clearMark.left; anchors.rightMargin: Theme.gap
                anchors.verticalCenter: parent.verticalCenter; text: row.driven ? row.model.expr.note : ""
                color: Theme.fg3; font.pixelSize: Theme.label; font.family: uiFont }
-        Text { id: clearMark; visible: row.driven; anchors.right: parent.right; anchors.rightMargin: Theme.grid
-               anchors.verticalCenter: parent.verticalCenter; text: "×"; font.pixelSize: Theme.heading
-               color: clearArea.containsMouse ? Theme.fg : Theme.fg3
-               MouseArea { id: clearArea; anchors.fill: parent; anchors.margins: -Theme.grid; hoverEnabled: true
-                           cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.clearExpression(row.model.id) } }
+        Item {  // the clear button: a whole field-sized square left of the key-mark gutter, its click area = its box
+            id: clearMark; visible: row.driven
+            anchors.right: parent.right; anchors.rightMargin: row.gutter; anchors.verticalCenter: parent.verticalCenter
+            width: Theme.field; height: Theme.field
+            Text { anchors.centerIn: parent; text: "×"; font.pixelSize: Theme.heading
+                   color: clearArea.containsMouse ? Theme.fg : Theme.fg3 }
+            MouseArea { id: clearArea; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.clearExpression(row.model.id) } }
         Rectangle {
             id: exprBox
             visible: row.driven
@@ -150,7 +153,10 @@ Item {
         unit: row.model.mixed ? "" : row.model.unit || ""
         atRest: row.mixed
         words: row.model.words || []
+        expressions: row.bridge.typesExpressions
+        defaultValue: row.model.default === undefined ? null : row.model.default   // double-click puts it back
         onEdited: (v) => row.set(v)
+        onTypedExpression: (t) => row.set(t)
         onScrubStarted: row.bridge.beginScrub(row.model.id)
         onScrubbed: (v) => row.bridge.scrub(row.model.id, v)
         onScrubEnded: row.bridge.endScrub() } }

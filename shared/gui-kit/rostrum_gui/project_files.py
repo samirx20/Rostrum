@@ -144,6 +144,20 @@ class ProjectFiles(FileMenuSlots, QObject):
             self.copied.emit(new.name)
         return self._try(go)
 
+    @Slot(str, result=bool)
+    def rename(self, name):
+        """Rename the project (its name on the top bar, clicked): the folder is renamed and the window reopens it
+        there, live, where it was; Open recent follows (the old row drops out with its folder)."""
+        def go():
+            old = self._name()
+            new = F.rename(self.doc.folder, name)
+            if new == Path(self.doc.folder).resolve():
+                return
+            self._fresh = None                    # a project someone named is kept, even with no change in it
+            self._open(new, self.doc.item_id, quiet=False)
+            self._say(f'Renamed "{old}" to "{self._name()}".')
+        return self.has_project() and self._try(go)
+
     @Slot()
     def showFolder(self):
         if self.has_project():
@@ -174,7 +188,7 @@ class ProjectFiles(FileMenuSlots, QObject):
         old, bridge = self.doc, self.host.bridge
         if doc.folder and doc.item_id:
             live.keep(doc)                               # every project is live (the bridge's LiveLink shows agents' steps)
-        if old is not None and old.folder and self.kind.snapshot and bridge is not None:
+        if old is not None and old.folder and Path(old.folder).exists() and self.kind.snapshot and bridge is not None:
             self._picture(bridge, old)
         self.host.show(doc)
         if self._fresh and old is not None and Path(old.folder or "") == self._fresh:

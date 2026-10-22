@@ -44,6 +44,7 @@ class Action:
     calls: Callable | None = None             # calls(facts) -> [operation calls]
     do: str = ""                              # an app's own non-operation action ("copy", "rename")
     why: str = ""                             # the app's own sentence for why it isn't offered
+    release: str = ""                         # a hold key let go: the app's own "do" run then (only if the press ran)
 
     def __post_init__(self):
         if self.importance not in ("primary", "secondary"):
@@ -127,7 +128,7 @@ class ActionList:
                 out.append(((first, a.rank, i), {
                     "id": a.id, "label": a.label_for(facts), "keys": self.keys_of(a), "importance": a.importance,
                     "group": "edit" if a.edit else a.group, "bar": a.bar, "calls": calls, "do": a.do,
-                    "edit": a.edit, "rank": a.rank, "job": self.job_of(a)}))
+                    "edit": a.edit, "rank": a.rank, "job": self.job_of(a), "release": a.release}))
         return [e for _, e in sorted(out, key=lambda x: x[0])]
 
     def why_not(self, facts, typed: str) -> str:

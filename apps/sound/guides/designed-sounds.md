@@ -53,6 +53,10 @@ folders instead (a Sonniss bundle, BOOM, their recordings), chosen by kind and s
 Add a folder first with `inspect_library folder=…`. How the picks and placement work, and how to search the library
 yourself: `inspect_guide 'library'`.
 
+**Layering both:** give a designed sound and library clips on one track the same `group` name
+(`sound("click", at=2.0, group="door")` next to `layer("door", […], at=2.0)`). They are then one sound: `sound.set` or
+`clip.set` moving or re-levelling one moves them all; `clip.set_one` changes just one clip.
+
 ## Check it
 
 - `look_events` with the sharp events' times (`expect`): clicks and ticks should sit within a frame. Check them on

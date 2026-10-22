@@ -9,6 +9,7 @@ disk as it happens, through the same door an agent's server uses. So there is no
     new_folder(root, base)        "Untitled", "Untitled 2" …: the first name not taken
     recent(kind) / remember(...)  Open recent, newest first (in userhome: scripted runs never touch the person's)
     duplicate(folder, dest)       a separate copy of the whole project folder
+    rename(folder, name)          the project folder renamed in place (clicking its name in the top bar)
     version_name()                a version's default name: the time ("22 Oct 14:32")
     open_whole(kind, folder, item) a damaged or newer file refused in plain words that say nothing was changed
     thumb(folder, item)           where a project's picture for the start screen lives
@@ -123,6 +124,25 @@ def duplicate(folder, dest) -> Path:
         raise RostrumError(codes.CONFLICT, "duplicate", str(dest), "already has files in it",
                            hint=f"Pick a new name, or an empty folder. {UNTOUCHED}")
     shutil.copytree(src, dest, dirs_exist_ok=True, ignore=SKIP)
+    return dest
+
+
+def rename(folder, name: str) -> Path:
+    """The project folder renamed beside itself (its documents, history, pictures and renders go with it). A name
+    taken, or a folder another program holds open, is refused in words and changes nothing; an agent that had the
+    old folder open is refused loudly on its next step (its folder is gone), never writes a second copy."""
+    src = Path(folder).resolve()
+    dest = src.parent / clean(name)
+    if dest == src:
+        return src
+    if dest.exists() and dest.resolve() != src:        # (a change of capitals only is the same folder on Windows)
+        raise RostrumError(codes.CONFLICT, "rename", f'"{dest.name}"', "is already a project in this folder",
+                           hint=f"Pick another name. {UNTOUCHED}")
+    try:
+        src.rename(dest)
+    except OSError as e:
+        raise RostrumError(codes.CONFLICT, "rename", f'"{src.name}"', "can't be renamed now: another program has "
+                           "a file in it open", hint=f"Close it there, then try again. {UNTOUCHED} ({e})") from e
     return dest
 
 

@@ -135,4 +135,6 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("scene-size", ["--sample"], ["select screen_sample", "set size vertical"]),
         ("camera-tool", ["--sample"], ["add camera", "tool camera"]),
         ("effects-menu", ["--sample"], ["select card", "clickbtn Effects", "wait 300"]),
+        ("rename-name", long(), ["name edit"]),                               # S35: the name clicked, the kit's rename field
+        ("show-only-kinds", ["--sample"], ["selectmany title card dot"]),     # S35: mixed kinds, the panel's Show only lines
     ]

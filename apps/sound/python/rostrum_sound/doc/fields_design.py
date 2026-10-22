@@ -1,7 +1,8 @@
 """A designed sound's fields (a `sound` item on a track: whoosh, click, riser, hit, subDrop). The engine's field table
 (engine/src/design/mod.rs, answered by `describe` › designs) is the authority; `Engine.check_names` compares this
 table with it. Each design's own fields are valid only while that design is chosen (rule of individuality): pick
-"click" and the whoosh's speed curve goes, the material appears.
+"click" and the whoosh's speed curve goes, the material appears. `group` is the clip's layer name (fields.py): a
+designed sound and library clips with one group name on one track are one layered sound (ops_group.py).
 """
 from __future__ import annotations
 
@@ -63,6 +64,8 @@ def params() -> list:
     out = [Param.choice("design", DESIGNS, group="Sound", label="Design"), V.time("at", group="Sound", help="When it "
            "starts: seconds, {\"beat\": n} or a marker (\"#logo+0.1\").")]
     out += [N(n, lo, hi, "Sound", imp=imp, label=lab, help=h, integer=n == "seed") for n, lo, hi, imp, lab, h in COMMON]
+    out.append(Param.text("group", group="Sound", importance="secondary", label="Layer group", help="Clips and "
+                          "designed sounds of one track with the same group name are one layered sound."))
     seen: dict[str, list] = {}
     for d, rows in OWN.items():
         for row in rows:

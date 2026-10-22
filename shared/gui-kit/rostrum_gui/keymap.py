@@ -3,6 +3,9 @@ its own keys (tools, panels, its own actions) and may never give a shared key an
 screen's shortcuts, the Ctrl+/ key list and hover help, and the action list takes every action's key from it, so a
 key is typed in one place only.
 
+A key held down and let go (`"hold": True` on an entry: Sound's "hold H to hear the original") runs its job on the
+press, once (no auto-repeat), and the job's release when the key comes up (keyhold.py watches the release).
+
 A clash is refused at start-up with a plain message naming both meanings (fail loudly): an app key that takes a
 shared key, or one key meaning two things in one app. Pointer gestures (click, box, wheel, drag modifiers) are in
 1.3 and 1.10, not here: they are not shortcuts.
@@ -97,16 +100,20 @@ def normal(key: str) -> str:
 
 
 class KeyMap:
-    """The shared keys plus one app's own (`app_keys`: [{job, keys, label}]). An app entry whose job is a shared
-    job adds another key for it (2D's Shift+2 for Fit)."""
+    """The shared keys plus one app's own (`app_keys`: [{job, keys, label, hold?}]). An app entry whose job is a
+    shared job adds another key for it (2D's Shift+2 for Fit). A hold key is a single key without Ctrl / Alt, so
+    letting it go is never mistaken for letting go of a modifier."""
 
     def __init__(self, app: str, app_keys=()):
         self.app = app
-        self._rows = [{**r, "keys": [normal(k) for k in r["keys"]], "where": "shared"} for r in SHARED]
+        self._rows = [{**r, "keys": [normal(k) for k in r["keys"]], "where": "shared", "hold": False} for r in SHARED]
         jobs = {r["job"]: r for r in self._rows}
         self._by_key = _index(self._rows, "the shared key map")
         for a in app_keys:
             keys = [normal(k) for k in a["keys"]]
+            if a.get("hold") and any("Ctrl+" in k or "Alt+" in k for k in keys):
+                raise ValueError(f'{app} gives "{a["label"]}" the hold key {", ".join(keys)}: a hold key must be '
+                                 "a key on its own, without Ctrl or Alt")
             for k in keys:
                 if k in self._by_key:
                     have = self._by_key[k]
@@ -119,7 +126,8 @@ class KeyMap:
                 row = jobs[a["job"]]
                 row["keys"] += [k for k in keys if k not in row["keys"]]
             else:
-                row = {"job": a["job"], "keys": keys, "label": a["label"], "area": a.get("area", app), "where": app}
+                row = {"job": a["job"], "keys": keys, "label": a["label"], "area": a.get("area", app), "where": app,
+                       "hold": bool(a.get("hold"))}
                 self._rows.append(row)
                 jobs[row["job"]] = row
             for k in keys:
@@ -145,8 +153,13 @@ class KeyMap:
         row = self._by_key.get(normal(sequence))
         return row["where"] if row else ""
 
+    def held(self, key_name: str) -> list[str]:
+        """The hold jobs a released key ends ("H" -> ["hear_original"]); modifiers held with it don't matter."""
+        name = normal(key_name).split("+")[-1]
+        return [r["job"] for r in self._rows if r["hold"] and any(k.split("+")[-1] == name for k in r["keys"])]
+
     def entries(self) -> list[dict]:
-        """Every key, shared first: {job, keys, label, area, where} for Qt shortcuts and the Ctrl+/ list."""
+        """Every key, shared first: {job, keys, label, area, where, hold} for Qt shortcuts and the Ctrl+/ list."""
         return [dict(r, keys=list(r["keys"])) for r in self._rows]
 
 

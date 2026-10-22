@@ -1,11 +1,19 @@
 import QtQuick
+import "."
 
-// The one ruler for time: seconds (unit "seconds", 0..duration) or frames (unit "frames", first..last, last is the
-// final frame so the width ends one past it). Ticks, labels, the playhead's head, optional shared marker flags.
-// Press or drag emits scrubbed(value), in the ruler's unit; the screen decides what to do with it. With editMarkers
-// a flag drags (markerMoved on release), renames on double-click and shows × to delete on hover; the screen runs
-// the marker operations (rostrum_gui.markers.MarkerWatch).
-// xOf(v) / tOf(x) (alias fOf) are the one mapping the key rows use too.
+// The one ruler for time (INTERACTION.md 1.6 › Ruler): seconds (unit "seconds", 0..duration) or frames (unit
+// "frames", first..last, last is the final frame so the width ends one past it). Top to bottom, each band only when
+// it has a use (rule of individuality):
+//   range band (rangeBand, 8 px): drag = one rangeSet(a, b) on release (seconds), double-click = rangeCleared();
+//   marker band (markers, or editMarkers): MarkerFlag.qml per marker, shared solid with a chain, own hollow;
+//   time scale: ticks and labels (the first inside the left edge; a label that would be cut is left out), with an
+//     optional upper line the app fills (`upper`: [{at seconds, text}], e.g. Sound's bars over seconds).
+// Press or drag on the scale emits scrubbed(value), in the ruler's unit: the app's playhead op does the seeking.
+// newMarker() (the app's M key) opens a name field at the playhead with a Shared switch when canShare; Enter emits
+// markerAdded(name, shared, at seconds) and the app's marker operation adds it. The kit never edits on its own.
+// `view` (a rostrum_gui.timeview.TimeViewObject, seconds): zoom and scroll, and the wheel over the ruler (Ctrl zooms
+// at the pointer, Shift scrolls); without it the ruler shows the whole length. xOf(v) / tOf(x) (alias fOf) are the
+// one mapping the rows use too.
 Item {
     id: r
     property string unit: "seconds"
@@ -14,16 +22,25 @@ Item {
     property int first: 0              // frames
     property int last: 47
     property real value: 0             // the playhead: seconds or a frame
-    property var markers: []           // [{id, name, at, colour}], at in seconds (either unit): a flag with its name
+    property var markers: []           // [{id, name, at, colour, shared}], at in seconds (either unit)
     property bool editMarkers: false   // drag a flag = markerMoved, double-click = rename, × = delete
+    property var view: null            // TimeViewObject: which stretch is on screen (none: all of it)
+    property bool rangeBand: false     // the app has a time range (loop, export, notes)
+    property var range: null           // {start, end} in seconds, or null
+    property var upper: []             // the scale's upper line: [{at, text}] in seconds; empty: one line
+    property bool canShare: false      // the document is in a project: new markers may be shared
     signal scrubbed(real t)
     signal markerMoved(string id, real at)        // seconds, on whole frames
     signal markerRenamed(string id, string name)
     signal markerRemoved(string id)
+    signal markerAdded(string name, bool shared, real at)
+    signal rangeSet(real a, real b)               // seconds, a < b, on whole frames
+    signal rangeCleared()
 
     readonly property bool frames: unit === "frames"
-    readonly property real origin: frames ? first : 0
-    readonly property real span: frames ? Math.max(1, last + 1 - first) : Math.max(duration, 0.001)
+    readonly property real total: frames ? Math.max(1, last + 1 - first) : Math.max(duration, 0.001)   // whole length
+    readonly property real origin: (frames ? first : 0) + (view ? view.start * (frames ? fps : 1) : 0)
+    readonly property real span: view ? Math.max(view.span * (frames ? fps : 1), 0.001) : total
     readonly property real perUnit: width / span
     readonly property real perSec: perUnit
     // label every `major` (at least ~90 px / ~70 px apart), small ticks every `minor`
@@ -31,103 +48,94 @@ Item {
                                          : ([0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60, 300].find(s => s * perUnit >= 90) || 600)
     readonly property real minor: frames ? (major >= 10 ? major / (major % 4 === 0 ? 4 : 5) : 1)
                                          : major / (major === 1 || major === 2 ? 4 : 5)
+    readonly property int tick0: Math.ceil(origin / minor - 1e-6)
     function xOf(v) { return (v - origin) * perUnit }
-    function tOf(x) { return frames ? origin + x / perUnit : Math.max(0, Math.min(duration, x / perUnit)) }
+    function tOf(x) { const v = origin + x / perUnit; return frames ? v : Math.max(0, Math.min(duration, v)) }
     function fOf(x) { return tOf(x) }
     function xOfSec(s) { return xOf(frames ? s * fps : s) }           // a time in seconds (markers), either unit
+    function nextX(at) {   // where the next marker after `at` stands (a flag's name stops before it)
+        let x = width + 1
+        for (const m of markers) if (m.at > at) x = Math.min(x, xOfSec(m.at))
+        return x
+    }
     function secOf(x) { const v = tOf(x); return Math.max(0, Math.round((frames ? v : v * fps)) / fps) }
     function label(v) {
         if (frames) return v
         return v >= 60 ? Math.floor(v / 60) + ":" + ("0" + Math.round(v % 60)).slice(-2) : (Math.round(v * 100) / 100) + "s"
     }
-    // with flags, the tick numbers drop below them (a flag is 16 px tall) when the ruler is tall enough for both rows
-    readonly property int labelTop: markers.length > 0 && height >= 30 ? 18 : 5
-    implicitHeight: 22
+    function newMarker() { namer.x = Math.max(0, Math.min(xOf(value) - 8, width - namer.width))
+                           namer.ask("Marker " + (markers.length + 1)) }
 
-    Repeater {
-        model: Math.floor(r.span / r.minor + 1e-6) + 1
+    // the bands, top down; the scale takes the rest (an app's fixed height under the natural one squeezes the
+    // labels up beside the flags, as before)
+    readonly property int bandH: rangeBand ? 8 : 0
+    readonly property int flagTop: bandH
+    readonly property bool flagRow: markers.length > 0 || editMarkers
+    readonly property int labelTop: bandH + (flagRow && height >= bandH + 30 + (upper.length ? 12 : 0) ? 18 : 5)
+    implicitHeight: bandH + (flagRow ? 18 : 0) + (upper.length ? 34 : 22)
+
+    Repeater {   // the time scale
+        model: Math.max(0, Math.floor((r.origin + r.span) / r.minor + 1e-6) - r.tick0 + 1)
         delegate: Rectangle {
             required property int index
-            readonly property real v: r.origin + index * r.minor
-            readonly property bool big: Math.abs((index * r.minor / r.major) - Math.round(index * r.minor / r.major)) < 1e-6
+            readonly property real v: (r.tick0 + index) * r.minor
+            readonly property bool big: Math.abs(v / r.major - Math.round(v / r.major)) < 1e-6
             x: Math.round(r.xOf(v)); y: r.height - height
             width: 1; height: big ? 7 : 3; color: big ? Theme.lineHover : Theme.line
-            Text { visible: parent.big && r.xOf(parent.v) < r.width - 24; x: 4; y: -r.height + r.labelTop + parent.height
+            Text { visible: parent.big && parent.x >= 0 && parent.x + 4 + implicitWidth <= r.width
+                   x: 4; y: -r.height + r.labelTop + (r.upper.length ? 13 : 0) + parent.height
                    text: r.label(parent.v); color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
                    font.features: { "tnum": 1 } }
         }
     }
-    MouseArea {  // scrubbing: under the flags, so a flag takes its own presses
-        anchors.fill: parent
-        preventStealing: true
-        cursorShape: Qt.PointingHandCursor
-        onPressed: (m) => r.scrubbed(r.tOf(m.x))
-        onPositionChanged: (m) => r.scrubbed(r.tOf(m.x))
-    }
-    Repeater {   // the project's shared markers: a flag with its name; editable: drag, double-click, ×
-        model: r.markers
-        delegate: Item {
-            id: mk
+    Repeater {   // the upper line (bars): the app's marks, brighter, with a tall tick
+        model: r.upper
+        delegate: Rectangle {
             required property var modelData
-            property real dx: 0                      // while dragging (one move on release)
-            property bool naming: false
-            readonly property color tint: modelData.colour ? modelData.colour : Theme.warn
-            x: Math.round(r.xOfSec(modelData.at) + dx); width: 1; height: r.height
-            z: hit.containsMouse || crossHit.containsMouse || naming ? 2 : 1
-            Rectangle { width: 1; height: parent.height; color: mk.tint }
-            Rectangle {
-                id: flag
-                x: 1; y: 0; height: 16; radius: 2; color: hit.containsMouse || crossHit.containsMouse ? Theme.raised : Theme.panel
-                border.color: mk.tint
-                width: mk.naming ? Math.max(editor.contentWidth + 12, 60)
-                                 : Math.min(name.implicitWidth + 8 + (cross.visible ? 14 : 0),
-                                            Math.max(r.width - mk.x - 1, 14))
-                clip: true
-                Text { id: name; x: 4; anchors.verticalCenter: parent.verticalCenter; text: modelData.name
-                       visible: !mk.naming; color: mk.tint; font.family: uiFont; font.pixelSize: Theme.label - 1 }
-                MouseArea {
-                    id: hit
-                    anchors.fill: parent
-                    enabled: r.editMarkers && !mk.naming
-                    hoverEnabled: true
-                    preventStealing: true
-                    cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
-                    property real x0: 0
-                    onPressed: (m) => { x0 = m.x; mk.dx = 0 }
-                    onPositionChanged: (m) => { if (pressed) mk.dx = m.x - x0 }
-                    onReleased: {
-                        if (Math.abs(mk.dx) >= 2)
-                            r.markerMoved(modelData.id, r.secOf(r.xOfSec(modelData.at) + mk.dx))
-                        mk.dx = 0
-                    }
-                    onDoubleClicked: { mk.naming = true; editor.text = modelData.name; editor.selectAll(); editor.forceActiveFocus() }
-                }
-                HoverTip { text: r.editMarkers ? "Double-click to rename, drag to move" : ""; hovered: hit.containsMouse
-                           pressed: hit.pressed || mk.naming }
-                Text {      // delete, on hover
-                    id: cross
-                    visible: r.editMarkers && (hit.containsMouse || crossHit.containsMouse) && !mk.naming
-                    anchors.right: parent.right; anchors.rightMargin: 4; anchors.verticalCenter: parent.verticalCenter
-                    text: "×"; color: crossHit.containsMouse ? Theme.danger : Theme.fg3
-                    font.family: uiFont; font.pixelSize: Theme.label + 1
-                    MouseArea { id: crossHit; anchors.fill: parent; anchors.margins: -3; hoverEnabled: true
-                                onClicked: r.markerRemoved(modelData.id) }
-                }
-                TextInput {
-                    id: editor
-                    visible: mk.naming
-                    x: 4; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 8
-                    color: Theme.fg; selectionColor: Theme.accentSoft; selectByMouse: true
-                    font.family: uiFont; font.pixelSize: Theme.label - 1
-                    onAccepted: { mk.naming = false; if (text.trim() && text !== modelData.name) r.markerRenamed(modelData.id, text.trim()) }
-                    onActiveFocusChanged: if (!activeFocus) mk.naming = false
-                    Keys.onEscapePressed: mk.naming = false
-                }
-            }
+            x: Math.round(r.xOfSec(modelData.at)); y: r.labelTop; width: 1; height: r.height - y; color: Theme.line
+            visible: x >= 0 && x + 4 + up.implicitWidth <= r.width
+            Text { id: up; x: 4; y: -1; text: modelData.text; color: Theme.fg2; font.family: uiFont
+                   font.pixelSize: Theme.label; font.features: { "tnum": 1 } }
         }
     }
+    Rectangle {  // the range band, and the range on it
+        visible: r.rangeBand; width: parent.width; height: r.bandH; color: Theme.sunken
+        readonly property var shown: area.ranging ? [Math.min(area.a, area.b), Math.max(area.a, area.b)]
+                                     : r.range ? [r.range.start, r.range.end] : null
+        Rectangle { visible: !!parent.shown; color: Theme.accentSoft; border.color: Theme.accent; height: parent.height
+                    x: parent.shown ? Math.max(0, r.xOfSec(parent.shown[0])) : 0
+                    width: parent.shown ? Math.max(1, Math.min(r.width, r.xOfSec(parent.shown[1])) - x) : 0 }
+        HoverHandler { id: bandHover }
+        HoverTip { text: "Time range"; help: "Drag here to set it; double-click to clear it."; hovered: bandHover.hovered
+                   pressed: area.pressed }
+    }
+    MouseArea {  // the band makes a range, the scale scrubs; under the flags, so a flag takes its own presses
+        id: area
+        anchors.fill: parent
+        preventStealing: true
+        hoverEnabled: true
+        cursorShape: r.rangeBand && mouseY < r.bandH ? Qt.IBeamCursor : Qt.PointingHandCursor
+        property bool ranging: false
+        property real a: 0
+        property real b: 0
+        onPressed: (m) => {
+            ranging = r.rangeBand && m.y < r.bandH
+            if (ranging) { a = r.secOf(m.x); b = a } else r.scrubbed(r.tOf(m.x))
+        }
+        onPositionChanged: (m) => { if (!pressed) return; if (ranging) b = r.secOf(m.x); else r.scrubbed(r.tOf(m.x)) }
+        onReleased: { if (ranging && Math.abs(r.xOfSec(b) - r.xOfSec(a)) >= 2) r.rangeSet(Math.min(a, b), Math.max(a, b))
+                      ranging = false }
+        onDoubleClicked: (m) => { if (r.rangeBand && m.y < r.bandH && r.range) r.rangeCleared() }
+        onWheel: (w) => { w.accepted = !!r.view && r.view.wheel(w.angleDelta.x, w.angleDelta.y,
+                                                                (w.modifiers & Qt.ControlModifier) !== 0,
+                                                                (w.modifiers & Qt.ShiftModifier) !== 0, w.x / r.width, false) }
+    }
+    Repeater { model: r.markers; delegate: MarkerFlag { ruler: r } }
     Rectangle {  // the playhead: a line through the ruler, its head at the top
         x: Math.round(r.xOf(r.value)); width: 1; height: r.height; color: Theme.accent
+        visible: x >= 0 && x <= r.width
         Rectangle { x: -4; y: 0; width: 9; height: 8; radius: 2; color: Theme.accent }
     }
+    MarkerNamer { id: namer; y: r.height + 2; canShare: r.canShare
+                  onAccepted: (name, shared) => r.markerAdded(name, shared, r.frames ? r.value / r.fps : r.value) }
 }
