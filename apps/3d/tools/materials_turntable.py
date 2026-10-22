@@ -21,7 +21,7 @@ SCRATCH = Path(r"C:\Users\Sam\.rostrum\waves\scratch\hem-h22-materials\project")
 OUT = Path(r"C:\Users\Sam\.rostrum\waves\results\stage2\h22")
 ITEM, SCREEN, FPS, SECONDS = "materials", "screen2d", 24, 4
 STILL = {"width": 1600, "samples": 256, "at": 1.0}
-VIDEO = {"width": 1280, "samples": 64}
+VIDEO = {"width": 960, "samples": 16, "denoise": True}
 
 SCENE = f'''
 brushed = material("m_brushed", baseColor="#c9ccd1", metallic=1, roughness=0.32, anisotropy=0.85, brushDirection="around y")
