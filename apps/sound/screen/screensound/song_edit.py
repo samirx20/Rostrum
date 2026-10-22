@@ -106,13 +106,16 @@ def edge_grab(doc, item_id: str, edge: str) -> dict:
     return {"id": item_id, "type": "edge", "edge": edge, "at": s[edge], "t": timing.sec(s[edge], doc.data, item_id)}
 
 
-def drag_calls(doc, g: dict, dt: float, free: bool = False) -> list[dict]:
+def drag_calls(doc, g: dict, dt: float, free: bool = False, grid=None) -> list[dict]:
+    """`grid`: the window's Grid ▾ / Snap (timing.Grid); a section edge snaps to it, a tempo change to beats
+    unless Snap is off."""
     root = doc.data
+    free = free or (grid is not None and not grid.on)
     if g["type"] == "edge":
         s = doc.item(g["id"])
         other = timing.sec(s["end" if g["edge"] == "at" else "at"], root, g["id"])
         step = timing.spb(root, other) * timing.SNAP_BEATS
-        t = timing.snap(g["t"] + dt, root, free)
+        t = timing.snap(g["t"] + dt, root, free, grid)
         t = max(0.0, min(t, other - step)) if g["edge"] == "at" else max(t, other + step)
         return [{"op": "section.set", "target": [g["id"]], "args": {g["edge"]: timing.write_time(g["at"], t, root)}}]
     # a tempo change: placed on the map without itself, so its own tempo doesn't move the ground under the drag

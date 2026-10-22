@@ -36,7 +36,7 @@ def drag_calls(doc, g: dict, dt: float, dsemi: int = 0, free: bool = False, grid
     if g["type"] == "section":
         return section_calls(doc, g, dt, free, grid)
     if g["type"] in song_edit.TYPES:
-        return song_edit.drag_calls(doc, g, dt, free)
+        return song_edit.drag_calls(doc, g, dt, free, grid)
     args = {"at": timing.write_time(g["at"], timing.snap(g["t"] + dt, root, free, grid), root)}
     if g["type"] == "note" and dsemi:
         args["pitch"] = timing.shift_pitch(g["pitch"], int(dsemi))
