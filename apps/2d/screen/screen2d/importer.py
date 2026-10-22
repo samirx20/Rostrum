@@ -8,6 +8,7 @@ to the importer; it is never kept here, never printed, never put in a message.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from PySide6.QtCore import Property, QCoreApplication, QObject, QUrl, Signal, Slot
@@ -16,6 +17,13 @@ from rostrum2d.io import importing
 from .import_job import Job
 
 FITTED = ("svg", "pdf", "psd", "figma")          # the kinds whose page lands fitted in the composition (media is always)
+
+
+def _svg_has_text(path: str) -> bool:
+    try:
+        return re.search(r"<(\w+:)?text[\s>]", Path(path).read_text(encoding="utf-8", errors="ignore")) is not None
+    except OSError:
+        return False
 
 
 class Importer(QObject):
@@ -57,6 +65,11 @@ class Importer(QObject):
     @Property(bool, notify=changed)
     def keepSize(self):
         return self._keep
+
+    @Property(bool, notify=changed)
+    def hasText(self):
+        """Whether the picked SVG has any text in it: only then is "Text in file" worth asking."""
+        return self.kind == "svg" and _svg_has_text(self._file)
 
     @Property(int, notify=changed)
     def page(self):
@@ -182,6 +195,12 @@ class Importer(QObject):
         if r["layers"]:
             b.select(r["layers"][-1])
         self.changed.emit()
+
+    @Slot()
+    def clearResult(self):
+        """The panel is opened again after an import: the last result goes, the settings come back."""
+        if self._state == "done":
+            self._clear()
 
     def _clear(self):
         if not self.running():
