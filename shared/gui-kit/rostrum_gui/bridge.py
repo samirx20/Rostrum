@@ -3,10 +3,12 @@
 Every edit is an operation through doc.apply (a scrub through doc.gesture: one change for the whole drag),
 recorded with the person's name, so undo, history and "who changed what" work the same as for agents.
 The bridge listens to the document (doc.subscribe), so an agent's or script's change shows up in place too.
-Selection, the More row, open groups and the search are screen state, not document changes. A refused edit fails loudly: the error
+Selection (one item, or several: `selectMany`, the panel then shows what they share, many.py), the More row, open
+groups and the search are screen state, not document changes. A refused edit fails loudly: the error
 line goes to the console and to `status` (the top bar shows it in red).
 
 An app adapts it by overriding the hooks (the one place each decision lives): `label_of` (an item's name),
+`kind_label` (its kind in words),
 `edit_call` (a screen edit -> its operation call), `shown_values` (the values the inspector shows),
 `anim_state` / `animate_calls` (an app with keys: the key mark on a row and what its toggle does),
 `on_page` (fields the page's own controls already show, which the inspector leaves out).
@@ -21,7 +23,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_core import RostrumError, Who, codes
 from rostrum_core.history import History
 
-from . import commands, rows
+from . import commands, many, rows
 from .bridge_edits import EditSlots
 from .bridge_sections import SectionSlots
 from .edits import Scrub, field_call
@@ -48,6 +50,7 @@ class DocBridge(SectionSlots, EditSlots, Parts, QObject):
         super().__init__(parent)
         self.doc, self.who = doc, who or Who.person("sam")
         self._sel, self._more, self._status = "", False, ""
+        self._selection: list[str] = []     # every selected item, the primary (`_sel`) first
         self._scrub: Scrub | None = None
         self._partners: list = []           # other documents in this person's one history (join_history)
         self._opened = [doc.history.mark()]  # where each history stood when this window opened (historyCount)
@@ -63,12 +66,22 @@ class DocBridge(SectionSlots, EditSlots, Parts, QObject):
     def selected(self):
         return self._sel
 
+    @Property("QVariantList", notify=selectionChanged)
+    def selection(self):
+        return list(self._selection)
+
     @Property("QVariantMap", notify=selectionChanged)
     def selectedItem(self):
+        """{id, label, kind, kindLabel, count}: the primary item's; several selected: "3 items" and their kind (in
+        words) when it is one, else "Different kinds"."""
         if not self._sel:
-            return {"id": "", "label": "", "kind": ""}
-        it = self.doc.item(self._sel)
-        return {"id": it["id"], "label": self.label_of(it), "kind": it["type"]}
+            return {"id": "", "label": "", "kind": "", "kindLabel": "", "count": 0}
+        its = [self.doc.item(i) for i in self._selection]
+        kinds = {it["type"] for it in its}
+        one = len(kinds) == 1
+        return {"id": its[0]["id"], "label": self.label_of(its[0]) if len(its) == 1 else f"{len(its)} items",
+                "kind": its[0]["type"] if one else "", "count": len(its),
+                "kindLabel": self.kind_label(its[0]) if one else "Different kinds"}
 
     @Property("QVariantList", notify=docChanged)
     def items(self):
@@ -123,11 +136,22 @@ class DocBridge(SectionSlots, EditSlots, Parts, QObject):
     # ---- screen state ---------------------------------------------------------------------------------------
     @Slot(str)
     def select(self, item_id):
-        if item_id and not self.doc.has(item_id):
-            return self._fail(f'Error: select: no item "{item_id}".')
-        self._sel = item_id
-        kind = self.doc.item(item_id)["type"] if item_id else ""
-        self._op_kind = (self.doc.kind.registry.field_op(kind) if item_id else None, kind)
+        """One item ("" = none)."""
+        self.selectMany([item_id] if item_id else [])
+
+    @Slot("QVariantList")
+    def selectMany(self, ids):
+        """Several items, the primary first (its name and order lead the panel); [] = none. The panel shows the
+        settings they all share; an edit there is one change on every one of them."""
+        ids = list(dict.fromkeys(str(i) for i in ids))
+        gone = [i for i in ids if not self.doc.has(i)]
+        if gone:
+            return self._fail(f'Error: select: no item "{gone[0]}".')
+        self._selection, self._sel = ids, ids[0] if ids else ""
+        kinds = [self.doc.item(i)["type"] for i in ids]
+        reg = self.doc.kind.registry
+        self._op_kind = (many.shared_op([reg.field_op(k) for k in kinds]) if ids else None,
+                         kinds[0] if len(set(kinds)) == 1 else "")
         self._static = self._layout()
         self.model.reset(self._rows())      # a new selection swaps the list at once (no reveal animation)
         self.rowsChanged.emit()
@@ -156,6 +180,10 @@ class DocBridge(SectionSlots, EditSlots, Parts, QObject):
     # ---- hooks (override in an app) -------------------------------------------------------------------------
     def label_of(self, item: dict) -> str:
         return name_of(item)
+
+    def kind_label(self, item: dict) -> str:
+        """An item's kind in words, for the panel's subtitle and Ctrl K's hints (default: its type, capitalised)."""
+        return item["type"][:1].upper() + item["type"][1:]
 
     def edit_call(self, item_id, param, value) -> dict:
         return field_call(self.doc, item_id, param, value)
@@ -193,12 +221,13 @@ class DocBridge(SectionSlots, EditSlots, Parts, QObject):
         return next((i["id"] for i in self._items()), "")
 
     def _commands(self):
-        return commands.build(self.doc, [self._sel] if self._sel else [], self.label_of)
+        return commands.build(self.doc, list(self._selection), self.label_of, self.kind_label)
 
     def _rows(self):
-        if not self._sel:
-            return []
-        it = self.doc.item(self._sel)
+        each = [self._item_rows(self.doc.item(i)) for i in self._selection]
+        return [] if not each else each[0] if len(each) == 1 else many.merge(each)
+
+    def _item_rows(self, it):
         evaluated = rows.evaluate(self._static, self.shown_values(it), self.doc.kind.facts(it, self.doc), self._more,
                                   lambda name: self.anim_state(it, name), lambda name: self.expr_state(it, name),
                                   lambda name: self.list_choices(it, name), self._open_groups, self._search)
@@ -216,8 +245,9 @@ class DocBridge(SectionSlots, EditSlots, Parts, QObject):
         self.docChanged.emit()
 
     def _on_doc(self, event):
-        if self._sel and not self.doc.has(self._sel):      # the selected item went away (e.g. undo of an add)
-            self.select(self._first())
+        if any(not self.doc.has(i) for i in self._selection):   # a selected item went away (e.g. undo of an add)
+            kept = [i for i in self._selection if self.doc.has(i)]
+            self.selectMany(kept) if len(kept) > 1 else self.select(kept[0] if kept else self._first())
         else:
             self._refresh()
             self.selectionChanged.emit()                   # its name may have changed (an agent's rename)

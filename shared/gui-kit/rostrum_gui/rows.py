@@ -21,7 +21,7 @@ from .commands import starts
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
 ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit",
-         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open")
+         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed")
 # anim: "" (can't be animated), "still" (could be), "keyed" (has keys), "onkey" (has a key at the playhead).
 # expr: "" for most rows; a param driven by an expression or binding has {"text", "note"}: the row shows them (and a
 # way to clear it) instead of its widget.
@@ -30,8 +30,8 @@ ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options",
 # A "pick" param (control "pick", a text naming one other item, "" = none) shows as a choice: "None" first, then what
 # the app's `choices(name)` gives (e.g. the layers a track matte may use). Never a bare text box of ids; with nothing
 # to pick (and nothing picked) the row is absent.
-# fold: the group a fold row (or a param row carrying its group's fold) opens; open: that group is open now, None when
-# nothing inside applies (no chevron).
+# fold: the group a fold row opens; open: that group is open now (None when nothing inside applies: the row is absent).
+# mixed: several items selected and their values differ (the widget says "Mixed"; many.py).
 
 
 def layout(op, kind: str = "") -> list[dict]:
@@ -147,14 +147,11 @@ def omit(rows: list[dict], gone: set[str]) -> list[dict]:
     holds = {r["id"]: r["holds"] for r in kept if r["row"] == "param"}
     out = []
     for r in kept:
-        if "members" in r:                  # a heading, More or fold row, or a param carrying its group's fold
-            members = [m for m in r["members"] if m in holds]
-            if not members and r["row"] != "param":
+        if r["row"] != "param":
+            members = [m for m in r.get("members", []) if m in holds]
+            if not members:
                 continue
             r = {**r, "members": members}
-            if r["row"] != "param":
-                r["holds"] = any(holds[m] for m in members)
-            if r.get("open") is not None and not any(holds[m] for m in members):
-                r["open"] = None
+            r["holds"] = any(holds[m] for m in members)
         out.append(r)
     return _headers(out)

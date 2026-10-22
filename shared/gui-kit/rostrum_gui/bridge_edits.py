@@ -1,6 +1,7 @@
 """The bridge's edit slots (a slot mix-in, see parts.py): every one an operation through doc.apply, recorded with
 the person's name. A scrub goes through doc.gesture (one change for the whole drag). A refused edit fails loudly:
-`_guard` reports it (console + status), never swallows it, never crashes.
+`_guard` reports it (console + status), never swallows it, never crashes. With several items selected, each edit is
+ONE change on every one of them (one doc.apply with a call per item; one scrub moves them all).
 The mix-in reaches the bridge through `self` (`self.doc`, `self.who`, `self._sel`, `self._scrub`, `self._fail`,
 `self._set_status`, `self._commands`, `self.select`) and the app's hooks (`edit_call`, `animate_calls`, ...).
 """
@@ -18,24 +19,29 @@ class EditSlots(SlotMixin):
     @Slot(str, "QVariant", result=bool)
     def setValue(self, param, value):
         """One inspector edit = one change (quick repeats of the same field merge: the core's nudge)."""
-        return self._guard(lambda: self._apply([self.edit_call(self._sel, param, value)],
-                                               edit_label(self.doc, self._sel, param, value)))
+        return self._guard(lambda: self._apply([self.edit_call(i, param, value) for i in self._selection],
+                                               self._many(edit_label(self.doc, self._sel, param, value))))
 
     @Slot(str)
     def toggleAnimate(self, param):
-        """The key mark's toggle on a row: the app's animate_calls, as one change."""
-        self._guard(lambda: self._apply(*self.animate_calls(self._sel, param)))
+        """The key mark's toggle on a row: the app's animate_calls, as one change. Several items: start animating
+        the ones that aren't yet; when all are, stop them all."""
+        def go():
+            states = {i: self.anim_state(self.doc.item(i), param) for i in self._selection}
+            todo = [i for i, s in states.items() if s == "still"] or list(self._selection)
+            self._apply_each(lambda i: self.animate_calls(i, param), todo)
+        self._guard(go)
 
     @Slot(str)
     def clearExpression(self, param):
         """The clear button on a row driven by an expression: the app's clear_expr_calls, as one change."""
-        self._guard(lambda: self._apply(*self.clear_expr_calls(self._sel, param)))
+        self._guard(lambda: self._apply_each(lambda i: self.clear_expr_calls(i, param), self._selection))
 
     @Slot(str)
     def beginScrub(self, param):
         self.endScrub()
         def go():
-            self._scrub = Scrub(self.doc, self.who, self._sel, param, self.edit_call)
+            self._scrub = Scrub(self.doc, self.who, list(self._selection), param, self.edit_call)
         self._guard(go)
 
     @Slot(str, "QVariant")
@@ -90,6 +96,15 @@ class EditSlots(SlotMixin):
 
     def _apply(self, calls, label):
         self._done(self.doc.apply(calls, self.who, label=label), "")
+
+    def _apply_each(self, calls_of, ids):
+        """`calls_of(id) -> (calls, label)` for each item, applied as one change."""
+        made = [calls_of(i) for i in ids]
+        self._apply([c for calls, _ in made for c in calls], self._many(made[0][1]) if len(made) > 1 else made[0][1])
+
+    def _many(self, label):
+        n = len(self._selection)
+        return f"{label} on {n} items" if n > 1 else label
 
     def _close_scrub(self, cancel):
         s, self._scrub = self._scrub, None

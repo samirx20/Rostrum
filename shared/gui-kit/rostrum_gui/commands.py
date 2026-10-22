@@ -28,7 +28,8 @@ def op_words(op) -> str:
     return f"{op.label} {op.name} {op.summary}"
 
 
-def build(doc, selection: list[str], name_of) -> list[dict]:
+def build(doc, selection: list[str], name_of, kind_of=None) -> list[dict]:
+    """`kind_of(item)`: an item's kind in words (default: its type, capitalised)."""
     reg = doc.kind.registry
     ops = reg.available(doc, selection)
     out: list[dict] = []
@@ -50,7 +51,7 @@ def build(doc, selection: list[str], name_of) -> list[dict]:
                     for o in p.options]
     for it in doc.items():
         if it["id"] != doc.data["id"] and it["id"] not in selection:
-            out.append({"key": "select:" + it["id"], "label": "Select " + name_of(it), "hint": it["type"].capitalize(),
+            out.append({"key": "select:" + it["id"], "label": "Select " + name_of(it), "hint": kind_of(it) if kind_of else it["type"].capitalize(),
                         "select": it["id"], "words": it["type"], "weight": len(IMPORTANCE)})
     return out
 

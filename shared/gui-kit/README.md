@@ -22,8 +22,14 @@ qml/RostrumKit/         the QML module (import RostrumKit; add shared/gui-kit/qm
   Panel / ItemList / Inspector / InspectorRow / CommandBar / TopBar / AppShell
 rostrum_gui/            the Python side (uv pip install -e shared/gui-kit)
   rows.py               the inspector's rows from a field operation: order, groups, More, validity (no Qt)
+  sections.py           opt-in rows by importance (`sections = True` on a bridge): essentials, every other group
+                        folded to its name, the "Find a setting" search; bridge_sections.py: toggleGroup / setSearch /
+                        revealField (open its group, scroll to it, focus it) and the `search` property
+  many.py               several items selected (`selectMany`): the settings they share, "Mixed" values; an edit is
+                        one change on all of them
   edits.py              screen edit -> operation call, its history label, the scrub gesture (no Qt)
-  commands.py           the command bar's list from the registry, and search (no Qt)
+  commands.py           the command bar's list from the registry, and the one search (word starts, label first, then
+                        each command's `words`; most used first) (no Qt)
   model.py              list model for QML; values change in place so rows animate
   bridge.py             DocBridge: selection, rows, edits, scrubs, undo / redo, commands, status
   parts.py              slots and handlers from outside the bridge class (see below)

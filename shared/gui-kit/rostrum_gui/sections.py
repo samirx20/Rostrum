@@ -2,9 +2,9 @@
 and `group` only, never per kind:
 - **Essentials**: the `primary` params in data order, no headings; a small gap (label "") where the group changes.
 - **Every other group folded to its name**: one fold row per group with a non-primary param, then its `secondary`
-  and `deep` params (rank, then data order), shown only while the group is open. A group whose first such param
-  has the group's own name ("Outline" › Outline) has no separate fold row: that param's row carries the fold
-  (chevron + its own widget), so no heading is said twice.
+  and `deep` params (rank, then data order), shown only while the group is open. A fold row always says its
+  group's name (the S26 "the first row already names it" rule is for headings only), and every non-primary param
+  sits inside its group's fold.
 - **Search**: a separate layout, every param under its group's heading (`rows.layout`'s heading rules, deep params
   included); `rows.evaluate(query=...)` keeps only valid params that `rows.matches` the search.
 Param rows carry `in`: "" (shown when valid) or the fold's group (shown when valid and that group is open).
@@ -33,13 +33,8 @@ def layout(op, kind: str = "") -> list[dict]:
         rows.append({"row": "group", "id": "gap:folds", "label": "", "members": [p.name for p in rest], "by": "holds"})
     for g in dict.fromkeys(p.group for p in rest):
         members = sorted((p for p in rest if p.group == g), key=lambda p: RANK[p.importance])    # stable
-        head = members[0] if members[0].label.lower() == g.lower() else None
-        inside = members[1:] if head else members
-        if head:
-            rows.append({**_param_row(head), "in": "", "fold": g, "members": [p.name for p in inside]})
-        else:
-            rows.append({"row": "fold", "id": "fold:" + g, "label": g, "fold": g, "members": [p.name for p in inside]})
-        rows += [{**_param_row(p), "in": g} for p in inside]
+        rows.append({"row": "fold", "id": "fold:" + g, "label": g, "fold": g, "members": [p.name for p in members]})
+        rows += [{**_param_row(p), "in": g} for p in members]
     return rows
 
 

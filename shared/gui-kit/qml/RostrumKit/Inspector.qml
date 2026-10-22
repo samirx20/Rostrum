@@ -16,7 +16,7 @@ Panel {
     Text { id: name; text: panel.bridge.selectedItem.label; color: Theme.fg; font.family: uiFont
            font.pixelSize: Theme.heading; font.weight: Font.DemiBold
            anchors.left: parent.left; anchors.right: parent.right; elide: Text.ElideRight }
-    Text { id: kind; text: Theme.sentence(panel.bridge.selectedItem.kind); color: Theme.fg3; font.family: uiFont
+    Text { id: kind; text: panel.bridge.selectedItem.kindLabel || Theme.sentence(panel.bridge.selectedItem.kind); color: Theme.fg3; font.family: uiFont
            font.pixelSize: Theme.body
            anchors.top: name.bottom; anchors.topMargin: 2 }
     FieldFrame {
