@@ -127,8 +127,14 @@ class RigView(QObject):
         self.changed.emit()
 
     @Slot(str)
-    def pickBone(self, bone):
-        """A click on a bone: it is picked (its settings show; the overlay stays, the rig is still in hand)."""
+    @Slot(str, bool)
+    def pickBone(self, bone, add=False):
+        """A click on a bone: it is picked (its settings show; the overlay stays, the rig is still in hand). Ctrl+click
+        (`add`): it joins the parts selected, in place of any other bone (a part + a bone: Attach to bone, rig_attach.py)."""
         self._picked = bone
-        self.b.select(bone)
+        if add:
+            doc = self.b.doc
+            self.b.selectMany([i for i in self.b._kit.selection if doc.has(i) and doc.item(i)["type"] != "bone"] + [bone])
+        else:
+            self.b.select(bone)
         self.changed.emit()

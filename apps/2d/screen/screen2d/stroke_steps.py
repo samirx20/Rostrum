@@ -9,10 +9,12 @@ through the calls the pointer and keys make.
     strokescopy | strokespaste | strokesclear (Esc)
     clickarea canvas|timeline|settings    a real click in that part of the window (the focused area follows it)
     key <combo>                    a real key press (B, V, Escape, Ctrl+C) | keydown Alt | keyup Alt (held across steps)
+    cmove <x> <y>                  move the real pointer there (a hover)
     cclick <x> <y> | cpath [ctrl] <x,y> <x,y> …    a real mouse click / press-drag-release at composition px (the canvas's
                                    own mapping to the window); ctrl holds Ctrl for the drag
     reston <text>                   rest the pointer on the visible item with that text (hover help shows after 0.9 s)
     clickbtn <label>               a real click on the context-bar button with that label
+    clickstarts <text>             the same for an item whose text starts with that (a name that changes)
     clicktext <text>               a real click on the visible item whose text or label is that (menus, buttons)
     shot <png>                     wait for the newest frame, then save a picture of the window (a walk takes one per step)
     windowsize <W>x<H>             resize the window now (a picture of an open menu needs the final size before it opens)
@@ -26,7 +28,7 @@ from PySide6.QtGui import QKeySequence
 from PySide6.QtTest import QTest
 
 WORDS = ("altpick", "altoff", "lasso", "selectstrokes", "strokesmove", "strokesturn", "strokesdelete", "strokescopy",
-         "strokespaste", "strokesclear", "clickarea", "clickat", "barbutton", "windowsize", "key", "keydown", "keyup", "cclick", "cpath", "clickbtn", "clicktext", "reston", "shot")
+         "strokespaste", "strokesclear", "clickarea", "clickat", "barbutton", "windowsize", "key", "keydown", "keyup", "cclick", "cpath", "clickbtn", "clicktext", "clickstarts", "reston", "shot", "cmove")
 
 # where an empty spot of each area is, as fractions of the window (width, height)
 AREAS = {"canvas": (0.45, 0.30), "timeline": (0.60, 0.93), "settings": (0.93, 0.55)}
@@ -48,15 +50,31 @@ def _scene_of(win, x, y):
     return QPoint(int(c.x()), int(c.y()))
 
 
-def _find(win, text):
-    """The visible item showing `text` (its text or its label), topmost first."""
+def _plain(v):
+    """A text with its runs of spaces made one (a label may keep two for looks)."""
+    return " ".join(v.split()) if isinstance(v, str) else v
+
+
+def _in_tip(o):
+    """Inside a hover tip (the kit's HoverTip popup): it only names what the pointer rests on, never a click target."""
+    while o is not None:
+        owner = o.parent()
+        if owner is not None and owner.metaObject().className().startswith("HoverTip"):
+            return True
+        o = o.parentItem()
+    return False
+
+
+def _find(win, text, prefix=False):
+    """The visible item showing `text` (its text or its label), topmost first; hover tips left out."""
     todo, hits = [i for i in (win.contentItem(), win.property("overlay")) if i is not None], []     # the overlay holds open menus
     while todo:
         o = todo.pop()
         if o.isVisible() and o.width() > 0:
             m = o.property("modelData")
             m = m.toVariant() if hasattr(m, "toVariant") else m
-            if text in (o.property("text"), o.property("label")) or (isinstance(m, dict) and text in (m.get("label"), m.get("text"))):
+            names = [_plain(v) for v in (o.property("text"), o.property("label"), *((m.get("label"), m.get("text")) if isinstance(m, dict) else ()))]
+            if (text in names or (prefix and any(isinstance(n, str) and n.startswith(text) for n in names))) and not _in_tip(o):
                 hits.append(o)
         todo.extend(o.childItems())
     return hits
@@ -75,6 +93,7 @@ def _texts(win, word):
 
 
 def _click_item(win, o):
+    QTest.qWait(120)        # let a bar or menu rebuilt by the last step be laid out first: read its place after, as a person sees it
     c = o.mapToScene(QPointF(o.width() / 2, o.height() / 2))
     QTest.mouseMove(win, QPoint(int(c.x()), int(c.y())))
     QTest.qWait(80)
@@ -106,6 +125,9 @@ def do_stroke_step(bridge, win, word, rest, step):
         held = {"Ctrl": Qt.Key.Key_Control, "Shift": Qt.Key.Key_Shift, "Alt": Qt.Key.Key_Alt}.get(rest[0]) or Qt.Key(QKeySequence(rest[0])[0].key())
         (QTest.keyPress if word == "keydown" else QTest.keyRelease)(win, held)
         QTest.qWait(100)
+    elif word == "cmove":
+        QTest.mouseMove(win, _scene_of(win, float(rest[0]), float(rest[1])))
+        QTest.qWait(250)
     elif word == "cclick":
         p = _scene_of(win, float(rest[0]), float(rest[1]))
         QTest.mouseMove(win, p)
@@ -133,8 +155,8 @@ def do_stroke_step(bridge, win, word, rest, step):
         QTest.mouseMove(win, QPoint(int(c.x()) - 6, int(c.y())))
         QTest.mouseMove(win, QPoint(int(c.x()), int(c.y())))
         QTest.qWait(900)
-    elif word in ("clickbtn", "clicktext"):
-        hits = _find(win, " ".join(rest))
+    elif word in ("clickbtn", "clicktext", "clickstarts"):
+        hits = _find(win, " ".join(rest), prefix=word == "clickstarts")
         if not hits:
             raise RuntimeError(f"step {step!r}: nothing visible is called {' '.join(rest)!r}; near it: {_texts(win, rest[0])}")
         _click_item(win, hits[0])

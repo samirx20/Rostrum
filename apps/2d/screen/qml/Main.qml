@@ -39,8 +39,9 @@ AppShell {
     Shortcut { sequence: "R"; enabled: !shell.typing; onActivated: backend.setTool("rect") }       // creation tools (create.py)
     Shortcut { sequence: "O"; enabled: !shell.typing; onActivated: backend.setTool("ellipse") }
     Shortcut { sequence: "T"; enabled: !shell.typing; onActivated: backend.setTool("text") }
+    Shortcut { sequence: "C"; enabled: !shell.typing; onActivated: backend.setTool("camera") }     // only with a camera (camera_tool.py)
     Shortcut { sequence: "A"; enabled: !shell.typing; onActivated: backend.showAnimated() }    // only the animated settings of the selection; again folds them
-    Shortcut { sequence: "Escape"; enabled: backend.tool === "draw" || backend.tool === "rect" || backend.tool === "ellipse"
+    Shortcut { sequence: "Escape"; enabled: backend.tool === "draw" || backend.tool === "rect" || backend.tool === "ellipse" || backend.tool === "camera"
                                             || (backend.tool === "text" && !backend.create.typing)
                onActivated: { if (backend.strokeSelect.count > 0 || backend.strokeSelect.armed) backend.strokeSelect.clear()   // picked strokes first
                               else backend.setTool("move") } }

@@ -10,6 +10,8 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 from rostrum_core.mcp.files import render_path
 
+from rostrum2d import project_sound
+
 from . import exporting, render
 from .geometry import comp_size
 from .pick import ITEM_COMP, doc_and_comp
@@ -32,6 +34,7 @@ def manifest(item: str, doc, comp: dict, partial: Path, info: dict, start: float
 @tools.tool("render_video", {"properties": {**ITEM_COMP, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
                                             "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition."},
                                             **exporting.QUALITY_ARGS,
+                                            "sound": {"type": "boolean", "description": "Put the project's sound under the picture, as render_export's mp4 does (the scene's soundtrack, else the project's main mix). Default: on when the project has sound. If the mix fails, the render fails; never a silent file."},
                                             "path": {"type": "string", "description": "Also copy the .mp4 here (absolute, or relative to the project folder), with the project saved beside it as <name>.project/ so other apps can open the film. Default: only the project's renders folder."}}})
 def render_video(ctx, args):
     """Export an mp4 (H.264, bt709) of a composition through the same engine as look_frame. Always a job: it returns a job id at once;
@@ -40,7 +43,8 @@ def render_video(ctx, args):
     vNNN.partial/ and is never listed. Without a project folder it goes to the person's Videos folder."""
     doc, comp = doc_and_comp(ctx, args)
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)
-    s = exporting.settings(ctx.tool, "mp4", duration, start=args.get("start"), end=args.get("end"), quality=args.get("quality"), bitrate=args.get("bitrate"))
+    s = exporting.settings(ctx.tool, "mp4", duration, start=args.get("start"), end=args.get("end"), quality=args.get("quality"), bitrate=args.get("bitrate"),
+                           sound=project_sound.for_export(doc.folder, comp.get("soundtrack", ""), "mp4", args.get("sound")))
     start, end = s["start"], s["end"]
     folder, item = ctx.app.folder, doc.item_id
     out = render_path(f'{item or "doc"}_{comp["id"]}')
@@ -61,6 +65,7 @@ def render_video(ctx, args):
         partial = project.begin_render(folder, item) if folder and item else None
         target = partial / f'{item}_{comp["id"]}.mp4' if partial else out
         info = render.video(ctx.tool, scene, target, start, end, job.progress, s["quality"], s["bitrate"])
+        exporting.with_sound(ctx.tool, info, target, s, folder or doc.folder)      # before it is finished or copied
         files = [target]
         if partial:
             if info["frames"] != round((end - start) * info["fps"]):      # fail loudly: the .partial stays, nothing is finished
@@ -74,7 +79,7 @@ def render_video(ctx, args):
                 beside = project.save_beside(folder, item, files[0].parent, copy_to.with_name(copy_to.stem + ".project"))
         said = f" The project is saved beside the copy: {beside}." if partial and copy_to else ""
         return Reply(f'Rendered {comp["id"]}: {info["frames"]} frames at {info["fps"]} fps, {start:g}–{end:g} s.{said}',
-                     {"frames": info["frames"], "fps": info["fps"], "start": start, "end": end,
+                     {"frames": info["frames"], "fps": info["fps"], "start": start, "end": end, "sound": info.get("sound"),
                       "project_copy": str(beside) if said else None}, files, warnings=scene.get("warnings", []))
 
-    return ctx.job(f'render_video {comp["id"]} {start:g}-{end:g}s', job_fn, key=f"video|{doc.item_id}|{comp['id']}|{start}|{end}|{s['quality']}|{s['bitrate']}|{doc.seq}|{out}")
+    return ctx.job(f'render_video {comp["id"]} {start:g}-{end:g}s', job_fn, key=f"video|{doc.item_id}|{comp['id']}|{start}|{end}|{s['quality']}|{s['bitrate']}|{s['sound']}|{doc.seq}|{out}")

@@ -1,7 +1,8 @@
 """The one export path for every format (mp4, prores4444, webm, gif, png and exr sequences, lottie, motion): the `render_export`
 tool and the screen's Export button both take `snapshot()` and run `run()`. The formats and what each takes come from
-`io/formats.py` (FORMATS) plus the two data formats here (Lottie; motion: the samples RostrumSound places sounds from,
-rostrum2d/motion_samples.py); nothing per format is written anywhere else. Nothing is reported as done unless the file read back right."""
+`io/formats.py` (FORMATS) plus the two data formats (Lottie; motion: the samples RostrumSound places sounds from,
+rostrum2d/motion_samples.py), and the settings rule, in export_settings.py; nothing per format is written anywhere else.
+Nothing is reported as done unless the file read back right."""
 from __future__ import annotations
 
 import json
@@ -12,28 +13,11 @@ from pathlib import Path
 from rostrum_core import project
 from rostrum_core.errors import RostrumError, codes
 
-from rostrum2d import settings
+from rostrum2d import settings as app_settings
 from rostrum2d.io import formats as table
 
+from .export_settings import DATA, LABELS, QUALITY_ARGS, formats, info, see_through, settings  # noqa: F401  (callers read them here)
 from .render import _fail
-
-LABELS = {"mp4": "MP4 (H.264)", "prores4444": "ProRes 4444", "webm": "WebM (VP9)", "gif": "GIF", "png": "PNG sequence", "exr": "EXR sequence (for the Editor)", "lottie": "Lottie (JSON)",
-          "motion": "Motion samples (for RostrumSound)"}
-DATA = ("lottie", "motion")
-# The MP4 quality arguments, as render_export and render_video both take them.
-QUALITY_ARGS = {
-    "quality": {"type": "string", "enum": list(table.QUALITY), "description": f"mp4 only: how much detail the file keeps (default {table.DEFAULT_QUALITY}; at 1080p 25 fps standard ≈ 12, high ≈ 25, best ≈ 50 Mbit/s; scales with size and fps)."},
-    "bitrate": {"type": "number", "exclusiveMinimum": 0, "maximum": table.MAX_MBIT, "description": "mp4 only: an exact bitrate in Mbit/s, instead of quality."}}                # not pictures: no engine, never a versioned picture render
-
-
-def formats() -> list[dict]:
-    """Every format and what it takes: alpha (can carry it), depths (bits; first = default), range (start / end apply),
-    sequence (one file per frame, written into a folder), qualities (the quality choices it takes; quality = the default)."""
-    rows = [{"name": n, "label": LABELS.get(n, n), "ext": f.ext, "alpha": f.alpha, "depths": list(f.depths), "range": True,
-             "sequence": not f.video, "qualities": list(f.qualities), "quality": table.DEFAULT_QUALITY if f.qualities else None}
-            for n, f in table.FORMATS.items()]
-    return rows + [{"name": n, "label": LABELS[n], "ext": ".json", "alpha": False, "depths": [], "range": False, "sequence": False,
-                    "qualities": [], "quality": None} for n in DATA]
 
 
 def snapshot(doc, comp_id: str, fmt: str, layers: list[str] | None = None) -> dict:
@@ -51,48 +35,6 @@ def snapshot(doc, comp_id: str, fmt: str, layers: list[str] | None = None) -> di
     timed = copy.deepcopy(retime.timed(comp, markers.times(doc.folder) if doc.folder else None, comp.get("fps", 30)))
     data = motion_samples.sample(timed, only=layers, where="export motion")
     return {"comp": {"id": comp_id, "props": {"fps": comp.get("fps", 30), "duration": comp.get("duration", 5.0)}}, "samples": data}
-
-
-def info(where: str, fmt: str) -> dict:
-    row = next((r for r in formats() if r["name"] == fmt), None)
-    if row is None:
-        raise RostrumError(codes.BAD_ARGUMENT, where, f'format "{fmt}"', "is not an export format", [r["name"] for r in formats()])
-    return row
-
-
-def see_through(background) -> bool:
-    """Is the composition's background transparent ("transparent" / "none" / empty, or a colour with zero alpha)?"""
-    b = str(background or "").strip().lower()
-    return b in ("", "none", "transparent") or (b.startswith("#") and len(b) == 9 and b.endswith("00"))
-
-
-def settings(where: str, fmt: str, duration: float, alpha=None, depth=None, start=None, end=None, quality=None, bitrate=None,
-             background="#000000", sound=None) -> dict:
-    """The settings that apply to `fmt`, defaults filled; one that doesn't apply (alpha on mp4, depth on gif, quality on png, any on
-    Lottie) is refused. `bitrate` (Mbit/s, exact) replaces `quality`. Transparency defaults on only where the format can carry
-    it and the composition's `background` is transparent (a solid background has nothing to keep). `sound`: the Sound item
-    whose mix goes under the picture (project_sound.song; MP4 only, io/export_sound.py), None for a silent file."""
-    row = info(where, fmt)
-    bad = lambda what, why: RostrumError(codes.BAD_ARGUMENT, where, what, why)
-    if alpha and not row["alpha"]:
-        raise bad("transparency", f"{fmt} cannot carry transparency; use one of " + ", ".join(r["name"] for r in formats() if r["alpha"]))
-    if depth is not None and depth not in row["depths"]:
-        raise bad(f"depth {depth}", f"{fmt} takes " + (" or ".join(map(str, row["depths"])) + " bits per channel" if row["depths"] else "no bit depth"))
-    start, end = 0.0 if start is None else start, duration if end is None else end
-    if not row["range"] and (start, end) != (0.0, duration):
-        raise bad(f"range for {fmt}", f"{fmt} always holds the whole composition")
-    if not 0 <= start < end <= duration + 1e-9:
-        raise bad(f"range {start}–{end} s", f"must satisfy 0 <= start < end <= {duration} (the composition's length)")
-    if (quality is not None or bitrate is not None) and not row["qualities"]:
-        raise bad("quality / bitrate", f"{fmt} takes no quality or bitrate; only " + ", ".join(r["name"] for r in formats() if r["qualities"]))
-    if quality is not None and quality not in row["qualities"]:
-        raise RostrumError(codes.BAD_ARGUMENT, where, f'quality "{quality}"', "is not a quality choice", row["qualities"])
-    if bitrate is not None and not 0 < bitrate <= table.MAX_MBIT:
-        raise bad(f"bitrate {bitrate:g} Mbit/s", f"must be above 0 and at most {table.MAX_MBIT}")
-    if sound and fmt != "mp4":
-        raise bad("sound", f"{fmt} carries no sound; only mp4 does")
-    return {"sound": sound or None, "alpha": row["alpha"] and see_through(background) if alpha is None else bool(alpha), "depth": depth or (row["depths"][0] if row["depths"] else None),
-            "start": start, "end": end, "quality": quality or row["quality"], "bitrate": bitrate}
 
 
 def _to_file(where: str, scene: dict, fmt: str, s: dict, target: Path, progress, engine_factory, folder=None) -> dict:
@@ -125,7 +67,13 @@ def _to_file(where: str, scene: dict, fmt: str, s: dict, target: Path, progress,
             facts = export(eng, fmt, target, s["alpha"], s["depth"], s["start"], s["end"], progress, s.get("quality"), s.get("bitrate"))
     except Exception as e:  # noqa: BLE001  the engine, the encoder, or the read-back: one loud failure naming what was drawn
         raise _fail(where, f"the {fmt} export {target.name}", e) from e
-    if s.get("sound"):                               # sound asked: the mix goes under the picture, or the export fails
+    return with_sound(where, facts, target, s, folder)
+
+
+def with_sound(where: str, facts: dict, target: Path, s: dict, folder) -> dict:
+    """Settings with a `sound`: the project's mix goes under the picture in `target` (facts["sound"]), or the export
+    fails, never a silent file passed off as done. render_video takes this step too."""
+    if s.get("sound"):
         from rostrum2d.io.export_sound import attach
         try:
             facts["sound"] = attach(target, folder, s["sound"], s["start"], s["end"])
@@ -182,7 +130,7 @@ def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_
         facts["files"] = [str(done / n) for n in names]
         facts["file"] = str(done / (Path(seq_name(stem)).name if png else name))
         return facts
-    final = Path(out) if out else settings.videos_dir() / f"{stem}_{time.strftime('%Y%m%d_%H%M%S')}{'' if png else row['ext']}"
+    final = Path(out) if out else app_settings.videos_dir() / f"{stem}_{time.strftime('%Y%m%d_%H%M%S')}{'' if png else row['ext']}"
     if not png and final.suffix.lower() != row["ext"]:
         raise RostrumError(codes.BAD_ARGUMENT, where, f'path "{final}"', f"must end in {row['ext']} for {fmt}")
     if png and final.exists():

@@ -2,10 +2,11 @@
 
 Layers top of the stack first (as they look: the last drawn is on top). Each layer row carries its bar (`start`, `end`
 in composition seconds, clamped to the composition; `startMarker` / `endMarker`: the shared marker an end is tied to,
-or ""), all its keys as one summary line (its effects' and masks' too) and, for a drawing, its frames (`frames`: where
-each starts and how long it is held). An open layer shows one row per animated field, then its effects and masks
-(their keys), then its own layers, indented. One fold state: a layer with layers inside (a group) is open unless
-folded; any other layer is closed unless opened (`flipped`: the ids whose default was turned round).
+or ""), all its keys as one summary line (its effects', masks' and a rig's bones' too) and, for a drawing, its frames
+(`frames`: where each starts and how long it is held). An open layer shows one row per animated field, then its
+effects and masks (their keys) and a rig's keyed bones and IK chains, then its own layers, indented. One fold state:
+a layer with layers inside (a group) is open unless folded; any other layer is closed unless opened (`flipped`: the
+ids whose default was turned round).
 """
 from __future__ import annotations
 
@@ -29,7 +30,9 @@ def label_of(item: dict, owner: dict | None = None) -> str:
 
 
 def _owned(layer: dict) -> list[dict]:
-    return [*layer.get("effects", []), *layer.get("masks", [])]
+    """What a layer holds that can carry keys of its own: effects, masks and, on a rig, its bones and IK chains (a
+    pose keys the bones, so the rig's bar shows them like any of its keys)."""
+    return [*layer.get("effects", []), *layer.get("masks", []), *layer.get("bones", []), *layer.get("iks", [])]
 
 
 def _fields(layer: dict) -> list[tuple[dict, str]]:
@@ -96,7 +99,7 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset()) -> li
                        for o, p in fields if o is lay)
             for o in _owned(lay):
                 keys = sorted((k for p in animated(o) for k in _keys(o, p)), key=lambda k: k["t"])
-                if keys or not only:
+                if keys or not (only or o["type"] in ("bone", "ik")):   # unkeyed bones would only crowd the list
                     out.append(_row("owned", o, depth + 1, label_of(o), keys))
             if not only:
                 walk(lay.get("layers", []), depth + 1)

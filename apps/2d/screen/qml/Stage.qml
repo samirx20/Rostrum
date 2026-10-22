@@ -152,7 +152,7 @@ Panel {
         MouseArea {
             id: canvas
             anchors.fill: parent
-            enabled: !well.drawing
+            enabled: !well.drawing && backend.tool !== "camera"
             preventStealing: true
             property bool moving: false
             property bool band: false
@@ -192,9 +192,10 @@ Panel {
         }
         PenOverlay {  // the pen tool and the selected path's points (not while playing: they'd lag)
             anchors.fill: parent
-            visible: !backend.playing && !well.drawing && ["rect", "ellipse", "text"].indexOf(backend.tool) < 0   // one input layer per tool
+            visible: !backend.playing && !well.drawing && ["rect", "ellipse", "text", "camera"].indexOf(backend.tool) < 0   // one input layer per tool
             fit: view.zoom; ox: view.ox; oy: view.oy
         }
+        CameraOverlay { anchors.fill: parent; stage: panel }   // C: drag pans the camera, Alt+drag pushes in
         CreateOverlay { anchors.fill: parent; stage: panel }   // R / O / T: drag a shape, click or drag and type
         Item {  // outlines of the selected layers (turned with them) and the handles of a single one; over the pen's overlay
             id: marks

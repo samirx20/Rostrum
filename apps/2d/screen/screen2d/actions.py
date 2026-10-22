@@ -7,12 +7,14 @@ PLAIN DATA, read into the kit's one action list (rostrum_gui/actions.py, ACTIONS
 its key comes from the key map, shared or keys2d.py), importance ("primary" = on the context bar, "secondary" = under ⋯
 and in menus), rank (lower first), group (menu divider), bar (the button or side menu it sits under: Combine, Mask,
 Align, Make, Match, Order), min_targets / max_targets / kinds, `when` (a condition on the selection's facts, in the
-one condition language: action_rules.Facts lists them), `calls` (an operation, a target rule and argument rules:
-action_rules.py) or `do` (not a document change: the clipboard, copy style, rename). A selection holding a locked
+one condition language: action_rules.Facts lists them), `promoted` (True, or a fact: while it holds the action comes
+first; a secondary one is then the context bar's first button, out of its `bar` menu: Make rig on parts named like a
+body), `calls` (an operation, a target rule and argument rules: action_rules.py) or `do` (not a document change: the clipboard, copy style, rename). A selection holding a locked
 layer is offered only what is marked `locked_ok` (Unlock, Paste).
 """
 from __future__ import annotations
 
+from rostrum2d import fields as F
 from rostrum_gui.actions import Action, ActionList
 
 from .action_rules import Facts, calls_of
@@ -45,6 +47,8 @@ _ORDER = {"front": "Bring to front", "forward": "Bring forward", "backward": "Se
 _DEPTHS = {"far": 3.0, "middle": 1.0, "near": 0.25}        # the camera depths background.add's defaults use (far → near)
 _MASK = lambda m: _op("mask.make", "stack_but_top", cutter="$top", mode=m, id="$new:group", at="$at")   # noqa: E731
 
+_EFFECT_WHEN = {"gradient": FACT("fills")}      # a gradient fills a shape or the letters of a text, not a picture
+
 DATA = [
     _a("group", "Group", rank=10, importance="primary", group="make", job="group", min_targets=2, when=FACT("groupable"),
        calls=_op("group.make", "stack", id="$new:group", **{"as": "group"})),
@@ -56,10 +60,13 @@ DATA = [
        calls=_op("group.make", "stack", id="$new:group", **{"as": "layout"})),
     _a("swap", "Make swap set", rank=60, group="make", bar="Make", min_targets=2, when=FACT("groupable"),
        calls=_op("group.make", "stack", id="$new:group", **{"as": "swap"})),
-    _a("rig", "Make rig", rank=60, group="make", bar="Make", when=FACT("groupable"), calls=_op("rig.make", "stack", id="$new:rig")),
+    _a("rig", "Make rig", rank=60, group="make", bar="Make", when=FACT("groupable"), promoted="body_parts",
+       calls=_op("rig.make", "stack", id="$new:rig")),
     # a character (UX_SPEC 3.23): a rig with no bones named like a body; a mouth or an eyes swap set
     _a("guess_bones", "Bones from part names", rank=8, importance="primary", group="make", max_targets=1,
        when=FACT("bones_guessable"), calls=_op("rig.guess_bones", "ids")),
+    _a("attach", "Attach to bone", rank=8, importance="primary", group="make", when=FACT("attachable"), calls={"rule": "attach"},
+       why="Select a part of a rig, then Ctrl+click the bone it should follow"),
     _a("lipsync", "Lip sync…", rank=8, importance="primary", group="make", max_targets=1, when=FACT("mouth_set"), do="lipsync"),
     _a("blinks", "Add blinks…", rank=8, importance="primary", group="make", max_targets=1, when=FACT("eyes_set"), do="blinks"),
     _a("mask", "Mask with top layer", rank=20, importance="primary", group="mask", bar="Mask", job="mask", min_targets=2,
@@ -79,6 +86,10 @@ DATA = [
          when={"all": [FACT("same_parent"), NOT("has_text"), NOT("has_camera")]},
          calls=_op("layer.match_size", "rest", to="$first", dims=d, at="$at"))
       for d, words in (("w", "Match width"), ("h", "Match height"), ("both", "Match size"))],
+    _a("fill_frame", "Fill the frame", rank=65, group="arrange", when={"all": [FACT("groupable"), NOT("has_text")]}, promoted="picture",
+       calls=_op("layer.fill_frame", "ids", mode="cover", at="$at")),
+    _a("fit_inside", "Fit inside the frame", rank=66, group="arrange", when={"all": [FACT("groupable"), NOT("has_text")]},
+       calls=_op("layer.fill_frame", "ids", mode="inside", at="$at")),
     *[_a(f"depth_{k}", f"{k.capitalize()} ({v:g})", rank=75, importance="primary", group="arrange", bar="Set depth",
          kinds=("drawing",), when=FACT("depth_ok"), calls={"rule": "depth", "value": v},
          why="Set depth needs a camera: + › Camera (drawings of the composition, not inside a group).")
@@ -89,6 +100,10 @@ DATA = [
     _a("key_here", "Key here", rank=45, group="animate", job="key_here", calls={"rule": "pose"}),
     *[_a(f"ease_{e['value']}", f"Ease: {e['label']}", rank=50, group="animate", bar="Ease", job=e["job"],
          when=FACT("keys_picked"), calls=_op("key.set", "keys", ease=e["value"])) for e in EASES if e["value"] != "custom"],
+    *[_a(f"effect_{e}", F.LABELS[e], rank=82 + n, importance="primary", group="look", bar="Effects", when=_EFFECT_WHEN.get(e, NOT("has_camera")),
+         calls=_op("effect.add", "ids", type=e)) for n, e in enumerate(F.EFFECTS)],
+    _a("effect_grain", "Grain (whole picture)", rank=90, importance="primary", group="look", bar="Effects",
+       calls=_op("grain.add", "comp")),
     _a("copy_style", "Copy style", rank=80, group="look", job="copy_style", max_targets=1, do="copy_style"),
     _a("paste_style", "Paste style", rank=80, group="look", job="paste_style", when=FACT("style_copied"),
        calls=_op("style.apply", "not_copied", **{"from": "$copied"})),
@@ -118,8 +133,23 @@ def _action(d: dict) -> Action:
     return Action(f"layer:{d['id']}", d["label"], when=when, kinds=d["kinds"], min_targets=d["min_targets"],
                   max_targets=d["max_targets"], importance=d["importance"], rank=d["rank"], job=d["job"],
                   group=d["group"], bar=d["bar"], calls=calls, do=d["do"], why=d["why"],
-                  promoted=(lambda f: True) if d["promoted"] else None)
+                  promoted=_promoted(d["promoted"]))
+
+
+def _promoted(p):
+    if not p:
+        return None
+    return (lambda f: True) if p is True else (lambda f, name=p: bool(f.facts.get(name)))
+
+
+class _List(ActionList):
+    """The kit's list (promoted actions first), where a secondary action promoted now also joins the context bar as
+    its own button (not in its `bar` menu): the selection makes it the obvious next step. Primaries keep their bar."""
+
+    def available(self, facts) -> list[dict]:
+        now = {a.id for a in self.actions if a.promoted and a.importance != "primary" and a.promoted(facts)}
+        return [{**e, "importance": "primary", "bar": ""} if e["id"] in now else e for e in super().available(facts)]
 
 
 ACTIONS = [_action(d) for d in DATA]
-LIST = ActionList(ACTIONS, KEYS2D, noun="layer")
+LIST = _List(ACTIONS, KEYS2D, noun="layer")

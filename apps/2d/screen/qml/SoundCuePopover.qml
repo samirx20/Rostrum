@@ -20,8 +20,8 @@ QQC.Popup {
                font.pixelSize: Theme.body; font.weight: Font.DemiBold; elide: Text.ElideRight }
         TextField { width: parent.width; value: pop.cp.words; placeholder: "Search sounds (whoosh, click …)"
                     onEdited: (v) => pop.cp.search(v) }
-        Text { visible: pop.cp.sounds.length === 0; width: parent.width; wrapMode: Text.Wrap
-               text: "No sounds match. Try fewer words, or add a sound folder in RostrumSound."
+        Text { visible: pop.cp.sounds.length === 0 || pop.cp.searching; width: parent.width; wrapMode: Text.Wrap
+               text: pop.cp.searching ? "Searching…" : "No sounds match. Try fewer words, or add a sound folder in RostrumSound."
                color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label }
         ListView {
             id: list

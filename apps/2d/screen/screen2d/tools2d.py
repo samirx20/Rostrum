@@ -6,6 +6,7 @@ from PySide6.QtCore import Property, QObject, Slot
 from rostrum_gui.parts import SlotMixin
 
 from .adding import Adder
+from .camera_tool import CameraTool
 from .create import Create
 from .curves import Curves
 from .exporter import Exporter
@@ -42,6 +43,7 @@ class ToolSlots(SlotMixin):
         self._exporter, self._importer, self._adder = Exporter(self), Importer(self), Adder(self)
         self._problems = Problems(self)
         self._problems.failed.connect(self._fail)
+        self._camera = CameraTool(self)                     # the Camera tool (C): pan and push in (camera_tool.py): backend.cameraTool
         self._create = Create(self)                         # R / O / T and typing on the canvas (create.py): backend.create
         self._snap = Snapper(self)                          # canvas drags snap (snapper.py): backend.snap
         self._paint_layers = PaintLayers(self)              # Draw's "Paint on …" group (paint_layers.py): backend.paintLayers
@@ -56,6 +58,11 @@ class ToolSlots(SlotMixin):
     def pen(self):
         """The pen tool and path point editing (pen.py)."""
         return self._pen
+
+    @Property(QObject, constant=True)
+    def cameraTool(self):
+        """The Camera tool: drag pans the camera, Alt+drag pushes in (camera_tool.py)."""
+        return self._camera
 
     @Property(QObject, constant=True)
     def create(self):

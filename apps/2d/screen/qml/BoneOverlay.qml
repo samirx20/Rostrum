@@ -4,7 +4,8 @@ import RostrumKit
 
 // The rig in hand's bones over the canvas (UX_SPEC 3.23; backend.rig: screen2d/rig_view.py, rig_drag.py). Thin tapered
 // bones from joint to tip, a circle at each joint. Drag a bone: it turns about its joint, or, in an IK chain (an arm, a
-// leg), the chain bends to reach the pointer; a click picks the bone. Drag a circle: the joint moves (at rest).
+// leg), the chain bends to reach the pointer; a click picks the bone (Ctrl+click: with the part picked, for Attach to
+// bone). Drag a circle: the joint moves (at rest).
 // Right-click the end of a chain (a wrist, an ankle) › Pin / Unpin. Each drag is one undo step. Positions are
 // composition px; `fit` is canvas px per composition px; `space` is the item the pointer is read in (Stage's marks).
 Item {
@@ -49,7 +50,7 @@ Item {
                 onReleased: (m) => {
                     const still = Math.abs(m.x - p0.x) + Math.abs(m.y - p0.y) < 3
                     if (on) { if (still) ov.rig.drag.cancel(); else ov.rig.drag.end() }
-                    if (still) ov.rig.pickBone(bone.modelData.id)                 // a click picks the bone
+                    if (still) ov.rig.pickBone(bone.modelData.id, (m.modifiers & Qt.ControlModifier) !== 0)   // a click picks the bone; Ctrl+click adds it to the part picked
                     on = false
                 }
                 onCanceled: { if (on) ov.rig.drag.cancel(); on = false }

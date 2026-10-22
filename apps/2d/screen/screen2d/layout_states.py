@@ -55,7 +55,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
     busy = [*TWELVE, f"rename card {LONG_LAYER}", f"say {LONG_STATUS}"]
     return [
         ("workspace", ["--sample"], ["select title"]),
+        ("rig-make-first", with_character(), ["select max"]),                # H32: parts named like a body: Make rig first
         ("rig-bones", with_character(), RIGGED),                             # H32: the bone overlay, a rig in hand
+        ("rig-attach", with_character(), [*RIGGED, "selectmany hand_R bone_5"]),   # a part + a bone: Attach to bone
         ("rig-poses", with_character(), [*RIGGED, "posesave", "posesave", "inspectorscroll 900"]),   # the Poses list
         ("lipsync-sheet", with_character(), [*RIGGED, *MOUTHS, "run layer:lipsync"]),             # Lip sync…
         ("blinks-sheet", with_character(), [*RIGGED, "selectmany eyes_open eyes_closed", "run layer:swap", "run layer:blinks"]),
@@ -129,4 +131,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("paint-strokes-picked", ["--sample"], [*PAINTED, "lasso 500,200 1000,200 1000,400 500,400"]),
         ("paint-alt-pick", ["--sample"], [*PAINTED, "altpick 750 310"]),
         ("set-depth", ["--sample"], ["tool draw", "draw 300 300 500 320 700 300", "tool move", "add camera", "select drawing_1"]),
+        # H32: a named frame size on Scene settings; the Camera tool (only with a camera) over the canvas; the Effects menu
+        ("scene-size", ["--sample"], ["select screen_sample", "set size vertical"]),
+        ("camera-tool", ["--sample"], ["add camera", "tool camera"]),
+        ("effects-menu", ["--sample"], ["select card", "clickbtn Effects", "wait 300"]),
     ]

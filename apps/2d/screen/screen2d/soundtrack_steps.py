@@ -104,6 +104,8 @@ def do_sound_step(bridge, win, word, rest, step):
         cp.search(" ".join(rest[1:]))
         if not cp.start():
             raise RuntimeError(f"step {step!r}: Add a sound here needs one layer selected")
+        if not cp.wait(30):                         # the search runs off the screen's thread (sound_cue_pick.py)
+            raise RuntimeError(f"step {step!r}: the sound search took over 30 s")
         _pump(0.3)
         print("sounds:", len(cp.sounds))
     elif what == "menu":

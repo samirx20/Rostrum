@@ -132,4 +132,5 @@ from . import ops_background  # noqa: E402,F401  (background.add, background.fit
 from . import ops_group, ops_mask, ops_state, ops_align, ops_look  # noqa: E402,F401  (select first, then act)
 from . import ops_clip  # noqa: E402,F401  (layer.paste: copy / cut / paste of layers)
 from . import ops_paint, ops_fill  # noqa: E402,F401  (paint.stroke, paint.fill: paint and fill on any element or drawing)
+from . import ops_frame, ops_grain  # noqa: E402,F401  (comp.size, layer.fill_frame, grain.add)
 from . import ops_keytime, ops_stagger  # noqa: E402,F401  (key.scale, key.paste, layer.stagger: retiming)

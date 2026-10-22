@@ -292,11 +292,12 @@ def do_step(bridge, win, step):
         from PySide6.QtCore import QPoint, Qt
         from PySide6.QtTest import QTest
         x0, y0, x1, y1 = (int(v) for v in rest[:4])
-        QTest.mousePress(win, Qt.LeftButton, Qt.NoModifier, QPoint(x0, y0))
+        mod = Qt.AltModifier if "alt" in rest[4:] else Qt.NoModifier           # mousedrag … alt: pressed with Alt held (the Camera tool pushes in)
+        QTest.mousePress(win, Qt.LeftButton, mod, QPoint(x0, y0))
         for k in range(1, 9):
             QTest.mouseMove(win, QPoint(x0 + (x1 - x0) * k // 8, y0 + (y1 - y0) * k // 8))
             QCoreApplication.processEvents()
-        QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, QPoint(x1, y1))
+        QTest.mouseRelease(win, Qt.LeftButton, mod, QPoint(x1, y1))
     elif word == "layermenu":                    # layermenu <layer> [open|<command>]: the row's right-click menu
         QMetaObject.invokeMethod(win, "openLayerMenu", Q_ARG("QVariant", rest[0]))
         if rest[1:] and rest[1] != "open":
