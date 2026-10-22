@@ -3778,6 +3778,19 @@ Pictures and numbers: `C:\Users\Sam\.rostrum\waves\results\sound-redesign\p29\RE
 | 3.19 Export | The engine renders a range itself (`render {from, to}`: mastered and measured on the range, stems cut, a silent end trimmed); stems by group (`stems: "groups"`); "For the Editor" (§10 #10: WAV 48 kHz 32-bit float, before mastering, a stem per group, `markers.json`) | Nested groups make no stem of their own |
 | Engine | A track renders in blocks of 64k frames, every effect keeping its state (`fx/state.rs`, `Chain`); bit for bit the same output; big song export 1,419 → 945 MB | Still whole: each clip's render, each track's measures, the master stage (the 30-min copy peaks at 3.3 GB) |
 
+### After P30 (2026-10-22, Team Priyam): the last round before release
+
+Pictures and numbers: `C:\Users\Sam\.rostrum\waves\results\sound-redesign\p30\README.md`; what is left:
+`C:\Users\Sam\.rostrum\waves\results\sound-redesign\p30\p31-notes.md`.
+
+| § | Built in P30 | Still left |
+|---|---|---|
+| Engine | The master bus, the mastering stage (glue, loudness passes, true-peak limiter) and every measure (each track's, each pass's loudness, the file's figures and series) work block by block from disk; the mix lives on disk until it is written. Bit for bit the same output; the 30-min copy peaks at 1.1 GB (was 3.6), the 6-min song at 0.8 GB | Still whole: one clip's own render, a ducked track while ducked, a bus while mixed, time warps / a whole-take master insert |
+| 3.11 Voice | Per-word times from the speech model's alignment, stored once per take (`voice_words.py`, `render_voice_words`); 2D's words, lip sync and captions read them (`voice_words.read`, `VOICE.md`) | A word's end is approximate; 2D's side is Team Hem's |
+| 3.12 Markers / 3.21 Files | "Make this the main mix" (`run_set_main_mix`, the Song panel and Ctrl+K; absent when it already is) and the "Main mix" mark; the "Cues from 2D" track shows; a clip tied to a marker shows a diamond and the marker's name, and its settings title says "tied to marker" | Dropping a clip on a marker does not tie it |
+| 3.0 / 3.9 Keys, timeline | Hold H hears Before (the kit's held keys); the kit's time view, scrollbar, ruler and snap (6 px); the kit's name labels | M opens Sound's own marker rename; Marker / Section / Song bands are Sound's own |
+| 3.13 Sound for motion | Designed sounds in a layer group show their layer mates as a Layers group in the settings panel | — |
+
 ---
 
 ## 8. What the spec needs
