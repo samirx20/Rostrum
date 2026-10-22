@@ -18,6 +18,8 @@ def song(folder, item="song"):
 
 
 def start(tmp_path, monkeypatch, recent):
+    # A scripted run's Open recent lives in its scratch home (rostrum_core/userhome.py), never the person's: this test's is tmp_path.
+    monkeypatch.setenv("ROSTRUM_SCRIPTED_HOME", str(tmp_path))
     monkeypatch.setenv("ROSTRUM_SETTINGS_DIR", str(tmp_path / "settings"))
     (tmp_path / "engine.exe").write_bytes(b"")                      # the engine starts on first use; these tests never use it
     monkeypatch.setenv("ROSTRUM_SOUND_ENGINE", str(tmp_path / "engine.exe"))
