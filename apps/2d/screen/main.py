@@ -107,13 +107,14 @@ def main():
     a.add_argument("--comp")
     a.add_argument("--step", action="append", default=[])
     a.add_argument("--shot")
+    a.add_argument("--size", default="1600x960", help="the window's size in logical px, WxH (screenshots at a person's screen size)")
     args = a.parse_args()
     if args.shot:
         check_shot_path(args.shot)
 
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
-    session = Session((1600, 960))
+    session = Session(tuple(int(n) for n in args.size.lower().split("x")))
     session.show(load_doc(args), live=bool(args.doc), comp_id=args.comp)
     for line in REFUSED:
         session.fail(line)
