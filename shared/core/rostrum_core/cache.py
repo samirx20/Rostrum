@@ -9,6 +9,12 @@ the last 15 minutes is never removed.
     from rostrum_core.cache import CACHE, cache_key
     k = cache_key("ai.voice", "qwentts@1", [text], {"voice": "ryan"})
     folder = CACHE.get("voice", k) or CACHE.put("voice", k, lambda tmp: make_take(tmp / "take.wav"))
+
+A single cached file (an app's own capped folder: a mix, a sound track, a picture) is made with `put_file`, the same
+way: each writer writes its own uniquely named temporary file and moves it into place whole, so two runs of one
+project at once both succeed and a reader never sees half a file.
+
+    wav = put_file(folder / f"{key}.wav", lambda tmp: engine.request("render", out=str(tmp)), "soundtrack")
 """
 from __future__ import annotations
 
@@ -58,6 +64,36 @@ def default_root() -> Path:
 
 def _size(folder: Path) -> int:
     return sum(p.stat().st_size for p in folder.rglob("*") if p.is_file())
+
+
+WRITING = ".writing"          # the temporary files of `put_file`, kept apart so a trim's glob never sees them
+
+
+def put_file(out, make: Callable[[Path], object], where: str = "cache") -> Path:
+    """The cached file `out`, made by `make(tmp)` if missing. `tmp` is unique to this writer (same suffix as `out`)
+    in `<folder>/.writing/`; it moves into place only when written. Two writers of one key both succeed (the
+    first one stands); `make` raising, or writing nothing, is loud and leaves nothing behind. A hit renews the time."""
+    out = Path(out)
+    if out.is_file():
+        try:
+            os.utime(out)                       # the newest used stays when the folder is trimmed
+        except OSError:
+            pass                                # open in a player: still a hit
+        return out
+    tmp = out.parent / WRITING / f"{out.stem}-{os.getpid()}-{uuid.uuid4().hex[:8]}{out.suffix}"
+    tmp.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        make(tmp)
+        if not tmp.is_file() or tmp.stat().st_size == 0:
+            raise RostrumError(codes.RENDER_FAILED, where, out.name, f"the job answered but wrote no file at {tmp}")
+        try:
+            os.replace(tmp, out)
+        except OSError:
+            if not out.is_file():               # not "another writer won and a reader holds it open": a real failure
+                raise
+    finally:
+        tmp.unlink(missing_ok=True)
+    return out
 
 
 class Cache:
