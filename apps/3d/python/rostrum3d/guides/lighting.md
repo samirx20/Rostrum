@@ -21,7 +21,7 @@ Lights are items (`light.add`, `light.set`). This guide explains the kinds of li
 
 ## Aiming
 
-Give a light `aim` = `item` and `aimItem` = the object (or `item.aim` with `at`), and it keeps pointing at it as either moves. `aim` = `point` aims at a fixed spot. Then place the light with `x y z` only. Aim for the part of the object you want lit, not always its centre.
+Give a light `aim` = `item` and `aimItem` = the object (or `item.aim` with `at`), and it keeps pointing at it as either moves. `aim` = `point` aims at a fixed spot. Then place the light with `x y z` only. Aim for the part of the object you want lit, not always its centre. An aimed light lies level; `roll` turns it around the way it points (`light.aim(target, roll=90)` in a script): 90 stands a strip on end so its reflection runs up a side instead of across.
 
 ## The roles lights play
 

@@ -10,6 +10,10 @@ from rostrum_core.errors import RostrumError, codes, did_you_mean
 
 from . import fields as F
 
+_AIMED = "An aimed item's turn is worked out from its aim; roll turns it around the way it points (roll=90 stands a strip on end)."
+HINTS = {"rx": _AIMED, "ry": _AIMED, "rz": _AIMED,
+         "roll": "Roll turns an aimed item: in a script give it with the aim, item.aim(target, roll=90)."}
+
 
 def make(type_: str, id_: str, values: dict, where: str) -> dict:
     item = {"id": id_, "type": type_, "name": str(values.get("name") or id_), **F.defaults(type_)}
@@ -36,7 +40,7 @@ def fill(item: dict, values: dict, where: str) -> dict:
         p = F.param(type_, bad[0])
         from rostrum_core.conditions import describe
         raise RostrumError(codes.BAD_ARGUMENT, where, f'{item["id"]}.{bad[0]}',
-                           f"only applies when {describe(p.valid_when)}", hint=f"Set that too to use {bad[0]}.")
+                           f"only applies when {describe(p.valid_when)}", hint=HINTS.get(bad[0], f"Set that too to use {bad[0]}."))
     return item
 
 

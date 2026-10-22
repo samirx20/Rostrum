@@ -41,6 +41,10 @@ scene from the document each time you look. Imported USD files stay untouched; y
   in Rostrum2D. Only filled shapes count, and a shape drawn on top of another is merged with it, so make holes with
   path data (opposite winding, or fill-rule evenodd) rather than a white shape. Give the faces different materials with
   `frontMaterial`, `bevelMaterial`, `sideMaterial`, `backMaterial`. Check it with `look_frame` from the front and a turned view.
+  Which way it faces: as made, a word reads from +Z (the default camera's side) with its letters' tops along +Y. Laid flat on a
+  top face with `rx=-90`, it faces up and its tops point to −Z, so it reads from a camera on the +Z side looking down; `ry=180`
+  then turns it to read from −Z. Upside down = turned 180° (fix with `ry` when it lies flat); mirrored = seen from behind (it is
+  facing away: fix with `rx` / `ry` by 180°, never by a negative scale).
 - **Memory.** `look_frame` replies carry the video memory the render used; a 4 GB card holds a modest scene at 1080p. If a
   render fails with a memory message, lower `width` or the number of lights before anything else.
 
