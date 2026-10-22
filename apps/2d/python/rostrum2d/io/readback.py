@@ -1,4 +1,8 @@
-"""Reads an export back and fails loudly: frame count, size and alpha must be what was asked for."""
+"""Reads an export back and fails loudly: frame count, size and alpha must be what was asked for.
+
+Alpha is checked as the file's shape, not its pixels: "transparency kept" means the file carries an alpha channel
+(`alpha_channel`). Whether any pixel is see-through is the picture's business (a solid background is opaque
+everywhere, and that file is right). Asked without alpha, the file must hold no see-through pixel."""
 from __future__ import annotations
 
 import json
@@ -42,8 +46,10 @@ def _video_frame_alpha(path: Path, index: int, w: int, h: int) -> int:
     return int(np.frombuffer(raw, np.uint8)[3::4].min())
 
 
-def _png_bits(path: Path) -> int:
-    return path.read_bytes()[24]               # IHDR bit depth
+def _png_header(path: Path) -> tuple[int, bool]:
+    """(bit depth, has an alpha channel) from the IHDR: colour type 4 is grey + alpha, 6 is RGBA."""
+    head = path.read_bytes()[:26]
+    return head[24], head[25] in (4, 6)
 
 
 def _picks(n: int) -> list[int]:
@@ -57,17 +63,19 @@ def _gif_facts(path: Path) -> dict:
         for i in _picks(n):
             im.seek(i)
             low = min(low, int(np.asarray(im.convert("RGBA"))[..., 3].min()))
-    return {"frames": n, "size": size, "min_alpha": low}
+    # A GIF's transparency is one palette slot, written when a pixel is see-through; an opaque picture needs none.
+    return {"frames": n, "size": size, "min_alpha": low, "alpha_channel": True}
 
 
 def _png_facts(out: Path) -> dict:
     rx = re.compile(re.escape(out.name).replace(re.escape("{frame}"), r"\d+") + "$")
     files = sorted(p for p in out.parent.iterdir() if rx.match(p.name))
-    facts = {"frames": len(files), "size": None, "min_alpha": 255, "bits": None}
+    facts = {"frames": len(files), "size": None, "min_alpha": 255, "bits": None, "alpha_channel": True}
     for p in (files[0], files[-1]) if files else ():
         with Image.open(p) as im:
             facts["size"] = im.size
-            facts["bits"] = _png_bits(p)
+            facts["bits"], has = _png_header(p)
+            facts["alpha_channel"] = facts["alpha_channel"] and has
             facts["min_alpha"] = min(facts["min_alpha"], int(np.asarray(im.convert("RGBA"))[..., 3].min()))
     return facts
 
@@ -79,7 +87,7 @@ def _exr_facts(out: Path) -> dict:
     hits = sorted((int(m.group(1)), p) for p in out.parent.iterdir() if (m := rx.match(p.name)))
     nums = [n for n, _ in hits]
     facts = {"frames": len(hits), "size": None, "min_alpha": 255, "first": nums[0] if nums else None,
-             "gaps": nums != list(range(nums[0], nums[0] + len(nums))) if nums else False}
+             "gaps": nums != list(range(nums[0], nums[0] + len(nums))) if nums else False, "alpha_channel": True}   # rgba part, checked below
     for _, p in (hits[0], hits[-1]) if hits else ():
         with OpenEXR.File(str(p)) as f:
             part = f.parts[0]
@@ -114,16 +122,16 @@ def check(fmt: str, out: str | Path, frames: int, w: int, h: int, alpha: bool, d
         facts = _probe(out)
         facts["min_alpha"] = 255
         pf = facts["pix_fmt"]
-        if "yuva" in pf or pf.startswith(("rgba", "bgra", "argb")) or fmt == "webm":    # has an alpha channel
+        # webm: ffprobe names the colour stream's format (yuv420p); vp9 keeps alpha in a side stream, read by decoding
+        facts["alpha_channel"] = "yuva" in pf or pf.startswith(("rgba", "bgra", "argb")) or fmt == "webm"
+        if facts["alpha_channel"]:
             facts["min_alpha"] = min(_video_frame_alpha(out, i, w, h) for i in _picks(facts["frames"]))
-        elif alpha:
-            raise ExportError(f"alpha was asked for but the file's pixel format {facts['pix_fmt']} has none", facts)
     if facts["frames"] != frames:
         raise ExportError(f"expected {frames} frames, the file has {facts['frames']}", facts)
     if facts["size"] != (w, h):
         raise ExportError(f"expected {w}x{h}, the file is {facts['size']}", facts)
-    if alpha and facts["min_alpha"] >= 255:
-        raise ExportError("alpha was asked for but every checked pixel is opaque", facts)
+    if alpha and not facts["alpha_channel"]:
+        raise ExportError("transparency was asked for but the file has no alpha channel", facts)
     if not alpha and facts["min_alpha"] < 255:
         raise ExportError("alpha was not asked for but the file has transparent pixels", facts)
     return facts
