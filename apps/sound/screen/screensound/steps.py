@@ -5,7 +5,7 @@
     drag-section <id> <dt s> (it and everything inside: section.move) | drag-tempo <id> <dt s> | drag-key <id> <dt s> |
     drag-edge <section id> at|end <dt s>   (one gesture each)
     song <start_bpm|add_tempo|set_key|add_key|add_section> [<value>] | song-open (the Song popup) |
-    picture-start <marker name|none> | picture-link <item id> | picture-pick (the project list, open)
+    choice-open <text shown> (a choice list, open) | picture-start <marker name|none> | picture-link <item id> | picture-pick (the project list, open)
     add-note <t s> <midi key> | delete | mute <track> | solo <track>
     arm <track> | record (start / stop, the real microphone) | record-fake | take-panel | take-set | punch | midi-fake |
     keys (steps_record.py)
@@ -13,7 +13,7 @@
     wait <seconds>
     zoom <factor> | scroll <s> | fit | lane <track> <lane> | lane-point <track> <t> <v> [<t2> <v2>] | lane-delete |
     picture <file|none>     (see steps_view.py)
-    deliver <streaming|apple|ebu|atsc|podcast> (master target, one change) | export (Render mix and stems, waits) |
+    deliver <streaming|apple|ebu|atsc|podcast> (master target, one change) | export-as <format> [<rate> [trim|full]] | export (Render mix and stems, waits) |
     clean-take (Make cleaned take on the selected clip, waits) | model-panel (the download question, for a screenshot) |
     duck-add <track> <under track> | duck-open <duck id> | duck-set <param> <json value> (the open duck)
 A step that leaves an error in the status fails (nonzero exit).
@@ -75,6 +75,11 @@ def wait_job(job, start, what):
 def do_mix_step(mix, word, rest):
     if word == "deliver":
         mix.loudness.choose(rest[0])
+    elif word == "export-as":                # export-as <format> [<sample rate>] [trim|full]: what the next export saves as
+        mix.export.setFormat(rest[0])
+        if len(rest) > 1:
+            mix.export.setRate(rest[1])
+        mix.export.setTrim(rest[2:3] != ["full"])
     elif word == "export":
         wait_job(mix.export, mix.export.start, "export")
     elif word == "clean-take":
@@ -90,7 +95,19 @@ def do_mix_step(mix, word, rest):
         mix.ducks.setValue(rest[0], value(" ".join(rest[1:])))
 
 
-MIX_WORDS = ("deliver", "export", "clean-take", "model-panel", "duck-add", "duck-open", "duck-set")
+MIX_WORDS = ("deliver", "export-as", "export", "clean-take", "model-panel", "duck-add", "duck-open", "duck-set")
+
+
+def find_choice(item, shown):
+    """The first visible choice field (the kit's ChoiceField) that shows `shown`."""
+    if (item.isVisible() and item.property("options") is not None and item.property("current") is not None
+            and item.property("text") == shown):
+        return item
+    for child in item.childItems():
+        found = find_choice(child, shown)
+        if found is not None:
+            return found
+    return None
 
 
 def do_step(bridge, win, step, recorder=None):
@@ -118,6 +135,11 @@ def do_step(bridge, win, step, recorder=None):
         QMetaObject.invokeMethod(win, "openSong")
     elif word == "picture-link":              # picture-link <item id> (a 2D item's newest render)
         bridge.linkPicture(rest[0])
+    elif word == "choice-open":              # choice-open <the words a choice field shows now>: its list, open (for a screenshot)
+        field = find_choice(win.contentItem(), rest and " ".join(rest))
+        if field is None:
+            raise RuntimeError(f"step {step!r}: no choice showing that")
+        QMetaObject.invokeMethod(field, "open")
     elif word == "picture-pick":             # the corner's "From the project…" list, open (for a screenshot)
         QMetaObject.invokeMethod(win, "openPicturePick")
     elif word == "drag-project-marker":      # drag-project-marker <name> <dt s>: the marker band's release

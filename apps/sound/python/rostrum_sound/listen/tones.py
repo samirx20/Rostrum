@@ -7,10 +7,10 @@ tone with its note name, so an agent can tell a cello's held D from a buzz.
 """
 from __future__ import annotations
 
-import librosa
 import numpy as np
 
 from .core import num
+from .dsp import fft_frequencies, hz_to_note
 
 N_FFT = 4096
 LO_HZ, HI_HZ = 40.0, 1200.0
@@ -42,7 +42,7 @@ def _refine(D, present, ff, i) -> float:
 def steady_tones(S, sr, max_lines=8) -> list[dict]:
     """[{freq_hz, note, strength_db, steady_pct, level_spread_db, in_quiet, mains_hz, is_hum, why}], strongest first.
     `S` is a power spectrogram (n_fft 4096)."""
-    f = librosa.fft_frequencies(sr=sr, n_fft=N_FFT)
+    f = fft_frequencies(sr, N_FFT)
     full = 10 * np.log10(np.maximum(S, 1e-20))
     # Neighbours: 3 to 10 bins each side, outside the window's own main lobe (±2 bins), on the whole spectrum.
     near = [d for d in range(-10, 11) if abs(d) >= 3]
@@ -71,7 +71,7 @@ def steady_tones(S, sr, max_lines=8) -> list[dict]:
         why = ("flat level" if flat else f"level moves {spread:.0f} dB (played)") + \
               (f", on the {mains} Hz mains series" if mains else "") + \
               (", still there in the quietest moments" if in_quiet else ", gone in the quietest moments")
-        out.append({"freq_hz": num(freq, 1), "note": librosa.hz_to_note(freq, unicode=False), "strength_db": num(strength[i], 1),
+        out.append({"freq_hz": num(freq, 1), "note": hz_to_note(freq), "strength_db": num(strength[i], 1),
                     "steady_pct": num(100 * steady[i], 0), "level_spread_db": num(spread, 1), "in_quiet": in_quiet,
                     "mains_hz": mains, "is_hum": is_hum, "why": why})
     return out

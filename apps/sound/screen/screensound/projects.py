@@ -18,6 +18,7 @@ import json
 import os
 import shutil
 import time
+from datetime import datetime
 from pathlib import Path
 
 from rostrum_core import Document, RostrumError, codes
@@ -175,6 +176,14 @@ def to_recover() -> list[Path]:
     root = untitled_root()
     found = [f for f in root.iterdir() if f.is_dir() and left_open(f)] if root.is_dir() else []
     return sorted(found, key=lambda f: f.stat().st_mtime, reverse=True)
+
+
+def when_text(folder) -> str:
+    """When a song was last changed, for a list: "Today, 14:32", "Yesterday, 09:05", "21 Oct, 18:40"."""
+    t = datetime.fromtimestamp(Path(folder).stat().st_mtime)
+    days = (datetime.now().date() - t.date()).days
+    day = "Today" if days == 0 else "Yesterday" if days == 1 else f"{t.day} {t:%b}"
+    return f"{day}, {t:%H:%M}"
 
 
 def discard_untitled(folder):

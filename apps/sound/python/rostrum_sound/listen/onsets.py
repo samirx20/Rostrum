@@ -1,8 +1,8 @@
 """onsets: hit times, and offsets from the times a picture expects them."""
-import librosa
 import numpy as np
 
 from .core import duration, load, mono, name_of, num
+from .dsp_events import onset_times
 
 HOP = 256
 
@@ -18,9 +18,7 @@ def _refine(m, sr, t, span=0.04):
 
 
 def detect(m, sr):
-    env = librosa.onset.onset_strength(y=m, sr=sr, hop_length=HOP)
-    frames = librosa.onset.onset_detect(onset_envelope=env, sr=sr, hop_length=HOP, backtrack=False)
-    return [_refine(m, sr, t) for t in librosa.frames_to_time(frames, sr=sr, hop_length=HOP)]
+    return [_refine(m, sr, t) for t in onset_times(m, sr, HOP)]
 
 
 def _nearest(ons, e):

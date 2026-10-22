@@ -22,7 +22,16 @@ Item {
         var mid = (lo + hi) / 2, half = Math.max(6, (hi - lo) / 2 + 2)
         return [mid - half, mid + half]
     }
-    function yOf(v) { return height * (1 - (v - range[0]) / (range[1] - range[0])) }
+    readonly property real axisH: 14                    // the time axis under the curve
+    readonly property real plotH: Math.max(1, height - axisH)
+    function yOf(v) { return plotH * (1 - (v - range[0]) / (range[1] - range[0])) }
+    // the time axis: a mark every `tickStep` seconds, the first step that leaves ~46 px between two labels
+    readonly property real tickStep: {
+        var steps = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600]
+        for (var i = 0; i < steps.length; i++) if (steps[i] / span * width >= 46) return steps[i]
+        return 1200
+    }
+    function clock(t) { var m = Math.floor(t / 60), s = Math.round(t - m * 60); return m + ":" + (s < 10 ? "0" : "") + s }
 
     Rectangle { anchors.fill: parent; color: Theme.sunken; radius: Theme.radiusCtl }
     Canvas {
@@ -56,14 +65,25 @@ Item {
         function onHeightChanged() { cv.requestPaint() }
         function onSecondsChanged() { cv.requestPaint() }
     }
+    Repeater {   // the time axis: seconds as m:ss, a faint line up from each
+        model: Math.floor(c.span / c.tickStep) + 1
+        delegate: Item {
+            required property int index
+            readonly property real at: index * c.tickStep
+            x: at / c.span * c.width; width: 1; height: c.height
+            Rectangle { width: 1; height: c.plotH; color: Theme.line; opacity: 0.5 }
+            Text { x: index === 0 ? 2 : -width / 2; y: c.plotH + 1; text: c.clock(parent.at); color: Theme.fg3
+                   font.family: uiFont; font.pixelSize: Theme.label - 2; font.features: { "tnum": 1 } }
+        }
+    }
     Text {
         visible: c.target !== null
-        anchors { right: parent.right; rightMargin: 4; bottom: parent.bottom; bottomMargin: 2 }
+        anchors { right: parent.right; rightMargin: 4; top: parent.top; topMargin: 2 }
         text: "target " + F.num(c.target, 0) + " LUFS"; color: Theme.ok
         font.family: uiFont; font.pixelSize: Theme.label - 1
     }
     Rectangle {   // the playhead
-        x: Math.min(c.width - 1, c.now / c.span * c.width); width: 1; height: parent.height; color: Theme.fg
+        x: Math.min(c.width - 1, c.now / c.span * c.width); width: 1; height: c.plotH; color: Theme.fg
         visible: c.values.length > 0
     }
 }

@@ -1,7 +1,7 @@
 """levels: per-stem loudness, each stem against the loudest and against the mix, buried flags."""
 import numpy as np
-import pyloudnorm as pyln
 
+from .bs1770 import integrated
 from .core import db, duration, is_float_file, load, num, peak_db, sections
 from .loudness import CLIP_LEVEL
 
@@ -14,7 +14,7 @@ def _pad_to(y, n, ch):
 
 
 def _lufs(y, sr):
-    return float(pyln.Meter(sr).integrated_loudness(y)) if y.shape[0] >= int(0.4 * sr) else float("-inf")
+    return integrated(y, sr)
 
 
 def levels(stems, mix=None, section_s=2.0, buried_db=18.0):

@@ -8,6 +8,7 @@ Rectangle {
     property bool selected: false
     property bool dim: false
     property bool plus: false
+    property string tip: ""             // the words under it while the pointer rests on it (what a chip that is only "+" does)
     property real maxWidth: 1e6          // the room it has: a longer name is cut with "…", never cut off by the strip
     signal clicked()
     height: 22
@@ -24,5 +25,6 @@ Rectangle {
         font.family: uiFont; font.pixelSize: chip.plus ? Theme.title : Theme.label
     }
     HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
+    HoverTip { text: chip.tip; hovered: hover.hovered }
     MouseArea { anchors.fill: parent; onClicked: chip.clicked() }
 }

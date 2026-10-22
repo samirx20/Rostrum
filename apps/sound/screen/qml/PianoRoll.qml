@@ -86,7 +86,7 @@ Panel {
                color: Theme.fg3
                text: p.kind === "none" ? "Add a track with + Track at the top, then select it to see its notes here."
                      : recorder.armed !== "" ? "Press Record (R) to record a take on this track."
-                     : "To record: arm the track (the round button on its row), then press R.
+                     : "To record: press Rec on the track's row, then press R.
 To write notes: choose an instrument in the inspector." 
                horizontalAlignment: Text.AlignHCenter }
     }

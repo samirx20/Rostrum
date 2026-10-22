@@ -1,4 +1,4 @@
-"""The Instruments page: one card per track that has an instrument. Exposed to QML as `instruments`.
+"""The Instruments page: one card per track (a track with no instrument plays recorded clips only; its card lets you pick one). Exposed to QML as `instruments`.
 
 Each card is a list of the same generic rows the inspector uses (`cards.layout` + `rostrum_gui.rows`), kept in
 one RowsModel per card so a control appearing or leaving eases in place. Editing a card's control is the
@@ -52,7 +52,7 @@ class InstrumentsPage(QObject):
 
     def _refresh(self):
         had = bool(self._cards.rows)
-        tracks = [t for t in self.doc.items() if t["type"] == "track" and cards.has_instrument(t)]
+        tracks = [t for t in self.doc.items() if t["type"] == "track"]
         self._more &= {t["id"] for t in tracks}
         out = []
         for t in tracks:

@@ -1,14 +1,14 @@
 """Reading and writing the audio a cleanup step works on: any file the engine reads, as float32 [channels, n]."""
 from __future__ import annotations
 
-from math import gcd
 from pathlib import Path
 
 import numpy as np
 import soundfile as sf
-from scipy.signal import resample_poly
 
 from rostrum_core import RostrumError, codes
+
+from ..listen.dsp import resample
 
 
 def read(path, rate: int, channels: int = 2) -> tuple[np.ndarray, int]:
@@ -25,8 +25,7 @@ def read(path, rate: int, channels: int = 2) -> tuple[np.ndarray, int]:
     elif x.shape[0] > channels:
         x = x[:channels] if channels == 2 else x.mean(0, keepdims=True)
     if sr != rate:
-        g = gcd(sr, rate)
-        x = resample_poly(x, rate // g, sr // g, axis=1).astype(np.float32)
+        x = resample(x, sr, rate, axis=1).astype(np.float32)
     return x, sr
 
 

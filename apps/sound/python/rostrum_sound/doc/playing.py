@@ -51,10 +51,14 @@ SYNTH_FIELDS = [
 SYNTH_KEYS = [f[0] for f in SYNTH_FIELDS]
 TOUCH_KEYS = ["position", "damping", "hardness"]
 
+# The picker's words (the inspector's field is narrow: about 20 characters)
+INSTRUMENT_WORDS = {"none": "None (clips only)", "builtIn": "Built-in sound", "sfz": "Sampled (SFZ file)",
+                    "kit": "Drum kit", "kitSfz": "Sampled drum kit", "model": "Played instrument",
+                    "synth": "Synth", "voice": "Spoken voice", "plugin": "Plug-in instrument"}
 INSTRUMENT = [
-    Param.choice("instrument", names.INSTRUMENTS, group="Instrument", label="Instrument",
+    Param.choice("instrument", names.INSTRUMENTS, group="Instrument", label="Instrument", labels=INSTRUMENT_WORDS,
                  help="What plays the track's notes / hits; none = recorded clips only."),
-    Param.choice("builtIn", names.BUILT_INS, group="Instrument", label="Built-in", valid_when=IS("instrument", "builtIn")),
+    Param.choice("builtIn", names.BUILT_INS, group="Instrument", label="Sound", valid_when=IS("instrument", "builtIn")),
     Param.text("sfz", group="Instrument", label="SFZ file", control="file", filters=["SFZ instruments (*.sfz)"], valid_when=IS("instrument", "sfz")),
     Param.toggle("legato", group="Instrument", importance="secondary", valid_when=IS("instrument", "sfz"),
                  help="Notes that overlap glide into each other (one bowed line)."),

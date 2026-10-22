@@ -51,7 +51,8 @@ class Songs(QObject):
 
     @Property("QVariantList", notify=changed)
     def recoverable(self):
-        return [{"folder": str(f), "when": f.name} for f in self._recoverable]
+        """The untitled songs a crash left, newest first: each with when it was last changed, in words."""
+        return [{"folder": str(f), "when": projects.when_text(f)} for f in self._recoverable]
 
     @Property(str, constant=True)
     def projectsFolder(self):

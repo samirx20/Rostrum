@@ -37,6 +37,7 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, D
         self._page, self._t, self._track = "timeline", 0.0, ""
         self._drag = self._grab = None
         self._view: dict = {}
+        self._fitted: set[str] = set()      # tracks the piano roll has already framed once
         self._zoom = View()                 # which stretch of the song is on screen (screen state, not an edit)
         self._open: dict = {}               # track id -> (item id, lane) of the automation lane shown under its row
         self._edit = None                   # the automation point being dragged (lanes.PointEdit)
@@ -166,6 +167,16 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, D
     def _length(self) -> float:
         return self._view["song"]["length"]
 
+    def _frame_new_track(self):
+        """The first time a track is shown, fit the view to its sounds (a short phrase is not a speck at the left).
+        Only while the view is still the screen's own: a person's zoom is left alone."""
+        if not self._track or self._track in self._fitted:
+            return
+        self._fitted.add(self._track)
+        blocks = self._view["roll"]["blocks"]
+        if blocks and (self._zoom.fit or self._zoom.auto):
+            self._zoom.fit_to(min(b["t"] for b in blocks), max(b["t"] + b["dur"] for b in blocks), self._length())
+
     def _markers_changed(self):
         """A project marker moved, was renamed or deleted (in 2D, by an agent …): follow renames as one recorded
         step, then redraw and render again. A deleted marker the song uses is reported loudly by the render."""
@@ -188,6 +199,7 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, D
         self._view = {"rows": rows, "markers": timeline.markers(root), "song": timeline.song(root),
                       "roll": timeline.roll(track, root, hue)}
         self._zoom.clamp(self._length())
+        self._frame_new_track()
         self.timelineChanged.emit()
         self.viewChanged.emit()
 

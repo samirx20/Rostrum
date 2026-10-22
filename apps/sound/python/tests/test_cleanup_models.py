@@ -2,7 +2,6 @@
 silently). Runs the real model on the CPU (1.5 s of audio); skipped where it is not installed."""
 import numpy as np
 import pytest
-from scipy.signal import correlate
 
 from rostrum_sound.cleanup import models, noise
 
@@ -26,5 +25,6 @@ def _speechlike(rate, seconds=1.5):
 def test_denoised_take_is_not_delayed():
     x = _speechlike(noise.RATE)
     y = noise.clean(x, 1.0)
-    c = correlate(y[0], x[0], mode="full", method="fft")
-    assert int(np.argmax(c)) - (x.shape[1] - 1) == 0
+    n = x.shape[1] + y.shape[1] - 1                  # cross-correlation by FFT: index k = lag k, n - k = lag -k
+    c = np.fft.irfft(np.fft.rfft(y[0], n) * np.conj(np.fft.rfft(x[0], n)), n)
+    assert int(np.argmax(c)) == 0

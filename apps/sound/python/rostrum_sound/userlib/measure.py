@@ -85,10 +85,10 @@ def _centroid(x: np.ndarray, sr: int) -> float:
 
 
 def _lufs(x: np.ndarray, sr: int) -> float:
-    import pyloudnorm as pyln
+    from ..listen.bs1770 import integrated
     if x.size < int(0.4 * sr):                          # a click: its level while it sounds, not diluted by silence
         x = np.tile(x, int(np.ceil(0.4 * sr / x.size)))
-    v = float(pyln.Meter(sr).integrated_loudness(x))
+    v = integrated(x, sr)
     return round(v, 1) if math.isfinite(v) else -99.0
 
 

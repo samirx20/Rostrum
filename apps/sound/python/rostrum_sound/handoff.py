@@ -13,6 +13,7 @@ from pathlib import Path
 from rostrum_core import RostrumError, codes
 from rostrum_core.project import begin_render, finish_render
 
+from . import deliver
 from .doc import markers
 
 ENGINE = "rostrum-sound-schedule/1"     # the contract the schedule was rendered through (names.CONTRACT)
@@ -40,7 +41,8 @@ def stems_rule(r: dict) -> dict:
             "stems_add_up": not inserts and glue <= LIMITER_SLACK_DB and limiter <= LIMITER_SLACK_DB}
 
 
-def manifest(item: str, version: int, r: dict, doc, who: str, master: bool) -> dict:
+def manifest(item: str, version: int, r: dict, doc, who: str, master: bool, names: dict | None = None) -> dict:
+    names = names or {}
     tracks = {t["id"]: t for t in r.get("tracks", [])}
     stems = {tid: Path(p).name for tid, p in r.get("stems", {}).items()}
     buses = {b["id"]: b for b in r.get("buses", [])}
@@ -50,21 +52,35 @@ def manifest(item: str, version: int, r: dict, doc, who: str, master: bool) -> d
             "made_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "source": {"document": doc.item_id, "history_entry": doc.seq}, "engine": ENGINE,
             "markers": markers.used(doc.data),          # the project / own marker times this render was made for
-            "sample_rate": doc.data.get("sampleRate", 48000), "bit_depth": "32-bit float",
-            "seconds": r.get("seconds"), "mastered": master,
+            "sample_rate": r.get("sampleRate", doc.data.get("sampleRate", 48000)),
+            "format": r.get("format", {"id": "wav32f", "label": "WAV 32-bit float", "container": "WAV", "subtype": "FLOAT", "ext": "wav"}),
+            "bit_depth": {"PCM_16": "16-bit", "PCM_24": "24-bit", "FLOAT": "32-bit float"}.get((r.get("format") or {}).get("subtype", "FLOAT"), "lossy (MP3)"),
+            "seconds": r.get("seconds"), "song_seconds": r.get("songSeconds", r.get("seconds")), "trimmed_silence": r.get("trimmed", False),
+            "clipped_samples": r.get("clippedSamples", 0), "mastered": master,
             # Without buses the track stems add up to the mix; with buses, the stems of the tracks in `direct` plus
             # the bus stems do (a track feeding a bus is inside its bus) — under `stems_rule`.
             "stems_add_up": rule["stems_add_up"], "stems_rule": rule,
             "direct": r.get("direct", list(stems)),
-            "mix": _file(Path(r["file"]).name, r), "stems": {tid: _file(n, tracks.get(tid, {})) for tid, n in stems.items()},
-            "bus_stems": {bid: _file(n, buses.get(bid, {})) for bid, n in bus_stems.items()}}
+            "mix": _file(Path(r["file"]).name, r),
+            # the id → file mapping: the file is named after the track as the screen shows it, the key is its id
+            "stems": {tid: {**_file(n, tracks.get(tid, {})), "name": names.get(tid, tid)} for tid, n in stems.items()},
+            "bus_stems": {bid: {**_file(n, buses.get(bid, {})), "name": names.get(bid, bid)} for bid, n in bus_stems.items()}}
 
 
-def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: bool = True) -> dict:
+def names_of(doc, ids) -> dict:
+    """{id: the name the screen shows} for tracks and buses (the id when it has no name)."""
+    return {i: (doc.item(i).get("name") or i) if doc.has(i) else i for i in ids}
+
+
+def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: bool = True, options: dict | None = None) -> dict:
     """Render `schedule` into the next version of the document's item. Returns the engine's answer with
     `file` / `stems` pointing into the finished folder, plus `version` and `folder`. Any failure raises; the
-    `.partial` folder stays, named in the error (HANDOFFS § 1)."""
+    `.partial` folder stays, named in the error (HANDOFFS § 1). `options` is `deliver.Options.read`'s request: the
+    file format, sample rate and trimming the silent end (default: 24-bit WAV at the song's rate, trimmed). The
+    files are named after the tracks; the manifest keeps the id → file mapping."""
     item = doc.item_id
+    opts = deliver.Options.read(options, doc.data.get("sampleRate", 48000))
+    schedule = {**schedule, "sampleRate": opts.sample_rate}
     part = begin_render(folder, item)
     try:
         r = engine.request("render", schedule=schedule, out=str(part / f"{item}_mix.wav"), stems=stems,
@@ -73,8 +89,15 @@ def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: b
         raise RostrumError(codes.JOB_FAILED, "render", str(part), f"failed and stays unfinished: {e}") from e
     if not Path(r["file"]).is_file():
         raise RostrumError(codes.JOB_FAILED, "render", str(part), "the engine answered but wrote no mix")
+    try:
+        names = names_of(doc, [*r.get("stems", {}), *r.get("busStems", {})])
+        r = deliver.deliver(part, r, names, opts, item)
+    except RostrumError:
+        raise
+    except Exception as e:
+        raise RostrumError(codes.JOB_FAILED, "render", str(part), f"could not write the {opts.spec['label']} files and stays unfinished: {e}") from e
     version = int(part.name[1:-len(".partial")])
-    done = finish_render(part, manifest(item, version, r, doc, who, master))
+    done = finish_render(part, manifest(item, version, r, doc, who, master, names))
     moved = lambda p: str(done / Path(p).name)   # noqa: E731
     return {**r, "file": moved(r["file"]), "stems": {k: moved(p) for k, p in r.get("stems", {}).items()},
             "busStems": {k: moved(p) for k, p in r.get("busStems", {}).items()},

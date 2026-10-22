@@ -81,7 +81,7 @@ songs are saved per change. Crash recovery offers back untitled songs whose proc
 ## Recording
 
 Everything goes through the engine's live transport, the same process that plays the song, so a take is placed
-against what was heard, to the sample. Arm a track (round button on its header): the microphone opens in the player
+against what was heard, to the sample. Arm a track (Rec on its header): the microphone opens in the player
 (`--mic`), its level shows in the record cluster of the top bar. Press the red Record button or R: the engine counts
 in if asked (its own clicks), plays from the playhead and records; Stop and the take becomes one clip (one undo step)
 in `<project>/media/<track>-take-<n>.wav` at the engine's `start` (its clock, minus the microphone's delay when

@@ -6,11 +6,12 @@ stored in the shared content-keyed cache (rostrum_core.cache), so later calls on
 import json
 import os
 
-import librosa
 import numpy as np
 from rostrum_core.cache import Cache, cache_key, file_hash
 
 from ..listen.core import LOW_END_HZ, band_share
+from ..listen.dsp import load_mono, rms
+from ..listen.dsp_events import onset_detect
 
 ANALYSIS_VERSION = 1
 SR, HOP = 48000, 128
@@ -24,7 +25,7 @@ def _db(x):
 
 
 def _rms_db(x):
-    r = librosa.feature.rms(y=x, frame_length=1024, hop_length=HOP)[0]
+    r = rms(x, 1024, HOP)
     return 20 * np.log10(np.maximum(r, 1e-9))
 
 
@@ -41,7 +42,7 @@ def _facts(x, a, b, floor_db):
 
 
 def _hits(x, o, env, floor):
-    on = librosa.onset.onset_detect(y=x, sr=SR, hop_length=HOP, backtrack=True, units="samples", delta=0.12)
+    on = onset_detect(x, SR, HOP, backtrack=True, delta=0.12) * HOP
     out = []
     for i, a in enumerate(on):
         a = max(0, int(a) - int(LEAD_S * SR))
@@ -66,7 +67,7 @@ def _beds(x, o, env, floor):
 
 def _analyse(path, o):
     """The slow part: read, find the sounds, measure them. Called once per (file, version, options)."""
-    x, _ = librosa.load(path, sr=SR, mono=True)
+    x = load_mono(path, SR)
     if x.size < int(0.05 * SR):
         raise ValueError(f"{path}: recording is shorter than 50 ms")
     env = _rms_db(x)

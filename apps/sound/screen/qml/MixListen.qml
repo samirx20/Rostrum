@@ -40,7 +40,7 @@ Rectangle {
                 required property var modelData
                 width: (parent.width - Theme.gap) / 2; height: parent.height
                 color: Theme.sunken; radius: Theme.radiusCtl
-                Image { anchors.fill: parent; anchors.margins: 2; fillMode: Image.PreserveAspectFit; asynchronous: true
+                Image { anchors.fill: parent; anchors.margins: 2; fillMode: Image.PreserveAspectFit; asynchronous: true; mipmap: true
                         source: modelData.src ? "file:///" + modelData.src : "" }
                 MouseArea { anchors.fill: parent; enabled: modelData.src !== ""; cursorShape: Qt.PointingHandCursor
                             onClicked: { pic.source = "file:///" + modelData.src; big.open() } }
@@ -54,6 +54,6 @@ Rectangle {
         width: parent.width * 0.8; height: parent.height * 0.8
         padding: Theme.gap; modal: true; closePolicy: QQC.Popup.CloseOnEscape | QQC.Popup.CloseOnPressOutside
         background: Rectangle { color: Theme.panel; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
-        contentItem: Image { id: pic; fillMode: Image.PreserveAspectFit }
+        contentItem: Image { id: pic; fillMode: Image.PreserveAspectFit; mipmap: true }
     }
 }

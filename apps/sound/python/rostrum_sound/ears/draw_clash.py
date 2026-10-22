@@ -1,14 +1,9 @@
 """The clash picture: time across, 1/3-octave bands up, each cell coloured by the pair of tracks fighting there."""
 from __future__ import annotations
 
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.colors import ListedColormap
-from matplotlib.patches import Patch
 
+from ..listen.plot import pyplot
 from .clash import CENTRES
 
 def _label(c):
@@ -26,6 +21,9 @@ def clash_picture(png, maps: dict, spans: list, hop_s: float, title="clashes: bo
     cells = np.zeros(shape, dtype=int)
     for i, p in enumerate(pairs):
         cells[maps[p]] = i + 1
+    plt = pyplot()
+    from matplotlib.colors import ListedColormap
+    from matplotlib.patches import Patch
     fig, ax = plt.subplots(figsize=(16, 8), dpi=100)
     cmap = ListedColormap(["#f4f5f7"] + [PALETTE[i % len(PALETTE)] for i in range(len(pairs))])
     ax.imshow(cells, origin="lower", aspect="auto", cmap=cmap, vmin=0, vmax=max(len(pairs), 1), interpolation="nearest",

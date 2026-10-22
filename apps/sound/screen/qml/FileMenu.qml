@@ -80,13 +80,28 @@ Button {
     }
     Prompt {
         id: recover
-        readonly property var first: songs.recoverable.length ? songs.recoverable[0] : null
-        heading: "RostrumSound closed unexpectedly"
-        message: "An untitled song from then is kept with every change up to that moment"
-                 + (songs.recoverable.length > 1 ? " (" + songs.recoverable.length + " songs)." : ".")
-        Button { text: "Open it"; kind: "primary"; onClicked: { recover.close(); songs.recover(recover.first.folder) } }
-        Button { text: "Throw it away"; danger: true; onClicked: { songs.discardRecovered(recover.first.folder)
-                                                                    if (!songs.recoverable.length) recover.close() } }
+        heading: songs.recoverable.length > 1 ? "RostrumSound closed unexpectedly: " + songs.recoverable.length + " songs were kept"
+                                              : "RostrumSound closed unexpectedly"
+        message: "Untitled songs from then are kept with every change up to that moment. Open the one you want, or throw it away."
+        content: [Repeater {
+            model: songs.recoverable
+            delegate: Rectangle {
+                required property var modelData
+                width: recover.availableWidth; height: Theme.button + 4
+                radius: Theme.radiusCtl; color: Theme.app
+                Text { x: Theme.gap + 2; anchors.verticalCenter: parent.verticalCenter; text: "Untitled song, " + parent.modelData.when
+                       color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
+                Row {
+                    anchors { right: parent.right; rightMargin: 2; verticalCenter: parent.verticalCenter }
+                    spacing: 2
+                    Button { text: "Open"; kind: "primary"; height: Theme.button - 4
+                             onClicked: { recover.close(); songs.recover(parent.parent.modelData.folder) } }
+                    Button { text: "Throw away"; kind: "ghost"; danger: true; height: Theme.button - 4
+                             onClicked: { songs.discardRecovered(parent.parent.modelData.folder)
+                                          if (!songs.recoverable.length) recover.close() } }
+                }
+            }
+        }]
         Button { text: "Later"; kind: "ghost"; onClicked: recover.close() }
     }
 }

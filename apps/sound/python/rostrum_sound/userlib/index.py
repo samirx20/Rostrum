@@ -19,10 +19,10 @@ import json
 import time
 from pathlib import Path
 
-import librosa
 import numpy as np
 from rostrum_core.cache import Cache, cache_key, file_hash
 
+from ..listen.dsp import load_mono
 from ..sfx.pool import SR, cut
 from . import kinds, measure, meta
 
@@ -66,7 +66,7 @@ def _bounds(x, path, about, cache_dir) -> list[tuple[int, int]]:
 
 
 def _analyse(path: Path, about: dict, cache_dir) -> dict:
-    x, _ = librosa.load(str(path), sr=SR, mono=True)
+    x = load_mono(path, SR)
     if x.size == 0:
         raise ValueError("the file has no audio")
     sounds = []

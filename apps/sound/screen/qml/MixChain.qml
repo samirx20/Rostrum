@@ -2,8 +2,8 @@ import QtQuick
 import QtQuick.Controls as QQC
 import RostrumKit
 
-// The insert chain of a track or the master: chips left to right in insert order, then "+" to add one.
-// A chip selects its effect (the inspector edits it). "+" lists the effect types; picking one is effect.add.
+// The insert chain of a track or the master: chips left to right in insert order, then "+ Effect" to add one.
+// A chip selects its effect (the inspector edits it). "+ Effect" lists the effect types; picking one is effect.add.
 Flickable {
     id: chain
     property var chips: []
@@ -23,7 +23,7 @@ Flickable {
                 onClicked: backend.select(modelData.id)
             }
         }
-        MixChip { id: plus; text: "+"; plus: true; onClicked: { menu.showPlugins = false; mixer.plugins.scan(); menu.open() } }
+        MixChip { id: plus; text: "+ Effect"; tip: chain.ownerId === "master" ? "Add an effect to the master" : "Add an effect to this track"; onClicked: { menu.showPlugins = false; mixer.plugins.scan(); menu.open() } }
     }
     QQC.Popup {
         id: menu

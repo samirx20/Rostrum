@@ -1,14 +1,11 @@
 """Pictures for the beats and pitch looks (matplotlib, text large enough to read at once)."""
 from __future__ import annotations
 
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
 
 from ..doc.keys import NAMES
 from ..listen.core import load, mono
+from ..listen.plot import pyplot
 
 OK, WARN, BAD, GRID, INK = "#2a9d4b", "#e08a00", "#d1362f", "#3b6fd4", "#222222"
 STATUS_COLOUR = {"ok": OK, "late": WARN, "early": WARN, "out_of_tune": WARN, "wrong_octave": BAD, "wrong_note": BAD, "missing": BAD}
@@ -25,6 +22,7 @@ def beats_picture(png, wav, beats, downbeats, onsets, doc_beats=None, title="", 
     triangle: green within `limit_ms` of the grid, orange within twice that, red beyond. `onsets` [(time, off_ms)]."""
     y, sr = load(wav)
     t, lo, hi = _envelope(mono(y), sr)
+    plt = pyplot()
     fig, ax = plt.subplots(figsize=(16, 6), dpi=100)
     ax.fill_between(t, lo, hi, color="#9aa5b1", lw=0)
     for b in beats:
@@ -50,6 +48,7 @@ def beats_picture(png, wav, beats, downbeats, onsets, doc_beats=None, title="", 
 
 def pitch_picture(png, times, midi, written=None, rows=None, title=""):
     """The pitch curve over a note grid, the written notes as bars, a coloured dot at each written note's start by status."""
+    plt = pyplot()
     fig, ax = plt.subplots(figsize=(16, 8), dpi=100)
     ok = ~np.isnan(midi)
     span = (np.nanmin(midi), np.nanmax(midi)) if ok.any() else (48, 72)

@@ -22,6 +22,21 @@ def test_zoom_stays_inside_the_song_and_fit_returns():
     assert v.fit and v.start == 0 and v.span(20.0) == 20.0
 
 
+def test_song_keeps_room_to_write_and_fit_to_notes_stays_inside():
+    from screensound import timeline
+    bar = 4 * 0.6                                           # 100 bpm, 4/4
+    root = {"tempo": 100, "beatsPerBar": 4, "tracks": [{"id": "t", "notes": [
+        {"id": "n", "type": "note", "pitch": "C4", "at": {"beat": 0}, "dur": {"beats": 1}}]}]}
+    assert timeline.song(root)["length"] == pytest.approx(8 * bar)       # a short phrase: still 8 bars to write in
+    root["tracks"][0]["notes"][0]["at"] = {"beat": 40}                  # 10 bars in: the last bar + 2 spare bars
+    assert timeline.song(root)["length"] == pytest.approx(13 * bar)
+    v = View()
+    v.fit_to(4.0, 6.0, 19.2)
+    assert not v.fit and v.auto and 0 <= v.start and v.start + v.span(19.2) <= 19.2 + 1e-9
+    v.zoom(2, 0.5, 19.2)
+    assert not v.auto                                                    # a person's zoom is theirs
+
+
 def test_automation_drag_is_one_undo_step_in_time_order(bridge):  # noqa: F811
     doc = bridge.doc
     bridge.openLane("lead", "lead", "volume")
