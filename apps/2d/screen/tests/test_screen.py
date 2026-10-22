@@ -75,6 +75,7 @@ def test_canvas_drag_is_one_undo_step_and_keys_an_animated_field(bridge):
     assert bridge.toggleAnimate("x") is None and keys_of(bridge.doc.item("box"), "x")   # key mark: first key
     n = len(bridge.doc.history.changes)
     assert bridge.beginMove()
+    bridge.snap.keys(True, False)                         # Ctrl held: placed freely, no snapping (snap.py has its own test)
     for dx in (5, 10, 20):
         bridge.moveBy(dx, 4)
     bridge.endDrag()

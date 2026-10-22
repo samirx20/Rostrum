@@ -32,6 +32,9 @@ from .tools2d import ToolSlots
 from .undo_state import UndoState
 
 
+TOOLS = ("move", "pen", "draw", "rect", "ellipse", "text")      # what the mouse does on the canvas (setTool)
+
+
 class Bridge2D(AgentView, ShownState, ClipboardSlots, UndoState, ActionSlots, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     toolChanged = Signal()
@@ -50,6 +53,7 @@ class Bridge2D(AgentView, ShownState, ClipboardSlots, UndoState, ActionSlots, La
         self.comp_id = comp_id or comps[0]["id"]
         self._t, self._tool, self._frame, self.autosave = 0.0, "move", 0, autosave
         self._flipped, self._drag, self._grab = set(), None, None      # rows folded / opened against their default
+        self._anim_only = set()                             # layers opened by A: only their animated settings show
         self._placed = None                                 # placed(), kept per document and markers
         self.marks = None                                   # made below (it needs this QObject); the first rows have none
         self._shown_init()
@@ -134,7 +138,7 @@ class Bridge2D(AgentView, ShownState, ClipboardSlots, UndoState, ActionSlots, La
 
     @Property(str, notify=toolChanged)
     def tool(self):
-        """What the mouse does on the canvas: "move" (select, move, handles), "pen" (pen.py) or "draw" (painter.py)."""
+        """What the mouse does on the canvas: "move" (select, move, handles), "pen" (pen.py), "draw" (painter.py), or "rect" / "ellipse" / "text" (create.py)."""
         return self._tool
 
     @Property(bool, notify=playingChanged)
@@ -162,7 +166,7 @@ class Bridge2D(AgentView, ShownState, ClipboardSlots, UndoState, ActionSlots, La
     @Property("QVariantList", notify=outlineChanged)
     def layers(self):
         """The timeline's rows, which are the layers list too (outline.rows): bars, keys, frames, fields, effects."""
-        return outline.rows(self.placed(), self._flipped)
+        return outline.rows(self.placed(), self._flipped, self._anim_only)
 
     @Property(str, notify=outlineChanged)
     def selectedLayer(self):
@@ -197,8 +201,8 @@ class Bridge2D(AgentView, ShownState, ClipboardSlots, UndoState, ActionSlots, La
     @Slot(str)
     def setTool(self, tool):
         """The one tool switch (the strip, V / P / B / Esc, pen.setOn, Add path / drawing). Leaving the pen ends its path."""
-        if tool not in ("move", "pen", "draw"):
-            return self._fail(f"Error: tool: {tool!r} is not a tool (move, pen, draw).")
+        if tool not in TOOLS:
+            return self._fail(f"Error: tool: {tool!r} is not a tool ({', '.join(TOOLS)}).")
         if tool != self._tool:
             if self._tool == "pen":
                 self._pen.finish()
@@ -213,6 +217,17 @@ class Bridge2D(AgentView, ShownState, ClipboardSlots, UndoState, ActionSlots, La
     def toggleFold(self, item_id):
         """Fold an open row, open a closed one (a group starts open, any other layer closed)."""
         self._flipped ^= {item_id}
+        self._anim_only.discard(item_id)
+        self.outlineChanged.emit()
+
+    @Slot()
+    def showAnimated(self):
+        """A: the selected layers open to only their animated settings; A again folds them (UX_SPEC 3.12)."""
+        layers = self.selected_layers()
+        if layers and all(i in self._anim_only for i in layers):
+            self._anim_only -= set(layers)
+        else:
+            self._anim_only |= set(layers)
         self.outlineChanged.emit()
 
     @Slot(float, float, result=str)

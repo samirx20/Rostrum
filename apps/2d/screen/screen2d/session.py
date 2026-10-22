@@ -9,9 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from rostrum_gui import guides, start
+from rostrum_gui.app import stop
 
 from .bridge2d import Bridge2D
 from .files import Files
+from .spacekey import SpaceKey
 
 QML = Path(__file__).resolve().parents[1] / "qml" / "Main.qml"
 GUIDES = guides.entries(Path(__file__).resolve().parents[2] / "guides", [     # Help's guides (apps/2d/guides): for people;
@@ -24,23 +26,24 @@ class Session:
     def __init__(self, size=(1600, 960)):
         self.size, self.bridge, self.engine, self.win = size, None, None, None
         self.files = Files(self)
+        self.space = None                                # Space: tap plays, hold + drag pans (spacekey.py; one per app)
 
     def show(self, doc, live: bool, comp_id=None, ask_recovery: bool = True):
         """Open `doc` in a new window (live: saved after every change, --doc); the old window closes without asking."""
         bridge = Bridge2D(doc, comp_id, autosave=live)
         bridge.files = self.files
         self.files.hold(doc, live, ask_recovery)
+        self.space = self.space or SpaceKey()
         _, engine, win = start(QML, {"backend": bridge, "painter": bridge.painter, "files": self.files,
-                                     "guides": GUIDES}, self.size,
+                                     "guides": GUIDES, "spaceKey": self.space}, self.size,
                                providers={"frame": bridge.frames.provider, "onion": bridge.painter.provider})
         old = (self.bridge, self.engine, self.win)
         self.bridge, self.engine, self.win = bridge, engine, win
         if old[0] is not None:
             old[2].setProperty("leaving", True)          # no "save changes?" for a window being replaced
-            old[2].close()
+            stop(old[1], old[2])                         # the window and its bindings first, then what they read
             old[0]._unsubscribe()
             old[0].close()
-            old[1].deleteLater()
 
     def fail(self, line: str):
         """A file action failed: said in the window's status line (red) and on the console."""
@@ -50,5 +53,10 @@ class Session:
             raise RuntimeError(line)
 
     def close(self):
+        """At quit: the window and its bindings go first (the kit's stop), then the bridge they read."""
+        if self.win is not None:
+            self.win.setProperty("leaving", True)
+        stop(self.engine, self.win)
+        self.engine = self.win = None
         if self.bridge is not None:
             self.bridge.close()

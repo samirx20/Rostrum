@@ -5,7 +5,7 @@ right-click menu (valid actions primary first, then the edit block last; a long 
 """
 from __future__ import annotations
 
-FOLD = 4            # a bar button with more choices than this is one entry with a side menu (right-click and ⋯)
+FOLD = 2            # a set of more choices than this is one entry with a side menu (right-click and ⋯): 2D, H29
 
 
 def _short(e):

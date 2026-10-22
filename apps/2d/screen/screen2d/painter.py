@@ -2,28 +2,30 @@
 
 Every change is an operation recorded through the document (a stroke = one gesture; "new drawing" and "hold" =
 one `doc.apply` each). The brush and the onion toggle are screen state. The brush panel is the kit's Inspector
-on this object (it has the same `rows` / `setValue` / `toggleMore` surface as a DocBridge), so the panel is built
-from the brush settings' own rules, not by hand.
+on this object (brush_panel.py), so the panel is built from the brush settings' own rules, not by hand.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, Signal, Slot
 from rostrum2d.drawing import frame_at, frame_number
+from rostrum2d.names import display_name
+from rostrum2d.ops_paint import PAINTABLE
 from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
 from . import adding, framing, onion
 from .brush import Brush
+from .brush_panel import BrushPanel
 from .strokes import StrokeDrag
 
 
-class Painter(QObject):
+class Painter(BrushPanel):
     changed = Signal()
-    brushChanged = Signal()
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.b, self._stroke, self._onion = bridge, None, False
+        self._fresh, self._new_layer = None, False      # "New drawing" picked for this selection; next stroke: new paint layer
         self.brush = Brush(bridge.comp().get("background", ""))
         self._serial, self._built, self._rev = 0, None, 0        # _rev: the document changed (the onion is stale)
         self.provider = onion.OnionProvider()
@@ -33,10 +35,16 @@ class Painter(QObject):
         bridge.outlineChanged.connect(self._refresh)
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
-    def drawing(self) -> dict | None:
+    def target(self) -> dict | None:
+        """The selected layer the pen paints on: a drawing, or any element that can hold paint (ops_paint.PAINTABLE)."""
         layer = self.b.selectedLayer
         item = self.b.doc.item(layer) if layer else None
-        return item if item and item["type"] == "drawing" else None
+        return item if item and item["type"] in PAINTABLE else None
+
+    def drawing(self) -> dict | None:
+        """The selected layer that has drawings (frame tools, onion): a drawing, or an element holding paint."""
+        item = self.target()
+        return item if item and (item["type"] == "drawing" or item.get("frames")) else None
 
     def _n(self) -> int:
         return frame_number(self.b.own_t(self.b.selectedLayer), self.b.comp()["fps"])
@@ -57,63 +65,51 @@ class Painter(QObject):
         d = self.drawing()
         return framing.marks(self.b.placed_item(d["id"]), self.b.comp()["fps"], self.b.comp()["duration"]) if d else []     # composition seconds
 
-    @Property(bool, notify=changed)
-    def onionOn(self):
-        return self._onion
+    onionOn = Property(bool, lambda self: self._onion, notify=changed)
 
     @Property(int, notify=changed)
     def onionSerial(self):
         return self._serial if self._onion and self._built else 0
 
-    # ---- the brush panel (the kit's Inspector talks to these) ---------------------------------------------------
-    @Property(QObject, constant=True)
-    def rows(self):
-        return self.model
+    # ---- what the pen paints on (ToolOptions.qml: "Painting on: … ▸", "+ Paint layer") -------------------------
+    def _aim(self) -> dict | None:
+        """The target, unless "New drawing" was picked for this selection."""
+        return None if self._fresh == self.b.selectedLayer and self._fresh is not None else self.target()
 
-    @Property("QVariantMap", notify=brushChanged)
-    def selectedItem(self):
-        return {"id": "brush", "label": self.brush.label(), "kind": "next stroke"}
+    @Property(str, notify=changed)
+    def targetName(self):
+        d = self._aim()
+        return display_name(d) if d else "New drawing"
 
-    @Property(bool, notify=brushChanged)
-    def moreOpen(self):
-        return self.brush.more
-
-    @Slot(str, "QVariant", result=bool)
-    def setValue(self, param, value):
-        return self.b.guard(lambda: self._brush_set(param, value))
-
-    def _brush_set(self, param, value):
-        self.brush.set(param, value)
-        self.model.update(self.brush.rows())
-        self.brushChanged.emit()
+    @Property("QVariantList", notify=changed)
+    def targetChoices(self):
+        d = self.target()
+        return ([{"value": "selected", "label": display_name(d)}] if d else []) + [{"value": "new", "label": "New drawing"}]
 
     @Slot(str)
-    def beginScrub(self, param):
-        pass                                        # the brush is not the document: nothing to gather into a step
+    def paintOn(self, which):
+        """"new": the next stroke makes a new drawing (for this selection); "selected": back to the selected layer."""
+        self._fresh = self.b.selectedLayer if which == "new" else None
+        self.changed.emit()
 
-    @Slot(str, "QVariant")
-    def scrub(self, param, value):
-        self.setValue(param, value)
+    @Property(bool, notify=changed)
+    def canNewLayer(self):
+        d = self._aim()
+        return bool(d and d.get("frames"))
+
+    newLayerNext = Property(bool, lambda self: self._new_layer, notify=changed)
 
     @Slot()
-    def endScrub(self):
-        pass
-
-    @Slot()
-    def toggleMore(self):
-        self.brush.more = not self.brush.more
-        self.model.update(self.brush.rows())
-        self.brushChanged.emit()
-
-    @Slot(str)
-    def toggleAnimate(self, param):
-        pass
+    def newPaintLayer(self):
+        """The next stroke starts a new paint layer on top (paint.stroke layer "new"); pressed again: not."""
+        self._new_layer = not self._new_layer
+        self.changed.emit()
 
     # ---- the pen: one stroke = one gesture = one change -----------------------------------------------------
     @Slot(float, float, float, result=bool)
     def beginStroke(self, x, y, pressure):
         """x, y in composition px (like Bridge2D.pickAt); pressure 0..1 (1 for a mouse)."""
-        d = self.drawing()
+        d = self._aim()
         if d is None and self.b.tool != "draw":
             return False
         self.endStroke()
@@ -125,8 +121,9 @@ class Painter(QObject):
 
         def go():
             self._stroke = StrokeDrag(self.b.doc, self.b.who, d["id"], self.b.time if make else self.b.own_t(d["id"]), c["fps"],
-                                      self.brush.stroke_args(), x, y, pressure, make)
+                                      self.brush.stroke_args(), x, y, pressure, make, "new" if self._new_layer else "")
             if make:
+                self._fresh = None
                 self.b.select(d["id"])
         return self.b.guard(go)
 
@@ -139,7 +136,8 @@ class Painter(QObject):
     def endStroke(self):
         s, self._stroke = self._stroke, None
         if s is not None:
-            self.b.guard(lambda: self.b.done(s.end(), ""))
+            if self.b.guard(lambda: self.b.done(s.end(), "")):
+                self._new_layer = False             # the new paint layer is made: later strokes go on it
             self._refresh()
 
     # ---- frame by frame (screen shortcuts and buttons; each is one change) -----------------------------------

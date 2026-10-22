@@ -57,7 +57,7 @@ QQC.ApplicationWindow {
     Shortcut { sequence: "F1"; onActivated: noticesDialog.open() }
     Shortcut { sequence: "Ctrl+H"; onActivated: win.historyOpen ? (win.historyOpen = false) : win.openHistory("") }
     Connections { target: win.bridge ? win.bridge.agent : null; function onHistoryAsked(s) { win.openHistory(s) } }
-    Shortcut { sequence: StandardKey.Undo; enabled: !commandBar.opened; onActivated: win.bridge.undo() }
+    Shortcut { sequences: [StandardKey.Undo]; enabled: !commandBar.opened; onActivated: win.bridge.undo() }
     Shortcut { sequences: ["Ctrl+Shift+Z", "Ctrl+Y"]; enabled: !commandBar.opened; onActivated: win.bridge.redo() }
 
     TopBar {

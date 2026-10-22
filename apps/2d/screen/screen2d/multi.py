@@ -5,7 +5,7 @@ Shift+click on the canvas, Ctrl+click / Shift+click in the layers list, the rubb
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_gui.selection_rules import click
+from rostrum_gui.selection_rules import box, click
 
 from . import bounds, picking
 
@@ -83,14 +83,15 @@ class Multi(QObject):
         self._set([hit] if hit else [])
         return hit
 
-    @Slot(float, float, float, float, result=int)
-    def boxSelect(self, x0, y0, x1, y1):
-        """The rubber band (composition px): select every layer whose box touches it, but not a locked one, nor a
-        layer inside a group that is selected too (the group moves it). Returns how many."""
+    @Slot(float, float, float, float, str, result=int)
+    def boxSelect(self, x0, y0, x1, y1, mods=""):
+        """The rubber band (composition px), by the kit's rule (selection_rules.box, INTERACTION 1.3): every layer it
+        touches, as its outermost group (never a locked one); `mods` "shift" adds them to the selection, "ctrl" picks
+        the deepest pieces instead (not groups). Returns how many are selected."""
         lo_x, hi_x, lo_y, hi_y = min(x0, x1), max(x0, x1), min(y0, y1), max(y0, y1)
         found = [x for x in bounds.boxes(self.b.placed(), self.b._t) if not x["locked"]
                  and (e := bounds.extent(x)) and e[0] <= hi_x and e[2] >= lo_x and e[1] <= hi_y and e[3] >= lo_y]
-        ids = {x["id"] for x in found}
-        hit = [x["id"] for x in reversed(found) if not set(x["up"]) & ids]       # topmost first
-        self._set(hit)
-        return len(hit)
+        touched = [((x["up"] or (x["id"],))[0], x["id"]) for x in reversed(found) if x["type"] != "group"]   # topmost first
+        ids = box(self.layers(), touched, set(mods.split()), "canvas")
+        self._set(ids)
+        return len(ids)

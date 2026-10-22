@@ -34,7 +34,7 @@ Panel {
         onEscaped: panel.bridge.setSearch("")
         trailing: KeyHint { text: "Ctrl F"; visible: find.input.text === "" && !find.input.activeFocus }
     }
-    Shortcut { sequence: StandardKey.Find; enabled: find.visible && panel.visible
+    Shortcut { sequences: [StandardKey.Find]; enabled: find.visible && panel.visible
                onActivated: { find.input.forceActiveFocus(); find.input.selectAll() } }
     Flickable {      // a long inspector scrolls (wheel or touch, thin bar in the panel's margin); a short one never moves
         id: scroller

@@ -68,6 +68,10 @@ pub struct Node {
     pub layers: Vec<Node>,
     /// A drawing layer's drawings: (frame number it appears at, its picture), sorted by frame (contract § 2).
     pub frames: Vec<(i64, String)>,
+    /// Paint on an element (contract § 2 `paint`): its drawings as `frames` are, and whether it is kept inside the
+    /// element's own pixels. Empty: no paint.
+    pub paint: Vec<(i64, String)>,
+    pub paint_inside: bool,
     /// A rig's bones, iks and binds (crate::rig; RIG.md).
     pub rig: Vec<Node>,
 }
@@ -180,8 +184,8 @@ fn node(v: &Value, parent: &str) -> Result<Node, String> {
     let kind = fields::TYPES.iter().copied().find(|t| *t == ty).ok_or_else(|| format!("{id}: unknown item type \"{ty}\"; this engine draws: {}", fields::TYPES.join(", ")))?;
     let (role, fields) = fields::of(kind).unwrap();
     for k in obj.keys() {
-        if !matches!(k.as_str(), "id" | "type" | "props" | "anim" | "effects" | "masks" | "layers") && !(k == "frames" && matches!(kind, "drawing" | "video")) && !(k == "rig" && kind == "rig") {
-            return Err(format!("{id}: unknown part \"{k}\" (an item has id, type, props, anim, effects, masks, layers; a drawing or video also frames; a rig also rig)"));
+        if !matches!(k.as_str(), "id" | "type" | "props" | "anim" | "effects" | "masks" | "layers") && !(k == "frames" && matches!(kind, "drawing" | "video")) && !(k == "rig" && kind == "rig") && !(k == "paint" && PAINTED.contains(&kind)) {
+            return Err(format!("{id}: unknown part \"{k}\" (an item has id, type, props, anim, effects, masks, layers; a drawing or video also frames; a rig also rig; a {} also paint)", PAINTED.join(", ")));
         }
     }
     let props = v["props"].as_object().ok_or_else(|| format!("{id}: no props"))?.clone();
@@ -217,9 +221,14 @@ fn node(v: &Value, parent: &str) -> Result<Node, String> {
         layers: kids("layers", role == Role::Comp || matches!(kind, "group" | "rig"), &[Role::Layer])?,
         rig: kids("rig", kind == "rig", &[Role::Rig])?,
         frames: if matches!(kind, "drawing" | "video") { drawings(&id, &v["frames"])? } else { vec![] },
+        paint: if v.get("paint").is_some() { drawings(&format!("{id}.paint"), &v["paint"]["frames"])? } else { vec![] },
+        paint_inside: v["paint"]["inside"].as_bool().unwrap_or(true),
         id, kind, role, props, anim,
     })
 }
+
+/// The item types that may carry paint (rostrum2d/paint_fields.py TYPES).
+pub const PAINTED: &[&str] = &["shape", "text", "image", "video", "path"];
 
 /// A drawing's `frames: [{"at": n, "src": "…png"}, …]`, sorted by `at`; every picture must exist.
 fn drawings(id: &str, v: &Value) -> Result<Vec<(i64, String)>, String> {

@@ -1,0 +1,30 @@
+"""Paint on an element (UX_SPEC.md §3.8, §3.9): the fields a painted shape, text, picture or path carries, and a
+drawing's "Draw each frame". The paint itself is the element's `frames` (painting-kit canvases, kind.py); these
+fields only say how it sits on the element. Python-side: scene.py sends the paint as `node["paint"]` instead.
+
+Rule of individuality: the Paint group appears only once the element holds paint (the `hasPaint` fact, kind.py).
+"""
+from __future__ import annotations
+
+from rostrum_core import Param
+
+TYPES = ("shape", "text", "image", "video", "path")      # elements that may hold paint (a drawing is only paint)
+HAS_PAINT = {"fact": "hasPaint"}
+G = "Paint"
+
+EACH_FRAME_HELP = "On: each frame can have its own drawing (hand-drawn animation; Alt+N adds the next). Off: one painting"
+
+ELEMENT = [
+    Param.toggle("paintInside", label="Keep inside the outline", group=G, default=True, importance="secondary",
+                 valid_when=HAS_PAINT, help="On: the paint shows only where the element itself is drawn. Off: it covers the whole box"),
+    Param.toggle("eachFrame", label="Draw each frame", group=G, default=False, importance="secondary",
+                 valid_when=HAS_PAINT, help=EACH_FRAME_HELP),
+    Param.number("paintW", label="Paint width", group=G, min=0, max=8192, step=1, unit="px", integer=True, default=0,
+                 importance="deep", valid_when=HAS_PAINT,
+                 help="The paint's own size in px, set by the first stroke from the element's box; it is stretched over the box"),
+    Param.number("paintH", label="Paint height", group=G, min=0, max=8192, step=1, unit="px", integer=True, default=0,
+                 importance="deep", valid_when=HAS_PAINT),
+]
+DRAWING = [Param.toggle("eachFrame", label="Draw each frame", group="Drawing", default=False, importance="secondary",
+                        help=EACH_FRAME_HELP + " (missing on an older drawing: on when it has several drawings)")]
+NAMES = {p.name for p in ELEMENT}          # never sent to the engine (scene.python_only); paintW / paintH are still

@@ -29,7 +29,7 @@ Bring a picture, a video, a PDF page, a Photoshop file or a Figma frame into you
 
 1. Click a piece's name in the timeline to pick it, or click it in the picture. Pieces can be moved, changed and animated like any other layer.
 2. To change several pieces together, pick them first: **Shift+click** on the canvas, or drag a box round them on empty canvas. The panel on the right then shows what they share, and a change applies to all of them as one step.
-3. Right-click the picked pieces, or look at the action bar under them, for what you can do to them together: **Group**, **Align**, **Distribute**, **Mask with top layer**, **Boolean** for shapes, and more (see [the-screen.md](the-screen.md)).
+3. Right-click the picked pieces, or look at the context bar at the top-centre of the canvas, for what you can do to them together: **Group**, **Align**, **Distribute**, **Mask with top layer**, **Combine** for shapes, and more (see [the-screen.md](the-screen.md)).
 4. **Hide** (the eye at the right of a piece's name) takes a piece out of the picture and the export without deleting it. **Lock** keeps a piece from being moved by mistake.
 
 ## 6. A single picture or video

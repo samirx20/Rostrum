@@ -11,11 +11,11 @@
     (plays, with full motion blur or not, at that Preview size, then prints the frames shown per second and each stage's time: screen2d/playstats.py)
     marker add <s> | marker move <name> <s> | marker rename <name> <new name> | marker remove <name> (ruler flags; _ for spaces)
   timeline compact|full (this tool's timeline height) | Draw tool (tool draw; paints on the selected drawing layer, or makes one): draw <x> <y> <x> <y> … (one stroke, composition px)
-    brush <setting> <value> | newframe [copy] | hold <+n|-n> | frame next|prev | onion on|off
+    brush <setting> <value> | newframe [copy] | hold <+n|-n> | frame next|prev | onion on|off | paintlayer | painton selected|new
   Paths (tool pen): pen <x,y> <x,y,hx,hy> … [close] (one new path: a point, or a press at x,y dragged to hx,hy =
     a smooth point; composition px) | pointpick <layer> <i> (select a point: its handles show) | pointdrag <layer> <i> <dx> <dy> [in|out] (a point, or its handle)
   Handles: resize <layer> <nw|n|ne|e|se|s|sw|w> <dx> <dy> [shift] [alt] | rotate <layer> <deg> [shift] (turn by that many
-    degrees) | boxselect <x0> <y0> <x1> <y1> (the rubber band) | shiftpick <layer> (add / remove) | movesel <dx> <dy> (move all selected)
+    degrees) | boxselect <x0> <y0> <x1> <y1> [shift] [ctrl] (the rubber band) | shiftpick <layer> (add / remove) | movesel <dx> <dy> (move all selected)
   Add and import: add <type> (the Add menu's entry; image / video: add image <path>) | addmenu open|close |
     import <path> [page=<n>] [text=outline] [keep=on] (the Import panel's job, waits, fails like it) | importstart <path> … (starts it,
     doesn't wait) | importpanel open [path]|close
@@ -29,6 +29,9 @@
     exportto <path> [replace|both|cancel] | exportshow (export_steps.py)
   Files (file_steps.py): new [name] | save | saveas <name> | openproject <path> | autosave | restore | discard |
     filemenu open|close | askclose
+  Keys (key_steps.py): keypick <id>[,<id>…] [ctrl|shift] | keydrag2 <key> <from s> <to s> | keydelete | showanim
+  Creation tools (create_steps.py): shape <rect|ellipse> x0 y0 x1 y1 [shift] [alt] | text <x> <y> <words> | textbox x0 y0 x1 y1 <words> | edittext <layer> <words>
+  View (view_steps.py): zoom <percent|fit> [x y] | pan <dx> <dy> | fitsel | viewmenu | draghold <layer> <dx> <dy> [ctrl] [shift]
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
@@ -38,8 +41,11 @@ import time
 
 from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject
 
+from .create_steps import WORDS as CREATE_WORDS, do_create_step
 from .export_steps import WORDS as EXPORT_WORDS, do_export_step
+from .key_steps import WORDS as KEY_WORDS, do_key_step
 from .file_steps import WORDS as FILE_WORDS, do_file_step
+from .view_steps import WORDS as VIEW_WORDS, do_view_step
 
 
 def value(text):
@@ -219,6 +225,10 @@ def do_step(bridge, win, step):
         bridge.painter.goFrame(1 if rest[0] == "next" else -1)
     elif word == "onion":
         bridge.painter.setOnion(rest[0] == "on")
+    elif word == "paintlayer":                   # "+ Paint layer": the next stroke starts a new paint layer
+        bridge.painter.newPaintLayer()
+    elif word == "painton":                      # painton selected|new: the "Painting on: … ▸" menu
+        bridge.painter.paintOn(rest[0])
     elif word == "marker":                       # the ruler's flag edits, through the same MarkerWatch slots
         from rostrum_core.markers import find
         m = bridge.marks
@@ -318,10 +328,16 @@ def do_step(bridge, win, step):
         if rest[1:]:
             bridge.exporter.setFormat(rest[1])
         QMetaObject.invokeMethod(win, "setExportOpen", Q_ARG("QVariant", rest[0] == "open"))
+    elif word in KEY_WORDS:
+        do_key_step(bridge, word, rest, step)
     elif word in EXPORT_WORDS:
         do_export_step(bridge, word, rest, step)
     elif word in FILE_WORDS:
         do_file_step(bridge, win, word, rest, step)
+    elif word in VIEW_WORDS:                     # zoom, pan, fitsel, draghold (view_steps.py)
+        do_view_step(bridge, win, word, rest, step)
+    elif word in CREATE_WORDS:
+        do_create_step(bridge, word, rest, step)
     else:
         raise ValueError(f"unknown step {step!r}")
     if bridge.status.startswith("Error"):
