@@ -18,7 +18,7 @@ import os
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QMetaObject, QTimer, QUrl
+from PySide6.QtCore import Q_ARG, QMetaObject, QTimer, QUrl
 from PySide6.QtGui import QGuiApplication
 
 from rostrum_core import Document, RostrumError
@@ -151,6 +151,8 @@ def file_step(screen, step) -> bool:
         QMetaObject.invokeMethod(screen.win, "openSettings")
     elif word in ("about", "help"):           # Help › About and licences / the Help menu, open
         QMetaObject.invokeMethod(screen.win, "openAbout" if word == "about" else "openHelp")
+    elif word == "agents":                    # agents [agent id]: Help › Connect an AI agent (with an id: its by-hand text open)
+        QMetaObject.invokeMethod(screen.win, "openConnectAgent", Q_ARG("QVariant", rest))
     elif word == "guide":                     # guide <file.md>: Help › that guide, in the guide viewer
         guides.open_named(screen.win, rest)
     else:

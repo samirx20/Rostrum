@@ -59,8 +59,12 @@ Source: "{#Stage}\runtime\*"; DestDir: "{app}\runtime"; Components: runtime; Fla
 Source: "{#Stage}\shared\*"; DestDir: "{app}\shared"; Components: runtime; Flags: recursesubdirs ignoreversion
 Source: "{#Stage}\LICENSE"; DestDir: "{app}"; Components: runtime
 Source: "{#Stage}\ATTRIBUTIONS.md"; DestDir: "{app}"; Components: runtime
+Source: "{#Stage}\VERSION"; DestDir: "{app}"; Components: runtime
 Source: "{#Stage}\apps\2d\*"; DestDir: "{app}\apps\2d"; Components: app2d; Flags: recursesubdirs ignoreversion
 Source: "{#Stage}\apps\sound\*"; DestDir: "{app}\apps\sound"; Components: appsound; Flags: recursesubdirs ignoreversion
+; Each app's agent server, started by hand in a terminal (Help > Connect an AI agent shows this command).
+Source: "{#Stage}\rostrum-2d-mcp.cmd"; DestDir: "{app}"; Components: app2d
+Source: "{#Stage}\rostrum-sound-mcp.cmd"; DestDir: "{app}"; Components: appsound
 
 [Icons]
 Name: "{group}\Rostrum2D"; Filename: "{#Pyw}"; Parameters: """{#Launch}"" 2d"; WorkingDir: "{app}"; IconFilename: "{app}\runtime\icons\rostrum2d.ico"; Components: app2d
@@ -85,6 +89,11 @@ Root: HKCU; Subkey: "Software\Classes\Rostrum.DocumentSound\shell\open\command";
 [Run]
 Filename: "{#Pyw}"; Parameters: """{#Launch}"" 2d"; Description: "Open Rostrum2D"; Flags: postinstall nowait skipifsilent; Components: app2d
 Filename: "{#Pyw}"; Parameters: """{#Launch}"" sound"; Description: "Open RostrumSound"; Flags: postinstall nowait skipifsilent unchecked; Components: appsound
+
+[UninstallRun]
+; First, before any file goes: take Rostrum out of every coding agent it was added to (only the entries Rostrum added
+; that start this install's Python; each settings file is backed up first), so no agent points at a deleted Python.
+Filename: "{app}\runtime\python\python.exe"; Parameters: "-m rostrum_connect remove-all --yes --this-install"; WorkingDir: "{app}"; Flags: runhidden waituntilterminated; RunOnceId: "RemoveAgentEntries"
 
 [UninstallDelete]
 ; What the apps write next to themselves (Python's compiled-code caches) and their logs.

@@ -29,6 +29,8 @@ class App:
     guides: Guides = field(default_factory=Guides)
     version: str = "0.1.0"
     folder: str | None = None                               # the project folder: inspect_project lists its items
+    no_project_hint: str = ""                               # with no folder and nothing open: what to do (inspect_project)
+    recent: Callable[[], list] | None = None                # the person's recent projects, shown when none is open
 
 
 class Groups:

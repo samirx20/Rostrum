@@ -52,6 +52,11 @@ def register(tools: Tools):
         """The project: every item (any app's: kind, name, finished renders, newest first) and what is open here."""
         docs = [{"item": i, "kind": _kind_name(d), "seq": d.seq, "items": sum(1 for _ in d.items())} for i, d in ctx.app.documents.items()]
         names = ", ".join(f'{d["item"]} ({d["kind"]}, step {d["seq"]})' for d in docs) or "nothing"
+        if not ctx.app.folder and not docs:           # a server started before the person opened any project
+            text = " ".join(x for x in ("No project is open.", ctx.app.no_project_hint) if x)
+            recent = ctx.app.recent() if ctx.app.recent else None
+            return Reply(text, {"app": ctx.app.name, "open": [], "items": None,
+                                **({"recent": recent} if recent is not None else {})})
         if not ctx.app.folder:
             return Reply(f"{ctx.app.name}: open: {names}. {NO_FOLDER}", {"app": ctx.app.name, "open": docs, "items": None},
                          warnings=[NO_FOLDER])

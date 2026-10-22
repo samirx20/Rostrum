@@ -47,6 +47,17 @@ function Open-App($app, $shotName, $userHome, [string[]]$extra = @(), [string]$l
     return (Get-Content $log.FullName -Raw)
 }
 
+# The real user's agent settings files: hashed now and again at the end (the walk must leave them untouched).
+$userVars = @("USERPROFILE", "HOME", "APPDATA", "LOCALAPPDATA", "CODEX_HOME", "ROSTRUM2D_PROJECTS"); $envBefore = $null
+$devPy = Join-Path $HOME ".rostrum\venv\Scripts\python.exe"
+# Per file: its servers (must not change) and its bytes (a change is only a note: an agent that is running, like the
+# Claude Code driving this walk, rewrites its own file).
+$agentState = { & $devPy -I -c "import sys; sys.path.insert(0, sys.argv[1]); from rostrum_connect import agents, connect
+for a in agents.AGENTS:
+    try: print(agents.user_file(a), '|', sorted(connect.entries(a.id).items()))
+    except Exception as e: print(agents.user_file(a), '| unreadable', e)" (Join-Path $PSScriptRoot "..\..\shared\mcp") }
+$realAgentFiles = @(& $agentState)
+$realHashes = @{}; foreach ($f in $realAgentFiles) { $p = ($f -split " \| ")[0]; $realHashes[$p] = if (Test-Path $p) { (Get-FileHash $p).Hash } else { "absent" } }
 New-Item -ItemType Directory -Force $saved, $Results | Out-Null
 foreach ($n in $names) { $l = Join-Path $desk "$n.lnk"; if (Test-Path $l) { Copy-Item $l $saved } }
 try {
@@ -95,8 +106,44 @@ try {
     $ort = & $py -c "import onnxruntime as o; print(o.__version__, o.get_available_providers())" 2>&1
     if ($LASTEXITCODE) { Problem "onnxruntime (Make cleaned take) doesn't load in the installed Python: $ort" } else { Write-Host "onnxruntime loads: $ort" }
 
+    # Connect an AI agent, as a new user: Codex in a scratch home (CODEX_HOME), so no real agent settings are touched.
+    # From here to the uninstall, this script and what it starts (the uninstaller too) see the scratch user's folders.
+    $agentUser = Join-Path $Scratch "user-agents"; $codexHome = Join-Path $agentUser ".codex"
+    New-Item -ItemType Directory -Force $codexHome, (Join-Path $agentUser "AppData\Local"), (Join-Path $agentUser "AppData\Roaming") | Out-Null
+    $toml = Join-Path $codexHome "config.toml"
+    [IO.File]::WriteAllBytes($toml, [Text.Encoding]::ASCII.GetBytes("# my Codex settings`r`nmodel = `"gpt-5`"`r`n`r`n[mcp_servers.other]`r`ncommand = `"other.exe`"`r`n"))
+    $seed = Get-FileHash $toml
+    $envBefore = @{}; foreach ($k in $userVars) { $envBefore[$k] = [Environment]::GetEnvironmentVariable($k) }
+    $env:USERPROFILE = $agentUser; $env:HOME = $agentUser; $env:CODEX_HOME = $codexHome
+    $env:APPDATA = Join-Path $agentUser "AppData\Roaming"; $env:LOCALAPPDATA = Join-Path $agentUser "AppData\Local"
+    $env:ROSTRUM2D_PROJECTS = Join-Path $agentUser "Documents\Rostrum2D"
+    $hand = (& $py -m rostrum_connect hand --agent codex --app 2d) -join "`n"
+    $hand | Set-Content (Join-Path $Results "installed-codex-by-hand.txt") -Encoding utf8
+    if ($hand -notmatch [regex]::Escape("$dir\runtime\python\python.exe") -or $hand -match "PYTHONPATH|\.rostrum\\venv") {
+        Problem "the by-hand text doesn't use the installed Python, or names PYTHONPATH / the dev venv:`n$hand" }
+    Open-App "2d" "connect-codex-by-hand" $agentUser @("--step", "agents codex") | Out-Null
+    $list = Join-Path $PSScriptRoot "list_tools.py"
+    foreach ($app in @("2d", "sound")) {
+        $out = & $py $list (Join-Path $dir "rostrum-$app-mcp.cmd") 2>&1
+        Write-Host "rostrum-$app-mcp.cmd: $($out -join ' | ')"
+        if ($LASTEXITCODE) { Problem "rostrum-$app-mcp.cmd didn't start a server that lists its tools: $out" }
+    }
+    $add = & $py -m rostrum_connect add --agent codex --app 2d --yes 2>&1
+    Write-Host "add: $add"
+    if ($LASTEXITCODE) { Problem "adding Rostrum2D to Codex failed: $add" }
+    Copy-Item $toml (Join-Path $Results "installed-codex-config-after-add.toml")
+    $out = & $py $list --codex $toml rostrum-2d 2>&1
+    Write-Host "Codex's entry: $($out -join ' | ')"
+    if ($LASTEXITCODE) { Problem "the server Codex's entry starts didn't list its tools: $out" }
+    Open-App "2d" "connect-codex-added" $agentUser @("--step", "agents") | Out-Null
+
     $p = Start-Process (Join-Path $dir "unins000.exe") -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait -PassThru
     if ($p.ExitCode) { Problem "the uninstaller exited with $($p.ExitCode)" }
+    for ($i = 0; $i -lt 30 -and (Test-Path $dir); $i++) { Start-Sleep -Milliseconds 500 }   # it finishes in a copy of itself
+    foreach ($k in $userVars) { [Environment]::SetEnvironmentVariable($k, $envBefore[$k]) }
+    $envBefore = $null
+    if ((Get-FileHash $toml).Hash -ne $seed.Hash) { Problem "after uninstall, Codex's config.toml isn't byte-for-byte what it was: $(Get-Content $toml -Raw)" }
+    else { Write-Host "uninstall took Rostrum out of Codex: config.toml byte-for-byte as before" }
     for ($i = 0; $i -lt 30 -and (Test-Path $dir); $i++) { Start-Sleep -Milliseconds 500 }   # it finishes in a copy of itself
     $left = @()
     if (Test-Path $dir) { $left += "the install folder: $((Get-ChildItem $dir -Recurse -Force | Select-Object -First 5).FullName -join ', ')" }
@@ -113,6 +160,14 @@ try {
 } catch {
     Problem "$_"
 } finally {
+    if ($envBefore) { foreach ($k in $userVars) { [Environment]::SetEnvironmentVariable($k, $envBefore[$k]) } }
+    $after = @(& $agentState)
+    if (($after -join "`n") -ne ($realAgentFiles -join "`n")) { Problem "the real user's agent servers changed during the walk:`n$($after -join "`n")" }
+    else { Write-Host "the real user's $($after.Count) agent settings files list the same servers as before the walk" }
+    foreach ($p in $realHashes.Keys) {
+        $now = if (Test-Path $p) { (Get-FileHash $p).Hash } else { "absent" }
+        Write-Host ("  {0}: {1}" -f $p, $(if ($now -eq $realHashes[$p]) { "byte-for-byte the same" } else { "bytes changed (same servers; the agent's own writes)" }))
+    }
     foreach ($f in Get-ChildItem $saved -Filter *.lnk) { Copy-Item $f.FullName $desk -Force }
     Write-Host "desktop shortcuts put back: $((Get-ChildItem $saved -Filter *.lnk).Name -join ', ')"
 }

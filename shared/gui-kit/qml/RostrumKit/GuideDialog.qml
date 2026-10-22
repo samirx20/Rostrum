@@ -46,9 +46,9 @@ QQC.Popup {
         Text {
             id: page
             width: flick.width
-            textFormat: Text.MarkdownText; wrapMode: Text.Wrap
-            text: dlg.body; baseUrl: dlg.url             // pictures in a guide load from beside it
-            color: Theme.fg; linkColor: Theme.accent; lineHeight: 1.25
+            textFormat: Text.RichText; wrapMode: Text.Wrap  // the guide as rich text (guides.page_html): line spacing
+            text: dlg.body; baseUrl: dlg.url                // on text only; pictures load from beside the guide
+            color: Theme.fg; linkColor: Theme.accent
             font.family: uiFont; font.pixelSize: Theme.title
             onLinkActivated: (link) => dlg.follow(link)
             HoverHandler { cursorShape: page.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }

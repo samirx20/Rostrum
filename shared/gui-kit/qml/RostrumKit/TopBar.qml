@@ -19,10 +19,12 @@ Item {
     property alias actions: actionsSlot.data
     // The app's own Help entries, above About: {value, label}. A guide's value is its .md file's file:// address
     // (rostrum_gui.guides.entries; it opens in the kit's guide viewer); any other value is the app's own entry
-    // (e.g. "Connect an AI agent") and comes back as helpPicked(value).
+    // and comes back as helpPicked(value). Apps with an agent server (an `agents` object, rostrum_gui/agents.py)
+    // also get "Connect an AI agent", just above About.
     property var helpEntries: []
     signal commandClicked()
     signal aboutClicked()
+    signal connectAgentClicked()
     signal guideClicked(string url)
     signal helpPicked(string value)
     implicitHeight: Theme.topBar
@@ -98,7 +100,7 @@ Item {
             KeyHint { id: cmdKey; text: "Ctrl K"; anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter }
             MouseArea { id: cmdHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: bar.commandClicked() }
         }
-        IconButton {  // Help: the app's guides, then About and licences (F1 opens that screen)
+        IconButton {  // Help: the app's guides, Connect an AI agent, then About and licences (F1 opens that screen)
             id: help
             glyph: "?"; kind: "ghost"; tip: "Help"; down: helpMenu.opened
             onClicked: helpMenu.open()
@@ -106,8 +108,10 @@ Item {
                 id: helpMenu
                 x: parent.width - width
                 width: 240
-                entries: bar.helpEntries.concat([{ value: "about", label: "About and licences" }])
-                onPicked: (v) => v === "about" ? bar.aboutClicked()
+                entries: bar.helpEntries
+                    .concat(typeof agents !== "undefined" && agents ? [{ value: "agents", label: "Connect an AI agent" }] : [])
+                    .concat([{ value: "about", label: "About and licences" }])
+                onPicked: (v) => v === "about" ? bar.aboutClicked() : v === "agents" ? bar.connectAgentClicked()
                                 : /^file:.*\.md$/i.test(v) ? bar.guideClicked(v) : bar.helpPicked(v)
             }
         }

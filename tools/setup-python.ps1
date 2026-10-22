@@ -27,7 +27,7 @@ if (-not (Test-Path $py)) {
 # What the three apps' screens, scripts and MCP servers need. Left out on purpose: the big optional AI extras
 # (2D lip sync, Sound cleanup); install those into the same environment when you want them.
 $packages = @(
-    "shared\core[mcp]", "shared\gui-kit", "shared\painting-kit",
+    "shared\core[mcp]", "shared\gui-kit", "shared\painting-kit", "shared\mcp",
     "apps\2d\python[mcp,io,render3d]", "apps\sound\python[listen,mcp]", "apps\3d\python[mcp]"
 )
 $args_ = @("pip", "install", "--python", $py)
