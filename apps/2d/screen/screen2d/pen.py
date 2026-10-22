@@ -150,6 +150,11 @@ class Pen(QObject):
             self.b.select(pid)
         return ok
 
+    @Slot(result=bool)
+    def close(self) -> bool:
+        """The context bar's Close path: the path ends closed (one change), like a click on its first point."""
+        return self.finish(True)
+
     # ---- editing the selected path's points: one drag = one gesture -------------------------------------------
     @Slot(int, str, result=bool)
     def beginPointDrag(self, i, part):

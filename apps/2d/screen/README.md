@@ -5,32 +5,34 @@ One workspace on one 2D document (no pages; the design is `../DESIGN.md`), built
 ```
 top bar          Rostrum2D · File · document · what just happened · Undo / Redo · + Add · Import · Export · Ctrl+K · Help
 centre           Canvas: the engine's frame at the playhead, fitted; the tool strip (Move V, Pen P, Draw B) at its top left;
-                 the selected layers' boxes and handles; the action bar under the selection
+                 the selected layers' boxes and handles; the context bar at the top-centre
 right            Settings panel (the kit's Inspector): the selected item(s)' field operation, values at the playhead, key
                  marks; essentials first, folded groups, Find a setting (Ctrl+F); with Draw on, the brush instead
 bottom           Timeline = the layers list: a name column (fold, rename, drag to reorder, lock, eye) and a bar per layer
                  with its keys and frames under a ruler with the markers; two heights (full / compact), remembered per tool
 ```
 
-## Select first, then act (`screen2d/actions.py`, `layer_order.py`, `qml/ActionBar.qml`, `qml/ActionMenu.qml`)
+## Select first, then act (`screen2d/actions.py`, `action_rules.py`, `layer_order.py`, `qml/ActionBar.qml`, `qml/ActionMenu.qml`)
 
-- **One list of actions on the selected layers** (`actions.ACTIONS`, data): Group, Ungroup, Clip, Auto layout, Make swap
-  set, Make rig, Mask with top layer (and the other mattes), Release mask, Union / Subtract / Intersect / Exclude, Align,
-  Distribute, Match size, Copy / Paste style, Lock / Unlock, Hide / Show, Duplicate, Delete, the four order moves, Rename.
-  Each has a key (`layer:<name>`), label, shortcut, importance (`bar` = on the action bar), group (menu dividers) and
-  `valid(Facts)`; `available(doc, ids, state)` returns only what the selection allows (nothing is greyed). Each action is
-  one change: all its operation calls in one apply. The operations are the ones agents call (`group.make`, `mask.make`,
-  `shape.boolean`, `layer.align`, `style.apply`, `layer.lock` …, `python/rostrum2d/ops_*.py`).
-- Four places read it: the **action bar** (a floating bar just under the selection; Move tool only, hidden while playing or
-  dragging; its buttons and "⋯" for the whole list), the **right-click menus** (a layer's name in the timeline, and the
-  selection on the canvas), **Ctrl+K** and the **shortcuts** (Ctrl+G, Ctrl+Shift+G, Ctrl+D, Delete, F2, Ctrl+], Ctrl+[,
-  Ctrl+A, Esc, arrows nudge 1 px, Shift 10 px, one change per press).
-- The selection is read in one place, `LayerOrder.selected_layers()` (the kit's `selection`, plus whatever the canvas's
-  Shift+click holds in `multi.py`). A selection holding a locked layer is offered only Unlock.
-- Lock and the eye on each layer row (`qml/LayerName.qml`): fields `locked` / `hidden`. A hidden layer is not drawn in the
-  preview or an export (`scene.py` leaves it out) and has no box; `bounds.pick` skips locked layers.
-- Steps: `selectmany <id> <id> …`, `act <action>` (`group`, `ungroup`, `mask`, `union`, `align_left`, `distribute_x`,
-  `match_w`, `lock`, `hide`, `delete`, `front` …), `nudge <dx> <dy>`, `actionmenu`, `actionbar` (print what they offer).
+- **One list of actions on the selected layers** (`actions.ACTIONS`), **plain data** shaped for the kit's one action list
+  (S31): id, label, `job` (a shared key map job) or `keys` (2D's own key), importance (`primary` = on the context bar),
+  rank, group (menu dividers), bar (the context bar button it sits under: Combine, Align, Distribute), min / max targets,
+  `when` (a condition in the one condition language, `rostrum_core.conditions`, read on the selection's facts:
+  `action_rules.Facts`), and `calls` (an operation, a target rule and argument rules such as `$new:group`, `$at`, `$top`;
+  or a named rule, `order`) or `do` (copy / cut to the clipboard, copy style, rename). `available(doc, ids, state)`
+  returns only what the selection allows (nothing is greyed). Each action is one change: all its calls in one apply,
+  operations agents call too (`python/rostrum2d/ops_*.py`).
+- Four doors read it: the **context bar** (`ActionBar.qml`: fixed at the top-centre of the canvas, "N layers" then the five
+  highest-ranked actions and "⋯"; Move tool only; hidden while playing or dragging; with Pen or Paint on it shows that
+  tool's options instead: Close path / Done; tip, size, colour, opacity, eraser E, `[` `]`), the **right-click menus**,
+  **Ctrl+K** and the **shortcuts** (Main.qml makes them from `backend.actionKeys()`, so a key is written once).
+- The selection is read in one place, `LayerOrder.selected_layers()`. A selection holding a locked layer is offered only Unlock.
+- **Keys in the timeline** (`key_select.py`, `backend.keys`): click picks a key, Ctrl+click adds / removes, Shift+click
+  the run between; a diamond on a layer's bar stands for all its keys at that frame. Picked keys move together (one
+  change); Delete removes them; Esc lets go of keys before layers. **A** opens the selected layers to their animated
+  settings only, again folds them (`outline.rows(…, anim_only)`).
+- Steps: `selectmany <id> <id> …`, `act <action>`, `nudge <dx> <dy>`, `actionmenu`, `actionbar`; keys (`key_steps.py`):
+  `keypick <id>[,<id>…] [ctrl|shift]`, `keydrag2 <key> <from s> <to s>`, `keydelete`, `showanim`.
 
 ## The timeline (`qml/LayerTimeline.qml`, `LayerRows.qml`, `LayerName.qml`, `LayerTrack.qml`, `screen2d/outline.py`, `bar_drag.py`)
 

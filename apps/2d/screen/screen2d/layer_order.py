@@ -10,7 +10,7 @@ from rostrum_core.tree import subtree_ids
 from rostrum_gui.parts import SlotMixin
 
 from . import bounds, route
-from .actions import available
+from .actions import ACTIONS, available, key_of
 
 # What actions.py covers, as the kit's operation commands would list it again in Ctrl+K.
 COVERED = ("group.make", "group.release", "rig.make", "mask.make", "mask.release", "shape.boolean", "path.boolean",
@@ -81,7 +81,7 @@ class LayerOrder(SlotMixin):
         """The action bar's buttons: [{key, label, shortcut, menu}], most used first; `menu` lists a button's choices
         (Boolean, Align, Distribute) and is empty for a button that acts at once."""
         items = []
-        for a in (x for x in self._actions() if x["importance"] == "bar"):
+        for a in sorted((x for x in self._actions() if x["importance"] == "bar"), key=lambda x: x["rank"]):
             name = a["bar"] or a["label"]
             item = next((i for i in items if i["label"] == name), None)
             if item is None:
@@ -90,6 +90,12 @@ class LayerOrder(SlotMixin):
             if a["bar"]:
                 item["menu"].append(self._entry(a))
         return items
+
+    @Slot(result="QVariantList")
+    def actionKeys(self):
+        """[{key, shortcut}] of every action in the list that has a key: Main.qml makes the shortcuts from it, so a key
+        is typed in one place (actions.py; the kit's key map once S31 lands). A key does its action only when valid."""
+        return [{"key": f"layer:{a['id']}", "shortcut": key_of(a)} for a in ACTIONS if key_of(a)]
 
     @Slot(result="QVariantMap")
     def selectionExtent(self) -> dict:
@@ -112,7 +118,7 @@ class LayerOrder(SlotMixin):
             return True
         if cmd["special"] in ("clip_copy", "clip_cut"):
             return self.copyLayers() if cmd["special"] == "clip_copy" else self.cutLayers()
-        if cmd["special"] == "copy":
+        if cmd["special"] == "copy_style":
             self._copied = self.selected_layers()[0]
             self._set_status(f"Copied the style of {self.label_of(self.doc.item(self._copied))}")
             return True
@@ -137,6 +143,9 @@ class LayerOrder(SlotMixin):
         """A shortcut's command (front, back, forward, backward, delete, rename, group, ungroup …): the same as Ctrl+K's,
         and quiet when it can't apply right now."""
         key = how if how.startswith("layer:") else f"layer:{how}"
+        keys = self._keys                    # keys picked in the timeline take Delete first (key_select.py)
+        if key == "layer:delete" and keys is not None and keys.count:
+            return keys.remove()
         if not any(c["key"] == key for c in self._layer_commands()):
             return False
         return self.run(key)
@@ -161,6 +170,12 @@ class LayerOrder(SlotMixin):
 
     @Slot()
     def clearSelection(self):
+        """Esc: one level at a time (INTERACTION 1.3): picked keys first, then the layers."""
+        keys = self._keys
+        if keys is not None and keys.count:
+            keys.clear()
+            self.select(bounds.layer_of(self.doc, self._sel) or self.comp_id)
+            return
         self.select(self.comp_id)
 
     @Slot(float, float, result=bool)

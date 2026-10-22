@@ -50,4 +50,5 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("about", ["--sample"], ["about"]),
         ("connect-agent", ["--sample"], ["agents"]),
         ("guide", ["--sample"], ["guide the-screen.md"]),
+        ("view-menu", ["--sample"], ["select title", "zoom 400", "viewmenu"]),     # zoomed in, the view's % menu open
     ]

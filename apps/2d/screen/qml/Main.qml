@@ -1,3 +1,4 @@
+import QtQml
 import QtQuick
 import RostrumKit
 
@@ -32,12 +33,17 @@ AppShell {
     Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
 
     // the tools: V move, P pen, B draw, Esc back to move (screen state, backend.setTool)
-    Shortcut { sequence: "V"; onActivated: backend.setTool("move") }
-    Shortcut { sequence: "P"; onActivated: backend.setTool(backend.tool === "pen" ? "move" : "pen") }
-    Shortcut { sequence: "B"; onActivated: backend.setTool("draw") }
-    Shortcut { sequence: "Escape"; enabled: backend.tool === "draw"; onActivated: backend.setTool("move") }
+    Shortcut { sequence: "V"; enabled: !shell.typing; onActivated: backend.setTool("move") }
+    Shortcut { sequence: "P"; enabled: !shell.typing; onActivated: backend.setTool(backend.tool === "pen" ? "move" : "pen") }
+    Shortcut { sequence: "B"; enabled: !shell.typing; onActivated: backend.setTool("draw") }
+    Shortcut { sequence: "R"; enabled: !shell.typing; onActivated: backend.setTool("rect") }       // creation tools (create.py)
+    Shortcut { sequence: "O"; enabled: !shell.typing; onActivated: backend.setTool("ellipse") }
+    Shortcut { sequence: "T"; enabled: !shell.typing; onActivated: backend.setTool("text") }
+    Shortcut { sequence: "A"; enabled: !shell.typing; onActivated: backend.showAnimated() }    // only the animated settings of the selection; again folds them
+    Shortcut { sequence: "Escape"; enabled: backend.tool === "draw" || backend.tool === "rect" || backend.tool === "ellipse"
+                                            || (backend.tool === "text" && !backend.create.typing); onActivated: backend.setTool("move") }
 
-    Shortcut { sequence: "Space"; onActivated: backend.togglePlay() }
+    Connections { target: spaceKey; function onTapped() { backend.togglePlay() } }   // a tap of Space plays; held, it pans (spacekey.py)
     Shortcut { sequence: "Alt+Left"; onActivated: painter.goFrame(-1) }       // frame by frame, on the selected drawing
     Shortcut { sequence: "Alt+Right"; onActivated: painter.goFrame(1) }
     Shortcut { sequence: "Alt+N"; onActivated: painter.newFrame(false) }
@@ -45,19 +51,20 @@ AppShell {
     Shortcut { sequence: "Alt+Up"; onActivated: painter.holdBy(1) }
     Shortcut { sequence: "Alt+Down"; onActivated: painter.holdBy(-1) }
     Shortcut { sequence: "Alt+O"; onActivated: painter.setOnion(!painter.onionOn) }
-    // layer order, delete and rename: the same commands Ctrl+K lists (screen2d/layer_order.py); quiet when they can't apply
-    Shortcut { sequence: "Ctrl+]"; onActivated: backend.layerCommand("forward") }
-    Shortcut { sequence: "Ctrl+["; onActivated: backend.layerCommand("backward") }
-    Shortcut { sequence: "Ctrl+Shift+]"; onActivated: backend.layerCommand("front") }
-    Shortcut { sequence: "Ctrl+Shift+["; onActivated: backend.layerCommand("back") }
-    Shortcut { sequence: "Delete"; onActivated: backend.layerCommand("delete") }
-    Shortcut { sequence: "F2"; onActivated: backend.layerCommand("rename") }
-    Shortcut { sequence: "Ctrl+D"; onActivated: backend.layerCommand("duplicate") }
+    // every key of the one action list (screen2d/actions.py: group, order, delete, rename, align, combine, mask …),
+    // made from the list itself so a key is typed in one place; quiet when its action can't apply (layerCommand).
+    // Delete with keys selected in the timeline removes those keys (key_select.py)
+    Instantiator {
+        model: backend.actionKeys()
+        delegate: Shortcut {
+            required property var modelData
+            sequence: modelData.shortcut; enabled: !shell.typing
+            onActivated: backend.layerCommand(modelData.key)
+        }
+    }
     // select, then act (screen2d/actions.py): the keys of the one list of actions, and the keyboard's select all, clear, nudge
-    readonly property bool typing: Window.activeFocusItem !== null && typeof Window.activeFocusItem.selectAll === "function"
+    readonly property bool typing: backend.create.typing || Window.activeFocusItem !== null && typeof Window.activeFocusItem.selectAll === "function"
     readonly property bool canvasKeys: backend.tool === "move" && !typing
-    Shortcut { sequence: "Ctrl+G"; onActivated: backend.layerCommand("group") }
-    Shortcut { sequence: "Ctrl+Shift+G"; onActivated: backend.layerCommand("ungroup") }
     Shortcut { sequence: "Ctrl+A"; enabled: shell.canvasKeys; onActivated: backend.selectAllLayers() }
     // copy, cut and paste layers (screen2d/clipboard.py; the system clipboard, so also into another project). Not while
     // typing: a text box keeps its own Ctrl+C / X / V
@@ -97,8 +104,9 @@ AppShell {
     ]
     FileFlow { id: fileFlow; window: shell }
     centre: [
-        Stage { id: stage; anchors.fill: parent },
-        ActionBar { anchors.fill: parent; stage: stage },       // select, then act: under the selection
+        Stage { id: stage; anchors.fill: parent; typing: shell.typing },   // typing: F stays a letter (ViewControls.qml)
+        CreateOverlay { anchors.fill: parent; stage: stage },    // R / O / T: drag a shape, click or drag and type
+        ActionBar { anchors.fill: parent; stage: stage },       // the context bar: top-centre of the canvas
         ExportPanel {   // opened by the Export button; docked on the canvas's right edge, beside the inspector (never over it)
             id: exportPanel
             anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }

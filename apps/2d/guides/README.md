@@ -5,7 +5,7 @@
 Short pages in everyday words, with the names of the real buttons. The app is one workspace (the picture, the settings of what you picked, and a timeline that is also the layers list), so these pages follow the work, not pages of the screen.
 
 1. [Making your first animation](first-animation.md): start a project, add text, pick and move, animate a value in place with the diamonds, play, do something to several layers, undo.
-2. [The screen](the-screen.md): the top bar, the canvas and its tools, select first then act (the action bar, right-click, Ctrl+K), the settings panel, the timeline and its two heights, lock and hide, markers.
+2. [The screen](the-screen.md): the top bar, the canvas and its tools, select first then act (the context bar, right-click, Ctrl+K), the settings panel, the timeline and its two heights, lock and hide, markers.
 3. [Drawing](drawing.md): the Draw tool, the brush, strokes, frames, hold and onion skin.
 4. [Importing pictures and files](importing.md): bring in pictures, video, SVG, PDF, PSD and Figma frames, then work on the pieces.
 5. [Exporting a video](exporting.md): the formats in plain words, the settings, and where the file goes.

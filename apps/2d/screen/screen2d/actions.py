@@ -1,172 +1,114 @@
 """The one list of actions on selected layers (Group, Mask, Align, Lock, Delete, Bring forward …): select first, then
-act (apps/2d/DESIGN.md). The action bar, the right-click menus, Ctrl+K and the shortcuts all read `available`, so they
-always agree and nothing is greyed: an action is listed only when the selection allows it. Each action is one change
-(all its calls in one apply) made of operations an agent calls too. Data only, no Qt.
+act (apps/2d/UX_SPEC.md 4.3, shared/gui-kit/INTERACTION.md 1.2). The context bar, the right-click menus, Ctrl+K and
+the shortcuts all read `available`, so they always agree and nothing is greyed: an action is listed only when the
+selection allows it. Each action is one change (all its calls in one apply) made of operations an agent calls too.
 
-An action: key (`layer:<name>`), label, shortcut, importance ("bar" = on the action bar, else "menu"), group (a divider
-in menus), `bar` (the bar button it sits under, e.g. "Boolean"), valid(Facts), calls(Facts, state) -> operation calls.
-`special` marks those that are not document changes: "copy" (remember the layer whose style is pasted), "rename", and
-"clip_copy" / "clip_cut" (the system clipboard: clipboard.py; Cut also removes, one change). Paste is layer_order's.
+PLAIN DATA, shaped for the kit's one action list (rostrum_gui/actions.py `Action`, S31), so it moves there with no
+rework: id, label, job (a key map job: its key comes from the key map) or keys (2D's own key), importance ("primary" =
+on the context bar, "secondary" = under ⋯ and in menus), rank (lower first), group (menu divider), bar (the context bar
+button it sits under), min_targets / max_targets / kinds, `when` (a condition on the selection's facts, in the one
+condition language: action_rules.Facts lists the facts), `calls` (an operation, a target rule and argument rules:
+action_rules.py) or `do` (not a document change: copy / cut to the clipboard, remember a style, rename). A selection
+holding a locked layer is offered only what is marked `locked_ok` (Unlock).
 """
 from __future__ import annotations
 
-from rostrum2d import fields as F
-from rostrum_core.ids import counted
-from rostrum_core.tree import index
-from rostrum2d.ops_group import HOLDERS, _why_not
+from .action_rules import Facts, allows, calls_of
 
-SHAPES = ("shape", "path")
+# The shared keys these actions use (INTERACTION.md Part 2). Until the kit's key map (S31) is in main; then
+# KeyMap("2d", APP_KEYS).key_of(job) replaces this table.
+SHARED_KEYS = {"group": "Ctrl+G", "ungroup": "Ctrl+Shift+G", "copy": "Ctrl+C", "cut": "Ctrl+X", "duplicate": "Ctrl+D",
+               "delete": "Delete", "rename": "F2", "forward": "Ctrl+]", "backward": "Ctrl+[", "front": "Ctrl+Shift+]",
+               "back": "Ctrl+Shift+[", "hide": "Ctrl+Shift+H", "lock": "Ctrl+Shift+L", "copy_style": "Ctrl+Alt+C",
+               "paste_style": "Ctrl+Alt+V"}
 
-
-class Facts:
-    """What the selection is. `ids` are in the order they were picked (the first is the primary); `stack` bottom first."""
-
-    def __init__(self, doc, ids: list[str]):
-        self.doc, self.ids, self.count = doc, ids, len(ids)
-        self.items = [doc.item(i) for i in ids]
-        self.kinds = {it["type"] for it in self.items}
-        where = {i: doc.parent_of(i) for i in ids}
-        self.parents = {w[0] for w in where.values()}
-        self.same_parent = len(self.parents) == 1
-        self.stack = sorted(ids, key=lambda i: where[i][2])
-        self.parent = doc.item(next(iter(self.parents))) if self.same_parent else None
-        p = self.parent
-        self.groupable = bool(p) and p["type"] in HOLDERS and p.get("layout", "none") == "none" and "camera" not in self.kinds
-        self.shapes = self.kinds <= set(SHAPES)
-        self.groups = self.kinds == {"group"}
-        self.releasable = self.groups and all(_why_not(it, doc.item(where[it["id"]][0])) is None for it in self.items)
-        self.maskable = self.groupable and all(F.param(it["type"], "matte") for it in self.items)
-        self.matted = any(it.get("matte") for it in self.items) or (
-            bool(p) and any(s.get("matte") in ids for s in p.get("layers", [])))
-        self.plain = [i for i, it in zip(ids, self.items) if it["type"] != "camera"]
-        self.locked = [i for i in self.plain if doc.item(i).get("locked")]
-        self.hidden = [i for i in self.plain if doc.item(i).get("hidden")]
+FACT = lambda name: {"fact": name}            # noqa: E731
+NOT = lambda name: {"not": {"fact": name}}    # noqa: E731
+ALL = lambda *names: {"all": [{"fact": n} for n in names]}   # noqa: E731
 
 
-def _call(_op, target, /, **args):
-    return {"op": _op, "target": list(target), "args": args}
+def _op(name, target, **args):
+    return {"op": name, "target": target, "args": args}
 
 
-def _fresh(f, type_):
-    """An id for the layer an action makes, so the screen can select it afterwards."""
-    return counted(index(f.doc.data, f.doc.kind.lists), type_)
-
-
-def _make(how):
-    return lambda f, st: [_call("group.make", f.stack, id=_fresh(f, "group"), **{"as": how})]
-
-
-def _mask(mode):
-    return lambda f, st: [_call("mask.make", f.stack[:-1], cutter=f.stack[-1], mode=mode, id=_fresh(f, "group"), at=st["at"](f.ids[0]))]
-
-
-def _align(edge):
-    return lambda f, st: [_call("layer.align", f.ids, edge=edge, at=st["at"](f.ids[0]))]
-
-
-def _match(dims):
-    return lambda f, st: [_call("layer.match_size", f.ids[1:], to=f.ids[0], dims=dims, at=st["at"](f.ids[0]))]
-
-
-def _reorder(how):
-    return lambda f, st: arrange_calls(f.doc, f.ids, how)
-
-
-def reordered(stack: list[str], picked: set[str], how: str) -> list[str]:
-    """The stack (index 0 = bottom) after moving the picked layers; their order among themselves stays."""
-    mine, rest = [i for i in stack if i in picked], [i for i in stack if i not in picked]
-    if how in ("front", "back"):
-        return rest + mine if how == "front" else mine + rest
-    out, step = list(stack), (1 if how == "forward" else -1)
-    for i in (reversed(range(len(out))) if step > 0 else range(len(out))):
-        j = i + step
-        if out[i] in picked and 0 <= j < len(out) and out[j] not in picked:
-            out[i], out[j] = out[j], out[i]
-    return out
-
-
-def arrange_calls(doc, layers: list[str], how: str) -> list[dict]:
-    """layer.arrange calls that put each parent's stack in the new order (none when nothing would move)."""
-    calls, by_parent = [], {}
-    for layer in layers:
-        by_parent.setdefault(doc.parent_of(layer)[0], set()).add(layer)
-    for parent, picked in by_parent.items():
-        now = [c["id"] for c in doc.item(parent)["layers"]]
-        for i, id_ in enumerate(reordered(now, picked, how)):
-            if now[i] != id_:
-                calls.append(_call("layer.arrange", [id_], index=i))
-                now.remove(id_)
-                now.insert(i, id_)
-    return calls
-
-
-def _act(key, label, valid, calls=None, shortcut="", importance="menu", group="", bar="", special=""):
-    return {"key": f"layer:{key}", "label": label, "shortcut": shortcut, "importance": importance, "group": group,
-            "bar": bar, "valid": valid, "calls": calls, "special": special}
+def _a(id_, label, *, rank=100, importance="secondary", group="", bar="", job="", keys="", when=None, calls=None,
+       do="", min_targets=1, max_targets=None, kinds=None, locked_ok=False):
+    return {"id": id_, "label": label, "rank": rank, "importance": importance, "group": group, "bar": bar, "job": job,
+            "keys": keys, "when": when, "calls": calls, "do": do, "min_targets": min_targets, "max_targets": max_targets,
+            "kinds": kinds, "locked_ok": locked_ok}
 
 
 _MATTES = {"luma": "Use its brightness", "alphaInverted": "Outside its shape", "lumaInverted": "Use its darkness"}
-_EDGES = {"left": "Align left", "hcenter": "Centre across", "right": "Align right", "top": "Align top",
-          "vcenter": "Centre up and down", "bottom": "Align bottom"}
-_ORDER = {"front": ("Bring to front", "Ctrl+Shift+]"), "forward": ("Bring forward", "Ctrl+]"),
-          "backward": ("Send backward", "Ctrl+["), "back": ("Send to back", "Ctrl+Shift+[")}
+_EDGES = {"left": ("Align left", "Alt+A"), "hcenter": ("Centre across", "Alt+H"), "right": ("Align right", "Alt+D"),
+          "top": ("Align top", "Alt+W"), "vcenter": ("Centre up and down", "Alt+V"), "bottom": ("Align bottom", "Alt+S")}
+_BOOLEANS = {"union": "Ctrl+Alt+U", "subtract": "Ctrl+Alt+S", "intersect": "Ctrl+Alt+I", "exclude": "Ctrl+Alt+X"}
+_ORDER = {"front": "Bring to front", "forward": "Bring forward", "backward": "Send backward", "back": "Send to back"}
+_MASK = lambda m: _op("mask.make", "stack_but_top", cutter="$top", mode=m, id="$new:group", at="$at")   # noqa: E731
 
 ACTIONS = [
-    _act("group", "Group", lambda f: f.groupable and f.count >= 2, _make("group"), "Ctrl+G", "bar", "make"),
-    _act("ungroup", "Ungroup", lambda f: f.releasable, lambda f, st: [_call("group.release", f.ids)], "Ctrl+Shift+G", "bar", "make"),
-    _act("clip", "Clip to a box", lambda f: f.groupable, _make("clip"), group="make"),
-    _act("layout", "Auto layout (a row)", lambda f: f.groupable and f.count >= 2, _make("layout"), group="make"),
-    _act("swap", "Make swap set", lambda f: f.groupable and f.count >= 2, _make("swap"), group="make"),
-    _act("rig", "Make rig", lambda f: f.groupable, lambda f, st: [_call("rig.make", f.stack, id=_fresh(f, "rig"))], group="make"),
-    _act("mask", "Mask with top layer", lambda f: f.maskable and f.count >= 2, _mask("alpha"), importance="bar", group="mask"),
-    *[_act(f"mask_{m}", f"Mask: {words.lower()}", lambda f: f.maskable and f.count >= 2, _mask(m), group="mask") for m, words in _MATTES.items()],
-    _act("release_mask", "Release mask", lambda f: f.matted,
-         lambda f, st: [_call("mask.release", f.ids)], group="mask"),
-    *[_act(op, op.capitalize(), lambda f: f.shapes and f.count >= 2 and f.same_parent,
-           lambda f, st, op=op: [_call("shape.boolean", f.stack, op=op, id=_fresh(f, "path"))], importance="bar", group="shape", bar="Boolean")
-      for op in ("union", "subtract", "intersect", "exclude")],
-    *[_act(f"align_{e}", words, lambda f: f.groupable,
-           _align(e), importance="bar", group="arrange", bar="Align") for e, words in _EDGES.items()],
-    *[_act(f"distribute_{a}", words, lambda f: f.same_parent and f.count >= 3,
-           lambda f, st, a=a: [_call("layer.distribute", f.ids, axis=a, at=st["at"](f.ids[0]))], importance="bar", group="arrange", bar="Distribute")
-      for a, words in (("x", "Even gaps across"), ("y", "Even gaps down"))],
-    *[_act(f"match_{d}", words, lambda f: f.count >= 2 and f.same_parent and "text" not in f.kinds and "camera" not in f.kinds, _match(d), group="arrange")
+    _a("group", "Group", rank=10, importance="primary", group="make", job="group", min_targets=2, when=FACT("groupable"),
+       calls=_op("group.make", "stack", id="$new:group", **{"as": "group"})),
+    _a("ungroup", "Ungroup", rank=10, importance="primary", group="make", job="ungroup", when=FACT("releasable"),
+       calls=_op("group.release", "ids")),
+    _a("clip", "Clip to a box", rank=60, group="make", when=FACT("groupable"),
+       calls=_op("group.make", "stack", id="$new:group", **{"as": "clip"})),
+    _a("layout", "Auto layout (a row)", rank=60, group="make", keys="Shift+A", min_targets=2, when=FACT("groupable"),
+       calls=_op("group.make", "stack", id="$new:group", **{"as": "layout"})),
+    _a("swap", "Make swap set", rank=60, group="make", min_targets=2, when=FACT("groupable"),
+       calls=_op("group.make", "stack", id="$new:group", **{"as": "swap"})),
+    _a("rig", "Make rig", rank=60, group="make", when=FACT("groupable"), calls=_op("rig.make", "stack", id="$new:rig")),
+    _a("mask", "Mask with top layer", rank=20, importance="primary", group="mask", keys="Ctrl+Alt+M", min_targets=2,
+       when=FACT("maskable"), calls=_MASK("alpha")),
+    *[_a(f"mask_{m}", f"Mask: {words.lower()}", rank=70, group="mask", min_targets=2, when=FACT("maskable"),
+         calls=_MASK(m)) for m, words in _MATTES.items()],
+    _a("release_mask", "Release mask", rank=20, group="mask", when=FACT("matted"), calls=_op("mask.release", "ids")),
+    *[_a(op, op.capitalize(), rank=5, importance="primary", group="shape", bar="Combine", keys=key, min_targets=2,
+         when=ALL("shapes", "same_parent"), calls=_op("shape.boolean", "stack", op=op, id="$new:path"))
+      for op, key in _BOOLEANS.items()],
+    *[_a(f"align_{e}", words, rank=30, importance="primary", group="arrange", bar="Align", keys=key, when=FACT("groupable"),
+         calls=_op("layer.align", "ids", edge=e, at="$at")) for e, (words, key) in _EDGES.items()],
+    *[_a(f"distribute_{ax}", words, rank=40, importance="primary", group="arrange", bar="Distribute", min_targets=3,
+         when=FACT("same_parent"), calls=_op("layer.distribute", "ids", axis=ax, at="$at"))
+      for ax, words in (("x", "Even gaps across"), ("y", "Even gaps down"))],
+    *[_a(f"match_{d}", words, rank=70, group="arrange", min_targets=2,
+         when={"all": [FACT("same_parent"), NOT("has_text"), NOT("has_camera")]},
+         calls=_op("layer.match_size", "rest", to="$first", dims=d, at="$at"))
       for d, words in (("w", "Match width"), ("h", "Match height"), ("both", "Match size"))],
-    _act("copy_style", "Copy style", lambda f: f.count == 1, group="look", special="copy"),
-    _act("paste_style", "Paste style", lambda f: False, group="look"),          # valid only with a copied layer: see available()
-    _act("lock", "Lock", lambda f: len(f.locked) < len(f.plain), lambda f, st: [_call("layer.lock", [i for i in f.plain if i not in f.locked])], group="state"),
-    _act("unlock", "Unlock", lambda f: bool(f.locked), lambda f, st: [_call("layer.unlock", f.locked)], group="state"),
-    _act("hide", "Hide", lambda f: len(f.hidden) < len(f.plain), lambda f, st: [_call("layer.hide", [i for i in f.plain if i not in f.hidden], on=True)], group="state"),
-    _act("show", "Show", lambda f: bool(f.hidden), lambda f, st: [_call("layer.hide", f.hidden, on=False)], group="state"),
-    _act("copy", "Copy", lambda f: True, shortcut="Ctrl+C", group="edit", special="clip_copy"),
-    _act("cut", "Cut", lambda f: True, shortcut="Ctrl+X", group="edit", special="clip_cut"),
-    _act("duplicate", "Duplicate", lambda f: True, lambda f, st: [_call("layer.duplicate", f.ids)], "Ctrl+D", group="edit"),
-    _act("delete", "Delete", lambda f: True, lambda f, st: [_call("layer.remove", f.ids)], "Delete", group="edit"),
-    *[_act(k, label, lambda f: True, _reorder(k), keys, group="order") for k, (label, keys) in _ORDER.items()],
-    _act("rename", "Rename", lambda f: f.count == 1, shortcut="F2", group="order", special="rename"),
+    _a("copy_style", "Copy style", rank=80, group="look", job="copy_style", max_targets=1, do="copy_style"),
+    _a("paste_style", "Paste style", rank=80, group="look", job="paste_style", when=FACT("style_copied"),
+       calls=_op("style.apply", "not_copied", **{"from": "$copied"})),
+    _a("lock", "Lock", rank=90, group="state", job="lock", when=FACT("any_unlocked"), calls=_op("layer.lock", "unlocked")),
+    _a("unlock", "Unlock", rank=90, group="state", job="lock", when=FACT("any_locked"), locked_ok=True,
+       calls=_op("layer.unlock", "locked")),
+    _a("hide", "Hide", rank=90, group="state", job="hide", when=FACT("any_shown"), calls=_op("layer.hide", "shown", on=True)),
+    _a("show", "Show", rank=90, group="state", job="hide", when=FACT("any_hidden"), calls=_op("layer.hide", "hidden", on=False)),
+    _a("copy", "Copy", rank=100, group="edit", job="copy", do="clip_copy"),
+    _a("cut", "Cut", rank=100, group="edit", job="cut", do="clip_cut"),
+    _a("duplicate", "Duplicate", rank=100, group="edit", job="duplicate", calls=_op("layer.duplicate", "ids")),
+    _a("delete", "Delete", rank=100, group="edit", job="delete", calls=_op("layer.remove", "ids")),
+    *[_a(k, label, rank=110, group="order", job=k, calls={"rule": "order", "how": k}) for k, label in _ORDER.items()],
+    _a("rename", "Rename", rank=110, group="order", job="rename", max_targets=1, do="rename"),
 ]
 
 
+def key_of(a: dict) -> str:
+    return a["keys"] or SHARED_KEYS.get(a["job"], "")
+
+
 def available(doc, ids: list[str], state: dict) -> list[dict]:
-    """The actions this selection allows, in menu order (each: key, label, shortcut, importance, group, bar, calls, special).
-    A selection holding a locked layer is offered only Unlock. `state`: {"at": id -> own seconds of the playhead, "copied": the layer whose style is copied ("" for none)}."""
+    """The actions this selection allows, in list order, resolved: {key ("layer:<id>"), label, shortcut, importance
+    ("bar" | "menu"), group, bar, rank, calls, special}. `state`: {"at": id -> own seconds of the playhead, "copied":
+    the layer whose style is copied ("" for none)}."""
     if not ids:
         return []
-    f, out = Facts(doc, ids), []
+    f, out = Facts(doc, ids, state.get("copied", "")), []
     for a in ACTIONS:
-        if f.locked and a["key"] != "layer:unlock":
+        if (f.facts["any_locked"] and not a["locked_ok"]) or not allows(a, f):
             continue                                    # a locked layer takes nothing until it is unlocked
-        if a["key"] == "layer:paste_style":
-            copied = state.get("copied", "")
-            if not (copied and doc.has(copied) and any(i != copied for i in ids)):
-                continue
-            calls = lambda f, st: [_call("style.apply", [i for i in f.ids if i != st["copied"]], **{"from": st["copied"]})]
-        elif a["valid"](f):
-            calls = a["calls"]
-        else:
-            continue
-        cs = calls(f, state) if calls else []
-        if (calls and not cs) or (a["special"] == "" and not calls):
+        calls = calls_of(a, f, state["at"])
+        if a["calls"] and not calls:
             continue                                    # a reorder that would move nothing
-        out.append({**{k: v for k, v in a.items() if k not in ("valid", "calls")}, "calls": cs})
+        out.append({"key": f"layer:{a['id']}", "label": a["label"], "shortcut": key_of(a), "group": a["group"],
+                    "importance": "bar" if a["importance"] == "primary" else "menu", "bar": a["bar"],
+                    "rank": a["rank"], "calls": calls, "special": a["do"]})
     return out

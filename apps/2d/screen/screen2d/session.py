@@ -12,6 +12,7 @@ from rostrum_gui import guides, start
 
 from .bridge2d import Bridge2D
 from .files import Files
+from .spacekey import SpaceKey
 
 QML = Path(__file__).resolve().parents[1] / "qml" / "Main.qml"
 GUIDES = guides.entries(Path(__file__).resolve().parents[2] / "guides", [     # Help's guides (apps/2d/guides): for people;
@@ -24,14 +25,16 @@ class Session:
     def __init__(self, size=(1600, 960)):
         self.size, self.bridge, self.engine, self.win = size, None, None, None
         self.files = Files(self)
+        self.space = None                                # Space: tap plays, hold + drag pans (spacekey.py; one per app)
 
     def show(self, doc, live: bool, comp_id=None, ask_recovery: bool = True):
         """Open `doc` in a new window (live: saved after every change, --doc); the old window closes without asking."""
         bridge = Bridge2D(doc, comp_id, autosave=live)
         bridge.files = self.files
         self.files.hold(doc, live, ask_recovery)
+        self.space = self.space or SpaceKey()
         _, engine, win = start(QML, {"backend": bridge, "painter": bridge.painter, "files": self.files,
-                                     "guides": GUIDES}, self.size,
+                                     "guides": GUIDES, "spaceKey": self.space}, self.size,
                                providers={"frame": bridge.frames.provider, "onion": bridge.painter.provider})
         old = (self.bridge, self.engine, self.win)
         self.bridge, self.engine, self.win = bridge, engine, win

@@ -1,28 +1,50 @@
 import QtQuick
+import QtQuick.Shapes
 import RostrumKit
 
-// The canvas: the engine's frame at the playhead (image://frame, rendered off the GUI thread), fitted on a
-// neutral backdrop, with the selected layers' outlines (Handles.qml: a single layer also gets resize + turn handles).
+// The canvas: the engine's frame at the playhead (image://frame, rendered off the GUI thread) on a neutral backdrop,
+// shown through the view (CanvasView.qml: zoom and pan, screen state), with the selected layers' outlines (Handles.qml:
+// a single layer also gets resize + turn handles).
 // A press picks what is painted under it (screen2d/picking.py): the outermost group, or the piece once you are inside
 // that group; Ctrl+press the piece itself; double-click goes one level in; Shift+click adds / removes. Dragging moves
-// it (all selected layers together); dragging on empty canvas draws a rubber band that selects the layers it touches
-// (boxSelect, not locked ones). One gesture = one undo step
-// (backend.beginMove / moveBy / endDrag: one gesture = one undo step; an animated x / y gets a key at the playhead).
-// With the Draw tool on (backend.tool, the tool strip at the top-left), a press draws instead: one stroke = one gesture =
-// one undo step (painter.beginStroke / strokeTo / endStroke; on no drawing the first stroke makes one). A pen reports
-// its pressure; a mouse is 1. The onion skin lies over the drawing's box. With the Pen tool on, PenOverlay takes the clicks.
+// it (all selected layers together), snapping to the frame and the other layers (backend.snap: Ctrl pressed after the
+// drag began = no snapping, Shift = straight); dragging on empty canvas draws a rubber band that selects the layers it
+// touches (boxSelect, not locked ones). One gesture = one undo step (backend.beginMove / moveBy / endDrag; an animated
+// x / y gets a key at the playhead). Layers outside the frame can still be grabbed.
+// With the Draw tool on, a press draws instead: one stroke = one gesture = one undo step (painter.beginStroke / strokeTo /
+// endStroke). A pen reports its pressure; a mouse is 1. The onion skin lies over the drawing's box. With the Pen tool
+// on, PenOverlay takes the clicks.
+// View: Ctrl+wheel / pinch zooms around the pointer, wheel / Shift+wheel scroll, Space+drag or middle-drag pans;
+// the keys and the "Fit · 50 % ▾" menu are ViewControls.qml. The engine draws the frame at the size shown, up to Full
+// (backend.setView: screen2d/shown.py).
 Panel {
     id: panel
+    objectName: "stage"                 // scripted steps reach the view through it (screen2d/view_steps.py)
     title: "Canvas"
+    property bool typing: false         // a text field has the focus (Main.qml): single-letter view keys stay off
     readonly property var info: backend.frameInfo
     readonly property Item canvasFrame: frame      // the picture's box
-    // The one mapping between composition px and this item's px (what sits over the canvas, e.g. the action bar, uses
-    // it): compScale = screen px per composition px; compOrigin = where composition (0, 0) is; compView = the visible well.
-    readonly property real compScale: well.fit
-    readonly property point compOrigin: { frame.x; frame.y; well.width; well.height; width; height; return frame.mapToItem(panel, 0, 0) }
+    // The one mapping between composition px and this item's px (everything over the canvas uses it: the action bar,
+    // the creation overlay, and Stage's own children through `view`): compScale = screen px per composition px;
+    // compOrigin = where composition (0, 0) is; compView = the visible well.
+    readonly property real compScale: view.zoom
+    readonly property point compOrigin: { view.ox; view.oy; width; height; return well.mapToItem(panel, view.ox, view.oy) }
     readonly property rect compView: { well.width; well.height; width; height; const p = well.mapToItem(panel, 0, 0); return Qt.rect(p.x, p.y, well.width, well.height) }
     function toComp(x, y) { return Qt.point((x - compOrigin.x) / compScale, (y - compOrigin.y) / compScale) }
     function fromComp(x, y) { return Qt.point(compOrigin.x + x * compScale, compOrigin.y + y * compScale) }
+    function inWell(x, y) { return Qt.point((x - view.ox) / view.zoom, (y - view.oy) / view.zoom) }   // the same, in the well
+    // the view, for the keys, the menu and scripted steps (view_steps.py)
+    function fitAll() { view.fitAll() }
+    function zoomPercent(p) { view.show(p / 100) }
+    function centreOn(x, y) { view.centreOn(x, y) }
+    function panBy(dx, dy) { view.panBy(dx, dy) }
+    function openViewMenu() { controls.openMenu() }
+    function fitSelection() {                       // F: the selection; nothing selected: everything
+        const e = backend.selectionExtent()
+        if (e.x0 === undefined) view.fitAll(); else view.fitBox(e.x0, e.y0, e.x1, e.y1)
+    }
+    onCompScaleChanged: backend.setView(compScale, Screen.devicePixelRatio)
+    Component.onCompleted: backend.setView(compScale, Screen.devicePixelRatio)
     headerRight: Text { text: panel.info.width + " × " + panel.info.height + "  ·  " + panel.info.fps + " fps"
                         color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
 
@@ -30,29 +52,35 @@ Panel {
         id: well
         anchors.fill: parent
         radius: Theme.radiusCtl; color: Theme.sunken
+        clip: true
         readonly property bool drawing: backend.tool === "draw"
-        readonly property real fit: Math.min((width - 48) / panel.info.width, (height - 48) / panel.info.height)
+        CanvasView { id: view; wellW: well.width; wellH: well.height; compW: panel.info.width || 1; compH: panel.info.height || 1 }
 
         Item {
             id: frame
-            width: Math.round(panel.info.width * well.fit); height: Math.round(panel.info.height * well.fit)
-            anchors.centerIn: parent
+            x: view.ox; y: view.oy
+            width: panel.info.width * view.zoom; height: panel.info.height * view.zoom
             Image {
                 anchors.fill: parent
                 source: backend.frame > 0 ? "image://frame/" + backend.frame : ""
-                cache: false; smooth: true; mipmap: true
+                cache: false; smooth: view.zoom < 2; mipmap: view.zoom < 1   // from 200 %: the export's own pixels, unblurred
             }
             Image {  // onion skin: the neighbouring drawings, tinted, over the selected drawing's box
                 readonly property var b: backend.selBox
                 visible: painter.onionSerial > 0 && b.w !== undefined
-                x: (b.x || 0) * well.fit; y: (b.y || 0) * well.fit
-                width: (b.w || 0) * well.fit; height: (b.h || 0) * well.fit
+                x: (b.x || 0) * view.zoom; y: (b.y || 0) * view.zoom
+                width: (b.w || 0) * view.zoom; height: (b.h || 0) * view.zoom
                 source: painter.onionSerial > 0 ? "image://onion/" + painter.onionSerial : ""
                 cache: false; smooth: true
             }
-            Rectangle {  // the frame's edge, so a dark composition still shows where it ends
-                anchors.fill: parent; anchors.margins: -1
-                color: "transparent"; border.width: 1; border.color: Theme.popupEdge
+        }
+        Shape {  // the frame's edge, so a dark composition still shows where it ends; dotted once zoomed or panned off Fit
+            x: frame.x - 1; y: frame.y - 1
+            ShapePath {
+                strokeWidth: 1; fillColor: "transparent"
+                strokeColor: view.fitted ? Theme.popupEdge : Theme.fg3
+                strokeStyle: view.fitted ? ShapePath.SolidLine : ShapePath.DashLine; dashPattern: [2, 3]
+                PathRectangle { width: frame.width + 2; height: frame.height + 2 }
             }
         }
         Item {  // the pen
@@ -62,7 +90,7 @@ Panel {
             PointHandler {
                 id: pen
                 acceptedButtons: Qt.LeftButton
-                function at() { return Qt.point((point.position.x - frame.x) / well.fit, (point.position.y - frame.y) / well.fit) }
+                function at() { return panel.inWell(point.position.x, point.position.y) }
                 readonly property real pressure: point.pressure > 0 ? point.pressure : 1
                 property bool drawing: false
                 onActiveChanged: {
@@ -79,25 +107,29 @@ Panel {
             preventStealing: true
             property bool moving: false
             property bool band: false
+            property bool deep: false       // Ctrl at the press picks the deepest piece; only a later Ctrl stops snapping
             property real sx: 0
             property real sy: 0
             property point b0
             property point b1
-            function comp(m) { return Qt.point((m.x - frame.x) / well.fit, (m.y - frame.y) / well.fit) }
+            function comp(m) { return panel.inWell(m.x, m.y) }
             function stop() { if (moving) backend.endDrag(); moving = false; band = false }
             onPressed: (m) => {
-                var p = comp(m), mode = (m.modifiers & Qt.ControlModifier) ? "deep" : "click"
-                var hit = backend.multi.target(p.x, p.y, mode)
+                var p = comp(m)
+                deep = (m.modifiers & Qt.ControlModifier) !== 0
+                var hit = backend.multi.target(p.x, p.y, deep ? "deep" : "click")
                 sx = m.x; sy = m.y; band = false; moving = false
                 if (hit === "") { band = true; b0 = p; b1 = p; return }                         // nothing painted: a rubber band
                 if (m.modifiers & Qt.ShiftModifier) backend.multi.toggle(hit)                   // Shift+click: add / remove
-                else if (!backend.multi.has(hit)) backend.multi.pick(p.x, p.y, mode)            // else keep the selection and move it
+                else if (!backend.multi.has(hit)) backend.multi.pick(p.x, p.y, deep ? "deep" : "click")   // else keep the selection and move it
                 moving = backend.multi.has(hit) && backend.beginMove()
             }
             onDoubleClicked: (m) => { var p = comp(m); backend.multi.pick(p.x, p.y, "in") }   // one level into the group
             onPositionChanged: (m) => {
-                if (moving) backend.moveBy((m.x - sx) / well.fit, (m.y - sy) / well.fit)
-                else if (band) b1 = comp(m)
+                if (moving) {
+                    backend.snap.keys((m.modifiers & Qt.ControlModifier) !== 0 && !deep, (m.modifiers & Qt.ShiftModifier) !== 0)
+                    backend.moveBy((m.x - sx) / view.zoom, (m.y - sy) / view.zoom)
+                } else if (band) b1 = comp(m)
             }
             onReleased: (m) => {
                 if (band) {
@@ -111,27 +143,66 @@ Panel {
         PenOverlay {  // the pen tool and the selected path's points (not while playing: they'd lag)
             anchors.fill: parent
             visible: !backend.playing && !well.drawing
-            fit: well.fit; ox: frame.x; oy: frame.y
+            fit: view.zoom; ox: view.ox; oy: view.oy
         }
         Item {  // outlines of the selected layers (turned with them) and the handles of a single one; over the pen's overlay
             id: marks
-            x: frame.x; y: frame.y
+            x: view.ox; y: view.oy
             visible: !backend.playing           // they follow the playhead again when it stops (playback.py)
             Repeater {
                 model: backend.multi.boxes
                 delegate: Handles {
                     required property var modelData
-                    box: modelData; fit: well.fit; space: marks
+                    box: modelData; fit: view.zoom; space: marks
                     editable: backend.multi.count === 1 && !well.drawing && modelData.type !== "path" && !backend.pen.on
                 }
             }
             Rectangle {  // the rubber band
                 visible: canvas.band && (canvas.b0.x !== canvas.b1.x || canvas.b0.y !== canvas.b1.y)
-                x: Math.min(canvas.b0.x, canvas.b1.x) * well.fit; y: Math.min(canvas.b0.y, canvas.b1.y) * well.fit
-                width: Math.abs(canvas.b1.x - canvas.b0.x) * well.fit; height: Math.abs(canvas.b1.y - canvas.b0.y) * well.fit
+                x: Math.min(canvas.b0.x, canvas.b1.x) * view.zoom; y: Math.min(canvas.b0.y, canvas.b1.y) * view.zoom
+                width: Math.abs(canvas.b1.x - canvas.b0.x) * view.zoom; height: Math.abs(canvas.b1.y - canvas.b0.y) * view.zoom
                 color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.12); border.width: 1; border.color: Theme.accent
             }
+            Repeater {  // what a drag snapped to: thin magenta lines, gone on release (backend.snap.lines, composition px)
+                model: backend.snap.lines
+                delegate: Rectangle {
+                    required property var modelData
+                    readonly property bool vertical: modelData.axis === "x"
+                    color: "#ff2fd0"            // INTERACTION 1.11's snap magenta (to move into the kit's Theme)
+                    x: vertical ? Math.round(modelData.at * view.zoom) : modelData.from * view.zoom
+                    y: vertical ? modelData.from * view.zoom : Math.round(modelData.at * view.zoom)
+                    width: vertical ? 1 : (modelData.to - modelData.from) * view.zoom
+                    height: vertical ? (modelData.to - modelData.from) * view.zoom : 1
+                }
+            }
+        }
+        MouseArea {  // panning: middle-drag, or Space held + drag (over every tool); the wheel scrolls, Ctrl+wheel zooms
+            id: panner
+            anchors.fill: parent
+            acceptedButtons: spaceKey.held ? (Qt.LeftButton | Qt.MiddleButton) : Qt.MiddleButton
+            preventStealing: true
+            property point last
+            onPressed: (m) => { spaceKey.use(); last = Qt.point(m.x, m.y) }
+            onPositionChanged: (m) => { view.panBy(m.x - last.x, m.y - last.y); last = Qt.point(m.x, m.y) }
+            onWheel: (w) => {
+                if (w.modifiers & Qt.ControlModifier) { view.zoomAt(view.zoom * Math.pow(1.25, w.angleDelta.y / 120), w.x, w.y); return }
+                const d = (w.pixelDelta.x || w.pixelDelta.y) ? w.pixelDelta : Qt.point(w.angleDelta.x / 2, w.angleDelta.y / 2)
+                if (w.modifiers & Qt.ShiftModifier) view.panBy(d.y || d.x, 0); else view.panBy(d.x, d.y)
+            }
+            HoverHandler { enabled: spaceKey.held; cursorShape: panner.pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor }
+        }
+        PinchHandler {  // a touchpad or touch pinch: zoom around the fingers
+            target: null
+            property real last: 1
+            onActiveChanged: last = 1
+            onActiveScaleChanged: { view.zoomAt(view.zoom * activeScale / last, centroid.position.x, centroid.position.y); last = activeScale }
         }
         ToolStrip { anchors { left: parent.left; top: parent.top; margins: Theme.gap } }   // over everything on the canvas
+        ViewControls {
+            id: controls
+            anchors { right: parent.right; bottom: parent.bottom; margins: Theme.gap }
+            view: view; typing: panel.typing
+            onFitSelection: panel.fitSelection()
+        }
     }
 }

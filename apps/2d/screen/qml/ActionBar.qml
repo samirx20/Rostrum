@@ -1,13 +1,14 @@
 import QtQuick
 import RostrumKit
 
-// The action bar: a small bar on the canvas under the selected layers, clear of their handles and a path's points
-// (above them when there is no room), with
-// only the actions this selection allows that people reach for most (backend.actionBar, screen2d/actions.py): Group,
-// Mask, Boolean, Align, Distribute … and "⋯" for the full list. Move tool only; hidden while playing and while the
-// pointer is down on the canvas (a drag). Also the right-click menu on the canvas: the full list. Sits over the canvas,
-// under the tool strip; places itself through the canvas's one mapping (`stage`: Stage.qml's compScale / fromComp /
-// toComp / compView, in the px of the item both fill).
+// The context bar (UX_SPEC 4.3, INTERACTION 1.1): one row at a fixed place, the top-centre of the canvas view, so the
+// eyes go to the same place every time. With the Move tool and a selection: what is selected ("3 layers") and the top
+// five actions this selection allows, by rank (backend.actionBar, screen2d/actions.py), then "⋯" for the whole list.
+// Hidden while playing, while dragging on the canvas and with nothing selected; never wraps; never covers the tool
+// strip. Also the right-click menu on the canvas (the full list). Places itself through the canvas's one mapping
+// (`stage`: Stage.qml's compView, in the px of the item both fill). Replaced by the kit's ContextBar once S31 is in main.
+// With another tool it shows that tool's few options instead (4.3): Pen: how to click, Close path, Done. Paint: the
+// tip, Size, Colour, Opacity, Eraser (E), and [ / ] for size — the brush panel holds the rest.
 Item {
     id: bar
     property Item stage
@@ -22,16 +23,18 @@ Item {
         function onSelectionChanged() { bar.refresh() }
         function onShownChanged() { bar.refresh() }
     }
-    readonly property real clearance: 28        // below the box: past the resize knobs and the turn zones (Handles.qml)
-    readonly property real lowest: {             // the lowest thing drawn for the selection: its box, a path's handles
-        let y = ext.y1 === undefined ? 0 : ext.y1
-        for (const p of backend.pen.points) y = Math.max(y, p.y, p.inY, p.outY)
-        return y
-    }
+    readonly property int count: backend.multi.count
     readonly property rect view: stage ? stage.compView : Qt.rect(0, 0, 0, 0)
     PointHandler { id: press; acceptedButtons: Qt.LeftButton; onActiveChanged: if (!active) bar.refresh() }
     readonly property bool dragging: press.active && !strip.hovered
-    readonly property bool showing: stage && backend.tool === "move" && !backend.playing && items.length > 0 && ext.x0 !== undefined && !dragging
+    readonly property string mode: backend.playing || dragging ? "" : backend.tool === "move" ? (items.length > 0 && ext.x0 !== undefined ? "select" : "")
+                                  : backend.tool === "pen" ? "pen" : backend.tool === "draw" ? "paint" : ""
+    readonly property bool showing: stage && mode !== ""
+    readonly property var brush: painter.brushNow
+    function setBrush(name, v) { painter.setValue(name, v) }
+    Shortcut { sequence: "E"; enabled: bar.mode === "paint"; onActivated: bar.setBrush("mode", bar.brush.mode === "erase" ? "normal" : "erase") }
+    Shortcut { sequence: "["; enabled: bar.mode === "paint"; onActivated: bar.setBrush("size", Math.max(0.5, Math.round(bar.brush.size / 1.25 * 2) / 2)) }
+    Shortcut { sequence: "]"; enabled: bar.mode === "paint"; onActivated: bar.setBrush("size", Math.min(2000, Math.round(bar.brush.size * 1.25 * 2) / 2)) }
 
     ActionMenu { id: choices; parent: bar; onPicked: (key) => backend.run(key) }
     function openMenu(entries, px, py) { choices.entries = entries; choices.openAt(px, py) }
@@ -43,19 +46,23 @@ Item {
         z: 3
         height: Theme.button; width: row.width + Theme.grid * 2
         radius: Theme.radiusCtl; color: Theme.raised; border.color: Theme.popupEdge
-        readonly property real cx: bar.stage ? bar.stage.fromComp((bar.ext.x0 + bar.ext.x1) / 2, 0).x : 0
-        readonly property real below: bar.stage ? bar.stage.fromComp(0, bar.lowest).y + bar.clearance : 0
-        readonly property real above: bar.stage ? bar.stage.fromComp(0, bar.ext.y0).y - bar.clearance - height : 0
-        readonly property real lo: bar.view.y + Theme.grid
-        readonly property real hi: bar.view.y + bar.view.height - height - Theme.grid
-        x: Math.max(bar.view.x + Theme.grid, Math.min(cx - width / 2, bar.view.x + bar.view.width - width - Theme.grid))
-        y: Math.max(lo, Math.min(below <= hi ? below : above >= lo ? above : hi, hi))
+        readonly property real clear: bar.view.x + Theme.gap + 40 + Theme.gap      // clear of the tool strip
+        x: Math.max(clear, bar.view.x + (bar.view.width - width) / 2)
+        y: bar.view.y + Theme.gap
         HoverHandler { id: hover }
         Row {
             id: row
-            x: Theme.grid; height: parent.height
+            x: Theme.grid; height: parent.height; spacing: 2
+            Text {      // what is selected, or the tool's own hint
+                visible: bar.mode === "select" || bar.mode === "pen"
+                anchors.verticalCenter: parent.verticalCenter
+                leftPadding: Theme.grid; rightPadding: Theme.gap
+                text: bar.mode === "pen" ? (backend.pen.draft.length === 0 ? "Click: corner  ·  Drag: curve" : "Click the first point to close")
+                    : bar.count === 1 ? "1 layer" : bar.count + " layers"
+                color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+            }
             Repeater {
-                model: bar.items.slice(0, bar.most)
+                model: bar.mode === "select" ? bar.items.slice(0, bar.most) : []
                 delegate: BarButton {
                     required property var modelData
                     label: modelData.label + (modelData.menu.length ? " ▾" : "")
@@ -63,8 +70,41 @@ Item {
                 }
             }
             BarButton {
+                visible: bar.mode === "select"
                 label: "⋯"; tip: "All actions"
                 onClicked: bar.openMenu(backend.actionMenu(), strip.x + x, strip.y + strip.height + 2)
+            }
+            BarButton { visible: bar.mode === "pen" && backend.pen.draft.length > 2; label: "Close path"; onClicked: { backend.pen.close(); backend.setTool("move") } }
+            BarButton { visible: bar.mode === "pen"; label: "Done"; onClicked: { backend.pen.finish(); backend.setTool("move") } }
+            Row {       // Paint: quick brush controls (the next stroke's; the brush panel on the right has every setting)
+                visible: bar.mode === "paint"
+                height: parent.height; spacing: Theme.gap
+                ChoiceField {
+                    anchors.verticalCenter: parent.verticalCenter; width: 92
+                    options: (bar.brush.tips || []).map(t => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) })); current: bar.brush.brush
+                    onPicked: (v) => bar.setBrush("brush", v)
+                }
+                Text { anchors.verticalCenter: parent.verticalCenter; text: "Size"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+                NumberField {
+                    anchors.verticalCenter: parent.verticalCenter; width: 72
+                    value: bar.brush.size || 0; from: 0.5; to: 2000; step: 0.5; unit: "px"
+                    onEdited: (v) => bar.setBrush("size", v); onScrubbed: (v) => bar.setBrush("size", v)
+                }
+                ColorField {
+                    anchors.verticalCenter: parent.verticalCenter; width: 96
+                    hex: bar.brush.color || "#ffffff"; onEdited: (v) => bar.setBrush("color", v)
+                }
+                Text { anchors.verticalCenter: parent.verticalCenter; text: "Opacity"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+                NumberField {
+                    anchors.verticalCenter: parent.verticalCenter; width: 64
+                    value: bar.brush.opacity === undefined ? 1 : bar.brush.opacity; from: 0; to: 1; step: 0.01
+                    onEdited: (v) => bar.setBrush("opacity", v); onScrubbed: (v) => bar.setBrush("opacity", v)
+                }
+                BarButton {
+                    label: bar.brush.mode === "erase" ? "Eraser on  E" : "Eraser  E"
+                    color: bar.brush.mode === "erase" ? Theme.accentSoft : area.containsMouse ? Theme.hover : "transparent"
+                    onClicked: bar.setBrush("mode", bar.brush.mode === "erase" ? "normal" : "erase")
+                }
             }
         }
     }
@@ -86,6 +126,7 @@ Item {
         property string tip
         signal clicked
         height: Theme.button - Theme.grid; width: text.implicitWidth + Theme.gap * 2; y: Theme.grid / 2
+        property alias area: area
         radius: 4; color: area.containsMouse ? Theme.hover : "transparent"
         Text { id: text; anchors.centerIn: parent; text: button.label; color: Theme.fg
                font.family: uiFont; font.pixelSize: Theme.body }

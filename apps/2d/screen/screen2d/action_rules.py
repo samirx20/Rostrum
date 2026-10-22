@@ -1,0 +1,126 @@
+"""How the plain-data action list (actions.py) is read: what the selection is (its facts), and how an action's
+"calls" (an operation name, a target rule and argument rules) become operation calls. No Qt.
+
+An action's `when` is a condition in the one condition language (`rostrum_core.conditions.holds`, the same as a
+field's `valid_when`), read on the selection's facts below. Its `calls`:
+
+    {"op": "group.make", "target": "stack", "args": {"id": "$new:group", "as": "group"}}
+    {"rule": "order", "how": "front"}                    a named rule that makes several calls (layer.arrange)
+
+Target rules: ids (in pick order) · stack (bottom first) · stack_but_top · rest (all but the first) · locked ·
+unlocked · hidden · shown · not_copied. Argument values starting with "$" are rules: $new:<type> (a fresh id, so the
+screen can select what was made) · $at (the playhead in the first layer's own seconds) · $top (the top of the stack) ·
+$first (the first picked) · $copied (the layer whose style was copied). Anything else is passed as it is.
+"""
+from __future__ import annotations
+
+from rostrum2d import fields as F
+from rostrum2d.ops_group import HOLDERS, _why_not
+from rostrum_core.conditions import holds
+from rostrum_core.ids import counted
+from rostrum_core.tree import index
+
+SHAPES = ("shape", "path")
+
+
+class Facts:
+    """What the selection is. `ids` are in the order they were picked (the first is the primary); `stack` bottom first.
+    `facts` holds the named truths an action's `when` reads."""
+
+    def __init__(self, doc, ids: list[str], copied: str = ""):
+        self.doc, self.ids, self.count = doc, ids, len(ids)
+        self.items = [doc.item(i) for i in ids]
+        self.kinds = {it["type"] for it in self.items}
+        where = {i: doc.parent_of(i) for i in ids}
+        parents = {w[0] for w in where.values()}
+        self.stack = sorted(ids, key=lambda i: where[i][2])
+        p = doc.item(next(iter(parents))) if len(parents) == 1 else None
+        plain = [i for i, it in zip(ids, self.items) if it["type"] != "camera"]
+        self.lists = {"ids": ids, "stack": self.stack, "stack_but_top": self.stack[:-1], "rest": ids[1:],
+                      "locked": [i for i in plain if doc.item(i).get("locked")],
+                      "hidden": [i for i in plain if doc.item(i).get("hidden")],
+                      "not_copied": [i for i in ids if i != copied]}
+        self.lists["unlocked"] = [i for i in plain if i not in self.lists["locked"]]
+        self.lists["shown"] = [i for i in plain if i not in self.lists["hidden"]]
+        self.copied = copied if copied and doc.has(copied) else ""
+        groupable = bool(p) and p["type"] in HOLDERS and p.get("layout", "none") == "none" and "camera" not in self.kinds
+        groups = self.kinds == {"group"}
+        self.facts = {
+            "one": self.count == 1, "same_parent": p is not None, "groupable": groupable,
+            "shapes": self.kinds <= set(SHAPES), "has_text": "text" in self.kinds, "has_camera": "camera" in self.kinds,
+            "releasable": groups and all(_why_not(it, doc.item(where[it["id"]][0])) is None for it in self.items),
+            "maskable": groupable and all(F.param(it["type"], "matte") for it in self.items),
+            "matted": any(it.get("matte") for it in self.items) or (
+                bool(p) and any(s.get("matte") in ids for s in p.get("layers", []))),
+            "any_locked": bool(self.lists["locked"]), "any_unlocked": bool(self.lists["unlocked"]),
+            "any_hidden": bool(self.lists["hidden"]), "any_shown": bool(self.lists["shown"]),
+            "style_copied": bool(self.copied) and any(i != self.copied for i in ids)}
+
+
+def allows(action: dict, f: Facts) -> bool:
+    """The one guard: how many are selected, their kinds, and the action's `when` on the selection's facts."""
+    if f.count < action.get("min_targets", 1):
+        return False
+    if action.get("max_targets") is not None and f.count > action["max_targets"]:
+        return False
+    if action.get("kinds") and not f.kinds <= set(action["kinds"]):
+        return False
+    return holds(action.get("when"), {}, f.facts)
+
+
+def calls_of(action: dict, f: Facts, at) -> list[dict]:
+    """The operation calls of an action on this selection ([] = it would change nothing). `at(id)`: own seconds."""
+    spec = action.get("calls")
+    if not spec:
+        return []
+    if "rule" in spec:
+        return RULES[spec["rule"]](f, **{k: v for k, v in spec.items() if k != "rule"})
+    target = f.lists[spec["target"]] if spec.get("target") else []
+    if spec.get("target") and not target:
+        return []
+    args = {k: _arg(v, f, at) for k, v in spec.get("args", {}).items()}
+    return [{"op": spec["op"], "target": list(target), "args": args}]
+
+
+def _arg(v, f: Facts, at):
+    if not (isinstance(v, str) and v.startswith("$")):
+        return v
+    name, _, rest = v[1:].partition(":")
+    if name == "new":
+        return counted(index(f.doc.data, f.doc.kind.lists), rest)
+    if name == "at":
+        return at(f.ids[0])
+    if name in ("top", "first", "copied"):
+        return {"top": f.stack[-1], "first": f.ids[0], "copied": f.copied}[name]
+    raise ValueError(f"unknown argument rule {v!r} in the action list")
+
+
+def reordered(stack: list[str], picked: set[str], how: str) -> list[str]:
+    """The stack (index 0 = bottom) after moving the picked layers; their order among themselves stays."""
+    mine, rest = [i for i in stack if i in picked], [i for i in stack if i not in picked]
+    if how in ("front", "back"):
+        return rest + mine if how == "front" else mine + rest
+    out, step = list(stack), (1 if how == "forward" else -1)
+    for i in (reversed(range(len(out))) if step > 0 else range(len(out))):
+        j = i + step
+        if out[i] in picked and 0 <= j < len(out) and out[j] not in picked:
+            out[i], out[j] = out[j], out[i]
+    return out
+
+
+def _order(f: Facts, how: str) -> list[dict]:
+    """layer.arrange calls that put each parent's stack in the new order (none when nothing would move)."""
+    calls, by_parent = [], {}
+    for layer in f.ids:
+        by_parent.setdefault(f.doc.parent_of(layer)[0], set()).add(layer)
+    for parent, picked in by_parent.items():
+        now = [c["id"] for c in f.doc.item(parent)["layers"]]
+        for i, id_ in enumerate(reordered(now, picked, how)):
+            if now[i] != id_:
+                calls.append({"op": "layer.arrange", "target": [id_], "args": {"index": i}})
+                now.remove(id_)
+                now.insert(i, id_)
+    return calls
+
+
+RULES = {"order": _order}
