@@ -3,7 +3,7 @@ calls a click, a drag or a key makes.
 
     keypick <key id>[,<key id>…] [ctrl|shift]   click a diamond (the ids it stands for); Ctrl adds / removes, Shift the run
     keybox <id>[,<id>…] [<id>…] [ctrl|shift]     a box dragged over diamonds (each argument one diamond's ids)
-    keybox time <t0> <t1> [ctrl|shift]           a box over every open row's diamonds between those times
+    keybox time <t0> <t1> [<row>,…] [ctrl|shift] a box over the open rows' diamonds between those times (only those rows)
     keydrag2 <key id> <from s> <to s> [snap] [hold]   press a picked key at <from>, let go at <to> (composition seconds): all
                                                  move; `snap`: within 0.1 s it snaps (time_snap.py); `hold`: not let go yet
     keystretch <key id> <from s> <to s> [snap] [hold] Alt+drag the first or last picked key: the picked keys stretch in time
@@ -11,6 +11,8 @@ calls a click, a drag or a key makes.
     easeplay on|off                              the key bar's ⋯ › Play the ease when picked
     wait <ms>                                    let the screen run that long (an ease playing once)
     keymore                                      open the key bar's ⋯
+    grab <png>                                   a picture of the window now, mid-steps (an ease still playing)
+    presskey <keys>                              a real key press in the window (Qt's names: K, Return, F9, Ctrl+C …)
     keydelete                                    Delete with keys picked
     showanim                                     A: the selection's animated settings only; again folds them
     ease <linear|easeIn|easeOut|smooth|spring|hold|custom>   the key bar's Ease ▾ (or a key's right-click)
@@ -28,7 +30,7 @@ from __future__ import annotations
 
 WORDS = ("keypick", "keybox", "keydrag2", "keystretch", "keydelete", "showanim", "ease", "easekey", "easecurve", "spring",
          "keytime", "keyvalue", "easemenu", "keyhere", "keycopy", "keypaste", "stagger", "event", "keyafter",
-         "easeplay", "wait", "keymore")
+         "easeplay", "wait", "keymore", "presskey", "grab")
 HOW = ("ctrl", "shift")
 
 
@@ -75,7 +77,9 @@ def do_key_step(bridge, word, rest, step):
         args = [r for r in rest if r not in HOW]
         if args[0] == "time":                       # a box over every row's diamonds from t0 to t1 (seconds, as shown)
             t0, t1 = float(args[1]), float(args[2])
-            groups = [k.get("ids", [k["id"]]) for row in bridge.layers for k in row["keys"] if t0 - 1e-6 <= k["t"] <= t1 + 1e-6]
+            rows = set(args[3].split(",")) if args[3:] else None        # the box spans only these rows
+            groups = [k.get("ids", [k["id"]]) for row in bridge.layers for k in row["keys"]
+                      if t0 - 1e-6 <= k["t"] <= t1 + 1e-6 and (rows is None or row["id"] in rows)]
         else:
             groups = [r.split(",") for r in args]
         keys.box(groups, how)
@@ -98,6 +102,13 @@ def do_key_step(bridge, word, rest, step):
         from PySide6.QtGui import QGuiApplication
         more = next(w.findChild(QObject, "keyMore") for w in QGuiApplication.topLevelWindows() if w.findChild(QObject, "keyMore"))
         QMetaObject.invokeMethod(more, "clicked")
+    elif word == "presskey":
+        _press_key(rest)
+    elif word == "grab":
+        from PySide6.QtGui import QGuiApplication
+        if not QGuiApplication.topLevelWindows()[0].grabWindow().save(rest[0]):
+            raise RuntimeError(f"step {step!r}: could not save {rest[0]}")
+        print("grabbed", rest[0], "time", bridge.time, "playing", bridge.playing)
     elif word == "easeplay":
         bridge.easePlay.setOn(rest[0] == "on")
     elif word == "wait":
@@ -129,3 +140,13 @@ def do_key_step(bridge, word, rest, step):
     elif word == "showanim":
         bridge.showAnimated()
         print("rows", [r["label"] for r in bridge.layers])
+
+
+def _press_key(rest):
+    """A real key press in the window (Qt's shortcut map gets it, as from the keyboard)."""
+    from PySide6.QtCore import QCoreApplication
+    from PySide6.QtGui import QGuiApplication, QKeySequence
+    from PySide6.QtTest import QTest
+    combo = QKeySequence(rest[0])[0]
+    QTest.keyClick(QGuiApplication.topLevelWindows()[0], combo.key(), combo.keyboardModifiers())
+    QCoreApplication.processEvents()

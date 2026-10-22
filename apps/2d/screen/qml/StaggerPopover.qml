@@ -24,6 +24,7 @@ QQC.Popup {
     contentItem: Column {
         spacing: Theme.gap
         Shortcut { sequence: "Escape"; enabled: pop.opened; onActivated: { pop.cancelled = true; pop.close() } }   // takes it back
+        Shortcut { sequences: ["Return", "Enter"]; enabled: pop.opened; onActivated: pop.close() }                  // keeps it
         Text { text: "Stagger " + pop.st.what; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold }
         Row {
             spacing: Theme.grid
