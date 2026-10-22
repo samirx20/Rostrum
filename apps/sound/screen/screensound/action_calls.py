@@ -74,11 +74,13 @@ def can_move(f, step) -> bool:
 
 
 def range_clips(f) -> list[str]:
-    """The clips a Delete on the time range cuts: the selected clips, or (nothing selected) those on the Editor's
-    track; only those the range reaches into."""
+    """The clips a Delete on the time range cuts: the selected clips (unless the range was drawn after them), the
+    clips of the selected tracks, else those on the Editor's track; only those the range reaches into."""
     root, (a, b) = f.doc.data, f.range
-    if f.count:
-        clips = f.items if f.one == "clip" else []
+    if f.one == "clip" and not f.on_range:
+        clips = f.items
+    elif f.one == "track":
+        clips = [c for t in f.items for c in t.get("clips", [])]
     else:
         clips = f.doc.item(f.track).get("clips", []) if f.track and f.doc.has(f.track) else []
     return [c["id"] for c in clips if ST.start_of(root, c) < b - 1e-6 and ST.end_of(root, c) > a + 1e-6]

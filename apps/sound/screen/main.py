@@ -167,6 +167,8 @@ def file_step(screen, step) -> bool:
         QMetaObject.invokeMethod(screen.win, "openLibrary")
     elif word in ("export-open", "deliver-open"):     # the Export sheet, open (Ctrl+E)
         screen.parts["mixer"].export.setDialogOpen(True)
+    elif word == "grid-open":                 # the header strip's Grid ▾ menu, open
+        QMetaObject.invokeMethod(screen.win, "openGrid")
     elif word == "file-in":                   # + Add › From a file… (a sound, a MIDI file or a video)
         screen.ctx_file_in.add(rest)
     elif word == "settings":

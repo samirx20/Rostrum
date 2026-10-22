@@ -17,6 +17,7 @@ Rectangle {
     readonly property bool empty: !backend.tracks.some(r => !r.mix)
     signal addTrack()
     function addFromFile() { fileDialog.open() }
+    function openGrid() { gridBtn.clicked() }          // (the scripted `grid-open` step)
     color: Theme.panel; radius: Theme.radiusPanel; clip: true
 
     FileDialog {

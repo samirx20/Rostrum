@@ -16,8 +16,9 @@ instrument can use are offered (the screen hides the rest). Drum tracks use hits
 
 - **A new track** starts from a sound in the **Library** (Ctrl+L): double-click an instrument. With a notes track
   selected the Library offers to change its instrument instead (the notes stay).
-- **Editor** (the dock under the arrangement, E; the selected track): double-click to add, drag to move (it snaps to
-  the grid; Ctrl = no snapping, Alt = a copy, Shift = only in time), drag the end to lengthen, Delete removes. Each drag
+- **Editor** (the dock under the arrangement, E; the selected track): double-click to add, or the **Draw** tool (B)
+  where every click adds; drag to move (it snaps to the grid set by **Grid ▾**, with **Snap** on; Ctrl = no snapping,
+  Alt = a copy, Shift = only in time), drag the end to lengthen, Delete removes. Each drag
   is one undo step. Drum tracks show a row per drum. Select several (Ctrl+click, Shift+click, a box) and act on them
   from the context bar, the right-click menu or keys: Q quantise, Ctrl+D duplicate, ↑ / ↓ a half step.
 - **MIDI keyboard:** choose the input device (shown only when one is connected), arm the track, record: what you play

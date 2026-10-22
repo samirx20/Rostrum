@@ -10,7 +10,8 @@
     arm <track> | record (start / stop, the real microphone) | record-fake | take-panel | take-set | punch | midi-fake |
     keys (steps_record.py)
     undo | redo | play | render (wait for the newest render) | more | commands [query …] | run <command key> |
-    wait <seconds> | shot <file.png> (a picture of the window now; several per run) | agent <label>|<json calls>
+    wait <seconds> | shot <file.png> (a picture of the window now; several per run) | agent <label>|<json calls> |
+    select-last <n> | handle-first <part> <dt s> (the walks: the items just made, their handle)
     zoom <factor> | scroll <s> | fit | lane <track> <lane> | lane-point <track> <t> <v> [<t2> <v2>] | lane-delete |
     picture <file|none>     (see steps_view.py)
     deliver <streaming|apple|ebu|atsc|podcast> (master target, one change) | export-as <format> [<rate> [trim|full]] | export (Render mix and stems, waits) |
@@ -212,6 +213,12 @@ def _do_step(bridge, win, step, recorder=None):
         QMetaObject.invokeMethod(win, "openCommands", Q_ARG("QVariant", " ".join(rest)))
     elif word == "run":
         bridge.run(rest[0])
+    elif word == "select-last":               # select-last <n>: the last n notes / hits / clips made on the Editor's track
+        t = bridge.doc.item(bridge._track)
+        made = [i["id"] for k in ("notes", "hits", "clips", "sounds", "lines") for i in t.get(k, [])][-int(rest[0]):]
+        bridge.pickMany(made)
+    elif word == "handle-first":              # handle-first <part> <dt s>: a handle drag on the first selected item
+        do_select_step(bridge, win, "handle", [bridge.selectedIds[0], *rest])
     elif word == "agent":                     # agent <label>|<json calls>: an agent's change (another author), for the walks
         from rostrum_core import Who
         label, _, calls = " ".join(rest).partition("|")
