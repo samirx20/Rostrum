@@ -19,7 +19,7 @@ from mcp.server.stdio import stdio_server
 
 from ..errors import RostrumError, codes
 from ..who import Who
-from . import shared_edit, shared_inspect, shared_markers, tools_list
+from . import shared_edit, shared_inspect, shared_markers, shared_screen, tools_list
 from .context import App, Groups, ToolContext
 from .guides import URI
 from .jobs import InProcessJobs
@@ -47,6 +47,7 @@ class Runtime:
         shared_inspect.register(shared)
         shared_edit.register(shared)
         shared_markers.register(shared)
+        shared_screen.register(shared)
         tools_list.register(shared)
         self.app, self.tools = app, shared.merged_with(tools) if tools else shared
         self.jobs = jobs or InProcessJobs(log=_log)
@@ -61,6 +62,9 @@ class Runtime:
             group = self.groups.current(who, (args or {}).get("group"))
             ctx = ToolContext(self.app, who, group, self.jobs, name, self.tools)
             with self._one_at_a_time:
+                for doc in list(self.app.documents.values()):   # a window may have changed it: read its steps first
+                    if getattr(doc, "live", None) is not None:
+                        doc.live.catch_up()
                 reply = tool.fn(ctx, checked)
             if not isinstance(reply, Reply):
                 raise TypeError(f"tool {name} returned {type(reply).__name__}, not Reply")

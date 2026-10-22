@@ -73,7 +73,16 @@ def _check_args(op, args, where):
     return {k: op.param(k).check(v, where) for k, v in args.items()}
 
 
-def _check_targets(kind, op, targets, view, where):
+def _locked_holder(idx, id_):
+    """The item itself or the nearest parent that is locked (a locked track holds its notes and clips), else None."""
+    while id_ is not None and id_ in idx:
+        if idx[id_].item.get("locked"):
+            return idx[id_].item
+        id_ = idx[id_].parent
+    return None
+
+
+def _check_targets(kind, op, targets, view, where, locked_by=None):
     idx, items = view.locs(), []
     if op.targets is None:
         if targets:
@@ -91,8 +100,12 @@ def _check_targets(kind, op, targets, view, where):
         if it.get("type") not in op.targets:
             raise RostrumError(codes.BAD_ARGUMENT, where, f'target "{t}"', f"is a {it.get('type')}, not a "
                                f"{' or '.join(op.targets)}")
-        if it.get("locked") and not op.name.endswith(".unlock"):
-            raise RostrumError(codes.CHECK_FAILED, where, f'target "{t}"', "is locked", hint="Unlock it first.")
+        held = _locked_holder(idx, t)
+        if held is not None and not (held["id"] == t and op.name.endswith(".unlock")):
+            by = locked_by(held["id"]) if locked_by else None
+            inside = "" if held["id"] == t else f'"{it.get("name") or t}" is inside '
+            raise RostrumError(codes.CHECK_FAILED, where, f'{inside}"{held.get("name") or held["id"]}" ({held["id"]})',
+                               "is locked" + (f" by {by}" if by else ""), hint="Unlock it first, then try again.")
         if not holds(op.valid_when, fields(it, kind.lists), kind.facts(it, view)):
             raise RostrumError(codes.BAD_ARGUMENT, where, f'target "{t}"',
                                f"can't take {op.name} now: it needs {describe(op.valid_when)}")
@@ -120,8 +133,9 @@ def _changed(edits, idx, lists) -> list[dict]:
     return [idx[i].item for i in ids if i in idx]
 
 
-def plan(kind, data: dict, calls) -> tuple[dict, list, list[dict]]:
-    """(the new document, the applied edits, the normalized calls). Pure: `data` is not touched."""
+def plan(kind, data: dict, calls, locked_by=None) -> tuple[dict, list, list[dict]]:
+    """(the new document, the applied edits, the normalized calls). Pure: `data` is not touched. `locked_by(id)`: who
+    locked an item, for the refusal's words (Document.locked_by)."""
     calls = normalize(calls)
     work, applied = copy.deepcopy(data), []
     idx = index(work, kind.lists)                       # one index for the whole call, kept up to date by its edits
@@ -129,7 +143,7 @@ def plan(kind, data: dict, calls) -> tuple[dict, list, list[dict]]:
         where = f"op {n} of {len(calls)} ({call['op']})"
         op = kind.registry.get(call["op"], f"op {n} of {len(calls)}")
         view = View(work, kind.lists, idx)
-        items = _check_targets(kind, op, call["target"], view, where)
+        items = _check_targets(kind, op, call["target"], view, where, locked_by)
         args = _check_args(op, call["args"], where)
         _check_valid_when(kind, op, items, args, view, where)
         ctx = Context(kind, work, where, idx)
