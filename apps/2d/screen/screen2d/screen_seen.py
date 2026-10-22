@@ -18,6 +18,12 @@ def _selected(bridge) -> list[dict]:
     return out
 
 
+def _visible(bridge) -> dict | None:
+    """The part of the scene the canvas shows, in composition px (as the view last settled; sharp.py), or None."""
+    v = bridge.sharp._visible
+    return None if v is None else {"x": v[0], "y": v[1], "w": v[2] - v[0], "h": v[3] - v[1]}
+
+
 def state(bridge) -> dict:
     comp = bridge.comp()
     ids = [r["id"] for r in _selected(bridge)]
@@ -29,7 +35,8 @@ def state(bridge) -> dict:
         # The area with the keyboard focus is not kept in Python today (Main.qml would call a `backend.setFocusArea(name)`
         # from its activeFocusItem); until then: the canvas.
         "focus": getattr(bridge, "_focus_area", "") or "canvas",
-        "view": {"tool": bridge.tool, "playing": bridge.playing, "previewSize": bridge.frameInfo["previewSize"]},
+        "view": {"tool": bridge.tool, "playing": bridge.playing, "previewSize": bridge.frameInfo["previewSize"],
+                 "zoom": bridge.view_zoom(), "visible": _visible(bridge)},
         # every move, resize, turn, bar, key or point drag acts on the selection, so that is what is being dragged
         "dragging": ids if bridge._drag is not None else [],
     }

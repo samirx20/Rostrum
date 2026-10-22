@@ -46,7 +46,7 @@ Rectangle {
             current: backend.curves.on ? "curves" : "keys"
             onPicked: (v) => backend.curves.setOn(v === "curves")
         }
-        FrameTools { anchors.verticalCenter: parent.verticalCenter; visible: !keyBar.visible }
+        FrameTools { anchors.verticalCenter: parent.verticalCenter; visible: painter.drawingId !== "" && !keyBar.visible }   // a frame-by-frame layer, no keys picked
         KeyBar { id: keyBar; anchors.verticalCenter: parent.verticalCenter }   // only while keys are picked
     }
     IconButton {  // every row, or only the selected layer's

@@ -3,6 +3,7 @@ calls a click, a drag or a key makes.
 
     keypick <key id>[,<key id>…] [ctrl|shift]   click a diamond (the ids it stands for); Ctrl adds / removes, Shift the run
     keybox <id>[,<id>…] [<id>…] [ctrl|shift]     a box dragged over diamonds (each argument one diamond's ids)
+    keybox time <t0> <t1> [ctrl|shift]           a box over every open row's diamonds between those times
     keydrag2 <key id> <from s> <to s>            press a picked key at <from>, let go at <to> (composition seconds): all move
     keystretch <key id> <from s> <to s>          Alt+drag the first or last picked key: the picked keys stretch in time
     keydelete                                    Delete with keys picked
@@ -65,7 +66,13 @@ def do_key_step(bridge, word, rest, step):
         print("keys", keys.ids)
     elif word == "keybox":
         how = rest[-1] if rest[-1] in HOW else ""
-        keys.box([r.split(",") for r in rest if r not in HOW], how)
+        args = [r for r in rest if r not in HOW]
+        if args[0] == "time":                       # a box over every row's diamonds from t0 to t1 (seconds, as shown)
+            t0, t1 = float(args[1]), float(args[2])
+            groups = [k.get("ids", [k["id"]]) for row in bridge.layers for k in row["keys"] if t0 - 1e-6 <= k["t"] <= t1 + 1e-6]
+        else:
+            groups = [r.split(",") for r in args]
+        keys.box(groups, how)
         print("keys", keys.ids)
     elif word in ("keydrag2", "keystretch"):
         begin = keys.beginDrag if word == "keydrag2" else keys.beginStretch

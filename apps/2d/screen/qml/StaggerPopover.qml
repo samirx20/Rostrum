@@ -16,7 +16,11 @@ QQC.Popup {
     background: Rectangle { color: Theme.raised; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
     onOpened: cancelled = false
     onClosed: cancelled ? st.cancel() : st.end()
-    Connections { target: pop.st; function onOpened() { pop.open() } }
+    Connections {   // opened by the action; closed when the stagger ends anywhere else (a key, a step, an undo)
+        target: pop.st
+        function onOpened() { pop.open() }
+        function onChanged() { if (!pop.st.open && pop.opened) pop.close() }
+    }
     contentItem: Column {
         spacing: Theme.gap
         Shortcut { sequence: "Escape"; enabled: pop.opened; onActivated: { pop.cancelled = true; pop.close() } }   // takes it back

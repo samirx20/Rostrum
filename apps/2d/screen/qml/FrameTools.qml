@@ -1,13 +1,12 @@
 import QtQuick
 import RostrumKit
 
-// The frame-by-frame buttons for the selected drawing layer. Only what applies at the playhead is there
+// The frame-by-frame buttons for the selected frame-by-frame layer (shown by LayerTimeline.qml: painter.drawingId). Only what applies at the playhead is there
 // (painter.now: no "next" on the last drawing, no "new drawing" where one already starts). Each is one change;
 // Alt+Left / Alt+Right / Alt+N / Alt+Up / Alt+Down / Alt+O are the same actions (Main.qml).
 Row {
     id: tools
     readonly property var now: painter.now
-    visible: painter.drawingId !== ""
     spacing: 2
     Button { kind: "ghost"; text: "Previous"; visible: tools.now.prev != null; onClicked: painter.goFrame(-1) }
     Button { kind: "ghost"; text: "Next"; visible: tools.now.next != null; onClicked: painter.goFrame(1) }
