@@ -51,7 +51,8 @@ songs are saved per change. Crash recovery offers back untitled songs whose proc
 (`SettingsPanel.qml`, `screensound/settings_page.py` = `settingsPage`) is the kit's Inspector on
 `rostrum_sound.settings_fields.FIELDS`. Switching songs rebuilds the bridge and pages and reloads the window
 (`main.py` `Screen.show`). Steps: `file-new`, `file-open <path>`, `file-save-as <folder>`, `file-menu`, `settings`,
-`add-track <piano|strings|pad|bass|synth|drums|voice|audio>`.
+`add-track <piano|strings|pad|bass|synth|drums|voice|audio>`, `press <Ctrl+Shift+S>` (a key chord into the window).
+The File menu shows the shortcuts (`HintMenu.qml`, the kit's Menu with key hints): Ctrl N / O / S, Ctrl Shift S (Save a copy), Ctrl ,.
 
 ## Mix page: loudness, delivery, export, ducks, cleaned takes
 
@@ -142,6 +143,6 @@ with everything inside. Times keep their written form. Steps: `song <action> [va
 Takes not yet checked against a real microphone for sample-exactness (needs a loopback test), keyboard takes not tried
 with a real keyboard. The library's audition still plays through Qt Multimedia (its files are any format). Bus / master rows have no mute or fader on the Timeline (those are
 on the Mix page).
-Choices show their stored names ("builtIn", "warmPad") until the kit can show labels; a bus output is typed in the inspector
-(the Mix page has a picker). `screensound/bridge.py` is ~390 lines: it should be split once the kit allows slots outside the bridge class.
+Choices show their stored names ("builtIn", "warmPad") until the kit can show labels. A track's / bus' Output is a pick list
+(Master and the buses; `output_pick.py`). Inspector rows have no hover words yet (kit request: show a field's `help` as a HoverTip). `screensound/bridge.py` is ~390 lines: it should be split once the kit allows slots outside the bridge class.
 Voice: see `apps/sound/VOICE.md`.

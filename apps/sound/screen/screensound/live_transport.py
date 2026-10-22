@@ -9,7 +9,7 @@ against what was heard, to the sample.
 
 Out: `rolling`, `ended`, `take`, `note`, `level` (input peak dB), `problem` (loud lines), `changed` (opened / gone).
 The process runs on the shared output (`--shared`: the device stays usable by other apps) unless the person chose
-"Take over the speakers" in settings; the chosen speakers, microphone and buffer reach it as the engine's
+"Use speakers alone" in settings; the chosen speakers, microphone and buffer reach it as the engine's
 environment (settings.engine_env). It is started only when it is first needed. When it cannot open or dies (no output device, no microphone) it says why, loudly, and the
 playhead runs on a clock (`alive` False, `reason`). It is ended by its own handle, never by name. `program` is the
 test seam: what replaces `[engine, "play"]` (fake_play.py speaks the same lines).

@@ -18,9 +18,10 @@ AppShell {
     function openFileMenu() { fileMenu.openMenu() }      // (the scripted `file-menu` step)
     function openSettings() { settingsPanel.open() }     // (`settings`)
     onClosing: (close) => { close.accepted = songs.mayClose() }    // an untitled song with changes asks first
-    Shortcut { sequence: StandardKey.New; onActivated: songs.newSong() }
-    Shortcut { sequence: StandardKey.Open; onActivated: fileMenu.openMenu() }
-    Shortcut { sequence: StandardKey.Save; onActivated: fileMenu.saveNow() }
+    Shortcut { sequence: "Ctrl+N"; onActivated: fileMenu.newNow() }
+    Shortcut { sequence: "Ctrl+O"; onActivated: fileMenu.openNow() }
+    Shortcut { sequence: "Ctrl+S"; onActivated: fileMenu.saveNow() }
+    Shortcut { sequence: "Ctrl+Shift+S"; onActivated: songs.untitled ? fileMenu.saveNow() : fileMenu.saveAsNow() }
     Shortcut { sequence: "Ctrl+,"; onActivated: settingsPanel.open() }
     function openSong() { readout.open() }      // (the scripted `song-open` step)
     function openPicturePick() { backend.setPictureOpen(true); picture.openItems() }     // (`picture-pick`)

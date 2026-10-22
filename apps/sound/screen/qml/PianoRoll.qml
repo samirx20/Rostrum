@@ -8,7 +8,7 @@ Panel {
     id: p
     readonly property var roll: backend.roll
     readonly property string kind: roll.kind
-    readonly property int keysWidth: 52
+    readonly property int keysWidth: kind === "drums" ? 76 : 52     // drum names ("Open hat") are longer than note names
     title: roll.name !== "" ? roll.name : "Piano roll"
     headerRight: [
         PictureToggle { anchors.verticalCenter: parent.verticalCenter },

@@ -1,6 +1,6 @@
 """The Settings page: the person's settings (rostrum_sound.settings) as inspector rows, built from the same field
 data and the same kit rows as the inspector (`rows.layout` / `rows.evaluate`), so the rule of individuality holds
-here too (Buffer shows only while "Take over the speakers" is on; a device row only when there is one to pick).
+here too (Buffer shows only while "Use speakers alone" is on; a device row only when there is one to pick).
 
 Settings are not part of a song, so a change is saved to the settings file at once, not recorded in a song's
 history. Device changes reach the player the next time it opens (the page says so). QML sees it as `settingsPage`,

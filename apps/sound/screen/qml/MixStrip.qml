@@ -79,8 +79,10 @@ Rectangle {
         Text {   // measured by the last render; absent until there is one
             Layout.fillWidth: true; Layout.preferredHeight: 28; horizontalAlignment: Text.AlignHCenter
             visible: s.measured
-            text: F.num(s.model.meter.peak, 1) + " pk\n" + F.num(s.model.meter.lufs, 1) + " LUFS"
+            text: "Peak " + F.num(s.model.meter.peak, 1) + " dB\nLoudness " + F.num(s.model.meter.lufs, 1) + " LUFS"
             color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.features: { "tnum": 1 }
+            HoverHandler { id: numsHover }
+            HoverTip { text: "Highest level (peak, dBFS) and average loudness (LUFS) of this track in the last render"; hovered: numsHover.hovered }
         }
     }
 }

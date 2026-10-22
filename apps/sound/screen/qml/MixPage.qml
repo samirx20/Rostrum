@@ -21,7 +21,8 @@ Panel {
                 Repeater { model: mixer.buses; delegate: MixStrip { height: row.height } }   // buses, before the master
                 Item {
                     width: addBus.width; height: row.height
-                    Button { id: addBus; text: "+ Bus"; kind: "ghost"; onClicked: mixer.addBus() }
+                    Button { id: addBus; text: "+ Group channel"; kind: "ghost"; onClicked: mixer.addBus()
+                             HoverTip { text: "New bus: a shared channel. Send several tracks to it to mix them together"; hovered: addBus.hovered } }
                 }
             }
         }

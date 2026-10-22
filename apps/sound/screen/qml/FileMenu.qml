@@ -16,17 +16,23 @@ Button {
     function openMenu() { menu.open() }
     function saveNow() { const t = songs.save(); if (t) backend.say(t) }
 
-    Menu {
+    function newNow() { songs.newSong() }
+    function openNow() { openDialog.open() }
+    function saveAsNow() { saveDialog.open() }
+
+    HintMenu {
         id: menu
-        width: 260
-        entries: [{ value: "new", label: "New song" }, { value: "open", label: "Open…" },
+        entries: [{ value: "new", label: "New song", hint: "Ctrl N" }, { value: "open", label: "Open…", hint: "Ctrl O" },
                   { value: "sample", label: "Open sample (Lull)" }]
                  .concat(songs.recent.slice(0, 6).map((r, i) => ({ value: "recent:" + i, label: "Open " + r.name })))
-                 .concat([{ value: "saveas", label: songs.untitled ? "Save…" : "Save a copy as…" },
-                          { value: "settings", label: "Settings…" }])
+                 .concat(songs.untitled ? [{ value: "saveas", label: "Save…", hint: "Ctrl S" }]
+                                         : [{ value: "save", label: "Save", hint: "Ctrl S" },
+                                            { value: "saveas", label: "Save a copy as…", hint: "Ctrl Shift S" }])
+                 .concat([{ value: "settings", label: "Settings…", hint: "Ctrl ," }])
         onPicked: (v) => {
             if (v === "new") songs.newSong()
             else if (v === "open") openDialog.open()
+            else if (v === "save") file.saveNow()
             else if (v === "sample") songs.openSample()
             else if (v === "saveas") saveDialog.open()
             else if (v === "settings") file.settingsPanel.open()

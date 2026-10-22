@@ -14,10 +14,6 @@ Item {
     implicitWidth: 28
 
     readonly property real travel: height - knob.height
-    Rectangle {  // the 0 dB tick
-        x: 0; width: 6; height: 1; color: Theme.fg3
-        y: knob.height / 2 + f.travel * (1 - F.posOfDb(0))
-    }
     Rectangle {  // track
         id: track
         anchors.horizontalCenter: parent.horizontalCenter

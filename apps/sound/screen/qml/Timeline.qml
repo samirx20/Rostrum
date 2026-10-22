@@ -15,7 +15,7 @@ import RostrumKit
 Rectangle {
     id: tl
     property bool slim: false
-    readonly property int headerWidth: 200
+    readonly property int headerWidth: 224
     readonly property var rows: slim ? backend.tracks.filter(r => !r.mix) : backend.tracks   // buses + master: lanes only
     readonly property real mixH: 20          // a bus's or the master's compact row
     readonly property int mixRows: rows.filter(r => r.mix).length
@@ -91,16 +91,14 @@ Rectangle {
                     readonly property var auto: tl.autoOf(modelData)
                     readonly property real h: tl.hOf(modelData)
                     width: column.width; height: h + (auto ? tl.laneGap + tl.laneH : 0)
-                    TrackHeader { visible: !row.modelData.mix; width: tl.headerWidth; height: row.h; track: row.modelData }
-                    MixRowHeader { visible: !!row.modelData.mix; width: tl.headerWidth; height: row.h; track: row.modelData }
+                    TrackHeader { visible: !row.modelData.mix; width: tl.headerWidth; height: row.h; track: row.modelData; showAuto: !tl.slim }
+                    MixRowHeader { visible: !!row.modelData.mix; width: tl.headerWidth; height: row.h; track: row.modelData; showAuto: !tl.slim }
                     Rectangle {
                         x: bars.x - list.x; width: bars.width; height: row.h
                         radius: Theme.radiusCtl - 2; color: Theme.sunken; clip: true
                         BeatGrid { anchors.fill: parent; ruler: bars }
                         LaneBlocks { anchors.fill: parent; track: row.modelData; ruler: bars }
                         DuckDips { anchors.fill: parent; trackId: row.modelData.id; ruler: bars }
-                        LaneToggle { visible: !tl.slim; track: row.modelData
-                                     anchors { right: parent.right; rightMargin: 4; verticalCenter: parent.verticalCenter } }
                     }
                     AutomationLane {
                         visible: !!row.auto

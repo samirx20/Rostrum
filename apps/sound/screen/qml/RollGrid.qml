@@ -13,7 +13,13 @@ Item {
     readonly property bool notes: roll.kind === "notes"
     readonly property int count: notes ? roll.hi - roll.lo + 1 : roll.kind === "drums" ? Math.max(1, roll.drums.length) : 1
     readonly property real rowH: notes ? Math.max(12, viewHeight / count)
-                               : roll.kind === "drums" ? Math.min(40, viewHeight / count) : viewHeight
+                               : roll.kind === "drums" ? Math.min(56, viewHeight / count) : viewHeight
+    // a drum's stored name ("openHat", "kick") in words for the row: "Open hat", "Kick"
+    function drumName(d) {
+        if (!d) return ""
+        var s = String(d).replace(/_/g, " ").replace(/([a-z])([A-Z0-9])/g, "$1 $2").toLowerCase()
+        return s.charAt(0).toUpperCase() + s.slice(1)
+    }
     function rowAt(y) { var i = Math.floor(y / rowH); return notes ? roll.hi - i : roll.kind === "drums" ? i : 0 }
     // The row names follow the key in force at the view's left edge: scrolling past a key change renames the keys.
     readonly property var rowNames: {
@@ -39,7 +45,7 @@ Item {
             Text {
                 visible: g.notes ? parent.key % 12 === 0 || g.rowH >= 16 : true
                 x: Theme.gap; anchors.verticalCenter: parent.verticalCenter
-                text: g.notes ? g.rowNames[parent.index] : g.roll.drums[parent.index] || ""
+                text: g.notes ? g.rowNames[parent.index] : g.drumName(g.roll.drums[parent.index])
                 color: g.notes && parent.key % 12 !== 0 ? Theme.fg4 : Theme.fg3
                 font.family: uiFont; font.pixelSize: Theme.label - (g.notes ? 1 : 0); font.features: { "tnum": 1 }
             }

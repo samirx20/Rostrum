@@ -87,10 +87,10 @@ def verdict(master: dict, render: dict, fields=ALL) -> dict:
     if "loudness" in fields and abs(off) > LUFS_TOLERANCE:
         problems.append(f"{abs(off):.1f} LU too {'loud' if off > 0 else 'quiet'}")
     if peak > ceiling:
-        problems.append(f"true peak {peak - ceiling:.1f} dB over the ceiling")
-    measured = f"{_n(round(lufs, 1))} LUFS, true peak {_n(round(peak, 1))} dBTP"
+        problems.append(f"loudest peak {peak - ceiling:.1f} dB over the limit")
+    measured = f"loudness {_n(round(lufs, 1))} LUFS, loudest peak {_n(round(peak, 1))} dBTP"
     if problems:
         return {"ok": False, "text": f"Miss: {' and '.join(problems)} ({measured})"}
     if "loudness" not in fields:                       # only the ceiling applies: no target to pass
-        return {"ok": True, "text": f"Peak under the ceiling ({measured})"}
+        return {"ok": True, "text": f"Loudest peak is under the limit ({measured})"}
     return {"ok": True, "text": f"Pass: {measured}"}
