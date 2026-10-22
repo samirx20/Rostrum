@@ -13,6 +13,7 @@ from rostrum2d import fields as F, retime
 
 from . import bounds, outline
 from .drags import DragSlots
+from .command_words import CommandWords
 from .file_commands import FileCommands
 from .frames import FrameRenderer
 from .handle_slots import HandleSlots
@@ -26,7 +27,7 @@ from .tools2d import ToolSlots
 from .undo_state import UndoState
 
 
-class Bridge2D(UndoState, LayerOrder, FileCommands, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
+class Bridge2D(UndoState, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     pageChanged = Signal()
     frameChanged = Signal()
@@ -51,6 +52,7 @@ class Bridge2D(UndoState, LayerOrder, FileCommands, DragSlots, HandleSlots, Tool
         self._scene = None                                  # the engine's scene, described once per change (_render)
         self.frames.ready.connect(self._on_frame)
         self.frames.failed.connect(self._fail)
+        self.frames.note.connect(self._set_status)         # no graphics driver: said once (frames.py)
         self.painter = Painter(self)
         self._make_tools()                                  # pen, curves, export, import, add, problems (tools2d.py)
         self.play = Playback(self)                          # playing: follows the clock (playback.py)

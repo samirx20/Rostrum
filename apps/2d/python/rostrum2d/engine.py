@@ -49,6 +49,8 @@ class Engine:
                                      stderr=self._log, creationflags=settings.NO_WINDOW)
         self.pid, self.scene = self.proc.pid, None
         self._shm = None                             # (name, mmap) of the engine's frame memory (pixels)
+        # Why it paints on the processor, in plain words (no working graphics driver; ROSTRUM2D_NO_GPU=1), or None on the GPU.
+        self.fallback: str | None = None
 
     def _request(self, req: dict, timeout_s: float = 60.0, progress=None) -> dict:
         t0 = time.perf_counter()
@@ -74,8 +76,9 @@ class Engine:
         return out
 
     def load(self, scene: dict):
-        """Load or replace the scene; the engine checks it whole, so a bad scene fails here, loudly."""
-        self._request({"scene": scene})
+        """Load or replace the scene; the engine checks it whole, so a bad scene fails here, loudly. With no working
+        graphics driver the engine draws the same frames on the processor and `fallback` says so."""
+        self.fallback = self._request({"scene": scene}).get("fallback")
         self.scene = scene
 
     def _props(self) -> dict:

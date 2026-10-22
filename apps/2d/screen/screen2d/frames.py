@@ -40,8 +40,12 @@ def _frame(eng, t: float, png: Path, samples: int | None, scale: float) -> QImag
     return QImage(str(png))
 
 
+_TOLD = set()                    # what was said in the status line already: once per app run
+
+
 class FrameRenderer(PictureWorker):
     ready = Signal(int)          # serial of the newest frame
+    note = Signal(str)           # a plain notice for the status line (painting on the processor: no graphics driver)
 
     def __init__(self, parent=None):
         super().__init__("frames2d", parent)
@@ -64,6 +68,9 @@ class FrameRenderer(PictureWorker):
             with STATS.stage("load"):
                 eng.load(scene)
             self._loaded = scene
+            if eng.fallback and eng.fallback not in _TOLD:
+                _TOLD.add(eng.fallback)
+                self.note.emit(eng.fallback)
         image = _frame(eng, t, SCRATCH / "frame.png", samples, scale)
         if image.isNull():
             raise RuntimeError(f"the engine's frame could not be read: {SCRATCH / 'frame.png'}")

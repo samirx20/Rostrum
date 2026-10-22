@@ -65,8 +65,10 @@ def timing(start_help: str, end_help: str) -> list:
 
 # Every layer has these (position is where its anchor sits in the composition, in px).
 TRANSFORM = [      # x, y are absent while a group's auto layout places the layer (layout_fields.py)
-    N("x", "X", "Transform", -20000, 20000, 1, "px", when=_layout.FREE_XY, default=960.0),
-    N("y", "Y", "Transform", -20000, 20000, 1, "px", when=_layout.FREE_XY, default=540.0),
+    N("x", "X", "Transform", -20000, 20000, 1, "px", when=_layout.FREE_XY, default=960.0,
+      help="Where the layer sits across the frame: move it left or right (position)"),
+    N("y", "Y", "Transform", -20000, 20000, 1, "px", when=_layout.FREE_XY, default=540.0,
+      help="Where the layer sits up and down the frame: move it up or down (position)"),
     N("scale", "Scale", "Transform", 0, 100, 0.01, "×", default=1.0),
     N("rotation", "Rotation", "Transform", -36000, 36000, 0.1, "°"),
     N("opacity", "Opacity", "Transform", 0, 1, 0.01, default=1.0),

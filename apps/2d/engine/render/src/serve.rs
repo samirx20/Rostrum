@@ -4,7 +4,8 @@
 //! - `{"open": {"width", "height", "html", "cpu"?, "depth"?, "color"?}}` — the page shell (styles, fonts, an empty
 //!   `<div id="rostrum-stage">`); paints on the GPU unless `cpu` is true; always into half-float surfaces in the
 //!   working colour space `color` names (color.rs); `depth: 16` makes `rgba` frames 16-bit (rgba64le), else 8-bit
-//!   with dither. Replies `{"ok": true, "gpu": bool}`.
+//!   with dither. Replies `{"ok": true, "gpu": bool, "adapter", "fallback"}`: with no GL context (no working graphics
+//!   driver, or `ROSTRUM2D_NO_GPU=1`) it paints on the CPU and `fallback` says so in plain words (else null).
 //! - `{"frame": {"stage": "<markup>", "index"?: n, "samples"?: ["<markup>", …], "image"?: path, "rgba"?: true, "boxes"?: true}}` —
 //!   (`index`: the document frame number, the output dither's seed, so a preview frame equals the exported one)
 //!   the stage's content for this frame, applied as edits to the kept page. `samples` (motion blur): the stage at
@@ -80,6 +81,8 @@ pub(crate) struct Session {
     scratch: keep::Scratch,
     /// The live canvas's shared-memory frames (`pixels`), made on first use and remade at a new frame size.
     shm: Option<crate::shm::Shm>,
+    /// What paints (`with_painting`): every open and scene reply says it.
+    pub(crate) painting: Value,
 }
 
 /// `warm`: the GL context made as the process started (taken by the first GPU open).
@@ -102,14 +105,19 @@ pub(crate) fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, Str
     };
     let page_ms = t0.elapsed().as_secs_f64() * 1000.0;
     let t1 = Instant::now();
-    let painter = match (req["cpu"].as_bool() == Some(true), warm.take()) {
-        (true, _) => Painter::cpu(width, height, color.surface_space())?,
-        (false, Some(gl)) => Painter::gpu_on(gl?, width, height, color.surface_space())?,
-        (false, None) => Painter::gpu(width, height, color.surface_space())?,
+    // On the GPU unless asked for the CPU; on the CPU too, said in plain words, when the GPU can't be used (painter.rs `best`).
+    let (painter, fallback) = match (req["cpu"].as_bool() == Some(true), warm.take()) {
+        (true, _) => (Painter::cpu(width, height, color.surface_space())?, None),
+        (false, gl) => match Painter::best(gl, width, height, color.surface_space())? {
+            (p, Ok(())) => (p, None),
+            (p, Err(why)) => {
+                eprintln!("2D engine: no GPU painter ({why}); painting on the CPU");
+                (p, Some(crate::painter::NO_GPU))
+            }
+        },
     };
     let painter_ms = t1.elapsed().as_secs_f64() * 1000.0;
-    let gpu = painter.is_gpu();
-    let adapter = painter.gpu_name().unwrap_or("").to_string();
+    let painting = json!({ "gpu": painter.is_gpu(), "adapter": painter.gpu_name().unwrap_or(""), "fallback": fallback });
     let sink = match req.get("encode") {
         Some(e) => {
             let program = e["program"].as_str().ok_or("encode needs program")?;
@@ -119,7 +127,16 @@ pub(crate) fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, Str
         None => None,
     };
     let scratch = keep::Scratch::new(|| DocumentConfig { base_url: Some(BASE_URL.into()), ..Default::default() });
-    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, shm: None }, json!({ "ok": true, "gpu": gpu, "adapter": adapter, "depth": if deep { 16 } else { 8 }, "timing": { "pageMs": page_ms, "painterMs": painter_ms } })))
+    let mut reply = json!({ "ok": true, "depth": if deep { 16 } else { 8 }, "timing": { "pageMs": page_ms, "painterMs": painter_ms } });
+    with_painting(&mut reply, &painting);
+    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, shm: None, painting }, reply))
+}
+
+/// Adds what paints (`gpu`, `adapter`, `fallback`: the plain reason it paints on the CPU, null on the GPU) to a reply.
+pub(crate) fn with_painting(reply: &mut Value, painting: &Value) {
+    if let (Some(r), Some(p)) = (reply.as_object_mut(), painting.as_object()) {
+        r.extend(p.clone());
+    }
 }
 
 /// The page document's settings at a frame size, its loads through `assets`.

@@ -84,7 +84,8 @@ pub fn load(held: &mut Held, session: &mut Option<Session>, warm: &mut Option<Re
         serve::page(session.as_mut().unwrap(), &json!({ "html": stage::shell(w, h, &scene.fonts)? }))?;
     }
     held.shell = Some((w, h));
-    let reply = json!({ "ok": true, "items": count(&scene.comp), "width": w, "height": h, "fps": scene.fps(), "duration": scene.duration(), "fonts": fonts_of(&scene) });
+    let mut reply = json!({ "ok": true, "items": count(&scene.comp), "width": w, "height": h, "fps": scene.fps(), "duration": scene.duration(), "fonts": fonts_of(&scene) });
+    serve::with_painting(&mut reply, &session.as_ref().unwrap().painting);
     held.scene = Some(scene);
     Ok(reply)
 }

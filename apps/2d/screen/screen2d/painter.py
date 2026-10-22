@@ -23,7 +23,8 @@ class Painter(QObject):
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
-        self.b, self.brush, self._stroke, self._onion = bridge, Brush(), None, False
+        self.b, self._stroke, self._onion = bridge, None, False
+        self.brush = Brush(bridge.comp().get("background", ""))
         self._serial, self._built, self._rev = 0, None, 0        # _rev: the document changed (the onion is stale)
         self.provider = onion.OnionProvider()
         self.model = RowsModel(rows.ROLES, self)
