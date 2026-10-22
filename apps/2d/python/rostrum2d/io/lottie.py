@@ -7,13 +7,15 @@
   precomp's layers, in the group's own px. `clip` becomes a rect mask over the box; otherwise the precomp is made
   huge so nothing is cut. Time inside a precomp is the composition's time.
 - The composition's background becomes the bottom solid layer (Lottie has no background colour).
-- text: glyph outlines as one shape layer per text (lottie_text.py). Not exported, always reported: drawing, video, tilt, effects, conic gradients, soft mask edges.
+- camera: baked into null parent layers, a keyframe every frame (lottie_camera.py), so the picture matches.
+- text: glyph outlines as one shape layer per text (lottie_text.py). Not exported, always reported: drawing, video, tilt, effects, motion blur, conic gradients, soft mask edges.
 """
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
+from .lottie_camera import bake as bake_camera
 from .lottie_image import image_layer
 from .lottie_layer import clip_mask, common
 from .lottie_outline import Outlines
@@ -38,6 +40,8 @@ def _layers(children: list[dict], ctx: Ctx, assets: list[dict], start_ind: int =
             continue
         if kind in NOT_EXPORTED:
             ctx.say(NOT_EXPORTED[kind])
+            continue
+        if kind == "camera":                   # a composition's own: bake_camera carries it, after the layers
             continue
         ind = start_ind + len(out)
         if kind in ("shape", "path"):
@@ -109,6 +113,9 @@ def to_lottie(scene: dict, background: bool = True) -> tuple[dict, list[str]]:
         outlines.close()
     for i, layer in enumerate(layers):
         layer["ind"] = len(layers) - i
+    layers += bake_camera(comp, layers, ctx, len(layers) + 1)
+    if pr.get("shutter", 0) > 0:
+        ctx.report.append(f'composition "{comp["id"]}": motion blur ({pr["shutter"]:g}° shutter) is not in Lottie; moving layers are sharp')
     if background:
         layers.append(_background(comp, len(layers) + 1))
     doc = {"v": VERSION, "fr": pr["fps"], "ip": 0, "op": round(pr["duration"] * pr["fps"]), "w": pr["width"],
