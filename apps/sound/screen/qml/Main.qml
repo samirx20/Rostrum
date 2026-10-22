@@ -11,6 +11,7 @@ AppShell {
     appName: "RostrumSound"
     documentName: backend.docName
     leftWidth: 0
+    helpEntries: guides
     bottomHeight: backend.page === "timeline" ? 300 + Math.min(2, backend.tracks.filter(r => r.auto).length) * 78 : 156
     Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
 
@@ -33,8 +34,8 @@ AppShell {
     actions: [Button {           // + Track: one track.add with a starting instrument (screensound/adder.py)
                   id: addTrack; text: "+ Track"; down: addMenu.visible; anchors.verticalCenter: parent.verticalCenter
                   onClicked: addMenu.visible ? addMenu.close() : addMenu.open()
-                  Menu { id: addMenu; width: 220; entries: adder.entries; onPicked: (v) => adder.add(v) } },
-              FileMenu { id: fileMenu; settingsPanel: settingsPanel; anchors.verticalCenter: parent.verticalCenter }]
+                  Menu { id: addMenu; width: 220; entries: adder.entries; onPicked: (v) => adder.add(v) } }]
+    leading: FileMenu { id: fileMenu; settingsPanel: settingsPanel; anchors.verticalCenter: parent.verticalCenter }
     SettingsPanel { id: settingsPanel }
     tools: [
         Segmented {

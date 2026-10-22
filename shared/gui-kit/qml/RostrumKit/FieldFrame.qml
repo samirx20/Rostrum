@@ -11,6 +11,8 @@ FocusScope {
     property string prefix: ""          // dim, before the value ("f/")
     property string suffix: ""          // dim, after the value ("mm", "°")
     property string placeholder: ""
+    property string atRest: ""          // shown at rest in place of the text (a path field: the file's own name)
+    property int elide: Text.ElideRight   // how the text at rest is cut
     property bool editable: false       // typing allowed: a click puts the caret in
     property bool engaged: false        // the field says it is in use (scrubbing, list open): accent look
     readonly property bool active: engaged || input.activeFocus
@@ -88,7 +90,7 @@ FocusScope {
     Text {  // at rest: the text from its start, "…" where it doesn't fit (TextInput would show its end)
         visible: !input.activeFocus
         anchors { left: input.left; right: input.right; verticalCenter: parent.verticalCenter }
-        text: input.text; elide: Text.ElideRight; color: Theme.fg; font: input.font
+        text: f.atRest !== "" ? f.atRest : input.text; elide: f.elide; color: Theme.fg; font: input.font
     }
     Text {  // the unit sits right after the value, dim
         visible: f.suffix !== "" && input.text !== ""

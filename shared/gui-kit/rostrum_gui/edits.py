@@ -28,7 +28,7 @@ def edit_label(doc, item_id, name, value) -> str:
     if p is not None and p.type == "toggle":
         return f"Turn {'on' if value else 'off'} {label}"
     if p is not None and p.type == "choice":
-        return f"{label}: {value}"
+        return f"{label}: {p.option_label(value)}"
     return f"Change {label}"
 
 

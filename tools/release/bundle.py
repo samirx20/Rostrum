@@ -20,6 +20,7 @@ import sys
 import zipfile
 from pathlib import Path
 
+import extras
 import icons
 from qt_trim import trim
 
@@ -34,13 +35,13 @@ SKIP = shutil.ignore_patterns("__pycache__", "tests", "*.egg-info", "*.pyc", ".p
 # One row per piece: (installer component, wheel specs from this repo, folders copied as they are).
 SHARED = ("runtime", ["shared/core[mcp]", "shared/gui-kit", "shared/painting-kit"],
           ["shared/core/rostrum_core", "shared/gui-kit/rostrum_gui", "shared/gui-kit/qml",
-           "shared/painting-kit/rostrum_paint", "LICENSE", "ATTRIBUTIONS.md"])
+           "shared/painting-kit/rostrum_paint", "LICENSE", "ATTRIBUTIONS.md", "VERSION"])
 APPS = {
     "2d": ("apps/2d", ["apps/2d/python[mcp,io,render3d]"],
            ["apps/2d/python/rostrum2d", "apps/2d/screen/main.py", "apps/2d/screen/screen2d", "apps/2d/screen/qml",
             "apps/2d/guides", "apps/2d/engine/fonts", "apps/2d/engine/DEPENDENCIES.md"],
            ["apps/2d/engine/target/agent/rostrum2d-render.exe", "apps/2d/engine/target/agent/rostrum2d_stamp.dll"]),
-    "sound": ("apps/sound", ["apps/sound/python[listen,mcp]"],
+    "sound": ("apps/sound", ["apps/sound/python[listen,cleanup,mcp]"],
               ["apps/sound/python/rostrum_sound", "apps/sound/screen/main.py", "apps/sound/screen/screensound",
                "apps/sound/screen/qml", "apps/sound/guides", "apps/sound/MODELS.md"],
               ["apps/sound/engine/target/agent/rostrum-sound.exe"]),
@@ -156,6 +157,12 @@ def main():
             copy(rel, REPO, stage)
         for rel in APPS[app][3]:
             copy(rel, args.engines, stage)
+    try:                                         # 2D's LGPL FFmpeg; the C++ runtime beside every engine
+        if "2d" in args.apps:
+            extras.ffmpeg(stage)
+        extras.crt(stage, sorted({Path(rel).parent for app in args.apps for rel in APPS[app][3]}))
+    except extras.Missing as e:
+        fail(str(e))
     copy("tools/release/rostrum.pyw", REPO, stage)
     shutil.move(stage / "tools" / "release" / "rostrum.pyw", py.parent / "rostrum.pyw")
     shutil.rmtree(stage / "tools")

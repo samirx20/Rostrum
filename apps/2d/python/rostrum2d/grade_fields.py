@@ -51,7 +51,8 @@ COLOUR = [
     _curve("curveR", "Red curve", "deep"),
     _curve("curveG", "Green curve", "deep"),
     _curve("curveB", "Blue curve", "deep"),
-    Param.text("lut", label="LUT file", group=G, importance="deep", default="",
+    Param.text("lut", label="LUT file", group=G, importance="deep", default="", control="file",
+               filters=["Colour look-up tables (*.cube)"],
                help="A .cube colour look-up table (absolute path), applied last. Empty = none"),
     _n("lutMix", "LUT amount", 0, 1, 0.01, 1.0, HAS_LUT, help="0 = none of the LUT, 1 = all of it"),
 ]

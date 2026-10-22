@@ -178,6 +178,12 @@ class DocBridge(EditSlots, Parts, QObject):
             self.selectionChanged.emit()                   # its name may have changed (an agent's rename)
         self._heard(event.change if event.kind == "change" else None)
 
+    @Slot(str)
+    def say(self, text):
+        """Put an app's own one-line message (a save, a refused open) in the top bar's status, where every app's
+        "what just happened" goes; a line starting "Error" shows red."""
+        self._set_status(text)
+
     def _set_status(self, text):
         self._status = text
         self.statusChanged.emit()

@@ -31,7 +31,8 @@ FIELDS = {
         Param.choice("sampleRate", list(deliver.RATE_LABELS), group="Output", importance="deep", label="Sample rate",
                      labels=deliver.RATE_LABELS, help="How finely this song's sound is stored; export uses it unless "
                                                       "you pick another."),
-        Param.text("picture", group="Picture", importance="secondary", help="What the sound is made to, shown at the playhead on the Timeline: a video file, or \"item:<id>\" for a 2D item of the project (its newest render)."),
+        Param.text("picture", group="Picture", importance="secondary", control="file",
+                   filters=["Videos (*.mp4 *.mov *.webm *.mkv *.avi)"], help="What the sound is made to, shown at the playhead on the Timeline: a video file, or \"item:<id>\" for a 2D item of the project (its newest render)."),
         V.time("pictureAt", group="Picture", importance="secondary", label="Picture starts",
                valid_when={"not": {"any": [IS("picture", None), IS("picture", "")]}},
                help='When the picture\'s first frame is at: seconds, a beat, or a shared marker ("#logo"); left out = 0. '
@@ -61,7 +62,8 @@ FIELDS = {
         N("decay", 0.1, 4, "Hit", imp="secondary", help="Factor of the hit's length."),
     ],
     "clip": [
-        Param.text("media", group="Clip", label="File"), V.time("at", group="Clip"),
+        Param.text("media", group="Clip", label="File", control="file",
+                   filters=["Sound files (*.wav *.flac *.mp3 *.ogg *.aif *.aiff)"]), V.time("at", group="Clip"),
         N("in", 0, None, "Clip", "s", label="In-point"),
         V.length("length", group="Clip", help="How much of the file plays; left out = to its end."),
         N("volume", 0, 4, "Clip"), N("pitch", -24, 24, "Clip", "st", "secondary", help="Tape-style: pitch and speed change together."),

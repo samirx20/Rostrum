@@ -8,7 +8,7 @@
     python apps/sound/screen/main.py --doc <project folder> <item>    # open a saved document (made if missing)
     python apps/sound/screen/main.py --step "select melody.n9600" --step "drag-note melody.n9600 0.6 2" --shot out.png
 Every song with a folder is saved after every change. Steps: see screensound/steps.py, plus the file steps here
-(`file-new`, `file-open <path>`, `file-save-as <folder>`, `file-menu`, `settings`, `add-track <kind>`). With --shot the window quits by
+(`file-new`, `file-open <path>`, `file-save-as <folder>`, `file-menu`, `settings`, `about`, `help`, `add-track <kind>`). With --shot the window quits by
 itself once the sound has rendered; a failed step, render or save exits nonzero. Offscreen screenshots:
 QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
 """
@@ -22,7 +22,7 @@ from PySide6.QtGui import QGuiApplication
 
 from rostrum_core import Document
 from rostrum_core.storage import paths
-from rostrum_gui import start
+from rostrum_gui import guides, start
 from rostrum_sound import KIND, run_source
 from screensound import projects
 from screensound.adder import Adder
@@ -34,6 +34,10 @@ from screensound.recording import Recording
 from screensound.sample import SOURCE
 from screensound.session import Songs
 from screensound.settings_page import SettingsPage
+
+GUIDES = guides.entries(Path(__file__).resolve().parents[1] / "guides", [
+    ("first-song.md", "Making your first song"), ("recording.md", "Recording"), ("exporting.md", "Exporting"),
+    ("settings.md", "Settings"), ("README.md", "All guides")])
 from screensound.steps import do_step, wait_render
 
 HERE = Path(__file__).resolve().parent
@@ -85,7 +89,7 @@ class Screen:
         keys = KeysRecording(bridge, recorder)
         context = {"backend": bridge, "instruments": instruments, "mixer": mixer, "recorder": recorder,
                    "keys": keys, "takeSetup": recorder.setup, "songs": self.songs, "settingsPage": self.settings,
-                   "adder": Adder(bridge)}
+                   "adder": Adder(bridge), "guides": GUIDES}
         self.ctx_adder = context["adder"]
         if self.engine is None:
             _, self.engine, self.win = start(MAIN_QML, context, self.size)
@@ -130,6 +134,8 @@ def file_step(screen, step) -> bool:
         screen.ctx_adder.add(rest)
     elif word == "settings":
         QMetaObject.invokeMethod(screen.win, "openSettings")
+    elif word in ("about", "help"):           # Help › About and licences / the Help menu, open
+        QMetaObject.invokeMethod(screen.win, "openAbout" if word == "about" else "openHelp")
     else:
         return False
     if screen.songs.error:

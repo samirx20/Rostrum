@@ -3,13 +3,14 @@ fails raises, so a scripted run exits nonzero.
 
     new [name] | save | saveas <name> | openproject <doc file or project folder> | autosave (write the recovery copy now)
     restore | discard (answer the recovery question) | filemenu open|close | askclose (press the window's close button)
+    about (Help › About and licences)
 Names: _ for spaces.
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Q_ARG, QMetaObject
 
-WORDS = ("new", "save", "saveas", "openproject", "autosave", "restore", "discard", "filemenu", "askclose")
+WORDS = ("new", "save", "saveas", "openproject", "autosave", "restore", "discard", "filemenu", "askclose", "about")
 
 
 def do_file_step(bridge, win, word, rest, step):
@@ -17,6 +18,9 @@ def do_file_step(bridge, win, word, rest, step):
     arg = " ".join(rest).replace("_", " ")
     if word == "filemenu":
         QMetaObject.invokeMethod(win, "setFileMenuOpen", Q_ARG("QVariant", rest[0] == "open"))
+        return
+    if word == "about":
+        QMetaObject.invokeMethod(win, "openAbout")
         return
     if word == "askclose":
         QMetaObject.invokeMethod(win, "askClose")

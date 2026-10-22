@@ -24,6 +24,7 @@ OWN_LICENCE = "MIT, HireMyLens Media"
 APP_WORDS = {"2d": ("2d", "rostrum2d"), "sound": ("sound", "rostrumsound")}
 SKIP_TOKENS = {"python", "rust", "cpu", "pip", "dev", "qt 6", "venv", "current"}
 GPL = re.compile(r"(?<![A-Za-z])(A?GPL|GNU General Public)", re.I)     # GPL / AGPL, never LGPL
+NOT = re.compile(r"\b(?:no|none|not|never|without)\b[^;()]*", re.I)   # "none GPL / AGPL" says what it is not
 TEXT_CAP = 100_000
 
 
@@ -129,7 +130,8 @@ def build(a) -> int:
         if row is None:
             missing.append(name)
     # Always listed: installed, our packages ship as source (no dist-info); in a dev venv they show as packages.
-    items.insert(0, ({"name": "Rostrum", "version": "0.1.0-dev", "licence": OWN_LICENCE,
+    version_file = Path(__file__).resolve().parents[2] / "VERSION"   # the one version number
+    items.insert(0, ({"name": "Rostrum", "version": version_file.read_text(encoding="utf-8").strip(), "licence": OWN_LICENCE,
                       "asks": "Our own code" + (": " + ", ".join(sorted(own)) if own else ""),
                       "source": "https://github.com/samirx20/Rostrum", "missing_row": False},
                      [repo_licence] if repo_licence else []))
@@ -150,7 +152,7 @@ def build(a) -> int:
                            "source": r["source"], "missing_row": False}, []))
     bad = []
     for item, _ in items:
-        if GPL.search(item["licence"]):
+        if GPL.search(NOT.sub("", item["licence"])):
             bad.append(f'{item["name"]} ({item["licence"]})')
         if re.search(r"\bL?GPL", item["licence"]) and re.search(r"LGPL", item["licence"]):
             item["asks"] += "; dynamically linked; source offered"

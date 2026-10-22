@@ -17,9 +17,9 @@ from pathlib import Path
 
 from PySide6.QtCore import Property, QObject
 
-VERSION = "0.1.0-dev"
 NAMES = {"2d": "Rostrum2D", "sound": "RostrumSound", "3d": "Rostrum3D", "editor": "Rostrum Editor"}
-REPO = Path(__file__).resolve().parents[3]          # <repo>/shared/gui-kit/rostrum_gui/notices.py
+REPO = Path(__file__).resolve().parents[3]          # <repo>/shared/gui-kit/rostrum_gui/notices.py (or the install)
+VERSION = (REPO / "VERSION").read_text(encoding="utf-8").strip()   # the one version number (the installer's too)
 
 
 def app_id(main_qml: Path | None = None) -> str:
