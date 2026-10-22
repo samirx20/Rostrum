@@ -65,7 +65,8 @@ def test_a_camera_is_baked_where_the_engine_puts_the_layers():
            "anim": {"x": [{"t": 0, "v": 960}, {"t": 2, "v": 1360}], "zoom": [{"t": 0, "v": 1.0}, {"t": 2, "v": 1.5}],
                     "rotation": [{"t": 0, "v": 0}, {"t": 2, "v": 10}]}}
     sc["comp"]["layers"].insert(0, cam)
-    lottie, report = to_lottie(sc)
+    baked = []
+    lottie, report = to_lottie(sc, baked=baked)
     box = next(l for l in lottie["layers"] if l["nm"] == "box")
     null = next(l for l in lottie["layers"] if l["ind"] == box["parent"])
     f = 45
@@ -78,7 +79,7 @@ def test_a_camera_is_baked_where_the_engine_puts_the_layers():
     qx, qy = px - a[0], py - a[1]
     got = (960 + z * (math.cos(rad) * qx - math.sin(rad) * qy), 540 + z * (math.sin(rad) * qx + math.cos(rad) * qy))
     assert math.dist(got, want) < 0.01
-    assert any("camera baked" in line for line in report)
+    assert not report and any("camera" in line for line in baked)       # carried exactly: not a difference
 
 
 def _ease_frac(sc, name, t):

@@ -72,6 +72,5 @@ def bake(comp: dict, layers: list[dict], ctx: Ctx, first_ind: int) -> list[dict]
         layer["parent"] = by_key[key]
     if nulls:
         ctx.layer = ", ".join(names)
-        ctx.say(f"camera baked into {len(nulls)} null parent layer(s), a keyframe every frame (Lottie has no 2D camera); "
-                "the picture matches the preview")
+        ctx.bake(f"camera: carried by {len(nulls)} null parent layer(s) (Lottie has no 2D camera)")
     return nulls

@@ -1,6 +1,8 @@
 """Scene description → Lottie JSON (bodymovin 5.x) and a report of everything Lottie couldn't carry.
 
 `to_lottie(scene)` → (lottie dict, report). `write_lottie(scene, path)` writes the file and returns the report.
+The report is what will differ from the preview; what is carried exactly as a keyframe every frame (springs, colour
+fades, the camera) is not a difference and goes to the `baked` list a caller may pass.
 
 - shape, path: Lottie shape layers (lottie_shapes.py). Images: image layers with the file embedded (lottie_image.py).
 - group: a precomp layer (so the group's opacity, blend, masks and keys apply to it as a whole); its children are the
@@ -99,8 +101,9 @@ def _round(v):
     return v
 
 
-def to_lottie(scene: dict, background: bool = True) -> tuple[dict, list[str]]:
-    """The scene description (rostrum2d.scene.describe) → (Lottie JSON as a dict, report sentences)."""
+def to_lottie(scene: dict, background: bool = True, baked: list | None = None) -> tuple[dict, list[str]]:
+    """The scene description (rostrum2d.scene.describe) → (Lottie JSON as a dict, report sentences); `baked` gets the
+    lines for what is carried as a keyframe every frame."""
     if scene.get("format") != "rostrum-2d-scene":
         raise ValueError(f'not a scene description (format "{scene.get("format")}")')
     comp = scene["comp"]
@@ -120,11 +123,13 @@ def to_lottie(scene: dict, background: bool = True) -> tuple[dict, list[str]]:
         layers.append(_background(comp, len(layers) + 1))
     doc = {"v": VERSION, "fr": pr["fps"], "ip": 0, "op": round(pr["duration"] * pr["fps"]), "w": pr["width"],
            "h": pr["height"], "nm": comp["id"], "ddd": 0, "assets": assets, "layers": layers}
+    if baked is not None:
+        baked.extend(ctx.baked)
     return _round(doc), ctx.report
 
 
-def write_lottie(scene: dict, path: str | Path, background: bool = True) -> list[str]:
+def write_lottie(scene: dict, path: str | Path, background: bool = True, baked: list | None = None) -> list[str]:
     """Write the Lottie file (UTF-8 JSON); returns the report."""
-    doc, report = to_lottie(scene, background)
+    doc, report = to_lottie(scene, background, baked)
     Path(path).write_text(json.dumps(doc, separators=(",", ":")), encoding="utf-8")
     return report

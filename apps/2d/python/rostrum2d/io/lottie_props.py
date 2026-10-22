@@ -16,7 +16,8 @@ from .lottie_keys import LINEAR, emit, expand
 class Ctx:
     fps: float
     duration: float
-    report: list[str] = field(default_factory=list)
+    report: list[str] = field(default_factory=list)     # what will differ from the preview
+    baked: list[str] = field(default_factory=list)      # what is carried as a keyframe every frame: looks the same, bigger file
     layer: str = ""
     outlines: object = None          # lottie_outline.Outlines: asks the engine for varied-stroke outlines
 
@@ -24,6 +25,12 @@ class Ctx:
         line = f'layer "{self.layer}": {text}'
         if line not in self.report:
             self.report.append(line)
+
+    def bake(self, text: str) -> None:
+        """Carried exactly, as a keyframe every frame: not a difference, so not in the report."""
+        line = f'layer "{self.layer}": {text}'
+        if line not in self.baked:
+            self.baked.append(line)
 
 
 def rgb(hex_: str) -> list[float]:
@@ -54,7 +61,7 @@ def build(node: dict, names: list[str], f, ctx: Ctx, what: str = "", bake: bool 
         steps, baked = expand(anim[n], ctx.fps)
         if baked:
             kind = "colour mixes in linear light in ours, sRGB in Lottie" if "c" in anim[n][0] else "spring / bounce is not one bezier"
-            ctx.say(f'{what or n}: {kind}; baked as a keyframe every frame')
+            ctx.bake(f'{what or n}: {kind}')
         return {"a": 1, "k": emit(steps, lambda v: f({**props, n: v}))}
     keys = {n: sorted(anim[n], key=lambda k: k["t"]) for n in keyed}
     t0 = min(k[0]["t"] for k in keys.values())
@@ -64,5 +71,5 @@ def build(node: dict, names: list[str], f, ctx: Ctx, what: str = "", bake: bool 
     for fr in range(f0, f1 + 1):
         values = {**props, **{n: track_value(ks, fr / ctx.fps) for n, ks in keys.items()}}
         steps.append({"t": float(fr), "v": values, "seg": LINEAR if fr < f1 else None})
-    ctx.say(f'{what or "/".join(keyed)}: {" and ".join(keyed)} drive one Lottie value together; baked as a keyframe every frame')
+    ctx.bake(f'{what or "/".join(keyed)}: {" and ".join(keyed)} drive one Lottie value together')
     return {"a": 1, "k": emit(steps, f)}

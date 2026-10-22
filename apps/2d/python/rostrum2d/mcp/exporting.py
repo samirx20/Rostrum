@@ -99,13 +99,14 @@ def _to_file(where: str, scene: dict, fmt: str, s: dict, target: Path, progress,
     if fmt == "lottie":
         from rostrum2d.io.lottie import write_lottie
         try:
-            report = write_lottie(scene, target)
+            baked: list[str] = []
+            report = write_lottie(scene, target, baked=baked)
             doc = json.loads(target.read_text(encoding="utf-8"))
         except Exception as e:  # noqa: BLE001
             raise _fail(where, f"the Lottie file {target.name}", e) from e
         p = scene["comp"]["props"]
         return {"file": str(target), "frames": round((p["duration"]) * p["fps"]), "fps": p["fps"], "alpha": False, "depth": None,
-                "checked": {"layers": len(doc.get("layers", [])), "size": (doc.get("w"), doc.get("h"))}, "report": report}
+                "checked": {"layers": len(doc.get("layers", [])), "size": (doc.get("w"), doc.get("h")), "baked": baked}, "report": report}
     from rostrum2d.io.export import export
     try:
         with (engine_factory or _engine)() as eng:
