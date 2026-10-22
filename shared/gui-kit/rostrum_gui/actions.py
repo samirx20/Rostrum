@@ -30,6 +30,7 @@ class Action:
     label: str | Callable = ""                # or label(facts) -> str ("Mute" / "Unmute")
     valid: Callable | None = None             # valid(facts) -> bool: the app's own condition
     valid_when: dict | None = None            # a registry condition, checked on every selected item
+    when: dict | None = None                  # a condition on the selection's own facts (facts.facts: {"groupable": …})
     kinds: tuple | None = None                # item types it acts on; None = any
     min_targets: int = 1                      # 0 = needs nothing selected (a time range action)
     max_targets: int | None = None
@@ -107,6 +108,8 @@ class ActionList:
         doc = getattr(facts, "doc", None)
         if a.valid_when and not all(holds(a.valid_when, it, doc.kind.facts(it, doc) if doc else {}) for it in items):
             return "when", []
+        if a.when and not holds(a.when, {}, getattr(facts, "facts", {})):
+            return "invalid", []
         if a.valid and not a.valid(facts):
             return "invalid", []
         calls = a.calls(facts) if a.calls else []
