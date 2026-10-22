@@ -9,6 +9,7 @@
 #include <pxr/imaging/hd/sceneIndexPluginRegistry.h>
 #include <pxr/imaging/hd/tokens.h>
 #include <pxr/imaging/hd/visibilitySchema.h>
+#include <pxr/imaging/hd/xformSchema.h>
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/usdLux/blackbody.h>
 
@@ -62,6 +63,26 @@ HdContainerDataSourceHandle distant_params(const HdContainerDataSourceHandle& li
       HdLightTokens->intensity, F::New(value(light, HdLightTokens->intensity, 1.0f) / kCyclesDistant));
 }
 
+// A panel (rect, disk; a strip is a rect) with normalize on, handed over as normalize off with intensity ÷ its area: the
+// UsdLux meaning (the same light at any size). Cycles' own normalize path came out exactly 10 000× too bright for every
+// size and distance (H23, results\stage2\h23\light-units-exact.json), while normalize off matched the hand-computed
+// value; nullptr when there is nothing to change.
+HdContainerDataSourceHandle panel_params(const HdContainerDataSourceHandle& prim, const HdContainerDataSourceHandle& light,
+                                         const TfToken& type) {
+  if (!value(light, HdLightTokens->normalize, false)) return nullptr;
+  GfMatrix4d m(1.0);
+  if (auto x = HdXformSchema::GetFromParent(prim).GetMatrix()) m = x->GetTypedValue(0.0f);
+  const double scale = m.GetRow3(0).GetLength() * m.GetRow3(1).GetLength();  // the panel's own X and Y in the world
+  const double r = value(light, HdLightTokens->radius, 0.5f);
+  const double area = scale * (type == HdPrimTypeTokens->rectLight
+                                   ? double(value(light, HdLightTokens->width, 1.0f)) * value(light, HdLightTokens->height, 1.0f)
+                                   : kPi * r * r);
+  if (!(area > 0)) return nullptr;  // a zero-size panel gives no light either way
+  const TfToken names[] = {HdLightTokens->normalize, HdLightTokens->intensity};
+  const HdDataSourceBaseHandle values[] = {F0::New(false), F::New(float(value(light, HdLightTokens->intensity, 1.0f) / area))};
+  return HdRetainedContainerDataSource::New(std::size(names), names, values);
+}
+
 // product lighting (light_extras.h): what our patch on Cycles' Hydra plug-in reads; none of it for a plain light
 HdContainerDataSourceHandle extras_params(const SdfPath& path, const TfToken& type, const LightExtras& x) {
   std::vector<TfToken> names;
@@ -110,8 +131,12 @@ class CyclesLights final : public HdSingleInputFilteringSceneIndexBase {
     }
     const bool dome = prim.primType == HdPrimTypeTokens->domeLight;
     if (const auto extras = extras_params(path, prim.primType, x)) prim.dataSource = with_light(prim.dataSource, extras);
-    if (!dome && prim.primType != HdPrimTypeTokens->distantLight) return prim;
     const HdContainerDataSourceHandle light = HdLightSchema::GetFromParent(prim.dataSource).GetContainer();
+    if (prim.primType == HdPrimTypeTokens->rectLight || prim.primType == HdPrimTypeTokens->diskLight) {
+      if (const auto panel = panel_params(prim.dataSource, light, prim.primType)) prim.dataSource = with_light(prim.dataSource, panel);
+      return prim;
+    }
+    if (!dome && prim.primType != HdPrimTypeTokens->distantLight) return prim;
     HdContainerDataSourceHandle params;
     try {
       params = dome ? dome_params(light) : distant_params(light);
