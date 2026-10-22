@@ -309,7 +309,7 @@ def do_step(bridge, win, step):
         if not bridge.layerCommand(rest[0]):
             raise RuntimeError(f"step {step!r}: {bridge.status or 'not available for the selection'}")   # the why
     elif word == "do":                           # do <action id>: any action of the list as a menu click runs it (effect_grain …)
-        if not bridge.actions.run(rest[0]):
+        if not bridge.run(rest[0]):              # the bridge's run takes the list's ids (action_slots.run)
             raise RuntimeError(f"step {step!r}: {bridge.status or 'not available for the selection'}")
     elif word == "nudge":
         bridge.nudge(float(rest[0]), float(rest[1]))

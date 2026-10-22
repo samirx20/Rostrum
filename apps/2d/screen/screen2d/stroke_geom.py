@@ -54,7 +54,7 @@ def outline(points: list) -> str:
     return "M " + " L ".join(f"{p[0]:.1f} {p[1]:.1f}" for p in points) if points else ""
 
 
-KNOB = 28.0                 # screen px: the turn knob sits this far above the box (QML divides by the zoom)
+KNOB = 28.0                 # screen px: the turn knob's centre sits this far above the strokes (StrokeOverlay.qml)
 
 
 def handle_point(kind: str, box: dict, zoom: float = 1.0) -> tuple[float, float]:
@@ -62,6 +62,22 @@ def handle_point(kind: str, box: dict, zoom: float = 1.0) -> tuple[float, float]
     if kind == "turn":
         return box["x"] + box["w"] / 2, box["y"] - KNOB / zoom
     return box["x"] + box["w"], box["y"] + box["h"]
+
+
+def handle_hit(box: dict, x: float, y: float, zoom: float, reach: float = 9.0) -> str:
+    """Which handle (x, y) is on, within `reach` screen px: "turn" (the knob), "scale" (any corner) or ""."""
+    if not box:
+        return ""
+    r = reach / zoom
+    kx, ky = handle_point("turn", box, zoom)
+    if abs(x - kx) <= r and abs(y - ky) <= r:
+        return "turn"
+    m = 4.0 / zoom                                  # the box is drawn 4 screen px outside the strokes
+    for cx in (box["x"] - m, box["x"] + box["w"] + m):
+        for cy in (box["y"] - m, box["y"] + box["h"] + m):
+            if abs(x - cx) <= r and abs(y - cy) <= r:
+                return "scale"
+    return ""
 
 
 def handle_amount(kind: str, centre, press, now, steps: bool = False) -> tuple[float, float]:

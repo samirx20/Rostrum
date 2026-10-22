@@ -1,6 +1,6 @@
 """The picked strokes' handles while Draw is on (UX_SPEC.md §3.8, "Select and move paint"): drag a corner of their box to
 scale them about its centre, drag the knob above it to turn them (Shift: in 15° steps). Press-drag-release is one
-gesture = one undo step, each move previewing `stroke.set {points, size}` (fills: their outline) from where the
+gesture = one undo step (the pen routes the press here when `handleAt` names a handle: Stage.qml), each move previewing `stroke.set {points, size}` (fills: their outline) from where the
 strokes were at the press, so nothing compounds. The handles' places are the box's (QML draws them from `box`).
 
 A slot mix-in for StrokeSelect (stroke_select.py: the selection, the mapping, `_begin_drag`, `_set_calls`).
@@ -17,6 +17,11 @@ LABELS = {"scale": "Scale strokes", "turn": "Turn strokes"}
 
 class StrokeHandles(SlotMixin):
     _handle = None              # (kind, centre, press) while a handle is dragged
+
+    @Slot(float, float, float, result=str)
+    def handleAt(self, x, y, zoom):
+        """The handle under (x, y) composition px at this zoom: "scale", "turn" or "" (the pen's press asks first)."""
+        return G.handle_hit(self.box, x, y, zoom) if self._ids else ""
 
     @Slot(str, float, float, result=bool)
     def beginHandle(self, kind, x, y):

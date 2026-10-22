@@ -3,7 +3,8 @@ import RostrumKit
 
 // A video layer's own sound, the thin row under its layer row (backend.soundtrack.videos, screen2d/video_sound.py;
 // UX_SPEC 3.28 Sync sound). The waveform lies along the layer's bar, read from the bar's own times (rowData), so it
-// moves and trims with the bar, live while dragging; the part shown is the part the bar plays (Clip starts at, Speed).
+// moves and trims with the bar, live while dragging; it shows only what Sound plays (Clip starts at, Speed, Loop's
+// rounds, cut to its groups' times: info.pieces).
 // RostrumSound mixes it. 🔊 mutes it in Sound's song (one change, Ctrl+Z takes it back). No project sound: it says so.
 Item {
     id: sub
@@ -47,21 +48,24 @@ Item {
                 property var peaks: sub.info.peaks
                 property real perSec: sub.ruler.perSec
                 property real start: sub.rowData.start || 0
-                property real inPoint: sub.info.in
+                property var pieces: sub.info.pieces
                 onPeaksChanged: requestPaint()
                 onPerSecChanged: requestPaint()
                 onWidthChanged: requestPaint()
                 onStartChanged: requestPaint()
-                onInPointChanged: requestPaint()
-                onPaint: {   // file time at a pixel = in + (comp time − start) · speed
+                onPiecesChanged: requestPaint()
+                onPaint: {   // only what Sound plays: in each piece, file time = in + (time after the bar's start − from) · speed
                     const g = getContext("2d"), h = height, mid = h / 2, rate = sub.info.rate, sp = sub.info.speed
                     const t0 = Math.max(0, start) - start      // a bar starting before 0 s shows from 0 s
                     g.reset()
                     g.fillStyle = Theme.ok
                     for (let px = 0; px < width; px++) {
-                        const f0 = inPoint + (t0 + px / perSec) * sp, f1 = inPoint + (t0 + (px + 1) / perSec) * sp
+                        const r = t0 + px / perSec
+                        const p = pieces.find(q => q.from <= r && r < q.from + q.length / sp)
+                        if (!p) continue
+                        const f0 = p.in + (r - p.from) * sp, f1 = f0 + sp / perSec
                         const i0 = Math.floor(f0 * rate), i1 = Math.max(i0 + 1, Math.floor(f1 * rate))
-                        if (i0 >= peaks.length) break
+                        if (i0 >= peaks.length) continue
                         let v = 0
                         for (let i = Math.max(0, i0); i < i1 && i < peaks.length; i++) v = Math.max(v, peaks[i])
                         const a = Math.max(1, v * (h - 2))

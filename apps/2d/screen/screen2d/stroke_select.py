@@ -198,7 +198,7 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
 
     @Slot()
     def endMove(self):
-        d, self._drag = self._drag, None
+        d, self._drag, self._size0 = self._drag, None, {}
         if d is not None:
             self.b.guard(lambda: self.b.done(d.end(), ""))
             self.changed.emit()

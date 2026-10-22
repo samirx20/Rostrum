@@ -4,7 +4,9 @@ the bar's own times). RostrumSound mixes it (rostrum2d/sync_sound.py puts it in 
 its mute is Sound's operation on that clip (`clip.set {volume}` in the song: one change, in 2D's one Undo, the same
 operation agents call through Sound's tools). Offered to QML as `backend.soundtrack.videos`.
 
-    rows: {layer id: {in, speed, muted, peaks, rate, problem}}   # peaks of the video's own sound, file seconds
+    rows: {layer id: {pieces, speed, muted, peaks, rate, problem}}   # peaks of the video's own sound, file seconds
+    pieces: [{from, in, length}]: what Sound plays, `from` seconds after the bar's start (sync_sound.wanted: a loop's
+    time rounds, cut to its groups, silent once the file ends); the row draws only those.
 The waveform is read once per file off the screen's thread (video_audio.wav, waveform.measure).
 """
 from __future__ import annotations
@@ -65,7 +67,9 @@ class VideoSound(QObject):
                 self._asked.add(w["file"])
                 self._reader.post_ordered(w["file"])
             speed = float(self.b.doc.item(lid).get("speed", 1.0)) or 1.0
-            rows[lid] = {"in": float(self.b.doc.item(lid).get("offset", 0.0)), "speed": speed,
+            heard = [{"from": round(w["at"] + q["after"] - w["start"], 6), "in": q["in"], "length": q["length"]}
+                     for q in w["pieces"]]
+            rows[lid] = {"pieces": heard, "speed": speed,
                          "muted": bool(c is not None and float(c.get("volume", 1.0)) == 0.0),
                          "peaks": wave.get("peaks", []), "rate": wave.get("rate", 100.0),
                          "problem": "" if clips is not None else NO_SONG}
@@ -86,15 +90,16 @@ class VideoSound(QObject):
 
     @Slot(str, bool, result=bool)
     def setMuted(self, layer, on):
-        """The row's 🔊: the clip's volume in Sound's song to 0 (muted) or 1, as the person's one change."""
-        folder, cid = self.b.doc.folder, sync_sound.clip_id(self.b.doc.item_id or "", layer)
+        """The row's 🔊: its clips' volume in Sound's song to 0 (muted) or 1, as the person's one change."""
+        folder = self.b.doc.folder
         try:
             song = project_sound.song(folder, self.b.comp().get("soundtrack", ""))
             if song is None:
                 raise RuntimeError(NO_SONG)
             snd = project_sound.open_song(folder, song["id"])
             name = self.b.label_of(self.b.doc.item(layer))
-            snd.apply([{"op": "clip.set", "target": [cid], "args": {"volume": 0.0 if on else 1.0}}], self.b.who,
+            ids = sync_sound.layer_clips(snd, self.b.doc.item_id or "", layer)     # a looped video: every time round
+            snd.apply([{"op": "clip.set", "target": ids, "args": {"volume": 0.0 if on else 1.0}}], self.b.who,
                       label=f"{'Mute' if on else 'Unmute'} the sound of {name}")
         except Exception as e:  # noqa: BLE001  loud, in words
             self.b._fail(e.line() if hasattr(e, "line") else f"Error: video sound: {e}")

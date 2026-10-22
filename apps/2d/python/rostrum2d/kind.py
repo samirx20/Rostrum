@@ -18,7 +18,7 @@ from . import exprbake, fields as F, fontcheck, paint_fields, pathdata, widthpro
 from .rig import model as rig_model
 
 OWNED = ["effects", "masks", "keys"]
-LISTS = {"doc": ["comps"], "comp": ["layers"], "group": ["layers", *OWNED], "drawing": ["frames", *OWNED],
+LISTS = {"doc": ["comps", "textStyles"], "comp": ["layers"], "group": ["layers", *OWNED], "drawing": ["frames", *OWNED],
          "frame": rostrum_paint.CANVAS_LISTS, **rostrum_paint.LISTS,
          "rig": ["layers", "bones", "iks", "binds", "poses", *OWNED], "bone": ["keys"], "ik": ["keys"], "camera": ["keys"],
          **{t: OWNED for t in ("shape", "text", "image", "video", "render3d", "path")},
@@ -28,7 +28,7 @@ for _t, _owned in LISTS.items():       # whatever animates a field may also hold
     if _t in F.ANIMATED_OWNERS and "exprs" not in _owned:
         _owned.append("exprs")
 HOLDS = {"comps": ("comp",), "layers": F.LAYERS, "effects": F.EFFECTS, "masks": ("mask",), "keys": ("key",),
-         "exprs": ("expr",),
+         "exprs": ("expr",), "textStyles": ("textstyle",),
          "frames": ("frame",), "bones": ("bone",), "iks": ("ik",), "binds": ("bind",), "poses": ("pose",), **rostrum_paint.HOLDS}
 
 REGISTRY = Registry()
@@ -38,6 +38,7 @@ def _set_fields(ctx, targets, args):
     for t in targets:
         for k, v in args.items():
             ctx.set(t, k, v)
+        text_styles.after_set(ctx, t, args)          # a style reaches its texts; a text set by hand leaves its style
 
 
 for _type, _params in F.FIELDS.items():
@@ -134,3 +135,4 @@ from . import ops_clip  # noqa: E402,F401  (layer.paste: copy / cut / paste of l
 from . import ops_paint, ops_fill  # noqa: E402,F401  (paint.stroke, paint.fill: paint and fill on any element or drawing)
 from . import ops_frame  # noqa: E402,F401  (comp.size, layer.fill_frame)
 from . import ops_keytime, ops_stagger  # noqa: E402,F401  (key.scale, key.paste, layer.stagger: retiming)
+from . import text_styles  # noqa: E402  (style.define, style.use, style.detach, style.remove: named text styles)

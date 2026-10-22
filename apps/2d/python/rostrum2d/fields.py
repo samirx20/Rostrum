@@ -355,6 +355,16 @@ LABELS = {"comp": "Composition", "shape": "Shape", "text": "Text", "image": "Ima
           "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "grain": "Grain", "mask": "Mask", "key": "Key",
           **_rig.LABELS, **_camera.LABELS, **_motion.LABELS}
 
+# Named text styles (text_styles.py): a style holds the type of a text, the same fields as a text's (one table); a text's
+# `textStyle` names the style it follows. A style is never keyed (it is the look, not a moment).
+STYLED = ("font", "size", "weight", "color", "tracking", "lineHeight", "stretch", "slant", "grade", "axes", "ligatures",
+          "figures", "smallCaps", "features")
+FIELDS["textstyle"] = [p for p in FIELDS["text"] if p.name in STYLED]
+FIELDS["text"].append(X("textStyle", "Text style", "Text", "", S, control="pick",
+                        help="The named text style this text follows (its font, size, weight, colour …): changing the style "
+                             "changes the text. Empty = its own. Setting one of those fields by hand detaches it"))
+STILL["textstyle"], LABELS["textstyle"] = set(STYLED), "Text style"
+
 
 def param(kind: str, name: str) -> Param | None:
     return next((p for p in FIELDS.get(kind, ()) if p.name == name), None)

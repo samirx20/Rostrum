@@ -207,7 +207,6 @@ def do_stroke_step(bridge, win, word, rest, step):
         zoom = win.findChild(QObject, "stage").property("compScale")
         a, b = handle_point(rest[0], sel.box, zoom), (float(rest[1]), float(rest[2]))
         pts = [_scene_of(win, a[0] + (b[0] - a[0]) * k / 8, a[1] + (b[1] - a[1]) * k / 8) for k in range(9)]
-        print("DEBUG grab", rest[0], sel.box, zoom, a, pts[0])
         QTest.mouseMove(win, pts[0])
         QTest.qWait(60)
         QTest.mousePress(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, pts[0])

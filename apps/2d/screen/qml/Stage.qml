@@ -115,7 +115,7 @@ Panel {
                 acceptedButtons: Qt.LeftButton
                 function at() { return panel.inWell(point.position.x, point.position.y) }
                 readonly property real pressure: point.pressure > 0 ? point.pressure : 1
-                property string mode: ""        // what this press does: "stroke", "lasso" (Ctrl, or Select strokes) or "move" (picked strokes)
+                property string mode: ""        // what this press does: "stroke", "lasso" (Ctrl, or Select strokes), "move" or "handle" (picked strokes)
                 property point from
                 onActiveChanged: {
                     var p = at()
@@ -123,6 +123,8 @@ Panel {
                     else if (active && backend.fill.on) { backend.fill.fillAt(p.x, p.y); mode = "" }                 // Fill (G): a click fills
                     else if (active && (backend.strokeSelect.armed || (Qt.application.keyboardModifiers & Qt.ControlModifier))) {
                         backend.strokeSelect.beginLasso(p.x, p.y); mode = "lasso"                                    // a lasso round strokes
+                    } else if (active && backend.strokeSelect.handleAt(p.x, p.y, view.zoom) !== "") {
+                        backend.strokeSelect.beginHandle(backend.strokeSelect.handleAt(p.x, p.y, view.zoom), p.x, p.y); mode = "handle"   // a corner scales, the knob turns
                     } else if (active && backend.strokeSelect.count > 0 && backend.strokeSelect.hits(p.x, p.y)) {
                         backend.strokeSelect.beginMove(); from = p; mode = "move"                                    // picked strokes: drag moves them
                     } else if (active) {
@@ -132,6 +134,7 @@ Panel {
                         if (mode === "stroke") painter.endStroke()
                         else if (mode === "lasso") backend.strokeSelect.endLasso()
                         else if (mode === "move") backend.strokeSelect.endMove()
+                        else if (mode === "handle") backend.strokeSelect.endHandle()
                         mode = ""
                     }
                 }
@@ -141,6 +144,7 @@ Panel {
                     if (mode === "stroke") painter.strokeTo(p.x, p.y, pressure)
                     else if (mode === "lasso") backend.strokeSelect.lassoTo(p.x, p.y)
                     else if (mode === "move") backend.strokeSelect.moveBy(p.x - from.x, p.y - from.y)
+                    else if (mode === "handle") backend.strokeSelect.handleTo(p.x, p.y, (Qt.application.keyboardModifiers & Qt.ShiftModifier) !== 0)
                 }
             }
             StrokeOverlay {     // the lasso, the picked strokes, the colour picker's swatch
