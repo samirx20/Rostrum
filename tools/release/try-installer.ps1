@@ -31,7 +31,7 @@ function Problem([string]$m) { $problems.Add($m); Write-Host "PROBLEM: $m" -Fore
 $walk = @{
     "2d"    = @{ name = "Rostrum2D"; ext = ".mtn"; docs = "Documents\Rostrum2D"
                  save = @("--step", "new Fresh test", "--step", "add text", "--step", "save")
-                 export = @(@("mp4", @("--step", "export mp4"))) }
+                 export = @(, @("mp4", @("--step", "export mp4"))) }
     "sound" = @{ name = "RostrumSound"; ext = ".trk"; docs = "Documents\Rostrum"
                  save = @("--step", "file-new", "--step", "add-track piano", "--step", "add-note 0 60", "--step", "file-save-as {home}\Documents\Rostrum\Fresh song")
                  export = @(@("wav", @("--step", "export-as wav24", "--step", "export")), @("flac", @("--step", "export-as flac", "--step", "export"))) }
@@ -81,7 +81,7 @@ try {
         foreach ($e in $w.export) {
             $before = Get-Date
             Open-App $app "export-$($e[0])" $userHome (@($doc.FullName) + $e[1]) | Out-Null
-            $out = Get-ChildItem $doc.Directory.Parent.FullName -Recurse -Filter "*.$($e[0])" | Where-Object { $_.LastWriteTime -ge $before } | Select-Object -First 1
+            $out = Get-ChildItem $doc.Directory.Parent.FullName -Recurse -Filter "*.$($e[0])" | Where-Object { $_.LastWriteTime -ge $before } | Sort-Object Length | Select-Object -Last 1   # the mix, not a stem
             if (-not $out) { Problem "$($w.name): no .$($e[0]) file after the export"; continue }
             Copy-Item $out.FullName (Join-Path $Results "installed-$app-export.$($e[0])")
             $ffprobe = (Get-Command ffprobe -ErrorAction SilentlyContinue).Source       # a different program reads it back

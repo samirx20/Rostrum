@@ -59,3 +59,4 @@ if ($p.ExitCode -ne 0 -or -not (Test-Path $Shot)) {
 }
 Write-Host "OK: $App opened from $Install as a fresh user; picture $Shot; log $($log.FullName)"
 Get-Content $log.FullName | Select-Object -Last 3
+exit 0
