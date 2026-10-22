@@ -84,8 +84,7 @@ Item {
                 Column {
                     anchors.left: parent.left; anchors.leftMargin: Theme.gap; anchors.right: buttons.left
                     anchors.rightMargin: Theme.gap; anchors.verticalCenter: parent.verticalCenter; spacing: 2
-                    Text { width: parent.width; text: row.modelData.name; elide: Text.ElideMiddle; color: Theme.fg
-                           font.family: uiFont; font.pixelSize: Theme.body }
+                    NameLabel { width: parent.width; text: row.modelData.name; elide: Text.ElideMiddle }
                     Text { id: whatText; width: parent.width; elide: Text.ElideRight; color: Theme.fg3
                            text: row.modelData.what + (row.modelData.inFile ? " · " + row.modelData.inFile : "")
                            font.family: uiFont; font.pixelSize: Theme.label

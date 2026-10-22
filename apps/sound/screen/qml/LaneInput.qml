@@ -93,7 +93,7 @@ MouseArea {
         if (mode === "drag") {
             var r = rowIndex(e.y)
             backend.dragTrack(r >= 0 && !shift(e) && !tl.rows[r].mix ? tl.rows[r].id : "")
-            backend.dragTo((e.x - x0) / bars.perSec, 0, ctrl(e), shift(e), alt(e), snapPx / bars.perSec)
+            backend.dragTo((e.x - x0) / bars.perSec, 0, ctrl(e), shift(e), alt(e), bars.perSec)
         }
         else if (mode === "handle") backend.handleTo((e.x - x0) / bars.perSec, (e.y - y0) / rowH, ctrl(e))
         else if (mode === "point") backend.laneDrag(bars.tOf(e.x), yFrac(e.y), shift(e))

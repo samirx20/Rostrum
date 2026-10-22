@@ -70,10 +70,15 @@ Item {
                 ctx.globalAlpha = 0.25; bar(ctx, x, y0, w, h, Theme.accent); ctx.globalAlpha = 1
                 bar(ctx, x, y0 + h - 2, w, 2, Theme.accent)
             }
+            var tag = (b.tie && showLabel) ? 12 : 0         // tied to a project marker (2D's cues): a diamond, then the name
+            if (tag > 0 && w > 24) {
+                ctx.fillStyle = Theme.fg; ctx.beginPath(); ctx.moveTo(x + 10, y0 + 4); ctx.lineTo(x + 14, y0 + 8)
+                ctx.lineTo(x + 10, y0 + 12); ctx.lineTo(x + 6, y0 + 8); ctx.closePath(); ctx.fill()
+            } else tag = 0
             if (showLabel && b.label) {
-                ctx.save(); ctx.beginPath(); ctx.rect(x + 6, y0, Math.max(0, w - 10 - (b.canBack || b.canNext ? 38 : 0)), h); ctx.clip()
+                ctx.save(); ctx.beginPath(); ctx.rect(x + 6 + tag, y0, Math.max(0, w - 10 - tag - (b.canBack || b.canNext ? 38 : 0)), h); ctx.clip()
                 ctx.fillStyle = Theme.fg; ctx.font = (Theme.label - 1) + "px '" + uiFont + "'"; ctx.textBaseline = "top"
-                ctx.fillText(b.label, x + 6, y0 + 2)
+                ctx.fillText(b.label, x + 6 + tag, y0 + 2)
                 ctx.restore()
             }
         }

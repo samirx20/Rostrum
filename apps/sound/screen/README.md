@@ -120,7 +120,7 @@ in `<project>/media/<track>-take-<n>.wav` at the engine's `start` (its clock, mi
 
 ## Zoom, automation lanes, picture (Timeline)
 
-- **Zoom / scroll.** One view (`screensound/view.py`: `backend.viewStart` + `viewSpan`) draws the ruler, markers, rows,
+- **Zoom / scroll.** One view (the kit's `TimeView`, `backend.timeView`: `viewStart` + `viewSpan`) draws the ruler, markers, rows,
   playhead and the piano roll's time axis. Ctrl + wheel or a pinch zooms around the pointer; Shift + wheel or a sideways
   swipe scrolls (a plain wheel scrolls in time when the rows have nothing to scroll up and down); Ctrl + / Ctrl - /
   Ctrl 0 (show all); a slim scrollbar while zoomed in. Playing keeps the playhead on screen. Screen state, not an edit.

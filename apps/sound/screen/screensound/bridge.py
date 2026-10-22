@@ -15,6 +15,7 @@ from PySide6.QtCore import Property, Slot
 from rostrum_gui import DocBridge
 from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
+from rostrum_gui.timeview import TimeViewObject
 from rostrum_core import live
 from rostrum_sound import compile as compile_doc
 from rostrum_sound.doc import markers as MK
@@ -36,7 +37,6 @@ from .select_slots import SelectSlots
 from .signals import SoundSignals as S
 from .song_slots import SongSlots
 from .transport import Transport
-from .view import View
 from .view_slots import ViewSlots
 from .workspace import Workspace
 
@@ -50,7 +50,8 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self.workspace = Workspace(lambda line: self._fail(line), lambda: self.model.reset(self._rows()))
         self._drag = self._grab = None
         self._view: dict = {}
-        self._zoom = View()                 # which stretch of the song is on screen (screen state, not an edit)
+        self._tv = TimeViewObject()         # which stretch of the song is on screen (screen state, not an edit)
+        self._zoom = self._tv.view
         self._open: dict = {}               # track id -> (item id, lane) of the automation lane shown under its row
         self._edit = None                   # the automation point being dragged (lanes.PointEdit)
         self._apt: tuple | None = None      # the selected automation point: (track id, item id, lane, index)
@@ -80,6 +81,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self.transport.said.connect(self.say)
         self.transport.moved.connect(self._moved)
         self.transport.render()
+        self._tv.changed.connect(self.viewChanged)
         self.viewChanged.connect(self._follow_zoom)       # Grid "Auto" follows the zoom (grid_slots.py)
         self._make_actions()                # the one action list: context bar, menus, Ctrl+K, keys (action_slots.py)
 
@@ -213,7 +215,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
             voice_card.mark_speaking([*rows, self._view["roll"]], side.voice.making())
             voice_card.mark_waiting([*rows, self._view["roll"]], side.voice.waiting())
             voice_takes.mark_takes([*rows, self._view["roll"]], root)
-        self._zoom.clamp(self._length())        # the view is the person's: nothing new on screen zooms or scrolls it
+        self._tv.setLength(self._length())        # the view is the person's: nothing new on screen zooms or scrolls it
         self.timelineChanged.emit()
         self.viewChanged.emit()
 

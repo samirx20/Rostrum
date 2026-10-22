@@ -15,6 +15,9 @@ the kit's ContextBar, ActionMenu, Ctrl+K and KeyMap read it through the hub (act
 """
 from __future__ import annotations
 
+from dataclasses import replace
+
+from rostrum_sound import main_mix
 from rostrum_sound.doc import select_time as ST
 
 from rostrum_gui.action_adapt import from_dicts
@@ -31,15 +34,20 @@ CLIPS = {"note", "hit", "clip", "line", "sound"}
 
 
 def act(key, label, valid_when, calls=None, shortcut="", importance="secondary", group="", menu="", do="",
-        promoted_when=None, needs="", min_targets=0):
+        promoted_when=None, needs="", min_targets=0, release=""):
     return {"key": key, "label": label, "shortcut": shortcut, "valid_when": valid_when, "importance": importance,
             "promoted_when": promoted_when, "calls": calls, "group": group, "menu": menu, "do": do, "needs": needs,
-            "min_targets": min_targets}
+            "min_targets": min_targets, "release": release}
 
 
 def _inside_clip(f):
     return f.one == "clip" and any(ST.start_of(f.doc.data, c) + 1e-6 < f.playhead < ST.end_of(f.doc.data, c) - 1e-6
                                    for c in f.items)
+
+
+def _can_make_main(f):
+    """Nothing selected, the song is in a project and is not its main mix yet (rule of individuality: else absent)."""
+    return f.count == 0 and bool(f.doc.folder) and not main_mix.is_main(f.doc.folder, f.doc.item_id)
 
 
 _STEPS = (("up", 1, "Up a half step", "Up"), ("down", -1, "Down a half step", "Down"),
@@ -90,10 +98,12 @@ ACTIONS = [
     act("take_prev", "Earlier take", V.take_valid(-1), V.take_calls(-1), group="line"),
     act("take_next", "Later take", V.take_valid(1), V.take_calls(1), group="line"),
     act("add_line", "Add line at playhead", V.voice_track, importance="primary", group="line", do="addline"),
+    # the song itself (nothing selected): absent once it is the main mix
+    act("main_mix", "Make this the main mix", _can_make_main, importance="secondary", group="song", do="mainmix"),
     # clips
     act("clean", "Clean up…", CLIP, importance="primary", group="clip", do="clean"),
     act("before_after", V.ba_label, V.ba_valid, V.ba_calls, shortcut="H", group="clip",
-        needs="Before / After needs clips with a clean-up set"),
+        needs="Before / After needs clips with a clean-up set", release="hear_back"),   # hold H: the other side, let go: back
     act("swap", "Swap…", lambda f: f.one == "clip" and f.count == 1, shortcut="S", importance="primary", group="clip",
         do="swap", needs="Swap needs one clip selected"),            # opens the Library; its Swap button is clip.swap
     act("normalize", "Even out level", CLIP, lambda f: [C.call("clip.normalize", f.ids, by="loudness")],
@@ -139,4 +149,6 @@ ACTIONS = [
         needs="Delete and close the gap needs a time range over a clip"),
     act("delete", "Delete", lambda f: f.count and f.kinds <= set(REMOVABLE), C.delete, "Delete", group="edit"),
 ]
-LIST = ActionList(from_dicts(ACTIONS, KEYMAP), KEYMAP, noun="item")
+# the kit's adapter doesn't read `release` yet (kit request in the P30 report): put it on the Actions here
+LIST = ActionList([replace(a, release=d["release"]) for a, d in zip(from_dicts(ACTIONS, KEYMAP), ACTIONS)], KEYMAP,
+                  noun="item")

@@ -7,6 +7,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
+from .layout_hem import LONG_MARKER, cues_song, two_songs
 from .sample import SOURCE
 
 LONG_TRACK = "lead_guitar_line_for_the_second_verse_and_bridge"
@@ -26,6 +27,21 @@ def long_project() -> list[str]:
     script = folder.parent / "long_names.py"
     script.write_text(SOURCE.replace('track("melody"', f'track("{LONG_TRACK}"'), encoding="utf-8")
     return ["--doc", str(folder), "song", "--script", str(script)]
+
+
+LAYERED = """tempo(100); beats_per_bar(4); length(bar(9))
+hits = track("hits", volume=0.9)
+hits.sound("click", at=2.0, group="a_long_layer_group_name_for_the_door_slam_in_the_second_scene")
+hits.sound("hit", at=2.0, group="a_long_layer_group_name_for_the_door_slam_in_the_second_scene")
+hits.sound("whoosh", at=1.5, dur=1.0, group="a_long_layer_group_name_for_the_door_slam_in_the_second_scene")
+"""
+
+
+def layered() -> list[str]:
+    """Start args for a song whose designed sounds are layers of one group (a long group name)."""
+    script = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "layered.py"
+    script.write_text(LAYERED, encoding="utf-8")
+    return ["--script", str(script)]
 
 
 def states() -> list[tuple[str, list[str], list[str]]]:
@@ -48,6 +64,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("group-muted-soloed", ["--sample"], [GROUP.format(name=LONG_TRACK), "group-toggle bus_1 mute", "group-toggle bus_1 solo"]),
         ("group-track-out", ["--sample"], [GROUP.format(name="Band"), "group-drop door bus_1", "group-drop melody door"]),
         ("group-folded", ["--sample"], [GROUP.format(name=LONG_TRACK), "fold bus_1"]),
+        ("designed-layers", layered(), ["dock editor", "select hits.click2000"]),
+        ("timeline-zoomed", ["--sample"], ["zoom 4 0.5"]),
         ("draw", ["--sample"], ["select melody", "dock editor", "tool draw"]),
         ("voice-lines", ["--sample"], ["add-track voice:ryan", "dock editor"]),
         ("voice-typed-lines", ["--sample"], ["add-track voice:ryan", "dock editor", "line-type Welcome to the show",
@@ -83,5 +101,11 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("guides-find", ["--sample"], ["guides find a_word_no_guide_has_anywhere_in_its_text_at_all"]),
         ("key-list", ["--sample"], ["keylist open"]),                          # Ctrl+/
         ("panels-folded", ["--sample"], ["panels fold"]),                      # Ctrl+\
+        ("main-mix-offer", two_songs(SCRATCH.name, "beta"), []),                                # P30: "Make this the main mix"
+        ("main-mix-marked", two_songs(SCRATCH.name, "alpha"), []),                              # P30: it is the main mix
+        ("main-mix-made", two_songs(SCRATCH.name, "beta"), ["action main_mix"]),                # P30: after the action
+        ("cues-from-2d", cues_song(SCRATCH.name), []),                                          # P30: the cue track, tagged clips
+        ("cues-from-2d-selected", cues_song(SCRATCH.name), ["select cue_logo", "dock editor"]),
+        ("cues-from-2d-long", cues_song(SCRATCH.name, LONG_MARKER.replace("_", " ")), ["select cue_logo"]),
         ("rename-name", long_project(), ["name edit"]),                       # S35: the name clicked, the kit's rename field
     ]

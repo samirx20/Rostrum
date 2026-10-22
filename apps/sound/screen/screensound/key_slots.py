@@ -116,8 +116,7 @@ class KeySlots:
         """F: zoom so the selection (or the time range) fills the view."""
         e = self.selectionExtent()
         if e:
-            self._zoom.fit_to(e["t0"], e["t1"], self._length())
-            self.viewChanged.emit()
+            self._tv.fitTo(e["t0"], e["t1"])
 
     @Slot()
     def markerHere(self):

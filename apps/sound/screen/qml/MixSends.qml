@@ -18,8 +18,8 @@ Column {
             width: c.width; spacing: 0
             Row {
                 width: parent.width
-                Text { width: parent.width - amount.width; text: modelData.name; elide: Text.ElideRight; color: Theme.fg3
-                       font.family: uiFont; font.pixelSize: Theme.label }
+                NameLabel { width: parent.width - amount.width; text: modelData.name; color: Theme.fg3
+                            font.pixelSize: Theme.label }
                 Text { id: amount; text: F.faderText(modelData.level); color: Theme.fg2; font.family: uiFont
                        font.pixelSize: Theme.label; font.features: { "tnum": 1 } }
             }

@@ -104,7 +104,7 @@ def do_select_step(bridge, win, word, rest):
         if dest:
             bridge.dragTrack(dest)
         for f in (0.25, 0.5, 0.75, 1.0):
-            bridge.dragTo(float(rest[0]) * f, round(dsemi * f), "ctrl" in mods, "shift" in mods, "alt" in mods, 0.05)
+            bridge.dragTo(float(rest[0]) * f, round(dsemi * f), "ctrl" in mods, "shift" in mods, "alt" in mods, 120.0)
         bridge.endDrag()
     elif word == "handle":
         if not bridge.beginHandle(rest[0], rest[1]):

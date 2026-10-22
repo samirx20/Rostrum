@@ -1,12 +1,13 @@
 """The Timeline's edits as operation calls (no Qt): moving a note / hit / clip / marker in time (and a note in
 pitch), adding a note, deleting the selection, a track's quick mute / solo. Times are written in the form the
 item used (timing.write_time). A drag snaps (DESIGN.md §5) unless free (Ctrl): to a marker or the playhead when
-the grabbed item's start is within a few pixels of one, else to the grid. Several selected items move together
+the grabbed item's start is within the kit's 6 px of one, else to the grid. Several selected items move together
 (`grab_many` / `many_calls`): each by the same amount, the one grabbed decides the snap.
 """
 from __future__ import annotations
 
 from rostrum_core import RostrumError, codes
+from rostrum_gui import snap
 
 from . import song_edit, timing
 from .timeline import kind_of
@@ -48,27 +49,26 @@ def grab_many(doc, ids, primary) -> dict:
     return {"primary": grab(doc, primary), "items": [grab(doc, i) for i in ids if doc.item(i)["type"] in MANY]}
 
 
-def snap_to(t: float, root: dict, free: bool, targets: list[dict], tol: float, grid=None) -> tuple[float, dict]:
-    """(where `t` lands, what it caught: {"t", "name"}, {} when free). Markers and the playhead catch within `tol`
-    seconds (a few pixels at any zoom), nearest first; otherwise the grid."""
+def snap_to(t: float, root: dict, free: bool, targets: list[snap.Target], scale: float, grid=None) -> tuple[float, dict]:
+    """(where `t` lands, what it caught: {"t", "name"}; {} when free). Markers and the playhead catch within the kit's
+    6 px (`scale` = screen px per second; 0 = catch nothing), strongest first; otherwise the grid."""
     if free:
         return max(0.0, round(t, 4)), {}
-    near = [m for m in targets if abs(m["t"] - t) <= tol]
-    if near:
-        m = min(near, key=lambda m: abs(m["t"] - t))
-        return m["t"], m
+    caught = snap.snap(t, targets, scale) if scale > 0 else None
+    if caught is not None and caught.target is not None:
+        return caught.value, {"t": caught.value, "name": caught.name}
     if not (grid or timing.DEFAULT).on:
         return max(0.0, round(t, 4)), {}
     g = timing.snap(t, root, False, grid)
     return g, {"t": g, "name": ""}
 
 
-def many_calls(doc, g: dict, dt: float, dsemi: int, free: bool, only_time: bool, targets: list[dict], tol: float,
+def many_calls(doc, g: dict, dt: float, dsemi: int, free: bool, only_time: bool, targets: list[snap.Target], scale: float,
                grid=None):
     """(calls, what it snapped to) for moving every grabbed item by the same amount: the grabbed one snaps, the rest
     follow; never before the song's start. Shift (`only_time`): no pitch change."""
     root, p = doc.data, g["primary"]
-    to, caught = snap_to(p["t"] + dt, root, free, targets, tol, grid)
+    to, caught = snap_to(p["t"] + dt, root, free, targets, scale, grid)
     d = max(to - p["t"], -min(x["t"] for x in g["items"]))
     calls = []
     for x in g["items"]:

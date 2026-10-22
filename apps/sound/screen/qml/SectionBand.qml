@@ -39,9 +39,9 @@ Item {
             width: Math.max(2, Math.round(band.ruler.wOf(modelData.end - modelData.t)) - 1); height: band.height - 2
             visible: x + width > 0 && x < band.width
             radius: 3; color: on ? Theme.accent : Theme.raised; border.width: 1; border.color: on ? Theme.fg3 : Theme.line
-            Text { x: 6; width: parent.width - 10; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight
-                   text: modelData.name; color: parent.on ? Theme.fg : Theme.fg2; visible: !parent.naming
-                   font.family: uiFont; font.pixelSize: Theme.label }
+            NameLabel { x: 6; width: parent.width - 10; anchors.verticalCenter: parent.verticalCenter
+                        text: modelData.name; color: parent.on ? Theme.fg : Theme.fg2; visible: !parent.naming
+                        font.pixelSize: Theme.label }
             TextInput {   // the name field, in place (Enter keeps, Esc cancels)
                 visible: parent.naming; x: 6; width: Math.max(60, parent.width - 10); anchors.verticalCenter: parent.verticalCenter
                 font.family: uiFont; font.pixelSize: Theme.label; color: Theme.fg; selectByMouse: true; clip: true

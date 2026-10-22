@@ -51,11 +51,10 @@ Rectangle {
     }
     Rectangle { x: Theme.gap; anchors.verticalCenter: parent.verticalCenter; width: 3; radius: 1.5
                 height: Math.min(parent.height - 8, 18); color: h.track.hue }
-    Text {
+    NameLabel {
         x: Theme.gap + 11; width: toggles.x - x - Theme.gap; anchors.verticalCenter: parent.verticalCenter
         id: nameText
-        text: h.track.name; elide: Text.ElideRight; font.family: uiFont; font.pixelSize: Theme.body
-        HoverTip { text: nameText.truncated ? h.track.name : ""; hovered: hover.hovered }     // a cut name, whole
+        text: h.track.name
         color: h.track.mute ? Theme.fg3 : Theme.fg
         visible: !rename.visible
     }

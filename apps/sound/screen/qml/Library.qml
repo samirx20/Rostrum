@@ -86,8 +86,7 @@ Panel {
             Column {
                 anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: Theme.gap; rightMargin: Theme.gap }
                 spacing: 2
-                Text { width: parent.width; text: row.modelData.label; elide: Text.ElideRight; color: Theme.fg
-                       font.family: uiFont; font.pixelSize: Theme.body }
+                NameLabel { width: parent.width; text: row.modelData.label }
                 Text { width: parent.width; text: row.modelData.what; elide: Text.ElideRight; color: Theme.fg3
                        font.family: uiFont; font.pixelSize: Theme.label }
             }
