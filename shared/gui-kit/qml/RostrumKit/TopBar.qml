@@ -38,7 +38,11 @@ Item {
     signal guidesClicked()               // ? › Guides (F1): the guides drawer
     signal keysClicked()                 // ? › Keys (Ctrl+/): the key list
     signal helpPicked(string value)
-    signal renameAsked(string name)      // the project's new name, typed on its tab (Enter or leaving the field)
+    signal renameAsked(string name)
+    function reportProblem() {           // ? › Report a problem: the log folder, the details copied, said in the message bar
+        const line = notices.reportProblem()
+        if (bar.bridge && bar.bridge.say) bar.bridge.say(line); else console.log(line)
+    }      // the project's new name, typed on its tab (Enter or leaving the field)
     signal historyClicked()
     implicitHeight: Theme.topBar
     function openHelp() { helpMenu.open() }
@@ -247,7 +251,7 @@ Item {
             id: help
             objectName: "helpButton"
             anchors.verticalCenter: parent.verticalCenter
-            glyph: "?"; kind: "ghost"; tip: "Help"; help: "Guides, keys, connecting an AI agent, About."; down: helpMenu.opened
+            glyph: "?"; kind: "ghost"; tip: "Help"; help: "Guides, keys, connecting an AI agent, reporting a problem, About."; down: helpMenu.opened
             onClicked: helpMenu.open()
             Menu {
                 id: helpMenu
@@ -256,8 +260,10 @@ Item {
                 entries: [{ value: "guides", label: "Guides   F1" }, { value: "keys", label: "Keys   Ctrl /" }]
                     .concat(typeof agents !== "undefined" && agents ? [{ value: "agents", label: "Connect an AI agent…" }] : [])
                     .concat(bar.helpEntries.filter(e => !/^file:.*\.md$/i.test(e.value)))
+                    .concat(typeof notices !== "undefined" && notices ? [{ value: "report", label: "Report a problem…" }] : [])
                     .concat([{ value: "about", label: "About and licences" }])
                 onPicked: (v) => v === "about" ? bar.aboutClicked() : v === "agents" ? bar.connectAgentClicked()
+                                : v === "report" ? bar.reportProblem()
                                 : v === "guides" ? bar.guidesClicked() : v === "keys" ? bar.keysClicked()
                                 : /^file:.*\.md$/i.test(v) ? bar.guideClicked(v) : bar.helpPicked(v)
             }

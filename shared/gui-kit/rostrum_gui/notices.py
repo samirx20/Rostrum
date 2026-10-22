@@ -15,7 +15,7 @@ import tempfile
 from argparse import Namespace
 from pathlib import Path
 
-from PySide6.QtCore import Property, QObject
+from PySide6.QtCore import Property, QObject, Slot
 
 NAMES = {"2d": "Rostrum2D", "sound": "RostrumSound", "3d": "Rostrum3D", "editor": "Rostrum Editor"}
 REPO = Path(__file__).resolve().parents[3]          # <repo>/shared/gui-kit/rostrum_gui/notices.py (or the install)
@@ -73,6 +73,12 @@ class Notices(QObject):
     @Property(str, constant=True)
     def version(self) -> str:
         return VERSION
+
+    @Slot(result=str)
+    def reportProblem(self) -> str:
+        """? › Report a problem: the log folder opens, the version and log's name are copied (report.py)."""
+        from .report import report
+        return report(NAMES.get(self.app, "Rostrum"), self.app or "rostrum", VERSION)
 
     @Property("QVariantList", constant=True)
     def items(self) -> list:
