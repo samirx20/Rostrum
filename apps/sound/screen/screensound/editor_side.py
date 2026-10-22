@@ -23,6 +23,11 @@ class EditorSide(QObject):
         bridge.side = self                                    # the scripted steps reach it (line-type)
         self.voice.changed.connect(bridge._rebuild)             # a line starts or stops being spoken: its block says so
 
+    @Property(QObject, constant=True)
+    def voiceDownload(self):
+        """The question that asks before the voice model is downloaded (ModelDownload.qml)."""
+        return self.voice.download
+
     def _track(self) -> dict:
         tid = self.bridge.roll.get("id", "")
         return self.bridge.doc.item(tid) if tid and self.bridge.doc.has(tid) else {}

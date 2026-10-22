@@ -6,10 +6,13 @@
     lane-delete                                               (the selected point)
     picture <video file> | picture none
     fold <group id> | fold all                                (a group's fold arrow; Alt+click = all)
+    vel-fold                                                  (the velocity strip's fold arrow)
+    group-drop <track id> <row id>                            (drag a track header onto that row: into / out of a group)
+    group-toggle <group id> mute|solo                         (M / S on a group's header)
 """
 from __future__ import annotations
 
-WORDS = ("zoom", "scroll", "fit", "lane", "lane-point", "lane-delete", "picture", "fold")
+WORDS = ("zoom", "scroll", "fit", "lane", "lane-point", "lane-delete", "picture", "fold", "vel-fold", "group-drop", "group-toggle")
 
 
 def do_view_step(bridge, word, rest):
@@ -26,6 +29,12 @@ def do_view_step(bridge, word, rest):
         point(bridge, rest[0], *map(float, rest[1:]))
     elif word == "lane-delete":
         bridge.removeSelected()
+    elif word == "vel-fold":
+        bridge.toggleVelocityFold()
+    elif word == "group-drop":
+        bridge.dropTracks([rest[0]], rest[1])
+    elif word == "group-toggle":
+        bridge.toggleGroupMS(rest[0], rest[1])
     elif word == "fold":
         bridge.toggleFold("" if rest[0] == "all" else rest[0], rest[0] == "all")
     elif word == "picture":

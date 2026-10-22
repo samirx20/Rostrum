@@ -83,7 +83,8 @@ def generate(text: str, voice: str = "ryan", style: str = "", language: str = "a
     missing = [n for n in (EXE, CODEC, TALKER) if not (d / n).is_file()]
     if missing:
         raise RostrumError(codes.MODEL_MISSING, where, "the voice model",
-                           f"is not installed in {d} (missing {', '.join(missing)})")
+                           f"is not installed in {d} (missing {', '.join(missing)})",
+                           hint="Download it with: python -m rostrum_sound.cleanup.fetch voice (about 1.9 GB).")
     _memory_gate(where)
     k = key(text, voice, style, language, seed)
     recipe = {"engine": ENGINE, "text": text, **_settings(voice, style, language, seed)}

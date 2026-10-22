@@ -36,15 +36,23 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("mixer", ["--sample"], ["dock mixer", "select drums"]),
         ("library", ["--sample"], ["library"]),
         ("library-auditioning", ["--sample"], ["select melody", "library", "audition builtIn:grandPiano"]),
+        ("library-trying-long", long_project(), [*busy, f"select {LONG_TRACK}", "library", "audition builtIn:grandPiano"]),   # P29: Keep / Revert
+        ("clean-result-line", ["--sample"], ["select-clip door", "dock editor", "clean 0 0 1",
+                                             "clean-line Background_noise_−18_dB_·_voice_level_unchanged_·_room_echo_shorter|The_voice_got_quieter_too:_try_less."]),
         ("velocity-strip", ["--sample"], ["select melody", "dock editor", "velocity-line 0 0.2 6 1"]),
         ("key-shading", ["--sample"], ['agent Set the key|[{"op":"key.add","target":[],"args":{"at":0,"key":"D minor"}}]', "select melody", "dock editor"]),
+        ("key-out-of-key-dots", ["--sample"], ['agent Set the key|[{"op":"key.add","target":[],"args":{"at":0,"key":"F# major"}}]', "select melody", "dock editor"]),
         ("velocity-strip-drums", ["--sample"], ["select drums", "dock editor"]),
+        ("velocity-folded", ["--sample"], ["select melody", "dock editor", "vel-fold"]),
         ("group-open", ["--sample"], [GROUP.format(name="Band")]),
+        ("group-muted-soloed", ["--sample"], [GROUP.format(name=LONG_TRACK), "group-toggle bus_1 mute", "group-toggle bus_1 solo"]),
+        ("group-track-out", ["--sample"], [GROUP.format(name="Band"), "group-drop door bus_1", "group-drop melody door"]),
         ("group-folded", ["--sample"], [GROUP.format(name=LONG_TRACK), "fold bus_1"]),
         ("draw", ["--sample"], ["select melody", "dock editor", "tool draw"]),
         ("voice-lines", ["--sample"], ["add-track voice:ryan", "dock editor"]),
         ("voice-typed-lines", ["--sample"], ["add-track voice:ryan", "dock editor", "line-type Welcome to the show",
                                               "line-type And now, the news from the whole second verse and bridge"]),
+        ("voice-model-question", ["--sample"], ["add-track voice:ryan", "dock editor", "line-type Welcome to the show", "voice-model-panel"]),   # P29: the download question
         ("voice-lane-typing", ["--sample"], ["add-track voice:ryan", "dock editor", "line-box 2"]),
         ("clean-before-after", ["--sample"], ["select-clip door", "dock editor", "clean 0 0 1"]),
         ("grid-menu", ["--sample"], ["grid-open"]),
@@ -53,6 +61,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("export-sheet", long_project(), [*busy, "exportsheet open streaming", f"exportwhere {LONG_FOLDER}"]),   # S34: the kit sheet
         ("export-versions", long_project(), [*busy, "range 1 3", "exportsheet open streaming", "export-what range",
                                              "export-more podcast mp3", "export-more ebu flac"]),     # P28: What + two more versions
+        ("export-for-the-editor", ["--sample"], [GROUP.format(name="Music"), "exportsheet open streaming", "export-preset editor"]),   # P29: preset, stems by group
+        ("swap-stepping", ["--sample"], ["select-clip door", "swap-demo", "swap-step 1", "swap-step 1"]),                    # P29: Trying in place
         ("problems-chip", long_project(), [*busy, "problems-demo", "problems open"]),
         ("job-chip", long_project(), [*busy, "job-show 42"]),
         ("long-editor", long_project(), [*busy, "dock editor"]),

@@ -78,6 +78,10 @@ Panel {
                 x: p.keysWidth + Math.round(bars.xOf(modelData.t)); width: 1; height: well.height
                 visible: bars.visibleX(x - p.keysWidth); color: Theme.fg4; opacity: 0.6 }
         }
+        Repeater {   // a voice line with several takes: ◂ ▸ on its block (TakeArrows.qml)
+            model: (p.roll.blocks || []).filter(b => b.canBack || b.canNext)
+            TakeArrows { required property var modelData; block: modelData; ruler: bars; xOffset: p.keysWidth; inset: well.height * 0.2 + 5 }
+        }
         Rectangle { x: p.keysWidth + Math.round(bars.xOf(backend.time)); width: 1; height: well.height
                     visible: bars.visibleX(x - p.keysWidth); color: Theme.accent; opacity: 0.9 }
         Rectangle {   // the time range, shaded
@@ -107,7 +111,7 @@ Panel {
         id: strip
         visible: bars.visible && (p.kind === "notes" || p.kind === "drums")
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-        height: 52; roll: p.roll; ruler: bars; keysWidth: p.keysWidth
+        roll: p.roll; ruler: bars; keysWidth: p.keysWidth
     }
     ActionMenu { id: rollMenu; onPicked: (v) => backend.menuPick(v) }      // the kit's
     function menuFor(id) {   // the right-click menu on an item (a scripted step: steps_select.py)

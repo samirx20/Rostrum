@@ -8,7 +8,9 @@ import RostrumKit
 // open on it — the microphone's track comes armed, ready to record. With a track of the same kind selected it asks
 // "Change Piano to Strings? The notes stay." and changes that track's sound instead (adder.swap, one undo step). "My sounds" is the person's own library
 // (LibraryPanel.qml: a sound goes on the selected recordings track at the playhead). Picking an entry (click, ↑ / ↓) plays it
-// through the engine (soundLibrary.auditionEntry: an instrument plays the selected track's notes); Esc or ■ Stop ends it. Closes with × or Ctrl+L; on a narrow window it floats and closes after each use (`used`).
+// through the engine (soundLibrary.auditionEntry: an instrument plays the selected track's notes); Esc or ■ Stop ends it. On a track that plays that kind of sound the pick is a try (nothing is written: "Trying Pad
+// on Strings"): Enter / double-click / Keep makes it the track's sound (one undo step), Esc / Revert / another track puts the
+// original back. Loop repeats what you hear while you browse. Closes with × or Ctrl+L; on a narrow window it floats and closes after each use (`used`).
 Panel {
     id: p
     title: "Library"
@@ -20,8 +22,8 @@ Panel {
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close (Ctrl+L)"; width: Theme.field; height: Theme.field
                               onClicked: workspace.setLibrary(false) }
     onVisibleChanged: if (visible) { search.input.forceActiveFocus(); current = 0 }
-    Keys.onEscapePressed: (e) => { if (soundLibrary.auditioning !== "") soundLibrary.stopAudition(); else e.accepted = false }
-    Connections { target: workspace; function onChanged() { if (!workspace.library) soundLibrary.stopAudition() } }   // closed: it stops
+    Keys.onEscapePressed: (e) => { if (soundLibrary.swapping) soundLibrary.swapBack(); else if (soundLibrary.auditioning !== "" || soundLibrary.trying.key !== undefined) soundLibrary.revert(); else e.accepted = false }
+    Connections { target: workspace; function onChanged() { if (!workspace.library) { soundLibrary.swapBack(); soundLibrary.stopAudition() } } }   // closed: it stops
     Connections { target: backend; function onLibraryWanted(chip) { p.chip = chip } }   // "Place a sound here"
     onFoundChanged: current = 0
 
@@ -35,6 +37,7 @@ Panel {
         const e = found[i]
         if (!e) return
         const m = adder.match(e.key)
+        if (m.track && soundLibrary.trying.key === e.key) { if (soundLibrary.keep()) p.used(); return }   // a tried sound: Enter keeps it
         if (m.track) { swap.entry = e.key; swap.track = m.track
                        swap.heading = "Change " + m.from + " to " + m.to + "?"; swap.open(); return }
         if (!adder.add(e.key)) return
@@ -48,9 +51,9 @@ Panel {
         editable: true; placeholder: "Search sounds"
         anchors { left: parent.left; right: parent.right; top: parent.top }
         onCommitted: (t) => search.text = t                // the words stay after Enter
-        onArrow: (dir) => p.pick(Math.max(0, Math.min(p.found.length - 1, p.current - dir)))
-        onEscaped: soundLibrary.stopAudition()
-        onEntered: p.use(p.current)
+        onArrow: (dir) => p.chip === "mine" ? soundLibrary.swapStep(-dir) : p.pick(Math.max(0, Math.min(p.found.length - 1, p.current - dir)))
+        onEscaped: soundLibrary.swapping ? soundLibrary.swapBack() : soundLibrary.stopAudition()
+        onEntered: soundLibrary.swapping ? soundLibrary.swapKeep() : p.use(p.current)
     }
     Flow {
         id: chips
@@ -110,16 +113,30 @@ Panel {
         text: "Add a folder of my sounds…"; kind: "ghost"
         onClicked: { p.chip = "mine"; mine.addFolder() }
     }
-    Item {      // only while something plays: what it is, and the way to stop it
+    Button {     // Loop while browsing: what you hear repeats until you stop it or pick another
+        id: loopBtn
+        anchors { right: parent.right; verticalCenter: foot.verticalCenter }
+        text: "Loop"; kind: "ghost"; down: soundLibrary.loop
+        onClicked: soundLibrary.setLoop(!soundLibrary.loop)
+    }
+    Item {      // only while something plays or is tried: what it is, and Keep / Revert (or the way to stop it)
         id: heard
-        visible: soundLibrary.auditioning !== ""
-        height: visible ? Theme.field : 0
+        readonly property bool trying: soundLibrary.trying.key !== undefined
+        visible: soundLibrary.auditioning !== "" || trying
+        height: visible ? heardCol.height : 0
         anchors { left: parent.left; right: parent.right; bottom: foot.top }
-        Text { anchors { left: parent.left; right: stop.left; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
-               text: "Hearing " + soundLibrary.auditioning; elide: Text.ElideRight; color: Theme.fg3
-               font.family: uiFont; font.pixelSize: Theme.label }
-        Button { id: stop; anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                 text: "■ Stop"; kind: "ghost"; onClicked: soundLibrary.stopAudition() }
+        Column {
+            id: heardCol
+            width: parent.width; spacing: Theme.grid
+            Text { width: parent.width; wrapMode: Text.WrapAnywhere
+                   text: heard.trying ? "Trying " + soundLibrary.trying.label + " on " + soundLibrary.trying.trackName
+                                      : "Hearing " + soundLibrary.auditioning
+                   color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+            Row { spacing: Theme.grid; layoutDirection: Qt.RightToLeft; width: parent.width
+                  Button { visible: !heard.trying; text: "■ Stop"; kind: "ghost"; onClicked: soundLibrary.stopAudition() }
+                  Button { visible: heard.trying; text: "Keep"; kind: "primary"; onClicked: { if (soundLibrary.keep()) p.used() } }
+                  Button { visible: heard.trying; text: "Revert"; kind: "ghost"; onClicked: soundLibrary.revert() } }
+        }
     }
     Prompt {    // a track of the same kind is selected: change its sound (the notes stay), or make a new track
         id: swap

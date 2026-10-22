@@ -71,7 +71,7 @@ Item {
                 bar(ctx, x, y0 + h - 2, w, 2, Theme.accent)
             }
             if (showLabel && b.label) {
-                ctx.save(); ctx.beginPath(); ctx.rect(x + 6, y0, Math.max(0, w - 10), h); ctx.clip()
+                ctx.save(); ctx.beginPath(); ctx.rect(x + 6, y0, Math.max(0, w - 10 - (b.canBack || b.canNext ? 38 : 0)), h); ctx.clip()
                 ctx.fillStyle = Theme.fg; ctx.font = (Theme.label - 1) + "px '" + uiFont + "'"; ctx.textBaseline = "top"
                 ctx.fillText(b.label, x + 6, y0 + 2)
                 ctx.restore()
@@ -117,6 +117,11 @@ Item {
                 }
             }
         }
+    }
+
+    Repeater {   // a voice line with several takes: ◂ ▸ on the block itself (TakeArrows.qml)
+        model: (lane.track.blocks || []).filter(b => b.canBack || b.canNext)
+        TakeArrows { required property var modelData; block: modelData; ruler: lane.ruler; inset: lane.pad + 2 }
     }
 
     Repeater {   // what an agent just changed here: the 1-second outline (only the flashed blocks get an item)

@@ -29,6 +29,7 @@ Item {
     }
     readonly property bool keyed: rowKey.inKey.indexOf(false) >= 0     // a key is in force (with none, every row is equal)
     readonly property var rowNames: rowKey.names
+    readonly property int keyRoot: rowKey.root !== undefined ? rowKey.root : -1     // the key's root note (0 … 11), -1 with no key
     readonly property var rowInKey: rowKey.inKey       // false: outside the song's key there, the row is shaded darker
     function black(k) { return [1, 3, 6, 8, 10].indexOf(k % 12) >= 0 }
     height: count * rowH
@@ -54,8 +55,14 @@ Item {
                 verticalAlignment: Text.AlignVCenter; fontSizeMode: Text.Fit; minimumPixelSize: 7  // shrinks the name
                 elide: Text.ElideRight
                 text: g.notes ? g.rowNames[parent.index] : g.drumName(g.roll.drums[parent.index])
-                color: g.notes && parent.key % 12 !== 0 ? Theme.fg4 : Theme.fg3
+                color: g.notes && g.keyRoot === parent.key % 12 ? Theme.accent : g.notes && parent.key % 12 !== 0 ? Theme.fg4 : Theme.fg3
                 font.family: uiFont; font.pixelSize: Theme.label - (g.notes ? 1 : 0); font.features: { "tnum": 1 }
+                font.weight: g.notes && g.keyRoot === parent.key % 12 ? Font.DemiBold : Font.Normal
+            }
+            Rectangle {   // the key's root, marked on the keyboard: an accent tick at the keys' inner edge
+                visible: g.notes && g.keyRoot === parent.key % 12
+                x: g.keysWidth - 9; width: 3; height: Math.min(parent.height - 3, 8); radius: 1.5
+                anchors.verticalCenter: parent.verticalCenter; color: Theme.accent
             }
         }
     }
@@ -91,7 +98,10 @@ Item {
                     var y = (g.roll.hi - b.keys[i]) * g.rowH + 1
                     ctx.fillStyle = fillOf(on); round(ctx, x, y, w, h, 3); ctx.fill()
                     if (on) { ctx.strokeStyle = Theme.accent; ctx.lineWidth = 2; round(ctx, x + 1, y + 1, w - 2, h - 2, 2); ctx.stroke() }
-                    if (g.rowH >= 14 && b.names[i] && w >= ctx.measureText(b.names[i]).width + 5) {      // whenever the name fits the bar
+                    if (b.out && b.out[i] && w >= 10) {      // outside the key playing there: a small dot at the end
+                        ctx.fillStyle = Theme.app; ctx.beginPath(); ctx.arc(x + w - 5, y + h / 2, 2.5, 0, 2 * Math.PI); ctx.fill()
+                    }
+                    if (g.rowH >= 14 && b.names[i] && w >= ctx.measureText(b.names[i]).width + (b.out && b.out[i] ? 14 : 5)) {      // whenever the name fits the bar
                         ctx.fillStyle = Theme.app; ctx.fillText(b.names[i], x + 3, y + h / 2)
                     }
                 }
@@ -119,7 +129,7 @@ Item {
                     }
                     ctx.globalAlpha = 1
                 }
-                ctx.save(); ctx.beginPath(); ctx.rect(x + 8, y, Math.max(0, w - 16), h); ctx.clip()      // the label stays inside its block
+                ctx.save(); ctx.beginPath(); ctx.rect(x + 8, y, Math.max(0, w - 16 - (b.canBack || b.canNext ? 38 : 0)), h); ctx.clip()      // the label stays inside its block, clear of the take arrows
                 ctx.fillStyle = Theme.fg2; ctx.font = Theme.label + "px '" + uiFont + "'"; ctx.textBaseline = "top"
                 ctx.fillText(b.label || "", x + 8, y + 6)
                 ctx.restore()

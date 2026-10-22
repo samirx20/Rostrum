@@ -5,12 +5,16 @@ import RostrumKit
 // as it is loud. Drag a bar: that note (a selected bar takes every selected note with it by the same proportion;
 // Alt = all to the same height). Drag across empty space: a line, and each note under it (the selected ones, when
 // some are) takes the line's height. One drag is one undo step (backend.beginVelocity … endVelocity); the number
-// beside the pointer is the height being set.
+// beside the pointer is the height being set. The fold arrow at the left folds it to one thin row (the person's own
+// screen state: backend.velocityFolded); the roll takes the room.
 Item {
     id: s
     property var roll
     property var ruler
     property int keysWidth: 52
+    readonly property bool folded: backend.velocityFolded
+    readonly property real fullHeight: 52
+    readonly property real foldedHeight: 18
     readonly property real padTop: 6
     readonly property real plotH: height - padTop - 4
     readonly property var picked: backend.picked
@@ -21,6 +25,7 @@ Item {
     property real v: 0
     property real px: 0
     property real py: 0
+    height: folded ? foldedHeight : fullHeight
     function vAt(y) { return Math.max(0, Math.min(1, 1 - (y - padTop) / plotH)) }
     function nearest(x) {                       // the bar under x (within 5 px), "" for none
         var b = roll.blocks || [], best = "", d = 6
@@ -31,14 +36,31 @@ Item {
         }
         return best
     }
-    Text { x: Theme.gap; width: s.keysWidth - Theme.gap - 6; height: parent.height; verticalAlignment: Text.AlignVCenter
-           text: "Vel"; color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label
-           HoverTip { text: "Velocity: how hard each note plays. Drag a bar, or draw a line across"; hovered: vh.containsMouse }
-           MouseArea { id: vh; anchors.fill: parent; hoverEnabled: true } }
-    Rectangle { x: s.keysWidth; width: s.width - x; height: s.height; radius: Theme.radiusCtl; color: Theme.sunken
+    Item {   // the fold arrow and the label: click either to fold or open the strip
+        x: 0; width: s.keysWidth; height: s.foldedHeight
+        Canvas {
+            id: arrow
+            x: Theme.gap; anchors.verticalCenter: parent.verticalCenter; width: 10; height: 10
+            property color ink: vh.containsMouse ? Theme.fg : Theme.fg3
+            property bool folded: s.folded
+            onInkChanged: requestPaint()
+            onFoldedChanged: requestPaint()
+            onPaint: { var c = getContext("2d"); c.reset(); c.fillStyle = ink; c.beginPath()
+                       if (folded) { c.moveTo(2, 0); c.lineTo(9, 5); c.lineTo(2, 10) } else { c.moveTo(0, 2); c.lineTo(10, 2); c.lineTo(5, 9) }
+                       c.closePath(); c.fill() }
+        }
+        Text { x: Theme.gap + 14; anchors.verticalCenter: parent.verticalCenter
+               text: "Vel"; color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label }
+        MouseArea { id: vh; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: backend.toggleVelocityFold() }
+        HoverTip { text: s.folded ? "Show the velocity strip" : "Velocity: how hard each note plays. Drag a bar, or draw a line across. Click to fold it away"
+                   hovered: vh.containsMouse; pressed: vh.pressed }
+    }
+    Rectangle { visible: !s.folded; x: s.keysWidth; width: s.width - x; height: s.height; radius: Theme.radiusCtl; color: Theme.sunken
                 border.color: Theme.border; border.width: 1 }
     Canvas {
         id: c
+        visible: !s.folded
         x: s.keysWidth; width: s.width - x; height: s.height; clip: true
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
@@ -65,7 +87,7 @@ Item {
     }
     Canvas {   // the line, as drawn
         id: ln
-        anchors.fill: parent; visible: s.mode === "line"
+        anchors.fill: parent; visible: s.mode === "line" && !s.folded
         onVisibleChanged: requestPaint()
         onPaint: {
             var ctx = getContext("2d"); ctx.reset()
@@ -83,6 +105,7 @@ Item {
     }
     MouseArea {
         id: m
+        enabled: !s.folded
         x: s.keysWidth; width: s.width - x; height: s.height
         preventStealing: true; cursorShape: s.nearest(mouseX) !== "" ? Qt.SizeVerCursor : Qt.CrossCursor; hoverEnabled: true
         onWheel: (w) => backend.viewWheel(w.angleDelta.x, w.angleDelta.y, (w.modifiers & Qt.ControlModifier) !== 0,

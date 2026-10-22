@@ -19,15 +19,18 @@ from PySide6.QtCore import Property, Signal, Slot
 from rostrum_core import RostrumError
 from rostrum_gui.export_sheet import ExportSheet
 from rostrum_sound import compile as compile_doc
-from rostrum_sound import deliver, handoff
+from rostrum_sound import deliver, handoff, presets
+from rostrum_sound.doc import markers
 
-from . import delivery, playback
+from . import delivery, export_stems, playback
 from .export_versions import Versions, ranges, schedule_for
 
 
 def summary(r: dict) -> str:
     n_bus, n_track = len(r.get("busStems") or {}), len(r.get("stems") or {})
-    stems = (f"{n_track} track stems" + (f" + {n_bus} group stems" if n_bus else "")) if n_track or n_bus else "no stems"
+    stems = (f"{n_track + n_bus} stems by group" if r.get("stemsBy") else
+             f"{n_track} track stems" + (f" + {n_bus} group stems" if n_bus else "")) if n_track or n_bus else "no stems"
+    stems += ", markers beside" if r.get("markersFile") else ""
     cut = f", {r['songSeconds'] - r['seconds']:.1f} s of silence trimmed" if r.get("trimmed") else ""
     return (f"Version {r['version']} · {r.get('format', {}).get('label', '')}, {r.get('sampleRate', 0) / 1000:g} kHz · "
             f"{r['seconds']:.1f} s{cut} · {stems}")
@@ -44,7 +47,8 @@ class RenderExport(ExportSheet):
         super().__init__(bridge, parent)
         self._loud, self._open_engine = loudness, open_engine
         self.changed.connect(self.own)                # (a subclass's property can't notify on the kit's signal: PySide6 crashes)
-        self._stems, self._format, self._rate, self._trim = False, deliver.DEFAULT_FORMAT, 0, True   # rate 0: the song's own
+        self._stems, self._format, self._rate, self._trim = "off", deliver.DEFAULT_FORMAT, 0, True   # rate 0: the song's own
+        self._markers = False                         # markers.json beside the files
         self._choice = self._target_key()
         self._more = Versions()
         bridge.docChanged.connect(self._sync)
@@ -93,8 +97,10 @@ class RenderExport(ExportSheet):
         doc = self.bridge.doc
         if not doc.folder or not doc.item_id:
             raise RuntimeError("save the song into a project first (open it with a project folder), so the render has a place to go")
+        # A preset's own render choice (the Editor's: the mix before mastering), while the sheet still shows it chosen.
+        master = presets.PRESETS.get(self.preset, {}).get("master", True)
         try:
-            schedule = compile_doc(doc)
+            schedule = compile_doc(doc, master=master)
         except RostrumError as e:
             raise RuntimeError(e.line()) from e
         span = self.range_times()
@@ -102,10 +108,11 @@ class RenderExport(ExportSheet):
             raise RuntimeError("the range chosen is not there any more (a time range or section was removed): choose What again")
         o = self.options()
         base = {"format": o.format, "sampleRate": o.sample_rate, "trim": o.trim, **({"from": span[0], "to": span[1]} if span else {})}
-        versions = [{"schedule": schedule, "options": base, "stems": "all" if self._stems else []}]
+        versions = [{"schedule": schedule, "options": base, "markers": self._markers,
+                     "stems": export_stems.REQUEST[export_stems.mode(self._stems, doc.data)]}]
         for r in self._more.rows:               # each extra version: its own target, file type and quality (no stems)
             rate = r["rate"] if r["rate"] in [x["id"] for x in deliver.rates_for(r["format"])] else 0
-            versions.append({"schedule": schedule_for(doc, r["target"]), "stems": [],
+            versions.append({"schedule": schedule_for(doc, r["target"]), "stems": [], "markers": False,
                              "options": {**base, "format": r["format"], "sampleRate": rate or doc.data.get("sampleRate", 48000)}})
         return {"doc": doc, "versions": versions, "who": f"{self.bridge.who.kind}:{self.bridge.who.name}", "out": out}
 
@@ -114,7 +121,8 @@ class RenderExport(ExportSheet):
         eng, made = self._open_engine(), []
         try:
             for v in p["versions"]:
-                made.append(handoff.render(p["doc"].folder, p["doc"], eng, v["schedule"], p["who"], stems=v["stems"], options=v["options"]))
+                made.append(handoff.render(p["doc"].folder, p["doc"], eng, v["schedule"], p["who"], stems=v["stems"], options=v["options"],
+                                           markers_file=v["markers"]))
         finally:
             eng.close()
         for m in made:
@@ -150,10 +158,36 @@ class RenderExport(ExportSheet):
     def rate(self):
         return str(self.options().sample_rate)
 
+    @Property(str, notify=own)
+    def stemsMode(self):
+        """"off", "all" or "groups" (a file per group, ungrouped tracks each their own)."""
+        return export_stems.mode(self._stems, self.bridge.doc.data)
+
+    @Property("QVariantList", notify=own)
+    def stemChoices(self):
+        """Only the stems choices that mean something for this song ("groups" needs a group)."""
+        return export_stems.choices(self.bridge.doc.data)
+
     @Property(bool, notify=own)
-    def stems(self):
-        """Also a file for every track and group (off by default: most deliveries are the mix alone)."""
-        return self._stems
+    def markers(self):
+        return self._markers
+
+    @Property(bool, notify=own)
+    def hasMarkers(self):
+        """Offered only when the song has a named marker or a section to write."""
+        d = self.bridge.doc.data
+        with markers.project(self.bridge.doc.folder):
+            return bool(markers.all(d) or d.get("sections"))
+
+    @Property("QVariantList", constant=True)
+    def presets(self):
+        return export_stems.listed()
+
+    @Property(str, notify=own)
+    def preset(self):
+        """The preset the sheet's choices equal now ("" when none)."""
+        return export_stems.matching({"format": self._format, "sampleRate": self.options().sample_rate, "trim": self._trim,
+                                      "stems": self.stemsMode, "markers": self._markers})
 
     @Property(bool, notify=own)
     def trim(self):
@@ -182,9 +216,24 @@ class RenderExport(ExportSheet):
         self._rate = int(value)
         self.changed.emit()
 
+    @Slot(str)
+    def setStemsMode(self, value):
+        if value in export_stems.MODES:
+            self._stems = value
+            self.changed.emit()
+
     @Slot(bool)
-    def setStems(self, on):
-        self._stems = bool(on)
+    def setMarkers(self, on):
+        self._markers = bool(on)
+        self.changed.emit()
+
+    @Slot(str)
+    def usePreset(self, name):
+        """A delivery preset (presets.py): sets the file, quality, trimming, stems and markers in one go."""
+        p = presets.PRESETS.get(name)
+        if p is None or self.running():
+            return
+        self._format, self._rate, self._trim, self._stems, self._markers = p["format"], p["sampleRate"], p["trim"], p["stems"], p["markers"]
         self.changed.emit()
 
     @Slot(bool)

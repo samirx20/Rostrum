@@ -16,8 +16,9 @@ from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 from rostrum_sound import userlib
 from rostrum_sound.userlib.kinds import KINDS
 
-from .adder import ENTRIES, placed_at
+from .adder import ENTRIES, Adder, placed_at
 from .auditioner import Auditioner
+from .swap_trial import SwapTrial
 
 ANY = ""
 LIMIT = 60
@@ -52,8 +53,11 @@ class LibraryPanel(QObject):
         self._total, self._busy, self._status = 0, "", ""
         self._heard = Auditioner(bridge, self)
         self._heard.changed.connect(self.changed)
-        self._heard.failed.connect(self._say)
-        bridge.picksChanged.connect(self.changed)       # a clip picked: the rows offer Swap
+        self._heard.failed.connect(self._heard_failed)
+        self._adder, self._tried = Adder(bridge, self), {}      # a sound tried on the selected track (Keep / Revert)
+        bridge.selectionChanged.connect(self._selection_moved)
+        self._trial = SwapTrial(bridge)
+        bridge.picksChanged.connect(self._picked)       # a clip picked: the rows offer Swap; another pick ends a trial
         bridge.docChanged.connect(self.changed)
         bridge.library_panel = self             # the scripted steps reach the panel from the bridge
         self._indexed.connect(self._done)
@@ -66,6 +70,16 @@ class LibraryPanel(QObject):
         """The one selected clip a result can take the place of ("" when none: the rows only Place)."""
         ids = self.bridge.selectedIds
         return ids[0] if len(ids) == 1 and self.bridge.doc.has(ids[0]) and self.bridge.doc.item(ids[0])["type"] == "clip" else ""
+
+    @Property(int, notify=changed)
+    def swapRow(self):
+        """The result on show in the clip's place while stepping (-1: the original, or not stepping)."""
+        return self._trial.row
+
+    @Property(bool, notify=changed)
+    def swapping(self):
+        """Stepping through candidates: Enter keeps the one on show, Esc puts the original back."""
+        return self._trial.active
 
     @Property(bool, notify=changed)
     def hasFolders(self):
@@ -156,17 +170,65 @@ class LibraryPanel(QObject):
 
     @Slot(str)
     def auditionEntry(self, key):
-        """Hear a Library entry (adder key): an instrument plays the selected track's notes, else a short phrase."""
+        """Hear a Library entry (adder key): an instrument plays the selected track's notes, else a short phrase.
+        On a track that plays this kind of sound it is a TRY (DESIGN.md §3.2b): nothing is written to the song (so no
+        history entry), `trying` names the track; Keep (`keep`) is one undo step, Revert / Esc (`revert`) leaves the
+        original exactly as it was."""
         e = next((x for x in ENTRIES if x["key"] == key), None)
         if e is None:
             return self._say(f'Error: audition: no sound "{key}".')
         b = self.bridge
         track = b._track if getattr(b, "_track", "") else None
+        m = self._adder.match(key)
+        self._tried = {"key": key, "label": e["label"], "track": m["track"], "trackName": m["from"]} if m else {}
         self._heard.start({k: v for k, v in e["fields"].items() if k != "name"}, e["label"], track)
+
+    @Property("QVariantMap", notify=changed)
+    def trying(self):
+        """{key, label, track, trackName} while a sound is tried on the selected track ({} otherwise)."""
+        return self._tried
+
+    @Slot(result=bool)
+    def keep(self):
+        """Keep the sound being tried: the track's sound changes, one undo step (`track.set`), the audition stops."""
+        t = self._tried
+        if not t:
+            self._say("Error: keep: no sound is being tried. Pick one in the Library first.")
+            return False
+        self.revert()
+        return self._adder.swap(t["key"], t["track"])
+
+    @Slot()
+    def revert(self):
+        """Put the original back: the audition stops and the try ends. The song was never changed, so it is exactly as
+        it was (Esc, ■ Stop, another track picked and closing the Library do the same)."""
+        self._tried = {}
+        self._heard.stop()
+        self.changed.emit()
 
     @Slot()
     def stopAudition(self):
-        self._heard.stop()
+        self.revert()
+
+    @Property(bool, notify=changed)
+    def loop(self):
+        return self._heard.loop
+
+    @Slot(bool)
+    def setLoop(self, on):
+        """Loop while browsing: the heard sound repeats until stopped or another is picked."""
+        self._heard.loop = bool(on)
+        self.changed.emit()
+
+    def _selection_moved(self):
+        """Another track picked: the try ends and its own sound is back (nothing was written)."""
+        t = self._adder._selected_track()
+        if self._tried and (t is None or t["id"] != self._tried["track"]):
+            self.revert()
+
+    def _heard_failed(self, line):
+        self._tried = {}                                # a sound that could not be played is not being tried
+        self._say(line)
 
     @Slot(int)
     def place(self, i):
@@ -192,10 +254,44 @@ class LibraryPanel(QObject):
         r, clip = self._results[i], self.swapTarget
         if not clip:
             return self._say("Error: swap: select one clip first.")
+        if self._trial.active:                  # a button on a row while stepping: that row, kept
+            self.swapTo(i)
+            return self.swapKeep()
         args = {"media": r["path"], **({"in": r["start"]} if r["start"] > 0.05 else {})}
         self.bridge._guard(lambda: self.bridge._apply([{"op": "clip.swap", "target": [clip], "args": args}], "Swap sound"))
 
+    @Slot(int)
+    def swapStep(self, delta):
+        """↓ (+1) / ↑ (-1): the next / previous result in the selected clip's place, played in a loop round the spot."""
+        n = len(self._results)
+        clip = self.swapTarget
+        if not (n and clip):
+            return
+        self._heard.stop()
+        self.swapTo(max(0, min(n - 1, (self._trial.row if self._trial.active else -1) + delta)))
+
+    def swapTo(self, i):
+        clip = self.swapTarget
+        if clip and self.bridge._guard(lambda: self._trial.step(clip, self._results[i], i)):
+            self.changed.emit()
+
+    @Slot()
+    def swapKeep(self):
+        self._trial.keep()
+        self.changed.emit()
+
+    @Slot()
+    def swapBack(self):
+        self._trial.back()
+        self.changed.emit()
+
+    def _picked(self):
+        if self._trial.active and self.swapTarget != self._trial.clip:
+            self._trial.back()                  # another pick: the original goes back, nothing recorded
+        self.changed.emit()
+
     def close(self):
+        self._trial.back()
         self._heard.close()
 
     # ---- inside -----------------------------------------------------------------------------------------------

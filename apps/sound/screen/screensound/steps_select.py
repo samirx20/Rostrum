@@ -37,7 +37,7 @@ WORDS = ("select-many", "select-add", "select-run", "select-all", "box", "range"
          "action-bar", "menu", "menu-roll", "key", "copy", "cut", "paste", "drag-many", "handle", "lock", "loop",
          "range-edge", "rename-open", "rename", "open", "jump", "playhead-step", "fit-selection", "marker-add",
          "fit-bar", "ask", "place", "library", "clean-open", "clean", "tool", "add-hit", "draw", "line-type",
-         "speak-again", "line-box", "select-clip", "grid", "snap", "velocity-line", "velocity-bar", "audition")
+         "speak-again", "line-box", "select-clip", "grid", "snap", "velocity-line", "velocity-bar", "audition", "clean-line")
 
 
 def _find(item, prop):
@@ -172,6 +172,9 @@ def do_select_step(bridge, win, word, rest):
             raise RuntimeError(f"audition: {rest[0]} did not play: {bridge.status}")
         heard._player.ended.disconnect()      # held there (the fake player's clock runs out), so the picture shows it playing
         heard._player.stop()
+    elif word == "clean-line":                # clean-line <line>|<warning>: the clean-up bar's result line, as if measured
+        line, _, warn = " ".join(rest).replace("_", " ").partition("|")
+        bridge.mix.cleaning.demo(line, warn)
     elif word == "select-clip":               # select-clip <track>: its first clip (a clip's id is made from its content)
         clips = bridge.doc.item(rest[0]).get("clips", [])
         if not clips:

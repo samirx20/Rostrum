@@ -30,6 +30,7 @@ from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject
 
 from .steps_record import WORDS as RECORD_WORDS, do_record_step
 from .steps_select import WORDS as SELECT_WORDS, do_select_step
+from .steps_swap import WORDS as SWAP_WORDS, do_swap_step
 from .steps_view import WORDS as VIEW_WORDS, do_view_step
 from .workspace import OLD_PAGES
 
@@ -214,6 +215,8 @@ def _do_step(bridge, win, step, recorder=None):
         do_record_step(recorder, word, rest)
     elif word in SELECT_WORDS:               # selection and its actions (steps_select.py)
         do_select_step(bridge, win, word, rest)
+    elif word in SWAP_WORDS:                 # swap stepping and the export presets (steps_swap.py)
+        do_swap_step(bridge, word, rest)
     elif word in VIEW_WORDS:
         do_view_step(bridge, word, rest)
     elif word in MIX_WORDS:

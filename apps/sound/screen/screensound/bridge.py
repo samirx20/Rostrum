@@ -179,7 +179,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         """The compiled song. A song with nothing in it yet (a new one, or an instrument with no notes) is still a
         song: it renders as silence the length the screen shows, instead of the engine refusing an empty schedule."""
         side = getattr(self, "side", None)                 # lines being spoken right now play once they are made
-        s = compile_doc(voice_card.without(self.doc, side.voice.making()) if side else self.doc)
+        s = compile_doc(voice_card.without(self.doc, side.voice.making() | side.voice.waiting()) if side else self.doc)
         if "length" not in s and not any(t.get(k) for t in s["tracks"] for k in SOUNDING):
             s["length"] = self._length()
         return s
@@ -211,6 +211,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         side = getattr(self, "side", None)               # lines being spoken say so on their blocks
         if side:
             voice_card.mark_speaking([*rows, self._view["roll"]], side.voice.making())
+            voice_card.mark_waiting([*rows, self._view["roll"]], side.voice.waiting())
             voice_takes.mark_takes([*rows, self._view["roll"]], root)
         self._zoom.clamp(self._length())        # the view is the person's: nothing new on screen zooms or scrolls it
         self.timelineChanged.emit()

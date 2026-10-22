@@ -105,8 +105,9 @@ class ActionSlots:
             self.setTime(ST.start_of(self.doc.data, self.doc.item(ids[0])))
             self.workspace.setLibrary(True)
             self.libraryWanted.emit("designed")
-        elif name == "swap":                                    # the Library opens; with a clip selected its rows say Swap
+        elif name == "swap":                                    # the Library opens on My sounds; ↑ / ↓ step (swap_trial.py)
             self.workspace.setLibrary(True)
+            self.libraryWanted.emit("mine")
         elif name == "clean":
             self.cleanWanted.emit()
         elif name == "speak":                                   # Speak again: a new take of each line, made at once
