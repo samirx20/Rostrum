@@ -37,7 +37,7 @@ File: `C:\Users\<you>\.gemini\settings.json`
 
 1. Open a terminal and paste the line above, then press Enter.
 2. Start a new Gemini CLI session.
-3. In Gemini CLI type /mcp (or run `gemini mcp list`); both should be listed. If one shows Disconnected, run `gemini trust` in that folder.
+3. In Gemini CLI type /mcp (or run `gemini mcp list`); both should be listed. Gemini switches every such server off in a folder you haven't trusted (it then says Disabled): start Gemini CLI in your project folder and say yes when it asks whether to trust it.
 
 ### RostrumSound (`rostrum-sound`)
 
@@ -68,11 +68,11 @@ File: `C:\Users\<you>\.gemini\settings.json`
 
 1. Open a terminal and paste the line above, then press Enter.
 2. Start a new Gemini CLI session.
-3. In Gemini CLI type /mcp (or run `gemini mcp list`); both should be listed. If one shows Disconnected, run `gemini trust` in that folder.
+3. In Gemini CLI type /mcp (or run `gemini mcp list`); both should be listed. Gemini switches every such server off in a folder you haven't trusted (it then says Disabled): start Gemini CLI in your project folder and say yes when it asks whether to trust it.
 
 ## Check it works
 
-In Gemini CLI type /mcp (or run `gemini mcp list`); both should be listed. If one shows Disconnected, run `gemini trust` in that folder.
+In Gemini CLI type /mcp (or run `gemini mcp list`); both should be listed. Gemini switches every such server off in a folder you haven't trusted (it then says Disabled): start Gemini CLI in your project folder and say yes when it asks whether to trust it.
 
 ## Remove it
 

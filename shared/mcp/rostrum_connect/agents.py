@@ -34,6 +34,7 @@ class Agent:
     cli_remove: tuple | None = None
     cli_list: tuple | None = None
     deeplink: str | None = None
+    button_cli: bool = True        # False: the agent's CLI rewrites the person's whole file, so Add / Remove edit it ourselves
     restart: str = "Close and reopen {name}."
     check: str = "Ask {name} to list its tools; rostrum-2d and rostrum-sound should be there."
 
@@ -69,6 +70,7 @@ AGENTS = (
           detect_paths=("~/.codex",), files_env=("CODEX_HOME", "config.toml"),
           cli_add=("codex", "mcp", "add", "{name}", "{env:--env}", "--", "{cmd}"),
           cli_remove=("codex", "mcp", "remove", "{name}"), cli_list=("codex", "mcp", "list"),
+          button_cli=False,        # `codex mcp add/remove` re-sorts and re-types every table (H26 proof); tomlkit keeps it
           restart="Start a new Codex session.", check="Run `codex mcp list`; both servers should be listed."),
     Agent("cursor", "Cursor", "https://cursor.com/docs/context/mcp", ("cursor",),
           _same("~/.cursor/mcp.json"), "json", ("mcpServers",), "std",
@@ -82,6 +84,7 @@ AGENTS = (
            "linux": "~/.config/Code/User/mcp.json"},
           "jsonc", ("servers",), "vscode", detect_paths=("%APPDATA%/Code", "~/Library/Application Support/Code"),
           cli_add=("code", "--add-mcp", "{json}"),
+          button_cli=False,        # `code --add-mcp` also writes its own "inputs": [] (H26 proof); a file edit leaves only ours
           restart="Nothing to restart: run the command “MCP: List Servers”, pick the server and choose Start.",
           check="Run the command “MCP: List Servers”; both should be listed."),
     Agent("windsurf", "Windsurf", "https://docs.windsurf.com/windsurf/cascade/mcp", ("windsurf",),
@@ -95,7 +98,8 @@ AGENTS = (
           cli_add=("gemini", "mcp", "add", "{env:-e}", "-s", "user", "{name}", "{cmd}"),
           cli_remove=("gemini", "mcp", "remove", "-s", "user", "{name}"), cli_list=("gemini", "mcp", "list"),
           restart="Start a new Gemini CLI session.", check="In Gemini CLI type /mcp (or run `gemini mcp list`); both should be listed. "
-                "If one shows Disconnected, run `gemini trust` in that folder."),
+                "Gemini switches every such server off in a folder you haven't trusted (it then says Disabled): "
+                "start Gemini CLI in your project folder and say yes when it asks whether to trust it."),
     Agent("opencode", "opencode", "https://opencode.ai/docs/mcp-servers/", ("opencode",),
           _same("~/.config/opencode/opencode.json"), "jsonc", ("mcp",), "opencode",
           detect_paths=("~/.config/opencode",), candidates=("~/.config/opencode/opencode.jsonc",), restart="Start a new opencode session.",

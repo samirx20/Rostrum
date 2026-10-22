@@ -23,7 +23,7 @@ class Doc:
     comments: bool = False  # the file had comments (jsonc)
     indent: object = 2      # spaces, or "\t"
     crlf: bool = False
-    final_newline: bool = True
+    tail: str = "\n"        # the file's own whitespace after its last line, written back as it was
 
 
 def strip_jsonc(text: str) -> tuple[str, bool]:
@@ -63,8 +63,10 @@ def read(path: Path, fmt: str) -> Doc:
     path = Path(path)
     if not path.exists():
         return Doc(tomlkit.document() if fmt == "toml" else {})
-    text = path.read_text(encoding="utf-8-sig")
-    doc = Doc(None, crlf="\r\n" in text, final_newline=text.endswith("\n") or not text.strip())
+    with open(path, encoding="utf-8-sig", newline="") as f:      # newline="": keep Windows line endings so we can write them back
+        text = f.read()
+    tail = text[len(text.rstrip()):].replace("\r\n", "\n") if text.strip() else "\n"
+    doc = Doc(None, crlf="\r\n" in text, tail=tail)
     m = re.search(r"\n([ \t]+)\S", text)
     doc.indent = "\t" if m and "\t" in m.group(1) else (len(m.group(1)) if m else 2)
     try:
@@ -87,11 +89,10 @@ def write(path: Path, fmt: str, doc: Doc, by_hand: str = "") -> None:
     if doc.comments:
         raise ConnectError(f"{path} has comments, which Rostrum won't remove. Add it by hand: {by_hand or 'see the guide'}")
     if fmt == "toml":
-        text = tomlkit.dumps(doc.data).rstrip() + ("\n" if doc.final_newline else "")   # tomlkit leaves a blank line behind
+        text = tomlkit.dumps(doc.data).replace("\r\n", "\n").rstrip() + doc.tail   # tomlkit can leave a blank line behind
     else:
-        text = json.dumps(doc.data, indent=doc.indent, ensure_ascii=False)
-        text += "\n" if doc.final_newline else ""
-        text = text.replace("\n", "\r\n") if doc.crlf else text
+        text = json.dumps(doc.data, indent=doc.indent, ensure_ascii=False) + doc.tail
+    text = text.replace("\r\n", "\n").replace("\n", "\r\n") if doc.crlf else text   # the file's own line endings
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
     try:
@@ -107,13 +108,6 @@ def backup_dir(agent_id: str) -> Path:
     from .agents import expand
     base = os.environ.get("ROSTRUM_BACKUP_DIR")
     return Path(base, agent_id) if base else expand("%LOCALAPPDATA%/Rostrum/agent-backups") / agent_id
-
-
-def backups(agent_id: str, filename: str) -> list[Path]:
-    """This file's backups, oldest first."""
-    folder = backup_dir(agent_id)
-    found = folder.glob(f"*-{filename}") if folder.is_dir() else []
-    return sorted(found, key=lambda p: p.stat().st_mtime_ns)
 
 
 def backup(path: Path, agent_id: str) -> Path | None:

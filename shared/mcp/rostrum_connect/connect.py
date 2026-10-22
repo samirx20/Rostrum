@@ -8,8 +8,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import agents, servers
-from .configfile import ConnectError, backup, backups, read, table, write
+from . import agents, before, servers
+from .configfile import ConnectError, backup, read, table, write
 
 
 @dataclass
@@ -40,7 +40,7 @@ class Result:
 
 
 def _cli(a: agents.Agent) -> str | None:
-    if os.environ.get("ROSTRUM_CONNECT_NO_CLI") == "1":
+    if os.environ.get("ROSTRUM_CONNECT_NO_CLI") == "1" or not a.button_cli:
         return None
     return next((p for c in a.clis if (p := shutil.which(c))), None)
 
@@ -120,6 +120,7 @@ def add(agent_id: str, app: str, ask=None, project: str | None = None) -> Result
     if ask and not st.file.exists() and not ask(f"{st.file} doesn't exist yet. Create it?"):
         return Result(False, f"Left {a.name} alone.", st.file, None, False)
     saved, cli = backup(st.file, a.id), _cli(a)
+    before.note(st.file, a.fmt, a.key)
     hand = by_hand(a.id, app)["snippet"]
     if cli and a.cli_add:
         if st.ours and a.cli_remove:
@@ -142,28 +143,15 @@ def remove(agent_id: str, app: str) -> Result:
         raise ConnectError(f"{srv.name} in {st.file} wasn't added by Rostrum, so I won't remove it.")
     if not st.ours:
         return Result(True, f"{srv.name} wasn't in {a.name}'s settings. Nothing to remove.", st.file, None, False)
-    first = backups(a.id, st.file.name)                      # the oldest backup tells what the file held before us
     saved, cli = backup(st.file, a.id), _cli(a)
-    had_table = _had_table(a, first)
     if cli and a.cli_remove:
         _run([cli, *agents.render_argv(a.cli_remove, srv, a.shape)[1:]])
     else:
-        def drop(d):
-            t = table(d.data, a.key)
-            t.pop(srv.name, None)
-            if not t and not had_table:
-                _drop_table(d.data, a.key)
-        _edit(a, drop)
+        _edit(a, lambda d: table(d.data, a.key).pop(srv.name, None))
+    before.tidy(st.file, a.fmt, a.key, _drop_table, _ours)     # the last of ours gone: the file as it was before us
     _check_listed(a, app, False, "to remove it")
     return Result(True, f"{srv.name} is removed from {a.name}'s settings ({st.file}). {a.restart.format(name=a.name)}",
                   st.file, saved, bool(cli and a.cli_remove))
-
-
-def _had_table(a: agents.Agent, older: list[Path]) -> bool:
-    """Did the servers table exist before Rostrum first touched the file? No backup means we made the file."""
-    if not older:
-        return False
-    return table(read(older[0], a.fmt).data, a.key) is not None
 
 
 def _drop_table(data, key: tuple) -> None:
