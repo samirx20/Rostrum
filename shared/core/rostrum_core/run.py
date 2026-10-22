@@ -1,9 +1,7 @@
 """Running a call (OPERATIONS.md § 5): check every operation's targets and arguments, run each plan against the
 document as the ones before it left it, then the app's whole-document check. Anything failing raises a
-RostrumError naming the operation; the caller's document is untouched (we work on a copy)."""
+RostrumError naming the operation; the caller's document is untouched (we work on a fork: edits.fork)."""
 from __future__ import annotations
-
-import copy
 
 from . import edits as E
 from . import ids, locks
@@ -121,9 +119,14 @@ def _changed(edits, idx, lists) -> list[dict]:
 def plan(kind, data: dict, calls, locked_by=None, who=None) -> tuple[dict, list, list[dict]]:
     """(the new document, the applied edits, the normalized calls). Pure: `data` is not touched. `locked_by(id)`: the
     Who that locked an item (Document.locked_by); `who`: who asks, so an agent can't unlock a person's lock."""
+    return plan_indexed(kind, data, calls, locked_by, who)[:3]
+
+
+def plan_indexed(kind, data: dict, calls, locked_by=None, who=None, idx=None):
+    """plan, plus the new document's index (its positions may be stale). `idx`: data's index, when known."""
     calls = normalize(calls)
-    work, applied = copy.deepcopy(data), []
-    idx = index(work, kind.lists)                       # one index for the whole call, kept up to date by its edits
+    work, idx = E.fork(data, kind.lists, idx)          # one index for the whole call, kept up to date by its edits
+    applied = []
     for n, call in enumerate(calls, 1):
         where = f"op {n} of {len(calls)} ({call['op']})"
         op = kind.registry.get(call["op"], f"op {n} of {len(calls)}")
@@ -145,4 +148,4 @@ def plan(kind, data: dict, calls, locked_by=None, who=None) -> tuple[dict, list,
     if problems:
         raise RostrumError(codes.CHECK_FAILED, f"{len(calls)} op(s)", "the document", "would break its check: "
                            + "; ".join(problems))
-    return work, applied, calls
+    return work, applied, calls, idx

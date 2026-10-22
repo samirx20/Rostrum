@@ -28,7 +28,9 @@ class DocKind:
     registry: Registry
     lists: dict = field(default_factory=lambda: {"doc": ["items"]})   # item type -> keys holding child items
     version: int = 1
-    check: Callable[[dict], list[str]] = _no_problems   # whole-document check, run after every call
+    # The app's check, run after every call: check(data), or check(data, items=None) to be handed the items a call
+    # changed (None: look at everything, as on open) so a big document isn't walked whole per change.
+    check: Callable[..., list[str]] = _no_problems
     # Facts about an item, for valid_when {"fact": …}: the app writes facts(item, doc), where doc is a View
     # (doc.parent(item), doc.item(id)), so a child can be valid by its parent (a note by its track's instrument).
     # A one-argument facts(item) still works.
@@ -36,6 +38,9 @@ class DocKind:
     new: Callable[[], dict] | None = None               # a fresh document's root
 
     def __post_init__(self):
+        app_check = self.check
+        if len(inspect.signature(app_check).parameters) < 2:
+            self.check = lambda data, items=None: app_check(data)
         app_facts = self.facts
         takes_doc = len(inspect.signature(app_facts).parameters) >= 2
 
@@ -67,7 +72,7 @@ class DocKind:
         try:
             out = [f"{e.where}: {e.subject} {e.problem}" + (f" ({', '.join(e.accepted)})" if e.accepted else "")
                    for e in self.bad_values(walk(data, self.lists) if items is None else items)]
-            return out + list(self.check(data))
+            return out + list(self.check(data, items))
         except SHAPE_ERRORS as e:
             return [f"{type(e).__name__}: {e}"]
 

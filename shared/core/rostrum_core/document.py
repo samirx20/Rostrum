@@ -11,10 +11,9 @@ from datetime import datetime, timezone
 
 from . import edits as E
 from . import joint, run
-from .diff import diff
+from .diff import _at, diff
 from .errors import RostrumError, codes
 from .history import Change, History
-from .storage import doc_hash
 from .tree import index
 from .who import Who
 
@@ -48,7 +47,7 @@ class Document:
     def __init__(self, kind, data: dict | None = None, folder=None, item=None, clock=ticking):
         self.kind, self.folder, self.item_id, self.clock = kind, folder, item, clock
         self.data = data if data is not None else kind.blank()
-        index(self.data, kind.lists)                    # a duplicate id fails here, loudly
+        self._idx = (self.data, self._top(), index(self.data, kind.lists))   # a duplicate id fails here; _index
         self.base = copy.deepcopy(self.data)            # history line 0
         self.history = History(kind.lists)
         self.script_bases: dict[str, dict] = {}         # § 7: what each script produced last time
@@ -70,23 +69,38 @@ class Document:
         return open_doc(cls, folder, item, kind)
 
     # reading
+    def _index(self) -> dict:
+        """id -> Loc for the current data, kept until the data is replaced (every change makes a new one) or its
+        top lists are (a set-up that writes into doc.data directly). Positions may be stale (parent_of looks)."""
+        if self._idx[0] is not self.data or self._idx[1] != self._top():
+            self._idx = (self.data, self._top(), index(self.data, self.kind.lists))
+        return self._idx[2]
+
+    def _indexed(self, data, idx):
+        self._idx = (data, self._top(data), idx)
+
+    def _top(self, data=None):
+        data = self.data if data is None else data
+        return tuple((id(data.get(k)), len(data.get(k) or ())) for k in self.kind.lists.get(data.get("type"), []))
+
     def item(self, id_) -> dict:
-        idx = index(self.data, self.kind.lists)
+        idx = self._index()
         if id_ not in idx:
             raise RostrumError.not_found("document", "item", id_, idx)
         return idx[id_].item
 
     def has(self, id_) -> bool:
-        return id_ in index(self.data, self.kind.lists)
+        return id_ in self._index()
 
     def items(self):
-        return (loc.item for loc in index(self.data, self.kind.lists).values())
+        return (loc.item for loc in list(self._index().values()))
 
     def parent_of(self, id_):
-        loc = index(self.data, self.kind.lists).get(id_)
+        idx = self._index()
+        loc = idx.get(id_)
         if loc is None:
-            raise RostrumError.not_found("document", "item", id_, index(self.data, self.kind.lists))
-        return loc.parent, loc.key, loc.index
+            raise RostrumError.not_found("document", "item", id_, idx)
+        return loc.parent, loc.key, (_at(idx, id_) if loc.parent is not None else loc.index)
 
     @property
     def seq(self) -> int:
@@ -110,30 +124,33 @@ class Document:
         if self._gesture is not None:
             raise RostrumError(codes.CONFLICT, "apply", "the document", "is being dragged by a person right now",
                                hint="Try again in a moment.")
-        work, edits, calls = run.plan(self.kind, self.data, calls, self.locked_by, who)
+        work, edits, calls, idx = run.plan_indexed(self.kind, self.data, calls, self.locked_by, who, self._index())
         if based_on is not None:
             self._check_based_on(edits, based_on)
         label = label or ", ".join(dict.fromkeys(self.kind.registry.get(c["op"]).label for c in calls))
         if not edits:
             return None
-        if self._nudge(who, label, edits, calls, work):
+        if self._nudge(who, label, edits, calls, work, idx):
             return self.history.changes[-1]
-        return self.commit(work, edits, who, label, calls, session)
+        return self.commit(work, edits, who, label, calls, session, idx=idx)
 
-    def commit(self, work, edits, who, label, calls=(), session=None, undoes=(), redoes=()) -> Change:
+    def commit(self, work, edits, who, label, calls=(), session=None, undoes=(), redoes=(), idx=None) -> Change:
         """Record an already-checked new tree as one change (used by apply, undo, merge, gestures). Live (live.py): if
-        the door took in another program's steps first, `work` is an older picture, so the edits go on top of now."""
+        the door took in another program's steps first, `work` is an older picture, so the edits go on top of now.
+        `idx`: work's index, when known."""
         with self._door() as caught:
             if caught:
-                work = copy.deepcopy(self.data)
-                idx = index(work, self.kind.lists)
+                work, idx = E.fork(self.data, self.kind.lists, self._index())
                 edits = [E.apply(work, self.kind.lists, e, label, idx) for e in edits]
-            return self._record(work, edits, who, label, calls, session, undoes, redoes)
+            return self._record(work, edits, who, label, calls, session, undoes, redoes, idx)
 
-    def _record(self, work, edits, who, label, calls, session, undoes, redoes) -> Change:
+    def _record(self, work, edits, who, label, calls, session, undoes, redoes, idx=None) -> Change:
         c = Change(self.seq + 1, self.seq, who, label, _now(), list(edits), list(calls), session,
-                   doc_hash(work), list(undoes), list(redoes), self.clock(), joint.current() or joint.new_id())
+                   "", list(undoes), list(redoes), self.clock(), joint.current() or joint.new_id())
+        c.hash_of(work)                     # worked out when first read (saving, comparing), not on every change
         self.data = work
+        if idx is not None:
+            self._indexed(work, idx)
         self.history.add(c)
         joint.note(self, c.step)
         with joint.within(c.step):          # what a listener changes now (a marker following a layer) is this step
@@ -149,7 +166,7 @@ class Document:
                                    f"was changed by {c.who} (\"{c.label}\", step {c.seq}) after step {based_on}",
                                    hint="Read the document again and retry.")
 
-    def _nudge(self, who, label, edits, calls, work) -> bool:
+    def _nudge(self, who, label, edits, calls, work, idx) -> bool:
         last = self.history.changes[-1] if self.history.changes else None
         if not (last and who.kind == "person" and last.who == who and last.original and last.label == label
                 and self.clock() - last.t < NUDGE_S and all(isinstance(e, E.Set) for e in last.edits + edits)):
@@ -158,8 +175,10 @@ class Document:
             return False
         first = {(e.id, *e.path): e.before for e in last.edits}
         last.edits = [E.Set(e.id, e.path, e.value, first[(e.id, *e.path)]) for e in edits]
-        last.calls, last.t, last.hash_after = last.calls + calls, self.clock(), doc_hash(work)
+        last.calls, last.t = last.calls + calls, self.clock()
+        last.hash_of(work)
         self.data = work
+        self._indexed(work, idx)
         with joint.within(last.step):
             self._emit(Event("change", last))
         return True
@@ -205,10 +224,9 @@ class Document:
         return self._replay(c.edits, who, f"Redid: {c.label}", redoes=[c.seq])
 
     def _replay(self, edits, who, label, **kw) -> Change:
-        work = copy.deepcopy(self.data)
-        idx = index(work, self.kind.lists)
+        work, idx = E.fork(self.data, self.kind.lists, self._index())
         done = [E.apply(work, self.kind.lists, e, label, idx) for e in edits]
-        return self.commit(work, done, who, label, **kw)
+        return self.commit(work, done, who, label, idx=idx, **kw)
 
     # versions
     @_through_door
