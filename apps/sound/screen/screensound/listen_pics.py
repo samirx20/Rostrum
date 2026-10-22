@@ -41,7 +41,8 @@ def make_pictures(render: dict, folder: Path, n: int) -> dict:
     else:
         t, st = short_term(y, sr)
     with _DRAWING:
-        loudness_panel(y, sr, t, st, loud)
+        lufs = render.get("lufs")          # the integrated loudness the engine already measured: not measured again here
+        loudness_panel(y, sr, t, st, loud, None if lufs is None else float(lufs))
         spectrum_panel(y, sr, spec)
     for old in folder.glob("*.png"):
         if old not in (loud, spec):
