@@ -8,8 +8,12 @@ import RostrumKit
 Row {
     readonly property bool hasBlur: backend.frameInfo.blur === true
     readonly property bool hasSize: backend.frameInfo.previewSize === true
-    visible: hasBlur || hasSize
+    property bool roomy: true  // false: the header has no room (LayerTimeline gives way with these first)
+    visible: (hasBlur || hasSize) && roomy
     spacing: Theme.gap         // a label to its control; groups get Theme.pad more (below)
+    // its width when laid out (kept while hidden, which may measure 0), so the header can ask whether it fits
+    property real shownWidth: 0
+    onWidthChanged: if (width > 0) shownWidth = width
 
     Text {
         visible: hasBlur; anchors.verticalCenter: parent.verticalCenter

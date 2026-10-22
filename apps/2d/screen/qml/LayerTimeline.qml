@@ -36,11 +36,20 @@ Rectangle {
     Row {  // the header
         id: header
         x: Theme.gap; y: Theme.gap; height: Theme.header; spacing: Theme.pad   // y: room for the edge's grab above it
-        PlayButton { anchors.verticalCenter: parent.verticalCenter; implicitHeight: 24; implicitWidth: 24
+        // gives way when it would reach the compact switch: the play options go first (the key bar matters more)
+        readonly property real room: compactSwitch.x - Theme.pad - x
+        readonly property real others: {
+            let w = 0
+            for (const c of [play, readout, mute, marker, keysCurves, frameTools, keyBar])
+                if (c.visible) w += c.width + spacing
+            return w
+        }
+        PlayButton { id: play; anchors.verticalCenter: parent.verticalCenter; implicitHeight: 24; implicitWidth: 24
                      playing: backend.playing; onClicked: backend.togglePlay() }
-        TimeReadout { anchors.verticalCenter: parent.verticalCenter; width: 112 }
-        PlayOptions { anchors.verticalCenter: parent.verticalCenter }
+        TimeReadout { id: readout; anchors.verticalCenter: parent.verticalCenter; width: 112 }
+        PlayOptions { anchors.verticalCenter: parent.verticalCenter; roomy: header.others + shownWidth <= header.room }
         IconButton {   // 🔊: the project's sound in 2D only (backend.soundtrack), only while there is sound
+            id: mute
             objectName: "soundMute"
             visible: backend.soundtrack.present
             anchors.verticalCenter: parent.verticalCenter; implicitWidth: 26; implicitHeight: 26; kind: "ghost"
@@ -48,14 +57,15 @@ Rectangle {
             tip: backend.soundtrack.muted ? "Sound is muted here (only in 2D): click to hear it" : "Mute the sound here (only in 2D, not the project)"
             onClicked: backend.soundtrack.setMuted(!backend.soundtrack.muted)
         }
-        AddMarker { anchors.verticalCenter: parent.verticalCenter }
+        AddMarker { id: marker; anchors.verticalCenter: parent.verticalCenter }
         Segmented {   // Keys: the rows' diamonds; Curves: the value curves inside this same area
+            id: keysCurves
             anchors.verticalCenter: parent.verticalCenter; implicitHeight: 26
             options: [{ value: "keys", label: "Keys" }, { value: "curves", label: "Curves" }]
             current: backend.curves.on ? "curves" : "keys"
             onPicked: (v) => backend.curves.setOn(v === "curves")
         }
-        FrameTools { anchors.verticalCenter: parent.verticalCenter; visible: painter.drawingId !== "" && !keyBar.visible }   // a frame-by-frame layer, no keys picked
+        FrameTools { id: frameTools; anchors.verticalCenter: parent.verticalCenter; visible: painter.drawingId !== "" && !keyBar.visible }   // a frame-by-frame layer, no keys picked
         KeyBar { id: keyBar; anchors.verticalCenter: parent.verticalCenter }   // only while keys are picked
     }
     IconButton {  // every row, or only the selected layer's
