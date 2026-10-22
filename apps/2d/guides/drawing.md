@@ -44,6 +44,25 @@ Under the brush, the panel shows **Paint on** and the name of what you paint on 
 1. Press and drag on the picture, then let go. That is one stroke.
 2. Each stroke is one change, so **Ctrl+Z** takes back the last stroke.
 
+### Pick a colour from the picture
+
+Hold **Alt**. The pointer becomes a picker, and a small round swatch beside it shows the colour of the picture under
+it, as you see it on screen (paint, shapes, pictures and all). Click, and that colour becomes the brush colour. Let go
+of **Alt** and you are painting again.
+
+### Select strokes, then move, copy, paste or delete them
+
+1. Hold **Ctrl** and drag a loop round the strokes (and fills) you want, or click **Select strokes** in the bar and
+   then drag. Anything with most of its length inside the loop is picked, and is outlined.
+2. The bar now shows what applies: **Copy**, **Paste**, **Delete** and **Done**. Drag the picked strokes to move them.
+   They stay strokes, so they stay sharp.
+3. **Ctrl+C** copies them and **Ctrl+V** pastes them a little down and right of the originals, onto the paint layer
+   that is highlighted. **Delete** removes them.
+4. **Esc**, **Done**, or a press outside the box lets go.
+
+Each of these is one change, so **Ctrl+Z** takes back a move, a paste or a delete. Only paint layers that are not
+locked can be picked from.
+
 ## 4. Fill a closed shape
 
 1. Draw the lines around an area, closed or nearly closed.

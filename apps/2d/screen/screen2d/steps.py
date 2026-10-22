@@ -34,6 +34,10 @@
   Creation tools (create_steps.py): shape <rect|ellipse> x0 y0 x1 y1 [shift] [alt] | text <x> <y> <words> | textbox x0 y0 x1 y1 <words> | edittext <layer> <words>
   Paint (paint_steps.py): fill <x> <y> | fillmode on|off | gap <size> | paintpick|paintremove <paint> | paintset <paint> <field> <v> |
     paintmove <paint> <row> | painttoggle <field> on|off
+  Strokes (stroke_steps.py): altpick <x> <y> [click] | altoff | lasso <x,y> … [open] | selectstrokes on|off | strokesmove <dx> <dy> |
+    strokesturn <deg> [scale] | strokesdelete | strokescopy | strokespaste | strokesclear | clickarea canvas|timeline|settings
+  Sound (soundtrack_steps.py): sound wait | mute on|off | beats on|off | beat prev|next | scrub <s> | play <s> |
+    wav <path> | pick <item|-> | menu | open [dry] | problem <png> | rulermenu
   View (view_steps.py): zoom <percent|fit> [x y] | pan <dx> <dy> | fitsel | viewmenu | draghold <layer> <dx> <dy> [ctrl] [shift]
 A step that leaves an error in the status fails (nonzero exit).
 """
@@ -49,7 +53,9 @@ from .export_steps import WORDS as EXPORT_WORDS, do_export_step
 from .key_steps import WORDS as KEY_WORDS, do_key_step
 from .file_steps import WORDS as FILE_WORDS, do_file_step
 from .paint_steps import WORDS as PAINT_WORDS, do_paint_step
+from .stroke_steps import WORDS as STROKE_WORDS, do_stroke_step
 from .view_steps import WORDS as VIEW_WORDS, do_view_step
+from .soundtrack_steps import WORDS as SOUND_WORDS, do_sound_step
 
 
 def value(text):
@@ -132,7 +138,7 @@ def steps_play(bridge, seconds, blur, size="full"):
 
 
 def steps_bardrag(bridge, step, rest):
-    """bardrag <layer> <move|start|end> <from s> <to s>: the timeline's bar drag through its own slots. A `#marker` target
+    """bardrag <layer> <move|start|end> <from s> <to s> [snap] [hold]: the timeline's bar drag through its own slots. A `#marker` target
     puts the dragged edge on that marker (the pointer goes as far as the edge needs) and lets go with snapping on."""
     layer, part, t0 = rest[0], rest[1], float(rest[2])
     if not bridge.beginBarDrag(layer, part, t0):
@@ -144,9 +150,12 @@ def steps_bardrag(bridge, step, rest):
         item = bridge.placed_item(layer)
         edge = (item["end"] if item.get("end", 36000.0) < 36000.0 else bridge.comp()["duration"]) if part == "end" else item.get("start", 0.0)
         snap, to = 0.1, t0 + times[name] - edge
+    snap = snap or (0.1 if "snap" in rest[4:] else 0.0)      # `snap`: within 0.1 s (time_snap.py)
     for f in (0.25, 0.5, 0.75, 1.0):
         bridge.barDragTo(t0 + (float(to) - t0) * f, snap)
-    bridge.endDrag()
+    print("drag label", ascii(bridge.timeSnap.text))
+    if "hold" not in rest[4:]:                   # `hold`: not let go yet (a picture mid-drag)
+        bridge.endDrag()
 
 
 def do_step(bridge, win, step):
@@ -344,6 +353,10 @@ def do_step(bridge, win, step):
         do_create_step(bridge, word, rest, step)
     elif word in PAINT_WORDS:                    # Fill, the paint layers panel (paint_steps.py)
         do_paint_step(bridge, word, rest, step)
+    elif word in SOUND_WORDS:                    # the project's sound, Show beats (soundtrack_steps.py)
+        do_sound_step(bridge, win, word, rest, step)
+    elif word in STROKE_WORDS:                   # Alt picks a colour, the lasso, the focused area (stroke_steps.py)
+        do_stroke_step(bridge, win, word, rest, step)
     else:
         raise ValueError(f"unknown step {step!r}")
     if bridge.status.startswith("Error"):

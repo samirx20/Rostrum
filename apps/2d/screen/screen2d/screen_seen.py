@@ -32,8 +32,8 @@ def state(bridge) -> dict:
         "playhead": bridge._t,                         # composition seconds
         "range": None,                                 # 2D has no time range yet
         "scene": bridge.label_of(comp),                # the open composition
-        # The area with the keyboard focus is not kept in Python today (Main.qml would call a `backend.setFocusArea(name)`
-        # from its activeFocusItem); until then: the canvas.
+        # The area with the keyboard focus or the last click: Main.qml tells `backend.setFocusArea(name)` ("canvas",
+        # "timeline", "settings"; tools2d.py); the kit's AppShell focus handling can replace it. The canvas until then.
         "focus": getattr(bridge, "_focus_area", "") or "canvas",
         "view": {"tool": bridge.tool, "playing": bridge.playing, "previewSize": bridge.frameInfo["previewSize"],
                  "zoom": bridge.view_zoom(), "visible": _visible(bridge)},

@@ -42,7 +42,34 @@ AppShell {
     Shortcut { sequence: "T"; enabled: !shell.typing; onActivated: backend.setTool("text") }
     Shortcut { sequence: "A"; enabled: !shell.typing; onActivated: backend.showAnimated() }    // only the animated settings of the selection; again folds them
     Shortcut { sequence: "Escape"; enabled: backend.tool === "draw" || backend.tool === "rect" || backend.tool === "ellipse"
-                                            || (backend.tool === "text" && !backend.create.typing); onActivated: backend.setTool("move") }
+                                            || (backend.tool === "text" && !backend.create.typing)
+               onActivated: { if (backend.strokeSelect.count > 0 || backend.strokeSelect.armed) backend.strokeSelect.clear()   // picked strokes first
+                              else backend.setTool("move") } }
+
+    // The area with the keyboard focus or the last click, for inspect_screen (backend.setFocusArea): "canvas", "timeline", "settings".
+    function areaOf(item) {
+        for (var i = item; i; i = i.parent) {
+            if (i === stage) return "canvas"
+            if (i === timeline) return "timeline"
+            if (i === settingsMove || i === settingsDraw) return "settings"
+        }
+        return ""
+    }
+    Connections { target: shell; function onActiveFocusItemChanged() { const a = shell.areaOf(shell.activeFocusItem); if (a !== "") backend.setFocusArea(a) } }
+    function areaAt(p) {        // the area under a window point
+        for (const [name, item] of [["canvas", stage], ["timeline", timeline], ["settings", settingsMove.visible ? settingsMove : settingsDraw]]) {
+            const q = item.mapFromItem(null, p.x, p.y)
+            if (q.x >= 0 && q.y >= 0 && q.x < item.width && q.y < item.height) return name
+        }
+        return ""
+    }
+    Item {      // a click anywhere says which area it was in; only watches (a passive handler on a clear sheet over the window)
+        anchors.fill: parent; z: 100000
+        TapHandler {
+            acceptedButtons: Qt.AllButtons; gesturePolicy: TapHandler.DragThreshold      // passive: the press goes on to what is beneath
+            onPressedChanged: if (pressed) { const a = shell.areaAt(point.scenePosition); if (a !== "") backend.setFocusArea(a) }
+        }
+    }
 
     Connections { target: spaceKey; function onTapped() { backend.togglePlay() } }   // a tap of Space plays; held, it pans (spacekey.py)
     // frame by frame, on the selected drawing (INTERACTION Part 2: , and . step drawings, = and − hold; Alt+arrows nudge)
@@ -50,6 +77,10 @@ AppShell {
     // of the selected layers, or of everything when none is selected (backend.stepEvent, screen2d/key_edits.py)
     Shortcut { sequence: ","; enabled: !shell.typing; onActivated: backend.stepEvent(-1) }
     Shortcut { sequence: "."; enabled: !shell.typing; onActivated: backend.stepEvent(1) }
+    // Shift+, and Shift+. : the previous / next beat of the project's sound (the key map's prev_beat / next_beat;
+    // "<" and ">" are what a US keyboard sends for them), only while the sound has a tempo (backend.soundtrack)
+    Shortcut { sequences: ["Shift+,", "<"]; enabled: !shell.typing && backend.soundtrack.hasBeats; onActivated: backend.soundtrack.stepBeat(-1) }
+    Shortcut { sequences: ["Shift+.", ">"]; enabled: !shell.typing && backend.soundtrack.hasBeats; onActivated: backend.soundtrack.stepBeat(1) }
     Shortcut { sequence: "Alt+N"; onActivated: painter.newFrame(false) }
     Shortcut { sequence: "Alt+Shift+N"; onActivated: painter.newFrame(true) }
     Shortcut { sequences: ["=", "+"]; enabled: !shell.typing && painter.drawingId !== ""; onActivated: painter.holdBy(1) }
@@ -65,7 +96,8 @@ AppShell {
         enabled: !shell.typing
         skip: backend.actions.keys.map(k => k.job).filter(j => j === "delete" || backend.actions.jobs.indexOf(j) < 0)   // keys run here
     }
-    Shortcut { sequences: ["Delete", "Backspace"]; enabled: !shell.typing; onActivated: backend.layerCommand("delete") }
+    Shortcut { sequences: ["Delete", "Backspace"]; enabled: !shell.typing
+               onActivated: { if (backend.strokeSelect.count > 0) backend.strokeSelect.remove(); else backend.layerCommand("delete") } }   // picked strokes first
     Shortcut { sequence: "Ctrl+A"; enabled: shell.canvasKeys; onActivated: backend.selectAllLayers() }
     // Esc steps back one level (the kit's ladder, selection_rules.esc_step): close an open panel, else clear
     Shortcut {
@@ -129,9 +161,9 @@ AppShell {
     ]
     leading: FileMenu { id: fileMenu; onAct: (key) => fileFlow.act(key) }
     right: [
-        Inspector { anchors.fill: parent; bridge: backend; keyMarks: true; visible: backend.tool !== "draw"
+        Inspector { id: settingsMove; anchors.fill: parent; bridge: backend; keyMarks: true; visible: backend.tool !== "draw"
                     highlight: backend.keys.props },      // the settings whose keys are picked (key_select.py)
-        Inspector { anchors.fill: parent; bridge: painter; title: "Brush"; visible: backend.tool === "draw"
+        Inspector { id: settingsDraw; anchors.fill: parent; bridge: painter; title: "Brush"; visible: backend.tool === "draw"
                     below: PaintOn { } }      // under the brush: the paint layers and switches of what it paints on
     ]
     bottom: LayerTimeline {

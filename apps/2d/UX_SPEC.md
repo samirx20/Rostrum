@@ -292,7 +292,7 @@ PLAN's list or the H28 draft.
 | Smears, trails, motion blur | Effects and the scene's shutter | Now | 3.25 |
 | Repeat *(new)* | Copies in a row, grid, circle or along a path, with offsets | Next | 3.27 |
 | Shape morphing | A path's outline changes between keys | Now | 3.4 |
-| After the last key *(new)* | Hold, repeat, back and forth, or carry on | Next | 3.18 |
+| After the last key | Hold, repeat, back and forth, or carry on | Now (H31) | 3.18 |
 | Time of a symbol or video *(new)* | Freeze, reverse, speed ramps | Next | 3.27 |
 
 ### F2. Expressions and links
@@ -355,10 +355,10 @@ PLAN's list or the H28 draft.
 
 | Feature | What it is | When | Card |
 |---|---|---|---|
-| Hear the project's sound | Plays and scrubs with the picture through Sound's engine | Next | 3.28 |
-| Waveform row | The last row of the timeline | Next | 3.28 |
+| Hear the project's sound | Plays and scrubs with the picture through Sound's engine | Now (H31) | 3.28 |
+| Waveform row | The last row of the timeline | Now (H31) | 3.28 |
 | Shared markers on the ruler | From Sound and every app; add, rename, move | Now | 3.28 |
-| Beat grid and snapping to beats | When Sound has a tempo map | Next | 3.28 |
+| Beat grid and snapping to beats | When Sound has a tempo map | Now (H31) | 3.28 |
 | Sync sound | A video's own sound; a cue tied to a beat | Next | 3.28 |
 | Motion samples to Sound | So Sound can place whooshes where things move | Now | 3.30 |
 
@@ -1109,7 +1109,7 @@ operation is one (`mask.make`).
   eases all selected keys. *Easy:* named eases first, the curve for those who want it. *Rejected:* the settings panel
   swapping to the key (Hem / today: you lose the layer's settings each time you touch a key, FINDINGS 3.1).
 
-### After the last key · Next
+### After the last key · Now (H31)
 - **Goal:** a spinner that keeps turning, a pulse that repeats, without copying keys.
 - **Steps:** select the last key → key bar ⋯ › **After the last key: Stay · Repeat · Back and forth · Carry on**.
 - **Feedback:** the repeat shows on the bar as faint copies of the keys.
@@ -1161,7 +1161,7 @@ operation is one (`mask.make`).
   bars and keys spread live as you change the number → click away to keep it.
 - **Feedback:** live; the bars form a staircase.
 - **Undo and adjust:** one step; open Stagger again to change it (it re-spreads from the first one).
-- **Agent:** `layer.stagger {ids, by, order}` *(new)*.
+- **Agent:** `layer.stagger {ids, by, order}`; picked keys: `key.stagger {by, order}` (H31).
 - **3E:** *Efficient:* 1 action replaces dragging n bars by hand (Hem's F3). *Effective:* "from the centre" and
   "random" give the cascades top motion design uses. *Rejected:* stagger as an expression only.
 
@@ -1501,7 +1501,7 @@ operation is one (`mask.make`).
 
 ## 3.28 Sound and music
 
-### Hear the project's sound · Next
+### Hear the project's sound · Now (H31)
 - **Goal:** time to music and voice by ear.
 - **Steps:** when the project has sound (a RostrumSound item, a placed sound file, a video's own sound), a **Sound
   row** appears at the bottom of the layers list with its waveform. Play plays it in sync; dragging the playhead scrubs
@@ -1509,11 +1509,11 @@ operation is one (`mask.make`).
   which Sound item plays (the project's main mix by default). **Open in RostrumSound** on the row's right-click.
 - **Where and when:** the row exists only when there is sound.
 - **Feedback:** waveform; markers from Sound on the ruler.
-- **Agent:** `value.set {soundtrack}` *(new field)*; eyes from Sound's tools.
+- **Agent:** `comp.set {soundtrack}` (the scene field; as built in H31) and `inspect_soundtrack` (what plays, its length, tempo, bars, markers); eyes from Sound's tools.
 - **3E:** *Effective:* the one audio engine renders it (rule 9), so what you hear in 2D is the mix. *Rejected:* a 2D
   audio engine (a second engine to keep in step), or no sound at all (today: timing to music blind).
 
-### Beat grid · Next
+### Beat grid · Now (H31)
 - **Goal:** land things on the beat.
 - **Steps:** when Sound has a tempo map, the ruler's ▾ › **Show beats** draws faint beat lines and bar numbers;
   snapping includes beats (bars stronger). Shift+`,` and Shift+`.` jump to the previous / next beat.

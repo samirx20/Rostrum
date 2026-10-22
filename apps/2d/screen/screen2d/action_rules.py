@@ -6,6 +6,7 @@ field's `valid_when`), read on the selection's facts below. Its `calls`:
 
     {"op": "group.make", "target": "stack", "args": {"id": "$new:group", "as": "group"}}
     {"rule": "order", "how": "front"}                    a named rule that makes several calls (layer.arrange)
+    {"rule": "depth", "value": 3.0}                      Set depth: drawing.set depth + background.fit
 
 Target rules: ids (in pick order) · stack (bottom first) · stack_but_top · rest (all but the first) · locked ·
 unlocked · hidden · shown · not_copied. Argument values starting with "$" are rules: $new:<type> (a fresh id, so the
@@ -57,7 +58,9 @@ class Facts:
             "any_locked": bool(self.lists["locked"]), "any_unlocked": bool(self.lists["unlocked"]),
             "any_hidden": bool(self.lists["hidden"]), "any_shown": bool(self.lists["shown"]),
             "style_copied": bool(self.copied) and any(i != self.copied for i in ids),
-            "clipboard": bool(self.state["clipboard"]), "keys_picked": bool(self.state["keys"])}
+            "clipboard": bool(self.state["clipboard"]), "keys_picked": bool(self.state["keys"]),
+            "depth_ok": self.kinds == {"drawing"} and bool(p) and p["type"] == "comp"
+            and any(c["type"] == "camera" for c in p.get("layers", []))}      # Set depth: drawings of a comp with a camera
 
 
 def calls_of(spec: dict | None, f: Facts, at) -> list[dict]:
@@ -134,4 +137,14 @@ def said(calls: list[dict], label: str, doc) -> str:
     return f"Keyed {n} setting{'s' if n != 1 else ''} on {m} layer{'s' if m != 1 else ''}"
 
 
-RULES = {"order": _order, "pose": _pose}
+def _depth(f: Facts, value: float) -> list[dict]:
+    """Set depth: each drawing goes to this camera depth (`drawing.set`) and is resized to cover everything the camera
+    shows of it over the shot (`background.fit`): one change. None when every drawing is already there."""
+    todo = [i for i, it in zip(f.ids, f.items) if it.get("depth", 0.0) != value]
+    if not todo:
+        return []
+    return [{"op": "drawing.set", "target": todo, "args": {"depth": value}},
+            {"op": "background.fit", "target": todo, "args": {}}]
+
+
+RULES = {"order": _order, "pose": _pose, "depth": _depth}

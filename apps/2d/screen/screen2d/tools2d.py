@@ -2,7 +2,7 @@
 mix-in for Bridge2D only makes them and hands them out."""
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QObject
+from PySide6.QtCore import Property, QObject, Slot
 from rostrum_gui.parts import SlotMixin
 
 from .adding import Adder
@@ -15,10 +15,14 @@ from .key_bar import KeyBar
 from .key_select import KeySelect
 from .multi import Multi
 from .paint_layers import PaintLayers
+from .paint_pick import ColourPick
 from .pen import Pen
 from .problems import Problems
 from .snapper import Snapper
 from .stagger import Stagger
+from .stroke_select import StrokeSelect
+from .time_snap import TimeSnap
+from .ease_play import EasePlay
 
 
 class ToolSlots(SlotMixin):
@@ -29,6 +33,8 @@ class ToolSlots(SlotMixin):
         self._keys.changed.connect(self._curves.changed)    # the curve editor shows the picked key's handles
         self._key_bar = KeyBar(self)                        # the timeline header's key bar (key_bar.py): backend.keyBar
         self._stagger = Stagger(self)                       # Stagger…'s popover (stagger.py): backend.stagger
+        self._time_snap = TimeSnap(self)                    # the "+6 f" label of a time drag (time_snap.py): backend.timeSnap
+        self._ease_play = EasePlay(self)                    # an ease picked plays once on the canvas (ease_play.py)
         self._exporter, self._importer, self._adder = Exporter(self), Importer(self), Adder(self)
         self._problems = Problems(self)
         self._problems.failed.connect(self._fail)
@@ -36,6 +42,8 @@ class ToolSlots(SlotMixin):
         self._snap = Snapper(self)                          # canvas drags snap (snapper.py): backend.snap
         self._paint_layers = PaintLayers(self)              # Draw's "Paint on …" group (paint_layers.py): backend.paintLayers
         self._filler = Filler(self)                         # Fill, G while Draw is on (filler.py): backend.fill
+        self._pick = ColourPick(self)                       # Alt picks a colour (paint_pick.py): backend.colourPick
+        self._strokes = StrokeSelect(self)                  # lasso, move, copy, delete strokes (stroke_select.py): backend.strokeSelect
 
     @Property(QObject, constant=True)
     def pen(self):
@@ -63,6 +71,16 @@ class ToolSlots(SlotMixin):
         return self._stagger
 
     @Property(QObject, constant=True)
+    def timeSnap(self):
+        """The label by the pointer while keys or bars are dragged in time: "+6 f · drop" (time_snap.py)."""
+        return self._time_snap
+
+    @Property(QObject, constant=True)
+    def easePlay(self):
+        """Picking an ease plays the stretch it shapes once on the canvas (ease_play.py)."""
+        return self._ease_play
+
+    @Property(QObject, constant=True)
     def snap(self):
         """Snapping while dragging on the canvas, and the lines it caught (snapper.py)."""
         return self._snap
@@ -76,6 +94,24 @@ class ToolSlots(SlotMixin):
     def fill(self):
         """Fill while Draw is on (filler.py)."""
         return self._filler
+
+    @Property(QObject, constant=True)
+    def colourPick(self):
+        """Hold Alt while Draw is on: pick the colour under the pointer (paint_pick.py)."""
+        return self._pick
+
+    @Property(QObject, constant=True)
+    def strokeSelect(self):
+        """Select strokes with a lasso, then move, copy, delete them (stroke_select.py)."""
+        return self._strokes
+
+    _focus_area = ""                                    # the area with the keyboard focus, for inspect_screen (screen_seen.py)
+
+    @Slot(str)
+    def setFocusArea(self, name):
+        """QML says which area has the keyboard focus or was clicked: "canvas", "timeline" or "settings". Small on
+        purpose: the kit's AppShell focus handling (S34) can replace it."""
+        self._focus_area = name
 
     @Property(QObject, constant=True)
     def exporter(self):

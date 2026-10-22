@@ -31,6 +31,7 @@ from .clipboard import ClipboardSlots
 from .key_edits import KeyEdits
 from .render3d_watch import Render3DWatch
 from .shown import ShownState
+from .soundtrack import Soundtrack
 from .tools2d import ToolSlots
 from .undo_state import UndoState
 
@@ -83,6 +84,7 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
         self.r3d = Render3DWatch(self, self)                # a 3D render layer follows its item's newest render
         self.r3d.changed.connect(self._render)
         self.r3d.changed.connect(self._problems.touch)
+        self._soundtrack = Soundtrack(self)                 # the project's sound, played by Sound's engine (soundtrack.py)
         self.selectionChanged.connect(self.outlineChanged)
         self.selectionChanged.connect(self.shownChanged)
         self.link = None
@@ -98,6 +100,7 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
     paintEdge = Property(QObject, lambda self: self._paint_edge, constant=True)   # the paint target's edge (paint_edge.py)
     sharp = Property(QObject, lambda self: self._sharp, constant=True)           # past Full, drawn sharp (sharp.py)
     actions = Property(QObject, lambda self: self._hub, constant=True)   # the context bar, menus, keys (action_slots.py)
+    soundtrack = Property(QObject, lambda self: self._soundtrack, constant=True)   # the Sound row, beats (soundtrack.py)
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
     def comp(self) -> dict:
@@ -297,3 +300,4 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
         self.frames.close()
         self._problems.close()
         self.r3d.close()
+        self._soundtrack.close()

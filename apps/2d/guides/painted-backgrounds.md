@@ -14,6 +14,20 @@ and `camera-parallax-motion-blur` (depth).
 - Inside each depth layer, paint layers (`paint.add`) keep passes apart: sky, clouds, a mountain range, haze … Undo,
   hiding (`visible`) and moving work per paint layer.
 
+## On the screen: Set depth
+
+Paint first, then set depths: select first, then act.
+
+1. Make sure the composition has a camera (**+ Add**, then **Camera**).
+2. Select a drawing in the timeline or on the canvas. The context bar shows **Set depth ▾**.
+3. Pick **Far** (depth 3), **Middle** (1) or **Near** (0.25). The drawing moves to that depth and is resized so it still
+   covers everything the camera shows of it. Do the same for each drawing. One pick is one change: **Ctrl+Z** takes it
+   back. For another value, type it in the drawing's **Depth** setting and run `background.fit` (below).
+4. Without a camera, **Set depth** is not on the bar. Press **Ctrl+K** and type "set depth": it says why.
+
+To split one painting into depth layers, pick its strokes with a lasso (**Ctrl**+drag, see `drawing`) and move them
+with `background.move` (below).
+
 ## The operations (each one call = one undo step; GUI, script and MCP use the same ones)
 
 | Operation | Does |

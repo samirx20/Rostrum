@@ -26,7 +26,8 @@ Row {
     Act { visible: opts.mode === "pen"; text: "Done"; onClicked: { backend.pen.finish(); backend.setTool("move") } }
 
     // ---- Paint (PaintOptions.qml: the brush's bar settings, Eraser, Fill, + Paint layer, Painting on) ----
-    PaintOptions { visible: opts.mode === "paint"; room: opts.room; anchors.verticalCenter: parent.verticalCenter }
+    PaintOptions { visible: opts.mode === "paint" && backend.strokeSelect.count === 0; room: opts.room; anchors.verticalCenter: parent.verticalCenter }
+    StrokeBar { visible: opts.mode === "paint" && backend.strokeSelect.count > 0; anchors.verticalCenter: parent.verticalCenter }   // strokes picked: what applies to them
 
     // ---- Text, while typing ----
     TextField {

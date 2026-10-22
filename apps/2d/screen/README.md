@@ -93,6 +93,26 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - Steps (`paint_steps.py`): `fill <x> <y>`, `fillmode on|off`, `gap <size>`, `paintpick`, `paintset`, `paintmove`,
   `paintremove`, `painttoggle`.
 
+## Alt picks a colour, lasso for strokes, Set depth, the focused area (H31)
+
+- **Alt picks a colour** (`paint_pick.py` as `backend.colourPick`): while Draw is on, holding Alt (an event filter on the
+  window reads the key) turns the pointer into a picker; a swatch beside it shows the colour of the engine's frame at that
+  point (what the canvas shows: `frames.provider`'s newest picture, not layer data); a click sets the brush colour the way
+  the bar's Colour does (`painter.setValue("color")`). Steps: `altpick <x> <y> [click]`, `altoff`.
+- **Lasso** (`stroke_select.py` as `backend.strokeSelect`, geometry in `stroke_geom.py`, `StrokeOverlay.qml`, `StrokeBar.qml`):
+  Ctrl+drag, or **Select strokes** in the bar then drag, picks the strokes (of what the pen paints on, unlocked paint
+  layers) with more than half their points inside; they are outlined, the bar swaps to "N strokes · drag to move · Copy ·
+  Paste · Delete · Done Esc". A press in their box and drag moves them (one `stroke.set {points}` per stroke in ONE change),
+  Delete = `stroke.remove`, Copy / Paste = `paint.stroke` of the same brush (24 px down and right). Esc clears. Scale /
+  turn exist as `strokeSelect.transform(scale, turn)` (steps and agents), without handles yet. Fills are not picked yet.
+  Steps: `lasso x,y … [open]`, `selectstrokes on|off`, `strokesmove`, `strokesturn`, `strokesdelete`, `strokescopy`,
+  `strokespaste`, `strokesclear`, `clickarea`, `clickat` (`stroke_steps.py`).
+- **Set depth ▾** (actions.py `depth_far|middle|near`, rule `depth` in action_rules.py): on drawings of a composition that
+  has a camera: `drawing.set {depth}` then `background.fit` in one change (3 / 1 / 0.25, the `background.add` defaults).
+  Without a camera it is absent; Ctrl+K typing "set depth" shows why (`action_slots._whys`, the action's `why`).
+- **Focused area** (`backend.setFocusArea`, tools2d.py; Main.qml): the keyboard focus or a click in the canvas, timeline or
+  settings sets it; `inspect_screen`'s `focus` reads it (`screen_seen.py`). The kit's AppShell version (S34) can replace it.
+
 ## Animating: the key bar, K, retiming, Stagger, `,` `.` (H30)
 
 - **Key bar** (`qml/KeyBar.qml`, `EaseCurve.qml`, `screen2d/key_bar.py`, `backend.keyBar`; the one ease list in `eases.py`):
@@ -112,6 +132,57 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   the popover previews `layer.stagger {by, order}` live in one open gesture; click away keeps it, Esc takes it back.
 - Steps (`key_steps.py`): `keybox`, `keystretch`, `ease`, `easekey`, `easecurve`, `spring`, `keytime`, `keyvalue`,
   `easemenu`, `keyhere`, `keycopy`, `keypaste`, `stagger <f> [order] [open]`, `event prev|next`.
+
+## H31 keys: snapping in time, the drag label, ease plays once, Stagger on keys, After the last key
+
+- **One snapping in time** (`screen2d/time_snap.py`): key drags (`drags.py`, `key_moves.py`), the key stretch, bar drags
+  (`bar_drag.py`) and the curve editor's key drags (`curves.py`) all ask it where a time lands. Targets, strongest first:
+  shared markers, the playhead, other layers' bar ends and keys (every layer shown; never what the drag moves), the
+  music's bar starts, then its beats (`backend.soundtrack.bar_times()` / `beat_times()`); within 6 screen px, else a
+  whole frame; Ctrl = free. Each answer says what it caught: a bar edge let go on a marker ties as before, and a moved
+  bar's shift is measured from where the previews left it, so the edge lands exactly on its target.
+- **The drag label and the snap line** (`backend.timeSnap`, `qml/DragLabel.qml`, `qml/SnapLine.qml`): "+6 f", "−3 f",
+  "+6 f · drop" beside the dragged edge or key on its layer's row (placed from the drag's time and row, never the
+  pointer: right for the mouse, steps and agents alike); a thin magenta line at the time it caught, only while snapped.
+  SnapLine.qml is the one place 2D's snap colour lives (the canvas's snap lines use it too).
+- **An ease picked plays once** (`screen2d/ease_play.py`, `playback.once`): picking an ease plays the stretch it shapes
+  on the canvas, then the playhead goes back. Screen state only; drags never play; the key bar's ⋯ turns it off.
+- **Stagger on picked keys** (`stagger.py`): keys picked on two or more layers → `key.stagger {by, order}` (each
+  layer's picked keys move together, one change). The spatial orders compare layers in composition px through their
+  groups and the camera (`rostrum2d/placement.centres_at`, the engine's `place`).
+- **After the last key** (key bar ⋯: Stay · Repeat · Back and forth · Carry on; `key.set {after}` on a field's last
+  key): written out as plain keys in one place, `rostrum_core/keys/after.py`, read by Python's evaluation and by the
+  scene sent to the engine (preview = export).
+- Steps: `keydrag2 <key> <from> <to> [snap] [hold]`, `keystretch … [snap] [hold]`, `bardrag … [snap] [hold]` (`hold`:
+  not let go, for a picture mid-drag), `keyafter <stay|repeat|pingpong|carry>`, `easeplay on|off`, `keymore` (the key
+  bar's ⋯), `wait <ms>`.
+
+## Sound in 2D (H31: `screen2d/soundtrack*.py`, `waveform.py`, `qml/SoundRow.qml`, `BeatLines.qml`, `TimeRuler.qml`)
+
+- **One audio engine** (AGENTS.md rule 9): 2D has no mixer and no player of its own. `bridge.soundtrack`
+  (`soundtrack.py`) picks the scene's song (the comp's `soundtrack` field: a Sound item id; empty = the project's
+  first Sound item), asks RostrumSound's engine for its mix and plays it with RostrumSound's live player.
+- **Sound's side, used as is:** `rostrum_sound.soundtrack` (no Qt: `find`, `read`, `render` cached by content and
+  engine version in `<cache>/soundtrack/`, `grid` = beats and bar starts in seconds, `stamp`, `facts`) and
+  `rostrum_sound.live_play.LivePlay` (the one live player, shared with the Sound screen; `warm` opens it stopped).
+- **Render** (`soundtrack_render.py`): one worker thread, newest request wins, one engine process ended by its own
+  handle. Re-rendered when `stamp` changes (the song's file, the shared markers, the pick; checked once a second).
+  The waveform's peaks are read once per mix file (`waveform.py`, keyed by the content-named file), never per paint.
+- **Playing** (`soundtrack_play.py`): `playback.py` calls `play` / `stop` and plays from 0 on a loop; the picture
+  follows `heard()` (the speaker's position; it waits up to 1.5 s for the output to start). Dragging in the ruler plays
+  a 90 ms burst (`scrub`). 🔊 in the timeline header mutes (screen state, 2D only).
+- **Loud, never silent:** no engine, a broken song, a missing marker or no sound output is said once in the status
+  line and stays on the Sound row in red; the picture keeps its own clock.
+- **Screen:** the Sound row is the layers list's footer (`LayerRows.qml`; kept in compact, `compactHeight` counts
+  it), right-click › Open in RostrumSound (`tools/rostrum.ps1 sound -Doc`). The ruler's ▾ (only while the song has a
+  tempo) › Show beats draws `BeatLines.qml`; Shift+, / Shift+. step beats (`stepBeat`; the key map's `prev_beat` /
+  `next_beat`). `beat_times()` / `bar_times()` feed time snapping (`time_snap.py`). Scene settings › Soundtrack is a
+  choice of the project's Sound items (`soundtrack_rows.py`), absent when there are none.
+- **Agents:** `inspect_soundtrack` (what plays: item, length, tempo, bars, markers) and `comp.set {soundtrack}`.
+  The field never reaches the 2D engine (`scene.python_only`).
+- Steps (`soundtrack_steps.py`): `sound wait | mute on|off | beats on|off | beat prev|next | scrub <s> | play <s> |
+  wav <path> | pick <item|-> | menu | open [dry] | problem <png>`, `rulermenu`. Layout states: `sound-row`,
+  `sound-beats`, `sound-compact`, `sound-menu` (a project made by `soundtrack_steps.sound_project`).
 
 ## The rules it builds in
 

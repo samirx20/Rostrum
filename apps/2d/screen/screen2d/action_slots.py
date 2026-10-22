@@ -35,7 +35,7 @@ class ActionSlots(SlotMixin):
 
     def _facts(self) -> Facts:
         return Facts(self.doc, self.selected_layers(), {"at": self.own_t, "copied": self._copied, "keys": self._keys.ids,
-                                                         "clipboard": bool(self.keys_copied() or self._clip_text())})
+                                                         "clipboard": bool(self.keys_copied() or self._clip_text() or self._strokes.has_clip())})
 
     def _what(self, f) -> str:
         """What the bar acts on: "title", "3 layers" ("" = nothing selected: no bar)."""
@@ -62,8 +62,12 @@ class ActionSlots(SlotMixin):
         """2D's actions that are not operations by themselves."""
         if name == "rename":
             self.renameRequested.emit(self.selected_layers()[0])
+        elif name == "clip_copy" and self._strokes.count:                # strokes picked while painting: those (stroke_select.py)
+            self._strokes.copy()
         elif name in ("clip_copy", "clip_cut") and self._keys.count:     # keys picked: their keys (key_edits.py)
             (self.copyKeys if name == "clip_copy" else self.cutKeys)()
+        elif name == "paste" and not self.keys_copied() and self._strokes.has_clip():   # strokes copied (stroke_select.py)
+            self._strokes.paste()
         elif name == "paste" and self.keys_copied():
             self.pasteKeys()
         elif name in ("clip_copy", "clip_cut", "paste"):
@@ -89,7 +93,17 @@ class ActionSlots(SlotMixin):
 
     @Slot(str, result="QVariantList")
     def commands(self, query):
-        return [{k: c.get(k, "") for k in ("key", "label", "hint", "keys")} for c in commands.search(self._commands(), query)]
+        found = [{k: c.get(k, "") for k in ("key", "label", "hint", "keys")} for c in commands.search(self._commands(), query)]
+        return found + self._whys(query, found)
+
+    def _whys(self, query, found) -> list[dict]:
+        """Ctrl+K: an action typed by name (its label or the bar button it sits under) that this selection doesn't allow
+        and that has its own sentence (`why`) shows it, so the person learns why it is absent; choosing it says it again."""
+        q, f = query.strip().lower(), self._facts()
+        have = {c["key"] for c in found}
+        why = next(((a.id, LIST._sentence(a, f)) for a in LIST.actions if len(q) >= 3 and a.id not in have and a.why
+                    and q in f"{a.bar} {a.label_for(f)}".lower() and LIST._sentence(a, f)), None)
+        return [{"key": why[0], "label": why[1], "hint": "Not available now", "keys": ""}] if why else []
 
     @Slot(str, result=bool)
     def run(self, key):

@@ -155,6 +155,8 @@ FIELDS: dict[str, list[Param]] = {
         N("fps", "Frame rate", "Frame", 1, 120, 1, "fps", integer=True, default=30),
         N("duration", "Length", "Frame", 0.04, 3600, 0.01, "s", default=5.0),
         C("background", "Background", "Look", "#000000"),
+        X("soundtrack", "Soundtrack", "Sound", "", S, help="The RostrumSound item of this project that plays with this "
+          "scene (its id); empty = the project's sound (its first Sound item). Rendered by Sound's engine"),
     ],
     "shape": [
         CH("shape", ["rect", "ellipse"], "Shape", "Shape", "rect", labels=RECT_WORDS),

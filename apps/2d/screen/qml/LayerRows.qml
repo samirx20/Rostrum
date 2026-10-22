@@ -31,6 +31,10 @@ ListView {
         menu.openAt(g.x, g.y)
     }
     ActionMenu { id: menu; onPicked: (key) => backend.run(key) }
+    function rowMid(id) {          // the middle of a row in the list's px (-1: not shown), for the drag label
+        const item = itemAtIndex(model.findIndex(r => r.id === id))
+        return item ? item.y - contentY + item.height / 2 : -1
+    }
 
     // drag-to-reorder: the dragged row, and where it would land (the row, above | below | into a group)
     property string dragId: ""
@@ -90,6 +94,11 @@ ListView {
         visible: list.boxing; z: 6
         x: list.box.x; y: list.box.y; width: list.box.width; height: list.box.height
         color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.12); border.color: Theme.accent; border.width: 1
+    }
+
+    footer: SoundRow {   // the project's sound, the last row (only when there is sound; kept in compact)
+        width: ListView.view.width; ruler: list.ruler; labelWidth: list.labelWidth
+        y: list.spacing
     }
 
     delegate: Item {

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from . import drawing, exprbake, fields as F, layoutbake, paint_fields, render3d, retime, stepped, swap, video
 from .layout_fields import py_only
-from rostrum_core.keys import animated, keys_of, springs
+from rostrum_core.keys import after, animated, keys_of, springs
 
 FORMAT, VERSION = "rostrum-2d-scene", 1
 
@@ -22,8 +22,8 @@ KEY_FIELDS = ("t", "v", "c", "d", "ease", "x1", "y1", "x2", "y2", "stiffness", "
 
 def python_only(kind: str) -> set[str]:
     """The fields of an item type the engine never sees: auto layout's, stepped timing's and swap sets' (all
-    applied here)."""
-    return (py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END, "locked", "hidden", "eachFrame"} | swap.PY_ONLY.get(kind, set())
+    applied here), and the scene's soundtrack (Sound's engine plays it, not 2D's)."""
+    return (py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END, "locked", "hidden", "eachFrame", "soundtrack"} | swap.PY_ONLY.get(kind, set())
             | paint_fields.NAMES)
 
 
@@ -35,8 +35,10 @@ def _key(key: dict) -> dict:
     return out
 
 
-def _anim(item: dict) -> dict:
-    return {prop: [_key(key) for key in keys_of(item, prop)]
+def _anim(item: dict, until: float) -> dict:
+    """Each animated field's keys; a last key's "after the last key" goes written out as plain keys up to `until`, the
+    composition's end (rostrum_core.keys.after: the engine reads keys only)."""
+    return {prop: [_key(key) for key in after.extend(keys_of(item, prop), until)]
             for prop in sorted(animated(item)) if prop not in python_only(item["type"])}
 
 
@@ -44,7 +46,7 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | 
     node = {"id": item["id"], "type": item["type"],
             "props": {p.name: item.get(p.name, p.default) for p in F.FIELDS[item["type"]]
                        if p.name not in python_only(item["type"])}}
-    anim = {**_anim(item), **(baked or {}).get(item["id"], {})}
+    anim = {**_anim(item, (where or {}).get("until", 0.0)), **(baked or {}).get(item["id"], {})}
     if anim:
         node["anim"] = anim
     for key in ("effects", "masks", "layers"):
@@ -121,7 +123,7 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     baked = exprbake.bake(comp, fps, markers)
     for item_id, fields in layoutbake.bake(comp, fps, baked).items():
         baked.setdefault(item_id, {}).update(fields)
-    where = {"folder": folder, "markers": markers, "span": span}
+    where = {"folder": folder, "markers": markers, "span": span, "until": comp.get("duration", F.defaults("comp")["duration"])}
     node = _node(comp, fps, baked, where)
     swap.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)
     stepped.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)

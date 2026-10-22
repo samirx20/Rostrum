@@ -15,6 +15,7 @@ Rectangle {
     property bool compact: false
     signal compactAsked(bool on)
     readonly property real compactHeight: rowsTop + Theme.rowDense + 2 * Theme.gap
+                                          + (backend.soundtrack.present ? Theme.row + 2 : 0)   // the Sound row stays
     function openMenu(id, px, py) { rows.openMenu(id, px, py) }
     color: Theme.panel; radius: Theme.radiusPanel
 
@@ -39,6 +40,14 @@ Rectangle {
                      playing: backend.playing; onClicked: backend.togglePlay() }
         TimeReadout { anchors.verticalCenter: parent.verticalCenter; width: 112 }
         PlayOptions { anchors.verticalCenter: parent.verticalCenter }
+        IconButton {   // 🔊: the project's sound in 2D only (backend.soundtrack), only while there is sound
+            objectName: "soundMute"
+            visible: backend.soundtrack.present
+            anchors.verticalCenter: parent.verticalCenter; implicitWidth: 26; implicitHeight: 26; kind: "ghost"
+            glyph: backend.soundtrack.muted ? "🔇" : "🔊"; down: backend.soundtrack.muted
+            tip: backend.soundtrack.muted ? "Sound is muted here (only in 2D): click to hear it" : "Mute the sound here (only in 2D, not the project)"
+            onClicked: backend.soundtrack.setMuted(!backend.soundtrack.muted)
+        }
         AddMarker { anchors.verticalCenter: parent.verticalCenter }
         Segmented {   // Keys: the rows' diamonds; Curves: the value curves inside this same area
             anchors.verticalCenter: parent.verticalCenter; implicitHeight: 26
@@ -106,6 +115,7 @@ Rectangle {
         text: "Add a shape, text or picture with + Add"
         wrapMode: Text.WordWrap; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
     }
+    BeatLines { ruler: ruler; bottomY: tl.height - Theme.gap }   // Show beats (the ruler's ▾): beat and bar lines
     Repeater {   // the project's shared markers, a faint line across every row (their flags are on the ruler)
         model: backend.markers
         delegate: Rectangle {
@@ -131,5 +141,14 @@ Rectangle {
     Rectangle {  // the playhead line, across every row
         x: ruler.x + Math.round(ruler.xOf(backend.time)); y: ruler.y + ruler.height
         width: 1; height: tl.height - y - Theme.gap; color: Theme.accent; opacity: 0.8
+    }
+    DragLabel {  // "+6 f · drop" beside the dragged edge or key, on its layer's row (time_snap.py); no row shown: under the ruler
+        readonly property real mid: rows.visible && backend.timeSnap.text !== "" ? rows.rowMid(backend.timeSnap.row) : -1
+        at: Qt.point(ruler.x + ruler.xOf(backend.timeSnap.t), mid >= 0 ? rows.y + mid : ruler.y + ruler.height + 12)
+    }
+    SnapLine {   // what a time drag caught (a marker, key, bar end, beat, the playhead), only while snapped (time_snap.py)
+        visible: backend.timeSnap.caught
+        x: ruler.x + Math.round(ruler.xOf(backend.timeSnap.caughtT)); y: ruler.y + ruler.height
+        width: 1; height: tl.height - y - Theme.gap
     }
 }

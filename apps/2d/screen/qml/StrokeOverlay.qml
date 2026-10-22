@@ -1,0 +1,52 @@
+import QtQuick
+import QtQuick.Shapes
+import RostrumKit
+
+// What lies over the canvas while Draw is on besides the pen: the lasso being drawn, the picked strokes' outlines and
+// box (backend.strokeSelect, composition px), and the colour picker's swatch while Alt is held (backend.colourPick).
+// Input is the pen's (Stage.qml): Ctrl+drag or Select strokes then drag = lasso; a press in the picked box moves them;
+// Alt+click picks the colour under the pointer. `fit`, `ox`, `oy`: this item's scale and where composition (0, 0) is.
+Item {
+    id: ov
+    property real fit: 1
+    property real ox: 0
+    property real oy: 0
+    readonly property var sel: backend.strokeSelect
+    readonly property var pick: backend.colourPick      // .swatch: the colour under the pointer while Alt is held; .at: where (composition px)
+
+    Shape {
+        x: ov.ox; y: ov.oy
+        scale: ov.fit; transformOrigin: Item.TopLeft
+        ShapePath {  // the lasso: a dashed loop
+            strokeWidth: 1.5 / ov.fit; strokeColor: Theme.accent; fillColor: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.1)
+            strokeStyle: ShapePath.DashLine; dashPattern: [4, 3]
+            PathSvg { path: ov.sel.lassoPath }
+        }
+    }
+    Repeater {  // the picked strokes, outlined
+        model: ov.sel.outlines
+        delegate: Shape {
+            required property string modelData
+            x: ov.ox; y: ov.oy
+            scale: ov.fit; transformOrigin: Item.TopLeft
+            ShapePath {
+                strokeWidth: 2 / ov.fit; strokeColor: Theme.accent; fillColor: "transparent"
+                PathSvg { path: modelData }
+            }
+        }
+    }
+    Rectangle {  // the box round them: a press inside moves them
+        readonly property var b: ov.sel.box
+        visible: ov.sel.count > 0 && b.w !== undefined
+        x: ov.ox + (b.x || 0) * ov.fit - 4; y: ov.oy + (b.y || 0) * ov.fit - 4
+        width: (b.w || 0) * ov.fit + 8; height: (b.h || 0) * ov.fit + 8
+        color: "transparent"; border.width: 1; border.color: Theme.accent
+    }
+    Rectangle {  // the picker: the colour under the pointer, beside it
+        visible: ov.pick.alt && ov.pick.swatch !== ""
+        x: ov.ox + ov.pick.at.x * ov.fit + 16; y: ov.oy + ov.pick.at.y * ov.fit + 16
+        width: 28; height: 28; radius: 14
+        color: ov.pick.swatch || "transparent"; border.width: 2; border.color: "white"
+        Rectangle { anchors.fill: parent; anchors.margins: -1; radius: width / 2; color: "transparent"; border.width: 1; border.color: "#80000000" }
+    }
+}

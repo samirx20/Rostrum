@@ -28,11 +28,21 @@ def long_project() -> list[str]:
     return ["--doc", str(folder), "main", "--script", str(script)]
 
 
+def with_sound() -> list[str]:
+    """Start args for a project with sound (soundtrack_steps.sound_project), made fresh in the temp folder."""
+    from .soundtrack_steps import sound_project
+    return sound_project(Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "With sound")
+
+
 def states() -> list[tuple[str, list[str], list[str]]]:
     long = long_project            # a fresh folder per state: each state's steps start from the same document
     busy = [*TWELVE, f"rename card {LONG_LAYER}", f"say {LONG_STATUS}"]
     return [
         ("workspace", ["--sample"], ["select title"]),
+        ("sound-row", with_sound(), ["sound wait", "select logo"]),          # the Sound row, its waveform, 🔊
+        ("sound-beats", with_sound(), ["sound beats on", "rulermenu"]),       # Show beats, the ruler's ▾ menu
+        ("sound-compact", with_sound(), ["sound wait", "select logo", "timeline compact"]),
+        ("sound-menu", with_sound(), ["sound wait", "sound menu"]),           # Open in RostrumSound
         ("rows-open", ["--sample"], ["select title", "open title"]),
         ("two-selected", ["--sample"], ["selectmany title card"]),
         ("action-menu", ["--sample"], ["selectmany dot rule", "actionmenu"]),
@@ -69,11 +79,22 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("keys-picked", ["--sample"], ["select title", "showanim", "keypick title.opacity.k900", "keypick title.y.k1000 ctrl"]),
         # H30: the key bar (one key; a spring), a key's Ease list, Stagger's popover
         ("key-bar-one", ["--sample"], ["select title", "showanim", "keypick title.opacity.k900"]),
-        ("key-bar-spring", ["--sample"], ["select title", "showanim", "keypick title.y.k200", "ease spring"]),
+        ("key-bar-spring", ["--sample"], ["select title", "showanim", "keypick title.y.k200", "easeplay off", "ease spring"]),
         ("key-ease-menu", ["--sample"], ["select title", "showanim", "keypick title.y.k200", "easemenu"]),
         ("stagger-popover", ["--sample"], ["selectmany title card", "stagger 3 open"]),
+        # H31: the key bar's ⋯ (After the last key, Play the ease), the "+6 f · key" label mid-drag, Stagger on keys
+        ("key-more-menu", ["--sample"], ["select dot", "keypick dot.x.k2200", "keyafter pingpong", "keymore"]),
+        ("key-drag-label", ["--sample"], ["select dot", "time 3", "keypick dot.x.k1000", "keypick dot.x.k2200 ctrl",
+                                          "keystretch dot.x.k2200 2.2 2.03 snap hold"]),
+        ("stagger-keys", ["--sample"], ["keypick card.scale.k0,card.scale.k800", "keypick title.y.k200 ctrl",
+                                        "keypick dot.x.k1000 ctrl", "stagger 9 picked open"]),
         # H30: painting's bar (Fill on, Close gaps), the "Paint on …" group with 3 paint layers, one with a long name
         ("paint-fill", ["--sample"], [*PAINTED, "fillmode on"]),
         ("paint-layers", ["--sample"], [*PAINTED, "paintlayer", "draw 600 400 1200 420", "paintlayer",
                                         "draw 600 500 1200 520", f"paintset {LONG_PAINT}"]),
+        # H31: Select strokes armed; strokes picked (their bar); Alt held over a colour; Set depth on a drawing with a camera
+        ("paint-select-strokes", ["--sample"], [*PAINTED, "selectstrokes on"]),
+        ("paint-strokes-picked", ["--sample"], [*PAINTED, "lasso 500,200 1000,200 1000,400 500,400"]),
+        ("paint-alt-pick", ["--sample"], [*PAINTED, "altpick 750 310"]),
+        ("set-depth", ["--sample"], ["tool draw", "draw 300 300 500 320 700 300", "tool move", "add camera", "select drawing_1"]),
     ]

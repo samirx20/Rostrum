@@ -127,6 +127,16 @@ def register(registry, canvas_types=("frame",)):
             _check_mask(ctx, t, item["mask"], item["id"])
             ctx.insert(t, "strokes", item)
 
+    @registry.operation("fill.add", "Lay a fill (a closed area kept as its outline, fill.py) into a paint layer, in painting "
+                        "order: to copy a fill; paint.fill makes one from a click.", target="paint", label="Add fill",
+                        importance="secondary",
+                        params=[ID, *(_required(p) if p.name == "points" else p for p in F.FIELDS["fill"])])
+    def fill_add(ctx, targets, args):
+        for t in targets:
+            item = _new(ctx, "fill", args if len(targets) == 1 else {**args, "id": None})
+            _check_mask(ctx, t, item["mask"], item["id"])
+            ctx.insert(t, "strokes", item)
+
     @registry.operation("stroke.remove", "Delete strokes (and fills).", target=("stroke", "fill"), label="Delete stroke",
                         importance="secondary")
     def stroke_remove(ctx, targets, args):

@@ -105,19 +105,48 @@ Panel {
         Item {  // the pen
             anchors.fill: parent
             visible: well.drawing
-            HoverHandler { cursorShape: Qt.CrossCursor }
+            HoverHandler {      // Alt held: the pointer picks a colour (the swatch beside it shows the colour under it)
+                id: hover
+                cursorShape: backend.colourPick.alt ? Qt.PointingHandCursor : Qt.CrossCursor
+                onPointChanged: { const p = panel.inWell(point.position.x, point.position.y); backend.colourPick.look(p.x, p.y) }
+            }
             PointHandler {
                 id: pen
                 acceptedButtons: Qt.LeftButton
                 function at() { return panel.inWell(point.position.x, point.position.y) }
                 readonly property real pressure: point.pressure > 0 ? point.pressure : 1
-                property bool drawing: false
+                property string mode: ""        // what this press does: "stroke", "lasso" (Ctrl, or Select strokes) or "move" (picked strokes)
+                property point from
                 onActiveChanged: {
-                    if (active && backend.fill.on) { var q = at(); backend.fill.fillAt(q.x, q.y); drawing = false }   // Fill (G): a click fills
-                    else if (active) { var p = at(); drawing = painter.beginStroke(p.x, p.y, pressure) }
-                    else { if (drawing) painter.endStroke(); drawing = false }
+                    var p = at()
+                    if (active && backend.colourPick.alt) { backend.colourPick.pickAt(p.x, p.y); mode = "" }       // Alt: pick the colour
+                    else if (active && backend.fill.on) { backend.fill.fillAt(p.x, p.y); mode = "" }                 // Fill (G): a click fills
+                    else if (active && (backend.strokeSelect.armed || (Qt.application.keyboardModifiers & Qt.ControlModifier))) {
+                        backend.strokeSelect.beginLasso(p.x, p.y); mode = "lasso"                                    // a lasso round strokes
+                    } else if (active && backend.strokeSelect.count > 0 && backend.strokeSelect.hits(p.x, p.y)) {
+                        backend.strokeSelect.beginMove(); from = p; mode = "move"                                    // picked strokes: drag moves them
+                    } else if (active) {
+                        backend.strokeSelect.clear()                                                                 // a press outside lets go of them
+                        mode = painter.beginStroke(p.x, p.y, pressure) ? "stroke" : ""
+                    } else {
+                        if (mode === "stroke") painter.endStroke()
+                        else if (mode === "lasso") backend.strokeSelect.endLasso()
+                        else if (mode === "move") backend.strokeSelect.endMove()
+                        mode = ""
+                    }
                 }
-                onPointChanged: { if (active && drawing) { var p = at(); painter.strokeTo(p.x, p.y, pressure) } }
+                onPointChanged: {
+                    if (!active) return
+                    var p = at()
+                    if (mode === "stroke") painter.strokeTo(p.x, p.y, pressure)
+                    else if (mode === "lasso") backend.strokeSelect.lassoTo(p.x, p.y)
+                    else if (mode === "move") backend.strokeSelect.moveBy(p.x - from.x, p.y - from.y)
+                }
+            }
+            StrokeOverlay {     // the lasso, the picked strokes, the colour picker's swatch
+                id: strokes
+                anchors.fill: parent
+                fit: view.zoom; ox: view.ox; oy: view.oy
             }
         }
         MouseArea {
@@ -207,10 +236,9 @@ Panel {
             }
             Repeater {  // what a drag snapped to: thin magenta lines, gone on release (backend.snap.lines, composition px)
                 model: backend.snap.lines
-                delegate: Rectangle {
+                delegate: SnapLine {            // the snap magenta (SnapLine.qml)
                     required property var modelData
                     readonly property bool vertical: modelData.axis === "x"
-                    color: "#ff2fd0"            // INTERACTION 1.11's snap magenta (to move into the kit's Theme)
                     x: vertical ? Math.round(modelData.at * view.zoom) : modelData.from * view.zoom
                     y: vertical ? modelData.from * view.zoom : Math.round(modelData.at * view.zoom)
                     width: vertical ? 1 : (modelData.to - modelData.from) * view.zoom

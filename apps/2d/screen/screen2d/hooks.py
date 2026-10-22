@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from rostrum2d import fields as F
 
-from . import exprs, outline, route, swap_rows
+from . import exprs, outline, route, soundtrack_rows, swap_rows
 
 SIBLING_PICKS = {"matte": lambda s: True,                          # any layer beside it can be its track matte
                  "pathLayer": lambda s: s.get("type") == "path"}   # text follows a path layer beside it
@@ -25,8 +25,9 @@ class Hooks2D:
     def edit_call(self, item_id, param, value):
         return route.edit_call(self.doc, item_id, param, swap_rows.edit_value(self.doc.item(item_id), param, value), self.own_t(item_id))
 
-    def _rows(self):          # a swap set's "Shows" is a choice among its children (swap_rows.py)
-        return swap_rows.rows(super()._rows(), self.doc.item(self._sel) if self._sel else None, self._t)
+    def _rows(self):          # a swap set's "Shows" is a choice among its children (swap_rows.py); the scene's
+        item = self.doc.item(self._sel) if self._sel else None     # Soundtrack among the project's Sound items
+        return soundtrack_rows.rows(swap_rows.rows(super()._rows(), item, self._t), item, self.doc.folder)
 
     def shown_values(self, item):
         return route.shown_values(self.placed_item(item["id"]), self._t)     # keys on a marker read as seconds

@@ -29,16 +29,18 @@ Row {
         if (fillBtn.can) w += fillBtn.implicitWidth + spacing
         if (filling) w += gaps.implicitWidth + spacing
         if (painter.canNewLayer) w += newLayer.implicitWidth + spacing
+        if (!filling) w += selectBtn.implicitWidth + spacing
         return w + paintingOn.implicitWidth
     }
     readonly property int fold: {
         const more = Theme.button + spacing
-        const cuts = [opacityW + spacing, filling ? 0 : eraser.implicitWidth + spacing, fillBtn.implicitWidth + spacing]
+        const cuts = [opacityW + spacing, filling ? 0 : eraser.implicitWidth + spacing, fillBtn.implicitWidth + spacing,
+                      filling ? 0 : selectBtn.implicitWidth + spacing]
         let w = fullW, k = 0
         while (k < cuts.length && w > room) { w -= cuts[k]; if (k === 0) w += more; k++ }
         return k
     }
-    function folded(id) { return id === "opacity" ? fold >= 1 : id === "eraser" ? fold >= 2 : id === "fill" ? fold >= 3 : false }
+    function folded(id) { return id === "opacity" ? fold >= 1 : id === "eraser" ? fold >= 2 : id === "fill" ? fold >= 3 : id === "select" ? fold >= 4 : false }
 
     Shortcut { sequence: "E"; enabled: po.visible && !po.filling; onActivated: po.toggleErase() }
     Shortcut { sequence: "G"; enabled: po.visible && fillBtn.can; onActivated: backend.fill.setOn(!po.filling) }
@@ -87,6 +89,11 @@ Row {
         visible: painter.canNewLayer; down: painter.newLayerNext
         text: "+ Paint layer"; onClicked: painter.newPaintLayer()
     }
+    Act {   // the next drag is a lasso round strokes (Ctrl+drag does the same): backend.strokeSelect
+        id: selectBtn
+        visible: !po.filling && !po.folded("select"); down: backend.strokeSelect.armed
+        text: "Select strokes"; onClicked: backend.strokeSelect.arm(!backend.strokeSelect.armed)
+    }
     Act {   // what the strokes go on: the selected layer or a new drawing (painter.targetName / paintOn)
         id: paintingOn
         down: onMenu.visible
@@ -112,6 +119,7 @@ Row {
                 Repeater { model: po.fields.filter(f => po.folded(f.id)); delegate: Field { } }
                 Act { visible: !po.filling && po.folded("eraser"); down: po.erasing; text: "Eraser  E"; onClicked: po.toggleErase() }
                 Act { visible: fillBtn.can && po.folded("fill"); down: po.filling; text: "Fill  G"; onClicked: backend.fill.setOn(!po.filling) }
+                Act { visible: !po.filling && po.folded("select"); down: backend.strokeSelect.armed; text: "Select strokes"; onClicked: backend.strokeSelect.arm(!backend.strokeSelect.armed) }
             }
         }
     }

@@ -31,10 +31,10 @@ def _op(name, target, **args):
 
 
 def _a(id_, label, *, rank=100, importance="secondary", group="", bar="", job="", when=None, calls=None, do="",
-       min_targets=1, max_targets=None, kinds=None, locked_ok=False, promoted=False):
+       min_targets=1, max_targets=None, kinds=None, locked_ok=False, promoted=False, why=""):
     return {"id": id_, "label": label, "rank": rank, "importance": importance, "group": group, "bar": bar, "job": job,
             "when": when, "calls": calls, "do": do, "min_targets": min_targets, "max_targets": max_targets,
-            "kinds": kinds, "locked_ok": locked_ok, "promoted": promoted}
+            "kinds": kinds, "locked_ok": locked_ok, "promoted": promoted, "why": why}
 
 
 _MATTES = {"luma": "Use its brightness", "alphaInverted": "Outside its shape", "lumaInverted": "Use its darkness"}
@@ -42,6 +42,7 @@ _EDGES = {"left": ("Align left", "align_left"), "hcenter": ("Centre across", "ce
           "right": ("Align right", "align_right"), "top": ("Align top", "align_top"),
           "vcenter": ("Centre up and down", "centre_down"), "bottom": ("Align bottom", "align_bottom")}
 _ORDER = {"front": "Bring to front", "forward": "Bring forward", "backward": "Send backward", "back": "Send to back"}
+_DEPTHS = {"far": 3.0, "middle": 1.0, "near": 0.25}        # the camera depths background.add's defaults use (far → near)
 _MASK = lambda m: _op("mask.make", "stack_but_top", cutter="$top", mode=m, id="$new:group", at="$at")   # noqa: E731
 
 DATA = [
@@ -73,6 +74,10 @@ DATA = [
          when={"all": [FACT("same_parent"), NOT("has_text"), NOT("has_camera")]},
          calls=_op("layer.match_size", "rest", to="$first", dims=d, at="$at"))
       for d, words in (("w", "Match width"), ("h", "Match height"), ("both", "Match size"))],
+    *[_a(f"depth_{k}", f"{k.capitalize()} ({v:g})", rank=75, importance="primary", group="arrange", bar="Set depth",
+         kinds=("drawing",), when=FACT("depth_ok"), calls={"rule": "depth", "value": v},
+         why="Set depth needs a camera: + › Camera (drawings of the composition, not inside a group).")
+      for k, v in _DEPTHS.items()],
     _a("stagger", "Stagger…", rank=35, importance="primary", group="arrange", min_targets=2, do="stagger"),
     _a("key_here", "Key here", rank=45, group="animate", job="key_here", calls={"rule": "pose"}),
     *[_a(f"ease_{e['value']}", f"Ease: {e['label']}", rank=50, group="animate", bar="Ease", job=e["job"],
@@ -105,7 +110,7 @@ def _action(d: dict) -> Action:
     calls = (lambda f, spec=d["calls"]: calls_of(spec, f, f.at)) if d["calls"] else None
     return Action(f"layer:{d['id']}", d["label"], when=when, kinds=d["kinds"], min_targets=d["min_targets"],
                   max_targets=d["max_targets"], importance=d["importance"], rank=d["rank"], job=d["job"],
-                  group=d["group"], bar=d["bar"], calls=calls, do=d["do"],
+                  group=d["group"], bar=d["bar"], calls=calls, do=d["do"], why=d["why"],
                   promoted=(lambda f: True) if d["promoted"] else None)
 
 

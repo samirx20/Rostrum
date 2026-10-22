@@ -36,6 +36,7 @@ class Playback(QObject):
     def __init__(self, bridge):
         super().__init__(bridge)
         self.b, self._clock, self._blur, self._size = bridge, (0.0, 0.0), False, "full"
+        self._once = None                                   # (until, back to): playing a stretch once (once())
         self._timer = QTimer(self)
         self._timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._timer.timeout.connect(self._tick)
@@ -74,9 +75,21 @@ class Playback(QObject):
         else:
             self._clock = (time.perf_counter(), self.b.time)
             self._timer.start(max(1, round(1000 / self.b.comp()["fps"])))
+            self.b.soundtrack.play(self.b.time)     # the project's sound, through Sound's engine (soundtrack.py)
             self.changed.emit()
 
+    def once(self, t0: float, t1: float, back: float):
+        """Play t0 → t1 once, then stop with the playhead back at `back` (ease_play.py: an ease picked plays once)."""
+        self.stop()
+        self._once = (t1, back)
+        self.b.setTime(t0)
+        self._clock = (time.perf_counter(), self.b.time)
+        self._timer.start(max(1, round(1000 / self.b.comp()["fps"])))
+        self.changed.emit()
+
     def stop(self):
+        self._once = None                       # stopped by hand: it stays where it is
+        self.b.soundtrack.stop()
         if self._timer.isActive():
             self._timer.stop()
             self.changed.emit()
@@ -94,7 +107,17 @@ class Playback(QObject):
     def _tick(self):
         c = self.b.comp()
         t = self._clock[1] + time.perf_counter() - self._clock[0]
+        heard = self.b.soundtrack.heard()       # while the mix rolls the picture follows the speaker, else its clock
+        if heard is not None and heard <= c["duration"]:
+            self._clock, t = (time.perf_counter(), heard), heard
+        if self._once is not None and t > self._once[0] + 1e-9:      # a stretch played once: back where it was
+            back, self._once = self._once[1], None
+            self._timer.stop()
+            self.changed.emit()
+            self.b.setTime(back)
+            return
         if t > c["duration"] + 1e-9:            # loop
             self._clock, t = (time.perf_counter(), 0.0), 0.0
+            self.b.soundtrack.play(0.0)
         with STATS.stage("gui"):
             self.b.setTime(t)
