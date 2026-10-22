@@ -953,9 +953,12 @@ Pieces 7, 10 (the undo rules), 11 and 12 (S32, 2026-10-22; see `HISTORY.md`). Bo
 Pieces 13, 14, 16, 17, 19, 20, 21 and 22 (S34, 2026-10-22; see `FILES.md`, `EXPORT.md`, `SHELL.md`). Both apps run on
 them. Pieces 6, 8, 9, 15 and 18, hold keys in the key map, renaming by clicking the project name and Report a problem
 (S35, 2026-10-22; see `TIMELINE.md`, `PANEL.md`, `DRAG.md`, `FILES.md`). Apps adopt 6, 9 and 15 from the notes there.
-Sound's "+ Another version" and export range are built in the app (P28). Not built yet: reopening at the same
-scene / selection / playhead / zoom, Find… for missing files, "Open the last version that works", the dotted
-underline on trade words, Cancel in Sound's export.
+Sound's "+ Another version" and export range are built in the app (P28). S36 (2026-10-22): reopening at the same
+scene / selection / playhead / zoom, Find… for missing files, "Open the last version that works", the marker
+right-click menu, "Fit · 50 % ▾" (`ViewControl`), the settings panel's "Effects (n) +" and right-click › Reset,
+`Popover`, `EdgeFade`, `Theme.snap`; in the core one undo step across documents (`joint.py`) and markers that follow
+another app's item (`links.py`); see `FILES.md`, `PANEL.md`, `shared/core/OPERATIONS.md` § 6. Not built yet: the
+dotted underline on trade words, Cancel in Sound's export.
 
 **Order:** the first six unblock both apps' rebuilds. Do them one at a time, by Team Sam alone, since they are
 shared-layer work.
