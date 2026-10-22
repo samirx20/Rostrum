@@ -61,18 +61,13 @@ def open_or_say(folder, item, what) -> Document | None:
 
 def load_doc(args) -> Document:
     if args.open:
-<<<<<<< HEAD
-        return Document.open(*resolve(args.open), KIND)
-    if not (args.doc or args.script or args.sample):
-=======
         try:
             folder, item = resolve(args.open)
         except RostrumError as e:
             REFUSED.append(e.line())
             return projects.new_project(projects.untitled(), Who.person("sam"))
         return open_or_say(folder, item, "the project") or projects.new_project(projects.untitled(), Who.person("sam"))
-    if not (args.doc or args.script or args.sample or args.step or args.shot):
->>>>>>> team/priyam
+    if not (args.doc or args.script or args.sample):
         return first_doc()
     source, name = SOURCE, "sample.py"
     if args.script:

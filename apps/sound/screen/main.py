@@ -8,12 +8,8 @@
     python apps/sound/screen/main.py --doc <project folder> <item>    # open a saved document (made if missing)
     python apps/sound/screen/main.py --step "select melody.n9600" --step "drag-note melody.n9600 0.6 2" --shot out.png
 Every song with a folder is saved after every change. Steps: see screensound/steps.py, plus the file steps here
-<<<<<<< HEAD
 (`file-new`, `file-open <path>`, `file-save-as <folder>`, `file-menu`, `settings`, `about`, `help`, `guide <file.md>`,
 `add-track <kind>`). With --shot the window quits by
-=======
-(`file-new`, `file-open <path>`, `file-save-as <folder>`, `file-menu`, `settings`, `about`, `add-track <kind>`). With --shot the window quits by
->>>>>>> team/priyam
 itself once the sound has rendered; a failed step, render or save exits nonzero. Offscreen screenshots:
 QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
 """
@@ -153,15 +149,10 @@ def file_step(screen, step) -> bool:
         screen.ctx_adder.add(rest)
     elif word == "settings":
         QMetaObject.invokeMethod(screen.win, "openSettings")
-<<<<<<< HEAD
     elif word in ("about", "help"):           # Help › About and licences / the Help menu, open
         QMetaObject.invokeMethod(screen.win, "openAbout" if word == "about" else "openHelp")
     elif word == "guide":                     # guide <file.md>: Help › that guide, in the guide viewer
         guides.open_named(screen.win, rest)
-=======
-    elif word == "about":                     # Help › About and licences
-        QMetaObject.invokeMethod(screen.win, "openAbout")
->>>>>>> team/priyam
     else:
         return False
     if screen.songs.error:
