@@ -15,7 +15,7 @@ class KeyHold(QObject):
         self.hub, self.keymap = hub, keymap
         self.jobs = [e["job"] for e in keymap.entries() if e["hold"]]
         app = QGuiApplication.instance()
-        if self.jobs and app is not None:
+        if self.jobs and isinstance(app, QGuiApplication):      # (a windowless Qt app has no keys to watch)
             app.installEventFilter(self)
             app.applicationStateChanged.connect(self._state)
 
