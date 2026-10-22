@@ -1952,7 +1952,7 @@ this song. Let me hear before and after."
 
    Each line has a one-sentence hint ("Start low: too much makes a voice sound watery"). The first time you open it,
    **Background noise** is pre-set to 0.5 on voice clips, so one click does something you can hear. No look presets.
-3. **The cleaned take is made as soon as you let go (recommended; open point 2).** After the slider is released or
+3. **The cleaned take is made as soon as you let go (recommended; §10, point 1).** After the slider is released or
    the switch is flipped, the job starts (`render_cleanup` for those clips). The clip on the lane shows a thin
    progress stripe along its bottom ("Cleaning 40%"). A progress line with **Cancel** appears in the Clean up group.
    - It is made **once and kept**: in the shared cache, keyed by the file's content, the step, the model version and
@@ -2497,8 +2497,9 @@ job; D (one effect on one clip) now and then. F: agents add effects through the 
       click on the chip; the song then plays and renders without it (preview ≡ export, so the preview never plays a
       version the export can't make).
     - **Crashed while playing:** playback stops; the chip turns red with "stopped working"; the notice says "Tape
-      stopped working while playing. Your settings in it are kept. [Try again] [Switch it off]". The engine keeps
-      running (plug-ins run apart from the mix; see open point 1).
+      stopped working while playing. Your settings in it are kept. [Try again] [Switch it off]". Plug-ins run inside
+      the sound engine today, so it restarts by itself (logged; "nothing was lost"); a plug-in in its own process,
+      so the engine never stops, is later (§10, point 4).
     - **Couldn't load at scan time:** listed in Settings › Plug-ins with the reason in words ("made for 32-bit
       Windows", "needs a licence it can't find", "took longer than 10 s to start").
 
@@ -2681,7 +2682,7 @@ a compressor's sidechain input picked from a list. Descript: "ducking" toggle on
 plain, speech-aware ducking and its dB depth. *We don't take* the compressor-with-sidechain route as the main way
 (plug-ins can still do it, 3.14 Later).
 
-**Later.** Ducking under a group as a document field (open point 4). Drawing the ducked level as an editable
+**Later.** Ducking under a group as a document field (§10, point 13). Drawing the ducked level as an editable
 automation lane ("bake the duck") — only if people want to hand-tweak single dips.
 
 **Today.** Partial: ducks exist in every layer, the dips are drawn on the Timeline; the screen adds them with "+ Duck"
@@ -2761,7 +2762,7 @@ offset ("trim"). GarageBand: a simple volume line under the track. *We take* Log
 take* the four recording modes.
 
 **Later.** **Curves between points** (ease in / out shapes) need a per-point `curve` field in the document (Team Sam,
-schema; open point 3). **Recording moves while playing** (touch a fader or knob, points written; needs the live
+schema; §10, point 5). **Recording moves while playing** (touch a fader or knob, points written; needs the live
 transport to report the position of each move). **Drawing freehand** with the pointer (many points, thinned). They can
 wait: straight segments with enough points cover fades, dips and builds.
 
@@ -2823,7 +2824,7 @@ person listens.
 
 **Feedback.** Meters move at screen rate while playing; numbers update ~10 times a second. Fader drags are heard on the
 next render (~0.3 s after release; during a drag the live player's gain follows at once where the engine allows,
-open point 5). "Check" pictures take ~1–3 s for a 3-minute song ("Drawing the pictures…" in the fold, never blocking).
+§10, point 14). "Check" pictures take ~1–3 s for a 3-minute song ("Drawing the pictures…" in the fold, never blocking).
 
 **Undo and adjust.** Every fader drag, pan drag, multi-fader drag, mute / solo click or swipe: one step. Peak reset,
 Play in mono, Check, dock height: screen state, not in history.
@@ -2884,7 +2885,7 @@ sharing a draft (often, quick mp3). D: the 2D / Editor pick up the sound item's 
    - **What** — **Whole song** (default) · **Loop range** (only when one is set) · **Selected section** (only when a
      section is selected) · **From … to …** (times or markers, typed or picked).
    - **Stems** — **None** · **Every track** · **Groups only** · **Every track and group**. Groups only is the natural
-     "dialogue / music / effects" split when the person has grouped that way (see open point 6).
+     "dialogue / music / effects" split when the person has grouped that way (see §10, point 10).
    - **Trim silence at the end** (on).
    - Folded **More**: **Before mastering** (no loudness matching, squeeze or master effects: for someone else to master),
      **File name** (default `<song>_mix`).
