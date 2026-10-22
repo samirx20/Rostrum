@@ -50,8 +50,8 @@ Item {
             preventStealing: true
             cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
             property real x0: 0
-            onPressed: (m) => { x0 = m.x; mk.dx = 0 }
-            onPositionChanged: (m) => { if (pressed) mk.dx = m.x - x0 }
+            onPressed: (m) => { x0 = hit.mapToItem(null, m.x, 0).x; mk.dx = 0 }     // window x: the flag moves under the pointer
+            onPositionChanged: (m) => { if (pressed) mk.dx = hit.mapToItem(null, m.x, 0).x - x0 }
             onReleased: {
                 if (Math.abs(mk.dx) >= 2)
                     ru.markerMoved(modelData.id, ru.secOf(ru.xOfSec(modelData.at) + mk.dx))

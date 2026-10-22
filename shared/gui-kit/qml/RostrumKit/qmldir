@@ -56,3 +56,4 @@ HScroll 1.0 HScroll.qml
 Popover 1.0 Popover.qml
 EffectsRow 1.0 EffectsRow.qml
 ViewControl 1.0 ViewControl.qml
+EdgeFade 1.0 EdgeFade.qml

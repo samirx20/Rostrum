@@ -53,7 +53,7 @@ FieldFrame {
 
     WheelHandler {  // a notch = one step (Shift ×10, Alt ÷10); only with keyboard focus, else the panel scrolls
         enabled: f.input.activeFocus && !f.word
-        acceptedModifiers: Qt.NoModifier | Qt.ShiftModifier | Qt.AltModifier
+        acceptedModifiers: Qt.KeyboardModifierMask   // any: NoModifier is 0, so "None | Shift | Alt" meant Shift+Alt only (S36)
         onWheel: (e) => {
             const notch = (e.angleDelta.y || e.angleDelta.x) / 120
             const unit = e.modifiers & Qt.AltModifier ? f.step / 10 : e.modifiers & Qt.ShiftModifier ? f.step * 10 : f.step
