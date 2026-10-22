@@ -40,3 +40,15 @@ def test_marker_tools(tmp_path):
     assert reply["data"]["markers"][0]["by"] == "agent:a"
     reply, _ = rt.call("inspect_markers", {"name": "hit-0.25"}, Who.agent("a"))
     assert reply["data"]["at"] == 1.0
+
+
+def test_markers_copied_without_history_are_read(tmp_path):
+    """S42: a project copied without its .rostrum folder (the Lull sample a person opens) still has its markers;
+    reading only the history file left 2D placing a key on a marker it said wasn't there."""
+    M.edit(tmp_path, [{"op": "marker.add", "args": {"name": "noise", "at": 0.5}}], Who.person())
+    M.open_markers(tmp_path).save()
+    copy = tmp_path / "copy"
+    (copy / "docs").mkdir(parents=True)
+    (copy / "docs" / "markers.mkr").write_bytes((tmp_path / "docs" / "markers.mkr").read_bytes())
+    assert M.times(copy) == {"noise": 0.5}
+    assert M.version(copy) > 0

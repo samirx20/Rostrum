@@ -15,6 +15,7 @@ Build-time tools only: uv (installs the wheels) and this checkout. Fails loudly 
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import shutil
 import subprocess
@@ -37,7 +38,8 @@ SKIP = shutil.ignore_patterns("__pycache__", "tests", "*.egg-info", "*.pyc", ".p
 # One row per piece: (installer component, wheel specs from this repo, folders copied as they are).
 SHARED = ("runtime", ["shared/core[mcp]", "shared/gui-kit", "shared/painting-kit", "shared/mcp"],
           ["shared/core/rostrum_core", "shared/gui-kit/rostrum_gui", "shared/gui-kit/qml",
-           "shared/painting-kit/rostrum_paint", "shared/mcp/rostrum_connect", "LICENSE", "ATTRIBUTIONS.md", "VERSION"])
+           "shared/painting-kit/rostrum_paint", "shared/mcp/rostrum_connect", "checkout_paths.py", "LICENSE",
+           "ATTRIBUTIONS.md", "VERSION"])           # checkout_paths: every app's screen/main.py imports it first
 APPS = {
     "2d": ("apps/2d", ["apps/2d/python[mcp,io,render3d]"],
            ["apps/2d/python/rostrum2d", "apps/2d/screen/main.py", "apps/2d/screen/screen2d", "apps/2d/screen/qml",
@@ -126,6 +128,24 @@ def notices(app: str, stage: Path, site: Path):
         fail(f"the notices for {app} could not be made (a GPL item, or the lines above)")
 
 
+def entry_imports(stage: Path, apps: list[str]):
+    """Every module an app's screen/main.py imports must be found by the installed Python, as main.py starts (its
+    install root first on the path). S42: 2D's main.py began importing the repo's checkout_paths.py, which the bundle
+    left out, and the installed 2D could not start at all."""
+    for app in apps:
+        main = stage / APPS[app][0] / "screen" / "main.py"
+        names = sorted({(n.module if isinstance(n, ast.ImportFrom) else a.name).split(".")[0]
+                        for n in ast.walk(ast.parse(main.read_text(encoding="utf-8")))
+                        if isinstance(n, (ast.Import, ast.ImportFrom)) and not getattr(n, "level", 0)
+                        for a in n.names})
+        probe = ("import sys, importlib.util; sys.path.insert(0, sys.argv[1]); sys.path.insert(0, sys.argv[2]); "
+                 "print(' '.join(n for n in sys.argv[3:] if importlib.util.find_spec(n) is None))")
+        out = subprocess.run([str(stage / "runtime" / "python" / "python.exe"), "-c", probe, str(stage),
+                              str(main.parent), *names], capture_output=True, text=True)
+        if out.returncode or out.stdout.strip():
+            fail(f"{app}'s screen/main.py imports what the install doesn't have: {out.stdout.strip()} {out.stderr.strip()}")
+
+
 def size(p: Path) -> int:
     return sum(f.stat().st_size for f in p.rglob("*") if f.is_file()) if p.exists() else 0
 
@@ -192,6 +212,7 @@ def main():
     shutil.rmtree(work)
     for app in args.apps:
         notices(app, stage, site)
+    entry_imports(stage, args.apps)
 
     report = {"runtime": size(stage / "runtime"), **{app: size(stage / APPS[app][0]) for app in args.apps},
               "total": size(stage), "python_site_packages": size(site), "qt_trimmed": saved,

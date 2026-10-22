@@ -20,9 +20,18 @@ def _key(name: str) -> str:
     return " ".join(str(name).split()).lower()
 
 
-def _file(folder) -> Path:
-    """The file every change to the markers writes: the history (the document file is written on Save only, S39)."""
-    return paths(folder, ITEM, EXT)["history"]
+def _stamp(folder) -> int:
+    """When the markers last changed: the history's write time (every change appends to it, S39). Only without a
+    history (a project copied without its .rostrum folder, like a sample) the document file's. Never the document
+    file beside a history: Save rewrites it with nothing changed, and Sound re-rendered on every save (S42).
+    0 = no markers yet."""
+    p = paths(folder, ITEM, EXT)
+    for f in (p["history"], p["doc"]):
+        try:
+            return f.stat().st_mtime_ns
+        except OSError:
+            pass
+    return 0
 
 
 _TIMES: dict = {}       # path -> (file time, {name: seconds}); a frame-by-frame reader re-reads only on change
@@ -33,10 +42,9 @@ def times(folder) -> dict[str, float]:
     the file is read again only when it changed. No project folder or no markers yet = {}."""
     if folder is None:
         return {}
-    path = _file(folder)
-    try:
-        stamp = path.stat().st_mtime_ns
-    except OSError:
+    path = Path(folder).resolve()
+    stamp = _stamp(folder)
+    if not stamp:
         return {}
     if _TIMES.get(path, (None,))[0] != stamp:
         from .markers import open_markers
@@ -55,10 +63,7 @@ def lookup(times_: dict[str, float], name: str) -> float | None:
 def version(folder) -> int:
     """A number that changes whenever the project's markers change (the file's write time); 0 = no markers yet.
     For screens and renders that ask "did markers change?" without a Qt signal (MarkerWatch has one)."""
-    try:
-        return _file(folder).stat().st_mtime_ns if folder is not None else 0
-    except OSError:
-        return 0
+    return _stamp(folder) if folder is not None else 0
 
 
 def refuse_clashes(times_: dict[str, float], local_names, where: str):
