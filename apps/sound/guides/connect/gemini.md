@@ -1,0 +1,84 @@
+# Connect Rostrum to Gemini CLI
+
+Rostrum2D and RostrumSound each have a small server (`rostrum-2d`, `rostrum-sound`) that lets Gemini CLI use them. Connecting means telling Gemini CLI how to start those servers.
+
+## The easy way
+
+In Rostrum open **Help → Connect an AI agent → Add to Gemini CLI** in that app, say yes, then follow the last line it shows (restart or check). Rostrum keeps a copy of your settings file first and never touches servers it didn't add.
+
+## By hand
+
+### Rostrum2D (`rostrum-2d`)
+
+Terminal:
+
+```
+gemini mcp add -e ROSTRUM_ADDED_BY=rostrum-connect -s user rostrum-2d 'C:\Users\<you>\AppData\Local\Programs\Rostrum\runtime\python\python.exe' -m rostrum2d.mcp
+```
+
+File: `C:\Users\<you>\.gemini\settings.json`
+
+```json
+{
+  "mcpServers": {
+    "rostrum-2d": {
+      "command": "C:\\Users\\<you>\\AppData\\Local\\Programs\\Rostrum\\runtime\\python\\python.exe",
+      "args": [
+        "-m",
+        "rostrum2d.mcp"
+      ],
+      "env": {
+        "ROSTRUM_ADDED_BY": "rostrum-connect"
+      }
+    }
+  }
+}
+```
+
+1. Open a terminal and paste the line above, then press Enter.
+2. Start a new Gemini CLI session.
+3. In Gemini CLI type /mcp (or run `gemini mcp list`); both should be listed. If one shows Disconnected, run `gemini trust` in that folder.
+
+### RostrumSound (`rostrum-sound`)
+
+Terminal:
+
+```
+gemini mcp add -e ROSTRUM_ADDED_BY=rostrum-connect -s user rostrum-sound 'C:\Users\<you>\AppData\Local\Programs\Rostrum\runtime\python\python.exe' -m rostrum_sound.mcp.server
+```
+
+File: `C:\Users\<you>\.gemini\settings.json`
+
+```json
+{
+  "mcpServers": {
+    "rostrum-sound": {
+      "command": "C:\\Users\\<you>\\AppData\\Local\\Programs\\Rostrum\\runtime\\python\\python.exe",
+      "args": [
+        "-m",
+        "rostrum_sound.mcp.server"
+      ],
+      "env": {
+        "ROSTRUM_ADDED_BY": "rostrum-connect"
+      }
+    }
+  }
+}
+```
+
+1. Open a terminal and paste the line above, then press Enter.
+2. Start a new Gemini CLI session.
+3. In Gemini CLI type /mcp (or run `gemini mcp list`); both should be listed. If one shows Disconnected, run `gemini trust` in that folder.
+
+## Check it works
+
+In Gemini CLI type /mcp (or run `gemini mcp list`); both should be listed. If one shows Disconnected, run `gemini trust` in that folder.
+
+## Remove it
+
+Easy way: Help → Connect an AI agent → Remove from Gemini CLI.
+
+By hand, for Rostrum2D: `gemini mcp remove -s user rostrum-2d`
+By hand, for RostrumSound: `gemini mcp remove -s user rostrum-sound`
+
+More about Gemini CLI and MCP servers: https://geminicli.com/docs/tools/mcp-server/

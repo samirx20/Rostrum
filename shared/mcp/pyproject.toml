@@ -1,0 +1,17 @@
+[project]
+name = "rostrum_connect"
+version = "0.1.0"
+description = "Connect Rostrum2D and RostrumSound's MCP servers to a person's coding agent (Claude Code, Codex, Cursor, ...)"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = ["tomlkit>=0.12"]   # MIT: edits Codex's config.toml without losing the person's comments
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["rostrum_connect"]   # call.py and demo/ in this folder are scripts, not part of the package
