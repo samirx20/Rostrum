@@ -197,7 +197,7 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     def _render(self):
         from rostrum2d.scene import describe
         try:            # a 3D render layer's render missing, a video file gone …: said on screen, no frame drawn
-            scene = describe(self.doc.data, self.comp_id, self.marks.times, self.doc.folder)
+            scene = describe(self.doc.data, self.comp_id, self.marks.times, self.doc.folder, (self._t, self._t))
         except Exception as e:  # noqa: BLE001
             self._fail(str(e))
             return

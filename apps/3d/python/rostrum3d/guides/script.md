@@ -48,7 +48,9 @@ The fields, by item (all items also take `x y z rx ry rz sx sy sz visible`; a ri
 - **material** `baseColor baseColorTexture metallic roughness roughnessTexture transmission ior coat coatRoughness anisotropy anisotropyRotation bumpTexture bumpStrength emissionColor emissionStrength thinFilm`.
 - **import** `file prim material`; **part** `path material visible`.
 - **shot** `camera fps start end width height background`.
-- Every item also takes `name="…"` (what screens show). Left out, the name is the type's label ("Mesh"), not the id, so name things a person will look for.
+- Every item also takes `name="…"` (what screens show). Left out, the name is the id.
+- A plane lies flat, facing up: `width` (along X) × `depth` (along Z); it has no `height`.
+- `lightsOnly` takes a handle, a list of handles / ids (`lightsOnly=[device, "floor"]`), or ids separated by spaces.
 
 More on lights, materials and rigs: `inspect_guide` `lighting`, `materials`, `camera-rigs`.
 
@@ -63,7 +65,8 @@ More on lights, materials and rigs: `inspect_guide` `lighting`, `materials`, `ca
   *held back* with who changed it. To make the script win, run again with `force: ["key.x"]` (those keys) or `force: true` (all).
 - Items and keys the script no longer makes are removed; things a person added themselves are left alone.
 - Give a script a stable `name` (`run_script`'s `name`, default `agent_script.py`) and re-run under it to merge. A different name is a different script.
-- Don't change an id's kind between runs (`mesh("a")` then `light("a")`): the merge rewrites that item in place instead of making a new one.
+- Don't change an id's kind between runs (`mesh("a")` then `light("a")`): use a new id. If a person had edited the old item, the run is
+  refused, naming the fields the new kind doesn't have; if nobody had, the item is rewritten in place as the new kind.
 
 ## Nesting
 
@@ -88,7 +91,10 @@ Materials and shots always go to the top level, even when made inside a `with`.
   Animatable: every number or colour field except a mesh's shape fields, a light's `spread`, and `aim`. A key's ease shapes the stretch
   that starts at it. Eases: `linear hold smooth snappy natural heavy easeIn easeOut easeInOut spring bounce custom`.
   Key ids come from the item, field and time (`cube.ry.k2000`), so the same script gives the same keys every run.
+  Springs and curves: `item.key("y", {0: 0.1, 1: 0}, ease="spring", stiffness=240, damping=14)` (settings on every key), or per key
+  `{0: {"v": 0, "ease": "custom", "x1": 0.2, "y1": 0, "x2": 0.1, "y2": 1.1}, 1: 30}`. A setting that doesn't fit the key's ease is refused.
 - `item.aim(item_or_id)` or `item.aim((x, y, z))` points the item's −Z at an item's origin or a point, every frame (turns `rx ry rz` off while it aims).
+  `item.aim(target, roll=90)` then turns it around the way it points: a strip light stands on end, a camera's horizon tilts. `roll` can be keyed.
 - `import.part(path, **fields)` an override on a prim inside an import's file (paths from `inspect_usd_file`).
 
 ## Inside the script

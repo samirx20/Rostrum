@@ -38,7 +38,8 @@ def look_frame(ctx, args):
             render.stills(ctx.tool, scene, [(t, raw)])
             w, h = sheet.scaled_copy(raw, width, dest)
         return Reply(f'Frame {frame} ({t:.3f} s) of {comp["id"]}, {w}×{h}. On screen: {", ".join(seen) or "nothing"}.',
-                     {"time": t, "frame": frame, "width": w, "height": h, "on_screen": seen}, [dest], [dest])
+                     {"time": t, "frame": frame, "width": w, "height": h, "on_screen": seen}, [dest], [dest],
+                     scene.get("warnings", []))
 
     return ctx.long(f'look_frame {comp["id"]} f{frame}', job_fn)
 
@@ -69,6 +70,7 @@ def look_sheet(ctx, args):
             tiles = [(png, f"{t:.2f} s   f{f}") for (t, png), f in zip(items, frames)]
             w, h = sheet.contact_sheet(tiles, tile_w, cols, dest)
         return Reply(f'Contact sheet of {comp["id"]}: {len(frames)} frames from {frames[0] / fps:.2f} to {frames[-1] / fps:.2f} s, {w}×{h}.',
-                     {"frames": frames, "times": [round(f / fps, 4) for f in frames], "width": w, "height": h, "cols": cols}, [dest], [dest])
+                     {"frames": frames, "times": [round(f / fps, 4) for f in frames], "width": w, "height": h, "cols": cols}, [dest], [dest],
+                     scene.get("warnings", []))
 
     return ctx.long(f'look_sheet {comp["id"]}', job_fn)

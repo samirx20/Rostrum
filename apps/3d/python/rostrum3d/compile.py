@@ -13,7 +13,7 @@ from .colors import linear
 from .light_fields import DOC_ONLY as LIGHT_DOC_ONLY
 
 FORMAT, VERSION = "rostrum-3d-scene", 1
-AIM_FIELDS = {"aim", "aimX", "aimY", "aimZ", "aimItem"}      # document-only: the compiler resolves them
+AIM_FIELDS = {"aim", "aimX", "aimY", "aimZ", "aimItem", "roll"}      # document-only: the compiler resolves them
 ROTATION = ("rx", "ry", "rz")
 DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"}      # words, font, file … never sent
 
@@ -88,7 +88,7 @@ class _Frames:
             parent = self.parent[id_]
             pw = self.world(parent, f) if parent else aim.IDENTITY
             try:
-                return aim.aim_rotation(pw, [v["x"], v["y"], v["z"]], target)
+                return aim.aim_rotation(pw, [v["x"], v["y"], v["z"]], target, v["roll"])
             except ValueError as e:
                 raise ValueError(f"{id_} at frame {f}: can't aim: {e}") from None
         finally:

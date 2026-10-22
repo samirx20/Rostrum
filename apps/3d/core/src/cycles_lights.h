@@ -5,6 +5,8 @@
 //    ray sees the dome, so the light a sunny HDR gave was strength² (π² at intensity 1) while the sky looked π: the
 //    floor came out ~3× too bright under a sun, about right under a flat dome (which Cycles doesn't sample as a light).
 //  - a distant light: × 4 ("unclear why, but approximately matches Karma").
+//  - a rect or disk panel with normalize on: exactly 10 000× too bright (measured H23; normalize off is right), so it
+//    is handed over as normalize off with intensity ÷ its area, which is what UsdLux's normalize means.
 // A Hydra filter in front of Cycles alone hands it numbers that give UsdLux's light: a dome as its picture already
 // multiplied (sky.h dome_picture, the same picture Storm gets) with a strength of exactly 1 (intensity 1/π, colour 1,
 // exposure 0, no colour temperature), so strength² = strength; a distant light's intensity ÷ 4. The stage keeps the

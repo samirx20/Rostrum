@@ -63,6 +63,10 @@ def _ref(problems, item, field, value, ids, what):
         problems.append(f'{item["id"]}.{field}: no {what} "{value}" (there are: {", ".join(sorted(ids)) or "none"})')
 
 
+_KNOWN = {t: {"id", "type", "name", *(["prop"] if t == "key" else []), *(p.name for p in ps), *LISTS.get(t, [])}
+          for t, ps in F.FIELDS.items()}
+
+
 def check(data: dict) -> list[str]:
     """Lists hold their own kinds; prim-safe ids; keys name animatable fields; every reference points at a real
     thing of the right type (materials, a shot's camera, an aim's item)."""
@@ -76,6 +80,10 @@ def check(data: dict) -> list[str]:
                     problems.append(f'{item["id"]}.{key} can\'t hold a {child.get("type")} ({child["id"]}); '
                                     f"it holds: {', '.join(HOLDS[key])}")
         t = item.get("type")
+        stray = sorted(set(item) - _KNOWN.get(t, set(item)))
+        if stray:                                        # e.g. a re-run that gave an id another kind (light → mesh)
+            problems.append(f'{t} {item["id"]}: has {", ".join(stray)}, which a {t} does not have (did a script give '
+                            f'the id "{item["id"]}" to a different kind of thing? Use a new id for the new kind)')
         if t in (*F.ITEMS, "material") and not PRIM_ID.match(item["id"]):
             problems.append(f'id "{item["id"]}": a {t} id is letters, digits and _ only, not starting with a digit')
         if t in F.ITEMS:

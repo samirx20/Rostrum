@@ -64,6 +64,8 @@ TRANSFORM = [
     N("aimY", "Aim Y", "Aim", -1e5, 1e5, 0.001, "m", S, IS("aim", "point")),
     N("aimZ", "Aim Z", "Aim", -1e5, 1e5, 0.001, "m", S, IS("aim", "point")),
     X("aimItem", "Aim at item", "Aim", "", S, IS("aim", "item"), help="The id of the item to look at (its origin)"),
+    N("roll", "Roll", "Aim", -36000, 36000, 0.1, "°", S, NOT("aim", "none"),
+      help="Turns an aimed item around the way it points: 90 stands a strip light on end, tilts a camera's horizon"),
 ]
 
 SHAPES = ["box", "sphere", "cylinder", "plane", "disc", "torus", *OUTLINE_SHAPES]
@@ -75,10 +77,12 @@ FIELDS: dict[str, list[Param]] = {
     "group": list(TRANSFORM),
     "mesh": [
         CH("shape", SHAPES, "Shape", "Shape", "box"),
-        N("width", "Width", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "plane"), default=1.0),
+        N("width", "Width", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "plane"), default=1.0,
+          help="Along X. A plane lies flat, facing up: width (X) × depth (Z)"),
         N("height", "Height", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "cylinder"), default=1.0),
         N("depth", "Depth", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "plane", *OUTLINE_SHAPES), default=1.0,
-          help="Text, svg, path2d: how far the flat outline is pushed out (try 0.02)"),
+          help="Box: along Z. Plane: its other side, along Z (a plane has no height). Text, svg, path2d: how far "
+               "the flat outline is pushed out (try 0.02)"),
         N("radius", "Radius", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "sphere", "cylinder", "disc", "torus"),
           default=0.5, help="Torus: from its centre to the middle of the ring"),
         N("tube", "Tube radius", "Shape", 0, 1e4, 0.001, "m", when=IS("shape", "torus"), default=0.15),

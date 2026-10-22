@@ -53,16 +53,38 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | 
 
 
 def _render3d(node: dict, item: dict, fps: float, where: dict) -> dict:
-    """The render's frames; a layer whose item isn't rendered yet is left out (an empty group) only when it is off
-    screen for all of `span`, the times about to be drawn. Anywhere it shows, and for a whole-film render, it fails loudly."""
+    """The render's frames. A layer whose item isn't rendered yet is, in looks and part renders (`span` given), a
+    labelled placeholder card at its own box, with a warning in the scene's `warnings`; a whole-film export fails loudly."""
     try:
         return render3d.node(node, item, fps, where.get("folder"))
-    except render3d.NotRendered:
-        span = where.get("span")
-        if span is None or (item.get("start", 0.0) <= span[1] and item.get("end", retime.END_OF_COMP) > span[0]):
+    except render3d.NotRendered as e:
+        if where.get("span") is None:
             raise
-        return {"id": item["id"], "type": "group", "props": {**{p.name: p.default for p in F.FIELDS["group"] if p.name not in python_only("group")},
-                                                              "opacity": 0.0}}
+        span = where["span"]
+        if item.get("start", 0.0) <= span[1] and item.get("end", retime.END_OF_COMP) > span[0]:       # only where it shows
+            where.setdefault("warnings", []).append(f'{item["id"]} shows a placeholder: 3D item {item.get("item", "")} is not rendered yet')
+        return _placeholder(node, item, e.subject)
+
+
+def _engine_props(type_: str, given: dict) -> dict:
+    """A node's props as the engine takes them: every field the engine knows (default unless given), none of the
+    document-only ones (timing from markers, ids …)."""
+    return {p.name: given.get(p.name, p.default) for p in F.FIELDS[type_] if p.name not in python_only(type_)}
+
+
+def _placeholder(node: dict, item: dict, name: str) -> dict:
+    """A flat grey card with a thin border and a centred label, from ordinary nodes, in the layer's box, transform and timing."""
+    props = node["props"]
+    w, h = props["w"], props["h"]
+    group = _engine_props("group", props)
+    anim = {k: v for k, v in node.get("anim", {}).items() if k in group}
+    card = {"id": f'{item["id"]}.card', "type": "shape", "props": _engine_props("shape", {
+        "shape": "rect", "w": w, "h": h, "x": w / 2, "y": h / 2, "fill": "#808080", "stroke": True, "strokeColor": "#d0d0d0",
+        "strokeWidth": 2.0})}
+    label = {"id": f'{item["id"]}.label', "type": "text", "props": _engine_props("text", {
+        "body": f"3D: {name} — not rendered yet", "size": max(12.0, min(h * 0.08, w * 0.05, 64.0)), "weight": 500.0,
+        "color": "#ffffff", "boxWidth": w * 0.9, "x": w / 2, "y": h / 2})}
+    return {"id": node["id"], "type": "group", "props": group, **({"anim": anim} if anim else {}), "layers": [card, label]}
 
 
 def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = None, folder=None,
@@ -70,7 +92,8 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     """The scene description of one composition (the first when not named). `markers`: the project's shared
     markers {name: seconds} (rostrum_core.markers.times(folder)), for expressions' marker("…"). `folder`: the
     project folder, where 3D render layers find their item's renders. `span`: (first, last) seconds that will be drawn,
-    when not the whole composition (looks, a part of a video): a 3D layer not rendered yet may then be off screen."""
+    when not the whole composition (looks, a part of a video): a 3D layer not rendered yet is then a placeholder
+    (the scene's `warnings` name it); with no span (a whole-film export) it is refused."""
     comps = doc_data.get("comps", [])
     if not comps:
         raise ValueError("the document has no composition yet (comp.add)")
@@ -82,8 +105,9 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     baked = exprbake.bake(comp, fps, markers)
     for item_id, fields in layoutbake.bake(comp, fps, baked).items():
         baked.setdefault(item_id, {}).update(fields)
-    node = _node(comp, fps, baked, {"folder": folder, "markers": markers, "span": span})
+    where = {"folder": folder, "markers": markers, "span": span}
+    node = _node(comp, fps, baked, where)
     swap.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)
     stepped.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)
-    return {"format": FORMAT, "version": VERSION, "comp": node}
+    return {"format": FORMAT, "version": VERSION, "comp": node, **({"warnings": where["warnings"]} if where.get("warnings") else {})}
 

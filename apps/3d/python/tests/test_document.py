@@ -6,7 +6,7 @@ from rostrum_core.errors import RostrumError
 
 from rostrum3d import KIND, run_source
 from rostrum3d import fields as F
-from rostrum3d.compile import DOCUMENT_ONLY, describe
+from rostrum3d.compile import AIM_FIELDS, DOCUMENT_ONLY, describe
 
 SAM = Who.person()
 SRC = '''
@@ -46,7 +46,7 @@ def test_a_taken_id_is_refused_naming_what_holds_it():
 
 def _check_node(node, n_frames):
     type_ = node["type"]
-    want = {p.name for p in F.FIELDS[type_]} - {"aim", "aimX", "aimY", "aimZ", "aimItem"} | ({"parts"} if type_ == "import" else set())
+    want = {p.name for p in F.FIELDS[type_]} - AIM_FIELDS | ({"parts"} if type_ == "import" else set())
     want -= {"turn"} if type_ == "light" else set()                          # a dome's turn is sent as its ry
     want -= DOCUMENT_ONLY if type_ == "mesh" else set()                      # words, fonts, files: compiled to the outline
     assert set(node["props"]) == want, node["id"]

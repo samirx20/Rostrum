@@ -10,15 +10,17 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 
 from rostrum_core import project
+from rostrum_core.storage import doc_hash
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 from rostrum_core.mcp.files import render_cache_folder
 
-from . import draw
+from . import draw, estimate
 from .shot import ITEM_SHOT, QUALITY, RENDERERS, TIME, check_frame, doc_and_shot, frame_of, renderer_of, seconds, size_of
 
 tools = Tools()
@@ -41,7 +43,7 @@ def _manifest(item, doc, info, partial: Path, renderer: str, size, frames: list[
     fps = info["fps"]
     return {"item": item, "version": int(m.group(1)) if (m := re.match(r"^v(\d+)\.partial$", partial.name)) else 0, "kind": "pictures",
             "made_by": "agent:rostrum-3d", "made_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "source": {"document": item, "history_entry": doc.seq, "shot": info["id"], "camera": info["camera"]},
+            "source": {"document": item, "history_entry": doc.seq, "doc_hash": doc_hash(doc.data), "shot": info["id"], "camera": info["camera"]},
             "engine": f"rostrum-3d ({renderer})", "frames": {"first": first_file, "last": first_file + len(frames) - 1, "fps": f"{fps:g}/1",
                                                             "shot_frames": [frames[0], frames[-1]]},
             "size": list(size), "colour": {"space": "scene-linear Rec.709 (EXR), sRGB display (PNG, OpenColorIO)"},
@@ -110,7 +112,9 @@ def render_still(ctx, args):
 @tools.tool("render_video", {"properties": {**ITEM_SHOT, "quality": QUALITY_ARG, **SETTINGS,
                                              "start": {"type": "number", "minimum": 0, "description": "Seconds from the start of the shot. Default 0."},
                                              "end": {"type": "number", "minimum": 0, "description": "Seconds from the start of the shot (the frame at this time is the last one). Default: the last frame of the shot."},
-                                             "exr": {"type": "boolean", "default": False, "description": "Also keep every frame as scene-linear EXR next to the mp4 (what the Editor wants)."}}})
+                                             "exr": {"type": "boolean", "default": False, "description": "Also keep every frame as scene-linear EXR next to the mp4 (what the Editor wants)."},
+                                             "budget_min": {"type": "number", "exclusiveMinimum": 0, "description": "Minutes you can spend. One probe frame is timed first; if the estimate is over this, nothing is rendered and the error names settings that should fit."},
+                                             "estimate_only": {"type": "boolean", "default": False, "description": "Time one probe frame (the middle one) and return the estimate; render no video."}}})
 def render_video(ctx, args):
     """An mp4 (H.264, bt709) of a shot, or of a time range of it, through the shot camera: every frame is rendered (Cycles by default;
     quality fast = Storm for a draft), then encoded by ffmpeg. A project render with a manifest; `exr` keeps the EXR frames too. Always a
@@ -131,12 +135,26 @@ def render_video(ctx, args):
     keep_exr = args.get("exr", False)
 
     def job_fn(job):
+        t_start = time.perf_counter()
+        probe_ms, probe_note = _probe(ctx.tool, engine, scene, info, (f0 + f1) // 2, renderer, (w, h), args)
+        est = estimate.total_seconds(probe_ms, count)
+        note = f"estimated {est:.0f} s ({probe_ms:.0f} ms a frame; {probe_note})"
+        data_est = {"estimate_s": round(est, 1), "probe_ms": round(probe_ms), "probe_note": probe_note}
+        budget_s = args["budget_min"] * 60 if "budget_min" in args else None
+        if budget_s is not None and est > budget_s:
+            fits = estimate.fitting_settings(est, budget_s, renderer, args.get("samples", 128), w)
+            raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"{count} frames at {w}×{h}, {renderer}", estimate.over_budget_text(est, budget_s, fits),
+                               hint="Nothing was rendered.")
+        if args.get("estimate_only"):
+            return Reply(f'Estimate for {info["id"]}: {count} frames, {w}×{h}, {renderer}: about {est:.0f} s ({est / 60:.1f} min), from one probe frame at '
+                         f'{probe_ms:.0f} ms ({probe_note}). No video was rendered.', {"frames": count, "renderer": renderer, **data_est}, warnings=engine.take_notices())
+        job.progress(0, count, f"frames 0 of {count}; {note}")
         partial, is_version = _folder(ctx.app.folder, doc, info)
         name, mp4 = f'{item or "doc"}_{info["id"]}', partial / f'{item or "doc"}_{info["id"]}.mp4'
         pngs = partial / "_png"
         pngs.mkdir()
         req = {"png": str(pngs / f"{name}.{{frame}}.png"), **({"exr": str(partial / f"{name}.{{frame}}.exr")} if keep_exr else {})}
-        draw.render(ctx.tool, f"frames {f0}–{f1} of {info['id']}", engine, scene, progress=lambda i, n, _=None: job.progress(i, n, f"frames {i} of {n}"),
+        draw.render(ctx.tool, f"frames {f0}–{f1} of {info['id']}", engine, scene, progress=lambda i, n, _=None: job.progress(i, n, f"frames {i} of {n}; {note}"),
                     camera=info["camera"], renderer=renderer, frames=[f0, f1], width=w, height=h, exposure=args.get("exposure", 0),
                     timeoutS=3600, **req, **_cycles(args, renderer))
         made = sorted(pngs.glob("*.png"))
@@ -148,11 +166,29 @@ def render_video(ctx, args):
         shutil.rmtree(pngs)
         files = [mp4.name, *(sorted(p.name for p in partial.glob("*.exr")))]
         done = _finish(partial, is_version, _manifest(item, doc, info, partial, renderer, (w, h), list(range(f0, f1 + 1)), files, FIRST))
-        return Reply(f'Rendered {info["id"]}: {count} frames at {fps:g} fps, {w}×{h}, {renderer}, as {mp4.name}.',
-                     {"frames": count, "fps": fps, "start_frame": f0, "end_frame": f1, "renderer": renderer, "folder": str(done)},
+        took = time.perf_counter() - t_start
+        return Reply(f'Rendered {info["id"]}: {count} frames at {fps:g} fps, {w}×{h}, {renderer}, as {mp4.name}, in {took:.0f} s '
+                     f'({took / count:.2f} s a frame; estimated {est:.0f} s).',
+                     {"frames": count, "fps": fps, "start_frame": f0, "end_frame": f1, "renderer": renderer, "folder": str(done), **data_est,
+                      "seconds": round(took, 1), "seconds_per_frame": round(took / count, 3)},
                      [done / n for n in files], warnings=engine.take_notices())
 
     return ctx.job(f'render_video {info["id"]} f{f0}-{f1}', job_fn, key=f"video|{item}|{info['id']}|{f0}|{f1}|{renderer}|{w}|{args}|{doc.seq}")
+
+
+def _probe(where: str, engine, scene: dict, info: dict, frame: int, renderer: str, size: tuple[int, int], args: dict) -> tuple[float, str]:
+    """Time one frame the way the export draws it (same path, size, samples). The engine reports no scene-load or kernel-compile time
+    apart from the frame's, so a quick probe is drawn twice and the second is used; a slow one (the first would be as costly as the
+    second) is used as it is, and that is said. (ms, how it was measured)"""
+    with tempfile.TemporaryDirectory(prefix="rostrum3d_probe_") as tmp:
+        def one() -> float:
+            r = draw.render(where, f"probe frame {frame} of {info['id']}", engine, scene, camera=info["camera"], renderer=renderer, frame=frame,
+                            width=size[0], height=size[1], png=str(Path(tmp) / "probe.png"), exposure=args.get("exposure", 0), **_cycles(args, renderer))
+            return float(r["frames"][0]["ms"])
+        first = one()
+        if first >= estimate.WARM_PROBE_MS:
+            return first, "one probe frame, may include scene load, so the estimate can be a little high"
+        return one(), "second probe frame, after a warm-up one"
 
 
 def _encode(where: str, pngs: Path, name: str, first: int, fps: float, mp4: Path, partial: Path):

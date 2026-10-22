@@ -49,6 +49,10 @@ A painted product (a car body, a coloured phone back, a lacquered toy) is two la
 - **`sheenTint`**: the colour of that glow. White reads as dust or fine fibres catching light; the fibre's own colour, lighter, reads as a dyed fabric.
 - Sheen shows at grazing angles, so judge it on curved shapes and at the edges, lit from the side or from behind.
 
+## Lettering and marks on a dark product
+
+Bare metal shows only what it reflects. Metal lettering on a dark face in a dark set mirrors the dark and reads as broken shapes. Give a mark a non-metal (pale enamel or paint, `metallic` 0, perhaps a touch of `emissionStrength`), or put a light or a bright card where the lettering reflects it. Raise it slightly above any glass over it, or the glass bends its edges.
+
 ## Painted and printed surfaces
 
 - **`baseColorTexture`**: an image painted or printed onto the surface along its UVs (a label, a painted pattern). It replaces `baseColor`.
