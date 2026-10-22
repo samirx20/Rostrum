@@ -18,6 +18,9 @@ test = ["pytest", "rostrum2d[io,render3d]"]
 [project.scripts]
 rostrum-2d-mcp = "rostrum2d.mcp.server:main"
 
+[project.entry-points."rostrum.links"]           # a shared marker following a 2D layer (rostrum_core.links)
+2d = "rostrum2d.links2d:time_of"
+
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
