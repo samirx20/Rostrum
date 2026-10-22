@@ -34,27 +34,42 @@ Item {
     onPtsChanged: canvas.requestPaint()
     onHChanged: canvas.requestPaint()
     onWidthChanged: canvas.requestPaint()
-    Repeater {   // the two handles
+    Repeater {   // the two handles (drawn only; the one grab area below drags them)
         model: c.h.length === 4 ? [0, 1] : []
         delegate: Rectangle {
             required property int modelData
             width: 7; height: 7; radius: 3.5; color: Theme.fg; border.color: Theme.accent
             x: c.px(c.h[2 * modelData]) - 3.5; y: c.py(c.h[2 * modelData + 1]) - 3.5
-            MouseArea {
-                anchors.fill: parent; anchors.margins: -5; preventStealing: true; cursorShape: Qt.SizeAllCursor
-                property bool held: false
-                onPressed: held = backend.keyBar.begin("curve")
-                onPositionChanged: (m) => {
-                    if (!held) return
-                    const p = mapToItem(c, m.x, m.y)
-                    const x = (p.x - c.pad) / (c.width - 2 * c.pad), y = (c.height - c.pad - p.y) / (c.height - 2 * c.pad)
-                    const v = c.h.slice()
-                    v[2 * modelData] = x; v[2 * modelData + 1] = y
-                    backend.keyBar.curveTo(v[0], v[1], v[2], v[3])
-                }
-                onReleased: { if (held) backend.keyBar.end(); held = false }
-                onCanceled: { if (held) backend.keyBar.end(); held = false }
-            }
         }
+    }
+    MouseArea {   // one grab area for both handles: a press takes the nearer one (within 9 px), so their targets never cross
+        anchors.fill: parent
+        enabled: c.h.length === 4
+        preventStealing: true
+        hoverEnabled: true
+        property int which: -1
+        function nearest(mx, my) {
+            let best = -1, bestD = 9 * 9
+            for (let i = 0; i < 2; i++) {
+                const dx = c.px(c.h[2 * i]) - mx, dy = c.py(c.h[2 * i + 1]) - my, d = dx * dx + dy * dy
+                if (d <= bestD) { best = i; bestD = d }
+            }
+            return best
+        }
+        cursorShape: which >= 0 || containsMouse && nearest(mouseX, mouseY) >= 0 ? Qt.SizeAllCursor : Qt.ArrowCursor
+        onPressed: (m) => {
+            const i = nearest(m.x, m.y)
+            if (i < 0 || !backend.keyBar.begin("curve")) { m.accepted = false; return }
+            which = i
+        }
+        onPositionChanged: (m) => {
+            if (which < 0) return
+            const x = (m.x - c.pad) / (c.width - 2 * c.pad), y = (c.height - c.pad - m.y) / (c.height - 2 * c.pad)
+            const v = c.h.slice()
+            v[2 * which] = x; v[2 * which + 1] = y
+            backend.keyBar.curveTo(v[0], v[1], v[2], v[3])
+        }
+        onReleased: { if (which >= 0) backend.keyBar.end(); which = -1 }
+        onCanceled: { if (which >= 0) backend.keyBar.end(); which = -1 }
     }
 }
