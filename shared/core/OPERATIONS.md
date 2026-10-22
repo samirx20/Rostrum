@@ -139,6 +139,7 @@ apply the script's changes to C, except where they collide with others' changes
 - An item the script deletes but someone edited is kept and reported the same way.
 - B only moves forward by what was applied, so a held-back change is reported again next run, or applied when forced.
 - Stable ids (§2) are what make this possible: the same script gives the same ids every run.
+- An id keeps its kind. A run whose output turns last run's light `a` into a mesh `a` is refused whole (`BAD_ARGUMENT`, naming the id, the old kind and the new one) before anything applies: use a new id for the new kind, or remove the old one first.
 - An open GUI receives the run as a change, not a reload, so its undo history survives.
 
 ## 8. Two writers at once

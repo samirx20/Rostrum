@@ -93,10 +93,23 @@ def check_output(kind, output: dict, where: str):
                 op.param(k).check(v, f"{where} › {item['id']}")
 
 
+def check_kinds(base: dict, output: dict, lists, where: str):
+    """An id keeps its kind across runs. Rewriting a light as a mesh in place would carry its history, links and
+    a person's held edits over to a different thing, so it is refused before anything applies."""
+    before = index(base, lists)
+    for id_, loc in index(output, lists).items():
+        was = before.get(id_)
+        if was is not None and was.item.get("type") != loc.item.get("type"):
+            raise RostrumError(codes.BAD_ARGUMENT, where, f'id "{id_}"',
+                               f'was a {was.item.get("type")} last run and is a {loc.item.get("type")} now',
+                               hint="Use a new id for the new kind (or remove the old one first).")
+
+
 def merge_script(doc, name, output: dict, who, force=False, session=None) -> MergeReport:
     lists = doc.kind.lists
     base = doc.script_bases.get(name) or doc.kind.blank()
     check_output(doc.kind, output, f"run_script {name}")
+    check_kinds(base, output, lists, f"run_script {name}")
     others = diff(base, doc.data, lists)
     other_keys = set().union(*(E.keys(e, lists) for e in others)) if others else set()
     work, new_base = copy.deepcopy(doc.data), copy.deepcopy(base)

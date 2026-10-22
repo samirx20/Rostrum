@@ -99,3 +99,15 @@ def test_bad_script_value_is_refused_whole():
     with pytest.raises(RostrumError, match="out of range"):
         doc.run_script("intro.py", produce(card__x=10**9, title__body="New"), SCRIPT)
     assert doc.item("title")["body"] == "Hi" and doc.seq == 1
+
+
+def test_rerun_that_changes_an_ids_kind_is_refused_whole():
+    import pytest
+    from rostrum_core import RostrumError
+    doc = fresh()
+    out = produce(title__body="New")
+    out["layers"][0] = {"id": "card", "type": "text", "name": "Card", **toy.DEFAULTS["text"]}
+    with pytest.raises(RostrumError, match='id "card" was a rect last run and is a text now') as err:
+        doc.run_script("intro.py", out, SCRIPT)
+    assert err.value.code == "BAD_ARGUMENT" and "new id" in err.value.line()
+    assert doc.item("card")["type"] == "rect" and doc.item("title")["body"] == "Hi" and doc.seq == 1
