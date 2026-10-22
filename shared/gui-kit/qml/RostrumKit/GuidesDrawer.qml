@@ -21,7 +21,7 @@ Panel {
     function show(u) { back = []; query = ""; find.input.text = ""; load(u) }
     function showList() { back = []; url = ""; html = "" }
     function search(q) { showList(); find.input.text = q; query = q.trim() }
-    function load(u) { url = u; html = guidePages.readAt(u, Math.round(flick.width)); flick.contentY = 0 }
+    function load(u) { url = u; html = guidePages.readAt(u, Math.floor(page.width)); flick.contentY = 0 }
     function follow(link) {
         if (/^(https?|mailto):/i.test(link)) { Qt.openUrlExternally(link); return }
         if (link.charAt(0) === "#") return                       // a heading on this page
@@ -87,7 +87,7 @@ Panel {
         contentWidth: width; contentHeight: page.height
         clip: true; boundsBehavior: Flickable.StopAtBounds
         onWidthChanged: if (drawer.url !== "" && width > 0) relay.restart()      // pictures fit the new width
-        Timer { id: relay; interval: 120; onTriggered: drawer.html = guidePages.readAt(drawer.url, Math.round(flick.width)) }
+        Timer { id: relay; interval: 120; onTriggered: drawer.html = guidePages.readAt(drawer.url, Math.floor(page.width)) }
         Text {
             id: page
             width: flick.width - Theme.grid
