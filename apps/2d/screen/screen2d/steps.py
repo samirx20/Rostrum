@@ -11,11 +11,11 @@
     (plays, with full motion blur or not, at that Preview size, then prints the frames shown per second and each stage's time: screen2d/playstats.py)
     marker add <s> | marker move <name> <s> | marker rename <name> <new name> | marker remove <name> (ruler flags; _ for spaces)
   timeline compact|full (this tool's timeline height) | Draw tool (tool draw; paints on the selected drawing layer, or makes one): draw <x> <y> <x> <y> … (one stroke, composition px)
-    brush <setting> <value> | newframe [copy] | hold <+n|-n> | frame next|prev | onion on|off
+    brush <setting> <value> | newframe [copy] | hold <+n|-n> | frame next|prev | onion on|off | paintlayer | painton selected|new
   Paths (tool pen): pen <x,y> <x,y,hx,hy> … [close] (one new path: a point, or a press at x,y dragged to hx,hy =
     a smooth point; composition px) | pointpick <layer> <i> (select a point: its handles show) | pointdrag <layer> <i> <dx> <dy> [in|out] (a point, or its handle)
   Handles: resize <layer> <nw|n|ne|e|se|s|sw|w> <dx> <dy> [shift] [alt] | rotate <layer> <deg> [shift] (turn by that many
-    degrees) | boxselect <x0> <y0> <x1> <y1> (the rubber band) | shiftpick <layer> (add / remove) | movesel <dx> <dy> (move all selected)
+    degrees) | boxselect <x0> <y0> <x1> <y1> [shift] [ctrl] (the rubber band) | shiftpick <layer> (add / remove) | movesel <dx> <dy> (move all selected)
   Add and import: add <type> (the Add menu's entry; image / video: add image <path>) | addmenu open|close |
     import <path> [page=<n>] [text=outline] [keep=on] (the Import panel's job, waits, fails like it) | importstart <path> … (starts it,
     doesn't wait) | importpanel open [path]|close
@@ -225,6 +225,10 @@ def do_step(bridge, win, step):
         bridge.painter.goFrame(1 if rest[0] == "next" else -1)
     elif word == "onion":
         bridge.painter.setOnion(rest[0] == "on")
+    elif word == "paintlayer":                   # "+ Paint layer": the next stroke starts a new paint layer
+        bridge.painter.newPaintLayer()
+    elif word == "painton":                      # painton selected|new: the "Painting on: … ▸" menu
+        bridge.painter.paintOn(rest[0])
     elif word == "marker":                       # the ruler's flag edits, through the same MarkerWatch slots
         from rostrum_core.markers import find
         m = bridge.marks

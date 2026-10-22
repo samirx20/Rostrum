@@ -6,7 +6,7 @@ on: the operation makes the drawing, the paint layer and the paint size if missi
 previews `stroke.set {points}`; release records the one change. Canvas px come from composition px
 (rostrum2d.drawing.to_canvas: the layer's x, y, anchor, scale and rotation over its box; a layer inside a group is not
 placed from the group's corner yet). With `make` (the Add menu's layer.add calls for a drawing) the same change first
-makes that drawing layer: Draw tool on, none selected, one undo step.
+makes that drawing layer: Draw tool on, none selected, one undo step. `layer` "new": the stroke starts a new paint layer.
 """
 from __future__ import annotations
 
@@ -19,7 +19,8 @@ MIN_STEP = 0.5            # canvas px: a move closer than this to the last point
 
 
 class StrokeDrag:
-    def __init__(self, doc, who, layer_id: str, t: float, fps: float, brush: dict, x: float, y: float, pressure=1.0, make=None):
+    def __init__(self, doc, who, layer_id: str, t: float, fps: float, brush: dict, x: float, y: float, pressure=1.0, make=None,
+                 layer: str = ""):
         self.doc, self.sid, self.points = doc, random_id("stroke"), []
         self._drag = Drag(doc, who, "Paint")
         try:
@@ -29,7 +30,7 @@ class StrokeDrag:
             self.props = resolve(self.item, t)
             self._add(x, y, pressure)
             self._drag.preview([{"op": "paint.stroke", "target": [layer_id],
-                                 "args": {**brush, "id": self.sid, "points": self.points, "space": "canvas",
+                                 "args": {**brush, "id": self.sid, "points": self.points, "space": "canvas", "layer": layer,
                                           "frame": max(0, frame_number(t, fps))}}])
         except Exception:
             self._drag.end(cancel=True)
