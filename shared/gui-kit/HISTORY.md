@@ -71,7 +71,7 @@ Words: the message line reads "Claude: Moved title" (`who_name`), "Undid: Move t
 |---|---|---|
 | One live file | `rostrum_core/live.py` | `live.keep(doc)`: the window and an agent's server each hold a copy of the document; every change now locks the file, takes in the other program's new steps, makes the change and saves, so nobody's steps are wiped. `doc.live.catch_up()` takes in new steps between changes (as ordinary change events). A person's drag that ends after an agent's step is put on top of it. |
 | The door | `rostrum_core/document.py` | Every change-making method (`apply`, `undo`, `redo`, `undo_session`, `redo_session`, `undo_changes`, `restore_version`, `mark_version`, `run_script`, `commit`) runs through `doc.live`'s door when there is one. `redo_session` is new (History's Bring back). `locked_by(id)` names who locked an item. |
-| Locks | `rostrum_core/run.py` | A locked item refuses every operation on itself and on everything inside it (a locked track holds its notes and clips), for people and agents alike, except its own `*.unlock`. The words: `"Background" (bg) is locked by Sam. Unlock it first, then try again.` / `"lead.n2000" (lead.n2000) is inside "lead" (lead), which is locked by Sam. …` |
+| Locks | `rostrum_core/locks.py` (called by `run.plan` after each operation) | The one lock check for every app: any edit an operation makes to a locked item or to anything inside it is refused (a locked track holds its notes and clips; a clip moved onto it, a section op over every track are caught too), for people and agents alike. Setting `locked` on the item itself always passes (lock / unlock). The words: `"Background" (bg) is locked by Sam. Unlock it first, then try again.` / `"lead.n2000" (lead.n2000) is inside "lead" (lead), which is locked by Sam. …` |
 | Refused undo | `rostrum_core/history.py` | `"Move chorus" can't be taken back or brought back: Claude changed chorus.x since ("Move", step 5). Undo that first, in History.` |
 | Who in words | `rostrum_core/who.py` | `Who.words()`: "Sam", "Claude", "logo.py", "Outside Rostrum". The kit's `who_name` adds "You". |
 | What the person sees | `rostrum_core/screen_state.py`, kit `rostrum_gui/live_link.py` | `LiveLink(bridge, app, state_fn)` (every 0.3 s: catch up, and write the app's `state_fn(bridge)` when it changes); `link.close()` removes it. |
@@ -80,6 +80,10 @@ Words: the message line reads "Claude: Moved title" (`who_name`), "Undid: Move t
 Rules for an app:
 - **Open a live document once with `live.keep(doc)`**, in the window when it edits a project file directly and in the
   MCP server. Never `doc.subscribe(... doc.save())` again: a second save path outside the lock is what wiped work.
+  `doc.save()` on a live document only goes through the door (it is saved already), so a stray Ctrl+S is harmless.
+  Change a document only through `doc.apply`, a gesture or the history methods: they all go through the door.
+- **Shared markers** are changed through `rostrum_core.markers.edit` / `open_to_change` (live too), never
+  open → apply → save.
 - **Never cache `doc.history`**: a catch-up that had to read the whole file makes a new History object.
 - **Lock is data**: an item with `"locked": true`, set by `<kind>.lock` / `<kind>.unlock` operations. Nothing else to do.
 
@@ -109,27 +113,12 @@ them instead of beside them:
   the layer (its keys, effects, masks, children of a group).
 - **Layout states:** `history-agent-run`, `agent-chip-long` in `layout_states.py`.
 
-## Notes for Team Priyam (RostrumSound)
+## RostrumSound (merged with P27 in S33)
 
-Sound runs on all of this on `team/sam` (commits c096c36, 20fcc4b). When you merge main into P27:
-- **Saving:** `SoundBridge.__init__` calls `live.keep(doc)` and makes `LiveLink(self, "sound", screen_seen.state)` when
-  the song has a folder (every song but a scratch one); `close()` closes it. The save in `_on_doc` is gone, and so is
-  `subscribe(lambda ev: doc.save())` in `python/rostrum_sound/mcp/app.py` (`open_or_new` now `live.keep`s). Ctrl+S in
-  `session.py` still calls `doc.save()`: make it "Save a version" (piece 13, `bridge.saveVersion(name)`).
-- **Lock (new):** tracks have a `locked` switch (`doc/fields.py`) and operations `track.lock` / `track.unlock`
-  (`doc/ops_tracks.py`). The core refuses every operation on a locked track **and on its notes, hits, clips, lines,
-  effects, automation, sends and ducks**. Still to do in the screen: a lock on the track header (Ctrl+Shift+L is the
-  shared key) and the locked look.
-- **Top bar:** `Main.qml` sets `saveWord`. Your `tools` (pages, transport, song readout) now sit right after the change
-  count, not centred. INTERACTION 1.1 moves transport into the arrangement header; when you do, drop `tools`.
-- **Outlines:** `TrackHeader.qml` and `LaneBlocks.qml` each have a `Repeater` on `backend.agent.flash` with a
-  `ChangeOutline`. Not yet in the piano roll (`PianoRoll.qml` / `RollGrid.qml`) or the mixer strips: add the same
-  three lines there.
-- **What the person sees:** `screensound/screen_seen.py`. Focus reports the page ("timeline", "mix", "instruments");
-  set `bridge._focus_area` to "arrangement" / "editor" / "mixer" from `Main.qml` for the real focused area. There is
-  no time range on the bridge yet; when there is, return it as `range`.
-- **Layout check:** `history-agent-run`, `agent-chip-long` in `layout_states.py`, with `agent_demo.py`
-  (`agent_demo_calls(n)` turns the first track down a little per step). Sound's check still has 47 faults that were
-  there before S32 (long track names cut in the track header, mix strip and instrument card without a hover, the
-  "2.4 s" ruler label cut by `BarRuler`, "+ Group channel"): yours in P27. The check needs `ROSTRUM_SOUND_ENGINE`
-  pointed at a built engine when run from a worktree.
+Done on the merged tree: `SoundBridge` keeps the song live (`live.keep`, `LiveLink`), no save in `_on_doc`; the MCP
+server `live.keep`s too. Lock: P27's `track.lock` / `track.unlock`, the header padlock and Ctrl+Shift+L, refused by
+the core's one check (`rostrum_core/locks.py`; Sound's own `doc/locks.py` is gone). Outlines on the track header and
+the painted lane (`LaneBlocks.qml`: an outline item only over the blocks `backend.agent.flash` names). `screen_seen.py`
+reports the dock, the Library, the ruler's time range and the area last clicked (arrangement / editor).
+Still open for Priyam: the agent outline in the Editor's piano roll and the Mixer strips (the same `Repeater` on
+`backend.agent.flash` with a `ChangeOutline`).

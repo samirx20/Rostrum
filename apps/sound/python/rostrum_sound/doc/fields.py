@@ -45,8 +45,6 @@ FIELDS = {
         *PL.INSTRUMENT,
         N("volume", 0, 4, "Mix", help="Fader gain (1 = as recorded)."), N("pan", **PAN, group="Mix"),
         Param.toggle("mute", group="Mix"), Param.toggle("solo", group="Mix"), FB.OUTPUT,
-        Param.toggle("locked", group="Track", importance="secondary",
-                     help="Locked: nobody (person or agent) can change the track until it is unlocked (track.unlock)."),
         N("reverb", 0, 1, "Mix", imp="secondary", help="Send to the master's track reverb."),
         Param.choice("tone", names.TONES, group="Mix", importance="secondary"),
         *PL.EXPRESSION,
