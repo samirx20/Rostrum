@@ -111,3 +111,16 @@ def test_a_bad_value_is_refused_by_the_document_check_and_on_open(tmp_path):
     (tmp_path / ".rostrum" / "itm_card.history.jsonl").unlink()      # a file with no history is checked the same
     with pytest.raises(RostrumError, match="focal=0 is out of range"):
         Document.open(tmp_path, "itm_card", toy.KIND)
+
+
+def test_a_drag_that_writes_0_as_0_0_still_opens(tmp_path):
+    """H31 F7 walk: a drag that also tied the layer rewrote its start 0 as 0.0; Python calls them equal, so no change was recorded,
+    but the file held 0.0 and its history no longer added up ("doesn't add up to its own last step" on open)."""
+    doc = toy.sample(tmp_path, "itm_card")
+    doc.apply({"op": "layer.move", "target": ["card"], "args": {"x": 5}}, SAM)
+    with doc.gesture("Move card", SAM) as g:
+        g.preview({"op": "layer.move", "target": ["card"], "args": {"x": 40}})
+        g.preview([{"op": "layer.move", "target": ["card"], "args": {"x": 5.0}}, CAM])     # x unchanged, written 5.0
+    doc.save()
+    again = Document.open(tmp_path, "itm_card", toy.KIND)
+    assert again.data == doc.data

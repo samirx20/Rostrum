@@ -9,6 +9,7 @@ run, so one moved card is one Move, not a reshuffle.
 from __future__ import annotations
 
 import bisect
+import json
 
 from .edits import MISSING, Insert, Move, Remove, Set
 from .tree import bare, child_keys, fields, index, walk
@@ -39,8 +40,13 @@ def _field_sets(id_, path, a, b, out):
     elif not path:
         for k in list(a) + [k for k in b if k not in a]:
             _field_sets(id_, [k], a.get(k, MISSING), b.get(k, MISSING), out)
-    elif a != b:
+    elif a != b or _written(a) != _written(b):    # 0 and 0.0 are equal in Python but not in the file (its hash)
         out.append(Set(id_, path, b, a))
+
+
+def _written(v) -> str:
+    """A value as the file writes it, so a change the file sees is never skipped as "no change"."""
+    return "" if v is MISSING else json.dumps(v, sort_keys=True)
 
 
 def diff(a: dict, b: dict, lists: dict) -> list:
