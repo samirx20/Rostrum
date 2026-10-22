@@ -17,6 +17,7 @@ Item {
     required property var model           // roles from rostrum_gui.rows.ROLES
     property var bridge
     property bool keyMarks: false
+    property bool highlighted: false      // marked while it is in focus elsewhere (2D: its keys picked in the timeline)
     readonly property int gutter: keyMarks ? 22 : 0
     readonly property bool driven: model.row === "param" && !!model.expr      // an expression decides (model.expr)
     readonly property bool tall: model.type === "list" || model.control === "curve"    // a widget taller than a field (top-aligned)
@@ -50,6 +51,10 @@ Item {
                text: "More"; color: moreArea.containsMouse ? Theme.fg : Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont }
         MouseArea { id: moreArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: row.bridge.toggleMore() }
+    }
+    Rectangle {  // highlighted: a steady soft mark (the flash below is the same colour, brief)
+        anchors.fill: parent; anchors.leftMargin: -Theme.grid; anchors.rightMargin: -Theme.grid
+        radius: Theme.radiusCtl; color: Theme.accentSoft; visible: row.highlighted
     }
     Rectangle {  // the flash after a jump to this field (revealField)
         id: flashMark

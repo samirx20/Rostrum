@@ -236,7 +236,7 @@ Not crates (`render/src`): `depth_tests.rs` — a parent's `perspective: 800px` 
 ## H24 (smaller playing preview; 2026-10-22)
 | Crate | Patch | Why |
 |---|---|---|
-| anyrender_skia | `SkiaSceneCache::set_root_scale(scale)` (scene.rs): a scale pushed as the bottom entry of `base_3d`, so `set_matrix`, `push_transform_3d`, captures, soft clips and flat layers all draw through it; 1 clears it. `write_tap` already skips any base, so no comp-cache buffer is written from a scaled paint. Under a scale, pixel-grid clips take the soft-clip path (`clip_on_pixel_grid` needs no base) | `frame` with `scale` 0.5 / 0.25 (the live canvas while playing, rostrum-motion painter.rs `set_scale`): the same laid-out page drawn smaller, blur / glow / shadow radii scaling with it, without laying the page out again at another size |
+| anyrender_skia | `SkiaSceneCache::set_root_view(scale, x0, y0)` (scene.rs; H24 `set_root_scale`, H30 adds the crop origin): a scale (and the crop's origin) pushed as the bottom entry of `base_3d`, so `set_matrix`, `push_transform_3d`, captures, soft clips and flat layers all draw through it; 1 clears it. `write_tap` already skips any base, so no comp-cache buffer is written from a scaled paint. Under a scale, pixel-grid clips take the soft-clip path (`clip_on_pixel_grid` needs no base) | `frame` with `scale` 0.5 / 0.25 (the live canvas while playing, rostrum-motion painter.rs `set_scale`): the same laid-out page drawn smaller, blur / glow / shadow radii scaling with it, without laying the page out again at another size; H30: `frame` with `view` (a crop of the page at any scale: the zoomed-in canvas drawn sharp) |
 
 ## H27 (big comps play faster; 2026-10-22)
 | Crate | Patch | Why |

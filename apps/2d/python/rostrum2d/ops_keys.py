@@ -66,8 +66,29 @@ def _still_value(ctx, owner: dict, prop: str, args: dict):
     return p.check(args[field], f"{ctx.where} › {owner['id']}.{prop}")
 
 
+POSE = ["x", "y", "scale", "rotation", "opacity"]       # K: position, scale, rotation and opacity (UX_SPEC 3.17)
+
+
+def _value_now(ctx, owner: dict, prop: str, t):
+    """{"v": value} of a pose field at own time t, or None where this owner can't key it now (no such field, driven
+    by an expression or placed by an auto layout / a path): K keys what it can and says how many."""
+    from rostrum_core.conditions import holds
+    from .evaluate import value_at
+    from .exprbake import source_of
+    if prop not in F.animatable(owner["type"]) or source_of(owner, prop) or isinstance(t, str):
+        return None
+    p = F.param(owner["type"], prop)
+    if not holds(p.valid_when, {**F.defaults(owner["type"]), **owner}):
+        return None
+    keys = keys_of(owner, prop)
+    if any(isinstance(k["t"], str) for k in keys):     # timed on a marker: the value needs the markers; left out
+        return None
+    return {"v": value_at(owner, prop, t)}
+
+
 put_key = register_key_ops(R, owners=OWNERS, check_key=_checked_value, check_still=_still_value, settable=settable,
-                           value_params=[V, C, D], key_add_help="The field is animated from then on: its keys alone decide its value.")
+                           value_params=[V, C, D], key_add_help="The field is animated from then on: its keys alone decide its value.",
+                           field_sets={"pose": POSE}, value_now=_value_now)
 
 
 # ---- the curve of a field: the keys as an agent or the curve editor draws them ---------------------------------

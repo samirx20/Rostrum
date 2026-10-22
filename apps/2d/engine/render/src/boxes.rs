@@ -28,12 +28,35 @@ impl Placed {
         let p = [a, c, 0.0, e, bb, d, 0.0, f, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0];
         blitz_paint::project_rect_bbox(&blitz_dom::mul4(b, &p), r)
     }
+
+    /// Element px -> page px as a 3×3 projective matrix, row-major (x', y', w') = M (x, y, 1), then x'/w', y'/w': the
+    /// 2D placement under any 3D tilt, as the painter draws it.
+    fn matrix(&self) -> [f64; 9] {
+        let [a, b, c, d, e, f] = self.transform.as_coeffs();
+        let Some(base) = &self.base else { return [a, c, e, b, d, f, 0.0, 0.0, 1.0] };
+        let p = [a, c, 0.0, e, b, d, 0.0, f, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0];
+        let m = blitz_dom::mul4(base, &p);
+        [m[0], m[1], m[3], m[4], m[5], m[7], m[12], m[13], m[15]]
+    }
+}
+
+/// A layer element as `places` finds it: its node, border box size and element px -> page px matrix.
+pub struct Place {
+    pub node: NodeId,
+    pub w: f64,
+    pub h: f64,
+    pub matrix: [f64; 9],
 }
 
 struct Walk<'a> {
     doc: &'a BaseDocument,
     out: Vec<Value>,
     glyphs: Vec<Option<Rect>>,
+    /// The attribute naming a layer element (`data-layer-id` on a page; a scene's stage uses `id`).
+    attr: &'static str,
+    /// `places`: only these layers are recorded, with their node and matrix.
+    want: &'a [&'a str],
+    places: Vec<(String, Place)>,
 }
 
 fn r(v: f64) -> f64 {
@@ -44,9 +67,9 @@ fn rect(b: Rect) -> Value {
     json!([r(b.x0), r(b.y0), r(b.x1), r(b.y1)])
 }
 
-fn layer_id(node: &Node) -> Option<&str> {
+fn layer_id<'n>(node: &'n Node, attr: &str) -> Option<&'n str> {
     let el = node.element_data()?;
-    el.attrs().iter().find(|a| &*a.name.local == LAYER_ATTR).map(|a| a.value.as_str())
+    el.attrs().iter().find(|a| &*a.name.local == attr).map(|a| a.value.as_str())
 }
 
 impl Walk<'_> {
@@ -100,7 +123,10 @@ impl Walk<'_> {
         let placed = Placed { transform, base };
         let local = Rect::new(0.0, 0.0, border.width(), border.height());
         let overflow = *node.scrollable_overflow();
-        let own = layer_id(node).map(|lid| {
+        if let Some(lid) = layer_id(node, self.attr).filter(|l| self.want.contains(l)) {
+            self.places.push((lid.to_string(), Place { node: id, w: local.width(), h: local.height(), matrix: placed.matrix() }));
+        }
+        let own = layer_id(node, self.attr).filter(|_| self.want.is_empty()).map(|lid| {
             let parent = owner.and_then(|i| self.out[i]["id"].as_str().map(str::to_string));
             self.out.push(json!({
                 "id": lid,
@@ -145,7 +171,7 @@ impl Walk<'_> {
 /// ink (border box ∪ overflowing content: text past its box) in page pixels, the clip its ancestors apply,
 /// and its opacity with its ancestors'.
 pub fn boxes(doc: &BaseDocument, width: u32, height: u32) -> Value {
-    let mut w = Walk { doc, out: vec![], glyphs: vec![] };
+    let mut w = Walk { doc, out: vec![], glyphs: vec![], attr: LAYER_ATTR, want: &[], places: vec![] };
     {
         let root = doc.root_element().id;
         w.element(root, Affine::IDENTITY, None, Rect::new(0.0, 0.0, width as f64, height as f64), 1.0, None);
@@ -154,4 +180,13 @@ pub fn boxes(doc: &BaseDocument, width: u32, height: u32) -> Value {
         b["glyphs"] = g.map_or(Value::Null, rect);
     }
     Value::Array(w.out)
+}
+
+/// The layers `ids` (elements whose `attr` is one of them) as painted this frame, in paint order: what `place`
+/// (place.rs) maps pointer and outline through. A layer not painted (hidden, opacity 0, out of its time) is absent.
+pub fn places(doc: &BaseDocument, width: u32, height: u32, attr: &'static str, ids: &[&str]) -> Vec<(String, Place)> {
+    let mut w = Walk { doc, out: vec![], glyphs: vec![], attr, want: ids, places: vec![] };
+    let root = doc.root_element().id;
+    w.element(root, Affine::IDENTITY, None, Rect::new(0.0, 0.0, width as f64, height as f64), 1.0, None);
+    w.places
 }

@@ -86,6 +86,8 @@ def _resample(pts, step):
 def landed(canvas: dict, w: int, h: int, stroke_id: str, path=None) -> dict:
     """Did the stroke's paint land on `path` (default: its own recorded path)? Mean / max px off, share painted."""
     s = _find(canvas, stroke_id)
+    if s.get("type") == "fill":
+        raise ValueError(f"{stroke_id} is a fill, not a stroke: it has no path to land on. Look at it with look_drawing")
     size, cov = float(s["size"]), coverage(canvas, w, h, stroke_id)
     if cov.sum() <= 1e-6:
         return {"stroke": stroke_id, "landed": False, "mean": None, "max": None,

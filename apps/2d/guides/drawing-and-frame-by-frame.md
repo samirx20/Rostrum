@@ -29,6 +29,13 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
   merges stroke by stroke, so a drawing a person redrew is kept (the reply lists what was held).
 - New drawing: `frame.add at=N` (blank) or `frame.add at=N copy=<frame id>` (start from a copy and change it).
 - Redraw: `paint.clear` on the paint layer, then new strokes; or `stroke.remove` single strokes.
+- Fill a closed area: `paint.fill {target: <layer>, at: [[x, y]], color, opacity, gap: small|medium|large, layer}`
+  (composition px; `space: "canvas"` for canvas px). The edges come from every visible paint layer of that drawing,
+  so fill a colour layer under a line layer; `gap` closes line ends that don't quite meet. The fill is a `fill` item
+  (its outline, ring 0 outside, 1.. holes) in the paint layer's `strokes`: sharp, one undo step, removed with
+  `stroke.remove`. A point on a line or in an open area is refused with the reason; nothing changes.
+- Paint layers: `stroke.add`/`paint.stroke` with `layer: "new"` starts one; `paint.set` (name, mode, opacity,
+  visible, locked), `paint.move {index}` (0 = bottom), `paint.remove`.
 
 ## The brush (`inspect_operations name: stroke.add` lists every setting)
 

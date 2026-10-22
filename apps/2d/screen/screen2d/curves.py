@@ -67,7 +67,8 @@ class Curves(QObject):
     @Property("QVariantList", notify=changed)
     def fields(self):
         """One entry per curve: id, label, colour, range lo..hi, shown, path [[t, v] …], keys, stretches (handles)."""
-        out, sel, layer = [], self.b._sel, self.b.selectedLayer
+        picked = self.b._keys.ids
+        out, sel, layer = [], picked[0] if picked else "", self.b.selectedLayer
         for n, (owner, prop) in enumerate(self._numbers()):
             fid, c, ks = f"{owner['id']}.{prop}", curve_of(owner, prop), keys_of(owner, prop)
             on = next((i for i, k in enumerate(ks) if k["id"] == sel), None)
@@ -96,7 +97,7 @@ class Curves(QObject):
 
     @Slot(str, result=bool)
     def beginKeyDrag(self, key_id):
-        self.b.select(key_id)
+        self.b._keys.click([key_id], "", [])           # picked like a diamond (the key bar shows it)
         return self._begin("Move key", {"key": key_id})
 
     @Slot(float, float)

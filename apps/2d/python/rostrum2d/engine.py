@@ -27,7 +27,7 @@ from pathlib import Path
 from . import settings
 
 LOG_DIR = settings.logs_dir()
-RETRY = {"frame", "bones", "outline", "measure", "scene"}     # short requests that are safe to send again
+RETRY = {"frame", "bones", "outline", "measure", "scene", "place"}     # short requests that are safe to send again
 QUICK_S = 30.0                                                  # dying again this soon after a restart: give up
 # Short, so the top bar's status line shows them whole; the log line says the rest (exit code, the old log).
 RESTARTED = "The drawing engine restarted. Nothing was lost."
@@ -68,6 +68,7 @@ class Engine:
         if not self.exe.exists():
             raise EngineError(f"2D engine not found: {self.exe} (set ROSTRUM2D_ENGINE)")
         self.scene, self._shm = None, None           # _shm: (name, mmap) of the engine's frame memory (pixels)
+        self.placed: dict = {}                       # the last pixels frame's `place` reply
         # Why it paints on the processor, in plain words (no working graphics driver; ROSTRUM2D_NO_GPU=1), or None on the GPU.
         self.fallback: str | None = None
         self.notice: str | None = None               # RESTARTED after a restart, until the screen has said it
@@ -169,6 +170,13 @@ class Engine:
         self._props()
         return self._request({"outline": {"id": id, "t": t}})["d"]
 
+    def place(self, t: float, ids: list[str]) -> dict[str, dict]:
+        """Where each layer is drawn at `t` (ENGINE_CONTRACT.md § 1 `place`), from the page the frame lays out, through its
+        groups, the camera and tilt: {id: {"m": 3×3 own px -> comp px (projective, row-major), "w", "h": its own box,
+        "edge": its true outline in comp px as path data}}. placement.py turns points through it; an undrawn layer fails."""
+        self._props()
+        return self._request({"place": {"t": t, "ids": list(ids)}})["layers"]
+
     def measure(self, items: list[dict]) -> dict[str, tuple[float, float]]:
         """Each text's laid-out box (w, h) in its own px, by the code that draws it: items are {id, and the text's
         evaluated fields} (ENGINE_CONTRACT.md § 1 `measure`). One round trip for the list; needs no scene loaded.
@@ -176,15 +184,20 @@ class Engine:
         sizes = self._request({"measure": {"items": items}})["sizes"]
         return {k: (float(w), float(h)) for k, (w, h) in sizes.items()}
 
-    def pixels(self, t: float, samples: int | None = None, scale: float = 1.0) -> tuple[memoryview, int, int, int]:
+    def pixels(self, t: float, samples: int | None = None, scale: float = 1.0, view: dict | None = None,
+               place: list[str] | None = None) -> tuple[memoryview, int, int, int]:
         """The frame at `t` as straight-alpha RGBA8 in the engine's shared memory (no PNG, no pipe; Windows):
         (view, width, height, stride). The view is valid until the frame after next is asked for; copy it.
         `samples`: motion-blur steps for this frame instead of the composition's (1 = no blur: fast playback).
         `scale`: 1, 0.5 or 0.25 × the composition's size, the same picture drawn smaller (playing); width and
-        height are then the smaller size."""
+        height are then the smaller size. `view` {x, y, w, h, scale}: only that part of the composition (comp px),
+        drawn at any scale (the zoomed-in canvas, sharp). `place`: layer ids whose `place` (see place) comes with this
+        frame, kept in `self.placed` ({} without)."""
         self._props()
-        req = {"t": t, "pixels": True, **({"shutterSamples": samples} if samples else {}), **({"scale": scale} if scale != 1 else {})}
-        shm = self._request({"frame": req})["shm"]
+        req = {"t": t, "pixels": True, **({"shutterSamples": samples} if samples else {}), **({"scale": scale} if scale != 1 else {}),
+               **({"view": view} if view else {}), **({"place": place} if place else {})}
+        out = self._request({"frame": req})
+        self.placed, shm = out.get("place") or {}, out["shm"]
         if shm["format"] != "rgba8":
             raise EngineError(f"pixels: the engine sent {shm['format']}; the canvas reads rgba8")
         if self._shm is None or self._shm[0] != shm["name"]:   # a new block when the frame size changes

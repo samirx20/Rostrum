@@ -118,15 +118,16 @@ impl SkiaSceneCache {
         Default::default()
     }
 
-    /// Rostrum patch (H24): a view scale under every draw of the next paint (a smaller playing preview), as the bottom
-    /// base matrix: every matrix is mapped by it, so nothing is laid out again and blur, glow and shadow radii scale
-    /// with it (Skia maps filters and mask blurs through the matrix). Taps are not written under it (`write_tap` skips
-    /// any base), so a smaller picture never enters the comp cache. 1 clears it; call before each paint.
-    pub fn set_root_scale(&mut self, scale: f32) {
+    /// Rostrum patch (H24, H30): a view under every draw of the next paint, as the bottom base matrix: page px (x, y) go
+    /// to ((x - x0)·scale, (y - y0)·scale) (a smaller playing preview; a sharp zoomed-in crop of the page). Every matrix
+    /// is mapped by it, so nothing is laid out again and blur, glow and shadow radii scale with it (Skia maps filters
+    /// and mask blurs through the matrix). Taps are not written under it (`write_tap` skips any base), so a scaled or
+    /// cropped picture never enters the comp cache. (1, 0, 0) clears it; call before each paint.
+    pub fn set_root_view(&mut self, scale: f32, x0: f32, y0: f32) {
         self.base_3d.clear();
-        if scale != 1.0 {
+        if (scale, x0, y0) != (1.0, 0.0, 0.0) {
             #[rustfmt::skip]
-            let m = [scale, 0.0, 0.0, 0.0, 0.0, scale, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0];
+            let m = [scale, 0.0, 0.0, -x0 * scale, 0.0, scale, 0.0, -y0 * scale, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0];
             self.base_3d.push(skia_safe::M44::row_major(&m));
         }
     }

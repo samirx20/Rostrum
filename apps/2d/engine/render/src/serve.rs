@@ -16,7 +16,9 @@
 //!   `image`, or with `rgba` replies `{"ok": true, "bytes": n, …}` followed by n bytes of straight-alpha RGBA on
 //!   stdout; with `pixels` the same bytes go into shared memory instead and the reply's `shm` says where (shm.rs).
 //!   `scale` (with `pixels` only: the live canvas while playing): 1, 0.5 or 0.25, the same laid-out page drawn at that
-//!   size (painter.rs `set_scale`); the reply's `width` / `height` and `shm` give the smaller size, `boxes` stay in comp px.
+//!   size (painter.rs `set_view`); the reply's `width` / `height` and `shm` give the smaller size, `boxes` stay in comp px.
+//!   Or `view: {x, y, w, h, scale}` (with `pixels` only: the zoomed-in canvas): the comp px crop x..x+w, y..y+h drawn at
+//!   `scale` (up to 64; at most 8192 px a side), round(w·scale) × round(h·scale) px, through the same paint as any frame.
 //!   `boxes` adds each layer's laid-out box to the reply (boxes.rs). With `encode: true` the pixels go
 //!   to the open's encoder instead and the reply is `{"ok": true, …}`.
 //! - `{"page": {"html"}}` — another page shell on the open session (a live preview's next prepared document):
@@ -65,7 +67,7 @@ use crate::sink::{Pixels, Sink};
 const STAGE: &str = "#rostrum-stage";
 
 pub(crate) struct Session {
-    doc: HtmlDocument,
+    pub(crate) doc: HtmlDocument,
     stage: NodeId,
     assets: Assets,
     painter: Painter,
@@ -186,7 +188,7 @@ fn failures(assets: &Assets) -> Result<(), String> {
 }
 
 /// Applies one stage's markup to the kept page as edits and lays it out: (diff ms, layout ms, edit count).
-fn apply(s: &mut Session, markup: &str) -> Result<(f64, f64, usize), String> {
+pub(crate) fn apply(s: &mut Session, markup: &str) -> Result<(f64, f64, usize), String> {
     let t0 = Instant::now();
     // The new stage, parsed on its own (no styles, no loads), walked beside the kept one.
     let next_stage = s.scratch.parse(markup).ok_or("stage markup lost its container")?;
@@ -284,9 +286,16 @@ fn warm_ahead(s: &Session, req: &Value) -> Result<Value, String> {
     Ok(json!({ "ok": true, "queued": queued }))
 }
 
-/// A frame's `scale` (the live canvas while playing, smaller): 1 (the default), 0.5 or 0.25, and only on `pixels` frames;
-/// stills, pictures, scopes and exports are drawn at the comp's size.
-fn preview_scale(req: &Value) -> Result<f32, String> {
+/// The most a `view` crop may enlarge (64 × is the canvas's top zoom) and the largest picture side it may make.
+const VIEW_MOST_SCALE: f64 = 64.0;
+const VIEW_MOST_PX: f64 = 8192.0;
+
+/// The part of the page a frame draws (painter.rs `View`): the whole comp unless the request asks, only on `pixels`
+/// frames (the live canvas; stills, pictures, scopes and exports are the comp's size):
+/// `scale` 0.5 / 0.25: the whole comp smaller (playing); `view {x, y, w, h, scale}`: the comp px crop x..x+w, y..y+h
+/// drawn at any scale up to 64 (the zoomed-in canvas drawn sharp; the picture at most 8192 px a side).
+fn preview_view(req: &Value, width: u32, height: u32) -> Result<crate::painter::View, String> {
+    let full = crate::painter::View::full(width, height);
     let scale = match &req["scale"] {
         Value::Null => 1.0,
         v => v.as_f64().ok_or_else(|| format!("scale is 1, 0.5 or 0.25; got {v}"))?,
@@ -294,19 +303,35 @@ fn preview_scale(req: &Value) -> Result<f32, String> {
     if ![1.0, 0.5, 0.25].contains(&scale) {
         return Err(format!("scale is 1, 0.5 or 0.25; got {scale}"));
     }
+    let view = &req["view"];
     let elsewhere = ["image", "rgba", "encode", "scopes", "sample"].iter().any(|k| !matches!(req[*k], Value::Null | Value::Bool(false)));
-    if scale != 1.0 && (req["pixels"].as_bool() != Some(true) || elsewhere) {
-        return Err("scale is for pixels frames (the live canvas) only; pictures, scopes and exports are drawn at the comp's size".into());
+    if (scale != 1.0 || !view.is_null()) && (req["pixels"].as_bool() != Some(true) || elsewhere) {
+        return Err("scale and view are for pixels frames (the live canvas) only; pictures, scopes and exports are drawn at the comp's size".into());
     }
-    Ok(scale as f32)
+    if view.is_null() {
+        return Ok(crate::painter::View { scale: scale as f32, ..full });
+    }
+    if scale != 1.0 {
+        return Err("a frame takes scale or view, not both".into());
+    }
+    let n = |k: &str| view[k].as_f64().filter(|v| v.is_finite()).ok_or_else(|| format!("view needs x, y, w, h, scale (numbers); {k} is {}", view[k]));
+    let (x, y, w, h, k) = (n("x")?, n("y")?, n("w")?, n("h")?, n("scale")?);
+    if w <= 0.0 || h <= 0.0 || x < -0.5 || y < -0.5 || x + w > width as f64 + 0.5 || y + h > height as f64 + 0.5 {
+        return Err(format!("view {x}, {y}, {w} × {h} is not inside the {width} × {height} comp"));
+    }
+    if !(k > 0.0 && k <= VIEW_MOST_SCALE) || (w * k).round() > VIEW_MOST_PX || (h * k).round() > VIEW_MOST_PX {
+        return Err(format!("view scale {k} on {w} × {h}: the scale is above 0 and at most {VIEW_MOST_SCALE}, the picture at most {VIEW_MOST_PX} px a side"));
+    }
+    Ok(crate::painter::View { scale: k as f32, x0: x as f32, y0: y as f32, w: w as f32, h: h as f32 })
 }
 
 /// One frame: the reply, and the rgba bytes that follow it when asked for.
 pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u8>>), String> {
     let markup = req["stage"].as_str().ok_or("frame needs stage")?;
-    // The same laid-out page, drawn at `scale` × the comp's size (painter.rs `set_scale`).
-    let scale = preview_scale(req)?;
-    s.painter.set_scale(scale, (s.width, s.height))?;
+    // The same laid-out page, drawn smaller (playing) or a crop of it larger (zoomed in): painter.rs `set_view`.
+    let view = preview_view(req, s.width, s.height)?;
+    s.painter.set_view(view)?;
+    let scale = view.scale;
     let samples: Vec<&str> = req["samples"].as_array().map(|a| a.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
     // The frame's pictures not kept yet, decoded side by side now, so layout and paint (which load one after another) only hit the cache.
     let t_decode = Instant::now();
@@ -562,6 +587,12 @@ pub fn run() {
             }
         } else if let Some(o) = req.get("outline") {
             match crate::scene_serve::outline(&held, o) {
+                Ok(r) => reply(&mut out, &r),
+                Err(e) => reply(&mut out, &json!({ "error": e })),
+            }
+        } else if let Some(p) = req.get("place") {
+            let r = session.as_mut().ok_or_else(|| "place before scene".to_string()).and_then(|s| crate::scene_serve::place(&held, s, p));
+            match r {
                 Ok(r) => reply(&mut out, &r),
                 Err(e) => reply(&mut out, &json!({ "error": e })),
             }
