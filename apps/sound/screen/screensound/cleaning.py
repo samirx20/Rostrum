@@ -11,6 +11,9 @@ import threading
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_sound import clean_clips, cleanup
+from rostrum_sound.cleanup import fetch
+
+from .model_fetch import ModelFetch
 
 
 class CleanedTake(QObject):
@@ -24,6 +27,9 @@ class CleanedTake(QObject):
         self._clip, self._busy, self._status = "", False, ""
         self._made: set = set()               # (media, recipe) already known to be in the cache
         self._thread: threading.Thread | None = None
+        self._download = ModelFetch(self)         # asked first when a step needs a model that is not installed
+        self._download.ready.connect(self.make)
+        self._download.cancelled.connect(self._note_cancelled)
         self._progress.connect(self._note)
         self._done.connect(self._finish)
         bridge.selectionChanged.connect(self._check)
@@ -43,9 +49,17 @@ class CleanedTake(QObject):
     def status(self):
         return self._status
 
+    @Property(QObject, constant=True)
+    def download(self):
+        return self._download
+
     @Slot(result=bool)
     def make(self):
-        if self._busy or not self._clip:
+        if self._busy or not self._clip or self._download.state in ("asking", "downloading"):
+            return False
+        missing = fetch.needed(cleanup.recipe_of(self.bridge.doc.item(self._clip)))
+        if missing:                                         # ask before the first download; "Download" carries on
+            self._download.ask(missing)
             return False
         self._busy, self._status = True, "Making the cleaned take…"
         self.changed.emit()
@@ -54,7 +68,12 @@ class CleanedTake(QObject):
         self._thread.start()
         return True
 
+    def _note_cancelled(self):
+        self._status = "Download cancelled: the cleaned take is not made."
+        self.changed.emit()
+
     def close(self):
+        self._download.close()
         if self._thread is not None:
             self._thread.join(timeout=600)
 

@@ -14,7 +14,7 @@
     zoom <factor> | scroll <s> | fit | lane <track> <lane> | lane-point <track> <t> <v> [<t2> <v2>] | lane-delete |
     picture <file|none>     (see steps_view.py)
     deliver <streaming|apple|ebu|atsc|podcast> (master target, one change) | export (Render mix and stems, waits) |
-    clean-take (Make cleaned take on the selected clip, waits) |
+    clean-take (Make cleaned take on the selected clip, waits) | model-panel (the download question, for a screenshot) |
     duck-add <track> <under track> | duck-open <duck id> | duck-set <param> <json value> (the open duck)
 A step that leaves an error in the status fails (nonzero exit).
 """
@@ -79,6 +79,9 @@ def do_mix_step(mix, word, rest):
         wait_job(mix.export, mix.export.start, "export")
     elif word == "clean-take":
         wait_job(mix.cleaning, mix.cleaning.make, "cleaned take")
+    elif word == "model-panel":
+        from rostrum_sound.cleanup import models
+        mix.cleaning.download.ask([models.UMXHQ, models.DFN3])
     elif word == "duck-add":
         mix.ducks.add(rest[0], rest[1])
     elif word == "duck-open":
@@ -87,7 +90,7 @@ def do_mix_step(mix, word, rest):
         mix.ducks.setValue(rest[0], value(" ".join(rest[1:])))
 
 
-MIX_WORDS = ("deliver", "export", "clean-take", "duck-add", "duck-open", "duck-set")
+MIX_WORDS = ("deliver", "export", "clean-take", "model-panel", "duck-add", "duck-open", "duck-set")
 
 
 def do_step(bridge, win, step, recorder=None):
