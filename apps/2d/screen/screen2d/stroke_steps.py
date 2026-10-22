@@ -31,7 +31,7 @@ from PySide6.QtGui import QKeySequence
 from PySide6.QtTest import QTest
 
 WORDS = ("altpick", "altoff", "lasso", "selectstrokes", "strokesmove", "strokesturn", "strokeshandle", "grabhandle", "strokesdelete", "strokescopy",
-         "strokespaste", "strokesclear", "clickarea", "clickat", "barbutton", "windowsize", "key", "keydown", "keyup", "cclick", "cpath", "clickbtn", "clicktext", "clickstarts", "dragtext", "reston", "shot", "cmove")
+         "strokespaste", "strokesclear", "clickarea", "clickat", "barbutton", "windowsize", "key", "keydown", "keyup", "cclick", "cpath", "clickbtn", "clickname", "clicktext", "clickstarts", "dragtext", "reston", "shot", "cmove")
 
 # where an empty spot of each area is, as fractions of the window (width, height)
 AREAS = {"canvas": (0.45, 0.30), "timeline": (0.60, 0.93), "settings": (0.93, 0.55)}
@@ -163,6 +163,11 @@ def do_stroke_step(bridge, win, word, rest, step):
         if not hits:
             raise RuntimeError(f"step {step!r}: nothing visible is called {' '.join(rest)!r}; near it: {_texts(win, rest[0])}")
         _click_item(win, hits[0])
+    elif word == "clickname":                      # clickname <objectName>: a control that has no words (the Effects row's +)
+        found = win.findChild(QObject, rest[0])
+        if found is None:
+            raise RuntimeError(f"step {step!r}: nothing on screen is named {rest[0]!r}")
+        _click_item(win, found)
     elif word == "dragtext":
         hits = _find(win, " ".join(rest[1:]))
         if not hits:

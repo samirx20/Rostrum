@@ -11,16 +11,18 @@ QtObject {
     property real wellH: 0
     property real compW: 1
     property real compH: 1
+    property real top: 0                       // room kept clear above the frame at Fit, for the context bar (Stage.qml)
     readonly property real margin: 24
     readonly property real fitMost: 4          // F on a tiny layer stops at 400 % (the frame is drawn at most at Full)
-    readonly property real fit: Math.max(0.01, Math.min((wellW - 2 * margin) / compW, (wellH - 2 * margin) / compH))
+    readonly property real above: Math.max(margin, top)   // the bar's room counts as the top margin, not on top of it
+    readonly property real fit: Math.max(0.01, Math.min((wellW - 2 * margin) / compW, (wellH - above - margin) / compH))
     property bool fitted: true
     property real asked: 1
     property real cx: 0
     property real cy: 0
     readonly property real zoom: fitted ? fit : asked
     readonly property real ox: Math.round(wellW / 2 - (fitted ? compW / 2 : cx) * zoom)
-    readonly property real oy: Math.round(wellH / 2 - (fitted ? compH / 2 : cy) * zoom)
+    readonly property real oy: Math.round(fitted ? above + (wellH - above - margin - compH * zoom) / 2 : wellH / 2 - cy * zoom)
     readonly property var steps: [0.02, 0.05, 0.1, 0.125, 0.25, 1 / 3, 0.5, 2 / 3, 1, 1.5, 2, 3, 4, 6, 8, 12, 16, 32, 64]
 
     function clamp(z) { return Math.max(steps[0], Math.min(steps[steps.length - 1], z)) }

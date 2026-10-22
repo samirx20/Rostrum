@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Dialogs
 import RostrumKit
 
-// The "+" at the foot of the tool strip: what is not a tool. Import… (files and designs: the Import panel), Camera, a 3D render (only
+// The "+ Add" row at the foot of the tool strip: what is not a tool. Import… (files and designs: the Import panel), Camera, a 3D render (only
 // with Rostrum3D, adder.entries) and the Library drawer. The drawing tools (shape, text, path, drawing) are tools, not here. A choice
 // is one change through the same operations agents use (`add` still takes every type); image and video ask for their file first.
 Button {
@@ -11,7 +11,7 @@ Button {
     property alias menuOpen: menu.visible
     readonly property var rest: add.adder.entries.filter(e => e.type === "camera" || e.type === "render3d")
     kind: "ghost"; width: 92
-    text: "+"; tip: "Add"; help: "Import a file, add a camera or a 3D render, open the Library."
+    text: "+  Add"; tip: "Add…"; help: "Import a file, add a camera or a 3D render, open the Library."
     down: menu.visible
     onClicked: menu.visible ? menu.close() : menu.open()
 

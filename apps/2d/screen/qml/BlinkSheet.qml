@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC
 import RostrumKit
 
-// Add blinks… (UX_SPEC 3.23 › Blinks): opened by the context bar's action on an eyes swap set, under the bar. How often
+// Add blinks… (UX_SPEC 3.23 › Blinks): opened by the context bar's action on an eyes swap set, under the bar, at the right edge. How often
 // (seconds), how much the gaps vary, which drawing is open, closed and half closed; Apply = one change over the whole
 // scene (keys you can move). Esc or a click away closes it with nothing changed (backend.blinks: rig_blinks.py).
 QQC.Popup {
@@ -11,6 +11,7 @@ QQC.Popup {
     modal: true; dim: false
     padding: Theme.pad
     width: 340
+    x: parent.width - width - Theme.gap; y: 104      // the right edge, under the bar: the face on the canvas stays in view
     closePolicy: QQC.Popup.CloseOnPressOutside | QQC.Popup.CloseOnEscape
     background: Rectangle { color: Theme.raised; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
     onClosed: bl.close()

@@ -5,7 +5,7 @@ one doc.gesture = one undo step. How an edit becomes a call lives in route.py on
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_gui import DocBridge
+from rostrum_gui import DocBridge, effects
 from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
 from rostrum_core import live, marker_times
@@ -38,6 +38,9 @@ from .undo_state import UndoState
 
 
 TOOLS = ("move", "pen", "draw", "rect", "ellipse", "text", "camera", "bone")      # what the mouse does on the canvas (setTool)
+
+
+FILLS = {"shape", "text", "path"}      # a gradient fills a shape or the letters of a text, not a picture
 
 
 class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, ActionSlots, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
@@ -98,6 +101,10 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
             live.keep(doc)
             self.link = LiveLink(self, "2d", screen_seen.state)
         self._make_actions()                                # the one action list's hub: bar, menus, Ctrl+K, keys
+        effects.attach(self, effects.EffectsSpec(           # the panel's "Effects (n) +" (the kit's row; PANEL.md)
+            types=[effects.EffectType(e, F.LABELS[e], valid=(lambda it: it["type"] in FILLS) if e == "gradient" else None)
+                   for e in F.EFFECTS],
+            kinds=tuple(t for t in F.LAYERS if t != "camera"), label=lambda eff: F.LABELS[eff["type"]]))
         self._render()
         self._problems.touch()
 

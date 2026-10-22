@@ -19,15 +19,9 @@ Column {
         }
         Button {
             anchors { right: parent.right; bottom: parent.bottom }
-            text: "Save pose"; help: "Keep the rig's pose at the playhead in its library."
+            text: "Save pose"; help: "Pose the character on the canvas, then keep its pose at the playhead in the library."
             onClicked: pl.p.save()
         }
-    }
-    Text {
-        visible: pl.p.poses.length === 0
-        width: pl.width; wrapMode: Text.WordWrap
-        text: "Pose the character on the canvas, then Save pose to reuse it."
-        color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
     }
     Repeater {
         model: pl.p.poses

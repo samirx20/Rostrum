@@ -16,6 +16,7 @@ Rectangle {
     signal compactAsked(bool on)
     readonly property real compactHeight: rowsTop + Theme.rowDense + 2 * Theme.gap
                                           + (backend.soundtrack.present ? Theme.row + 2 : 0)   // the Sound row stays
+    readonly property real wantedHeight: rowsTop + rows.contentHeight + 2 * Theme.gap   // header, ruler and every row: Main.qml's default height, up to its cap
     function openMenu(id, px, py) { rows.openMenu(id, px, py) }
     color: Theme.panel; radius: Theme.radiusPanel
 
