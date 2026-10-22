@@ -950,6 +950,10 @@ listing every change with its section, so drawings that weren't redrawn (the ASC
 
 **Built:** pieces 1–5 (S31, 2026-10-22; see `ACTIONS.md`). 2D runs on them; Sound plugs in through the adapter.
 Pieces 7, 10 (the undo rules), 11 and 12 (S32, 2026-10-22; see `HISTORY.md`). Both apps run on them.
+Pieces 13, 14, 16, 17, 19, 20, 21 and 22 (S34, 2026-10-22; see `FILES.md`, `EXPORT.md`, `SHELL.md`). Both apps run on
+them. Not built yet from those pieces: renaming by clicking the project name, reopening at the same scene / selection /
+playhead / zoom, Find… for missing files, "Open the last version that works", Report a problem in the ? menu, the
+dotted underline on trade words, Sound's "+ Another version", Cancel and range in Sound's export.
 
 **Order:** the first six unblock both apps' rebuilds. Do them one at a time, by Team Sam alone, since they are
 shared-layer work.

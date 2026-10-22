@@ -117,7 +117,7 @@ Rectangle {
         }
         Row {
             spacing: Theme.gap
-            Button { visible: job.ready && !panel.done && job.state !== "running"; text: "Import"; kind: "primary"
+            Button { visible: !!job.ready && !panel.done && job.state !== "running"; text: "Import"; kind: "primary"
                      onClicked: { if (job.source === "figma") { job.runFigma(figma.key, figma.frame, figma.token); figma.token = "" } else job.run() } }
             Button { visible: job.state === "running"; text: "Cancel"; onClicked: job.cancel() }
             Button { text: "Close"; kind: "ghost"; onClicked: panel.shown = false }
