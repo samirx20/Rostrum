@@ -20,6 +20,7 @@ import sys
 import zipfile
 from pathlib import Path
 
+import icons
 from qt_trim import trim
 
 REPO = Path(__file__).resolve().parents[2]
@@ -158,6 +159,7 @@ def main():
     copy("tools/release/rostrum.pyw", REPO, stage)
     shutil.move(stage / "tools" / "release" / "rostrum.pyw", py.parent / "rostrum.pyw")
     shutil.rmtree(stage / "tools")
+    icons.main(stage / "runtime" / "icons")
     if (SAMPLES / "lull").is_dir():
         shutil.copytree(SAMPLES / "lull", stage / "runtime" / "samples" / "lull", ignore=SKIP)
     else:
