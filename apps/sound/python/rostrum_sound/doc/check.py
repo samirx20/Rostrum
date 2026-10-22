@@ -125,7 +125,7 @@ def check(data: dict) -> list[str]:
         elif t == "automation":
             out += _lane(item, data)
         for k, v in item.items():
-            for ref in _refs(v):
+            for ref in () if k == "colour" else _refs(v):         # a colour ("#4aa3ff") is not a marker
                 if markers.key(markers.ref(ref)) not in marks:
                     out.append(f"{item['id']}.{k}: no marker {markers.ref(ref)!r} for {ref!r}")
     return out
