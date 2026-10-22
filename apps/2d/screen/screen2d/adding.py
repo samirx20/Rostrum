@@ -34,7 +34,10 @@ def new_layer_calls(doc, comp: dict, type_: str) -> tuple[list[dict], str]:
     lid = ids.counted(index(doc.data, KIND.lists), type_)
     calls = [{"op": "layer.add", "target": [comp["id"]], "args": {"type": type_, "id": lid}}]
     if type_ != "camera":
-        calls.append({"op": KIND.registry.field_op(type_).name, "target": [lid], "args": {"x": comp["width"] / 2, "y": comp["height"] / 2}})
+        args = {"x": comp["width"] / 2, "y": comp["height"] / 2}
+        if type_ == "text":                     # a first text reads at about 8 % of the picture's height, in round steps of 4
+            args["size"] = max(8, round(comp["height"] * 0.08 / 4) * 4)
+        calls.append({"op": KIND.registry.field_op(type_).name, "target": [lid], "args": args})
     return calls, lid
 
 

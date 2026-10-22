@@ -20,7 +20,8 @@
     doesn't wait) | importpanel open [path]|close
     problems open|close (the Problems panel, after the list is worked out) | inspectorscroll <px>
   Export: export <mp4|prores4444|webm|gif|png|exr|lottie> [alpha=on|off] [depth=8|16] [start=<s>] [end=<s>] (the Export button's
-    job; waits for it) | exportpanel open [format]|close | exportcancel [format] (start one, then Cancel it)
+    job; waits for it) | exportpanel open [format]|close | exportcancel [format] (start one, then Cancel it) |
+    exportto <path> [replace|both|cancel] | exportshow (export_steps.py)
   Files (file_steps.py): new [name] | save | saveas <name> | openproject <path> | autosave | restore | discard |
     filemenu open|close | askclose
 A step that leaves an error in the status fails (nonzero exit).
@@ -32,6 +33,7 @@ import time
 
 from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject
 
+from .export_steps import WORDS as EXPORT_WORDS, do_export_step
 from .file_steps import WORDS as FILE_WORDS, do_file_step
 
 
@@ -212,7 +214,28 @@ def do_step(bridge, win, step):
         QMetaObject.invokeMethod(win, "openCommands", Q_ARG("QVariant", " ".join(rest)))
     elif word == "run":
         bridge.run(rest[0])
-    elif word in ("front", "back", "forward", "backward", "delete"):    # the layer-order shortcuts (layer_order.py)
+    elif word == "layerdrag":                    # layerdrag <layer> <above|below|into> <target layer> (the Layers panel's drop)
+        if not bridge.moveLayer(rest[0], rest[2], rest[1]):
+            raise RuntimeError(f"step {step!r}: nothing moved")
+    elif word == "layerdrop":                    # layerdrop <layer> <above|below|into> <target>: show the drop line, no move
+        from PySide6.QtCore import QObject
+        box = win.findChild(QObject, "layersList")
+        for name, v in (("dragId", rest[0]), ("dropWhere", rest[1]), ("dropRow", rest[2])):
+            box.setProperty(name, v)
+    elif word == "mousedrag":                    # mousedrag <x0> <y0> <x1> <y1> [right]: a real press, pull and release in the window
+        from PySide6.QtCore import QPoint, Qt
+        from PySide6.QtTest import QTest
+        x0, y0, x1, y1 = (int(v) for v in rest[:4])
+        QTest.mousePress(win, Qt.LeftButton, Qt.NoModifier, QPoint(x0, y0))
+        for k in range(1, 9):
+            QTest.mouseMove(win, QPoint(x0 + (x1 - x0) * k // 8, y0 + (y1 - y0) * k // 8))
+            QCoreApplication.processEvents()
+        QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, QPoint(x1, y1))
+    elif word == "layermenu":                    # layermenu <layer> [open|<command>]: the row's right-click menu
+        QMetaObject.invokeMethod(win, "openLayerMenu", Q_ARG("QVariant", rest[0]))
+        if rest[1:] and rest[1] != "open":
+            bridge.run(f"layer:{rest[1]}")
+    elif word in ("front", "back", "forward", "backward", "delete", "duplicate"):    # the layer-order shortcuts (layer_order.py)
         if not bridge.layerCommand(word):
             raise RuntimeError(f"step {step!r}: not available for the selection")
     elif word == "rename":                       # rename <layer> <new name> (the Layers panel's name box)
@@ -249,6 +272,8 @@ def do_step(bridge, win, step):
         if rest[1:]:
             bridge.exporter.setFormat(rest[1])
         QMetaObject.invokeMethod(win, "setExportOpen", Q_ARG("QVariant", rest[0] == "open"))
+    elif word in EXPORT_WORDS:
+        do_export_step(bridge, word, rest, step)
     elif word in FILE_WORDS:
         do_file_step(bridge, win, word, rest, step)
     else:

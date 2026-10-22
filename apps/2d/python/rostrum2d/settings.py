@@ -1,12 +1,13 @@
-"""Where Rostrum2D finds its parts: every setup assumption in one place, for the checkout and the installed app alike.
+"""Where Rostrum2D finds its parts: every setup assumption in one place.
 
-Each lookup is an ordered list, first hit wins:
-    engine        ROSTRUM2D_ENGINE  ·  <app>/engine/rostrum*.exe  ·  checkout apps/2d/engine/target/{release,agent}/
-    ffmpeg        ROSTRUM_FFMPEG_DIR/<name>  ·  <app>/ffmpeg/<name>  ·  <app>/<name>  ·  PATH   (ffmpeg, ffprobe; LGPL)
-    fonts         ROSTRUM2D_FONTS  ·  fonts/ beside the engine  ·  checkout apps/2d/engine/fonts   (the engine's own order)
-    Rostrum3D     ROSTRUM3D_CORE (only it, when set)  ·  <suite>/Rostrum3D/engine/rostrum3d-core.exe  ·  checkout apps/3d/core/.build/install/
-<app> is the installed app's folder: ROSTRUM2D_HOME, else the folder of the frozen program (the installer's bundle);
-none in a checkout. <suite> is the folder holding the installed apps (<app>'s parent).
+One root, <root>: this checkout, or the installed Rostrum folder, which has the same layout (tools/release/bundle.py
+copies the repo's own paths: apps\\2d\\python, apps\\2d\\engine\\target\\agent\\rostrum2d-render.exe, runtime\\python …).
+So every place below is the same in both; an environment variable, when set, is the only place looked at.
+    engine        ROSTRUM2D_ENGINE  ·  <root>/apps/2d/engine/target/release/, then …/agent/   rostrum2d-render.exe
+    ffmpeg        ROSTRUM_FFMPEG_DIR  ·  <root>/apps/2d/ffmpeg/   ffmpeg.exe, ffprobe.exe and their DLLs (LGPL build;
+                  WebM, ProRes, video import). Never from PATH: the app runs only the FFmpeg it ships. MP4 needs none.
+    fonts         ROSTRUM2D_FONTS  ·  <root>/apps/2d/engine/fonts
+    Rostrum3D     ROSTRUM3D_CORE  ·  <root>/apps/3d/core/.build/install/rostrum3d-core.exe
 
 Folders for the person's things:
     projects      ROSTRUM2D_PROJECTS, else Documents/Rostrum2D (made on first use)
@@ -17,13 +18,16 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
+import subprocess
 import sys
 from pathlib import Path
 
-CHECKOUT = Path(__file__).resolve().parents[2]                     # apps/2d (also inside the installed bundle)
-REPO = CHECKOUT.parents[1]
+APP = Path(__file__).resolve().parents[2]                          # <root>/apps/2d
+ROOT = APP.parents[1]
 EXE = ".exe" if os.name == "nt" else ""
+# Every helper program (engine, ffmpeg, ffprobe) starts with this: the installed app runs under pythonw, which has no
+# console, so without it each one would open its own black console window.
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
 def _env_path(name: str) -> Path | None:
@@ -31,55 +35,43 @@ def _env_path(name: str) -> Path | None:
     return Path(v) if v else None
 
 
-def app_dir() -> Path | None:
-    """The installed app's folder, or None when running from a checkout."""
-    if _env_path("ROSTRUM2D_HOME"):
-        return _env_path("ROSTRUM2D_HOME")
-    return Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else None
-
-
-def _first(candidates) -> Path | None:
-    return next((p for p in candidates if p is not None and p.is_file()), None)
-
-
 # ---- the engine ---------------------------------------------------------------------------------------------------
 def engine_candidates() -> list[Path]:
-    out = [_env_path("ROSTRUM2D_ENGINE")] if _env_path("ROSTRUM2D_ENGINE") else []
-    if app_dir():
-        out += sorted((app_dir() / "engine").glob(f"rostrum*{EXE}"))
-    for profile in ("release", "agent"):
-        out += sorted((CHECKOUT / "engine" / "target" / profile).glob(f"rostrum*{EXE}"))
-    return out
+    """Where the engine is looked for, in order: ROSTRUM2D_ENGINE alone when set, else the release then agent build."""
+    if _env_path("ROSTRUM2D_ENGINE"):
+        return [_env_path("ROSTRUM2D_ENGINE")]
+    return [APP / "engine" / "target" / profile / f"rostrum2d-render{EXE}" for profile in ("release", "agent")]
 
 
 def engine_exe() -> Path | None:
     """The 2D engine program (ROSTRUM2D_ENGINE as given, else the first that exists); None = not built or installed."""
     if _env_path("ROSTRUM2D_ENGINE"):
         return _env_path("ROSTRUM2D_ENGINE")
-    return _first(engine_candidates())
+    return next((p for p in engine_candidates() if p.is_file()), None)
 
 
 # ---- ffmpeg -------------------------------------------------------------------------------------------------------
+def ffmpeg_dir() -> Path:
+    """The folder holding the app's own LGPL FFmpeg: ROSTRUM_FFMPEG_DIR, else <root>/apps/2d/ffmpeg."""
+    return _env_path("ROSTRUM_FFMPEG_DIR") or APP / "ffmpeg"
+
+
 def ffmpeg(name: str = "ffmpeg") -> str:
-    """The ffmpeg (or ffprobe) program to run: the bundled LGPL build beside the app first, then PATH. Fails loudly."""
-    places = [_env_path("ROSTRUM_FFMPEG_DIR")]
-    if app_dir():
-        places += [app_dir() / "ffmpeg", app_dir()]
-    hit = _first(p / f"{name}{EXE}" for p in places if p is not None)
-    found = str(hit) if hit else shutil.which(name)
-    if not found:
-        raise RuntimeError(f"{name} was not found: put it in the app's ffmpeg folder, on PATH, or set ROSTRUM_FFMPEG_DIR")
-    return found
+    """The ffmpeg (or ffprobe) program to run, from ffmpeg_dir() only. Fails loudly, naming the missing file."""
+    exe = ffmpeg_dir() / f"{name}{EXE}"
+    if not exe.is_file():
+        raise RuntimeError(f"{exe.name} is missing: it should be at {exe}. WebM and ProRes export and video import use "
+                           "the FFmpeg that comes with Rostrum2D; reinstall Rostrum2D (in a checkout: put an LGPL FFmpeg "
+                           "build there, or set ROSTRUM_FFMPEG_DIR). MP4, PNG and GIF export don't need it.")
+    return str(exe)
 
 
 # ---- fonts --------------------------------------------------------------------------------------------------------
 def fonts_dir() -> Path | None:
-    """The app's fonts folder (the families a 2D layer can name), in the engine's own order; None when there is none."""
-    exe = engine_exe()
-    for d in (_env_path("ROSTRUM2D_FONTS"), exe.parent / "fonts" if exe else None, CHECKOUT / "engine" / "fonts"):
-        if d is not None and d.is_dir():
-            return d
-    return None
+    """The app's fonts folder (the families a 2D layer can name): ROSTRUM2D_FONTS, else <root>/apps/2d/engine/fonts;
+    None when it isn't there."""
+    d = _env_path("ROSTRUM2D_FONTS") or APP / "engine" / "fonts"
+    return d if d.is_dir() else None
 
 
 # ---- folders ------------------------------------------------------------------------------------------------------
@@ -141,14 +133,10 @@ def write_settings(data: dict) -> None:
 
 # ---- the other apps -----------------------------------------------------------------------------------------------
 def rostrum3d_exe() -> Path | None:
-    """ROSTRUM3D_CORE when set (only that: a path that isn't there = not installed), else the installed suite's, else the
-    checkout's build."""
-    if _env_path("ROSTRUM3D_CORE"):
-        return _first([_env_path("ROSTRUM3D_CORE")])
-    suite = app_dir().parent if app_dir() else None
-    return _first([
-                   suite / "Rostrum3D" / "engine" / f"rostrum3d-core{EXE}" if suite else None,
-                   REPO / "apps" / "3d" / "core" / ".build" / "install" / f"rostrum3d-core{EXE}"])
+    """ROSTRUM3D_CORE when set, else <root>/apps/3d/core/.build/install/rostrum3d-core.exe (the checkout's build, and
+    where an installer carrying Rostrum3D puts it); None when that file isn't there."""
+    exe = _env_path("ROSTRUM3D_CORE") or ROOT / "apps" / "3d" / "core" / ".build" / "install" / f"rostrum3d-core{EXE}"
+    return exe if exe.is_file() else None
 
 
 def has_rostrum3d() -> bool:

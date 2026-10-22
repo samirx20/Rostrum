@@ -19,7 +19,7 @@ class ExportError(RuntimeError):
 
 
 def _run(args: list[str]) -> bytes:
-    r = subprocess.run(args, capture_output=True)
+    r = subprocess.run(args, capture_output=True, creationflags=settings.NO_WINDOW)
     if r.returncode:
         raise ExportError(f"{args[0]} failed: {r.stderr.decode(errors='replace').strip()}", {"command": args[:4]})
     return r.stdout

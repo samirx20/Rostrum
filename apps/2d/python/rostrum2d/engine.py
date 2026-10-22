@@ -20,7 +20,6 @@ from pathlib import Path
 
 from . import settings
 
-HERE = Path(__file__).resolve().parents[2]                         # apps/2d
 LOG_DIR = settings.logs_dir()
 
 
@@ -29,12 +28,12 @@ class EngineError(RuntimeError):
 
 
 def find_exe() -> Path:
-    """The engine program, in settings.py's one order: ROSTRUM2D_ENGINE, the installed app's engine folder, this checkout's
-    build (release, then the agents' `agent` profile)."""
+    """The engine program, in settings.py's one order: ROSTRUM2D_ENGINE, else the release build, then the agents' `agent`
+    build (the installed app carries the latter at the same place)."""
     exe = settings.engine_exe()
     if exe is None:
-        raise EngineError(f"2D engine not found: no rostrum*.exe in the app's engine folder or {HERE / 'engine' / 'target'} "
-                          "(release or agent); build apps/2d/engine or set ROSTRUM2D_ENGINE")
+        raise EngineError(f"2D engine not found: none of {', '.join(map(str, settings.engine_candidates()))}; "
+                          "build apps/2d/engine (in an install: reinstall Rostrum2D) or set ROSTRUM2D_ENGINE")
     return exe
 
 
@@ -47,7 +46,7 @@ class Engine:
         self.log_path = LOG_DIR / f"engine2d-{os.getpid()}-{int(time.time())}.log"
         self._log = open(self.log_path, "wb")
         self.proc = subprocess.Popen([str(exe), "serve"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                     stderr=self._log)
+                                     stderr=self._log, creationflags=settings.NO_WINDOW)
         self.pid, self.scene = self.proc.pid, None
         self._shm = None                             # (name, mmap) of the engine's frame memory (pixels)
 

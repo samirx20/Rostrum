@@ -2,7 +2,8 @@
 //! scene's optional `"fonts": {"Family": "C:\\…\\file.ttf"}`, which win) and the app's fonts folder. A text layer
 //! naming a font found in neither is refused when the scene loads or is edited, naming what there is.
 //!
-//! The app's folder: `ROSTRUM2D_FONTS` if set, else `fonts\` beside the program (the installed app), else the
+//! The app's folder: `ROSTRUM2D_FONTS` if set, else `fonts\` beside the program, else `engine/fonts` above
+//! `target/<profile>/` (the installed app, which mirrors the repo), else the
 //! source tree's `apps/2d/engine/fonts/` (a build in this checkout). Only permissive fonts go there (SIL OFL;
 //! each with its licence text beside it).
 
@@ -23,9 +24,12 @@ pub fn app_folder() -> Result<PathBuf, String> {
     if let Ok(dir) = std::env::var("ROSTRUM2D_FONTS") {
         return Ok(PathBuf::from(dir));
     }
-    let beside = std::env::current_exe().ok().and_then(|e| e.parent().map(|d| d.join("fonts")));
+    let exe = std::env::current_exe().ok();
+    let beside = exe.as_ref().and_then(|e| e.parent().map(|d| d.join("fonts")));
+    // The installed app mirrors the repo (tools/release/bundle.py): engine/target/<profile>/x.exe -> engine/fonts.
+    let layout = exe.as_ref().and_then(|e| Some(e.parent()?.parent()?.parent()?.join("fonts")));
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("fonts");
-    beside.into_iter().chain([source]).find(|d| d.is_dir()).ok_or_else(|| "no fonts folder: set ROSTRUM2D_FONTS or put fonts\\ beside the program".to_string())
+    beside.into_iter().chain(layout).chain([source]).find(|d| d.is_dir()).ok_or_else(|| "no fonts folder: set ROSTRUM2D_FONTS or put fonts\\ beside the program".to_string())
 }
 
 /// The project's fonts (`project`: the scene's `fonts` object, or null), then the app folder's.

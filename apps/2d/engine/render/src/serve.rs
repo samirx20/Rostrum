@@ -424,7 +424,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         convert(&mut s.painter, &s.color, &mut raw, pw, s.deep, false, index, slot)?;
         taps_done(s, &mut tap_write_ms)?;
         paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
-        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "gpuMs": s.painter.last_gpu_ms, "scale": scale });
+        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "gpuMs": s.painter.last_gpu_ms, "scale": scale, "flushMs": s.painter.last_flush_ms, "taps": taps, "tapReadMs": tap_read_ms, "gpuCache": s.painter.gpu_cache() });
         let boxes = if boxes_wanted { crate::boxes::boxes(&s.doc, w, h) } else { Value::Null };
         return Ok((json!({ "ok": true, "width": pw, "height": ph, "shm": info, "timing": timing, "boxes": boxes, "scopes": scopes_out }), None));
     }

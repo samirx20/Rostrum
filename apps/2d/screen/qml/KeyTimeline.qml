@@ -32,7 +32,7 @@ Panel {
 
     TimeRuler {
         id: ruler
-        x: panel.labelWidth + Theme.gap + 8; width: parent.width - x - Theme.gap - 8; height: 22   // 8: room for a key at 0
+        x: panel.labelWidth + Theme.gap + 8; width: parent.width - x - Theme.gap - 8; height: backend.markers.length > 0 ? 34 : 22   // 8: room for a key at 0; 34: a row for marker flags above the numbers
         duration: panel.duration; fps: backend.frameInfo.fps; time: backend.time
     }
     CurveEditor {
@@ -53,6 +53,12 @@ Panel {
         keyBegin: (id) => backend.beginKeyDrag(id)
         onKeyDragged: (t) => backend.keyDragTo(t, 6 / ruler.perSec)   // lands on a marker within 6 px
         onKeyReleased: backend.endDrag()
+    }
+    Text {   // empty state: how to reach the Ease choice (it shows once a key is selected)
+        visible: !backend.curves.on && backend.selectedItem.kind !== "key" && backend.tracks.some(t => t.keys.length > 0)
+        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: Theme.pad }
+        text: "Click a diamond to change its ease"
+        color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
     }
     Repeater {   // the project's shared markers, a faint line across every row (their flags are on the ruler)
         model: backend.markers
