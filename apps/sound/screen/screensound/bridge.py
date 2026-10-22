@@ -13,14 +13,17 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, Slot
 from rostrum_gui import DocBridge
+from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
+from rostrum_core import live
 from rostrum_sound import compile as compile_doc
 from rostrum_sound.doc import markers as MK
 from rostrum_sound.doc import ops_mix
 
 from . import voice_card
-from . import inspect, lanes, onpage, output_pick, picture, pick, timeline
+from . import inspect, lanes, onpage, output_pick, picture, pick, screen_seen, timeline
 from .action_slots import ActionSlots
+from .agent_demo import AgentDemo
 from .edit_slots import EditSlots
 from .grid_slots import GridSlots
 from .handle_slots import HandleSlots
@@ -38,7 +41,7 @@ from .workspace import Workspace
 SOUNDING = ("notes", "hits", "clips", "sounds")       # what makes a compiled track last (engine contract/track.rs)
 
 
-class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, HandleSlots, GridSlots, ActionSlots, KeySlots, SelectSlots, S, DocBridge):
+class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, HandleSlots, GridSlots, ActionSlots, KeySlots, SelectSlots, S, DocBridge):
     def __init__(self, doc, name="Untitled song", autosave=False, parent=None):
         self.name, self.autosave = name, autosave
         self._t, self._track = 0.0, ""
@@ -52,6 +55,10 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, Hand
         self._picture_open = False
         MK.use_project(doc.folder)          # the screen works in this document's project (its shared markers)
         super().__init__(doc, parent=parent)
+        self.link = None
+        if autosave and doc.folder:         # one door for every save, shared with agents' servers (rostrum_core.live)
+            live.keep(doc)
+            self.link = LiveLink(self, "sound", screen_seen.state)
         self._picture_open = bool(self.doc.data.get("picture"))     # the corner opens by itself on a song with a picture
         self._follow_render = picture.Follow(lambda: (self.pictureChoice, self.doc.folder), self)
         self._follow_render.changed.connect(self.timelineChanged)       # the linked item has a newer render
@@ -78,6 +85,8 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, Hand
     @Property(str, constant=True)
     def docName(self):
         return self.name
+
+    isLive = Property(bool, lambda self: self.link is not None, constant=True)   # saved after every change: the top bar says "Saved"
 
     @Property(float, notify=S.timeChanged)
     def time(self):
@@ -209,10 +218,10 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, Hand
         self._guard(self._rebuild)
         if event.kind == "change":             # a drag renders once, when it lands
             self.transport.changed()
-        if self.autosave and event.kind == "change":
-            self._guard(self.doc.save)
 
     def close(self):
+        if self.link:
+            self.link.close()
         self.endDrag()
         self._marks.close()
         self.transport.close()

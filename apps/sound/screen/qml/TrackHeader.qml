@@ -17,6 +17,10 @@ Rectangle {
     Behavior on color { ColorAnimation { duration: Theme.fast } }
     HoverHandler { id: hover }
 
+    Repeater {   // an agent just changed this track: the 1-second outline
+        model: backend.agent.flash.indexOf(h.track.id) >= 0 ? 1 : 0
+        ChangeOutline { anchors.fill: parent }
+    }
     MouseArea {   // click selects the track alone, Ctrl+click adds / removes, Shift+click the tracks between
         id: area; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: (m) => {

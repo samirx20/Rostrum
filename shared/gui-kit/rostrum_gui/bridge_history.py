@@ -29,4 +29,4 @@ class HistoryParts:
         self._kit.partners.append(partner)
         d = partner.history_doc()
         self._kit.opened.append(d.history.mark() if d is not None else _NONE.mark())
-        partner.changed.connect(lambda: self._heard(partner.last_change()))
+        partner.changed.connect(lambda: self._heard(partner.last_change(), partner.history_doc()))

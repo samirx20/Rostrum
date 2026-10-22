@@ -36,3 +36,6 @@ ConnectAgentDialog 1.0 ConnectAgentDialog.qml
 ActionMenu 1.0 ActionMenu.qml
 ContextBar 1.0 ContextBar.qml
 KeyMap 1.0 KeyMap.qml
+AgentChip 1.0 AgentChip.qml
+HistorySheet 1.0 HistorySheet.qml
+ChangeOutline 1.0 ChangeOutline.qml

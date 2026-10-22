@@ -102,13 +102,18 @@ def open_markers(folder) -> Document:
     return Document.open(folder, ITEM, KIND) if _exists(folder) else Document.new(KIND, folder, ITEM)
 
 
-def edit(folder, calls, who, label=None):
-    """Apply marker operations as one change and save at once. Returns the Change (None: nothing changed)."""
+def open_to_change(folder) -> Document:
+    """The marker document, live (live.keep): a change locks the file, takes in what other programs saved, and saves."""
+    from .live import keep
     doc = open_markers(folder)
-    change = doc.apply(calls, who, label=label)
-    if change is not None:
-        doc.save()
-    return change
+    keep(doc)
+    return doc
+
+
+def edit(folder, calls, who, label=None):
+    """Apply marker operations as one change, saved at once through the one door. Returns the Change (None: nothing
+    changed)."""
+    return open_to_change(folder).apply(calls, who, label=label)
 
 
 def _made_by(doc, id_):

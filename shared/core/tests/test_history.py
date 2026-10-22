@@ -47,7 +47,7 @@ def test_undo_refuses_when_someone_changed_the_same_thing_later():
     doc.apply({"op": "layer.move", "target": ["card"], "args": {"x": 9}}, AGENT)
     with pytest.raises(RostrumError) as e:
         doc.undo(SAM)
-    assert e.value.code == codes.CONFLICT and "agent:claude-code" in e.value.line() and x(doc) == 9
+    assert e.value.code == codes.CONFLICT and "Claude changed" in e.value.line() and x(doc) == 9
 
 
 def test_failing_op_applies_nothing_and_names_the_op():

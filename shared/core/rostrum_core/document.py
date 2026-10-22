@@ -2,7 +2,9 @@
 change it through here (OPERATIONS.md §§ 5–6)."""
 from __future__ import annotations
 
+import contextlib
 import copy
+import functools
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -27,6 +29,15 @@ def ticking() -> float:
     return _last_t[0]
 
 
+def _through_door(fn):
+    """A change-making method runs inside the document's door: with live.keep, lock + catch up + save (live.py)."""
+    @functools.wraps(fn)
+    def through(self, *a, **kw):
+        with self._door():
+            return fn(self, *a, **kw)
+    return through
+
+
 @dataclass
 class Event:
     kind: str          # "change" | "preview" | "reset"
@@ -43,6 +54,7 @@ class Document:
         self.script_bases: dict[str, dict] = {}         # § 7: what each script produced last time
         self.saved_by: str | None = None                # the app version that last saved it (storage.py)
         self._subs, self._gesture = [], None
+        self.live = None                                # live.Live when another program shares the file
 
     @classmethod
     def new(cls, kind, folder=None, item=None, start=(), **kw) -> "Document":
@@ -84,12 +96,21 @@ class Document:
         return self.history.who_changed(id_, field_)
 
     # the door
+    def _door(self):
+        return self.live.door() if self.live is not None else contextlib.nullcontext([])
+
+    def locked_by(self, id_) -> str | None:
+        """Who locked item `id_` last ("Sam", "Claude"), for the plain refusal; None when nobody did through an op."""
+        c = self.history.who_changed(id_, "locked")
+        return c.who.name.capitalize() if c is not None and c.who.kind == "person" else c.who.name if c else None
+
+    @_through_door
     def apply(self, calls, who: Who, label=None, session=None, based_on=None) -> Change | None:
         """Run a list of operations as one change, all or nothing. Nothing changed = nothing recorded (None)."""
         if self._gesture is not None:
             raise RostrumError(codes.CONFLICT, "apply", "the document", "is being dragged by a person right now",
                                hint="Try again in a moment.")
-        work, edits, calls = run.plan(self.kind, self.data, calls)
+        work, edits, calls = run.plan(self.kind, self.data, calls, self.locked_by)
         if based_on is not None:
             self._check_based_on(edits, based_on)
         label = label or ", ".join(dict.fromkeys(self.kind.registry.get(c["op"]).label for c in calls))
@@ -100,7 +121,16 @@ class Document:
         return self.commit(work, edits, who, label, calls, session)
 
     def commit(self, work, edits, who, label, calls=(), session=None, undoes=(), redoes=()) -> Change:
-        """Record an already-checked new tree as one change (used by apply, undo, merge, gestures)."""
+        """Record an already-checked new tree as one change (used by apply, undo, merge, gestures). Live (live.py): if
+        the door took in another program's steps first, `work` is an older picture, so the edits go on top of now."""
+        with self._door() as caught:
+            if caught:
+                work = copy.deepcopy(self.data)
+                idx = index(work, self.kind.lists)
+                edits = [E.apply(work, self.kind.lists, e, label, idx) for e in edits]
+            return self._record(work, edits, who, label, calls, session, undoes, redoes)
+
+    def _record(self, work, edits, who, label, calls, session, undoes, redoes) -> Change:
         c = Change(self.seq + 1, self.seq, who, label, _now(), list(edits), list(calls), session,
                    doc_hash(work), list(undoes), list(redoes), self.clock())
         self.data = work
@@ -132,19 +162,33 @@ class Document:
         return True
 
     # undo / redo: new changes, per author
+    @_through_door
     def undo(self, who: Who) -> Change | None:
         c = self.history.last_undoable(who)
         return self.undo_changes([c], who) if c else None
 
+    @_through_door
     def undo_session(self, session, who: Who) -> Change | None:
         cs = [c for c in self.history.changes if c.original and c.session == session and self.history.done[c.seq]]
         return self.undo_changes(cs, who, f"Undid session {session}") if cs else None
 
+    @_through_door
+    def redo_session(self, session, who: Who) -> Change | None:
+        """Bring back a whole taken-back run (History's "Bring back"): one step, refused like any redo."""
+        cs = [c for c in self.history.changes if c.original and c.session == session and not self.history.done[c.seq]]
+        if not cs:
+            return None
+        self.history.blockers(cs, max(self.history.at[c.seq] for c in cs))
+        edits = [e for c in sorted(cs, key=lambda c: c.seq) for e in c.edits]
+        return self._replay(edits, who, f"Brought back: {cs[-1].label}", redoes=[c.seq for c in cs])
+
+    @_through_door
     def undo_changes(self, targets, who, label=None) -> Change:
         self.history.blockers(targets, max(self.history.at[c.seq] for c in targets))
         rev = [E.reverse(e) for c in sorted(targets, key=lambda c: -c.seq) for e in reversed(c.edits)]
         return self._replay(rev, who, label or f"Undid: {targets[-1].label}", undoes=[c.seq for c in targets])
 
+    @_through_door
     def redo(self, who: Who) -> Change | None:
         c = self.history.last_redoable(who)
         if not c:
@@ -159,6 +203,7 @@ class Document:
         return self.commit(work, done, who, label, **kw)
 
     # versions
+    @_through_door
     def mark_version(self, name):
         self.history.versions[name] = self.seq
 
@@ -173,6 +218,7 @@ class Document:
                 E.apply(data, self.kind.lists, e, f"step {c.seq}", idx)
         return data
 
+    @_through_door
     def restore_version(self, name, who: Who) -> Change | None:
         if name not in self.history.versions:
             raise RostrumError.not_found("restore_version", "version", name, self.history.versions)
@@ -185,6 +231,7 @@ class Document:
         from .gesture import Gesture
         return Gesture(self, label, who)
 
+    @_through_door
     def run_script(self, name, output: dict, who: Who | None = None, force=False, session=None):
         from .merge import merge_script
         return merge_script(self, name, output, who or Who.script(name), force, session)
@@ -198,6 +245,11 @@ class Document:
             fn(ev)
 
     def save(self):
+        """Write the document to its project folder. A live document (live.keep) is saved after every change already:
+        here it only goes through the one door (lock, catch up), so a save never writes over another program's steps."""
+        if self.live is not None:
+            with self._door():
+                return
         from .storage import save
         save(self)
 

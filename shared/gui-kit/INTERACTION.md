@@ -949,6 +949,7 @@ listing every change with its section, so drawings that weren't redrawn (the ASC
 2026-10-22.
 
 **Built:** pieces 1–5 (S31, 2026-10-22; see `ACTIONS.md`). 2D runs on them; Sound plugs in through the adapter.
+Pieces 7, 10 (the undo rules), 11 and 12 (S32, 2026-10-22; see `HISTORY.md`). Both apps run on them.
 
 **Order:** the first six unblock both apps' rebuilds. Do them one at a time, by Team Sam alone, since they are
 shared-layer work.

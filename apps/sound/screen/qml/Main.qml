@@ -13,6 +13,7 @@ AppShell {
     bridge: backend
     appName: "RostrumSound"
     documentName: backend.docName
+    saveWord: backend.isLive ? "Saved" : ""      // a song in a project folder is saved after every change
     helpEntries: guides
     readonly property bool wide: width >= 1500                       // the Library pushes instead of floating
     readonly property bool hasTracks: backend.tracks.some(r => !r.mix)
