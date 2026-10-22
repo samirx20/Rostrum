@@ -1,0 +1,68 @@
+import QtQuick
+import QtQuick.Controls as QQC
+import "."
+
+// A small panel anchored to something, for a few settings that belong to one action (2D's Stagger…, Sound's Land a bar).
+//   Popover { id: pop; title: "Stagger 3 layers"; focusItem: byField
+//             NumberField { id: byField … }  Row { … } }       // children go in the content slot, under the title
+//   pop.openAt(button)            // under `button`, left edges together; above it when there is no room below
+//   pop.openAtPoint(x, y)         // at a point in window coordinates
+// Closes on Esc (first `escaped()`, so an app can take the change back; typing in a field is dropped with it)
+// and on a click outside. A `modal` popover
+// swallows the click that closes it. `accepted()` is Enter pressed anywhere in it that no field used (the app decides
+// whether that closes it: pop.close()). The popover stays inside the window, whatever the size. Keyboard focus goes
+// into `focusItem` (else the popover itself) on opening and goes back to what had it when it closes.
+QQC.Popup {
+    id: pop
+    property string title: ""
+    property Item focusItem: null                 // takes the keys on opening
+    default property alias content: slot.data
+    signal escaped()
+    signal accepted()
+
+    property var anchor: null                     // what openAt placed it by: placed again when its size settles
+    property point point: Qt.point(0, 0)          // or the point openAtPoint was given
+    property Item before: null                    // what had the keys before it opened
+
+    parent: QQC.Overlay.overlay
+    padding: Theme.pad
+    focus: true
+    closePolicy: QQC.Popup.CloseOnPressOutside      // Esc: the Shortcut below (not while a list opened from inside has the keys)
+    background: Rectangle { color: Theme.raised; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
+    enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
+    exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }
+
+    function openAt(item) { anchor = item; place(); open() }
+    function openAtPoint(px, py) { anchor = null; point = Qt.point(px, py); place(); open() }
+    function place() {
+        const ov = parent
+        if (!ov) return
+        let p = anchor ? anchor.mapToItem(ov, 0, anchor.height + Theme.grid) : point
+        let y0 = p.y
+        if (y0 + height > ov.height - Theme.grid && anchor)      // no room below: above the anchor
+            y0 = anchor.mapToItem(ov, 0, 0).y - height - Theme.grid
+        x = Math.max(Theme.grid, Math.min(p.x, ov.width - width - Theme.grid))
+        y = Math.max(Theme.grid, Math.min(y0, ov.height - height - Theme.grid))
+    }
+    onWidthChanged: if (visible) place()
+    onHeightChanged: if (visible) place()
+
+    readonly property var focused: parent && parent.Window.window ? parent.Window.window.activeFocusItem : null
+    readonly property bool typing: !!focused && focused.cursorPosition !== undefined     // a text field has the keys: it takes Enter first
+    readonly property bool mine: {      // the keys are inside this popover (not in a list that opened from it)
+        for (let o = focused; o; o = o.parent) if (o === pop.contentItem) return true
+        return false
+    }
+    onAboutToShow: before = focused
+    onOpened: (focusItem ? focusItem : pop).forceActiveFocus()
+    onClosed: { if (before && before.visible) before.forceActiveFocus(); before = null }
+    Shortcut { sequence: "Escape"; enabled: pop.opened && pop.mine; onActivated: { pop.escaped(); pop.close() } }
+    Shortcut { sequences: ["Return", "Enter"]; enabled: pop.opened && pop.mine && !pop.typing; onActivated: pop.accepted() }
+
+    contentItem: Column {
+        spacing: Theme.gap
+        NameLabel { visible: pop.title !== ""; text: pop.title; font.weight: Font.DemiBold      // a long title shortens, whole on hover
+                    width: Math.min(implicitWidth, 360) }
+        Column { id: slot; spacing: Theme.gap }
+    }
+}

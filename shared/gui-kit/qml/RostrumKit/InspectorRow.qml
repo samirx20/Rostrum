@@ -12,9 +12,13 @@ import "."
 // a filled diamond = a key at the playhead, outlined = animated, faint (always shown, a little stronger on hover) =
 // could be animated (INTERACTION 1.5: always visible, not only on hover).
 // Clicking the mark is bridge.toggleAnimate (the app decides what that does).
+// Right-click on a param row: Reset puts it back to its default (model.default) through the same set operation, one
+// undo step (INTERACTION 1.4). At its default (or with no default, or driven by an expression) there is nothing to
+// reset, so the menu is absent. Mixed values count as not at the default.
 Item {
     id: row
     required property var model           // roles from rostrum_gui.rows.ROLES
+    objectName: model.row === "param" ? "row:" + model.id : ""      // scripted steps (the layout check) find a row by it
     property var bridge
     property bool keyMarks: false
     property bool highlighted: false      // marked while it is in focus elsewhere (2D: its keys picked in the timeline)
@@ -28,6 +32,8 @@ Item {
                               : model.control === "curve" ? Theme.curveBox + Theme.row - Theme.field
                               : tall && widget.item ? Math.max(Theme.row, widget.item.implicitHeight + Theme.row - Theme.field)
                               : Math.max(Theme.row, label.implicitHeight + 2 * Theme.grid)    // a long label wraps
+    readonly property bool canReset: model.row === "param" && !driven && model.default !== undefined && model.default !== null
+        && (!!model.mixed || JSON.stringify(model.value) !== JSON.stringify(model.default))
     property real reveal: model.valid ? 1 : 0
     Behavior on reveal { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
     width: parent ? parent.width : 0
@@ -124,6 +130,10 @@ Item {
                    font.family: monoFont; wrapMode: Text.WrapAnywhere }
         }
         HoverHandler { id: rowHover }
+        TapHandler {  // right-click › Reset (left clicks and drags stay with the widgets)
+            acceptedButtons: Qt.RightButton; enabled: row.canReset
+            onTapped: (pt) => { resetMenu.active = true; resetMenu.item.openAt(pt.scenePosition.x, pt.scenePosition.y) }
+        }
         Item {  // the key mark
             visible: row.keyMarks && !!row.model.anim
             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
@@ -134,6 +144,11 @@ Item {
             MouseArea { id: markArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: row.bridge.toggleAnimate(row.model.id) }
         }
+    }
+
+    Loader {   // made at the first right-click only: a panel has many rows
+        id: resetMenu; active: false
+        sourceComponent: ActionMenu { entries: [{ value: "reset", label: "Reset" }]; onPicked: row.set(row.model.default) }
     }
 
     readonly property string mixed: model.mixed ? "Mixed" : ""       // a field's words at rest ("" = its value)

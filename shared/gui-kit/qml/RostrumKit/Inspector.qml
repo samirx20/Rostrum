@@ -9,9 +9,11 @@ import "."
 // Several items of different kinds: a line per kind at the top ("3 layers ›", bridge.narrowLines); a click keeps only
 // that kind (bridge.narrowTo). The last line: who changed the selection last and when (bridge.lastChanged); a click
 // opens History (bridge.agent.askHistory). Both are absent when there is nothing to say.
+// An app with `effects: true` (after rostrum_gui.effects.attach(bridge, spec)) also gets the "Effects (n) +" section under the rows (EffectsRow).
 Panel {
     id: panel
     property var bridge
+    property bool effects: false         // the "Effects (n) +" section (an app that called rostrum_gui.effects.attach)
     property bool keyMarks: false        // an app with keys: rows show key marks (see InspectorRow)
     property var highlight: []           // field ids marked as in focus (2D: the settings whose keys are picked)
     property alias below: belowSlot.data // an app's own group under the rows, in the same scroll (2D: "Paint on …")
@@ -77,6 +79,7 @@ Panel {
                 delegate: InspectorRow { bridge: panel.bridge; keyMarks: panel.keyMarks
                                          highlighted: model.row === "param" && panel.highlight.indexOf(model.id) >= 0 }
             }
+            EffectsRow { part: panel.effects ? panel.bridge.invoke("effects", []) : null }   // "Effects (n) +" (effects.attach)
             Column { id: belowSlot; width: parent.width }
         }
         Text { visible: panel.finds && panel.bridge.nothingFound; text: "No setting matches"; y: Theme.grid

@@ -27,6 +27,8 @@ QtObject {
     readonly property color warn: "#f2b33d"
     readonly property color agent: "#a594f9"        // an agent's work: its chip dot, the 1 s outline on what it changed
     readonly property color agentSoft: Qt.rgba(165 / 255, 148 / 255, 249 / 255, 0.14)
+    readonly property color snap: "#ff2fd0"         // what a drag snapped to (INTERACTION 1.11): the snap line and its name chip
+    readonly property color snapText: "#ffffff"     // the name on the snap chip
     readonly property color scrim: Qt.rgba(0, 0, 0, 0.4)
     readonly property color popupEdge: Qt.rgba(1, 1, 1, 0.08)
 
