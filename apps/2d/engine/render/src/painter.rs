@@ -1,5 +1,6 @@
 //! Paints a laid-out page with Skia into one surface: on the GPU (OpenGL through WGL; WGL needs a window
-//! for its context, so a hidden one is made) or, when asked, on the CPU. Same drawing code either way;
+//! for its context, so a hidden one is made) or on the CPU, when asked or when no GL context can be made
+//! (`Painter::best`, the one place that chooses: a PC with no working graphics driver). Same drawing code either way;
 //! frames are read back as stored (premultiplied half floats) and go through the output step (color.rs).
 //!
 //! Every surface is half float (F16) in the render's working colour space (color.rs `surface_space`), so
@@ -147,7 +148,7 @@ half4 main(float2 p) {
 }
 "#;
 
-fn hidden_window() -> (isize, isize) {
+fn hidden_window() -> Result<(isize, isize), String> {
     use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
     use windows_sys::Win32::UI::WindowsAndMessaging::*;
     let class: Vec<u16> = "RostrumMotionGL\0".encode_utf16().collect();
@@ -160,8 +161,10 @@ fn hidden_window() -> (isize, isize) {
         wc.lpszClassName = class.as_ptr();
         RegisterClassW(&wc);
         let hwnd = CreateWindowExW(0, class.as_ptr(), class.as_ptr(), WS_OVERLAPPEDWINDOW, 0, 0, 64, 64, std::ptr::null_mut(), std::ptr::null_mut(), hinst, std::ptr::null());
-        assert!(!hwnd.is_null(), "CreateWindowExW failed");
-        (hwnd as isize, hinst as isize)
+        if hwnd.is_null() {
+            return Err("CreateWindowExW failed (no window for the GL context)".into());
+        }
+        Ok((hwnd as isize, hinst as isize))
     }
 }
 
@@ -192,8 +195,17 @@ fn gpu_budget(width: u32, height: u32) -> usize {
 /// GPU resources not used for this long are freed after a paint, so a budget filled by an earlier scene goes back.
 const GPU_UNUSED: std::time::Duration = std::time::Duration::from_secs(5);
 
+/// What the person is told when frames are painted on the CPU because the GPU could not be used (serve's `fallback`).
+pub const NO_GPU: &str = "No graphics driver, so drawing is slower";   // short: the top bar's status line has ~45 letters of room
+
+/// `ROSTRUM2D_NO_GPU=1` makes `gl_context` fail as on a PC with no working graphics driver (to prove the CPU fallback).
+const NO_GPU_SWITCH: &str = "ROSTRUM2D_NO_GPU";
+
 pub fn gl_context() -> Result<Gl, String> {
-    let (hwnd, hinst) = hidden_window();
+    if std::env::var_os(NO_GPU_SWITCH).is_some_and(|v| v == "1") {
+        return Err(format!("{NO_GPU_SWITCH}=1: no GL context, as asked"));
+    }
+    let (hwnd, hinst) = hidden_window()?;
     let mut wh = Win32WindowHandle::new(NonZeroIsize::new(hwnd).unwrap());
     wh.hinstance = NonZeroIsize::new(hinst);
     let raw_window = RawWindowHandle::Win32(wh);
@@ -236,8 +248,20 @@ pub fn gl_context() -> Result<Gl, String> {
 }
 
 impl Painter {
-    /// A GPU painter; fails (never silently falls back) when the GPU cannot be used. `space`: the working colour
-    /// space (color.rs `surface_space`).
+    /// The painter a render uses: on the GPU when it can be (`gl`: a context made beforehand, or None to make one now),
+    /// else on the CPU, with the reason (`Err` of the second value: the technical one, for the log). The same drawing
+    /// and output code either way (preview ≡ export); only the speed differs. The one place a render picks its painter.
+    pub fn best(gl: Option<Result<Gl, String>>, width: u32, height: u32, space: Option<ColorSpace>) -> Result<(Self, Result<(), String>), String> {
+        let why = match gl.unwrap_or_else(gl_context).and_then(|gl| Self::gpu_on(gl, width, height, space.clone())) {
+            Ok(p) => return Ok((p, Ok(()))),
+            Err(why) => why,
+        };
+        Ok((Self::cpu(width, height, space)?, Err(why)))
+    }
+
+    /// A GPU painter for the tests that need the GPU; fails (never falls back) when it cannot be used (a render goes
+    /// through `best`). `space`: the working colour space (color.rs `surface_space`).
+    #[cfg(test)]
     pub fn gpu(width: u32, height: u32, space: Option<ColorSpace>) -> Result<Self, String> {
         Self::gpu_on(gl_context()?, width, height, space)
     }

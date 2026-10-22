@@ -26,13 +26,15 @@ with group("row", w=300, h=60, layout="row", gap=10, hugWidth=False):
 
 
 class FakeEngine:
+    fallback = None            # the real engine's reply to a scene: "fallback" says when it draws on the processor (engine.py)
+
     def load(self, scene):
-        pass
+        self.fallback = None
 
     def still(self, t, png):
         QImage(4, 4, QImage.Format.Format_RGB32).save(str(png))
 
-    def pixels(self, t):
+    def pixels(self, t, samples=None, scale=1.0):
         return memoryview(bytearray(4 * 4 * 4)), 4, 4, 16
 
     def measure(self, items):

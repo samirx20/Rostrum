@@ -38,6 +38,7 @@ pwsh -File C:\Users\Sam\.rostrum\waves\heavy.ps1 run "<team>: 2d engine build" b
 - **Pitfall:** cargo fingerprints path crates by their path relative to the workspace and by file times. A build
   of another copy of this folder into the same `target` (or files with older times) can leave stale vendor crates:
   `cargo clean --profile agent -p blitz-dom -p blitz-paint -p anyrender -p anyrender_skia -p parley -p usvg` fixes it.
+- No graphics driver: when no GL context can be made the engine paints on the CPU (same frames, slower) and the reply's `fallback` says so; `ROSTRUM2D_NO_GPU=1` forces that, to try it on a PC that has a GPU.
 - Tests (fast, about 1 s once built): `cargo test --manifest-path apps\2d\engine\Cargo.toml --profile agent -p rostrum2d-render`.
 
 ## The scene: the engine evaluates every frame (H6)
@@ -57,7 +58,7 @@ the scene once. Code: `render/src/scene/` and `render/src/scene_serve.rs`.
 
 | Request | Does | Reply |
 |---|---|---|
-| `{"scene": {…}, "cpu"?: true}` | load or replace the scene; refused whole if anything is unknown (the error names the item and field); every layer's stage is written once at load so a later frame never meets something it can't draw; opens a session the comp's size if none is open at that size | `{"ok": true, "items", "width", "height", "fps", "duration"}` |
+| `{"scene": {…}, "cpu"?: true}` | load or replace the scene; refused whole if anything is unknown (the error names the item and field); every layer's stage is written once at load so a later frame never meets something it can't draw; opens a session the comp's size if none is open at that size | `{"ok": true, "items", "width", "height", "fps", "duration", "gpu", "adapter", "fallback"}` |
 | `{"frame": {"t": 1.25, "image"? / "rgba"? / "boxes"? …}}` | the scene at `t` seconds, drawn as any frame (all of `frame`'s outputs); `index` defaults to round(t·fps) so a still equals the exported frame; `timing.evalMs` = keys + easing + markup | as `frame` |
 | `{"export": {"start"?, "end"?, "encode": {"program", "args"}, "file"?, "progress"?}}` | every frame start..end at the comp's fps into the encoder (`file` checked to exist and not be empty after); or `"images": "C:\\…\\f-{frame}.png"` for one picture per frame; `progress: true` sends `{"progress": i, "of": n}` lines first | `{"ok": true, "frames", "fps", "code", "timing"}` |
 | `{"edit": [{"id", "props"?: {…}, "anim"?: {field: [keys] \| null}}]}` | small changes to the held scene (a drag), checked as a load is, all or nothing | `{"ok": true, "edits": n}` |

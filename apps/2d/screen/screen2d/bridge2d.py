@@ -11,9 +11,9 @@ from rostrum_core import marker_times
 from rostrum_core.tree import index
 from rostrum2d import fields as F, retime
 
-from .command_words import CommandWords
 from . import bounds, outline
 from .drags import DragSlots
+from .command_words import CommandWords
 from .file_commands import FileCommands
 from .frames import FrameRenderer
 from .handle_slots import HandleSlots
@@ -52,6 +52,7 @@ class Bridge2D(UndoState, LayerOrder, FileCommands, CommandWords, DragSlots, Han
         self._scene = None                                  # the engine's scene, described once per change (_render)
         self.frames.ready.connect(self._on_frame)
         self.frames.failed.connect(self._fail)
+        self.frames.note.connect(self._set_status)         # no graphics driver: said once (frames.py)
         self.painter = Painter(self)
         self._make_tools()                                  # pen, curves, export, import, add, problems (tools2d.py)
         self.play = Playback(self)                          # playing: follows the clock (playback.py)
