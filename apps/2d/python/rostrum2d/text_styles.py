@@ -21,7 +21,7 @@ from rostrum_core.errors import codes
 
 from . import fields as F
 from .kind import REGISTRY as R
-from .names import unique_name
+from .names import display_name, unique_name
 
 LIST = "textStyles"            # on the document root
 
@@ -71,12 +71,12 @@ def after_set(ctx, target: str, args: dict):
 @R.operation("style.define", "Save the type of a text (font, size, weight, colour, letter spacing, line height …) as a "
              "named text style; the text then follows it. Changing the style later (textstyle.set) changes every text "
              "that follows it.", target="text", label="Save as style",
-             params=[Param.text("name", label="Name", help="The style's name; the text's name when left out"),
+             params=[Param.text("name", label="Name", help="The style's name; the text's name (as the layers list shows it) when left out"),
                      Param.text("id", label="Id", importance="deep", help="Optional; counted (textstyle_1 …) when left out")])
 def style_define(ctx, targets, args):
     text = ctx.item(targets[0])
     taken = {s["name"] for s in styles(ctx.doc)}
-    name = args.get("name") or unique_name(taken, text.get("name") or "Text style")
+    name = args.get("name") or unique_name(taken, display_name(text))
     if name in taken:
         ctx.fail(codes.BAD_ARGUMENT, f'name "{name}"', "is already a text style's name", sorted(taken))
     id_ = args.get("id") or ctx.new_id("textstyle")

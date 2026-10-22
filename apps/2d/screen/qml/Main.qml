@@ -13,7 +13,8 @@ AppShell {
     appName: "Rostrum2D"
     helpEntries: guides                 // Help's guides (screen2d/session.py), in the kit's guide viewer
     documentName: files.hasProject ? files.name : "Untitled"   // the project (the kit's files: rostrum_gui/project_files.py)
-    leftWidth: 0
+    leftWidth: backend.library.open ? Theme.sidePanel : 0      // the Library drawer (LibraryDrawer.qml) pushes the canvas
+    left: [ LibraryDrawer { anchors.fill: parent; visible: backend.library.open } ]
     areaNames: ({ centre: "canvas", right: "settings", bottom: "timeline" })   // inspect_screen's words for the focused area
     saveWord: backend.isLive ? "Saved" : ""      // a project is live: every change is already on disk
     // The timeline's height is remembered per tool (DESIGN.md › two heights): Move and Pen want every row, Draw a big
@@ -76,6 +77,7 @@ AppShell {
     Shortcut { sequences: ["Delete", "Backspace"]; enabled: !shell.typing
                onActivated: { if (backend.strokeSelect.count > 0) backend.strokeSelect.remove(); else backend.layerCommand("delete") } }   // picked strokes first
     Shortcut { sequence: "Ctrl+A"; enabled: shell.canvasKeys; onActivated: backend.selectAllLayers() }
+    Shortcut { sequence: "Ctrl+L"; enabled: !shell.typing; onActivated: backend.library.setOpen(!backend.library.open) }   // the kit's "library" job
     // Esc steps back one level (the kit's ladder, selection_rules.esc_step): close an open panel, else clear
     Shortcut {
         sequence: "Escape"; enabled: shell.canvasKeys

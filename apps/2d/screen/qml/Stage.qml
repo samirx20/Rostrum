@@ -151,6 +151,7 @@ Panel {
                 id: strokes
                 anchors.fill: parent
                 fit: view.zoom; ox: view.ox; oy: view.oy
+                cover: bar.visible ? Qt.rect(bar.x, bar.y, bar.width, bar.height) : Qt.rect(0, 0, 0, 0)    // the turn knob goes below the strokes rather than under the bar
             }
         }
         MouseArea {
@@ -275,6 +276,7 @@ Panel {
         }
         ContextBar {   // select, then act: the kit's bar at the top-centre, clear of the tool strip (backend.actions);
                        // with Pen, Paint or typing on, that tool's options instead (ToolOptions.qml)
+            id: bar
             hub: backend.actions
             anchors { top: parent.top; topMargin: Theme.gap; horizontalCenter: parent.horizontalCenter }
             maxWidth: well.width - 2 * (tools.width + 2 * Theme.gap)

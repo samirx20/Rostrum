@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import math
 
+from rostrum2d.paint_transform import moved, transformed  # noqa: F401  (the operation's own geometry)
+
 
 def inside(poly: list, x: float, y: float) -> bool:
     """Even-odd test: is (x, y) inside the closed polygon [[x, y], …]."""
@@ -34,21 +36,6 @@ def bounds(groups: list[list]) -> tuple[float, float, float, float] | None:
     return min(xs), min(ys), max(xs), max(ys)
 
 
-def moved(points: list, dx: float, dy: float) -> list:
-    return [[p[0] + dx, p[1] + dy, *p[2:]] for p in points]
-
-
-def transformed(points: list, around: tuple[float, float], scale: float = 1.0, turn: float = 0.0) -> list:
-    """The points scaled by `scale` and turned by `turn` degrees (clockwise on screen) about `around`."""
-    ax, ay = around
-    c, s = math.cos(math.radians(turn)), math.sin(math.radians(turn))
-    out = []
-    for p in points:
-        x, y = (p[0] - ax) * scale, (p[1] - ay) * scale
-        out.append([ax + x * c - y * s, ay + x * s + y * c, *p[2:]])
-    return out
-
-
 def outline(points: list) -> str:
     """A stroke's path as SVG path data (composition px), for the selection's outline."""
     return "M " + " L ".join(f"{p[0]:.1f} {p[1]:.1f}" for p in points) if points else ""
@@ -57,19 +44,20 @@ def outline(points: list) -> str:
 KNOB = 28.0                 # screen px: the turn knob's centre sits this far above the strokes (StrokeOverlay.qml)
 
 
-def handle_point(kind: str, box: dict, zoom: float = 1.0) -> tuple[float, float]:
-    """Where a handle is (composition px): "scale" the box's bottom-right corner, "turn" the knob above its top centre."""
+def handle_point(kind: str, box: dict, zoom: float = 1.0, below: bool = False) -> tuple[float, float]:
+    """Where a handle is (composition px): "scale" the box's bottom-right corner, "turn" the knob above its top centre
+    (`below`: under its bottom centre, where the screen moves it when the context bar would cover it)."""
     if kind == "turn":
-        return box["x"] + box["w"] / 2, box["y"] - KNOB / zoom
+        return box["x"] + box["w"] / 2, (box["y"] + box["h"] + KNOB / zoom) if below else box["y"] - KNOB / zoom
     return box["x"] + box["w"], box["y"] + box["h"]
 
 
-def handle_hit(box: dict, x: float, y: float, zoom: float, reach: float = 9.0) -> str:
+def handle_hit(box: dict, x: float, y: float, zoom: float, reach: float = 9.0, below: bool = False) -> str:
     """Which handle (x, y) is on, within `reach` screen px: "turn" (the knob), "scale" (any corner) or ""."""
     if not box:
         return ""
     r = reach / zoom
-    kx, ky = handle_point("turn", box, zoom)
+    kx, ky = handle_point("turn", box, zoom, below)
     if abs(x - kx) <= r and abs(y - ky) <= r:
         return "turn"
     m = 4.0 / zoom                                  # the box is drawn 4 screen px outside the strokes

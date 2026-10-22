@@ -155,4 +155,12 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("key-faint-copies", ["--sample"], ["select dot", "keypick dot.x.k2200", "keyafter repeat"]),
         ("key-beat-words", with_sound(), ["sound wait", "select logo", "time 1.0", "keyhere", "showanim",
                                           "keypick logo.x.k1000"]),
+        # H33 (rig, round 2): Styles ▾ on a text with a saved style; the Library drawer without a project and with a
+        # brand kit of long names
+        ("styles-menu", ["--sample"], ["select title", "do layer:style_save", "add text", "clickbtn Styles", "wait 300"]),
+        ("library-no-project", ["--sample"], ["library open", "select title"]),
+        ("library-brand", long_project(), ["select title_card_for_the_summer_launch_film", "do layer:style_save",
+                                           "brand colors Summer_launch_coral_for_the_headphones_campaign #ff7a59",
+                                           "brand colors Night #101820",
+                                           f"brand textStyles {LONG_LAYER.replace(' ', '_')} textstyle_1", "library open"]),
     ]

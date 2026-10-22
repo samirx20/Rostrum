@@ -205,7 +205,7 @@ def do_stroke_step(bridge, win, word, rest, step):
         if not sel.box:
             raise RuntimeError(f"step {step!r}: no strokes picked")
         zoom = win.findChild(QObject, "stage").property("compScale")
-        a, b = handle_point(rest[0], sel.box, zoom), (float(rest[1]), float(rest[2]))
+        a, b = handle_point(rest[0], sel.box, zoom, sel.knobBelow), (float(rest[1]), float(rest[2]))
         pts = [_scene_of(win, a[0] + (b[0] - a[0]) * k / 8, a[1] + (b[1] - a[1]) * k / 8) for k in range(9)]
         QTest.mouseMove(win, pts[0])
         QTest.qWait(60)

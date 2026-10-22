@@ -87,17 +87,23 @@ def _check_keys(owner: dict, problems: list):
         seen.add((prop, k.get("t")))
 
 
+_LEAVES = frozenset(t for t, owned in rostrum_paint.LISTS.items() if not owned)   # strokes, fills: nothing inside
+
+
 def check(data: dict) -> list[str]:
     """Each list holds only its own kinds of item; keys name real animatable fields, one per field per time."""
     problems, stack = [], [data]
     while stack:
         item = stack.pop()
         for key in LISTS.get(item.get("type"), []):
+            held = HOLDS[key]
             for child in item.get(key, []):
-                if child.get("type") not in HOLDS[key]:
-                    problems.append(f'{item["id"]}.{key} can\'t hold a {child.get("type")} ({child["id"]}); '
-                                    f"it holds: {', '.join(HOLDS[key])}")
-                stack.append(child)
+                t = child.get("type")
+                if t not in held:
+                    problems.append(f'{item["id"]}.{key} can\'t hold a {t} ({child["id"]}); '
+                                    f"it holds: {', '.join(held)}")
+                if t not in _LEAVES:            # thousands of strokes: only their kind is looked at
+                    stack.append(child)
         if item.get("type") in F.ANIMATED_OWNERS:
             _check_keys(item, problems)
         if item.get("type") == "rig":
@@ -132,7 +138,7 @@ from . import ops_timing  # noqa: E402,F401  (layer.shift, layer.trim: move and 
 from . import ops_background  # noqa: E402,F401  (background.add, background.fit, background.move: painted backgrounds)
 from . import ops_group, ops_mask, ops_state, ops_align, ops_look  # noqa: E402,F401  (select first, then act)
 from . import ops_clip  # noqa: E402,F401  (layer.paste: copy / cut / paste of layers)
-from . import ops_paint, ops_fill  # noqa: E402,F401  (paint.stroke, paint.fill: paint and fill on any element or drawing)
+from . import ops_paint, ops_fill, paint_transform  # noqa: E402,F401  (paint.stroke, paint.fill, stroke.transform: paint, fill and move paint on any element or drawing)
 from . import ops_frame  # noqa: E402,F401  (comp.size, layer.fill_frame)
 from . import ops_keytime, ops_stagger  # noqa: E402,F401  (key.scale, key.paste, layer.stagger: retiming)
 from . import text_styles  # noqa: E402  (style.define, style.use, style.detach, style.remove: named text styles)

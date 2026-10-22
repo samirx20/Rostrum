@@ -80,6 +80,13 @@ def canvas_points(item: dict, props: dict, place: dict, points) -> list[list[flo
     return out
 
 
+def comp_points(item: dict, props: dict, place: dict, points) -> list[list[float]]:
+    """The other way: [[x, y, *rest], …] in the item's paint canvas px -> comp px (rest kept)."""
+    cw, ch = D.paint_size(item, props)
+    w, h = place["w"], place["h"]
+    return [[*comp_point(place, (q[0] + 0.5) * w / cw, (q[1] + 0.5) * h / ch), *q[2:]] for q in points]
+
+
 def _comp_of(doc_data: dict, layer_id: str) -> str:
     def has(layers):
         return any(lay["id"] == layer_id or has(lay.get("layers", [])) for lay in layers)

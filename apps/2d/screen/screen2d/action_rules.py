@@ -10,7 +10,7 @@ field's `valid_when`), read on the selection's facts below. Its `calls`:
     {"rule": "attach"}                                   Attach to bone: bind.add or bind.set (rig_attach.py)
 
 Target rules: ids (in pick order) · stack (bottom first) · stack_but_top · rest (all but the first) · locked ·
-unlocked · hidden · shown · not_copied. Argument values starting with "$" are rules: $new:<type> (a fresh id, so the
+unlocked · hidden · shown · not_copied · styled (texts following a style). Argument values starting with "$" are rules: $new:<type> (a fresh id, so the
 screen can select what was made) · $at (the playhead in the first layer's own seconds) · $top (the top of the stack) ·
 $first (the first picked) · $copied (the layer whose style was copied). Anything else is passed as it is.
 """
@@ -51,7 +51,8 @@ class Facts:
         self.lists = {"ids": ids, "stack": self.stack, "stack_but_top": self.stack[:-1], "rest": ids[1:],
                       "locked": [i for i in plain if doc.item(i).get("locked")],
                       "hidden": [i for i in plain if doc.item(i).get("hidden")],
-                      "not_copied": [i for i in ids if i != copied], "keys": list(self.state["keys"])}
+                      "not_copied": [i for i in ids if i != copied], "keys": list(self.state["keys"]),
+                      "styled": [i for i, it in zip(ids, self.items) if it.get("textStyle")]}   # texts following a text style
         self.lists["comp"] = [_comp_of(doc, ids[0])] if ids else []   # the whole picture: the composition the layers are in
         self.lists["unlocked"] = [i for i in plain if i not in self.lists["locked"]]
         self.lists["shown"] = [i for i in plain if i not in self.lists["hidden"]]
@@ -70,6 +71,7 @@ class Facts:
             "style_copied": bool(self.copied) and any(i != self.copied for i in ids),
             "clipboard": bool(self.state["clipboard"]), "keys_picked": bool(self.state["keys"]),
             "fills": self.kinds <= {"shape", "text", "path"},
+            "texts": self.kinds == {"text"}, "styled": bool(self.lists["styled"]),    # Styles ▾ (text_styles.py)
             "picture": self.kinds <= {"image", "video", "render3d"},     # Fill the frame comes first for a photo or clip
             "has_sound": bool(self.state.get("sound")) and "camera" not in self.kinds,   # Add a sound here (sound_cue_pick.py)
             # a character (rig/guess.py, rig_mouths.py): Bones from part names, Lip sync…, Add blinks…

@@ -13,6 +13,7 @@ from .curves import Curves
 from .exporter import Exporter
 from .filler import Filler
 from .importer import Importer
+from .brand_view import LibraryView
 from .key_bar import KeyBar
 from .key_select import KeySelect
 from .multi import Multi
@@ -44,6 +45,7 @@ class ToolSlots(SlotMixin):
         self._time_snap = TimeSnap(self)                    # the "+6 f" label of a time drag (time_snap.py): backend.timeSnap
         self._ease_play = EasePlay(self)                    # an ease picked plays once on the canvas (ease_play.py)
         self._exporter, self._importer, self._adder = Exporter(self), Importer(self), Adder(self)
+        self._library = LibraryView(self)                   # the Library drawer's brand kit and styles (brand_view.py): backend.library
         self._problems = Problems(self)
         self._problems.failed.connect(self._fail)
         self._camera = CameraTool(self)                     # the Camera tool (C): pan and push in (camera_tool.py): backend.cameraTool
@@ -162,6 +164,11 @@ class ToolSlots(SlotMixin):
     def importer(self):
         """The Import panel's job (importer.py)."""
         return self._importer
+
+    @Property(QObject, constant=True)
+    def library(self):
+        """The Library drawer: the project's brand kit and this document's text styles (brand_view.py)."""
+        return self._library
 
     @Property(QObject, constant=True)
     def adder(self):

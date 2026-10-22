@@ -50,6 +50,8 @@ class Hooks2D:
     def list_choices(self, item, param):   # the picks (control "pick"): a shared marker by name, or a sibling layer
         if param in ("marker", "endMarker"):
             return [{"value": m["name"], "label": m["name"]} for m in (self.marks.rows() if self.marks else [])]
+        if param == "textStyle":                     # the document's text styles (rostrum2d/text_styles.py)
+            return [{"value": s["id"], "label": s["name"]} for s in self.doc.data.get("textStyles", [])]
         if param not in SIBLING_PICKS:
             return []
         parent, key, _ = self.doc.parent_of(item["id"])

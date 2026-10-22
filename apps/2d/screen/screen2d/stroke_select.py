@@ -2,7 +2,9 @@
 (or Select strokes in the context bar, then drag) around strokes of what the pen paints on; drag moves them; Delete,
 Copy and Paste in the bar (stroke_clip.py); the box's corner handles scale them and the knob above it turns them
 (stroke_handles.py); Esc clears. Each change is one undo step through the painting kit's operations
-(`stroke.set {points}`, `stroke.remove`, `paint.stroke`): the very calls an agent makes with a stroke's id.
+(`stroke.transform`, `stroke.remove`, `paint.stroke`): the very calls an agent makes with a stroke's id. A drag previews
+`stroke.set {points}` from where the strokes were at the press; its one recorded step is the `stroke.transform` the drag
+came to (`_xf`), so a dragged move and an agent's typed one leave the same step.
 
 The selection is screen state (stroke ids); points are shown in composition px through the layer's own place
 (rostrum2d/placement.py, the pen's mapping), so the outline sits where the paint is on screen. A QObject part, read in
@@ -30,6 +32,8 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
         self.b = bridge
         self._armed, self._ids, self._lasso, self._drag = False, [], [], None
         self._layer, self._place, self._comp, self._start, self._size0 = "", None, {}, {}, {}
+        self._xf = {}                                   # the drag so far as stroke.transform's numbers
+        self._knob_below = False                        # the turn knob under the box (StrokeOverlay.qml: the bar covers above)
         QGuiApplication.clipboard().dataChanged.connect(self.changed)       # Paste appears when strokes are copied
         self._at = None                                 # (selected layer, playhead) the strokes were picked at
         bridge.toolChanged.connect(self.clear)
@@ -49,6 +53,11 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
     armed = Property(bool, lambda self: self._armed, notify=changed)
     count = Property(int, lambda self: len(self._ids), notify=changed)
     ids = Property("QVariantList", lambda self: list(self._ids), notify=changed)
+    def _set_knob_below(self, on):
+        if on != self._knob_below:
+            self._knob_below = on
+            self.changed.emit()
+    knobBelow = Property(bool, lambda self: self._knob_below, _set_knob_below, notify=changed)
     canPaste = Property(bool, lambda self: bool(self._clip) and self._target() is not None, notify=changed)
 
     @Property(str, notify=changed)
@@ -72,15 +81,9 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
     def _frame(self, d: dict) -> dict | None:
         return self.b._paint_layers._frame() or frame_at(d, self.b.painter._n())
 
-    def _sizes(self, d):
-        from rostrum2d.drawing import paint_size
-        return paint_size(d, resolve(d, self.b.own_t(d["id"])))
-
     def _to_comp(self, points: list) -> list:
         d = self.b.doc.item(self._layer)
-        cw, ch = self._sizes(d)
-        w, h = self._place["w"], self._place["h"]
-        return [[*placement.comp_point(self._place, (p[0] + 0.5) * w / cw, (p[1] + 0.5) * h / ch), *p[2:]] for p in points]
+        return placement.comp_points(d, resolve(d, self.b.own_t(d["id"])), self._place, points)
 
     def _to_canvas(self, points: list) -> list:
         d = self.b.doc.item(self._layer)
@@ -181,7 +184,7 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
 
     def _begin_drag(self, label):
         """A gesture from the picked strokes as they are now (their comp points and brush sizes at the press)."""
-        self._drag, self._start = Drag(self.b.doc, self.b.who, label), dict(self._comp)
+        self._drag, self._start, self._label, self._xf = Drag(self.b.doc, self.b.who, label), dict(self._comp), label, {}
         self._size0 = {i: self.b.doc.item(i).get("size") for i in self._ids}
 
     @Slot(float, float)
@@ -192,16 +195,28 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
 
         def go():
             self._comp = {i: G.moved(p, dx, dy) for i, p in self._start.items()}
+            self._xf = {"dx": round(dx, 2), "dy": round(dy, 2)}
             self._drag.preview(self._set_calls(lambda p: (p, 0)))
         self.b.guard(go)
         self.changed.emit()
 
     @Slot()
     def endMove(self):
-        d, self._drag, self._size0 = self._drag, None, {}
-        if d is not None:
-            self.b.guard(lambda: self.b.done(d.end(), ""))
-            self.changed.emit()
+        """Let go: the previews are put back and the drag's stroke.transform is the one step (none if it went nowhere)."""
+        d, self._drag, self._size0, xf = self._drag, None, {}, self._xf
+        self._xf = {}
+        if d is None:
+            return
+        d.end(cancel=True)
+        if xf:
+            self._change(self._label, lambda: [self._xf_call(xf)])
+        self.changed.emit()
+
+    def _xf_call(self, args: dict) -> dict:
+        """stroke.transform on the picked strokes, where they are seen now (the playhead's frame)."""
+        from rostrum2d.drawing import frame_number
+        n = frame_number(self.b._t, self.b.comp()["fps"])
+        return {"op": "stroke.transform", "target": list(self._ids), "args": {**args, "frame": n}}
 
     def move(self, dx: float, dy: float) -> bool:
         """The picked strokes moved by dx, dy (composition px) as one change (steps, agents' screens)."""
@@ -212,13 +227,9 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
 
     @Slot(float, float, result=bool)
     def transform(self, scale, turn):
-        """The picked strokes scaled and turned about their box's centre: one change."""
-        b = self.box
-        if not b:
-            return False
-        c, k = (b["x"] + b["w"] / 2, b["y"] + b["h"] / 2), scale
-        return self._change("Scale strokes" if turn == 0 else "Turn strokes",
-                            lambda: self._set_calls(lambda p: (G.transformed(p, c, k, turn), k if k != 1 else 0)))
+        """The picked strokes scaled and turned about their box's centre: one change (stroke.transform)."""
+        return bool(self._ids) and self._change("Scale strokes" if turn == 0 else "Turn strokes",
+                                                lambda: [self._xf_call({"scale": scale, "turn": turn})])
 
     @Slot(result=bool)
     def remove(self):

@@ -1,7 +1,8 @@
 """The picked strokes' handles while Draw is on (UX_SPEC.md §3.8, "Select and move paint"): drag a corner of their box to
 scale them about its centre, drag the knob above it to turn them (Shift: in 15° steps). Press-drag-release is one
-gesture = one undo step (the pen routes the press here when `handleAt` names a handle: Stage.qml), each move previewing `stroke.set {points, size}` (fills: their outline) from where the
-strokes were at the press, so nothing compounds. The handles' places are the box's (QML draws them from `box`).
+gesture = one undo step (the pen routes the press here when `handleAt` names a handle: Stage.qml), each move previewing
+`stroke.set {points, size}` (fills: their outline) from where the strokes were at the press, so nothing compounds; the
+step recorded on release is `stroke.transform {scale}` or `{turn}` (stroke_select.endMove), what an agent types. The handles' places are the box's (QML draws them from `box`).
 
 A slot mix-in for StrokeSelect (stroke_select.py: the selection, the mapping, `_begin_drag`, `_set_calls`).
 """
@@ -21,7 +22,7 @@ class StrokeHandles(SlotMixin):
     @Slot(float, float, float, result=str)
     def handleAt(self, x, y, zoom):
         """The handle under (x, y) composition px at this zoom: "scale", "turn" or "" (the pen's press asks first)."""
-        return G.handle_hit(self.box, x, y, zoom) if self._ids else ""
+        return G.handle_hit(self.box, x, y, zoom, below=self._knob_below) if self._ids else ""
 
     @Slot(str, float, float, result=bool)
     def beginHandle(self, kind, x, y):
@@ -50,6 +51,7 @@ class StrokeHandles(SlotMixin):
         def go():
             self._comp = {i: G.transformed(p, centre, scale, turn) for i, p in self._start.items()}
             self._drag.preview(self._set_calls(lambda p: (p, scale if scale != 1 else 0)))
+            self._xf = {"scale": round(scale, 4)} if kind == "scale" else {"turn": round(turn, 2)}
         self.b.guard(go)
         self.changed.emit()
 
@@ -63,7 +65,7 @@ class StrokeHandles(SlotMixin):
         b = self.box
         if not b:
             return False
-        at = G.handle_point(kind, b)
+        at = G.handle_point(kind, b, below=self._knob_below)
         if not self.beginHandle(kind, *at):
             return False
         self.handleTo(*to, steps)

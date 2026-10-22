@@ -28,6 +28,11 @@ Rectangle {
         id: column
         x: Theme.grid; y: Theme.grid
         spacing: 2
+        Button {    // the Library drawer (LibraryDrawer.qml): the brand kit and the scene's text styles
+            kind: "ghost"; width: 92; text: "Library"; job: "library"      // (its key, Ctrl+L, is in the hover help)
+            help: "The project's brand kit (colours, text styles, logos) and this scene's text styles."
+            down: backend.library.open; onClicked: backend.library.setOpen(!backend.library.open)
+        }
         Repeater {
             model: strip.tools.filter(t => (!t.needsCamera || backend.cameraTool.available) && (!t.needsRig || backend.boneTool.available))   // Camera: only when the scene has one; Bone: while a rig is in hand
             delegate: Button {

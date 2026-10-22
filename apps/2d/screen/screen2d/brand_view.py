@@ -1,0 +1,118 @@
+"""The Library drawer's Brand kit (UX_SPEC 3.27): the project's colours, text styles and logos (rostrum2d/brand_kit.py,
+the same as the MCP tools inspect_brand_kit / run_brand_kit / run_brand_use), plus this document's own text styles.
+Offered to QML as `backend.library`. Open / closed is screen state (Ctrl+L, the tool strip's Library button).
+
+Click a colour: the selected layers take it. Click a text style: the selected texts follow it (one change each, the
+same operations an agent's run_brand_use makes). Click a logo: it is imported onto the canvas (the importer's drop).
+"+ From selection" adds the selected text's style or the selected layer's colour to the kit; "+ Logo…" a file.
+"""
+from __future__ import annotations
+
+from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
+from rostrum2d import brand_kit as B
+from rostrum2d import fields as F, text_styles
+from rostrum2d.ops_look import COLOUR
+
+
+class LibraryView(QObject):
+    changed = Signal()
+
+    def __init__(self, bridge, parent=None):
+        super().__init__(parent or bridge)
+        self.b, self._open, self._kit = bridge, False, {s: [] for s in B.SECTIONS}
+        bridge.docChanged.connect(self.changed)
+        bridge.selectionChanged.connect(self.changed)
+
+    def _folder(self) -> str:
+        return str(self.b.doc.folder or "")
+
+    def _reload(self):
+        try:
+            self._kit = B.read(self._folder()) if self._folder() else {s: [] for s in B.SECTIONS}
+        except Exception as e:  # noqa: BLE001  a broken brand.json: said, and the kit shows empty
+            self.b._fail(f"Error: brand kit: {e}")
+            self._kit = {s: [] for s in B.SECTIONS}
+        self.changed.emit()
+
+    # ---- what QML shows ------------------------------------------------------------------------------------------
+    open = Property(bool, lambda self: self._open, notify=changed)
+    hasProject = Property(bool, lambda self: bool(self._folder()), notify=changed)
+    colors = Property("QVariantList", lambda self: self._kit["colors"], notify=changed)
+    textStyles = Property("QVariantList", lambda self: self._kit["textStyles"], notify=changed)
+    logos = Property("QVariantList", lambda self: self._kit["logos"], notify=changed)
+
+    @Property("QVariantList", notify=changed)
+    def docStyles(self):
+        """This document's text styles: {id, name, size, weight, color, font}."""
+        return [{"id": s["id"], "name": s["name"], **text_styles.values(s)} for s in text_styles.styles(self.b.doc.data)]
+
+    @Property(str, notify=changed)
+    def picked(self):
+        """What the selection can take: "texts", "colour" (shapes, paths, texts mixed), or "" (nothing to colour)."""
+        items = [self.b.doc.item(i) for i in self.b.selected_layers()]
+        if items and all(it["type"] == "text" for it in items):
+            return "texts"
+        return "colour" if items and any(F.param(it["type"], f) for it in items for f in COLOUR) else ""
+
+    # ---- what a person does --------------------------------------------------------------------------------------
+    @Slot(bool)
+    def setOpen(self, on):
+        self._open = bool(on)
+        if self._open:
+            self._reload()
+        self.changed.emit()
+
+    @Slot(str, str)
+    def use(self, section, name):
+        """A kit colour or text style on the selection: one change."""
+        ids = self.b.selected_layers()
+        self.b.guard(lambda: self.b._apply(B.use_calls(self.b.doc, section, B.entry(self._folder(), section, name), ids),
+                                           f"Use {name}"))
+
+    @Slot(str)
+    def useDocStyle(self, style_id):
+        ids = [i for i in self.b.selected_layers() if self.b.doc.item(i)["type"] == "text"]
+        self.b.guard(lambda: self.b._apply([{"op": "style.use", "target": ids, "args": {"style": style_id}}], "Use style"))
+
+    @Slot(str)
+    def placeLogo(self, name):
+        """The logo onto the canvas, centred: the importer's drop (one change, its report if something didn't come)."""
+        from pathlib import Path
+        f = Path(self._folder()) / B.entry(self._folder(), "logos", name)["file"]
+        self.b.importer.dropFiles([str(f)], float("nan"), float("nan"))
+
+    @Slot()
+    def addFromSelection(self):
+        """The selected text's style (its document style when it follows one, named after it) or the selected layer's
+        colour, into the kit."""
+        items = [self.b.doc.item(i) for i in self.b.selected_layers()]
+        if not items:
+            return self.b._set_status("Select a text or a coloured layer first")
+        it = items[0]
+        if it["type"] == "text":
+            style = next((s for s in text_styles.styles(self.b.doc.data) if s["id"] == it.get("textStyle")), None)
+            name = style["name"] if style else self.b.label_of(it)
+            return self._add("textStyles", {"name": name, **text_styles.values(style or it)})
+        field = next((f for f in COLOUR if F.param(it["type"], f)), None)
+        if field is None:
+            return self.b._set_status("That layer has no colour of its own")
+        value = it.get(field, F.param(it["type"], field).default)
+        return self._add("colors", {"name": value.upper(), "value": value})
+
+    @Slot(str)
+    def addLogo(self, url):
+        path = QUrl(url).toLocalFile() if url.startswith("file:") else url
+        from pathlib import Path
+        self._add("logos", {"name": Path(path).stem, "file": path})
+
+    @Slot(str, str)
+    def remove(self, section, name):
+        if self.b.guard(lambda: B.remove(self._folder(), section, name)):
+            self._reload()
+
+    def _add(self, section, entry):
+        if not self._folder():
+            return self.b._set_status("The brand kit is the project's: save the scene in a project first")
+        if self.b.guard(lambda: B.add(self._folder(), section, entry)):
+            self.b._set_status(f'Added {entry["name"]} to the brand kit')
+            self._reload()

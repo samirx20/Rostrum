@@ -108,6 +108,11 @@ DATA = [
          when=FACT("keys_picked"), calls=_op("key.set", "keys", ease=e["value"])) for e in EASES if e["value"] != "custom"],
     *[_a(f"effect_{e}", F.LABELS[e], rank=82 + n, importance="primary", group="look", bar="Effects", when=_EFFECT_WHEN.get(e, NOT("has_camera")),
          calls=_op("effect.add", "ids", type=e)) for n, e in enumerate(F.EFFECTS)],
+    # Styles ▾ on texts (rostrum2d/text_styles.py): the document's styles come first (_List.available adds them)
+    _a("style_save", "Save as style", rank=81, importance="primary", group="look", bar="Styles", kinds=("text",),
+       max_targets=1, when=NOT("styled"), calls=_op("style.define", "ids")),
+    _a("style_detach", "Detach style", rank=81, importance="primary", group="look", bar="Styles", kinds=("text",),
+       when=FACT("styled"), calls=_op("style.detach", "styled")),
     _a("copy_style", "Copy style", rank=80, group="look", job="copy_style", max_targets=1, do="copy_style"),
     _a("paste_style", "Paste style", rank=80, group="look", job="paste_style", when=FACT("style_copied"),
        calls=_op("style.apply", "not_copied", **{"from": "$copied"})),
@@ -152,7 +157,28 @@ class _List(ActionList):
 
     def available(self, facts) -> list[dict]:
         now = {a.id for a in self.actions if a.promoted and a.importance != "primary" and a.promoted(facts)}
-        return [{**e, "importance": "primary", "bar": ""} if e["id"] in now else e for e in super().available(facts)]
+        out = [{**e, "importance": "primary", "bar": ""} if e["id"] in now else e for e in super().available(facts)]
+        uses = _style_uses(facts)
+        at = next((n for n, e in enumerate(out) if e["bar"] == "Styles"), len(out))
+        return out[:at] + uses + out[at:]
+
+    def owns(self, key: str) -> bool:
+        """Whether `key` is one of this list's actions (the document's styles included)."""
+        return key.startswith(STYLE_USE) or any(a.id == key for a in self.actions)
+
+
+STYLE_USE = "layer:style_use:"
+
+
+def _style_uses(f) -> list[dict]:
+    """Styles ▾'s first part: each of the document's text styles the selected texts don't all follow yet (one change:
+    style.use). Built from the document, so not in DATA."""
+    if f.facts.get("texts") is not True or f.facts.get("any_locked"):
+        return []
+    return [{"id": STYLE_USE + s["id"], "label": s["name"], "keys": "", "importance": "primary", "group": "look",
+             "bar": "Styles", "calls": [{"op": "style.use", "target": list(f.ids), "args": {"style": s["id"]}}],
+             "do": "", "edit": False, "rank": 81, "job": ""}
+            for s in f.doc.data.get("textStyles", []) if any(it.get("textStyle") != s["id"] for it in f.items)]
 
 
 ACTIONS = [_action(d) for d in DATA]
