@@ -52,7 +52,9 @@ Item {
                                                       - sp - commandWidth - sp - help.width
                                                     : afterTab
     readonly property real messageWidth: fit(message.implicitWidth, Math.min(afterTab, rightOfTools) - Theme.gap, 24)
-    function fit(natural, there, least) { const w = Math.min(natural, Math.max(0, there)); return w >= least ? w : 0 }
+    // a part gets its natural width or what is there; below `least` it gives way entirely (a short name that fits whole
+    // always shows: "t1 •" is narrower than `least`)
+    function fit(natural, there, least) { const w = Math.min(natural, Math.max(0, there)); return w >= Math.min(least, natural) && w > 0 ? w : 0 }
 
     Row {  // left group: wordmark, leading buttons, the document tab
         id: leftGroup
