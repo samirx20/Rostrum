@@ -28,6 +28,7 @@ from rostrum_core.keys import key_id, marked
 
 from . import fields as F, pathdata
 from .expr import ExprError, parse
+from .group_fit import fit
 from .kind import KIND, LISTS
 from .ops_expr import expr_id, link_source
 from .rig import script as rig_script
@@ -130,11 +131,14 @@ class Item:
 
     def __exit__(self, *exc):
         self._b.holders.pop()
+        if self.node["type"] == "group" and not exc[0] and self.id not in self._b.sized:
+            fit(self.node)
 
 
 class Build:
     def __init__(self, reserved=()):
         self.root, self.holders, self.reserved, self.taken = KIND.blank(), [], set(reserved), set()
+        self.sized = set()          # groups whose script gave a size (w or h): never refitted
 
     def new_id(self, type_, id_):
         if id_ is None:
@@ -155,6 +159,8 @@ class Build:
             if k not in known:
                 raise ValueError(f'a {node["type"]} has no field "{k}"; it has: {", ".join(known)}' + _hint(k, known))
             node[k] = F.param(node["type"], k).check(v, f'{node["id"]}.{k}')
+            if node["type"] == "group" and k in ("w", "h"):
+                self.sized.add(node["id"])
 
     def add(self, type_, id_, values, into: list) -> Item:
         node = {"id": self.new_id(type_, id_), "type": type_, "name": F.LABELS[type_], **F.defaults(type_)}
