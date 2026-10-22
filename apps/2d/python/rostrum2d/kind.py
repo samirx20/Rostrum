@@ -90,38 +90,54 @@ def _check_keys(owner: dict, problems: list):
 _LEAVES = frozenset(t for t, owned in rostrum_paint.LISTS.items() if not owned)   # strokes, fills: nothing inside
 
 
-def check(data: dict) -> list[str]:
-    """Each list holds only its own kinds of item; keys name real animatable fields, one per field per time."""
+def _check_owner(item: dict, problems: list):
+    """What one item's own fields and lists must satisfy (its keys, a rig's parts, a path's data, its drawings' order)."""
+    if item.get("type") in F.ANIMATED_OWNERS:
+        _check_keys(item, problems)
+    if item.get("type") == "rig":
+        problems += rig_model.problems_of(item)
+    if item.get("type") == "path":
+        try:
+            pathdata.commands(item["d"])
+        except ValueError as e:
+            problems.append(f'{item["id"]}.d: {e}')
+        try:
+            widthprofile.parse(item.get("widthProfile", ""))
+        except ValueError as e:
+            problems.append(f'{item["id"]}.widthProfile: {e}')
+    if item.get("frames"):              # a drawing's, or an element's paint
+        ats = [f["at"] for f in item["frames"]]
+        if ats != sorted(set(ats)):
+            problems.append(f'{item["id"]}: drawings must be at different frames, in order (they are at {ats})')
+
+
+def check(data: dict, items=None) -> list[str]:
+    """Each list holds only its own kinds of item; keys name real animatable fields, one per field per time.
+    `items`: the items a change set or brought in (rostrum_core.kind); then only they and the items holding them are
+    checked in full (a key's owner sees its duplicate times), and only their texts' fonts. None: everything, as on open."""
     problems, stack = [], [data]
+    changed = None if items is None else {i["id"] for i in items}
+    owners = []
     while stack:
         item = stack.pop()
         for key in LISTS.get(item.get("type"), []):
             held = HOLDS[key]
             for child in item.get(key, []):
                 t = child.get("type")
+                if changed is not None and child["id"] in changed and (not owners or owners[-1] is not item):
+                    owners.append(item)
                 if t not in held:
                     problems.append(f'{item["id"]}.{key} can\'t hold a {t} ({child["id"]}); '
                                     f"it holds: {', '.join(held)}")
                 if t not in _LEAVES:            # thousands of strokes: only their kind is looked at
                     stack.append(child)
-        if item.get("type") in F.ANIMATED_OWNERS:
-            _check_keys(item, problems)
-        if item.get("type") == "rig":
-            problems += rig_model.problems_of(item)
-        if item.get("type") == "path":
-            try:
-                pathdata.commands(item["d"])
-            except ValueError as e:
-                problems.append(f'{item["id"]}.d: {e}')
-            try:
-                widthprofile.parse(item.get("widthProfile", ""))
-            except ValueError as e:
-                problems.append(f'{item["id"]}.widthProfile: {e}')
-        if item.get("frames"):              # a drawing's, or an element's paint
-            ats = [f["at"] for f in item["frames"]]
-            if ats != sorted(set(ats)):
-                problems.append(f'{item["id"]}: drawings must be at different frames, in order (they are at {ats})')
-    return problems + exprbake.problems_of_doc(data) + fontcheck.problems_of_doc(data)
+        if changed is None:
+            _check_owner(item, problems)
+    if changed is not None:
+        for item in {id(i): i for i in [*owners, *items]}.values():
+            _check_owner(item, problems)
+    texts = data if items is None else {"layers": [i for i in items if i.get("type") == "text"]}
+    return problems + exprbake.problems_of_doc(data) + fontcheck.problems_of_doc(texts)
 
 
 KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts,
