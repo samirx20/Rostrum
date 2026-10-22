@@ -111,7 +111,6 @@ AppShell {
     FileFlow { id: fileFlow; window: shell }
     centre: [
         Stage { id: stage; anchors.fill: parent; typing: shell.typing },   // typing: F stays a letter (ViewControls.qml)
-        CreateOverlay { anchors.fill: parent; stage: stage },    // R / O / T: drag a shape, click or drag and type
         ExportPanel {   // opened by the Export button; docked on the canvas's right edge, beside the inspector (never over it)
             id: exportPanel
             anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }

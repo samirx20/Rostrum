@@ -7,7 +7,7 @@ import RostrumKit
 // there); the outline and its size ("320 × 180") follow the pointer. Text: click and type, or drag a box to wrap in;
 // Esc or Ctrl+Enter ends (the text stays selected), Enter is a new line. Double-click a text (Move) to type in it again.
 // While typing the engine's own picture shows the words; the box here is transparent text with the cursor, lined up
-// through the Stage's mapping only (compScale, fromComp, toComp). The tool strip's rectangle is left to its buttons.
+// through the Stage's mapping only (compScale, fromComp, toComp). It lies in the canvas, under the tool strip (Stage.qml).
 Item {
     id: ov
     property Item stage
@@ -17,25 +17,15 @@ Item {
     readonly property bool creating: tool === "rect" || tool === "ellipse" || tool === "text"
     readonly property var box: create.box
     readonly property var look: create.style
-    property Item strip: null
-
-    function findStrip(item) {
-        if (item.objectName === "toolStrip") return item
-        for (let i = 0; i < item.children.length; i++) { const r = findStrip(item.children[i]); if (r) return r }
-        return null
-    }
-    function overStrip(p) {
-        if (!strip && stage) strip = findStrip(stage)
-        if (!strip) return false
-        const q = strip.mapToItem(ov, 0, 0)
-        return p.x >= q.x && p.x <= q.x + strip.width && p.y >= q.y && p.y <= q.y + strip.height
-    }
-    function atMouse(m) { return stage.toComp(m.x, m.y) }
+    // the one mapping (Stage.qml), from this overlay's own px (it lies in the canvas well, under the tool strip)
+    function toComp(x, y) { const q = ov.mapToItem(stage, x, y); return stage.toComp(q.x, q.y) }
+    function fromComp(x, y) { const q = stage.fromComp(x, y); return ov.mapFromItem(stage, q.x, q.y) }
+    function atMouse(m) { return ov.toComp(m.x, m.y) }
 
     MouseArea {
         id: area
         anchors.fill: parent
-        enabled: ov.creating && !backend.playing
+        enabled: ov.creating && !backend.playing && !spaceKey.held     // Space held: the view pans (ViewInput.qml)
         visible: enabled                                  // out of the way (and of the layout check) unless a creation tool is on
         cursorShape: Qt.CrossCursor
         preventStealing: true
@@ -44,7 +34,6 @@ Item {
         property real py: 0
         property bool shape: ov.tool === "rect" || ov.tool === "ellipse"
         onPressed: (m) => {
-            if (ov.overStrip(Qt.point(m.x, m.y))) { m.accepted = false; return }      // the tool strip's buttons
             if (ov.create.typing) return                      // the click that ends typing is handled by `ender` below
             p0 = ov.atMouse(m); px = m.x; py = m.y
             if (shape) ov.create.beginShape(ov.tool, p0.x, p0.y, 4 / ov.scale)
@@ -58,7 +47,7 @@ Item {
         }
         onReleased: (m) => {
             if (ov.create.typing) return
-            const p = ov.atMouse(m), moved = Math.abs(m.x - ov.stage.fromComp(p0.x, p0.y).x) + Math.abs(m.y - ov.stage.fromComp(p0.x, p0.y).y) > 4
+            const p = ov.atMouse(m), moved = Math.abs(m.x - ov.fromComp(p0.x, p0.y).x) + Math.abs(m.y - ov.fromComp(p0.x, p0.y).y) > 4
             if (shape) ov.create.endShape(p.x, p.y, (m.modifiers & Qt.ShiftModifier) !== 0, (m.modifiers & Qt.AltModifier) !== 0)
             else if (moved) ov.create.beginText(Math.min(p0.x, p.x), Math.min(p0.y, p.y), Math.abs(p.x - p0.x))
             else ov.create.beginText(p0.x, p0.y, 0)
@@ -80,7 +69,7 @@ Item {
             }
             const now = Date.now()
             if (ov.tool === "move" && now - lastAt < 450 && Math.abs(x - lastPos.x) + Math.abs(y - lastPos.y) < 6) {
-                const p = ov.stage.toComp(x, y)
+                const p = ov.toComp(x, y)
                 ov.create.editAt(p.x, p.y)
                 lastAt = 0
             } else { lastAt = now; lastPos = Qt.point(x, y) }
@@ -90,7 +79,7 @@ Item {
         id: shapeBox
         readonly property bool on: ov.box.kind === "rect" || ov.box.kind === "ellipse"
         visible: on
-        x: on ? ov.stage.fromComp(ov.box.x, ov.box.y).x : 0; y: on ? ov.stage.fromComp(ov.box.x, ov.box.y).y : 0
+        x: on ? ov.fromComp(ov.box.x, ov.box.y).x : 0; y: on ? ov.fromComp(ov.box.x, ov.box.y).y : 0
         width: on ? ov.box.w * ov.scale : 0; height: on ? ov.box.h * ov.scale : 0
         readonly property color wash: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.15)
         Rectangle { visible: ov.box.kind === "rect"; anchors.fill: parent; color: shapeBox.wash; border.width: 1.5; border.color: Theme.accent }
@@ -106,7 +95,7 @@ Item {
     Rectangle {         // the live size, by the pointer
         visible: ov.box.label !== undefined
         readonly property point at: area.pressed ? Qt.point(area.px + 16, area.py + 16)
-                                  : ov.stage.fromComp(ov.box.x + ov.box.w + 8 / ov.scale, ov.box.y + ov.box.h + 8 / ov.scale)
+                                  : ov.fromComp(ov.box.x + ov.box.w + 8 / ov.scale, ov.box.y + ov.box.h + 8 / ov.scale)
         x: Math.min(at.x, ov.width - width - Theme.grid); y: Math.min(at.y, ov.height - height - Theme.grid)
         width: sizeText.width + 2 * Theme.grid; height: sizeText.height + Theme.grid
         radius: Theme.radiusCtl; color: Theme.raised; border.width: 1; border.color: Theme.popupEdge
@@ -117,7 +106,7 @@ Item {
         id: editor
         readonly property bool on: ov.create.typing && ov.box.kind === "text"
         visible: on
-        x: on ? ov.stage.fromComp(ov.box.x, ov.box.y).x : 0; y: on ? ov.stage.fromComp(ov.box.x, ov.box.y).y : 0
+        x: on ? ov.fromComp(ov.box.x, ov.box.y).x : 0; y: on ? ov.fromComp(ov.box.x, ov.box.y).y : 0
         width: on ? (ov.box.wrap ? ov.box.w * ov.scale : Math.max(ov.box.w * ov.scale, edit.contentWidth) + 4) : 0
         height: on ? Math.max(ov.box.h * ov.scale, edit.contentHeight) : 0
         property alias text: edit.text

@@ -20,19 +20,25 @@ Item {
         else view.show(Number(key) / 100)
     }
     function entries() {
-        const out = [{ value: "fit", label: "Fit", hint: "Ctrl 0", group: "a" }]
+        const out = [{ value: "fit", label: "Fit", keys: "Ctrl 0", group: "a" }]
         for (const p of [25, 50, 100, 200, 400])
-            out.push({ value: String(p), label: p + " %", hint: p === 100 ? "Ctrl 1" : "", group: "a" })
-        if (backend.selectedLayer !== "") out.push({ value: "sel", label: "Zoom to selection", hint: "F", group: "a" })
-        out.push({ value: "snap", label: backend.snap.on ? "Turn snapping off" : "Turn snapping on", hint: "", group: "b" })
+            out.push({ value: String(p), label: p + " %", keys: p === 100 ? "Ctrl 1" : "", group: "a" })
+        if (backend.selectedLayer !== "") out.push({ value: "sel", label: "Zoom to selection", keys: "F", group: "a" })
+        out.push({ value: "snap", label: backend.snap.on ? "Turn snapping off" : "Turn snapping on", group: "b" })
         return out
     }
 
-    function openMenu() {                       // above the button (it sits at the canvas's bottom edge)
+    function openMenu() {                       // above the button, right edges lined up (window px: the kit's menu)
         menu.entries = vc.entries()
-        const h = menu.entries.length * Theme.popupRow + Theme.grid * 3
-        menu.openAt(vc.x + vc.width - menu.width, vc.y - h - 2)
+        menu.openAt(0, 0)
+        Qt.callLater(vc.placeMenu)              // its size settles a moment after the entries are set
     }
+    function placeMenu() {
+        const p = vc.mapToItem(null, vc.width, 0)
+        menu.at = { px: p.x - menu.width, py: p.y - menu.height - 2 }
+        menu.place()
+    }
+    Connections { target: menu; function onHeightChanged() { if (menu.opened) vc.placeMenu() } }
     Button {
         id: button
         kind: "normal"
@@ -40,8 +46,7 @@ Item {
         down: menu.opened
         onClicked: vc.openMenu()
     }
-    ActionMenu { id: menu; parent: vc.parent; width: 200;   // in the canvas's px (openAt keeps it inside from there)
-                 onPicked: (key) => vc.act(key) }
+    ActionMenu { id: menu; onPicked: (key) => vc.act(key) }
 
     Shortcut { sequence: "Ctrl+0"; onActivated: vc.view.fitAll() }
     Shortcut { sequence: "Ctrl+1"; onActivated: vc.view.show(1) }

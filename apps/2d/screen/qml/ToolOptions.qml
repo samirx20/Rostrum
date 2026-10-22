@@ -66,7 +66,13 @@ Row {
     Act {   // what the strokes go on: the selected layer or a new drawing (painter.targetName / paintOn)
         id: paintingOn
         visible: opts.mode === "paint"; down: onMenu.visible
-        text: "Painting on: " + painter.targetName + "  ▸"; onClicked: onMenu.visible ? onMenu.close() : onMenu.open()
+        // a long name is shortened here (the whole name shows on hover): the bar never wraps or cuts (UX_SPEC 4.3)
+        readonly property string name: painter.targetName
+        readonly property int most: opts.roomy ? 24 : 10
+        text: "Painting on: " + (name.length > most ? name.slice(0, most - 1) + "…" : name) + "  ▸"
+        onClicked: onMenu.visible ? onMenu.close() : onMenu.open()
+        HoverHandler { id: onHover }
+        HoverTip { hovered: onHover.hovered && paintingOn.name.length > paintingOn.most; text: "Painting on " + paintingOn.name }
         Menu { id: onMenu; entries: painter.targetChoices; onPicked: (v) => painter.paintOn(v) }
     }
 

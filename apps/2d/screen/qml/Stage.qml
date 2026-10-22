@@ -9,7 +9,7 @@ import RostrumKit
 // that group; Ctrl+press the piece itself; double-click goes one level in; Shift+click adds / removes. Dragging moves
 // it (all selected layers together), snapping to the frame and the other layers (backend.snap: Ctrl pressed after the
 // drag began = no snapping, Shift = straight); dragging on empty canvas draws a rubber band that selects the layers it
-// touches (boxSelect, not locked ones). One gesture = one undo step (backend.beginMove / moveBy / endDrag; an animated
+// touches (boxSelect, not locked ones; Shift+box adds, Ctrl+box picks the deepest pieces). One gesture = one undo step (backend.beginMove / moveBy / endDrag; an animated
 // x / y gets a key at the playhead). Layers outside the frame can still be grabbed.
 // With the Draw tool on, a press draws instead: one stroke = one gesture = one undo step (painter.beginStroke / strokeTo /
 // endStroke). A pen reports its pressure; a mouse is 1. The onion skin lies over the drawing's box. With the Pen tool
@@ -137,7 +137,8 @@ Panel {
             onReleased: (m) => {
                 if (band) {
                     if (Math.abs(m.x - sx) + Math.abs(m.y - sy) < 4) backend.pickAt(b0.x, b0.y)   // a click: the composition
-                    else backend.multi.boxSelect(b0.x, b0.y, b1.x, b1.y)
+                    else backend.multi.boxSelect(b0.x, b0.y, b1.x, b1.y, ((m.modifiers & Qt.ShiftModifier) ? "shift " : "")
+                                                 + ((m.modifiers & Qt.ControlModifier) ? "ctrl" : ""))   // Shift adds, Ctrl: the deepest pieces
                 }
                 stop()
             }
@@ -148,6 +149,7 @@ Panel {
             visible: !backend.playing && !well.drawing
             fit: view.zoom; ox: view.ox; oy: view.oy
         }
+        CreateOverlay { anchors.fill: parent; stage: panel }   // R / O / T: drag a shape, click or drag and type
         Item {  // outlines of the selected layers (turned with them) and the handles of a single one; over the pen's overlay
             id: marks
             x: view.ox; y: view.oy
@@ -179,26 +181,13 @@ Panel {
                 }
             }
         }
-        MouseArea {  // panning: middle-drag, or Space held + drag (over every tool); the wheel scrolls, Ctrl+wheel zooms
-            id: panner
-            anchors.fill: parent
-            acceptedButtons: spaceKey.held ? (Qt.LeftButton | Qt.MiddleButton) : Qt.MiddleButton
-            preventStealing: true
-            property point last
-            onPressed: (m) => { spaceKey.use(); last = Qt.point(m.x, m.y) }
-            onPositionChanged: (m) => { view.panBy(m.x - last.x, m.y - last.y); last = Qt.point(m.x, m.y) }
-            onWheel: (w) => {
-                if (w.modifiers & Qt.ControlModifier) { view.zoomAt(view.zoom * Math.pow(1.25, w.angleDelta.y / 120), w.x, w.y); return }
-                const d = (w.pixelDelta.x || w.pixelDelta.y) ? w.pixelDelta : Qt.point(w.angleDelta.x / 2, w.angleDelta.y / 2)
-                if (w.modifiers & Qt.ShiftModifier) view.panBy(d.y || d.x, 0); else view.panBy(d.x, d.y)
-            }
-            HoverHandler { enabled: spaceKey.held; cursorShape: panner.pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor }
-        }
-        PinchHandler {  // a touchpad or touch pinch: zoom around the fingers
+        ViewInput { anchors.fill: parent; view: view }   // wheel, pinch and Space+drag move the view
+        DragHandler {  // middle-drag pans (on the well itself: other buttons pass straight to the tools)
             target: null
-            property real last: 1
-            onActiveChanged: last = 1
-            onActiveScaleChanged: { view.zoomAt(view.zoom * activeScale / last, centroid.position.x, centroid.position.y); last = activeScale }
+            acceptedButtons: Qt.MiddleButton
+            property vector2d was
+            onActiveChanged: was = Qt.vector2d(0, 0)
+            onActiveTranslationChanged: { view.panBy(activeTranslation.x - was.x, activeTranslation.y - was.y); was = activeTranslation }
         }
         TapHandler {   // right-click: an unselected layer is selected alone first, a selected one keeps the selection
             acceptedButtons: Qt.RightButton
@@ -220,7 +209,7 @@ Panel {
             toolOptions: panel.toolMode !== "" ? optionsComponent : null
             dragging: canvas.pressed || backend.playing || (backend.tool !== "move" && panel.toolMode === "")
         }
-        Component { id: optionsComponent; ToolOptions { mode: panel.toolMode } }
+        Component { id: optionsComponent; ToolOptions { mode: panel.toolMode; room: well.width - 2 * (tools.width + 2 * Theme.gap) } }
     }
     ActionMenu { id: canvasMenu; onPicked: (v) => backend.run(v) }
     // The canvas's right-click menu at (x, y) in the well's px (default: the middle of the selection, for scripts).

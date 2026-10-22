@@ -55,4 +55,11 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("connect-agent", ["--sample"], ["agents"]),
         ("guide", ["--sample"], ["guide the-screen.md"]),
         ("view-menu", ["--sample"], ["select title", "zoom 400", "viewmenu"]),     # zoomed in, the view's % menu open
+        # H29: the creation tools, the context bar's tool options, keys picked in the timeline
+        ("rect-drawing", ["--sample"], ["shapedrag rect 300 200 900 600"]),
+        ("typing", ["--sample"], ["typetext 300 300 Spring_launch"]),
+        ("long-typing", long(), [*busy, "typetext 300 300 Spring_launch_for_the_new_headphones"]),
+        ("pen-tool", ["--sample"], ["tool pen", "pen 300,300 600,320"]),
+        ("paint-on-shape", ["--sample"], ["select card", "tool draw", "draw 600 300 900 330 1200 300"]),
+        ("keys-picked", ["--sample"], ["select title", "showanim", "keypick title.opacity.k900", "keypick title.y.k1000 ctrl"]),
     ]
