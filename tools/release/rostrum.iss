@@ -104,6 +104,7 @@ Filename: "{app}\runtime\python\python.exe"; Parameters: "-m rostrum_connect rem
 Type: filesandordirs; Name: "{app}\runtime"
 Type: filesandordirs; Name: "{app}\shared"
 Type: filesandordirs; Name: "{app}\apps"
+Type: filesandordirs; Name: "{app}\__pycache__"
 Type: filesandordirs; Name: "{localappdata}\Rostrum\logs"
 Type: dirifempty; Name: "{localappdata}\Rostrum"
 Type: dirifempty; Name: "{app}"
