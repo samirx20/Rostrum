@@ -5,6 +5,8 @@ import "."
 // A scrub is one gesture: scrubStarted, many scrubbed(value), scrubEnded — the app records it as ONE change.
 // A typed value or an arrow step is one edited(value). `words` ([{value, label}]): a value that means something
 // ("End of comp") shows as its words, not as a number; it can't be scrubbed from (click and type a number instead).
+// `expressions`: the app can drive a value by an expression (2D), so a typed "=…" is sent whole as typedExpression
+// (the text, "=" included), never stripped to the number in it. Off, "=…" is read as the number it holds.
 FieldFrame {
     id: f
     property real value: 0
@@ -13,9 +15,11 @@ FieldFrame {
     property real step: 1
     property string unit: ""
     property var words: []
+    property bool expressions: false
     readonly property string word: { for (let w of words) if (w.value === value) return w.label; return "" }
     readonly property bool scrubbing: scrub.scrubbing
     signal edited(real value)
+    signal typedExpression(string text)
     signal scrubStarted()
     signal scrubbed(real value)
     signal scrubEnded()
@@ -31,8 +35,9 @@ FieldFrame {
     prefix: unitFirst && !word ? unit : ""
     suffix: unitFirst || word ? "" : unit
     onCommitted: (t) => {
+        if (expressions && t.trim().startsWith("=")) { f.typedExpression(t.trim()); return }
         var v = parseFloat(t.replace(/[^0-9eE+\-.]/g, ""))
-        if (isNaN(v)) { input.text = text; return }           // (the words themselves, committed back, are not a number either)           // not a number: keep the value, change nothing
+        if (isNaN(v)) { input.text = text; return }           // not a number (the words themselves too): keep the value
         f.edited(clamp(v))
     }
     onArrow: (d, big) => f.edited(clamp(value + d * (big ? 10 : 1) * step))

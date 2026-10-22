@@ -121,6 +121,12 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         """A search is typed and no setting that applies matches it ("No setting matches")."""
         return bool(self._kit.search.strip()) and not any(r["valid"] for r in self.model.rows if r["row"] == "param")
 
+    @Property(bool, constant=True)
+    def typesExpressions(self):
+        """A number field may take a typed "=…" (sent whole to edit_call): the app has expressions, which is when it
+        overrides clear_expr_calls (2D). Elsewhere "=5" is just 5."""
+        return type(self).clear_expr_calls is not DocBridge.clear_expr_calls
+
     @Property(int, notify=docChanged)
     def historyCount(self):
         return self.changes_since_open()
