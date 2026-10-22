@@ -34,12 +34,13 @@ Rectangle {
             spacing: Theme.grid
             Button {        // + Add: a track with a sound (the Library), a picture to work to, a file
                 id: add; text: "+ Add"; down: addMenu.visible; height: Theme.button
-                onClicked: addMenu.visible ? addMenu.close() : addMenu.open()
-                HintMenu {
-                    id: addMenu; width: 240
-                    entries: [{ value: "track", label: "Track with a sound…", hint: "Ctrl L" },
+                onClicked: { if (addMenu.visible) { addMenu.close(); return }
+                             const p = add.mapToItem(null, 0, add.height + 2); addMenu.openAt(p.x, p.y) }
+                ActionMenu {    // the kit's menu with keys
+                    id: addMenu
+                    entries: [{ value: "track", label: "Track with a sound…", keys: "Ctrl+L" },
                               { value: "picture", label: "Picture to work to…" },
-                              { value: "file", label: "From a file…", hint: "Ctrl I" }]
+                              { value: "file", label: "From a file…", keys: "Ctrl+I" }]
                     onPicked: (v) => v === "track" ? a.addTrack() : v === "file" ? fileDialog.open() : backend.setPictureOpen(true)
                 }
             }

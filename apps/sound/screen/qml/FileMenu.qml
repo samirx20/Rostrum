@@ -13,22 +13,22 @@ Button {
     down: menu.visible
     onClicked: menu.visible ? menu.close() : openMenu()
     HoverTip { text: "Menu: new, open, duplicate, preferences"; hovered: file.hovered && !menu.visible }
-    function openMenu() { menu.open() }
+    function openMenu() { const p = file.mapToItem(null, 0, file.height + 2); menu.openAt(p.x, p.y) }
     function saveNow() { backend.say(songs.saveVersion()) }
     function newNow() { songs.newSong() }
     function openNow() { openDialog.open() }
     function duplicateNow() { duplicateDialog.open() }
 
-    HintMenu {
+    ActionMenu {    // the kit's menu with keys (INTERACTION.md Part 5, piece 3)
         id: menu
-        entries: [{ value: "new", label: "New song", hint: "Ctrl N" }, { value: "open", label: "Open…", hint: "Ctrl O" },
-                  { value: "sample", label: "Open sample (Lull)" }]
-                 .concat(songs.recent.slice(0, 6).map((r, i) => ({ value: "recent:" + i, label: "Open " + r.name })))
-                 .concat([{ value: "duplicate", label: "Duplicate…", hint: "Ctrl Shift S" },
-                          { value: "version", label: "Save a version", hint: "Ctrl S" },
-                          { value: "folder", label: "Show folder" },
-                          { value: "settings", label: "Preferences…", hint: "Ctrl ," },
-                          { value: "quit", label: "Quit", hint: "Ctrl Q" }])
+        entries: [{ value: "new", label: "New song", keys: "Ctrl+N", group: "open" }, { value: "open", label: "Open…", keys: "Ctrl+O", group: "open" },
+                  { value: "sample", label: "Open sample (Lull)", group: "open" }]
+                 .concat(songs.recent.slice(0, 6).map((r, i) => ({ value: "recent:" + i, label: "Open " + r.name, group: "recent" })))
+                 .concat([{ value: "duplicate", label: "Duplicate…", keys: "Ctrl+Shift+S", group: "file" },
+                          { value: "version", label: "Save a version", keys: "Ctrl+S", group: "file" },
+                          { value: "folder", label: "Show folder", group: "file" },
+                          { value: "settings", label: "Preferences…", keys: "Ctrl+,", group: "app" },
+                          { value: "quit", label: "Quit", keys: "Ctrl+Q", group: "app" }])
         onPicked: (v) => {
             if (v === "new") songs.newSong()
             else if (v === "open") openDialog.open()

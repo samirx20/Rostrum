@@ -105,6 +105,16 @@ class KeySlots:
             self._zoom.fit_to(e["t0"], e["t1"], self._length())
             self.viewChanged.emit()
 
+    @Slot()
+    def markerHere(self):
+        """M (the key map's `marker`): a marker at the playhead."""
+        self.markerAt(self._t)
+
+    @Slot(str)
+    def dock(self, name):
+        """E / X / Ctrl+L (the key map): the Editor or Mixer dock, or the Library, open / closed."""
+        self.workspace.toggleLibrary() if name == "library" else self.workspace.toggleDock(name)
+
     @Slot(float, result=bool)
     def markerAt(self, t):
         """M: a marker at `t` (the playhead), "Marker n", with its name field open in place."""

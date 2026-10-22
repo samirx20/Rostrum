@@ -38,7 +38,7 @@ Panel {
                 id: input
                 x: p.keysWidth; width: grid.width - x; height: grid.height
                 grid: grid; bars: bars; flick: view; kind: p.kind; trackId: p.roll.id
-                onMenuAt: (entries, px, py) => { rollMenu.entries = entries; var q = input.mapToItem(p, px, py); rollMenu.openAt(q.x, q.y) }
+                onMenuAt: (entries, px, py) => { rollMenu.entries = entries; var q = input.mapToItem(null, px, py); rollMenu.openAt(q.x, q.y) }
             }
             Component.onCompleted: centre()
             function centre() {   // the notes in view
@@ -73,19 +73,17 @@ Panel {
             Text { visible: !!parent.s.name; x: 4; y: 2; text: parent.s.name || ""; color: "#ff4fd8"
                    font.family: uiFont; font.pixelSize: Theme.label }
         }
-        ContextBar {   // at a fixed place: the top centre of the Editor (INTERACTION.md §1.2)
-            id: rollBar
-            x: p.keysWidth; width: well.width - p.keysWidth; y: Theme.grid
-            active: backend.area === "roll"
-            busy: input.busy || rollMenu.opened
+        ContextBar {   // the kit's: a fixed place, the top centre of the Editor (INTERACTION.md §1.2)
+            hub: backend.actions
+            x: p.keysWidth + (well.width - p.keysWidth - width) / 2; y: Theme.grid; maxWidth: well.width - p.keysWidth - 2 * Theme.pad
+            dragging: input.busy || rollMenu.visible || backend.area !== "roll"
         }
     }
-    ActionMenu { id: rollMenu; parent: p; onPicked: (key) => key.startsWith("menu:") ? p.openSub(key) : backend.runAction(key) }
-    function openSub(key) { rollMenu.entries = backend.subMenu(key); rollMenu.openAt(rollMenu.x, rollMenu.y) }
+    ActionMenu { id: rollMenu; onPicked: (v) => backend.menuPick(v) }      // the kit's
     function menuFor(id) {   // the right-click menu on an item (a scripted step: steps_select.py)
         rollMenu.entries = backend.itemMenu(id)
         var e = backend.selectionExtent()
-        var q = well.mapToItem(p, p.keysWidth + Math.max(0, bars.xOf(e.t1 || 0)) + 8, well.height / 3)
+        var q = well.mapToItem(null, p.keysWidth + Math.max(0, bars.xOf(e.t1 || 0)) + 8, well.height / 3)
         rollMenu.openAt(q.x, q.y)
     }
     Column {   // nothing to draw: say what to do, calmly

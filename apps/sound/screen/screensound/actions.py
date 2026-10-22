@@ -2,7 +2,7 @@
 apps/sound/DESIGN.md §3.0 point 3). Data only, one entry per action, shaped like the kit's coming action list so the
 entries move there as they are:
 
-    key ("sel:<name>"), label (words, or a function of the selection), shortcut, valid_when(Facts),
+    key (the action's id), label (words, or a function of the selection), shortcut, valid_when(Facts),
     importance ("primary" = on the context bar, "secondary" = under ⋯ and in menus), promoted_when(Facts) (a
     selection that makes a secondary one primary), calls(Facts) -> operation calls, group (a divider in menus;
     "edit" = the edit block: keys and the right-click menu, never the bar), menu (the bar button it sits under,
@@ -10,14 +10,19 @@ entries move there as they are:
     change by itself), needs (what the message line says when its key is pressed while it doesn't apply), amount
     ((label, default(Facts)): the action asks one number first, in a small popover; then calls(Facts, number)).
 
-action_list.py reads these for the context bar, the right-click menu, Ctrl+K and the keys. No Qt.
+`LIST` is them on the kit's one action list (rostrum_gui.actions, through action_adapt.from_dicts; keys from keys.py):
+the kit's ContextBar, ActionMenu, Ctrl+K and KeyMap read it through the hub (action_slots.py). No Qt.
 """
 from __future__ import annotations
 
 from rostrum_sound.doc import select_time as ST
 
+from rostrum_gui.action_adapt import from_dicts
+from rostrum_gui.actions import ActionList
+
 from . import action_calls as C
 from .action_calls import REMOVABLE, TIMED
+from .keys import KEYMAP
 
 EFFECTS = ("eq", "compressor", "reverb", "delay", "saturate", "tape", "limiter", "width", "gate", "deess")
 WORDS = {"eq": "EQ", "deess": "De-ess"}
@@ -25,10 +30,10 @@ CLIPS = {"note", "hit", "clip", "line", "sound"}
 
 
 def act(key, label, valid_when, calls=None, shortcut="", importance="secondary", group="", menu="", do="",
-        promoted_when=None, needs="", amount=None):
-    return {"key": f"sel:{key}", "label": label, "shortcut": shortcut, "valid_when": valid_when,
-            "importance": importance, "promoted_when": promoted_when, "calls": calls, "group": group, "menu": menu,
-            "do": do, "needs": needs, "amount": amount}
+        promoted_when=None, needs="", min_targets=0):
+    return {"key": key, "label": label, "shortcut": shortcut, "valid_when": valid_when, "importance": importance,
+            "promoted_when": promoted_when, "calls": calls, "group": group, "menu": menu, "do": do, "needs": needs,
+            "min_targets": min_targets}
 
 
 def _inside_clip(f):
@@ -44,8 +49,8 @@ NAMED = ("track", "marker", "section")
 
 ACTIONS = [
     # tracks
-    act("group", "Send to a new group", lambda f: TRACK(f) and f.count >= 2, lambda f: [C.call("bus.from_tracks", f.ids)],
-        "Ctrl+G", "primary", "make", needs="Send to a new group needs two or more tracks selected"),
+    act("group", "Send to a new group", TRACK, lambda f: [C.call("bus.from_tracks", f.ids)],
+        "Ctrl+G", "primary", "make", needs="Send to a new group needs two or more tracks selected", min_targets=2),
     act("mute", C.flip("mute", "Mute", "Unmute"), TRACK, C.toggle_all("mute"), "Shift+M", group="track",
         promoted_when=lambda f: f.count >= 2, needs="Mute needs tracks selected"),
     act("solo", C.flip("solo", "Solo", "Unsolo"), TRACK, C.toggle_all("solo"), "Shift+S", group="track",
@@ -73,8 +78,8 @@ ACTIONS = [
     # markers (the song's own, placed in seconds) and designed sounds
     act("place_sound", "Place a sound here", lambda f: f.one == "marker" and f.count == 1, importance="primary",
         group="marker", do="library"),
-    act("fit_bar", "Land a bar here", MARKER, C.fit_bar, importance="primary", group="marker",
-        amount=("Bar", C.bar_near), needs="Land a bar needs one marker selected (placed in seconds)"),
+    act("fit_bar", "Land a bar here", MARKER, importance="primary", group="marker", do="fit",
+        needs="Land a bar needs one marker selected (placed in seconds)"),       # asks the bar first (a popover)
     act("vary", "Make another like it", lambda f: f.one == "sound", lambda f: [C.call("sound.vary", f.ids)],
         importance="primary", group="sound"),
     # clips
@@ -88,8 +93,8 @@ ACTIONS = [
         needs="Join needs two or more clips that play one file back to back on one track"),
     act("crossfade", "Crossfade", lambda f: C.clips_one_track(f) and C.tries(f, [C.call("clip.crossfade", f.ids)]),
         lambda f: [C.call("clip.crossfade", f.ids)], importance="primary", group="clip"),
-    act("layer", "Layer as one sound", lambda f: CLIP(f) and f.count >= 2,
-        lambda f: [C.call("clip.set", f.ids, group=C.layer_name(f))], "Ctrl+G", group="clip"),
+    act("layer", "Layer as one sound", CLIP, lambda f: [C.call("clip.set", f.ids, group=C.layer_name(f))], "Ctrl+G",
+        group="clip", needs="Layer as one sound needs two or more clips selected", min_targets=2),
     act("stems", "Split into parts (stems)", lambda f: CLIP(f) and f.count == 1,
         lambda f: [C.call("clip.split_stems", f.ids)], group="clip"),
     act("section_duplicate", "Duplicate section", lambda f: f.one == "section", lambda f: [C.call("section.duplicate", f.ids)],
@@ -117,3 +122,4 @@ ACTIONS = [
         needs="Delete and close the gap needs a time range over a clip"),
     act("delete", "Delete", lambda f: f.count and f.kinds <= set(REMOVABLE), C.delete, "Delete", group="edit"),
 ]
+LIST = ActionList(from_dicts(ACTIONS, KEYMAP), KEYMAP, noun="item")

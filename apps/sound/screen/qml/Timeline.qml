@@ -5,7 +5,7 @@ import RostrumKit
 // (name, mute, solo) and its notes, hits and clips; the playhead and marker lines across every row.
 // Select first, then act (LaneInput: click, Ctrl+click, Shift+click, box; drag moves every selected item, one undo
 // step, Ctrl = no snapping, Shift = only in time, Alt = a copy). A drag on the ruler is a time range (shaded over
-// every lane). The action bar floats under the selection; right-click opens the same list (ActionMenu).
+// every lane). The kit's ContextBar sits at the top centre; right-click opens the kit's ActionMenu (backend.actions).
 // Zoom and scroll: Ctrl + wheel (or a pinch) zooms around the pointer, Shift + wheel or a sideways swipe scrolls,
 // Ctrl + / Ctrl - / Ctrl 0 (fit) from the keyboard, a slim scrollbar while zoomed in; playing keeps the playhead
 // on screen. The view is backend.viewStart / viewSpan, shared by the ruler, markers, rows and the piano roll.
@@ -143,7 +143,7 @@ Rectangle {
         }
         return null
     }
-    function openMenu(entries, p) { menu.entries = entries; menu.openAt(p.x, p.y) }
+    function openMenu(entries, p) { var w = tl.mapToItem(null, p.x, p.y); menu.entries = entries; menu.openAt(w.x, w.y) }
     function menuFor(id) {   // the right-click menu on an item, opened beside it (a scripted step: steps_select.py)
         var entries = backend.itemMenu(id), e = backend.selectionExtent()
         var sp = e.tracks && e.tracks.length ? rowSpan(e.tracks[0]) : null
@@ -166,10 +166,18 @@ Rectangle {
         Text { visible: !!parent.s.name; x: 4; y: 2; text: parent.s.name || ""; color: tl.snapColour
                font.family: uiFont; font.pixelSize: Theme.label }
     }
-    ContextBar {   // at a fixed place: the top centre of the arrangement, just under the ruler (INTERACTION.md §1.2)
-        x: bars.x; width: bars.width; y: list.y + Theme.grid
-        active: backend.area === "arrange"
-        busy: lanes.busy || menu.opened
+    ContextBar {   // the kit's: a fixed place, the top centre of the arrangement just under the ruler (INTERACTION.md §1.2)
+        id: cbar
+        hub: backend.actions
+        x: bars.x + (bars.width - width) / 2; y: list.y + Theme.grid; maxWidth: bars.width - 2 * Theme.pad
+        dragging: lanes.busy || menu.visible || clean.visible || ask.visible || backend.area !== "arrange"
     }
-    ActionMenu { id: menu; parent: tl; onPicked: (key) => key.startsWith("menu:") ? tl.openMenu(backend.subMenu(key), Qt.point(menu.x, menu.y)) : backend.runAction(key) }
+    ActionMenu { id: menu; onPicked: (v) => backend.menuPick(v) }          // the kit's: keys on rows, dividers
+    CleanPopover { id: clean; parent: tl; x: cbar.x + (cbar.width - width) / 2; y: cbar.y + cbar.height + 2 }
+    AskPopover { id: ask; parent: tl; x: cbar.x + (cbar.width - width) / 2; y: cbar.y + cbar.height + 2 }
+    Connections {
+        target: backend
+        function onCleanWanted() { if (backend.area === "arrange") clean.open() }
+        function onAskWanted(key, label, value) { ask.key = key; ask.label = label; ask.value = value; ask.open() }
+    }
 }

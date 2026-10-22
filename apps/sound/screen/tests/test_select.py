@@ -76,11 +76,11 @@ def test_shift_is_only_in_time_and_ctrl_is_free(bridge):
 def test_cut_and_paste_are_one_undo_step_each(bridge):
     doc, n = bridge.doc, len(bridge.doc.history.changes)
     bridge.selectMany([A, B])
-    assert bridge.runAction("sel:cut")
+    assert bridge.run("cut")
     assert not doc.has(A) and not doc.has(B) and len(doc.history.changes) == n + 1
     bridge.setTime(6.0)
     bridge.select("lead")
-    assert bridge.runAction("sel:paste")
+    assert bridge.run("paste")
     assert len(doc.history.changes) == n + 2
     new = bridge.selectedIds                             # what the paste made is selected
     assert [doc.item(i)["at"] for i in new] == [{"beat": 12.0}, {"beat": 14.0}]
@@ -91,7 +91,7 @@ def test_cut_and_paste_are_one_undo_step_each(bridge):
 def test_a_locked_tracks_note_refuses_an_edit_loudly(bridge):
     doc = bridge.doc
     bridge.select("lead")
-    assert bridge.runAction("sel:lock")
+    assert bridge.run("lock")
     bridge.select(A)
     assert not bridge.nudge("grid", 1)                   # refused, said, nothing moved
     assert "locked" in bridge.status and doc.item(A)["at"] == {"beat": 4}
@@ -119,7 +119,7 @@ def test_landing_a_bar_on_a_marker_is_one_undo_step(bridge):
     bridge.setTime(9.0)
     bridge.markerAt(9.0)
     bridge.finishRename(bridge.renaming, "logo")         # M, then the name, Enter
-    assert bridge.runActionWith("sel:fit_bar", 5)
+    assert bridge.landBar("fit_bar", 5)
     assert abs(tempo.seconds_at(doc.data, 16) - 9.0) < 1e-6   # bar 5 starts on the marker; beats follow
     assert len(doc.history.changes) == n + 3             # add, rename, land: one step each
     bridge.undo()

@@ -4,8 +4,8 @@ bridge call a click, a box, a key or a menu makes.
     select-many <id> <id> … | select-add <id> (Ctrl+click) | select-run <id> (Shift+click) | select-all [arrange|roll]
     box <track id>[,<track id>…] <t0> <t1>   (a box on the arrangement's lanes) | box roll <t0> <t1> <row0> <row1>
     range <t0> <t1> (a drag on the ruler) | range-clear
-    action <key> (an action bar / menu entry: quantize, transpose_up, join, …; "sel:" may be left out)
-    action-bar [arrange|roll] (that area has the focus; fails when the bar would be empty)
+    action <id> (an action of the list: quantize, transpose_up, join …, or an at:… empty-space entry)
+    action-bar [arrange|roll] (that area has the focus; fails when the context bar would be empty)
     menu <id> (the right-click menu on that item, open in the arrangement) | menu-roll <id> (in the Editor)
     key <sequence> (a key to the window: "Ctrl+D", "Q", "Shift+Up") | copy | cut | paste
     drag-many <dt s> [<d semitones>] [ctrl|shift|alt …] [to=<track>] (the selection, held by its first item, one
@@ -70,10 +70,11 @@ def do_select_step(bridge, win, word, rest):
     elif word == "range-clear":
         bridge.clearRange()
     elif word == "action":
-        bridge.runAction(rest[0] if rest[0].startswith(("sel:", "at:")) else f"sel:{rest[0]}")
+        bridge.run(rest[0].removeprefix("sel:"))
     elif word == "action-bar":
         bridge.focusArea(rest[0] if rest else "arrange")
-        if not bridge.actionBar():
+        bridge.actions.refresh()
+        if not bridge.actions.bar["items"]:
             raise RuntimeError("action-bar: nothing to show for this selection")
     elif word in ("menu", "menu-roll"):
         host = _find(win.contentItem(), "mixRows" if word == "menu" else "keysWidth")
@@ -83,7 +84,7 @@ def do_select_step(bridge, win, word, rest):
     elif word == "key":
         _key(win, rest[0])
     elif word in ("copy", "cut", "paste"):
-        bridge.runAction(f"sel:{word}")
+        bridge.run(word)
     elif word == "drag-many":
         ids = bridge.selectedIds
         if not ids or not bridge.beginDrag(ids[0]):
@@ -127,13 +128,9 @@ def do_select_step(bridge, win, word, rest):
     elif word == "marker-add":
         bridge.markerAt(bridge.time)
     elif word == "fit-bar":
-        bridge.runActionWith("sel:fit_bar", float(rest[0]))
-    elif word == "ask":
-        bar = _find(win.contentItem(), "menuOpen")
-        item = next((i for i in bridge.actionBar() if i["key"] == f"sel:{rest[0]}"), None)
-        if bar is None or item is None:
-            raise RuntimeError(f"ask: no {rest[0]!r} on the context bar")
-        QMetaObject.invokeMethod(bar, "press", Q_ARG("QVariant", item), Q_ARG("QVariant", bar.width() / 2))
+        bridge.landBar("fit_bar", float(rest[0]))
+    elif word == "ask":                       # ask fit_bar: the action that asks a number first, its popover open
+        bridge.run(rest[0])
     elif word == "place":
         from .adder import Adder
         if not Adder(bridge).add(f"design:{rest[0]}"):

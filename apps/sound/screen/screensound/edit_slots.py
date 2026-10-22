@@ -11,6 +11,7 @@ from PySide6.QtCore import Property, Signal, Slot
 from rostrum_gui.edits import Drag
 
 from . import handles, moves, timing
+from .actions import LIST
 
 
 class EditSlots:
@@ -50,10 +51,11 @@ class EditSlots:
     def removeSelected(self):
         if self._apt:
             return self._remove_point()
-        if self.timeRange and self.applies("sel:cut_range"):     # Delete on a time range over a clip: cut it out
-            return self.runAction("sel:cut_range")
+        valid = {e["id"] for e in LIST.available(self._facts())}
+        if self.timeRange and "cut_range" in valid:             # Delete on a time range over a clip: cut it out
+            return self._hub.run("cut_range")
         if len(self.selectedIds) > 1:
-            return self.runAction("sel:delete")
+            return self._hub.run("delete")
         if self._sel and self.doc.has(self._sel):
             self._guard(lambda: self._apply([moves.remove_call(self.doc, self._sel)], "Delete"))
 

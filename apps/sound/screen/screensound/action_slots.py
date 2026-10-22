@@ -1,123 +1,115 @@
-"""The selection's actions for the context bar, the right-click menu, Ctrl+K and the keys (a slot mix-in for
-SoundBridge, next to select_slots.py): every door reads the one action list (actions.py, action_list.py) and runs
-through `runAction`, as one change (copy only fills the clipboard). A key whose action doesn't apply does nothing and
-the message line says why. Paste goes to the playhead on the selection's top track (clipboard.py); what a
-duplicate, split or paste made is selected afterwards. The arrow and playhead keys are key_slots.py.
+"""Sound on the kit's one action list (shared/gui-kit/ACTIONS.md): one `SoundHub` (the kit's ActionHub) hosted as
+`backend.actions` feeds the kit's ContextBar, ActionMenu, Ctrl+K and KeyMap from actions.LIST, so every door agrees
+and a key whose action doesn't apply says why. Each action is one change; what a duplicate, split, paste or new
+section made is selected afterwards. The hub also answers the shared keys that are not actions on the selection
+(keys.ROUTES: play, the playhead, nudges, the loop, zoom …), so the window has ONE key map. A slot mix-in for
+SoundBridge; the empty-space menus ("Paste here", "Add marker here") are Sound's own (`atMenu`, `runAt`).
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Signal, Slot
+from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui import commands
+from rostrum_gui.action_hub import ActionHub
+from rostrum_gui.action_views import commands as do_commands
 from rostrum_sound.doc import select_time as ST
 
 from . import action_calls as C
-from . import action_list as L
 from . import clipboard, timing
+from .actions import LIST
+from .keys import ROUTES, SKIP
 
-MAKES = ("sel:duplicate", "sel:range_duplicate", "sel:split", "sel:paste", "sel:section")   # select what they made
+MAKES = ("note.duplicate", "hit.duplicate", "clip.duplicate", "clip.split", "section.add", "track.duplicate",
+         "section.duplicate")          # what these made is selected afterwards
+
+
+class SoundHub(ActionHub):
+    """The kit's hub, plus Sound's shared keys that are not actions (keys.ROUTES → bridge methods)."""
+
+    def __init__(self, bridge, *a):
+        super().__init__(*a, parent=bridge)
+        self.bridge = bridge
+
+    @Property("QVariantList", constant=True)
+    def skip(self):
+        """The jobs Main.qml / the kit's AppShell bind themselves (KeyMap.qml's `skip`)."""
+        return SKIP
+
+    @Slot(str)
+    def key(self, job):
+        if job in ROUTES:
+            name, *args = ROUTES[job]
+            getattr(self.bridge, name)(*args)
+            self.refresh()
+            return
+        super().key(job)
 
 
 class ActionSlots:
     libraryWanted = Signal(str)       # "Place a sound here": the Library opens on this chip
     cleanWanted = Signal()            # "Clean up…": the host opens the clean-up popover
-    def _acts(self):
-        return L.available(self.doc, self._picks.ids, self._t, self._picks.range, bool(self._board["items"]),
-                           self._track)
+    askWanted = Signal(str, str, float)   # an action asks one number first (Land a bar here: "Bar", the nearest)
 
-    @Slot(result="QVariantList")
-    def actionBar(self):
-        """The context bar's buttons in rank order: [{key, label, shortcut, menu}] ([] = no bar)."""
-        return L.bar_items(self._acts())
+    def _make_actions(self):
+        self._hub = SoundHub(self, LIST, self._facts, self._what, self._act_apply, self._act_do, self.say)
+        for sig in (self.picksChanged, self.rangeChanged, self.docChanged, self.selectionChanged):
+            sig.connect(self._hub.refresh)
+        self.timeChanged.connect(lambda: None if self.playing else self._hub.refresh())   # Split at playhead
+        self._hub.refresh()
 
-    @Slot(int, result="QVariantList")
-    def overflowMenu(self, shown):
-        """⋯: what the bar doesn't show (its buttons past `shown`, then the secondary actions)."""
-        return L.overflow(self._acts(), shown)
+    actions = Property(QObject, lambda self: self._hub, constant=True)
 
-    @Slot(result="QVariantList")
-    def actionMenu(self):
-        """The right-click menu: every valid action, the edit block last: [{value, label, hint, group}]."""
-        return L.menu_entries(self._acts())
+    def _facts(self):
+        return C.Facts(self.doc, self._picks.ids, self._t, self._picks.range, bool(self._board["items"]), self._track)
 
-    @Slot(str, result="QVariantList")
-    def subMenu(self, value):
-        """The choices behind a folded entry ("menu:Add effect")."""
-        return L.submenu(self._acts(), value)
+    def _what(self, f) -> str:
+        return self.selectionWords or ("Time range" if self._picks.range else "")
 
-    @Slot(str, result="QVariantList")
-    def itemMenu(self, item_id):
-        """Right-click on an item: an unselected one is selected alone first; a selected one keeps the selection."""
-        if item_id not in self._picks.ids:
-            self._pick([item_id])
-        return self.actionMenu()
-
-    @Slot(str, float, result="QVariantList")
-    def atMenu(self, track_id, t):
-        """Right-click on empty lane space (a track) or on the ruler (""): what can be done at that time."""
-        return L.at_menu(self.doc, track_id, round(t, 4), bool(self._board["items"]))
-
-    @Slot(str, result=bool)
-    def applies(self, key):
-        """Whether an action is valid for the selection right now (a key choosing between two, e.g. Ctrl+G)."""
-        return any(a["key"] == key for a in self._acts())
-
-    @Slot(str, result=bool)
-    def keyAction(self, key):
-        """A key's action: done when it applies, else nothing changes and the message line says why."""
-        if any(a["key"] == key for a in self._acts()):
-            return self.runAction(key)
-        self.say(L.why(self.doc, self._picks.ids, key))
-        return False
-
-    @Slot(str, result=bool)
-    def runAction(self, key):
-        if key.startswith("at:"):
-            return self._run_at(key.split(":"))
-        a = next((x for x in self._acts() if x["key"] == key), None)
-        if a is None:
-            self._fail(f'Error: "{key}" does not apply to what is selected right now.')
-            return False
+    # ---- running ----------------------------------------------------------------------------------------------
+    def _act_apply(self, calls, label):
         words = self.selectionWords
-        if a["do"] == "inside":                        # of the time range, or of the selected section
-            sec = self.doc.item(self._picks.ids[0]) if self._picks.ids else None
-            rng = (ST.start_of(self.doc.data, sec), ST.start_of(self.doc.data, {**sec, "at": sec["end"]})) if sec                 else self._picks.range
+        made = any(c["op"] in MAKES for c in calls)
+        if self._act(calls, f"{label} · {words}" if words else label, made) and any(c["op"] == "section.add" for c in calls):
+            self.clearRange()
+            if self._picks.ids:
+                self.startRename(self._picks.ids[0])            # a new section's name field opens in place
+
+    def _act_do(self, name, entry):
+        """Sound's actions that are not operations by themselves."""
+        ids, words = self._picks.ids, self.selectionWords
+        if name == "inside":                                    # of the time range, or of the selected section
+            sec = self.doc.item(ids[0]) if ids else None
+            rng = (ST.start_of(self.doc.data, sec), ST.start_of(self.doc.data, {**sec, "at": sec["end"]})) if sec \
+                else self._picks.range
             self._pick(C.inside(C.Facts(self.doc, [], rng=rng)))
-            return True
-        if a["do"] == "rename":
-            return self.startRename(self._picks.ids[0])
-        if a["do"] in ("copy", "cut"):
-            self._board = clipboard.copy_items(self.doc, self._picks.ids)
-            if a["do"] == "copy":
+        elif name == "rename":
+            self.startRename(ids[0])
+        elif name in ("copy", "cut"):
+            self._board = clipboard.copy_items(self.doc, ids)
+            if name == "copy":
                 self.say(f"Copied {words}")
-                return True
-            return self._act(C.delete(C.Facts(self.doc, self._picks.ids)), f"Cut {words}")
-        if a["do"] == "paste":
-            return self._paste(self._paste_track())
-        if a["do"] == "library":                       # the playhead on the marker, the Library on designed sounds
-            self.setTime(ST.start_of(self.doc.data, self.doc.item(self._picks.ids[0])))
+            else:
+                self._act(C.delete(C.Facts(self.doc, ids)), f"Cut {words}")
+        elif name == "paste":
+            self._paste(self._paste_track())
+        elif name == "library":                                 # the playhead on the marker, the Library on designed
+            self.setTime(ST.start_of(self.doc.data, self.doc.item(ids[0])))
             self.workspace.setLibrary(True)
             self.libraryWanted.emit("designed")
-            return True
-        if a["do"] == "clean":
+        elif name == "clean":
             self.cleanWanted.emit()
-            return True
-        if a["amount"]:                                # asks a number first: the bar's popover answers runActionWith
-            return self.runActionWith(key, a["amount"]["value"])
-        done = self._act(a["calls"], f"{a['label']} · {words}" if words else a["label"], key in MAKES)
-        if done and key == "sel:section" and self._picks.ids:
-            self.clearRange()
-            self.startRename(self._picks.ids[0])        # its name field opens in place
-        return done
+        elif name == "fit":
+            self.askWanted.emit("fit_bar", "Bar", float(C.bar_near(self._facts())))
+        else:
+            raise ValueError(f'action {entry["id"]}: RostrumSound has no "{name}" action')
 
     @Slot(str, float, result=bool)
-    def runActionWith(self, key, value):
-        """An action that asked a number (the context bar's popover): Land a bar here with bar `value`."""
-        if not self.applies(key):
-            self.say(L.why(self.doc, self._picks.ids, key))
+    def landBar(self, _key, bar):
+        """The popover's answer for Land a bar here: `tempo.fit_bar` with that bar (one step)."""
+        f = self._facts()
+        if not (f.one == "marker" and f.count == 1):
+            self.say("Land a bar needs one marker selected (placed in seconds)")
             return False
-        calls = L.with_amount(self.doc, self._picks.ids, key, value, playhead=self._t, rng=self._picks.range)
-        label = next(a["label"] for a in self._acts() if a["key"] == key)
-        return self._act(calls, f"{label}: {value:g}")
+        return self._act(C.fit_bar(f, int(bar)), f"Land bar {int(bar)} on {f.items[0].get('name')}")
 
     @Slot(bool, bool, bool, result=bool)
     def cleanSelected(self, voice, noise, echo):
@@ -128,7 +120,32 @@ class ActionSlots:
         return bool(clips) and self._act([{"op": "clip.set_one", "target": [c], "args": args} for c in clips],
                                          "Clean up " + self.selectionWords)
 
-    def _run_at(self, parts):
+    # ---- menus ------------------------------------------------------------------------------------------------
+    @Slot(str, result="QVariantList")
+    def itemMenu(self, item_id):
+        """Right-click on an item: an unselected one is selected alone first; then the kit's menu for the selection."""
+        if item_id not in self._picks.ids:
+            self._pick([item_id])
+        self._hub.refresh()
+        return self._hub.menu()
+
+    @Slot(str, float, result="QVariantList")
+    def atMenu(self, track_id, t):
+        """Right-click on empty lane space (a track) or on the ruler (""): what can be done at that time."""
+        t, out = round(t, 4), []
+        if track_id and self._board["items"]:
+            out.append({"value": f"at:paste:{track_id}:{t}", "label": "Paste here", "keys": "Ctrl+V", "group": "here"})
+        out.append({"value": f"at:marker:{t}", "label": "Add marker here", "keys": "M", "group": "here"})
+        if track_id:
+            out.append({"value": f"at:all:{track_id}", "label": "Select all on this track", "keys": "", "group": "select"})
+        else:
+            out.append({"value": f"at:section:{t}", "label": "Make a section from here", "keys": "", "group": "here"})
+        return out
+
+    @Slot(str, result=bool)
+    def runAt(self, value):
+        """An empty-space menu entry ("at:<what>:…"): paste here, a marker, select all on a track, a section."""
+        parts = value.split(":")
         what = parts[1]
         if what == "paste":
             return self._paste(parts[2], float(parts[3]))
@@ -140,6 +157,12 @@ class ActionSlots:
         f = C.Facts(self.doc, [], rng=(timing.snap(t, self.doc.data, False), self._length()))
         return self._act(C.section(f), "Make a section")
 
+    @Slot(str)
+    def menuPick(self, value):
+        """Any ActionMenu's choice: an empty-space entry, else the action list's."""
+        self.runAt(value) if value.startswith("at:") else self._hub.run(value)
+
+    # ---- paste and apply --------------------------------------------------------------------------------------
     def _paste_track(self):
         picked = [self.doc.item(i) for i in self._picks.ids]
         if not picked:
@@ -165,16 +188,28 @@ class ActionSlots:
                 self._pick(made)
         return self._guard(go)
 
-    # ---- Ctrl+K ------------------------------------------------------------------------------------------------
+    # ---- Ctrl+K and scripts -------------------------------------------------------------------------------------
     def _commands(self):
-        """Ctrl+K: the selection's actions first (the same list), then every other command."""
-        words = self.selectionWords or "Song"
-        mine = [{"key": a["key"], "label": a["label"], "hint": words + (f" · {a['shortcut']}" if a["shortcut"] else ""),
-                 "calls": a["calls"]} for a in self._acts()]
-        ops = {c["op"] for a in mine for c in a["calls"]}
+        """Ctrl+K: the action list first (with keys), then the kit's commands it doesn't repeat."""
+        f = self._facts()
+        mine = [{**c, "do": lambda k=c["key"]: self._hub.run(k)} if "do" in c else c
+                for c in do_commands(LIST.available(f), self._what(f))]
+        ops = {x["op"] for c in mine for x in c.get("calls", [])}
         rest = commands.build(self.doc, self._picks.ids, self.label_of)
         return mine + [c for c in rest if not any(x["op"] in ops for x in c.get("calls", []))]
 
+    @Slot(str, result="QVariantList")
+    def commands(self, query):
+        return [{k: c.get(k, "") for k in ("key", "label", "hint", "keys")} for c in commands.search(self._commands(), query)]
+
     @Slot(str, result=bool)
     def run(self, key):
-        return self.runAction(key) if key.startswith(("sel:", "at:")) else super().run(key)
+        """Ctrl+K, a menu or a script: an action of the list through the hub (one change; not valid now: it says
+        why), an empty-space entry, else the kit's."""
+        if key.startswith("at:"):
+            return self.runAt(key)
+        if not any(a.id == key for a in LIST.actions):
+            return super().run(key)
+        ok = any(e["id"] == key for e in LIST.available(self._facts()))
+        self._hub.run(key)
+        return ok

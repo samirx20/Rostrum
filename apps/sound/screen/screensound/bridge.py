@@ -70,6 +70,7 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, Hand
         self.transport.said.connect(self.say)
         self.transport.moved.connect(self._moved)
         self.transport.render()
+        self._make_actions()                # the one action list: context bar, menus, Ctrl+K, keys (action_slots.py)
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
     @Property(str, constant=True)

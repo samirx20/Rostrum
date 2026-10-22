@@ -38,18 +38,17 @@ AppShell {
     Shortcut { sequence: "Ctrl+Q"; onActivated: Qt.quit() }
     Shortcut { sequence: "Ctrl+E"; onActivated: shell.openExport() }
     Shortcut { sequence: "Ctrl+Shift+E"; onActivated: shell.exportAgain() }
-    Shortcut { sequence: "Space"; onActivated: backend.togglePlay() }
-    Shortcut { sequence: "Home"; onActivated: backend.setTime(0) }
-    Shortcut { sequence: "Ctrl+L"; onActivated: workspace.toggleLibrary() }
-    Shortcut { sequence: "E"; enabled: shell.hasTracks; onActivated: workspace.toggleDock("editor") }
-    Shortcut { sequence: "X"; enabled: shell.hasTracks; onActivated: workspace.toggleDock("mixer") }
     Shortcut { sequence: "R"; enabled: recorder.armed !== ""; onActivated: recorder.toggleRecord() }
-    Shortcut { sequences: [StandardKey.Delete, "Backspace"]; onActivated: backend.removeSelected() }
-    Shortcut { sequences: ["Ctrl+=", "Ctrl++"]; onActivated: backend.zoomStep(1.25) }      // timeline zoom (screen state)
-    Shortcut { sequence: "Ctrl+-"; onActivated: backend.zoomStep(0.8) }
-    Shortcut { sequences: ["Ctrl+0", "Ctrl+9"]; onActivated: backend.fitView() }                  // show the whole song
 
-    SoundKeys {}                    // the editing keys on the selection (nudge, pitch, copy / paste, Q, M …)
+    // ONE key map for the window (the kit's KeyMap, INTERACTION.md Part 2): every shared key and Sound's own
+    // (screensound/keys.py) call backend.actions.key(job): an action on the selection when it applies (else the
+    // message line says why), or Sound's own job (play, the playhead, nudges, the loop, zoom: keys.ROUTES). The jobs
+    // in `skip` (files, undo, Ctrl+K, F1, R) keep their own Shortcuts here and in the kit's AppShell.
+    readonly property bool typing: {
+        const f = activeFocusItem
+        return !!f && f.cursorPosition !== undefined && f.selectByMouse !== undefined      // a text field has the keys
+    }
+    KeyMap { hub: backend.actions; enabled: !shell.typing; skip: backend.actions.skip }
     leading: FileMenu { id: fileMenu; settingsPanel: settingsPanel; anchors.verticalCenter: parent.verticalCenter }
     SettingsPanel { id: settingsPanel }
     actions: [          // the top bar's chips, then Export (kit TopBar: its `actions` slot sits before Search)
