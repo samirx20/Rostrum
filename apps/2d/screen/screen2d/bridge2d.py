@@ -1,4 +1,4 @@
-"""Rostrum2D's document bridge: the kit's DocBridge plus time, pages (design, draw, animate), the layer tree, the
+"""Rostrum2D's document bridge: the kit's DocBridge plus time, the tool (move, pen, draw), the layer rows, the
 canvas frame and the two drags (move a layer on the canvas, move a key on the timeline). Every change is an operation; each drag is
 one doc.gesture = one undo step. How an edit becomes a call lives in route.py only.
 """
@@ -22,30 +22,35 @@ from .layer_order import LayerOrder
 from .painter import Painter
 from .playback import Playback, size_offered
 from .playstats import STATS
+from .clipboard import ClipboardSlots
 from .render3d_watch import Render3DWatch
+from .shown import ShownState
 from .tools2d import ToolSlots
 from .undo_state import UndoState
 
 
-class Bridge2D(UndoState, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
+class Bridge2D(ShownState, ClipboardSlots, UndoState, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
-    pageChanged = Signal()
+    toolChanged = Signal()
     frameChanged = Signal()
+    shownChanged = Signal()                                 # a new frame is on screen: the overlays follow it (shown.py)
     outlineChanged = Signal()
     playingChanged = Signal()
     markersChanged = Signal()
     historyChanged = Signal()                               # the kit's docChanged, for the history properties below
-    renameRequested = Signal(str)                           # F2 / Ctrl+K "Rename layer": the Layers panel's name box
+    renameRequested = Signal(str)                           # F2 / Ctrl+K "Rename layer": the layer row's name box
+    sections = True                                         # settings panel: essentials, folded groups, search (kit)
 
     def __init__(self, doc, comp_id=None, autosave=False, parent=None):
         comps = doc.data.get("comps", [])
         if not comps:
             raise ValueError("the document has no composition yet (comp.add)")
         self.comp_id = comp_id or comps[0]["id"]
-        self._t, self._page, self._frame, self.autosave = 0.0, "design", 0, autosave
-        self._folded, self._opened, self._drag, self._grab = set(), set(), None, None
+        self._t, self._tool, self._frame, self.autosave = 0.0, "move", 0, autosave
+        self._flipped, self._drag, self._grab = set(), None, None      # rows folded / opened against their default
         self._placed = None                                 # placed(), kept per document and markers
         self.marks = None                                   # made below (it needs this QObject); the first rows have none
+        self._shown_init()
         super().__init__(doc, parent=parent)
         self.docChanged.connect(self.historyChanged)
         self.frames = FrameRenderer(self)
@@ -70,6 +75,7 @@ class Bridge2D(UndoState, LayerOrder, FileCommands, CommandWords, DragSlots, Han
         self.r3d.changed.connect(self._render)
         self.r3d.changed.connect(self._problems.touch)
         self.selectionChanged.connect(self.outlineChanged)
+        self.selectionChanged.connect(self.shownChanged)
         self._render()
         self._problems.touch()
 
@@ -121,9 +127,10 @@ class Bridge2D(UndoState, LayerOrder, FileCommands, CommandWords, DragSlots, Han
                 "label": outline.label_of(c), "blur": c["shutter"] > 0 and c["shutterSamples"] > 1,
                 "previewSize": size_offered(c)}
 
-    @Property(str, notify=pageChanged)
-    def page(self):
-        return self._page
+    @Property(str, notify=toolChanged)
+    def tool(self):
+        """What the mouse does on the canvas: "move" (select, move, handles), "pen" (pen.py) or "draw" (painter.py)."""
+        return self._tool
 
     @Property(bool, notify=playingChanged)
     def playing(self):
@@ -149,25 +156,23 @@ class Bridge2D(UndoState, LayerOrder, FileCommands, CommandWords, DragSlots, Han
 
     @Property("QVariantList", notify=outlineChanged)
     def layers(self):
-        return outline.layer_rows(self.comp(), self._folded)
-
-    @Property("QVariantList", notify=outlineChanged)
-    def tracks(self):
-        return outline.tracks(self.placed(), self._opened)
+        """The timeline's rows, which are the layers list too (outline.rows): bars, keys, frames, fields, effects."""
+        return outline.rows(self.placed(), self._flipped)
 
     @Property(str, notify=outlineChanged)
     def selectedLayer(self):
         """The layer the selection belongs to (itself, or the layer of a selected effect, mask or key)."""
         return bounds.layer_of(self.doc, self._sel) if self._sel else ""
 
-    @Property("QVariantMap", notify=outlineChanged)
+    @Property("QVariantMap", notify=shownChanged)
     def selBox(self):
+        """The selected layer's box as the picture on screen shows it (shown.py)."""
         layer = self.selectedLayer
-        return next((b for b in bounds.boxes(self.placed(), self._t) if b["id"] == layer), {})
+        return next((b for b in bounds.boxes(self.shown_placed(), self.shown_t()) if b["id"] == layer), {})
 
     def _first(self):
-        rows = outline.layer_rows(self.comp(), set())
-        return rows[0]["id"] if rows else self.comp_id
+        layers = self.comp().get("layers", [])
+        return layers[-1]["id"] if layers else self.comp_id
 
     # ---- screen state -----------------------------------------------------------------------------------------
     @Slot(float)
@@ -185,9 +190,15 @@ class Bridge2D(UndoState, LayerOrder, FileCommands, CommandWords, DragSlots, Han
         self._show()
 
     @Slot(str)
-    def setPage(self, page):
-        self._page = page
-        self.pageChanged.emit()
+    def setTool(self, tool):
+        """The one tool switch (the strip, V / P / B / Esc, pen.setOn, Add path / drawing). Leaving the pen ends its path."""
+        if tool not in ("move", "pen", "draw"):
+            return self._fail(f"Error: tool: {tool!r} is not a tool (move, pen, draw).")
+        if tool != self._tool:
+            if self._tool == "pen":
+                self._pen.finish()
+            self._tool = tool
+            self.toolChanged.emit()
 
     @Slot()
     def togglePlay(self):
@@ -195,22 +206,16 @@ class Bridge2D(UndoState, LayerOrder, FileCommands, CommandWords, DragSlots, Han
 
     @Slot(str)
     def toggleFold(self, item_id):
-        self._folded ^= {item_id}
-        self.outlineChanged.emit()
-
-    @Slot(str)
-    def toggleTrack(self, item_id):
-        self._opened ^= {item_id}
+        """Fold an open row, open a closed one (a group starts open, any other layer closed)."""
+        self._flipped ^= {item_id}
         self.outlineChanged.emit()
 
     @Slot(float, float, result=str)
     def pickAt(self, x, y):
-        """A click on the canvas (composition px): select the topmost layer there; on empty canvas, the
-        composition (its frame size, rate, length, background)."""
-        hit = bounds.pick(self.placed(), self._t, x, y)
-        if hit != self.selectedLayer:
-            self.select(hit or self.comp_id)
-        return hit
+        """A click on the canvas (composition px): select what is painted there by the click rule (picking.py: the
+        outermost group, or the piece once inside it); on empty canvas, the composition (its frame size, rate,
+        length, background)."""
+        return self._multi.pick(x, y, "click")
 
     # ---- for the Painter (screen2d/painter.py) ----------------------------------------------------------------
     def guard(self, fn) -> bool:
@@ -238,14 +243,19 @@ class Bridge2D(UndoState, LayerOrder, FileCommands, CommandWords, DragSlots, Han
                 self._scene = False                         # tried; the next change tries again
                 self._fail(str(e))
         if self._scene:
-            self.frames.request(self._scene, self._t, self.play.samples(), self.play.scale())
+            self.frames.request(self._scene, self._t, self.play.samples(), self.frame_scale(), self.frame_tag())
+        elif self._shown is not None:                       # no picture for this state: the overlays go live
+            self._shown = None
+            self.shownChanged.emit()
 
-    def _on_frame(self, serial):
+    def _on_frame(self, serial, tag):
         self._frame = serial
-        self.frameChanged.emit()
+        self.frameChanged.emit()                            # the picture and the overlays change together
+        self._frame_shown(tag)
         STATS.frame_shown(self._t)
 
     def _on_doc(self, event):
+        self._note_change()
         super()._on_doc(event)
         self.outlineChanged.emit()
         self._render()

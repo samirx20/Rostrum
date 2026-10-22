@@ -58,6 +58,17 @@ def cls(o) -> str:
     return o.metaObject().className()
 
 
+def scrolls(o) -> bool:
+    """A scrolling list or area, including an app's own QML type built on one (its class is "LayerRows_QMLTYPE_7",
+    a ListView underneath): a half-scrolled row in it is not cut text."""
+    m = o.metaObject()
+    while m is not None:
+        if m.className().startswith(FLICK):
+            return True
+        m = m.superClass()
+    return False
+
+
 def short(o) -> str:
     name = o.objectName() or cls(o).split("_QML")[0].replace("QQuick", "")
     text = o.property("text") if cls(o).startswith(("QQuickText", "Button", "IconButton")) else None
@@ -193,7 +204,7 @@ def check(win, ignore=()) -> list[Fault]:
             elif t.property("contentHeight") > t.height() + SLACK and t.property("lineCount") > 1:
                 say("cut", n, f"text {t.property('contentHeight'):.0f} px tall in a {t.height():.0f} px box")
             if n.seen.width() < n.rect.width() - SLACK or (n.seen.height() < n.rect.height() - SLACK
-                                                           and not (n.clipper and cls(n.clipper.item).startswith(FLICK))):
+                                                           and not (n.clipper and scrolls(n.clipper.item))):
                 say("cut", n, f"text cut by {tail(n.clipper.path, 2) if n.clipper else 'the window'}")
     for a in atoms:                  # what a clipping panel or scroll list hides (a half-scrolled row) is not outside
         if a.clipper is None and not inside(a.rect, win_rect):

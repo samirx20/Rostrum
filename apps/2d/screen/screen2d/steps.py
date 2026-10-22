@@ -1,17 +1,18 @@
 """Scripted steps for screenshots and checks. Each goes through the same bridge call a click or drag makes.
 
-    select <id> | page design|draw|animate | time <s> | set <param> <json value> | scrub <param> <v> <v> …
+    select <id> | tool move|pen|draw | time <s> | set <param> <json value> | scrub <param> <v> <v> …
     animate <param> (the key mark's toggle) | drag <layer> <dx> <dy> (canvas drag, composition px; in an auto layout it
     changes the layer's slot: the same drag slots, so <dx> <dy> moves the pointer)
     curves on|off | curvedrag <key> <dt> <dv> | handledrag <key> <1|2> <dx> <dy> (the curve editor)
-    keydrag <key id> <t> | open <layer> (timeline rows) | fold <layer> (layers panel) | pick <x> <y>
+    keydrag <key id> <t> | bardrag <layer> <move|start|end> <from s> <to s> (a layer bar on the timeline: pointer pressed at
+    <from>, let go at <to>; <to> may be #marker_name, _ for spaces: the dragged edge lands on it and the layer is tied) | open <layer> (timeline rows) | fold <layer> (layers panel) | pick <x> <y>
     front | back | forward | backward | delete (the selected layer(s): Ctrl+Shift+] / Ctrl+Shift+[ / Ctrl+] / Ctrl+[ / Delete) |
     rename <layer> <name> | undo | redo | more | commands [query …] | run <command key> | play | play <seconds> [blur] [full|half|quarter]
     (plays, with full motion blur or not, at that Preview size, then prints the frames shown per second and each stage's time: screen2d/playstats.py)
     marker add <s> | marker move <name> <s> | marker rename <name> <new name> | marker remove <name> (ruler flags; _ for spaces)
-  Draw page (on the selected drawing layer): draw <x> <y> <x> <y> … (one stroke, composition px)
+  timeline compact|full (this tool's timeline height) | Draw tool (tool draw; paints on the selected drawing layer, or makes one): draw <x> <y> <x> <y> … (one stroke, composition px)
     brush <setting> <value> | newframe [copy] | hold <+n|-n> | frame next|prev | onion on|off
-  Design page, paths: pen <x,y> <x,y,hx,hy> … [close] (one new path: a point, or a press at x,y dragged to hx,hy =
+  Paths (tool pen): pen <x,y> <x,y,hx,hy> … [close] (one new path: a point, or a press at x,y dragged to hx,hy =
     a smooth point; composition px) | pointpick <layer> <i> (select a point: its handles show) | pointdrag <layer> <i> <dx> <dy> [in|out] (a point, or its handle)
   Handles: resize <layer> <nw|n|ne|e|se|s|sw|w> <dx> <dy> [shift] [alt] | rotate <layer> <deg> [shift] (turn by that many
     degrees) | boxselect <x0> <y0> <x1> <y1> (the rubber band) | shiftpick <layer> (add / remove) | movesel <dx> <dy> (move all selected)
@@ -19,6 +20,10 @@
     import <path> [page=<n>] [text=outline] [keep=on] (the Import panel's job, waits, fails like it) | importstart <path> … (starts it,
     doesn't wait) | importpanel open [path]|close
     problems open|close (the Problems panel, after the list is worked out) | inspectorscroll <px>
+  Select, then act: selectmany <id> <id> … (those layers, the first is the primary) | act <action> (an entry of the one
+    list on the selection: group, ungroup, mask, union, align_left, distribute_x, match_w, lock, hide, delete, front …;
+    fails when the selection doesn't allow it) | nudge <dx> <dy> (the arrow keys, px) | actionmenu | actionbar (print what they offer)
+  Inspector kit: find <text> (the search box; alone clears it) | group <name> (fold / open a group) | reveal <field> (bring a field into view)
   Export: export <mp4|prores4444|webm|gif|png|exr|lottie> [alpha=on|off] [depth=8|16] [start=<s>] [end=<s>] (the Export button's
     job; waits for it) | exportpanel open [format]|close | exportcancel [format] (start one, then Cancel it) |
     exportto <path> [replace|both|cancel] | exportshow (export_steps.py)
@@ -116,14 +121,40 @@ def steps_play(bridge, seconds, blur, size="full"):
     STATS.on = STATS.log
 
 
+def steps_bardrag(bridge, step, rest):
+    """bardrag <layer> <move|start|end> <from s> <to s>: the timeline's bar drag through its own slots. A `#marker` target
+    puts the dragged edge on that marker (the pointer goes as far as the edge needs) and lets go with snapping on."""
+    layer, part, t0 = rest[0], rest[1], float(rest[2])
+    if not bridge.beginBarDrag(layer, part, t0):
+        raise RuntimeError(f"step {step!r}: {bridge.status}")
+    snap, to = 0.0, rest[3]
+    if to.startswith("#"):
+        name, times = to[1:], bridge.times()
+        name = name if name in times else name.replace("_", " ")
+        item = bridge.placed_item(layer)
+        edge = (item["end"] if item.get("end", 36000.0) < 36000.0 else bridge.comp()["duration"]) if part == "end" else item.get("start", 0.0)
+        snap, to = 0.1, t0 + times[name] - edge
+    for f in (0.25, 0.5, 0.75, 1.0):
+        bridge.barDragTo(t0 + (float(to) - t0) * f, snap)
+    bridge.endDrag()
+
+
 def do_step(bridge, win, step):
     word, *rest = step.split()
     if word == "select":
         bridge.select(rest[0])
     elif word == "exportcancel":
         steps_cancel(bridge, step, rest)
-    elif word == "page":
-        bridge.setPage(rest[0])
+    elif word == "tool":
+        bridge.setTool(rest[0])
+    elif word == "timeline":                     # timeline compact|full: the button at the timeline header's right end
+        QMetaObject.invokeMethod(win, "setTimeline", Q_ARG("QVariant", rest[0] == "compact"), Q_ARG("QVariant", None))
+    elif word == "find":
+        bridge.setSearch(" ".join(rest))
+    elif word == "group":
+        bridge.toggleGroup(" ".join(rest))
+    elif word == "reveal":
+        bridge.revealField(rest[0])
     elif word == "time":
         bridge.setTime(float(rest[0]))
     elif word == "set":
@@ -149,8 +180,10 @@ def do_step(bridge, win, step):
         bridge.beginKeyDrag(rest[0])
         bridge.keyDragTo(float(rest[1]))
         bridge.endDrag()
+    elif word == "bardrag":
+        steps_bardrag(bridge, step, rest)
     elif word == "open":
-        bridge.toggleTrack(rest[0])
+        bridge.toggleFold(rest[0])
     elif word == "fold":
         bridge.toggleFold(rest[0])
     elif word == "pick":
@@ -235,6 +268,15 @@ def do_step(bridge, win, step):
         QMetaObject.invokeMethod(win, "openLayerMenu", Q_ARG("QVariant", rest[0]))
         if rest[1:] and rest[1] != "open":
             bridge.run(f"layer:{rest[1]}")
+    elif word == "selectmany":
+        bridge._select(rest)
+    elif word == "act":
+        if not bridge.layerCommand(rest[0]):
+            raise RuntimeError(f"step {step!r}: not available for the selection ({', '.join(e['value'][6:] for e in bridge.actionMenu())})")
+    elif word == "nudge":
+        bridge.nudge(float(rest[0]), float(rest[1]))
+    elif word in ("actionmenu", "actionbar"):
+        print(word, [(e["value"] if word == "actionmenu" else e["label"]) for e in getattr(bridge, "actionMenu" if word == "actionmenu" else "actionBar")()])
     elif word in ("front", "back", "forward", "backward", "delete", "duplicate"):    # the layer-order shortcuts (layer_order.py)
         if not bridge.layerCommand(word):
             raise RuntimeError(f"step {step!r}: not available for the selection")

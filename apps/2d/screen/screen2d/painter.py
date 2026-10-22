@@ -1,4 +1,4 @@
-"""The Draw page's side of the screen: the pen, the brush, drawings frame by frame, the onion skin.
+"""The Draw tool's side of the screen: the pen, the brush, drawings frame by frame, the onion skin.
 
 Every change is an operation recorded through the document (a stroke = one gesture; "new drawing" and "hold" =
 one `doc.apply` each). The brush and the onion toggle are screen state. The brush panel is the kit's Inspector
@@ -12,7 +12,7 @@ from rostrum2d.drawing import frame_at, frame_number
 from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
-from . import framing, onion
+from . import adding, framing, onion
 from .brush import Brush
 from .strokes import StrokeDrag
 
@@ -114,14 +114,20 @@ class Painter(QObject):
     def beginStroke(self, x, y, pressure):
         """x, y in composition px (like Bridge2D.pickAt); pressure 0..1 (1 for a mouse)."""
         d = self.drawing()
-        if d is None:
+        if d is None and self.b.tool != "draw":
             return False
         self.endStroke()
         c = self.b.comp()
+        make = None
+        if d is None:                       # Draw tool, no drawing selected: the first stroke makes the drawing layer too
+            make, lid = adding.new_layer_calls(self.b.doc, c, "drawing")
+            d = {"id": lid}
 
         def go():
-            self._stroke = StrokeDrag(self.b.doc, self.b.who, d["id"], self.b.own_t(d["id"]), c["fps"], self.brush.stroke_args(),
-                                      x, y, pressure)
+            self._stroke = StrokeDrag(self.b.doc, self.b.who, d["id"], self.b.time if make else self.b.own_t(d["id"]), c["fps"],
+                                      self.brush.stroke_args(), x, y, pressure, make)
+            if make:
+                self.b.select(d["id"])
         return self.b.guard(go)
 
     @Slot(float, float, float)

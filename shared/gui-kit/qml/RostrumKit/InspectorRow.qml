@@ -1,7 +1,10 @@
 import QtQuick
 import "."
 
-// One generic inspector row: a group header, a param, or the More row — nothing placed per control.
+// One generic inspector row: a group header, a param, the More row or a fold row — nothing placed per control.
+// A fold row (rows by importance) is a group's name with a chevron: click opens or closes the group
+// (bridge.toggleGroup(model.fold)). `flash()` briefly marks the row and `focusWidget()` puts the keys in its widget
+// (revealField). Several items selected and their values differ (model.mixed): the field says "Mixed" until edited.
 // The widget comes from the param's `type` only. The row owns its reveal: when `valid` changes, height and
 // opacity ease over Theme.reveal (160 ms); the Column below just follows. A new selection builds fresh rows
 // at their final state (a Behavior does not animate the first value), so the list swaps at once.
@@ -18,6 +21,7 @@ Item {
     readonly property bool tall: model.type === "list" || model.control === "curve"    // a widget taller than a field (top-aligned)
     readonly property int full: model.row === "group" ? Theme.groupGap + (model.label ? Theme.rowDense : 0)   // "": a gap only
                               : model.row === "more" ? Theme.row + Theme.grid
+                              : model.row === "fold" ? Theme.row
                               : driven ? Theme.row + exprBox.height + Theme.grid
                               : model.control === "curve" ? Theme.curveBox + Theme.row - Theme.field
                               : tall && widget.item ? Math.max(Theme.row, widget.item.implicitHeight + Theme.row - Theme.field)
@@ -45,6 +49,27 @@ Item {
                text: "More"; color: moreArea.containsMouse ? Theme.fg : Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont }
         MouseArea { id: moreArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: row.bridge.toggleMore() }
+    }
+    Rectangle {  // the flash after a jump to this field (revealField)
+        id: flashMark
+        anchors.fill: parent; anchors.leftMargin: -Theme.grid; anchors.rightMargin: -Theme.grid
+        radius: Theme.radiusCtl; color: Theme.accentSoft; opacity: 0
+        SequentialAnimation on opacity { id: flashAnim; running: false
+            NumberAnimation { to: 1; duration: Theme.fast } PauseAnimation { duration: 700 }
+            NumberAnimation { to: 0; duration: 400 } }
+    }
+    Item {  // a fold row: chevron + the group's name
+        visible: row.model.row === "fold"
+        anchors.fill: parent
+        Chevron { id: foldChev; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                  rotation: row.model.open ? 0 : -90; color: foldArea.containsMouse ? Theme.fg : Theme.fg3
+                  Behavior on rotation { NumberAnimation { duration: Theme.fast; easing.type: Theme.revealEasing } } }
+        Text { anchors.left: foldChev.right; anchors.leftMargin: Theme.grid + 2
+               anchors.verticalCenter: parent.verticalCenter; text: row.model.label
+               color: foldArea.containsMouse ? Theme.fg : Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
+               font.weight: Font.DemiBold }
+        MouseArea { id: foldArea; anchors.fill: parent; hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.toggleGroup(row.model.fold) }
     }
     Item {  // a param: label column, then the widget
         visible: row.model.row === "param"
@@ -99,21 +124,30 @@ Item {
         }
     }
 
+    readonly property string mixed: model.mixed ? "Mixed" : ""       // a field's words at rest ("" = its value)
     function set(v) { bridge.setValue(model.id, v) }
+    function flash() { flashAnim.restart() }
+    function focusWidget() {
+        const w = widget.item
+        if (!w) return
+        if (w.input && w.editable) { w.input.forceActiveFocus(); w.input.selectAll() } else w.forceActiveFocus()
+    }
     Component { id: toggle; Toggle { checked: !!row.model.value; onToggled: (v) => row.set(v) } }
     Component { id: number; NumberField {
         value: row.model.value === null || row.model.value === undefined ? 0 : row.model.value
         from: row.model.min === null || row.model.min === undefined ? -1e9 : row.model.min
         to: row.model.max === null || row.model.max === undefined ? 1e9 : row.model.max
         step: row.model.step ? row.model.step : 1
-        unit: row.model.unit || ""
+        unit: row.model.mixed ? "" : row.model.unit || ""
+        atRest: row.mixed
         words: row.model.words || []
         onEdited: (v) => row.set(v)
         onScrubStarted: row.bridge.beginScrub(row.model.id)
         onScrubbed: (v) => row.bridge.scrub(row.model.id, v)
         onScrubEnded: row.bridge.endScrub() } }
-    Component { id: choice; ChoiceField { options: row.model.options; current: row.model.value ?? ""; onPicked: (v) => row.set(v) } }
-    Component { id: colour; ColorField { hex: row.model.value || "#000000"; onEdited: (v) => row.set(v) } }
+    Component { id: choice; ChoiceField { options: row.model.options; current: row.model.value ?? ""; atRest: row.mixed
+                                          onPicked: (v) => row.set(v) } }
+    Component { id: colour; ColorField { hex: row.model.value || "#000000"; atRest: row.mixed; onEdited: (v) => row.set(v) } }
     Component { id: list; ListField {
         values: row.model.value || []; choices: row.model.options || []
         minItems: row.model.minItems || 0; maxItems: row.model.maxItems === undefined ? null : row.model.maxItems
@@ -123,5 +157,5 @@ Item {
     Component { id: path; PathField {
         value: row.model.value || ""; folder: row.model.control === "folder"; nameFilters: row.model.filters || []
         onEdited: (v) => row.set(v) } }
-    Component { id: text; TextField { value: row.model.value || ""; onEdited: (v) => row.set(v) } }
+    Component { id: text; TextField { value: row.model.value || ""; atRest: row.mixed; onEdited: (v) => row.set(v) } }
 }

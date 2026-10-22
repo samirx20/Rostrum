@@ -44,7 +44,7 @@ _TOLD = set()                    # what was said in the status line already: onc
 
 
 class FrameRenderer(PictureWorker):
-    ready = Signal(int)          # serial of the newest frame
+    ready = Signal(int, object)  # serial of the newest frame, and the tag it was asked with (what it was rendered from)
     note = Signal(str)           # a plain notice for the status line (painting on the processor: no graphics driver)
 
     def __init__(self, parent=None):
@@ -53,17 +53,17 @@ class FrameRenderer(PictureWorker):
         SCRATCH.mkdir(parents=True, exist_ok=True)
         self.start()
 
-    def request(self, scene: dict, t: float, samples: int | None = None, scale: float = 1.0):
+    def request(self, scene: dict, t: float, samples: int | None = None, scale: float = 1.0, tag=None):
         """Draw `scene` at `t`. `samples`: motion-blur steps instead of the composition's; `scale`: 1, 0.5 or 0.25 of
-        its size (both for fast playback). The same scene and engine either way, so a paused frame and the export are
-        the full picture."""
-        self.post_latest((scene, t, samples, scale))
+        its size (fast playback, dragging). The same scene and engine either way, so a paused frame and the export are
+        the full picture. `tag` comes back with the frame (`ready`): the state it was rendered from (shown.py)."""
+        self.post_latest((scene, t, samples, scale, tag))
 
     def open_engine(self):
         return open_engine()
 
     def handle(self, eng, job):
-        scene, t, samples, scale = job
+        scene, t, samples, scale, tag = job
         if scene is not self._loaded:                       # the bridge describes a new scene only on a change
             with STATS.stage("load"):
                 eng.load(scene)
@@ -74,7 +74,7 @@ class FrameRenderer(PictureWorker):
         image = _frame(eng, t, SCRATCH / "frame.png", samples, scale)
         if image.isNull():
             raise RuntimeError(f"the engine's frame could not be read: {SCRATCH / 'frame.png'}")
-        self.ready.emit(self.publish(image))
+        self.ready.emit(self.publish(image), tag)
         if eng.notice:                                      # it died and was restarted (engine.py): said once
             self.note.emit(eng.notice)
             eng.notice = None

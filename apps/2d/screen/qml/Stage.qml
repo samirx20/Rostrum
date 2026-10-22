@@ -2,17 +2,27 @@ import QtQuick
 import RostrumKit
 
 // The canvas: the engine's frame at the playhead (image://frame, rendered off the GUI thread), fitted on a
-// neutral backdrop, with the selected layers' outlines (Handles.qml: a single layer also gets resize + turn handles). Press on a layer
-// selects it (Shift+click adds / removes); dragging moves it (all selected layers together); dragging on empty canvas draws a rubber band that
-// selects the layers it touches (boxSelect). One gesture = one undo step
+// neutral backdrop, with the selected layers' outlines (Handles.qml: a single layer also gets resize + turn handles).
+// A press picks what is painted under it (screen2d/picking.py): the outermost group, or the piece once you are inside
+// that group; Ctrl+press the piece itself; double-click goes one level in; Shift+click adds / removes. Dragging moves
+// it (all selected layers together); dragging on empty canvas draws a rubber band that selects the layers it touches
+// (boxSelect, not locked ones). One gesture = one undo step
 // (backend.beginMove / moveBy / endDrag: one gesture = one undo step; an animated x / y gets a key at the playhead).
-// On the Draw page with a drawing layer selected, a press draws instead: one stroke = one gesture = one undo step
-// (painter.beginStroke / strokeTo / endStroke). A pen reports its pressure; a mouse is 1. The onion skin lies over
-// the drawing's box.
+// With the Draw tool on (backend.tool, the tool strip at the top-left), a press draws instead: one stroke = one gesture =
+// one undo step (painter.beginStroke / strokeTo / endStroke; on no drawing the first stroke makes one). A pen reports
+// its pressure; a mouse is 1. The onion skin lies over the drawing's box. With the Pen tool on, PenOverlay takes the clicks.
 Panel {
     id: panel
     title: "Canvas"
     readonly property var info: backend.frameInfo
+    readonly property Item canvasFrame: frame      // the picture's box
+    // The one mapping between composition px and this item's px (what sits over the canvas, e.g. the action bar, uses
+    // it): compScale = screen px per composition px; compOrigin = where composition (0, 0) is; compView = the visible well.
+    readonly property real compScale: well.fit
+    readonly property point compOrigin: { frame.x; frame.y; well.width; well.height; width; height; return frame.mapToItem(panel, 0, 0) }
+    readonly property rect compView: { well.width; well.height; width; height; const p = well.mapToItem(panel, 0, 0); return Qt.rect(p.x, p.y, well.width, well.height) }
+    function toComp(x, y) { return Qt.point((x - compOrigin.x) / compScale, (y - compOrigin.y) / compScale) }
+    function fromComp(x, y) { return Qt.point(compOrigin.x + x * compScale, compOrigin.y + y * compScale) }
     headerRight: Text { text: panel.info.width + " × " + panel.info.height + "  ·  " + panel.info.fps + " fps"
                         color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
 
@@ -20,7 +30,7 @@ Panel {
         id: well
         anchors.fill: parent
         radius: Theme.radiusCtl; color: Theme.sunken
-        readonly property bool drawing: backend.page === "draw" && painter.drawingId !== ""
+        readonly property bool drawing: backend.tool === "draw"
         readonly property real fit: Math.min((width - 48) / panel.info.width, (height - 48) / panel.info.height)
 
         Item {
@@ -44,11 +54,6 @@ Panel {
                 anchors.fill: parent; anchors.margins: -1
                 color: "transparent"; border.width: 1; border.color: Theme.popupEdge
             }
-        }
-        Text {  // Draw page, nothing to draw on
-            visible: backend.page === "draw" && painter.drawingId === ""
-            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: Theme.pad }
-            text: "Select a drawing layer to draw on it"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
         }
         Item {  // the pen
             anchors.fill: parent
@@ -81,13 +86,15 @@ Panel {
             function comp(m) { return Qt.point((m.x - frame.x) / well.fit, (m.y - frame.y) / well.fit) }
             function stop() { if (moving) backend.endDrag(); moving = false; band = false }
             onPressed: (m) => {
-                var p = comp(m), hit = backend.layerAt(p.x, p.y)
+                var p = comp(m), mode = (m.modifiers & Qt.ControlModifier) ? "deep" : "click"
+                var hit = backend.multi.target(p.x, p.y, mode)
                 sx = m.x; sy = m.y; band = false; moving = false
-                if (hit === "") { band = true; b0 = p; b1 = p; return }                         // empty canvas: a rubber band
+                if (hit === "") { band = true; b0 = p; b1 = p; return }                         // nothing painted: a rubber band
                 if (m.modifiers & Qt.ShiftModifier) backend.multi.toggle(hit)                   // Shift+click: add / remove
-                else if (!backend.multi.has(hit)) backend.pickAt(p.x, p.y)                      // else keep the selection and move it
+                else if (!backend.multi.has(hit)) backend.multi.pick(p.x, p.y, mode)            // else keep the selection and move it
                 moving = backend.multi.has(hit) && backend.beginMove()
             }
+            onDoubleClicked: (m) => { var p = comp(m); backend.multi.pick(p.x, p.y, "in") }   // one level into the group
             onPositionChanged: (m) => {
                 if (moving) backend.moveBy((m.x - sx) / well.fit, (m.y - sy) / well.fit)
                 else if (band) b1 = comp(m)
@@ -101,9 +108,9 @@ Panel {
             }
             onCanceled: stop()
         }
-        PenOverlay {  // Design page: the pen tool and the selected path's points (not while playing: they'd lag)
+        PenOverlay {  // the pen tool and the selected path's points (not while playing: they'd lag)
             anchors.fill: parent
-            visible: backend.page === "design" && !backend.playing
+            visible: !backend.playing && !well.drawing
             fit: well.fit; ox: frame.x; oy: frame.y
         }
         Item {  // outlines of the selected layers (turned with them) and the handles of a single one; over the pen's overlay
@@ -125,5 +132,6 @@ Panel {
                 color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.12); border.width: 1; border.color: Theme.accent
             }
         }
+        ToolStrip { anchors { left: parent.left; top: parent.top; margins: Theme.gap } }   // over everything on the canvas
     }
 }

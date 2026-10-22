@@ -2,14 +2,14 @@
 
 ## For people using the app
 
-Short pages in everyday words, with the names of the real buttons.
+Short pages in everyday words, with the names of the real buttons. The app is one workspace (the picture, the settings of what you picked, and a timeline that is also the layers list), so these pages follow the work, not pages of the screen.
 
-1. [Making your first animation](first-animation.md): start a project, add text and a shape, move to a time, make a value animate, play, undo.
-2. [The screen](the-screen.md): the three pages, layers, canvas, inspector, timeline, markers and the top bar.
-3. [Drawing](drawing.md): the drawing layer, the brush, strokes, frames, hold and onion skin.
-4. [Importing pictures and files](importing.md): bring in pictures, video, SVG, PDF, PSD and Figma frames.
+1. [Making your first animation](first-animation.md): start a project, add text, pick and move, animate a value in place with the diamonds, play, do something to several layers, undo.
+2. [The screen](the-screen.md): the top bar, the canvas and its tools, select first then act (the action bar, right-click, Ctrl+K), the settings panel, the timeline and its two heights, lock and hide, markers.
+3. [Drawing](drawing.md): the Draw tool, the brush, strokes, frames, hold and onion skin.
+4. [Importing pictures and files](importing.md): bring in pictures, video, SVG, PDF, PSD and Figma frames, then work on the pieces.
 5. [Exporting a video](exporting.md): the formats in plain words, the settings, and where the file goes.
-6. [Files and settings](files.md): New, Open, Save, Save as, the unsaved dot, recovery and closing.
+6. [Files and settings](files.md): New, Open, Open sample, Save, Save as, the unsaved dot, recovery and closing.
 
 ## For agents
 
@@ -30,3 +30,4 @@ How-to pages for the tools and the document. They assume MCP tools and operation
 - [character-rigging-and-lip-sync.md](character-rigging-and-lip-sync.md): joints, poses and lip sync.
 - [import-and-export.md](import-and-export.md): importing and exporting, by tool.
 - [3d-renders-in-2d.md](3d-renders-in-2d.md): showing a Rostrum3D render inside a composition.
+- Select first, then act, as operations: `group.make`, `group.release`, `mask.make`, `mask.release`, `shape.boolean`, `layer.align`, `layer.distribute`, `layer.match_size`, `style.apply`, `layer.lock`, `layer.unlock`, `layer.hide`, `rig.make` (each takes the layers as its `target`; the screen's action list calls exactly these), and `layer.shift` / `layer.trim` for moving and trimming a layer in time.

@@ -4,7 +4,8 @@ Press: previews `stroke.add` (a fixed id, the points so far) on the paint layer 
 the playhead; if it shows none, the same change first adds the frame (`frame.add at=<current frame>`), and a paint
 layer if the new frame has none. Each move previews `stroke.set {points}`; release records the one change.
 Canvas px of the drawing come from composition px (rostrum2d.drawing.to_canvas: the layer's x, y, anchor, scale and
-rotation; a drawing inside a group is not placed from the group's corner yet).
+rotation; a drawing inside a group is not placed from the group's corner yet). With `make` (the Add menu's layer.add
+calls for a drawing) the same change first makes that drawing layer: Draw tool on, none selected, one undo step.
 """
 from __future__ import annotations
 
@@ -23,11 +24,13 @@ def paint_target(frame: dict) -> dict | None:
 
 
 class StrokeDrag:
-    def __init__(self, doc, who, layer_id: str, t: float, fps: float, brush: dict, x: float, y: float, pressure=1.0):
+    def __init__(self, doc, who, layer_id: str, t: float, fps: float, brush: dict, x: float, y: float, pressure=1.0, make=None):
         self.doc, self.sid, self.points = doc, random_id("stroke"), []
-        self.props = resolve(doc.item(layer_id), t)
         self._drag = Drag(doc, who, "Draw")
         try:
+            if make:
+                self._drag.preview(make)
+            self.props = resolve(doc.item(layer_id), t)
             n = frame_number(t, fps)
             frame = frame_at(doc.item(layer_id), n)
             if frame is None:

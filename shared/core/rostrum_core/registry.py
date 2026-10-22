@@ -26,6 +26,7 @@ class Operation:
     importance: str = "primary"
     valid_when: dict | None = None        # on the target item's fields / facts
     fields: bool = False                  # its params ARE the target kind's fields (the inspector reads it)
+    min_targets: int = 1                  # how many targets it needs at least (a boolean: 2); offered only then
 
     def param(self, name) -> Param | None:
         return next((p for p in self.params if p.name == name), None)
@@ -38,7 +39,8 @@ class Operation:
                 "arguments": {"type": "object", "properties": props, "required": required,
                               "additionalProperties": False},
                 "params": [p.to_dict() for p in self.params],
-                "importance": self.importance, "valid_when": self.valid_when, "fields": self.fields}
+                "importance": self.importance, "valid_when": self.valid_when, "fields": self.fields,
+                "min_targets": self.min_targets}
 
 
 class Registry:
@@ -46,11 +48,11 @@ class Registry:
         self._ops: dict[str, Operation] = {}
 
     def operation(self, name, summary, target=None, params=(), label="", importance="primary",
-                  valid_when=None, fields=False):
+                  valid_when=None, fields=False, min_targets=1):
         """Decorator: @reg.operation("camera.set", "Change a camera.", target="camera", params=[...])."""
         def register(fn):
             self.add(Operation(name, summary, fn, _kinds(target), list(params), label or name, importance,
-                               valid_when, fields))
+                               valid_when, fields, min_targets))
             return fn
         return register
 
@@ -89,15 +91,15 @@ class Registry:
         return next((o for o in self._ops.values() if o.fields and o.targets and kind in o.targets), None)
 
     def available(self, doc, target_ids=()) -> list[Operation]:
-        """Operations that can run right now: those that fit these targets, plus those that need no target
-        (Add layer). The command bar's list (absent, not greyed)."""
+        """Operations that can run right now: those that fit these targets (every one of them, and enough of them),
+        plus those that need no target (Add layer). The command bar's list (absent, not greyed)."""
         items = [doc.item(i) for i in target_ids]
         out = []
         for op in self._ops.values():
             if op.targets is None:
                 out.append(op)
                 continue
-            if items and all(it["type"] in op.targets and holds(op.valid_when, it, doc.kind.facts(it, doc))
+            if len(items) >= max(1, op.min_targets) and all(it["type"] in op.targets and holds(op.valid_when, it, doc.kind.facts(it, doc))
                              for it in items):
                 out.append(op)
         return out

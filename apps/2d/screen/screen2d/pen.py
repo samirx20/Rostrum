@@ -1,4 +1,4 @@
-"""The pen tool (Design page) and editing a path layer's points. Every change is an operation; each is one change.
+"""The pen tool (the tool strip's Pen, P) and editing a path layer's points. Every change is an operation; each is one change.
 
 Drawing a new path: click = a corner point, press-drag = a smooth point (symmetric handles), click the first point
 = close; Enter or Escape ends. The points live here (screen state) until the path ends; then one gesture adds the
@@ -51,16 +51,17 @@ class Pen(QObject):
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
-        self.b, self._on, self._draft, self._press, self._drag, self._grab = bridge, False, [], None, None, None
+        self.b, self._draft, self._press, self._drag, self._grab = bridge, [], None, None, None
         self._pick = ("", -1)         # (path layer, its selected point): only that point shows its handles
         bridge.outlineChanged.connect(self.changed)
         bridge.timeChanged.connect(self.changed)
-        bridge.pageChanged.connect(lambda: self.setOn(False) if bridge.page != "design" and self._on else None)
+        bridge.toolChanged.connect(self.changed)
+        bridge.shownChanged.connect(self.changed)           # the points follow the picture on screen (shown.py)            # on = the bridge's tool is "pen" (one source of truth)
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
     @Property(bool, notify=changed)
     def on(self):
-        return self._on
+        return self.b.tool == "pen"
 
     @Property("QVariantList", notify=changed)
     def draft(self):
@@ -69,7 +70,7 @@ class Pen(QObject):
     @Property(int, notify=changed)
     def selected(self):
         """The selected path's selected point (-1: none); the point just drawn while the pen is on."""
-        if self._on:
+        if self.on:
             return len(self._draft) - 1
         return self._pick[1] if self._pick[0] == self.b.selectedLayer else -1
 
@@ -85,15 +86,17 @@ class Pen(QObject):
 
     @Property("QVariantList", notify=changed)
     def points(self):
-        """The selected path's points and handles in composition px: [{i, x, y, inX, inY, outX, outY}]."""
-        item = self._layer()
-        if item is None:
+        """The selected path's points and handles in composition px: [{i, x, y, inX, inY, outX, outY}], as the picture
+        on screen shows the path (shown.py)."""
+        live = self._layer()
+        item = live and self.b.shown_item(live["id"])
+        if not item or item.get("type") != "path":
             return []
         try:
             subs = PD.to_points(item["d"])
         except ValueError:
             return []
-        fn = to_parent(resolve(item, self.b.own_t(item["id"])))
+        fn = to_parent(resolve(item, self.b.own_t(item["id"], self.b.shown_t())))
         out = []
         for p in (p for s in subs for p in s["points"]):
             x, y = fn(p["x"], p["y"])
@@ -106,10 +109,9 @@ class Pen(QObject):
     # ---- the pen: a new path ----------------------------------------------------------------------------------
     @Slot(bool)
     def setOn(self, on):
-        if not on:
-            self.finish()
-        self._on = on
-        self.changed.emit()
+        """The pen's own switch is the bridge's tool: on = "pen", off = back to "move" (that ends the path)."""
+        if on or self.on:
+            self.b.setTool("pen" if on else "move")
 
     @Slot(float, float)
     def press(self, x, y):

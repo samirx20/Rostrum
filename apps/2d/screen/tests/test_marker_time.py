@@ -37,7 +37,7 @@ def bridge(monkeypatch, tmp_path):
 
 
 def test_keys_show_at_play_time_and_write_in_own_seconds(bridge):
-    row = next(r for r in bridge.tracks if r["id"] == "dot")
+    row = next(r for r in bridge.layers if r["row"] == "layer" and r["id"] == "dot")
     assert [k["t"] for k in row["keys"]] == [pytest.approx(11.6), pytest.approx(12.6)]      # marker + written t
     first = row["keys"][0]["id"]
     bridge.select(first)

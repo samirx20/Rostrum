@@ -11,8 +11,8 @@ from pathlib import Path
 
 from rostrum_core import project
 from rostrum_core.errors import RostrumError, codes
-from rostrum_core.mcp.files import RENDER_DIR
 
+from rostrum2d import settings
 from rostrum2d.io import formats as table
 
 from .render import _fail
@@ -164,7 +164,7 @@ def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_
         facts["files"] = [str(done / n) for n in names]
         facts["file"] = str(done / (Path(seq_name(stem)).name if png else name))
         return facts
-    final = Path(out) if out else RENDER_DIR / f"{stem}_{time.strftime('%Y%m%d_%H%M%S')}{'' if png else row['ext']}"
+    final = Path(out) if out else settings.videos_dir() / f"{stem}_{time.strftime('%Y%m%d_%H%M%S')}{'' if png else row['ext']}"
     if not png and final.suffix.lower() != row["ext"]:
         raise RostrumError(codes.BAD_ARGUMENT, where, f'path "{final}"', f"must end in {row['ext']} for {fmt}")
     if png and final.exists():

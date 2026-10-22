@@ -81,6 +81,8 @@ def _check_targets(kind, op, targets, view, where):
         return items
     if not targets:
         raise RostrumError(codes.BAD_ARGUMENT, where, "target []", f"{op.name} needs a {'/'.join(op.targets)}")
+    if len(targets) < op.min_targets:
+        raise RostrumError(codes.BAD_ARGUMENT, where, f"target {targets}", f"{op.name} needs {op.min_targets} or more")
     for t in targets:
         if t not in idx:
             raise RostrumError.not_found(where, '/'.join(op.targets), t,

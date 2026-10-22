@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC
 import RostrumKit
 
-// The File button in the top bar: New, Open, Save (only while there is something to save), Save as, and the projects
+// The File button in the top bar: New, Open, Open sample, Save (only while there is something to save), Save as, and the projects
 // opened last. Each is also a Ctrl+K command and a shortcut (files.commands); `act(key)` is what a click does.
 Button {
     id: fileButton
@@ -39,12 +39,14 @@ Button {
                         y: heading.height; width: parent.width; height: Theme.popupRow; radius: 4
                         color: hover.hovered ? Theme.hover : "transparent"
                         Text {
+                            id: entryName
                             anchors { left: parent.left; leftMargin: Theme.gap - menu.padding; right: chip.left; rightMargin: Theme.gap
                                       verticalCenter: parent.verticalCenter }
                             text: row.modelData.label
                             elide: Text.ElideRight; color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont
                         }
-                        KeyHint { id: chip; visible: row.modelData.hint !== "Recent"; text: row.modelData.hint
+                        HoverTip { text: entryName.truncated ? row.modelData.label : ""; hovered: hover.hovered }   // a long project name, whole
+                        KeyHint { id: chip; visible: row.modelData.hint !== "Recent" && row.modelData.hint !== ""; text: row.modelData.hint
                                   anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter }
                         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
                         TapHandler { onTapped: { menu.close(); fileButton.act(row.modelData.key) } }

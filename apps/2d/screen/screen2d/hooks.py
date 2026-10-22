@@ -1,6 +1,8 @@
 """Rostrum2D's hooks into the kit's DocBridge: the 2D animation model (route.py, exprs.py). A mix-in for Bridge2D."""
 from __future__ import annotations
 
+from rostrum2d import fields as F
+
 from . import exprs, outline, route, swap_rows
 
 SIBLING_PICKS = {"matte": lambda s: True,                          # any layer beside it can be its track matte
@@ -11,6 +13,14 @@ class Hooks2D:
     def label_of(self, item):
         owner = self.doc.item(self.doc.parent_of(item["id"])[0]) if item.get("type") == "key" else None
         return outline.label_of(item, owner)
+
+    def kind_label(self, item):          # the panel's subtitle and Ctrl+K hints: "Composition", never the raw "Comp"
+        return F.LABELS.get(item.get("type", ""), super().kind_label(item))
+
+    def selection_label(self, ids):      # several selected: "2 layers" (any other mix: the kit's "N items")
+        if len(ids) > 1 and all(self.doc.item(i)["type"] in F.LAYERS for i in ids):
+            return f"{len(ids)} layers"
+        return super().selection_label(ids)
 
     def edit_call(self, item_id, param, value):
         return route.edit_call(self.doc, item_id, param, swap_rows.edit_value(self.doc.item(item_id), param, value), self.own_t(item_id))

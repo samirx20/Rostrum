@@ -1,14 +1,47 @@
 # apps/2d/screen — the Rostrum2D screen
 
-Design, Draw and Animate pages on one 2D document, built from the shared GUI kit (`shared/gui-kit/`).
+One workspace on one 2D document (no pages; the design is `../DESIGN.md`), built from the shared GUI kit (`shared/gui-kit/`).
 
 ```
-top bar          Rostrum2D · document · [Design | Draw | Animate] · history · Ctrl+K
-left             Layers: the composition's layers, top first; effects and masks under their layer; groups fold
-centre           Canvas: the engine's frame at the playhead, fitted; the selected layer's box; drag moves it
-right            Inspector: the selected item's field operation, values at the playhead, key marks
-bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (layer rows, open into field rows)
+top bar          Rostrum2D · File · document · what just happened · Undo / Redo · + Add · Import · Export · Ctrl+K · Help
+centre           Canvas: the engine's frame at the playhead, fitted; the tool strip (Move V, Pen P, Draw B) at its top left;
+                 the selected layers' boxes and handles; the action bar under the selection
+right            Settings panel (the kit's Inspector): the selected item(s)' field operation, values at the playhead, key
+                 marks; essentials first, folded groups, Find a setting (Ctrl+F); with Draw on, the brush instead
+bottom           Timeline = the layers list: a name column (fold, rename, drag to reorder, lock, eye) and a bar per layer
+                 with its keys and frames under a ruler with the markers; two heights (full / compact), remembered per tool
 ```
+
+## Select first, then act (`screen2d/actions.py`, `layer_order.py`, `qml/ActionBar.qml`, `qml/ActionMenu.qml`)
+
+- **One list of actions on the selected layers** (`actions.ACTIONS`, data): Group, Ungroup, Clip, Auto layout, Make swap
+  set, Make rig, Mask with top layer (and the other mattes), Release mask, Union / Subtract / Intersect / Exclude, Align,
+  Distribute, Match size, Copy / Paste style, Lock / Unlock, Hide / Show, Duplicate, Delete, the four order moves, Rename.
+  Each has a key (`layer:<name>`), label, shortcut, importance (`bar` = on the action bar), group (menu dividers) and
+  `valid(Facts)`; `available(doc, ids, state)` returns only what the selection allows (nothing is greyed). Each action is
+  one change: all its operation calls in one apply. The operations are the ones agents call (`group.make`, `mask.make`,
+  `shape.boolean`, `layer.align`, `style.apply`, `layer.lock` …, `python/rostrum2d/ops_*.py`).
+- Four places read it: the **action bar** (a floating bar just under the selection; Move tool only, hidden while playing or
+  dragging; its buttons and "⋯" for the whole list), the **right-click menus** (a layer's name in the timeline, and the
+  selection on the canvas), **Ctrl+K** and the **shortcuts** (Ctrl+G, Ctrl+Shift+G, Ctrl+D, Delete, F2, Ctrl+], Ctrl+[,
+  Ctrl+A, Esc, arrows nudge 1 px, Shift 10 px, one change per press).
+- The selection is read in one place, `LayerOrder.selected_layers()` (the kit's `selection`, plus whatever the canvas's
+  Shift+click holds in `multi.py`). A selection holding a locked layer is offered only Unlock.
+- Lock and the eye on each layer row (`qml/LayerName.qml`): fields `locked` / `hidden`. A hidden layer is not drawn in the
+  preview or an export (`scene.py` leaves it out) and has no box; `bounds.pick` skips locked layers.
+- Steps: `selectmany <id> <id> …`, `act <action>` (`group`, `ungroup`, `mask`, `union`, `align_left`, `distribute_x`,
+  `match_w`, `lock`, `hide`, `delete`, `front` …), `nudge <dx> <dy>`, `actionmenu`, `actionbar` (print what they offer).
+
+## The timeline (`qml/LayerTimeline.qml`, `LayerRows.qml`, `LayerName.qml`, `LayerTrack.qml`, `screen2d/outline.py`, `bar_drag.py`)
+
+- One rows list (`backend.layers`, `outline.rows`): a row per layer (bar, keys, a drawing's frames), then, while it is open,
+  a row per animated setting, its effects and masks, and its own layers. Open / fold with the name's arrow (`toggleFold`).
+- **Bars** (`drags.py`, `bar_drag.py`): a bar's middle drags with `layer.shift`, its ends with `layer.trim`; the dragged edge
+  snaps to a shared marker or the playhead within a few px (else whole frames); let go on a marker and the layer is tied to
+  it (`layer.shift {to: "#marker"}`, `layer.trim {start|end: "#marker"}`). One drag = one gesture = one undo step.
+  Steps: `bardrag <layer> <move|start|end> <from s> <to s|#marker_name>`.
+- Two heights (Main.qml `timelineByTool`): full (every row) or compact (header, ruler, the selected layer's row; the name is a
+  menu of all layers); Move and Pen remember the full one, Draw the compact one.
 
 ## The rules it builds in
 
@@ -23,9 +56,9 @@ bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (
   wins (`screen2d/frames.py`; `open_engine` is the one line to swap).
 - Click empty canvas: the composition is selected (size, frame rate, length, background).
 
-## Draw and frame by frame
+## Draw tool and frame by frame
 
-- **Pen** (`screen2d/strokes.py`): on Draw, with a `drawing` layer selected, a press-drag-release is one stroke = one
+- **Pen** (`screen2d/strokes.py`): with the Draw tool on and a `drawing` layer selected (none selected: the first stroke makes the drawing layer in the same change), a press-drag-release is one stroke = one
   `doc.gesture` = one undo step. Press previews `stroke.add` (fixed id, points so far) on the topmost unlocked paint
   layer of the frame shown at the playhead; each move previews `stroke.set {points}`. No frame shown there yet: the
   same change adds it first (`frame.add at=<current frame>`). Composition px become canvas px with the layer's x, y,
@@ -39,7 +72,7 @@ bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (
 - Steps: `draw <x> <y> <x> <y> …` (one stroke, composition px), `brush <setting> <value>`, `newframe [copy]`,
   `hold <+n|-n>`, `frame next|prev`, `onion on|off`.
 
-## Paths (Design page)
+## Paths (Pen tool)
 
 - **Pen** (`screen2d/pen.py`, `qml/PenOverlay.qml`; button or P): click = corner point, press-drag = smooth point,
   click the first point = close, Enter / Escape = done. The finished path is one change (`layer.add` + `path.set`).
@@ -48,7 +81,7 @@ bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (
   Alt moves one alone). A path inside a group is not offset by the group yet.
 - Steps: `pen <x,y> <x,y,hx,hy> … [close]`, `pointpick <layer> <i>`, `pointdrag <layer> <i> <dx> <dy> [in|out]`.
 
-## Handles and multi-select (Design page)
+## Handles and multi-select (Move tool)
 
 - A selected layer's outline turns with it. With one layer selected (not a path, whose points show instead) it has 4 corner +
   4 edge knobs (`qml/Handles.qml`; an edge knob is absent on a small box) and a turn zone just outside each corner (open-hand
@@ -60,7 +93,7 @@ bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (
 - **Several layers** (`screen2d/multi.py`, `backend.multi`): drag on empty canvas = a rubber band; layers whose boxes touch it
   are selected (not a layer inside a selected group). **Shift+click** adds / removes one. The first is the inspector's;
   every outline shows, handles only for a single layer. Dragging any one moves them all in one undo step (not layers in
-  an auto layout or driven by an expression: refused loudly). A click or the layers panel resets to one.
+  an auto layout or driven by an expression: refused loudly). A plain click on another layer resets to one.
 - One source for "where a layer's box is on screen": `bounds.boxes` carries each layer through its groups' whole chain (position,
   turn, scale, anchor), so a layer inside a turned group outlines, picks, resizes and moves where it shows (drags are read in the
   parent's frame, `bounds.parent_delta`). It reads each layer at the **stepped** time the engine draws (Timing › Steps on it, its
@@ -69,7 +102,7 @@ bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (
 - Steps: `resize <layer> <nw|n|ne|e|se|s|sw|w> <dx> <dy> [shift] [alt]`, `rotate <layer> <deg> [shift]`,
   `boxselect <x0> <y0> <x1> <y1>`, `shiftpick <layer>`, `movesel <dx> <dy>`.
 
-## Curves (Animate page)
+## Curves
 
 - The timeline's **Keys / Curves** switch shows the selected layer's animated number fields as value curves, overlaid,
   one colour each (the legend names them; click one to hide it). Drag a key (time and value, `key.set`) or a Bézier
@@ -99,11 +132,11 @@ bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (
 ... main.py --script shot.py                                                     # what a script builds
 ... main.py --doc <project folder> <item>                                        # open / make; saves on change
 ... main.py --open <docs\main.mtn or project folder>                             # open it as a person does (File > Save)
-... main.py --sample --step "time 1.2" --step "select title" --step "page animate" --shot out.png
+... main.py --sample --step "time 1.2" --step "select title" --step "time 1" --shot out.png --size 1646x850 --lookcheck
 .venv\Scripts\python.exe -m pytest -q apps\2d\screen\tests                       # under a second
 ```
-Steps: `select`, `page`, `time`, `set`, `scrub`, `animate`, `drag <layer> <dx> <dy>`, `keydrag <key> <t>`,
-`open <layer>`, `fold <layer>`, `pick <x> <y>`, `undo`, `redo`, `more`, `commands`, `run`, `play`, and the Draw steps above
+Steps: `select`, `selectmany`, `act`, `nudge`, `tool move|pen|draw`, `time`, `set`, `scrub`, `animate`, `drag <layer> <dx> <dy>`, `keydrag <key> <t>`,
+`bardrag`, `open <layer>`, `fold <layer>`, `pick <x> <y>`, `find <text>`, `group <name>`, `reveal <field>`, `undo`, `redo`, `more`, `commands`, `run`, `play`, and the Draw steps above;
 `export <format> [alpha=on|off] [depth=8|16] [start=<s>] [end=<s>]`, `exportpanel open [format]|close` (`screen2d/steps.py`). Offscreen: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts`.
 
 ## Files (File menu, Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S)
@@ -129,7 +162,7 @@ Steps: `select`, `page`, `time`, `set`, `scrub`, `animate`, `drag <layer> <dx> <
 - **Fails loudly:** a failed save, open or Save as is said in red in the top bar; as a step it exits nonzero.
 - Where things are found (engine, ffmpeg, fonts, the projects folder, the settings file with the recent list, whether
   Rostrum3D is installed) is in one place: `apps/2d/python/rostrum2d/settings.py`. Without Rostrum3D the Add menu and
-  Ctrl+K have no 3D render layer.
+  Ctrl+K have no 3D render layer. The File menu also has **Open sample**.
 - Code: `screen2d/projects.py` (folders, recovery copy, Save as; no Qt), `files.py` (the menu's actions, `files` in QML),
   `recent.py`, `session.py` (one window per open document), `file_commands.py` (Ctrl+K), `qml/FileMenu.qml`,
   `qml/FileFlow.qml` (the questions, shortcuts, open dialog), `qml/AskDialog.qml`.
@@ -143,15 +176,15 @@ Steps: `select`, `page`, `time`, `set`, `scrub`, `animate`, `drag <layer> <dx> <
   depth for png, from / to seconds for everything but Lottie), then Export. It runs as a job off the GUI thread with a progress
   bar, then shows the file, frames, size and what was read back (png / gif: the first frame; Lottie: what it couldn't carry), or
   the error in red. Where it goes: the project's `renders/<item>/vNNN/` (with a manifest) when the document has a folder, else
-  the render cache.
+  the person's Videos folder (Documents when there is none), never the hidden cache.
 - The formats and their settings are data (`rostrum2d.io.formats.FORMATS` + Lottie, listed by `rostrum2d.mcp.exporting`); the
   MCP tool `render_export` runs the same code (`exporting.run`), so a person and an agent get the same files.
 
 ## Add and import
 
-- **+ Add** (top bar, `qml/AddMenu.qml`, `screen2d/adding.py`): a small menu of only what applies on this page, most important
-  first. Design: shape, text, path (turns the pen on), image, video (each asks for a file), group, camera. Draw: drawing.
-  Animate: camera, rig, group. A choice is one change (`layer.add` + the type's field operation, centred in the
+- **+ Add** (top bar, `qml/AddMenu.qml`, `screen2d/adding.py`): a small menu of only new content, most important first:
+  shape, text, path (turns the Pen on), image, video (each asks for a file), drawing (turns Draw on), camera, 3D render. Groups and rigs
+  are made from a selection (Group, Make rig), never added empty. A choice is one change (`layer.add` + the type's field operation, centred in the
   composition), selected, one undo step. The list is data (`adding.ENTRIES`); the popup is the kit's `Menu`.
 - **Import** (top bar, `qml/ImportPanel.qml`, `screen2d/importer.py`): from a file (SVG, PDF with its page, PSD, image,
   video; what the file is decides which settings show) or a Figma file key + frame + your own token (typed into the panel,

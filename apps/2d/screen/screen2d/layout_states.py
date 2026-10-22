@@ -1,4 +1,5 @@
-"""Rostrum2D's screen states for the layout check (rostrum_gui/layout_run.py): each page, the open panels and menus,
+"""Rostrum2D's screen states for the layout check (rostrum_gui/layout_run.py): the one workspace with each tool and
+timeline height, one and several selected, the open panels and menus,
 and the long-text cases (a long project name, a long layer name, many changes, a long status message).
 A state is (name, start args, steps). Add one whenever a screen or panel is added."""
 from __future__ import annotations
@@ -28,12 +29,17 @@ def states() -> list[tuple[str, list[str], list[str]]]:
     long = long_project            # a fresh folder per state: each state's steps start from the same document
     busy = [*TWELVE, f"rename card {LONG_LAYER}", f"say {LONG_STATUS}"]
     return [
-        ("design", ["--sample"], ["select title"]),
-        ("animate", ["--sample"], ["select title", "page animate"]),
-        ("draw", ["--sample"], ["page draw"]),
-        ("long-design", long(), busy),
-        ("long-animate", long(), [*busy, "page animate", "open card"]),
-        ("long-draw", long(), [*busy, "page draw"]),
+        ("workspace", ["--sample"], ["select title"]),
+        ("rows-open", ["--sample"], ["select title", "open title"]),
+        ("two-selected", ["--sample"], ["selectmany title card"]),
+        ("action-menu", ["--sample"], ["selectmany dot rule", "actionmenu"]),
+        ("find-setting", ["--sample"], ["select title", "find marker"]),
+        ("draw-tool", ["--sample"], ["select title", "tool draw"]),
+        ("timeline-full-draw", ["--sample"], ["tool draw", "timeline full"]),
+        ("curves", ["--sample"], ["select title", "curves on"]),
+        ("long-workspace", long(), busy),
+        ("long-rows-open", long(), [*busy, "open card"]),
+        ("long-draw", long(), [*busy, "tool draw"]),
         ("file-menu", long(), [*busy, "filemenu open"]),
         ("add-menu", ["--sample"], ["addmenu open"]),
         ("export-panel", long(), [*busy, "exportpanel open"]),

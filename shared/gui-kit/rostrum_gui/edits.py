@@ -51,12 +51,15 @@ class Drag:
 
 class Scrub(Drag):
     """One drag on a number or slider. `call(item_id, name, value)` makes each move's call (default field_call;
-    an app with keys routes it through its own value operation)."""
+    an app with keys routes it through its own value operation). `item_id`: one item, or a list (every selected
+    item moves to the same value; still one change)."""
 
     def __init__(self, doc, who, item_id, name, call=None):
-        super().__init__(doc, who, edit_label(doc, item_id, name, None))
-        self.item_id, self.name = item_id, name
+        self.items = [item_id] if isinstance(item_id, str) else list(item_id)
+        label = edit_label(doc, self.items[0], name, None)
+        super().__init__(doc, who, label if len(self.items) == 1 else f"{label} on {len(self.items)} items")
+        self.item_id, self.name = self.items[0], name
         self._call = call or (lambda i, n, v: field_call(doc, i, n, v))
 
     def preview(self, value):
-        super().preview([self._call(self.item_id, self.name, value)])
+        super().preview([self._call(i, self.name, value) for i in self.items])

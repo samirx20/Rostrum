@@ -106,6 +106,7 @@ def main():
     a.add_argument("--comp")
     a.add_argument("--step", action="append", default=[])
     a.add_argument("--shot")
+    a.add_argument("--size", default="1600x960", help="the window's size in logical px, WxH (screenshots at a person's screen size)")
     a.add_argument("--check-layout", metavar="FOLDER")
     a.add_argument("--check-name")
     args = a.parse_args()
@@ -117,7 +118,7 @@ def main():
 
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
-    session = Session((1600, 960))
+    session = Session(tuple(int(n) for n in args.size.lower().split("x")))
     session.show(load_doc(args), live=bool(args.doc), comp_id=args.comp)
     for line in REFUSED:
         session.fail(line)
@@ -159,7 +160,7 @@ def main():
             raise RuntimeError(f"could not save {args.shot}")
         print(f"saved {args.shot} {img.width()}x{img.height()}  history={bridge.historyCount}  "
               f"selected={bridge.selected}  shown={bridge.shown()}")
-        app.exit(0)          # not quit(): that asks each window to close, and one with unsaved changes asks first
+        app.exit(code[0])    # not quit(): that asks each window to close, and one with unsaved changes asks first
 
     QTimer.singleShot(400, lambda: guarded(run_steps))
     if args.shot or args.check_layout:
