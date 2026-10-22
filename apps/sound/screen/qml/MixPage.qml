@@ -56,6 +56,7 @@ Panel {
             }
         }
         MixMaster { id: master; anchors { right: parent.right; top: parent.top; bottom: listen.top; bottomMargin: Theme.gap } }
-        MixListen { id: listen; anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: implicitHeight }
+        MixListen { id: listen; anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: implicitHeight
+                    room: parent.height - master.need - Theme.gap }       // the master card keeps what it needs
     }
 }

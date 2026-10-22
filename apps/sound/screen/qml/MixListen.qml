@@ -8,9 +8,11 @@ Rectangle {
     id: l
     readonly property var pics: mixer.listen
     property bool open: false
+    property real room: 1000          // the most it may take: what the master card leaves (MixPage); it never covers it
     // Open, at most a quarter of the page: the strips' faders keep their travel (buses and sends made them taller).
-    readonly property real openHeight: Math.max(150, Math.min(292, (parent ? parent.height : 1000) * 0.25))
-    implicitHeight: open ? openHeight : 36
+    readonly property real openHeight: Math.min(room, Math.max(150, Math.min(292, (parent ? parent.height : 1000) * 0.25)))
+    readonly property bool fits: room >= 150     // too little room to open in place: the pictures open large instead
+    implicitHeight: open && fits ? openHeight : 36
     color: Theme.app; radius: Theme.radiusPanel
     clip: true
     Behavior on implicitHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
@@ -29,7 +31,8 @@ Rectangle {
             color: l.pics.status.indexOf("Could not") === 0 ? Theme.danger : Theme.fg3
             font.family: uiFont; font.pixelSize: Theme.body
         }
-        MouseArea { id: tap; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: l.open = !l.open }
+        MouseArea { id: tap; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: l.fits ? l.open = !l.open : l.showLarge() }
     }
     Row {
         x: Theme.pad; y: bar.height; width: parent.width - 2 * Theme.pad; height: l.openHeight - bar.height - Theme.pad
@@ -46,6 +49,10 @@ Rectangle {
                             onClicked: { pic.source = "file:///" + modelData.src; big.open() } }
             }
         }
+    }
+    function showLarge() {           // a small window: both pictures in the large view
+        if (pics.loudness === "") return
+        pic.source = "file:///" + pics.loudness; big.open()
     }
     QQC.Popup {
         id: big
