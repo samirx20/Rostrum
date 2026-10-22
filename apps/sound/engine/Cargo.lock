@@ -1379,6 +1379,7 @@ dependencies = [
  "ebur128",
  "firewheel",
  "freeverb",
+ "libc",
  "png",
  "realfft",
  "rubato",

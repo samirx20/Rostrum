@@ -15,6 +15,7 @@ pub mod mastergain;
 pub mod par;
 pub mod render;
 pub mod schedule;
+pub mod sweep;
 pub mod tape;
 pub mod trackcache;
 #[cfg(test)]

@@ -65,6 +65,8 @@ impl Tape {
     pub fn spill(chs: &[Vec<f32>]) -> Result<Tape, String> {
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let dir = std::env::temp_dir().join("rostrum-sound-render");
+        static SWEPT: std::sync::Once = std::sync::Once::new();
+        SWEPT.call_once(|| super::sweep::dead_files(&dir));     // what an engine that died mid-render left here
         let path = dir.join(format!("{}-{}.f32", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
         let fail = |e: std::io::Error| format!("could not write the render's scratch file {}: {e}", path.display());
         std::fs::create_dir_all(&dir).map_err(fail)?;
