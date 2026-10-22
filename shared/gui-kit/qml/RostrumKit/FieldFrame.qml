@@ -88,9 +88,11 @@ FocusScope {
         restoreMode: Binding.RestoreNone
     }
     Text {  // at rest: the text from its start, "…" where it doesn't fit (TextInput would show its end)
+        id: rest
         visible: !input.activeFocus
         anchors { left: input.left; right: input.right; verticalCenter: parent.verticalCenter }
         text: f.atRest !== "" ? f.atRest : input.text; elide: f.elide; color: Theme.fg; font: input.font
+        HoverTip { text: rest.truncated ? rest.text : ""; hovered: f.hovered }   // the whole value when it is cut
     }
     Text {  // the unit sits right after the value, dim
         visible: f.suffix !== "" && input.text !== ""
