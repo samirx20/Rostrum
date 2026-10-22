@@ -10,15 +10,15 @@ from rostrum_core import userhome
 from rostrum_core.storage import write_atomic
 
 ROOT = Path(__file__).resolve().parents[3]
-CODE = ("import sys; from screen2d import recent; from rostrum2d import settings;"
-        "recent.add(sys.argv[1], 'main'); print(settings.settings_path())")
+CODE = ("import sys; from rostrum_core import recent;"
+        "recent.remember('2d', '.mtn', sys.argv[1], 'main', 'Throwaway'); print(recent.file('2d'))")
 
 
 def test_scripted_run_leaves_the_real_recent_list_alone(tmp_path):
     real = tmp_path / "home"
-    (real / ".rostrum" / "2d").mkdir(parents=True)
-    real_file = real / ".rostrum" / "2d" / "settings.json"
-    real_file.write_text(json.dumps({"recent": [{"folder": "C:/mine", "item": "main"}]}), encoding="utf-8")
+    (real / ".rostrum" / "settings").mkdir(parents=True)
+    real_file = real / ".rostrum" / "settings" / "2d-recent.json"          # rostrum_core/recent.py's list
+    real_file.write_text(json.dumps([{"folder": "C:/mine", "item": "main", "name": "Mine"}]), encoding="utf-8")
     before = real_file.read_bytes()
     env = {k: v for k, v in os.environ.items() if not k.startswith(("ROSTRUM_", "PYTEST"))}
     env.update(HOME=str(real), USERPROFILE=str(real), ROSTRUM_REAL_HOME="", PYTHONPATH=os.pathsep.join(sys.path))   # the same packages this test sees

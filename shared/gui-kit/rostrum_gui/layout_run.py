@@ -28,7 +28,9 @@ def kit_step(bridge, step: str) -> bool:
     `agent-run <n>`: an agent ("claude-code") makes n changes in one session, through doc.apply; the app's bridge
       gives them with the hook `agent_demo_calls(n) -> [calls, ...]` (n lists of operation calls, harmless ones).
     `agent-say <words>`: the agent chip and the message line show these words.
-    `history open`: the History sheet opens (bridge.agent.historyAsked)."""
+    `history open`: the History sheet opens (bridge.agent.historyAsked).
+    `guides open [file]`, `guides find <words>`, `keylist open`, `panels fold`, `area <name>`: shell_steps.py."""
+    from . import export_steps, shell_steps   # (Qt only here: the check's own process never imports them)
     word, _, rest = step.partition(" ")
     if word == "say":
         bridge._set_status(rest)
@@ -44,6 +46,10 @@ def kit_step(bridge, step: str) -> bool:
         bridge._set_status(rest)
     elif step == "history open":
         bridge.agent.askHistory("")
+    elif word in shell_steps.WORDS:
+        return shell_steps.do(step)
+    elif word in export_steps.WORDS:      # the Export sheet, the job and Problems chips (export_steps.py)
+        return export_steps.do(bridge, step)
     else:
         return False
     return True

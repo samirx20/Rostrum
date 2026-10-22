@@ -9,7 +9,7 @@ from __future__ import annotations
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui.model import RowsModel
 
-from . import ducks, playback, strips
+from . import ducks, playback, problems, strips
 from .cleaning import CleanedTake
 from .export import RenderExport
 from .loudness import LoudnessMeter
@@ -30,8 +30,10 @@ class MixPage(QObject):
         self._master: dict = {}
         self._plugins = PluginHub(bridge, playback.open_engine, self)
         self._ducks, self._loudness = ducks.DuckHub(bridge, self), LoudnessMeter(bridge, self)
-        self._export, self._cleaning = RenderExport(bridge, parent=self), CleanedTake(bridge, self)
+        self._export, self._cleaning = RenderExport(bridge, self._loudness, parent=self), CleanedTake(bridge, self)
         bridge.mix = self                                 # the scripted steps (steps.py) reach these through the bridge
+        self._problems = problems.make(bridge)
+        bridge.exporter, bridge.problems = self._export, self._problems   # the kit's sheet, chips and steps (EXPORT.md)
         self._refresh()
         self._plugins.catalogChanged.connect(self._refresh)      # the scan names the vendors the chips drop
         bridge.docChanged.connect(self._refresh)
@@ -57,6 +59,11 @@ class MixPage(QObject):
     @Property(QObject, constant=True)
     def export(self):
         return self._export
+
+    @Property(QObject, constant=True)
+    def problems(self):
+        """The Problems chip's list (problems.py)."""
+        return self._problems
 
     @Property(QObject, constant=True)
     def cleaning(self):

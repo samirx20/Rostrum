@@ -50,7 +50,7 @@ if APP == "2d":
     d.save()
     rt = Runtime(make_app(str(folder), [ITEM]), app_tools())
     ui = Session((1600, 960))
-    ui.show(Document.open(folder, ITEM, KIND), live=True)
+    ui.files.put(Document.open(folder, ITEM, KIND))
     run = [{"op": "text.set", "target": ["title"], "args": {"x": 700}},
            {"op": "shape.set", "target": ["card"], "args": {"fill": "#2a3a66"}},
            {"op": "shape.set", "target": ["rule"], "args": {"w": 300}}]
@@ -75,7 +75,7 @@ else:
     d.save()
     rt = make_runtime(make_app(str(folder), [ITEM]))
     ui = sound_main.Screen((1600, 960))
-    ui.songs.start(Document.open(folder, ITEM, KIND), "")
+    ui.files.put(Document.open(folder, ITEM, KIND))
     run = [{"op": "track.set", "target": ["melody"], "args": {"volume": 0.6}},
            {"op": "track.set", "target": ["pad"], "args": {"volume": 0.4}},
            {"op": "track.set", "target": ["drums"], "args": {"volume": 0.5}}]

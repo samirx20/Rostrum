@@ -1,5 +1,5 @@
-"""The person's last Rostrum2D project, read the way the 2D screen's Open recent list reads it (settings "recent":
-rows {folder, item}, newest first, only ones still on disk). The MCP server opens the first row when it is started
+"""The person's last Rostrum2D project, read from the one Open recent list the 2D screen keeps too
+(rostrum_core/recent.py: rows {folder, item, name}, newest first, only ones still on disk). The MCP server opens the first row when it is started
 with no options, so an agent works on what the person was just working on.
 """
 from __future__ import annotations
@@ -7,10 +7,10 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from rostrum_core import project
+from rostrum_core import project, recent
 from rostrum_core.storage import paths
 
-from . import KIND, settings
+from . import KIND
 
 DEFAULT_ITEM = "main"
 
@@ -21,8 +21,7 @@ def doc_file(folder, item) -> Path:
 
 def recent_rows() -> list[dict]:
     """[{folder, item}] newest first, the ones whose document is still on disk."""
-    return [{"folder": r["folder"], "item": r["item"]} for r in settings.read_settings().get("recent", [])
-            if doc_file(r["folder"], r["item"]).is_file()]
+    return [{"folder": r["folder"], "item": r["item"]} for r in recent.rows("2d", KIND.ext)]
 
 
 def describe(row: dict) -> dict:

@@ -10,7 +10,7 @@ from PySide6.QtGui import QGuiApplication
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from rostrum_core import Document, Who  # noqa: E402
 from rostrum2d import KIND, textsize  # noqa: E402
-from screen2d import frames, projects  # noqa: E402
+from screen2d import files2d, frames  # noqa: E402
 from screen2d.bridge2d import Bridge2D  # noqa: E402
 from test_screen import FakeEngine  # noqa: E402
 
@@ -40,7 +40,7 @@ def test_count_follows_what_is_in_effect_and_buttons_follow_what_can_be_done(bri
 
 def test_a_new_or_just_opened_file_shows_no_changes_and_nothing_to_undo(bridge, tmp_path):
     assert bridge.historyCount == 0 and bridge.undoLabel != ""     # opened with 1 change in its past: still undoable
-    new = Bridge2D(projects.new_project("Fresh", root=tmp_path))
+    new = Bridge2D(files2d.blank(tmp_path / "Fresh"))
     try:
         assert new.historyCount == 0 and new.undoLabel == "" and new.doc.data["comps"]
         new.undo()                                                  # nothing to take back: the composition stays

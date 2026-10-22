@@ -3,8 +3,8 @@ import "."
 
 // The top bar, one row in a fixed order (INTERACTION.md 1.1, 1.14):
 //   ≡ (`menu`, optional) · app name · leading buttons (`leading`: File) · document tab · message ·
-//   "Saved · N changes" · app tools (`tools`, kept for Sound for now) · chips (the agent chip first, then `chips`:
-//   an app's own, e.g. Sound's loudness) · ↶ ↷ (only when they can act) · command box · `actions` (Export) · ?
+//   "Saved · N changes" · app tools (`tools`, kept for Sound for now) · chips (the agent chip first, Problems
+//   (`problems`), the job (`job`), then `chips`: an app's own, e.g. Sound's loudness) · ↶ ↷ (only when they can act) · command box · `actions` (Export) · ?
 // Never shrunk or hidden: the change count, the tools, ↶ ↷, the actions and ?. When room runs out things give way in
 // one fixed order, never sliding under each other: 1. the message ("…", down to nothing; hover shows it all),
 // 2. the document tab, 3. the command box (280 px, then 150, then its search icon), 4. the chips (dot and count:
@@ -22,6 +22,9 @@ Item {
     property alias tools: toolsSlot.data
     property alias chips: chipsSlot.data
     property alias actions: actionsSlot.data
+    property var problems: null              // the Problems chip's source ({rows}, jump(row)): ProblemsChip.qml
+    property var job: null                   // the running job (the Export sheet's model): JobChip.qml, and Play · Show
+                                             // in folder after the message while it says "Exported …"
     // The app's own Help entries, above About: {value, label}. A guide's value is its .md file's file:// address
     // (rostrum_gui.guides.entries; it opens in the kit's guide viewer); any other value is the app's own entry
     // and comes back as helpPicked(value). Apps with an agent server (an `agents` object, rostrum_gui/agents.py)
@@ -31,6 +34,8 @@ Item {
     signal aboutClicked()
     signal connectAgentClicked()
     signal guideClicked(string url)
+    signal guidesClicked()               // ? › Guides (F1): the guides drawer
+    signal keysClicked()                 // ? › Keys (Ctrl+/): the key list
     signal helpPicked(string value)
     signal historyClicked()
     implicitHeight: Theme.topBar
@@ -40,6 +45,18 @@ Item {
         historyClicked()
         if (bridge && bridge.agent) bridge.agent.askHistory(historyFocus)
     }
+
+    component BarLink: Text {                // a word to click after the message (Play, Show in folder)
+        signal clicked()
+        anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+        height: Math.max(implicitHeight, 16); verticalAlignment: Text.AlignVCenter
+        color: linkHover.hovered ? Theme.fg : Theme.accent
+        font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold
+        HoverHandler { id: linkHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: parent.clicked() }
+    }
+    component Dot: Text { anchors.verticalCenter: parent ? parent.verticalCenter : undefined; text: "·"; color: Theme.fg3
+                          font.family: uiFont; font.pixelSize: Theme.label }
 
     // ---- the room each part gets (widths only; the rows below just place them) ----------------------------------
     readonly property int sp: Theme.groupGap
@@ -51,11 +68,14 @@ Item {
     readonly property real undoWidth: (undoText ? Theme.button : 0) + (redoText ? Theme.button : 0) + (undoText && redoText ? Theme.grid : 0)
     readonly property bool appChips: chipsSlot.children.length > 0
     readonly property bool agentShown: agentChip.info.state !== ""
-    readonly property real chipsNarrowWidth: (agentShown ? agentChip.narrowWidth : 0) + (appChips ? chipsSlot.implicitWidth : 0)
-                                           + (agentShown && appChips ? Theme.gap : 0)
-    readonly property real chipsExtra: agentShown ? agentChip.fullWidth - agentChip.narrowWidth : 0
+    readonly property int chipCount: (agentShown ? 1 : 0) + (problemsChip.n > 0 ? 1 : 0) + (jobChip.shown ? 1 : 0) + (appChips ? 1 : 0)
+    readonly property real chipsNarrowWidth: (agentShown ? agentChip.narrowWidth : 0) + problemsChip.narrowWidth + jobChip.narrowWidth
+                                           + (appChips ? chipsSlot.implicitWidth : 0) + Math.max(0, chipCount - 1) * Theme.gap
+    readonly property real chipsExtra: (agentShown ? agentChip.fullWidth - agentChip.narrowWidth : 0)
+                                     + problemsChip.fullWidth - problemsChip.narrowWidth + jobChip.fullWidth - jobChip.narrowWidth
+    readonly property bool doneLinks: !!job && job.state === "done" && job.doneMessage !== "" && bridge.status === job.doneMessage
     readonly property real fixedWidth: edgeLeft + slot(menuSlot) + wordmark.implicitWidth + slot(leadingSlot)
-                                     + sp + count.implicitWidth + slot(toolsSlot)
+                                     + sp + count.implicitWidth + (doneLinks ? links.implicitWidth + Theme.gap : 0) + slot(toolsSlot)
                                      + (chipsNarrowWidth ? sp + chipsNarrowWidth : 0) + (undoWidth ? sp + undoWidth : 0)
                                      + sp + Theme.button + slot(actionsSlot) + sp + help.width + edgeRight
     readonly property real room: width - fixedWidth                            // what may still be handed out
@@ -117,6 +137,16 @@ Item {
                 HoverHandler { id: messageHover }
                 HoverTip { text: message.truncated ? bar.bridge.status : ""; hovered: messageHover.hovered }
             }
+            Row {   // after an export: "Exported Main.mp4 · Play · Show in folder ·" (until the next message)
+                id: links
+                visible: bar.doneLinks && bar.messageWidth > 0
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: Theme.gap
+                BarLink { text: "Play"; onClicked: bar.job.play() }
+                Dot { }
+                BarLink { text: "Show in folder"; onClicked: bar.job.showInFolder() }
+                Dot { }
+            }
             Text {  // "Saved · 14 changes": its own piece, never shrinks, the door to History
                 id: count
                 anchors.verticalCenter: parent.verticalCenter
@@ -138,10 +168,14 @@ Item {
         Row {  // chips: each only while it has something to say
             anchors.verticalCenter: parent.verticalCenter
             spacing: Theme.gap
-            visible: bar.agentShown || bar.appChips
+            visible: bar.chipCount > 0
             AgentChip { id: agentChip; bridge: bar.bridge; narrow: bar.chipsNarrow; anchors.verticalCenter: parent.verticalCenter
                         width: implicitWidth; height: implicitHeight
                         onReview: (session) => { bar.historyFocus = session; bar.historyClicked() } }
+            ProblemsChip { id: problemsChip; source: bar.problems; narrow: bar.chipsNarrow; anchors.verticalCenter: parent.verticalCenter
+                           width: implicitWidth; height: implicitHeight }
+            JobChip { id: jobChip; job: bar.job; narrow: bar.chipsNarrow; anchors.verticalCenter: parent.verticalCenter
+                      width: implicitWidth; height: implicitHeight }
             Row { id: chipsSlot; anchors.verticalCenter: parent.verticalCenter; spacing: Theme.gap; visible: children.length > 0 }
         }
         Row {  // ↶ ↷: each only while it can act; the tip names the step
@@ -190,19 +224,23 @@ Item {
             spacing: Theme.gap
             visible: children.length > 0
         }
-        IconButton {  // Help: the app's guides, Connect an AI agent, then About and licences (F1 opens that screen)
+        IconButton {  // ? (INTERACTION.md 1.17): Guides (F1, the drawer lists the app's guides), Keys, Connect an AI agent,
+                      // the app's own entries, then About and licences
             id: help
+            objectName: "helpButton"
             anchors.verticalCenter: parent.verticalCenter
-            glyph: "?"; kind: "ghost"; tip: "Help"; down: helpMenu.opened
+            glyph: "?"; kind: "ghost"; tip: "Help"; help: "Guides, keys, connecting an AI agent, About."; down: helpMenu.opened
             onClicked: helpMenu.open()
             Menu {
                 id: helpMenu
                 x: parent.width - width
                 width: 240
-                entries: bar.helpEntries
-                    .concat(typeof agents !== "undefined" && agents ? [{ value: "agents", label: "Connect an AI agent" }] : [])
+                entries: [{ value: "guides", label: "Guides   F1" }, { value: "keys", label: "Keys   Ctrl /" }]
+                    .concat(typeof agents !== "undefined" && agents ? [{ value: "agents", label: "Connect an AI agent…" }] : [])
+                    .concat(bar.helpEntries.filter(e => !/^file:.*\.md$/i.test(e.value)))
                     .concat([{ value: "about", label: "About and licences" }])
                 onPicked: (v) => v === "about" ? bar.aboutClicked() : v === "agents" ? bar.connectAgentClicked()
+                                : v === "guides" ? bar.guidesClicked() : v === "keys" ? bar.keysClicked()
                                 : /^file:.*\.md$/i.test(v) ? bar.guideClicked(v) : bar.helpPicked(v)
             }
         }

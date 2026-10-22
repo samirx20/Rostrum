@@ -123,6 +123,19 @@ def layer_move(ctx, targets, args):
     _set_fields(ctx, targets, args)
 
 
+@REGISTRY.operation("layer.lock", "Lock layers: nobody can change them until they are unlocked.", target=tuple(FIELDS),
+                    label="Lock", importance="secondary")
+def layer_lock(ctx, targets, args):
+    for t in targets:
+        ctx.set(t, "locked", True)
+
+
+@REGISTRY.operation("layer.unlock", "Unlock layers.", target=tuple(FIELDS), label="Unlock", importance="secondary")
+def layer_unlock(ctx, targets, args):
+    for t in targets:
+        ctx.set(t, "locked", False)
+
+
 def _check(data) -> list[str]:
     names = [it["id"] for it in data.get("layers", [])]
     return [] if len(names) == len(set(names)) else ["two layers share an id"]

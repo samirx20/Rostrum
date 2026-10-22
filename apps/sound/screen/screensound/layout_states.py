@@ -12,6 +12,8 @@ from .sample import SOURCE
 LONG_TRACK = "lead_guitar_line_for_the_second_verse_and_bridge"
 LONG_AGENT = "Claude: moved the title card, softened the door knock, and rebalanced the whole second verse against the drums"
 LONG_STATUS = "No graphics driver, so drawing is slower"
+LONG_SONG = "Summer_launch_film_for_the_new_headphones_-_final_score_v3"   # a step's words: _ for spaces
+LONG_FOLDER = r"C:\Users\Sam\Music\Rostrum_deliveries\Summer_launch_film_for_the_new_headphones\final_score_round_three_for_the_client"
 TWELVE = [f"select {LONG_TRACK}"] + [f"set volume {0.5 + n / 100}" if n % 2 else f"set pan {n / 100}" for n in range(12)]
 IGNORE = ()
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
@@ -37,10 +39,14 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("grid-menu", ["--sample"], ["grid-open"]),
         ("export", ["--sample"], ["deliver streaming", "export-open"]),
         ("long-export", long_project(), [*busy, "deliver streaming", "export-open"]),
+        ("export-sheet", long_project(), [*busy, "exportsheet open streaming", f"exportwhere {LONG_FOLDER}"]),   # S34: the kit sheet
+        ("problems-chip", long_project(), [*busy, "problems-demo", "problems open"]),
+        ("job-chip", long_project(), [*busy, "job-show 42"]),
         ("long-editor", long_project(), [*busy, "dock editor"]),
         ("long-mixer", long_project(), [*busy, "dock mixer"]),
         ("long-library", long_project(), [*busy, "library"]),
         ("file-menu", long_project(), [*busy, "file-menu"]),
+        ("start-screen", long_project(), [f"duplicate {LONG_SONG}_{n}" for n in (2, 3)] + ["startscreen open"]),   # long recent names
         ("song", ["--sample"], ["song-open"]),
         ("history-agent-run", ["--sample"], ["agent-run 6", "history open"]),
         ("agent-chip-long", long_project(), [*busy, "agent-run 3", f"agent-say {LONG_AGENT}"]),
@@ -50,4 +56,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("about", ["--sample"], ["about"]),
         ("connect-agent", ["--sample"], ["agents"]),
         ("guide", ["--sample"], ["guide first-song.md"]),
+        ("guides-list", ["--sample"], ["guides open"]),                       # the kit's guides drawer (F1)
+        ("guides-find", ["--sample"], ["guides find a_word_no_guide_has_anywhere_in_its_text_at_all"]),
+        ("key-list", ["--sample"], ["keylist open"]),                          # Ctrl+/
+        ("panels-folded", ["--sample"], ["panels fold"]),                      # Ctrl+\
     ]

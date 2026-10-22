@@ -28,9 +28,12 @@ from .userhome import locked
 
 
 def keep(doc) -> "Live":
-    """Make `doc` (saved in a project folder) live: every change is locked, caught up and saved at once."""
+    """Make `doc` (saved in a project folder) live: every change is locked, caught up and saved at once. A document
+    already live stays as it is (the kit's file model and the window's bridge both ask)."""
     if doc.folder is None or doc.item_id is None:
         raise ValueError("live.keep needs a document saved in a project folder")
+    if doc.live is not None:
+        return doc.live
     live = doc.live = Live(doc)
     with live.door():                       # first save (a new document) and first look
         pass

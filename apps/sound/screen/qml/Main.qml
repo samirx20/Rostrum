@@ -6,7 +6,7 @@ import RostrumKit
 // song makes a sound, Search, Help. Centre: the arrangement, always, with its header strip (+ Add, ⏮ ▶, Record while
 // armed, position, tempo · beats · key, zoom); under it the dock (Editor E / Mixer X; folds away). Left: the Library
 // (Ctrl+L), pushing the arrangement on a wide window and floating over it below 1500 px. Right: the settings panel —
-// the selection's settings, or the song while nothing is selected — or the Export sheet in its place (Ctrl+E).
+// the selection's settings, or the song while nothing is selected — or a kit sheet in its place (Export Ctrl+E, History Ctrl+H).
 // Saving is automatic: there is no Save and no question on closing.
 AppShell {
     id: shell
@@ -28,18 +28,17 @@ AppShell {
     function openLibrary() { workspace.setLibrary(true) }   // (`library`)
     function openGrid() { arrangement.openGrid() }          // (`grid-open`: the Grid menu, open)
     function openPicturePick() { backend.setPictureOpen(true); arrangement.picture.openItems() }     // (`picture-pick`)
-    function openExport() { if (shell.hasSound) mixer.export.setDialogOpen(true) }
-    function exportAgain() { if (shell.hasSound && !mixer.export.busy) mixer.export.start() }   // the last settings
+    function openExport() { if (shell.hasSound) mixer.export.setOpen(true) }
+    // Export: the kit's sheet in the settings panel's place (Ctrl+E; Ctrl+Shift+E again: AppShell), filled with Sound's
+    // targets and settings (screensound/export.py, ExportSettings.qml); the job chip comes with it. Problems: the kit chip.
+    exporter: shell.hasSound ? mixer.export : null
+    exportSettings: ExportSettings { }
+    problems: mixer.problems
     function used() { if (!shell.wide) workspace.setLibrary(false) }   // a narrow window's Library closes after use
-    Shortcut { sequence: "Ctrl+N"; onActivated: fileMenu.newNow() }
-    Shortcut { sequence: "Ctrl+O"; onActivated: fileMenu.openNow() }
-    Shortcut { sequence: "Ctrl+S"; onActivated: fileMenu.saveNow() }
-    Shortcut { sequence: "Ctrl+Shift+S"; onActivated: fileMenu.duplicateNow() }
+    // Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S: the kit's FilesMenu makes them (from the key map)
     Shortcut { sequence: "Ctrl+I"; onActivated: arrangement.addFromFile() }
     Shortcut { sequence: "Ctrl+,"; onActivated: settingsPanel.open() }
     Shortcut { sequence: "Ctrl+Q"; onActivated: Qt.quit() }
-    Shortcut { sequence: "Ctrl+E"; onActivated: shell.openExport() }
-    Shortcut { sequence: "Ctrl+Shift+E"; onActivated: shell.exportAgain() }
     Shortcut { sequence: "R"; enabled: recorder.armed !== ""; onActivated: recorder.toggleRecord() }
 
     // ONE key map for the window (the kit's KeyMap, INTERACTION.md Part 2): every shared key and Sound's own
@@ -50,18 +49,26 @@ AppShell {
         const f = activeFocusItem
         return !!f && f.cursorPosition !== undefined && f.selectByMouse !== undefined      // a text field has the keys
     }
-    KeyMap { hub: backend.actions; enabled: !shell.typing; skip: backend.actions.skip }
+    KeyMap { hub: backend.actions; enabled: !shell.typing && !startScreen.visible; skip: backend.actions.skip }
     // A new selection (a click in the arrangement, the Editor or the Mixer, or a track made from the Library) gives the
     // keys back to the work: a text field (the Library's search, a settings row) never keeps them silently.
     // (A name field opened in place — a new section, M, F2 — keeps them: it is the work.)
     Connections { target: backend; function onPicksChanged() { if (shell.typing && backend.renaming === "") shell.contentItem.forceActiveFocus() } }
-    leading: FileMenu { id: fileMenu; settingsPanel: settingsPanel; anchors.verticalCenter: parent.verticalCenter }
+    menu: FilesMenu {    // ≡ (kit): New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen; then Sound's own
+        id: fileMenu
+        extra: [{ value: "settings", label: "Preferences…", keys: "Ctrl+,", group: "app" },
+                { value: "quit", label: "Quit", keys: "Ctrl+Q", group: "app" }]
+        onPicked: (v) => { if (v === "settings") settingsPanel.open(); else if (v === "quit") Qt.quit() }
+    }
+    // the start screen (kit): at launch with nothing to reopen, or ≡ › Start screen…; over everything while shown
+    StartScreen { id: startScreen; anchors.fill: parent; z: 100; onGuideAsked: (url) => shell.openGuide(url)
+                  anchors.leftMargin: shell.guidesOpen ? (shell.guidesWidth || 0) : 0 }   // a guide opened from it shows beside it
     SettingsPanel { id: settingsPanel }
     actions: [          // the top bar's chips, then Export (kit TopBar: its `actions` slot sits before Search)
         LoudnessReadout { visible: shell.hasSound; compact: shell.width < 1366; anchors.verticalCenter: parent.verticalCenter },
-        Button { visible: shell.hasSound; text: "Export"; kind: "primary"; down: mixer.export.dialogOpen
+        Button { visible: shell.hasSound; text: "Export"; kind: "primary"; down: mixer.export.open
                  anchors.verticalCenter: parent.verticalCenter
-                 onClicked: mixer.export.setDialogOpen(!mixer.export.dialogOpen)
+                 onClicked: mixer.export.setOpen(!mixer.export.open)
                  HoverTip { text: "Export the song (Ctrl+E). Ctrl+Shift+E exports again with the last settings"; hovered: parent.hovered } }
     ]
     left: Library { anchors.fill: parent; visible: shell.wide && workspace.library; onUsed: shell.used() }
@@ -90,14 +97,12 @@ AppShell {
     ]
     right: Item {
         anchors.fill: parent
-        readonly property bool exporting: mixer.export.dialogOpen
-        Inspector { visible: !parent.exporting && backend.selected !== ""; bridge: backend
+        Inspector { visible: backend.selected !== ""; bridge: backend
                     anchors { left: parent.left; right: parent.right; top: parent.top; bottom: clean.top
                               bottomMargin: clean.visible ? Theme.gap : 0 } }
-        SongSettings { visible: !parent.exporting && backend.selected === ""
+        SongSettings { visible: backend.selected === ""
                        anchors { left: parent.left; right: parent.right; top: parent.top; bottom: parent.bottom } }
-        CleanTakeBar { id: clean; visible: !parent.exporting && mixer.cleaning.clip !== ""
+        CleanTakeBar { id: clean; visible: mixer.cleaning.clip !== ""
                        anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: implicitHeight }
-        ExportSheet { visible: parent.exporting; anchors.fill: parent }
     }
 }

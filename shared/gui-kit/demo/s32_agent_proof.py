@@ -84,7 +84,7 @@ def two_d():
              {"op": "layer.add", "target": "film", "args": {"type": "shape", "id": "dot"}}], SAM)
     d.save()
     rt = Runtime(app := make_app(str(folder), ["main"]), app_tools())
-    bridge = Bridge2D(Document.open(folder, "main", KIND), autosave=True)
+    bridge = Bridge2D(Document.open(folder, "main", KIND))
     proof("2d", folder, rt, bridge, {"op": "shape.set", "target": ["dot"], "args": {"x": 321}},
           {"op": "layer.lock", "target": ["dot"]},
           [("the locked layer", {"op": "shape.set", "target": ["dot"], "args": {"x": 5}})],
@@ -116,7 +116,7 @@ def sound():
     d.save()
     note = next(n["id"] for n in d.item("lead")["notes"])
     rt = make_runtime(make_app(str(folder), ["song"]))
-    bridge = SoundBridge(Document.open(folder, "song", KIND), "Proof song", autosave=True)
+    bridge = SoundBridge(Document.open(folder, "song", KIND), "Proof song")
     proof("sound", folder, rt, bridge, {"op": "track.set", "target": ["lead"], "args": {"volume": 0.4}},
           {"op": "track.lock", "target": ["lead"]},
           [("the locked track", {"op": "track.set", "target": ["lead"], "args": {"volume": 0.1}}),

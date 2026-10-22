@@ -105,14 +105,6 @@ class ToolSlots(SlotMixin):
         """Select strokes with a lasso, then move, copy, delete them (stroke_select.py)."""
         return self._strokes
 
-    _focus_area = ""                                    # the area with the keyboard focus, for inspect_screen (screen_seen.py)
-
-    @Slot(str)
-    def setFocusArea(self, name):
-        """QML says which area has the keyboard focus or was clicked: "canvas", "timeline" or "settings". Small on
-        purpose: the kit's AppShell focus handling (S34) can replace it."""
-        self._focus_area = name
-
     @Property(QObject, constant=True)
     def exporter(self):
         """The Export button's job (exporter.py)."""

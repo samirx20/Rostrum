@@ -84,6 +84,15 @@ def stage_sheet(win, hover="hovered"):
     print("hovered:", h.property("hovered"))
 
 
+def demo_guides():
+    """The guides drawer's list in the demo: Rostrum2D's guides (any real guides would do)."""
+    from rostrum_gui.guides import entries
+    folder = HERE.parents[2] / "apps" / "2d" / "guides"
+    pages = sorted(folder.glob("*.md"))
+    return entries(folder, [(p.name, p.read_text(encoding="utf-8").splitlines()[0].lstrip("# ").strip())
+                            for p in pages if p.name != "README.md"])
+
+
 def main():
     a = argparse.ArgumentParser()
     a.add_argument("--step", action="append", default=[])
@@ -99,7 +108,7 @@ def main():
     size = (1040, 860) if args.sheet else (1600, 960)
     if args.size:
         size = tuple(int(v) for v in args.size.split("x"))
-    app, engine, win = start(qml, {"backend": bridge}, size)
+    app, engine, win = start(qml, {"backend": bridge, "guides": demo_guides()}, size)
     code = [0]
 
     def guarded(fn):

@@ -3,6 +3,8 @@ import "."
 
 // A button: "normal" (raised), "primary" (accent) or "ghost" (no box until hovered). Optional key hint at the
 // right ("Ctrl K"). `danger` colours the text red (delete, discard). Click, Space or Enter: one clicked().
+// Hover help (INTERACTION.md 1.17): with a `help` sentence or a key map `job`, resting on it shows its name (`tip`, else
+// its text), the sentence and the key.
 Item {
     id: b
     property string text: ""
@@ -10,6 +12,10 @@ Item {
     property string hint: ""
     property bool danger: false
     property bool down: false            // shown pressed (e.g. a panel that is open)
+    property string tip: ""              // the name in the hover help when the text alone doesn't say it
+    property string help: ""             // one plain sentence of what it does
+    property string job: ""              // its key map job: the key in the hover help (AppShell.keyFor)
+    readonly property string keyName: job && Window.window && Window.window.keyFor ? Window.window.keyFor(job) : ""
     readonly property bool hovered: hoverHandler.hovered
     signal clicked()
     implicitHeight: Theme.button
@@ -39,4 +45,6 @@ Item {
     KeyHint { id: hintBox; visible: b.hint !== ""; text: b.hint
               anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter }
     MouseArea { id: area; anchors.fill: parent; onClicked: b.clicked() }
+    HoverTip { text: b.help || b.keyName && !b.hint || b.tip ? (b.tip || b.text) : ""; help: b.help
+               key: b.hint ? "" : b.keyName; hovered: b.hovered; pressed: area.pressed || b.down }
 }

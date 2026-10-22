@@ -12,11 +12,10 @@ AppShell {
     bridge: backend
     appName: "Rostrum2D"
     helpEntries: guides                 // Help's guides (screen2d/session.py), in the kit's guide viewer
-    documentName: files.label           // the project, and a dot while there are unsaved changes (screen2d/files.py)
-    property bool leaving: false        // closing without asking (session.py replaces the window, or the answer was given)
-    onClosing: (close) => fileFlow.closing(close)
+    documentName: files.hasProject ? files.name : "Untitled"   // the project (the kit's files: rostrum_gui/project_files.py)
     leftWidth: 0
-    saveWord: backend.isLive ? "Saved" : ""      // live (--doc): every change is already on disk; else the title's own dot
+    areaNames: ({ centre: "canvas", right: "settings", bottom: "timeline" })   // inspect_screen's words for the focused area
+    saveWord: backend.isLive ? "Saved" : ""      // a project is live: every change is already on disk
     // The timeline's height is remembered per tool (DESIGN.md › two heights): Move and Pen want every row, Draw a big
     // canvas with only the drawing's own row (compact). {compact, asked}: asked = the height its edge was dragged to
     // (-1: the default for this window). Screen state, never the document.
@@ -46,31 +45,6 @@ AppShell {
                onActivated: { if (backend.strokeSelect.count > 0 || backend.strokeSelect.armed) backend.strokeSelect.clear()   // picked strokes first
                               else backend.setTool("move") } }
 
-    // The area with the keyboard focus or the last click, for inspect_screen (backend.setFocusArea): "canvas", "timeline", "settings".
-    function areaOf(item) {
-        for (var i = item; i; i = i.parent) {
-            if (i === stage) return "canvas"
-            if (i === timeline) return "timeline"
-            if (i === settingsMove || i === settingsDraw) return "settings"
-        }
-        return ""
-    }
-    Connections { target: shell; function onActiveFocusItemChanged() { const a = shell.areaOf(shell.activeFocusItem); if (a !== "") backend.setFocusArea(a) } }
-    function areaAt(p) {        // the area under a window point
-        for (const [name, item] of [["canvas", stage], ["timeline", timeline], ["settings", settingsMove.visible ? settingsMove : settingsDraw]]) {
-            const q = item.mapFromItem(null, p.x, p.y)
-            if (q.x >= 0 && q.y >= 0 && q.x < item.width && q.y < item.height) return name
-        }
-        return ""
-    }
-    Item {      // a click anywhere says which area it was in; only watches (a passive handler on a clear sheet over the window)
-        anchors.fill: parent; z: 100000
-        TapHandler {
-            acceptedButtons: Qt.AllButtons; gesturePolicy: TapHandler.DragThreshold      // passive: the press goes on to what is beneath
-            onPressedChanged: if (pressed) { const a = shell.areaAt(point.scenePosition); if (a !== "") backend.setFocusArea(a) }
-        }
-    }
-
     Connections { target: spaceKey; function onTapped() { backend.togglePlay() } }   // a tap of Space plays; held, it pans (spacekey.py)
     // frame by frame, on the selected drawing (INTERACTION Part 2: , and . step drawings, = and − hold; Alt+arrows nudge)
     // , and . : the playhead to the previous / next thing that happens (a key, a marker, a drawing, a layer's start or end)
@@ -93,7 +67,7 @@ AppShell {
     readonly property bool canvasKeys: backend.tool === "move" && !typing
     KeyMap {
         hub: backend.actions
-        enabled: !shell.typing
+        enabled: !shell.typing && !startScreen.visible
         skip: backend.actions.keys.map(k => k.job).filter(j => j === "delete" || backend.actions.jobs.indexOf(j) < 0)   // keys run here
     }
     Shortcut { sequences: ["Delete", "Backspace"]; enabled: !shell.typing
@@ -103,10 +77,10 @@ AppShell {
     Shortcut {
         sequence: "Escape"; enabled: shell.canvasKeys
         onActivated: {
-            const open = exportPanel.shown || importPanel.shown || problemsPanel.shown || fileMenu.menuOpen || addMenu.menuOpen
+            const open = backend.exporter.open || importPanel.shown || fileMenu.menuOpen || addMenu.menuOpen
             if (backend.stepBack({ popover: open }) === "close") {
-                shell.setExportOpen(false); shell.setImportOpen(false); shell.setProblemsOpen(false)
-                fileMenu.menuOpen = false; addMenu.menuOpen = false
+                shell.setExportOpen(false); shell.setImportOpen(false)
+                fileMenu.closeMenu(); addMenu.menuOpen = false
             }
         }
     }
@@ -123,43 +97,41 @@ AppShell {
     Shortcut { sequence: "Alt+Up"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, -0.1) }
     Shortcut { sequence: "Alt+Down"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, 0.1) }
 
-    function setExportOpen(open) { exportPanel.shown = open; if (open) { importPanel.shown = false; problemsPanel.shown = false } }
-    function setImportOpen(open) { importPanel.shown = open; if (open) { exportPanel.shown = false; problemsPanel.shown = false } }
-    function setProblemsOpen(open) { problemsPanel.shown = open; if (open) { exportPanel.shown = false; importPanel.shown = false } }
-    function setFileMenuOpen(open) { fileMenu.menuOpen = open }
-    function askClose() { shell.close() }
+    function setExportOpen(open) { backend.exporter.setOpen(open); if (open) importPanel.shown = false }
+    function setImportOpen(open) { importPanel.shown = open; if (open) backend.exporter.setOpen(false) }
+    function setFileMenuOpen(open) { if (open) fileMenu.openMenu(); else fileMenu.closeMenu() }
     function openLayerMenu(id) { timeline.openMenu(id) }
     function openCanvasMenu() { stage.openMenu() }
     function setAddOpen(open) { if (open) addMenu.menuOpen = true; else addMenu.menuOpen = false }
 
+    // Export: the kit sheet in the inspector's place (Ctrl+E; Ctrl+Shift+E again), filled with 2D's formats
+    // (screen2d/exporter.py); the job chip comes with it. Problems: the kit chip, only while something is wrong.
+    exporter: backend.exporter
+    exportSettings: ExportSettings { }
+    problems: backend.problems
     actions: [
-        Button {        // only while something is wrong (screen2d/problems.py)
-            visible: backend.problems.count > 0
-            text: backend.problems.count + (backend.problems.count === 1 ? " problem" : " problems")
-            down: problemsPanel.shown; onClicked: shell.setProblemsOpen(!problemsPanel.shown)
-        },
         AddMenu { id: addMenu },
         Button { text: "Import"; down: importPanel.shown; onClicked: shell.setImportOpen(!importPanel.shown) },
-        IconButton { glyph: "↗"; tip: "Export"; down: exportPanel.shown; onClicked: shell.setExportOpen(!exportPanel.shown) }
+        Button { text: "Export"; kind: "primary"; down: backend.exporter.open; onClicked: shell.setExportOpen(!backend.exporter.open) }
     ]
-    FileFlow { id: fileFlow; window: shell }
+    // the start screen (kit): at launch with nothing to reopen, or ≡ › Start screen…; over everything while shown
+    StartScreen { id: startScreen; anchors.fill: parent; z: 100; onGuideAsked: (url) => shell.openGuide(url)
+                  anchors.leftMargin: shell.guidesOpen ? (shell.guidesWidth || 0) : 0 }   // a guide opened from it shows beside it
     StaggerPopover { x: (shell.width - width) / 2; y: 104 }   // the context bar's Stagger… (stagger.py): under the bar
     centre: [
         Stage { id: stage; anchors.fill: parent; typing: shell.typing },   // typing: F stays a letter (ViewControls.qml)
-        ExportPanel {   // opened by the Export button; docked on the canvas's right edge, beside the inspector (never over it)
-            id: exportPanel
-            anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
+        EmptyHint {     // a new scene (the kit's empty state, INTERACTION.md 1.16): gone with the first layer
+            visible: backend.layers.length === 0 && backend.tool === "move"
+            anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: Theme.groupGap * 3 }
+            width: Math.min(460, parent.width - 4 * Theme.gap)
+            text: "Draw a shape (R), type (T), paint (B), or drop a file here."
         },
-        ImportPanel {   // opened by the Import button; same place as the export panel (one open at a time)
+        ImportPanel {   // opened by the Import button, on the canvas (opening the Export sheet closes it)
             id: importPanel
-            anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
-        },
-        ProblemsPanel { // opened by the Problems button; same place again
-            id: problemsPanel
             anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
         }
     ]
-    leading: FileMenu { id: fileMenu; onAct: (key) => fileFlow.act(key) }
+    menu: FilesMenu { id: fileMenu }    // ≡: New, Open, Open recent, Duplicate, Save a version … (kit; saving is automatic)
     right: [
         Inspector { id: settingsMove; anchors.fill: parent; bridge: backend; keyMarks: true; visible: backend.tool !== "draw"
                     highlight: backend.keys.props },      // the settings whose keys are picked (key_select.py)
