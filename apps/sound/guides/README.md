@@ -8,7 +8,8 @@ Short pages in everyday words, with the names of the real buttons.
    selecting and the context bar, keys, playing.
 2. [Recording](recording.md): choose a microphone, arm a track, record, punch in, and make a cleaner take.
 3. [Exporting](exporting.md): the Export sheet: what for, file, quality, stems, and where the files go.
-4. [Preferences](settings.md): every preference explained.
+4. [Groups, versions and delivery](arranging-and-delivering.md): groups, Swap, Before / After, Speak again, For the Editor, the main mix, Cues from 2D.
+5. [Preferences](settings.md): every preference explained.
 
 ## For agents
 

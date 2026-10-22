@@ -46,7 +46,8 @@ from screensound.song_panel import SongPanel
 
 GUIDES = guides.entries(Path(__file__).resolve().parents[1] / "guides", [
     ("first-song.md", "Making your first song"), ("recording.md", "Recording"), ("exporting.md", "Exporting"),
-    ("settings.md", "Settings"), ("README.md", "All guides")])
+    ("arranging-and-delivering.md", "Groups, versions and delivery"), ("settings.md", "Settings"),
+    ("README.md", "All guides")])
 from screensound.steps import do_step, wait_render
 
 HERE = Path(__file__).resolve().parent
