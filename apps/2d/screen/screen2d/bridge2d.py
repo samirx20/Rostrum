@@ -21,9 +21,12 @@ from .hooks import Hooks2D
 from .action_slots import ActionSlots
 from .layer_order import LayerOrder
 from .painter import Painter
+from .paint_edge import PaintEdge
+from .sharp import Sharp
 from .playback import Playback, size_offered
 from .playstats import STATS
 from .clipboard import ClipboardSlots
+from .key_edits import KeyEdits
 from .render3d_watch import Render3DWatch
 from .shown import ShownState
 from .tools2d import ToolSlots
@@ -33,7 +36,7 @@ from .undo_state import UndoState
 TOOLS = ("move", "pen", "draw", "rect", "ellipse", "text")      # what the mouse does on the canvas (setTool)
 
 
-class Bridge2D(ShownState, ClipboardSlots, UndoState, ActionSlots, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
+class Bridge2D(ShownState, KeyEdits, ClipboardSlots, UndoState, ActionSlots, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     toolChanged = Signal()
     frameChanged = Signal()
@@ -64,6 +67,7 @@ class Bridge2D(ShownState, ClipboardSlots, UndoState, ActionSlots, LayerOrder, F
         self.frames.failed.connect(self._fail)
         self.frames.note.connect(self._set_status)         # no graphics driver: said once (frames.py)
         self.painter = Painter(self)
+        self._paint_edge, self._sharp = PaintEdge(self), Sharp(self, self.frames)   # paint_edge.py, sharp.py
         self._make_tools()                                  # pen, curves, export, import, add, problems (tools2d.py)
         self.play = Playback(self)                          # playing: follows the clock (playback.py)
         self.play.changed.connect(self.playingChanged)
@@ -90,6 +94,8 @@ class Bridge2D(ShownState, ClipboardSlots, UndoState, ActionSlots, LayerOrder, F
     undoLabel = Property(str, UndoState.undo_label, notify=historyChanged)         # "" = nothing to undo
     redoLabel = Property(str, UndoState.redo_label, notify=historyChanged)
 
+    paintEdge = Property(QObject, lambda self: self._paint_edge, constant=True)   # the paint target's edge (paint_edge.py)
+    sharp = Property(QObject, lambda self: self._sharp, constant=True)           # past Full, drawn sharp (sharp.py)
     actions = Property(QObject, lambda self: self._hub, constant=True)   # the context bar, menus, keys (action_slots.py)
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
@@ -262,7 +268,8 @@ class Bridge2D(ShownState, ClipboardSlots, UndoState, ActionSlots, LayerOrder, F
                 self._scene = False                         # tried; the next change tries again
                 self._fail(str(e))
         if self._scene:
-            self.frames.request(self._scene, self._t, self.play.samples(), self.frame_scale(), self.frame_tag())
+            self.frames.request(self._scene, self._t, self.play.samples(), self.frame_scale(), self.frame_tag(),
+                                **self.frame_extras())
         elif self._shown is not None:                       # no picture for this state: the overlays go live
             self._shown = None
             self.shownChanged.emit()

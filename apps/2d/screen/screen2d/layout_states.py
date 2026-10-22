@@ -11,6 +11,8 @@ from .sample import SOURCE
 
 LONG_LAYER = "Title card for the summer launch film, second take"
 LONG_STATUS = "No graphics driver, so drawing is slower"
+PAINTED = ["select card", "tool draw", "draw 600 300 900 330 1200 300"]
+LONG_PAINT = 'paint_3 name "Line art for the summer launch film, cleaned up"'     # the third paint layer, renamed
 TWELVE = ["select card"] + [f"set {'xy'[n % 2]} {500 + n}" for n in range(12)]   # 12 changes (x, y in turn: no merging)
 # What the check leaves out on purpose: the canvas' own handles are small drag targets on the picture by design.
 IGNORE = ()
@@ -62,4 +64,13 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("pen-tool", ["--sample"], ["tool pen", "pen 300,300 600,320"]),
         ("paint-on-shape", ["--sample"], ["select card", "tool draw", "draw 600 300 900 330 1200 300"]),
         ("keys-picked", ["--sample"], ["select title", "showanim", "keypick title.opacity.k900", "keypick title.y.k1000 ctrl"]),
+        # H30: the key bar (one key; a spring), a key's Ease list, Stagger's popover
+        ("key-bar-one", ["--sample"], ["select title", "showanim", "keypick title.opacity.k900"]),
+        ("key-bar-spring", ["--sample"], ["select title", "showanim", "keypick title.y.k200", "ease spring"]),
+        ("key-ease-menu", ["--sample"], ["select title", "showanim", "keypick title.y.k200", "easemenu"]),
+        ("stagger-popover", ["--sample"], ["selectmany title card", "stagger 3 open"]),
+        # H30: painting's bar (Fill on, Close gaps), the "Paint on …" group with 3 paint layers, one with a long name
+        ("paint-fill", ["--sample"], [*PAINTED, "fillmode on"]),
+        ("paint-layers", ["--sample"], [*PAINTED, "paintlayer", "draw 600 400 1200 420", "paintlayer",
+                                        "draw 600 500 1200 520", f"paintset {LONG_PAINT}"]),
     ]

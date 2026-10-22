@@ -15,8 +15,8 @@ import RostrumKit
 // endStroke). A pen reports its pressure; a mouse is 1. The onion skin lies over the drawing's box. With the Pen tool
 // on, PenOverlay takes the clicks.
 // View: Ctrl+wheel / pinch zooms around the pointer, wheel / Shift+wheel scroll, Space+drag or middle-drag pans;
-// the keys and the "Fit · 50 % ▾" menu are ViewControls.qml. The engine draws the frame at the size shown, up to Full
-// (backend.setView: screen2d/shown.py).
+// the keys and the "Fit · 50 % ▾" menu are ViewControls.qml. The engine draws the frame at the size shown, up to Full, and past
+// Full the visible part again at the size shown (backend.setView: screen2d/shown.py; backend.sharp: screen2d/sharp.py).
 Panel {
     id: panel
     objectName: "stage"                 // scripted steps reach the view through it (screen2d/view_steps.py)
@@ -47,7 +47,15 @@ Panel {
         if (e.x0 === undefined) view.fitAll(); else view.fitBox(e.x0, e.y0, e.x1, e.y1)
     }
     onCompScaleChanged: backend.setView(compScale, Screen.devicePixelRatio)
-    Component.onCompleted: backend.setView(compScale, Screen.devicePixelRatio)
+    Component.onCompleted: { backend.setView(compScale, Screen.devicePixelRatio); settle.restart() }
+    // Past Full the visible part is drawn again at the size shown (backend.sharp: screen2d/sharp.py), once the view settles.
+    readonly property var visibleKey: [view.zoom, view.ox, view.oy, well.width, well.height]
+    onVisibleKeyChanged: settle.restart()
+    Timer {
+        id: settle; interval: 150
+        onTriggered: { const a = panel.inWell(0, 0), b = panel.inWell(well.width, well.height)
+                       backend.sharp.setVisible(a.x, a.y, b.x, b.y, Screen.devicePixelRatio) }
+    }
     headerRight: Text { text: panel.info.width + " × " + panel.info.height + "  ·  " + panel.info.fps + " fps"
                         color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
 
@@ -67,6 +75,14 @@ Panel {
                 anchors.fill: parent
                 source: backend.frame > 0 ? "image://frame/" + backend.frame : ""
                 cache: false; smooth: view.zoom < 2; mipmap: view.zoom < 1   // from 200 %: the export's own pixels, unblurred
+            }
+            Image {  // past Full: the visible part drawn again at the size shown (backend.sharp), over the enlarged frame
+                readonly property var c: backend.sharp.picture
+                visible: c.serial !== undefined
+                x: (c.x || 0) * view.zoom; y: (c.y || 0) * view.zoom
+                width: (c.w || 0) * view.zoom; height: (c.h || 0) * view.zoom
+                source: c.serial ? "image://framecrop/" + c.serial : ""
+                cache: false; smooth: true
             }
             Image {  // onion skin: the neighbouring drawings, tinted, over the selected drawing's box
                 readonly property var b: backend.selBox
@@ -97,7 +113,8 @@ Panel {
                 readonly property real pressure: point.pressure > 0 ? point.pressure : 1
                 property bool drawing: false
                 onActiveChanged: {
-                    if (active) { var p = at(); drawing = painter.beginStroke(p.x, p.y, pressure) }
+                    if (active && backend.fill.on) { var q = at(); backend.fill.fillAt(q.x, q.y); drawing = false }   // Fill (G): a click fills
+                    else if (active) { var p = at(); drawing = painter.beginStroke(p.x, p.y, pressure) }
                     else { if (drawing) painter.endStroke(); drawing = false }
                 }
                 onPointChanged: { if (active && drawing) { var p = at(); painter.strokeTo(p.x, p.y, pressure) } }
@@ -159,7 +176,16 @@ Panel {
                 delegate: Handles {
                     required property var modelData
                     box: modelData; fit: view.zoom; space: marks
+                    visible: !(well.drawing && backend.paintEdge.layer === modelData.id)   // painting: its true edge instead
                     editable: backend.multi.count === 1 && !well.drawing && modelData.type !== "path" && !backend.pen.on
+                }
+            }
+            Shape {  // painting: the target's true edge, the limit its paint stays inside (backend.paintEdge, composition px)
+                visible: well.drawing && backend.paintEdge.path !== ""
+                scale: view.zoom; transformOrigin: Item.TopLeft
+                ShapePath {
+                    strokeWidth: 1.5 / view.zoom; strokeColor: Theme.accent; fillColor: "transparent"
+                    PathSvg { path: backend.paintEdge.path }
                 }
             }
             Rectangle {  // the rubber band

@@ -35,8 +35,14 @@ class FakeEngine:
     def still(self, t, png):
         QImage(4, 4, QImage.Format.Format_RGB32).save(str(png))
 
-    def pixels(self, t, samples=None, scale=1.0):
+    placed = {}
+
+    def pixels(self, t, samples=None, scale=1.0, view=None, place=None):
+        self.placed = {i: self.place(t, [i])[i] for i in place or []}
         return memoryview(bytearray(4 * 4 * 4)), 4, 4, 16
+
+    def place(self, t, ids):           # every layer at the comp's origin, unturned (the real one: engine `place`)
+        return {i: {"m": [1, 0, 0, 0, 1, 0, 0, 0, 1], "w": 320.0, "h": 180.0, "edge": ""} for i in ids}
 
     def measure(self, items):
         return {i["id"]: (0.5 * i["size"] * len(i["body"]), i["size"] * i["lineHeight"]) for i in items}
@@ -106,12 +112,14 @@ def test_drag_in_an_auto_layout_reorders_in_one_undo_step(bridge):
 def test_key_drag_is_one_step_and_keeps_the_key(bridge):
     key = keys_of(bridge.doc.item("title"), "opacity")[1]["id"]
     n = len(bridge.doc.history.changes)
+    bridge.keys.click([key], "", [])             # a press picks the diamond first (KeyDot.qml)
     assert bridge.beginKeyDrag(key)
     for t in (1.1, 1.26, 1.5):
         bridge.keyDragTo(t)
     bridge.endDrag()
     assert len(bridge.doc.history.changes) == n + 1
-    assert bridge.doc.item(key)["t"] == 1.5 and bridge.selected == key
+    assert bridge.doc.item(key)["t"] == 1.5 and bridge.keys.ids == [key]
+    assert bridge.selected == "title"               # keys never enter the selection: the panel keeps the layer
 
 
 def test_pen_stroke_is_one_undo_step_and_one_change(bridge):

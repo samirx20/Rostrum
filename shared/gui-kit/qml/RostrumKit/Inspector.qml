@@ -10,6 +10,8 @@ Panel {
     id: panel
     property var bridge
     property bool keyMarks: false        // an app with keys: rows show key marks (see InspectorRow)
+    property var highlight: []           // field ids marked as in focus (2D: the settings whose keys are picked)
+    property alias below: belowSlot.data // an app's own group under the rows, in the same scroll (2D: "Paint on …")
     readonly property bool finds: !!panel.bridge.sectioned
     title: "Inspector"
 
@@ -48,8 +50,10 @@ Panel {
             Repeater {
                 id: rowsView
                 model: panel.bridge.rows
-                delegate: InspectorRow { bridge: panel.bridge; keyMarks: panel.keyMarks }
+                delegate: InspectorRow { bridge: panel.bridge; keyMarks: panel.keyMarks
+                                         highlighted: model.row === "param" && panel.highlight.indexOf(model.id) >= 0 }
             }
+            Column { id: belowSlot; width: parent.width }
         }
         Text { visible: panel.finds && panel.bridge.nothingFound; text: "No setting matches"; y: Theme.grid
                color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body }

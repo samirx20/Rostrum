@@ -29,8 +29,11 @@
     exportto <path> [replace|both|cancel] | exportshow (export_steps.py)
   Files (file_steps.py): new [name] | save | saveas <name> | openproject <path> | autosave | restore | discard |
     filemenu open|close | askclose
-  Keys (key_steps.py): keypick <id>[,<id>…] [ctrl|shift] | keydrag2 <key> <from s> <to s> | keydelete | showanim
+  Keys (key_steps.py): keypick | keybox | keydrag2 | keystretch | keydelete | showanim | ease | easekey | easecurve |
+    spring | keytime | keyvalue | easemenu | keyhere (K) | keycopy | keypaste | stagger <f> [order] [open] | event prev|next
   Creation tools (create_steps.py): shape <rect|ellipse> x0 y0 x1 y1 [shift] [alt] | text <x> <y> <words> | textbox x0 y0 x1 y1 <words> | edittext <layer> <words>
+  Paint (paint_steps.py): fill <x> <y> | fillmode on|off | gap <size> | paintpick|paintremove <paint> | paintset <paint> <field> <v> |
+    paintmove <paint> <row> | painttoggle <field> on|off
   View (view_steps.py): zoom <percent|fit> [x y] | pan <dx> <dy> | fitsel | viewmenu | draghold <layer> <dx> <dy> [ctrl] [shift]
 A step that leaves an error in the status fails (nonzero exit).
 """
@@ -45,6 +48,7 @@ from .create_steps import WORDS as CREATE_WORDS, do_create_step
 from .export_steps import WORDS as EXPORT_WORDS, do_export_step
 from .key_steps import WORDS as KEY_WORDS, do_key_step
 from .file_steps import WORDS as FILE_WORDS, do_file_step
+from .paint_steps import WORDS as PAINT_WORDS, do_paint_step
 from .view_steps import WORDS as VIEW_WORDS, do_view_step
 
 
@@ -338,6 +342,8 @@ def do_step(bridge, win, step):
         do_view_step(bridge, win, word, rest, step)
     elif word in CREATE_WORDS:
         do_create_step(bridge, word, rest, step)
+    elif word in PAINT_WORDS:                    # Fill, the paint layers panel (paint_steps.py)
+        do_paint_step(bridge, word, rest, step)
     else:
         raise ValueError(f"unknown step {step!r}")
     if bridge.status.startswith("Error"):
