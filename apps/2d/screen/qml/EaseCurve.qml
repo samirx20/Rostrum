@@ -41,7 +41,7 @@ Item {
             width: 7; height: 7; radius: 3.5; color: Theme.fg; border.color: Theme.accent
             x: c.px(c.h[2 * modelData]) - 3.5; y: c.py(c.h[2 * modelData + 1]) - 3.5
             MouseArea {
-                anchors.fill: parent; anchors.margins: -2; preventStealing: true; cursorShape: Qt.SizeAllCursor
+                anchors.fill: parent; anchors.margins: -5; preventStealing: true; cursorShape: Qt.SizeAllCursor
                 property bool held: false
                 onPressed: held = backend.keyBar.begin("curve")
                 onPositionChanged: (m) => {
