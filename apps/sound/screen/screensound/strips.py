@@ -2,19 +2,15 @@
 
 A strip is a plain dict: id, name, volume, pan, mute, solo, the insert chain in order, and a meter that is
 `{}` (absent) until a render has measured the track. The master is one more strip, the one with id "master".
-The master's loudness rows come from `master.set`'s own params (Loudness group, primary), so the loudness
-target appears only while normalize is on, by `valid_when`.
+The master's delivery settings (Normalize, the loudness target) are in the Deliver dialog and the inspector.
 """
 from __future__ import annotations
 
 import math
 
-from rostrum_gui import rows
-
 from . import plugin_rows
 
 MASTER = "master"
-LOUDNESS = "Loudness"
 EFFECT_NAMES = {"eq": "EQ", "deess": "De-ess", "dehum": "De-hum"}
 
 
@@ -98,7 +94,3 @@ def routing(item: dict, buses: list[dict], label) -> dict:
             "sendTargets": [] if item["type"] != "track" else [{"id": b["id"], "name": label(b)} for b in buses
                                                                if b["id"] not in used]}
 
-
-def master_layout(op) -> list[dict]:
-    """The master strip's extra rows: the Loudness group's primary params (normalize, loudness)."""
-    return [r for r in rows.layout(op) if r["row"] == "param" and r["group"] == LOUDNESS and r["importance"] == "primary"]

@@ -5,12 +5,18 @@ import RostrumKit
 // the ticks) and beats per bar: a number at each labelled bar (its
 // start in seconds after it, dimmer), beat ticks, the playhead's head. Press or drag sets the time.
 // With a track armed and punch on (the take panel), the punch range is shaded here too: a drag across the ruler
-// sets it, its edges drag (takeSetup.setPunch: a quarter beat grid, Shift = free; screen state, not an edit).
+// sets it, its edges drag (takeSetup.setPunch: a quarter beat grid, Ctrl = free; screen state, not an edit).
 // xOf(t) / tOf(x) are the one mapping the rows, markers and piano roll use too: backend.viewStart and
 // backend.viewSpan (the zoom and scroll) are the one place that says which stretch of the song is on screen.
+// The range band (the top `band` px, INTERACTION.md §1.6): drag on it for the time range (backend.setRange: snapped
+// to the grid, Ctrl = free; screen state, shaded here and faintly over the rows by the host); double-click clears it.
+// Below it, the time scale: click or drag moves the playhead (scrub). Right-click: the ruler's menu (menuAt).
 // Wheel: Ctrl zooms around the pointer, Shift or a sideways swipe scrolls (the one rule, in backend.viewWheel).
 Item {
     id: r
+    signal menuAt(real t, real x, real y)
+    readonly property int band: 7
+    readonly property var range: backend.timeRange
     readonly property var song: backend.song
     readonly property real length: song.length
     readonly property real barSec: song.spb * song.beatsPerBar
@@ -58,8 +64,8 @@ Item {
         delegate: Row {
             required property int index
             readonly property real t: r.song.beats[index * r.every * r.song.beatsPerBar] || 0
-            x: Math.round(r.xOf(t)) + 4; y: 3; spacing: 5
-            visible: r.xOf(t) > -40 && r.xOf(t) < r.width - 20
+            x: Math.round(r.xOf(t)) + 4; y: r.band - 1; spacing: 5
+            visible: r.xOf(t) >= -4 && r.xOf(t) < r.width - 20      // a label that would be cut at the left is left out
             Text { text: index * r.every + 1; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
                    font.features: { "tnum": 1 } }
             Text { visible: r.showSeconds; text: (Math.round(parent.t * 10) / 10) + " s"; color: Theme.fg4
@@ -71,12 +77,16 @@ Item {
         anchors.fill: parent
         preventStealing: true
         hoverEnabled: true
-        property int mode: 0                 // 0: the time, 1: a new punch range, 2: its in edge, 3: its out edge
+        property int mode: 0                 // 0: the time, 1: a new punch range, 2: its in edge, 3: its out edge, 4: a time range
         property real x0: 0
         property real other: 0               // the edge that stays while one is dragged
-        cursorShape: r.punchEdge(mouseX) ? Qt.SizeHorCursor : Qt.PointingHandCursor
+        cursorShape: r.punchEdge(mouseX) || mouseY < r.band ? Qt.SizeHorCursor : Qt.PointingHandCursor
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        onDoubleClicked: (m) => { if (m.y < r.band) backend.clearRange() }
         onPressed: (m) => {
             x0 = m.x
+            if (m.button === Qt.RightButton) { mode = -1; r.menuAt(r.tOf(m.x), m.x, m.y); return }
+            if (m.y < r.band) { mode = 4; return }
             var e = r.punchEdge(m.x)
             mode = e ? e + 1 : 0
             if (e) other = r.punch[e === 1 ? 1 : 0]
@@ -84,15 +94,25 @@ Item {
         }
         onPositionChanged: (m) => {
             if (!pressed) return
-            var free = (m.modifiers & Qt.ShiftModifier) !== 0
+            var free = (m.modifiers & Qt.ControlModifier) !== 0       // Ctrl = no snapping (DESIGN.md §5)
             if (mode === 0 && r.punchOn && Math.abs(m.x - x0) > 6) mode = 1
-            if (mode === 1) takeSetup.setPunch(r.tOf(x0), r.tOf(m.x), free)
-            else if (mode >= 2) takeSetup.setPunch(r.tOf(m.x), other, free)
-            else backend.setTime(r.tOf(m.x))
+            if (mode === 0) backend.setTime(r.tOf(m.x))                  // the scale: scrub
+            else if (mode === 1) takeSetup.setPunch(r.tOf(x0), r.tOf(m.x), free)
+            else if (mode === 4 && Math.abs(m.x - x0) >= 4) backend.setRange(r.tOf(x0), r.tOf(m.x), free)
+            else if (mode === 2 || mode === 3) takeSetup.setPunch(r.tOf(m.x), other, free)
         }
         onReleased: mode = 0
         onWheel: (w) => backend.viewWheel(w.angleDelta.x, w.angleDelta.y, (w.modifiers & Qt.ControlModifier) !== 0,
                                           (w.modifiers & Qt.ShiftModifier) !== 0, w.x / r.width, false)
+    }
+    Rectangle {   // the range band: a faint strip, the time range strong in it
+        width: r.width; height: r.band; color: Qt.rgba(1, 1, 1, 0.03)
+        Rectangle {
+            visible: r.range.length === 2
+            x: visible ? Math.max(0, r.xOf(r.range[0])) : 0; height: parent.height; radius: 2
+            width: visible ? Math.max(2, Math.min(r.width, r.xOf(r.range[1])) - x) : 0
+            color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, backend.looping ? 0.85 : 0.5)
+        }
     }
     Rectangle {  // the playhead: a line through the ruler, its head at the top
         visible: r.visibleX(x)

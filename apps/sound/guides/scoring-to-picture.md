@@ -5,9 +5,10 @@ This page covers the tools; what the music should do is yours to decide.
 
 ## 1. See the picture
 
-- **On the screen:** Timeline › "Picture" in the piano roll's header opens a corner with the video frame at the playhead.
-  It plays along while you play. Pick a project item's latest render or a file; an item reference follows the item's
-  newest render.
+- **On the screen:** **+ Add › Picture to work to…** (or **+ Add › From a file…** with a video) opens the Picture panel
+  at the arrangement's top right, with the video frame at the playhead. It plays along while you play. Pick a project
+  item's latest render or a file; an item reference follows the item's newest render. Once a picture is set,
+  **Picture** in the arrangement's header strip shows and hides it.
 - **As an agent:** `look_video` with `video` = the file: `what: "sheet"` for the whole clip at a glance, `"motion"` for
   sudden stops and big moves (impact candidates, with times), `"frames"` around one time to check an event frame by frame.
   Every picture is labelled with time and frame number.
@@ -25,7 +26,7 @@ A marker is a named time (`marker.add` with `name` and `at`). Anything else can 
 | `"#logo+0.5"` / `"#logo-1"` | half a second after / one second before it |
 
 Put hits, clips, sections, automation points and look-tool checks on markers (`"#logo"`), never on a copied number.
-When the cut moves, move the marker once (`marker.set`, or drag it on the Timeline's marker band) and everything on it
+When the cut moves, move the marker once (`marker.set`, or drag it on the arrangement's marker band) and everything on it
 follows. Times keep the form they were written in: a drag on the screen never turns `"#logo+0.5"` into seconds.
 
 Markers shared with other apps (a 2D "logo lands" read by Sound) come through the project service (`inspect_markers`

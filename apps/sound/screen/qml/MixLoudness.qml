@@ -3,32 +3,19 @@ import QtQuick.Layouts
 import RostrumKit
 import "MixFormat.js" as F
 
-// The master's loudness, from the render that plays: the normalize / target rows (by valid_when), the delivery target
-// (only while normalize is on), the short-term loudness at the playhead with its curve, the true peak (so far while
-// playing, else the whole mix), the integrated loudness of the whole mix, and the pass / miss line against the target.
+// The master's loudness, from the render that plays: the short-term loudness at the playhead with its curve (and the
+// target as a dashed line), the true peak (so far while playing, else the whole mix), the integrated loudness of the
+// whole mix, and the pass / miss line against the target. Choosing the target is in the Deliver dialog.
 ColumnLayout {
     id: l
-    property var proxy                                  // what an InspectorRow calls on its "bridge": the master
     readonly property var meter: mixer.loudness
     readonly property var target: meter.target
     readonly property var info: mixer.master
     readonly property bool measured: !!info.meter && info.meter.lufs !== undefined
     spacing: Theme.gap
 
-    Column {
-        Layout.fillWidth: true
-        Repeater { model: mixer.masterRows; delegate: InspectorRow { bridge: l.proxy } }
-    }
-    MixPick {   // where it is going: one pick sets the target's loudness and true peak together
-        visible: l.target.shown
-        Layout.fillWidth: true; Layout.preferredHeight: 22
-        popupWidth: 200
-        text: "Deliver to: " + l.target.label
-        choices: (l.target.choices || []).map(c => ({ id: c.id, label: c.label + "   " + c.detail }))
-        onPicked: (id) => l.meter.choose(id)
-    }
     Text { visible: !l.measured; Layout.fillWidth: true; Layout.fillHeight: true; verticalAlignment: Text.AlignTop; wrapMode: Text.WordWrap
-           text: "Render to measure loudness"; color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.body }
+           text: "Measuring the loudness…"; color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.body }
     ColumnLayout {   // the curve takes the height that is left: no dead space in the strip
         visible: l.measured
         Layout.fillWidth: true; Layout.fillHeight: true; spacing: 2

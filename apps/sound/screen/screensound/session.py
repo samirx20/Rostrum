@@ -1,19 +1,24 @@
-"""The open song and the window around it: New, Open, Open recent, Save As, crash recovery (projects.py does the
-files; this swaps what is on screen). QML sees it as `songs`.
+"""The open song and the window around it: New, Open, Open recent, Duplicate, Show folder, crash recovery
+(projects.py does the files; this swaps what is on screen). QML sees it as `songs`.
 
-Switching songs builds a fresh bridge and pages for the new document and loads the window again; the old window
-and its engine processes are closed first. Leaving an untitled song that has changes asks first (`askKeep`):
-Save… (then the switch goes on), Don't keep, or Cancel.
+Saving is automatic (INTERACTION.md §1.19): every change is on disk as it happens, so there is no Save, no "unsaved"
+mark and no question when leaving a song. A brand-new song nobody changed is removed when it is left, so pressing
+New and going elsewhere leaves nothing behind. Switching songs builds a fresh bridge for the new document and loads
+the window again; the old window and its engine processes are closed first. (Kit piece 13 replaces this later.)
 """
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
+from PySide6.QtGui import QDesktopServices
 
 from rostrum_sound import opening
 
 from . import projects
+
+VERSIONS_LATER = "Everything is saved as you go. Named versions come with the History sheet."
 
 
 def local(path_or_url: str) -> Path:
@@ -22,23 +27,17 @@ def local(path_or_url: str) -> Path:
 
 class Songs(QObject):
     changed = Signal()
-    askKeep = Signal()                 # an untitled song with changes is about to be left: Save… / Don't keep / Cancel
-    wantSaveAs = Signal()              # open the Save As dialog
-    recoverOffered = Signal()          # untitled songs left by a crash are waiting (`recoverable`)
-    refused = Signal()                 # an open or save was refused: `error` says why
+    recoverOffered = Signal()          # untitled songs left by a crash (from before saving was automatic) are waiting
+    refused = Signal()                 # an open or a duplicate was refused: `error` says why
 
     def __init__(self, show, parent=None):
-        """`show(doc, name, untitled)` puts a document on screen (main.py: bridge, pages, window)."""
+        """`show(doc, name)` puts a document on screen (main.py: bridge, its parts, window)."""
         super().__init__(parent)
-        self._show, self._doc, self._pending, self._error = show, None, None, ""
+        self._show, self._doc, self._error = show, None, ""
         self._recoverable: list[Path] = []
-        self._drop = None              # an untitled song the person chose not to keep: removed once it is left
+        self._fresh: set[str] = set()      # songs made by New in this window (removed when left untouched)
 
     # ---- reads -------------------------------------------------------------------------------------------------
-    @Property(bool, notify=changed)
-    def untitled(self):
-        return bool(self._doc) and projects.is_untitled(self._doc.folder)
-
     @Property(str, notify=changed)
     def folder(self):
         return str(self._doc.folder) if self._doc else ""
@@ -59,10 +58,7 @@ class Songs(QObject):
 
     @Property(str, constant=True)
     def projectsFolder(self):
-        return QUrl.fromLocalFile(str(projects.settings.projects_dir())).toString()
-
-    def needs_asking(self) -> bool:
-        return self.untitled and projects.changed(self._doc)
+        return QUrl.fromLocalFile(str(projects.songs_root())).toString()
 
     # ---- opening --------------------------------------------------------------------------------------------------
     def start(self, doc, refused: str = ""):
@@ -80,61 +76,61 @@ class Songs(QObject):
 
     def _put(self, doc):
         old = self._doc
-        name = projects.title(doc.folder, doc.item_id)
-        untitled = projects.is_untitled(doc.folder)
-        self._show(doc, name + (" — not saved yet" if untitled else ""), untitled)
+        self._show(doc, projects.title(doc.folder, doc.item_id))
         projects.lock(doc.folder)
         if old is not None and Path(old.folder) != Path(doc.folder):
             projects.unlock(old.folder)
-            if projects.is_untitled(old.folder) and (not projects.changed(old) or self._drop == old.folder):
-                projects.discard_untitled(old.folder)          # an untouched (or not kept) untitled song leaves nothing
+            self._drop_if_untouched(old)
         self._doc, self._error = doc, ""
         projects.remember(doc.folder, doc.item_id)
         self.changed.emit()
 
-    def _go(self, action):
-        """Run `action` now, or after asking when it would leave an untitled song with changes."""
-        if self.needs_asking():
-            self._pending = action
-            self.askKeep.emit()
-            return
-        self._try(action)
+    def _drop_if_untouched(self, doc):
+        if str(doc.folder) in self._fresh and not projects.changed(doc):
+            shutil.rmtree(doc.folder, ignore_errors=True)
+        self._fresh.discard(str(doc.folder))
 
-    def _try(self, action):
+    def _try(self, action) -> bool:
         try:
             action()
+            return True
         except Exception as e:  # noqa: BLE001  shown on screen, in words
             self._error = opening.said(e)
             self.changed.emit()
             self.refused.emit()
+            return False
 
     @Slot()
     def newSong(self):
-        self._go(lambda: self._put(projects.new_song()))
+        def go():
+            doc = projects.new_song()
+            self._fresh.add(str(doc.folder))
+            self._put(doc)
+        self._try(go)
 
     @Slot(str)
     def openPath(self, path_or_url):
         def go():
             folder, item = projects.resolve(local(path_or_url))
             self._put(projects.open_song(folder, item))
-        self._go(go)
+        self._try(go)
 
     @Slot(str, str)
     def openRecent(self, folder, item):
-        self._go(lambda: self._put(projects.open_song(folder, item)))
+        self._try(lambda: self._put(projects.open_song(folder, item)))
 
     @Slot()
     def openSample(self):
-        """File › Open sample: the person's own copy of the Lull score (rostrum_core.samples copies it once)."""
+        """≡ › Open sample: the person's own copy of the Lull score (rostrum_core.samples copies it once)."""
         from rostrum_core import samples
-        self._go(lambda: self._put(projects.open_song(*samples.open_copy("lull", "sound"))))
+        self._try(lambda: self._put(projects.open_song(*samples.open_copy("lull", "sound"))))
 
     @Slot(str)
     def recover(self, folder):
         def go():
             self._recoverable = [f for f in self._recoverable if str(f) != folder]
             self._put(projects.open_song(folder, projects.ITEM))
-        self._go(go)
+        self._try(go)
 
     @Slot(str)
     def discardRecovered(self, folder):
@@ -142,60 +138,36 @@ class Songs(QObject):
         self._try(lambda: projects.discard_untitled(folder))
         self.changed.emit()
 
-    # ---- saving ----------------------------------------------------------------------------------------------------
+    # ---- the ≡ menu's file actions ---------------------------------------------------------------------------------
     @Slot(result=str)
-    def save(self):
-        """Ctrl+S. An untitled song asks for a name and place; a named one is already saved (every change is)."""
-        if self.untitled:
-            self.wantSaveAs.emit()
-            return ""
+    def saveVersion(self):
+        """Ctrl+S. Every change is already on disk; named versions come with the kit's History (`version.save`)."""
         self._try(self._doc.save)
-        return "Saved. Every change is kept as you make it."
+        return VERSIONS_LATER
 
-    @Slot(str)
-    def saveAs(self, path_or_url):
+    @Slot(str, result=str)
+    def duplicate(self, path_or_url):
+        """Ctrl+Shift+S: a separate copy of the song in a new folder; this window stays on the original."""
+        out = []
+
         def go():
-            doc = self._doc
-            dest = projects.save_as(doc.folder, doc.item_id, local(path_or_url))
-            self._doc = None                    # the untitled source is gone; nothing to unlock or discard
-            self._put(projects.open_song(dest, doc.item_id))
+            dest = projects.duplicate(self._doc.folder, self._doc.item_id, local(path_or_url))
+            out.append(f"Duplicated to {dest}. This window stays on the original; the copy is in Open recent.")
+            projects.remember(dest, self._doc.item_id)
+            projects.remember(self._doc.folder, self._doc.item_id)      # the original stays the newest
         self._try(go)
-        if self._pending and not self.untitled:
-            self.answer("go")
-
-    @Slot(str)
-    def answer(self, choice):
-        """The askKeep prompt: "save" (Save As, then go on), "discard" (drop the untitled song, go on), "go", "cancel"."""
-        action, self._pending = self._pending, None
-        if choice == "save":
-            self._pending = action
-            self.wantSaveAs.emit()
-        elif choice in ("discard", "go") and action:
-            if choice == "discard":
-                self._drop = self._doc.folder
-            self._try(action)
         self.changed.emit()
+        return out[0] if out else ""
 
-    @Slot(result=bool)
-    def mayClose(self) -> bool:
-        """The window's close button: ask first for an untitled song with changes (quitting is the pending action)."""
-        if not self.needs_asking():
-            return True
-        from PySide6.QtCore import QCoreApplication
-        self._pending = lambda: QCoreApplication.instance().quit()
-        self.askKeep.emit()
-        return False
+    @Slot()
+    def showFolder(self):
+        if self._doc is not None:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(self._doc.folder)))
 
     def close(self):
-        """The app is quitting: unlock the song; an untouched (or not kept) untitled one leaves nothing behind. An
-        untitled song with changes nobody decided about (the app was ended, not closed by the person) keeps its lock,
-        so the next start offers it back like after a crash."""
+        """The app is quitting: unlock the song; a brand-new one nobody changed leaves nothing behind."""
         doc = self._doc
         if doc is None:
             return
-        if not projects.is_untitled(doc.folder):
-            projects.unlock(doc.folder)
-        elif not projects.changed(doc) or self._drop == doc.folder:
-            projects.discard_untitled(doc.folder)
-        else:
-            projects.lock(doc.folder, pid=0)            # no process: offered back on the next start
+        projects.unlock(doc.folder)
+        self._drop_if_untouched(doc)

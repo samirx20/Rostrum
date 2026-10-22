@@ -1,5 +1,6 @@
-"""RostrumSound's screen states for the layout check (rostrum_gui/layout_run.py): each page, the open menus and
-dialogs, and the long-text cases (a long song name, a long track name, many changes, a long status message).
+"""RostrumSound's screen states for the layout check (rostrum_gui/layout_run.py): the empty song, the workspace with
+the Editor, the Mixer or the Library open, the Export sheet, the open menus and dialogs, and the long-text
+cases (a long song name, a long track name, many changes, a long status message).
 A state is (name, start args, steps). Add one whenever a screen or panel is added."""
 from __future__ import annotations
 
@@ -27,15 +28,21 @@ def long_project() -> list[str]:
 def states() -> list[tuple[str, list[str], list[str]]]:
     busy = [*TWELVE, f"say {LONG_STATUS}"]
     return [
-        ("instruments", ["--sample"], ["page instruments"]),
-        ("timeline", ["--sample"], ["page timeline"]),
-        ("mix", ["--sample"], ["page mix", "select melody"]),
-        ("long-instruments", long_project(), [*busy, "page instruments"]),
-        ("long-timeline", long_project(), [*busy, "page timeline"]),
-        ("long-mix", long_project(), [*busy, "page mix"]),
+        ("empty-song", ["--new"], []),
+        ("editor", ["--sample"], ["dock editor", "select melody"]),
+        ("mixer", ["--sample"], ["dock mixer", "select drums"]),
+        ("library", ["--sample"], ["library"]),
+        ("draw", ["--sample"], ["select melody", "dock editor", "tool draw"]),
+        ("voice-lines", ["--sample"], ["add-track voice:ryan", "dock editor"]),
+        ("grid-menu", ["--sample"], ["grid-open"]),
+        ("export", ["--sample"], ["deliver streaming", "export-open"]),
+        ("long-export", long_project(), [*busy, "deliver streaming", "export-open"]),
+        ("long-editor", long_project(), [*busy, "dock editor"]),
+        ("long-mixer", long_project(), [*busy, "dock mixer"]),
+        ("long-library", long_project(), [*busy, "library"]),
         ("file-menu", long_project(), [*busy, "file-menu"]),
-        ("song", ["--sample"], ["page timeline", "song-open"]),
-        ("history-agent-run", ["--sample"], ["page timeline", "agent-run 6", "history open"]),
+        ("song", ["--sample"], ["song-open"]),
+        ("history-agent-run", ["--sample"], ["agent-run 6", "history open"]),
         ("agent-chip-long", long_project(), [*busy, "agent-run 3", f"agent-say {LONG_AGENT}"]),
         ("settings", ["--sample"], ["settings"]),
         ("commands", ["--sample"], ["commands"]),

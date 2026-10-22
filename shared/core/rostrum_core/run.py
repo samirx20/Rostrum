@@ -6,7 +6,7 @@ from __future__ import annotations
 import copy
 
 from . import edits as E
-from . import ids
+from . import ids, locks
 from .conditions import describe, holds
 from .errors import RostrumError, codes, did_you_mean
 from .tree import View, fields, index, subtree_ids
@@ -73,16 +73,7 @@ def _check_args(op, args, where):
     return {k: op.param(k).check(v, where) for k, v in args.items()}
 
 
-def _locked_holder(idx, id_):
-    """The item itself or the nearest parent that is locked (a locked track holds its notes and clips), else None."""
-    while id_ is not None and id_ in idx:
-        if idx[id_].item.get("locked"):
-            return idx[id_].item
-        id_ = idx[id_].parent
-    return None
-
-
-def _check_targets(kind, op, targets, view, where, locked_by=None):
+def _check_targets(kind, op, targets, view, where):
     idx, items = view.locs(), []
     if op.targets is None:
         if targets:
@@ -100,13 +91,6 @@ def _check_targets(kind, op, targets, view, where, locked_by=None):
         if it.get("type") not in op.targets:
             raise RostrumError(codes.BAD_ARGUMENT, where, f'target "{t}"', f"is a {it.get('type')}, not a "
                                f"{' or '.join(op.targets)}")
-        held = _locked_holder(idx, t)
-        if held is not None and not (held["id"] == t and op.name.endswith(".unlock")):
-            by = locked_by(held["id"]) if locked_by else None
-            whose = f'"{held.get("name") or held["id"]}" ({held["id"]})'
-            subject, problem = (whose, "is locked") if held["id"] == t else (f'"{it.get("name") or t}" ({t})', f"is inside {whose}, which is locked")
-            raise RostrumError(codes.CHECK_FAILED, where, subject, problem + (f" by {by}" if by else ""),
-                               hint="Unlock it first, then try again.")
         if not holds(op.valid_when, fields(it, kind.lists), kind.facts(it, view)):
             raise RostrumError(codes.BAD_ARGUMENT, where, f'target "{t}"',
                                f"can't take {op.name} now: it needs {describe(op.valid_when)}")
@@ -144,7 +128,7 @@ def plan(kind, data: dict, calls, locked_by=None) -> tuple[dict, list, list[dict
         where = f"op {n} of {len(calls)} ({call['op']})"
         op = kind.registry.get(call["op"], f"op {n} of {len(calls)}")
         view = View(work, kind.lists, idx)
-        items = _check_targets(kind, op, call["target"], view, where, locked_by)
+        items = _check_targets(kind, op, call["target"], view, where)
         args = _check_args(op, call["args"], where)
         _check_valid_when(kind, op, items, args, view, where)
         ctx = Context(kind, work, where, idx)
@@ -154,6 +138,7 @@ def plan(kind, data: dict, calls, locked_by=None) -> tuple[dict, list, list[dict
             raise
         except Exception as e:  # a bug in an operation is loud, never half-applied
             raise RostrumError(codes.INTERNAL, where, op.name, f"failed: {type(e).__name__}: {e}") from e
+        locks.check(ctx.edits, idx, kind.lists, where, locked_by)
         call["args"] = args
         applied += ctx.edits
     problems = kind.problems(work, _changed(applied, idx, kind.lists))

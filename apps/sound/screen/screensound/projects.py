@@ -4,9 +4,11 @@ A song is one Sound document in a project folder (`<folder>/docs/<item>.trk`, ro
 is written there as it happens (the document is the single source of truth, and agents edit the same file), so
 "saving" a named song is never needed. What a person still needs:
 
-- **A new song** starts *untitled* in the untitled area (`untitled_root()`), saved on every change like any other,
-  so nothing is lost; Save gives it a name and a place (Save As moves it, the untitled copy is removed).
-- **Save As** copies the whole project folder (document, history, takes, renders) to a new folder and goes on there.
+- **A new song** is made at once as "Untitled song" (then "Untitled song 2" …) in the projects folder, saved on every
+  change like any other (INTERACTION.md §1.19: saving is automatic; no Save, no "unsaved" question).
+- **Duplicate** copies the whole project folder (document, history, takes, renders) to a new folder; the window stays
+  on the original.
+- Songs from before (the old untitled area, `untitled_root()`) still open and are still offered back after a crash.
 - **Recent songs**: the last 10 opened, in the settings folder; ones that are gone drop out when read.
 - **Crash recovery**: while a song is open its folder holds `.rostrum/sound-open.json` (the process id). A lock
   left by a process that is no longer running means the app stopped unexpectedly: an untitled song left that way is
@@ -33,6 +35,13 @@ LOCK = Path(".rostrum") / "sound-open.json"
 RECENT_MAX = 10
 
 
+def songs_root() -> Path:
+    """Where new songs are made: the projects folder (a scripted run's scratch home, never the person's)."""
+    if userhome.scripted() and not os.environ.get("ROSTRUM_PROJECTS_DIR"):
+        return userhome.home() / "projects"
+    return settings.projects_dir()
+
+
 def untitled_root() -> Path:
     return settings.settings_dir().parent / "untitled-songs"
 
@@ -43,14 +52,14 @@ def recent_file() -> Path:
 
 # ---- making, finding ----------------------------------------------------------------------------------------
 def new_song() -> Document:
-    """A new, empty, untitled song (saved at once, so it survives a crash), with the person's defaults for new songs
-    (Settings: sample rate, loudness target, true-peak ceiling)."""
+    """A new, empty song named "Untitled song" (then "Untitled song 2" …) in the projects folder, saved at once, with
+    the person's defaults for new songs (Preferences: sample rate, loudness target, true-peak ceiling)."""
     s = settings.load()
-    folder = untitled_root() / time.strftime("untitled-%Y%m%d-%H%M%S")
-    n = 1
+    root, n = songs_root(), 1
+    folder = root / "Untitled song"
     while folder.exists():
         n += 1
-        folder = folder.with_name(f"{folder.name.split('~')[0]}~{n}")
+        folder = root / f"Untitled song {n}"
     data = Document.new(KIND).data
     data["sampleRate"] = int(s["sampleRate"])
     master = data["master"][0]
@@ -103,22 +112,19 @@ def title(folder, item) -> str:
     return f"{Path(folder).name} · {item}" if many else Path(folder).name
 
 
-# ---- Save As ------------------------------------------------------------------------------------------------
-def save_as(folder, item, dest) -> Path:
-    """Copy the project to `dest` (a new folder, or an empty one) and return it; an untitled source is then removed.
+# ---- Duplicate ----------------------------------------------------------------------------------------------
+def duplicate(folder, item, dest) -> Path:
+    """Copy the project to `dest` (a new folder, or an empty one) and return it; the original stays as it is.
     Refuses to overwrite a folder that has anything in it."""
     src, dest = Path(folder).resolve(), Path(dest).resolve()
     if dest == src:
         return dest
     if dest.exists() and any(dest.iterdir()):
-        raise RostrumError(codes.BAD_ARGUMENT, "save as", str(dest), "already has files in it",
+        raise RostrumError(codes.BAD_ARGUMENT, "duplicate", str(dest), "already has files in it",
                            hint="Pick a new name, or an empty folder.")
     if src in dest.parents:
-        raise RostrumError(codes.BAD_ARGUMENT, "save as", str(dest), "is inside the song's own folder")
+        raise RostrumError(codes.BAD_ARGUMENT, "duplicate", str(dest), "is inside the song's own folder")
     shutil.copytree(src, dest, dirs_exist_ok=True, ignore=shutil.ignore_patterns("sound-open.json", "*.partial"))
-    if is_untitled(src):
-        unlock(src)
-        shutil.rmtree(src, ignore_errors=True)
     return dest
 
 

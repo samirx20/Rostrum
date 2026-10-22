@@ -1,10 +1,11 @@
-"""RostrumSound's document bridge: the kit's DocBridge plus pages, the playhead, the arrangement and piano roll
+"""RostrumSound's document bridge: the kit's DocBridge plus the workspace (workspace.py: the bottom dock, the Sounds
+panel), the playhead, the arrangement and piano roll
 (timeline.py), what is under the pointer (pick.py), the drags (one doc.gesture = one undo step) and the sound
 (transport.py: rendered by the engine after each change, played from the playhead).
 
 The slots live in small mix-ins (gui-kit README › parts.py): view_slots (playhead, zoom), picture_slots, song_slots
 (music map), lane_slots (automation), edit_slots (edits and drags); the signals in signals.py. Every change is an
-operation (moves.py builds the calls). The Mix page reads `lastRender` (the engine's render answer, with stems for
+operation (moves.py builds the calls). The Mixer reads `lastRender` (the engine's render answer, with stems for
 every track) and listens to `renderChanged`. The project's shared markers are watched (MarkerWatch): one moved or
 renamed in another app re-renders the sound, and a rename is followed as one recorded step (marker.follow).
 """
@@ -19,28 +20,34 @@ from rostrum_sound import compile as compile_doc
 from rostrum_sound.doc import markers as MK
 from rostrum_sound.doc import ops_mix
 
+from . import voice_card
 from . import inspect, lanes, onpage, output_pick, picture, pick, screen_seen, timeline
+from .action_slots import ActionSlots
 from .agent_demo import AgentDemo
 from .edit_slots import EditSlots
+from .grid_slots import GridSlots
+from .handle_slots import HandleSlots
+from .key_slots import KeySlots
 from .lane_slots import LaneSlots
 from .picture_slots import PictureSlots
+from .select_slots import SelectSlots
 from .signals import SoundSignals as S
 from .song_slots import SongSlots
 from .transport import Transport
 from .view import View
 from .view_slots import ViewSlots
+from .workspace import Workspace
 
-PAGES = ("instruments", "timeline", "mix")
 SOUNDING = ("notes", "hits", "clips", "sounds")       # what makes a compiled track last (engine contract/track.rs)
 
 
-class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, DocBridge):
+class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, HandleSlots, GridSlots, ActionSlots, KeySlots, SelectSlots, S, DocBridge):
     def __init__(self, doc, name="Untitled song", autosave=False, parent=None):
         self.name, self.autosave = name, autosave
-        self._page, self._t, self._track = "timeline", 0.0, ""
+        self._t, self._track = 0.0, ""
+        self.workspace = Workspace(lambda line: self._fail(line), lambda: self.model.reset(self._rows()))
         self._drag = self._grab = None
         self._view: dict = {}
-        self._fitted: set[str] = set()      # tracks the piano roll has already framed once
         self._zoom = View()                 # which stretch of the song is on screen (screen state, not an edit)
         self._open: dict = {}               # track id -> (item id, lane) of the automation lane shown under its row
         self._edit = None                   # the automation point being dragged (lanes.PointEdit)
@@ -58,6 +65,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self._marks = MarkerWatch(self.doc.folder, self, self.who, self._fail, "sound")
         self._marks.changed.connect(self._markers_changed)
         self.join_history(self._marks)                      # marker edits undo with the screen's one history
+        self.selectionChanged.connect(self._follow_kit)          # Sound's list follows the kit's (select_slots)
         self.selectionChanged.connect(self._follow_selection)
         self.selectionChanged.connect(self._drop_point)
         self._follow_selection()
@@ -70,6 +78,8 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self.transport.said.connect(self.say)
         self.transport.moved.connect(self._moved)
         self.transport.render()
+        self.viewChanged.connect(self._follow_zoom)       # Grid "Auto" follows the zoom (grid_slots.py)
+        self._make_actions()                # the one action list: context bar, menus, Ctrl+K, keys (action_slots.py)
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
     @Property(str, constant=True)
@@ -77,10 +87,6 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         return self.name
 
     isLive = Property(bool, lambda self: self.link is not None, constant=True)   # saved after every change: the top bar says "Saved"
-
-    @Property(str, notify=S.pageChanged)
-    def page(self):
-        return self._page
 
     @Property(float, notify=S.timeChanged)
     def time(self):
@@ -137,8 +143,11 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
     def edit_call(self, item_id, param, value):
         return inspect.edit_call(self.doc, item_id, param, value)
 
-    def on_page(self, item):        # the inspector leaves out what the page's own controls show (onpage.py)
-        return onpage.fields(self._page, item.get("type", ""), self.doc.kind.registry)
+    def on_page(self, item):        # the inspector leaves out what the workspace's own controls show (onpage.py)
+        return onpage.fields(self.workspace.dock, item.get("type", ""))
+
+    def _first(self):       # nothing selected at first: the settings panel shows the song (DESIGN.md decision 4)
+        return ""
 
     def list_choices(self, item, param):      # a track's / bus' Output: Master and the buses it may feed
         return output_pick.choices(self.doc, item, self.label_of) if param == output_pick.FIELD else []
@@ -147,14 +156,6 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         return output_pick.without_none(super()._rows())
 
     # ---- screen state -----------------------------------------------------------------------------------------
-    @Slot(str)
-    def setPage(self, page):
-        if page not in PAGES:
-            return self._fail(f'Error: page: "{page}" is not a page ({", ".join(PAGES)}).')
-        self._page = page
-        self.model.reset(self._rows())
-        self.pageChanged.emit()
-
     @Slot()
     def togglePlay(self):
         self.transport.toggle(self._t)
@@ -175,23 +176,14 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
     def _schedule(self) -> dict:
         """The compiled song. A song with nothing in it yet (a new one, or an instrument with no notes) is still a
         song: it renders as silence the length the screen shows, instead of the engine refusing an empty schedule."""
-        s = compile_doc(self.doc)
+        side = getattr(self, "side", None)                 # lines being spoken right now play once they are made
+        s = compile_doc(voice_card.without(self.doc, side.voice.making()) if side else self.doc)
         if "length" not in s and not any(t.get(k) for t in s["tracks"] for k in SOUNDING):
             s["length"] = self._length()
         return s
 
     def _length(self) -> float:
         return self._view["song"]["length"]
-
-    def _frame_new_track(self):
-        """The first time a track is shown, fit the view to its sounds (a short phrase is not a speck at the left).
-        Only while the view is still the screen's own: a person's zoom is left alone."""
-        if not self._track or self._track in self._fitted:
-            return
-        self._fitted.add(self._track)
-        blocks = self._view["roll"]["blocks"]
-        if blocks and (self._zoom.fit or self._zoom.auto):
-            self._zoom.fit_to(min(b["t"] for b in blocks), max(b["t"] + b["dur"] for b in blocks), self._length())
 
     def _markers_changed(self):
         """A project marker moved, was renamed or deleted (in 2D, by an agent …): follow renames as one recorded
@@ -214,8 +206,10 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         track = self.doc.item(self._track) if self._track and self.doc.has(self._track) else None
         self._view = {"rows": rows, "markers": timeline.markers(root), "song": timeline.song(root),
                       "roll": timeline.roll(track, root, hue)}
-        self._zoom.clamp(self._length())
-        self._frame_new_track()
+        side = getattr(self, "side", None)               # lines being spoken say so on their blocks
+        if side:
+            voice_card.mark_speaking([*rows, self._view["roll"]], side.voice.making())
+        self._zoom.clamp(self._length())        # the view is the person's: nothing new on screen zooms or scrolls it
         self.timelineChanged.emit()
         self.viewChanged.emit()
 

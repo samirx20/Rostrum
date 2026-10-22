@@ -5,6 +5,11 @@ recordings. Rostrum indexes it **once**: every file is split into its single sou
 copied out of the folder; the index keeps file paths and measurements only, in the shared cache. The folder list lives
 in your settings (`~/.rostrum/settings/sound-library.json`), not in a project.
 
+**On the screen:** open the **Library** (Ctrl+L) and click **My sounds**, or **Add a folder of my sounds…** at its
+bottom. Search with the Library's search box, narrow by kind, length and brightness, hear a sound with ▶, and
+double-click it (or **Place**) to put it at the playhead: on the selected recordings track, else on a "Sound effects"
+track (one undo step).
+
 ## Add a folder
 
     inspect_library folder="D:\Sounds\Sonniss GDC 2024"
@@ -61,7 +66,7 @@ move's fastest moment, panned with the layer (`pan` → `panTo`), louder for fas
 move; a click where it lands hard; a press and its release (the same click higher and softer); ticks that differ a
 little in take, pitch and level. Each sound is chosen by kind and shape: a fast short move gets a short bright whoosh,
 a slow big one a longer, darker one; a recording already used is pushed back. Change any clip with `clip.set` (or
-move it on the Timeline); running it again keeps your changes. Missing a kind (no clicks in your folders) is an
+move it in the arrangement); running it again keeps your changes. Missing a kind (no clicks in your folders) is an
 error that says which kind to add.
 
 ## Licences

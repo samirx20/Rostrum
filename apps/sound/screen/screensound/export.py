@@ -1,4 +1,4 @@
-"""Render mix and stems, from the screen: the same versioned render the MCP `render_mix` makes (`handoff.render`:
+"""Export, from the screen (the Export sheet, ExportSheet.qml): the same versioned render the MCP `render_mix` makes (`handoff.render`:
 `renders/<item>/vNNN/` with its manifest, every track's stem, and a stem per bus when the engine writes them), in the
 background on its own engine process. Exposed to QML as `mixer.export`. A failure is written in the status, in
 words, and is the bridge's red error too (never a quiet "done").
@@ -18,8 +18,8 @@ from . import playback
 
 
 def summary(r: dict) -> str:
-    n_bus = len(r.get("busStems") or {})
-    stems = f"{len(r.get('stems') or {})} track stems" + (f" + {n_bus} bus stems" if n_bus else "")
+    n_bus, n_track = len(r.get("busStems") or {}), len(r.get("stems") or {})
+    stems = (f"{n_track} track stems" + (f" + {n_bus} group stems" if n_bus else "")) if n_track or n_bus else "no stems"
     cut = f", {r['songSeconds'] - r['seconds']:.1f} s of silence trimmed" if r.get("trimmed") else ""
     return (f"Version {r['version']} · {r.get('format', {}).get('label', '')}, {r.get('sampleRate', 0) / 1000:g} kHz · "
             f"{r['seconds']:.1f} s{cut} · {stems}")
@@ -33,17 +33,18 @@ def files_of(r: dict) -> list[dict]:
     """What the render wrote, for the list on screen: [{label, path}] — the mix, then the stems (tracks, then buses)."""
     return ([{"label": "Mix", "path": r["file"]}]
             + [{"label": f"Track · {k}", "path": p} for k, p in (r.get("stems") or {}).items()]
-            + [{"label": f"Bus · {k}", "path": p} for k, p in (r.get("busStems") or {}).items()])
+            + [{"label": f"Group · {k}", "path": p} for k, p in (r.get("busStems") or {}).items()])
 
 
 class RenderExport(QObject):
     changed = Signal()
+    dialogChanged = Signal()
     _done = Signal("QVariantMap", str)         # the render answer or the error line (from the worker thread)
 
     def __init__(self, bridge, open_engine=playback.open_engine, parent=None):
         super().__init__(parent)
         self.bridge, self._open_engine = bridge, open_engine
-        self._busy, self._status, self._result = False, "", {}
+        self._busy, self._status, self._result, self._dialog, self._stems = False, "", {}, False, False
         self._format, self._rate, self._trim = deliver.DEFAULT_FORMAT, 0, True      # rate 0: the song's own (48 kHz when not one of ours)
         self._thread: threading.Thread | None = None
         self._done.connect(self._finish)
@@ -65,6 +66,28 @@ class RenderExport(QObject):
     @Property(str, notify=changed)
     def rate(self):
         return str(self.options().sample_rate)
+
+    @Property(bool, notify=changed)
+    def stems(self):
+        """Also a file for every track and group (off by default: most deliveries are the mix alone)."""
+        return self._stems
+
+    @Slot(bool)
+    def setStems(self, on):
+        self._stems = bool(on)
+        self.changed.emit()
+
+    @Property(bool, notify=dialogChanged)
+    def dialogOpen(self):
+        """Whether the Export sheet is open: one flag, so the top bar, Ctrl+E and a scripted step all open the
+        same sheet."""
+        return self._dialog
+
+    @Slot(bool)
+    def setDialogOpen(self, on):
+        if on != self._dialog:
+            self._dialog = on
+            self.dialogChanged.emit()
 
     @Property(bool, notify=changed)
     def trim(self):
@@ -121,10 +144,11 @@ class RenderExport(QObject):
             schedule = compile_doc(doc)
         except RostrumError as e:
             return self._refuse(f"Error: render: {e.line()}")
-        self._busy, self._status, self._result = True, "Rendering the mix and stems…", {}
+        self._busy, self._status, self._result = True, "Exporting the mix" + (" and stems…" if self._stems else "…"), {}
         self.changed.emit()
         who = f"{self.bridge.who.kind}:{self.bridge.who.name}"
-        self._thread = threading.Thread(target=self._work, args=(doc, schedule, who, self.options()), daemon=True)
+        self._thread = threading.Thread(target=self._work, args=(doc, schedule, who, self.options(), "all" if self._stems else []),
+                                        daemon=True)
         self._thread.start()
         return True
 
@@ -138,11 +162,11 @@ class RenderExport(QObject):
         if self._thread is not None:
             self._thread.join(timeout=120)
 
-    def _work(self, doc, schedule, who, opts):
+    def _work(self, doc, schedule, who, opts, stems):
         eng = None
         try:
             eng = self._open_engine()
-            r = handoff.render(doc.folder, doc, eng, schedule, who,
+            r = handoff.render(doc.folder, doc, eng, schedule, who, stems=stems,
                                options={"format": opts.format, "sampleRate": opts.sample_rate, "trim": opts.trim})
             if not Path(r["file"]).is_file():
                 raise RuntimeError(f"the mix is not at {r['file']}")
