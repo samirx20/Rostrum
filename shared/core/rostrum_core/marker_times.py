@@ -21,17 +21,17 @@ def _key(name: str) -> str:
 
 
 def _stamp(folder) -> int:
-    """When the markers last changed: the newer of the history (every change appends to it) and the document file
-    (written on Save, S39; a project copied without its .rostrum folder, like a sample, has only this). 0 = no
-    markers yet."""
+    """When the markers last changed: the history's write time (every change appends to it, S39). Only without a
+    history (a project copied without its .rostrum folder, like a sample) the document file's. Never the document
+    file beside a history: Save rewrites it with nothing changed, and Sound re-rendered on every save (S42).
+    0 = no markers yet."""
     p = paths(folder, ITEM, EXT)
-    stamps = []
     for f in (p["history"], p["doc"]):
         try:
-            stamps.append(f.stat().st_mtime_ns)
+            return f.stat().st_mtime_ns
         except OSError:
             pass
-    return max(stamps, default=0)
+    return 0
 
 
 _TIMES: dict = {}       # path -> (file time, {name: seconds}); a frame-by-frame reader re-reads only on change
