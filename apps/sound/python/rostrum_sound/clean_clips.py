@@ -14,7 +14,8 @@ from rostrum_core import RostrumError, codes
 
 from . import cleanup
 
-HINT = "Run the render_cleanup tool (or rostrum_sound.cleanup.make), or switch the clip's useCleaned off."
+HINT = ("On the Timeline: select the clip and press Make cleaned take, or turn its Use cleaned take off. "
+        "Agents: run the render_cleanup tool (or rostrum_sound.cleanup.make), or set useCleaned false.")
 
 
 def media_of(clip: dict, where: str) -> str:

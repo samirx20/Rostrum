@@ -67,7 +67,7 @@ def register(tools: Tools):
                 if e.code == codes.MODEL_MISSING and e.where == "cleanup" and not e.hint:
                     m = next((m for m in fetch.ALL if m.id == e.subject), None)
                     if m:
-                        e.hint = f"Run the install_model tool with model \"{m.id}\" first. {fetch.install_hint(m)}"
+                        e.hint = f"Run the run_model_install tool with model \"{m.id}\" first. {fetch.install_hint(m)}"
                 raise
             new = sum(1 for m in made if m["generated"])
             return Reply(f"{len(made)} cleaned takes ready ({new} made now, {len(made) - new} from the cache).",
@@ -75,13 +75,13 @@ def register(tools: Tools):
 
         return ctx.long(f"cleanup {doc.item_id}", work, key=f"cleanup:{doc.item_id}:{ids}")
 
-    @tools.tool("install_model", {"required": ["model"], "properties": {"model": {"type": "string",
+    @tools.tool("run_model_install", {"required": ["model"], "properties": {"model": {"type": "string",
         "enum": [m.id for m in fetch.ALL], "description": "The clean-up model to download: deepfilternet3 (noise, 16 MB) or umxhq (stems and dialogue isolation, 142 MB)."}}})
-    def install_model(ctx, args):
+    def run_model_install(ctx, args):
         """Download a clean-up model that render_cleanup needs (models are not installed with the app). Checked by its fingerprint; a model already there is left alone. Same as the command line `python -m rostrum_sound.cleanup.fetch <model>`."""
         m = next((m for m in fetch.ALL if m.id == args["model"]), None)
         if m is None:
-            raise RostrumError.not_found("install_model", "model", args["model"], [m.id for m in fetch.ALL], in_="the clean-up models")
+            raise RostrumError.not_found("run_model_install", "model", args["model"], [m.id for m in fetch.ALL], in_="the clean-up models")
 
         def work(job):
             if not fetch.missing(m):
@@ -89,7 +89,7 @@ def register(tools: Tools):
             f = fetch.install(m, progress=lambda done, total: job.progress(note=f"{m.id}: {done / 1e6:.0f} of {total / 1e6:.0f} MB"))
             return Reply(f"{m.id} installed ({m.licence}).", {"model": m.id, "file": str(f)})
 
-        return ctx.long(f"install {m.id}", work, key=f"install_model:{m.id}")
+        return ctx.long(f"install {m.id}", work, key=f"run_model_install:{m.id}")
 
     @tools.tool("look_cleanup", {"properties": {**ITEM,
         "clip": {"type": "string", "description": "A clip id: its file before vs its cleaned take, and its stems when made."},
