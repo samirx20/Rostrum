@@ -17,6 +17,7 @@ OWN = [
     {"job": "rect_tool", "keys": ["R"], "label": "Rectangle"},
     {"job": "ellipse_tool", "keys": ["O"], "label": "Ellipse"},
     {"job": "text_tool", "keys": ["T"], "label": "Text"},
+    {"job": "camera_tool", "keys": ["C"], "label": "Camera"},
     {"job": "auto_layout", "keys": ["Shift+A"], "label": "Auto layout"},
     {"job": "align_left", "keys": ["Alt+A"], "label": "Align left"},
     {"job": "align_right", "keys": ["Alt+D"], "label": "Align right"},
