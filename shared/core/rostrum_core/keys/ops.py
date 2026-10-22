@@ -34,15 +34,20 @@ def key_id(owner: str, prop: str, t) -> str:
 def register_key_ops(registry, *, owners, check_key: Callable, check_still: Callable,
                      settable: Callable | None = None, value_params: list[Param] | None = None,
                      key_add_help: str = "From then on its keys alone decide its value.",
-                     prop_help: str = "The field to animate (x, opacity, fill …)") -> Callable:
+                     prop_help: str = "The field to animate (x, opacity, fill …)",
+                     field_sets: dict[str, list[str]] | None = None, value_now: Callable | None = None) -> Callable:
     """Register the four operations on `registry`; returns `put_key(ctx, owner_id, prop, t, args)` for ops that add
     keys too. `check_key(ctx, owner, prop, args)` -> (the key's value field 'v' | 'c' | 'd', the checked value);
     `check_still(ctx, owner, prop, args)` -> the checked value of a field with no keys (it also refuses a field
     that doesn't apply now); `settable(ctx, owner, prop)` refuses a field that can't change now. `key_add_help` and `prop_help` are the words
-    each app uses in its operation descriptions."""
+    each app uses in its operation descriptions. `field_sets` ({"pose": ["x", "y", …]}) lets key.add key a named set
+    at once with each field's value now (`value_now(ctx, owner, prop, t)` -> {"v": 3.0}, or None for a field that
+    owner can't key now: it is left out); key.add then takes `fields` instead of `prop` (K in the screens)."""
     vals = value_params if value_params is not None else [V, C]
     settable = settable or (lambda ctx, owner, prop: None)
-    PROP = Param.text("prop", label="Field", required=True, help=prop_help)
+    PROP = Param.text("prop", label="Field", required=not field_sets, help=prop_help)
+    sets = [Param.choice("fields", list(field_sets), label="Fields", help="Key this set of fields with their values now "
+                         "(instead of prop and a value): " + "; ".join(f"{k}: {', '.join(v)}" for k, v in field_sets.items()))]         if field_sets else []
 
     def put_key(ctx, owner_id: str, prop: str, t: float, args: dict):
         """Add a key, or change the one already there (same field, same time)."""
@@ -65,10 +70,32 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
 
     @registry.operation("key.add", "Set a field's value at a time (adds a key, or changes the one at that time). "
                         + key_add_help, target=owners, label="Add key",
-                        params=[PROP, Param.number("t", label="Time", required=True, **KEY_TIME), *vals, EASE])
+                        params=[PROP, *sets, Param.number("t", label="Time", required=True, **KEY_TIME), *vals, EASE])
     def key_add(ctx, targets, args):
+        if "fields" in args:
+            return _key_set(ctx, targets, args)
+        if "prop" not in args:
+            ctx.fail(codes.BAD_ARGUMENT, '"prop"', "is required", hint='The field to key, or fields: "'
+                     + '" | "'.join(field_sets or {}) + '" for a set.' if field_sets else "The field to key.")
         for t in targets:
             put_key(ctx, t, args["prop"], args["t"], args)
+
+    def _key_set(ctx, targets, args):
+        """K: every field of the set each target can key now, at its value now (one change)."""
+        given = [p.name for p in (PROP, *vals) if p.name in args]
+        if given:
+            ctx.fail(codes.BAD_ARGUMENT, '"fields"', f"keys each field at its value now; leave out {', '.join(given)}")
+        keyed = 0
+        for t in targets:
+            owner = ctx.item(t)
+            for prop in field_sets[args["fields"]]:
+                now = value_now(ctx, owner, prop, args["t"])
+                if now is not None:
+                    put_key(ctx, t, prop, args["t"], {**now, **({"ease": args["ease"]} if "ease" in args else {})})
+                    keyed += 1
+        if not keyed:
+            ctx.fail(codes.BAD_ARGUMENT, f'fields "{args["fields"]}"', "has nothing these items can key now",
+                     hint="Their fields may be driven by an expression or an auto layout.")
 
     @registry.operation("key.remove", "Delete keys. A field whose last key goes keeps that key's value as its still value.",
                         target="key", label="Delete key", importance="secondary")

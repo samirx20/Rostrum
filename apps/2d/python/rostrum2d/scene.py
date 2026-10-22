@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from . import drawing, exprbake, fields as F, layoutbake, paint_fields, render3d, retime, stepped, swap, video
 from .layout_fields import py_only
-from rostrum_core.keys import animated, keys_of
+from rostrum_core.keys import animated, keys_of, springs
 
 FORMAT, VERSION = "rostrum-2d-scene", 1
 
@@ -27,8 +27,16 @@ def python_only(kind: str) -> set[str]:
             | paint_fields.NAMES)
 
 
+def _key(key: dict) -> dict:
+    """A key as the engine reads it: a spring written as bounce / speed goes as its stiffness / damping (springs)."""
+    out = {k: key[k] for k in KEY_FIELDS if k in key}
+    if key.get("ease") == "spring" and ("bounce" in key or "speed" in key):
+        out["stiffness"], out["damping"] = springs.physics_of(key)
+    return out
+
+
 def _anim(item: dict) -> dict:
-    return {prop: [{k: key[k] for k in KEY_FIELDS if k in key} for key in keys_of(item, prop)]
+    return {prop: [_key(key) for key in keys_of(item, prop)]
             for prop in sorted(animated(item)) if prop not in python_only(item["type"])}
 
 

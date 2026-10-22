@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import math
 
+from .spring import physics_of
+
 BEZIERS = {
     "smooth": (0.25, 0.1, 0.25, 1.0),
     "snappy": (0.16, 1.0, 0.3, 1.0),
@@ -76,7 +78,7 @@ def ease(key: dict, x: float) -> float:
     if name == "custom":
         return bezier(key.get("x1", 0.25), key.get("y1", 0.1), key.get("x2", 0.25), key.get("y2", 1.0), x)
     if name == "spring":
-        return spring(x, key.get("stiffness", 170.0), key.get("damping", 12.0))
+        return spring(x, *physics_of(key))       # bounce / speed or stiffness / damping (spring.py)
     if name == "bounce":
         return bounce(x)
     raise ValueError(f'unknown ease "{name}"; accepted: {", ".join(NAMES)}')

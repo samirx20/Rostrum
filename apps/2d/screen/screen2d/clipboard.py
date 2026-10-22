@@ -31,6 +31,7 @@ class ClipboardSlots(SlotMixin):
         mime.setData(MIME, text.encode("utf-8"))
         mime.setText(text)
         QGuiApplication.clipboard().setMimeData(mime)
+        self._key_clip = []                         # the latest copy wins: Ctrl+V pastes layers now (key_edits.py)
         self._set_status(f"Copied {self._clip_count(len(layers))}")
         return True
 

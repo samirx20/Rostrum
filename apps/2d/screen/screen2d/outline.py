@@ -14,6 +14,8 @@ from rostrum2d.names import display_name
 from rostrum2d.retime import END, FIELD
 from rostrum_core.keys import animated, keys_of, marked
 
+from .eases import shape_of
+
 from . import framing
 
 
@@ -41,8 +43,8 @@ def _fields(layer: dict) -> list[tuple[dict, str]]:
 
 def _keys(owner: dict, prop: str) -> list[dict]:
     """A field's keys for the timeline; a key on a shared marker (placed by retime.placed) carries its words."""
-    return [{"id": k["id"], "ids": [k["id"]], "t": k["t"], **({"marker": marked.label(k["ref"])} if "ref" in k else {})}
-            for k in keys_of(owner, prop)]
+    return [{"id": k["id"], "ids": [k["id"]], "t": k["t"], "ease": shape_of(k.get("ease", "smooth")),
+             **({"marker": marked.label(k["ref"])} if "ref" in k else {})} for k in keys_of(owner, prop)]
 
 
 def _row(kind: str, owner: dict, depth: int, label: str, keys: list, prop: str = "") -> dict:

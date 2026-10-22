@@ -53,15 +53,28 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
 
 ## 6. Change how it feels
 
-1. Click a diamond on the bar. The panel offers the ease choices for that key: how the value speeds up and slows down on its way to the next key.
-2. Click **Curves** in the timeline's top strip to see each value's curve between its keys. Click **Keys** to go back to the diamonds.
+1. Click a diamond on the bar. The **key bar** appears in the timeline's top strip: **Ease** (Linear, Ease in, Ease out, Smooth, Spring, Jump, Custom), a small curve, and for one key its **Time** and **Value**. The ease is how the value speeds up and slows down on its way to the next key.
+2. Pick an ease. Every picked key changes at once, as one step. You can also right-click a diamond for the same list, or press **F9** (Smooth), **Shift+F9** (Ease in), **Ctrl+Shift+F9** (Ease out) or **Ctrl+Alt+J** (Jump).
+3. Drag the two small dots on the curve to shape it by hand: the ease becomes **Custom**.
+4. **Spring** overshoots and settles. Two sliders appear: **Bounce** (none to a lot) and **Speed** (slow to fast).
+5. Between two keys, a tiny mark on the row shows the ease: a straight line (Linear), a curve (eased), a step (Jump).
+6. Click **Curves** in the timeline's top strip to see each value's curve between its keys. Click **Keys** to go back to the diamonds.
 
-## 7. Play it
+## 7. Key many layers at once, and retime
+
+1. Pick the layers, put the playhead where the pose should be, and press **K**. Each picked layer gets a key for its position, scale, rotation and opacity, as one step. The message line says what it did ("Keyed 4 settings on 3 layers").
+2. To pick several keys: **Ctrl+click** diamonds, **Shift+click** for the run between two, or drag a box over the diamonds on empty rows (it can cross several layers).
+3. Drag a picked diamond to move them all. Hold **Alt** and drag the first or the last picked diamond to stretch or squeeze them all in time.
+4. **Ctrl+C** copies the picked keys. Pick other layers, move the playhead and press **Ctrl+V**: the keys land on the same settings of those layers, starting at the playhead and keeping their spacing.
+5. **,** and **.** jump the playhead to the previous or next thing that happens: a key, a marker, a drawing, or where a layer starts or ends. With layers picked, only theirs.
+6. To make layers start one after another, pick them and click **Stagger…** on the context bar. Set "Each starts [2 f] after the one before" and an **Order** (stack, as picked, left to right, top to bottom, from the centre, random). The bars spread as you change it. Click away to keep it (one step), or press Esc to take it back. Open Stagger again to change it.
+
+## 8. Play it
 
 1. Press **Space**, or click the play button, to play from the playhead. Press Space again to stop.
 2. **Preview size** (**Full**, **Half**, **Quarter**) makes playback lighter on a slow computer. It does not change what you export.
 
-## 8. Do something to several layers at once
+## 9. Do something to several layers at once
 
 Select first, then act. Hold **Shift** and click more things in the picture, or **Ctrl+click** more names in the timeline, or drag a box round them on empty canvas, or press **Ctrl+A** for every layer. The panel then shows the settings they share ("Mixed" where they differ); change one and it changes on all of them, as one step.
 
@@ -69,7 +82,7 @@ The **context bar** at the top-centre of the canvas says how many you picked and
 
 ![The context bar at the top-centre of the canvas, two layers picked](pictures/action-bar.png)
 
-## 9. Undo a mistake
+## 10. Undo a mistake
 
 1. Press **Ctrl+Z** to take back the last change. **Ctrl+Shift+Z** (or **Ctrl+Y**) brings it back.
 2. The undo and redo arrows near the top do the same. They appear only when there is something to undo or redo. Point at one to read what it would take back.

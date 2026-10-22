@@ -46,7 +46,8 @@ Rectangle {
             current: backend.curves.on ? "curves" : "keys"
             onPicked: (v) => backend.curves.setOn(v === "curves")
         }
-        FrameTools { anchors.verticalCenter: parent.verticalCenter }
+        FrameTools { anchors.verticalCenter: parent.verticalCenter; visible: !keyBar.visible }
+        KeyBar { id: keyBar; anchors.verticalCenter: parent.verticalCenter }   // only while keys are picked
     }
     IconButton {  // every row, or only the selected layer's
         id: compactSwitch
@@ -57,10 +58,10 @@ Rectangle {
         onClicked: tl.compactAsked(!tl.compact)
     }
     Text {   // how to reach the Ease choice (it shows once a key is selected)
-        visible: !tl.compact && !backend.curves.on && backend.selectedItem.kind !== "key" && backend.layers.some(r => r.keys.length > 0)
+        visible: !tl.compact && !backend.curves.on && !backend.keyBar.shown && backend.layers.some(r => r.keys.length > 0)
                  && x > header.x + header.width + Theme.pad
         anchors { right: compactSwitch.left; rightMargin: Theme.pad; verticalCenter: header.verticalCenter }
-        text: "Click a diamond to change its ease"
+        text: "Click a diamond to change its ease, drag a box to pick several"
         color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
     }
 
@@ -111,6 +112,20 @@ Rectangle {
             required property var modelData
             x: ruler.x + Math.round(ruler.xOf(modelData.at)); y: ruler.y + ruler.height
             width: 1; height: tl.height - y - Theme.gap; color: Theme.warn; opacity: 0.35
+        }
+    }
+    Menu {   // a key's right-click: the same Ease list as the key bar (backend.keyBar)
+        id: easeMenu
+        width: 140
+        entries: backend.keyBar.eases
+        onPicked: (v) => backend.keyBar.setEase(v)
+    }
+    Connections {
+        target: backend.keyBar
+        function onMenuAsked(gx, gy) {
+            const p = tl.mapFromItem(null, gx, gy)
+            easeMenu.x = Math.min(p.x, tl.width - easeMenu.width); easeMenu.y = Math.max(0, p.y - easeMenu.height)
+            easeMenu.open()
         }
     }
     Rectangle {  // the playhead line, across every row

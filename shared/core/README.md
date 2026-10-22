@@ -61,7 +61,10 @@ put_key = register_key_ops(REGISTRY, owners=ITEMS, check_key=..., check_still=..
 `check_key(ctx, owner, prop, args)` returns `(key field "v"|"c"|"d", checked value)`; `check_still(...)` returns the
 checked value of a field with no keys (and refuses one that doesn't apply now); `settable` refuses a field that can't
 change now (2D: driven by an expression); `value_params` are the value params a key takes (2D adds `d`). Extras
-(2D's path morph and curve handles, expressions) stay in the app. The same screen rules for "edit at the playhead goes
+(2D's path morph and curve handles, expressions) stay in the app. Optional `field_sets` ({"pose": [...]}) with `value_now(ctx, owner,
+prop, t)` give key.add a `fields` argument that keys a whole set at its values now (K). `spring.py` is the one place a
+spring's words (`bounce`, `speed`, what people and the key bar use) become `stiffness` / `damping` (what the engines
+read); a key carrying an app's `rawSpring` fact (no words on it) shows the expert numbers. The same screen rules for "edit at the playhead goes
 through keys" are `shared/gui-kit/rostrum_gui/route.py` (`KeyRoute`).
 
 **Keys on a marker** (`marked.py`): a key's `t` may be a shared marker reference, `"#drop+0.2"` (read by
