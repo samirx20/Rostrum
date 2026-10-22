@@ -66,9 +66,9 @@ def common(node: dict, ctx: Ctx, ty: int, ind: int, extra_masks: list[dict] = ()
         if pr[key] != 0 or key in node.get("anim", {}):
             ctx.say("2.5D tilt is not in Lottie; the layer is drawn flat")
             break
-    for fx in node.get("effects", []):
-        if fx["type"] in EFFECT_SAYS:
-            ctx.say(f'{EFFECT_SAYS[fx["type"]]} effect is not exported (Lottie players ignore effects)')
+    for fx in node.get("effects", []):             # a gradient is a fill (lottie_shapes / lottie_text); any other is said
+        if fx["type"] != "gradient":
+            ctx.say(f'{EFFECT_SAYS.get(fx["type"], fx["type"])} effect is not exported (Lottie players ignore effects)')
     layer = {"ddd": 0, "ind": ind, "ty": ty, "nm": node["id"], "sr": 1, "ks": transform(node, ctx),
              "ao": 0, "ip": round(pr["start"] * ctx.fps, 4), "op": round(min(pr["end"], ctx.duration) * ctx.fps, 4),
              "st": 0, "bm": blends.LOTTIE[pr["blend"]]}

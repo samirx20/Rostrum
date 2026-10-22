@@ -70,7 +70,7 @@ class Outlines:
             f0 = math.floor(min(k[0]["t"] for k in keys) * ctx.fps)
             f1 = math.ceil(max(k[-1]["t"] for k in keys) * ctx.fps)
             frames = [(float(f), eng.outline(node["id"], f / ctx.fps)) for f in range(f0, f1 + 1)]
-            ctx.say(f'varied stroke: {" and ".join(keyed)} change it; the outline is baked as a keyframe every frame')
+            ctx.bake(f'varied stroke: {" and ".join(keyed)} change its outline')
         return _items(frames)
 
 

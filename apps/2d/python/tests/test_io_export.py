@@ -1,4 +1,4 @@
-"""Export read-back must fail loudly on a wrong frame count and on missing alpha (tiny files made on the fly)."""
+"""Export read-back must fail loudly on a wrong frame count and on alpha the file can't carry (tiny files made on the fly)."""
 import subprocess
 
 import numpy as np
@@ -40,12 +40,18 @@ def test_wrong_frame_count_fails(tmp_path):
         readback.check("webm", tmp_path / "a.webm", 6, W, H, True)
 
 
-def test_missing_alpha_fails(tmp_path):
-    _encode("webm", tmp_path / "a.webm", 4, False)           # alpha format, but every pixel opaque
-    with pytest.raises(readback.ExportError, match="alpha"):
-        readback.check("webm", tmp_path / "a.webm", 4, W, H, True)
+def test_alpha_is_the_files_channel_not_its_pixels(tmp_path):
+    # S27 H2: a solid background is opaque everywhere; with transparency kept (the default) that file is right.
+    for fmt in ("webm", "gif"):
+        _encode(fmt, tmp_path / f"opaque.{fmt}", 4, False)
+        assert readback.check(fmt, tmp_path / f"opaque.{fmt}", 4, W, H, True)["min_alpha"] == 255
     _encode("webm", tmp_path / "b.webm", 4, True)
     assert readback.check("webm", tmp_path / "b.webm", 4, W, H, True)["min_alpha"] == 0
+    with pytest.raises(readback.ExportError, match="transparent pixels"):     # asked without alpha, yet see-through
+        readback.check("webm", tmp_path / "b.webm", 4, W, H, False)
+    Image.new("RGB", (W, H)).save(tmp_path / "rgb_0000.png")                  # no alpha channel at all
+    with pytest.raises(readback.ExportError, match="no alpha channel"):
+        readback.check("png", tmp_path / "rgb_{frame}.png", 1, W, H, True)
 
 
 def test_png_bit_depth_and_alpha(tmp_path):

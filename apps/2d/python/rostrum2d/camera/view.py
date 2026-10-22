@@ -11,12 +11,23 @@ from ..evaluate import value_at
 ID = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
 
 
-def shot(comp: dict, t: float):
-    """(x, y, zoom, roll) of the camera showing at t, or None. Two showing at once: the later one in the list wins."""
+def shot(comp: dict, t: float, at=value_at):
+    """(x, y, zoom, roll) of the camera showing at t, or None. Two showing at once: the later one in the list wins.
+    `at(layer, field, t)` reads a field: the document's layers by default; the Lottie export passes the scene's."""
     for layer in reversed(comp.get("layers", [])):
-        if layer["type"] == "camera" and value_at(layer, "start", t) <= t < value_at(layer, "end", t):
-            return tuple(float(value_at(layer, f, t)) for f in ("x", "y", "zoom", "rotation"))
+        if layer["type"] == "camera" and at(layer, "start", t) <= t < at(layer, "end", t):
+            return tuple(float(at(layer, f, t)) for f in ("x", "y", "zoom", "rotation"))
     return None
+
+
+def parts(cx: float, cy: float, cam, depth: float) -> tuple[float, float, float, float]:
+    """The camera's matrix for a layer at `depth` as a transform: (px, py, scale, turn). The comp point (px, py) lands
+    on the centre (cx, cy), scaled by `scale` and turned by `turn` degrees (clockwise) about it. At rest: (cx, cy, 1, 0)."""
+    if cam is None:
+        return cx, cy, 1.0, 0.0
+    x, y, zoom, roll = cam
+    s = 1 / (1 + depth)
+    return cx + s * (x - cx), cy + s * (y - cy), zoom ** s, -roll
 
 
 def layer_matrix(comp: dict, cam, props: dict) -> tuple:
@@ -26,12 +37,9 @@ def layer_matrix(comp: dict, cam, props: dict) -> tuple:
         return ID
     d = F.defaults("comp")
     cx, cy = comp.get("width", d["width"]) / 2, comp.get("height", d["height"]) / 2
-    x, y, zoom, roll = cam
-    s = 1 / (1 + props.get("depth", 0.0))
-    z = zoom ** s
-    r = math.radians(-roll)
+    px, py, z, turn = parts(cx, cy, cam, props.get("depth", 0.0))
+    r = math.radians(turn)
     cos, sin = math.cos(r) * z, math.sin(r) * z
-    px, py = cx + s * (x - cx), cy + s * (y - cy)
     return (cos, sin, -sin, cos, cx - cos * px + sin * py, cy - sin * px - cos * py)
 
 
