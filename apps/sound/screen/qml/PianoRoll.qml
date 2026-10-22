@@ -124,10 +124,9 @@ Panel {
         anchors.centerIn: parent; spacing: Theme.gap
         Text { anchors.horizontalCenter: parent.horizontalCenter; font.family: uiFont; font.pixelSize: Theme.title
                color: Theme.fg2; text: p.kind === "none" ? "Nothing selected" : "Nothing on this track yet" }
-        Text { anchors.horizontalCenter: parent.horizontalCenter; font.family: uiFont; font.pixelSize: Theme.body
-               color: Theme.fg3
-               text: p.kind === "none" ? "Select a track or something on it to edit it here."
-                     : recorder.armed !== "" ? "Press Record (R) to record a take on this track."
+        Text { visible: p.kind !== "none"; anchors.horizontalCenter: parent.horizontalCenter; font.family: uiFont
+               font.pixelSize: Theme.body; color: Theme.fg3
+               text: recorder.armed !== "" ? "Press Record (R) to record a take on this track."
                      : "To record: press Rec on the track's row, then press R.
 To write notes: choose an instrument in the inspector." 
                horizontalAlignment: Text.AlignHCenter }

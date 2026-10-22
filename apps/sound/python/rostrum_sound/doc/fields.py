@@ -54,12 +54,12 @@ FIELDS = {
         V.time("at", group="Note"), V.length("dur", tied=True, group="Note", label="Length",
                                            help='Seconds, {"beats": n}, or tied: {"to": "#land"} ends it at a time or marker, '
                                                 '"next" holds it until the next note on the track.'),
-        N("vel", 0, 1, "Note", label="Velocity"), N("pan", **PAN, group="Note", imp="secondary"),
+        N("vel", 0, 1, "Note", label="Velocity", display="percent"), N("pan", **PAN, group="Note", imp="secondary"),
         *PL.NOTE,
     ],
     "hit": [
         V.drum("drum", group="Hit", help="A drum name or a GM key number."), V.time("at", group="Hit"),
-        N("vel", 0, 1, "Hit", label="Velocity"), N("pan", **PAN, group="Hit", imp="secondary"),
+        N("vel", 0, 1, "Hit", label="Velocity", display="percent"), N("pan", **PAN, group="Hit", imp="secondary"),
         N("tune", 0.25, 4, "Hit", imp="secondary", help="Pitch ratio (synth kit only)."),
         N("decay", 0.1, 4, "Hit", imp="secondary", help="Factor of the hit's length."),
     ],
@@ -100,7 +100,7 @@ FIELDS = {
           help="Integrated loudness (LUFS) the whole mix is made to: -14 suits streaming, -23 broadcast."),
         N("truePeak", -12, 0, "Loudness", "dBTP", "secondary", label="Loudest peak allowed",
           help="True peak ceiling (dBTP): no moment of the mix goes above it, so it never distorts after re-encoding."),
-        N("glue", 0, 1, "Master", imp="secondary", label="Smooth the mix",
+        N("glue", 0, 1, "Master", imp="secondary", label="Smooth the mix", display="percent",
           help="Glue compression: gently squeezes the whole mix so the parts sit together."),
         Param.choice("reverb", names.SPACES, group="Spaces", importance="secondary", label="Master reverb"),
         Param.choice("trackReverbSpace", names.SPACES, group="Spaces", importance="secondary",

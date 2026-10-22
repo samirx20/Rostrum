@@ -4,8 +4,9 @@ import RostrumKit
 import "MixFormat.js" as F
 
 // The master's loudness, from the render that plays: the short-term loudness at the playhead with its curve (and the
-// target as a dashed line), the true peak (so far while playing, else the whole mix), the integrated loudness of the
-// whole mix. Each number is green inside the target, amber outside it (no sentence repeats them). Choosing the target is in the Deliver dialog.
+// target as a dashed line), the true peak (so far while playing, else the whole mix) and, while playing, the loudness
+// so far. The whole mix's loudness is not said here: it is the top bar's chip. Numbers are green inside the target,
+// amber outside it. Choosing the target is in the Deliver dialog.
 ColumnLayout {
     id: l
     readonly property var meter: mixer.loudness
@@ -30,7 +31,7 @@ ColumnLayout {
             Text { anchors.baseline: big.baseline; text: "LUFS"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body }
         }
         LoudnessCurve {
-            visible: l.height >= 170         // a short strip: the curve folds away, the two numbers stay
+            visible: l.height >= 170         // a short strip: the curve folds away, the numbers stay
             Layout.fillWidth: true; Layout.fillHeight: true; Layout.minimumHeight: 64; Layout.topMargin: Theme.grid
             values: l.meter.curve; hop: l.meter.axis.hop; window: l.meter.axis.window; seconds: l.meter.axis.seconds
             target: l.target.shown && l.target.lufs != null ? l.target.lufs : null
@@ -41,10 +42,10 @@ ColumnLayout {
             Repeater {
                 model: [{ what: backend.playing ? "Loudest peak so far" : "Loudest peak", unit: "dBTP",
                           tip: "True peak (dBTP): the highest level the sound reaches between samples",
-                          v: backend.playing && l.meter.peakNow !== null ? l.meter.peakNow : l.info.meter.truePeak, ok: (v) => v <= l.target.peak },
+                          v: backend.playing && l.meter.peakNow !== null ? l.meter.peakNow : l.info.meter.truePeak, ok: (v) => v <= l.target.peak }].concat(
+                        // the whole mix's loudness is the top bar's chip; only while playing is "so far" a different number
                         backend.playing && l.meter.integratedNow != null
-                            ? { what: "Loudness so far", unit: "LUFS", tip: "Integrated loudness (LUFS) from the start up to now", v: l.meter.integratedNow, ok: (v) => Math.abs(v - l.target.lufs) <= 1 }
-                            : { what: "Loudness (whole mix)", unit: "LUFS", tip: "Integrated loudness (LUFS) of the whole mix", v: l.info.meter.lufs, ok: (v) => Math.abs(v - l.target.lufs) <= 1 }]
+                            ? [{ what: "Loudness so far", unit: "LUFS", tip: "Integrated loudness (LUFS) from the start up to now", v: l.meter.integratedNow, ok: (v) => Math.abs(v - l.target.lufs) <= 1 }] : [])
                 delegate: Column {
                     required property var modelData
                     Layout.fillWidth: true; Layout.preferredWidth: 1
