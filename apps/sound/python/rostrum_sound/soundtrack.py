@@ -15,12 +15,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 from pathlib import Path
 
 from rostrum_core import RostrumError, codes
 from rostrum_core import markers as shared
 from rostrum_core import project
+from rostrum_core.cache import put_file
 
 from . import names, settings
 from .compile import compile as compile_doc
@@ -73,14 +73,7 @@ def render(engine, folder, root: dict) -> Path:
         schedule = compile_doc(root)
     key = hashlib.sha256((json.dumps(schedule, sort_keys=True, default=str) + _engine_id(engine)).encode()).hexdigest()
     out = cache() / f"{key[:24]}.wav"
-    if out.is_file():
-        os.utime(out)                       # the newest used stays when the cache is trimmed
-        return out
-    part = out.with_suffix(".partial.wav")
-    engine.request("render", schedule=schedule, out=str(part))
-    if not part.is_file():
-        raise RostrumError(codes.RENDER_FAILED, "soundtrack", "the sound engine", f"answered but wrote no file at {part}")
-    os.replace(part, out)
+    put_file(out, lambda tmp: engine.request("render", schedule=schedule, out=str(tmp)), "soundtrack")
     _trim()
     return out
 

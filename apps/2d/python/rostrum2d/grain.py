@@ -11,6 +11,8 @@ import re
 import subprocess
 from pathlib import Path
 
+from rostrum_core.cache import put_file
+
 from . import settings
 
 CLIP_FRAMES = 12          # pictures in the loop: long enough not to be seen repeating at 24-30 fps
@@ -34,16 +36,13 @@ def clip(src: str, where: str = "grain") -> Path:
     w, h, fps, seed = int(m[1]), int(m[2]), float(m[3]), int(m[4])
     name = "grain-" + hashlib.sha256(f"{w}x{h}|{fps:g}|{seed}|{CLIP_FRAMES}".encode()).hexdigest()[:12] + ".mkv"
     target = settings.cache_dir("2d-grain") / name
-    if not target.is_file():
-        target.parent.mkdir(parents=True, exist_ok=True)
-        tmp = target.with_suffix(".partial.mkv")
-        vf = f"color=c=gray:s={w}x{h}:r={fps:g},noise=alls=100:allf=t:all_seed={seed}"
+    vf = f"color=c=gray:s={w}x{h}:r={fps:g},noise=alls=100:allf=t:all_seed={seed}"
+
+    def make(tmp):
         run = subprocess.run([settings.ffmpeg(), "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", vf,
                               "-frames:v", str(CLIP_FRAMES), "-c:v", "ffv1", str(tmp)], capture_output=True, text=True,
                              creationflags=settings.NO_WINDOW)
-        if run.returncode != 0 or not tmp.is_file():
-            tmp.unlink(missing_ok=True)
+        if run.returncode != 0:
             raise RuntimeError(f"{where}: ffmpeg could not make the noise clip (exit {run.returncode}): "
                                f"{run.stderr.strip()[-400:]}")
-        tmp.replace(target)
-    return target
+    return put_file(target, make, where)

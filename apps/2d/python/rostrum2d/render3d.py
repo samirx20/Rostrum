@@ -28,6 +28,7 @@ import re
 from pathlib import Path
 
 from rostrum_core import RostrumError, codes, project, storage
+from rostrum_core.cache import put_file
 
 from . import settings
 
@@ -180,10 +181,7 @@ def picture(exr: Path, w: int, h: int, fit: str) -> Path:
     cpu.applyRGBA(rgba)
     rgba[..., 3:4] = a
     img = Image.fromarray((np.clip(rgba, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA")
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    tmp = out.with_name(out.stem + ".partial.png")
-    _fit(img, w, h, fit).save(tmp, format="PNG", compress_level=1)
-    tmp.replace(out)
+    put_file(out, lambda tmp: _fit(img, w, h, fit).save(tmp, format="PNG", compress_level=1), "3D picture")
     _trim()
     return out
 

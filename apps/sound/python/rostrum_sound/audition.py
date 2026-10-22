@@ -20,6 +20,7 @@ import json
 from pathlib import Path
 
 from rostrum_core import RostrumError, codes
+from rostrum_core.cache import put_file
 
 from . import settings
 from .builder import Song
@@ -130,10 +131,7 @@ def render_audition(engine, entry: dict, doc: dict | None = None, track: str | N
             "designed": "the designed sound", "file": "the sound file"}[kind]
     if out.is_file():
         return {"file": str(out), "seconds": None, "cached": True, "what": what}
-    folder.mkdir(parents=True, exist_ok=True)
-    tmp = out.with_suffix(".part.wav")
-    r = engine.request("render", schedule=schedule, out=str(tmp), stems=[])
-    if not tmp.is_file():
-        raise RostrumError(codes.RENDER_FAILED, "render_audition", "the engine", f"answered but wrote no file at {tmp}")
-    tmp.replace(out)
+    r = {}
+    put_file(out, lambda tmp: r.update(engine.request("render", schedule=schedule, out=str(tmp), stems=[]) or {}),
+             "render_audition")
     return {"file": str(out), "seconds": r.get("seconds"), "cached": False, "what": what}

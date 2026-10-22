@@ -9,6 +9,8 @@ import json
 import subprocess
 from pathlib import Path
 
+from rostrum_core.cache import put_file
+
 from . import settings
 
 CACHE_DIR = settings.cache_dir("2d-video-sound")
@@ -51,18 +53,13 @@ def wav(path: Path) -> Path:
     """The video's sound as an 8 kHz mono WAV (made once; the name is the file's path, size and time)."""
     path = Path(path)
     out = CACHE_DIR / (hashlib.sha256(repr(_key(path)).encode()).hexdigest()[:24] + ".wav")
-    if out.is_file():
-        out.touch()
-        return out
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    tmp = out.with_suffix(".partial.wav")
-    r = subprocess.run([settings.ffmpeg(), "-hide_banner", "-loglevel", "error", "-y", "-i", str(path), "-vn", "-ac", "1",
-                        "-ar", str(RATE), str(tmp)], capture_output=True, text=True, timeout=300,
-                       creationflags=settings.NO_WINDOW)
-    if r.returncode != 0 or not tmp.is_file():
-        tmp.unlink(missing_ok=True)
-        raise RuntimeError(f"ffmpeg could not read the sound of {path} (exit {r.returncode}): {r.stderr.strip()[-300:]}")
-    tmp.replace(out)
+    def make(tmp):
+        r = subprocess.run([settings.ffmpeg(), "-hide_banner", "-loglevel", "error", "-y", "-i", str(path), "-vn",
+                            "-ac", "1", "-ar", str(RATE), str(tmp)], capture_output=True, text=True, timeout=300,
+                           creationflags=settings.NO_WINDOW)
+        if r.returncode != 0:
+            raise RuntimeError(f"ffmpeg could not read the sound of {path} (exit {r.returncode}): {r.stderr.strip()[-300:]}")
+    put_file(out, make, "video sound")
     for old in sorted(CACHE_DIR.glob("*.wav"), key=lambda p: p.stat().st_mtime, reverse=True)[KEEP:]:
         old.unlink(missing_ok=True)
     return out
