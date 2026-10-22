@@ -1,15 +1,11 @@
 """motion: how much moves per frame, and the frames where a moving thing stops or starts (contact)."""
 import os
 
-import cv2
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
-from scipy.signal import find_peaks
 
-from .video import open_video
+from ..listen.dsp_events import find_peaks
+from ..listen.plot import pyplot
+from .video import cv2, open_video
 
 FLOW_W = 320        # optical flow is computed at this width
 MOVING_PX = 0.35    # px/frame (at flow scale) under which a pixel counts as still
@@ -20,20 +16,21 @@ def flow_series(video):
     """Per frame: motion energy, speed of the fast part (px/frame, source scale), picture jump,
     centroid of what moves -> (rows, fps)."""
     cap, fps, _ = open_video(video)
+    cv = cv2()
     rows, prev, prev_h, k = [], None, None, None
     while True:
         ok, fr = cap.read()
         if not ok:
             break
         k = k or fr.shape[1] / FLOW_W
-        g = cv2.GaussianBlur(cv2.cvtColor(cv2.resize(fr, (FLOW_W, int(fr.shape[0] / k)),
-                             interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2GRAY), (3, 3), 0)
-        hist = cv2.calcHist([g], [0], None, [32], [0, 256]).ravel()
+        g = cv.GaussianBlur(cv.cvtColor(cv.resize(fr, (FLOW_W, int(fr.shape[0] / k)),
+                            interpolation=cv.INTER_AREA), cv.COLOR_BGR2GRAY), (3, 3), 0)
+        hist = cv.calcHist([g], [0], None, [32], [0, 256]).ravel()
         hist /= hist.sum()
         r = {"frame": len(rows), "energy": 0.0, "speed": 0.0, "jump": 0.0, "at": None}
         if prev is not None:
             r["jump"] = float(np.abs(hist - prev_h).sum() / 2 + np.abs(g.astype(np.int16) - prev).mean() / 255)
-            mag = np.linalg.norm(cv2.calcOpticalFlowFarneback(prev, g, None, 0.5, 3, 15, 3, 5, 1.2, 0), axis=2)
+            mag = np.linalg.norm(cv.calcOpticalFlowFarneback(prev, g, None, 0.5, 3, 15, 3, 5, 1.2, 0), axis=2)
             r["energy"] = float(mag.sum() * k / mag.size)
             moving = mag > MOVING_PX
             if moving.sum() > 20:
@@ -54,7 +51,7 @@ def candidates(rows, fps, min_speed=3.0, min_drop=3.0, rel=0.3, min_confidence=0
     d = np.diff(sp, prepend=sp[0])
     out = []
     for kind, sign in (("stop", -1), ("start", 1)):
-        idx, _ = find_peaks(sign * d, height=min_drop, distance=3)
+        idx = find_peaks(sign * d, height=min_drop, distance=3)
         for i in idx:
             ref = sp[max(0, i - 3):i].max() if kind == "stop" else sp[i:i + 3].max()
             big = max(sp[i - 1], sp[i])
@@ -72,6 +69,7 @@ def candidates(rows, fps, min_speed=3.0, min_drop=3.0, rel=0.3, min_confidence=0
 def _plot(rows, cands, fps, png, title):
     t = np.arange(len(rows)) / fps
     en, sp = np.array([r["energy"] for r in rows]), np.array([r["speed"] for r in rows])
+    plt = pyplot()
     fig, ax = plt.subplots(3, 1, figsize=(16, 8), sharex=True)
     ax[0].plot(t, en, c="#1b6ca8"); ax[0].set_ylabel("motion energy")
     ax[1].plot(t, sp, c="#c0392b"); ax[1].set_ylabel("fast-part speed (px/frame)")
@@ -99,7 +97,7 @@ def motion(video, out_dir, **options):
     cands = candidates(rows, fps, **options)
     jump = np.array([r["jump"] for r in rows])
     cuts = [{"frame": int(i), "time_s": round(i / fps, 3), "jump": round(float(jump[i]), 2)}
-            for i in find_peaks(jump, height=CUT_JUMP, distance=4)[0]]
+            for i in find_peaks(jump, height=CUT_JUMP, distance=4)]
     os.makedirs(out_dir, exist_ok=True)
     png = os.path.join(out_dir, "motion.png")
     _plot(rows, cands, fps, png, os.path.basename(os.fspath(video)))

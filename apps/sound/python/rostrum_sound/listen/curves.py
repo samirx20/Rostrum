@@ -1,12 +1,9 @@
 """The loudness + band-energy picture (matplotlib, never shown on screen)."""
-import matplotlib
-
-matplotlib.use("Agg")
-import librosa
-import matplotlib.pyplot as plt
 import numpy as np
 
 from .core import BANDS, db, mono
+from .dsp import fft_frequencies, frames_to_time, stft
+from .plot import pyplot
 
 BAND_COLORS = ["#4b0082", "#1f77b4", "#2ca02c", "#ff7f0e", "#d62728"]
 N_FFT, HOP = 4096, 2048
@@ -14,9 +11,9 @@ N_FFT, HOP = 4096, 2048
 
 def band_curves(y, sr, step=0.5):
     """Band energy in dB per `step` seconds -> (times, [5, T])."""
-    pw = (np.abs(librosa.stft(mono(y), n_fft=N_FFT, hop_length=HOP)) * 2.0 / np.hanning(N_FFT).sum()) ** 2 / 2.0
-    f = librosa.fft_frequencies(sr=sr, n_fft=N_FFT)
-    t = librosa.frames_to_time(np.arange(pw.shape[1]), sr=sr, hop_length=HOP)
+    pw = (np.abs(stft(mono(y), N_FFT, HOP)) * 2.0 / np.hanning(N_FFT).sum()) ** 2 / 2.0
+    f = fft_frequencies(sr, N_FFT)
+    t = frames_to_time(np.arange(pw.shape[1]), sr, HOP)
     edges = np.arange(0, t[-1] + step, step)
     idx = np.digitize(t, edges) - 1
     ts, rows = [], []
@@ -30,6 +27,7 @@ def band_curves(y, sr, step=0.5):
 
 def draw_loudness(y, sr, t, st, png, title, limiter=None):
     """`limiter` = (hop seconds, dB reduced per hop, worst moments): a third panel under the other two."""
+    plt = pyplot()
     fig, axes = plt.subplots(3 if limiter else 2, 1, figsize=(16, 12 if limiter else 9), dpi=100, sharex=True)
     a1, a2 = axes[0], axes[1]
     if limiter:

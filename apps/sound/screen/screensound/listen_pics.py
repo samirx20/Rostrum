@@ -1,5 +1,5 @@
-"""The listen pictures of the last render: the loudness curve and the spectrum, made with `rostrum_sound.listen`
-off the GUI thread into a folder, refreshed when the render changes. A failure is shown on the panel, never hidden.
+"""The listen pictures of the last render: the loudness curves and the spectrum, from `rostrum_sound.listen`'s numbers
+drawn for the panel (listen_draw.py) off the GUI thread into a folder, refreshed when the render changes. A failure is shown on the panel, never hidden.
 
 Each picture gets a new file name per render (`loudness-3.png`), so the QML Image never shows a stale cache.
 """
@@ -24,16 +24,25 @@ _DRAWING = threading.Lock()      # matplotlib's pyplot is not thread-safe: one d
 
 def make_pictures(render: dict, folder: Path, n: int) -> dict:
     """Both pictures of one render answer -> {"loudness": path, "spectrum": path}. Raises on any failure."""
-    from rostrum_sound import listen
+    import numpy as np
+    from rostrum_sound.listen.core import load
+    from rostrum_sound.listen.loudness import short_term
+
+    from .listen_draw import loudness_panel, spectrum_panel
     wav = render.get("file")
     if not wav or not Path(wav).is_file():
         raise FileNotFoundError(f"the render's file is not there: {wav}")
     folder.mkdir(parents=True, exist_ok=True)
     loud, spec = folder / f"loudness-{n}.png", folder / f"spectrum-{n}.png"
-    series = series_pairs(render["series"]) if render.get("series") else None
+    y, sr = load(wav)
+    if render.get("series"):
+        pairs = series_pairs(render["series"])
+        t, st = np.array([p[0] for p in pairs], float), np.array([-200.0 if p[1] is None else p[1] for p in pairs], float)
+    else:
+        t, st = short_term(y, sr)
     with _DRAWING:
-        listen.loudness(wav, out_png=str(loud), series=series)
-        listen.spectrogram(wav, str(spec))
+        loudness_panel(y, sr, t, st, loud)
+        spectrum_panel(y, sr, spec)
     for old in folder.glob("*.png"):
         if old not in (loud, spec):
             try:

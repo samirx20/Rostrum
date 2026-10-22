@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from itertools import combinations
 
-import librosa
 import numpy as np
-from scipy.ndimage import binary_closing, label
 
 from ..listen.core import load, mono, num
+from ..listen.dsp import fft_frequencies, resample, stft
+from ..listen.dsp_events import closing_1x3, label
 
 N_FFT, HOP = 4096, 2048
 CENTRES = [1000.0 * 2 ** (k / 3) for k in range(-13, 13)]          # 50 Hz … 16 kHz
@@ -25,10 +25,10 @@ def band_levels(wav, sr_to: int | None = None):
     y, sr = load(wav)
     m = mono(y)
     if sr_to and sr != sr_to:
-        m, sr = librosa.resample(m, orig_sr=sr, target_sr=sr_to), sr_to
+        m, sr = resample(m, sr, sr_to), sr_to
     win = np.hanning(N_FFT)
-    amp = np.abs(librosa.stft(m, n_fft=N_FFT, hop_length=HOP, window=win)) * 2 / win.sum()
-    f = librosa.fft_frequencies(sr=sr, n_fft=N_FFT)
+    amp = np.abs(stft(m, N_FFT, HOP, window=win)) * 2 / win.sum()
+    f = fft_frequencies(sr, N_FFT)
     bank = np.array([(f >= lo) & (f < hi) for lo, hi in EDGES], dtype=float)
     return 10 * np.log10(bank @ (amp ** 2) / 2 + 1e-12), sr
 
@@ -54,8 +54,8 @@ def find_clashes(levels: dict, within_db: float = 6.0, floor_db: float = -45.0, 
     for a, b in combinations(levels, 2):
         la, lb = levels[a], levels[b]
         cells = (la >= floor_db) & (lb >= floor_db) & (np.abs(la - lb) <= within_db)
-        cells = binary_closing(np.pad(cells, ((0, 0), (1, 1))), structure=np.ones((1, 3)))[:, 1:-1]
-        lab, count = label(cells, structure=np.ones((3, 3)))
+        cells = closing_1x3(np.pad(cells, ((0, 0), (1, 1))))[:, 1:-1]
+        lab, count = label(cells)
         keep = np.zeros_like(cells)
         for i in range(1, count + 1):
             rows, cols = np.nonzero(lab == i)

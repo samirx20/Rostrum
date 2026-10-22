@@ -54,7 +54,7 @@ TOUCH_KEYS = ["position", "damping", "hardness"]
 # The picker's words (the inspector's field is narrow: about 20 characters)
 INSTRUMENT_WORDS = {"none": "None (clips only)", "builtIn": "Built-in sound", "sfz": "Sampled (SFZ file)",
                     "kit": "Drum kit", "kitSfz": "Sampled drum kit", "model": "Played instrument",
-                    "synth": "Synth (shape your own)", "voice": "Spoken voice", "plugin": "Plug-in instrument"}
+                    "synth": "Synth", "voice": "Spoken voice", "plugin": "Plug-in instrument"}
 INSTRUMENT = [
     Param.choice("instrument", names.INSTRUMENTS, group="Instrument", label="Instrument", labels=INSTRUMENT_WORDS,
                  help="What plays the track's notes / hits; none = recorded clips only."),

@@ -1,11 +1,12 @@
 """Chords per bar or beat and the key, from the document's notes when it has any, else from the audio's chroma."""
 from __future__ import annotations
 
-import librosa
 import numpy as np
 
 from ..doc import keys, tempo
 from ..listen.core import load, mono, num
+from ..listen.dsp import frames_to_time, resample
+from ..listen.dsp_events import chroma
 from .theory import chord_from_chroma, estimate_key, name_chord, relative_pair
 
 MIN_SHARE = 0.15                # a pitch class counts in a window when it sounds for this share of it
@@ -42,11 +43,10 @@ def chart_from_notes(notes, wins, key_at=lambda s: None) -> list[dict]:
 
 
 def chroma_of(wav):
-    """(chroma [12, frames], frame times): the harmonic part, constant-Q, so drums don't smear the chords."""
+    """(chroma [12, frames], frame times) at 22.05 kHz, one frame per 2048 samples (dsp_events.chroma)."""
     y, sr = load(wav)
-    m = librosa.resample(mono(y), orig_sr=sr, target_sr=22050) if sr != 22050 else mono(y)
-    c = librosa.feature.chroma_cqt(y=librosa.effects.harmonic(m), sr=22050, hop_length=2048)
-    return c, librosa.times_like(c, sr=22050, hop_length=2048)
+    c = chroma(resample(mono(y), sr, 22050), 22050, 2048)
+    return c, frames_to_time(np.arange(c.shape[1]), 22050, 2048)
 
 
 def chart_from_audio(chroma, t, wins, key_at=lambda s: None) -> list[dict]:

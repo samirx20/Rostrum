@@ -7,9 +7,13 @@ requires-python = ">=3.12"
 dependencies = ["rostrum-core"]
 
 [project.optional-dependencies]
-listen = ["numpy", "scipy", "soundfile", "librosa", "pyloudnorm", "matplotlib", "opencv-python-headless"]
+# What ships: the ears' maths is our own numpy (listen/dsp*.py, bs1770.py); matplotlib draws the pictures.
+# OpenCV (video looks) is downloaded on first use: python -m rostrum_sound.sfx.opencv.
+listen = ["numpy", "soundfile", "matplotlib"]
+# Development only: the libraries the numpy versions were checked against, and OpenCV for the video looks in a dev venv.
+listen-dev = ["librosa", "scipy", "pyloudnorm", "opencv-python-headless==5.0.0.93"]
 mcp = ["rostrum-core[mcp]"]
-cleanup = ["numpy", "scipy", "soundfile", "onnxruntime-directml; sys_platform == 'win32'", "onnxruntime; sys_platform != 'win32'"]
+cleanup = ["numpy", "soundfile", "onnxruntime-directml; sys_platform == 'win32'", "onnxruntime; sys_platform != 'win32'"]
 test = ["pytest>=8"]
 
 [build-system]

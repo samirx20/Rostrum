@@ -44,7 +44,7 @@ def test_pool_cache_reads_then_reanalyses_on_change(tmp_path, monkeypatch):
 
 
 def test_a_held_note_is_a_tone_and_mains_hum_is_hum():
-    import librosa
+    from rostrum_sound.listen.dsp import stft
     from rostrum_sound.listen.tones import N_FFT, steady_tones
     t = np.arange(8 * SR) / SR
     swell = np.interp(t, [0, 3, 6, 8], [0.05, 1.0, 0.3, 0.02])            # a held D3 that swells and fades
@@ -53,7 +53,7 @@ def test_a_held_note_is_a_tone_and_mains_hum_is_hum():
 
     def tones(y):
         y = (y + 0.001 * rng.standard_normal(len(t))).astype(np.float32)
-        return steady_tones(np.abs(librosa.stft(y, n_fft=N_FFT, hop_length=1024)) ** 2, SR)
+        return steady_tones(np.abs(stft(y, N_FFT, 1024)) ** 2, SR)
     held = tones(drone)
     assert any(x["note"] == "D3" for x in held) and not any(x["is_hum"] for x in held)
     found = tones(drone + hum)
