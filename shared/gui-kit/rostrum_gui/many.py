@@ -7,6 +7,8 @@
   an expression or binding, a pick, a list, a curve, a file — is absent when the items differ.
 - The key mark: "onkey" / "keyed" when every item is; else "still" when any could be animated ("" when one can't).
 Each item's own rows come from rows.evaluate (and rows.omit) as for one item; `merge` folds them together.
+- Mixed kinds also get a narrowing line per kind ("3 layers", "1 text": click one to keep only that kind, `by_kind`),
+  and the panel's last line says who changed the selection last and when (`last_change`, `ago`).
 """
 from __future__ import annotations
 
@@ -66,3 +68,29 @@ def _param(r: dict, alike: list[dict]) -> dict:
     anim = ("" if "" in anims else anims[0] if len(set(anims)) == 1 else
             "keyed" if all(a in ("keyed", "onkey") for a in anims) else "still")
     return {**r, "holds": ok, "valid": ok and all(a["valid"] for a in rows), "mixed": mixed, "anim": anim}
+
+
+def by_kind(kinds: list[tuple[str, str]]) -> list[dict]:
+    """The narrowing lines for a selection: `kinds` = [(type, kind in words)] per selected item. One line per kind, in
+    the order they first appear, {"kind", "label": "3 layers", "count"}; none when every item is one kind."""
+    order = dict.fromkeys(t for t, _ in kinds)
+    if len(order) < 2:
+        return []
+    words = dict(kinds)
+    n = {t: sum(1 for k, _ in kinds if k == t) for t in order}
+    return [{"kind": t, "count": n[t], "label": f"{n[t]} {words[t].lower()}{'s' if n[t] > 1 else ''}"} for t in order]
+
+
+def last_change(doc, ids):
+    """The newest change still in force that touched any of these items (an Insert, Set, Move or Remove of one), or
+    None: the panel's "Last changed by" line. An undo or redo step isn't one; the step it acted on is."""
+    h, ids = doc.history, set(ids)
+    return next((c for c in reversed(h.changes) if c.original and h.done[c.seq]
+                 and any(getattr(e, "id", None) in ids for e in c.edits)), None)
+
+
+def ago(t: float, now: float) -> str:
+    """How long ago, in plain words: "just now", "2 min ago", "3 h ago", "4 d ago"."""
+    s = max(0, now - t)
+    return ("just now" if s < 60 else f"{int(s // 60)} min ago" if s < 3600
+            else f"{int(s // 3600)} h ago" if s < 86400 else f"{int(s // 86400)} d ago")

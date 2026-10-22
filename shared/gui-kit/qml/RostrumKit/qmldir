@@ -17,6 +17,7 @@ ChoiceField 1.0 ChoiceField.qml
 ColorField 1.0 ColorField.qml
 Slider 1.0 Slider.qml
 KeyMark 1.0 KeyMark.qml
+NameLabel 1.0 NameLabel.qml
 Segmented 1.0 Segmented.qml
 PlayButton 1.0 PlayButton.qml
 Panel 1.0 Panel.qml
@@ -46,3 +47,5 @@ FilesMenu 1.0 FilesMenu.qml
 ExportSheet 1.0 ExportSheet.qml
 JobChip 1.0 JobChip.qml
 ProblemsChip 1.0 ProblemsChip.qml
+SnapLine 1.0 SnapLine.qml
+DragLabel 1.0 DragLabel.qml

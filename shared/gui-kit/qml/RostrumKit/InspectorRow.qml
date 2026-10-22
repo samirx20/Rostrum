@@ -154,6 +154,7 @@ Item {
         atRest: row.mixed
         words: row.model.words || []
         expressions: row.bridge.typesExpressions
+        defaultValue: row.model.default === undefined ? null : row.model.default   // double-click puts it back
         onEdited: (v) => row.set(v)
         onTypedExpression: (t) => row.set(t)
         onScrubStarted: row.bridge.beginScrub(row.model.id)

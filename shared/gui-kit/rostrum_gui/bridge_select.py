@@ -4,9 +4,12 @@ Selection, the More row and the rows' layout are screen state, not document chan
 """
 from __future__ import annotations
 
+import time
+
 from PySide6.QtCore import Slot
 
 from . import commands, many, rows
+from .history_rows import who_name
 from .parts import SlotMixin
 
 
@@ -33,6 +36,31 @@ class SelectSlots(SlotMixin):
         self.model.reset(self._rows())      # a new selection swaps the list at once (no reveal animation)
         self.rowsChanged.emit()
         self.selectionChanged.emit()
+
+    @Slot(result="QVariantList")
+    def narrowLines(self):
+        """Mixed kinds selected: a line per kind, [{kind, label: "3 layers", count}] (else []). Read it in a binding
+        that also reads `selection`, so it follows the selection."""
+        k = self._kit
+        return many.by_kind([(it["type"], self.kind_label(it)) for it in map(self.doc.item, k.selection)])
+
+    @Slot(str)
+    def narrowTo(self, kind):
+        """Keep only the selected items of this kind (a narrowing line's click). A selection change, never a document
+        change: no undo step."""
+        keep = [i for i in self._kit.selection if self.doc.item(i)["type"] == kind]
+        if keep:
+            self.selectMany(keep)
+
+    @Slot(result="QVariantMap")
+    def lastChanged(self):
+        """{who, ago, label, session}: who changed the selection last, when, and what they did ({} = nothing yet).
+        Read it in a binding that also reads `historyCount` and `selection`."""
+        c = many.last_change(self.doc, self._kit.selection)
+        if c is None:
+            return {}
+        return {"who": who_name(c.who, self.who), "ago": many.ago(c.t, time.time()) if c.t else "", "label": c.label,
+                "session": c.session or ""}
 
     @Slot()
     def toggleMore(self):

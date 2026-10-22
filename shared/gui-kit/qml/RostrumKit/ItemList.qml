@@ -29,10 +29,10 @@ Panel {
                 Text { anchors.centerIn: parent; text: item.modelData.kind.slice(0, 2).replace(/^./, c => c.toUpperCase())
                        color: item.selected ? "white" : Theme.fg2; font.family: uiFont; font.pixelSize: 10; font.weight: Font.DemiBold }
             }
-            Text {
+            NameLabel {
                 anchors.left: chip.right; anchors.leftMargin: Theme.gap; anchors.verticalCenter: parent.verticalCenter
                 anchors.right: kindLabel.left; anchors.rightMargin: Theme.gap
-                text: item.modelData.label; color: Theme.fg; elide: Text.ElideRight; font.family: uiFont; font.pixelSize: Theme.body
+                text: item.modelData.label
             }
             Text {
                 id: kindLabel

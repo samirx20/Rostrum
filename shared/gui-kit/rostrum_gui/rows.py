@@ -21,7 +21,7 @@ from .match import starts
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
 ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit",
-         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed")
+         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default")
 # anim: "" (can't be animated), "still" (could be), "keyed" (has keys), "onkey" (has a key at the playhead).
 # expr: "" for most rows; a param driven by an expression or binding has {"text", "note"}: the row shows them (and a
 # way to clear it) instead of its widget.
@@ -32,6 +32,7 @@ ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options",
 # to pick (and nothing picked) the row is absent.
 # fold: the group a fold row opens; open: that group is open now (None when nothing inside applies: the row is absent).
 # mixed: several items selected and their values differ (the widget says "Mixed"; many.py).
+# default: the param's own default (None = none: no reset); a number field puts itself back to it on a double-click.
 
 
 def layout(op, kind: str = "") -> list[dict]:
