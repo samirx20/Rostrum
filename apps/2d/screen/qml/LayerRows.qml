@@ -19,15 +19,13 @@ ListView {
     clip: true
     boundsBehavior: Flickable.StopAtBounds
 
-    // Right-click menu of a layer: what applies to the selection (backend.layerMenu), the same commands as Ctrl+K.
+    // Right-click menu of a layer: what applies to the selection (backend.layerMenu), the same list as Ctrl+K and the action bar.
     function openMenu(id, px, py) {
         const item = itemAtIndex(backend.layers.findIndex(r => r.id === id))
         menu.entries = backend.layerMenu(id)
-        menu.x = px === undefined ? Theme.gap * 4 : px
-        menu.y = py === undefined ? (item ? item.y - contentY + item.height : 0) : py
-        if (menu.entries.length) menu.open()
+        menu.openAt(px === undefined ? Theme.gap * 4 : px, py === undefined ? (item ? item.y - contentY + item.height : 0) : py)
     }
-    Menu { id: menu; parent: list; onPicked: (key) => backend.run(key) }
+    ActionMenu { id: menu; parent: list; onPicked: (key) => backend.run(key) }
 
     // drag-to-reorder: the dragged row, and where it would land (the row, above | below | into a group)
     property string dragId: ""

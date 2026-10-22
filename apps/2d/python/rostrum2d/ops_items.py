@@ -35,7 +35,9 @@ def _all_ids(ctx):
 
 
 def _names(ctx) -> set[str]:
-    return {loc.item.get("name") for loc in _all_ids(ctx).values()}
+    """The names a person reads in the layers list (a layer named only "Text" with a meaningful id shows its id, so
+    it doesn't take the name "Text" from the next new text)."""
+    return {display_name(loc.item) for loc in _all_ids(ctx).values() if loc.item.get("type") != "doc"}
 
 
 @R.operation("comp.add", "Add a composition (one shot: its frame size, frame rate and length).", label="Add composition",

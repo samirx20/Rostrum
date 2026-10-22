@@ -53,6 +53,23 @@ AppShell {
     Shortcut { sequence: "Delete"; onActivated: backend.layerCommand("delete") }
     Shortcut { sequence: "F2"; onActivated: backend.layerCommand("rename") }
     Shortcut { sequence: "Ctrl+D"; onActivated: backend.layerCommand("duplicate") }
+    // select, then act (screen2d/actions.py): the keys of the one list of actions, and the keyboard's select all, clear, nudge
+    readonly property bool typing: Window.activeFocusItem !== null && typeof Window.activeFocusItem.selectAll === "function"
+    readonly property bool canvasKeys: backend.tool === "move" && !typing
+    Shortcut { sequence: "Ctrl+G"; onActivated: backend.layerCommand("group") }
+    Shortcut { sequence: "Ctrl+Shift+G"; onActivated: backend.layerCommand("ungroup") }
+    Shortcut { sequence: "Ctrl+A"; enabled: shell.canvasKeys; onActivated: backend.selectAllLayers() }
+    Shortcut { sequence: "Escape"; enabled: shell.canvasKeys && backend.selectedLayer !== "" && !exportPanel.shown && !importPanel.shown
+                                            && !problemsPanel.shown && !fileMenu.menuOpen && !addMenu.menuOpen
+               onActivated: backend.clearSelection() }
+    Shortcut { sequence: "Left"; enabled: shell.canvasKeys; onActivated: backend.nudge(-1, 0) }
+    Shortcut { sequence: "Right"; enabled: shell.canvasKeys; onActivated: backend.nudge(1, 0) }
+    Shortcut { sequence: "Up"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, -1) }
+    Shortcut { sequence: "Down"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, 1) }
+    Shortcut { sequence: "Shift+Left"; enabled: shell.canvasKeys; onActivated: backend.nudge(-10, 0) }
+    Shortcut { sequence: "Shift+Right"; enabled: shell.canvasKeys; onActivated: backend.nudge(10, 0) }
+    Shortcut { sequence: "Shift+Up"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, -10) }
+    Shortcut { sequence: "Shift+Down"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, 10) }
 
     function setExportOpen(open) { exportPanel.shown = open; if (open) { importPanel.shown = false; problemsPanel.shown = false } }
     function setImportOpen(open) { importPanel.shown = open; if (open) { exportPanel.shown = false; problemsPanel.shown = false } }
@@ -75,7 +92,8 @@ AppShell {
     ]
     FileFlow { id: fileFlow; window: shell }
     centre: [
-        Stage { anchors.fill: parent },
+        Stage { id: stage; anchors.fill: parent },
+        ActionBar { anchors.fill: parent; canvas: stage.canvasFrame },       // select, then act: under the selection
         ExportPanel {   // opened by the Export button; docked on the canvas's right edge, beside the inspector (never over it)
             id: exportPanel
             anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }

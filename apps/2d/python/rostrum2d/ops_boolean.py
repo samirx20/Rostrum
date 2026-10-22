@@ -70,7 +70,7 @@ def commands_of(p: pathops.Path) -> list[tuple]:
 @R.operation("path.boolean", "Combine two or more path or shape layers into one new path: union, subtract (the "
              "first minus the others), intersect or exclude. They must be in the same group or composition. The "
              "inputs are removed; the new path sits where they were, with the first one's fill and stroke.",
-             target=("path", "shape"), label="Combine",
+             target=("path", "shape"), label="Combine", min_targets=2,
              params=[Param.choice("mode", list(MODES), label="Mode", required=True), ID])
 def path_boolean(ctx, targets, args):
     combine(ctx, targets, args["mode"], args)
@@ -80,7 +80,7 @@ def path_boolean(ctx, targets, args):
              "first minus the others), intersect or exclude. The result is baked when applied: the originals are removed and "
              "the new path sits where they were, with the first one's fill and outline (no live, still-editable combination). "
              "They must be in the same group or composition.",
-             target=("path", "shape"), label="Combine shapes",
+             target=("path", "shape"), label="Combine shapes", min_targets=2,
              params=[Param.choice("op", list(MODES), label="Combine", required=True), ID])
 def shape_boolean(ctx, targets, args):
     combine(ctx, targets, args["op"], args)

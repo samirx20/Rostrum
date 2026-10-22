@@ -47,9 +47,9 @@ def boxes(comp: dict, t: float) -> list[dict]:
             placed[te] = solve(comp, te)
         return placed[te]
 
-    def walk(layers, m, n):
+    def walk(layers, m, n, locked=False):
         for lay in layers:
-            if lay["type"] == "camera":         # not drawn: no box (and no scale)
+            if lay["type"] == "camera" or lay.get("hidden"):         # not drawn: no box (and no scale)
                 continue
             own = lay.get(STEPS, "group")
             ln = n if own == "group" else int(own)
@@ -65,12 +65,13 @@ def boxes(comp: dict, t: float) -> list[dict]:
             W, H = w * sx * gx, h * sy * gy
             out.append({"id": lay["id"], "type": lay["type"], "x": ax_s - p["anchorX"] * W, "y": ay_s - p["anchorY"] * H,
                         "w": W, "h": H, "rot": p["rotation"] + math.degrees(ang), "ax": p["anchorX"], "ay": p["anchorY"],
-                        "lw": w * sx, "lh": h * sy, "lrot": p["rotation"], "m": m})
+                        "lw": w * sx, "lh": h * sy, "lrot": p["rotation"], "m": m,
+                        "locked": locked or bool(lay.get("locked"))})
             if lay["type"] == "group":
                 c, s = math.cos(math.radians(p["rotation"])), math.sin(math.radians(p["rotation"]))
                 inner = _compose(m, c * sx, s * sx, -s * sy, c * sy, p["x"], p["y"])           # parent px -> this layer's px
                 inner = _compose(inner, 1, 0, 0, 1, -p["anchorX"] * w, -p["anchorY"] * h)
-                walk(lay.get("layers", []), inner, ln)
+                walk(lay.get("layers", []), inner, ln, locked or bool(lay.get("locked")))
 
     walk(comp.get("layers", []), (1.0, 0.0, 0.0, 1.0, 0.0, 0.0), int(comp.get(STEPS, "1")))
     return out
@@ -105,8 +106,9 @@ def inside(b: dict, x: float, y: float) -> bool:
 
 
 def pick(comp: dict, t: float, x: float, y: float) -> str:
-    """The topmost layer under (x, y), or "" (groups count only where none of their layers is)."""
-    hits = [b for b in boxes(comp, t) if inside(b, x, y)]
+    """The topmost layer under (x, y), or "" (groups count only where none of their layers is). A locked layer is not
+    picked (a hidden one has no box)."""
+    hits = [b for b in boxes(comp, t) if not b["locked"] and inside(b, x, y)]
     return hits[-1]["id"] if hits else ""
 
 

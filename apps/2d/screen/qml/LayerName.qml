@@ -66,10 +66,30 @@ Rectangle {
         onActiveFocusChanged: if (!activeFocus) name.endRename(true)
         Keys.onEscapePressed: name.endRename(false)
     }
+    Row {  // the lock and the eye: on hover, or always while on (a click is one change; hidden layers dim and don't export)
+        id: switches
+        visible: name.isLayer && !name.renaming
+        anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
+        Repeater {
+            model: [{ field: "locked", tip: "Locked: it can't be picked or moved" }, { field: "hidden", tip: "Hidden: not drawn, not exported" }]
+            delegate: Item {
+                id: sw
+                required property var modelData
+                readonly property bool on: !!name.rowData[modelData.field]
+                visible: on || hover.containsMouse || swArea.containsMouse
+                width: 18; height: 18
+                LayerSwitchIcon { anchors.centerIn: parent; kind: sw.modelData.field; on: sw.on; hot: swArea.containsMouse }
+                MouseArea { id: swArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onClicked: backend.toggleSwitch(name.rowData.id, sw.modelData.field) }
+                HoverTip { hovered: swArea.containsMouse; pressed: swArea.pressed; text: sw.modelData.tip }
+            }
+        }
+    }
     Text {
         visible: !name.renaming
+        opacity: name.rowData.hidden ? 0.45 : 1
         x: icon.visible ? icon.x + icon.width + Theme.gap : name.indent + 16
-        width: parent.width - x - Theme.gap; anchors.verticalCenter: parent.verticalCenter
+        width: parent.width - x - Theme.gap - (name.isLayer ? 38 : 0); anchors.verticalCenter: parent.verticalCenter
         text: name.rowData.label; elide: Text.ElideRight; font.family: uiFont
         font.pixelSize: name.isLayer ? Theme.body : Theme.label + 1
         color: name.isLayer || name.selected ? Theme.fg : Theme.fg2

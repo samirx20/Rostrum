@@ -20,6 +20,9 @@
     import <path> [page=<n>] [text=outline] [keep=on] (the Import panel's job, waits, fails like it) | importstart <path> … (starts it,
     doesn't wait) | importpanel open [path]|close
     problems open|close (the Problems panel, after the list is worked out) | inspectorscroll <px>
+  Select, then act: selectmany <id> <id> … (those layers, the first is the primary) | act <action> (an entry of the one
+    list on the selection: group, ungroup, mask, union, align_left, distribute_x, match_w, lock, hide, delete, front …;
+    fails when the selection doesn't allow it) | nudge <dx> <dy> (the arrow keys, px) | actionmenu | actionbar (print what they offer)
   Inspector kit: find <text> (the search box; alone clears it) | group <name> (fold / open a group) | reveal <field> (bring a field into view)
   Export: export <mp4|prores4444|webm|gif|png|exr|lottie> [alpha=on|off] [depth=8|16] [start=<s>] [end=<s>] (the Export button's
     job; waits for it) | exportpanel open [format]|close | exportcancel [format] (start one, then Cancel it) |
@@ -265,6 +268,15 @@ def do_step(bridge, win, step):
         QMetaObject.invokeMethod(win, "openLayerMenu", Q_ARG("QVariant", rest[0]))
         if rest[1:] and rest[1] != "open":
             bridge.run(f"layer:{rest[1]}")
+    elif word == "selectmany":
+        bridge._select(rest)
+    elif word == "act":
+        if not bridge.layerCommand(rest[0]):
+            raise RuntimeError(f"step {step!r}: not available for the selection ({', '.join(e['value'][6:] for e in bridge.actionMenu())})")
+    elif word == "nudge":
+        bridge.nudge(float(rest[0]), float(rest[1]))
+    elif word in ("actionmenu", "actionbar"):
+        print(word, [(e["value"] if word == "actionmenu" else e["label"]) for e in getattr(bridge, "actionMenu" if word == "actionmenu" else "actionBar")()])
     elif word in ("front", "back", "forward", "backward", "delete", "duplicate"):    # the layer-order shortcuts (layer_order.py)
         if not bridge.layerCommand(word):
             raise RuntimeError(f"step {step!r}: not available for the selection")

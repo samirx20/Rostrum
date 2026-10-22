@@ -68,6 +68,7 @@ def rows(comp: dict, flipped: set[str]) -> list[dict]:
                 row.update(bar=True, start=min(max(lay.get("start", 0.0), 0.0), duration),
                            end=min(max(lay.get("end", duration), 0.0), duration),
                            startMarker=lay.get(FIELD) or "", endMarker=lay.get(END) or "")
+            row.update(locked=bool(lay.get("locked")), hidden=bool(lay.get("hidden")))
             row["fold"] = "" if not inside else "open" if is_open else "closed"
             if lay["type"] == "drawing":
                 row["frames"] = framing.marks(lay, comp["fps"], duration)

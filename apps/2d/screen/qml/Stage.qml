@@ -13,6 +13,7 @@ Panel {
     id: panel
     title: "Canvas"
     readonly property var info: backend.frameInfo
+    readonly property Item canvasFrame: frame      // the picture's box (the action bar sits under the selection, in its px)
     headerRight: Text { text: panel.info.width + " × " + panel.info.height + "  ·  " + panel.info.fps + " fps"
                         color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
 

@@ -24,6 +24,7 @@ Rectangle {
     Rectangle {  // the bar
         id: bar
         visible: track.rowData.bar === true
+        opacity: track.rowData.hidden ? 0.35 : 1       // a hidden layer dims
         x: track.xOf(track.rowData.start || 0); width: Math.max(4, track.xOf(track.rowData.end || 0) - x)
         y: 3; height: parent.height - 6; radius: 4
         color: track.lit ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.34) : Theme.raised
