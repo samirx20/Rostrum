@@ -5,8 +5,10 @@ Filled in by rostrum_core's callers at the door (GUI bridge, MCP server, script 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import PurePath
 
 KINDS = ("person", "agent", "script", "outside")
+_AGENTS = (("claude", "Claude"), ("codex", "Codex"), ("gemini", "Gemini"), ("cursor", "Cursor"))
 
 
 @dataclass(frozen=True)
@@ -33,6 +35,18 @@ class Who:
     @classmethod
     def from_dict(cls, d) -> "Who":
         return cls(d["kind"], d["name"])
+
+    def words(self) -> str:
+        """Who in plain words, the one place a Who becomes a name on screen or in a refusal: a person by name ("Sam"),
+        an agent by its app ("claude-code" -> "Claude"), a script by its file name, "Outside Rostrum"."""
+        if self.kind == "agent":
+            low = self.name.lower()
+            return next((w for k, w in _AGENTS if low.startswith(k)), self.name[:1].upper() + self.name[1:])
+        if self.kind == "script":
+            return PurePath(self.name.replace("\\", "/")).name or self.name
+        if self.kind == "outside":
+            return "Outside Rostrum"
+        return self.name[:1].upper() + self.name[1:]
 
     def __str__(self):
         return f"{self.kind}:{self.name}"

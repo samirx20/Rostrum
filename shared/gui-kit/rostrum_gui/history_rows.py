@@ -11,28 +11,15 @@ from __future__ import annotations
 
 import time
 from datetime import datetime, timezone
-from pathlib import PurePath
 
 from rostrum_core import desk
 
 SHOWS = ("everyone", "you", "agents", "scripts")
-_AGENTS = (("claude", "Claude"), ("codex", "Codex"), ("gemini", "Gemini"), ("cursor", "Cursor"))
 
 
 def who_name(who, me=None) -> str:
-    """A Who in words: "You" for this window's person; an agent by its app ("claude-code" -> "Claude");
-    a script by its file name; a change made outside Rostrum as "Outside Rostrum"."""
-    if me is not None and who == me:
-        return "You"
-    if who.kind == "agent":
-        low = who.name.lower()
-        hit = next((word for key, word in _AGENTS if low.startswith(key)), None)
-        return hit or (who.name[:1].upper() + who.name[1:])
-    if who.kind == "script":
-        return PurePath(who.name.replace("\\", "/")).name or who.name
-    if who.kind == "outside":
-        return "Outside Rostrum"
-    return who.name[:1].upper() + who.name[1:]
+    """A Who in words: "You" for this window's person, else the core's one wording (Who.words)."""
+    return "You" if me is not None and who == me else who.words()
 
 
 def clock(change) -> str:

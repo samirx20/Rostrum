@@ -109,8 +109,8 @@ class History:
                 if hit:
                     k = E.key_text(sorted(hit)[0])
                     raise RostrumError(codes.CONFLICT, "undo", f'"{targets[-1].label}"',
-                                       f"can't be undone or redone: change {c.seq} ({c.who}, \"{c.label}\") "
-                                       f"changed {k} after it", hint="Undo that change first.")
+                                       f"can't be taken back or brought back: {c.who.words()} changed {k} since "
+                                       f"(\"{c.label}\", step {c.seq})", hint="Undo that first, in History.")
 
     def who_changed(self, id_, field_=None) -> Change | None:
         want = (id_,) if field_ is None else (id_, field_)
