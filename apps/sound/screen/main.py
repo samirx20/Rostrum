@@ -8,7 +8,7 @@
     python apps/sound/screen/main.py --doc <project folder> <item>    # open a saved document (made if missing)
     python apps/sound/screen/main.py --step "select melody.n9600" --step "drag-note melody.n9600 0.6 2" --shot out.png
 Every song with a folder is saved after every change. Steps: see screensound/steps.py, plus the file steps here
-(`file-new`, `file-open <path>`, `file-save-as <folder>`, `file-menu`, `settings`, `add-track <kind>`). With --shot the window quits by
+(`file-new`, `file-open <path>`, `file-save-as <folder>`, `file-menu`, `settings`, `about`, `add-track <kind>`). With --shot the window quits by
 itself once the sound has rendered; a failed step, render or save exits nonzero. Offscreen screenshots:
 QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
 """
@@ -130,6 +130,8 @@ def file_step(screen, step) -> bool:
         screen.ctx_adder.add(rest)
     elif word == "settings":
         QMetaObject.invokeMethod(screen.win, "openSettings")
+    elif word == "about":                     # Help › About and licences
+        QMetaObject.invokeMethod(screen.win, "openAbout")
     else:
         return False
     if screen.songs.error:
