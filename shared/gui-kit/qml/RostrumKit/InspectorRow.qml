@@ -168,7 +168,7 @@ Item {
         unit: row.model.mixed ? "" : row.model.unit || ""
         atRest: row.mixed
         words: row.model.words || []
-        expressions: row.bridge.typesExpressions
+        expressions: row.bridge.typesExpressions === true     // a bridge without the flag (a sub-panel) takes no typed =…
         defaultValue: row.model.default === undefined ? null : row.model.default   // double-click puts it back
         onEdited: (v) => row.set(v)
         onTypedExpression: (t) => row.set(t)

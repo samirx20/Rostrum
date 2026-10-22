@@ -4,7 +4,7 @@
   PATH holds only Windows itself, no PYTHON* variables, and the home / AppData folders are a fresh scratch folder
   (so no C:\Users\Sam\.rostrum\venv, no uv, no Rust, no dev checkout can be found).
 
-  pwsh -File tools\release\check.ps1 -Install <folder> -App 2d|sound -Shot <file.png> -UserHome <empty folder> [-Lnk <x.lnk>] [-Extra <args>]
+  pwsh -File tools\release\check.ps1 -Install <folder> -App 2d|sound -Shot <file.png> -UserHome <empty folder> [-Lnk <x.lnk>] [-Extra <args>] [-Wait <s, 120>]
 
   -Lnk: start exactly what this shortcut starts (its target and arguments) instead of the install's
         pythonw.exe + runtime\rostrum.pyw <app>. -Extra: more arguments (e.g. a .mtn file, as a double-click passes).
@@ -16,14 +16,15 @@ param(
     [Parameter(Mandatory)][string]$Shot,
     [Parameter(Mandatory)][string]$UserHome,
     [string]$Lnk,
-    [string[]]$Extra = @()
+    [string[]]$Extra = @(),
+    [int]$Wait = 120
 )
 $ErrorActionPreference = "Stop"
 $pyw = Join-Path $Install "runtime\python\pythonw.exe"
 $launcher = Join-Path $Install "runtime\rostrum.pyw"
 foreach ($f in @($pyw, $launcher)) { if (-not (Test-Path $f)) { Write-Host "FAIL: $f is missing"; exit 1 } }
 
-New-Item -ItemType Directory -Force (Join-Path $UserHome "AppData\Local"), (Join-Path $UserHome "AppData\Roaming"), (Join-Path $UserHome "Documents") | Out-Null
+New-Item -ItemType Directory -Force (Join-Path $UserHome "AppData\Local"), (Join-Path $UserHome "AppData\Roaming"), (Join-Path $UserHome "Documents"), (Join-Path $UserHome ".rostrum") | Out-Null
 $start = @($launcher, $App)
 if ($Lnk) {
     $l = (New-Object -ComObject WScript.Shell).CreateShortcut($Lnk)
@@ -45,6 +46,10 @@ $psi.Environment["HOMEPATH"] = $UserHome.Substring(2)
 $psi.Environment["LOCALAPPDATA"] = Join-Path $UserHome "AppData\Local"
 $psi.Environment["APPDATA"] = Join-Path $UserHome "AppData\Roaming"
 $psi.Environment["ROSTRUM_NO_MESSAGE_BOX"] = "1"          # this check reads the log instead of waiting on a box
+# A --shot run is "scripted" (rostrum_core.userhome) and would keep settings, Open recent and new projects in a temp
+# folder removed at exit. Here the "person" is the fresh scratch user, so the app runs as their normal start: settings
+# in their ~\.rostrum, projects in their Documents, and the next start can reopen the file.
+$psi.Environment["ROSTRUM_REAL_HOME"] = "1"
 # 2D asks Windows for the Documents folder (not USERPROFILE), which would be the real user's: keep its projects in the
 # scratch home's Documents, where a new user's own would be.
 $psi.Environment["ROSTRUM2D_PROJECTS"] = Join-Path $UserHome "Documents\Rostrum2D"
@@ -52,7 +57,7 @@ $psi.Environment["ROSTRUM2D_PROJECTS"] = Join-Path $UserHome "Documents\Rostrum2
 # dimmed screen); drawing on the app's own thread does. A person's window is not affected.
 $psi.Environment["QSG_RENDER_LOOP"] = "basic"
 $p =[System.Diagnostics.Process]::Start($psi)
-if (-not $p.WaitForExit(120000)) { $p.Kill($true); Write-Host "FAIL: $App did not finish in 2 minutes (PID $($p.Id) and the app it watches ended)"; exit 1 }
+if (-not $p.WaitForExit($Wait * 1000)) { $p.Kill($true); Write-Host "FAIL: $App did not finish in $Wait s (PID $($p.Id) and the app it watches ended)"; exit 1 }
 $log = Get-ChildItem (Join-Path $UserHome "AppData\Local\Rostrum\logs") -Filter "$App-*.log" -ErrorAction SilentlyContinue |
     Sort-Object LastWriteTime | Select-Object -Last 1
 if ($p.ExitCode -ne 0 -or -not (Test-Path $Shot)) {
