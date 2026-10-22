@@ -9,8 +9,8 @@ Hit-testing a press still reads the live document (the person acts on the newest
 While a drag is under way (a layer, a handle, a point, a key or a bar), frames are drawn at half size so the picture
 keeps up; the drag's last frame, after release, is full size again. The canvas's zoom (Stage.qml's one mapping, sent with
 setView) caps the size too: the engine draws the frame at the size it is shown, up to Full (VIEW_SCALES: the engine
-takes 1, 1/2 or 1/4), so the fit view doesn't draw more than it shows and 400 % shows a full-size frame, never a
-smaller one stretched. The same engine and scene either way (preview = export); the view itself is screen state. The engine's queue is newest-wins
+takes 1, 1/2 or 1/4), so the fit view doesn't draw more than it shows; past Full the visible part is drawn again at the
+size shown (sharp.py), so 400 % is sharp, never Full enlarged. The same engine and scene either way (preview = export); the view itself is screen state. The engine's queue is newest-wins
 (rostrum_gui.frames.PictureWorker.post_latest): no backlog.
 `drag→shown` (STATS, playstats.py): from a drag's change to the frame that shows it on screen.
 
@@ -66,6 +66,21 @@ class ShownState:
         """The engine's scale for the next frame: Preview size while playing, half while dragging, else full; never
         more than the canvas shows."""
         return min(self._view, DRAG_SCALE if self.dragging() and not self.play.playing else self.play.scale())
+
+    def frame_extras(self) -> dict:
+        """What a frame job asks for beside the frame: the sharp crop (sharp.py) and the paint target's place
+        (paint_edge.py)."""
+        crop, place = self._sharp.crop(), self._paint_edge.ids()
+        self._sharp.asked(crop)
+        self._paint_edge.asked(place)
+        return {"crop": crop, "place": place}
+
+    def place_of(self, layer_id: str) -> dict:
+        """The layer's place at the playhead now, from the canvas's engine and the scene as the document is
+        (rostrum2d/placement.py: painting's one mapping)."""
+        if not self._scene:
+            raise RuntimeError("the canvas can't be drawn right now, so there is nowhere to paint (see the status line)")
+        return self.frames.place(self._scene, self._t, [layer_id])[layer_id]
 
     def _note_change(self):
         """A document change: remember when, while dragging (for drag→shown)."""

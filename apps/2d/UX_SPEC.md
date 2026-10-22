@@ -764,7 +764,7 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
   eye, opacity and blend; right-click › Delete. Strokes go to the highlighted one.
   In the timeline, opening the element's row (its arrow) shows paint layers as sub-rows only when there are two or
   more.
-- **Agent:** `stroke.add {layer: "new"}` makes the paint layer with its first stroke; `paint.layer_set`, `paint.layer_remove` *(new)*.
+- **Agent:** `paint.stroke {layer: "new"}` makes the paint layer with its first stroke; `paint.set`, `paint.move`, `paint.remove` *(H30: built under these names)*.
 - **3E:** *Effective:* lines over colour is how hand animation and illustration are built (Toon Boom's line and
   colour art). *Easy:* invisible until you want a second layer. *Rejected:* making every paint layer a timeline layer
   (doubles rows; breaks "paint belongs to its element").
@@ -2580,7 +2580,7 @@ server. *(new)* = to be added.
 | Relating (select first, then act) | `group.make {as: group | clip | layout | swap | boolean (new)}` · `group.release` · `mask.make` · `mask.release` · `shape.boolean` · `layer.align` · `layer.distribute` · `layer.match_size` · `style.apply` · `layer.follow` / `layer.unfollow` *(new)* · `rig.make` · `symbol.make` *(new)* · `repeat.make` *(new)* |
 | Look | `effect.add` · `effect.remove` · `value.set` (fill, gradient, blend, colour) |
 | Expressions | `expr.set` · `expr.clear` · `link.set` |
-| Painting | `stroke.add` (any element *(extended)*) · `stroke.set` · `stroke.remove` · `paint.layer_set` / `paint.layer_remove` *(new)* · `paint.fill` *(new)* · `frame.add` · `frame.hold` · `frame.remove` · `background.add` · `background.fit` · `background.move` |
+| Painting | `paint.stroke` (any element; H30) · `stroke.set` · `stroke.remove` · `paint.set` / `paint.move` / `paint.remove` (H30) · `paint.fill` (H30) · `frame.add` · `frame.hold` · `frame.remove` · `background.add` · `background.fit` · `background.move` |
 | Characters | `bone.add` · `bone.remove` · `bind.add` · `bind.remove` · `ik.add` · `ik.remove` · `pose.save` · `pose.apply` · `pose.remove` · `swap.show` · `lipsync.apply` · `blink.add` · `rig.guess_bones` *(new)* |
 | Camera | `camera.shake` *(new)* · `camera.keep_in_frame` *(new)* |
 | Reuse | `symbol.place` · `symbol.set` · `symbol.detach` · `style.define` · `style.use` · `motion.save` · `motion.apply` · `library.add` · `repeat.bake` *(all new)* |

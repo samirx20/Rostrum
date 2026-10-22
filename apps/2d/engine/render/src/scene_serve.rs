@@ -18,6 +18,10 @@
 //! - `{"bones": {"t": 1.25}}` → `{"ok": true, "rigs": {…}}`: every rig's posed bones and IK targets in comp px (rig/bones.rs, RIG.md).
 //! - `{"outline": {"id", "t"}}` → `{"ok": true, "d": "…"|null}`: a path layer's varied (tapered / width-profile) stroke as filled-outline
 //!   path data in the layer's box px, at `t`; `d` null when the stroke is even (scene/outline_cmd.rs; the Lottie export's source).
+//! - `{"place": {"t", "ids": [id, …]}}` → `{"ok": true, "layers": {id: {"m": [9], "w", "h", "edge": "M… L… Z"}}}`: where each layer
+//!   is drawn at t, from the laid-out page (through its groups, the camera and tilt): `m` its own px -> comp px (3×3
+//!   projective, row-major), `w` × `h` its own box, `edge` its true outline in comp px (place.rs). A `frame` with
+//!   `"place": [id, …]` adds the same as its reply's `place`, for the picture it drew (a layer it doesn't draw left out).
 //! - `{"measure": {"items": [{"id", "body", "font", "size", "weight", "stretch", "tracking", "lineHeight", "align", "boxWidth", …}]}}`
 //!   → `{"ok": true, "sizes": {id: [w, h]}}`: each text's laid-out box in its own px, by the path that draws it (scene/measure.rs);
 //!   with the loaded scene's fonts, else the app's. Needs no scene and no open page.
@@ -111,6 +115,24 @@ pub fn outline(held: &Held, req: &Value) -> Result<Value, String> {
     crate::scene::outline_cmd::outline(&held.scene()?.comp, req)
 }
 
+/// `place {t, ids}` (place.rs): where those layers are drawn at `t` and their edges, from the page laid out at t (no paint).
+pub fn place(held: &Held, s: &mut Session, req: &Value) -> Result<Value, String> {
+    let t = req["t"].as_f64().ok_or("place needs t (seconds)")?;
+    Ok(json!({ "ok": true, "layers": placed(held, s, t, &req["ids"], true)? }))
+}
+
+/// The layers `ids` (a list of layer ids) as the page shows them at `t`: the page is laid out at t first (a no-op
+/// after that frame's own layout, but a motion-blurred frame leaves its last sub-frame laid out).
+fn placed(held: &Held, s: &mut Session, t: f64, ids: &Value, strict: bool) -> Result<Value, String> {
+    let scene = held.scene()?;
+    let ids: Vec<&str> = ids.as_array().ok_or("place needs ids (a list of layer ids)")?.iter().map(|v| v.as_str().ok_or("place: ids are layer ids (text)")).collect::<Result<_, _>>()?;
+    if held.shell != Some((s.width, s.height)) {
+        return Err("the open page is not the scene's (an open or page came after the scene); send the scene again".into());
+    }
+    serve::apply(s, &markup(scene, t, false)?.0)?;
+    crate::place::places(&s.doc, s.width, s.height, &eval::whole(&scene.comp, t), &ids, strict)
+}
+
 /// The stage markup at `t`, and the ms it took.
 /// `alpha`: the comp's background left out (an export with transparency).
 fn markup(scene: &Scene, t: f64, alpha: bool) -> Result<(String, f64), String> {
@@ -158,6 +180,9 @@ pub fn frame(held: &Held, s: &mut Session, req: &Value) -> Result<(Value, Option
     let (mut reply, px) = serve::frame(s, &f)?;
     if let Some(timing) = reply.get_mut("timing") {
         timing["evalMs"] = json!(eval_ms);
+    }
+    if !req["place"].is_null() {
+        reply["place"] = placed(held, s, t, &req["place"], false)?;
     }
     Ok((reply, px))
 }

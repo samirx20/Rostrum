@@ -80,7 +80,7 @@ class DragSlots(SlotMixin):
 
     @Slot(str, result=bool)
     def beginKeyDrag(self, key_id):
-        self.select(key_id)
+        """A single picked key (key_select.py picks it first; keys never enter the layer selection)."""
         return self._begin("Move key", key_id)
 
     @Slot(float, float)

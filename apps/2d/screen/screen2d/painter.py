@@ -7,7 +7,7 @@ on this object (brush_panel.py), so the panel is built from the brush settings' 
 from __future__ import annotations
 
 from PySide6.QtCore import Property, Signal, Slot
-from rostrum2d.drawing import frame_at, frame_number
+from rostrum2d.drawing import each_frame, frame_at, frame_number
 from rostrum2d.names import display_name
 from rostrum2d.ops_paint import PAINTABLE
 from rostrum_gui import rows
@@ -51,8 +51,10 @@ class Painter(BrushPanel):
 
     @Property(str, notify=changed)
     def drawingId(self):
+        """The selected frame-by-frame layer (Draw each frame on): only it shows the timeline's frame tools (UX_SPEC
+        3.9). Alt+N works on any painted element (it turns Draw each frame on): it reads drawing(), not this."""
         d = self.drawing()
-        return d["id"] if d else ""
+        return d["id"] if d and each_frame(d) else ""
 
     @Property("QVariantMap", notify=changed)
     def now(self):
@@ -118,10 +120,11 @@ class Painter(BrushPanel):
         if d is None:                       # Draw tool, no drawing selected: the first stroke makes the drawing layer too
             make, lid = adding.new_layer_calls(self.b.doc, c, "drawing")
             d = {"id": lid}
+        layer = "new" if self._new_layer else self.b._paint_layers.current()     # the highlighted paint layer
 
         def go():
             self._stroke = StrokeDrag(self.b.doc, self.b.who, d["id"], self.b.time if make else self.b.own_t(d["id"]), c["fps"],
-                                      self.brush.stroke_args(), x, y, pressure, make, "new" if self._new_layer else "")
+                                      self.brush.stroke_args(), x, y, self.b.place_of, pressure, make, layer)
             if make:
                 self._fresh = None
                 self.b.select(d["id"])

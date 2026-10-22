@@ -14,7 +14,7 @@ curves, not what to choose; choose by what the move must say, then check by look
 | `easeInOut` | Symmetrical slow-fast-slow. Things travelling between two resting places. |
 | `snappy` | Almost all the travel happens in the first part, then a long soft settle. Reads as quick but not rough. |
 | `heavy` | Like `snappy`, with an even longer, softer landing. The last part crawls. |
-| `spring` | Overshoots the target and settles, controlled by `stiffness` and `damping`. Low damping rings longer. The 0–1 of the stretch is read as one second, so a short stretch squeezes the wobble. |
+| `spring` | Overshoots the target and settles. Two words control it: `bounce` (0 none – 1 a lot) and `speed` (0 slow – 1 fast); the key bar's sliders are the same two. Experts may write `stiffness` and `damping` instead (bounce 0.6, speed 0.5 is stiffness 170, damping 12). The 0–1 of the stretch is read as one second, so a short stretch squeezes the wobble. |
 | `bounce` | Falls onto the target and rebounds. Ends exactly on the value. |
 | `custom` | Your own curve: `x1 y1 x2 y2` (x 0–1; y may go below 0 or above 1 to overshoot). |
 
@@ -33,8 +33,12 @@ that the file says what you decided.
 - `look_motion` lists every pair of entrances that overlap with the overlap in seconds, and whether they start together.
   A stagger you meant as "one after another" that shows a large overlap, or a "together" that shows an offset, is a script
   mistake you can read without rendering.
-- A stagger is easiest to keep consistent with a loop: the start time is `base + i * step`, so changing `step` changes
-  the whole rhythm in one place.
+- `layer.stagger {ids, by, order}` spreads layers so each starts `by` seconds after the one before, counting from the
+  earliest start among them, in an order: `stack`, `picked`, `left_to_right`, `top_to_bottom`, `centre` (equal
+  distances start together) or `random` (the same every time). Calling it again re-spreads them, so the rhythm is one
+  number. In the screen: Stagger… on the context bar.
+- A stagger in a script is easiest to keep consistent with a loop: the start time is `base + i * step`, so changing
+  `step` changes the whole rhythm in one place.
 - `look_sheet` over just the entrance window (`start`, `end`) shows what the overlap looks like.
 
 ## Checking an ease choice
@@ -44,3 +48,11 @@ that the file says what you decided.
    frame is the ease. Bunched early tiles, wide-open later ones: slow-fast. The reverse: fast-slow.
 3. `look_frame` on the landing frame and one frame after: the layer should be where you meant, and not still moving unless
    you meant it to.
+
+## Retiming keys without re-keying
+
+- `key.add {fields: "pose", t}` keys position, scale, rotation and opacity at once with their values now (K in the screen).
+- `key.scale {around, by}` on keys stretches (`by` 2: twice as slow) or squeezes (0.5) them in time around a moment.
+- `key.paste {from: [key ids], at}` on layers puts copies of those keys on the same settings, the first at `at`, the
+  others keeping their spacing, values and eases.
+- `key.set {ease}` on many keys at once changes them in one step; `key.handles` shapes a custom curve.

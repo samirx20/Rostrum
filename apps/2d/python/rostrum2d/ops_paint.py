@@ -17,7 +17,8 @@ from rostrum_core import Param
 from rostrum_core.errors import codes
 from rostrum_paint.ops import build
 
-from . import drawing as D, paint_fields
+from . import drawing as D, paint_fields, placement
+from .engine import EngineError
 from .evaluate import resolve
 from .kind import REGISTRY as R
 
@@ -48,8 +49,8 @@ def paint_stroke(ctx, targets, args):
         props = resolve(item, n / _fps(ctx, t))
         cw, ch = D.paint_size(item, props)
         pts = args["points"]
-        if args.get("space", "comp") == "comp":
-            pts = [[*map(lambda v: round(v, 2), D.to_canvas(item, props, q[0], q[1])), *q[2:]] for q in pts]
+        if args.get("space", "comp") == "comp":         # where the engine draws the layer at that frame (placement.py)
+            pts = placement.canvas_points(item, props, _place(ctx, t, n), pts)
         if item["type"] != "drawing" and not item.get("paintW"):
             ctx.set(t, "paintW", cw)
             ctx.set(t, "paintH", ch)
@@ -59,6 +60,15 @@ def paint_stroke(ctx, targets, args):
         if sid in ctx.idx:
             ctx.fail(codes.BAD_ARGUMENT, f'id "{sid}"', "is already used in this document")
         ctx.insert(paint["id"], "strokes", build("stroke", sid, {**brush, "points": pts}, ctx.where))
+
+
+def _place(ctx, id_: str, n: int) -> dict:
+    """The layer's place at frame n (placement.place_at: through its groups, the camera and tilt), loudly."""
+    try:
+        return placement.place_at(ctx.doc, id_, n / _fps(ctx, id_))
+    except (KeyError, ValueError, EngineError) as e:
+        ctx.fail(codes.BAD_ARGUMENT, f'"{id_}" at frame {n}', f"has no place to paint in composition px: {e}",
+                 hint='Pass points in the paint canvas px (space "canvas").')
 
 
 def _fps(ctx, id_) -> float:

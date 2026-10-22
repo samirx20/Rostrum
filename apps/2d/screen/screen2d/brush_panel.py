@@ -5,7 +5,6 @@ brush is screen state (the next stroke), not the document: nothing here is an un
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_paint.marks import TIPS
 
 
 class BrushPanel(QObject):
@@ -18,8 +17,9 @@ class BrushPanel(QObject):
 
     @Property("QVariantMap", notify=brushChanged)
     def brushNow(self):
-        """The context bar's quick brush controls (ToolOptions.qml, Paint): the next stroke's values and the tips."""
-        return {**self.brush.values, "tips": list(TIPS)}
+        """The context bar's brush controls (PaintOptions.qml): the next stroke's values, and `bar`, the settings the
+        bar shows (Brush.bar(): the kit's placement table; `fillBar` while Fill is on); the panel shows the rest."""
+        return {**self.brush.values, "bar": self.brush.bar(), "fillBar": self.brush.bar("fill")}
 
     @Property("QVariantMap", notify=brushChanged)
     def selectedItem(self):

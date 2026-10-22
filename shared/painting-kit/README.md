@@ -9,20 +9,22 @@ see the canvas and know where each stroke landed (`docs/PLAN.md` › Tools for a
 
 - **Strokes are items in the app's one document.** A host app puts a kit **canvas** in one of its own item types
   (2D: a drawing's `frame`). A canvas holds `paints` (paint layers, bottom first) and `paintmasks`; a paint layer
-  holds `strokes` in painting order. So painting goes through `Document.apply` like every other change: one history,
+  holds `strokes` in painting order (and **fills**: a closed area kept as its outline, `fill.py`, laid like a
+  stroke; `fill.region(alpha, at, gap)` finds the outline, with gap closing). So painting goes through `Document.apply` like every other change: one history,
   undo / redo per author, who painted what, script re-runs that never wipe a person's strokes.
 - **A stroke batch is one call list**: `doc.apply([stroke.add, stroke.add, …], who)` = one change = one undo step,
   labelled and recorded with its author. A live pen stroke is one gesture (`stroke.add` once, then `stroke.set
   {points}` while drawing; release = one change).
-- **Brushes are data**: every brush setting is a `Param` with range, importance and `valid_when` (`fields.BRUSH`).
+- **Brushes are data**: every brush setting is a `Param` with range, importance and `valid_when` (`fields.BRUSH`);
+  `fields.BAR` says which a screen shows in its tool bar while painting (the rest go to its panel: never both).
   The brush panel, the stroke inspector, the MCP schema and `stroke.add`'s checks all read it; a setting that doesn't
   apply right now is absent (wetness only with smudge, tip angle only when the tip doesn't turn with the stroke).
 - **Pixels are a cache of the strokes**, never the truth: an agent or a person never waits for a full replay to look.
 
 ```python
 import rostrum_paint
-rostrum_paint.register(REGISTRY, canvas_types=("frame",))      # paint.add/set/clear/unlock, stroke.add/set/remove,
-                                                               # paintmask.add/set
+rostrum_paint.register(REGISTRY, canvas_types=("frame",))      # paint.add/set/move/remove/clear/unlock,
+                                                               # stroke.add/set/remove, fill.set, paintmask.add/set
 KIND = DocKind(..., lists={..., "frame": rostrum_paint.CANVAS_LISTS, **rostrum_paint.LISTS})
 
 doc.apply([{"op": "stroke.add", "target": "ink", "args": {"points": [[x, y, pressure], …], "color": "#ffb040",

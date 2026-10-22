@@ -46,8 +46,10 @@ AppShell {
 
     Connections { target: spaceKey; function onTapped() { backend.togglePlay() } }   // a tap of Space plays; held, it pans (spacekey.py)
     // frame by frame, on the selected drawing (INTERACTION Part 2: , and . step drawings, = and − hold; Alt+arrows nudge)
-    Shortcut { sequence: ","; enabled: !shell.typing && painter.drawingId !== ""; onActivated: painter.goFrame(-1) }
-    Shortcut { sequence: "."; enabled: !shell.typing && painter.drawingId !== ""; onActivated: painter.goFrame(1) }
+    // , and . : the playhead to the previous / next thing that happens (a key, a marker, a drawing, a layer's start or end)
+    // of the selected layers, or of everything when none is selected (backend.stepEvent, screen2d/key_edits.py)
+    Shortcut { sequence: ","; enabled: !shell.typing; onActivated: backend.stepEvent(-1) }
+    Shortcut { sequence: "."; enabled: !shell.typing; onActivated: backend.stepEvent(1) }
     Shortcut { sequence: "Alt+N"; onActivated: painter.newFrame(false) }
     Shortcut { sequence: "Alt+Shift+N"; onActivated: painter.newFrame(true) }
     Shortcut { sequences: ["=", "+"]; enabled: !shell.typing && painter.drawingId !== ""; onActivated: painter.holdBy(1) }
@@ -109,6 +111,7 @@ AppShell {
         IconButton { glyph: "↗"; tip: "Export"; down: exportPanel.shown; onClicked: shell.setExportOpen(!exportPanel.shown) }
     ]
     FileFlow { id: fileFlow; window: shell }
+    StaggerPopover { x: (shell.width - width) / 2; y: 104 }   // the context bar's Stagger… (stagger.py): under the bar
     centre: [
         Stage { id: stage; anchors.fill: parent; typing: shell.typing },   // typing: F stays a letter (ViewControls.qml)
         ExportPanel {   // opened by the Export button; docked on the canvas's right edge, beside the inspector (never over it)
@@ -126,8 +129,10 @@ AppShell {
     ]
     leading: FileMenu { id: fileMenu; onAct: (key) => fileFlow.act(key) }
     right: [
-        Inspector { anchors.fill: parent; bridge: backend; keyMarks: true; visible: backend.tool !== "draw" },
-        Inspector { anchors.fill: parent; bridge: painter; title: "Brush"; visible: backend.tool === "draw" }
+        Inspector { anchors.fill: parent; bridge: backend; keyMarks: true; visible: backend.tool !== "draw"
+                    highlight: backend.keys.props },      // the settings whose keys are picked (key_select.py)
+        Inspector { anchors.fill: parent; bridge: painter; title: "Brush"; visible: backend.tool === "draw"
+                    below: PaintOn { } }      // under the brush: the paint layers and switches of what it paints on
     ]
     bottom: LayerTimeline {
         id: timeline

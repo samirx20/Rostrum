@@ -9,6 +9,10 @@ from .easing import NAMES as EASES
 _IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 
 
+# stiffness / damping only on a spring not written in words (an app's `rawSpring` fact: no bounce / speed on the key)
+_RAW = {"all": [_IS("ease", "spring"), {"fact": "rawSpring"}]}
+
+
 def _num(name, label, group, lo, hi, step, unit="", when=None, default=0.0):
     return Param.number(name, label=label, group=group, min=lo, max=hi, step=step, unit=unit, importance="primary",
                         valid_when=when, default=default)
@@ -27,6 +31,10 @@ KEY_FIELDS = [
     _num("y1", "Curve y1", "Curve", -2, 3, 0.01, when=_IS("ease", "custom"), default=0.1),
     _num("x2", "Curve x2", "Curve", 0, 1, 0.01, when=_IS("ease", "custom"), default=0.25),
     _num("y2", "Curve y2", "Curve", -2, 3, 0.01, when=_IS("ease", "custom"), default=1.0),
-    _num("stiffness", "Stiffness", "Spring", 1, 2000, 1, when=_IS("ease", "spring"), default=170.0),
-    _num("damping", "Damping", "Spring", 0, 200, 0.1, when=_IS("ease", "spring"), default=12.0),
+    _num("bounce", "Bounce", "Spring", 0, 1, 0.01, when=_IS("ease", "spring"), default=0.6),
+    _num("speed", "Speed", "Spring", 0, 1, 0.01, when=_IS("ease", "spring"), default=0.5),
+    Param.number("stiffness", label="Stiffness", group="Spring", min=1, max=2000, step=1, importance="deep",
+                 valid_when=_RAW, default=170.0, help="The expert's spring (mass 1); bounce / speed win when set"),
+    Param.number("damping", label="Damping", group="Spring", min=0, max=200, step=0.1, importance="deep",
+                 valid_when=_RAW, default=12.0, help="The expert's spring; bounce / speed win when set"),
 ]

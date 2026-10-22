@@ -28,7 +28,7 @@ class Facts:
     "copied": the layer whose style is copied ("" for none), "clipboard": layers can be pasted} (screen state)."""
 
     def __init__(self, doc, ids: list[str], state: dict | None = None):
-        self.state = {"at": lambda i: 0.0, "copied": "", "clipboard": False, **(state or {})}
+        self.state = {"at": lambda i: 0.0, "copied": "", "clipboard": False, "keys": [], **(state or {})}
         self.at, copied = self.state["at"], self.state["copied"]
         self.doc, self.ids, self.count = doc, ids, len(ids)
         self.items = [doc.item(i) for i in ids]
@@ -41,7 +41,7 @@ class Facts:
         self.lists = {"ids": ids, "stack": self.stack, "stack_but_top": self.stack[:-1], "rest": ids[1:],
                       "locked": [i for i in plain if doc.item(i).get("locked")],
                       "hidden": [i for i in plain if doc.item(i).get("hidden")],
-                      "not_copied": [i for i in ids if i != copied]}
+                      "not_copied": [i for i in ids if i != copied], "keys": list(self.state["keys"])}
         self.lists["unlocked"] = [i for i in plain if i not in self.lists["locked"]]
         self.lists["shown"] = [i for i in plain if i not in self.lists["hidden"]]
         self.copied = copied if copied and doc.has(copied) else ""
@@ -57,7 +57,7 @@ class Facts:
             "any_locked": bool(self.lists["locked"]), "any_unlocked": bool(self.lists["unlocked"]),
             "any_hidden": bool(self.lists["hidden"]), "any_shown": bool(self.lists["shown"]),
             "style_copied": bool(self.copied) and any(i != self.copied for i in ids),
-            "clipboard": bool(self.state["clipboard"])}
+            "clipboard": bool(self.state["clipboard"]), "keys_picked": bool(self.state["keys"])}
 
 
 def calls_of(spec: dict | None, f: Facts, at) -> list[dict]:
@@ -115,4 +115,23 @@ def _order(f: Facts, how: str) -> list[dict]:
     return calls
 
 
-RULES = {"order": _order}
+def _pose(f: Facts) -> list[dict]:
+    """K: key.add fields "pose" on each selected layer at the playhead in its own seconds (one call per layer)."""
+    return [{"op": "key.add", "target": [i], "args": {"fields": "pose", "t": round(f.at(i), 6)}} for i in f.ids]
+
+
+POSE_WORDS = {"x": "position", "y": "position", "scale": "scale", "rotation": "rotation", "opacity": "opacity"}
+
+
+def said(calls: list[dict], label: str, doc) -> str:
+    """The words a change is recorded and shown with: K says what it keyed ("Keyed 4 settings on 3 layers")."""
+    pose = [c for c in calls if c["op"] == "key.add" and c["args"].get("fields") == "pose"]
+    if not pose:
+        return label
+    words = {POSE_WORDS[k["prop"]] for c in pose for k in doc.item(c["target"][0]).get("keys", [])
+             if k["prop"] in POSE_WORDS and k["t"] == c["args"]["t"]}
+    n, m = len(words), len(pose)
+    return f"Keyed {n} setting{'s' if n != 1 else ''} on {m} layer{'s' if m != 1 else ''}"
+
+
+RULES = {"order": _order, "pose": _pose}

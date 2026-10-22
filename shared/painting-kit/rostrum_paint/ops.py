@@ -81,7 +81,7 @@ def _check_mask(ctx, paint_or_stroke_id, mask_id, where_id):
 def register(registry, canvas_types=("frame",)):
     """Add the kit's operations to an app's registry. `canvas_types`: the host item types that are canvases."""
     canvas_types = tuple(canvas_types)
-    for type_ in ("paint", "stroke", "paintmask"):
+    for type_ in ("paint", "stroke", "fill", "paintmask"):
         _field_op(registry, type_)
 
     @registry.operation("paint.add", "Add a paint layer to a canvas (on top unless index is given).", target=canvas_types,
@@ -90,6 +90,20 @@ def register(registry, canvas_types=("frame",)):
         for t in targets:
             ctx.insert(t, "paints", _new(ctx, "paint", args if len(targets) == 1 else {**args, "id": None}),
                        args.get("index"))
+
+    @registry.operation("paint.remove", "Delete paint layers with their strokes.", target="paint",
+                        label="Delete paint layer", importance="secondary")
+    def paint_remove(ctx, targets, args):
+        for t in targets:
+            ctx.remove(t)
+
+    @registry.operation("paint.move", "Move a paint layer up or down among its canvas's paint layers (0 = bottom).",
+                        target="paint", label="Reorder paint layer", importance="secondary",
+                        params=[_required(INDEX)])
+    def paint_move(ctx, targets, args):
+        for t in targets:
+            holder = canvas_of(ctx.doc, ctx.kind.lists, t)
+            ctx.move(t, holder["id"], "paints", min(args["index"], len(holder["paints"]) - 1))
 
     @registry.operation("paint.clear", "Remove every stroke of paint layers (to redraw them).", target="paint",
                         label="Clear paint", importance="secondary")
@@ -113,7 +127,7 @@ def register(registry, canvas_types=("frame",)):
             _check_mask(ctx, t, item["mask"], item["id"])
             ctx.insert(t, "strokes", item)
 
-    @registry.operation("stroke.remove", "Delete strokes.", target="stroke", label="Delete stroke",
+    @registry.operation("stroke.remove", "Delete strokes (and fills).", target=("stroke", "fill"), label="Delete stroke",
                         importance="secondary")
     def stroke_remove(ctx, targets, args):
         for t in targets:

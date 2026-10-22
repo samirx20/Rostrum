@@ -13,8 +13,8 @@ from .marks import MODES, TIPS
 
 LAYER_MODES = ("normal", "multiply", "screen", "add")
 CANVAS_LISTS = ["paints", "paintmasks"]                  # a host's canvas type holds these
-LISTS = {"paint": ["strokes"], "stroke": [], "paintmask": []}
-HOLDS = {"paints": ("paint",), "strokes": ("stroke",), "paintmasks": ("paintmask",)}
+LISTS = {"paint": ["strokes"], "stroke": [], "fill": [], "paintmask": []}
+HOLDS = {"paints": ("paint",), "strokes": ("stroke", "fill"), "paintmasks": ("paintmask",)}   # a fill is laid in order too
 P, S, D = "primary", "secondary", "deep"
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 
@@ -52,6 +52,13 @@ BRUSH = [
       help="Same seed = the same bristles and drift; set once when the stroke is made"),
 ]
 
+# Where each brush setting lives on a screen while painting: the one table the context bar and the brush panel both
+# read, so nothing shows twice. "bar": above the canvas, the few changed while painting (in this order); the rest is
+# the settings panel. `mode` is in the bar only as its "erase" value (Eraser, E); its other values (how the paint
+# lays: multiply, screen, add) stay in the panel, and apply only while not erasing.
+BAR = ("brush", "size", "color", "opacity")
+BAR_VALUE = {"mode": "erase"}
+
 FIELDS: dict[str, list[Param]] = {
     "paint": [
         Param.text("name", label="Name", default="Paint"),
@@ -67,6 +74,14 @@ FIELDS: dict[str, list[Param]] = {
         Param.text("mask", label="Mask", default="", importance=S, group="Mask",
                    help="A paint mask's id: the stroke only paints inside it (empty = no mask)"),
     ],
+    "fill": [       # a closed area filled with one colour, kept as its outline (fill.py): it stays sharp
+        Param.points("points", label="Outline", min=2, max=3, importance=D, group="Path",
+                     help="[[x, y, ring], …] in canvas px: ring 0 is the outside, 1, 2 … holes"),
+        Param.color("color", label="Colour", group="Fill", default="#202020"),
+        N("opacity", "Opacity", 0, 1, 0.01, 1.0, group="Fill"),
+        Param.text("mask", label="Mask", default="", importance=S, group="Mask",
+                   help="A paint mask's id: the fill only shows inside it (empty = no mask)"),
+    ],
     "paintmask": [
         Param.points("points", label="Outline", min=2, max=2, required=False, group="Mask",
                      help="The polygon [[x, y], …] in canvas px"),
@@ -74,7 +89,7 @@ FIELDS: dict[str, list[Param]] = {
         Param.toggle("invert", label="Invert", default=False, group="Mask", help="Paint outside the outline instead"),
     ],
 }
-LABELS = {"paint": "Paint layer", "stroke": "Stroke", "paintmask": "Paint mask"}
+LABELS = {"paint": "Paint layer", "stroke": "Stroke", "fill": "Fill", "paintmask": "Paint mask"}
 
 
 def defaults(kind: str) -> dict:

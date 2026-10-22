@@ -16,6 +16,7 @@ from __future__ import annotations
 from rostrum_gui.actions import Action, ActionList
 
 from .action_rules import Facts, calls_of
+from .eases import EASES
 from .keys2d import KEYS2D
 
 __all__ = ["ACTIONS", "DATA", "Facts", "LIST"]
@@ -72,6 +73,10 @@ DATA = [
          when={"all": [FACT("same_parent"), NOT("has_text"), NOT("has_camera")]},
          calls=_op("layer.match_size", "rest", to="$first", dims=d, at="$at"))
       for d, words in (("w", "Match width"), ("h", "Match height"), ("both", "Match size"))],
+    _a("stagger", "Stagger…", rank=35, importance="primary", group="arrange", min_targets=2, do="stagger"),
+    _a("key_here", "Key here", rank=45, group="animate", job="key_here", calls={"rule": "pose"}),
+    *[_a(f"ease_{e['value']}", f"Ease: {e['label']}", rank=50, group="animate", bar="Ease", job=e["job"],
+         when=FACT("keys_picked"), calls=_op("key.set", "keys", ease=e["value"])) for e in EASES if e["value"] != "custom"],
     _a("copy_style", "Copy style", rank=80, group="look", job="copy_style", max_targets=1, do="copy_style"),
     _a("paste_style", "Paste style", rank=80, group="look", job="paste_style", when=FACT("style_copied"),
        calls=_op("style.apply", "not_copied", **{"from": "$copied"})),

@@ -48,7 +48,8 @@ for _type, _params in F.FIELDS.items():
 
 def facts(item: dict, doc=None) -> dict:
     if item.get("type") == "key":
-        return {"number": "v" in item, "color": "c" in item, "shape": "d" in item}
+        return {"number": "v" in item, "color": "c" in item, "shape": "d" in item,      # rawSpring: keys.spring
+                "rawSpring": not {"bounce", "speed"} & set(item)}
     out = {"hasPaint": bool(item.get("frames"))} if item.get("type") in paint_fields.TYPES else {}
     if item.get("type") in F.LAYERS and doc is not None:      # inside a group with an auto layout (layout.py)
         parent = doc.parent(item)
@@ -130,4 +131,5 @@ from . import ops_timing  # noqa: E402,F401  (layer.shift, layer.trim: move and 
 from . import ops_background  # noqa: E402,F401  (background.add, background.fit, background.move: painted backgrounds)
 from . import ops_group, ops_mask, ops_state, ops_align, ops_look  # noqa: E402,F401  (select first, then act)
 from . import ops_clip  # noqa: E402,F401  (layer.paste: copy / cut / paste of layers)
-from . import ops_paint  # noqa: E402,F401  (paint.stroke: paint on any element or drawing)
+from . import ops_paint, ops_fill  # noqa: E402,F401  (paint.stroke, paint.fill: paint and fill on any element or drawing)
+from . import ops_keytime, ops_stagger  # noqa: E402,F401  (key.scale, key.paste, layer.stagger: retiming)

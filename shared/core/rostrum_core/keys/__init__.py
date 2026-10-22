@@ -4,7 +4,8 @@ from .easing import BEZIERS, NAMES as EASES, ease
 from .evaluate import animated, key_value, keys_of, mix_color, track_value
 from . import marked
 from .fields import KEY_FIELDS
+from . import spring as springs
 from .ops import key_id, register_key_ops
 
 __all__ = ["BEZIERS", "EASES", "KEY_FIELDS", "animated", "ease", "key_id", "key_value", "keys_of", "marked", "mix_color",
-           "register_key_ops", "track_value"]
+           "register_key_ops", "springs", "track_value"]

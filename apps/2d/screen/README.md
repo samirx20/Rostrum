@@ -61,16 +61,57 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - **The view** (`qml/CanvasView.qml`, `ViewInput.qml`, `ViewControls.qml`, `screen2d/spacekey.py`, `view_steps.py`):
   one mapping (Stage's `compScale`, `toComp`, `fromComp`, `inWell`) for everything over the canvas. Ctrl+wheel / pinch
   at the pointer, Space+drag or middle-drag, Ctrl+0, Ctrl+1, F (Shift+2), Ctrl+= / Ctrl+−; the "Fit · 43 % ▾" menu. The
-  engine is asked for the frame at the size shown, up to Full (`shown.setView`). Screen state only. Steps: `zoom`,
+  engine is asked for the frame at the size shown, up to Full (`shown.setView`); past Full, once the view settles, the
+  visible part is drawn again at the size shown (`screen2d/sharp.py`, the engine's `frame.view`: the export's own
+  paint) and lies over the enlarged frame (none while playing or dragging). Screen state only. Steps: `zoom`,
   `pan`, `fitsel`, `viewmenu`.
 - **Snapping** (`screen2d/snap.py` pure, `snapper.py` as `backend.snap`): moves and resize edges snap within 6 screen
   px to the frame's edges and centre, then other layers'; magenta lines; Ctrl during the drag = free, Shift = straight.
 - **Box select** (`multi.boxSelect(…, mods)` through the kit's `selection_rules.box`): Shift adds, Ctrl the deepest.
 - **Painting on any element** (`painter.py`, `brush_panel.py`, `strokes.py`): the Draw tool paints on the selected
   shape, text, picture or path (kept inside its outline by the engine), on a drawing, or with nothing selected makes a
-  drawing. Each stroke is one `paint.stroke` change (the agent's operation too). The Paint bar: tip, Size, Colour,
-  Opacity (gives way on narrow windows), Eraser E, `[` `]`, + Paint layer, Painting on: *x* ▸. Frame keys: `,` `.`
-  step drawings, `=` `−` hold. Steps: `draw`, `paintlayer`, `painton selected|new`.
+  drawing. Each stroke is one `paint.stroke` change (the agent's operation too). Frame keys: `,` `.` step drawings,
+  `=` `−` hold. Steps: `draw`, `paintlayer`, `painton selected|new`.
+
+## One brush panel, Fill, paint layers (H30)
+
+- **Each brush setting in one place** (`rostrum_paint.fields.BAR` / `BAR_VALUE`, the kit's table both read):
+  `Brush.bar()` gives the context bar's few (tip, Size, Colour, Opacity; `PaintOptions.qml` builds them by type), and
+  `Brush.rows()` the panel's rest (`rows.omit` of the bar's; Mode without its "erase" value, absent while erasing:
+  the bar's Eraser E is that value). The bar never wraps: Opacity, then Eraser, then Fill fold into the bar's own ⋯.
+- **Fill** (`filler.py` as `backend.fill`, G or the bar's Fill while the target has paint): a click is one
+  `paint.fill` (ops_fill.py) with the brush's colour and opacity, on the highlighted paint layer (or a new one when
+  + Paint layer is armed), Close gaps small / medium / large in the bar. The fill is a kit **fill** item in the paint
+  layer's `strokes`: an outline traced from the flood fill (`rostrum_paint.fill`), laid by `canvas.stamp` like a
+  stroke, so the canvas PNG the engine draws holds it (preview = export). A click on a line or in an open area is
+  refused by the operation (status), nothing changes.
+- **Paint on <element>** (`paint_layers.py` as `backend.paintLayers`, `PaintOn.qml` in the kit Inspector's `below`
+  slot, under the brush): the paint layers at the playhead, top first (eye, click = strokes and fills go on it, drag =
+  `paint.move`, right-click › Delete = `paint.remove`), the highlighted one's Opacity (one gesture) and Blend
+  (`paint.set`), the element's Keep inside the outline / Draw each frame (`<type>.set`), Onion skin while drawing each
+  frame (with Draw on it is here, not above the timeline).
+- Steps (`paint_steps.py`): `fill <x> <y>`, `fillmode on|off`, `gap <size>`, `paintpick`, `paintset`, `paintmove`,
+  `paintremove`, `painttoggle`.
+
+## Animating: the key bar, K, retiming, Stagger, `,` `.` (H30)
+
+- **Key bar** (`qml/KeyBar.qml`, `EaseCurve.qml`, `screen2d/key_bar.py`, `backend.keyBar`; the one ease list in `eases.py`):
+  in the timeline header only while keys are picked. Ease ▾, the small curve (drag its two handles: `key.handles`), one
+  key's Time and Value, a spring's Bounce and Speed (`key.set {bounce, speed}`; the words become stiffness / damping in one
+  place, `rostrum_core/keys/spring.py`, and `scene.py` sends the engine those). Every picked key changes; each pick, edit
+  or whole drag is one change. A key's right-click opens the same list; F9 / Shift+F9 / Ctrl+Shift+F9 / Ctrl+Alt+J are
+  actions on the one list (`ease_*`, valid while keys are picked). The rows draw a tiny line / curve / step between keys.
+- **K** (`actions.py` `key_here`, rule `pose`): `key.add {fields: "pose", t}` on each selected layer, one change; the
+  message says "Keyed 4 settings on 3 layers" (`action_rules.said`).
+- **Box-pick** (`LayerRows.qml` box, `KeySelect.box`): drag on an empty part of the rows. **Stretch** (`KeyDot.qml` Alt+press,
+  `KeySelect.beginStretch`): `key.scale {around, by}` around the other end. **Copy / paste keys** (`key_edits.py`): with keys
+  picked Ctrl+C copies their ids (the latest copy wins over layers); Ctrl+V pastes onto the selected layers at the
+  playhead (`key.paste {from, at}`, one call per layer, one change).
+- **`,` / `.`** (`key_edits.stepEvent`): keys, markers, drawings, bar starts and ends; of the selected layers or all.
+- **Stagger…** (`qml/StaggerPopover.qml`, `screen2d/stagger.py`, `backend.stagger`): an action on the bar (2+ layers);
+  the popover previews `layer.stagger {by, order}` live in one open gesture; click away keeps it, Esc takes it back.
+- Steps (`key_steps.py`): `keybox`, `keystretch`, `ease`, `easekey`, `easecurve`, `spring`, `keytime`, `keyvalue`,
+  `easemenu`, `keyhere`, `keycopy`, `keypaste`, `stagger <f> [order] [open]`, `event prev|next`.
 
 ## The rules it builds in
 
@@ -90,10 +131,13 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - **Pen** (`screen2d/strokes.py`): with the Draw tool on and a `drawing` layer selected (none selected: the first stroke makes the drawing layer in the same change), a press-drag-release is one stroke = one
   `doc.gesture` = one undo step. Press previews `stroke.add` (fixed id, points so far) on the topmost unlocked paint
   layer of the frame shown at the playhead; each move previews `stroke.set {points}`. No frame shown there yet: the
-  same change adds it first (`frame.add at=<current frame>`). Composition px become canvas px with the layer's x, y,
-  anchor, scale and rotation (`rostrum2d.drawing.to_canvas`; a drawing inside a group is not offset by the group yet). Pressure comes from a pen (`PointHandler`), 1 for a mouse.
+  same change adds it first (`frame.add at=<current frame>`). Composition px become canvas px through the layer's
+  place at the press (the engine's `place`: through its groups, the camera and tilt; `rostrum2d/placement.py`, the one
+  mapping `paint.stroke` in comp px uses too). While painting, the target's true edge (rounded corners, ellipse, a
+  path's shape, a text's letters) is drawn instead of its box (`screen2d/paint_edge.py`, from the frame's `place`). Pressure comes from a pen (`PointHandler`), 1 for a mouse.
 - **Brush** (`screen2d/brush.py`): the next stroke's settings, screen state (not the document). The panel is the kit's
-  Inspector over `rostrum_paint.fields.BRUSH`: settings that don't apply are absent, deep ones behind More.
+  Inspector over `rostrum_paint.fields.BRUSH` minus the bar's settings: settings that don't apply are absent, deep ones
+  behind More.
 - **Frames** (`screen2d/framing.py`): a mark where each drawing starts and a bar for its hold (Draw bar and the
   drawing's Animate row). Buttons (only the ones that apply at the playhead) and shortcuts, each one change:
   Previous / Next (Alt+Left / Alt+Right), New drawing (Alt+N) / New from this (Alt+Shift+N), Hold longer / shorter

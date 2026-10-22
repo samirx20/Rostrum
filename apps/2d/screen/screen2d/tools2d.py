@@ -9,12 +9,16 @@ from .adding import Adder
 from .create import Create
 from .curves import Curves
 from .exporter import Exporter
+from .filler import Filler
 from .importer import Importer
+from .key_bar import KeyBar
 from .key_select import KeySelect
 from .multi import Multi
+from .paint_layers import PaintLayers
 from .pen import Pen
 from .problems import Problems
 from .snapper import Snapper
+from .stagger import Stagger
 
 
 class ToolSlots(SlotMixin):
@@ -22,11 +26,16 @@ class ToolSlots(SlotMixin):
         self._pen, self._curves = Pen(self), Curves(self)
         self._multi = Multi(self)                           # several layers selected (multi.py): backend.multi
         self._keys = KeySelect(self)                        # keys picked in the timeline (key_select.py): backend.keys
+        self._keys.changed.connect(self._curves.changed)    # the curve editor shows the picked key's handles
+        self._key_bar = KeyBar(self)                        # the timeline header's key bar (key_bar.py): backend.keyBar
+        self._stagger = Stagger(self)                       # Stagger…'s popover (stagger.py): backend.stagger
         self._exporter, self._importer, self._adder = Exporter(self), Importer(self), Adder(self)
         self._problems = Problems(self)
         self._problems.failed.connect(self._fail)
         self._create = Create(self)                         # R / O / T and typing on the canvas (create.py): backend.create
         self._snap = Snapper(self)                          # canvas drags snap (snapper.py): backend.snap
+        self._paint_layers = PaintLayers(self)              # Draw's "Paint on …" group (paint_layers.py): backend.paintLayers
+        self._filler = Filler(self)                         # Fill, G while Draw is on (filler.py): backend.fill
 
     @Property(QObject, constant=True)
     def pen(self):
@@ -44,9 +53,29 @@ class ToolSlots(SlotMixin):
         return self._keys
 
     @Property(QObject, constant=True)
+    def keyBar(self):
+        """Ease, the small curve, Time / Value and Spring for the picked keys (key_bar.py)."""
+        return self._key_bar
+
+    @Property(QObject, constant=True)
+    def stagger(self):
+        """Stagger…: layers start one after another, live, one change (stagger.py)."""
+        return self._stagger
+
+    @Property(QObject, constant=True)
     def snap(self):
         """Snapping while dragging on the canvas, and the lines it caught (snapper.py)."""
         return self._snap
+
+    @Property(QObject, constant=True)
+    def paintLayers(self):
+        """The paint layers of what Draw paints on, and its paint switches (paint_layers.py)."""
+        return self._paint_layers
+
+    @Property(QObject, constant=True)
+    def fill(self):
+        """Fill while Draw is on (filler.py)."""
+        return self._filler
 
     @Property(QObject, constant=True)
     def exporter(self):

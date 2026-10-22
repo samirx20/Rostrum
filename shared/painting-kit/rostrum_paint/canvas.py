@@ -21,13 +21,13 @@ import numpy as np
 
 from rostrum_core.cache import CACHE, cache_key
 
-from . import brush, compose, marks, native
+from . import brush, compose, fill, marks, native
 
 BUDGET = 1200 << 20              # bytes of kept layer states in memory
 CHECKPOINT = 24                  # during a long replay, keep a state every N strokes
 _HERE = Path(__file__).resolve().parent
 ENGINE_VERSION = hashlib.sha1(b"".join((_HERE / f).read_bytes() for f in ("marks.py", "brush.py", "canvas.py",
-                                                                           "compose.py"))).hexdigest()[:12]
+                                                                           "compose.py", "fill.py"))).hexdigest()[:12]
 
 
 @dataclass
@@ -98,15 +98,17 @@ def _paper(w, h):
 
 
 def stamp(layer_px, s: dict, w, h, masks: dict, under=None):
-    """Paint one stroke item into a layer (in place); its Coverage or None. The one place a stroke item becomes
-    brush-engine arguments."""
+    """Paint one stroke (or fill) item into a layer (in place); its Coverage or None. The one place a stroke item
+    becomes brush-engine arguments."""
     rgb = [int(s["color"][i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    mask = compose.mask_array(masks[s["mask"]], w, h) if s.get("mask") else None
+    if s["type"] == "fill":
+        return fill.lay(layer_px, s, rgb, mask)
     params = dict(opacity=s["opacity"], hardness=s["hardness"], spacing=s["spacing"], jitter=s["jitter"],
                   seed=s["seed"], angle=None if s["follow"] else s["angle"], grain=s["grain"], mode=s["mode"],
                   color_jitter=s["color_jitter"], hue_jitter=s["hue_jitter"], size_pressure=s["size_pressure"],
                   opacity_pressure=s["opacity_pressure"], wet=s["wet"] if s["smudge"] else 0.0,
                   sample_all=bool(s["smudge"] and s["pickup"]))
-    mask = compose.mask_array(masks[s["mask"]], w, h) if s.get("mask") else None
     return brush.stamp_stroke(layer_px, s["points"], rgb, s["size"], s["brush"], mask=mask,
                               under=under if params["sample_all"] else None, paper=_paper(w, h), lay=LAY, **params)
 

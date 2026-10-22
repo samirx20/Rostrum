@@ -27,7 +27,8 @@ GUIDES = Path(__file__).resolve().parents[3] / "guides"
 INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text / image / group layers animated by keys. "
                 "Read inspect_guide 'start-here', build with run_script, then check your work with look_frame, look_sheet and look_motion. "
                 "Paint on any shape, text, picture or path, or on a drawing, with paint.stroke (its paint stays inside the outline and "
-                "moves with it; one call list = one undo step) and check with look_drawing, "
+                "moves with it; one call list = one undo step), fill a closed area with paint.fill {at, color, gap} (paint layers: "
+                "paint.set, paint.move, paint.remove) and check with look_drawing, "
                 "inspect_drawing_at and inspect_stroke_landed; read inspect_guide 'drawing'. "
                 "The server opens the person's last project; inspect_recent_projects and run_open_project switch.")
 

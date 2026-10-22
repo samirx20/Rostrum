@@ -11,6 +11,7 @@ from rostrum_gui.action_views import commands as do_commands
 from rostrum_gui.parts import SlotMixin
 from rostrum_gui.selection_rules import esc_step
 
+from .action_rules import said
 from .actions import LIST, Facts
 
 # What actions.py covers, as the kit's operation commands would list it again in Ctrl+K.
@@ -29,11 +30,12 @@ class ActionSlots(SlotMixin):
         self._hub = ActionHub(LIST, self._facts, self._what, self._act_apply, self._act_do, self._set_status, self)
         self.selectionChanged.connect(self._hub.refresh)
         self.docChanged.connect(self._hub.refresh)
+        self._keys.changed.connect(self._hub.refresh)       # Ease's keys (F9 …) follow the keys picked
         self._hub.refresh()
 
     def _facts(self) -> Facts:
-        return Facts(self.doc, self.selected_layers(), {"at": self.own_t, "copied": self._copied,
-                                                         "clipboard": bool(self._clip_text())})
+        return Facts(self.doc, self.selected_layers(), {"at": self.own_t, "copied": self._copied, "keys": self._keys.ids,
+                                                         "clipboard": bool(self.keys_copied() or self._clip_text())})
 
     def _what(self, f) -> str:
         """What the bar acts on: "title", "3 layers" ("" = nothing selected: no bar)."""
@@ -49,6 +51,8 @@ class ActionSlots(SlotMixin):
         after += [c["args"]["id"] for c in calls if c["op"] in MAKES and c["args"].get("id")]
         if not self._guard(lambda: self._apply(calls, label)):
             return
+        if said(calls, label, self.doc) != label:      # K: "Keyed 4 settings on 3 layers" (action_rules.said)
+            self._set_status(said(calls, label, self.doc))
         if any(c["op"] == "layer.duplicate" for c in calls):
             after = [self.doc.item(parent)[k][at + 1]["id"] for parent, k, at in (self.doc.parent_of(i) for i in layers)]
         if after:
@@ -58,8 +62,14 @@ class ActionSlots(SlotMixin):
         """2D's actions that are not operations by themselves."""
         if name == "rename":
             self.renameRequested.emit(self.selected_layers()[0])
+        elif name in ("clip_copy", "clip_cut") and self._keys.count:     # keys picked: their keys (key_edits.py)
+            (self.copyKeys if name == "clip_copy" else self.cutKeys)()
+        elif name == "paste" and self.keys_copied():
+            self.pasteKeys()
         elif name in ("clip_copy", "clip_cut", "paste"):
             {"clip_copy": self.copyLayers, "clip_cut": self.cutLayers, "paste": self.pasteLayers}[name]()
+        elif name == "stagger":
+            self._stagger.start()
         elif name == "copy_style":
             self._copied = self.selected_layers()[0]
             self._set_status(f"Copied the style of {self.label_of(self.doc.item(self._copied))}")

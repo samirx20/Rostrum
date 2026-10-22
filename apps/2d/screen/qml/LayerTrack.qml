@@ -7,7 +7,8 @@ import RostrumKit
 // = one change; near a marker or the playhead it snaps, and an end dropped on a marker is tied to it: a small flag).
 // Keys sit on it as diamonds (all the layer's keys); a drawing's frames lie on it (FrameMarks). Setting, effect and
 // mask rows show their keys only. Click a diamond: the key is selected (the inspector shows its ease); drag it: key.set
-// t (it lands on a marker within 6 px). A click anywhere else on the row selects its layer; the ruler scrubs.
+// t (it lands on a marker within 6 px). A click anywhere else on the row selects its layer, a drag there draws a box
+// that picks every key it touches (on several rows); between two keys a tiny shape shows the ease. The ruler scrubs.
 Rectangle {
     id: track
     property var rowData
@@ -20,7 +21,46 @@ Rectangle {
     radius: Theme.radiusCtl
     color: isLayer ? Theme.sunken : Qt.darker(Theme.panel, 1.15)
 
-    MouseArea { anchors.fill: parent; onPressed: backend.select(track.rowData.owner) }   // the row's empty part
+    property Item rows                  // the LayerRows it lies in: a box dragged here picks keys on every row it touches
+    MouseArea {   // the row's empty part: a click selects its layer, a drag draws a box that picks keys
+        anchors.fill: parent
+        property point from
+        property bool boxing: false
+        onPressed: (m) => { from = Qt.point(m.x, m.y); boxing = false }
+        onPositionChanged: (m) => {
+            if (!boxing && Math.abs(m.x - from.x) + Math.abs(m.y - from.y) < 5) return
+            if (!boxing) { boxing = true; track.rows.boxStart(mapToItem(track.rows.contentItem, from.x, from.y)) }
+            track.rows.boxTo(mapToItem(track.rows.contentItem, m.x, m.y))
+        }
+        onReleased: (m) => {
+            if (boxing) track.rows.boxEnd(m.modifiers & Qt.ControlModifier ? "ctrl" : m.modifiers & Qt.ShiftModifier ? "shift" : "")
+            else { backend.keys.clear(); backend.select(track.rowData.owner) }   // a click on the row lets picked keys go
+            boxing = false
+        }
+        onCanceled: { if (boxing) track.rows.boxEnd("cancel"); boxing = false }
+    }
+    Repeater {   // the ease between two keys, a tiny shape on the row: a line (linear), a curve (eased), a step (jump)
+        model: track.rowData.keys.length > 1 ? track.rowData.keys.slice(0, -1) : []
+        delegate: Canvas {
+            required property var modelData
+            required property int index
+            readonly property real x0: track.xOf(modelData.t)
+            readonly property real x1: track.xOf(track.rowData.keys[index + 1].t)
+            visible: x1 - x0 > 26
+            width: 12; height: 8; x: (x0 + x1) / 2 - width / 2; y: (track.height - height) / 2; z: 1
+            opacity: 0.7
+            property string shape: modelData.ease || "curve"
+            onShapeChanged: requestPaint()
+            onPaint: {
+                const ctx = getContext("2d")
+                ctx.reset(); ctx.strokeStyle = Theme.fg3; ctx.lineWidth = 1.2; ctx.beginPath()
+                if (shape === "line") { ctx.moveTo(0, height); ctx.lineTo(width, 0) }
+                else if (shape === "step") { ctx.moveTo(0, height); ctx.lineTo(width, height); ctx.moveTo(width, height); ctx.lineTo(width, 0) }
+                else { ctx.moveTo(0, height); ctx.bezierCurveTo(width * 0.9, height, width * 0.1, 0, width, 0) }
+                ctx.stroke()
+            }
+        }
+    }
 
     Rectangle {  // the bar
         id: bar

@@ -2,9 +2,10 @@ import QtQuick
 import RostrumKit
 
 // One key on a timeline row (LayerTrack.qml): a diamond at its time; on a layer's bar it stands for every key of the
-// layer at that frame (modelData.ids). Click picks it (the settings panel shows its ease); Ctrl+click adds or removes
+// layer at that frame (modelData.ids). Click picks it (the key bar shows its ease; the panel keeps the layer, its keyed setting highlighted); Ctrl+click adds or removes
 // it, Shift+click picks the run between (backend.keys, screen2d/key_select.py). Drag moves it, or every picked key
-// together (key.set t, one change; a single key lands on a marker within 6 px). `shift`: the x of what it lies in
+// together (key.set t, one change; a single key lands on a marker within 6 px). Alt+drag the first or last picked
+// key stretches them all in time (key.scale); right-click gives the Ease list (backend.keyBar). `shift`: the x of what it lies in
 // (a layer's bar), so it sits at its time whatever holds it.
 Item {
     id: key
@@ -14,7 +15,7 @@ Item {
     property real room: -1             // the bar's width: at the bar's very ends the click area stays inside it
     readonly property real at: row.xOf(modelData.t) - shift - width / 2      // where the diamond is centred, minus half
     readonly property var ids: modelData.ids || [modelData.id]
-    readonly property bool on: modelData.id === backend.selected || backend.keys.count > 0 && backend.keys.has(ids)
+    readonly property bool on: backend.keys.count > 0 && backend.keys.has(ids)
     x: room < 0 ? at : Math.max(0, Math.min(room - width, at))
     width: 16; height: parent.height        // the track's height, or the bar's when it lies in a bar
     KeyMark {
@@ -24,11 +25,23 @@ Item {
     }
     MouseArea {
         id: keyArea; anchors.fill: parent; hoverEnabled: true; preventStealing: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.SizeHorCursor
         property string held: ""        // "one" | "many" | ""
         function rowIds() { return key.row.rowData.keys.map(k => k.ids || [k.id]) }
         onPressed: (m) => {
             held = ""
+            if (m.button === Qt.RightButton) {                  // the Ease list, for the picked keys (this one picked first)
+                if (!backend.keys.has(key.ids)) backend.keys.click(key.ids, "", rowIds())
+                const g = keyArea.mapToItem(null, m.x, m.y)
+                backend.keyBar.askMenu(g.x, g.y)
+                return
+            }
+            if ((m.modifiers & Qt.AltModifier) && backend.keys.has(key.ids)          // Alt+drag an end: stretch them all
+                    && backend.keys.beginStretch(key.modelData.id, key.row.tAt(keyArea, m.x))) {
+                held = "many"
+                return
+            }
             if (m.modifiers & (Qt.ControlModifier | Qt.ShiftModifier)) {        // add / remove, or the run between
                 backend.keys.click(key.ids, (m.modifiers & Qt.ControlModifier) ? "ctrl" : "shift", rowIds())
                 return

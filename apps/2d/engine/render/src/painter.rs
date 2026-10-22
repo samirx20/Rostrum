@@ -45,6 +45,23 @@ enum Last {
     Held,
 }
 
+/// The part of the page a picture shows (comp px from (x0, y0), w × h) and its scale: the picture is round(w·scale) ×
+/// round(h·scale) px. The whole comp at scale 1 is every export's and still's.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct View {
+    pub scale: f32,
+    pub x0: f32,
+    pub y0: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+impl View {
+    pub fn full(width: u32, height: u32) -> View {
+        View { scale: 1.0, x0: 0.0, y0: 0.0, w: width as f32, h: height as f32 }
+    }
+}
+
 // Field order is drop order: the surface and cached GPU images go before the GL context they live in
 // (dropped after it, they hang the driver at exit).
 pub struct Painter {
@@ -59,11 +76,11 @@ pub struct Painter {
     /// The GPU output step of playing frames (`read_output8`), made on first use and kept while the table is the same.
     out8: Option<Out8>,
     gl: Option<Gl>,
-    /// The surfaces' size: the comp's, times `scale`.
+    /// The surfaces' size: the view's (`set_view`).
     width: u32,
     height: u32,
-    /// The view scale every paint draws through (`set_scale`; 1 but for a smaller playing preview).
-    scale: f32,
+    /// The view every paint draws through (`set_view`): scale and the page px at the picture's top-left.
+    view: (f32, f32, f32),
     /// The working colour space every surface is tagged with (None: display values, unmanaged).
     space: Option<ColorSpace>,
     /// The last frame's time recording the drawing and submitting it to the GPU, reading it back (waiting for
@@ -270,35 +287,35 @@ impl Painter {
     pub fn gpu_on(mut gl: Gl, width: u32, height: u32, space: Option<ColorSpace>) -> Result<Self, String> {
         gl.gr.set_resource_cache_limit(gpu_budget(width, height));
         let surface = new_surface(Some(&mut gl), width, height, &space)?;
-        Ok(Self { gl: Some(gl), surface, acc: None, held: None, last: Last::Frame, width, height, scale: 1.0, space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0 })
+        Ok(Self { gl: Some(gl), surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0 })
     }
 
     pub fn cpu(width: u32, height: u32, space: Option<ColorSpace>) -> Result<Self, String> {
         let surface = new_surface(None, width, height, &space)?;
-        Ok(Self { gl: None, surface, acc: None, held: None, last: Last::Frame, width, height, scale: 1.0, space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0 })
+        Ok(Self { gl: None, surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0 })
     }
 
-    /// Paints from now on at `scale` × the comp's `full` size (1, or a smaller playing preview; ENGINE_CONTRACT.md § 1): the
-    /// surfaces are made again at round(w·scale) × round(h·scale) when that size changes, and every draw goes through the
-    /// root scale (anyrender_skia `set_root_scale`), so the page is not laid out again. Refused with frames in flight to
-    /// an encoder (their surfaces would go).
-    pub fn set_scale(&mut self, scale: f32, full: (u32, u32)) -> Result<(), String> {
-        let size = (((full.0 as f32 * scale).round() as u32).max(1), ((full.1 as f32 * scale).round() as u32).max(1));
+    /// Paints from now on the page's part `v` (ENGINE_CONTRACT.md § 1 `scale`, `view`): the whole comp at 1, a smaller
+    /// playing preview, or a crop drawn larger (the zoomed-in canvas). The surfaces are made again at
+    /// round(w·scale) × round(h·scale) when that size changes, and every draw goes through the root view (anyrender_skia
+    /// `set_root_view`), so the page is not laid out again. Refused with frames in flight to an encoder (their surfaces would go).
+    pub fn set_view(&mut self, v: View) -> Result<(), String> {
+        let size = (((v.w * v.scale).round() as u32).max(1), ((v.h * v.scale).round() as u32).max(1));
         if size == (self.width, self.height) {
-            self.scale = scale;
+            self.view = (v.scale, v.x0, v.y0);
             return Ok(());
         }
         if !self.in_flight.is_empty() {
             return Err("a frame at another scale while frames are in flight to the encoder".into());
         }
         self.surface = new_surface(self.gl.as_mut(), size.0, size.1, &self.space)?;
-        ((self.width, self.height), self.scale) = (size, scale);
+        ((self.width, self.height), self.view) = (size, (v.scale, v.x0, v.y0));
         (self.acc, self.held, self.out8) = (None, None, None);
         self.last = Last::Frame;
         Ok(())
     }
 
-    /// The size of the pictures it paints (the comp's times `set_scale`'s scale).
+    /// The size of the pictures it paints (`set_view`'s).
     pub fn size(&self) -> (u32, u32) {
         (self.width, self.height)
     }
@@ -340,9 +357,9 @@ impl Painter {
             canvas.clear(Color::TRANSPARENT);
             // Half-float images were decoded into the working space: anyrender_skia tags them with it.
             anyrender_skia::working_space::set(self.space.clone());
-            self.cache.set_root_scale(self.scale);
+            self.cache.set_root_view(self.view.0, self.view.1, self.view.2);
             draw(&mut SkiaScenePainter::new(canvas, &mut self.cache));
-            self.cache.set_root_scale(1.0);
+            self.cache.set_root_view(1.0, 0.0, 0.0);
         }
         self.cache.held = None;
         self.cache.next_gen();
