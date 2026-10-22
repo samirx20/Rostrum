@@ -19,7 +19,7 @@ Rectangle {
         anchors { left: parent.left; leftMargin: Theme.pad; top: parent.top }
         height: Theme.header; verticalAlignment: Text.AlignVCenter
         text: "PROBLEMS"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
-        font.weight: Font.DemiBold; font.letterSpacing: 0.4
+        font.weight: Font.DemiBold; font.letterSpacing: Theme.capsSpacing
     }
     ListView {
         id: list

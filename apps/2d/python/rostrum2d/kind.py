@@ -123,4 +123,7 @@ from . import ops_path, ops_stroke  # noqa: E402,F401  (vector paths, booleans, 
 from .rig import ops as _rig_ops, poses as _rig_poses  # noqa: E402,F401  (bones, IK chains, binds, poses)
 from .lipsync import ops as _lipsync_ops  # noqa: E402,F401  (lipsync.apply)
 from . import ops_swap  # noqa: E402,F401  (swap.show, blink.add)
+from . import ops_timing  # noqa: E402,F401  (layer.shift, layer.trim: move and trim a layer in time)
 from . import ops_background  # noqa: E402,F401  (background.add, background.fit, background.move: painted backgrounds)
+from . import ops_group, ops_mask, ops_state, ops_align, ops_look  # noqa: E402,F401  (select first, then act)
+from . import ops_clip  # noqa: E402,F401  (layer.paste: copy / cut / paste of layers)

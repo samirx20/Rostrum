@@ -27,6 +27,7 @@ with group("row", w=300, h=60, layout="row", gap=10, hugWidth=False):
 
 class FakeEngine:
     fallback = None            # the real engine's reply to a scene: "fallback" says when it draws on the processor (engine.py)
+    notice = None              # set when the engine died and was restarted (engine.py): said once
 
     def load(self, scene):
         self.fallback = None
@@ -131,3 +132,15 @@ def test_pen_stroke_is_one_undo_step_and_one_change(bridge):
     assert len(strokes()[0]["points"]) == 4 and strokes()[0]["points"][-1][2] == 0.6
     bridge.undo()
     assert not strokes() and not any(f["at"] == 5 for f in doc.item("pad")["frames"])   # the frame it added went too
+
+
+def test_group_from_the_selection_is_one_change_and_undo_takes_it_back(bridge):
+    """Select first, then act, through the same path as the action bar, the right-click menu and Ctrl+K."""
+    bridge.selectMany(["title", "box"])
+    n = len(bridge.doc.history.changes)
+    assert bridge.run("layer:group")
+    groups = [i for i in bridge.doc.items() if i["type"] == "group" and i["id"] != "row"]
+    assert len(groups) == 1 and len(bridge.doc.history.changes) == n + 1
+    assert {c["id"] for c in groups[0]["layers"]} == {"title", "box"}
+    bridge.undo()
+    assert not [i for i in bridge.doc.items() if i["type"] == "group" and i["id"] != "row"]

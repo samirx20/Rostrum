@@ -1,6 +1,6 @@
 # Exporting a video
 
-For a person using the Rostrum2D app: turn your project into a video, pictures or another file you can share or hand on.
+Turn your project into a video, pictures or another file you can share or hand on. The export is made the same way the picture on the canvas is drawn, so what you see is what you get. Layers you have hidden (the eye at the right of their name in the timeline) are left out.
 
 ## 1. Open the Export panel
 
@@ -34,9 +34,10 @@ Only the settings that apply to the chosen format are shown.
 
 ## 4. Where the file goes
 
-1. Under **Save to** you see the file's name, and "Saved in" with its folder. By default it goes inside your project's folder, in its own new version folder, so an export never replaces an earlier one.
-2. To choose another place, click **Choose…**, pick a folder and a name. **Default** goes back to the usual place.
-3. If a file with that name is already there, the app asks **Replace?** with **Cancel**, **Keep both** and sometimes **Replace**.
+1. Under **Save to** you see the file's name, and "Saved in" with its folder. A project that has its own folder saves inside it, in its own new version folder, so an export never replaces an earlier one.
+2. A document that is not a saved project yet (for example the built-in sample) saves into your **Videos** folder, or your Documents folder if you have no Videos folder. It is never hidden away in a cache. Long folder names wrap at the backslashes so you can read the whole path.
+3. To choose another place, click **Choose…**, pick a folder and a name. **Default** goes back to the usual place.
+4. If a file with that name is already there, the app asks **Replace?** with **Cancel**, **Keep both** and sometimes **Replace**.
 
 ## 5. Export
 

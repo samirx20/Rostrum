@@ -14,6 +14,7 @@ Item {
     function act(key) {
         if (key === "file:new") whenSaved(() => files.newProject(""))
         else if (key === "file:open") whenSaved(() => openDialog.open())
+        else if (key === "file:sample") whenSaved(() => files.openSample())
         else if (key.startsWith("file:recent:")) whenSaved(() => files.openRecent(parseInt(key.split(":")[2])))
         else if (key === "file:saveas") askName()
         else if (key === "file:save" && files.unsaved) save(null)

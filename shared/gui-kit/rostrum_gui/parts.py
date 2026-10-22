@@ -21,9 +21,6 @@ class SlotMixin:
 class Parts:
     """Mixed into DocBridge: the registry behind `attach`, `handle` and `invoke`."""
 
-    def _parts_init(self):
-        self._handlers: dict = {}
-
     def attach(self, name: str, obj) -> None:
         """Offer `obj` (a QObject) to QML as `bridge.<name>`."""
         if self.property(name) is not None:
@@ -31,12 +28,12 @@ class Parts:
         self.setProperty(name, obj)                  # a dynamic property: the bridge class stays untouched
 
     def handle(self, name: str, fn) -> None:
-        if name in self._handlers:
+        if name in self._kit.handlers:
             raise RostrumError(codes.CONFLICT, "bridge", f'"{name}"', "already has a handler")
-        self._handlers[name] = fn
+        self._kit.handlers[name] = fn
 
     def _invoke(self, name: str, args: list):
-        fn = self._handlers.get(name)
+        fn = self._kit.handlers.get(name)
         if fn is None:
             self._fail(f'Error: invoke: no handler "{name}".')
             return None

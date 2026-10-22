@@ -36,7 +36,7 @@ doc ─ comps ─ comp (width, height, fps, duration, background)
   undo step). Guide: `guides/drawing-and-frame-by-frame.md`.
 - **Vectors** (`pathdata.py`, `ops_path.py`, `ops_boolean.py`): a path layer's `d` (absolute M / L / C / Z) is the one
   truth; `path.add_point / set_point / remove_point / close / fit`, `shape.to_path`, `path.boolean` (skia-pathops). The
-  pen on the Design page (`screen/screen2d/pen.py`) writes the same `d`.
+  Pen tool (`screen/screen2d/pen.py`) writes the same `d`.
 - **Video** (`video.py`): decoded once with `ffmpeg` into a cache keyed by the file's content; the engine picks the
   frame by the frame time, so preview ≡ export.
 - **Script layer** (`script.py`): `comp(...)`, `shape / text / image / group(...)`, `.key(field, {time: value}, ease=)`, `.expr(field, "…")`, `.link(field, of=, field=, scale=, offset=)`, `.effect(type, ...)`, `.mask(...)`, `with group(...):`. See its docstring.

@@ -22,7 +22,7 @@ tools = Tools()
     **exporting.QUALITY_ARGS,
     "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0. Not for lottie or motion (both always hold the whole composition)."},
     "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition. Not for lottie or motion."},
-    "path": {"type": "string", "description": "Write here (absolute, or relative to the project folder; for png a new folder). Default: the project's renders folder (a versioned render with a manifest, the file named after the project and composition), or the render cache."},
+    "path": {"type": "string", "description": "Write here (absolute, or relative to the project folder; for png a new folder). Default: the project's renders folder (a versioned render with a manifest, the file named after the project and composition), or the person's Videos folder (no project)."},
     "overwrite": {"type": "boolean", "description": "Replace a file that already exists at `path`. Default false: an existing file makes the export fail (nothing is replaced)."}}})
 def render_export(ctx, args):
     """Export a composition in one of the formats the Export button offers, through the same engine as look_frame. Always a job: it

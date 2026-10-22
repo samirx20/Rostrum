@@ -112,6 +112,18 @@ class Files(QObject):
             self.host.show(Document.open(folder, item, KIND), False)
         return self._try(go)
 
+    @Slot(result=bool)
+    def openSample(self):
+        """A small example project (the same one `--sample` shows), made fresh and not saved until the person saves it."""
+        from rostrum2d import run_source
+        from .sample import SOURCE
+
+        def go():
+            doc = Document.new(KIND)
+            doc.run_script("sample.py", run_source(SOURCE, "sample.py"))
+            self.host.show(doc, False)
+        return self._try(go)
+
     @Slot(int, result=bool)
     def openRecent(self, i):
         return 0 <= i < len(self._recent) and self.openPath(self._recent[i]["path"])
@@ -165,7 +177,7 @@ class Files(QObject):
     # ---- Ctrl+K ----------------------------------------------------------------------------------------------
     def commands(self) -> list[dict]:
         """The file actions that apply now (absent, not greyed): Save only while there is something to save."""
-        out = [("file:new", "New project", "Ctrl N"), ("file:open", "Open…", "Ctrl O")]
+        out = [("file:new", "New project", "Ctrl N"), ("file:open", "Open…", "Ctrl O"), ("file:sample", "Open sample", "")]
         if self._unsaved and self.hasFolder:
             out.append(("file:save", "Save", "Ctrl S"))
         out.append(("file:saveas", "Save as…" if self.hasFolder else "Save…", "Ctrl Shift S"))

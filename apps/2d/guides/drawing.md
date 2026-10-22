@@ -1,16 +1,21 @@
 # Drawing
 
-For a person using the Rostrum2D app. Paint by hand on a drawing layer, and draw one picture after another for frame-by-frame animation.
+Paint by hand, and draw one picture after another for frame-by-frame animation. Drawing is a **tool** you pick, not a page you go to: the same workspace stays, the right-hand panel shows your brush, and the timeline gives the picture the room.
 
-## 1. Add a drawing layer
+![The Draw tool, with the brush on the right and two drawings with the onion skin on](pictures/draw-tool.png)
 
-1. Click **Draw** at the top.
-2. Click **+ Add**. On this page the list has one choice: **Drawing**. Click it.
-3. A layer called "Drawing" appears in Layers and is selected. Until a drawing layer is selected, the canvas says "Select a drawing layer to draw on it".
+## 1. Pick the Draw tool
+
+1. Click **Draw** in the tool strip at the top left of the canvas, or press **B**.
+2. If a drawing layer is picked, you paint on it. If nothing is picked, or the picked layer is not a drawing, **your first stroke makes a new drawing layer** and picks it. It is one step, so **Ctrl+Z** takes back the layer and the stroke together.
+3. **+ Add**, then **Drawing**, also makes a drawing layer and turns the Draw tool on.
+4. Press **V** (or **Esc**) to go back to Move.
+
+When Draw is on, the timeline shrinks to its compact height: the top strip, the ruler and only the drawing's own row. The picture gets the room, and Play and the playhead are still there. Click the button at the right end of the top strip to bring all the rows back; the tool remembers which height you last used with it.
 
 ## 2. Choose your brush
 
-On the Draw page the right-hand panel is called **Brush**. It sets how the next stroke looks.
+With Draw on, the right-hand panel is called **Brush**. It sets how the next stroke looks.
 
 1. **Colour**: click the swatch or type a colour.
 2. **Size**: how wide the stroke is, in pixels.
@@ -21,18 +26,14 @@ On the Draw page the right-hand panel is called **Brush**. It sets how the next 
 7. Under **Pen**, **Size from pressure** and **Opacity from pressure** say how much a pressure-sensitive pen changes the stroke. A mouse has no pressure.
 8. **More** opens the rest. Only the settings that apply to the tip you chose are shown.
 
-The brush's first colour is very dark. On the black background you will not see it. Change **Colour** before you draw.
-
 ## 3. Draw a stroke
 
 1. Press and drag on the picture, then let go. That is one stroke.
 2. Each stroke is one change, so **Ctrl+Z** takes back the last stroke.
 
-![A drawing with its frames at the bottom](pictures/draw-page.png)
-
 ## 4. Frames: one drawing after another
 
-The strip along the bottom is called **Drawing**. It shows the drawing layer's frames on the ruler. A drawing starts at a mark and is held until the next one. The number on a bar is the frame where it starts.
+The drawing's row in the timeline shows its frames as marks on its bar. A drawing starts at a mark and is held until the next one. The number on a mark is the frame where it starts.
 
 1. Move the playhead to where you want the next picture (click the ruler).
 2. Click **New drawing**. A blank picture starts there.
@@ -50,5 +51,9 @@ The strip along the bottom is called **Drawing**. It shows the drawing layer's f
 ## 6. Play it
 
 Press **Space**. The pictures play in order at the project's speed. **Preview size** makes playback lighter.
+
+## 7. More than one drawing layer
+
+Lines on top, colour below: pick **+ Add**, **Drawing** again for a second layer, then drag its name under the first in the timeline. Both are in the same list, and each keeps its own frames. Strokes go onto the drawing layer that is picked, so click the name of the one you want to paint on.
 
 Next: [the-screen.md](the-screen.md), and [exporting.md](exporting.md) to get a video file out.

@@ -23,6 +23,7 @@ FocusScope {
     signal committed(string text)       // Enter or focus loss with changed text
     signal entered()                    // Enter, whether or not the text changed
     signal arrow(int direction, bool big)  // Up / Down while typing (Shift = big)
+    signal escaped()                    // Esc while typing (the typing is dropped first)
     implicitWidth: 140
     implicitHeight: Theme.field
 
@@ -78,7 +79,7 @@ FocusScope {
         function commit() { if (text !== f.text && text !== sent) { sent = text; f.committed(text) } }
         onAccepted: { commit(); f.entered(); focus = false }
         onActiveFocusChanged: if (activeFocus) sent = ""; else commit()
-        Keys.onEscapePressed: { text = f.text; focus = false }
+        Keys.onEscapePressed: { text = f.text; focus = false; f.escaped() }
         Keys.onUpPressed: (e) => f.arrow(1, (e.modifiers & Qt.ShiftModifier) !== 0)
         Keys.onDownPressed: (e) => f.arrow(-1, (e.modifiers & Qt.ShiftModifier) !== 0)
     }

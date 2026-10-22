@@ -1,6 +1,6 @@
 # Importing pictures and files
 
-For a person using the Rostrum2D app: bring a picture, a video, a PDF page, a Photoshop file or a Figma frame into your project.
+Bring a picture, a video, a PDF page, a Photoshop file or a Figma frame into your project, then work on the pieces like any other layer.
 
 ## 1. Open the Import panel
 
@@ -23,13 +23,20 @@ For a person using the Rostrum2D app: bring a picture, a video, a PDF page, a Ph
 
 1. Click **Import**. A progress line shows while it works, and **Cancel** appears.
 2. When it is done, the panel says what came across. It also lists anything that did **not** come across, under "Didn't come across". When everything came across it says "Everything came across."
-3. The new layers appear in **Layers**. Pictures and layers from a PDF, PSD or SVG can be moved and changed like any other layer.
+3. The new layers appear in the timeline at the bottom, which is also the layers list. A file with several parts (an SVG logo, a PDF page, a PSD) comes in as one group; click the small arrow beside its name to open it and see the pieces.
 
-## 5. A single picture or video
+## 5. Work on the pieces
+
+1. Click a piece's name in the timeline to pick it, or click it in the picture. Pieces can be moved, changed and animated like any other layer.
+2. To change several pieces together, pick them first: **Shift+click** on the canvas, or drag a box round them on empty canvas. The panel on the right then shows what they share, and a change applies to all of them as one step.
+3. Right-click the picked pieces, or look at the action bar under them, for what you can do to them together: **Group**, **Align**, **Distribute**, **Mask with top layer**, **Boolean** for shapes, and more (see [the-screen.md](the-screen.md)).
+4. **Hide** (the eye at the right of a piece's name) takes a piece out of the picture and the export without deleting it. **Lock** keeps a piece from being moved by mistake.
+
+## 6. A single picture or video
 
 You can also use **+ Add**, then **Image** or **Video**, and pick the file there. It is the same result for one picture or clip.
 
-## 6. Figma
+## 7. Figma
 
 1. Choose **Figma** under **From**.
 2. Fill in **File key** (from the file's address in your browser), **Frame** (the frame's name; the first one if you leave it empty) and **Token** (your own Figma access token; it is not saved).

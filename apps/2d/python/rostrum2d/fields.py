@@ -30,9 +30,12 @@ def C(name, label, group, default, imp=P, when=None):
     return Param.color(name, label=label, group=group, importance=imp, valid_when=when, default=default)
 
 
-def CH(name, options, label, group, default, imp=P, when=None, help=""):
+RECT_WORDS = {"rect": "Rectangle"}
+
+
+def CH(name, options, label, group, default, imp=P, when=None, help="", labels=None):
     return Param.choice(name, options, label=label, group=group, importance=imp, valid_when=when, default=default,
-                        help=help)
+                        help=help, labels=labels or {})
 
 
 def T(name, label, group, default, imp=P, when=None, help=""):
@@ -60,7 +63,7 @@ def timing(start_help: str, end_help: str) -> list:
     """Starts at (before 0 is allowed: a lead-in before the layer's marker), Ends at (absent while it ends at a marker), and the markers."""
     return [N("start", "Starts at", "Timing", -36000, 36000, 0.01, "s", S, help=start_help + "; counted from Timed from marker when set, so -0.2 = just before it"),
             N("end", "Ends at", "Timing", 0, 36000, 0.01, "s", S, IS("endMarker", ""), default=36000.0, help=end_help,
-              words={36000.0: "End of comp"}), *MARKER_TIMING]
+              words={36000.0: "End of composition"}), *MARKER_TIMING]
 
 
 # Every layer has these (position is where its anchor sits in the composition, in px).
@@ -106,7 +109,7 @@ BY_LETTER = {"not": IS("letterDelay", 0)}
 FIGURES = ["default", "proportional lining", "tabular lining", "proportional old-style", "tabular old-style"]
 TYPE = [
     T("ligatures", "Ligatures", "Type", True, D, help="Joined letters such as fi and fl, where the font has them"),
-    CH("figures", FIGURES, "Numbers", "Type", "default", S,
+    CH("figures", FIGURES, "Number style", "Type", "default", S,
        help="Tabular numbers all have one width (they line up in counters); old-style numbers rise and fall like letters"),
     T("smallCaps", "Small caps", "Type", False, D, help="The font's own small capitals (refused if it has none)"),
     X("features", "Font features", "Type", "", D, help='OpenType features by tag, e.g. "ss01 ss03 salt" or "cv05=2"'),
@@ -154,7 +157,7 @@ FIELDS: dict[str, list[Param]] = {
         C("background", "Background", "Look", "#000000"),
     ],
     "shape": [
-        CH("shape", ["rect", "ellipse"], "Shape", "Shape", "rect"),
+        CH("shape", ["rect", "ellipse"], "Shape", "Shape", "rect", labels=RECT_WORDS),
         N("w", "Width", "Shape", 0, 20000, 1, "px", default=200.0),
         N("h", "Height", "Shape", 0, 20000, 1, "px", default=200.0),
         N("radius", "Corner radius", "Shape", 0, 10000, 1, "px", when=IS("shape", "rect")),
@@ -298,7 +301,7 @@ FIELDS: dict[str, list[Param]] = {
     ],
     # A mask: the part of the layer that shows (in the layer's own px, from its top-left corner).
     "mask": [
-        CH("shape", ["rect", "ellipse"], "Shape", "Mask", "rect"),
+        CH("shape", ["rect", "ellipse"], "Shape", "Mask", "rect", labels=RECT_WORDS),
         N("x", "X", "Mask", -20000, 20000, 1, "px"),
         N("y", "Y", "Mask", -20000, 20000, 1, "px"),
         N("w", "Width", "Mask", 0, 20000, 1, "px", default=200.0),
@@ -306,7 +309,7 @@ FIELDS: dict[str, list[Param]] = {
         N("radius", "Corner radius", "Mask", 0, 10000, 1, "px", S, IS("shape", "rect")),
         N("feather", "Feather", "Mask", 0, 1000, 0.5, "px", S, help="Soft edge: this many px wide, centred on the edge"),
         T("invert", "Invert", "Mask", False, S),
-        N("angle", "Angle", "Mask", -360, 360, 0.1, "°", S, help="Turns the mask shape around its centre (a feathered rect sweeping across = a soft diagonal wipe)"),
+        N("angle", "Rotation", "Mask", -360, 360, 0.1, "°", S, help="Turns the mask shape around its centre (a feathered rect sweeping across = a soft diagonal wipe)"),
     ],
     "key": KEY_FIELDS,         # the one key shape (rostrum_core.keys): t, v | c | d, ease and its curve
 }
@@ -318,9 +321,13 @@ FIELDS.update(_camera.FIELDS)
 FIELDS.update(_motion.FIELDS)
 FIELDS["comp"] += _motion.COMP + _stepped.COMP     # stepped timing (stepped.py): Python-side, applied in the scene
 LAYERS = ("shape", "text", "image", "video", "render3d", "group", "drawing", "path", "rig", "camera")
+# Whether a layer can be picked or changed (locked) and whether it is drawn at all (hidden: not in the preview, not in an
+# export; scene.py leaves it out). Document-only: the engine never sees them (scene.python_only). A camera has neither.
+STATE = [T("locked", "Locked", "Layer", False, D, help="Locked: the screen won't pick or drag it and operations refuse it until it is unlocked"),
+         T("hidden", "Hidden", "Layer", False, D, help="Not drawn, in the preview and in an export, until shown again")]
 for _t in LAYERS:
     if _t != "camera":
-        FIELDS[_t] += _layout.CHILD + ([_layout.CHILD_GROW] if _t in _layout.SIZED else [])
+        FIELDS[_t] += STATE + _layout.CHILD + ([_layout.CHILD_GROW] if _t in _layout.SIZED else [])
     FIELDS[_t] += _stepped.LAYER
 EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", *_motion.EFFECTS)
 ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask",) + _rig.OWNED_KEYS
@@ -329,7 +336,7 @@ STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name f
          "video": {"w", "h", "offset", "speed"},
          "render3d": {"w", "h", "offset", "speed", "version"},
          "text": {"letterDelay", "letterSeed"},
-         **_rig.STILL, **_camera.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth"}}
+         **_rig.STILL, **_camera.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth", "locked", "hidden"}}
 LABELS = {"comp": "Composition", "shape": "Shape", "text": "Text", "image": "Image", "video": "Video", "render3d": "3D render", "group": "Group", "drawing": "Drawing", "path": "Path", "frame": "Drawing frame",
           "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "mask": "Mask", "key": "Key",
           **_rig.LABELS, **_camera.LABELS, **_motion.LABELS}

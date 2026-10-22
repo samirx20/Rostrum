@@ -6,13 +6,11 @@ the layer's own px. Point edits never move the box: `path.fit` does that, keepin
 """
 from __future__ import annotations
 
-import math
-
 from rostrum_core import Param
 from rostrum_core.errors import codes
 from rostrum_core.tree import index
 
-from . import fields as F, pathdata as PD
+from . import boxes, fields as F, pathdata as PD
 from .kind import REGISTRY as R
 from .ops_items import ID, new_item
 
@@ -119,14 +117,8 @@ def to_parent(item: dict):
     """local box px → the parent's px, as the stage draws the layer (contract § 4 Transform; tilt refused)."""
     if item.get("tiltX") or item.get("tiltY"):
         raise ValueError(f"{item['id']} is tilted (2.5D); a tilted layer can't be combined as a flat path")
-    ax, ay = item["anchorX"] * item["w"], item["anchorY"] * item["h"]
-    sx, sy = item["scale"] * item["scaleX"], item["scale"] * item["scaleY"]
-    c, s = math.cos(math.radians(item["rotation"])), math.sin(math.radians(item["rotation"]))
-
-    def fn(x, y):
-        u, v = (x - ax) * sx, (y - ay) * sy
-        return item["x"] + c * u - s * v, item["y"] + s * u + c * v
-    return fn
+    a, b, c, d, e, f = boxes.matrix(item, item["w"], item["h"])
+    return lambda x, y: (a * x + c * y + e, b * x + d * y + f)
 
 
 def _fit_fields(ctx, t, cmds, keep_place=True) -> dict:
