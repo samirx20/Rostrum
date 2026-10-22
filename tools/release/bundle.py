@@ -35,7 +35,7 @@ SKIP = shutil.ignore_patterns("__pycache__", "tests", "*.egg-info", "*.pyc", ".p
 # One row per piece: (installer component, wheel specs from this repo, folders copied as they are).
 SHARED = ("runtime", ["shared/core[mcp]", "shared/gui-kit", "shared/painting-kit"],
           ["shared/core/rostrum_core", "shared/gui-kit/rostrum_gui", "shared/gui-kit/qml",
-           "shared/painting-kit/rostrum_paint", "LICENSE", "ATTRIBUTIONS.md"])
+           "shared/painting-kit/rostrum_paint", "LICENSE", "ATTRIBUTIONS.md", "VERSION"])
 APPS = {
     "2d": ("apps/2d", ["apps/2d/python[mcp,io,render3d]"],
            ["apps/2d/python/rostrum2d", "apps/2d/screen/main.py", "apps/2d/screen/screen2d", "apps/2d/screen/qml",

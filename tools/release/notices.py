@@ -130,7 +130,8 @@ def build(a) -> int:
         if row is None:
             missing.append(name)
     # Always listed: installed, our packages ship as source (no dist-info); in a dev venv they show as packages.
-    items.insert(0, ({"name": "Rostrum", "version": "0.1.0-dev", "licence": OWN_LICENCE,
+    version_file = Path(__file__).resolve().parents[2] / "VERSION"   # the one version number
+    items.insert(0, ({"name": "Rostrum", "version": version_file.read_text(encoding="utf-8").strip(), "licence": OWN_LICENCE,
                       "asks": "Our own code" + (": " + ", ".join(sorted(own)) if own else ""),
                       "source": "https://github.com/samirx20/Rostrum", "missing_row": False},
                      [repo_licence] if repo_licence else []))
