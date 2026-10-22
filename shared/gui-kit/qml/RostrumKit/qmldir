@@ -49,3 +49,7 @@ JobChip 1.0 JobChip.qml
 ProblemsChip 1.0 ProblemsChip.qml
 SnapLine 1.0 SnapLine.qml
 DragLabel 1.0 DragLabel.qml
+MarkerFlag 1.0 MarkerFlag.qml
+MarkerNamer 1.0 MarkerNamer.qml
+TimelineHeader 1.0 TimelineHeader.qml
+HScroll 1.0 HScroll.qml
