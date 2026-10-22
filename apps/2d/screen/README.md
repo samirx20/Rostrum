@@ -51,6 +51,27 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - Two heights (Main.qml `timelineByTool`): full (every row) or compact (header, ruler, the selected layer's row; the name is a
   menu of all layers); Move and Pen remember the full one, Draw the compact one.
 
+## Creation tools, the view, snapping, painting on any element (H29)
+
+- **R / O / T** (`screen2d/create.py`, `typing_session.py`, `qml/CreateOverlay.qml` in the canvas under the tool strip):
+  drag a rectangle or ellipse (Shift square / round, Alt from the centre, a click = 200 × 200), one change, selected,
+  back to Move; T: click or drag a box and type on the canvas, one change per typing session (previews `text.set` per
+  key), Esc / Ctrl+Enter ends; double-click a text to type in it again. While typing the context bar has Font, Weight,
+  Size, Colour, Done (`qml/ToolOptions.qml`). Steps: `shape`, `shapedrag`, `text`, `textbox`, `typetext`, `edittext`.
+- **The view** (`qml/CanvasView.qml`, `ViewInput.qml`, `ViewControls.qml`, `screen2d/spacekey.py`, `view_steps.py`):
+  one mapping (Stage's `compScale`, `toComp`, `fromComp`, `inWell`) for everything over the canvas. Ctrl+wheel / pinch
+  at the pointer, Space+drag or middle-drag, Ctrl+0, Ctrl+1, F (Shift+2), Ctrl+= / Ctrl+−; the "Fit · 43 % ▾" menu. The
+  engine is asked for the frame at the size shown, up to Full (`shown.setView`). Screen state only. Steps: `zoom`,
+  `pan`, `fitsel`, `viewmenu`.
+- **Snapping** (`screen2d/snap.py` pure, `snapper.py` as `backend.snap`): moves and resize edges snap within 6 screen
+  px to the frame's edges and centre, then other layers'; magenta lines; Ctrl during the drag = free, Shift = straight.
+- **Box select** (`multi.boxSelect(…, mods)` through the kit's `selection_rules.box`): Shift adds, Ctrl the deepest.
+- **Painting on any element** (`painter.py`, `brush_panel.py`, `strokes.py`): the Draw tool paints on the selected
+  shape, text, picture or path (kept inside its outline by the engine), on a drawing, or with nothing selected makes a
+  drawing. Each stroke is one `paint.stroke` change (the agent's operation too). The Paint bar: tip, Size, Colour,
+  Opacity (gives way on narrow windows), Eraser E, `[` `]`, + Paint layer, Painting on: *x* ▸. Frame keys: `,` `.`
+  step drawings, `=` `−` hold. Steps: `draw`, `paintlayer`, `painton selected|new`.
+
 ## The rules it builds in
 
 - **One animation model** (`screen2d/route.py`, the only place): a number or colour field keys may drive is edited
