@@ -3,7 +3,7 @@ fails raises, so a scripted run exits nonzero.
 
     new [name] | save | saveas <name> | openproject <doc file or project folder> | autosave (write the recovery copy now)
     restore | discard (answer the recovery question) | filemenu open|close | askclose (press the window's close button)
-    about (Help › About and licences) | agents (Help › Connect an AI agent) | help (the Help menu, open) | guide <file.md> (Help › that guide)
+    about (Help › About and licences) | agents [agent id] (Help › Connect an AI agent; with an id, its by-hand text open) | help (the Help menu, open) | guide <file.md> (Help › that guide)
 Names: _ for spaces.
 """
 from __future__ import annotations
@@ -21,8 +21,11 @@ def do_file_step(bridge, win, word, rest, step):
     if word == "filemenu":
         QMetaObject.invokeMethod(win, "setFileMenuOpen", Q_ARG("QVariant", rest[0] == "open"))
         return
-    if word in ("about", "agents", "help"):
-        QMetaObject.invokeMethod(win, {"about": "openAbout", "agents": "openConnectAgent"}.get(word, "openHelp"))
+    if word in ("about", "help"):
+        QMetaObject.invokeMethod(win, "openAbout" if word == "about" else "openHelp")
+        return
+    if word == "agents":
+        QMetaObject.invokeMethod(win, "openConnectAgent", Q_ARG("QVariant", rest[0] if rest else ""))
         return
     if word == "guide":
         guides.open_named(win, rest[0])

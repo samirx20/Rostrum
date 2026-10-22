@@ -34,7 +34,10 @@ QQC.ApplicationWindow {
     color: Theme.app
 
     function openAbout() { noticesDialog.open() }
-    function openConnectAgent() { agentsDialog.open() }
+    function openConnectAgent(handFor) {  // handFor: an agent id whose "Do it by hand" opens with it (scripted steps)
+        agentsDialog.open()
+        if (handFor) agentsDialog.toggleHand(handFor)
+    }
     function openHelp() { topBar.openHelp() }
     function openGuide(url) { guideDialog.show(url) }
     function openGuideNamed(file) {       // a scripted step's "guide <file.md>": false when Help has no such guide
