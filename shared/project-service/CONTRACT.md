@@ -137,7 +137,10 @@ Over the client in `rostrum_core.project`, and the same through each app's MCP s
 
 **Built (S9), before the service:** `rostrum_core.project` reads the folder directly — `items(folder, kind)`,
 `item`, `renders(folder, item)` (finished `vNNN/` only, newest first), `latest_render(folder, item, "pictures")`,
-and `begin_render` / `finish_render` for writers (`vNNN.partial/` renamed when done). Every server's
+and `begin_render` / `finish_render` for writers (`vNNN.partial/` renamed when done). **Main item of a kind**
+(H32): `main(folder, "sound")` is the project's main mix, the item every app plays and mixes by default: the one
+marked in `project.json` › `"main": {"sound": "<item id>"}` (`set_main(folder, "sound", id)`; `None` clears it), else
+the first Sound item by name. A mark naming an item that is gone is a loud error, never a silent fallback. Every server's
 `inspect_project` lists them when the app is started with its project folder (`App(folder=…)`).
 
 How renders are handed between apps (EXR layers, WAV stems, frame numbering) is in `shared/HANDOFFS.md`.
