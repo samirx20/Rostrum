@@ -12,13 +12,13 @@ Panel {
     Text { id: name; text: panel.bridge.selectedItem.label; color: Theme.fg; font.family: uiFont
            font.pixelSize: Theme.heading; font.weight: Font.DemiBold
            anchors.left: parent.left; anchors.right: parent.right; elide: Text.ElideRight }
-    Text { id: kind; text: panel.bridge.selectedItem.kind; color: Theme.fg3; font.family: uiFont
-           font.pixelSize: Theme.body; font.capitalization: Font.Capitalize
+    Text { id: kind; text: Theme.sentence(panel.bridge.selectedItem.kind); color: Theme.fg3; font.family: uiFont
+           font.pixelSize: Theme.body
            anchors.top: name.bottom; anchors.topMargin: 2 }
     Flickable {      // a long inspector scrolls (wheel or touch, thin bar in the panel's margin); a short one never moves
         id: scroller
         objectName: "inspectorScroll"    // scripted steps scroll it (an app's `inspectorscroll` step)
-        anchors { left: parent.left; right: parent.right; top: kind.bottom; bottom: parent.bottom }
+        anchors { left: parent.left; right: parent.right; top: kind.bottom; bottom: parent.bottom; topMargin: Theme.gap }   // scrolled rows stop short of the subtitle
         contentHeight: list.height; clip: true; boundsBehavior: Flickable.StopAtBounds
         Column {
             id: list

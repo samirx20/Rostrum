@@ -16,7 +16,7 @@ Item {
     readonly property int gutter: keyMarks ? 22 : 0
     readonly property bool driven: model.row === "param" && !!model.expr      // an expression decides (model.expr)
     readonly property bool tall: model.type === "list" || model.control === "curve"    // a widget taller than a field (top-aligned)
-    readonly property int full: model.row === "group" ? Theme.groupGap + Theme.rowDense
+    readonly property int full: model.row === "group" ? Theme.groupGap + (model.label ? Theme.rowDense : 0)   // "": a gap only
                               : model.row === "more" ? Theme.row + Theme.grid
                               : driven ? Theme.row + exprBox.height + Theme.grid
                               : model.control === "curve" ? Theme.curveBox + Theme.row - Theme.field
@@ -34,7 +34,7 @@ Item {
         visible: row.model.row === "group"
         anchors.left: parent.left; anchors.bottom: parent.bottom; anchors.bottomMargin: Theme.grid + 2
         text: row.model.label; color: Theme.fg3; font.family: uiFont
-        font.pixelSize: Theme.label; font.weight: Font.DemiBold; font.letterSpacing: 0.3
+        font.pixelSize: Theme.label; font.weight: Font.DemiBold
     }
     Item {  // the More row (deep params live behind it)
         visible: row.model.row === "more"
