@@ -17,14 +17,18 @@ _DONE: dict[str, dict] = {}
 def peaks(wav) -> dict:
     key = str(wav)
     if key not in _DONE:
-        data, sr = sf.read(key, dtype="float32", always_2d=True)
-        seconds = len(data) / sr
-        rate = min(RATE, MOST / max(seconds, 1e-6))
-        per = max(1, int(sr / rate))
-        n = len(data) // per
-        loud = np.abs(data[: n * per]).max(axis=1).reshape(n, per).max(axis=1) if n else np.zeros(0)
         _DONE.clear()                       # one mix plays at a time: keep only its peaks
-        _DONE[key] = {"seconds": round(seconds, 4), "rate": sr / per,
-                      "peaks": [round(float(v), 3) for v in np.minimum(loud, 1.0)],
-                      "peak": round(float(np.abs(data).max()) if len(data) else 0.0, 4)}
+        _DONE[key] = measure(key)
     return _DONE[key]
+
+
+def measure(wav) -> dict:
+    """The peaks of any WAV, read now (peaks() keeps the mix's; a video's sound row keeps its own, video_sound.py)."""
+    data, sr = sf.read(str(wav), dtype="float32", always_2d=True)
+    seconds = len(data) / sr
+    rate = min(RATE, MOST / max(seconds, 1e-6))
+    per = max(1, int(sr / rate))
+    n = len(data) // per
+    loud = np.abs(data[: n * per]).max(axis=1).reshape(n, per).max(axis=1) if n else np.zeros(0)
+    return {"seconds": round(seconds, 4), "rate": sr / per, "peaks": [round(float(v), 3) for v in np.minimum(loud, 1.0)],
+            "peak": round(float(np.abs(data).max()) if len(data) else 0.0, 4)}

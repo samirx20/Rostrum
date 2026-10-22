@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from rostrum2d import fields as F
 
-from . import exprs, outline, route, size_rows, soundtrack_rows, swap_rows
+from . import beat_words, exprs, outline, route, size_rows, soundtrack_rows, swap_rows
 
 SIBLING_PICKS = {"matte": lambda s: True,                          # any layer beside it can be its track matte
                  "pathLayer": lambda s: s.get("type") == "path"}   # text follows a path layer beside it
@@ -12,7 +12,7 @@ SIBLING_PICKS = {"matte": lambda s: True,                          # any layer b
 class Hooks2D:
     def label_of(self, item):
         owner = self.doc.item(self.doc.parent_of(item["id"])[0]) if item.get("type") == "key" else None
-        return outline.label_of(item, owner)
+        return outline.label_of(item, owner, owner and (lambda t: beat_words.say(self, t + self.offset(owner["id"]))))
 
     def kind_label(self, item):          # the panel's subtitle and Ctrl+K hints: "Composition", never the raw "Comp"
         return F.LABELS.get(item.get("type", ""), super().kind_label(item))
@@ -50,6 +50,8 @@ class Hooks2D:
     def list_choices(self, item, param):   # the picks (control "pick"): a shared marker by name, or a sibling layer
         if param in ("marker", "endMarker"):
             return [{"value": m["name"], "label": m["name"]} for m in (self.marks.rows() if self.marks else [])]
+        if param == "textStyle":                     # the document's text styles (rostrum2d/text_styles.py)
+            return [{"value": s["id"], "label": s["name"]} for s in self.doc.data.get("textStyles", [])]
         if param not in SIBLING_PICKS:
             return []
         parent, key, _ = self.doc.parent_of(item["id"])

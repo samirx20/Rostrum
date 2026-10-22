@@ -18,7 +18,7 @@ from . import exprbake, fields as F, fontcheck, paint_fields, pathdata, widthpro
 from .rig import model as rig_model
 
 OWNED = ["effects", "masks", "keys"]
-LISTS = {"doc": ["comps"], "comp": ["layers"], "group": ["layers", *OWNED], "drawing": ["frames", *OWNED],
+LISTS = {"doc": ["comps", "textStyles"], "comp": ["layers"], "group": ["layers", *OWNED], "drawing": ["frames", *OWNED],
          "frame": rostrum_paint.CANVAS_LISTS, **rostrum_paint.LISTS,
          "rig": ["layers", "bones", "iks", "binds", "poses", *OWNED], "bone": ["keys"], "ik": ["keys"], "camera": ["keys"],
          **{t: OWNED for t in ("shape", "text", "image", "video", "render3d", "path")},
@@ -28,7 +28,7 @@ for _t, _owned in LISTS.items():       # whatever animates a field may also hold
     if _t in F.ANIMATED_OWNERS and "exprs" not in _owned:
         _owned.append("exprs")
 HOLDS = {"comps": ("comp",), "layers": F.LAYERS, "effects": F.EFFECTS, "masks": ("mask",), "keys": ("key",),
-         "exprs": ("expr",),
+         "exprs": ("expr",), "textStyles": ("textstyle",),
          "frames": ("frame",), "bones": ("bone",), "iks": ("ik",), "binds": ("bind",), "poses": ("pose",), **rostrum_paint.HOLDS}
 
 REGISTRY = Registry()
@@ -38,6 +38,7 @@ def _set_fields(ctx, targets, args):
     for t in targets:
         for k, v in args.items():
             ctx.set(t, k, v)
+        text_styles.after_set(ctx, t, args)          # a style reaches its texts; a text set by hand leaves its style
 
 
 for _type, _params in F.FIELDS.items():
@@ -86,17 +87,23 @@ def _check_keys(owner: dict, problems: list):
         seen.add((prop, k.get("t")))
 
 
+_LEAVES = frozenset(t for t, owned in rostrum_paint.LISTS.items() if not owned)   # strokes, fills: nothing inside
+
+
 def check(data: dict) -> list[str]:
     """Each list holds only its own kinds of item; keys name real animatable fields, one per field per time."""
     problems, stack = [], [data]
     while stack:
         item = stack.pop()
         for key in LISTS.get(item.get("type"), []):
+            held = HOLDS[key]
             for child in item.get(key, []):
-                if child.get("type") not in HOLDS[key]:
-                    problems.append(f'{item["id"]}.{key} can\'t hold a {child.get("type")} ({child["id"]}); '
-                                    f"it holds: {', '.join(HOLDS[key])}")
-                stack.append(child)
+                t = child.get("type")
+                if t not in held:
+                    problems.append(f'{item["id"]}.{key} can\'t hold a {t} ({child["id"]}); '
+                                    f"it holds: {', '.join(held)}")
+                if t not in _LEAVES:            # thousands of strokes: only their kind is looked at
+                    stack.append(child)
         if item.get("type") in F.ANIMATED_OWNERS:
             _check_keys(item, problems)
         if item.get("type") == "rig":
@@ -124,13 +131,14 @@ rostrum_paint.register(REGISTRY, canvas_types=("frame",))
 from . import ops_draw, ops_expr, ops_items, ops_keys  # noqa: E402,F401  (they register on REGISTRY)
 from . import follow  # noqa: E402,F401  (text.follow: a text on a path layer)
 from . import ops_path, ops_stroke  # noqa: E402,F401  (vector paths, booleans, stroke width)
-from .rig import ops as _rig_ops, poses as _rig_poses, guess as _rig_guess, joints as _rig_joints  # noqa: E402,F401  (bones, IK chains, binds, poses, Bones from part names, joints and posing)
+from .rig import ops as _rig_ops, poses as _rig_poses, guess as _rig_guess, joints as _rig_joints, draw as _rig_draw, mirror as _rig_mirror  # noqa: E402,F401  (bones, IK chains, binds, poses, Bones from part names, joints and posing, the Bone tool, Mirror pose)
 from .lipsync import ops as _lipsync_ops  # noqa: E402,F401  (lipsync.apply)
 from . import ops_swap  # noqa: E402,F401  (swap.show, blink.add)
 from . import ops_timing  # noqa: E402,F401  (layer.shift, layer.trim: move and trim a layer in time)
 from . import ops_background  # noqa: E402,F401  (background.add, background.fit, background.move: painted backgrounds)
 from . import ops_group, ops_mask, ops_state, ops_align, ops_look  # noqa: E402,F401  (select first, then act)
 from . import ops_clip  # noqa: E402,F401  (layer.paste: copy / cut / paste of layers)
-from . import ops_paint, ops_fill  # noqa: E402,F401  (paint.stroke, paint.fill: paint and fill on any element or drawing)
-from . import ops_frame, ops_grain  # noqa: E402,F401  (comp.size, layer.fill_frame, grain.add)
+from . import ops_paint, ops_fill, paint_transform  # noqa: E402,F401  (paint.stroke, paint.fill, stroke.transform: paint, fill and move paint on any element or drawing)
+from . import ops_frame  # noqa: E402,F401  (comp.size, layer.fill_frame)
 from . import ops_keytime, ops_stagger  # noqa: E402,F401  (key.scale, key.paste, layer.stagger: retiming)
+from . import text_styles  # noqa: E402  (style.define, style.use, style.detach, style.remove: named text styles)

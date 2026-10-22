@@ -6,6 +6,8 @@ item marked main in project.json, else the first Sound item by name). No Qt.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from rostrum_core import project
 
 
@@ -14,15 +16,43 @@ def main_mix(folder) -> dict | None:
     return project.main(folder, "sound") if folder else None
 
 
+_FOUND: dict = {}       # (folder, chosen) -> (the sound files' stamp, the song): asked on every change, even a pen move
+
+
 def song(folder, chosen: str = "") -> dict | None:
-    """The Sound item that plays: `chosen` (a scene's `soundtrack`) when set, else the main mix; None: no sound."""
+    """The Sound item that plays: `chosen` (a scene's `soundtrack`) when set, else the main mix; None: no sound.
+    Finding it reads every document of the project (their names), so the answer is kept until a Sound file,
+    project.json or a Sound item's renders change on disk (`_stamp`)."""
     if not folder:
         return None
+    key, stamp = (str(folder), chosen), _stamp(folder)
+    got = _FOUND.get(key)
+    if got is not None and got[0] == stamp:
+        return got[1]
     from rostrum_sound import soundtrack
     if chosen:
-        return soundtrack.find(folder, chosen)
-    m = main_mix(folder)
-    return soundtrack.find(folder, m["id"]) if m else None
+        found = soundtrack.find(folder, chosen)
+    else:
+        m = main_mix(folder)
+        found = soundtrack.find(folder, m["id"]) if m else None
+    _FOUND[key] = (stamp, found)
+    return found
+
+
+def _stamp(folder) -> tuple:
+    """(name, modified, size) of each Sound file in docs/, project.json and each Sound item's renders folder."""
+    f = Path(folder)
+    sounds = sorted(p for p in (f / "docs").glob("*") if project.KIND_OF_EXT.get(p.suffix) == "sound") \
+        if (f / "docs").is_dir() else []
+    return tuple((str(p), *_seen(p)) for p in [*sounds, f / "project.json", *(f / "renders" / s.stem for s in sounds)])
+
+
+def _seen(p: Path) -> tuple[int, int]:
+    try:
+        st = p.stat()
+    except OSError:
+        return 0, -1
+    return st.st_mtime_ns, st.st_size
 
 
 def for_export(folder, chosen: str, fmt: str, asked: bool | None) -> str | None:
@@ -38,7 +68,28 @@ def for_export(folder, chosen: str, fmt: str, asked: bool | None) -> str | None:
     return s["id"] if s else None
 
 
-_BEATS: dict = {}       # (song's stamp, seconds) -> beat times: describe() runs on every edit, the song's file rarely changes
+_SONGS: dict = {}       # (folder, item) -> the song's live Document: one copy per process (cues, video sound, Undo)
+
+
+def open_song(folder, item: str):
+    """The song `item` as a live Document (rostrum_core.live: every change locked, caught up and saved at once; one
+    door with Sound's own window). One copy per process, caught up on each call, so 2D's cues, the video sound and the
+    screen's Undo all see the same history. Its check reads the project's shared markers ("#Logo · sound")."""
+    from rostrum_core import live
+    from rostrum_sound.doc import markers as song_markers
+    from rostrum_sound.opening import open_whole
+    song_markers.use_project(folder)                 # this process works in this project (Undo checks the song too)
+    key = (str(folder), item)
+    doc = _SONGS.get(key)
+    if doc is None:
+        doc = _SONGS[key] = open_whole(folder, item)
+        live.keep(doc)
+    else:
+        doc.live.catch_up()
+    return doc
+
+
+_BEATS: dict = {}     # (song's stamp, seconds) -> beat times: describe() runs on every edit, the song's file rarely changes
 
 
 def beats(folder, chosen: str, seconds: float) -> list[float] | None:

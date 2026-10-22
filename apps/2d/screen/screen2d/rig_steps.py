@@ -4,7 +4,12 @@ or the sheets' clicks make. Bones, chains, poses and drawings are named by id or
     bones                          wait for the engine's posed bones of the rig in hand, then print them and the joints
     jointdrag <bone> pivot|tip <x> <y>    drag that joint circle to (x, y) composition px (fixes it at rest)
     posedrag <bone> <dx> <dy>      press the bone's middle and drag by (dx, dy) composition px (FK turn, or IK pull)
-    bonepick <bone>                click a bone (it is picked)
+    bonepick <bone>                click a bone (it is picked); `bonepick <bone> ctrl` = Ctrl+click (joins the part picked)
+    bonerealclick <bone> [ctrl]    a real mouse click (Ctrl held: `ctrl`) in the window on the bone's middle
+    boneclick <x> <y>              with the Bone tool (J): a click at (x, y) composition px (a joint)
+    bonedrag <x0> <y0> <x1> <y1>   with the Bone tool: press at (x0, y0), drag to (x1, y1), let go (one bone)
+    bonehover <x> <y>              the pointer over (x, y): the line of the bone a click would make
+    boneend                        Esc with the Bone tool: the chain ends (again: back to Move)
     pin <bone> on|off              right-click the chain end at that bone's joint › Pin / Unpin
     posesave | poseapply <pose> | poseblend <pose> <amount>    the Poses list in the settings
     lipsync open|close|apply | lipsync line <item/line> | lipsync shape <X|A…|H> <drawing|->
@@ -16,7 +21,7 @@ import time
 
 from PySide6.QtCore import QCoreApplication
 
-WORDS = ("bones", "jointdrag", "posedrag", "bonepick", "pin", "posesave", "poseapply", "poseblend", "lipsync", "blinks")
+WORDS = ("bones", "jointdrag", "posedrag", "bonepick", "bonerealclick", "boneclick", "bonedrag", "bonehover", "boneend", "pin", "posesave", "poseapply", "poseblend", "lipsync", "blinks")
 
 
 def _id(bridge, name: str, kinds=None) -> str:
@@ -69,7 +74,12 @@ def do_rig_step(bridge, word, rest, step):
         drag.end()
     elif word == "bonepick":
         wait_bones(bridge)
-        rig.pickBone(_id(bridge, rest[0], ("bone",)))
+        rig.pickBone(_id(bridge, rest[0], ("bone",)), rest[1:2] == ["ctrl"])
+    elif word == "bonerealclick":
+        wait_bones(bridge)
+        _real_click(bridge, _id(bridge, rest[0], ("bone",)), rest[1:2] == ["ctrl"])
+    elif word in ("boneclick", "bonedrag", "bonehover", "boneend"):
+        _bone_tool(bridge, word, [float(v) for v in rest], step)
     elif word == "pin":
         wait_bones(bridge)
         bone = _id(bridge, rest[0], ("bone",))
@@ -110,3 +120,41 @@ def do_rig_step(bridge, word, rest, step):
             sheet.setVary(float(rest[1]))
         elif what == "pick":
             sheet.setPick(rest[1], "" if rest[2] == "-" else _id(bridge, rest[2]))
+
+
+def _bone_tool(bridge, word, xy, step):
+    """The Bone tool's press / hover / release, as BoneTool.qml makes them (a joint is caught within 8 screen px at 100 %)."""
+    tool, near = bridge.boneTool, 8.0
+    if word == "boneend":
+        return tool.end() or bridge.setTool("move")
+    if bridge.tool != "bone":
+        bridge.setTool("bone")
+    end = time.time() + 15
+    while bridge.rig.place() is None and time.time() < end:        # the rig's place comes from the engine
+        bridge.rig.refresh()
+        QCoreApplication.processEvents()
+        time.sleep(0.02)
+    if word == "bonehover":
+        return tool.hover(*xy)
+    x0, y0, x1, y1 = xy if word == "bonedrag" else (*xy, *xy)
+    if not tool.press(x0, y0, near):
+        raise RuntimeError(f"step {step!r}: {bridge.status}")
+    tool.hover((x0 + x1) / 2, (y0 + y1) / 2)
+    tool.release(x1, y1, near)
+
+
+def _real_click(bridge, bone, ctrl):
+    """A real press and release from the mouse (QTest) on the bone's middle, as a person's click reaches BoneOverlay.qml."""
+    from PySide6.QtCore import QObject, QPoint, QPointF, Qt
+    from PySide6.QtGui import QGuiApplication
+    from PySide6.QtTest import QTest
+    win = next(w for w in QGuiApplication.topLevelWindows() if w.findChild(QObject, "stage"))
+    b = next(p for p in bridge.rig.bones if p["id"] == bone)
+    stage = win.findChild(QObject, "stage")
+    o, k = stage.property("compOrigin"), stage.property("compScale")
+    c = stage.mapToScene(QPointF(o.x() + (b["x"] + b["tipX"]) / 2 * k, o.y() + (b["y"] + b["tipY"]) / 2 * k))
+    p, mod = QPoint(int(c.x()), int(c.y())), Qt.KeyboardModifier.ControlModifier if ctrl else Qt.KeyboardModifier.NoModifier
+    QTest.mouseMove(win, p)
+    QTest.qWait(80)
+    QTest.mouseClick(win, Qt.MouseButton.LeftButton, mod, p)
+    QTest.qWait(250)

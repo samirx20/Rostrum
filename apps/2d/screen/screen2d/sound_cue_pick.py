@@ -100,12 +100,13 @@ class CuePick(QObject):
         if not self._layer:
             return False
         try:
+            about = next((r["about"] for r in self._rows if r["path"] == path), "")
             r = sound_cues.cue(self.b.doc.folder, self.b.doc, self._layer, path, self.b.who,
-                               chosen=self.b.comp().get("soundtrack", ""))
+                               chosen=self.b.comp().get("soundtrack", ""), about=about)
         except Exception as e:  # noqa: BLE001  loud, in words
             self.b._fail(e.line() if hasattr(e, "line") else f"Error: Add a sound here: {e}")
             return False
-        self.b._set_status(f'Added {Path(r["file"]).stem} at "{r["marker"]}" · RostrumSound mixes it')
+        self.b._set_status(f'Added {about or Path(r["file"]).stem} at "{r["marker"]}" · RostrumSound mixes it · Ctrl+Z takes it back')
         self._layer = ""
         self.changed.emit()
         return True

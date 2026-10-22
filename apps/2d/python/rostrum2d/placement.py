@@ -5,8 +5,10 @@ inverted. The screen's pen (screen2d/strokes.py) and the operations' composition
 with `space: "comp"`) both go through `canvas_points`, so a stroke lands under the pointer wherever the layer sits.
 
 A place is {"m": [9 numbers], "w", "h": the layer's own box (its paint is stretched over it), "edge": path data}.
-`place_at` asks an engine for one from a document (no screen): this module's own engine, started on first use and
-closed when Python exits, loaded with the document's scene. No engine built -> EngineError, loudly: no estimate.
+`place_at` asks an engine for one from a document: the host's running engine when a program registered one (`use`:
+the screen's canvas engine, with the project's markers and folder, so a scripted comp-px stroke starts no engine of its
+own and sees what the canvas sees), else this module's own engine, started on first use and closed when Python exits.
+No engine built -> EngineError, loudly: no estimate.
 """
 from __future__ import annotations
 
@@ -16,7 +18,30 @@ import threading
 from . import drawing as D
 
 _lock = threading.RLock()
-_own = None                 # this module's own engine (place_at)
+_own = None                 # this module's own engine (own_place)
+_host = None                # the running program's (`use`)
+
+
+class Host:
+    """A running program's side of places: `place(scene, t, ids) -> {id: place}` (the screen's canvas engine; default
+    this module's own), `markers()` -> {name: seconds} and `folder()` (the project's, where 3D render layers find
+    their renders) for the scene it describes. Both are asked each time, so they follow a project switch."""
+
+    def __init__(self, place=None, markers=lambda: None, folder=lambda: None):
+        self.place, self.markers, self.folder = place or own_place, markers, folder
+
+
+def use(host: Host | None):
+    """Places come from this host's engine from now on (None: back to this module's own engine)."""
+    global _host
+    _host = host
+
+
+def drop(host: Host):
+    """The program closing its engine: back to this module's own, unless another host took over since."""
+    global _host
+    if _host is host:
+        _host = None
 
 
 def comp_point(place: dict, lx: float, ly: float) -> tuple[float, float]:
@@ -55,6 +80,13 @@ def canvas_points(item: dict, props: dict, place: dict, points) -> list[list[flo
     return out
 
 
+def comp_points(item: dict, props: dict, place: dict, points) -> list[list[float]]:
+    """The other way: [[x, y, *rest], …] in the item's paint canvas px -> comp px (rest kept)."""
+    cw, ch = D.paint_size(item, props)
+    w, h = place["w"], place["h"]
+    return [[*comp_point(place, (q[0] + 0.5) * w / cw, (q[1] + 0.5) * h / ch), *q[2:]] for q in points]
+
+
 def _comp_of(doc_data: dict, layer_id: str) -> str:
     def has(layers):
         return any(lay["id"] == layer_id or has(lay.get("layers", [])) for lay in layers)
@@ -70,37 +102,41 @@ def open_engine():
     return Engine()
 
 
-def place_at(doc_data: dict, layer_id: str, t: float) -> dict:
-    """The layer's place at composition time `t`, from the document as it is (a document's own operations have no
-    screen; the scene is described without the project's markers and 3D renders, as only the layer's place is read)."""
+def own_place(scene: dict, t: float, ids: list[str]) -> dict:
+    """{id: place} from this module's own engine, started on first use and closed when Python exits."""
     global _own
-    from .scene import describe
-    scene = describe(doc_data, _comp_of(doc_data, layer_id), None, None, (t, t))
     with _lock:
         if _own is None:
             _own = open_engine()
             atexit.register(_own.close)
         _own.load(scene)
-        return _own.place(t, [layer_id])[layer_id]
+        return _own.place(t, ids)
+
+
+def _places(doc_data: dict, layer_id: str, span: tuple[float, float], asks: list[tuple[float, list[str]]]) -> list[dict]:
+    """[{id: place}] for each (t, ids) in `asks`, from one scene of the layer's composition, through the host (with its
+    project's markers and folder), else this module's own engine (no program around the document: no markers or
+    renders, as only places are read)."""
+    from .scene import describe
+    host = _host or Host()
+    scene = describe(doc_data, _comp_of(doc_data, layer_id), host.markers(), host.folder(), span)
+    return [host.place(scene, t, ids) for t, ids in asks]
+
+
+def place_at(doc_data: dict, layer_id: str, t: float) -> dict:
+    """The layer's place at composition time `t`, from the document as it is."""
+    return _places(doc_data, layer_id, (t, t), [(t, [layer_id])])[0][layer_id]
 
 
 def centres_at(doc_data: dict, when: dict[str, float]) -> dict[str, tuple[float, float]]:
     """Each layer's box centre in composition px, each at its own composition time (`when`: {id: seconds}), through
     its groups, the camera and tilt (the engine's `place`): one scene load for them all. layer.stagger's spatial
     orders read these, so layers in different groups compare where they are seen."""
-    global _own
-    from .scene import describe
     if not when:
         return {}
-    scene = describe(doc_data, _comp_of(doc_data, next(iter(when))), None, None, (min(when.values()), max(when.values())))
+    got = _places(doc_data, next(iter(when)), (min(when.values()), max(when.values())), [(t, [i]) for i, t in when.items()])
     out = {}
-    with _lock:
-        if _own is None:
-            _own = open_engine()
-            atexit.register(_own.close)
-        _own.load(scene)
-        for id_, t in when.items():
-            p = _own.place(t, [id_])[id_]
-            out[id_] = comp_point(p, p["w"] / 2, p["h"] / 2)
+    for (id_, _), places in zip(when.items(), got):
+        p = places[id_]
+        out[id_] = comp_point(p, p["w"] / 2, p["h"] / 2)
     return out
-

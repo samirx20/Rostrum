@@ -13,6 +13,7 @@ Item {
     property real fit: 1
     property Item space
     readonly property var rig: backend.rig
+    readonly property bool posing: backend.tool === "move"    // with the Bone tool the bones show, its own overlay takes the pointer
     visible: rig.rig !== ""
     function at(item, m) { const q = item.mapToItem(ov.space, m.x, m.y); return Qt.point(q.x / ov.fit, q.y / ov.fit) }
 
@@ -41,6 +42,7 @@ Item {
             MouseArea {         // the wedge's middle: pose it
                 id: area
                 x: bone.wide; y: -bone.wide; width: Math.max(4, bone.len - bone.wide * 1.5); height: 2 * bone.wide
+                enabled: ov.posing
                 hoverEnabled: true; preventStealing: true
                 cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                 property bool on: false
@@ -70,6 +72,7 @@ Item {
             MouseArea {
                 id: jarea
                 anchors.fill: parent; anchors.margins: -4
+                enabled: ov.posing
                 hoverEnabled: true; preventStealing: true
                 acceptedButtons: Qt.LeftButton | (joint.modelData.ik !== "" ? Qt.RightButton : 0)
                 cursorShape: Qt.SizeAllCursor

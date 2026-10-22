@@ -68,6 +68,9 @@ fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
         props.insert("paintSrc".into(), Value::from(drawing_src(&node.paint, t, fps)));
         props.insert("paintInside".into(), Value::from(node.paint_inside));
     }
+    if node.kind == "grain" {
+        props.insert("frame".into(), Value::from((t * fps + 1e-6).floor()));
+    }
     if node.kind == "video" {
         props.insert("picture".into(), Value::from(super::stage_fx::video_picture(node, t, fps)));
     }

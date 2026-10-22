@@ -13,7 +13,8 @@ AppShell {
     appName: "Rostrum2D"
     helpEntries: guides                 // Help's guides (screen2d/session.py), in the kit's guide viewer
     documentName: files.hasProject ? files.name : "Untitled"   // the project (the kit's files: rostrum_gui/project_files.py)
-    leftWidth: 0
+    leftWidth: backend.library.open ? Theme.sidePanel : 0      // the Library drawer (LibraryDrawer.qml) pushes the canvas
+    left: [ LibraryDrawer { anchors.fill: parent; visible: backend.library.open } ]
     areaNames: ({ centre: "canvas", right: "settings", bottom: "timeline" })   // inspect_screen's words for the focused area
     saveWord: backend.isLive ? "Saved" : ""      // a project is live: every change is already on disk
     // The timeline's height is remembered per tool (DESIGN.md › two heights): Move and Pen want every row, Draw a big
@@ -40,10 +41,12 @@ AppShell {
     Shortcut { sequence: "O"; enabled: !shell.typing; onActivated: backend.setTool("ellipse") }
     Shortcut { sequence: "T"; enabled: !shell.typing; onActivated: backend.setTool("text") }
     Shortcut { sequence: "C"; enabled: !shell.typing; onActivated: backend.setTool("camera") }     // only with a camera (camera_tool.py)
+    Shortcut { sequence: "J"; enabled: !shell.typing && backend.boneTool.available; onActivated: backend.setTool("bone") }   // only with a rig in hand (bone_tool.py)
     Shortcut { sequence: "A"; enabled: !shell.typing; onActivated: backend.showAnimated() }    // only the animated settings of the selection; again folds them
     Shortcut { sequence: "Escape"; enabled: backend.tool === "draw" || backend.tool === "rect" || backend.tool === "ellipse" || backend.tool === "camera"
-                                            || (backend.tool === "text" && !backend.create.typing)
+                                            || backend.tool === "bone" || (backend.tool === "text" && !backend.create.typing)
                onActivated: { if (backend.strokeSelect.count > 0 || backend.strokeSelect.armed) backend.strokeSelect.clear()   // picked strokes first
+                              else if (backend.tool === "bone" && backend.boneTool.end()) {}     // the bone chain ends first
                               else backend.setTool("move") } }
 
     Connections { target: spaceKey; function onTapped() { backend.togglePlay() } }   // a tap of Space plays; held, it pans (spacekey.py)
@@ -74,6 +77,7 @@ AppShell {
     Shortcut { sequences: ["Delete", "Backspace"]; enabled: !shell.typing
                onActivated: { if (backend.strokeSelect.count > 0) backend.strokeSelect.remove(); else backend.layerCommand("delete") } }   // picked strokes first
     Shortcut { sequence: "Ctrl+A"; enabled: shell.canvasKeys; onActivated: backend.selectAllLayers() }
+    Shortcut { sequence: "Ctrl+L"; enabled: !shell.typing; onActivated: backend.library.setOpen(!backend.library.open) }   // the kit's "library" job
     // Esc steps back one level (the kit's ladder, selection_rules.esc_step): close an open panel, else clear
     Shortcut {
         sequence: "Escape"; enabled: shell.canvasKeys
@@ -119,6 +123,7 @@ AppShell {
     StartScreen { id: startScreen; anchors.fill: parent; z: 100; onGuideAsked: (url) => shell.openGuide(url)
                   anchors.leftMargin: shell.guidesOpen ? (shell.guidesWidth || 0) : 0 }   // a guide opened from it shows beside it
     StaggerPopover { x: (shell.width - width) / 2; y: 104 }   // the context bar's Stagger… (stagger.py): under the bar
+    DepthPopover { x: (shell.width - width) / 2; y: 104 }     // Set depth ▾ › Other depth… (depth_typed.py): under the bar
     SoundCuePopover { x: (shell.width - width) / 2; y: 104 }  // Add a sound here… (sound_cue_pick.py): under the bar
     LipSyncSheet { x: (shell.width - width) / 2; y: 104 }     // Lip sync… on a mouth swap set (rig_lipsync.py): under the bar
     BlinkSheet { x: (shell.width - width) / 2; y: 104 }       // Add blinks… on an eyes swap set (rig_blinks.py): under the bar
@@ -132,6 +137,7 @@ AppShell {
         },
         ImportPanel {   // opened by the Import button, on the canvas (opening the Export sheet closes it)
             id: importPanel
+            Connections { target: backend.importer; function onWantPanel() { shell.setImportOpen(true) } }
             anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
         }
     ]

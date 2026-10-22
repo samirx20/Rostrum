@@ -144,7 +144,11 @@ FIT_MARGIN = 0.9        # a picture bigger than the frame is scaled to this shar
 
 def _fitted(tree: dict) -> dict:
     """The tree's layers under one root group whose box is the picture's visible content (the union of its layers' boxes,
-    not the source page with its margins). Its `x`, `y`, `scale` are set in `_fit_calls`."""
+    not the source page with its margins). Its `x`, `y`, `scale` are set in `_fit_calls`. A file that is one group (a PSD
+    holding just the group "max") keeps that group as the root, not wrapped again in a group of the file's name."""
+    if len(tree["layers"]) == 1 and tree["layers"][0]["type"] == "group":
+        only = tree["layers"][0]
+        return {**tree, "layers": [{**only, "box": _boxes(only)}]}
     box = _content_box(tree)
     return {**tree, "layers": [{"type": "group", "name": Path(tree["name"]).stem, "props": {}, "layers": tree["layers"],
                                 "box": box}]}

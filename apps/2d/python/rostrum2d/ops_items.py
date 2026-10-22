@@ -138,7 +138,8 @@ def _descendants(ctx, id_):
     return subtree_ids(ctx.item(id_), ctx.kind.lists)
 
 
-@R.operation("effect.add", "Add an effect to layers: blur, glow, gradient (fills a shape, or a text's letters), shadow.",
+@R.operation("effect.add", "Add an effect to layers: blur, glow, gradient (fills a shape, or a text's letters), shadow, frosted glass, "
+             "grain (film grain on the layer's own look; on a group it covers all its layers), trail, smear.",
              target=F.LAYERS, label="Add effect",
              params=[Param.choice("type", list(F.EFFECTS), label="Effect", required=True), ID, NAME, INDEX])
 def effect_add(ctx, targets, args):

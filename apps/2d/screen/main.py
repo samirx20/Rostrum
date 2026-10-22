@@ -112,7 +112,9 @@ def main():
             bridge = session.bridge
             layout_run.sweep(app, session.win, args.check_layout, args.check_name,
                              lambda: bridge.frames.idle() and bridge.frame > 0, IGNORE)
-        elif args.shot:
+        elif args.shot:          # the closing picture's own time limit counts from here: a step waits (and fails) on its own
+            QTimer.singleShot(30000, lambda: (print("FAIL: timeout: the closing picture's frame never landed", file=sys.stderr),
+                                              app.exit(4)))
             wait_frame(0)
 
     def wait_frame(n):       # the newest frame has landed, then the 160 ms reveals have finished
@@ -134,8 +136,9 @@ def main():
         app.exit(code[0])
 
     QTimer.singleShot(400, lambda: guarded(run_steps))
-    if args.shot or args.check_layout:
-        QTimer.singleShot(120000 if args.check_layout else 30000, lambda: (print("FAIL: timeout", file=sys.stderr), app.exit(4)))
+    if args.shot or args.check_layout:      # a backstop for a step that hangs without a limit of its own
+        QTimer.singleShot(120000 if args.check_layout else 1800000,
+                          lambda: (print("FAIL: timeout: the run went on too long", file=sys.stderr), app.exit(4)))
     app.exec()
     session.close()
     sys.exit(code[0])

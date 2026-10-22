@@ -294,6 +294,15 @@ FIELDS: dict[str, list[Param]] = {
         N("saturate", "Colour boost", "Glass", 0, 4, 0.01, "×", S, default=1.0, help="1 = unchanged, above 1 = richer"),
         N("brightness", "Brightness", "Glass", 0, 3, 0.01, "×", D, default=1.0),
     ],
+    # Film grain on the layer's own look (engine: scene/grain.rs), only where the layer is; a new picture each frame.
+    "grain": [
+        N("amount", "Amount", "Grain", 0, 1, 0.01, default=0.15, help="How strong: 0.1 = fine film, 0.4 = rough"),
+        N("size", "Grain size", "Grain", 0.5, 16, 0.5, "px", default=1.5),
+        T("colour", "Colour grain", "Grain", False, S, help="Off: grey grain. On: each colour has its own grain"),
+        T("still", "Same each frame", "Grain", False, D, help="Off: the grain moves like film. On: a fixed texture"),
+        N("seed", "Seed", "Grain", 0, 100000, 1, "", D, integer=True, default=1,
+          help="A different seed is a different, equally random grain"),
+    ],
     "shadow": [
         N("dx", "Offset X", "Shadow", -2000, 2000, 1, "px"),
         N("dy", "Offset Y", "Shadow", -2000, 2000, 1, "px", default=20.0),
@@ -334,7 +343,7 @@ for _t in LAYERS:
 for _t in _paint.TYPES:                    # paint on an element (paint_fields.py): its Paint group
     FIELDS[_t] += _paint.ELEMENT
 FIELDS["drawing"] += _paint.DRAWING
-EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", *_motion.EFFECTS)
+EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", "grain", *_motion.EFFECTS)
 ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask",) + _rig.OWNED_KEYS
 STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h"}, "path": {"w", "h"},
          "group": {"columns"},
@@ -343,8 +352,18 @@ STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name f
          "text": {"letterDelay", "letterSeed"},
          **_rig.STILL, **_camera.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth", "locked", "hidden", "paintW", "paintH"}}
 LABELS = {"comp": "Composition", "shape": "Shape", "text": "Text", "image": "Image", "video": "Video", "render3d": "3D render", "group": "Group", "drawing": "Drawing", "path": "Path", "frame": "Drawing frame",
-          "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "mask": "Mask", "key": "Key",
+          "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "grain": "Grain", "mask": "Mask", "key": "Key",
           **_rig.LABELS, **_camera.LABELS, **_motion.LABELS}
+
+# Named text styles (text_styles.py): a style holds the type of a text, the same fields as a text's (one table); a text's
+# `textStyle` names the style it follows. A style is never keyed (it is the look, not a moment).
+STYLED = ("font", "size", "weight", "color", "tracking", "lineHeight", "stretch", "slant", "grade", "axes", "ligatures",
+          "figures", "smallCaps", "features")
+FIELDS["textstyle"] = [p for p in FIELDS["text"] if p.name in STYLED]
+FIELDS["text"].append(X("textStyle", "Text style", "Text", "", S, control="pick",
+                        help="The named text style this text follows (its font, size, weight, colour …): changing the style "
+                             "changes the text. Empty = its own. Setting one of those fields by hand detaches it"))
+STILL["textstyle"], LABELS["textstyle"] = set(STYLED), "Text style"
 
 
 def param(kind: str, name: str) -> Param | None:

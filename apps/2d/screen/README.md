@@ -102,9 +102,10 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - **Lasso** (`stroke_select.py` as `backend.strokeSelect`, geometry in `stroke_geom.py`, `StrokeOverlay.qml`, `StrokeBar.qml`):
   Ctrl+drag, or **Select strokes** in the bar then drag, picks the strokes (of what the pen paints on, unlocked paint
   layers) with more than half their points inside; they are outlined, the bar swaps to "N strokes · drag to move · Copy ·
-  Paste · Delete · Done Esc". A press in their box and drag moves them (one `stroke.set {points}` per stroke in ONE change),
-  Delete = `stroke.remove`, Copy / Paste = `paint.stroke` of the same brush (24 px down and right). Esc clears. Scale /
-  turn exist as `strokeSelect.transform(scale, turn)` (steps and agents), without handles yet. Fills are not picked yet.
+  Paste · Delete · Done Esc". A press in their box and drag moves them; a corner of the box scales them, the knob above
+  it turns them (below the box when the context bar would cover it). Each drag previews `stroke.set {points}` and records
+  ONE `stroke.transform {dx, dy | scale | turn}`: the call an agent types (rostrum2d/paint_transform.py). Delete =
+  `stroke.remove`, Copy / Paste = `paint.stroke` of the same brush (24 px down and right). Esc clears.
   Steps: `lasso x,y … [open]`, `selectstrokes on|off`, `strokesmove`, `strokesturn`, `strokesdelete`, `strokescopy`,
   `strokespaste`, `strokesclear`, `clickarea`, `clickat` (`stroke_steps.py`).
 - **Set depth ▾** (actions.py `depth_far|middle|near`, rule `depth` in action_rules.py): on drawings of a composition that
@@ -183,6 +184,22 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - Steps (`soundtrack_steps.py`): `sound wait | mute on|off | beats on|off | beat prev|next | scrub <s> | play <s> |
   wav <path> | pick <item|-> | menu | open [dry] | problem <png>`, `rulermenu`. Layout states: `sound-row`,
   `sound-beats`, `sound-compact`, `sound-menu` (a project made by `soundtrack_steps.sound_project`).
+
+## H33 (rig): the Bone tool, Mirror pose, faint marks past the keys, beat words
+
+- **The Bone tool J** (`screen2d/bone_tool.py` as `backend.boneTool`, `qml/BoneTool.qml`; RIG.md › Drawing bones by hand):
+  in the tool strip and on J only while a rig is in hand; draws bones joint by joint with `bone.draw`; the bones overlay
+  stays visible but does not take the pointer while it is on. Leaving the rig ends it (back to Move).
+- **Mirror pose ▾** on the context bar (actions.py `mirror_*`, fact `mirrorable`): `pose.mirror` at the playhead.
+- **Faint marks past the keys** (`screen2d/key_ghosts.py`, rows' `ghosts` / `tails` from `outline.rows`, drawn in
+  `qml/LayerTrack.qml`): Repeat and Back and forth show faint copies of the keys after the last one, read from
+  `rostrum_core.keys.after.extend` (what playback and the export read); a spring still moving at its next key shows a faint
+  tail to where it would have settled (`easing.spring` with the key's own physics), with a hover tip.
+- **Beat words** (`screen2d/beat_words.py`, the one place): with a tempo in the project's music, a key's label says
+  "… at bar 5" / "bar 5 beat 3" (hooks.label_of), the key bar shows "bar 5 beat 3" beside one key's Time, and the time
+  drag's snap label names bars and beats the same way. A time within half a frame of a beat is on it.
+- Steps: `bonedrag`, `boneclick`, `bonehover`, `boneend`, `bonerealclick <bone> [ctrl]` (a real mouse click; Ctrl held).
+  Layout states: `bone-tool`, `mirror-pose-menu`, `key-faint-copies`, `key-beat-words`.
 
 ## The rules it builds in
 
@@ -397,8 +414,9 @@ processes on one file (each saves; reopen to see the other's).
 - **Fill the frame** / **Fit inside the frame** (`layer.fill_frame`, `ops_frame.py`): scales the selection (turn kept) to cover or
   sit inside its parent's frame, centred; first on the context bar for a picture or clip, else in the ⋯ menu / Ctrl+K.
 - **Effects ▾** on the context bar (any layer but a camera): Blur, Glow, Gradient (shapes and text), Frosted glass, Shadow,
-  Trail, Smear = `effect.add`; **Grain (whole picture)** = `grain.add` (`ops_grain.py`: a looping ffmpeg-noise clip, cached,
-  as a screen-locked Overlay video layer on top; its Opacity is the amount, its Scale the grain size).
+  Grain, Trail, Smear = `effect.add`. Grain (H33) is drawn by the engine on the layer's own look (`engine/render/src/scene/grain.rs`,
+  a shader; amount, size, colour, moving or still, seed); for the whole shot, put it on a group holding everything.
+  Old documents' whole-picture grain layer (H32, `grain:` recipe in a video layer's `src`, `P/grain.py`) still opens.
 - **Camera tool (C)** (`camera_tool.py`, `qml/CameraOverlay.qml`, `backend.cameraTool`): in the strip only when the scene has a
   camera; drag pans, Alt+drag (Alt held at the press) pushes in / out; writes the camera's x, y, zoom through `route.value_call`
   (a keyed field gets a key at the playhead), one drag = one undo step. Steps: `tool camera`, `key C`, `mousedrag … alt`.

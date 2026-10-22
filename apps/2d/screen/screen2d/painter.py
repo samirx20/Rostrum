@@ -26,6 +26,7 @@ class Painter(BrushPanel):
         super().__init__(parent)
         self.b, self._stroke, self._onion = bridge, None, False
         self._fresh, self._new_layer = None, False      # "New drawing" picked for this selection; next stroke: new paint layer
+        self._target = None                             # (document state, layer, what the pen paints on): target()
         self.brush = Brush(bridge.comp().get("background", ""))
         self._serial, self._built, self._rev = 0, None, 0        # _rev: the document changed (the onion is stale)
         self.provider = onion.OnionProvider()
@@ -37,9 +38,11 @@ class Painter(BrushPanel):
     # ---- reads for QML ----------------------------------------------------------------------------------------
     def target(self) -> dict | None:
         """The selected layer the pen paints on: a drawing, or any element that can hold paint (ops_paint.PAINTABLE)."""
-        layer = self.b.selectedLayer
-        item = self.b.doc.item(layer) if layer else None
-        return item if item and item["type"] in PAINTABLE else None
+        layer, data, got = self.b.selectedLayer, self.b.doc.data, self._target
+        if got is None or got[0] is not data or got[1] != layer:     # once per document state (never changed in place)
+            item = self.b.doc.item(layer) if layer else None
+            got = self._target = (data, layer, item if item and item["type"] in PAINTABLE else None)
+        return got[2]
 
     def drawing(self) -> dict | None:
         """The selected layer that has drawings (frame tools, onion): a drawing, or an element holding paint."""

@@ -16,8 +16,10 @@ from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from rostrum2d import sound_cues
 
+from .song_history import SongHistory
 from .soundtrack_play import SoundtrackPlay
 from .soundtrack_render import SoundtrackRender
+from .video_sound import VideoSound
 
 REPO = Path(__file__).resolve().parents[4]
 
@@ -35,7 +37,10 @@ class Soundtrack(QObject):
         self._render = SoundtrackRender(self)
         self._render.rendered.connect(self._on_rendered)
         self._render.failed.connect(self._on_failed)
-        self._unfollow = sound_cues.watch(bridge.doc, self._say)    # "Add a sound here" cues follow their layers
+        self._unfollow = sound_cues.watch(bridge.doc, self._say)    # cues follow their layers, videos' sound goes to Sound
+        self.history = SongHistory(bridge, self)
+        bridge.join_history(self.history)                           # Ctrl+Z takes back Add a sound here (song_history.py)
+        self._videos = VideoSound(self, bridge)                     # the timeline's Video sound rows (video_sound.py)
         self._poll = QTimer(self, interval=1000, timeout=self.check)
         self._poll.start()
         self.check()
@@ -53,6 +58,7 @@ class Soundtrack(QObject):
     showBeats = Property(bool, lambda self: self._beats_on and bool(self.beat_times()), notify=changed)
     bpm = Property(float, lambda self: self._info.get("grid", {}).get("bpm", 0.0), notify=changed)
     lines = Property("QVariantList", lambda self: self._info.get("lines", []), notify=changed)   # voice-over: [{t, end, text}]
+    videos = Property(QObject, lambda self: self._videos, constant=True)    # a video layer's own sound (video_sound.py)
 
     @Property("QVariantList", notify=changed)
     def beats(self):
@@ -90,6 +96,8 @@ class Soundtrack(QObject):
         if stamp == self._stamp:
             return
         self._song, self._stamp = song, stamp
+        self.history.touch()
+        self._videos.refresh()                                      # a mute set in Sound's window shows here too
         if song is None:
             self._info, self._problem = {}, ""
         else:
@@ -178,6 +186,7 @@ class Soundtrack(QObject):
 
     def close(self):
         self._unfollow()
+        self._videos.close()
         self._poll.stop()
         self._play.close()
         self._render.close()

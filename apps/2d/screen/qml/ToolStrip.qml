@@ -17,7 +17,9 @@ Rectangle {
         { value: "ellipse", label: "Ellipse", job: "ellipse_tool", help: "Drag out an ellipse." },
         { value: "text", label: "Text", job: "text_tool", help: "Click or drag a box on the canvas, then type." },
         { value: "camera", label: "Camera", job: "camera_tool", needsCamera: true,
-          help: "Drag to pan the camera; hold Alt and drag up to push in, down to pull out." }]
+          help: "Drag to pan the camera; hold Alt and drag up to push in, down to pull out." },
+        { value: "bone", label: "Bone", job: "bone_tool", needsRig: true,
+          help: "Click joint after joint (or drag from a joint to the tip) to draw the rig's bones. Esc ends the chain." }]
     width: column.width + 2 * Theme.grid; height: column.height + 2 * Theme.grid
     radius: Theme.radiusPanel; color: Theme.panel
     border.width: 1; border.color: Theme.popupEdge
@@ -26,8 +28,13 @@ Rectangle {
         id: column
         x: Theme.grid; y: Theme.grid
         spacing: 2
+        Button {    // the Library drawer (LibraryDrawer.qml): the brand kit and the scene's text styles
+            kind: "ghost"; width: 92; text: "Library"; job: "library"      // (its key, Ctrl+L, is in the hover help)
+            help: "The project's brand kit (colours, text styles, logos) and this scene's text styles."
+            down: backend.library.open; onClicked: backend.library.setOpen(!backend.library.open)
+        }
         Repeater {
-            model: strip.tools.filter(t => !t.needsCamera || backend.cameraTool.available)      // Camera: only when the scene has one
+            model: strip.tools.filter(t => (!t.needsCamera || backend.cameraTool.available) && (!t.needsRig || backend.boneTool.available))   // Camera: only when the scene has one; Bone: while a rig is in hand
             delegate: Button {
                 required property var modelData
                 kind: "ghost"; width: 92

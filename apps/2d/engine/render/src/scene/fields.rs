@@ -82,6 +82,8 @@ const GRADIENT: &[Field] = &[
     ("middle", Toggle), ("color3", Color), ("mid", Number),
 ];
 const BACKDROP: &[Field] = &[("radius", Number), ("fillAmount", Number), ("saturate", Number), ("brightness", Number)];
+/// Film grain (super::grain); `frame` is not a field: eval.rs writes the frame number now.
+const GRAIN: &[Field] = &[("amount", Number), ("size", Number), ("colour", Toggle), ("still", Toggle), ("seed", Number)];
 const SHADOW: &[Field] = &[("dx", Number), ("dy", Number), ("radius", Number), ("color", Color), ("strength", Number)];
 const MASK: &[Field] = &[
     ("shape", Choice(SHAPES)), ("x", Number), ("y", Number), ("w", Number), ("h", Number),
@@ -117,6 +119,7 @@ pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
         "gradient" => Some((Role::Effect, GRADIENT.to_vec())),
         "backdrop" => Some((Role::Effect, BACKDROP.to_vec())),
         "shadow" => Some((Role::Effect, SHADOW.to_vec())),
+        "grain" => Some((Role::Effect, GRAIN.to_vec())),
         "mask" => Some((Role::Mask, MASK.to_vec())),
         "trail" | "smear" => crate::motion::fields(kind).map(|f| (Role::Effect, f.to_vec())),
         "bone" | "ik" | "bind" => crate::rig::fields::of(kind).map(|f| (Role::Rig, f.to_vec())),
@@ -125,7 +128,7 @@ pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
 }
 
 /// Every type the engine reads (for error messages and the fields.py check).
-pub const TYPES: &[&str] = &["comp", "shape", "text", "image", "video", "group", "drawing", "path", "blur", "glow", "gradient", "backdrop", "shadow", "mask", "rig", "bone", "ik", "bind", "camera", "trail", "smear"];
+pub const TYPES: &[&str] = &["comp", "shape", "text", "image", "video", "group", "drawing", "path", "blur", "glow", "gradient", "backdrop", "shadow", "grain", "mask", "rig", "bone", "ik", "bind", "camera", "trail", "smear"];
 
 /// Fields keys may drive: numbers, colours, a path's shape `d` and its `widthProfile`, except those that describe the item rather than a moment
 /// (fields.py `STILL`).

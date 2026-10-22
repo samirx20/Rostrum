@@ -9,6 +9,8 @@ import RostrumKit
 // mask rows show their keys only. Click a diamond: the key is selected (the inspector shows its ease); drag it: key.set
 // t (it lands on a marker within 6 px). A click anywhere else on the row selects its layer, a drag there draws a box
 // that picks every key it touches (on several rows); between two keys a tiny shape shows the ease. The ruler scrubs.
+// Past the last key, Repeat and Back and forth show faint copies of the keys; a spring cut short by its next key, a
+// faint tail to where it would have settled (screen2d/key_ghosts.py, from the evaluator's own functions).
 Rectangle {
     id: track
     property var rowData
@@ -105,6 +107,26 @@ Rectangle {
             width: 7; height: 7; radius: 1; color: Theme.warn
             HoverHandler { id: flagHover }
             HoverTip { hovered: flagHover.hovered; text: (modelData.at === "start" ? "Starts at marker " : "Ends at marker ") + modelData.name }
+        }
+    }
+    Repeater {   // a spring still moving at its next key: a faint tail to where it would have settled (key_ghosts.py)
+        model: track.rowData.tails || []
+        delegate: Rectangle {
+            required property var modelData
+            x: track.xOf(modelData.t0); width: Math.max(2, track.xOf(modelData.t1) - x)
+            y: track.height / 2 - 1.5; height: 3; radius: 1.5; z: 1
+            color: Theme.fg3; opacity: tailHover.hovered ? 0.7 : 0.35
+            HoverHandler { id: tailHover }
+            HoverTip { hovered: tailHover.hovered; text: "The spring is still moving here: at the key it jumps. Move the key this much later for it to settle." }
+        }
+    }
+    Repeater {   // Repeat / Back and forth: faint copies of the keys after the last one, as playback plays them (key_ghosts.py)
+        model: track.rowData.ghosts || []
+        delegate: Rectangle {
+            required property var modelData
+            width: 7; height: 7; rotation: 45; z: 1
+            x: track.xOf(modelData) - width / 2; y: (track.height - height) / 2
+            color: "transparent"; border.width: 1; border.color: Theme.fg2; opacity: 0.45
         }
     }
     Repeater {   // the keys of a row with no bar (a setting, an effect, a mask)

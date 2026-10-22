@@ -17,7 +17,7 @@ from .actions import LIST, Facts
 # What actions.py covers, as the kit's operation commands would list it again in Ctrl+K.
 COVERED = ("group.make", "group.release", "rig.make", "mask.make", "mask.release", "shape.boolean", "path.boolean",
            "layer.align", "layer.distribute", "layer.match_size", "style.apply", "layer.lock", "layer.unlock",
-           "layer.hide", "layer.remove", "layer.duplicate")
+           "layer.hide", "layer.remove", "layer.duplicate", "style.define", "style.use", "style.detach")
 MAKES = ("group.make", "rig.make", "mask.make", "shape.boolean")        # operations that make a layer: it is selected after
 
 
@@ -75,6 +75,8 @@ class ActionSlots(SlotMixin):
             {"clip_copy": self.copyLayers, "clip_cut": self.cutLayers, "paste": self.pasteLayers}[name]()
         elif name == "stagger":
             self._stagger.start()
+        elif name == "depth":                                            # Set depth ▾ › Other depth… (depth_typed.py)
+            self._depth_typed.start()
         elif name == "sound_here":
             self._cuepick.start()
         elif name in ("lipsync", "blinks"):                              # the character sheets (rig_lipsync.py, rig_blinks.py)
@@ -113,7 +115,7 @@ class ActionSlots(SlotMixin):
     @Slot(str, result=bool)
     def run(self, key):
         """Ctrl+K, a menu or a script: an action of the list through the hub (one change), else the kit's."""
-        if not any(a.id == key for a in LIST.actions):
+        if not LIST.owns(key):
             return super().run(key)
         entry = next((e for e in LIST.available(self._facts()) if e["id"] == key), None)
         self._hub.run(key)                          # not valid now: the hub says why in the status

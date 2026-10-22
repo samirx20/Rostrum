@@ -115,7 +115,7 @@ Panel {
                 acceptedButtons: Qt.LeftButton
                 function at() { return panel.inWell(point.position.x, point.position.y) }
                 readonly property real pressure: point.pressure > 0 ? point.pressure : 1
-                property string mode: ""        // what this press does: "stroke", "lasso" (Ctrl, or Select strokes) or "move" (picked strokes)
+                property string mode: ""        // what this press does: "stroke", "lasso" (Ctrl, or Select strokes), "move" or "handle" (picked strokes)
                 property point from
                 onActiveChanged: {
                     var p = at()
@@ -123,6 +123,8 @@ Panel {
                     else if (active && backend.fill.on) { backend.fill.fillAt(p.x, p.y); mode = "" }                 // Fill (G): a click fills
                     else if (active && (backend.strokeSelect.armed || (Qt.application.keyboardModifiers & Qt.ControlModifier))) {
                         backend.strokeSelect.beginLasso(p.x, p.y); mode = "lasso"                                    // a lasso round strokes
+                    } else if (active && backend.strokeSelect.handleAt(p.x, p.y, view.zoom) !== "") {
+                        backend.strokeSelect.beginHandle(backend.strokeSelect.handleAt(p.x, p.y, view.zoom), p.x, p.y); mode = "handle"   // a corner scales, the knob turns
                     } else if (active && backend.strokeSelect.count > 0 && backend.strokeSelect.hits(p.x, p.y)) {
                         backend.strokeSelect.beginMove(); from = p; mode = "move"                                    // picked strokes: drag moves them
                     } else if (active) {
@@ -132,6 +134,7 @@ Panel {
                         if (mode === "stroke") painter.endStroke()
                         else if (mode === "lasso") backend.strokeSelect.endLasso()
                         else if (mode === "move") backend.strokeSelect.endMove()
+                        else if (mode === "handle") backend.strokeSelect.endHandle()
                         mode = ""
                     }
                 }
@@ -141,12 +144,14 @@ Panel {
                     if (mode === "stroke") painter.strokeTo(p.x, p.y, pressure)
                     else if (mode === "lasso") backend.strokeSelect.lassoTo(p.x, p.y)
                     else if (mode === "move") backend.strokeSelect.moveBy(p.x - from.x, p.y - from.y)
+                    else if (mode === "handle") backend.strokeSelect.handleTo(p.x, p.y, (Qt.application.keyboardModifiers & Qt.ShiftModifier) !== 0)
                 }
             }
             StrokeOverlay {     // the lasso, the picked strokes, the colour picker's swatch
                 id: strokes
                 anchors.fill: parent
                 fit: view.zoom; ox: view.ox; oy: view.oy
+                cover: bar.visible ? Qt.rect(bar.x, bar.y, bar.width, bar.height) : Qt.rect(0, 0, 0, 0)    // the turn knob goes below the strokes rather than under the bar
             }
         }
         MouseArea {
@@ -192,10 +197,11 @@ Panel {
         }
         PenOverlay {  // the pen tool and the selected path's points (not while playing: they'd lag)
             anchors.fill: parent
-            visible: !backend.playing && !well.drawing && ["rect", "ellipse", "text", "camera"].indexOf(backend.tool) < 0   // one input layer per tool
+            visible: !backend.playing && !well.drawing && ["rect", "ellipse", "text", "camera", "bone"].indexOf(backend.tool) < 0   // one input layer per tool
             fit: view.zoom; ox: view.ox; oy: view.oy
         }
         CameraOverlay { anchors.fill: parent; stage: panel }   // C: drag pans the camera, Alt+drag pushes in
+        BoneTool { anchors.fill: parent; stage: panel }        // J: draw a rig's bones joint by joint (bone_tool.py)
         CreateOverlay { anchors.fill: parent; stage: panel }   // R / O / T: drag a shape, click or drag and type
         Item {  // outlines of the selected layers (turned with them) and the handles of a single one; over the pen's overlay
             id: marks
@@ -207,7 +213,7 @@ Panel {
                     required property var modelData
                     box: modelData; fit: view.zoom; space: marks
                     visible: !(well.drawing && backend.paintEdge.layer === modelData.id)   // painting: its true edge instead
-                    editable: backend.multi.count === 1 && !well.drawing && modelData.type !== "path" && !backend.pen.on
+                    editable: backend.multi.count === 1 && !well.drawing && backend.tool !== "bone" && modelData.type !== "path" && !backend.pen.on
                 }
             }
             BoneOverlay { fit: view.zoom; space: marks }   // a rig in hand: its bones and joints, posing and fixing drags (rig_view.py)
@@ -270,6 +276,7 @@ Panel {
         }
         ContextBar {   // select, then act: the kit's bar at the top-centre, clear of the tool strip (backend.actions);
                        // with Pen, Paint or typing on, that tool's options instead (ToolOptions.qml)
+            id: bar
             hub: backend.actions
             anchors { top: parent.top; topMargin: Theme.gap; horizontalCenter: parent.horizontalCenter }
             maxWidth: well.width - 2 * (tools.width + 2 * Theme.gap)
@@ -293,5 +300,16 @@ Panel {
         const g = well.mapToItem(null, x, y)
         canvasMenu.entries = entries
         canvasMenu.openAt(g.x, g.y)
+    }
+    // Files dragged in from the desktop: imported where they are let go (importer.dropFiles; the Import panel's one job).
+    DropArea {
+        id: fileDrop
+        anchors.fill: parent
+        keys: ["text/uri-list"]
+        onEntered: (drag) => drag.accept(Qt.CopyAction)
+        onDropped: (drop) => {
+            const w = fileDrop.mapToItem(panel, drop.x, drop.y), p = panel.toComp(w.x, w.y)
+            if (backend.importer.dropFiles(drop.urls, p.x, p.y)) drop.accept(Qt.CopyAction)
+        }
     }
 }

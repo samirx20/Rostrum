@@ -18,7 +18,9 @@
     degrees) | boxselect <x0> <y0> <x1> <y1> [shift] [ctrl] (the rubber band) | shiftpick <layer> (add / remove) | movesel <dx> <dy> (move all selected)
   Add and import: add <type> (the Add menu's entry; image / video: add image <path>) | addmenu open|close |
     import <path> [page=<n>] [text=outline] [keep=on] (the Import panel's job, waits, fails like it) | importstart <path> … (starts it,
-    doesn't wait) | importpanel open [path]|close
+    doesn't wait) | importpanel open [path]|close | drop <path> [x y] | library open|close (the Library drawer) |
+    brand <colors|textStyles|logos> <name, _ for spaces> <#rrggbb | text style id | file> (into the project's brand kit)
+    (a file let go on the canvas) | pastetext <text> (the clipboard holds it, then Ctrl+V: a Figma link opens Import)
     problems open|close (the kit's Problems chip list, after the list is worked out: layout_run.kit_step) | inspectorscroll <px>
   Select, then act: selectmany <id> <id> … (those layers, the first is the primary) | act <action> (an entry of the one
     list on the selection: group, ungroup, mask, union, align_left, distribute_x, match_w, lock, hide, delete, front …;
@@ -295,9 +297,14 @@ def do_step(bridge, win, step):
         mod = Qt.AltModifier if "alt" in rest[4:] else Qt.NoModifier           # mousedrag … alt: pressed with Alt held (the Camera tool pushes in)
         QTest.mousePress(win, Qt.LeftButton, mod, QPoint(x0, y0))
         for k in range(1, 9):
+            if k == 5 and "altmid" in rest[4:]:  # mousedrag … altmid: Alt goes down halfway through the drag
+                QTest.keyPress(win, Qt.Key_Alt)
+                mod = Qt.AltModifier
             QTest.mouseMove(win, QPoint(x0 + (x1 - x0) * k // 8, y0 + (y1 - y0) * k // 8))
             QCoreApplication.processEvents()
         QTest.mouseRelease(win, Qt.LeftButton, mod, QPoint(x1, y1))
+        if "altmid" in rest[4:]:
+            QTest.keyRelease(win, Qt.Key_Alt)
     elif word == "layermenu":                    # layermenu <layer> [open|<command>]: the row's right-click menu
         QMetaObject.invokeMethod(win, "openLayerMenu", Q_ARG("QVariant", rest[0]))
         if rest[1:] and rest[1] != "open":
@@ -307,6 +314,10 @@ def do_step(bridge, win, step):
     elif word == "act":
         if not bridge.layerCommand(rest[0]):
             raise RuntimeError(f"step {step!r}: {bridge.status or 'not available for the selection'}")   # the why
+    elif word == "do":                           # do <action id>: any action of the list as a menu click runs it (effect_grain …)
+        key = rest[0] if ":" in rest[0] else f"layer:{rest[0]}"     # the list's ids are "layer:<id>" (actions._action)
+        if not bridge.run(key):                  # the bridge's run, as a menu click (action_slots.run; the hub's returns nothing)
+            raise RuntimeError(f"step {step!r}: {bridge.status or 'not available for the selection'}")
     elif word == "nudge":
         bridge.nudge(float(rest[0]), float(rest[1]))
     elif word == "actionmenu":                   # print the right-click menu's entries
@@ -332,6 +343,30 @@ def do_step(bridge, win, step):
         QMetaObject.invokeMethod(win, "setAddOpen", Q_ARG("QVariant", rest[0] == "open"))
     elif word in ("import", "importstart"):
         steps_import(bridge, step, rest)
+    elif word == "drop":                         # drop <path> [<x> <y>]: a file let go on the canvas (comp px)
+        job = bridge.importer
+        x, y = (float(rest[1]), float(rest[2])) if rest[2:] else (float("nan"), float("nan"))
+        if not job.dropFiles([rest[0]], x, y):
+            raise RuntimeError(f"step {step!r}: the drop was refused")
+        while (job.running() or job._queue) and job.wait(600):
+            pass
+        if job.state != "done":
+            raise RuntimeError(f"step {step!r}: {job.note}")
+        print(f"drop: {job.note}")
+    elif word == "pastetext":                    # pastetext <text>: the clipboard holds this text, then Ctrl+V
+        from PySide6.QtGui import QGuiApplication
+        QGuiApplication.clipboard().setText(" ".join(rest))
+        bridge.pasteLayers()
+        QCoreApplication.processEvents()
+    elif word == "library":
+        bridge.library.setOpen(rest[0] == "open")
+    elif word == "brand":                        # brand <section> <name> <value>: the MCP tool's add (brand_kit.py)
+        from rostrum2d import brand_kit, text_styles
+        name, given = rest[1].replace("_", " "), rest[2]     # not `value`: that is this module's reader (the set step)
+        entry = ({"value": given} if rest[0] == "colors" else {"file": given} if rest[0] == "logos"
+                 else text_styles.values(bridge.doc.item(given)))
+        brand_kit.add(bridge.doc.folder, rest[0], {"name": name, **entry})
+        bridge.library.setOpen(bridge.library.open)          # read again
     elif word == "importpanel":
         if rest[1:]:
             bridge.importer.setFile(rest[1])

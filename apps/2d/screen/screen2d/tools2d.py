@@ -6,12 +6,14 @@ from PySide6.QtCore import Property, QObject, Slot
 from rostrum_gui.parts import SlotMixin
 
 from .adding import Adder
+from .bone_tool import BoneTool
 from .camera_tool import CameraTool
 from .create import Create
 from .curves import Curves
 from .exporter import Exporter
 from .filler import Filler
 from .importer import Importer
+from .brand_view import LibraryView
 from .key_bar import KeyBar
 from .key_select import KeySelect
 from .multi import Multi
@@ -27,6 +29,7 @@ from .snapper import Snapper
 from .stagger import Stagger
 from .stroke_select import StrokeSelect
 from .time_snap import TimeSnap
+from .depth_typed import DepthTyped
 from .ease_play import EasePlay
 
 
@@ -38,9 +41,11 @@ class ToolSlots(SlotMixin):
         self._keys.changed.connect(self._curves.changed)    # the curve editor shows the picked key's handles
         self._key_bar = KeyBar(self)                        # the timeline header's key bar (key_bar.py): backend.keyBar
         self._stagger = Stagger(self)                       # Stagger…'s popover (stagger.py): backend.stagger
+        self._depth_typed = DepthTyped(self)                # Set depth ▾ › Other depth…'s popover (depth_typed.py): backend.depthTyped
         self._time_snap = TimeSnap(self)                    # the "+6 f" label of a time drag (time_snap.py): backend.timeSnap
         self._ease_play = EasePlay(self)                    # an ease picked plays once on the canvas (ease_play.py)
         self._exporter, self._importer, self._adder = Exporter(self), Importer(self), Adder(self)
+        self._library = LibraryView(self)                   # the Library drawer's brand kit and styles (brand_view.py): backend.library
         self._problems = Problems(self)
         self._problems.failed.connect(self._fail)
         self._camera = CameraTool(self)                     # the Camera tool (C): pan and push in (camera_tool.py): backend.cameraTool
@@ -51,6 +56,7 @@ class ToolSlots(SlotMixin):
         self._pick = ColourPick(self)                       # Alt picks a colour (paint_pick.py): backend.colourPick
         self._strokes = StrokeSelect(self)                  # lasso, move, copy, delete strokes (stroke_select.py): backend.strokeSelect
         self._rig = RigView(self)                           # the rig in hand's bones on the canvas (rig_view.py): backend.rig
+        self._bone_tool = BoneTool(self, self._rig)         # the Bone tool (J): draw bones by hand (bone_tool.py): backend.boneTool
         self._poses = PoseList(self)                        # the rig's pose library in the settings (rig_poses.py): backend.poses
         self._lipsync, self._blinks = LipSyncSheet(self), BlinkSheet(self)   # Lip sync…, Add blinks… (rig_lipsync.py, rig_blinks.py)
 
@@ -63,6 +69,11 @@ class ToolSlots(SlotMixin):
     def cameraTool(self):
         """The Camera tool: drag pans the camera, Alt+drag pushes in (camera_tool.py)."""
         return self._camera
+
+    @Property(QObject, constant=True)
+    def boneTool(self):
+        """The Bone tool: draw a rig's bones joint by joint (bone_tool.py)."""
+        return self._bone_tool
 
     @Property(QObject, constant=True)
     def create(self):
@@ -83,6 +94,11 @@ class ToolSlots(SlotMixin):
     def stagger(self):
         """Stagger…: layers start one after another, live, one change (stagger.py)."""
         return self._stagger
+
+    @Property(QObject, constant=True)
+    def depthTyped(self):
+        """Set depth ▾ › Other depth…: a typed camera depth for the selected drawings, live, one change (depth_typed.py)."""
+        return self._depth_typed
 
     @Property(QObject, constant=True)
     def timeSnap(self):
@@ -148,6 +164,11 @@ class ToolSlots(SlotMixin):
     def importer(self):
         """The Import panel's job (importer.py)."""
         return self._importer
+
+    @Property(QObject, constant=True)
+    def library(self):
+        """The Library drawer: the project's brand kit and this document's text styles (brand_view.py)."""
+        return self._library
 
     @Property(QObject, constant=True)
     def adder(self):

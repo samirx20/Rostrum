@@ -72,6 +72,19 @@ def paint_size(item: dict, props: dict) -> tuple[int, int]:
     return max(1, round(w)), max(1, round(h))
 
 
+_SHOWN: dict = {}           # frame id -> (the frame as it was, w, h, its PNG): the last picture made of each drawing
+
+
 def picture(item: dict, frame: dict) -> Path:
-    """One drawing's picture (content-keyed PNG, canvas size, straight alpha) for the engine to draw."""
-    return canvas.png(frame, *canvas_size(item))
+    """One drawing's picture (content-keyed PNG, canvas size, straight alpha) for the engine to draw. A drawing equal
+    to the one last pictured (a document is never changed in place: each change is a new tree) reuses its PNG without
+    keying every stroke again, so a change elsewhere costs a compare, not 10,000 strokes' keys."""
+    w, h = canvas_size(item)
+    got = _SHOWN.get(frame["id"])
+    if got and got[1:3] == (w, h) and (got[0] is frame or got[0] == frame) and got[3].is_file():
+        return got[3]
+    path = canvas.png(frame, w, h)
+    if len(_SHOWN) > 512:
+        _SHOWN.clear()
+    _SHOWN[frame["id"]] = (frame, w, h, path)
+    return path

@@ -167,3 +167,24 @@ holds the bones' `rotation`, `scale`, `moveX`, `moveY`, the iks' `targetX`, `tar
   group is bound to the bone most of them followed.
 - On the screen (`screen2d/rig_view.py`, `rig_drag.py`, `qml/BoneOverlay.qml`): the posed bones and joints come from the
   engine's `bones` and `place` answers (the canvas's own engine, `frames.ask`), so the overlay is the pose the export draws.
+
+## Drawing bones by hand and Mirror pose (Python, `rostrum2d/rig/draw.py`, `mirror.py`; screen `screen2d/bone_tool.py`; H33)
+
+- `bone.draw` (target: one rig; `x`, `y` = the joint, `tipX`, `tipY` = where the bone ends, rig px at rest; `parent`,
+  `attach`): one bone. It hangs from the bone that **ends** at that joint (within 2 px: a chain), else beside a bone that
+  **starts** there (a branch, same parent), else it is a root; `parent` given wins. A tip on the joint is refused. With
+  `attach` (default on) every part of the rig with no bind yet whose middle the bone runs through (its centre within half
+  the part's shorter side of the bone, at rest) is bound rigid to it: an arm's bone takes the arm, a head's the eyes and
+  mouths. The first bone through a part keeps it; Attach to bone moves it. New bones are named "Bone 1", "Bone 2" …
+- **The Bone tool (J)**, only while a rig is in hand: press at a joint and drag to the tip, or click joint after joint
+  (each bone one `bone.draw` = one undo step; the next starts at its tip). A press within 8 screen px of a joint the
+  rig shows starts there (posed joints are found where they show, used where they are at rest). Esc ends the chain;
+  Esc again goes back to Move. Steps: `bonedrag x0 y0 x1 y1`, `boneclick x y`, `bonehover x y`, `boneend`.
+- `pose.mirror` (target: rig; `t`, `how` = `left_to_right` (default) / `right_to_left` / `swap`): keys one side from the
+  other at `t`. Sides are read from names (`bodynames` words: L / R, left / right, camelCase); a bone with no side in its
+  name takes its bound parts' side ("Bone 4" bound to "upper arm L"). Two items pair when their names match without the
+  side words. Turn and Move X change sign; Scale, Move Y, IK amount and a swap set's drawing are copied; an IK target
+  keeps its offset from its own chain's rest tip, mirrored sideways. `swap` exchanges the sides and turns the middle
+  bones the other way (the whole pose seen in a mirror). One call = one undo step; it only puts keys. Refused, saying
+  why, on a rig with no left / right pairs. On screen: the context bar's **Mirror pose ▾** (Left side onto the right ·
+  Right side onto the left · Swap left and right), only on a rig that has pairs.

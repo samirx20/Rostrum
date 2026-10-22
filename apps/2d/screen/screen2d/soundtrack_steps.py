@@ -11,6 +11,8 @@
                                 status line is cleared so the walk goes on
     sound cue [words…]          Add a sound here… on the selected layer: the picker, searched for the words
     sound cue pick <n>          tie the picker's n-th sound (1 = the first) to the layer; prints the cue and its marker
+    sound cue twice <a> <b>     two searches typed fast (b before a's answer): the list must be b's, never a's
+    sound video [<layer> on|off]  print the Video sound rows; with a layer: its row's 🔊 (mute on / off)
     rulermenu                   the ruler's ▾ menu
 """
 from __future__ import annotations
@@ -99,6 +101,21 @@ def do_sound_step(bridge, win, word, rest, step):
             raise RuntimeError(f"step {step!r}: the cue was refused (the status line says why)")
         _pump(0.2)
         print("cue:", row["about"], "| markers:", [(m["name"], m["at"]) for m in __import__("rostrum_core").markers.listing(bridge.doc.folder)])
+    elif what == "cue" and rest[1:2] == ["twice"]:
+        cp = bridge.cuePick
+        if not cp.start():
+            raise RuntimeError(f"step {step!r}: Add a sound here needs one layer selected")
+        cp.search(rest[2])
+        cp.search(rest[3])                          # at once: a's answer may still be on its way
+        if not cp.wait(30):
+            raise RuntimeError(f"step {step!r}: the sound search took over 30 s")
+        _pump(0.5)                                  # a late answer for a must not replace b's list
+        from rostrum2d import sound_cues
+        want = [r["path"] for r in sound_cues.choices(rest[3], 40)]
+        got = [r["path"] for r in cp.sounds]
+        if got != want or cp.words != rest[3]:
+            raise RuntimeError(f"step {step!r}: the list is not {rest[3]!r}'s ({len(got)} shown, {len(want)} expected)")
+        print(f"sounds for {rest[3]!r} (after {rest[2]!r}):", len(got))
     elif what == "cue":
         cp = bridge.cuePick
         cp.search(" ".join(rest[1:]))
@@ -108,6 +125,16 @@ def do_sound_step(bridge, win, word, rest, step):
             raise RuntimeError(f"step {step!r}: the sound search took over 30 s")
         _pump(0.3)
         print("sounds:", len(cp.sounds))
+    elif what == "video":
+        vs = st.videos
+        if len(rest) > 2 and not vs.setMuted(rest[1], rest[2] == "on"):
+            raise RuntimeError(f"step {step!r}: the mute was refused (the status line says why)")
+        _settle(bridge)
+        for _ in range(100):                        # the waveform is read off the screen's thread
+            if all(r["peaks"] or r["problem"] for r in vs.rows.values()):
+                break
+            _pump(0.05)
+        print("video sound:", {k: {**v, "peaks": len(v["peaks"])} for k, v in vs.rows.items()})
     elif what == "menu":
         _invoke(win, "soundRow", "openMenu")
     elif what == "open":
@@ -126,36 +153,3 @@ def do_sound_step(bridge, win, word, rest, step):
         bridge._set_status("")
     else:
         raise ValueError(f"unknown step {step!r}")
-
-
-SONG = '''tempo(120); beats_per_bar(4); length(bar(3))
-d = track("drums", kit="synth")
-for b in range(8):
-    d.hit("kick", at=beat(b))
-d.hit("cymbal", at="#drop")
-'''
-FILM = '''comp("main", width=1280, height=720, fps=30, duration=4)
-text("title", body="Drop", x=640, y=200, end=1.4)
-shape("logo", x=640, y=360, start=0.5, end=3.0)
-'''
-
-
-def sound_project(folder) -> list[str]:
-    """Start args for a project with sound (the layout check's Sound states): a short song with a tempo and the
-    shared marker "drop" at 2 s, and a scene "film" (item) with two layers."""
-    from pathlib import Path
-
-    from rostrum_core import Document, Who, markers
-    from rostrum_core.storage import save
-    from rostrum_sound import KIND, run_source
-    from rostrum_sound.doc import markers as sound_markers
-    folder = Path(folder)
-    (folder / "docs").mkdir(parents=True, exist_ok=True)
-    markers.edit(folder, [{"op": "marker.add", "args": {"name": "drop", "at": 2.0}}], Who.agent("layout"))
-    with sound_markers.project(folder):
-        song = Document.new(KIND, folder, "song")
-        song.run_script("song.py", run_source(SONG, "song.py"), Who.agent("layout"))
-        save(song)
-    script = folder.parent / f"{folder.name}-film.py"
-    script.write_text(FILM, encoding="utf-8")
-    return ["--doc", str(folder), "film", "--script", str(script)]

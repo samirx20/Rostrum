@@ -48,6 +48,7 @@ Row {
         value: bar.kb.time; from: 0; to: backend.frameInfo.duration; step: 0.01; unit: " s"
         onEdited: (v) => bar.kb.setTime(v)
     }
+    Words { visible: bar.kb.beat !== ""; text: bar.kb.beat; color: Theme.fg2; rightPadding: Theme.gap }    // on a beat of the music: "bar 5 beat 3"
     Words { visible: bar.kb.hasValue; text: "Value" }
     NumberField {
         visible: bar.kb.hasValue; anchors.verticalCenter: parent.verticalCenter; width: 72

@@ -10,7 +10,7 @@ from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
 from rostrum_core import live, marker_times
 from rostrum_core.tree import index
-from rostrum2d import fields as F, retime
+from rostrum2d import fields as F, placement, retime
 
 from . import bounds, outline, screen_seen
 from .drags import DragSlots
@@ -37,7 +37,7 @@ from .tools2d import ToolSlots
 from .undo_state import UndoState
 
 
-TOOLS = ("move", "pen", "draw", "rect", "ellipse", "text", "camera")      # what the mouse does on the canvas (setTool)
+TOOLS = ("move", "pen", "draw", "rect", "ellipse", "text", "camera", "bone")      # what the mouse does on the canvas (setTool)
 
 
 class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, ActionSlots, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
@@ -47,6 +47,8 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
     shownChanged = Signal()                                 # a new frame is on screen: the overlays follow it (shown.py)
     outlineChanged = Signal()
     playingChanged = Signal()
+    _sel_layer = None                                       # (document state, selection, its layer): selectedLayer
+    _comp_at = _placed_idx = None                           # comp() and placed_item()'s, kept per document state
     markersChanged = Signal()
     renameRequested = Signal(str)                           # F2 / Ctrl+K "Rename layer": the layer row's name box
     sections = True                                         # settings panel: essentials, folded groups, search (kit)
@@ -79,6 +81,8 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
         self._marker_saved()                                # (remembers the last change: only later ones are announced)
         self.marks.changed.connect(self._marker_saved)
         self.join_history(self.marks)                       # marker edits undo with the screen's one history
+        self._host = placement.Host(self.frames.place, lambda: self.marks.times, lambda: doc.folder)
+        placement.use(self._host)                           # comp-px strokes and spatial staggers ask the canvas's engine
         self.model.update(self._rows())
         self.marks.changed.connect(self._render)            # expressions may read marker("…")
         self.marks.changed.connect(self._problems.touch)
@@ -107,7 +111,10 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
     def comp(self) -> dict:
-        return self.doc.item(self.comp_id)
+        got, data = self._comp_at, self.doc.data              # asked thousands of times per pen stroke: once per state
+        if got is None or got[0] is not data or got[1] != self.comp_id:
+            got = self._comp_at = (data, self.comp_id, self.doc.item(self.comp_id))
+        return got[2]
 
     def times(self) -> dict:
         """The project's shared markers {name: seconds} (keys timed on a marker are placed through them)."""
@@ -125,7 +132,10 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
 
     def placed_item(self, id_: str) -> dict:
         """One item of `placed()` (a layer, effect, mask or key owner), its times in composition seconds."""
-        found = index(self.placed(), self.doc.kind.lists).get(id_)
+        placed = self.placed()
+        if self._placed_idx is None or self._placed_idx[0] is not placed:
+            self._placed_idx = (placed, index(placed, self.doc.kind.lists))
+        found = self._placed_idx[1].get(id_)
         return found.item if found else self.doc.item(id_)
 
     def offset(self, id_: str) -> float:
@@ -182,8 +192,13 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
 
     @Property(str, notify=outlineChanged)
     def selectedLayer(self):
-        """The layer the selection belongs to (itself, or the layer of a selected effect, mask or key)."""
-        return bounds.layer_of(self.doc, self._sel) if self._sel else ""
+        """The layer the selection belongs to (itself, or the layer of a selected effect, mask or key). The panels ask
+        hundreds of times per change, so it is worked out once per document state and selection (a document is never
+        changed in place: each change is a new tree)."""
+        got, data, sel = self._sel_layer, self.doc.data, self._sel
+        if got is None or got[0] is not data or got[1] != sel:
+            got = self._sel_layer = (data, sel, bounds.layer_of(self.doc, sel) if sel else "")
+        return got[2]
 
     @Property("QVariantMap", notify=shownChanged)
     def selBox(self):
@@ -217,6 +232,8 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
             return self._fail(f"Error: tool: {tool!r} is not a tool ({', '.join(TOOLS)}).")
         if tool == "camera" and not self._camera.available:
             return self._fail("Error: camera: this scene has no camera; + Add › Camera first.")
+        if tool == "bone" and not self._bone_tool.available:
+            return self._fail("Error: bone: select a rig first (Make rig on a character's parts).")
         if tool != self._tool:
             if self._tool == "pen":
                 self._pen.finish()
@@ -302,6 +319,7 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
         self.play.stop()
         self.marks.close()
         self.endDrag()
+        placement.drop(self._host)
         self.frames.close()
         self._problems.close()
         self._cuepick.close()

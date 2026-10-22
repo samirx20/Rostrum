@@ -2074,6 +2074,33 @@
     null
    ]
   ],
+  "grain": [
+   [
+    "amount",
+    "number",
+    null
+   ],
+   [
+    "size",
+    "number",
+    null
+   ],
+   [
+    "colour",
+    "toggle",
+    null
+   ],
+   [
+    "still",
+    "toggle",
+    null
+   ],
+   [
+    "seed",
+    "number",
+    null
+   ]
+  ],
   "shadow": [
    [
     "dx",
@@ -2825,6 +2852,11 @@
    "fillAmount",
    "saturate",
    "brightness"
+  ],
+  "grain": [
+   "amount",
+   "size",
+   "seed"
   ],
   "shadow": [
    "dx",

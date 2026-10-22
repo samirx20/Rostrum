@@ -27,6 +27,8 @@ pub(super) fn v(it: &Item, f: &str) -> String {
 }
 
 /// The page shell: the scene's fonts (fonts.rs; a file that can't be read is an error) and an empty stage the comp's size.
+/// Every picture on the stage (image, drawing, video, paint) is a block: an inline `<img>` sits on the text baseline, so
+/// one shorter than a line of text (a 5 px mouth from a PSD) was pushed below its own clipped box and never drawn.
 pub fn shell(width: u32, height: u32, fonts: &[super::fonts::Font]) -> R<String> {
     let mut faces = String::new();
     let mut read: Vec<(&std::path::Path, String)> = vec![];
@@ -39,7 +41,8 @@ pub fn shell(width: u32, height: u32, fonts: &[super::fonts::Font]) -> R<String>
         let _ = writeln!(faces, "@font-face {{ font-family: \"{}\"; src: url(\"data:font/ttf;base64,{data}\"); }}", f.family);
     }
     Ok(format!("<html><head><style>{faces}html, body {{ margin: 0; background: transparent; }}
-#rostrum-stage {{ position: relative; width: {width}px; height: {height}px; overflow: hidden; }}</style></head><body><div id=\"rostrum-stage\"></div></body></html>"))
+#rostrum-stage {{ position: relative; width: {width}px; height: {height}px; overflow: hidden; }}
+#rostrum-stage img {{ display: block; }}</style></head><body><div id=\"rostrum-stage\"></div></body></html>"))
 }
 
 /// The stage markup of the comp at one time.
@@ -224,6 +227,7 @@ fn layer(it: &Item) -> R<String> {
     }
     // Colour effects (grade.rs) act on the layer's own look and its effects; frosted glass stays as it sees what is behind.
     let body = super::grade::wrap(it, body)?;
+    let body = super::grain::wrap(it, body)?;
     let (glass, opacity, body) = super::stage_fx::glass(it, !defs.is_empty(), body)?;
     let (warp, warp_defs) = crate::rig::warp_markup(it);
     let size = if it.props.contains_key("w") { format!("width:{}px;height:{}px;", v(it, "w"), v(it, "h")) } else { String::new() };

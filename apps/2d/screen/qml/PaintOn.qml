@@ -38,7 +38,7 @@ Column {
             required property int index
             width: po.width; height: Theme.rowDense; radius: Theme.radiusCtl
             color: modelData.current ? Theme.accentSoft : rowArea.containsMouse ? Theme.hover : "transparent"
-            z: drag.active ? 2 : 0
+            z: rowArea.moving ? 2 : 0
             Item {      // the eye (the layers panel's own; crossed out when hidden)
                 id: eye
                 x: Theme.grid; width: 18; height: parent.height
@@ -53,21 +53,30 @@ Column {
                 anchors.verticalCenter: parent.verticalCenter
                 text: lr.modelData.name; color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont; elide: Text.ElideRight
             }
-            MouseArea {
+            MouseArea {     // click: strokes go on it; drag up or down: reorder (drop on another row's place)
                 id: rowArea
                 anchors.fill: nameText; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton
-                onClicked: (ev) => ev.button === Qt.RightButton ? rowMenu.open() : po.pl.pick(lr.modelData.id)
-            }
-            HoverTip { hovered: rowArea.containsMouse && nameText.truncated; text: lr.modelData.name }
-            DragHandler {   // reorder: drop on another row's place
-                id: drag
-                target: null; yAxis.enabled: true; xAxis.enabled: false
-                onActiveChanged: if (!active) {
-                    const to = Math.max(0, Math.min(layerRows.count - 1, lr.index + Math.round(translation.y / lr.height)))
+                preventStealing: true
+                property real y0: 0
+                property real dy: 0
+                property bool moving: false
+                onPressed: (ev) => { y0 = mapToItem(po, ev.x, ev.y).y; dy = 0; moving = false }
+                onPositionChanged: (ev) => {
+                    if (!pressed || pressedButtons !== Qt.LeftButton) return
+                    dy = mapToItem(po, ev.x, ev.y).y - y0
+                    if (Math.abs(dy) > 4) moving = true
+                }
+                onReleased: (ev) => {
+                    if (ev.button === Qt.RightButton) { rowMenu.open(); return }
+                    if (!moving) { po.pl.pick(lr.modelData.id); return }
+                    const to = Math.max(0, Math.min(layerRows.count - 1, lr.index + Math.round(dy / lr.height)))
+                    moving = false; dy = 0
                     if (to !== lr.index) po.pl.moveTo(lr.modelData.id, to)
                 }
+                onCanceled: { moving = false; dy = 0 }
             }
-            transform: Translate { y: drag.active ? drag.translation.y : 0 }
+            HoverTip { hovered: rowArea.containsMouse && !rowArea.moving && nameText.truncated; text: lr.modelData.name }
+            transform: Translate { y: rowArea.moving ? rowArea.dy : 0 }
             Menu { id: rowMenu; y: lr.height; entries: [{ value: "delete", label: "Delete" }]
                    onPicked: (v) => po.pl.remove(lr.modelData.id) }
         }

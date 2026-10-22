@@ -9,6 +9,7 @@ pub mod fields;
 pub mod follow;
 pub mod fonts;
 pub mod grade;
+pub mod grain;
 pub mod grade_curve;
 pub mod letters;
 pub mod matte;
