@@ -57,6 +57,7 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, Hand
         self._marks = MarkerWatch(self.doc.folder, self, self.who, self._fail, "sound")
         self._marks.changed.connect(self._markers_changed)
         self.join_history(self._marks)                      # marker edits undo with the screen's one history
+        self.selectionChanged.connect(self._follow_kit)          # Sound's list follows the kit's (select_slots)
         self.selectionChanged.connect(self._follow_selection)
         self.selectionChanged.connect(self._drop_point)
         self._follow_selection()

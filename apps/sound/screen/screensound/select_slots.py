@@ -1,8 +1,9 @@
 """The bridge's selection as a list, the time range, and the one action list (a slot mix-in for SoundBridge, see
 gui-kit parts.py). Click / Ctrl+click / Shift+click / box / Ctrl+A / Esc pick ids (selection.py); what is done with
 them is action_slots.py (the one action list). Selecting is screen state, not
-an undo step; every action is one change. The kit's DocBridge keeps one selected id (`_sel` = the first) for the
-inspector; the rest live here until the kit's own `selectMany` arrives (H28).
+an undo step; every action is one change. The whole list goes to the kit's `selectMany` (H28: the settings panel
+shows what the selected items share); the order picked, the Shift anchor and the time range stay here. After the
+person's undo / redo, what that step touched is selected again (read from the change's `undoes` / `redoes`).
 """
 from __future__ import annotations
 
@@ -36,6 +37,12 @@ class SelectSlots:
         """The count chip: "5 notes", "2 tracks" ("" for none)."""
         return selection.count_words(self._kinds())
 
+    def selection_label(self, ids):
+        """The kit's panel title and Ctrl K hints: one item's name, else Sound's count words ("5 notes")."""
+        if len(ids) == 1:
+            return super().selection_label(ids)
+        return selection.count_words([self.doc.item(i)["type"] for i in ids])
+
     def _kinds(self):
         return [self.doc.item(i)["type"] for i in self._picks.ids]
 
@@ -46,7 +53,8 @@ class SelectSlots:
         self._pick([item_id] if item_id else [])
 
     @Slot("QVariantList")
-    def selectMany(self, ids):
+    def pickMany(self, ids):
+        """Several ids at once ([] = none); the kit's own `selectMany` is called with the result."""
         self._pick([str(i) for i in ids])
 
     def _pick(self, ids, anchor=None):
@@ -54,7 +62,7 @@ class SelectSlots:
         if gone:
             return self._fail(f'Error: select: no item "{gone[0]}".')
         self._picks.set(ids, anchor)
-        super().select(self._picks.ids[0] if self._picks.ids else "")      # the kit: inspector + selectionChanged
+        self.selectMany(self._picks.ids)          # the kit: the settings panel + selectionChanged
         self.picksChanged.emit()
 
     @Slot(str, bool, bool)
@@ -175,22 +183,21 @@ class SelectSlots:
         """What an agent reads (`inspect_selection`): ids with kind, track, start, end, a line each; the range."""
         return selection.describe(self.doc, self._picks.ids, self._view["rows"], self._picks.range, self.label_of)
 
-    @Slot()
-    def undo(self):
-        """Undo, then select what the undone step touched (so the next action is on the same things)."""
-        self._restoring(super().undo)
+    def _follow_kit(self):
+        """The kit's selection is the one list (anything may call its `selectMany`); the order, anchor and range
+        here follow it (bridge.py connects this to selectionChanged)."""
+        ids = list(self.selection)
+        if ids != self._picks.ids:
+            self._picks.set(ids, self._picks.anchor if self._picks.anchor in ids else None)
+            self.picksChanged.emit()
 
-    @Slot()
-    def redo(self):
-        self._restoring(super().redo)
-
-    def _restoring(self, step):
-        n = len(self.doc.history.changes)
-        step()
-        if len(self.doc.history.changes) > n:
-            touched = [e.id for e in self.doc.history.changes[-1].edits]
-            kinds = ("note", "hit", "clip", "line", "track", "marker", "section", "sound")
-            back = [i for i in dict.fromkeys(touched) if self.doc.has(i) and self.doc.item(i)["type"] in kinds]
+    def _restore(self, change):
+        """The person's undo / redo selects what the step touched again (so the next action is on the same things)."""
+        if change is None or change.who != self.who or not (change.undoes or change.redoes):
+            return
+        kinds = ("note", "hit", "clip", "line", "track", "marker", "section", "sound")
+        back = [i for i in dict.fromkeys(e.id for e in change.edits) if self.doc.has(i) and self.doc.item(i)["type"] in kinds]
+        if back:
             self._pick(back)
 
     def _on_doc(self, event):
@@ -198,3 +205,5 @@ class SelectSlots:
         if self._picks.keep(self.doc.has):
             self._pick(self._picks.ids)
         super()._on_doc(event)
+        if event.kind == "change":
+            self._restore(event.change)

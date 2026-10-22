@@ -52,7 +52,7 @@ def _key(win, text):
 
 def do_select_step(bridge, win, word, rest):
     if word == "select-many":
-        bridge.selectMany(rest)
+        bridge.pickMany(rest)
     elif word in ("select-add", "select-run"):
         bridge.clickSelect(rest[0], word == "select-add", word == "select-run")
     elif word == "select-all":

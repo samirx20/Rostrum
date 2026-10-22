@@ -107,7 +107,7 @@ MouseArea {
         if (mode === "press" || mode === "hpress") backend.clickSelect(hit, ctrl(e), shift(e))
         else if (mode === "empty") {
             backend.clearPoint()
-            if (!ctrl(e)) backend.selectMany([])
+            if (!ctrl(e)) backend.pickMany([])
             if (row0 >= 0 && !tl.rows[row0].mix) backend.focusTrack(tl.rows[row0].id)
             backend.setTime(bars.tOf(e.x))
         }

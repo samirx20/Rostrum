@@ -72,7 +72,7 @@ MouseArea {
     }
     onReleased: (e) => {
         if (mode === "press" || mode === "hpress") backend.clickSelect(hit, ctrl(e), shift(e))
-        else if (mode === "empty") { if (!ctrl(e)) backend.selectMany([]); backend.setTime(bars.tOf(e.x)) }
+        else if (mode === "empty") { if (!ctrl(e)) backend.pickMany([]); backend.setTime(bars.tOf(e.x)) }
         else if (mode === "drag" || mode === "handle") backend.endDrag()
         else if (mode === "box") backend.endBox()
         mode = ""
