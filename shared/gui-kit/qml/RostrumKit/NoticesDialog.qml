@@ -45,7 +45,7 @@ QQC.Popup {
         anchors { left: parent.left; leftMargin: Theme.groupGap + Theme.grid; top: about.bottom; topMargin: Theme.groupGap + Theme.grid }
         text: "Components this app ships" + (dlg.items.length ? "  ·  " + dlg.items.length : "")
         color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold
-        font.letterSpacing: 0.4; font.capitalization: Font.AllUppercase
+        font.letterSpacing: Theme.capsSpacing; font.capitalization: Font.AllUppercase
     }
     Rectangle {  // the list sits in a sunken well
         anchors { left: parent.left; right: parent.right; top: listTitle.bottom; bottom: parent.bottom
@@ -63,7 +63,12 @@ QQC.Popup {
             delegate: Item {
                 id: row
                 required property var modelData
-                width: ListView.view.width; height: 48
+                // a licence cell may carry notes ("MIT-0 (metadata); its LICENSE text is …"): the name sits at the right,
+                // the notes wrap under what the licence asks, never cut
+                readonly property var cut: /^(.*?)(?:; |\. | \()(.*)$/.exec(modelData.licence || "")
+                readonly property string licenceName: cut ? cut[1] : (modelData.licence || "")
+                readonly property string notes: cut ? (modelData.licence.slice(cut[1].length).replace(/^[;.]?\s*/, "")) : ""
+                width: ListView.view.width; height: askText.y + askText.height + Theme.gap
                 Text {
                     id: nameText
                     anchors { left: parent.left; leftMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
@@ -78,12 +83,14 @@ QQC.Popup {
                 Text {
                     anchors { right: parent.right; rightMargin: Theme.gap; baseline: nameText.baseline }
                     width: parent.width * 0.36; horizontalAlignment: Text.AlignRight; elide: Text.ElideRight
-                    text: row.modelData.licence; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
+                    text: row.licenceName; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
                 }
                 Text {
+                    id: askText
                     anchors { left: parent.left; leftMargin: Theme.gap; right: parent.right; rightMargin: Theme.gap
                               top: nameText.bottom; topMargin: 3 }
-                    text: row.modelData.asks; elide: Text.ElideRight
+                    text: row.notes ? row.modelData.asks + " · Licence: " + row.notes : row.modelData.asks
+                    wrapMode: Text.WordWrap
                     color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
                 }
             }

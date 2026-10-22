@@ -20,7 +20,7 @@ Rectangle {
         Text {
             anchors.left: parent.left; anchors.leftMargin: Theme.pad; anchors.verticalCenter: parent.verticalCenter
             text: panel.title; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
-            font.weight: Font.DemiBold; font.letterSpacing: 0.4; font.capitalization: Font.AllUppercase
+            font.weight: Font.DemiBold; font.letterSpacing: Theme.capsSpacing; font.capitalization: Font.AllUppercase
         }
         Row {
             id: headerRightSlot

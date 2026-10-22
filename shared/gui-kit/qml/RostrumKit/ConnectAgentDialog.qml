@@ -72,7 +72,7 @@ QQC.Popup {
                     Text {
                         text: sec.modelData.title; leftPadding: Theme.grid
                         color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold
-                        font.letterSpacing: 0.4; font.capitalization: Font.AllUppercase
+                        font.letterSpacing: Theme.capsSpacing; font.capitalization: Font.AllUppercase
                     }
                     Repeater { model: sec.modelData.rows; delegate: agentRow }
                 }
@@ -189,8 +189,10 @@ QQC.Popup {
                     delegate: Text {
                         required property var modelData
                         required property int index
-                        width: body.width; wrapMode: Text.WordWrap
-                        text: (index + 1) + ".  " + modelData
+                        width: body.width; wrapMode: Text.WordWrap; textFormat: Text.RichText
+                        // `a command` in a step shows in the code font, never with its backticks
+                        text: (index + 1) + ".&nbsp; " + modelData.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                              .replace(/`([^`]+)`/g, "<span style=\"font-family:'" + monoFont + "'; color:" + Theme.fg + "\">$1</span>")
                         color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
                     }
                 }

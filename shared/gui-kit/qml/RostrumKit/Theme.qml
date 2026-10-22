@@ -35,6 +35,9 @@ QtObject {
     readonly property int heading: 16
 
     // spacing on a 4 px grid
+    // letter spacing in whole pixels only: Windows snaps each letter to a pixel, so a fractional spacing piles up and
+    // opens a visible gap inside a word ("Trans form", "EXP ORT")
+    readonly property int capsSpacing: 1  // headings in capitals (panel titles, dialog sections)
     readonly property int grid: 4
     readonly property int gap: 8          // between panels, inside fields
     readonly property int pad: 12         // inside panels
@@ -63,4 +66,8 @@ QtObject {
     readonly property int reveal: 160     // a control appearing or leaving (height + opacity)
     readonly property int revealEasing: Easing.OutCubic
     readonly property real scrubPixels: 4 // mouse pixels per step when dragging a number
+
+    // words as a person reads them: first letter up, the rest as written ("next stroke" → "Next stroke", never
+    // "Next Stroke"; Font.Capitalize upper-cases every word)
+    function sentence(t) { return t ? t.charAt(0).toUpperCase() + t.slice(1) : "" }
 }

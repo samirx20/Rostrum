@@ -37,7 +37,7 @@ Panel {
             Text {
                 id: kindLabel
                 anchors.right: parent.right; anchors.rightMargin: Theme.gap; anchors.verticalCenter: parent.verticalCenter
-                text: item.modelData.kind; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.capitalization: Font.Capitalize
+                text: Theme.sentence(item.modelData.kind); color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
             }
             MouseArea { id: hover; anchors.fill: parent; hoverEnabled: true; onClicked: panel.bridge.select(item.modelData.id) }
         }

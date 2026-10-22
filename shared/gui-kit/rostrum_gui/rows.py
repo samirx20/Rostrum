@@ -3,7 +3,9 @@
 Layout (fixed per kind, so delegates live on and animate): for each group, in the order groups first appear
 among the non-deep params, a group header and its params (primary before secondary, then data order); then a
 More row and the deep params in data order. A first group named as the item's own type has no header: the panel's
-subtitle right above it already says that word (a key showed "Key" twice, a text "Text"). Each row then gets `valid`:
+subtitle right above it already says that word (a key showed "Key" twice, a text "Text"). A group whose first row
+has the group's own name ("Fill" › Fill, "Outline" › Outline) keeps its gap but shows no heading text (label ""): the
+row right under it already says the word. Each row then gets `valid`:
 - a param: its valid_when holds on the item's values and facts (and, if deep, More is open);
 - a group header: any of its members is valid (an empty group is absent, not an empty header);
 - the More row: any deep param is valid.
@@ -38,7 +40,9 @@ def layout(op, kind: str = "") -> list[dict]:
     for i, g in enumerate(groups):
         members = sorted((p for p in shown if p.group == g), key=lambda p: RANK[p.importance])  # stable
         if not (i == 0 and g.lower() == kind.lower()):
-            rows.append({"row": "group", "id": "group:" + g, "label": g, "members": [p.name for p in members]})
+            said = members[0].label.lower() == g.lower()          # the first row already names the group
+            rows.append({"row": "group", "id": "group:" + g, "label": "" if said else g,
+                         "members": [p.name for p in members]})
         rows += [_param_row(p) for p in members]
     if deep:
         rows.append({"row": "more", "id": "more", "label": "More", "members": [p.name for p in deep]})
