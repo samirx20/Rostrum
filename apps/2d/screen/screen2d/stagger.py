@@ -2,7 +2,8 @@
 ("Each starts [2 f] after the one before", Order). The bars and keys spread live while the number or the order
 changes (one open gesture: layer.stagger previewed), and clicking away keeps it as ONE change; Esc takes it back.
 The popover remembers the last amount and order. Opening it again re-spreads from the first (layer.stagger counts
-from the earliest start). Offered to QML as `backend.stagger`; screen state only.
+from the earliest start). With keys picked on two or more layers it staggers those keys instead (key.stagger: each
+layer's picked keys move together). Offered to QML as `backend.stagger`; screen state only.
 """
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ class Stagger(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.b, self._drag, self._ids, self._by, self._order = bridge, None, [], 2, "stack"
+        self._op, self._what = "layer.stagger", ""
 
     @Property(bool, notify=changed)
     def open(self):
@@ -38,20 +40,25 @@ class Stagger(QObject):
 
     @Property(str, notify=changed)
     def what(self):
-        return f"{len(self._ids)} layers"
+        return self._what
 
     @Slot(result=bool)
     def start(self):
         """Open it on the selected layers (two or more): the spread shows at once with the last amount and order."""
         self.end()
-        ids = self.b.selected_layers()
-        if len(ids) < 2:
-            self.b._set_status("Stagger needs two or more layers selected.")
+        keys, layers = self.b._keys.ids, self.b.selected_layers()
+        if keys and len(self.b._keys._layers()) >= 2:          # keys picked on several layers: those keys
+            self._op, self._ids = "key.stagger", keys
+            self._what = f"{len(keys)} keys on {len(self.b._keys._layers())} layers"
+        elif len(layers) >= 2:
+            self._op, self._ids, self._what = "layer.stagger", layers, f"{len(layers)} layers"
+        else:
+            self.b._set_status("Stagger needs two or more layers selected, or keys picked on two or more layers.")
             return False
-        self._ids = ids
+        label = f"Stagger {self._what}"
 
         def go():
-            self._drag = Drag(self.b.doc, self.b.who, f"Stagger {len(ids)} layers")
+            self._drag = Drag(self.b.doc, self.b.who, label)
         if not self.b.guard(go):
             return False
         self._spread()
@@ -71,7 +78,7 @@ class Stagger(QObject):
 
     def _spread(self):
         if self._drag is not None:
-            call = {"op": "layer.stagger", "target": self._ids,
+            call = {"op": self._op, "target": self._ids,
                     "args": {"by": round(self._by / self.b.comp()["fps"], 6), "order": self._order}}
             self.b.guard(lambda: self._drag.preview([call]))
         self.changed.emit()

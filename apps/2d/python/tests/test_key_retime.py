@@ -73,3 +73,27 @@ def test_stagger_orders():
 def test_spring_words_match_the_old_numbers():
     assert springs.physics(springs.BOUNCE, springs.SPEED) == pytest.approx((170.0, 12.0), rel=1e-3)
     assert springs.feel(*springs.physics(0.2, 0.8)) == pytest.approx((0.2, 0.8), abs=1e-3)
+
+
+def test_key_stagger_moves_each_layers_picked_keys_in_one_change(doc):
+    for o in ("b", "c"):
+        doc.apply({"op": "key.paste", "target": [o], "args": {"from": ["a.opacity.k1000", "a.opacity.k2000"], "at": 1.0}}, SAM)
+    ids = [k["id"] for o in ("a", "b", "c") for k in doc.item(o)["keys"]]
+    doc.apply({"op": "key.stagger", "target": ids, "args": {"by": 0.5, "order": "picked"}}, SAM)
+    assert [_ts(doc, o) for o in ("a", "b", "c")] == [[1.0, 2.0], [1.5, 2.5], [2.0, 3.0]]
+    doc.undo(SAM)
+    assert [_ts(doc, o) for o in ("a", "b", "c")] == [[1.0, 2.0]] * 3
+
+
+def test_after_the_last_key_reaches_the_engine_as_the_value_python_reads(doc):
+    """Preview = export: the scene sent to the engine carries the written-out keys, and Python reads the same value."""
+    from rostrum2d.evaluate import value_at
+    from rostrum2d.scene import describe
+    from rostrum_core.keys import track_value
+    doc.apply({"op": "key.set", "target": ["a.opacity.k2000"], "args": {"after": "pingpong"}}, SAM)
+    sent = next(n for n in describe(doc.data)["comp"]["layers"] if n["id"] == "a")["anim"]["opacity"]
+    assert all("after" not in k for k in sent) and sent[-1]["t"] >= 10.0
+    for t in (2.5, 3.25, 4.0, 6.6):
+        assert abs(track_value(sent, t) - value_at(doc.item("a"), "opacity", t)) < 1e-9
+    v = lambda t: value_at(doc.item("a"), "opacity", t)  # noqa: E731
+    assert v(2.5) == pytest.approx(v(1.5)) and v(3.0) == 0 and v(4.5) == pytest.approx(v(1.5))       # back, then forth

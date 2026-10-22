@@ -1,6 +1,6 @@
 """The one animation model: a field is either still (its value on the item) or animated (it has keys; then the
 keys alone decide its value and the item's own value is ignored). Between two keys the first key's ease shapes
-the way; before the first key and after the last the value holds. Colours travel in linear light.
+the way; before the first key the value holds, and after the last too unless the last key says otherwise (after.py). Colours travel in linear light.
 
 This is the reference the Rust engine implements (ENGINE_CONTRACT.md › Evaluation; checked by the engine's
 scene tests); Python uses it for the inspector's "value now" and the motion facts. Frames are drawn by the engine only.
@@ -8,6 +8,7 @@ What is app-specific (a field's default when it has no keys: `value_at`, `resolv
 """
 from __future__ import annotations
 
+from .after import after_of, extend
 from .easing import ease
 from .marked import order
 
@@ -48,6 +49,8 @@ def track_value(keys: list[dict], t: float):
     if any(isinstance(k["t"], str) for k in keys):     # never a silent wrong value: place them first (marked.py)
         raise ValueError(f'key {next(k for k in keys if isinstance(k["t"], str)).get("id", "")} is timed on a marker '
                          "and was not placed: the app resolves marker keys (keys.marked.resolve) before evaluating")
+    if after_of(keys) != "stay":                       # repeat, back and forth, carry on: written out as keys (after.py)
+        keys = extend(keys, t)
     field = next(f for f in ("v", "c", "d") if f in keys[0])
     if t <= keys[0]["t"]:
         return keys[0][field]

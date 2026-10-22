@@ -12,18 +12,17 @@ click on a row's empty part, or Esc) lets them go.
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_core.keys import keys_of, marked
-from rostrum_gui.edits import Drag
-
 from .bounds import layer_of
+from .key_moves import KeyMoves
 
 
-class KeySelect(QObject):
+class KeySelect(KeyMoves, QObject):
     changed = Signal()
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.b, self._ids, self._drag, self._own = bridge, [], None, False
+        self._found, self._anchor = [], 0.0                 # a drag's snap targets and the grabbed key's time (key_moves.py)
         bridge.selectionChanged.connect(self._followed)
         bridge.docChanged.connect(self._prune)
 
@@ -117,71 +116,3 @@ class KeySelect(QObject):
                                                                label="Delete key" if n == 1 else f"Delete {n} keys"), ""))
         self.changed.emit()
         return ok
-
-    @Slot(str, float, result=bool)
-    def beginDrag(self, key_id, t0):
-        """A press on a picked key (with others picked): they all move by the pointer's time change. t0: composition
-        seconds under the pointer."""
-        if key_id not in self._ids:
-            return False
-        grab = [(k, self.b.placed_item(k)) for k in self._ids]
-        self._grab, self._t0 = [(k, dict(item)) for k, item in grab], t0
-
-        def go():
-            self._drag = Drag(self.b.doc, self.b.who, f"Move {len(self._ids)} keys")
-        return self.b.guard(go)
-
-    @Slot(str, float, result=bool)
-    def beginStretch(self, key_id, t0):
-        """Alt+press on the first or last picked key: dragging it stretches the picked keys in time around the other
-        end (key.scale, one change). False for a key in the middle (then it is a plain move)."""
-        times = {k: self.b.placed_item(k)["t"] for k in self._ids}
-        if len(set(round(t, 6) for t in times.values())) < 2 or times.get(key_id) not in (min(times.values()), max(times.values())):
-            return False
-        self._stretch = (times[key_id], max(times.values()) if times[key_id] == min(times.values()) else min(times.values()))
-        self._grab, self._t0 = [], t0
-
-        def go():
-            self._drag = Drag(self.b.doc, self.b.who, f"Stretch {len(self._ids)} keys")
-        return self.b.guard(go)
-
-    def _stretch_to(self, t):
-        (held, around), fps = self._stretch, self.b.comp()["fps"]
-        to = round((held + t - self._t0) * fps) / fps
-        by = (to - around) / (held - around)
-        if by < 0.01:
-            return
-        groups: dict[float, list[str]] = {}
-        for k in self._ids:                 # one call per time origin (a layer timed from a marker counts from it)
-            groups.setdefault(self.b.offset(self.b.doc.parent_of(k)[0]), []).append(k)
-        calls = [{"op": "key.scale", "target": ids, "args": {"around": round(around - off, 6), "by": round(by, 6)}}
-                 for off, ids in groups.items()]
-        self.b.guard(lambda: self._drag.preview(calls))
-
-    @Slot(float)
-    def dragTo(self, t):
-        if self._drag is None:
-            return
-        if not self._grab:                  # a stretch (beginStretch)
-            return self._stretch_to(t)
-        c = self.b.comp()
-        dt = round((t - self._t0) * c["fps"]) / c["fps"]          # whole frames
-        first = min(k["t"] for _, k in self._grab)
-        last = max(k["t"] for _, k in self._grab)
-        dt = min(max(dt, -first), c["duration"] - last)
-        moving = {k for k, _ in self._grab}
-        calls = []
-        for kid, key in self._grab:
-            owner = self.b.placed_item(self.b.doc.parent_of(kid)[0])
-            t = key["t"] + dt
-            if any(o["id"] not in moving and abs(o["t"] - t) < 1e-6 for o in keys_of(owner, key["prop"])):
-                return                                            # another key of that setting is there: stay
-            to = marked.moved(key["ref"], dt) if "ref" in key else t - self.b.offset(owner["id"])
-            calls.append({"op": "key.set", "target": [kid], "args": {"t": to}})
-        self.b.guard(lambda: self._drag.preview(calls))
-
-    @Slot()
-    def endDrag(self):
-        d, self._drag = self._drag, None
-        if d is not None:
-            self.b.guard(lambda: self.b.done(d.end(), ""))

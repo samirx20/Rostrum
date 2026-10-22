@@ -4,6 +4,7 @@ this list. `prop` names the field and never changes."""
 from __future__ import annotations
 
 from ..params import Param
+from .after import AFTER, WORDS as AFTER_WORDS
 from .easing import NAMES as EASES
 
 _IS = lambda name, value: {"is": [name, value]}  # noqa: E731
@@ -27,6 +28,9 @@ KEY_FIELDS = [
     Param.text("d", label="Shape", group="Key", importance="primary", valid_when={"fact": "shape"}, default="",
                help="Path data; the engine morphs it into the next key's shape"),
     Param.choice("ease", list(EASES), label="Ease", group="Key", importance="primary", default="smooth"),
+    Param.choice("after", AFTER, label="After the last key", group="Key", importance="secondary", default="stay",
+                 labels=AFTER_WORDS, help="Read on a field's last key: stay, repeat the keys, back and forth, or carry on "
+                 "at the speed it arrived with (after.py)"),
     _num("x1", "Curve x1", "Curve", 0, 1, 0.01, when=_IS("ease", "custom"), default=0.25),
     _num("y1", "Curve y1", "Curve", -2, 3, 0.01, when=_IS("ease", "custom"), default=0.1),
     _num("x2", "Curve x2", "Curve", 0, 1, 0.01, when=_IS("ease", "custom"), default=0.25),

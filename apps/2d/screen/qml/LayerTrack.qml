@@ -83,7 +83,10 @@ Rectangle {
                 if (!(p === "move" && backend.multi.has(track.rowData.id))) backend.select(track.rowData.id)
                 held = backend.beginBarDrag(track.rowData.id, p, track.tAt(barArea, m.x)) === false ? "" : p
             }
-            onPositionChanged: (m) => { if (held) backend.barDragTo(track.tAt(barArea, m.x), 6 / track.ruler.perSec) }
+            onPositionChanged: (m) => {
+                if (!held) return
+                backend.barDragTo(track.tAt(barArea, m.x), (m.modifiers & Qt.ControlModifier) ? 0 : 6 / track.ruler.perSec)
+            }
             onReleased: { if (held) backend.endDrag(); held = "" }
             onCanceled: { if (held) backend.endDrag(); held = "" }
         }

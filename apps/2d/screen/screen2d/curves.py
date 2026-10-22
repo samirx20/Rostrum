@@ -14,6 +14,7 @@ from rostrum_core.keys import keys_of, marked
 from rostrum2d.ops_keys import curve_of, handles_of
 from rostrum_gui.edits import Drag
 
+from . import time_snap
 from .outline import _fields, label_of
 
 COLORS = ["#ff7a6b", "#f2b33d", "#4cc38a", "#4cc9e0", "#b48cff", "#ff7ac6"]
@@ -98,19 +99,24 @@ class Curves(QObject):
     @Slot(str, result=bool)
     def beginKeyDrag(self, key_id):
         self.b._keys.click([key_id], "", [])           # picked like a diamond (the key bar shows it)
-        return self._begin("Move key", {"key": key_id})
+        found = time_snap.targets(self.b, skip_keys=[key_id])          # what its time may snap to (time_snap.py)
+        return self._begin("Move key", {"key": key_id, "found": found, "from": self.b.placed_item(key_id)["t"]})
 
     @Slot(float, float)
-    def keyTo(self, t, v):
-        """The key's new time and value (seconds, field value): key.set. Another key's time is not taken."""
+    @Slot(float, float, float)
+    def keyTo(self, t, v, within=0.0):
+        """The key's new time and value (seconds, field value): key.set. Another key's time is not taken. Its time
+        snaps within `within` seconds (time_snap.py; 0 = Ctrl held: free), else to a whole frame."""
         if self._drag is None or "which" in self._grab:
             return
         c, doc = self.b.comp(), self.b.doc
         key = self.b.placed_item(self._grab["key"])
         owner = self.b.placed_item(doc.parent_of(key["id"])[0])
-        t = min(max(round(t * c["fps"]) / c["fps"], 0.0), c["duration"])
+        t, caught = time_snap.snap(t, self._grab["found"], within, c["fps"])
+        t = min(max(t, 0.0), c["duration"])
         if any(k["id"] != key["id"] and abs(k["t"] - t) < 1e-6 for k in keys_of(owner, key["prop"])):
-            t = key["t"]
+            t, caught = key["t"], None
+        self.b.timeSnap.show(t - self._grab["from"], c["fps"], caught, t, owner["id"])
         p = F.param(owner["type"], key["prop"])
         lo, hi = (p.min if p.min is not None else -1e9), (p.max if p.max is not None else 1e9)
         args = {"t": marked.moved(key["ref"], t - key["t"]) if "ref" in key else t - self.b.offset(owner["id"]),   # on a marker: stays on it
@@ -143,6 +149,7 @@ class Curves(QObject):
     @Slot()
     def endDrag(self):
         d, self._drag, self._grab, self._frozen = self._drag, None, None, {}
+        self.b.timeSnap.clear()                         # the label and the snap line go with the drag
         if d is not None:
             self.b.guard(lambda: self.b.done(d.end(), ""))
 

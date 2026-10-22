@@ -6,7 +6,7 @@ field edit or whole drag is ONE change (key.set, key.handles: the operations an 
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_core.keys import ease as ease_at, springs
+from rostrum_core.keys import after as last_key, ease as ease_at, keys_of, springs
 from rostrum_gui.edits import Drag
 
 from . import eases
@@ -114,7 +114,39 @@ class KeyBar(QObject):
             x1, y1, x2, y2 = eases.handles(self._first())
             return self._apply([{"op": "key.handles", "target": self.picked(), "args": dict(x1=x1, y1=y1, x2=x2, y2=y2)}], label)
         words = dict(zip(("bounce", "speed"), springs.feel_of(self._first()))) if value == "spring" else {}
-        return self._apply(self._all({"ease": value, **words}), label)          # a spring in words (spring.py)
+        return self._apply(self._all({"ease": value, **words}), label) and self._played()   # a spring in words (spring.py)
+
+    def _played(self) -> bool:
+        self.b._ease_play.play(self.picked())         # the stretch plays once on the canvas (ease_play.py)
+        return True
+
+    # ---- the ⋯ menu: After the last key (UX_SPEC 3.18), for the picked keys that are their field's last ---------
+    def _lasts(self) -> list[str]:
+        out = []
+        for kid in self.picked():
+            key = self.b.doc.item(kid)
+            row = keys_of(self.b.placed_item(self.b.doc.parent_of(kid)[0]), key["prop"])
+            if len(row) > 1 and row[-1]["id"] == kid:
+                out.append(kid)
+        return out
+
+    @Property("QVariantList", notify=changed)
+    def afters(self):
+        """After the last key's choices, [] unless a picked key is its field's last (then the ⋯ menu shows them)."""
+        return [{"value": a, "label": last_key.WORDS[a]} for a in last_key.AFTER] if self._lasts() else []
+
+    @Property(str, notify=changed)
+    def after(self):
+        found = {self.b.doc.item(k).get("after", "stay") for k in self._lasts()}
+        return found.pop() if len(found) == 1 else ""
+
+    @Slot(str, result=bool)
+    def setAfter(self, value):
+        """key.set {after} on the picked last keys: one change."""
+        lasts = self._lasts()
+        if not lasts or value not in last_key.AFTER:
+            return False
+        return self._apply([{"op": "key.set", "target": lasts, "args": {"after": value}}], f"After the last key: {last_key.WORDS[value]}")
 
     @Slot(float, result=bool)
     def setTime(self, t):

@@ -10,7 +10,7 @@ from rostrum2d.retime import END_OF_COMP
 from rostrum_gui.edits import Drag
 from rostrum_gui.parts import SlotMixin
 
-from . import bounds, exprs, layout_drag, route
+from . import bounds, exprs, layout_drag, route, time_snap
 from .bar_drag import PARTS, BarGrab
 
 
@@ -81,19 +81,23 @@ class DragSlots(SlotMixin):
     @Slot(str, result=bool)
     def beginKeyDrag(self, key_id):
         """A single picked key (key_select.py picks it first; keys never enter the layer selection)."""
+        self._key_from = self.placed_item(key_id)["t"]
+        self._found = time_snap.targets(self, skip_keys=[key_id])        # what it may snap to (time_snap.py)
         return self._begin("Move key", key_id)
 
     @Slot(float, float)
     def keyDragTo(self, t, snap=0.0):
-        """`snap`: seconds within which the key lands on a shared marker instead of the nearest frame."""
+        """`snap`: seconds within which the key lands on a marker, the playhead, another key or bar end, a beat
+        (time_snap.py; 0 = Ctrl held: free) instead of the nearest frame."""
         if self._drag is None or not isinstance(self._grab, str):
             return
         c, key = self.comp(), self.placed_item(self._grab)
-        on = self.marks.snap(t, snap)
-        t = min(max(on if on != t else round(t * c["fps"]) / c["fps"], 0.0), c["duration"])
+        t, caught = time_snap.snap(t, self._found, snap, c["fps"])
+        t = min(max(t, 0.0), c["duration"])
         owner = self.placed_item(self.doc.parent_of(key["id"])[0])
         if any(k["id"] != key["id"] and abs(k["t"] - t) < 1e-6 for k in keys_of(owner, key["prop"])):
             return                       # another key of this field is there: stay at the last free time
+        self.timeSnap.show(t - self._key_from, c["fps"], caught, t, bounds.layer_of(self.doc, key["id"]))
         to = marked.moved(key["ref"], t - key["t"]) if "ref" in key else t - self.offset(owner["id"])   # on a marker: stays on it; else own seconds
         self._guard(lambda: self._drag.preview([{"op": "key.set", "target": [key["id"]], "args": {"t": to}}]))
 
@@ -111,18 +115,22 @@ class DragSlots(SlotMixin):
         ops_timing.use_project(self.doc.folder)
         fps, end = self.comp()["fps"], item.get("end", END_OF_COMP)
         others = [i for i in self.selected_layers() if i != layer_id and not self.doc.item(i).get("locked")]             if part == "move" and layer_id in self.selected_layers() else []      # a selected bar takes the others along
-        grab = BarGrab(layer_id, part, t0, item.get("start", 0.0), end if end < END_OF_COMP else self.comp()["duration"], fps, others)
+        moving = [layer_id, *others]
+        found = time_snap.targets(self, carried=moving) if part == "move" else time_snap.targets(self, skip_layers=moving)
+        grab = BarGrab(layer_id, part, t0, item.get("start", 0.0), end if end < END_OF_COMP else self.comp()["duration"], fps, others, found)
         if not others:
             self.select(layer_id)
         return self._begin({"move": "Move in time", "start": "Trim start", "end": "Trim end"}[part], grab)
 
     @Slot(float, float)
     def barDragTo(self, t, snap_seconds=0.0):
-        """The pointer is at `t` (composition seconds): the edge snaps to a shared marker or the playhead within
-        `snap_seconds`, else to a whole frame."""
+        """The pointer is at `t` (composition seconds): the edge snaps within `snap_seconds` (time_snap.py; 0 = Ctrl
+        held: free), else to a whole frame."""
         if self._drag is None or not isinstance(self._grab, BarGrab):
             return
-        calls = self._grab.calls(t, self.times(), self._t, snap_seconds)
+        g = self._grab
+        calls = g.calls(t, snap_seconds, self.placed_item(g.layer).get("start", 0.0))
+        self.timeSnap.show(g.moved, g.fps, g.caught, g.edge, g.layer)
         if calls:
             self._guard(lambda: self._drag.preview(calls))
 
@@ -130,6 +138,7 @@ class DragSlots(SlotMixin):
     def endDrag(self):
         d, g, self._drag, self._grab = self._drag, self._grab, None, None
         self._snap.end()                                # the snap lines go with the drag
+        self.timeSnap.clear()                           # and the "+6 f" label
         if d is not None and isinstance(g, BarGrab) and g.tie_calls():      # let go on a marker: the layer is tied to it
             self._guard(lambda: d.preview(g.tie_calls()))
         if d is not None:

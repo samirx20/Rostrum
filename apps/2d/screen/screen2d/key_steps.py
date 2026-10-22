@@ -4,8 +4,13 @@ calls a click, a drag or a key makes.
     keypick <key id>[,<key id>…] [ctrl|shift]   click a diamond (the ids it stands for); Ctrl adds / removes, Shift the run
     keybox <id>[,<id>…] [<id>…] [ctrl|shift]     a box dragged over diamonds (each argument one diamond's ids)
     keybox time <t0> <t1> [ctrl|shift]           a box over every open row's diamonds between those times
-    keydrag2 <key id> <from s> <to s>            press a picked key at <from>, let go at <to> (composition seconds): all move
-    keystretch <key id> <from s> <to s>          Alt+drag the first or last picked key: the picked keys stretch in time
+    keydrag2 <key id> <from s> <to s> [snap] [hold]   press a picked key at <from>, let go at <to> (composition seconds): all
+                                                 move; `snap`: within 0.1 s it snaps (time_snap.py); `hold`: not let go yet
+    keystretch <key id> <from s> <to s> [snap] [hold] Alt+drag the first or last picked key: the picked keys stretch in time
+    keyafter <stay|repeat|pingpong|carry>        the key bar's ⋯ › After the last key
+    easeplay on|off                              the key bar's ⋯ › Play the ease when picked
+    wait <ms>                                    let the screen run that long (an ease playing once)
+    keymore                                      open the key bar's ⋯
     keydelete                                    Delete with keys picked
     showanim                                     A: the selection's animated settings only; again folds them
     ease <linear|easeIn|easeOut|smooth|spring|hold|custom>   the key bar's Ease ▾ (or a key's right-click)
@@ -22,7 +27,8 @@ calls a click, a drag or a key makes.
 from __future__ import annotations
 
 WORDS = ("keypick", "keybox", "keydrag2", "keystretch", "keydelete", "showanim", "ease", "easekey", "easecurve", "spring",
-         "keytime", "keyvalue", "easemenu", "keyhere", "keycopy", "keypaste", "stagger", "event")
+         "keytime", "keyvalue", "easemenu", "keyhere", "keycopy", "keypaste", "stagger", "event", "keyafter",
+         "easeplay", "wait", "keymore")
 HOW = ("ctrl", "shift")
 
 
@@ -78,8 +84,29 @@ def do_key_step(bridge, word, rest, step):
         begin = keys.beginDrag if word == "keydrag2" else keys.beginStretch
         if not begin(rest[0], float(rest[1])):
             raise RuntimeError(f"step {step!r}: {rest[0]} is not a picked key (or not the first / last, to stretch)")
-        keys.dragTo(float(rest[2]))
-        keys.endDrag()
+        t0, t1 = float(rest[1]), float(rest[2])
+        for f in (0.5, 1.0):                         # as a hand pulls it
+            keys.dragTo(t0 + (t1 - t0) * f, 0.1 if "snap" in rest else 0.0)
+        if "hold" not in rest:
+            keys.endDrag()
+        print("drag label", ascii(bridge.timeSnap.text))
+    elif word == "keyafter":
+        if not bridge.keyBar.setAfter(rest[0]):
+            raise RuntimeError(f"step {step!r}: no last key picked ({bridge.status})")
+    elif word == "keymore":
+        from PySide6.QtCore import QMetaObject, QObject
+        from PySide6.QtGui import QGuiApplication
+        more = next(w.findChild(QObject, "keyMore") for w in QGuiApplication.topLevelWindows() if w.findChild(QObject, "keyMore"))
+        QMetaObject.invokeMethod(more, "clicked")
+    elif word == "easeplay":
+        bridge.easePlay.setOn(rest[0] == "on")
+    elif word == "wait":
+        import time
+        from PySide6.QtCore import QCoreApplication
+        end = time.perf_counter() + float(rest[0]) / 1000
+        while time.perf_counter() < end:
+            QCoreApplication.processEvents()
+        print("time", bridge.time, "playing", bridge.playing)
     elif word in ("ease", "easecurve", "spring", "keytime", "keyvalue", "easemenu"):
         _bar_steps(bridge, word, rest, step)
     elif word in ("easekey", "keyhere", "keycopy", "keypaste", "keydelete"):

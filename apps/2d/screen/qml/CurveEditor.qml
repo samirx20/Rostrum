@@ -175,7 +175,8 @@ Item {
                 if (!pressed) return
                 if (!grab) { backend.setTime(ed.tOf(m.x)); return }
                 if (grab.handle) backend.curves.handleTo(ed.tOf(m.x), ed.vOf(grab.f, m.y))
-                else backend.curves.keyTo(ed.tOf(m.x), ed.vOf(grab.f, m.y))
+                else backend.curves.keyTo(ed.tOf(m.x), ed.vOf(grab.f, m.y),      // its time snaps within 6 px (time_snap.py; Ctrl: free)
+                                          (m.modifiers & Qt.ControlModifier) ? 0 : ed.tOf(6) - ed.tOf(0))
             }
             onReleased: { grab = null; backend.curves.endDrag() }
             onCanceled: { grab = null; backend.curves.endDrag() }

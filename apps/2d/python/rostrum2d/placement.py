@@ -82,3 +82,25 @@ def place_at(doc_data: dict, layer_id: str, t: float) -> dict:
             atexit.register(_own.close)
         _own.load(scene)
         return _own.place(t, [layer_id])[layer_id]
+
+
+def centres_at(doc_data: dict, when: dict[str, float]) -> dict[str, tuple[float, float]]:
+    """Each layer's box centre in composition px, each at its own composition time (`when`: {id: seconds}), through
+    its groups, the camera and tilt (the engine's `place`): one scene load for them all. layer.stagger's spatial
+    orders read these, so layers in different groups compare where they are seen."""
+    global _own
+    from .scene import describe
+    if not when:
+        return {}
+    scene = describe(doc_data, _comp_of(doc_data, next(iter(when))), None, None, (min(when.values()), max(when.values())))
+    out = {}
+    with _lock:
+        if _own is None:
+            _own = open_engine()
+            atexit.register(_own.close)
+        _own.load(scene)
+        for id_, t in when.items():
+            p = _own.place(t, [id_])[id_]
+            out[id_] = comp_point(p, p["w"] / 2, p["h"] / 2)
+    return out
+

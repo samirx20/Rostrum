@@ -4,7 +4,8 @@ import RostrumKit
 // One key on a timeline row (LayerTrack.qml): a diamond at its time; on a layer's bar it stands for every key of the
 // layer at that frame (modelData.ids). Click picks it (the key bar shows its ease; the panel keeps the layer, its keyed setting highlighted); Ctrl+click adds or removes
 // it, Shift+click picks the run between (backend.keys, screen2d/key_select.py). Drag moves it, or every picked key
-// together (key.set t, one change; a single key lands on a marker within 6 px). Alt+drag the first or last picked
+// together (key.set t, one change; within 6 px the grabbed key snaps: screen2d/time_snap.py; Ctrl: free; the "+6 f"
+// label beside the key: DragLabel.qml). Alt+drag the first or last picked
 // key stretches them all in time (key.scale); right-click gives the Ease list (backend.keyBar). `shift`: the x of what it lies in
 // (a layer's bar), so it sits at its time whatever holds it.
 Item {
@@ -51,8 +52,10 @@ Item {
             else held = backend.beginKeyDrag(key.modelData.id) !== false ? "one" : ""
         }
         onPositionChanged: (m) => {
-            if (held === "one") backend.keyDragTo(key.row.tAt(keyArea, m.x), 6 / key.row.ruler.perSec)
-            else if (held === "many") backend.keys.dragTo(key.row.tAt(keyArea, m.x))
+            if (!held) return
+            const reach = (m.modifiers & Qt.ControlModifier) ? 0 : 6 / key.row.ruler.perSec      // Ctrl: no snapping
+            if (held === "one") backend.keyDragTo(key.row.tAt(keyArea, m.x), reach)
+            else backend.keys.dragTo(key.row.tAt(keyArea, m.x), reach)
         }
         function stop() { if (held === "one") backend.endDrag(); else if (held === "many") backend.keys.endDrag(); held = "" }
         onReleased: stop()
