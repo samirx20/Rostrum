@@ -10,6 +10,7 @@ Short pages in everyday words, with the names of the real buttons. The app is on
 4. [Importing pictures and files](importing.md): bring in pictures, video, SVG, PDF, PSD and Figma frames, then work on the pieces.
 5. [Exporting a video](exporting.md): the formats in plain words, the settings, and where the file goes.
 6. [Files and settings](files.md): New, Open, Open sample, Save, Save as, the unsaved dot, recovery and closing.
+7. [Timing to music](timing-to-music.md): hear the project's sound from RostrumSound, the Sound row, mute, pick the soundtrack, show beats, snap and tie to beats and markers, jump beat to beat, open the song in RostrumSound.
 
 ## For agents
 
