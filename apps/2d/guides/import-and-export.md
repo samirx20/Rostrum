@@ -33,7 +33,12 @@ Check an import: `look_frame` at full width next to the source, `inspect_item` (
 it. In a project it lands in `renders/<item>/vNNN/` with a manifest Sound and the Editor can find; a failed export stays in a
 `.partial` folder and is never listed. `start` and `end` (seconds) pick a range.
 
-The Python `rostrum2d.io.export(engine, fmt, out, alpha=None, depth=None, start=0.0, end=None)` goes through the **same engine
+**MP4 quality.** An mp4 takes one setting, `quality`: `standard`, `high` (the default) or `best`. It sets how much detail the
+file keeps, and so its size: at 1080p and 25 frames a second that is about 12, 25 and 50 Mbit/s; a bigger picture or more
+frames a second gets more in proportion. `bitrate` (Mbit/s, up to 160) asks for an exact number instead. On the screen the
+Export panel shows **Quality** only while MP4 is chosen. `render_video` and `render_export` both take `quality` and `bitrate`.
+
+The Python `rostrum2d.io.export(engine, fmt, out, alpha=None, depth=None, start=0.0, end=None, quality=None, bitrate=None)` goes through the **same engine
 path as `look_frame`**, then reads the file back (frame count, size, alpha, depth) and **fails loudly** if it does not match.
 
 | `fmt` | File | Alpha | Bits per channel |
@@ -44,9 +49,10 @@ path as `look_frame`**, then reads the file back (frame count, size, alpha, dept
 | `prores4444` | one `.mov` (ProRes 4444) | yes | 16 |
 | `png` | a **sequence**: `out` holds `{frame}` (or is a folder / stem: `<stem>_{frame}.png`), numbered from the first frame of the range | yes | 8 or 16 |
 
-Asking a format for what it cannot carry (alpha on mp4; 16 bits on gif) is refused with the list of ones that can. mp4, webm and
-ProRes go through FFmpeg; GIF and PNG are written by the engine. In the shipped app the mp4 will use the system encoder
-(the x264 build used here is for development).
+Asking a format for what it cannot carry (alpha on mp4; 16 bits on gif; a quality on png) is refused with the list of ones
+that can. The mp4 is made by Windows' own H.264 encoder (the graphics card's encoder when it has one), with no FFmpeg; its width
+and height must be even numbers (H.264 needs it), and an odd size is refused before anything is written. A see-through part of
+the picture comes out black. webm and ProRes go through FFmpeg; GIF, PNG and EXR are written by the engine.
 
 ### Lottie
 
@@ -68,4 +74,4 @@ ProRes go through FFmpeg; GIF and PNG are written by the engine. In the shipped 
 ## Not yet
 
 MCP tools for import and for the formats other than mp4; sound in a 2D video export (sound is RostrumSound's: 2D mp4 has none);
-Mac H.264 through the system encoder.
+MP4 on the Mac (it will use the Mac's own encoder; today it says it is not built yet).

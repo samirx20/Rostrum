@@ -5,7 +5,8 @@
     changes the layer's slot: the same drag slots, so <dx> <dy> moves the pointer)
     curves on|off | curvedrag <key> <dt> <dv> | handledrag <key> <1|2> <dx> <dy> (the curve editor)
     keydrag <key id> <t> | open <layer> (timeline rows) | fold <layer> (layers panel) | pick <x> <y>
-    undo | redo | more | commands [query …] | run <command key> | play
+    undo | redo | more | commands [query …] | run <command key> | play | play <seconds> [blur] [full|half|quarter]
+    (plays, with full motion blur or not, at that Preview size, then prints the frames shown per second and each stage's time: screen2d/playstats.py)
     marker add <s> | marker move <name> <s> | marker rename <name> <new name> | marker remove <name> (ruler flags; _ for spaces)
   Draw page (on the selected drawing layer): draw <x> <y> <x> <y> … (one stroke, composition px)
     brush <setting> <value> | newframe [copy] | hold <+n|-n> | frame next|prev | onion on|off
@@ -19,6 +20,8 @@
     problems open|close (the Problems panel, after the list is worked out) | inspectorscroll <px>
   Export: export <mp4|prores4444|webm|gif|png|exr|lottie> [alpha=on|off] [depth=8|16] [start=<s>] [end=<s>] (the Export button's
     job; waits for it) | exportpanel open [format]|close | exportcancel [format] (start one, then Cancel it)
+  Files (file_steps.py): new [name] | save | saveas <name> | openproject <path> | autosave | restore | discard |
+    filemenu open|close | askclose
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
@@ -27,6 +30,8 @@ import json
 import time
 
 from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject
+
+from .file_steps import WORDS as FILE_WORDS, do_file_step
 
 
 def value(text):
@@ -88,6 +93,24 @@ def steps_cancel(bridge, step, rest):
     job.wait(60)
     if job.state != "cancelled":
         raise RuntimeError(f"step {step!r}: expected the export to be cancelled, it is {job.state!r}: {job.note}")
+
+
+def steps_play(bridge, seconds, blur, size="full"):
+    """Play for `seconds` (after the Problems list's first look, which shares the CPU) at Preview size `size`, then
+    print the frames shown."""
+    from .playstats import STATS
+    bridge.problems.wait(60)
+    bridge.playback.setBlur(blur)
+    bridge.playback.setSize(size)
+    STATS.on = True
+    STATS.reset()
+    bridge.togglePlay()
+    end = time.perf_counter() + seconds
+    while time.perf_counter() < end:
+        QCoreApplication.processEvents()
+    bridge.togglePlay()
+    print(f"play {seconds:g} s from the playhead: {STATS.report()}")
+    STATS.on = STATS.log
 
 
 def do_step(bridge, win, step):
@@ -178,6 +201,8 @@ def do_step(bridge, win, step):
         getattr(bridge, word)()
     elif word == "more":
         bridge.toggleMore()
+    elif word == "play" and rest:                # play for <seconds>, then print the frames shown per second
+        steps_play(bridge, float(rest[0]), "blur" in rest[1:], next((w for w in rest[1:] if w != "blur"), "full"))
     elif word == "play":
         bridge.togglePlay()
     elif word == "commands":
@@ -215,6 +240,8 @@ def do_step(bridge, win, step):
         if rest[1:]:
             bridge.exporter.setFormat(rest[1])
         QMetaObject.invokeMethod(win, "setExportOpen", Q_ARG("QVariant", rest[0] == "open"))
+    elif word in FILE_WORDS:
+        do_file_step(bridge, win, word, rest, step)
     else:
         raise ValueError(f"unknown step {step!r}")
     if bridge.status.startswith("Error"):

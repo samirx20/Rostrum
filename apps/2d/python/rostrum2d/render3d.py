@@ -29,7 +29,9 @@ from pathlib import Path
 
 from rostrum_core import RostrumError, codes, project, storage
 
-CACHE_DIR = Path.home() / ".rostrum" / "cache" / "2d-render3d"
+from . import settings
+
+CACHE_DIR = settings.cache_dir("2d-render3d")
 CACHE_BYTES = 4 << 30
 CONVERTER = "1"              # bump when the conversion changes (it is in every cache key)
 _FRAME_NO = re.compile(r"\.(\d+)\.exr$", re.I)

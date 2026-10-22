@@ -4,24 +4,27 @@ one doc.gesture = one undo step. How an edit becomes a call lives in route.py on
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
+from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui import DocBridge
 from rostrum_gui.markers import MarkerWatch
 from rostrum_core import marker_times
 from rostrum_core.tree import index
-from rostrum2d import retime
+from rostrum2d import fields as F, retime
 
 from . import bounds, outline
 from .drags import DragSlots
+from .file_commands import FileCommands
 from .frames import FrameRenderer
 from .handle_slots import HandleSlots
 from .hooks import Hooks2D
 from .painter import Painter
+from .playback import Playback, size_offered
+from .playstats import STATS
 from .render3d_watch import Render3DWatch
 from .tools2d import ToolSlots
 
 
-class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
+class Bridge2D(FileCommands, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     pageChanged = Signal()
     frameChanged = Signal()
@@ -36,15 +39,17 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
         self.comp_id = comp_id or comps[0]["id"]
         self._t, self._page, self._frame, self.autosave = 0.0, "design", 0, autosave
         self._folded, self._opened, self._drag, self._grab = set(), set(), None, None
+        self._placed = None                                 # placed(), kept per document and markers
         self.marks = None                                   # made below (it needs this QObject); the first rows have none
         super().__init__(doc, parent=parent)
         self.frames = FrameRenderer(self)
+        self._scene = None                                  # the engine's scene, described once per change (_render)
         self.frames.ready.connect(self._on_frame)
         self.frames.failed.connect(self._fail)
         self.painter = Painter(self)
         self._make_tools()                                  # pen, curves, export, import, add, problems (tools2d.py)
-        self._timer = QTimer(self)
-        self._timer.timeout.connect(self._tick)
+        self.play = Playback(self)                          # playing: follows the clock (playback.py)
+        self.play.changed.connect(self.playingChanged)
         self.marks = MarkerWatch(doc.folder, self, self.who, self._fail, "2d")   # shared markers: flags, edits, snap
         self.marks.changed.connect(self.markersChanged)
         self.marks.changed.connect(lambda: self.model.update(self._rows()))   # the marker picks list them
@@ -69,8 +74,13 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
 
     def placed(self) -> dict:
         """The composition as the screen shows it: every time in composition seconds, where it plays (retime.timed:
-        a layer timed from a marker, keys on a marker). The playhead is in these seconds; keys on a marker keep `ref`."""
-        return retime.timed(self.comp(), self.times(), self.comp()["fps"])
+        a layer timed from a marker, keys on a marker). The playhead is in these seconds; keys on a marker keep `ref`.
+        Worked out once per document and markers (every change gives a new doc.data, every marker read a new
+        marks.times), not on every read: rows, outline and drags read it many times a frame. Callers only read it."""
+        key = (self.doc.data, self.marks.times if self.marks else None)
+        if self._placed is None or any(a is not b for a, b in zip(self._placed[0], key)):
+            self._placed = (key, retime.timed(self.comp(), self.times(), self.comp()["fps"]))
+        return self._placed[1]
 
     def placed_item(self, id_: str) -> dict:
         """One item of `placed()` (a layer, effect, mask or key owner), its times in composition seconds."""
@@ -92,9 +102,10 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
 
     @Property("QVariantMap", notify=outlineChanged)
     def frameInfo(self):
-        c = self.comp()
+        c = {**F.defaults("comp"), **self.comp()}
         return {"width": c["width"], "height": c["height"], "fps": c["fps"], "duration": c["duration"],
-                "label": outline.label_of(c)}
+                "label": outline.label_of(c), "blur": c["shutter"] > 0 and c["shutterSamples"] > 1,
+                "previewSize": size_offered(c)}
 
     @Property(str, notify=pageChanged)
     def page(self):
@@ -102,7 +113,12 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
 
     @Property(bool, notify=playingChanged)
     def playing(self):
-        return self._timer.isActive()
+        return self.play.playing
+
+    @Property(QObject, constant=True)
+    def playback(self):
+        """Playing's settings (Blur while playing): screen2d/playback.py."""
+        return self.play
 
     @Property(int, notify=frameChanged)
     def frame(self):
@@ -144,10 +160,15 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     def setTime(self, t):
         c = self.comp()
         self._t = min(max(round(t * c["fps"]) / c["fps"], 0.0), c["duration"])
-        self.model.update(self._rows())
+        still = not self.play.playing            # while playing, only the playhead and the frame (playback.py)
+        if still:
+            with STATS.stage("rows"):
+                self.model.update(self._rows())
         self.timeChanged.emit()
-        self.outlineChanged.emit()
-        self._render()
+        if still:
+            with STATS.stage("outline"):
+                self.outlineChanged.emit()
+        self._show()
 
     @Slot(str)
     def setPage(self, page):
@@ -156,11 +177,7 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
 
     @Slot()
     def togglePlay(self):
-        if self._timer.isActive():
-            self._timer.stop()
-        else:
-            self._timer.start(round(1000 / self.comp()["fps"]))
-        self.playingChanged.emit()
+        self.play.toggle()
 
     @Slot(str)
     def toggleFold(self, item_id):
@@ -189,23 +206,30 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
         self._done(change, nothing)
 
     # ---- inside -----------------------------------------------------------------------------------------------
-    def _tick(self):
-        c = self.comp()
-        nxt = self._t + 1 / c["fps"]
-        self.setTime(0.0 if nxt > c["duration"] + 1e-9 else nxt)
-
     def _render(self):
+        """The document, the markers or a 3D render changed: describe the scene again, then show the playhead."""
+        self._scene = None
+        self._show()
+
+    def _show(self):
+        """The frame at the playhead. The scene doesn't depend on the playhead (the engine evaluates every time), so it
+        is described once per change, never per frame: playing and scrubbing only send `t`."""
         from rostrum2d.scene import describe
-        try:            # a 3D render layer's render missing, a video file gone …: said on screen, no frame drawn
-            scene = describe(self.doc.data, self.comp_id, self.marks.times, self.doc.folder, (self._t, self._t))
-        except Exception as e:  # noqa: BLE001
-            self._fail(str(e))
-            return
-        self.frames.request(scene, self._t)
+        if self._scene is None:
+            try:        # a 3D render layer's render missing, a video file gone …: said on screen, no frame drawn
+                with STATS.stage("describe"):
+                    self._scene = describe(self.doc.data, self.comp_id, self.marks.times, self.doc.folder,
+                                           (0.0, self.comp()["duration"]))
+            except Exception as e:  # noqa: BLE001
+                self._scene = False                         # tried; the next change tries again
+                self._fail(str(e))
+        if self._scene:
+            self.frames.request(self._scene, self._t, self.play.samples(), self.play.scale())
 
     def _on_frame(self, serial):
         self._frame = serial
         self.frameChanged.emit()
+        STATS.frame_shown(self._t)
 
     def _on_doc(self, event):
         super()._on_doc(event)
@@ -216,8 +240,9 @@ class Bridge2D(DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
             self._guard(self.doc.save)
 
     def close(self):
-        self._timer.stop()
+        self.play.stop()
         self.marks.close()
         self.endDrag()
         self.frames.close()
         self._problems.close()
+        self.r3d.close()

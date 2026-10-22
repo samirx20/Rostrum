@@ -97,12 +97,43 @@ bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (
 .venv\Scripts\python.exe apps\2d\screen\main.py                                  # sample document
 ... main.py --script shot.py                                                     # what a script builds
 ... main.py --doc <project folder> <item>                                        # open / make; saves on change
+... main.py --open <docs\main.mtn or project folder>                             # open it as a person does (File > Save)
 ... main.py --step "time 1.2" --step "select title" --step "page animate" --shot out.png
 .venv\Scripts\python.exe -m pytest -q apps\2d\screen\tests                       # under a second
 ```
 Steps: `select`, `page`, `time`, `set`, `scrub`, `animate`, `drag <layer> <dx> <dy>`, `keydrag <key> <t>`,
 `open <layer>`, `fold <layer>`, `pick <x> <y>`, `undo`, `redo`, `more`, `commands`, `run`, `play`, and the Draw steps above
 `export <format> [alpha=on|off] [depth=8|16] [start=<s>] [end=<s>]`, `exportpanel open [format]|close` (`screen2d/steps.py`). Offscreen: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts`.
+
+## Files (File menu, Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S)
+
+- **A file is a project folder.** New makes `Documents\Rostrum2D\Untitled 1` (then 2, 3 …) with one blank composition
+  (1920 × 1080, 25 fps, 10 s) as the document `docs\main.mtn`, and opens it. Open takes a `.mtn` file (or a project
+  folder); Open recent lists the last 8 that still exist. Save as asks a name and makes a new project folder next to
+  the others: a copy of the whole project (other documents, markers, imported pictures, renders; never the recovery
+  copy), with this window's version saved in it and imported pictures pointed into the copy (one change in the history).
+  The window then shows the new project; the old one stays as it was last saved.
+- **Saving is by hand.** An edit puts a dot after the name (title bar and top bar: `Spring promo •`). Every 60 seconds
+  while there are unsaved changes a **recovery copy** is written to `<project>\.rostrum\recovery\` (the same format as a
+  save); the saved document is never touched. Save writes the document and its history and deletes the recovery copy.
+  Opening a project whose recovery copy is newer than its saved document asks "Restore unsaved changes?" (Restore /
+  Discard). Closing, New or Open with unsaved changes asks Save / Don't save / Cancel.
+- **The screen and agents on the same project.** `--doc <folder> <item>` (the launchers, agents, the MCP server) keeps
+  saving after every change, so an agent always reads what the person did and never works on an old copy; nothing is
+  ever "unsaved" there. In a window saved by hand, Save first checks that nobody else (an agent, another window) saved
+  the document since this window read it; if someone did, it refuses and overwrites nothing ("use Save as to keep your
+  version"), so a person's Save can never wipe an agent's work and the other way round.
+- **Absent, not greyed:** Save is in the menu and Ctrl+K only while there is something to save; the recent list leaves
+  out the open project. A document without a folder (the sample, `--script`) offers "Save…", which asks a name.
+- **Fails loudly:** a failed save, open or Save as is said in red in the top bar; as a step it exits nonzero.
+- Where things are found (engine, ffmpeg, fonts, the projects folder, the settings file with the recent list, whether
+  Rostrum3D is installed) is in one place: `apps/2d/python/rostrum2d/settings.py`. Without Rostrum3D the Add menu and
+  Ctrl+K have no 3D render layer.
+- Code: `screen2d/projects.py` (folders, recovery copy, Save as; no Qt), `files.py` (the menu's actions, `files` in QML),
+  `recent.py`, `session.py` (one window per open document), `file_commands.py` (Ctrl+K), `qml/FileMenu.qml`,
+  `qml/FileFlow.qml` (the questions, shortcuts, open dialog), `qml/AskDialog.qml`.
+- Steps (`screen2d/file_steps.py`, `_` for spaces): `new [name]`, `save`, `saveas <name>`, `openproject <path>`,
+  `autosave`, `restore`, `discard`, `filemenu open|close`, `askclose`. Test: `tests/test_recovery.py`.
 
 ## Export
 

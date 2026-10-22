@@ -1,7 +1,8 @@
 import QtQuick
 import RostrumKit
 
-// Design page, bottom: play, the time, a full-width ruler with the playhead, and Add marker (in a project).
+// Design page, bottom: play, the time, how playing frames are drawn (PlayOptions), a full-width ruler with
+// the playhead, and Add marker (in a project).
 Rectangle {
     id: bar
     color: Theme.panel; radius: Theme.radiusPanel
@@ -16,13 +17,17 @@ Rectangle {
         anchors.left: play.right; anchors.leftMargin: Theme.pad; anchors.verticalCenter: parent.verticalCenter
         width: 128
     }
+    PlayOptions {
+        id: blur
+        anchors.left: readout.right; anchors.leftMargin: Theme.pad; anchors.verticalCenter: parent.verticalCenter
+    }
     AddMarker {
         id: addMarker
         anchors.right: parent.right; anchors.rightMargin: Theme.gap; anchors.verticalCenter: parent.verticalCenter
     }
     Rectangle {
         id: well
-        anchors { right: addMarker.visible ? addMarker.left : parent.right; left: readout.right; verticalCenter: parent.verticalCenter
+        anchors { right: addMarker.visible ? addMarker.left : parent.right; left: blur.visible ? blur.right : readout.right; verticalCenter: parent.verticalCenter
                   leftMargin: Theme.pad; rightMargin: addMarker.visible ? Theme.pad : Theme.gap }
         height: 32; radius: Theme.radiusCtl; color: Theme.sunken
         TimeRuler {

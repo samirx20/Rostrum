@@ -14,6 +14,8 @@ from pathlib import Path
 
 from rostrum_core import RostrumError, codes
 
+from .. import settings
+
 BASE = {"AA": "ɑː", "AE": "æ", "AO": "ɔː", "AW": "aʊ", "AY": "aɪ", "EH": "ɛ", "EY": "eɪ", "IH": "ɪ", "OW": "oʊ",
         "OY": "ɔɪ", "UH": "ʊ", "UW": "uː", "B": "b", "CH": "tʃ", "D": "d", "DH": "ð", "F": "f", "G": "ɡ", "HH": "h",
         "JH": "dʒ", "K": "k", "L": "l", "M": "m", "N": "n", "NG": "ŋ", "P": "p", "R": "ɹ", "S": "s", "SH": "ʃ",
@@ -54,7 +56,7 @@ def units(phones: list[str]) -> list[Unit]:
 
 def dict_path() -> Path:
     return Path(os.environ.get("ROSTRUM_CMUDICT") or
-                Path.home() / ".rostrum" / "models" / "cmudict-7479086" / "cmudict.dict")
+                settings.models_dir() / "cmudict-7479086" / "cmudict.dict")
 
 
 @lru_cache(maxsize=1)

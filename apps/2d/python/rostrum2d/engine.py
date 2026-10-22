@@ -18,8 +18,10 @@ import subprocess
 import time
 from pathlib import Path
 
+from . import settings
+
 HERE = Path(__file__).resolve().parents[2]                         # apps/2d
-LOG_DIR = Path.home() / ".rostrum" / "logs"
+LOG_DIR = settings.logs_dir()
 
 
 class EngineError(RuntimeError):
@@ -27,22 +29,13 @@ class EngineError(RuntimeError):
 
 
 def find_exe() -> Path:
-    """ROSTRUM2D_ENGINE, else this checkout's engine build (release, then the agents' `agent` profile)."""
-    if os.environ.get("ROSTRUM2D_ENGINE"):
-        return Path(os.environ["ROSTRUM2D_ENGINE"])
-    for profile in ("release", "agent"):
-        for p in (HERE / "engine" / "target" / profile).glob("rostrum*.exe"):
-            return p
-    raise EngineError(f"2D engine not built: no rostrum*.exe in {HERE / 'engine' / 'target'} (release or agent); "
-                      "build apps/2d/engine or set ROSTRUM2D_ENGINE")
-
-
-def h264(out: Path, w: int, h: int, fps: int) -> dict:
-    return {"program": "ffmpeg", "args": [
-        "-hide_banner", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{w}x{h}",
-        "-r", str(fps), "-i", "-", "-vf", "scale=out_color_matrix=bt709:out_range=tv", "-c:v", "libx264",
-        "-preset", "slow", "-crf", "14", "-pix_fmt", "yuv420p", "-colorspace", "bt709", "-color_primaries", "bt709",
-        "-color_trc", "bt709", str(out)]}
+    """The engine program, in settings.py's one order: ROSTRUM2D_ENGINE, the installed app's engine folder, this checkout's
+    build (release, then the agents' `agent` profile)."""
+    exe = settings.engine_exe()
+    if exe is None:
+        raise EngineError(f"2D engine not found: no rostrum*.exe in the app's engine folder or {HERE / 'engine' / 'target'} "
+                          "(release or agent); build apps/2d/engine or set ROSTRUM2D_ENGINE")
+    return exe
 
 
 class Engine:
@@ -118,11 +111,15 @@ class Engine:
         sizes = self._request({"measure": {"items": items}})["sizes"]
         return {k: (float(w), float(h)) for k, (w, h) in sizes.items()}
 
-    def pixels(self, t: float) -> tuple[memoryview, int, int, int]:
+    def pixels(self, t: float, samples: int | None = None, scale: float = 1.0) -> tuple[memoryview, int, int, int]:
         """The frame at `t` as straight-alpha RGBA8 in the engine's shared memory (no PNG, no pipe; Windows):
-        (view, width, height, stride). The view is valid until the frame after next is asked for; copy it."""
+        (view, width, height, stride). The view is valid until the frame after next is asked for; copy it.
+        `samples`: motion-blur steps for this frame instead of the composition's (1 = no blur: fast playback).
+        `scale`: 1, 0.5 or 0.25 × the composition's size, the same picture drawn smaller (playing); width and
+        height are then the smaller size."""
         self._props()
-        shm = self._request({"frame": {"t": t, "pixels": True}})["shm"]
+        req = {"t": t, "pixels": True, **({"shutterSamples": samples} if samples else {}), **({"scale": scale} if scale != 1 else {})}
+        shm = self._request({"frame": req})["shm"]
         if shm["format"] != "rgba8":
             raise EngineError(f"pixels: the engine sent {shm['format']}; the canvas reads rgba8")
         if self._shm is None or self._shm[0] != shm["name"]:   # a new block when the frame size changes
@@ -132,13 +129,17 @@ class Engine:
         view = memoryview(self._shm[1])[shm["offset"]:shm["offset"] + shm["bytes"]]
         return view, shm["width"], shm["height"], shm["stride"]
 
-    def video(self, mp4: Path, start: float = 0.0, end: float | None = None, progress=None) -> dict:
+    def video(self, mp4: Path, start: float = 0.0, end: float | None = None, progress=None, quality: str | None = None,
+              bitrate: float | None = None) -> dict:
+        """An MP4 through the formats table's encoder (io/formats.py: the OS's own H.264); `quality` or `bitrate` (Mbit/s)."""
+        from .io import formats                      # the table imports find_exe from here
         p = self._props()
-        fps, end = p["fps"], p["duration"] if end is None else end
-        mp4 = Path(mp4)
+        fps, end, w, h = p["fps"], p["duration"] if end is None else end, p["width"], p["height"]
+        mp4, f = Path(mp4), formats.get("mp4")
         mp4.parent.mkdir(parents=True, exist_ok=True)
+        encode = f.build(str(mp4), w, h, fps, 8, 0, formats.kbps(f, w, h, fps, quality, bitrate))
         out = self._request({"export": {"start": start, "end": end, "file": str(mp4), "progress": progress is not None,
-                                        "encode": h264(mp4, p["width"], p["height"], fps)}},
+                                        "encode": encode}},
                             timeout_s=3600.0, progress=progress)
         if not mp4.is_file() or mp4.stat().st_size == 0:
             raise EngineError(f"export wrote no video: {mp4}; log {self.log_path}")

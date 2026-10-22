@@ -16,8 +16,11 @@ from pathlib import Path
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QImage
 from rostrum_gui.frames import ImageProvider, PictureWorker, image_from_pixels
+from rostrum2d import settings
 
-SCRATCH = Path.home() / ".rostrum" / "cache" / "screen2d" / str(os.getpid())
+from .playstats import STATS
+
+SCRATCH = settings.cache_dir("screen2d") / str(os.getpid())
 FrameProvider = ImageProvider
 
 
@@ -27,10 +30,13 @@ def open_engine():
     return Engine()
 
 
-def _frame(eng, t: float, png: Path) -> QImage:
+def _frame(eng, t: float, png: Path, samples: int | None, scale: float) -> QImage:
     if sys.platform == "win32":
-        return image_from_pixels(*eng.pixels(t))
-    eng.still(t, png)
+        with STATS.stage("pixels"):
+            got = eng.pixels(t, samples, scale)
+        with STATS.stage("image"):
+            return image_from_pixels(*got)
+    eng.still(t, png)                                      # full size until the engine's pixels come to the Mac
     return QImage(str(png))
 
 
@@ -43,18 +49,22 @@ class FrameRenderer(PictureWorker):
         SCRATCH.mkdir(parents=True, exist_ok=True)
         self.start()
 
-    def request(self, scene: dict, t: float):
-        self.post_latest((scene, t))
+    def request(self, scene: dict, t: float, samples: int | None = None, scale: float = 1.0):
+        """Draw `scene` at `t`. `samples`: motion-blur steps instead of the composition's; `scale`: 1, 0.5 or 0.25 of
+        its size (both for fast playback). The same scene and engine either way, so a paused frame and the export are
+        the full picture."""
+        self.post_latest((scene, t, samples, scale))
 
     def open_engine(self):
         return open_engine()
 
     def handle(self, eng, job):
-        scene, t = job
-        if scene != self._loaded:
-            eng.load(scene)
+        scene, t, samples, scale = job
+        if scene is not self._loaded:                       # the bridge describes a new scene only on a change
+            with STATS.stage("load"):
+                eng.load(scene)
             self._loaded = scene
-        image = _frame(eng, t, SCRATCH / "frame.png")
+        image = _frame(eng, t, SCRATCH / "frame.png", samples, scale)
         if image.isNull():
             raise RuntimeError(f"the engine's frame could not be read: {SCRATCH / 'frame.png'}")
         self.ready.emit(self.publish(image))

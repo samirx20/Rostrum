@@ -10,14 +10,12 @@ report of what didn't come across. The Import panel and the MCP tool `run_import
 from __future__ import annotations
 
 import json
-import os
-import shutil
 import subprocess
 from pathlib import Path
 
 from PIL import Image, ImageFont
 
-from .. import engine
+from .. import settings
 from . import tree as T
 from .figma import figma_tree
 from .pdf import pdf_pages, pdf_tree
@@ -33,7 +31,9 @@ FILTERS = "Images, video, SVG, PDF, PSD (*.svg *.pdf *.psd " + " ".join("*" + e 
 def app_fonts() -> set[str] | None:
     """The family names the engine can draw (its fonts folder), so an imported text in another font is reported and set in the
     default one rather than refused by the engine later. None when the folder can't be found (then nothing is checked)."""
-    folder = Path(os.environ.get("ROSTRUM2D_FONTS") or engine.HERE / "engine" / "fonts")
+    folder = settings.fonts_dir()
+    if folder is None:
+        return None
     names: set[str] = set()
     for f in folder.glob("*.[to]tf"):
         family = ImageFont.truetype(str(f), 12).getname()[0]
@@ -53,9 +53,7 @@ def _size_of(kind: str, path: Path) -> tuple[int, int]:
     if kind == "image":
         with Image.open(path) as im:
             return im.size
-    exe = shutil.which("ffprobe")
-    if exe is None:
-        raise RuntimeError("ffprobe is needed to read a video's size and was not found")
+    exe = settings.ffmpeg("ffprobe")              # fails loudly when there is none
     out = subprocess.run([exe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "json",
                           str(path)], capture_output=True, timeout=60)
     streams = json.loads(out.stdout or b"{}").get("streams") or []

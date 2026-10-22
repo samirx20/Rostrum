@@ -41,9 +41,11 @@ class Exporter(QObject):
         return float(self._comp().get("duration", 5.0))
 
     def _reset(self):
-        """The chosen format's defaults: transparency on where it can be carried, its first bit depth, the whole composition."""
+        """The chosen format's defaults: transparency on where it can be carried, its first bit depth, its default quality, the
+        whole composition."""
         r = self._row()
-        self._values = {"alpha": r["alpha"], "depth": r["depths"][0] if r["depths"] else None, "start": 0.0, "end": self._duration()}
+        self._values = {"alpha": r["alpha"], "depth": r["depths"][0] if r["depths"] else None, "quality": r["quality"],
+                        "start": 0.0, "end": self._duration()}
 
     # ---- what QML shows -----------------------------------------------------------------------------------
     @Property("QVariantList", constant=True)
@@ -135,7 +137,8 @@ class Exporter(QObject):
     def setSetting(self, key, value):
         if self.running() or key not in self._values:
             return
-        self._values[key] = int(value) if key == "depth" else bool(value) if key == "alpha" else float(value)
+        kind = {"depth": int, "alpha": bool, "quality": str}.get(key, float)
+        self._values[key] = kind(value)
         if key == "start":
             self._values["end"] = max(self._values["end"], self._values["start"] + 1 / self._comp()["fps"])
         self.changed.emit()
@@ -148,7 +151,7 @@ class Exporter(QObject):
         self._facts, self._progress = {}, 0.0
         try:
             v = self._values
-            s = exporting.settings("export", self._fmt, self._duration(), v["alpha"], v["depth"], v["start"], v["end"])
+            s = exporting.settings("export", self._fmt, self._duration(), v["alpha"], v["depth"], v["start"], v["end"], v["quality"])
             scene = exporting.snapshot(b.doc, self._comp_id, self._fmt)   # the snapshot: edits made while it runs are not in the file
         except Exception as e:  # noqa: BLE001
             return self._finish({}, e.line() if hasattr(e, "line") else f"Error: export: {e}")

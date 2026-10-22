@@ -23,6 +23,8 @@ Panel {
         Item { width: Theme.gap; height: 1 },
         AddMarker { anchors.verticalCenter: parent.verticalCenter },
         Item { width: Theme.grid; height: 1; visible: backend.markerEdit.available },
+        PlayOptions { id: opts; anchors.verticalCenter: parent.verticalCenter },
+        Item { width: Theme.gap; height: 1; visible: opts.visible },
         TimeReadout { anchors.verticalCenter: parent.verticalCenter },
         Item { width: Theme.gap; height: 1 },
         PlayButton { playing: backend.playing; onClicked: backend.togglePlay(); implicitHeight: 24; implicitWidth: 24 }

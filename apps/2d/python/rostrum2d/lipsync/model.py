@@ -13,6 +13,8 @@ from pathlib import Path
 
 from rostrum_core import RostrumError, codes
 
+from .. import settings
+
 from .audio import RATE
 
 ENGINE = "wav2vec2-lv60-espeak@1"     # our version of the whole job: bump when audio, alignment or timing changes
@@ -23,7 +25,7 @@ MIN_FREE_GB = 2.5
 
 def folder() -> Path:
     return Path(os.environ.get("ROSTRUM_PHONES_DIR") or
-                Path.home() / ".rostrum" / "models" / "wav2vec2-lv60-espeak-fp16")
+                settings.models_dir() / "wav2vec2-lv60-espeak-fp16")
 
 
 def vocab(where="lipsync") -> dict:
