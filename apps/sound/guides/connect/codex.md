@@ -4,7 +4,7 @@ Rostrum2D and RostrumSound each have a small server (`rostrum-2d`, `rostrum-soun
 
 ## The easy way
 
-In Rostrum open **Help → Connect an AI agent → Add to Codex** in that app, say yes, then follow the last line it shows (restart or check). Rostrum keeps a copy of your settings file first and never touches servers it didn't add.
+In Rostrum click the **?** button in the top bar and choose **Connect an AI agent…**. Press **Add** next to Codex, then **Add** again to say yes, and follow the last line it shows (restart or check). Rostrum keeps a copy of your settings file first and never touches servers it didn't add.
 
 ## By hand
 
@@ -60,7 +60,7 @@ Run `codex mcp list`; both servers should be listed.
 
 ## Remove it
 
-Easy way: Help → Connect an AI agent → Remove from Codex.
+Easy way: **?** → **Connect an AI agent…**, then press **Remove** next to Codex.
 
 By hand, for Rostrum2D: `codex mcp remove rostrum-2d`
 By hand, for RostrumSound: `codex mcp remove rostrum-sound`
