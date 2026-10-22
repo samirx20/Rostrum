@@ -21,13 +21,12 @@ Rectangle {
     ColumnLayout {
         anchors.fill: parent; anchors.margins: Theme.gap + 2
         spacing: Theme.gap
-        Text {
+        NameLabel {
             Layout.fillWidth: true; Layout.preferredHeight: 22
             id: stripName
-            text: s.model.name; elide: Text.ElideRight; color: Theme.fg; verticalAlignment: Text.AlignVCenter
-            font.family: uiFont; font.pixelSize: Theme.title; font.weight: Font.DemiBold
-            MouseArea { id: nameArea; anchors.fill: parent; hoverEnabled: true; onPressed: s.pick() }
-            HoverTip { text: stripName.truncated ? s.model.name : ""; hovered: nameArea.containsMouse }   // a cut name, whole
+            text: s.model.name; verticalAlignment: Text.AlignVCenter
+            font.pixelSize: Theme.title; font.weight: Font.DemiBold
+            MouseArea { anchors.fill: parent; onPressed: s.pick() }
         }
         MixPick {   // where it plays to: the master or a bus (the choices are the buses it may feed)
             Layout.fillWidth: true; Layout.preferredHeight: 22

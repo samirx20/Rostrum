@@ -64,7 +64,18 @@ impl WavWriter {
     }
 }
 
-/// A whole bed written through the writer (the mix: its channels are in memory for its measures).
+/// The finished mix written from its tape, block by block.
+pub fn write_mix(path: &Path, mix: &crate::mix::render::stats::Mix, sr: u32) -> Result<(), String> {
+    let frames = mix.frames();
+    let mut w = WavWriter::create(path, mix.layout.channels(), frames, mix.layout, sr)?;
+    for at in (0..frames).step_by(crate::mix::tape::BLOCK) {
+        w.write(&mix.read(at, crate::mix::tape::BLOCK.min(frames - at))?)?;
+    }
+    w.finish()
+}
+
+/// A whole bed in memory written through the writer.
+#[allow(dead_code)]
 pub fn write_whole(path: &Path, chs: &[Vec<f32>], layout: Layout, sr: u32) -> Result<(), String> {
     let frames = chs.first().map_or(0, Vec::len);
     let mut w = WavWriter::create(path, chs.len(), frames, layout, sr)?;

@@ -6,7 +6,11 @@
 
 use serde::Deserialize;
 
-use crate::analysis::loudness::{integrated_lufs_n, sample_peaks};
+use std::collections::VecDeque;
+
+use crate::analysis::loudness::{Lufs, Peaks};
+use crate::mix::spool::Spool;
+use crate::mix::spool::CHUNK as BLOCK;
 
 #[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -31,113 +35,247 @@ pub struct MasterReport {
 
 /// A look-ahead limiter on true peaks, linked across the channels: the gain reaches what each peak
 /// needs by the time it plays (a held minimum smoothed over the look-ahead, which never overshoots),
-/// then recovers over `release`. Returns its largest gain reduction (dB, ≥ 0).
-fn limit(chs: &mut [Vec<f32>], ceiling: f64, sr: f64) -> f64 {
-    let peaks = sample_peaks(&chs.iter().map(|c| c.as_slice()).collect::<Vec<_>>());
-    let n = peaks.len();
-    let la = (sr * 0.0015).round() as usize;
-    let need: Vec<f64> = peaks.iter().map(|&p| if p > ceiling { ceiling / p } else { 1.0 }).collect();
-    // Minimum over [i, i + la], then an exponential recovery.
-    let mut held = vec![1.0; n];
-    let mut dq: std::collections::VecDeque<usize> = Default::default();
-    for j in (0..n).rev() {
-        while dq.back().is_some_and(|&k| need[k] >= need[j]) {
-            dq.pop_back();
-        }
-        dq.push_back(j);
-        while dq.front().is_some_and(|&k| k > j + la) {
-            dq.pop_front();
-        }
-        held[j] = need[*dq.front().unwrap()];
+/// then recovers over `release`. Fed block by block, it answers each frame once the look-ahead after it is in
+/// (`finish`: the rest); `deepest` is its largest gain reduction (dB, ≥ 0).
+struct Limiter {
+    ceiling: f64,
+    la: usize,
+    rel: f64,
+    peaks: Peaks,
+    /// The frames' needs not yet past the window: (frame, need), needs rising from front to back.
+    window: VecDeque<(usize, f64)>,
+    needs: usize,
+    held: usize,
+    g: f64,
+    /// The last `la + 1` recovered gains, and their sum (the moving average).
+    recent: VecDeque<f64>,
+    sum: f64,
+    lowest: f64,
+    /// The frames waiting for their gain.
+    wait: Vec<VecDeque<f32>>,
+}
+
+impl Limiter {
+    fn new(nch: usize, ceiling: f64, sr: f64) -> Limiter {
+        let la = (sr * 0.0015).round() as usize;
+        Limiter { ceiling, la, rel: 1.0 - (-1.0 / (0.08 * sr)).exp(), peaks: Peaks::new(nch), window: VecDeque::new(), needs: 0, held: 0, g: 1.0, recent: VecDeque::new(), sum: 0.0, lowest: 1.0, wait: vec![VecDeque::new(); nch] }
     }
-    let rel = 1.0 - (-1.0 / (0.08 * sr)).exp();
-    let mut g = 1.0f64;
-    for h in held.iter_mut() {
-        g = if *h < g { *h } else { g + (1.0 - g) * rel };
-        g = g.min(*h);
-        *h = g;
-    }
-    // A moving average over the look-ahead: every gain in the window is already at most the peak's need.
-    let mut sum = 0.0;
-    let mut lowest = 1.0f64;
-    for i in 0..n {
-        sum += held[i];
-        if i > la {
-            sum -= held[i - la - 1];
+
+    fn push(&mut self, block: &[Vec<f32>]) -> Vec<Vec<f32>> {
+        for (w, c) in self.wait.iter_mut().zip(block) {
+            w.extend(c.iter().copied());
         }
-        let g = sum / (i.min(la) + 1) as f64;
-        lowest = lowest.min(g);
-        for c in chs.iter_mut() {
-            c[i] = (c[i] as f64 * g) as f32;
-        }
+        let peaks = self.peaks.push(&block.iter().map(|c| c.as_slice()).collect::<Vec<_>>());
+        self.needs_in(&peaks, false)
     }
-    -20.0 * lowest.max(1e-9).log10()
+
+    fn finish(&mut self) -> Vec<Vec<f32>> {
+        let peaks = self.peaks.finish();
+        self.needs_in(&peaks, true)
+    }
+
+    /// Each peak's need into the window; then every frame whose window is whole (`ended`: every frame left) out.
+    fn needs_in(&mut self, peaks: &[f64], ended: bool) -> Vec<Vec<f32>> {
+        let mut out = vec![vec![]; self.wait.len()];
+        for &p in peaks {
+            let need = if p > self.ceiling { self.ceiling / p } else { 1.0 };
+            while self.window.back().is_some_and(|&(_, v)| v >= need) {
+                self.window.pop_back();
+            }
+            self.window.push_back((self.needs, need));
+            self.needs += 1;
+            // Frame j's hold: the least need over [j, j + la].
+            if self.needs > self.la {
+                self.release(self.needs - 1 - self.la, &mut out);
+            }
+        }
+        if ended {
+            while self.held < self.needs {
+                self.release(self.held, &mut out);
+            }
+        }
+        out
+    }
+
+    /// Frame `j` (the next one) gets its gain: the held minimum, the recovery, the moving average over the look-ahead.
+    fn release(&mut self, j: usize, out: &mut [Vec<f32>]) {
+        while self.window.front().is_some_and(|&(k, _)| k < j) {
+            self.window.pop_front();
+        }
+        let h = self.window.front().expect("the window holds frame j").1;
+        let mut g = self.g;
+        g = if h < g { h } else { g + (1.0 - g) * self.rel };
+        g = g.min(h);
+        self.g = g;
+        self.sum += g;
+        self.recent.push_back(g);
+        if j > self.la {
+            self.sum -= self.recent.pop_front().expect("la + 2 gains");
+        }
+        let gain = self.sum / (j.min(self.la) + 1) as f64;
+        self.lowest = self.lowest.min(gain);
+        for (o, w) in out.iter_mut().zip(self.wait.iter_mut()) {
+            let x = w.pop_front().expect("a frame per need");
+            o.push((x as f64 * gain) as f32);
+        }
+        self.held += 1;
+    }
+
+    fn deepest(&self) -> f64 {
+        -20.0 * self.lowest.max(1e-9).log10()
+    }
 }
 
 /// Feed-forward compression linked across the channels, over the program's own loudness (soft
-/// knee, 6 dB); the detector is the BS.1770-weighted mean power (the LFE does not drive it). Returns its
-/// largest gain reduction (dB, ≥ 0).
-fn glue(chs: &mut [Vec<f32>], weights: &[f64], amount: f64, program: f64, sr: f64) -> f64 {
-    if amount <= 0.0 {
-        return 0.0;
-    }
-    let ratio = 1.0 + 3.0 * amount;
-    let threshold = program + 3.0;
-    let (att, rel) = (1.0 - (-1.0 / (0.025 * sr)).exp(), 1.0 - (-1.0 / (0.18 * sr)).exp());
-    let det = 1.0 - (-1.0 / (0.01 * sr)).exp();
-    let wsum: f64 = weights.iter().sum::<f64>().max(1e-9);
-    let n = chs.iter().map(|c| c.len()).min().unwrap_or(0);
-    let (mut ms, mut gr, mut deepest) = (0.0f64, 0.0f64, 0.0f64);
-    for i in 0..n {
-        let mut p = 0.0;
-        for (c, w) in chs.iter().zip(weights) {
-            let x = c[i] as f64;
-            p += w * x * x;
-        }
-        ms += det * (p / wsum - ms);
-        let lvl = 10.0 * ms.max(1e-12).log10();
-        let over = lvl - threshold;
-        let want = if over <= -3.0 { 0.0 } else if over < 3.0 { (1.0 / ratio - 1.0) * (over + 3.0).powi(2) / 12.0 } else { (1.0 / ratio - 1.0) * over };
-        gr += (if want < gr { att } else { rel }) * (want - gr);
-        deepest = deepest.min(gr);
-        let g = 10f64.powf(gr / 20.0);
-        for c in chs.iter_mut() {
-            c[i] = (c[i] as f64 * g) as f32;
-        }
-    }
-    -deepest
+/// knee, 6 dB); the detector is the BS.1770-weighted mean power (the LFE does not drive it). Block by block;
+/// `deepest` is its largest gain reduction (dB, ≥ 0).
+struct Glue {
+    weights: Vec<f64>,
+    wsum: f64,
+    ratio: f64,
+    threshold: f64,
+    att: f64,
+    rel: f64,
+    det: f64,
+    ms: f64,
+    gr: f64,
+    deepest: f64,
 }
 
-/// Masters a bed in place: glue, then gain to the target (BS.1770 with the layout's channel weights),
-/// then the true-peak limiter (linked: every channel under the ceiling); the gain is corrected and
-/// the chain re-run (from the glued signal) until the result is within 0.2 LU. Reports what it did (MasterReport).
-pub fn master_n(chs: &mut [Vec<f32>], weights: &[f64], spec: &MasterSpec, sr: f64) -> MasterReport {
-    let lufs = |chs: &[Vec<f32>]| integrated_lufs_n(&chs.iter().map(|c| c.as_slice()).collect::<Vec<_>>(), weights, sr);
-    let program = lufs(chs);
+impl Glue {
+    fn new(weights: &[f64], amount: f64, program: f64, sr: f64) -> Glue {
+        Glue {
+            weights: weights.to_vec(), wsum: weights.iter().sum::<f64>().max(1e-9), ratio: 1.0 + 3.0 * amount, threshold: program + 3.0,
+            att: 1.0 - (-1.0 / (0.025 * sr)).exp(), rel: 1.0 - (-1.0 / (0.18 * sr)).exp(), det: 1.0 - (-1.0 / (0.01 * sr)).exp(), ms: 0.0, gr: 0.0, deepest: 0.0,
+        }
+    }
+
+    fn block(&mut self, chs: &mut [Vec<f32>]) {
+        let n = chs.iter().map(|c| c.len()).min().unwrap_or(0);
+        for i in 0..n {
+            let mut p = 0.0;
+            for (c, w) in chs.iter().zip(&self.weights) {
+                let x = c[i] as f64;
+                p += w * x * x;
+            }
+            self.ms += self.det * (p / self.wsum - self.ms);
+            let lvl = 10.0 * self.ms.max(1e-12).log10();
+            let over = lvl - self.threshold;
+            let r = self.ratio;
+            let want = if over <= -3.0 { 0.0 } else if over < 3.0 { (1.0 / r - 1.0) * (over + 3.0).powi(2) / 12.0 } else { (1.0 / r - 1.0) * over };
+            self.gr += (if want < self.gr { self.att } else { self.rel }) * (want - self.gr);
+            self.deepest = self.deepest.min(self.gr);
+            let g = 10f64.powf(self.gr / 20.0);
+            for c in chs.iter_mut() {
+                c[i] = (c[i] as f64 * g) as f32;
+            }
+        }
+    }
+}
+
+/// A signal the mastering stage reads block by block, as often as it needs (the same frames every time).
+pub type Source<'a> = &'a dyn Fn(usize, usize) -> Result<Vec<Vec<f32>>, String>;
+
+/// The source's integrated loudness, read through once.
+fn lufs_of(read: Source, nch: usize, total: usize, weights: &[f64], sr: f64) -> Result<f64, String> {
+    let mut m = Lufs::new(nch, weights, sr);
+    for at in (0..total).step_by(BLOCK) {
+        let b = read(at, BLOCK.min(total - at))?;
+        m.push(&b.iter().map(|c| c.as_slice()).collect::<Vec<_>>());
+    }
+    Ok(m.finish())
+}
+
+/// The source through `gain` and the limiter into a new spool; with `measure`, the result's loudness too.
+fn limited(read: Source, nch: usize, total: usize, gain: Option<f32>, ceiling: f64, sr: f64, on_disk: bool, measure: Option<&[f64]>) -> Result<(Spool, f64, Option<f64>), String> {
+    let mut lim = Limiter::new(nch, ceiling, sr);
+    let mut out = Spool::new(nch, total, on_disk)?;
+    let mut meter = measure.map(|w| Lufs::new(nch, w, sr));
+    let mut emit = |b: Vec<Vec<f32>>, out: &mut Spool| -> Result<(), String> {
+        if b.first().is_some_and(|c| !c.is_empty()) {
+            if let Some(m) = &mut meter {
+                m.push(&b.iter().map(|c| c.as_slice()).collect::<Vec<_>>());
+            }
+            out.push(&b)?;
+        }
+        Ok(())
+    };
+    for at in (0..total).step_by(BLOCK) {
+        let mut b = read(at, BLOCK.min(total - at))?;
+        if let Some(g) = gain {
+            b.iter_mut().for_each(|c| c.iter_mut().for_each(|v| *v *= g));
+        }
+        let o = lim.push(&b);
+        emit(o, &mut out)?;
+    }
+    let o = lim.finish();
+    emit(o, &mut out)?;
+    Ok((out.done()?, lim.deepest(), meter.map(Lufs::finish)))
+}
+
+/// Masters a signal of `total` frames: glue, then gain to the target (BS.1770 with the layout's channel weights),
+/// then the true-peak limiter (linked: every channel under the ceiling); the gain is corrected and the chain re-run
+/// (from the glued signal) until the result is within 0.2 LU. Block by block: the glued signal and each pass's result
+/// are spooled (`on_disk`: on disk), so a whole song is never in memory. The mastered signal and what it did (MasterReport).
+pub fn master_blocks(read: Source, nch: usize, total: usize, weights: &[f64], spec: &MasterSpec, sr: f64, on_disk: bool) -> Result<(Spool, MasterReport), String> {
+    let program = lufs_of(read, nch, total, weights, sr)?;
     // A little under the ceiling: encoders (mp3, aac) and other meters read inter-sample peaks a few tenths higher.
     let ceiling = 10f64.powf((spec.true_peak - 0.3) / 20.0);
     if program <= -69.0 {
         // No integrated loudness to read (silence, or under the 400 ms gate: a UI click): the ceiling still holds.
-        return MasterReport { limiter_db: limit(chs, ceiling, sr), ..Default::default() };
+        let (out, limiter_db, _) = limited(read, nch, total, None, ceiling, sr, on_disk, None)?;
+        return Ok((out, MasterReport { limiter_db, ..Default::default() }));
     }
-    let glue_db = glue(chs, weights, spec.glue, program, sr);
-    let src: Vec<Vec<f32>> = chs.to_vec();
-    let mut gain_db = spec.loudness.map_or(0.0, |t| t - lufs(chs));
-    let mut report = MasterReport { glue_db, ..Default::default() };
-    for pass in 0..4 {
-        let g = 10f64.powf(gain_db / 20.0) as f32;
-        for (c, s) in chs.iter_mut().zip(&src) {
-            for i in 0..c.len() {
-                c[i] = s[i] * g;
+    // The glued signal, spooled (with no glue: the source itself), and its loudness on the way.
+    let mut glued = None;
+    let mut glue_db = 0.0;
+    let mut glued_lufs = None;
+    if spec.glue > 0.0 {
+        let mut g = Glue::new(weights, spec.glue, program, sr);
+        let mut sp = Spool::new(nch, total, on_disk)?;
+        let mut m = spec.loudness.map(|_| Lufs::new(nch, weights, sr));
+        for at in (0..total).step_by(BLOCK) {
+            let mut b = read(at, BLOCK.min(total - at))?;
+            g.block(&mut b);
+            if let Some(m) = &mut m {
+                m.push(&b.iter().map(|c| c.as_slice()).collect::<Vec<_>>());
             }
+            sp.push(&b)?;
         }
-        (report.gain_db, report.limiter_db) = (gain_db, limit(chs, ceiling, sr));
-        let Some(target) = spec.loudness else { break };
-        let got = lufs(chs);
+        glue_db = -g.deepest;
+        glued_lufs = m.map(Lufs::finish);
+        glued = Some(sp.done()?);
+    }
+    let from_glued = |at: usize, n: usize| glued.as_ref().expect("glued").read(at, n);
+    let src: Source = if glued.is_some() { &from_glued } else { read };
+    let mut gain_db = match (spec.loudness, glued_lufs) {
+        (None, _) => 0.0,
+        (Some(t), Some(l)) => t - l,
+        (Some(t), None) => t - lufs_of(src, nch, total, weights, sr)?,
+    };
+    let mut report = MasterReport { glue_db, ..Default::default() };
+    let mut pass = 0;
+    loop {
+        let g = 10f64.powf(gain_db / 20.0) as f32;
+        let (out, limiter_db, got) = limited(src, nch, total, Some(g), ceiling, sr, on_disk, spec.loudness.map(|_| weights))?;
+        (report.gain_db, report.limiter_db) = (gain_db, limiter_db);
+        let (Some(target), Some(got)) = (spec.loudness, got) else { return Ok((out, report)) };
         if (got - target).abs() <= 0.2 || pass == 3 {
-            break;
+            return Ok((out, report));
         }
         gain_db += target - got;
+        pass += 1;
+    }
+}
+
+/// Masters a bed in memory, in place (bed/ fold-downs, tests): `master_blocks` over it.
+pub fn master_n(chs: &mut [Vec<f32>], weights: &[f64], spec: &MasterSpec, sr: f64) -> MasterReport {
+    let total = chs.iter().map(|c| c.len()).min().unwrap_or(0);
+    let src: &[Vec<f32>] = chs;
+    let read = |at: usize, n: usize| Ok(src.iter().map(|c| c[at..at + n].to_vec()).collect());
+    let (out, report) = master_blocks(&read, chs.len(), total, weights, spec, sr, false).expect("mastering in memory cannot fail");
+    for (c, o) in chs.iter_mut().zip(out.into_whole().expect("in memory")) {
+        c[..total].copy_from_slice(&o);
     }
     report
 }

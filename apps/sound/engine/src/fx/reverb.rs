@@ -6,7 +6,7 @@ use std::f64::consts::PI;
 use super::dsp::each;
 
 /// Four parallel feedback combs per channel, cross-mixed; "shimmer" adds an octave tap and wobble.
-/// Stereo is the original two sides; a surround bed's mains (the LFE stays dry: `reverb_bed`) each
+/// Stereo is the original two sides; a surround bed's mains (the LFE stays dry: `BedReverb`) each
 /// get comb lengths of their own and are fed half their own signal, half the mains' sum (÷√n), so a
 /// source in one speaker still fills the room.
 pub struct Reverb {
@@ -104,11 +104,6 @@ impl Reverb {
             x[side] = x[side] * self.dry + (self.sums[side] * 0.8 + others * 0.2) * self.wet;
         }
     }
-}
-
-/// A reverb over a bed's mains (the LFE stays dry); stereo is the stereo reverb.
-pub fn reverb_bed(bed: &mut [Vec<f32>], layout: crate::bed::Layout, space: &str, wet: f64, sr: f64) {
-    BedReverb::new(bed.len(), layout, space, wet, sr).block(bed);
 }
 
 /// A track's reverb send over a bed of `channels` (stereo: both sides; a bed: its mains), its tail kept

@@ -8,11 +8,10 @@ import RostrumKit
 Panel {
     id: p
     title: "Inspector"
-    Text { id: name; text: backend.docName; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.heading
-           font.weight: Font.DemiBold; anchors.left: parent.left; anchors.right: parent.right; elide: Text.ElideRight
-           HoverHandler { id: nameHover }
-           HoverTip { text: name.truncated ? name.text : ""; hovered: nameHover.hovered } }
-    Text { id: kind; text: "Song"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
+    NameLabel { id: name; text: backend.docName; font.pixelSize: Theme.heading
+                font.weight: Font.DemiBold; anchors.left: parent.left; anchors.right: parent.right }
+    Text { id: kind; text: songPanel.mainMix === "main" ? "Song · Main mix" : "Song"
+           color: songPanel.mainMix === "main" ? Theme.accent : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
            anchors.top: name.bottom; anchors.topMargin: 2 }
     Flickable {
         anchors { left: parent.left; right: parent.right; top: kind.bottom; bottom: parent.bottom; topMargin: Theme.gap }
@@ -35,6 +34,12 @@ Panel {
                                                      .map(m => ({ value: m, label: m.charAt(0).toUpperCase() + m.slice(1) }))
                                   current: songPanel.key.mode; onPicked: (v) => songPanel.setKey(songPanel.key.tonic, v) }
                 }
+            }
+            Item {   // not the main mix yet: the one action for it (absent once it is, the title says so)
+                visible: songPanel.mainMix === "other"
+                width: parent.width; height: visible ? Theme.row + Theme.grid : 0
+                Button { anchors.verticalCenter: parent.verticalCenter; text: "Make this the main mix"
+                         onClicked: songPanel.makeMain() }
             }
             Repeater { model: songPanel.rows; delegate: InspectorRow { bridge: songPanel } }
             Text {

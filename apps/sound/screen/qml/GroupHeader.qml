@@ -40,12 +40,11 @@ Rectangle {
         HoverTip { text: (h.track.folded ? "Show the tracks" : "Fold the tracks away") + ". Alt+click: all groups"
                    hovered: arrowArea.containsMouse; pressed: arrowArea.pressed }
     }
-    Text {
+    NameLabel {
         id: nameText
         x: arrow.x + arrow.width + 2; width: count.x - x - Theme.gap; anchors.verticalCenter: parent.verticalCenter
-        text: h.track.name; elide: Text.ElideRight; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold
+        text: h.track.name; font.pixelSize: Theme.label; font.weight: Font.DemiBold
         color: h.track.mute ? Theme.fg3 : Theme.fg
-        HoverTip { text: nameText.truncated ? h.track.name : ""; hovered: hover.hovered }     // a cut name, whole
     }
     Text {
         id: count

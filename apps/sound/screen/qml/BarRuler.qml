@@ -1,41 +1,40 @@
 import QtQuick
 import RostrumKit
 
-// Bars and beats along a width, from the song's tempo map (song.beats: every beat's time, so tempo changes move
-// the ticks) and beats per bar: a number at each labelled bar (its
-// start in seconds after it, dimmer), beat ticks, the playhead's head. Press or drag sets the time.
-// With a track armed and punch on (the take panel), the punch range is shaded here too: a drag across the ruler
-// sets it, its edges drag (takeSetup.setPunch: a quarter beat grid, Ctrl = free; screen state, not an edit).
-// xOf(t) / tOf(x) are the one mapping the rows, markers and piano roll use too: backend.viewStart and
-// backend.viewSpan (the zoom and scroll) are the one place that says which stretch of the song is on screen.
-// The range band (the top `band` px, INTERACTION.md §1.6): drag on it for the time range (backend.setRange: snapped
-// to the grid, Ctrl = free; screen state, shaded here and faintly over the rows by the host); double-click clears it.
-// Below it, the time scale: click or drag moves the playhead (scrub). Right-click: the ruler's menu (menuAt).
-// Wheel: Ctrl zooms around the pointer, Shift or a sideways swipe scrolls (the one rule, in backend.viewWheel).
+// The song's ruler: the kit's Ruler (range band, seconds scale, playhead, scrub, the wheel's zoom and scroll through
+// backend.timeView) with Sound's bars on its upper line, plus what is Sound's own: the punch range (with a take
+// armed and punch on: a drag across the scale sets it, its edges drag; takeSetup.setPunch, a quarter beat grid,
+// Ctrl = free; screen state, not an edit) and the right-click menu (menuAt). The range band's drag is one
+// backend.setRange (snapped to the grid); double-click clears it. xOf(t) / tOf(x) are the one mapping the rows,
+// markers and piano roll use too, the kit's, following backend.timeView.
 Item {
     id: r
     signal menuAt(real t, real x, real y)
-    readonly property int band: 7
+    readonly property int band: kit.bandH
     readonly property var range: backend.timeRange
     readonly property var song: backend.song
     readonly property real length: song.length
     readonly property real barSec: song.spb * song.beatsPerBar
     readonly property real start: backend.viewStart
-    readonly property real perSec: width / Math.max(backend.viewSpan, 0.001)
+    readonly property real perSec: kit.perSec
     function visibleX(x) { return x >= -1 && x <= width + 1 }
     readonly property real barPx: barSec * perSec
     readonly property int every: [1, 2, 4, 8, 16, 32].find(n => n * barPx >= 64) || 64   // bars per label
-    readonly property bool showSeconds: every * barPx >= 92
-    function xOf(t) { return (t - start) * perSec }         // a time → where it is drawn
-    function wOf(dur) { return dur * perSec }               // a length → how wide (never shifted by the scroll)
-    function tOf(x) { return Math.max(0, Math.min(length, start + x / perSec)) }
+    function xOf(t) { return kit.xOf(t) }                    // a time → where it is drawn
+    function wOf(dur) { return dur * perSec }                // a length → how wide (never shifted by the scroll)
+    function tOf(x) { return kit.tOf(x) }
     readonly property var punch: typeof takeSetup !== "undefined" ? takeSetup.punchRange : []
     readonly property bool punchOn: punch.length === 2
     function punchEdge(x) {                                  // 1: the in edge under x, 2: the out edge, 0: neither
         if (!punchOn) return 0
         return Math.abs(x - xOf(punch[0])) <= 5 ? 1 : Math.abs(x - xOf(punch[1])) <= 5 ? 2 : 0
     }
-    implicitHeight: 22
+    readonly property var barMarks: {   // "Bar 5" at every `every`-th bar
+        var out = [], per = song.beatsPerBar * every
+        for (var i = 0; i * per < song.beats.length; i++) out.push({ at: song.beats[i * per], text: "Bar " + (i * every + 1) })
+        return out
+    }
+    implicitHeight: kit.implicitHeight
     clip: true
 
     Rectangle {  // the punch range, with its two edges to drag
@@ -47,76 +46,42 @@ Item {
         Rectangle { width: 3; height: parent.height; color: Theme.danger }
         Rectangle { x: parent.width - 3; width: 3; height: parent.height; color: Theme.danger }
     }
-    Repeater {   // beat ticks (when they are far enough apart), bar ticks taller
-        model: r.song.beats
-        delegate: Rectangle {
-            required property int index
-            required property real modelData
-            readonly property bool bar: index % r.song.beatsPerBar === 0
-            readonly property real gap: index + 1 < r.song.beats.length ? r.song.beats[index + 1] - modelData : r.song.spb
-            visible: (bar || gap * r.perSec >= 10) && r.visibleX(x)
-            x: Math.round(r.xOf(modelData)); y: r.height - height
-            width: 1; height: bar ? 8 : 4; color: bar ? Theme.lineHover : Theme.line
-        }
+    Ruler {
+        id: kit
+        anchors.fill: parent
+        duration: r.length; fps: 1000                        // (whole milliseconds: the grid does the snapping)
+        value: backend.time; view: backend.timeView; upper: r.barMarks
+        rangeBand: true; range: r.range.length === 2 ? { start: r.range[0], end: r.range[1] } : null
+        onScrubbed: (t) => backend.setTime(t)
+        onRangeSet: (a, b) => backend.setRange(a, b, false)
+        onRangeCleared: backend.clearRange()
     }
-    Repeater {   // labels
-        model: Math.floor((r.song.beats.length - 1) / (r.song.beatsPerBar * r.every)) + 1
-        delegate: Row {
-            required property int index
-            readonly property real t: r.song.beats[index * r.every * r.song.beatsPerBar] || 0
-            x: Math.round(r.xOf(t)) + 4; y: r.band - 1; spacing: 5
-            visible: r.xOf(t) >= -4 && r.xOf(t) < r.width - 20      // a label that would be cut at the left is left out
-            Text { text: index * r.every + 1; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
-                   font.features: { "tnum": 1 } }
-            Text { visible: r.showSeconds; text: (Math.round(parent.t * 10) / 10) + " s"; color: Theme.fg4
-                   font.family: uiFont; font.pixelSize: Theme.label - 1; font.features: { "tnum": 1 }
-                   anchors.baseline: parent.children[0].baseline }
-        }
-    }
-    MouseArea {
+    MouseArea {   // above the kit's: the right-click menu, and the punch range while a take is armed with punch on
         anchors.fill: parent
         preventStealing: true
-        hoverEnabled: true
-        property int mode: 0                 // 0: the time, 1: a new punch range, 2: its in edge, 3: its out edge, 4: a time range
+        property int mode: -1                // 0: the time, 1: a new punch range, 2: its in edge, 3: its out edge
         property real x0: 0
         property real other: 0               // the edge that stays while one is dragged
-        cursorShape: r.punchEdge(mouseX) || mouseY < r.band ? Qt.SizeHorCursor : Qt.PointingHandCursor
+        cursorShape: r.punchEdge(mouseX) ? Qt.SizeHorCursor : Qt.ArrowCursor
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        onDoubleClicked: (m) => { if (m.y < r.band) backend.clearRange() }
         onPressed: (m) => {
             x0 = m.x
             if (m.button === Qt.RightButton) { mode = -1; r.menuAt(r.tOf(m.x), m.x, m.y); return }
-            if (m.y < r.band) { mode = 4; return }
+            if (!r.punchOn || m.y < r.band) { m.accepted = false; return }       // the kit's (scrub, range band)
             var e = r.punchEdge(m.x)
             mode = e ? e + 1 : 0
             if (e) other = r.punch[e === 1 ? 1 : 0]
             else backend.setTime(r.tOf(m.x))
         }
         onPositionChanged: (m) => {
-            if (!pressed) return
+            if (!pressed || mode < 0) return
             var free = (m.modifiers & Qt.ControlModifier) !== 0       // Ctrl = no snapping (DESIGN.md §5)
-            if (mode === 0 && r.punchOn && Math.abs(m.x - x0) > 6) mode = 1
+            if (mode === 0 && Math.abs(m.x - x0) > 6) mode = 1
             if (mode === 0) backend.setTime(r.tOf(m.x))                  // the scale: scrub
             else if (mode === 1) takeSetup.setPunch(r.tOf(x0), r.tOf(m.x), free)
-            else if (mode === 4 && Math.abs(m.x - x0) >= 4) backend.setRange(r.tOf(x0), r.tOf(m.x), free)
-            else if (mode === 2 || mode === 3) takeSetup.setPunch(r.tOf(m.x), other, free)
+            else takeSetup.setPunch(r.tOf(m.x), other, free)
         }
-        onReleased: mode = 0
-        onWheel: (w) => backend.viewWheel(w.angleDelta.x, w.angleDelta.y, (w.modifiers & Qt.ControlModifier) !== 0,
-                                          (w.modifiers & Qt.ShiftModifier) !== 0, w.x / r.width, false)
-    }
-    Rectangle {   // the range band: a faint strip, the time range strong in it
-        width: r.width; height: r.band; color: Qt.rgba(1, 1, 1, 0.03)
-        Rectangle {
-            visible: r.range.length === 2
-            x: visible ? Math.max(0, r.xOf(r.range[0])) : 0; height: parent.height; radius: 2
-            width: visible ? Math.max(2, Math.min(r.width, r.xOf(r.range[1])) - x) : 0
-            color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, backend.looping ? 0.85 : 0.5)
-        }
-    }
-    Rectangle {  // the playhead: a line through the ruler, its head at the top
-        visible: r.visibleX(x)
-        x: Math.round(r.xOf(backend.time)); width: 1; height: r.height; color: Theme.accent
-        Rectangle { x: -4; y: 0; width: 9; height: 8; radius: 2; color: Theme.accent }
+        onReleased: mode = -1
+        onWheel: (w) => { w.accepted = false }
     }
 }

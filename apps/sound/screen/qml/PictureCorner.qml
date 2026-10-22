@@ -22,9 +22,9 @@ Panel {
     height: Theme.header + Math.round((width - 2 * bodyPad) * 9 / 16) + Theme.gap + Theme.button + bodyPad
             + (startRow.visible ? Theme.gap + Theme.field : 0)
     headerRight: [
-        Text { anchors.verticalCenter: parent.verticalCenter; visible: backend.pictureChoice !== ""
-               text: backend.pictureName; elide: Text.ElideMiddle
-               width: Math.min(implicitWidth, pc.width - 140); color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+        NameLabel { anchors.verticalCenter: parent.verticalCenter; visible: backend.pictureChoice !== ""
+                    text: backend.pictureName; elide: Text.ElideMiddle
+                    width: Math.min(implicitWidth, pc.width - 140); color: Theme.fg3; font.pixelSize: Theme.label }
     ]
 
     function openItems() { items.open() }

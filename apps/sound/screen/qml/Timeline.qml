@@ -85,7 +85,7 @@ Rectangle {
     BarRuler {
         id: bars
         x: tl.headerWidth + Theme.gap * 2; width: tl.width - x - Theme.pad
-        y: songBand.y + songBand.height + (songBand.visible ? 2 : 0); height: 22
+        y: songBand.y + songBand.height + (songBand.visible ? 2 : 0); height: implicitHeight
     }
     Flickable {
         id: list
@@ -172,10 +172,9 @@ Rectangle {
                text: { var r = tl.rows.find(x => x.id === tl.dragId); return r ? r.name : "" }
                elide: Text.ElideRight; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.label }
     }
-    HScroll { id: scrollbar; x: bars.x; width: bars.width; y: tl.height - height - Theme.grid }
+    HScroll { id: scrollbar; view: backend.timeView; x: bars.x; width: bars.width; y: tl.height - height - Theme.grid }
 
     // ---- the selection's marks: the time range, the snap line, the context bar, the right-click menu ---------
-    readonly property color snapColour: "#ff4fd8"       // the snap line's magenta (INTERACTION.md §1.11; the kit's later)
     function rowSpan(id) {   // {top, bottom} of a track's row in the Timeline's px (scrolled), or null
         var top = 0
         for (var i = 0; i < rows.length; i++) {
@@ -201,13 +200,11 @@ Rectangle {
         height: list.y + Math.min(list.height, column.height - list.contentY) - y      // down to the last row
         color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.07)     // faint over the rows (the band shows it strongly)
     }
-    Rectangle {   // what a drag snapped to: a thin line (a marker's name beside it; the grid faint)
+    Item {   // what a drag snapped to: the kit's snap line (a marker's or the playhead's name in its chip)
+        x: bars.x; y: bars.y; width: bars.width; height: list.y + list.height - y
         readonly property var s: backend.snapLine
-        visible: s.t !== undefined && lanes.busy && bars.visibleX(bars.xOf(s.t))
-        x: visible ? bars.x + Math.round(bars.xOf(s.t)) : 0; y: bars.y; width: 1; height: list.y + list.height - y
-        color: tl.snapColour; opacity: s.name ? 0.95 : 0.5
-        Text { visible: !!parent.s.name; x: 4; y: 2; text: parent.s.name || ""; color: tl.snapColour
-               font.family: uiFont; font.pixelSize: Theme.label }
+        SnapLine { visible: !!parent.s.name && lanes.busy && bars.visibleX(bars.xOf(parent.s.t))
+                   at: bars.xOf(parent.s.t || 0); name: parent.s.name || "" }
     }
     ContextBar {   // the kit's: a fixed place, the header strip's centre, so it never covers a clip or a note
         id: cbar       // (INTERACTION.md §1.2: top centre of the arrangement; Sound's header is that top)

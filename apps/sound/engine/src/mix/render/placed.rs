@@ -4,9 +4,10 @@
 
 use std::sync::Arc;
 
-use super::stats::{track_stats, TrackStats};
+use super::stats::{track_stats, TrackMeter, TrackStats};
 use crate::mix::duck::{self, DuckSpan};
 use crate::mix::schedule::Schedule;
+use crate::mix::spool::CHUNK;
 use crate::mix::tape::{Tape, BLOCK};
 
 pub(super) struct Placed {
@@ -36,6 +37,15 @@ fn place(s: &Schedule, outs: &[Arc<Tape>], k: usize, keep: bool, buf: usize) -> 
         return Ok(Placed { duck: None, stats: None, ducked: None });
     }
     let sr = s.sample_rate as f64;
+    if track.ducks.is_empty() {
+        // Measured from its tape, block by block.
+        let mut m = TrackMeter::new(&track.name, outs[k].channels(), s.total_samples, sr, s.layout);
+        for at in (0..s.total_samples).step_by(CHUNK) {
+            m.push(&outs[k].read(at, CHUNK.min(s.total_samples - at))?);
+        }
+        return Ok(Placed { duck: None, stats: Some(m.finish()), ducked: None });
+    }
+    // A duck follows the level of other tracks over the whole song (duck.rs): this track is ducked whole.
     let mut chs = outs[k].whole()?;
     let mut dips: Vec<DuckSpan> = vec![];
     let mut report = false;
@@ -52,7 +62,7 @@ fn place(s: &Schedule, outs: &[Arc<Tape>], k: usize, keep: bool, buf: usize) -> 
         (track.name.clone(), dips)
     });
     let stats = track.mix.then(|| track_stats(&track.name, &chs, s.total_samples, sr, s.layout));
-    let ducked = if !track.ducks.is_empty() && (track.mix || keep) { Some(Arc::new(Tape::spill(&chs)?)) } else { None };
+    let ducked = if track.mix || keep { Some(Arc::new(Tape::spill(&chs)?)) } else { None };
     Ok(Placed { duck, stats, ducked })
 }
 

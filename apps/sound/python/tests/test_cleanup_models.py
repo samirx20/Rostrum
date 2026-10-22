@@ -3,7 +3,9 @@ silently). Runs the real model on the CPU (1.5 s of audio); skipped where it is 
 import numpy as np
 import pytest
 
-from rostrum_sound.cleanup import models, noise
+# The clean-up models run on onnxruntime, an optional package: without it the test says so and is skipped.
+pytest.importorskip("onnxruntime", reason="the optional clean-up package onnxruntime is not installed")
+from rostrum_sound.cleanup import models, noise  # noqa: E402
 
 
 def _have(m):

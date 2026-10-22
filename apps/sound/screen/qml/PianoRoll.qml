@@ -42,7 +42,7 @@ Panel {
     BarRuler {
         id: bars
         visible: p.kind !== "none" && p.kind !== "empty"
-        x: p.keysWidth; width: parent.width - x; height: 22
+        x: p.keysWidth; width: parent.width - x; height: implicitHeight
     }
     Rectangle {
         id: well
@@ -91,13 +91,11 @@ Panel {
             width: visible ? Math.max(1, Math.min(bars.width, bars.xOf(r[1])) - Math.max(0, bars.xOf(r[0]))) : 0
             color: Theme.accentSoft
         }
-        Rectangle {   // what a drag snapped to
+        Item {   // what a drag snapped to: the kit's snap line over the roll
+            x: p.keysWidth; width: bars.width; height: well.height
             readonly property var s: backend.snapLine
-            visible: s.t !== undefined && input.busy && bars.visibleX(bars.xOf(s.t))
-            x: visible ? p.keysWidth + Math.round(bars.xOf(s.t)) : 0; width: 1; height: well.height
-            color: "#ff4fd8"; opacity: s.name ? 0.95 : 0.5          // magenta: what it caught (INTERACTION.md §1.11)
-            Text { visible: !!parent.s.name; x: 4; y: 2; text: parent.s.name || ""; color: "#ff4fd8"
-                   font.family: uiFont; font.pixelSize: Theme.label }
+            SnapLine { visible: !!parent.s.name && input.busy && bars.visibleX(bars.xOf(parent.s.t))
+                       at: bars.xOf(parent.s.t || 0); name: parent.s.name || "" }
         }
         ContextBar {   // the kit's: a fixed place, the Editor's top centre = the dock's tab row (INTERACTION.md §1.2)
             parent: p.barSlot || well

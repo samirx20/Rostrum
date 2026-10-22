@@ -1,6 +1,6 @@
-"""What would break silently on the Timeline: zooming never leaves the song (and zooming out all the way is "fit"
-again), an automation point drag is one undo step that keeps the points in time order, the picture is a document field
-that survives save and load, and a missing picture file is refused loudly."""
+"""What would break silently on the Timeline: the song keeps room to write in, an automation point drag is one undo
+step that keeps the points in time order, the picture is a document field that survives save and load, and a missing
+picture file is refused loudly. (Zoom and scroll are the kit's TimeView, tested there.)"""
 import sys
 from pathlib import Path
 
@@ -8,21 +8,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from screensound.steps_view import point  # noqa: E402
-from screensound.view import View  # noqa: E402
 from test_screen import bridge  # noqa: E402,F401  (the screen's fixture: a small song, a stand-in engine)
 
 
-def test_zoom_stays_inside_the_song_and_fit_returns():
-    v = View()
-    v.zoom(4, 0.9, 20.0)
-    assert not v.fit and 0 <= v.start and v.start + v.span(20.0) <= 20.0 + 1e-9
-    v.scroll(100, 20.0)
-    assert v.start + v.span(20.0) == pytest.approx(20.0)
-    v.zoom(0.01, 0.5, 20.0)
-    assert v.fit and v.start == 0 and v.span(20.0) == 20.0
-
-
-def test_song_keeps_room_to_write_and_fit_to_notes_stays_inside():
+def test_song_keeps_room_to_write():
     from screensound import timeline
     bar = 4 * 0.6                                           # 100 bpm, 4/4
     root = {"tempo": 100, "beatsPerBar": 4, "tracks": [{"id": "t", "notes": [
@@ -30,11 +19,6 @@ def test_song_keeps_room_to_write_and_fit_to_notes_stays_inside():
     assert timeline.song(root)["length"] == pytest.approx(8 * bar)       # a short phrase: still 8 bars to write in
     root["tracks"][0]["notes"][0]["at"] = {"beat": 40}                  # 10 bars in: the last bar + 2 spare bars
     assert timeline.song(root)["length"] == pytest.approx(13 * bar)
-    v = View()
-    v.fit_to(4.0, 6.0, 19.2)
-    assert not v.fit and v.auto and 0 <= v.start and v.start + v.span(19.2) <= 19.2 + 1e-9
-    v.zoom(2, 0.5, 19.2)
-    assert not v.auto                                                    # a person's zoom is theirs
 
 
 def test_automation_drag_is_one_undo_step_in_time_order(bridge):  # noqa: F811

@@ -135,15 +135,17 @@ fn fader(bus: &Bus, chs: &mut [Vec<f32>], sr: f64) {
     }
 }
 
-/// The buses mixed and their outputs added into `master` (the summed direct tracks): `outs[k]` is track k's
-/// output when it feeds a bus, `pres[k]` its pre-fader tap (both on disk, read one track at a time). Returns
-/// each bus' figures, in schedule order, and (when `keep`) each bus' output as a stem, `total` long, on disk.
+/// The buses mixed: `outs[k]` is track k's output when it feeds a bus, `pres[k]` its pre-fader tap (both on disk,
+/// read one track at a time), `buf` frames each. Returns each bus' figures, in schedule order, (when `keep`) each
+/// bus' output as a stem, `total` long, and the outputs that reach the master, in the order they are added to it
+/// (after the direct tracks), all on disk.
 pub type BusStems = Vec<(String, Arc<Tape>)>;
-pub fn mix(s: &Schedule, outs: Vec<Option<Arc<Tape>>>, pres: &[Option<Tape>], master: &mut [Vec<f32>], keep: bool) -> Result<(Vec<TrackStats>, BusStems), String> {
+pub fn mix(s: &Schedule, outs: Vec<Option<Arc<Tape>>>, pres: &[Option<Tape>], buf: usize, keep: bool) -> Result<(Vec<TrackStats>, BusStems, Vec<Arc<Tape>>), String> {
     if s.buses.is_empty() || matches!(s.tap, Some(Tap { bus: None })) {
-        return Ok((vec![], vec![]));
+        return Ok((vec![], vec![], vec![]));
     }
-    let (sr, layout, buf) = (s.sample_rate as f64, s.layout, master[0].len());
+    let (sr, layout) = (s.sample_rate as f64, s.layout);
+    let mut master = vec![];
     let order = order(s)?;
     let mut inputs: Vec<Vec<Vec<f32>>> = s.buses.iter().map(|_| vec![vec![0.0f32; buf]; layout.channels()]).collect();
     for (k, t) in s.tracks.iter().enumerate() {
@@ -174,11 +176,11 @@ pub fn mix(s: &Schedule, outs: Vec<Option<Arc<Tape>>>, pres: &[Option<Tape>], ma
             stems.push((bus.name.clone(), Arc::new(Tape::spill(&cut)?)));
         }
         match (s.tap, bus.output) {
-            (Some(Tap { bus: Some(tapped) }), _) if tapped == b => add(master, &chs, None, sr),
+            (Some(Tap { bus: Some(tapped) }), _) if tapped == b => master.push(Arc::new(Tape::spill(&chs)?)),
             (Some(_), None) => {}
-            (None, None) => add(master, &chs, None, sr),
+            (None, None) => master.push(Arc::new(Tape::spill(&chs)?)),
             (_, Some(parent)) => add(&mut inputs[parent], &chs, None, sr),
         }
     }
-    Ok((stats.into_iter().flatten().collect(), stems))
+    Ok((stats.into_iter().flatten().collect(), stems, master))
 }

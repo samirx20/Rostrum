@@ -14,6 +14,8 @@ from rostrum_gui.action_hub import ActionHub
 from rostrum_gui.action_views import commands as do_commands
 from rostrum_sound.doc import select_time as ST
 
+from rostrum_sound import main_mix
+
 from . import action_calls as C
 from . import voice_actions as V
 from . import clipboard, timing
@@ -50,6 +52,7 @@ class ActionSlots:
     libraryWanted = Signal(str)       # "Place a sound here": the Library opens on this chip
     cleanWanted = Signal()            # "Clean up…": the host opens the clean-up popover
     askWanted = Signal(str, str, float)   # an action asks one number first (Land a bar here: "Bar", the nearest)
+    mainMixChanged = Signal()         # the main-mix mark moved (the Song panel's mark and button re-read)
     voiceWanted = Signal(str)         # a voice track's lines need their speech made (editor_side starts the job)
 
     def _refuse(self, line):
@@ -116,10 +119,25 @@ class ActionSlots:
                     self.voiceWanted.emit(track)
         elif name == "addline":                                 # Add line at playhead: the box opens in the lane
             self.side.startTyping(ids[0], self._t)
+        elif name == "hear_back":                               # H let go: the other side back (the press flipped it)
+            self._hub.run("before_after")
+        elif name == "mainmix":                                 # a mark on the project, not a song edit: no undo step
+            self.makeMainMix()
         elif name == "fit":
             self.askWanted.emit("fit_bar", "Bar", float(C.bar_near(self._facts())))
         else:
             raise ValueError(f'action {entry["id"]}: RostrumSound has no "{name}" action')
+
+    @Slot(result=bool)
+    def makeMainMix(self):
+        """Make this song the project's main mix (main_mix.make_main, the run_set_main_mix tool's one door)."""
+        def go():
+            r = main_mix.make_main(self.doc.folder, self.doc.item_id)
+            self.say(f'"{r["name"]}" is now the main mix')
+            self.mainMixChanged.emit()
+            self._hub.refresh()
+            return True
+        return self._guard(go)
 
     @Slot(str, float, result=bool)
     def landBar(self, _key, bar):

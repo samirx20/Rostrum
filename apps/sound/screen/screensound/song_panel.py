@@ -16,6 +16,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui import rows
 from rostrum_gui.edits import Scrub, edit_label
 from rostrum_gui.model import RowsModel
+from rostrum_sound import main_mix
 
 from . import song_edit
 
@@ -37,6 +38,7 @@ class SongPanel(QObject):
         self._more, self._scrub = False, None
         self._refresh()
         bridge.docChanged.connect(self._refresh)
+        bridge.mainMixChanged.connect(self.changed)
 
     @property
     def _root(self) -> str:
@@ -56,6 +58,17 @@ class SongPanel(QObject):
         """{tonic, mode, set}: the key at the start of the song (set false: the song has no key yet)."""
         st = song_edit.state(self.doc.data, None, 0.0)
         return {"tonic": st["tonic"] if st["hasKey"] else "", "mode": st["mode"], "set": st["hasKey"]}
+
+    @Property(str, notify=changed)
+    def mainMix(self):
+        """"main" (this song is the project's main mix: the panel marks it), "other" (the panel offers "Make this the
+        main mix") or "" (the song is not in a project folder yet)."""
+        f = self.doc.folder
+        return "" if not f else "main" if main_mix.is_main(f, self.doc.item_id) else "other"
+
+    @Slot()
+    def makeMain(self):
+        self.bridge.makeMainMix()
 
     # ---- what an InspectorRow calls on its bridge -----------------------------------------------------------
     @Slot(str, "QVariant", result=bool)

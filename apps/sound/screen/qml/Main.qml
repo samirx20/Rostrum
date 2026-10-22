@@ -98,6 +98,7 @@ AppShell {
     right: Item {
         anchors.fill: parent
         Inspector { visible: backend.selected !== ""; bridge: backend
+                    below: [LayerRows { }]
                     anchors { left: parent.left; right: parent.right; top: parent.top; bottom: clean.top
                               bottomMargin: clean.visible ? Theme.gap : 0 } }
         SongSettings { visible: backend.selected === ""

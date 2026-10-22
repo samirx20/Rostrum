@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 from functools import lru_cache
 
+from rostrum_core import marker_times
 from rostrum_sound import names, voice_lines
 from rostrum_sound.doc import keys as K
 from rostrum_sound.doc import markers as mk
@@ -77,13 +78,36 @@ def hit_block(h, root):
             "drum": str(h["drum"]), "label": str(h["drum"]), "vel": h.get("vel", 0.85)}
 
 
+def tie_of(item: dict) -> dict | None:
+    """The project marker an item's start is written on ("#logo lands+0.1" -> {name, offset}); None when it is not tied.
+    A clip tied to a marker follows it when the marker moves (2D's "Add a sound here" writes its cues this way)."""
+    parts = marker_times.split(item.get("at"))
+    return {"name": parts[0], "offset": parts[1]} if parts else None
+
+
+TIE_NAME = 14           # characters of a marker's name in the inspector's subtitle (the block shows it whole)
+
+
+def tie_words(item: dict) -> str:
+    """"tied to marker “logo lands”" (with "· 0.1 s after" when it starts off the marker); "" when not tied."""
+    tie = tie_of(item)
+    if not tie:
+        return ""
+    off = f" · {abs(tie['offset']):g} s {'after' if tie['offset'] > 0 else 'before'}" if abs(tie["offset"]) > 1e-6 else ""
+    name = tie["name"] if len(tie["name"]) <= TIE_NAME else tie["name"][:TIE_NAME - 1].rstrip() + "…"
+    return f"tied to marker “{name}”{off}"
+
+
 def clip_block(c, root):
     t, dur, peaks = clip_span(c, root)
     label = c["media"].replace("\\", "/").rsplit("/", 1)[-1]
+    if tie_of(c):
+        label = f'{tie_of(c)["name"]} · {label}'                     # the marker it is tied to, then the sound
     dur *= c.get("stretch", 1)      # a stretched clip lasts length × stretch
     return {"id": c["id"], "type": "clip", "t": t, "dur": dur, "label": label, "peaks": list(peaks),
             "fadeIn": min(c.get("fadeIn", 0), dur), "fadeOut": min(c.get("fadeOut", 0), dur),
-            "volume": c.get("volume", 1), "levelY": level_y(c.get("volume", 1))}      # the level line (handles.py)
+            "volume": c.get("volume", 1), "levelY": level_y(c.get("volume", 1)),      # the level line (handles.py)
+            **({"tie": tie_of(c)["name"]} if tie_of(c) else {})}                         # a marker tag on the block
 
 
 SOUND_SECONDS = {"click": 0.08, "hit": 1.2}       # designed sounds without a length: how long their block is drawn

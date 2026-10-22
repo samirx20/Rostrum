@@ -8,6 +8,7 @@ it snaps, `snapLine` says where and to what (a marker's name, "" for the grid) f
 from __future__ import annotations
 
 from PySide6.QtCore import Property, Signal, Slot
+from rostrum_gui import snap
 from rostrum_gui.edits import Drag
 
 from . import handles, moves, timing
@@ -114,9 +115,9 @@ class EditSlots:
         self.dragTo(dt, dsemi, free, False, False, 0.0)
 
     @Slot(float, int, bool, bool, bool, float)
-    def dragTo(self, dt, dsemi, free, only_time, copy, tol):
+    def dragTo(self, dt, dsemi, free, only_time, copy, scale):
         """A drag's move with its keys: free (Ctrl, no snapping), only_time (Shift), copy (Alt, read once, at the
-        first move); `tol` = how near (seconds) a marker or the playhead must be to catch it."""
+        first move); `scale` = screen px per second: a marker or the playhead within the kit's 6 px catches it (0 = none)."""
         if self._drag is None:
             return
         g = self._grab
@@ -124,7 +125,7 @@ class EditSlots:
         def go():
             if "primary" not in g:
                 return self._drag.preview(moves.drag_calls(self.doc, g, dt, dsemi, free, self._grid_now))
-            calls, caught = moves.many_calls(self.doc, g, dt, dsemi, free, only_time, self._snap_targets(), tol,
+            calls, caught = moves.many_calls(self.doc, g, dt, dsemi, free, only_time, self._snap_targets(), scale,
                                               self._grid_now)
             if not only_time:
                 calls += moves.track_calls(self.doc, g, getattr(self, "_to_track", ""))
@@ -140,7 +141,7 @@ class EditSlots:
         self._to_track = track_id
 
     def _snap_targets(self):
-        return [{"t": m["t"], "name": m["name"]} for m in self._view["markers"]] + [{"t": self._t, "name": "playhead"}]
+        return [snap.Target("marker", m["name"], m["t"]) for m in self._view["markers"]]             + [snap.Target("playhead", "playhead", self._t)]
 
     @Slot()
     def endDrag(self):

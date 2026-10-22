@@ -4,10 +4,20 @@ from __future__ import annotations
 from PySide6.QtCore import Slot
 from rostrum_gui.edits import Drag
 
-from . import moves, song_edit
+from . import layers, moves, song_edit, timeline
 
 
 class SongSlots:
+    def kind_label(self, item):
+        """The inspector's subtitle: the kind, and for a clip tied to a project marker which one (2D's cues)."""
+        words = timeline.tie_words(item)
+        return f"{super().kind_label(item)} · {words}" if words else super().kind_label(item)
+
+    @Slot(result="QVariantMap")
+    def layers(self):
+        """The settings panel's Layers group: the selected sound's layer mates ({} when it has no layered group)."""
+        return layers.of(self.doc, self._picks.ids)
+
     @Slot(result="QVariantMap")
     def songEdit(self):
         """What the Song popup shows now: only what is valid at the playhead with this selection."""

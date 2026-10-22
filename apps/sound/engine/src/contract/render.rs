@@ -70,7 +70,7 @@ pub fn run(job: Job) -> Result<Value, Error> {
     let mix = render::render_keep(&s, cache.as_ref(), &stems).map_err(Error::render)?;
     let took = t0.elapsed().as_secs_f64();
     let sr = s.sample_rate;
-    crate::mix::wavwriter::write_whole(&out, &mix.channels, mix.layout, sr).map_err(Error::render)?;
+    crate::mix::wavwriter::write_mix(&out, &mix, sr).map_err(Error::render)?;
     // The stems, `<track>.wav`, and the bus stems beside them, `<bus>.bus.wav`: with the stems of the tracks that play
     // straight to the master the bus stems add up to what reaches the master (`direct` lists those tracks).
     let named = |list: &[(String, std::sync::Arc<crate::mix::tape::Tape>)], ext: &str| -> Vec<(String, PathBuf)> { list.iter().map(|(id, _)| (id.clone(), stems_dir.join(format!("{id}{ext}")))).collect() };
@@ -80,8 +80,7 @@ pub fn run(job: Job) -> Result<Value, Error> {
     let as_map = |paths: &[(String, PathBuf)]| -> serde_json::Map<String, Value> { paths.iter().map(|(id, p)| (id.clone(), json!(p.to_string_lossy()))).collect() };
     let (stem_files, bus_files) = (as_map(&stem_paths), as_map(&bus_paths));
     let direct: Vec<&str> = s.tracks.iter().filter(|t| t.into.is_none() && crate::mix::buses::direct(&s, t)).map(|t| t.name.as_str()).collect();
-    let refs: Vec<&[f32]> = mix.channels.iter().map(|c| c.as_slice()).collect();
-    let loud = crate::analysis::loudstats::stats_n(&refs, &mix.layout.weights(), sr as f64);
+    let loud = mix.loud().map_err(Error::render)?;
     let r2 = |v: f64| (v * 100.0).round() / 100.0;
     let tracks: Vec<Value> = mix.tracks.iter().map(|t| json!({ "id": t.name, "peak": t.peak, "rms": t.rms, "lufs": t.lufs,
         "span": t.span.map(|(a, b)| [a, b]), "onsets": t.onsets, "bands": t.bands })).collect();
