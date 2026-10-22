@@ -76,7 +76,10 @@ class HandleSlots:
         def fields_of(g, item):
             size = ("w", "h") if item["type"] in OWN_SIZE else ("scale", "scaleX", "scaleY")
             return size + (() if g.placed else ("x", "y"))
-        return self._handle_begin("Resize", hx, hy, fields_of)
+        ok = self._handle_begin("Resize", hx, hy, fields_of)
+        if ok:                                          # the dragged edge snaps (snapper.py); not on a turned box
+            self._snap.begin_edge(self._grab.layer, abs(self._grab.box["rot"]) > 1e-6)
+        return ok
 
     @Slot(float, float, bool, bool)
     def resizeBy(self, dx, dy, shift=False, alt=False):
@@ -85,6 +88,7 @@ class HandleSlots:
         if self._drag is None or not isinstance(g, Grab):
             return
         item, p, b = self.doc.item(g.layer), g.p, g.box
+        dx, dy = self._snap.edge(g.hx, g.hy, dx, dy)
         scaled = item["type"] not in OWN_SIZE
         dx, dy = bounds.parent_delta(b, dx, dy)                 # the drag in the layer's parent's px (a turned group)
         r = T.resize({"x": p["x"], "y": p["y"], "w": b["lw"], "h": b["lh"], "ax": b["ax"], "ay": b["ay"], "rot": b["lrot"]},

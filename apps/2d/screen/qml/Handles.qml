@@ -65,6 +65,7 @@ Item {
                 onPositionChanged: (m) => {
                     if (!on) return
                     var q = at(m)
+                    backend.snap.keys((m.modifiers & Qt.ControlModifier) !== 0, false)   // Ctrl: no snapping (snapper.py)
                     backend.resizeBy(q.x - p0.x, q.y - p0.y, (m.modifiers & Qt.ShiftModifier) !== 0, (m.modifiers & Qt.AltModifier) !== 0)
                 }
                 onReleased: { if (on) backend.endDrag(); on = false }

@@ -29,10 +29,11 @@ class DragSlots(SlotMixin):
             self._fail("Error: move: x or y is driven by an expression; clear it first (the cross on its row).")
             return False
         more = self._multi.extras()
-        if more:
-            return self._begin_many([layer] + more)
         p = resolve(self.doc.item(layer), self.own_t(layer))
-        return self._begin(label, (layer, p["x"], p["y"]))
+        ok = self._begin_many([layer] + more) if more else self._begin(label, (layer, p["x"], p["y"]))
+        if ok:
+            self._snap.begin([layer] + more)            # what the drag may snap to (snapper.py)
+        return ok
 
     def _begin_many(self, layers) -> bool:
         """Several selected layers move together: one gesture, one undo step."""
@@ -52,6 +53,8 @@ class DragSlots(SlotMixin):
         auto layout: layer.arrange to the slot nearest the pointer)."""
         if self._drag is None or not isinstance(self._grab, (dict, tuple, list)):
             return
+        if not isinstance(self._grab, dict):
+            dx, dy = self._snap.move(dx, dy)            # Shift: straight; then snapping (snapper.py)
         ox, oy = dx, dy
         if isinstance(self._grab, list):
             calls = []
@@ -126,6 +129,7 @@ class DragSlots(SlotMixin):
     @Slot()
     def endDrag(self):
         d, g, self._drag, self._grab = self._drag, self._grab, None, None
+        self._snap.end()                                # the snap lines go with the drag
         if d is not None and isinstance(g, BarGrab) and g.tie_calls():      # let go on a marker: the layer is tied to it
             self._guard(lambda: d.preview(g.tie_calls()))
         if d is not None:
