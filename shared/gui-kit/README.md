@@ -9,6 +9,9 @@ Shaped by the GUI proofs (`proofs/gui-qt/`, `proofs/gui-mock/`) and the experime
 regions, select first then act, selection, the settings panel, the diamond, the timeline, keys, words, and the kit
 pieces still to build (its Part 5). It wins over the app specs where they differ.
 
+**Actions, keys and selecting:** [`ACTIONS.md`](ACTIONS.md) (S31): the one action list, the context bar, menus,
+Ctrl+K and the key map, and how an app plugs in.
+
 **First layer (S4):** tokens, controls, the inspector built from operation schemas, the Ctrl+K command bar, the
 app shell, a demo. Not yet: history / AI panels, Fast / Final viewers, the native viewport slot, a colour picker
 popup, a real timeline.
