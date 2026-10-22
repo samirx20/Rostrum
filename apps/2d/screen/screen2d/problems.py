@@ -1,7 +1,7 @@
 """The screen's problems list: what inspect_diagnose finds (rostrum2d/diagnose_engine.everything, the same function),
 worked out off the GUI thread with an engine of its own, newest document wins, half a second after the last change.
-The top bar shows a Problems button with the count only while there are any; its panel lists each in words and a click
-selects the item it is about.
+The kit's Problems chip in the top bar (ProblemsChip.qml) shows the count only while there are any; its list shows each
+in words with what to do, and a click jumps to it (`jump`: selects the item it is about, and goes to its moment).
 """
 from __future__ import annotations
 
@@ -37,14 +37,22 @@ class Problems(PictureWorker):
     def count(self):
         return len(self._rows)
 
-    @Slot(str)
-    def show(self, item_id):
-        """A row was clicked: select what it is about (nothing for a problem of the whole composition)."""
+    @Slot("QVariant")
+    def jump(self, row):
+        """A row was clicked: select what it is about (nothing for a problem of the whole composition), and go to its
+        moment when it has one."""
+        row = dict(row)
+        if isinstance(row.get("time"), (int, float)):
+            self.bridge.setTime(float(row["time"]))
         try:
-            self.bridge.doc.item(item_id)
+            self.bridge.doc.item(row.get("item") or "")
         except RostrumError:
             return
-        self.bridge.select(item_id)
+        self.bridge.select(row["item"])
+
+    def show_rows(self, rows):
+        """A scripted list (the layout check's long problems), until the next look."""
+        self._take(list(rows))
 
     def touch(self):
         """The document or the markers changed: look again once things are still."""
@@ -77,7 +85,7 @@ class Problems(PictureWorker):
         data, comp_id, folder, markers = job
         with textsize.use(eng):         # this thread measures texts with its own engine
             found = everything(data, comp_id, folder, markers, eng)
-        rows = [{**p, "label": WORDS.get(p["kind"], p["kind"])} for p in found]
+        rows = [{**p, "label": WORDS.get(p["kind"], p["kind"]), "danger": p["kind"] == "refused"} for p in found]
         self.found.emit(rows)
 
     def describe(self, job, error):
