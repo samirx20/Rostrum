@@ -284,6 +284,7 @@ Rectangle {
                        // with Pen, Paint or typing on, that tool's options instead (ToolOptions.qml)
             id: bar
             hub: backend.actions
+            showName: false          // the settings panel shows the name
             // one rule: just above the frame's top edge, never over it; Fit keeps this room free (view.top), a zoomed view lets it ride the well's top
             anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
             anchors.topMargin: Math.max(Theme.gap, frame.y - bar.height - Theme.gap)

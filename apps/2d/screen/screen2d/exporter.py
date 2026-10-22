@@ -62,7 +62,7 @@ class Exporter(ExportSheet):
 
     def default_folder(self):
         base = exporting.project_renders(self.bridge.doc.folder, self.bridge.doc.item_id)
-        return f"{base} (a new version folder)" if base else f"{RENDER_DIR} (the render cache)"
+        return str(base) if base else str(RENDER_DIR)
 
     def file_name(self):
         return self._stem() + ("" if self._row()["sequence"] else self._row()["ext"])

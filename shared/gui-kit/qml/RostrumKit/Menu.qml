@@ -2,12 +2,15 @@ import QtQuick
 import QtQuick.Controls as QQC
 import "."
 
-// A small popup list of actions under whatever it sits in (a button's Add menu). `entries`: [{value, label}];
-// choosing one closes it and sends picked(value). Up / Down move, Enter picks, Esc closes.
+// A small popup list of actions under whatever it sits in (a button's Add menu). `entries`: [{value, label, keys, checked}];
+// choosing one closes it and sends picked(value). Up / Down move, Enter picks, Esc closes. When any entry has
+// `checked`, a fixed left column shows ✓ on the chosen one; `keys` sit right-aligned.
 QQC.Popup {
     id: menu
     property var entries: []
     property int highlighted: 0
+    readonly property bool checks: entries.some(e => e.checked !== undefined)
+    readonly property int checkW: checks ? 18 : 0
     signal picked(string value)
     y: parent ? parent.height + 2 : 0
     width: 168
@@ -33,9 +36,21 @@ QQC.Popup {
                 width: menu.availableWidth; height: Theme.popupRow; radius: 4
                 color: index === menu.highlighted ? Theme.hover : "transparent"
                 Text {
-                    anchors { left: parent.left; leftMargin: Theme.gap - menu.padding; right: parent.right; verticalCenter: parent.verticalCenter }
+                    visible: menu.checks && !!row.modelData.checked
+                    x: Theme.gap - menu.padding; anchors.verticalCenter: parent.verticalCenter
+                    text: "✓"; color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont
+                }
+                Text {
+                    anchors { left: parent.left; leftMargin: Theme.gap - menu.padding + menu.checkW; verticalCenter: parent.verticalCenter
+                              right: keys.visible ? keys.left : parent.right; rightMargin: keys.visible ? Theme.gap : Theme.gap - menu.padding }
                     text: row.modelData.label; elide: Text.ElideRight
                     color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont
+                }
+                Text {
+                    id: keys
+                    visible: !!row.modelData.keys
+                    anchors { right: parent.right; rightMargin: Theme.gap - menu.padding; verticalCenter: parent.verticalCenter }
+                    text: row.modelData.keys || ""; color: Theme.fg3; font.pixelSize: Theme.label; font.family: uiFont
                 }
                 MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onEntered: menu.highlighted = row.index; onClicked: row.parent.pick(row.index) }

@@ -39,6 +39,8 @@ class Param:
     max: float | None = None
     step: float | None = None
     unit: str = ""
+    display: str = ""                # for type "number": how screens show it, one way per kind (the kit's ValueKinds.js):
+                                     # "percent" (1 = 100 %), "db" (a linear gain as dB), "pan" (−1..1 as L / C / R); "" = plain
     integer: bool = False
     options: list = field(default_factory=list)
     labels: dict = field(default_factory=dict)   # for type "choice": value -> the words screens show (else plain_words)

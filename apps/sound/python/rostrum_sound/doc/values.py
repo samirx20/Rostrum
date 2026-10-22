@@ -126,10 +126,11 @@ def step(lo, hi, unit="", integer=False) -> float:
     return min(s, 0.01) if unit == "s" else s
 
 
-def N(name, lo, hi, group, unit="", imp="primary", when=None, integer=False, default=None, label="", help=""):
+def N(name, lo, hi, group, unit="", imp="primary", when=None, integer=False, default=None, label="", help="", display=""):
     """A number field (the Sound document's one way to make one): range, group, importance, validity, step."""
     return Param.number(name, min=lo, max=hi, step=step(lo, hi, unit, integer), group=group, unit=unit,
-                        importance=imp, valid_when=when, integer=integer, default=default, label=label, help=help)
+                        importance=imp, valid_when=when, integer=integer, default=default, label=label, help=help,
+                        display=display)     # how screens show it: "db", "pan", "percent" (the kit's ValueKinds.js)
 
 
 def env(name, lo, hi, **kw) -> Value:

@@ -4,7 +4,7 @@ import QtQuick.Dialogs
 import "."
 
 // Export (INTERACTION.md 1.19 item 8): a sheet in the right column, in the settings panel's place, so the work stays in
-// sight. What for (a short list in words, each with its file type) · the chosen one's settings (`settings`: the app
+// sight. One heading (its title), then what for (a short list in words, each with its file type) · the chosen one's settings (`settings`: the app
 // fills it with kit rows) · range (only when the document has more than everything) · where (the project's Renders
 // folder; Browse) · the file's name · Export. A file already there is never replaced without asking: Replace / Keep
 // both / Cancel, the one blocking question. The export runs in the background (the top bar's job chip); done, the
@@ -51,8 +51,7 @@ Panel {
             width: flick.width
             spacing: Theme.gap
 
-            Caption { text: "What for" }
-            Column {        // the app's choices, in words, each with its file type
+            Column {        // the app's choices, in words, each with its file type (the sheet's title is the one heading)
                 width: parent.width
                 Repeater {
                     model: sheet.model ? sheet.model.choices : []

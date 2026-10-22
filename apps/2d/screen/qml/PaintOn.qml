@@ -10,10 +10,11 @@ Column {
     readonly property var pl: backend.paintLayers
     readonly property var cur: { for (const l of pl.layers) if (l.current) return l; return null }
     width: parent ? parent.width : 0
+    readonly property int labelColumn: Theme.labelColumnFor(width)     // the settings rows' own column and field width
     visible: pl.title !== ""
 
     component Label: Text {
-        width: Theme.labelColumn - Theme.gap; anchors.verticalCenter: parent.verticalCenter
+        width: po.labelColumn - Theme.gap; anchors.verticalCenter: parent.verticalCenter
         color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont; elide: Text.ElideRight
     }
     component Line: Item { width: po.width; height: Theme.row }
@@ -75,8 +76,8 @@ Column {
         visible: po.cur !== null
         Label { text: "Opacity" }
         NumberField {
-            x: Theme.labelColumn; width: parent.width - Theme.labelColumn; anchors.verticalCenter: parent.verticalCenter
-            value: po.cur ? po.cur.opacity : 1; from: 0; to: 1; step: 0.01
+            x: po.labelColumn; width: parent.width - po.labelColumn - Theme.keyGutter; anchors.verticalCenter: parent.verticalCenter
+            value: po.cur ? po.cur.opacity : 1; from: 0; to: 1; step: 0.01; display: "percent"
             onEdited: (v) => po.pl.setLayer(po.cur.id, "opacity", v)
             onScrubStarted: po.pl.beginScrub(po.cur.id); onScrubbed: (v) => po.pl.scrub(v); onScrubEnded: po.pl.endScrub()
         }
@@ -85,7 +86,7 @@ Column {
         visible: po.cur !== null
         Label { text: "Blend" }
         ChoiceField {
-            x: Theme.labelColumn; width: parent.width - Theme.labelColumn; anchors.verticalCenter: parent.verticalCenter
+            x: po.labelColumn; width: parent.width - po.labelColumn - Theme.keyGutter; anchors.verticalCenter: parent.verticalCenter
             options: po.pl.modes; current: po.cur ? po.cur.mode : "normal"
             onPicked: (v) => po.pl.setLayer(po.cur.id, "mode", v)
         }
@@ -97,7 +98,7 @@ Column {
             required property var modelData
             height: Math.max(Theme.row, tlab.implicitHeight + 2 * Theme.grid)
             Label { id: tlab; text: tl.modelData.label; wrapMode: Text.WordWrap; maximumLineCount: 2; lineHeight: 0.9 }
-            Toggle { x: Theme.labelColumn; anchors.verticalCenter: parent.verticalCenter; checked: tl.modelData.value
+            Toggle { x: po.labelColumn; anchors.verticalCenter: parent.verticalCenter; checked: tl.modelData.value
                      onToggled: (v) => po.pl.setToggle(tl.modelData.id, v) }
             HoverHandler { id: tHover }
             HoverTip { hovered: tHover.hovered; text: tl.modelData.help || "" }
@@ -106,7 +107,7 @@ Column {
     Line {
         visible: po.pl.onionApplies
         Label { text: "Onion skin" }
-        Toggle { x: Theme.labelColumn; anchors.verticalCenter: parent.verticalCenter; checked: painter.onionOn
+        Toggle { x: po.labelColumn; anchors.verticalCenter: parent.verticalCenter; checked: painter.onionOn
                  onToggled: (v) => painter.setOnion(v) }
     }
 }

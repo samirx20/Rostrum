@@ -20,7 +20,7 @@ from rostrum_core.conditions import holds
 from .match import starts
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
-ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit",
+ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit", "display",
          "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default")
 # anim: "" (can't be animated), "still" (could be), "keyed" (has keys), "onkey" (has a key at the playhead).
 # expr: "" for most rows; a param driven by an expression or binding has {"text", "note"}: the row shows them (and a
@@ -32,6 +32,7 @@ ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options",
 # to pick (and nothing picked) the row is absent.
 # fold: the group a fold row opens; open: that group is open now (None when nothing inside applies: the row is absent).
 # mixed: several items selected and their values differ (the widget says "Mixed"; many.py).
+# display: how a number shows ("percent", "db", "pan"; "" = plain), ValueKinds.js; amounts get a slider too.
 # default: the param's own default (None = none: no reset); a number field puts itself back to it on a double-click.
 
 
@@ -65,7 +66,7 @@ def _grouped(params, kind: str) -> list[dict]:
 def _param_row(p) -> dict:
     return {"row": "param", "id": p.name, "label": p.label, "type": p.type, "group": p.group,
             "importance": p.importance, "help": p.help, "options": p.choices(), "min": p.min, "max": p.max,
-            "step": p.step, "unit": p.unit, "valid_when": p.valid_when, "default": p.default,
+            "step": p.step, "unit": p.unit, "display": p.display, "valid_when": p.valid_when, "default": p.default,
             "words": [{"value": v, "label": w} for v, w in p.words.items()],
             "item": p.item or "", "minItems": p.min_items, "maxItems": p.max_items, "control": p.control,
             "filters": list(p.filters)}

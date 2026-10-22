@@ -2,8 +2,9 @@
 (INTERACTION.md 1.18). The bridge owns one and feeds it every change it hears (its own document's and each joined
 partner's); a change by an agent, or by a script an agent ran (it carries a session), counts.
 
-- `chip`: {"state", "text", "count", "session", "who"}. "working" while changes keep arriving less than 5 s apart
-  ("Claude is working · 6 changes"), "done" after 5 s of quiet ("Claude: 12 changes"), "" after Keep or Undo all.
+- `chip`: {"state", "text", "say", "count", "session", "who"}. "working" while changes keep arriving less than 5 s
+  apart, "done" after 5 s of quiet, "" after Keep or Undo all. `text` is the chip ("Claude · 12 changes"); `say` the
+  agent's sentence (its last change, or what it said), shown in the chip's dropdown.
 - `flash`: ids of the items the agent changed in the last second (apps outline them, ChangeOutline.qml).
 - `message`: "Claude: <what>", the agent's last change in words.
 It only reads changes: it never moves the selection, the playhead or the scroll. Keep is not a change.
@@ -71,7 +72,7 @@ class AgentWatch(QObject):
         self.changed.emit()
 
     def say(self, text, state="done"):
-        """Show `text` on the chip as it stands (the layout check's long-text states: `agent-say <text>`)."""
+        """Put `text` in the chip's dropdown as the agent's sentence (the layout check's long-text states: `agent-say`)."""
         from rostrum_core import Who
         self._who = self._who or Who.agent("claude-code")
         self._state, self._text, self._message = state, text, text
@@ -100,9 +101,9 @@ class AgentWatch(QObject):
         if not self._state:
             return {"state": "", "text": "", "count": 0, "session": "", "who": ""}
         name, n = who_name(self._who), self._count
-        words = f"{n} change{'s' if n != 1 else ''}"
-        text = self._text or (f"{name} is working · {words}" if self._state == "working" else f"{name}: {words}")
-        return {"state": self._state, "text": text, "count": n, "session": self._session, "who": name}
+        text = f"{name} · {n} change{'s' if n != 1 else ''}"
+        say = self._text or self._message or (f"{name} is working." if self._state == "working" else "")
+        return {"state": self._state, "text": text, "say": say, "count": n, "session": self._session, "who": name}
 
     @Property("QVariantList", notify=changed)
     def flash(self):

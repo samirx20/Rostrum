@@ -28,7 +28,7 @@ Item {
         out.push({ value: "snap", label: backend.snap.on ? "Turn snapping off" : "Turn snapping on", group: "b" })
         if (backend.frameInfo.previewSize === true)     // a large composition: how big playing frames are drawn (paused frames and exports are Full)
             for (const o of [["full", "Full"], ["half", "Half"], ["quarter", "Quarter"]])
-                out.push({ value: "size:" + o[0], label: (backend.playback.size === o[0] ? "✓ " : "") + "Preview while playing: " + o[1], group: "c" })
+                out.push({ value: "size:" + o[0], label: "Preview while playing: " + o[1], checked: backend.playback.size === o[0], group: "c" })
         return out
     }
 

@@ -11,12 +11,14 @@ import "."
 // its choices. When maxWidth is too small the lowest-ranked buttons fold into ⋯ one by one. A click calls
 // hub.run(id); a choice from a ▾ menu calls hub.run(value). Hidden when `what` is empty (and no toolOptions),
 // and while `dragging`. `toolOptions` (a Component): shown instead of the selection actions (a tool's options).
+// `showName: false` drops the name chip (an app whose settings panel already shows the selection's name).
 Rectangle {
     id: bar
     property var hub
     property real maxWidth: 10000
     property bool dragging: false
     property Component toolOptions: null
+    property bool showName: true
     readonly property var info: hub && hub.bar ? hub.bar : ({what: "", items: [], more: []})
     readonly property bool tool: toolOptions !== null
     readonly property int maxActions: 5
@@ -25,7 +27,7 @@ Rectangle {
         value: it.id, label: it.label, keys: it.keys, group: "~folded", sub: it.menu && it.menu.length ? it.menu : undefined
     })).concat(info.more || [])
 
-    visible: !dragging && (tool || !!info.what)
+    visible: !dragging && (tool || (!!info.what && (showName || (info.items || []).length + (info.more || []).length > 0)))
     height: Theme.button + 2 * Theme.grid
     width: Math.min(maxWidth, row.implicitWidth + 2 * Theme.gap)
     radius: Theme.radiusPanel; color: Theme.raised; border.color: Theme.popupEdge
@@ -58,7 +60,7 @@ Rectangle {
     function fitCount() {
         const all = info.items || []
         const n = Math.min(all.length, maxActions)
-        const chip = info.what ? Math.ceil(chipMeasure.implicitWidth) + Theme.pad + 2 * Theme.grid : 0
+        const chip = showName && info.what ? Math.ceil(chipMeasure.implicitWidth) + Theme.pad + 2 * Theme.grid : 0
         const hasMore = (info.more || []).length > 0 || all.length > n
         let k = n
         const total = c => {
@@ -82,7 +84,7 @@ Rectangle {
         spacing: Theme.grid
         Loader { active: bar.tool; visible: bar.tool; sourceComponent: bar.toolOptions; anchors.verticalCenter: parent.verticalCenter }   // an unloaded Loader keeps its last width: out of the row
         Text {
-            visible: !bar.tool && !!bar.info.what
+            visible: !bar.tool && bar.showName && !!bar.info.what
             anchors.verticalCenter: parent.verticalCenter
             rightPadding: Theme.pad - Theme.grid
             text: bar.info.what; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont; font.weight: Font.DemiBold

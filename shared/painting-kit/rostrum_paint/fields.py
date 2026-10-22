@@ -19,9 +19,13 @@ P, S, D = "primary", "secondary", "deep"
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 
 
-def N(name, label, lo, hi, step, default, imp=P, unit="", when=None, group="Brush", integer=False, help=""):
+def N(name, label, lo, hi, step, default, imp=P, unit="", when=None, group="Brush", integer=False, help="", display=""):
     return Param.number(name, label=label, min=lo, max=hi, step=step, default=default, importance=imp, unit=unit,
-                        valid_when=when, group=group, integer=integer, help=help)
+                        valid_when=when, group=group, integer=integer, help=help, display=display)
+
+
+def A(name, label, default, imp=S, **kw):   # an amount, 0..1, shown as % (the kit's one display for it)
+    return N(name, label, 0, 1, 0.01, default, imp, display="percent", **kw)
 
 
 # The brush: every setting of a stroke except where it goes (points) and what clips it (mask).
@@ -30,22 +34,22 @@ BRUSH = [
     N("size", "Size", 0.5, 2000, 0.5, 12.0, unit="px"),
     Param.choice("brush", TIPS, label="Tip", group="Brush", default="round",
                  help="round, bristle (dry brush), chalk, flat, block (square block-in), line (crisp thin line)"),
-    N("opacity", "Opacity", 0, 1, 0.01, 1.0, S),
-    N("hardness", "Hardness", 0, 1, 0.01, 0.5, S, help="0 = soft edge, 1 = hard edge"),
+    A("opacity", "Opacity", 1.0),
+    A("hardness", "Hardness", 0.5, help="0 = soft edge, 1 = hard edge"),
     Param.choice("mode", MODES, label="Mode", group="Brush", default="normal", importance=S,
                  help="normal paints over, multiply glazes, erase removes, screen / add paint light"),
-    N("size_pressure", "Size from pressure", 0, 1, 0.01, 0.8, S, group="Pen"),
-    N("opacity_pressure", "Opacity from pressure", 0, 1, 0.01, 0.3, S, group="Pen"),
+    A("size_pressure", "Pressure → size", 0.8, group="Pen"),
+    A("opacity_pressure", "Pressure → opacity", 0.3, group="Pen"),
     N("spacing", "Spacing", 0.02, 2, 0.01, 0.1, D, help="Distance between dabs, in tip lengths"),
     N("jitter", "Scatter", 0, 2, 0.01, 0.0, D, help="Dabs wander off the path, in tip sizes"),
     Param.toggle("follow", label="Tip turns with the stroke", group="Brush", default=True, importance=D),
     N("angle", "Tip angle", -360, 360, 1, 0.0, D, "°", IS("follow", False)),
-    N("grain", "Paper grain", 0, 1, 0.01, 0.0, D, help="How much the paper's tooth breaks up the paint"),
-    N("color_jitter", "Colour drift", 0, 1, 0.01, 0.04, D, group="Colour drift"),
+    A("grain", "Paper grain", 0.0, D, help="How much the paper's tooth breaks up the paint"),
+    A("color_jitter", "Colour drift", 0.04, D, group="Colour drift"),
     N("hue_jitter", "Hue drift", 0, 180, 0.5, 0.0, D, "°", group="Colour drift"),
     Param.toggle("smudge", label="Wet (smudge)", group="Wet", default=False, importance=D,
                  help="The brush drags the paint it passes over"),
-    N("wet", "Wetness", 0, 1, 0.01, 0.5, D, when=IS("smudge", True), group="Wet"),
+    A("wet", "Wetness", 0.5, D, when=IS("smudge", True), group="Wet"),
     Param.toggle("pickup", label="Pick up layers below", group="Wet", default=False, importance=D,
                  valid_when=IS("smudge", True)),
     N("seed", "Seed", 0, 2**31 - 1, 1, 0, D, integer=True, group="Repeat",

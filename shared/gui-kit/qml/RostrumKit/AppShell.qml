@@ -98,9 +98,9 @@ QQC.ApplicationWindow {
     color: Theme.app
 
     function openAbout() { noticesDialog.open() }
-    function openConnectAgent(handFor) {  // handFor: an agent id whose "Do it by hand" opens with it (scripted steps)
+    function openConnectAgent(handFor) {  // handFor: an agent id whose Set up by hand opens with it (scripted steps)
         agentsDialog.open()
-        if (handFor) agentsDialog.toggleHand(handFor)
+        if (handFor) agentsDialog.showHand(handFor)
     }
     function openHelp() { topBar.openHelp() }
     function openGuide(url) { guidesDrawer.show(url); openGuides() }

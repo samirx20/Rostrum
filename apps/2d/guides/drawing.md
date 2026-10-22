@@ -32,7 +32,7 @@ bar's own **⋯** button; Size and the colour always stay.
 1. **Hardness**: how crisp or soft its edge is.
 2. **Mode**: how the stroke meets what is already there (multiply darkens like a glaze, screen and add light it up).
    It is not shown while the eraser is on: an eraser only takes paint away.
-3. Under **Pen**, **Size from pressure** and **Opacity from pressure** say how much a pressure-sensitive pen changes
+3. Under **Pen**, **Pressure → size** and **Pressure → opacity** say how much a pressure-sensitive pen changes
    the stroke. A mouse has no pressure.
 4. **More** opens the rest (spacing, scatter, paper grain, colour drift, wet paint). Only the settings that apply to
    the tip you chose are shown.

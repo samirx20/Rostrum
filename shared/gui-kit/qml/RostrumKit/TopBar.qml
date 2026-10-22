@@ -3,12 +3,13 @@ import "."
 
 // The top bar, one row in a fixed order (INTERACTION.md 1.1, 1.14):
 //   ≡ (`menu`, optional) · app name · leading buttons (`leading`: File) · document tab · message ·
-//   "Saved · N changes" · app tools (`tools`, kept for Sound for now) · chips (the agent chip first, Problems
+//   "Saved · N changes" (the count only when N > 0) · app tools (`tools`, kept for Sound for now) · chips (the agent chip first, Problems
 //   (`problems`), the job (`job`), then `chips`: an app's own, e.g. Sound's loudness) · ↶ ↷ (only when they can act) · command box · `actions` (Export) · ?
-// Never shrunk or hidden: the change count, the tools, ↶ ↷, the actions and ?. When room runs out things give way in
-// one fixed order, never sliding under each other: 1. the message ("…", down to nothing; hover shows it all),
-// 2. the document tab, 3. the command box (280 px, then 150, then its search icon), 4. the chips (dot and count:
-// `chipsNarrow`, which an app chip may read too).
+// Never shrunk or hidden: the change count, the tools, ↶ ↷, the actions and ?, and the document tab's first 160 px.
+// When room runs out things give way in one fixed order, never sliding under each other: 1. the message ("…", down
+// to nothing; hover shows it all), 2. the document tab down to 160 px, 3. the command box (280 px, then 150, then
+// its search icon), 4. the chips (dot and count: `chipsNarrow`, which an app chip may read too).
+// While the agent chip shows, the message is not shown: the agent's words are in the chip's dropdown.
 // The change count opens History (historyClicked, and bridge.agent.askHistory, which a kit AppShell listens to).
 Item {
     id: bar
@@ -81,6 +82,7 @@ Item {
                                      + problemsChip.fullWidth - problemsChip.narrowWidth + jobChip.fullWidth - jobChip.narrowWidth
     readonly property bool doneLinks: !!job && job.state === "done" && job.doneMessage !== "" && bridge.status === job.doneMessage
     readonly property real fixedWidth: edgeLeft + slot(menuSlot) + wordmark.implicitWidth + slot(leadingSlot)
+                                     + (tabFloor ? sp + tabFloor : 0)
                                      + sp + count.implicitWidth + (doneLinks ? links.implicitWidth + Theme.gap : 0) + slot(toolsSlot)
                                      + (chipsNarrowWidth ? sp + chipsNarrowWidth : 0) + (undoWidth ? sp + undoWidth : 0)
                                      + sp + Theme.button + slot(actionsSlot) + sp + help.width + edgeRight
@@ -90,8 +92,9 @@ Item {
     readonly property real afterChips: room - (chipsNarrow ? 0 : chipsExtra)
     readonly property real commandWidth: afterChips >= 150 - Theme.button ? Math.min(280, Theme.button + afterChips) : Theme.button
     readonly property real afterCommand: afterChips - (commandWidth - Theme.button)
-    readonly property real tabWidth: fit(tab.implicitWidth, afterCommand - sp, 48)
-    readonly property real afterTab: afterCommand - (tabWidth ? tabWidth + sp : 0)
+    readonly property real tabFloor: documentName !== "" ? Math.min(tab.implicitWidth, 160) : 0      // the name's own room
+    readonly property real tabWidth: tabFloor ? tabFloor + Math.max(0, Math.min(tab.implicitWidth - tabFloor, afterCommand)) : 0
+    readonly property real afterTab: afterCommand - (tabWidth - tabFloor)
     readonly property real messageWidth: fit(message.implicitWidth, afterTab - Theme.gap, 24)
     // a part gets its natural width or what is there; below `least` it gives way entirely (a short name that fits whole
     // always shows: "t1 •" is narrower than `least`)
@@ -149,10 +152,10 @@ Item {
             spacing: Theme.gap
             Text {  // the last thing that happened (or what failed): gives way first, hover shows all of it
                 id: message
-                visible: bar.messageWidth > 0
+                visible: bar.messageWidth > 0 && !bar.agentShown
                 width: bar.messageWidth
                 anchors.verticalCenter: parent.verticalCenter
-                text: bar.bridge.status ? bar.bridge.status + "  ·" : ""
+                text: bar.bridge.status ? bar.bridge.status + (count.visible ? "  ·" : "") : ""
                 elide: Text.ElideRight
                 color: /^Error/.test(bar.bridge.status) ? Theme.danger : Theme.fg3
                 font.family: uiFont; font.pixelSize: Theme.label
@@ -161,7 +164,7 @@ Item {
             }
             Row {   // after an export: "Exported Main.mp4 · Play · Show in folder ·" (until the next message)
                 id: links
-                visible: bar.doneLinks && bar.messageWidth > 0
+                visible: bar.doneLinks && message.visible
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: Theme.gap
                 BarLink { text: "Play"; onClicked: bar.job.play() }
@@ -169,12 +172,13 @@ Item {
                 BarLink { text: "Show in folder"; onClicked: bar.job.showInFolder() }
                 Dot { }
             }
-            Text {  // "Saved · 14 changes": its own piece, never shrinks, the door to History
-                id: count
+            Text {  // "Saved · 14 changes" ("Saved" with none): its own piece, never shrinks, the door to History.
+                id: count   // While the agent chip shows, the count is the chip's ("Claude · 6 changes"): "Saved" alone
                 anchors.verticalCenter: parent.verticalCenter
-                readonly property int n: bar.bridge.historyCount
+                readonly property int n: bar.agentShown ? 0 : bar.bridge.historyCount
                 height: Math.max(implicitHeight, 16); verticalAlignment: Text.AlignVCenter     // a click target of at least 16 px
-                text: (bar.saveWord ? bar.saveWord + " · " : "") + n + (n === 1 ? " change" : " changes")
+                text: [bar.saveWord, n > 0 ? n + (n === 1 ? " change" : " changes") : ""].filter(w => w).join(" · ")
+                visible: text !== ""
                 color: countHover.hovered ? Theme.fg : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
                 HoverHandler { id: countHover; cursorShape: Qt.PointingHandCursor }
                 TapHandler { onTapped: bar.openHistory("") }

@@ -28,7 +28,7 @@ def test_agent_run_folds_into_one_row_and_undo_all_marks_it_taken_back():
     run = got[0]
     assert run["who"] == "Claude" and run["count"] == 3 and not run["undone"]
     assert [s["seq"] for s in run["steps"]] == [4, 3, 2]          # newest first
-    assert bridge.agent.chip["text"] == "Claude is working · 3 changes"
+    assert bridge.agent.chip["text"] == "Claude · 3 changes" and bridge.agent.chip["state"] == "working"
 
     assert bridge.undoRun("run-1")
     assert len(doc.history.changes) == 5                          # Undo all is ONE new step

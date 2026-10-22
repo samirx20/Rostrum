@@ -21,9 +21,10 @@ S = "secondary"
 D = "deep"
 
 
-def N(name, label, group, lo, hi, step, unit="", imp=P, when=None, integer=False, default=0.0, help="", words=None):
+def N(name, label, group, lo, hi, step, unit="", imp=P, when=None, integer=False, default=0.0, help="", words=None,
+      display=""):      # display: how screens show it ("percent" = 1 is 100 %; the kit's ValueKinds.js)
     return Param.number(name, label=label, group=group, min=lo, max=hi, step=step, unit=unit, importance=imp,
-                        valid_when=when, integer=integer, default=default, help=help, words=words or {})
+                        valid_when=when, integer=integer, default=default, help=help, words=words or {}, display=display)
 
 
 def C(name, label, group, default, imp=P, when=None):
@@ -72,13 +73,13 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
       help="Where the layer sits across the frame: move it left or right (position)"),
     N("y", "Y", "Transform", -20000, 20000, 1, "px", when=_layout.FREE_XY, default=540.0,
       help="Where the layer sits up and down the frame: move it up or down (position)"),
-    N("scale", "Scale", "Transform", 0, 100, 0.01, "×", default=1.0),
+    N("scale", "Scale", "Transform", 0, 100, 0.01, "×", default=1.0, display="percent"),
     N("rotation", "Rotation", "Transform", -36000, 36000, 0.1, "°"),
-    N("opacity", "Opacity", "Transform", 0, 1, 0.01, default=1.0),
+    N("opacity", "Opacity", "Transform", 0, 1, 0.01, default=1.0, display="percent"),
     N("anchorX", "Anchor X", "Anchor", -10, 10, 0.01, "", S, default=0.5, help="0 = left edge, 1 = right edge"),
     N("anchorY", "Anchor Y", "Anchor", -10, 10, 0.01, "", S, default=0.5, help="0 = top edge, 1 = bottom edge"),
-    N("scaleX", "Stretch X", "Anchor", 0, 100, 0.01, "×", D, default=1.0),
-    N("scaleY", "Stretch Y", "Anchor", 0, 100, 0.01, "×", D, default=1.0),
+    N("scaleX", "Stretch X", "Anchor", 0, 100, 0.01, "×", D, default=1.0, display="percent"),
+    N("scaleY", "Stretch Y", "Anchor", 0, 100, 0.01, "×", D, default=1.0, display="percent"),
     N("tiltX", "Tilt X", "Depth", -180, 180, 0.1, "°", D, help="Turn around the horizontal axis (2.5D)"),
     N("tiltY", "Tilt Y", "Depth", -180, 180, 0.1, "°", D, help="Turn around the vertical axis (2.5D)"),
     *timing("The layer appears at this time", "The layer is gone from this time"),

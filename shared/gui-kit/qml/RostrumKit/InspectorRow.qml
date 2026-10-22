@@ -1,5 +1,6 @@
 import QtQuick
 import "."
+import "ValueKinds.js" as VK
 
 // One generic inspector row: a group header, a param, the More row or a fold row — nothing placed per control.
 // A fold row (rows by importance) is a group's name with a chevron: click opens or closes the group
@@ -15,6 +16,9 @@ import "."
 // Right-click on a param row: Reset puts it back to its default (model.default) through the same set operation, one
 // undo step (INTERACTION 1.4). At its default (or with no default, or driven by an expression) there is nothing to
 // reset, so the menu is absent. Mixed values count as not at the default.
+// A number with a `display` kind (model.display; ValueKinds.js) shows in that kind's words ("80 %", "−1.9 dB", "L 30");
+// an amount (VK.slides: pan, a gain, a 0..1 amount) gets the kit Slider with its NumberField beside it.
+// The label column is Theme.labelColumnFor(width), the same for every row, so every field starts and ends alike.
 Item {
     id: row
     required property var model           // roles from rostrum_gui.rows.ROLES
@@ -22,7 +26,9 @@ Item {
     property var bridge
     property bool keyMarks: false
     property bool highlighted: false      // marked while it is in focus elsewhere (2D: its keys picked in the timeline)
-    readonly property int gutter: keyMarks ? 22 : 0
+    readonly property int gutter: keyMarks ? Theme.keyGutter : 0
+    readonly property int labelColumn: Theme.labelColumnFor(width)
+    readonly property bool amount: model.type === "number" && VK.slides(model.display || "", model.min ?? 0, model.max ?? 1e9)
     readonly property bool driven: model.row === "param" && !!model.expr      // an expression decides (model.expr)
     readonly property bool tall: model.type === "list" || model.control === "curve"    // a widget taller than a field (top-aligned)
     readonly property int full: model.row === "group" ? Theme.groupGap + (model.label ? Theme.rowDense : 0)   // "": a gap only
@@ -89,7 +95,7 @@ Item {
         anchors.verticalCenter: row.driven || row.tall ? undefined : parent.verticalCenter
         anchors.top: row.driven || row.tall ? parent.top : undefined
         height: Theme.row
-        Text { id: label; width: Theme.labelColumn - Theme.gap; anchors.verticalCenter: parent.verticalCenter
+        Text { id: label; width: row.labelColumn - Theme.gap; anchors.verticalCenter: parent.verticalCenter
                text: row.model.label; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
                wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; lineHeight: 0.9   // never cut to "Width along the…"
                HoverHandler { id: labelHover }
@@ -97,13 +103,14 @@ Item {
                           hovered: labelHover.hovered } }   // hover help: the setting's name and its one sentence
         Loader {
             id: widget
-            x: Theme.labelColumn
+            x: row.labelColumn
             anchors.verticalCenter: row.tall ? undefined : parent.verticalCenter
             y: row.tall ? (Theme.row - Theme.field) / 2 : 0
-            width: row.model.type === "toggle" ? (item ? item.implicitWidth : 0) : parent.width - Theme.labelColumn - row.gutter
+            width: row.model.type === "toggle" ? (item ? item.implicitWidth : 0) : parent.width - row.labelColumn - row.gutter
             height: row.tall && item ? item.implicitHeight : Theme.field
             active: row.model.row === "param" && !row.driven
             sourceComponent: row.model.control === "curve" ? curve
+                           : row.amount ? amountRow
                            : row.model.control === "file" || row.model.control === "folder" ? path
                            : ({ toggle: toggle, number: number, choice: choice, color: colour, text: text, list: list })[row.model.type] || text
         }
@@ -160,6 +167,21 @@ Item {
         if (w.input && w.editable) { w.input.forceActiveFocus(); w.input.selectAll() } else w.forceActiveFocus()
     }
     Component { id: toggle; Toggle { checked: !!row.model.value; onToggled: (v) => row.set(v) } }
+    Component { id: amountRow; Item {   // an amount: the slider, then the value in its kind's words (typed there)
+        readonly property var input: amountField.item ? amountField.item.input : null      // focusWidget types here
+        readonly property bool editable: true
+        Slider { anchors.left: parent.left; anchors.right: amountField.left; anchors.rightMargin: Theme.gap
+                 anchors.verticalCenter: parent.verticalCenter
+                 value: row.model.value ?? 0; from: row.model.min ?? 0; to: row.model.max ?? 1
+                 step: row.model.step ? row.model.step : 0.01; display: row.model.display || ""
+                 defaultValue: row.model.default ?? null
+                 onEdited: (v) => row.set(v)
+                 onScrubStarted: row.bridge.beginScrub(row.model.id)
+                 onScrubbed: (v) => row.bridge.scrub(row.model.id, v)
+                 onScrubEnded: row.bridge.endScrub() }
+        Loader { id: amountField; anchors.right: parent.right; width: Theme.amountField; height: parent.height
+                 sourceComponent: number }
+    } }
     Component { id: number; NumberField {
         value: row.model.value === null || row.model.value === undefined ? 0 : row.model.value
         from: row.model.min === null || row.model.min === undefined ? -1e9 : row.model.min
@@ -169,6 +191,7 @@ Item {
         atRest: row.mixed
         words: row.model.words || []
         expressions: row.bridge.typesExpressions === true     // a bridge without the flag (a sub-panel) takes no typed =…
+        display: row.model.display || ""
         defaultValue: row.model.default === undefined ? null : row.model.default   // double-click puts it back
         onEdited: (v) => row.set(v)
         onTypedExpression: (t) => row.set(t)

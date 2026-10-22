@@ -7,7 +7,6 @@ import RostrumKit
 // they look and behave like every other setting; each change is one undo step.
 Panel {
     id: p
-    title: "Inspector"
     NameLabel { id: name; text: backend.docName; font.pixelSize: Theme.heading
                 font.weight: Font.DemiBold; anchors.left: parent.left; anchors.right: parent.right }
     Text { id: kind; text: songPanel.mainMix === "main" ? "Song · Main mix" : "Song"
