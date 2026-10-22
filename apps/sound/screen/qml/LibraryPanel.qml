@@ -7,6 +7,8 @@ import RostrumKit
 // sounds"; the choices and results appear once there is something to search. Each result plays on its own through the engine (click it, or ▶; ■ Stop in the Library ends it) and
 // goes on the selected track at the playhead (double-click or Place: one operation, one undo step). With one clip
 // selected each result also has Swap (double-click swaps): clip.swap keeps the clip's time, length, level and fades.
+// ↑ / ↓ (in the search box) step through the results in the clip's place with a loop round it; Enter keeps (one undo step),
+// Esc puts the original back (swap_trial.py). The step bar appears only while stepping.
 Item {
     id: lib
     property string query: ""
@@ -46,9 +48,28 @@ Item {
         Text { width: parent.width; wrapMode: Text.WordWrap; text: soundLibrary.status
                color: soundLibrary.status.startsWith("Error") ? Theme.danger : Theme.fg3
                font.family: uiFont; font.pixelSize: Theme.label }
+        Text { visible: soundLibrary.swapTarget !== "" && !soundLibrary.swapping; width: parent.width; wrapMode: Text.WordWrap
+               text: "↑ ↓ try each sound in place of the clip"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+        Item {
+            id: stepBar
+            visible: soundLibrary.swapping
+            width: parent.width; height: visible ? Theme.field : 0
+            Text { anchors { left: parent.left; right: keepBtn.left; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
+                   text: "Trying in place"; elide: Text.ElideRight
+                   color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+            Row { id: keepBtn; anchors { right: parent.right; verticalCenter: parent.verticalCenter } spacing: 2
+                  Button { text: "Original"; kind: "ghost"; onClicked: soundLibrary.swapBack()
+                           HoverTip { text: "Put the original back (Esc)"; hovered: backHover.hovered }
+                           HoverHandler { id: backHover } }
+                  Button { text: "Keep"; kind: "primary"; onClicked: { soundLibrary.swapKeep(); lib.used() }
+                           HoverTip { text: "Keep this one (Enter)"; hovered: keepHover.hovered }
+                           HoverHandler { id: keepHover } } }
+        }
         ListView {
             id: list
             width: parent.width; height: body.height - y; clip: true; spacing: 2
+            currentIndex: soundLibrary.swapRow
+            onCurrentIndexChanged: if (soundLibrary.swapping) positionViewAtIndex(currentIndex, ListView.Contain)
             boundsBehavior: Flickable.StopAtBounds
             model: soundLibrary.results
             delegate: Rectangle {
@@ -57,7 +78,7 @@ Item {
                 required property int index
                 width: list.width; height: Theme.rowDense * 2
                 radius: Theme.radiusCtl
-                color: hover.hovered ? Theme.hover : Theme.raised
+                color: soundLibrary.swapRow === row.index ? Theme.accentSoft : hover.hovered ? Theme.hover : Theme.raised
                 HoverHandler { id: hover }
                 TapHandler { onTapped: soundLibrary.audition(row.index); onDoubleTapped: { soundLibrary.swapTarget ? soundLibrary.swap(row.index) : soundLibrary.place(row.index); lib.used() } }
                 Column {
@@ -65,9 +86,10 @@ Item {
                     anchors.rightMargin: Theme.gap; anchors.verticalCenter: parent.verticalCenter; spacing: 2
                     Text { width: parent.width; text: row.modelData.name; elide: Text.ElideMiddle; color: Theme.fg
                            font.family: uiFont; font.pixelSize: Theme.body }
-                    Text { width: parent.width; elide: Text.ElideRight; color: Theme.fg3
+                    Text { id: whatText; width: parent.width; elide: Text.ElideRight; color: Theme.fg3
                            text: row.modelData.what + (row.modelData.inFile ? " · " + row.modelData.inFile : "")
-                           font.family: uiFont; font.pixelSize: Theme.label }
+                           font.family: uiFont; font.pixelSize: Theme.label
+                           HoverTip { text: whatText.truncated ? whatText.text : ""; hovered: hover.hovered } }
                 }
                 Row {
                     id: buttons
@@ -75,7 +97,7 @@ Item {
                     spacing: 2
                     IconButton { glyph: "▶"; kind: "ghost"; tip: "Hear it"; onClicked: soundLibrary.audition(row.index) }
                     Button { text: "Place"; onClicked: { soundLibrary.place(row.index); lib.used() } }
-                    Button { visible: soundLibrary.swapTarget !== ""; kind: "primary"; text: "Swap"
+                    Button { visible: soundLibrary.swapTarget !== "" && soundLibrary.swapRow !== row.index; kind: "primary"; text: "Swap"
                              onClicked: { soundLibrary.swap(row.index); lib.used() } }
                 }
             }

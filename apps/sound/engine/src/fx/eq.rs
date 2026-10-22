@@ -3,6 +3,7 @@
 
 use std::f64::consts::PI;
 
+use super::state::Insert;
 use super::{frames, BLOCK};
 use crate::mix::schedule::EqBand;
 
@@ -65,21 +66,45 @@ pub(crate) fn biquad(shape: &str, f: f64, gain_db: f64, q: f64, sr: f64) -> Coef
     Coeffs { b0: b0 / a0, b1: b1 / a0, b2: b2 / a0, a1: a1 / a0, a2: a2 / a0 }
 }
 
-pub(crate) fn eq(bands: &[EqBand], chs: &mut [&mut [f32]], sr: f64) {
-    let n = frames(chs);
-    for band in bands {
-        let automated = band.freq.automated() || band.gain.automated() || band.q.automated();
-        let coeffs = |t: f64| biquad(&band.shape, band.freq.at(t), band.gain.at(t), band.q.at(t), sr);
-        let mut c = coeffs(0.0);
-        // Transposed direct form II, per channel.
-        let mut z = vec![[0.0f64; 2]; chs.len()];
-        for i in 0..n {
-            if automated && i % BLOCK == 0 {
-                c = coeffs(i as f64 / sr);
-            }
-            for (ch, buf) in chs.iter_mut().enumerate() {
-                buf[i] = c.tick(&mut z[ch], buf[i] as f64) as f32;
+/// The EQ bands with their filter memory, kept between blocks (state.rs).
+pub(crate) struct Eq {
+    bands: Vec<(EqBand, bool, Coeffs, Vec<[f64; 2]>)>,
+    sr: f64,
+}
+
+impl Eq {
+    pub fn new(bands: &[EqBand], channels: usize, sr: f64) -> Self {
+        let bands = bands
+            .iter()
+            .map(|b| {
+                let automated = b.freq.automated() || b.gain.automated() || b.q.automated();
+                (b.clone(), automated, biquad(&b.shape, b.freq.at(0.0), b.gain.at(0.0), b.q.at(0.0), sr), vec![[0.0f64; 2]; channels])
+            })
+            .collect();
+        Eq { bands, sr }
+    }
+}
+
+impl Insert for Eq {
+    fn block(&mut self, chs: &mut [&mut [f32]], t0: usize) -> Result<(), String> {
+        let (n, sr) = (frames(chs), self.sr);
+        for (band, automated, c, z) in self.bands.iter_mut() {
+            // Transposed direct form II, per channel.
+            for i in 0..n {
+                if *automated && (t0 + i) % BLOCK == 0 {
+                    let t = (t0 + i) as f64 / sr;
+                    *c = biquad(&band.shape, band.freq.at(t), band.gain.at(t), band.q.at(t), sr);
+                }
+                for (ch, buf) in chs.iter_mut().enumerate() {
+                    buf[i] = c.tick(&mut z[ch], buf[i] as f64) as f32;
+                }
             }
         }
+        Ok(())
     }
+}
+
+#[cfg(test)]
+pub(crate) fn eq(bands: &[EqBand], chs: &mut [&mut [f32]], sr: f64) {
+    let _ = Eq::new(bands, chs.len(), sr).block(chs, 0);
 }

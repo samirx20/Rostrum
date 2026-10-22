@@ -33,9 +33,15 @@ QQC.Popup {
                color: text.indexOf("Error") === 0 ? Theme.danger : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
         Button {
             width: pop.availableWidth; kind: "primary"
-            visible: pop.voice || pop.noise || pop.echo
-            text: pop.job.busy ? "Cleaning…" : "Clean"
-            onClicked: if (!pop.job.busy && backend.cleanSelected(pop.voice, pop.noise, pop.echo)) pop.job.makeFor(backend.selectedIds)
+            visible: !pop.job.busy && (pop.voice || pop.noise || pop.echo)
+            text: "Clean"
+            onClicked: if (backend.cleanSelected(pop.voice, pop.noise, pop.echo)) pop.job.makeFor(backend.selectedIds)
+        }
+        Button {
+            width: pop.availableWidth; kind: "ghost"
+            visible: pop.job.cancellable
+            text: "Cancel the clean-up"
+            onClicked: pop.job.cancel()
         }
     }
 }

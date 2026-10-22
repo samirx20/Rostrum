@@ -58,12 +58,13 @@ Column {
         width: v.width; editable: true; placeholder: "Type what she says"
         onEntered: if (editorSide.typeLine(v.trackId, say.input.text)) say.input.text = ""
     }
-    Text { visible: !!editorSide.track.voiceMissing && editorSide.track.voiceMissing !== v.status
+    ModelDownload { width: v.width; fetch: editorSide.voiceDownload }    // asks before the voice model is downloaded
+    Text { visible: !!editorSide.track.voiceMissing && editorSide.voiceDownload.state === "idle" && editorSide.track.voiceMissing !== v.status
            width: v.width; wrapMode: Text.WordWrap; text: editorSide.track.voiceMissing || ""
            color: Theme.warn; font.family: uiFont; font.pixelSize: Theme.label }
     Item {
         width: v.width; height: visible ? Theme.button + Theme.gap : 0
-        visible: v.missing > 0 || v.status !== ""
+        visible: (v.missing > 0 || v.status !== "") && editorSide.voiceDownload.state === "idle"   // the download question says it
         Button {
             id: make
             y: Theme.gap; visible: v.missing > 0 && !v.busy

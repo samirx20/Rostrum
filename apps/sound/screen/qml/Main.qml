@@ -102,7 +102,7 @@ AppShell {
                               bottomMargin: clean.visible ? Theme.gap : 0 } }
         SongSettings { visible: backend.selected === ""
                        anchors { left: parent.left; right: parent.right; top: parent.top; bottom: parent.bottom } }
-        CleanTakeBar { id: clean; visible: mixer.cleaning.clip !== ""
+        CleanTakeBar { id: clean; visible: mixer.cleaning.shown
                        anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: implicitHeight }
     }
 }

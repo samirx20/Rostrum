@@ -3,13 +3,25 @@ is one gesture on the notes (or drum hits) of the track in the Editor, `endVeloc
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Slot
+from PySide6.QtCore import Property, Signal, Slot
 from rostrum_gui.edits import Drag
 
 from . import velocity
 
 
 class VelocitySlots:
+    velocityFoldedChanged = Signal()
+
+    @Property(bool, notify=velocityFoldedChanged)
+    def velocityFolded(self):
+        """The strip is folded to its one thin row: the person's own screen state, never the song, never undone."""
+        return self.__dict__.get("_vel_folded", False)
+
+    @Slot()
+    def toggleVelocityFold(self):
+        self.__dict__["_vel_folded"] = not self.velocityFolded
+        self.velocityFoldedChanged.emit()
+
     @Slot(str, result=bool)
     def beginVelocity(self, item_id):
         """Press on a bar (`item_id`) or on empty strip space ("": a line). A bar that is selected takes every

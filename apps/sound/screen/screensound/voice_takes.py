@@ -32,7 +32,8 @@ def label(track: dict, line: dict) -> str:
 
 
 def mark_takes(rows: list[dict], root: dict) -> None:
-    """The take is named on the block ("Take 2 of 3 · words") for lines with more than one."""
+    """The take is named on the block ("Take 2 of 3 · words") for lines with more than one, and the block says which
+    way a take is left (`canBack` / `canNext`): the lane draws its ◂ ▸ arrows from that (TakeArrows.qml)."""
     by_id = {ln["id"]: (t, ln) for t in root.get("tracks", []) if t.get("instrument") == "voice" for ln in t.get("lines", [])}
     for r in rows:
         for b in r.get("blocks", []):
@@ -40,3 +41,5 @@ def mark_takes(rows: list[dict], root: dict) -> None:
                 name = label(*by_id[b["id"]])
                 if name:
                     b["label"] = f"{name} · {b['label']}"
+                    b["canBack"] = neighbour(*by_id[b["id"]], -1) is not None
+                    b["canNext"] = neighbour(*by_id[b["id"]], 1) is not None

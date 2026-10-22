@@ -58,12 +58,18 @@ def clip_span(c: dict, root: dict) -> tuple[float, float, tuple]:
     return timing.sec(c["at"], root, c["id"]), max(dur, 0.05), peaks
 
 
+def in_key_then(k: int, key) -> bool:
+    """Is pitch `k` in the key playing (the one rule the roll's key shading uses too)? With no key, every pitch is."""
+    return key is None or K.parse(key) is None or K.in_key(k, key)
+
+
 def note_block(n, root):
     ks = timing.keys(n["pitch"])
     t = timing.sec(n["at"], root, n["id"])
     key = K.key_at(root, t)                     # spelled in the key playing there (Bb in D minor, not A#)
     label = " ".join(timing.name(k, key) for k in ks)
-    return {"id": n["id"], "type": "note", "t": t, "dur": timing.length_sec(n["dur"], root, t, n), "keys": ks, "names": [timing.name(k, key) for k in ks], "label": label, "vel": n.get("vel", 0.8)}
+    return {"id": n["id"], "type": "note", "t": t, "dur": timing.length_sec(n["dur"], root, t, n), "keys": ks, "names": [timing.name(k, key) for k in ks], "label": label, "vel": n.get("vel", 0.8),
+            "out": [not in_key_then(k, key) for k in ks]}
 
 
 def hit_block(h, root):
@@ -226,7 +232,8 @@ def roll(track: dict | None, root: dict, hue: str = HUES[0]) -> dict:
     def spell(key):
         rows = range(hi, lo - 1, -1)
         return {"names": [timing.name(k, key) for k in rows],
-                "inKey": [key is None or K.parse(key) is None or K.in_key(k, key) for k in rows]}
+                "inKey": [in_key_then(k, key) for k in rows],
+                "root": K.parse(key)[0] if key is not None and K.parse(key) is not None else -1}   # the tonic's pitch class
     row_names = [{"t": 0.0, **spell(K.key_at(root, 0.0))}]
     row_names += [{"t": c["t"], **spell(c["key"])} for c in music_map.key_changes(root) if c["t"] > 0]
     return {"id": track["id"], "name": track.get("name") or track["id"], "kind": kind_of(track), "blocks": bl,

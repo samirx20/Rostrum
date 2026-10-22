@@ -32,6 +32,24 @@ Rectangle {
     readonly property real rowH: rows.length === mixRows + groupRows ? 24
         : Math.max(slim ? 18 : 24, Math.min(slim ? 26 : 52,
               (list.height - addH - openLanes * (laneH + laneGap) - mixRows * mixH - groupRows * groupH - rowGap * (rows.length - 1)) / (rows.length - mixRows - groupRows)))
+    // Dragging a track header: where it would land is asked of the backend (group_drag.py), the one rule.
+    property string dragId: ""
+    property string dropOver: ""            // the row under the pointer
+    property string dropWhat: ""            // "join" | "leave" | "" (nothing there)
+    property string dropBus: ""
+    property real dragX: 0
+    property real dragY: 0
+    function dragTo(id, p) {
+        dragId = id; dragY = p.y - list.contentY + list.y
+        var i = slot(p.y).i
+        dropOver = i >= 0 ? rows[i].id : ""
+        var t = dropOver === "" ? "" : backend.dropTarget(dropOver)
+        dropWhat = t.split(":")[0]; dropBus = t.indexOf(":") >= 0 ? t.split(":")[1] : ""
+    }
+    function dropAt(id, dropped) {
+        if (dropped && dropWhat !== "" && dropOver !== id) backend.dropTracks([id], dropOver)
+        dragId = ""; dropOver = ""; dropWhat = ""; dropBus = ""
+    }
     function autoOf(r) { return slim ? null : r.auto }
     function hOf(r) { return r.group ? groupH : r.mix ? mixH : rowH }
     function bottomMix(r) { return !!r.mix && !r.group }                    // a bus or the master in the compact rows, not a group header
@@ -95,7 +113,18 @@ Rectangle {
                     }
                     TrackHeader { visible: !row.modelData.mix; x: (row.modelData.depth || 0) * 14; y: row.top0
                                   width: tl.headerWidth - x; height: row.h; track: row.modelData; showAuto: !tl.slim
-                                  onMenuWanted: (px, py) => tl.openMenu(backend.itemMenu(row.modelData.id), mapToItem(tl, px, py)) }
+                                  dragging: tl.dragId === row.modelData.id
+                                  onMenuWanted: (px, py) => tl.openMenu(backend.itemMenu(row.modelData.id), mapToItem(tl, px, py))
+                                  onDragMoved: (px, py) => tl.dragTo(row.modelData.id, mapToItem(column, px, py))
+                                  onDragEnded: (px, py, dropped) => tl.dropAt(row.modelData.id, dropped) }
+                    Rectangle {   // a drag over this group: its rows are tinted (the group the track will join)
+                        visible: tl.dropWhat === "join" && (row.modelData.id === tl.dropBus || row.modelData.bus === tl.dropBus)
+                        y: row.top0; width: tl.headerWidth; height: row.h; radius: Theme.radiusCtl
+                        color: Theme.accentSoft; border.width: 1; border.color: Theme.accent }
+                    Rectangle {   // a drag over a track that is in no group: the track will leave its group
+                        visible: tl.dropWhat === "leave" && row.modelData.id === tl.dropOver
+                        y: row.top0; width: tl.headerWidth; height: row.h; radius: Theme.radiusCtl
+                        color: "transparent"; border.width: 1; border.color: Theme.fg3 }
                     GroupHeader { visible: !!row.modelData.group; y: row.top0; width: tl.headerWidth; height: row.h; track: row.modelData; showAuto: !tl.slim }
                     MixRowHeader { visible: tl.bottomMix(row.modelData); y: row.top0; width: tl.headerWidth; height: row.h; track: row.modelData; showAuto: !tl.slim }
                     Rectangle {
@@ -134,6 +163,14 @@ Rectangle {
         visible: bars.visibleX(x - bars.x)
         x: bars.x + Math.round(bars.xOf(backend.time)); y: bars.y + bars.height
         width: 1; height: list.y + list.height - y; color: Theme.accent; opacity: 0.9
+    }
+    Rectangle {   // the header being dragged: its name rides the pointer
+        visible: tl.dragId !== ""
+        x: Theme.gap * 2; y: tl.dragY - height / 2; width: tl.headerWidth - Theme.gap * 2; height: 22; radius: Theme.radiusCtl
+        color: Theme.raised; border.color: Theme.accent; opacity: 0.92
+        Text { anchors { left: parent.left; leftMargin: Theme.gap; right: parent.right; verticalCenter: parent.verticalCenter }
+               text: { var r = tl.rows.find(x => x.id === tl.dragId); return r ? r.name : "" }
+               elide: Text.ElideRight; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.label }
     }
     HScroll { id: scrollbar; x: bars.x; width: bars.width; y: tl.height - height - Theme.grid }
 

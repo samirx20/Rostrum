@@ -5,6 +5,9 @@ import RostrumKit
 // screensound/export.py): the live check of the sound that plays now against the target (pass / miss), the file type,
 // the quality (sample rate), stems, and trimming the silent end; then "+ Another version" rows (each its own target,
 // file type and quality, rendered as its own version; the live check under each is that row's pass / miss).
+// A delivery preset ("For the Editor", presets.py) is one button that sets file, quality, trimming, stems and markers; it
+// shows as chosen while the choices still equal it. Stems: only the mix / every track and group / one per group (only offered
+// when the song has a group). "Write the markers beside the files" only when the song has a marker or section.
 Column {
     id: root
     readonly property var job: mixer.export
@@ -38,6 +41,16 @@ Column {
         text: root.target.verdict && root.target.verdict.text ? (root.target.verdict.ok ? "✓ " : "") + root.target.verdict.text : ""
         color: root.target.verdict && root.target.verdict.ok ? Theme.ok : Theme.warn
         font.family: uiFont; font.pixelSize: Theme.body
+    }
+    Repeater {   // delivery presets: one button each, chosen while the sheet matches it
+        model: root.job.presets
+        delegate: Button {
+            required property var modelData
+            width: root.width; text: modelData.label; kind: root.job.preset === modelData.value ? "primary" : "ghost"
+            onClicked: root.job.usePreset(modelData.value)
+            HoverHandler { id: presetHover }
+            HoverTip { text: modelData.detail; hovered: presetHover.hovered }
+        }
     }
     Field {
         label: "File"
@@ -73,8 +86,12 @@ Column {
         }
     }
     Button { text: "+ Another version"; kind: "ghost"; onClicked: root.job.addVersion() }
-    Switch { checked: root.job.stems; onToggled: (v) => root.job.setStems(v)
-             text: root.job.stems ? "Stems: a file for every track and group" : "Stems: off (only the mix)" }
+    Field {
+        label: "Stems"; tip: "Separate files for the Editor or a mix elsewhere; they add up to the mix"
+        ChoiceField { width: parent.width; options: root.job.stemChoices; current: root.job.stemsMode; onPicked: (v) => root.job.setStemsMode(v) }
+    }
+    Switch { visible: root.job.hasMarkers; checked: root.job.markers; onToggled: (v) => root.job.setMarkers(v)
+             text: root.job.markers ? "Markers written beside the files" : "No markers file" }
     Switch { checked: root.job.trim; onToggled: (v) => root.job.setTrim(v)
              text: root.job.trim ? "Cut the silence at the end" : "Keep the song's full length" }
 }

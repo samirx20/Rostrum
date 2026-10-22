@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from rostrum_core.mcp import Reply, Tools
 
-from .. import deliver, handoff
+from .. import deliver, handoff, presets
 from ..compile import compile as compile_doc
 from ..doc import markers, ops_mix, times
 
@@ -26,7 +26,10 @@ def register(tools: Tools):
         "solo": {"type": "array", "items": {"type": "string"}, "description": "Only these track ids are heard."},
         "mute": {"type": "array", "items": {"type": "string"}, "description": "These track ids are not heard."},
         "master": {"type": "boolean", "default": True, "description": "False: the mix before mastering (no loudness target, glue or master effects)."},
-        "stems": {"type": "boolean", "default": True, "description": "Also write one file per track (named after the track) and one per bus (`<bus name>.bus.<ext>`)."},
+        "stems": {"enum": [True, False, "all", "groups"], "default": True,
+                  "description": "true / \"all\": a file per track (named after the track) and per bus (`<bus name>.bus.<ext>`). \"groups\": a file per group (a bus tracks play into) and per track that is in no group, nothing twice. false: only the mix."},
+        "preset": {"enum": list(presets.PRESETS), "description": "; ".join(f"{k}: {v['label']} — {v['detail']}" for k, v in presets.PRESETS.items())
+                   + ". Sets format, sampleRate, trim and stems (and writes markers.json) unless you give them."},
         "format": {"type": "string", "enum": [f["id"] for f in deliver.FORMATS], "default": deliver.DEFAULT_FORMAT,
                    "description": "; ".join(f"{f['id']}: {f['label']} — {f['detail']}" for f in deliver.FORMATS) + ". Every file of the render is in this format."},
         "sampleRate": {"type": "integer", "enum": [r["id"] for r in deliver.RATES],
@@ -38,6 +41,7 @@ def register(tools: Tools):
         """Render the document to a file (24-bit WAV by default; `format` picks WAV 16 / 24 / 32-bit float, FLAC or MP3) and stems as its next version (renders/<item>/vNNN/), with loudness, true
         peak and per-track meters. Stems are named after their tracks; the manifest maps ids to files. Returns a job."""
         doc = ctx.document(args.get("item"))
+        args = presets.expand(args, args.get("preset"))             # a wrong preset answers now
         item = doc.item_id
         master = args.get("master", True)
         follow = ops_mix.follow_calls(doc.data)     # project markers renamed elsewhere: one recorded step first
@@ -45,7 +49,7 @@ def register(tools: Tools):
             doc.apply(follow, ctx.who, label="Follow renamed markers")
         schedule = compile_doc(doc.data, solo=args.get("solo"), mute=args.get("mute"), master=master)
         state = ctx.app.state
-        stems = "all" if args.get("stems", True) else []
+        stems = {True: "all", False: [], "all": "all", "groups": "groups"}[args.get("stems", True)]
         who = f"{ctx.who.kind}:{ctx.who.name}"
         partial = bool(args.get("solo") or args.get("mute"))
         options = {k: args[k] for k in ("format", "sampleRate", "trim") if k in args}
@@ -59,13 +63,14 @@ def register(tools: Tools):
             job.progress(note="rendering")
             if partial:     # a listening check, not the item's sound: never a version the Editor could pick up
                 out = state.renders(item) / "check" / "check.wav"
-                r = state.engine.request("render", schedule=schedule, out=str(out), stems=stems,
+                r = state.engine.request("render", schedule=schedule, out=str(out), stems="all" if stems == "groups" else stems,
                                          stemsDir=str(out.parent / "stems"))
             else:
-                r = handoff.render(state.folder, doc, state.engine, schedule, who, stems=stems, master=master, options=options)
+                r = handoff.render(state.folder, doc, state.engine, schedule, who, stems=stems, master=master, options=options,
+                                   markers_file=bool(args.get("markers")))
             state.remember(item, r)
             files = [r["file"], *r["stems"].values(), *r.get("busStems", {}).values()]
             return Reply(summary(r), {**{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
-                              **{k: r[k] for k in ("format", "sampleRate", "songSeconds", "trimmed", "range") if k in r}}, files)
+                              **{k: r[k] for k in ("format", "sampleRate", "songSeconds", "trimmed", "range", "stemsBy") if k in r}}, files)
 
         return ctx.job(f"render {item}", work, key=f"render:{item}:{hash(str((schedule, options)))}")

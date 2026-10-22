@@ -117,8 +117,13 @@ pub(crate) fn fft(re: &mut [f64], im: &mut [f64], inverse: bool) {
 
 /// `x` convolved with `ir`, cut to x's length (overlap-add; real FFTs, realfft).
 pub fn convolve(x: &[f32], ir: &[f64]) -> Vec<f64> {
+    convolve_len(x, ir, x.len())
+}
+
+/// `x` convolved with `ir`, `len` samples of it (x's length plus the IR's tail at most).
+fn convolve_len(x: &[f32], ir: &[f64], len: usize) -> Vec<f64> {
     use realfft::RealFftPlanner;
-    let mut out = vec![0.0; x.len()];
+    let mut out = vec![0.0; len];
     if ir.is_empty() || x.is_empty() {
         return out;
     }
@@ -148,23 +153,75 @@ pub fn convolve(x: &[f32], ir: &[f64]) -> Vec<f64> {
         spec[0].im = 0.0;
         spec[n / 2].im = 0.0;
         inv.process(&mut spec, &mut buf).expect("fft size");
-        for (k, v) in buf.iter().enumerate().take(x.len() - start) {
+        for (k, v) in buf.iter().enumerate().take(len - start) {
             out[start + k] += v * scale;
         }
     }
     out
 }
 
-/// The insert: each channel through its side of the IR, blended with the dry signal by `mix`.
-pub fn run(ir: &Ir, mix: &Param, l: &mut [f32], r: &mut [f32], sr: f64) -> Result<(), String> {
-    let [il, irr] = match ir {
+/// The IR's two sides (a built-in one made, a file's read).
+pub fn sides(ir: &Ir, sr: f64) -> Result<[Vec<f64>; 2], String> {
+    Ok(match ir {
         Ir::Builtin(name) => builtin(name, sr)?,
         Ir::File(pcm) => {
             let d = pcm.read()?;
             let ch = |c: usize| d.iter().skip(c.min(pcm.channels - 1)).step_by(pcm.channels).map(|v| *v as f64).collect::<Vec<_>>();
             [ch(0), ch(1)]
         }
-    };
+    })
+}
+
+/// The insert on one pair, block by block: each block's tail past its end (the IR's length) is carried into the
+/// next. Within a block the sum is the whole-buffer one; across a block edge the overlap-add segments start at the
+/// edge, so the tail adds in another order (a difference of float rounding, ~1e-7 of full scale).
+pub struct Conv {
+    ir: [Vec<f64>; 2],
+    mix: Param,
+    sr: f64,
+    carry: [Vec<f64>; 2],
+}
+
+impl Conv {
+    pub fn new(ir: [Vec<f64>; 2], mix: &Param, sr: f64) -> Self {
+        Conv { ir, mix: mix.clone(), sr, carry: [vec![], vec![]] }
+    }
+
+    pub fn pair(&mut self, l: &mut [f32], r: &mut [f32], t0: usize) {
+        let n = l.len();
+        let mut wet = [0, 1].map(|c| {
+            let x: &[f32] = if c == 0 { l } else { r };
+            let ir = &self.ir[c];
+            let mut w = convolve_len(x, ir, n + ir.len().saturating_sub(1));
+            let carry = std::mem::take(&mut self.carry[c]);
+            w.iter_mut().zip(&carry).for_each(|(a, b)| *a += *b);
+            if carry.len() > w.len() {
+                w.extend_from_slice(&carry[w.len()..]);
+            }
+            w
+        });
+        for (c, w) in wet.iter_mut().enumerate() {
+            self.carry[c] = w.split_off(n.min(w.len()));
+        }
+        let [wl, wr] = &wet;
+        for i in 0..n {
+            let m = self.mix.at((t0 + i) as f64 / self.sr);
+            l[i] = (l[i] as f64 * (1.0 - m) + wl[i] * m) as f32;
+            r[i] = (r[i] as f64 * (1.0 - m) + wr[i] * m) as f32;
+        }
+    }
+}
+
+#[cfg(test)]
+pub fn run(ir: &Ir, mix: &Param, l: &mut [f32], r: &mut [f32], sr: f64) -> Result<(), String> {
+    Conv::new(sides(ir, sr)?, mix, sr).pair(l, r, 0);
+    Ok(())
+}
+
+/// The old whole-buffer insert, kept as the reference the block form is checked against (tests).
+#[cfg(test)]
+pub fn run_whole(ir: &Ir, mix: &Param, l: &mut [f32], r: &mut [f32], sr: f64) -> Result<(), String> {
+    let [il, irr] = sides(ir, sr)?;
     let (wl, wr) = (convolve(l, &il), convolve(r, &irr));
     for i in 0..l.len() {
         let m = mix.at(i as f64 / sr);

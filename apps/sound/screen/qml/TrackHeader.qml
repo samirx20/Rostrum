@@ -12,9 +12,13 @@ Rectangle {
     property bool showAuto: true            // off while the arrangement is slim (its lanes cannot open there)
     readonly property bool on: !!backend.picked[track.id]
     signal menuWanted(real x, real y)       // right-click: the host opens the track's actions (backend.itemMenu)
+    signal dragMoved(real x, real y)        // the header is being dragged (pointer in this header's coordinates): into / out of a group
+    signal dragEnded(real x, real y, bool dropped)
+    property bool dragging: false           // set by the host while its drop marks show; the header dims
     radius: Theme.radiusCtl
     color: on ? Theme.accentSoft : area.containsMouse ? Theme.raised : "transparent"
     Behavior on color { ColorAnimation { duration: Theme.fast } }
+    opacity: dragging ? 0.55 : 1
     HoverHandler { id: hover }
 
     Repeater {   // an agent just changed this track: the 1-second outline
@@ -23,7 +27,19 @@ Rectangle {
     }
     MouseArea {   // click selects the track alone, Ctrl+click adds / removes, Shift+click the tracks between
         id: area; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton
+        property real x0: 0
+        property real y0: 0
+        property bool moved: false
+        onPressed: (m) => { x0 = m.x; y0 = m.y; moved = false }
+        onPositionChanged: (m) => {
+            if (!pressed || !(pressedButtons & Qt.LeftButton)) return
+            if (!moved && Math.abs(m.y - y0) + Math.abs(m.x - x0) < 8) return       // a click is not a drag
+            moved = true; h.dragMoved(m.x, m.y)
+        }
+        onReleased: (m) => { if (moved) h.dragEnded(m.x, m.y, true) }
+        onCanceled: { if (moved) h.dragEnded(0, 0, false); moved = false }
         onClicked: (m) => {
+            if (moved) { moved = false; return }
             backend.focusArea("arrange")
             if (m.button === Qt.RightButton) h.menuWanted(m.x, m.y)
             else backend.clickSelect(h.track.id, (m.modifiers & Qt.ControlModifier) !== 0, (m.modifiers & Qt.ShiftModifier) !== 0)

@@ -13,7 +13,17 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_core import RostrumError
 from rostrum_sound.cleanup import fetch
 
-NAMES = {"deepfilternet3": "DeepFilterNet 3 (noise removal)", "umxhq": "Open-Unmix UMX-HQ (stem separation)"}
+NAMES = {"deepfilternet3": "DeepFilterNet 3 (noise removal)", "umxhq": "Open-Unmix UMX-HQ (stem separation)",
+         "qwentts": "the voice (Qwen3-TTS)"}
+
+
+def _groups(models) -> list[tuple]:
+    """(id, total bytes, licences) per model folder: the voice is three files but one question."""
+    out: dict = {}
+    for m in models:
+        size, lic = out.get(m.id, (0, []))
+        out[m.id] = (size + m.size, lic + [x for x in [licence_line(m)] if x not in lic])
+    return [(i, size, " and ".join(lic)) for i, (size, lic) in out.items()]
 
 
 def licence_line(m) -> str:
@@ -42,8 +52,9 @@ class ModelFetch(QObject):
 
     @Property(str, notify=changed)
     def question(self):
-        parts = [f"{NAMES.get(m.id, m.id)} ({m.size / 1e6:.0f} MB, {licence_line(m)})" for m in self._needs]
-        return f"This clean-up needs {' and '.join(parts)}. Download {'it' if len(parts) == 1 else 'them'} now?"
+        parts = [f"{NAMES.get(i, i)} ({size / 1e6:.0f} MB, {lic})" for i, size, lic in _groups(self._needs)]
+        what = "Speaking a line" if any(m.id == "qwentts" for m in self._needs) else "This clean-up"
+        return f"{what} needs {' and '.join(parts)}. Download {'it' if len(parts) == 1 else 'them'} now?"
 
     @Property(float, notify=changed)
     def progress(self):
@@ -88,7 +99,7 @@ class ModelFetch(QObject):
     def _work(self, models, stop):
         try:
             for i, m in enumerate(models):
-                self._note = f"{NAMES.get(m.id, m.id)}" + (f" ({i + 1} of {len(models)})" if len(models) > 1 else "")
+                self._note = f"{NAMES.get(m.id, m.id)}" + (f" ({i + 1} of {len(models)}: {m.file})" if len(models) > 1 else "")
                 fetch.install(m, progress=lambda done, total: self._tick.emit(done, total), cancel=stop)
             err = ""
         except RostrumError as e:

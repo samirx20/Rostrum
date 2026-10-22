@@ -8,7 +8,7 @@ use super::stats::Mix;
 use crate::mix::tape::{Tape, BLOCK};
 use crate::mix::wavwriter::WavWriter;
 
-/// Writes each (tape, file) pair, `mix.gain.total` frames long, at rate `sr`.
+/// Writes each (tape, file) pair, `mix.gain.total` frames long (from song frame `mix.gain.offset`: a range), at rate `sr`.
 pub fn write(mix: &Mix, files: &[(&Tape, PathBuf)], sr: u32) -> Result<(), String> {
     if files.is_empty() {
         return Ok(());
@@ -20,7 +20,7 @@ pub fn write(mix: &Mix, files: &[(&Tape, PathBuf)], sr: u32) -> Result<(), Strin
         let n = BLOCK.min(total - at);
         let g: Vec<f32> = (at..at + n).map(|i| gain.stem(i)).collect();
         for ((tape, _), w) in files.iter().zip(writers.iter_mut()) {
-            let mut block = tape.read(at, n)?;
+            let mut block = tape.read(gain.offset + at, n)?;
             block.iter_mut().for_each(|c| c.iter_mut().zip(&g).for_each(|(v, g)| *v *= g));
             w.write(&block)?;
         }

@@ -17,6 +17,7 @@ pub mod render;
 pub mod schedule;
 pub mod sweep;
 pub mod tape;
+pub mod tapewriter;
 pub mod trackcache;
 #[cfg(test)]
 mod trackcache_tests;

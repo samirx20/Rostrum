@@ -14,7 +14,9 @@ pub mod livefx;
 pub mod master;
 pub mod matcheq;
 pub mod reverb;
+pub mod state;
 pub mod stereo;
+pub mod tapefx;
 #[cfg(test)]
 mod tests;
 

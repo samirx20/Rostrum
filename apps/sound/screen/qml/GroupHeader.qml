@@ -4,7 +4,8 @@ import RostrumKit
 // A group's header in the arrangement (DESIGN.md §3.1d): a bus that tracks play into, drawn as a row above them with
 // a fold arrow (click folds the tracks behind this one row, Alt+click folds or unfolds every group), its name (click
 // selects the group: Ctrl+Shift+G ungroups it) and, folded, how many tracks it holds. Folding is the person's own
-// screen state, not the song. Its fader and effects are in the Mixer; a group inside a group is indented.
+// screen state, not the song. M / S at the right mute the group or solo its tracks. Its fader and effects are in the
+// Mixer; a group inside a group is indented. Dropping a track header on it (Timeline) puts the track into the group.
 Rectangle {
     id: h
     property var track
@@ -49,10 +50,12 @@ Rectangle {
     Text {
         id: count
         visible: !!h.track.folded && h.width >= 200      // narrow: the name gets the room
-        anchors { right: autoChip.visible ? autoChip.left : parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
+        anchors { right: autoChip.visible ? autoChip.left : toggles.left; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
         text: h.track.count + (h.track.count === 1 ? " track" : " tracks")
         font.family: uiFont; font.pixelSize: Theme.label - 1; color: Theme.fg3
     }
+    GroupToggles { id: toggles; track: h.track
+                   anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter } }
     LaneToggle { id: autoChip; visible: h.showAuto; track: h.track
-                 anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter } }
+                 anchors { right: toggles.left; rightMargin: 2; verticalCenter: parent.verticalCenter } }
 }

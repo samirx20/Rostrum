@@ -14,6 +14,8 @@ pub struct Job {
     out: PathBuf,
     stems: Vec<bool>,
     stems_dir: PathBuf,
+    /// A stretch of the song, seconds (`from` / `to`; both or neither).
+    range: Option<(f64, f64)>,
 }
 
 /// Reads the request's fields (so an unknown one fails before any work).
@@ -44,12 +46,25 @@ pub fn read(o: &mut Obj) -> Result<Job, Error> {
     if !o.bool("master", true)? {
         c.job["master"] = Value::Null;
     }
-    Ok(Job { c, out, stems, stems_dir })
+    let range = match (o.opt_num("from", 0.0, 1e7)?, o.opt_num("to", 0.0, 1e7)?) {
+        (None, None) => None,
+        (Some(a), Some(b)) if a < b => Some((a, b)),
+        (a, b) => return Err(Error::new("BAD_ARGUMENT", "from", format!("from {a:?} to {b:?}"), "is not a stretch of the song: give both `from` and `to` in seconds, 0 ≤ from < to")),
+    };
+    Ok(Job { c, out, stems, stems_dir, range })
 }
 
 pub fn run(job: Job) -> Result<Value, Error> {
-    let Job { c, out, stems, stems_dir } = job;
-    let s = Schedule::parse(&c.job.to_string()).map_err(|e| Error::new("INTERNAL", "render", "the compiled job", e))?;
+    let Job { c, out, stems, stems_dir, range } = job;
+    let mut s = Schedule::parse(&c.job.to_string()).map_err(|e| Error::new("INTERNAL", "render", "the compiled job", e))?;
+    if let Some((a, b)) = range {
+        let (sr, total) = (s.sample_rate as f64, s.total_samples);
+        let (from, to) = ((a * sr).round() as usize, ((b * sr).round() as usize).min(total));
+        if from >= to {
+            return Err(Error::new("BAD_ARGUMENT", "from", format!("{a} s"), format!("starts after the song ends ({:.1} s)", total as f64 / sr)));
+        }
+        s.range = Some((from, to));
+    }
     let t0 = std::time::Instant::now();
     let cache = crate::mix::trackcache::TrackCache::default_dir();
     let mix = render::render_keep(&s, cache.as_ref(), &stems).map_err(Error::render)?;
@@ -71,7 +86,8 @@ pub fn run(job: Job) -> Result<Value, Error> {
     let tracks: Vec<Value> = mix.tracks.iter().map(|t| json!({ "id": t.name, "peak": t.peak, "rms": t.rms, "lufs": t.lufs,
         "span": t.span.map(|(a, b)| [a, b]), "onsets": t.onsets, "bands": t.bands })).collect();
     Ok(json!({
-        "file": out.to_string_lossy(), "seconds": c.seconds, "renderSeconds": took, "sampleRate": sr,
+        "file": out.to_string_lossy(), "seconds": c.seconds,
+        "range": s.range.map(|(a, b)| [a as f64 / sr as f64, b as f64 / sr as f64]), "renderSeconds": took, "sampleRate": sr,
         "lufs": mix.lufs, "truePeak": mix.true_peak, "peak": mix.peak, "lra": loud.lra, "clipped": mix.clipped, "bands": mix.bands,
         "series": { "hop": 0.1, "shortTermWindow": 3.0, "correlationWindow": 0.4, "momentaryWindow": 0.4,
             "momentary": loud.momentary.iter().map(|&v| (v * 1000.0).round() / 1000.0).collect::<Vec<_>>(),

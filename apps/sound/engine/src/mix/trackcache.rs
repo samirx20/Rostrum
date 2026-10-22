@@ -36,14 +36,22 @@ impl TrackCache {
         Tape::open(&self.dir.join(name), len)
     }
 
-    /// Stores a track and hands back its tape; None when the cache cannot be written (the render then keeps
-    /// the track in a scratch tape of its own, and the next render does the same work).
-    pub fn store(&self, key: &str, chs: &[Vec<f32>]) -> Option<Tape> {
+    /// A whole tape file this render wrote (tapewriter.rs) moved into the cache under `key`; None when it can't be.
+    pub fn adopt(&self, key: &str, file: &Path, len: usize) -> Option<Tape> {
+        let to = self.dir.join(format!("{key}.f32"));
+        std::fs::create_dir_all(&self.dir).ok()?;
+        std::fs::rename(file, &to).ok()?;
+        Tape::open(&to, len)
+    }
+
+    /// Stores a track of `len` frames that `write` writes in the tape layout (tapewriter.rs streams one); None when the
+    /// cache cannot be written (the render then keeps the track in a scratch tape of its own).
+    pub fn store_with(&self, key: &str, len: usize, write: impl FnOnce(&mut std::io::BufWriter<std::fs::File>) -> std::io::Result<()>) -> Option<Tape> {
         let name = format!("{key}.f32");
-        if !crate::mix::cache::write_with(&self.dir, &name, |w| crate::mix::tape::write_to(w, chs)) {
+        if !crate::mix::cache::write_with(&self.dir, &name, write) {
             return None;
         }
-        Tape::open(&self.dir.join(name), chs.first().map_or(0, Vec::len))
+        Tape::open(&self.dir.join(name), len)
     }
 }
 

@@ -33,6 +33,7 @@ def arrange(root: dict, tracks: list[dict], mix: list[dict], folded) -> list[dic
         seen.add(bus)
         under, fold = [by_id[k] for k in below(bus) if not by_id[k].get("mix")], bus in folded
         out.append({**by_id[bus], "group": True, "depth": depth, "folded": fold, "count": len(under),
+                    "solo": bool(under) and all(r.get("solo") for r in under),     # lit when every track in it is soloed
                     "blocks": [b for r in under for b in r["blocks"]] if fold else []})
         if fold:
             seen.update(below(bus))
@@ -44,7 +45,7 @@ def arrange(root: dict, tracks: list[dict], mix: list[dict], folded) -> list[dic
                 emit(k, depth + 1)
             else:
                 seen.add(k)
-                out.append({**by_id[k], "depth": depth + 1})
+                out.append({**by_id[k], "depth": depth + 1, "bus": bus})      # `bus`: the group it plays into
 
     def top(item_id: str) -> str:
         item, hops = next(i for i in [*root.get("tracks", []), *root.get("buses", [])] if i["id"] == item_id), 0

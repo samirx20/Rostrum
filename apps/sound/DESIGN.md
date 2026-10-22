@@ -3763,6 +3763,21 @@ Pictures per item in `C:\Users\Sam\.rostrum\waves\results\sound-redesign\p28\` (
 | 3.19 Export | What = whole song / the time range / a section (`render_mix {from, to}`); "+ Another version" rows, each with its target, file and live line | Ranges rendered by the engine itself (today cut from the whole render: the loudness is the song's); stems by group; "For the Editor" |
 | Engine | Live play keeps real time (shared-mode output no longer reopened: 0.70× → 1.000× over 60 s, in Sound and in 2D; `C:\Users\Sam\.rostrum\waves\results\sound-redesign\p28\play-clock.md`) | Per-track effects memory (RELEASE line 16): planned in p29-notes.md |
 
+### After P29 (2026-10-22, Team Priyam): the rest of the "Left" column
+
+Pictures and numbers: `C:\Users\Sam\.rostrum\waves\results\sound-redesign\p29\README.md`.
+
+| § | Built in P29 | Still left |
+|---|---|---|
+| 3.1 / 3.15 Groups | Drag a track header into / out of a group (`bus.add_track` / `bus.remove_track`, the selection goes along, one undo step, settings kept; the target group tinted, a name chip follows the pointer); M / S on the group header (M: `bus.set mute`; S: solo on every track of the group, lit when all are) | The real mouse drag not driven by a test; dropping does not reorder |
+| 3.3 Notes | Fold the velocity strip (screen state); a dot on notes outside the key at their time (the key shading's one rule, `in_key_then`); the key's root marked on the keyboard | — |
+| 3.7 / 3.2b Library | Trying a sound on a track writes nothing; Keep (one `track.set`) / Revert / Esc; Loop while browsing (through the engine) | Voices auditioned with a sentence; the italic "trying" in the track header |
+| 3.10 Clean-up | Measurement line from `look_cleanup`'s numbers, measured once per take and stored (noise, voice level, room echo; a warning when the voice got quieter); Cancel (the job runs in its own process; nothing half-made kept; the clip plays its original, one undo step) | Hold-H (Team Sam: key release in the kit's KeyMap) |
+| 3.11 Voice | Take arrows on the voice line's block (shown only with more than one take); the voice model in the download registry: a missing model asks the download question | The voice files have no web address yet (not hosted: needs Sam's OK, like UMX-HQ); a real progress figure while speaking |
+| 3.13 Sound for motion | Swap stepping: ↑ / ↓ through the results, each swapped from the original (`clip.swap` with the original's values), a 1 s loop round the spot, Enter keeps (one history entry), Esc puts the original back | Designed sounds in a layer (`group` on sound fields: Team Sam) |
+| 3.19 Export | The engine renders a range itself (`render {from, to}`: mastered and measured on the range, stems cut, a silent end trimmed); stems by group (`stems: "groups"`); "For the Editor" (§10 #10: WAV 48 kHz 32-bit float, before mastering, a stem per group, `markers.json`) | Nested groups make no stem of their own |
+| Engine | A track renders in blocks of 64k frames, every effect keeping its state (`fx/state.rs`, `Chain`); bit for bit the same output; big song export 1,419 → 945 MB | Still whole: each clip's render, each track's measures, the master stage (the 30-min copy peaks at 3.3 GB) |
+
 ---
 
 ## 8. What the spec needs

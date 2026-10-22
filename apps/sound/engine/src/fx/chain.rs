@@ -7,10 +7,17 @@
 //!   (the IR's left side on the left speaker), dehum, dereverb; time-based effects leave the LFE dry;
 //! - the reverb insert: one reverb over the mains (dsp.rs);
 //! - a CLAP / VST3 effect is stereo: on a surround bed it is an error naming it.
+//! A chain is built once (`Chain::new`) and run block by block, each effect keeping its state (state.rs). The
+//! effects that read the whole take at once (the dialogue repairs and dynamics with their look-ahead, a plugin
+//! rendered offline) make the chain `whole`: its owner then runs it over the whole signal as one block.
 
 use crate::bed::Layout;
-use crate::fx::eq::eq;
-use crate::fx::inserts;
+use crate::fx::convolve::Conv;
+use crate::fx::eq::Eq;
+use crate::fx::inserts::{Compressor, Delay, Limiter, ReverbInsert, Saturate};
+use crate::fx::state::{two, Insert, Pairwise};
+use crate::fx::stereo::Width;
+use crate::fx::tapefx::TapeFx;
 use crate::mix::schedule::Effect;
 
 /// Runs a chain of inserts over a stereo buffer, in order.
@@ -18,76 +25,128 @@ pub fn stereo(effects: &[Effect], l: &mut [f32], r: &mut [f32], sr: f64) -> Resu
     run(effects, &mut [l, r], Layout::Stereo, sr)
 }
 
-/// Two channels of the bed, mutably (i < j).
-fn two<'a>(chs: &'a mut [&mut [f32]], i: usize, j: usize) -> (&'a mut [f32], &'a mut [f32]) {
-    let (a, b) = chs.split_at_mut(j);
-    (&mut *a[i], &mut *b[0])
-}
-
-/// `f` over each left/right pair, then over each lone channel (with a scratch partner it discards);
-/// the LFE only when `lfe`.
-fn pairwise(chs: &mut [&mut [f32]], layout: Layout, lfe: bool, mut f: impl FnMut(&mut [f32], &mut [f32]) -> Result<(), String>) -> Result<(), String> {
-    let pairs = layout.pairs();
-    for &(i, j) in &pairs {
-        let (l, r) = two(chs, i, j);
-        f(l, r)?;
-    }
-    for c in 0..chs.len() {
-        let paired = pairs.iter().any(|&(i, j)| i == c || j == c);
-        if paired || (!lfe && Some(c) == layout.lfe()) {
-            continue;
-        }
-        let mut scratch = chs[c].to_vec();
-        f(&mut *chs[c], &mut scratch)?;
-    }
-    Ok(())
-}
-
-/// Runs a chain of inserts over the bed's channels, in order.
+/// Runs a chain of inserts over the whole of the bed's channels, in order.
 pub fn run(effects: &[Effect], chs: &mut [&mut [f32]], layout: Layout, sr: f64) -> Result<(), String> {
     if chs.len() != layout.channels() {
         return Err(format!("{} channels on a {} bus", chs.len(), layout.name()));
     }
-    for e in effects {
-        match e {
-            Effect::Eq { bands } => eq(bands, chs, sr),
-            Effect::Compressor { threshold, ratio, attack, release, makeup, knee } => inserts::compressor(threshold, ratio, *attack, *release, makeup, *knee, chs, sr),
-            Effect::Delay { time, feedback, mix, ping_pong, damp } => pairwise(chs, layout, false, |l, r| Ok(inserts::delay(*time, feedback, mix, *ping_pong, *damp, l, r, sr)))?,
-            Effect::Reverb { space, mix, decay, damping, size } => inserts::reverb(space, mix, crate::fx::reverb::Shape { decay: *decay, damping: *damping, size: *size }, chs, layout, sr),
-            Effect::Saturate { drive, mix } => inserts::saturate(drive, mix, chs, sr),
-            Effect::Tape { wow, flutter, age } => inserts::tape(wow, flutter, age, chs, sr),
-            Effect::Limiter { ceiling, release } => inserts::limiter(*ceiling, *release, chs, sr),
-            Effect::Width { width, mono_below } => pairwise(chs, layout, false, |l, r| Ok(crate::fx::stereo::width(width, *mono_below, l, r, sr)))?,
-            Effect::Convolution { ir, mix } => pairwise(chs, layout, false, |l, r| crate::fx::convolve::run(ir, mix, l, r, sr))?,
-            Effect::Plugin { plugin } => {
-                if layout != Layout::Stereo {
+    Chain::new(effects, layout, sr)?.block(chs, 0)
+}
+
+pub struct Chain {
+    stages: Vec<Box<dyn Insert>>,
+    whole: bool,
+}
+
+impl Chain {
+    /// The chain's effects with fresh state (a stereo plugin on a surround bed is an error naming it).
+    pub fn new(effects: &[Effect], layout: Layout, sr: f64) -> Result<Chain, String> {
+        let n = layout.channels();
+        let mut whole = false;
+        let mut stages: Vec<Box<dyn Insert>> = vec![];
+        for e in effects {
+            let stage: Box<dyn Insert> = match e {
+                Effect::Eq { bands } => Box::new(Eq::new(bands, n, sr)),
+                Effect::Compressor { threshold, ratio, attack, release, makeup, knee } => Box::new(Compressor::new(threshold, ratio, *attack, *release, makeup, *knee, sr)),
+                Effect::Delay { time, feedback, mix, ping_pong, damp } => {
+                    let mut p = Pairwise::new(layout, n, false, || Delay::new(*time, feedback, mix, *ping_pong, *damp, sr));
+                    Box::new(Each(move |chs: &mut [&mut [f32]], t0| p.run(chs, |d, l, r| Ok(d.pair(l, r, t0)))))
+                }
+                Effect::Reverb { space, mix, decay, damping, size } => Box::new(ReverbInsert::new(space, mix, crate::fx::reverb::Shape { decay: *decay, damping: *damping, size: *size }, n, layout, sr)),
+                Effect::Saturate { drive, mix } => Box::new(Saturate { drive: drive.clone(), mix: mix.clone(), sr }),
+                Effect::Tape { wow, flutter, age } => Box::new(TapeFx::new(wow, flutter, age, n, sr)),
+                Effect::Limiter { ceiling, release } => Box::new(Limiter::new(*ceiling, *release, sr)),
+                Effect::Width { width, mono_below } => {
+                    let mut p = Pairwise::new(layout, n, false, || Width::new(width, *mono_below, sr));
+                    Box::new(Each(move |chs: &mut [&mut [f32]], t0| p.run(chs, |w, l, r| Ok(w.pair(l, r, t0)))))
+                }
+                Effect::Convolution { ir, mix } => {
+                    let sides = crate::fx::convolve::sides(ir, sr)?;
+                    let mut p = Pairwise::new(layout, n, false, || Conv::new(sides.clone(), mix, sr));
+                    Box::new(Each(move |chs: &mut [&mut [f32]], t0| p.run(chs, |c, l, r| Ok(c.pair(l, r, t0)))))
+                }
+                Effect::Plugin { plugin } if layout != Layout::Stereo => {
                     return Err(format!("the plugin {} ({}) is a stereo effect and this bus is {}: put it on a track (before the panner)", plugin.id, plugin.path, layout.name()));
                 }
-                let (l, r) = two(chs, 0, 1);
-                crate::plugins::clap::render::rendered(plugin, &[], l, r, sr, true)?
-            }
-            Effect::Deess { freq, threshold, range } => crate::dialogue::dynamics::deess(chs, sr, *freq, *threshold, *range),
-            Effect::Gate { threshold, ratio, range, attack, hold, release } => crate::dialogue::dynamics::gate(chs, sr, *threshold, *ratio, *range, *attack, *hold, *release),
-            Effect::Leveller { target, max_gain, max_cut, speed, floor } => crate::dialogue::dynamics::leveller(chs, &layout.weights(), sr, *target, *max_gain, *max_cut, *speed, *floor),
-            // What each repair found (the hum, the runs, the room) is reported by `inspect`, not here.
-            Effect::Dehum { freq, harmonics, width } => pairwise(chs, layout, true, |l, r| {
-                let _ = crate::dialogue::dehum::dehum(l, r, sr, *freq, *harmonics, *width);
-                Ok(())
-            })?,
-            Effect::Declip { threshold } => chs.iter_mut().for_each(|c| {
-                let _ = crate::dialogue::lsar::declip(c, *threshold);
-            }),
-            Effect::Declick { sensitivity, max_length } => {
-                let n = ((max_length * sr / 1000.0) as usize).max(2);
-                chs.iter_mut().for_each(|c| {
-                    let _ = crate::dialogue::declick::declick(c, *sensitivity, n);
-                })
-            }
-            Effect::Dereverb { amount, reduction, time } => pairwise(chs, layout, false, |l, r| {
-                let _ = crate::dialogue::dereverb::dereverb(l, r, sr, *amount, *reduction, *time);
-                Ok(())
-            })?,
+                _ => {
+                    whole = true;
+                    Box::new(Whole { effect: e.clone(), layout, sr, ran: false })
+                }
+            };
+            stages.push(stage);
         }
+        Ok(Chain { stages, whole })
+    }
+
+    /// The chain reads the whole signal at once: run it as one block.
+    pub fn whole(&self) -> bool {
+        self.whole
+    }
+
+    /// One block of every channel, in place (`t0`: its first frame).
+    pub fn block(&mut self, chs: &mut [&mut [f32]], t0: usize) -> Result<(), String> {
+        for s in self.stages.iter_mut() {
+            s.block(chs, t0)?;
+        }
+        Ok(())
+    }
+}
+
+/// A stage from a closure (the pair effects over a bed).
+struct Each<F>(F);
+
+impl<F: FnMut(&mut [&mut [f32]], usize) -> Result<(), String> + Send> Insert for Each<F> {
+    fn block(&mut self, chs: &mut [&mut [f32]], t0: usize) -> Result<(), String> {
+        (self.0)(chs, t0)
+    }
+}
+
+/// An effect that reads the whole take (look-ahead dynamics, the repairs, an offline plugin): one block only.
+struct Whole {
+    effect: Effect,
+    layout: Layout,
+    sr: f64,
+    ran: bool,
+}
+
+impl Insert for Whole {
+    fn block(&mut self, chs: &mut [&mut [f32]], _t0: usize) -> Result<(), String> {
+        if std::mem::replace(&mut self.ran, true) {
+            return Err("an effect that reads the whole take was run in blocks (an engine fault)".into());
+        }
+        whole_effect(&self.effect, chs, self.layout, self.sr)
+    }
+}
+
+fn whole_effect(e: &Effect, chs: &mut [&mut [f32]], layout: Layout, sr: f64) -> Result<(), String> {
+    let n = layout.channels();
+    match e {
+        Effect::Plugin { plugin } => {
+            let (l, r) = two(chs, 0, 1);
+            crate::plugins::clap::render::rendered(plugin, &[], l, r, sr, true)?
+        }
+        Effect::Deess { freq, threshold, range } => crate::dialogue::dynamics::deess(chs, sr, *freq, *threshold, *range),
+        Effect::Gate { threshold, ratio, range, attack, hold, release } => crate::dialogue::dynamics::gate(chs, sr, *threshold, *ratio, *range, *attack, *hold, *release),
+        Effect::Leveller { target, max_gain, max_cut, speed, floor } => crate::dialogue::dynamics::leveller(chs, &layout.weights(), sr, *target, *max_gain, *max_cut, *speed, *floor),
+        // What each repair found (the hum, the runs, the room) is reported by `inspect`, not here.
+        Effect::Dehum { freq, harmonics, width } => Pairwise::new(layout, n, true, || ()).run(chs, |_, l, r| {
+            let _ = crate::dialogue::dehum::dehum(l, r, sr, *freq, *harmonics, *width);
+            Ok(())
+        })?,
+        Effect::Declip { threshold } => chs.iter_mut().for_each(|c| {
+            let _ = crate::dialogue::lsar::declip(c, *threshold);
+        }),
+        Effect::Declick { sensitivity, max_length } => {
+            let n = ((max_length * sr / 1000.0) as usize).max(2);
+            chs.iter_mut().for_each(|c| {
+                let _ = crate::dialogue::declick::declick(c, *sensitivity, n);
+            })
+        }
+        Effect::Dereverb { amount, reduction, time } => Pairwise::new(layout, n, false, || ()).run(chs, |_, l, r| {
+            let _ = crate::dialogue::dereverb::dereverb(l, r, sr, *amount, *reduction, *time);
+            Ok(())
+        })?,
+        _ => unreachable!("block effects are built in Chain::new"),
     }
     Ok(())
 }

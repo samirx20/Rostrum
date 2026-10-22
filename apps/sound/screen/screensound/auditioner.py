@@ -6,6 +6,8 @@ plays. A failed render or player is said (`failed`), never a silent nothing.
     a = Auditioner(bridge); a.start(entry, "Grand piano", track="pad"); a.stop()
 `busy` is "" when idle, else what is being rendered or played ("Grand piano"); `playing` is True once it is sounding.
 `program` is the player's test seam (as LivePlay.program).
+`loop` True: a sound that runs out starts again (through the same engine player, never Qt Multimedia) until it is
+stopped or another is picked.
 """
 from __future__ import annotations
 
@@ -25,6 +27,7 @@ class Auditioner(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.bridge, self.busy, self.playing, self.program = bridge, "", False, None
+        self.loop = False                      # Loop (the Library's toggle): the sound repeats while you browse
         self._serial, self._engine, self._player = 0, None, None
         self._made.connect(self._ready)
 
@@ -71,12 +74,19 @@ class Auditioner(QObject):
         if self._player is None:
             self._player = LivePlay(self)
             self._player.program = self.program
-            self._player.ended.connect(lambda _t: self._idle())
+            self._player.ended.connect(lambda _t: self._ended())
             self._player.problem.connect(self._problem)
         self._player.load(file)
         self._player.play(0.0)
         self.playing = True
         self.changed.emit()
+
+    def _ended(self):
+        """The sound ran out: with Loop on it starts again from its beginning (until stopped or another is picked)."""
+        if self.loop and self.playing and self._player is not None:
+            self._player.play(0.0)
+        else:
+            self._idle()
 
     def _problem(self, line):
         self._idle()

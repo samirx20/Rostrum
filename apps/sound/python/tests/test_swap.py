@@ -32,3 +32,25 @@ def test_swap_keeps_the_spot_and_matches_the_level(tmp_path):
     d.undo(P)
     d.undo(P)
     assert d.item("k")["media"] == str(new)
+
+
+def test_stepping_swaps_from_the_original(tmp_path):
+    """The screen's ↑ / ↓: a short candidate then a long one gives what the long one alone would, and Esc is no step."""
+    from rostrum_sound.doc.ops_swap import original_args
+    old, short, long_ = tmp_path / "old.wav", tmp_path / "short.wav", tmp_path / "long.wav"
+    tone = lambda a, s: a * np.sin(np.linspace(0, 440 * 2 * np.pi * s, int(44100 * s)))   # noqa: E731
+    for f, a, s in ((old, .5, 2), (short, .5, .5), (long_, .5, 3)):
+        sf.write(str(f), tone(a, s), 44100)
+    d = Document.new(KIND)
+    d.apply([_op("track.add", [], id="t"), _op("clip.add", ["t"], id="k", media=str(old), at=1, length=2, volume=.8)], P)
+    was = original_args(d.item("k"), d.data)
+    with d.gesture("Swap sound", P) as g:
+        g.preview([_op("clip.swap", ["k"], media=str(short), **was)])
+        assert d.item("k")["length"] == .5
+        g.preview([_op("clip.swap", ["k"], media=str(long_), **was)])
+    c = d.item("k")
+    assert c["media"] == str(long_) and c["length"] == 2 and len(d.history.changes) == 2    # the spot stayed; one entry
+    with d.gesture("Swap sound", P) as g:
+        g.preview([_op("clip.swap", ["k"], media=str(short), **original_args(c, d.data))])
+        g.cancel()
+    assert d.item("k") == c

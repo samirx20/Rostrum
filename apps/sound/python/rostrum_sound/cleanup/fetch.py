@@ -2,7 +2,7 @@
 Streams to `<file>.partial`, checks size and sha256, then renames: the real file name never holds a half download.
 Any failure or a cancel removes the partial and raises a plain RostrumError.
 
-    python -m rostrum_sound.cleanup.fetch --list | <model id> [<model id> …]
+    python -m rostrum_sound.cleanup.fetch --list | <model id> [<model id> …]       ("voice": the voice model's three files)
 """
 from __future__ import annotations
 
@@ -17,13 +17,15 @@ from pathlib import Path
 from rostrum_core import RostrumError, codes
 
 from . import models
+from .. import voice_models
 from .models import Model
 
 CHUNK = 1 << 20
 TIMEOUT_S = 30                      # no bytes for this long = failed (a stalled download must not hang forever)
 ALL = (models.DFN3, models.UMXHQ)
 # Which models each clean-up step needs (chain.py's recipe fields: stem, isolate, denoise, dereverb).
-NEEDS = {"stem": (models.UMXHQ,), "isolate": (models.UMXHQ, models.DFN3), "denoise": (models.DFN3,), "dereverb": ()}
+NEEDS = {"stem": (models.UMXHQ,), "isolate": (models.UMXHQ, models.DFN3), "denoise": (models.DFN3,), "dereverb": (),
+         "voice": voice_models.FILES}          # the voice model: a line that is to be spoken (voice_models.py)
 
 
 def target(m: Model) -> Path:
@@ -123,27 +125,34 @@ def main(argv: list[str]) -> int:
         for m in ALL:
             print(f"{m.id}: {m.size / 1e6:.0f} MB, {'installed' if not missing(m) else 'not installed'}, {m.licence}")
         return 0
-    by_id = {m.id: m for m in ALL}
+    by_id = {m.id: (m,) for m in ALL} | {"voice": voice_models.FILES}
     for mid in argv:
         if mid not in by_id:
             print(f"Error: download: {mid!r} is not a model. Accepted: {', '.join(by_id)}.", file=sys.stderr)
             return 2
-        m = by_id[mid]
-        if not missing(m):
-            print(f"{m.id}: already installed at {target(m)}")
-            continue
-        last = [-1]
+        for m in by_id[mid]:
+            code = _one(m)
+            if code:
+                return code
+    return 0
 
-        def show(done, total):
-            pct = int(100 * done / max(total, 1))
-            if pct != last[0] and pct % 5 == 0:
-                last[0] = pct
-                print(f"{m.id}: {pct}% ({done / 1e6:.0f} of {total / 1e6:.0f} MB)", flush=True)
-        try:
-            print(f"{m.id}: installed at {install(m, show)} (hash checked)")
-        except RostrumError as e:
-            print(e.line(), file=sys.stderr)
-            return 1
+
+def _one(m: Model) -> int:
+    if not missing(m):
+        print(f"{m.id}: already installed at {target(m)}")
+        return 0
+    last = [-1]
+
+    def show(done, total):
+        pct = int(100 * done / max(total, 1))
+        if pct != last[0] and pct % 5 == 0:
+            last[0] = pct
+            print(f"{m.id}: {pct}% ({done / 1e6:.0f} of {total / 1e6:.0f} MB)", flush=True)
+    try:
+        print(f"{m.id}: installed at {install(m, show)} (hash checked)")
+    except RostrumError as e:
+        print(e.line(), file=sys.stderr)
+        return 1
     return 0
 
 
