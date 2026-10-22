@@ -35,6 +35,7 @@ from rostrum2d import KIND, run_source
 from screen2d.sample import SOURCE
 from screen2d.session import Session
 from screen2d.steps import do_step
+from screen2d import watchdog
 
 
 def load_doc(args) -> Document | None:
@@ -90,6 +91,7 @@ def main():
     if args.shot:
         check_shot_path(args.shot)
 
+    watchdog.arm()                                 # a start that never shows its window says where it waits
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
     session = Session(tuple(int(n) for n in args.size.lower().split("x")), args.comp)
@@ -98,6 +100,7 @@ def main():
         session.files.launch(args.open)
     else:
         session.files.put(doc)
+    watchdog.shown_on(session.win)
     code = [0]
 
     def guarded(fn):

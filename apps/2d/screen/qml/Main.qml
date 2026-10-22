@@ -24,7 +24,8 @@ AppShell {
     function setTimeline(compact, asked) {
         timelineNow = { compact: compact, asked: asked === undefined || asked === null ? timelineNow.asked : asked }
     }
-    bottomHeight: timelineNow.compact ? timeline.compactHeight
+    // the start screen is not the workspace: no timeline under it (a guide opened from it takes the full height)
+    bottomHeight: startScreen.visible ? -Theme.gap : timelineNow.compact ? timeline.compactHeight
                 : Math.round(Math.max(150, Math.min(height * 0.6, timelineNow.asked >= 0 ? timelineNow.asked
                                                                   : Math.min(timeline.wantedHeight, Math.max(220, Math.min(380, height * 0.32))))))
     Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
@@ -145,6 +146,7 @@ AppShell {
     ]
     bottom: LayerTimeline {
         id: timeline
+        visible: !startScreen.visible
         anchors.fill: parent
         compact: shell.timelineNow.compact
         onResized: (h) => shell.setTimeline(false, h)   // its top edge, dragged (clamped above): every row again
