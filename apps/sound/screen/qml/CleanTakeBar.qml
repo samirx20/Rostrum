@@ -18,7 +18,9 @@ Rectangle {
             text: "This clip has cleanup set, but its cleaned take is not made yet."
             color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
         }
+        ModelDownload { width: parent.width; fetch: bar.job.download }
         Button {
+            visible: bar.job.download.state === "idle" || bar.job.download.state === "done"
             width: parent.width; kind: "primary"; opacity: bar.job.busy ? 0.6 : 1
             text: bar.job.busy ? "Making…" : "Make cleaned take"
             onClicked: bar.job.make()

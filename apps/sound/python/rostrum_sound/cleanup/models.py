@@ -9,7 +9,7 @@ from pathlib import Path
 
 from rostrum_core import RostrumError, codes
 
-from .. import memory
+from .. import memory, settings
 
 
 @dataclass(frozen=True)
@@ -21,20 +21,25 @@ class Model:
     licence: str
     engine: str        # the cache key's engine: bump when anything that decides the output changes
     need_gb: float     # free memory the job needs (measured, MODELS.md)
+    url: str = ""      # where `fetch.install` downloads it (a pinned address: the file's hash is checked after)
 
 
 DFN3 = Model("deepfilternet3", "denoiser_model.onnx", 16104687,
              "fe5eb64fa2e4154c83f8e4935e82871c850c154387ee892e0ab65fe179e7d8c9",
              "MIT OR Apache-2.0 (DeepFilterNet 3, Schröter et al.; torchDF single-graph export)",
-             "deepfilternet3-torchdf-fe5eb64f@2", 1.0)
+             "deepfilternet3-torchdf-fe5eb64f@2", 1.0,
+             "https://huggingface.co/kimtos-labs/denoiser-dfn3/resolve/888f33c41851d7168ae31c3637c323b9e2f3c2a4/denoiser_model.onnx")
 UMXHQ = Model("umxhq", "umxhq.onnx", 142496426,
               "b26b5f5a4ff0e919825d28b355bac648908a271f00990bf8ca2f238c87863ec9",
               "MIT (Open-Unmix UMX-HQ, sigsep, Zenodo 3370489; trained on MUSDB18-HQ); our ONNX export",
-              "umxhq-onnx-b26b5f5a@1", 2.0)
+              "umxhq-onnx-b26b5f5a@1", 2.0,
+              # TO DO BEFORE RELEASE: this is our own export and is not hosted yet. Upload umxhq.onnx (142496426 bytes) as an
+              # asset of the GitHub release "models-v1" (needs Sam's OK to publish); until then the download says "not available".
+              "https://github.com/samirx20/Rostrum/releases/download/models-v1/umxhq.onnx")
 
 
 def models_dir() -> Path:
-    return Path(os.environ.get("ROSTRUM_MODELS_DIR") or Path.home() / ".rostrum" / "models")
+    return settings.models_dir()
 
 
 def path(m: Model) -> Path:

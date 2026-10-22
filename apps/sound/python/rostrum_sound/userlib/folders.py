@@ -1,23 +1,22 @@
 """The user's own sound folders (a Sonniss bundle, BOOM, Soundly exports, their recordings): a list kept in the user's
-settings (`~/.rostrum/settings/sound-library.json`), never in a project. Nothing from these folders is copied
+settings (`<settings dir>/sound-library.json`), never in a project. Nothing from these folders is copied
 anywhere; the index keeps paths and measurements only.
 """
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 from rostrum_core import RostrumError, codes
+
+from .. import settings
 
 FILE = "sound-library.json"
 
 
 def settings_file() -> Path:
-    """Where the list lives. `ROSTRUM_SETTINGS_DIR` moves it (tests)."""
-    root = Path(os.environ["ROSTRUM_SETTINGS_DIR"]) if os.environ.get("ROSTRUM_SETTINGS_DIR") else \
-        Path.home() / ".rostrum" / "settings"
-    return root / FILE
+    """Where the list lives: the settings folder (settings.settings_dir; `ROSTRUM_SETTINGS_DIR` moves it)."""
+    return settings.settings_dir() / FILE
 
 
 def folders() -> list[str]:

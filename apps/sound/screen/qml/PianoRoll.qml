@@ -84,7 +84,10 @@ Panel {
                color: Theme.fg2; text: p.kind === "none" ? "No track yet" : "Nothing on this track yet" }
         Text { anchors.horizontalCenter: parent.horizontalCenter; font.family: uiFont; font.pixelSize: Theme.body
                color: Theme.fg3
-               text: p.kind === "none" ? "Add a track, then select it to see its notes here."
-                                       : "Choose its instrument in the inspector to write notes here." }
+               text: p.kind === "none" ? "Add a track with + Track at the top, then select it to see its notes here."
+                     : recorder.armed !== "" ? "Press Record (R) to record a take on this track."
+                     : "To record: arm the track (the round button on its row), then press R.
+To write notes: choose an instrument in the inspector." 
+               horizontalAlignment: Text.AlignHCenter }
     }
 }

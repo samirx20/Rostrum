@@ -143,8 +143,8 @@ class Recording(QObject):
         takes, self._takes = self._takes, []
         if not takes:
             if self._rolled:
-                raise RostrumError(codes.INTERNAL, "record", "the take", "the engine sent no take for this pass",
-                                   [], "Is the microphone working? The input meter should move while you speak.")
+                raise RostrumError(codes.INTERNAL, "record", "the take", "came back empty from the player",
+                                   [], "Nothing was recorded. Check the microphone in Settings; its meter should move while you speak.")
             self.bridge._fail("Take stopped before playback rolled: nothing was recorded")
             return
         self.bridge._apply([rec.land_take(self.bridge.doc, self._armed, t) for t in takes], "Record take")

@@ -28,7 +28,7 @@ use windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
 use windows::Win32::System::Performance::{QueryPerformanceCounter, QueryPerformanceFrequency};
 use windows::Win32::System::Threading::{AvRevertMmThreadCharacteristics, AvSetMmThreadCharacteristicsW};
 
-pub use crate::live::wasapi::device::outputs;
+pub use crate::live::wasapi::device::{input, inputs, outputs};
 use crate::live::wasapi::device::{describe, name, output};
 use crate::live::wasapi::open::{exclusive, shared};
 use crate::live::wasapi::stream::{period_frames, play, Ended, Stream};

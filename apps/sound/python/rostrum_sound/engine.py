@@ -4,7 +4,7 @@ Instruments, samples and decoded media stay loaded between requests, and the eng
 render while its content is unchanged. An engine error comes back as the same RostrumError (code, where,
 accepted, hint), so agents read the engine's words. A dead or silent engine is a loud error, never a hang.
 
-    eng = Engine()                       # finds the built engine, or ROSTRUM_SOUND_ENGINE
+    eng = Engine()                       # finds the engine (settings.engine_path), or ROSTRUM_SOUND_ENGINE
     eng.request("render", schedule=..., out=r"C:\\...\\mix.wav", stems="all")
 """
 from __future__ import annotations
@@ -18,22 +18,15 @@ from pathlib import Path
 
 from rostrum_core import RostrumError, codes
 
-from . import names
+from . import names, settings
 from .doc import fields_design as FDS
 
-ENGINE_DIR = Path(__file__).resolve().parents[2] / "engine" / "target"
-EXE = "rostrum-sound.exe" if os.name == "nt" else "rostrum-sound"
 TIMEOUT_S = 600
 
 
 def find_engine() -> Path:
-    env = os.environ.get("ROSTRUM_SOUND_ENGINE")
-    found = [Path(env)] if env else [ENGINE_DIR / p / EXE for p in ("release", "agent")]
-    for p in found:
-        if p.is_file():
-            return p
-    raise RostrumError(codes.INTERNAL, "sound engine", "rostrum-sound", "is not built",
-                       [str(p) for p in found], "Build it: cargo build --profile agent -j 4 in apps/sound/engine, or set ROSTRUM_SOUND_ENGINE.")
+    """The engine program (settings.engine_path: the one place it is looked for)."""
+    return settings.engine_path()
 
 
 class Engine:

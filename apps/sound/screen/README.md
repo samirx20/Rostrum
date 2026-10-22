@@ -32,7 +32,8 @@ bottom (full)    the arrangement: bars / beats ruler, named markers, a row per t
 ## Run
 
 ```
-.venv\Scripts\python.exe apps\sound\screen\main.py                                  # the sample song
+.venv\Scripts\python.exe apps\sound\screen\main.py                                  # the last song, else a new one
+... main.py <song folder or .trk>  |  --new  |  --sample                               # open / new untitled / sample
 ... main.py --script song.py                                                        # what a script builds
 ... main.py --doc <project folder> <item>                                           # open / make; saves on change
 ... main.py --step "page mix" --step render --step "wait 20" --shot out.png         # scripted, quits by itself
@@ -41,6 +42,16 @@ bottom (full)    the arrangement: bars / beats ruler, named markers, a row per t
 Steps (`screensound/steps.py`): `page`, `select`, `time`, `set`, `drag-note <id> <dt> <dsemitones>`, `drag-clip`,
 `drag-marker`, `add-note`, `delete`, `mute`, `solo`, `undo`, `redo`, `play`, `render`, `wait <s>`, `more`,
 `commands`, `run`, `zoom`, `scroll`, `fit`, `lane`, `lane-point`, `lane-delete`, `picture`. Offscreen: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts`.
+
+## Songs as files, Settings (P21)
+
+File menu (`FileMenu.qml`, `screensound/session.py` = `songs`, `projects.py`): New song, Open…, recent songs, Save… /
+Save a copy as…, Settings…. A new song is untitled (saved per change in the untitled area) until Save names it; named
+songs are saved per change. Crash recovery offers back untitled songs whose process is gone. Settings
+(`SettingsPanel.qml`, `screensound/settings_page.py` = `settingsPage`) is the kit's Inspector on
+`rostrum_sound.settings_fields.FIELDS`. Switching songs rebuilds the bridge and pages and reloads the window
+(`main.py` `Screen.show`). Steps: `file-new`, `file-open <path>`, `file-save-as <folder>`, `file-menu`, `settings`,
+`add-track <piano|strings|pad|bass|synth|drums|voice|audio>`.
 
 ## Mix page: loudness, delivery, export, ducks, cleaned takes
 

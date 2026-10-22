@@ -28,6 +28,7 @@ from .view import View
 from .view_slots import ViewSlots
 
 PAGES = ("instruments", "timeline", "mix")
+SOUNDING = ("notes", "hits", "clips", "sounds")       # what makes a compiled track last (engine contract/track.rs)
 
 
 class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, DocBridge):
@@ -53,7 +54,7 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, D
         self.selectionChanged.connect(self._drop_point)
         self._follow_selection()
         self._rebuild()
-        self.transport = Transport(lambda: compile_doc(self.doc), self._length, self)
+        self.transport = Transport(self._schedule, self._length, self)
         self.transport.playingChanged.connect(self.playingChanged)
         self.transport.renderChanged.connect(self.renderChanged)
         self.transport.stateChanged.connect(self.soundChanged)
@@ -153,6 +154,14 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, D
             self._track = next((t["id"] for t in self.doc.data.get("tracks", [])), "")
         if self._view:
             self._rebuild()
+
+    def _schedule(self) -> dict:
+        """The compiled song. A song with nothing in it yet (a new one, or an instrument with no notes) is still a
+        song: it renders as silence the length the screen shows, instead of the engine refusing an empty schedule."""
+        s = compile_doc(self.doc)
+        if "length" not in s and not any(t.get(k) for t in s["tracks"] for k in SOUNDING):
+            s["length"] = self._length()
+        return s
 
     def _length(self) -> float:
         return self._view["song"]["length"]

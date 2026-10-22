@@ -14,6 +14,13 @@ AppShell {
     bottomHeight: backend.page === "timeline" ? 300 + Math.min(2, backend.tracks.filter(r => r.auto).length) * 78 : 156
     Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
 
+    function openFileMenu() { fileMenu.openMenu() }      // (the scripted `file-menu` step)
+    function openSettings() { settingsPanel.open() }     // (`settings`)
+    onClosing: (close) => { close.accepted = songs.mayClose() }    // an untitled song with changes asks first
+    Shortcut { sequence: StandardKey.New; onActivated: songs.newSong() }
+    Shortcut { sequence: StandardKey.Open; onActivated: fileMenu.openMenu() }
+    Shortcut { sequence: StandardKey.Save; onActivated: fileMenu.saveNow() }
+    Shortcut { sequence: "Ctrl+,"; onActivated: settingsPanel.open() }
     function openSong() { readout.open() }      // (the scripted `song-open` step)
     function openPicturePick() { backend.setPictureOpen(true); picture.openItems() }     // (`picture-pick`)
     Shortcut { sequence: "Space"; onActivated: backend.togglePlay() }
@@ -23,6 +30,12 @@ AppShell {
     Shortcut { sequence: "Ctrl+-"; onActivated: backend.zoomStep(0.8) }
     Shortcut { sequences: ["Ctrl+0", "Ctrl+9"]; onActivated: backend.fitView() }                  // show the whole song
 
+    actions: [Button {           // + Track: one track.add with a starting instrument (screensound/adder.py)
+                  id: addTrack; text: "+ Track"; down: addMenu.visible; anchors.verticalCenter: parent.verticalCenter
+                  onClicked: addMenu.visible ? addMenu.close() : addMenu.open()
+                  Menu { id: addMenu; width: 220; entries: adder.entries; onPicked: (v) => adder.add(v) } },
+              FileMenu { id: fileMenu; settingsPanel: settingsPanel; anchors.verticalCenter: parent.verticalCenter }]
+    SettingsPanel { id: settingsPanel }
     tools: [
         Segmented {
             options: [{ value: "instruments", label: "Instruments" }, { value: "timeline", label: "Timeline" },

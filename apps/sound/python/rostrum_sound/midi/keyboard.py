@@ -23,6 +23,7 @@ from pathlib import Path
 
 from rostrum_core import RostrumError, codes
 
+from .. import settings
 from ..doc import tempo
 from ..engine import find_engine
 from .song import GM_TO_SYNTH
@@ -88,7 +89,8 @@ class Take:
 
     def _start(self):
         self._proc = subprocess.Popen(self.command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                      stderr=subprocess.PIPE, text=True, encoding="utf-8")
+                                      stderr=subprocess.PIPE, text=True, encoding="utf-8",
+                                      env=settings.engine_env())
         self.pid, self._err = self._proc.pid, []
         threading.Thread(target=lambda: [self._lines.put(x) for x in self._proc.stdout], daemon=True).start()
         threading.Thread(target=lambda: self._err.extend(self._proc.stderr), daemon=True).start()

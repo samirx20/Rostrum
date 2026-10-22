@@ -1,4 +1,5 @@
-//! `rostrum-sound record <out.wav> [--seconds <s>]`: a voiceover take from the default microphone.
+//! `rostrum-sound record <out.wav> [--seconds <s>]`: a voiceover take from the default microphone
+//! (or the first input whose name contains $ROSTRUM_AUDIO_INPUT, wasapi/device.rs).
 //! WASAPI shared-mode capture at the device's own rate, folded to mono, written as a 32-bit float
 //! WAV when the take ends: on a stdin line `stop` (or {"stop": true}), at the end of stdin, or after
 //! --seconds. Out on stdout, one JSON object per line: {"ready": {rate, channels, device}} once the
@@ -15,7 +16,7 @@ use std::time::{Duration, Instant};
 
 use windows::core::GUID;
 use windows::Win32::Media::Audio::*;
-use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CoTaskMemFree, CLSCTX_ALL, COINIT_MULTITHREADED};
+use windows::Win32::System::Com::{CoInitializeEx, CoTaskMemFree, CLSCTX_ALL, COINIT_MULTITHREADED};
 
 const SUBTYPE_FLOAT: GUID = GUID::from_u128(0x00000003_0000_0010_8000_00aa00389b71);
 
@@ -145,8 +146,7 @@ unsafe fn open_raw(client: &IAudioClient) -> bool {
 
 unsafe fn capture(stop: &AtomicBool, mut sink: impl FnMut(Packet), ready: &std::sync::mpsc::Sender<Result<Mic, String>>) -> Result<(), String> {
     let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
-    let devices: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|e| e.message())?;
-    let device = devices.GetDefaultAudioEndpoint(eCapture, eConsole).map_err(|e| format!("no microphone: {}", e.message()))?;
+    let device = crate::live::wasapi::input().map_err(|e| format!("no microphone: {e}"))?;
     let id = device.GetId().ok().map(|p| { let s = p.to_string().unwrap_or_default(); CoTaskMemFree(Some(p.0 as *const _)); s }).unwrap_or_default();
     let client: IAudioClient = device.Activate(CLSCTX_ALL, None).map_err(|e| e.message())?;
     let mix = client.GetMixFormat().map_err(|e| e.message())?;
