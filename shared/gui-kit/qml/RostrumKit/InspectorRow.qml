@@ -64,6 +64,7 @@ Item {
             height: row.tall && item ? item.implicitHeight : Theme.field
             active: row.model.row === "param" && !row.driven
             sourceComponent: row.model.control === "curve" ? curve
+                           : row.model.control === "file" || row.model.control === "folder" ? path
                            : ({ toggle: toggle, number: number, choice: choice, color: colour, text: text, list: list })[row.model.type] || text
         }
         // A param driven by an expression or binding (model.expr = {text, note}): in place of the widget a note
@@ -111,7 +112,7 @@ Item {
         onScrubStarted: row.bridge.beginScrub(row.model.id)
         onScrubbed: (v) => row.bridge.scrub(row.model.id, v)
         onScrubEnded: row.bridge.endScrub() } }
-    Component { id: choice; ChoiceField { options: row.model.options; current: row.model.value || ""; onPicked: (v) => row.set(v) } }
+    Component { id: choice; ChoiceField { options: row.model.options; current: row.model.value ?? ""; onPicked: (v) => row.set(v) } }
     Component { id: colour; ColorField { hex: row.model.value || "#000000"; onEdited: (v) => row.set(v) } }
     Component { id: list; ListField {
         values: row.model.value || []; choices: row.model.options || []
@@ -119,5 +120,8 @@ Item {
         onEdited: (v) => row.set(v) } }
     Component { id: curve; CurveField {   // a curve param's max = the top of its out range (above 1: a multiplier)
         value: row.model.value || ""; most: row.model.max ? row.model.max : 1; onEdited: (v) => row.set(v) } }
+    Component { id: path; PathField {
+        value: row.model.value || ""; folder: row.model.control === "folder"; nameFilters: row.model.filters || []
+        onEdited: (v) => row.set(v) } }
     Component { id: text; TextField { value: row.model.value || ""; onEdited: (v) => row.set(v) } }
 }

@@ -53,7 +53,10 @@ class Param:
     control: str = ""                # the screen control when the type alone doesn't say which: "curve" for a text of
                                      # "x,y x,y …" points from 0 to 1 (the kit's CurveField); "pick" for a text naming one
                                      # other item ("" = none; the screen offers the app's choices); "" = the type's own
-                                     # (a curve's max = the top of its y range; above 1 it is a multiplier, 1 = unchanged)
+                                     # (a curve's max = the top of its y range; above 1 it is a multiplier, 1 = unchanged);
+                                     # "file" / "folder" for a text holding a path (the field gets a Browse button that
+                                     # opens the system's file or folder dialog)
+    filters: list = field(default_factory=list)   # for control "file": what the dialog lists, ["SFZ instruments (*.sfz)"]
 
     def __post_init__(self):
         if self.type not in TYPES:
@@ -128,6 +131,7 @@ class Param:
         elif t == "choice":
             if value not in self.options:
                 bad("is not one of the choices", self.options, did_you_mean(value, self.options))
+            return self.options[self.options.index(value)]   # the option itself (a screen's 48000.0 is 48000)
         elif t == "color":
             if not isinstance(value, str) or not HEX.match(value):
                 bad("is not a colour", ["#rrggbb"])

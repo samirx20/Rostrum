@@ -6,6 +6,7 @@ fills them from `settings.choices(name)`. Folder fields hold a path; "" means th
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from rostrum_core import Operation, Param
@@ -46,11 +47,12 @@ PARAMS = [
     Param.number("truePeak", group=SONGS, importance="secondary", label="Peak ceiling", default=-1, min=-12, max=0,
                  step=0.1, unit=" dBTP", help="The loudest any moment of a new song may reach, so it never distorts "
                                               "after a video site re-encodes it."),
-    Param.text("projects", group=FILES, label="Projects folder", default="",
+    Param.text("projects", group=FILES, label="Projects folder", control="folder", default="",
                help=f"Where new projects are made. Empty: {PROJECTS}"),
-    Param.text("models", group=FILES, importance="deep", label="AI models folder", default="",
+    Param.text("models", group=FILES, importance="deep", label="AI models folder", control="folder", default="",
                help=f"Where the voice and clean-up models are kept. Empty: {MODELS}"),
-    Param.text("engine", group=FILES, importance="deep", label="Sound engine program", default="",
+    Param.text("engine", group=FILES, importance="deep", label="Sound engine program", control="file",
+               filters=["Programs (*.exe)"] if os.name == "nt" else [], default="",
                help="The rostrum-sound program to use. Empty: found automatically (the one installed with the app)."),
 ]
 

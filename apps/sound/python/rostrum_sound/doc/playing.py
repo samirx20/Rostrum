@@ -55,7 +55,7 @@ INSTRUMENT = [
     Param.choice("instrument", names.INSTRUMENTS, group="Instrument", label="Instrument",
                  help="What plays the track's notes / hits; none = recorded clips only."),
     Param.choice("builtIn", names.BUILT_INS, group="Instrument", label="Built-in", valid_when=IS("instrument", "builtIn")),
-    Param.text("sfz", group="Instrument", label="SFZ file", valid_when=IS("instrument", "sfz")),
+    Param.text("sfz", group="Instrument", label="SFZ file", control="file", filters=["SFZ instruments (*.sfz)"], valid_when=IS("instrument", "sfz")),
     Param.toggle("legato", group="Instrument", importance="secondary", valid_when=IS("instrument", "sfz"),
                  help="Notes that overlap glide into each other (one bowed line)."),
     Param.toggle("swell", group="Instrument", importance="secondary", valid_when=IS("instrument", "sfz"),

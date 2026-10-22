@@ -7,15 +7,16 @@ import "."
 FieldFrame {
     id: f
     property var options: []              // [{value, label}] or plain strings: the field shows the label, sends the value
-    property string current: ""
+    property var current: ""              // a value of any type: matched to the options as text (48000 == "48000")
     readonly property bool opened: menu.opened
-    signal picked(string value)
+    signal picked(var value)              // the option's own value, type kept (a number stays a number)
     function valueAt(i) { const o = options[i]; return typeof o === "string" ? o : o.value }
     function labelAt(i) { const o = options[i]; return typeof o === "string" ? o : o.label }
-    function indexOf(v) { for (let i = 0; i < options.length; i++) if (valueAt(i) === v) return i; return -1 }
+    function same(a, b) { return String(a) === String(b) }
+    function indexOf(v) { for (let i = 0; i < options.length; i++) if (same(valueAt(i), v)) return i; return -1 }
     function open() { menu.highlighted = Math.max(0, indexOf(current)); menu.open() }
 
-    text: indexOf(current) >= 0 ? labelAt(indexOf(current)) : current
+    text: indexOf(current) >= 0 ? labelAt(indexOf(current)) : String(current === undefined || current === null ? "" : current)
     engaged: menu.opened
     activeFocusOnTab: true
     Keys.onSpacePressed: open()
@@ -41,7 +42,7 @@ FieldFrame {
             Keys.onDownPressed: menu.highlighted = Math.min(f.options.length - 1, menu.highlighted + 1)
             Keys.onReturnPressed: pick(menu.highlighted)
             Keys.onEnterPressed: pick(menu.highlighted)
-            function pick(i) { menu.close(); if (f.valueAt(i) !== f.current) f.picked(f.valueAt(i)) }
+            function pick(i) { menu.close(); if (!f.same(f.valueAt(i), f.current)) f.picked(f.valueAt(i)) }
             Repeater {
                 model: f.options
                 delegate: Rectangle {
@@ -57,7 +58,7 @@ FieldFrame {
                     }
                     Rectangle {  // the current option: a small accent dot at the right
                         id: tick
-                        visible: f.valueAt(opt.index) === f.current
+                        visible: f.same(f.valueAt(opt.index), f.current)
                         anchors.right: parent.right; anchors.rightMargin: Theme.gap - menu.padding + 2
                         anchors.verticalCenter: parent.verticalCenter
                         width: 6; height: 6; radius: 3; color: Theme.accent

@@ -14,7 +14,7 @@ from rostrum_core.conditions import holds
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
 ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit",
-         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control")
+         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters")
 # anim: "" (can't be animated), "still" (could be), "keyed" (has keys), "onkey" (has a key at the playhead).
 # expr: "" for most rows; a param driven by an expression or binding has {"text", "note"}: the row shows them (and a
 # way to clear it) instead of its widget.
@@ -48,7 +48,8 @@ def _param_row(p) -> dict:
             "importance": p.importance, "help": p.help, "options": p.choices(), "min": p.min, "max": p.max,
             "step": p.step, "unit": p.unit, "valid_when": p.valid_when, "default": p.default,
             "words": [{"value": v, "label": w} for v, w in p.words.items()],
-            "item": p.item or "", "minItems": p.min_items, "maxItems": p.max_items, "control": p.control}
+            "item": p.item or "", "minItems": p.min_items, "maxItems": p.max_items, "control": p.control,
+            "filters": list(p.filters)}
 
 
 def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=None, expr=None, choices=None) -> list[dict]:
