@@ -31,12 +31,14 @@ AppShell {
     Shortcut { sequence: "Ctrl+Shift+["; onActivated: backend.layerCommand("back") }
     Shortcut { sequence: "Delete"; onActivated: backend.layerCommand("delete") }
     Shortcut { sequence: "F2"; onActivated: backend.layerCommand("rename") }
+    Shortcut { sequence: "Ctrl+D"; onActivated: backend.layerCommand("duplicate") }
 
     function setExportOpen(open) { exportPanel.shown = open; if (open) { importPanel.shown = false; problemsPanel.shown = false } }
     function setImportOpen(open) { importPanel.shown = open; if (open) { exportPanel.shown = false; problemsPanel.shown = false } }
     function setProblemsOpen(open) { problemsPanel.shown = open; if (open) { exportPanel.shown = false; importPanel.shown = false } }
     function setFileMenuOpen(open) { fileMenu.menuOpen = open }
     function askClose() { shell.close() }
+    function openLayerMenu(id) { layersPanel.openMenu(id) }
     function setAddOpen(open) { if (open) addMenu.menuOpen = true; else addMenu.menuOpen = false }
 
     tools: [
@@ -48,6 +50,7 @@ AppShell {
         }
     ]
     actions: [
+        UndoRedo { },
         Button {        // only while something is wrong (screen2d/problems.py)
             visible: backend.problems.count > 0
             text: backend.problems.count + (backend.problems.count === 1 ? " problem" : " problems")
@@ -59,7 +62,7 @@ AppShell {
         IconButton { glyph: "↗"; tip: "Export"; down: exportPanel.shown; onClicked: shell.setExportOpen(!exportPanel.shown) }
     ]
     FileFlow { id: fileFlow; window: shell }
-    left: LayersPanel { anchors.fill: parent }
+    left: LayersPanel { id: layersPanel; anchors.fill: parent }
     centre: [
         Stage { anchors.fill: parent },
         ExportPanel {   // opened by the Export button; docked on the canvas's right edge, beside the inspector (never over it)
