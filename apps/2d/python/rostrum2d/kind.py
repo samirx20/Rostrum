@@ -3,6 +3,7 @@ operation per item type (`text.set`, `glow.set`, `key.set` …) generated from t
 
     doc ─ comps ─ comp ─ layers ─ shape | text | image | group (group ─ layers …)
                                   | drawing ─ frames ─ frame ─ paints ─ paint ─ strokes (painting kit)
+                                  shape | text | image | video | path may hold frames too (paint on an element)
                                                                    ─ paintmasks
                                   each layer ─ effects (blur, glow, gradient, shadow) ─ keys
                                              ─ masks ─ keys
@@ -13,7 +14,7 @@ from __future__ import annotations
 import rostrum_paint
 from rostrum_core import DocKind, Registry
 
-from . import exprbake, fields as F, fontcheck, pathdata, widthprofile
+from . import exprbake, fields as F, fontcheck, paint_fields, pathdata, widthprofile
 from .rig import model as rig_model
 
 OWNED = ["effects", "masks", "keys"]
@@ -21,6 +22,7 @@ LISTS = {"doc": ["comps"], "comp": ["layers"], "group": ["layers", *OWNED], "dra
          "frame": rostrum_paint.CANVAS_LISTS, **rostrum_paint.LISTS,
          "rig": ["layers", "bones", "iks", "binds", "poses", *OWNED], "bone": ["keys"], "ik": ["keys"], "camera": ["keys"],
          **{t: OWNED for t in ("shape", "text", "image", "video", "render3d", "path")},
+         **{t: ["frames", *OWNED] for t in paint_fields.TYPES},     # paint on an element (paint_fields.py)
          **{t: ["keys"] for t in (*F.EFFECTS, "mask")}}
 for _t, _owned in LISTS.items():       # whatever animates a field may also hold its expression (ops_expr.py)
     if _t in F.ANIMATED_OWNERS and "exprs" not in _owned:
@@ -47,10 +49,11 @@ for _type, _params in F.FIELDS.items():
 def facts(item: dict, doc=None) -> dict:
     if item.get("type") == "key":
         return {"number": "v" in item, "color": "c" in item, "shape": "d" in item}
+    out = {"hasPaint": bool(item.get("frames"))} if item.get("type") in paint_fields.TYPES else {}
     if item.get("type") in F.LAYERS and doc is not None:      # inside a group with an auto layout (layout.py)
         parent = doc.parent(item)
-        return {"inLayout": bool(parent) and parent.get("type") == "group" and parent.get("layout", "none") != "none"}
-    return {}
+        out["inLayout"] = bool(parent) and parent.get("type") == "group" and parent.get("layout", "none") != "none"
+    return out
 
 
 _NEEDS = {"v": "v (a number)", "c": "c (a colour)", "d": "d (text: path data, or a width profile \"pos,mult …\")"}
@@ -106,7 +109,7 @@ def check(data: dict) -> list[str]:
                 widthprofile.parse(item.get("widthProfile", ""))
             except ValueError as e:
                 problems.append(f'{item["id"]}.widthProfile: {e}')
-        if item.get("type") == "drawing":
+        if item.get("frames"):              # a drawing's, or an element's paint
             ats = [f["at"] for f in item["frames"]]
             if ats != sorted(set(ats)):
                 problems.append(f'{item["id"]}: drawings must be at different frames, in order (they are at {ats})')
@@ -127,3 +130,4 @@ from . import ops_timing  # noqa: E402,F401  (layer.shift, layer.trim: move and 
 from . import ops_background  # noqa: E402,F401  (background.add, background.fit, background.move: painted backgrounds)
 from . import ops_group, ops_mask, ops_state, ops_align, ops_look  # noqa: E402,F401  (select first, then act)
 from . import ops_clip  # noqa: E402,F401  (layer.paste: copy / cut / paste of layers)
+from . import ops_paint  # noqa: E402,F401  (paint.stroke: paint on any element or drawing)

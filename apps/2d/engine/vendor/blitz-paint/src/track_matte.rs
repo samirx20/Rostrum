@@ -5,6 +5,9 @@
 //! the matte is then drawn as every element is (the same painting, no second drawing path) into a layer composited
 //! `DestIn` (kept where the matte covers) or `DestOut` (inverted). A luma matte is drawn over opaque black and its
 //! layer turned into coverage by luminance (`luminanceToAlpha`), so where the matte is transparent it reads as black.
+//!
+//! Rostrum patch (H29): `data-track-matte="atop"` is paint on an element: the first child (the paint) is drawn
+//! `SrcAtop` over the rest (the element), so it shows only where the element itself is drawn, by the same structure.
 
 use std::sync::Arc;
 
@@ -30,13 +33,13 @@ impl ElementCx<'_, '_> {
         let tree = self.context.dom.as_ref().tree();
         let kids: Vec<_> = self.node.children.iter().copied().filter(|&id| tree[id].is_element()).collect();
         let Some((&matte, content)) = kids.split_first() else { return true };
-        let (luma, inverted) = (mode.starts_with("luma"), mode.ends_with("Inverted"));
+        let (luma, inverted, atop) = (mode.starts_with("luma"), mode.ends_with("Inverted"), mode == "atop");
 
         scene.push_layer(Fill::NonZero, Mix::Normal, ALMOST_OPAQUE, Affine::IDENTITY, &EVERYWHERE, None, None);
         for &id in content {
             self.context.render_node_for(scene, id, self.transform, EVERYWHERE);
         }
-        let compose = if inverted { Compose::DestOut } else { Compose::DestIn };
+        let compose = if atop { Compose::SrcAtop } else if inverted { Compose::DestOut } else { Compose::DestIn };
         let filter = luma.then(|| Arc::new(Filter::single(FilterEffect::ColorMatrix(ColorMatrix(LUMINANCE_TO_ALPHA)))));
         scene.push_layer(Fill::NonZero, BlendMode::new(Mix::Normal, compose), 1.0, Affine::IDENTITY, &EVERYWHERE, filter, None);
         if luma {

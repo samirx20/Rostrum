@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum2d.drawing import frame_at, frame_number
+from rostrum2d.ops_paint import PAINTABLE
 from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
@@ -33,10 +34,16 @@ class Painter(QObject):
         bridge.outlineChanged.connect(self._refresh)
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
-    def drawing(self) -> dict | None:
+    def target(self) -> dict | None:
+        """The selected layer the pen paints on: a drawing, or any element that can hold paint (ops_paint.PAINTABLE)."""
         layer = self.b.selectedLayer
         item = self.b.doc.item(layer) if layer else None
-        return item if item and item["type"] == "drawing" else None
+        return item if item and item["type"] in PAINTABLE else None
+
+    def drawing(self) -> dict | None:
+        """The selected layer that has drawings (frame tools, onion): a drawing, or an element holding paint."""
+        item = self.target()
+        return item if item and (item["type"] == "drawing" or item.get("frames")) else None
 
     def _n(self) -> int:
         return frame_number(self.b.own_t(self.b.selectedLayer), self.b.comp()["fps"])
@@ -69,6 +76,12 @@ class Painter(QObject):
     @Property(QObject, constant=True)
     def rows(self):
         return self.model
+
+    @Property("QVariantMap", notify=brushChanged)
+    def brushNow(self):
+        """The context bar's quick brush controls (ActionBar.qml, Paint): the next stroke's values and the tips."""
+        from rostrum_paint.marks import TIPS
+        return {**self.brush.values, "tips": list(TIPS)}
 
     @Property("QVariantMap", notify=brushChanged)
     def selectedItem(self):
@@ -113,7 +126,7 @@ class Painter(QObject):
     @Slot(float, float, float, result=bool)
     def beginStroke(self, x, y, pressure):
         """x, y in composition px (like Bridge2D.pickAt); pressure 0..1 (1 for a mouse)."""
-        d = self.drawing()
+        d = self.target()
         if d is None and self.b.tool != "draw":
             return False
         self.endStroke()

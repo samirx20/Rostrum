@@ -55,7 +55,15 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
   (a frame number). At time `t` the engine shows the `src` of the last frame with `at <= floor(t · fps)`; nothing
   before the first. Each `src` is a straight-alpha RGBA PNG of exactly `w × h`, made once by the painting kit and named by
   its content (never changes under the same name): the engine only reads it, stretched to the box like an image with
-  `fit: stretch`. Masks and effects apply as on any layer.
+  `fit: stretch`. Masks and effects apply as on any layer. Python sends only the drawings that can show: with the
+  document's "Draw each frame" off, only the first (`rostrum2d/drawing.py` `shown_frames`).
+- **`paint`** (added H29, same version): paint on an element. A `shape`, `text`, `image`, `video` or `path` may carry
+  `paint: {"frames": [{"at", "src"}, …], "inside": true}`: its drawings, picked at `t` by the drawing rule above, each
+  a straight-alpha PNG of the element's paint canvas, stretched over the element's own box (0, 0)..(w, h) (a text's:
+  its laid-out box, the `measure` size) in the layer's transform, so it moves, scales, turns and fades with it. It is
+  drawn over the element's own look, before masks and effects (they see element and paint together; a shadow then
+  follows both, as a drop shadow; a glow in its own colours glows the paint too). `inside` true: drawn source-atop,
+  so it shows only where the element itself is drawn (its fill, letters, picture, stroke); false: over the whole box.
 - **`path`** (added S8, same version): a vector path. `props.d` is SVG path data with absolute commands only — `M x y`,
   `L x y`, `C x1 y1 x2 y2 x y`, `Z` (numbers separated by spaces or commas; a command's numbers may repeat; extra pairs
   after `M` are lines; after `Z` a new `M` is needed) — in the layer's own px from its box's top-left. `w × h` is its box
@@ -195,4 +203,5 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - S10 (same version): text `pathLayer` (a text follows a path layer, per frame); a text on a path now takes its colour and outline when not played letter by letter.
 - H10 (same version): rig layers, bones, IK, binds; the `bones` request.
 - H16 (same version): the `measure` request (a text's laid-out box, for auto layout and the screen's boxes).
+- H29 (same version): `paint` on shape, text, image, video and path layers.
 - S8 (same version): `path` and `video` layers; text features, axes, text on a path, letter by letter; gradient `conic` and centre; `backdrop`; masks feather / invert / `angle` for every shape; scene `fonts` and the `scene` reply's font list; `pixels` written out.
