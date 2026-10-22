@@ -91,3 +91,23 @@ def test_save_open_round_trip_with_versions_and_outside_change(tmp_path):
     hist.write_text(hist.read_text(encoding="utf-8") + "{broken\n", encoding="utf-8")
     with pytest.raises(RostrumError, match="line 5"):
         Document.open(tmp_path, "itm_card", toy.KIND)
+
+
+def test_a_bad_value_is_refused_by_the_document_check_and_on_open(tmp_path):
+    """RELEASE line 13: every field of every kind is checked against its own data (a frame rate of 0 crashed 2D's
+    drawing); a call that would store one fails, and a file holding one is refused in words, never half-opened."""
+    doc = toy.sample(tmp_path, "itm_card")
+    doc.save()
+    assert json.loads((tmp_path / "docs" / "itm_card.toy").read_text(encoding="utf-8"))["saved_by"]   # line 14
+    with pytest.raises(RostrumError, match="out of range"):
+        doc.run_script("bad.py", {**doc.data, "layers": [{**doc.data["layers"][0], "focal": 0}]})
+    path = tmp_path / "docs" / "itm_card.toy"
+    file = json.loads(path.read_text(encoding="utf-8"))
+    file["doc"]["layers"][0]["focal"] = 0
+    path.write_text(json.dumps(file), encoding="utf-8")
+    with pytest.raises(RostrumError, match=r"damaged.*focal=0 is out of range") as e:
+        Document.open(tmp_path, "itm_card", toy.KIND)
+    assert e.value.code == codes.CHECK_FAILED and json.loads(path.read_text(encoding="utf-8")) == file   # untouched
+    (tmp_path / ".rostrum" / "itm_card.history.jsonl").unlink()      # a file with no history is checked the same
+    with pytest.raises(RostrumError, match="focal=0 is out of range"):
+        Document.open(tmp_path, "itm_card", toy.KIND)

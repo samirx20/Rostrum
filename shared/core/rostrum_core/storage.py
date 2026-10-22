@@ -1,7 +1,9 @@
 """Saving and opening a document (OPERATIONS.md § 6, project-service CONTRACT.md § 1).
 
 In the project folder:
-    docs/<item><ext>                    the document: {"format", "version", "doc"}, plain readable JSON
+    docs/<item><ext>                    the document: {"format", "version", "saved_by", "doc"}, plain readable JSON
+                                        ("version" is the file format's number; "saved_by" the app version that
+                                        wrote it, from the one VERSION file at the repo / install root)
     .rostrum/<item>.history.jsonl       line 1 = the document when history began; then one change per line,
                                         and {"version": name, "at": seq} lines for named versions
     .rostrum/<item>.script.json         what each script produced last time (for the § 7 merge)
@@ -20,6 +22,17 @@ from pathlib import Path
 
 from .errors import RostrumError, codes
 from .who import Who
+
+VERSION_FILE = Path(__file__).resolve().parents[3] / "VERSION"   # <root>/shared/core/rostrum_core/storage.py
+
+
+def app_version() -> str:
+    """The Rostrum version saving files (the installer's and Help → About's number too). Missing is loud."""
+    try:
+        return VERSION_FILE.read_text(encoding="utf-8").strip()
+    except OSError as e:
+        raise RostrumError(codes.INTERNAL, "save", str(VERSION_FILE), f"can't be read ({e})",
+                           hint="The app's VERSION file is missing; reinstall Rostrum.") from e
 
 
 def canonical(data) -> str:
@@ -54,14 +67,15 @@ def write_atomic(path: Path, text: str, tries: int = 20):
 def save(doc):
     if doc.folder is None or doc.item_id is None:
         raise RostrumError(codes.BAD_ARGUMENT, "save", "the document", "has no project folder or item id")
-    p, kind = paths(doc.folder, doc.item_id, doc.kind.ext), doc.kind
+    p, kind, saved_by = paths(doc.folder, doc.item_id, doc.kind.ext), doc.kind, app_version()
     lines = [json.dumps({"format": kind.format, "version": kind.version, "base": doc.base}, ensure_ascii=False)]
     lines += [json.dumps(c.to_dict(), ensure_ascii=False) for c in doc.history.changes]
     lines += [json.dumps({"version": n, "at": s}) for n, s in doc.history.versions.items()]
     write_atomic(p["history"], "\n".join(lines) + "\n")
     write_atomic(p["script"], json.dumps(doc.script_bases, indent=1, ensure_ascii=False))
-    write_atomic(p["doc"], json.dumps({"format": kind.format, "version": kind.version, "doc": doc.data},
-                                      indent=1, ensure_ascii=False))
+    write_atomic(p["doc"], json.dumps({"format": kind.format, "version": kind.version, "saved_by": saved_by,
+                                       "doc": doc.data}, indent=1, ensure_ascii=False))
+    doc.saved_by = saved_by
 
 
 def _read_json(path: Path, where: str):
@@ -77,16 +91,31 @@ def _check_format(kind, head, path):
         raise RostrumError(codes.BAD_ARGUMENT, "open", str(path), f"is a {head.get('format')!r} file",
                            [kind.format])
     if head.get("version", 0) > kind.version:
-        raise RostrumError(codes.CHECK_FAILED, "open", str(path), f"was saved by a newer version "
-                           f"({head['version']} > {kind.version})", hint="Update Rostrum to open it.")
+        by = f"Rostrum {head['saved_by']}, " if isinstance(head.get("saved_by"), str) else ""
+        raise RostrumError(codes.CHECK_FAILED, "open", str(path), f"was saved by a newer version ({by}file format "
+                           f"{head['version']}; this is Rostrum {app_version()}, format {kind.version})",
+                           hint="Update Rostrum to open it.")
 
 
 def open_doc(cls, folder, item, kind):
-    from .history import Change
+    """Opened whole or not at all: whatever was read, the result passes the document check (every field value,
+    then the app's own), else the file is refused in words and never half-opened."""
     p = paths(folder, item, kind.ext)
+    doc = _read_doc(cls, folder, item, kind, p)
+    problems = kind.problems(doc.data)
+    if problems:
+        raise RostrumError(codes.CHECK_FAILED, "open", str(p["doc"]), "is damaged: it doesn't hold together "
+                           f"({'; '.join(problems[:3])}{' …' if len(problems) > 3 else ''})",
+                           hint="Nothing was saved over it.")
+    return doc
+
+
+def _read_doc(cls, folder, item, kind, p):
+    from .history import Change
     file = _read_json(p["doc"], "open")
     _check_format(kind, file, p["doc"])
     doc = cls(kind, file["doc"], folder, item)
+    doc.saved_by = file.get("saved_by")         # None: saved before files recorded it
     if not p["history"].exists():
         return doc
     raw = p["history"].read_text(encoding="utf-8").splitlines()

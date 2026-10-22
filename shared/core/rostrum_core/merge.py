@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from . import edits as E
 from .diff import diff
 from .errors import RostrumError, codes
-from .tree import fields, index, walk
+from .tree import index, walk
 
 
 @dataclass
@@ -73,11 +73,11 @@ def _script_value(e):
     return {E.Remove: "(remove)", E.Insert: "(add)", E.Move: "(move)"}[type(e)]
 
 
-def _record(base, lists, e, name):
+def _record(base, lists, e, name, idx):
     """Move B forward by one edit. An edit inside an item B doesn't hold (its insert was held back) can't be
     recorded and isn't: it is simply compared again on the next run."""
     try:
-        E.apply(base, lists, e, f"run_script {name} (record)")
+        E.apply(base, lists, e, f"run_script {name} (record)", idx)
     except RostrumError as err:
         if err.code != codes.NOT_FOUND:
             raise
@@ -86,11 +86,8 @@ def _record(base, lists, e, name):
 def check_output(kind, output: dict, where: str):
     """A script's values obey the same parameter rules as operation arguments (no side door)."""
     index(output, kind.lists)                             # duplicate ids: loud
-    for item in walk(output, kind.lists):
-        op = kind.registry.field_op(item.get("type"))
-        for k, v in (fields(item, kind.lists).items() if op else ()):
-            if op.param(k):
-                op.param(k).check(v, f"{where} › {item['id']}")
+    for bad in kind.bad_values(walk(output, kind.lists)):
+        raise bad.within(where)
 
 
 def check_kinds(base: dict, output: dict, lists, where: str):
@@ -113,11 +110,12 @@ def merge_script(doc, name, output: dict, who, force=False, session=None) -> Mer
     others = diff(base, doc.data, lists)
     other_keys = set().union(*(E.keys(e, lists) for e in others)) if others else set()
     work, new_base = copy.deepcopy(doc.data), copy.deepcopy(base)
+    idx, base_idx = index(work, lists), index(new_base, lists)     # each kept up to date by its edits
     report, applied = MergeReport(name), []
     for e in diff(base, output, lists):
         ks = E.keys(e, lists)
         if isinstance(e, E.Set) and _current(work, lists, (e.id, *e.path)) == e.value:
-            _record(new_base, lists, e, name)                              # everyone already agrees
+            _record(new_base, lists, e, name, base_idx)                              # everyone already agrees
             continue
         hit = E.overlap(ks, other_keys)
         if hit and not _forced(force, ks):
@@ -128,14 +126,14 @@ def merge_script(doc, name, output: dict, who, force=False, session=None) -> Mer
                                 "label": c.label if c else "?"})
             continue
         try:
-            applied.append(E.apply(work, lists, e, f"run_script {name}"))
+            applied.append(E.apply(work, lists, e, f"run_script {name}", idx))
         except RostrumError as err:
             if err.code not in (codes.NOT_FOUND, codes.CONFLICT):
                 raise
             report.held.append({"key": E.key_text(sorted(ks)[0]), "script": _script_value(e),
                                 "kept": "(its place is gone)", "who": "?", "label": err.problem})
             continue
-        _record(new_base, lists, e, name)
+        _record(new_base, lists, e, name, base_idx)
     problems = doc.kind.check(work)
     if problems:
         raise RostrumError(codes.CHECK_FAILED, f"run_script {name}", "the merged document",

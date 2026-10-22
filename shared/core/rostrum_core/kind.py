@@ -6,8 +6,11 @@ import inspect
 from dataclasses import dataclass, field
 from typing import Callable
 
+from .errors import RostrumError
 from .registry import Registry
-from .tree import View
+from .tree import View, fields, walk
+
+SHAPE_ERRORS = (KeyError, TypeError, ValueError, AttributeError, IndexError)   # an app check reading a wrong shape
 
 
 def _no_problems(data) -> list[str]:
@@ -42,6 +45,31 @@ class DocKind:
                 return app_facts(item)
             return app_facts(item, self.view(doc) if doc is not None else None)
         self.facts = facts
+
+    def bad_values(self, items):
+        """Each stored field value its kind's own field op refuses (range, kind of value, choices): the same rule
+        operation arguments obey, so no field of any kind can hold what its control could never set (a frame rate
+        of 0). Yields RostrumErrors."""
+        for item in items:
+            op = self.registry.field_op(item.get("type"))
+            for name, value in (fields(item, self.lists).items() if op else ()):
+                p = op.param(name)
+                if p is None:
+                    continue
+                try:
+                    p.check(value, f'{item.get("type")} "{item.get("id")}"')
+                except RostrumError as e:
+                    yield e
+
+    def problems(self, data: dict, items=None) -> list[str]:
+        """The whole-document check: every field value (or only `items`', the ones a call changed) against its
+        field's own data, then the app's own check. Run after every call and on every open."""
+        try:
+            out = [f"{e.where}: {e.subject} {e.problem}" + (f" ({', '.join(e.accepted)})" if e.accepted else "")
+                   for e in self.bad_values(walk(data, self.lists) if items is None else items)]
+            return out + list(self.check(data))
+        except SHAPE_ERRORS as e:
+            return [f"{type(e).__name__}: {e}"]
 
     def view(self, doc) -> View:
         if isinstance(doc, View):
