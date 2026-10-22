@@ -41,7 +41,7 @@ class EditSlots:
 
         def go():
             before = {n["id"] for n in self.doc.item(self._track).get("notes", [])}
-            self._apply([moves.add_note_call(self.doc, self._track, t, key)], "Add note")
+            self._apply([moves.add_note_call(self.doc, self._track, t, key, grid=self._grid_now)], "Add note")
             new = [n["id"] for n in self.doc.item(self._track)["notes"] if n["id"] not in before]
             if new:
                 self.select(new[0])
@@ -55,7 +55,7 @@ class EditSlots:
         i = int(round(row))
         if not self._track or not 0 <= i < len(drums):
             return ""
-        return self._add_one("hits", moves.add_hit_call(self.doc, self._track, t, drums[i]), "Add drum hit")
+        return self._add_one("hits", moves.add_hit_call(self.doc, self._track, t, drums[i], grid=self._grid_now), "Add drum hit")
 
     @Slot(float, float, result=str)
     def drawAt(self, t, row):
@@ -65,7 +65,9 @@ class EditSlots:
             return self.addHit(t, row)
         if not self._track:
             return ""
-        call = moves.add_note_call(self.doc, self._track, t, int(round(row)), beats=timing.step_beats(self.doc.data))
+        grid = self._grid_now
+        call = moves.add_note_call(self.doc, self._track, t, int(round(row)), beats=timing.step_beats(self.doc.data, grid),
+                                   grid=grid)
         return self._add_one("notes", call, "Draw note")
 
     def _add_one(self, key, call, label):
@@ -121,8 +123,9 @@ class EditSlots:
 
         def go():
             if "primary" not in g:
-                return self._drag.preview(moves.drag_calls(self.doc, g, dt, dsemi, free))
-            calls, caught = moves.many_calls(self.doc, g, dt, dsemi, free, only_time, self._snap_targets(), tol)
+                return self._drag.preview(moves.drag_calls(self.doc, g, dt, dsemi, free, self._grid_now))
+            calls, caught = moves.many_calls(self.doc, g, dt, dsemi, free, only_time, self._snap_targets(), tol,
+                                              self._grid_now)
             if not only_time:
                 calls += moves.track_calls(self.doc, g, getattr(self, "_to_track", ""))
             if copy and not self._copy:
@@ -163,4 +166,4 @@ class EditSlots:
         row = next((m for m in self._marks.rows() if m["id"] == marker_id), None)
         if row is None or abs(dt) < 1e-6:
             return False
-        return self._marks.move(marker_id, timing.snap(row["at"] + dt, self.doc.data, free))
+        return self._marks.move(marker_id, timing.snap(row["at"] + dt, self.doc.data, free, self._grid_now))

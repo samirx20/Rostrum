@@ -14,6 +14,7 @@ from . import selection, timing
 class SelectSlots:
     rangeChanged = Signal()
     picksChanged = Signal()
+    areaChanged = Signal()
 
     @property
     def _picks(self) -> selection.Selection:
@@ -112,9 +113,9 @@ class SelectSlots:
         shows."""
         if area != self._area:
             self._area = area
-            self.picksChanged.emit()
+            self.areaChanged.emit()            # not a new selection: a name field being typed in keeps its keys
 
-    @Property(str, notify=picksChanged)
+    @Property(str, notify=areaChanged)
     def area(self):
         return self._area
 
@@ -167,7 +168,7 @@ class SelectSlots:
     @Slot(float, float, bool)
     def setRange(self, t0, t1, free):
         """A drag on the ruler: a time range, snapped to the grid unless free (Ctrl)."""
-        a, b = sorted((timing.snap(t0, self.doc.data, free), timing.snap(t1, self.doc.data, free)))
+        a, b = sorted((timing.snap(t0, self.doc.data, free, self._grid_now), timing.snap(t1, self.doc.data, free, self._grid_now)))
         self._picks.range = (a, b) if b - a > 1e-3 else None
         self.__dict__["_range_newer"] = True             # a range drawn after the items: Ctrl+D etc. mean the range
         self.rangeChanged.emit()

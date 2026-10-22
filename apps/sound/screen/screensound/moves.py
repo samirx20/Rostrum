@@ -30,14 +30,14 @@ def grab(doc, item_id) -> dict:
             "pitch": it.get("pitch")}
 
 
-def drag_calls(doc, g: dict, dt: float, dsemi: int = 0, free: bool = False) -> list[dict]:
+def drag_calls(doc, g: dict, dt: float, dsemi: int = 0, free: bool = False, grid=None) -> list[dict]:
     """The calls for a drag `dt` seconds (and `dsemi` semitones, notes only) from where it started."""
     root = doc.data
     if g["type"] == "section":
-        return section_calls(doc, g, dt, free)
+        return section_calls(doc, g, dt, free, grid)
     if g["type"] in song_edit.TYPES:
         return song_edit.drag_calls(doc, g, dt, free)
-    args = {"at": timing.write_time(g["at"], timing.snap(g["t"] + dt, root, free), root)}
+    args = {"at": timing.write_time(g["at"], timing.snap(g["t"] + dt, root, free, grid), root)}
     if g["type"] == "note" and dsemi:
         args["pitch"] = timing.shift_pitch(g["pitch"], int(dsemi))
     return [{"op": f"{g['type']}.set", "target": [g["id"]], "args": args}]
@@ -48,7 +48,7 @@ def grab_many(doc, ids, primary) -> dict:
     return {"primary": grab(doc, primary), "items": [grab(doc, i) for i in ids if doc.item(i)["type"] in MANY]}
 
 
-def snap_to(t: float, root: dict, free: bool, targets: list[dict], tol: float) -> tuple[float, dict]:
+def snap_to(t: float, root: dict, free: bool, targets: list[dict], tol: float, grid=None) -> tuple[float, dict]:
     """(where `t` lands, what it caught: {"t", "name"}, {} when free). Markers and the playhead catch within `tol`
     seconds (a few pixels at any zoom), nearest first; otherwise the grid."""
     if free:
@@ -57,15 +57,18 @@ def snap_to(t: float, root: dict, free: bool, targets: list[dict], tol: float) -
     if near:
         m = min(near, key=lambda m: abs(m["t"] - t))
         return m["t"], m
-    g = timing.snap(t, root, False)
+    if not (grid or timing.DEFAULT).on:
+        return max(0.0, round(t, 4)), {}
+    g = timing.snap(t, root, False, grid)
     return g, {"t": g, "name": ""}
 
 
-def many_calls(doc, g: dict, dt: float, dsemi: int, free: bool, only_time: bool, targets: list[dict], tol: float):
+def many_calls(doc, g: dict, dt: float, dsemi: int, free: bool, only_time: bool, targets: list[dict], tol: float,
+               grid=None):
     """(calls, what it snapped to) for moving every grabbed item by the same amount: the grabbed one snaps, the rest
     follow; never before the song's start. Shift (`only_time`): no pitch change."""
     root, p = doc.data, g["primary"]
-    to, caught = snap_to(p["t"] + dt, root, free, targets, tol)
+    to, caught = snap_to(p["t"] + dt, root, free, targets, tol, grid)
     d = max(to - p["t"], -min(x["t"] for x in g["items"]))
     calls = []
     for x in g["items"]:
@@ -96,34 +99,34 @@ def copy_calls(g: dict) -> list[dict]:
     return [{"op": f"{k}.duplicate", "target": ids, "args": {"by": 0}} for k, ids in by.items()]
 
 
-def section_calls(doc, g: dict, dt: float, free: bool = False) -> list[dict]:
+def section_calls(doc, g: dict, dt: float, free: bool = False, grid=None) -> list[dict]:
     """A section dragged: one `section.move` (it and everything inside), by what is left to go from where it is
     now (a drag previews on top of itself), in beats when the section is written in beats."""
     root = doc.data
     at = doc.item(g["id"])["at"]
-    now, to = timing.sec(at, root, g["id"]), timing.snap(g["t"] + dt, root, free)
+    now, to = timing.sec(at, root, g["id"]), timing.snap(g["t"] + dt, root, free, grid)
     by = {"beats": round(timing.beat(to, root) - timing.beat(now, root), 4)} if isinstance(at, dict)         else round(to - now, 4)
     if abs(by["beats"] if isinstance(by, dict) else by) < 1e-6:
         return []
     return [{"op": "section.move", "target": [g["id"]], "args": {"by": by}}]
 
 
-def add_hit_call(doc, track_id, t: float, drum: str, free: bool = False) -> dict:
+def add_hit_call(doc, track_id, t: float, drum: str, free: bool = False, grid=None) -> dict:
     """A drum hit on `drum` at `t` (snapped), written in the form the track's hits already use (beats by default)."""
     root, track = doc.data, doc.item(track_id)
     first = next(iter(track.get("hits", [])), None)
-    at = timing.snap(t, root, free)
+    at = timing.snap(t, root, free, grid)
     when = round(at, 4) if first is not None and isinstance(first["at"], (int, float)) else         {"beat": round(timing.beat(at, root), 4)}
     return {"op": "hit.add", "target": [track_id], "args": {"drum": drum, "at": when}}
 
 
-def add_note_call(doc, track_id, t: float, key: int, free: bool = False, beats: float = 1.0) -> dict:
+def add_note_call(doc, track_id, t: float, key: int, free: bool = False, beats: float = 1.0, grid=None) -> dict:
     """A note `beats` long (one beat, or the grid's step when drawn) at `t` on `key`, written in the form the track's
     notes already use (beats by default)."""
     root, track = doc.data, doc.item(track_id)
     first = next(iter(track.get("notes", [])), None)
     secs = first is not None and isinstance(first["at"], (int, float))
-    at = timing.snap(t, root, free)
+    at = timing.snap(t, root, free, grid)
     pitch = key if first is not None and isinstance(first["pitch"], int) else timing.name(key)
     if secs:
         args = {"at": round(at, 4), "dur": round(timing.spb(root, at) * beats, 4)}

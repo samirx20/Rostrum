@@ -52,4 +52,4 @@ class HandleSlots:
         """A handle's move from the press: dt seconds, dy row heights (the level line); snapped unless free."""
         g = self._grab
         if self._drag is not None and g and "handle" in g:
-            self._guard(lambda: self._drag.preview(handles.calls(self.doc, g["grabs"], g["handle"], dt, dy, free)))
+            self._guard(lambda: self._drag.preview(handles.calls(self.doc, g["grabs"], g["handle"], dt, dy, free, self._grid_now)))

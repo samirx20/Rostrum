@@ -63,23 +63,23 @@ def grab(doc, ids, handle) -> list[dict]:
     return out
 
 
-def calls(doc, grabs, handle, dt, dy, free) -> list[dict]:
+def calls(doc, grabs, handle, dt, dy, free, grid=None) -> list[dict]:
     root, out = doc.data, []
     for g in grabs:
         it, s, dur = g["it"], g["s"], g["dur"]
         if handle == "length":
-            end = s + max(MIN_S, dur + dt) if free else max(s + MIN_S, timing.snap(s + dur + dt, root, False))
+            end = s + max(MIN_S, dur + dt) if free else max(s + MIN_S, timing.snap(s + dur + dt, root, False, grid))
             args = {"dur": timing.write_length(it["dur"], end - s, root, s)}
             out.append({"op": "note.set", "target": [g["id"]], "args": args})
             continue
         sp, inn = g["sp"], float(it.get("in", 0))
         if handle == "start":
-            to = s + dt if free else timing.snap(s + dt, root, False)
+            to = s + dt if free else timing.snap(s + dt, root, False, grid)
             d = min(max(to - s, -inn / sp), dur - MIN_S)
             args = {"at": write_like(it["at"], s + d, root), "in": round(inn + d * sp, 4),
                     "length": ST.length_like(it.get("length"), g["src"] - d * sp, root, s + d, it)}
         elif handle == "end":
-            to = s + dur + dt if free else timing.snap(s + dur + dt, root, False)
+            to = s + dur + dt if free else timing.snap(s + dur + dt, root, False, grid)
             src = min(max(MIN_S, to - s) * sp, g["file"] - inn)
             args = {"length": ST.length_like(it.get("length"), src, root, s, it)}
         elif handle in ("fadeIn", "fadeOut"):

@@ -19,7 +19,8 @@ class EditorSide(QObject):
         for s in (self.voice.changed, bridge.timelineChanged, bridge.docChanged):
             s.connect(self.changed)
         bridge.voiceWanted.connect(self.voice.start)
-        bridge.side = self                                    # the scripted steps reach it (line-type)          # "Speak again": the new takes are made at once
+        bridge.side = self                                    # the scripted steps reach it (line-type)
+        self.voice.changed.connect(bridge._rebuild)             # a line starts or stops being spoken: its block says so          # "Speak again": the new takes are made at once
 
     def _track(self) -> dict:
         tid = self.bridge.roll.get("id", "")

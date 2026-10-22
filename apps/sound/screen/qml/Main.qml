@@ -25,6 +25,7 @@ AppShell {
     function openSettings() { settingsPanel.open() }     // (`settings`: Preferences)
     function openSong() { arrangement.readout.open() }   // (`song-open`: the tempo / key popover)
     function openLibrary() { workspace.setLibrary(true) }   // (`library`)
+    function openGrid() { arrangement.openGrid() }          // (`grid-open`: the Grid menu, open)
     function openPicturePick() { backend.setPictureOpen(true); arrangement.picture.openItems() }     // (`picture-pick`)
     function openExport() { if (shell.hasSound) mixer.export.setDialogOpen(true) }
     function exportAgain() { if (shell.hasSound && !mixer.export.busy) mixer.export.start() }   // the last settings
@@ -51,7 +52,8 @@ AppShell {
     KeyMap { hub: backend.actions; enabled: !shell.typing; skip: backend.actions.skip }
     // A new selection (a click in the arrangement, the Editor or the Mixer, or a track made from the Library) gives the
     // keys back to the work: a text field (the Library's search, a settings row) never keeps them silently.
-    Connections { target: backend; function onPicksChanged() { if (shell.typing) shell.contentItem.forceActiveFocus() } }
+    // (A name field opened in place — a new section, M, F2 — keeps them: it is the work.)
+    Connections { target: backend; function onPicksChanged() { if (shell.typing && backend.renaming === "") shell.contentItem.forceActiveFocus() } }
     leading: FileMenu { id: fileMenu; settingsPanel: settingsPanel; anchors.verticalCenter: parent.verticalCenter }
     SettingsPanel { id: settingsPanel }
     actions: [          // the top bar's chips, then Export (kit TopBar: its `actions` slot sits before Search)

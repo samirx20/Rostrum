@@ -169,7 +169,7 @@ class ActionSlots:
         t = float(parts[-1])
         if what == "marker":
             return self.markerAt(t)
-        f = C.Facts(self.doc, [], rng=(timing.snap(t, self.doc.data, False), self._length()))
+        f = C.Facts(self.doc, [], rng=(timing.snap(t, self.doc.data, False, self._grid_now), self._length()))
         return self._act(C.section(f), "Make a section")
 
     @Slot(str)

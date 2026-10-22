@@ -197,6 +197,9 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, Hand
         track = self.doc.item(self._track) if self._track and self.doc.has(self._track) else None
         self._view = {"rows": rows, "markers": timeline.markers(root), "song": timeline.song(root),
                       "roll": timeline.roll(track, root, hue)}
+        side = getattr(self, "side", None)               # lines being spoken say so on their blocks
+        if side:
+            voice_card.mark_speaking([*rows, self._view["roll"]], side.voice.making())
         self._zoom.clamp(self._length())        # the view is the person's: nothing new on screen zooms or scrolls it
         self.timelineChanged.emit()
         self.viewChanged.emit()

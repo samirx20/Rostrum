@@ -4,8 +4,9 @@ Reading goes through the document's own `times` (seconds, `{"beat": n}`, `"#drop
 the item already used: a note placed in beats is moved in beats, one placed on a marker stays on that marker
 (`"#drop+0.25"`), seconds stay seconds. A drag snaps to the grid unless it is free (Ctrl) or Snap is off.
 
-GRID is the screen's one grid setting (Grid ▾ and Snap in the arrangement's header; screen state, never saved):
-every snap (drags, ends, the ruler's range, Draw, nudges) reads it here.
+A `Grid` is a window's grid setting (Grid ▾ and Snap in the arrangement's header; screen state, never saved): the
+bridge holds one and passes it to every snap (drags, ends, the ruler's range, Draw, nudges); without one, the
+default (1/16, Snap on) is used.
 """
 from __future__ import annotations
 
@@ -39,12 +40,12 @@ class Grid:
         self.auto_beats = 4.0
 
 
-GRID = Grid()
+DEFAULT = Grid()             # never changed: what a caller without a window's grid gets
 
 
-def step_beats(root: dict) -> float:
+def step_beats(root: dict, grid: Grid | None = None) -> float:
     """One grid step in beats (nudges, Draw's note length, Ctrl+arrows)."""
-    return GRID.beats(root)
+    return (grid or DEFAULT).beats(root)
 
 
 def sec(value, root: dict, where="time") -> float:
@@ -62,11 +63,12 @@ def beat(t: float, root: dict) -> float:
     return tempo.beat_at(root, t)
 
 
-def snap(t: float, root: dict, free: bool) -> float:
-    """To the nearest grid step (through the tempo map), unless free or Snap is off."""
-    if free or not GRID.on:
+def snap(t: float, root: dict, free: bool, grid: Grid | None = None) -> float:
+    """To the nearest step of `grid` (the window's; through the tempo map), unless free or its Snap is off."""
+    grid = grid or DEFAULT
+    if free or not grid.on:
         return max(0.0, round(t, 4))
-    step = GRID.beats(root)
+    step = grid.beats(root)
     b = round(tempo.beat_at(root, t) / step) * step
     return max(0.0, round(tempo.seconds_at(root, b), 6))
 

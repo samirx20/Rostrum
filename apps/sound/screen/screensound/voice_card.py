@@ -52,6 +52,17 @@ def without(doc, ids):
     return SimpleNamespace(data=data, folder=getattr(doc, "folder", None))
 
 
+def mark_speaking(rows: list[dict], ids) -> None:
+    """A line being spoken reads "Speaking… · <words>" on its block (the arrangement's rows and the Editor's roll),
+    not "not made"."""
+    if not ids:
+        return
+    for r in rows:
+        for b in r.get("blocks", []):
+            if b["type"] == "line" and b["id"] in ids:
+                b["label"] = "Speaking… · " + b["label"].removeprefix("not made · ")
+
+
 class VoiceMaker(QObject):
     changed = Signal()
     _done = Signal(str, str)      # track id, error ("" = made)
