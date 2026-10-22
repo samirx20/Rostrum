@@ -8,6 +8,7 @@ time, the newest wins), where it can't hitch playback; only its answer comes bac
 from __future__ import annotations
 
 import copy
+from types import SimpleNamespace
 
 from PySide6.QtCore import QTimer, Signal
 from rostrum_gui.frames import PictureWorker
@@ -35,7 +36,7 @@ class Render3DWatch(PictureWorker):
             self._take(None)
 
     def open_engine(self):
-        return True                  # no engine: the look reads files
+        return SimpleNamespace(close=lambda: None)     # no engine (the look reads files); the worker closes it
 
     def handle(self, _eng, job):
         from rostrum2d import render3d

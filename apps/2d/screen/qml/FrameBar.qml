@@ -11,7 +11,7 @@ Panel {
         FrameTools { anchors.verticalCenter: parent.verticalCenter },
         Item { width: Theme.gap; height: 1 },
         PlayOptions { id: opts; anchors.verticalCenter: parent.verticalCenter },
-        Item { width: Theme.gap; height: 1; visible: opts.visible },
+        Item { width: Theme.pad; height: 1; visible: opts.visible },
         TimeReadout { anchors.verticalCenter: parent.verticalCenter },
         Item { width: Theme.gap; height: 1 },
         PlayButton { playing: backend.playing; onClicked: backend.togglePlay(); implicitHeight: 24; implicitWidth: 24 }

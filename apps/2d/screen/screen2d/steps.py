@@ -186,7 +186,9 @@ def do_step(bridge, win, step):
     elif word == "marker":                       # the ruler's flag edits, through the same MarkerWatch slots
         from rostrum_core.markers import find
         m = bridge.marks
-        ref = rest[1].replace("_", " ") if len(rest) > 1 else ""            # a marker's name, _ for spaces
+        ref = rest[1] if len(rest) > 1 else ""                              # a marker's name, _ for spaces
+        names = [r["name"] for r in m.rows()]
+        ref = ref if ref in names else ref.replace("_", " ")
         mid = find(m.rows(), ref)["id"] if rest[0] != "add" else ""
         if rest[0] == "add":
             bridge.setTime(float(rest[1]))
@@ -194,7 +196,7 @@ def do_step(bridge, win, step):
         elif rest[0] == "move":
             m.move(mid, float(rest[2]))
         elif rest[0] == "rename":
-            m.rename(mid, " ".join(rest[2:]))
+            m.rename(mid, " ".join(rest[2:]).replace("_", " "))
         elif rest[0] == "remove":
             m.remove(mid)
     elif word in ("undo", "redo"):

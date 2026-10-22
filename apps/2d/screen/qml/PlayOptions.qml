@@ -9,7 +9,7 @@ Row {
     readonly property bool hasBlur: backend.frameInfo.blur === true
     readonly property bool hasSize: backend.frameInfo.previewSize === true
     visible: hasBlur || hasSize
-    spacing: Theme.grid
+    spacing: Theme.gap         // a label to its control; groups get Theme.pad more (below)
 
     Text {
         visible: hasBlur; anchors.verticalCenter: parent.verticalCenter
