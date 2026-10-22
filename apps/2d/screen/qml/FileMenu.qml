@@ -39,11 +39,13 @@ Button {
                         y: heading.height; width: parent.width; height: Theme.popupRow; radius: 4
                         color: hover.hovered ? Theme.hover : "transparent"
                         Text {
+                            id: entryName
                             anchors { left: parent.left; leftMargin: Theme.gap - menu.padding; right: chip.left; rightMargin: Theme.gap
                                       verticalCenter: parent.verticalCenter }
                             text: row.modelData.label
                             elide: Text.ElideRight; color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont
                         }
+                        HoverTip { text: entryName.truncated ? row.modelData.label : ""; hovered: hover.hovered }   // a long project name, whole
                         KeyHint { id: chip; visible: row.modelData.hint !== "Recent" && row.modelData.hint !== ""; text: row.modelData.hint
                                   anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter }
                         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }

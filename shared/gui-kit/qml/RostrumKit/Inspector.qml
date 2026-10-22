@@ -15,7 +15,9 @@ Panel {
 
     Text { id: name; text: panel.bridge.selectedItem.label; color: Theme.fg; font.family: uiFont
            font.pixelSize: Theme.heading; font.weight: Font.DemiBold
-           anchors.left: parent.left; anchors.right: parent.right; elide: Text.ElideRight }
+           anchors.left: parent.left; anchors.right: parent.right; elide: Text.ElideRight
+           HoverHandler { id: nameHover }
+           HoverTip { text: name.truncated ? name.text : ""; hovered: nameHover.hovered } }   // a long name, whole
     Text { id: kind; text: panel.bridge.selectedItem.kindLabel || Theme.sentence(panel.bridge.selectedItem.kind); color: Theme.fg3; font.family: uiFont
            font.pixelSize: Theme.body
            anchors.top: name.bottom; anchors.topMargin: 2 }

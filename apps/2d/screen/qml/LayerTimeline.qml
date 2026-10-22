@@ -20,8 +20,8 @@ Rectangle {
 
     MouseArea {  // the top edge: in the gap above the timeline, so it never takes a click meant for the canvas
         id: edge
-        anchors { left: parent.left; right: parent.right; bottom: parent.top }
-        height: Theme.gap
+        anchors { left: parent.left; right: parent.right; verticalCenter: parent.top }
+        height: 2 * Theme.gap          // 16 px: easy to grab; half in the gap above, half on the timeline's own edge
         hoverEnabled: true; preventStealing: true
         cursorShape: Qt.SizeVerCursor
         property real y0: 0
@@ -34,7 +34,7 @@ Rectangle {
 
     Row {  // the header
         id: header
-        x: Theme.gap; height: Theme.header; spacing: Theme.pad
+        x: Theme.gap; y: Theme.gap; height: Theme.header; spacing: Theme.pad   // y: room for the edge's grab above it
         PlayButton { anchors.verticalCenter: parent.verticalCenter; implicitHeight: 24; implicitWidth: 24
                      playing: backend.playing; onClicked: backend.togglePlay() }
         TimeReadout { anchors.verticalCenter: parent.verticalCenter; width: 112 }
@@ -71,7 +71,7 @@ Rectangle {
     }
     TimeRuler {
         id: ruler
-        x: tl.labelWidth + Theme.gap + 8; y: header.height   // 8: room for a key at 0
+        x: tl.labelWidth + Theme.gap + 8; y: header.y + header.height   // 8: room for a key at 0
         width: parent.width - x - Theme.pad - 8; height: backend.markers.length > 0 ? 34 : 22   // 34: a row for marker flags
         duration: backend.frameInfo.duration; fps: backend.frameInfo.fps; time: backend.time
     }
@@ -92,7 +92,7 @@ Rectangle {
     VScrollBar { flick: rows; visible: rows.visible && needed }
     MouseArea {  // compact: the one row's name is a list of every layer
         visible: tl.compact && !backend.curves.on && backend.layers.length > 0
-        x: 0; y: tl.rowsTop; width: tl.labelWidth; height: Theme.rowDense
+        x: 0; y: tl.rowsTop; width: tl.labelWidth; height: Theme.rowDense; z: 2
         cursorShape: Qt.PointingHandCursor
         onClicked: { picker.entries = backend.layers.filter(r => r.row === "layer")
                          .map(r => ({ value: r.id, label: " ".repeat(r.depth) + r.label })); picker.open() }

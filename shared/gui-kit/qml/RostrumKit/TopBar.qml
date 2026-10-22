@@ -77,7 +77,9 @@ Item {
             radius: Theme.radiusCtl; color: Theme.panel
             Text { id: tabLabel; anchors.fill: parent; anchors.leftMargin: Theme.pad; anchors.rightMargin: Theme.pad
                    verticalAlignment: Text.AlignVCenter; elide: Text.ElideMiddle
-                   text: bar.documentName; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
+                   text: bar.documentName; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
+                   HoverHandler { id: tabHover }
+                   HoverTip { text: tabLabel.truncated ? bar.documentName : ""; hovered: tabHover.hovered } }   // a long name, whole
         }
     }
     Row {  // the app's tools: centred while that collides with nothing, else as far toward the centre as fits
@@ -136,17 +138,19 @@ Item {
                 Rectangle { width: 10; height: 10; radius: 5; color: "transparent"; border.width: 1.5; border.color: Theme.fg3 }
                 Rectangle { x: 8; y: 10; width: 6; height: 1.5; radius: 1; rotation: 45; color: Theme.fg3 }
             }
-            Text {
+            Text {      // the words fit or say less, never cut mid-word: "Search or run a command", else "Search"
+                id: cmdWords
                 visible: !command.iconOnly
                 anchors { left: lens.right; leftMargin: Theme.gap; right: cmdKey.left; rightMargin: Theme.grid
                           verticalCenter: parent.verticalCenter }
-                elide: Text.ElideRight
-                text: "Search or run a command"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
+                readonly property string full: "Search or run a command"
+                TextMetrics { id: fullWidth; font: cmdWords.font; text: cmdWords.full }
+                text: fullWidth.advanceWidth <= width ? full : "Search"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
             }
             KeyHint { id: cmdKey; visible: !command.iconOnly; text: "Ctrl K"
                       anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter }
             MouseArea { id: cmdHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: bar.commandClicked() }
-            HoverTip { text: command.iconOnly ? "Search or run a command  Ctrl K" : ""; hovered: cmdHover.containsMouse
+            HoverTip { text: command.iconOnly || cmdWords.text !== cmdWords.full ? "Search or run a command  Ctrl K" : ""; hovered: cmdHover.containsMouse
                        pressed: cmdHover.pressed }
         }
         IconButton {  // Help: the app's guides, Connect an AI agent, then About and licences (F1 opens that screen)

@@ -15,6 +15,7 @@ Rectangle {
     readonly property bool isLayer: rowData.row === "layer"
     readonly property bool lit: rowData.owner === backend.selected || backend.multi.ids.indexOf(rowData.owner) >= 0   // every selected layer's bar
     function xOf(t) { return 8 + Math.round(ruler.xOf(t)) }
+    function onBar(k) { return k.t >= (rowData.start || 0) - 1e-6 && k.t <= (rowData.end || 0) + 1e-6 }   // a key in the layer's time
     function tAt(item, x) { return ruler.tOf(item.mapToItem(track, x, 0).x - 8) }
     radius: Theme.radiusCtl
     color: isLayer ? Theme.sunken : Qt.darker(Theme.panel, 1.15)
@@ -46,6 +47,10 @@ Rectangle {
             onReleased: { if (held) backend.endDrag(); held = "" }
             onCanceled: { if (held) backend.endDrag(); held = "" }
         }
+        Repeater {   // a layer's keys lie in its bar: pressed on a key, the key moves; anywhere else, the bar
+            model: bar.visible ? track.rowData.keys.filter(k => track.onBar(k)) : []
+            delegate: KeyDot { row: track; shift: bar.x; room: bar.width }
+        }
     }
     FrameMarks { anchors.fill: parent; frames: track.rowData.frames; timeRuler: track.ruler }   // a drawing's frames, on its bar
     Repeater {   // a tied end: a small flag with the marker's name on hover
@@ -59,27 +64,8 @@ Rectangle {
             HoverTip { hovered: flagHover.hovered; text: (modelData.at === "start" ? "Starts at marker " : "Ends at marker ") + modelData.name }
         }
     }
-    Repeater {   // the keys
-        model: track.rowData.keys
-        delegate: Item {
-            id: key
-            required property var modelData
-            readonly property bool on: modelData.id === backend.selected
-            x: track.xOf(modelData.t) - width / 2
-            width: 16; height: track.height
-            KeyMark {
-                anchors.centerIn: parent; size: track.isLayer ? 8 : 7
-                color: key.on ? Theme.accent : keyArea.containsMouse ? Theme.fg : track.isLayer ? Theme.fg2 : Theme.fg3
-            }
-            MouseArea {
-                id: keyArea; anchors.fill: parent; hoverEnabled: true; preventStealing: true
-                cursorShape: Qt.SizeHorCursor
-                property bool held: false
-                onPressed: held = backend.beginKeyDrag(key.modelData.id) !== false
-                onPositionChanged: (m) => { if (held) backend.keyDragTo(track.tAt(keyArea, m.x), 6 / track.ruler.perSec) }
-                onReleased: { if (held) backend.endDrag(); held = false }
-                onCanceled: { if (held) backend.endDrag(); held = false }
-            }
-        }
+    Repeater {   // the keys of a row with no bar (a setting, an effect, a mask)
+        model: bar.visible ? track.rowData.keys.filter(k => !track.onBar(k)) : track.rowData.keys
+        delegate: KeyDot { row: track }
     }
 }

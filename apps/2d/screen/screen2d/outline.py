@@ -52,6 +52,18 @@ def _row(kind: str, owner: dict, depth: int, label: str, keys: list, prop: str =
             "depth": depth, "owned": kind != "layer", "fold": "", "keys": keys, "frames": [], "bar": False}
 
 
+def _one_per_frame(keys: list[dict], fps: float) -> list[dict]:
+    """A layer's summary line: keys of several settings at the same frame are ONE diamond (the first one's id: a click
+    selects it, its row opens the rest), never one drawn over another."""
+    seen, out = set(), []
+    for k in keys:
+        f = round(k["t"] * fps)
+        if f not in seen:
+            seen.add(f)
+            out.append(k)
+    return out
+
+
 def rows(comp: dict, flipped: set[str]) -> list[dict]:
     """`comp` as placed (every time in composition seconds): bridge.placed()."""
     out: list[dict] = []
@@ -60,7 +72,7 @@ def rows(comp: dict, flipped: set[str]) -> list[dict]:
     def walk(layers, depth):
         for lay in reversed(layers):
             fields = _fields(lay)
-            summary = sorted((k for o, p in fields for k in _keys(o, p)), key=lambda k: k["t"])
+            summary = _one_per_frame(sorted((k for o, p in fields for k in _keys(o, p)), key=lambda k: k["t"]), comp["fps"])
             inside = bool(fields or _owned(lay) or lay.get("layers"))
             is_open = inside and (bool(lay.get("layers")) != (lay["id"] in flipped))
             row = _row("layer", lay, depth, label_of(lay), summary)

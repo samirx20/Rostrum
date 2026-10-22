@@ -85,8 +85,10 @@ Rectangle {
         Column {   // where it will go and what it will be called: before it starts, while it runs, and after
             visible: job.state !== "done"
             width: col.width; spacing: 2
-            Text { width: parent.width; text: job.fileName; elide: Text.ElideMiddle; color: Theme.fg
-                   font.family: uiFont; font.pixelSize: Theme.body }
+            Text { id: fileName; width: parent.width; text: job.fileName; elide: Text.ElideMiddle; color: Theme.fg
+                   font.family: uiFont; font.pixelSize: Theme.body
+                   HoverHandler { id: fileHover }
+                   HoverTip { text: fileName.truncated ? job.fileName : ""; hovered: fileHover.hovered } }   // a long name, whole
             Text { width: parent.width; text: "Saved in " + job.destination.replace(/\\/g, "\\\u200b"); wrapMode: Text.Wrap; maximumLineCount: 4
                    elide: Text.ElideMiddle; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
         }

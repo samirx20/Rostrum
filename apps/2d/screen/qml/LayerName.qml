@@ -10,6 +10,7 @@ Rectangle {
     id: name
     property var rowData
     property ListView rows
+    enabled: !rows.compact           // compact: the one name row is the list of every layer (LayerTimeline.qml)
     readonly property bool isLayer: rowData.row === "layer"
     readonly property bool selected: rowData.id === backend.selected || isLayer && backend.multi.ids.indexOf(rowData.id) >= 0 && backend.multi.count > 1
     readonly property bool inSelected: !selected && isLayer && backend.multi.ids.indexOf(rowData.id) >= 0   // a key, effect or mask of it is selected
@@ -28,6 +29,7 @@ Rectangle {
         property bool dragging: false
         property bool dropped: false
         anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton
+        enabled: !name.rows.compact      // compact: the row's name is the list of every layer (LayerTimeline.qml)
         onPressed: (m) => { pressY = m.y; dropped = false }
         onPositionChanged: (m) => {
             if (!pressed || !name.isLayer || !(m.buttons & Qt.LeftButton)) return
@@ -51,7 +53,7 @@ Rectangle {
         visible: name.rowData.fold !== ""
         Chevron { anchors.centerIn: parent; rotation: name.rowData.fold === "open" ? 0 : -90
                   color: foldArea.containsMouse ? Theme.fg : Theme.fg3 }
-        MouseArea { id: foldArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+        MouseArea { id: foldArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; enabled: !name.rows.compact
                     onClicked: backend.toggleFold(name.rowData.id) }
     }
     LayerIcon {
@@ -95,6 +97,7 @@ Rectangle {
         x: icon.visible ? icon.x + icon.width + Theme.gap : name.indent + 16
         width: parent.width - x - Theme.gap - (name.isLayer ? 38 : 0); anchors.verticalCenter: parent.verticalCenter
         text: name.rowData.label; elide: Text.ElideRight; font.family: uiFont
+        HoverTip { text: parent.truncated ? name.rowData.label : ""; hovered: hover.containsMouse }   // the whole name
         font.pixelSize: name.isLayer ? Theme.body : Theme.label + 1
         color: name.isLayer || name.selected ? Theme.fg : Theme.fg2
     }
