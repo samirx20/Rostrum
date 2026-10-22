@@ -24,6 +24,7 @@ OWN_LICENCE = "MIT, HireMyLens Media"
 APP_WORDS = {"2d": ("2d", "rostrum2d"), "sound": ("sound", "rostrumsound")}
 SKIP_TOKENS = {"python", "rust", "cpu", "pip", "dev", "qt 6", "venv", "current"}
 GPL = re.compile(r"(?<![A-Za-z])(A?GPL|GNU General Public)", re.I)     # GPL / AGPL, never LGPL
+NOT = re.compile(r"\b(?:no|none|not|never|without)\b[^;()]*", re.I)   # "none GPL / AGPL" says what it is not
 TEXT_CAP = 100_000
 
 
@@ -150,7 +151,7 @@ def build(a) -> int:
                            "source": r["source"], "missing_row": False}, []))
     bad = []
     for item, _ in items:
-        if GPL.search(item["licence"]):
+        if GPL.search(NOT.sub("", item["licence"])):
             bad.append(f'{item["name"]} ({item["licence"]})')
         if re.search(r"\bL?GPL", item["licence"]) and re.search(r"LGPL", item["licence"]):
             item["asks"] += "; dynamically linked; source offered"

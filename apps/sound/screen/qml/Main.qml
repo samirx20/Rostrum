@@ -33,8 +33,8 @@ AppShell {
     actions: [Button {           // + Track: one track.add with a starting instrument (screensound/adder.py)
                   id: addTrack; text: "+ Track"; down: addMenu.visible; anchors.verticalCenter: parent.verticalCenter
                   onClicked: addMenu.visible ? addMenu.close() : addMenu.open()
-                  Menu { id: addMenu; width: 220; entries: adder.entries; onPicked: (v) => adder.add(v) } },
-              FileMenu { id: fileMenu; settingsPanel: settingsPanel; anchors.verticalCenter: parent.verticalCenter }]
+                  Menu { id: addMenu; width: 220; entries: adder.entries; onPicked: (v) => adder.add(v) } }]
+    leading: FileMenu { id: fileMenu; settingsPanel: settingsPanel; anchors.verticalCenter: parent.verticalCenter }
     SettingsPanel { id: settingsPanel }
     tools: [
         Segmented {

@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Dialogs
 import "."
 
-// A file or folder path: the text field (type or paste a path; Enter commits) and a "Browse…" button that opens
+// A file or folder path: the text field (type or paste a path; Enter commits) and a "…" (Browse) button that opens
 // the system's own file or folder dialog, starting where the current path is. A choice sends one edited(path)
 // with a plain local path (C:\Music\x.sfz, /Users/me/x.sfz), never a file:// address.
 Item {
@@ -31,13 +31,16 @@ Item {
         anchors { left: parent.left; right: browse.left; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
         value: f.value
         placeholder: "Default"            // empty means the setting's default (its help says which)
+        atRest: f.value.replace(/[\\/]+$/, "").split(/[\\/]/).pop()   // at rest the file's (folder's) own name; a click shows the whole path
+        elide: Text.ElideMiddle
         onEdited: (v) => f.edited(v)
     }
-    Button {
+    IconButton {  // small, so the name keeps the room in a narrow inspector; its tip says what it does
         id: browse
         anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-        height: Theme.field
-        text: "Browse…"
+        width: Theme.field; height: Theme.field
+        glyph: "…"
+        tip: f.folder ? "Browse for a folder" : "Browse for a file"
         onClicked: f.folder ? folderDialog.open() : fileDialog.open()
     }
     FileDialog {

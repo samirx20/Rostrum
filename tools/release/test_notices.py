@@ -24,3 +24,8 @@ def test_gpl_package_stops_the_run(tmp_path):
 
 def test_lgpl_package_passes(tmp_path):
     assert run(tmp_path, "LGPL-3.0-or-later").returncode == 0
+
+
+def test_a_licence_saying_what_it_is_not_passes(tmp_path):
+    assert run(tmp_path, "MIT; none GPL / AGPL").returncode == 0
+    assert run(tmp_path / "b", "GPL-2.0, not LGPL").returncode == 1

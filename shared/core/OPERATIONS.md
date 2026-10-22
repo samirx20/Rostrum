@@ -101,7 +101,7 @@ The error codes and the one-line message format are defined once, in `shared/mcp
 - Kept whole; no trimming until a real project shows it is too big.
 
 ### Undo and redo
-- Undo is a **new change** that applies the reverse of an earlier one (`"Undo: Move logo"`). History only grows, so undo itself can be undone and every step stays visible.
+- Undo is a **new change** that applies the reverse of an earlier one (`"Undid: Move logo"`; a redo reads `"Redid: Move logo"`). History only grows, so undo itself can be undone and every step stays visible.
 - **Undo is per author.** A person's Ctrl+Z undoes that person's last change, never the agent's (like a shared online document). An agent's `undo` undoes its own. The history panel can undo any single change, or a whole agent session at once.
 - Undo refuses, changing nothing, when a later change touched the same thing, and says which change.
 

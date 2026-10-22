@@ -29,7 +29,8 @@ FIELDS = {
         V.time("length", group="Time", help="How long the mix is (a time); left out = the last sound + 2 s."),
         N("beatsPerBar", 1, 16, "Time", imp="secondary", integer=True, label="Beats per bar"),
         N("sampleRate", 22050, 192000, "Output", "Hz", "deep", integer=True, label="Sample rate"),
-        Param.text("picture", group="Picture", importance="secondary", help="What the sound is made to, shown at the playhead on the Timeline: a video file, or \"item:<id>\" for a 2D item of the project (its newest render)."),
+        Param.text("picture", group="Picture", importance="secondary", control="file",
+                   filters=["Videos (*.mp4 *.mov *.webm *.mkv *.avi)"], help="What the sound is made to, shown at the playhead on the Timeline: a video file, or \"item:<id>\" for a 2D item of the project (its newest render)."),
         V.time("pictureAt", group="Picture", importance="secondary", label="Picture starts",
                valid_when={"not": {"any": [IS("picture", None), IS("picture", "")]}},
                help='When the picture\'s first frame is at: seconds, a beat, or a shared marker ("#logo"); left out = 0. '
@@ -59,7 +60,8 @@ FIELDS = {
         N("decay", 0.1, 4, "Hit", imp="secondary", help="Factor of the hit's length."),
     ],
     "clip": [
-        Param.text("media", group="Clip", label="File"), V.time("at", group="Clip"),
+        Param.text("media", group="Clip", label="File", control="file",
+                   filters=["Sound files (*.wav *.flac *.mp3 *.ogg *.aif *.aiff)"]), V.time("at", group="Clip"),
         N("in", 0, None, "Clip", "s", label="In-point"),
         V.length("length", group="Clip", help="How much of the file plays; left out = to its end."),
         N("volume", 0, 4, "Clip"), N("pitch", -24, 24, "Clip", "st", "secondary", help="Tape-style: pitch and speed change together."),

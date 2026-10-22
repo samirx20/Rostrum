@@ -18,7 +18,7 @@ WORDS = {"X": "rest", "A": "closed (M B P)", "B": "slightly open", "C": "open", 
          "F": "puckered (OO W)", "G": "teeth on lip (F V)", "H": "tongue up (L)"}
 SECONDS = dict(min=0, max=36000, unit="s")
 PARAMS = [
-    Param.text("source", label="Voice clip", required=True, help="A WAV file (a made take, or a recording)"),
+    Param.text("source", label="Voice clip", required=True, control="file", filters=["WAV sound (*.wav)"], help="A WAV file (a made take, or a recording)"),
     Param.number("at", label="Starts at", default=0.0, help="Where the clip starts in the composition", **SECONDS),
     Param.text("text", label="Words said", help="With the words, phones are aligned to them (English); without, "
                                                   "the model's own hearing is used (any language)"),

@@ -134,19 +134,19 @@ class Document:
 
     def undo_session(self, session, who: Who) -> Change | None:
         cs = [c for c in self.history.changes if c.original and c.session == session and self.history.done[c.seq]]
-        return self.undo_changes(cs, who, f"Undo session {session}") if cs else None
+        return self.undo_changes(cs, who, f"Undid session {session}") if cs else None
 
     def undo_changes(self, targets, who, label=None) -> Change:
         self.history.blockers(targets, max(self.history.at[c.seq] for c in targets))
         rev = [E.reverse(e) for c in sorted(targets, key=lambda c: -c.seq) for e in reversed(c.edits)]
-        return self._replay(rev, who, label or f"Undo: {targets[-1].label}", undoes=[c.seq for c in targets])
+        return self._replay(rev, who, label or f"Undid: {targets[-1].label}", undoes=[c.seq for c in targets])
 
     def redo(self, who: Who) -> Change | None:
         c = self.history.last_redoable(who)
         if not c:
             return None
         self.history.blockers([c], self.history.at[c.seq])
-        return self._replay(c.edits, who, f"Redo: {c.label}", redoes=[c.seq])
+        return self._replay(c.edits, who, f"Redid: {c.label}", redoes=[c.seq])
 
     def _replay(self, edits, who, label, **kw) -> Change:
         work = copy.deepcopy(self.data)

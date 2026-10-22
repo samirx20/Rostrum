@@ -39,9 +39,9 @@ def T(name, label, group, default, imp=P, when=None, help=""):
     return Param.toggle(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help)
 
 
-def X(name, label, group, default, imp=P, help="", when=None, control=""):
+def X(name, label, group, default, imp=P, help="", when=None, control="", filters=()):
     return Param.text(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help,
-                      control=control)
+                      control=control, filters=list(filters))
 
 
 BLENDS = _blends.BLENDS          # the one list (blends.txt), shared with the engine
@@ -177,7 +177,8 @@ FIELDS: dict[str, list[Param]] = {
         N("strokeWidth", "Outline width", "Outline", 0, 100, 0.5, "px", D, STROKE, default=1.0),
     ] + TYPE + [_unless_following(p) for p in TRANSFORM],
     "image": [
-        X("src", "File", "Image", "", help="Absolute path, or relative to the project folder"),
+        X("src", "File", "Image", "", help="Absolute path, or relative to the project folder", control="file",
+          filters=["Pictures (*.png *.jpg *.jpeg *.webp *.tif *.tiff *.exr)"]),
         N("w", "Width", "Image", 0, 20000, 1, "px", default=640.0),
         N("h", "Height", "Image", 0, 20000, 1, "px", default=360.0),
         CH("fit", ["cover", "contain", "stretch"], "Fit", "Image", "cover", S),
@@ -186,7 +187,8 @@ FIELDS: dict[str, list[Param]] = {
     # A video: its frames are decoded once (video.py) at the comp's fps and this size; the engine shows the frame the time asks for.
     # Source frame = floor((frame − start·fps) · speed) + round(offset·fps), looped or held at the last frame. No sound here.
     "video": [
-        X("src", "File", "Video", "", help="Absolute path, or relative to the project folder"),
+        X("src", "File", "Video", "", help="Absolute path, or relative to the project folder", control="file",
+          filters=["Videos (*.mp4 *.mov *.webm *.mkv *.avi)"]),
         N("w", "Width", "Video", 2, 8192, 1, "px", integer=True, default=640),
         N("h", "Height", "Video", 2, 8192, 1, "px", integer=True, default=360),
         CH("fit", ["cover", "contain", "stretch"], "Fit", "Video", "cover", S),

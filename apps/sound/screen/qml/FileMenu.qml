@@ -14,7 +14,7 @@ Button {
     down: menu.visible
     onClicked: menu.visible ? menu.close() : openMenu()
     function openMenu() { menu.open() }
-    function saveNow() { note.show(songs.save()) }
+    function saveNow() { const t = songs.save(); if (t) backend.say(t) }
 
     Menu {
         id: menu
@@ -33,19 +33,12 @@ Button {
             else if (v.indexOf("recent:") === 0) { const r = songs.recent[Number(v.slice(7))]; songs.openRecent(r.folder, r.item) }
         }
     }
-    Text {
-        id: note
-        function show(t) { text = t; visible = t !== ""; hide.restart() }
-        visible: false
-        anchors { right: parent.left; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
-        color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body
-        Timer { id: hide; interval: 3500; onTriggered: note.visible = false }
-    }
-    Text {      // a refused open / save, in words, until the next thing works
-        visible: songs.error !== ""
-        anchors { right: parent.left; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
-        width: 420; elide: Text.ElideRight; horizontalAlignment: Text.AlignRight
-        text: songs.error; color: Theme.danger; font.family: uiFont; font.pixelSize: Theme.body
+    // What a save said, and a refused open / save in words: in the top bar's status line, like every other
+    // "what just happened" (a line starting "Error" shows red).
+    Connections {
+        target: songs
+        property string said: ""
+        function onChanged() { if (songs.error !== "" && songs.error !== said) backend.say("Error: " + songs.error); said = songs.error }
     }
 
     FolderDialog {

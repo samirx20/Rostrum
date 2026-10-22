@@ -53,7 +53,6 @@ AppShell {
             text: backend.problems.count + (backend.problems.count === 1 ? " problem" : " problems")
             down: problemsPanel.shown; onClicked: shell.setProblemsOpen(!problemsPanel.shown)
         },
-        FileMenu { id: fileMenu; onAct: (key) => fileFlow.act(key) },
         AddMenu { id: addMenu },
         Button { text: "Import"; down: importPanel.shown; onClicked: shell.setImportOpen(!importPanel.shown) },
         IconButton { glyph: "↗"; tip: "Export"; down: exportPanel.shown; onClicked: shell.setExportOpen(!exportPanel.shown) }
@@ -75,6 +74,7 @@ AppShell {
             anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
         }
     ]
+    leading: FileMenu { id: fileMenu; onAct: (key) => fileFlow.act(key) }
     right: [
         Inspector { anchors.fill: parent; bridge: backend; keyMarks: true; visible: backend.page !== "draw" },
         Inspector { anchors.fill: parent; bridge: painter; title: "Brush"; visible: backend.page === "draw" }

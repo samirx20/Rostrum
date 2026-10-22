@@ -68,7 +68,7 @@ INSTRUMENT = [
               valid_when=IS("instrument", "sfz"), help="Other playing styles of this instrument, each its own SFZ "
               'file ({"spiccato": "…spic.sfz"}); a note picks one with art.'),
     Param.choice("kit", names.KITS, group="Instrument", label="Drum kit", valid_when=IS("instrument", "kit")),
-    Param.text("kitSfz", group="Instrument", label="SFZ drum kit", valid_when=IS("instrument", "kitSfz")),
+    Param.text("kitSfz", group="Instrument", label="SFZ drum kit", control="file", filters=["SFZ instruments (*.sfz)"], valid_when=IS("instrument", "kitSfz")),
     Param.choice("model", names.MODELS, group="Instrument", label="Model", valid_when=MODEL,
                  help="A played (procedural) instrument: plucked strings, struck bars or a bowed violin."),
     *touch(),

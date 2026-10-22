@@ -40,7 +40,7 @@ APPS = {
            ["apps/2d/python/rostrum2d", "apps/2d/screen/main.py", "apps/2d/screen/screen2d", "apps/2d/screen/qml",
             "apps/2d/guides", "apps/2d/engine/fonts", "apps/2d/engine/DEPENDENCIES.md"],
            ["apps/2d/engine/target/agent/rostrum2d-render.exe", "apps/2d/engine/target/agent/rostrum2d_stamp.dll"]),
-    "sound": ("apps/sound", ["apps/sound/python[listen,mcp]"],
+    "sound": ("apps/sound", ["apps/sound/python[listen,cleanup,mcp]"],
               ["apps/sound/python/rostrum_sound", "apps/sound/screen/main.py", "apps/sound/screen/screensound",
                "apps/sound/screen/qml", "apps/sound/guides", "apps/sound/MODELS.md"],
               ["apps/sound/engine/target/agent/rostrum-sound.exe"]),
@@ -156,6 +156,12 @@ def main():
             copy(rel, REPO, stage)
         for rel in APPS[app][3]:
             copy(rel, args.engines, stage)
+    ffmpeg = args.engines / "apps/2d/ffmpeg"       # 2D's own LGPL FFmpeg (WebM, ProRes, video import); MP4 needs none
+    if "2d" in args.apps and ffmpeg.is_dir():
+        copy("apps/2d/ffmpeg", args.engines, stage)
+    elif "2d" in args.apps:
+        print(f"NOTE: no {ffmpeg}: Rostrum2D ships without FFmpeg, so WebM / ProRes export and video import will say "
+              "it is missing (MP4, PNG, GIF and EXR don't need it)")
     copy("tools/release/rostrum.pyw", REPO, stage)
     shutil.move(stage / "tools" / "release" / "rostrum.pyw", py.parent / "rostrum.pyw")
     shutil.rmtree(stage / "tools")
