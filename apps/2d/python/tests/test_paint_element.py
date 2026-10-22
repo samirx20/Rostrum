@@ -31,7 +31,7 @@ def test_one_paint_stroke_is_one_undo_step():
     d = painted_ellipse(True)
     egg = d.item("egg")
     assert (egg["paintW"], egg["paintH"]) == (200, 100)                 # the paint size comes from the box
-    assert egg["frames"][0]["paints"][0]["strokes"][0]["points"][0][:2] == [-10.0, 8.0]    # composition px -> canvas px
+    assert egg["frames"][0]["paints"][0]["strokes"][0]["points"][0][:2] == [-10.5, 7.5]    # composition px -> canvas px (pixel centres)
     d.undo(SAM)
     egg = d.item("egg")
     assert not egg.get("frames") and not egg.get("paintW")

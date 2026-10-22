@@ -62,6 +62,7 @@ the scene once. Code: `render/src/scene/` and `render/src/scene_serve.rs`.
 | `{"frame": {"t": 1.25, "image"? / "rgba"? / "boxes"? …}}` | the scene at `t` seconds, drawn as any frame (all of `frame`'s outputs); `index` defaults to round(t·fps) so a still equals the exported frame; `timing.evalMs` = keys + easing + markup | as `frame` |
 | `{"export": {"start"?, "end"?, "encode": {"program", "args"}, "file"?, "progress"?}}` | every frame start..end at the comp's fps into the encoder (`file` checked to exist and not be empty after); or `"images": "C:\\…\\f-{frame}.png"` for one picture per frame; `progress: true` sends `{"progress": i, "of": n}` lines first | `{"ok": true, "frames", "fps", "code", "timing"}` |
 | `{"edit": [{"id", "props"?: {…}, "anim"?: {field: [keys] \| null}}]}` | small changes to the held scene (a drag), checked as a load is, all or nothing | `{"ok": true, "edits": n}` |
+| `{"place": {"t", "ids": [id, …]}}` (H30) | where layers are drawn at t, from the laid-out page (`render/src/place.rs`, through groups, camera and tilt): own px -> comp px as a 3×3 matrix, the own box, the true edge as path data; also `frame.place` | `{"ok": true, "layers": {id: {"m", "w", "h", "edge"}}}` |
 
 The page requests (`open`, `page`, `frame {stage}`) still work; after an `open` or `page`, send the scene again.
 

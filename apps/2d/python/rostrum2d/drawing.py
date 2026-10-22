@@ -1,10 +1,11 @@
 """Reading paint: a drawing layer's, or the paint on any element (a shape, text, picture or path holding `frames`,
 paint_fields.py). Which drawing shows at a frame (the "Draw each frame" rule), its neighbours (onion skin), the
-paint canvas's size and picture, and composition px -> canvas px. The one place these rules live; the scene, the
+paint canvas's size and picture. The one place these rules live; the scene, the
 screen, the operations and the MCP tools use it.
 
 The paint covers the element's own box (sizes.own_size; a drawing's box is its canvas w × h) and is stretched over
-it: canvas px (0, 0)..(cw, ch) = the box's (0, 0)..(w, h), so it moves, scales and turns with the element.
+it: canvas px (0, 0)..(cw, ch) = the box's (0, 0)..(w, h), so it moves, scales and turns with the element. Composition
+px -> canvas px is placement.py's (the engine's own placement of the layer).
 """
 from __future__ import annotations
 
@@ -74,18 +75,3 @@ def paint_size(item: dict, props: dict) -> tuple[int, int]:
 def picture(item: dict, frame: dict) -> Path:
     """One drawing's picture (content-keyed PNG, canvas size, straight alpha) for the engine to draw."""
     return canvas.png(frame, *canvas_size(item))
-
-
-def to_canvas(item: dict, props: dict, x: float, y: float) -> tuple[float, float]:
-    """Composition px -> the item's paint canvas px, for an item at top level with its values at this moment
-    (`props`: resolved x, y, anchor, scale, stretch, rotation …). Tilt is not inverted."""
-    from .boxes import matrix                        # boxes reads drawings too
-    w, h = own_size(item["type"], props)
-    a, b, c, d, e, f = matrix(props, w, h)
-    det = a * d - b * c
-    if not det or not w or not h:
-        raise ValueError(f'{item["id"]} is scaled to nothing; there is no canvas point here')
-    dx, dy = x - e, y - f
-    lx, ly = (d * dx - c * dy) / det, (a * dy - b * dx) / det
-    cw, ch = paint_size(item, props)
-    return lx * cw / w, ly * ch / h

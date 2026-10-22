@@ -5,23 +5,22 @@
 //! border box's px (its own transform left out, its descendants' kept), from the same Blitz layout (Stylo +
 //! Taffy + Parley shaping, line breaking, variable-font instances) and the same font files the renderer paints.
 
-use std::fmt::Write as _;
 use std::io::Read as _;
 use std::sync::Arc;
 
 use blitz_dom::{BaseDocument, NodeData, NodeId};
 use blitz_html::HtmlDocument;
 use blitz_traits::shell::{ColorScheme, Viewport};
-use kurbo::{Affine, Point, Vec2};
+use kurbo::{Affine, BezPath, Point, Vec2};
 use parley::PositionedLayoutItem;
 use serde_json::{json, Map, Value};
 use skrifa::instance::{LocationRef, NormalizedCoord, Size};
 use skrifa::outline::{DrawSettings, OutlinePen};
 use skrifa::{FontRef, GlyphId, MetadataProvider};
 
-/// An SVG path in layer px: each glyph's outline through `t` (font units are y-up at the glyph's origin).
+/// A path in layer px: each glyph's outline through `t` (font units are y-up at the glyph's origin).
 struct Pen<'a> {
-    d: &'a mut String,
+    path: &'a mut BezPath,
     t: Affine,
 }
 
@@ -34,29 +33,40 @@ impl Pen<'_> {
 impl OutlinePen for Pen<'_> {
     fn move_to(&mut self, x: f32, y: f32) {
         let p = self.pt(x, y);
-        let _ = write!(self.d, "M{:.2} {:.2}", p.x, p.y);
+        self.path.move_to(p);
     }
     fn line_to(&mut self, x: f32, y: f32) {
         let p = self.pt(x, y);
-        let _ = write!(self.d, "L{:.2} {:.2}", p.x, p.y);
+        self.path.line_to(p);
     }
     fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
         let (c, p) = (self.pt(cx, cy), self.pt(x, y));
-        let _ = write!(self.d, "Q{:.2} {:.2} {:.2} {:.2}", c.x, c.y, p.x, p.y);
+        self.path.quad_to(c, p);
     }
     fn curve_to(&mut self, c0x: f32, c0y: f32, c1x: f32, c1y: f32, x: f32, y: f32) {
         let (a, b, p) = (self.pt(c0x, c0y), self.pt(c1x, c1y), self.pt(x, y));
-        let _ = write!(self.d, "C{:.2} {:.2} {:.2} {:.2} {:.2} {:.2}", a.x, a.y, b.x, b.y, p.x, p.y);
+        self.path.curve_to(a, b, p);
     }
     fn close(&mut self) {
-        self.d.push('Z');
+        self.path.close_path();
     }
 }
 
+/// The glyphs a layer element draws (its painted descendants'; hidden ones, like a text layer's sizer, left out), in
+/// its border box's px: the edge paint kept inside a text stays within (place.rs), and `run`'s outlines.
+pub(crate) fn outlines(doc: &BaseDocument, layer: NodeId) -> BezPath {
+    let mut path = BezPath::new();
+    walk(doc, layer, Affine::IDENTITY, true, &mut path);
+    path
+}
+
 /// The glyphs drawn inside node `id` (and its painted descendants), `parent` mapping its parent's space to layer px.
-fn walk(doc: &BaseDocument, id: NodeId, parent: Affine, own: bool, d: &mut String) {
+fn walk(doc: &BaseDocument, id: NodeId, parent: Affine, own: bool, d: &mut BezPath) {
     let node = &doc.tree()[id];
     if !matches!(node.data, NodeData::Element(_) | NodeData::AnonymousBlock(_)) || format!("{:?}", node.taffy_display()) == "None" {
+        return;
+    }
+    if node.primary_styles().is_some_and(|s| format!("{:?}", s.get_inherited_box().visibility) != "Visible") {
         return;
     }
     let layout = *node.final_layout();
@@ -77,7 +87,7 @@ fn walk(doc: &BaseDocument, id: NodeId, parent: Affine, own: bool, d: &mut Strin
                     let skew = run.synthesis().skew().map(|a| Affine::skew(a.to_radians().tan() as f64, 0.0)).unwrap_or_default();
                     for g in glyph_run.positioned_glyphs() {
                         let Some(glyph) = outlines.get(GlyphId::new(g.id)) else { continue };
-                        let mut pen = Pen { d, t: t * Affine::translate(origin + Vec2::new(g.x as f64, g.y as f64)) * skew };
+                        let mut pen = Pen { path: d, t: t * Affine::translate(origin + Vec2::new(g.x as f64, g.y as f64)) * skew };
                         let _ = glyph.draw(DrawSettings::unhinted(size, LocationRef::new(&coords)), &mut pen);
                     }
                 }
@@ -104,9 +114,7 @@ pub fn run() {
     for id in req["layers"].as_array().into_iter().flatten().filter_map(Value::as_str) {
         let Ok(Some(node_id)) = doc.query_selector(&format!("[data-layer-id=\"{id}\"]")) else { continue };
         let size = doc.get_node(node_id).unwrap().final_layout().size;
-        let mut d = String::new();
-        walk(&doc, node_id, Affine::IDENTITY, true, &mut d);
-        out.insert(id.to_string(), json!({ "w": size.width, "h": size.height, "d": d }));
+        out.insert(id.to_string(), json!({ "w": size.width, "h": size.height, "d": outlines(&doc, node_id).to_svg() }));
     }
     println!("{}", Value::Object(out));
 }
