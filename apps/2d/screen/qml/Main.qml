@@ -111,7 +111,7 @@ AppShell {
     problems: backend.problems
     actions: [
         AddMenu { id: addMenu },
-        Button { text: "Import"; down: importPanel.shown; onClicked: shell.setImportOpen(!importPanel.shown) },
+        Button { text: "Import"; help: "Bring in a file or a design from another app."; down: importPanel.shown; onClicked: shell.setImportOpen(!importPanel.shown) },
         Button { text: "Export"; kind: "primary"; down: backend.exporter.open; onClicked: shell.setExportOpen(!backend.exporter.open) }
     ]
     // the start screen (kit): at launch with nothing to reopen, or ≡ › Start screen…; over everything while shown

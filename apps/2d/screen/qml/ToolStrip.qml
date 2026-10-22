@@ -8,10 +8,14 @@ import RostrumKit
 Rectangle {
     id: strip
     objectName: "toolStrip"           // CreateOverlay leaves this rectangle to the buttons
-    readonly property var tools: [{ value: "move", label: "Move", key: "V" }, { value: "pen", label: "Pen", key: "P" },
-                                  { value: "draw", label: "Draw", key: "B" },
-                                  { value: "rect", label: "Rectangle", key: "R" }, { value: "ellipse", label: "Ellipse", key: "O" },
-                                  { value: "text", label: "Text", key: "T" }]
+    // job: the key map job (the key shown comes from the map: AppShell.keyFor); help: the hover help's sentence
+    readonly property var tools: [
+        { value: "move", label: "Move", job: "move_tool", help: "Pick layers, move them, and drag their handles." },
+        { value: "pen", label: "Pen", job: "pen_tool", help: "Click and drag points to draw a path." },
+        { value: "draw", label: "Draw", job: "paint_tool", help: "Paint strokes with a brush, on a drawing or on the selected layer." },
+        { value: "rect", label: "Rectangle", job: "rect_tool", help: "Drag out a rectangle." },
+        { value: "ellipse", label: "Ellipse", job: "ellipse_tool", help: "Drag out an ellipse." },
+        { value: "text", label: "Text", job: "text_tool", help: "Click or drag a box on the canvas, then type." }]
     width: column.width + 2 * Theme.grid; height: column.height + 2 * Theme.grid
     radius: Theme.radiusPanel; color: Theme.panel
     border.width: 1; border.color: Theme.popupEdge
@@ -25,7 +29,8 @@ Rectangle {
             delegate: Button {
                 required property var modelData
                 kind: "ghost"; width: 92
-                text: modelData.label; hint: modelData.key
+                text: modelData.label; help: modelData.help; job: modelData.job
+                hint: Window.window.keyFor(modelData.job)
                 down: backend.tool === modelData.value
                 onClicked: backend.setTool(modelData.value)
             }

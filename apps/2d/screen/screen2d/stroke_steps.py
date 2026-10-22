@@ -11,6 +11,7 @@ through the calls the pointer and keys make.
     key <combo>                    a real key press (B, V, Escape, Ctrl+C) | keydown Alt | keyup Alt (held across steps)
     cclick <x> <y> | cpath [ctrl] <x,y> <x,y> …    a real mouse click / press-drag-release at composition px (the canvas's
                                    own mapping to the window); ctrl holds Ctrl for the drag
+    reston <text>                   rest the pointer on the visible item with that text (hover help shows after 0.9 s)
     clickbtn <label>               a real click on the context-bar button with that label
     clicktext <text>               a real click on the visible item whose text or label is that (menus, buttons)
     shot <png>                     wait for the newest frame, then save a picture of the window (a walk takes one per step)
@@ -25,7 +26,7 @@ from PySide6.QtGui import QKeySequence
 from PySide6.QtTest import QTest
 
 WORDS = ("altpick", "altoff", "lasso", "selectstrokes", "strokesmove", "strokesturn", "strokesdelete", "strokescopy",
-         "strokespaste", "strokesclear", "clickarea", "clickat", "barbutton", "windowsize", "key", "keydown", "keyup", "cclick", "cpath", "clickbtn", "clicktext", "shot")
+         "strokespaste", "strokesclear", "clickarea", "clickat", "barbutton", "windowsize", "key", "keydown", "keyup", "cclick", "cpath", "clickbtn", "clicktext", "reston", "shot")
 
 # where an empty spot of each area is, as fractions of the window (width, height)
 AREAS = {"canvas": (0.45, 0.30), "timeline": (0.60, 0.93), "settings": (0.93, 0.55)}
@@ -102,7 +103,8 @@ def do_stroke_step(bridge, win, word, rest, step):
         QTest.keyClick(win, Qt.Key(keys.key()), keys.keyboardModifiers())
         QTest.qWait(150)
     elif word in ("keydown", "keyup"):
-        (QTest.keyPress if word == "keydown" else QTest.keyRelease)(win, Qt.Key(QKeySequence(rest[0])[0].key()))
+        held = {"Ctrl": Qt.Key.Key_Control, "Shift": Qt.Key.Key_Shift, "Alt": Qt.Key.Key_Alt}.get(rest[0]) or Qt.Key(QKeySequence(rest[0])[0].key())
+        (QTest.keyPress if word == "keydown" else QTest.keyRelease)(win, held)
         QTest.qWait(100)
     elif word == "cclick":
         p = _scene_of(win, float(rest[0]), float(rest[1]))
@@ -122,6 +124,15 @@ def do_stroke_step(bridge, win, word, rest, step):
                 QCoreApplication.processEvents()
         QTest.mouseRelease(win, Qt.MouseButton.LeftButton, mod, pts[-1])
         QTest.qWait(300)
+    elif word == "reston":
+        QTest.qWait(700)                     # the window has settled (the top bar slides in at start)
+        hits = _find(win, " ".join(rest))
+        if not hits:
+            raise RuntimeError(f"step {step!r}: nothing visible is called {' '.join(rest)!r}")
+        c = hits[0].mapToScene(QPointF(hits[0].width() / 2, hits[0].height() / 2))
+        QTest.mouseMove(win, QPoint(int(c.x()) - 6, int(c.y())))
+        QTest.mouseMove(win, QPoint(int(c.x()), int(c.y())))
+        QTest.qWait(900)
     elif word in ("clickbtn", "clicktext"):
         hits = _find(win, " ".join(rest))
         if not hits:

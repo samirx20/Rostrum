@@ -8,7 +8,7 @@ Button {
     id: add
     property var adder: backend.adder
     property alias menuOpen: menu.visible
-    text: "+ Add"
+    text: "+ Add"; tip: "Add"; help: "Put a new layer on the canvas: a shape, text, a drawing, a camera."
     down: menu.visible
     onClicked: menu.visible ? menu.close() : menu.open()
 
