@@ -33,7 +33,7 @@ PARAMS = [
                  help="The voice separated from music and effects; the rest is left out."),
     N("denoise", 0, 1, "Cleanup", imp="secondary", label="Noise reduction", display="percent",
       help="Takes out steady background noise (hiss, hum, room tone); 0 = off."),
-    N("dereverb", 0, 1, "Cleanup", imp="secondary", label="Reverb reduction",
+    N("dereverb", 0, 1, "Cleanup", imp="secondary", label="Reverb reduction", display="percent",
       help="Takes out the room's echo; 0 = off."),
     Param.toggle("useCleaned", group="Cleanup", label="Use cleaned take", valid_when=HAS_CLEANUP,
                  help="Play the cleaned take (made once with the render_cleanup tool); off = the original file."),

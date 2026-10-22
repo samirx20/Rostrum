@@ -28,7 +28,7 @@ def touch(track=True, imp="primary", group="Instrument"):
     (conditions on its track, through the kind's facts: doc/kind.py)."""
     struck, plucked = (STRUCK, PLUCKED) if track else ({"fact": "struck"}, {"fact": "plucked"})
     return [
-        N("position", 0, 0.5, group, imp=imp, when=struck, help="Where it is plucked or struck: bridge / bar "
+        N("position", 0, 0.5, group, imp=imp, when=struck, display="percent", help="Where it is plucked or struck: bridge / bar "
           "end (0) … middle (0.5); plucked strings from 0.03. Not for violin."),
         N("damping", 0, 1, group, imp=imp, when=plucked, default=0, display="percent",
           help="Plucked strings only: 0 rings open … 1 palm-muted."),
@@ -79,7 +79,7 @@ INSTRUMENT = [
     Param.text("style", group="Instrument", importance="deep", label="Style", valid_when=VOICE,
                help='How the voice speaks, in plain words: "warm, confident", "low and close to the microphone".'),
     Param.choice("synth", names.WAVES, group="Instrument", label="Wave", valid_when=SYNTH),
-    *[N(n, lo, hi, "Instrument", unit, imp, SYNTH, whole, default) for n, lo, hi, default, unit, imp, whole
+    *[N(n, lo, hi, "Instrument", unit, imp, SYNTH, whole, default, display="percent" if (lo, hi, unit) == (0, 1, "") else "") for n, lo, hi, default, unit, imp, whole
       in SYNTH_FIELDS],
     plugins.record(IS("instrument", "plugin")),
 ]

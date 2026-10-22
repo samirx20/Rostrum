@@ -16,13 +16,13 @@ from .select_time import at_seconds, end_of, start_of
 N = V.N
 GRID = N("grid", 0.0625, 16, "Quantize", "beats", default=0.25, label="Grid",
          help="The grid to snap to, in beats: 1 = a beat, 0.5 = eighths, 0.25 = sixteenths. Left out = 0.25.")
-STRENGTH = N("strength", 0, 1, "Quantize", default=1, label="Strength",
+STRENGTH = N("strength", 0, 1, "Quantize", default=1, label="Strength", display="percent",
              help="0 = leave as played, 1 = exactly on the grid, in between = part of the way. Left out = 1.")
 ENDS = Param.toggle("ends", group="Quantize", label="Snap the ends too", importance="secondary",
                     help="Notes only: the end of each note snaps to the grid as well (its length changes).")
 TIMING = N("timing", 0, 200, "Humanize", "ms", default=10, label="Timing", help="Each start moves by up to this "
           "many milliseconds, earlier or later. Left out = 10.")
-VELOCITY = N("velocity", 0, 1, "Humanize", default=0.05, label="Velocity",
+VELOCITY = N("velocity", 0, 1, "Humanize", default=0.05, label="Velocity", display="percent",
              help="Each velocity changes by up to this much (0 … 1 scale). Left out = 0.05.")
 SEED = N("seed", 1, 999999, "Humanize", imp="secondary", integer=True, default=1, label="Seed",
          help="The same seed on the same notes gives the same result every time; another seed, another feel.")

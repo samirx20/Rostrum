@@ -34,7 +34,7 @@ FIELDS = {
     "duck": [
         Param.list("under", "id", group="Duck", kind="track", min_items=1, label="Under",
                    help="Track ids that push this track down while they sound."),
-        N("depth", 0, 1, "Duck", help="How far it dips: 0 = not at all, 1 = silent."),
+        N("depth", 0, 1, "Duck", display="percent", help="How far it dips: 0 = not at all, 1 = silent."),
         N("attack", 0.001, 2, "Duck", "s", "secondary", help="How fast it dips."),
         N("release", 0.01, 5, "Duck", "s", "secondary", help="How fast it comes back."),
         N("hold", 0, 2, "Duck", "s", "secondary", help="How long it stays down after the others stop."),

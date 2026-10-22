@@ -21,13 +21,10 @@ Rectangle {
                 spacing: Theme.gap
                 Repeater { id: strips; model: mixer.tracks; delegate: MixStrip { height: row.height } }
                 Repeater { model: mixer.buses; delegate: MixStrip { height: row.height } }   // groups, before the master
-                Rectangle {   // a slim strip right after the last strip
-                    width: 30; height: row.height; radius: Theme.radiusPanel
-                    color: addArea.containsMouse ? Theme.hover : Theme.app
-                    Text { anchors.centerIn: parent; rotation: -90; text: "+ Group"; font.family: uiFont; font.pixelSize: Theme.body
-                           color: addArea.containsMouse ? Theme.fg : Theme.fg2 }
-                    MouseArea { id: addArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: mixer.addBus() }
-                    HoverTip { text: "A new group: a shared channel several tracks play into (a bus)"; hovered: addArea.containsMouse }
+                Item {   // "+ Group" at the end of the strips, level with the strip names
+                    width: addGroup.width; height: row.height
+                    Button { id: addGroup; y: Theme.gap + 2 + (22 - height) / 2; text: "+ Group"; kind: "ghost"
+                             tip: "New group"; help: "A shared channel several tracks play into (a bus)"; onClicked: mixer.addBus() }
                 }
             }
         }

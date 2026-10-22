@@ -50,6 +50,7 @@ COMMON = [("volume", 0, 4, "primary", "Level", "1 = the design's own peak level.
           ("pan", -1, 1, "secondary", "Pan", "Left … right (a whoosh's pan path overrides it)."),
           ("width", 0, 1, "secondary", "Width", "Mono … wide."),
           ("seed", 1, 999999, "deep", "Take", "Another whole number: another take of the same design.")]
+COMMON_DISPLAY = {"volume": "db", "pan": "pan", "width": "percent"}
 LANES = {"whoosh": ["speed", "panPath"]}
 REQUIRED_BY = {"whoosh": ["dur"], "riser": ["dur"]}
 
@@ -63,7 +64,7 @@ def params() -> list:
     from rostrum_core import Param
     out = [Param.choice("design", DESIGNS, group="Sound", label="Design"), V.time("at", group="Sound", help="When it "
            "starts: seconds, {\"beat\": n} or a marker (\"#logo+0.1\").")]
-    out += [N(n, lo, hi, "Sound", imp=imp, label=lab, help=h, integer=n == "seed") for n, lo, hi, imp, lab, h in COMMON]
+    out += [N(n, lo, hi, "Sound", imp=imp, label=lab, help=h, integer=n == "seed", display=COMMON_DISPLAY.get(n, "")) for n, lo, hi, imp, lab, h in COMMON]
     out.append(Param.text("group", group="Sound", importance="deep", label="Layer group", help="Clips and "
                           "designed sounds of one track with the same group name are one layered sound."))
     seen: dict[str, list] = {}
@@ -79,7 +80,8 @@ def params() -> list:
             out.append(V.length("dur", tied=True, group="Design", importance=imp, label=lab, valid_when=_when(designs),
                                 help=h + ' Or tied: {"to": "#drop"} ends it there (a riser peaks on the marker, wherever it moves).'))
             continue
-        out.append(N(name, lo, hi, "Design", imp=imp, label=lab, help=h, when=_when(designs)))
+        out.append(N(name, lo, hi, "Design", imp=imp, label=lab, help=h, when=_when(designs),
+                     display="percent" if (lo, hi) == (0, 1) else ""))
     out.append(V.curve("speed", (0, 1), (0, 1), group="Motion", importance="primary", label="Speed curve",
                        valid_when=IS("design", "whoosh"), help="[[fraction of the length, speed 0 … 1], …]: the "
                        "move's speed shapes the level, the sweep and the air."))

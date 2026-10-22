@@ -15,10 +15,7 @@ from rostrum_sound import settings
 from rostrum_sound.settings_fields import FIELDS
 
 DEFAULT_DEVICE = "Windows default"
-
-
-def _mb(n: int) -> str:
-    return f"{n / 1e9:.1f} GB" if n >= 1e9 else f"{n / 1e6:.0f} MB"
+FOLDERS = {"projects": settings.projects_dir, "models": settings.models_dir}
 
 
 class SettingsPage(QObject):
@@ -52,12 +49,9 @@ class SettingsPage(QObject):
 
     @Property(str, notify=changed)
     def facts(self):
-        """Plain lines under the rows: where things are and how much room the models take."""
-        lines = [f"AI models: {_mb(settings.models_disk_use())} in {settings.models_dir()}",
-                 f"New projects go to {settings.projects_dir()}"]
-        if getattr(settings, "device_error", ""):
-            lines.append(f"Could not list the sound devices: {settings.device_error}")
-        return "\n".join(lines)
+        """Only a fault worth saying: the sound devices could not be listed."""
+        err = getattr(settings, "device_error", "")
+        return f"Could not list the sound devices: {err}" if err else ""
 
     @Slot()
     def toggleMore(self):
@@ -67,6 +61,8 @@ class SettingsPage(QObject):
     @Slot(str, "QVariant")
     def setValue(self, name, value):
         try:
+            if name in FOLDERS and str(value) == str(FOLDERS[name]()):
+                value = ""                 # the shown default path is the default, not a choice
             settings.set(name, value)
             self._set_status("Saved. Sound device changes apply the next time the player opens."
                              if name in ("output", "input", "exclusive", "buffer") else "Saved.")
@@ -114,6 +110,9 @@ class SettingsPage(QObject):
         for r in out:                      # an empty device is Windows' own choice, not "None"
             if r["row"] == "param" and r["id"] in ("output", "input"):
                 r["options"] = [{**o, "label": DEFAULT_DEVICE} if o["value"] == "" else o for o in r["options"]]
+        for r in out:                      # an empty folder shows the real folder it means
+            if r["row"] == "param" and r["id"] in FOLDERS and not r["value"]:
+                r["value"] = str(FOLDERS[r["id"]]())
         (self.model.reset if reset else self.model.update)(out)
         self.changed.emit()
 
