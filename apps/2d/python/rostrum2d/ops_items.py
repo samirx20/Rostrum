@@ -8,6 +8,7 @@ from rostrum_core.errors import codes
 
 from . import fields as F
 from .kind import LISTS, REGISTRY as R
+from .names import display_name, unique_name
 
 ID = Param.text("id", label="Id", help="Optional; counted per type when left out (text_1, text_2 …)")
 NAME = Param.text("name", label="Name")
@@ -20,7 +21,9 @@ def new_item(ctx, type_, args, **extra) -> dict:
     id_ = args.get("id") or ctx.new_id(type_)
     if id_ in _all_ids(ctx):
         ctx.fail(codes.BAD_ARGUMENT, f'id "{id_}"', "is already used in this document")
-    item = {"id": id_, "type": type_, "name": args.get("name") or F.LABELS[type_], **F.defaults(type_), **extra}
+    name = args.get("name") or (unique_name(_names(ctx), F.LABELS[type_])
+                                if type_ in F.LAYERS else F.LABELS[type_])
+    item = {"id": id_, "type": type_, "name": name, **F.defaults(type_), **extra}
     for key in LISTS.get(type_, []):
         item[key] = []
     return item
@@ -29,6 +32,10 @@ def new_item(ctx, type_, args, **extra) -> dict:
 def _all_ids(ctx):
     from rostrum_core.tree import index
     return index(ctx.doc, ctx.kind.lists)
+
+
+def _names(ctx) -> set[str]:
+    return {loc.item.get("name") for loc in _all_ids(ctx).values()}
 
 
 @R.operation("comp.add", "Add a composition (one shot: its frame size, frame rate and length).", label="Add composition",
@@ -70,6 +77,30 @@ def layer_remove(ctx, targets, args):
     drop_binds(ctx, targets)
     for t in targets:
         ctx.remove(t)
+
+
+@R.operation("layer.duplicate", "Copy layers: each copy lands just above its original, named \"<name> copy\", with its keys, "
+             "effects, masks and layers inside it copied under new ids.", target=F.LAYERS, label="Duplicate",
+             importance="secondary")
+def layer_duplicate(ctx, targets, args):
+    from rostrum_core import ids
+    from rostrum_core.tree import bare, child_keys
+    lists = ctx.kind.lists
+
+    def put(item, parent, key, at, taken):
+        new = {**bare(item, lists), "id": ids.counted(taken, item["type"])}
+        taken.add(new["id"])
+        ctx.insert(parent, key, new, at)
+        for k in child_keys(item, lists):
+            for child in item.get(k, []):
+                put(child, new["id"], k, None, taken)
+        return new["id"]
+
+    for t in targets:
+        idx = _all_ids(ctx)
+        loc = idx[t]
+        copy = put(loc.item, loc.parent, loc.key, loc.index + 1, set(idx))
+        ctx.set(copy, "name", unique_name(_names(ctx), f"{display_name(loc.item)} copy"))
 
 
 @R.operation("item.rename", "Rename a composition, layer, effect or mask.", target=("comp", *F.LAYERS, *F.EFFECTS, "mask"),

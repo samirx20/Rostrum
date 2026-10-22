@@ -9,6 +9,7 @@ is held). A group's layers follow it, indented.
 from __future__ import annotations
 
 from rostrum2d import fields as F
+from rostrum2d.names import display_name
 from rostrum_core.keys import animated, keys_of, marked
 
 from . import framing
@@ -20,8 +21,7 @@ def label_of(item: dict, owner: dict | None = None) -> str:
     if item.get("type") == "key" and owner is not None:
         p = F.param(owner["type"], item["prop"])
         return f"{label_of(owner)} · {p.label if p else item['prop']} at {marked.label(item['t'])}"
-    name = item.get("name")
-    return str(item["id"] if not name or name == F.LABELS.get(item.get("type")) else name)
+    return display_name(item)
 
 
 def _owned(layer: dict) -> list[dict]:
