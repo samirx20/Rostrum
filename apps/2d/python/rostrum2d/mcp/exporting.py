@@ -130,13 +130,16 @@ def _manifest(item, doc_seq, comp_id, fmt, s, facts, version, names, size) -> di
             "colour": {"space": "ACEScg", "view": table.HANDOFF_VIEW} if fmt == "exr" else {"space": "Rec.709 (bt709, display-referred)"}, "checks": {"frame_count": "ok"}}
 
 
-def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_seq=0, out=None, progress=None, engine_factory=None) -> dict:
+def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_seq=0, out=None, progress=None, engine_factory=None,
+        name=None, overwrite=False) -> dict:
     """Export `scene` as `fmt` with settings `s` (from settings()). Where it goes: `out` (a file; for a sequence a folder), else the
     project's renders folder (folder + item; not for Lottie or motion, which are not pictures), else the render cache.
     Written under a .partial name and renamed when read back right; a failed or cancelled run removes what it wrote. Returns the facts: file, frames, fps, alpha, depth, checked,
-    files (what was written), report (Lottie: what it couldn't carry)."""
+    files (what was written), report (Lottie: what it couldn't carry).
+    `name`: the file's name without its extension (export_name.stem_of: the project's and the composition's); default item_composition.
+    An `out` that already exists is refused unless `overwrite` (a sequence's folder is never replaced)."""
     row, comp = info(where, fmt), scene["comp"]
-    stem = f'{item or "doc"}_{comp["id"]}'
+    stem = name or f'{item or "doc"}_{comp["id"]}'
     png = fmt in table.FORMATS and not table.FORMATS[fmt].video     # a sequence: one file per frame, in a folder
     seq_name = lambda base: table.pattern(table.FORMATS[fmt], base)
     if out is None and folder and item and fmt not in DATA:       # a project render: renders/<item>/vNNN/
@@ -158,6 +161,9 @@ def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_
         raise RostrumError(codes.BAD_ARGUMENT, where, f'path "{final}"', f"must end in {row['ext']} for {fmt}")
     if png and final.exists():
         raise RostrumError(codes.BAD_ARGUMENT, where, f'path "{final}"', "already exists; a sequence is written into a new folder")
+    if final.exists() and not overwrite:
+        raise RostrumError(codes.BAD_ARGUMENT, where, f'path "{final}"', "already exists; nothing was replaced",
+                           hint='Pass "overwrite": true to replace it, or choose another path.')
     final.parent.mkdir(parents=True, exist_ok=True)
     part = final.with_name(final.name + ".partial") if png else final.with_name(final.stem + ".partial" + final.suffix)
     if png:

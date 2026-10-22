@@ -7,10 +7,13 @@ file. A failure is reported (red status, the error line), never as success; Canc
 """
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 from PySide6.QtCore import Property, QCoreApplication, QObject, QUrl, Signal, Slot
-from rostrum2d.mcp import exporting
+from rostrum2d.mcp import export_name, exporting
+from rostrum_core.mcp.files import RENDER_DIR
 
 from . import export_rows
 from .export_job import Job
@@ -20,12 +23,15 @@ class Exporter(QObject):
     changed = Signal()
     _landed = Signal("QVariantMap", str)          # (facts, error line): from the worker thread
     _progressed = Signal(float)
+    taken = Signal(str, bool)                     # (the name of a file already there, whether it can be replaced): QML asks
 
     def __init__(self, bridge, engine_factory=None, parent=None):
         super().__init__(parent or bridge)
         self._bridge, self.job = bridge, Job(engine_factory)
         self._state, self._note, self._progress, self._facts = "", "", 0.0, {}
         self._fmt, self._values = "mp4", {}
+        self._target = ""                        # a path the person chose ("" = the project's renders folder)
+        self._asked: tuple | None = None         # the press that is waiting for Replace / Keep both / Cancel
         self._comp_id = bridge.comp_id          # the comp shown, until another is picked
         self._reset()
         self._landed.connect(self._finish)
@@ -86,6 +92,26 @@ class Exporter(QObject):
         return self._note
 
     @Property(str, notify=changed)
+    def fileName(self):
+        """What the file will be called: the chosen path's name, else the project's and the composition's, in words."""
+        return self._chosen().name if self._target else self._stem() + ("" if self._row()["sequence"] else self._row()["ext"])
+
+    @Property(str, notify=changed)
+    def target(self):
+        """The path the person chose to save to ("" = the project's renders folder)."""
+        return self._target
+
+    @Property(str, notify=changed)
+    def destination(self):
+        """The folder the file goes into, in words: shown before the export starts, while it runs and after."""
+        if self._target:
+            return str(self._chosen().parent)
+        folder = self._bridge.doc.folder
+        if folder and self._fmt not in exporting.DATA:
+            return f"{Path(folder) / 'renders' / self._bridge.doc.item_id} (in a new version folder)"
+        return f"{RENDER_DIR} (the render cache)"
+
+    @Property(str, notify=changed)
     def path(self):
         """The result's file (a sequence: its folder)."""
         f = self._facts.get("files") or []
@@ -113,6 +139,14 @@ class Exporter(QObject):
 
     def running(self) -> bool:
         return self.job.running()
+
+    def _stem(self) -> str:
+        return export_name.stem_of(self._bridge.doc, self._comp_id)
+
+    def _chosen(self) -> Path:
+        """The chosen path, ending in the format's extension (a sequence: the folder it is written into)."""
+        p, ext = Path(self._target), self._row()["ext"]
+        return p if self._row()["sequence"] or p.suffix.lower() == ext else p.with_suffix(ext)
 
     # ---- what a person does -------------------------------------------------------------------------------
     @Slot(str)
@@ -143,8 +177,54 @@ class Exporter(QObject):
             self._values["end"] = max(self._values["end"], self._values["start"] + 1 / self._comp()["fps"])
         self.changed.emit()
 
+    @Slot(str)
+    def setTarget(self, path):
+        """A path from the Save dialog (a file:// url or a path); "" goes back to the renders folder."""
+        if self.running():
+            return
+        self._target = QUrl(path).toLocalFile() if path.startswith("file:") else path
+        self.changed.emit()
+
+    @Slot()
+    def request(self):
+        """The Export button: when the chosen file is already there, ask first (the `taken` signal); else start."""
+        if self.running() or not self._target:
+            return self.start()
+        where = self._chosen()
+        if where.exists():
+            self._asked = (where,)
+            return self.taken.emit(where.name, not self._row()["sequence"])
+        self.start()
+
+    @Slot(str)
+    def answer(self, choice):
+        """Replace | both (keep both: " 2" is added) | anything else cancels."""
+        asked, self._asked = self._asked, None
+        if not asked or choice not in ("replace", "both"):
+            return
+        if choice == "both":
+            self._target = str(export_name.free_path(asked[0]))
+            self.changed.emit()
+        self._go(overwrite=choice == "replace")
+
+    @Slot()
+    def showInFolder(self):
+        """The file selected in the file manager (a sequence: its folder opened)."""
+        f = (self._facts.get("files") or [""])[0]
+        if not f:
+            return
+        if sys.platform == "win32":
+            subprocess.Popen(["explorer", f"/select,{f}"] if not self._row()["sequence"] else ["explorer", str(Path(f).parent)])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", "-R", f])
+        else:
+            subprocess.Popen(["xdg-open", str(Path(f).parent)])
+
     @Slot()
     def start(self):
+        self._go()
+
+    def _go(self, overwrite=False):
         b = self._bridge
         if self.running():
             return b._fail("Error: export: one is already running; wait for it.")
@@ -157,13 +237,15 @@ class Exporter(QObject):
             return self._finish({}, e.line() if hasattr(e, "line") else f"Error: export: {e}")
         fmt, doc = self._fmt, b.doc
         item, folder, seq = doc.item_id, doc.folder, doc.seq
+        name, out = self._stem(), (self._chosen() if self._target else None)
         self._state, self._note = "running", f"Exporting {self._row()['label']}…"
         self.changed.emit()
         b._set_status(self._note)
 
         def export(make_engine):
-            return exporting.run("export", scene, fmt, s, folder, item, seq, None,
-                                 lambda done, total: self._progressed.emit(done / total if total else 0.0), make_engine)
+            return exporting.run("export", scene, fmt, s, folder, item, seq, out,
+                                 lambda done, total: self._progressed.emit(done / total if total else 0.0), make_engine,
+                                 name=name, overwrite=overwrite)
         self.job.start(export, self._landed.emit)
 
     @Slot()
@@ -200,5 +282,5 @@ class Exporter(QObject):
         else:
             self._state, self._facts, self._progress = "done", dict(facts), 1.0
             self._note = f'Exported {facts["frames"]} frames'
-            self._bridge._set_status(f"{self._note}: {self.path}")
+            self._bridge._set_status(f"Exported {Path(self.path).name}")
         self.changed.emit()
