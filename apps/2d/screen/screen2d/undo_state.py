@@ -1,23 +1,15 @@
-"""What the top bar says about the person's one history: how many changes are *in effect*, and what Undo / Redo would do.
-
-The documents keep an append-only history (an undo is itself a recorded step), so counting its entries made "N changes"
-go UP after Undo. Here a change counts while it is done: Undo takes the count down, Redo brings it back. The same rule
-as desk.py picks what Undo and Redo would act on, across the document and the markers (one history).
+"""What Undo / Redo would do across the person's one history (the document and the markers): the same rule as
+desk.py. The top bar's "N changes" is the kit's (DocBridge.changes_since_open).
 """
 from __future__ import annotations
 
 
-def live_count(history) -> int:
-    return sum(1 for c in history.changes if c.original and history.done[c.seq])
-
-
 class UndoState:
-    """Mix-in for Bridge2D, which publishes history_count, undo_label and redo_label as properties (a mix-in that is not
-    a QObject cannot carry them)."""
+    """Mix-in for Bridge2D, which publishes undo_label and redo_label as properties (a mix-in that is not a QObject
+    cannot carry them)."""
 
     def _histories(self):
-        docs = [self.doc] + [p.history_doc() for p in self._partners]
-        return [d.history for d in docs if d is not None]
+        return self._joined()
 
     def _next(self, pick):
         """(history, change) of the newest step Undo (or Redo) would act on, or None: desk.py's rule."""
@@ -39,9 +31,6 @@ class UndoState:
         if c is not None and c.who == self.who and c.seq != getattr(self, "_marker_seen", c.seq):
             self._set_status(f"{c.label}  ·  markers save as you go")
         self._marker_seen = c.seq if c is not None else 0
-
-    def history_count(self):
-        return sum(live_count(h) for h in self._histories())
 
     def undo_label(self):
         """What Undo would take back ("" when there is nothing to undo: the button is absent)."""

@@ -101,7 +101,7 @@ class Files(QObject):
     # ---- the actions -----------------------------------------------------------------------------------------
     @Slot(str, result=bool)
     def newProject(self, name=""):
-        return self._try(lambda: self.host.show(projects.new_project(name or projects.untitled(), self.who), False))
+        return self._try(lambda: self.host.show(projects.new_project(name or projects.untitled()), False))
 
     @Slot(str, result=bool)
     def openPath(self, path):

@@ -28,7 +28,7 @@ class MarkerWatch(QObject):
         super().__init__(parent)
         self.folder, self.who, self.owner = folder, who or Who.person("sam"), owner
         self._fail = fail or (lambda line: print(line, file=sys.stderr))
-        self._stamp, self.times, self._rows, self._count, self._last = None, {}, [], 0, None
+        self._stamp, self.times, self._rows, self._last = None, {}, [], None
         self._read()
         self._timer = QTimer(self)
         self._timer.timeout.connect(self.refresh)
@@ -60,9 +60,6 @@ class MarkerWatch(QObject):
         """An undo or redo landed in `doc` (from history_doc): save it and show it."""
         doc.save()
         self.refresh()
-
-    def change_count(self) -> int:
-        return self._count
 
     def last_change(self):
         return self._last
@@ -106,7 +103,7 @@ class MarkerWatch(QObject):
         doc = open_markers(self.folder) if stamp else None
         self._rows = [{k: m[k] for k in ("id", "name", "at", "colour")} for m in listing(self.folder, doc)] if doc else []
         changes = doc.history.changes if doc else []
-        self._count, self._last = len(changes), (changes[-1] if changes else None)
+        self._last = changes[-1] if changes else None
         return True
 
     def _edit(self, calls, label) -> bool:

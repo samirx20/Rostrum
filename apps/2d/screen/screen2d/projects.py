@@ -45,10 +45,10 @@ def free_folder(name: str, root: Path | None = None) -> Path:
     return folder
 
 
-def new_project(name: str, who: Who, root: Path | None = None) -> Document:
-    """A new project folder with one blank composition (1920 × 1080, 25 fps, 10 s), saved."""
-    doc = Document.new(KIND, folder=free_folder(name, root), item=ITEM)
-    doc.apply([{"op": "comp.add", "args": dict(BLANK)}], who, label="New project")
+def new_project(name: str, root: Path | None = None) -> Document:
+    """A new project folder with one blank composition (1920 × 1080, 25 fps, 10 s), saved. The composition is the
+    document's starting contents, not a change: a new project has nothing to undo."""
+    doc = Document.new(KIND, folder=free_folder(name, root), item=ITEM, start=[{"op": "comp.add", "args": dict(BLANK)}])
     doc.save()
     return doc
 

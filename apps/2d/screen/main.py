@@ -22,7 +22,7 @@ from pathlib import Path
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QGuiApplication
 
-from rostrum_core import Document, Who
+from rostrum_core import Document
 from rostrum_core.storage import paths
 from rostrum2d import KIND, run_source
 from screen2d import projects, recent
@@ -37,7 +37,7 @@ def first_doc() -> Document:
     last = recent.rows()
     if last:
         return Document.open(last[0]["folder"], last[0]["item"], KIND)
-    return projects.new_project(projects.untitled(), Who.person("sam"))
+    return projects.new_project(projects.untitled())
 
 
 def load_doc(args) -> Document:
