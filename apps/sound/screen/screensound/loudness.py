@@ -95,13 +95,13 @@ class LoudnessMeter(QObject):
             return {"shown": False}
         return {"shown": True, "lufs": m.get("loudness", -16) if "loudness" in fields else None,
                 "peak": m.get("truePeak", -1), "label": delivery.label_of(m, fields), "key": delivery.key_of(m, fields),
-                "choices": delivery.choices(fields), "verdict": delivery.verdict(m, self.bridge.lastRender or {}, fields)}
+                "choices": delivery.choices(), "verdict": delivery.verdict(m, self.bridge.lastRender or {}, fields)}
 
     # ---- the one edit ----------------------------------------------------------------------------------------
     @Slot(str, result=bool)
     def choose(self, key):
         """master.set: that delivery target's numbers for the fields that apply now (one change)."""
-        return self.bridge._guard(lambda: self.bridge._apply([delivery.call(key, self._fields()[1])],
+        return self.bridge._guard(lambda: self.bridge._apply([delivery.call(key)],
                                                              "Set delivery target"))
 
     # ---- inside ----------------------------------------------------------------------------------------------

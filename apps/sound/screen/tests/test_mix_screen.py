@@ -59,10 +59,11 @@ def test_plugins_own_bypass_is_not_a_setting():
     assert [r["id"] for r in rows if r["row"] == "param"] == ["2"]
 
 
-def test_delivery_with_normalize_off_sets_only_the_ceiling():
+def test_delivering_with_normalize_off_turns_it_on():
     doc, _ = setup()
     m = doc.item("master")
-    fields = delivery.applying(doc.kind.registry.field_op("master"), m, doc.kind.facts(m, doc))
-    assert fields == ["truePeak"]                       # the loudness target is not valid while Normalize is off
-    doc.apply([delivery.call("atsc", fields)], Who.person("sam"))
-    assert doc.item("master")["truePeak"] == -2.0 and doc.item("master")["loudness"] == m["loudness"]
+    assert delivery.applying(doc.kind.registry.field_op("master"), m, doc.kind.facts(m, doc)) == ["truePeak"]
+    doc.apply([delivery.call("atsc")], Who.person("sam"))     # one step: Normalize on and both numbers
+    m = doc.item("master")
+    assert m["normalize"] and m["truePeak"] == -2.0 and m["loudness"] == -24.0
+    assert doc.history.changes[-1].label != "Run t.py" and len(doc.history.changes) == 2    # setup + this one

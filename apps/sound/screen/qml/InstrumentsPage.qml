@@ -32,7 +32,7 @@ Item {
         Text {
             visible: instruments.empty
             anchors.centerIn: parent
-            text: "No instruments yet — add a track with Ctrl+K"
+            text: "No instruments yet. Add one with + Track at the top."
             color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.title
         }
     }

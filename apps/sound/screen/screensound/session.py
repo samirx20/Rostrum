@@ -171,9 +171,15 @@ class Songs(QObject):
         return False
 
     def close(self):
-        """The app is quitting: unlock the song; an untouched untitled one leaves nothing behind."""
-        if self._doc is None:
+        """The app is quitting: unlock the song; an untouched (or not kept) untitled one leaves nothing behind. An
+        untitled song with changes nobody decided about (the app was ended, not closed by the person) keeps its lock,
+        so the next start offers it back like after a crash."""
+        doc = self._doc
+        if doc is None:
             return
-        projects.unlock(self._doc.folder)
-        if projects.is_untitled(self._doc.folder) and (not projects.changed(self._doc) or self._drop == self._doc.folder):
-            projects.discard_untitled(self._doc.folder)
+        if not projects.is_untitled(doc.folder):
+            projects.unlock(doc.folder)
+        elif not projects.changed(doc) or self._drop == doc.folder:
+            projects.discard_untitled(doc.folder)
+        else:
+            projects.lock(doc.folder, pid=0)            # no process: offered back on the next start

@@ -160,7 +160,10 @@ class LivePlay(QObject):
                 self._line.emit(gen, msg)
         code = proc.wait()
         time.sleep(0.05)                             # the last of stderr
-        self._gone.emit(gen, code, "".join(err).strip())
+        try:
+            self._gone.emit(gen, code, "".join(err).strip())
+        except RuntimeError:                         # the screen closed first: nobody is left to tell
+            pass
 
     def send(self, msg: dict):
         if self._proc is None:

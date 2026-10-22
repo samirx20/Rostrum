@@ -8,7 +8,7 @@
     python apps/sound/screen/main.py --doc <project folder> <item>    # open a saved document (made if missing)
     python apps/sound/screen/main.py --step "select melody.n9600" --step "drag-note melody.n9600 0.6 2" --shot out.png
 Every song with a folder is saved after every change. Steps: see screensound/steps.py, plus the file steps here
-(`file-new`, `file-open <path>`, `file-save-as <folder>`, `file-menu`, `settings`). With --shot the window quits by
+(`file-new`, `file-open <path>`, `file-save-as <folder>`, `file-menu`, `settings`, `add-track <kind>`). With --shot the window quits by
 itself once the sound has rendered; a failed step, render or save exits nonzero. Offscreen screenshots:
 QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
 """
@@ -25,6 +25,7 @@ from rostrum_core.storage import paths
 from rostrum_gui import start
 from rostrum_sound import KIND, run_source
 from screensound import projects
+from screensound.adder import Adder
 from screensound.bridge import SoundBridge
 from screensound.instruments import InstrumentsPage
 from screensound.keys_record import KeysRecording
@@ -83,7 +84,9 @@ class Screen:
         instruments, mixer, recorder = InstrumentsPage(bridge), MixPage(bridge), Recording(bridge)
         keys = KeysRecording(bridge, recorder)
         context = {"backend": bridge, "instruments": instruments, "mixer": mixer, "recorder": recorder,
-                   "keys": keys, "takeSetup": recorder.setup, "songs": self.songs, "settingsPage": self.settings}
+                   "keys": keys, "takeSetup": recorder.setup, "songs": self.songs, "settingsPage": self.settings,
+                   "adder": Adder(bridge)}
+        self.ctx_adder = context["adder"]
         if self.engine is None:
             _, self.engine, self.win = start(MAIN_QML, context, self.size)
         else:
@@ -123,6 +126,8 @@ def file_step(screen, step) -> bool:
         screen.songs.saveAs(rest)
     elif word == "file-menu":
         QMetaObject.invokeMethod(screen.win, "openFileMenu")
+    elif word == "add-track":                 # add-track <piano|strings|…|audio> (the + Track menu)
+        screen.ctx_adder.add(rest)
     elif word == "settings":
         QMetaObject.invokeMethod(screen.win, "openSettings")
     else:
@@ -178,7 +183,7 @@ def main():
             raise RuntimeError(f"could not save {args.shot}")
         print(f"saved {args.shot} {img.width()}x{img.height()}  history={bridge.historyCount}  "
               f"selected={bridge.selected}  sound={bridge.soundState!r}  lufs={bridge.lastRender.get('lufs')}")
-        app.quit()
+        app.exit(0)              # not quit(): that asks the window, and an untitled song with changes would ask back
 
     QTimer.singleShot(400, lambda: guarded(run_steps))
     if args.shot:

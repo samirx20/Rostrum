@@ -30,7 +30,11 @@ AppShell {
     Shortcut { sequence: "Ctrl+-"; onActivated: backend.zoomStep(0.8) }
     Shortcut { sequences: ["Ctrl+0", "Ctrl+9"]; onActivated: backend.fitView() }                  // show the whole song
 
-    actions: [FileMenu { id: fileMenu; settingsPanel: settingsPanel; anchors.verticalCenter: parent.verticalCenter }]
+    actions: [Button {           // + Track: one track.add with a starting instrument (screensound/adder.py)
+                  id: addTrack; text: "+ Track"; down: addMenu.visible; anchors.verticalCenter: parent.verticalCenter
+                  onClicked: addMenu.visible ? addMenu.close() : addMenu.open()
+                  Menu { id: addMenu; width: 220; entries: adder.entries; onPicked: (v) => adder.add(v) } },
+              FileMenu { id: fileMenu; settingsPanel: settingsPanel; anchors.verticalCenter: parent.verticalCenter }]
     SettingsPanel { id: settingsPanel }
     tools: [
         Segmented {

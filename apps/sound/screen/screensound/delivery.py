@@ -56,14 +56,19 @@ def key_of(master: dict, fields=ALL) -> str:
 
 def label_of(master: dict, fields=ALL) -> str:
     """The row's name, or the numbers themselves when no single row has them ("−1 dBTP" with only the ceiling on)."""
+    if "loudness" not in fields:                       # Normalize off: no target chosen yet
+        return "Choose…"
     t = BY_KEY.get(key_of(master, fields))
     return t["label"] if t else _detail({FIELDS[f][0]: master.get(f) for f in fields}, fields) or "Custom"
 
 
-def call(key: str, fields=ALL, master_id: str = "master") -> dict:
-    """The one operation that sets the target: every field that applies, at once (one undo step)."""
+def call(key: str, master_id: str = "master") -> dict:
+    """The one operation that delivers to a target (one undo step): Normalize on, so the mix is made that loud, and
+    both its numbers. (Choosing "Streaming" with Normalize off used to set only the ceiling: it looked like nothing
+    happened, P21 walk-through.)"""
     t = BY_KEY[key]
-    return {"op": "master.set", "target": [master_id], "args": {f: t[FIELDS[f][0]] for f in fields}}
+    return {"op": "master.set", "target": [master_id],
+            "args": {"normalize": True, **{f: t[FIELDS[f][0]] for f in ALL}}}
 
 
 def _n(v: float) -> str:
@@ -86,4 +91,6 @@ def verdict(master: dict, render: dict, fields=ALL) -> dict:
     measured = f"{_n(round(lufs, 1))} LUFS, true peak {_n(round(peak, 1))} dBTP"
     if problems:
         return {"ok": False, "text": f"Miss: {' and '.join(problems)} ({measured})"}
+    if "loudness" not in fields:                       # only the ceiling applies: no target to pass
+        return {"ok": True, "text": f"Peak under the ceiling ({measured})"}
     return {"ok": True, "text": f"Pass: {measured}"}

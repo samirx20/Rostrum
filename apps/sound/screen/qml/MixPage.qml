@@ -28,7 +28,7 @@ Panel {
         Text {
             visible: strips.count === 0
             anchors.centerIn: scroller
-            text: "No tracks yet — add one with Ctrl+K"
+            text: "No tracks yet. Add one with + Track at the top."
             color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.title
         }
         Rectangle {   // the selected plug-in effect's settings (only while one is selected)

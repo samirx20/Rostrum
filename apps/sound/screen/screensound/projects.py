@@ -138,8 +138,9 @@ def remember(folder, item):
 
 
 # ---- open lock and recovery -------------------------------------------------------------------------------------
-def lock(folder):
-    write_atomic(Path(folder) / LOCK, json.dumps({"pid": os.getpid(), "at": time.time()}))
+def lock(folder, pid: int | None = None):
+    """Mark the song open by this process (`pid` 0: by none, i.e. left to be recovered)."""
+    write_atomic(Path(folder) / LOCK, json.dumps({"pid": os.getpid() if pid is None else pid, "at": time.time()}))
 
 
 def unlock(folder):
@@ -147,6 +148,8 @@ def unlock(folder):
 
 
 def _alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
     if pid == os.getpid():
         return True
     try:
