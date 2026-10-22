@@ -21,10 +21,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import edits as E
+from . import histfile
 from .document import Document
 from .errors import RostrumError, codes
 from .history import Change
-from .storage import doc_hash, paths, save
+from .storage import app_version, doc_hash, paths, save
 from .tree import index
 
 
@@ -51,23 +52,26 @@ class Rebuilt:
 def _read(path: Path, kind):
     """(base, [raw change dicts or None for a line that can't be read], versions), reading as far as it goes."""
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-        head = json.loads(lines[0])
-        if head.get("format") != kind.format:
-            raise ValueError(f"it is a {head.get('format')!r} file")
-        base = head["base"]
-    except (OSError, IndexError, ValueError, KeyError, AttributeError) as e:
-        raise RostrumError(codes.CHECK_FAILED, "rescue", str(path), f"can't rebuild it: its history's first line "
-                           f"is unreadable ({type(e).__name__}: {e})", hint="Nothing was changed.") from e
+        r = histfile.read(path, kind, app_version=app_version, lenient=True)
+        base = r.base()
+    except (OSError, ValueError, KeyError, TypeError, RostrumError) as e:
+        raise RostrumError(codes.CHECK_FAILED, "rescue", str(path), f"can't rebuild it: its history's first lines "
+                           f"are unreadable ({type(e).__name__}: {e})", hint="Nothing was changed.") from e
     raw, versions = [], {}
-    for line in lines[1:]:
+    for k, e in r.entries:
         try:
-            entry = json.loads(line)
-            if "version" in entry and "seq" not in entry:
-                versions[entry["version"]] = entry["at"]
+            if e is None:
+                raw.append(None)
+            elif k == "version":
+                versions[e["version"]] = e["at"]
+            elif k == "hash":
+                if 0 < e["at"] <= len(raw) and raw[e["at"] - 1] is not None and raw[e["at"] - 1].get("seq") == e["at"]:
+                    raw[e["at"] - 1] = {**raw[e["at"] - 1], "hash_after": e["hash"]}
+            elif raw and raw[-1] is not None and raw[-1].get("seq") == e.get("seq"):
+                raw[-1] = e                                   # a nudge merged into the step: the later line wins
             else:
-                raw.append(entry)
-        except (ValueError, KeyError, TypeError):
+                raw.append(e)
+        except (KeyError, TypeError, AttributeError):
             raw.append(None)
     return base, raw, versions
 

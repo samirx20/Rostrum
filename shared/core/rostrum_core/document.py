@@ -44,16 +44,18 @@ class Event:
 
 
 class Document:
-    def __init__(self, kind, data: dict | None = None, folder=None, item=None, clock=ticking):
+    def __init__(self, kind, data: dict | None = None, folder=None, item=None, clock=ticking, base=None):
         self.kind, self.folder, self.item_id, self.clock = kind, folder, item, clock
         self.data = data if data is not None else kind.blank()
         self._idx = (self.data, self._top(), index(self.data, kind.lists))   # a duplicate id fails here; _index
-        self.base = copy.deepcopy(self.data)            # history line 0
+        self._base = copy.deepcopy(self.data) if base is None else base   # history line 0 (opening: read when asked)
         self.history = History(kind.lists)
         self.script_bases: dict[str, dict] = {}         # § 7: what each script produced last time
         self.saved_by: str | None = None                # the app version that last saved it (storage.py)
         self._subs, self._gesture = [], None
         self.live = None                                # live.Live when another program shares the file
+        self._written = None                            # storage.Written: where the history file ends, as we left it
+        self.notes: list[str] = []                      # plain sentences from opening (a step cut off by a crash)
 
     @classmethod
     def new(cls, kind, folder=None, item=None, start=(), **kw) -> "Document":
@@ -67,6 +69,17 @@ class Document:
         """Open a saved document; a file changed outside Rostrum is recorded first as a change by `outside`."""
         from .storage import open_doc
         return open_doc(cls, folder, item, kind)
+
+    @property
+    def base(self) -> dict:
+        """The document when its history began (a big one opened from a file is parsed only when asked)."""
+        if callable(self._base):
+            self._base = self._base()
+        return self._base
+
+    @base.setter
+    def base(self, value):
+        self._base = value
 
     # reading
     def _index(self) -> dict:
@@ -271,13 +284,12 @@ class Document:
             fn(ev)
 
     def save(self):
-        """Write the document to its project folder. A live document (live.keep) is saved after every change already:
-        here it only goes through the one door (lock, catch up), so a save never writes over another program's steps."""
-        if self.live is not None:
-            with self._door():
-                return
+        """Write the document to its project folder. A live document (live.keep) has every change in its history file
+        already; this writes its document file too, through the one door (lock, catch up), so a save never writes over
+        another program's steps."""
         from .storage import save
-        save(self)
+        with self._door():
+            save(self)
 
 
 def _now() -> str:

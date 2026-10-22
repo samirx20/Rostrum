@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 
 from .errors import RostrumError, codes
+from .storage import paths
 
 ITEM, EXT = "markers", ".mkr"
 REF = re.compile(r"^#(\S(?:.*?\S)?)\s*(?:([+-])\s*(\d+(?:\.\d+)?))?$")
@@ -20,7 +21,8 @@ def _key(name: str) -> str:
 
 
 def _file(folder) -> Path:
-    return Path(folder) / "docs" / f"{ITEM}{EXT}"
+    """The file every change to the markers writes: the history (the document file is written on Save only, S39)."""
+    return paths(folder, ITEM, EXT)["history"]
 
 
 _TIMES: dict = {}       # path -> (file time, {name: seconds}); a frame-by-frame reader re-reads only on change

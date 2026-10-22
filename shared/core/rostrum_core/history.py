@@ -51,6 +51,10 @@ class Change:
         """hash_after will be data's hash; data must not change in place afterwards (edits.fork)."""
         self._hash, self._after = "", data
 
+    def ident(self) -> tuple:
+        """The same step, as read back from a file (the seq alone isn't: another program's step can have it)."""
+        return self.seq, self.t, self.step, self.label
+
     @property
     def original(self) -> bool:
         return not self.undoes and not self.redoes
@@ -58,7 +62,7 @@ class Change:
     def to_dict(self) -> dict:
         return {"seq": self.seq, "based_on": self.based_on, "who": self.who.to_dict(), "label": self.label,
                 "when": self.when, "session": self.session, "calls": self.calls,
-                "edits": [E.to_dict(e) for e in self.edits], "hash_after": self.hash_after,
+                "edits": [E.to_dict(e) for e in self.edits], "hash_after": self._hash,   # "" until known (storage)
                 "undoes": self.undoes, "redoes": self.redoes, "t": self.t,
                 **({"step": self.step} if self.step else {})}
 

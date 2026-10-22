@@ -12,7 +12,7 @@ def test_rebuilds_to_the_last_good_step_and_keeps_the_damaged_files(tmp_path):
         doc.apply({"op": "layer.rename", "target": [layer], "args": {"name": name}}, Who.person("sam"))
         doc.save()
     hist = tmp_path / ".rostrum" / "main.history.jsonl"
-    lines = hist.read_text(encoding="utf-8").splitlines()
+    lines = [ln for ln in hist.read_text(encoding="utf-8").splitlines() if not ln.startswith('{"hash"')]
     lines[-1] = lines[-1][:40]                                   # the last step is cut off (a crash while saving)
     hist.write_text("\n".join(lines) + "\n", encoding="utf-8")
     damaged = tmp_path / "docs" / f"main{KIND.ext}"
