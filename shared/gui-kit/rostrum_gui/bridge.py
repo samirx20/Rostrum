@@ -90,8 +90,8 @@ class DocBridge(EditSlots, Parts, QObject):
         if item_id and not self.doc.has(item_id):
             return self._fail(f'Error: select: no item "{item_id}".')
         self._sel = item_id
-        op = self.doc.kind.registry.field_op(self.doc.item(item_id)["type"]) if item_id else None
-        self._static = rows.layout(op)
+        kind = self.doc.item(item_id)["type"] if item_id else ""
+        self._static = rows.layout(self.doc.kind.registry.field_op(kind) if item_id else None, kind)
         self.model.reset(self._rows())      # a new selection swaps the list at once (no reveal animation)
         self.selectionChanged.emit()
 

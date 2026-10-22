@@ -2,7 +2,8 @@
 
 Layout (fixed per kind, so delegates live on and animate): for each group, in the order groups first appear
 among the non-deep params, a group header and its params (primary before secondary, then data order); then a
-More row and the deep params in data order. Each row then gets `valid`:
+More row and the deep params in data order. A first group named as the item's own type has no header: the panel's
+subtitle right above it already says that word (a key showed "Key" twice, a text "Text"). Each row then gets `valid`:
 - a param: its valid_when holds on the item's values and facts (and, if deep, More is open);
 - a group header: any of its members is valid (an empty group is absent, not an empty header);
 - the More row: any deep param is valid.
@@ -25,17 +26,19 @@ ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options",
 # to pick (and nothing picked) the row is absent.
 
 
-def layout(op) -> list[dict]:
-    """The static row list for a field operation: group headers, params, More, deep params."""
+def layout(op, kind: str = "") -> list[dict]:
+    """The static row list for a field operation: group headers, params, More, deep params. `kind`: the item's
+    type as the panel's subtitle shows it (none: every group has its header)."""
     if op is None:
         return []
     shown = [p for p in op.params if p.importance != "deep" and p.type != "id"]
     deep = [p for p in op.params if p.importance == "deep" and p.type != "id"]
     groups = list(dict.fromkeys(p.group for p in shown))
     rows: list[dict] = []
-    for g in groups:
+    for i, g in enumerate(groups):
         members = sorted((p for p in shown if p.group == g), key=lambda p: RANK[p.importance])  # stable
-        rows.append({"row": "group", "id": "group:" + g, "label": g, "members": [p.name for p in members]})
+        if not (i == 0 and g.lower() == kind.lower()):
+            rows.append({"row": "group", "id": "group:" + g, "label": g, "members": [p.name for p in members]})
         rows += [_param_row(p) for p in members]
     if deep:
         rows.append({"row": "more", "id": "more", "label": "More", "members": [p.name for p in deep]})

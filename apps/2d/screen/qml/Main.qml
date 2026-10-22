@@ -9,6 +9,7 @@ AppShell {
     id: shell
     bridge: backend
     appName: "Rostrum2D"
+    helpEntries: guides                 // Help's guides (screen2d/session.py), in the kit's guide viewer
     documentName: files.label           // the project, and a dot while there are unsaved changes (screen2d/files.py)
     property bool leaving: false        // closing without asking (session.py replaces the window, or the answer was given)
     onClosing: (close) => fileFlow.closing(close)

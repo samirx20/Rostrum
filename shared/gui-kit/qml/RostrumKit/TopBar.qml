@@ -17,9 +17,14 @@ Item {
     property alias leading: leadingSlot.data
     property alias tools: toolsSlot.data
     property alias actions: actionsSlot.data
-    property var helpEntries: []          // the app's own Help entries ({value: a file:// address, label}: guides), above About
+    // The app's own Help entries, above About: {value, label}. A guide's value is its .md file's file:// address
+    // (rostrum_gui.guides.entries; it opens in the kit's guide viewer); any other value is the app's own entry
+    // (e.g. "Connect an AI agent") and comes back as helpPicked(value).
+    property var helpEntries: []
     signal commandClicked()
     signal aboutClicked()
+    signal guideClicked(string url)
+    signal helpPicked(string value)
     implicitHeight: Theme.topBar
     function openHelp() { helpMenu.open() }
 
@@ -102,7 +107,8 @@ Item {
                 x: parent.width - width
                 width: 240
                 entries: bar.helpEntries.concat([{ value: "about", label: "About and licences" }])
-                onPicked: (v) => v === "about" ? bar.aboutClicked() : Qt.openUrlExternally(v)
+                onPicked: (v) => v === "about" ? bar.aboutClicked()
+                                : /^file:.*\.md$/i.test(v) ? bar.guideClicked(v) : bar.helpPicked(v)
             }
         }
     }

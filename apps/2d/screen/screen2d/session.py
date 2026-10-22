@@ -8,12 +8,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from rostrum_gui import start
+from rostrum_gui import guides, start
 
 from .bridge2d import Bridge2D
 from .files import Files
 
 QML = Path(__file__).resolve().parents[1] / "qml" / "Main.qml"
+GUIDES = guides.entries(Path(__file__).resolve().parents[2] / "guides", [     # Help's guides (apps/2d/guides)
+    ("start-here.md", "Start here"), ("type-and-kinetic-text.md", "Type and moving text"),
+    ("shape-and-path-animation.md", "Shapes and paths"), ("easing-and-overlap.md", "Easing and overlap"),
+    ("colour-and-blending.md", "Colour and blending"), ("drawing-and-frame-by-frame.md", "Drawing, frame by frame"),
+    ("camera-parallax-motion-blur.md", "Camera and motion blur"), ("import-and-export.md", "Import and export")])
 
 
 class Session:
@@ -26,7 +31,8 @@ class Session:
         bridge = Bridge2D(doc, comp_id, autosave=live)
         bridge.files = self.files
         self.files.hold(doc, live, ask_recovery)
-        _, engine, win = start(QML, {"backend": bridge, "painter": bridge.painter, "files": self.files}, self.size,
+        _, engine, win = start(QML, {"backend": bridge, "painter": bridge.painter, "files": self.files,
+                                     "guides": GUIDES}, self.size,
                                providers={"frame": bridge.frames.provider, "onion": bridge.painter.provider})
         old = (self.bridge, self.engine, self.win)
         self.bridge, self.engine, self.win = bridge, engine, win

@@ -94,11 +94,12 @@ bottom (full)    Design: play + time + ruler   ·   Animate: keyframe timeline (
 ## Run
 
 ```
-.venv\Scripts\python.exe apps\2d\screen\main.py                                  # sample document
+.venv\Scripts\python.exe apps\2d\screen\main.py                                  # the last project, else a new one
+... main.py --sample                                                             # the built-in sample (not saved)
 ... main.py --script shot.py                                                     # what a script builds
 ... main.py --doc <project folder> <item>                                        # open / make; saves on change
 ... main.py --open <docs\main.mtn or project folder>                             # open it as a person does (File > Save)
-... main.py --step "time 1.2" --step "select title" --step "page animate" --shot out.png
+... main.py --sample --step "time 1.2" --step "select title" --step "page animate" --shot out.png
 .venv\Scripts\python.exe -m pytest -q apps\2d\screen\tests                       # under a second
 ```
 Steps: `select`, `page`, `time`, `set`, `scrub`, `animate`, `drag <layer> <dx> <dy>`, `keydrag <key> <t>`,

@@ -20,7 +20,8 @@ QQC.ApplicationWindow {
     property alias leading: topBar.leading      // the app's left top-bar buttons (File), after the wordmark
     property alias tools: topBar.tools          // the app's own top-bar tools (centred)
     property alias actions: topBar.actions      // the app's action buttons (right, before the command bar)
-    property alias helpEntries: topBar.helpEntries   // the app's guides in Help (rostrum_gui.guides.entries)
+    property alias helpEntries: topBar.helpEntries   // the app's guides in Help (rostrum_gui.guides.entries), then its own
+    signal helpPicked(string value)                  // a Help entry that is neither a guide nor About (the app handles it)
     property int leftWidth: Theme.sidePanel - 32   // 0: no left panel (the centre takes its place, no gap)
     property int rightWidth: Theme.sidePanel       // 0: no right panel
     property int bottomHeight: Theme.timeline
@@ -34,6 +35,12 @@ QQC.ApplicationWindow {
 
     function openAbout() { noticesDialog.open() }
     function openHelp() { topBar.openHelp() }
+    function openGuide(url) { guideDialog.show(url) }
+    function openGuideNamed(file) {       // a scripted step's "guide <file.md>": false when Help has no such guide
+        const e = helpEntries.find(x => x.value.endsWith("/" + file))
+        if (e) guideDialog.show(e.value)
+        return !!e
+    }
     Shortcut { sequence: "Ctrl+K"; onActivated: commandBar.open() }
     Shortcut { sequence: "F1"; onActivated: noticesDialog.open() }
     Shortcut { sequence: StandardKey.Undo; enabled: !commandBar.opened; onActivated: win.bridge.undo() }
@@ -45,6 +52,8 @@ QQC.ApplicationWindow {
         bridge: win.bridge; appName: win.appName; documentName: win.documentName
         onCommandClicked: commandBar.open()
         onAboutClicked: noticesDialog.open()
+        onGuideClicked: (url) => guideDialog.show(url)
+        onHelpPicked: (value) => win.helpPicked(value)
     }
     Item {
         id: body
@@ -57,5 +66,6 @@ QQC.ApplicationWindow {
         Item { id: bottomSlot; y: body.height - height; width: body.width; height: win.bottomHeight }
     }
     CommandBar { id: commandBar; bridge: win.bridge }
+    GuideDialog { id: guideDialog }
     NoticesDialog { id: noticesDialog; data: typeof notices !== "undefined" ? notices : null }
 }
