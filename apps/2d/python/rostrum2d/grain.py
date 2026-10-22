@@ -1,4 +1,5 @@
-"""Film grain as data: a grain layer's `src` is its recipe, `grain:<w>x<h>@<fps>#<seed>`, never a file path, so the
+"""Old documents' whole-picture grain layer (H32; today grain is a per-layer effect drawn by the engine: fields.py
+`grain`, engine scene/grain.rs). Kept so those documents still open. Film grain as data: a grain layer's `src` is its recipe, `grain:<w>x<h>@<fps>#<seed>`, never a file path, so the
 project opens on another computer and survives a cleaned cache. The noise clip (ffmpeg's `noise` filter, a fixed seed,
 a different picture each frame) is made from the recipe when a video layer's source is resolved (video.source) and kept
 in the cache, named by the recipe. Same recipe, same grain. No Qt.

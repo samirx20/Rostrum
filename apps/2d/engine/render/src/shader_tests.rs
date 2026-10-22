@@ -37,3 +37,8 @@ fn a_shader_that_does_not_compile_fails_the_frame_naming_the_effect_and_skia_s_m
     // The error is taken with the frame: the next, healthy one paints.
     paint_with("passthrough", "uniform shader src; half4 main(float2 p) { return src.eval(p); }").unwrap();
 }
+
+#[test]
+fn the_grain_effect_s_shader_links() {
+    paint_with("grain", crate::scene::grain::PROGRAM).unwrap();
+}

@@ -224,6 +224,7 @@ fn layer(it: &Item) -> R<String> {
     }
     // Colour effects (grade.rs) act on the layer's own look and its effects; frosted glass stays as it sees what is behind.
     let body = super::grade::wrap(it, body)?;
+    let body = super::grain::wrap(it, body)?;
     let (glass, opacity, body) = super::stage_fx::glass(it, !defs.is_empty(), body)?;
     let (warp, warp_defs) = crate::rig::warp_markup(it);
     let size = if it.props.contains_key("w") { format!("width:{}px;height:{}px;", v(it, "w"), v(it, "h")) } else { String::new() };

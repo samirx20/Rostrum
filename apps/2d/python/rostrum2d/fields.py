@@ -294,6 +294,15 @@ FIELDS: dict[str, list[Param]] = {
         N("saturate", "Colour boost", "Glass", 0, 4, 0.01, "×", S, default=1.0, help="1 = unchanged, above 1 = richer"),
         N("brightness", "Brightness", "Glass", 0, 3, 0.01, "×", D, default=1.0),
     ],
+    # Film grain on the layer's own look (engine: scene/grain.rs), only where the layer is; a new picture each frame.
+    "grain": [
+        N("amount", "Amount", "Grain", 0, 1, 0.01, default=0.15, help="How strong: 0.1 = fine film, 0.4 = rough"),
+        N("size", "Grain size", "Grain", 0.5, 16, 0.5, "px", default=1.5),
+        T("colour", "Colour grain", "Grain", False, S, help="Off: grey grain. On: each colour has its own grain"),
+        T("still", "Same each frame", "Grain", False, D, help="Off: the grain moves like film. On: a fixed texture"),
+        N("seed", "Seed", "Grain", 0, 100000, 1, "", D, integer=True, default=1,
+          help="A different seed is a different, equally random grain"),
+    ],
     "shadow": [
         N("dx", "Offset X", "Shadow", -2000, 2000, 1, "px"),
         N("dy", "Offset Y", "Shadow", -2000, 2000, 1, "px", default=20.0),
@@ -334,7 +343,7 @@ for _t in LAYERS:
 for _t in _paint.TYPES:                    # paint on an element (paint_fields.py): its Paint group
     FIELDS[_t] += _paint.ELEMENT
 FIELDS["drawing"] += _paint.DRAWING
-EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", *_motion.EFFECTS)
+EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", "grain", *_motion.EFFECTS)
 ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask",) + _rig.OWNED_KEYS
 STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h"}, "path": {"w", "h"},
          "group": {"columns"},
@@ -343,7 +352,7 @@ STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name f
          "text": {"letterDelay", "letterSeed"},
          **_rig.STILL, **_camera.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth", "locked", "hidden", "paintW", "paintH"}}
 LABELS = {"comp": "Composition", "shape": "Shape", "text": "Text", "image": "Image", "video": "Video", "render3d": "3D render", "group": "Group", "drawing": "Drawing", "path": "Path", "frame": "Drawing frame",
-          "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "mask": "Mask", "key": "Key",
+          "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "grain": "Grain", "mask": "Mask", "key": "Key",
           **_rig.LABELS, **_camera.LABELS, **_motion.LABELS}
 
 

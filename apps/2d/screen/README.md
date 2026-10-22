@@ -397,8 +397,9 @@ processes on one file (each saves; reopen to see the other's).
 - **Fill the frame** / **Fit inside the frame** (`layer.fill_frame`, `ops_frame.py`): scales the selection (turn kept) to cover or
   sit inside its parent's frame, centred; first on the context bar for a picture or clip, else in the ⋯ menu / Ctrl+K.
 - **Effects ▾** on the context bar (any layer but a camera): Blur, Glow, Gradient (shapes and text), Frosted glass, Shadow,
-  Trail, Smear = `effect.add`; **Grain (whole picture)** = `grain.add` (`ops_grain.py`: a looping ffmpeg-noise clip, cached,
-  as a screen-locked Overlay video layer on top; its Opacity is the amount, its Scale the grain size).
+  Grain, Trail, Smear = `effect.add`. Grain (H33) is drawn by the engine on the layer's own look (`engine/render/src/scene/grain.rs`,
+  a shader; amount, size, colour, moving or still, seed); for the whole shot, put it on a group holding everything.
+  Old documents' whole-picture grain layer (H32, `grain:` recipe in a video layer's `src`, `P/grain.py`) still opens.
 - **Camera tool (C)** (`camera_tool.py`, `qml/CameraOverlay.qml`, `backend.cameraTool`): in the strip only when the scene has a
   camera; drag pans, Alt+drag (Alt held at the press) pushes in / out; writes the camera's x, y, zoom through `route.value_call`
   (a keyed field gets a key at the playhead), one drag = one undo step. Steps: `tool camera`, `key C`, `mousedrag … alt`.

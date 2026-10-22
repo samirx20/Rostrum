@@ -102,8 +102,6 @@ DATA = [
          when=FACT("keys_picked"), calls=_op("key.set", "keys", ease=e["value"])) for e in EASES if e["value"] != "custom"],
     *[_a(f"effect_{e}", F.LABELS[e], rank=82 + n, importance="primary", group="look", bar="Effects", when=_EFFECT_WHEN.get(e, NOT("has_camera")),
          calls=_op("effect.add", "ids", type=e)) for n, e in enumerate(F.EFFECTS)],
-    _a("effect_grain", "Grain (whole picture)", rank=90, importance="primary", group="look", bar="Effects",
-       calls=_op("grain.add", "comp")),
     _a("copy_style", "Copy style", rank=80, group="look", job="copy_style", max_targets=1, do="copy_style"),
     _a("paste_style", "Paste style", rank=80, group="look", job="paste_style", when=FACT("style_copied"),
        calls=_op("style.apply", "not_copied", **{"from": "$copied"})),
