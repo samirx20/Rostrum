@@ -28,8 +28,8 @@ fn a_cached_mix_is_the_uncached_mix_bit_for_bit() {
     let cold = render_with(&s, Some(&cache)).unwrap();
     assert_eq!(files(&dir), 2, "each track stored");
     let warm = render_with(&s, Some(&cache)).unwrap();
-    assert_eq!(bits(&plain.channels), bits(&cold.channels));
-    assert_eq!(bits(&plain.channels), bits(&warm.channels));
+    assert_eq!(bits(&plain.channels().unwrap()), bits(&cold.channels().unwrap()));
+    assert_eq!(bits(&plain.channels().unwrap()), bits(&warm.channels().unwrap()));
     assert_eq!(plain.ducks.len(), warm.ducks.len());
     assert_eq!(plain.tracks.iter().map(|t| t.lufs.to_bits()).collect::<Vec<_>>(), warm.tracks.iter().map(|t| t.lufs.to_bits()).collect::<Vec<_>>());
     let _ = std::fs::remove_dir_all(dir);
@@ -48,7 +48,7 @@ fn one_changed_track_re_renders_alone_and_the_mix_matches() {
     assert_ne!(a.track_keys[1], b.track_keys[1]);
     let warm = render_with(&b, Some(&cache)).unwrap();
     assert_eq!(files(&dir), 3, "only the changed track was stored again");
-    assert_eq!(bits(&render_with(&b, None).unwrap().channels), bits(&warm.channels));
+    assert_eq!(bits(&render_with(&b, None).unwrap().channels().unwrap()), bits(&warm.channels().unwrap()));
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -62,7 +62,7 @@ fn a_bus_keys_its_feeders_and_a_named_file_keys_by_its_stamp() {
     let dir = folder("bus");
     let cache = TrackCache::at(dir.clone());
     render_with(&a, Some(&cache)).unwrap();
-    assert_eq!(bits(&render_with(&a, None).unwrap().channels), bits(&render_with(&a, Some(&cache)).unwrap().channels));
+    assert_eq!(bits(&render_with(&a, None).unwrap().channels().unwrap()), bits(&render_with(&a, Some(&cache)).unwrap().channels().unwrap()));
     // A media clip's PCM file: rewriting it changes the key.
     let pcm = dir.join("take.f32");
     std::fs::write(&pcm, vec![0u8; 800]).unwrap();

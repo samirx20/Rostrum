@@ -41,66 +41,128 @@ pub fn integrated_lufs(l: &[f32], r: &[f32], sr: f64) -> f64 {
 /// 1.41: a surround, 1: a front); equal to our own `integrated_lufs_own` to 1e-9 LU on every clip tried
 /// (loudness_parity.rs). A weight set it cannot map, or a rate it refuses, falls back to our own.
 pub fn integrated_lufs_n(chs: &[&[f32]], weights: &[f64], sr: f64) -> f64 {
-    use ebur128::{Channel, EbuR128, Mode};
-    let map: Option<Vec<Channel>> = weights
-        .iter()
-        .enumerate()
-        .map(|(i, w)| match *w {
-            w if w == 0.0 => Some(Channel::Unused),
-            w if (w - 1.41).abs() < 1e-9 => Some(if i % 2 == 0 { Channel::LeftSurround } else { Channel::RightSurround }),
-            w if w == 1.0 => Some(match i { 0 => Channel::Left, 1 => Channel::Right, 2 => Channel::Center, _ => Channel::Left }),
-            _ => None,
-        })
-        .collect();
     let n = chs.iter().map(|c| c.len()).min().unwrap_or(0);
-    let measured = (|| {
-        let map = map?;
-        if chs.len() != map.len() || sr.fract() != 0.0 || n == 0 {
-            return None;
+    let mut m = Lufs::new(chs.len(), weights, sr);
+    m.push(&chs.iter().map(|c| &c[..n]).collect::<Vec<_>>());
+    m.finish()
+}
+
+/// `integrated_lufs_n` fed block by block (the mix and the mastering stage read a song from disk): the same
+/// figure, bit for bit, however the signal is cut into blocks.
+pub struct Lufs {
+    e: Option<ebur128::EbuR128>,
+    own: Option<OwnLufs>,
+    frames: usize,
+}
+
+impl Lufs {
+    pub fn new(channels: usize, weights: &[f64], sr: f64) -> Lufs {
+        use ebur128::{Channel, EbuR128, Mode};
+        let map: Option<Vec<Channel>> = weights
+            .iter()
+            .enumerate()
+            .map(|(i, w)| match *w {
+                w if w == 0.0 => Some(Channel::Unused),
+                w if (w - 1.41).abs() < 1e-9 => Some(if i % 2 == 0 { Channel::LeftSurround } else { Channel::RightSurround }),
+                w if w == 1.0 => Some(match i { 0 => Channel::Left, 1 => Channel::Right, 2 => Channel::Center, _ => Channel::Left }),
+                _ => None,
+            })
+            .collect();
+        let e = (|| {
+            let map = map?;
+            if channels != map.len() || sr.fract() != 0.0 {
+                return None;
+            }
+            let mut e = EbuR128::new(channels as u32, sr as u32, Mode::I).ok()?;
+            e.set_channel_map(&map).ok()?;
+            Some(e)
+        })();
+        // Our own runs beside it only where it cannot measure.
+        let own = e.is_none().then(|| OwnLufs::new(channels, weights, sr));
+        Lufs { e, own, frames: 0 }
+    }
+
+    /// The next frames (every channel the same length).
+    pub fn push(&mut self, chs: &[&[f32]]) {
+        let n = chs.first().map_or(0, |c| c.len());
+        if n == 0 {
+            return;
         }
-        let mut e = EbuR128::new(chs.len() as u32, sr as u32, Mode::I).ok()?;
-        e.set_channel_map(&map).ok()?;
-        let cut: Vec<&[f32]> = chs.iter().map(|c| &c[..n]).collect();
-        e.add_frames_planar_f32(&cut).ok()?;
-        e.loudness_global().ok()
-    })();
-    match measured {
-        Some(l) if l.is_finite() => l.max(-70.0),
-        Some(_) => -70.0,
-        None => integrated_lufs_own(chs, weights, sr),
+        self.frames += n;
+        if let Some(e) = &mut self.e {
+            if e.add_frames_planar_f32(chs).is_err() {
+                self.e = None; // a refused block: the figure reads −70, as a refused whole measure did
+            }
+        }
+        if let Some(o) = &mut self.own {
+            o.push(chs);
+        }
+    }
+
+    pub fn finish(self) -> f64 {
+        if let Some(o) = self.own {
+            return o.finish();
+        }
+        match self.e.map(|e| e.loudness_global()) {
+            Some(Ok(l)) if self.frames > 0 && l.is_finite() => l.max(-70.0),
+            _ => -70.0,
+        }
+    }
+}
+
+/// Our own integrated loudness, block by block (the K-weighting above, 400 ms blocks, both gates).
+struct OwnLufs {
+    f: Vec<[Bq; 2]>,
+    weights: Vec<f64>,
+    hop: usize,
+    at: usize,
+    acc: f64,
+    quarters: Vec<f64>,
+}
+
+impl OwnLufs {
+    fn new(channels: usize, weights: &[f64], sr: f64) -> OwnLufs {
+        OwnLufs { f: (0..channels).map(|_| k_weighting(sr)).collect(), weights: weights.to_vec(), hop: (sr * 0.1).round() as usize, at: 0, acc: 0.0, quarters: vec![] }
+    }
+
+    /// Mean square of the K-weighted signal per 100 ms; a block is four of them.
+    fn push(&mut self, chs: &[&[f32]]) {
+        for i in 0..chs.first().map_or(0, |c| c.len()) {
+            let mut s = 0.0;
+            for (c, [shelf, hp]) in self.f.iter_mut().enumerate() {
+                let y = hp.run(shelf.run(chs[c][i] as f64));
+                s += self.weights[c] * y * y;
+            }
+            self.acc += s;
+            self.at += 1;
+            if self.at % self.hop == 0 {
+                self.quarters.push(self.acc / self.hop as f64);
+                self.acc = 0.0;
+            }
+        }
+    }
+
+    fn finish(self) -> f64 {
+        let blocks: Vec<f64> = self.quarters.windows(4).map(|w| w.iter().sum::<f64>() / 4.0).collect();
+        let lufs = |ms: f64| -0.691 + 10.0 * ms.max(1e-12).log10();
+        let gated = |min: f64| -> Option<f64> {
+            let kept: Vec<f64> = blocks.iter().copied().filter(|&b| lufs(b) > min).collect();
+            (!kept.is_empty()).then(|| kept.iter().sum::<f64>() / kept.len() as f64)
+        };
+        match gated(-70.0) {
+            Some(m) => gated(lufs(m) - 10.0).map_or(-70.0, lufs),
+            None => -70.0,
+        }
     }
 }
 
 /// Our own integrated loudness (the K-weighting above, 400 ms blocks, both gates): the fallback and the reference.
+#[cfg(test)]
 pub fn integrated_lufs_own(chs: &[&[f32]], weights: &[f64], sr: f64) -> f64 {
-    let mut f: Vec<[Bq; 2]> = chs.iter().map(|_| k_weighting(sr)).collect();
-    let hop = (sr * 0.1).round() as usize;
     let n = chs.iter().map(|c| c.len()).min().unwrap_or(0);
-    // Mean square of the K-weighted signal per 100 ms; a block is four of them.
-    let mut quarters = vec![];
-    let mut acc = 0.0;
-    for i in 0..n {
-        let mut s = 0.0;
-        for (c, [shelf, hp]) in f.iter_mut().enumerate() {
-            let y = hp.run(shelf.run(chs[c][i] as f64));
-            s += weights[c] * y * y;
-        }
-        acc += s;
-        if (i + 1) % hop == 0 {
-            quarters.push(acc / hop as f64);
-            acc = 0.0;
-        }
-    }
-    let blocks: Vec<f64> = quarters.windows(4).map(|w| w.iter().sum::<f64>() / 4.0).collect();
-    let lufs = |ms: f64| -0.691 + 10.0 * ms.max(1e-12).log10();
-    let gated = |min: f64| -> Option<f64> {
-        let kept: Vec<f64> = blocks.iter().copied().filter(|&b| lufs(b) > min).collect();
-        (!kept.is_empty()).then(|| kept.iter().sum::<f64>() / kept.len() as f64)
-    };
-    match gated(-70.0) {
-        Some(m) => gated(lufs(m) - 10.0).map_or(-70.0, lufs),
-        None => -70.0,
-    }
+    let mut o = OwnLufs::new(chs.len(), weights, sr);
+    o.push(&chs.iter().map(|c| &c[..n]).collect::<Vec<_>>());
+    o.finish()
 }
 
 /// The 4× interpolation filter: three fractional phases of a Kaiser-ish windowed sinc, 16 taps each.
@@ -118,35 +180,83 @@ fn phases() -> [[f64; 16]; 3] {
     p
 }
 
-/// The peak around each sample (it and the three interpolated points after it) over the channels
-/// given, or of each channel alone (`per_channel`: one list per channel).
+/// The peak around each sample (it and the three interpolated points after it) over the channels given.
 pub(crate) fn sample_peaks(chs: &[&[f32]]) -> Vec<f64> {
-    let p = phases();
     let n = chs.iter().map(|c| c.len()).min().unwrap_or(0);
-    let at = |x: &[f32], i: isize| if i >= 0 && (i as usize) < n { x[i as usize] as f64 } else { 0.0 };
-    // Each sample's peak depends only on its neighbours: computed in blocks on all cores, joined in order.
-    const BLOCK: usize = 1 << 16;
-    let blocks: Vec<std::ops::Range<usize>> = (0..n).step_by(BLOCK).map(|s| s..(s + BLOCK).min(n)).collect();
-    crate::mix::par::map(blocks, |range| {
-        let mut acc = vec![0.0; chs.len()];
-        range
-            .map(|i| {
-                let mut m = chs.iter().fold(0.0f64, |m, c| m.max((c[i] as f64).abs()));
-                for row in &p {
-                    acc.iter_mut().for_each(|a| *a = 0.0);
-                    for (k, c) in row.iter().enumerate() {
-                        let j = i as isize + k as isize - 7;
-                        for (a, x) in acc.iter_mut().zip(chs) {
-                            *a += c * at(x, j);
+    let mut p = Peaks::new(chs.len());
+    let mut out = p.push(&chs.iter().map(|c| &c[..n]).collect::<Vec<_>>());
+    out.extend(p.finish());
+    out
+}
+
+/// `sample_peaks` fed block by block: each sample's peak once the 8 samples after it are in (`finish`: past the
+/// end reads 0, as the whole-signal measure does). The same values, bit for bit, however the signal is cut.
+pub(crate) struct Peaks {
+    p: [[f64; 16]; 3],
+    /// Samples from frame `base` on: the 7 before the next to answer, and the ones not answered yet.
+    buf: Vec<Vec<f32>>,
+    base: usize,
+    next: usize,
+}
+
+impl Peaks {
+    pub fn new(channels: usize) -> Peaks {
+        Peaks { p: phases(), buf: vec![vec![]; channels], base: 0, next: 0 }
+    }
+
+    /// The next frames in; the peaks of the frames that can be answered now, in order.
+    pub fn push(&mut self, chs: &[&[f32]]) -> Vec<f64> {
+        for (b, c) in self.buf.iter_mut().zip(chs) {
+            b.extend_from_slice(c);
+        }
+        let have = self.base + self.buf.first().map_or(0, Vec::len);
+        self.answer(have.saturating_sub(8), have)
+    }
+
+    /// The peaks of the frames left (the signal ends here).
+    pub fn finish(&mut self) -> Vec<f64> {
+        let have = self.base + self.buf.first().map_or(0, Vec::len);
+        self.answer(have, have)
+    }
+
+    /// Peaks of frames `next .. upto`; frames from `end` on read 0 (past the signal).
+    fn answer(&mut self, upto: usize, end: usize) -> Vec<f64> {
+        if upto <= self.next {
+            return vec![];
+        }
+        let (p, buf, base) = (&self.p, &self.buf, self.base);
+        let at = |x: &[f32], j: isize| if j >= 0 && (j as usize) < end { x[j as usize - base] as f64 } else { 0.0 };
+        // Each sample's peak depends only on its neighbours: computed in parts on all cores, joined in order.
+        const PART: usize = 1 << 14;
+        let parts: Vec<std::ops::Range<usize>> = (self.next..upto).step_by(PART).map(|s| s..(s + PART).min(upto)).collect();
+        let out = crate::mix::par::map(parts, |range| {
+            let mut acc = vec![0.0; buf.len()];
+            range
+                .map(|i| {
+                    let mut m = buf.iter().fold(0.0f64, |m, c| m.max((c[i - base] as f64).abs()));
+                    for row in p {
+                        acc.iter_mut().for_each(|a| *a = 0.0);
+                        for (k, c) in row.iter().enumerate() {
+                            let j = i as isize + k as isize - 7;
+                            for (a, x) in acc.iter_mut().zip(buf) {
+                                *a += c * at(x, j);
+                            }
                         }
+                        m = acc.iter().fold(m, |m, a| m.max(a.abs()));
                     }
-                    m = acc.iter().fold(m, |m, a| m.max(a.abs()));
-                }
-                m
-            })
-            .collect::<Vec<f64>>()
-    })
-    .concat()
+                    m
+                })
+                .collect::<Vec<f64>>()
+        })
+        .concat();
+        self.next = upto;
+        let keep_from = self.next.saturating_sub(7).max(self.base);
+        for b in self.buf.iter_mut() {
+            b.drain(..keep_from - self.base);
+        }
+        self.base = keep_from;
+        out
+    }
 }
 
 /// True peak (dBTP).

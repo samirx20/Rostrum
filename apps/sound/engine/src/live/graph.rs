@@ -76,6 +76,6 @@ pub fn play(take: Take) -> Result<(), String> {
 pub fn play_schedule(path: &str) -> Result<(), String> {
     let s = crate::mix::load(path)?;
     let mix = crate::mix::render::render(&s)?;
-    let [l, r]: [Vec<f32>; 2] = crate::mix::render::stats::as_stereo(&mix.channels).try_into().map_err(|_| "a fold-down is two channels")?;
+    let [l, r]: [Vec<f32>; 2] = crate::mix::render::stats::as_stereo(&mix.channels()?).try_into().map_err(|_| "a fold-down is two channels")?;
     play(Take { left: l, right: r, rate: s.sample_rate, pos: Default::default() })
 }

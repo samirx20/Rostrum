@@ -33,9 +33,10 @@ fn renders_the_same_every_time() {
     let s = Schedule::parse(SCHEDULE).unwrap();
     let a = render(&s).unwrap();
     let b = render(&s).unwrap();
-    assert_eq!(a.channels[0].len(), 66150);
+    let (ac, bc) = (a.channels().unwrap(), b.channels().unwrap());
+    assert_eq!(ac[0].len(), 66150);
     assert!(a.peak > 0.05, "silent render");
-    assert_eq!(a.channels, b.channels);
+    assert_eq!(ac, bc);
     assert_eq!(a.ducks.len(), 1, "the keys track reports its ducking");
     assert!(!a.ducks[0].1.is_empty(), "the keys dip under the fx");
 }
@@ -58,14 +59,15 @@ fn a_surround_schedule_renders_its_bed_with_every_stage_on_every_channel() {
     let sched = Schedule::parse(&s).unwrap();
     let a = render(&sched).unwrap();
     let b = render(&sched).unwrap();
-    assert_eq!(a.channels.len(), 6);
-    assert_eq!(a.channels, b.channels);
+    let (ac, bc) = (a.channels().unwrap(), b.channels().unwrap());
+    assert_eq!(ac.len(), 6);
+    assert_eq!(ac, bc);
     assert!((a.lufs - -23.0).abs() < 0.3, "BS.1770 with channel weights: {}", a.lufs);
     assert!(a.true_peak <= -1.0, "{}", a.true_peak);
-    let energy = |c: usize| a.channels[c].iter().map(|v| (*v as f64).powi(2)).sum::<f64>();
+    let energy = |c: usize| ac[c].iter().map(|v| (*v as f64).powi(2)).sum::<f64>();
     assert!((0..6).all(|c| energy(c) > 0.0), "every channel sounds");
     assert!(a.tracks.iter().all(|t| t.shares.as_ref().is_some_and(|s| s.len() == 6)));
-    let report = crate::mix::bus::surround_report(&a, 44100.0);
+    let report = crate::mix::bus::surround_report(a.layout, &ac, a.lufs, 44100.0);
     assert_eq!(report["channels"].as_array().unwrap().len(), 6);
 }
 
@@ -108,14 +110,14 @@ fn a_file_through_a_dry_unprocessed_mix_comes_out_as_it_went_in() {
         for (hz, name) in [(1000.0, "k1"), (18000.0, "k18")] {
             let (file, n) = sine_file(name, sr, hz, 0.125, 2.0); // -18 dBFS
             let s = clip_schedule(&file, n, sr, "dry");
-            let mix = render_with(&s, None).unwrap();
+            let mix = render_with(&s, None).unwrap().channels().unwrap();
             let start = sr as usize / 2;
             let (mut worst, mut tail) = (0.0f64, 0.0f64);
-            for i in 0..mix.channels[0].len() {
+            for i in 0..mix[0].len() {
                 let want = if i >= start && i < start + n { (0.125 * (2.0 * std::f64::consts::PI * hz * (i - start) as f64 / sr as f64).sin()) as f32 as f64 } else { 0.0 };
-                worst = worst.max((mix.channels[0][i] as f64 - want).abs());
+                worst = worst.max((mix[0][i] as f64 - want).abs());
                 if i >= start + n {
-                    tail = tail.max((mix.channels[0][i] as f64).abs());
+                    tail = tail.max((mix[0][i] as f64).abs());
                 }
             }
             assert!(worst < 1e-6, "{hz} Hz at {sr}: the engine changed the signal by {} dB re full scale", db(worst));
@@ -133,11 +135,11 @@ fn the_master_hall_reverb_is_what_costs_a_sine_its_level_and_gives_it_a_tail() {
     let dry = render_with(&clip_schedule(&file, n, sr, "dry"), None).unwrap();
     let hall = render_with(&clip_schedule(&file, n, sr, "hall"), None).unwrap();
     let (a, b) = (sr as usize, sr as usize + 4800);
-    let peak = |m: &Mix| m.channels[0][a..b].iter().fold(0.0f64, |p, v| p.max((*v as f64).abs()));
+    let peak = |m: &Mix| m.channels().unwrap()[0][a..b].iter().fold(0.0f64, |p, v| p.max((*v as f64).abs()));
     let loss = db(peak(&hall)) - db(peak(&dry));
     assert!((-0.9..=-0.1).contains(&loss), "a 1 kHz sine through the hall: {loss:.2} dB");
     let end = sr as usize / 2 + n;
-    let ring = |m: &Mix| (end..m.channels[0].len()).rev().find(|&i| db((m.channels[0][i] as f64).abs() / 0.125) > -60.0).map_or(0.0, |i| (i - end) as f64 / sr as f64);
+    let ring = |m: &Mix| { let c = m.channels().unwrap(); (end..c[0].len()).rev().find(|&i| db((c[0][i] as f64).abs() / 0.125) > -60.0).map_or(0.0, |i| (i - end) as f64 / sr as f64) };
     assert_eq!(ring(&dry), 0.0);
     assert!((0.15..=0.8).contains(&ring(&hall)), "the hall's tail: {:.2} s", ring(&hall));
 }

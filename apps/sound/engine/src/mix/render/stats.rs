@@ -8,8 +8,9 @@ use std::sync::Arc;
 
 pub struct Mix {
     pub layout: Layout,
-    /// One buffer per channel, in the layout's file order.
-    pub channels: Vec<Vec<f32>>,
+    /// The finished mix on disk (tape.rs), in the layout's file order: `frames` long. Read it in blocks
+    /// (`read`), or whole where a caller needs it whole (`channels`: playback, a surround report).
+    pub out: Option<Tape>,
     pub peak: f64,
     pub sum_sq: f64,
     /// Each channel's sample sum (DC offset).
@@ -36,6 +37,33 @@ pub struct Mix {
     pub master: crate::fx::master::MasterReport,
     /// Energy per band of the file (balance.rs BANDS, dB; a surround bed's stereo fold-down): its tonal balance.
     pub bands: [f64; 5],
+    /// The file's momentary / short-term loudness, loudness range and correlation (analysis/loudstats.rs).
+    pub loud: Option<crate::analysis::loudstats::Stats>,
+}
+
+impl Mix {
+    fn tape(&self) -> Result<&Tape, String> {
+        self.out.as_ref().ok_or_else(|| "the mix was not rendered (an engine fault)".to_string())
+    }
+
+    /// Frames in the file.
+    pub fn frames(&self) -> usize {
+        self.gain.as_ref().map_or(0, |g| g.total)
+    }
+
+    /// Frames `at .. at + n` of every channel.
+    pub fn read(&self, at: usize, n: usize) -> Result<Vec<Vec<f32>>, String> {
+        self.tape()?.read(at, n)
+    }
+
+    /// The whole mix in memory, one buffer per channel.
+    pub fn channels(&self) -> Result<Vec<Vec<f32>>, String> {
+        self.tape()?.whole()
+    }
+
+    pub fn loud(&self) -> Result<&crate::analysis::loudstats::Stats, String> {
+        self.loud.as_ref().ok_or_else(|| "the mix was not measured (an engine fault)".to_string())
+    }
 }
 
 /// One track as it reaches the mix (after its effects, fader and ducking): what an agent checks.
@@ -83,50 +111,113 @@ pub fn as_stereo(chs: &[Vec<f32>]) -> Vec<Vec<f32>> {
     }
 }
 
+/// A track's (or bus') figures over its first `total` frames, the whole signal in memory.
 pub(crate) fn track_stats(name: &str, chs: &[Vec<f32>], total: usize, sr: f64, layout: Layout) -> TrackStats {
-    let frame = (sr * 0.01).round().max(1.0) as usize;
-    let floor = 10f64.powf(-50.0 / 20.0);
-    let nch = chs.len() as f64;
-    let (mut peak, mut sum, mut n, mut first, mut last) = (0.0f64, 0.0f64, 0usize, None, 0usize);
-    let mut levels = vec![];
-    for f in (0..total).step_by(frame) {
-        let end = (f + frame).min(total);
-        let mut s = 0.0;
-        for i in f..end {
-            let mut p = 0.0;
-            for c in chs {
-                let a = c[i] as f64;
-                peak = peak.max(a.abs());
-                p += a * a;
-            }
-            s += p / nch;
-        }
-        let rms = (s / (end - f) as f64).sqrt();
-        levels.push(if rms > 0.0 { 20.0 * rms.log10() } else { -120.0 });
-        if rms > floor {
-            first.get_or_insert(f);
-            last = end;
-            sum += s;
-            n += end - f;
+    let mut m = TrackMeter::new(name, chs.len(), total, sr, layout);
+    m.push(chs);
+    m.finish()
+}
+
+/// A track's figures measured as it comes, block by block (read from its tape): what `TrackStats` reports, the
+/// same bit for bit however the track is cut into blocks. Frames past `total` (a loop's tail) are not measured.
+pub(crate) struct TrackMeter {
+    name: String,
+    nch: usize,
+    total: usize,
+    sr: f64,
+    at: usize,
+    frame: usize,
+    floor: f64,
+    peak: f64,
+    /// The 10 ms frame being summed: its power so far and its first sample.
+    fs: f64,
+    f0: usize,
+    sum: f64,
+    n: usize,
+    first: Option<usize>,
+    last: usize,
+    levels: Vec<f64>,
+    energy: Vec<f64>,
+    lufs: crate::analysis::loudness::Lufs,
+    balance: crate::analysis::balance::Balance,
+}
+
+impl TrackMeter {
+    pub fn new(name: &str, nch: usize, total: usize, sr: f64, layout: Layout) -> TrackMeter {
+        let weights = if nch == layout.channels() { layout.weights() } else { vec![1.0; nch] };
+        TrackMeter {
+            name: name.into(), nch, total, sr, at: 0, frame: (sr * 0.01).round().max(1.0) as usize, floor: 10f64.powf(-50.0 / 20.0),
+            peak: 0.0, fs: 0.0, f0: 0, sum: 0.0, n: 0, first: None, last: 0, levels: vec![], energy: vec![0.0; nch],
+            lufs: crate::analysis::loudness::Lufs::new(nch, &weights, sr), balance: crate::analysis::balance::Balance::new(sr, true),
         }
     }
-    let weights = if chs.len() == layout.channels() { layout.weights() } else { vec![1.0; chs.len()] };
-    let cut: Vec<&[f32]> = chs.iter().map(|c| &c[..total.min(c.len())]).collect();
-    // A stereo track is measured as it is; a bed track through its fold-down.
-    let folded;
-    let st: &[Vec<f32>] = if chs.len() == 2 { chs } else { folded = as_stereo(chs); &folded };
-    let (bands, speech) = crate::analysis::balance::bands_and_speech(&st[0], &st[1], total, sr);
-    let energy: Vec<f64> = chs.iter().map(|c| c[..total.min(c.len())].iter().map(|v| (*v as f64).powi(2)).sum()).collect();
-    let all: f64 = energy.iter().sum();
-    TrackStats {
-        name: name.into(),
-        peak,
-        rms: if n > 0 { (sum / n as f64).sqrt() } else { 0.0 },
-        span: first.map(|f| (f as f64 / sr, last as f64 / sr)),
-        onsets: onsets(&levels, frame as f64 / sr),
-        lufs: crate::analysis::loudness::integrated_lufs_n(&cut, &weights, sr),
-        bands,
-        speech,
-        shares: (chs.len() > 2 && all > 0.0).then(|| energy.iter().map(|e| ((e / all) * 1000.0).round() / 1000.0).collect()),
+
+    /// The 10 ms frame ending at `end` closed: its level, and whether it sounds.
+    fn close(&mut self, end: usize) {
+        let rms = (self.fs / (end - self.f0) as f64).sqrt();
+        self.levels.push(if rms > 0.0 { 20.0 * rms.log10() } else { -120.0 });
+        if rms > self.floor {
+            self.first.get_or_insert(self.f0);
+            self.last = end;
+            self.sum += self.fs;
+            self.n += end - self.f0;
+        }
+        (self.fs, self.f0) = (0.0, end);
+    }
+
+    /// The next frames (every channel the same length); what falls past `total` is left out.
+    pub fn push(&mut self, chs: &[Vec<f32>]) {
+        let n = chs.first().map_or(0, Vec::len).min(self.total - self.at);
+        if n == 0 {
+            return;
+        }
+        let nch = self.nch as f64;
+        let cut: Vec<&[f32]> = chs.iter().map(|c| &c[..n]).collect();
+        let lufs = &mut self.lufs;
+        let balance = &mut self.balance;
+        // The loudness and the balance each on a core of their own, the levels here.
+        std::thread::scope(|sc| {
+            sc.spawn(|| lufs.push(&cut));
+            sc.spawn(|| {
+                // A stereo track is measured as it is; a bed track through its fold-down.
+                if cut.len() == 2 {
+                    balance.push(cut[0], cut[1]);
+                } else {
+                    let st = as_stereo(&cut.iter().map(|c| c.to_vec()).collect::<Vec<_>>());
+                    balance.push(&st[0], &st[1]);
+                }
+            });
+        });
+        for i in 0..n {
+            let mut p = 0.0;
+            for (c, e) in chs.iter().zip(self.energy.iter_mut()) {
+                let a = c[i] as f64;
+                self.peak = self.peak.max(a.abs());
+                p += a * a;
+                *e += a * a;
+            }
+            self.fs += p / nch;
+            let k = self.at + i + 1;
+            if k - self.f0 == self.frame || k == self.total {
+                self.close(k);
+            }
+        }
+        self.at += n;
+    }
+
+    pub fn finish(self) -> TrackStats {
+        let (bands, speech) = self.balance.finish();
+        let all: f64 = self.energy.iter().sum();
+        TrackStats {
+            rms: if self.n > 0 { (self.sum / self.n as f64).sqrt() } else { 0.0 },
+            span: self.first.map(|f| (f as f64 / self.sr, self.last as f64 / self.sr)),
+            onsets: onsets(&self.levels, self.frame as f64 / self.sr),
+            lufs: self.lufs.finish(),
+            bands,
+            speech,
+            shares: (self.nch > 2 && all > 0.0).then(|| self.energy.iter().map(|e| ((e / all) * 1000.0).round() / 1000.0).collect()),
+            name: self.name,
+            peak: self.peak,
+        }
     }
 }

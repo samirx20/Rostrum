@@ -21,7 +21,8 @@ pub fn read(path: &str) -> Result<(Mix, f64), String> {
     if path.ends_with(".json") {
         let s = crate::mix::schedule::Schedule::parse(&std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?)?;
         let m = crate::mix::render::render(&s)?;
-        let mix = if m.layout == Layout::Stereo { Mix::Stereo(Frames::from_channels(&m.channels, 0x3)) } else { Mix::Bed(m.channels, m.layout) };
+        let chs = m.channels()?;
+        let mix = if m.layout == Layout::Stereo { Mix::Stereo(Frames::from_channels(&chs, 0x3)) } else { Mix::Bed(chs, m.layout) };
         return Ok((mix, s.sample_rate as f64));
     }
     if let Ok((chs, sr)) = crate::mix::wavio::read(path) {

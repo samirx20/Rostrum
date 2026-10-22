@@ -16,7 +16,7 @@ fn sched(tracks: &[String], extra: &str) -> Schedule {
 }
 
 fn mix(s: &Schedule) -> Vec<Vec<f32>> {
-    render_with(s, None).unwrap().channels
+    render_with(s, None).unwrap().channels().unwrap()
 }
 
 fn rms(chs: &[Vec<f32>]) -> f64 {
@@ -35,7 +35,7 @@ const BUS: &str = r#"{"name":"group","volume":1,"pan":0}"#;
 fn a_track_through_a_bus_sounds_as_it_does_on_the_master_and_the_bus_fader_scales_it() {
     let direct = mix(&sched(&[track("keys", "", "")], ""));
     let routed = render_with(&sched(&[track("keys", r#","output":0"#, "")], &format!(r#","buses":[{BUS}]"#)), None).unwrap();
-    assert!(diff(&direct, &routed.channels) < 1e-5);
+    assert!(diff(&direct, &routed.channels().unwrap()) < 1e-5);
     assert_eq!(routed.buses.len(), 1);
     assert!(routed.buses[0].rms > 0.0 && routed.tracks.len() == 1);
     let half = mix(&sched(&[track("keys", r#","output":0"#, "")], r#","buses":[{"name":"group","volume":0.5,"pan":0}]"#));
@@ -68,7 +68,7 @@ fn bus_effects_run_on_the_sum_and_nested_buses_feed_their_parent() {
     let s = sched(&[track("keys", r#","output":0"#, r#","volume":0.5"#), track("pad", r#","output":0"#, r#","volume":0.5"#)], &format!(r#","buses":[{lowpass},{{"name":"music","volume":1,"pan":0}}]"#));
     let r = render_with(&s, None).unwrap();
     let plain = mix(&sched(&[track("keys", "", r#","volume":0.5"#), track("pad", "", r#","volume":0.5"#)], ""));
-    assert!(rms(&r.channels) < rms(&plain) * 0.9, "the low-pass on the bus took the highs");
+    assert!(rms(&r.channels().unwrap()) < rms(&plain) * 0.9, "the low-pass on the bus took the highs");
     assert_eq!(r.buses.iter().map(|b| b.name.as_str()).collect::<Vec<_>>(), ["dark", "music"]);
     assert!((r.buses[0].rms - r.buses[1].rms).abs() < 1e-6, "the parent holds what its child gave it");
 }
@@ -133,8 +133,8 @@ fn a_cached_mix_with_buses_and_a_pre_fader_send_is_the_uncached_mix() {
     let cache = TrackCache::at(dir.clone());
     let s = sched(&[track("keys", r#","output":0,"sends":[{"bus":1,"level":0.4,"pre":true}]"#, ""), track("pad", r#","sends":[{"bus":1,"level":0.2}]"#, "")], r#","buses":[{"name":"group","volume":0.8,"pan":0.3},{"name":"verb","volume":1,"pan":0,"effects":[{"type":"reverb","space":"hall","mix":1}]}]"#);
     let plain = mix(&s);
-    let cold = render_with(&s, Some(&cache)).unwrap().channels;
-    let warm = render_with(&s, Some(&cache)).unwrap().channels;
+    let cold = render_with(&s, Some(&cache)).unwrap().channels().unwrap();
+    let warm = render_with(&s, Some(&cache)).unwrap().channels().unwrap();
     assert_eq!(plain, cold);
     assert_eq!(plain, warm);
     let _ = std::fs::remove_dir_all(dir);
