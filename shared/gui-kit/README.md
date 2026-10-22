@@ -5,6 +5,10 @@ dynamically linked (PySide6); no GPL-only Qt add-ons, and no Qt Quick Controls s
 here (`QtQuick.Controls` is used only for `Popup` and the window, under the Basic style, fully covered by our drawing).
 Shaped by the GUI proofs (`proofs/gui-qt/`, `proofs/gui-mock/`) and the experiment's `docs/GUI_DESIGN.md`.
 
+**How every app behaves:** [`INTERACTION.md`](INTERACTION.md), the shared interaction spec (S30). It covers the
+regions, select first then act, selection, the settings panel, the diamond, the timeline, keys, words, and the kit
+pieces still to build (its Part 5). It wins over the app specs where they differ.
+
 **First layer (S4):** tokens, controls, the inspector built from operation schemas, the Ctrl+K command bar, the
 app shell, a demo. Not yet: history / AI panels, Fast / Final viewers, the native viewport slot, a colour picker
 popup, a real timeline.
