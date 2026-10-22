@@ -29,6 +29,13 @@ class LayerOrder(SlotMixin):
     def _layer_types(self):
         return self.doc.kind.registry.get("layer.remove").targets
 
+    @Slot(result="QVariantMap")
+    def selectionExtent(self) -> dict:
+        """x0, y0, x1, y1 (composition px) round the selected layers' outlines as the picture shows them; {} for none
+        (F: fit the selection, Stage.qml)."""
+        es = [bounds.extent(b) for b in self._multi.boxes]
+        return {"x0": min(e[0] for e in es), "y0": min(e[1] for e in es), "x1": max(e[2] for e in es), "y1": max(e[3] for e in es)} if es else {}
+
     @Slot(str, str, result=bool)
     def toggleSwitch(self, layer_id, which):
         """The lock or the eye on a layer's row (which: "locked" | "hidden"): that layer only, one change."""

@@ -5,34 +5,40 @@ One workspace on one 2D document (no pages; the design is `../DESIGN.md`), built
 ```
 top bar          Rostrum2D · File · document · what just happened · Undo / Redo · + Add · Import · Export · Ctrl+K · Help
 centre           Canvas: the engine's frame at the playhead, fitted; the tool strip (Move V, Pen P, Draw B) at its top left;
-                 the selected layers' boxes and handles; the action bar under the selection
+                 the selected layers' boxes and handles; the context bar at the top-centre
 right            Settings panel (the kit's Inspector): the selected item(s)' field operation, values at the playhead, key
                  marks; essentials first, folded groups, Find a setting (Ctrl+F); with Draw on, the brush instead
 bottom           Timeline = the layers list: a name column (fold, rename, drag to reorder, lock, eye) and a bar per layer
                  with its keys and frames under a ruler with the markers; two heights (full / compact), remembered per tool
 ```
 
-## Select first, then act (`screen2d/actions.py`, `keys2d.py`, `action_slots.py`; the kit's ContextBar, ActionMenu, KeyMap)
+## Select first, then act (`screen2d/actions.py`, `action_rules.py`, `keys2d.py`, `action_slots.py`; the kit's ContextBar, ActionMenu, KeyMap)
 
-- **2D's entries in the kit's one action list** (`actions.ACTIONS`, kit `Action`s; `LIST = ActionList(ACTIONS, KEYS2D)`):
-  Group, Ungroup, Clip, Auto layout, Make swap set, Make rig, Mask with top layer (and the other mattes), Release mask,
-  Union / Subtract / Intersect / Exclude, Align, Distribute, Match size, Copy / Paste style, Lock / Unlock, Hide / Show,
-  the four order moves, and the kit's edit block (Copy, Cut, Paste, Duplicate, Rename, Delete). Each has an id
-  (`layer:<name>`), label, importance (`primary` = on the context bar), group (menu dividers), `valid(Facts)`,
-  `min_targets`, and its key through `job` (shared keys) or 2D's own keys (`keys2d.py`, refused at start-up if one takes
-  a shared key). The kit's guard leaves out what the selection doesn't allow (nothing is greyed). Each action is one
-  change: all its operation calls in one apply; the operations are the ones agents call (`python/rostrum2d/ops_*.py`).
+- **2D's entries in the kit's one action list** (`actions.DATA`, plain data, read into kit `Action`s:
+  `LIST = ActionList(ACTIONS, KEYS2D)`): id, label, `job` (its key from the key map: shared, or 2D's own in `keys2d.py`,
+  refused at start-up if one takes a shared key), importance (`primary` = on the context bar), rank, group (menu
+  dividers), `bar` (the button or side menu it sits under: Combine, Mask, Align, Distribute, Make, Match, Order),
+  min / max targets, `when` (a condition in the one condition language on the selection's facts: `action_rules.Facts`),
+  and `calls` (an operation, a target rule and argument rules such as `$new:group`, `$at`, `$top`; or the named rule
+  `order`: `action_rules.py`) or `do` (the clipboard, copy style, rename). The kit's one guard leaves out what the
+  selection doesn't allow (nothing is greyed). Each action is one change: all its calls in one apply; the operations
+  are the ones agents call (`python/rostrum2d/ops_*.py`). A selection holding a locked layer is offered only Unlock.
 - One `ActionHub` (`backend.actions`, `action_slots.py`) feeds four doors: the **context bar** (the kit's ContextBar at
-  the top-centre of the canvas; Move tool only, hidden while playing or dragging), the **right-click menus** (a layer's
-  name in the timeline, and the canvas: an unselected layer is selected alone first), **Ctrl+K**'s Do group and the
-  **keys** (the kit's KeyMap: a key does its action only when valid, else the status line says why). Esc steps back one
-  level (the kit's `selection_rules.esc_step`); arrows nudge 1 px, Shift 10 px, one change per press.
-- The selection is read in one place, `LayerOrder.selected_layers()` (the kit's `selection`, plus whatever the canvas's
-  Shift+click holds in `multi.py`). A selection holding a locked layer is offered only Unlock.
+  the top-centre of the canvas, hidden while playing or dragging; with Pen, Paint or typing on it shows that tool's
+  options instead: `qml/ToolOptions.qml`), the **right-click menus** (a layer's name in the timeline, and the canvas: an
+  unselected layer is selected alone first; sets of more than two choices fold into a side menu), **Ctrl+K**'s Do group
+  and the **keys** (the kit's KeyMap). Esc steps back one level (the kit's `selection_rules.esc_step`: picked keys,
+  then layers); arrows nudge 1 px, Shift 10 px, Alt 0.1 px, one change per press.
+- The selection is read in one place, `LayerOrder.selected_layers()`.
 - Lock and the eye on each layer row (`qml/LayerName.qml`): fields `locked` / `hidden`. A hidden layer is not drawn in the
   preview or an export (`scene.py` leaves it out) and has no box; `bounds.pick` skips locked layers.
+- **Keys in the timeline** (`key_select.py`, `backend.keys`): click picks a key, Ctrl+click adds / removes, Shift+click
+  the run between; a diamond on a layer's bar stands for all its keys at that frame. Picked keys move together (one
+  change); Delete removes them. **A** opens the selected layers to their animated settings only; again folds them
+  (`outline.rows(…, anim_only)`).
 - Steps: `selectmany <id> <id> …`, `act <action>` (`group`, `ungroup`, `mask`, `union`, `align_left`, `distribute_x`,
-  `match_w`, `lock`, `hide`, `delete`, `front` …), `nudge <dx> <dy>`, `actionmenu`, `actionbar` (print what they offer).
+  `match_w`, `lock`, `hide`, `delete`, `front` …), `nudge <dx> <dy>`, `actionmenu`, `actionbar`; keys (`key_steps.py`):
+  `keypick <id>[,<id>…] [ctrl|shift]`, `keydrag2 <key> <from s> <to s>`, `keydelete`, `showanim`.
 
 ## The timeline (`qml/LayerTimeline.qml`, `LayerRows.qml`, `LayerName.qml`, `LayerTrack.qml`, `screen2d/outline.py`, `bar_drag.py`)
 
@@ -45,12 +51,33 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - Two heights (Main.qml `timelineByTool`): full (every row) or compact (header, ruler, the selected layer's row; the name is a
   menu of all layers); Move and Pen remember the full one, Draw the compact one.
 
+## Creation tools, the view, snapping, painting on any element (H29)
+
+- **R / O / T** (`screen2d/create.py`, `typing_session.py`, `qml/CreateOverlay.qml` in the canvas under the tool strip):
+  drag a rectangle or ellipse (Shift square / round, Alt from the centre, a click = 200 × 200), one change, selected,
+  back to Move; T: click or drag a box and type on the canvas, one change per typing session (previews `text.set` per
+  key), Esc / Ctrl+Enter ends; double-click a text to type in it again. While typing the context bar has Font, Weight,
+  Size, Colour, Done (`qml/ToolOptions.qml`). Steps: `shape`, `shapedrag`, `text`, `textbox`, `typetext`, `edittext`.
+- **The view** (`qml/CanvasView.qml`, `ViewInput.qml`, `ViewControls.qml`, `screen2d/spacekey.py`, `view_steps.py`):
+  one mapping (Stage's `compScale`, `toComp`, `fromComp`, `inWell`) for everything over the canvas. Ctrl+wheel / pinch
+  at the pointer, Space+drag or middle-drag, Ctrl+0, Ctrl+1, F (Shift+2), Ctrl+= / Ctrl+−; the "Fit · 43 % ▾" menu. The
+  engine is asked for the frame at the size shown, up to Full (`shown.setView`). Screen state only. Steps: `zoom`,
+  `pan`, `fitsel`, `viewmenu`.
+- **Snapping** (`screen2d/snap.py` pure, `snapper.py` as `backend.snap`): moves and resize edges snap within 6 screen
+  px to the frame's edges and centre, then other layers'; magenta lines; Ctrl during the drag = free, Shift = straight.
+- **Box select** (`multi.boxSelect(…, mods)` through the kit's `selection_rules.box`): Shift adds, Ctrl the deepest.
+- **Painting on any element** (`painter.py`, `brush_panel.py`, `strokes.py`): the Draw tool paints on the selected
+  shape, text, picture or path (kept inside its outline by the engine), on a drawing, or with nothing selected makes a
+  drawing. Each stroke is one `paint.stroke` change (the agent's operation too). The Paint bar: tip, Size, Colour,
+  Opacity (gives way on narrow windows), Eraser E, `[` `]`, + Paint layer, Painting on: *x* ▸. Frame keys: `,` `.`
+  step drawings, `=` `−` hold. Steps: `draw`, `paintlayer`, `painton selected|new`.
+
 ## The rules it builds in
 
 - **One animation model** (`screen2d/route.py`, the only place): a number or colour field keys may drive is edited
   through `value.set` with `at` = the playhead (a still field changes; an animated one gets a key there). The
   inspector shows values at the playhead. The key mark on a row: filled = a key at the playhead, outlined =
-  animated, faint on hover = could be animated; clicking it adds the first key (`key.add`) or stops animating
+  animated, faint (always shown) = could be animated; clicking it adds the first key (`key.add`) or stops animating
   (`key.clear`).
 - **Every drag is one undo step**: moving a layer on the canvas (`value.set` x / y at the playhead) and moving a
   key on the timeline (`key.set` t) are each one `doc.gesture`.

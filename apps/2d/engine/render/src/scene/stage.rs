@@ -13,6 +13,8 @@ use super::stage_type;
 #[path = "stage_path.rs"]
 mod path;
 pub(crate) use path::outline_d;
+#[path = "stage_paint.rs"]
+mod paint;
 
 type R<T> = Result<T, String>;
 
@@ -185,35 +187,40 @@ fn layer(it: &Item) -> R<String> {
     let look = Look { gradient: grad.as_deref(), color: None };
     let (mut style, inner) = content(it, look)?;
     let blur: f64 = it.effects.iter().filter(|e| e.kind == "blur").map(|e| e.num("radius")).sum();
-    let filters = if blur != 0.0 { format!("filter:blur({blur}px);") } else { String::new() };
+    let mut filters = if blur != 0.0 { format!("blur({blur}px) ") } else { String::new() };
     if let Some(s) = it.effects.iter().find(|e| e.kind == "shadow") {
         let c = s.str("color");
         let ch = |i: usize| u8::from_str_radix(&c[i..i + 2], 16).unwrap_or(0);
         let rgba = format!("rgba({},{},{},{})", ch(1), ch(3), ch(5), v(s, "strength"));
         let prop = if it.kind == "text" { "text-shadow" } else { "box-shadow" };
-        if it.kind == "path" {
+        if paint::shows(it) {
+            // A painted layer's shadow follows element and paint together (and is never painted on).
+            let _ = write!(filters, "drop-shadow({}px {}px {}px {rgba}) ", v(s, "dx"), v(s, "dy"), v(s, "radius"));
+        } else if it.kind == "path" {
             // A path's shadow follows its outline, not its box.
             let _ = write!(style, "filter:drop-shadow({}px {}px {}px {rgba});", v(s, "dx"), v(s, "dy"), v(s, "radius"));
         } else {
             let _ = write!(style, "{prop}:{}px {}px {}px {rgba};", v(s, "dx"), v(s, "dy"), v(s, "radius"));
         }
     }
+    let filters = if filters.is_empty() { filters } else { format!("filter:{};", filters.trim_end()) };
     let mut defs = String::new();
     let masks = it.masks.iter().enumerate().map(|(i, m)| super::stage_fx::mask(it, i, m, &mut defs)).collect::<R<Vec<_>>>()?;
-    // Masks cut the content first; effects see the cut result.
-    let masked = |content_style: &str, extra: &str| {
-        let mut html = boxed(content_style, &inner, false);
+    // Masks cut the content (with its paint: stage_paint.rs) first; effects see the cut result.
+    let masked = |content_style: &str, extra: &str, painted: bool| {
+        let own = boxed(content_style, &inner, false);
+        let mut html = if painted { paint::over(it, own) } else { own };
         for m in &masks {
             html = boxed(m, &html, true);
         }
         boxed(extra, &html, true)
     };
-    let mut body = masked(&style, &filters);
+    let mut body = masked(&style, &filters, true);
     for g in it.effects.iter().filter(|e| e.kind == "glow") {
-        // A blurred copy behind, added light.
+        // A blurred copy behind, added light (in the layer's own colours, its paint too).
         let color = if g.on("ownColor") { None } else { Some(g.str("color")) };
         let (gs, _) = content(it, Look { color, ..look })?;
-        body = masked(&gs, &format!("filter:blur({}px);opacity:{};mix-blend-mode:plus-lighter;", v(g, "radius"), g.num("strength").min(1.0))) + &body;
+        body = masked(&gs, &format!("filter:blur({}px);opacity:{};mix-blend-mode:plus-lighter;", v(g, "radius"), g.num("strength").min(1.0)), color.is_none()) + &body;
     }
     // Colour effects (grade.rs) act on the layer's own look and its effects; frosted glass stays as it sees what is behind.
     let body = super::grade::wrap(it, body)?;

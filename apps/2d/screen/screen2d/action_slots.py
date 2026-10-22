@@ -92,7 +92,10 @@ class ActionSlots(SlotMixin):
 
     @Slot(str, result=bool)
     def layerCommand(self, how):
-        """A key's or a script's action by job (front, delete, group …): runs if valid now, else says why."""
+        """A key's or a script's action by job (front, delete, group …): runs if valid now, else says why. Keys picked
+        in the timeline take Delete first (key_select.py)."""
+        if how in ("delete", "layer:delete") and self._keys.count:
+            return self._keys.remove()
         entry, why = LIST.on_key(self._facts(), how)
         if entry is None:
             if why:
@@ -117,7 +120,11 @@ class ActionSlots(SlotMixin):
     def stepBack(self, state):
         """Esc: the one step the kit's ladder takes now (selection_rules.esc_step). "cancel" and "close" are the
         screen's own (it closes its panel or menu); "clear" clears the selection here."""
-        step = esc_step({**state, "selected": bool(self.selected_layers())})
-        if step == "clear":
+        step = esc_step({**state, "inner": bool(self._keys.count), "selected": bool(self.selected_layers())})
+        if step == "clear_inner":                   # keys picked in the timeline go first, the layer stays picked
+            layer = self.selected_layers()
+            self._keys.clear()
+            self.selectMany(layer)
+        elif step == "clear":
             self.clearSelection()
         return step or ""

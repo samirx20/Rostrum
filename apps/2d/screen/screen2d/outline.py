@@ -41,7 +41,7 @@ def _fields(layer: dict) -> list[tuple[dict, str]]:
 
 def _keys(owner: dict, prop: str) -> list[dict]:
     """A field's keys for the timeline; a key on a shared marker (placed by retime.placed) carries its words."""
-    return [{"id": k["id"], "t": k["t"], **({"marker": marked.label(k["ref"])} if "ref" in k else {})}
+    return [{"id": k["id"], "ids": [k["id"]], "t": k["t"], **({"marker": marked.label(k["ref"])} if "ref" in k else {})}
             for k in keys_of(owner, prop)]
 
 
@@ -53,19 +53,21 @@ def _row(kind: str, owner: dict, depth: int, label: str, keys: list, prop: str =
 
 
 def _one_per_frame(keys: list[dict], fps: float) -> list[dict]:
-    """A layer's summary line: keys of several settings at the same frame are ONE diamond (the first one's id: a click
-    selects it, its row opens the rest), never one drawn over another."""
-    seen, out = set(), []
+    """A layer's summary line: keys of several settings at the same frame are ONE diamond (the first one's id; `ids`:
+    every key it stands for, so a click picks them all), never one drawn over another."""
+    by_frame: dict[int, dict] = {}
     for k in keys:
         f = round(k["t"] * fps)
-        if f not in seen:
-            seen.add(f)
-            out.append(k)
-    return out
+        if f in by_frame:
+            by_frame[f]["ids"].append(k["id"])
+        else:
+            by_frame[f] = {**k, "ids": [k["id"]]}
+    return list(by_frame.values())
 
 
-def rows(comp: dict, flipped: set[str]) -> list[dict]:
-    """`comp` as placed (every time in composition seconds): bridge.placed()."""
+def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset()) -> list[dict]:
+    """`comp` as placed (every time in composition seconds): bridge.placed(). `anim_only`: layers opened by A, showing
+    only their animated settings (theirs, their effects' and masks'), not their own layers."""
     out: list[dict] = []
     duration = comp["duration"]
 
@@ -74,7 +76,8 @@ def rows(comp: dict, flipped: set[str]) -> list[dict]:
             fields = _fields(lay)
             summary = _one_per_frame(sorted((k for o, p in fields for k in _keys(o, p)), key=lambda k: k["t"]), comp["fps"])
             inside = bool(fields or _owned(lay) or lay.get("layers"))
-            is_open = inside and (bool(lay.get("layers")) != (lay["id"] in flipped))
+            only = lay["id"] in anim_only
+            is_open = bool(fields) if only else inside and (bool(lay.get("layers")) != (lay["id"] in flipped))
             row = _row("layer", lay, depth, label_of(lay), summary)
             if F.param(lay["type"], "start") is not None:   # a camera, a shape …: when it shows, as a bar
                 row.update(bar=True, start=min(max(lay.get("start", 0.0), 0.0), duration),
@@ -91,8 +94,10 @@ def rows(comp: dict, flipped: set[str]) -> list[dict]:
                        for o, p in fields if o is lay)
             for o in _owned(lay):
                 keys = sorted((k for p in animated(o) for k in _keys(o, p)), key=lambda k: k["t"])
-                out.append(_row("owned", o, depth + 1, label_of(o), keys))
-            walk(lay.get("layers", []), depth + 1)
+                if keys or not only:
+                    out.append(_row("owned", o, depth + 1, label_of(o), keys))
+            if not only:
+                walk(lay.get("layers", []), depth + 1)
 
     walk(comp.get("layers", []), 0)
     return out

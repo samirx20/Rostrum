@@ -80,7 +80,7 @@ Rectangle {
         id: row
         x: Theme.gap; anchors.verticalCenter: parent.verticalCenter
         spacing: Theme.grid
-        Loader { active: bar.tool; sourceComponent: bar.toolOptions; anchors.verticalCenter: parent.verticalCenter }
+        Loader { active: bar.tool; visible: bar.tool; sourceComponent: bar.toolOptions; anchors.verticalCenter: parent.verticalCenter }   // an unloaded Loader keeps its last width: out of the row
         Text {
             visible: !bar.tool && !!bar.info.what
             anchors.verticalCenter: parent.verticalCenter

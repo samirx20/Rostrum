@@ -1,17 +1,17 @@
-"""Frame-by-frame on a drawing layer: what the timeline shows and the calls for the buttons. No Qt.
+"""Frame-by-frame on a drawing layer or a painted element (only the drawings that can show: drawing.shown_frames): what the timeline shows and the calls for the buttons. No Qt.
 
 A drawing shows its frame with the largest `at` <= the current frame number, held until the next one. The last
 frame is held to the end of the composition, so only a frame with a next one can be held longer or shorter.
 """
 from __future__ import annotations
 
-from rostrum2d.drawing import frame_at
+from rostrum2d.drawing import frame_at, shown_frames
 from rostrum_core.ids import random_id
 
 
 def marks(drawing: dict, fps: float, duration: float) -> list[dict]:
     """[{id, at, t0, t1}] sorted by `at`: where each drawing starts and until when it is held (seconds)."""
-    fr = sorted(drawing.get("frames", []), key=lambda f: f["at"])
+    fr = sorted(shown_frames(drawing), key=lambda f: f["at"])
     ends = [f["at"] for f in fr[1:]] + [round(duration * fps)]
     return [{"id": f["id"], "at": f["at"], "t0": f["at"] / fps, "t1": max(end, f["at"] + 1) / fps}
             for f, end in zip(fr, ends)]
@@ -19,7 +19,7 @@ def marks(drawing: dict, fps: float, duration: float) -> list[dict]:
 
 def state(drawing: dict, n: int) -> dict:
     """What the buttons need at frame number n: which of them apply (the rest are absent from the screen)."""
-    fr = sorted(drawing.get("frames", []), key=lambda f: f["at"])
+    fr = sorted(shown_frames(drawing), key=lambda f: f["at"])
     here = frame_at(drawing, n)
     nxt = next((f for f in fr if f["at"] > n), None)
     held = (nxt["at"] - here["at"]) if here and nxt else 0

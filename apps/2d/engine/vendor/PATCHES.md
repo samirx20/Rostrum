@@ -223,6 +223,11 @@ Not crates (`render/src`): `depth_tests.rs` — a parent's `perspective: 800px` 
 |---|---|---|
 | blitz-paint | `track_matte.rs` + `render.rs` hook: an element with `data-track-matte` (alpha, alphaInverted, luma, lumaInverted) draws its children after the first into an isolated layer, then the first child (the matte) as usual into a `DestIn` / `DestOut` layer; luma over opaque black through a `luminanceToAlpha` colour matrix | a track matte drawn by the same painting as every layer, so any layer type is a matte (the SVG `<mask>` copy of layer drawing drew nothing and is gone) |
 
+## H29 (paint on an element; 2026-10-22)
+| Crate | Patch | Why |
+|---|---|---|
+| blitz-paint | `track_matte.rs`: mode `atop` draws the first child (an element's paint) into a `SrcAtop` layer over the rest (the element) | paint kept inside any element's own pixels (a shape, a text's letters, a picture, a path) by one rule, with no second drawing of the element |
+
 ## H17 (rounded masks; 2026-10-22)
 | Crate | Patch | Why |
 |---|---|---|

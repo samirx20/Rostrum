@@ -31,7 +31,7 @@ def steps_handles(bridge, step, rest):
             bridge.rotateTo(ox + 100 * math.cos(a), oy + 100 * math.sin(a), flags["shift"])
         bridge.endDrag()
     elif word == "boxselect":
-        bridge._multi.boxSelect(*[float(v) for v in rest[:4]])
+        bridge._multi.boxSelect(*[float(v) for v in rest[:4]], " ".join(k for k in ("shift", "ctrl") if flags.get(k) or k in rest))   # [shift] [ctrl]
     elif word == "shiftpick":
         bridge._multi.toggle(rest[0])
     elif word == "movesel":

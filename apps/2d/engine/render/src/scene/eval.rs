@@ -52,15 +52,21 @@ fn fps(comp: &Node) -> f64 {
 
 /// The picture of the drawing showing at time `t`: the last with at ≤ floor(t·fps); "" before the first
 /// (rostrum2d/drawing.py `frame_at`, `frame_number`).
-fn drawing_src(node: &Node, t: f64, fps: f64) -> &str {
+/// The same rule picks an element's paint (`paint`).
+fn drawing_src(frames: &[(i64, String)], t: f64, fps: f64) -> &str {
     let n = (t * fps + 1e-6).floor() as i64;
-    node.frames.iter().take_while(|f| f.0 <= n).last().map_or("", |f| f.1.as_str())
+    frames.iter().take_while(|f| f.0 <= n).last().map_or("", |f| f.1.as_str())
 }
 
 fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
     let mut props = props_at(node, t);
     if node.kind == "drawing" {
-        props.insert("src".into(), Value::from(drawing_src(node, t, fps)));
+        props.insert("src".into(), Value::from(drawing_src(&node.frames, t, fps)));
+    }
+    if !node.paint.is_empty() {
+        // Paint on an element (stage_paint.rs): the picture showing now ("" before its first drawing).
+        props.insert("paintSrc".into(), Value::from(drawing_src(&node.paint, t, fps)));
+        props.insert("paintInside".into(), Value::from(node.paint_inside));
     }
     if node.kind == "video" {
         props.insert("picture".into(), Value::from(super::stage_fx::video_picture(node, t, fps)));

@@ -11,6 +11,7 @@ from rostrum_core.errors import codes
 from rostrum_core.tree import index
 from rostrum_paint.ops import build
 
+from . import paint_fields
 from .kind import REGISTRY as R
 
 
@@ -36,15 +37,16 @@ def _place(frames, at) -> int:
     return sum(1 for f in frames if f["at"] < at)
 
 
-@R.operation("frame.add", "Add a drawing to a drawing layer at a frame (blank, or a copy of another drawing to "
-             "redraw on). It shows until the next drawing.", target="drawing", label="New drawing",
+@R.operation("frame.add", "Add a drawing at a frame to a drawing layer or a painted element (blank, or a copy of "
+             "another drawing to redraw on). It shows until the next drawing; Draw each frame turns on in the same change.",
+             target=("drawing", *paint_fields.TYPES), label="New drawing",
              params=[Param.number("at", label="Frame", min=0, max=10**7, integer=True, required=True),
                      Param.id("copy", kind="frame", label="Copy of", importance="secondary",
                               help="A frame id whose paint layers are copied"),
                      Param.text("id", label="Id", importance="deep")])
 def frame_add(ctx, targets, args):
     for t in targets:
-        frames = ctx.item(t)["frames"]
+        frames = ctx.item(t).get("frames", [])
         if any(f["at"] == args["at"] for f in frames):
             ctx.fail(codes.BAD_ARGUMENT, f'at={args["at"]}', f"{t} already has a drawing at that frame")
         if args.get("copy"):
@@ -57,6 +59,8 @@ def frame_add(ctx, targets, args):
         else:
             frame = starter_frame(ctx, args["at"], args.get("id"))
         ctx.insert(t, "frames", frame, _place(frames, args["at"]))
+        if not ctx.item(t).get("eachFrame"):
+            ctx.set(t, "eachFrame", True)
 
 
 def _copy_ids(ctx, frame):

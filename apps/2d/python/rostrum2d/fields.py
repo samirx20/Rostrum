@@ -13,7 +13,7 @@ from dataclasses import replace
 from rostrum_core import Param
 from rostrum_core.keys import KEY_FIELDS
 
-from . import blends as _blends, grade_fields as _grade, layout_fields as _layout, stepped as _stepped, swap as _swap
+from . import blends as _blends, grade_fields as _grade, layout_fields as _layout, paint_fields as _paint, stepped as _stepped, swap as _swap
 
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 P = "primary"
@@ -329,6 +329,9 @@ for _t in LAYERS:
     if _t != "camera":
         FIELDS[_t] += STATE + _layout.CHILD + ([_layout.CHILD_GROW] if _t in _layout.SIZED else [])
     FIELDS[_t] += _stepped.LAYER
+for _t in _paint.TYPES:                    # paint on an element (paint_fields.py): its Paint group
+    FIELDS[_t] += _paint.ELEMENT
+FIELDS["drawing"] += _paint.DRAWING
 EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", *_motion.EFFECTS)
 ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask",) + _rig.OWNED_KEYS
 STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h"}, "path": {"w", "h"},
@@ -336,7 +339,7 @@ STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name f
          "video": {"w", "h", "offset", "speed"},
          "render3d": {"w", "h", "offset", "speed", "version"},
          "text": {"letterDelay", "letterSeed"},
-         **_rig.STILL, **_camera.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth", "locked", "hidden"}}
+         **_rig.STILL, **_camera.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth", "locked", "hidden", "paintW", "paintH"}}
 LABELS = {"comp": "Composition", "shape": "Shape", "text": "Text", "image": "Image", "video": "Video", "render3d": "3D render", "group": "Group", "drawing": "Drawing", "path": "Path", "frame": "Drawing frame",
           "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "mask": "Mask", "key": "Key",
           **_rig.LABELS, **_camera.LABELS, **_motion.LABELS}

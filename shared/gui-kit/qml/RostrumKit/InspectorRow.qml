@@ -9,7 +9,8 @@ import "."
 // opacity ease over Theme.reveal (160 ms); the Column below just follows. A new selection builds fresh rows
 // at their final state (a Behavior does not animate the first value), so the list swaps at once.
 // With `keyMarks` (an app with keys) every param row keeps a gutter at the right for its key mark (model.anim):
-// a filled diamond = a key at the playhead, outlined = animated, faint on hover only = could be animated.
+// a filled diamond = a key at the playhead, outlined = animated, faint (always shown, a little stronger on hover) =
+// could be animated (INTERACTION 1.5: always visible, not only on hover).
 // Clicking the mark is bridge.toggleAnimate (the app decides what that does).
 Item {
     id: row
@@ -113,11 +114,11 @@ Item {
         }
         HoverHandler { id: rowHover }
         Item {  // the key mark
-            visible: row.keyMarks && !!row.model.anim && (row.model.anim !== "still" || rowHover.hovered)
+            visible: row.keyMarks && !!row.model.anim
             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
             width: row.gutter - 4; height: Theme.field
             KeyMark { anchors.centerIn: parent; filled: row.model.anim === "onkey"
-                      color: row.model.anim === "still" ? (markArea.containsMouse ? Theme.fg2 : Theme.fg4)
+                      color: row.model.anim === "still" ? (markArea.containsMouse ? Theme.fg2 : rowHover.hovered ? Theme.fg3 : Theme.fg4)
                            : markArea.containsMouse ? Theme.accentHover : Theme.accent }
             MouseArea { id: markArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: row.bridge.toggleAnimate(row.model.id) }

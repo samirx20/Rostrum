@@ -100,7 +100,7 @@ pub fn measure(req: &Value, held: Option<&[fonts::Font]>) -> R<Value> {
     comp_props.insert("height".into(), json!(ROOM));
     comp_props.insert("fps".into(), json!(30.0));
     comp_props.insert("background".into(), json!("#000000"));
-    let comp = Node { id: "measure".into(), kind: "comp", role: fields::Role::Comp, props: comp_props, anim: vec![], effects: vec![], masks: vec![], layers, frames: vec![], rig: vec![] };
+    let comp = Node { id: "measure".into(), kind: "comp", role: fields::Role::Comp, props: comp_props, anim: vec![], effects: vec![], masks: vec![], layers, frames: vec![], paint: vec![], paint_inside: true, rig: vec![] };
     let named = |e: String| ids.iter().enumerate().rev().fold(e, |e, (i, id)| e.replace(&page_id(i), id));
     let markup = stage::stage(&eval::whole(&comp, 0.0)).map_err(named)?;
     let empty = "<div id=\"rostrum-stage\"></div>";

@@ -1,3 +1,4 @@
+import QtQml
 import QtQuick
 import RostrumKit
 
@@ -32,28 +33,36 @@ AppShell {
     Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
 
     // the tools: V move, P pen, B draw, Esc back to move (screen state, backend.setTool)
-    Shortcut { sequence: "V"; onActivated: backend.setTool("move") }
-    Shortcut { sequence: "P"; onActivated: backend.setTool(backend.tool === "pen" ? "move" : "pen") }
-    Shortcut { sequence: "B"; onActivated: backend.setTool("draw") }
-    Shortcut { sequence: "Escape"; enabled: backend.tool === "draw"; onActivated: backend.setTool("move") }
+    Shortcut { sequence: "V"; enabled: !shell.typing; onActivated: backend.setTool("move") }
+    Shortcut { sequence: "P"; enabled: !shell.typing; onActivated: backend.setTool(backend.tool === "pen" ? "move" : "pen") }
+    Shortcut { sequence: "B"; enabled: !shell.typing; onActivated: backend.setTool("draw") }
+    Shortcut { sequence: "R"; enabled: !shell.typing; onActivated: backend.setTool("rect") }       // creation tools (create.py)
+    Shortcut { sequence: "O"; enabled: !shell.typing; onActivated: backend.setTool("ellipse") }
+    Shortcut { sequence: "T"; enabled: !shell.typing; onActivated: backend.setTool("text") }
+    Shortcut { sequence: "A"; enabled: !shell.typing; onActivated: backend.showAnimated() }    // only the animated settings of the selection; again folds them
+    Shortcut { sequence: "Escape"; enabled: backend.tool === "draw" || backend.tool === "rect" || backend.tool === "ellipse"
+                                            || (backend.tool === "text" && !backend.create.typing); onActivated: backend.setTool("move") }
 
-    Shortcut { sequence: "Space"; onActivated: backend.togglePlay() }
-    Shortcut { sequence: "Alt+Left"; onActivated: painter.goFrame(-1) }       // frame by frame, on the selected drawing
-    Shortcut { sequence: "Alt+Right"; onActivated: painter.goFrame(1) }
+    Connections { target: spaceKey; function onTapped() { backend.togglePlay() } }   // a tap of Space plays; held, it pans (spacekey.py)
+    // frame by frame, on the selected drawing (INTERACTION Part 2: , and . step drawings, = and − hold; Alt+arrows nudge)
+    Shortcut { sequence: ","; enabled: !shell.typing && painter.drawingId !== ""; onActivated: painter.goFrame(-1) }
+    Shortcut { sequence: "."; enabled: !shell.typing && painter.drawingId !== ""; onActivated: painter.goFrame(1) }
     Shortcut { sequence: "Alt+N"; onActivated: painter.newFrame(false) }
     Shortcut { sequence: "Alt+Shift+N"; onActivated: painter.newFrame(true) }
-    Shortcut { sequence: "Alt+Up"; onActivated: painter.holdBy(1) }
-    Shortcut { sequence: "Alt+Down"; onActivated: painter.holdBy(-1) }
+    Shortcut { sequences: ["=", "+"]; enabled: !shell.typing && painter.drawingId !== ""; onActivated: painter.holdBy(1) }
+    Shortcut { sequence: "-"; enabled: !shell.typing && painter.drawingId !== ""; onActivated: painter.holdBy(-1) }
     Shortcut { sequence: "Alt+O"; onActivated: painter.setOnion(!painter.onionOn) }
     // select, then act: every action's key comes from the one key map (screen2d/keys2d.py) and runs through the one
-    // action list (backend.actions): only when valid now, else the status line says why. Not while typing.
-    readonly property bool typing: Window.activeFocusItem !== null && typeof Window.activeFocusItem.selectAll === "function"
+    // action list (backend.actions): only when valid now, else the status line says why. Not while typing. Delete is
+    // run here: keys picked in the timeline go before layers (backend.layerCommand, key_select.py)
+    readonly property bool typing: backend.create.typing || shell.activeFocusItem !== null && typeof shell.activeFocusItem.selectAll === "function"
     readonly property bool canvasKeys: backend.tool === "move" && !typing
     KeyMap {
         hub: backend.actions
         enabled: !shell.typing
-        skip: backend.actions.keys.map(k => k.job).filter(j => backend.actions.jobs.indexOf(j) < 0)   // keys run here
+        skip: backend.actions.keys.map(k => k.job).filter(j => j === "delete" || backend.actions.jobs.indexOf(j) < 0)   // keys run here
     }
+    Shortcut { sequences: ["Delete", "Backspace"]; enabled: !shell.typing; onActivated: backend.layerCommand("delete") }
     Shortcut { sequence: "Ctrl+A"; enabled: shell.canvasKeys; onActivated: backend.selectAllLayers() }
     // Esc steps back one level (the kit's ladder, selection_rules.esc_step): close an open panel, else clear
     Shortcut {
@@ -74,6 +83,10 @@ AppShell {
     Shortcut { sequence: "Shift+Right"; enabled: shell.canvasKeys; onActivated: backend.nudge(10, 0) }
     Shortcut { sequence: "Shift+Up"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, -10) }
     Shortcut { sequence: "Shift+Down"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, 10) }
+    Shortcut { sequence: "Alt+Left"; enabled: shell.canvasKeys; onActivated: backend.nudge(-0.1, 0) }      // the fine step
+    Shortcut { sequence: "Alt+Right"; enabled: shell.canvasKeys; onActivated: backend.nudge(0.1, 0) }
+    Shortcut { sequence: "Alt+Up"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, -0.1) }
+    Shortcut { sequence: "Alt+Down"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, 0.1) }
 
     function setExportOpen(open) { exportPanel.shown = open; if (open) { importPanel.shown = false; problemsPanel.shown = false } }
     function setImportOpen(open) { importPanel.shown = open; if (open) { exportPanel.shown = false; problemsPanel.shown = false } }
@@ -97,7 +110,7 @@ AppShell {
     ]
     FileFlow { id: fileFlow; window: shell }
     centre: [
-        Stage { id: stage; anchors.fill: parent },
+        Stage { id: stage; anchors.fill: parent; typing: shell.typing },   // typing: F stays a letter (ViewControls.qml)
         ExportPanel {   // opened by the Export button; docked on the canvas's right edge, beside the inspector (never over it)
             id: exportPanel
             anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }

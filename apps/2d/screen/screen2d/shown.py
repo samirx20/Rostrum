@@ -7,7 +7,10 @@ from the engine a little later than a change, and an overlay drawn from the live
 Hit-testing a press still reads the live document (the person acts on the newest truth).
 
 While a drag is under way (a layer, a handle, a point, a key or a bar), frames are drawn at half size so the picture
-keeps up; the drag's last frame, after release, is full size again. The engine's queue is newest-wins
+keeps up; the drag's last frame, after release, is full size again. The canvas's zoom (Stage.qml's one mapping, sent with
+setView) caps the size too: the engine draws the frame at the size it is shown, up to Full (VIEW_SCALES: the engine
+takes 1, 1/2 or 1/4), so the fit view doesn't draw more than it shows and 400 % shows a full-size frame, never a
+smaller one stretched. The same engine and scene either way (preview = export); the view itself is screen state. The engine's queue is newest-wins
 (rostrum_gui.frames.PictureWorker.post_latest): no backlog.
 `drag→shown` (STATS, playstats.py): from a drag's change to the frame that shows it on screen.
 
@@ -17,12 +20,19 @@ from __future__ import annotations
 
 import time
 
+from PySide6.QtCore import Slot
 from rostrum_core.tree import index
 from rostrum2d import retime
 
 from .playstats import STATS
 
 DRAG_SCALE = 0.5           # the engine's `scale` while dragging
+VIEW_SCALES = (0.25, 0.5, 1.0)   # the engine's sizes, smallest first: the first one at least as big as the view shows
+
+
+def view_scale(shown: float) -> float:
+    """The engine's `scale` for a frame shown at `shown` device px per composition px."""
+    return next((s for s in VIEW_SCALES if s >= shown - 1e-3), 1.0)
 
 
 class ShownState:
@@ -30,6 +40,20 @@ class ShownState:
         self._shown = None          # (doc.data, marker times, t) of the frame on screen; None: none yet (the live state)
         self._shown_placed = None   # (key, the comp placed): worked out once per shown state
         self._asked = {}            # id(doc.data) → when a drag made it (for drag→shown)
+        self._zoom, self._view = 1.0, 1.0   # the canvas's zoom (screen px per composition px) and its engine scale
+
+    @Slot(float, float)
+    def setView(self, zoom, device_ratio):
+        """The canvas's zoom changed (Stage.qml): snapping's distance follows it; the next frame is drawn at the size
+        shown (redrawn now only when that size changes)."""
+        self._zoom = max(float(zoom), 1e-6)
+        scale = view_scale(self._zoom * max(float(device_ratio), 1.0))
+        if scale != self._view:
+            self._view = scale
+            self._show()
+
+    def view_zoom(self) -> float:
+        return self._zoom
 
     def frame_tag(self):
         """What a frame about to be requested is rendered from (it comes back with the frame: _frame_shown)."""
@@ -39,8 +63,9 @@ class ShownState:
         return self._drag is not None or self._pen._drag is not None
 
     def frame_scale(self) -> float:
-        """The engine's scale for the next frame: Preview size while playing, half while dragging, else full."""
-        return DRAG_SCALE if self.dragging() and not self.play.playing else self.play.scale()
+        """The engine's scale for the next frame: Preview size while playing, half while dragging, else full; never
+        more than the canvas shows."""
+        return min(self._view, DRAG_SCALE if self.dragging() and not self.play.playing else self.play.scale())
 
     def _note_change(self):
         """A document change: remember when, while dragging (for drag→shown)."""

@@ -39,7 +39,7 @@ This page takes you from an empty project to something that moves, and shows you
 A value moves over time when it has **keys**. A key is a small diamond that remembers the value at one moment. You do not need another page for this: you change the value where it is.
 
 1. Pick your text. Put the playhead at 0 seconds.
-2. In the panel, find **X**. At the right edge of its row is a diamond, faint until you point at the row. Click it. It fills in, and a key is saved at 0 seconds.
+2. In the panel, find **X**. At the right edge of its row is a faint diamond. Click it. It fills in, and a key is saved at 0 seconds.
 3. Move the playhead to 1 second.
 4. Change **X**: type a new number and press Enter, or drag the text in the picture. A second key appears at 1 second by itself.
 
@@ -48,7 +48,7 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
 5. The diamond beside a value tells you its state:
    - **Filled**: there is a key at the playhead.
    - **Outlined**: the value is animated, but there is no key at this moment.
-   - **Faint, only when you point at the row**: it is not animated yet. Click it to start.
+   - **Faint**: it is not animated yet. Click it to start.
 6. The same keys show as diamonds on the layer's bar in the timeline. Drag a diamond to move that key in time. It snaps to the playhead and to markers.
 
 ## 6. Change how it feels
@@ -65,9 +65,9 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
 
 Select first, then act. Hold **Shift** and click more things in the picture, or **Ctrl+click** more names in the timeline, or drag a box round them on empty canvas, or press **Ctrl+A** for every layer. The panel then shows the settings they share ("Mixed" where they differ); change one and it changes on all of them, as one step.
 
-A small bar appears just under the picked layers with only what applies to them: **Group**, **Mask with top layer**, **Boolean** (two or more shapes), **Align**, **Distribute** (three or more). The **⋯** button opens everything. You get the same list when you right-click the picked layers, in **Ctrl+K**, and in a few shortcuts (Ctrl+G groups, Ctrl+Shift+G ungroups).
+The **context bar** at the top-centre of the canvas says how many you picked and shows only what applies to them: **Combine** (two or more shapes), **Group**, **Mask with top layer**, **Align**, **Distribute** (three or more). The **⋯** button opens everything. You get the same list when you right-click the picked layers, in **Ctrl+K**, and in a few shortcuts (Ctrl+G groups, Ctrl+Shift+G ungroups).
 
-![The action bar under two picked shapes](pictures/action-bar.png)
+![The context bar at the top-centre of the canvas, two layers picked](pictures/action-bar.png)
 
 ## 9. Undo a mistake
 
