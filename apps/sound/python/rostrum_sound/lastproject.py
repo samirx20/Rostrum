@@ -1,40 +1,27 @@
 """The person's last RostrumSound song, read the way the Sound screen's Recent songs list reads it
-(`<settings dir>/sound-recent.json`: rows {folder, item, name}, newest first; gone and untitled songs left out).
+(rostrum_core/recent.py, the one Open recent list: rows {folder, item, name}, newest first; gone songs left out).
 The MCP server opens the first row when it is started with no options, so an agent works on what the person was just doing.
 """
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from pathlib import Path
 
-from rostrum_core import project
+from rostrum_core import project, recent
 from rostrum_core.storage import paths
 
-from . import KIND, settings
+from . import KIND
 
-DEFAULT_ITEM = "song"             # a new song's item id inside its project folder (screensound.projects.ITEM)
+DEFAULT_ITEM = "song"             # a new song's item id inside its project folder (screensound/files_sound.py ITEM)
 
 
 def doc_file(folder, item) -> Path:
     return paths(folder, item, KIND.ext)["doc"]
 
 
-def _untitled(folder) -> bool:
-    try:
-        Path(folder).resolve().relative_to((settings.settings_dir().parent / "untitled-songs").resolve())
-        return True
-    except ValueError:
-        return False
-
-
 def recent_rows() -> list[dict]:
-    """[{folder, item, name}] newest first; songs that are gone (or untitled) are left out."""
-    try:
-        rows = json.loads((settings.settings_dir() / "sound-recent.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return []
-    return [r for r in rows if doc_file(r["folder"], r["item"]).is_file() and not _untitled(r["folder"])]
+    """[{folder, item, name}] newest first; songs that are gone are left out."""
+    return [{k: r[k] for k in ("folder", "item", "name")} for r in recent.rows("sound", KIND.ext)]
 
 
 def describe(row: dict) -> dict:

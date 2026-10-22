@@ -1,61 +1,41 @@
 # Files and settings
 
-Starting, saving and opening projects, and what happens when you close with changes not saved.
+Starting, opening and copying projects. Your work is saved as you go: there is no Save button and nothing to lose.
 
-## 1. The File menu
+## 1. Saving is automatic
 
-Click **File** at the top left.
+1. Every change is on disk the moment you make it. The top bar says **Saved** and how many changes you made.
+2. There is no unsaved dot and no "Save changes?" question when you close or open something else.
+3. An agent working on the same project saves the same way. You see its changes in your window as they happen.
 
-![The File menu](pictures/file-menu.png)
+## 2. The ≡ menu
 
-- **New project** (Ctrl+N): a fresh, empty project.
-- **Open…** (Ctrl+O): pick a project to open.
-- **Open sample**: a small example project to look around in. It is made fresh each time and is not saved until you save it.
-- **Save** (Ctrl+S): keeps your changes. It is in the menu only while there is something to save.
-- **Save as…** (Ctrl+Shift+S): keeps a copy of the project under a name you type.
-- **Recent**: under this heading are the projects you opened last. Click one to open it.
+Click **≡** at the top left.
+
+- **New** (Ctrl+N): a new project, made at once in your projects folder.
+- **Open…** (Ctrl+O): pick a project folder to open.
+- **Open recent**: the projects you opened last.
+- **Open sample**: your own copy of the sample project. The original never changes.
+- **Duplicate…** (Ctrl+Shift+S): a separate copy of the whole project under a name you choose. Your window stays on the original and says so; click **Open the copy** to go to it.
+- **Save a version** (Ctrl+S): gives the project as it is now a name, in History, so you can come back to it. The time is filled in as the name; type another if you like.
+- **Show folder**: the project's folder on your computer.
+- **Start screen…**: the start screen (see 4).
 
 The same actions are in the command box (**Ctrl+K**).
 
-## 2. A project is a folder
+## 3. A project is a folder
 
 1. Each project is a folder. It holds your work, your exports and your markers together.
-2. New projects go in `Documents\Rostrum2D`. **Save as…** also makes its new folder there.
-3. A new project is called "Untitled 1", "Untitled 2" and so on until you give it a name. It already has its folder, so **Save** keeps it there under that name.
+2. New projects go in `Documents\Rostrum2D`, called "Untitled", "Untitled 2" and so on.
+3. A new project you leave without changing anything is removed, so trying New leaves nothing behind.
 
-## 3. The unsaved dot
+## 4. Starting the app
 
-1. Next to the project's name at the top is a small dot while you have changes that are not saved yet.
-2. Press **Ctrl+S**, or choose **Save** in the File menu. The dot goes away.
+1. The app opens the project you had open last.
+2. With nothing to reopen, the start screen shows: **New**, **Open…**, **Open the sample**, your recent projects (with a picture of each), and three guides.
 
-## 4. Name a project
+## 5. If a project can't be opened
 
-1. Choose **Save as…** in the File menu.
-2. A box asks for a name and says that a new project folder is made in your Rostrum2D folder. It starts with a suggested name, which you can change.
-3. Type a name and click **Save**. The new project opens in its own window, with your changes in it. **Cancel** changes nothing.
-
-## 5. Open a project
-
-1. Choose **Open…**, then pick the project in the window that opens. It starts in your Rostrum2D folder.
-2. Or choose one from **Recent** in the same menu.
-3. The project opens in its own window.
-
-## 6. If the computer stops before you save
-
-1. While you have unsaved changes, the app keeps a recovery copy for you about once a minute. It never replaces your saved project.
-2. Next time you open that project, a question appears: **Restore unsaved changes?** It says when the copy was made.
-3. **Restore** brings the changes back. **Discard** throws the copy away.
-
-## 7. Closing with unsaved changes
-
-When you close the window, or use **New project**, **Open…** or **Open sample**, with unsaved changes, the app asks **Save changes to** your project's name:
-
-- **Save**: keeps the changes, then carries on.
-- **Don't save**: throws the changes away, then carries on.
-- **Cancel**: stays where you are.
-
-## 8. If someone else saved it first
-
-If an agent or another window saved the same project after you opened it, **Save** will not write over theirs. It says so. Use **Save as…** to keep your version as a new project. An agent's changes and yours are kept apart: **Ctrl+Z** takes back only your own steps.
+A damaged project, or one saved by a newer Rostrum2D, is not opened. A sentence in the top bar says why and that nothing was changed.
 
 Next: [first-animation.md](first-animation.md), [exporting.md](exporting.md).

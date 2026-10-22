@@ -49,10 +49,10 @@ Rectangle {
             height: r.inner
             Rectangle {   // the microphone's peak, -60 … 0 dBFS, sideways (the engine's {"input"} level)
                 id: level
-                visible: recorder.level !== null
+                visible: typeof recorder.level === "number"     // none (null / undefined): no microphone level yet
                 x: Theme.gap; anchors.verticalCenter: parent.verticalCenter
                 width: 24; height: 6; radius: 3; color: Theme.sunken
-                readonly property real db: recorder.level === null ? -100 : recorder.level
+                readonly property real db: typeof recorder.level === "number" ? recorder.level : -100
                 Rectangle { height: parent.height; radius: 3
                             width: parent.width * Math.max(0, Math.min(1, (level.db + 60) / 60))
                             color: level.db > -1 ? Theme.danger : level.db > -6 ? Theme.warn : Theme.ok }
