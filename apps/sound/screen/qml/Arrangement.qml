@@ -5,7 +5,7 @@ import RostrumKit
 // The arrangement, always in the middle (DESIGN.md §2.2, INTERACTION.md §1.1): a header strip — + Add, ⏮ ▶, ⟳ (only
 // with a time range), Record
 // (while a track is armed), the position and tempo · beats · key (click: the tempo / key popover), then at the right
-// the picture's switch (while the song has one) and the zoom (− + Fit) — then the Timeline (ruler, sections,
+// the picture's switch (while the song has one), Grid ▾ and Snap, and the zoom (− + Fit) — then the Timeline (ruler, sections,
 // markers, track headers and lanes, + Track, the Master row last). A new song says what to do first (W1): "Start with
 // a sound." with Add a track and Bring in a picture. The picture floats at the top right while it is open.
 Rectangle {
@@ -69,6 +69,18 @@ Rectangle {
             Button { visible: backend.picture !== ""; text: "Picture"; kind: "ghost"; down: backend.pictureOpen
                      height: Theme.field; onClicked: backend.setPictureOpen(!backend.pictureOpen) }
             Item { visible: backend.picture !== ""; width: Theme.gap; height: 1 }
+            Button {   // Grid ▾: the step every snap uses (timing.GRID; screen state)
+                id: gridBtn; kind: "ghost"; height: Theme.field; down: gridMenu.visible
+                text: "Grid " + (backend.gridChoices.find(c => c.value === backend.grid) || {label: ""}).label + " ▾"
+                onClicked: { const p = gridBtn.mapToItem(null, 0, gridBtn.height + 2); gridMenu.openAt(p.x, p.y) }
+                HoverTip { text: "The grid notes, clips and ranges snap to (Auto follows the zoom)"; hovered: parent.hovered && !gridMenu.visible }
+                ActionMenu { id: gridMenu; entries: backend.gridChoices; onPicked: (v) => backend.setGrid(v) }
+            }
+            Button { text: "Snap"; kind: "ghost"; height: Theme.field; down: backend.snapOn
+                     onClicked: backend.setSnap(!backend.snapOn)
+                     HoverTip { text: backend.snapOn ? "Snapping is on: drags land on the grid, markers and the playhead (hold Ctrl for free). Click to turn it off"
+                                                     : "Snapping is off: everything moves freely. Click to turn it on"; hovered: parent.hovered } }
+            Item { width: Theme.gap; height: 1 }
             Text {   // while zoomed in: how far
                 visible: !backend.viewFit && !a.compact; anchors.verticalCenter: parent.verticalCenter; rightPadding: Theme.gap
                 text: "Zoom " + (Math.round(backend.song.length / backend.viewSpan * 10) / 10) + "×"

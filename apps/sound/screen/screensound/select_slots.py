@@ -62,6 +62,8 @@ class SelectSlots:
         if gone:
             return self._fail(f'Error: select: no item "{gone[0]}".')
         self._picks.set(ids, anchor)
+        if ids:
+            self.__dict__["_range_newer"] = False        # items picked after the range: actions mean them (Facts)
         self.selectMany(self._picks.ids)          # the kit: the settings panel + selectionChanged
         self.picksChanged.emit()
 
@@ -167,6 +169,7 @@ class SelectSlots:
         """A drag on the ruler: a time range, snapped to the grid unless free (Ctrl)."""
         a, b = sorted((timing.snap(t0, self.doc.data, free), timing.snap(t1, self.doc.data, free)))
         self._picks.range = (a, b) if b - a > 1e-3 else None
+        self.__dict__["_range_newer"] = True             # a range drawn after the items: Ctrl+D etc. mean the range
         self.rangeChanged.emit()
         self.selectionChanged.emit()
         self._range_moved()

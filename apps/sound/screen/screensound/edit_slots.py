@@ -65,7 +65,7 @@ class EditSlots:
             return self.addHit(t, row)
         if not self._track:
             return ""
-        call = moves.add_note_call(self.doc, self._track, t, int(round(row)), beats=timing.SNAP_BEATS)
+        call = moves.add_note_call(self.doc, self._track, t, int(round(row)), beats=timing.step_beats(self.doc.data))
         return self._add_one("notes", call, "Draw note")
 
     def _add_one(self, key, call, label):

@@ -21,6 +21,7 @@ import os
 import sys
 from pathlib import Path
 
+import shiboken6
 from PySide6.QtCore import Q_ARG, QMetaObject, QTimer, QUrl
 from PySide6.QtGui import QGuiApplication
 
@@ -125,7 +126,7 @@ class Screen:
         if old_win is not None:
             old_win.deleteLater()
         self.parts = {"bridge": bridge, "mixer": mixer, "recorder": recorder, "keys": keys, "side": side,
-                      "library": library}
+                      "library": library, "context": context}   # every object QML reads lives as long as the window
 
     @staticmethod
     def _close(parts):
@@ -137,6 +138,13 @@ class Screen:
         return self.parts["bridge"]
 
     def close(self):
+        """The window and its engine go first, then what their bindings read: closed the other way round, every
+        binding still alive re-reads a context object that is already gone ("Cannot read property … of null")."""
+        if self.win is not None:
+            self.win.close()
+        if self.engine is not None:
+            shiboken6.delete(self.engine)            # destroys the window and every binding with it, now
+            self.engine = self.win = None
         if self.parts:
             self._close(self.parts)
         self.songs.close()

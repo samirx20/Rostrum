@@ -82,6 +82,7 @@ ACTIONS = [
         needs="Land a bar needs one marker selected (placed in seconds)"),       # asks the bar first (a popover)
     act("vary", "Make another like it", lambda f: f.one == "sound", lambda f: [C.call("sound.vary", f.ids)],
         importance="primary", group="sound"),
+    act("speak_again", "Speak again", lambda f: f.one == "line", importance="primary", group="line", do="speak"),
     # clips
     act("clean", "Clean up…", CLIP, importance="primary", group="clip", do="clean"),
     act("normalize", "Even out level", CLIP, lambda f: [C.call("clip.normalize", f.ids, by="loudness")],
@@ -101,9 +102,9 @@ ACTIONS = [
         importance="primary", group="section"),
     act("section_inside", "Select what's inside", lambda f: f.one == "section" and f.count == 1, importance="primary",
         group="section", do="inside"),
-    # a time range (nothing else selected)
-    act("section", "Make a section", lambda f: f.range and not f.count, C.section, importance="primary", group="range"),
-    act("inside", "Select what's inside", lambda f: f.range and not f.count, importance="primary", group="range",
+    # a time range (a section is made from the range whatever else is selected; the rest when the range is newer)
+    act("section", "Make a section", lambda f: bool(f.range), C.section, importance="primary", group="range"),
+    act("inside", "Select what's inside", lambda f: f.on_range, importance="primary", group="range",
         do="inside"),
     # the edit block: keys and the right-click menu, never the context bar
     act("copy", "Copy", lambda f: f.count and f.kinds <= CLIPS, shortcut="Ctrl+C", group="edit", do="copy",
@@ -112,9 +113,10 @@ ACTIONS = [
         needs="Cut needs notes, hits, clips or lines selected"),
     act("paste", "Paste", lambda f: f.clipboard, shortcut="Ctrl+V", group="edit", do="paste",
         needs="Nothing to paste yet: copy something first"),
-    act("duplicate", "Duplicate", lambda f: f.count and (f.kinds <= set(TIMED) or TRACK(f)), C.duplicate, "Ctrl+D",
+    act("duplicate", "Duplicate", lambda f: f.count and not f.on_range and (f.kinds <= set(TIMED) or TRACK(f)),
+        C.duplicate, "Ctrl+D",
         group="edit", needs="Duplicate needs notes, hits, clips or tracks selected"),
-    act("range_duplicate", "Duplicate", lambda f: f.range and not f.count and bool(C.inside(f)), C.range_duplicate,
+    act("range_duplicate", "Duplicate", lambda f: f.on_range and bool(C.inside(f)), C.range_duplicate,
         "Ctrl+D", group="edit"),
     act("rename", "Rename", lambda f: f.one in NAMED and f.count == 1, shortcut="F2", group="edit", do="rename",
         needs="Rename needs one track, marker or section selected"),

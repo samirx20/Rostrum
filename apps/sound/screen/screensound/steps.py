@@ -134,6 +134,13 @@ def shot(bridge, win, path):
 
 
 def do_step(bridge, win, step, recorder=None):
+    bridge.__dict__["_refused"] = ""             # an action refused during this step fails it (action_slots._refuse)
+    _do_step(bridge, win, step, recorder)
+    if bridge.__dict__.get("_refused"):
+        raise RuntimeError(f"step {step!r}: refused: {bridge.__dict__['_refused']}")
+
+
+def _do_step(bridge, win, step, recorder=None):
     word, *rest = step.split()
     if word == "dock":
         bridge.workspace.setDock(rest[0])

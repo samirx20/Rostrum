@@ -49,6 +49,9 @@ AppShell {
         return !!f && f.cursorPosition !== undefined && f.selectByMouse !== undefined      // a text field has the keys
     }
     KeyMap { hub: backend.actions; enabled: !shell.typing; skip: backend.actions.skip }
+    // A new selection (a click in the arrangement, the Editor or the Mixer, or a track made from the Library) gives the
+    // keys back to the work: a text field (the Library's search, a settings row) never keeps them silently.
+    Connections { target: backend; function onPicksChanged() { if (shell.typing) shell.contentItem.forceActiveFocus() } }
     leading: FileMenu { id: fileMenu; settingsPanel: settingsPanel; anchors.verticalCenter: parent.verticalCenter }
     SettingsPanel { id: settingsPanel }
     actions: [          // the top bar's chips, then Export (kit TopBar: its `actions` slot sits before Search)

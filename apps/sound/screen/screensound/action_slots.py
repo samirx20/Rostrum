@@ -7,6 +7,8 @@ SoundBridge; the empty-space menus ("Paste here", "Add marker here") are Sound's
 """
 from __future__ import annotations
 
+import random
+
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui import commands
 from rostrum_gui.action_hub import ActionHub
@@ -48,9 +50,16 @@ class ActionSlots:
     libraryWanted = Signal(str)       # "Place a sound here": the Library opens on this chip
     cleanWanted = Signal()            # "Clean up…": the host opens the clean-up popover
     askWanted = Signal(str, str, float)   # an action asks one number first (Land a bar here: "Bar", the nearest)
+    voiceWanted = Signal(str)         # a voice track's lines need their speech made (editor_side starts the job)
+
+    def _refuse(self, line):
+        """An action asked for that can't run now: said in the message line, and kept so a scripted step that asked
+        for it fails (a refusal is not a success, AGENTS rule 6)."""
+        self.__dict__["_refused"] = line
+        self.say(line)
 
     def _make_actions(self):
-        self._hub = SoundHub(self, LIST, self._facts, self._what, self._act_apply, self._act_do, self.say)
+        self._hub = SoundHub(self, LIST, self._facts, self._what, self._act_apply, self._act_do, self._refuse)
         for sig in (self.picksChanged, self.rangeChanged, self.docChanged, self.selectionChanged):
             sig.connect(self._hub.refresh)
         self.timeChanged.connect(lambda: None if self.playing else self._hub.refresh())   # Split at playhead
@@ -59,7 +68,8 @@ class ActionSlots:
     actions = Property(QObject, lambda self: self._hub, constant=True)
 
     def _facts(self):
-        return C.Facts(self.doc, self._picks.ids, self._t, self._picks.range, bool(self._board["items"]), self._track)
+        return C.Facts(self.doc, self._picks.ids, self._t, self._picks.range, bool(self._board["items"]), self._track,
+                       self.__dict__.get("_range_newer", False))
 
     def _what(self, f) -> str:
         return self.selectionWords or ("Time range" if self._picks.range else "")
@@ -97,6 +107,11 @@ class ActionSlots:
             self.libraryWanted.emit("designed")
         elif name == "clean":
             self.cleanWanted.emit()
+        elif name == "speak":                                   # Speak again: a new take of each line, made at once
+            calls = [{"op": "line.set", "target": [i], "args": {"seed": random.randint(1, 999999)}} for i in ids]
+            if self._act(calls, f"Speak again · {words}"):
+                for track in dict.fromkeys(self.doc.parent_of(i)[0] for i in ids):
+                    self.voiceWanted.emit(track)
         elif name == "fit":
             self.askWanted.emit("fit_bar", "Bar", float(C.bar_near(self._facts())))
         else:
@@ -107,7 +122,7 @@ class ActionSlots:
         """The popover's answer for Land a bar here: `tempo.fit_bar` with that bar (one step)."""
         f = self._facts()
         if not (f.one == "marker" and f.count == 1):
-            self.say("Land a bar needs one marker selected (placed in seconds)")
+            self._refuse("Land a bar needs one marker selected (placed in seconds)")
             return False
         return self._act(C.fit_bar(f, int(bar)), f"Land bar {int(bar)} on {f.items[0].get('name')}")
 

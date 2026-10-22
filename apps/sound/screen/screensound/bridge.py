@@ -18,9 +18,11 @@ from rostrum_sound import compile as compile_doc
 from rostrum_sound.doc import markers as MK
 from rostrum_sound.doc import ops_mix
 
+from . import voice_card
 from . import inspect, lanes, onpage, output_pick, picture, pick, timeline
 from .action_slots import ActionSlots
 from .edit_slots import EditSlots
+from .grid_slots import GridSlots
 from .handle_slots import HandleSlots
 from .key_slots import KeySlots
 from .lane_slots import LaneSlots
@@ -36,14 +38,13 @@ from .workspace import Workspace
 SOUNDING = ("notes", "hits", "clips", "sounds")       # what makes a compiled track last (engine contract/track.rs)
 
 
-class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, HandleSlots, ActionSlots, KeySlots, SelectSlots, S, DocBridge):
+class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, HandleSlots, GridSlots, ActionSlots, KeySlots, SelectSlots, S, DocBridge):
     def __init__(self, doc, name="Untitled song", autosave=False, parent=None):
         self.name, self.autosave = name, autosave
         self._t, self._track = 0.0, ""
         self.workspace = Workspace(lambda line: self._fail(line), lambda: self.model.reset(self._rows()))
         self._drag = self._grab = None
         self._view: dict = {}
-        self._fitted: set[str] = set()      # tracks the piano roll has already framed once
         self._zoom = View()                 # which stretch of the song is on screen (screen state, not an edit)
         self._open: dict = {}               # track id -> (item id, lane) of the automation lane shown under its row
         self._edit = None                   # the automation point being dragged (lanes.PointEdit)
@@ -70,6 +71,7 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, Hand
         self.transport.said.connect(self.say)
         self.transport.moved.connect(self._moved)
         self.transport.render()
+        self.viewChanged.connect(self._follow_zoom)       # Grid "Auto" follows the zoom (grid_slots.py)
         self._make_actions()                # the one action list: context bar, menus, Ctrl+K, keys (action_slots.py)
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
@@ -165,23 +167,14 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, Hand
     def _schedule(self) -> dict:
         """The compiled song. A song with nothing in it yet (a new one, or an instrument with no notes) is still a
         song: it renders as silence the length the screen shows, instead of the engine refusing an empty schedule."""
-        s = compile_doc(self.doc)
+        side = getattr(self, "side", None)                 # lines being spoken right now play once they are made
+        s = compile_doc(voice_card.without(self.doc, side.voice.making()) if side else self.doc)
         if "length" not in s and not any(t.get(k) for t in s["tracks"] for k in SOUNDING):
             s["length"] = self._length()
         return s
 
     def _length(self) -> float:
         return self._view["song"]["length"]
-
-    def _frame_new_track(self):
-        """The first time a track is shown, fit the view to its sounds (a short phrase is not a speck at the left).
-        Only while the view is still the screen's own: a person's zoom is left alone."""
-        if not self._track or self._track in self._fitted:
-            return
-        self._fitted.add(self._track)
-        blocks = self._view["roll"]["blocks"]
-        if blocks and (self._zoom.fit or self._zoom.auto):
-            self._zoom.fit_to(min(b["t"] for b in blocks), max(b["t"] + b["dur"] for b in blocks), self._length())
 
     def _markers_changed(self):
         """A project marker moved, was renamed or deleted (in 2D, by an agent …): follow renames as one recorded
@@ -204,8 +197,7 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, Hand
         track = self.doc.item(self._track) if self._track and self.doc.has(self._track) else None
         self._view = {"rows": rows, "markers": timeline.markers(root), "song": timeline.song(root),
                       "roll": timeline.roll(track, root, hue)}
-        self._zoom.clamp(self._length())
-        self._frame_new_track()
+        self._zoom.clamp(self._length())        # the view is the person's: nothing new on screen zooms or scrolls it
         self.timelineChanged.emit()
         self.viewChanged.emit()
 

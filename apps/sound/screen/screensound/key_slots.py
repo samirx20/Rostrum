@@ -33,7 +33,7 @@ class KeySlots:
 
     @Slot(str, int, result=bool)
     def nudge(self, how, sign):
-        beats = {"grid": timing.SNAP_BEATS, "bar": float(self.doc.data.get("beatsPerBar", 4)), "fine": 1 / 32}[how]
+        beats = {"grid": timing.step_beats(self.doc.data), "bar": float(self.doc.data.get("beatsPerBar", 4)), "fine": 1 / 32}[how]
         by = C.Facts(self.doc, self._picks.ids).by_kind()
         if not by:
             return False
@@ -64,7 +64,7 @@ class KeySlots:
     @Slot(int)
     def playheadStep(self, n):
         """Ctrl+← →: the playhead `n` grid steps (never a change)."""
-        beat = timing.beat(self._t, self.doc.data) + n * timing.SNAP_BEATS
+        beat = timing.beat(self._t, self.doc.data) + n * timing.step_beats(self.doc.data)
         self.setTime(max(0.0, timing.tempo.seconds_at(self.doc.data, max(0.0, beat))))
 
     @Slot(int)

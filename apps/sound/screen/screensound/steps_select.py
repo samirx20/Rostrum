@@ -20,6 +20,8 @@ bridge call a click, a box, a key or a menu makes.
       clean <voice 0|1> <noise 0|1> <echo 0|1> (Clean: the steps on the selected clips, then their cleaned takes)
     tool select|draw (the Editor's tool) | add-hit <t s> <drum row> (a double-click on an empty drum row) |
       draw <t s> <key or drum row> (a click with the Draw tool)
+    line-type <words …> (Enter in the Editor's "Type what she says" on its voice track) | speak-again (on the
+      selected lines) | grid auto|bar|beat|1/8|1/16|1/32|1/8T|1/16T | snap on|off
 """
 from __future__ import annotations
 
@@ -30,7 +32,8 @@ from PySide6.QtTest import QTest
 WORDS = ("select-many", "select-add", "select-run", "select-all", "box", "range", "range-clear", "action",
          "action-bar", "menu", "menu-roll", "key", "copy", "cut", "paste", "drag-many", "handle", "lock", "loop",
          "range-edge", "rename-open", "rename", "open", "jump", "playhead-step", "fit-selection", "marker-add",
-         "fit-bar", "ask", "place", "library", "clean-open", "clean", "tool", "add-hit", "draw")
+         "fit-bar", "ask", "place", "library", "clean-open", "clean", "tool", "add-hit", "draw", "line-type",
+         "speak-again", "grid", "snap")
 
 
 def _find(item, prop):
@@ -152,3 +155,12 @@ def do_select_step(bridge, win, word, rest):
         made = (bridge.addHit if word == "add-hit" else bridge.drawAt)(float(rest[0]), float(rest[1]))
         if not made:
             raise RuntimeError(f"{word}: nothing added: {bridge.status}")
+    elif word == "line-type":
+        if not bridge.side.typeLine(bridge.roll.get("id", ""), " ".join(rest)):
+            raise RuntimeError(f"line-type: no line added (the Editor shows no voice track?): {bridge.status}")
+    elif word == "speak-again":
+        bridge.run("speak_again")
+    elif word == "grid":
+        bridge.setGrid(rest[0])
+    elif word == "snap":
+        bridge.setSnap(rest[0] == "on")
