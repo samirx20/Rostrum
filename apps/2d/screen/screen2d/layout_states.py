@@ -107,6 +107,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("about", ["--sample"], ["about"]),
         ("connect-agent", ["--sample"], ["agents"]),
         ("guide", ["--sample"], ["guide the-screen.md"]),
+        ("start-screen-guide", ["--sample"], ["startscreen open", "guide text-on-a-path.md"]),   # no timeline under it
         ("guides-list", ["--sample"], ["guides open"]),                       # the kit's guides drawer (F1)
         ("guides-find", ["--sample"], ["guides find a_word_no_guide_has_anywhere_in_its_text_at_all"]),
         ("key-list", ["--sample"], ["keylist open"]),                          # Ctrl+/

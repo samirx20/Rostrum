@@ -10,7 +10,9 @@ look tools and exports all render through it, the same way (preview ≡ export).
 The engine holds the scene and evaluates every frame itself (keys, easing, drawing); Python only describes it.
 
 If the process dies (a crash, ended in Task Manager), the next request starts a new one and loads the scene again;
-a short request that was cut off (a frame, a measure) is sent again. One line goes to the log (stderr) and `notice`
+a short request that was cut off (a frame, a measure) is sent again. An engine that doesn't answer within the
+request's time limit is ended and counts as dead: no wait on it can hang (a stuck graphics driver once kept the
+window from ever showing). One line goes to the log (stderr) and `notice`
 holds a sentence for the person. Dying again within QUICK_S of a restart is not retried: every request then fails
 with one plain sentence (GAVE_UP). An export is never sent again (Cancel ends the engine on purpose).
 """
@@ -19,8 +21,10 @@ from __future__ import annotations
 import json
 import mmap
 import os
+import queue
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -84,6 +88,15 @@ class Engine:
         self.proc = subprocess.Popen([str(self.exe), "serve"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                      stderr=self._log, creationflags=settings.NO_WINDOW)
         self.pid = self.proc.pid
+        self._lines: queue.Queue = queue.Queue()     # the engine's reply lines, read by a thread; None: it ended
+        threading.Thread(target=self._read, args=(self.proc.stdout, self._lines), daemon=True,
+                         name=f"engine2d-{self.pid}").start()
+
+    @staticmethod
+    def _read(out, lines: queue.Queue):
+        for line in iter(out.readline, b""):
+            lines.put(line)
+        lines.put(None)
 
     def _restart(self):
         """A new process for the dead one, the scene loaded again; GAVE_UP when it died again soon after the last restart."""
@@ -123,8 +136,15 @@ class Engine:
             self.proc.stdin.write((json.dumps(req) + "\n").encode("utf-8"))
             self.proc.stdin.flush()
             while True:
-                line = self.proc.stdout.readline()
-                if not line:
+                try:
+                    line = self._lines.get(timeout=max(0.0, t0 + timeout_s - time.perf_counter()))
+                except queue.Empty:
+                    self.proc.kill()                     # stuck: ended, so the next request starts a fresh one
+                    _log_line(f"the 2D drawing engine (pid {self.pid}) gave no answer to {next(iter(req))} in "
+                              f"{timeout_s:.0f} s and was ended; its log: {self.log_path}")
+                    raise _Died(f"2D engine (pid {self.pid}) gave no answer to {next(iter(req))} in {timeout_s:.0f} s; "
+                                f"log {self.log_path}") from None
+                if line is None:
                     raise _Died(f"2D engine (pid {self.pid}) ended without a reply; log {self.log_path}")
                 out = json.loads(line)
                 if set(out) != {"progress", "of"}:           # export's per-frame progress lines (keys in any order)
@@ -133,8 +153,6 @@ class Engine:
                     progress(out["progress"], out["of"])
         except OSError as e:
             raise _Died(f"2D engine (pid {self.pid}) stopped: {e}; log {self.log_path}") from e
-        if time.perf_counter() - t0 > timeout_s:
-            raise EngineError(f"2D engine took over {timeout_s} s for {next(iter(req))}")
         if "error" in out:
             raise EngineError(f"2D engine refused {next(iter(req))}: {out['error']}")
         out["ms"] = (time.perf_counter() - t0) * 1000
