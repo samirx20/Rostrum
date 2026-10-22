@@ -106,10 +106,8 @@ class Exporter(QObject):
         """The folder the file goes into, in words: shown before the export starts, while it runs and after."""
         if self._target:
             return str(self._chosen().parent)
-        folder = self._bridge.doc.folder
-        if folder and self._fmt not in exporting.DATA:
-            return f"{Path(folder) / 'renders' / self._bridge.doc.item_id} (in a new version folder)"
-        return f"{RENDER_DIR} (the render cache)"
+        base = exporting.project_renders(self._bridge.doc.folder, self._bridge.doc.item_id)
+        return f"{base} (in a new version folder)" if base else f"{RENDER_DIR} (the render cache)"
 
     @Property(str, notify=changed)
     def path(self):

@@ -127,7 +127,7 @@ Every version folder has a `manifest.json`. The Editor, the cache and agents rea
 }
 ```
 
-A sound manifest has `"kind": "sound"`, `sample_rate`, `bit_depth`, `stems` and, per file, `loudness_lufs`, `true_peak_db` and `clipped_at`.
+Data exports that are not frames (2D's Lottie and motion samples) have `"kind": "data"` and a `format`; a reader of `"pictures"` never picks them up. A sound manifest has `"kind": "sound"`, `sample_rate`, `bit_depth`, `stems` and, per file, `loudness_lufs`, `true_peak_db` and `clipped_at`.
 
 - `history_entry` ties the render to the exact version of the document. A changed document means a new render, never a patched one.
 - The cache key includes the engine version (AGENTS rule 7): a new engine re-renders.

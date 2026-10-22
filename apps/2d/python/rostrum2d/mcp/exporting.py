@@ -120,9 +120,16 @@ def _engine():
     return Engine()
 
 
+def project_renders(folder, item) -> Path | None:
+    """The one rule for where an export goes when no path is chosen, for every format: the project's
+    renders/<item>/ (a new vNNN version folder each time), else (no project yet) the render cache, RENDER_DIR."""
+    return Path(folder) / "renders" / item if folder and item else None
+
+
 def _manifest(item, doc_seq, comp_id, fmt, s, facts, version, names, size) -> dict:
     fps, first = facts["fps"], 1001 + round(s["start"] * facts["fps"])
-    return {"item": item, "version": version, "kind": "pictures", "format": fmt, "made_by": "agent:rostrum-2d",
+    # Lottie and motion samples are data, not frames: their own kind, so readers of "pictures" never pick them up
+    return {"item": item, "version": version, "kind": "data" if fmt in DATA else "pictures", "format": fmt, "made_by": "agent:rostrum-2d",
             "made_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "source": {"document": item, "history_entry": doc_seq, "comp": comp_id}, "engine": "rostrum-2d",
             "frames": {"first": first, "last": first + facts["frames"] - 1, "fps": f"{fps:g}/1", "start": s["start"], "end": s["end"]},
@@ -132,8 +139,8 @@ def _manifest(item, doc_seq, comp_id, fmt, s, facts, version, names, size) -> di
 
 def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_seq=0, out=None, progress=None, engine_factory=None,
         name=None, overwrite=False) -> dict:
-    """Export `scene` as `fmt` with settings `s` (from settings()). Where it goes: `out` (a file; for a sequence a folder), else the
-    project's renders folder (folder + item; not for Lottie or motion, which are not pictures), else the render cache.
+    """Export `scene` as `fmt` with settings `s` (from settings()). Where it goes: `out` (a file; for a sequence a folder), else
+    project_renders(folder, item) for every format, else the render cache.
     Written under a .partial name and renamed when read back right; a failed or cancelled run removes what it wrote. Returns the facts: file, frames, fps, alpha, depth, checked,
     files (what was written), report (Lottie: what it couldn't carry).
     `name`: the file's name without its extension (export_name.stem_of: the project's and the composition's); default item_composition.
@@ -142,14 +149,14 @@ def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_
     stem = name or f'{item or "doc"}_{comp["id"]}'
     png = fmt in table.FORMATS and not table.FORMATS[fmt].video     # a sequence: one file per frame, in a folder
     seq_name = lambda base: table.pattern(table.FORMATS[fmt], base)
-    if out is None and folder and item and fmt not in DATA:       # a project render: renders/<item>/vNNN/
+    if out is None and project_renders(folder, item):              # a project render: renders/<item>/vNNN/
         part = project.begin_render(folder, item)
         name = f"{stem}{row['ext']}"
         try:
             facts = _to_file(where, scene, fmt, s, part / (stem if png else name), progress, engine_factory)
             names = sorted(p.name for p in part.iterdir())
             done = project.finish_render(part, _manifest(item, doc_seq, comp["id"], fmt, s, facts, int(part.name[1:].split(".")[0]),
-                                                         names, (comp["props"]["width"], comp["props"]["height"])))
+                                                         names, (comp["props"].get("width"), comp["props"].get("height"))))
         except BaseException:                        # a failed or stopped (cancelled) render leaves no unfinished version behind
             shutil.rmtree(part, ignore_errors=True)
             raise
