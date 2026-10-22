@@ -104,14 +104,24 @@ One physically based material type, written as Cycles' `principled_bsdf` (on `ou
 |---|---|---|
 | `baseColor` | [r,g,b] linear | |
 | `baseColorTexture` | absolute path or `""` | sRGB image on the mesh's UVs; multiplies nothing, replaces `baseColor` |
-| `metallic`, `roughness` | 0..1 | |
+| `metallic`, `roughness` | 0..1 | Cycles' principled BSDF has **one** roughness: on glass it also blurs what is seen through (frosted glass) |
 | `roughnessTexture` | path or `""` | raw (non-colour) |
-| `transmission`, `ior` | 0..1, 1..3 | glass: `transmission 1, roughness 0, ior 1.5` |
+| `transmission`, `ior` | 0..1, 1..3 | glass: `transmission 1, roughness 0, ior 1.5`; frosted: the same with `roughness` 0.1–0.4 |
 | `coat`, `coatRoughness` | 0..1 | |
+| `coatTint`, `coatIor` | [r,g,b] linear, 1..3 | Cycles `coat_tint`, `coat_ior`; Storm: none (its clear coat is untinted, fixed IOR) |
+| `sheen`, `sheenRoughness`, `sheenTint` | 0..1, 0..1, [r,g,b] | Cycles `sheen_weight`, `sheen_roughness`, `sheen_tint`; Storm: none |
 | `anisotropy`, `anisotropyRotation` | 0..1, 0..1 | brushed metal (Cycles) |
+| `brushDirection` | `"uv"`, `"around x"`, `"around y"`, `"around z"` | where the brushing runs, linked into the principled `tangent` when `anisotropy` > 0. `uv`: a `cycles_tangent` (`direction_type uv_map`, default UVs). `around <axis>`: circles round that axis of the item through its origin, built as `cycles_texture_coordinate.object` × axis (`cycles_vector_math cross_product`) → `cycles_vector_transform` object→world. (Cycles' own radial tangent centres its circles on generated coordinate 0.5, which Hydra meshes don't have.) Storm: none |
 | `bumpTexture`, `bumpStrength` | path or `""`, 0..1 | a height image as bump (painted relief) |
 | `emissionColor`, `emissionStrength` | [r,g,b], ≥ 0 | |
+| `emissionTexture` | path or `""` | an sRGB image on the UVs that becomes the glow colour (× `emissionStrength`): Cycles `cycles_image_texture` → `emission_color`; Storm a `UsdUVTexture` (scale = strength) → `emissiveColor` |
 | `thinFilm` | nm, 0 = off | coatings |
+
+**A picture per frame** (v1.4): a material may carry `"anim": {"emissionTexture": [one absolute image path per frame, start..end]}`; no other material field can change per frame. The core writes them as **time samples on the texture's file input** (Cycles `filename`, Storm `file`; asset paths are held, never blended), so one stage plays the whole shot like every other animated field. Both renderers read material inputs through UsdImaging, which should mark a time-sampled shader input as varying and re-read it when the frame changes. **Not yet seen working (H22):** the materials turntable video (`tools/materials_turntable.py video`) is the check: its screen shows its own 2D frame number. If the screen stays on one picture, the fallback is to send one scene per frame for shots that use it. Every path is checked (absolute, exists) before anything is built.
+
+The document's `emissionRender` (the id of a 2D item of the project) never reaches the core: the compiler (`material_scene.py`) takes that item's newest finished `pictures` render (`rostrum_core.project.latest_render`), which must be a PNG sequence, and gives each shot frame *f* the 2D file of the same moment: `first + floor((f / fps − frames.start) × fps2)`, held at the first and last file. A still render gives one `emissionTexture`; a sequence gives the `anim` list. Loud: no project folder, no such item, not a 2D item, not rendered, no PNG frames, a frame file missing.
+
+**Storm can't show:** anisotropy and its direction, sheen, coat tint and coat IOR, thin film, bump. Rough glass can't blur what is behind it in Storm, so it is drawn less see-through and milkier the rougher it is (`see_through = transmission × (1 − 0.6 × roughness)` sets both the diffuse share and the opacity).
 
 ## 3. Render
 
@@ -157,3 +167,4 @@ One physically based material type, written as Cycles' `principled_bsdf` (on `ou
 - **v1.2** (H20): `view` finishes its picture on the graphics card (10 -> 96 pictures a second at 960 x 540); `ao`, `aoRadius`, `dof`; reply `cameraDof`.
 - **v1.3** (H21): outline meshes (mesh shape `outline`: extruded, rounded-bevel text and logos with front / bevel / side / back materials).
 - **v1.3** (H21): product lighting: light kind `strip`; `spread`, `card`, `lightsOnly` on lights, `seenByCamera` on domes; `view` reply `notInQuickView`. Cycles needs the patched Hydra plug-in for spread, links and a hidden dome.
+- **v1.4** (H22): materials: `coatTint`, `coatIor`, `sheen`, `sheenRoughness`, `sheenTint`, `brushDirection`, `emissionTexture`, and a material's `anim.emissionTexture` (a picture per frame).

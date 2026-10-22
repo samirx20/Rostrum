@@ -27,7 +27,14 @@ struct ContourFrame {
 
 double signed_area(const Contour& c);
 ContourFrame frame_of(const Contour& c, double sharp_deg);
-// The contour moved `d` towards the solid's inside (a hole grows, an outer shrinks).
+// Per corner, the share (kMinInsetShare .. 1) of an inset `d` it can take without an inset edge turning backwards.
+// Where the outline curves tighter than `d` (the tip of an "s", a small round end), moving every corner the full
+// `d` along its miter makes neighbouring corners overtake each other: the bevel folds over itself, which shades as a
+// dark, jagged rim, and on a finely cut curve the folds cross and the bevel is refused. There the bevel gets
+// narrower instead (same height, less inset), easing back to full width over about 2 × d along the outline.
+std::vector<double> inset_share(const Contour& c, const ContourFrame& f, double d);
+constexpr double kMinInsetShare = 0.1;
+// The contour moved `d` (times each corner's inset_share) towards the solid's inside (a hole grows, an outer shrinks).
 Contour inset(const Contour& c, const ContourFrame& f, double d);
 // The shapes with stray short edges merged away: an edge much shorter than both its neighbours and than
 // the bevel (an SVG's closing nub, a font's tiny segment at an extreme) would turn backwards when inset,

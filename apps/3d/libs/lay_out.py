@@ -27,8 +27,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-VERSION = "5.2.2-cycles-a456b76"
+VERSION = "5.2.2-cycles-a456b76-r1"   # r1 (H22): Cycles' Hydra plug-in with cycles-rostrum-lights.patch
 BUNDLE_TAG, BUNDLE_COMMIT, CYCLES_COMMIT = "v5.2.2", "60d6e96", "a456b76"
+CYCLES_INSTALL = "install-r1"         # made by build_cycles.bat (the proof's unpatched build is install\)
+CYCLES_PATCH = "cycles-rostrum-lights.patch"
 REPO = Path(__file__).resolve().parents[3]
 DEFAULT_DEST = Path.home() / ".rostrum" / "libs" / "3d" / VERSION
 DEFAULT_BUNDLE = REPO / "proofs" / "3d-product" / ".build" / "cycles" / "lib" / "windows_x64"
@@ -91,7 +93,7 @@ def walk(src: Path, dst: Path, skip_dirs=(), skip_suffix=()):
 
 def plan(bundle: Path, cycles: Path, stylized: Path, dest: Path) -> list[tuple[Path, Path]]:
     jobs: list[tuple[Path, Path]] = []
-    rt, install = dest / "runtime", cycles / "install"
+    rt, install = dest / "runtime", cycles / CYCLES_INSTALL
     for folder, names in LOADED.items():
         jobs += [(need(bundle / folder / "bin" / f"{n}.dll"), rt / "bin" / f"{n}.dll") for n in names]
     jobs += [(need(install / f"{n}.dll"), rt / "bin" / f"{n}.dll") for n in FROM_CYCLES]
@@ -197,7 +199,7 @@ def main() -> int:
     meta = {
         "version": VERSION,
         "bundle": {"source": "Blender lib-windows_x64", "tag": BUNDLE_TAG, "commit": BUNDLE_COMMIT},
-        "cycles": {"commit": CYCLES_COMMIT},
+        "cycles": {"commit": CYCLES_COMMIT, "install": CYCLES_INSTALL, "patch": CYCLES_PATCH},
         "stylized": {"source": str(REPO), "git_head": git_head()},
         "date": datetime.date.today().isoformat(),
         "files": len(jobs),

@@ -89,7 +89,7 @@ def _ids(values: dict) -> dict:
 
 class Build:
     def __init__(self, reserved=()):
-        self.root, self.holders, self.reserved, self.taken = KIND.blank(), [], set(reserved), set()
+        self.root, self.holders, self.reserved, self.taken = KIND.blank(), [], set(reserved), {}      # taken: id -> kind
 
     def new_id(self, type_or_id: str, id_: str | None = None, loose=False) -> str:
         if loose:                                        # a part's id from its path: already unique per import
@@ -99,8 +99,8 @@ class Build:
         if not (ids.is_valid(id_) if loose else PRIM_ID.match(id_)):
             raise ValueError(f'"{id_}" is not a usable id (letters, digits and _, not starting with a digit)')
         if id_ in self.taken:
-            raise ValueError(f'id "{id_}" is used twice in the script')
-        self.taken.add(id_)
+            raise ValueError(f'id "{id_}" is used twice in the script (already {F.LABELS.get(self.taken[id_], "an item").lower()})')
+        self.taken[id_] = type_or_id if not loose else "part"
         return id_
 
     def add(self, type_: str, id_, values: dict, into: list) -> Item:

@@ -99,8 +99,9 @@ std::vector<Row> rows_of(double depth, double bevel, int steps) {
   return rows;
 }
 
-void loft(Builder& b, const Contour& c, const ContourFrame& f, const std::vector<Row>& rows) {
+void loft(Builder& b, const Contour& c, const ContourFrame& f, const std::vector<Row>& rows, double bevel) {
   const size_t n = c.size();
+  const std::vector<double> share = inset_share(c, f, bevel);  // the same narrowing as the caps' inset
   std::vector<double> u(n + 1, 0.0), v(rows.size(), 0.0);  // perimeter distance; distance from the front
   for (size_t i = 0; i < n; ++i) u[i + 1] = u[i] + (c[(i + 1) % n] - c[i]).GetLength();
   for (size_t j = 1; j < rows.size(); ++j)
@@ -128,9 +129,10 @@ void loft(Builder& b, const Contour& c, const ContourFrame& f, const std::vector
   for (size_t j = 0; j < rows.size(); ++j)
     for (size_t k = 0; k < nc; ++k) {
       const Row& r = rows[j];
-      const GfVec2d p = c[col_corner[k]] - f.miter[col_corner[k]] * r.inset;
-      const double ca = std::cos(r.a);
-      id[j * nc + k] = b.add(GfVec3d(p[0], p[1], r.z), GfVec3d(col_n[k][0] * ca, col_n[k][1] * ca, std::sin(r.a)));
+      const double s = share[col_corner[k]];  // a narrowed bevel is a quarter ellipse: s × as wide, as tall
+      const GfVec2d p = c[col_corner[k]] - f.miter[col_corner[k]] * (r.inset * s);
+      const GfVec3d nrm(col_n[k][0] * std::cos(r.a), col_n[k][1] * std::cos(r.a), s * std::sin(r.a));
+      id[j * nc + k] = b.add(GfVec3d(p[0], p[1], r.z), nrm.GetNormalized());
     }
   // Quads seen from outside: u grows to the right, v (0 at the back, 1 at the front) upwards.
   for (size_t i = 0; i < n; ++i) {
@@ -228,8 +230,8 @@ Extruded make_extrusion(const std::vector<OutlineShape>& given, double depth, do
     cap(b, shapes[si], frames[si], bevel, depth / 2, true, box, w);
     cap(b, shapes[si], frames[si], bevel, -depth / 2, false, box, w);
     if (depth <= 0) continue;  // a flat card: front and back only
-    loft(b, shapes[si].outer, frames[si][0], rows);
-    for (size_t k = 0; k < shapes[si].holes.size(); ++k) loft(b, shapes[si].holes[k], frames[si][k + 1], rows);
+    loft(b, shapes[si].outer, frames[si][0], rows, bevel);
+    for (size_t k = 0; k < shapes[si].holes.size(); ++k) loft(b, shapes[si].holes[k], frames[si][k + 1], rows, bevel);
   }
   return b.done(smooth);
 }

@@ -17,5 +17,9 @@ namespace r3d {
 
 // register the filter for Hydra's "Cycles" renderer; call once, before any Cycles engine is made
 void register_cycles_lights();
+// After a scene load: tells every Cycles engine which lights' (and linked items') product lighting may have changed.
+// Our own attributes (rostrum:seenByCamera, rostrum:lightsOnly …) don't dirty a light in USD's eyes, so without this a
+// dome switched to unseen in a running engine stayed seen (H22).
+void announce_light_extras();
 
 }  // namespace r3d

@@ -21,10 +21,19 @@ INDEX = Param.number("index", label="Position", min=0, max=100000, integer=True,
 PLACE = [ID, NAME, INTO, INDEX]
 
 
+def refuse_used_id(ctx, id_: str) -> None:
+    """The one place ids are checked across the document (items, materials, shots, parts, keys): a taken id is
+    refused naming what holds it ('id "top" is already used by a mesh')."""
+    held = index(ctx.doc, ctx.kind.lists).get(id_)
+    if held:
+        what = F.LABELS.get(held.item.get("type"), "item").lower()
+        ctx.fail(codes.BAD_ARGUMENT, f'id "{id_}"', f"is already used by {'an' if what[0] in 'aeiou' else 'a'} {what}",
+                 hint="Pick another id, or leave id out to have one counted.")
+
+
 def new_item(ctx, type_: str, args: dict, field_args: dict) -> dict:
     id_ = args.get("id") or ctx.new_id(type_)
-    if id_ in index(ctx.doc, ctx.kind.lists):
-        ctx.fail(codes.BAD_ARGUMENT, f'id "{id_}"', "is already used in this document")
+    refuse_used_id(ctx, id_)
     return build.make(type_, id_, {"name": args.get("name") or F.LABELS[type_], **field_args}, ctx.where)
 
 
@@ -121,8 +130,8 @@ def item_duplicate(ctx, targets, args):
     taken = set(index(ctx.doc, ctx.kind.lists))
     for t in targets:
         loc = index(ctx.doc, ctx.kind.lists)[t]
-        if args.get("id") and args["id"] in taken:
-            ctx.fail(codes.BAD_ARGUMENT, f'id "{args["id"]}"', "is already used in this document")
+        if args.get("id"):
+            refuse_used_id(ctx, args["id"])
         new = copy.deepcopy(loc.item)
         _reid(new, args.get("id") or ids.counted(taken, new["type"]), taken, ctx.kind.lists)
         if args.get("rename", True):

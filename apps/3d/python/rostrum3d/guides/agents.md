@@ -7,7 +7,7 @@ scene from the document each time you look. Imported USD files stay untouched; y
 
 1. **Know the shot.** `inspect_shot` gives the frame rate, the frame range, the picture size, the shot camera and every light.
    `inspect_usd_file` shows what a file you want to import holds (its parts, their materials and sizes) before you import it.
-2. **Build with a script**, small steps: the room and the subject first, then the camera, then light, then materials, then motion.
+2. **Build with a script** (`inspect_guide` `script` is the whole script API on one page), small steps: the room and the subject first, then the camera, then light, then materials, then motion.
    Each step ends with a look.
 3. **Look through the shot's camera, not around the scene.** Everything you see is what the final picture will hold.
    - `look_frame` — one frame. Quality `fast` (Storm) tells you composition, scale, framing and motion in about a second;

@@ -87,9 +87,38 @@ ContourFrame frame_of(const Contour& c, double sharp_deg) {
   return f;
 }
 
+std::vector<double> inset_share(const Contour& c, const ContourFrame& f, double d) {
+  const size_t n = c.size();
+  std::vector<double> lim(n, d), share(n);
+  // Edge i -> j shrinks by d_i * a + d_j * b when inset (a, b: how far each end's miter leans along the edge);
+  // keep 10% of it: d_i, d_j <= 0.9 L / (a + b).
+  for (size_t i = 0; i < n; ++i) {
+    const size_t j = (i + 1) % n;
+    const GfVec2d e = c[j] - c[i];
+    const double len = e.GetLength();
+    if (len <= 0) continue;
+    const double a = std::max(0.0, -GfDot(f.miter[i], e) / len), b = std::max(0.0, GfDot(f.miter[j], e) / len);
+    if (a + b <= 0) continue;
+    const double most = 0.9 * len / (a + b);
+    lim[i] = std::min(lim[i], most);
+    lim[j] = std::min(lim[j], most);
+  }
+  for (size_t i = 0; i < n; ++i) share[i] = d > 0 ? std::clamp(lim[i] / d, kMinInsetShare, 1.0) : 1.0;
+  // Ease back to the full width over ~2 d of outline, both ways round (twice, so the ramp crosses the seam).
+  const double per_m = d > 0 ? 1.0 / (2.0 * d) : 0.0;
+  for (int pass = 0; pass < 2; ++pass)
+    for (size_t k = 1; k <= n; ++k) {
+      const size_t i = k % n, p = k - 1, q = (n - k) % n, r = (q + 1) % n;
+      share[i] = std::min(share[i], share[p] + (c[i] - c[p]).GetLength() * per_m);
+      share[q] = std::min(share[q], share[r] + (c[q] - c[r]).GetLength() * per_m);
+    }
+  return share;
+}
+
 Contour inset(const Contour& c, const ContourFrame& f, double d) {
+  const std::vector<double> share = inset_share(c, f, d);
   Contour out;
-  for (size_t i = 0; i < c.size(); ++i) out.push_back(c[i] - f.miter[i] * d);
+  for (size_t i = 0; i < c.size(); ++i) out.push_back(c[i] - f.miter[i] * (d * share[i]));
   return out;
 }
 

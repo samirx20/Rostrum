@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from rostrum_core.keys import keys_of, track_value
 
-from . import aim, fields as F, outline as outlines, rigs
+from . import aim, fields as F, material_scene, outline as outlines, rigs
 from .outline_fields import FIELDS as _OUTLINE_PARAMS, OUTLINE_SHAPES
 from .colors import linear
 from .light_fields import DOC_ONLY as LIGHT_DOC_ONLY
@@ -169,12 +169,10 @@ def describe(data: dict, shot_id: str, folder=None) -> dict:
     cam = fr.items.get(info["camera"])
     if cam is None or cam["type"] != "camera":
         raise ValueError(f'shot "{shot_id}": its camera "{info["camera"]}" is not a camera in this document')
-    mat_params = F.FIELDS["material"]
     return {
         "format": FORMAT, "version": VERSION,
         "shot": {k: info[k] for k in ("id", "fps", "start", "end")},
         "world": {"background": linear(shot["background"]), "environment": None},
-        "materials": [{"id": m["id"], "props": {p.name: _out(p, m.get(p.name, p.default)) for p in mat_params}}
-                      for m in data.get("materials", [])],
+        "materials": material_scene.materials(data, frames, info["fps"], folder, _out),
         "items": [_node(i, fr) for i in data.get("items", [])],
     }
