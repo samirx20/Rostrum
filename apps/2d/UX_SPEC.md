@@ -45,7 +45,7 @@ that satisfies all three.
 | 6 | **Arrows move what you selected, in the place you are working.** On the canvas they move it in space; in the timeline, in time. **Ctrl+arrows always move the playhead.** `,` and `.` jump to the previous / next thing that happens (a key, a marker, a drawing). | One rule instead of a list to memorise, and the habits of Figma (nudge) and After Effects (step) both fit. |
 | 7 | **Painting is one model.** Any element can be painted on: its paint is its texture, kept inside its outline, painted once, and it moves, scales and fades with it. A **Drawing** is paint with no outline. **"Draw each frame"** is a switch on any painted element for hand-drawn animation. Paint (B) on nothing makes a new drawing the size of what you paint. *(Implements PLAN › Decided 2.)* | One model covers grain on a shape, a painted illustration and frame-by-frame, with one set of brushes and one way to undo. |
 | 8 | **Symbols: one idea for reuse and nesting.** Select → Make symbol. A symbol is a reusable piece with its own time; each copy can change its words, colours and swap choices and has its own start, speed and loop. It replaces "precomp", "component" and "nested comp". | Three overlapping ideas from other tools become one, so there is one thing to learn and one operation for agents. |
-| 9 | **Sound is in the room.** The project's music and voice play in 2D through RostrumSound's engine (rule 9), with a waveform row under the ruler and the beat grid when Sound has a tempo. Bars, keys and the playhead snap to markers and beats; dropping a bar's end on a marker ties it there. | Timing to music by eye is not timing to music; the one-engine rule keeps it a single sound path. |
+| 9 | **Sound is in the room.** The project's music and voice play in 2D through RostrumSound's engine (rule 9), with a waveform row at the bottom of the timeline and the beat grid when Sound has a tempo. Bars, keys and the playhead snap to markers and beats; dropping a bar's end on a marker ties it there. | Timing to music by eye is not timing to music; the one-engine rule keeps it a single sound path. |
 | 10 | **The agent is a co-worker, not a mode.** Its changes appear live without touching your selection, playhead or scroll; each run arrives as a group you can review or undo whole; Ctrl+Z only takes back your own steps; **Notes** (N) lets you scribble directions on a frame that the agent reads; a locked layer is locked for agents too. | You can let an agent work beside you without losing your place or your trust. |
 
 Other decisions, with reasons, are in each feature's card (part 3) and in "Hem's draft: kept, changed, added" (end of
@@ -57,7 +57,7 @@ part 4).
 ┌ ≡ Rostrum2D │ Spring launch › Main ▾ ··········· Saved · You: Moved title │ ↶ ↷ │ 🔍 Search  Ctrl K │ Export │ ? ┐
 ├──┬───────────────────────────────────────────────────────────────────────────────┬──────────────────────────────┤
 │V │                ┌── context bar: what you can do right now ──┐                 │ SETTINGS                     │
-│▭ │                │ 2 layers · Group  Mask  Align ▾  Boolean ▾ ⋯│                 │ title · Text                 │
+│▭ │                │ 2 layers · Group  Mask  Align ▾  Combine ▾ ⋯│                 │ title · Text                 │
 │✒ │                └────────────────────────────────────────────┘                 │ [Find a setting      Ctrl F] │
 │T │          ┌──────────────────────────────────────────────────┐                 │ Essentials (always open)     │
 │🖌 │          │                                                  │                 │ ▸ Groups folded to names     │
@@ -153,7 +153,7 @@ PLAN's list or the H28 draft.
 | Several comps in a project | A comp list in the top bar; PDF pages arrive as comps | Now | 3.1 |
 | Comp settings | Shown in the settings panel when nothing is selected | Now | 3.1 |
 | Zoom, pan, fit, 100 % | Ctrl+wheel at the pointer, Space-drag, Ctrl+0, Ctrl+1, Shift+2 to selection | Now | 3.2 |
-| Rotate the view *(new)* | Turn the canvas for drawing comfort; never changes the picture | Next | 3.2 |
+| Rotate and mirror the view *(new)* | Turn or mirror the canvas to check a drawing; never changes the picture | Next | 3.2 |
 | Rulers and guides *(new)* | Drag guides out of the rulers; snapping to them | Next | 3.2 |
 | Safe areas and grid *(new)* | Title / action safe, a layout grid, a pixel grid when zoomed in | Next | 3.2 |
 | Preview size and Fast / Final | Full / Half / Quarter / Auto; Fast (no motion blur) or Final (exact export) | Now | 3.2 |
@@ -191,6 +191,7 @@ PLAN's list or the H28 draft.
 | Brushes | The shared painting kit's brushes, pressure and tilt; brush library | Now | 3.8 |
 | Eraser, colour picking, fill *(fill new)* | E toggles the eraser; Alt picks a colour; a fill bucket for closed lines | Now · Next (fill) | 3.8 |
 | Select and move paint *(new)* | Lasso strokes to move, scale, turn or copy them | Next | 3.8 |
+| Steadiness *(new)* | Smooths shaky strokes as you paint | Next | 3.8 |
 | Painted backgrounds at depths | Far / mid / near drawings sized to the camera move | Next (screen) | 3.8 |
 | Draw each frame | The switch that turns a painted element into hand-drawn frames | Now | 3.9 |
 | Exposures, holds, onion skin | Hold a drawing 1–n frames; see neighbours faintly | Now | 3.9 |
@@ -210,6 +211,7 @@ PLAN's list or the H28 draft.
 | Nudge | Arrows 1 px, Shift 10 px | Now | 3.11 |
 | Layers list = timeline rows | Order by dragging, rename, hide, lock, solo | Now | 3.12 |
 | Copy, cut, paste, duplicate, Alt-drag | In place, between comps and projects, with keys | Now | 3.12 |
+| Find a layer, show only animated settings *(new)* | Search the rows; U shows only what moves | Next | 3.12 |
 | Colour labels on rows *(new)* | Mark rows by colour to find them | Later | 3.12 |
 | Group, ungroup, clip | From the selection | Now | 3.13 |
 | Align, distribute, match size | From the selection | Now | 3.16 |
@@ -238,8 +240,8 @@ PLAN's list or the H28 draft.
 | Layer bars, trim, slip | Drag the bar, its ends, or the content inside | Now (bar, ends) · Next (slip) | 3.19 |
 | Stagger *(new)* | Each selected layer starts n frames after the one before | Next | 3.19 |
 | Markers and ties | Shared named markers; drop a bar end on one to tie it | Now | 3.19 |
-| Stepped timing | Ones, twos, threes per layer, group or comp | Now | 3.19 |
-| Loop range and work area | Play a stretch over and over; export it | Now | 3.29 |
+| Stepped timing | Ones, twos, threes per layer, group or comp | Now | 3.9 |
+| Play range and work area | Play a stretch over and over; export it | Now | 3.29 |
 | Letter, word and line animation | Animate the text once, spread it per letter | Now | 3.20 |
 | Letter ranges *(new)* | A wave through the letters (a range that moves) | Later | 3.20 |
 | Motion paths | The path of a moving layer on the canvas, with its keys and handles | Next | 3.21 |
@@ -247,6 +249,16 @@ PLAN's list or the H28 draft.
 | Orient along path *(new)* | A layer turns to follow its path | Next | 3.21 |
 | Smears, trails, motion blur | Effects and the comp's shutter | Now | 3.25 |
 | Repeat *(new)* | Copies in a row, grid, circle or along a path, with offsets | Next | 3.27 |
+| Shape morphing | A path's outline changes between keys | Now | 3.4 |
+| After the last key *(new)* | Hold, repeat, back and forth, or carry on | Next | 3.18 |
+| Time of a symbol or video *(new)* | Freeze, reverse, speed ramps | Next | 3.27 |
+
+### F2. Expressions and links
+
+| Feature | What it is | When | Card |
+|---|---|---|---|
+| Expressions | A little code on one setting, started by typing `=` | Now | 3.26 |
+| Links between settings | One setting follows another, × a scale + an offset | Now (operation) · Next (on screen) | 3.26 |
 
 ### G. Following, rigs and characters
 
@@ -282,7 +294,7 @@ PLAN's list or the H28 draft.
 | Fill, outline, gradient with on-canvas handles | Gradients dragged on the canvas | Now (settings) · Next (handles) | 3.25 |
 | Effects | Blur, glow, shadow, frosted glass, trail, smear; grain, displace, distort, light wrap | Now · Next (the four new) | 3.25 |
 | Blend modes | All 16 plus Add | Now | 3.25 |
-| Colour adjust | Exposure, contrast, saturation, curves, levels, LUT | Now | 3.25 |
+| Colour adjust | Exposure, contrast, saturation, curves, levels, a colour look file (LUT) | Now | 3.25 |
 | Effects on the whole comp *(new)* | The comp's own effects, when nothing is selected | Next | 3.25 |
 | Colour picker, eyedropper, palette | Project colours one click away | Now | 3.25 |
 
@@ -302,7 +314,7 @@ PLAN's list or the H28 draft.
 | Feature | What it is | When | Card |
 |---|---|---|---|
 | Hear the project's sound | Plays and scrubs with the picture through Sound's engine | Next | 3.28 |
-| Waveform row | Under the ruler, in the layers list | Next | 3.28 |
+| Waveform row | The last row of the timeline | Next | 3.28 |
 | Shared markers on the ruler | From Sound and every app; add, rename, move | Now | 3.28 |
 | Beat grid and snapping to beats | When Sound has a tempo map | Next | 3.28 |
 | Sync sound | A video's own sound; a cue tied to a beat | Next | 3.28 |
@@ -312,7 +324,7 @@ PLAN's list or the H28 draft.
 
 | Feature | What it is | When | Card |
 |---|---|---|---|
-| Play, loop, step, scrub | Space, loop range, Ctrl+arrows, drag the playhead | Now | 3.29 |
+| Play, loop, step, scrub | Space, play range, Ctrl+arrows, drag the playhead | Now | 3.29 |
 | Hide the panels | Ctrl+\ shows only the canvas and the timeline header | Now | 3.29 |
 | Export panel | MP4, ProRes 4444, WebM, GIF, PNG sequence, EXR, Lottie, still, motion samples | Now | 3.30 |
 | Export again *(new)* | Ctrl+Shift+E repeats the last export | Now | 3.30 |
@@ -356,7 +368,8 @@ PLAN's list or the H28 draft.
 
 Each card: **Goal** · **Steps** · **Where and when** (where the controls live and when they appear) · **Feedback** ·
 **Undo and adjust** · **Keys** · **Agent** (the operation an agent calls; the screen calls the same) · **3E** (why this
-way, and what was rejected). "Context bar" means the bar at the top of the canvas (decision 2). "Settings" means the
+way, and what was rejected). Where a card leaves a field out, the default holds: **Undo** = Ctrl+Z takes the change
+back as one step; **Keys** = none beyond Ctrl+K; **Rejected** = no serious alternative was found. "Context bar" means the bar at the top of the canvas (decision 2). "Settings" means the
 settings panel on the right. Shortcuts are written Ctrl / Alt / Shift; on the Mac, Ctrl is ⌘ and Alt is ⌥.
 
 ## 3.1 Project, comps and starting
@@ -373,7 +386,7 @@ settings panel on the right. Shortcuts are written Ctrl / Alt / Shift; on the Ma
 - **Feedback:** each size shows as a small frame of the right shape; the length can be changed later by dragging the
   comp's end on the ruler.
 - **Undo and adjust:** every comp setting is in the settings panel with nothing selected; change it any time.
-- **Keys:** Ctrl+N new project (on the start screen) or new comp (inside a project); Ctrl+O open.
+- **Keys:** Ctrl+N new project (on the start screen); Ctrl+Shift+N new comp (inside a project); Ctrl+O open.
 - **Agent:** `project` tools of the shared layer; `comp.add {size, fps, length}`.
 - **3E:** *Effective:* the sizes people deliver are the ones offered. *Efficient:* two clicks; nothing to type.
   *Easy:* names, not numbers ("9:16 vertical", not "1080×1920"). *Rejected:* a blank dialog with width / height
@@ -387,7 +400,7 @@ settings panel on the right. Shortcuts are written Ctrl / Alt / Shift; on the Ma
 - **Feedback:** switching keeps each comp's own playhead, zoom and selection.
 - **Undo and adjust:** each comp operation is one undoable step (deleting a comp too).
 - **Keys:** Ctrl+Shift+N new comp; Ctrl+Tab next comp.
-- **Agent:** `comp.add`, `comp.remove`, `item.rename`.
+- **Agent:** `comp.add`, `comp.duplicate` *(new)*, `comp.remove`, `item.rename`.
 - **3E:** *Easy:* where you read which comp you are in is where you change it. *Rejected:* a separate Project panel
   always open (it eats width all day for something used a few times); tabs per comp (they crowd the top bar, the cause
   of the overlap bug Sam saw).
@@ -422,12 +435,14 @@ settings panel on the right. Shortcuts are written Ctrl / Alt / Shift; on the Ma
 - **3E:** *Effective:* path points, small type and painting detail need it (FINDINGS 4.1). *Easy:* the same keys as
   Figma and Photoshop. *Rejected:* a zoom tool (Z) you pick and click (a tool for a thing the wheel does).
 
-### Rotate the view · Next
+### Rotate and mirror the view · Next
 - **Goal:** draw a curve at a comfortable angle, as on paper.
 - **Steps:** Shift+Space+drag turns the view; on a pen display, two-finger twist. Click the small compass that appears
   in the view controls to set it straight again (or Shift+0).
-- **Where and when:** the compass shows only while the view is turned.
-- **Feedback:** the frame turns on screen; the picture and export do not.
+- **Mirror:** Shift+H mirrors the view left to right (the animator's and painter's check for a lopsided drawing); a
+  small "Mirrored" label shows until Shift+H again.
+- **Where and when:** the compass shows only while the view is turned; the label only while mirrored.
+- **Feedback:** the frame turns or mirrors on screen; the picture and export do not.
 - **Agent:** none (view only).
 - **3E:** *Effective:* hand-drawn lines are better drawn in the hand's natural direction (Toon Boom, Procreate).
   *Easy:* the compass appears only when the view is turned, and one click straightens it.
@@ -445,12 +460,14 @@ settings panel on the right. Shortcuts are written Ctrl / Alt / Shift; on the Ma
 ### Preview size, Fast / Final, transparent background · Now
 - **Goal:** keep playback smooth while working; check the exact export picture.
 - **Steps:** in the view controls: **Full / Half / Quarter / Auto** (Auto lowers the size while playing if a frame
-  would be late, and returns to Full when you stop) and **Fast / Final** (Fast skips motion blur and drops brush
-  texture detail while playing; Final draws exactly what export makes).
+  would be late, and returns to Full when you stop) and **Fast / Final** (Fast skips motion blur and draws heavy effects
+  and brush texture lighter while playing; Final draws exactly what export makes).
 - **Where and when:** view controls, bottom-right of the canvas. Fast / Final appears only when the comp has something
-  Fast would skip (motion blur on, or heavy effects).
+  Fast would skip (motion blur, heavy effects or textured brushes).
 - **Feedback:** a small label "Half" or "Fast" sits in the canvas's corner while not Full / Final, so you never mistake
-  a lighter picture for the export. A comp with no background shows a checkerboard.
+  a lighter picture for the export. A comp with no background shows a checkerboard. The one unlabelled exception: during
+  a drag the picture is drawn at half size for speed and sharpens the moment you let go (6.1). A paused frame is always
+  exactly the export.
 - **Agent:** `look_frame {quality}`.
 - **3E:** *Effective:* preview equals export: Fast is labelled, never silent, and paused frames are always Final.
   *Efficient:* Auto means no fiddling. *Rejected:* a hidden "draft" mode that changes the picture without saying so.
@@ -462,7 +479,7 @@ settings panel on the right. Shortcuts are written Ctrl / Alt / Shift; on the Ma
 - **Steps:** press R (rectangle) or O (ellipse), or click the Shape button in the tool strip (it shows the last shape
   used; right-click or a small arrow lists Rectangle, Ellipse, Polygon, Star, Line) → drag on the canvas. Shift keeps it
   square / round; Alt draws from the centre. A click without dragging makes a 200 px shape at that point. After
-  drawing, the tool returns to Move (hold Shift while releasing to keep drawing more; double-click the tool to keep it).
+  drawing, the tool returns to Move (double-click the tool's button to keep it on for several shapes).
 - **Where and when:** tool strip; the shape's settings appear on the right at once: Fill, Outline, W H, Corner radius
   (rectangle), Sides (polygon), Points and Inner radius (star).
 - **Feedback:** live size in a small label by the pointer ("320 × 180"); smart guides while dragging (6.2).
@@ -499,6 +516,15 @@ settings panel on the right. Shortcuts are written Ctrl / Alt / Shift; on the Ma
 - **Agent:** `path.add_point`, `path.set_point`, `path.remove_point`, `path.close`, `path.fit`.
 - **3E:** *Effective:* the industry-standard pen gives exact outlines. *Easy:* the rule is shown in the context bar
   while you need it, and nowhere else. *Rejected:* separate "add point" / "delete point" tools (Illustrator's tool zoo).
+
+### Shape morphing · Now
+- **Goal:** a logo mark that changes outline; a blob that breathes; a line that bends.
+- **Steps:** select a path → click the **Shape** diamond in its settings (a key of its outline at the playhead) → move
+  the playhead → edit points (double-click the path) → a second shape key. Points are matched in order; **Start point**
+  (right-click a point) fixes a twist.
+- **Feedback:** the outline in between draws live as you scrub; the shape keys sit on the bar like any key.
+- **Agent:** `value.set {d, at}` (path-shape keys, H14).
+- **3E:** *Effective:* morphing is core to logo and icon motion. *Easy:* the same diamond as every other setting.
 
 ### Pencil (vector freehand) · Next
 - **Goal:** draw a line by hand and get a clean, editable path (for draw-on lines, hand-drawn arrows, signatures).
@@ -585,7 +611,7 @@ settings panel on the right. Shortcuts are written Ctrl / Alt / Shift; on the Ma
 - **Feedback:** a small panel at the canvas's right edge shows progress for big files (the work runs in the
   background; the screen never freezes) and then one line: "Placed logo.svg: 14 layers". If anything didn't come
   across, the line says how many, with **Show what** (the list in words: "2 gradients on outlines, drawn as flat
-  colour"). A fully clean import closes the panel by itself after 3 s.
+  colour"). A fully clean import closes the panel by itself after 3 s. Choosing files uses the system's own file window.
 - **Undo and adjust:** the whole placement is one step.
 - **Keys:** Ctrl+I; drop.
 - **Agent:** `run_import {file, page, at}`; `layer.add {type: image|video}`.
@@ -597,8 +623,9 @@ settings panel on the right. Shortcuts are written Ctrl / Alt / Shift; on the Ma
 - **Goal:** copy a shape in Figma or an image in a browser and paste it.
 - **Steps:** Ctrl+V on the canvas. SVG on the clipboard comes in as layers; a picture as an image layer (saved into
   the project's files); plain text as a text layer.
+- **Undo and adjust:** one step for the whole paste.
 - **Agent:** `layer.paste` (extended to outside clipboards).
-- **3E:** *Efficient:* the fastest route designers use daily.
+- **3E:** *Efficient:* the fastest route designers use daily. *Rejected:* saving to a file and placing it first.
 
 ### Replace a picture or video · Next
 - **Goal:** swap the placeholder screenshot for the final one, keeping all the animation.
@@ -621,7 +648,10 @@ settings panel on the right. Shortcuts are written Ctrl / Alt / Shift; on the Ma
 - **Steps:** place it; its bar shows its length; drag the bar's ends to trim it, drag inside the bar with Alt to slip
   which part plays (Next); settings: **Speed**, **Loop**, **Start at**. Its own sound is passed to Sound and plays in 2D
   as a sound row tied to the video (3.28).
-- **Feedback:** the bar shows small frame pictures when the row is tall enough; scrubbing uses a light proxy (Next).
+- **Time (Next):** a keyable **Time** setting says which moment of the clip shows, for freezes, reverse and speed
+  ramps (After Effects' time remapping, in words).
+- **Feedback:** the bar shows small frame pictures when the row is tall enough; scrubbing uses a lighter copy of the
+  video made once in the background (Next).
 - **Agent:** `layer.add {type: video}`, `layer.trim`, `value.set {speed, offset, loop}`.
 - **3E:** *Easy:* trim like any other bar. *Rejected:* a separate clip editor (that's the Editor's job).
 
@@ -674,6 +704,8 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
 - **Feedback:** the stroke draws under the pen at the screen's refresh rate (6.1); outside-the-outline paint is never
   shown (no surprise at export); a thin outline of the element's edge shows while painting so you know the limit.
 - **Undo and adjust:** each stroke is one step. Paint can be moved later (lasso, below).
+- **Steadiness (Next):** a slider in the brush settings smooths shaky strokes as you paint (Procreate's StreamLine);
+  0 by default for sketching, higher for clean lines.
 - **Keys:** B; E eraser on / off (the pen's back end erases on its own); [ and ] size; Shift+[ / ] softness; Alt
   (hold) picks a colour from the canvas; Shift+drag draws a straight line; numbers 1–0 set opacity 10–100 %.
 - **Agent:** `stroke.add {target, points (x, y, pressure, tilt, speed), brush, colour, opacity, layer}` (today on a
@@ -686,10 +718,11 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
 ### Paint layers inside an element · Next
 - **Goal:** keep line art above colour, or shading separate, so each can change alone.
 - **Steps:** in the settings panel's **Paint on …** group, the element shows one paint layer, "Paint". **+ Paint
-  layer** adds another above; drag to reorder; each has an eye, opacity and blend. Strokes go to the highlighted one.
+  layer** makes your **next stroke** start a new paint layer above (nothing empty is made); drag to reorder; each has an
+  eye, opacity and blend; right-click › Delete. Strokes go to the highlighted one.
   In the timeline, opening the element's row (its arrow) shows paint layers as sub-rows only when there are two or
   more.
-- **Agent:** `paint.layer_add {target}` *(new)*; `stroke.add {layer}`.
+- **Agent:** `stroke.add {layer: "new"}` makes the paint layer with its first stroke; `paint.layer_set`, `paint.layer_remove` *(new)*.
 - **3E:** *Effective:* lines over colour is how hand animation and illustration are built (Toon Boom's line and
   colour art). *Easy:* invisible until you want a second layer. *Rejected:* making every paint layer a timeline layer
   (doubles rows; breaks "paint belongs to its element").
@@ -698,7 +731,8 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
 - **Goal:** fix strokes; take colours from the picture; fill a closed line drawing.
 - **Steps:** E toggles the eraser (any brush can erase); hold Alt to pick a colour under the pen; **Fill** (G while
   Paint is on, Next): click inside a closed area → it fills on the current paint layer, with **Close gaps** (small,
-  medium, large) in the context bar for lines that don't quite meet.
+  medium, large) in the context bar for lines that don't quite meet. Fill finds its edges in **all** the element's
+  paint layers, so the colour layer fills up to the lines on the line layer.
 - **Agent:** `stroke.add {erase: true}`, `paint.fill {target, at, colour, gap}` *(new)*.
 - **3E:** *Effective:* fill with gap closing is what makes colouring hand-drawn frames fast (Toon Boom). *Easy:* the
   eraser is a switch, not a second tool to set up.
@@ -718,7 +752,8 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
   Near · or a number) → each moves back and is resized so it still covers the camera's whole move. To split one
   painting: select strokes (above) → **Move to depth ▾**.
 - **Where and when:** Set depth appears for drawings when the comp has a camera; without a camera it says why in Ctrl+K
-  ("needs a camera: + › Camera").
+  ("needs a camera: + › Camera"). There is no "+ Painted background" item: you paint first, then set depths (select
+  first, then act).
 - **Feedback:** the camera's frame shows its whole move as a faint path on the canvas; a layer that would not cover
   the shot shows a warning stripe at the uncovered edge.
 - **Agent:** `background.add`, `background.fit`, `background.move`; eyes `look_background`, `inspect_background`.
@@ -733,7 +768,8 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
 ## 3.9 Frame-by-frame
 
 ### Draw each frame · Now
-- **Goal:** hand-drawn animation: smoke, sparks, a walk, a smear.
+- **Goal:** hand-drawn animation: smoke, sparks, a walk, a smear. (Animators call a held drawing an "exposure"; on
+  screen it is a **hold**.)
 - **Steps:** with a painted element selected (or a new drawing), switch **Draw each frame** on (settings, under Paint;
   or Alt+N, which turns it on and starts the next drawing). Now each **drawing** is held on the timeline as a block.
   Draw → Alt+N (new drawing at the playhead, blank) or Alt+Shift+N (a copy of this one to change) → draw → …
@@ -748,15 +784,15 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
 - **Keys:** Alt+← / Alt+→ previous / next drawing (also `,` and `.` when this layer is selected), Alt+N new,
   Alt+Shift+N copy, Alt+↑ / Alt+↓ hold longer / shorter, Alt+O onion skin.
 - **Agent:** `frame.add`, `frame.hold`, `frame.remove`, `stroke.add {frame}`; eyes `look_drawing_change`.
-- **3E:** *Effective:* exposures (holds) as blocks are how animators think (Toon Boom's X-sheet, Dreams' flipbook).
+- **3E:** *Effective:* holds as blocks are how animators think (Toon Boom's X-sheet, Dreams' flipbook).
   *Efficient:* keyboard-only between drawings. *Easy:* the frame tools appear only on a frame-by-frame layer.
   *Rejected:* a separate frame-by-frame layer type (a fourth model); an X-sheet grid view (powerful but a second
   timeline to learn: later, if animators ask).
 
-### Onion skin, light table, flip · Now (onion) · Next (light table, flip)
+### Onion skin, light table, flip through · Now (onion) · Next (light table, flip through)
 - **Goal:** see where the last drawing was; see the other layers; feel the motion.
 - **Steps:** Onion (Alt+O) shows 1 before and 1 after by default; its small menu sets counts (0–5) and tints.
-  **Light table** (in the same menu, Next): show other layers' drawings faintly too. **Flip** (Next): hold `,` or `.`
+  **Light table** (in the same menu, Next): show other layers' drawings faintly too. **Flip through** (Next): hold `,` or `.`
   to flip through the drawings at the comp's speed; release to stop.
 - **Agent:** onion is view only; `look_drawing {onion}` gives the agent the same view.
 - **3E:** *Easy:* one button, sensible default, depth one menu away.
@@ -766,7 +802,8 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
 - **Steps:** select layers (or nothing, for the comp) → settings **Timing › Steps: Every frame / On twos / On threes /
   On fours / As its group**.
 - **Agent:** `value.set {steps}`.
-- **3E:** *Effective:* mixed rates in one shot (PLAN tool 12). *Easy:* the name says it ("On twos").
+- **3E:** *Effective:* mixed rates in one shot (PLAN tool 12). *Easy:* the name says it ("On twos"). *Rejected:*
+  baking the steps into keys (the document's keys stay smooth, so a change of mind is one pick).
 
 ## 3.10 Selection
 
@@ -832,7 +869,7 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
 
 ### Anchor point · Next
 - **Goal:** turn and scale around the right point (a door on its hinge, a needle at its base).
-- **Steps:** Alt+drag the small circle at the layer's centre (shown when one layer is selected) to move the anchor
+- **Steps:** drag the small circle at the layer's centre (shown when one layer is selected) to move the anchor
   **without** moving the picture; or the 9-dot picker in settings **Anchor**.
 - **Agent:** `value.set {anchorX, anchorY}` (the screen also adjusts x / y so nothing jumps).
 - **3E:** *Easy:* a 9-dot picker reads at a glance; "Anchor X 0.50" did not (FINDINGS 4.3).
@@ -859,7 +896,8 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
 - **Steps:** eye hides (a hidden layer does **not** export, and the row says so with a struck eye); lock stops it being
   picked or changed **by anyone, agents included**; Alt+click an eye shows only that layer.
 - **Feedback:** solo is a viewing aid and says so: a bar across the top of the canvas reads **"Showing only Hills ·
-  export shows everything · Show all"**. It ends with Show all or Esc.
+  export shows everything · Show all"**. It ends with Show all, or Alt+click on the eye again (Esc is kept for
+  clearing the selection).
 - **Agent:** `layer.hide`, `layer.lock`; a locked layer refuses agent operations with "Locked by Sam: unlock it first".
 - **3E:** *Effective:* lock as a shared rule makes it the simplest way to protect your work from an agent.
   *Easy:* solo is labelled, so preview equals export is never broken silently.
@@ -872,6 +910,14 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
   along.
 - **Agent:** `layer.paste`, `layer.duplicate`, `layer.remove`.
 - **3E:** *Efficient:* smart duplicate builds a row of buttons in three presses.
+
+### Find a layer, show only what moves · Next
+- **Goal:** find your way in a comp of 40+ layers.
+- **Steps:** Ctrl+Shift+F (or the small search box at the top of the layers column, shown once there are more than
+  12 layers) filters the rows by name or kind. **U** with layers selected opens only the settings that are animated
+  (After Effects' habit); U again folds them.
+- **Agent:** none needed (`inspect_item`).
+- **3E:** *Efficient:* no scrolling through rows. *Easy:* the search box appears when the list is long enough to need it.
 
 ### Colour labels · Later
 - Right-click › **Label ▾** colours a row's edge; Ctrl+K "select label red". `value.set {label}`.
@@ -1007,19 +1053,26 @@ operation is one (`mask.make`).
 ### The key bar · Now
 - **Goal:** set how a move starts and lands, for one key or many.
 - **Steps:** select keys → the **timeline header** shows the key bar: **Ease ▾** (Linear, Ease in, Ease out, Smooth,
-  Spring, Hold, Custom), a **small curve** you can drag (two handles, like a CSS cubic curve), and, for one key, its
+  Spring, Jump (no in-between: the value jumps at the next key), Custom), a **small curve** you can drag (two handles, like a CSS cubic curve), and, for one key, its
   **Time** and **Value**. Pick or drag; every selected key changes. Right-click on a key gives the same Ease list.
 - **Where and when:** in the timeline header, only while keys are selected; the settings panel keeps showing the
   layer, with the keyed setting highlighted (decision 5).
 - **Feedback:** the ease shows on the bar between keys as a tiny shape (a straight line for linear, a curve for eased,
-  a step for hold); the canvas plays the stretch once when you pick an ease (turn off in the key bar's ⋯), so you see
+  a step for jump); the canvas plays the stretch once when you pick an ease (turn off in the key bar's ⋯), so you see
   the feel at once.
 - **Undo and adjust:** one step per pick or curve drag.
-- **Keys:** F9 smooth (the After Effects habit); Shift+F9 ease in; Ctrl+Shift+F9 ease out; Ctrl+Alt+H hold.
+- **Keys:** F9 smooth (the After Effects habit); Shift+F9 ease in; Ctrl+Shift+F9 ease out; Ctrl+Alt+J jump.
 - **Agent:** `key.set {ease}`, `key.handles`; eyes `inspect_curve`.
 - **3E:** *Effective:* the curve chip gives exact control without opening the curve editor. *Efficient:* one pick
   eases all selected keys. *Easy:* named eases first, the curve for those who want it. *Rejected:* the settings panel
   swapping to the key (Hem / today: you lose the layer's settings each time you touch a key, FINDINGS 3.1).
+
+### After the last key · Next
+- **Goal:** a spinner that keeps turning, a pulse that repeats, without copying keys.
+- **Steps:** select the last key → key bar ⋯ › **After the last key: Stay · Repeat · Back and forth · Carry on**.
+- **Feedback:** the repeat shows on the bar as faint copies of the keys.
+- **Agent:** `key.set {after}` *(new)*.
+- **3E:** *Efficient:* one pick, no expression needed. *Rejected:* `loop()` in an expression as the only way.
 
 ### Spring · Next
 - **Goal:** the bouncy-but-settled feel of Apple's UI motion.
@@ -1054,7 +1107,7 @@ operation is one (`mask.make`).
 - **Agent:** `layer.shift {by | to}`, `layer.trim {start | end}`.
 - **3E:** *Efficient:* 1 drag replaces two number boxes (Hem). *Easy:* After Effects / Premiere habit.
 
-### Slip · Next
+### Slip: change which part plays · Next
 - **Goal:** keep a video's or a frame-by-frame loop's bar where it is, but change which part plays.
 - **Steps:** Alt+drag inside the bar → the content slides under the bar; a ghost shows the full content.
 - **Agent:** `value.set {offset}`.
@@ -1157,7 +1210,7 @@ operation is one (`mask.make`).
 ### Make rig · Now
 - **Goal:** turn a character's parts into one puppet.
 - **Steps:** select the parts (head, body, arms, mouths…) → context bar **Make rig** → a rig holding them, everything
-  where it was. With the rig selected, the **Bone** tool appears in the tool strip (3.23).
+  where it was. With one group selected (a PSD's parts arrive as one group), **Make rig** turns that group into the rig. With the rig selected, the **Bone** tool appears in the tool strip (3.23).
 - **Agent:** `rig.make {ids}`.
 - **3E:** select first, then act; no empty rig.
 
@@ -1178,8 +1231,8 @@ operation is one (`mask.make`).
 
 ### Posing: drag the hand, pin the feet · Next (H30)
 - **Goal:** pose by pulling the end, like a puppet.
-- **Steps:** with the Move tool inside a rig: drag a bone to turn it (FK); drag the end of a chain (a hand) and the
-  chain bends to reach (IK); right-click a joint › **Pin** keeps it in place (feet on the floor). Poses key like any
+- **Steps:** with the Move tool, when the rig is selected or you are inside it: drag a bone to turn it (FK); drag the end of a chain (a hand) and the
+  chain bends to reach (animators call this IK); right-click a joint › **Pin** keeps it in place (feet on the floor). Poses key like any
   setting (K keys all bones).
 - **Agent:** `ik.add`, `ik.remove`, `value.set` on bones; eyes `inspect_rig_motion`.
 - **3E:** *Efficient:* one drag sets a whole arm.
@@ -1195,7 +1248,9 @@ operation is one (`mask.make`).
 - **Goal:** one mouth, eye or hand drawing shows at a time.
 - **Steps:** select the drawings → context bar **Make swap set** → settings **Showing** lists them as pictures; click
   one to show it (keyed, held until the next choice, when animated). Next: drag a new drawing onto the set to add it.
+- **Undo and adjust:** one step; **Ungroup** gives the drawings back.
 - **Agent:** `group.make {as: "swap"}`, `swap.show`.
+- **3E:** *Easy:* pick by picture. *Rejected:* a group with a Swap switch found in its settings (today).
 
 ### Lip sync · Next (H30)
 - **Goal:** the mouth matches the voice.
@@ -1212,7 +1267,9 @@ operation is one (`mask.make`).
 ### Blinks · Next (H30)
 - **Steps:** select the eye swap set → **Add blinks…** → **How often** (seconds, with a little randomness), which
   drawing is "closed" → Apply → keys you can move.
+- **Undo and adjust:** one step; drag single blink keys; run again to replace them.
 - **Agent:** `blink.add`.
+- **3E:** *Efficient:* a minute of blinks in one action, still editable keys.
 
 ### Bend weights · Later
 - Paint how much each part bends with each bone (a weight brush shown only inside a rig).
@@ -1221,9 +1278,11 @@ operation is one (`mask.make`).
 
 ### Camera and the Camera tool · Now (layer) · Next (tool)
 - **Goal:** push in, pan, tilt, with parallax.
-- **Steps:** + › **Camera** (one per comp; it frames exactly what the comp showed, so nothing jumps). The **Camera
-  tool** (C) appears in the strip once there is a camera: drag on the canvas to move the camera, Ctrl+wheel to dolly in
-  / out, Shift+drag to turn it. Keys like any layer.
+- **Steps:** + › **Camera** (one per comp, so the + menu offers it only while there is none; it frames exactly what
+  the comp showed, so nothing jumps). The **Camera
+  tool** (C) appears in the strip once there is a camera: drag on the canvas to move the camera, Alt+drag up / down to
+  move it closer / further, Shift+drag to turn it. Ctrl+wheel still zooms your view, never the camera, so looking
+  closer never adds a key. Keys like any layer.
 - **Where and when:** the camera's row is pinned at the top of the layers list; Camera tool only when a camera exists.
 - **Feedback:** the canvas always shows what the camera sees (that is the export). With the camera selected, its whole
   move shows as a faint path.
@@ -1235,7 +1294,7 @@ operation is one (`mask.make`).
 - **Goal:** layers at different distances; a rack focus.
 - **Steps:** each layer's **Depth** (in the Depth group; 0 = the screen plane, positive = further). With a camera:
   **Depth of field** on → **Focus on**: click the eyedropper and click a layer on the canvas to focus on it; key it to
-  rack focus. **Blur amount**.
+  move the focus from one layer to another (a rack focus). **Blur amount**.
 - **Agent:** `value.set {z, focus, aperture}`.
 
 ### Side view · Later
@@ -1243,11 +1302,11 @@ operation is one (`mask.make`).
 - **Steps:** view controls ▾ › **Side view**: the canvas shows the layers from above as lines at their depths, with the
   camera; drag a line to change its depth. Esc returns.
 
-### Camera shake and follow · Next
+### Camera shake and keep in frame · Next
 - **Goal:** handheld feel; keep a moving thing in frame.
-- **Steps:** select the camera → context bar **Shake…** (amount, speed, fades in and out with the bar) or **Follow…**
-  (pick a layer; how loosely). Both write ordinary keys you can edit; run again to replace.
-- **Agent:** `camera.shake {amount, speed}`, `camera.follow {target, lag}` *(new)*.
+- **Steps:** select the camera → context bar **Shake…** (amount, speed, fades in and out with the bar) or **Keep in frame…**
+  (pick a layer; how loosely the camera follows it). Both write ordinary keys you can edit; run again to replace.
+- **Agent:** `camera.shake {amount, speed}`, `camera.keep_in_frame {target, lag}` *(new)*.
 - **3E:** tools that make keys (not a look preset); the result stays editable.
 
 ### Tilt (2.5D) · Now
@@ -1291,7 +1350,7 @@ operation is one (`mask.make`).
 
 ### Blend modes and colour adjust · Now
 - **Steps:** settings **Look › Blend** (16 + Add, by name, with a live preview as you move through the list),
-  **Colour** group: Exposure, Contrast, Saturation, Temperature, Tint, Hue, then folded Curves, Levels, LUT.
+  **Colour** group: Exposure, Contrast, Saturation, Temperature, Tint, Hue, then folded Curves, Levels, Look file (LUT).
 - **Agent:** `value.set {blend}`, grade fields.
 - **3E:** *Efficient:* preview while browsing blends (no pick-look-undo).
 
@@ -1308,7 +1367,7 @@ operation is one (`mask.make`).
   (in the panel of another layer, or its row in the timeline) → the field shows a link chip "= card · Opacity" with
   **× 1** and **+ 0** you can edit. Or drag a setting's name onto another setting's name.
 - **Feedback:** the linked field shows the chip instead of a number; a canvas drag on a linked value is refused in
-  words ("Opacity follows card: unlink it to change it here").
+  words ("Opacity is linked to card: unlink it to change it here").
 - **Undo and adjust:** one step; **Unlink** (on the chip) keeps the current value.
 - **Agent:** `link.set {field, from, scale, offset}`.
 - **3E:** *Effective:* PLAN's "links between values". *Easy:* click the source, no syntax. *Rejected:* typing the
@@ -1319,8 +1378,10 @@ operation is one (`mask.make`).
 - **Steps:** in any number field type `=` → the field becomes a code line with name suggestions (other layers, their
   settings, `marker("drop")`, `noise`, `time`, `loop`, and `beat` / `pulse()` when Sound has a tempo) → Enter. Errors show under the field in words ("No layer called
   'titel'. Did you mean 'title'?") and the field keeps its last good value until fixed.
+- **Undo and adjust:** one step; the × on the code line removes it and keeps the current value.
 - **Agent:** `expr.set`, `expr.clear`.
-- **3E:** *Efficient:* `=` is the spreadsheet habit; no menu needed. *Easy:* suggestions as you type.
+- **3E:** *Efficient:* `=` is the spreadsheet habit; no menu needed. *Easy:* suggestions as you type. *Rejected:*
+  a separate expression editor window.
 
 ## 3.27 Reuse: symbols, styles, saved motions, the library, repeat
 
@@ -1331,14 +1392,14 @@ operation is one (`mask.make`).
   its first **copy**. More copies: Alt+drag, Ctrl+D, or drag the symbol from the library. **Edit the symbol:**
   double-click a copy → you are inside it (the path shows `Main › Button`); changes show in every copy. **Change one
   copy:** select it → settings show the symbol's **changeable settings** (its texts, colours and swap choices; the
-  maker marks which, by right-click › **Changeable in copies**) plus the copy's own **Start**, **Speed** and **Loop**.
+  maker marks which, by right-click › **Changeable in copies**) plus the copy's own **Start**, **Speed**, **Loop** and **Time** (keyable, Next: freeze, reverse or ramp the symbol's own time).
   **Detach** turns a copy back into plain layers.
 - **Where and when:** a copy's row shows a symbol icon; its bar shows the symbol's own length (loop marks if looping).
 - **Feedback:** while editing a symbol, other copies update live; outside, a copy with changes shows a dot by the
   changed setting, with **Reset** on hover.
 - **Undo and adjust:** every step is one change; editing inside a symbol is undone like any other change.
 - **Agent:** `symbol.make {ids}`, `symbol.place {source, at}`, `symbol.set {copy, field, value}`, `symbol.detach`
-  *(all new)*.
+  *(all new)*; Make symbol on a scene's layers from another comp is `symbol.place {source: comp}`.
 - **3E:** *Effective:* covers Figma's components, After Effects' precomps and Flash's movie clips with one idea: a
   piece with its own time. *Efficient:* change once, everywhere. *Easy:* one word, one icon. *Rejected:* separate
   precomps and components (two ideas for one need); nested comps without per-copy changes (forces duplicates).
@@ -1357,7 +1418,7 @@ operation is one (`mask.make`).
 
 ### Saved motions · Later
 - **Goal:** reuse your own animation (the way you bring cards in) on other layers.
-- **Steps:** select keys → right-click › **Save motion…** (a name) → later, select layers → library › Motions → click to
+- **Steps:** select keys → right-click › **Save motion…** (type a name in place) → later, select layers → library › Motions → click to
   apply at the playhead (relative: it moves from where each layer is).
 - **Agent:** `motion.save`, `motion.apply` *(new)*.
 - **3E:** tools, not taste: only motions people or agents saved themselves; none ship.
@@ -1367,9 +1428,13 @@ operation is one (`mask.make`).
 - **Steps:** the **Library** button at the top of the tool strip (or Ctrl+L) opens a drawer on the left of the canvas
   (it pushes the canvas, never covers it). Sections: **This project** (comps, 3D items, Sound items, files),
   **Symbols**, **Styles**, **Brushes**, **Motions**, **Brand kit** (your saved colours, fonts, logos, shared across
-  projects), **Connectors** (Poly Haven, Freesound … only if switched on). Drag anything onto the canvas.
+  projects), **Connectors** (Poly Haven, Freesound … only if switched on). Drag anything onto the canvas. **Filling the
+  brand kit:** right-click a colour or text style, a font, or a logo layer › **Add to brand kit**, or drop files on the
+  Brand kit section.
 - **Where and when:** closed by default; remembers open / closed per project.
-- **Agent:** the library is project data (`project` tools; `inspect_library` *(new)*).
+- **Agent:** the library is project data (`inspect_library`, `library.add` *(new)*).
+- **Width:** 280 px. Drawers: Library 280, Guides 360, History 320. Below 1600 px wide only one drawer is open at a
+  time, so the canvas keeps at least half the window.
 - **3E:** *Easy:* one place for "things I can reuse". *Rejected:* a permanent left panel (Hem moved the layers list
   into the timeline to give the canvas width; a permanent library would take it back).
 
@@ -1388,7 +1453,7 @@ operation is one (`mask.make`).
   opacity, time offset), each animatable. Edit the original; every copy follows. **Make into layers** bakes them.
 - **Agent:** `repeat.make {id, arrange, count, step}` *(new)*.
 - **3E:** *Effective:* Cavalry's duplicator is how procedural motion design is done. *Efficient:* one setting
-  instead of n copies.
+  instead of n copies. *Undo and adjust:* **Make into layers** (`repeat.bake` *(new)*) is one step like any other.
 
 ## 3.28 Sound and music
 
@@ -1407,7 +1472,7 @@ operation is one (`mask.make`).
 ### Beat grid · Next
 - **Goal:** land things on the beat.
 - **Steps:** when Sound has a tempo map, the ruler's ▾ › **Show beats** draws faint beat lines and bar numbers;
-  snapping includes beats (bars stronger). While beats show, `,` and `.` also stop on each beat.
+  snapping includes beats (bars stronger). Shift+`,` and Shift+`.` jump to the previous / next beat.
 - **Agent:** key times can be written as beats `"bar 5"` *(new form)*.
 
 ### Sync sound · Next
@@ -1422,8 +1487,8 @@ operation is one (`mask.make`).
 
 ### Play, loop, step, scrub · Now
 - **Goal:** watch it, again and again.
-- **Steps:** Space plays / pauses; playing loops over the **loop range** (drag on the ruler's top band to set it;
-  right-click a bar › **Loop this layer**; Shift+I / Shift+O set its start / end at the playhead; double-click the band
+- **Steps:** Space plays / pauses; playing loops over the **play range** (drag on the ruler's top band to set it;
+  right-click a bar › **Play only this layer's time**; Shift+I / Shift+O set its start / end at the playhead; double-click the band
   to clear). Drag the playhead to scrub. Ctrl+← / → step one frame, Ctrl+Shift+← / → ten; Home / End go to the start /
   end; `,` and `.` jump to the previous / next key, marker or drawing of the selection (of everything when nothing is
   selected). The time in the header: click to type a time (seconds, frames or a marker name).
@@ -1441,10 +1506,10 @@ operation is one (`mask.make`).
 ### Export panel · Now
 - **Goal:** the right file, fast, where you can find it.
 - **Steps:** **Export** (top bar, Ctrl+E) → the settings panel's place is taken by the export sheet (the canvas stays
-  visible) → **What for** as a short list, each with its file type: **Video (MP4)**, **Video with transparency
-  (ProRes 4444 · WebM)**, **GIF**, **Image sequence (PNG)**, **For the Editor (EXR)**, **Lottie (for apps and the
+  visible) → **What for** as a short list, each with its file type: **Video (MP4)**, **Video with transparency**
+  (Format: **ProRes 4444** for editing, the default, or **WebM** for the web), **GIF**, **Image sequence (PNG)**, **For the Editor (EXR)**, **Lottie (for apps and the
   web)**, **Still image (PNG) of this frame**, **Motion for Sound** → only the settings for that choice appear (MP4:
-  Quality Standard / High / Best; GIF: colours, size; PNG: 8 / 16 bit) → **Range: whole comp / loop range / marker to
+  Quality Standard / High / Best; GIF: colours, size; PNG: 8 / 16 bit) → **Range: whole comp / play range / marker to
   marker** → **Size: 100 % / 50 % / other** → **Save to** (the project's Renders folder by default; Choose… once,
   remembered) → **Export**.
 - **Where and when:** the sheet closes when you start the export (it runs in the background through the jobs queue);
@@ -1485,8 +1550,9 @@ operation is one (`mask.make`).
 - **Goal:** keep "the one I showed the client" and go back to it.
 - **Steps:** Ctrl+S → **Save a version**: name it (default: the time) → listed at the top of the History drawer.
   **Open** a version to look at it (read-only, with a banner), **Restore** it (a new step that brings everything back;
-  nothing is lost), **Duplicate as a new comp**. Rostrum also keeps an automatic version each day you work.
-- **Agent:** `version.save`, `version.restore` *(new)*.
+  nothing is lost), **Duplicate as a new comp**. Rostrum also keeps an automatic version each day you work. Naming happens in place in
+  the drawer (no dialog).
+- **Agent:** `version.save`, `version.restore`, `version.to_comp` *(new)*.
 - **3E:** gives Ctrl+S a real meaning in an app that saves everything by itself. *Rejected:* Ctrl+S doing nothing.
 
 ## 3.32 Files, saving and recovery
@@ -1494,7 +1560,7 @@ operation is one (`mask.make`).
 ### Saving is automatic · Now
 - Every change is saved as it happens (PLAN: files hidden, saving automatic). The top bar says **Saved** after each
   change. There is no "unsaved" state, no Save As (Duplicate project, from ≡, makes a copy). Projects live in the
-  user's Rostrum projects folder; ≡ › **Show project folder** opens it.
+  user's Rostrum projects folder; ≡ › **Show project folder** opens it. Agent: `project.duplicate` (project service).
 
 ### Recovery · Now
 - If the app stops, the launcher shows one plain sentence and where the log is (S27); opening again returns to exactly
@@ -1502,7 +1568,7 @@ operation is one (`mask.make`).
 
 ### Missing files and fonts · Now
 - A missing picture or font shows in Problems (3.36) and on its layer's row (a small warning). **Find it…** relinks
-  every layer using that file at once; a missing font offers **Use another font** (a list) or installs from the brand
+  every layer using that file at once (`asset.relink` *(new)*); a missing font offers **Use another font** (a list) or installs from the brand
   kit.
 
 ## 3.33 Help and learning
@@ -1516,6 +1582,13 @@ operation is one (`mask.make`).
   skip it, then the hints are gone).
 
 ## 3.34 Working with an agent
+
+### Connect an AI agent · Now
+- **Goal:** let Claude (or another agent) work in Rostrum2D.
+- **Steps:** ? › **Connect an AI agent** → a short sheet lists the AI apps found on this computer, each with **Connect**
+  (or the one command to paste, shown in the code font) → done once per AI app (S25).
+- **Feedback:** the sheet says "Connected" per app; the agent chip appears the first time an agent works.
+- **3E:** *Easy:* one button per app; nothing to configure.
 
 ### Live changes that never move you · Now
 - **Goal:** watch the agent work without losing your place.
@@ -1545,7 +1618,7 @@ operation is one (`mask.make`).
 
 ### The agent sees what you see · Next
 - **Goal:** say "make **this** warmer" and mean the thing you selected.
-- **Steps:** none: the agent can read your selection, playhead, loop range and open comp through `inspect_screen`
+- **Steps:** none: the agent can read your selection, playhead, play range and open comp through `inspect_screen`
   *(new)*. Right-click › **Copy link for an agent** copies a short reference ("2D · Spring launch › Main › title ·
   2.40 s") to paste into the AI app.
 - **3E:** pointing beats describing.
@@ -1559,7 +1632,7 @@ operation is one (`mask.make`).
 ### Paint-over notes · Next
 - **Goal:** direct by pointing and scribbling, at a moment, the way a director marks a frame.
 - **Steps:** N (Notes tool) → draw or write on the canvas (a red marker by default) and type a line ("push this
-  pose", "darker here") → the note is pinned to this place and **this time range** (the loop range, or ±0.5 s). Notes
+  pose", "darker here") → the note is pinned to this place and **this time range** (the play range, or ±0.5 s). Notes
   show as small pins on the ruler; click one to jump there. **Resolve** hides it (kept in history).
 - **Where and when:** notes show only while the Notes tool is on or the 💬 toggle in the view controls is on; they
   **never export**, and they are not layers (they are not in the timeline rows).
@@ -1602,12 +1675,12 @@ operation is one (`mask.make`).
 | Region | Where | Always there | What it holds |
 |---|---|---|---|
 | **Top bar** | the top row, 44 px | yes | ≡ menu · project › comp ▾ · the message (what just happened, Saved) · agent chip (while an agent works) · Problems chip (while something is wrong) · export progress (while exporting) · ↶ ↷ (when they can act) · Search Ctrl K · **Export** · ? |
-| **Tool strip** | floating on the canvas's left edge, 40 px wide | yes | Library · Move V · Shape R/O ▾ · Pen P ▾ · Text T · Paint B · then tools that appear: Camera C (a camera exists), Bone J (a rig selected), Notes N · and at the bottom **+** (Place a file, Camera, 3D render, Painted background, Symbol) |
+| **Tool strip** | floating on the canvas's left edge: 40 px wide, 8 px in (56 px kept clear) | yes | Library · Move V · Shape R/O ▾ · Pen P ▾ · Text T · Paint B · then tools that appear: Camera C (a camera exists), Bone J (a rig selected), Notes N · and at the bottom **+** (Place a file…, From Figma…, Camera while there is none, 3D render with Rostrum3D, a Symbol from the library) |
 | **Context bar** | floating, top-centre of the canvas, one row | when there is something to say | With Move and a selection: what is selected ("3 layers") and the actions it allows, most used first, the rest under ⋯. With another tool: that tool's few options. With nothing to say: hidden. Hidden while dragging. |
 | **Canvas** | the middle | yes | The frame at the playhead, exactly as exported; handles, guides, motion paths, onion skin, notes. Bottom-left: the group path when inside a group. Bottom-right: view controls (Fit · zoom % ▾ · preview size · Fast/Final · notes toggle). |
 | **Settings panel** | right, 296 px (drag its edge: 256–420) | yes (folds away with Ctrl+\) | The header (name, kind or "3 layers", Find a setting), the essentials, the folded groups, Effects (n) +. With nothing selected: the comp. With Paint: Brush, then Paint on <element>. While exporting: the export sheet. |
-| **Timeline** | bottom, full width | the header and ruler always | Header: ▶, time, loop toggle · the key bar or frame tools when they apply · marker button, Keys / Curves, 🔊, ⊟ full / compact. Ruler with markers (and beats). Rows: layers list on the left (name, eye, lock), bars and keys on the right. The Sound row last. |
-| **Drawers** | left (Library, Guides) or right (History) | no | Open from the tool strip (Library), ? (Guides), the top bar's message (History). A drawer pushes the canvas aside; it never covers it. Only one drawer per side. |
+| **Timeline** | bottom, full width | the header and ruler always | Header: ▶, time, play-range toggle · the key bar or frame tools when they apply · marker button, Keys / Curves (once something is animated), 🔊 (when there is sound), ⊟ full / compact. Ruler with markers (and beats). Rows: layers list on the left (name, eye, lock), bars and keys on the right. The Sound row last. |
+| **Drawers** | left (Library 280 px, Guides 360 px) or right (History 320 px) | no | Open from the tool strip (Library), ? (Guides), the top bar's message (History). A drawer pushes the canvas aside; it never covers it. One drawer per side; below 1600 px wide, one drawer at a time. |
 
 ## 4.2 What shows when
 
@@ -1623,28 +1696,37 @@ operation is one (`mask.make`).
 
 ## 4.3 The context bar, in every state
 
-| State | Context bar shows |
-|---|---|
-| Move, nothing selected | hidden |
-| Move, one shape | `Card · Mask ▾  Combine ▾ (only with 2+) Repeat  Make symbol  ⋯` → for one layer: **Mask ▾ (Draw a mask)**, **Repeat**, **Make symbol**, **Align to frame ▾**, ⋯ (Copy style, Lock, Hide, Duplicate, Delete, order) |
-| Move, one text | `title · Animate letters (after its first key) · Put on path (with a path also selected) · Make symbol · ⋯` |
-| Move, one picture / video | `photo · Replace…  Crop  Mask ▾  ⋯` |
-| Move, 2+ layers | `3 layers · Group  Mask ▾  Align ▾  Distribute ▾ (3+)  Stagger…  ⋯` (Combine ▾ when all are shapes; Follow *x* when picked last; Make rig; Make swap set) |
-| Move, a group | `Logo · Ungroup  Auto layout  Clip  ⋯` |
-| Move, a rig | `Max · Bones (the tool) · Poses ▾ · ⋯` |
-| Move, a swap set | `Mouth · Lip sync…  Add blinks…  ⋯` |
-| Move, a camera | `Camera · Shake…  Follow…  Focus on ▸  ⋯` |
-| Move, a mask group | `Masked · Release mask  ⋯` |
-| Pen | `Click: corner · Drag: curve · Click the first point to close   Close path  Done` |
-| Editing points | `Smooth / Corner   Delete point   Done` |
-| Text, typing | `Font ▾  Weight ▾  Size  Colour ■  Done` |
-| Paint | `[brush picture] Soft round ▾   Size ●──  Opacity ──●  Colour ■  Eraser E   Painting on: Card ▸` |
-| Paint, strokes selected | `12 strokes · Move to depth ▾  Copy  Delete  Done` |
-| Notes | `Marker ■  Write a note…  Resolve` |
+The context bar shows the **five highest-ranked** actions this selection allows, then ⋯ for the rest in the same order.
+Ranks come from the one action list (`apps/2d/screen/screen2d/actions.py` on `team/hem`), so the context bar,
+right-click and Ctrl+K always agree. Some selections **promote** the action they most likely want to the front (column
+"Promoted when").
 
-The importance order and the "valid when" rules come from the one action list (`apps/2d/screen/screen2d/actions.py` on
-`team/hem`), so the context bar, right-click and Ctrl+K always agree. The context bar shows at most **five** actions;
-the rest sit under ⋯ in the same order.
+| Selection (Move tool) | Context bar, in rank order (first five shown) | Promoted when | Under ⋯ |
+|---|---|---|---|
+| nothing | hidden | — | — |
+| one shape or path | Mask ▾ (with Draw a mask) · Repeat · Make symbol · Align to frame ▾ | — | Copy style, Lock, Hide, Duplicate, order, Delete |
+| one text | Animate letters (once it has a key) · Make symbol · Mask ▾ · Align to frame ▾ | — | as above |
+| one picture or video | Replace… · Fill the frame · Crop · Mask ▾ · Make symbol | — | as above |
+| one drawing | Set depth ▾ (with a camera) · Mask ▾ · Make symbol | — | as above |
+| 2+ layers | Group · Mask ▾ · Align ▾ · Distribute ▾ (3+) · Stagger… | all shapes → **Combine ▾** first · one is a path → **Put on path** (a text) or **Move along path** first · all drawings or pictures → **Make swap set** first · the last picked is named → **Follow *x*** | Make symbol · Auto layout · Make rig · Clip · Make swap set · Follow *x* · Match size · Paste style · Lock, Hide, Duplicate, order, Delete |
+| one group | Ungroup · Make rig · Auto layout · Clip · Make symbol | parts named like a body → **Make rig** first | as above |
+| a rig | Bones from part names (no bones yet) · Poses ▾ · Make symbol | — | as above |
+| a swap set | Lip sync… · Add blinks… | — | as above |
+| a camera | Shake… · Keep in frame… · Focus on ▸ | — | Lock, Hide |
+| a mask group | Release mask · Mode ▾ | — | as above |
+
+| Tool | Context bar |
+|---|---|
+| Pen | Click: corner · Drag: curve · Click the first point to close · **Close path** · **Done** |
+| Editing points | **Smooth / Corner** · **Delete point** · **Done** |
+| Text, while typing | Font ▾ · Weight ▾ · Size · Colour ■ · **Done** |
+| Paint | brush ▾ · Size · Colour ■ · Opacity · Eraser E · Painting on: *x* ▸ |
+| Paint, strokes selected | *12 strokes* · Move to depth ▾ · Copy · Delete · **Done** |
+| Notes | Marker colour ■ · Write a note… · Resolve |
+
+**When the bar is too wide** (at 1280 px, the Paint bar), the lowest-ranked items move under ⋯ one by one; for Paint,
+Opacity then Eraser fold first, and Size and Colour never do. The bar never wraps to two lines and never covers the
+tool strip.
 
 ## 4.4 The settings panel, per kind
 
@@ -1662,7 +1744,7 @@ Every group not listed in Essentials is folded to its name; the panel remembers 
 | Group | X Y · Scale · Rotation · Opacity | Layout (if auto layout) · Clip · Look · Effects · Depth · Timing |
 | Symbol copy | Its changeable settings · Start · Speed · Loop · X Y · Scale · Rotation · Opacity | Look · Effects · Depth · Timing |
 | Camera | Zoom · X Y · Rotation · Depth of field (on/off) | Focus (if on) · Motion blur · Timing |
-| Rig | Poses · the selected bone's turn | IK · Timing |
+| Rig | Poses · the selected bone's turn | Reach (pins, how limbs reach) · Timing |
 | 3D render | Version · Speed · Loop · W H · X Y · Opacity | Same as picture |
 | Several | The settings they share (Mixed where they differ) | The groups they share |
 | Nothing | Comp: Size · Length · Frame rate · Background | Timing (Steps) · Motion blur · Colour · Effects · Soundtrack · Layout grid |
@@ -1688,7 +1770,7 @@ picker, Steps **On twos**, sizes **16:9 HD**. One spelling: **Colour**, **Centre
 │  │      └──────────────────────────────────────────────────────┘        │ ▸ Colour  ▸ Effects (0) +    │
 │+ │                                                  Fit 52 % ▾  Full ▾  │                             │
 ├──┴──────────────────────────────────────────────────────────────────────┴─────────────────────────────┤
-│ ▶ 0.00 s  ⟲ │                                                       │ ◇ Marker  Keys│Curves  ⊟ │
+│ ▶ 0.00 s  ⟲ │                                                                      │ ◇ Marker  ⊟ │
 │ LAYERS       │0s      1s      2s      3s      4s      5s      6s      7s      8s      9s             │
 │              │  Your layers appear here as bars. Drag a bar to change when it shows.                 │
 └───────────────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -1769,11 +1851,11 @@ picker, Steps **On twos**, sizes **16:9 HD**. One spelling: **Colour**, **Centre
 **W7 · A rig selected (character)**
 
 ```
-│📚│               ┌ Max · Poses ▾  Lip sync… (on the mouth)  ⋯ ┐       │ Max · Rig                   │
+│📚│               ┌ Max · Poses ▾  Bones from part names  ⋯ ┐          │ Max · Rig                   │
 │V │      ┌──────────────────────────────────────────────────────┐        │ Poses                       │
 │▭ │      │          (o_o)    bones drawn over the parts           │        │ [🙂][😮][😠][+ Save pose]    │
 │🦴│ ←Bone│          /|\      drag a hand: the arm follows (IK)   │        │ Selected bone: forearm 32°  │
-│T │      │          / \      pinned feet show a pin               │        │ ▸ IK  ▸ Timing              │
+│T │      │          / \      pinned feet show a pin               │        │ ▸ Reach  ▸ Timing           │
 ```
 
 **W8 · Exporting (the export sheet takes the settings panel's place)**
@@ -1819,9 +1901,9 @@ picker, Steps **On twos**, sizes **16:9 HD**. One spelling: **Colour**, **Centre
 
 ## 4.6 Window sizes
 
-The canvas must never drop below **half the window's width**, and the frame at Fit must stay at least **480 px wide**. The frame's Fit leaves room for the tool strip (56 px), the context bar (48 px) and the view controls (32 px), so they never sit on the picture at Fit.
+The canvas must never drop below **half the window's width**, and the frame at Fit must stay at least **480 px wide**. The frame's Fit leaves room for the tool strip (56 px kept clear), the context bar (48 px) and the view controls (32 px), so they never sit on the picture at Fit.
 
-| Window (logical px) | Settings panel | Timeline at start | Canvas (about) | Frame at Fit (16:9) | Notes |
+| Window (screen points) | Settings panel | Timeline at start | Canvas (about) | Frame at Fit (16:9) | Notes |
 |---|---|---|---|---|---|
 | **1280 × 720** | 256 | compact (≈ 120) | 1024 × 556 | ≈ 846 × 476 at compact; ≈ 615 × 346 at full (250) | The top bar's message shortens first; search becomes its icon. Full timeline on demand. |
 | **1366 × 768** | 264 | compact (≈ 120) | 1102 × 604 | ≈ 932 × 524 | Rows end on a whole row, never cut mid-row (FINDINGS 5). |
@@ -1852,7 +1934,9 @@ the rest of the screen.
 |---|---|---|---|---|
 | Start screen | full window | launch with no project; ≡ | New (named sizes), recent projects as pictures, Open, Guides | opening a project |
 | Comp list | menu | the comp name | comps with pictures, New / Duplicate / Rename / Delete | a pick, Esc |
-| + menu | menu | + in the tool strip | Place a file… · From Figma… · Camera · 3D render · Painted background · Symbol ▸ | a pick, Esc |
+| + menu | menu | + in the tool strip | Place a file… · From Figma… · Camera (while there is none) · 3D render (with Rostrum3D) · Symbol ▸ | a pick, Esc |
+| System file window | the operating system's own | Place, Replace, Save to › Choose…, Find it… | files and folders | a pick, Cancel |
+| Effects list | popover | Effects + | the effects that apply to this selection, each with a one-line description | a pick, Esc |
 | Place progress / report | small panel, canvas right edge | placing a file | progress; "Placed …"; Show what didn't come across | itself after 3 s if clean; × |
 | PDF pages | inline question in that panel | a multi-page PDF | This page / All pages as comps | the answer |
 | Figma token | small dialog, first time only | pasting a Figma link | where to get a token; the field; "never stored in the project" | OK / Cancel |
@@ -1863,11 +1947,13 @@ the rest of the screen.
 | Link to… | pointer mode | right-click a setting | click the source; Esc cancels | a click, Esc |
 | Lip sync | popover | context bar on a mouth set | voice line, mouth-shape map with pictures, Apply | Apply / Esc |
 | Add blinks | popover | context bar on an eye set | how often, closed drawing, Apply | Apply / Esc |
-| Shake / Follow | popover | context bar on a camera | amount, speed / target, lag | Apply / Esc |
+| Shake / Keep in frame | popover | context bar on a camera | amount, speed / target, how loosely | Apply / Esc |
 | Export sheet | sheet in the settings panel's place | Export, Ctrl+E | what for, its settings, range, size, save to, Export | starting the export, Esc, × |
 | Replace file? | **blocking dialog** | exporting onto an existing file | Replace / Keep both / Cancel | a choice |
 | Library | left drawer | tool strip, Ctrl+L | project items, symbols, styles, brushes, motions, brand kit, connectors | the button again, Esc |
-| History | right drawer | the top bar's message, Ctrl+H | steps by who, before / after, Undo this, versions | the same, Esc |
+| History | right drawer | the top bar's message, Ctrl+H | steps by who, before / after, Undo this, versions (Save a version names it in place) | the same, Esc |
+| Save pose · Save motion | a name field in place (Poses group · the library) | Save pose · right-click › Save motion… | the name | Enter / Esc |
+| Connect an AI agent | sheet | ? › Connect an AI agent | AI apps found, Connect per app | × |
 | Guides | left drawer | ? › Guides | searchable how-tos | × |
 | Shortcut sheet | overlay | Ctrl+/ | searchable shortcut list by job | Esc |
 | Problems | popover | the Problems chip | problems in words with fixes | click away |
@@ -1885,6 +1971,7 @@ the rest of the screen.
 | Click a key → the settings panel shows the key | **Changed**: a key bar in the timeline header; the panel stays on the layer | You keep seeing the layer; many keys eased at once (FINDINGS 3.1, 2.14). |
 | Action bar floating under the selection | **Changed**: one context bar at the top-centre of the canvas | Fixed place, never covers the art, never jumps or falls off-screen; also carries tool options, so there is one place for "what can I do now". |
 | Action bar also above the settings | **Dropped** | Two places for the same actions. |
+| "Comp" as the word on screen | **Kept for now, flagged** | The fresh-eyes check calls it jargon, and the Editor has a Comp page (compositing). A plainer word ("scene") is a naming choice across apps; recorded for Sam rather than changed here. |
 | One action list for bar, right-click, Ctrl+K, shortcuts | **Kept** | The core of select-then-act. Extended (Follow, Put on path, Stagger, Repeat, Make symbol, Lip sync, Blinks, Replace, Draw a mask). |
 | + Add, Import, Export in the top bar | **Changed**: + and Place in the tool strip (one door for files and drops); Export stays in the top bar | One door; creation beside the canvas; a shorter top bar that cannot overlap. |
 | Change count in the top bar | **Dropped** | Means nothing to a person (FINDINGS 4.3); "Saved" and ↶ say it. |
@@ -1905,7 +1992,8 @@ the rest of the screen.
 **How clicks are counted:** one click, one drag, one key press, or typing one value (a word, a number, a name) counts as
 **1**. Pressing Enter after typing counts separately. Moving the playhead by clicking the ruler counts 1. Painting
 strokes are not counted (they are the work itself). The route is the one a person would take on their first good day:
-visible buttons, plus the shortcuts named on them. "Today" says what the current screen (main plus Hem's H28 in
+visible buttons, plus the shortcuts named on them. F4, F7 and F8 start from a project that already holds RostrumSound's
+voice or music (made in that app, rule 9); F7's layers were made as in F1–F3. "Today" says what the current screen (main plus Hem's H28 in
 progress) can't do or does with more steps.
 
 ## F1 · Type animation: "Spring launch" rises in letter by letter and cuts out on the "out" marker (Maya)
@@ -1940,14 +2028,14 @@ With the marker already made in Sound, 28. **Today:** no text tool (+ Add, then 
 | 4 | Pick the four outlines | Click the first outline row · Shift+click the last | 2 |
 | 5 | Draw them on | Open **Line** · click the ruler at 1.0 s · **Draw to** diamond (100 %) · Home · Draw to field · type 0 | 6 |
 | 6 | One after another | Context bar **Stagger…** · type 3 (frames) · Enter | 3 |
-| 7 | A wipe for the fill | **R** · drag a rectangle over the logo · Shift+click the two fill rows · context bar **Mask** | 4 |
+| 7 | A wipe for the fill | **R** · drag a rectangle over the logo · Shift+click the two fill rows · context bar **Mask** | 5 |
 | 8 | Animate the wipe | Click the rectangle's row · click the ruler at 1.2 s · X diamond · click the ruler at 0.8 s · drag the rectangle off to the left | 5 |
 | 9 | A glow | Shift+Enter (back to the logo group) · Effects **+** · **Glow** | 3 |
 | 10 | Springy settle | Click the ruler at 1.6 s · Scale diamond · click the ruler at 1.0 s · Scale field · type 90 · box the two keys · Ease ▾ · **Spring** | 8 |
-| 11 | Transparent background | Esc · Background ▾ · **None** | 3 |
+| 11 | Transparent background | Esc · Esc (keys, then layers) · Background ▾ · **None** | 4 |
 | 12 | Watch | Space | 1 |
-| 13 | Export | Export · **Video with transparency** · Export | 3 |
-| | | **Total** | **42** |
+| 13 | Export | Export · **Video with transparency** (ProRes 4444, the default) · Export | 3 |
+| | | **Total** | **44** |
 
 **Today:** keys on several outlines at once and the action bar are being built in H28; no stagger (each bar dragged by
 hand), the mask is a 200 px box placed by typing, no spring ease, glow only through Ctrl+K on the first selected layer.
@@ -1981,7 +2069,7 @@ The project already has the voice line "hello" made in RostrumSound.
 |---|---|---|---|
 | 1 | Open the project | Start screen · click the project | 1 |
 | 2 | Bring the parts in | Drag `max.psd` onto the canvas (the group "max" with named parts) | 1 |
-| 3 | Make a puppet | Context bar **Make rig** | 1 |
+| 3 | Make a puppet | (the new group is selected; its parts are named like a body, so Make rig is first) context bar **Make rig** | 1 |
 | 4 | Bones | Context bar **Bones from part names** · drag 4 joints that are slightly off (elbows, knees) | 5 |
 | 5 | Mouths | Double-click into the rig · click the "mouth A" row · Shift+click "mouth rest" · **Make swap set** | 4 |
 | 6 | Lip sync | **Lip sync…** · click "hello" in the voice list · (shapes guessed from names, all right) **Apply** | 3 |
@@ -2001,12 +2089,12 @@ Drawing bones by hand instead of step 4: about 26 clicks (each joint a click). *
 |---|---|---|---|
 | 1 | New project | New · 24 fps · Create | 3 |
 | 2 | First drawing | **B** · draw (a new drawing is made around the strokes) | 1 + strokes |
-| 3 | Hand-drawn frames | **Alt+N** (Draw each frame turns on, next drawing) · **Alt+O** (onion skin) · New drawings hold ▾ · **2 frames** | 4 |
-| 4 | Drawings 2–12 | Alt+N before each, then draw (11 ×) | 11 + strokes |
+| 3 | Hand-drawn frames | New drawings hold ▾ · **2 frames** · **Alt+N** (Draw each frame turns on; drawing 2 starts) · **Alt+O** (onion skin) · draw | 4 + strokes |
+| 4 | Drawings 3–12 | Alt+N before each, then draw (10 ×) | 10 + strokes |
 | 5 | Colour layer | **+ Paint layer** · drag it under "Paint" | 2 |
-| 6 | Colour each drawing | **G** (fill) · for each of the 12 drawings: click inside the puff · Alt+→ to the next | 24 |
-| 7 | Loop | Right-click the bar · **Loop this layer** · Space | 3 |
-| 8 | Export | Export · **GIF** · Range ▾ · **Loop range** · Export | 5 |
+| 6 | Colour each drawing | **G** (fill) · Home (back to drawing 1) · for each of the 12 drawings: click inside the puff · Alt+→ to the next | 25 |
+| 7 | Repeat it | Right-click the bar · **Play only this layer's time** · Space | 3 |
+| 8 | Export | Export · **GIF** · Range ▾ · **Play range** · Export | 5 |
 | | | **Total** | **≈ 53, plus the strokes** |
 
 **Today:** Draw page, + Add › Drawing first, no colour layer, no fill bucket, no zoom; the rest of the timing is hidden
@@ -2022,11 +2110,11 @@ while drawing.
 | 4 | Middle and near | Painting on ▸ **New drawing** · paint · Painting on ▸ **New drawing** · paint | 4 + strokes |
 | 5 | Set the depths | **V** · click the far drawing · Set depth ▾ · **Far** · click the middle one · Set depth ▾ · **Middle** · click the near one · Set depth ▾ · **Near** | 10 |
 | 6 | A textured house | **R** · drag · Fill swatch · pick · **B** · paint grain inside it | 5 + strokes |
-| 7 | Push in | Click the camera row · Home · K · End · **C** · Ctrl+wheel on the canvas (dolly in) · box the two keys · Ease ▾ · **Smooth** | 9 |
-| 8 | Smoke | Painting on ▸ **New drawing** · paint · **V** · Home · K · End · drag the smoke up and right | 7 + strokes |
+| 7 | Push in | Click the camera row · Home · K · End · **C** · Alt+drag up on the canvas (camera closer) · box the two keys · Ease ▾ · **Smooth** | 9 |
+| 8 | Smoke | **B** · Painting on ▸ **New drawing** · paint · **V** · Home · K · End · drag the smoke up and right | 8 + strokes |
 | 9 | Grain on everything | Esc · Effects **+** · **Grain** | 3 |
 | 10 | Watch, export | Space · Export · Export | 3 |
-| | | **Total** | **≈ 46, plus the strokes** |
+| | | **Total** | **≈ 47, plus the strokes** |
 
 **Today:** depths only through an agent (`background.add`), painting only on drawing layers, no Camera tool, no grain.
 
@@ -2071,13 +2159,13 @@ steps. **Today:** live updates and per-person undo work; no review group, no not
 |---|---|---|---|
 | 1 | New project | New · **9:16 vertical** · Create | 3 |
 | 2 | Logo | **Library** · Brand kit · drag the logo onto the canvas | 3 |
-| 3 | Photo | Drag the photo from the desktop · right-click › **Send to back** · context bar **Fill the frame** | 3 |
+| 3 | Photo | Drag the photo from the desktop · right-click › **Send to back** · context bar **Fill the frame** | 4 |
 | 4 | Title | **T** · click · type "Summer drop" · Esc · Style ▾ · **Brand heading** | 6 |
 | 5 | Title and logo come in | Shift+click the logo · click the ruler at 0.8 s · **K** · Home · Opacity field · type 0 · drag both down a little | 7 |
 | 6 | Feel | Box the keys · Ease ▾ · **Ease out** · **Stagger…** · Enter (2 f default) | 5 |
 | 7 | Slow push on the photo | Click the photo · Home · K · End · Scale field · type 110 | 6 |
 | 8 | Export | Export · Export | 2 |
-| | | **Total** | **35** |
+| | | **Total** | **36** |
 
 **Today:** no 9:16 by name, no library or brand kit, no K, no stagger, no "Fill the frame".
 
@@ -2087,7 +2175,7 @@ steps. **Today:** live updates and per-person undo work; no review group, no not
 |---|---|---|---|
 | 1 | New project | New · Create | 2 |
 | 2 | One icon | **O** · drag · **T** · click under it · type "Plan" · Esc · Shift+click the circle | 7 |
-| 3 | Make it a symbol | **Make symbol** · double-click it · right-click the text › **Changeable in copies** · Shift+Enter | 5 |
+| 3 | Make it a symbol | **Make symbol** (2 layers: in the first five) · double-click it · right-click the text › **Changeable in copies** · Shift+Enter | 5 |
 | 4 | Three more | Alt+drag × 3 | 3 |
 | 5 | Their labels | For each of the three copies: click it · Label field · type the word | 9 |
 | 6 | Space them | Drag a box over all four · **Distribute ▾** · **Even gaps across** | 3 |
@@ -2146,11 +2234,12 @@ per brief that touches them.
 
 - **On the canvas** a dragged layer (or a resize edge) snaps when within **6 screen px** of: the frame's edges and
   centre lines; other visible layers' edges and centres (in the same group first); guides; equal spacing between
-  neighbours; the layout grid; whole pixels above 400 % zoom. A thin magenta line shows what it snapped to, and equal
+  neighbours; the layout grid; whole pixels above 600 % zoom (when the pixel grid shows). A thin magenta line shows what it snapped to, and equal
   gaps show their distance.
 - **In time** bars, keys and the playhead snap within **6 screen px** to: the playhead, markers, beats (when shown),
   other layers' bar ends and keys, whole frames always.
-- **Hold Ctrl** while dragging to stop snapping for that drag. The view menu has **Snapping** on / off for those who
+- **Ctrl pressed after a drag has started** stops snapping for that drag; Ctrl pressed *before* pressing on a layer
+  picks its deepest piece (6.4), so the two never meet. The view menu has **Snapping** on / off for those who
   want it off all the time (it stays on by default).
 - Snapping never changes a value the person typed.
 
@@ -2183,7 +2272,7 @@ per brief that touches them.
 - **Focus is visible:** the region that has the keyboard (canvas, timeline, settings) shows a faint top edge
   highlight. Clicking in a region gives it focus; Esc in a field returns focus to the canvas.
 - In fields: Tab and Shift+Tab move between fields; Enter commits; Esc cancels; ↑ / ↓ change a number by 1 (Shift 10).
-- Single-letter tool keys (V, R, O, P, T, B, C, J, N, K, M, G) work only when no field has focus, so typing a name
+- Single-letter keys (V, R, O, L, P, T, B, C, J, N, K, M, U, and E / G while painting) work only when no field has focus, so typing a name
   never switches tools.
 - Every action reachable by mouse is reachable by Ctrl+K; every shortcut is on its button's hover name and in Ctrl+/.
 - Pen and touch: pressure and tilt from any pen; the pen's back end erases; two-finger pinch zooms, twist turns the
@@ -2197,7 +2286,7 @@ an internal name, never silent (rule 6).
 | Situation | Says |
 |---|---|
 | An action that needs more selected (from Ctrl+K by exact name) | "Combine needs two or more shapes selected." |
-| A canvas drag on a value that follows a link or expression | "Opacity follows *card*. Unlink it to change it here." |
+| A canvas drag on a value that follows a link or expression | "Opacity is linked to *card*. Unlink it to change it here." |
 | A locked layer | "*Background* is locked. Unlock it to change it." (and an Unlock button) |
 | A missing font | "The font *Söhne* isn't on this computer. Pick another, or install it and it will be used." |
 | An export that failed | "The MP4 couldn't be made: this Windows has no video encoder (Media Feature Pack). Install it, or export ProRes." |
@@ -2281,6 +2370,7 @@ core (the shared operations and history), svc (the project service).
 | Replace a picture or video | None | Replace…, drop on its row | S | Py, screen |
 | Crop, fit, Fill the frame | Size only | Double-click to crop; Fit; Fill the frame | M | Py, eng |
 | Slip a video | `offset` field | Alt+drag inside the bar | S | screen |
+| Time of a video or symbol (freeze, reverse, ramps) | Speed and offset only | Keyable Time | M | Py, eng |
 | 3D render picked by picture, Open in 3D | Item typed in a field | List with pictures; Open in Rostrum3D | S | screen, svc |
 | **Painting and drawing** | | | | |
 | Paint on any element (inside its outline) | Drawing layers only | B paints on the selected element; on nothing makes a drawing (that part is in H28) | XL | eng, Py, kit (painting kit), screen |
@@ -2290,12 +2380,16 @@ core (the shared operations and history), svc (the project service).
 | Lasso and move strokes | `stroke.set` exists | Ctrl+lasso, transform, copy | M | screen |
 | Set depth / Move to depth on screen | Agent only (`background.*`) | Context bar on drawings | M | screen |
 | Stroke reveal | None | Reveal % | M | Py, eng |
+| Shape morphing | Path-shape keys (H14); points edited on screen | The Shape diamond; Start point | S | screen |
+| Brush steadiness | None | A Steadiness slider | M | painting kit |
+| Mirror the view | None | Shift+H | S | screen |
 | Frame-by-frame | Done on screen (frames, holds, onion, Alt keys) | Plus "New drawings hold", light table, flip, `,` `.` | S (hold, flip) · M (light table) | screen |
 | **Selecting and arranging** | | | | |
 | Picking by paint, outer group, double-click in, Ctrl+click deep, Shift / Ctrl rules | Done (H28) | Same, plus hover outline, group path at bottom-left, Tab to next layer, Shift+Enter out | S | screen |
 | Handles | Done; resize pointers don't turn with a turned box | Pointers turn | S | screen |
 | X Y / W H pairs, scrubbing labels, maths in fields | One per row; no scrub | Pairs; scrub; `+20`, `*2`, `50%`, `=` | M | kit |
 | Anchor point | Fields "Anchor X 0.50" | Alt+drag on canvas, 9-dot picker | M | screen, kit |
+| Find a layer, U for animated settings | None | Search box over 12 layers; U | S | screen |
 | Layer rows, reorder, rename, hide, lock | Done (H28) | Plus solo with its banner, smart duplicate | S | screen |
 | Group, ungroup, clip, mask, align, distribute, match size, copy / paste style, from the selection | Done (H28: operations, action bar, right-click, Ctrl+K on all) | Same list, moved to the fixed context bar, plus the new actions below | M (move to context bar) | screen |
 | Draw a mask on one layer | None | Mask ▾ › Draw | M | screen |
@@ -2305,13 +2399,14 @@ core (the shared operations and history), svc (the project service).
 | Diamond, animate in place | Done (H28); diamond only on hover | Always faintly visible | S | kit |
 | K: key the selection | None | K | S | screen, Py |
 | Box-select, move keys | Single key drag | Box-select across bars; move together | M | screen |
+| After the last key (repeat, back and forth) | Expressions only | Key bar ⋯ | M | core, Py |
 | Stretch and paste keys | None | Alt+drag ends; Ctrl+C / V at the playhead | M | Py, screen |
 | Key bar (ease for many keys, curve chip) | The settings panel swaps to one key | Key bar in the timeline header | M | screen |
 | Spring ease | None | Bounce and Speed | M | core (easing), Py |
 | Curve editor | Done | Same | — | — |
 | Stagger | None | Stagger… popover | M | Py (`layer.stagger`), screen |
 | Markers: M, type the name at once; tie by drop | Marker button, rename by double-click; tie by drop (H28) | M key, name typed at once, ties on keys too | S | screen, kit |
-| Loop range, loop a layer | Not found | Band on the ruler, right-click a bar | S | screen |
+| Play range, play only a layer's time | Not found | Band on the ruler, right-click a bar | S | screen |
 | Letter animation | Done (fields) | Plus "Animate letters" in the context bar | S | screen |
 | Letter ranges | None | Later | L | Py, eng |
 | Motion paths on the canvas | None | Path, dots, key squares, spatial handles | L | screen, core (spatial keys) |
@@ -2323,7 +2418,7 @@ core (the shared operations and history), svc (the project service).
 | Bones from part names | None | Context bar on a rig with no bones | M | Py |
 | Bend weights | Two-bone bend only | Later | L | eng |
 | **Camera and depth** | | | | |
-| Camera tool | None (layer and fields) | C: drag, dolly, turn | M | screen |
+| Camera tool | None (layer and fields) | C: drag, move closer, turn | M | screen |
 | Focus by clicking a layer, rack focus | Fields | Eyedropper on the canvas | S | screen |
 | Shake, follow | None | Helpers that write keys | M | Py |
 | Side view | None | Later | L | screen, eng |
@@ -2390,7 +2485,7 @@ because later steps lean on earlier ones.
 4. **Sound in 2D** (with Team Sam / Priyam: the project service plays Sound's mix in sync) and the beat grid. *F7, and
    every job cut to music.*
 5. **H30 characters on screen:** Bone tool, Bones from part names, IK drag, poses, Lip sync, Add blinks. *F4.*
-6. **Reuse:** symbols, styles, the library drawer, Repeat. *F3, F9, F10.*
+6. **Reuse:** symbols, styles, the library drawer, Repeat. *F9, F10.*
 7. **Motion paths, Move along a path, Follow, the Camera tool.** *F6, F10.*
 8. **Working with an agent:** the run as a group, dots, notes, `inspect_screen`, the History drawer, versions. *F8.*
 9. **New effects and live booleans:** grain, displace, distort, light wrap, live combine. *The reference look.*
@@ -2406,15 +2501,15 @@ Ctrl = ⌘ and Alt = ⌥ on the Mac. Single-letter keys work only when no text f
 | **Tools** | V Move · R Rectangle · O Ellipse · L Line · P Pen · Shift+P Pencil · T Text · B Paint · E Eraser (while painting) · G Fill (while painting) · C Camera (with a camera) · J Bone (with a rig) · N Notes |
 | **Make and place** | Ctrl+I Place a file · Ctrl+Shift+N New comp · Ctrl+N New project (start screen) |
 | **Select** | Click · Shift+click (canvas) · Ctrl+click / Shift+click (rows) · Ctrl+A · Esc · Enter / double-click (go in) · Shift+Enter (go out) · Ctrl+click (deepest) · Tab / Shift+Tab (next / previous layer) |
-| **Move and size** | Arrows nudge 1 px / Shift 10 px (canvas) · Shift while dragging (proportions, straight) · Alt while dragging (from the centre) · Alt+drag (a copy) · Ctrl while dragging (no snapping) · Alt+drag the anchor |
+| **Move and size** | Arrows nudge 1 px / Shift 10 px (canvas) · Shift while dragging (proportions, straight) · Alt while dragging (from the centre) · Alt+drag (a copy) · Ctrl while dragging (no snapping) · drag the anchor circle |
 | **Edit** | Ctrl+Z · Ctrl+Shift+Z / Ctrl+Y · Ctrl+C · Ctrl+X · Ctrl+V (in place) · Ctrl+Shift+V (at the pointer) · Ctrl+D · Delete · F2 rename |
 | **Arrange** | Ctrl+] / Ctrl+[ forward / back · Ctrl+Shift+] / [ front / back · Ctrl+G group · Ctrl+Shift+G ungroup · Shift+A auto layout · Ctrl+Alt+M mask · Ctrl+Alt+U / S / I / X combine (union, subtract, intersect, exclude) · Alt+A / D / W / S align left / right / top / bottom · Alt+H / V centre across / up and down · Ctrl+Shift+H hide · Ctrl+Shift+L lock · Alt+click an eye (solo) · Ctrl+Alt+K make symbol · Ctrl+Alt+C / V copy / paste style |
-| **Animate** | K key the selection · M add a marker · F9 smooth · Shift+F9 ease in · Ctrl+Shift+F9 ease out · Ctrl+Alt+H hold · Alt+[ / Alt+] trim start / end to the playhead · arrows move selected keys or bars 1 frame / Shift 10 (timeline) · Alt+drag a key selection's end (stretch) · F fit curves (Curves) |
-| **Time** | Space play / pause · Ctrl+← / → one frame · Ctrl+Shift+← / → ten frames · Home / End · `,` / `.` previous / next key, marker, drawing or beat · Shift+I / Shift+O loop start / end |
-| **Frame-by-frame** | Alt+← / Alt+→ previous / next drawing · Alt+N new drawing · Alt+Shift+N copy of this drawing · Alt+↑ / Alt+↓ hold longer / shorter · Alt+O onion skin · hold `,` or `.` to flip |
-| **Paint** | [ / ] size · Shift+[ / ] softness · 1–0 opacity · Alt (hold) pick a colour · Shift+drag straight line · Ctrl+drag lasso strokes |
-| **View** | Ctrl+wheel / pinch zoom · Space+drag pan · Shift+Space+drag turn the view · Ctrl+0 fit · Ctrl+1 100 % · Shift+2 zoom to selection · Ctrl+= / Ctrl+− · Shift+0 straighten the view · Shift+R rulers · Ctrl+\ hide panels |
-| **Find and help** | Ctrl+K search and run · Ctrl+F find a setting · Ctrl+/ shortcuts · Ctrl+L library · Ctrl+H history · Ctrl+S save a version |
+| **Animate** | K key the selection · M add a marker · F9 smooth · Shift+F9 ease in · Ctrl+Shift+F9 ease out · Ctrl+Alt+J jump (no in-between) · Alt+[ / Alt+] trim start / end to the playhead · arrows move selected keys or bars 1 frame / Shift 10 (timeline) · Alt+drag a key selection's end (stretch) · F fit curves (Curves) |
+| **Time** | Space play / pause · Ctrl+← / → one frame · Ctrl+Shift+← / → ten frames · Home / End · `,` / `.` previous / next key, marker or drawing · Shift+`,` / Shift+`.` previous / next beat · Shift+I / Shift+O loop start / end |
+| **Frame-by-frame** | Alt+← / Alt+→ previous / next drawing · Alt+N new drawing · Alt+Shift+N copy of this drawing · Alt+↑ / Alt+↓ hold longer / shorter · Alt+O onion skin · hold `,` or `.` to flip through |
+| **Paint** | E eraser · G fill · [ / ] size · Shift+[ / ] softness · 1–0 opacity · Alt (hold) pick a colour · Shift+drag straight line · Ctrl+drag lasso strokes |
+| **View** | Shift+H mirror the view · Ctrl+wheel / pinch zoom · Space+drag pan · Shift+Space+drag turn the view · Ctrl+0 fit · Ctrl+1 100 % · Shift+2 zoom to selection · Ctrl+= / Ctrl+− · Shift+0 straighten the view · Shift+R rulers · Ctrl+\ hide panels |
+| **Find and help** | Ctrl+K search and run · Ctrl+F find a setting · Ctrl+Shift+F find a layer · U show only animated settings · Ctrl+/ shortcuts · Ctrl+L library · Ctrl+H history · Ctrl+S save a version |
 | **Export** | Ctrl+E export · Ctrl+Shift+E export again |
 
 # Appendix B · The operations the screen calls
@@ -2424,23 +2519,24 @@ server. *(new)* = to be added.
 
 | Area | Operations |
 |---|---|
-| Comps | `comp.add` · `comp.remove` · `item.rename` · `value.set` (comp settings) · `guide.add` / `guide.remove` *(new)* |
-| Layers | `layer.add` · `layer.remove` · `layer.duplicate` · `layer.paste` · `layer.arrange` · `layer.hide` · `layer.lock` · `layer.unlock` · `layer.replace` *(new)* · `run_import` |
-| Values and keys | `value.set {at}` · `key.add` (with `fields: "pose"` for K *(new)*) · `key.set` · `key.remove` · `key.clear` · `key.handles` · `key.scale` *(new)* · `key.paste` *(new)* · spatial handles on `key.set` *(new)* · spring ease *(new)* |
+| Comps | `comp.add` · `comp.duplicate` *(new)* · `comp.remove` · `item.rename` · `value.set` (comp settings) · `guide.add` / `guide.remove` *(new)* |
+| Layers | `layer.add` · `asset.relink` *(new)* · `layer.remove` · `layer.duplicate` · `layer.paste` · `layer.arrange` · `layer.hide` · `layer.lock` · `layer.unlock` · `layer.replace` *(new)* · `run_import` |
+| Values and keys | `value.set {at}` · `key.add` (with `fields: "pose"` for K *(new)*) · `key.set` · `key.remove` · `key.clear` · `key.handles` · `key.scale` *(new)* · `key.paste` *(new)* · `key.set {after}` *(new)* · spatial handles on `key.set` *(new)* · spring ease *(new)* |
 | Timing | `layer.shift {by | to: "#marker"}` · `layer.trim` · `layer.stagger` *(new)* · `marker.add` / `move` / `rename` / `remove` / `colour` |
 | Paths | `path.add_point` · `path.set_point` · `path.remove_point` · `path.close` · `path.fit` · `path.width` · `shape.to_path` · `path.flatten` *(new)* |
 | Relating (select first, then act) | `group.make {as: group | clip | layout | swap | boolean (new)}` · `group.release` · `mask.make` · `mask.release` · `shape.boolean` · `layer.align` · `layer.distribute` · `layer.match_size` · `style.apply` · `layer.follow` / `layer.unfollow` *(new)* · `rig.make` · `symbol.make` *(new)* · `repeat.make` *(new)* |
 | Look | `effect.add` · `effect.remove` · `value.set` (fill, gradient, blend, colour) |
 | Expressions | `expr.set` · `expr.clear` · `link.set` |
-| Painting | `stroke.add` (any element *(extended)*) · `stroke.set` · `stroke.remove` · `paint.layer_add` *(new)* · `paint.fill` *(new)* · `frame.add` · `frame.hold` · `frame.remove` · `background.add` · `background.fit` · `background.move` |
+| Painting | `stroke.add` (any element *(extended)*) · `stroke.set` · `stroke.remove` · `paint.layer_set` / `paint.layer_remove` *(new)* · `paint.fill` *(new)* · `frame.add` · `frame.hold` · `frame.remove` · `background.add` · `background.fit` · `background.move` |
 | Characters | `bone.add` · `bone.remove` · `bind.add` · `bind.remove` · `ik.add` · `ik.remove` · `pose.save` · `pose.apply` · `pose.remove` · `swap.show` · `lipsync.apply` · `blink.add` · `rig.guess_bones` *(new)* |
-| Camera | `camera.shake` *(new)* · `camera.follow` *(new)* |
-| Reuse | `symbol.place` · `symbol.set` · `symbol.detach` · `style.define` · `style.use` · `motion.save` · `motion.apply` *(all new)* |
+| Camera | `camera.shake` *(new)* · `camera.keep_in_frame` *(new)* |
+| Reuse | `symbol.place` · `symbol.set` · `symbol.detach` · `style.define` · `style.use` · `motion.save` · `motion.apply` · `library.add` · `repeat.bake` *(all new)* |
 | Sound | `value.set {soundtrack}` *(new field)* · `sound.cue` *(new)* · `text.words_to_markers` *(new)* |
 | Notes | `note.add` · `note.resolve` *(new)* |
-| History | `undo` · `redo` · `history.list` · `history.undo {step}` *(new)* · `version.save` · `version.restore` *(new)* |
+| History | `undo` · `redo` · `history.list` · `history.undo {step}` *(new)* · `version.save` · `version.restore` · `version.to_comp` *(new)* · `project.duplicate` (project service) |
 | Export | `render_export` · `render_video` |
 | Eyes (agents only) | `look_frame` · `look_sheet` · `look_motion` · `look_at` · `look_drawing` · `look_drawing_change` · `inspect_drawing_at` · `inspect_stroke_landed` · `look_rig` · `inspect_rig_motion` · `inspect_lipsync` · `look_background` · `inspect_background` · `inspect_curve` · `inspect_layout` · `inspect_item` · `inspect_diagnose` · `inspect_tools` · `inspect_fonts` *(new)* · `inspect_screen` *(new)* · `look_notes` *(new)* · `inspect_library` *(new)* |
 
 Screen-only state (not operations, never in the history): the selection, the playhead, the tool, zoom and pan, the
-timeline's height, open groups, the search text, solo, the view's turn. Everything else is an operation.
+timeline's height, open groups, the search text, solo, the view's turn and mirror, and the play range (passed as the
+range to operations that need one, such as export and notes). Everything else is an operation.
