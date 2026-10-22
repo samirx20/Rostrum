@@ -20,13 +20,15 @@ from rostrum_sound import compile as compile_doc
 from rostrum_sound.doc import markers as MK
 from rostrum_sound.doc import ops_mix
 
-from . import voice_card
+from . import voice_card, voice_takes
 from . import inspect, lanes, onpage, output_pick, picture, pick, screen_seen, timeline
 from .action_slots import ActionSlots
 from .agent_demo import AgentDemo
 from .edit_slots import EditSlots
 from .grid_slots import GridSlots
+from .group_slots import GroupSlots
 from .handle_slots import HandleSlots
+from .velocity_slots import VelocitySlots
 from .key_slots import KeySlots
 from .lane_slots import LaneSlots
 from .picture_slots import PictureSlots
@@ -41,7 +43,7 @@ from .workspace import Workspace
 SOUNDING = ("notes", "hits", "clips", "sounds")       # what makes a compiled track last (engine contract/track.rs)
 
 
-class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, HandleSlots, GridSlots, ActionSlots, KeySlots, SelectSlots, S, DocBridge):
+class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, HandleSlots, VelocitySlots, GridSlots, GroupSlots, ActionSlots, KeySlots, SelectSlots, S, DocBridge):
     def __init__(self, doc, name="Untitled song", parent=None):
         self.name = name
         self._t, self._track = 0.0, ""
@@ -201,7 +203,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         root = self.doc.data
         self._open = {k: v for k, v in self._open.items() if self.doc.has(k)
                       and v in lanes.applicable(self.doc.item(k), root)}
-        rows = timeline.rows(root, self._open)
+        rows = timeline.rows(root, self._open, self._folded)
         hue = next((r["hue"] for r in rows if r["id"] == self._track), timeline.HUES[0])
         track = self.doc.item(self._track) if self._track and self.doc.has(self._track) else None
         self._view = {"rows": rows, "markers": timeline.markers(root), "song": timeline.song(root),
@@ -209,6 +211,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         side = getattr(self, "side", None)               # lines being spoken say so on their blocks
         if side:
             voice_card.mark_speaking([*rows, self._view["roll"]], side.voice.making())
+            voice_takes.mark_takes([*rows, self._view["roll"]], root)
         self._zoom.clamp(self._length())        # the view is the person's: nothing new on screen zooms or scrolls it
         self.timelineChanged.emit()
         self.viewChanged.emit()

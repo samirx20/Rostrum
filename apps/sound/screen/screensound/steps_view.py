@@ -5,10 +5,11 @@
     lane-point <track> <t s> <value> [<t2 s> <value2>]        (press there: grab or add a point; drag to the second spot)
     lane-delete                                               (the selected point)
     picture <video file> | picture none
+    fold <group id> | fold all                                (a group's fold arrow; Alt+click = all)
 """
 from __future__ import annotations
 
-WORDS = ("zoom", "scroll", "fit", "lane", "lane-point", "lane-delete", "picture")
+WORDS = ("zoom", "scroll", "fit", "lane", "lane-point", "lane-delete", "picture", "fold")
 
 
 def do_view_step(bridge, word, rest):
@@ -25,6 +26,8 @@ def do_view_step(bridge, word, rest):
         point(bridge, rest[0], *map(float, rest[1:]))
     elif word == "lane-delete":
         bridge.removeSelected()
+    elif word == "fold":
+        bridge.toggleFold("" if rest[0] == "all" else rest[0], rest[0] == "all")
     elif word == "picture":
         bridge.setPicture("" if rest[0] == "none" else " ".join(rest))
 

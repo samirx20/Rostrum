@@ -21,6 +21,7 @@ from rostrum_gui.action_adapt import from_dicts
 from rostrum_gui.actions import ActionList
 
 from . import action_calls as C
+from . import voice_actions as V
 from .action_calls import REMOVABLE, TIMED
 from .keys import KEYMAP
 
@@ -51,6 +52,8 @@ ACTIONS = [
     # tracks
     act("group", "Send to a new group", TRACK, lambda f: [C.call("bus.from_tracks", f.ids)],
         "Ctrl+G", "primary", "make", needs="Send to a new group needs two or more tracks selected", min_targets=2),
+    act("ungroup", "Ungroup", lambda f: bool(C.group_buses(f)) and C.tries(f, [C.call("bus.ungroup", C.group_buses(f))]),
+        lambda f: [C.call("bus.ungroup", C.group_buses(f))], "Ctrl+Shift+G", "primary", "make"),
     act("mute", C.flip("mute", "Mute", "Unmute"), TRACK, C.toggle_all("mute"), "Shift+M", group="track",
         promoted_when=lambda f: f.count >= 2, needs="Mute needs tracks selected"),
     act("solo", C.flip("solo", "Solo", "Unsolo"), TRACK, C.toggle_all("solo"), "Shift+S", group="track",
@@ -82,9 +85,17 @@ ACTIONS = [
         needs="Land a bar needs one marker selected (placed in seconds)"),       # asks the bar first (a popover)
     act("vary", "Make another like it", lambda f: f.one == "sound", lambda f: [C.call("sound.vary", f.ids)],
         importance="primary", group="sound"),
-    act("speak_again", "Speak again", lambda f: f.one == "line", importance="primary", group="line", do="speak"),
+    act("speak_again", "Speak again", lambda f: f.one == "line", shortcut="T", importance="primary", group="line",
+        do="speak", needs="Speak again needs voice lines selected"),
+    act("take_prev", "Earlier take", V.take_valid(-1), V.take_calls(-1), group="line"),
+    act("take_next", "Later take", V.take_valid(1), V.take_calls(1), group="line"),
+    act("add_line", "Add line at playhead", V.voice_track, importance="primary", group="line", do="addline"),
     # clips
     act("clean", "Clean up…", CLIP, importance="primary", group="clip", do="clean"),
+    act("before_after", V.ba_label, V.ba_valid, V.ba_calls, shortcut="H", group="clip",
+        needs="Before / After needs clips with a clean-up set"),
+    act("swap", "Swap…", lambda f: f.one == "clip" and f.count == 1, shortcut="S", importance="primary", group="clip",
+        do="swap", needs="Swap needs one clip selected"),            # opens the Library; its Swap button is clip.swap
     act("normalize", "Even out level", CLIP, lambda f: [C.call("clip.normalize", f.ids, by="loudness")],
         importance="primary", group="clip"),
     act("split", "Split at playhead", _inside_clip, lambda f: [C.call("clip.split", f.ids, at=round(f.playhead, 4))],
@@ -106,6 +117,10 @@ ACTIONS = [
     act("section", "Make a section", lambda f: bool(f.range), C.section, importance="primary", group="range"),
     act("inside", "Select what's inside", lambda f: f.on_range, importance="primary", group="range",
         do="inside"),
+    act("delete_time", "Delete time", lambda f: bool(f.range), C.delete_time, group="range",
+        needs="Delete time needs a time range"),
+    act("insert_time", "Insert time", lambda f: bool(f.range), C.insert_time, group="range",
+        needs="Insert time needs a time range"),
     # the edit block: keys and the right-click menu, never the context bar
     act("copy", "Copy", lambda f: f.count and f.kinds <= CLIPS, shortcut="Ctrl+C", group="edit", do="copy",
         needs="Copy needs notes, hits, clips or lines selected"),

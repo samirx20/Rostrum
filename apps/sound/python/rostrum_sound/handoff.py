@@ -56,6 +56,7 @@ def manifest(item: str, version: int, r: dict, doc, who: str, master: bool, name
             "format": r.get("format", {"id": "wav32f", "label": "WAV 32-bit float", "container": "WAV", "subtype": "FLOAT", "ext": "wav"}),
             "bit_depth": {"PCM_16": "16-bit", "PCM_24": "24-bit", "FLOAT": "32-bit float"}.get((r.get("format") or {}).get("subtype", "FLOAT"), "lossy (MP3)"),
             "seconds": r.get("seconds"), "song_seconds": r.get("songSeconds", r.get("seconds")), "trimmed_silence": r.get("trimmed", False),
+            **({"range": r["range"]} if r.get("range") else {}),
             "clipped_samples": r.get("clippedSamples", 0), "mastered": master,
             # Without buses the track stems add up to the mix; with buses, the stems of the tracks in `direct` plus
             # the bus stems do (a track feeding a bus is inside its bus) — under `stems_rule`.

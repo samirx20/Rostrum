@@ -55,6 +55,8 @@ class Options:
     format: str = DEFAULT_FORMAT
     sample_rate: int = 48000
     trim: bool = True
+    start: float | None = None       # a range of the song (seconds): `from` / `to` in a request; both or neither
+    end: float | None = None
 
     @classmethod
     def read(cls, args: dict | None, doc_rate: int = 48000) -> Options:
@@ -68,7 +70,12 @@ class Options:
             ok = ", ".join(str(r["id"]) for r in rates_for(fmt))
             raise RostrumError(codes.BAD_ARGUMENT, "render", f"sample rate {rate}", f"is not available for {BY_FORMAT[fmt]['label']}",
                                hint=f"Use one of: {ok}.")
-        return cls(fmt, int(rate), bool(args.get("trim", True)))
+        a, b = args.get("from"), args.get("to")
+        if (a is None) != (b is None) or a is not None and not (isinstance(a, (int, float)) and isinstance(b, (int, float))
+                                                              and 0 <= a < b):
+            raise RostrumError(codes.BAD_ARGUMENT, "render", f"range from {a} to {b}", "is not a stretch of the song",
+                               hint='Give both `from` and `to` in seconds, with 0 ≤ from < to (or neither for the whole song).')
+        return cls(fmt, int(rate), bool(args.get("trim", True)), None if a is None else float(a), None if b is None else float(b))
 
     @property
     def spec(self) -> dict:
@@ -141,8 +148,8 @@ def _convert(block, spec, rng):
     return block, over
 
 
-def write(path: Path, src: Path, keep: int, rate: int, spec: dict, sf) -> int:
-    """Write the first `keep` frames of the engine's float file `src` as `spec`, a block at a time (a stem is never
+def write(path: Path, src: Path, keep: int, rate: int, spec: dict, sf, offset: int = 0) -> int:
+    """Write `keep` frames of the engine's float file `src` (from frame `offset`) as `spec`, a block at a time (a stem is never
     held whole; one is much bigger than a block). A file shorter than `keep` is padded with silence so every file is
     the same length. Returns how many samples went past full scale."""
     import numpy as np
@@ -151,6 +158,7 @@ def write(path: Path, src: Path, keep: int, rate: int, spec: dict, sf) -> int:
     over = done = 0
     with sf.SoundFile(str(src)) as r, sf.SoundFile(str(path), "w", samplerate=rate, channels=r.channels,
                                                    format=spec["format"], subtype=spec["subtype"], **kw) as f:
+        r.seek(offset)
         for block in r.blocks(blocksize=BLOCK, dtype="float32", always_2d=True, frames=keep):
             data, n = _convert(block, spec, rng)
             f.write(data); over += n; done += len(block)
@@ -163,7 +171,8 @@ def write(path: Path, src: Path, keep: int, rate: int, spec: dict, sf) -> int:
 def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dict:
     """Turn the engine's float files in `folder` into the delivered ones. `r` is the engine's answer (`file`,
     `stems` {track id: path}, `busStems` {bus id: path}); `names` maps a track or bus id to the name the screen shows.
-    Returns `r` with the new paths, `seconds` (the delivered length), `songSeconds` (the song's own), `files` (what
+    Returns `r` with the new paths (`range` [from, to] when only a part of the song was asked for: the whole song is
+    rendered and cut here, so the loudness measured is the whole song's, not the part's), `seconds` (the delivered length), `songSeconds` (the song's own), `files` (what
     each id became) and what was written (`format`, `sampleRate`, `trimmedTo`, `clippedSamples`)."""
     sf = _soundfile()
     spec = opts.spec
@@ -178,14 +187,20 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dic
     if any(i[2] != opts.sample_rate for i in info.values()):
         raise RostrumError(codes.JOB_FAILED, "render", str(folder), f"the engine wrote {rate} Hz, not the {opts.sample_rate} Hz asked for")
     heard = max(i[1] for i in info.values())
-    keep = frames
-    if opts.trim and heard:
+    keep, first = frames, 0
+    if opts.start is not None:         # a range: the engine renders the whole song (it has no range), the cut is made here
+        first = int(opts.start * rate)
+        if first >= frames:
+            raise RostrumError(codes.BAD_ARGUMENT, "render", f"range from {opts.start:g} s",
+                               f"starts after the song ends ({frames / rate:.1f} s)")
+        keep = min(frames, int(opts.end * rate)) - first
+    elif opts.trim and heard:
         keep = min(frames, max(heard + int(TAIL * rate), int(MIN_SECONDS * rate)))
     over, files = 0, {}
     for kind, key, src, stem in jobs:
         dest = folder / f"{stem}.{spec['ext']}"
         part = dest.with_name(dest.name + ".part")        # the engine's file may have the final name: write beside it, then swap
-        over += write(part, src, keep, rate, spec, sf)
+        over += write(part, src, keep, rate, spec, sf, first)
         if dest != src:
             src.unlink()
         part.replace(dest)
@@ -194,5 +209,6 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dic
     return {**r, "file": str(mix), "seconds": keep / rate, "songSeconds": frames / rate,
             "stems": {k: str(files[("track", k)]) for k in (r.get("stems") or {})},
             "busStems": {k: str(files[("bus", k)]) for k in (r.get("busStems") or {})},
-            "format": opts.describe(), "sampleRate": rate, "trimmed": bool(opts.trim and keep < frames),
+            "format": opts.describe(), "sampleRate": rate, "trimmed": bool(opts.start is None and opts.trim and keep < frames),
+            **({"range": [first / rate, (first + keep) / rate]} if opts.start is not None else {}),
             "clippedSamples": over}

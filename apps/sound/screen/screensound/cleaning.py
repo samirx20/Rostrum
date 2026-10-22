@@ -15,6 +15,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_sound import clean_clips, cleanup
 from rostrum_sound.cleanup import fetch
 
+from . import voice_actions as V
 from .model_fetch import ModelFetch
 
 
@@ -30,6 +31,7 @@ class CleanedTake(QObject):
         self._made: set = set()               # (media, recipe) already known to be in the cache
         self._thread: threading.Thread | None = None
         self._download = ModelFetch(self)         # asked first when a step needs a model that is not installed
+        self._recipes: dict[str, str] = {}        # clip id -> the clean-up it had when last looked at (a change = made on release)
         self._pending: list[str] = []             # the clips a download was asked for (made once it lands)
         self._steps: dict[str, list] = {}         # clip id -> [progress notes seen, notes expected] while making
         self._download.ready.connect(lambda: self.makeFor(self._pending or [self._clip]))
@@ -37,7 +39,11 @@ class CleanedTake(QObject):
         self._progress.connect(self._note)
         self._done.connect(self._finish)
         bridge.selectionChanged.connect(self._check)
+        bridge.docChanged.connect(self._on_release)
         bridge.docChanged.connect(self._check)
+        bridge.selectionChanged.connect(self.changed)
+        bridge.docChanged.connect(self.changed)
+        self._on_release()
         self._check()
 
     @Property(str, notify=changed)
@@ -61,6 +67,19 @@ class CleanedTake(QObject):
     @Property(QObject, constant=True)
     def download(self):
         return self._download
+
+    @Property("QVariantMap", notify=changed)
+    def audition(self):
+        """{show, after}: the Before | After switch (Editor header, Clean up group) shows while every selected clip has a
+        clean-up set (and, to go to After, its take is made); `after` = the cleaned take is the one playing."""
+        f = self.bridge._facts()
+        show = bool(f.ids) and V.ba_valid(f)
+        return {"show": show, "after": show and not all(it.get("useCleaned", True) is False for it in f.items)}
+
+    @Slot(result=bool)
+    def flip(self):
+        """Before / After (H): `clip.set {useCleaned}` on the selected clips: one step, playback goes on."""
+        return bool(self.bridge.run("before_after"))
 
     @Slot(result=bool)
     def make(self):
@@ -134,6 +153,21 @@ class CleanedTake(QObject):
             self.bridge.transport.changed()               # play the cleaned take: render again
         self.changed.emit()
         self._check()
+
+    def _on_release(self):
+        """Made on release (DESIGN.md §3.10 step 3): a slider let go or a switch flipped changes a selected clip's
+        clean-up, and its cleaned take starts at once (from the cache when it was made before: undo / redo / back to an
+        earlier value are instant). A clip seen for the first time just records its clean-up."""
+        doc, now, changed = self.bridge.doc, {}, []
+        for t in doc.data.get("tracks", []):
+            for c in t.get("clips", []):
+                r = cleanup.recipe_of(c)
+                now[c["id"]] = key = str(sorted(r.items()))
+                if r and c["id"] in self._recipes and self._recipes[c["id"]] != key and c["id"] in self.bridge._picks.ids:
+                    changed.append(c["id"])
+        self._recipes = now
+        if changed:
+            self.makeFor(changed)
 
     def _check(self):
         sel, doc, clip = self.bridge.selected, self.bridge.doc, ""

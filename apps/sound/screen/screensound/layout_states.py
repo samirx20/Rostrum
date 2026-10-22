@@ -15,6 +15,7 @@ LONG_STATUS = "No graphics driver, so drawing is slower"
 LONG_SONG = "Summer_launch_film_for_the_new_headphones_-_final_score_v3"   # a step's words: _ for spaces
 LONG_FOLDER = r"C:\Users\Sam\Music\Rostrum_deliveries\Summer_launch_film_for_the_new_headphones\final_score_round_three_for_the_client"
 TWELVE = [f"select {LONG_TRACK}"] + [f"set volume {0.5 + n / 100}" if n % 2 else f"set pan {n / 100}" for n in range(12)]
+GROUP = 'agent Group the band|[{{"op":"bus.from_tracks","target":["pad","melody","drums"],"args":{{"name":"{name}"}}}}]'
 IGNORE = ()
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -34,12 +35,24 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("editor", ["--sample"], ["dock editor", "select melody"]),
         ("mixer", ["--sample"], ["dock mixer", "select drums"]),
         ("library", ["--sample"], ["library"]),
+        ("library-auditioning", ["--sample"], ["select melody", "library", "audition builtIn:grandPiano"]),
+        ("velocity-strip", ["--sample"], ["select melody", "dock editor", "velocity-line 0 0.2 6 1"]),
+        ("key-shading", ["--sample"], ['agent Set the key|[{"op":"key.add","target":[],"args":{"at":0,"key":"D minor"}}]', "select melody", "dock editor"]),
+        ("velocity-strip-drums", ["--sample"], ["select drums", "dock editor"]),
+        ("group-open", ["--sample"], [GROUP.format(name="Band")]),
+        ("group-folded", ["--sample"], [GROUP.format(name=LONG_TRACK), "fold bus_1"]),
         ("draw", ["--sample"], ["select melody", "dock editor", "tool draw"]),
         ("voice-lines", ["--sample"], ["add-track voice:ryan", "dock editor"]),
+        ("voice-typed-lines", ["--sample"], ["add-track voice:ryan", "dock editor", "line-type Welcome to the show",
+                                              "line-type And now, the news from the whole second verse and bridge"]),
+        ("voice-lane-typing", ["--sample"], ["add-track voice:ryan", "dock editor", "line-box 2"]),
+        ("clean-before-after", ["--sample"], ["select-clip door", "dock editor", "clean 0 0 1"]),
         ("grid-menu", ["--sample"], ["grid-open"]),
         ("export", ["--sample"], ["deliver streaming", "export-open"]),
         ("long-export", long_project(), [*busy, "deliver streaming", "export-open"]),
         ("export-sheet", long_project(), [*busy, "exportsheet open streaming", f"exportwhere {LONG_FOLDER}"]),   # S34: the kit sheet
+        ("export-versions", long_project(), [*busy, "range 1 3", "exportsheet open streaming", "export-what range",
+                                             "export-more podcast mp3", "export-more ebu flac"]),     # P28: What + two more versions
         ("problems-chip", long_project(), [*busy, "problems-demo", "problems open"]),
         ("job-chip", long_project(), [*busy, "job-show 42"]),
         ("long-editor", long_project(), [*busy, "dock editor"]),

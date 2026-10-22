@@ -8,7 +8,7 @@ from PySide6.QtCore import Property, Signal, Slot
 
 from .timing import Grid
 
-WORDS = {"auto": "Auto", "bar": "Bar", "beat": "Beat", "1/8": "1/8", "1/16": "1/16", "1/32": "1/32",
+WORDS = {"auto": "Auto", "bar": "Bar", "1/2": "1/2", "beat": "Beat (1/4)", "1/8": "1/8", "1/16": "1/16", "1/32": "1/32",
          "1/8T": "1/8 triplets", "1/16T": "1/16 triplets"}
 
 
@@ -46,6 +46,10 @@ class GridSlots:
     def setSnap(self, on):
         self._grid_now.on = bool(on)
         self.gridChanged.emit()
+
+    @Slot()
+    def toggleSnap(self):
+        self.setSnap(not self._grid_now.on)
 
     def _follow_zoom(self):
         span = self.viewSpan

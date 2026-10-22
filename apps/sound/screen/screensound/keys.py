@@ -18,6 +18,7 @@ SOUND_KEYS = [
     {"job": "hear_original", "keys": ["H"], "label": "Hear the original (hold)", "area": "Edit"},
     {"job": "mute", "keys": ["Shift+M"], "label": "Mute", "area": "Edit"},
     {"job": "solo", "keys": ["Shift+S"], "label": "Solo", "area": "Edit"},
+    {"job": "snap", "keys": ["Shift+G"], "label": "Snapping on / off", "area": "Edit"},
     {"job": "editor_dock", "keys": ["E"], "label": "Editor dock", "area": "Panels"},
     {"job": "mixer_dock", "keys": ["X"], "label": "Mixer dock", "area": "Panels"},
 ]
@@ -37,6 +38,7 @@ ROUTES = {
     "nudge_up": ("pitchStep", 1), "nudge_down": ("pitchStep", -1), "nudge_up_big": ("pitchStep", 12),
     "nudge_down_big": ("pitchStep", -12),
     "move_tool": ("setTool", "select"), "paint_tool": ("setTool", "draw"),        # V / B: the Editor's tools
+    "snap": ("toggleSnap",),
     "editor_dock": ("dock", "editor"), "mixer_dock": ("dock", "mixer"), "library": ("dock", "library"),
 }
 SKIP = ["new", "open", "save_version", "duplicate_file", "add_file", "preferences", "quit", "export", "export_again",

@@ -16,7 +16,7 @@ Item {
     readonly property real mark: Math.max(2, Math.min(5, height / 9))     // a note bar's thickness
     readonly property var picked: backend.picked                           // one read per change
     readonly property var cleaning: mixer.cleaning.progress                // clip id -> 0..1 while cleaning
-    opacity: track.mute ? 0.45 : 1
+    opacity: track.mute ? 0.45 : track.group ? 0.5 : 1      // a folded group's tracks, faint
 
     Canvas {
         id: c
@@ -65,6 +65,10 @@ Item {
             if (done !== undefined) {                      // its cleaned take being made: fills left to right
                 ctx.globalAlpha = 0.35; bar(ctx, x, y0, Math.max(2, w * done), h, Theme.accent); ctx.globalAlpha = 1
                 bar(ctx, x, y0 + h - 2, Math.max(2, w * done), 2, Theme.accent)
+            }
+            if (b.making) {                                // a voice line being spoken: tinted, with a stripe along its bottom
+                ctx.globalAlpha = 0.25; bar(ctx, x, y0, w, h, Theme.accent); ctx.globalAlpha = 1
+                bar(ctx, x, y0 + h - 2, w, 2, Theme.accent)
             }
             if (showLabel && b.label) {
                 ctx.save(); ctx.beginPath(); ctx.rect(x + 6, y0, Math.max(0, w - 10), h); ctx.clip()

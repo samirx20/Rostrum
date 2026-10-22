@@ -7,9 +7,11 @@ import RostrumKit
 // instrument's settings and its choice. These were the Instruments page's cards; they follow the Editor's track.
 Item {
     id: e
+    property Item barSlot: null          // the dock's tab row (Dock.qml): where the Editor's context bar sits
     readonly property var side: editorSide.track
     readonly property bool hasSide: side.isVoice || side.isPlugin
     PianoRoll {
+        barSlot: e.barSlot
         anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: e.hasSide ? panel.left : parent.right
                   rightMargin: e.hasSide ? Theme.gap : 0 }
     }

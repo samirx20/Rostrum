@@ -8,7 +8,7 @@ from rostrum_core.mcp import Reply, Tools
 
 from .. import deliver, handoff
 from ..compile import compile as compile_doc
-from ..doc import ops_mix
+from ..doc import markers, ops_mix, times
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
 
@@ -31,7 +31,9 @@ def register(tools: Tools):
                    "description": "; ".join(f"{f['id']}: {f['label']} — {f['detail']}" for f in deliver.FORMATS) + ". Every file of the render is in this format."},
         "sampleRate": {"type": "integer", "enum": [r["id"] for r in deliver.RATES],
                        "description": "Hz: 44100 (music), 48000 (video), 96000 (high resolution; not for mp3). Default: the document's rate."},
-        "trim": {"type": "boolean", "default": True, "description": "Trim the silent end: the mix and every stem stop at the music's last audible sound (above -80 dBFS) plus a short tail, all the same length. False: the song's full length."}}})
+        "trim": {"type": "boolean", "default": True, "description": "Trim the silent end: the mix and every stem stop at the music's last audible sound (above -80 dBFS) plus a short tail, all the same length. False: the song's full length."},
+        "from": {"description": "Only a part of the song: where the file starts (seconds, a beat or a marker, like any time). Needs `to`. The engine renders the whole song and the part is cut from it, so loudness is the whole song's, not the part's; the silent end is not trimmed."},
+        "to": {"description": "Where the part ends (a time). Needs `from`."}}})
     def render_mix(ctx, args):
         """Render the document to a file (24-bit WAV by default; `format` picks WAV 16 / 24 / 32-bit float, FLAC or MP3) and stems as its next version (renders/<item>/vNNN/), with loudness, true
         peak and per-track meters. Stems are named after their tracks; the manifest maps ids to files. Returns a job."""
@@ -47,6 +49,10 @@ def register(tools: Tools):
         who = f"{ctx.who.kind}:{ctx.who.name}"
         partial = bool(args.get("solo") or args.get("mute"))
         options = {k: args[k] for k in ("format", "sampleRate", "trim") if k in args}
+        with markers.project(getattr(doc, "folder", None)):          # a time may name a project marker
+            for k in ("from", "to"):
+                if k in args:
+                    options[k] = times.seconds(args[k], doc.data, k)
         deliver.Options.read(options, doc.data.get("sampleRate", 48000))      # a wrong choice answers now, not after the render
 
         def work(job):
@@ -60,6 +66,6 @@ def register(tools: Tools):
             state.remember(item, r)
             files = [r["file"], *r["stems"].values(), *r.get("busStems", {}).values()]
             return Reply(summary(r), {**{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
-                              **{k: r[k] for k in ("format", "sampleRate", "songSeconds", "trimmed") if k in r}}, files)
+                              **{k: r[k] for k in ("format", "sampleRate", "songSeconds", "trimmed", "range") if k in r}}, files)
 
         return ctx.job(f"render {item}", work, key=f"render:{item}:{hash(str((schedule, options)))}")

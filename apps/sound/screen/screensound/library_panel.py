@@ -3,20 +3,21 @@ on its own and placed on a track at the playhead. Exposed to QML as `soundLibrar
 
 Rule of individuality: with no folder yet the panel offers only "Add a sound folder"; the search, the shape choices
 and the results appear once there is something to search. Indexing a folder runs off the screen's thread (the first
-time a large folder takes a while; an unchanged one comes back from the index at once). Auditioning plays the sound's
-own stretch of its file with the screen's player (playback.Player). Placing is one operation call (`clip.add`, plus
+time a large folder takes a while; an unchanged one comes back from the index at once). Auditioning renders the entry
+through the engine and plays it on the engine's live player (auditioner.py): a file's own stretch, or an adder entry
+(an instrument on the selected track's notes, a kit, a designed sound). Placing is one operation call (`clip.add`, plus
 `track.add` when there is no track to put it on), so it is one undo step, exactly what an agent would call.
 """
 from __future__ import annotations
 
 import threading
 
-from PySide6.QtCore import Property, QObject, QTimer, QUrl, Signal, Slot
+from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 from rostrum_sound import userlib
 from rostrum_sound.userlib.kinds import KINDS
 
-from .adder import placed_at
-from .playback import Player
+from .adder import ENTRIES, placed_at
+from .auditioner import Auditioner
 
 ANY = ""
 LIMIT = 60
@@ -49,13 +50,23 @@ class LibraryPanel(QObject):
         self._text, self._kind, self._length, self._bright = "", ANY, ANY, ANY
         self._results: list[dict] = []
         self._total, self._busy, self._status = 0, "", ""
-        self._player = None
-        self._stop = QTimer(self, singleShot=True, timeout=self._end_audition)
+        self._heard = Auditioner(bridge, self)
+        self._heard.changed.connect(self.changed)
+        self._heard.failed.connect(self._say)
+        bridge.picksChanged.connect(self.changed)       # a clip picked: the rows offer Swap
+        bridge.docChanged.connect(self.changed)
+        bridge.library_panel = self             # the scripted steps reach the panel from the bridge
         self._indexed.connect(self._done)
         if self._folders:
             self._index(self._folders)
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
+    @Property(str, notify=changed)
+    def swapTarget(self):
+        """The one selected clip a result can take the place of ("" when none: the rows only Place)."""
+        ids = self.bridge.selectedIds
+        return ids[0] if len(ids) == 1 and self.bridge.doc.has(ids[0]) and self.bridge.doc.item(ids[0])["type"] == "clip" else ""
+
     @Property(bool, notify=changed)
     def hasFolders(self):
         return bool(self._folders)
@@ -132,13 +143,30 @@ class LibraryPanel(QObject):
         setattr(self, {"kind": "_kind", "length": "_length", "brightness": "_bright"}[which], value)
         self._search()
 
+    @Property(str, notify=changed)
+    def auditioning(self):
+        """What is being heard right now ("" when nothing is): the stop control shows only then."""
+        return self._heard.busy
+
     @Slot(int)
     def audition(self, i):
-        """Play result `i` on its own: its stretch of the file, then stop."""
+        """Play result `i` on its own: its stretch of the file, through the engine."""
         r = self._results[i]
-        self._player = self._player or Player(self)
-        self._player.play(r["path"], r["start"])
-        self._stop.start(int((r["end"] - r["start"]) * 1000) + 50)
+        self._heard.start({"media": r["path"], "in": r["start"], "length": r["end"] - r["start"]}, r["name"])
+
+    @Slot(str)
+    def auditionEntry(self, key):
+        """Hear a Library entry (adder key): an instrument plays the selected track's notes, else a short phrase."""
+        e = next((x for x in ENTRIES if x["key"] == key), None)
+        if e is None:
+            return self._say(f'Error: audition: no sound "{key}".')
+        b = self.bridge
+        track = b._track if getattr(b, "_track", "") else None
+        self._heard.start({k: v for k, v in e["fields"].items() if k != "name"}, e["label"], track)
+
+    @Slot()
+    def stopAudition(self):
+        self._heard.stop()
 
     @Slot(int)
     def place(self, i):
@@ -157,10 +185,18 @@ class LibraryPanel(QObject):
             "media": r["path"], "at": at, "in": r["start"], "length": round(r["end"] - r["start"], 4)}})
         b._guard(lambda: b._apply(calls, "Place sound"))
 
+    @Slot(int)
+    def swap(self, i):
+        """Result `i` in place of the selected clip: its time, length, level (matched by loudness) and fades stay
+        (`clip.swap`, one operation call, one undo step)."""
+        r, clip = self._results[i], self.swapTarget
+        if not clip:
+            return self._say("Error: swap: select one clip first.")
+        args = {"media": r["path"], **({"in": r["start"]} if r["start"] > 0.05 else {})}
+        self.bridge._guard(lambda: self.bridge._apply([{"op": "clip.swap", "target": [clip], "args": args}], "Swap sound"))
+
     def close(self):
-        self._stop.stop()
-        if self._player:
-            self._player.close()
+        self._heard.close()
 
     # ---- inside -----------------------------------------------------------------------------------------------
     def _index(self, paths):
@@ -195,10 +231,6 @@ class LibraryPanel(QObject):
         self._status = (f"{r['total']} sounds" + (f", showing {LIMIT}" if r["more"] else "")) if r["total"] else \
             "No sounds match. Loosen the search."
         self.changed.emit()
-
-    def _end_audition(self):
-        if self._player:
-            self._player.stop()
 
     def _say(self, line):
         print(line) if not line.startswith("Error") else self.bridge._fail(line)

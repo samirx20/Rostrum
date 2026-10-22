@@ -3,7 +3,8 @@ import RostrumKit
 
 // Sound's part of the kit Export sheet (AppShell.exportSettings; the sheet's What for list is the delivery targets,
 // screensound/export.py): the live check of the sound that plays now against the target (pass / miss), the file type,
-// the quality (sample rate), stems, and trimming the silent end.
+// the quality (sample rate), stems, and trimming the silent end; then "+ Another version" rows (each its own target,
+// file type and quality, rendered as its own version; the live check under each is that row's pass / miss).
 Column {
     id: root
     readonly property var job: mixer.export
@@ -46,6 +47,32 @@ Column {
         label: "Quality"; tip: "How finely the sound is stored (sample rate)"
         ChoiceField { width: parent.width; options: root.job.rates; current: root.job.rate; onPicked: (v) => root.job.setRate(v) }
     }
+    Repeater {   // "+ Another version": each row is its own target, file type and quality, made as its own version
+        model: root.job.more
+        delegate: Column {
+            id: ver
+            required property var modelData
+            required property int index
+            width: root.width; spacing: Theme.grid
+            Row {
+                width: parent.width; spacing: Theme.gap
+                Text { width: parent.width - Theme.field - Theme.gap; anchors.verticalCenter: parent.verticalCenter
+                       text: "Version " + (ver.index + 2); color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
+                IconButton { glyph: "✕"; kind: "ghost"; tip: "Take this version out"; onClicked: root.job.removeVersion(ver.index) }
+            }
+            ChoiceField { width: parent.width; options: root.job.targets; current: ver.modelData.target
+                          onPicked: (v) => root.job.setVersion(ver.index, "target", v) }
+            ChoiceField { width: parent.width; options: root.job.formats; current: ver.modelData.format
+                          onPicked: (v) => root.job.setVersion(ver.index, "format", v) }
+            ChoiceField { width: parent.width; options: root.job.ratesFor(ver.modelData.format); current: ver.modelData.rate
+                          onPicked: (v) => root.job.setVersion(ver.index, "rate", v) }
+            Text { width: parent.width; wrapMode: Text.WordWrap; visible: !!ver.modelData.verdict && !!ver.modelData.verdict.text
+                   text: ver.modelData.verdict && ver.modelData.verdict.text ? (ver.modelData.verdict.ok ? "✓ " : "") + ver.modelData.verdict.text : ""
+                   color: ver.modelData.verdict && ver.modelData.verdict.ok ? Theme.ok : Theme.warn
+                   font.family: uiFont; font.pixelSize: Theme.body }
+        }
+    }
+    Button { text: "+ Another version"; kind: "ghost"; onClicked: root.job.addVersion() }
     Switch { checked: root.job.stems; onToggled: (v) => root.job.setStems(v)
              text: root.job.stems ? "Stems: a file for every track and group" : "Stems: off (only the mix)" }
     Switch { checked: root.job.trim; onToggled: (v) => root.job.setTrim(v)

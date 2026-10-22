@@ -59,6 +59,18 @@ def bus_remove(ctx, targets, args):
         ctx.remove(t)
 
 
+@REGISTRY.operation("bus.ungroup", "Ungroup: the tracks (and groups) that play to this bus play where it played to, "
+                    "and the bus goes with its own effects. Fails while a track sends to it.", target="bus",
+                    label="Ungroup", importance="secondary")
+def bus_ungroup(ctx, targets, args):
+    for t in targets:
+        out = ctx.item(t).get("output", names.MASTER_OUT)
+        for x in [*ctx.doc.get("tracks", []), *ctx.doc.get("buses", [])]:
+            if x.get("output") == t:
+                ctx.set(x["id"], "output", out)
+        bus_remove(ctx, [t], {})
+
+
 @REGISTRY.operation("send.add", "Send some of a track to a bus (the way a reverb bus is fed); one send per bus.",
                     target="track", label="Add send", params=[
                         Param.text("bus", label="Bus", required=True, help="The bus id."), *FD.params("send")[1:]])

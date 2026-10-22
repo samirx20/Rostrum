@@ -27,12 +27,30 @@ Column {
                         color: modelData.making ? Theme.accent : modelData.made ? Theme.ok : Theme.warn
                         SequentialAnimation on opacity { running: modelData.making; loops: Animation.Infinite
                             NumberAnimation { to: 0.3; duration: 500 } NumberAnimation { to: 1; duration: 500 } } }
-            Text { id: when; anchors.right: parent.right; anchors.rightMargin: Theme.gap; anchors.verticalCenter: parent.verticalCenter
-                   text: modelData.making ? "Speaking…" : modelData.when; color: modelData.making ? Theme.accent : Theme.fg2
-                   font.family: uiFont; font.pixelSize: Theme.body }
-            Text { anchors.left: dot.right; anchors.leftMargin: Theme.gap; anchors.right: when.left; anchors.rightMargin: Theme.gap
-                   anchors.verticalCenter: parent.verticalCenter; text: modelData.text; elide: Text.ElideRight
-                   color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
+            Row {
+                id: right
+                anchors.right: parent.right; anchors.rightMargin: Theme.gap; anchors.verticalCenter: parent.verticalCenter
+                spacing: Theme.grid
+                Text { visible: modelData.canBack; text: "◂"; color: backArea.containsMouse ? Theme.fg : Theme.fg3
+                       font.family: uiFont; font.pixelSize: Theme.body
+                       MouseArea { id: backArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true
+                                   onClicked: editorSide.stepTake(modelData.id, -1) }
+                       HoverTip { text: "Earlier take"; hovered: backArea.containsMouse; pressed: backArea.pressed } }
+                Text { visible: modelData.take !== ""; text: modelData.take; color: Theme.fg2
+                       font.family: uiFont; font.pixelSize: Theme.label }
+                Text { visible: modelData.canNext; text: "▸"; color: nextArea.containsMouse ? Theme.fg : Theme.fg3
+                       font.family: uiFont; font.pixelSize: Theme.body
+                       MouseArea { id: nextArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true
+                                   onClicked: editorSide.stepTake(modelData.id, 1) }
+                       HoverTip { text: "Later take"; hovered: nextArea.containsMouse; pressed: nextArea.pressed } }
+                Text { id: when
+                       text: modelData.making ? "Speaking…" : modelData.when; color: modelData.making ? Theme.accent : Theme.fg2
+                       font.family: uiFont; font.pixelSize: Theme.body }
+            }
+            Text { anchors.left: dot.right; anchors.leftMargin: Theme.gap; anchors.right: right.left; anchors.rightMargin: Theme.gap
+                   id: words; anchors.verticalCenter: parent.verticalCenter; text: modelData.text; elide: Text.ElideRight
+                   color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
+                   HoverTip { text: words.truncated ? modelData.text : ""; hovered: area.containsMouse; pressed: area.pressed } }
         }
     }
     FieldFrame {   // type a line: Enter adds it and its speech is made at once
@@ -40,7 +58,7 @@ Column {
         width: v.width; editable: true; placeholder: "Type what she says"
         onEntered: if (editorSide.typeLine(v.trackId, say.input.text)) say.input.text = ""
     }
-    Text { visible: editorSide.track.voiceMissing !== "" && editorSide.track.voiceMissing !== undefined
+    Text { visible: !!editorSide.track.voiceMissing && editorSide.track.voiceMissing !== v.status
            width: v.width; wrapMode: Text.WordWrap; text: editorSide.track.voiceMissing || ""
            color: Theme.warn; font.family: uiFont; font.pixelSize: Theme.label }
     Item {

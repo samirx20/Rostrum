@@ -16,7 +16,7 @@ Item {
 
     Row {
         id: tabs
-        height: 32; spacing: 2
+        height: 36; spacing: 2
         Repeater {
             model: [{ value: "editor", label: "Editor", key: "E" }, { value: "mixer", label: "Mixer", key: "X" }]
             delegate: Button {
@@ -45,11 +45,16 @@ Item {
         onPositionChanged: (m) => workspace.setHeight(d.tool, Math.round(Math.min(d.room, Math.max(tabs.height + 120,
                                                           h0 - (mapToItem(null, m.x, m.y).y - y0)))))
     }
+    Item {   // the Editor's context bar sits here, in the tab row: never over its notes (PianoRoll.qml places it)
+        id: barSlot
+        anchors { left: tabs.right; right: parent.right; top: parent.top; leftMargin: Theme.gap; rightMargin: Theme.button + Theme.gap }
+        height: tabs.height
+    }
     Loader {
         anchors { left: parent.left; right: parent.right; top: tabs.bottom; bottom: parent.bottom; topMargin: Theme.grid }
         active: d.tool !== ""
         sourceComponent: d.tool === "mixer" ? mixerTool : editorTool
     }
-    Component { id: editorTool; EditorDock {} }
+    Component { id: editorTool; EditorDock { barSlot: barSlot } }
     Component { id: mixerTool; Mixer {} }
 }

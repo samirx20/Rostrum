@@ -7,11 +7,13 @@ import RostrumKit
 // (one undo step; Ctrl = no snapping, Shift = only in time, Alt = a copy). The context bar sits at the top centre.
 Panel {
     id: p
+    property Item barSlot: null          // the dock's tab row: where the context bar sits (never over the notes)
     readonly property var roll: backend.roll
     readonly property string kind: roll.kind
     readonly property int keysWidth: kind === "drums" ? 76 : 52     // drum names ("Open hat") are longer than note names
     title: roll.name !== "" ? roll.name : "Piano roll"
     headerRight: [
+        BeforeAfter { anchors.verticalCenter: parent.verticalCenter; rightPadding: Theme.gap },
         Row {   // the Editor's two tools (Select V, Draw B; INTERACTION 1.1): a click adds in Draw (backend.tool)
             anchors.verticalCenter: parent.verticalCenter; spacing: 2; rightPadding: Theme.gap
             visible: p.kind === "notes" || p.kind === "drums"
@@ -45,7 +47,8 @@ Panel {
     Rectangle {
         id: well
         visible: bars.visible
-        anchors { left: parent.left; right: parent.right; top: bars.bottom; bottom: parent.bottom; topMargin: Theme.grid }
+        anchors { left: parent.left; right: parent.right; top: bars.bottom; bottom: strip.visible ? strip.top : parent.bottom; topMargin: Theme.grid
+                  bottomMargin: strip.visible ? Theme.grid : 0 }
         radius: Theme.radiusCtl; color: Theme.sunken; clip: true
 
         Flickable {
@@ -92,11 +95,19 @@ Panel {
             Text { visible: !!parent.s.name; x: 4; y: 2; text: parent.s.name || ""; color: "#ff4fd8"
                    font.family: uiFont; font.pixelSize: Theme.label }
         }
-        ContextBar {   // the kit's: a fixed place, the top centre of the Editor (INTERACTION.md §1.2)
+        ContextBar {   // the kit's: a fixed place, the Editor's top centre = the dock's tab row (INTERACTION.md §1.2)
+            parent: p.barSlot || well
             hub: backend.actions
-            x: p.keysWidth + (well.width - p.keysWidth - width) / 2; y: Theme.grid; maxWidth: well.width - p.keysWidth - 2 * Theme.pad
+            anchors.horizontalCenter: parent.horizontalCenter; y: p.barSlot ? (parent.height - height) / 2 : Theme.grid
+            maxWidth: parent.width
             dragging: input.busy || rollMenu.visible || backend.area !== "roll"
         }
+    }
+    VelocityStrip {   // one bar per note or hit; drag a bar, or draw a line across (DESIGN.md §3.3d)
+        id: strip
+        visible: bars.visible && (p.kind === "notes" || p.kind === "drums")
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+        height: 52; roll: p.roll; ruler: bars; keysWidth: p.keysWidth
     }
     ActionMenu { id: rollMenu; onPicked: (v) => backend.menuPick(v) }      // the kit's
     function menuFor(id) {   // the right-click menu on an item (a scripted step: steps_select.py)

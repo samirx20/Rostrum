@@ -18,10 +18,10 @@ SNAP_BEATS = 0.25          # the music map's own snap (tempo / key changes, sect
 
 
 class Grid:
-    """Grid ▾: "bar", "beat", "1/8", "1/16", "1/32", "1/8T", "1/16T" (triplets) or "auto" (follows the zoom);
+    """Grid ▾: "bar", "1/2", "beat" (1/4), "1/8", "1/16", "1/32", "1/8T", "1/16T" (triplets) or "auto" (follows the zoom);
     Snap on / off."""
-    STEPS = {"beat": 1.0, "1/8": 0.5, "1/16": 0.25, "1/32": 0.125, "1/8T": 1 / 3, "1/16T": 1 / 6}
-    CHOICES = ["auto", "bar", "beat", "1/8", "1/16", "1/32", "1/8T", "1/16T"]
+    STEPS = {"1/2": 2.0, "beat": 1.0, "1/8": 0.5, "1/16": 0.25, "1/32": 0.125, "1/8T": 1 / 3, "1/16T": 1 / 6}
+    CHOICES = ["auto", "bar", "1/2", "beat", "1/8", "1/16", "1/32", "1/8T", "1/16T"]
 
     def __init__(self):
         self.value, self.on, self.auto_beats = "1/16", True, 0.25

@@ -14,7 +14,7 @@
     select-last <n> | handle-first <part> <dt s> (the walks: the items just made, their handle)
     zoom <factor> | scroll <s> | fit | lane <track> <lane> | lane-point <track> <t> <v> [<t2> <v2>] | lane-delete |
     picture <file|none>     (see steps_view.py)
-    deliver <streaming|apple|ebu|atsc|podcast> (master target, one change) | export-as <format> [<rate> [trim|full]] | export (the Export sheet's Export, waits) |
+    deliver <streaming|apple|ebu|atsc|podcast> (master target, one change) | export-as <format> [<rate> [trim|full]] | export-more [<target> [<format>]] (+ Another version) | export-what <all|range|section:<id>> | export (the Export sheet's Export, waits) |
     clean-take (Make cleaned take on the selected clip, waits) | model-panel (the download question, for a screenshot) |
     duck-add <track> <under track> | duck-open <duck id> | duck-set <param> <json value> (the open duck)
     select-many, select-add, select-run, select-all, box, range, action, action-bar, menu, menu-roll, key, copy, cut,
@@ -94,6 +94,16 @@ def do_mix_step(mix, word, rest):
             raise RuntimeError(f"export: nothing after {3 * RENDER_WAIT_S} s")
         if exp.state != "done":
             raise RuntimeError(exp.note)
+    elif word == "export-more":                # export-more [<target> [<format>]]: "+ Another version", with its target / file type
+        e = mix.export
+        e.addVersion()
+        n = len(e._more.rows) - 1
+        for key, v in zip(("target", "format"), rest):
+            e.setVersion(n, key, v)
+    elif word == "export-what":                # export-what <all|range|section:<id>>: the sheet's What
+        mix.export.setRange(rest[0])
+        if mix.export.range != rest[0]:
+            raise RuntimeError(f"export-what: no range {rest[0]!r} (there are: {', '.join(r['value'] for r in mix.export.ranges)})")
     elif word == "clean-take":
         wait_job(mix.cleaning, mix.cleaning.make, "cleaned take")
     elif word == "model-panel":
@@ -114,7 +124,7 @@ def do_mix_step(mix, word, rest):
         mix.ducks.setValue(rest[0], value(" ".join(rest[1:])))
 
 
-MIX_WORDS = ("deliver", "export-as", "export", "clean-take", "model-panel", "model-download", "duck-add", "duck-open", "duck-set")
+MIX_WORDS = ("deliver", "export-as", "export-more", "export-what", "export", "clean-take", "model-panel", "model-download", "duck-add", "duck-open", "duck-set")
 
 
 def find_choice(item, shown):
