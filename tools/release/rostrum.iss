@@ -60,6 +60,7 @@ Source: "{#Stage}\shared\*"; DestDir: "{app}\shared"; Components: runtime; Flags
 Source: "{#Stage}\LICENSE"; DestDir: "{app}"; Components: runtime
 Source: "{#Stage}\ATTRIBUTIONS.md"; DestDir: "{app}"; Components: runtime
 Source: "{#Stage}\VERSION"; DestDir: "{app}"; Components: runtime
+Source: "{#Stage}\checkout_paths.py"; DestDir: "{app}"; Components: runtime
 Source: "{#Stage}\apps\2d\*"; DestDir: "{app}\apps\2d"; Components: app2d; Flags: recursesubdirs ignoreversion
 Source: "{#Stage}\apps\sound\*"; DestDir: "{app}\apps\sound"; Components: appsound; Excludes: "\python\*,\engine\*"; Flags: recursesubdirs ignoreversion
 ; Sound's engine part (bundle.py SOUND_ENGINE): 2D plays and writes the project's sound through it, so it comes with either app.
