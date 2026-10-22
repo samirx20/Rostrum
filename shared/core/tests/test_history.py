@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from rostrum_core import Document, RostrumError, Who, codes, toy
+from rostrum_core import Document, RostrumError, Who, codes, live, toy
 
 SAM, AGENT = Who.person("sam"), Who.agent("claude-code")
 CAM = {"op": "camera.set", "target": ["cam_1"], "args": {"dof": True}}
@@ -89,7 +89,7 @@ def test_save_open_round_trip_with_versions_and_outside_change(tmp_path):
     assert x(opened) == 77 and opened.history.changes[-1].who.kind == "outside"
     hist = tmp_path / ".rostrum" / "itm_card.history.jsonl"
     hist.write_text(hist.read_text(encoding="utf-8") + "{broken\n", encoding="utf-8")
-    with pytest.raises(RostrumError, match="line 5"):
+    with pytest.raises(RostrumError, match="line 7"):
         Document.open(tmp_path, "itm_card", toy.KIND)
 
 
@@ -124,3 +124,46 @@ def test_a_drag_that_writes_0_as_0_0_still_opens(tmp_path):
     doc.save()
     again = Document.open(tmp_path, "itm_card", toy.KIND)
     assert again.data == doc.data
+
+
+def test_a_step_cut_off_by_a_crash_is_left_out_loudly_and_the_rest_opens(tmp_path):
+    """S39: the history file is appended to; a crash mid-append cuts only its last line."""
+    doc = toy.sample(tmp_path, "itm_card")
+    doc.save()
+    live.keep(doc)
+    doc.apply({"op": "layer.move", "target": ["card"], "args": {"x": 5}}, SAM)
+    doc.apply(CAM, AGENT)
+    hist = tmp_path / ".rostrum" / "itm_card.history.jsonl"
+    text = hist.read_text(encoding="utf-8")
+    hist.write_text(text[:text.rstrip("\n").rfind("\n") + 30], encoding="utf-8")   # the agent's step half-written
+    opened = Document.open(tmp_path, "itm_card", toy.KIND)
+    assert opened.seq == 1 and x(opened) == 5 and "cut off" in opened.notes[0]
+    opened.undo(SAM)
+    opened.save()                                    # the cut-off line goes before the next whole one
+    again = Document.open(tmp_path, "itm_card", toy.KIND)
+    assert again.seq == 2 and x(again) == 0 and not again.notes
+
+
+def test_an_old_layout_file_opens_unchanged_and_is_saved_in_the_new_one(tmp_path):
+    """Files saved before S39: history rewritten whole with the starting document on line 1, an indented document."""
+    doc = toy.sample(tmp_path, "itm_card")
+    doc.apply({"op": "layer.move", "target": ["card"], "args": {"x": 5}}, SAM)
+    doc.mark_version("first")
+    doc.apply(CAM, AGENT)
+    kind = toy.KIND
+    lines = [json.dumps({"format": kind.format, "version": kind.version, "base": doc.base})]
+    lines += [json.dumps(c.to_dict()) for c in doc.history.changes] + [json.dumps({"version": "first", "at": 1})]
+    (tmp_path / ".rostrum").mkdir()
+    (tmp_path / ".rostrum" / "itm_card.history.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / f"itm_card{kind.ext}").write_text(json.dumps(
+        {"format": kind.format, "version": kind.version, "saved_by": "0.1.2", "doc": doc.data}, indent=1), encoding="utf-8")
+    old = Document.open(tmp_path, "itm_card", kind)
+    assert old.data == doc.data and old.seq == 2 and old.versions() == {"first": 1}
+    old.undo(SAM)
+    old.save()
+    assert '"layout":2' in (tmp_path / ".rostrum" / "itm_card.history.jsonl").read_text(encoding="utf-8").split("\n")[0]
+    new = Document.open(tmp_path, "itm_card", kind)
+    assert new.data == old.data and new.seq == 3 and x(new) == 0 and new.item("cam_1")["dof"] is True
+    new.restore_version("first", SAM)
+    assert x(new) == 5 and new.item("cam_1")["dof"] is False
