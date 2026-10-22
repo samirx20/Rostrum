@@ -65,6 +65,8 @@ Source: "{#Stage}\apps\sound\*"; DestDir: "{app}\apps\sound"; Components: appsou
 [Icons]
 Name: "{group}\Rostrum2D"; Filename: "{#Pyw}"; Parameters: """{#Launch}"" 2d"; WorkingDir: "{app}"; IconFilename: "{app}\runtime\icons\rostrum2d.ico"; Components: app2d
 Name: "{group}\RostrumSound"; Filename: "{#Pyw}"; Parameters: """{#Launch}"" sound"; WorkingDir: "{app}"; IconFilename: "{app}\runtime\icons\rostrumsound.ico"; Components: appsound
+Name: "{group}\Samples\Lull (Rostrum2D)"; Filename: "{#Pyw}"; Parameters: """{#Launch}"" 2d --open-sample"; WorkingDir: "{app}"; IconFilename: "{app}\runtime\icons\rostrum2d.ico"; Components: app2d
+Name: "{group}\Samples\Lull (RostrumSound)"; Filename: "{#Pyw}"; Parameters: """{#Launch}"" sound --open-sample"; WorkingDir: "{app}"; IconFilename: "{app}\runtime\icons\rostrumsound.ico"; Components: appsound
 Name: "{group}\Uninstall Rostrum"; Filename: "{uninstallexe}"
 Name: "{userdesktop}\Rostrum2D"; Filename: "{#Pyw}"; Parameters: """{#Launch}"" 2d"; WorkingDir: "{app}"; IconFilename: "{app}\runtime\icons\rostrum2d.ico"; Tasks: desktop2d
 Name: "{userdesktop}\RostrumSound"; Filename: "{#Pyw}"; Parameters: """{#Launch}"" sound"; WorkingDir: "{app}"; IconFilename: "{app}\runtime\icons\rostrumsound.ico"; Tasks: desktopsound

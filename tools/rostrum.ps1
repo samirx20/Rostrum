@@ -1,12 +1,14 @@
 <#
 .SYNOPSIS
-  Opens one Rostrum app on its sample project:  pwsh -File tools\rostrum.ps1 2d | sound | 3d
+  Opens one Rostrum app:  pwsh -File tools\rostrum.ps1 2d | sound | 3d
 
-  2d     Rostrum2D on the "Lull" film           (C:\Users\Sam\.rostrum\samples\lull, item "film")
-  sound  RostrumSound on the Lull score         (same project, item "score")
+  2d     Rostrum2D: your last project (its own Open recent list), else a new empty one
+  sound  RostrumSound: your last song, else a new empty one
   3d     Rostrum3D on the product shot          (C:\Users\Sam\.rostrum\samples\product-shot, item "product")
 
-  -Doc <folder> <item>   open another project instead of the sample
+  -Sample                2d / sound: the Lull sample instead (the film / the score), your own copy in
+                         Documents\Rostrum\Samples\Lull, made once from C:\Users\Sam\.rostrum\samples\lull
+  -Doc <folder> <item>   open another project
   -Shot <file.png>       save a picture of the window and close it (to check that the app opens)
   -Step "<a>; <b>"       scripted steps before the picture, as the app's own --step (e.g. -Step "page mix; time 14.9")
   -FromShortcut          problems show in a message box (the desktop shortcuts use this)
@@ -21,6 +23,7 @@ param(
     [string]$Shot,
     [string[]]$Step,
     [switch]$FromShortcut,
+    [switch]$Sample,
     [string]$Repo = (Split-Path $PSScriptRoot -Parent)
 )
 $ErrorActionPreference = "Stop"
@@ -33,11 +36,11 @@ $Apps = @{
     "2d"    = @{ Name = "Rostrum2D"; Main = "apps\2d\screen\main.py"; EnvVar = "ROSTRUM2D_ENGINE"
                  Engines = @("apps\2d\engine\target\release\rostrum2d-render.exe", "apps\2d\engine\target\agent\rostrum2d-render.exe")
                  Build = @("cargo", "build", "--profile", "agent", "-j", "4"); BuildIn = "apps\2d\engine"
-                 Folder = "lull"; Item = "film"; Script = $null }
+                 Script = $null }
     "sound" = @{ Name = "RostrumSound"; Main = "apps\sound\screen\main.py"; EnvVar = "ROSTRUM_SOUND_ENGINE"
                  Engines = @("apps\sound\engine\target\release\rostrum-sound.exe", "apps\sound\engine\target\agent\rostrum-sound.exe")
                  Build = @("cargo", "build", "--profile", "agent", "-j", "4"); BuildIn = "apps\sound\engine"
-                 Folder = "lull"; Item = "score"; Script = $null }
+                 Script = $null }
     "3d"    = @{ Name = "Rostrum3D"; Main = "apps\3d\app\main.py"; EnvVar = "ROSTRUM3D_CORE"
                  Engines = @("apps\3d\core\.build\install\rostrum3d-core.exe")
                  Build = @("cmd.exe", "/c", (Join-Path $Repo "apps\3d\core\build.bat")); BuildIn = "apps\3d\core"
@@ -94,18 +97,25 @@ if ($App -eq "3d") {     # the 3D engine's libraries: one folder, named by rostr
 if ($Doc) {
     if ($Doc.Count -ne 2) { Fail "-Doc needs a project folder and an item name, like: -Doc C:\my\project film" }
     $folder, $item, $script = $Doc[0], $Doc[1], $null
+} elseif ($App -ne "3d" -and $Sample) {   # the person's copy of the sample (rostrum_core.samples: the one place)
+    $got = & $py -c "from rostrum_core import samples; f, i = samples.open_copy('lull', '$App'); print(f); print(i)"
+    if ($LASTEXITCODE -ne 0) { Fail "The Lull sample could not be copied to Documents\Rostrum\Samples (the lines above say why)." }
+    $folder, $item, $script = $got[0], $got[1], $null
+} elseif ($App -ne "3d") {                # no project named: the app opens its last file, else a new one
+    $folder, $item, $script = $null, $null, $null
 } else {
     $folder = Join-Path $Samples $a.Folder; $item = $a.Item
     $script = if ($a.Script) { Join-Path $folder $a.Script } else { $null }
     if (-not (Test-Path $folder)) { Fail "The sample project for $($a.Name) is missing: $folder" }
 }
-$argv = @((Join-Path $Repo $a.Main), "--doc", $folder, $item)
+$argv = @((Join-Path $Repo $a.Main))
+if ($folder) { $argv += @("--doc", $folder, $item) }
 if ($script) { $argv += @("--script", $script) }      # used only the first time, to make the document
 foreach ($s in ($Step -join ";") -split ";") { if ($s.Trim()) { $argv += @("--step", $s.Trim()) } }
 if ($Shot) { $argv += @("--shot", $Shot) }
 
 # 4. Open it. The window stays until you close it; this prompt waits for it.
-Write-Host "Opening $($a.Name) on $folder ($item) ..."
+Write-Host "Opening $($a.Name) $(if ($folder) { "on $folder ($item)" } else { "(your last file, else a new one)" }) ..."
 if ($FromShortcut) {
     $logs = Join-Path $HOME ".rostrum\logs"; New-Item -ItemType Directory -Force $logs | Out-Null
     $log = Join-Path $logs "open-$App.log"
