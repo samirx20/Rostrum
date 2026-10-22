@@ -214,6 +214,6 @@ pub fn run(args: &[String]) -> Result<(), String> {
         l.sort_by(f64::total_cmp);
         serde_json::json!({ "notes": l.len(), "minMs": ms(l[0]), "medianMs": ms(l[l.len() / 2]), "maxMs": ms(l[l.len() - 1]), "jitterMs": ms(l[l.len() - 1] - l[0]) })
     });
-    println!("{}", serde_json::json!({ "done": { "notes": notes, "takes": takes.taken, "latency": lat, "mode": stats.mode, "periodMs": stats.period_frames as f64 * 1000.0 / rate, "droppedMs": (stats.dropped_ms * 100.0).round() / 100.0, "steppedUp": stats.steps, "blocks": stats.blocks } }));
+    println!("{}", serde_json::json!({ "done": { "notes": notes, "takes": takes.taken, "latency": lat, "mode": stats.mode, "periodMs": stats.period_frames as f64 * 1000.0 / rate, "droppedMs": (stats.dropped_ms * 100.0).round() / 100.0, "latencyKeptMs": (stats.settled_ms * 100.0).round() / 100.0, "steppedUp": stats.steps, "blocks": stats.blocks } }));
     Ok(())
 }
