@@ -23,6 +23,8 @@ class Hooks2D:
         return super().selection_label(ids)
 
     def edit_call(self, item_id, param, value):
+        if isinstance(value, str) and value.lstrip().startswith("="):    # typed "=pulse()" into a field: the expr.set agents call
+            return exprs.typed_call(item_id, param, value)
         return route.edit_call(self.doc, item_id, param, swap_rows.edit_value(self.doc.item(item_id), param, value), self.own_t(item_id))
 
     def _rows(self):          # a swap set's "Shows" is a choice among its children (swap_rows.py); the scene's

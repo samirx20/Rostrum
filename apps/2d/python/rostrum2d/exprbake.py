@@ -108,10 +108,16 @@ def comp_of(data: dict, item_id: str) -> dict:
 
 
 class _Env:
-    __slots__ = ("time", "frame", "fps", "duration", "markers", "get")
+    __slots__ = ("time", "frame", "fps", "duration", "markers", "get", "_beats")
 
-    def __init__(self, t, fps, duration, get, markers):
+    def __init__(self, t, fps, duration, get, markers, beats):
         self.time, self.frame, self.fps, self.duration, self.markers, self.get = t, round(t * fps), fps, duration, markers, get
+        self._beats = beats
+
+    @property
+    def beats(self):
+        """The sound's beat times, asked for only when an expression uses pulse() (None: no sound / not in a project)."""
+        return self._beats()
 
 
 def _final(owner: dict, prop: str, v):
@@ -127,9 +133,10 @@ def _final(owner: dict, prop: str, v):
     return float(round(v)) if p.integer else v
 
 
-def bake(comp: dict, fps: float, markers: dict | None = None) -> dict[str, dict[str, list]]:
+def bake(comp: dict, fps: float, markers: dict | None = None, beats=None) -> dict[str, dict[str, list]]:
     """{item id: {field: linear keys at every frame}} for every field of the composition with an expression.
-    `markers`: the project's {name: seconds} (rostrum_core.markers.times); None = not in a project folder."""
+    `markers`: the project's {name: seconds} (rostrum_core.markers.times); None = not in a project folder.
+    `beats`: a function giving the project sound's beat times (sorted seconds) or None; called once, only if pulse() is used."""
     items = items_of(comp)
     exprs = exprs_of(items)
     if not exprs:
@@ -137,13 +144,18 @@ def bake(comp: dict, fps: float, markers: dict | None = None) -> dict[str, dict[
     bad = problems(items, exprs)
     if bad:
         raise ValueError("expressions: " + "; ".join(bad))
-    trees, memo = {k: parse_cached(s) for k, s in exprs.items()}, {}
+    trees, memo, asked = {k: parse_cached(s) for k, s in exprs.items()}, {}, []
+
+    def beat_times():
+        if not asked:
+            asked.append(beats() if beats else None)
+        return asked[0]
     duration = comp.get("duration", F.defaults("comp")["duration"])
 
     def at(key, t):
         if (key, t) not in memo:
             try:
-                memo[key, t] = _final(items[key[0]], key[1], run(trees[key], _Env(t, fps, duration, get, markers)))
+                memo[key, t] = _final(items[key[0]], key[1], run(trees[key], _Env(t, fps, duration, get, markers, beat_times)))
             except ExprError as e:
                 raise ValueError(e.at(f"{key[0]}.{key[1]}", exprs[key])) from None
         return memo[key, t]

@@ -11,6 +11,8 @@ wobble that never ends, a bar that is always half as wide as another. For a hand
   Script: `shadow.link("x", of="logo", field="x", offset=12)`.
 - **Write an expression**: `expr.set {target: "title", prop: "rotation", source: "sin(time * 2) * 6"}`.
   Script: `title.expr("rotation", "sin(time * 2) * 6")`.
+- **On the screen**: type `=` and the formula into any number field of the inspector, e.g. `=sin(time * 2) * 6`.
+  It does the same `expr.set`, as one change you can undo. Type just `=` (or press the × on a driven field) to take it off.
 
 A bind is only an expression written for you (`logo.x + 12`); the inspector shows it as one. `expr.clear {prop}` takes
 either off. The field's own value and keys are **ignored while an expression is on it** (they come back when it is
@@ -26,7 +28,7 @@ cleared); the inspector says "overrides its keys".
 | other items' fields, shifted | `ref("logo.x", time - 0.2)`: the logo's x a fifth of a second ago |
 | calculate | `+ - * / %`, `^` or `**` (`-2^2` is -4), brackets |
 | compare, choose | `< <= > >= == !=` (give 1 or 0), `and or not`, `a if c else b` |
-| functions | `sin cos` (radians) `abs sqrt floor ceil round min max clamp(x, lo, hi) lerp(a, b, p) noise(x[, seed])` |
+| functions | `sin cos` (radians) `abs sqrt floor ceil round min max clamp(x, lo, hi) lerp(a, b, p) noise(x[, seed]) pulse([decay])` |
 
 `lerp` also blends two colours: `lerp(#ff0000, #0000ff, time / duration)` on a colour field. `noise` is smooth value
 noise between -1 and 1, the same numbers on every machine; the formula is in `expr.py`'s header and `expr_lib.py`.
@@ -40,6 +42,10 @@ with the item, the field and the **column** where it went wrong.
 - **A loop of motion:** `540 + sin(time * 2 * pi / 3) * 30` (period 3 s). `time % 3` is a ramp that restarts every 3 s.
 - **Hand-held feel:** `noise(time * 2, 1) * 6` on x and `noise(time * 2, 2) * 6` on y: different seeds so they don't move
   together.
+- **Pulse on the beat:** `1 + pulse() * 0.15` on scale: 1 on every beat of the project's music, falling in a straight line
+  to 0 over a quarter of a second (`pulse(0.4)` falls slower; before the first beat it is 0). The beats are the tempo
+  grid of the song that plays with the scene (the Sound row's beat lines), so they follow tempo changes and a re-cut
+  song. A project with no sound gives a message, never a silent 0. Combine: `pulse() * 12 * noise(time * 8)`.
 - **Stay on screen:** `clamp(logo.x, 100, 1180)`.
 - **Switch at a moment:** `1 if time >= 1.5 else 0` (use `frame >= 45` to count frames).
 - **Match sizes:** `link.set` with `scale` (a bar's width = 0.4 × another item's width).

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from rostrum_core import Param
 from rostrum_core.errors import codes
-from rostrum_core.keys import BEZIERS, keys_of, marked, register_key_ops, track_value
+from rostrum_core.keys import BEZIERS, key_value, keys_of, marked, register_key_ops, track_value
 
 from . import fields as F
 from .kind import REGISTRY as R, check_text
@@ -71,7 +71,8 @@ POSE = ["x", "y", "scale", "rotation", "opacity"]       # K: position, scale, ro
 
 def _value_now(ctx, owner: dict, prop: str, t):
     """{"v": value} of a pose field at own time t, or None where this owner can't key it now (no such field, driven
-    by an expression or placed by an auto layout / a path): K keys what it can and says how many."""
+    by an expression or placed by an auto layout / a path) or where a key would change nothing. The one rule for what K
+    keys (UX_SPEC 3.17): every field it can, except one whose keys already all hold this value: K never makes a flat field."""
     from rostrum_core.conditions import holds
     from .evaluate import value_at
     from .exprbake import source_of
@@ -83,7 +84,15 @@ def _value_now(ctx, owner: dict, prop: str, t):
     keys = keys_of(owner, prop)
     if any(isinstance(k["t"], str) for k in keys):     # timed on a marker: the value needs the markers; left out
         return None
-    return {"v": value_at(owner, prop, t)}
+    now = value_at(owner, prop, t)
+    return None if adds_nothing(owner, prop, now) else {"v": now}
+
+
+def adds_nothing(owner: dict, prop: str, v) -> bool:
+    """A key of `v` would change nothing: the field is animated and every key already holds `v`. The one test K, K on
+    a rig (rig.key) and Apply pose (pose.apply) share, so none of them makes a flat field."""
+    keys = keys_of(owner, prop)
+    return bool(keys) and all(key_value(k) == v for k in keys)
 
 
 put_key = register_key_ops(R, owners=OWNERS, check_key=_checked_value, check_still=_still_value, settable=settable,

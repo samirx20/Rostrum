@@ -22,3 +22,11 @@ def clear_calls(item: dict, prop: str) -> tuple[list[dict], str]:
     """(calls, history label) for the clear button."""
     return ([{"op": "expr.clear", "target": [item["id"]], "args": {"prop": prop}}],
             f"Clear expression on {F.param(item['type'], prop).label}")
+
+
+def typed_call(item_id: str, param: str, text: str) -> dict:
+    """A field's text starting with "=" (`=pulse(0.2)`): the same expr.set an agent calls; a bare "=" clears it."""
+    source = text.lstrip()[1:].strip()
+    if not source:
+        return {"op": "expr.clear", "target": [item_id], "args": {"prop": param}}
+    return {"op": "expr.set", "target": [item_id], "args": {"prop": param, "source": source}}

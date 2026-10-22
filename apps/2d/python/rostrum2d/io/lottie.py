@@ -57,8 +57,9 @@ def _layers(children: list[dict], ctx: Ctx, assets: list[dict], start_ind: int =
             layer = image_layer(node, ctx, assets, ind)
         elif kind == "group":
             layer = _group(node, ctx, assets, ind)
-        else:
-            raise ValueError(f'layer "{node["id"]}": type "{kind}" is not known to the Lottie export')
+        else:                                  # a kind Lottie can't carry is left out and listed, never a failed export
+            ctx.say(f'a "{kind}" layer is not exported (Lottie has no such layer)')
+            continue
         if kind != "image":
             _gradient_note(node, ctx, kind)
         out.append(layer)
