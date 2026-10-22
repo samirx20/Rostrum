@@ -1,33 +1,51 @@
 """The `rostrum-sound` MCP server (stdio), on rostrum_core.mcp.
 
-    python -m rostrum_sound.mcp.server --folder <project folder> [--item cue]
+    python -m rostrum_sound.mcp                                        (opens the person's last song)
+    python -m rostrum_sound.mcp --project <folder> [--item <id>]       (that project; --folder is the same)
 
-Opens (or creates) the Sound documents `<folder>/docs/<item>.trk` and starts one engine process for the session.
+With no options the server opens the song the Sound screen would open: the newest row of Recent songs still on disk. With
+none, no document is open (inspect_project says so). While running, inspect_recent_projects lists the person's songs and
+run_open_project switches (the one engine process stays). Songs are `<folder>/docs/<item>.trk`, saved after every change.
 """
 from __future__ import annotations
 
 import argparse
 
-from rostrum_core.mcp import Tools, run_stdio
+import anyio
+from mcp.server.stdio import stdio_server
+from rostrum_core.mcp import Runtime, Tools, build_server
 
-from . import tools_cleanup, tools_ears, tools_inspect, tools_look, tools_midi, tools_motion, tools_plugins, tools_render, tools_sfx, tools_voice
+from . import tools_cleanup, tools_ears, tools_inspect, tools_look, tools_midi, tools_motion, tools_plugins, tools_project, tools_render, tools_sfx, tools_voice
 from .app import make_app
 
 
 def sound_tools() -> Tools:
     tools = Tools()
     for m in (tools_render, tools_look, tools_inspect, tools_sfx, tools_voice, tools_motion, tools_plugins, tools_midi,
-              tools_cleanup, tools_ears):
+              tools_cleanup, tools_ears, tools_project):
         m.register(tools)
     return tools
 
 
+def make_runtime(app) -> Runtime:
+    runtime = Runtime(app, sound_tools())
+    tools_project.with_no_project_sentence(runtime)
+    return runtime
+
+
+async def _serve(app):
+    server = build_server(app, runtime=make_runtime(app))
+    async with stdio_server() as (read, write):
+        await server.run(read, write, server.create_initialization_options())
+
+
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="rostrum-sound", description=__doc__.splitlines()[0])
-    p.add_argument("--folder", required=True, help="The project folder (documents in docs/, renders in renders/).")
-    p.add_argument("--item", action="append", help="A Sound document's item id (repeatable). Default: cue.")
+    p = argparse.ArgumentParser(prog="rostrum-sound", description="The rostrum-sound MCP server (stdio). With no options it opens the person's last song.")
+    p.add_argument("--project", "--folder", dest="project", help="The project folder (documents in docs/, renders in renders/). Default: the person's last song.")
+    p.add_argument("--item", action="append", help="A Sound document's item id (repeatable). Default: the project's recent item, else its only / newest one.")
     a = p.parse_args(argv)
-    run_stdio(make_app(a.folder, a.item or ["cue"]), sound_tools())
+    folder, items = tools_project.start_choice(a.project, a.item)
+    anyio.run(_serve, make_app(folder, items))
 
 
 if __name__ == "__main__":
