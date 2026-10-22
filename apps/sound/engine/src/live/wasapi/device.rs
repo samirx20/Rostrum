@@ -1,5 +1,5 @@
 //! The live output's device (mod.rs): the default output or the one $ROSTRUM_AUDIO_OUTPUT names,
-//! the outputs by name, and how WASAPI describes one (its mix format and form factor). Opening a stream
+//! the microphone (record.rs): the default input or the one $ROSTRUM_AUDIO_INPUT names, both listed by name, and how WASAPI describes one (its mix format and form factor). Opening a stream
 //! on it is open.rs.
 
 // The COM calls here are all unsafe; the functions that make them are unsafe as a whole.
@@ -11,15 +11,24 @@ use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CoTaskMemFre
 
 /// The output devices (their names, as Windows shows them).
 pub fn outputs() -> Vec<String> {
+    names(eRender)
+}
+
+/// The microphones and other inputs (their names, as Windows shows them).
+pub fn inputs() -> Vec<String> {
+    names(eCapture)
+}
+
+fn names(flow: EDataFlow) -> Vec<String> {
     unsafe {
         let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
-        endpoints().map(|v| v.into_iter().map(|(n, _)| n).collect()).unwrap_or_default()
+        endpoints(flow).map(|v| v.into_iter().map(|(n, _)| n).collect()).unwrap_or_default()
     }
 }
 
-unsafe fn endpoints() -> Result<Vec<(String, IMMDevice)>, String> {
+unsafe fn endpoints(flow: EDataFlow) -> Result<Vec<(String, IMMDevice)>, String> {
     let devices: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|e| e.message())?;
-    let all = devices.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE).map_err(|e| e.message())?;
+    let all = devices.EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE).map_err(|e| e.message())?;
     let mut out = vec![];
     for i in 0..all.GetCount().map_err(|e| e.message())? {
         let d = all.Item(i).map_err(|e| e.message())?;
@@ -37,15 +46,24 @@ pub unsafe fn name(d: &IMMDevice) -> String {
 /// The output to play on: the default, or the first whose name contains $ROSTRUM_AUDIO_OUTPUT
 /// (any case), so a test or a person can pick the speakers without changing Windows' default.
 pub unsafe fn output() -> Result<IMMDevice, String> {
-    match std::env::var("ROSTRUM_AUDIO_OUTPUT").ok().filter(|s| !s.is_empty()) {
+    pick(eRender, "ROSTRUM_AUDIO_OUTPUT", "output")
+}
+
+/// The microphone to record from: the default input, or the first whose name contains $ROSTRUM_AUDIO_INPUT (any case).
+pub unsafe fn input() -> Result<IMMDevice, String> {
+    pick(eCapture, "ROSTRUM_AUDIO_INPUT", "input")
+}
+
+unsafe fn pick(flow: EDataFlow, var: &str, what: &str) -> Result<IMMDevice, String> {
+    match std::env::var(var).ok().filter(|s| !s.is_empty()) {
         Some(want) => {
-            let all = endpoints()?;
+            let all = endpoints(flow)?;
             let names: Vec<String> = all.iter().map(|(n, _)| format!("\"{n}\"")).collect();
-            all.into_iter().find(|(n, _)| n.to_lowercase().contains(&want.to_lowercase())).map(|(_, d)| d).ok_or(format!("no audio output named like \"{want}\" (ROSTRUM_AUDIO_OUTPUT); outputs: {}", names.join(", ")))
+            all.into_iter().find(|(n, _)| n.to_lowercase().contains(&want.to_lowercase())).map(|(_, d)| d).ok_or(format!("no audio {what} named like \"{want}\" ({var}); {what}s: {}", names.join(", ")))
         }
         None => {
             let devices: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|e| e.message())?;
-            devices.GetDefaultAudioEndpoint(eRender, eConsole).map_err(|e| e.message())
+            devices.GetDefaultAudioEndpoint(flow, eConsole).map_err(|e| format!("no default audio {what}: {}", e.message()))
         }
     }
 }

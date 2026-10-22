@@ -22,6 +22,7 @@ from pathlib import Path
 
 from rostrum_core import RostrumError, codes
 
+from . import settings
 from .engine import find_engine
 
 READY_S = 6          # the microphone must be running by then
@@ -82,7 +83,7 @@ class Recorder:
 
     def start(self):
         self._proc = subprocess.Popen(self.command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                      text=True, encoding="utf-8")
+                                      text=True, encoding="utf-8", env=settings.engine_env())
         self._err: list[str] = []
         threading.Thread(target=self._read, daemon=True).start()
         threading.Thread(target=lambda: self._err.extend(self._proc.stderr), daemon=True).start()

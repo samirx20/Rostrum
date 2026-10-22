@@ -2,9 +2,9 @@
 synth drums and,
 when the file is on this machine, one recorded clip. Markers "verse" and "drop". (A starting point to look at
 and play with, not a template.)"""
-from pathlib import Path
+from rostrum_sound import settings
 
-DOOR = Path.home() / ".rostrum" / "assets" / "sounds" / "foley-h4" / "bigsoundbank" / "0015_door.ogg"
+DOOR = settings.assets_dir() / "sounds" / "foley-h4" / "bigsoundbank" / "0015_door.ogg"
 
 SOURCE = '''
 tempo(100); beats_per_bar(4); length(bar(9))

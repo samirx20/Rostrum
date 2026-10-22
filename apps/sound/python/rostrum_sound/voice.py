@@ -6,7 +6,7 @@ process ends (docs: the experiment's docs/AI_MODELS.md › Voice; apps/sound/VOI
     take = voice.generate("The night is long.", voice="ryan", style="calm, close to the mic")
     take.file, take.seconds, take.generated            # generated=False: it was already in the cache
 
-The model folder: ROSTRUM_QWENTTS_DIR, else ~/.rostrum/models/qwentts. ROSTRUM_TTS_DEVICE picks the device
+The model folder: ROSTRUM_QWENTTS_DIR, else qwentts in the models folder (settings.models_dir). ROSTRUM_TTS_DEVICE picks the device
 ("Vulkan0", "CPU" …). The cache entry follows shared/project-service/CONTRACT.md § 5 (key = SHA-256 of kind, engine
 version, inputs, settings), kept by rostrum_core.cache: written under a temporary name, then renamed.
 """
@@ -23,7 +23,7 @@ from pathlib import Path
 from rostrum_core import RostrumError, codes
 from rostrum_core.cache import Cache, cache_key
 
-from . import memory
+from . import memory, settings
 
 VOICES = ("ryan", "aiden", "vivian", "serena", "uncle_fu", "dylan", "eric", "ono_anna", "sohee")
 LANGUAGES = ("auto", "english", "chinese", "japanese", "korean", "german", "french", "russian", "portuguese",
@@ -44,7 +44,7 @@ class Take:
 
 
 def model_dir() -> Path:
-    return Path(os.environ.get("ROSTRUM_QWENTTS_DIR") or Path.home() / ".rostrum" / "models" / "qwentts")
+    return Path(os.environ.get("ROSTRUM_QWENTTS_DIR") or settings.models_dir() / "qwentts")
 
 
 def store() -> Cache:

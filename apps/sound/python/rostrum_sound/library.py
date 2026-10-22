@@ -1,4 +1,4 @@
-"""The installed sound library (`~/.rostrum/assets/sounds/<pack>/…`) and what each sound in it is, so an agent can
+"""The installed sound library (`<assets>/sounds/<pack>/…`, settings.assets_dir) and what each sound in it is, so an agent can
 choose a recording without hearing every file. One place answers "what is this file": a description from the
 pack's own data when there is one (`library_data/<pack>.json`, shipped with the app, or a `takes.json` the pack
 carries), else the words of its folders and file name; plus its length in seconds for recordings.
@@ -10,7 +10,9 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
-LIBRARY = Path.home() / ".rostrum" / "assets" / "sounds"
+from . import settings
+
+LIBRARY = settings.assets_dir() / "sounds"
 DATA = Path(__file__).resolve().parent / "library_data"
 AUDIO = {".wav", ".flac", ".ogg", ".mp3"}
 KINDS = {"instruments": {".sfz"}, "recordings": AUDIO}

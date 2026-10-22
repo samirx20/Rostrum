@@ -50,7 +50,7 @@ def register(tools: Tools):
         "brightness_range": {**RANGE, "description": "[low, high] on 0 (250 Hz) … 1 (8 kHz)."},
         "limit": {"type": "integer", "default": 40, "minimum": 1, "maximum": 400}}})
     def inspect_library(ctx, args):
-        """Sounds to use. Installed packs under ~/.rostrum/assets/sounds (kind instruments / recordings): each with its path, what
+        """Sounds to use. Installed packs under <assets>/sounds, settings.assets_dir (kind instruments / recordings): each with its path, what
         it is, its category and length. The user's own sound folders (kind sounds or a sound kind; `folder` adds one): every
         file cut into single sounds, each with its file, start and end in it (use as a clip's in_ / length), kinds, length,
         attack, loudest moment (peak_s), brightness and loudness; filter by words, plain shape words or [low, high] ranges.

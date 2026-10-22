@@ -60,8 +60,8 @@ impl Drop for Input {
     }
 }
 
-/// `rostrum-sound midi`: the MIDI input devices and the audio outputs.
+/// `rostrum-sound midi`: the MIDI input devices, the audio outputs and the audio inputs (microphones).
 pub fn list_cmd() -> Result<(), String> {
-    println!("{}", serde_json::json!({ "devices": devices(), "outputs": crate::live::wasapi::outputs() }));
+    println!("{}", serde_json::json!({ "devices": devices(), "outputs": crate::live::wasapi::outputs(), "inputs": crate::live::wasapi::inputs() }));
     Ok(())
 }

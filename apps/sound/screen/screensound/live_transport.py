@@ -8,8 +8,9 @@ against what was heard, to the sample.
     p.set_state(countIn=1, record={"punch": [a, b]}, hear=True)      # remembered and sent again after a reopen
 
 Out: `rolling`, `ended`, `take`, `note`, `level` (input peak dB), `problem` (loud lines), `changed` (opened / gone).
-The process runs on the shared output (`--shared`: the device stays usable by other apps) and is started only when
-it is first needed. When it cannot open or dies (no output device, no microphone) it says why, loudly, and the
+The process runs on the shared output (`--shared`: the device stays usable by other apps) unless the person chose
+"Take over the speakers" in settings; the chosen speakers, microphone and buffer reach it as the engine's
+environment (settings.engine_env). It is started only when it is first needed. When it cannot open or dies (no output device, no microphone) it says why, loudly, and the
 playhead runs on a clock (`alive` False, `reason`). It is ended by its own handle, never by name. `program` is the
 test seam: what replaces `[engine, "play"]` (fake_play.py speaks the same lines).
 """
@@ -21,6 +22,7 @@ import threading
 import time
 
 from PySide6.QtCore import QObject, Signal
+from rostrum_sound import settings
 
 QUIT_S = 3
 
@@ -116,7 +118,9 @@ class LivePlay(QObject):
             head = [str(find_engine()), "play"]
         else:
             head = list(self.program)
-        o, args = self.opts, [self.file, "--shared", "--from", str(round(self._t, 4))]
+        o, args = self.opts, [self.file, "--from", str(round(self._t, 4))]
+        if not settings.load()["exclusive"]:
+            args.append("--shared")
         for key, flag in (("mic", "--mic"), ("midi", "--midi"), ("instrument", "--instrument"), ("bpm", "--bpm"),
                           ("beats", "--beats"), ("beat_times", "--beat-times")):
             if key in o:
@@ -132,7 +136,8 @@ class LivePlay(QObject):
         self._gen += 1
         try:
             self._proc = subprocess.Popen(self._args(), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                          stderr=subprocess.PIPE, text=True, encoding="utf-8")
+                                          stderr=subprocess.PIPE, text=True, encoding="utf-8",
+                                          env=settings.engine_env())
         except OSError as e:
             self._dead(f"the engine's player could not start: {e}")
             return

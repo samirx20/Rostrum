@@ -18,8 +18,9 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QUrl, Signal
+from rostrum_sound import settings
 
-SCRATCH = Path.home() / ".rostrum" / "cache" / "screensound" / str(os.getpid())
+SCRATCH = settings.cache_dir() / "screensound" / str(os.getpid())
 KEEP = 2                     # renders kept on disk: the newest and the one that may still be playing
 
 
