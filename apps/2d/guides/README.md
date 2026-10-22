@@ -9,7 +9,7 @@ Short pages in everyday words, with the names of the real buttons. The app is on
 3. [Drawing](drawing.md): the Draw tool, the brush, strokes, frames, hold and onion skin.
 4. [Importing pictures and files](importing.md): bring in pictures, video, SVG, PDF, PSD and Figma frames, then work on the pieces.
 5. [Exporting a video](exporting.md): the formats in plain words, the settings, and where the file goes.
-6. [Files and settings](files.md): New, Open, Open sample, Save, Save as, the unsaved dot, recovery and closing.
+6. [Files and settings](files.md): saving is automatic; New, Open, Open recent, the sample, Duplicate, versions and the start screen.
 
 ## For agents
 

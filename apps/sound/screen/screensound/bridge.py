@@ -42,8 +42,8 @@ SOUNDING = ("notes", "hits", "clips", "sounds")       # what makes a compiled tr
 
 
 class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, HandleSlots, GridSlots, ActionSlots, KeySlots, SelectSlots, S, DocBridge):
-    def __init__(self, doc, name="Untitled song", autosave=False, parent=None):
-        self.name, self.autosave = name, autosave
+    def __init__(self, doc, name="Untitled song", parent=None):
+        self.name = name
         self._t, self._track = 0.0, ""
         self.workspace = Workspace(lambda line: self._fail(line), lambda: self.model.reset(self._rows()))
         self._drag = self._grab = None
@@ -56,7 +56,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         MK.use_project(doc.folder)          # the screen works in this document's project (its shared markers)
         super().__init__(doc, parent=parent)
         self.link = None
-        if autosave and doc.folder:         # one door for every save, shared with agents' servers (rostrum_core.live)
+        if doc.folder and doc.item_id:      # live: one door for every save, shared with agents' servers (rostrum_core.live)
             live.keep(doc)
             self.link = LiveLink(self, "sound", screen_seen.state)
         self._picture_open = bool(self.doc.data.get("picture"))     # the corner opens by itself on a song with a picture

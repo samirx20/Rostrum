@@ -1,19 +1,18 @@
 """Rostrum2D's screen: Design and Animate pages on one 2D document.
 
-    python apps/2d/screen/main.py                                   # a person's launch: the last project opened,
-                                                                    # else a new "Untitled N" project
-    python apps/2d/screen/main.py --sample                          # the window, on the small built-in sample
-                                                                    # (never saved; the only way it opens)
+    python apps/2d/screen/main.py                                   # a person's launch: the last project where it
+                                                                    # was left, else the start screen
+    python apps/2d/screen/main.py --sample                          # the window, on the small built-in screen sample
+                                                                    # (in memory, never saved; for checks and pictures)
     python apps/2d/screen/main.py --script my_shot.py               # on what a script builds
-    python apps/2d/screen/main.py --doc <project folder> <item>     # open a saved document (made if missing),
-                                                                    # saved again after every change (launchers, agents)
-    python apps/2d/screen/main.py --open <doc file or project folder>   # open it the way a person does: File > Save
-                                                                    # saves, unsaved changes are kept in a recovery copy
+    python apps/2d/screen/main.py --doc <project folder> <item>     # open a saved document (made if missing)
+    python apps/2d/screen/main.py --open <doc file or project folder>   # open it the way ≡ › Open does
+Every project window is live: each change is on disk at once, shared with agents (shared/gui-kit/FILES.md).
     python apps/2d/screen/main.py --sample --step "select title" --step "page animate" --step "time 1.2" --shot out.png
     python apps/2d/screen/main.py --check-layout <folder>             # the layout check: every screen state at every
                                                                     # real window size (rostrum_gui/layout_run.py)
 Steps and --shot go with any start (no file named: the plain start, so a walk can check it). Steps: see screen2d/steps.py (file steps: screen2d/file_steps.py). With --shot the window quits by itself; a failed
-step, frame or save exits nonzero.
+step or frame exits nonzero.
 Offscreen screenshots: QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
 """
 import argparse
@@ -24,50 +23,20 @@ from pathlib import Path
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QGuiApplication
 
-from rostrum_core import Document, RostrumError
+from rostrum_core import Document
 from rostrum_core.storage import paths
 from rostrum_gui import layout_run
 from rostrum2d import KIND, run_source
-from screen2d import projects, recent
-from screen2d.projects import resolve
 from screen2d.sample import SOURCE
 from screen2d.session import Session
 from screen2d.steps import do_step
 
 
-REFUSED = []      # why the last project didn't open on a plain launch (said in the status line once shown)
-
-
-def first_doc() -> Document:
-    """What a plain launch opens: the newest project in Open recent still on disk, else a new Untitled project.
-    A last project that can't be opened (damaged, a newer version's) never stops the app from starting: a new
-    Untitled project opens instead and the window says why."""
-    last = recent.rows()
-    doc = open_or_say(last[0]["folder"], last[0]["item"], "your last project") if last else None
-    return doc or projects.new_project(projects.untitled())
-
-
-def open_or_say(folder, item, what) -> Document | None:
-    """The project, or None with the reason kept for the status line (a damaged file never stops the app)."""
-    try:
-        return Document.open(folder, item, KIND)     # checked whole on open (every value, then 2D's own check)
-    except (RostrumError, KeyError, TypeError, ValueError, AttributeError, IndexError) as e:
-        why = f"{e.problem}{(' ' + e.hint) if e.hint else ''}" if isinstance(e, RostrumError) else f"is damaged ({type(e).__name__}: {e})"
-        REFUSED.append(f"Error: {what} {Path(folder).name} didn't open: it {why}")
-        print(f"FAIL: {REFUSED[-1]}", file=sys.stderr)
-        return None
-
-
-def load_doc(args) -> Document:
-    if args.open:
-        try:
-            folder, item = resolve(args.open)
-        except RostrumError as e:
-            REFUSED.append(e.line())
-            return projects.new_project(projects.untitled())
-        return open_or_say(folder, item, "the project") or projects.new_project(projects.untitled())
+def load_doc(args) -> Document | None:
+    """--doc / --script / --sample as asked; None for a person's launch (`files.launch`: the project named by --open,
+    else the last one where it was left, else the start screen)."""
     if not (args.doc or args.script or args.sample):
-        return first_doc()
+        return None
     source, name = SOURCE, "sample.py"
     if args.script:
         source, name = Path(args.script).read_text(encoding="utf-8"), Path(args.script).name
@@ -118,10 +87,12 @@ def main():
 
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
-    session = Session(tuple(int(n) for n in args.size.lower().split("x")))
-    session.show(load_doc(args), live=bool(args.doc), comp_id=args.comp)
-    for line in REFUSED:
-        session.fail(line)
+    session = Session(tuple(int(n) for n in args.size.lower().split("x")), args.comp)
+    doc = load_doc(args)
+    if doc is None:
+        session.files.launch(args.open)
+    else:
+        session.files.put(doc)
     code = [0]
 
     def guarded(fn):
@@ -160,7 +131,7 @@ def main():
             raise RuntimeError(f"could not save {args.shot}")
         print(f"saved {args.shot} {img.width()}x{img.height()}  history={bridge.historyCount}  "
               f"selected={bridge.selected}  shown={bridge.shown()}")
-        app.exit(code[0])    # not quit(): that asks each window to close, and one with unsaved changes asks first
+        app.exit(code[0])
 
     QTimer.singleShot(400, lambda: guarded(run_steps))
     if args.shot or args.check_layout:

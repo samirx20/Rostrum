@@ -14,7 +14,7 @@
     select-last <n> | handle-first <part> <dt s> (the walks: the items just made, their handle)
     zoom <factor> | scroll <s> | fit | lane <track> <lane> | lane-point <track> <t> <v> [<t2> <v2>] | lane-delete |
     picture <file|none>     (see steps_view.py)
-    deliver <streaming|apple|ebu|atsc|podcast> (master target, one change) | export-as <format> [<rate> [trim|full]] | export (Render mix and stems, waits) |
+    deliver <streaming|apple|ebu|atsc|podcast> (master target, one change) | export-as <format> [<rate> [trim|full]] | export (the Export sheet's Export, waits) |
     clean-take (Make cleaned take on the selected clip, waits) | model-panel (the download question, for a screenshot) |
     duck-add <track> <under track> | duck-open <duck id> | duck-set <param> <json value> (the open duck)
     select-many, select-add, select-run, select-all, box, range, action, action-bar, menu, menu-roll, key, copy, cut,
@@ -85,8 +85,15 @@ def do_mix_step(mix, word, rest):
         if len(rest) > 1:
             mix.export.setRate(rest[1])
         mix.export.setTrim(rest[2:3] != ["full"])
-    elif word == "export":
-        wait_job(mix.export, mix.export.start, "export")
+    elif word == "export":                     # the Export sheet's Export (the kit's flow: asks when a file is there)
+        exp = mix.export
+        exp.request()
+        if exp.asking():
+            raise RuntimeError("export: a file of that name is already there (answer with the kit's `exportnow both`)")
+        if exp.state == "running" and not exp.wait(3 * RENDER_WAIT_S):
+            raise RuntimeError(f"export: nothing after {3 * RENDER_WAIT_S} s")
+        if exp.state != "done":
+            raise RuntimeError(exp.note)
     elif word == "clean-take":
         wait_job(mix.cleaning, mix.cleaning.make, "cleaned take")
     elif word == "model-panel":

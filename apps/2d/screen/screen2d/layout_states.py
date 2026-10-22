@@ -12,6 +12,7 @@ from .sample import SOURCE
 LONG_LAYER = "Title card for the summer launch film, second take"
 LONG_AGENT = "Claude: moved the title card, changed its colour, and re-timed the whole opening against the music"
 LONG_STATUS = "No graphics driver, so drawing is slower"
+LONG_PROJECT = "Summer_launch_film_for_the_new_headphones_-_final_cut_v3"   # a step's words: _ for spaces
 PAINTED = ["select card", "tool draw", "draw 600 300 900 330 1200 300"]
 LONG_PAINT = 'paint_3 name "Line art for the summer launch film, cleaned up"'     # the third paint layer, renamed
 TWELVE = ["select card"] + [f"set {'xy'[n % 2]} {500 + n}" for n in range(12)]   # 12 changes (x, y in turn: no merging)
@@ -26,6 +27,9 @@ def long_project() -> list[str]:
     script = folder.parent / "long_names.py"
     script.write_text(SOURCE.replace('"title"', '"title_card_for_the_summer_launch_film"'), encoding="utf-8")
     return ["--doc", str(folder), "main", "--script", str(script)]
+
+
+LONG_FOLDER = r"C:\Users\Sam\Documents\Rostrum_projects\Summer_launch_film_for_the_new_headphones\deliveries\final_round_three_for_the_client"
 
 
 def states() -> list[tuple[str, list[str], list[str]]]:
@@ -48,17 +52,24 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("long-rows-open", long(), [*busy, "open card"]),
         ("long-draw", long(), [*busy, "tool draw"]),
         ("file-menu", long(), [*busy, "filemenu open"]),
+        ("start-screen", long(), [f"duplicateproject {LONG_PROJECT}_{n}" for n in (2, 3)] + ["startscreen open"]),   # long recent names
         ("history-agent-run", ["--sample"], ["select title", "agent-run 6", "history open"]),
         ("agent-chip-long", long(), [*busy, "agent-run 3", f"agent-say {LONG_AGENT}"]),
         ("add-menu", ["--sample"], ["addmenu open"]),
-        ("export-panel", long(), [*busy, "exportpanel open"]),
+        ("export-sheet", long(), [*busy, "exportsheet open png", f"exportwhere {LONG_FOLDER}"]),     # S34: the kit sheet
+        ("job-chip", long(), [*busy, "job-show 42"]),
+        ("job-failed", long(), [*busy, "job-failed The engine stopped while drawing frame 112: the GPU ran out of memory. Try a smaller size."]),
         ("import-panel", ["--sample"], ["importpanel open"]),
-        ("problems", ["--sample"], ["problems open"]),
+        ("problems-chip", long(), [*busy, "problems-demo", "problems open"]),
         ("commands", ["--sample"], ["commands"]),
         ("help-menu", ["--sample"], ["help"]),
         ("about", ["--sample"], ["about"]),
         ("connect-agent", ["--sample"], ["agents"]),
         ("guide", ["--sample"], ["guide the-screen.md"]),
+        ("guides-list", ["--sample"], ["guides open"]),                       # the kit's guides drawer (F1)
+        ("guides-find", ["--sample"], ["guides find a_word_no_guide_has_anywhere_in_its_text_at_all"]),
+        ("key-list", ["--sample"], ["keylist open"]),                          # Ctrl+/
+        ("panels-folded", ["--sample"], ["panels fold"]),                      # Ctrl+\
         ("view-menu", ["--sample"], ["select title", "zoom 400", "viewmenu"]),     # zoomed in, the view's % menu open
         # H29: the creation tools, the context bar's tool options, keys picked in the timeline
         ("rect-drawing", ["--sample"], ["shapedrag rect 300 200 900 600"]),

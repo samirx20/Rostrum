@@ -19,16 +19,17 @@
   Add and import: add <type> (the Add menu's entry; image / video: add image <path>) | addmenu open|close |
     import <path> [page=<n>] [text=outline] [keep=on] (the Import panel's job, waits, fails like it) | importstart <path> … (starts it,
     doesn't wait) | importpanel open [path]|close
-    problems open|close (the Problems panel, after the list is worked out) | inspectorscroll <px>
+    problems open|close (the kit's Problems chip list, after the list is worked out: layout_run.kit_step) | inspectorscroll <px>
   Select, then act: selectmany <id> <id> … (those layers, the first is the primary) | act <action> (an entry of the one
     list on the selection: group, ungroup, mask, union, align_left, distribute_x, match_w, lock, hide, delete, front …;
     fails when the selection doesn't allow it) | nudge <dx> <dy> (the arrow keys, px) | actionmenu | actionbar (print what they offer)
   Inspector kit: find <text> (the search box; alone clears it) | group <name> (fold / open a group) | reveal <field> (bring a field into view)
-  Export: export <mp4|prores4444|webm|gif|png|exr|lottie> [alpha=on|off] [depth=8|16] [start=<s>] [end=<s>] (the Export button's
-    job; waits for it) | exportpanel open [format]|close | exportcancel [format] (start one, then Cancel it) |
-    exportto <path> [replace|both|cancel] | exportshow (export_steps.py)
-  Files (file_steps.py): new [name] | save | saveas <name> | openproject <path> | autosave | restore | discard |
-    filemenu open|close | askclose
+  Export (the kit's Export sheet): export <mp4|prores4444|webm|gif|png|exr|lottie> [alpha=on|off] [depth=8|16]
+    [quality=<q>] [range=<a→b>] (the sheet's Export; waits for it) | exportpanel open [format]|close (= exportsheet) |
+    exportcancel [format] (start one, then Cancel it) | exportto <folder> [replace|both|cancel] | exportshow (export_steps.py);
+    the kit's own: exportsheet, exportwhere, exportnow, job-show, job-failed (rostrum_gui/export_steps.py)
+  Files (file_steps.py): new [name] | openproject <path> | startscreen open|close | version [name] | duplicateproject <name> |
+    filemenu open|close
   Keys (key_steps.py): keypick | keybox | keydrag2 | keystretch | keydelete | showanim | ease | easekey | easecurve |
     spring | keytime | keyvalue | easemenu | keyhere (K) | keycopy | keypaste | stagger <f> [order] [open] | event prev|next
   Creation tools (create_steps.py): shape <rect|ellipse> x0 y0 x1 y1 [shift] [alt] | text <x> <y> <words> | textbox x0 y0 x1 y1 <words> | edittext <layer> <words>
@@ -62,12 +63,19 @@ def value(text):
 def steps_export(bridge, step, rest):
     job = bridge.exporter
     job.setFormat(rest[0])
+    if job.format != rest[0]:
+        raise ValueError(f"step {step!r}: no format {rest[0]!r}")
     for kv in rest[1:]:
         key, _, v = kv.partition("=")
-        if key not in ("alpha", "depth", "start", "end"):
+        if key == "range":
+            job.setRange(v.replace("_", " "))
+            if job.range != v.replace("_", " "):
+                raise ValueError(f"step {step!r}: no range {v!r} in {[r['value'] for r in job.ranges_list()]}")
+        elif key in ("alpha", "depth", "quality"):
+            job.setSetting(key, v in ("on", "true", "1") if key == "alpha" else v)
+        else:
             raise ValueError(f"step {step!r}: unknown setting {key!r}")
-        job.setSetting(key, v in ("on", "true", "1") if key == "alpha" else float(v))
-    job.start()
+    job.request()
     if job.state == "running" and not job.wait(600):
         raise RuntimeError(f"step {step!r}: the export did not finish in 10 minutes")
     if job.state != "done":
@@ -102,9 +110,10 @@ def steps_cancel(bridge, step, rest):
     """Start an export and press Cancel once its engine runs: the panel must end on "cancelled"."""
     job = bridge.exporter
     job.setFormat(rest[0] if rest else "png")
-    job.start()
+    job._engine = None
+    job.request()
     t0 = time.time()
-    while job.job.engine is None and job.running() and time.time() - t0 < 20:
+    while job._engine is None and job.running() and time.time() - t0 < 20:
         QCoreApplication.processEvents()
     time.sleep(0.4)
     job.cancel()
@@ -316,10 +325,6 @@ def do_step(bridge, win, step):
         if rest[1:]:
             bridge.importer.setFile(rest[1])
         QMetaObject.invokeMethod(win, "setImportOpen", Q_ARG("QVariant", rest[0] == "open"))
-    elif word == "problems":                     # the Problems panel, once the list is worked out
-        if not bridge.problems.wait(30):
-            raise RuntimeError(f"step {step!r}: the problems list was not ready in 30 s")
-        QMetaObject.invokeMethod(win, "setProblemsOpen", Q_ARG("QVariant", rest[0] == "open"))
     elif word == "inspectorscroll":              # scroll the (visible) inspector to <px> from its top
         from PySide6.QtCore import QObject
         end = time.time() + 0.4                  # rows that just appeared ease in (Theme.reveal): let them finish

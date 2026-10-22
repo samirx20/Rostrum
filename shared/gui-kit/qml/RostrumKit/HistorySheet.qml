@@ -26,6 +26,12 @@ Panel {
     onFocusSessionChanged: reload()
     onVisibleChanged: if (visible) reload()
     Component.onCompleted: reload()
+    function nameVersion(name) {               // Ctrl+S: the name field, with the time as the default name, selected
+        flick.contentY = 0
+        vname.input.text = name
+        vname.input.forceActiveFocus()
+        vname.input.selectAll()
+    }
     Connections { target: sheet.bridge; function onDocChanged() { if (sheet.visible) sheet.reload() } }
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close  Esc"; onClicked: sheet.closed() }
 
@@ -84,7 +90,8 @@ Panel {
                 Small { anchors.verticalCenter: parent.verticalCenter; text: "One agent run"; color: Theme.fg }
                 Act { anchors.right: parent.right; text: "Show all"; onClicked: sheet.focusSession = "" }
             }
-            Small { visible: sheet.rows.length === 0; text: "No changes yet."; color: Theme.fg3 }
+            EmptyHint { visible: sheet.rows.length === 0; width: parent.width
+                        text: "Changes you and agents make will be listed here." }
 
             Repeater {
                 model: sheet.rows

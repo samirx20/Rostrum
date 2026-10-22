@@ -49,12 +49,12 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
     renameRequested = Signal(str)                           # F2 / Ctrl+K "Rename layer": the layer row's name box
     sections = True                                         # settings panel: essentials, folded groups, search (kit)
 
-    def __init__(self, doc, comp_id=None, autosave=False, parent=None):
+    def __init__(self, doc, comp_id=None, parent=None):
         comps = doc.data.get("comps", [])
         if not comps:
             raise ValueError("the document has no composition yet (comp.add)")
         self.comp_id = comp_id or comps[0]["id"]
-        self._t, self._tool, self._frame, self.autosave = 0.0, "move", 0, autosave
+        self._t, self._tool, self._frame = 0.0, "move", 0
         self._flipped, self._drag, self._grab = set(), None, None      # rows folded / opened against their default
         self._anim_only = set()                             # layers opened by A: only their animated settings show
         self._placed = None                                 # placed(), kept per document and markers
@@ -86,7 +86,7 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
         self.selectionChanged.connect(self.outlineChanged)
         self.selectionChanged.connect(self.shownChanged)
         self.link = None
-        if autosave and doc.folder:                         # live (--doc): one door for every save, shared with agents' servers
+        if doc.folder and doc.item_id:                     # live: one door for every save, shared with agents' servers
             live.keep(doc)
             self.link = LiveLink(self, "2d", screen_seen.state)
         self._make_actions()                                # the one action list's hub: bar, menus, Ctrl+K, keys

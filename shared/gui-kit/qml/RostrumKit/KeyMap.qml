@@ -3,18 +3,22 @@ import "."
 
 // The window's shortcuts, made from the key map. `hub.keys` is [{job, keys: [sequences], label}]; a pressed key
 // calls hub.key(job). Put one in the root window. `skip`: jobs the host handles itself (a text field's own keys).
-// `enabled: false` turns every shortcut off (a dialog with its own typing).
+// `enabled: false` turns every shortcut off (a dialog with its own typing). The keys the window's AppShell binds itself
+// (`shell`: undo, redo, Ctrl+K, History, guides, the key list, F6, Ctrl+\, export) are always left to it.
 Instantiator {
     id: km
     property var hub
     property bool enabled: true
     property var skip: []
+    // the jobs the kit's AppShell binds itself (and the app's own Export through it), never made here
+    readonly property var shell: ["undo", "redo", "command_box", "history", "guides", "key_list", "next_area",
+                                  "fold_panels", "export", "export_again"]
     model: hub ? hub.keys : []
     delegate: Shortcut {
         required property var modelData
         sequences: modelData.keys
         context: Qt.WindowShortcut
-        enabled: km.enabled && km.skip.indexOf(modelData.job) < 0
+        enabled: km.enabled && km.skip.indexOf(modelData.job) < 0 && km.shell.indexOf(modelData.job) < 0
         onActivated: km.hub.key(modelData.job)
     }
 }

@@ -200,6 +200,11 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         self._heard(event.change if event.kind == "change" else None)
 
     @Slot(str)
+    def setFocusArea(self, name):
+        """The area that takes the keys (AppShell.focusArea, named by the app's `areaNames`), for inspect_screen."""
+        self._focus_area = name
+
+    @Slot(str)
     def say(self, text):
         """Put an app's own one-line message (a save, a refused open) in the top bar's status, where every app's
         "what just happened" goes; a line starting "Error" shows red."""

@@ -1,8 +1,9 @@
-"""Scripted steps for the file actions (steps.py hands these over). Each calls what the File menu calls; one that
-fails raises, so a scripted run exits nonzero.
+"""Scripted steps for the file actions (steps.py hands these over). Each calls what the ≡ menu calls (the kit's
+ProjectFiles, `bridge.files`); one that fails raises, so a scripted run exits nonzero.
 
-    new [name] | save | saveas <name> | openproject <doc file or project folder> | autosave (write the recovery copy now)
-    restore | discard (answer the recovery question) | filemenu open|close | askclose (press the window's close button)
+    new [name] | openproject <doc file or project folder> | startscreen open|close | version [name] (Save a version; the
+    time when no name) | duplicateproject <name> (a copy in the projects folder; the window stays;
+    `duplicate` alone is the layer step) | filemenu open|close
     about (Help › About and licences) | agents [agent id] (Help › Connect an AI agent; with an id, its by-hand text open) | help (the Help menu, open) | guide <file.md> (Help › that guide)
 Names: _ for spaces.
 """
@@ -12,7 +13,7 @@ from PySide6.QtCore import Q_ARG, QMetaObject
 
 from rostrum_gui import guides
 
-WORDS = ("new", "save", "saveas", "openproject", "autosave", "restore", "discard", "filemenu", "askclose", "about", "agents", "help", "guide")
+WORDS = ("new", "openproject", "startscreen", "version", "duplicateproject", "filemenu", "about", "agents", "help", "guide")
 
 
 def do_file_step(bridge, win, word, rest, step):
@@ -30,15 +31,11 @@ def do_file_step(bridge, win, word, rest, step):
     if word == "guide":
         guides.open_named(win, rest[0])
         return
-    if word == "askclose":
-        QMetaObject.invokeMethod(win, "askClose")
+    if word == "startscreen":
+        files.setStart(rest[0] == "open")
         return
-    if word == "discard":
-        files.discard()
-        return
-    ok = {"new": lambda: files.newProject(arg), "save": files.save, "saveas": lambda: files.saveAs(arg),
-          "openproject": lambda: files.openPath(" ".join(rest)), "autosave": files.autosave,
-          "restore": files.restore}[word]()
+    ok = {"new": lambda: files.newProject(arg), "openproject": lambda: files.openPath(" ".join(rest)),
+          "version": lambda: files.saveVersion(arg), "duplicateproject": lambda: files.duplicate(arg)}[word]()
     if not ok:
         raise RuntimeError(f"step {step!r}: {files.host.bridge.status}")
-    print(f"{word}: {files.label} ({files.doc.folder})")
+    print(f"{word}: {files.name} ({files.doc.folder})")

@@ -118,9 +118,9 @@ def _changed(edits, idx, lists) -> list[dict]:
     return [idx[i].item for i in ids if i in idx]
 
 
-def plan(kind, data: dict, calls, locked_by=None) -> tuple[dict, list, list[dict]]:
-    """(the new document, the applied edits, the normalized calls). Pure: `data` is not touched. `locked_by(id)`: who
-    locked an item, for the refusal's words (Document.locked_by)."""
+def plan(kind, data: dict, calls, locked_by=None, who=None) -> tuple[dict, list, list[dict]]:
+    """(the new document, the applied edits, the normalized calls). Pure: `data` is not touched. `locked_by(id)`: the
+    Who that locked an item (Document.locked_by); `who`: who asks, so an agent can't unlock a person's lock."""
     calls = normalize(calls)
     work, applied = copy.deepcopy(data), []
     idx = index(work, kind.lists)                       # one index for the whole call, kept up to date by its edits
@@ -138,7 +138,7 @@ def plan(kind, data: dict, calls, locked_by=None) -> tuple[dict, list, list[dict
             raise
         except Exception as e:  # a bug in an operation is loud, never half-applied
             raise RostrumError(codes.INTERNAL, where, op.name, f"failed: {type(e).__name__}: {e}") from e
-        locks.check(ctx.edits, idx, kind.lists, where, locked_by)
+        locks.check(ctx.edits, idx, kind.lists, where, locked_by, who)
         call["args"] = args
         applied += ctx.edits
     problems = kind.problems(work, _changed(applied, idx, kind.lists))

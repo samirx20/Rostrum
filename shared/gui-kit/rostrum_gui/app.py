@@ -40,6 +40,8 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     if app_id(main_qml) in ("2d", "sound"):           # Help → Connect an AI agent (apps with an agent server to add)
         from rostrum_gui.agents import Agents
         ctx.setContextProperty("agents", Agents(app_id(main_qml), engine))
+    from rostrum_gui.keymap import KeyMap            # the shared keys: the key list and hover help when an app has no hub
+    ctx.setContextProperty("sharedKeys", KeyMap("Rostrum").entries())
     from rostrum_gui.guides import GuidePages        # Help → a guide, read by the kit's guide viewer
     ctx.setContextProperty("guidePages", GuidePages(engine))
     for k, v in context.items():
@@ -49,6 +51,8 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
         raise RuntimeError(f"QML failed to load: {main_qml} (errors above)")
     win = engine.rootObjects()[0]
     win.resize(*size)
+    from rostrum_gui.focus_areas import watch         # the area last pressed takes the keys (AppShell.pressedAt)
+    watch(win)
     return app, engine, win
 
 

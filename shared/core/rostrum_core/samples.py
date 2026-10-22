@@ -24,6 +24,10 @@ def originals() -> Path:
 
 
 def copies() -> Path:
+    """The person's copies; a scripted run's go to its scratch home (userhome), never the person's Documents."""
+    from . import userhome
+    if userhome.scripted():
+        return userhome.home() / "samples"
     return Path.home() / "Documents" / "Rostrum" / "Samples"
 
 

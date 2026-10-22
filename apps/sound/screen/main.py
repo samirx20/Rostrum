@@ -1,17 +1,18 @@
 """RostrumSound's screen: one workspace on one Sound document (the arrangement, the Editor / Mixer dock, the Sounds
 panel, the settings panel; apps/sound/DESIGN.md §2).
 
-    python apps/sound/screen/main.py                                  # the last song, or a new one
+    python apps/sound/screen/main.py                                  # the last song where it was left, else the start screen
     python apps/sound/screen/main.py <song file or project folder>    # open that song
     python apps/sound/screen/main.py --new                            # a new song ("Untitled song" in the projects folder)
-    python apps/sound/screen/main.py --sample                         # a small sample song (not saved)
-    python apps/sound/screen/main.py --script my_song.py              # on what a script builds (not saved)
+    python apps/sound/screen/main.py --sample                         # a small sample song (in memory, not saved)
+    python apps/sound/screen/main.py --script my_song.py              # on what a script builds (in memory, not saved)
     python apps/sound/screen/main.py --doc <project folder> <item>    # open a saved document (made if missing)
     python apps/sound/screen/main.py --step "select melody.n9600" --step "drag-note melody.n9600 0.6 2" --shot out.png
-Every song with a folder is saved after every change. Steps: see screensound/steps.py, plus the file steps here
-(`file-new`, `file-open <path>`, `file-duplicate <folder>`, `file-menu`, `settings`, `about`, `help`, `guide <file.md>`,
+Every song with a folder is live: each change is on disk at once, shared with agents (shared/gui-kit/FILES.md).
+Steps: see screensound/steps.py, plus the file steps here (`new [name]`, `openproject <path>`, `duplicate <name>`,
+`version [name]`, `startscreen open|close`, `file-menu`, `settings`, `about`, `help`, `guide <file.md>`,
 `add-track <sound>`, `library`, `export-open`, `file-in <path>`). With --shot the window quits by
-itself once the sound has rendered; a failed step, render or save exits nonzero. Offscreen screenshots:
+itself once the sound has rendered; a failed step or render exits nonzero. Offscreen screenshots:
 QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
     python apps/sound/screen/main.py --check-layout <folder>          # the layout check: every screen state at every
                                                                       # real window size (rostrum_gui/layout_run.py)
@@ -29,8 +30,7 @@ from rostrum_core import Document, RostrumError
 from rostrum_core.storage import paths
 from rostrum_gui import guides, layout_run, start
 from rostrum_sound import KIND, run_source
-from rostrum_sound.opening import said
-from screensound import projects
+from rostrum_gui.project_files import ProjectFiles
 from screensound.adder import Adder
 from screensound.bridge import SoundBridge
 from screensound.editor_side import EditorSide
@@ -40,7 +40,7 @@ from screensound.library_panel import LibraryPanel
 from screensound.mixer import MixPage
 from screensound.recording import Recording
 from screensound.sample import SOURCE
-from screensound.session import Songs
+from screensound.files_sound import FILES_SOUND, title
 from screensound.settings_page import SettingsPage
 from screensound.song_panel import SongPanel
 
@@ -53,25 +53,13 @@ HERE = Path(__file__).resolve().parent
 MAIN_QML = HERE / "qml" / "Main.qml"
 
 
-def first_song(args) -> tuple[Document, str]:
-    """(the first document, why the asked-for song was refused or ""). A song that can't be opened whole (a double-
-    clicked damaged file, a last song saved by a newer version) is never shown half-read: a new song opens
-    instead and the screen says why, in words."""
-    try:
-        return first_doc(args), ""
-    except RostrumError as e:
-        if args.script or args.sample:
-            raise
-        print(f"FAIL: {e}", file=sys.stderr)
-        return projects.new_song(), said(e)
-
-
-def first_doc(args) -> Document:
-    """What opens first: --doc / --script / --sample as asked, a path given, else the last song, else a new one."""
+def load_doc(args) -> Document | None:
+    """--doc / --script / --sample as asked; None for a person's launch (`files.launch`: the song named, else the last
+    one where it was left, else the start screen; a damaged one never stops the app: the screen says why)."""
     if args.doc:
         folder, item = args.doc
         if paths(folder, item, KIND.ext)["doc"].is_file():
-            return projects.open_song(folder, item)
+            return FILES_SOUND.open(folder, item)
         doc = Document.new(KIND, folder=folder, item=item)
         doc.run_script(*_script(args))
         doc.save()
@@ -80,10 +68,7 @@ def first_doc(args) -> Document:
         doc = Document.new(KIND)
         doc.run_script(*_script(args))
         return doc
-    if args.path:
-        return projects.open_song(*projects.resolve(args.path))
-    last = None if args.new else next(iter(projects.recent()), None)
-    return projects.open_song(last["folder"], last["item"]) if last else projects.new_song()
+    return None
 
 
 def _script(args):
@@ -97,20 +82,23 @@ class Screen:
 
     def __init__(self, size=(1600, 960)):
         self.size, self.engine, self.win, self.parts = size, None, None, None
-        self.songs = Songs(self.show)
+        self.files = ProjectFiles(FILES_SOUND, self)      # ≡ menu, start screen, Open recent (kit; saving is automatic)
+        self.unnamed = "Untitled song"                     # the name of a song with no folder (--script, --sample)
         self.settings = SettingsPage()
 
-    def show(self, doc, name):
+    def show(self, doc):
+        name = title(doc.folder, doc.item_id) if doc.folder else self.unnamed
         old_win, old_parts = self.win, self.parts
         if old_win is not None:
+            QGuiApplication.instance().setQuitOnLastWindowClosed(False)   # the next window comes at once: don't quit
             old_win.close()
         if old_parts:
             self._close(old_parts)
-        bridge = SoundBridge(doc, name, autosave=doc.folder is not None)
+        bridge = SoundBridge(doc, name)            # live when the song has a folder
         mixer, recorder, side = MixPage(bridge), Recording(bridge), EditorSide(bridge)
         keys, library = KeysRecording(bridge, recorder), LibraryPanel(bridge)
         context = {"backend": bridge, "workspace": bridge.workspace, "mixer": mixer, "recorder": recorder,
-                   "keys": keys, "takeSetup": recorder.setup, "songs": self.songs, "settingsPage": self.settings,
+                   "keys": keys, "takeSetup": recorder.setup, "files": self.files, "settingsPage": self.settings,
                    "adder": Adder(bridge), "songPanel": SongPanel(bridge), "editorSide": side, "fileIn": FileIn(bridge),
                    "soundLibrary": library, "guides": GUIDES}
         self.ctx_adder, self.ctx_file_in = context["adder"], context["fileIn"]
@@ -125,6 +113,7 @@ class Screen:
             self.win.resize(*self.size)
         if old_win is not None:
             old_win.deleteLater()
+            QGuiApplication.instance().setQuitOnLastWindowClosed(True)
         self.parts = {"bridge": bridge, "mixer": mixer, "recorder": recorder, "keys": keys, "side": side,
                       "library": library, "context": context}   # every object QML reads lives as long as the window
 
@@ -135,7 +124,7 @@ class Screen:
 
     @property
     def bridge(self):
-        return self.parts["bridge"]
+        return self.parts["bridge"] if self.parts else None
 
     def close(self):
         """The window and its engine go first, then what their bindings read: closed the other way round, every
@@ -147,18 +136,23 @@ class Screen:
             self.engine = self.win = None
         if self.parts:
             self._close(self.parts)
-        self.songs.close()
+        self.files.close()
 
 
 def file_step(screen, step) -> bool:
     """The steps that switch songs or open the song menu / Settings (they live here, beside the session)."""
     word, _, rest = step.partition(" ")
-    if word == "file-new":
-        screen.songs.newSong()
-    elif word == "file-open":
-        screen.songs.openPath(rest)
-    elif word in ("file-duplicate", "file-save-as"):     # ≡ › Duplicate… (the old name still works)
-        screen.songs.duplicate(rest)
+    files, ok = screen.files, True
+    if word in ("new", "file-new"):           # new [name]: ≡ › New (the kit's ProjectFiles)
+        ok = files.newProject(rest.replace("_", " "))
+    elif word in ("openproject", "file-open"):    # openproject <song file or project folder>
+        ok = files.openPath(rest)
+    elif word in ("duplicate", "duplicateproject", "file-duplicate"):     # duplicate <name or folder>: a copy; the window stays
+        ok = files.duplicate(rest.replace("_", " ") if "/" not in rest and "\\" not in rest else rest)
+    elif word == "version":                   # version [name]: Save a version (the time when no name)
+        ok = files.saveVersion(rest.replace("_", " "))
+    elif word == "startscreen":               # startscreen open|close
+        files.setStart(rest == "open")
     elif word == "file-menu":
         QMetaObject.invokeMethod(screen.win, "openFileMenu")
     elif word == "add-track":                 # add-track <sound key> (the Sounds panel: adder.py; old names still work)
@@ -181,8 +175,8 @@ def file_step(screen, step) -> bool:
         guides.open_named(screen.win, rest)
     else:
         return False
-    if screen.songs.error:
-        raise RuntimeError(f"{word}: {screen.songs.error}")
+    if not ok:
+        raise RuntimeError(f"{word}: {screen.bridge.status}")
     return True
 
 
@@ -206,11 +200,13 @@ def main():
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
     screen = Screen(tuple(int(n) for n in args.size.lower().split("x")))
-    doc, refused = first_song(args)
-    if doc.folder is None:            # --script / --sample: shown as before, not a song on disk
-        screen.show(doc, Path(args.script).stem if args.script else "Sample song")
+    if args.script or args.sample:
+        screen.unnamed = Path(args.script).stem if args.script else "Sample song"
+    doc = load_doc(args)
+    if doc is None:
+        screen.files.launch(args.path, args.new)
     else:
-        screen.songs.start(doc, refused)
+        screen.files.put(doc)
     code = [0]
 
     def guarded(fn):
