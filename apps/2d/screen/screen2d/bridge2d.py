@@ -18,6 +18,7 @@ from .file_commands import FileCommands
 from .frames import FrameRenderer
 from .handle_slots import HandleSlots
 from .hooks import Hooks2D
+from .action_slots import ActionSlots
 from .layer_order import LayerOrder
 from .painter import Painter
 from .playback import Playback, size_offered
@@ -29,7 +30,7 @@ from .tools2d import ToolSlots
 from .undo_state import UndoState
 
 
-class Bridge2D(ShownState, ClipboardSlots, UndoState, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
+class Bridge2D(ShownState, ClipboardSlots, UndoState, ActionSlots, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     toolChanged = Signal()
     frameChanged = Signal()
@@ -76,6 +77,7 @@ class Bridge2D(ShownState, ClipboardSlots, UndoState, LayerOrder, FileCommands, 
         self.r3d.changed.connect(self._problems.touch)
         self.selectionChanged.connect(self.outlineChanged)
         self.selectionChanged.connect(self.shownChanged)
+        self._make_actions()                                # the one action list's hub: bar, menus, Ctrl+K, keys
         self._render()
         self._problems.touch()
 
@@ -83,6 +85,8 @@ class Bridge2D(ShownState, ClipboardSlots, UndoState, LayerOrder, FileCommands, 
     historyCount = Property(int, lambda self: self.changes_since_open(), notify=historyChanged)   # since it opened
     undoLabel = Property(str, UndoState.undo_label, notify=historyChanged)         # "" = nothing to undo
     redoLabel = Property(str, UndoState.redo_label, notify=historyChanged)
+
+    actions = Property(QObject, lambda self: self._hub, constant=True)   # the context bar, menus, keys (action_slots.py)
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
     def comp(self) -> dict:
