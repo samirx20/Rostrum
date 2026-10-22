@@ -1,7 +1,9 @@
 """The "Make cleaned take" button of a clip (Timeline inspector): shown only while the selected clip has a cleanup step
 set and its cleaned take is not made yet. Pressing it runs the same job as the MCP `render_cleanup`
 (`rostrum_sound.clean_clips.make_clips`) in the background; the status line follows its progress and a failure is
-written in words (and is the bridge's red error), never a quiet "done". Exposed to QML as `mixer.cleaning`.
+written in words (and is the bridge's red error), never a quiet "done". Exposed to QML as `mixer.cleaning`. The
+context bar's "Clean up…" popover starts the same job for every selected clip (`makeFor`) and asks `missingWords`
+whether the clean-up models are on this computer.
 Making a take never edits the document (it lives in the cache); the sound is re-rendered once it is made.
 """
 from __future__ import annotations
@@ -28,7 +30,9 @@ class CleanedTake(QObject):
         self._made: set = set()               # (media, recipe) already known to be in the cache
         self._thread: threading.Thread | None = None
         self._download = ModelFetch(self)         # asked first when a step needs a model that is not installed
-        self._download.ready.connect(self.make)
+        self._pending: list[str] = []             # the clips a download was asked for (made once it lands)
+        self._steps: dict[str, list] = {}         # clip id -> [progress notes seen, notes expected] while making
+        self._download.ready.connect(lambda: self.makeFor(self._pending or [self._clip]))
         self._download.cancelled.connect(self._note_cancelled)
         self._progress.connect(self._note)
         self._done.connect(self._finish)
@@ -40,6 +44,11 @@ class CleanedTake(QObject):
     def clip(self):
         """The selected clip's id while it needs its cleaned take made ("" otherwise: the button is absent)."""
         return self._clip
+
+    @Property("QVariantMap", notify=changed)
+    def progress(self):
+        """{clip id: 0..1} while their cleaned takes are being made (the arrangement fills each clip left to right)."""
+        return {i: min(0.95, seen / total) for i, (seen, total) in self._steps.items()}
 
     @Property(bool, notify=changed)
     def busy(self):
@@ -55,20 +64,42 @@ class CleanedTake(QObject):
 
     @Slot(result=bool)
     def make(self):
-        if self._busy or not self._clip or self._download.state in ("asking", "downloading"):
+        return self.makeFor([self._clip] if self._clip else [])
+
+    @Slot("QVariantList", result=bool)
+    def makeFor(self, ids):
+        """The cleaned takes of these clips (those with a clean-up step set), one job in the background."""
+        doc = self.bridge.doc
+        ids = [i for i in ids if doc.has(i) and doc.item(i)["type"] == "clip" and cleanup.recipe_of(doc.item(i))]
+        if self._busy or not ids or self._download.state in ("asking", "downloading"):
             return False
-        missing = fetch.needed(cleanup.recipe_of(self.bridge.doc.item(self._clip)))
+        missing = []
+        for i in ids:
+            missing += [m for m in fetch.needed(cleanup.recipe_of(doc.item(i))) if m not in missing]
         if missing:                                         # ask before the first download; "Download" carries on
-            self._status = ""                               # a new question: an old "cancelled" line no longer holds
+            self._status, self._pending = "", list(ids)     # a new question: an old "cancelled" line no longer holds
             self.changed.emit()
             self._download.ask(missing)
             return False
-        self._busy, self._status = True, "Making the cleaned take…"
+        self._busy, self._pending = True, []
+        self._steps = {i: [0, 1 + len(cleanup.recipe_of(doc.item(i)))] for i in ids}
+        self._status = f"Making the cleaned take{'s' if len(ids) > 1 else ''}…"
         self.changed.emit()
-        snapshot = copy.deepcopy(self.bridge.doc.data)          # the worker reads a copy: edits go on meanwhile
-        self._thread = threading.Thread(target=self._work, args=(snapshot, self._clip), daemon=True)
+        snapshot = copy.deepcopy(doc.data)                  # the worker reads a copy: edits go on meanwhile
+        self._thread = threading.Thread(target=self._work, args=(snapshot, ids), daemon=True)
         self._thread.start()
         return True
+
+    @Slot(bool, bool, bool, result=str)
+    def missingWords(self, voice, noise, echo):
+        """One sentence when the chosen steps need models not on this computer yet ("" when all are here)."""
+        recipe = {"isolate": voice, "denoise": 0.6 if noise else 0, "dereverb": 0.6 if echo else 0}
+        missing = fetch.needed({k: v for k, v in recipe.items() if v})
+        if not missing:
+            return ""
+        mb = sum(m.size for m in missing) / 1e6
+        return ("The clean-up models aren't on this computer yet: Clean downloads them first"
+                + (f" (about {mb:.0f} MB)." if mb else "."))
 
     def _note_cancelled(self):
         self._status = "Download cancelled: the cleaned take is not made."
@@ -79,20 +110,23 @@ class CleanedTake(QObject):
         if self._thread is not None:
             self._thread.join(timeout=600)
 
-    def _work(self, root, clip_id):
+    def _work(self, root, clip_ids):
         try:
-            clean_clips.make_clips(root, [clip_id], progress=self._progress.emit)
+            clean_clips.make_clips(root, clip_ids, progress=self._progress.emit)
             err = ""
         except Exception as e:  # noqa: BLE001  shown on the screen, whatever it was
             err = f"Error: cleaned take: {getattr(e, 'line', lambda: e)()}"
         self._done.emit(err)
 
     def _note(self, text):
+        clip = text.split(":", 1)[0]
+        if clip in self._steps:
+            self._steps[clip][0] += 1
         self._status = text
         self.changed.emit()
 
     def _finish(self, error):
-        self._busy = False
+        self._busy, self._steps = False, {}
         self._status = error
         if error:
             self.bridge._fail(error)

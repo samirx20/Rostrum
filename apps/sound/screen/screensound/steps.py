@@ -1,6 +1,6 @@
 """Scripted steps for screenshots and checks. Each goes through the same bridge call a click or drag makes.
 
-    page instruments|timeline|mix | select <id> | time <s> | set <param> <json value>
+    dock editor|mixer|none | page timeline|mix|instruments (old scripts: = dock editor|mixer|none) | select <id> | time <s> | set <param> <json value>
     drag-note <id> <dt s> <d semitones> | drag-clip <id> <dt s> | drag-marker <id> <dt s> | drag-project-marker <name> <dt s> |
     drag-section <id> <dt s> (it and everything inside: section.move) | drag-tempo <id> <dt s> | drag-key <id> <dt s> |
     drag-edge <section id> at|end <dt s>   (one gesture each)
@@ -10,12 +10,15 @@
     arm <track> | record (start / stop, the real microphone) | record-fake | take-panel | take-set | punch | midi-fake |
     keys (steps_record.py)
     undo | redo | play | render (wait for the newest render) | more | commands [query …] | run <command key> |
-    wait <seconds>
+    wait <seconds> | shot <file.png> (a picture of the window now; several per run) | agent <label>|<json calls> |
+    select-last <n> | handle-first <part> <dt s> (the walks: the items just made, their handle)
     zoom <factor> | scroll <s> | fit | lane <track> <lane> | lane-point <track> <t> <v> [<t2> <v2>] | lane-delete |
     picture <file|none>     (see steps_view.py)
     deliver <streaming|apple|ebu|atsc|podcast> (master target, one change) | export-as <format> [<rate> [trim|full]] | export (Render mix and stems, waits) |
     clean-take (Make cleaned take on the selected clip, waits) | model-panel (the download question, for a screenshot) |
     duck-add <track> <under track> | duck-open <duck id> | duck-set <param> <json value> (the open duck)
+    select-many, select-add, select-run, select-all, box, range, action, action-bar, menu, menu-roll, key, copy, cut,
+    paste, drag-many (the selection and its actions: steps_select.py)
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
@@ -26,7 +29,9 @@ import time
 from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject
 
 from .steps_record import WORDS as RECORD_WORDS, do_record_step
+from .steps_select import WORDS as SELECT_WORDS, do_select_step
 from .steps_view import WORDS as VIEW_WORDS, do_view_step
+from .workspace import OLD_PAGES
 
 RENDER_WAIT_S = 120
 
@@ -117,10 +122,33 @@ def find_choice(item, shown):
     return None
 
 
+def shot(bridge, win, path):
+    """The window as a picture once the newest sound has rendered and the 160 ms reveals have finished."""
+    wait_render(bridge)
+    end = time.monotonic() + 0.6
+    while time.monotonic() < end:
+        QCoreApplication.processEvents()
+        time.sleep(0.02)
+    img = win.grabWindow()
+    if img.isNull() or not img.save(path):
+        raise RuntimeError(f"shot: could not save {path}")
+
+
 def do_step(bridge, win, step, recorder=None):
+    bridge.__dict__["_refused"] = ""             # an action refused during this step fails it (action_slots._refuse)
+    _do_step(bridge, win, step, recorder)
+    if bridge.__dict__.get("_refused"):
+        raise RuntimeError(f"step {step!r}: refused: {bridge.__dict__['_refused']}")
+
+
+def _do_step(bridge, win, step, recorder=None):
     word, *rest = step.split()
-    if word == "page":
-        bridge.setPage(rest[0])
+    if word == "dock":
+        bridge.workspace.setDock(rest[0])
+    elif word == "page":                      # the pages are gone: an old script's page opens the dock that took its place
+        if rest[0] not in OLD_PAGES:
+            raise ValueError(f"step {step!r}: no such page (timeline, mix or instruments)")
+        bridge.workspace.setDock(OLD_PAGES[rest[0]])
     elif word == "select":
         bridge.select(rest[0])
     elif word == "time":
@@ -167,6 +195,8 @@ def do_step(bridge, win, step, recorder=None):
         recorder.toggleRecord()
     elif word in RECORD_WORDS:
         do_record_step(recorder, word, rest)
+    elif word in SELECT_WORDS:               # selection and its actions (steps_select.py)
+        do_select_step(bridge, win, word, rest)
     elif word in VIEW_WORDS:
         do_view_step(bridge, word, rest)
     elif word in MIX_WORDS:
@@ -183,6 +213,18 @@ def do_step(bridge, win, step, recorder=None):
         QMetaObject.invokeMethod(win, "openCommands", Q_ARG("QVariant", " ".join(rest)))
     elif word == "run":
         bridge.run(rest[0])
+    elif word == "select-last":               # select-last <n>: the last n notes / hits / clips made on the Editor's track
+        t = bridge.doc.item(bridge._track)
+        made = [i["id"] for k in ("notes", "hits", "clips", "sounds", "lines") for i in t.get(k, [])][-int(rest[0]):]
+        bridge.pickMany(made)
+    elif word == "handle-first":              # handle-first <part> <dt s>: a handle drag on the first selected item
+        do_select_step(bridge, win, "handle", [bridge.selectedIds[0], *rest])
+    elif word == "agent":                     # agent <label>|<json calls>: an agent's change (another author), for the walks
+        from rostrum_core import Who
+        label, _, calls = " ".join(rest).partition("|")
+        bridge.doc.apply(json.loads(calls), Who.agent("Claude"), label=label)
+    elif word == "shot":                      # shot <file.png>: a picture of the window now (the flow walks: one per step)
+        shot(bridge, win, " ".join(rest))
     elif word == "wait":                      # let background work (the listen pictures) land: wait <seconds>
         end = time.monotonic() + float(rest[0])
         while time.monotonic() < end:

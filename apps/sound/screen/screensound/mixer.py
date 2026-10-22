@@ -1,4 +1,4 @@
-"""The Mix page: one strip per track, one per bus, then the master. Exposed to QML as `mixer`.
+"""The Mixer (bottom dock): one strip per track, one per bus, then the master. Exposed to QML as `mixer`.
 
 Strips come from the document (`strips.py`) and the last render's meters; every edit is the bridge's edit on the
 strip's item (the strip selects it first), so a fader drag is one scrub = one change. Adding an effect is the
@@ -7,13 +7,11 @@ strip's item (the strip selects it first), so a fader drag is one scrub = one ch
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
 from . import ducks, playback, strips
 from .cleaning import CleanedTake
 from .export import RenderExport
-from .listen_pics import ListenPics
 from .loudness import LoudnessMeter
 from .plugins import PluginHub
 
@@ -24,15 +22,12 @@ ROLES = ("id", "name", "volume", "pan", "mute", "solo", "effects", "meter", "can
 class MixPage(QObject):
     masterChanged = Signal()
 
-    def __init__(self, bridge, pics_folder=None, parent=None):
+    def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.bridge, self.doc = bridge, bridge.doc
         self._tracks = RowsModel(ROLES, self)
         self._buses = RowsModel(ROLES, self)
-        self._master_rows = RowsModel(rows.ROLES, self)
-        self._master_layout = strips.master_layout(self.doc.kind.registry.field_op("master"))
         self._master: dict = {}
-        self.pics = ListenPics(bridge, pics_folder, self)
         self._plugins = PluginHub(bridge, playback.open_engine, self)
         self._ducks, self._loudness = ducks.DuckHub(bridge, self), LoudnessMeter(bridge, self)
         self._export, self._cleaning = RenderExport(bridge, parent=self), CleanedTake(bridge, self)
@@ -43,7 +38,6 @@ class MixPage(QObject):
         bridge.renderChanged.connect(self._refresh)
 
     def close(self):
-        self.pics.close()
         self._plugins.close()
         self._export.close()
         self._cleaning.close()
@@ -76,17 +70,9 @@ class MixPage(QObject):
     def buses(self):
         return self._buses
 
-    @Property(QObject, constant=True)
-    def masterRows(self):
-        return self._master_rows
-
     @Property("QVariantMap", notify=masterChanged)
     def master(self):
         return self._master
-
-    @Property(QObject, constant=True)
-    def listen(self):
-        return self.pics
 
     @Property("QVariantList", constant=True)
     def effectTypes(self):
@@ -144,5 +130,3 @@ class MixPage(QObject):
         m = self.doc.item(strips.MASTER)
         self._master = strips.strip(m, "Master", strips.master_meter(render), vendor_of=vendor)
         self.masterChanged.emit()
-        evaluated = rows.evaluate(self._master_layout, m, self.doc.kind.facts(m, self.doc), False)
-        self._master_rows.update(evaluated) if self._master_rows.rows else self._master_rows.reset(evaluated)

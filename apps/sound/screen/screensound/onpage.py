@@ -1,26 +1,21 @@
-"""A control appears once per screen: which fields the page's own controls already show, so the inspector leaves them
-out (no Qt). One table, read by the bridge's `on_page` hook: page -> item type -> fields shown outside the inspector.
+"""A control appears once per screen: which fields the workspace's own controls already show, so the inspector leaves
+them out (no Qt). One table, read by the bridge's `on_page` hook: dock -> item type -> fields shown outside the inspector.
 
-"*" holds what every page shows (the arrangement's track headers: mute, solo). The master strip's rows are its own
-layout (strips.master_layout), so they are read from there, not listed twice.
+"*" holds what is always on screen (the arrangement's track headers: mute, solo). "mixer" is what the Mixer shows
+while it is open in the bottom dock (workspace.py). The master's delivery settings (Normalize, the targets) are in
+the Deliver dialog, not on the master strip, so the inspector keeps them.
 """
 from __future__ import annotations
 
-from . import strips
-
-ON_PAGE = {
-    "*": {"track": ("mute", "solo")},                                   # Timeline track headers (slim on every page)
-    "mix": {"track": ("volume", "pan", "output"),                       # MixStrip: fader, pan, where it plays to
-            "bus": ("volume", "pan", "mute", "output"),
-            "send": ("level",),                                         # MixSends
-            "master": ("volume",)},                                     # MixMaster's fader (+ its layout rows below)
+ON_SCREEN = {
+    "*": {"track": ("mute", "solo")},                                   # the arrangement's track headers
+    "mixer": {"track": ("volume", "pan", "output"),                     # MixStrip: fader, pan, where it plays to
+              "bus": ("volume", "pan", "mute", "output"),
+              "send": ("level",),                                       # MixSends
+              "master": ("volume",)},                                   # MixMaster's fader
 }
 
 
-def fields(page: str, item_type: str, registry) -> set[str]:
-    """The fields of an item of this type that the page shows outside the inspector."""
-    out = {*ON_PAGE["*"].get(item_type, ()), *ON_PAGE.get(page, {}).get(item_type, ())}
-    if page == "mix" and item_type == "master":
-        out |= {r["id"] for r in strips.master_layout(registry.field_op("master"))}
-    return out
-
+def fields(dock: str, item_type: str, registry=None) -> set[str]:
+    """The fields of an item of this type that the screen shows outside the inspector, with this dock open."""
+    return {*ON_SCREEN["*"].get(item_type, ()), *ON_SCREEN.get(dock, {}).get(item_type, ())}

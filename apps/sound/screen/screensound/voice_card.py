@@ -5,9 +5,10 @@ from __future__ import annotations
 
 import copy
 import threading
+from types import SimpleNamespace
 
 from PySide6.QtCore import QObject, Signal
-from rostrum_sound import voice_lines
+from rostrum_sound import voice, voice_lines
 
 
 def when_text(at) -> str:
@@ -22,11 +23,44 @@ def card_roles(track: dict, state: dict) -> dict:
     if track.get("instrument") != "voice":
         return {"isVoice": False, "lines": [], "missing": 0, "voiceStatus": "", "voiceBusy": False,
                 "voiceFailed": False}
-    lines = [{"id": ln["id"], "text": ln["text"], "when": when_text(ln["at"]),
+    making = set(state.get("ids", ())) if state.get("busy") else set()
+    lines = [{"id": ln["id"], "text": ln["text"], "when": when_text(ln["at"]), "making": ln["id"] in making,
               "made": voice_lines.take_of(track, ln) is not None} for ln in track.get("lines", [])]
     return {"isVoice": True, "lines": lines, "missing": sum(not ln["made"] for ln in lines),
             "voiceStatus": state.get("status", ""), "voiceBusy": state.get("busy", False),
-            "voiceFailed": state.get("failed", False)}
+            "voiceFailed": state.get("failed", False), "voiceMissing": model_missing()}
+
+
+def model_missing() -> str:
+    """One sentence when the voice model is not on this computer ("" when it is)."""
+    d = voice.model_dir()
+    if all((d / n).is_file() for n in (voice.EXE, voice.CODEC, voice.TALKER)):
+        return ""
+    return f"The voice model isn't on this computer yet (it goes in {d}), so lines can't be spoken. See Preferences › Models."
+
+
+def without(doc, ids):
+    """The document as the screen's render reads it while these lines are being spoken: without them (they are on
+    their way, and the song re-renders when they land). A line not made and not being made still fails the render
+    loudly, and export never takes this path."""
+    if not ids:
+        return doc
+    data = copy.deepcopy(doc.data)
+    for t in data.get("tracks", []):
+        if t.get("lines"):
+            t["lines"] = [ln for ln in t["lines"] if ln["id"] not in ids]
+    return SimpleNamespace(data=data, folder=getattr(doc, "folder", None))
+
+
+def mark_speaking(rows: list[dict], ids) -> None:
+    """A line being spoken reads "Speaking… · <words>" on its block (the arrangement's rows and the Editor's roll),
+    not "not made"."""
+    if not ids:
+        return
+    for r in rows:
+        for b in r.get("blocks", []):
+            if b["type"] == "line" and b["id"] in ids:
+                b["label"] = "Speaking… · " + b["label"].removeprefix("not made · ")
 
 
 class VoiceMaker(QObject):
@@ -38,6 +72,10 @@ class VoiceMaker(QObject):
         self.bridge, self._state, self._threads = bridge, {}, []
         self._done.connect(self._finish)
 
+    def making(self) -> set:
+        """The ids of every line being spoken now."""
+        return {i for st in self._state.values() if st.get("busy") for i in st.get("ids", ())}
+
     def state(self, track_id: str) -> dict:
         return self._state.get(track_id, {})
 
@@ -48,7 +86,7 @@ class VoiceMaker(QObject):
         ids = [ln["id"] for ln in track.get("lines", []) if voice_lines.take_of(track, ln) is None]
         if not ids:
             return
-        self._state[track_id] = {"busy": True, "status": f"Making {len(ids)} line{'s' if len(ids) > 1 else ''}… "
+        self._state[track_id] = {"busy": True, "ids": ids, "status": f"Making {len(ids)} line{'s' if len(ids) > 1 else ''}… "
                                  "(the first one loads the voice)"}
         self.changed.emit()
         snapshot = copy.deepcopy(self.bridge.doc.data)     # the thread reads this copy, never the live document

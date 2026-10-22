@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC
 import RostrumKit
 
-// Settings (screensound/settings_page.py, `settingsPage`): the kit's own Inspector on the settings' field data, so
+// Preferences (screensound/settings_page.py, `settingsPage`): the kit's own Inspector on the settings' field data, so
 // it shows only what applies now, most important first; a change is saved at once. Under it: where the models and
 // projects are and how much room the models take, and the last save's word.
 QQC.Popup {
@@ -33,7 +33,7 @@ QQC.Popup {
     contentItem: Item {
         Inspector {
             anchors { left: parent.left; right: parent.right; top: parent.top; bottom: foot.top }
-            title: "Settings"; bridge: settingsPage
+            title: "Preferences"; bridge: settingsPage
         }
         Column {
             id: foot

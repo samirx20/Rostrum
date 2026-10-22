@@ -1,68 +1,102 @@
 import QtQuick
 import RostrumKit
 
-// RostrumSound: Instruments | Timeline | Mix. Centre: the page (Timeline: the piano roll of the selection's
-// track). Right: the inspector of the selected item on every page. Bottom, full width: the arrangement
-// (tall on Timeline, slim elsewhere: the tracks stay in sight so sound is always made in context).
-// No left panel yet: no page has a job for one.
+// RostrumSound: one workspace (apps/sound/DESIGN.md §2, shared/gui-kit/INTERACTION.md §1.1). Top bar: project-wide
+// things only — ≡ (the menu), the song's name, the message and change count, the Loudness chip and Export once the
+// song makes a sound, Search, Help. Centre: the arrangement, always, with its header strip (+ Add, ⏮ ▶, Record while
+// armed, position, tempo · beats · key, zoom); under it the dock (Editor E / Mixer X; folds away). Left: the Library
+// (Ctrl+L), pushing the arrangement on a wide window and floating over it below 1500 px. Right: the settings panel —
+// the selection's settings, or the song while nothing is selected — or the Export sheet in its place (Ctrl+E).
+// Saving is automatic: there is no Save and no question on closing.
 AppShell {
     id: shell
     bridge: backend
     appName: "RostrumSound"
     documentName: backend.docName
-    leftWidth: 0
     helpEntries: guides
-    bottomHeight: backend.page === "timeline" ? 300 + Math.min(2, backend.tracks.filter(r => r.auto).length) * 78 : 156
-    Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
+    readonly property bool wide: width >= 1500                       // the Library pushes instead of floating
+    readonly property bool hasTracks: backend.tracks.some(r => !r.mix)
+    readonly property bool hasSound: backend.tracks.some(r => !r.mix && r.blocks.length > 0)
+    leftWidth: wide && workspace.library ? (width >= 1920 ? 280 : 260) : 0
+    rightWidth: width >= 1920 ? 320 : width >= 1646 ? 296 : width >= 1366 ? 264 : 256
+    bottomHeight: -Theme.gap        // no full-width bottom panel: the dock sits under the arrangement only (kit request)
 
     function openFileMenu() { fileMenu.openMenu() }      // (the scripted `file-menu` step)
-    function openSettings() { settingsPanel.open() }     // (`settings`)
-    onClosing: (close) => { close.accepted = songs.mayClose() }    // an untitled song with changes asks first
+    function openSettings() { settingsPanel.open() }     // (`settings`: Preferences)
+    function openSong() { arrangement.readout.open() }   // (`song-open`: the tempo / key popover)
+    function openLibrary() { workspace.setLibrary(true) }   // (`library`)
+    function openGrid() { arrangement.openGrid() }          // (`grid-open`: the Grid menu, open)
+    function openPicturePick() { backend.setPictureOpen(true); arrangement.picture.openItems() }     // (`picture-pick`)
+    function openExport() { if (shell.hasSound) mixer.export.setDialogOpen(true) }
+    function exportAgain() { if (shell.hasSound && !mixer.export.busy) mixer.export.start() }   // the last settings
+    function used() { if (!shell.wide) workspace.setLibrary(false) }   // a narrow window's Library closes after use
     Shortcut { sequence: "Ctrl+N"; onActivated: fileMenu.newNow() }
     Shortcut { sequence: "Ctrl+O"; onActivated: fileMenu.openNow() }
     Shortcut { sequence: "Ctrl+S"; onActivated: fileMenu.saveNow() }
-    Shortcut { sequence: "Ctrl+Shift+S"; onActivated: songs.untitled ? fileMenu.saveNow() : fileMenu.saveAsNow() }
+    Shortcut { sequence: "Ctrl+Shift+S"; onActivated: fileMenu.duplicateNow() }
+    Shortcut { sequence: "Ctrl+I"; onActivated: arrangement.addFromFile() }
     Shortcut { sequence: "Ctrl+,"; onActivated: settingsPanel.open() }
-    function openSong() { readout.open() }      // (the scripted `song-open` step)
-    function openPicturePick() { backend.setPictureOpen(true); picture.openItems() }     // (`picture-pick`)
-    Shortcut { sequence: "Space"; onActivated: backend.togglePlay() }
+    Shortcut { sequence: "Ctrl+Q"; onActivated: Qt.quit() }
+    Shortcut { sequence: "Ctrl+E"; onActivated: shell.openExport() }
+    Shortcut { sequence: "Ctrl+Shift+E"; onActivated: shell.exportAgain() }
     Shortcut { sequence: "R"; enabled: recorder.armed !== ""; onActivated: recorder.toggleRecord() }
-    Shortcut { sequences: [StandardKey.Delete, "Backspace"]; onActivated: backend.removeSelected() }
-    Shortcut { sequences: ["Ctrl+=", "Ctrl++"]; onActivated: backend.zoomStep(1.25) }      // timeline zoom (screen state)
-    Shortcut { sequence: "Ctrl+-"; onActivated: backend.zoomStep(0.8) }
-    Shortcut { sequences: ["Ctrl+0", "Ctrl+9"]; onActivated: backend.fitView() }                  // show the whole song
 
-    actions: [Button {           // + Track: one track.add with a starting instrument (screensound/adder.py)
-                  id: addTrack; text: "+ Track"; down: addMenu.visible; anchors.verticalCenter: parent.verticalCenter
-                  onClicked: addMenu.visible ? addMenu.close() : addMenu.open()
-                  Menu { id: addMenu; width: 220; entries: adder.entries; onPicked: (v) => adder.add(v) } }]
+    // ONE key map for the window (the kit's KeyMap, INTERACTION.md Part 2): every shared key and Sound's own
+    // (screensound/keys.py) call backend.actions.key(job): an action on the selection when it applies (else the
+    // message line says why), or Sound's own job (play, the playhead, nudges, the loop, zoom: keys.ROUTES). The jobs
+    // in `skip` (files, undo, Ctrl+K, F1, R) keep their own Shortcuts here and in the kit's AppShell.
+    readonly property bool typing: {
+        const f = activeFocusItem
+        return !!f && f.cursorPosition !== undefined && f.selectByMouse !== undefined      // a text field has the keys
+    }
+    KeyMap { hub: backend.actions; enabled: !shell.typing; skip: backend.actions.skip }
+    // A new selection (a click in the arrangement, the Editor or the Mixer, or a track made from the Library) gives the
+    // keys back to the work: a text field (the Library's search, a settings row) never keeps them silently.
+    // (A name field opened in place — a new section, M, F2 — keeps them: it is the work.)
+    Connections { target: backend; function onPicksChanged() { if (shell.typing && backend.renaming === "") shell.contentItem.forceActiveFocus() } }
     leading: FileMenu { id: fileMenu; settingsPanel: settingsPanel; anchors.verticalCenter: parent.verticalCenter }
     SettingsPanel { id: settingsPanel }
-    tools: [
-        Segmented {
-            options: [{ value: "instruments", label: "Instruments" }, { value: "timeline", label: "Timeline" },
-                      { value: "mix", label: "Mix" }]
-            current: backend.page
-            onPicked: (v) => backend.setPage(v)
-        },
-        Item { width: Theme.gap; height: 1 },
-        PlayButton { playing: backend.playing; onClicked: backend.togglePlay() },
-        RecordControls { anchors.verticalCenter: parent.verticalCenter },
-        SongReadout { id: readout; anchors.verticalCenter: parent.verticalCenter }
+    actions: [          // the top bar's chips, then Export (kit TopBar: its `actions` slot sits before Search)
+        LoudnessReadout { visible: shell.hasSound; compact: shell.width < 1366; anchors.verticalCenter: parent.verticalCenter },
+        Button { visible: shell.hasSound; text: "Export"; kind: "primary"; down: mixer.export.dialogOpen
+                 anchors.verticalCenter: parent.verticalCenter
+                 onClicked: mixer.export.setDialogOpen(!mixer.export.dialogOpen)
+                 HoverTip { text: "Export the song (Ctrl+E). Ctrl+Shift+E exports again with the last settings"; hovered: parent.hovered } }
     ]
+    left: Library { anchors.fill: parent; visible: shell.wide && workspace.library; onUsed: shell.used() }
     centre: [
-        InstrumentsPage { anchors.fill: parent; visible: backend.page === "instruments" },
-        PianoRoll { anchors { fill: parent; rightMargin: picture.visible ? picture.width + Theme.gap : 0 }
-                    visible: backend.page === "timeline" },
-        PictureCorner { id: picture; width: 340; anchors { top: parent.top; right: parent.right }
-                        visible: backend.page === "timeline" && backend.pictureOpen },
-        MixPage { anchors.fill: parent; visible: backend.page === "mix" }
+        Arrangement {
+            id: arrangement
+            anchors { left: parent.left; right: parent.right; top: parent.top; bottom: dock.visible ? dock.top : parent.bottom
+                      bottomMargin: dock.visible ? Theme.gap : 0 }
+            headerWidth: shell.width >= 1920 ? 200 : shell.width >= 1646 ? 180 : shell.width >= 1366 ? 160 : 140
+            compact: shell.width < 1366
+            onAddTrack: workspace.setLibrary(true)
+        },
+        Dock {
+            id: dock
+            visible: shell.hasTracks
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+            room: parent.height - 160 - Theme.gap        // the arrangement keeps the ruler and two tracks
+            preferred: shell.width >= 1920 ? 460 : shell.width >= 1646 ? 380 : shell.width >= 1366 ? 320 : 300
+        },
+        Library {   // a narrow window: floats over the arrangement, closes after use
+            visible: !shell.wide && workspace.library
+            width: 260; z: 10
+            anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+            onUsed: shell.used()
+        }
     ]
     right: Item {
         anchors.fill: parent
-        Inspector { anchors { left: parent.left; right: parent.right; top: parent.top; bottom: clean.top
-                              bottomMargin: clean.visible ? Theme.gap : 0 } bridge: backend }
-        CleanTakeBar { id: clean; anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: implicitHeight }
+        readonly property bool exporting: mixer.export.dialogOpen
+        Inspector { visible: !parent.exporting && backend.selected !== ""; bridge: backend
+                    anchors { left: parent.left; right: parent.right; top: parent.top; bottom: clean.top
+                              bottomMargin: clean.visible ? Theme.gap : 0 } }
+        SongSettings { visible: !parent.exporting && backend.selected === ""
+                       anchors { left: parent.left; right: parent.right; top: parent.top; bottom: parent.bottom } }
+        CleanTakeBar { id: clean; visible: !parent.exporting && mixer.cleaning.clip !== ""
+                       anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: implicitHeight }
+        ExportSheet { visible: parent.exporting; anchors.fill: parent }
     }
-    bottom: Timeline { anchors.fill: parent; slim: backend.page !== "timeline" }
 }

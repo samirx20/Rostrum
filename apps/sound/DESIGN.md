@@ -3722,6 +3722,29 @@ partial · missing · blocked. "Kit" = the shared GUI kit (Team Hem / Team Sam);
 | 3.22 | Settings, help, guides | Settings, Help with guides, About | partial | Test tone, measure delay, plug-ins group, key list, first-run card, hover help on rows | kit hover help, key list |
 | 3.23 | Working with an agent | Connect dialog; live edits with who; re-runs keep the person's edits | partial | Flash of agent changes, Copy for an agent, `inspect_screen`, `edit_undo`, Agent activity | shared core tools |
 
+### After P27 (2026-10-22, Team Priyam): what was built, what is left
+
+Built in the gap table's order, on the S30 shared spec and the kit's S31 action list. Flows walked with a picture per
+step: `C:\Users\Sam\.rostrum\waves\results\sound-redesign\p27\flows.md`.
+
+| § | Now | Left |
+|---|---|---|
+| 2 One workspace | **Built**: arrangement in the middle with its header strip (+ Add, ⏮ ▶ ⟳, Record when armed, position, tempo · beats · key, zoom); Editor / Mixer dock (E / X, folds, height per tab); Library (Ctrl+L, floats below 1500 px); song in the settings panel when nothing is selected; Export sheet (Ctrl+E); top bar project-wide only with the Loudness chip; automatic saving, Duplicate | Grid ▾ / Snap in the header; click (Shift+K) outside recording; start screen; named versions (kit History sheet) |
+| 2 Long names, first ruler label | **Built** (hover shows whole names; first label never cut); layout check 0 faults at four sizes | — |
+| 3.0 Selection and actions | **Built**: list selection on the kit's `selectMany` (click, Ctrl, Shift runs, box across tracks, Ctrl+A, Esc), time range on the ruler's band, one action list on the kit (context bar top-centre, right-click with keys, Ctrl+K with keys, key map with why-not sentences), copy / cut / paste / duplicate, drags of many (Ctrl free, Alt copy, Shift only in time, 4 px, 6 px snap with a named line), clip handles and note ends, undo selects what it touched, F2 / double-click rename | Snapping to other items' and sections' edges; the value label beside the pointer; inline amounts in the kit bar (Land a bar uses Sound's popover) |
+| 3.1 Tracks | **Built**: Library first; change a track's sound (asked); `track.move`, `track.duplicate`, lock (Ctrl+Shift+L, refused for everyone) | Groups drawn as headers that fold; parts (schema) |
+| 3.3 / 3.4 Notes, drums | Box, ends, key names; see flows.md for the drum-hit and Draw tool state | Velocity strip, grid menu, key shading, patterns, swing (schema) |
+| 3.6 Tempo, sections | **Built**: `tempo.fit_bar` (Land a bar here), Make a section on a range, `section.duplicate`, rename in place | Ramps (schema), `range.insert` / `range.remove` |
+| 3.7 Library | **Built**: one panel (instruments, drums, record, voice, designed, my sounds); sounds land by their moment (peak / onset), tied to a marker | Audition through the engine |
+| 3.9 Clips | **Built**: trims, fades, level line, stretch corner; `clip.to_track`; `clip.cut_range` (Shift+Delete); overlapping clips stack | Reverse (schema), close gaps, slip |
+| 3.10 Clean-up | **Built**: Clean up popover on any clips, progress fill on each clip | Made on release; Before / After (H) |
+| 3.11 Voice | Even out level = `clip.normalize {by: loudness}` | Type lines on the lane, Speak again button (flows.md C′) |
+| 3.12 Picture, markers | **Built**: M with name in place, Land a bar here, Place a sound here | Shared switch on M; problem chip; frame step |
+| 3.13 Sound for motion | **Built**: designed sounds on screen (Designed chip, Effects track, riser ends on its marker, Make another like it = `sound.vary`) | Swap; layering (`group`, schema) |
+| 3.18 / 3.19 Mix, Export | **Built**: Mixer in the dock; Export sheet with the live pass line; Loudness chip | Ranges, "+ Another version", stems by group, "For the Editor" |
+| 3.20–3.23 | — | Kit pieces 11–13 and 21 (History sheet, agent chip and outline, files and start, job chip) — Team Sam |
+| Memory | The screen's own peak on the big song **4,649 → 659 MB** (painted lanes, grid and roll; no unused listen pictures) | The engine's per-track effects still grow with song length (RELEASE line 16) |
+
 ---
 
 ## 8. What the spec needs

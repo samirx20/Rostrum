@@ -2,8 +2,9 @@ import QtQuick
 import RostrumKit
 
 // The song's sections (intro, verse, drop) under the markers: each a bar from its start to its end with its name.
-// Click selects the section (the inspector edits its name, start and end); drag moves it and everything that
-// starts inside it (one `section.move` per step, the whole drag one undo step; a quarter beat grid, Shift = free).
+// Click selects the section (the inspector edits its name, start and end); double-click or F2 renames it in place;
+// drag moves it and everything that
+// starts inside it (one `section.move` per step, the whole drag one undo step; a quarter beat grid, Ctrl = free).
 // Drag the left or right edge: that edge only moves (`section.set`, one undo step), the section's contents stay.
 // Absent when the song has no sections. The clicks are taken here in one place, as in MarkerBand.
 Item {
@@ -32,14 +33,24 @@ Item {
         model: band.sections
         delegate: Rectangle {
             required property var modelData
-            readonly property bool on: modelData.id === backend.selected
+            readonly property bool on: !!backend.picked[modelData.id]
+            readonly property bool naming: backend.renaming === modelData.id
             x: Math.round(band.ruler.xOf(modelData.t)); y: 1
             width: Math.max(2, Math.round(band.ruler.wOf(modelData.end - modelData.t)) - 1); height: band.height - 2
             visible: x + width > 0 && x < band.width
             radius: 3; color: on ? Theme.accent : Theme.raised; border.width: 1; border.color: on ? Theme.fg3 : Theme.line
             Text { x: 6; width: parent.width - 10; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight
-                   text: modelData.name; color: parent.on ? Theme.fg : Theme.fg2
+                   text: modelData.name; color: parent.on ? Theme.fg : Theme.fg2; visible: !parent.naming
                    font.family: uiFont; font.pixelSize: Theme.label }
+            TextInput {   // the name field, in place (Enter keeps, Esc cancels)
+                visible: parent.naming; x: 6; width: Math.max(60, parent.width - 10); anchors.verticalCenter: parent.verticalCenter
+                font.family: uiFont; font.pixelSize: Theme.label; color: Theme.fg; selectByMouse: true; clip: true
+                selectionColor: Theme.app
+                onVisibleChanged: if (visible) { text = modelData.name; forceActiveFocus(); selectAll() }
+                onAccepted: backend.finishRename(modelData.id, text)
+                Keys.onEscapePressed: backend.finishRename(modelData.id, "")
+                onActiveFocusChanged: if (!activeFocus && visible) backend.finishRename(modelData.id, text)
+            }
         }
     }
     MouseArea {
@@ -48,6 +59,7 @@ Item {
         property real x0: 0
         property bool dragging: false
         hoverEnabled: true
+        onDoubleClicked: (m) => { var id = band.sectionAt(m.x); if (id !== "") backend.startRename(id) }
         cursorShape: { var id = band.sectionAt(mouseX), e = band.edgeAt(id, mouseX)
                        return e !== "" ? Qt.SplitHCursor : id !== "" ? Qt.SizeHorCursor : Qt.ArrowCursor }
         onPressed: (m) => {
@@ -57,7 +69,7 @@ Item {
             if (!dragging) m.accepted = false
         }
         onPositionChanged: (m) => { if (dragging && pressed)
-            backend.dragBy((m.x - x0) / band.ruler.perSec, 0, (m.modifiers & Qt.ShiftModifier) !== 0) }
+            backend.dragBy((m.x - x0) / band.ruler.perSec, 0, (m.modifiers & Qt.ControlModifier) !== 0) }
         onWheel: (w) => backend.viewWheel(w.angleDelta.x, w.angleDelta.y, (w.modifiers & Qt.ControlModifier) !== 0,
                                           (w.modifiers & Qt.ShiftModifier) !== 0, w.x / band.width, false)
         onReleased: { if (dragging) backend.endDrag(); dragging = false }

@@ -41,7 +41,7 @@ class LaneSlots:
 
         def go():
             track = self.doc.item(track_id)
-            e = lanes.PointEdit(target, lanes.owner_of(track, target), self.doc.data, lane)
+            e = lanes.PointEdit(target, lanes.owner_of(track, target), self.doc.data, lane, self._grid_now)
             span = e.hi - e.lo
             call = e.press(t, e.lo + (1 - yfrac) * span, tol_t, tol_y * span, free)
             self._edit, self._drag = e, Drag(self.doc, self.who, "Automate")
@@ -69,7 +69,7 @@ class LaneSlots:
 
     def _remove_point(self):
         track_id, target, lane, i = self._apt
-        e = lanes.PointEdit(target, lanes.owner_of(self.doc.item(track_id), target), self.doc.data, lane)
+        e = lanes.PointEdit(target, lanes.owner_of(self.doc.item(track_id), target), self.doc.data, lane, self._grid_now)
         e.index = i
         self._apt = None
         self.pointChanged.emit()

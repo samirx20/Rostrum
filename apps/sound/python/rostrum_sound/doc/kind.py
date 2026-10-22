@@ -14,9 +14,12 @@ from rostrum_core import DocKind
 
 from .. import names
 from . import fields as FD
-from . import ops_buses, ops_cleanup, ops_mix, ops_music, ops_select_clips, ops_select_move, ops_select_notes, ops_select_tracks, ops_timed, ops_tracks, ops_voice  # noqa: F401  (they register the operations)
+from . import ops_buses, ops_cleanup, ops_mix, ops_music, ops_fit, ops_section_copy, ops_select_clips, ops_select_move, ops_select_notes, ops_select_place, ops_select_tracks, ops_timed, ops_tracks, ops_voice  # noqa: F401  (they register the operations)
 from .check import check
+from .locks import guard
 from .registry import LISTS, MASTER_ID, REGISTRY
+
+guard(REGISTRY)                 # a locked track refuses every change, for everyone (locks.py)
 
 
 def blank() -> dict:

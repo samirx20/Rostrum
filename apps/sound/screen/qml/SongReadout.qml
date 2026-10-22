@@ -1,11 +1,13 @@
 import QtQuick
 import RostrumKit
 
-// The playhead as text: bar.beat first, seconds after ("5.1  9.60 s"), digits all one width; the tempo and key
-// playing there ("♩ 132  D minor"; click: the Song popup, SongEditor.qml, to edit tempo, key and sections); then the sound's state when there is
-// one to tell (rendering, no output here, a failed render: red). Bars and beats follow the tempo map (song.beats).
+// The top bar's position and song: where the playhead is ("5.3 · 0:09.60": bar.beat, then the time; digits all one
+// width) and what plays there ("♩ 100 · 4/4 · C major"; click: the tempo / key popover, SongEditor.qml); then the
+// sound's state when there is one to tell (rendering, no output here, a failed render: red). Bars and beats follow
+// the tempo map (song.beats). `compact` (a small window, §2.5): bar.beat only (the time on hover) and the key short.
 Row {
     id: ro
+    property bool compact: false
     spacing: Theme.gap
     readonly property var song: backend.song
     readonly property int bpb: song.beatsPerBar
@@ -17,23 +19,38 @@ Row {
         }
         return best
     }
+    function clock(t) {
+        var m = Math.floor(t / 60), s = t - 60 * m
+        return m + ":" + (s < 10 ? "0" : "") + s.toFixed(2)
+    }
+    function shortKey(k) {   // "C minor" -> "Cm", "D major" -> "D", a mode -> its first three letters
+        var p = k.split(" ")
+        return p[0] + (p[1] === "minor" ? "m" : p[1] === "major" || !p[1] ? "" : " " + p[1].slice(0, 3))
+    }
     readonly property int beat: Math.max(0, lastAt(song.beats, backend.time, b => b))
     readonly property int tempoAt: Math.max(0, lastAt(song.tempos, backend.time, c => c.t))
     readonly property int keyAt: lastAt(song.keys, backend.time, c => c.t)
-    Item { width: 2; height: 1 }
-    Text { text: (Math.floor(ro.beat / ro.bpb) + 1) + "." + (ro.beat % ro.bpb + 1)
-           width: 36; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body; font.features: { "tnum": 1 }
-           anchors.verticalCenter: parent.verticalCenter }
-    Text { text: backend.time.toFixed(2) + " s"; width: 52; color: Theme.fg3; font.family: uiFont
-           font.pixelSize: Theme.label; font.features: { "tnum": 1 }; anchors.verticalCenter: parent.verticalCenter }
+    readonly property string key: keyAt >= 0 ? song.keys[keyAt].key : ""
     function open() { editor.open() }
-    Text { id: tempoText; anchors.verticalCenter: parent.verticalCenter   // click: the Song popup (tempo, key, sections)
-           text: "♩ " + Math.round(ro.song.tempos[ro.tempoAt].bpm) + (ro.keyAt >= 0 ? "  " + ro.song.keys[ro.keyAt].key : "")
-           color: tempoArea.containsMouse || editor.opened ? Theme.fg : Theme.fg2
-           font.family: uiFont; font.pixelSize: Theme.label; font.features: { "tnum": 1 }
-           MouseArea { id: tempoArea; anchors { fill: parent; margins: -4 } hoverEnabled: true
-                       cursorShape: Qt.PointingHandCursor; onClicked: editor.opened ? editor.close() : editor.open() } }
-    SongEditor { id: editor; parent: tempoText; y: tempoText.height + 10 }
+
+    Text {
+        id: place
+        text: (Math.floor(ro.beat / ro.bpb) + 1) + "." + (ro.beat % ro.bpb + 1) + (ro.compact ? "" : "  ·  " + ro.clock(backend.time))
+        color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body; font.features: { "tnum": 1 }
+        anchors.verticalCenter: parent.verticalCenter
+        HoverHandler { id: placeHover }
+        HoverTip { text: ro.compact ? ro.clock(backend.time) : ""; hovered: placeHover.hovered }
+    }
+    Text {
+        id: tempoText; anchors.verticalCenter: parent.verticalCenter   // click: the tempo / key popover
+        text: "♩ " + Math.round(ro.song.tempos[ro.tempoAt].bpm) + "  ·  " + ro.bpb + "/4"
+              + (ro.key ? "  ·  " + (ro.compact ? ro.shortKey(ro.key) : ro.key) : "")
+        color: tempoArea.containsMouse || editor.opened ? Theme.fg : Theme.fg2
+        font.family: uiFont; font.pixelSize: Theme.body; font.features: { "tnum": 1 }
+        MouseArea { id: tempoArea; anchors { fill: parent; margins: -4 } hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor; onClicked: editor.opened ? editor.close() : editor.open() }
+        SongEditor { id: editor; y: tempoText.height + 10 }
+    }
     Text { visible: text !== ""; text: backend.soundState; anchors.verticalCenter: parent.verticalCenter
            color: /^Render failed/.test(text) ? Theme.danger : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
 }

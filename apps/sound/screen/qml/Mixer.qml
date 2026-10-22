@@ -1,16 +1,18 @@
 import QtQuick
 import RostrumKit
 
-// The Mix page: a strip per track, then per bus, left to right, the master at the right end, the listen pictures below.
-Panel {
+// The Mixer in the bottom dock (DESIGN.md §2.2, W3): a strip per track, then per group (bus), left to right, scrolling
+// sideways when they don't fit; the Master pinned at the right (fader, meter, loudness). The selected plug-in effect's
+// settings or the open duck sit beside the master while there is one. Clicking a strip selects its track everywhere.
+Rectangle {
     id: page
-    title: "Mix"
+    color: Theme.panel; radius: Theme.radiusPanel; clip: true
 
     Item {
-        anchors.fill: parent
+        anchors { fill: parent; margins: Theme.gap }
         Flickable {   // the track strips (scroll sideways when there are many)
             id: scroller
-            anchors { left: parent.left; top: parent.top; bottom: listen.top; bottomMargin: Theme.gap }
+            anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
             width: Math.min(parent.width - master.width - Theme.gap - (plug.visible || duck.visible ? plug.width + Theme.gap : 0), row.width)
             contentWidth: row.width; clip: true; boundsBehavior: Flickable.StopAtBounds
             Row {
@@ -18,18 +20,18 @@ Panel {
                 height: scroller.height
                 spacing: Theme.gap
                 Repeater { id: strips; model: mixer.tracks; delegate: MixStrip { height: row.height } }
-                Repeater { model: mixer.buses; delegate: MixStrip { height: row.height } }   // buses, before the master
+                Repeater { model: mixer.buses; delegate: MixStrip { height: row.height } }   // groups, before the master
                 Item {
                     width: addBus.width; height: row.height
-                    Button { id: addBus; text: "+ Group channel"; kind: "ghost"; onClicked: mixer.addBus()
-                             HoverTip { text: "New bus: a shared channel. Send several tracks to it to mix them together"; hovered: addBus.hovered } }
+                    Button { id: addBus; text: "+ Group"; kind: "ghost"; onClicked: mixer.addBus()
+                             HoverTip { text: "A new group: a shared channel several tracks play into (a bus)"; hovered: addBus.hovered } }
                 }
             }
         }
         Text {
             visible: strips.count === 0
             anchors.centerIn: scroller
-            text: "No tracks yet. Add one with + Track at the top."
+            text: "Your tracks' faders will be here."
             color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.title
         }
         Rectangle {   // the selected plug-in effect's settings (only while one is selected)
@@ -37,7 +39,7 @@ Panel {
             readonly property var panel: mixer.plugins.selectedPanel
             visible: !!panel
             width: 280; color: Theme.app; radius: Theme.radiusPanel
-            anchors { right: master.left; rightMargin: Theme.gap; top: parent.top; bottom: listen.top; bottomMargin: Theme.gap }
+            anchors { right: master.left; rightMargin: Theme.gap; top: parent.top; bottom: parent.bottom }
             Flickable {
                 anchors { fill: parent; margins: Theme.gap + 2 }
                 contentHeight: settings.height; clip: true; boundsBehavior: Flickable.StopAtBounds
@@ -48,15 +50,13 @@ Panel {
             id: duck
             visible: !!mixer.ducks.panel.id
             width: plug.width; color: Theme.app; radius: Theme.radiusPanel
-            anchors { right: master.left; rightMargin: Theme.gap; top: parent.top; bottom: listen.top; bottomMargin: Theme.gap }
+            anchors { right: master.left; rightMargin: Theme.gap; top: parent.top; bottom: parent.bottom }
             Flickable {
                 anchors { fill: parent; margins: Theme.gap + 2 }
                 contentHeight: duckSettings.height; clip: true; boundsBehavior: Flickable.StopAtBounds
                 DuckPanel { id: duckSettings }
             }
         }
-        MixMaster { id: master; anchors { right: parent.right; top: parent.top; bottom: listen.top; bottomMargin: Theme.gap } }
-        MixListen { id: listen; anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: implicitHeight
-                    room: parent.height - master.need - Theme.gap }       // the master card keeps what it needs
+        MixMaster { id: master; anchors { right: parent.right; top: parent.top; bottom: parent.bottom } }
     }
 }

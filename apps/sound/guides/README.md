@@ -4,10 +4,11 @@
 
 Short pages in everyday words, with the names of the real buttons.
 
-1. [Making your first song](first-song.md): start a song, add a track, pick an instrument, write notes, play, save.
+1. [Making your first song](first-song.md): the screen, a new song, a track from the Library, notes in the Editor,
+   selecting and the context bar, keys, playing.
 2. [Recording](recording.md): choose a microphone, arm a track, record, punch in, and make a cleaner take.
-3. [Exporting](exporting.md): the formats, the sample rates, stems, and where the files go.
-4. [Settings](settings.md): every setting explained.
+3. [Exporting](exporting.md): the Export sheet: what for, file, quality, stems, and where the files go.
+4. [Preferences](settings.md): every preference explained.
 
 ## For agents
 
@@ -17,7 +18,7 @@ How-to pages for the tools and the document. They assume MCP tools and operation
 - [scoring-to-picture.md](scoring-to-picture.md): scoring against a picture and shared markers.
 - [designed-sounds.md](designed-sounds.md): made-from-scratch sounds.
 - [voice.md](voice.md) and [script.md](script.md): spoken lines.
-- [library.md](library.md): your own sound folders.
+- [library.md](library.md): your own sound folders (the Library's My sounds).
 - [cleaning-a-recording.md](cleaning-a-recording.md) and [cleanup.md](cleanup.md): clean-up steps.
-- [mixing-to-delivery.md](mixing-to-delivery.md): mix, loudness and delivery.
+- [mixing-to-delivery.md](mixing-to-delivery.md): mix, loudness and export.
 - [listening.md](listening.md) and [checking-a-mix-by-ear.md](checking-a-mix-by-ear.md): seeing and hearing the result.

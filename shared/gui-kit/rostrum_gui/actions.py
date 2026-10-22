@@ -20,7 +20,7 @@ from rostrum_core.conditions import holds
 
 from .keymap import normal
 
-EDIT_JOBS = ("copy", "cut", "paste", "duplicate", "rename", "delete")    # keys + right-click's last block only
+EDIT_JOBS = ("copy", "cut", "paste", "duplicate", "rename", "delete", "delete_close_gap")    # keys + right-click's last block only
 NUMBERS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}
 
 
