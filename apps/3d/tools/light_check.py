@@ -99,6 +99,9 @@ if __name__ == "__main__":
     E_rect = float((10 * (2.0 / np.sqrt(r2)) ** 2 / r2 * (0.5 / n) ** 2).sum())
     cases["rect"] = ('light("panel", kind="rect", width=0.5, height=0.5, intensity=10, shadows=False, x=-0.7, y=2, rx=-90)\n',
                      E_rect)
+    # the same panel with normalize on: intensity 2.5 over its 0.25 m² is radiance 10 again (Cycles was 10 000× off until H23)
+    cases["rect-normalized"] = ('light("panel", kind="rect", width=0.5, height=0.5, intensity=2.5, normalize=True, shadows=False, '
+                                'x=-0.7, y=2, rx=-90)\n', E_rect)
     report = {}
     for name, (light, E) in cases.items():
         res = render(name, light)

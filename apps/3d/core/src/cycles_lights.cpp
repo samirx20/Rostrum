@@ -63,23 +63,41 @@ HdContainerDataSourceHandle distant_params(const HdContainerDataSourceHandle& li
       HdLightTokens->intensity, F::New(value(light, HdLightTokens->intensity, 1.0f) / kCyclesDistant));
 }
 
-// A panel (rect, disk; a strip is a rect) with normalize on, handed over as normalize off with intensity ÷ its area: the
-// UsdLux meaning (the same light at any size). Cycles' own normalize path came out exactly 10 000× too bright for every
-// size and distance (H23, results\stage2\h23\light-units-exact.json), while normalize off matched the hand-computed
-// value; nullptr when there is nothing to change.
-HdContainerDataSourceHandle panel_params(const HdContainerDataSourceHandle& prim, const HdContainerDataSourceHandle& light,
-                                         const TfToken& type) {
-  if (!value(light, HdLightTokens->normalize, false)) return nullptr;
+// How much brighter Cycles makes a panel's centre for a spread (kernel/light/area.h keeps the light's total power, so
+// the centre gains tan(h) / (tan(h) − h), h the half spread: ~100× at a 20° spread; the kernel's 3 / h³ form below
+// 0.05 rad). 1 with no spread (a cone of 90° or more).
+double spread_gain(double cone_deg) {
+  const double h = cone_deg * kPi / 180.0;
+  if (h <= 0 || h >= kPi / 2) return 1.0;
+  const double t = std::tan(h);
+  return h > 0.05 ? t / (t - h) : 3.0 * t / (h * h * h);
+}
+
+// The world area of a panel (its own X × Y sizes, times its world scale); rect or disk (a strip is a rect).
+double panel_area(const HdContainerDataSourceHandle& prim, const HdContainerDataSourceHandle& light, const TfToken& type) {
   GfMatrix4d m(1.0);
   if (auto x = HdXformSchema::GetFromParent(prim).GetMatrix()) m = x->GetTypedValue(0.0f);
-  const double scale = m.GetRow3(0).GetLength() * m.GetRow3(1).GetLength();  // the panel's own X and Y in the world
   const double r = value(light, HdLightTokens->radius, 0.5f);
-  const double area = scale * (type == HdPrimTypeTokens->rectLight
-                                   ? double(value(light, HdLightTokens->width, 1.0f)) * value(light, HdLightTokens->height, 1.0f)
-                                   : kPi * r * r);
-  if (!(area > 0)) return nullptr;  // a zero-size panel gives no light either way
+  const double own = type == HdPrimTypeTokens->rectLight
+                         ? double(value(light, HdLightTokens->width, 1.0f)) * value(light, HdLightTokens->height, 1.0f)
+                         : kPi * r * r;
+  return own * m.GetRow3(0).GetLength() * m.GetRow3(1).GetLength();
+}
+
+// A panel in UsdLux's meaning; nullptr when there is nothing to change:
+//  - normalize on is handed over as normalize off with intensity ÷ its area (the same light at any size). Cycles' own
+//    normalize path came out exactly 10 000× too bright for every size and distance (H23, the results folder's
+//    light-units-before-fix.txt), while normalize off matched the hand-computed value.
+//  - a spread (shapingConeAngle, from light_extras) only narrows the light, like a honeycomb grid: its centre stays as
+//    bright as with no grid, so the intensity is divided by Cycles' spread gain.
+HdContainerDataSourceHandle panel_params(const HdContainerDataSourceHandle& prim, const HdContainerDataSourceHandle& light,
+                                         const TfToken& type, double cone_deg) {
+  const bool normalize = value(light, HdLightTokens->normalize, false);
+  const double gain = spread_gain(cone_deg), area = normalize ? panel_area(prim, light, type) : 1.0;
+  if ((!normalize && gain == 1.0) || !(area > 0)) return nullptr;  // a zero-size panel gives no light either way
   const TfToken names[] = {HdLightTokens->normalize, HdLightTokens->intensity};
-  const HdDataSourceBaseHandle values[] = {F0::New(false), F::New(float(value(light, HdLightTokens->intensity, 1.0f) / area))};
+  const HdDataSourceBaseHandle values[] = {F0::New(false),
+                                           F::New(float(value(light, HdLightTokens->intensity, 1.0f) / area / gain))};
   return HdRetainedContainerDataSource::New(std::size(names), names, values);
 }
 
@@ -133,7 +151,9 @@ class CyclesLights final : public HdSingleInputFilteringSceneIndexBase {
     if (const auto extras = extras_params(path, prim.primType, x)) prim.dataSource = with_light(prim.dataSource, extras);
     const HdContainerDataSourceHandle light = HdLightSchema::GetFromParent(prim.dataSource).GetContainer();
     if (prim.primType == HdPrimTypeTokens->rectLight || prim.primType == HdPrimTypeTokens->diskLight) {
-      if (const auto panel = panel_params(prim.dataSource, light, prim.primType)) prim.dataSource = with_light(prim.dataSource, panel);
+      const auto cone = x.coneDeg.find(path);
+      if (const auto panel = panel_params(prim.dataSource, light, prim.primType, cone == x.coneDeg.end() ? 90.0 : cone->second))
+        prim.dataSource = with_light(prim.dataSource, panel);
       return prim;
     }
     if (!dome && prim.primType != HdPrimTypeTokens->distantLight) return prim;
