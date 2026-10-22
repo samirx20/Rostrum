@@ -1,5 +1,6 @@
 import QtQuick
 import "."
+import "ValueKinds.js" as VK
 
 // A number. Drag sideways to scrub (Shift = coarse, 10 steps at a time; Alt = fine, a tenth of a step), or click to
 // type; Up / Down step while typing. Double-click puts it back to `defaultValue` (none set: nothing happens), and the
@@ -9,6 +10,8 @@ import "."
 // ("End of comp") shows as its words, not as a number; it can't be scrubbed from (click and type a number instead).
 // `expressions`: the app can drive a value by an expression (2D), so a typed "=…" is sent whole as typedExpression
 // (the text, "=" included), never stripped to the number in it. Off, "=…" is read as the number it holds.
+// `display` ("percent", "db", "pan"; ValueKinds.js): the value is shown, typed, scrubbed and stepped in that kind's
+// units ("80 %", "−1.9 dB", "L 30"); what goes out is always the stored value. "" = a plain number with `unit`.
 FieldFrame {
     id: f
     property real value: 0
@@ -19,6 +22,7 @@ FieldFrame {
     property var words: []
     property bool expressions: false
     property var defaultValue: null                            // the setting's own default; null = none (no reset)
+    property string display: ""
     readonly property string word: { for (let w of words) if (w.value === value) return w.label; return "" }
     readonly property bool scrubbing: scrub.scrubbing
     signal edited(real value)
@@ -27,37 +31,49 @@ FieldFrame {
     signal scrubbed(real value)
     signal scrubEnded()
 
-    readonly property int decimals: Math.max(0, Math.ceil(-Math.log10(step) - 1e-9))
-    readonly property bool unitFirst: /\/$/.test(unit)        // "f/2.8"
+    // scrubbing, arrows and the wheel work on the shown number (`shown`, in steps of `showStep`); clamp() gives it back stored
+    readonly property real shown: VK.shown(display, value)
+    readonly property real showStep: VK.step(display, step)
+    readonly property var showRange: VK.range(display, from, to)
+    readonly property int decimals: VK.decimalsOf(showStep)
+    readonly property var parts: VK.parts(display, value, step)
+    readonly property string unitShown: display ? parts.unit : unit
+    readonly property bool unitFirst: /\/$/.test(unitShown)    // "f/2.8"
     readonly property bool hasDefault: defaultValue !== null && defaultValue !== undefined
-    function clamp(v, unit) { const u = unit || step; return Math.max(from, Math.min(to, Math.round(v / u) * u)) }
+    function clamp(n, unit) {                                    // a shown number -> the stored value, in range
+        const u = unit || showStep
+        const k = Math.max(showRange[0], Math.min(showRange[1], Math.round(n / u) * u))
+        return Math.max(from, Math.min(to, VK.stored(display, k)))
+    }
     function format(v) {                                         // a fine value (Alt) shows its extra digit
+        if (display) return parts.text
         let d = decimals
         while (d < decimals + 1 && Math.abs(v * Math.pow(10, d) - Math.round(v * Math.pow(10, d))) > 1e-6) d++
         return Number(v).toFixed(d)
     }
-    function reset() { if (hasDefault) { f.edited(clamp(Number(defaultValue))); f.input.focus = false } }
+    function reset() { if (hasDefault) { f.edited(Math.max(from, Math.min(to, Number(defaultValue)))); f.input.focus = false } }
 
     editable: true
     engaged: scrub.scrubbing
     text: word || format(value)
-    prefix: unitFirst && !word ? unit : ""
-    suffix: unitFirst || word ? "" : unit
+    prefix: unitFirst && !word ? unitShown : ""
+    suffix: unitFirst || word ? "" : unitShown
     onCommitted: (t) => {
         if (expressions && t.trim().startsWith("=")) { f.typedExpression(t.trim()); return }
-        var v = parseFloat(t.replace(/[^0-9eE+\-.]/g, ""))
+        var v = VK.parse(display, t)
         if (isNaN(v)) { input.text = text; return }           // not a number (the words themselves too): keep the value
-        f.edited(clamp(v))
+        f.edited(clamp(VK.shown(display, v)))
     }
-    onArrow: (d, big) => f.edited(clamp(value + d * (big ? 10 : 1) * step))
+    onArrow: (d, big) => f.edited(clamp(shownFrom() + d * (big ? 10 : 1) * showStep))
+    function shownFrom() { return isFinite(shown) ? shown : showRange[0] }     // −∞ dB steps up from the floor
 
     WheelHandler {  // a notch = one step (Shift ×10, Alt ÷10); only with keyboard focus, else the panel scrolls
         enabled: f.input.activeFocus && !f.word
         acceptedModifiers: Qt.KeyboardModifierMask   // any: NoModifier is 0, so "None | Shift | Alt" meant Shift+Alt only (S36)
         onWheel: (e) => {
             const notch = (e.angleDelta.y || e.angleDelta.x) / 120
-            const unit = e.modifiers & Qt.AltModifier ? f.step / 10 : e.modifiers & Qt.ShiftModifier ? f.step * 10 : f.step
-            f.edited(f.clamp(f.value + notch * unit, unit))
+            const unit = e.modifiers & Qt.AltModifier ? f.showStep / 10 : e.modifiers & Qt.ShiftModifier ? f.showStep * 10 : f.showStep
+            f.edited(f.clamp(f.shownFrom() + notch * unit, unit))
         }
     }
     Timer { id: twice; interval: Qt.styleHints.mouseDoubleClickInterval }
@@ -72,14 +88,14 @@ FieldFrame {
         property real lastX: 0
         property real travelled: 0          // steps moved so far; each move counts at the speed of the keys held now
         property real startValue: 0
-        onPressed: (m) => { startX = lastX = m.x; startValue = f.value; travelled = 0; scrubbing = false }
+        onPressed: (m) => { startX = lastX = m.x; startValue = f.shownFrom(); travelled = 0; scrubbing = false }
         onPositionChanged: (m) => {
             if (f.word || (!scrubbing && Math.abs(m.x - startX) < 3)) return
             if (!scrubbing) { scrubbing = true; f.scrubStarted() }
             const fine = m.modifiers & Qt.AltModifier, coarse = m.modifiers & Qt.ShiftModifier
             travelled += (m.x - lastX) / Theme.scrubPixels * (fine ? 0.1 : coarse ? 10 : 1)
             lastX = m.x
-            f.scrubbed(f.clamp(startValue + travelled * f.step, fine ? f.step / 10 : f.step))
+            f.scrubbed(f.clamp(startValue + travelled * f.showStep, fine ? f.showStep / 10 : f.showStep))
         }
         onReleased: {
             if (scrubbing) { scrubbing = false; f.scrubEnded(); return }

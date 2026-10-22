@@ -7,7 +7,6 @@ import RostrumKit
 // they look and behave like every other setting; each change is one undo step.
 Panel {
     id: p
-    title: "Inspector"
     Text { id: name; text: backend.docName; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.heading
            font.weight: Font.DemiBold; anchors.left: parent.left; anchors.right: parent.right; elide: Text.ElideRight
            HoverHandler { id: nameHover }

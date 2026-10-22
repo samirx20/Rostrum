@@ -55,7 +55,11 @@ QtObject {
     readonly property int field: 24       // every field box (number, text, choice, colour)
     readonly property int button: 28
     readonly property int curveBox: 132     // the inspector's curve control (CurveField), a square
-    readonly property int labelColumn: 104  // inspector label column ("Shadow softness" fits)
+    readonly property int labelColumn: 104  // the label column's least width ("Shadow softness" fits)
+    readonly property int keyGutter: 22     // the key-mark column at a settings row's right (an app with keys)
+    readonly property int amountField: 64   // an amount's value box beside its slider ("−60.0 dB", "100 %")
+    // a settings row's label column at this row width: 45 % (a 296 px panel fits "Keep inside the outline" on one line)
+    function labelColumnFor(w) { return Math.max(labelColumn, Math.round(w * 0.45)) }
     readonly property int sidePanel: 280
     readonly property int timeline: 184
     readonly property int popupRow: 26

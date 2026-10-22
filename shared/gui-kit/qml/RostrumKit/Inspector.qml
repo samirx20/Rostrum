@@ -9,6 +9,9 @@ import "."
 // Several items of different kinds: a line per kind at the top ("3 layers ›", bridge.narrowLines); a click keeps only
 // that kind (bridge.narrowTo). The last line: who changed the selection last and when (bridge.lastChanged); a click
 // opens History (bridge.agent.askHistory). Both are absent when there is nothing to say.
+// The name shows once: the kind line is absent when it says the same as the name ("Camera" / "Camera").
+// `above`: an app's own group first, above the rows (2D: a rig's Poses); `below`: one under them; `sheets` (Panel): a
+// sheet that takes the whole panel's place while shown (2D: Lip sync, Add blinks). No caption over the panel.
 // An app with `effects: true` (after rostrum_gui.effects.attach(bridge, spec)) also gets the "Effects (n) +" section under the rows (EffectsRow).
 Panel {
     id: panel
@@ -16,19 +19,22 @@ Panel {
     property bool effects: false         // the "Effects (n) +" section (an app that called rostrum_gui.effects.attach)
     property bool keyMarks: false        // an app with keys: rows show key marks (see InspectorRow)
     property var highlight: []           // field ids marked as in focus (2D: the settings whose keys are picked)
+    property alias above: aboveSlot.data // an app's own group above the rows, in the same scroll (2D: a rig's Poses)
     property alias below: belowSlot.data // an app's own group under the rows, in the same scroll (2D: "Paint on …")
+    readonly property string kindText: panel.bridge.selectedItem.kindLabel || Theme.sentence(panel.bridge.selectedItem.kind)
     readonly property bool finds: !!panel.bridge.sectioned
     property int tick: 0                 // "2 min ago" ages while the panel stays open
     readonly property var narrow: { panel.bridge.selection; return panel.bridge.narrowLines ? panel.bridge.narrowLines() : [] }
     readonly property var last: { panel.bridge.selection; panel.bridge.historyCount; panel.tick; return panel.bridge.lastChanged ? panel.bridge.lastChanged() : ({}) }   // a page bridge (Brush, Settings) has neither
     readonly property bool hasLast: panel.bridge.selected !== "" && !!panel.last.who
-    title: "Inspector"
 
     NameLabel { id: name; text: panel.bridge.selectedItem.label; font.pixelSize: Theme.heading; font.weight: Font.DemiBold
                 anchors.left: parent.left; anchors.right: parent.right }   // a long name, whole on hover
-    Text { id: kind; text: panel.bridge.selectedItem.kindLabel || Theme.sentence(panel.bridge.selectedItem.kind); color: Theme.fg3; font.family: uiFont
-           font.pixelSize: Theme.body
-           anchors.top: name.bottom; anchors.topMargin: 2 }
+    Text { id: kind; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
+           readonly property bool same: panel.kindText.toLowerCase() === String(name.text || "").trim().toLowerCase()
+           text: same ? "" : panel.kindText; visible: !same
+           height: same ? 0 : implicitHeight
+           anchors.top: name.bottom; anchors.topMargin: same ? 0 : 2 }
     FieldFrame {
         id: find
         objectName: "findSetting"
@@ -73,6 +79,7 @@ Panel {
                     }
                 }
             }
+            Column { id: aboveSlot; width: parent.width }
             Repeater {
                 id: rowsView
                 model: panel.bridge.rows

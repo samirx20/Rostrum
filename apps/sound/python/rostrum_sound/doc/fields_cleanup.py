@@ -31,7 +31,7 @@ PARAMS = [
     Param.toggle("isolate", group="Cleanup", importance="secondary", label="Keep only the dialogue",
                  valid_when={"not": STEM_CHOSEN},
                  help="The voice separated from music and effects; the rest is left out."),
-    N("denoise", 0, 1, "Cleanup", imp="secondary", label="Noise reduction",
+    N("denoise", 0, 1, "Cleanup", imp="secondary", label="Noise reduction", display="percent",
       help="Takes out steady background noise (hiss, hum, room tone); 0 = off."),
     N("dereverb", 0, 1, "Cleanup", imp="secondary", label="Reverb reduction",
       help="Takes out the room's echo; 0 = off."),

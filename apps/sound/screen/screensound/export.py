@@ -87,7 +87,7 @@ class RenderExport(ExportSheet):
         doc = self.bridge.doc
         if not doc.folder or not doc.item_id:
             return "Nowhere yet: save the song into a project first"
-        return f"{Path(doc.folder) / 'renders' / doc.item_id} (a new version folder)"
+        return str(Path(doc.folder) / 'renders' / doc.item_id)
 
     def file_name(self):
         name = re.sub(r'[<>:"/\\|?*]+', " ", self.bridge.docName or self.bridge.doc.item_id or "Song").strip() or "Song"

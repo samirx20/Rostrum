@@ -1,29 +1,25 @@
 import QtQuick
-import QtQuick.Controls as QQC
 import RostrumKit
 
-// Lip sync… (UX_SPEC 3.23): opened by the context bar's action on a mouth swap set, under the bar, at the right edge. The project's voice
-// lines (RostrumSound's own: click one), a row per mouth shape with its drawing (guessed from the names; pick another to
-// fix it), Apply = one change. Esc or a click away closes it with nothing changed (backend.lipsync: rig_lipsync.py).
-QQC.Popup {
+// Lip sync… (UX_SPEC 3.23): opened by the context bar's action on a mouth swap set, a sheet in the settings panel's place
+// (Inspector `sheets`), so the face on the canvas stays in view. The project's voice lines (RostrumSound's own: click
+// one), a row per mouth shape with its drawing (guessed from the names; pick another to fix it), Apply = one change.
+// Esc or × closes it with nothing changed (backend.lipsync: rig_lipsync.py).
+Panel {
     id: pop
+    anchors.fill: parent
     readonly property var ls: backend.lipsync
-    modal: true; dim: false
-    padding: Theme.pad
-    width: 380
-    x: parent.width - width - Theme.gap; y: 104      // the right edge, under the bar: the face on the canvas stays in view
-    closePolicy: QQC.Popup.CloseOnPressOutside | QQC.Popup.CloseOnEscape
-    background: Rectangle { color: Theme.raised; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
-    onClosed: ls.close()
-    Connections {
-        target: pop.ls
-        function onOpened() { pop.open() }
-        function onChanged() { if (!pop.ls.open && pop.opened) pop.close() }
-    }
+    readonly property real availableWidth: width - 2 * bodyPad
+    visible: pop.ls.open
+    title: "Lip sync · " + pop.ls.what
+    onVisibleChanged: if (visible) forceActiveFocus()
+    Keys.onEscapePressed: pop.close()
+    function close() { pop.ls.close() }
+    headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close  Esc"; onClicked: pop.close() }
     component Words: Text { color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body; elide: Text.ElideRight }
-    contentItem: Column {
+    Column {
+        width: pop.availableWidth
         spacing: Theme.grid
-        Text { text: "Lip sync · " + pop.ls.what; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold }
         Words { text: "Voice line"; color: Theme.fg3; font.pixelSize: Theme.label }
         Repeater {          // the project's voice lines with a voice: click one
             model: pop.ls.lines

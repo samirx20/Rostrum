@@ -7,6 +7,7 @@ import "."
 //  - an entry with `sub` (a list of entries) opens a side menu on hover or Right; Left or Esc closes it;
 //  - openAt(x, y [, xIfFlipped]) opens at a point in window coordinates and stays on screen (flips left / up);
 //  - Up / Down move, Enter picks, Esc closes. Choosing sends picked(value) from the top menu, whatever its depth.
+//  - when any entry has `checked`, a fixed left column shows ✓ on the checked ones (the chosen entry);
 // Long labels shorten with "…" and show whole on hover. Width fits the longest label + key (180 to 320).
 QQC.Popup {
     id: menu
@@ -14,13 +15,15 @@ QQC.Popup {
     property int highlighted: 0
     property var owner: null                 // the menu this one is a side menu of
     readonly property int dividerHeight: 9
+    readonly property bool checks: entries.some(e => e.checked !== undefined)   // reserve the ✓ column
+    readonly property int checkW: checks ? 18 : 0
     signal picked(string value)
 
     parent: QQC.Overlay.overlay
     padding: Theme.grid
     focus: true
     closePolicy: QQC.Popup.CloseOnEscape | QQC.Popup.CloseOnPressOutside
-    width: Math.max(180, Math.min(320, Math.ceil(widest.labelW + widest.keysW + Theme.gap + Theme.pad + 2 * padding + 16)))
+    width: Math.max(180, Math.min(320, Math.ceil(widest.labelW + widest.keysW + menu.checkW + Theme.gap + Theme.pad + 2 * padding + 16)))
     height: list.implicitHeight + 2 * padding
     background: Rectangle { color: Theme.raised; radius: Theme.radiusCtl; border.color: Theme.popupEdge }
     enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
@@ -109,9 +112,14 @@ QQC.Popup {
                     y: row.divided ? menu.dividerHeight : 0; width: parent.width; height: Theme.popupRow; radius: 4
                     color: row.index === menu.highlighted ? Theme.hover : "transparent"
                     Text {
+                        visible: menu.checks && !!row.modelData.checked
+                        x: Theme.gap - menu.padding; anchors.verticalCenter: parent.verticalCenter
+                        text: "✓"; color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont
+                    }
+                    Text {
                         id: lab
-                        anchors { left: parent.left; leftMargin: Theme.gap - menu.padding; verticalCenter: parent.verticalCenter }
-                        width: parent.width - 2 * (Theme.gap - menu.padding) - (chip.visible ? chip.width + Theme.gap : 0) - (row.sub ? 14 : 0)
+                        anchors { left: parent.left; leftMargin: Theme.gap - menu.padding + menu.checkW; verticalCenter: parent.verticalCenter }
+                        width: parent.width - 2 * (Theme.gap - menu.padding) - menu.checkW - (chip.visible ? chip.width + Theme.gap : 0) - (row.sub ? 14 : 0)
                         text: row.modelData.label; elide: Text.ElideRight
                         color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont
                     }

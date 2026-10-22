@@ -77,11 +77,6 @@ Rectangle {
         tip: tl.compact ? "Show every layer" : "Show only the selected layer"
         onClicked: tl.compactAsked(!tl.compact)
     }
-    Text {
-        x: Theme.pad; anchors.verticalCenter: ruler.bottom; anchors.verticalCenterOffset: -11
-        text: "Layers"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
-        font.weight: Font.DemiBold; font.letterSpacing: Theme.capsSpacing; font.capitalization: Font.AllUppercase
-    }
     TimeRuler {
         id: ruler
         x: tl.labelWidth + Theme.gap + 8; y: header.y + header.height   // 8: room for a key at 0

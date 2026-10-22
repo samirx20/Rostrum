@@ -63,10 +63,9 @@ Row {
         Menu {
             id: more
             width: 236
-            readonly property string tick: "  ✓"
-            entries: bar.kb.afters.map(a => ({ value: "after:" + a.value,
-                                               label: "After the last key: " + a.label + (bar.kb.after === a.value ? more.tick : "") }))
-                     .concat([{ value: "play", label: "Play the ease when picked" + (backend.easePlay.on ? more.tick : "") }])
+            entries: bar.kb.afters.map(a => ({ value: "after:" + a.value, label: "After the last key: " + a.label,
+                                               checked: bar.kb.after === a.value }))
+                     .concat([{ value: "play", label: "Play the ease when picked", checked: backend.easePlay.on }])
             onPicked: (v) => v === "play" ? backend.easePlay.setOn(!backend.easePlay.on) : bar.kb.setAfter(v.slice(6))
         }
     }

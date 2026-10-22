@@ -66,13 +66,11 @@ Panel {
                           onClicked: sheet.bridge.restoreVersion(modelData.name) }
                 }
             }
-            Small { visible: !sheet.bridge || sheet.bridge.versions.length === 0; color: Theme.fg3
-                    text: "No versions yet. Name one to come back to it." }
             Row {
                 spacing: Theme.gap
                 TextField { id: vname; width: body.width - saveBtn.width - Theme.gap; placeholder: "Name this version"
                             onEntered: saveBtn.clicked() }
-                Button { id: saveBtn; text: "Save a version"
+                Button { id: saveBtn; text: "Save a version"; help: "Name this moment to come back to it later"
                          onClicked: if (sheet.bridge.saveVersion(vname.input.text)) { vname.input.text = ""; vname.input.focus = false } }
             }
 

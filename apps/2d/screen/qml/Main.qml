@@ -119,8 +119,6 @@ AppShell {
     StaggerPopover { }   // the context bar's Stagger… (stagger.py): under the bar
     DepthPopover { x: (shell.width - width) / 2; y: 104 }     // Set depth ▾ › Other depth… (depth_typed.py): under the bar
     SoundCuePopover { x: (shell.width - width) / 2; y: 104 }  // Add a sound here… (sound_cue_pick.py): under the bar
-    LipSyncSheet { }     // Lip sync… on a mouth swap set (rig_lipsync.py): under the bar
-    BlinkSheet { }       // Add blinks… on an eyes swap set (rig_blinks.py): under the bar
     centre: [
         Stage { id: stage; anchors.fill: parent; typing: shell.typing },   // typing: F stays a letter (ViewControls.qml)
         EmptyHint {     // a new scene (the kit's empty state, INTERACTION.md 1.16): gone with the first layer
@@ -140,8 +138,9 @@ AppShell {
         Inspector { id: settingsMove; anchors.fill: parent; bridge: backend; keyMarks: true; effects: true
                     visible: backend.tool !== "draw" && !(backend.create.typing && backend.selected === "")   // a new text: no layer to show yet
                     highlight: backend.keys.props         // the settings whose keys are picked (key_select.py)
-                    below: RigPoses { } },                // a rig in hand: its pose library (rig_poses.py)
-        Inspector { id: settingsDraw; anchors.fill: parent; bridge: painter; title: ""; visible: backend.tool === "draw"
+                    above: RigPoses { }                   // a rig in hand: its pose library first (rig_poses.py)
+                    sheets: [LipSyncSheet { }, BlinkSheet { }] },   // Lip sync… / Add blinks… in the panel's place
+        Inspector { id: settingsDraw; anchors.fill: parent; bridge: painter; visible: backend.tool === "draw"
                     below: PaintOn { } }      // under the brush: the paint layers and switches of what it paints on
     ]
     bottom: LayerTimeline {

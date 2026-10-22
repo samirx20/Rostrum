@@ -30,9 +30,9 @@ def touch(track=True, imp="primary", group="Instrument"):
     return [
         N("position", 0, 0.5, group, imp=imp, when=struck, help="Where it is plucked or struck: bridge / bar "
           "end (0) … middle (0.5); plucked strings from 0.03. Not for violin."),
-        N("damping", 0, 1, group, imp=imp, when=plucked, default=0,
+        N("damping", 0, 1, group, imp=imp, when=plucked, default=0, display="percent",
           help="Plucked strings only: 0 rings open … 1 palm-muted."),
-        N("hardness", 0, 1, group, imp="secondary" if imp == "primary" else imp, when=struck, default=0.5,
+        N("hardness", 0, 1, group, imp="secondary" if imp == "primary" else imp, when=struck, default=0.5, display="percent",
           help="Pick / mallet: soft … hard. Not for violin."),
     ]
 

@@ -22,7 +22,7 @@ N = V.N
 
 IS = PL.IS
 
-PAN = dict(lo=-1, hi=1)
+PAN = dict(lo=-1, hi=1, display="pan")
 FIELDS = {
     "doc": [
         N("tempo", 20, 400, "Time", "bpm"),
@@ -43,9 +43,9 @@ FIELDS = {
         Param.color("colour", group="Track", importance="secondary", label="Colour",
                     help="The track's colour on the Timeline and Mixer (a hex like #4aa3ff); optional."),
         *PL.INSTRUMENT,
-        N("volume", 0, 4, "Mix", help="Fader gain (1 = as recorded)."), N("pan", **PAN, group="Mix"),
+        N("volume", 0, 4, "Mix", help="Fader gain (1 = as recorded).", display="db"), N("pan", **PAN, group="Mix"),
         Param.toggle("mute", group="Mix"), Param.toggle("solo", group="Mix"), FB.OUTPUT,
-        N("reverb", 0, 1, "Mix", imp="secondary", help="Send to the master's track reverb."),
+        N("reverb", 0, 1, "Mix", imp="secondary", help="Send to the master's track reverb.", display="percent"),
         Param.choice("tone", names.TONES, group="Mix", importance="secondary"),
         *PL.EXPRESSION,
     ],
@@ -68,14 +68,14 @@ FIELDS = {
                    filters=["Sound files (*.wav *.flac *.mp3 *.ogg *.aif *.aiff)"]), V.time("at", group="Clip"),
         N("in", 0, None, "Clip", "s", label="In-point"),
         V.length("length", group="Clip", help="How much of the file plays; left out = to its end."),
-        N("volume", 0, 4, "Clip"), N("pitch", -24, 24, "Clip", "st", "secondary", help="Tape-style: pitch and speed change together."),
+        N("volume", 0, 4, "Clip", display="db"), N("pitch", -24, 24, "Clip", "st", "secondary", help="Tape-style: pitch and speed change together."),
         N("shift", -24, 24, "Clip", "st", "secondary", help="Pitch shift keeping the length."),
         N("stretch", 0.25, 4, "Clip", "×", "secondary", help="Length factor keeping the pitch (2 = twice as long); the clip lasts length × stretch."),
         Param.text("group", group="Clip", importance="secondary", label="Layer group", help="Clips of one track with the same group name are one layered sound: moving or re-levelling one moves them all (clip.set_one changes just one)."),
         N("pan", **PAN, group="Clip", imp="secondary"),
         N("panTo", **PAN, group="Clip", imp="deep", label="Pan to", help="Pan at the clip's end."),
         N("fadeIn", 0, 600, "Fades", "s", label="Fade in"), N("fadeOut", 0, 600, "Fades", "s", label="Fade out"),
-        N("reverb", 0, 1, "Clip", imp="secondary"),
+        N("reverb", 0, 1, "Clip", imp="secondary", display="percent"),
         *FC.PARAMS,
     ],
     "line": [
@@ -83,7 +83,7 @@ FIELDS = {
                    "starts: seconds, {\"beat\": n} or a marker (\"#drop+0.5\")."),
         N("seed", 1, 999999, "Line", imp="secondary", integer=True, label="Take",
           help="Another whole number makes another reading of the same words."),
-        N("volume", 0, 4, "Line"), N("fadeIn", 0, 600, "Fades", "s", "secondary", label="Fade in"),
+        N("volume", 0, 4, "Line", display="db"), N("fadeIn", 0, 600, "Fades", "s", "secondary", label="Fade in"),
         N("fadeOut", 0, 600, "Fades", "s", "secondary", label="Fade out"),
     ],
     "sound": FDS.params(),
@@ -94,7 +94,7 @@ FIELDS = {
                plugins.record(IS("effect", "plugin"))],
     "marker": [Param.text("name", group="Marker"), V.time("at", group="Marker")],
     "master": [
-        N("volume", 0, 4, "Master"),
+        N("volume", 0, 4, "Master", display="db"),
         Param.toggle("normalize", group="Loudness", label="Normalize"),
         N("loudness", -60, 0, "Loudness", "LUFS", when=IS("normalize", True), label="Loudness target",
           help="Integrated loudness (LUFS) the whole mix is made to: -14 suits streaming, -23 broadcast."),

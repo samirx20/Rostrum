@@ -34,4 +34,17 @@ class HistoryParts:
         self._kit.partners.append(partner)
         d = partner.history_doc()
         self._kit.opened.append(d.history.mark() if d is not None else _NONE.mark())
-        partner.changed.connect(lambda: self._heard(partner.last_change(), partner.history_doc()))
+        seen = [_key(d.history.changes[-1]) if d is not None and d.history.changes else None]
+
+        def heard():  # only news: a partner re-read (a file check, an open) re-offers its newest old change
+            c = partner.last_change()
+            new = c is not None and _key(c) != seen[0]
+            if new:
+                seen[0] = _key(c)
+            self._heard(c if new else None, partner.history_doc())
+        partner.changed.connect(heard)
+
+
+def _key(change):
+    """A change the same across re-reads of its file (each re-read makes new objects)."""
+    return change.seq, change.t, change.when
