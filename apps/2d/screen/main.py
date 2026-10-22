@@ -22,7 +22,7 @@ from pathlib import Path
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QGuiApplication
 
-from rostrum_core import Document, RostrumError, Who
+from rostrum_core import Document, RostrumError
 from rostrum_core.storage import paths
 from rostrum2d import KIND, run_source
 from screen2d import projects, recent
@@ -41,7 +41,7 @@ def first_doc() -> Document:
     Untitled project opens instead and the window says why."""
     last = recent.rows()
     doc = open_or_say(last[0]["folder"], last[0]["item"], "your last project") if last else None
-    return doc or projects.new_project(projects.untitled(), Who.person("sam"))
+    return doc or projects.new_project(projects.untitled())
 
 
 def open_or_say(folder, item, what) -> Document | None:
@@ -65,8 +65,8 @@ def load_doc(args) -> Document:
             folder, item = resolve(args.open)
         except RostrumError as e:
             REFUSED.append(e.line())
-            return projects.new_project(projects.untitled(), Who.person("sam"))
-        return open_or_say(folder, item, "the project") or projects.new_project(projects.untitled(), Who.person("sam"))
+            return projects.new_project(projects.untitled())
+        return open_or_say(folder, item, "the project") or projects.new_project(projects.untitled())
     if not (args.doc or args.script or args.sample):
         return first_doc()
     source, name = SOURCE, "sample.py"

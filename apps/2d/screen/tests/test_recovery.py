@@ -12,7 +12,7 @@ WHO = Who.person("sam")
 
 
 def test_recovery_restores_unsaved_edits_and_save_clears_it(tmp_path):
-    doc = projects.new_project("Promo", WHO, root=tmp_path)
+    doc = projects.new_project("Promo", root=tmp_path)
     saved_text = (doc.folder / "docs" / "main.mtn").read_text(encoding="utf-8")
     doc.apply([{"op": "layer.add", "target": ["main"], "args": {"type": "shape", "id": "box"}}], WHO, label="Add shape")
 

@@ -22,6 +22,7 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
 
     QQuickStyle.setStyle("Basic")      # we draw every control ourselves; Basic is only the Popup base
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
+    link_in_accent(app)
     families = set(QFontDatabase.families())
     pick = lambda wanted: next((f for f in wanted if f in families), QGuiApplication.font().family())  # noqa: E731
     engine = QQmlApplicationEngine()
@@ -45,3 +46,15 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     win = engine.rootObjects()[0]
     win.resize(*size)
     return app, engine, win
+
+
+def link_in_accent(app):
+    """Links in a guide (Markdown text) take the application palette's link colour, not the Text's linkColor, so the
+    palette gets Theme.qml's accent (read from there: one place for the colour). Qt's default is a dark blue."""
+    import re
+    from PySide6.QtGui import QColor, QPalette
+    theme = (KIT_QML / "RostrumKit" / "Theme.qml").read_text(encoding="utf-8")
+    accent = re.search(r'property color accent:\s*"(#[0-9a-fA-F]+)"', theme)
+    pal = app.palette()
+    pal.setColor(QPalette.Link, QColor(accent.group(1)))
+    app.setPalette(pal)

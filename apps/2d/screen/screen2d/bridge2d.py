@@ -72,7 +72,7 @@ class Bridge2D(UndoState, LayerOrder, FileCommands, DragSlots, HandleSlots, Tool
         self._problems.touch()
 
     # ---- the history, as the top bar and the Undo / Redo buttons read it (undo_state.py) ----------------------------
-    historyCount = Property(int, UndoState.history_count, notify=historyChanged)   # changes in effect, not entries
+    historyCount = Property(int, lambda self: self.changes_since_open(), notify=historyChanged)   # since it opened
     undoLabel = Property(str, UndoState.undo_label, notify=historyChanged)         # "" = nothing to undo
     redoLabel = Property(str, UndoState.redo_label, notify=historyChanged)
 

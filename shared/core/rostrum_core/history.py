@@ -59,6 +59,17 @@ class History:
     def seq(self) -> int:
         return self.changes[-1].seq if self.changes else 0
 
+    def mark(self) -> tuple[int, dict]:
+        """Where the history stands now (the newest step, which originals are done), for `moved_since`."""
+        return self.seq, dict(self.done)
+
+    def moved_since(self, mark) -> int:
+        """How many originals are not as they were at `mark`: made since and still done, or older ones undone or
+        redone since. 0 right after `mark`; Undo takes it down, Redo brings it back (a screen's "N changes")."""
+        seq0, done0 = mark
+        return sum(1 for c in self.changes if c.original
+                   and (self.done[c.seq] if c.seq > seq0 else self.done[c.seq] != done0.get(c.seq)))
+
     def add(self, c: Change):
         self.changes.append(c)
         if c.original:

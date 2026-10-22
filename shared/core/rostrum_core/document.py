@@ -44,8 +44,11 @@ class Document:
         self._subs, self._gesture = [], None
 
     @classmethod
-    def new(cls, kind, folder=None, item=None, **kw) -> "Document":
-        return cls(kind, None, folder, item, **kw)
+    def new(cls, kind, folder=None, item=None, start=(), **kw) -> "Document":
+        """A new document. `start`: operations that make its starting contents (a new project's blank composition):
+        they are history line 0, not a change, so a new file has nothing to undo and shows no changes."""
+        data = run.plan(kind, kind.blank(), list(start))[0] if start else None
+        return cls(kind, data, folder, item, **kw)
 
     @classmethod
     def open(cls, folder, item, kind) -> "Document":
