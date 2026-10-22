@@ -26,7 +26,7 @@ from rostrum_core.storage import paths
 from rostrum_gui import guides, start
 from rostrum_sound import KIND, run_source
 from rostrum_sound.opening import said
-from screensound import projects
+from screensound import look_check, projects
 from screensound.adder import Adder
 from screensound.bridge import SoundBridge
 from screensound.instruments import InstrumentsPage
@@ -134,6 +134,18 @@ class Screen:
         self.songs.close()
 
 
+def press_keys(win, text):
+    """A key chord ("Ctrl+N", "Ctrl+Shift+S", "R") sent to the window, to check the shortcuts work."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    *mods, key = text.split("+")
+    mod = Qt.KeyboardModifier.NoModifier
+    for m in mods:
+        mod |= {"ctrl": Qt.KeyboardModifier.ControlModifier, "shift": Qt.KeyboardModifier.ShiftModifier,
+                "alt": Qt.KeyboardModifier.AltModifier}[m.lower()]
+    QTest.keyClick(win, Qt.Key[f"Key_{key.upper()}"] if len(key) == 1 else Qt.Key[f"Key_{key}"], mod)
+
+
 def file_step(screen, step) -> bool:
     """The steps that switch songs or open the song menu / Settings (they live here, beside the session)."""
     word, _, rest = step.partition(" ")
@@ -145,6 +157,8 @@ def file_step(screen, step) -> bool:
         screen.songs.saveAs(rest)
     elif word == "file-menu":
         QMetaObject.invokeMethod(screen.win, "openFileMenu")
+    elif word == "press":                     # press Ctrl+Shift+S: the key as a person types it, into the window
+        press_keys(screen.win, rest)
     elif word == "add-track":                 # add-track <piano|strings|…|audio> (the + Track menu)
         screen.ctx_adder.add(rest)
     elif word == "settings":
@@ -171,11 +185,14 @@ def main():
     a.add_argument("--new", action="store_true")
     a.add_argument("--step", action="append", default=[])
     a.add_argument("--shot")
+    a.add_argument("--look", action="store_true", help="after the steps, list words cut off or on top of each other "
+                   "(screensound/look_check.py); nonzero exit when there is one")
+    a.add_argument("--size", default="1600x960", help="window size, WxH (look checks at 1280x720 … 1920x1080)")
     args = a.parse_args()
 
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
-    screen = Screen()
+    screen = Screen(tuple(int(n) for n in args.size.lower().split("x")))
     doc, refused = first_song(args)
     if doc.folder is None:            # --script / --sample: shown as before, not a song on disk
         screen.show(doc, Path(args.script).stem if args.script else "Sample song")
@@ -206,9 +223,15 @@ def main():
         img = screen.win.grabWindow()
         if img.isNull() or not img.save(args.shot):
             raise RuntimeError(f"could not save {args.shot}")
+        if args.look:
+            problems = look_check.check(screen.win)
+            for line in problems:
+                print(f"LOOK: {line}")
+            if problems:
+                code[0] = 5
         print(f"saved {args.shot} {img.width()}x{img.height()}  history={bridge.historyCount}  "
               f"selected={bridge.selected}  sound={bridge.soundState!r}  lufs={bridge.lastRender.get('lufs')}")
-        app.exit(0)              # not quit(): that asks the window, and an untitled song with changes would ask back
+        app.exit(code[0])        # not quit(): that asks the window, and an untitled song with changes would ask back
 
     QTimer.singleShot(400, lambda: guarded(run_steps))
     if args.shot:
