@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC
 import RostrumKit
 
-// Lip sync… (UX_SPEC 3.23): opened by the context bar's action on a mouth swap set, under the bar. The project's voice
+// Lip sync… (UX_SPEC 3.23): opened by the context bar's action on a mouth swap set, under the bar, at the right edge. The project's voice
 // lines (RostrumSound's own: click one), a row per mouth shape with its drawing (guessed from the names; pick another to
 // fix it), Apply = one change. Esc or a click away closes it with nothing changed (backend.lipsync: rig_lipsync.py).
 QQC.Popup {
@@ -11,6 +11,7 @@ QQC.Popup {
     modal: true; dim: false
     padding: Theme.pad
     width: 380
+    x: parent.width - width - Theme.gap; y: 104      // the right edge, under the bar: the face on the canvas stays in view
     closePolicy: QQC.Popup.CloseOnPressOutside | QQC.Popup.CloseOnEscape
     background: Rectangle { color: Theme.raised; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
     onClosed: ls.close()

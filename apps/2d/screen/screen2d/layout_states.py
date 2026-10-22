@@ -142,7 +142,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # H32: a named frame size on Scene settings; the Camera tool (only with a camera) over the canvas; the Effects menu
         ("scene-size", ["--sample"], ["select screen_sample", "set size vertical"]),
         ("camera-tool", ["--sample"], ["add camera", "tool camera"]),
-        ("effects-menu", ["--sample"], ["select card", "clickbtn Effects", "wait 300"]),
+        ("effects-menu", with_character(), [*RIGGED, "inspectorscroll 900", "clickname addEffect", "wait 300"]),
         ("rename-name", long(), ["name edit"]),                               # S35: the name clicked, the kit's rename field
         ("show-only-kinds", ["--sample"], ["selectmany title card dot"]),     # S35: mixed kinds, the panel's Show only lines
         # H33: Set depth ▾ › Other depth… open (a typed number); picked strokes turned by their knob (handles on the box)

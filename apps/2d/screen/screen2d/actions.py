@@ -47,8 +47,6 @@ _ORDER = {"front": "Bring to front", "forward": "Bring forward", "backward": "Se
 _DEPTHS = {"far": 3.0, "middle": 1.0, "near": 0.25}        # the camera depths background.add's defaults use (far → near)
 _MASK = lambda m: _op("mask.make", "stack_but_top", cutter="$top", mode=m, id="$new:group", at="$at")   # noqa: E731
 
-_EFFECT_WHEN = {"gradient": FACT("fills")}      # a gradient fills a shape or the letters of a text, not a picture
-
 DATA = [
     _a("group", "Group", rank=10, importance="primary", group="make", job="group", min_targets=2, when=FACT("groupable"),
        calls=_op("group.make", "stack", id="$new:group", **{"as": "group"})),
@@ -106,8 +104,6 @@ DATA = [
     _a("key_here", "Key here", rank=45, group="animate", job="key_here", calls={"rule": "pose"}),
     *[_a(f"ease_{e['value']}", f"Ease: {e['label']}", rank=50, group="animate", bar="Ease", job=e["job"],
          when=FACT("keys_picked"), calls=_op("key.set", "keys", ease=e["value"])) for e in EASES if e["value"] != "custom"],
-    *[_a(f"effect_{e}", F.LABELS[e], rank=82 + n, importance="primary", group="look", bar="Effects", when=_EFFECT_WHEN.get(e, NOT("has_camera")),
-         calls=_op("effect.add", "ids", type=e)) for n, e in enumerate(F.EFFECTS)],
     # Styles ▾ on texts (rostrum2d/text_styles.py): the document's styles come first (_List.available adds them)
     _a("style_save", "Save as style", rank=81, importance="primary", group="look", bar="Styles", kinds=("text",),
        max_targets=1, when=NOT("styled"), calls=_op("style.define", "ids")),

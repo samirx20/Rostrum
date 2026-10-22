@@ -17,6 +17,7 @@ Item {
         if (key === "fit") view.fitAll()
         else if (key === "sel") vc.fitSelection()
         else if (key === "snap") backend.snap.setOn(!backend.snap.on)
+        else if (key.startsWith("size:")) backend.playback.setSize(key.slice(5))
         else view.show(Number(key) / 100)
     }
     function entries() {
@@ -25,6 +26,9 @@ Item {
             out.push({ value: String(p), label: p + " %", keys: p === 100 ? "Ctrl 1" : "", group: "a" })
         if (backend.selectedLayer !== "") out.push({ value: "sel", label: "Zoom to selection", keys: "F", group: "a" })
         out.push({ value: "snap", label: backend.snap.on ? "Turn snapping off" : "Turn snapping on", group: "b" })
+        if (backend.frameInfo.previewSize === true)     // a large composition: how big playing frames are drawn (paused frames and exports are Full)
+            for (const o of [["full", "Full"], ["half", "Half"], ["quarter", "Quarter"]])
+                out.push({ value: "size:" + o[0], label: (backend.playback.size === o[0] ? "✓ " : "") + "Preview while playing: " + o[1], group: "c" })
         return out
     }
 

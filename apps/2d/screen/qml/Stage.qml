@@ -17,11 +17,12 @@ import RostrumKit
 // View: Ctrl+wheel / pinch zooms around the pointer, wheel / Shift+wheel scroll, Space+drag or middle-drag pans;
 // the keys and the "Fit · 50 % ▾" menu are ViewControls.qml. The engine draws the frame at the size shown, up to Full, and past
 // Full the visible part again at the size shown (backend.setView: screen2d/shown.py; backend.sharp: screen2d/sharp.py).
-Panel {
+// No header row (a kit Panel always reserves one): the size and fps are in the frame's hover and Scene settings.
+Rectangle {
     id: panel
+    color: Theme.panel; radius: Theme.radiusPanel; clip: true
     property alias addMenu: tools.addMenu       // the "+" menu at the tool strip's foot (Main.qml: Esc, setAddOpen)
     objectName: "stage"                 // scripted steps reach the view through it (screen2d/view_steps.py)
-    title: ""
     property bool typing: false         // a text field has the focus (Main.qml): single-letter view keys stay off
     // the tool whose options the context bar shows instead of the selection's actions ("" = the actions)
     readonly property string toolMode: backend.create.typing ? "text" : backend.tool === "pen" ? "pen"
@@ -57,21 +58,25 @@ Panel {
         onTriggered: { const a = panel.inWell(0, 0), b = panel.inWell(well.width, well.height)
                        backend.sharp.setVisible(a.x, a.y, b.x, b.y, Screen.devicePixelRatio) }
     }
-    headerRight: Text { text: panel.info.width + " × " + panel.info.height + "  ·  " + panel.info.fps + " fps"
-                        color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
 
     Rectangle {
         id: well
-        anchors.fill: parent
+        anchors { fill: parent; margins: Theme.pad }
         radius: Theme.radiusCtl; color: Theme.sunken
         clip: true
         readonly property bool drawing: backend.tool === "draw"
-        CanvasView { id: view; wellW: well.width; wellH: well.height; compW: panel.info.width || 1; compH: panel.info.height || 1 }
+        CanvasView { id: view; wellW: well.width; wellH: well.height; compW: panel.info.width || 1; compH: panel.info.height || 1
+                     top: bar.height + 2 * Theme.gap }
 
         Item {
             id: frame
             x: view.ox; y: view.oy
             width: panel.info.width * view.zoom; height: panel.info.height * view.zoom
+            HoverHandler { id: frameHover; enabled: backend.tool === "move" }
+            HoverTip {   // the frame's size, when the pointer rests on the frame (Scene settings has it too)
+                hovered: frameHover.hovered && !canvas.pressed
+                text: panel.info.width + " × " + panel.info.height + " · " + panel.info.fps + " fps"
+            }
             Image {
                 anchors.fill: parent
                 source: backend.frame > 0 ? "image://frame/" + backend.frame : ""
@@ -279,7 +284,9 @@ Panel {
                        // with Pen, Paint or typing on, that tool's options instead (ToolOptions.qml)
             id: bar
             hub: backend.actions
-            anchors { top: parent.top; topMargin: Theme.gap; horizontalCenter: parent.horizontalCenter }
+            // one rule: just above the frame's top edge, never over it; Fit keeps this room free (view.top), a zoomed view lets it ride the well's top
+            anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
+            anchors.topMargin: Math.max(Theme.gap, frame.y - bar.height - Theme.gap)
             maxWidth: well.width - 2 * (tools.width + 2 * Theme.gap)
             toolOptions: panel.toolMode !== "" ? optionsComponent : null
             dragging: canvas.pressed || backend.playing || (backend.tool !== "move" && panel.toolMode === "")

@@ -26,7 +26,7 @@ AppShell {
     }
     bottomHeight: timelineNow.compact ? timeline.compactHeight
                 : Math.round(Math.max(150, Math.min(height * 0.6, timelineNow.asked >= 0 ? timelineNow.asked
-                                                                  : Math.max(220, Math.min(380, height * 0.32)))))
+                                                                  : Math.min(timeline.wantedHeight, Math.max(220, Math.min(380, height * 0.32))))))
     Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
 
     // the tools: V move, P pen, B draw, Esc back to move (screen state, backend.setTool)
@@ -119,8 +119,8 @@ AppShell {
     StaggerPopover { }   // the context bar's Stagger… (stagger.py): under the bar
     DepthPopover { x: (shell.width - width) / 2; y: 104 }     // Set depth ▾ › Other depth… (depth_typed.py): under the bar
     SoundCuePopover { x: (shell.width - width) / 2; y: 104 }  // Add a sound here… (sound_cue_pick.py): under the bar
-    LipSyncSheet { x: (shell.width - width) / 2; y: 104 }     // Lip sync… on a mouth swap set (rig_lipsync.py): under the bar
-    BlinkSheet { x: (shell.width - width) / 2; y: 104 }       // Add blinks… on an eyes swap set (rig_blinks.py): under the bar
+    LipSyncSheet { }     // Lip sync… on a mouth swap set (rig_lipsync.py): under the bar
+    BlinkSheet { }       // Add blinks… on an eyes swap set (rig_blinks.py): under the bar
     centre: [
         Stage { id: stage; anchors.fill: parent; typing: shell.typing },   // typing: F stays a letter (ViewControls.qml)
         EmptyHint {     // a new scene (the kit's empty state, INTERACTION.md 1.16): gone with the first layer
@@ -137,7 +137,8 @@ AppShell {
     ]
     menu: FilesMenu { id: fileMenu }    // ≡: New, Open, Open recent, Duplicate, Save a version … (kit; saving is automatic)
     right: [
-        Inspector { id: settingsMove; anchors.fill: parent; bridge: backend; keyMarks: true; visible: backend.tool !== "draw"
+        Inspector { id: settingsMove; anchors.fill: parent; bridge: backend; keyMarks: true; effects: true
+                    visible: backend.tool !== "draw" && !(backend.create.typing && backend.selected === "")   // a new text: no layer to show yet
                     highlight: backend.keys.props         // the settings whose keys are picked (key_select.py)
                     below: RigPoses { } },                // a rig in hand: its pose library (rig_poses.py)
         Inspector { id: settingsDraw; anchors.fill: parent; bridge: painter; title: ""; visible: backend.tool === "draw"
