@@ -2,7 +2,7 @@ import QtQuick
 import RostrumKit
 
 // The Library (DESIGN.md §2.2, decision 3; INTERACTION.md "Library", Ctrl+L): adding a track is choosing its sound. A search box (focused on open),
-// kind chips (All · Instruments · Drums · Record · Voice · Designed · My sounds; a designed sound is placed at the playhead on
+// a kind dropdown (All · Instruments · Drums · Record · Voice · Designed · My sounds; a designed sound is placed at the playhead on
 // the Effects track, tied to a marker the playhead sits on) and the list (adder.find). Click picks an entry;
 // double-click or Enter uses it: a new track with that sound (one operation, one undo step), selected, the Editor
 // open on it — the microphone's track comes armed, ready to record. With a track of the same kind selected it asks
@@ -10,7 +10,7 @@ import RostrumKit
 // (LibraryPanel.qml: a sound goes on the selected recordings track at the playhead). Picking an entry (click, ↑ / ↓) plays it
 // through the engine (soundLibrary.auditionEntry: an instrument plays the selected track's notes); Esc or ■ Stop ends it. On a track that plays that kind of sound the pick is a try (nothing is written: "Trying Pad
 // on Strings"): Enter / double-click / Keep makes it the track's sound (one undo step), Esc / Revert / another track puts the
-// original back. Loop repeats what you hear while you browse. Closes with × or Ctrl+L; on a narrow window it floats and closes after each use (`used`).
+// original back. Loop (shown while something plays) repeats what you hear. Closes with × or Ctrl+L; on a narrow window it floats and closes after each use (`used`).
 Panel {
     id: p
     title: "Library"
@@ -55,18 +55,16 @@ Panel {
         onEscaped: soundLibrary.swapping ? soundLibrary.swapBack() : soundLibrary.stopAudition()
         onEntered: soundLibrary.swapping ? soundLibrary.swapKeep() : p.use(p.current)
     }
-    Flow {
+    Row {      // one row: the kind; for "My sounds" also the Filter (length, tone, kind of recording)
         id: chips
         anchors { left: parent.left; right: parent.right; top: search.bottom; topMargin: Theme.gap }
         spacing: Theme.grid
-        Repeater {
-            model: adder.kinds
-            delegate: Button {
-                required property var modelData
-                text: modelData.label; kind: "ghost"; height: 24; down: p.chip === modelData.value
-                onClicked: p.chip = modelData.value
-            }
-        }
+        ChoiceField { width: parent.width - (filterBtn.visible ? filterBtn.width + parent.spacing : 0)
+                      options: adder.kinds.map(k => ({ value: k.value, label: k.label })); current: p.chip
+                      onPicked: (v) => p.chip = v }
+        Button { id: filterBtn; visible: p.chip === "mine" && soundLibrary.hasFolders; kind: "ghost"; height: Theme.field
+                 text: soundLibrary.filterCount > 0 ? "Filter · " + soundLibrary.filterCount + " ▾" : "Filter ▾"
+                 down: mine.filterOpen; onClicked: mine.openFilter(filterBtn) }
     }
     ListView {
         id: list
@@ -79,19 +77,25 @@ Panel {
             id: row
             required property var modelData
             required property int index
-            width: list.width; height: 44; radius: Theme.radiusCtl
+            width: list.width; height: row.modelData.note !== "" ? 44 : 32; radius: Theme.radiusCtl
             color: p.current === index ? Theme.accentSoft : hover.hovered ? Theme.hover : "transparent"
             HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: p.pick(row.index); onDoubleTapped: p.use(row.index) }
+            IconButton { id: hear; glyph: "▶"; kind: "ghost"; tip: "Hear it"; visible: hover.hovered && row.modelData.kind !== "record"
+                         anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
+                         onClicked: p.pick(row.index) }
             Column {
-                anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: Theme.gap; rightMargin: Theme.gap }
+                anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: Theme.gap; rightMargin: Theme.gap + (hear.visible ? hear.width : 0) }
                 spacing: 2
                 NameLabel { width: parent.width; text: row.modelData.label }
-                Text { width: parent.width; text: row.modelData.what; elide: Text.ElideRight; color: Theme.fg3
+                Text { id: noteText; visible: row.modelData.note !== ""; width: parent.width; text: row.modelData.note
+                       HoverTip { text: noteText.truncated ? noteText.text : ""; hovered: hover.hovered }
+                       elide: Text.ElideRight; color: Theme.fg3
                        font.family: uiFont; font.pixelSize: Theme.label }
             }
         }
     }
+    EdgeFade { flick: list; anchors.fill: list; visible: list.visible }
     Column {   // the search found nothing
         visible: p.chip !== "mine" && p.found.length === 0
         anchors { left: parent.left; right: parent.right; top: chips.bottom; topMargin: Theme.pad }
@@ -112,12 +116,6 @@ Panel {
         text: "Add a folder of my sounds…"; kind: "ghost"
         onClicked: { p.chip = "mine"; mine.addFolder() }
     }
-    Button {     // Loop while browsing: what you hear repeats until you stop it or pick another
-        id: loopBtn
-        anchors { right: parent.right; verticalCenter: foot.verticalCenter }
-        text: "Loop"; kind: "ghost"; down: soundLibrary.loop
-        onClicked: soundLibrary.setLoop(!soundLibrary.loop)
-    }
     Item {      // only while something plays or is tried: what it is, and Keep / Revert (or the way to stop it)
         id: heard
         readonly property bool trying: soundLibrary.trying.key !== undefined
@@ -133,6 +131,9 @@ Panel {
                    color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
             Row { spacing: Theme.grid; layoutDirection: Qt.RightToLeft; width: parent.width
                   Button { visible: !heard.trying; text: "■ Stop"; kind: "ghost"; onClicked: soundLibrary.stopAudition() }
+                  Button { text: "Loop"; kind: "ghost"; down: soundLibrary.loop; onClicked: soundLibrary.setLoop(!soundLibrary.loop)
+                           HoverTip { text: "Repeat what you hear"; hovered: loopHover.hovered }
+                           HoverHandler { id: loopHover } }
                   Button { visible: heard.trying; text: "Keep"; kind: "primary"; onClicked: { if (soundLibrary.keep()) p.used() } }
                   Button { visible: heard.trying; text: "Revert"; kind: "ghost"; onClicked: soundLibrary.revert() } }
         }

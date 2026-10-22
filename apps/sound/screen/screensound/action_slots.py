@@ -22,6 +22,9 @@ from . import clipboard, timing
 from .actions import LIST
 from .keys import ROUTES, SKIP
 
+# Ctrl+K lists only the named things you would go to, in our words (never a single note, hit or effect)
+KINDS = {"track": "Track", "bus": "Group", "marker": "Marker", "section": "Section", "clip": "Clip"}
+
 MAKES = ("note.duplicate", "hit.duplicate", "clip.duplicate", "clip.split", "section.add", "track.duplicate",
          "section.duplicate")          # what these made is selected afterwards
 
@@ -117,8 +120,9 @@ class ActionSlots:
             if self._act(V.speak_calls(self._facts()), f"Speak again · {words}"):
                 for track in dict.fromkeys(self.doc.parent_of(i)[0] for i in ids):
                     self.voiceWanted.emit(track)
-        elif name == "addline":                                 # Add line at playhead: the box opens in the lane
-            self.side.startTyping(ids[0], self._t)
+        elif name == "addline":                                 # Add line at playhead: the Lines box takes the keys
+            self.workspace.setDock("editor")
+            self.side.linesWanted.emit()
         elif name == "hear_back":                               # H let go: the other side back (the press flipped it)
             self._hub.run("before_after")
         elif name == "mainmix":                                 # a mark on the project, not a song edit: no undo step
@@ -232,8 +236,9 @@ class ActionSlots:
         mine = [{**c, "do": lambda k=c["key"]: self._hub.run(k)} if "do" in c else c
                 for c in do_commands(LIST.available(f), self._what(f))]
         ops = {x["op"] for c in mine for x in c.get("calls", [])}
-        rest = commands.build(self.doc, self._picks.ids, self.label_of)
-        return mine + [c for c in rest if not any(x["op"] in ops for x in c.get("calls", []))]
+        rest = commands.build(self.doc, self._picks.ids, self.label_of, kind_of=lambda it: KINDS.get(it["type"], ""))
+        return mine + [c for c in rest if not any(x["op"] in ops for x in c.get("calls", []))
+                       and ("select" not in c or self.doc.item(c["select"])["type"] in KINDS)]
 
     @Slot(str, result="QVariantList")
     def commands(self, query):

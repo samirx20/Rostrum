@@ -72,9 +72,7 @@ class RenderExport(ExportSheet):
 
     # ---- the kit's questions --------------------------------------------------------------------------------
     def choices_list(self):
-        ext = deliver.BY_FORMAT[self._format]["ext"].upper()
-        return [{"value": c["id"], "label": f'{c["label"]} · {c["detail"]}'.replace("-", "−"), "type": ext}
-                for c in delivery.choices()]
+        return [{"value": c["id"], "label": c["label"], "tip": c["detail"].replace("-", "−")} for c in delivery.choices()]
 
     def chose(self):
         if self._loud is not None and self._choice != self._target_key():
@@ -249,7 +247,7 @@ class RenderExport(ExportSheet):
 
     @Property("QVariantList", constant=True)
     def targets(self):
-        return [{"value": c["id"], "label": f'{c["label"]} · {c["detail"]}'.replace("-", "−")} for c in delivery.choices()]
+        return [{"value": c["id"], "label": c["label"]} for c in delivery.choices()]
 
     @Slot(str, result="QVariantList")
     def ratesFor(self, fmt):

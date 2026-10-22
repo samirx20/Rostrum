@@ -29,6 +29,7 @@ Column {
                 onScrubStarted: { backend.select(modelData.id); backend.beginScrub("level") }
                 onScrubbed: (v) => backend.scrub("level", v)
                 onScrubEnded: backend.endScrub()
+                onEdited: (v) => { backend.select(modelData.id); backend.beginScrub("level"); backend.scrub("level", v); backend.endScrub() }
             }
         }
     }

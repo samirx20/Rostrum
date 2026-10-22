@@ -38,11 +38,11 @@ Item {
         function bar(ctx, x, y, w, h, color) { ctx.fillStyle = color; ctx.fillRect(x, y, w, h) }
 
         function paintClip(ctx, b, on, x, w, y0, h) {   // y0: its row's top (stacked clips share the lane)
-            var col = on ? Theme.accent : lane.track.hue
-            ctx.globalAlpha = on ? 0.3 : 0.18
+            var col = lane.track.hue                       // selected: an accent outline only, the waveform stays as it was
+            ctx.globalAlpha = 0.18
             ctx.fillStyle = col; ctx.beginPath(); ctx.roundedRect(x, y0, w, h, 4, 4); ctx.fill()
             ctx.globalAlpha = 1
-            ctx.strokeStyle = col; ctx.lineWidth = 1
+            ctx.strokeStyle = on ? Theme.accent : col; ctx.lineWidth = on ? 2 : 1
             ctx.beginPath(); ctx.roundedRect(x + 0.5, y0 + 0.5, w - 1, h - 1, 4, 4); ctx.stroke()
             var showLabel = h >= 16
             var peaks = b.peaks || [], n = peaks.length

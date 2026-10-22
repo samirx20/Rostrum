@@ -26,7 +26,7 @@ FIELDS = {
                    help='"master" or another bus id (a bus can feed a bus, never in a loop).'),
     ],
     "send": [
-        Param.text("bus", group="Send", label="Bus", help="The bus id this send feeds."),
+        Param.text("bus", group="Send", label="Group", help="The bus id this send feeds."),
         N("level", 0, 4, "Send", help="How much of the track goes to the bus (1 = as loud as the track).", display="db"),
         Param.toggle("pre", group="Send", importance="secondary", label="Before fader",
                      help="On: the send ignores the track's fader. Off: it follows it."),

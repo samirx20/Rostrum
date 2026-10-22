@@ -13,7 +13,6 @@ Rectangle {
     property alias headerWidth: timeline.headerWidth
     property bool compact: false                       // a small window: the position and key show short
     readonly property alias picture: corner
-    readonly property alias readout: readout
     readonly property bool empty: !backend.tracks.some(r => !r.mix)
     signal addTrack()
     function addFromFile() { fileDialog.open() }
@@ -116,8 +115,8 @@ Rectangle {
         EmptyHint {     // the kit's empty state (INTERACTION.md 1.16): one line, two buttons, gone with the first track
             width: parent.width
             text: "Start with a sound, or drop a file here."
-            buttons: [{ value: "track", label: "Add a track" }, { value: "picture", label: "Bring in a picture" }]
-            onPicked: (v) => v === "track" ? a.addTrack() : backend.setPictureOpen(true)
+            buttons: [{ value: "track", label: "Add a track" }]
+            onPicked: a.addTrack()
         }
     }
     PictureCorner {

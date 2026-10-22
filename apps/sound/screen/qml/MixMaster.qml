@@ -9,7 +9,7 @@ import "MixFormat.js" as F
 Rectangle {
     id: m
     readonly property var info: mixer.master          // id, name, volume, effects, meter
-    readonly property real minBody: Math.max(140, loud.implicitHeight)   // fader travel, the loudness at its smallest curve
+    readonly property real minBody: 140   // fader travel first: the loudness curve folds away before the fader shrinks
     width: 330
     color: Theme.app
     radius: Theme.radiusPanel
@@ -52,7 +52,7 @@ Rectangle {
                 Text { Layout.alignment: Qt.AlignHCenter; text: F.faderText(m.info.volume); color: Theme.fg
                        font.family: uiFont; font.pixelSize: Theme.body; font.features: { "tnum": 1 } }
             }
-            MixLoudness { id: loud; Layout.fillWidth: true; Layout.fillHeight: true }
+            MixLoudness { id: loud; Layout.fillWidth: true; Layout.fillHeight: true; Layout.minimumHeight: 0 }
         }
     }
     }

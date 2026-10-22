@@ -10,7 +10,7 @@ Rectangle {
     readonly property var job: mixer.cleaning
     visible: job.shown
     implicitHeight: visible ? col.height + 2 * Theme.pad : 0
-    color: Theme.panel; radius: Theme.radiusPanel
+    color: "transparent"
     Keys.onEscapePressed: (e) => { if (job.cancellable) job.cancel(); else e.accepted = false }
     Column {
         id: col

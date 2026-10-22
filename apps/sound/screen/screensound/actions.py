@@ -97,7 +97,7 @@ ACTIONS = [
         do="speak", needs="Speak again needs voice lines selected"),
     act("take_prev", "Earlier take", V.take_valid(-1), V.take_calls(-1), group="line"),
     act("take_next", "Later take", V.take_valid(1), V.take_calls(1), group="line"),
-    act("add_line", "Add line at playhead", V.voice_track, importance="primary", group="line", do="addline"),
+    act("add_line", "Type a line", V.voice_track, importance="primary", group="line", do="addline"),
     # the song itself (nothing selected): absent once it is the main mix
     act("main_mix", "Make this the main mix", _can_make_main, importance="secondary", group="song", do="mainmix"),
     # clips

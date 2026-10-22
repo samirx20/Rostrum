@@ -24,7 +24,7 @@ AppShell {
 
     function openFileMenu() { fileMenu.openMenu() }      // (the scripted `file-menu` step)
     function openSettings() { settingsPanel.open() }     // (`settings`: Preferences)
-    function openSong() { arrangement.readout.open() }   // (`song-open`: the tempo / key popover)
+    function openSong() { backend.clearSelection() }   // (`song-open`: the song in the settings panel; the header's tempo does the same)
     function openLibrary() { workspace.setLibrary(true) }   // (`library`)
     function openGrid() { arrangement.openGrid() }          // (`grid-open`: the Grid menu, open)
     function openPicturePick() { backend.setPictureOpen(true); arrangement.picture.openItems() }     // (`picture-pick`)

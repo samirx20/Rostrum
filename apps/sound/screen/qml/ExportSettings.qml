@@ -3,7 +3,7 @@ import RostrumKit
 
 // Sound's part of the kit Export sheet (AppShell.exportSettings; the sheet's What for list is the delivery targets,
 // screensound/export.py): the live check of the sound that plays now against the target (pass / miss), the file type,
-// the quality (sample rate), stems, and trimming the silent end; then "+ Another version" rows (each its own target,
+// stems, and trimming the silent end; then "+ Another version" rows (each its own target,
 // file type and quality, rendered as its own version; the live check under each is that row's pass / miss).
 // A delivery preset ("For the Editor", presets.py) is one button that sets file, quality, trimming, stems and markers; it
 // shows as chosen while the choices still equal it. Stems: only the mix / every track and group / one per group (only offered
@@ -14,6 +14,7 @@ Column {
     readonly property var target: mixer.loudness.target
     width: parent ? parent.width : 0
     spacing: Theme.gap
+    property bool more: false          // "More": the sample rate (DESIGN.md §2.4), for the file and each version
 
     component Field: Column {         // a label, its control under it at full width (the sheet is narrow)
         id: field
@@ -57,6 +58,7 @@ Column {
         ChoiceField { width: parent.width; options: root.job.formats; current: root.job.format; onPicked: (v) => root.job.setFormat(v) }
     }
     Field {
+        visible: root.more
         label: "Quality"; tip: "How finely the sound is stored (sample rate)"
         ChoiceField { width: parent.width; options: root.job.rates; current: root.job.rate; onPicked: (v) => root.job.setRate(v) }
     }
@@ -77,7 +79,7 @@ Column {
                           onPicked: (v) => root.job.setVersion(ver.index, "target", v) }
             ChoiceField { width: parent.width; options: root.job.formats; current: ver.modelData.format
                           onPicked: (v) => root.job.setVersion(ver.index, "format", v) }
-            ChoiceField { width: parent.width; options: root.job.ratesFor(ver.modelData.format); current: ver.modelData.rate
+            ChoiceField { visible: root.more; width: parent.width; options: root.job.ratesFor(ver.modelData.format); current: ver.modelData.rate
                           onPicked: (v) => root.job.setVersion(ver.index, "rate", v) }
             Text { width: parent.width; wrapMode: Text.WordWrap; visible: !!ver.modelData.verdict && !!ver.modelData.verdict.text
                    text: ver.modelData.verdict && ver.modelData.verdict.text ? (ver.modelData.verdict.ok ? "✓ " : "") + ver.modelData.verdict.text : ""
@@ -91,7 +93,8 @@ Column {
         ChoiceField { width: parent.width; options: root.job.stemChoices; current: root.job.stemsMode; onPicked: (v) => root.job.setStemsMode(v) }
     }
     Switch { visible: root.job.hasMarkers; checked: root.job.markers; onToggled: (v) => root.job.setMarkers(v)
-             text: root.job.markers ? "Markers written beside the files" : "No markers file" }
+             text: "Markers file" }
     Switch { checked: root.job.trim; onToggled: (v) => root.job.setTrim(v)
-             text: root.job.trim ? "Cut the silence at the end" : "Keep the song's full length" }
+             text: "Cut the silence at the end" }
+    Button { text: root.more ? "Less" : "More"; kind: "ghost"; onClicked: root.more = !root.more }
 }

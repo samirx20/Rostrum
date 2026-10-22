@@ -130,3 +130,16 @@ def test_a_script_sets_vibrato_rate_after_its_vibrato_lane():
     doc = Document.new(KIND)
     doc.run_script("v.py", run_source(src, "v.py"), Who.script("v.py"))
     assert compile(doc)["tracks"][0]["expression"]["vibratoRate"] == 5.2
+
+
+def test_removing_a_used_marker_is_refused_after_other_edits():
+    """The check looks only at changed items while the markers stay the same (check.py _ref_holders); a marker
+    removed under a note that points at it must still fail loudly."""
+    import pytest
+    from rostrum_core import RostrumError
+    doc = Document.new(KIND)
+    doc.run_script("cue.py", run_source(CUE, "cue.py"), Who.script("cue.py"))
+    doc.apply({"op": "track.set", "target": ["pad"], "args": {"volume": 0.3}}, Who.person())   # the fast path
+    drop = next(m["id"] for m in doc.data["markers"] if m.get("name") == "drop")
+    with pytest.raises(RostrumError, match="drop"):
+        doc.apply({"op": "marker.remove", "target": [drop], "args": {}}, Who.person())

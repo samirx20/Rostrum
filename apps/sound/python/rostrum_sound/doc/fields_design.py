@@ -64,7 +64,7 @@ def params() -> list:
     out = [Param.choice("design", DESIGNS, group="Sound", label="Design"), V.time("at", group="Sound", help="When it "
            "starts: seconds, {\"beat\": n} or a marker (\"#logo+0.1\").")]
     out += [N(n, lo, hi, "Sound", imp=imp, label=lab, help=h, integer=n == "seed") for n, lo, hi, imp, lab, h in COMMON]
-    out.append(Param.text("group", group="Sound", importance="secondary", label="Layer group", help="Clips and "
+    out.append(Param.text("group", group="Sound", importance="deep", label="Layer group", help="Clips and "
                           "designed sounds of one track with the same group name are one layered sound."))
     seen: dict[str, list] = {}
     for d, rows in OWN.items():

@@ -114,6 +114,11 @@ class LibraryPanel(QObject):
     def brightness(self):
         return self._bright
 
+    @Property(int, notify=changed)
+    def filterCount(self):
+        """How many of kind / length / tone narrow the list now (the Filter button says so)."""
+        return sum(bool(v) for v in (self._kind, self._length, self._bright))
+
     @Property("QVariantList", constant=True)
     def kindChoices(self):
         return _choices(KINDS)

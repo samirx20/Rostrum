@@ -12,6 +12,7 @@ from .voice_card import VoiceMaker, card_roles
 class EditorSide(QObject):
     changed = Signal()
     typingChanged = Signal()
+    linesWanted = Signal()                # Add line at playhead: the Lines box takes the keys
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent)

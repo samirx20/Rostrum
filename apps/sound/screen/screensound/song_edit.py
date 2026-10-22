@@ -3,7 +3,7 @@
 Everything here builds calls for the document's own operations (`doc.set`, `tempo.add`, `key.add` / `key.set`,
 `section.add` / `section.set`, `*.remove`); the bridge applies them (a drag: one gesture = one undo step). Times keep
 the form they were written in (beats stay beats, a section on a marker stays on it); a new thing is written in beats.
-`state` is what the Song popup shows: only what is valid right now (a delete only with that thing selected).
+`state` is what the settings panel's song view needs: only what is valid right now (a delete only with that thing selected).
 """
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from rostrum_sound.doc import tempo
 from . import timing
 
 TYPES = ("tempo", "edge")        # drags handled here (a key change moves like any timed item: moves.py)
+NO_KEY = "No key"               # the one wording for a song with no key, wherever it shows
 TONICS = ["C", "C#", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"]
 SECTION_BARS = 4
 
@@ -38,13 +39,13 @@ def _name(have, base="section"):
 def split_key(key: str) -> tuple[str, str]:
     p = K.parse(key) if key else None
     if p is None:
-        return "C", "major"
+        return "", "major"          # no key: no tonic (every screen says NO_KEY; a first key is chosen, never assumed)
     pc, mode = p
     return next(n for n in TONICS if (K.TONICS[n[0]] + {"#": 1, "b": -1}.get(n[1:], 0)) % 12 == pc), mode
 
 
 def state(root: dict, sel: dict | None, t: float) -> dict:
-    """Facts for the Song popup at playhead `t` (seconds) with `sel` (the selected item, or None)."""
+    """Facts for the song view at playhead `t` (seconds) with `sel` (the selected item, or None)."""
     from . import music_map
     keys = music_map.key_changes(root)
     here = next((k for k in reversed(keys) if k["t"] <= t + 1e-6), None)

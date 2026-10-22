@@ -2,7 +2,7 @@ import QtQuick
 import RostrumKit
 
 // A voice track's lines (text + when) and Make voice (beside the Editor), which shows only while a line has no audio yet.
-// Clicking a line selects it, so the inspector shows its fields (words, time, take, level, fades). "Type what she says":
+// Clicking a line selects it, so the inspector shows its fields (words, time, take, level, fades). "Type a line":
 // Enter adds the line at the playhead (or after the last line) and its speech is made at once (editorSide.typeLine);
 // a line being spoken shows "Speaking…". Without the voice model, one sentence says so.
 Column {
@@ -55,7 +55,8 @@ Column {
     }
     FieldFrame {   // type a line: Enter adds it and its speech is made at once
         id: say
-        width: v.width; editable: true; placeholder: "Type what she says"
+        width: v.width; editable: true; placeholder: "Type a line"
+        Connections { target: editorSide; function onLinesWanted() { say.input.forceActiveFocus() } }
         onEntered: if (editorSide.typeLine(v.trackId, say.input.text)) say.input.text = ""
     }
     ModelDownload { width: v.width; fetch: editorSide.voiceDownload }    // asks before the voice model is downloaded

@@ -15,7 +15,7 @@ from . import ids
 from .registry import REGISTRY, set_fields, taken
 
 REGISTRY.operation("bus.set", "Change a bus: its name, fader, pan, mute or where it plays to.", target="bus",
-                   params=FD.params("bus"), label="Edit bus", fields=True)(set_fields)
+                   params=FD.params("bus"), label="Edit group", fields=True)(set_fields)
 REGISTRY.operation("send.set", "Change a send: which bus, how much goes to it, or whether it ignores the fader.",
                    target="send", params=FD.params("send"), label="Edit send", fields=True)(set_fields)
 REGISTRY.operation("duck.set", "Change a duck: what it ducks under, how deep, how fast it dips and returns.",
@@ -33,7 +33,7 @@ def need_bus(ctx, bus, what):
 
 
 @REGISTRY.operation("bus.add", "Add a bus: a channel tracks play or send into (give it effects with effect.add on "
-                    "the bus; route a track to it with track.set output, or send.add).", label="Add bus", params=[
+                    "the bus; route a track to it with track.set output, or send.add).", label="Add group", params=[
                         Param.text("id", label="Id", help="Optional; counted when left out (bus_1 …)."),
                         *FD.params("bus")])
 def bus_add(ctx, targets, args):
@@ -48,7 +48,7 @@ def bus_add(ctx, targets, args):
 
 
 @REGISTRY.operation("bus.remove", "Delete a bus and its effects; fails while a track plays to it, sends to it or "
-                    "another bus feeds it (move those first).", target="bus", label="Delete bus", importance="secondary")
+                    "another bus feeds it (move those first).", target="bus", label="Delete group", importance="secondary")
 def bus_remove(ctx, targets, args):
     for t in targets:
         users = [f"track {x['id']}" for x in ctx.doc.get("tracks", []) if x.get("output") == t]

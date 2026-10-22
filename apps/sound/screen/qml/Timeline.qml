@@ -108,7 +108,7 @@ Rectangle {
                     readonly property real top0: tl.addAbove(index)
                     width: column.width; height: top0 + h + (auto ? tl.laneGap + tl.laneH : 0)
                     Button {   // + Track: the Sounds panel (adding a track is choosing its sound)
-                        visible: row.top0 > 0; text: "+ Track"; kind: "ghost"; height: Theme.field
+                        visible: row.top0 > 0 && backend.tracks.some(r => !r.mix); text: "+ Track"; kind: "ghost"; height: Theme.field
                         x: Theme.grid; y: (row.top0 - height) / 2 - tl.rowGap / 2; onClicked: tl.addTrack()
                     }
                     TrackHeader { visible: !row.modelData.mix; x: (row.modelData.depth || 0) * 14; y: row.top0
@@ -216,10 +216,10 @@ Rectangle {
     ActionMenu { id: menu; onPicked: (v) => backend.menuPick(v) }          // the kit's: keys on rows, dividers
     LaneLineBox { tl: tl; bars: bars }   // typing a voice line right on its lane
     CleanPopover { id: clean; parent: cbar; x: (cbar.width - width) / 2; y: cbar.height + 2 }   // under the bar
-    AskPopover { id: ask; parent: cbar; x: (cbar.width - width) / 2; y: cbar.height + 2 }
+    AskPopover { id: ask }
     Connections {
         target: backend
         function onCleanWanted() { if (backend.area === "arrange") clean.open() }
-        function onAskWanted(key, label, value) { ask.key = key; ask.label = label; ask.value = value; ask.open() }
+        function onAskWanted(key, label, value) { ask.key = key; ask.label = label; ask.value = value; ask.openAt(cbar) }
     }
 }

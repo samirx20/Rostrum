@@ -14,7 +14,20 @@ Item {
     property string query: ""
     signal used()
     onQueryChanged: soundLibrary.setText(query)
+    readonly property bool filterOpen: filterPop.opened
     function addFolder() { picker.open() }
+    function openFilter(item) { filterPop.openAt(item) }
+
+    Popover {   // length, tone and kind of sound: one place, not three rows
+        id: filterPop
+        Column { spacing: Theme.gap
+            ChoiceField { width: 220; options: soundLibrary.kindChoices; current: soundLibrary.kind
+                          onPicked: (v) => soundLibrary.setFilter("kind", v) }
+            Segmented { options: soundLibrary.lengthChoices; current: soundLibrary.length
+                        onPicked: (v) => soundLibrary.setFilter("length", v) }
+            Segmented { options: soundLibrary.brightnessChoices; current: soundLibrary.brightness
+                        onPicked: (v) => soundLibrary.setFilter("brightness", v) } }
+    }
 
     FolderDialog { id: picker; title: "Choose a folder of your sounds"
                    onAccepted: soundLibrary.addFolder(selectedFolder.toString()) }
@@ -39,12 +52,6 @@ Item {
         id: body
         visible: soundLibrary.hasFolders && soundLibrary.busy === ""
         anchors.fill: parent; spacing: Theme.gap
-        ChoiceField { width: parent.width; options: soundLibrary.kindChoices; current: soundLibrary.kind
-                      onPicked: (v) => soundLibrary.setFilter("kind", v) }
-        Segmented { options: soundLibrary.lengthChoices; current: soundLibrary.length
-                    onPicked: (v) => soundLibrary.setFilter("length", v) }
-        Segmented { options: soundLibrary.brightnessChoices; current: soundLibrary.brightness
-                    onPicked: (v) => soundLibrary.setFilter("brightness", v) }
         Text { width: parent.width; wrapMode: Text.WordWrap; text: soundLibrary.status
                color: soundLibrary.status.startsWith("Error") ? Theme.danger : Theme.fg3
                font.family: uiFont; font.pixelSize: Theme.label }
@@ -65,9 +72,12 @@ Item {
                            HoverTip { text: "Keep this one (Enter)"; hovered: keepHover.hovered }
                            HoverHandler { id: keepHover } } }
         }
-        ListView {
+        Item {
+          width: parent.width; height: body.height - y
+          EdgeFade { z: 1; flick: list; anchors.fill: list }
+          ListView {
             id: list
-            width: parent.width; height: body.height - y; clip: true; spacing: 2
+            anchors.fill: parent; clip: true; spacing: 2
             currentIndex: soundLibrary.swapRow
             onCurrentIndexChanged: if (soundLibrary.swapping) positionViewAtIndex(currentIndex, ListView.Contain)
             boundsBehavior: Flickable.StopAtBounds
@@ -101,5 +111,6 @@ Item {
                 }
             }
         }
+          }
     }
 }

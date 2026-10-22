@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// "Type what she says" in the voice track's lane, at the time you double-clicked (or the playhead for Add line at
+// "Type a line" in the voice track's lane, at the time you double-clicked (or the playhead for Add line at
 // playhead): Enter makes the line (its speech is made when typing finishes), Esc or clicking away cancels
 // (DESIGN.md §3.11 step 2). `tl` is the Timeline, `bars` its ruler; the open box is editorSide.typing.
 Item {
@@ -22,7 +22,7 @@ Item {
         onAccepted: editorSide.typeAt(box.at.track, text, box.at.t)
         Keys.onEscapePressed: editorSide.cancelTyping()
         onActiveFocusChanged: if (!activeFocus && box.visible) editorSide.cancelTyping()
-        Text { visible: input.text === ""; text: "Type what she says, then Enter"; color: Theme.fg4
+        Text { visible: input.text === ""; text: "Type a line"; color: Theme.fg4
                font.family: uiFont; font.pixelSize: Theme.body }
     }
 }
