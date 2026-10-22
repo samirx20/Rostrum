@@ -53,10 +53,17 @@ QQC.Popup {
                 width: ListView.view.width; height: Theme.row + 2; radius: Theme.radiusCtl
                 color: index === list.currentIndex ? Theme.accentSoft : "transparent"
                 Text { anchors.left: parent.left; anchors.leftMargin: Theme.gap; anchors.verticalCenter: parent.verticalCenter
-                       anchors.right: hint.left; anchors.rightMargin: Theme.gap; elide: Text.ElideRight
+                       anchors.right: tail.left; anchors.rightMargin: Theme.gap; elide: Text.ElideRight
                        text: cmd.modelData.label; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
-                Text { id: hint; anchors.right: parent.right; anchors.rightMargin: Theme.gap; anchors.verticalCenter: parent.verticalCenter
-                       text: cmd.modelData.hint; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+                Row {
+                    id: tail
+                    anchors.right: parent.right; anchors.rightMargin: Theme.gap; anchors.verticalCenter: parent.verticalCenter
+                    spacing: Theme.gap
+                    Text { text: cmd.modelData.hint || ""; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+                           visible: text !== ""; anchors.verticalCenter: parent.verticalCenter }
+                    Text { text: cmd.modelData.keys || ""; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+                           visible: text !== ""; anchors.verticalCenter: parent.verticalCenter }
+                }
                 MouseArea { anchors.fill: parent; hoverEnabled: true
                             onEntered: list.currentIndex = cmd.index; onClicked: bar.runCurrent() }
             }
