@@ -948,6 +948,8 @@ listing every change with its section, so drawings that weren't redrawn (the ASC
 **Sizes:** S = under ~100 lines, M = ~100–300, L = over 300. "Today" is `main` plus H28 on `team/hem`, read
 2026-10-22.
 
+**Built:** pieces 1–5 (S31, 2026-10-22; see `ACTIONS.md`). 2D runs on them; Sound plugs in through the adapter.
+
 **Order:** the first six unblock both apps' rebuilds. Do them one at a time, by Team Sam alone, since they are
 shared-layer work.
 

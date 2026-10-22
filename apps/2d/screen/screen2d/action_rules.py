@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from rostrum2d import fields as F
 from rostrum2d.ops_group import HOLDERS, _why_not
-from rostrum_core.conditions import holds
 from rostrum_core.ids import counted
 from rostrum_core.tree import index
 
@@ -25,9 +24,12 @@ SHAPES = ("shape", "path")
 
 class Facts:
     """What the selection is. `ids` are in the order they were picked (the first is the primary); `stack` bottom first.
-    `facts` holds the named truths an action's `when` reads."""
+    `facts` holds the named truths an action's `when` reads. `state`: {"at": id -> its own seconds at the playhead,
+    "copied": the layer whose style is copied ("" for none), "clipboard": layers can be pasted} (screen state)."""
 
-    def __init__(self, doc, ids: list[str], copied: str = ""):
+    def __init__(self, doc, ids: list[str], state: dict | None = None):
+        self.state = {"at": lambda i: 0.0, "copied": "", "clipboard": False, **(state or {})}
+        self.at, copied = self.state["at"], self.state["copied"]
         self.doc, self.ids, self.count = doc, ids, len(ids)
         self.items = [doc.item(i) for i in ids]
         self.kinds = {it["type"] for it in self.items}
@@ -54,23 +56,13 @@ class Facts:
                 bool(p) and any(s.get("matte") in ids for s in p.get("layers", []))),
             "any_locked": bool(self.lists["locked"]), "any_unlocked": bool(self.lists["unlocked"]),
             "any_hidden": bool(self.lists["hidden"]), "any_shown": bool(self.lists["shown"]),
-            "style_copied": bool(self.copied) and any(i != self.copied for i in ids)}
+            "style_copied": bool(self.copied) and any(i != self.copied for i in ids),
+            "clipboard": bool(self.state["clipboard"])}
 
 
-def allows(action: dict, f: Facts) -> bool:
-    """The one guard: how many are selected, their kinds, and the action's `when` on the selection's facts."""
-    if f.count < action.get("min_targets", 1):
-        return False
-    if action.get("max_targets") is not None and f.count > action["max_targets"]:
-        return False
-    if action.get("kinds") and not f.kinds <= set(action["kinds"]):
-        return False
-    return holds(action.get("when"), {}, f.facts)
-
-
-def calls_of(action: dict, f: Facts, at) -> list[dict]:
-    """The operation calls of an action on this selection ([] = it would change nothing). `at(id)`: own seconds."""
-    spec = action.get("calls")
+def calls_of(spec: dict | None, f: Facts, at) -> list[dict]:
+    """An action's `calls` spec made into operation calls on this selection ([] = it would change nothing). `at(id)`:
+    own seconds of the playhead."""
     if not spec:
         return []
     if "rule" in spec:

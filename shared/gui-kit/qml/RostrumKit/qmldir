@@ -33,3 +33,6 @@ CurveField 1.0 CurveField.qml
 NoticesDialog 1.0 NoticesDialog.qml
 GuideDialog 1.0 GuideDialog.qml
 ConnectAgentDialog 1.0 ConnectAgentDialog.qml
+ActionMenu 1.0 ActionMenu.qml
+ContextBar 1.0 ContextBar.qml
+KeyMap 1.0 KeyMap.qml

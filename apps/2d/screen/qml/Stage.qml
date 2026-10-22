@@ -22,6 +22,9 @@ Panel {
     objectName: "stage"                 // scripted steps reach the view through it (screen2d/view_steps.py)
     title: "Canvas"
     property bool typing: false         // a text field has the focus (Main.qml): single-letter view keys stay off
+    // the tool whose options the context bar shows instead of the selection's actions ("" = the actions)
+    readonly property string toolMode: backend.create.typing ? "text" : backend.tool === "pen" ? "pen"
+                                     : backend.tool === "draw" ? "paint" : ""
     readonly property var info: backend.frameInfo
     readonly property Item canvasFrame: frame      // the picture's box
     // The one mapping between composition px and this item's px (everything over the canvas uses it: the action bar,
@@ -197,12 +200,42 @@ Panel {
             onActiveChanged: last = 1
             onActiveScaleChanged: { view.zoomAt(view.zoom * activeScale / last, centroid.position.x, centroid.position.y); last = activeScale }
         }
-        ToolStrip { anchors { left: parent.left; top: parent.top; margins: Theme.gap } }   // over everything on the canvas
+        TapHandler {   // right-click: an unselected layer is selected alone first, a selected one keeps the selection
+            acceptedButtons: Qt.RightButton
+            enabled: backend.tool === "move"
+            onTapped: (ev) => panel.openMenu(ev.position.x, ev.position.y)
+        }
+        ToolStrip { id: tools; anchors { left: parent.left; top: parent.top; margins: Theme.gap } }   // over everything on the canvas
         ViewControls {
             id: controls
             anchors { right: parent.right; bottom: parent.bottom; margins: Theme.gap }
             view: view; typing: panel.typing
             onFitSelection: panel.fitSelection()
         }
+        ContextBar {   // select, then act: the kit's bar at the top-centre, clear of the tool strip (backend.actions);
+                       // with Pen, Paint or typing on, that tool's options instead (ToolOptions.qml)
+            hub: backend.actions
+            anchors { top: parent.top; topMargin: Theme.gap; horizontalCenter: parent.horizontalCenter }
+            maxWidth: well.width - 2 * (tools.width + 2 * Theme.gap)
+            toolOptions: panel.toolMode !== "" ? optionsComponent : null
+            dragging: canvas.pressed || backend.playing || (backend.tool !== "move" && panel.toolMode === "")
+        }
+        Component { id: optionsComponent; ToolOptions { mode: panel.toolMode } }
+    }
+    ActionMenu { id: canvasMenu; onPicked: (v) => backend.run(v) }
+    // The canvas's right-click menu at (x, y) in the well's px (default: the middle of the selection, for scripts).
+    function openMenu(x, y) {
+        if (x === undefined) {
+            const b = backend.multi.boxes[0]
+            const c = b ? Qt.point(view.ox + (b.x + b.w / 2) * view.zoom, view.oy + (b.y + b.h / 2) * view.zoom)
+                        : Qt.point(well.width / 2, well.height / 2)
+            x = c.x; y = c.y
+        }
+        const p = panel.inWell(x, y)
+        const entries = backend.layerMenu(backend.multi.target(p.x, p.y, "click"))
+        if (!entries.length) return
+        const g = well.mapToItem(null, x, y)
+        canvasMenu.entries = entries
+        canvasMenu.openAt(g.x, g.y)
     }
 }

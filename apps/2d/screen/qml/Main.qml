@@ -44,36 +44,37 @@ AppShell {
                                             || (backend.tool === "text" && !backend.create.typing); onActivated: backend.setTool("move") }
 
     Connections { target: spaceKey; function onTapped() { backend.togglePlay() } }   // a tap of Space plays; held, it pans (spacekey.py)
-    Shortcut { sequence: "Alt+Left"; onActivated: painter.goFrame(-1) }       // frame by frame, on the selected drawing
-    Shortcut { sequence: "Alt+Right"; onActivated: painter.goFrame(1) }
+    // frame by frame, on the selected drawing (INTERACTION Part 2: , and . step drawings, = and − hold; Alt+arrows nudge)
+    Shortcut { sequence: ","; enabled: !shell.typing && painter.drawingId !== ""; onActivated: painter.goFrame(-1) }
+    Shortcut { sequence: "."; enabled: !shell.typing && painter.drawingId !== ""; onActivated: painter.goFrame(1) }
     Shortcut { sequence: "Alt+N"; onActivated: painter.newFrame(false) }
     Shortcut { sequence: "Alt+Shift+N"; onActivated: painter.newFrame(true) }
-    Shortcut { sequence: "Alt+Up"; onActivated: painter.holdBy(1) }
-    Shortcut { sequence: "Alt+Down"; onActivated: painter.holdBy(-1) }
+    Shortcut { sequences: ["=", "+"]; enabled: !shell.typing && painter.drawingId !== ""; onActivated: painter.holdBy(1) }
+    Shortcut { sequence: "-"; enabled: !shell.typing && painter.drawingId !== ""; onActivated: painter.holdBy(-1) }
     Shortcut { sequence: "Alt+O"; onActivated: painter.setOnion(!painter.onionOn) }
-    // every key of the one action list (screen2d/actions.py: group, order, delete, rename, align, combine, mask …),
-    // made from the list itself so a key is typed in one place; quiet when its action can't apply (layerCommand).
-    // Delete with keys selected in the timeline removes those keys (key_select.py)
-    Instantiator {
-        model: backend.actionKeys()
-        delegate: Shortcut {
-            required property var modelData
-            sequence: modelData.shortcut; enabled: !shell.typing
-            onActivated: backend.layerCommand(modelData.key)
-        }
-    }
-    // select, then act (screen2d/actions.py): the keys of the one list of actions, and the keyboard's select all, clear, nudge
+    // select, then act: every action's key comes from the one key map (screen2d/keys2d.py) and runs through the one
+    // action list (backend.actions): only when valid now, else the status line says why. Not while typing. Delete is
+    // run here: keys picked in the timeline go before layers (backend.layerCommand, key_select.py)
     readonly property bool typing: backend.create.typing || Window.activeFocusItem !== null && typeof Window.activeFocusItem.selectAll === "function"
     readonly property bool canvasKeys: backend.tool === "move" && !typing
+    KeyMap {
+        hub: backend.actions
+        enabled: !shell.typing
+        skip: backend.actions.keys.map(k => k.job).filter(j => j === "delete" || backend.actions.jobs.indexOf(j) < 0)   // keys run here
+    }
+    Shortcut { sequences: ["Delete", "Backspace"]; enabled: !shell.typing; onActivated: backend.layerCommand("delete") }
     Shortcut { sequence: "Ctrl+A"; enabled: shell.canvasKeys; onActivated: backend.selectAllLayers() }
-    // copy, cut and paste layers (screen2d/clipboard.py; the system clipboard, so also into another project). Not while
-    // typing: a text box keeps its own Ctrl+C / X / V
-    Shortcut { sequence: StandardKey.Copy; enabled: shell.canvasKeys; onActivated: backend.copyLayers() }
-    Shortcut { sequence: StandardKey.Cut; enabled: shell.canvasKeys; onActivated: backend.cutLayers() }
-    Shortcut { sequence: StandardKey.Paste; enabled: shell.canvasKeys; onActivated: backend.pasteLayers() }
-    Shortcut { sequence: "Escape"; enabled: shell.canvasKeys && backend.selectedLayer !== "" && !exportPanel.shown && !importPanel.shown
-                                            && !problemsPanel.shown && !fileMenu.menuOpen && !addMenu.menuOpen
-               onActivated: backend.clearSelection() }
+    // Esc steps back one level (the kit's ladder, selection_rules.esc_step): close an open panel, else clear
+    Shortcut {
+        sequence: "Escape"; enabled: shell.canvasKeys
+        onActivated: {
+            const open = exportPanel.shown || importPanel.shown || problemsPanel.shown || fileMenu.menuOpen || addMenu.menuOpen
+            if (backend.stepBack({ popover: open }) === "close") {
+                shell.setExportOpen(false); shell.setImportOpen(false); shell.setProblemsOpen(false)
+                fileMenu.menuOpen = false; addMenu.menuOpen = false
+            }
+        }
+    }
     Shortcut { sequence: "Left"; enabled: shell.canvasKeys; onActivated: backend.nudge(-1, 0) }
     Shortcut { sequence: "Right"; enabled: shell.canvasKeys; onActivated: backend.nudge(1, 0) }
     Shortcut { sequence: "Up"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, -1) }
@@ -82,6 +83,10 @@ AppShell {
     Shortcut { sequence: "Shift+Right"; enabled: shell.canvasKeys; onActivated: backend.nudge(10, 0) }
     Shortcut { sequence: "Shift+Up"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, -10) }
     Shortcut { sequence: "Shift+Down"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, 10) }
+    Shortcut { sequence: "Alt+Left"; enabled: shell.canvasKeys; onActivated: backend.nudge(-0.1, 0) }      // the fine step
+    Shortcut { sequence: "Alt+Right"; enabled: shell.canvasKeys; onActivated: backend.nudge(0.1, 0) }
+    Shortcut { sequence: "Alt+Up"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, -0.1) }
+    Shortcut { sequence: "Alt+Down"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, 0.1) }
 
     function setExportOpen(open) { exportPanel.shown = open; if (open) { importPanel.shown = false; problemsPanel.shown = false } }
     function setImportOpen(open) { importPanel.shown = open; if (open) { exportPanel.shown = false; problemsPanel.shown = false } }
@@ -89,6 +94,7 @@ AppShell {
     function setFileMenuOpen(open) { fileMenu.menuOpen = open }
     function askClose() { shell.close() }
     function openLayerMenu(id) { timeline.openMenu(id) }
+    function openCanvasMenu() { stage.openMenu() }
     function setAddOpen(open) { if (open) addMenu.menuOpen = true; else addMenu.menuOpen = false }
 
     actions: [
@@ -106,7 +112,6 @@ AppShell {
     centre: [
         Stage { id: stage; anchors.fill: parent; typing: shell.typing },   // typing: F stays a letter (ViewControls.qml)
         CreateOverlay { anchors.fill: parent; stage: stage },    // R / O / T: drag a shape, click or drag and type
-        ActionBar { anchors.fill: parent; stage: stage },       // the context bar: top-centre of the canvas
         ExportPanel {   // opened by the Export button; docked on the canvas's right edge, beside the inspector (never over it)
             id: exportPanel
             anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
