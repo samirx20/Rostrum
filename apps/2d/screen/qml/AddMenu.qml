@@ -2,20 +2,28 @@ import QtQuick
 import QtQuick.Dialogs
 import RostrumKit
 
-// The Add button in the top bar: the layers that make sense on this page (adder.entries), most important first. A choice is one
-// change through the same operations agents use; image and video ask for their file first.
+// The "+" at the foot of the tool strip: what is not a tool. Import… (files and designs: the Import panel), Camera, a 3D render (only
+// with Rostrum3D, adder.entries) and the Library drawer. The drawing tools (shape, text, path, drawing) are tools, not here. A choice
+// is one change through the same operations agents use (`add` still takes every type); image and video ask for their file first.
 Button {
     id: add
     property var adder: backend.adder
     property alias menuOpen: menu.visible
-    text: "+ Add"; tip: "Add"; help: "Put a new layer on the canvas: a shape, text, a drawing, a camera."
+    readonly property var rest: add.adder.entries.filter(e => e.type === "camera" || e.type === "render3d")
+    kind: "ghost"; width: 92
+    text: "+"; tip: "Add"; help: "Import a file, add a camera or a 3D render, open the Library."
     down: menu.visible
     onClicked: menu.visible ? menu.close() : menu.open()
 
     Menu {
         id: menu
-        entries: add.adder.entries.map(e => ({ value: e.type, label: e.label }))
-        onPicked: (type) => add.adder.add(type)
+        entries: [{ value: "import", label: "Import…" }].concat(add.rest.map(e => ({ value: e.type, label: e.label })))
+                 .concat([{ value: "library", label: "Library" }])
+        onPicked: (v) => {
+            if (v === "import") Window.window.setImportOpen(true)
+            else if (v === "library") backend.library.setOpen(!backend.library.open)
+            else add.adder.add(v)
+        }
     }
     FileDialog {
         id: dialog

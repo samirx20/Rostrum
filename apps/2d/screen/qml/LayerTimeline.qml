@@ -76,14 +76,6 @@ Rectangle {
         tip: tl.compact ? "Show every layer" : "Show only the selected layer"
         onClicked: tl.compactAsked(!tl.compact)
     }
-    Text {   // how to reach the Ease choice (it shows once a key is selected)
-        visible: !tl.compact && !backend.curves.on && !backend.keyBar.shown && backend.layers.some(r => r.keys.length > 0)
-                 && x > header.x + header.width + Theme.pad
-        anchors { right: compactSwitch.left; rightMargin: Theme.pad; verticalCenter: header.verticalCenter }
-        text: "Click a diamond to change its ease, drag a box to pick several"
-        color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
-    }
-
     Text {
         x: Theme.pad; anchors.verticalCenter: ruler.bottom; anchors.verticalCenterOffset: -11
         text: "Layers"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
@@ -109,6 +101,7 @@ Rectangle {
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; top: parent.top
                   topMargin: tl.rowsTop; rightMargin: Theme.gap; bottomMargin: Theme.gap }   // x as the ruler's
     }
+    EdgeFade { flick: rows; visible: rows.visible; x: rows.x; y: rows.y; width: rows.width; height: rows.height; color: Theme.panel }   // a half-shown row fades, never a sliver
     VScrollBar { flick: rows; visible: rows.visible && needed }
     MouseArea {  // compact: the one row's name is a list of every layer
         visible: tl.compact && !backend.curves.on && backend.layers.length > 0

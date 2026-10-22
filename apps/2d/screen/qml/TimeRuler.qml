@@ -28,7 +28,7 @@ Ruler {
     }
     Menu {
         id: viewMenu
-        parent: more; y: more.height + 2
+        parent: more; x: more.width - width; y: more.height + 2   // under the ▾, right edges lined up
         width: 160
         entries: backend.soundtrack.hasBeats
                  ? [{ value: "beats", label: backend.soundtrack.showBeats ? "Hide beats" : "Show beats" }] : []

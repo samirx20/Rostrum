@@ -7,6 +7,7 @@ import RostrumKit
 // Rectangle (R), Ellipse (O), Text (T): drag a shape / click or drag a box and type (CreateOverlay.qml). The one switch is backend.setTool; Esc goes back to Move (Main.qml).
 Rectangle {
     id: strip
+    property alias addMenu: addBtn
     objectName: "toolStrip"           // CreateOverlay leaves this rectangle to the buttons
     // job: the key map job (the key shown comes from the map: AppShell.keyFor); help: the hover help's sentence
     readonly property var tools: [
@@ -28,11 +29,6 @@ Rectangle {
         id: column
         x: Theme.grid; y: Theme.grid
         spacing: 2
-        Button {    // the Library drawer (LibraryDrawer.qml): the brand kit and the scene's text styles
-            kind: "ghost"; width: 92; text: "Library"; job: "library"      // (its key, Ctrl+L, is in the hover help)
-            help: "The project's brand kit (colours, text styles, logos) and this scene's text styles."
-            down: backend.library.open; onClicked: backend.library.setOpen(!backend.library.open)
-        }
         Repeater {
             model: strip.tools.filter(t => (!t.needsCamera || backend.cameraTool.available) && (!t.needsRig || backend.boneTool.available))   // Camera: only when the scene has one; Bone: while a rig is in hand
             delegate: Button {
@@ -44,5 +40,6 @@ Rectangle {
                 onClicked: backend.setTool(modelData.value)
             }
         }
+        AddMenu { id: addBtn }     // "+" at the foot: Import…, Camera, 3D render, Library
     }
 }

@@ -2,7 +2,7 @@
 kinds, so change RIG.md together with this table. Merged into `rostrum2d.fields.FIELDS` and `LABELS`."""
 from __future__ import annotations
 
-from ..fields import C, CH, IS, N, P, S, T, X, TRANSFORM  # noqa: F401  (the table helpers)
+from ..fields import C, CH, D, IS, N, P, S, T, X, TRANSFORM  # noqa: F401  (the table helpers)
 
 IK_ON = IS("mode", "ik")
 BENDS = IS("bone2", "")
@@ -11,9 +11,9 @@ BENDING = {"not": BENDS}                    # a bind with a bone2 bends; without
 FIELDS = {
     # A rig is a group of layers that also holds bones, iks and binds; its box is its px space.
     "rig": [
-        N("w", "Width", "Rig", 0, 20000, 1, "px", default=1920.0),
-        N("h", "Height", "Rig", 0, 20000, 1, "px", default=1080.0),
-        T("clip", "Clip to box", "Rig", False, S, help="Hide parts outside the rig's box"),
+        N("w", "Width", "Box", 0, 20000, 1, "px", D, default=1920.0),
+        N("h", "Height", "Box", 0, 20000, 1, "px", D, default=1080.0),
+        T("clip", "Clip to box", "Box", False, S, help="Hide parts outside the rig's box"),
     ] + TRANSFORM,
     "bone": [
         X("parent", "Parent bone", "Bone", "", help='Id of the bone it hangs from; empty = a root bone'),

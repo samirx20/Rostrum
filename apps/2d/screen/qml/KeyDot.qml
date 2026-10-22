@@ -28,6 +28,7 @@ Item {
         id: keyArea; anchors.fill: parent; hoverEnabled: true; preventStealing: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.SizeHorCursor
+        HoverTip { hovered: keyArea.containsMouse; text: "Click to change its ease; drag a box on an empty part of the row to pick several" }
         property string held: ""        // "one" | "many" | ""
         function rowIds() { return key.row.rowData.keys.map(k => k.ids || [k.id]) }
         onPressed: (m) => {
