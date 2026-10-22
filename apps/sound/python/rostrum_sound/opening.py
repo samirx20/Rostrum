@@ -18,21 +18,15 @@ UNTOUCHED = "Nothing was changed in it."
 
 
 def open_whole(folder, item) -> Document:
-    """The song, read and checked in full; else a RostrumError in words a person reads."""
+    """The song, read and checked in full (every value, then the song's own check: rostrum_core's open); else a
+    RostrumError in words a person reads."""
     name = f'The song "{Path(folder).name}"'
     try:
-        doc = Document.open(folder, item, KIND)
+        return Document.open(folder, item, KIND)
     except RostrumError as e:
         raise _refused(name, e) from e
     except (KeyError, TypeError, ValueError, AttributeError, IndexError) as e:   # readable, but the wrong shape
         raise _damaged(name, f"its contents are not a song's ({type(e).__name__}: {e})") from e
-    try:
-        problems = KIND.check(doc.data)
-    except (KeyError, TypeError, ValueError, AttributeError, IndexError) as e:
-        problems = [f"{type(e).__name__}: {e}"]
-    if problems:
-        raise _damaged(name, f"it doesn't hold together ({problems[0]})")
-    return doc
 
 
 def said(e: Exception) -> str:

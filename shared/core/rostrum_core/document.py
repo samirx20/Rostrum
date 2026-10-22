@@ -41,6 +41,7 @@ class Document:
         self.base = copy.deepcopy(self.data)            # history line 0
         self.history = History(kind.lists)
         self.script_bases: dict[str, dict] = {}         # § 7: what each script produced last time
+        self.saved_by: str | None = None                # the app version that last saved it (storage.py)
         self._subs, self._gesture = [], None
 
     @classmethod
@@ -153,7 +154,8 @@ class Document:
 
     def _replay(self, edits, who, label, **kw) -> Change:
         work = copy.deepcopy(self.data)
-        done = [E.apply(work, self.kind.lists, e, label) for e in edits]
+        idx = index(work, self.kind.lists)
+        done = [E.apply(work, self.kind.lists, e, label, idx) for e in edits]
         return self.commit(work, done, who, label, **kw)
 
     # versions
@@ -165,9 +167,10 @@ class Document:
 
     def at_step(self, seq) -> dict:
         data = copy.deepcopy(self.base)
+        idx = index(data, self.kind.lists)              # once: each edit keeps it up to date
         for c in self.history.changes[:seq]:
             for e in c.edits:
-                E.apply(data, self.kind.lists, e, f"step {c.seq}")
+                E.apply(data, self.kind.lists, e, f"step {c.seq}", idx)
         return data
 
     def restore_version(self, name, who: Who) -> Change | None:

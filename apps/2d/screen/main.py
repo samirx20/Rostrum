@@ -47,11 +47,7 @@ def first_doc() -> Document:
 def open_or_say(folder, item, what) -> Document | None:
     """The project, or None with the reason kept for the status line (a damaged file never stops the app)."""
     try:
-        doc = Document.open(folder, item, KIND)
-        problems = KIND.check(doc.data)          # opened whole or not at all: a project that doesn't hold together
-        if problems:                             # would fail later, half on screen
-            raise ValueError(f"it doesn't hold together: {problems[0]}")
-        return doc
+        return Document.open(folder, item, KIND)     # checked whole on open (every value, then 2D's own check)
     except (RostrumError, KeyError, TypeError, ValueError, AttributeError, IndexError) as e:
         why = f"{e.problem}{(' ' + e.hint) if e.hint else ''}" if isinstance(e, RostrumError) else f"is damaged ({type(e).__name__}: {e})"
         REFUSED.append(f"Error: {what} {Path(folder).name} didn't open: it {why}")
