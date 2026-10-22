@@ -2,7 +2,10 @@
 
 On while `ROSTRUM2D_PLAYBACK_LOG=1` (one line per shown frame on stderr) or while the `play <seconds>` step measures
 (steps.py). Stages: `gui` (the GUI thread's work per tick), `describe` (the scene for the engine), `load` (the scene
-sent to the engine), `pixels` (the engine draws the frame), `image` (the frame copied into a picture).
+sent to the engine), `pixels` (the engine draws the frame), `image` (the frame copied into a picture). Inside
+`pixels`, the engine's own split (its reply's `timing`) as `eng.<part>`: eval (keys and the stage markup), diff, layout,
+record (Skia drawing commands), flush (Skia's CPU work handing them to the GPU), gpu (the wait for the GPU), read
+(copy back), convert (into the shared memory).
 """
 from __future__ import annotations
 
@@ -11,6 +14,9 @@ import sys
 import time
 from collections import defaultdict
 from contextlib import contextmanager
+
+
+ENGINE_PARTS = ("eval", "diff", "layout", "record", "flush", "gpu", "read", "convert")
 
 
 class PlayStats:
@@ -30,6 +36,13 @@ class PlayStats:
         finally:
             if self.on:
                 self.ms[name].append((time.perf_counter() - t0) * 1000)
+
+    def engine(self, timing: dict):
+        """The engine's own split of one `pixels` frame (ms), recorded as `eng.<part>`."""
+        if self.on:
+            for k in ENGINE_PARTS:
+                if k + "Ms" in timing:
+                    self.ms["eng." + k].append(timing[k + "Ms"])
 
     def frame_shown(self, t: float):
         if not self.on:

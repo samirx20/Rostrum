@@ -66,3 +66,31 @@ fn letters(opacity: &[f32]) -> String {
 fn opacity_edits_on_inline_block_letters_lay_out_as_a_fresh_page() {
     check(&[letters(&[0.0, 0.0, 0.0, 0.0, 0.0]), letters(&[0.5, 0.2, 0.0, 0.0, 0.0]), letters(&[1.0, 0.7, 0.4, 0.1, 0.0]), letters(&[1.0, 1.0, 1.0, 0.8, 0.5])]);
 }
+
+fn card(i: usize, x: f32, inner: &str) -> String {
+    format!("<div id=\"c{i}\" style=\"position:absolute;left:{x:.1}px;top:{}px;width:120px;height:40px;opacity:0.8\">{inner}</div>", 40 * i)
+}
+
+/// Staging only the changed pieces (restage.rs) leaves the kept page as staging each frame whole would: moved,
+/// unchanged, re-shaped (rebuilt) and added layers, compared with a fresh page every frame.
+#[test]
+fn staging_only_changed_pieces_lays_out_as_a_fresh_page() {
+    let frames: Vec<Vec<String>> = vec![
+        (0..5).map(|i| card(i, 10.0, "<span>a</span>")).collect(),
+        (0..5).map(|i| card(i, if i == 2 { 50.0 } else { 10.0 }, "<span>a</span>")).collect(),
+        (0..5).map(|i| card(i, 10.0, if i == 3 { "<b>x</b><i>y</i>" } else { "<span>a</span>" })).collect(),
+        (0..6).map(|i| card(i, 20.0, "<span>a</span>")).collect(),
+        (0..6).map(|i| card(i, 20.0, "<span>a</span>")).collect(),
+    ];
+    let mut kept = doc(&frames[0].concat(), true);
+    let stage = kept.query_selector("#rostrum-stage").unwrap().unwrap();
+    let mut scratch = crate::keep::Scratch::new(DocumentConfig::default);
+    let mut last = crate::restage::Kept::default();
+    for (k, pieces) in frames.iter().enumerate() {
+        let m = pieces.concat();
+        let edits = crate::restage::edits(&kept, stage, &mut scratch, &mut last, Some(pieces.clone()), &m).unwrap();
+        crate::keep::apply(&mut kept, &scratch.0, &edits);
+        kept.resolve(0.0);
+        assert_eq!(dump(&kept), dump(&doc(&m, false)), "frame {k} differs from staging it whole");
+    }
+}

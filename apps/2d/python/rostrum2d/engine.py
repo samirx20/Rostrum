@@ -69,6 +69,7 @@ class Engine:
             raise EngineError(f"2D engine not found: {self.exe} (set ROSTRUM2D_ENGINE)")
         self.scene, self._shm = None, None           # _shm: (name, mmap) of the engine's frame memory (pixels)
         self.placed: dict = {}                       # the last pixels frame's `place` reply
+        self.timing: dict = {}                       # the last pixels frame's own split (its reply's `timing`)
         # Why it paints on the processor, in plain words (no working graphics driver; ROSTRUM2D_NO_GPU=1), or None on the GPU.
         self.fallback: str | None = None
         self.notice: str | None = None               # RESTARTED after a restart, until the screen has said it
@@ -197,7 +198,7 @@ class Engine:
         req = {"t": t, "pixels": True, **({"shutterSamples": samples} if samples else {}), **({"scale": scale} if scale != 1 else {}),
                **({"view": view} if view else {}), **({"place": place} if place else {})}
         out = self._request({"frame": req})
-        self.placed, shm = out.get("place") or {}, out["shm"]
+        self.placed, shm, self.timing = out.get("place") or {}, out["shm"], out.get("timing") or {}
         if shm["format"] != "rgba8":
             raise EngineError(f"pixels: the engine sent {shm['format']}; the canvas reads rgba8")
         if self._shm is None or self._shm[0] != shm["name"]:   # a new block when the frame size changes

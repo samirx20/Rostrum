@@ -26,6 +26,7 @@ mod painter;
 mod pixels;
 mod place;
 mod readback;
+mod restage;
 mod rig;
 mod scene;
 mod scene_serve;

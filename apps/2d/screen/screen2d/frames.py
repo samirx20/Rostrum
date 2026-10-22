@@ -40,6 +40,7 @@ def _frame(eng, t: float, png: Path, samples: int | None, scale: float, place=No
     if sys.platform == "win32":
         with STATS.stage("pixels"):
             got = eng.pixels(t, samples, scale, view, place)
+        STATS.engine(eng.timing)
         with STATS.stage("image"):
             return image_from_pixels(*got)
     if view:                                               # a crop needs the engine's pixels (Windows for now)

@@ -81,6 +81,9 @@ pub(crate) struct Session {
     pub(crate) sink: Option<Sink>,
     /// Each frame's stage markup is parsed here (no styles, no loads) and walked beside the kept page.
     scratch: keep::Scratch,
+    /// The pieces the kept stage was staged from (restage.rs), and the next frame's when its caller has them.
+    pub(crate) kept_pieces: crate::restage::Kept,
+    pub(crate) next_pieces: Option<Vec<String>>,
     /// The live canvas's shared-memory frames (`pixels`), made on first use and remade at a new frame size.
     shm: Option<crate::shm::Shm>,
     /// What paints (`with_painting`): every open and scene reply says it.
@@ -131,7 +134,7 @@ pub(crate) fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, Str
     let scratch = keep::Scratch::new(|| DocumentConfig { base_url: Some(BASE_URL.into()), ..Default::default() });
     let mut reply = json!({ "ok": true, "depth": if deep { 16 } else { 8 }, "timing": { "pageMs": page_ms, "painterMs": painter_ms } });
     with_painting(&mut reply, &painting);
-    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, shm: None, painting }, reply))
+    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, kept_pieces: Default::default(), next_pieces: None, shm: None, painting }, reply))
 }
 
 /// Adds what paints (`gpu`, `adapter`, `fallback`: the plain reason it paints on the CPU, null on the GPU) to a reply.
@@ -175,6 +178,7 @@ pub(crate) fn page(s: &mut Session, req: &Value) -> Result<Value, String> {
     let (doc, stage) = shell(html, page_config(s.width, s.height, &s.assets), &s.assets)?;
     s.doc = doc;
     s.stage = stage;
+    s.kept_pieces = Default::default();
     Ok(json!({ "ok": true, "timing": { "pageMs": t0.elapsed().as_secs_f64() * 1000.0 } }))
 }
 
@@ -190,9 +194,9 @@ fn failures(assets: &Assets) -> Result<(), String> {
 /// Applies one stage's markup to the kept page as edits and lays it out: (diff ms, layout ms, edit count).
 pub(crate) fn apply(s: &mut Session, markup: &str) -> Result<(f64, f64, usize), String> {
     let t0 = Instant::now();
-    // The new stage, parsed on its own (no styles, no loads), walked beside the kept one.
-    let next_stage = s.scratch.parse(markup).ok_or("stage markup lost its container")?;
-    let edits = keep::diff_from(&s.doc, &s.scratch.0, s.stage, next_stage);
+    // The new stage (or only its changed pieces), parsed on its own (no styles, no loads), walked beside the kept one.
+    let pieces = s.next_pieces.take();
+    let edits = crate::restage::edits(&s.doc, s.stage, &mut s.scratch, &mut s.kept_pieces, pieces, markup)?;
     let diff_ms = t0.elapsed().as_secs_f64() * 1000.0;
     let t1 = Instant::now();
     keep::apply(&mut s.doc, &s.scratch.0, &edits);

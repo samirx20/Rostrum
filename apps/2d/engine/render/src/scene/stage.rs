@@ -47,25 +47,36 @@ pub fn shell(width: u32, height: u32, fonts: &[super::fonts::Font]) -> R<String>
 
 /// The stage markup of the comp at one time.
 pub fn stage(comp: &Item) -> R<String> {
-    let mut out = format!("<div style=\"position:absolute;left:0;top:0;width:100%;height:100%;background:{};\"></div>", v(comp, "background"));
+    Ok(parts(comp)?.concat())
+}
+
+/// The stage markup of the comp at one time, one piece per top-level element (the background, then each top-level
+/// layer): serve.rs stages only the pieces that changed since the last frame (restage.rs).
+pub fn parts(comp: &Item) -> R<Vec<String>> {
+    let mut out = vec![format!("<div style=\"position:absolute;left:0;top:0;width:100%;height:100%;background:{};\"></div>", v(comp, "background"))];
     // The camera (crate::camera): each top-level layer seen through it, by its depth; the camera itself isn't drawn.
     let view = crate::camera::View::of(comp)?;
-    out += &siblings(comp, |l, markup| view.place(l, markup))?;
+    out.extend(each_sibling(comp, |l, markup| view.place(l, markup))?);
     Ok(out)
 }
 
 /// A comp's or group's layers in order, each seen through its track matte (matte.rs); a layer used as a matte isn't drawn on its own.
-fn siblings(parent: &Item, mut place: impl FnMut(&Item, String) -> String) -> R<String> {
-    let mut out = String::new();
+fn siblings(parent: &Item, place: impl FnMut(&Item, String) -> String) -> R<String> {
+    Ok(each_sibling(parent, place)?.concat())
+}
+
+/// `siblings`, one piece per layer.
+fn each_sibling(parent: &Item, mut place: impl FnMut(&Item, String) -> String) -> R<Vec<String>> {
+    let mut out = vec![];
     for l in parent.layers.iter().filter(|l| l.kind != "camera" && !super::matte::used(l, parent)) {
         let own = place(l, layer(l)?);
-        out += &match super::matte::of(l, parent) {
+        out.push(match super::matte::of(l, parent) {
             None => own,
             Some(m) => {
                 let matte = m.map(|m| layer(m).map(|markup| place(m, markup))).transpose()?.unwrap_or_default();
                 super::matte::wrap(l, &matte, own)
             }
-        };
+        });
     }
     Ok(out)
 }
