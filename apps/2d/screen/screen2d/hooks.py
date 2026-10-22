@@ -14,7 +14,7 @@ class Hooks2D:
         owner = self.doc.item(self.doc.parent_of(item["id"])[0]) if item.get("type") == "key" else None
         return outline.label_of(item, owner, owner and (lambda t: beat_words.say(self, t + self.offset(owner["id"]))))
 
-    def kind_label(self, item):          # the panel's subtitle and Ctrl+K hints: "Composition", never the raw "Comp"
+    def kind_label(self, item):          # the panel's subtitle and Ctrl+K hints: "Scene", never the raw "Comp"
         return F.LABELS.get(item.get("type", ""), super().kind_label(item))
 
     def selection_label(self, ids):      # several selected: "2 layers" (any other mix: the kit's "N items")

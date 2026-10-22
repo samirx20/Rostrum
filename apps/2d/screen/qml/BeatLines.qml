@@ -26,6 +26,7 @@ Item {
             }
             Text {   // left of its line (a marker's flag hangs to the right of its own); bar 1 inside the ruler
                 visible: parent.bar && (modelData.bar - 1) % lines.numberEvery === 0 && modelData.t < lines.ruler.duration - 1e-6
+                         && !backend.markers.some(m => Math.abs(lines.ruler.xOf(m.at) - lines.ruler.xOf(modelData.t)) < width + 8)   // not against a marker
                 x: modelData.t > 0 ? -width - 3 : 3; y: 1
                 text: modelData.bar; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
             }

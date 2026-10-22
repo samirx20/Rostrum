@@ -22,7 +22,7 @@ QQC.Popup {
     component Words: Text { color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body; elide: Text.ElideRight }
     contentItem: Column {
         spacing: Theme.grid
-        Text { text: "Lip sync " + pop.ls.what; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold }
+        Text { text: "Lip sync · " + pop.ls.what; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold }
         Words { text: "Voice line"; color: Theme.fg3; font.pixelSize: Theme.label }
         Repeater {          // the project's voice lines with a voice: click one
             model: pop.ls.lines

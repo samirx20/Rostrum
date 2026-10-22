@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// The settings panel's "Paint on <element>" group, under the brush while Draw is on (UX_SPEC 3.8; backend.paintLayers).
+// The settings panel's paint layers group, under the brush while Draw is on (UX_SPEC 3.8; backend.paintLayers).
 // The paint layers, top first: the eye, the name (click: strokes and fills go on it; drag: reorder; right-click ›
 // Delete); under the list the highlighted layer's Opacity and Blend; then the element's paint switches (Keep inside
 // the outline, Draw each frame) and Onion skin while drawing each frame. Absent while the pen paints on a new drawing.
@@ -18,17 +18,7 @@ Column {
     }
     component Line: Item { width: po.width; height: Theme.row }
 
-    Item {  // the heading, like a group's
-        width: po.width; height: Theme.groupGap + Theme.rowDense
-        Text {
-            anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.bottomMargin: Theme.grid + 2
-            id: heading
-            text: po.pl.title; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold
-            elide: Text.ElideRight
-            HoverHandler { id: headHover }
-            HoverTip { hovered: headHover.hovered && heading.truncated; text: heading.text }   // a long name, whole
-        }
-    }
+    Item { width: po.width; height: Theme.gap }     // no heading: the bar already says what the brush paints on
     Repeater {      // the paint layers, top first
         id: layerRows
         model: po.pl.layers

@@ -89,6 +89,14 @@ def open_song(folder, item: str):
     return doc
 
 
+
+def open_item(folder, item: str):
+    """A document an Undo / Redo step reached that isn't open here (rostrum_core.joint: Add a sound here's song): a
+    Sound item of the project opened live, else None (the undo is then refused in words)."""
+    if not folder or item not in {s["id"] for s in project.items(folder, "sound")}:
+        return None
+    return open_song(folder, item)
+
 _BEATS: dict = {}     # (song's stamp, seconds) -> beat times: describe() runs on every edit, the song's file rarely changes
 
 

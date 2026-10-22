@@ -10,7 +10,7 @@ from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
 from rostrum_core import live, marker_times
 from rostrum_core.tree import index
-from rostrum2d import fields as F, placement, retime
+from rostrum2d import fields as F, placement, project_sound, retime
 
 from . import bounds, outline, screen_seen
 from .drags import DragSlots
@@ -108,6 +108,10 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
     actions = Property(QObject, lambda self: self._hub, constant=True)   # the context bar, menus, keys (action_slots.py)
     soundtrack = Property(QObject, lambda self: self._soundtrack, constant=True)   # the Sound row, beats (soundtrack.py)
     cuePick = Property(QObject, lambda self: self._cuepick, constant=True)       # Add a sound here… (sound_cue_pick.py)
+
+    def open_item(self, item_id):
+        """Undo / Redo of a step that reached Sound's song (Add a sound here): the song opened live (project_sound)."""
+        return project_sound.open_item(self.doc.folder, item_id)
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
     def comp(self) -> dict:

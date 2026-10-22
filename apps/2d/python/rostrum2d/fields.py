@@ -75,10 +75,10 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
     N("scale", "Scale", "Transform", 0, 100, 0.01, "×", default=1.0),
     N("rotation", "Rotation", "Transform", -36000, 36000, 0.1, "°"),
     N("opacity", "Opacity", "Transform", 0, 1, 0.01, default=1.0),
-    N("anchorX", "Anchor X", "Transform", -10, 10, 0.01, "", S, default=0.5, help="0 = left edge, 1 = right edge"),
-    N("anchorY", "Anchor Y", "Transform", -10, 10, 0.01, "", S, default=0.5, help="0 = top edge, 1 = bottom edge"),
-    N("scaleX", "Stretch X", "Transform", 0, 100, 0.01, "×", D, default=1.0),
-    N("scaleY", "Stretch Y", "Transform", 0, 100, 0.01, "×", D, default=1.0),
+    N("anchorX", "Anchor X", "Anchor", -10, 10, 0.01, "", S, default=0.5, help="0 = left edge, 1 = right edge"),
+    N("anchorY", "Anchor Y", "Anchor", -10, 10, 0.01, "", S, default=0.5, help="0 = top edge, 1 = bottom edge"),
+    N("scaleX", "Stretch X", "Anchor", 0, 100, 0.01, "×", D, default=1.0),
+    N("scaleY", "Stretch Y", "Anchor", 0, 100, 0.01, "×", D, default=1.0),
     N("tiltX", "Tilt X", "Depth", -180, 180, 0.1, "°", D, help="Turn around the horizontal axis (2.5D)"),
     N("tiltY", "Tilt Y", "Depth", -180, 180, 0.1, "°", D, help="Turn around the vertical axis (2.5D)"),
     *timing("The layer appears at this time", "The layer is gone from this time"),
@@ -116,14 +116,14 @@ TYPE = [
     N("slant", "Slant", "Font", -90, 90, 0.1, "°", D, help="Variable font slant axis (slnt); negative leans right"),
     N("grade", "Grade", "Font", -1000, 1000, 1, "", D, help="Variable font grade axis (GRAD): heavier without getting wider"),
     X("axes", "Other axes", "Font", "", D, help='Any variable font axis by tag, e.g. "XTRA 468, CASL 1"'),
-    X("pathLayer", "Follows path", "Path", "", S, control="pick", help="The id of a path layer beside it (same group): the letters sit on that path as it is "
+    X("pathLayer", "Follows path", "On a path", "", S, control="pick", help="The id of a path layer beside it (same group): the letters sit on that path as it is "
       "reshaped, moved or drawn on, and the text takes its place and turn. Empty = not following one (text.follow sets it)"),
-    X("path", "Path", "Path", "", D, when=NOT_FOLLOWING,
+    X("path", "Path", "On a path", "", D, when=NOT_FOLLOWING,
       help="SVG path data (M L C Z) in the layer's own px; the letters sit on it. Empty = a normal line"),
-    N("pathOffset", "Start along path", "Path", -100000, 100000, 1, "px", S, ON_PATH,
+    N("pathOffset", "Start along path", "On a path", -100000, 100000, 1, "px", S, ON_PATH,
       help="Moves the text along the path from where its alignment puts it"),
-    CH("pathAlign", ["start", "center", "end"], "Align on path", "Path", "start", S, ON_PATH),
-    Param.choice("pathOverflow", ["hide", "straight"], label="Off the path", group="Path", default="hide",
+    CH("pathAlign", ["start", "center", "end"], "Align on path", "On a path", "start", S, ON_PATH),
+    Param.choice("pathOverflow", ["hide", "straight"], label="Off the path", group="On a path", default="hide",
                  importance=S, valid_when=ON_PATH, labels={"straight": "Carry on straight"},
                  help="Letters that don't fit on the path: left out, or carried on in a straight line"),
     N("letterDelay", "Letter delay", "Letters", 0, 10, 0.005, "s", S,
@@ -173,12 +173,12 @@ FIELDS: dict[str, list[Param]] = {
         N("size", "Size", "Text", 1, 2000, 1, "px", default=96.0),
         N("weight", "Weight", "Text", 1, 1000, 1, "", default=600.0),
         C("color", "Colour", "Text", "#ffffff"),
-        CH("align", ["left", "center", "right"], "Align", "Text", "center", S),
-        N("tracking", "Letter spacing", "Text", -0.5, 2, 0.001, "em", S, help="Space between letters"),
-        N("lineHeight", "Line height", "Text", 0.5, 4, 0.01, "×", S, default=1.1),
+        CH("align", ["left", "center", "right"], "Align", "Paragraph", "center", S),
+        N("tracking", "Letter spacing", "Paragraph", -0.5, 2, 0.001, "em", S, help="Space between letters"),
+        N("lineHeight", "Line height", "Paragraph", 0.5, 4, 0.01, "×", S, default=1.1),
         X("font", "Font", "Font", "Roboto Flex", S),
         N("stretch", "Width", "Font", 25, 200, 1, "%", D, default=100.0, help="Variable font width"),
-        N("boxWidth", "Box width", "Text", 0, 20000, 1, "px", D, help="0 = one line, as wide as the text"),
+        N("boxWidth", "Box width", "Paragraph", 0, 20000, 1, "px", D, help="0 = one line, as wide as the text"),
         T("stroke", "Outline", "Outline", False, D),
         C("strokeColor", "Outline colour", "Outline", "#ffffff", D, STROKE),
         N("strokeWidth", "Outline width", "Outline", 0, 100, 0.5, "px", D, STROKE, default=1.0),
@@ -219,9 +219,9 @@ FIELDS: dict[str, list[Param]] = {
         T("loop", "Loop", "3D render", False, D, help="Start again when the render ends (otherwise the last frame is held)"),
     ] + TRANSFORM,
     "group": [      # a size the auto layout hugs is absent: the layout sets it (layout_fields.py)
-        N("w", "Width", "Group", 0, 20000, 1, "px", when=_layout.SIZE_SET["w"], default=1920.0),
-        N("h", "Height", "Group", 0, 20000, 1, "px", when=_layout.SIZE_SET["h"], default=1080.0),
-        T("clip", "Clip to box", "Group", False, S, help="Hide children outside the group's box"),
+        N("w", "Width", "Box", 0, 20000, 1, "px", D, when=_layout.SIZE_SET["w"], default=1920.0),
+        N("h", "Height", "Box", 0, 20000, 1, "px", D, when=_layout.SIZE_SET["h"], default=1080.0),
+        T("clip", "Clip to box", "Box", False, S, help="Hide children outside the group's box"),
     ] + TRANSFORM,
     # A drawing: painted strokes (the shared painting kit), one drawing per frame or held for several. Its canvas
     # is w × h px; untransformed it covers that box with the canvas's px = the composition's px.
@@ -232,19 +232,19 @@ FIELDS: dict[str, list[Param]] = {
     # A vector path (pathdata.py): `d` is absolute M, L, C, Z in the layer's own px from its box's top-left.
     # trimStart..trimEnd is the part of the stroke drawn (fractions of its length: the "draw on").
     "path": [
-        X("d", "Path data", "Path", "", D,
+        X("d", "Path data", "Points", "", D,
           help="Absolute M x y, L x y, C x1 y1 x2 y2 x y, Z in the layer's own px; the pen tool writes it. A new path has no points"),
-        N("w", "Box width", "Path", 1, 20000, 1, "px", D, default=100.0, help="The box the anchor and gradients use"),
-        N("h", "Box height", "Path", 1, 20000, 1, "px", D, default=100.0),
+        N("w", "Box width", "Points", 1, 20000, 1, "px", D, default=100.0, help="The box the anchor and gradients use"),
+        N("h", "Box height", "Points", 1, 20000, 1, "px", D, default=100.0),
         T("filled", "Fill", "Fill", True),
         C("fill", "Fill colour", "Fill", "#ffffff", when=IS("filled", True)),
-        CH("fillRule", ["nonzero", "evenodd"], "Fill rule", "Fill", "nonzero", D, IS("filled", True)),
-        T("stroke", "Stroke", "Stroke", False),
-        C("strokeColor", "Stroke colour", "Stroke", "#ffffff", when=STROKE),
-        N("strokeWidth", "Stroke width", "Stroke", 0, 500, 0.5, "px", when=STROKE, default=4.0),
-        CH("cap", ["butt", "round", "square"], "Ends", "Stroke", "round", S, STROKE),
-        CH("join", ["miter", "round", "bevel"], "Corners", "Stroke", "round", S, STROKE),
-        N("miter", "Miter limit", "Stroke", 1, 100, 0.1, "", D, {"all": [STROKE, IS("join", "miter")]}, default=4.0),
+        CH("fillRule", ["nonzero", "evenodd"], "Fill rule", "Overlaps", "nonzero", D, IS("filled", True)),
+        T("stroke", "Outline", "Outline", False),
+        C("strokeColor", "Outline colour", "Outline", "#ffffff", when=STROKE),
+        N("strokeWidth", "Outline width", "Outline", 0, 500, 0.5, "px", when=STROKE, default=4.0),
+        CH("cap", ["butt", "round", "square"], "Ends", "Line ends", "round", S, STROKE),
+        CH("join", ["miter", "round", "bevel"], "Corners", "Line ends", "round", S, STROKE),
+        N("miter", "Miter limit", "Line ends", 1, 100, 0.1, "", D, {"all": [STROKE, IS("join", "miter")]}, default=4.0),
         N("dash", "Dash", "Dashes", 0, 10000, 0.5, "px", S, STROKE, help="0 = a solid line"),
         N("gap", "Gap", "Dashes", 0, 10000, 0.5, "px", S, STROKE, default=10.0),
         N("dashOffset", "Dash offset", "Dashes", -100000, 100000, 0.5, "px", D, STROKE, help="Animate it to march the dashes"),
@@ -351,7 +351,7 @@ STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name f
          "render3d": {"w", "h", "offset", "speed", "version"},
          "text": {"letterDelay", "letterSeed"},
          **_rig.STILL, **_camera.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth", "locked", "hidden", "paintW", "paintH"}}
-LABELS = {"comp": "Composition", "shape": "Shape", "text": "Text", "image": "Image", "video": "Video", "render3d": "3D render", "group": "Group", "drawing": "Drawing", "path": "Path", "frame": "Drawing frame",
+LABELS = {"comp": "Scene", "shape": "Shape", "text": "Text", "image": "Image", "video": "Video", "render3d": "3D render", "group": "Group", "drawing": "Drawing", "path": "Path", "frame": "Drawing frame",
           "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "grain": "Grain", "mask": "Mask", "key": "Key",
           **_rig.LABELS, **_camera.LABELS, **_motion.LABELS}
 
@@ -360,7 +360,7 @@ LABELS = {"comp": "Composition", "shape": "Shape", "text": "Text", "image": "Ima
 STYLED = ("font", "size", "weight", "color", "tracking", "lineHeight", "stretch", "slant", "grade", "axes", "ligatures",
           "figures", "smallCaps", "features")
 FIELDS["textstyle"] = [p for p in FIELDS["text"] if p.name in STYLED]
-FIELDS["text"].append(X("textStyle", "Text style", "Text", "", S, control="pick",
+FIELDS["text"].append(X("textStyle", "Text style", "Font", "", S, control="pick",
                         help="The named text style this text follows (its font, size, weight, colour …): changing the style "
                              "changes the text. Empty = its own. Setting one of those fields by hand detaches it"))
 STILL["textstyle"], LABELS["textstyle"] = set(STYLED), "Text style"

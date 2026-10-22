@@ -30,21 +30,25 @@ Row {
                              : "Plays with one blur step per frame so it keeps up; paused frames and exports have full blur"
         }
     }
-    Item { visible: hasBlur && hasSize; width: Theme.pad; height: 1 }
-    Text {
-        visible: hasSize; anchors.verticalCenter: parent.verticalCenter
-        text: "Preview size"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body
-    }
-    Segmented {
+    Rectangle {   // "Full ▾": the size's menu, its name on hover
         id: size
-        visible: hasSize; anchors.verticalCenter: parent.verticalCenter; implicitHeight: 26
-        options: [{ value: "full", label: "Full" }, { value: "half", label: "Half" }, { value: "quarter", label: "Quarter" }]
-        current: backend.playback.size
-        onPicked: (v) => backend.playback.setSize(v)
-        HoverHandler { id: sizeHover }
+        visible: hasSize; anchors.verticalCenter: parent.verticalCenter
+        readonly property var sizes: [{ value: "full", label: "Full" }, { value: "half", label: "Half" }, { value: "quarter", label: "Quarter" }]
+        implicitWidth: sizeText.implicitWidth + 2 * Theme.gap; implicitHeight: 26
+        radius: Theme.radiusCtl; color: sizeHover.hovered ? Theme.hover : "transparent"
+        Text { id: sizeText; anchors.centerIn: parent; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body
+               text: (size.sizes.find(o => o.value === backend.playback.size) || size.sizes[0]).label + " ▾" }
+        HoverHandler { id: sizeHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: sizeMenu.open() }
         HoverTip {
-            hovered: sizeHover.hovered
-            text: "How big frames are drawn while playing: smaller plays smoother. Paused frames and exports are always full size"
+            hovered: sizeHover.hovered && !sizeMenu.opened
+            text: "Preview size: how big frames are drawn while playing. Paused frames and exports are always full size"
+        }
+        Menu {
+            id: sizeMenu
+            y: size.height + 2; width: 110
+            entries: size.sizes
+            onPicked: (v) => backend.playback.setSize(v)
         }
     }
 }

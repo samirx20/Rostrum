@@ -17,16 +17,12 @@ AppShell {
     left: [ LibraryDrawer { anchors.fill: parent; visible: backend.library.open } ]
     areaNames: ({ centre: "canvas", right: "settings", bottom: "timeline" })   // inspect_screen's words for the focused area
     saveWord: backend.isLive ? "Saved" : ""      // a project is live: every change is already on disk
-    // The timeline's height is remembered per tool (DESIGN.md › two heights): Move and Pen want every row, Draw a big
-    // canvas with only the drawing's own row (compact). {compact, asked}: asked = the height its edge was dragged to
-    // (-1: the default for this window). Screen state, never the document.
-    property var timelineByTool: ({ move: { compact: false, asked: -1 }, pen: { compact: false, asked: -1 },
-                                    draw: { compact: true, asked: -1 } })
-    readonly property var timelineNow: timelineByTool[backend.tool] || timelineByTool.move
+    // The timeline's height is the person's choice (⊟ compact, or its edge dragged), never changed by a tool.
+    // {compact, asked}: asked = the height its edge was dragged to (-1: the default for this window). Screen state,
+    // never the document.
+    property var timelineNow: ({ compact: false, asked: -1 })
     function setTimeline(compact, asked) {
-        const all = Object.assign({}, timelineByTool)
-        all[backend.tool] = { compact: compact, asked: asked === undefined || asked === null ? timelineNow.asked : asked }
-        timelineByTool = all
+        timelineNow = { compact: compact, asked: asked === undefined || asked === null ? timelineNow.asked : asked }
     }
     bottomHeight: timelineNow.compact ? timeline.compactHeight
                 : Math.round(Math.max(150, Math.min(height * 0.6, timelineNow.asked >= 0 ? timelineNow.asked
@@ -82,10 +78,10 @@ AppShell {
     Shortcut {
         sequence: "Escape"; enabled: shell.canvasKeys
         onActivated: {
-            const open = backend.exporter.open || importPanel.shown || fileMenu.menuOpen || addMenu.menuOpen
+            const open = backend.exporter.open || importPanel.shown || fileMenu.menuOpen || stage.addMenu.menuOpen
             if (backend.stepBack({ popover: open }) === "close") {
                 shell.setExportOpen(false); shell.setImportOpen(false)
-                fileMenu.closeMenu(); addMenu.menuOpen = false
+                fileMenu.closeMenu(); stage.addMenu.menuOpen = false
             }
         }
     }
@@ -107,7 +103,7 @@ AppShell {
     function setFileMenuOpen(open) { if (open) fileMenu.openMenu(); else fileMenu.closeMenu() }
     function openLayerMenu(id) { timeline.openMenu(id) }
     function openCanvasMenu() { stage.openMenu() }
-    function setAddOpen(open) { if (open) addMenu.menuOpen = true; else addMenu.menuOpen = false }
+    function setAddOpen(open) { stage.addMenu.menuOpen = open }
 
     // Export: the kit sheet in the inspector's place (Ctrl+E; Ctrl+Shift+E again), filled with 2D's formats
     // (screen2d/exporter.py); the job chip comes with it. Problems: the kit chip, only while something is wrong.
@@ -115,14 +111,12 @@ AppShell {
     exportSettings: ExportSettings { }
     problems: backend.problems
     actions: [
-        AddMenu { id: addMenu },
-        Button { text: "Import"; help: "Bring in a file or a design from another app."; down: importPanel.shown; onClicked: shell.setImportOpen(!importPanel.shown) },
         Button { text: "Export"; kind: "primary"; down: backend.exporter.open; onClicked: shell.setExportOpen(!backend.exporter.open) }
     ]
     // the start screen (kit): at launch with nothing to reopen, or ≡ › Start screen…; over everything while shown
     StartScreen { id: startScreen; anchors.fill: parent; z: 100; onGuideAsked: (url) => shell.openGuide(url)
                   anchors.leftMargin: shell.guidesOpen ? (shell.guidesWidth || 0) : 0 }   // a guide opened from it shows beside it
-    StaggerPopover { x: (shell.width - width) / 2; y: 104 }   // the context bar's Stagger… (stagger.py): under the bar
+    StaggerPopover { }   // the context bar's Stagger… (stagger.py): under the bar
     DepthPopover { x: (shell.width - width) / 2; y: 104 }     // Set depth ▾ › Other depth… (depth_typed.py): under the bar
     SoundCuePopover { x: (shell.width - width) / 2; y: 104 }  // Add a sound here… (sound_cue_pick.py): under the bar
     LipSyncSheet { x: (shell.width - width) / 2; y: 104 }     // Lip sync… on a mouth swap set (rig_lipsync.py): under the bar
@@ -135,7 +129,7 @@ AppShell {
             width: Math.min(460, parent.width - 4 * Theme.gap)
             text: "Draw a shape (R), type (T), paint (B), or drop a file here."
         },
-        ImportPanel {   // opened by the Import button, on the canvas (opening the Export sheet closes it)
+        ImportPanel {   // opened by the + menu's Import…, on the canvas (opening the Export sheet closes it)
             id: importPanel
             Connections { target: backend.importer; function onWantPanel() { shell.setImportOpen(true) } }
             anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
@@ -146,7 +140,7 @@ AppShell {
         Inspector { id: settingsMove; anchors.fill: parent; bridge: backend; keyMarks: true; visible: backend.tool !== "draw"
                     highlight: backend.keys.props         // the settings whose keys are picked (key_select.py)
                     below: RigPoses { } },                // a rig in hand: its pose library (rig_poses.py)
-        Inspector { id: settingsDraw; anchors.fill: parent; bridge: painter; title: "Brush"; visible: backend.tool === "draw"
+        Inspector { id: settingsDraw; anchors.fill: parent; bridge: painter; title: ""; visible: backend.tool === "draw"
                     below: PaintOn { } }      // under the brush: the paint layers and switches of what it paints on
     ]
     bottom: LayerTimeline {

@@ -1,6 +1,6 @@
-"""Add a sound here is one Undo step for the person (sound_cues.py): the clip in Sound's song is their change; the
-shared marker it is timed by is kept by 2D's link, so one Undo across 2D's one history (the document, the markers,
-the song: rostrum_core.desk) takes the cue back and Redo brings it back, with its marker still there."""
+"""Add a sound here is one Undo step for the person (sound_cues.py, rostrum_core.joint): the marker it is timed by and
+the clip in Sound's song are one step, so one Undo across 2D's one history (rostrum_core.desk) takes both back and Redo
+brings both back; with the song not open on the screen, Undo opens it (project_sound.open_item)."""
 import wave
 
 from rostrum_core import Who, desk, markers
@@ -11,7 +11,7 @@ from test_soundtrack import project
 ME = Who.person("sam")
 
 
-def test_one_undo_takes_back_the_cue(tmp_path):
+def _cued(tmp_path):
     app, rt = project(tmp_path)
     doc = app.documents["film"]
     doc.apply([{"op": "layer.add", "target": ["main"], "args": {"type": "shape", "id": "logo"}}], ME)
@@ -19,16 +19,31 @@ def test_one_undo_takes_back_the_cue(tmp_path):
     with wave.open(str(click), "wb") as w:
         w.setnchannels(1), w.setsampwidth(2), w.setframerate(8000), w.writeframes(b"\x00\x10" * 800)
     sound_cues.cue(tmp_path, doc, "logo", click, ME)
+    return doc
 
-    def cue_clips():
-        song = project_sound.open_song(tmp_path, "song")
-        return [c["id"] for t in song.data["tracks"] if t["id"] == sound_cues.TRACK for c in t.get("clips", [])]
 
+def _cue_clips(tmp_path):
+    song = project_sound.open_song(tmp_path, "song")
+    return [c["id"] for t in song.data["tracks"] if t["id"] == sound_cues.TRACK for c in t.get("clips", [])]
+
+
+def _marks(tmp_path):
+    return {m["name"]: m for m in markers.listing(tmp_path)}
+
+
+def test_one_undo_takes_back_the_cue_and_its_marker(tmp_path):
+    doc = _cued(tmp_path)
     docs = [doc, markers.open_to_change(tmp_path), project_sound.open_song(tmp_path, "song")]
-    assert cue_clips() == ["cue_logo"]
-    doc_where, _ = desk.undo(docs, ME)
-    assert doc_where.item_id == "song" and cue_clips() == []
+    assert _cue_clips(tmp_path) == ["cue_logo"]
+    assert _marks(tmp_path)["logo · sound"]["follows"]["part"] == "logo"   # it follows its layer (links.py)
+    desk.undo(docs, ME)
+    assert _cue_clips(tmp_path) == [] and "logo · sound" not in _marks(tmp_path)
     assert doc.has("logo")                                        # the one step was the cue, not the layer
-    assert "logo · sound" in [m["name"] for m in markers.listing(tmp_path)]   # kept for Redo
     desk.redo(docs, ME)
-    assert cue_clips() == ["cue_logo"]
+    assert _cue_clips(tmp_path) == ["cue_logo"] and "logo · sound" in _marks(tmp_path)
+
+
+def test_undo_opens_the_song_when_it_is_not_open_here(tmp_path):
+    doc = _cued(tmp_path)
+    hit = desk.undo([doc, markers.open_to_change(tmp_path)], ME, lambda item: project_sound.open_item(tmp_path, item))
+    assert hit is not None and _cue_clips(tmp_path) == []

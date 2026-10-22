@@ -12,7 +12,7 @@ FIELDS = {
         N("y", "Looks at Y", "Camera", -20000, 20000, 1, "px", P, default=540.0),
         N("zoom", "Zoom", "Camera", 0.01, 100, 0.01, "×", P, default=1.0,
           help="2 = twice as close; far layers (depth) grow less"),
-        N("rotation", "Roll", "Camera", -36000, 36000, 0.1, "°", S, help="Turns the camera clockwise, so the picture turns the other way"),
+        N("rotation", "Roll", "Lens", -36000, 36000, 0.1, "°", S, help="Turns the camera clockwise, so the picture turns the other way"),
         *timing("From this time this camera is the one used (a cut)", "From this time it isn't"),
     ],
 }

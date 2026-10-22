@@ -73,7 +73,7 @@ Item {
     }
     MouseArea {
         anchors.fill: parent; acceptedButtons: Qt.RightButton
-        onClicked: (m) => { menu.x = m.x; menu.y = m.y - menu.height; menu.open() }
+        onClicked: (m) => { menu.x = Math.min(m.x, row.width - menu.width); menu.y = m.y - menu.height; menu.open() }
     }
     function openMenu() { menu.x = row.labelWidth / 2; menu.y = -menu.height; menu.open() }   // (steps: the right-click)
     Menu {

@@ -19,8 +19,9 @@ import RostrumKit
 // Full the visible part again at the size shown (backend.setView: screen2d/shown.py; backend.sharp: screen2d/sharp.py).
 Panel {
     id: panel
+    property alias addMenu: tools.addMenu       // the "+" menu at the tool strip's foot (Main.qml: Esc, setAddOpen)
     objectName: "stage"                 // scripted steps reach the view through it (screen2d/view_steps.py)
-    title: "Canvas"
+    title: ""
     property bool typing: false         // a text field has the focus (Main.qml): single-letter view keys stay off
     // the tool whose options the context bar shows instead of the selection's actions ("" = the actions)
     readonly property string toolMode: backend.create.typing ? "text" : backend.tool === "pen" ? "pen"
