@@ -17,21 +17,25 @@ Rectangle {
     id: tl
     property bool slim: false
     property int headerWidth: 224
+    property Item barSlot: null          // where the context bar sits (the header strip, Arrangement.qml)
     signal addTrack()
     readonly property real addH: slim ? 0 : 28          // the "+ Track" row, between the tracks and the group / master rows
     readonly property var rows: slim ? backend.tracks.filter(r => !r.mix) : backend.tracks   // buses + master: lanes only
     readonly property real mixH: 20          // a bus's or the master's compact row
-    readonly property int mixRows: rows.filter(r => r.mix).length
+    readonly property real groupH: 24        // a group's header row
+    readonly property int mixRows: rows.filter(r => r.mix && !r.group).length
+    readonly property int groupRows: rows.filter(r => r.group).length
     readonly property real rowGap: 2
     readonly property real laneH: 76         // an open automation lane
     readonly property real laneGap: 2
     readonly property int openLanes: slim ? 0 : rows.filter(r => r.auto).length
-    readonly property real rowH: rows.length === mixRows ? 24
+    readonly property real rowH: rows.length === mixRows + groupRows ? 24
         : Math.max(slim ? 18 : 24, Math.min(slim ? 26 : 52,
-              (list.height - addH - openLanes * (laneH + laneGap) - mixRows * mixH - rowGap * (rows.length - 1)) / (rows.length - mixRows)))
+              (list.height - addH - openLanes * (laneH + laneGap) - mixRows * mixH - groupRows * groupH - rowGap * (rows.length - 1)) / (rows.length - mixRows - groupRows)))
     function autoOf(r) { return slim ? null : r.auto }
-    function hOf(r) { return r.mix ? mixH : rowH }
-    function addAbove(i) { return rows[i].mix && (i === 0 || !rows[i - 1].mix) ? addH : 0 }   // + Track sits above the first mix row
+    function hOf(r) { return r.group ? groupH : r.mix ? mixH : rowH }
+    function bottomMix(r) { return !!r.mix && !r.group }                    // a bus or the master in the compact rows, not a group header
+    function addAbove(i) { return bottomMix(rows[i]) && (i === 0 || !bottomMix(rows[i - 1])) ? addH : 0 }   // + Track sits above the first mix row
     function slot(y) {   // which row is at height y of the list: its index, whether y is in its automation lane, where that starts
         var top = 0
         for (var i = 0; i < rows.length; i++) {
@@ -89,9 +93,11 @@ Rectangle {
                         visible: row.top0 > 0; text: "+ Track"; kind: "ghost"; height: Theme.field
                         x: Theme.grid; y: (row.top0 - height) / 2 - tl.rowGap / 2; onClicked: tl.addTrack()
                     }
-                    TrackHeader { visible: !row.modelData.mix; y: row.top0; width: tl.headerWidth; height: row.h; track: row.modelData; showAuto: !tl.slim 
+                    TrackHeader { visible: !row.modelData.mix; x: (row.modelData.depth || 0) * 14; y: row.top0
+                                  width: tl.headerWidth - x; height: row.h; track: row.modelData; showAuto: !tl.slim
                                   onMenuWanted: (px, py) => tl.openMenu(backend.itemMenu(row.modelData.id), mapToItem(tl, px, py)) }
-                    MixRowHeader { visible: !!row.modelData.mix; y: row.top0; width: tl.headerWidth; height: row.h; track: row.modelData; showAuto: !tl.slim }
+                    GroupHeader { visible: !!row.modelData.group; y: row.top0; width: tl.headerWidth; height: row.h; track: row.modelData; showAuto: !tl.slim }
+                    MixRowHeader { visible: tl.bottomMix(row.modelData); y: row.top0; width: tl.headerWidth; height: row.h; track: row.modelData; showAuto: !tl.slim }
                     Rectangle {
                         x: bars.x - list.x; y: row.top0; width: bars.width; height: row.h
                         radius: Theme.radiusCtl - 2; color: Theme.sunken; clip: true
@@ -166,15 +172,17 @@ Rectangle {
         Text { visible: !!parent.s.name; x: 4; y: 2; text: parent.s.name || ""; color: tl.snapColour
                font.family: uiFont; font.pixelSize: Theme.label }
     }
-    ContextBar {   // the kit's: a fixed place, the top centre of the arrangement just under the ruler (INTERACTION.md §1.2)
-        id: cbar
+    ContextBar {   // the kit's: a fixed place, the header strip's centre, so it never covers a clip or a note
+        id: cbar       // (INTERACTION.md §1.2: top centre of the arrangement; Sound's header is that top)
+        parent: tl.barSlot || tl
         hub: backend.actions
-        x: bars.x + (bars.width - width) / 2; y: list.y + Theme.grid; maxWidth: bars.width - 2 * Theme.pad
+        anchors.centerIn: parent; maxWidth: parent.width
         dragging: lanes.busy || menu.visible || clean.visible || ask.visible || backend.area !== "arrange"
     }
     ActionMenu { id: menu; onPicked: (v) => backend.menuPick(v) }          // the kit's: keys on rows, dividers
-    CleanPopover { id: clean; parent: tl; x: cbar.x + (cbar.width - width) / 2; y: cbar.y + cbar.height + 2 }
-    AskPopover { id: ask; parent: tl; x: cbar.x + (cbar.width - width) / 2; y: cbar.y + cbar.height + 2 }
+    LaneLineBox { tl: tl; bars: bars }   // typing a voice line right on its lane
+    CleanPopover { id: clean; parent: cbar; x: (cbar.width - width) / 2; y: cbar.height + 2 }   // under the bar
+    AskPopover { id: ask; parent: cbar; x: (cbar.width - width) / 2; y: cbar.height + 2 }
     Connections {
         target: backend
         function onCleanWanted() { if (backend.area === "arrange") clean.open() }

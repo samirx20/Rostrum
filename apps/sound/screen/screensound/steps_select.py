@@ -21,9 +21,13 @@ bridge call a click, a box, a key or a menu makes.
     tool select|draw (the Editor's tool) | add-hit <t s> <drum row> (a double-click on an empty drum row) |
       draw <t s> <key or drum row> (a click with the Draw tool)
     line-type <words …> (Enter in the Editor's "Type what she says" on its voice track) | speak-again (on the
-      selected lines) | grid auto|bar|beat|1/8|1/16|1/32|1/8T|1/16T | snap on|off
+      selected lines) | velocity-line <t0 s> <v0> <t1 s> <v1> (draw a line across the velocity strip) |
+      velocity-bar <id> <v> (drag that bar) | audition <entry key> (pick it in the Library: rendered by the engine,
+      played on the fake player) | grid auto|bar|1/2|beat|1/8|1/16|1/32|1/8T|1/16T | snap on|off
 """
 from __future__ import annotations
+
+import sys
 
 from PySide6.QtCore import Q_ARG, QMetaObject
 from PySide6.QtGui import QKeySequence
@@ -33,7 +37,7 @@ WORDS = ("select-many", "select-add", "select-run", "select-all", "box", "range"
          "action-bar", "menu", "menu-roll", "key", "copy", "cut", "paste", "drag-many", "handle", "lock", "loop",
          "range-edge", "rename-open", "rename", "open", "jump", "playhead-step", "fit-selection", "marker-add",
          "fit-bar", "ask", "place", "library", "clean-open", "clean", "tool", "add-hit", "draw", "line-type",
-         "speak-again", "grid", "snap")
+         "speak-again", "line-box", "select-clip", "grid", "snap", "velocity-line", "velocity-bar", "audition")
 
 
 def _find(item, prop):
@@ -158,8 +162,34 @@ def do_select_step(bridge, win, word, rest):
     elif word == "line-type":
         if not bridge.side.typeLine(bridge.roll.get("id", ""), " ".join(rest)):
             raise RuntimeError(f"line-type: no line added (the Editor shows no voice track?): {bridge.status}")
+    elif word == "audition":                  # audition <entry key>: hear it through the engine, on the fake player
+        from .steps_record import FAKE, pump
+        heard = bridge.library_panel._heard
+        heard.program = [sys.executable, "-I", str(FAKE)]
+        bridge.library_panel.auditionEntry(rest[0])
+        pump(lambda: heard.playing, 20.0)
+        if not heard.playing:
+            raise RuntimeError(f"audition: {rest[0]} did not play: {bridge.status}")
+        heard._player.ended.disconnect()      # held there (the fake player's clock runs out), so the picture shows it playing
+        heard._player.stop()
+    elif word == "select-clip":               # select-clip <track>: its first clip (a clip's id is made from its content)
+        clips = bridge.doc.item(rest[0]).get("clips", [])
+        if not clips:
+            raise RuntimeError(f"select-clip: {rest[0]} has no clip")
+        bridge.select(clips[0]["id"])
+    elif word == "line-box":                  # line-box [seconds]: the text box open in the voice lane (double-click on it)
+        if not bridge.side.startTyping(bridge.roll.get("id", ""), float(rest[0]) if rest else bridge.time):
+            raise RuntimeError("line-box: the Editor shows no voice track")
     elif word == "speak-again":
         bridge.run("speak_again")
+    elif word in ("velocity-line", "velocity-bar"):
+        if not bridge.beginVelocity(rest[0] if word == "velocity-bar" else ""):
+            raise RuntimeError(f"{word}: nothing to change: {bridge.status}")
+        if word == "velocity-bar":
+            bridge.velocityBar(float(rest[1]), False)
+        else:
+            bridge.velocityLine(*[float(x) for x in rest[:4]])
+        bridge.endVelocity()
     elif word == "grid":
         bridge.setGrid(rest[0])
     elif word == "snap":

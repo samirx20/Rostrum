@@ -31,6 +31,7 @@ Rectangle {
         anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: Theme.gap; rightMargin: Theme.gap }
         height: 36
         Row {
+            id: leftRow
             anchors { left: parent.left; verticalCenter: parent.verticalCenter }
             spacing: Theme.grid
             Button {        // + Add: a track with a sound (the Library), a picture to work to, a file
@@ -64,7 +65,13 @@ Rectangle {
             Item { width: Theme.gap; height: 1 }
             SongReadout { id: readout; compact: a.compact; anchors.verticalCenter: parent.verticalCenter }
         }
+        Item {   // the arrangement's context bar sits here, between the transport and the view controls: in the
+                 // header, never over the clips and notes (Timeline.qml places it)
+            id: barSlot
+            anchors { left: leftRow.right; right: rightRow.left; top: parent.top; bottom: parent.bottom; leftMargin: Theme.gap; rightMargin: Theme.gap }
+        }
         Row {
+            id: rightRow
             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
             spacing: 2
             Button { visible: backend.picture !== ""; text: "Picture"; kind: "ghost"; down: backend.pictureOpen
@@ -79,8 +86,8 @@ Rectangle {
             }
             Button { text: "Snap"; kind: "ghost"; height: Theme.field; down: backend.snapOn
                      onClicked: backend.setSnap(!backend.snapOn)
-                     HoverTip { text: backend.snapOn ? "Snapping is on: drags land on the grid, markers and the playhead (hold Ctrl for free). Click to turn it off"
-                                                     : "Snapping is off: everything moves freely. Click to turn it on"; hovered: parent.hovered } }
+                     HoverTip { text: backend.snapOn ? "Snapping is on: drags land on the grid, markers and the playhead (hold Ctrl for free). Click or Shift+G to turn it off"
+                                                     : "Snapping is off: everything moves freely. Click or Shift+G to turn it on"; hovered: parent.hovered } }
             Item { width: Theme.gap; height: 1 }
             Text {   // while zoomed in: how far
                 visible: !backend.viewFit && !a.compact; anchors.verticalCenter: parent.verticalCenter; rightPadding: Theme.gap
@@ -98,6 +105,7 @@ Rectangle {
     Timeline {
         id: timeline
         anchors { left: parent.left; right: parent.right; top: strip.bottom; bottom: parent.bottom }
+        barSlot: barSlot
         onAddTrack: a.addTrack()
     }
     Column {   // a new song: what to do first

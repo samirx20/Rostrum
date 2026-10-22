@@ -15,13 +15,13 @@ import anyio
 from mcp.server.stdio import stdio_server
 from rostrum_core.mcp import Runtime, Tools, build_server
 
-from . import tools_cleanup, tools_ears, tools_inspect, tools_look, tools_midi, tools_motion, tools_plugins, tools_project, tools_render, tools_sfx, tools_voice
+from . import tools_audition, tools_cleanup, tools_ears, tools_inspect, tools_look, tools_midi, tools_motion, tools_plugins, tools_project, tools_render, tools_sfx, tools_voice
 from .app import make_app
 
 
 def sound_tools() -> Tools:
     tools = Tools()
-    for m in (tools_render, tools_look, tools_inspect, tools_sfx, tools_voice, tools_motion, tools_plugins, tools_midi,
+    for m in (tools_render, tools_audition, tools_look, tools_inspect, tools_sfx, tools_voice, tools_motion, tools_plugins, tools_midi,
               tools_cleanup, tools_ears, tools_project):
         m.register(tools)
     return tools

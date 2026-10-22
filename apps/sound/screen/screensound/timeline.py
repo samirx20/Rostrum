@@ -14,7 +14,7 @@ from rostrum_sound import names, voice_lines
 from rostrum_sound.doc import keys as K
 from rostrum_sound.doc import markers as mk
 
-from . import lanes, music_map, pick, timing
+from . import groups, lanes, music_map, pick, timing
 from .handles import level_y
 
 # no blues: blue is the selection (Theme.accent)
@@ -155,11 +155,12 @@ def kind_of(track: dict) -> str:
     return "audio" if track.get("clips") or track.get("sounds") else "empty"
 
 
-def rows(root: dict, open_lanes: dict | None = None) -> list[dict]:
+def rows(root: dict, open_lanes: dict | None = None, folded=frozenset()) -> list[dict]:
     """One row per track for the arrangement: name, hue, mute / solo, kind, and its blocks with lanes 0..1 (top to
     bottom: notes by pitch, one per key of a chord; hits by drum row) so a row reads like a small piano roll.
     `open_lanes` (track id -> (item id, lane)) adds `auto`: the automation lane drawn under that track's row.
-    The buses and the master follow as compact rows (`mix`: true) that hold only their automation lanes."""
+    The buses and the master follow as compact rows (`mix`: true) that hold only their automation lanes; a bus that
+    tracks play into is a group header above them instead (groups.py), its tracks folded away when `folded` has it."""
     out = []
     for i, t in enumerate(root.get("tracks", [])):
         bl = blocks(t, root)
@@ -176,7 +177,7 @@ def rows(root: dict, open_lanes: dict | None = None) -> list[dict]:
                     "mute": bool(t.get("mute")), "solo": bool(t.get("solo")), "locked": bool(t.get("locked")), "kind": kind_of(t), "blocks": bl,
                     "autoUsed": lanes.used(t),
                     "auto": lanes.lane_data(t, root, *open_lanes[t["id"]]) if t["id"] in (open_lanes or {}) else None})
-    return out + lanes.mix_rows(root, open_lanes or {})
+    return groups.arrange(root, out, lanes.mix_rows(root, open_lanes or {}), folded)
 
 
 def markers(root: dict) -> list[dict]:
@@ -221,8 +222,12 @@ def roll(track: dict | None, root: dict, hue: str = HUES[0]) -> dict:
     lo, hi = max(0, lo), min(127, hi)
     # The rows' names, by the one speller, once per key in force: [{t, names}] from time 0 (the key before the
     # first change, or none) and at each key change. The screen reads the entry at the view's left edge.
-    spell = lambda key: [timing.name(k, key) for k in range(hi, lo - 1, -1)]   # noqa: E731
-    row_names = [{"t": 0.0, "names": spell(K.key_at(root, 0.0))}]
-    row_names += [{"t": c["t"], "names": spell(c["key"])} for c in music_map.key_changes(root) if c["t"] > 0]
+    # `inKey` is the same per row: false for a row outside that key (shaded darker); all true with no key.
+    def spell(key):
+        rows = range(hi, lo - 1, -1)
+        return {"names": [timing.name(k, key) for k in rows],
+                "inKey": [key is None or K.parse(key) is None or K.in_key(k, key) for k in rows]}
+    row_names = [{"t": 0.0, **spell(K.key_at(root, 0.0))}]
+    row_names += [{"t": c["t"], **spell(c["key"])} for c in music_map.key_changes(root) if c["t"] > 0]
     return {"id": track["id"], "name": track.get("name") or track["id"], "kind": kind_of(track), "blocks": bl,
             "lo": lo, "hi": hi, "rowNames": row_names, "drums": roll_drums(track), "hue": hue}

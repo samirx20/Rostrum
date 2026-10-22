@@ -7,7 +7,8 @@ import RostrumKit
 // double-click or Enter uses it: a new track with that sound (one operation, one undo step), selected, the Editor
 // open on it — the microphone's track comes armed, ready to record. With a track of the same kind selected it asks
 // "Change Piano to Strings? The notes stay." and changes that track's sound instead (adder.swap, one undo step). "My sounds" is the person's own library
-// (LibraryPanel.qml: a sound goes on the selected recordings track at the playhead). Closes with × or Ctrl+L; on a narrow window it floats and closes after each use (`used`).
+// (LibraryPanel.qml: a sound goes on the selected recordings track at the playhead). Picking an entry (click, ↑ / ↓) plays it
+// through the engine (soundLibrary.auditionEntry: an instrument plays the selected track's notes); Esc or ■ Stop ends it. Closes with × or Ctrl+L; on a narrow window it floats and closes after each use (`used`).
 Panel {
     id: p
     title: "Library"
@@ -19,8 +20,16 @@ Panel {
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close (Ctrl+L)"; width: Theme.field; height: Theme.field
                               onClicked: workspace.setLibrary(false) }
     onVisibleChanged: if (visible) { search.input.forceActiveFocus(); current = 0 }
+    Keys.onEscapePressed: (e) => { if (soundLibrary.auditioning !== "") soundLibrary.stopAudition(); else e.accepted = false }
+    Connections { target: workspace; function onChanged() { if (!workspace.library) soundLibrary.stopAudition() } }   // closed: it stops
     Connections { target: backend; function onLibraryWanted(chip) { p.chip = chip } }   // "Place a sound here"
     onFoundChanged: current = 0
+
+    function pick(i) {                                   // click or arrow: select it and hear it
+        current = i
+        const e = found[i]
+        if (e && e.kind !== "record") soundLibrary.auditionEntry(e.key)
+    }
 
     function use(i) {
         const e = found[i]
@@ -39,7 +48,8 @@ Panel {
         editable: true; placeholder: "Search sounds"
         anchors { left: parent.left; right: parent.right; top: parent.top }
         onCommitted: (t) => search.text = t                // the words stay after Enter
-        onArrow: (dir) => p.current = Math.max(0, Math.min(p.found.length - 1, p.current - dir))
+        onArrow: (dir) => p.pick(Math.max(0, Math.min(p.found.length - 1, p.current - dir)))
+        onEscaped: soundLibrary.stopAudition()
         onEntered: p.use(p.current)
     }
     Flow {
@@ -58,7 +68,7 @@ Panel {
     ListView {
         id: list
         visible: p.chip !== "mine"
-        anchors { left: parent.left; right: parent.right; top: chips.bottom; bottom: foot.top; topMargin: Theme.gap; bottomMargin: Theme.gap }
+        anchors { left: parent.left; right: parent.right; top: chips.bottom; bottom: heard.top; topMargin: Theme.gap; bottomMargin: Theme.gap }
         clip: true; spacing: 2; boundsBehavior: Flickable.StopAtBounds
         model: p.found
         currentIndex: p.current
@@ -69,7 +79,7 @@ Panel {
             width: list.width; height: 44; radius: Theme.radiusCtl
             color: p.current === index ? Theme.accentSoft : hover.hovered ? Theme.hover : "transparent"
             HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: p.current = row.index; onDoubleTapped: p.use(row.index) }
+            TapHandler { onTapped: p.pick(row.index); onDoubleTapped: p.use(row.index) }
             Column {
                 anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: Theme.gap; rightMargin: Theme.gap }
                 spacing: 2
@@ -91,7 +101,7 @@ Panel {
         id: mine
         visible: p.chip === "mine"
         query: p.chip === "mine" ? p.query : ""
-        anchors { left: parent.left; right: parent.right; top: chips.bottom; bottom: foot.top; topMargin: Theme.gap; bottomMargin: Theme.gap }
+        anchors { left: parent.left; right: parent.right; top: chips.bottom; bottom: heard.top; topMargin: Theme.gap; bottomMargin: Theme.gap }
         onUsed: p.used()
     }
     Button {
@@ -99,6 +109,17 @@ Panel {
         anchors { left: parent.left; bottom: parent.bottom }
         text: "Add a folder of my sounds…"; kind: "ghost"
         onClicked: { p.chip = "mine"; mine.addFolder() }
+    }
+    Item {      // only while something plays: what it is, and the way to stop it
+        id: heard
+        visible: soundLibrary.auditioning !== ""
+        height: visible ? Theme.field : 0
+        anchors { left: parent.left; right: parent.right; bottom: foot.top }
+        Text { anchors { left: parent.left; right: stop.left; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
+               text: "Hearing " + soundLibrary.auditioning; elide: Text.ElideRight; color: Theme.fg3
+               font.family: uiFont; font.pixelSize: Theme.label }
+        Button { id: stop; anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                 text: "■ Stop"; kind: "ghost"; onClicked: soundLibrary.stopAudition() }
     }
     Prompt {    // a track of the same kind is selected: change its sound (the notes stay), or make a new track
         id: swap

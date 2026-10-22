@@ -22,11 +22,14 @@ Item {
     }
     function rowAt(y) { var i = Math.floor(y / rowH); return notes ? roll.hi - i : roll.kind === "drums" ? i : 0 }
     // The row names follow the key in force at the view's left edge: scrolling past a key change renames the keys.
-    readonly property var rowNames: {
-        var list = roll.rowNames, at = ruler.start + 1e-6, hit = list.length ? list[0].names : []
-        for (var i = 0; i < list.length; i++) if (list[i].t <= at) hit = list[i].names
+    readonly property var rowKey: {
+        var list = roll.rowNames, at = ruler.start + 1e-6, hit = list.length ? list[0] : ({ names: [], inKey: [] })
+        for (var i = 0; i < list.length; i++) if (list[i].t <= at) hit = list[i]
         return hit
     }
+    readonly property bool keyed: rowKey.inKey.indexOf(false) >= 0     // a key is in force (with none, every row is equal)
+    readonly property var rowNames: rowKey.names
+    readonly property var rowInKey: rowKey.inKey       // false: outside the song's key there, the row is shaded darker
     function black(k) { return [1, 3, 6, 8, 10].indexOf(k % 12) >= 0 }
     height: count * rowH
 
@@ -38,6 +41,9 @@ Item {
             y: index * g.rowH; width: g.width; height: g.rowH
             Rectangle { x: g.keysWidth; width: parent.width - x; height: parent.height
                         color: g.notes && g.black(parent.key) ? Theme.app : "transparent" }
+            Rectangle { x: g.keysWidth; width: parent.width - x; height: parent.height     // in the key: lighter; out: darker
+                        visible: g.notes && g.keyed; color: g.rowInKey[parent.index] ? Theme.raised : "black"
+                        opacity: g.rowInKey[parent.index] ? 0.5 : 0.4 }
             Rectangle { x: g.keysWidth; width: parent.width - x; height: 1; y: parent.height - 1
                         visible: g.notes ? parent.key % 12 === 0 : true; color: Theme.border }
             Rectangle { width: g.keysWidth - 6; height: parent.height - 1; x: 0

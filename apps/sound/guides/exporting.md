@@ -11,7 +11,7 @@ For a person using the RostrumSound app: turn your song into sound files you can
 
 ## 1. What for
 
-Pick where it is going: **Streaming**, **Apple Music**, **EBU R128 broadcast**, **ATSC A/85 broadcast** or
+Pick where it is going: **Streaming**, **Apple Music**, **EBU R128**, **ATSC A/85** or
 **Podcast**. Each choice sets the song's loudness and its loudest peak in one step (one undo).
 
 Under the choices a line checks the sound that plays now against that target:
@@ -52,7 +52,19 @@ A new song starts with the rate set in Preferences. MP3 offers only 44.1 and 48 
 - **Cut the silence at the end** (on at first): the file ends a quarter of a second after the last sound you can hear.
   The mix and stems are cut to the same length. Switch it off to keep the song's full length.
 
-## 5. Export
+## 5. Range, and another version
+
+- **Range** (appears when the song has more than the whole song): the **whole song**, the **time range** you have
+  dragged on the ruler, or a **section**. The file is exactly that stretch. Its loudness is the whole song's, matched
+  by the master and then cut, so a quiet section stays quieter than a loud one, as it sounds in the song. The silent
+  end is not cut for a range. Agents: `render_mix` with `from` and `to` (seconds, a beat or a marker).
+- **+ Another version** adds a row with its own target, file type and quality (for example Streaming WAV and a
+  Podcast MP3 from one click). Each row has its own line: how far up or down the sound that plays now will be turned
+  to reach it, and whether the loudest peak stays under the limit. **Export** makes every row, each in its own
+  numbered folder. A version's target does not change the song's own target. Stems come with the first version only.
+  Agents: one `render_mix` per version.
+
+## 6. Export
 
 1. Click **Export**. It says **Exporting…** and works in the background; you can keep working.
 2. When done, the sheet says "Exported · Version 3 · …". Click **Show in folder** to open it.

@@ -10,6 +10,8 @@ from types import SimpleNamespace
 from PySide6.QtCore import QObject, Signal
 from rostrum_sound import voice, voice_lines
 
+from . import voice_takes
+
 
 def when_text(at) -> str:
     """A line's time as it was written: "12.5 s", "beat 8", "#drop+0.5"."""
@@ -25,7 +27,9 @@ def card_roles(track: dict, state: dict) -> dict:
                 "voiceFailed": False}
     making = set(state.get("ids", ())) if state.get("busy") else set()
     lines = [{"id": ln["id"], "text": ln["text"], "when": when_text(ln["at"]), "making": ln["id"] in making,
-              "made": voice_lines.take_of(track, ln) is not None} for ln in track.get("lines", [])]
+              "made": voice_lines.take_of(track, ln) is not None, "take": voice_takes.label(track, ln),
+              "canBack": voice_takes.neighbour(track, ln, -1) is not None,
+              "canNext": voice_takes.neighbour(track, ln, 1) is not None} for ln in track.get("lines", [])]
     return {"isVoice": True, "lines": lines, "missing": sum(not ln["made"] for ln in lines),
             "voiceStatus": state.get("status", ""), "voiceBusy": state.get("busy", False),
             "voiceFailed": state.get("failed", False), "voiceMissing": model_missing()}
@@ -61,6 +65,7 @@ def mark_speaking(rows: list[dict], ids) -> None:
         for b in r.get("blocks", []):
             if b["type"] == "line" and b["id"] in ids:
                 b["label"] = "Speaking… · " + b["label"].removeprefix("not made · ")
+                b["making"] = True
 
 
 class VoiceMaker(QObject):
@@ -80,7 +85,18 @@ class VoiceMaker(QObject):
         return self._state.get(track_id, {})
 
     def start(self, track_id: str):
-        if self.state(track_id).get("busy"):
+        if self.state(track_id).get("busy"):                     # a line typed meanwhile waits its turn (and says so)
+            track = next(t for t in self.bridge.doc.data["tracks"] if t["id"] == track_id)
+            st = self._state[track_id]
+            st["ids"] = list(dict.fromkeys([*st["ids"], *(ln["id"] for ln in track.get("lines", [])
+                                                           if voice_lines.take_of(track, ln) is None)]))
+            st["again"] = True
+            self.changed.emit()
+            return
+        gone = model_missing()
+        if gone:                                  # said in one plain sentence, never a silent failure
+            self._state[track_id] = {"failed": True, "status": gone}
+            self.changed.emit()
             return
         track = next(t for t in self.bridge.doc.data["tracks"] if t["id"] == track_id)
         ids = [ln["id"] for ln in track.get("lines", []) if voice_lines.take_of(track, ln) is None]
@@ -103,7 +119,12 @@ class VoiceMaker(QObject):
         self._done.emit(track_id, error)
 
     def _finish(self, track_id, error):
+        again = self._state.get(track_id, {}).get("again") and not error
         self._state[track_id] = {"failed": bool(error), "status": error}
+        if again:                                 # lines typed while this one was spoken: the next round
+            self.start(track_id)
+            if self.state(track_id).get("busy"):
+                return
         self.changed.emit()
         if not error:
             self.bridge.transport.render()      # the song now has its voice: hear it

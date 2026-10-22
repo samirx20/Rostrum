@@ -22,6 +22,7 @@ from rostrum_sound import compile as compile_doc
 from rostrum_sound import deliver, handoff
 
 from . import delivery, playback
+from .export_versions import Versions, ranges, schedule_for
 
 
 def summary(r: dict) -> str:
@@ -45,7 +46,10 @@ class RenderExport(ExportSheet):
         self.changed.connect(self.own)                # (a subclass's property can't notify on the kit's signal: PySide6 crashes)
         self._stems, self._format, self._rate, self._trim = False, deliver.DEFAULT_FORMAT, 0, True   # rate 0: the song's own
         self._choice = self._target_key()
+        self._more = Versions()
         bridge.docChanged.connect(self._sync)
+        bridge.renderChanged.connect(self.changed)       # each extra version's line follows the sound that plays
+        bridge.rangeChanged.connect(self.changed)        # What: a time range on the ruler is a choice
 
     def _target_key(self) -> str:
         return (self._loud.target.get("key") or "") if self._loud is not None else ""
@@ -72,6 +76,9 @@ class RenderExport(ExportSheet):
         if self._loud is not None and self._choice != self._target_key():
             self._loud.choose(self._choice)                # one master.set: Normalize on, its loudness and peak
 
+    def ranges_list(self):
+        return ranges(self.bridge.doc, self.bridge._picks.range)
+
     def default_folder(self):
         doc = self.bridge.doc
         if not doc.folder or not doc.item_id:
@@ -90,29 +97,41 @@ class RenderExport(ExportSheet):
             schedule = compile_doc(doc)
         except RostrumError as e:
             raise RuntimeError(e.line()) from e
+        span = self.range_times()
+        if self._range != "all" and span is None:
+            raise RuntimeError("the range chosen is not there any more (a time range or section was removed): choose What again")
         o = self.options()
-        return {"doc": doc, "schedule": schedule, "who": f"{self.bridge.who.kind}:{self.bridge.who.name}", "out": out,
-                "options": {"format": o.format, "sampleRate": o.sample_rate, "trim": o.trim}, "stems": "all" if self._stems else []}
+        base = {"format": o.format, "sampleRate": o.sample_rate, "trim": o.trim, **({"from": span[0], "to": span[1]} if span else {})}
+        versions = [{"schedule": schedule, "options": base, "stems": "all" if self._stems else []}]
+        for r in self._more.rows:               # each extra version: its own target, file type and quality (no stems)
+            rate = r["rate"] if r["rate"] in [x["id"] for x in deliver.rates_for(r["format"])] else 0
+            versions.append({"schedule": schedule_for(doc, r["target"]), "stems": [],
+                             "options": {**base, "format": r["format"], "sampleRate": rate or doc.data.get("sampleRate", 48000)}})
+        return {"doc": doc, "versions": versions, "who": f"{self.bridge.who.kind}:{self.bridge.who.name}", "out": out}
 
     def work(self, p, progress):
         progress(-1.0)                                     # the engine can't say how far it is
-        eng = self._open_engine()
+        eng, made = self._open_engine(), []
         try:
-            r = handoff.render(p["doc"].folder, p["doc"], eng, p["schedule"], p["who"], stems=p["stems"], options=p["options"])
+            for v in p["versions"]:
+                made.append(handoff.render(p["doc"].folder, p["doc"], eng, v["schedule"], p["who"], stems=v["stems"], options=v["options"]))
         finally:
             eng.close()
-        if not Path(r["file"]).is_file():
-            raise RuntimeError(f"the mix is not at {r['file']}")
-        files = [r["file"], *(r.get("stems") or {}).values(), *(r.get("busStems") or {}).values()]
+        for m in made:
+            if not Path(m["file"]).is_file():
+                raise RuntimeError(f"the mix is not at {m['file']}")
+        r = made[0]
+        files = [x for m in made for x in (m["file"], *(m.get("stems") or {}).values(), *(m.get("busStems") or {}).values())]
         main = r["file"]
-        if p["out"] is not None:                            # Browse: the mix, copied in; the old file stays until it is whole
+        if p["out"] is not None:                            # Browse: the first mix, copied in; the old file stays until it is whole
             out = Path(p["out"])
             out.parent.mkdir(parents=True, exist_ok=True)
             part = out.with_name(out.stem + ".partial" + out.suffix)
             shutil.copyfile(r["file"], part)
             os.replace(part, out)
             main, files = str(out), [str(out), *files]
-        return {**r, "file": main, "files": files, "version": f"v{int(r['version']):03d}", "summary": summary(r)}
+        return {**r, "file": main, "files": files, "version": f"v{int(r['version']):03d}",
+                "summary": " | ".join(summary(m) for m in made), "versions": [f"v{int(m['version']):03d}" for m in made]}
 
     # ---- Sound's own settings (qml/ExportSettings.qml) --------------------------------------------------------
     @Property("QVariantList", constant=True)
@@ -172,6 +191,39 @@ class RenderExport(ExportSheet):
     def setTrim(self, on):
         self._trim = bool(on)
         self.changed.emit()
+
+    @Property("QVariantList", notify=own)
+    def more(self):
+        """The extra delivery rows ("+ Another version"): {target, format, rate, verdict}."""
+        m = self.bridge.doc.item("master")
+        return self._more.shown(m, self.bridge.lastRender or {}, self.bridge.doc.data.get("sampleRate", 48000))
+
+    @Property("QVariantList", constant=True)
+    def targets(self):
+        return [{"value": c["id"], "label": f'{c["label"]} · {c["detail"]}'.replace("-", "−")} for c in delivery.choices()]
+
+    @Slot(str, result="QVariantList")
+    def ratesFor(self, fmt):
+        return [{"value": str(c["id"]), "label": option_label(c)} for c in deliver.rates_for(fmt)] if fmt in deliver.BY_FORMAT else []
+
+    @Slot()
+    def addVersion(self):
+        if not self.running():
+            self._more.add(self._choice, self._format)
+            self.changed.emit()
+
+    @Slot(int)
+    def removeVersion(self, i):
+        if not self.running():
+            self._more.remove(i)
+            self.changed.emit()
+
+    @Slot(int, str, str)
+    def setVersion(self, i, key, value):
+        """One row's `target`, `format` or `rate`."""
+        if not self.running() and key in ("target", "format", "rate"):
+            self._more.set(i, **{key: int(value) if key == "rate" else value})
+            self.changed.emit()
 
     @Slot(bool)
     def setDialogOpen(self, on):                       # (the old name: scripts and the ≡ menu)

@@ -118,6 +118,7 @@ MouseArea {
     onDoubleClicked: (e) => {   // goes in: the item selected, the Editor open on it
         var u = under(e)
         var id = u && !u.r.mix ? backend.blockAt(u.r.id, u.t, u.lane, snapPx / bars.perSec) : ""
+        if (id === "" && u && editorSide.isVoiceTrack(u.r.id)) { editorSide.startTyping(u.r.id, bars.tOf(e.x)); return }
         if (id !== "") { backend.select(id); workspace.setDock("editor") }
     }
     onCanceled: { if (mode === "drag" || mode === "point" || mode === "handle") backend.cancelDrag(); if (mode === "box") backend.endBox(); mode = "" }

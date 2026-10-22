@@ -4,8 +4,9 @@ import RostrumKit
 
 // "My sounds" in the Sounds panel: the person's own sound folders (library_panel.py, `soundLibrary`), searched by the
 // panel's words (`query`) and narrowed by kind and shape. With no folder yet it offers only "Add a folder of my
-// sounds"; the choices and results appear once there is something to search. Each result plays on its own (▶) and
-// goes on the selected track at the playhead (double-click or Place: one operation, one undo step).
+// sounds"; the choices and results appear once there is something to search. Each result plays on its own through the engine (click it, or ▶; ■ Stop in the Library ends it) and
+// goes on the selected track at the playhead (double-click or Place: one operation, one undo step). With one clip
+// selected each result also has Swap (double-click swaps): clip.swap keeps the clip's time, length, level and fades.
 Item {
     id: lib
     property string query: ""
@@ -58,7 +59,7 @@ Item {
                 radius: Theme.radiusCtl
                 color: hover.hovered ? Theme.hover : Theme.raised
                 HoverHandler { id: hover }
-                TapHandler { onDoubleTapped: { soundLibrary.place(row.index); lib.used() } }
+                TapHandler { onTapped: soundLibrary.audition(row.index); onDoubleTapped: { soundLibrary.swapTarget ? soundLibrary.swap(row.index) : soundLibrary.place(row.index); lib.used() } }
                 Column {
                     anchors.left: parent.left; anchors.leftMargin: Theme.gap; anchors.right: buttons.left
                     anchors.rightMargin: Theme.gap; anchors.verticalCenter: parent.verticalCenter; spacing: 2
@@ -74,6 +75,8 @@ Item {
                     spacing: 2
                     IconButton { glyph: "▶"; kind: "ghost"; tip: "Hear it"; onClicked: soundLibrary.audition(row.index) }
                     Button { text: "Place"; onClicked: { soundLibrary.place(row.index); lib.used() } }
+                    Button { visible: soundLibrary.swapTarget !== ""; kind: "primary"; text: "Swap"
+                             onClicked: { soundLibrary.swap(row.index); lib.used() } }
                 }
             }
         }

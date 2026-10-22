@@ -93,6 +93,22 @@ def cut_range(f):
     return [call("clip.cut_range", ids, at=round(f.range[0], 4), end=round(f.range[1], 4))]
 
 
+def group_buses(f) -> list[str]:
+    """The groups a selection means: the selected buses, or the one bus every selected track plays into."""
+    if f.one == "bus":
+        return f.ids
+    out = {it.get("output") for it in f.items} if f.one == "track" else set()
+    return [b] if len(out) == 1 and (b := out.pop()) in {x["id"] for x in f.doc.data.get("buses", [])} else []
+
+
+def delete_time(f):
+    return [call("range.remove", [], at=round(f.range[0], 4), end=round(f.range[1], 4))]
+
+
+def insert_time(f):
+    return [call("range.insert", [], at=round(f.range[0], 4), length=round(f.range[1] - f.range[0], 4))]
+
+
 def duplicate(f):
     if f.one == "track":
         return [call("track.duplicate", f.ids)]

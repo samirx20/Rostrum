@@ -7,7 +7,6 @@ SoundBridge; the empty-space menus ("Paste here", "Add marker here") are Sound's
 """
 from __future__ import annotations
 
-import random
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui import commands
@@ -16,6 +15,7 @@ from rostrum_gui.action_views import commands as do_commands
 from rostrum_sound.doc import select_time as ST
 
 from . import action_calls as C
+from . import voice_actions as V
 from . import clipboard, timing
 from .actions import LIST
 from .keys import ROUTES, SKIP
@@ -105,13 +105,16 @@ class ActionSlots:
             self.setTime(ST.start_of(self.doc.data, self.doc.item(ids[0])))
             self.workspace.setLibrary(True)
             self.libraryWanted.emit("designed")
+        elif name == "swap":                                    # the Library opens; with a clip selected its rows say Swap
+            self.workspace.setLibrary(True)
         elif name == "clean":
             self.cleanWanted.emit()
         elif name == "speak":                                   # Speak again: a new take of each line, made at once
-            calls = [{"op": "line.set", "target": [i], "args": {"seed": random.randint(1, 999999)}} for i in ids]
-            if self._act(calls, f"Speak again · {words}"):
+            if self._act(V.speak_calls(self._facts()), f"Speak again · {words}"):
                 for track in dict.fromkeys(self.doc.parent_of(i)[0] for i in ids):
                     self.voiceWanted.emit(track)
+        elif name == "addline":                                 # Add line at playhead: the box opens in the lane
+            self.side.startTyping(ids[0], self._t)
         elif name == "fit":
             self.askWanted.emit("fit_bar", "Bar", float(C.bar_near(self._facts())))
         else:

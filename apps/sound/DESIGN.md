@@ -3745,6 +3745,24 @@ step: `C:\Users\Sam\.rostrum\waves\results\sound-redesign\p27\flows.md`.
 | 3.20–3.23 | — | Kit pieces 11–13 and 21 (History sheet, agent chip and outline, files and start, job chip) — Team Sam |
 | Memory | The screen's own peak on the big song **4,649 → 659 MB** (painted lanes, grid and roll; no unused listen pictures) | The engine's per-track effects still grow with song length (RELEASE line 16) |
 
+### After P28 (2026-10-22, Team Priyam): the "Left" column, what was built
+
+Pictures per item in `C:\Users\Sam\.rostrum\waves\results\sound-redesign\p28\` (notes, groups, audition, voice, swap, export); what is still left for P29 in
+`C:\Users\Sam\.rostrum\waves\results\sound-redesign\p28\p29-notes.md`.
+
+| § | Built in P28 | Still left |
+|---|---|---|
+| 2 Header | Grid ▾ gains 1/2; Snap on Shift+G; **the context bar sits in the header strip** (the arrangement's between the transport and the view controls, the Editor's in the dock's tab row), so it never covers a clip or a note | Click (Shift+K) outside recording; start screen; named versions (kit) |
+| 3.1 / 3.15 Groups | Groups drawn as headers above their tracks, indented, fold arrow (Alt+click: all), folded row shows the tracks faintly; fold state is the person's (screen); `bus.ungroup` (Ctrl+Shift+G) | Drag a track into / out of a group; M / S on the header |
+| 3.3 / 3.4 Notes, drums | Velocity strip under the roll (a bar per note or hit, drag a bar, draw a line across, selected notes only when some are; one undo step); key shading of rows outside the key, following key changes | Fold the strip; out-of-key dot on notes; root marked on the keyboard |
+| 3.6 Tempo, sections | `range.remove` / `range.insert` (Delete time / Insert time on a time range): notes, clips, automation, sections, tempo, key and the song's own markers; project markers stay | Ramps (schema) |
+| 3.7 / 3.2b Library | Audition through the engine: `render_audition` (agents too), played on the engine's live player; picking an entry plays it, Esc / a new pick stops it | Keep / revert a tried sound; voices in the Library; loop while browsing |
+| 3.10 Clean-up | Before / After switch (H, Ctrl+K) on clips with a clean-up, a document value (`useCleaned`, one undo step); the cleaned take is made as soon as its settings change | Hold-H (needs key release in the kit's KeyMap); measurement line; Cancel |
+| 3.11 Voice | Type a line on the voice lane (double-click or Add line at playhead), words and a "being spoken" stripe on the block; Speak again (T) as a new take; Earlier / Later take | Take arrows on the block itself; real progress; download question for the voice model |
+| 3.13 Sound for motion | `clip.swap` (S, Swap on Library results): new file, same start, length, fades, matched loudness; layering of clips through `group` (exists) | Stepping through candidates with a loop; designed sounds in a layer (`group` on sounds: schema, Team Sam) |
+| 3.19 Export | What = whole song / the time range / a section (`render_mix {from, to}`); "+ Another version" rows, each with its target, file and live line | Ranges rendered by the engine itself (today cut from the whole render: the loudness is the song's); stems by group; "For the Editor" |
+| Engine | Live play keeps real time (shared-mode output no longer reopened: 0.70× → 1.000× over 60 s, in Sound and in 2D; `C:\Users\Sam\.rostrum\waves\results\sound-redesign\p28\play-clock.md`) | Per-track effects memory (RELEASE line 16): planned in p29-notes.md |
+
 ---
 
 ## 8. What the spec needs

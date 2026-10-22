@@ -9,7 +9,8 @@
 //! The stream keeps watching the device: when its clock falls behind what was written (frames it
 //! has not played pile up as added latency, under load) by more than FALL_BEHIND, the stream is
 //! reopened at the next longer period that keeps real time — shared mode past 25 ms — as the
-//! start-up probe does; each step is reported on stdout (`{"output": …}`) and in `Stats`.
+//! start-up probe does; each step is reported on stdout (`{"output": …}`) and in `Stats`. In shared mode there is
+//! nothing longer: the added latency is kept (stream.rs `play`), never reopened for.
 
 // The COM calls here are all unsafe; the functions that make them are unsafe as a whole.
 #![allow(unsafe_op_in_unsafe_fn)]
@@ -60,6 +61,8 @@ pub struct Stats {
     pub blocks: u64,
     pub dropped_ms: f64,
     pub steps: u32,
+    /// Latency the device added that no longer period could take back (kept, not reopened: stream.rs `play`).
+    pub settled_ms: f64,
     pub mode: &'static str,
     pub period_frames: u32,
 }
@@ -139,7 +142,7 @@ unsafe fn run<S: Source>(make: impl FnOnce(&crate::live::monitor::Device) -> Res
     let mut task = 0u32;
     let mmcss = AvSetMmThreadCharacteristicsW(w!("Pro Audio"), &mut task).ok();
     let result = loop {
-        let behind = match play(&stream, rate, &mut source, stop, &mut written, &mut stats, &mut ready) {
+        let behind = match play(&stream, rate, &mut source, stop, &mut written, &mut stats, &mut ready, stream.mode == "exclusive") {
             Ok(Ended::Stopped(behind)) => {
                 stats.dropped_ms += behind * 1000.0;
                 break Ok(());

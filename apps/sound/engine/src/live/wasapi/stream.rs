@@ -60,7 +60,10 @@ pub unsafe fn period_frames(s: &Stream) -> u32 {
 pub type Ready<'a> = Option<(&'a Sender<Result<Opened, String>>, String, Option<String>)>;
 
 /// Plays `source` on one stream until `stop`, an error, or the device falling behind by more than FALL_BEHIND.
-pub unsafe fn play<S: Source>(s: &Stream, rate: u32, source: &mut S, stop: &AtomicBool, written: &mut u64, stats: &mut Stats, ready: &mut Ready) -> Result<Ended, String> {
+/// `step`: a longer period exists to reopen at. Without one (shared mode), reopening only throws away what the
+/// device holds and starts it again (a Bluetooth output adds ~200 ms once it settles: reopened each time, play
+/// ran at 0.7× real time), so the added latency is taken as the device's own, said once, and play goes on.
+pub unsafe fn play<S: Source>(s: &Stream, rate: u32, source: &mut S, stop: &AtomicBool, written: &mut u64, stats: &mut Stats, ready: &mut Ready, step: bool) -> Result<Ended, String> {
     let event = CreateEventW(None, false, false, None).map_err(|e| e.message())?;
     let r = (|| -> Result<Ended, String> {
         s.client.SetEventHandle(event).map_err(|e| e.message())?;
@@ -110,9 +113,15 @@ pub unsafe fn play<S: Source>(s: &Stream, rate: u32, source: &mut S, stop: &Atom
                     behind = ((lag - base) / rate as f64).max(0.0);
                 }
                 source.heard(*written, qpc as f64 * 1e-7 + lag / rate as f64);
-                if behind > limit {
+                if behind > limit && step {
                     *written += n as u64;
                     return Ok(Ended::Behind(behind));
+                }
+                if behind > limit {
+                    base = lag;
+                    stats.settled_ms += behind * 1000.0;
+                    println!("{}", serde_json::json!({ "output": { "latencyGrewMs": (behind * 1e5).round() / 100.0, "kept": s.mode } }));
+                    behind = 0.0;
                 }
             }
             *written += n as u64;

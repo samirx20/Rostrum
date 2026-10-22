@@ -5,8 +5,6 @@ GUI thread, newest request wins. The render file is what the engine's live trans
 unchanged track's render, so a re-render after a small edit is quick); each render goes to a new numbered file
 (the player may still hold the last one open), with stems for every track so the Mix page has meters. A failed
 render is reported (`failed`), never passed off as the new sound; the last good render stays playable.
-`Player`: QMediaPlayer + QAudioOutput, only for auditioning a library sound in its own format (library_panel.py);
-the song itself plays through the engine. With no sound output it says so and runs on a clock.
 """
 from __future__ import annotations
 
@@ -17,7 +15,7 @@ import threading
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QUrl, Signal
+from PySide6.QtCore import QObject, Signal
 from rostrum_sound import settings
 
 SCRATCH = settings.cache_dir() / "screensound" / str(os.getpid())
@@ -100,44 +98,3 @@ class Renderer(QObject):
                 return
             time.sleep(0.1)
         print(f"Warning: could not delete the screen's renders in {SCRATCH} (a file is still open)", file=sys.stderr)
-
-
-class Player(QObject):
-    """Plays one file from a time. `position()` is where it is, in seconds (the player's, or the clock's)."""
-    problem = Signal(str)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        from PySide6.QtMultimedia import QAudioOutput, QMediaDevices, QMediaPlayer
-        self.has_output = bool(QMediaDevices.audioOutputs())
-        self._player = QMediaPlayer(self)
-        self._out = QAudioOutput(self)
-        self._player.setAudioOutput(self._out)
-        self._player.errorOccurred.connect(lambda _e, text: self.problem.emit(f"Error: playback: {text}"))
-        self._file, self._t0, self._clock, self.playing = "", 0.0, 0.0, False
-
-    def play(self, file: str, t: float):
-        self._t0, self._clock, self.playing = t, time.monotonic(), True
-        if not self.has_output:
-            return
-        if file != self._file:
-            self._file = file
-            self._player.setSource(QUrl.fromLocalFile(file))
-        self._player.setPosition(int(t * 1000))
-        self._player.play()
-
-    def stop(self):
-        self.playing = False
-        if self.has_output:
-            self._player.stop()
-
-    def position(self) -> float:
-        from PySide6.QtMultimedia import QMediaPlayer
-        playing = self.has_output and self._player.playbackState() == QMediaPlayer.PlaybackState.PlayingState
-        if playing and self._player.position() > 0:      # a device that never starts moving: the clock runs on
-            return self._player.position() / 1000
-        return self._t0 + time.monotonic() - self._clock
-
-    def close(self):
-        self.stop()
-        self._player.setSource(QUrl())
