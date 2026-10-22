@@ -2,14 +2,15 @@
 
     python apps/2d/screen/main.py                                   # a person's launch: the last project opened,
                                                                     # else a new "Untitled N" project
-    python apps/2d/screen/main.py --sample                          # the window, on a small sample document
+    python apps/2d/screen/main.py --sample                          # the window, on the small built-in sample
+                                                                    # (never saved; the only way it opens)
     python apps/2d/screen/main.py --script my_shot.py               # on what a script builds
     python apps/2d/screen/main.py --doc <project folder> <item>     # open a saved document (made if missing),
                                                                     # saved again after every change (launchers, agents)
     python apps/2d/screen/main.py --open <doc file or project folder>   # open it the way a person does: File > Save
                                                                     # saves, unsaved changes are kept in a recovery copy
-    python apps/2d/screen/main.py --step "select title" --step "page animate" --step "time 1.2" --shot out.png
-Steps: see screen2d/steps.py (file steps: screen2d/file_steps.py). With --shot the window quits by itself; a failed
+    python apps/2d/screen/main.py --sample --step "select title" --step "page animate" --step "time 1.2" --shot out.png
+Steps and --shot go with any start (no file named: the plain start, so a walk can check it). Steps: see screen2d/steps.py (file steps: screen2d/file_steps.py). With --shot the window quits by itself; a failed
 step, frame or save exits nonzero.
 Offscreen screenshots: QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
 """
@@ -42,7 +43,7 @@ def first_doc() -> Document:
 def load_doc(args) -> Document:
     if args.open:
         return Document.open(*resolve(args.open), KIND)
-    if not (args.doc or args.script or args.sample or args.step or args.shot):
+    if not (args.doc or args.script or args.sample):
         return first_doc()
     source, name = SOURCE, "sample.py"
     if args.script:
