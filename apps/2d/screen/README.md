@@ -166,46 +166,42 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 ```
 Steps: `select`, `selectmany`, `act`, `nudge`, `tool move|pen|draw`, `time`, `set`, `scrub`, `animate`, `drag <layer> <dx> <dy>`, `keydrag <key> <t>`,
 `bardrag`, `open <layer>`, `fold <layer>`, `pick <x> <y>`, `find <text>`, `group <name>`, `reveal <field>`, `undo`, `redo`, `more`, `commands`, `run`, `play`, and the Draw steps above;
-`export <format> [alpha=on|off] [depth=8|16] [start=<s>] [end=<s>]`, `exportpanel open [format]|close` (`screen2d/steps.py`). Offscreen: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts`.
+`export <format> [alpha=on|off] [depth=8|16] [quality=<q>] [range=<a→b>]`, `exportpanel open [format]|close` (`screen2d/steps.py`), and the kit's
+`exportsheet open [format]|close`, `exportwhere <folder>`, `exportnow [replace|both|cancel]`, `job-show <percent>`, `job-failed <words>`. Offscreen: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts`.
 
-## Files (File menu, Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S)
+## Files (≡ menu, Ctrl+N / Ctrl+O / Ctrl+Shift+S / Ctrl+S; the kit's one model: shared/gui-kit/FILES.md)
 
-- **A file is a project folder.** New makes `Documents\Rostrum2D\Untitled 1` (then 2, 3 …) with one blank composition
-  (1920 × 1080, 25 fps, 10 s) as the document `docs\main.mtn`, and opens it. Open takes a `.mtn` file (or a project
-  folder); Open recent lists the last 8 that still exist. Save as asks a name and makes a new project folder next to
-  the others: a copy of the whole project (other documents, markers, imported pictures, renders; never the recovery
-  copy), with this window's version saved in it and imported pictures pointed into the copy (one change in the history).
-  The window then shows the new project; the old one stays as it was last saved.
-- **Saving is by hand.** An edit puts a dot after the name (title bar and top bar: `Spring promo •`). Every 60 seconds
-  while there are unsaved changes a **recovery copy** is written to `<project>\.rostrum\recovery\` (the same format as a
-  save); the saved document is never touched. Save writes the document and its history and deletes the recovery copy.
-  Opening a project whose recovery copy is newer than its saved document asks "Restore unsaved changes?" (Restore /
-  Discard). Closing, New or Open with unsaved changes asks Save / Don't save / Cancel.
-- **The screen and agents on the same project.** `--doc <folder> <item>` (the launchers, agents, the MCP server) keeps
-  saving after every change, so an agent always reads what the person did and never works on an old copy; nothing is
-  ever "unsaved" there. In a window saved by hand, Save first checks that nobody else (an agent, another window) saved
-  the document since this window read it; if someone did, it refuses and overwrites nothing ("use Save as to keep your
-  version"), so a person's Save can never wipe an agent's work and the other way round.
-- **Absent, not greyed:** Save is in the menu and Ctrl+K only while there is something to save; the recent list leaves
-  out the open project. A document without a folder (the sample, `--script`) offers "Save…", which asks a name.
-- **Fails loudly:** a failed save, open or Save as is said in red in the top bar; as a step it exits nonzero.
-- Where things are found (engine, ffmpeg, fonts, the projects folder, the settings file with the recent list, whether
-  Rostrum3D is installed) is in one place: `apps/2d/python/rostrum2d/settings.py`. Without Rostrum3D the Add menu and
-  Ctrl+K have no 3D render layer. The File menu also has **Open sample**.
-- Code: `screen2d/projects.py` (folders, recovery copy, Save as; no Qt), `files.py` (the menu's actions, `files` in QML),
-  `recent.py`, `session.py` (one window per open document), `file_commands.py` (Ctrl+K), `qml/FileMenu.qml`,
-  `qml/FileFlow.qml` (the questions, shortcuts, open dialog), `qml/AskDialog.qml`.
-- Steps (`screen2d/file_steps.py`, `_` for spaces): `new [name]`, `save`, `saveas <name>`, `openproject <path>`,
-  `autosave`, `restore`, `discard`, `filemenu open|close`, `askclose`. Test: `tests/test_recovery.py`.
+- **Saving is automatic.** Every project window is live (`rostrum_core.live` + `LiveLink` in `Bridge2D`, for any
+  document with a folder, however it was opened): each change is on disk at once, through the same door as the agent
+  server, and an agent's change shows in the window on the next LiveLink tick. No Save, no unsaved dot, no
+  "Save changes?", no recovery copy.
+- **A file is a project folder.** New makes `Documents\Rostrum2D\Untitled` (then 2, 3 …) with one blank composition
+  (1920 × 1080, 25 fps, 10 s) as `docs\main.mtn`, and opens it; a New project left untouched is removed when left.
+  Open takes a project folder (or a `.mtn` file); Open recent lists the last 10 still on disk (`rostrum_core/recent.py`,
+  the same list the MCP server reads). Open sample opens the person's own copy of the Lull sample (`rostrum_core.samples`).
+- **Duplicate…** copies the whole project to a new folder; imported pictures inside it are pointed into the copy (one
+  change in the copy). The window stays on the original and says so, with **Open the copy**. **Save a version**
+  (Ctrl+S) opens History's name field with the time as the name. **Show folder**, **Start screen…**.
+- **Starting:** the last project where it was left; with nothing to reopen, the kit's start screen. A damaged or newer
+  project is refused in words ("… Nothing was changed.") and the app still starts.
+- `--sample` / `--script` are in-memory windows for checks and pictures (no folder, not saved).
+- Code: `screen2d/files2d.py` (2D's adapter: blank, resolve, repoint, picture), `session.py` (one window per open
+  document), `file_commands.py` (Ctrl+K), kit `rostrum_gui/project_files.py`, `qml/RostrumKit/FilesMenu.qml`,
+  `StartScreen.qml`.
+- Steps (`screen2d/file_steps.py`, `_` for spaces): `new [name]`, `openproject <path>`, `startscreen open|close`,
+  `version [name]`, `duplicateproject <name>`, `filemenu open|close`. Test: `shared/gui-kit/tests/test_docfiles.py`.
 
 ## Export
 
-- **Export** in the top bar opens a small panel (`qml/ExportPanel.qml`, `screen2d/exporter.py`): pick a format (mp4, ProRes 4444,
-  WebM, GIF, PNG sequence, Lottie), then only the settings that apply to it (transparency where the format can carry it, bit
-  depth for png, from / to seconds for everything but Lottie), then Export. It runs as a job off the GUI thread with a progress
-  bar, then shows the file, frames, size and what was read back (png / gif: the first frame; Lottie: what it couldn't carry), or
-  the error in red. Where it goes: the project's `renders/<item>/vNNN/` (with a manifest) when the document has a folder, else
-  the person's Videos folder (Documents when there is none), never the hidden cache.
+- **Export** (the top bar's Export, Ctrl+E; Ctrl+Shift+E exports again) opens the kit's Export sheet in the inspector's place
+  (`shared/gui-kit/EXPORT.md`), filled by `screen2d/exporter.py` (`Exporter`, the kit's `ExportSheet`) and
+  `qml/ExportSettings.qml`: What for in words with the file type (video to share .mp4, video for editing .mov, for the web
+  .webm, GIF, still frames, frames for the Editor, Lottie, motion for RostrumSound: `export_rows.WHAT_FOR`), then only the
+  settings that apply (transparency where the format can carry it, bit depth, quality), the range (everything, or marker to
+  marker), where it goes (the project's `renders/<item>/vNNN/` with a manifest; Browse for a folder: a file there is never
+  replaced without Replace / Keep both / Cancel), Export. It runs as a background job (the top bar's job chip, Cancel); done,
+  the message line says "Exported <file> · Play · Show in folder", the sheet shows what was read back (Lottie: what it
+  couldn't carry), and the document gets a version "Exported v003". A failure is red, in words; no unfinished file is left.
 - The formats and their settings are data (`rostrum2d.io.formats.FORMATS` + Lottie, listed by `rostrum2d.mcp.exporting`); the
   MCP tool `render_export` runs the same code (`exporting.run`), so a person and an agent get the same files.
 
@@ -233,10 +229,10 @@ Steps: `select`, `selectmany`, `act`, `nudge`, `tool move|pen|draw`, `time`, `se
 
 ## Problems, steps and curves
 
-- **Problems** (`screen2d/problems.py`, `qml/ProblemsPanel.qml`): half a second after a change, off the GUI thread with an
+- **Problems** (`screen2d/problems.py`, the kit's Problems chip): half a second after a change, off the GUI thread with an
   engine of its own, the same list agents get from `inspect_diagnose` (`rostrum2d.diagnose_engine.everything`). The top bar
-  shows "N problems" only while there are any; the panel says each in words with how to fix it, and a click selects the item.
-  Steps: `problems open|close` (waits for the list).
+  shows "N problems" only while there are any; its list says each in words with how to fix it, and a click selects the item
+  (and goes to its moment when it has one: `Problems.jump`). Steps: `problems open|close` (waits for the list).
 - **Steps** (Timing › Steps on a composition, group or layer; `rostrum2d/stepped.py`): on twos / threes / fours is how the
   scene is evaluated, never baked into the keys.
 - **Colour curves**: the kit's curve control (`RostrumKit/CurveField.qml`) for a param marked `control="curve"`: drag a

@@ -10,7 +10,9 @@ Item {
     property string kind: "normal"
     property bool danger: false
     property bool down: false            // shown pressed (e.g. a toggled-on tool)
-    property string tip: ""              // what it does, in words: shown under it while the pointer rests on it
+    property string tip: ""              // its name, in words: shown under it while the pointer rests on it
+    property string help: ""             // hover help: one plain sentence of what it does (INTERACTION.md 1.17)
+    property string job: ""              // its key map job: the key shown in the hover help (AppShell.keyFor)
     readonly property bool hovered: hoverHandler.hovered
     signal clicked()
     implicitWidth: Theme.button; implicitHeight: Theme.button
@@ -31,5 +33,6 @@ Item {
         color: b.danger ? Theme.danger : b.hovered || b.down ? Theme.fg : Theme.fg2
     }
     MouseArea { id: area; anchors.fill: parent; onClicked: b.clicked() }
-    HoverTip { text: b.tip; hovered: b.hovered; pressed: area.pressed || b.down }
+    HoverTip { text: b.tip; help: b.help; key: b.job && b.Window.window && b.Window.window.keyFor ? b.Window.window.keyFor(b.job) : ""
+               hovered: b.hovered; pressed: area.pressed || b.down }
 }

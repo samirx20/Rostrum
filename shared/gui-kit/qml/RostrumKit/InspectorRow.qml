@@ -80,7 +80,10 @@ Item {
         height: Theme.row
         Text { id: label; width: Theme.labelColumn - Theme.gap; anchors.verticalCenter: parent.verticalCenter
                text: row.model.label; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
-               wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; lineHeight: 0.9 }   // never cut to "Width along the…"
+               wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; lineHeight: 0.9   // never cut to "Width along the…"
+               HoverHandler { id: labelHover }
+               HoverTip { text: row.model.help || label.truncated ? row.model.label : ""; help: row.model.help || ""
+                          hovered: labelHover.hovered } }   // hover help: the setting's name and its one sentence
         Loader {
             id: widget
             x: Theme.labelColumn

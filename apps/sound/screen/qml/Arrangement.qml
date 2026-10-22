@@ -105,17 +105,11 @@ Rectangle {
         x: timeline.headerWidth + Theme.gap * 2 + Math.max(0, (a.width - timeline.headerWidth - Theme.gap * 2 - width) / 2)
         y: strip.height + Math.max(60, (a.height - strip.height - height) / 2 - 40)
         width: Math.min(420, a.width - timeline.headerWidth - 4 * Theme.gap)
-        spacing: Theme.gap
-        Text { width: parent.width; text: "Start with a sound."; color: Theme.fg; horizontalAlignment: Text.AlignHCenter
-               font.family: uiFont; font.pixelSize: Theme.heading; font.weight: Font.DemiBold }
-        Text { width: parent.width; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter
-               text: "Pick an instrument, a drum kit, a voice or the microphone. Each sound starts its own track."
-               color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body }
-        Row {
-            anchors.horizontalCenter: parent.horizontalCenter; spacing: Theme.gap; topPadding: Theme.grid
-            Button { text: "Add a track"; kind: "primary"; hint: "Ctrl L"; onClicked: a.addTrack() }
-            Button { text: "Bring in a picture"; onClicked: backend.setPictureOpen(true)
-                     HoverTip { text: "Already have a film? Show it here and make the sound to it"; hovered: parent.hovered } }
+        EmptyHint {     // the kit's empty state (INTERACTION.md 1.16): one line, two buttons, gone with the first track
+            width: parent.width
+            text: "Start with a sound, or drop a file here."
+            buttons: [{ value: "track", label: "Add a track" }, { value: "picture", label: "Bring in a picture" }]
+            onPicked: (v) => v === "track" ? a.addTrack() : backend.setPictureOpen(true)
         }
     }
     PictureCorner {

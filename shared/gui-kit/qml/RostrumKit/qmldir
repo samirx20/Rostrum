@@ -31,7 +31,9 @@ KeyRows 1.0 KeyRows.qml
 Menu 1.0 Menu.qml
 CurveField 1.0 CurveField.qml
 NoticesDialog 1.0 NoticesDialog.qml
-GuideDialog 1.0 GuideDialog.qml
+GuidesDrawer 1.0 GuidesDrawer.qml
+KeyList 1.0 KeyList.qml
+EmptyHint 1.0 EmptyHint.qml
 ConnectAgentDialog 1.0 ConnectAgentDialog.qml
 ActionMenu 1.0 ActionMenu.qml
 ContextBar 1.0 ContextBar.qml
@@ -39,3 +41,8 @@ KeyMap 1.0 KeyMap.qml
 AgentChip 1.0 AgentChip.qml
 HistorySheet 1.0 HistorySheet.qml
 ChangeOutline 1.0 ChangeOutline.qml
+StartScreen 1.0 StartScreen.qml
+FilesMenu 1.0 FilesMenu.qml
+ExportSheet 1.0 ExportSheet.qml
+JobChip 1.0 JobChip.qml
+ProblemsChip 1.0 ProblemsChip.qml

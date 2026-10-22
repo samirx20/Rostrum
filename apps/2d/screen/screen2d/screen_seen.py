@@ -26,8 +26,7 @@ def state(bridge) -> dict:
         "playhead": bridge._t,                         # composition seconds
         "range": None,                                 # 2D has no time range yet
         "scene": bridge.label_of(comp),                # the open composition
-        # The area with the keyboard focus is not kept in Python today (Main.qml would call a `backend.setFocusArea(name)`
-        # from its activeFocusItem); until then: the canvas.
+        # the area last pressed (the kit's AppShell.focusArea, named by Main.qml's areaNames, via bridge.setFocusArea)
         "focus": getattr(bridge, "_focus_area", "") or "canvas",
         "view": {"tool": bridge.tool, "playing": bridge.playing, "previewSize": bridge.frameInfo["previewSize"]},
         # every move, resize, turn, bar, key or point drag acts on the selection, so that is what is being dragged

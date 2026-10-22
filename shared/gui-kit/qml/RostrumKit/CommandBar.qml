@@ -68,7 +68,8 @@ QQC.Popup {
                             onEntered: list.currentIndex = cmd.index; onClicked: bar.runCurrent() }
             }
         }
-        Text { id: empty; visible: list.count === 0; text: "Nothing matches"; leftPadding: Theme.gap
-               color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body }
+        EmptyHint { id: empty; visible: list.count === 0; width: parent.width
+                    text: search.input.text.trim() ? "Nothing called “" + search.input.text.trim() + "”. Try a shorter word."
+                                                   : "Nothing to run here yet." }
     }
 }

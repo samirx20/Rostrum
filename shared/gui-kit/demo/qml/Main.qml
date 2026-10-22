@@ -9,6 +9,7 @@ AppShell {
     appName: "Rostrum"
     documentName: "Kit demo"
     saveWord: "Saved"
+    helpEntries: guides                 // the guides drawer (F1) lists them
 
     left: ItemList { anchors.fill: parent; bridge: backend }
     centre: Viewer { anchors.fill: parent }

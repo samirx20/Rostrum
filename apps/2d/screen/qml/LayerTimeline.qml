@@ -99,11 +99,10 @@ Rectangle {
         Chevron { anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter } }
         Menu { id: picker; y: parent.height; width: tl.labelWidth; onPicked: (id) => backend.select(id) }
     }
-    Text {
+    EmptyHint {     // the kit's empty state (INTERACTION.md 1.16): gone with the first layer
         visible: backend.layers.length === 0
-        x: Theme.pad; y: tl.rowsTop + Theme.gap; width: tl.labelWidth - Theme.pad
-        text: "Add a shape, text or picture with + Add"
-        wrapMode: Text.WordWrap; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
+        x: Theme.pad; y: tl.rowsTop + Theme.gap * 2; width: tl.width - 2 * Theme.pad
+        text: "Your layers appear here as bars. Drag a bar to change when it shows."
     }
     Repeater {   // the project's shared markers, a faint line across every row (their flags are on the ruler)
         model: backend.markers

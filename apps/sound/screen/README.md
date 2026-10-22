@@ -51,16 +51,20 @@ Steps (`screensound/steps.py`): `dock editor|mixer|none` (old scripts' `page tim
 `drag-marker`, `add-note`, `delete`, `mute`, `solo`, `undo`, `redo`, `play`, `render`, `wait <s>`, `more`,
 `commands`, `run`, `zoom`, `scroll`, `fit`, `lane`, `lane-point`, `lane-delete`, `picture`. Offscreen: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts`.
 
-## Songs as files, Settings (P21)
+## Songs as files, Settings (S34: the kit's one file model, shared/gui-kit/FILES.md)
 
-File menu (`FileMenu.qml`, `screensound/session.py` = `songs`, `projects.py`): New song, Open…, recent songs, Save… /
-Save a copy as…, Settings…. A new song is untitled (saved per change in the untitled area) until Save names it; named
-songs are saved per change. Crash recovery offers back untitled songs whose process is gone. Settings
-(`SettingsPanel.qml`, `screensound/settings_page.py` = `settingsPage`) is the kit's Inspector on
-`rostrum_sound.settings_fields.FIELDS`. Switching songs rebuilds the bridge and its parts and reloads the window
-(`main.py` `Screen.show`). Steps: `file-new`, `file-open <path>`, `file-save-as <folder>`, `file-menu`, `settings`,
-`add-track <sound key>` (adder.py: `builtIn:grandPiano`, `kit`, `mic`, `voice:ryan` …; the old piano|strings|pad|bass|drums|voice|audio still work), `press <Ctrl+Shift+S>` (a key chord into the window).
-The File menu shows the shortcuts (`HintMenu.qml`, the kit's Menu with key hints): Ctrl N / O / S, Ctrl Shift S (Save a copy), Ctrl ,.
+≡ menu (kit `FilesMenu.qml` + `rostrum_gui/project_files.py` = `files`; Sound's adapter `screensound/files_sound.py`):
+New, Open…, Open recent ▸, Open sample (the person's copy of Lull), Duplicate… (a separate copy; the window stays),
+Save a version (Ctrl+S: History's name field, the time as the name), Show folder, Start screen…, then Sound's own:
+Preferences… (Ctrl+,), Quit (Ctrl+Q). Saving is automatic: every song with a folder is live (`SoundBridge`:
+`live.keep` + `LiveLink`), however it was opened; no Save, no question on closing, no untitled area or crash
+recovery. A new song is "Untitled song" (then 2, 3 …) in the projects folder; one left untouched is removed when left.
+With nothing to reopen the app starts on the kit's start screen. Settings (`SettingsPanel.qml`,
+`screensound/settings_page.py` = `settingsPage`) is the kit's Inspector on `rostrum_sound.settings_fields.FIELDS`.
+Switching songs rebuilds the bridge and its parts and reloads the window (`main.py` `Screen.show`). Steps: `new [name]`,
+`openproject <path>`, `duplicate <name>`, `version [name]`, `startscreen open|close` (old `file-new`, `file-open`,
+`file-duplicate` still work), `file-menu`, `settings`, `add-track <sound key>` (adder.py: `builtIn:grandPiano`, `kit`,
+`mic`, `voice:ryan` …), `press <Ctrl+Shift+S>` (a key chord into the window).
 
 ## Mixer and Deliver: loudness, delivery, export, ducks, cleaned takes
 
