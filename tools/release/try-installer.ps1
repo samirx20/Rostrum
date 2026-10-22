@@ -3,7 +3,7 @@
   Installs a RostrumSetup-*.exe into a scratch folder (silently, both apps, desktop shortcuts) and walks each app as a
   brand-new user (check.ps1: only Windows on the PATH, a fresh home folder):
     plain start from the Start menu and the desktop (must open a new empty file, never the sample) · New → add one
-    thing → Save · plain start again (must reopen that file) · the saved file double-clicked · export (2D: MP4;
+    thing → Save · plain start again (must reopen that file) · the saved file double-clicked · export (2D: MP4 and WebM;
     Sound: WAV and FLAC), each file read back · Help › About and licences · Sound's clean-up library loads
   then uninstalls and checks that nothing is left but the person's own files. Pictures go to -Results.
 
@@ -31,7 +31,7 @@ function Problem([string]$m) { $problems.Add($m); Write-Host "PROBLEM: $m" -Fore
 $walk = @{
     "2d"    = @{ name = "Rostrum2D"; ext = ".mtn"; docs = "Documents\Rostrum2D"
                  save = @("--step", "new Fresh test", "--step", "add text", "--step", "save")
-                 export = @(, @("mp4", @("--step", "export mp4"))) }
+                 export = @(@("mp4", @("--step", "export mp4")), @("webm", @("--step", "export webm"))) }
     "sound" = @{ name = "RostrumSound"; ext = ".trk"; docs = "Documents\Rostrum"
                  save = @("--step", "file-new", "--step", "add-track piano", "--step", "add-note 0 60", "--step", "file-save-as {home}\Documents\Rostrum\Fresh song")
                  export = @(@("wav", @("--step", "export-as wav24", "--step", "export")), @("flac", @("--step", "export-as flac", "--step", "export"))) }

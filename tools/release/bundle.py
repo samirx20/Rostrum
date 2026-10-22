@@ -20,6 +20,7 @@ import sys
 import zipfile
 from pathlib import Path
 
+import extras
 import icons
 from qt_trim import trim
 
@@ -156,12 +157,12 @@ def main():
             copy(rel, REPO, stage)
         for rel in APPS[app][3]:
             copy(rel, args.engines, stage)
-    ffmpeg = args.engines / "apps/2d/ffmpeg"       # 2D's own LGPL FFmpeg (WebM, ProRes, video import); MP4 needs none
-    if "2d" in args.apps and ffmpeg.is_dir():
-        copy("apps/2d/ffmpeg", args.engines, stage)
-    elif "2d" in args.apps:
-        print(f"NOTE: no {ffmpeg}: Rostrum2D ships without FFmpeg, so WebM / ProRes export and video import will say "
-              "it is missing (MP4, PNG, GIF and EXR don't need it)")
+    try:                                         # 2D's LGPL FFmpeg; the C++ runtime beside every engine
+        if "2d" in args.apps:
+            extras.ffmpeg(stage)
+        extras.crt(stage, sorted({Path(rel).parent for app in args.apps for rel in APPS[app][3]}))
+    except extras.Missing as e:
+        fail(str(e))
     copy("tools/release/rostrum.pyw", REPO, stage)
     shutil.move(stage / "tools" / "release" / "rostrum.pyw", py.parent / "rostrum.pyw")
     shutil.rmtree(stage / "tools")

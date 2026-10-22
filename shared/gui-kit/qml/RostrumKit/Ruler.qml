@@ -40,6 +40,8 @@ Item {
         if (frames) return v
         return v >= 60 ? Math.floor(v / 60) + ":" + ("0" + Math.round(v % 60)).slice(-2) : (Math.round(v * 100) / 100) + "s"
     }
+    // with flags, the tick numbers drop below them (a flag is 16 px tall) when the ruler is tall enough for both rows
+    readonly property int labelTop: markers.length > 0 && height >= 30 ? 18 : 5
     implicitHeight: 22
 
     Repeater {
@@ -50,7 +52,7 @@ Item {
             readonly property bool big: Math.abs((index * r.minor / r.major) - Math.round(index * r.minor / r.major)) < 1e-6
             x: Math.round(r.xOf(v)); y: r.height - height
             width: 1; height: big ? 7 : 3; color: big ? Theme.lineHover : Theme.line
-            Text { visible: parent.big && r.xOf(parent.v) < r.width - 24; x: 4; y: -r.height + 5 + parent.height
+            Text { visible: parent.big && r.xOf(parent.v) < r.width - 24; x: 4; y: -r.height + r.labelTop + parent.height
                    text: r.label(parent.v); color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
                    font.features: { "tnum": 1 } }
         }
@@ -100,6 +102,8 @@ Item {
                     }
                     onDoubleClicked: { mk.naming = true; editor.text = modelData.name; editor.selectAll(); editor.forceActiveFocus() }
                 }
+                HoverTip { text: r.editMarkers ? "Double-click to rename, drag to move" : ""; hovered: hit.containsMouse
+                           pressed: hit.pressed || mk.naming }
                 Text {      // delete, on hover
                     id: cross
                     visible: r.editMarkers && (hit.containsMouse || crossHit.containsMouse) && !mk.naming
