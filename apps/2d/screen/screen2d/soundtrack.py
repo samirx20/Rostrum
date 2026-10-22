@@ -1,5 +1,6 @@
 """The project's sound in 2D (`backend.soundtrack`; UX_SPEC 3.28, AGENTS.md rule 9). No mixer, no audio engine here:
-RostrumSound's engine renders the scene's `soundtrack` (a Sound item; empty = the project's first) when the song,
+RostrumSound's engine renders the scene's `soundtrack` (a Sound item; empty = the project's main mix,
+rostrum2d/project_sound.py) when the song,
 the markers or the pick change (soundtrack_render.py; a cheap stat once a second), and its live player plays it with
 2D's playback (soundtrack_play.py: play / stop / loop / scrub; the picture follows the speaker, `heard`). Mute is
 2D only. No output, no engine, a broken song: said once, loudly (status line, Sound row); the picture plays on its
@@ -12,6 +13,8 @@ import subprocess
 from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
+
+from rostrum2d import sound_cues
 
 from .soundtrack_play import SoundtrackPlay
 from .soundtrack_render import SoundtrackRender
@@ -32,6 +35,7 @@ class Soundtrack(QObject):
         self._render = SoundtrackRender(self)
         self._render.rendered.connect(self._on_rendered)
         self._render.failed.connect(self._on_failed)
+        self._unfollow = sound_cues.watch(bridge.doc, self._say)    # "Add a sound here" cues follow their layers
         self._poll = QTimer(self, interval=1000, timeout=self.check)
         self._poll.start()
         self.check()
@@ -48,6 +52,7 @@ class Soundtrack(QObject):
     hasBeats = Property(bool, lambda self: bool(self.beat_times()), notify=changed)
     showBeats = Property(bool, lambda self: self._beats_on and bool(self.beat_times()), notify=changed)
     bpm = Property(float, lambda self: self._info.get("grid", {}).get("bpm", 0.0), notify=changed)
+    lines = Property("QVariantList", lambda self: self._info.get("lines", []), notify=changed)   # voice-over: [{t, end, text}]
 
     @Property("QVariantList", notify=changed)
     def beats(self):
@@ -77,7 +82,8 @@ class Soundtrack(QObject):
         folder = self.b.doc.folder
         try:
             from rostrum_sound import soundtrack
-            song = soundtrack.find(folder, self.b.comp().get("soundtrack", "")) if folder else None
+            from rostrum2d import project_sound
+            song = project_sound.song(folder, self.b.comp().get("soundtrack", ""))
             stamp = soundtrack.stamp(folder, song["id"]) if song else None
         except Exception as e:  # noqa: BLE001  a named song that isn't there, rostrum_sound missing: loud
             return self._on_failed(e.line() if hasattr(e, "line") else f"Error: soundtrack: {e}")
@@ -171,6 +177,7 @@ class Soundtrack(QObject):
             self.changed.emit()
 
     def close(self):
+        self._unfollow()
         self._poll.stop()
         self._play.close()
         self._render.close()

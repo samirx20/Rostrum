@@ -9,6 +9,8 @@
     sound menu                  the Sound row's right-click     sound open [dry]   Open in RostrumSound (dry: print it)
     sound problem <png>         the mix must have failed (no engine …): a picture of the screen saying so, then the
                                 status line is cleared so the walk goes on
+    sound cue [words…]          Add a sound here… on the selected layer: the picker, searched for the words
+    sound cue pick <n>          tie the picker's n-th sound (1 = the first) to the layer; prints the cue and its marker
     rulermenu                   the ruler's ▾ menu
 """
 from __future__ import annotations
@@ -90,6 +92,20 @@ def do_sound_step(bridge, win, word, rest, step):
         bridge.doc.apply([{"op": "comp.set", "target": [bridge.comp_id], "args": {"soundtrack": item}}], bridge.who)
         _settle(bridge)
         print("soundtrack:", st.describe() or "none")
+    elif what == "cue" and rest[1:2] == ["pick"]:
+        cp = bridge.cuePick
+        row = cp.sounds[int(rest[2]) - 1]
+        if not cp.pick(row["path"]):
+            raise RuntimeError(f"step {step!r}: the cue was refused (the status line says why)")
+        _pump(0.2)
+        print("cue:", row["about"], "| markers:", [(m["name"], m["at"]) for m in __import__("rostrum_core").markers.listing(bridge.doc.folder)])
+    elif what == "cue":
+        cp = bridge.cuePick
+        cp.search(" ".join(rest[1:]))
+        if not cp.start():
+            raise RuntimeError(f"step {step!r}: Add a sound here needs one layer selected")
+        _pump(0.3)
+        print("sounds:", len(cp.sounds))
     elif what == "menu":
         _invoke(win, "soundRow", "openMenu")
     elif what == "open":

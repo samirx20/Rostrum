@@ -60,9 +60,18 @@ def info(where: str, fmt: str) -> dict:
     return row
 
 
-def settings(where: str, fmt: str, duration: float, alpha=None, depth=None, start=None, end=None, quality=None, bitrate=None) -> dict:
+def see_through(background) -> bool:
+    """Is the composition's background transparent ("transparent" / "none" / empty, or a colour with zero alpha)?"""
+    b = str(background or "").strip().lower()
+    return b in ("", "none", "transparent") or (b.startswith("#") and len(b) == 9 and b.endswith("00"))
+
+
+def settings(where: str, fmt: str, duration: float, alpha=None, depth=None, start=None, end=None, quality=None, bitrate=None,
+             background="#000000", sound=None) -> dict:
     """The settings that apply to `fmt`, defaults filled; one that doesn't apply (alpha on mp4, depth on gif, quality on png, any on
-    Lottie) is refused. `bitrate` (Mbit/s, exact) replaces `quality`."""
+    Lottie) is refused. `bitrate` (Mbit/s, exact) replaces `quality`. Transparency defaults on only where the format can carry
+    it and the composition's `background` is transparent (a solid background has nothing to keep). `sound`: the Sound item
+    whose mix goes under the picture (project_sound.song; MP4 only, io/export_sound.py), None for a silent file."""
     row = info(where, fmt)
     bad = lambda what, why: RostrumError(codes.BAD_ARGUMENT, where, what, why)
     if alpha and not row["alpha"]:
@@ -80,11 +89,13 @@ def settings(where: str, fmt: str, duration: float, alpha=None, depth=None, star
         raise RostrumError(codes.BAD_ARGUMENT, where, f'quality "{quality}"', "is not a quality choice", row["qualities"])
     if bitrate is not None and not 0 < bitrate <= table.MAX_MBIT:
         raise bad(f"bitrate {bitrate:g} Mbit/s", f"must be above 0 and at most {table.MAX_MBIT}")
-    return {"alpha": row["alpha"] if alpha is None else bool(alpha), "depth": depth or (row["depths"][0] if row["depths"] else None),
+    if sound and fmt != "mp4":
+        raise bad("sound", f"{fmt} carries no sound; only mp4 does")
+    return {"sound": sound or None, "alpha": row["alpha"] and see_through(background) if alpha is None else bool(alpha), "depth": depth or (row["depths"][0] if row["depths"] else None),
             "start": start, "end": end, "quality": quality or row["quality"], "bitrate": bitrate}
 
 
-def _to_file(where: str, scene: dict, fmt: str, s: dict, target: Path, progress, engine_factory) -> dict:
+def _to_file(where: str, scene: dict, fmt: str, s: dict, target: Path, progress, engine_factory, folder=None) -> dict:
     """Draw into `target` (a file; for a sequence the base its frames are named from). Facts read back, or RENDER_FAILED."""
     if fmt == "motion":
         data, p = scene["samples"], scene["comp"]["props"]
@@ -111,9 +122,16 @@ def _to_file(where: str, scene: dict, fmt: str, s: dict, target: Path, progress,
     try:
         with (engine_factory or _engine)() as eng:
             eng.load(scene)
-            return export(eng, fmt, target, s["alpha"], s["depth"], s["start"], s["end"], progress, s.get("quality"), s.get("bitrate"))
+            facts = export(eng, fmt, target, s["alpha"], s["depth"], s["start"], s["end"], progress, s.get("quality"), s.get("bitrate"))
     except Exception as e:  # noqa: BLE001  the engine, the encoder, or the read-back: one loud failure naming what was drawn
         raise _fail(where, f"the {fmt} export {target.name}", e) from e
+    if s.get("sound"):                               # sound asked: the mix goes under the picture, or the export fails
+        from rostrum2d.io.export_sound import attach
+        try:
+            facts["sound"] = attach(target, folder, s["sound"], s["start"], s["end"])
+        except Exception as e:  # noqa: BLE001
+            raise _fail(where, f"the sound of {target.name}", e) from e
+    return facts
 
 
 def _engine():
@@ -154,7 +172,7 @@ def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_
         part = project.begin_render(folder, item)
         name = f"{stem}{row['ext']}"
         try:
-            facts = _to_file(where, scene, fmt, s, part / (stem if png else name), progress, engine_factory)
+            facts = _to_file(where, scene, fmt, s, part / (stem if png else name), progress, engine_factory, folder)
             names = sorted(p.name for p in part.iterdir())
             done = project.finish_render(part, _manifest(item, doc_seq, comp["id"], fmt, s, facts, int(part.name[1:].split(".")[0]),
                                                          names, (comp["props"].get("width"), comp["props"].get("height"))))
@@ -179,7 +197,7 @@ def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_
     else:
         part.unlink(missing_ok=True)
     try:
-        facts = _to_file(where, scene, fmt, s, part / final.name if png else part, progress, engine_factory)
+        facts = _to_file(where, scene, fmt, s, part / final.name if png else part, progress, engine_factory, folder)
         if not png and (not part.is_file() or part.stat().st_size == 0):
             raise _fail(where, f"the {fmt} export {final.name}", RuntimeError(f"no file at {part}"))
     except BaseException:                            # a failed or stopped (cancelled) export leaves no .partial behind

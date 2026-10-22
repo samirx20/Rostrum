@@ -51,6 +51,18 @@ Item {
                 }
             }
         }
+        Repeater {   // a voice-over's lines, their words where they are spoken (voice_words.py), over the waveform
+            model: wave.visible ? row.st.lines : []
+            delegate: Rectangle {
+                required property var modelData
+                x: modelData.t * row.ruler.perSec; y: 2; height: well.height - 4
+                width: Math.max(4, (modelData.end - modelData.t) * row.ruler.perSec - 2)
+                radius: Theme.radiusCtl; color: Qt.rgba(0, 0, 0, 0.55); border.color: Theme.line; clip: true
+                Text { x: 4; width: parent.width - 8; anchors.verticalCenter: parent.verticalCenter
+                       text: modelData.text; elide: Text.ElideRight; color: Theme.fg
+                       font.family: uiFont; font.pixelSize: Theme.label }
+            }
+        }
         Text {   // still rendering, or what went wrong
             visible: row.st.problem !== "" || row.st.peaks.length === 0
             x: Theme.pad; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 2 * Theme.pad

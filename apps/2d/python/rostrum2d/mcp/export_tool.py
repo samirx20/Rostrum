@@ -6,6 +6,8 @@ from pathlib import Path
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
+from rostrum2d import project_sound
+
 from . import export_name, exporting
 from .pick import ITEM_COMP, doc_and_comp
 
@@ -17,9 +19,10 @@ tools = Tools()
     "format": {"type": "string", "enum": [r["name"] for r in exporting.formats()],
                "description": "mp4 | prores4444 (alpha) | webm (alpha) | gif | png (a sequence of pictures in a new folder) | lottie (vector JSON; the reply lists what it couldn't carry) | motion (the moving layers' place, scale and opacity 60 times a second: the samples file RostrumSound's edit_sounds_from_motion reads)."},
     "layers": {"type": "array", "items": {"type": "string"}, "description": "motion only: sample these layer ids (a camera as camera:<id>). Default: every layer and camera that moves on its own."},
-    "alpha": {"type": "boolean", "description": "Keep transparency. Default: on for the formats that can carry it (not mp4, not lottie)."},
+    "alpha": {"type": "boolean", "description": "Keep transparency. Default: on only for a format that can carry it (not mp4, not lottie) and a transparent composition background."},
     "depth": {"type": "integer", "enum": [8, 16], "description": "Bits per channel; png only (default 8)."},
     **exporting.QUALITY_ARGS,
+    "sound": {"type": "boolean", "description": "mp4 only: put the project's sound under the picture (the scene's soundtrack, else the project's main mix, mixed by RostrumSound's engine and cut to start..end). Default: on for mp4 when the project has sound. If the mix or putting it under the picture fails, the export fails; never a silent file."},
     "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0. Not for lottie or motion (both always hold the whole composition)."},
     "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition. Not for lottie or motion."},
     "path": {"type": "string", "description": "Write here (absolute, or relative to the project folder; for png a new folder). Default: the project's renders folder (a versioned render with a manifest, the file named after the project and composition), or the person's Videos folder (no project)."},
@@ -31,7 +34,8 @@ def render_export(ctx, args):
     doc, comp = doc_and_comp(ctx, args)
     fmt = args["format"]
     s = exporting.settings(ctx.tool, fmt, comp.get("duration", 5.0), args.get("alpha"), args.get("depth"), args.get("start"), args.get("end"),
-                                args.get("quality"), args.get("bitrate"))
+                                args.get("quality"), args.get("bitrate"), comp.get("background", "#000000"),
+                                project_sound.for_export(doc.folder, comp.get("soundtrack", ""), fmt, args.get("sound")))
     out = None
     if "path" in args:
         out = Path(args["path"])
@@ -46,7 +50,9 @@ def render_export(ctx, args):
     def job_fn(job):
         facts = exporting.run(ctx.tool, scene, fmt, s, folder, item, seq, out, job.progress, name=name, overwrite=overwrite)
         say = f'Exported {comp["id"]} as {fmt}: {facts["frames"]} frames at {facts["fps"]} fps'
-        data = {k: facts[k] for k in ("file", "frames", "fps", "alpha", "depth", "checked", "files") if k in facts}
+        data = {k: facts[k] for k in ("file", "frames", "fps", "alpha", "depth", "checked", "files", "sound") if k in facts}
+        if "sound" in facts:
+            say += f', with the sound of "{facts["sound"]["song"]}"'
         if "report" in facts:
             say += "; Lottie could not carry: " + ("; ".join(facts["report"]) if facts["report"] else "nothing")
             data["report"] = facts["report"]

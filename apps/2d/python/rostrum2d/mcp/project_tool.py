@@ -9,6 +9,7 @@ at once. Switching changes no document and does not touch the person's Open rece
 from __future__ import annotations
 
 import dataclasses
+import sys
 from pathlib import Path
 
 from rostrum_core import Document, live
@@ -18,6 +19,7 @@ from rostrum_core.storage import paths
 
 from rostrum2d import KIND
 from .. import lastproject as last
+from .. import sound_cues
 
 tools = Tools()
 NO_PROJECT = "No project is open. Open one in Rostrum2D, or call run_open_project with a folder."
@@ -32,6 +34,7 @@ def open_documents(project: str, items: list[str]) -> dict:
         exists = paths(project, item, KIND.ext)["doc"].exists()
         doc = Document.open(project, item, KIND) if exists else Document.new(KIND, project, item)
         live.keep(doc)                       # one door for every save, shared with the person's window (rostrum_core.live)
+        sound_cues.watch(doc, lambda line: print(line, file=sys.stderr))   # cue markers follow their layers
         docs[item] = doc
     return docs
 

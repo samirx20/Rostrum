@@ -12,6 +12,7 @@ import re
 from pathlib import Path
 
 from PySide6.QtCore import Property, Signal, Slot
+from rostrum2d import project_sound
 from rostrum2d.mcp import export_name, exporting
 from rostrum_core.mcp.files import RENDER_DIR
 from rostrum_gui.export_sheet import ExportSheet
@@ -70,15 +71,27 @@ class Exporter(ExportSheet):
         return not self._row()["sequence"]           # a folder of frames is never replaced (exporting.run)
 
     def chose(self):
-        """The chosen format's defaults: transparency where it can be carried, its first bit depth, its default quality."""
+        """The chosen format's defaults: transparency where it can be carried and the background is transparent, its first
+        bit depth, its default quality; for an MP4 of a project with sound, its sound (on)."""
         r = self._row()
-        self._values = {"alpha": r["alpha"], "depth": r["depths"][0] if r["depths"] else None, "quality": r["quality"]}
+        self._values = {"alpha": r["alpha"] and exporting.see_through(self._comp().get("background", "#000000")), "depth": r["depths"][0] if r["depths"] else None, "quality": r["quality"]}
+        if self._has_sound():
+            self._values["sound"] = True
         if not r["range"]:
             self._range = "all"
 
+    def _has_sound(self) -> bool:
+        """An MP4 of a project with sound (a stale main-mix mark: no switch here; the Sound row and the export say it)."""
+        try:
+            return self._choice == "mp4" and project_sound.song(self.bridge.doc.folder, self._comp().get("soundtrack", "")) is not None
+        except Exception:  # noqa: BLE001
+            return False
+
     def begin(self, out, overwrite):
         v, span = self._values, self.range_times() or (0.0, self._duration())
-        s = exporting.settings("export", self._choice, self._duration(), v["alpha"], v["depth"], span[0], span[1], v["quality"])
+        sound = project_sound.for_export(self.bridge.doc.folder, self._comp().get("soundtrack", ""), self._choice, v.get("sound"))
+        s = exporting.settings("export", self._choice, self._duration(), v["alpha"], v["depth"], span[0], span[1], v["quality"],
+                               background=self._comp().get("background", "#000000"), sound=sound)
         doc = self.bridge.doc
         return {"scene": exporting.snapshot(doc, self._comp_id, self._choice), "fmt": self._choice, "s": s,
                 "folder": doc.folder, "item": doc.item_id, "seq": doc.seq, "name": self._stem(), "out": out,
@@ -145,5 +158,5 @@ class Exporter(ExportSheet):
     def setSetting(self, key, value):
         if self.running() or key not in self._values:
             return
-        self._values[key] = {"depth": int, "alpha": bool, "quality": str}[key](value)
+        self._values[key] = {"depth": int, "alpha": bool, "quality": str, "sound": bool}[key](value)
         self.changed.emit()

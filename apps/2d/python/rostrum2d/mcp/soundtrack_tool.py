@@ -13,13 +13,15 @@ tools = Tools()
 @tools.tool("inspect_soundtrack", {"properties": {**ITEM_COMP}})
 def inspect_soundtrack(ctx, args):
     """What plays with this composition: the RostrumSound item (the comp's `soundtrack` field; empty = the project's
-    first Sound item), its length, tempo, beats per bar, bar start times (seconds) and markers. Pick another with
+    main mix), its length, tempo, beats per bar, bar start times (seconds) and markers. Pick another with
     comp.set {soundtrack: "<sound item id>"}. Time things to the music with the shared markers ("#drop") or these bars."""
     doc, comp = doc_and_comp(ctx, args)
     if not doc.folder:
         return Reply("No sound: this document is not in a project folder.", {"soundtrack": None})
     from rostrum_sound import soundtrack
-    f = soundtrack.facts(doc.folder, comp.get("soundtrack", ""))
+    from rostrum2d import project_sound
+    song = project_sound.song(doc.folder, comp.get("soundtrack", ""))
+    f = soundtrack.facts(doc.folder, song["id"]) if song else None
     if f is None:
         return Reply("No sound: the project has no RostrumSound item.", {"soundtrack": None})
     meter = f"{f['bpm']:g} bpm, {f['beatsPerBar']} beats a bar" + (" (the tempo changes)" if f["tempoChanges"] else "")

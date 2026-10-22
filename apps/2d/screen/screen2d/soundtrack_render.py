@@ -23,7 +23,7 @@ def open_engine():
 
 
 class SoundtrackRender(QObject):
-    rendered = Signal("QVariantMap")    # {item, name, file, seconds, peak, rate, peaks, grid}
+    rendered = Signal("QVariantMap")    # {item, name, file, seconds, peak, rate, peaks, grid, lines (voice_words.py)}
     failed = Signal(str)
 
     def __init__(self, parent=None):
@@ -59,8 +59,9 @@ class SoundtrackRender(QObject):
                     wav = soundtrack.render(eng, folder, root)
                     wave = waveform.peaks(wav)
                     grid = soundtrack.grid(root, max(end, wave["seconds"]))
+                    from rostrum2d import voice_words
                     self.rendered.emit({"item": song["id"], "name": song["name"], "file": str(wav), **wave,
-                                        "grid": grid})
+                                        "grid": grid, "lines": voice_words.lines(folder, root)})
                 except Exception as e:  # noqa: BLE001  any failure is said, loudly
                     line = e.line() if hasattr(e, "line") else f"Error: soundtrack: {type(e).__name__}: {e}"
                     print(line, file=sys.stderr)

@@ -26,11 +26,15 @@ Column {
         delegate: Row {
             id: srow
             required property var modelData
-            Label { text: srow.modelData.label }
+            readonly property bool wide: modelData.kind === "switch"     // a switch says what it does beside it
+            Label { visible: !srow.wide; text: srow.modelData.label }
             Item {
-                width: root.width - root.labelW; height: Theme.row
-                Toggle { visible: srow.modelData.kind === "toggle"; anchors.verticalCenter: parent.verticalCenter
+                width: srow.wide ? root.width : root.width - root.labelW; height: Theme.row
+                Toggle { visible: srow.modelData.kind === "toggle" || srow.wide; anchors.verticalCenter: parent.verticalCenter
                          checked: !!srow.modelData.value; onToggled: (v) => root.job.setSetting(srow.modelData.key, v) }
+                Text { visible: srow.wide; x: 32 + Theme.gap; width: parent.width - x; height: parent.height
+                       verticalAlignment: Text.AlignVCenter; text: srow.modelData.label; color: Theme.fg2
+                       font.family: uiFont; font.pixelSize: Theme.body; elide: Text.ElideRight }
                 ChoiceField { visible: srow.modelData.kind === "choice"; anchors.verticalCenter: parent.verticalCenter; width: parent.width
                               options: srow.modelData.options || []; current: String(srow.modelData.value)
                               onPicked: (v) => root.job.setSetting(srow.modelData.key, v) }
