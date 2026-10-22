@@ -17,8 +17,7 @@ Panel {
     function close() { pop.ls.close() }
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close  Esc"; onClicked: pop.close() }
     component Words: Text { color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body; elide: Text.ElideRight }
-    Column {
-        width: pop.availableWidth
+    SheetScroll {
         spacing: Theme.grid
         Words { text: "Voice line"; color: Theme.fg3; font.pixelSize: Theme.label }
         Repeater {          // the project's voice lines with a voice: click one

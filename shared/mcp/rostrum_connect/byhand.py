@@ -36,7 +36,7 @@ def by_hand(agent_id: str, app: str, generic: bool = False) -> dict:
     if a.deeplink:
         b64 = base64.b64encode(json.dumps(agents.to_entry("std", srv), separators=(",", ":")).encode()).decode()
         link = a.deeplink.format(name=srv.name, b64=b64)
-    path = agents.user_file(a)
+    path = agents.user_file(a, generic)
     steps = []
     if command:
         steps.append("Open a terminal and paste the line above, then press Enter.")
@@ -57,7 +57,7 @@ def _remove_how(a: agents.Agent, app: str) -> str:
     srv = servers.entry(app)
     if a.cli_remove:
         return "`" + " ".join(_quote(x) for x in agents.render_argv(a.cli_remove, srv, a.shape)) + "`"
-    return f"open {agents.user_file(a)} and delete the “{srv.name}” block (keep everything else)."
+    return f"open {agents.user_file(a, generic=True)} and delete the “{srv.name}” block (keep everything else)."
 
 
 def guide_markdown(agent_id: str) -> str:
@@ -66,9 +66,9 @@ def guide_markdown(agent_id: str) -> str:
            f"Rostrum2D and RostrumSound each have a small server ({', '.join(f'`{servers.APPS[x][0]}`' for x in servers.APPS)}) "
            f"that lets {a.name} use them. Connecting means telling {a.name} how to start those servers.", "",
            "## The easy way", "",
-           f"In Rostrum open **Help → Connect an AI agent → Add to {a.name}** in that app, say yes, "
-           f"then follow the last line it shows (restart or check). Rostrum keeps a copy of your settings file first "
-           f"and never touches servers it didn't add.", "",
+           f"In Rostrum click the **?** button in the top bar and choose **Connect an AI agent…**. Press **Add** next to "
+           f"{a.name}, then **Add** again to say yes, and follow the last line it shows (restart or check). Rostrum keeps "
+           f"a copy of your settings file first and never touches servers it didn't add.", "",
            "## By hand", ""]
     for app in servers.APPS:
         h = by_hand(agent_id, app, generic=True)
@@ -80,7 +80,7 @@ def guide_markdown(agent_id: str) -> str:
         out += [f"File: `{h['file']}`", "", "```" + ("toml" if a.fmt == "toml" else "json"), h["snippet"], "```", ""]
         out += [f"{i}. {s}" for i, s in enumerate(h["steps"], 1)] + [""]
     out += ["## Check it works", "", a.check.format(name=a.name), "",
-            "## Remove it", "", f"Easy way: Help → Connect an AI agent → Remove from {a.name}.", ""]
+            "## Remove it", "", f"Easy way: **?** → **Connect an AI agent…**, then press **Remove** next to {a.name}.", ""]
     out += [f"By hand, for {APP_NAMES[app]}: {_remove_how(a, app)}" + "" for app in servers.APPS]
     out += ["", f"More about {a.name} and MCP servers: {a.docs}", ""]
     text, home = "\n".join(out), Path.home()

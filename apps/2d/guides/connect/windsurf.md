@@ -4,7 +4,7 @@ Rostrum2D and RostrumSound each have a small server (`rostrum-2d`, `rostrum-soun
 
 ## The easy way
 
-In Rostrum open **Help → Connect an AI agent → Add to Windsurf** in that app, say yes, then follow the last line it shows (restart or check). Rostrum keeps a copy of your settings file first and never touches servers it didn't add.
+In Rostrum click the **?** button in the top bar and choose **Connect an AI agent…**. Press **Add** next to Windsurf, then **Add** again to say yes, and follow the last line it shows (restart or check). Rostrum keeps a copy of your settings file first and never touches servers it didn't add.
 
 ## By hand
 
@@ -68,7 +68,7 @@ Open the “…” menu in the Cascade panel → MCPs; both servers should be li
 
 ## Remove it
 
-Easy way: Help → Connect an AI agent → Remove from Windsurf.
+Easy way: **?** → **Connect an AI agent…**, then press **Remove** next to Windsurf.
 
 By hand, for Rostrum2D: open C:\Users\<you>\.codeium\windsurf\mcp_config.json and delete the “rostrum-2d” block (keep everything else).
 By hand, for RostrumSound: open C:\Users\<you>\.codeium\windsurf\mcp_config.json and delete the “rostrum-sound” block (keep everything else).

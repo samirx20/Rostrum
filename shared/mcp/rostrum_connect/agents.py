@@ -133,7 +133,11 @@ def expand(path: str) -> Path:
     return Path(os.path.expanduser(path.replace("%APPDATA%", roaming).replace("%LOCALAPPDATA%", local)))
 
 
-def user_file(a: Agent) -> Path:
+def user_file(a: Agent, generic: bool = False) -> Path:
+    """The agent's settings file on this computer; `generic`: in a standard setup (the shipped guides), never this
+    computer's own overrides (an environment variable's folder, a file found elsewhere)."""
+    if generic:
+        return expand(a.files[plat()])
     folder = os.environ.get(a.files_env[0]) if a.files_env else None
     if folder:
         return Path(folder) / a.files_env[1]

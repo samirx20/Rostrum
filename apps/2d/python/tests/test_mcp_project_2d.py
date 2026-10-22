@@ -1,9 +1,12 @@
 """What agents rely on: the 2D server, started with no options, opens the person's last project (never Sam's real one in
 a test: the settings live in a temp folder), says so plainly when there is none, and run_open_project switches."""
+import json
+
 from rostrum_core import Who
+from rostrum_core import recent as recent_list
 from rostrum_core.mcp import Runtime
 
-from rostrum2d import KIND, settings
+from rostrum2d import KIND
 from rostrum2d.mcp.server import make_app, make_runtime
 from rostrum2d.mcp.project_tool import open_project, start_choice
 
@@ -17,8 +20,12 @@ def project(folder, item="main"):
 
 
 def start(tmp_path, monkeypatch, recent):
+    # A scripted run's Open recent lives in its scratch home (rostrum_core/userhome.py), never the person's: this test's is tmp_path.
+    monkeypatch.setenv("ROSTRUM_SCRIPTED_HOME", str(tmp_path))
     monkeypatch.setenv("ROSTRUM_DATA", str(tmp_path / "data"))
-    settings.write_settings({"recent": recent})
+    recent_file = recent_list.file("2d")                                # the one Open recent list (rostrum_core/recent.py)
+    recent_file.parent.mkdir(parents=True, exist_ok=True)
+    recent_file.write_text(json.dumps(recent), encoding="utf-8")
     folder, items = start_choice(None, None)
     app = make_app(folder, items)
     return app, make_runtime(app)

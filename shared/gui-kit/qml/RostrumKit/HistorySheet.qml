@@ -24,13 +24,16 @@ Panel {
     }
     onShowChanged: reload()
     onFocusSessionChanged: reload()
-    onVisibleChanged: if (visible) reload()
-    Component.onCompleted: reload()
+    onVisibleChanged: if (visible) reload(); else rows = []     // closed: nothing is held or built
+    Component.onCompleted: if (visible) reload()
+    readonly property ListView page: pageLoader.item ? pageLoader.item.list : null
     function nameVersion(name) {               // Ctrl+S: the name field, with the time as the default name, selected
-        flick.contentY = 0
-        vname.input.text = name
-        vname.input.forceActiveFocus()
-        vname.input.selectAll()
+        if (!page) return
+        const field = page.headerItem.nameField
+        page.positionViewAtBeginning()
+        field.input.text = name
+        field.input.forceActiveFocus()
+        field.input.selectAll()
     }
     Connections { target: sheet.bridge; function onDocChanged() { if (sheet.visible) sheet.reload() } }
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close  Esc"; onClicked: sheet.closed() }
@@ -41,65 +44,70 @@ Panel {
     }
     component Act: Button { kind: "ghost"; height: Theme.rowDense; implicitHeight: Theme.rowDense }
 
-    Flickable {
-        id: flick
+    Loader {   // the list is built only while the sheet is open
+        id: pageLoader
         anchors.fill: parent
-        contentHeight: body.height
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        Column {
-            id: body
-            width: flick.width
-            spacing: Theme.gap
-
-            Item { width: 1; height: Theme.grid }
-            Small { text: "VERSIONS"; font.weight: Font.DemiBold; font.letterSpacing: Theme.capsSpacing; color: Theme.fg3 }
-            Repeater {
-                model: sheet.bridge ? sheet.bridge.versions : []
-                delegate: Item {
-                    required property var modelData
-                    width: body.width; height: Theme.rowDense
-                    Small { anchors.left: parent.left; anchors.right: restore.left; anchors.rightMargin: Theme.gap
-                            anchors.verticalCenter: parent.verticalCenter; color: Theme.fg
-                            text: modelData.name + (modelData.when ? "  ·  " + modelData.when : "") }
-                    Act { id: restore; anchors.right: parent.right; text: "Restore"
-                          onClicked: sheet.bridge.restoreVersion(modelData.name) }
-                }
-            }
-            Row {
+        active: sheet.visible
+        sourceComponent: Item {   // the list and its bar side by side
+            readonly property alias list: list
+            ListView {   // rows are made only for what is on screen (a long song has thousands of changes)
+                id: list
+                anchors.fill: parent
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
                 spacing: Theme.gap
-                TextField { id: vname; width: body.width - saveBtn.width - Theme.gap; placeholder: "Name this version"
-                            onEntered: saveBtn.clicked() }
-                Button { id: saveBtn; text: "Save a version"; help: "Name this moment to come back to it later"
-                         onClicked: if (sheet.bridge.saveVersion(vname.input.text)) { vname.input.text = ""; vname.input.focus = false } }
-            }
-
-            Item { width: 1; height: Theme.grid }
-            Segmented {
-                visible: sheet.focusSession === ""
-                options: [{ value: "everyone", label: "Everyone" }, { value: "you", label: "You" },
-                          { value: "agents", label: "Agents" }, { value: "scripts", label: "Scripts" }]
-                current: sheet.show
-                onPicked: (v) => sheet.show = v
-            }
-            Item {  // Review: one run only, with the way back to everything
-                visible: sheet.focusSession !== ""
-                width: body.width; height: Theme.rowDense
-                Small { anchors.verticalCenter: parent.verticalCenter; text: "One agent run"; color: Theme.fg }
-                Act { anchors.right: parent.right; text: "Show all"; onClicked: sheet.focusSession = "" }
-            }
-            EmptyHint { visible: sheet.rows.length === 0; width: parent.width
-                        text: "Changes you and agents make will be listed here." }
-
-            Repeater {
                 model: sheet.rows
+                header: Column {
+                    readonly property alias nameField: vname
+                    bottomPadding: Theme.gap
+                    width: list.width
+                    spacing: Theme.gap
+                    Item { width: 1; height: Theme.grid }
+                    Small { text: "VERSIONS"; font.weight: Font.DemiBold; font.letterSpacing: Theme.capsSpacing; color: Theme.fg3 }
+                    Repeater {
+                        model: sheet.bridge ? sheet.bridge.versions : []
+                        delegate: Item {
+                            required property var modelData
+                            width: list.width; height: Theme.rowDense
+                            Small { anchors.left: parent.left; anchors.right: restore.left; anchors.rightMargin: Theme.gap
+                                    anchors.verticalCenter: parent.verticalCenter; color: Theme.fg
+                                    text: modelData.name + (modelData.when ? "  ·  " + modelData.when : "") }
+                            Act { id: restore; anchors.right: parent.right; text: "Restore"
+                                  onClicked: sheet.bridge.restoreVersion(modelData.name) }
+                        }
+                    }
+                    Row {
+                        spacing: Theme.gap
+                        TextField { id: vname; width: list.width - saveBtn.width - Theme.gap; placeholder: "Name this version"
+                                    onEntered: saveBtn.clicked() }
+                        Button { id: saveBtn; text: "Save a version"; help: "Name this moment to come back to it later"
+                                 onClicked: if (sheet.bridge.saveVersion(vname.input.text)) { vname.input.text = ""; vname.input.focus = false } }
+                    }
+
+                    Item { width: 1; height: Theme.grid }
+                    Segmented {
+                        visible: sheet.focusSession === ""
+                        options: [{ value: "everyone", label: "Everyone" }, { value: "you", label: "You" },
+                                  { value: "agents", label: "Agents" }, { value: "scripts", label: "Scripts" }]
+                        current: sheet.show
+                        onPicked: (v) => sheet.show = v
+                    }
+                    Item {  // Review: one run only, with the way back to everything
+                        visible: sheet.focusSession !== ""
+                        width: list.width; height: Theme.rowDense
+                        Small { anchors.verticalCenter: parent.verticalCenter; text: "One agent run"; color: Theme.fg }
+                        Act { anchors.right: parent.right; text: "Show all"; onClicked: sheet.focusSession = "" }
+                    }
+                    EmptyHint { visible: sheet.rows.length === 0; width: parent.width
+                                text: "Changes you and agents make will be listed here." }
+                }
                 delegate: Column {
                     id: row
                     required property var modelData
                     readonly property string key: modelData.doc + ":" + modelData.seq
                     readonly property bool isRun: modelData.kind === "run"
                     readonly property bool unfolded: isRun && (sheet.focusSession !== "" || !!sheet.open[key])
-                    width: body.width
+                    width: list.width
                     spacing: 2
                     Item {
                         width: parent.width; height: Theme.row + (row.isRun ? Theme.rowDense : 0)
@@ -149,7 +157,7 @@ Panel {
                     }
                 }
             }
+            VScrollBar { flick: list }
         }
     }
-    VScrollBar { flick: flick }
 }
