@@ -42,9 +42,8 @@ Row {
     Row {   // tempo, beats per bar and key: their one home. Each edits what plays at the playhead (song_panel.py)
         anchors.verticalCenter: parent.verticalCenter; spacing: Theme.grid
         readonly property int tempoNow: Math.round(ro.song.tempos[ro.tempoAt].bpm)
-        Text { text: "♩"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body; anchors.verticalCenter: parent.verticalCenter }
-        NumberField {
-            width: 48; value: parent.tempoNow; from: 20; to: 400; step: 1
+        NumberField {   // the unit inside the field: one control, "100 bpm"
+            width: 76; value: parent.tempoNow; from: 20; to: 400; step: 1; unit: "bpm"
             onEdited: (v) => songPanel.setTempo(v)
             onScrubStarted: songPanel.beginTempo()
             onScrubbed: (v) => songPanel.scrubTempo(v)

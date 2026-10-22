@@ -3409,7 +3409,7 @@ total also includes getting to a delivered file.
 | # | Do | Clicks | Keys |
 |---|---|---|---|
 | 1 | L → double-click **Voice: Maya** | 1 | 1 |
-| 2 | In the Editor's "Type what she says" box: type the line → Enter (first time: the model download question, +1) | 1 | 1 |
+| 2 | In the Editor's Lines box ("Type a line"): type the line → Enter (first time: the model download question, +1) | 1 | 1 |
 | 3 | **Speak again** if you want another reading | 1 | |
 | 4 | Export → Export | 2 | |
 | | **Total** | **5** | **2** |

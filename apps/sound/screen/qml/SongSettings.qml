@@ -1,17 +1,16 @@
 import QtQuick
 import RostrumKit
 
-// The settings panel while nothing is selected: the song (DESIGN.md decision 4, W1) — its name, length (the rest of
+// The settings panel while nothing is selected: the song (DESIGN.md decision 4, W1) — titled "Song" (its name is
+// the top bar's tab, renamed there), its length (the rest of
 // the song's own settings behind More), then what can be added at the playhead (a tempo change, a key change, a
 // section). Tempo, beats per bar and key live in the arrangement header (SongReadout.qml), never here too. The rows
 // are the kit's InspectorRow on `songPanel` (song_panel.py: the `doc.set` fields); each change is one undo step.
 Panel {
     id: p
-    NameLabel { id: name; text: backend.docName; font.pixelSize: Theme.heading
-                font.weight: Font.DemiBold; anchors.left: parent.left; anchors.right: parent.right }
-    Text { id: kind; text: songPanel.mainMix === "main" ? "Song · Main mix" : "Song"
-           color: songPanel.mainMix === "main" ? Theme.accent : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
-           anchors.top: name.bottom; anchors.topMargin: 2 }
+    Text { id: kind; text: songPanel.mainMix === "main" ? "Song · Main mix" : "Song"   // its name is the top bar's tab
+           color: songPanel.mainMix === "main" ? Theme.accent : Theme.fg; font.family: uiFont
+           font.pixelSize: Theme.heading; font.weight: Font.DemiBold }
     Flickable {
         anchors { left: parent.left; right: parent.right; top: kind.bottom; bottom: parent.bottom; topMargin: Theme.gap }
         contentHeight: list.height; clip: true; boundsBehavior: Flickable.StopAtBounds

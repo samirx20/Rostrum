@@ -97,13 +97,9 @@ AppShell {
     ]
     right: Item {
         anchors.fill: parent
-        Inspector { visible: backend.selected !== ""; bridge: backend
-                    below: [LayerRows { }]
-                    anchors { left: parent.left; right: parent.right; top: parent.top; bottom: clean.top
-                              bottomMargin: clean.visible ? Theme.gap : 0 } }
-        SongSettings { visible: backend.selected === ""
-                       anchors { left: parent.left; right: parent.right; top: parent.top; bottom: parent.bottom } }
-        CleanTakeBar { id: clean; visible: mixer.cleaning.shown
-                       anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: implicitHeight }
+        Inspector { visible: backend.selected !== ""; bridge: backend      // the clean-up's result: in the panel, under Cleanup
+                    below: [LayerRows { }, CleanTakeBar { width: parent ? parent.width : 0; height: implicitHeight }]
+                    anchors.fill: parent }
+        SongSettings { visible: backend.selected === ""; anchors.fill: parent }
     }
 }

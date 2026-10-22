@@ -87,9 +87,12 @@ def placed_at(b, lead: float = 0.0):
 
 
 def _note(e: dict) -> str:
-    """The description, only when it holds a word the name does not ("Warm pad" / "Warm pad" says nothing twice)."""
+    """The description, only when it tells this sound apart: it holds a word the name does not ("Warm pad" / "Warm pad"
+    says nothing twice) and no other sound says the same ("Struck bar" under three mallets says nothing)."""
     own = set(re.findall(r"\w+", e["label"].lower()))
-    return e["what"] if set(re.findall(r"\w+", e["what"].lower())) - own else ""
+    if not set(re.findall(r"\w+", e["what"].lower())) - own:
+        return ""
+    return e["what"] if sum(x["what"] == e["what"] for x in ENTRIES) == 1 else ""
 
 
 def find(text: str, kind: str) -> list[dict]:
