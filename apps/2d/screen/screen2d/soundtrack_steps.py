@@ -3,7 +3,7 @@
     sound wait                  wait for the mix (the render, the peaks, the grid) and print what plays
     sound mute on|off           the 🔊 button              sound beats on|off   the ruler's ▾ › Show beats
     sound beat prev|next        Shift+, / Shift+.         sound scrub <s>      the playhead dragged there (a burst)
-    sound play <s>              play for that long, then print where the speaker and the picture are
+    sound play <s> [hold]       play for that long, print where the speaker and the picture are (hold: keep playing)
     sound wav <path>            copy the mix 2D plays to a WAV (to listen to / measure)
     sound pick <item|->         Scene settings › Soundtrack (comp.set {soundtrack}; - = the project's sound)
     sound menu                  the Sound row's right-click     sound open [dry]   Open in RostrumSound (dry: print it)
@@ -77,7 +77,8 @@ def do_sound_step(bridge, win, word, rest, step):
         heard = st.heard()
         print(f"after {rest[1]} s: picture at {bridge.time:.3f} s, speaker at "
               f"{'-' if heard is None else f'{heard:.3f} s'}; player alive: {st._play.alive()}")
-        bridge.togglePlay()
+        if "hold" not in rest[2:]:               # `hold`: still playing (a picture while it plays)
+            bridge.togglePlay()
     elif what == "wav":
         _settle(bridge)
         if not st.describe().get("file"):
