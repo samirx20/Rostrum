@@ -20,6 +20,9 @@ scene from the document each time you look. Imported USD files stay untouched; y
    If something is too small in frame, check the camera's focal length and the distance before scaling the object.
 5. **Render last.** `render_still` (png for people, exr for the Editor) and `render_video` are jobs: they return a job id at once;
    `inspect_job` with `wait_s` shows `frames n of m`. Draft a video with `quality: "fast"` first.
+   Before a long `render_video`, ask `estimate_only: true` (it times one probe frame at the same settings; measured within about
+   10 % of the real time), or give `budget_min`: over it, nothing renders and the error names lower samples or width that fit.
+   Another job on the same graphics card can make every frame many times slower, and a probe taken then shows it.
 
 ## Techniques
 

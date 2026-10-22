@@ -15,9 +15,25 @@ Lights are items (`light.add`, `light.set`). This guide explains the kinds of li
 
 - **`intensity`** and **`exposure`** — brightness, in USD's units (the same in Storm and Cycles): an HDR dome at intensity 1, exposure 0 lights the scene with the photo's own values; a sun (`distant`, `normalize` on) gives `intensity` lux, so a white floor facing it reads intensity ÷ π — daylight floors near 1 need a sun of about 3, a real midday sun is far brighter and is brought down with the render's `exposure`. `exposure` is in stops: +1 doubles, −1 halves. Use `exposure` to balance lights against each other, so the ratios read in stops like a photographer's.
 - **`color`** and **`temperature`** — `temperature` in kelvin (2700 a warm bulb, 4000 neutral, 5600 daylight, 7500 cool shade) gives physically right white light; 0 turns it off and only `color` counts. A little warm/cool contrast between two lights separates forms.
-- **`normalize`** — off (default): a bigger light gives more light. On: the size changes only the softness, so you can resize without rebalancing.
+- **`normalize`** — off (default): `intensity` is the panel's own brightness, so a bigger light gives more light. On: `intensity` is shared out over the panel's area, so the size changes only the softness and you can resize without rebalancing. Numbers for both: *Brightness at product scale* below.
 - **`shadows`** — whether it casts shadows. Leave it on unless a fill light's shadows clutter the picture.
 - **Size and distance** — softness depends on how big the light looks from the object. A large panel close by gives soft light with gentle shadows; the same panel far away gets small and hard. Brightness also falls off with distance (four times dimmer at twice the distance).
+
+## Brightness at product scale (measured)
+
+Light falls off with the square of the distance, so a product a few centimetres across, lit from half a metre, needs very different numbers from a room. Measured in Cycles (H23) on a 92 mm pale grey puck (`#bdbdbd`, roughness 0.55), one 0.3 m square panel at 45° above, `normalize` on, no other light, the PNG value of the puck's top (0–255):
+
+| Panel distance | intensity 0.1 | 0.3 | 1 | 3 | 10 | 30 |
+|---|---|---|---|---|---|---|
+| 0.25 m | 70 | 127 | 190 | 227 | 246 | 253 (white) |
+| 0.5 m | 27 | 70 | 132 | 189 | 230 | 246 |
+| 1 m | 3 | 21 | 65 | 121 | 184 | 224 |
+
+- **Starting number, `normalize` on:** intensity ≈ **4 × distance²** (metres) puts a pale surface in the middle of the range: 0.25 at 0.25 m, 1 at 0.5 m, 4 at 1 m. A key light is usually that or up to 3× more; a fill 4–8× less (2–3 stops, `exposure` −2 to −3).
+- **`normalize` off:** divide by the panel's area (width × height, or length × width for a strip, π × radius² for a disk): the same 0.3 m panel at 0.5 m needs about 1 ÷ 0.09 ≈ 11 for the same picture.
+- **Metal and gloss show the panel itself**, not the light it throws: a strip's reflection reads about intensity ÷ its area (with `normalize` on), so a small strip looks much brighter in a reflection than its light on a matte surface. Judge highlights in `look_frame quality=final`.
+- **Check it:** `inspect_exposure` renders one quick frame and says how much is blown out or crushed and where the brightest and darkest parts are (and what is there). Use `quality=final` for metal, glass and anything a panel reflects in.
+- The quick view (Storm) is within about 10 % of these numbers for rect and disk panels and about 20 % brighter for strips; it ignores `spread`.
 
 ## Aiming
 
@@ -36,7 +52,7 @@ These are the jobs a light does; a shot may need some, all, or others.
 
 ## Panel tools
 
-- **`spread`** (rect, disk, strip; degrees, 180 by default) — how wide the panel throws its light. 180 is a bare softbox: light all around its front, so it spills onto the floor and background. Smaller is a honeycomb grid on the box: a tighter pool, less spill, while the panel keeps its size, so shadows stay soft and reflections keep their shape. Use it when a light must reach the object and not the backdrop. **Cycles only** (with the patched plug-in): the quick view throws the light all around, and its reply says so (`notInQuickView`).
+- **`spread`** (rect, disk, strip; degrees, 180 by default) — how wide the panel throws its light. 180 is a bare softbox: light all around its front, so it spills onto the floor and background. Smaller is a honeycomb grid on the box: a tighter pool, less spill, while the panel keeps its size, so shadows stay soft and reflections keep their shape. Like a real grid, it doesn't make the middle of the pool brighter: the light fades from full straight ahead to nothing at half the spread off its axis (measured within a few % of that in Cycles, H23). Use it when a light must reach the object and not the backdrop. **Cycles only** (with the patched plug-in): the quick view throws the light all around, and its reply says so (`notInQuickView`).
 - **`card`** (rect, disk, strip; off by default) — the panel itself shows to the camera as a bright card of the light's own brightness. Off, a panel is invisible to the camera (it still lights, and in Cycles still shows in glossy and metal reflections). Turn it on when the light is in frame on purpose, or to see in the quick view where a panel stands. In Storm the card is drawn but not reflected (Storm reflects only the dome).
 
 ## Strip reflections along a curved edge
