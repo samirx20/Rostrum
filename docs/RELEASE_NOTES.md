@@ -55,6 +55,8 @@ has how-to pages for people.
 
 ### Known limits
 
+- Rarely, Rostrum2D does not open its window at the first try (seen twice in about 40 starts while testing). Close it
+  in Task Manager and start it again; nothing is lost.
 - Icons are placeholders.
 - Tried on this laptop as a brand-new user, not yet on a second Windows account or a Mac.
 - 3D and the Editor are not in this installer yet.
