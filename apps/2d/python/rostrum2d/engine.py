@@ -8,6 +8,11 @@ look tools and exports all render through it, the same way (preview ≡ export).
         eng.measure([{"id": "t", **text_fields}])   # {"t": (w, h)}: a text's laid-out box (textsize.py keeps them)
 
 The engine holds the scene and evaluates every frame itself (keys, easing, drawing); Python only describes it.
+
+If the process dies (a crash, ended in Task Manager), the next request starts a new one and loads the scene again;
+a short request that was cut off (a frame, a measure) is sent again. One line goes to the log (stderr) and `notice`
+holds a sentence for the person. Dying again within QUICK_S of a restart is not retried: every request then fails
+with one plain sentence (GAVE_UP). An export is never sent again (Cancel ends the engine on purpose).
 """
 from __future__ import annotations
 
@@ -15,16 +20,36 @@ import json
 import mmap
 import os
 import subprocess
+import sys
 import time
 from pathlib import Path
 
 from . import settings
 
 LOG_DIR = settings.logs_dir()
+RETRY = {"frame", "bones", "outline", "measure", "scene"}     # short requests that are safe to send again
+QUICK_S = 30.0                                                  # dying again this soon after a restart: give up
+# Short, so the top bar's status line shows them whole; the log line says the rest (exit code, the old log).
+RESTARTED = "The drawing engine restarted. Nothing was lost."
+GAVE_UP = "Drawing stopped twice. Save, then reopen."
 
 
 class EngineError(RuntimeError):
+    plain = False                                    # True: the message is a whole sentence for the person, as it is
+
+
+class _Died(EngineError):
     pass
+
+
+def _gave_up() -> EngineError:
+    e = EngineError(GAVE_UP)
+    e.plain = True
+    return e
+
+
+def _log_line(text: str):
+    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {text}", file=sys.stderr, flush=True)
 
 
 def find_exe() -> Path:
@@ -39,20 +64,58 @@ def find_exe() -> Path:
 
 class Engine:
     def __init__(self, exe: Path | None = None):
-        exe = exe or find_exe()
-        if not exe.exists():
-            raise EngineError(f"2D engine not found: {exe} (set ROSTRUM2D_ENGINE)")
-        LOG_DIR.mkdir(parents=True, exist_ok=True)
-        self.log_path = LOG_DIR / f"engine2d-{os.getpid()}-{int(time.time())}.log"
-        self._log = open(self.log_path, "wb")
-        self.proc = subprocess.Popen([str(exe), "serve"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                     stderr=self._log, creationflags=settings.NO_WINDOW)
-        self.pid, self.scene = self.proc.pid, None
-        self._shm = None                             # (name, mmap) of the engine's frame memory (pixels)
+        self.exe = exe or find_exe()
+        if not self.exe.exists():
+            raise EngineError(f"2D engine not found: {self.exe} (set ROSTRUM2D_ENGINE)")
+        self.scene, self._shm = None, None           # _shm: (name, mmap) of the engine's frame memory (pixels)
         # Why it paints on the processor, in plain words (no working graphics driver; ROSTRUM2D_NO_GPU=1), or None on the GPU.
         self.fallback: str | None = None
+        self.notice: str | None = None               # RESTARTED after a restart, until the screen has said it
+        self._restarted_at = None
+        self._stopped: EngineError | None = None     # set: never restarted again; every request raises it
+        self._start()
+
+    def _start(self):
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        self.log_path = LOG_DIR / f"engine2d-{os.getpid()}-{time.time_ns()}.log"
+        self._log = open(self.log_path, "wb")
+        self.proc = subprocess.Popen([str(self.exe), "serve"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                     stderr=self._log, creationflags=settings.NO_WINDOW)
+        self.pid = self.proc.pid
+
+    def _restart(self):
+        """A new process for the dead one, the scene loaded again; GAVE_UP when it died again soon after the last restart."""
+        if self._stopped:
+            raise self._stopped
+        code, old = self.proc.wait(), self.log_path
+        if self._restarted_at is not None and time.monotonic() - self._restarted_at < QUICK_S:
+            self._stopped = _gave_up()
+            _log_line(f"the 2D drawing engine stopped again (exit code {code}) {time.monotonic() - self._restarted_at:.0f} s "
+                      f"after a restart; not restarted again. Its log: {old}")
+            raise self._stopped
+        self._release()
+        self._start()
+        self._restarted_at = time.monotonic()
+        _log_line(f"the 2D drawing engine stopped (exit code {code}) and was restarted (new pid {self.pid}); old log: {old}")
+        if self.scene is not None:
+            try:
+                self._send({"scene": self.scene}, 60.0, None)
+            except _Died:
+                return self._restart()               # this soon: gives up, loudly
+        self.notice = RESTARTED
 
     def _request(self, req: dict, timeout_s: float = 60.0, progress=None) -> dict:
+        if self.proc.poll() is not None:             # it died between requests
+            self._restart()
+        try:
+            return self._send(req, timeout_s, progress)
+        except _Died:
+            if next(iter(req)) not in RETRY:
+                raise
+            self._restart()
+            return self._send(req, timeout_s, progress)
+
+    def _send(self, req: dict, timeout_s: float, progress) -> dict:
         t0 = time.perf_counter()
         try:
             self.proc.stdin.write((json.dumps(req) + "\n").encode("utf-8"))
@@ -60,14 +123,14 @@ class Engine:
             while True:
                 line = self.proc.stdout.readline()
                 if not line:
-                    raise EngineError(f"2D engine (pid {self.pid}) ended without a reply; log {self.log_path}")
+                    raise _Died(f"2D engine (pid {self.pid}) ended without a reply; log {self.log_path}")
                 out = json.loads(line)
                 if set(out) != {"progress", "of"}:           # export's per-frame progress lines (keys in any order)
                     break
                 if progress:
                     progress(out["progress"], out["of"])
         except OSError as e:
-            raise EngineError(f"2D engine (pid {self.pid}) stopped: {e}; log {self.log_path}") from e
+            raise _Died(f"2D engine (pid {self.pid}) stopped: {e}; log {self.log_path}") from e
         if time.perf_counter() - t0 > timeout_s:
             raise EngineError(f"2D engine took over {timeout_s} s for {next(iter(req))}")
         if "error" in out:
@@ -146,6 +209,18 @@ class Engine:
         if not mp4.is_file() or mp4.stat().st_size == 0:
             raise EngineError(f"export wrote no video: {mp4}; log {self.log_path}")
         return {"file": str(mp4), "frames": out["frames"], "fps": fps, "timing": out["timing"]}
+
+    def kill(self):
+        """End the process on purpose (Cancel): it is never restarted, and a request after this fails."""
+        self._stopped = EngineError(f"2D engine (pid {self.pid}) was stopped on purpose (Cancel)")
+        if self.proc.poll() is None:
+            self.proc.kill()                         # our own child, by its handle
+
+    def _release(self):
+        if self._shm is not None:
+            self._shm[1].close()
+            self._shm = None
+        self._log.close()
 
     def close(self):
         if self._shm is not None:

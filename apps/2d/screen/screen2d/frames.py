@@ -75,8 +75,13 @@ class FrameRenderer(PictureWorker):
         if image.isNull():
             raise RuntimeError(f"the engine's frame could not be read: {SCRATCH / 'frame.png'}")
         self.ready.emit(self.publish(image))
+        if eng.notice:                                      # it died and was restarted (engine.py): said once
+            self.note.emit(eng.notice)
+            eng.notice = None
 
     def describe(self, job, error):
+        if getattr(error, "plain", False):                  # a whole sentence for the person (engine.GAVE_UP)
+            return f"Error: {error}"
         return f"Error: canvas frame at {job[1]:.2f} s: {error}"
 
     def close(self):

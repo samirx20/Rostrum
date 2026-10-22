@@ -38,8 +38,7 @@ class Job:
         if not self.running() or self.engine is None or self.cancelled:
             return False
         self.cancelled = True
-        if self.engine.proc.poll() is None:
-            self.engine.proc.kill()
+        self.engine.kill()                           # on purpose: never restarted (engine.py)
         return True
 
     def wait(self, timeout_s: float):
