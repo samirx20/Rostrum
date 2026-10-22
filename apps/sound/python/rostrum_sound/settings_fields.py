@@ -11,9 +11,10 @@ from pathlib import Path
 
 from rostrum_core import Operation, Param
 
+from . import deliver
+
 DEVICE, FILES, SONGS = "Sound device", "Files", "New songs"
 BUFFERS = [0, 3, 5, 10, 20, 40]
-RATES = [44100, 48000, 96000]
 PROJECTS = Path.home() / "Documents" / "Rostrum Sound"
 MODELS = Path.home() / ".rostrum" / "models"
 
@@ -38,8 +39,8 @@ PARAMS = [
                  help="How much sound is prepared ahead when it takes over the speakers. Shorter: a key sounds sooner, "
                       "but a slow machine may crackle. Automatic finds the shortest that plays cleanly and lengthens "
                       "it if the machine falls behind. A fixed buffer stays as set."),
-    Param.choice("sampleRate", RATES, group=SONGS, label="Sample rate", default=48000,
-                 labels={44100: "44.1 kHz (music CDs)", 48000: "48 kHz (video)", 96000: "96 kHz"},
+    Param.choice("sampleRate", list(deliver.RATE_LABELS), group=SONGS, label="Sample rate", default=48000,
+                 labels=deliver.RATE_LABELS,
                  help="How finely a new song's sound is stored. 48 kHz suits video; a song keeps its own once made."),
     Param.number("loudness", group=SONGS, label="Loudness target", default=-14, min=-30, max=-5, step=0.5,
                  unit=" LUFS", help="How loud a new song is made when you export it with loudness matching. "
