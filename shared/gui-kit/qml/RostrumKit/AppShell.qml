@@ -30,7 +30,9 @@ QQC.ApplicationWindow {
     title: documentName ? documentName + " — " + appName : appName
     color: Theme.app
 
+    function openAbout() { noticesDialog.open() }
     Shortcut { sequence: "Ctrl+K"; onActivated: commandBar.open() }
+    Shortcut { sequence: "F1"; onActivated: noticesDialog.open() }
     Shortcut { sequence: StandardKey.Undo; enabled: !commandBar.opened; onActivated: win.bridge.undo() }
     Shortcut { sequences: ["Ctrl+Shift+Z", "Ctrl+Y"]; enabled: !commandBar.opened; onActivated: win.bridge.redo() }
 
@@ -39,6 +41,7 @@ QQC.ApplicationWindow {
         anchors { left: parent.left; right: parent.right; top: parent.top }
         bridge: win.bridge; appName: win.appName; documentName: win.documentName
         onCommandClicked: commandBar.open()
+        onAboutClicked: noticesDialog.open()
     }
     Item {
         id: body
@@ -51,4 +54,5 @@ QQC.ApplicationWindow {
         Item { id: bottomSlot; y: body.height - height; width: body.width; height: win.bottomHeight }
     }
     CommandBar { id: commandBar; bridge: win.bridge }
+    NoticesDialog { id: noticesDialog; data: typeof notices !== "undefined" ? notices : null }
 }

@@ -1,0 +1,48 @@
+<#
+.SYNOPSIS
+  Opens one app from an installed (or staged) Rostrum as a brand-new Windows user would have it, and saves a picture:
+  PATH holds only Windows itself, no PYTHON* variables, and the home / AppData folders are a fresh scratch folder
+  (so no C:\Users\Sam\.rostrum\venv, no uv, no Rust, no dev checkout can be found).
+
+  pwsh -File tools\release\check.ps1 -Install <folder> -App 2d|sound -Shot <file.png> -Home <empty scratch folder> [-Exe <target>]
+
+  -Exe: what to start (default: the install's pythonw.exe + runtime\rostrum.pyw, exactly as the shortcuts do).
+  Exits non-zero, printing the app's log, when the app fails or no picture is saved.
+#>
+param(
+    [Parameter(Mandatory)][string]$Install,
+    [Parameter(Mandatory)][ValidateSet("2d", "sound")][string]$App,
+    [Parameter(Mandatory)][string]$Shot,
+    [Parameter(Mandatory)][string]$UserHome,
+    [string[]]$Extra = @()
+)
+$ErrorActionPreference = "Stop"
+$pyw = Join-Path $Install "runtime\python\pythonw.exe"
+$launcher = Join-Path $Install "runtime\rostrum.pyw"
+foreach ($f in @($pyw, $launcher)) { if (-not (Test-Path $f)) { Write-Host "FAIL: $f is missing"; exit 1 } }
+
+New-Item -ItemType Directory -Force (Join-Path $UserHome "AppData\Local"), (Join-Path $UserHome "AppData\Roaming"), (Join-Path $UserHome "Documents") | Out-Null
+$psi = [System.Diagnostics.ProcessStartInfo]::new($pyw)
+foreach ($a in @($launcher, $App) + $Extra + @("--shot", $Shot)) { $psi.ArgumentList.Add($a) }
+$psi.UseShellExecute = $false
+$keep = @("SystemRoot", "windir", "SystemDrive", "COMPUTERNAME", "NUMBER_OF_PROCESSORS", "PROCESSOR_ARCHITECTURE", "OS", "TEMP", "TMP")
+$psi.Environment.Clear()
+foreach ($k in $keep) { $v = [Environment]::GetEnvironmentVariable($k); if ($v) { $psi.Environment[$k] = $v } }
+$psi.Environment["PATH"] = "$env:SystemRoot\System32;$env:SystemRoot"
+$psi.Environment["USERPROFILE"] = $UserHome
+$psi.Environment["HOMEDRIVE"] = $UserHome.Substring(0, 2)
+$psi.Environment["HOMEPATH"] = $UserHome.Substring(2)
+$psi.Environment["LOCALAPPDATA"] = Join-Path $UserHome "AppData\Local"
+$psi.Environment["APPDATA"] = Join-Path $UserHome "AppData\Roaming"
+$psi.Environment["ROSTRUM_NO_MESSAGE_BOX"] = "1"          # this check reads the log instead of waiting on a box
+$p = [System.Diagnostics.Process]::Start($psi)
+if (-not $p.WaitForExit(120000)) { $p.Kill(); Write-Host "FAIL: $App did not finish in 2 minutes (PID $($p.Id) ended)"; exit 1 }
+$log = Get-ChildItem (Join-Path $UserHome "AppData\Local\Rostrum\logs") -Filter "$App-*.log" -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime | Select-Object -Last 1
+if ($p.ExitCode -ne 0 -or -not (Test-Path $Shot)) {
+    Write-Host "FAIL: $App exit code $($p.ExitCode); picture saved: $(Test-Path $Shot). Its log ($($log.FullName)):"
+    if ($log) { Get-Content $log.FullName -Tail 40 }
+    exit 1
+}
+Write-Host "OK: $App opened from $Install as a fresh user; picture $Shot; log $($log.FullName)"
+Get-Content $log.FullName | Select-Object -Last 3
