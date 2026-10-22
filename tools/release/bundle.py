@@ -29,13 +29,13 @@ HERE = Path(__file__).resolve().parent
 CACHE = Path.home() / ".rostrum" / "release-cache"
 EMBED = CACHE / "downloads" / "python-embed" / "python-3.12.10-embed-amd64.zip"
 SAMPLES = Path.home() / ".rostrum" / "samples"
-OURS = {"rostrum-core", "rostrum-gui", "rostrum-paint", "rostrum2d", "rostrum-sound"}
+OURS = {"rostrum-core", "rostrum-gui", "rostrum-paint", "rostrum-connect", "rostrum2d", "rostrum-sound"}
 SKIP = shutil.ignore_patterns("__pycache__", "tests", "*.egg-info", "*.pyc", ".pytest_cache")
 
 # One row per piece: (installer component, wheel specs from this repo, folders copied as they are).
-SHARED = ("runtime", ["shared/core[mcp]", "shared/gui-kit", "shared/painting-kit"],
+SHARED = ("runtime", ["shared/core[mcp]", "shared/gui-kit", "shared/painting-kit", "shared/mcp"],
           ["shared/core/rostrum_core", "shared/gui-kit/rostrum_gui", "shared/gui-kit/qml",
-           "shared/painting-kit/rostrum_paint", "LICENSE", "ATTRIBUTIONS.md", "VERSION"])
+           "shared/painting-kit/rostrum_paint", "shared/mcp/rostrum_connect", "LICENSE", "ATTRIBUTIONS.md", "VERSION"])
 APPS = {
     "2d": ("apps/2d", ["apps/2d/python[mcp,io,render3d]"],
            ["apps/2d/python/rostrum2d", "apps/2d/screen/main.py", "apps/2d/screen/screen2d", "apps/2d/screen/qml",
@@ -46,8 +46,11 @@ APPS = {
                "apps/sound/screen/qml", "apps/sound/guides", "apps/sound/MODELS.md"],
               ["apps/sound/engine/target/agent/rostrum-sound.exe"]),
 }
+# rostrum-<app>-mcp.cmd in the install folder: for a person typing in a terminal, and the by-hand text. Agent settings
+# get runtime\python\python.exe -m <module> instead (rostrum_connect.servers): several agents refuse to start a .cmd.
+MCP_LAUNCHERS = {"2d": ("rostrum-2d-mcp.cmd", "rostrum2d.mcp"), "sound": ("rostrum-sound-mcp.cmd", "rostrum_sound.mcp.server")}
 PTH = ["python312.zip", ".", "Lib\\site-packages", "..\\..\\shared\\core", "..\\..\\shared\\gui-kit",
-       "..\\..\\shared\\painting-kit", "..\\..\\apps\\2d\\python", "..\\..\\apps\\2d\\site-packages",
+       "..\\..\\shared\\painting-kit", "..\\..\\shared\\mcp", "..\\..\\apps\\2d\\python", "..\\..\\apps\\2d\\site-packages",
        "..\\..\\apps\\sound\\python", "..\\..\\apps\\sound\\site-packages", "import site"]
 
 
@@ -66,7 +69,7 @@ def copy(rel: str, src_root: Path, dst_root: Path):
 def wheels(specs: list[str], target: Path):
     """Install the specs (and everything they need, from the shared uv cache) into target, then drop our own packages:
     those ship as source in the repo layout."""
-    local = [str(REPO / s) for s in ("shared/core", "shared/gui-kit", "shared/painting-kit")]
+    local = [str(REPO / s) for s in ("shared/core", "shared/gui-kit", "shared/painting-kit", "shared/mcp")]
     cmd = ["uv", "pip", "install", "--quiet", "--target", str(target), "--python", sys.executable,
            *[str(REPO / s.split("[")[0]) + ("[" + s.split("[")[1] if "[" in s else "") for s in specs], *local]
     if subprocess.run(cmd).returncode:
@@ -163,6 +166,9 @@ def main():
         extras.crt(stage, sorted({Path(rel).parent for app in args.apps for rel in APPS[app][3]}))
     except extras.Missing as e:
         fail(str(e))
+    for app in args.apps:                        # each app's agent server, by hand in a terminal (MCP_LAUNCHERS)
+        name, module = MCP_LAUNCHERS[app]
+        (stage / name).write_bytes(f'@echo off\r\n"%~dp0runtime\\python\\python.exe" -m {module} %*\r\n'.encode("ascii"))
     copy("tools/release/rostrum.pyw", REPO, stage)
     shutil.move(stage / "tools" / "release" / "rostrum.pyw", py.parent / "rostrum.pyw")
     shutil.rmtree(stage / "tools")

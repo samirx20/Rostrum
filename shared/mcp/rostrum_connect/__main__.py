@@ -1,6 +1,7 @@
 """python -m rostrum_connect found | status | add | remove | remove-all | entries | hand | guides | table
 
-remove-all: takes out every entry Rostrum added, from every agent (the uninstaller runs it first)."""
+remove-all: takes out every entry Rostrum added, from every agent. The uninstaller runs it first with --this-install:
+only the entries that start THIS install's Python (a developer's checkout entries stay)."""
 from __future__ import annotations
 
 import argparse
@@ -24,6 +25,20 @@ def table_markdown() -> str:
 
 def _apps(ns) -> list[str]:
     return [ns.app] if getattr(ns, "app", None) else list(servers.APPS)
+
+
+def _strings(v) -> list[str]:
+    if isinstance(v, dict):
+        return [s for x in v.values() for s in _strings(x)]
+    if isinstance(v, list):
+        return [s for x in v for s in _strings(x)]
+    return [v] if isinstance(v, str) else []
+
+
+def _starts_here(entry: dict, app: str) -> bool:
+    """Does this agent entry start the Python that `servers.entry` picks here (this install's own)?"""
+    here = servers.entry(app).command.lower()
+    return any(s.lower() == here for s in _strings(entry))
 
 
 def run(ns) -> int:
@@ -51,7 +66,8 @@ def run(ns) -> int:
         for a in agents.AGENTS:
             for app in servers.APPS:
                 try:
-                    if connect.status(a.id, app).ours:
+                    st = connect.status(a.id, app)
+                    if st.ours and not (ns.this_install and not _starts_here(st.entry, app)):
                         print(connect.remove(a.id, app).summary)
                 except ConnectError as e:      # one agent's broken file must not stop the rest; still fails at the end
                     print(f"Error: {a.name}, {app}: {e}", file=sys.stderr)
@@ -87,6 +103,9 @@ def main(argv=None) -> int:
             p.add_argument("--app", choices=list(servers.APPS), required=name == "hand")
         if name in ("add", "remove-all"):
             p.add_argument("--yes", action="store_true", help="Don't ask; answer yes to every question.")
+        if name == "remove-all":
+            p.add_argument("--this-install", action="store_true",
+                           help="Only entries that start this install's Python (what the uninstaller removes).")
         if name == "guides":
             p.add_argument("--out", required=True)
     try:
