@@ -17,6 +17,7 @@ import copy
 import hashlib
 import json
 import os
+import threading
 import time
 from pathlib import Path
 
@@ -51,7 +52,7 @@ def paths(folder, item, ext) -> dict:
 
 def write_atomic(path: Path, text: str, tries: int = 20):
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".partial")
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.partial")   # one per writer: no collisions
     tmp.write_text(text, encoding="utf-8")
     for n in range(tries):
         try:

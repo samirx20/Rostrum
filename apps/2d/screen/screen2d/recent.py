@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from rostrum2d import KIND, settings
+from rostrum_core import userhome
 from rostrum_core.storage import paths
 
 KEEP = 8
@@ -22,7 +23,8 @@ def rows() -> list[dict]:
 
 def add(folder, item) -> None:
     """Put this project first (once); keeps KEEP."""
-    data = settings.read_settings()
     row = {"folder": str(Path(folder).resolve()), "item": item}
-    data["recent"] = ([row] + [r for r in data.get("recent", []) if r != row])[:KEEP]
-    settings.write_settings(data)
+    with userhome.locked(settings.settings_path()):          # two windows at once never lose or crash each other
+        data = settings.read_settings()
+        data["recent"] = ([row] + [r for r in data.get("recent", []) if r != row])[:KEEP]
+        settings.write_settings(data)
