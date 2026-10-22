@@ -2,6 +2,9 @@
 
 use crate::bed::Layout;
 use crate::mix::duck;
+use crate::mix::mastergain::MasterGain;
+use crate::mix::tape::Tape;
+use std::sync::Arc;
 
 pub struct Mix {
     pub layout: Layout,
@@ -21,14 +24,14 @@ pub struct Mix {
     pub tracks: Vec<TrackStats>,
     /// Each bus as it leaves (buses.rs), in schedule order; empty without buses.
     pub buses: Vec<TrackStats>,
-    /// Tracks kept as stems (render_keep): each as it reaches the master, in the layout's channels, `total` long.
-    pub stems: Vec<(String, Vec<Vec<f32>>)>,
+    /// Tracks kept as stems (render_keep): each as it reaches the master, in the layout's channels, on disk (tape.rs);
+    /// stems.rs writes them through the master's gain, block by block.
+    pub stems: Vec<(String, Arc<Tape>)>,
     /// Each bus as it leaves (after its effects and fader), kept when any stem is: with the direct tracks' stems
     /// these add up to what reaches the master.
-    pub bus_stems: Vec<(String, Vec<Vec<f32>>)>,
-    /// The master's linear gain per sample (fader and its lane, fades, gain to the loudness target): the one
-    /// gain the stems carry (bus.rs computes it; render/ applies it to the stems and empties this). Empty unless asked for.
-    pub master_gain: Vec<f32>,
+    pub bus_stems: Vec<(String, Arc<Tape>)>,
+    /// The master's linear gain (fader, lane, fades, loudness gain): the one gain the stems carry (bus.rs sets it).
+    pub gain: Option<MasterGain>,
     /// What the mastering stage did (fx/master.rs): its gain, and the largest reductions of its glue and limiter.
     pub master: crate::fx::master::MasterReport,
     /// Energy per band of the file (balance.rs BANDS, dB; a surround bed's stereo fold-down): its tonal balance.

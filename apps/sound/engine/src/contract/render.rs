@@ -1,13 +1,13 @@
 //! The `render` request: the schedule compiled, the mix rendered (tracks read back from the render cache
-//! when unchanged), the mix and any stems written whole or not at all (`.partial`, then renamed), and the
-//! meters answered in the same reply.
+//! when unchanged), the mix and any stems written block by block, whole or not at all (`.partial`, then
+//! renamed), and the meters answered in the same reply.
 
 use super::error::Error;
 use super::read::Obj;
 use super::schedule::{compile, Compiled};
-use crate::mix::{render, schedule::Schedule, wavio};
+use crate::mix::{render, schedule::Schedule};
 use serde_json::{json, Value};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub struct Job {
     c: Compiled,
@@ -55,25 +55,15 @@ pub fn run(job: Job) -> Result<Value, Error> {
     let mix = render::render_keep(&s, cache.as_ref(), &stems).map_err(Error::render)?;
     let took = t0.elapsed().as_secs_f64();
     let sr = s.sample_rate;
-    write(&out, &wavio::write(&mix.channels, mix.layout, sr))?;
-    let mut stem_files = serde_json::Map::new();
-    if !mix.stems.is_empty() {
-        std::fs::create_dir_all(&stems_dir).map_err(|e| Error::render(format!("{}: {e}", stems_dir.display())))?;
-        for (id, chs) in &mix.stems {
-            let f = stems_dir.join(format!("{id}.wav"));
-            write(&f, &wavio::write(chs, mix.layout, sr))?;
-            stem_files.insert(id.clone(), json!(f.to_string_lossy()));
-        }
-    }
-    // Bus stems beside them, `<bus>.bus.wav`: with the stems of the tracks that play straight to the master they
-    // add up to what reaches the master (`direct` lists those tracks).
-    let mut bus_files = serde_json::Map::new();
-    for (id, chs) in &mix.bus_stems {
-        std::fs::create_dir_all(&stems_dir).map_err(|e| Error::render(format!("{}: {e}", stems_dir.display())))?;
-        let f = stems_dir.join(format!("{id}.bus.wav"));
-        write(&f, &wavio::write(chs, mix.layout, sr))?;
-        bus_files.insert(id.clone(), json!(f.to_string_lossy()));
-    }
+    crate::mix::wavwriter::write_whole(&out, &mix.channels, mix.layout, sr).map_err(Error::render)?;
+    // The stems, `<track>.wav`, and the bus stems beside them, `<bus>.bus.wav`: with the stems of the tracks that play
+    // straight to the master the bus stems add up to what reaches the master (`direct` lists those tracks).
+    let named = |list: &[(String, std::sync::Arc<crate::mix::tape::Tape>)], ext: &str| -> Vec<(String, PathBuf)> { list.iter().map(|(id, _)| (id.clone(), stems_dir.join(format!("{id}{ext}")))).collect() };
+    let (stem_paths, bus_paths) = (named(&mix.stems, ".wav"), named(&mix.bus_stems, ".bus.wav"));
+    let files: Vec<(&crate::mix::tape::Tape, PathBuf)> = mix.stems.iter().chain(&mix.bus_stems).zip(stem_paths.iter().chain(&bus_paths)).map(|((_, t), (_, p))| (&**t, p.clone())).collect();
+    render::stems::write(&mix, &files, sr).map_err(Error::render)?;
+    let as_map = |paths: &[(String, PathBuf)]| -> serde_json::Map<String, Value> { paths.iter().map(|(id, p)| (id.clone(), json!(p.to_string_lossy()))).collect() };
+    let (stem_files, bus_files) = (as_map(&stem_paths), as_map(&bus_paths));
     let direct: Vec<&str> = s.tracks.iter().filter(|t| t.into.is_none() && crate::mix::buses::direct(&s, t)).map(|t| t.name.as_str()).collect();
     let refs: Vec<&[f32]> = mix.channels.iter().map(|c| c.as_slice()).collect();
     let loud = crate::analysis::loudstats::stats_n(&refs, &mix.layout.weights(), sr as f64);
@@ -96,18 +86,4 @@ pub fn run(job: Job) -> Result<Value, Error> {
         "buses": mix.buses.iter().map(|t| json!({ "id": t.name, "peak": t.peak, "rms": t.rms, "lufs": t.lufs })).collect::<Vec<_>>(),
         "ducks": mix.ducks.iter().map(|(t, spans)| json!({ "track": t, "spans": spans.iter().map(|&(a, b, db)| [a, b, db]).collect::<Vec<_>>() })).collect::<Vec<_>>(),
     }))
-}
-
-/// Written to `<file>.partial`, checked, then renamed: a failed write leaves no file under the real name.
-fn write(path: &Path, bytes: &[u8]) -> Result<(), Error> {
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| Error::render(format!("{}: {e}", dir.display())))?;
-    }
-    let partial = PathBuf::from(format!("{}.partial", path.display()));
-    std::fs::write(&partial, bytes).map_err(|e| Error::render(format!("{}: {e}", partial.display())))?;
-    if std::fs::metadata(&partial).map(|m| m.len()).unwrap_or(0) != bytes.len() as u64 {
-        return Err(Error::render(format!("{} was not written whole; kept for inspection", partial.display())));
-    }
-    let _ = std::fs::remove_file(path);
-    std::fs::rename(&partial, path).map_err(|e| Error::render(format!("{} → {}: {e}", partial.display(), path.display())))
 }

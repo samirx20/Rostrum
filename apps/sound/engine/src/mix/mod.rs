@@ -11,13 +11,16 @@ pub mod cache;
 pub mod clipshape;
 pub mod duck;
 pub mod effects;
+pub mod mastergain;
 pub mod par;
 pub mod render;
 pub mod schedule;
+pub mod tape;
 pub mod trackcache;
 #[cfg(test)]
 mod trackcache_tests;
 pub mod wavio;
+pub mod wavwriter;
 
 pub fn load(path: &str) -> Result<schedule::Schedule, String> {
     schedule::Schedule::parse(&std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?)
@@ -30,7 +33,7 @@ pub fn render_cmd(args: &[String]) -> Result<(), String> {
     let t0 = Instant::now();
     let mix = render::render(&s)?;
     let took = t0.elapsed().as_secs_f64();
-    std::fs::write(&args[2], wavio::write(&mix.channels, mix.layout, s.sample_rate)).map_err(|e| format!("{}: {e}", args[2]))?;
+    wavwriter::write_whole(std::path::Path::new(&args[2]), &mix.channels, mix.layout, s.sample_rate)?;
     let ducks: Vec<serde_json::Value> = mix.ducks.iter().map(|(t, spans)| serde_json::json!({ "track": t, "spans": spans.iter().map(|&(a, b, db)| [a, b, db]).collect::<Vec<_>>() })).collect();
     let secs = mix.channels[0].len() as f64 / s.sample_rate as f64;
     let refs: Vec<&[f32]> = mix.channels.iter().map(|c| c.as_slice()).collect();

@@ -32,7 +32,7 @@ fn stereo_fader(track: &Track, l: &mut [f32], r: &mut [f32], sr: f64) {
 /// One track from its clips (and the layers feeding it) to its place in the bed, reverb send included.
 /// A feeder stays stereo: its bus places the sum. With it, the tap before the fader when the track sends
 /// from there (buses.rs).
-pub(super) fn track_out(s: &Schedule, track: &Track, clips: Vec<Vec<Vec<f32>>>, feeders: Vec<&Vec<Vec<f32>>>, buf: usize) -> Result<(Vec<Vec<f32>>, Option<Vec<Vec<f32>>>), String> {
+pub(super) fn track_out(s: &Schedule, track: &Track, clips: Vec<Vec<Vec<f32>>>, feeders: Vec<&crate::mix::tape::Tape>, buf: usize) -> Result<(Vec<Vec<f32>>, Option<Vec<Vec<f32>>>), String> {
     let (sr, layout) = (s.sample_rate as f64, s.layout);
     let add = |into: &mut [Vec<f32>], from: &[Vec<f32>], at: usize| {
         for (dst, src) in into.iter_mut().zip(from) {
@@ -62,7 +62,7 @@ pub(super) fn track_out(s: &Schedule, track: &Track, clips: Vec<Vec<Vec<f32>>>, 
     let mut st = vec![vec![0.0f32; buf]; 2];
     // A bus: its feeders' outputs (after their own effects, level and pan) are its input.
     for f in feeders {
-        add(&mut st, f, 0);
+        f.add_into(&mut st)?;
     }
     for (clip, c) in track.clips.iter().zip(&clips) {
         add(&mut st, c, clip.start_sample);

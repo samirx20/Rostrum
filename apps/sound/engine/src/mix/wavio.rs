@@ -9,11 +9,23 @@ const FLOAT_GUID: [u8; 16] = [3, 0, 0, 0, 0, 0, 0x10, 0, 0x80, 0, 0, 0xaa, 0, 0x
 /// A bed as a float WAV.
 pub fn write(chs: &[Vec<f32>], layout: Layout, sr: u32) -> Vec<u8> {
     let n = chs.first().map_or(0, |c| c.len());
-    let nch = chs.len() as u32;
-    let data = (n * chs.len() * 4) as u32;
+    let mut w = header(chs.len(), n, layout, sr);
+    w.reserve(n * chs.len() * 4);
+    for i in 0..n {
+        for c in chs {
+            w.extend_from_slice(&c[i].to_le_bytes());
+        }
+    }
+    w
+}
+
+/// The header of a float WAV of `nch` channels and `n` frames (wavwriter.rs streams the samples after it).
+pub fn header(nch: usize, n: usize, layout: Layout, sr: u32) -> Vec<u8> {
+    let nch = nch as u32;
+    let data = (n * nch as usize * 4) as u32;
     let ext = nch > 2;
     let fmt_len: u32 = if ext { 40 } else { 16 };
-    let mut w = Vec::with_capacity(28 + fmt_len as usize + data as usize);
+    let mut w = Vec::with_capacity(28 + fmt_len as usize);
     w.extend_from_slice(b"RIFF");
     w.extend_from_slice(&(20 + fmt_len + data).to_le_bytes());
     w.extend_from_slice(b"WAVEfmt ");
@@ -32,11 +44,6 @@ pub fn write(chs: &[Vec<f32>], layout: Layout, sr: u32) -> Vec<u8> {
     }
     w.extend_from_slice(b"data");
     w.extend_from_slice(&data.to_le_bytes());
-    for i in 0..n {
-        for c in chs {
-            w.extend_from_slice(&c[i].to_le_bytes());
-        }
-    }
     w
 }
 

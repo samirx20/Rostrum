@@ -29,6 +29,15 @@ pub fn map_n<T: Send, R: Send>(items: Vec<T>, threads: usize, f: impl Fn(T) -> R
     out.into_iter().map(|m| m.into_inner().unwrap().expect("every job ran")).collect()
 }
 
+/// What the mix's jobs may hold at once (render/): each job holds about one track, so a long song runs fewer
+/// at a time and its peak stays near this, whatever its length or track count.
+const BUDGET_BYTES: usize = 2 << 30;
+
+/// How many jobs of `bytes` each to run at once within the budget (at least one).
+pub fn threads_for(bytes: usize) -> usize {
+    (BUDGET_BYTES / bytes.max(1)).max(1)
+}
+
 /// `f` over every item on all cores; results in item order.
 pub fn map<T: Send, R: Send>(items: Vec<T>, f: impl Fn(T) -> R + Sync) -> Vec<R> {
     map_n(items, usize::MAX, f)

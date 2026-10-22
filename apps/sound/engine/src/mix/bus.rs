@@ -18,9 +18,9 @@ pub fn safety_clip(x: f64) -> f64 {
     }
 }
 
-/// The summed tracks (`bus`, the tail included) to the finished mix. `keep_gain`: also hand back the master's
-/// linear gain per sample (`Mix::master_gain`) for the stems.
-pub fn master(s: &Schedule, mut bus: Vec<Vec<f32>>, keep_gain: bool) -> Result<Mix, String> {
+/// The summed tracks (`bus`, the tail included) to the finished mix, worked in place on `bus`; the mix's
+/// `gain` is the master's linear gain the stems carry (mastergain.rs).
+pub fn master(s: &Schedule, mut bus: Vec<Vec<f32>>) -> Result<Mix, String> {
     let (sr, total, layout) = (s.sample_rate as f64, s.total_samples, s.layout);
     crate::mix::effects::time_warps(&mut bed::slices(&mut bus), sr, &s.time_warps);
     if s.master_reverb != "dry" {
@@ -45,39 +45,26 @@ pub fn master(s: &Schedule, mut bus: Vec<Vec<f32>>, keep_gain: bool) -> Result<M
             }
         }
     }
-    // The fader and the fades, then the mastering stage when there is one, then the safety clip.
-    let (fi, fo) = (s.fade_in_samples, s.fade_out_samples);
-    let env: Vec<f64> = (0..total)
-        .map(|i| {
-            let mut env = 1.0;
-            if fi > 0 && i < fi {
-                env = 0.5 * (1.0 - (std::f64::consts::PI * (i as f64 / fi.max(1) as f64)).cos());
-            }
-            if fo > 0 && i + fo >= total {
-                let rem = (total as f64 - 1.0 - i as f64) / (fo.max(2) - 1) as f64;
-                env = f64::min(env, (0.5 * (1.0 - (std::f64::consts::PI * rem).cos())).powf(2.2));
-            }
-            env
-        })
-        .collect();
-    // The master fader: its lane when it has one (buses.rs), else its level.
-    let fader = crate::mix::buses::master_fader(s);
-    // The master's linear gain, computed once: the mix and (when `keep_gain`) the stems both take it from here.
-    let lin: Vec<f64> = (0..total).map(|i| fader.at(i as f64 / sr) * env[i]).collect();
-    let mut out: Vec<Vec<f32>> = bus.iter().map(|c| (0..total).map(|i| (c[i] as f64 * lin[i]) as f32).collect()).collect();
+    // The fader and the fades (the master's linear gain, one source for the mix and the stems), then the
+    // mastering stage when there is one, then the safety clip.
+    let mut gain = crate::mix::mastergain::MasterGain::new(s);
+    let mut out = bus;
+    for c in out.iter_mut() {
+        c.truncate(total);
+        c.iter_mut().enumerate().for_each(|(i, v)| *v = (*v as f64 * gain.lin(i)) as f32);
+    }
     let weights = layout.weights();
     let report = s.master.as_ref().map(|m| crate::fx::master::master_n(&mut out, &weights, m, sr)).unwrap_or_default();
-    let norm = 10f64.powf(report.gain_db / 20.0);
-    let master_gain: Vec<f32> = if keep_gain { lin.iter().map(|g| (g * norm) as f32).collect() } else { vec![] };
+    gain.norm = 10f64.powf(report.gain_db / 20.0);
     let nch = out.len();
-    let mut mix = Mix { layout, channels: vec![vec![0.0; total]; nch], peak: 0.0001, sum_sq: 0.0, sums: vec![0.0; nch], clipped: 0, lufs: -70.0, true_peak: -120.0, true_peak_series: vec![], ducks: vec![], tracks: vec![], buses: vec![], stems: vec![], bus_stems: vec![], master_gain, master: report, bands: [-140.0; 5] };
+    let mut mix = Mix { layout, channels: vec![], peak: 0.0001, sum_sq: 0.0, sums: vec![0.0; nch], clipped: 0, lufs: -70.0, true_peak: -120.0, true_peak_series: vec![], ducks: vec![], tracks: vec![], buses: vec![], stems: vec![], bus_stems: vec![], gain: Some(gain), master: report, bands: [-140.0; 5] };
     for i in 0..total {
         let (mut hot, mut sq) = (false, 0.0);
         for c in 0..nch {
             let raw = out[c][i] as f64;
             hot |= raw.abs() >= 0.99;
             let a = if s.safety_clip { safety_clip(raw) } else { raw };
-            mix.channels[c][i] = a as f32;
+            out[c][i] = a as f32;
             mix.peak = mix.peak.max(a.abs());
             sq += a * a;
             mix.sums[c] += a;
@@ -85,6 +72,7 @@ pub fn master(s: &Schedule, mut bus: Vec<Vec<f32>>, keep_gain: bool) -> Result<M
         mix.clipped += hot as usize;
         mix.sum_sq += sq / nch as f64;
     }
+    mix.channels = out;
     // The file's measures, each on its own core.
     let chs: Vec<&[f32]> = mix.channels.iter().map(|c| c.as_slice()).collect();
     let (lufs, true_peak, bands) = std::thread::scope(|sc| {
@@ -174,7 +162,7 @@ mod tests {
         let mut channels = vec![vec![0.0f32; n]; 6];
         channels[0] = tone.clone();
         channels[4] = tone.iter().enumerate().map(|(i, v)| if i >= 48000 { -v / std::f32::consts::FRAC_1_SQRT_2 } else { 0.0 }).collect();
-        let mix = Mix { layout: Layout::Surround51, channels, peak: 0.5, sum_sq: 0.0, sums: vec![0.0; 6], clipped: 0, lufs: -20.0, true_peak: -6.0, true_peak_series: vec![], ducks: vec![], tracks: vec![], buses: vec![], stems: vec![], bus_stems: vec![], master_gain: vec![], master: Default::default(), bands: [-140.0; 5] };
+        let mix = Mix { layout: Layout::Surround51, channels, peak: 0.5, sum_sq: 0.0, sums: vec![0.0; 6], clipped: 0, lufs: -20.0, true_peak: -6.0, true_peak_series: vec![], ducks: vec![], tracks: vec![], buses: vec![], stems: vec![], bus_stems: vec![], gain: None, master: Default::default(), bands: [-140.0; 5] };
         let r = surround_report(&mix, sr);
         let losses = r["foldDown"]["cancellations"].as_array().unwrap();
         assert!(!losses.is_empty() && losses.iter().all(|l| l["at"].as_f64().unwrap() >= 0.8), "{losses:?}");
