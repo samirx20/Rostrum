@@ -11,6 +11,11 @@ Panel {
     readonly property var roll: backend.roll
     readonly property string kind: roll.kind
     readonly property int keysWidth: kind === "drums" ? 76 : 52     // drum names ("Open hat") are longer than note names
+    function toolHint(tool) {   // what the Select / Draw tool does here, said on hover (not as a line on the screen)
+        var free = "Ctrl drags freely"
+        return kind === "notes" ? "  ·  " + (tool === "draw" ? "Click to add a note" : "Double-click to add a note") + "  ·  " + free
+             : kind === "drums" || kind === "audio" ? "  ·  " + free : ""
+    }
     title: roll.name !== "" ? roll.name : "Piano roll"
     headerRight: [
         BeforeAfter { anchors.verticalCenter: parent.verticalCenter; rightPadding: Theme.gap },
@@ -29,14 +34,10 @@ Panel {
                            font.family: uiFont; font.pixelSize: Theme.label }
                     MouseArea { id: ta; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                 onClicked: backend.setTool(parent.modelData.v) }
-                    HoverTip { text: parent.modelData.label + "  " + parent.modelData.key; hovered: ta.containsMouse; pressed: ta.pressed }
+                    HoverTip { text: parent.modelData.label + "  " + parent.modelData.key + p.toolHint(parent.modelData.v); hovered: ta.containsMouse; pressed: ta.pressed }
                 }
             }
         },
-        Text { anchors.verticalCenter: parent.verticalCenter; rightPadding: Theme.grid
-               text: p.kind === "notes" ? (backend.tool === "draw" ? "Click to add a note" : "Double-click to add a note") + "  ·  Ctrl drags freely"
-                   : p.kind === "drums" || p.kind === "audio" ? "Ctrl drags freely" : ""
-               color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label }
     ]
 
     BarRuler {

@@ -21,12 +21,16 @@ Rectangle {
     ColumnLayout {
         anchors.fill: parent; anchors.margins: Theme.gap + 2
         spacing: Theme.gap
-        NameLabel {
-            Layout.fillWidth: true; Layout.preferredHeight: 22
-            id: stripName
-            text: s.model.name; verticalAlignment: Text.AlignVCenter
-            font.pixelSize: Theme.title; font.weight: Font.DemiBold
-            MouseArea { anchors.fill: parent; onPressed: s.pick() }
+        RowLayout {
+            Layout.fillWidth: true; Layout.preferredHeight: 22; Layout.maximumHeight: 22; spacing: Theme.grid
+            NameLabel {
+                Layout.fillWidth: true; Layout.fillHeight: true
+                id: stripName
+                text: s.model.name; verticalAlignment: Text.AlignVCenter
+                font.pixelSize: Theme.title; font.weight: Font.DemiBold
+                MouseArea { anchors.fill: parent; onPressed: s.pick() }
+            }
+            MixMS { strip: s; compact: true; visible: s.low; Layout.preferredWidth: 46; Layout.maximumWidth: 46 }   // a low dock: M / S beside the name, the fader keeps the height
         }
         MixPick {   // where it plays to: the master or a bus (the choices are the buses it may feed)
             Layout.fillWidth: true; Layout.preferredHeight: 22
@@ -49,17 +53,12 @@ Rectangle {
                 onScrubStarted: { s.pick(); backend.beginScrub("pan") }
                 onScrubbed: (v) => backend.scrub("pan", v)
                 onScrubEnded: backend.endScrub()
+                onEdited: (v) => { s.pick(); backend.beginScrub("pan"); backend.scrub("pan", v); backend.endScrub() }   // wheel, ← / →: one change
             }
         }
         MixSends { visible: !s.low; Layout.fillWidth: true; ownerId: s.model.id; sends: s.model.sends; targets: s.model.sendTargets }
         MixDucks { visible: !s.low; Layout.fillWidth: true; ownerId: s.model.id; ducks: s.model.ducks; targets: s.model.duckTargets }
-        RowLayout {
-            Layout.fillWidth: true; spacing: Theme.grid
-            MixSwitch { Layout.fillWidth: true; text: "M"; on: s.model.mute; tint: Theme.warn
-                        onToggled: (v) => { s.pick(); backend.setValue("mute", v) } }
-            MixSwitch { Layout.fillWidth: true; visible: s.model.canSolo; text: "S"; on: s.model.solo; tint: Theme.accent
-                        onToggled: (v) => { s.pick(); backend.setValue("solo", v) } }
-        }
+        MixMS { strip: s; visible: !s.low; Layout.fillWidth: true }
         RowLayout {  // fader and meter
             Layout.fillWidth: true; Layout.fillHeight: true; spacing: Theme.gap
             Item { Layout.fillWidth: true }

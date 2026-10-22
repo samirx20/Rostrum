@@ -55,6 +55,7 @@ Rectangle {
     }
     GroupToggles { id: toggles; track: h.track
                    anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter } }
-    LaneToggle { id: autoChip; visible: h.showAuto; track: h.track
+    LaneToggle { id: autoChip; visible: h.showAuto && (hover.hovered || h.track.autoUsed || !!h.track.auto);   // on hover or in use
+                 track: h.track
                  anchors { right: toggles.left; rightMargin: 2; verticalCenter: parent.verticalCenter } }
 }

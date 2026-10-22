@@ -72,11 +72,11 @@ INSTRUMENT = [
     Param.choice("model", names.MODELS, group="Instrument", label="Model", valid_when=MODEL,
                  help="A played (procedural) instrument: plucked strings, struck bars or a bowed violin."),
     *touch(),
-    Param.choice("voice", voice.VOICES, group="Instrument", label="Voice", valid_when=VOICE,
+    Param.choice("voice", voice.VOICES, group="Instrument", label="Speaker", valid_when=VOICE,
                  help="Who speaks the track's lines (a preset voice)."),
     Param.choice("language", voice.LANGUAGES, group="Instrument", label="Language", valid_when=VOICE,
                  help="The language the lines are spoken in; auto = from the text."),
-    Param.text("style", group="Instrument", label="Style", valid_when=VOICE,
+    Param.text("style", group="Instrument", importance="deep", label="Style", valid_when=VOICE,
                help='How the voice speaks, in plain words: "warm, confident", "low and close to the microphone".'),
     Param.choice("synth", names.WAVES, group="Instrument", label="Wave", valid_when=SYNTH),
     *[N(n, lo, hi, "Instrument", unit, imp, SYNTH, whole, default) for n, lo, hi, default, unit, imp, whole

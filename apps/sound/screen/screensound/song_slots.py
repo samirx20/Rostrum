@@ -20,7 +20,7 @@ class SongSlots:
 
     @Slot(result="QVariantMap")
     def songEdit(self):
-        """What the Song popup shows now: only what is valid at the playhead with this selection."""
+        """What the song view needs now: only what is valid at the playhead."""
         sel = self.doc.item(self._sel) if self._sel and self.doc.has(self._sel) else None
         return song_edit.state(self.doc.data, sel, self._t)
 

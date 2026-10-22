@@ -57,7 +57,12 @@ class SongPanel(QObject):
     def key(self):
         """{tonic, mode, set}: the key at the start of the song (set false: the song has no key yet)."""
         st = song_edit.state(self.doc.data, None, 0.0)
-        return {"tonic": st["tonic"] if st["hasKey"] else "", "mode": st["mode"], "set": st["hasKey"]}
+        return {"tonic": st["tonic"], "mode": st["mode"], "set": st["hasKey"]}
+
+    @Property(str, constant=True)
+    def noKey(self):
+        """The words for a song with no key (the panel's field, the header strip)."""
+        return song_edit.NO_KEY
 
     @Property(str, notify=changed)
     def mainMix(self):

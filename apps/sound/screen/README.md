@@ -142,11 +142,11 @@ in `<project>/media/<track>-take-<n>.wav` at the engine's `start` (its clock, mi
 
 ## Song: tempo, key, sections (editable)
 
-Click the tempo / key in the top bar: the Song popup (`SongEditor.qml`, `song_edit.py`). **Tempo**: the song's own,
-"Tempo change here" (on the playhead's beat, `tempo.add`), the selected change's tempo and Delete. **Key**: tonic + mode
-choosers (`key.set` on the key playing now, or a first `key.add`), "Key change here" (only once the song has a key and
-the playhead is not on one), Delete on a selected key change. **Sections**: "Section here" (4 bars from the playhead),
-the selected one's name, Delete. A delete shows only with that thing selected. On the ruler, flags for tempo and key
+Click the tempo / key in the top bar: it selects the song, and the settings panel shows it (`SongSettings.qml`,
+`song_edit.py`; no popup). **Tempo**: the song's own, the selected change's tempo and Delete. **Key**: tonic + mode
+choosers (`key.set` on the key at the start, or a first `key.add`; no key reads "No key" everywhere). At the playhead:
+"Tempo change" (on its beat, `tempo.add`), "Key change" (only once the song has a key and the playhead is not on one),
+"Section" (4 bars from the playhead). A delete shows only with that thing selected. On the ruler, flags for tempo and key
 changes (`SongBand.qml`: click selects, drag moves, one undo step, on its beat; a change in seconds stays in seconds)
 and the section bar's edges: drag an edge to resize (`section.set`, the contents stay), drag the middle to move it
 with everything inside. Times keep their written form. Steps: `song <action> [value]`, `song-open`, `drag-tempo`,

@@ -103,7 +103,22 @@ def _refs(value):
             yield from _refs(v)
 
 
-def check(data: dict) -> list[str]:
+_SEEN = {"markers": [], "marks": None}   # the markers the last check saw (their items, so `is` compares them)
+
+
+def _ref_holders(data: dict, items, marks: list):
+    """The items whose marker references need checking: only the changed ones while the markers are the very same
+    items as the last check saw and no tempo changed (a version shares unchanged items: rostrum_core edits.fork), else every item."""
+    own = data.get("markers", [])
+    same = (items is not None and not any(i.get("type") in ("doc", "tempo") for i in items) and marks == _SEEN["marks"] and len(own) == len(_SEEN["markers"])
+            and all(a is b for a, b in zip(own, _SEEN["markers"])))
+    _SEEN.update(markers=list(own), marks=marks)
+    return items if same else walk(data, LISTS)
+
+
+def check(data: dict, items=None) -> list[str]:
+    """`items`: the items a call changed (None: everything, as on open). Track and song rules are always checked
+    whole; marker references only in the changed items unless a marker changed."""
     out = []
     try:
         marks = [markers.key(n) for n, _ in markers.items(data)]
@@ -116,7 +131,7 @@ def check(data: dict) -> list[str]:
         if not TRACK_ID.match(track["id"]):
             out.append(f"track id {track['id']!r} must be 1–64 letters, digits, _ . -")
         out += _instrument(track)
-    for item in walk(data, LISTS):
+    for item in _ref_holders(data, items, marks):
         t = item.get("type")
         if t == "effect":
             out += FX.problems(item) + _lane(item, data)

@@ -5,7 +5,7 @@ import RostrumKit
 // its actions; double-click the name or F2 renames it in place, double-click elsewhere opens the Editor), a lock
 // (track.lock / track.unlock: nobody, agents included, can change a locked track; shown on hover or when locked), and the two quick
 // toggles, mute and solo (each a track.set operation; lit when on), and the "Rec" arm button for recording
-// (red when armed; arming is screen state, not an edit).
+// (on hover of the row and while armed, red when armed; arming is screen state, not an edit).
 Rectangle {
     id: h
     property var track
@@ -89,22 +89,16 @@ Rectangle {
                        hovered: lockArea.containsMouse; pressed: lockArea.pressed }
         }
         LaneToggle { visible: h.showAuto && (hover.hovered || h.track.autoUsed || !!h.track.auto); track: h.track }   // on hover or in use
-        Rectangle {   // "Rec": arm this track for recording (lit red when armed)
+        Rectangle {   // "Rec": arm this track for recording; on hover of the row, and while armed (lit red, like M / S lit)
             id: arm
             readonly property bool lit: recorder.armed === h.track.id
-            width: armRow.width + Theme.gap; height: 18; radius: 4
-            color: lit ? Qt.rgba(Theme.danger.r, Theme.danger.g, Theme.danger.b, 0.18) : armArea.containsMouse ? Theme.hover : "transparent"
-            border.width: 1; border.color: lit ? Theme.danger : Theme.line
-            Row {
-                id: armRow
-                anchors.centerIn: parent; spacing: 4
-                Rectangle { anchors.verticalCenter: parent.verticalCenter; width: 7; height: 7; radius: 3.5
-                            color: arm.lit ? Theme.danger : "transparent"
-                            border.width: 1.5; border.color: arm.lit ? Theme.danger : Theme.fg3 }
-                Text { visible: h.width >= 170; anchors.verticalCenter: parent.verticalCenter; text: "Rec"; font.family: uiFont   // narrow: the dot alone
-                       font.pixelSize: Theme.label; font.weight: Font.DemiBold
-                       color: arm.lit ? Theme.danger : armArea.containsMouse ? Theme.fg : Theme.fg3 }
-            }
+            visible: hover.hovered || lit
+            width: 28; height: 18; radius: 4
+            color: lit ? Theme.danger : armArea.containsMouse ? Theme.hover : "transparent"
+            Behavior on color { ColorAnimation { duration: Theme.fast } }
+            Text { anchors.centerIn: parent; text: "Rec"; font.family: uiFont
+                   font.pixelSize: Theme.label; font.weight: Font.DemiBold
+                   color: arm.lit ? Theme.app : armArea.containsMouse ? Theme.fg : Theme.fg3 }
             MouseArea { id: armArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: recorder.arm(h.track.id) }
             HoverTip { text: arm.lit ? "Armed: press Record (R) to record on this track. Click to disarm."

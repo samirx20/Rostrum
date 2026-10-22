@@ -99,7 +99,7 @@ class MixPage(QObject):
     def addBus(self):
         """bus.add (one change), then select the new bus so the inspector can name it."""
         before = {b["id"] for b in self._bus_items()}
-        if not self._call({"op": "bus.add", "args": {}}, "Add bus"):
+        if not self._call({"op": "bus.add", "args": {}}, "Add group"):
             return False
         self.bridge.select(next(b["id"] for b in self._bus_items() if b["id"] not in before))
         return True

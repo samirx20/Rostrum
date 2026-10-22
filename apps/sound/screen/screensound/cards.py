@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 # Plain words for a procedural instrument (its `model` field); an unknown one is just its own name, spaced out.
-FAMILY = {"guitar": "Plucked string", "nylonGuitar": "Plucked string", "violin": "Bowed string",
+FAMILY = {"guitar": "Steel-string pluck", "nylonGuitar": "Soft nylon pluck", "violin": "Bowed string",
           "marimba": "Struck bar", "vibraphone": "Struck bar", "glockenspiel": "Struck bar", "tubularBell": "Struck bar"}
 
 

@@ -44,7 +44,7 @@ Item {
                         color: g.notes && g.black(parent.key) ? Theme.app : "transparent" }
             Rectangle { x: g.keysWidth; width: parent.width - x; height: parent.height     // in the key: lighter; out: darker
                         visible: g.notes && g.keyed; color: g.rowInKey[parent.index] ? Theme.raised : "black"
-                        opacity: g.rowInKey[parent.index] ? 0.5 : 0.4 }
+                        opacity: g.rowInKey[parent.index] ? 0.5 : 0.65 }
             Rectangle { x: g.keysWidth; width: parent.width - x; height: 1; y: parent.height - 1
                         visible: g.notes ? parent.key % 12 === 0 : true; color: Theme.border }
             Rectangle { width: g.keysWidth - 6; height: parent.height - 1; x: 0

@@ -9,6 +9,8 @@ sounds". Exposed to QML as `adder`.
 """
 from __future__ import annotations
 
+import re
+
 from PySide6.QtCore import Property, QObject, Slot
 from rostrum_sound import names
 from rostrum_sound.voice import VOICES
@@ -26,16 +28,20 @@ DESIGNED = {"whoosh": ("Whoosh", "Air rushing past: a move, a swipe", {"dur": 0.
             "hit": ("Impact", "A big hit with a tail: a logo lands", {}),
             "click": ("Click", "A short tick: a button, a UI tap", {}),
             "subDrop": ("Sub drop", "A deep fall after a hit", {"dur": 1.5})}
-SAID = {"feltPiano": "Soft felt piano, close and quiet", "grandPiano": "Concert grand piano",
-        "warmPad": "Warm pad, slow start", "analogStrings": "Analog string ensemble, smooth",
-        "spiccatoStrings": "Short bowed strings, bouncy", "choirPad": "Soft choir, held notes",
-        "cinematicBrass": "Big film brass", "subBass": "Deep sub bass", "shepardRiser": "A rise that never ends",
-        "glassMarimba": "Glassy marimba, bright"}
+# What a sound adds beyond its name (shown under it; "" when there is nothing to add, and `note` hides a repeat of the name).
+SAID = {"feltPiano": "Soft and close", "warmPad": "Slow start", "analogStrings": "Smooth ensemble",
+        "spiccatoStrings": "Short, bouncy", "choirPad": "Held notes", "cinematicBrass": "Big, filmic",
+        "shepardRiser": "A rise that never ends", "glassMarimba": "Glassy, bright"}
 
 
 def _said(name: str) -> str:
     """"grandPiano" -> "Grand piano"."""
     return spaced(name).capitalize()
+
+
+def _plain(label: str) -> str:
+    """The name for a sentence ("Add voice: Ryan"): only the first letter drops, so names stay as typed."""
+    return label[:1].lower() + label[1:]
 
 
 def _entry(key, label, what, kind, fields, arm=False) -> dict:
@@ -44,19 +50,19 @@ def _entry(key, label, what, kind, fields, arm=False) -> dict:
 
 def _entries() -> list[dict]:
     """Every sound a new track can start from: {key, label, what, kind, fields, arm}."""
-    out = [_entry(f"builtIn:{b}", _said(b), SAID.get(b, "Built-in instrument"), "instrument",
+    out = [_entry(f"builtIn:{b}", _said(b), SAID.get(b, ""), "instrument",
                   {"name": _said(b), "instrument": "builtIn", "builtIn": b}) for b in names.BUILT_INS]
     out.append(_entry("synth", "Synth", "A simple synth: saw, square, sine", "instrument",
                       {"name": "Synth", "instrument": "synth"}))
-    out += [_entry(f"model:{m}", _said(m), f"{FAMILY.get(m, 'Played instrument')}, played by notes", "instrument",
+    out += [_entry(f"model:{m}", _said(m), FAMILY.get(m, ""), "instrument",
                    {"name": _said(m), "instrument": "model", "model": m}) for m in names.MODELS]
     out.append(_entry("kit", "Drum kit", "Kick, snare, hats, toms: a row for each drum", "drums",
                       {"name": "Drums", "instrument": "kit"}))
     out.append(_entry("mic", "Microphone", "Record your voice or an instrument (ready to record)", "record",
                       {"name": "Recording", "instrument": "none"}, arm=True))
-    out.append(_entry("files", "Sound files", "A track for recordings and sound files", "record",
+    out.append(_entry("files", "Sound files", "Recordings and loops", "record",
                       {"name": "Audio", "instrument": "none"}))
-    out += [_entry(f"voice:{v}", f"Voice: {_said(v)}", "Type what to say and this voice speaks it", "voice",
+    out += [_entry(f"voice:{v}", f"Voice: {_said(v)}", "", "voice",
                    {"name": "Voice", "instrument": "voice", "voice": v}) for v in VOICES]
     out += [_entry(f"design:{d}", label, what, "designed", {"design": d, **extra})
             for d, (label, what, extra) in DESIGNED.items()]
@@ -80,10 +86,16 @@ def placed_at(b, lead: float = 0.0):
     return round(max(0.0, b._t - lead), 4), ""
 
 
+def _note(e: dict) -> str:
+    """The description, only when it holds a word the name does not ("Warm pad" / "Warm pad" says nothing twice)."""
+    own = set(re.findall(r"\w+", e["label"].lower()))
+    return e["what"] if set(re.findall(r"\w+", e["what"].lower())) - own else ""
+
+
 def find(text: str, kind: str) -> list[dict]:
     """The entries whose words hold every word typed, of that kind ("" = all)."""
     words = text.lower().split()
-    return [{k: v for k, v in e.items() if k != "fields"} for e in ENTRIES
+    return [{**{k: v for k, v in e.items() if k != "fields"}, "note": _note(e)} for e in ENTRIES
             if (not kind or e["kind"] == kind) and all(w in f"{e['label']} {e['what']} {e['kind']}".lower() for w in words)]
 
 
@@ -125,7 +137,7 @@ class Adder(QObject):
         if old and t.get("name") == old["fields"]["name"]:
             args["name"] = e["fields"]["name"]
         return b._guard(lambda: b._apply([{"op": "track.set", "target": [track_id], "args": args}],
-                                         f"Change sound to {e['label'].lower()}"))
+                                         f"Change sound to {_plain(e['label'])}"))
 
     def _selected_track(self) -> dict | None:
         doc, i = self.bridge.doc, self.bridge.selected
@@ -147,7 +159,7 @@ class Adder(QObject):
 
         def go():
             before = {t["id"] for t in b.doc.data.get("tracks", [])}
-            b._apply([{"op": "track.add", "args": dict(e["fields"])}], f"Add {e['label'].lower()} track")
+            b._apply([{"op": "track.add", "args": dict(e["fields"])}], f"Add {_plain(e['label'])}" + ("" if e["kind"] == "voice" else " track"))
             new = [t["id"] for t in b.doc.data.get("tracks", []) if t["id"] not in before]
             if new:
                 b.select(new[0])
@@ -171,7 +183,7 @@ class Adder(QObject):
 
         def go():
             before = {s["id"] for t in b.doc.data.get("tracks", []) for s in t.get("sounds", [])}
-            b._apply(calls, f"Place {e['label'].lower()}" + (f" on {on}" if on else ""))
+            b._apply(calls, f"Place {_plain(e['label'])}" + (f" on {on}" if on else ""))
             new = [s["id"] for t in b.doc.data.get("tracks", []) for s in t.get("sounds", []) if s["id"] not in before]
             if new:
                 b.select(new[0])

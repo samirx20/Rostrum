@@ -3,14 +3,14 @@ import RostrumKit
 
 // The song's tempo changes and key changes on the ruler, each a small flag at its time ("♩ 96", "D minor").
 // Click selects it (the inspector edits it; Delete removes it); drag moves it (one gesture = one undo step; a tempo
-// change on its beat, a quarter beat grid, Ctrl = free). Absent while the song has neither. Clicks are taken here in
+// change on its beat, a quarter beat grid, Ctrl = free). The key at the start is not flagged (the header strip and the song view say it). Absent while the song has none. Clicks are taken here in
 // one place, as in MarkerBand.
 Item {
     id: band
     property var ruler
     readonly property var song: backend.song
     readonly property var marks: song.tempoMarks.map(c => ({ id: c.id, t: c.t, text: "♩ " + Math.round(c.bpm), tempo: true }))
-                                 .concat(song.keys.map(k => ({ id: k.id, t: k.t, text: k.key, tempo: false })))
+                                 .concat(song.keys.filter(k => k.t > 0.001).map(k => ({ id: k.id, t: k.t, text: k.key, tempo: false })))
     clip: true
     visible: marks.length > 0
     function flagWidth(text) { return metrics.advanceWidth(text) + 14 }
