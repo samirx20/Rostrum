@@ -21,7 +21,7 @@ from .action_calls import REMOVABLE, TIMED
 
 EFFECTS = ("eq", "compressor", "reverb", "delay", "saturate", "tape", "limiter", "width", "gate", "deess")
 WORDS = {"eq": "EQ", "deess": "De-ess"}
-CLIPS = {"note", "hit", "clip", "line"}
+CLIPS = {"note", "hit", "clip", "line", "sound"}
 
 
 def act(key, label, valid_when, calls=None, shortcut="", importance="secondary", group="", menu="", do="",
@@ -92,6 +92,10 @@ ACTIONS = [
         lambda f: [C.call("clip.set", f.ids, group=C.layer_name(f))], "Ctrl+G", group="clip"),
     act("stems", "Split into parts (stems)", lambda f: CLIP(f) and f.count == 1,
         lambda f: [C.call("clip.split_stems", f.ids)], group="clip"),
+    act("section_duplicate", "Duplicate section", lambda f: f.one == "section", lambda f: [C.call("section.duplicate", f.ids)],
+        importance="primary", group="section"),
+    act("section_inside", "Select what's inside", lambda f: f.one == "section" and f.count == 1, importance="primary",
+        group="section", do="inside"),
     # a time range (nothing else selected)
     act("section", "Make a section", lambda f: f.range and not f.count, C.section, importance="primary", group="range"),
     act("inside", "Select what's inside", lambda f: f.range and not f.count, importance="primary", group="range",

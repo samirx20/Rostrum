@@ -14,7 +14,7 @@ from rostrum_sound import names, voice_lines
 from rostrum_sound.doc import keys as K
 from rostrum_sound.doc import markers as mk
 
-from . import lanes, music_map, timing
+from . import lanes, music_map, pick, timing
 from .handles import level_y
 
 # no blues: blue is the selection (Theme.accent)
@@ -171,6 +171,7 @@ def rows(root: dict, open_lanes: dict | None = None) -> list[dict]:
                 b["lanes"] = [0.5 if hi == lo else 1 - (k - lo) / (hi - lo) for k in b["keys"]]
             elif b["type"] == "hit":
                 b["lanes"] = [drums.index(b["drum"]) / max(len(drums) - 1, 1)]
+        pick.stack(bl)                       # overlapping clips / sounds share the lane in rows
         out.append({"id": t["id"], "name": t.get("name") or t["id"], "hue": hue(t, i),
                     "mute": bool(t.get("mute")), "solo": bool(t.get("solo")), "locked": bool(t.get("locked")), "kind": kind_of(t), "blocks": bl,
                     "autoUsed": lanes.used(t),

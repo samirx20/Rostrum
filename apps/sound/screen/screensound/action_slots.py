@@ -78,8 +78,10 @@ class ActionSlots:
             self._fail(f'Error: "{key}" does not apply to what is selected right now.')
             return False
         words = self.selectionWords
-        if a["do"] == "inside":
-            self._pick(C.inside(C.Facts(self.doc, [], rng=self._picks.range)))
+        if a["do"] == "inside":                        # of the time range, or of the selected section
+            sec = self.doc.item(self._picks.ids[0]) if self._picks.ids else None
+            rng = (ST.start_of(self.doc.data, sec), ST.start_of(self.doc.data, {**sec, "at": sec["end"]})) if sec                 else self._picks.range
+            self._pick(C.inside(C.Facts(self.doc, [], rng=rng)))
             return True
         if a["do"] == "rename":
             return self.startRename(self._picks.ids[0])

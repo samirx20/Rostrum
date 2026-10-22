@@ -18,7 +18,10 @@ class HandleSlots:
         row = next((r for r in self._view["rows"] if r["id"] == track_id), None)
         for b in (row["blocks"] if row else []):
             if b["type"] == "clip" and b["id"] in self.selectedIds:
-                h = handles.at(b, t, y, tol)
+                rows, row = b.get("rows", 1), b.get("row", 0)
+                if rows > 1 and not row <= y * rows < row + 1:
+                    continue                                  # stacked: only its own row of the lane
+                h = handles.at(b, t, y * rows - row, tol)
                 if h:
                     return {"id": b["id"], "handle": h}
         return {}

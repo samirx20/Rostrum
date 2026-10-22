@@ -121,7 +121,7 @@ def inside(f):
     """The ids of notes, hits and clips that start inside the range (any track)."""
     t0, t1 = f.range
     root = f.doc.data
-    return [it["id"] for t in root.get("tracks", []) for k in ("notes", "hits", "clips") for it in t.get(k, [])
+    return [it["id"] for t in root.get("tracks", []) for k in ("notes", "hits", "clips", "sounds") for it in t.get(k, [])
             if t0 - 1e-6 <= ST.start_of(root, it) < t1 - 1e-6]
 
 

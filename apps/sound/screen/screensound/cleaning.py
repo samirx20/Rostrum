@@ -31,6 +31,7 @@ class CleanedTake(QObject):
         self._thread: threading.Thread | None = None
         self._download = ModelFetch(self)         # asked first when a step needs a model that is not installed
         self._pending: list[str] = []             # the clips a download was asked for (made once it lands)
+        self._steps: dict[str, list] = {}         # clip id -> [progress notes seen, notes expected] while making
         self._download.ready.connect(lambda: self.makeFor(self._pending or [self._clip]))
         self._download.cancelled.connect(self._note_cancelled)
         self._progress.connect(self._note)
@@ -43,6 +44,11 @@ class CleanedTake(QObject):
     def clip(self):
         """The selected clip's id while it needs its cleaned take made ("" otherwise: the button is absent)."""
         return self._clip
+
+    @Property("QVariantMap", notify=changed)
+    def progress(self):
+        """{clip id: 0..1} while their cleaned takes are being made (the arrangement fills each clip left to right)."""
+        return {i: min(0.95, seen / total) for i, (seen, total) in self._steps.items()}
 
     @Property(bool, notify=changed)
     def busy(self):
@@ -76,6 +82,7 @@ class CleanedTake(QObject):
             self._download.ask(missing)
             return False
         self._busy, self._pending = True, []
+        self._steps = {i: [0, 1 + len(cleanup.recipe_of(doc.item(i)))] for i in ids}
         self._status = f"Making the cleaned take{'s' if len(ids) > 1 else ''}…"
         self.changed.emit()
         snapshot = copy.deepcopy(doc.data)                  # the worker reads a copy: edits go on meanwhile
@@ -112,11 +119,14 @@ class CleanedTake(QObject):
         self._done.emit(err)
 
     def _note(self, text):
+        clip = text.split(":", 1)[0]
+        if clip in self._steps:
+            self._steps[clip][0] += 1
         self._status = text
         self.changed.emit()
 
     def _finish(self, error):
-        self._busy = False
+        self._busy, self._steps = False, {}
         self._status = error
         if error:
             self.bridge._fail(error)

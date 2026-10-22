@@ -15,6 +15,7 @@ from PySide6.QtCore import Property, QObject, QTimer, QUrl, Signal, Slot
 from rostrum_sound import userlib
 from rostrum_sound.userlib.kinds import KINDS
 
+from .adder import placed_at
 from .playback import Player
 
 ANY = ""
@@ -29,8 +30,12 @@ def _choices(values) -> list[dict]:
 def _row(s: dict) -> dict:
     name = s["path"].replace("\\", "/").rsplit("/", 1)[-1]
     return {"path": s["path"], "start": s["start"], "end": s["end"], "name": name, "kind": s["kind"],
+            "peak_s": s.get("peak_s", 0), "onset_s": s.get("onset_s", 0),
             "what": f"{s['kind']} · {s['seconds']:.2f} s · {s['words']['brightness']} · {s['words']['attack']} attack",
             "inFile": f"at {s['start']:.2f} s in the file" if s["start"] > 0.05 else ""}
+
+
+PEAKED = ("whoosh", "riser")       # placed by their loudest moment; the rest by their onset (DESIGN.md §3.13 point 2)
 
 
 class LibraryPanel(QObject):
@@ -146,8 +151,10 @@ class LibraryPanel(QObject):
         calls = []
         if track not in tracks:
             calls.append({"op": "track.add", "args": {"id": track, "name": "Sound effects"}})
+        lead = r.get("peak_s", 0) if r["kind"] in PEAKED else r.get("onset_s", 0)   # its moment lands on the playhead
+        at, _ = placed_at(b, float(lead or 0))
         calls.append({"op": "clip.add", "target": [track], "args": {
-            "media": r["path"], "at": round(b.time, 4), "in": r["start"], "length": round(r["end"] - r["start"], 4)}})
+            "media": r["path"], "at": at, "in": r["start"], "length": round(r["end"] - r["start"], 4)}})
         b._guard(lambda: b._apply(calls, "Place sound"))
 
     def close(self):

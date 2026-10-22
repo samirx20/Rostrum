@@ -13,6 +13,8 @@ from PySide6.QtCore import Property, QObject, Slot
 from rostrum_sound import names
 from rostrum_sound.voice import VOICES
 
+from rostrum_core.marker_times import write as marker_time
+
 from .cards import FAMILY, spaced
 
 # Kind chips, in order ("mine": the person's own library, drawn by the panel from `soundLibrary`).
@@ -65,6 +67,17 @@ ENTRIES = _entries()
 PLAYS = {"instrument": ("builtIn", "sfz", "synth", "model", "plugin"), "drums": ("kit", "kitSfz"), "voice": ("voice",)}
 OLD_KEYS = {"piano": "builtIn:grandPiano", "strings": "builtIn:analogStrings", "pad": "builtIn:warmPad",   # `add-track`
             "bass": "builtIn:subBass", "drums": "kit", "voice": "voice:ryan", "audio": "files"}
+
+
+def placed_at(b, lead: float = 0.0):
+    """(time, marker name) for a sound placed at the playhead whose moment comes `lead` seconds into it (a riser's
+    end, a whoosh's loudest point, a hit's onset): that moment lands on the playhead. On a marker the time is tied to
+    it ("#logo lands", "#logo lands-2"; the selected marker first), so it follows when the marker moves."""
+    here = sorted((m for m in b._view["markers"] if abs(m["t"] - b._t) < 1e-3),
+                  key=lambda m: m["id"] not in b.selectedIds)
+    if here and here[0]["t"] - lead >= 0:
+        return marker_time(here[0]["name"], -lead), here[0]["name"]
+    return round(max(0.0, b._t - lead), 4), ""
 
 
 def find(text: str, kind: str) -> list[dict]:
@@ -152,10 +165,8 @@ class Adder(QObject):
             while fx in have:
                 fx += "_2"
             calls.append({"op": "track.add", "args": {"id": fx, "name": "Effects", "instrument": "none"}})
-        here = sorted((m for m in b._view["markers"] if abs(m["t"] - b._t) < 1e-3),
-                      key=lambda m: m["id"] not in b.selectedIds)       # the selected marker first
-        on = here[0]["name"] if here else ""
-        at = f"#{on}" if on else round(b._t, 4)
+        lead = e["fields"].get("dur", 0) if e["fields"]["design"] == "riser" else 0     # a riser ENDS on the moment
+        at, on = placed_at(b, lead)
         calls.append({"op": "sound.add", "target": [fx], "args": {**e["fields"], "at": at}})
 
         def go():
