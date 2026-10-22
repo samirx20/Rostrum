@@ -25,11 +25,15 @@ Rectangle {
         spacing: 2
         Rectangle {   // Record / stop: drawn like the kit's ghost button (no box until hovered)
             visible: !r.keysOn
-            width: r.inner; height: r.inner; radius: Theme.radiusCtl
+            width: recWord.x + recWord.width + Theme.gap / 2 + 2; height: r.inner; radius: Theme.radiusCtl
             color: area.pressed ? Theme.active : area.containsMouse ? Theme.hover : "transparent"
             Behavior on color { ColorAnimation { duration: Theme.fast } }
-            Rectangle { anchors.centerIn: parent; color: Theme.danger
-                        width: 12; height: 12; radius: recorder.recording ? 2 : 6 }
+            Rectangle { color: Theme.danger
+                        x: Theme.gap - 2; width: 12; height: 12; radius: recorder.recording ? 2 : 6
+                        anchors.verticalCenter: parent.verticalCenter }
+            Text { id: recWord; x: Theme.gap + 12 + 2; anchors.verticalCenter: parent.verticalCenter
+                   text: recorder.recording ? "Stop" : "Record"; font.family: uiFont; font.pixelSize: Theme.label
+                   color: Theme.fg }
             MouseArea { id: area; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: recorder.toggleRecord() }
         }
@@ -41,13 +45,13 @@ Rectangle {
         }
         Item {        // the input level (and the take's time): one slot, so the cluster does not jump
             visible: recorder.level !== null || r.taking
-            width: (recorder.level !== null ? level.width + Theme.gap : 0) + (r.taking ? status.implicitWidth + Theme.gap : 0) + Theme.gap
+            width: (recorder.level !== null ? level.width + Theme.gap : 0) + (r.taking ? status.implicitWidth + Theme.gap : 0)
             height: r.inner
             Rectangle {   // the microphone's peak, -60 … 0 dBFS, sideways (the engine's {"input"} level)
                 id: level
                 visible: recorder.level !== null
                 x: Theme.gap; anchors.verticalCenter: parent.verticalCenter
-                width: 48; height: 6; radius: 3; color: Theme.sunken
+                width: 24; height: 6; radius: 3; color: Theme.sunken
                 readonly property real db: recorder.level === null ? -100 : recorder.level
                 Rectangle { height: parent.height; radius: 3
                             width: parent.width * Math.max(0, Math.min(1, (level.db + 60) / 60))

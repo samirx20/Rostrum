@@ -35,10 +35,6 @@ def layout(op) -> list[dict]:
     return [r for r in rows.layout(SimpleNamespace(params=params)) if r["row"] != "group"]
 
 
-def has_instrument(track: dict) -> bool:
-    return track.get("instrument", "none") != "none"
-
-
 def what_it_is(track: dict) -> str:
     """The instrument in plain words: "Sampled · Violin Section", "Plucked string · guitar", "Synth · saw"."""
     kind = track.get("instrument", "none")
@@ -59,6 +55,8 @@ def what_it_is(track: dict) -> str:
         return "Plug-in · " + ((track.get("plugin") or {}).get("name") or "none chosen")
     if kind == "voice":
         return "Voice · " + spaced(track.get("voice") or "ryan")
+    if kind == "none":
+        return "Plays recorded clips only. Pick an instrument to write notes here."
     return spaced(kind)
 
 

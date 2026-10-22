@@ -8,6 +8,7 @@ QQC.Popup {
     property string heading: ""
     property string message: ""
     default property alias buttons: row.data
+    property alias content: extra.data      // anything between the sentence and the buttons (a list)
     parent: QQC.Overlay.overlay
     anchors.centerIn: parent
     width: 400; padding: Theme.pad + Theme.grid
@@ -20,6 +21,7 @@ QQC.Popup {
                font.family: uiFont; font.pixelSize: Theme.heading; font.weight: Font.DemiBold }
         Text { width: parent.width; text: pop.message; color: Theme.fg2; wrapMode: Text.WordWrap
                font.family: uiFont; font.pixelSize: Theme.body; lineHeight: 1.25 }
+        Column { id: extra; width: parent.width; spacing: Theme.gap / 2 }
         Row { id: row; spacing: Theme.gap; anchors.right: parent.right }
     }
 }

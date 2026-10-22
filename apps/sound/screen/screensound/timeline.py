@@ -6,6 +6,7 @@ A clip without a length plays to the end of its file: the file's length is read 
 """
 from __future__ import annotations
 
+import math
 from functools import lru_cache
 
 from rostrum_sound import names, voice_lines
@@ -154,16 +155,20 @@ def markers(root: dict) -> list[dict]:
     return sorted(({**m, "named": (m["name"], round(m["t"], 4)) in starts} for m in out), key=lambda m: m["t"])
 
 
-EMPTY_BARS = 8
+EMPTY_BARS = 8              # a song always has room for at least this many bars to write in
+SPARE_BARS = 2              # and, once it has sound, this many empty bars after the last sound
 
 
 def song(root: dict) -> dict:
-    """The grid and length: what the ruler draws. Without a set length: the last sound + 2 s (as the mix)."""
+    """The grid and length: what the ruler draws. Without a set length: room to write: the last sound rounded up
+    to a whole bar plus SPARE_BARS, never under EMPTY_BARS (the mix itself still ends at its last sound + 2 s)."""
     ends = [b["t"] + b["dur"] for t in root.get("tracks", []) for b in blocks(t, root)]
     ends += [m["t"] for m in markers(root)] + [s["end"] for s in music_map.sections(root)]
-    length = timing.sec(root["length"], root) if root.get("length") is not None else max(ends, default=0) + 2
-    if not ends and root.get("length") is None:     # an empty song: room for 8 bars to write in (silence, as the mix)
-        length = EMPTY_BARS * int(root.get("beatsPerBar", 4)) * timing.spb(root)
+    bar = int(root.get("beatsPerBar", 4)) * timing.spb(root)
+    if root.get("length") is not None:
+        length = timing.sec(root["length"], root)
+    else:
+        length = max(EMPTY_BARS, math.ceil(max(ends, default=0) / bar) + SPARE_BARS) * bar
     length = max(length, 1.0)
     return {"length": length, "spb": timing.spb(root), "beatsPerBar": int(root.get("beatsPerBar", 4)),
             "tempo": float(root.get("tempo", 120)), **music_map.grid(root, length)}

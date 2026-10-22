@@ -25,7 +25,7 @@ Rectangle {
         spacing: 2
         Text { width: parent.width; text: card.model.name; elide: Text.ElideRight; color: Theme.fg
                font.family: uiFont; font.pixelSize: Theme.heading; font.weight: Font.DemiBold }
-        Text { width: parent.width; text: card.model.what; elide: Text.ElideRight; color: Theme.fg3
+        Text { width: parent.width; text: card.model.what; wrapMode: Text.WordWrap; color: Theme.fg3
                font.family: uiFont; font.pixelSize: Theme.body }
     }
     QtObject {   // what an InspectorRow calls on its "bridge": the card's track, not whatever is selected
