@@ -65,7 +65,7 @@ Rectangle {
         Row {
             visible: job.kind === "svg"; height: visible ? Theme.row : 0; spacing: 0
             Text { width: panel.labelW; height: parent.height; verticalAlignment: Text.AlignVCenter
-                   text: "Text"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
+                   text: "Text in file"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
             ChoiceField {
                 anchors.verticalCenter: parent.verticalCenter; width: col.width - panel.labelW
                 options: [{ value: "text", label: "Editable text" }, { value: "outline", label: "Outlines (looks the same)" }]

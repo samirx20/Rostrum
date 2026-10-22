@@ -36,3 +36,7 @@ gif = "0.14"
 png = "0.18"
 usvg = "0.48"
 jpeg-encoder = { version = "0.7.1", features = ["simd"] }
+
+[target.'cfg(windows)'.dependencies]
+# MP4 through Windows' own H.264 encoder (Media Foundation; encode_mp4.rs). MIT OR Apache-2.0; already in the lock.
+windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_Media_MediaFoundation", "Win32_System_Com"] }

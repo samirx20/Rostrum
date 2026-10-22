@@ -19,17 +19,21 @@ from .render import _fail
 
 LABELS = {"mp4": "MP4 (H.264)", "prores4444": "ProRes 4444", "webm": "WebM (VP9)", "gif": "GIF", "png": "PNG sequence", "exr": "EXR sequence (for the Editor)", "lottie": "Lottie (JSON)",
           "motion": "Motion samples (for RostrumSound)"}
-DATA = ("lottie", "motion")                # not pictures: no engine, never a versioned picture render
+DATA = ("lottie", "motion")
+# The MP4 quality arguments, as render_export and render_video both take them.
+QUALITY_ARGS = {
+    "quality": {"type": "string", "enum": list(table.QUALITY), "description": f"mp4 only: how much detail the file keeps (default {table.DEFAULT_QUALITY}; at 1080p 25 fps standard ≈ 12, high ≈ 25, best ≈ 50 Mbit/s; scales with size and fps)."},
+    "bitrate": {"type": "number", "exclusiveMinimum": 0, "maximum": table.MAX_MBIT, "description": "mp4 only: an exact bitrate in Mbit/s, instead of quality."}}                # not pictures: no engine, never a versioned picture render
 
 
 def formats() -> list[dict]:
     """Every format and what it takes: alpha (can carry it), depths (bits; first = default), range (start / end apply),
-    sequence (one file per frame, written into a folder)."""
+    sequence (one file per frame, written into a folder), qualities (the quality choices it takes; quality = the default)."""
     rows = [{"name": n, "label": LABELS.get(n, n), "ext": f.ext, "alpha": f.alpha, "depths": list(f.depths), "range": True,
-             "sequence": not f.video}
+             "sequence": not f.video, "qualities": list(f.qualities), "quality": table.DEFAULT_QUALITY if f.qualities else None}
             for n, f in table.FORMATS.items()]
-    return rows + [{"name": n, "label": LABELS[n], "ext": ".json", "alpha": False, "depths": [], "range": False, "sequence": False}
-                   for n in DATA]
+    return rows + [{"name": n, "label": LABELS[n], "ext": ".json", "alpha": False, "depths": [], "range": False, "sequence": False,
+                    "qualities": [], "quality": None} for n in DATA]
 
 
 def snapshot(doc, comp_id: str, fmt: str, layers: list[str] | None = None) -> dict:
@@ -56,8 +60,9 @@ def info(where: str, fmt: str) -> dict:
     return row
 
 
-def settings(where: str, fmt: str, duration: float, alpha=None, depth=None, start=None, end=None) -> dict:
-    """The settings that apply to `fmt`, defaults filled; one that doesn't apply (alpha on mp4, depth on gif, any on Lottie) is refused."""
+def settings(where: str, fmt: str, duration: float, alpha=None, depth=None, start=None, end=None, quality=None, bitrate=None) -> dict:
+    """The settings that apply to `fmt`, defaults filled; one that doesn't apply (alpha on mp4, depth on gif, quality on png, any on
+    Lottie) is refused. `bitrate` (Mbit/s, exact) replaces `quality`."""
     row = info(where, fmt)
     bad = lambda what, why: RostrumError(codes.BAD_ARGUMENT, where, what, why)
     if alpha and not row["alpha"]:
@@ -69,8 +74,14 @@ def settings(where: str, fmt: str, duration: float, alpha=None, depth=None, star
         raise bad(f"range for {fmt}", f"{fmt} always holds the whole composition")
     if not 0 <= start < end <= duration + 1e-9:
         raise bad(f"range {start}–{end} s", f"must satisfy 0 <= start < end <= {duration} (the composition's length)")
+    if (quality is not None or bitrate is not None) and not row["qualities"]:
+        raise bad("quality / bitrate", f"{fmt} takes no quality or bitrate; only " + ", ".join(r["name"] for r in formats() if r["qualities"]))
+    if quality is not None and quality not in row["qualities"]:
+        raise RostrumError(codes.BAD_ARGUMENT, where, f'quality "{quality}"', "is not a quality choice", row["qualities"])
+    if bitrate is not None and not 0 < bitrate <= table.MAX_MBIT:
+        raise bad(f"bitrate {bitrate:g} Mbit/s", f"must be above 0 and at most {table.MAX_MBIT}")
     return {"alpha": row["alpha"] if alpha is None else bool(alpha), "depth": depth or (row["depths"][0] if row["depths"] else None),
-            "start": start, "end": end}
+            "start": start, "end": end, "quality": quality or row["quality"], "bitrate": bitrate}
 
 
 def _to_file(where: str, scene: dict, fmt: str, s: dict, target: Path, progress, engine_factory) -> dict:
@@ -99,7 +110,7 @@ def _to_file(where: str, scene: dict, fmt: str, s: dict, target: Path, progress,
     try:
         with (engine_factory or _engine)() as eng:
             eng.load(scene)
-            return export(eng, fmt, target, s["alpha"], s["depth"], s["start"], s["end"], progress)
+            return export(eng, fmt, target, s["alpha"], s["depth"], s["start"], s["end"], progress, s.get("quality"), s.get("bitrate"))
     except Exception as e:  # noqa: BLE001  the engine, the encoder, or the read-back: one loud failure naming what was drawn
         raise _fail(where, f"the {fmt} export {target.name}", e) from e
 

@@ -10,14 +10,12 @@ report of what didn't come across. The Import panel and the MCP tool `run_import
 from __future__ import annotations
 
 import json
-import os
-import shutil
 import subprocess
 from pathlib import Path
 
 from PIL import Image, ImageFont
 
-from .. import engine
+from .. import settings
 from . import tree as T
 from .figma import figma_tree
 from .pdf import pdf_pages, pdf_tree
@@ -33,7 +31,9 @@ FILTERS = "Images, video, SVG, PDF, PSD (*.svg *.pdf *.psd " + " ".join("*" + e 
 def app_fonts() -> set[str] | None:
     """The family names the engine can draw (its fonts folder), so an imported text in another font is reported and set in the
     default one rather than refused by the engine later. None when the folder can't be found (then nothing is checked)."""
-    folder = Path(os.environ.get("ROSTRUM2D_FONTS") or engine.HERE / "engine" / "fonts")
+    folder = settings.fonts_dir()
+    if folder is None:
+        return None
     names: set[str] = set()
     for f in folder.glob("*.[to]tf"):
         family = ImageFont.truetype(str(f), 12).getname()[0]
@@ -53,9 +53,7 @@ def _size_of(kind: str, path: Path) -> tuple[int, int]:
     if kind == "image":
         with Image.open(path) as im:
             return im.size
-    exe = shutil.which("ffprobe")
-    if exe is None:
-        raise RuntimeError("ffprobe is needed to read a video's size and was not found")
+    exe = settings.ffmpeg("ffprobe")              # fails loudly when there is none
     out = subprocess.run([exe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "json",
                           str(path)], capture_output=True, timeout=60)
     streams = json.loads(out.stdout or b"{}").get("streams") or []
@@ -130,7 +128,8 @@ def plan(doc, comp_id: str, path=None, kind: str | None = None, page: int = 1, t
          into: str | None = None, fit: bool = False, progress=None, cancelled=None) -> dict:
     """The slow part of an import, with no change to the document (so it may run off the GUI thread): read, download, parse,
     place. → {"name", "kind", "calls": [ops], "report", "label", "into", "comps"?}; `apply` makes the one change.
-    `fit` (svg / pdf / psd / figma): the source's page is centred in the composition, scaled to fit inside it (both ways).
+    `fit` (svg / pdf / psd / figma): the picture's visible content box is centred in the composition at its own size, scaled
+    down to fit inside it (with a margin) only when it is bigger; a whole-PDF import (page 0) makes comps of the page's size.
     `progress(fraction, words)` and `cancelled()` are called between stages; a True from `cancelled` raises Cancelled."""
     kind = kind or ("figma" if figma else kind_of(path))
     if kind == "pdf" and page == 0:                          # page 0 = every page, a composition each (the open comp only sets fps and length)

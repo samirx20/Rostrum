@@ -12,7 +12,9 @@ import shutil
 import subprocess
 from pathlib import Path
 
-CACHE_DIR = Path.home() / ".rostrum" / "cache" / "2d-video"
+from . import settings
+
+CACHE_DIR = settings.cache_dir("2d-video")
 CACHE_BYTES = 6 << 30            # size of CACHE_DIR before the oldest clips' folders go
 DECODER = "1"
 
@@ -75,7 +77,7 @@ def _decode(id_: str, path: Path, folder: Path, w: int, h: int, fit: str, fps: f
     shutil.rmtree(tmp, ignore_errors=True)
     tmp.mkdir(parents=True)
     vf = f"fps={fps:g}," + _FIT[fit].format(w=w, h=h)
-    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(path), "-an", "-vf", vf,
+    cmd = [settings.ffmpeg(), "-hide_banner", "-loglevel", "error", "-y", "-i", str(path), "-an", "-vf", vf,
            "-start_number", "0", "-compression_level", "1", str(tmp / "f%06d.png")]
     try:
         run = subprocess.run(cmd, capture_output=True, text=True)

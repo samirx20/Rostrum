@@ -227,3 +227,8 @@ Not crates (`render/src`): `depth_tests.rs` — a parent's `perspective: 800px` 
 | Crate | Patch | Why |
 |---|---|---|
 | blitz-paint | `render/clip_path.rs`: `clip-path: inset(… round r)` honours its corner radii (per corner, resolved against the inset box, shrunk together when two corners would overlap, as CSS says; an elliptical corner takes its mean radius) | upstream left a `TODO` and drew every rounded inset as a square, so every rounded rect mask (`mask(shape="rect", radius=…)`) on any layer was square: the H16 phone's screen corners stuck out of its body |
+
+## H24 (smaller playing preview; 2026-10-22)
+| Crate | Patch | Why |
+|---|---|---|
+| anyrender_skia | `SkiaSceneCache::set_root_scale(scale)` (scene.rs): a scale pushed as the bottom entry of `base_3d`, so `set_matrix`, `push_transform_3d`, captures, soft clips and flat layers all draw through it; 1 clears it. `write_tap` already skips any base, so no comp-cache buffer is written from a scaled paint. Under a scale, pixel-grid clips take the soft-clip path (`clip_on_pixel_grid` needs no base) | `frame` with `scale` 0.5 / 0.25 (the live canvas while playing, rostrum-motion painter.rs `set_scale`): the same laid-out page drawn smaller, blur / glow / shadow radii scaling with it, without laying the page out again at another size |

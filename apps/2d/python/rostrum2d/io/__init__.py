@@ -1,7 +1,8 @@
 """Import and export for Rostrum2D.
 
 Export (every frame through the engine's one render path, then read back; a bad file fails loudly):
-    export(eng, "mp4" | "prores4444" | "webm" | "gif" | "png", out, alpha=, depth=, start=, end=)
+    export(eng, "mp4" | "prores4444" | "webm" | "gif" | "png", out, alpha=, depth=, start=, end=,
+           quality=, bitrate=)              # quality / bitrate: mp4 only
     write_lottie(scene, path) -> report        the part of the scene Lottie can say; the rest is listed
 
 Import (each source → one import tree → document operations, one undo step):

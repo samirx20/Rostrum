@@ -6,6 +6,7 @@
 //!   rostrum2d-render encode-png <pattern with {frame}> <w> <h> <8|16> <first frame number>
 //!       RGBA8 or RGBA64LE frames (straight alpha) → one PNG per frame, `{frame}` → the 4-digit frame number.
 //!   rostrum2d-render encode-exr …   the Editor hand-off (encode_exr.rs).
+//!   rostrum2d-render encode-mp4 …   H.264 through the operating system's own encoder (encode_mp4.rs).
 //! All fail loudly (exit 1, the reason on stderr) on a short frame, a bad argument or a write error; a frame
 //! that only partly arrived is an error, never a quietly shorter file.
 
@@ -16,6 +17,7 @@ pub fn run(kind: &str, args: &[String]) {
     let done = match kind {
         "encode-gif" => gif(args),
         "encode-exr" => crate::encode_exr::exr(args),
+        "encode-mp4" => crate::encode_mp4::mp4(args),
         _ => png(args),
     };
     match done {
@@ -27,7 +29,7 @@ pub fn run(kind: &str, args: &[String]) {
     }
 }
 
-fn num(args: &[String], i: usize, what: &str) -> Result<u32, String> {
+pub(crate) fn num(args: &[String], i: usize, what: &str) -> Result<u32, String> {
     args.get(i).ok_or(format!("missing {what}"))?.parse().map_err(|_| format!("{what} is not a number: {}", args[i]))
 }
 

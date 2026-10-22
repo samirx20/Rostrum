@@ -13,7 +13,6 @@ the engine is built, its box is used for the layer's box and the report says how
 """
 from __future__ import annotations
 
-import os
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -21,13 +20,12 @@ from pathlib import Path
 from fontTools.pens.basePen import BasePen
 from fontTools.ttLib import TTFont
 
-from .. import textsize
+from .. import settings, textsize
 from .lottie_glyphs import baseline, lines as _lines, metrics, shaper
 from .lottie_layer import common
 from .lottie_props import Ctx, build, frozen, rgb
 from .lottie_shapes import _STILL, _stroke, gradient, group
 
-FONTS = Path(__file__).resolve().parents[3] / "engine" / "fonts"
 HELD = ["body", "font", "size", "weight", "stretch", "tracking", "lineHeight", "align", "boxWidth", "slant", "grade", "stroke"]
 
 
@@ -70,8 +68,9 @@ class _Pen(BasePen):
 @lru_cache(maxsize=1)
 def _catalog() -> dict[str, Path]:
     """Family name → font file, as the engine lists them (each family, also without a trailing " Variable")."""
-    folder = Path(os.environ.get("ROSTRUM2D_FONTS", FONTS))
-    found = {}
+    folder, found = settings.fonts_dir(), {}
+    if folder is None:
+        return found
     for path in sorted(folder.glob("*.[ot]tf")):
         names = TTFont(path, lazy=True)["name"]
         for nid in (16, 1):

@@ -44,14 +44,14 @@ def stills(where: str, scene: dict, items: list[tuple[float, Path]], progress=No
         raise _fail(where, "the engine", e) from e
 
 
-def video(where: str, scene: dict, mp4: Path, start: float, end: float, progress=None) -> dict:
+def video(where: str, scene: dict, mp4: Path, start: float, end: float, progress=None, quality=None, bitrate=None) -> dict:
     """Export to `<name>.partial.mp4`, then rename: a failed export never leaves a file under the final name."""
     from rostrum2d.engine import Engine
     part = mp4.with_name(mp4.stem + ".partial.mp4")
     try:
         with Engine() as eng:
             eng.load(scene)
-            out = eng.video(part, start=start, end=end, progress=progress)
+            out = eng.video(part, start=start, end=end, progress=progress, quality=quality, bitrate=bitrate)
     except Exception as e:
         raise _fail(where, f"the video {mp4.name} (partial file, if any: {part})", e) from e
     if not part.is_file() or part.stat().st_size == 0:

@@ -24,7 +24,13 @@ Panel {
             radius: Theme.radiusCtl
             color: selected ? Theme.accentSoft : hover.containsMouse || inSelected ? Theme.hover : "transparent"
 
-            MouseArea { id: hover; anchors.fill: parent; hoverEnabled: true; onClicked: backend.select(row.modelData.id) }
+            property bool renaming: false
+            function beginRename() { if (!modelData.owned) { renaming = true; nameBox.text = modelData.label; nameBox.forceActiveFocus(); nameBox.selectAll() } }
+            function endRename(keep) { if (renaming) { renaming = false; if (keep) backend.renameLayer(modelData.id, nameBox.text) } }
+            Connections { target: backend; function onRenameRequested(id) { if (id === row.modelData.id) row.beginRename() } }
+
+            MouseArea { id: hover; anchors.fill: parent; hoverEnabled: true; onClicked: backend.select(row.modelData.id)
+                        onDoubleClicked: row.beginRename() }   // double-click (or F2, Ctrl+K "Rename layer") renames
             Item {  // the fold arrow (absent when there is nothing to fold)
                 id: fold
                 x: row.indent - 2; width: 14; height: parent.height
@@ -40,7 +46,18 @@ Panel {
                 kind: row.modelData.kind; shape: row.modelData.shape
                 ink: row.selected ? Theme.accentHover : row.modelData.owned ? Theme.fg3 : Theme.fg2
             }
+            TextInput {  // the name box while renaming: Enter keeps, Esc or leaving the row drops
+                id: nameBox
+                visible: row.renaming
+                anchors.left: icon.right; anchors.leftMargin: Theme.gap; anchors.verticalCenter: parent.verticalCenter
+                anchors.right: mark.left; anchors.rightMargin: Theme.gap
+                font.family: uiFont; font.pixelSize: Theme.body; color: Theme.fg; selectByMouse: true; clip: true
+                onAccepted: row.endRename(true)
+                onActiveFocusChanged: if (!activeFocus) row.endRename(true)
+                Keys.onEscapePressed: row.endRename(false)
+            }
             Text {
+                visible: !row.renaming
                 anchors.left: icon.right; anchors.leftMargin: Theme.gap; anchors.verticalCenter: parent.verticalCenter
                 anchors.right: mark.left; anchors.rightMargin: Theme.gap
                 text: row.modelData.label; elide: Text.ElideRight; font.family: uiFont

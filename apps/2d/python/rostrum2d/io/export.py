@@ -13,8 +13,10 @@ def _engine_request(eng: Engine, req: dict, **kw) -> dict:
 
 
 def export(eng: Engine, fmt: str, out, alpha: bool | None = None, depth: int | None = None,
-           start: float = 0.0, end: float | None = None, progress=None) -> dict:
-    """Export the engine's loaded scene (seconds `start`..`end`) as `fmt`; returns the facts read back from the file."""
+           start: float = 0.0, end: float | None = None, progress=None, quality: str | None = None,
+           bitrate: float | None = None) -> dict:
+    """Export the engine's loaded scene (seconds `start`..`end`) as `fmt`; returns the facts read back from the file.
+    `quality` (formats.QUALITY) or an exact `bitrate` (Mbit/s): for the formats that take one (mp4)."""
     f = formats.get(fmt)
     if eng.scene is None:
         raise EngineError("no scene loaded (Engine.load)")
@@ -28,12 +30,13 @@ def export(eng: Engine, fmt: str, out, alpha: bool | None = None, depth: int | N
     p = eng.scene["comp"]["props"]
     w, h, fps = p["width"], p["height"], p["fps"]
     end = p["duration"] if end is None else end
+    kbps = formats.kbps(f, w, h, fps, quality, bitrate)
     out = Path(out)
     target = str(out) if f.video else formats.pattern(f, out)
     Path(target).parent.mkdir(parents=True, exist_ok=True)
     first = f.first + round(start * fps)
     req = {"start": start, "end": end, "alpha": alpha, "progress": progress is not None,
-           "encode": f.build(target, w, h, fps, depth, first)}
+           "encode": f.build(target, w, h, fps, depth, first, kbps)}
     if f.video:
         req["file"] = target
     if depth != 8:                                   # the engine sends 16-bit frames only while loaded that way
@@ -44,4 +47,5 @@ def export(eng: Engine, fmt: str, out, alpha: bool | None = None, depth: int | N
         if depth != 8:
             _engine_request(eng, {"scene": eng.scene, "depth": 8})
     facts = readback.check(fmt, target, reply["frames"], w, h, alpha, depth)
-    return {"file": target, "frames": reply["frames"], "fps": fps, "alpha": alpha, "depth": depth, "checked": facts}
+    return {"file": target, "frames": reply["frames"], "fps": fps, "alpha": alpha, "depth": depth, "checked": facts,
+            **({"kbps": kbps} if kbps else {})}

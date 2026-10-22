@@ -19,6 +19,7 @@ tools = Tools()
     "layers": {"type": "array", "items": {"type": "string"}, "description": "motion only: sample these layer ids (a camera as camera:<id>). Default: every layer and camera that moves on its own."},
     "alpha": {"type": "boolean", "description": "Keep transparency. Default: on for the formats that can carry it (not mp4, not lottie)."},
     "depth": {"type": "integer", "enum": [8, 16], "description": "Bits per channel; png only (default 8)."},
+    **exporting.QUALITY_ARGS,
     "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0. Not for lottie or motion (both always hold the whole composition)."},
     "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition. Not for lottie or motion."},
     "path": {"type": "string", "description": "Write here (absolute, or relative to the project folder; for png a new folder). Default: the project's renders folder (a versioned render with a manifest), or the render cache."}}})
@@ -28,7 +29,8 @@ def render_export(ctx, args):
     read back right (frame count, size, alpha, bit depth); a failure names what failed and leaves nothing under the final name."""
     doc, comp = doc_and_comp(ctx, args)
     fmt = args["format"]
-    s = exporting.settings(ctx.tool, fmt, comp.get("duration", 5.0), args.get("alpha"), args.get("depth"), args.get("start"), args.get("end"))
+    s = exporting.settings(ctx.tool, fmt, comp.get("duration", 5.0), args.get("alpha"), args.get("depth"), args.get("start"), args.get("end"),
+                                args.get("quality"), args.get("bitrate"))
     out = None
     if "path" in args:
         out = Path(args["path"])

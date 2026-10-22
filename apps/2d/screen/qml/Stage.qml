@@ -101,14 +101,15 @@ Panel {
             }
             onCanceled: stop()
         }
-        PenOverlay {  // Design page: the pen tool and the selected path's points
+        PenOverlay {  // Design page: the pen tool and the selected path's points (not while playing: they'd lag)
             anchors.fill: parent
-            visible: backend.page === "design"
+            visible: backend.page === "design" && !backend.playing
             fit: well.fit; ox: frame.x; oy: frame.y
         }
         Item {  // outlines of the selected layers (turned with them) and the handles of a single one; over the pen's overlay
             id: marks
             x: frame.x; y: frame.y
+            visible: !backend.playing           // they follow the playhead again when it stops (playback.py)
             Repeater {
                 model: backend.multi.boxes
                 delegate: Handles {

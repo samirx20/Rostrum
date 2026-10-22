@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
-from rostrum2d import KIND, fields as F
+from rostrum2d import KIND, fields as F, settings
 from rostrum2d.io import importing
 from rostrum_core import ids
 from rostrum_core.tree import index
@@ -20,6 +20,13 @@ ENTRIES = {
     "animate": ["camera", "rig", "group"],
 }
 ASKS_FILE = ("image", "video")
+ONLY_WITH_3D = ("render3d",)            # a Rostrum3D item's render: offered only when Rostrum3D is installed
+
+
+def entries(page: str) -> list[str]:
+    """The Add menu's types on this page, those that can be used here (no 3D render layer without Rostrum3D)."""
+    has3d = settings.has_rostrum3d()
+    return [t for t in ENTRIES[page] if has3d or t not in ONLY_WITH_3D]
 
 
 def new_layer_calls(doc, comp: dict, type_: str) -> tuple[list[dict], str]:
@@ -43,12 +50,12 @@ class Adder(QObject):
     @Property("QVariantList", notify=changed)
     def entries(self):
         """[{type, label}] for the current page."""
-        return [{"type": t, "label": F.LABELS[t]} for t in ENTRIES[self.b.page]]
+        return [{"type": t, "label": F.LABELS[t]} for t in entries(self.b.page)]
 
     @Slot(str)
     def add(self, type_):
         """The menu's entry: image / video ask for a file; path starts the pen; the rest add a layer now."""
-        if type_ not in ENTRIES[self.b.page]:
+        if type_ not in entries(self.b.page):
             return self.b._fail(f"Error: add: {type_} is not in the Add menu of the {self.b.page} page.")
         if type_ in ASKS_FILE:
             self.fileWanted.emit(type_)

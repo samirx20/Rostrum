@@ -9,7 +9,9 @@ AppShell {
     id: shell
     bridge: backend
     appName: "Rostrum2D"
-    documentName: backend.frameInfo.label
+    documentName: files.label           // the project, and a dot while there are unsaved changes (screen2d/files.py)
+    property bool leaving: false        // closing without asking (session.py replaces the window, or the answer was given)
+    onClosing: (close) => fileFlow.closing(close)
     leftWidth: 248
     bottomHeight: backend.page === "animate" ? 300 : backend.page === "draw" ? 132 : 52
     Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
@@ -22,10 +24,19 @@ AppShell {
     Shortcut { sequence: "Alt+Up"; onActivated: painter.holdBy(1) }
     Shortcut { sequence: "Alt+Down"; onActivated: painter.holdBy(-1) }
     Shortcut { sequence: "Alt+O"; onActivated: painter.setOnion(!painter.onionOn) }
+    // layer order, delete and rename: the same commands Ctrl+K lists (screen2d/layer_order.py); quiet when they can't apply
+    Shortcut { sequence: "Ctrl+]"; onActivated: backend.layerCommand("forward") }
+    Shortcut { sequence: "Ctrl+["; onActivated: backend.layerCommand("backward") }
+    Shortcut { sequence: "Ctrl+Shift+]"; onActivated: backend.layerCommand("front") }
+    Shortcut { sequence: "Ctrl+Shift+["; onActivated: backend.layerCommand("back") }
+    Shortcut { sequence: "Delete"; onActivated: backend.layerCommand("delete") }
+    Shortcut { sequence: "F2"; onActivated: backend.layerCommand("rename") }
 
     function setExportOpen(open) { exportPanel.shown = open; if (open) { importPanel.shown = false; problemsPanel.shown = false } }
     function setImportOpen(open) { importPanel.shown = open; if (open) { exportPanel.shown = false; problemsPanel.shown = false } }
     function setProblemsOpen(open) { problemsPanel.shown = open; if (open) { exportPanel.shown = false; importPanel.shown = false } }
+    function setFileMenuOpen(open) { fileMenu.menuOpen = open }
+    function askClose() { shell.close() }
     function setAddOpen(open) { if (open) addMenu.menuOpen = true; else addMenu.menuOpen = false }
 
     tools: [
@@ -42,10 +53,12 @@ AppShell {
             text: backend.problems.count + (backend.problems.count === 1 ? " problem" : " problems")
             down: problemsPanel.shown; onClicked: shell.setProblemsOpen(!problemsPanel.shown)
         },
+        FileMenu { id: fileMenu; onAct: (key) => fileFlow.act(key) },
         AddMenu { id: addMenu },
         Button { text: "Import"; down: importPanel.shown; onClicked: shell.setImportOpen(!importPanel.shown) },
         IconButton { glyph: "↗"; tip: "Export"; down: exportPanel.shown; onClicked: shell.setExportOpen(!exportPanel.shown) }
     ]
+    FileFlow { id: fileFlow; window: shell }
     left: LayersPanel { anchors.fill: parent }
     centre: [
         Stage { anchors.fill: parent },

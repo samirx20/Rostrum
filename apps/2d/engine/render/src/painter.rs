@@ -58,8 +58,11 @@ pub struct Painter {
     /// The GPU output step of playing frames (`read_output8`), made on first use and kept while the table is the same.
     out8: Option<Out8>,
     gl: Option<Gl>,
+    /// The surfaces' size: the comp's, times `scale`.
     width: u32,
     height: u32,
+    /// The view scale every paint draws through (`set_scale`; 1 but for a smaller playing preview).
+    scale: f32,
     /// The working colour space every surface is tagged with (None: display values, unmanaged).
     space: Option<ColorSpace>,
     /// The last frame's time recording the drawing and submitting it to the GPU, reading it back (waiting for
@@ -230,12 +233,37 @@ impl Painter {
     /// A GPU painter on a context made beforehand (gl_context).
     pub fn gpu_on(mut gl: Gl, width: u32, height: u32, space: Option<ColorSpace>) -> Result<Self, String> {
         let surface = new_surface(Some(&mut gl), width, height, &space)?;
-        Ok(Self { gl: Some(gl), surface, acc: None, held: None, last: Last::Frame, width, height, space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0 })
+        Ok(Self { gl: Some(gl), surface, acc: None, held: None, last: Last::Frame, width, height, scale: 1.0, space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0 })
     }
 
     pub fn cpu(width: u32, height: u32, space: Option<ColorSpace>) -> Result<Self, String> {
         let surface = new_surface(None, width, height, &space)?;
-        Ok(Self { gl: None, surface, acc: None, held: None, last: Last::Frame, width, height, space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0 })
+        Ok(Self { gl: None, surface, acc: None, held: None, last: Last::Frame, width, height, scale: 1.0, space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0 })
+    }
+
+    /// Paints from now on at `scale` × the comp's `full` size (1, or a smaller playing preview; ENGINE_CONTRACT.md § 1): the
+    /// surfaces are made again at round(w·scale) × round(h·scale) when that size changes, and every draw goes through the
+    /// root scale (anyrender_skia `set_root_scale`), so the page is not laid out again. Refused with frames in flight to
+    /// an encoder (their surfaces would go).
+    pub fn set_scale(&mut self, scale: f32, full: (u32, u32)) -> Result<(), String> {
+        let size = (((full.0 as f32 * scale).round() as u32).max(1), ((full.1 as f32 * scale).round() as u32).max(1));
+        if size == (self.width, self.height) {
+            self.scale = scale;
+            return Ok(());
+        }
+        if !self.in_flight.is_empty() {
+            return Err("a frame at another scale while frames are in flight to the encoder".into());
+        }
+        self.surface = new_surface(self.gl.as_mut(), size.0, size.1, &self.space)?;
+        ((self.width, self.height), self.scale) = (size, scale);
+        (self.acc, self.held, self.out8) = (None, None, None);
+        self.last = Last::Frame;
+        Ok(())
+    }
+
+    /// The size of the pictures it paints (the comp's times `set_scale`'s scale).
+    pub fn size(&self) -> (u32, u32) {
+        (self.width, self.height)
     }
 
     pub fn is_gpu(&self) -> bool {
@@ -268,7 +296,9 @@ impl Painter {
             canvas.clear(Color::TRANSPARENT);
             // Half-float images were decoded into the working space: anyrender_skia tags them with it.
             anyrender_skia::working_space::set(self.space.clone());
+            self.cache.set_root_scale(self.scale);
             draw(&mut SkiaScenePainter::new(canvas, &mut self.cache));
+            self.cache.set_root_scale(1.0);
         }
         self.cache.held = None;
         self.cache.next_gen();

@@ -14,6 +14,8 @@
 //!   then runs once, after the shutter; painter.rs). Writes a PNG or JPEG (by extension, 8-bit) to
 //!   `image`, or with `rgba` replies `{"ok": true, "bytes": n, …}` followed by n bytes of straight-alpha RGBA on
 //!   stdout; with `pixels` the same bytes go into shared memory instead and the reply's `shm` says where (shm.rs).
+//!   `scale` (with `pixels` only: the live canvas while playing): 1, 0.5 or 0.25, the same laid-out page drawn at that
+//!   size (painter.rs `set_scale`); the reply's `width` / `height` and `shm` give the smaller size, `boxes` stay in comp px.
 //!   `boxes` adds each layer's laid-out box to the reply (boxes.rs). With `encode: true` the pixels go
 //!   to the open's encoder instead and the reply is `{"ok": true, …}`.
 //! - `{"page": {"html"}}` — another page shell on the open session (a live preview's next prepared document):
@@ -265,9 +267,29 @@ fn warm_ahead(s: &Session, req: &Value) -> Result<Value, String> {
     Ok(json!({ "ok": true, "queued": queued }))
 }
 
+/// A frame's `scale` (the live canvas while playing, smaller): 1 (the default), 0.5 or 0.25, and only on `pixels` frames;
+/// stills, pictures, scopes and exports are drawn at the comp's size.
+fn preview_scale(req: &Value) -> Result<f32, String> {
+    let scale = match &req["scale"] {
+        Value::Null => 1.0,
+        v => v.as_f64().ok_or_else(|| format!("scale is 1, 0.5 or 0.25; got {v}"))?,
+    };
+    if ![1.0, 0.5, 0.25].contains(&scale) {
+        return Err(format!("scale is 1, 0.5 or 0.25; got {scale}"));
+    }
+    let elsewhere = ["image", "rgba", "encode", "scopes", "sample"].iter().any(|k| !matches!(req[*k], Value::Null | Value::Bool(false)));
+    if scale != 1.0 && (req["pixels"].as_bool() != Some(true) || elsewhere) {
+        return Err("scale is for pixels frames (the live canvas) only; pictures, scopes and exports are drawn at the comp's size".into());
+    }
+    Ok(scale as f32)
+}
+
 /// One frame: the reply, and the rgba bytes that follow it when asked for.
 pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u8>>), String> {
     let markup = req["stage"].as_str().ok_or("frame needs stage")?;
+    // The same laid-out page, drawn at `scale` × the comp's size (painter.rs `set_scale`).
+    let scale = preview_scale(req)?;
+    s.painter.set_scale(scale, (s.width, s.height))?;
     let samples: Vec<&str> = req["samples"].as_array().map(|a| a.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
     // The frame's pictures not kept yet, decoded side by side now, so layout and paint (which load one after another) only hit the cache.
     let t_decode = Instant::now();
@@ -391,18 +413,20 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         return Ok((json!({ "ok": true, "scopes": scopes_out, "sample": sample_out }), None));
     }
     if shared && image.is_none() {
-        // Straight into the canvas's shared memory (shm.rs): the same output step as every frame, no pipe.
-        let bytes = (w * h) as usize * if s.deep { 8 } else { 4 };
+        // Straight into the canvas's shared memory (shm.rs): the same output step as every frame, no pipe; at the
+        // painter's size (smaller with `scale`).
+        let (pw, ph) = s.painter.size();
+        let bytes = (pw * ph) as usize * if s.deep { 8 } else { 4 };
         if s.shm.as_ref().map(crate::shm::Shm::slot_bytes) != Some(bytes) {
             s.shm = Some(crate::shm::Shm::new(bytes)?);
         }
-        let (slot, info) = s.shm.as_mut().unwrap().next(w, h, s.deep);
-        convert(&mut s.painter, &s.color, &mut raw, w, s.deep, false, index, slot)?;
+        let (slot, info) = s.shm.as_mut().unwrap().next(pw, ph, s.deep);
+        convert(&mut s.painter, &s.color, &mut raw, pw, s.deep, false, index, slot)?;
         taps_done(s, &mut tap_write_ms)?;
         paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
-        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "gpuMs": s.painter.last_gpu_ms });
+        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "gpuMs": s.painter.last_gpu_ms, "scale": scale });
         let boxes = if boxes_wanted { crate::boxes::boxes(&s.doc, w, h) } else { Value::Null };
-        return Ok((json!({ "ok": true, "width": w, "height": h, "shm": info, "timing": timing, "boxes": boxes, "scopes": scopes_out }), None));
+        return Ok((json!({ "ok": true, "width": pw, "height": ph, "shm": info, "timing": timing, "boxes": boxes, "scopes": scopes_out }), None));
     }
     let deep = s.deep && image.is_none();
     let mut pixels = vec![0u8; (w * h) as usize * if deep { 8 } else { 4 }];

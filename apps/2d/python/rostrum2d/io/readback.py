@@ -9,6 +9,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+from .. import settings
+
 
 class ExportError(RuntimeError):
     def __init__(self, message: str, facts: dict):
@@ -24,7 +26,7 @@ def _run(args: list[str]) -> bytes:
 
 
 def _probe(path: Path) -> dict:
-    out = _run(["ffprobe", "-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries",
+    out = _run([settings.ffmpeg("ffprobe"), "-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries",
                 "stream=width,height,pix_fmt,nb_read_frames", "-of", "json", str(path)])
     s = json.loads(out)["streams"][0]
     return {"frames": int(s["nb_read_frames"]), "size": (s["width"], s["height"]), "pix_fmt": s["pix_fmt"]}
@@ -33,7 +35,7 @@ def _probe(path: Path) -> dict:
 def _video_frame_alpha(path: Path, index: int, w: int, h: int) -> int:
     """Lowest alpha of video frame `index`, decoded to rgba (webm: vp9's own decoder; the native one drops alpha)."""
     pre = ["-c:v", "libvpx-vp9"] if path.suffix == ".webm" else []
-    raw = _run(["ffmpeg", "-v", "error", *pre, "-i", str(path), "-vf", f"select='eq(n,{index})'", "-frames:v", "1",
+    raw = _run([settings.ffmpeg(), "-v", "error", *pre, "-i", str(path), "-vf", f"select='eq(n,{index})'", "-frames:v", "1",
                 "-f", "rawvideo", "-pix_fmt", "rgba", "-"])
     if len(raw) != w * h * 4:
         raise ExportError(f"could not decode frame {index}", {"file": str(path)})

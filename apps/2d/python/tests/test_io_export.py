@@ -22,7 +22,7 @@ def _frames(n, alpha):
 
 
 def _encode(fmt, out, n, alpha):
-    spec = formats.get(fmt).build(str(out), W, H, 10, 8, 0)
+    spec = formats.get(fmt).build(str(out), W, H, 10, 8, 0, 0)
     subprocess.run([spec["program"], *spec["args"]], input=_frames(n, alpha), check=True, capture_output=True)
 
 

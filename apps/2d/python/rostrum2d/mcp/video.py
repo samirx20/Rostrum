@@ -10,7 +10,7 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 from rostrum_core.mcp.files import render_path
 
-from . import render
+from . import exporting, render
 from .geometry import comp_size
 from .pick import ITEM_COMP, doc_and_comp
 
@@ -31,6 +31,7 @@ def manifest(item: str, doc, comp: dict, partial: Path, info: dict, start: float
 
 @tools.tool("render_video", {"properties": {**ITEM_COMP, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
                                             "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition."},
+                                            **exporting.QUALITY_ARGS,
                                             "path": {"type": "string", "description": "Also copy the .mp4 here (absolute, or relative to the project folder), with the project saved beside it as <name>.project/ so other apps can open the film. Default: only the project's renders folder."}}})
 def render_video(ctx, args):
     """Export an mp4 (H.264, bt709) of a composition through the same engine as look_frame. Always a job: it returns a job id at once;
@@ -39,9 +40,8 @@ def render_video(ctx, args):
     vNNN.partial/ and is never listed. Without a project folder it goes to the render cache."""
     doc, comp = doc_and_comp(ctx, args)
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)
-    start, end = args.get("start", 0.0), args.get("end", duration)
-    if not 0 <= start < end <= duration + 1e-9:
-        raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"range {start}–{end} s", f"must satisfy 0 <= start < end <= {duration} (the composition's length)")
+    s = exporting.settings(ctx.tool, "mp4", duration, start=args.get("start"), end=args.get("end"), quality=args.get("quality"), bitrate=args.get("bitrate"))
+    start, end = s["start"], s["end"]
     folder, item = ctx.app.folder, doc.item_id
     out = render_path(f'{item or "doc"}_{comp["id"]}')
     copy_to = None
@@ -60,7 +60,7 @@ def render_video(ctx, args):
     def job_fn(job):
         partial = project.begin_render(folder, item) if folder and item else None
         target = partial / f'{item}_{comp["id"]}.mp4' if partial else out
-        info = render.video(ctx.tool, scene, target, start, end, job.progress)
+        info = render.video(ctx.tool, scene, target, start, end, job.progress, s["quality"], s["bitrate"])
         files = [target]
         if partial:
             if info["frames"] != round((end - start) * info["fps"]):      # fail loudly: the .partial stays, nothing is finished
@@ -77,4 +77,4 @@ def render_video(ctx, args):
                      {"frames": info["frames"], "fps": info["fps"], "start": start, "end": end,
                       "project_copy": str(beside) if said else None}, files, warnings=scene.get("warnings", []))
 
-    return ctx.job(f'render_video {comp["id"]} {start:g}-{end:g}s', job_fn, key=f"video|{doc.item_id}|{comp['id']}|{start}|{end}|{doc.seq}|{out}")
+    return ctx.job(f'render_video {comp["id"]} {start:g}-{end:g}s', job_fn, key=f"video|{doc.item_id}|{comp['id']}|{start}|{end}|{s['quality']}|{s['bitrate']}|{doc.seq}|{out}")
