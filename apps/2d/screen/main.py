@@ -39,19 +39,33 @@ def first_doc() -> Document:
     A last project that can't be opened (damaged, a newer version's) never stops the app from starting: a new
     Untitled project opens instead and the window says why."""
     last = recent.rows()
-    if last:
-        try:
-            return Document.open(last[0]["folder"], last[0]["item"], KIND)
-        except (RostrumError, KeyError, TypeError, ValueError, AttributeError, IndexError) as e:
-            why = f"{e.problem}{(' ' + e.hint) if e.hint else ''}" if isinstance(e, RostrumError) else f"is damaged ({type(e).__name__}: {e})"
-            REFUSED.append(f"Error: your last project {Path(last[0]['folder']).name} didn't open: it {why}")
-            print(f"FAIL: {REFUSED[-1]}", file=sys.stderr)
-    return projects.new_project(projects.untitled(), Who.person("sam"))
+    doc = open_or_say(last[0]["folder"], last[0]["item"], "your last project") if last else None
+    return doc or projects.new_project(projects.untitled(), Who.person("sam"))
+
+
+def open_or_say(folder, item, what) -> Document | None:
+    """The project, or None with the reason kept for the status line (a damaged file never stops the app)."""
+    try:
+        doc = Document.open(folder, item, KIND)
+        problems = KIND.check(doc.data)          # opened whole or not at all: a project that doesn't hold together
+        if problems:                             # would fail later, half on screen
+            raise ValueError(f"it doesn't hold together: {problems[0]}")
+        return doc
+    except (RostrumError, KeyError, TypeError, ValueError, AttributeError, IndexError) as e:
+        why = f"{e.problem}{(' ' + e.hint) if e.hint else ''}" if isinstance(e, RostrumError) else f"is damaged ({type(e).__name__}: {e})"
+        REFUSED.append(f"Error: {what} {Path(folder).name} didn't open: it {why}")
+        print(f"FAIL: {REFUSED[-1]}", file=sys.stderr)
+        return None
 
 
 def load_doc(args) -> Document:
     if args.open:
-        return Document.open(*resolve(args.open), KIND)
+        try:
+            folder, item = resolve(args.open)
+        except RostrumError as e:
+            REFUSED.append(e.line())
+            return projects.new_project(projects.untitled(), Who.person("sam"))
+        return open_or_say(folder, item, "the project") or projects.new_project(projects.untitled(), Who.person("sam"))
     if not (args.doc or args.script or args.sample or args.step or args.shot):
         return first_doc()
     source, name = SOURCE, "sample.py"
