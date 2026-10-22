@@ -12,6 +12,7 @@ Item {
     property alias tools: toolsSlot.data
     property alias actions: actionsSlot.data
     signal commandClicked()
+    signal aboutClicked()
     implicitHeight: Theme.topBar
 
     Row {  // the app's tools sit in the middle of the window
@@ -57,6 +58,16 @@ Item {
             }
             KeyHint { text: "Ctrl K"; anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter }
             MouseArea { id: cmdHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: bar.commandClicked() }
+        }
+        IconButton {  // Help: About and licences (F1 opens the same screen)
+            glyph: "?"; kind: "ghost"; tip: "Help"; down: helpMenu.opened
+            onClicked: helpMenu.open()
+            Menu {
+                id: helpMenu
+                x: parent.width - width
+                entries: [{ value: "about", label: "About and licences" }]
+                onPicked: bar.aboutClicked()
+            }
         }
     }
 }

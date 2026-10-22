@@ -29,3 +29,4 @@ Ruler 1.0 Ruler.qml
 KeyRows 1.0 KeyRows.qml
 Menu 1.0 Menu.qml
 CurveField 1.0 CurveField.qml
+NoticesDialog 1.0 NoticesDialog.qml
