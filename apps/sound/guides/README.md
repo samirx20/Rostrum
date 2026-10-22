@@ -4,10 +4,10 @@
 
 Short pages in everyday words, with the names of the real buttons.
 
-1. [first-song.md](first-song.md): start a song, add a track, pick an instrument, write notes, play, save.
-2. [recording.md](recording.md): choose a microphone, arm a track, record, punch in, and make a cleaner take.
-3. [exporting.md](exporting.md): the formats, the sample rates, stems, and where the files go.
-4. [settings.md](settings.md): every setting explained.
+1. [Making your first song](first-song.md): start a song, add a track, pick an instrument, write notes, play, save.
+2. [Recording](recording.md): choose a microphone, arm a track, record, punch in, and make a cleaner take.
+3. [Exporting](exporting.md): the formats, the sample rates, stems, and where the files go.
+4. [Settings](settings.md): every setting explained.
 
 ## For agents
 

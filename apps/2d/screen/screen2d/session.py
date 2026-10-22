@@ -14,11 +14,10 @@ from .bridge2d import Bridge2D
 from .files import Files
 
 QML = Path(__file__).resolve().parents[1] / "qml" / "Main.qml"
-GUIDES = guides.entries(Path(__file__).resolve().parents[2] / "guides", [     # Help's guides (apps/2d/guides)
-    ("start-here.md", "Start here"), ("type-and-kinetic-text.md", "Type and moving text"),
-    ("shape-and-path-animation.md", "Shapes and paths"), ("easing-and-overlap.md", "Easing and overlap"),
-    ("colour-and-blending.md", "Colour and blending"), ("drawing-and-frame-by-frame.md", "Drawing, frame by frame"),
-    ("camera-parallax-motion-blur.md", "Camera and motion blur"), ("import-and-export.md", "Import and export")])
+GUIDES = guides.entries(Path(__file__).resolve().parents[2] / "guides", [     # Help's guides (apps/2d/guides): for people;
+    ("first-animation.md", "Making your first animation"), ("the-screen.md", "The screen"),   # the agent pages are
+    ("drawing.md", "Drawing"), ("importing.md", "Importing pictures and files"),                # listed in README.md
+    ("exporting.md", "Exporting a video"), ("files.md", "Files and settings"), ("README.md", "All guides")])
 
 
 class Session:
