@@ -35,6 +35,8 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     ctx.setContextProperty("monoFont", pick(MONO_FONTS))
     from rostrum_gui.notices import Notices, app_id   # the Help → About and licences screen (every app has one)
     ctx.setContextProperty("notices", Notices(app_id(main_qml), engine))
+    from rostrum_gui.guides import GuidePages        # Help → a guide, read by the kit's guide viewer
+    ctx.setContextProperty("guidePages", GuidePages(engine))
     for k, v in context.items():
         ctx.setContextProperty(k, v)
     engine.load(QUrl.fromLocalFile(str(main_qml)))

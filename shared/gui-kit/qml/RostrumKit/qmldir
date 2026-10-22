@@ -31,3 +31,4 @@ KeyRows 1.0 KeyRows.qml
 Menu 1.0 Menu.qml
 CurveField 1.0 CurveField.qml
 NoticesDialog 1.0 NoticesDialog.qml
+GuideDialog 1.0 GuideDialog.qml
