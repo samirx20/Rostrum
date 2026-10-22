@@ -12,6 +12,7 @@ from pathlib import Path
 
 from rostrum_core import Document, RostrumError, codes
 from .doc import KIND
+from .doc import markers
 
 APPS = {"rostrum-2d": "Rostrum2D", "rostrum-3d": "Rostrum3D", "rostrum-editor": "Rostrum Editor"}
 UNTOUCHED = "Nothing was changed in it."
@@ -22,7 +23,8 @@ def open_whole(folder, item) -> Document:
     RostrumError in words a person reads."""
     name = f'The song "{Path(folder).name}"'
     try:
-        return Document.open(folder, item, KIND)
+        with markers.project(folder):       # its check sees the project's shared markers ("#hush-2.2"), not only its own
+            return Document.open(folder, item, KIND)
     except RostrumError as e:
         raise _refused(name, e) from e
     except (KeyError, TypeError, ValueError, AttributeError, IndexError) as e:   # readable, but the wrong shape

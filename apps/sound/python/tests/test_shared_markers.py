@@ -92,3 +92,12 @@ def test_a_riser_tied_to_a_marker_peaks_on_it_when_it_moves(doc):
     project.edit(doc.folder, [{"op": "marker.move", "target": [_id(doc.folder)], "args": {"at": 4.0}}], Who.person())
     s = compile(doc)["tracks"][0]["sounds"][0]
     assert (s["at"], s["dur"]) == (1.0, 3.0)
+
+
+def test_a_song_using_a_project_marker_opens(doc):
+    """S27 P1: the open check counted only the song's own markers, so every song naming a shared one (Lull) was
+    refused as damaged."""
+    from rostrum_sound import opening
+    doc.save()
+    markers.use_project(None)                        # a fresh process: nobody has set the project yet
+    assert opening.open_whole(doc.folder, "cue").data["tracks"]
