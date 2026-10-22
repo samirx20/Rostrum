@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from rostrum_core.conditions import holds
 
-from .commands import starts
+from .match import starts
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
 ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit",

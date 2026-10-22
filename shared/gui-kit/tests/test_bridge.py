@@ -57,3 +57,16 @@ def test_rows_by_importance_never_show_what_does_not_apply(bridge):
     b.select("cam_1")
     assert "motionBlur" in b.shown()[0] and "shutter" not in b.shown()[0]
     assert b.revealField("sensor") and "sensor" in b.shown()[0]
+
+
+def test_an_app_cannot_overwrite_the_kits_names():
+    """S24: the kit's `_opened` silently replaced Rostrum2D's. A kit name redefined or set by an app now fails loudly."""
+    _app = QCoreApplication.instance() or QCoreApplication([])
+    class Clash(DocBridge):
+        def _refresh(self):
+            pass
+    with pytest.raises(TypeError, match="_refresh"):
+        Clash(toy.sample())
+    b = DocBridge(toy.sample())
+    with pytest.raises(AttributeError):
+        b.model = None
