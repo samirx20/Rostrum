@@ -29,6 +29,7 @@ class Change:
     undoes: list = field(default_factory=list)     # seqs of originals this step undid
     redoes: list = field(default_factory=list)     # seqs of originals this step re-did
     t: float = 0.0                                 # clock time: merging nudges, ordering undo across documents
+    step: str | None = None                        # one step across documents (joint.py): undone / redone together
 
     @property
     def original(self) -> bool:
@@ -38,13 +39,15 @@ class Change:
         return {"seq": self.seq, "based_on": self.based_on, "who": self.who.to_dict(), "label": self.label,
                 "when": self.when, "session": self.session, "calls": self.calls,
                 "edits": [E.to_dict(e) for e in self.edits], "hash_after": self.hash_after,
-                "undoes": self.undoes, "redoes": self.redoes, "t": self.t}
+                "undoes": self.undoes, "redoes": self.redoes, "t": self.t,
+                **({"step": self.step} if self.step else {})}
 
     @classmethod
     def from_dict(cls, d) -> "Change":
         return cls(d["seq"], d["based_on"], Who.from_dict(d["who"]), d["label"], d["when"],
                    [E.from_dict(e) for e in d["edits"]], d.get("calls", []), d.get("session"),
-                   d.get("hash_after", ""), d.get("undoes", []), d.get("redoes", []), d.get("t", 0.0))
+                   d.get("hash_after", ""), d.get("undoes", []), d.get("redoes", []), d.get("t", 0.0),
+                   d.get("step"))
 
 
 class History:

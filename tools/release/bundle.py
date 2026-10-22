@@ -7,7 +7,9 @@ apps/2d/engine/target/agent/rostrum2d-render.exe, apps/2d/guides …), so every 
 lookup in the code works unchanged. Python is python.org's embeddable build (runtime/python); its ._pth file puts our
 packages on the path. Third-party wheels are split: what every app needs (Qt, the shared packages' needs) goes to
 runtime/python/Lib/site-packages, what only one app needs to apps/<app>/site-packages. Each top folder is one
-installer component: runtime (shared, always), apps/2d, apps/sound.
+installer component: runtime (shared, always), apps/2d, apps/sound, except Sound's engine part (SOUND_ENGINE: the
+rostrum_sound package and rostrum-sound.exe), which 2D needs too (it plays and writes the project's sound through it,
+AGENTS.md rule 9): it ships with either app (rostrum.iss).
 Build-time tools only: uv (installs the wheels) and this checkout. Fails loudly on any missing piece.
 """
 from __future__ import annotations
@@ -42,10 +44,12 @@ APPS = {
             "apps/2d/guides", "apps/2d/engine/fonts", "apps/2d/engine/DEPENDENCIES.md"],
            ["apps/2d/engine/target/agent/rostrum2d-render.exe", "apps/2d/engine/target/agent/rostrum2d_stamp.dll"]),
     "sound": ("apps/sound", ["apps/sound/python[listen,cleanup,mcp]"],
-              ["apps/sound/python/rostrum_sound", "apps/sound/screen/main.py", "apps/sound/screen/screensound",
-               "apps/sound/screen/qml", "apps/sound/guides", "apps/sound/MODELS.md"],
-              ["apps/sound/engine/target/agent/rostrum-sound.exe"]),
+              ["apps/sound/screen/main.py", "apps/sound/screen/screensound", "apps/sound/screen/qml", "apps/sound/guides",
+               "apps/sound/MODELS.md"], []),
 }
+# Sound's engine part: every app that makes or plays sound needs it (2D's sound row, Add a sound here, MP4 sound).
+# Its Python needs come in through each app's own wheel spec (2D's pyproject depends on rostrum-sound).
+SOUND_ENGINE = (["apps/sound/python/rostrum_sound"], ["apps/sound/engine/target/agent/rostrum-sound.exe"])
 # rostrum-<app>-mcp.cmd in the install folder: for a person typing in a terminal, and the by-hand text. Agent settings
 # get runtime\python\python.exe -m <module> instead (rostrum_connect.servers): several agents refuse to start a .cmd.
 MCP_LAUNCHERS = {"2d": ("rostrum-2d-mcp.cmd", "rostrum2d.mcp"), "sound": ("rostrum-sound-mcp.cmd", "rostrum_sound.mcp.server")}
@@ -69,7 +73,8 @@ def copy(rel: str, src_root: Path, dst_root: Path):
 def wheels(specs: list[str], target: Path):
     """Install the specs (and everything they need, from the shared uv cache) into target, then drop our own packages:
     those ship as source in the repo layout."""
-    local = [str(REPO / s) for s in ("shared/core", "shared/gui-kit", "shared/painting-kit", "shared/mcp")]
+    local = [str(REPO / s) for s in ("shared/core", "shared/gui-kit", "shared/painting-kit", "shared/mcp",
+                                     "apps/sound/python")]
     cmd = ["uv", "pip", "install", "--quiet", "--target", str(target), "--python", sys.executable,
            *[str(REPO / s.split("[")[0]) + ("[" + s.split("[")[1] if "[" in s else "") for s in specs], *local]
     if subprocess.run(cmd).returncode:
@@ -110,7 +115,9 @@ def move(src: Path, dst: Path, files: list[str]):
 def notices(app: str, stage: Path, site: Path):
     """apps/<app>/notices.json (the About / Licences screen) and NOTICES.txt (full texts) for what this app ships."""
     folder = stage / APPS[app][0]
-    deps = [str(REPO / APPS[app][0] / "engine" / "DEPENDENCIES.md")]
+    deps = [str(p) for p in (REPO / APPS[app][0] / "engine" / "DEPENDENCIES.md", REPO / "apps/sound/engine/DEPENDENCIES.md")
+            if p.is_file()]                      # every app ships Sound's engine (SOUND_ENGINE)
+    deps = list(dict.fromkeys(deps))
     cmd = [sys.executable, str(HERE / "notices.py"), "--app", app, "--attributions", str(REPO / "ATTRIBUTIONS.md"),
            "--site-packages", str(site), "--site-packages", str(folder / "site-packages"),
            *[x for d in deps for x in ("--engine-deps", d)], "--out", str(folder / "notices.json"),
@@ -160,10 +167,15 @@ def main():
             copy(rel, REPO, stage)
         for rel in APPS[app][3]:
             copy(rel, args.engines, stage)
+    for rel in SOUND_ENGINE[0]:                  # with either app (rostrum.iss: Components: app2d appsound)
+        copy(rel, REPO, stage)
+    for rel in SOUND_ENGINE[1]:
+        copy(rel, args.engines, stage)
     try:                                         # 2D's LGPL FFmpeg; the C++ runtime beside every engine
         if "2d" in args.apps:
             extras.ffmpeg(stage)
-        extras.crt(stage, sorted({Path(rel).parent for app in args.apps for rel in APPS[app][3]}))
+        extras.crt(stage, sorted({Path(rel).parent for rel in [*SOUND_ENGINE[1],
+                                                                *(r for app in args.apps for r in APPS[app][3])]}))
     except extras.Missing as e:
         fail(str(e))
     for app in args.apps:                        # each app's agent server, by hand in a terminal (MCP_LAUNCHERS)

@@ -14,7 +14,7 @@ from __future__ import annotations
 HOOKS = frozenset({
     "label_of", "kind_label", "edit_call", "shown_values", "on_page", "anim_state", "list_choices", "animate_calls",
     "expr_state", "clear_expr_calls", "sections", "selection_label", "extra_commands",
-    "select", "run", "say", "commands", "historyCount", "undoLabel", "redoLabel", "_commands", "_rows", "_first", "_on_doc",
+    "select", "run", "open_item", "say", "commands", "historyCount", "undoLabel", "redoLabel", "_commands", "_rows", "_first", "_on_doc",
     "staticMetaObject",
 })
 ONCE = frozenset({"doc", "who", "model", "_kit", "_unsubscribe"})

@@ -92,11 +92,11 @@ class EditSlots(SlotMixin):
     def _step(self, fn, nothing):
         pairs = [(self.doc, None)] + [(p.history_doc(), p) for p in self._kit.partners]
         pairs = [(d, p) for d, p in pairs if d is not None]
-        hit = fn([d for d, _ in pairs], self.who)
-        if hit is not None:
-            partner = next(p for d, p in pairs if d is hit[0])
+        hit = fn([d for d, _ in pairs], self.who, self.open_item)
+        for doc, _ in hit.all if hit is not None else ():      # a step across documents changed each of them
+            partner = next((p for d, p in pairs if d is doc), None)
             if partner is not None:
-                partner.stepped(hit[0])
+                partner.stepped(doc)
         self._done(hit[1] if hit else None, nothing)
 
     def _apply(self, calls, label):

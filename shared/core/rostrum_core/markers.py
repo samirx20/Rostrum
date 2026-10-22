@@ -9,6 +9,9 @@ operation in one history (undo, who changed what) like any other document:
     marker.move    at                                  → retime markers
     marker.rename  name                                → rename one marker (its id never changes)
     marker.remove                                      → delete markers
+    marker.follow  item, part, use                     → keep a marker on another app's item (links.py)
+    marker.unfollow                                    → let it stand on its own again
+    marker.keep    at                                  → a following marker put back on its item (links.refresh)
 
 Times are seconds on the project timeline. Names are unique (case and spaces at the ends ignored).
 Apps call `edit(folder, calls, who)` to change it and `listing(folder)` / `at(folder, name)` to read it.
@@ -18,6 +21,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from . import links
 from .document import Document
 from .errors import RostrumError, codes
 from .kind import DocKind
@@ -56,7 +60,40 @@ def marker_colour(ctx, targets, args):
                     params=[Param.number("at", required=True, **_AT)])
 def marker_move(ctx, targets, args):
     for t in targets:
+        f = ctx.item(t).get("follows")
+        if f:
+            ctx.fail(codes.BAD_ARGUMENT, f'marker "{ctx.item(t)["name"]}"', f'follows "{f["part"]}" in "{f["item"]}"; '
+                     "it moves with it", hint="Move that instead, or marker.unfollow first.")
         ctx.set(t, "at", args["at"])
+
+
+@REGISTRY.operation("marker.keep", "Put following markers back on their item's time (links.refresh does this).",
+                    target="marker", label="Markers follow their items", importance="deep",
+                    params=[Param.number("at", required=True, **_AT)])
+def marker_keep(ctx, targets, args):
+    for t in targets:
+        if not ctx.item(t).get("follows"):
+            ctx.fail(codes.BAD_ARGUMENT, f'marker "{ctx.item(t)["name"]}"', "follows nothing", hint="Use marker.move.")
+        ctx.set(t, "at", args["at"])
+
+
+@REGISTRY.operation("marker.follow", "Keep a marker on another app's item: a part's start or end (a live link, "
+                    "links.py). It moves whenever that part moves, even with its app closed.", target="marker",
+                    label="Follow", importance="deep", params=[
+                        Param.text("item", label="Item", required=True, help="The project item (\"scene1\")"),
+                        Param.text("part", label="Part", required=True, help="Its part (a 2D layer id)"),
+                        Param.choice("use", links.USES, label="At its", default="start")])
+def marker_follow(ctx, targets, args):
+    for t in targets:
+        ctx.set(t, "follows", {"item": args["item"], "part": args["part"], "use": args.get("use", "start")})
+
+
+@REGISTRY.operation("marker.unfollow", "Let following markers stand on their own (they stay where they are).",
+                    target="marker", label="Stop following", importance="deep")
+def marker_unfollow(ctx, targets, args):
+    for t in targets:
+        if ctx.item(t).get("follows"):
+            ctx.set(t, "follows", None)
 
 
 @REGISTRY.operation("marker.rename", "Rename a marker; what points at it by id keeps working.", target="marker",
@@ -82,6 +119,10 @@ def _check(data) -> list[str]:
         elif k in seen:
             out.append(f'two markers are called "{m["name"]}" ({seen[k]} and {m["id"]}); names must differ')
         seen.setdefault(k, m["id"])
+        f = m.get("follows")
+        if f is not None and not (isinstance(f, dict) and f.get("item") and f.get("part")
+                                  and f.get("use", "start") in links.USES):
+            out.append(f'marker "{m.get("name")}" follows {f!r}; it needs an item, a part and start / end')
         if not isinstance(m.get("at"), (int, float)) or m["at"] < 0:
             out.append(f'marker "{m.get("name")}" has a bad time {m.get("at")!r}; it must be 0 s or later')
     return out
@@ -99,7 +140,9 @@ def open_markers(folder) -> Document:
     """The project's marker document (an empty one, not yet saved, when the project has no markers)."""
     if folder is None or not Path(folder).is_dir():
         raise RostrumError(codes.NOT_FOUND, "markers", str(folder), "is not a project folder")
-    return Document.open(folder, ITEM, KIND) if _exists(folder) else Document.new(KIND, folder, ITEM)
+    doc = Document.open(folder, ITEM, KIND) if _exists(folder) else Document.new(KIND, folder, ITEM)
+    links.watch(doc)                        # following markers keep their items' times, in the same step
+    return doc
 
 
 def open_to_change(folder) -> Document:
@@ -132,7 +175,7 @@ def listing(folder, doc: Document | None = None) -> list[dict]:
     for m in doc.data["markers"]:
         last = doc.who_changed(m["id"])
         out.append({"id": m["id"], "name": m["name"], "at": m["at"], "owner": m.get("owner", ""),
-                    "colour": m.get("colour", ""), "by": _made_by(doc, m["id"]),
+                    "colour": m.get("colour", ""), "follows": m.get("follows"), "by": _made_by(doc, m["id"]),
                     "changed_by": str(last.who) if last else "outside"})
     return sorted(out, key=lambda m: (m["at"], m["name"].lower()))
 

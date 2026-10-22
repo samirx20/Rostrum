@@ -68,6 +68,15 @@ A **live link** is one item used inside another — a 2D comp placed on the Edit
 - `"version"` may be pinned to a named version instead of `latest`, so a locked cut doesn't change under the editor.
 - **Read-only context:** any app can show the rest of the project at the same moment (the music under a 2D animation, the edit around a 3D shot) using Fast-quality renders from the cache. It cannot be edited there. Double-clicking it opens the item in its own app at that moment (decided 2026-10-21).
 - A link that would make a loop (A inside B inside A) is refused with an error naming the loop.
+- **Built (S36): a marker that follows another app's item** (`rostrum_core.links`). The marker carries the link,
+  `follows: {"item": "scene1", "part": "logo", "use": "start"}` (`marker.follow` / `marker.unfollow`), so there is
+  one source of truth; `links.listing(folder)` shows it in this section's shape (`"from": "scene1#logo"`,
+  `"into": "markers#mk_…"`). The owning app registers how to read a part's time (`links.register("2d", time_of)` or
+  the entry point group `rostrum.links`), so Sound keeps 2D's cue marker on its layer with 2D closed. The markers
+  document moves followers after every change made in this program, in the same undo step (`joint.py`); the owning
+  app calls `links.refresh(folder, who, docs={item: doc})` after its own changes. A follower can't be moved by hand
+  (move its item, or unfollow it). A part that is gone, an app that isn't installed or a loop goes to
+  `links.problems(folder)` and `links.on_problem` listeners, never silently.
 - Frames from different apps are **combined only in the Editor** (rule 8). Other apps only show them as context.
 
 ## 4. Analyse once, store as data (AGENTS.md rule 7)

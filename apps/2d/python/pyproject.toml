@@ -3,7 +3,8 @@ name = "rostrum2d"
 version = "0.1.0"
 description = "Rostrum2D's Python layer: document, operations, script layer, engine contract, MCP server"
 requires-python = ">=3.11"
-dependencies = ["rostrum_core", "skia-pathops>=0.9"]   # skia-pathops: path booleans (BSD-3-Clause)
+dependencies = ["rostrum_core", "skia-pathops>=0.9",   # skia-pathops: path booleans (BSD-3-Clause)
+                "rostrum-sound", "soundfile>=0.12"]   # 2D plays / writes the project's sound through Sound's engine (rule 9); soundfile BSD-3
 
 [project.optional-dependencies]
 mcp = ["rostrum_core[mcp]"]
@@ -23,3 +24,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["rostrum2d*"]
+
+[tool.uv.sources]                                # our own packages come from this checkout, never from an index
+rostrum-core = { path = "../../../shared/core", editable = true }
+rostrum-sound = { path = "../../sound/python", editable = true }
