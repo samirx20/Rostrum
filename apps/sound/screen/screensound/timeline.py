@@ -154,11 +154,16 @@ def markers(root: dict) -> list[dict]:
     return sorted(({**m, "named": (m["name"], round(m["t"], 4)) in starts} for m in out), key=lambda m: m["t"])
 
 
+EMPTY_BARS = 8
+
+
 def song(root: dict) -> dict:
     """The grid and length: what the ruler draws. Without a set length: the last sound + 2 s (as the mix)."""
     ends = [b["t"] + b["dur"] for t in root.get("tracks", []) for b in blocks(t, root)]
     ends += [m["t"] for m in markers(root)] + [s["end"] for s in music_map.sections(root)]
     length = timing.sec(root["length"], root) if root.get("length") is not None else max(ends, default=0) + 2
+    if not ends and root.get("length") is None:     # an empty song: room for 8 bars to write in (silence, as the mix)
+        length = EMPTY_BARS * int(root.get("beatsPerBar", 4)) * timing.spb(root)
     length = max(length, 1.0)
     return {"length": length, "spb": timing.spb(root), "beatsPerBar": int(root.get("beatsPerBar", 4)),
             "tempo": float(root.get("tempo", 120)), **music_map.grid(root, length)}

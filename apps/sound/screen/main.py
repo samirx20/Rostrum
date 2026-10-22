@@ -1,70 +1,156 @@
 """RostrumSound's screen: Instruments, Timeline and Mix pages on one Sound document.
 
-    python apps/sound/screen/main.py                                  # the window, on a small sample song
-    python apps/sound/screen/main.py --script my_song.py              # on what a script builds
-    python apps/sound/screen/main.py --doc <project folder> <item>    # open a saved document (made if missing),
-                                                                      # saved again after every change
+    python apps/sound/screen/main.py                                  # the last song, or a new untitled one
+    python apps/sound/screen/main.py <song file or project folder>    # open that song
+    python apps/sound/screen/main.py --new                            # a new untitled song
+    python apps/sound/screen/main.py --sample                         # a small sample song (not saved)
+    python apps/sound/screen/main.py --script my_song.py              # on what a script builds (not saved)
+    python apps/sound/screen/main.py --doc <project folder> <item>    # open a saved document (made if missing)
     python apps/sound/screen/main.py --step "select melody.n9600" --step "drag-note melody.n9600 0.6 2" --shot out.png
-Steps: see screensound/steps.py. With --shot the window quits by itself once the sound has rendered; a failed
-step, render or save exits nonzero. Offscreen screenshots: QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
+Every song with a folder is saved after every change. Steps: see screensound/steps.py, plus the file steps here
+(`file-new`, `file-open <path>`, `file-save-as <folder>`, `file-menu`, `settings`). With --shot the window quits by
+itself once the sound has rendered; a failed step, render or save exits nonzero. Offscreen screenshots:
+QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
 """
 import argparse
 import os
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QMetaObject, QTimer, QUrl
 from PySide6.QtGui import QGuiApplication
 
 from rostrum_core import Document
 from rostrum_core.storage import paths
 from rostrum_gui import start
 from rostrum_sound import KIND, run_source
+from screensound import projects
 from screensound.bridge import SoundBridge
 from screensound.instruments import InstrumentsPage
 from screensound.keys_record import KeysRecording
 from screensound.mixer import MixPage
 from screensound.recording import Recording
 from screensound.sample import SOURCE
+from screensound.session import Songs
+from screensound.settings_page import SettingsPage
 from screensound.steps import do_step, wait_render
 
 HERE = Path(__file__).resolve().parent
+MAIN_QML = HERE / "qml" / "Main.qml"
 
 
-def load_doc(args) -> Document:
-    source, name = SOURCE, "sample.py"
-    if args.script:
-        source, name = Path(args.script).read_text(encoding="utf-8"), Path(args.script).name
+def first_doc(args) -> Document:
+    """What opens first: --doc / --script / --sample as asked, a path given, else the last song, else a new one."""
     if args.doc:
         folder, item = args.doc
         if paths(folder, item, KIND.ext)["doc"].is_file():
             return Document.open(folder, item, KIND)
         doc = Document.new(KIND, folder=folder, item=item)
-    else:
-        doc = Document.new(KIND)
-    doc.run_script(name, run_source(source, name))
-    if args.doc:
+        doc.run_script(*_script(args))
         doc.save()
-    return doc
+        return doc
+    if args.script or args.sample:
+        doc = Document.new(KIND)
+        doc.run_script(*_script(args))
+        return doc
+    if args.path:
+        return projects.open_song(*projects.resolve(args.path))
+    last = None if args.new else next(iter(projects.recent()), None)
+    return projects.open_song(last["folder"], last["item"]) if last else projects.new_song()
+
+
+def _script(args):
+    if args.script:
+        return Path(args.script).name, run_source(Path(args.script).read_text(encoding="utf-8"), Path(args.script).name)
+    return "sample.py", run_source(SOURCE, "sample.py")
+
+
+class Screen:
+    """The window and everything made for one song; `show` replaces them all for another song."""
+
+    def __init__(self, size=(1600, 960)):
+        self.size, self.engine, self.win, self.parts = size, None, None, None
+        self.songs = Songs(self.show)
+        self.settings = SettingsPage()
+
+    def show(self, doc, name, untitled=False):
+        old_win, old_parts = self.win, self.parts
+        if old_win is not None:
+            old_win.close()
+        if old_parts:
+            self._close(old_parts)
+        bridge = SoundBridge(doc, name, autosave=doc.folder is not None)
+        instruments, mixer, recorder = InstrumentsPage(bridge), MixPage(bridge), Recording(bridge)
+        keys = KeysRecording(bridge, recorder)
+        context = {"backend": bridge, "instruments": instruments, "mixer": mixer, "recorder": recorder,
+                   "keys": keys, "takeSetup": recorder.setup, "songs": self.songs, "settingsPage": self.settings}
+        if self.engine is None:
+            _, self.engine, self.win = start(MAIN_QML, context, self.size)
+        else:
+            ctx = self.engine.rootContext()
+            for k, v in context.items():
+                ctx.setContextProperty(k, v)
+            self.engine.load(QUrl.fromLocalFile(str(MAIN_QML)))
+            self.win = self.engine.rootObjects()[-1]
+            self.win.resize(*self.size)
+        if old_win is not None:
+            old_win.deleteLater()
+        self.parts = {"bridge": bridge, "instruments": instruments, "mixer": mixer, "recorder": recorder, "keys": keys}
+
+    @staticmethod
+    def _close(parts):
+        for k in ("keys", "recorder", "mixer", "bridge"):
+            parts[k].close()
+
+    @property
+    def bridge(self):
+        return self.parts["bridge"]
+
+    def close(self):
+        if self.parts:
+            self._close(self.parts)
+        self.songs.close()
+
+
+def file_step(screen, step) -> bool:
+    """The steps that switch songs or open the song menu / Settings (they live here, beside the session)."""
+    word, _, rest = step.partition(" ")
+    if word == "file-new":
+        screen.songs.newSong()
+    elif word == "file-open":
+        screen.songs.openPath(rest)
+    elif word == "file-save-as":
+        screen.songs.saveAs(rest)
+    elif word == "file-menu":
+        QMetaObject.invokeMethod(screen.win, "openFileMenu")
+    elif word == "settings":
+        QMetaObject.invokeMethod(screen.win, "openSettings")
+    else:
+        return False
+    if screen.songs.error:
+        raise RuntimeError(f"{word}: {screen.songs.error}")
+    return True
 
 
 def main():
     a = argparse.ArgumentParser()
+    a.add_argument("path", nargs="?", help="a song file (.trk) or a project folder")
     a.add_argument("--doc", nargs=2, metavar=("FOLDER", "ITEM"))
     a.add_argument("--script")
+    a.add_argument("--sample", action="store_true")
+    a.add_argument("--new", action="store_true")
     a.add_argument("--step", action="append", default=[])
     a.add_argument("--shot")
     args = a.parse_args()
 
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
-    name = args.doc[1] if args.doc else Path(args.script).stem if args.script else "Sample song"
-    bridge = SoundBridge(load_doc(args), name, autosave=bool(args.doc))
-    instruments, mixer, recorder = InstrumentsPage(bridge), MixPage(bridge), Recording(bridge)
-    keys = KeysRecording(bridge, recorder)
-    _, engine, win = start(HERE / "qml" / "Main.qml", {"backend": bridge, "instruments": instruments, "mixer": mixer,
-                                       "recorder": recorder, "keys": keys, "takeSetup": recorder.setup},
-                           (1600, 960))
+    screen = Screen()
+    doc = first_doc(args)
+    if doc.folder is None:            # --script / --sample: shown as before, not a song on disk
+        screen.show(doc, Path(args.script).stem if args.script else "Sample song")
+    else:
+        screen.songs.start(doc)
     code = [0]
 
     def guarded(fn):
@@ -77,15 +163,17 @@ def main():
 
     def run_steps():
         for s in args.step:
-            do_step(bridge, win, s, recorder)
+            if not file_step(screen, s):
+                do_step(screen.bridge, screen.win, s, screen.parts["recorder"])
         if args.shot:
-            wait_render(bridge)
+            wait_render(screen.bridge)
             QTimer.singleShot(600, lambda: guarded(shoot))     # the 160 ms reveals have finished
 
     def shoot():
+        bridge = screen.bridge
         if bridge.status.startswith("Error"):
             raise RuntimeError(bridge.status)
-        img = win.grabWindow()
+        img = screen.win.grabWindow()
         if img.isNull() or not img.save(args.shot):
             raise RuntimeError(f"could not save {args.shot}")
         print(f"saved {args.shot} {img.width()}x{img.height()}  history={bridge.historyCount}  "
@@ -96,11 +184,7 @@ def main():
     if args.shot:
         QTimer.singleShot(180000, lambda: (print("FAIL: timeout", file=sys.stderr), app.exit(4)))
     app.exec()
-    keys.close()
-    recorder.close()
-    mixer.close()
-    bridge.close()
-    del engine
+    screen.close()
     sys.exit(code[0])
 
 
