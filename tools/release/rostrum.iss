@@ -61,7 +61,10 @@ Source: "{#Stage}\LICENSE"; DestDir: "{app}"; Components: runtime
 Source: "{#Stage}\ATTRIBUTIONS.md"; DestDir: "{app}"; Components: runtime
 Source: "{#Stage}\VERSION"; DestDir: "{app}"; Components: runtime
 Source: "{#Stage}\apps\2d\*"; DestDir: "{app}\apps\2d"; Components: app2d; Flags: recursesubdirs ignoreversion
-Source: "{#Stage}\apps\sound\*"; DestDir: "{app}\apps\sound"; Components: appsound; Flags: recursesubdirs ignoreversion
+Source: "{#Stage}\apps\sound\*"; DestDir: "{app}\apps\sound"; Components: appsound; Excludes: "\python\*,\engine\*"; Flags: recursesubdirs ignoreversion
+; Sound's engine part (bundle.py SOUND_ENGINE): 2D plays and writes the project's sound through it, so it comes with either app.
+Source: "{#Stage}\apps\sound\python\*"; DestDir: "{app}\apps\sound\python"; Components: app2d appsound; Flags: recursesubdirs ignoreversion
+Source: "{#Stage}\apps\sound\engine\*"; DestDir: "{app}\apps\sound\engine"; Components: app2d appsound; Flags: recursesubdirs ignoreversion
 ; Each app's agent server, started by hand in a terminal (Help > Connect an AI agent shows this command).
 Source: "{#Stage}\rostrum-2d-mcp.cmd"; DestDir: "{app}"; Components: app2d
 Source: "{#Stage}\rostrum-sound-mcp.cmd"; DestDir: "{app}"; Components: appsound

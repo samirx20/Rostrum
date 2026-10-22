@@ -67,6 +67,10 @@ spring's words (`bounce`, `speed`, what people and the key bar use) become `stif
 read); a key carrying an app's `rawSpring` fact (no words on it) shows the expert numbers. The same screen rules for "edit at the playhead goes
 through keys" are `shared/gui-kit/rostrum_gui/route.py` (`KeyRoute`).
 
+**Where a key came from** (S36): a key may carry `from`, a few words naming its source ("Voice · line 3": lip sync
+keys name their sound). `key.add` / `key.set` take it; a key without it reads and shows exactly as before (the
+settings panel shows the From row only when it is set).
+
 **Keys on a marker** (`marked.py`): a key's `t` may be a shared marker reference, `"#drop+0.2"` (read by
 `marker_times.split / seconds`, the one reader Sound uses too). The document keeps it as written; the app turns it
 into seconds once where its document becomes times (`marked.resolve`; 2D: `retime.timed` / `retime.placed`), so a

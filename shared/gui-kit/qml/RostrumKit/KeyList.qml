@@ -68,5 +68,6 @@ QQC.Popup {
         EmptyHint { visible: list.count === 0; width: list.width; y: Theme.groupGap
                     text: dlg.query ? "Nothing called “" + dlg.query + "”. Try a shorter word." : "This app has no keys yet." }
     }
+    EdgeFade { flick: list; anchors.fill: list }
     VScrollBar { flick: list }
 }

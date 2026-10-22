@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Slot
 
-ASKS = ("open", "duplicate", "version")         # these need the window first (a dialog, History's name field)
+ASKS = ("open", "duplicate", "version", "find")  # these need the window first (a dialog, History's name field)
 
 
 class FileMenuSlots:
@@ -25,6 +25,10 @@ class FileMenuSlots:
                     {"value": "version", "label": "Save a version", "keys": k["version"], "group": "file"},
                     {"value": "folder", "label": "Show folder", "group": "file"},
                     {"value": "start", "label": "Start screen…", "group": "file"}]
+        if self._rescue:
+            out.append({"value": "rescue", "label": "Open the last version that works", "group": "repair"})
+        if self._missing():
+            out.append({"value": "find", "label": "Find missing files…", "group": "repair"})
         return out
 
     def commands(self) -> list[dict]:
@@ -46,6 +50,6 @@ class FileMenuSlots:
             return True
         if value.startswith("recent:"):
             return self.openRecent(int(value.split(":")[1]))
-        go = {"new": self.newProject, "sample": self.openSample, "copy": self.openCopy,
+        go = {"rescue": self.openRescued, "new": self.newProject, "sample": self.openSample, "copy": self.openCopy,
               "folder": lambda: self.showFolder() or True, "start": lambda: self.setStart(True) or True}.get(value)
         return bool(go and go())

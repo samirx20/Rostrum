@@ -18,6 +18,8 @@ from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from rostrum_core import RostrumError, Who
 from rostrum_core.markers import _exists as exists, edit, listing, open_markers, open_to_change, times, version
 
+from . import marker_menu
+
 POLL_MS = 500          # another process (an agent, Sound) may move a marker: look at the file this often (cheap)
 
 
@@ -95,6 +97,30 @@ class MarkerWatch(QObject):
     @Slot(str, result=bool)
     def remove(self, marker_id):
         return self._edit([{"op": "marker.remove", "target": [marker_id]}], "Delete marker")
+
+    # ---- the right-click menu (marker_menu.py): rows from the marker operations; a choice is one change -------------
+    def _facts(self, marker_id, playhead, shared):
+        at = next((m["at"] for m in self._rows if m["id"] == marker_id), 0.0)
+        return marker_menu.MarkerFacts([marker_id], playhead, at, self.available, shared)
+
+    @Slot(str, float, bool, result="QVariantList")
+    def menu(self, marker_id, playhead, shared):
+        """The menu for one marker: only what applies to it now (INTERACTION.md 1.6). `shared`: it is the project's."""
+        return marker_menu.rows(self._facts(marker_id, playhead, shared))
+
+    @Slot(str, str, float, bool, result=str)
+    def choose(self, marker_id, value, playhead, shared):
+        """A row of menu() chosen: its operations run as one change ("" back); the screen's own ones come back as
+        their word ("rename": the flag's name field; "share": the app flips shared / own)."""
+        try:
+            e = marker_menu.entry(self._facts(marker_id, playhead, shared), value)
+        except ValueError as err:
+            self._fail("Error: " + str(err))
+            return ""
+        if e["do"]:
+            return e["do"]
+        self._edit(e["calls"], e["label"])
+        return ""
 
     # ---- inside -----------------------------------------------------------------------------------------------
     def _read(self) -> bool:

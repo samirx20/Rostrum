@@ -12,6 +12,7 @@ disk as it happens, through the same door an agent's server uses. So there is no
     rename(folder, name)          the project folder renamed in place (clicking its name in the top bar)
     version_name()                a version's default name: the time ("22 Oct 14:32")
     open_whole(kind, folder, item) a damaged or newer file refused in plain words that say nothing was changed
+    (project_files / file_repairs.py: "Open the last version that works", Find… for missing files, reopen at the same place)
     thumb(folder, item)           where a project's picture for the start screen lives
 """
 from __future__ import annotations
@@ -47,6 +48,11 @@ class AppFiles:
     guides: list = field(default_factory=list)  # [(Path to a .md, label)], the start screen shows up to three
     after_copy: Callable | None = None         # (copy's Document, old folder, new folder) -> calls to point its files home
     snapshot: Callable | None = None           # (bridge) -> a QImage of the work, for the start screen's picture
+    doc_kind: object = None                    # the app's DocKind: lets "Open the last version that works" rebuild from history
+    place: Callable | None = None              # (bridge) -> dict: where the person is (scene, selection, playhead, view…)
+    restore_place: Callable | None = None      # (bridge, dict) -> None: put it back after the project is shown
+    refs: Callable | None = None               # (doc) -> [(item id, field, path)]: every file the document uses (Find…)
+    ref_op: Callable | None = None             # (doc, item id) -> the operation that sets that item's file field
 
 
 def projects_root(kind: AppFiles) -> Path:

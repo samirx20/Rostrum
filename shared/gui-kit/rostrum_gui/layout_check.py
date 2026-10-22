@@ -9,6 +9,8 @@ What counts as a fault (AGENTS.md › Rules: every look pass runs it, at several
   cut       text cut off: elided with no hover to show the whole line, wider than its box, or cut by a clipping panel
   outside   a control partly outside the window, or sticking out of the panel it sits on
   small     something clickable smaller than MIN_CLICK in either direction
+  stray     text that shows as a mark, not words: a sliver of a half-scrolled line, or text elided to "…" or one character
+            (see stray())
 A "control" is something clickable (a MouseArea, a tap/drag handler, a text field) or a line of text that is not
 inside one. `ignore`: item-path fragments an app knows are deliberate (e.g. the canvas' own drag handles).
 """
@@ -20,6 +22,7 @@ from PySide6.QtCore import QRectF
 
 MIN_CLICK = 16            # px (logical): smaller than this is hard to hit with a mouse
 SLACK = 2                 # px: anti-aliasing and rounding never count
+SHORT = 80                # px: a text taller than this is a block of text, not a row (a sliver of it is just scrolling)
 CONTAIN = 4               # a control wholly inside one this many times its area is layered on it, not crossing it
 CLICK = ("QQuickMouseArea", "QQuickTapHandler", "QQuickDragHandler", "QQuickTextInput", "QQuickTextEdit")
 FLICK = ("QQuickFlickable", "QQuickListView", "QQuickGridView", "QQuickScrollView")
@@ -177,6 +180,27 @@ def hover_shows(node: Node) -> bool:
     return False
 
 
+def stray(n: Node, say, nodes: list[Node]) -> None:
+    """Text that shows as a stray mark, not as words (S36: a "." above "Last changed by" was the top 5 px of the next
+    row's "Group" header peeking out of the settings list's bottom edge):
+      a sliver  a scrolling list or panel shows under half of a short text, a line or two (a half-scrolled row reads as a
+                dot or a scratch; a long block of text in a scroll area is not a sliver). An item whose type name
+                holds "EdgeFade" laid over the sliver (a fade into the panel's colour) makes it fine.
+      a speck   text with hover help elided down to "…" or one character
+      clipped   a one-line text with clip on whose line is taller than its box"""
+    t, w = n.item, n.item.width()
+    shown = str(t.property("text"))[:20]
+    line = max(t.property("contentHeight") or 0, 1)              # the text's height (all its lines)
+    faded = any("EdgeFade" in cls(o.item) and o.seen.intersects(n.seen) for o in nodes)
+    if n.clipper and scrolls(n.clipper.item) and n.rect.height() < SHORT and n.seen.height() < 0.5 * n.rect.height() - SLACK             and not faded:
+        say("stray", n, f"only {n.seen.height():.0f} of {n.rect.height():.0f} px of the text shows "
+                        f"({shown!r} peeks out of {tail(n.clipper.path, 2)}: reads as a stray mark)")
+    elif t.property("truncated") and len(str(t.property("text"))) > 2 and w < 1.2 * line:
+        say("stray", n, f"text elided down to {w:.0f} px: only '…' or one character shows ({shown!r})")
+    elif t.clip() and t.property("contentHeight") > t.height() + SLACK and t.property("lineCount") <= 1:
+        say("stray", n, f"text line {t.property('contentHeight'):.0f} px tall clipped to a {t.height():.0f} px box")
+
+
 def check(win, ignore=()) -> list[Fault]:
     nodes = [n for n in walk(win) if not any(s in n.path for s in ignore)]
     found: list[Fault] = []
@@ -206,6 +230,7 @@ def check(win, ignore=()) -> list[Fault]:
             if n.seen.width() < n.rect.width() - SLACK or (n.seen.height() < n.rect.height() - SLACK
                                                            and not (n.clipper and scrolls(n.clipper.item))):
                 say("cut", n, f"text cut by {tail(n.clipper.path, 2) if n.clipper else 'the window'}")
+            stray(n, say, nodes)
     for a in atoms:                  # what a clipping panel or scroll list hides (a half-scrolled row) is not outside
         if a.clipper is None and not inside(a.rect, win_rect):
             say("outside", a, "partly outside the window", a.rect)

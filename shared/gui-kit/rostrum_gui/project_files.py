@@ -21,7 +21,9 @@ from rostrum_core import RostrumError, codes, live, samples
 
 from . import docfiles as F
 from .file_menu import FileMenuSlots
+from .file_repairs import RepairSlots
 from .keymap import KeyMap
+from .place_keeper import PlaceKeeper
 
 JOBS = {"new": "new", "open": "open", "duplicate": "duplicate_file", "version": "save_version"}
 SHOWN_GUIDES = 3
@@ -31,7 +33,7 @@ def local(path_or_url: str) -> Path:
     return Path(QUrl(path_or_url).toLocalFile() if "://" in path_or_url else path_or_url)
 
 
-class ProjectFiles(FileMenuSlots, QObject):
+class ProjectFiles(FileMenuSlots, RepairSlots, QObject):
     changed = Signal()
     wanted = Signal(str)                 # "open" | "duplicate" | "version": the menu asks what it must, then acts
     copied = Signal(str)                 # Duplicate made a copy: its name (the menu offers "Open the copy")
@@ -40,6 +42,7 @@ class ProjectFiles(FileMenuSlots, QObject):
         super().__init__(parent)
         self.kind, self.host, self.doc = kind, host, None
         self._fresh, self._copy, self._start, self._said = None, None, False, ""
+        self.places = PlaceKeeper(kind, lambda: (self.doc, self.host.bridge), self)   # the app calls files.places.note()
         km = KeyMap(kind.title)
         self._keys = {v: km.key_of(job) for v, job in JOBS.items()}
 
@@ -61,6 +64,8 @@ class ProjectFiles(FileMenuSlots, QObject):
     startShown = Property(bool, lambda s: s._start, notify=changed)
     projectsFolder = Property(str, lambda s: str(F.projects_root(s.kind)), notify=changed)
     projectsUrl = Property(str, lambda s: QUrl.fromLocalFile(str(F.projects_root(s.kind))).toString(), notify=changed)
+    rescue = Property("QVariantMap", lambda s: s.rescue_row(), notify=changed)
+    missing = Property(int, lambda s: len(s._missing()), notify=changed)
     hasSample = Property(bool, lambda s: bool(s.kind.sample), constant=True)
     noun = Property(str, lambda s: s.kind.noun, constant=True)
     keys = Property("QVariantMap", lambda s: dict(s._keys), constant=True)
@@ -154,6 +159,7 @@ class ProjectFiles(FileMenuSlots, QObject):
             if new == Path(self.doc.folder).resolve():
                 return
             self._fresh = None                    # a project someone named is kept, even with no change in it
+            self.places.save(self.doc, self.host.bridge, new)     # it reopens where it was, under its new name
             self._open(new, self.doc.item_id, quiet=False)
             self._say(f'Renamed "{old}" to "{self._name()}".')
         return self.has_project() and self._try(go)
@@ -176,6 +182,7 @@ class ProjectFiles(FileMenuSlots, QObject):
         try:
             doc = F.open_whole(self.kind, folder, item)
         except RostrumError as e:
+            self.offer_rescue(folder, item, e)
             if not quiet:
                 raise
             self._said = F.said(e)
@@ -190,7 +197,9 @@ class ProjectFiles(FileMenuSlots, QObject):
             live.keep(doc)                               # every project is live (the bridge's LiveLink shows agents' steps)
         if old is not None and old.folder and Path(old.folder).exists() and self.kind.snapshot and bridge is not None:
             self._picture(bridge, old)
+        self.places.save(old, bridge)                    # where the person left the old one (screen state, not a change)
         self.host.show(doc)
+        self.places.restore(doc, self.host.bridge)       # …and the new one where it was left
         if self._fresh and old is not None and Path(old.folder or "") == self._fresh:
             if not old.history.changes and Path(doc.folder or "") != self._fresh:
                 shutil.rmtree(self._fresh, ignore_errors=True)
@@ -215,6 +224,7 @@ class ProjectFiles(FileMenuSlots, QObject):
 
     def close(self):
         """The app is quitting: keep the picture; a New project nobody changed leaves nothing behind."""
+        self.places.save(self.doc, self.host.bridge)
         if self.doc is not None and self.has_project() and self.kind.snapshot and self.host.bridge is not None:
             self._picture(self.host.bridge, self.doc)
         if self._fresh and self.doc is not None and not self.doc.history.changes:

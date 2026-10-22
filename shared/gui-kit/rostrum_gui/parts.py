@@ -1,11 +1,11 @@
 """Slots and handlers for a bridge that live outside the bridge class (no Qt object of their own).
 
-Three ways, from the lightest; each leaves the existing bridges as they are:
+Two ways; each leaves the existing bridges as they are:
 - A slot mix-in: a plain class (no base) whose methods carry `@Slot`. List it before DocBridge in the bridge's
   bases and QML sees its slots as the bridge's own: `class Bridge2D(ZoomSlots, DocBridge)`. The mix-in reaches the
   bridge through `self` (`self.doc`, `self.who`, `self._apply`, `self._guard`). `SlotMixin` below only names the idea.
-- `bridge.attach("pen", Pen(self))`: a QObject with its own slots and properties, read in QML as `bridge.pen`
-  (the old way, `@Property(QObject, constant=True)`, written once for every part).
+- (S36: `bridge.attach(name, obj)` is gone: a dynamic property on the bridge reads as null from QML. A part that is a
+  QObject of its own is offered with `@Property(QObject, constant=True)` on the app's bridge, or through `invoke`.)
 - `bridge.handle("zoomTo", fn)`: a Python function registered by name from any module; QML calls
   `bridge.invoke("zoomTo", [args])`. A handler that raises RostrumError is reported, never swallowed (like an edit).
 """
@@ -19,13 +19,7 @@ class SlotMixin:
 
 
 class Parts:
-    """Mixed into DocBridge: the registry behind `attach`, `handle` and `invoke`."""
-
-    def attach(self, name: str, obj) -> None:
-        """Offer `obj` (a QObject) to QML as `bridge.<name>`."""
-        if self.property(name) is not None:
-            raise RostrumError(codes.CONFLICT, "bridge", f'"{name}"', "is already a property of the bridge")
-        self.setProperty(name, obj)                  # a dynamic property: the bridge class stays untouched
+    """Mixed into DocBridge: the registry behind `handle` and `invoke`."""
 
     def handle(self, name: str, fn) -> None:
         if name in self._kit.handlers:

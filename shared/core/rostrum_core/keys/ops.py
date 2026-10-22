@@ -24,6 +24,8 @@ KEY_TIME = dict(min=-36000, max=36000, unit="s", markers=True)  # where a key si
 V = Param.number("v", label="Value", help="For a number field")
 C = Param.color("c", label="Colour", help="For a colour field")
 EASE = Param.choice("ease", EASES, label="Ease", help="Shapes the way to the next key")
+FROM = Param.text("from", label="From", importance="deep",
+                  help="Optional words on where the key came from (lip sync: the sound it was made from)")
 
 
 def key_id(owner: str, prop: str, t) -> str:
@@ -57,8 +59,9 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
         existing = next((k for k in keys_of(owner, prop) if same_time(k["t"], t)), None)
         if existing:
             ctx.set(existing["id"], field, value)
-            if "ease" in args:
-                ctx.set(existing["id"], "ease", args["ease"])
+            for k in ("ease", "from"):
+                if k in args:
+                    ctx.set(existing["id"], k, args[k])
             return
         taken = index(ctx.doc, ctx.kind.lists)
         id_ = key_id(owner_id, prop, t)
@@ -66,11 +69,12 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
             id_ = ids.counted(taken, id_)
         after = sum(1 for k in owner.get("keys", []) if (k["prop"], order(k["t"])) < (prop, order(t)))
         ctx.insert(owner_id, "keys", {"id": id_, "type": "key", "prop": prop, "t": t, field: value,
-                                      "ease": args.get("ease", "smooth")}, after)
+                                      "ease": args.get("ease", "smooth"),
+                                      **({"from": args["from"]} if args.get("from") else {})}, after)
 
     @registry.operation("key.add", "Set a field's value at a time (adds a key, or changes the one at that time). "
                         + key_add_help, target=owners, label="Add key",
-                        params=[PROP, *sets, Param.number("t", label="Time", required=True, **KEY_TIME), *vals, EASE])
+                        params=[PROP, *sets, Param.number("t", label="Time", required=True, **KEY_TIME), *vals, EASE, FROM])
     def key_add(ctx, targets, args):
         if "fields" in args:
             return _key_set(ctx, targets, args)
@@ -95,7 +99,8 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
                     keyed += 1
         if not keyed:
             ctx.fail(codes.BAD_ARGUMENT, f'fields "{args["fields"]}"', "has nothing these items can key now",
-                     hint="Their fields may be driven by an expression or an auto layout.")
+                     hint="Their fields may be driven by an expression or an auto layout, or every field already "
+                     "holds this value.")
 
     @registry.operation("key.remove", "Delete keys. A field whose last key goes keeps that key's value as its still value.",
                         target="key", label="Delete key", importance="secondary")

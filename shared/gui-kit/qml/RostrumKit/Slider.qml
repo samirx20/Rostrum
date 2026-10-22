@@ -32,7 +32,7 @@ Item {
     Keys.onRightPressed: (e) => nudge(1, e.modifiers)
     WheelHandler {
         enabled: s.activeFocus
-        acceptedModifiers: Qt.NoModifier | Qt.ShiftModifier | Qt.AltModifier
+        acceptedModifiers: Qt.KeyboardModifierMask   // any: NoModifier is 0, so "None | Shift | Alt" meant Shift+Alt only (S36)
         onWheel: (e) => s.nudge((e.angleDelta.y || e.angleDelta.x) / 120, e.modifiers)
     }
 

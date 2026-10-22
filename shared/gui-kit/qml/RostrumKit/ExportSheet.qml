@@ -42,7 +42,7 @@ Panel {
 
     Flickable {
         id: flick
-        anchors.fill: parent
+        anchors { left: parent.left; right: parent.right; top: parent.top; bottom: footer.top }
         contentHeight: col.height + Theme.pad
         clip: true
         boundsBehavior: Flickable.StopAtBounds
@@ -99,44 +99,49 @@ Panel {
                 }
             }
 
-            Item { width: 1; height: Theme.grid }
-            Button {
-                width: parent.width
-                visible: !sheet.running
-                text: "Export"; kind: "primary"
-                onClicked: sheet.model.request()
-            }
-            Row {           // while it runs: how far, and Cancel
-                visible: sheet.running
-                width: parent.width; spacing: Theme.gap
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - (cancelBtn.visible ? cancelBtn.width + Theme.gap : 0); height: 4; radius: 2; color: Theme.raised
-                    Rectangle { height: parent.height; radius: 2; color: Theme.accent
-                                width: sheet.model && sheet.model.progress >= 0 ? parent.width * sheet.model.progress : parent.width / 4
-                                opacity: sheet.model && sheet.model.progress >= 0 ? 1 : 0.5 }
-                }
-                Button { id: cancelBtn; visible: sheet.model && sheet.model.cancellable; text: "Cancel"
-                         onClicked: sheet.model.cancel() }
-            }
-            Text {          // what it is doing, what it made, or what failed (one sentence; the old file is kept)
-                visible: sheet.model && sheet.model.state !== "" && text !== ""
-                width: parent.width; wrapMode: Text.Wrap
-                text: !sheet.model ? "" : sheet.model.state === "failed" ? sheet.model.note.replace(/^Error: [a-z_ ]+: /, "")
-                                        : sheet.model.state === "done" && sheet.model.note === sheet.model.doneMessage ? "" : sheet.model.note
-                color: sheet.model && sheet.model.state === "failed" ? Theme.danger : Theme.fg2
-                font.family: uiFont; font.pixelSize: Theme.body
-            }
-            Row {           // done: Exported · Play · Show in folder
-                visible: sheet.model && sheet.model.state === "done"
-                spacing: Theme.gap
-                Text { text: "Exported"; color: Theme.ok; font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold
-                       height: 16; verticalAlignment: Text.AlignVCenter }
-                Link { text: "Play"; onClicked: sheet.model.play() }
-                Link { text: "Show in folder"; onClicked: sheet.model.showInFolder() }
-            }
         }
     }
+    Column {        // Export and what it is doing: pinned under the choices, never scrolled out of sight (S36)
+        id: footer
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+        topPadding: Theme.gap; spacing: Theme.gap
+        Button {
+            width: footer.width
+            visible: !sheet.running
+            text: "Export"; kind: "primary"
+            onClicked: sheet.model.request()
+        }
+        Row {           // while it runs: how far, and Cancel
+            visible: sheet.running
+            width: footer.width; spacing: Theme.gap
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                width: footer.width - (cancelBtn.visible ? cancelBtn.width + Theme.gap : 0); height: 4; radius: 2; color: Theme.raised
+                Rectangle { height: parent.height; radius: 2; color: Theme.accent
+                            width: sheet.model && sheet.model.progress >= 0 ? parent.width * sheet.model.progress : parent.width / 4
+                            opacity: sheet.model && sheet.model.progress >= 0 ? 1 : 0.5 }
+            }
+            Button { id: cancelBtn; visible: sheet.model && sheet.model.cancellable; text: "Cancel"
+                     onClicked: sheet.model.cancel() }
+        }
+        Text {          // what it is doing, what it made, or what failed (one sentence; the old file is kept)
+            visible: sheet.model && sheet.model.state !== "" && text !== ""
+            width: footer.width; wrapMode: Text.Wrap
+            text: !sheet.model ? "" : sheet.model.state === "failed" ? sheet.model.note.replace(/^Error: [a-z_ ]+: /, "")
+                                    : sheet.model.state === "done" && sheet.model.note === sheet.model.doneMessage ? "" : sheet.model.note
+            color: sheet.model && sheet.model.state === "failed" ? Theme.danger : Theme.fg2
+            font.family: uiFont; font.pixelSize: Theme.body
+        }
+        Row {           // done: Exported · Play · Show in folder
+            visible: sheet.model && sheet.model.state === "done"
+            spacing: Theme.gap
+            Text { text: "Exported"; color: Theme.ok; font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold
+                   height: 16; verticalAlignment: Text.AlignVCenter }
+            Link { text: "Play"; onClicked: sheet.model.play() }
+            Link { text: "Show in folder"; onClicked: sheet.model.showInFolder() }
+        }
+    }
+    EdgeFade { flick: flick; anchors.fill: flick }   // a half-scrolled row fades (S36 stray check)
 
     FolderDialog {
         id: folderDialog

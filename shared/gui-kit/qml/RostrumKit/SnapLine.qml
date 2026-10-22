@@ -13,7 +13,6 @@ Item {
     property bool vertical: true
     property real from: 0
     property real to: 0
-    readonly property color magenta: "#ff2fd0"     // 1.11's snap colour (Theme has no token for it yet)
     readonly property real span: to > from ? to - from : (vertical ? parent.height : parent.width)
     z: 999
     x: vertical ? Math.round(at) : (to > from ? from : 0)
@@ -21,14 +20,14 @@ Item {
     width: vertical ? 1 : span
     height: vertical ? span : 1
 
-    Rectangle { anchors.fill: parent; color: line.magenta }
+    Rectangle { anchors.fill: parent; color: Theme.snap }
 
     Rectangle {                                    // the name, kept inside the parent
         id: chip
         visible: line.name !== ""
         width: Math.min(words.implicitWidth + 2 * Theme.grid, 200); height: words.implicitHeight + 2
         radius: 3
-        color: line.magenta
+        color: Theme.snap
         x: line.vertical ? Math.min(2, line.parent.width - line.x - width) : 2
         y: line.vertical ? 2 : (line.y > height + 2 ? -height - 1 : 2)
         Text {
@@ -38,7 +37,7 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
             text: line.name
-            color: "#ffffff"; font.family: uiFont; font.pixelSize: Theme.label
+            color: Theme.snapText; font.family: uiFont; font.pixelSize: Theme.label
         }
     }
 }

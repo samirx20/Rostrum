@@ -104,6 +104,13 @@ The error codes and the one-line message format are defined once, in `shared/mcp
 - Undo is a **new change** that applies the reverse of an earlier one (`"Undid: Move logo"`; a redo reads `"Redid: Move logo"`). History only grows, so undo itself can be undone and every step stays visible.
 - **Undo is per author.** A person's Ctrl+Z undoes that person's last change, never the agent's (like a shared online document). An agent's `undo` undoes its own. The history panel can undo any single change, or a whole agent session at once.
 - Undo refuses, changing nothing, when a later change touched the same thing, and says which change.
+- **One step across documents** (`rostrum_core.joint`, S36). Every change carries a `step` id. An app operation that
+  changes several documents opens one step (`with joint.step(): …`), and a change a listener makes while another is
+  being recorded (a cue marker following its layer) joins that change's step on its own. `desk.undo` / `desk.redo`
+  take a step back or bring it back **whole**, in every document it reached: all are checked first, a refusal in
+  any changes none. A document the step reached that isn't open is asked for with `open_item(item_id)` (the kit's
+  bridge hook of that name); without it the undo is refused in words. `.rostrum/steps.jsonl` records which
+  documents a step reached.
 
 ### A drag is one step
 - The GUI opens a **gesture** when a drag (or a slider scrub) starts. While it moves, the document updates live in memory and the viewer redraws; on release the gesture is saved as **one** change.

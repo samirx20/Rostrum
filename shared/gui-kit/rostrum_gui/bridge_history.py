@@ -22,6 +22,11 @@ class HistoryParts:
         docs = [p.history_doc() for p in self._kit.partners]
         return [self.doc.history] + [d.history if d is not None else _NONE for d in docs]
 
+    def open_item(self, item_id):
+        """A document a step across documents reached that isn't joined here (rostrum_core.desk / joint.py), opened
+        live for Undo / Redo; None = this app can't open it, and the undo is refused in words. Apps override."""
+        return None
+
     def join_history(self, partner):
         """Another document edited from this screen joins the one undo history and the change count (AGENTS.md
         rule 3; rostrum_core.desk). `partner`: `history_doc()` (its Document now, or None), `stepped(doc)` (save and

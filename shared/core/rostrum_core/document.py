@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from . import edits as E
-from . import run
+from . import joint, run
 from .diff import diff
 from .errors import RostrumError, codes
 from .history import Change, History
@@ -132,10 +132,12 @@ class Document:
 
     def _record(self, work, edits, who, label, calls, session, undoes, redoes) -> Change:
         c = Change(self.seq + 1, self.seq, who, label, _now(), list(edits), list(calls), session,
-                   doc_hash(work), list(undoes), list(redoes), self.clock())
+                   doc_hash(work), list(undoes), list(redoes), self.clock(), joint.current() or joint.new_id())
         self.data = work
         self.history.add(c)
-        self._emit(Event("change", c))
+        joint.note(self, c.step)
+        with joint.within(c.step):          # what a listener changes now (a marker following a layer) is this step
+            self._emit(Event("change", c))
         return c
 
     def _check_based_on(self, edits, based_on):
@@ -158,7 +160,8 @@ class Document:
         last.edits = [E.Set(e.id, e.path, e.value, first[(e.id, *e.path)]) for e in edits]
         last.calls, last.t, last.hash_after = last.calls + calls, self.clock(), doc_hash(work)
         self.data = work
-        self._emit(Event("change", last))
+        with joint.within(last.step):
+            self._emit(Event("change", last))
         return True
 
     # undo / redo: new changes, per author
@@ -178,9 +181,14 @@ class Document:
         cs = [c for c in self.history.changes if c.original and c.session == session and not self.history.done[c.seq]]
         if not cs:
             return None
-        self.history.blockers(cs, max(self.history.at[c.seq] for c in cs))
-        edits = [e for c in sorted(cs, key=lambda c: c.seq) for e in c.edits]
-        return self._replay(edits, who, f"Brought back: {cs[-1].label}", redoes=[c.seq for c in cs])
+        return self.redo_changes(cs, who, f"Brought back: {cs[-1].label}")
+
+    @_through_door
+    def redo_changes(self, targets, who, label=None) -> Change:
+        """Bring back undone originals `targets` as one new change (refused like any redo)."""
+        self.history.blockers(targets, max(self.history.at[c.seq] for c in targets))
+        edits = [e for c in sorted(targets, key=lambda c: c.seq) for e in c.edits]
+        return self._replay(edits, who, label or f"Redid: {targets[-1].label}", redoes=[c.seq for c in targets])
 
     @_through_door
     def undo_changes(self, targets, who, label=None) -> Change:

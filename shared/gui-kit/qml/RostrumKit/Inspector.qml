@@ -9,16 +9,18 @@ import "."
 // Several items of different kinds: a line per kind at the top ("3 layers ›", bridge.narrowLines); a click keeps only
 // that kind (bridge.narrowTo). The last line: who changed the selection last and when (bridge.lastChanged); a click
 // opens History (bridge.agent.askHistory). Both are absent when there is nothing to say.
+// An app with `effects: true` (after rostrum_gui.effects.attach(bridge, spec)) also gets the "Effects (n) +" section under the rows (EffectsRow).
 Panel {
     id: panel
     property var bridge
+    property bool effects: false         // the "Effects (n) +" section (an app that called rostrum_gui.effects.attach)
     property bool keyMarks: false        // an app with keys: rows show key marks (see InspectorRow)
     property var highlight: []           // field ids marked as in focus (2D: the settings whose keys are picked)
     property alias below: belowSlot.data // an app's own group under the rows, in the same scroll (2D: "Paint on …")
     readonly property bool finds: !!panel.bridge.sectioned
     property int tick: 0                 // "2 min ago" ages while the panel stays open
-    readonly property var narrow: { panel.bridge.selection; return panel.bridge.narrowLines() }
-    readonly property var last: { panel.bridge.selection; panel.bridge.historyCount; panel.tick; return panel.bridge.lastChanged() }
+    readonly property var narrow: { panel.bridge.selection; return panel.bridge.narrowLines ? panel.bridge.narrowLines() : [] }
+    readonly property var last: { panel.bridge.selection; panel.bridge.historyCount; panel.tick; return panel.bridge.lastChanged ? panel.bridge.lastChanged() : ({}) }   // a page bridge (Brush, Settings) has neither
     readonly property bool hasLast: panel.bridge.selected !== "" && !!panel.last.who
     title: "Inspector"
 
@@ -77,11 +79,13 @@ Panel {
                 delegate: InspectorRow { bridge: panel.bridge; keyMarks: panel.keyMarks
                                          highlighted: model.row === "param" && panel.highlight.indexOf(model.id) >= 0 }
             }
+            EffectsRow { part: panel.effects ? panel.bridge.invoke("effects", []) : null }   // "Effects (n) +" (effects.attach)
             Column { id: belowSlot; width: parent.width }
         }
         Text { visible: panel.finds && panel.bridge.nothingFound; text: "No setting matches"; y: Theme.grid
                color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body }
     }
+    EdgeFade { flick: scroller; anchors.fill: scroller }   // a half-scrolled row fades, never a stray "." (S36)
     VScrollBar { flick: scroller }
     Item {  // the last line: who changed the selection last (a click opens History)
         id: lastLine

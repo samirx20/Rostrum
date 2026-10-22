@@ -1,5 +1,6 @@
 """The one key shape, as a fields table: the value one field has at one time (`t` seconds; `v` a number, `c` a
-colour, `d` a path's shape) and the `ease` that shapes the stretch to the next key. Both apps' "key" item type is
+colour, `d` a path's shape) and the `ease` that shapes the stretch to the next key; optionally `from`, a label
+saying where the key came from ("Voice · line 3": lip sync keys name their sound). Keys without it read as before. Both apps' "key" item type is
 this list. `prop` names the field and never changes."""
 from __future__ import annotations
 
@@ -10,6 +11,7 @@ from .easing import NAMES as EASES
 _IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 
 
+_HAS_FROM = {"not": {"any": [_IS("from", ""), _IS("from", None)]}}   # an old key without one shows no row
 # stiffness / damping only on a spring not written in words (an app's `rawSpring` fact: no bounce / speed on the key)
 _RAW = {"all": [_IS("ease", "spring"), {"fact": "rawSpring"}]}
 
@@ -28,6 +30,9 @@ KEY_FIELDS = [
     Param.text("d", label="Shape", group="Key", importance="primary", valid_when={"fact": "shape"}, default="",
                help="Path data; the engine morphs it into the next key's shape"),
     Param.choice("ease", list(EASES), label="Ease", group="Key", importance="primary", default="smooth"),
+    Param.text("from", label="From", group="Key", importance="secondary", default="", valid_when=_HAS_FROM,
+               help="Where the key came from, in words (lip sync: the sound it was made from); optional, shown only "
+               "when set"),
     Param.choice("after", AFTER, label="After the last key", group="Key", importance="secondary", default="stay",
                  labels=AFTER_WORDS, help="Read on a field's last key: stay, repeat the keys, back and forth, or carry on "
                  "at the speed it arrived with (after.py)"),

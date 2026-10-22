@@ -85,12 +85,11 @@ Steps: `select <id>`, `set <param> <value>`, `scrub <param> <v> <v> …`, `undo`
 
 ## Bridge pieces from other modules (parts.py)
 
-A bridge file need not hold every slot. Three ways, lightest first (existing bridges keep working as they are):
+A bridge file need not hold every slot. Two ways (existing bridges keep working as they are):
 1. **Slot mix-in.** A plain class (no base, not a QObject) whose methods carry `@Slot`; list it before `DocBridge`:
    `class Bridge2D(ZoomSlots, DocBridge)`. QML sees the slots as the bridge's own; the mix-in uses `self.doc`,
    `self._apply`, `self._guard`. (A QObject base would hide the slots.)
-2. **`self.attach("pen", Pen(self))`**: a QObject with its own slots, read in QML as `bridge.pen`.
-3. **`self.handle("zoomTo", fn)`** registers a Python function by name from any module; QML calls
+2. **`self.handle("zoomTo", fn)`** registers a Python function by name from any module; QML calls
    `bridge.invoke("zoomTo", [args])`. A `RostrumError` from it is reported like a refused edit.
 
 ## The background picture worker (frames.py)

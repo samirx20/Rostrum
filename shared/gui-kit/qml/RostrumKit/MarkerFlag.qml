@@ -5,17 +5,21 @@ import "."
 // marker band, above the time labels. Shared markers (the project's, seen in every app; `shared` missing = shared)
 // are solid with a small chain; this scene's or song's own are hollow. With the ruler's editMarkers: drag = one
 // markerMoved on release, double-click = rename in place (Enter keeps, Esc cancels), × on hover = markerRemoved.
+// Right-click: the Ruler's marker menu (Rename, Move to playhead, Colour, Shared / Only here, Delete) when the ruler has
+// a `markerSource`; Rename there starts the same name field (`startRename()`).
 Item {
     id: mk
     required property var modelData
     property Item ruler
     readonly property var ru: ruler ? ruler : stub    // (the ruler arrives after the first bindings run)
     QtObject { id: stub; property real width; property real height; property int flagTop; property bool editMarkers
-               function xOfSec(s) { return -1 } function nextX(at) { return 0 } }
+               function xOfSec(s) { return -1 } function nextX(at) { return 0 }
+               function openMarkerMenu(flag, marker, x, y) { } }
     readonly property bool shared: modelData.shared !== false
     readonly property color tint: modelData.colour ? modelData.colour : Theme.warn
     property real dx: 0                      // while dragging (one move on release)
     property bool naming: false
+    function startRename() { naming = true; editor.text = modelData.name; editor.selectAll(); editor.forceActiveFocus() }
     x: Math.round(ru.xOfSec(modelData.at) + dx); width: 1; height: ru.height
     visible: x >= 0 && x <= ru.width
     z: hit.containsMouse || crossHit.containsMouse || naming ? 2 : 1
@@ -46,14 +50,19 @@ Item {
             preventStealing: true
             cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
             property real x0: 0
-            onPressed: (m) => { x0 = m.x; mk.dx = 0 }
-            onPositionChanged: (m) => { if (pressed) mk.dx = m.x - x0 }
+            onPressed: (m) => { x0 = hit.mapToItem(null, m.x, 0).x; mk.dx = 0 }     // window x: the flag moves under the pointer
+            onPositionChanged: (m) => { if (pressed) mk.dx = hit.mapToItem(null, m.x, 0).x - x0 }
             onReleased: {
                 if (Math.abs(mk.dx) >= 2)
                     ru.markerMoved(modelData.id, ru.secOf(ru.xOfSec(modelData.at) + mk.dx))
                 mk.dx = 0
             }
-            onDoubleClicked: { mk.naming = true; editor.text = modelData.name; editor.selectAll(); editor.forceActiveFocus() }
+            onDoubleClicked: mk.startRename()
+        }
+        TapHandler {      // right-click: the marker menu (built from the marker operations, rostrum_gui/marker_menu.py)
+            acceptedButtons: Qt.RightButton
+            enabled: ru.editMarkers && !mk.naming
+            onTapped: (pt) => { const p = flag.mapToItem(null, pt.position.x, pt.position.y); ru.openMarkerMenu(mk, modelData, p.x, p.y) }
         }
         HoverTip { text: modelData.name + (mk.shared ? " · shared with the project" : " · only here")
                    help: ru.editMarkers ? "Drag to move it, double-click to rename." : ""
