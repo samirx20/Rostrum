@@ -5,7 +5,8 @@ import RostrumKit
 // click selects alone, Ctrl+click adds / removes, Shift+click the run between; a press that moves 4 px or more
 // drags every selected item in time and (notes) in pitch (Ctrl: no snapping, Shift: only in time, Alt: a copy;
 // one undo step). Empty space: a click clears and puts the playhead there, a drag draws a box (Ctrl adds),
-// a double-click adds a note. A note's right end sets its length (every selected note by the same amount, one undo
+// a double-click adds a note (or, on the drum rows, a hit). The Draw tool (B; V is Select): a click on empty space adds
+// a note one grid step long (drag on: longer) or a hit. The two tools' buttons are in the Editor's header (PianoRoll). A note's right end sets its length (every selected note by the same amount, one undo
 // step; the pointer shows ↔ over it). Right-click: the selection's actions, or the menu for that time.
 MouseArea {
     id: m
@@ -19,7 +20,7 @@ MouseArea {
     hoverEnabled: true
     readonly property real snapPx: 6     // snapping catches within 6 px (INTERACTION.md §1.11)
     property string hover: ""
-    cursorShape: mode === "handle" || hover !== "" ? Qt.SizeHorCursor : Qt.ArrowCursor
+    cursorShape: mode === "handle" || hover !== "" ? Qt.SizeHorCursor : backend.tool === "draw" ? Qt.CrossCursor : Qt.ArrowCursor
     function endUnder(e) { return kind === "notes" ? backend.rollHandleAt(bars.tOf(e.x), grid.rowAt(e.y), snapPx / bars.perSec) : ({}) }
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     property real x0: 0
@@ -50,6 +51,11 @@ MouseArea {
         }
         var h = endUnder(e)
         if (h.id) { hit = h.id; mode = "hpress"; return }
+        if (hit === "" && backend.tool === "draw") {          // Draw: a click on empty space adds a note / hit there
+            hit = backend.drawAt(bars.tOf(e.x), grid.rowAt(e.y))
+            mode = hit !== "" && kind === "notes" ? "hpress" : ""   // dragging on sets the new note's length
+            return
+        }
         if (hit !== "" && !ctrl(e) && !shift(e) && !backend.picked[hit]) backend.select(hit)
         mode = hit !== "" ? "press" : "empty"
     }
@@ -78,8 +84,11 @@ MouseArea {
         mode = ""
     }
     onCanceled: { if (mode === "drag" || mode === "handle") backend.cancelDrag(); if (mode === "box") backend.endBox(); mode = "" }
-    onDoubleClicked: (e) => { if (kind === "notes" && backend.rollAt(bars.tOf(e.x), grid.rowAt(e.y), 0) === "")
-                                  backend.addNote(bars.tOf(e.x), Math.round(grid.rowAt(e.y))) }
+    onDoubleClicked: (e) => {   // empty space: a note on that key, or a hit on that drum (Select tool; Draw adds on a click)
+        if (backend.tool === "draw" || backend.rollAt(bars.tOf(e.x), grid.rowAt(e.y), 0) !== "") return
+        if (kind === "notes") backend.addNote(bars.tOf(e.x), Math.round(grid.rowAt(e.y)))
+        else if (kind === "drums") backend.addHit(bars.tOf(e.x), grid.rowAt(e.y))
+    }
 
     Rectangle {   // the box being dragged
         visible: m.mode === "box"

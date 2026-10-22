@@ -12,8 +12,27 @@ Panel {
     readonly property int keysWidth: kind === "drums" ? 76 : 52     // drum names ("Open hat") are longer than note names
     title: roll.name !== "" ? roll.name : "Piano roll"
     headerRight: [
+        Row {   // the Editor's two tools (Select V, Draw B; INTERACTION 1.1): a click adds in Draw (backend.tool)
+            anchors.verticalCenter: parent.verticalCenter; spacing: 2; rightPadding: Theme.gap
+            visible: p.kind === "notes" || p.kind === "drums"
+            Repeater {
+                model: [{ v: "select", label: "Select", key: "V" }, { v: "draw", label: "Draw", key: "B" }]
+                delegate: Rectangle {
+                    required property var modelData
+                    readonly property bool on: backend.tool === modelData.v
+                    width: t.implicitWidth + 2 * Theme.gap; height: 22; radius: 4
+                    color: on ? Theme.accentSoft : ta.containsMouse ? Theme.hover : Theme.raised
+                    border.color: on ? Theme.accent : Theme.popupEdge
+                    Text { id: t; anchors.centerIn: parent; text: parent.modelData.label; color: parent.on ? Theme.fg : Theme.fg2
+                           font.family: uiFont; font.pixelSize: Theme.label }
+                    MouseArea { id: ta; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: backend.setTool(parent.modelData.v) }
+                    HoverTip { text: parent.modelData.label + "  " + parent.modelData.key; hovered: ta.containsMouse; pressed: ta.pressed }
+                }
+            }
+        },
         Text { anchors.verticalCenter: parent.verticalCenter; rightPadding: Theme.grid
-               text: p.kind === "notes" ? "Double-click to add a note  ·  Ctrl drags freely  ·  Ctrl + wheel zooms"
+               text: p.kind === "notes" ? (backend.tool === "draw" ? "Click to add a note" : "Double-click to add a note") + "  ·  Ctrl drags freely"
                    : p.kind === "drums" || p.kind === "audio" ? "Ctrl drags freely" : ""
                color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label }
     ]

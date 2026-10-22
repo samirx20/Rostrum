@@ -155,7 +155,7 @@ def file_step(screen, step) -> bool:
         QMetaObject.invokeMethod(screen.win, "openFileMenu")
     elif word == "add-track":                 # add-track <sound key> (the Sounds panel: adder.py; old names still work)
         screen.ctx_adder.add(rest)
-    elif word in ("library", "sounds"):       # the Library, open (Ctrl+L)
+    elif word == "sounds" or step.strip() == "library":     # the Library, open (Ctrl+L); `library <chip>`: steps_select
         QMetaObject.invokeMethod(screen.win, "openLibrary")
     elif word in ("export-open", "deliver-open"):     # the Export sheet, open (Ctrl+E)
         screen.parts["mixer"].export.setDialogOpen(True)

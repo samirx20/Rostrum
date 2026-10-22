@@ -16,6 +16,20 @@ from . import moves, selection, timing
 class KeySlots:
     loopChanged = Signal()
     renamingChanged = Signal()
+    toolChanged = Signal()
+
+    @Property(str, notify=toolChanged)
+    def tool(self):
+        """The Editor's tool: "select" (V: click picks, drag moves, box) or "draw" (B: a click on empty space adds a
+        note or a hit; a drag sets the note's length). Screen state."""
+        return getattr(self, "_tool", "select")
+
+    @Slot(str)
+    def setTool(self, name):
+        if name not in ("select", "draw"):
+            return self._fail(f'Error: tool: "{name}" is not a tool (select, draw).')
+        self._tool = name
+        self.toolChanged.emit()
 
     @Slot(str, int, result=bool)
     def nudge(self, how, sign):

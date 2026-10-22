@@ -36,6 +36,7 @@ ROUTES = {
     **{f"nudge_{d}{s}": ("nudge", how, 1 if d == "right" else -1) for d in ("left", "right") for s, how in _NUDGE.items()},
     "nudge_up": ("pitchStep", 1), "nudge_down": ("pitchStep", -1), "nudge_up_big": ("pitchStep", 12),
     "nudge_down_big": ("pitchStep", -12),
+    "move_tool": ("setTool", "select"), "paint_tool": ("setTool", "draw"),        # V / B: the Editor's tools
     "editor_dock": ("dock", "editor"), "mixer_dock": ("dock", "mixer"), "library": ("dock", "library"),
 }
 SKIP = ["new", "open", "save_version", "duplicate_file", "add_file", "preferences", "quit", "export", "export_again",

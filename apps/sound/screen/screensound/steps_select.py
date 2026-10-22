@@ -18,6 +18,8 @@ bridge call a click, a box, a key or a menu makes.
       marker) | ask <action key> (its number field, open: for a picture) | place <design> (the Library's designed sound,
       double-clicked) | library <chip> (the Library open on a chip) | clean-open (the Clean up popover, open) |
       clean <voice 0|1> <noise 0|1> <echo 0|1> (Clean: the steps on the selected clips, then their cleaned takes)
+    tool select|draw (the Editor's tool) | add-hit <t s> <drum row> (a double-click on an empty drum row) |
+      draw <t s> <key or drum row> (a click with the Draw tool)
 """
 from __future__ import annotations
 
@@ -28,7 +30,7 @@ from PySide6.QtTest import QTest
 WORDS = ("select-many", "select-add", "select-run", "select-all", "box", "range", "range-clear", "action",
          "action-bar", "menu", "menu-roll", "key", "copy", "cut", "paste", "drag-many", "handle", "lock", "loop",
          "range-edge", "rename-open", "rename", "open", "jump", "playhead-step", "fit-selection", "marker-add",
-         "fit-bar", "ask", "place", "library", "clean-open", "clean")
+         "fit-bar", "ask", "place", "library", "clean-open", "clean", "tool", "add-hit", "draw")
 
 
 def _find(item, prop):
@@ -144,3 +146,9 @@ def do_select_step(bridge, win, word, rest):
         voice, noise, echo = (r == "1" for r in rest[:3])
         if bridge.cleanSelected(voice, noise, echo):
             bridge.mix.cleaning.makeFor(bridge.selectedIds)
+    elif word == "tool":
+        bridge.setTool(rest[0])
+    elif word in ("add-hit", "draw"):
+        made = (bridge.addHit if word == "add-hit" else bridge.drawAt)(float(rest[0]), float(rest[1]))
+        if not made:
+            raise RuntimeError(f"{word}: nothing added: {bridge.status}")

@@ -47,6 +47,36 @@ class EditSlots:
                 self.select(new[0])
         self._guard(go)
 
+    @Slot(float, float, result=str)
+    def addHit(self, t, row):
+        """Double-click on an empty drum row (or a click with Draw): a hit on that drum at the snapped time, one
+        step, selected. Returns its id ("" when none)."""
+        drums = self._view["roll"].get("drums") or []
+        i = int(round(row))
+        if not self._track or not 0 <= i < len(drums):
+            return ""
+        return self._add_one("hits", moves.add_hit_call(self.doc, self._track, t, drums[i]), "Add drum hit")
+
+    @Slot(float, float, result=str)
+    def drawAt(self, t, row):
+        """The Draw tool's click on empty space in the Editor: a note one grid step long on that key, or a hit on
+        that drum row; one step, selected. Returns the new id (a drag on then sets the note's length)."""
+        if self._view["roll"].get("kind") == "drums":
+            return self.addHit(t, row)
+        if not self._track:
+            return ""
+        call = moves.add_note_call(self.doc, self._track, t, int(round(row)), beats=timing.SNAP_BEATS)
+        return self._add_one("notes", call, "Draw note")
+
+    def _add_one(self, key, call, label):
+        before = {x["id"] for x in self.doc.item(self._track).get(key, [])}
+        if not self._guard(lambda: self._apply([call], label)):
+            return ""
+        new = [x["id"] for x in self.doc.item(self._track).get(key, []) if x["id"] not in before]
+        if new:
+            self.select(new[0])
+        return new[0] if new else ""
+
     @Slot()
     def removeSelected(self):
         if self._apt:
