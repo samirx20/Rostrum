@@ -10,7 +10,7 @@ the Python side (`python_only`): the engine never sees them. Rigs, long IK chain
 """
 from __future__ import annotations
 
-from . import drawing, exprbake, fields as F, layoutbake, paint_fields, render3d, retime, stepped, swap, video
+from . import drawing, exprbake, fields as F, layoutbake, paint_fields, project_sound, render3d, retime, stepped, swap, video
 from .layout_fields import py_only
 from rostrum_core.keys import after, animated, keys_of, springs
 
@@ -120,7 +120,7 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
         raise ValueError(f'no composition "{comp_id}"; there are: {", ".join(c["id"] for c in comps)}')
     fps = comp.get("fps", F.defaults("comp")["fps"])
     comp = retime.timed(comp, markers, fps)          # layers timed from a marker: every time in comp seconds from here
-    baked = exprbake.bake(comp, fps, markers)
+    baked = exprbake.bake(comp, fps, markers, lambda: project_sound.beats(folder, comp.get("soundtrack", ""), comp.get("duration", 5.0)))
     for item_id, fields in layoutbake.bake(comp, fps, baked).items():
         baked.setdefault(item_id, {}).update(fields)
     where = {"folder": folder, "markers": markers, "span": span, "until": comp.get("duration", F.defaults("comp")["duration"])}

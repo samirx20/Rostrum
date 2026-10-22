@@ -10,6 +10,8 @@ from pathlib import Path
 from .sample import SOURCE
 
 LONG_LAYER = "Title card for the summer launch film, second take"
+LONG_ERROR = ("The drawing engine stopped and could not be restarted: the engine program was ended from outside twice "
+              "within a minute (exit code 1), so drawing stopped. Save, then reopen Rostrum2D.")
 LONG_AGENT = "Claude: moved the title card, changed its colour, and re-timed the whole opening against the music"
 LONG_STATUS = "No graphics driver, so drawing is slower"
 LONG_PROJECT = "Summer_launch_film_for_the_new_headphones_-_final_cut_v3"   # a step's words: _ for spaces
@@ -35,6 +37,16 @@ def with_sound() -> list[str]:
     return sound_project(Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "With sound")
 
 
+def with_character() -> list[str]:
+    """Start args for the small character project (rig_sample.py), made fresh in the temp folder."""
+    from .rig_sample import character_project
+    return character_project(Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "Character")
+
+
+RIGGED = ["select max", "run layer:rig", "run layer:guess_bones", "bones"]     # H32: a rig with bones from part names
+MOUTHS = ["selectmany mouth_rest mouth_M_B_P mouth_E mouth_O mouth_A mouth_F_V", "run layer:swap"]
+
+
 LONG_FOLDER = r"C:\Users\Sam\Documents\Rostrum_projects\Summer_launch_film_for_the_new_headphones\deliveries\final_round_three_for_the_client"
 
 
@@ -43,10 +55,18 @@ def states() -> list[tuple[str, list[str], list[str]]]:
     busy = [*TWELVE, f"rename card {LONG_LAYER}", f"say {LONG_STATUS}"]
     return [
         ("workspace", ["--sample"], ["select title"]),
+        ("rig-make-first", with_character(), ["select max"]),                # H32: parts named like a body: Make rig first
+        ("rig-bones", with_character(), RIGGED),                             # H32: the bone overlay, a rig in hand
+        ("rig-attach", with_character(), [*RIGGED, "selectmany hand_R bone_5"]),   # a part + a bone: Attach to bone
+        ("rig-poses", with_character(), [*RIGGED, "posesave", "posesave", "inspectorscroll 900"]),   # the Poses list
+        ("lipsync-sheet", with_character(), [*RIGGED, *MOUTHS, "run layer:lipsync"]),             # Lip sync…
+        ("blinks-sheet", with_character(), [*RIGGED, "selectmany eyes_open eyes_closed", "run layer:swap", "run layer:blinks"]),
         ("sound-row", with_sound(), ["sound wait", "select logo"]),          # the Sound row, its waveform, 🔊
         ("sound-beats", with_sound(), ["sound beats on", "rulermenu"]),       # Show beats, the ruler's ▾ menu
         ("sound-compact", with_sound(), ["sound wait", "select logo", "timeline compact"]),
         ("sound-menu", with_sound(), ["sound wait", "sound menu"]),           # Open in RostrumSound
+        ("sound-cue-picker", with_sound(), ["sound wait", "select logo", "sound cue whoosh"]),   # H32: Add a sound here…
+        ("export-sheet-sound", with_sound(), ["sound wait", "exportsheet open mp4"]),          # H32: Include the project's sound
         ("rows-open", ["--sample"], ["select title", "open title"]),
         ("two-selected", ["--sample"], ["selectmany title card"]),
         ("action-menu", ["--sample"], ["selectmany dot rule", "actionmenu"]),
@@ -62,6 +82,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("long-rows-open", long(), [*busy, "open card"]),
         ("long-draw", long(), [*busy, "tool draw"]),
         ("file-menu", long(), [*busy, "filemenu open"]),
+        ("file-menu-sample", ["--sample"], ["filemenu open"]),                 # File > Open sample
+        ("long-status-line", ["--sample"], [f"say {LONG_ERROR}"]),               # elided with the whole text on hover
+        ("expression-typed", ["--sample"], ["select title", "set x =sin(time * 2) * 40 + 640", "open title"]),   # `=…` typed
         ("start-screen", long(), [f"duplicateproject {LONG_PROJECT}_{n}" for n in (2, 3)] + ["startscreen open"]),   # long recent names
         ("history-agent-run", ["--sample"], ["select title", "agent-run 6", "history open"]),
         ("agent-chip-long", long(), [*busy, "agent-run 3", f"agent-say {LONG_AGENT}"]),
@@ -108,4 +131,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("paint-strokes-picked", ["--sample"], [*PAINTED, "lasso 500,200 1000,200 1000,400 500,400"]),
         ("paint-alt-pick", ["--sample"], [*PAINTED, "altpick 750 310"]),
         ("set-depth", ["--sample"], ["tool draw", "draw 300 300 500 320 700 300", "tool move", "add camera", "select drawing_1"]),
+        # H32: a named frame size on Scene settings; the Camera tool (only with a camera) over the canvas; the Effects menu
+        ("scene-size", ["--sample"], ["select screen_sample", "set size vertical"]),
+        ("camera-tool", ["--sample"], ["add camera", "tool camera"]),
+        ("effects-menu", ["--sample"], ["select card", "clickbtn Effects", "wait 300"]),
     ]

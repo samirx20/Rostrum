@@ -27,6 +27,8 @@ def settings(row: dict, values: dict) -> list[dict]:
     if row["qualities"]:
         out.append({"key": "quality", "kind": "choice", "label": "Quality", "value": values["quality"],
                     "options": [{"value": q, "label": q.capitalize()} for q in row["qualities"]]})
+    if "sound" in values:                         # only an MP4 of a project that has sound (exporter.chose)
+        out.append({"key": "sound", "kind": "switch", "label": "Include the project's sound", "value": values["sound"]})
     return out
 
 
@@ -43,6 +45,8 @@ def facts(row: dict, f: dict, path: str) -> list[dict]:
         out.append({"label": "Transparency", "text": "kept" if f["alpha"] else "not kept"})
     if len(row["depths"]) > 1:
         out.append({"label": "Bit depth", "text": f'{f["depth"]}-bit'})
+    if f.get("sound"):
+        out.append({"label": "Sound", "text": "the project's mix"})
     if f.get("kbps"):
         out.append({"label": "Bitrate", "text": f'{f["kbps"] / 1000:.1f} Mbit/s'})
     return out

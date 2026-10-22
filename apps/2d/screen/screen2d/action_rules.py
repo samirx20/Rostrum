@@ -7,6 +7,7 @@ field's `valid_when`), read on the selection's facts below. Its `calls`:
     {"op": "group.make", "target": "stack", "args": {"id": "$new:group", "as": "group"}}
     {"rule": "order", "how": "front"}                    a named rule that makes several calls (layer.arrange)
     {"rule": "depth", "value": 3.0}                      Set depth: drawing.set depth + background.fit
+    {"rule": "attach"}                                   Attach to bone: bind.add or bind.set (rig_attach.py)
 
 Target rules: ids (in pick order) · stack (bottom first) · stack_but_top · rest (all but the first) · locked ·
 unlocked · hidden · shown · not_copied. Argument values starting with "$" are rules: $new:<type> (a fresh id, so the
@@ -16,9 +17,15 @@ $first (the first picked) · $copied (the layer whose style was copied). Anythin
 from __future__ import annotations
 
 from rostrum2d import fields as F
+from rostrum2d.names import display_name
 from rostrum2d.ops_group import HOLDERS, _why_not
+from rostrum2d.rig.bodynames import bodylike
+from rostrum2d.rig.guess import guessable
 from rostrum_core.ids import counted
 from rostrum_core.tree import index
+
+from . import rig_attach
+from .rig_mouths import is_eyes, is_mouth
 
 SHAPES = ("shape", "path")
 
@@ -26,7 +33,8 @@ SHAPES = ("shape", "path")
 class Facts:
     """What the selection is. `ids` are in the order they were picked (the first is the primary); `stack` bottom first.
     `facts` holds the named truths an action's `when` reads. `state`: {"at": id -> its own seconds at the playhead,
-    "copied": the layer whose style is copied ("" for none), "clipboard": layers can be pasted} (screen state)."""
+    "copied": the layer whose style is copied ("" for none), "clipboard": layers can be pasted, "picked": the selection as
+    the kit holds it, bones too} (screen state)."""
 
     def __init__(self, doc, ids: list[str], state: dict | None = None):
         self.state = {"at": lambda i: 0.0, "copied": "", "clipboard": False, "keys": [], **(state or {})}
@@ -43,6 +51,7 @@ class Facts:
                       "locked": [i for i in plain if doc.item(i).get("locked")],
                       "hidden": [i for i in plain if doc.item(i).get("hidden")],
                       "not_copied": [i for i in ids if i != copied], "keys": list(self.state["keys"])}
+        self.lists["comp"] = [_comp_of(doc, ids[0])] if ids else []   # the whole picture: the composition the layers are in
         self.lists["unlocked"] = [i for i in plain if i not in self.lists["locked"]]
         self.lists["shown"] = [i for i in plain if i not in self.lists["hidden"]]
         self.copied = copied if copied and doc.has(copied) else ""
@@ -59,8 +68,29 @@ class Facts:
             "any_hidden": bool(self.lists["hidden"]), "any_shown": bool(self.lists["shown"]),
             "style_copied": bool(self.copied) and any(i != self.copied for i in ids),
             "clipboard": bool(self.state["clipboard"]), "keys_picked": bool(self.state["keys"]),
+            "fills": self.kinds <= {"shape", "text", "path"},
+            "picture": self.kinds <= {"image", "video", "render3d"},     # Fill the frame comes first for a photo or clip
+            "has_sound": bool(self.state.get("sound")) and "camera" not in self.kinds,   # Add a sound here (sound_cue_pick.py)
+            # a character (rig/guess.py, rig_mouths.py): Bones from part names, Lip sync…, Add blinks…
+            "bones_guessable": self.count == 1 and guessable(self.items[0]),
+            "attachable": rig_attach.pair(doc, list(self.state.get("picked", []))) is not None,   # a part + a bone
+            "body_parts": groupable and p["type"] != "rig" and "rig" not in self.kinds and bodylike(_part_names(self.items)),   # Make rig first
+            "mouth_set": self.count == 1 and is_mouth(self.items[0]),
+            "eyes_set": self.count == 1 and is_eyes(self.items[0]),
             "depth_ok": self.kinds == {"drawing"} and bool(p) and p["type"] == "comp"
             and any(c["type"] == "camera" for c in p.get("layers", []))}      # Set depth: drawings of a comp with a camera
+
+
+def _comp_of(doc, id_: str) -> str:
+    while doc.item(id_)["type"] != "comp":
+        id_ = doc.parent_of(id_)[0]
+    return id_
+
+
+def _part_names(items: list[dict]) -> list[str]:
+    """The parts a selection would make a character of: one group's own layers, else the layers picked."""
+    one = items[0] if len(items) == 1 and items[0]["type"] == "group" else None
+    return [display_name(lay) for lay in (one.get("layers", []) if one else items)]
 
 
 def calls_of(spec: dict | None, f: Facts, at) -> list[dict]:
@@ -120,7 +150,8 @@ def _order(f: Facts, how: str) -> list[dict]:
 
 def _pose(f: Facts) -> list[dict]:
     """K: key.add fields "pose" on each selected layer at the playhead in its own seconds (one call per layer)."""
-    return [{"op": "key.add", "target": [i], "args": {"fields": "pose", "t": round(f.at(i), 6)}} for i in f.ids]
+    return [{"op": "rig.key", "target": [i], "args": {"t": round(f.at(i), 6)}} if f.doc.item(i)["type"] == "rig"   # a rig: its bones' pose (rig/joints.py)
+            else {"op": "key.add", "target": [i], "args": {"fields": "pose", "t": round(f.at(i), 6)}} for i in f.ids]
 
 
 POSE_WORDS = {"x": "position", "y": "position", "scale": "scale", "rotation": "rotation", "opacity": "opacity"}
@@ -147,4 +178,5 @@ def _depth(f: Facts, value: float) -> list[dict]:
             {"op": "background.fit", "target": todo, "args": {}}]
 
 
-RULES = {"order": _order, "pose": _pose, "depth": _depth}
+RULES = {"order": _order, "pose": _pose, "depth": _depth,
+         "attach": lambda f: rig_attach.calls(f.doc, list(f.state.get("picked", [])))}

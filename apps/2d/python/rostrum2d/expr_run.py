@@ -6,7 +6,7 @@ import math
 
 from rostrum_core.keys import mix_color
 from rostrum_core.markers import lookup
-from .expr_lib import CMPS, CONSTS, FUNCS, ExprError
+from .expr_lib import CMPS, CONSTS, FUNCS, ExprError, pulse
 
 
 def _num(v, col):
@@ -37,7 +37,8 @@ def _arith(op, a, b):
 
 
 def run(node, env):
-    """`env`: time, frame, fps, duration, markers ({name: seconds} | None) and get(item, field, t) -> value."""
+    """`env`: time, frame, fps, duration, markers ({name: seconds} | None), beats (sorted seconds | None) and
+    get(item, field, t) -> value."""
     k, col = node[0], node[1]
     if k == "num":
         return node[2]
@@ -66,6 +67,8 @@ def run(node, env):
         return _compare(node[2], run(node[3], env), run(node[4], env), col)
     if k == "call":
         args = [run(a, env) for a in node[3]]
+        if node[2] == "pulse":
+            return _pulse(env, _num(args[0], col) if args else 0.25, col)
         if node[2] == "lerp" and isinstance(args[0], str):
             return mix_color(args[0], _colour(args[1], col), min(1.0, max(0.0, _num(args[2], col))))
         nums = [_num(a, col) for a in args]
@@ -84,6 +87,15 @@ def run(node, env):
     if isinstance(v, complex) or not math.isfinite(v):
         raise ExprError("the result is not a finite number", col)
     return float(v)
+
+
+def _pulse(env, decay, col) -> float:
+    if env.beats is None:
+        raise ExprError("pulse(): the project has no sound with a beat grid; make the music in RostrumSound first "
+                        "(or this document is not in a project folder)", col)
+    if decay <= 0:
+        raise ExprError("pulse(decay): decay is in seconds and must be above 0", col)
+    return pulse(env.beats, env.time, decay)
 
 
 def _colour(v, col):

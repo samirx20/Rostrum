@@ -6,6 +6,7 @@ from PySide6.QtCore import Property, QObject, Slot
 from rostrum_gui.parts import SlotMixin
 
 from .adding import Adder
+from .camera_tool import CameraTool
 from .create import Create
 from .curves import Curves
 from .exporter import Exporter
@@ -18,6 +19,10 @@ from .paint_layers import PaintLayers
 from .paint_pick import ColourPick
 from .pen import Pen
 from .problems import Problems
+from .rig_blinks import BlinkSheet
+from .rig_lipsync import LipSyncSheet
+from .rig_poses import PoseList
+from .rig_view import RigView
 from .snapper import Snapper
 from .stagger import Stagger
 from .stroke_select import StrokeSelect
@@ -38,17 +43,26 @@ class ToolSlots(SlotMixin):
         self._exporter, self._importer, self._adder = Exporter(self), Importer(self), Adder(self)
         self._problems = Problems(self)
         self._problems.failed.connect(self._fail)
+        self._camera = CameraTool(self)                     # the Camera tool (C): pan and push in (camera_tool.py): backend.cameraTool
         self._create = Create(self)                         # R / O / T and typing on the canvas (create.py): backend.create
         self._snap = Snapper(self)                          # canvas drags snap (snapper.py): backend.snap
         self._paint_layers = PaintLayers(self)              # Draw's "Paint on …" group (paint_layers.py): backend.paintLayers
         self._filler = Filler(self)                         # Fill, G while Draw is on (filler.py): backend.fill
         self._pick = ColourPick(self)                       # Alt picks a colour (paint_pick.py): backend.colourPick
         self._strokes = StrokeSelect(self)                  # lasso, move, copy, delete strokes (stroke_select.py): backend.strokeSelect
+        self._rig = RigView(self)                           # the rig in hand's bones on the canvas (rig_view.py): backend.rig
+        self._poses = PoseList(self)                        # the rig's pose library in the settings (rig_poses.py): backend.poses
+        self._lipsync, self._blinks = LipSyncSheet(self), BlinkSheet(self)   # Lip sync…, Add blinks… (rig_lipsync.py, rig_blinks.py)
 
     @Property(QObject, constant=True)
     def pen(self):
         """The pen tool and path point editing (pen.py)."""
         return self._pen
+
+    @Property(QObject, constant=True)
+    def cameraTool(self):
+        """The Camera tool: drag pans the camera, Alt+drag pushes in (camera_tool.py)."""
+        return self._camera
 
     @Property(QObject, constant=True)
     def create(self):
@@ -104,6 +118,26 @@ class ToolSlots(SlotMixin):
     def strokeSelect(self):
         """Select strokes with a lasso, then move, copy, delete them (stroke_select.py)."""
         return self._strokes
+
+    @Property(QObject, constant=True)
+    def rig(self):
+        """The rig in hand: its bones and joints on the canvas, posing and fixing drags (rig_view.py, rig_drag.py)."""
+        return self._rig
+
+    @Property(QObject, constant=True)
+    def poses(self):
+        """The rig's pose library: Save pose, apply at the playhead, blend (rig_poses.py)."""
+        return self._poses
+
+    @Property(QObject, constant=True)
+    def lipsync(self):
+        """Lip sync… on a mouth swap set: a voice line of the project, a drawing per mouth shape (rig_lipsync.py)."""
+        return self._lipsync
+
+    @Property(QObject, constant=True)
+    def blinks(self):
+        """Add blinks… on an eyes swap set (rig_blinks.py)."""
+        return self._blinks
 
     @Property(QObject, constant=True)
     def exporter(self):

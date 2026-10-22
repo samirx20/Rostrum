@@ -39,8 +39,9 @@ AppShell {
     Shortcut { sequence: "R"; enabled: !shell.typing; onActivated: backend.setTool("rect") }       // creation tools (create.py)
     Shortcut { sequence: "O"; enabled: !shell.typing; onActivated: backend.setTool("ellipse") }
     Shortcut { sequence: "T"; enabled: !shell.typing; onActivated: backend.setTool("text") }
+    Shortcut { sequence: "C"; enabled: !shell.typing; onActivated: backend.setTool("camera") }     // only with a camera (camera_tool.py)
     Shortcut { sequence: "A"; enabled: !shell.typing; onActivated: backend.showAnimated() }    // only the animated settings of the selection; again folds them
-    Shortcut { sequence: "Escape"; enabled: backend.tool === "draw" || backend.tool === "rect" || backend.tool === "ellipse"
+    Shortcut { sequence: "Escape"; enabled: backend.tool === "draw" || backend.tool === "rect" || backend.tool === "ellipse" || backend.tool === "camera"
                                             || (backend.tool === "text" && !backend.create.typing)
                onActivated: { if (backend.strokeSelect.count > 0 || backend.strokeSelect.armed) backend.strokeSelect.clear()   // picked strokes first
                               else backend.setTool("move") } }
@@ -118,6 +119,9 @@ AppShell {
     StartScreen { id: startScreen; anchors.fill: parent; z: 100; onGuideAsked: (url) => shell.openGuide(url)
                   anchors.leftMargin: shell.guidesOpen ? (shell.guidesWidth || 0) : 0 }   // a guide opened from it shows beside it
     StaggerPopover { x: (shell.width - width) / 2; y: 104 }   // the context bar's Stagger… (stagger.py): under the bar
+    SoundCuePopover { x: (shell.width - width) / 2; y: 104 }  // Add a sound here… (sound_cue_pick.py): under the bar
+    LipSyncSheet { x: (shell.width - width) / 2; y: 104 }     // Lip sync… on a mouth swap set (rig_lipsync.py): under the bar
+    BlinkSheet { x: (shell.width - width) / 2; y: 104 }       // Add blinks… on an eyes swap set (rig_blinks.py): under the bar
     centre: [
         Stage { id: stage; anchors.fill: parent; typing: shell.typing },   // typing: F stays a letter (ViewControls.qml)
         EmptyHint {     // a new scene (the kit's empty state, INTERACTION.md 1.16): gone with the first layer
@@ -134,7 +138,8 @@ AppShell {
     menu: FilesMenu { id: fileMenu }    // ≡: New, Open, Open recent, Duplicate, Save a version … (kit; saving is automatic)
     right: [
         Inspector { id: settingsMove; anchors.fill: parent; bridge: backend; keyMarks: true; visible: backend.tool !== "draw"
-                    highlight: backend.keys.props },      // the settings whose keys are picked (key_select.py)
+                    highlight: backend.keys.props         // the settings whose keys are picked (key_select.py)
+                    below: RigPoses { } },                // a rig in hand: its pose library (rig_poses.py)
         Inspector { id: settingsDraw; anchors.fill: parent; bridge: painter; title: "Brush"; visible: backend.tool === "draw"
                     below: PaintOn { } }      // under the brush: the paint layers and switches of what it paints on
     ]

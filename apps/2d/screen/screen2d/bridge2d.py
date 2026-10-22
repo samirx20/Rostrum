@@ -31,12 +31,13 @@ from .clipboard import ClipboardSlots
 from .key_edits import KeyEdits
 from .render3d_watch import Render3DWatch
 from .shown import ShownState
+from .sound_cue_pick import CuePick
 from .soundtrack import Soundtrack
 from .tools2d import ToolSlots
 from .undo_state import UndoState
 
 
-TOOLS = ("move", "pen", "draw", "rect", "ellipse", "text")      # what the mouse does on the canvas (setTool)
+TOOLS = ("move", "pen", "draw", "rect", "ellipse", "text", "camera")      # what the mouse does on the canvas (setTool)
 
 
 class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, ActionSlots, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
@@ -85,6 +86,7 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
         self.r3d.changed.connect(self._render)
         self.r3d.changed.connect(self._problems.touch)
         self._soundtrack = Soundtrack(self)                 # the project's sound, played by Sound's engine (soundtrack.py)
+        self._cuepick = CuePick(self, self)                 # Add a sound here… (sound_cue_pick.py)
         self.selectionChanged.connect(self.outlineChanged)
         self.selectionChanged.connect(self.shownChanged)
         self.link = None
@@ -101,6 +103,7 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
     sharp = Property(QObject, lambda self: self._sharp, constant=True)           # past Full, drawn sharp (sharp.py)
     actions = Property(QObject, lambda self: self._hub, constant=True)   # the context bar, menus, keys (action_slots.py)
     soundtrack = Property(QObject, lambda self: self._soundtrack, constant=True)   # the Sound row, beats (soundtrack.py)
+    cuePick = Property(QObject, lambda self: self._cuepick, constant=True)       # Add a sound here… (sound_cue_pick.py)
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
     def comp(self) -> dict:
@@ -212,6 +215,8 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
         """The one tool switch (the strip, V / P / B / Esc, pen.setOn, Add path / drawing). Leaving the pen ends its path."""
         if tool not in TOOLS:
             return self._fail(f"Error: tool: {tool!r} is not a tool ({', '.join(TOOLS)}).")
+        if tool == "camera" and not self._camera.available:
+            return self._fail("Error: camera: this scene has no camera; + Add › Camera first.")
         if tool != self._tool:
             if self._tool == "pen":
                 self._pen.finish()
@@ -299,5 +304,6 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
         self.endDrag()
         self.frames.close()
         self._problems.close()
+        self._cuepick.close()
         self.r3d.close()
         self._soundtrack.close()

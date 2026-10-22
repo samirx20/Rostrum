@@ -75,6 +75,33 @@ def item(folder, item_id: str) -> dict:
     raise RostrumError.not_found("project", "item", item_id, [it["id"] for it in every])
 
 
+def main(folder, kind: str) -> dict | None:
+    """The project's main item of a kind (the "main mix" for "sound"): the one marked in project.json's "main", else
+    the first of that kind by name; None when the project has none. A mark naming an item that is gone is loud."""
+    every = items(folder, kind)
+    meta = Path(folder) / "project.json"
+    marked = _read_json(meta, "project").get("main", {}).get(kind) if meta.is_file() else None
+    if not marked:
+        return every[0] if every else None
+    for it in every:
+        if it["id"] == marked:
+            return it
+    raise RostrumError(codes.NOT_FOUND, "project", f'main {kind} "{marked}"', f"is not a {kind} item of this project",
+                       [it["id"] for it in every], "Pick another item as the main one.")
+
+
+def set_main(folder, kind: str, item_id: str | None):
+    """Mark `item_id` (an item of `kind`) as the project's main one; None clears the mark (the first by name wins).
+    project.json is written whole; its other keys stay as they were."""
+    if item_id is not None and item_id not in (ids := [it["id"] for it in items(folder, kind)]):
+        raise RostrumError(codes.NOT_FOUND, "project", f'{kind} item "{item_id}"', "is not in this project", ids)
+    meta = Path(folder) / "project.json"
+    data = _read_json(meta, "project") if meta.is_file() else {}
+    marks = {k: v for k, v in data.pop("main", {}).items() if k != kind} | ({kind: item_id} if item_id else {})
+    from .storage import write_atomic
+    write_atomic(meta, json.dumps(data | ({"main": marks} if marks else {}), indent=1, ensure_ascii=False))
+
+
 def latest_render(folder, item_id: str, kind: str | None = None) -> dict | None:
     """The newest finished render of an item ("pictures" / "sound" to pick one kind), or None."""
     return next((r for r in renders(folder, item_id) if kind is None or r["kind"] == kind), None)

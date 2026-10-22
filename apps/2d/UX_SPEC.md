@@ -273,7 +273,7 @@ PLAN's list or the H28 draft.
 | Feature | What it is | When | Card |
 |---|---|---|---|
 | Start animating with the diamond | A key at the playhead; later changes add keys | Now | 3.17 |
-| K: key the selection here *(new)* | Keys position, scale, rotation, opacity of every selected layer | Now | 3.17 |
+| K: key the selection here *(new)* | Keys position, scale, rotation, opacity of every selected layer; one rule (`ops_keys._value_now`): every field it can key, except one whose keys all already hold this value (K never makes a flat field, so a second K without a change adds nothing) | Now | 3.17 |
 | Select, move, stretch, copy and paste keys | Box-select on bars, drag, Alt-drag to stretch, Ctrl+C / V at the playhead | Now (select, move) · Next (stretch, paste) | 3.17 |
 | Key bar and easing | Ease for all selected keys; a curve you drag | Now | 3.18 |
 | Spring ease *(new)* | Bounce and settle by feel (Apple UI motion) | Next | 3.18 |

@@ -2,6 +2,7 @@
 Grammar and the full list: expr.py."""
 from __future__ import annotations
 
+import bisect
 import math
 
 
@@ -34,11 +35,19 @@ def noise(x: float, seed: float = 0.0) -> float:
     return a + (b - a) * (f * f * (3 - 2 * f))
 
 
+def pulse(beats: list[float], t: float, decay: float) -> float:
+    """1 on each beat, falling in a straight line to 0 over `decay` seconds (0 before the first beat). `beats`: the
+    project's sound's beat times, sorted (project_sound.beats)."""
+    i = bisect.bisect_right(beats, t + 1e-9) - 1
+    return 0.0 if i < 0 else max(0.0, 1.0 - max(0.0, t - beats[i]) / decay)
+
+
 FUNCS = {"sin": (1, 1, math.sin), "cos": (1, 1, math.cos), "abs": (1, 1, abs), "sqrt": (1, 1, math.sqrt),
          "floor": (1, 1, lambda x: float(math.floor(x))), "ceil": (1, 1, lambda x: float(math.ceil(x))),
          "round": (1, 1, lambda x: float(math.floor(x + 0.5))), "min": (2, 8, min), "max": (2, 8, max),
          "clamp": (3, 3, lambda x, lo, hi: min(max(x, lo), hi)), "lerp": (3, 3, lambda a, b, p: a + (b - a) * p),
-         "noise": (1, 2, noise)}
+         "noise": (1, 2, noise),
+         "pulse": (0, 1, None)}               # pulse(decay = 0.25): run by expr_run, which has the beats
 STATIC = {"ref", "marker"}                       # their first argument is a quoted name, known before anything runs
 CMPS = {"<": lambda a, b: a < b, "<=": lambda a, b: a <= b, ">": lambda a, b: a > b, ">=": lambda a, b: a >= b,
         "==": lambda a, b: a == b, "!=": lambda a, b: a != b}

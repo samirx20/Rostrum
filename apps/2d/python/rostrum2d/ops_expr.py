@@ -59,7 +59,7 @@ def put(ctx, owner_id: str, prop: str, source: str):
 
 
 @R.operation("expr.set", "Drive a field with a small expression: time, frame, fps, duration, sin cos abs sqrt floor "
-             "ceil round min max clamp lerp noise, + - * / % ^, comparisons, `a if c else b`, and other items' fields "
+             "ceil round min max clamp lerp noise pulse(decay) (1 on each beat of the project's sound, falling to 0), + - * / % ^, comparisons, `a if c else b`, and other items' fields "
              "(`logo.x`, `ref(\"logo.x\", time - 0.2)`). It overrides the field's own value and keys; "
              "`expr.clear` takes it away.", target=OWNERS, label="Drive by expression", importance="secondary",
              params=[PROP, Param.text("source", label="Expression", required=True,

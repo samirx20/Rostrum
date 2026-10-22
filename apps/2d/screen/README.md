@@ -319,6 +319,11 @@ Steps: `select`, `selectmany`, `act`, `nudge`, `tool move|pen|draw`, `time`, `se
   couldn't carry), and the document gets a version "Exported v003". A failure is red, in words; no unfinished file is left.
 - The formats and their settings are data (`rostrum2d.io.formats.FORMATS` + Lottie, listed by `rostrum2d.mcp.exporting`); the
   MCP tool `render_export` runs the same code (`exporting.run`), so a person and an agent get the same files.
+- **Include the project's sound** (a switch, only for MP4 and only when the project has sound; on by default): the scene's
+  soundtrack, else the project's main mix (`rostrum2d/project_sound.py`), mixed by RostrumSound's engine, cut to the
+  export's range and put under the picture by the bundled LGPL FFmpeg (`rostrum2d/io/export_sound.py`) before the file is
+  renamed. If the mix or the muxing fails, the export fails: never a silent MP4 when sound was asked. Agents:
+  `render_export {format: "mp4", sound: true|false}` (default as on the screen).
 
 ## Add and import
 
@@ -362,3 +367,38 @@ Steps: `select`, `selectmany`, `act`, `nudge`, `tool move|pen|draw`, `time`, `se
 
 Text on the canvas is measured by the engine (rostrum2d/textsize.py); drawing ignores rotation. No live sync between two
 processes on one file (each saves; reopen to see the other's).
+
+## Characters (H32: `rig_view.py`, `rig_drag.py`, `rig_poses.py`, `rig_lipsync.py`, `rig_blinks.py`, `rig_mouths.py`, `rig_voice.py`)
+
+- **Make rig** is the context bar's first button on a group (or layers) whose parts are named like a body, outside a rig
+  (fact `body_parts`; `promoted` in `actions.py`: a secondary action promoted now joins the bar on its own).
+- **Bones from part names** on the context bar for a rig with no bones whose parts are named like a body (`rig.guess_bones`).
+- **Attach to bone** (`rig_attach.py`): select a part of the rig, Ctrl+click a bone on the overlay; one change (`bind.set` to
+  that bone, rigid, or `bind.add`). Absent when it is already attached there.
+- The rig's bar in the timeline shows its bones' and IK chains' keys (one diamond per time; moved and deleted like any
+  keys); opened, a row per keyed bone (`outline._owned`).
+- **Bone overlay** (`qml/BoneOverlay.qml`, `backend.rig`) while a rig, or anything inside one, is selected with Move: posed
+  bones from the canvas's engine (`frames.ask` → `bones`, `place`). Drag a circle = fix the joint (`rig.move_joint`); drag a
+  bone = turn it (FK, `value.set rotation`) or, in an IK chain (orange), pull the chain (`value.set targetX/Y`); a click picks
+  the bone; right-click a chain's end › Pin / Unpin (`ik.pin`). One drag = one undo step. K on a rig = `rig.key`.
+- **Poses** under the settings (`qml/RigPoses.qml`, `backend.poses`): Save pose, click = apply at the playhead, slider = part
+  of the way (one change on release), right-click › Delete.
+- **Lip sync…** on a mouth swap set (`qml/LipSyncSheet.qml`, `backend.lipsync`): the project's voice lines from RostrumSound
+  (`rig_voice.lines`), a row per mouth shape guessed from the drawings' names, Apply = one `lipsync.apply` (a line not heard
+  before is listened to off the screen's thread first). **Add blinks…** on an eyes swap set (`qml/BlinkSheet.qml`): Every,
+  Varies by, open / closed / half, Apply = one `blink.add`.
+- Steps (`rig_steps.py`): `bones`, `jointdrag`, `posedrag`, `bonepick`, `pin`, `posesave`, `poseapply`, `poseblend`,
+  `lipsync open|line|shape|apply|close`, `blinks open|every|vary|pick|apply|close`. Test character: `rig_sample.py`.
+
+## Sizes, Fill the frame, Effects, the Camera tool, Grain (H32 steps)
+
+- **Scene settings › Size** (`size_rows.py`, `rostrum2d/frame_sizes.py` = the one list: Wide 16:9, 4K 16:9, Vertical 9:16,
+  Square 1:1, Post 4:5; "Custom" when the numbers match none; the names alone, the numbers are right under them). A pick is `comp.size`; Width and Height stay typeable.
+- **Fill the frame** / **Fit inside the frame** (`layer.fill_frame`, `ops_frame.py`): scales the selection (turn kept) to cover or
+  sit inside its parent's frame, centred; first on the context bar for a picture or clip, else in the ⋯ menu / Ctrl+K.
+- **Effects ▾** on the context bar (any layer but a camera): Blur, Glow, Gradient (shapes and text), Frosted glass, Shadow,
+  Trail, Smear = `effect.add`; **Grain (whole picture)** = `grain.add` (`ops_grain.py`: a looping ffmpeg-noise clip, cached,
+  as a screen-locked Overlay video layer on top; its Opacity is the amount, its Scale the grain size).
+- **Camera tool (C)** (`camera_tool.py`, `qml/CameraOverlay.qml`, `backend.cameraTool`): in the strip only when the scene has a
+  camera; drag pans, Alt+drag (Alt held at the press) pushes in / out; writes the camera's x, y, zoom through `route.value_call`
+  (a keyed field gets a key at the playhead), one drag = one undo step. Steps: `tool camera`, `key C`, `mousedrag … alt`.

@@ -11,7 +11,7 @@ from rostrum_core.errors import codes
 from ..evaluate import value_at
 from ..kind import REGISTRY as R
 from ..ops_items import ID, NAME, new_item
-from ..ops_keys import put_key
+from ..ops_keys import adds_nothing, put_key
 
 POSED = {"bone": ("rotation", "scale", "moveX", "moveY"), "ik": ("targetX", "targetY", "mix")}
 CHOICE = ("show",)                          # a swap set's drawing: picked, never blended (swap.py)
@@ -98,7 +98,8 @@ def pose_apply(ctx, targets, args):
                     v, ease = (round(v) if amount >= 0.5 else now[id_][f]), "hold"
                 else:
                     v, ease = now[id_][f] + amount * (v - now[id_][f]), args.get("ease", "smooth")
-                put_key(ctx, id_, f, at, {"v": v, "ease": ease})
+                if not adds_nothing(ctx.item(id_), f, v):     # the one K rule: never a flat field
+                    put_key(ctx, id_, f, at, {"v": v, "ease": ease})
 
 
 @R.operation("pose.remove", "Delete saved poses (keys already made from them stay).", target="pose",

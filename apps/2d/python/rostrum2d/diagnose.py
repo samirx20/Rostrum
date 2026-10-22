@@ -17,6 +17,7 @@ from rostrum_core.marker_times import lookup
 from . import fields as F, follow, render3d, retime
 from .engine import EngineError
 from .expr import ExprError, find
+from .grain import is_recipe
 from .exprbake import exprs_of, items_of, parse_cached, problems as expr_problems
 from .layoutbake import uses_layout
 from .seen import unseen
@@ -87,7 +88,7 @@ def _files(items: dict, folder) -> list[dict]:
     for item in items.values():
         for field in ("src", "lut"):
             path = item.get(field, "")
-            if path and not (Path(path) if Path(path).is_absolute() else Path(folder or ".") / path).exists():
+            if path and not is_recipe(path) and not (Path(path) if Path(path).is_absolute() else Path(folder or ".") / path).exists():
                 out.append(_p("missing-file", item["id"], f'{item["id"]}.{field}: no file at "{path}"',
                               "Point it at the file again (absolute, or relative to the project folder)"))
     return out

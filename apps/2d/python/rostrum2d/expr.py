@@ -11,7 +11,8 @@ Nothing here uses Python's eval / compile / ast, so an expression can only do wh
 Names: time (s), frame, fps, duration, pi, e, true, false, and `item.field` (a dotted name = that item's field at
 the same time; `ref("a-b.x", time - 0.2)` is the same with a quoted id and a shifted time). Functions: sin cos
 (radians) abs sqrt floor ceil round(x + 0.5 rounded down) min max clamp(x, lo, hi) lerp(a, b, p) (numbers or
-colours) noise(x[, seed]). Colours are #rrggbb. `noise` is value noise in -1..1, the same on every machine: with
+colours) noise(x[, seed]) pulse([decay]) (1 on each beat of the project's sound, falling straight to 0 over
+decay seconds, default 0.25; the beat grid is RostrumSound's). Colours are #rrggbb. `noise` is value noise in -1..1, the same on every machine: with
 h(n) = hash of the whole number n and the seed, i = floor(x), f = x - i, u = f·f·(3 - 2f), the result is
 h(i) + (h(i+1) - h(i))·u; the hash is 32-bit integer arithmetic only (see `_hash`).
 """

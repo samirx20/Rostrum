@@ -15,7 +15,9 @@ Rectangle {
         { value: "draw", label: "Draw", job: "paint_tool", help: "Paint strokes with a brush, on a drawing or on the selected layer." },
         { value: "rect", label: "Rectangle", job: "rect_tool", help: "Drag out a rectangle." },
         { value: "ellipse", label: "Ellipse", job: "ellipse_tool", help: "Drag out an ellipse." },
-        { value: "text", label: "Text", job: "text_tool", help: "Click or drag a box on the canvas, then type." }]
+        { value: "text", label: "Text", job: "text_tool", help: "Click or drag a box on the canvas, then type." },
+        { value: "camera", label: "Camera", job: "camera_tool", needsCamera: true,
+          help: "Drag to pan the camera; hold Alt and drag up to push in, down to pull out." }]
     width: column.width + 2 * Theme.grid; height: column.height + 2 * Theme.grid
     radius: Theme.radiusPanel; color: Theme.panel
     border.width: 1; border.color: Theme.popupEdge
@@ -25,7 +27,7 @@ Rectangle {
         x: Theme.grid; y: Theme.grid
         spacing: 2
         Repeater {
-            model: strip.tools
+            model: strip.tools.filter(t => !t.needsCamera || backend.cameraTool.available)      // Camera: only when the scene has one
             delegate: Button {
                 required property var modelData
                 kind: "ghost"; width: 92

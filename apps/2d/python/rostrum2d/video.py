@@ -12,7 +12,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from . import settings
+from . import grain, settings
 
 CACHE_DIR = settings.cache_dir("2d-video")
 CACHE_BYTES = 6 << 30            # size of CACHE_DIR before the oldest clips' folders go
@@ -37,6 +37,8 @@ def source(item: dict, base: Path | None = None) -> Path:
     src = item.get("src", "")
     if not src:
         raise ValueError(f'{item["id"]}.src: a video layer needs a file')
+    if grain.is_recipe(src):                     # film grain: made from its recipe (grain.py), never a stored path
+        return grain.clip(src, f'{item["id"]}.src')
     p = Path(src)
     if not p.is_absolute() and base is not None:
         p = base / p
