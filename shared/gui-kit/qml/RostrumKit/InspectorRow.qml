@@ -95,7 +95,9 @@ Item {
         anchors.verticalCenter: row.driven || row.tall ? undefined : parent.verticalCenter
         anchors.top: row.driven || row.tall ? parent.top : undefined
         height: Theme.row
-        Text { id: label; width: row.labelColumn - Theme.gap; anchors.verticalCenter: parent.verticalCenter
+        Text { id: label   // an amount's label is only as wide as its words: its slider starts right after them
+               width: row.amount ? Math.min(row.labelColumn - Theme.gap, Math.ceil(implicitWidth)) : row.labelColumn - Theme.gap
+               anchors.verticalCenter: parent.verticalCenter
                text: row.model.label; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
                wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; lineHeight: 0.9   // never cut to "Width along the…"
                HoverHandler { id: labelHover }

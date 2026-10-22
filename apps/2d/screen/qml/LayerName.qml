@@ -92,12 +92,13 @@ Rectangle {
         }
     }
     Text {
+        id: labelText
         visible: !name.renaming
         opacity: name.rowData.hidden ? 0.45 : 1
         x: icon.visible ? icon.x + icon.width + Theme.gap : name.indent + 16
         width: parent.width - x - Theme.gap - (name.isLayer ? 38 : 0); anchors.verticalCenter: parent.verticalCenter
         text: name.rowData.label; elide: Text.ElideRight; font.family: uiFont
-        HoverTip { text: parent.truncated ? name.rowData.label : ""; hovered: hover.containsMouse }   // the whole name
+        HoverTip { text: labelText.truncated ? name.rowData.label : ""; hovered: hover.containsMouse }   // the whole name
         font.pixelSize: name.isLayer ? Theme.body : Theme.label + 1
         color: name.isLayer || name.selected ? Theme.fg : Theme.fg2
     }

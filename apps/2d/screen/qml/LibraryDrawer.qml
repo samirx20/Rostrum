@@ -32,6 +32,7 @@ Rectangle {
         width: col.width; topPadding: Theme.gap
         color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold
     }
+    component AddPicked: Button { kind: "ghost"; onClicked: drawer.lib.addFromSelection() }   // under its own section
     component Row2: Rectangle {     // one clickable entry: a name and a small line under it, × on hover
         id: entry
         property string title: ""
@@ -44,17 +45,20 @@ Rectangle {
         color: area.containsMouse ? Theme.hover : "transparent"
         Rectangle { id: chip; visible: entry.swatch.a > 0; width: 18; height: 18; radius: 4; color: entry.swatch
                     border.color: Theme.line; anchors { left: parent.left; leftMargin: Theme.grid; verticalCenter: parent.verticalCenter } }
-        Column {     // names wrap: a long brand name is read whole, never cut
+        Column {     // one line each; a long name ends in … and hover shows it whole
             id: words
             anchors { left: chip.visible ? chip.right : parent.left; leftMargin: Theme.gap; right: parent.right
                       rightMargin: 28; verticalCenter: parent.verticalCenter }
-            Text { width: parent.width; text: entry.title; wrapMode: Text.Wrap; color: Theme.fg
+            Text { id: titleText; width: parent.width; text: entry.title; elide: Text.ElideRight; color: Theme.fg
                    font.family: uiFont; font.pixelSize: Theme.body }
-            Text { visible: !!entry.sub; width: parent.width; text: entry.sub; wrapMode: Text.WrapAnywhere; color: Theme.fg3
+            Text { id: subText; visible: !!entry.sub; width: parent.width; text: entry.sub; elide: Text.ElideRight; color: Theme.fg3
                    font.family: uiFont; font.pixelSize: Theme.label }
         }
         MouseArea { id: area; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: entry.picked() }
+        HoverTip { hovered: area.containsMouse && (titleText.truncated || subText.truncated)
+                   text: entry.title + (entry.sub ? "
+" + entry.sub : "") }
         IconButton { visible: entry.removable && (area.containsMouse || hovered); glyph: "✕"; kind: "ghost"
                      tip: "Take it out of the brand kit"
                      anchors { right: parent.right; verticalCenter: parent.verticalCenter }
@@ -76,6 +80,8 @@ Rectangle {
                                         sub: modelData.name.toUpperCase() !== modelData.value.toUpperCase() ? modelData.value.toUpperCase() : ""
                                         onPicked: drawer.lib.use("colors", modelData.name)
                                         onRemoved: drawer.lib.remove("colors", modelData.name) } }
+            AddPicked { visible: drawer.lib.hasProject && drawer.lib.picked !== "" && drawer.lib.picked !== "texts"
+                        text: "+ This colour"; help: "Keep the selected layer's colour in the project's brand kit." }
             Heading { visible: drawer.lib.hasProject; text: "Brand kit · text styles" }
             Repeater { model: drawer.lib.textStyles
                        delegate: Row2 { required property var modelData; title: modelData.name; swatch: modelData.color || "transparent"
@@ -83,20 +89,16 @@ Rectangle {
                                              + (modelData.weight ? " · " + modelData.weight : "")
                                         onPicked: drawer.lib.use("textStyles", modelData.name)
                                         onRemoved: drawer.lib.remove("textStyles", modelData.name) } }
+            AddPicked { visible: drawer.lib.hasProject && drawer.lib.picked === "texts"
+                        text: "+ This text's style"; help: "Keep the selected text's style in the project's brand kit." }
             Heading { visible: drawer.lib.hasProject; text: "Brand kit · logos" }
             Repeater { model: drawer.lib.logos
                        delegate: Row2 { required property var modelData; title: modelData.name; sub: modelData.file
                                         onPicked: drawer.lib.placeLogo(modelData.name)
                                         onRemoved: drawer.lib.remove("logos", modelData.name) } }
-            Row {
-                visible: drawer.lib.hasProject; spacing: Theme.gap; topPadding: Theme.gap
-                Button { visible: drawer.lib.picked !== ""; kind: "ghost"
-                         text: drawer.lib.picked === "texts" ? "+ This text's style" : "+ This colour"
-                         help: "Keep the selected text's style, or the selected layer's colour, in the project's brand kit."
-                         onClicked: drawer.lib.addFromSelection() }
-                Button { text: "+ Logo…"; kind: "ghost"; help: "Keep a logo file in the project's brand kit."
-                         onClicked: logoDialog.open() }
-            }
+            Button { visible: drawer.lib.hasProject; kind: "ghost"; text: "+ Logo…"
+                     help: "Keep a logo file in the project's brand kit."
+                     onClicked: logoDialog.open() }
             Heading { visible: drawer.lib.docStyles.length > 0; text: "This scene · text styles" }
             Repeater { model: drawer.lib.docStyles
                        delegate: Row2 { required property var modelData; title: modelData.name; swatch: modelData.color

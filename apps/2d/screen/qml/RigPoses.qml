@@ -56,6 +56,10 @@ Column {
             }
         }
     }
+    Item {  // the end of the group: a line and a group's gap, so the settings below don't read as poses
+        width: pl.width; height: Theme.groupGap
+        Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 1; color: Theme.line }
+    }
     ActionMenu {
         id: poseMenu
         property string pose: ""

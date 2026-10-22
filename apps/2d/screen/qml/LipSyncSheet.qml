@@ -39,9 +39,11 @@ Panel {
             delegate: Item {
                 id: shape
                 required property var modelData
-                width: pop.availableWidth; height: Theme.row
-                Words { anchors.verticalCenter: parent.verticalCenter; width: parent.width - pick.width - Theme.grid
-                        text: shape.modelData.shape + "  " + shape.modelData.words }
+                width: pop.availableWidth; height: Math.max(Theme.row, said.implicitHeight + 4)
+                Words { id: said; anchors.verticalCenter: parent.verticalCenter; width: parent.width - pick.width - Theme.grid
+                        wrapMode: Text.WordWrap; elide: Text.ElideNone   // a long shape name wraps, never cut
+                        text: shape.modelData.shape + "  "     // "(OO W)" stays whole on its line
+                              + shape.modelData.words.replace(/\([^)]*\)/, m => m.replace(/ /g, "\u00a0")) }
                 ChoiceField {
                     id: pick
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
