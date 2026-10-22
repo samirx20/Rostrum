@@ -61,9 +61,10 @@ class Live:
                 caught = self.catch_up()
                 before = self._mine()
                 yield caught
-                if self._mine() != before or not self._started:
-                    save(self.doc, document=not self._started or not self.p["doc"].exists())
-                    self._started = True
+                first = not self._started and not (self.p["history"].exists() and self.p["doc"].exists())
+                if self._mine() != before or first:     # a first look at a saved document writes nothing
+                    save(self.doc, document=first or not self.p["doc"].exists())
+                self._started = True
             finally:
                 self._depth -= 1
 
