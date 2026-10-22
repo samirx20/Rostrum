@@ -90,57 +90,81 @@ fn matrix(s: &Surround, vol: f64, layout: Layout, t: f64) -> (Vec<[f64; 2]>, Opt
     (gl.iter().zip(&gr).map(|(a, b)| [a * k, b * k]).collect(), (dist > 1.0).then(|| 20000.0 / dist))
 }
 
-/// The track's stereo signal placed in a bed of `layout`: one buffer per channel.
+/// The track's stereo signal placed in a bed of `layout`: one buffer per channel (the tests' whole-track form).
+#[cfg(test)]
 pub fn pan(l: &[f32], r: &[f32], s: &Surround, vol: &Param, layout: Layout, sr: f64) -> Vec<Vec<f32>> {
-    let n = l.len().min(r.len());
-    let mut out = vec![vec![0.0f32; n]; layout.channels()];
-    let moving = [&s.az, &s.el, &s.dist, &s.spread, &s.centre, vol].iter().any(|p| matches!(p, Param::Envelope(_)));
-    let (mut prev, mut cut) = matrix(s, vol.at(0.0), layout, 0.0);
-    let mut air = [0.0f64; 2];
-    for b in (0..n).step_by(BLOCK) {
-        let end = (b + BLOCK).min(n);
-        let (next, c) = if moving { matrix(s, vol.at(end as f64 / sr), layout, end as f64 / sr) } else { (prev.clone(), cut) };
-        let alpha = c.map(|f| 1.0 - (-2.0 * std::f64::consts::PI * f.min(sr * 0.45) / sr).exp());
-        for i in b..end {
-            let f = (i - b) as f64 / BLOCK as f64;
-            let mut x = [l[i] as f64, r[i] as f64];
-            if let Some(a) = alpha {
-                for ch in 0..2 {
-                    air[ch] += a * (x[ch] - air[ch]);
-                    x[ch] = air[ch];
-                }
-            } else {
-                air = x;
-            }
-            for (ch, buf) in out.iter_mut().enumerate() {
-                let (p, q) = (prev[ch], next[ch]);
-                buf[i] = ((p[0] + (q[0] - p[0]) * f) * x[0] + (p[1] + (q[1] - p[1]) * f) * x[1]) as f32;
-            }
-        }
-        (prev, cut) = (next, c);
-    }
-    if let Some(k) = layout.lfe() {
-        send_lfe(&mut out[k], l, r, &s.lfe, vol, &s.dist, sr);
-    }
-    out
+    Panner::new(s, vol, layout, sr).block(l, r, 0)
 }
 
-/// The LFE send: (left + right) / 2 × the send × the fader (and distance), through a 120 Hz low-pass (two Butterworth stages).
-fn send_lfe(lfe: &mut [f32], l: &[f32], r: &[f32], send: &Param, vol: &Param, dist: &Param, sr: f64) {
-    if matches!(send, Param::Value(v) if *v <= 0.0) {
-        return;
+/// The panner over a track, block by block: its gains, its air filter and its LFE send carried between blocks.
+pub struct Panner {
+    s: Surround,
+    vol: Param,
+    layout: Layout,
+    sr: f64,
+    moving: bool,
+    prev: Vec<[f64; 2]>,
+    cut: Option<f64>,
+    air: [f64; 2],
+    lfe: Option<Lfe>,
+}
+
+struct Lfe {
+    lp: crate::fx::eq::Coeffs,
+    z1: [f64; 2],
+    z2: [f64; 2],
+    g: f64,
+}
+
+impl Panner {
+    pub fn new(s: &Surround, vol: &Param, layout: Layout, sr: f64) -> Self {
+        let moving = [&s.az, &s.el, &s.dist, &s.spread, &s.centre, vol].iter().any(|p| matches!(p, Param::Envelope(_)));
+        let (prev, cut) = matrix(s, vol.at(0.0), layout, 0.0);
+        // The LFE send: none when it is a constant 0.
+        let lfe = (layout.lfe().is_some() && !matches!(s.lfe, Param::Value(v) if v <= 0.0))
+            .then(|| Lfe { lp: biquad("lowpass", 120.0, 0.0, std::f64::consts::FRAC_1_SQRT_2, sr), z1: [0.0; 2], z2: [0.0; 2], g: 0.0 });
+        Panner { s: s.clone(), vol: vol.clone(), layout, sr, moving, prev, cut, air: [0.0; 2], lfe }
     }
-    let lp = biquad("lowpass", 120.0, 0.0, std::f64::consts::FRAC_1_SQRT_2, sr);
-    let (mut z1, mut z2) = ([0.0; 2], [0.0; 2]);
-    let (mut g, mut at) = (0.0, usize::MAX);
-    for i in 0..lfe.len() {
-        if at == usize::MAX || i % BLOCK == 0 {
-            let t = i as f64 / sr;
-            g = send.at(t).max(0.0) * vol.at(t) / dist.at(t).max(1.0);
-            at = i;
+
+    /// Frames `t0 ..` of the track placed in the bed (`t0` a multiple of 32 but for the track's last block).
+    pub fn block(&mut self, l: &[f32], r: &[f32], t0: usize) -> Vec<Vec<f32>> {
+        let (n, sr, layout) = (l.len().min(r.len()), self.sr, self.layout);
+        let mut out = vec![vec![0.0f32; n]; layout.channels()];
+        for b in (0..n).step_by(BLOCK) {
+            let end = (b + BLOCK).min(n);
+            let te = (t0 + end) as f64 / sr;
+            let (next, c) = if self.moving { matrix(&self.s, self.vol.at(te), layout, te) } else { (self.prev.clone(), self.cut) };
+            let alpha = c.map(|f| 1.0 - (-2.0 * std::f64::consts::PI * f.min(sr * 0.45) / sr).exp());
+            for i in b..end {
+                let f = (i - b) as f64 / BLOCK as f64;
+                let mut x = [l[i] as f64, r[i] as f64];
+                if let Some(a) = alpha {
+                    for ch in 0..2 {
+                        self.air[ch] += a * (x[ch] - self.air[ch]);
+                        x[ch] = self.air[ch];
+                    }
+                } else {
+                    self.air = x;
+                }
+                for (ch, buf) in out.iter_mut().enumerate() {
+                    let (p, q) = (self.prev[ch], next[ch]);
+                    buf[i] = ((p[0] + (q[0] - p[0]) * f) * x[0] + (p[1] + (q[1] - p[1]) * f) * x[1]) as f32;
+                }
+            }
+            (self.prev, self.cut) = (next, c);
         }
-        let x = (l[i] as f64 + r[i] as f64) * 0.5 * g;
-        lfe[i] += lp.tick(&mut z2, lp.tick(&mut z1, x)) as f32;
+        if let (Some(k), Some(lfe)) = (layout.lfe(), &mut self.lfe) {
+            // (left + right) / 2 × the send × the fader (and distance), through a 120 Hz low-pass (two Butterworth stages).
+            for i in 0..n {
+                if (t0 + i) % BLOCK == 0 {
+                    let t = (t0 + i) as f64 / sr;
+                    lfe.g = self.s.lfe.at(t).max(0.0) * self.vol.at(t) / self.s.dist.at(t).max(1.0);
+                }
+                let x = (l[i] as f64 + r[i] as f64) * 0.5 * lfe.g;
+                out[k][i] += lfe.lp.tick(&mut lfe.z2, lfe.lp.tick(&mut lfe.z1, x)) as f32;
+            }
+        }
+        out
     }
 }
 

@@ -4,20 +4,43 @@
 
 use crate::mix::schedule::Param;
 
-pub fn width(amount: &Param, mono_below: f64, l: &mut [f32], r: &mut [f32], sr: f64) {
-    let a = if mono_below > 0.0 { (-2.0 * std::f64::consts::PI * mono_below / sr).exp() } else { 0.0 };
-    let (mut lp, mut w) = (0.0f64, amount.at(0.0));
-    for i in 0..l.len().min(r.len()) {
-        if i % 32 == 0 {
-            w = amount.at(i as f64 / sr);
-        }
-        let (m, s) = ((l[i] as f64 + r[i] as f64) * 0.5, (l[i] as f64 - r[i] as f64) * 0.5);
-        // The side's lows (one-pole low-pass) stay as they are when widening and fold away when narrowing.
-        lp = (1.0 - a) * s + a * lp;
-        let side = if mono_below > 0.0 { (s - lp) * w + lp * w.min(1.0) } else { s * w };
-        l[i] = (m + side) as f32;
-        r[i] = (m - side) as f32;
+/// One pair's width, its side low-pass kept between blocks (fx/state.rs).
+pub struct Width {
+    amount: Param,
+    mono_below: f64,
+    a: f64,
+    sr: f64,
+    lp: f64,
+    w: f64,
+}
+
+impl Width {
+    pub fn new(amount: &Param, mono_below: f64, sr: f64) -> Self {
+        let a = if mono_below > 0.0 { (-2.0 * std::f64::consts::PI * mono_below / sr).exp() } else { 0.0 };
+        Width { amount: amount.clone(), mono_below, a, sr, lp: 0.0, w: amount.at(0.0) }
     }
+
+    pub fn pair(&mut self, l: &mut [f32], r: &mut [f32], t0: usize) {
+        let a = self.a;
+        for i in 0..l.len().min(r.len()) {
+            if (t0 + i) % 32 == 0 {
+                self.w = self.amount.at((t0 + i) as f64 / self.sr);
+            }
+            let w = self.w;
+            let (m, s) = ((l[i] as f64 + r[i] as f64) * 0.5, (l[i] as f64 - r[i] as f64) * 0.5);
+            // The side's lows (one-pole low-pass) stay as they are when widening and fold away when narrowing.
+            self.lp = (1.0 - a) * s + a * self.lp;
+            let lp = self.lp;
+            let side = if self.mono_below > 0.0 { (s - lp) * w + lp * w.min(1.0) } else { s * w };
+            l[i] = (m + side) as f32;
+            r[i] = (m - side) as f32;
+        }
+    }
+}
+
+#[cfg(test)]
+pub fn width(amount: &Param, mono_below: f64, l: &mut [f32], r: &mut [f32], sr: f64) {
+    Width::new(amount, mono_below, sr).pair(l, r, 0);
 }
 
 #[cfg(test)]

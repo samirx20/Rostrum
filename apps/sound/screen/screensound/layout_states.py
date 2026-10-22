@@ -38,7 +38,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("library-auditioning", ["--sample"], ["select melody", "library", "audition builtIn:grandPiano"]),
         ("library-trying-long", long_project(), [*busy, f"select {LONG_TRACK}", "library", "audition builtIn:grandPiano"]),   # P29: Keep / Revert
         ("clean-result-line", ["--sample"], ["select-clip door", "dock editor", "clean 0 0 1",
-                                             "clean-line Background_noise_−18_dB_·_voice_level_unchanged_·_room_echo_shorter|The_voice_got_quieter_too:_try_less."]),
+                                             "clean-line Background_noise_−18_dB_·_voice_level_−4_dB_·_room_echo_shorter|The_voice_got_quieter_too:_try_less."]),
         ("velocity-strip", ["--sample"], ["select melody", "dock editor", "velocity-line 0 0.2 6 1"]),
         ("key-shading", ["--sample"], ['agent Set the key|[{"op":"key.add","target":[],"args":{"at":0,"key":"D minor"}}]', "select melody", "dock editor"]),
         ("key-out-of-key-dots", ["--sample"], ['agent Set the key|[{"op":"key.add","target":[],"args":{"at":0,"key":"F# major"}}]', "select melody", "dock editor"]),

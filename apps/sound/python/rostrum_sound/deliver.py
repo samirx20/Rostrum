@@ -171,8 +171,9 @@ def write(path: Path, src: Path, keep: int, rate: int, spec: dict, sf, offset: i
 def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dict:
     """Turn the engine's float files in `folder` into the delivered ones. `r` is the engine's answer (`file`,
     `stems` {track id: path}, `busStems` {bus id: path}); `names` maps a track or bus id to the name the screen shows.
-    Returns `r` with the new paths (`range` [from, to] when only a part of the song was asked for: the whole song is
-    rendered and cut here, so the loudness measured is the whole song's, not the part's), `seconds` (the delivered length), `songSeconds` (the song's own), `files` (what
+    Returns `r` with the new paths (`range` [from, to] when only a part of the song was asked for: the engine renders
+    that part itself, mastered and measured on its own; an older render of the whole song is cut here), `seconds` (the
+    delivered length), `songSeconds` (the song's own), `files` (what
     each id became) and what was written (`format`, `sampleRate`, `trimmedTo`, `clippedSamples`)."""
     sf = _soundfile()
     spec = opts.spec
@@ -188,7 +189,12 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dic
         raise RostrumError(codes.JOB_FAILED, "render", str(folder), f"the engine wrote {rate} Hz, not the {opts.sample_rate} Hz asked for")
     heard = max(i[1] for i in info.values())
     keep, first = frames, 0
-    if opts.start is not None:         # a range: the engine renders the whole song (it has no range), the cut is made here
+    ranged = opts.start is not None and r.get("range") is not None      # the engine rendered the range itself
+    if ranged:
+        first = 0
+        if opts.trim and heard:        # its silent end goes, as a whole song's does
+            keep = min(frames, max(heard + int(TAIL * rate), int(MIN_SECONDS * rate)))
+    elif opts.start is not None:       # a whole-song render (a test's, an old engine's): the cut is made here
         first = int(opts.start * rate)
         if first >= frames:
             raise RostrumError(codes.BAD_ARGUMENT, "render", f"range from {opts.start:g} s",
@@ -206,9 +212,11 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dic
         part.replace(dest)
         files[(kind, key)] = dest
     mix = files[("mix", None)]
-    return {**r, "file": str(mix), "seconds": keep / rate, "songSeconds": frames / rate,
+    start = r["range"][0] if ranged else first / rate
+    song = (r.get("seconds") or frames / rate) if ranged else frames / rate
+    return {**{k: v for k, v in r.items() if k != "range"}, "file": str(mix), "seconds": keep / rate, "songSeconds": song,
             "stems": {k: str(files[("track", k)]) for k in (r.get("stems") or {})},
             "busStems": {k: str(files[("bus", k)]) for k in (r.get("busStems") or {})},
-            "format": opts.describe(), "sampleRate": rate, "trimmed": bool(opts.start is None and opts.trim and keep < frames),
-            **({"range": [first / rate, (first + keep) / rate]} if opts.start is not None else {}),
+            "format": opts.describe(), "sampleRate": rate, "trimmed": bool(opts.trim and keep < frames and (ranged or opts.start is None)),
+            **({"range": [start, start + keep / rate]} if opts.start is not None else {}),
             "clippedSamples": over}

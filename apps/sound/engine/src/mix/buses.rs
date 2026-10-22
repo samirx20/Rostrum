@@ -7,7 +7,7 @@
 use serde::Deserialize;
 use std::sync::Arc;
 
-use crate::bed::{self, Layout};
+use crate::bed;
 use crate::mix::render::stats::{track_stats, TrackStats};
 use crate::mix::schedule::{Automation, Effect, Param, Schedule, Track};
 use crate::mix::tape::Tape;
@@ -98,15 +98,6 @@ pub fn order(s: &Schedule) -> Result<Vec<usize>, String> {
     let mut out: Vec<usize> = (0..n).collect();
     out.sort_by(|a, b| depth[*b].cmp(&depth[*a]));
     Ok(out)
-}
-
-/// The stereo tap before a track's fader, on the bed's front pair (L / R) — for its pre-fader sends.
-pub fn pre_tap(t: &Track, l: &[f32], r: &[f32], layout: Layout) -> Option<Vec<Vec<f32>>> {
-    has_pre(t).then(|| {
-        let mut chs = vec![l.to_vec(), r.to_vec()];
-        chs.resize(layout.channels(), vec![0.0; l.len()]);
-        chs
-    })
 }
 
 /// Polarity flipped (phase invert).

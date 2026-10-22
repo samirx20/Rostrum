@@ -52,6 +52,11 @@ pub struct Schedule {
     /// Each track's render-cache key (trackcache.rs), made from the raw job when it is parsed.
     #[serde(skip)]
     pub track_keys: Vec<String>,
+    /// The frames of the song the file holds (the render request's `from` / `to`; None: all of it). The tracks
+    /// render whole (their cache keys do not change); the master stage, its loudness and the file's measures work
+    /// on the range alone, and the stems are cut to it.
+    #[serde(skip)]
+    pub range: Option<(usize, usize)>,
 }
 
 fn safety_clip_on() -> bool {

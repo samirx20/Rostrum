@@ -11,7 +11,10 @@ pub struct MasterGain {
     sr: f64,
     fade_in: usize,
     fade_out: usize,
-    /// Frames in the file.
+    /// Frames in the song (where its fade-out ends).
+    song: usize,
+    /// The song frame the file starts at (a range), and the frames in the file.
+    pub offset: usize,
     pub total: usize,
     /// The mastering stage's gain to its loudness target (linear; 1 without one).
     pub norm: f64,
@@ -19,12 +22,13 @@ pub struct MasterGain {
 
 impl MasterGain {
     pub fn new(s: &Schedule) -> MasterGain {
-        MasterGain { fader: crate::mix::buses::master_fader(s), sr: s.sample_rate as f64, fade_in: s.fade_in_samples, fade_out: s.fade_out_samples, total: s.total_samples, norm: 1.0 }
+        let (offset, end) = s.range.unwrap_or((0, s.total_samples));
+        MasterGain { fader: crate::mix::buses::master_fader(s), sr: s.sample_rate as f64, fade_in: s.fade_in_samples, fade_out: s.fade_out_samples, song: s.total_samples, offset, total: end - offset, norm: 1.0 }
     }
 
-    /// The fades' envelope at frame `i`.
+    /// The fades' envelope at song frame `i`.
     fn env(&self, i: usize) -> f64 {
-        let (fi, fo, total) = (self.fade_in, self.fade_out, self.total);
+        let (fi, fo, total) = (self.fade_in, self.fade_out, self.song);
         let mut env = 1.0;
         if fi > 0 && i < fi {
             env = 0.5 * (1.0 - (std::f64::consts::PI * (i as f64 / fi.max(1) as f64)).cos());
@@ -36,12 +40,13 @@ impl MasterGain {
         env
     }
 
-    /// Fader times fades at frame `i` (what the mix takes before its mastering stage).
+    /// Fader times fades at frame `i` of the file (what the mix takes before its mastering stage).
     pub fn lin(&self, i: usize) -> f64 {
+        let i = i + self.offset;
         self.fader.at(i as f64 / self.sr) * self.env(i)
     }
 
-    /// The whole linear gain at frame `i`, as the stems carry it.
+    /// The whole linear gain at frame `i` of the file, as the stems carry it.
     pub fn stem(&self, i: usize) -> f32 {
         (self.lin(i) * self.norm) as f32
     }

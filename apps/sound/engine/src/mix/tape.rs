@@ -13,7 +13,7 @@ use std::sync::Mutex;
 /// Frames per block, everywhere the mix works block by block (64 k frames: 512 KB of stereo f32).
 pub const BLOCK: usize = 1 << 16;
 
-const HEADER: usize = 32;
+pub(crate) const HEADER: usize = 32;
 
 pub struct Tape {
     file: Mutex<File>,
@@ -61,8 +61,20 @@ impl Tape {
         Some(Tape { file: Mutex::new(file), path: path.to_path_buf(), scratch: false, chs, len, from, n })
     }
 
+    /// A whole tape file made by this render (tapewriter.rs), opened as a scratch tape (removed when dropped).
+    pub fn open_scratch(path: &Path, len: usize) -> Option<Tape> {
+        let mut t = Tape::open(path, len)?;
+        t.scratch = true;
+        Some(t)
+    }
+
     /// Channels written to a scratch file of this render (removed when the tape is dropped).
     pub fn spill(chs: &[Vec<f32>]) -> Result<Tape, String> {
+        Tape::spill_with(chs.first().map_or(0, Vec::len), |w| write_to(w, chs))
+    }
+
+    /// A scratch tape of `len` frames that `write` fills in the tape layout (tapewriter.rs streams one).
+    pub fn spill_with(len: usize, write: impl FnOnce(&mut BufWriter<File>) -> std::io::Result<()>) -> Result<Tape, String> {
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let dir = std::env::temp_dir().join("rostrum-sound-render");
         static SWEPT: std::sync::Once = std::sync::Once::new();
@@ -70,8 +82,8 @@ impl Tape {
         let path = dir.join(format!("{}-{}.f32", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
         let fail = |e: std::io::Error| format!("could not write the render's scratch file {}: {e}", path.display());
         std::fs::create_dir_all(&dir).map_err(fail)?;
-        let written = File::create(&path).and_then(|f| write_to(&mut BufWriter::new(f), chs));
-        let opened = written.map_err(fail).and_then(|_| Tape::open(&path, chs.first().map_or(0, Vec::len)).ok_or_else(|| format!("the render's scratch file {} did not read back", path.display())));
+        let written = File::create(&path).and_then(|f| write(&mut BufWriter::new(f)));
+        let opened = written.map_err(fail).and_then(|_| Tape::open(&path, len).ok_or_else(|| format!("the render's scratch file {} did not read back", path.display())));
         match opened {
             Ok(mut tape) => {
                 tape.scratch = true;

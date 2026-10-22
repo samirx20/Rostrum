@@ -47,12 +47,8 @@ pub(super) fn render_tracks(s: &Schedule, cache: Option<&TrackCache>, buf: usize
             let clips = render_track_clips(s, k)?;
             let feeders: Vec<&Tape> = s.tracks.iter().enumerate().filter(|(_, t)| t.into == Some(k)).filter_map(|(j, _)| done[j].as_deref()).collect();
             let (out, pre) = track_out(s, &s.tracks[k], clips, feeders, buf)?;
-            let stored = cache.and_then(|c| c.store(&s.track_keys[k], &out));
-            let tape = match stored {
-                Some(t) => t,
-                None => Tape::spill(&out)?,
-            };
-            Ok((k, tape, pre.map(|p| Tape::spill(&p)).transpose()?))
+            let tape = out.finish(cache.map(|c| (c, s.track_keys[k].as_str())))?;
+            Ok((k, tape, pre.map(|p| p.finish(None)).transpose()?))
         });
         for r in rendered {
             let (k, tape, pre) = r?;

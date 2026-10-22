@@ -49,8 +49,12 @@ pub fn master(s: &Schedule, mut bus: Vec<Vec<f32>>) -> Result<Mix, String> {
     // mastering stage when there is one, then the safety clip.
     let mut gain = crate::mix::mastergain::MasterGain::new(s);
     let mut out = bus;
+    // A range: the file is that stretch of the song (the stages above ran over the song, so it starts with their
+    // state: a reverb tail, a compressor's gain), mastered and measured on its own.
+    let (from, total) = (gain.offset, gain.total);
     for c in out.iter_mut() {
-        c.truncate(total);
+        c.truncate(from + total);
+        c.drain(..from);
         c.iter_mut().enumerate().for_each(|(i, v)| *v = (*v as f64 * gain.lin(i)) as f32);
     }
     let weights = layout.weights();

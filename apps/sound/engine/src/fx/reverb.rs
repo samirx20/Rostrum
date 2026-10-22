@@ -108,23 +108,34 @@ impl Reverb {
 
 /// A reverb over a bed's mains (the LFE stays dry); stereo is the stereo reverb.
 pub fn reverb_bed(bed: &mut [Vec<f32>], layout: crate::bed::Layout, space: &str, wet: f64, sr: f64) {
-    if bed.len() == 2 {
-        let (l, r) = bed.split_at_mut(1);
-        return reverb(&mut l[0], &mut r[0], space, wet, sr);
+    BedReverb::new(bed.len(), layout, space, wet, sr).block(bed);
+}
+
+/// A track's reverb send over a bed of `channels` (stereo: both sides; a bed: its mains), its tail kept
+/// between blocks; nothing when the space is dry or the send under 0.005.
+pub struct BedReverb {
+    r: Option<Reverb>,
+    mains: Vec<usize>,
+    x: Vec<f64>,
+}
+
+impl BedReverb {
+    pub fn new(channels: usize, layout: crate::bed::Layout, space: &str, wet: f64, sr: f64) -> Self {
+        let mains: Vec<usize> = (0..channels).filter(|&c| channels == 2 || Some(c) != layout.lfe()).collect();
+        let on = space != "dry" && wet > 0.005 && channels > 0;
+        BedReverb { r: on.then(|| Reverb::with_channels(space, wet, sr, mains.len())), x: vec![0.0; mains.len()], mains }
     }
-    if space == "dry" || wet <= 0.005 || bed.is_empty() {
-        return;
-    }
-    let mains: Vec<usize> = (0..bed.len()).filter(|&c| Some(c) != layout.lfe()).collect();
-    let mut r = Reverb::with_channels(space, wet, sr, mains.len());
-    let mut x = vec![0.0; mains.len()];
-    for i in 0..bed[0].len() {
-        for (k, &c) in mains.iter().enumerate() {
-            x[k] = bed[c][i] as f64;
-        }
-        r.process_n(&mut x);
-        for (k, &c) in mains.iter().enumerate() {
-            bed[c][i] = x[k] as f32;
+
+    pub fn block(&mut self, bed: &mut [Vec<f32>]) {
+        let Some(r) = &mut self.r else { return };
+        for i in 0..bed.first().map_or(0, Vec::len) {
+            for (k, &c) in self.mains.iter().enumerate() {
+                self.x[k] = bed[c][i] as f64;
+            }
+            r.process_n(&mut self.x);
+            for (k, &c) in self.mains.iter().enumerate() {
+                bed[c][i] = self.x[k] as f32;
+            }
         }
     }
 }
