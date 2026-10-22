@@ -12,12 +12,14 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, Slot
 from rostrum_gui import DocBridge
+from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
+from rostrum_core import live
 from rostrum_sound import compile as compile_doc
 from rostrum_sound.doc import markers as MK
 from rostrum_sound.doc import ops_mix
 
-from . import inspect, lanes, onpage, output_pick, picture, pick, timeline
+from . import inspect, lanes, onpage, output_pick, picture, pick, screen_seen, timeline
 from .edit_slots import EditSlots
 from .lane_slots import LaneSlots
 from .picture_slots import PictureSlots
@@ -45,6 +47,10 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, D
         self._picture_open = False
         MK.use_project(doc.folder)          # the screen works in this document's project (its shared markers)
         super().__init__(doc, parent=parent)
+        self.link = None
+        if autosave and doc.folder:         # one door for every save, shared with agents' servers (rostrum_core.live)
+            live.keep(doc)
+            self.link = LiveLink(self, "sound", screen_seen.state)
         self._picture_open = bool(self.doc.data.get("picture"))     # the corner opens by itself on a song with a picture
         self._follow_render = picture.Follow(lambda: (self.pictureChoice, self.doc.folder), self)
         self._follow_render.changed.connect(self.timelineChanged)       # the linked item has a newer render
@@ -215,10 +221,10 @@ class SoundBridge(ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, S, D
         self._guard(self._rebuild)
         if event.kind == "change":             # a drag renders once, when it lands
             self.transport.changed()
-        if self.autosave and event.kind == "change":
-            self._guard(self.doc.save)
 
     def close(self):
+        if self.link:
+            self.link.close()
         self.endDrag()
         self._marks.close()
         self.transport.close()

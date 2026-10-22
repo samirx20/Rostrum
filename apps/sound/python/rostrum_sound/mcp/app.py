@@ -12,7 +12,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from rostrum_core import Document, RostrumError, codes
+from rostrum_core import Document, RostrumError, codes, live
 from rostrum_core.mcp import App, Guides
 
 from .. import opening
@@ -58,8 +58,7 @@ class SoundState:
 def open_or_new(folder: Path, item: str) -> Document:
     doc_file = folder / "docs" / f"{item}{KIND.ext}"
     doc = opening.open_whole(folder, item) if doc_file.is_file() else Document.new(KIND, folder=folder, item=item)
-    doc.save()
-    doc.subscribe(lambda ev: doc.save())             # every change is on disk at once
+    live.keep(doc)                                   # every change is on disk at once, through the one shared door
     return doc
 
 

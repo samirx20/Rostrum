@@ -30,3 +30,16 @@ def track_add(ctx, targets, args):
 def track_remove(ctx, targets, args):
     for t in targets:
         ctx.remove(t)
+
+
+@REGISTRY.operation("track.lock", "Lock tracks: every operation refuses them until track.unlock.", target="track",
+                    label="Lock", importance="secondary")
+def track_lock(ctx, targets, args):
+    for t in targets:
+        ctx.set(t, "locked", True)
+
+
+@REGISTRY.operation("track.unlock", "Unlock tracks.", target="track", label="Unlock", importance="secondary")
+def track_unlock(ctx, targets, args):
+    for t in targets:
+        ctx.set(t, "locked", False)

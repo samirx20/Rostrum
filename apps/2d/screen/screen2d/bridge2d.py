@@ -6,12 +6,13 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui import DocBridge
+from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
-from rostrum_core import marker_times
+from rostrum_core import live, marker_times
 from rostrum_core.tree import index
 from rostrum2d import fields as F, retime
 
-from . import bounds, outline
+from . import bounds, outline, screen_seen
 from .drags import DragSlots
 from .command_words import CommandWords
 from .file_commands import FileCommands
@@ -77,6 +78,10 @@ class Bridge2D(ShownState, ClipboardSlots, UndoState, ActionSlots, LayerOrder, F
         self.r3d.changed.connect(self._problems.touch)
         self.selectionChanged.connect(self.outlineChanged)
         self.selectionChanged.connect(self.shownChanged)
+        self.link = None
+        if autosave and doc.folder:                         # live (--doc): one door for every save, shared with agents' servers
+            live.keep(doc)
+            self.link = LiveLink(self, "2d", screen_seen.state)
         self._make_actions()                                # the one action list's hub: bar, menus, Ctrl+K, keys
         self._render()
         self._problems.touch()
@@ -264,10 +269,10 @@ class Bridge2D(ShownState, ClipboardSlots, UndoState, ActionSlots, LayerOrder, F
         self.outlineChanged.emit()
         self._render()
         self._problems.touch()
-        if self.autosave and event.kind == "change":
-            self._guard(self.doc.save)
 
     def close(self):
+        if self.link:
+            self.link.close()
         self.play.stop()
         self.marks.close()
         self.endDrag()
