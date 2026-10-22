@@ -20,7 +20,9 @@ QML = Path(__file__).resolve().parents[1] / "qml" / "Main.qml"
 GUIDES = guides.entries(Path(__file__).resolve().parents[2] / "guides", [     # Help's guides (apps/2d/guides): for people;
     ("first-animation.md", "Making your first animation"), ("the-screen.md", "The screen"),   # the agent pages are
     ("drawing.md", "Drawing"), ("importing.md", "Importing pictures and files"),                # listed in README.md
-    ("exporting.md", "Exporting a video"), ("files.md", "Files and settings"), ("README.md", "All guides")])
+    ("exporting.md", "Exporting a video"), ("files.md", "Files and settings"), ("timing-to-music.md", "Timing to music"),
+    ("text-on-a-path.md", "Text on a path"), ("curve-editor.md", "The curve editor"),
+    ("characters-sound-camera.md", "Characters, sound, camera and styles"), ("README.md", "All guides")])
 
 
 class Session:
