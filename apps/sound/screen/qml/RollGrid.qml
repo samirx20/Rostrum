@@ -55,55 +55,81 @@ Item {
     }
     BeatGrid { x: g.keysWidth; width: g.width - x; height: g.height; ruler: g.ruler; opacity: 0.8 }
 
+    readonly property var picked: backend.picked        // one read per change
     Item {   // the plot: zoomed in, what is out of view is cut at the keys' edge
         x: g.keysWidth; width: g.width - x; height: g.height; clip: true
-        Repeater {   // notes (a chord: one bar per key), hits, clips
-            model: g.roll.blocks
-            delegate: Item {
-                id: b
-                required property var modelData
-                readonly property bool on: !!backend.picked[modelData.id]
-                x: Math.round(g.ruler.xOf(modelData.t)); width: g.width; height: g.height
-                Repeater {
-                    model: b.modelData.type === "note" ? b.modelData.keys : []
-                    delegate: Rectangle {
-                        required property int modelData
-                        y: (g.roll.hi - modelData) * g.rowH + 1; height: g.rowH - 2
-                        width: Math.max(4, g.ruler.wOf(b.modelData.dur) - 1); radius: 3
-                        color: b.on ? Qt.lighter(g.roll.hue, 1.25) : g.roll.hue      // selected: a lighter fill, the accent outline
-                        border.width: b.on ? 2 : 0; border.color: Theme.accent
-                        Text { visible: parent.width >= implicitWidth + 5 && g.rowH >= 14   // whenever the name fits the bar
-                               x: 3; anchors.verticalCenter: parent.verticalCenter
-                               text: b.modelData.names[b.modelData.keys.indexOf(parent.modelData)]; color: Theme.app; font.family: uiFont
-                               font.pixelSize: Theme.label - 1; font.weight: Font.DemiBold }
+        // One painted surface for the notes, hits and clips, not four items per note: only what is on screen is
+        // painted, again when the roll, the zoom, the scroll, the selection or the size changes.
+        Canvas {
+            id: c
+            anchors.fill: parent
+            onWidthChanged: requestPaint()
+            onHeightChanged: requestPaint()
+            Connections {
+                target: g
+                function onRollChanged() { c.requestPaint() }
+                function onPickedChanged() { c.requestPaint() }
+                function onRowHChanged() { c.requestPaint() }
+            }
+            Connections {
+                target: g.ruler
+                function onStartChanged() { c.requestPaint() }
+                function onPerSecChanged() { c.requestPaint() }
+            }
+            function fillOf(on) { return on ? Qt.lighter(g.roll.hue, 1.25) : g.roll.hue }      // selected: a lighter fill, the accent outline
+            function round(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundedRect(x, y, w, h, r, r) }
+            function paintNote(ctx, b, on, x) {
+                var w = Math.max(4, g.ruler.wOf(b.dur) - 1), h = g.rowH - 2
+                ctx.font = "600 " + (Theme.label - 1) + "px '" + uiFont + "'"; ctx.textBaseline = "middle"
+                for (var i = 0; i < b.keys.length; i++) {
+                    var y = (g.roll.hi - b.keys[i]) * g.rowH + 1
+                    ctx.fillStyle = fillOf(on); round(ctx, x, y, w, h, 3); ctx.fill()
+                    if (on) { ctx.strokeStyle = Theme.accent; ctx.lineWidth = 2; round(ctx, x + 1, y + 1, w - 2, h - 2, 2); ctx.stroke() }
+                    if (g.rowH >= 14 && b.names[i] && w >= ctx.measureText(b.names[i]).width + 5) {      // whenever the name fits the bar
+                        ctx.fillStyle = Theme.app; ctx.fillText(b.names[i], x + 3, y + h / 2)
                     }
                 }
-                Rectangle {   // a hit: a diamond on its drum's row
-                    visible: b.modelData.type === "hit"
-                    readonly property real s: Math.min(12, g.rowH * 0.5)
-                    x: -s / 2; y: g.roll.drums.indexOf(b.modelData.drum) * g.rowH + (g.rowH - s) / 2
-                    width: s; height: s; rotation: 45; radius: 2
-                    color: b.on ? Qt.lighter(g.roll.hue, 1.25) : g.roll.hue; opacity: b.on ? 1 : 0.5 + 0.5 * (b.modelData.vel || 0)
-                    border.width: b.on ? 2 : 0; border.color: Theme.accent
+            }
+            function paintHit(ctx, b, on, x) {                  // a diamond on its drum's row
+                var cy = g.roll.drums.indexOf(b.drum) * g.rowH + g.rowH / 2
+                var d = Math.min(12, g.rowH * 0.5) * 0.7071
+                ctx.globalAlpha = on ? 1 : 0.5 + 0.5 * (b.vel || 0)
+                ctx.fillStyle = fillOf(on)
+                ctx.beginPath(); ctx.moveTo(x, cy - d); ctx.lineTo(x + d, cy); ctx.lineTo(x, cy + d); ctx.lineTo(x - d, cy); ctx.closePath(); ctx.fill()
+                if (on) { ctx.strokeStyle = Theme.accent; ctx.lineWidth = 2; ctx.stroke() }
+                ctx.globalAlpha = 1
+            }
+            function paintClip(ctx, b, on, x) {
+                var y = g.height * 0.2, h = g.height * 0.6, w = Math.max(4, g.ruler.wOf(b.dur))
+                ctx.strokeStyle = on ? Theme.accent : g.roll.hue; ctx.lineWidth = 1
+                round(ctx, x + 0.5, y + 0.5, w - 1, h - 1, 4); ctx.stroke()
+                var peaks = b.peaks || [], n = peaks.length
+                if (n > 0) {
+                    var ix = x + 4, iw = w - 8, top = y + 24, ih = h - 28, pw = iw / n
+                    ctx.globalAlpha = 0.85; ctx.fillStyle = on ? Theme.accent : g.roll.hue
+                    for (var i = 0; i < n; i++) {
+                        var ph = Math.max(1, ih * peaks[i])
+                        ctx.fillRect(ix + i * pw, top + (ih - ph) / 2, Math.max(1, pw - 2), ph)
+                    }
+                    ctx.globalAlpha = 1
                 }
-                Rectangle {   // a clip: its waveform
-                    visible: b.modelData.type === "clip" || b.modelData.type === "line"
-                    y: g.height * 0.2; height: g.height * 0.6; width: Math.max(4, g.ruler.wOf(b.modelData.dur))
-                    radius: 4; color: "transparent"; border.width: 1; border.color: b.on ? Theme.accent : g.roll.hue
-                    Text { x: 8; y: 6; width: parent.width - 16; elide: Text.ElideRight   // stays inside its block
-                           text: b.modelData.label; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label }
-                    Row {
-                        anchors.fill: parent; anchors.margins: 4; anchors.topMargin: 24
-                        Repeater {
-                            model: b.modelData.peaks || []
-                            delegate: Item {
-                                required property real modelData
-                                width: parent.width / Math.max(1, b.modelData.peaks.length); height: parent.height
-                                Rectangle { anchors.centerIn: parent; width: Math.max(1, parent.width - 2); radius: 1
-                                            height: Math.max(1, parent.height * modelData)
-                                            color: b.on ? Theme.accent : g.roll.hue; opacity: 0.85 }
-                            }
-                        }
+                ctx.save(); ctx.beginPath(); ctx.rect(x + 8, y, Math.max(0, w - 16), h); ctx.clip()      // the label stays inside its block
+                ctx.fillStyle = Theme.fg2; ctx.font = Theme.label + "px '" + uiFont + "'"; ctx.textBaseline = "top"
+                ctx.fillText(b.label || "", x + 8, y + 6)
+                ctx.restore()
+            }
+            onPaint: {
+                var ctx = getContext("2d"); ctx.reset()
+                var blocks = g.roll.blocks || [], picked = g.picked
+                for (var pass = 0; pass < 2; pass++) {          // what is selected is drawn last, on top
+                    for (var i = 0; i < blocks.length; i++) {
+                        var b = blocks[i], on = !!picked[b.id]
+                        if (on !== (pass === 1)) continue
+                        var x = Math.round(g.ruler.xOf(b.t))
+                        if (x > width + 12 || x + g.ruler.wOf(b.dur) < -12) continue        // off screen
+                        if (b.type === "note") paintNote(ctx, b, on, x)
+                        else if (b.type === "hit") paintHit(ctx, b, on, x)
+                        else if (b.type === "clip" || b.type === "line" || b.type === "sound") paintClip(ctx, b, on, x)
                     }
                 }
             }

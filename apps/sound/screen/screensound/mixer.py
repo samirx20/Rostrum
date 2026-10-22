@@ -12,7 +12,6 @@ from rostrum_gui.model import RowsModel
 from . import ducks, playback, strips
 from .cleaning import CleanedTake
 from .export import RenderExport
-from .listen_pics import ListenPics
 from .loudness import LoudnessMeter
 from .plugins import PluginHub
 
@@ -23,13 +22,12 @@ ROLES = ("id", "name", "volume", "pan", "mute", "solo", "effects", "meter", "can
 class MixPage(QObject):
     masterChanged = Signal()
 
-    def __init__(self, bridge, pics_folder=None, parent=None):
+    def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.bridge, self.doc = bridge, bridge.doc
         self._tracks = RowsModel(ROLES, self)
         self._buses = RowsModel(ROLES, self)
         self._master: dict = {}
-        self.pics = ListenPics(bridge, pics_folder, self)
         self._plugins = PluginHub(bridge, playback.open_engine, self)
         self._ducks, self._loudness = ducks.DuckHub(bridge, self), LoudnessMeter(bridge, self)
         self._export, self._cleaning = RenderExport(bridge, parent=self), CleanedTake(bridge, self)
@@ -40,7 +38,6 @@ class MixPage(QObject):
         bridge.renderChanged.connect(self._refresh)
 
     def close(self):
-        self.pics.close()
         self._plugins.close()
         self._export.close()
         self._cleaning.close()
@@ -76,10 +73,6 @@ class MixPage(QObject):
     @Property("QVariantMap", notify=masterChanged)
     def master(self):
         return self._master
-
-    @Property(QObject, constant=True)
-    def listen(self):
-        return self.pics
 
     @Property("QVariantList", constant=True)
     def effectTypes(self):
