@@ -101,3 +101,16 @@ def test_a_song_using_a_project_marker_opens(doc):
     doc.save()
     markers.use_project(None)                        # a fresh process: nobody has set the project yet
     assert opening.open_whole(doc.folder, "cue").data["tracks"]
+
+
+def test_saving_a_song_twice_writes_the_markers_file_once(doc, monkeypatch):
+    """Every save looks at the project's markers (the window's one history); a look that changes nothing never
+    rewrites them: a rewrite wakes every app watching the markers (and once hung Sound)."""
+    from rostrum_core import live, storage
+    written = []
+    monkeypatch.setattr(live, "save", lambda d, document=True: written.append(d.item_id) or storage.save(d, document))
+    for at in (1.0, 2.0):
+        doc.apply({"op": "marker.add", "args": {"name": f"beat {at:g}", "at": at}}, Who.person())
+        doc.save()
+        project.open_to_change(doc.folder)          # as the window's history does after every step
+    assert written.count(project.ITEM) == 0         # the markers were written once, by the fixture's marker.add
