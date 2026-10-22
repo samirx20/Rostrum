@@ -245,6 +245,11 @@ class Document:
             fn(ev)
 
     def save(self):
+        """Write the document to its project folder. A live document (live.keep) is saved after every change already:
+        here it only goes through the one door (lock, catch up), so a save never writes over another program's steps."""
+        if self.live is not None:
+            with self._door():
+                return
         from .storage import save
         save(self)
 
