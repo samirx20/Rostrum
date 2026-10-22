@@ -10,6 +10,8 @@
     python apps/2d/screen/main.py --open <doc file or project folder>   # open it the way a person does: File > Save
                                                                     # saves, unsaved changes are kept in a recovery copy
     python apps/2d/screen/main.py --sample --step "select title" --step "page animate" --step "time 1.2" --shot out.png
+    python apps/2d/screen/main.py --check-layout <folder>             # the layout check: every screen state at every
+                                                                    # real window size (rostrum_gui/layout_run.py)
 Steps and --shot go with any start (no file named: the plain start, so a walk can check it). Steps: see screen2d/steps.py (file steps: screen2d/file_steps.py). With --shot the window quits by itself; a failed
 step, frame or save exits nonzero.
 Offscreen screenshots: QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
@@ -24,6 +26,7 @@ from PySide6.QtGui import QGuiApplication
 
 from rostrum_core import Document, RostrumError
 from rostrum_core.storage import paths
+from rostrum_gui import layout_run
 from rostrum2d import KIND, run_source
 from screen2d import projects, recent
 from screen2d.projects import resolve
@@ -103,7 +106,12 @@ def main():
     a.add_argument("--comp")
     a.add_argument("--step", action="append", default=[])
     a.add_argument("--shot")
+    a.add_argument("--check-layout", metavar="FOLDER")
+    a.add_argument("--check-name")
     args = a.parse_args()
+    if args.check_layout and not args.check_name:
+        from screen2d.layout_states import states
+        sys.exit(layout_run.run_all(Path(__file__), states(), args.check_layout))
     if args.shot:
         check_shot_path(args.shot)
 
@@ -125,8 +133,14 @@ def main():
 
     def run_steps():
         for s in args.step:
-            do_step(session.bridge, session.win, s)        # a file step may open another window
-        if args.shot:
+            if not layout_run.kit_step(session.bridge, s):
+                do_step(session.bridge, session.win, s)    # a file step may open another window
+        if args.check_layout:
+            from screen2d.layout_states import IGNORE
+            bridge = session.bridge
+            layout_run.sweep(app, session.win, args.check_layout, args.check_name,
+                             lambda: bridge.frames.idle() and bridge.frame > 0, IGNORE)
+        elif args.shot:
             wait_frame(0)
 
     def wait_frame(n):       # the newest frame has landed, then the 160 ms reveals have finished
@@ -148,8 +162,8 @@ def main():
         app.exit(0)          # not quit(): that asks each window to close, and one with unsaved changes asks first
 
     QTimer.singleShot(400, lambda: guarded(run_steps))
-    if args.shot:
-        QTimer.singleShot(30000, lambda: (print("FAIL: timeout", file=sys.stderr), app.exit(4)))
+    if args.shot or args.check_layout:
+        QTimer.singleShot(120000 if args.check_layout else 30000, lambda: (print("FAIL: timeout", file=sys.stderr), app.exit(4)))
     app.exec()
     session.close()
     sys.exit(code[0])

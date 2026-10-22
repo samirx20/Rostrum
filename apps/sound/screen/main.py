@@ -12,6 +12,8 @@ Every song with a folder is saved after every change. Steps: see screensound/ste
 `add-track <kind>`). With --shot the window quits by
 itself once the sound has rendered; a failed step, render or save exits nonzero. Offscreen screenshots:
 QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
+    python apps/sound/screen/main.py --check-layout <folder>          # the layout check: every screen state at every
+                                                                      # real window size (rostrum_gui/layout_run.py)
 """
 import argparse
 import os
@@ -23,7 +25,7 @@ from PySide6.QtGui import QGuiApplication
 
 from rostrum_core import Document, RostrumError
 from rostrum_core.storage import paths
-from rostrum_gui import guides, start
+from rostrum_gui import guides, layout_run, start
 from rostrum_sound import KIND, run_source
 from rostrum_sound.opening import said
 from screensound import projects
@@ -171,7 +173,12 @@ def main():
     a.add_argument("--new", action="store_true")
     a.add_argument("--step", action="append", default=[])
     a.add_argument("--shot")
+    a.add_argument("--check-layout", metavar="FOLDER")
+    a.add_argument("--check-name")
     args = a.parse_args()
+    if args.check_layout and not args.check_name:
+        from screensound.layout_states import states
+        sys.exit(layout_run.run_all(Path(__file__), states(), args.check_layout))
 
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
@@ -193,9 +200,13 @@ def main():
 
     def run_steps():
         for s in args.step:
-            if not file_step(screen, s):
+            if not (layout_run.kit_step(screen.bridge, s) or file_step(screen, s)):
                 do_step(screen.bridge, screen.win, s, screen.parts["recorder"])
-        if args.shot:
+        if args.check_layout:
+            from screensound.layout_states import IGNORE
+            layout_run.sweep(app, screen.win, args.check_layout, args.check_name,
+                             lambda: not screen.bridge.transport.busy(), IGNORE)
+        elif args.shot:
             wait_render(screen.bridge)
             QTimer.singleShot(600, lambda: guarded(shoot))     # the 160 ms reveals have finished
 
@@ -211,7 +222,7 @@ def main():
         app.exit(0)              # not quit(): that asks the window, and an untitled song with changes would ask back
 
     QTimer.singleShot(400, lambda: guarded(run_steps))
-    if args.shot:
+    if args.shot or args.check_layout:
         QTimer.singleShot(180000, lambda: (print("FAIL: timeout", file=sys.stderr), app.exit(4)))
     app.exec()
     screen.close()
