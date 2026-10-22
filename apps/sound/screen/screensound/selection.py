@@ -6,7 +6,7 @@ inspector shows. Selecting is screen state: never an undo step, never saved. `de
 """
 from __future__ import annotations
 
-PICKABLE = ("note", "hit", "clip", "line")          # what a box, Ctrl+A and a drag of many take along
+PICKABLE = ("note", "hit", "clip", "line", "sound")          # what a box, Ctrl+A and a drag of many take along
 
 
 class Selection:
@@ -73,7 +73,7 @@ def blocks_by_id(rows: list[dict]) -> dict[str, dict]:
 
 def count_words(kinds: list[str]) -> str:
     """The count chip: "5 notes", "1 clip", "3 items" (mixed kinds)."""
-    names = {"note": "note", "hit": "drum hit", "clip": "clip", "line": "line", "track": "track", "marker": "marker",
+    names = {"note": "note", "hit": "drum hit", "clip": "clip", "line": "line", "sound": "sound", "track": "track", "marker": "marker",
              "section": "section", "bus": "group", "master": "master"}
     n = len(kinds)
     if not n:

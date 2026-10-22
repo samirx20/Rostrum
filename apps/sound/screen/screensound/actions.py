@@ -6,8 +6,9 @@ entries move there as they are:
     importance ("primary" = on the context bar, "secondary" = under ⋯ and in menus), promoted_when(Facts) (a
     selection that makes a secondary one primary), calls(Facts) -> operation calls, group (a divider in menus;
     "edit" = the edit block: keys and the right-click menu, never the bar), menu (the bar button it sits under,
-    e.g. "Transpose"), do ("copy" / "cut" / "paste" / "inside" / "rename": not a document change by itself),
-    needs (what the message line says when its key is pressed while it doesn't apply).
+    e.g. "Transpose"), do ("copy" / "cut" / "paste" / "inside" / "rename" / "library" / "clean": not a document
+    change by itself), needs (what the message line says when its key is pressed while it doesn't apply), amount
+    ((label, default(Facts)): the action asks one number first, in a small popover; then calls(Facts, number)).
 
 action_list.py reads these for the context bar, the right-click menu, Ctrl+K and the keys. No Qt.
 """
@@ -24,10 +25,10 @@ CLIPS = {"note", "hit", "clip", "line"}
 
 
 def act(key, label, valid_when, calls=None, shortcut="", importance="secondary", group="", menu="", do="",
-        promoted_when=None, needs=""):
+        promoted_when=None, needs="", amount=None):
     return {"key": f"sel:{key}", "label": label, "shortcut": shortcut, "valid_when": valid_when,
             "importance": importance, "promoted_when": promoted_when, "calls": calls, "group": group, "menu": menu,
-            "do": do, "needs": needs}
+            "do": do, "needs": needs, "amount": amount}
 
 
 def _inside_clip(f):
@@ -38,6 +39,8 @@ def _inside_clip(f):
 _STEPS = (("up", 1, "Up a half step", "Up"), ("down", -1, "Down a half step", "Down"),
           ("up12", 12, "Up an octave", "Shift+Up"), ("down12", -12, "Down an octave", "Shift+Down"))
 TRACK, NOTES, CLIP = (lambda f: f.one == "track"), (lambda f: f.one in ("note", "hit")), (lambda f: f.one == "clip")
+MARKER = lambda f: f.one == "marker" and f.count == 1 and isinstance(f.items[0].get("at"), (int, float))  # noqa: E731
+NAMED = ("track", "marker", "section")
 
 ACTIONS = [
     # tracks
@@ -67,9 +70,17 @@ ACTIONS = [
           keys, "primary", "pitch", "Transpose") for k, n, label, keys in _STEPS],
     act("humanize", "Humanise", NOTES, lambda f: [C.call(f"{f.one}.humanize", f.ids)], group="time",
         promoted_when=lambda f: f.one == "hit"),
+    # markers (the song's own, placed in seconds) and designed sounds
+    act("place_sound", "Place a sound here", lambda f: f.one == "marker" and f.count == 1, importance="primary",
+        group="marker", do="library"),
+    act("fit_bar", "Land a bar here", MARKER, C.fit_bar, importance="primary", group="marker",
+        amount=("Bar", C.bar_near), needs="Land a bar needs one marker selected (placed in seconds)"),
+    act("vary", "Make another like it", lambda f: f.one == "sound", lambda f: [C.call("sound.vary", f.ids)],
+        importance="primary", group="sound"),
     # clips
-    act("normalize", "Even out level", CLIP, lambda f: [C.call("clip.normalize", f.ids)], importance="primary",
-        group="clip"),
+    act("clean", "Clean up…", CLIP, importance="primary", group="clip", do="clean"),
+    act("normalize", "Even out level", CLIP, lambda f: [C.call("clip.normalize", f.ids, by="loudness")],
+        importance="primary", group="clip"),
     act("split", "Split at playhead", _inside_clip, lambda f: [C.call("clip.split", f.ids, at=round(f.playhead, 4))],
         "Ctrl+T", "primary", "clip", needs="Split needs clips selected with the playhead inside one"),
     act("join", "Join", lambda f: C.clips_one_track(f) and C.tries(f, [C.call("clip.join", f.ids)]),
@@ -96,8 +107,8 @@ ACTIONS = [
         group="edit", needs="Duplicate needs notes, hits, clips or tracks selected"),
     act("range_duplicate", "Duplicate", lambda f: f.range and not f.count and bool(C.inside(f)), C.range_duplicate,
         "Ctrl+D", group="edit"),
-    act("rename", "Rename", lambda f: TRACK(f) and f.count == 1, shortcut="F2", group="edit", do="rename",
-        needs="Rename needs one track selected"),
+    act("rename", "Rename", lambda f: f.one in NAMED and f.count == 1, shortcut="F2", group="edit", do="rename",
+        needs="Rename needs one track, marker or section selected"),
     act("cut_range", "Delete and close the gap", lambda f: bool(f.range), C.cut_range, "Shift+Delete", group="edit",
         needs="Delete and close the gap needs a time range over a clip"),
     act("delete", "Delete", lambda f: f.count and f.kinds <= set(REMOVABLE), C.delete, "Delete", group="edit"),

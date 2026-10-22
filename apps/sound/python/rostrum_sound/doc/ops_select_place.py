@@ -72,9 +72,9 @@ def track_duplicate(ctx, targets, args):
 def to_track(ctx, targets, args):
     dest = args["track"]
     if dest not in ctx.idx or ctx.idx[dest].item.get("type") != "track":
-        ctx.fail(codes.NOT_FOUND, "track", f'"{dest}"', "is not a track in this song")
+        ctx.fail(codes.NOT_FOUND, f'track "{dest}"', "is not a track in this song")
     if ctx.item(dest).get("instrument") == "voice":
-        ctx.fail(codes.BAD_ARGUMENT, "track", f'"{dest}"', "is a voice track: it holds spoken lines, not clips",
+        ctx.fail(codes.BAD_ARGUMENT, f'track "{dest}"', "is a voice track: it holds spoken lines, not clips",
                  hint="Choose an audio track.")
     every = list(dict.fromkeys(targets + [m["id"] for t in targets if ctx.item(t)["type"] == "clip" for m in mates(ctx, t)]))
     for t in every:

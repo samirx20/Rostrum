@@ -6,7 +6,7 @@ duplicate, split or paste made is selected afterwards. The arrow and playhead ke
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Slot
+from PySide6.QtCore import Signal, Slot
 from rostrum_gui import commands
 from rostrum_sound.doc import select_time as ST
 
@@ -14,10 +14,12 @@ from . import action_calls as C
 from . import action_list as L
 from . import clipboard, timing
 
-MAKES = ("sel:duplicate", "sel:range_duplicate", "sel:split", "sel:paste")      # select what they made afterwards
+MAKES = ("sel:duplicate", "sel:range_duplicate", "sel:split", "sel:paste", "sel:section")   # select what they made
 
 
 class ActionSlots:
+    libraryWanted = Signal(str)       # "Place a sound here": the Library opens on this chip
+    cleanWanted = Signal()            # "Clean up…": the host opens the clean-up popover
     def _acts(self):
         return L.available(self.doc, self._picks.ids, self._t, self._picks.range, bool(self._board["items"]),
                            self._track)
@@ -89,7 +91,40 @@ class ActionSlots:
             return self._act(C.delete(C.Facts(self.doc, self._picks.ids)), f"Cut {words}")
         if a["do"] == "paste":
             return self._paste(self._paste_track())
-        return self._act(a["calls"], f"{a['label']} · {words}" if words else a["label"], key in MAKES)
+        if a["do"] == "library":                       # the playhead on the marker, the Library on designed sounds
+            self.setTime(ST.start_of(self.doc.data, self.doc.item(self._picks.ids[0])))
+            self.workspace.setLibrary(True)
+            self.libraryWanted.emit("designed")
+            return True
+        if a["do"] == "clean":
+            self.cleanWanted.emit()
+            return True
+        if a["amount"]:                                # asks a number first: the bar's popover answers runActionWith
+            return self.runActionWith(key, a["amount"]["value"])
+        done = self._act(a["calls"], f"{a['label']} · {words}" if words else a["label"], key in MAKES)
+        if done and key == "sel:section" and self._picks.ids:
+            self.clearRange()
+            self.startRename(self._picks.ids[0])        # its name field opens in place
+        return done
+
+    @Slot(str, float, result=bool)
+    def runActionWith(self, key, value):
+        """An action that asked a number (the context bar's popover): Land a bar here with bar `value`."""
+        if not self.applies(key):
+            self.say(L.why(self.doc, self._picks.ids, key))
+            return False
+        calls = L.with_amount(self.doc, self._picks.ids, key, value, playhead=self._t, rng=self._picks.range)
+        label = next(a["label"] for a in self._acts() if a["key"] == key)
+        return self._act(calls, f"{label}: {value:g}")
+
+    @Slot(bool, bool, bool, result=bool)
+    def cleanSelected(self, voice, noise, echo):
+        """The clean-up popover's Clean: the steps set on every selected clip (one change); the screen then starts
+        the cleaned takes (mixer.cleaning.makeFor)."""
+        args = {"isolate": bool(voice), "denoise": 0.6 if noise else 0, "dereverb": 0.6 if echo else 0}
+        clips = [i for i in self._picks.ids if self.doc.item(i)["type"] == "clip"]
+        return bool(clips) and self._act([{"op": "clip.set_one", "target": [c], "args": args} for c in clips],
+                                         "Clean up " + self.selectionWords)
 
     def _run_at(self, parts):
         what = parts[1]

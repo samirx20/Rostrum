@@ -10,7 +10,7 @@ from rostrum_core import RostrumError, run
 from rostrum_sound.doc import select_time as ST
 
 TIMED = ("note", "hit", "clip")                       # what has `<kind>.duplicate` / `.move`
-REMOVABLE = ("note", "hit", "clip", "line", "track", "marker", "section")
+REMOVABLE = ("note", "hit", "clip", "line", "track", "marker", "section", "sound")
 
 
 class Facts:
@@ -134,6 +134,18 @@ def range_duplicate(f):
 def section(f):
     have = {s.get("name") for s in f.doc.data.get("sections", [])}
     n = len(have) + 1
-    while f"Section {n}" in have:
+    while f"section_{n}" in have:            # a section name is one word (doc/sections.py); renamed in place at once
         n += 1
-    return [{"op": "section.add", "args": {"name": f"Section {n}", "at": round(f.range[0], 4), "end": round(f.range[1], 4)}}]
+    return [{"op": "section.add", "args": {"name": f"section_{n}", "at": round(f.range[0], 4), "end": round(f.range[1], 4)}}]
+
+
+def bar_near(f) -> int:
+    """The bar nearest the selected marker at today's tempo (the popover's starting number)."""
+    root = f.doc.data
+    t = ST.start_of(root, f.items[0])
+    return max(2, round(ST.tempo.beat_at(root, t) / int(root.get("beatsPerBar", 4))) + 1)
+
+
+def fit_bar(f, bar=None):
+    name = f.items[0].get("name") or f.ids[0]
+    return [{"op": "tempo.fit_bar", "args": {"marker": name, "bar": int(bar if bar is not None else bar_near(f))}}]

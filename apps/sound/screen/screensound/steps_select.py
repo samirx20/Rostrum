@@ -12,8 +12,12 @@ bridge call a click, a box, a key or a menu makes.
       gesture; to=: clips dragged onto that track's row)
     handle <id> start|end|fadeIn|fadeOut|level|stretch|length <dt s> [<dy row heights>] (a handle drag, one gesture)
     lock <track> (the header's lock: lock / unlock) | loop (Shift+L) | range-edge in|out (Shift+I / Shift+O)
-    rename-open <track> (its name field, open) | rename <track> <new name> | open <id> (double-click: select + Editor)
+    rename-open <id> (its name field, open) | rename <new name> (Enter in the open field) | open <id> (double-click: select + Editor)
     jump next|prev (`,` / `.`) | playhead-step <n> (Ctrl+arrows) | fit-selection (F)
+    marker-add (M: a marker at the playhead, its name field open) | fit-bar <bar> (Land a bar here on the selected
+      marker) | ask <action key> (its number field, open: for a picture) | place <design> (the Library's designed sound,
+      double-clicked) | library <chip> (the Library open on a chip) | clean-open (the Clean up popover, open) |
+      clean <voice 0|1> <noise 0|1> <echo 0|1> (Clean: the steps on the selected clips, then their cleaned takes)
 """
 from __future__ import annotations
 
@@ -23,7 +27,8 @@ from PySide6.QtTest import QTest
 
 WORDS = ("select-many", "select-add", "select-run", "select-all", "box", "range", "range-clear", "action",
          "action-bar", "menu", "menu-roll", "key", "copy", "cut", "paste", "drag-many", "handle", "lock", "loop",
-         "range-edge", "rename-open", "rename", "open", "jump", "playhead-step", "fit-selection")
+         "range-edge", "rename-open", "rename", "open", "jump", "playhead-step", "fit-selection", "marker-add",
+         "fit-bar", "ask", "place", "library", "clean-open", "clean")
 
 
 def _find(item, prop):
@@ -106,8 +111,10 @@ def do_select_step(bridge, win, word, rest):
         bridge.rangeEdge(rest[0])
     elif word == "rename-open":
         bridge.startRename(rest[0])
-    elif word == "rename":
-        bridge.finishRename(rest[0], " ".join(rest[1:]))
+    elif word == "rename":                    # rename <new name>: Enter in the name field that is open
+        if not bridge.renaming:
+            raise RuntimeError("rename: no name field is open (rename-open <id>, marker-add or F2 first)")
+        bridge.finishRename(bridge.renaming, " ".join(rest))
     elif word == "open":
         bridge.select(rest[0])
         bridge.workspace.setDock("editor")
@@ -117,3 +124,26 @@ def do_select_step(bridge, win, word, rest):
         bridge.playheadStep(int(rest[0]))
     elif word == "fit-selection":
         bridge.fitSelection()
+    elif word == "marker-add":
+        bridge.markerAt(bridge.time)
+    elif word == "fit-bar":
+        bridge.runActionWith("sel:fit_bar", float(rest[0]))
+    elif word == "ask":
+        bar = _find(win.contentItem(), "menuOpen")
+        item = next((i for i in bridge.actionBar() if i["key"] == f"sel:{rest[0]}"), None)
+        if bar is None or item is None:
+            raise RuntimeError(f"ask: no {rest[0]!r} on the context bar")
+        QMetaObject.invokeMethod(bar, "press", Q_ARG("QVariant", item), Q_ARG("QVariant", bar.width() / 2))
+    elif word == "place":
+        from .adder import Adder
+        if not Adder(bridge).add(f"design:{rest[0]}"):
+            raise RuntimeError(f"place: {bridge.status}")
+    elif word == "library":
+        bridge.workspace.setLibrary(True)
+        bridge.libraryWanted.emit(rest[0])
+    elif word == "clean-open":
+        bridge.cleanWanted.emit()
+    elif word == "clean":
+        voice, noise, echo = (r == "1" for r in rest[:3])
+        if bridge.cleanSelected(voice, noise, echo):
+            bridge.mix.cleaning.makeFor(bridge.selectedIds)

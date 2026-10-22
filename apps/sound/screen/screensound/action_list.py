@@ -19,14 +19,15 @@ def available(doc, ids, playhead=0.0, rng=None, clipboard=False, track="") -> li
     for a in ACTIONS:
         if not a["valid_when"](f):
             continue
-        cs = a["calls"](f) if a["calls"] else []
-        if a["calls"] and not cs:
+        cs = a["calls"](f) if a["calls"] and not a["amount"] else []
+        if a["calls"] and not a["amount"] and not cs:
             continue
         promoted = a["promoted_when"] is not None and a["promoted_when"](f)
         label = a["label"](f) if callable(a["label"]) else a["label"]
+        amount = {"label": a["amount"][0], "value": a["amount"][1](f)} if a["amount"] else None
         out.append({**{k: v for k, v in a.items() if k not in ("valid_when", "promoted_when", "calls")},
                     "label": label, "importance": "primary" if promoted else a["importance"],
-                    "promoted": promoted, "calls": cs})
+                    "promoted": promoted, "calls": cs, "amount": amount})
     return sorted(out, key=lambda a: (a["group"] == "edit", a["importance"] != "primary", not a["promoted"]))
 
 
@@ -52,7 +53,7 @@ def bar_items(acts: list[dict]) -> list[dict]:
         item = next((i for i in items if i["label"] == name), None)
         if item is None:
             item = {"key": "" if a["menu"] else a["key"], "label": name, "shortcut": "" if a["menu"] else a["shortcut"],
-                    "menu": []}
+                    "menu": [], "amount": a["amount"]}
             items.append(item)
         if a["menu"]:
             item["menu"].append(entry(a))
@@ -104,3 +105,9 @@ def at_menu(doc, track_id: str, t: float, clipboard: bool) -> list[dict]:
     else:
         out.append({"value": f"at:section:{t}", "label": "Make a section from here", "hint": "", "group": "here"})
     return out
+
+
+def with_amount(doc, ids, key, value, **state) -> list[dict]:
+    """The calls of an action that asked a number (Land a bar here: the bar)."""
+    a = next(x for x in ACTIONS if x["key"] == key)
+    return a["calls"](Facts(doc, ids, **state), value)

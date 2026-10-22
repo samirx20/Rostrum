@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import copy
 
-from rostrum_core import codes
+from rostrum_core import Param, codes
 from rostrum_core.edits import MISSING
 
 from . import ids, times
@@ -130,28 +130,54 @@ def crossfade(ctx, targets, args):
         ctx.set(b["id"], "fadeIn", n)
 
 
-@REGISTRY.operation("clip.normalize", "Set each selected clip's level so its loudest moment reaches a target peak "
-                    "(default -1 dB). Only the part that plays counts.", target="clip", params=[PEAK],
-                    label="Normalize clips", importance="secondary")
+BY = Param.choice("by", ["peak", "loudness"], default="peak", group="Level", label="By",
+                  labels={"peak": "Loudest moment", "loudness": "Loudness"},
+                  help='"peak": the loudest moment reaches `peak`; "loudness": every clip sounds as loud (`loudness`, '
+                       "LUFS: even out a voice-over's takes).")
+LOUD = V.N("loudness", -40, -6, "Level", "LUFS", label="Loudness",
+           help="The loudness every clip ends at (by loudness). Left out = the middle of the selected clips' own "
+                "loudness (the fewest big changes).")
+
+
+@REGISTRY.operation("clip.normalize", "Set each selected clip's level: by its loudest moment (to a target peak, "
+                    "default -1 dB) or by loudness (every clip as loud: given, or the middle of theirs). Only the part "
+                    "that plays counts.", target="clip", params=[PEAK, BY, LOUD], label="Normalize clips",
+                    importance="secondary")
 def normalize(ctx, targets, args):
+    import numpy as np
+
+    peak, heard = args.get("peak", -1), {t: _heard(ctx, t) for t in targets}
+    if args.get("by") == "loudness":
+        from ..listen.bs1770 import integrated
+        lufs = {t: integrated(x, sr) for t, (x, sr) in heard.items()}
+        bad = [t for t, v in lufs.items() if not np.isfinite(v)]
+        if bad:
+            ctx.fail(codes.CHECK_FAILED, f'clip "{bad[0]}"', "is too short or too quiet to measure its loudness")
+        aim = args.get("loudness", float(np.median(list(lufs.values()))))
+        gains = {t: 10 ** ((aim - v) / 20) for t, v in lufs.items()}
+    else:
+        gains = {t: 10 ** (peak / 20) / float(np.abs(x).max()) for t, (x, _) in heard.items()}
+    for t, volume in gains.items():
+        if volume > 4:
+            ctx.fail(codes.CHECK_FAILED, f'clip "{t}"', f"is too quiet to reach that level (it would need ×{volume:.1f}"
+                     ", the most a clip takes is ×4)", hint="Choose a lower level.")
+        ctx.set(t, "volume", round(volume, 4))
+
+
+def _heard(ctx, t):
+    """(samples, rate) of the part of clip `t` that plays; a silent or unreadable clip is a loud error."""
     import numpy as np
     import soundfile as sf
 
     from ..clean_clips import media_of
-    root, peak = ctx.doc, args.get("peak", -1)
-    for t in targets:
-        c = ctx.item(t)
-        try:
-            with sf.SoundFile(str(media_of(c, t))) as f:
-                f.seek(min(int(float(c.get("in", 0)) * f.samplerate), f.frames))
-                x = f.read(int(source_length(c, root) * f.samplerate), dtype="float32", always_2d=True)
-        except RuntimeError as e:
-            ctx.fail(codes.BAD_ARGUMENT, f'clip "{t}" media', f"could not be read: {e}")
-        top = float(np.abs(x).max()) if x.size else 0.0
-        if top <= 1e-6:
-            ctx.fail(codes.CHECK_FAILED, f'clip "{t}"', "is silent in the part that plays, so it can't be normalized")
-        volume = 10 ** (peak / 20) / top
-        if volume > 4:
-            ctx.fail(codes.CHECK_FAILED, f'clip "{t}"', f"is too quiet to reach {peak} dB (it would need ×{volume:.1f}"
-                     ", the most a clip takes is ×4)", hint="Choose a lower peak.")
-        ctx.set(t, "volume", round(volume, 4))
+    c = ctx.item(t)
+    try:
+        with sf.SoundFile(str(media_of(c, t))) as f:
+            sr = f.samplerate
+            f.seek(min(int(float(c.get("in", 0)) * sr), f.frames))
+            x = f.read(int(source_length(c, ctx.doc) * sr), dtype="float32", always_2d=True)
+    except RuntimeError as e:
+        ctx.fail(codes.BAD_ARGUMENT, f'clip "{t}" media', f"could not be read: {e}")
+    if not x.size or float(np.abs(x).max()) <= 1e-6:
+        ctx.fail(codes.CHECK_FAILED, f'clip "{t}"', "is silent in the part that plays, so it can't be normalized")
+    return x, sr

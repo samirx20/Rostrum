@@ -107,12 +107,19 @@ class KeySlots:
 
     @Slot(float, result=bool)
     def markerAt(self, t):
-        """M: a marker at `t` (the playhead), named "Marker n"."""
+        """M: a marker at `t` (the playhead), "Marker n", with its name field open in place."""
         have = {m["name"] for m in self._view["markers"]}
         n = len(have) + 1
         while f"Marker {n}" in have:
             n += 1
-        return self._act([{"op": "marker.add", "args": {"name": f"Marker {n}", "at": round(t, 4)}}], "Add marker")
+        before = {m["id"] for m in self.doc.data.get("markers", [])}
+        done = self._act([{"op": "marker.add", "args": {"name": f"Marker {n}", "at": round(t, 4)}}], "Add marker")
+        new = [m["id"] for m in self.doc.data.get("markers", []) if m["id"] not in before]
+        if done and new:                                # its name field opens at once (Enter keeps, Esc takes it back)
+            self._pick(new)
+            self.startRename(new[0])
+            self._new_marker = new[0]
+        return done
 
     @Slot(str, result=bool)
     def toggleLock(self, track_id):
@@ -135,9 +142,14 @@ class KeySlots:
 
     @Slot(str, str)
     def finishRename(self, item_id, text):
-        """Enter: the new name as one `track.set`; Esc (text None-like "") keeps the old one."""
-        self._renaming = ""
+        """Enter: the new name as one `<kind>.set` (a track, a marker, a section); Esc ("") keeps the old one, and a
+        marker just added with M is taken back (Esc cancels the whole thing)."""
+        new, self._renaming = getattr(self, "_new_marker", ""), ""
+        self._new_marker = ""
         self.renamingChanged.emit()
         name = text.strip()
+        if not name and new == item_id and self.doc.has(item_id):
+            return self.undo()
         if name and self.doc.has(item_id) and name != (self.doc.item(item_id).get("name") or item_id):
-            self._act([{"op": "track.set", "target": [item_id], "args": {"name": name}}], f"Rename to {name}")
+            kind = self.doc.item(item_id)["type"]
+            self._act([{"op": f"{kind}.set", "target": [item_id], "args": {"name": name}}], f"Rename to {name}")

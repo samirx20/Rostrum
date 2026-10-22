@@ -11,11 +11,11 @@ from rostrum_core import RostrumError, codes
 from . import song_edit, timing
 from .timeline import kind_of
 
-MANY = ("note", "hit", "clip", "line")          # what moves together when several are selected
-MOVABLE = ("note", "hit", "clip", "line", "marker", "section", "tempo", "key")
-REMOVABLE = ("note", "hit", "clip", "line", "marker", "track", "effect", "automation", "bus", "send", "duck",
+MANY = ("note", "hit", "clip", "line", "sound")          # what moves together when several are selected
+MOVABLE = ("note", "hit", "clip", "line", "sound", "marker", "section", "tempo", "key")
+REMOVABLE = ("note", "hit", "clip", "line", "sound", "marker", "track", "effect", "automation", "bus", "send", "duck",
              "tempo", "key", "section")
-LABELS = {"note": "Move note", "hit": "Move drum hit", "clip": "Move clip", "line": "Move line", "marker": "Move marker",
+LABELS = {"sound": "Move sound", "note": "Move note", "hit": "Move drum hit", "clip": "Move clip", "line": "Move line", "marker": "Move marker",
           "section": "Move section", "tempo": "Move tempo change", "key": "Move key change",
           "edge": "Resize section"}
 

@@ -111,3 +111,16 @@ def test_trim_by_handle_and_note_length_are_one_undo_step_each(bridge):
     assert len(doc.history.changes) == n + 1
     bridge.undo()
     assert doc.item(A)["dur"] == {"beats": 1} and set(bridge.selectedIds) == {A, B}      # undo selects them again
+
+
+def test_landing_a_bar_on_a_marker_is_one_undo_step(bridge):
+    from rostrum_sound.doc import tempo
+    doc, n = bridge.doc, len(bridge.doc.history.changes)
+    bridge.setTime(9.0)
+    bridge.markerAt(9.0)
+    bridge.finishRename(bridge.renaming, "logo")         # M, then the name, Enter
+    assert bridge.runActionWith("sel:fit_bar", 5)
+    assert abs(tempo.seconds_at(doc.data, 16) - 9.0) < 1e-6   # bar 5 starts on the marker; beats follow
+    assert len(doc.history.changes) == n + 3             # add, rename, land: one step each
+    bridge.undo()
+    assert doc.data["tempo"] == 120
