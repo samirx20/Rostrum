@@ -114,12 +114,11 @@ def watch(app: str, name: str, rest: list[str]) -> int:
             code &= 0xFFFFFFFF
             fatal = [line.strip() for line in open(log, encoding="utf-8", errors="replace")
                      if line.startswith(("Fatal Python error", "Windows fatal exception"))]   # faulthandler's trace
-            why = (f"{name} crashed ({fatal[-1] if fatal else CRASHES.get(code, 'a Windows error')}, code 0x{code:08X})"
-                   if fatal or code >= 0xC0000000
-                   else f"{name} was ended from outside (for example in Task Manager), exit code {code}")
-            append(log, f"--- {now()}: {why}. The lines above are the last it wrote.")
+            why = (f"{name} crashed ({fatal[-1] if fatal else CRASHES.get(code, 'a Windows error')})"
+                   if fatal or code >= 0xC0000000 else f"{name} was ended from outside (for example in Task Manager)")
+            append(log, f"--- {now()}: {why}, exit code 0x{code:08X}. The lines above are the last it wrote.")
             message(name, f"{why}.\n\nIf you had unsaved work, {name} offers it back when you open it again."
-                    f"\n\nThe last lines it wrote:\n\n{tail(log, 6)}\nFull log: {log}")
+                    f"\n\nWhat it was doing is written in:\n{log}")
         return code
     finally:
         mark.unlink(missing_ok=True)
