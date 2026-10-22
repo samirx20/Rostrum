@@ -146,7 +146,7 @@ Panel {
         }
         PenOverlay {  // the pen tool and the selected path's points (not while playing: they'd lag)
             anchors.fill: parent
-            visible: !backend.playing && !well.drawing
+            visible: !backend.playing && !well.drawing && ["rect", "ellipse", "text"].indexOf(backend.tool) < 0   // one input layer per tool
             fit: view.zoom; ox: view.ox; oy: view.oy
         }
         CreateOverlay { anchors.fill: parent; stage: panel }   // R / O / T: drag a shape, click or drag and type

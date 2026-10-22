@@ -52,6 +52,17 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     return app, engine, win
 
 
+def stop(engine, win=None):
+    """Close a window started by `start`: the window and its engine go first, now, then the caller releases what their
+    bindings read (the bridge, its parts, image providers). The other way round, every binding still alive re-reads a
+    context object that is already gone ("Cannot read property … of null"). Every app closes its windows through this."""
+    import shiboken6
+    if win is not None:
+        win.close()
+    if engine is not None and shiboken6.isValid(engine):
+        shiboken6.delete(engine)                   # destroys the window and every binding with it
+
+
 def link_in_accent(app):
     """Links in a guide (Markdown text) take the application palette's link colour, not the Text's linkColor, so the
     palette gets Theme.qml's accent (read from there: one place for the colour). Qt's default is a dark blue."""

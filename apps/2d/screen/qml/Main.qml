@@ -55,7 +55,7 @@ AppShell {
     // select, then act: every action's key comes from the one key map (screen2d/keys2d.py) and runs through the one
     // action list (backend.actions): only when valid now, else the status line says why. Not while typing. Delete is
     // run here: keys picked in the timeline go before layers (backend.layerCommand, key_select.py)
-    readonly property bool typing: backend.create.typing || Window.activeFocusItem !== null && typeof Window.activeFocusItem.selectAll === "function"
+    readonly property bool typing: backend.create.typing || shell.activeFocusItem !== null && typeof shell.activeFocusItem.selectAll === "function"
     readonly property bool canvasKeys: backend.tool === "move" && !typing
     KeyMap {
         hub: backend.actions

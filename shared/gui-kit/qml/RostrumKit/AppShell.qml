@@ -47,7 +47,7 @@ QQC.ApplicationWindow {
     }
     Shortcut { sequence: "Ctrl+K"; onActivated: commandBar.open() }
     Shortcut { sequence: "F1"; onActivated: noticesDialog.open() }
-    Shortcut { sequence: StandardKey.Undo; enabled: !commandBar.opened; onActivated: win.bridge.undo() }
+    Shortcut { sequences: [StandardKey.Undo]; enabled: !commandBar.opened; onActivated: win.bridge.undo() }
     Shortcut { sequences: ["Ctrl+Shift+Z", "Ctrl+Y"]; enabled: !commandBar.opened; onActivated: win.bridge.redo() }
 
     TopBar {

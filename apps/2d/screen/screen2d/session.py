@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from rostrum_gui import guides, start
+from rostrum_gui.app import stop
 
 from .bridge2d import Bridge2D
 from .files import Files
@@ -40,10 +41,9 @@ class Session:
         self.bridge, self.engine, self.win = bridge, engine, win
         if old[0] is not None:
             old[2].setProperty("leaving", True)          # no "save changes?" for a window being replaced
-            old[2].close()
+            stop(old[1], old[2])                         # the window and its bindings first, then what they read
             old[0]._unsubscribe()
             old[0].close()
-            old[1].deleteLater()
 
     def fail(self, line: str):
         """A file action failed: said in the window's status line (red) and on the console."""
@@ -53,5 +53,10 @@ class Session:
             raise RuntimeError(line)
 
     def close(self):
+        """At quit: the window and its bindings go first (the kit's stop), then the bridge they read."""
+        if self.win is not None:
+            self.win.setProperty("leaving", True)
+        stop(self.engine, self.win)
+        self.engine = self.win = None
         if self.bridge is not None:
             self.bridge.close()

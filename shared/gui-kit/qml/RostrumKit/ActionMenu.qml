@@ -72,12 +72,13 @@ QQC.Popup {
     Loader { id: subLoader; active: false; source: "ActionMenu.qml" }
 
     // measure the widest label and key, to size the menu
-    TextMetrics { id: tm; font.pixelSize: Theme.body; font.family: uiFont }
-    TextMetrics { id: tk; font.pixelSize: Theme.label; font.family: uiFont }
+    // (FontMetrics.advanceWidth(text) reads without writing: a TextMetrics' text set inside a binding loops)
+    FontMetrics { id: tm; font.pixelSize: Theme.body; font.family: uiFont }
+    FontMetrics { id: tk; font.pixelSize: Theme.label; font.family: uiFont }
     QtObject {
         id: widest
-        property real labelW: { let w = 0; for (const e of menu.entries) { tm.text = e.label; w = Math.max(w, tm.advanceWidth) } return w }
-        property real keysW: { let w = 0; for (const e of menu.entries) { if (e.keys) { tk.text = e.keys; w = Math.max(w, tk.advanceWidth + Theme.gap) } } return w }
+        property real labelW: { let w = 0; for (const e of menu.entries) w = Math.max(w, tm.advanceWidth(e.label)); return w }
+        property real keysW: { let w = 0; for (const e of menu.entries) if (e.keys) w = Math.max(w, tk.advanceWidth(e.keys) + Theme.gap); return w }
     }
 
     contentItem: Column {
