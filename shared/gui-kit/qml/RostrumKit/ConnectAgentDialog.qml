@@ -119,7 +119,7 @@ QQC.Popup {
                     spacing: Theme.gap
                     Button {
                         visible: row.a.installed && row.a.state === "none" && dlg.asking !== row.a.id && !row.busy
-                        text: "Add to " + row.a.name; kind: "primary"
+                        text: "Add to " + row.a.name
                         onClicked: dlg.asking = row.a.id
                     }
                     Button {
@@ -161,16 +161,6 @@ QQC.Popup {
                 visible: !!dlg.openHand[row.a.id]
                 width: parent.width; spacing: Theme.gap
                 Repeater {
-                    model: row.a.steps
-                    delegate: Text {
-                        required property var modelData
-                        required property int index
-                        width: body.width; wrapMode: Text.WordWrap
-                        text: (index + 1) + ".  " + modelData
-                        color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
-                    }
-                }
-                Repeater {
                     model: (row.a.command ? [{ caption: "Command (paste it in a terminal)", text: row.a.command }] : [])
                            .concat([{ caption: (row.a.command ? "Or add this to " : "Add this to ") + row.a.file, text: row.a.snippet }])
                     delegate: Column {
@@ -192,6 +182,16 @@ QQC.Popup {
                                      anchors { right: parent.right; top: parent.top; margins: Theme.grid }
                                      onClicked: dlg.data.copy(box.modelData.text) }
                         }
+                    }
+                }
+                Repeater {
+                    model: row.a.steps
+                    delegate: Text {
+                        required property var modelData
+                        required property int index
+                        width: body.width; wrapMode: Text.WordWrap
+                        text: (index + 1) + ".  " + modelData
+                        color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
                     }
                 }
                 Row {
