@@ -34,6 +34,7 @@ QQC.ApplicationWindow {
     color: Theme.app
 
     function openAbout() { noticesDialog.open() }
+    function openConnectAgent() { agentsDialog.open() }
     function openHelp() { topBar.openHelp() }
     function openGuide(url) { guideDialog.show(url) }
     function openGuideNamed(file) {       // a scripted step's "guide <file.md>": false when Help has no such guide
@@ -52,6 +53,7 @@ QQC.ApplicationWindow {
         bridge: win.bridge; appName: win.appName; documentName: win.documentName
         onCommandClicked: commandBar.open()
         onAboutClicked: noticesDialog.open()
+        onConnectAgentClicked: agentsDialog.open()
         onGuideClicked: (url) => guideDialog.show(url)
         onHelpPicked: (value) => win.helpPicked(value)
     }
@@ -68,4 +70,5 @@ QQC.ApplicationWindow {
     CommandBar { id: commandBar; bridge: win.bridge }
     GuideDialog { id: guideDialog }
     NoticesDialog { id: noticesDialog; data: typeof notices !== "undefined" ? notices : null }
+    ConnectAgentDialog { id: agentsDialog; data: typeof agents !== "undefined" ? agents : null }
 }

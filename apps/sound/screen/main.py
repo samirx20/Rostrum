@@ -149,8 +149,8 @@ def file_step(screen, step) -> bool:
         screen.ctx_adder.add(rest)
     elif word == "settings":
         QMetaObject.invokeMethod(screen.win, "openSettings")
-    elif word in ("about", "help"):           # Help › About and licences / the Help menu, open
-        QMetaObject.invokeMethod(screen.win, "openAbout" if word == "about" else "openHelp")
+    elif word in ("about", "agents", "help"): # Help › About and licences / Connect an AI agent / the Help menu, open
+        QMetaObject.invokeMethod(screen.win, {"about": "openAbout", "agents": "openConnectAgent"}.get(word, "openHelp"))
     elif word == "guide":                     # guide <file.md>: Help › that guide, in the guide viewer
         guides.open_named(screen.win, rest)
     else:
