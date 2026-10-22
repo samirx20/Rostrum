@@ -1,5 +1,74 @@
 # RostrumSound — the UX and interaction spec
 
+> **S30 shared-spec changes (2026-10-22, Team Sam).** The shared interaction spec
+> `C:\Users\Sam\Documents\CODE\Rostrum\shared\gui-kit\INTERACTION.md` sets one way of working for every Rostrum app
+> and wins where this spec differs. The edits it made here are marked **(S30)** in place. Some words were renamed
+> throughout without a mark:
+> - Sounds panel → **Library**;
+> - action bar → **context bar**;
+> - More ▾ → **⋯**;
+> - Deliver → **Export**;
+> - File › → **≡ ›**;
+> - `inspect_selection` → **`inspect_screen`**.
+>
+> The wireframes in §2.6 and the flow counts in §4 were not redrawn, so read them with these changes in mind:
+>
+> 1. **Saving is automatic.**
+>    - There is no unsaved dot, no Save or Save as, and no "Save changes?" question.
+>    - A new song is created at once, named "Untitled song", in the projects folder.
+>    - Ctrl+S saves a **named version**; Ctrl+Shift+S makes a separate copy (**Duplicate**).
+>    - With nothing to reopen, the app shows the start screen.
+> 2. **The top bar holds project-wide things only:**
+>    - ≡ · song name · message · **Saved · N changes** (never cut) · chips · ↶ ↷ · Search · Export · ?;
+>    - the chips are the agent, Problems, a running job, and **Loudness** (Sound's own chip).
+> 3. **Transport and position move to the arrangement's header strip**, which now reads, from the left:
+>    - **+ Add**;
+>    - ⏮ ▶ ⟳, then ● Record once armed, and the click;
+>    - position, then tempo · beats · key;
+>    - Grid ▾ · Snap · zoom · fit.
+>
+>    This is the same place as 2D's timeline header.
+> 4. **The context bar stays at a fixed place:** the top-centre of the focused area (arrangement or Editor), never
+>    under the selection.
+> 5. **Export** (Ctrl+E; Ctrl+Shift+E exports again) is a **sheet in the right column**, in the settings panel's
+>    place, not a dialog.
+> 6. **Panels and app choices:**
+>    - the **Library** is Ctrl+L (no longer L);
+>    - **Preferences** (Ctrl+,) replaces the Settings dialog.
+> 7. **Keys renamed:**
+>    - **K** keys the selection at the playhead (on its open automation lanes);
+>    - the click (metronome) is **Shift+K**;
+>    - Loop is **Shift+L** (not C);
+>    - zoom to the selection is **F** (not Z);
+>    - **A** still shows automation.
+> 8. **The time range is set on the ruler's top band.** Clicking or dragging the ruler's scale moves the playhead.
+>    Shift+I / Shift+O set the range's start and end.
+> 9. **Playhead and nudge keys:**
+>    - **Ctrl+← / →** always move the playhead (a frame with a picture, else a grid step);
+>    - the fine nudge is **Alt+← / →**;
+>    - `,` / `.` jump to the previous / next thing that happens.
+> 10. **Automation "points" are keys,** with the same ◇ as 2D. Changing an automated setting at the playhead adds a
+>     key. Ctrl+click adds a key, and Ctrl frees it from snapping.
+> 11. **Feel numbers:**
+>     - faders and knobs: Shift = bigger steps, **Alt = fine**;
+>     - hover after **500 ms**;
+>     - snapping within **6 px**;
+>     - nudges under 1 s apart are one undo step.
+> 12. **Lock** on tracks (Ctrl+Shift+L), respected by agents.
+> 13. **Agents:**
+>     - the agent chip shows in the top bar;
+>     - changed things are outlined for **1 s**, with a dot on changed tracks;
+>     - a tie is undone with **Untie**.
+> 14. **Help keys:** F1 opens Guides, Ctrl+/ the key list.
+> 15. **Other keys:**
+>     - Ctrl+\ hides the panels;
+>     - Alt+[ / ] trim to the playhead;
+>     - Shift+, / Shift+. go to the previous / next beat;
+>     - Space+drag pans.
+> 16. **Markers and picture:**
+>     - double-clicking a marker renames it;
+>     - the picture has no letter key (P stays kept for parts).
+
 *Team Priyam, brief P26, 2026-10-22. Written by four designers in parallel (people, screen, flows and feel ·
 making music · audio, voice and picture · mix, delivery and the app) on one shared screen model, one template and one
 key map, then put together and settled by the lead. **This is the spec to review before any more screen building.**
@@ -35,16 +104,15 @@ The structure (decided in the first round, refined here):
    pages go.
 2. **Select first, then act.** Every action works on what is selected (tracks, notes, hits, clips, sounds, lines,
    markers, sections, a time range, automation points) and is **one operation taking those ids**, so a person and an
-   agent call the same thing and it is one undo step. The actions appear in the **action bar** next to the selection
+   agent call the same thing and it is one undo step. The actions appear in the **context bar** next to the selection
    (only while something applies), in the right-click menu, in Ctrl+K and as keys — all from one list. Never an empty
    container first.
-3. **Adding a track is choosing a sound.** The **Sounds panel** (L, or + Add › Track) holds instruments, drum kits,
+3. **Adding a track is choosing a sound.** The **Library** (L, or + Add › Track) holds instruments, drum kits,
    voices, the microphone, the person's own library and designed sounds; picking one makes the track or places the
    sound. A track's settings live once, in the settings panel.
 4. **With nothing selected, the settings panel shows the song** (name, tempo, beats per bar, key, length), as in 2D.
    The Song popup that covered the notes goes.
-5. **Deliver is its own dialog**; a small **loudness readout** against the target sits in the top bar once the song
-   makes a sound. The master strip keeps only fader, meter and loudness.
+5. **Export is its own sheet** in the right column *(S30: was a dialog)*; a small **loudness chip** against the target sits in the top bar once the song makes a sound. The master strip keeps only fader, meter and loudness.
 6. **Tools appear when used:** Record once a track is armed; the Picture panel once a picture is set; automation lanes
    under their track (A); the Editor tool (Select V / Draw B) only in the Editor.
 7. **Groups are one thing:** a group (the song file calls it a bus) that tracks play into, drawn as a header with its
@@ -59,21 +127,21 @@ The structure (decided in the first round, refined here):
     (bus), Duck (sidechain), Plays into (output).
 11. **Fail loudly, in one sentence:** a missing plug-in stops play and delivery until it is switched off (one click);
     a marker deleted in 2D raises a problem chip with choices; nothing is silently converted.
-12. **The agent sees what the person sees:** "the selection" is ids (`inspect_selection`, new); agent changes flash
+12. **The agent sees what the person sees:** "the selection" is ids (`inspect_screen`, new); agent changes flash
     briefly, never move the person's view, and fold into one history row with Keep / Undo all.
 
 Settled between the four parts (where they differed):
 - **Home** always moves the playhead to the start; **Enter** confirms or does the obvious thing for what has focus
-  (add a line on a voice track, place the sound picked in the Sounds panel). Enter no longer means "to start".
+  (add a line on a voice track, place the sound picked in the Library). Enter no longer means "to start".
 - **Mute / solo the selected tracks:** Shift+M / Shift+S (M is the marker key). **Next / previous marker:** Alt+M /
   Alt+Shift+M.
 - **Pitch by keys:** ↑ / ↓ move notes a half step (Shift: an octave) and move clips to the track above / below;
   **Ctrl+↑ / Ctrl+↓** change pitch the other way round (notes: a scale step in the key; clips: "pitch only" by a half
-  step). Alt+arrows stay unused (2D uses them for drawn frames).
+  step). *(S30: Alt+arrows are now the fine nudge in every app; 2D's drawn frames moved to `,` / `.`.)*
 - **Hear the original while cleaning:** hold **H** (B is the Draw tool, as in 2D). **T** steps through takes, **S**
   opens Swap on a placed sound, **P** is kept for "make a part" when parts arrive.
 - **Track order:** Ctrl+] / Ctrl+[ (2D's "order"), not Alt+↑/↓.
-- **Help:** F1 (Help lists every key). Ctrl+H opens History. Ctrl+B is kept for Bounce (later).
+- **Help:** F1 opens Guides, Ctrl+/ the key list *(S30)*. Ctrl+H opens History. Ctrl+B is kept for Bounce (later).
 
 ---
 
@@ -109,7 +177,7 @@ Said once, in plain language; the screen uses the plain word and gives the techn
 | Person | What they want from Sound | How often | What they already know | What that means for the screen |
 |---|---|---|---|---|
 | **Motion designer** (the main 2D user) | Music and sound effects that hit the moments of a 2D film: the logo lands, the card slides, the drop | Every project, a short session (30–90 min) at the end of the animation | After Effects, Premiere, maybe GarageBand. Knows "timeline", "keyframe", "marker". Doesn't know "bus", "LUFS", "sidechain" | The project's markers are on the ruler from the first second; sounds are placed *on* a marker; designed sounds (whoosh, impact, riser) are one search away; loudness is a word and a colour, not a unit |
-| **Video maker doing a voice-over** | Record their voice, cut the mistakes, make it clean and even, deliver at the right loudness | Weekly; the same steps every time | Premiere / CapCut / Descript, a USB mic. Knows "cut", "fade". Thinks "too quiet", not "−18 dB" | Recording is one key once a mic track exists; the take appears as you speak; clean-up and "even out" act on the selection; Deliver offers "Podcast" and "YouTube" by name |
+| **Video maker doing a voice-over** | Record their voice, cut the mistakes, make it clean and even, deliver at the right loudness | Weekly; the same steps every time | Premiere / CapCut / Descript, a USB mic. Knows "cut", "fade". Thinks "too quiet", not "−18 dB" | Recording is one key once a mic track exists; the take appears as you speak; clean-up and "even out" act on the selection; Export offers "Podcast" and "YouTube" by name |
 | **Musician writing a score or a song** | Write parts with instruments, build the song, mix it | Long sessions, many times a week | GarageBand / Logic / Ableton. Knows piano roll, quantise, tempo, bars, often a MIDI keyboard | The arrangement and piano roll behave like GarageBand/Logic (E opens the editor below, same keys where we can); nothing taught that they already know |
 | **An agent** working for any of them | Do the job through MCP: write parts, place sounds, mix, deliver; check by "ears" tools | Any time, often while a person watches | Every operation by name; the guides in `apps/sound/guides/` | Every action is an operation taking the selected ids; the agent can read what the person selected; its changes show live and never move the person's selection, playhead or scroll (same rule as 2D) |
 | **Sam** (the owner) | All of the above, and judging the result by ear | Daily while the app is built | Knows the plan, not mixing jargon | Plain words everywhere; nothing cut off at 1646×900; every step shows what to do next |
@@ -131,7 +199,7 @@ The six jobs of DESIGN.md §2, plus two I found missing (G, H). Each in two line
 | **E · Mix to delivery** | Balance, group, add effects, duck, hit a loudness target, deliver with stems. | Files that pass the target, plus stems if asked. |
 | **F · Agent and person together** | An agent builds; the person watches, tweaks a selection, hands parts back. | One song, one history, nobody's edits wiped. |
 | **G · Fix the sound of a recorded video** *(found missing)* | Bring in a video with its own camera sound (an interview, a vlog), clean it, level it, add music under it. | The video's voice is clean and the music ducks under it; delivered back to the project. Common for video makers; today it means splitting the job by hand. |
-| **H · Versions for each platform** *(found missing)* | The same piece delivered several ways: a 30 s and a 15 s cut, a loud one for social and a −16 one for podcast. | Several files from one song in one Deliver, each passing its own target. (Short cuts by range need the range render, §9.) |
+| **H · Versions for each platform** *(found missing)* | The same piece delivered several ways: a 30 s and a 15 s cut, a loud one for social and a −16 one for podcast. | Several files from one song in one Export, each passing its own target. (Short cuts by range need the range render, §9.) |
 
 ---
 
@@ -145,27 +213,32 @@ every dialog, the sizes and the wireframes.
 | Change | Why (3E) |
 |---|---|
 | **Undo and Redo buttons and "what just happened" sit in the top bar**, beside the change count, exactly as in 2D. | *Easy:* a person new to Sound sees that every step can be taken back; *family:* 2D's top bar has the same three things in the same order. |
-| **"+ Add" in the top bar** (a short menu: *Track with a sound… L* · *Picture to work to…* · *From a file…*), and a **"+ Track" row under the last track** that opens the Sounds panel directly. | *Easy:* 2D's "+ Add" is where new things come from; one place to look in both apps. *Efficient:* "+ Track" sits where the new track will appear. Picture and files are not sounds, so they don't belong inside the Sounds panel. |
-| **Recording is chosen in the Sounds panel** ("Microphone" and "Line in" are the first entries under *Record*), and **a voice** ("Voice: Maya" …) is chosen there too. | *Effective:* every track starts from what it will sound like, including a mic or a voice (select first: never an empty "audio track" to set up afterwards). *Easy:* one list for "what do I want to hear". |
+| **"+ Add" at the left end of the arrangement's header strip** *(S30: was in the top bar, which holds project-wide things only)* (a short menu: *Track with a sound… Ctrl+L* · *Picture to work to…* · *From a file…*), and a **"+ Track" row under the last track** that opens the Library directly. | *Easy:* 2D's "+ Add" is where new things come from; one place to look in both apps. *Efficient:* "+ Track" sits where the new track will appear. Picture and files are not sounds, so they don't belong inside the Library. |
+| **Recording is chosen in the Library** ("Microphone" and "Line in" are the first entries under *Record*), and **a voice** ("Voice: Maya" …) is chosen there too. | *Effective:* every track starts from what it will sound like, including a mic or a voice (select first: never an empty "audio track" to set up afterwards). *Easy:* one list for "what do I want to hear". |
 | **Nothing selected → the settings panel shows the song**: name, tempo, beats per bar, key, length, with the hint "Select a track, a note or a clip to change it here". Master settings stay on the Master row. | *Family:* 2D shows the composition when nothing is selected. *Easy:* tempo, key and length have one home instead of a popup that covers the notes (`picture-02-song-popup.png`). Keeps decision 10 (no master jargon at step 1). |
-| **Deliver and the loudness readout appear once the song makes a sound** (absent in an empty song). | Rule of individuality: nothing to deliver or measure yet. |
-| **One action bar at a time**, in the area that has focus (arrangement or Editor). Delete, Copy, Paste are never on it (they are keys and in the right-click menu). | *Efficient:* the bar keeps room for the 3–5 actions that matter; *easy:* one bar to read. |
+| **Export and the loudness readout appear once the song makes a sound** (absent in an empty song). | Rule of individuality: nothing to deliver or measure yet. |
+| **One context bar at a time**, in the area that has focus (arrangement or Editor). Delete, Copy, Paste are never on it (they are keys and in the right-click menu). | *Efficient:* the bar keeps room for the 3–5 actions that matter; *easy:* one bar to read. |
 
 ### 2.2 Regions
 
-**Top bar** (always, 44 px high; one row; fixed order, left to right)
-- **File** (menu: New, Open, Open recent, Save, Save as, Import a file, Export MIDI, Settings, Connect an AI agent, About, Quit).
-- **Song name** with a dot while unsaved (click = rename).
-- **What just happened** ("Agent: added 12 notes to Strings") · **N changes** (click = history list) · **↶ ↷**.
-- **Transport:** ⏮ (to start, Enter) · ▶ / ■ (Space) · **⟳ loop** (only while a loop range exists; lit when on) ·
-  **click** (the metronome, K) · **● Record** and the **input meter** (only while a track is armed).
+**Top bar** (always, 44 px high; one row; fixed order, left to right) *(S30: the shared top bar; transport, position and tempo moved to the arrangement's header strip)*
+- **≡** (menu: New, Open, Open recent, Duplicate, Save a version, Show folder, Export MIDI, Move into a project, Preferences, Quit).
+- **Song name** (click = rename). Saving is automatic: no unsaved dot.
+- **What just happened** ("Agent: added 12 notes to Strings") · **Saved · N changes** (never cut; click = History) ·
+  chips (agent, Problems, a running job, **Loudness**) · **↶ ↷** · **Search Ctrl K** · **Export** (once there is sound;
+  Ctrl+E) · **?**.
+
+**Arrangement header strip** (above the ruler; the same place as 2D's timeline header) *(S30)*, left to right:
+- **+ Add**.
+- **Transport:** ⏮ (to start, Home) · ▶ / ■ (Space) · **⟳ loop** (only while a time range exists; lit when on; Shift+L) · **click** (the metronome, Shift+K) · **● Record** and the **input meter** (only while a track is armed).
 - **Position:** bar.beat.tick and time ("5.3.1 · 0:09.60"); click to type a place to jump to.
 - **Tempo · beats per bar · key** ("♩ 100 · 4/4 · C major"); click = the Song popover (§2.4).
-- **Loudness readout** (once the song makes a sound): "Loudness −15.2 · target −14", a green dot inside ±1 of the
-  target, amber outside (never red: it is not an error). Click = opens the Mixer with its loudness curve.
-- **+ Add** · **Deliver** (once there is sound; Ctrl+Shift+E) · **Search or run a command** (Ctrl+K) · **?** Help.
+- then *Grid 1/16 ▾* · *Snap* · zoom − + · fit at its right end.
 
-**Sounds panel** (left, one click away: L, "+ Track", "+ Add › Track with a sound…"; 260 px)
+**Loudness chip** in the top bar (once the song makes a sound): "Loudness −15.2 · target −14", a green dot inside ±1 of the
+  target, amber outside (never red: it is not an error). Click = opens the Mixer with its loudness curve.
+
+**Library** (left, one click away: Ctrl+L *(S30)*, "+ Track", "+ Add › Track with a sound…"; 260 px)
 - Search box (focused on open) and kind chips: *All · Instruments · Drums · Record · Voice · Designed · My sounds*.
 - A list of entries, each with a ▶ to hear it and a short plain description ("Warm pad, slow start").
 - Click = hear it; **double-click, Enter or drag** = use it: with no track selected (or a track of another kind
@@ -178,18 +251,17 @@ every dialog, the sizes and the wireframes.
 
 **Arrangement** (centre, always)
 - **Ruler** (two lines high): bars on top, seconds below; the **section band** (names as labels you can drag); the
-  **marker band** (project markers dashed, Sound's own solid; tied items show a small flag); the loop range and a
+  **marker band** (shared markers solid with a small chain, this song's own hollow *(S30, as §3.12)*; tied items show a small flag); the time range and a
   time-range selection as a shaded band; the playhead.
 - **Track headers** (left column): colour stripe, name, **M** (mute) **S** (solo), **Rec** on tracks that can record,
   a small level meter while playing; "Auto" (automation lanes, A) on hover or when the track has automation.
   Below the last track: **+ Track**. The **Master** row is last, always.
 - **Lanes:** notes as a mini piano roll, drum hits as ticks, clips as waveforms, designed sounds as shaded blocks,
   voice lines as word blocks, automation lanes opened under their track.
-- **Action bar** (with a selection that allows actions): floats just under the selection; if the selection is off
-  screen it sits at the bottom edge of the arrangement.
+- **Context bar** (with a selection that allows actions): at a fixed place, the top-centre of the arrangement just under the ruler (or of the Editor when it has focus), never under the selection *(S30)*.
 - **Picture** (with a tool: only while a picture is set): a floating, resizable panel at the arrangement's top right;
   drag its title to move it, its corner to resize; "−" folds it to its title; "×" removes the picture (one undo step).
-- **Header strip of the arrangement** (above the ruler, 28 px): *Grid 1/16 ▾* · *Snap* on/off · zoom −/+ · fit.
+- **Header strip of the arrangement** (above the ruler, 28 px): see above *(S30)*.
 
 **Bottom dock** (one click away; one of two at a time; folds away)
 - A tab row: **Editor (E)** · **Mixer (X)** · fold ▾. Drag the top edge to resize; height remembered per tab.
@@ -202,7 +274,7 @@ every dialog, the sizes and the wireframes.
   (slots, "+ effect"), sends and ducks (folded, with a count), pan, fader, meter, M S. Master: fader, meter, the
   loudness curve against the target. Selection is shared: clicking a strip selects that track everywhere.
 
-**Settings panel** (right, always, 300 px)
+**Settings panel** (right, always; 256 / 264 / 296 / 320 px at 1280 / 1366 / 1646 / 1920, as in every app *(S30)*)
 - Title: the selection's name and kind ("Piano · Track", "5 notes", "3 notes, 2 clips").
 - **Find a setting** (Ctrl+F). **Essentials** open; other groups folded to their names; settings that don't apply
   now are absent. Several items of one kind: shared settings, a differing value shows "Mixed"; a change sets all.
@@ -213,48 +285,48 @@ every dialog, the sizes and the wireframes.
 
 | Always | With a selection | With a tool | One click away |
 |---|---|---|---|
-| Top bar: File, song name, changes ↶ ↷, ⏮ ▶, click, position, tempo/beats/key, + Add, Search, Help | The selection's highlight (accent outline) | **Armed track** → ● Record, input meter, input picker, count-in in the top bar; the track's lane shows the take growing | Sounds panel (L) |
-| Arrangement: header strip, ruler with sections and markers, track headers, lanes, + Track, Master row | **Action bar** with the selection's top actions + More | **Picture set** → Picture panel; its markers on the ruler | Editor (E), Mixer (X) |
-| Settings panel (song when nothing is selected) | Settings panel: the selection's settings | **Automation open (A)** → lanes under the track, point editing | Deliver dialog (once there is sound) |
-| Once there is sound: Deliver, loudness readout | Editor content follows the selection | **Loop range set** → ⟳ in the top bar and the shaded band | Song popover (click tempo/key), Settings (Ctrl+,), history list (click "N changes") |
+| Top bar: ≡, song name, Saved · changes, ↶ ↷, Search, ? *(S30)* · Arrangement header: + Add, ⏮ ▶, click, position, tempo/beats/key | The selection's highlight (accent outline) | **Armed track** → ● Record, input meter, input picker, count-in in the arrangement header *(S30)*; the track's lane shows the take growing | Library (Ctrl+L) |
+| Arrangement: header strip, ruler with sections and markers, track headers, lanes, + Track, Master row | **Context bar** with the selection's top actions + More | **Picture set** → Picture panel; its markers on the ruler | Editor (E), Mixer (X) |
+| Settings panel (song when nothing is selected) | Settings panel: the selection's settings | **Automation open (A)** → lanes under the track, point editing | Export dialog (once there is sound) |
+| Once there is sound: Export, loudness readout | Editor content follows the selection | **Loop range set** → ⟳ in the top bar and the shaded band | Song popover (click tempo/key), Settings (Ctrl+,), history list (click "N changes") |
 | | Velocity strip (notes or hits in the Editor) | **A job running** (clean-up, voice, deliver) → progress line on the item and in the top bar's message | Right-click menu, Ctrl+K, + Add menu, File menu, Help |
 | | Rename field (F2) on one track / marker / section | **Agent connected** → "Agent" names in the message line and history | Connect an AI agent, About |
 
 ### 2.4 Dialogs and popups
 
 Rule for all: a popover closes on Esc or a click outside, and keeps what you changed (every change is already one
-undo step). A dialog that starts work (Deliver, model download) has one main button and Cancel; Esc = Cancel.
+undo step). A dialog that starts work (Export, model download) has one main button and Cancel; Esc = Cancel.
 
 | What | Opens from | What's in it | How it closes |
 |---|---|---|---|
-| **Deliver** (dialog, 560×auto) | Top bar Deliver, Ctrl+Shift+E, File › Deliver…, Ctrl+K | Rows of deliveries (one by default): *Target* (Streaming −14 · YouTube −14 · Podcast −16 · Broadcast −23 · Film −27 · None; each with a hover sentence), *File* (WAV / MP3 / FLAC / AAC), *Quality* (48 kHz 24-bit by default; folded), *What* (whole song · loop range · a section), *Stems* (off / each group / each track). Live check per row: "Will pass: −14.1, loudest peak −1.2" or "Will be turned down 2.8 to reach −14". *Where* (song folder; "Also give it to the project" on when the song is in a project). "+ Another version" adds a row (job H). Buttons: **Deliver**, Cancel. | Deliver → the dialog shows progress per row, then "Done · Show file" / "Play it"; Esc or Close. A failure keeps it open with the one-sentence reason on that row. |
+| **Export** (sheet in the right column, in the settings panel's place *(S30: was a dialog)*) | Top bar Export, Ctrl+E (Ctrl+Shift+E exports again with the last settings), ≡ › Export…, Ctrl+K | Rows of deliveries (one by default): *Target* (Streaming −14 · YouTube −14 · Podcast −16 · Broadcast −23 · Film −27 · None; each with a hover sentence), *File* (WAV / MP3 / FLAC / AAC), *Quality* (48 kHz 24-bit by default; folded), *What* (whole song · time range · a section), *Stems* (off / each group / each track). Live check per row: "Will pass: −14.1, loudest peak −1.2" or "Will be turned down 2.8 to reach −14". *Where* (song folder; "Also give it to the project" on when the song is in a project). "+ Another version" adds a row (job H). Buttons: **Export**, Cancel. | Export → the sheet shows progress per row, then "Done · Show file" / "Play it"; Esc or ×. A failure keeps it open with the one-sentence reason on that row. |
 | **Song popover** | Click tempo / beats / key in the top bar | Tempo (type, drag, *Tap* button), beats per bar, key (note + major/minor), "Add a tempo change here" (at the playhead), "Add a key change here". Sections are made on the ruler (§3.0), not here. | Esc, click outside |
 | **+ Add menu** | Top bar + Add | Track with a sound… (L) · Picture to work to… · From a file… (audio, MIDI, video) | Choosing, Esc |
 | **Picture chooser** | + Add › Picture…, Ctrl+K "Set picture" | The project's items that have a render (newest first, thumbnail + name), then "A video file…" | Choosing (Picture panel appears), Esc |
 | **Record setup popover** | The input name beside ● Record (only while armed) | Input picker, big level meter with "good level" zone, *Hear myself* (on/off, with "use headphones" hint), *Count-in* (off / 1 bar / 2 bars), *Measure the delay* (plays a sweep; shows the result) | Esc, click outside |
-| **Clean-up popover** | Action bar *Clean up* on clips | Voice only · Less noise · Less echo · Split into parts (stems); before/after switch; **Clean** button | Clean starts the job (progress on each clip); Esc |
+| **Clean-up popover** | Context bar *Clean up* on clips | Voice only · Less noise · Less echo · Split into parts (stems); before/after switch; **Clean** button | Clean starts the job (progress on each clip); Esc |
 | **Inline name field** | M (marker), *Make a section*, F2, *Send to a new group* | One text field at the place it names, default text selected ("Marker 3", "Section 2", "Drums + Bass") | Enter keeps, Esc cancels the whole action |
-| **Settings** (dialog) | Ctrl+, , File › Settings | Audio device and buffer, input, MIDI devices, the models (downloaded, size, remove), folders of my sounds, theme, keys list (read only) — with Find a setting | Close, Esc |
-| **Connect an AI agent** | File › Connect an AI agent…, Ctrl+K | How to connect (copy button for the MCP line), what the agent can do, "Agents can change your song; every change is in the history and can be undone" | Close |
+| **Preferences** (dialog) *(S30: was Settings)* | Ctrl+, , ≡ › Preferences | Audio device and buffer, input, MIDI devices, the models (downloaded, size, remove), folders of my sounds, theme, keys list (read only) — with Find a setting | Close, Esc |
+| **Connect an AI agent** | ? › Connect an AI agent… *(S30)*, Ctrl+K | How to connect (copy button for the MCP line), what the agent can do, "Agents can change your song; every change is in the history and can be undone" | Close |
 | **Model download question** | First use of voice, clean-up, stems | "Voice needs a 1.2 GB download (Qwen3-TTS, Apache-2.0). Download now?" Download / Not now. Then a progress line in the top bar. | Choosing |
 | **Plug-in window** | Double-click a plug-in effect or instrument | The plug-in's own window, our title bar with Bypass and the preset name | Close (settings stay) |
-| **Open / Save as** | Ctrl+O, Ctrl+Shift+S, first Ctrl+S | The system file dialog | System |
-| **Unsaved changes** | Closing with an unsaved, named song | "Save changes to 'Logo sting'?" Save / Don't save / Cancel (untitled songs are kept automatically and offered back) | Choosing |
+| **Open** | Ctrl+O | The system file dialog *(S30: no Save as; Duplicate, Ctrl+Shift+S, makes a copy in the projects folder)* | System |
+| ~~Unsaved changes~~ | *(S30: removed; saving is automatic)* | | |
 | **Missing file** | Opening a song whose recording or video moved | "2 files are missing: take-3.wav, logo.mp4." Find them… / Open anyway (the clips show "missing" and the render fails loudly naming them) | Choosing |
 | **Offered back after a crash** (exists, S27) | Next start after a crash | Plain sentence, where the log is, "Open the song as it was" | Choosing |
 | **Ctrl+K** | Ctrl+K, the top bar search | Every action valid for the selection first, then every command, every setting ("Edit Tempo"), every sound by name | Running one, Esc |
 | **Right-click menu** | Right-click anywhere | §3.0 | Choosing, Esc |
-| **Hover words** | Hover 600 ms over any icon or sound word | One plain sentence, and the key | Moving away |
+| **Hover words** | Hover 500 ms *(S30)* over any icon or sound word | One plain sentence, and the key | Moving away |
 
 ### 2.5 Window sizes
 
 Sizes (px). The arrangement's lanes never get narrower than 520 and the arrangement never lower than the ruler plus
 two tracks (160). Things give way in this fixed order and never slide under each other:
 
-1. **Sounds panel** floats over the arrangement instead of pushing it (below 1500 wide) and closes after each use.
-2. Top bar: "what just happened" shortens to the change count (hover shows it all).
+1. **Library** floats over the arrangement instead of pushing it (below 1500 wide) and closes after each use.
+2. Top bar: "what just happened" shortens with "…" (hover shows it all); "Saved · N changes" never shrinks *(S30)*.
 3. Top bar: the search box becomes its icon ("Ctrl K" on hover).
-4. Top bar: position shows bar.beat only (time on hover); the key shows short ("Cm").
+4. Arrangement header: position shows bar.beat only (time on hover); the key shows short ("Cm") *(S30)*.
 5. Song name shortens with "…" (min 80 px).
 6. Settings panel 320 → 300 → 260.
 7. Track headers 200 → 140 (the small meter goes; M S Rec stay).
@@ -263,10 +335,10 @@ two tracks (160). Things give way in this fixed order and never slide under each
 10. Below 1280×720 (down to the window's minimum, 1024×600): the settings panel becomes a 40 px strip that opens as
     an overlay; the dock opens over the arrangement instead of beside it.
 
-Never shrink or hide: File, ↶ ↷ and the count, ▶ ⏮, ● Record (when armed), tempo, + Add, Deliver, Help, the Rec / M / S
-buttons, the action bar's first action.
+Never shrink or hide: ≡, Saved · N changes, ↶ ↷ *(S30)*, ▶ ⏮, ● Record (when armed), tempo, + Add, Export, Help, the Rec / M / S
+buttons, the context bar's first action.
 
-| Size | Top bar | Sounds panel | Settings panel | Track headers | Dock default height | Picture default |
+| Size | Top bar | Library | Settings panel | Track headers | Dock default height | Picture default |
 |---|---|---|---|---|---|---|
 | 1280×720 | steps 2–4 applied | overlay, 260 | 260 | 140 | 300 (of 676) | 256×144 |
 | 1366×768 | steps 2–3 | overlay, 260 | 280 | 160 | 320 | 288×162 |
@@ -276,6 +348,15 @@ buttons, the action bar's first action.
 The look pass checks all four sizes for overlap and cut-off automatically (memory: look-pass-automatic).
 
 ### 2.6 Wireframes
+
+*(S30) These were drawn before the shared spec, so their top bars still show File, transport, tempo and + Add. In the
+shared layout:*
+- *File, transport, tempo and + Add sit in the arrangement's header strip;*
+- *the top bar reads ≡ · song · message · Saved · N changes · chips · ↶ ↷ · Search · Export · ?;*
+- *the context bar sits at the top-centre of the focused area, not under the selection.*
+
+*See `C:\Users\Sam\.rostrum\waves\results\kit\s30\INTERACTION.html`, wireframe W2.*
+
 
 Drawn at Sam's 1646×900 unless the title says otherwise. `[ ]` = a button, `▾` = a menu, `●` = record,
 `░` = shaded selection, `▓` = selected item.
@@ -299,7 +380,7 @@ Drawn at Sam's 1646×900 unless the title says otherwise. `[ ]` = a button, `▾
 │ + Track                                                                      │ clip to change it here.     │
 │ Master                                                                       │                             │
 └──────────────────────────────────────────────────────────────────────────────┴─────────────────────────────┘
-No Deliver, no loudness readout, no dock, no Record: nothing to deliver, measure, edit or record yet.
+No Export, no loudness readout, no dock, no Record: nothing to deliver, measure, edit or record yet.
 ```
 
 **W2 · Writing notes, the Editor open** (piano track selected, five notes selected)
@@ -307,7 +388,7 @@ No Deliver, no loudness readout, no dock, no Record: nothing to deliver, measure
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ File  Sample song •  You: moved 5 notes · 14 changes ↶ ↷  ⏮ ▶ click  5.3.1 · 0:09.6  ♩100 · 4/4 · C major  │
-│                                       Loudness −16.8 · target −14 ●  [+ Add] [Deliver] [Ctrl K] ?          │
+│                                       Loudness −16.8 · target −14 ●  [+ Add] [Export] [Ctrl K] ?          │
 ├──────────────────────────────────────────────────────────────────────────────┬─────────────────────────────┤
 │ Grid 1/16 ▾  Snap ✓                                               − + fit    │ 5 notes                     │
 │ │verse                        │chorus                    ▼logo lands         │ [ Find a setting  Ctrl F ]  │
@@ -324,7 +405,7 @@ No Deliver, no loudness readout, no dock, no Record: nothing to deliver, measure
 │ A4 │  ▓▓▓▓▓▓      ▓▓▓▓▓▓      ░░ bass notes faint ░░                         │                             │
 │ G4 │                    ▓▓▓▓▓▓▓▓▓▓                                           │                             │
 │ F4 │              ▓▓▓▓▓▓                                                     │                             │
-│    │ [ Quantise Q ] [ Transpose ± ] [ Velocity ] [ Duplicate ] [ More ▾ ]    │                             │
+│    │ [ Quantise Q ] [ Transpose ± ] [ Velocity ] [ Duplicate ] [ ⋯ ]    │                             │
 │ vel│  ▮   ▮     ▮   ▮       ▮   (velocity strip: drag a bar, or across)      │                             │
 └──────────────────────────────────────────────────────────────────────────────┴─────────────────────────────┘
 ```
@@ -334,7 +415,7 @@ No Deliver, no loudness readout, no dock, no Record: nothing to deliver, measure
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ File  Sample song   22 changes ↶ ↷  ⏮ ▶ click  9.1.1 · 0:19.2  ♩100 · 4/4 · C major                        │
-│                                  Loudness −13.6 · target −14 ●  [+ Add] [Deliver] [Ctrl K] ?               │
+│                                  Loudness −13.6 · target −14 ●  [+ Add] [Export] [Ctrl K] ?               │
 ├──────────────────────────────────────────────────────────────────────────────┬─────────────────────────────┤
 │ 1      2      3      4      5      6      7      8      9     10             │ Drums · Track               │
 │ ▌Piano   M S  ═ ══ ═ ═══ ═ ══ ═ ═══ ═ ══ ═ ═══                               │ [ Find a setting  Ctrl F ]  │
@@ -342,7 +423,7 @@ No Deliver, no loudness readout, no dock, no Record: nothing to deliver, measure
 │▓▌Drums   M S  ' ' ' ' ' ' ' ' ' ' ' ' ' ' ' '                                │ Level       −4.0            │
 │ ▌Voice   M S  ▁▃▅▃▁   ▂▅▆▃▁    ▁▄▅▂                                          │ Pan         centre          │
 │ Master                                                                       │ Plays into  Master ▾        │
-│                      [ Send to a new group Ctrl G ] [ Add effect ] [ More ▾ ]│ ▸ Effects (1)               │
+│                      [ Send to a new group Ctrl G ] [ Add effect ] [ ⋯ ]│ ▸ Effects (1)               │
 ├─ [Editor E] [Mixer X] ───────────────────────────────────────────── ▾ ───────┤ ▸ Sends and ducking         │
 │  Piano    Bass     Drums▓   Voice   │ Master                                 │ ▸ Sound of the kit          │
 │  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐ │ ┌─────────────────────────────────┐    │                             │
@@ -373,8 +454,8 @@ No Deliver, no loudness readout, no dock, no Record: nothing to deliver, measure
 │                                                                              │ on this track, ready to cut.│
 └──────────────────────────────────────────────────────────────────────────────┴─────────────────────────────┘
 While recording, the Editor folds (nothing to edit yet); after Stop the take is selected and the Editor opens on its
-waveform with the action bar: [ Clean up ] [ Even out level ] [ Split at playhead Ctrl T ] [ More ▾ ].
-Deliver appears once the take exists.
+waveform with the context bar: [ Clean up ] [ Even out level ] [ Split at playhead Ctrl T ] [ ⋯ ].
+Export appears once the take exists.
 ```
 
 **W5 · Scoring with the picture** (a 2D film set as the picture; marker "logo lands" selected)
@@ -382,7 +463,7 @@ Deliver appears once the take exists.
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ File  Launch film score   9 changes ↶ ↷  ⏮ ▶ click  5.1.1 · 0:08.0  ♩120 · 4/4 · D minor                   │
-│                                  Loudness −18.0 · target −14 ●  [+ Add] [Deliver] [Ctrl K] ?               │
+│                                  Loudness −18.0 · target −14 ●  [+ Add] [Export] [Ctrl K] ?               │
 ├──────────────────────────────────────────────────────────────────────────────┬─────────────────────────────┤
 │ Grid 1/8 ▾  Snap ✓                                     ┌ Picture ─── − × ┐   │ logo lands · Marker         │
 │ │intro            │build              ┊▼logo lands ┊▼cut│                │   │ (from the project)          │
@@ -392,17 +473,17 @@ Deliver appears once the take exists.
 │ ▌Hits     M S                   ▓ riser ▓┃▓ impact       └───── resize ◢ ┘   │ Moving it in 2D moves them. │
 │ + Track                                  ┃                                   │                             │
 │ Master                                   ┃                                   │                             │
-│        [ Place a sound here ] [ Land a bar here ] [ Rename ] [ More ▾ ]      │                             │
+│        [ Place a sound here ] [ Land a bar here ] [ Rename ] [ ⋯ ]      │                             │
 ├─ [Editor E] [Mixer X] ───────────────────────────────────────────── ▾ ───────┤                             │
 │ (Editor of the last edited track, or folded)                                 │                             │
 └──────────────────────────────────────────────────────────────────────────────┴─────────────────────────────┘
 Project markers are dashed (┊), Sound's own are solid. Items tied to a marker show a small flag at their tied edge.
 ```
 
-**W6 · The Deliver dialog** (two versions: job H)
+**W6 · The Export dialog** (two versions: job H)
 
 ```
-               ┌ Deliver "Launch film score" ─────────────────────────────────────────────── × ┐
+               ┌ Export "Launch film score" ─────────────────────────────────────────────── × ┐
                │                                                                               │
                │  1  Target  [ Streaming −14 ▾ ]   File [ WAV ▾ ]   What [ Whole song ▾ ]      │
                │     Stems   [ Off ▾ ]                                                         │
@@ -417,20 +498,20 @@ Project markers are dashed (┊), Sound's own are solid. Items tied to a marker 
                │  Where  C:\Users\Sam\Music\Launch film score\  [ Change… ]                    │
                │  ✓ Also give it to the project (2D's "Launch film" can use it)                │
                │                                                                               │
-               │                                                       [ Cancel ] [ Deliver ]  │
+               │                                                       [ Cancel ] [ Export ]  │
                └───────────────────────────────────────────────────────────────────────────────┘
-After Deliver: each row shows a progress line, then "Done · [ Play it ] [ Show file ]". A failure keeps the dialog
-open and says on its row what failed and what to do ("The voice clip 'take-3' is missing. Find it, then Deliver again.").
+After Export: each row shows a progress line, then "Done · [ Play it ] [ Show file ]". A failure keeps the dialog
+open and says on its row what failed and what to do ("The voice clip 'take-3' is missing. Find it, then Export again.").
 ```
 
-**W7 · A selection with the action bar and the right-click menu** (three clips on two tracks)
+**W7 · A selection with the context bar and the right-click menu** (three clips on two tracks)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┬─────────────────────────────┐
 │ 0s        5s        10s       15s       20s                                  │ 3 clips                     │
 │ ▌Voice  Rec M S  ▓▓take 1▓▓  ▓▓take 2▓▓     take 3                           │ [ Find a setting  Ctrl F ]  │
 │ ▌Room   Rec M S       ▓▓room tone▓▓▓▓▓                                       │ Level      Mixed            │
-│                 [ Clean up ] [ Even out level ] [ Fade ▾ ] [ More ▾ ]        │ Fade in    0.05 s           │
+│                 [ Clean up ] [ Even out level ] [ Fade ▾ ] [ ⋯ ]        │ Fade in    0.05 s           │
 │                       ┌──────────────────────────────────┐                   │ Fade out   Mixed            │
 │                       │ Clean up…                        │                   │ ▸ Clean-up                  │
 │                       │ Even out level                   │                   │ ▸ Effects on these clips    │
@@ -452,7 +533,7 @@ open and says on its row what failed and what to do ("The voice clip 'take-3' is
 
 ## 3. Features
 
-Every feature uses the grammar of 3.0 (select first, the action bar, right-click, Ctrl+K, one undo step per gesture).
+Every feature uses the grammar of 3.0 (select first, the context bar, right-click, Ctrl+K, one undo step per gesture).
 
 ### 3.0 Selection and actions
 
@@ -478,7 +559,7 @@ E (tracks, strips), F (the person's selection is what they hand to the agent).
    | Sections | Section band on the ruler | — |
    | A time range | Drag on the ruler (seconds/bars line) | Shaded band over every lane |
    | Automation points | An open automation lane (A) | — |
-   | Sounds in the Sounds panel | The panel's list | (panel only: they aren't in the song yet) |
+   | Sounds in the Library | The panel's list | (panel only: they aren't in the song yet) |
 
 2. **How to select** (one rule set for every place):
    - **Click** an item: selects it alone. **Click empty space**: clears (Esc does too).
@@ -487,8 +568,9 @@ E (tracks, strips), F (the person's selection is what they hand to the agent).
      (Same as 2D's layer list. 2D's canvas uses Shift to add; Sound has no canvas, so no conflict.)
    - **Drag a box** on empty lane space (arrangement or Editor): selects every item it touches; with Ctrl it adds.
      In the arrangement the box can span tracks.
-   - **Drag on the ruler**: a **time range** (snaps to the grid). Shift+drag: the range only on the selected tracks.
-     A time range and items are separate selections: the range's action bar offers "Select what's inside".
+   - **Drag on the ruler's top band**: a **time range** (snaps to the grid); clicking or dragging the scale below moves
+     the playhead *(S30)*. Shift+drag on the band: the range only on the selected tracks.
+     A time range and items are separate selections: the range's context bar offers "Select what's inside".
    - **Ctrl+A**: everything of the kind in the focused area — all notes of the Editor's track; in the arrangement,
      all items on the selected tracks (all tracks if none); in the Mixer, all strips.
    - **Double-click** an item: selects it and opens the Editor on it. **Double-click a name** (track, marker,
@@ -497,10 +579,10 @@ E (tracks, strips), F (the person's selection is what they hand to the agent).
      playhead; job D places sounds at the playhead next).
    - **Selecting never changes the song**: it is not an undo step and is not saved.
 
-3. **The action bar** — what it shows for each kind (top actions by importance, the rest in **More ▾**; Delete,
+3. **The context bar** — what it shows for each kind (top actions by importance, the rest in **⋯**; Delete,
    Copy, Cut, Paste are keys and in the right-click menu, never on the bar). An action that doesn't apply is absent.
 
-   | Selection | Action bar (in order) | In More | Operation (agent) |
+   | Selection | Context bar (in order) | In More | Operation (agent) |
    |---|---|---|---|
    | 1 track | Open in Editor (E) · Add effect · Colour | Duplicate track · Move up/down · Record (arm) · Export MIDI | `effect.add`, `track.set {colour}`, `track.duplicate` **(new)**, `track.set {order}` **(new field/op)** |
    | 2+ tracks | **Send to a new group** (Ctrl+G) · Mute · Solo · Colour | Add effect to each · Duplicate · Delete | `bus.from_tracks`, `track.set {mute/solo/colour}` |
@@ -513,7 +595,7 @@ E (tracks, strips), F (the person's selection is what they hand to the agent).
    | Voice lines | Speak again · Voice ▾ · Edit words | Duplicate | `line.set`, `render_voice`, `line.duplicate` **(new)** |
    | 1 marker | **Place a sound here** · Land a bar here · Rename (F2) | Delete marker (Sound's own; a project marker: "Delete from the project", says what is tied to it first) | `marker.set`, `marker.add`, tempo fit **(new: `tempo.fit_bar`)** |
    | 1 section | Duplicate section · Rename · Select what's inside | Delete section (label only) | `section.move`, `section.set`, `section.duplicate` **(new)** |
-   | Time range | **Loop** (C) · Make a section · Duplicate (Ctrl+D) · Select what's inside | Deliver this range · Bounce to audio (both later, §9) | screen state; `section.add`; `<kind>.duplicate {by: range length}` |
+   | Time range | **Loop** (C) · Make a section · Duplicate (Ctrl+D) · Select what's inside | Export this range · Bounce to audio (both later, §9) | screen state; `section.add`; `<kind>.duplicate {by: range length}` |
    | Automation points | Flatten · Duplicate | Curve shape (later) | `automation.set` |
    | Mixed kinds (e.g. notes + clips) | Duplicate · Move to playhead | Only the notes › · Only the clips › | each kind's `.duplicate` / `.move`, one batch |
 
@@ -522,7 +604,7 @@ E (tracks, strips), F (the person's selection is what they hand to the agent).
 4. **Right-click menu** — the same list as the bar, all of it, grouped by importance, then a line, then Copy · Cut ·
    Paste · Duplicate · Rename (one named item) · Delete, each with its key. Right-click on an **unselected** item first
    selects it alone; on a **selected** item it keeps the selection. On empty space: *Paste here* · *Add a sound
-   here…* (opens the Sounds panel with the playhead moved there) · *Add marker here* (M) · *Select all on this track*.
+   here…* (opens the Library with the playhead moved there) · *Add marker here* (M) · *Select all on this track*.
    On the ruler: *Add marker here* · *Loop from here…* · *Make a section from here*. On a track header: the track's
    actions.
 
@@ -545,19 +627,18 @@ E (tracks, strips), F (the person's selection is what they hand to the agent).
      only in time (no pitch / track change), like 2D's Shift for "straight".
    - **Drag an end**: length (notes, clips, sounds); a clip's left end trims its start; a clip's top corners = fades.
      With several selected, every selected item's same end changes by the same amount.
-   - **Arrows**: ← → one grid step (Shift: one bar; Ctrl: fine, 10 ms or 1/32 of a beat). ↑ ↓: notes a half step
+   - **Arrows**: ← → one grid step (Shift: one bar; **Alt**: fine, 10 ms or 1/32 of a beat; Ctrl+← → always move the
+     playhead *(S30)*). ↑ ↓: notes a half step
      (Shift: an octave); clips and sounds to the track above / below. Tracks: Ctrl+] / Ctrl+[ move them down / up in
      the list (2D's "order" keys).
    - **Delete** removes; on a time range inside one clip it cuts that part out and closes the gap on that track
      (voice editing, job C; op **(new: `clip.cut_range`)**); elsewhere a time range's Delete is later (§9).
 
 8. **One undo step per gesture.** A whole drag, a box-move, a paste, a duplicate, an action on 40 notes, a key nudge
-   = one step. Holding an arrow down repeats: the run of repeats is one step (ends 500 ms after the key is let go).
+   = one step. Holding an arrow down repeats: the run of repeats is one step (presses under 1 s apart, as in every app *(S30)*).
    Undo puts the selection back on what the undone step touched, so the next action is on the same things.
 
-**Feedback.** Selected items get the accent outline and a lighter fill at once (one frame). The action bar fades in
-next to the selection within 100 ms and moves with it while scrolling; it never covers the selection (it flips above
-if there is no room below). The settings panel title changes at once. While dragging, a faint copy stays where the
+**Feedback.** Selected items get the accent outline and a lighter fill at once (one frame). The context bar fades in at its fixed place (top-centre of the focused area) within 100 ms *(S30)*. The settings panel title changes at once. While dragging, a faint copy stays where the
 item was until release; the snap line shows what it caught (§5). After an action, the message line says what
 happened ("Quantised 16 notes to 1/16").
 
@@ -565,11 +646,10 @@ happened ("Quantised 16 notes to 1/16").
 with an amount (quantise strength, transpose steps, fade length) keeps its last amount as the default next time, and
 the settings panel shows the result's values to change afterwards.
 
-**Keys.** Click, Ctrl+click, Shift+click, box, ruler drag, Ctrl+A, Esc · Ctrl+C / X / V / D · Delete · arrows (Shift,
-Ctrl) · Alt+drag · Ctrl+] / [ · F2 · Ctrl+K · the per-action keys (Q, Ctrl+G, Ctrl+T, Ctrl+J, C). Full list §6.
+**Keys.** Click, Ctrl+click, Shift+click, box, ruler band drag, Ctrl+A, Esc · Ctrl+C / X / V / D · Delete · arrows (Shift, Alt) *(S30)* · Alt+drag · Ctrl+] / [ · F2 · Ctrl+K · the per-action keys (Q, Ctrl+G, Ctrl+T, Ctrl+J, Shift+L). Full list §6.
 
 **Agent.** Every action is one operation with `target: [ids]` — the table above names them. The selection itself is
-screen state; the agent reads it with **`inspect_selection` (new)**: the selected ids with kind, track, start, end
+screen state; the agent reads it with **`inspect_screen` (new)**: the selected ids with kind, track, start, end
 and a one-line description, plus the time range if one is set. The agent never changes the person's selection (2D's
 rule); its own changes show live and are named in the message line. Paste for agents = `<kind>.add_many` (exists).
 
@@ -593,7 +673,7 @@ range inside a clip).
 selection memory (recall a saved selection); Delete / insert time across all tracks (`range.remove`, `range.insert`).
 
 **Today.** **Partial:** single selection only (kit `bridge.select(id)`); one-item drag moves; Ctrl+K lists what applies
-to one item. Missing: multi-select, box, ranges for items, action bar, right-click, clipboard, nudge, end drags. The
+to one item. Missing: multi-select, box, ranges for items, context bar, right-click, clipboard, nudge, end drags. The
 operations for move / duplicate / quantise / split / join / crossfade / normalise / transpose / group exist.
 
 ---
@@ -623,20 +703,20 @@ operations for move / duplicate / quantise / split / join / crossfade / normalis
 **Goal.** "Start a new piece and get to the first sound quickly."
 **Who / when.** A, B, D at the start of every job; C starts the same way with an audio track. Once per song.
 **How it works.**
-1. **Ctrl+N** or File › New song. The song opens untitled (saved per change in the untitled area, as today).
+1. **Ctrl+N** or ≡ › New song. The song opens untitled (saved per change in the untitled area, as today).
 2. The arrangement is empty and shows one centred hint with one button: **Add a track** ("Pick a sound to start
-   with: an instrument, drums, your voice or a sound file"). The **Sounds panel opens by itself** on a new song,
+   with: an instrument, drums, your voice or a sound file"). The **Library opens by itself** on a new song,
    with the search field focused.
 3. The top bar shows tempo **120**, beats per bar **4/4**, key **"No key"** (a muted chip). Each is one click to change
    (3.6). Length is automatic (last sound + 2 s), so nobody sets it.
 4. The settings panel shows only a hint ("Select something to see its settings. Nothing selected: the song") and,
    under it, the song's own essentials: name, tempo, key, beats per bar. Master settings are not shown here (they
    live on the master's row and in the Mixer).
-5. Picking a sound in the Sounds panel makes the first track (3.1b). The hint goes away.
+5. Picking a sound in the Library makes the first track (3.1b). The hint goes away.
 
-**Feedback.** The new empty song appears in under a second; the Sounds panel slides in; the cursor is in its search.
+**Feedback.** The new empty song appears in under a second; the Library slides in; the cursor is in its search.
 **Undo and adjust.** A new song has an empty history. Tempo / key / metre are edited any time (3.6).
-**Keys.** Ctrl+N new · Ctrl+O open · Ctrl+S save (names an untitled song) · Ctrl+Shift+S save a copy · L Sounds panel.
+**Keys.** Ctrl+N new · Ctrl+O open · Ctrl+S save a version · Ctrl+Shift+S duplicate · Ctrl+L Library *(S30: saving is automatic)*.
 **Agent.** `run_open_project` / the project service makes the document; `doc.set {tempo, beatsPerBar}` (exists);
 `key.add {key, at: 0}` (exists). `inspect_project` returns the empty song.
 **Why this way (3E).** Effective: the first real step (pick a sound) is the only one asked. Efficient: 2 clicks to a
@@ -645,15 +725,15 @@ playable track. Easy: one hint, one button; no master jargon at step 1 (DESIGN �
 taste); a song pre-filled with default tracks — the person deletes what they didn't ask for.
 **Studied.** GarageBand opens a project chooser and then a "choose a track type" dialog; Logic asks for a track type
 first. We take "the first thing you do is pick a sound"; we skip the dialog and the project templates.
-**Later.** A person's own starting song ("open this as new") — File › New from a song… — when people ask; it is a copy, not a shipped template.
-**Today.** Partial: File › New song exists; the new song's settings panel shows master settings; the Sounds panel does not exist.
+**Later.** A person's own starting song ("open this as new") — ≡ › New from a song… — when people ask; it is a copy, not a shipped template.
+**Today.** Partial: ≡ › New song exists; the new song's settings panel shows master settings; the Library does not exist.
 
 #### 3.1b Adding a track
 
 **Goal.** "I want a piano / drums / my voice / this sound file in the song."
 **Who / when.** All jobs, several times per song.
 **How it works.** A track is made by choosing what it plays — never an empty track first (select first, then act).
-1. **+ Track** (at the bottom of the track headers, always; and in the top bar) or **L** opens the Sounds panel.
+1. **+ Track** (at the bottom of the track headers, always; and in the top bar) or **L** opens the Library.
 2. Find a sound (3.7). Then any one of:
    - **double-click** it or press **Enter**: a new track with that sound, placed **below the selected track** (or last
      when none is selected), selected, its header name in edit mode for an optional rename;
@@ -666,10 +746,10 @@ first. We take "the first thing you do is pick a sound"; we skip the dialog and 
 | An instrument (built-in, played, synth, SFZ, plug-in) | Instrument | notes | piano roll (3.3) | keys |
 | A drum kit | Drums | hits | drum grid (3.4) | drum |
 | A voice | Voice | spoken lines | the lines (another part of this spec) | mouth |
-| A sound file, a library sound, or **Audio track** (Sounds panel, top row "Empty audio track — to record into") | Audio | clips and designed sounds | waveform | wave |
+| A sound file, a library sound, or **Audio track** (Library, top row "Empty audio track — to record into") | Audio | clips and designed sounds | waveform | wave |
 
 4. The empty audio track is the one exception to "no empty track": recording needs a place to land. It is the first
-   row of the Sounds panel and also offered on a track header's right-click as "New audio track to record".
+   row of the Library and also offered on a track header's right-click as "New audio track to record".
 5. The new track's name is the sound's name ("Grand piano"); a second one is "Grand piano 2". Its colour is the next
    free colour of the track palette (below), and the inspector shows that same colour (fixes DESIGN §7 point 6).
 
@@ -677,7 +757,7 @@ first. We take "the first thing you do is pick a sound"; we skip the dialog and 
 instrument or drum track and the dock was open; the sound plays a short audition when picked (3.7).
 **Undo and adjust.** One `track.add` = one undo step (with the clip, when made from a file: one batch). Swap the
 sound later without losing notes (3.2c).
-**Keys.** L Sounds panel · Enter add the highlighted sound · Esc close the panel.
+**Keys.** L Library · Enter add the highlighted sound · Esc close the panel.
 **Agent.** `track.add {name, instrument, …the form's settings}` (exists; takes the instrument in the same call);
 from a file: `track.add {instrument: "none"}` + `clip.add` in one batch (exists). **(new)** `track.add` gains `after`
 (a track id) so an agent can place it, same as the screen. Reply: the new track id.
@@ -688,7 +768,7 @@ sound; an empty "+ Track" that adds a default piano (today) — the person then 
 **Studied.** Logic's library on the left changes the selected track's patch; Ableton makes a track when you drop an
 instrument in empty space. We take drop-to-make and the library on the left; we drop the track-type dialog.
 **Later.** Multi-output instruments (a plug-in drum kit with one track per drum output) — rare, needs routing work.
-**Today.** Partial: `+ Track` with a fixed menu of 8 kinds (`screensound/adder.py`); no Sounds panel; no `after`.
+**Today.** Partial: `+ Track` with a fixed menu of 8 kinds (`screensound/adder.py`); no Library; no `after`.
 
 #### 3.1c Naming, colouring, ordering, deleting tracks
 
@@ -707,9 +787,9 @@ instrument in empty space. We take drop-to-make and the library on the left; we 
 - **Duplicate:** **Ctrl+D** with tracks selected: copies with everything on them, placed below each original.
   Right-click also offers **"New track with this sound"** (same instrument and settings, no notes: for doubling a
   part).
-- **Delete:** **Delete** with tracks selected. No confirmation: Undo brings it back whole. The action bar shows "Delete
+- **Delete:** **Delete** with tracks selected. No confirmation: Undo brings it back whole. The context bar shows "Delete
   3 tracks (412 notes)" so the size is visible before the click.
-- The action bar for selected tracks shows, most used first: Send to a new group (Ctrl+G), Colour, Mute / Solo,
+- The context bar for selected tracks shows, most used first: Send to a new group (Ctrl+G), Colour, Mute / Solo,
   Duplicate, Delete; the rest (Add effect…, New track with this sound, Export as MIDI) in "More…" and right-click.
 
 **Feedback.** Rename in place; colour changes the header, lane items and mixer strip at once; drag shows the drop
@@ -727,6 +807,12 @@ same gestures as any list on Windows and as 2D's layer list.
 **Later.** Track icons chosen by the person (purely cosmetic).
 **Today.** Partial: rename and colour through the inspector; no reorder, duplicate or multi-select (needs the kit's selection list, DESIGN §6.1).
 
+**Lock** *(S30, shared spec 1.18)*:
+- The lock on a track header (shown on hover, or when it is on), or Ctrl+Shift+L, stops anyone changing that track
+  and what is on it, agents included.
+- An agent gets "*Voice* is locked by Sam: unlock it first".
+- `track.set {locked}` *(new field, schema)*.
+
 #### 3.1d Folders vs groups of tracks — we do one thing: groups that also fold
 
 **Goal.** "These eight drum and percussion tracks belong together: fold them away, and turn them up or down together."
@@ -740,14 +826,14 @@ straight to the master, so it costs nothing for tidiness alone. Two look-alike c
 folder and then wonder why the folder's fader does nothing. One container, one rule: "a group folds, and it is a
 fader for everything in it".
 **How it works.**
-1. Select tracks → **Ctrl+G** (or action bar "Send to a new group"). A group header appears above the first
+1. Select tracks → **Ctrl+G** (or context bar "Send to a new group"). A group header appears above the first
    selected track; the selected tracks move under it (indented, contiguous), and play into it. Name field opens
    ("Group 1"; type "Drums").
 2. Fold / unfold: click the arrow on the group header, or **Alt+click** it to fold / unfold all groups.
 3. Add a track to a group: drag its header into the group's indented area; take it out: drag it out (its output
    goes back to where the group plays to).
 4. **Ctrl+Shift+G** with a group selected: ungroup — its tracks play where the group played (the master, or a
-   parent group), the group's effects are dropped (the action bar says so: "Ungroup (removes 2 effects)"), one step.
+   parent group), the group's effects are dropped (the context bar says so: "Ungroup (removes 2 effects)"), one step.
 5. A group can contain groups (drums inside "Band"); fold state is per person (screen state, not the song).
 
 **Feedback.** The tracks re-flow under the header; the Mixer shows a group strip with the tracks beside it.
@@ -784,9 +870,9 @@ beat lines). A copy gets its own name ("chorus riff 2"), so changing one copy ne
 **How it looks and behaves (with parts).**
 1. In the arrangement, a part is drawn as a **rounded block** across its extent on its track lane, tinted the track's
    colour, name at top-left, its notes drawn inside as a mini roll. Notes not in any part are drawn as today (loose).
-2. **Make a part:** select notes (in the Editor or by box on the lane) → action bar **"Make a part"** (proposed key
+2. **Make a part:** select notes (in the Editor or by box on the lane) → context bar **"Make a part"** (proposed key
    **P**) → name field inline (default "Part 1"). Also: drag across an empty bar range on a lane with nothing
-   selected, then "Make a part" from the action bar takes every note in that range.
+   selected, then "Make a part" from the context bar takes every note in that range.
 3. **Click** a part = selects all its notes (the selection is still notes: every note action works on it).
    **Double-click** = opens the Editor (E) on that track, zoomed to the part.
 4. **Drag** the block body = move all its notes (snaps to bars; Ctrl free). **Alt+drag** = copy.
@@ -838,7 +924,7 @@ that loops its contents). We take the corner loop drag and the named block; we r
 **Goal.** "Which pad sounds right *for this part*?"
 **Who / when.** A every song, several times; B often.
 **How it works.**
-1. Select the track (click its header), then **L**. The Sounds panel opens filtered to what this track can play (an
+1. Select the track (click its header), then **L**. The Library opens filtered to what this track can play (an
    instrument track: instruments; a drum track: kits; a voice track: voices). A small line at the top says "Trying
    sounds on **Pad**"; "Show everything" removes the filter.
 2. **Click** a sound (or move with **↑ / ↓**): Rostrum **plays this track's own notes with that sound** — the loop
@@ -936,7 +1022,7 @@ take the few-on-top idea, built from importance.
 1. **Finding plug-ins:** Settings › Plug-ins lists the folders searched (the standard CLAP / VST3 folders, plus
    "+ Add folder"). Rostrum scans once at first start and when a folder changes; a plug-in that fails to load is listed
    with the reason ("crashed while loading", "64-bit only"), never hidden.
-2. Plug-in instruments appear in the Sounds panel under **Plug-in instruments** with their maker's name.
+2. Plug-in instruments appear in the Library under **Plug-in instruments** with their maker's name.
 3. Choose one like any instrument (3.2b). The settings panel's Instrument group then shows **Open plug-in window**
    (first) and, folded, the settings you have changed (by name, each with its own lane for automation).
 4. **Open plug-in window** (or double-click the instrument name on the track header): the plug-in's own window
@@ -956,14 +1042,14 @@ undo covers it.
 **Rejected:** recording every knob movement as a separate undo step (hundreds of steps).
 **Studied.** Every DAW floats the plug-in's window; Reaper records a step per touch; Logic per touch end. We take
 "per pause" for a clean history.
-**Later.** Plug-in presets in the Sounds panel; MIDI controller lanes to plug-ins (STATUS gap).
+**Later.** Plug-in presets in the Library; MIDI controller lanes to plug-ins (STATUS gap).
 **Today.** Partial: plug-ins load and their parameters are automatable (`PluginList.qml`, `PluginSettings.qml`); no plug-in window opener on the new layout; scanning is through `inspect_plugins`.
 
 #### 3.2f Voices (text to speech) as an instrument
 
 **Goal.** "A calm male narrator reading these lines."
 **Who / when.** C (instead of recording), D for temp voice, F often.
-**How it works.** Pick a voice in the Sounds panel (Voices section; each row is a name + language + a short plain
+**How it works.** Pick a voice in the Library (Voices section; each row is a name + language + a short plain
 description). The audition speaks one sentence. The voice track's settings panel shows Voice, Language, **How it
 speaks** (a text field: "warm, close to the microphone"). Writing and timing the lines is the voice section (another
 part of this spec). Changing the voice re-reads every line (a job with progress; the old audio plays until the new is
@@ -984,7 +1070,7 @@ ready).
 1. Track selected → right-click › **Save as my sound…** (also in Ctrl+K). A small field asks the name ("Round bass").
    A tick box "Include its effects" (on by default when the track has effects).
 2. It is saved outside the song, in the person's own sounds folder (`%USERPROFILE%\.rostrum\sounds\Round bass.rsound`),
-   and appears at once in the Sounds panel under **My sounds**.
+   and appears at once in the Library under **My sounds**.
 3. Using it is the same as any sound: pick → new track; or on a selected track → try → keep.
 4. Right-click a saved sound in the panel: Rename, Delete, Show in folder.
 
@@ -1060,13 +1146,13 @@ Cmd-click. We take Ableton's B + double-click; Logic's chord-from-key idea comes
 | Right-click › Select › | Same pitch · Same velocity range · Higher / lower than this · Every 2nd · Top / bottom note of each chord · Out of key |
 | Esc or click on empty space | nothing |
 
-**Feedback.** Selected notes are bright with an outline; the velocity strip highlights their bars; the action bar
+**Feedback.** Selected notes are bright with an outline; the velocity strip highlights their bars; the context bar
 appears just above the selection ("8 notes · Quantise · Transpose · Make a part · Duplicate · More…"); the settings
 panel shows the shared fields ("8 notes": pitch "—", length, velocity).
 **Undo and adjust.** Selection is not a change (not in history), as in 2D.
 **Keys.** Ctrl+A · Esc · Ctrl/Shift+click.
 **Agent.** Agents select by ids: `inspect_project` lists notes; `look_events` and `inspect_harmony` say where they
-are. **(new, kit)** `inspect_selection` returns the person's current selection (ids), so a person can hand
+are. **(new, kit)** `inspect_screen` returns the person's current selection (ids), so a person can hand
 "these notes" to an agent (job F).
 **Why this way (3E).** Every way people pick notes, the Windows-standard modifiers. **Rejected:** a lasso (box is enough for a grid).
 **Studied.** Logic's "Select › Same pitch / Higher pitch / Every 2nd" menu is the model for our Select menu.
@@ -1083,7 +1169,7 @@ are. **(new, kit)** `inspect_selection` returns the person's current selection (
    in key** on (toolbar), ↑/↓ and vertical drags move by steps of the scale playing there.
 4. **Length:** the pointer becomes a ⟷ near a note's **right end** (the last 6 px, or the last third of a short note):
    drag = new length for all selected (each by the same amount). **Left end**: moves the start, keeps the end.
-5. **Hold to the next note** (action bar › More, or right-click): each selected note lasts until the next note starts
+5. **Hold to the next note** (context bar › More, or right-click): each selected note lasts until the next note starts
    (a "legato" line). Written as `dur: "next"`, so it keeps holding when you move the next note.
 6. Copy / cut / paste: Ctrl+C / X / V; paste lands at the playhead on the selected track, times relative.
 7. **Ctrl+D** duplicates right after the selection.
@@ -1146,8 +1232,7 @@ highlight and the in-key movement; fold-to-scale is later.
 - **Grid** (toolbar): **Auto** (the default: the grid line spacing follows zoom — bars when zoomed out, 1/16 when
   in), or fixed: Bar, 1/2, 1/4, 1/8, 1/16, 1/32, each also as triplets (1/8T …). The ruler shows the same lines.
 - **Snap** (toolbar, magnet, on by default): starts and ends snap to the grid, to **markers** and to section edges,
-  whichever is nearest within 8 px; the line it snaps to lights up with its name ("#logo"). **Shift** while dragging
-  ignores snapping.
+  whichever is nearest within 6 px *(S30)*; the line it snaps to lights up with its name ("#logo"). **Ctrl** while dragging ignores snapping *(S30)*.
 - When a note's start or end snaps to a marker, it is **written on the marker** (`"#logo"` / `{"to": "#logo"}`): it
   follows the marker when 2D or the music moves it (3.3g).
 
@@ -1158,13 +1243,13 @@ highlight and the in-key movement; fold-to-scale is later.
 
 #### 3.3g Quantise, transpose, humanise
 
-**How it works.** All three act on the selection (notes, or hits in the drum grid), from the action bar, right-click,
+**How it works.** All three act on the selection (notes, or hits in the drum grid), from the context bar, right-click,
 Ctrl+K, or a key.
 - **Quantise (Q):** snaps the selected notes' starts to the editor's grid at full strength — the first try just works.
-  The action bar button has a small ▾: **Grid** (defaults to the editor grid), **Strength** (0–100 %; 50 % = halfway,
+  The context bar button has a small ▾: **Grid** (defaults to the editor grid), **Strength** (0–100 %; 50 % = halfway,
   keeps feel), **Ends too** (off). The ▾ choices are remembered for the next Q.
-- **Transpose:** ↑/↓ for one step; action bar "Transpose…" opens an inline field: semitones (±), **In key** tick box.
-- **Loosen (humanise):** action bar › More › "Loosen timing…": Timing (up to ms, default 10), Velocity (spread,
+- **Transpose:** ↑/↓ for one step; context bar "Transpose…" opens an inline field: semitones (±), **In key** tick box.
+- **Loosen (humanise):** context bar › More › "Loosen timing…": Timing (up to ms, default 10), Velocity (spread,
   default 0.05), **Another take** button (a new seed, so the same settings give a different result; the same seed
   always gives the same result, so an agent's re-run is stable).
 
@@ -1175,7 +1260,7 @@ Ctrl+K, or a key.
 `note.humanize` / `hit.humanize {timing, velocity, seed}` (all exist). **(new)** `in_key` on transpose.
 **Why this way (3E).** Defaults that are right first time; settings one ▾ away. **Rejected:** a quantise dialog.
 **Studied.** Logic's region quantise (non-destructive) vs Ableton's (destructive with strength). We store the result
-(plain values the person can edit), Ableton-style; the grid in the action bar is Logic's directness.
+(plain values the person can edit), Ableton-style; the grid in the context bar is Logic's directness.
 **Later.** Quantise to a groove taken from another track (Ableton groove extraction).
 **Today.** Ops exist (S26); no screen access.
 
@@ -1203,8 +1288,7 @@ Ctrl+K, or a key.
 
 **How it works.**
 - **Ctrl+wheel**: zoom time at the pointer · **Alt+wheel** (proposed): zoom pitch rows (taller / shorter) ·
-  **wheel**: scroll up / down in pitch · **Shift+wheel**: scroll in time · middle-drag: pan both · **Z**: zoom to the
-  selection (or the part) · **Ctrl+0**: fit the track's notes · **Ctrl+= / −**: zoom time.
+  **wheel**: scroll up / down in pitch · **Shift+wheel**: scroll in time · middle-drag: pan both · **F**: zoom to the selection (or the part) *(S30: was Z)* · **Ctrl+0**: fit the track's notes · **Ctrl+= / −**: zoom time.
 - The piano roll's time follows the arrangement's when "Link zoom" is on (toolbar; on by default) so bars line up
   above and below.
 - **Follow playhead** (toolbar, on): while playing, the view turns the page when the playhead reaches the right edge.
@@ -1385,13 +1469,13 @@ it. Because single letters are shortcuts in Rostrum, it is a **mode you switch o
 
 **Goal.** "Bring in a part I wrote elsewhere" / "give my notes to someone using another app."
 **How it works.**
-- **Import:** drag a `.mid` file onto the arrangement (or File › Import MIDI…). Dropped on empty space below the
+- **Import:** drag a `.mid` file onto the arrangement (or ≡ › Import MIDI…). Dropped on empty space below the
   tracks: one new track per MIDI track, starting at the drop's bar. Dropped onto an existing instrument track: its
   notes go onto that track at that bar. Tracks get a built-in instrument from the file's instrument number; drums
   (channel 10) become hits on a drum track.
 - If the song is empty, the file's tempo, metre and key come with it. If not, a bar asks inline: **"Use the file's
   tempo and key?"** [Keep mine] [Use the file's].
-- **Export:** File › Export MIDI… (the whole song), or right-click selected tracks › **Export as MIDI…** (just those).
+- **Export:** ≡ › Export MIDI… (the whole song), or right-click selected tracks › **Export as MIDI…** (just those).
   What MIDI can't carry is listed afterwards ("2 hits on 'whoosh' skipped"), never dropped silently.
 **Agent.** `edit_import_midi {path, song_map}` (exists) — **(new)** `at` and `track` params; `render_midi {path}`
 (exists) — **(new)** `tracks` param.
@@ -1415,7 +1499,7 @@ it. Because single letters are shortcuts in Rostrum, it is a **mode you switch o
    under the ruler that shows tempo flags and key changes; shown once the song has any change, or via right-click
    ruler › Show song lane). A flag shows "♩ 92"; drag it sideways to move (snaps to beats), up / down to change bpm;
    Delete removes it.
-3. **Ramps (slowing down / speeding up gradually):** select a tempo change → action bar **"Ramp from here"**: the
+3. **Ramps (slowing down / speeding up gradually):** select a tempo change → context bar **"Ramp from here"**: the
    tempo glides from this change to the next instead of jumping. Drawn as a slope between flags.
    - **Decision:** a ramp is a real setting (**new, schema: `ramp: true` on a tempo change, Team Sam**, and the tempo
      map + engine contract learn linear segments). **Interim:** "Ramp from here" writes a tempo change on every beat
@@ -1465,7 +1549,7 @@ of the six jobs needs them.
 **Goal.** "Mark the song's parts and rearrange them: chorus twice, swap verse 2 and the bridge."
 **Who / when.** A always; B to mark scenes; E for navigating.
 **How it works.**
-1. **Make from a range:** drag on the ruler (a range) → action bar **"Make a section"** → name field inline (last used
+1. **Make from a range:** drag on the ruler (a range) → context bar **"Make a section"** → name field inline (last used
    names offered as chips: "verse", "chorus"). The section appears as a labelled band above the ruler. Ranges snap to
    bars.
 2. **Select:** click the label (Ctrl+click adds). Its whole time range highlights across all tracks.
@@ -1503,8 +1587,9 @@ Easy: the result has no gaps or overlaps unless you ask.
 - Right-click the ruler › **Show: Bars and time** (default for songs) · **Time only** (for voice-over: the bar line
   hides, and so does the song lane) · **Bars only**.
 - With a picture set, time shows **timecode with frames** at the picture's frame rate ("00:00:09:14").
-- Click the ruler = move the playhead; drag = a time range (loop / make section / bounce / export); **Home** =
-  playhead to start; double-click a marker = playhead there.
+- Click or drag the ruler's scale = move the playhead; drag on its **top band** = a time range (loop / make section /
+  bounce / export) *(S30)*; **Home** = playhead to start; click a marker = select it and move the playhead there;
+  double-click = rename *(S30)*.
 - The **position** in the top bar shows both (bar.beat and time); click it to type a place ("17" goes to bar 17,
   "1:30" to 90 s, "#drop" to the marker).
 **Agent.** Times in any form (seconds, `{"beat": n}`, `"#marker"`); screen state otherwise.
@@ -1514,9 +1599,9 @@ Easy: the result has no gaps or overlaps unless you ask.
 
 ---
 
-### 3.7 Finding sounds: the Sounds panel and the library
+### 3.7 Finding sounds: the Library and the library
 
-#### 3.7a The Sounds panel
+#### 3.7a The Library
 
 **Goal.** "Find the right sound fast, hear it, put it where I want."
 **Who / when.** A (instruments), D (effects) constantly; B, C sometimes.
@@ -1578,14 +1663,14 @@ preview; the onset / peak alignment is ours, from the library's measurements.
 
 **Goal.** "Use my sound effects collection."
 **How it works.**
-1. In the Sounds panel, at the foot of **My files**: **+ Add a folder…** (a folder picker), or drag a folder from
+1. In the Library, at the foot of **My files**: **+ Add a folder…** (a folder picker), or drag a folder from
    Explorer onto the panel.
 2. Indexing runs in the background: the row shows "Reading Sonniss GDC 2024 — 1,240 of 8,000 files"; you can keep
    working; sounds appear as they are read. Later starts re-read only new or changed files.
 3. Files that can't be read are listed under the folder ("12 files skipped" → the list with reasons), never hidden.
 4. Right-click a folder: Re-read, Remove from library (files are not touched), Show in Explorer.
-5. Nothing is copied: the song refers to the file where it is. **File › Collect files into the song folder (new)**
-   copies every outside file a song uses into its `media` folder, for moving or sending the song; Deliver offers it
+5. Nothing is copied: the song refers to the file where it is. **≡ › Collect files into the song folder (new)**
+   copies every outside file a song uses into its `media` folder, for moving or sending the song; Export offers it
    too. A clip whose file is missing is drawn red with "File missing — Find…" (relink by picking the file or its folder).
 6. The folder list is the person's (settings), not the song's.
 
@@ -1601,7 +1686,7 @@ into the song, one change rewriting the paths); `inspect_library` reports missin
 **Decision.** Later, as connectors the person turns on in Settings › Sources, never on by default. Each shows its
 licence on every result and is filtered to licences safe to use in a product (CC0, CC-BY; "non-commercial" results
 hidden unless the person turns them on, with a plain warning). A CC-BY sound placed in a song is added to the song's
-**credits list** (who to credit), which Deliver writes next to the export.
+**credits list** (who to credit), which Export writes next to the export.
 - **Free instrument packs** (CC0 / permissive SFZ libraries): a "Get more instruments" row at the foot of Sampled
   lists a vetted few with size and licence; download with one click into the person's library folder.
 - **Online sound sources** (e.g. Freesound, Poly Haven audio when it exists, ambientCG for textures in 3D): search
@@ -1624,7 +1709,7 @@ the best bits."
 paper) sometimes. Job F: an agent can't sing, but it can set up the take (track, punch range, count-in) for the person.
 
 **How it works.**
-1. **Choose the input, once per machine.** Go to File › Settings (Ctrl+,) › Sound device › **Microphone**; empty
+1. **Choose the input, once per machine.** Go to ≡ › Settings (Ctrl+,) › Sound device › **Microphone**; empty
    means the system default. This exists. The microphone also shows **where you need it**, in the Take panel
    (step 3): the panel's first line reads "Microphone: *Laptop microphone* ▾" as a picker **(new on screen)**, so you
    never leave the recording screen to change it. If the device has more than one input (an audio interface), each
@@ -1672,7 +1757,7 @@ paper) sometimes. Job F: an agent can't sing, but it can set up the take (track,
 
      That is all there is. You can't swipe across takes with the mouse (that is **Later**). Split and click do the same
      job with two gestures everyone already knows.
-   - **Flatten:** "Keep only the chosen parts", in the stack's right-click or action bar. It throws away the unused
+   - **Flatten:** "Keep only the chosen parts", in the stack's right-click or context bar. It throws away the unused
      takes from the song (their files stay in `media` until Clean up files) and leaves ordinary clips.
 9. **Recording on several tracks.** Arm several tracks (click each Rec pill, or select tracks, then right-click ›
    Arm). One press of R records them all at the same moment, each from its own **Input**. Each lands as its own take.
@@ -1776,12 +1861,12 @@ Job B (placing a stinger on a cut). Job A (a recorded part, a sample loop). Job 
      point.
 
    A ghost shows where they will land while you drag. One undo step per drop (`track.add` + `clip.add` in one batch).
-   Also: File › Import sound… (Ctrl+I, proposed), which places the files at the playhead on the selected track.
+   Also: ≡ › Import sound… (Ctrl+I, proposed), which places the files at the playhead on the selected track.
 2. **Select.**
    - Click a clip to select it. Ctrl-click adds or removes one. Shift-click selects the clips between, on the same
      track.
    - Drag a box on empty lane space to select everything inside it. Ctrl+A selects all on the focused track.
-   - The selected clips get a bright outline, and the **action bar** appears under them.
+   - The selected clips get a bright outline, and the **context bar** appears under them.
 3. **Move.** Drag the clip body. It snaps to the grid, markers, the playhead and other clips' edges. Dragging up or
    down moves it to another track. Several selected clips move together. One `clip.move` for the whole gesture (exists).
 4. **Trim.** Drag the **left edge**: the clip starts later in its file and the sound underneath stays where it was
@@ -1790,18 +1875,18 @@ Job B (placing a stinger on a cut). Job A (a recorded part, a sample loop). Job 
    file's ends; the edge stops there. A grouped (layered) clip's edge trims only that clip (`clip.set_one`).
 5. **Split.**
    - Press **Ctrl+T** to cut every selected clip at the playhead (`clip.split`, exists).
-   - Or click the action bar's **Split** and then click the clip where you want the cut. The pointer becomes a thin
+   - Or click the context bar's **Split** and then click the clip where you want the cut. The pointer becomes a thin
      blade line until the click; Esc cancels.
 
    Fades stay on the outer ends.
 6. **Join.** Select two or more pieces that were cut from one file and still sit back to back. **Join** (Ctrl+J)
-   appears in the action bar (`clip.join`, exists). For clips that aren't from one file and back to back, Join is
+   appears in the context bar (`clip.join`, exists). For clips that aren't from one file and back to back, Join is
    absent, not greyed out; Crossfade or Bounce is offered instead.
 7. **Fades.** Hover a clip: a small square appears at each **top corner**. Drag it inward: the fade's curve is drawn
    over the waveform and its length is shown ("Fade in 0.40 s"). Drag back to the corner to remove it.
    `clip.set {fadeIn}` / `{fadeOut}` (exists). Selected clips: the drag on one sets all of them to the same length.
 8. **Crossfade.**
-   - Select two neighbouring clips on one track. **Crossfade** appears in the action bar; its default overlap is
+   - Select two neighbouring clips on one track. **Crossfade** appears in the context bar; its default overlap is
      0.05 s (`clip.crossfade`, exists).
    - Or drag the seam between two touching clips: a small "⋈" handle shows at the seam on hover. Dragging it sideways
      sets the overlap length directly (same op, `length` from the drag).
@@ -1818,7 +1903,7 @@ Job B (placing a stinger on a cut). Job A (a recorded part, a sample loop). Job 
 
     Both exist. **Ctrl+↑ / Ctrl+↓** change "Pitch only" by a semitone on the selected clips. The inspector shows
     the result in words: "plays 1.19× faster".
-11. **Normalise.** The action bar's **Normalise** sets each selected clip so its loudest moment reaches −1 dB
+11. **Normalise.** The context bar's **Normalise** sets each selected clip so its loudest moment reaches −1 dB
     (`clip.normalize`, exists). While the action runs, a small inline field next to the button shows "−1 dB" and can
     be edited. A second choice in the same field, **"by loudness"** (each clip at the same average loudness, for
     voice), needs `by: loudness` **(new)**. The measurement is analysed once and cached by file and range.
@@ -1826,13 +1911,13 @@ Job B (placing a stinger on a cut). Job A (a recorded part, a sample loop). Job 
     up or down; the number shows beside the pointer ("−3.5 dB"). `clip.set {volume}` (exists); on a layered clip it
     scales the whole group (exists). Double-click the line to reset it to 0 dB. Points on the line, a level that
     changes inside one clip, are **Later** (below).
-13. **Layer several clips as one sound.** Select the clips, then **Ctrl+G** or the action bar's "Layer as one sound".
+13. **Layer several clips as one sound.** Select the clips, then **Ctrl+G** or the context bar's "Layer as one sound".
     This sets the same `group` name on all of them (`clip.set {group}`, exists). Ctrl+G with tracks selected makes a
     group channel instead (3.x, another writer); either way it means "group what I selected". A layered set draws a
     thin bracket on its left, moves and levels as one, and Ctrl+Shift+G un-layers it. To change just one layer, use
     **Alt-click** (proposed) to pick one clip inside the layer; the inspector then edits only that one
     (`clip.set_one`, exists).
-14. **Reverse.** Right-click or the action bar › **Reverse**: the clip plays backwards. This is a field `reverse`
+14. **Reverse.** Right-click or the context bar › **Reverse**: the clip plays backwards. This is a field `reverse`
     **(new in the contract; the engine already has it)**. It is in now, not Later, because a reversed cymbal or whoosh
     is one of the most common sound-design moves (3.13).
 15. **Slip** (move the sound inside the clip without moving the clip). In the Editor (E), drag the waveform sideways:
@@ -1861,7 +1946,7 @@ Job B (placing a stinger on a cut). Job A (a recorded part, a sample loop). Job 
   ("Trim: 2.40 s", "×1.25", "−3.5 dB").
 - Snapping shows a line and the snapped thing's name ("logo", "bar 5").
 - The sound updates after release (render debounced about 300 ms).
-- The action bar shows only what the selection allows.
+- The context bar shows only what the selection allows.
 
 **Undo and adjust.**
 - Every drag, split, join, fade, stretch, normalise or drop is one step, named.
@@ -1939,7 +2024,7 @@ this song. Let me hear before and after."
 (dialogue from a video's own sound). An agent cleans and then checks with `look_cleanup`.
 
 **How it works.**
-1. **Select the clips.** One clip or many, on any tracks. The action bar shows **Clean up**. Right-click and
+1. **Select the clips.** One clip or many, on any tracks. The context bar shows **Clean up**. Right-click and
    Ctrl+K have it too.
 2. **Click Clean up.** The inspector jumps to its **Clean up** group, already unfolded, for all the selected clips
    (mixed values show "—"). The group lists what can be taken out, in plain words:
@@ -2037,7 +2122,7 @@ focus.
 - Everything below the screen exists: fields, job, cache, models, download question, `look_cleanup`, the "Make cleaned
   take" bar (P10) and model download (P21).
 - Missing:
-  - Clean up on several clips from the action bar;
+  - Clean up on several clips from the context bar;
   - making the take automatically on release;
   - the Before/After switch and H (today you flip "Use cleaned take" in the inspector);
   - the measurement line;
@@ -2069,18 +2154,18 @@ job F (an agent writes and places lines, a person re-takes the ones they don't l
    settings, from `effect.add`): one switch, shown only on tracks with clips. The proposed name is "Level the voice".
    It adds the existing compressor effect, visibly, in the track's effects.
 5. **Check loudness.** The top bar's loudness readout says "−17.2 · target −16 (podcast)" in amber or green. The
-   target is chosen in Deliver, and "Podcast −16" is one of its targets.
-6. **Deliver** (Ctrl+Shift+E): podcast target, MP3 or WAV. This is another writer's section; nothing voice-specific is
+   target is chosen in Export, and "Podcast −16" is one of its targets.
+6. **Export** (Ctrl+Shift+E): podcast target, MP3 or WAV. This is another writer's section; nothing voice-specific is
    needed.
 
 **How it works — generated speech (a voice track).**
-1. **Make the track.** In the Sounds panel (L) › **Voices**, each voice is a row with a ▶ to hear a sample sentence
+1. **Make the track.** In the Library (L) › **Voices**, each voice is a row with a ▶ to hear a sample sentence
    (pre-made once per voice and kept in the cache, `voice.sample` job **(new)**). Drag a voice onto the arrangement,
    or double-click it, to make a voice track (`track.add {instrument: voice, voice}`, exists). The inspector shows the
    track's **Voice**, **Language** and **How it should sound** (style, plain words: "warm, unhurried").
 2. **Add a line.** Do one of these:
    - double-click the voice track's lane at a time;
-   - with the voice track selected, press **Enter** on the lane, or use the action bar's **Add line at playhead**;
+   - with the voice track selected, press **Enter** on the lane, or use the context bar's **Add line at playhead**;
    - paste text (Ctrl+V) onto a selected voice track: every paragraph becomes a line, placed one after another with a
      0.4 s pause between them.
 
@@ -2090,7 +2175,7 @@ job F (an agent writes and places lines, a person re-takes the ones they don't l
    exists). The line's block shows a progress stripe and then its waveform; its length becomes the true spoken
    length. While it is not made, the block is hatched and says "being made". Play with an unmade line waits with
    "Waiting for 1 line (6 s)", the same rule as clean-up.
-4. **Another take.** Select the line, then use the action bar's **Another take** (or **T**, proposed). This is
+4. **Another take.** Select the line, then use the context bar's **Another take** (or **T**, proposed). This is
    `line.set {seed: n+1}`, and the take is made. The line's block shows "Take 2 ◂ ▸": the arrows step back to earlier
    takes **instantly**, because they are kept in the cache. Each take is one undo step.
 5. **Change the words.** Double-click the line's block to edit the text inline. The take is made again; the old one
@@ -2185,7 +2270,7 @@ nudges).
 **How it works.**
 1. **Bring in the picture.** Do one of these:
    - **drag a video file** onto the arrangement;
-   - File › **Picture…**, which shows a small list: "From this project: *Launch film* (2D, rendered 10 min ago) ·
+   - ≡ › **Picture…**, which shows a small list: "From this project: *Launch film* (2D, rendered 10 min ago) ·
      *Logo sting* …" and "A video file…";
    - Ctrl+K "Picture".
 
@@ -2197,11 +2282,10 @@ nudges).
      corner to resize; it snaps to the arrangement's corners. Its size and place are remembered per song.
    - **What it shows:** the frame at the playhead, plus a footer with **frame number, time and the nearest marker's
      name** ("frame 102 · 4.08 s · logo").
-   - **Its buttons:** "–" hides it to a small chip, "Picture ▸", at the top-right; **P** (proposed) shows or hides
-     it. "⤢" makes it big, about half the arrangement, while you hold **Shift+P**.
+   - **Its buttons:** "–" hides it to a small chip, "Picture ▸", at the top-right; it has no letter key *(S30: P stays kept for parts)*. "⤢" makes it big, about half the arrangement, while you hold **Shift+P**.
    - **Its menu (⋯):** Choose another… / Starts at… (`pictureAt`, exists; can sit on a marker) / Remove picture.
 3. **Scrub with the picture.** Drag the playhead or the ruler, and the picture follows at screen rate. Arrow keys with
-   nothing selected step **one frame** (,/. proposed for frame back / forward, like video tools). The ruler can show a
+   nothing selected do nothing; **Ctrl+← / →** step **one frame** *(S30)*. The ruler can show a
    **frames** row when a picture is set (right-click the ruler › Show frames).
 4. **Markers on the ruler.** The ruler has a marker row:
    - **project markers** (shared: made in 2D, or here with "Shared" on) are drawn **solid with a small chain icon**;
@@ -2223,10 +2307,10 @@ nudges).
 7. **Snapping and tying (the grammar at the top).** Notes, hits, clips, designed sounds, lines, sections and
    automation points snap to markers. **Dropping on one ties it.** A tied item shows a small flag on its tied edge;
    hover it to see "On *logo* +0.20 s". Nudging with arrows keeps the tie. In the inspector, a tied time reads
-   "**logo** +0.20 s" with a ⋯ menu offering "Unpin (keep the time in seconds)" or "Put on another marker…".
+   "**logo** +0.20 s" with a ⋯ menu offering "Untie (keep the time in seconds)" or "Put on another marker…".
    Note lengths tie their end (`{"to": "#land"}`, exists for notes; clips and designed sounds **new**, STATUS gap 5).
 8. **Fit the tempo so a bar lands on a marker.**
-   - Click a marker, and the action bar shows **"Land a bar here"**. An inline field asks "Bar [5]", suggesting the
+   - Click a marker, and the context bar shows **"Land a bar here"**. An inline field asks "Bar [5]", suggesting the
      nearest bar. Enter changes the tempo since the last tempo change so bar 5's first beat falls exactly on the
      marker.
    - Or drag a **bar number** on the ruler's bar row onto a marker (it snaps): the same thing.
@@ -2260,8 +2344,7 @@ nudges).
 - A shared marker's change goes into the project's marker history (exists).
 - The picture's place and size are view state, not history.
 
-**Keys.** M marker at playhead · F2 rename the selected marker · P show / hide the picture (proposed) · Shift+P
-hold for big picture (proposed) · , / . one frame back / forward (proposed) · Alt+M / Alt+Shift+M playhead to the next / previous
+**Keys.** M marker at playhead · F2 rename the selected marker · Ctrl+← / → one frame back / forward *(S30)* · `,` / `.` previous / next thing that happens · Alt+M / Alt+Shift+M playhead to the next / previous
 marker (proposed) ·
 Ctrl while dragging = no snapping.
 
@@ -2316,7 +2399,7 @@ logo. Quick to place, quick to swap until it feels right."
 auditions and swaps).
 
 **How it works.**
-1. **Find a sound: the Sounds panel (L).** It has three tabs: **Designed**, **My sounds** and **Instruments**. A
+1. **Find a sound: the Library (L).** It has three tabs: **Designed**, **My sounds** and **Instruments**. A
    search box sits on top and searches across all three.
    - **Designed:** Whoosh, Click, Riser, Impact (`hit`), Sub drop, each with a one-line description ("a move through
      the air: follows a move's speed"). **Click a row's ▶ to hear it** with its default settings: rendered once and
@@ -2363,9 +2446,9 @@ auditions and swaps).
    one layer.
    - `group` exists on clips. **Designed sounds need the same `group` field (new)**, so a layer can mix designed and
      recorded sounds.
-6. **Audition and swap on the same spot.** Select a placed sound, then the action bar's **Swap…** (or **S**,
+6. **Audition and swap on the same spot.** Select a placed sound, then the context bar's **Swap…** (or **S**,
    proposed).
-   1. The Sounds panel opens, filtered to the same kind and similar length. The current sound is pinned at the top as
+   1. The Library opens, filtered to the same kind and similar length. The current sound is pinned at the top as
       "Now".
    2. **↑ / ↓ step through the candidates.** Each one is put **in place** (aligned the same way, its level matched by
       measured loudness, fades kept). Playback **loops from 1 s before the spot to 1 s after**, so you hear it in
@@ -2405,7 +2488,7 @@ auditions and swaps).
 - Place, shape (per release), layer, swap (on Enter) and "sounds from motion" are each one step. Running "sounds from
   motion" again is one step and never wipes a person's edit (rule 3).
 
-**Keys.** L Sounds panel · T another take (proposed) · S swap (proposed) · ↑ ↓ Enter Esc inside a swap · Ctrl+G
+**Keys.** L Library · T another take (proposed) · S swap (proposed) · ↑ ↓ Enter Esc inside a swap · Ctrl+G
 layer · Ctrl+D duplicate a sound right after (a repeated tick) · Alt drag copy.
 
 **Agent.**
@@ -2442,7 +2525,7 @@ layer · Ctrl+D duplicate a sound right after (a repeated tick) · Alt drag copy
 **Today.** **Partial.**
 - Exists: designed sounds (engine, fields, ops), the library index and search, sounds from motion (designed and
   library), ties for designed sounds' length.
-- Missing on screen: the Sounds panel itself (the library panel is built but not shown); designed sounds have **no
+- Missing on screen: the Library itself (the library panel is built but not shown); designed sounds have **no
   screen at all**; auditions; aligned drops; swap; motion from the Picture panel; group on sounds; reverse.
 
 ---
@@ -2456,7 +2539,7 @@ job; D (one effect on one clip) now and then. F: agents add effects through the 
 
 **How it works.**
 1. **Select first.** Click a track header (or Ctrl-click several), a clip (or several), a group, or the master row /
-   strip. The **action bar** under the selection shows **Add effect ▾**; the same entry is in the right-click menu and
+   strip. The **context bar** under the selection shows **Add effect ▾**; the same entry is in the right-click menu and
    in Ctrl+K ("Add effect: Reverb").
 2. **Add effect ▾** opens one menu (the kit's Menu), a search field at the top (typing filters at once):
    - **Built in**, each with a four-word line of what it does: EQ (shape the tone), Compressor (even out loud and
@@ -2525,7 +2608,7 @@ installed here").
 **Why this way (3E).** *Effective:* every place that has a chain (track, clip, group, master) is reachable the same way,
 including clips, which the screen never offered. *Efficient:* select five tracks → one Add effect = five inserts
 (today: one strip at a time). *Easy:* the effects are named by what they do, the new effect is selected so its
-settings are right there. **Rejected:** a "+ Effect" button on every strip and every clip (clutter; the action bar
+settings are right there. **Rejected:** a "+ Effect" button on every strip and every clip (clutter; the context bar
 appears only with a selection); a separate effects browser window (a menu with search is enough for ~11 built-ins
 plus plug-ins); effect presets shipped with looks ("Warm vocal") — tools, not taste.
 
@@ -2554,7 +2637,7 @@ for a first song, so nothing about groups shows until you make one.
 
 **How it works.**
 1. **Make a group (select first).** Click a track header, Ctrl-click the others (or Shift-click a run). Press
-   **Ctrl+G**, or the action bar's **Group**, or right-click › Send to a new group. One change: a group is made,
+   **Ctrl+G**, or the context bar's **Group**, or right-click › Send to a new group. One change: a group is made,
    named from its tracks ("Kick + Snare + Hats"; more than three: "Kick + 3 more"), and every selected track now
    plays into it. The name field is selected and editable inline (type to rename, Enter; Esc keeps the made-up name).
 2. **Where groups show (refined from DESIGN.md §4, with reason).** In the arrangement a group is a **header row
@@ -2574,7 +2657,7 @@ for a first song, so nothing about groups shows until you make one.
    header onto a group header** (the group lights up as a drop target; release = one change); drag it out to the
    left edge of the track list to send it back to Master. Groups have the same Output picker (a group can play into
    another group: Strings + Brass → Orchestra).
-5. **Sends — a shared reverb in one step.** Select the tracks that should share the room; action bar / right-click
+5. **Sends — a shared reverb in one step.** Select the tracks that should share the room; context bar / right-click
    **Share a reverb** (Ctrl+K "Share a reverb"). One change: a group named "Reverb" is made with one Reverb effect set
    to **only the echo** (mix 100 %, so the dry sound is not doubled), and each selected track gets a send to it at a
    moderate level (0.3). The same menu has **Share an echo** (a Delay instead) and **Send to ▸** an existing group (adds a
@@ -2640,7 +2723,7 @@ no loop refusal at the operation.
 **How it works.**
 1. **Select the tracks that should dip** (the music tracks, or the Music group: a group selects every track that
    feeds it).
-2. Action bar / right-click / Ctrl+K: **Duck under…**. A small picker opens right there, listing the **other** tracks,
+2. Context bar / right-click / Ctrl+K: **Duck under…**. A small picker opens right there, listing the **other** tracks,
    voice tracks first (tracks with a Voice instrument or recorded speech), each with a check box. Tick the voice
    (or several), press Enter or click **Duck**. One change: each selected track gets a duck under the ticked ones.
    Default settings so the first try works for speech: dips about 6 dB, quickly down (20 ms), back in 0.3 s,
@@ -2713,10 +2796,10 @@ right) sometimes.
    while playing. *Why:* the person is already looking at the setting; 2D uses the same mark for "this changes over
    time".
 4. **Edit points.**
-   - Click on the lane's line: a point there (snaps to the grid, Shift = free).
+   - Click on the lane's line: a key there (snaps to the grid, Ctrl = free) *(S30: keys, not points; Ctrl as in every app)*.
    - Drag a point: moves in time and value, stays between its neighbours; the value shows next to the pointer in
      the setting's units (dB, %, Hz).
-   - **Several points:** drag a box on empty lane space to select points, Shift-click to add; drag any selected point to
+   - **Several points:** drag a box on empty lane space to select points, Ctrl+click to add, Shift+click for the run between *(S30)*; drag any selected point to
      move them all; Delete removes them; Ctrl+C / Ctrl+V copies them to the playhead (same lane or another track's same
      lane).
    - **Move a stretch up or down:** Alt-drag on the line between two points raises / lowers that whole stretch
@@ -2740,8 +2823,7 @@ the settings panel row shows the moving value.
 each. Every change is one `automation.set` with the lane's whole point list. Times keep their written form (a point on
 `#drop` stays on the marker when it moves).
 
-**Keys.** A (show / hide lanes of the selected tracks), Delete (selected points), Ctrl+C / Ctrl+V, Shift (free of grid
-while dragging), Alt-drag (move a stretch), arrows (nudge selected points one grid step; ↑ / ↓ one value step,
+**Keys.** A (show / hide lanes of the selected tracks), **K** (a key at the playhead on every open lane of the selected tracks, with its current value) *(S30)*, Delete (selected points), Ctrl+C / Ctrl+V, Ctrl (free of grid while dragging) *(S30)*, Alt-drag (move a stretch), arrows (nudge selected points one grid step; ↑ / ↓ one value step,
 proposed: 1 dB on Volume).
 
 **Agent.** `automation.set {lane, points}` on a track, bus, master, send or effect (exists; the lane names are the same
@@ -2794,7 +2876,7 @@ person listens.
    arrangement: one selection everywhere), dragging one fader moves all of them by the same dB, one step.
 4. **Mute / solo, several at once.** Click M or S on one strip; **drag across** several M (or S) buttons to set them
    all the same way in one move; with several tracks selected, **Shift+M** / **Shift+S** or clicking M / S on
-   one of them mutes / solos all selected (the same rule as the action bar: if any is off, all go on). The same M / S
+   one of them mutes / solos all selected (the same rule as the context bar: if any is off, all go on). The same M / S
    are on the track headers.
 5. **Meters.** Each strip: a bar after the fader (what the strip sends on), a thin line holding the highest point for 2 s,
    red above 0 dB. Master: the bar plus **Loudness now** (the last 3 seconds), **Whole song** (integrated; while
@@ -2819,7 +2901,7 @@ person listens.
    - **Play in mono** (a listen switch, not a song change) is beside the pictures.
    Clicking a picture moves the playhead to that time.
 9. The **master's own settings** (Loudness matching, Target, Peak limit, Squeeze (glue), master Reverb) are in the
-   settings panel when the master is selected, not crammed in the strip; the delivery target is chosen in Deliver
+   settings panel when the master is selected, not crammed in the strip; the delivery target is chosen in Export
    (3.19) and shows here as one line ("Target: Streaming −14 / −1 · Change…").
 
 **Feedback.** Meters move at screen rate while playing; numbers update ~10 times a second. Fader drags are heard on the
@@ -2867,15 +2949,15 @@ master strip holds delivery (Render cut off on small windows), no facts list wit
 sharing a draft (often, quick mp3). D: the 2D / Editor pick up the sound item's render by themselves.
 
 **How it works.**
-1. **Open Deliver:** the top bar's **Deliver** button, **Ctrl+Shift+E**, File › Deliver…, or with a time range selected,
-   right-click › **Export this range…** (opens Deliver with the range filled in). An untitled song first asks for a
-   name in a one-line field inside the dialog ("Name this song to deliver it: [Untitled song] [Save and continue]"),
-   because renders go into the song's folder.
+1. **Open Export:** the top bar's **Export** button, **Ctrl+E** (Ctrl+Shift+E exports again with the last settings) *(S30)*, or with a time range selected,
+   right-click › **Export this range…** (opens Export with the range filled in). *(S30: no naming step. Every song already lives in its folder and is saved automatically; an "Untitled song" exports
+   as such and can be renamed any time.)* It opens as a **sheet in the right column** (the settings panel's place), so
+   the arrangement stays visible.
 2. **The dialog**, one column, top to bottom (each part shows only what applies):
    - **For** — a list in plain words, each with its numbers small after it:
      **Streaming** (Spotify, YouTube, Tidal) −14 / −1 · **Apple Music** −16 / −1 · **Podcast** −16 / −1 ·
      **TV, Europe** (EBU R128) −23 / −1 · **TV, US** (ATSC A/85) −24 / −2 · **For the Editor (film, no loudness
-     change)** (new: stems in 32-bit float, no loudness matching, the Editor's Deliver sets loudness on the final mix,
+     change)** (new: stems in 32-bit float, no loudness matching, the Editor's Deliver page sets loudness on the final mix,
      per `shared\HANDOFFS.md`) · **Custom…** (two numbers). Picking one sets the song's target (one change, the same
      `master.set` the agent uses), so the top bar readout and the Mixer follow. The last choice is remembered per song.
    - **Format** — WAV 24-bit (for video editors) · WAV 16-bit (CD) · WAV 32-bit float (to keep mixing) · FLAC 24-bit
@@ -2910,7 +2992,7 @@ sharing a draft (often, quick mp3). D: the 2D / Editor pick up the sound item's 
    and redone by hand). Progress shows on the new track's lane while it renders; Esc cancels.
 7. **Handing to the Editor and 2D.** Nothing to press: a render of a song that is an item of a project becomes that
    item's newest render, and the Editor and 2D pick it up (live link, as the picture already does the other way). The
-   Deliver dialog says so under the button for a project song: "The Editor and Rostrum2D use the newest version of this
+   Export dialog says so under the button for a project song: "The Editor and Rostrum2D use the newest version of this
    sound." A song alone (not in a project) says nothing of it.
 
 **Feedback.** Choices update the pass / miss line at once. Render progress every ~0.5 s. Done in about real-time / 2
@@ -2920,7 +3002,7 @@ for a typical song (the block-by-block render, P26 B). The top bar chip shows th
 change (it writes files; nothing to undo — delete the version folder by hand). Bounce is one change (the new track,
 the clip, the mutes), undoable; its file stays in `media\` for redo.
 
-**Keys.** Ctrl+Shift+E (Deliver), Enter (Render, when the dialog has focus), Esc (close; a running render keeps going),
+**Keys.** Ctrl+Shift+E (Export), Enter (Render, when the dialog has focus), Esc (close; a running render keeps going),
 Ctrl+B (Bounce to audio, **proposed**).
 
 **Agent.** `render_mix {format, sampleRate, trim, stems, master, solo, mute}` (exists; returns a job), **`from` / `to`
@@ -2944,7 +3026,7 @@ bounce, sources muted). *We don't take* Reaper's wildcard file naming or its man
 **Later.** Several deliveries in one go ("Streaming WAV + Podcast MP3"), a queue of renders; AAC once an encoder can
 ship; loudness-matched listening to a finished version (3.18 Later).
 
-**Today.** Partial: format, rate, trim, stems (all), versioned folders, Show folder, Deliver-to targets and pass / miss
+**Today.** Partial: format, rate, trim, stems (all), versioned folders, Show folder, Export-to targets and pass / miss
 after a render exist, crammed into the Mix page's master strip (`MixExport.qml`); no dialog, no range, no groups-only
 stems, no pass / miss before rendering, no cancel on screen, no bounce, no "For the Editor" choice.
 
@@ -2969,7 +3051,7 @@ morning."
    project's marker list (shared with 2D and the Editor). Ctrl+Z in Sound undoes your last change **made in this
    window**, whether it was in the song or in the shared markers, in the order you made them. A marker moved in 2D is
    undone in 2D.
-4. **The history list (refined: where it opens).** Click the top bar's **"12 changes"** (or Ctrl+K "History"; proposed
+4. **The history list (refined: where it opens).** Click the top bar's **"Saved · 12 changes"** (or Ctrl+K "History"; proposed
    key Ctrl+H). It opens **in the right column, over the settings panel**, full height, with a × (Esc closes; the
    settings panel is back). *Why the right column:* the list needs height, and the arrangement stays fully visible so
    hovering a change can **light up what it touched** (notes, clips, tracks flash in the arrangement). A popup would
@@ -2985,10 +3067,10 @@ morning."
    - A filter at the top: **Everyone · You · Agents · Scripts**.
 5. **Who changed this?** The settings panel's last line for a selected item: "Last changed by Claude, 3 min ago (Add
    strings)" — click it to open History at that change. (from `history.who`)
-6. **Versions (new).** File › **Save a version…** (also a button at the top of History): type a name ("before client
+6. **Versions (new).** **Ctrl+S** or ≡ › **Save a version…** *(S30)* (also a button at the top of History): type a name ("before client
    notes"), Enter. Versions show at the top of History under **Versions** (fold). On a version: **Go back to this**
    (a new change back to that point: undoable, so nothing is lost) and **Open a copy** (a new untitled song as it was
-   then, to compare). Every delivered render is also marked automatically ("Delivered v003") so "the song as it was
+   then, to compare). Every delivered render is also marked automatically ("Exported v003") so "the song as it was
    when I sent v003" is one click.
 
 **Feedback.** Each undo / redo plays nothing new by itself but the mix re-renders (~0.3 s) and the changed items flash
@@ -3034,7 +3116,7 @@ no versions, no MCP undo tool; status says "Undo:" not "Undid:".
 
 **How it works.**
 1. **Start:** the app opens the last song, else a new untitled one (exists). **First run:** see 3.22.
-2. **New song** (Ctrl+N, File › New song): an empty arrangement with one obvious action ("Add a track (L)") and the
+2. **New song** (Ctrl+N, ≡ › New song): an empty arrangement with one obvious action ("Add a track (L)") and the
    default tempo / key / sample rate from Settings. The title reads "Untitled song — not saved yet".
 3. **Untitled songs are saved on every change** in the untitled area (`~\.rostrum\untitled-songs`): nothing is lost if
    the app closes. **Save…** (Ctrl+S on an untitled song) asks only a name and a place (default
@@ -3051,7 +3133,7 @@ no versions, no MCP undo tool; status says "Undo:" not "Undid:".
 7. **Crash recovery:** an untitled song left by a crashed run is offered on the next start as a list: Open / Throw away
    each, Later (exists). A named song needs no recovery (saved per change); after a crash the launcher shows one plain
    sentence and where the log is (S27).
-8. **The sample song** (File › **Open the sample song**): opens **a copy** of the Lull sample as an untitled song, so
+8. **The sample song** (≡ › **Open the sample song**): opens **a copy** of the Lull sample as an untitled song, so
    the original never changes and the person can play with it freely.
 9. **Songs inside a project vs alone.** A song alone is its own folder (`<name>\song.trk`, `media\`, `renders\`). A song
    inside a project is one sound item of the project folder (the same layout under the project); it sees the project's
@@ -3066,7 +3148,7 @@ no versions, no MCP undo tool; status says "Undo:" not "Undid:".
     - A media file missing (a recording moved): the song opens; the clip is drawn red with "file missing"; the
       status says "2 recordings are missing. Playing and delivery stop at them until you find them." [Find…] (pick the
       folder; every missing file found there is re-linked in one change).
-11. **Where renders go:** `<song folder>\renders\<song>\vNNN\` (3.19). **Show folder** in Deliver and File › Show song
+11. **Where renders go:** `<song folder>\renders\<song>\vNNN\` (3.19). **Show folder** in Export and ≡ › Show song
     folder open Explorer there.
 
 **Feedback.** The title always says the song's name and whether it is in a project or untitled. The status line confirms
@@ -3075,7 +3157,15 @@ saves, moves and copies with the full folder path (hover shows all of it).
 **Undo and adjust.** File actions are not song changes (no undo); Re-linking missing files is one change. Save a copy
 never touches the original.
 
-**Keys.** Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S (save a copy as).
+*(S30, shared spec 1.19.)* Saving is automatic for every song:
+- A new song is created at once in the projects folder as "Untitled song". Click the name to rename it.
+- There is no untitled area, no Save…, and no "Keep 'Untitled song'?" question.
+- Read points 2–4 and 6 above that way: Save… becomes Rename, Save a copy as becomes **Duplicate** (Ctrl+Shift+S), and
+  Ctrl+S saves a named version.
+- With nothing to reopen, the start screen shows New song, recent songs, the sample and three guides.
+
+**Keys.** Ctrl+N, Ctrl+O, Ctrl+S (save a version), Ctrl+Shift+S (duplicate) *(S30)*.
+
 
 **Agent.** `inspect_recent_projects`, `run_open_project {folder}` (exist); any tool takes `item` to work on a song of a
 project; the agent works on the same file, so a person's open window receives its changes live. A newer or damaged
@@ -3109,7 +3199,7 @@ on screen, missing-media find, Ctrl+S message for named songs (check).
 weeks.
 
 **How it works.**
-1. **Settings** (Ctrl+, or File › Settings…): a dialog built like the settings panel (essentials, folded groups,
+1. **Preferences** *(S30: was Settings, a word the settings panel already uses)* (Ctrl+, or ≡ › Preferences…): a dialog built like the settings panel (essentials, folded groups,
    search). Changes apply and save at once; **Done** closes. Only what applies shows (exists). Groups:
    - **Sound device:** **Speakers** (list; "Windows' default" first), **Microphone** (list), **Take over the speakers**
      ("On: only RostrumSound uses them, for the shortest delay between a key and its sound; other programs go quiet
@@ -3125,7 +3215,7 @@ weeks.
      reason in words (3.14).
    - **Files:** Projects folder; folded: AI models folder (with disk use and **Remove unused models**), Sound engine
      program (advanced).
-2. **Help menu** (the top bar's **?**, F1 proposed): **Guides** (Your first song, Recording, Writing parts, Mixing to a
+2. **Help menu** (the top bar's **?**): **Guides** (F1, opened in a drawer beside the arrangement *(S30)*) (Your first song, Recording, Writing parts, Mixing to a
    target, Exporting, Settings, Scoring to picture, Cleaning a recording, Sounds library …) read **inside the app** in the
    kit's guide viewer (links between guides work, Back returns) · **Keyboard shortcuts** (from F1 › Keys): one page
    listing every key, built from the same list the menus use, searchable · **Connect an AI agent…** (3.23) · **About
@@ -3145,7 +3235,7 @@ and a plain failure ("Couldn't hear the clicks: turn the speakers up or move the
 **Undo and adjust.** Settings are the person's machine choices, not song changes: they are not in the song's history
 (and an agent can't change them, see Agent). Each can be changed back in place.
 
-**Keys.** Ctrl+, (Settings), F1 (Help: guides and the key list).
+**Keys.** Ctrl+, (Preferences), F1 (Guides), Ctrl+/ (key list) *(S30)*.
 
 **Agent.** Settings are deliberately **not** agent operations (speakers, microphone and folders belong to the person
 at the machine). Agents read guides with `inspect_guide` and tools with `inspect_tools` (exist); plug-in scan with
@@ -3185,7 +3275,7 @@ the mix, clean the takes).
 2. **The agent works on the same song.** Its changes arrive as normal changes (no reload, the person's undo history
    survives). On the screen:
    - The **status line** shows the latest: "Claude: added 24 notes to Strings" (the agent's name from its connection).
-   - Changed items **flash once** in an agent colour (the same for every agent change, distinct from selection), and
+   - Changed items are **outlined for 1 s** *(S30)* in an agent colour, changed tracks get a small dot for a minute, and the top bar shows the **agent chip** ("● Claude is working · 6 changes", then "Claude: 12 changes · Review · Undo all") (the same for every agent change, distinct from selection), and
      new tracks slide in.
    - Nothing of the person's view moves: selection, playhead, zoom, open dock and the settings panel stay put. If the
      agent deletes what the person had selected, the selection drops it and the status says so.
@@ -3194,7 +3284,7 @@ the mix, clean the takes).
    - right-click › **Copy for an agent** (Ctrl+K too): puts a plain line on the clipboard to paste into the agent's
      chat: `RostrumSound song "Lull" (C:\Users\…\Lull): selected 8 notes on Strings (strings.n1500 … strings.n9000),
      bars 3–4.` Ids and plain words, so the agent knows exactly what "this" is.
-   - or just tell the agent "the selection": the agent reads it with **`inspect_selection` (new)**, which returns the
+   - or just tell the agent "the selection": the agent reads it with **`inspect_screen` (new)**, which returns the
      open window's selection (ids, type, time range) for that song.
 4. **Both editing at once** (AGENTS rule 3). Every change is a small change by id, so the person's and the agent's
    changes don't clash unless they touch the same field:
@@ -3217,7 +3307,7 @@ the mix, clean the takes).
    reason, never as "done".
 
 **Feedback.** Agent changes appear within the time the change takes to apply (well under a second for edits) and are
-heard after the usual re-render. The flash lasts ~1.5 s. The status line is overwritten by the next change; History
+heard after the usual re-render. The outline lasts 1 s *(S30)*. The status line is overwritten by the next change; History
 keeps everything.
 
 **Undo and adjust.** The person adjusts anything the agent made like their own (select → act). "Undo all" reverses a
@@ -3227,7 +3317,7 @@ one" per change).
 **Keys.** Ctrl+K "Copy for an agent"; Ctrl+H (History, proposed).
 
 **Agent.** Everything a person does maps to an operation through `edit_document` / `run_script` (exist); `inspect_history`
-(exists); **`inspect_selection` (new, shared core: 2D needs the same)**; **`edit_undo` (new)**; the look tools (exist);
+(exists); **`inspect_screen` (new, shared core: 2D needs the same)**; **`edit_undo` (new)**; the look tools (exist);
 `inspect_guide` for "how to" (exists). Every change carries `who: agent:<name>` and the turn's `group` (exists).
 
 **Why this way (3E).** *Effective:* the agent and the person really share one song, with nothing wiped and every change
@@ -3242,11 +3332,11 @@ mode (rejected here, see 3.20). Descript's AI actions: results land as normal ed
 per-person model and Descript's "agent edits are ordinary edits". *We don't take* suggestion mode.
 
 **Later.** An AI panel in the kit (ask in place, "make variations" giving alternate takes, PLAN's kept list); the agent
-seeing the person's playhead and loop range as context (`inspect_selection` can carry them from the start).
+seeing the person's playhead and time range as context (`inspect_screen` can carry them from the start).
 
 **Today.** Partial: Connect an AI agent exists; agents edit the same song live through MCP with who and group; script
 re-runs keep the person's edits; the change count shows. Missing: flash of agent changes, folded agent turn in a
-history list, Copy for an agent, `inspect_selection`, `edit_undo`, Agent activity.
+history list, Copy for an agent, `inspect_screen`, `edit_undo`, Agent activity.
 
 ---
 
@@ -3262,14 +3352,14 @@ total also includes getting to a delivered file.
 
 | Flow | Today (same steps) | New (same steps) | New, empty song → delivered file | Screen changes today → new |
 |---|---|---|---|---|
-| A · Song: 2 tracks, 16 notes, 8 hits, repeat 4 bars, a section | ~57 clicks | **32 clicks + 3 keys** | 34 clicks + 3 keys | 2–4 → 0 (+ Deliver dialog) |
+| A · Song: 2 tracks, 16 notes, 8 hits, repeat 4 bars, a section | ~57 clicks | **32 clicks + 3 keys** | 34 clicks + 3 keys | 2–4 → 0 (+ Export dialog) |
 | B · Score: load picture, 3 markers, tempo so bar 5 lands | ~10 + **blocked** (no markers on screen) | **12 clicks + 7 keys** (6 + 1 if 2D made the markers) | 21 clicks + 10 keys | 3 popups → 1 (picture chooser) |
-| C · Voice-over: record, cut a fluff, clean, even out, podcast | ~16 + **blocked** (no split / normalise) | **9 clicks + 6 keys** | same | 2 → 1 (Deliver) |
+| C · Voice-over: record, cut a fluff, clean, even out, podcast | ~16 + **blocked** (no split / normalise) | **9 clicks + 6 keys** | same | 2 → 1 (Export) |
 | C′ · Spoken lines (generated voice) | **blocked** | **3 clicks + 2 keys** | 5 clicks + 2 keys | — → 0 |
 | D · SFX: a whoosh and an impact on two markers | **blocked** | **6 clicks + 1 key** | 8 clicks + 1 key | — → 0 |
 | E · Mix: 3 faders, group 3 tracks, 2 effects, target, WAV + stems | ~18 clicks | **13 clicks + 3 keys** | same | 1 page + 3 pickers → 1 dialog |
 | F · Agent + person | 1 (history) | **2 clicks + 1 key** to tweak, 0 to watch | — | 0 → 0 |
-| Fix a mix an agent made | not walked (≈ 14, Mix page, render cut off) | **9 clicks + 2 keys** | same | → 1 (Deliver) |
+| Fix a mix an agent made | not walked (≈ 14, Mix page, render cut off) | **9 clicks + 2 keys** | same | → 1 (Export) |
 | 15-second sting for a logo reveal | **blocked** (no designed sounds on screen) | — | **17 clicks + 2 keys** | — → 2 |
 
 ### A · Write a song (two tracks, a repeat, a section, delivered)
@@ -3277,7 +3367,7 @@ total also includes getting to a delivered file.
 | # | Do | Clicks | Keys | Screen |
 |---|---|---|---|---|
 | 1 | Ctrl+N | | 1 | Empty song (W1) |
-| 2 | Click **Add a track** | 1 | | Sounds panel opens (panel) |
+| 2 | Click **Add a track** | 1 | | Library opens (panel) |
 | 3 | Double-click **Piano** (single click first to hear it is optional) | 1 | | Track "Piano" added and selected; Editor opens on its piano roll (panel) |
 | 4 | Click 16 notes into the roll (click = a note of the grid length; drag = longer) | 16 | | Notes appear and sound as placed |
 | 5 | Click **+ Track**, double-click **Drum kit** | 2 | | Drums track; Editor shows its drum grid |
@@ -3285,7 +3375,7 @@ total also includes getting to a delivered file.
 | 7 | Drag on the ruler over bars 1–4 → Ctrl+D | 1 | 1 | Everything in bars 1–4 copied to bars 5–8 (one undo step) |
 | 8 | Drag on the ruler over bars 1–8 → **Make a section** → type "verse" → Enter | 3 | 1 | Section label on the ruler |
 | | *Same steps as today: 32 clicks + 3 keys (today ~57, 2–4 page/popup changes)* | | | |
-| 9 | **Deliver** → **Deliver** (defaults: Streaming −14, WAV, whole song) | 2 | | Dialog; progress; "Done · Show file" |
+| 9 | **Export** → **Export** (defaults: Streaming −14, WAV, whole song) | 2 | | Dialog; progress; "Done · Show file" |
 | | **Total** | **34** (today's ~57 had no delivery) | **3** | 1 dialog |
 
 ### B · Score to picture
@@ -3299,7 +3389,7 @@ total also includes getting to a delivered file.
 | 4 | L → double-click **Strings** | 1 | 1 | Track + Editor |
 | 5 | Click 4 notes (they snap to the marker), drag across the velocity strip for the swell | 5 | | |
 | 6 | Drag on the ruler around the marker → C → Space | 1 | 2 | Loop plays with the picture |
-| 7 | **Deliver** → **Deliver** | 2 | | |
+| 7 | **Export** → **Export** | 2 | | |
 | | **Total** (with the 3 markers made here) | **21** (15 if 2D made them) | **10** (4) | 1 popup + 1 dialog |
 
 ### C · Voice-over
@@ -3311,7 +3401,7 @@ total also includes getting to a delivered file.
 | 3 | Drag across the fluff in the Editor → Delete | 1 | 1 | That part is cut out, the gap closes (one undo step) |
 | 4 | Ctrl+A in the lane (both pieces) → **Clean up** → **Clean** | 2 | 1 | Clean-up popover; progress on each clip, then the cleaned sound plays |
 | 5 | **Even out level** | 1 | | Both pieces at the same loudness |
-| 6 | **Deliver** → Target **Podcast −16** → File **MP3** → **Deliver** | 4 | | Dialog (1 change) |
+| 6 | **Export** → Target **Podcast −16** → File **MP3** → **Export** | 4 | | Dialog (1 change) |
 | | **Total** | **9** (today ~16 + blocked) | **6** | 1 dialog (today 2) |
 
 ### C′ · Spoken lines (a generated voice)
@@ -3321,7 +3411,7 @@ total also includes getting to a delivered file.
 | 1 | L → double-click **Voice: Maya** | 1 | 1 |
 | 2 | In the Editor's "Type what she says" box: type the line → Enter (first time: the model download question, +1) | 1 | 1 |
 | 3 | **Speak again** if you want another reading | 1 | |
-| 4 | Deliver → Deliver | 2 | |
+| 4 | Export → Export | 2 | |
 | | **Total** | **5** | **2** |
 
 ### D · Sound for motion (a whoosh and an impact on two 2D markers)
@@ -3333,7 +3423,7 @@ total also includes getting to a delivered file.
 | 3 | Click marker "logo lands" → double-click **Impact** (panel still open at 1646; at 1280 it closed: +1 key) | 2 | |
 | 4 | Click the whoosh → **Make another like it** until it fits (optional) | 1 | |
 | | *Same steps as today: 6 clicks + 1 key (today blocked)* | | |
-| 5 | Deliver → Deliver | 2 | |
+| 5 | Export → Export | 2 | |
 | | **Total** | **8** | **1** |
 
 Each sound is placed on an "Effects" track made the first time, and **tied to its marker** because the playhead was
@@ -3348,7 +3438,7 @@ marker is writer 3's "sound for motion" section.)
 | 2 | Drag 3 faders | 3 | | Loudness readout moves |
 | 3 | Click Drums strip, Ctrl+click Bass, Ctrl+click Perc → Ctrl+G → Enter (name kept: "Drums + Bass + Perc") | 3 | 2 | A group strip appears after them, routed (today 10 clicks, 3 pickers) |
 | 4 | On a strip: **+ effect** → **Squeeze**; on another: **+ effect** → **Space** | 4 | | |
-| 5 | **Deliver** → Stems **Each group** → **Deliver** (target Streaming −14 is the default) | 3 | | Dialog |
+| 5 | **Export** → Stems **Each group** → **Export** (target Streaming −14 is the default) | 3 | | Dialog |
 | | **Total** | **13** (today ~18) | **3** | 1 dialog (today a page + 3 pickers) |
 
 ### F · Agent and person together
@@ -3358,7 +3448,7 @@ marker is writer 3's "sound for motion" section.)
 | 1 | Person | Connect an AI agent (once per machine) | — |
 | 2 | Agent | Builds a 20 s cue to the markers; each step shows in the arrangement and the message line ("Agent: added 32 notes to Strings") | 0 (watching; nothing moves the person's view) |
 | 3 | Person | Box-select the busy notes in bar 3 → Delete | 1 click + 1 key |
-| 4 | Person | Tells the agent "tidy the ending"; the agent reads the selection (`inspect_selection`) or the range | 0 |
+| 4 | Person | Tells the agent "tidy the ending"; the agent reads the selection (`inspect_screen`) or the range | 0 |
 | 5 | Agent | Re-runs its part; the person's deletion stays (the re-run edits only what the agent made and the person didn't touch, AGENTS rule 3) | 0 |
 | 6 | Person | Click "N changes" to see who did what | 1 |
 
@@ -3374,7 +3464,7 @@ The agent delivered a song; the voice is buried and the file is too loud.
 | 4 | Drag Music's fader down | 1 | | |
 | 5 | Click Music strip → right-click → **Duck under ▸ Voice** | 3 | | Music dips under the voice (writer 3, ducking) |
 | 6 | Space to listen | | 1 | |
-| 7 | **Deliver** → **Deliver** (the agent's last settings are kept: target −14 now passes) | 2 | | Dialog |
+| 7 | **Export** → **Export** (the agent's last settings are kept: target −14 now passes) | 2 | | Dialog |
 | | **Total** | **9** | **2** | 1 dialog |
 
 ### A 15-second sting for a logo reveal
@@ -3390,10 +3480,10 @@ The 2D project "Logo reveal" has markers "logo lands" (2.0 s) and "tagline" (9.0
 | 5 | Double-click **Warm pad** (new track at the playhead; Editor opens) → click 3 notes of a chord | 4 | |
 | 6 | Box-select the chord → drag its right end to the song's end (snaps to the end) | 2 | |
 | 7 | Click marker "tagline" → double-click **Soft chime** | 2 | |
-| 8 | **Deliver** → **Deliver** ("Also give it to the project" is on: 2D's piece gets the sound) | 2 | |
+| 8 | **Export** → **Export** ("Also give it to the project" is on: 2D's piece gets the sound) | 2 | |
 | | **Total** | **17** | **2** |
 
-Screen changes: the picture chooser and the Deliver dialog (2).
+Screen changes: the picture chooser and the Export dialog (2).
 
 ---
 
@@ -3408,7 +3498,7 @@ Screen changes: the picture chooser and the Deliver dialog (2).
   new place from the next block (we don't stop playback).
 - **No jump on press**: the grab point is kept (you grab a note in its middle, it stays under the pointer there).
   A press that moves less than 4 px is a click, not a drag (no accidental moves).
-- **Faders and knobs**: drag up/down; Shift = fine (10× slower); double-click = back to its default (0 dB, centre);
+- **Faders and knobs**: drag up/down; Shift = bigger steps, **Alt = fine** (10× slower) *(S30: one meaning per modifier)*; double-click = back to its default (0 dB, centre);
   the value shows beside the pointer while dragging. Scroll wheel over a fader moves it only while it has focus
   (scrolling the Mixer never changes a level by accident).
 - **Long songs**: the arrangement draws only what's on screen; dragging in a 10-minute song with 40 tracks stays at
@@ -3423,7 +3513,7 @@ Screen changes: the picture chooser and the Deliver dialog (2).
 - **Ctrl while dragging = free** (2D's key for "no snapping"). **Snap ✓** in the header turns it off for everything.
 - **Dropped on a marker = tied to it** (the flag shows; as in 2D). A tie is undone by dragging it off with Ctrl, or
   "Untie" in its More.
-- Snapping is magnetic only within 8 px of the target at any zoom, so at high zoom you can still place freely
+- Snapping is magnetic only within 6 px *(S30)* of the target at any zoom, so at high zoom you can still place freely
   between grid lines.
 
 ### Multi-select feel
@@ -3435,18 +3525,19 @@ Screen changes: the picture chooser and the Deliver dialog (2).
 
 ### Keys and focus
 
-- **Five areas take keys**: the arrangement, the Editor, the Mixer, the Sounds panel, the settings panel. The area you
+- **Five areas take keys**: the arrangement, the Editor, the Mixer, the Library, the settings panel. The area you
   last clicked has focus; its header shows a thin accent line. F6 moves focus to the next area (proposed;
   Windows' own key for "next pane").
 - **Arrows, Delete, Ctrl+A, Ctrl+C/V/D** act in the focused area on its selection (the same items may be selected in
   two areas; the focused one decides what Ctrl+A means).
 - **Typing in a field** takes every key until Enter, Tab or Esc; Space types a space there, it doesn't play.
-- **Global keys** work anywhere outside a text field: Space, Enter, R, C, K, E, X, L, M, Ctrl+K, Ctrl+Z, Ctrl+S, Ctrl+Shift+E.
-- **Esc** goes back one level: closes a popover → clears a box/range → clears the selection → leaves the Sounds panel.
+- **Global keys** work anywhere outside a text field: Space, Enter, R, K, Shift+K, Shift+L, E, X, M, A, F, Ctrl+K, Ctrl+L,
+  Ctrl+Z, Ctrl+S, Ctrl+E *(S30)*. F6 moves to the next area.
+- **Esc** goes back one level: closes a popover → clears a box/range → clears the selection → leaves the Library.
 
 ### Hover words
 
-Every icon and every sound word has a hover sentence (after 600 ms, gone on move), plain, with its key:
+Every icon and every sound word has a hover sentence (after 500 ms *(S30)*, gone on move), plain, with its key:
 "M — Mute: silence this track (M S)"; "Loudest peak — the highest point of the waveform. Under −1 is safe for every
 platform."; "Squeeze — makes loud and quiet parts closer together (a compressor)."; "Group channel — several tracks
 mixed together before the master, so one fader moves them all." The first time a sound word appears in a session it
@@ -3464,14 +3555,14 @@ has a dotted underline. Written once in the operation and field data (their `hel
 | Editor on an empty instrument track | "Click to add a note. Drag for a longer one." (grid in the song's key) | — |
 | Mixer with no tracks | "Your tracks' faders will be here." | **Add a track** |
 | Settings panel, nothing selected | the song's settings and "Select a track, a note or a clip to change it here." | — |
-| Sounds panel, search finds nothing | "No sound called 'xyz'. Try a shorter word, or add a folder of your sounds." | **Add a folder…** |
+| Library, search finds nothing | "No sound called 'xyz'. Try a shorter word, or add a folder of your sounds." | **Add a folder…** |
 | History, no changes | "Changes you and agents make will be listed here." | — |
 
 ### Plain errors
 
 - **One sentence: what failed, then what to do.** "The microphone isn't connected. Plug it in or pick another input."
   "This song uses the marker 'drop', which was deleted in 2D. Put it back in 2D or untie the 2 sounds on it."
-- **Where:** on the thing that failed (a clip's red outline and its sentence; a Deliver row), and in the top bar's
+- **Where:** on the thing that failed (a clip's red outline and its sentence; a Export row), and in the top bar's
   message line. Never a silent fallback (AGENTS rule 6): a delivery that can't pass says so and writes no file
   claiming success.
 - **Red only for errors.** Amber means "not yet at the target"; green means "fine". Clipping on a meter is red because
@@ -3480,7 +3571,7 @@ has a dotted underline. Written once in the operation and field data (their `hel
 
 ### Progress for long jobs
 
-- Clean-up, voice, stems, bounce (later), Deliver, model downloads are **jobs** (the one jobs queue).
+- Clean-up, voice, stems, bounce (later), Export, model downloads are **jobs** (the one jobs queue).
 - Each shows a progress line **on the item** it works on (a clip fills left to right) and a short line in the top
   bar's message ("Cleaning 2 clips · 40 %"); click it to cancel.
 - You keep working while a job runs; the item it works on shows its old sound until the new one lands (one undo step
@@ -3502,85 +3593,95 @@ has a dotted underline. Written once in the operation and field data (their `hel
 
 ### Nothing greyed out
 
-A control that can't be used now is not shown: Record without an armed track, Deliver without sound, Join for clips
+A control that can't be used now is not shown: Record without an armed track, Export without sound, Join for clips
 that don't touch, the velocity strip without notes, Loop without a range. The data on each operation ("valid when",
-"importance") builds the action bar, the menus, Ctrl+K and the settings panel; nothing is hand-hidden per panel.
+"importance") builds the context bar, the menus, Ctrl+K and the settings panel; nothing is hand-hidden per panel.
 
 ---
 
 ## 6. The key map
 
-"2D" = the same key with the same meaning in Rostrum2D (COMMON.md and 2D's DESIGN.md). "proposed" = not in the
-reserved list; the lead decides.
+*(S30) This section was rewritten to follow the one key map for every Rostrum app, in
+`C:\Users\Sam\Documents\CODE\Rostrum\shared\gui-kit\INTERACTION.md` Part 2. The Where column says:*
+- *"shared": the same key does the same thing in 2D and every other app;*
+- *"Sound": the key is RostrumSound's own;*
+- *"changed": what P26 had, when the key changed.*
 
-| Group | Key | Does | 2D |
+| Group | Key | Does | Where |
 |---|---|---|---|
-| **Play** | Space | Play / stop | same |
-| | Shift+Space | Play from the selection's start (proposed) | — |
-| | Home | Playhead to the start (Enter confirms what has focus) | — |
-| | End | Playhead to the song's end (proposed) | — |
-| | C | Loop on/off (makes the loop from the time range if one is selected) | — |
-| | K | Click (metronome) on/off | — |
-| | R | Record on the armed track | **clash in name only:** 2D's R = Rectangle tool (H28 if time). Different apps, no shared screen; keep both (R = record in Logic, Pro Tools, Reaper) |
-| **Files and app** | Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | New / open / save / save as | same |
-| | Ctrl+Shift+E | Deliver… | proposed for 2D's Export (same meaning: make the final file) |
-| | Ctrl+, | Settings | same |
-| | Ctrl+K | Search or run anything | same |
-| | Ctrl+F | Find a setting | same |
-| | F1 | Help; Help lists every key (proposed) | proposed for 2D too |
-| **Undo** | Ctrl+Z / Ctrl+Shift+Z (and Ctrl+Y) | Undo / redo | same |
-| **Select** | Click / Ctrl+click / Shift+click / drag a box | Select / add-remove one / the run between / box | same as 2D's layer list |
-| | Drag on the ruler (Shift: only selected tracks) | Time range | — |
-| | Ctrl+A | Select all in the focused area | same |
-| | Esc | Back one level / deselect | same |
-| **Edit** | Ctrl+C / Ctrl+X / Ctrl+V | Copy / cut / paste at the playhead | same |
-| | Ctrl+D | Duplicate right after | same |
-| | Alt+drag | Drag a copy | same |
-| | Delete (or Backspace) | Delete; on a range inside a clip, cut it out and close the gap | same |
-| | F2 | Rename | same |
-| | ← → | Nudge a grid step (Shift: a bar; Ctrl: fine) | same meaning (2D: 1 px, Shift 10 px) |
-| | ↑ ↓ | Notes: half step (Shift: octave); clips/sounds: track above/below | same meaning (nudge) |
-| | Ctrl+] / Ctrl+[ | Move selected tracks down / up | same ("order") |
-| | Ctrl while dragging | No snapping | same |
-| | Shift while dragging | Only in time | same meaning ("straight") |
-| **Notes and hits** | Q | Quantise | — |
-| | Ctrl+↑ / Ctrl+↓ | Transpose by a scale step in the key (proposed) | — |
-| **Clips** | Ctrl+T | Split at the playhead | — |
-| | Ctrl+J | Join | — |
-| | Ctrl+B | Bounce the range to audio (proposed; later, §9) | — |
-| **Groups** | Ctrl+G | Tracks: send to a new group · clips/sounds: layer as one sound | same meaning ("group") |
-| | Ctrl+Shift+G | Ungroup / unlayer | same |
-| **Tracks** | Shift+M / Shift+S | Mute / solo the selected tracks (proposed) | — |
-| **Panels and view** | E | Editor | — |
-| | X | Mixer | — |
-| | L | Sounds panel | — |
-| | A | Show automation of the selected track | — |
-| | F6 | Focus the next area (proposed) | proposed for 2D |
-| | Ctrl+= / Ctrl+− / Ctrl+0 | Zoom in / out / fit the song | same |
-| | Z | Zoom to the selection | — |
-| | Ctrl+wheel / Shift+wheel | Zoom at the pointer / scroll in time | same |
-| **Markers** | M | Marker at the playhead (name asked inline) | proposed for 2D's "Add marker" (same meaning) |
+| **Play** | Space | Play / stop (hold + drag: pan) | shared |
+| | Shift+Space | Play from the selection's start | shared |
+| | Home / End | Playhead to the start / the song's end | shared |
+| | Ctrl+← / Ctrl+→ | Playhead one frame (with a picture) or one grid step; Ctrl+Shift: ten | shared · changed (was fine nudge) |
+| | `,` / `.` | Playhead to the previous / next thing that happens (marker, section edge, the selection's starts and ends) | shared · changed (was frame step, proposed) |
+| | Shift+`,` / Shift+`.` | Previous / next beat | shared |
+| | Alt+M / Alt+Shift+M | Next / previous marker | shared |
+| | Shift+L | Loop on / off (loops the time range) | shared · changed (was C) |
+| | Shift+I / Shift+O | Time range start / end at the playhead | shared |
+| | R | Record on the armed track (arms the selected track first if none is) | Sound |
+| | Shift+K | Click (metronome) on / off | Sound · changed (was K) |
+| **Select** | Click / Ctrl+click / Shift+click / drag a box (Ctrl+box adds) | Select / add-remove one / the run between / box | shared |
+| | Drag on the ruler's top band (Shift: only selected tracks) | Time range | shared · changed (was any drag on the ruler) |
+| | Ctrl+A | Select all in the focused area | shared |
+| | Esc | Back one level | shared |
+| | Tab / Shift+Tab | Next / previous item at this level | shared |
+| | Ctrl+Shift+F | Find a track | shared |
+| **Edit** | Ctrl+Z / Ctrl+Shift+Z (and Ctrl+Y) | Undo / redo your own steps | shared |
+| | Ctrl+C / Ctrl+X / Ctrl+V | Copy / cut / paste at the playhead on the selected track | shared |
+| | Ctrl+Shift+V | Paste at the original time (later, §9) | shared |
+| | Ctrl+D | Duplicate right after | shared |
+| | Alt+drag | Drag a copy | shared |
+| | Delete (or Backspace) | Delete; on a range inside a clip, cut it out and close the gap | shared |
+| | Shift+Delete | Delete and close the gap on that track | shared |
+| | F2 | Rename | shared |
+| | ← → | Nudge a grid step (Shift: a bar; **Alt: fine**, 10 ms or 1/32 beat) | shared · changed (fine was Ctrl) |
+| | ↑ ↓ | Notes: half step (Shift: octave); clips / sounds: track above / below | shared meaning (move the selection) |
+| | Ctrl+↑ / Ctrl+↓ | Notes: a scale step in the key; clips: pitch only, a half step | Sound |
+| | Ctrl+] / Ctrl+[ | Move selected tracks down / up | shared |
+| | Alt+[ / Alt+] | Trim the selection's start / end to the playhead | shared · new |
+| | Ctrl while dragging · Alt while dragging · Shift while dragging | No snapping · a copy · only in time | shared |
+| | Ctrl+Shift+L | Lock / unlock the selected tracks (agents too) | shared · new |
+| **Notes and hits** | Q | Quantise | Sound |
+| **Clips** | Ctrl+T | Split at the playhead | shared |
+| | Ctrl+J | Join | shared |
+| | Ctrl+B | Bounce the range to audio (later, §9) | Sound |
+| | T · S · hold H | Next take · swap a placed sound · hear the original | Sound |
+| **Groups** | Ctrl+G / Ctrl+Shift+G | Tracks: send to a new group / ungroup · clips: layer as one sound / unlayer | shared |
+| **Tracks** | Shift+M / Shift+S | Mute / solo the selected tracks | Sound |
+| **Automation** | ◇ in the settings panel | Start automating / remove the key here | shared |
+| | K | A key at the playhead on every open lane of the selected tracks | shared · changed (was the click) |
+| | A | Show / hide the automation lanes of the selected tracks | shared |
+| **Markers** | M | Marker at the playhead (name it at once; Shared switch) | shared |
+| **Panels and view** | E · X | Editor · Mixer | Sound |
+| | Ctrl+L | Library (instruments and sounds) | shared · changed (was L) |
+| | Ctrl+H | History | shared |
+| | Ctrl+F | Find a setting | shared |
+| | V · B | Select · Draw (in the Editor) | shared |
+| | F6 | Focus the next area | shared |
+| | Ctrl+\ | Hide the side panels and fold the dock | shared · new |
+| | Ctrl+= / Ctrl+− / Ctrl+0 | Zoom in / out / fit the song | shared |
+| | F | Zoom to the selection | shared · changed (was Z) |
+| | Ctrl+wheel / Shift+wheel / Alt+wheel | Zoom at the pointer / scroll in time / row height | shared |
+| | Space+drag · middle-drag | Pan | shared |
+| **Files and app** | Ctrl+N / Ctrl+O | New / open | shared |
+| | Ctrl+S | Save a version (saving is automatic) | shared · changed (was save) |
+| | Ctrl+Shift+S | Duplicate (a separate copy) | shared · changed (was save as) |
+| | Ctrl+I | Add from a file | shared · new |
+| | Ctrl+E / Ctrl+Shift+E | Export… / export again | shared · changed (Export was Ctrl+Shift+E) |
+| | Ctrl+, | Preferences | shared |
+| | Ctrl+K | Search or run anything | shared |
+| | F1 · Ctrl+/ | Guides · key list | shared · changed (F1 was Help with keys) |
+| | Ctrl+Q | Quit | shared |
 
-**Clashes found**
-1. **R** — Sound: record; 2D: Rectangle tool. Not in one app; keep, noted for the lead.
-2. **Ctrl+↑/↓** — I use it for "transpose in key"; it must not also mean "fine nudge" (fine nudge is Ctrl+← → only,
-   which has no vertical meaning). No clash inside Sound.
-3. **Alt+arrows** — 2D: previous/next drawn frame. Sound leaves Alt+arrows **unused** on purpose, so a 2D habit never
-   moves notes by surprise. (DESIGN.md §5 proposed Alt for fine nudge; changed to Ctrl for this reason.)
-4. **Enter** — global "to start", but in a field or the Sounds panel it confirms / adds. Focus decides (§5). Home is
-   the alias that always means "to start".
-5. **X vs Ctrl+X**, **K vs Ctrl+K**, **A vs Ctrl+A**, **E vs Ctrl+Shift+E**: different keys, no clash; mentioned
-   because a slipped Ctrl changes the meaning — each plain-letter key only opens or toggles something, never deletes,
-   so a slip is harmless.
-6. **DESIGN.md §5 used "Shift: free" for drags**; changed to **Ctrl = free** to match 2D. Shift = "only in time".
-
-**Keys settled by the lead** (the table above, with these changes): Home = playhead to the start (Enter confirms or
-does the obvious thing for what has focus) · Shift+M / Shift+S mute / solo the selected tracks · Alt+M /
-Alt+Shift+M next / previous marker · Ctrl+↑ / Ctrl+↓ pitch the other way (notes: a scale step; clips: pitch only,
-a half step) · V Select and B Draw in the Editor (2D's keys) · hold H to hear the original of a cleaned clip · T next
-take · S swap a placed sound · P make a part (when parts arrive) · , and . step a picture frame · Ctrl+] / Ctrl+[
-track order · R arms the selected track when none is armed, then records · F1 Help (lists every key) · Ctrl+H
-History · Ctrl+B Bounce (later) · Shift+Delete delete and close the gap on that track. Alt+arrows stay unused.
+**Clashes, as settled (S30).**
+1. **R** is Record in Sound and Rectangle in 2D. Both are kept as app-only tool keys: single letters pick tools and
+   panels and differ between apps, and neither removes anything, so a slipped habit is harmless.
+2. **Alt+arrows** are now the fine nudge in every app. 2D's previous / next drawing moved to `,` / `.`.
+3. **Enter** confirms or goes in, depending on focus. **Home** is "to the start".
+4. **K** is "key here" everywhere. The click moved to Shift+K.
+5. **P** stays kept for "make a part". The picture has no letter key.
+6. P26's earlier settlements are kept where they don't clash: Shift+M / Shift+S, Ctrl+↑ / ↓ for pitch, T, S, H,
+   Ctrl+] / [.
 
 ---
 
@@ -3596,14 +3697,14 @@ partial · missing · blocked. "Kit" = the shared GUI kit (Team Hem / Team Sam);
 | 2 | Mix page at 1280×720 / 1366×768 (S28 #1) | Render was hidden under Listen; **fixed for now in P26**: Listen gives way, Render pinned, the card scrolls | partial | Delivery moves to its dialog | screen |
 | 2 | Long track names (S28 #2) | Cut with no hover in the track header, the Mix strip and the instrument card | missing | Names shorten with "…" and show whole on hover, everywhere a name is shown (one name label piece) | screen (kit hover label) |
 | 2 | First time label on the rulers (S28 #3) | "2.4 s" cut at the left edge of both rulers | missing | Labels start inside the ruler; the first one never cut | screen (kit ruler if shared) |
-| 3.0 | Selection and actions | Single selection; one-item drag; Ctrl+K for one item | partial | Multi-select, box, ranges, action bar, right-click, clipboard, nudge | kit selection list; screen |
-| 3.1 | Songs, tracks, parts | New song; + Track with 8 kinds; rename / colour in the inspector; `bus.from_tracks` | partial | Sounds panel first; reorder, duplicate; groups that fold; parts | `part` (schema); `track.duplicate`, track order (new) |
+| 3.0 | Selection and actions | Single selection; one-item drag; Ctrl+K for one item | partial | Multi-select, box, ranges, context bar, right-click, clipboard, nudge | kit selection list; screen |
+| 3.1 | Songs, tracks, parts | New song; + Track with 8 kinds; rename / colour in the inspector; `bus.from_tracks` | partial | Library first; reorder, duplicate; groups that fold; parts | `part` (schema); `track.duplicate`, track order (new) |
 | 3.2 | Instruments | Picker on cards / inspector; plug-ins load; voices on cards only | partial | Audition on your notes, swap without loss, saved sounds | `render_audition` (new); engine auditions |
 | 3.3 | Notes and the piano roll | Click adds, one-note drag, quarter-beat snap | partial | Select / Draw tools, box, ends, velocity strip, grid menu, key shading, ties shown | kit selection; screen |
 | 3.4 | Drums | Drum rows; click adds a hit; one synth kit | partial | Paint, accents, patterns ×N, swing, per-drum settings | `swing`, `drums` (schema); a free SFZ kit (decision) |
 | 3.5 | Playing in | MIDI keyboard on arm; count-in, punch | partial | Play the selected track without arming; computer keyboard; overdub / replace; MIDI files on screen | live transport opens MIDI on select |
 | 3.6 | Tempo, key, metre, sections | Tempo / key / sections in a popup and on the ruler | partial | Song in the settings panel; tempo fit to a marker; ramps; section ripple / duplicate | `ramp` (schema); `tempo.fit_bar`, `range.insert/remove`, `section.duplicate` (new) |
-| 3.7 | Sounds panel and library | Library panel built but never shown; search in the engine | missing | One panel for every kind of sound, audition, aligned drops | engine auditions |
+| 3.7 | Library and library | Library panel built but never shown; search in the engine | missing | One panel for every kind of sound, audition, aligned drops | engine auditions |
 | 3.8 | Recording | Arm, meter, count-in, punch, hear input, a take as one clip | partial | Take stacks, choose / combine takes, input per track, several tracks, calibration button | `stack`, `input` (schema); `take.choose`, `take.flatten` (new) |
 | 3.9 | Editing audio clips | Ops exist (split, join, crossfade, normalise, move, duplicate); screen moves one clip | partial | Edges, fades, stretch corner, level line, seam handle, drop files, slip, reverse, close gaps | `reverse`, clip length ties (schema); `clip.remove {close}`, `clip.close_gaps` (new) |
 | 3.10 | Clean-up | Fields, job, cache, models, download question, "Make cleaned take" bar | partial / blocked | Several clips at once, made on release, Before / After (H), measurement line | the isolation model upload (NEEDS_DECISIONS 7); the installer's `cleanup` extra |
@@ -3615,11 +3716,11 @@ partial · missing · blocked. "Kit" = the shared GUI kit (Team Hem / Team Sam);
 | 3.16 | Ducking | Ducks drawn; "+ Duck" per strip | partial | Duck the selected tracks under a voice or a group | duck under a group (engine) |
 | 3.17 | Automation | Lanes for many settings; opened by "Auto" | partial | A key, ◇ in the settings panel, several points at once | kit ◇; `curve` (schema, later) |
 | 3.18 | Mixing and loudness | Strips, faders, meters, loudness live, curve, Listen pictures (a page) | partial | Mixer in the dock, top-bar loudness, Check with Select / Play | screen |
-| 3.19 | Export and delivery | Format, rate, trim, stems, versions, pass / miss after render — on the master strip | partial | Deliver dialog, range, groups-only stems, pass / miss before, cancel, bounce, "For the Editor" | `render_mix {from, to}`; `edit_bounce` (new); HANDOFFS stems (Team Sam) |
+| 3.19 | Export and delivery | Format, rate, trim, stems, versions, pass / miss after render — on the master strip | partial | Export dialog, range, groups-only stems, pass / miss before, cancel, bounce, "For the Editor" | `render_mix {from, to}`; `edit_bounce` (new); HANDOFFS stems (Team Sam) |
 | 3.20 | Undo, history, versions | One history with who; per-person undo; change count | partial | History list with folded agent turns, Keep / Undo all, named versions | kit History panel; `version.save` (new) |
 | 3.21 | Files | New, open, recent, save, untitled per change, recovery, Lull sample (P1 fixed) | mostly exists | Move into a project, find missing media | `edit_relink_media` (new) |
 | 3.22 | Settings, help, guides | Settings, Help with guides, About | partial | Test tone, measure delay, plug-ins group, key list, first-run card, hover help on rows | kit hover help, key list |
-| 3.23 | Working with an agent | Connect dialog; live edits with who; re-runs keep the person's edits | partial | Flash of agent changes, Copy for an agent, `inspect_selection`, `edit_undo`, Agent activity | shared core tools |
+| 3.23 | Working with an agent | Connect dialog; live edits with who; re-runs keep the person's edits | partial | Flash of agent changes, Copy for an agent, `inspect_screen`, `edit_undo`, Agent activity | shared core tools |
 
 ---
 
@@ -3646,10 +3747,10 @@ settings `drums` on tracks · `ramp` on tempo changes (and linear tempo segments
 tracks · `reverse` on clips · `group` on designed sounds · length ties `{"to": "#marker"}` on clips and sounds ·
 `curve` on automation points (later) · metre changes (later).
 
-**Shared core and kit** (requests, exact wording in the sections): the selection as a list and `inspect_selection` ·
+**Shared core and kit** (requests, exact wording in the sections): the selection as a list and `inspect_screen` ·
 box and range selection in the timeline · item handles on timeline blocks (edges, corners, level line, seam) · the
-action bar and right-click menu fed by the one action list (2D's from H28, reused, never a second copy) · an inline
-value field in the action bar (names, semitones, a bar number, a target) · a tool state per editor (Select / Draw) ·
+context bar and right-click menu fed by the one action list (2D's from H28, reused, never a second copy) · an inline
+value field in the context bar (names, semitones, a bar number, a target) · a tool state per editor (Select / Draw) ·
 a "trying" state for a field (audition without a history entry, Esc puts back) · a banner for key-taking modes · a
 colour swatch palette shared with 2D · a problem chip in the top bar · one marker look and marker row for both apps
 · an audition service through Sound's engine · the History panel (folded agent turns, Keep / Undo all, highlight) ·
@@ -3671,17 +3772,17 @@ Deliberately not in this round, with one-line reasons. (Writers 1–3 list their
 | Later | Why it can wait |
 |---|---|
 | **Parts** (a named block of notes you grab as one; `part.make`) | Needs a schema field (Team Sam); every job works on note selections and time ranges now (DESIGN.md §1). Add if people miss blocks. |
-| **Bounce to audio** and **Deliver this range** | Need the range render (`render_mix {from, to}`); the block render (P26 B) makes it cheap. Ctrl+B is reserved. |
+| **Bounce to audio** and **Export this range** | Need the range render (`render_mix {from, to}`); the block render (P26 B) makes it cheap. Ctrl+B is reserved. |
 | **Delete time / insert time across all tracks** (`range.remove`, `range.insert`) | Not needed for the eight jobs; Delete on a range inside one clip (job C) covers the common case. |
 | **Voice edited by its words** (a transcript under recordings, Descript-style) | Needs ASR on recordings, analysed once and stored; next brief (DESIGN.md §7.3). The waveform with cut-and-close-gap carries job C. |
-| **Short cuts for platforms** (a 30 s / 15 s version of a song, job H) | Needs range render plus a "cut-down" tool; job H's loudness versions work now in Deliver. |
+| **Short cuts for platforms** (a 30 s / 15 s version of a song, job H) | Needs range render plus a "cut-down" tool; job H's loudness versions work now in Export. |
 | **Select similar** (same pitch / velocity / colour), saved selections | Ctrl+A, box and Shift-runs cover the jobs. |
 | **Automation curve shapes** between points | Straight lines carry the jobs; shapes are a refinement. |
 | **Tool modes** (pencil, scissors) | Rejected for now (§3.0); revisit only if people ask. |
 | **Paste at original time** (Ctrl+Shift+V) | Paste at the playhead plus Ctrl+D covers the jobs. |
 | **Touch / pen gestures**, a pinch to zoom | Windows laptop with a mouse first. |
 | **Picture's own sound** (play the video's audio) | Job G needs it: import the video's sound as a clip is the first step; playing it live with the picture is later. |
-| **5.1 / Atmos** in Deliver | PLAN: stereo first. |
+| **5.1 / Atmos** in Export | PLAN: stereo first. |
 | **Customisable keys** | One fixed key map shared with 2D first; a person can't break family habits by accident. |
 | **A keys overlay** (hold a key to see all shortcuts) | Help › Keys lists them; the overlay is polish. |
 | **Undo per author** ("undo only the agent's last change") | One history with who-did-what covers job F; per-author undo needs care with dependent edits. |
@@ -3699,14 +3800,14 @@ fader while playing (3.17) · a plug-in in its own process so a crash can't touc
 |---|---|---|
 | 1 | **Clean-ups and speech made automatically** (on releasing the slider / finishing a line) or by a button | **Automatically**, once, kept and reused (rule 7). One job at a time, newest wins, progress on the item, Esc cancels. Voice isolation (about 2 GB of memory) asks once per session when memory is short. Today's "Make cleaned take" bar goes. |
 | 2 | **Arming a track:** in the song file or screen state | **Screen state.** An agent's re-run must never disarm a person, and arming is not part of the song. |
-| 3 | **A missing plug-in** | Play and Deliver **stop** at it, saying which plug-in and where, until it is switched off (one click). Preview ≡ export, fail loudly. |
+| 3 | **A missing plug-in** | Play and Export **stop** at it, saying which plug-in and where, until it is switched off (one click). Preview ≡ export, fail loudly. |
 | 4 | **A crashing plug-in** | Plug-ins run inside the engine today, so the honest text is: "The sound engine stopped and was restarted; nothing was lost" (P2's restart, logged). A separate plug-in process is later. |
 | 5 | **Song-file fields** (`part`, `stack`, `swing`, `drums`, `ramp`, `input`, `reverse`, sound `group`, clip / sound ties, `curve`) | **One batched request to Team Sam** (§8). Each feature works in its interim form until then. |
 | 6 | **`range.insert` / `range.remove`** | Moved from "later" to the next Sound operations brief: section ripple, duplicate and delete-with-music stand on them. |
 | 7 | **Click in the piano roll** | A click selects or deselects; **Draw (B)** or a double-click adds a note. Changes today's behaviour; said in the release notes. |
 | 8 | **The MIDI keyboard** | Plays the selected notes / drum track at once, without arming; arming is only for recording. |
 | 9 | **Chord notes** (a note whose pitch is a list) | The screen writes separate notes. A list-pitch note (an agent's) is drawn as linked bars that move together, with "Split into notes" (`note.split_chord`). |
-| 10 | **Stems for the Editor vs `shared\HANDOFFS.md`** | Deliver gets **"For the Editor"**: 32-bit float, full length, no trim, no loudness change, stems by group (groups named Dialogue / Music / Effects give the HANDOFFS split). Needs Team Sam's agreement on the shared contract. |
+| 10 | **Stems for the Editor vs `shared\HANDOFFS.md`** | Export gets **"For the Editor"**: 32-bit float, full length, no trim, no loudness change, stems by group (groups named Dialogue / Music / Effects give the HANDOFFS split). Needs Team Sam's agreement on the shared contract. |
 | 11 | **Loops in routing** | Refused by the operations themselves (`bus.from_tracks`, `track.set {output}`, `bus.set {output}`), naming the loop; the screen never offers one. |
 | 12 | **Groups drawn as headers** | A view only: member tracks are drawn under their group, the song's track order is untouched. |
 | 13 | **Ducking under a group** | Until the engine can listen to a group, the screen expands the group into its tracks and says so. |
@@ -3715,8 +3816,8 @@ fader while playing (3.17) · a plug-in in its own process so a crash can't touc
 | 16 | **A video's own sound** | Imported as a clip first (job G), through what Sound already ships for reading video; playing it live with the picture is later. |
 | 17 | **Only one drum kit ships** (the synth kit) | **DECISION for Sam** (priority, not taste): ship a vetted free SFZ drum kit download sooner, so drums don't sound the same in every song. Recommended: yes. |
 | 18 | **The voice model's size** in the download question | Read from the installed model when the text is written; no placeholder numbers on screen. |
-| 19 | **Versions marked by renders** | The render's record notes the history point, so History shows "Delivered v003" (small, in `handoff.py`). |
-| 20 | **Key clashes** | Settled in §0 and §6. R = Record in Sound and Rectangle in 2D: kept, the apps never share a screen. |
+| 19 | **Versions marked by renders** | The render's record notes the history point, so History shows "Exported v003" (small, in `handoff.py`). |
+| 20 | **Key clashes** | Settled in §0 and §6, then by the shared key map *(S30)*. R = Record in Sound and Rectangle in 2D: kept as app-only tool keys (shared spec Part 2). |
 
 ---
 
@@ -3739,7 +3840,7 @@ Each step: what the person is thinking · what they need on screen · what they 
 | 5 Build the song | "Verse, chorus, repeat this 4 bars" | The **arrangement** big: sections on the ruler, all tracks, select a range → duplicate | The piano roll of one track |
 | 6 Add more instruments | "Bass under it, drums" | Same as 2–4, the arrangement stays above | — |
 | 7 Shape the sound | "Warmer pad" | That track's instrument settings (inspector, essentials first) | Everyone else's settings |
-| 8 Listen through | "Does it flow?" | Arrangement + playhead + loop range | Editor |
+| 8 Listen through | "Does it flow?" | Arrangement + playhead + time range | Editor |
 
 **Best tools:** GarageBand / Logic: the arrangement (tracks × time) is the centre; the selected region's editor
 opens *below* it (one key, E), the library of sounds on the left when choosing. Ableton: the clip's detail in a
@@ -3769,7 +3870,7 @@ one key.
 | 3 Review | "Which take? Cut the fluffs" | The voice as **words** (transcript) and waveform; split / delete / close gaps | Notes, mixer |
 | 4 Clean | "Less room, no hiss" | Clean up on the selected clips (voice isolate, noise, echo), before / after listen | Effects chain jargon |
 | 5 Level | "Even, podcast loud" | Normalise selected clips; the loudness meter against the target | Faders of other tracks |
-| 6 Deliver | "An mp3/wav at −16" | Deliver dialog with the podcast target | — |
+| 6 Export | "An mp3/wav at −16" | Export dialog with the podcast target | — |
 
 **Best tools:** Hindenburg: voice tools, auto-levelling and a loudness meter always visible, delivery by target.
 Descript: edit the voice by editing its words. **Lesson:** voice work is about words and loudness, not notes and
@@ -3780,12 +3881,12 @@ buses. We have no transcript yet (open point 3); until then the waveform with sp
 | Step | Thinking | Needs | Doesn't need |
 |---|---|---|---|
 | 1 See the motion | "Where does it whoosh / hit?" | Picture or the 2D markers on the ruler | Piano roll |
-| 2 Find / make a sound | "A whoosh, 0.6 s" | Sounds panel: my library (search by kind), **designed sounds** (whoosh, impact, riser … with their settings), audition | — |
+| 2 Find / make a sound | "A whoosh, 0.6 s" | Library: my library (search by kind), **designed sounds** (whoosh, impact, riser … with their settings), audition | — |
 | 3 Place it | "On 'logo lands'" | Drop at a marker / the playhead; it stays on the marker when 2D moves | — |
 | 4 Shape it | "Faster, darker, layer a thud" | The selected sound's settings (inspector), layer = group of clips/sounds | Track instrument settings |
 | 5 Sit it in | "Under the music" | Level, duck under voice | Delivery |
 
-**Lesson:** a **Sounds panel** (library + designed sounds + instruments) is one place for "find a sound", placed on
+**Lesson:** a **Library** (library + designed sounds + instruments) is one place for "find a sound", placed on
 the selected track at the playhead. Today the library panel is built but not shown and designed sounds have no
 screen at all.
 
@@ -3798,7 +3899,7 @@ screen at all.
 | 3 Effects | "Glue, space" | Effects on the strip / selection, their settings in the inspector | — |
 | 4 Duck / automate | "Music under the voice" | Duck on the selection, lanes on the arrangement | — |
 | 5 Hit the target | "Streaming −14" | Loudness meter + target line always visible while mixing | — |
-| 6 Deliver | "Final WAV + stems" | **Deliver dialog**: target, format, rate, range, stems, Pass / Miss, Render, Show folder | The master strip carrying all of it |
+| 6 Export | "Final WAV + stems" | **Export dialog**: target, format, rate, range, stems, Pass / Miss, Render, Show folder | The master strip carrying all of it |
 
 **Best tools:** Logic's mixer is a key away (X), not a separate app; Reaper's render dialog holds format, range and
 stems together. Hindenburg puts the loudness meter always on screen.
