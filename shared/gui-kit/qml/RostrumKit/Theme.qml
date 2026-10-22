@@ -25,6 +25,8 @@ QtObject {
     readonly property color danger: "#ff6b6b"
     readonly property color ok: "#4cc38a"
     readonly property color warn: "#f2b33d"
+    readonly property color agent: "#a594f9"        // an agent's work: its chip dot, the 1 s outline on what it changed
+    readonly property color agentSoft: Qt.rgba(165 / 255, 148 / 255, 249 / 255, 0.14)
     readonly property color scrim: Qt.rgba(0, 0, 0, 0.4)
     readonly property color popupEdge: Qt.rgba(1, 1, 1, 0.08)
 

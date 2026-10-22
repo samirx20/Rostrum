@@ -6,6 +6,8 @@
 Steps go through the same bridge calls a click makes:
     select <id> | set <param> <json value> | scrub <param> <v> <v> … | undo | redo | more
     commands [query …] (opens Ctrl+K with that text) | run <command key>
+    and the layout check's kit steps (layout_run.kit_step): say <words> | agent-run <n> | agent-say <words> | history open
+    undo-run (Undo all on that run) | version <name>; --size 1280x720 sets the window size.
 With --shot the window quits by itself; a failed step or save exits nonzero.
 """
 import argparse
@@ -18,6 +20,7 @@ from PySide6.QtTest import QTest
 
 from rostrum_core import toy
 from rostrum_gui import DocBridge, start
+from rostrum_gui.layout_run import kit_step
 
 HERE = Path(__file__).resolve().parent
 
@@ -27,6 +30,12 @@ def value(text):
         return json.loads(text)
     except json.JSONDecodeError:
         return text            # a bare word is a string: set lightType Spot
+
+
+class DemoBridge(DocBridge):
+    def agent_demo_calls(self, n):
+        """The layout check's `agent-run n`: n harmless moves of the card."""
+        return [[{"op": "layer.move", "target": ["card"], "args": {"x": 100 + 10 * i}}] for i in range(n)]
 
 
 def do_step(bridge, win, step):
@@ -48,6 +57,12 @@ def do_step(bridge, win, step):
         QMetaObject.invokeMethod(win, "openCommands", Q_ARG("QVariant", " ".join(rest)))
     elif word == "run":
         bridge.run(rest[0])
+    elif word == "undo-run":                  # Undo all on the agent run the kit steps made
+        bridge.undoRun("layout-check")
+    elif word == "version":
+        bridge.saveVersion(" ".join(rest))
+    elif kit_step(bridge, step):
+        pass
     else:
         raise ValueError(f"unknown step {step!r}")
     if bridge.status.startswith("Error"):
@@ -74,13 +89,16 @@ def main():
     a.add_argument("--step", action="append", default=[])
     a.add_argument("--shot")
     a.add_argument("--sheet", action="store_true")
+    a.add_argument("--size", help="window size, e.g. 1280x720")
     a.add_argument("--hover", default="hovered", help="--sheet: the control to rest the pointer on")
     args = a.parse_args()
 
     doc = toy.sample()
-    bridge = DocBridge(doc)
+    bridge = DemoBridge(doc)
     qml = HERE / "qml" / ("ControlsSheet.qml" if args.sheet else "Main.qml")
     size = (1040, 860) if args.sheet else (1600, 960)
+    if args.size:
+        size = tuple(int(v) for v in args.size.split("x"))
     app, engine, win = start(qml, {"backend": bridge}, size)
     code = [0]
 

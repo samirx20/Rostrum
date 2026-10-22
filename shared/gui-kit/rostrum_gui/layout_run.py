@@ -23,11 +23,29 @@ SIZES = [(1280, 720), (1366, 768), (1646, 900), (1920, 1080)]
 
 
 def kit_step(bridge, step: str) -> bool:
-    """The check's own steps (any app): `say <words>` = the status line shows these words. True when handled."""
+    """The check's own steps (any app); True when handled:
+    `say <words>`: the status line shows these words.
+    `agent-run <n>`: an agent ("claude-code") makes n changes in one session, through doc.apply; the app's bridge
+      gives them with the hook `agent_demo_calls(n) -> [calls, ...]` (n lists of operation calls, harmless ones).
+    `agent-say <words>`: the agent chip and the message line show these words.
+    `history open`: the History sheet opens (bridge.agent.historyAsked)."""
     word, _, rest = step.partition(" ")
-    if word != "say":
+    if word == "say":
+        bridge._set_status(rest)
+    elif word == "agent-run":
+        hook = getattr(bridge, "agent_demo_calls", None)
+        if hook is None:
+            raise RuntimeError(f"layout step {step!r}: {type(bridge).__name__} has no agent_demo_calls(n) hook")
+        from rostrum_core import Who
+        for calls in hook(int(rest)):
+            bridge.doc.apply(calls, Who.agent("claude-code"), session="layout-check")
+    elif word == "agent-say":
+        bridge.agent.say(rest)
+        bridge._set_status(rest)
+    elif step == "history open":
+        bridge.agent.askHistory("")
+    else:
         return False
-    bridge._set_status(rest)
     return True
 
 

@@ -14,7 +14,7 @@ from __future__ import annotations
 HOOKS = frozenset({
     "label_of", "kind_label", "edit_call", "shown_values", "on_page", "anim_state", "list_choices", "animate_calls",
     "expr_state", "clear_expr_calls", "sections", "selection_label", "extra_commands",
-    "select", "run", "say", "commands", "historyCount", "_commands", "_rows", "_first", "_on_doc",
+    "select", "run", "say", "commands", "historyCount", "undoLabel", "redoLabel", "_commands", "_rows", "_first", "_on_doc",
     "staticMetaObject",
 })
 ONCE = frozenset({"doc", "who", "model", "_kit", "_unsubscribe"})
@@ -23,7 +23,7 @@ ONCE = frozenset({"doc", "who", "model", "_kit", "_unsubscribe"})
 class KitState:
     """Every piece of the bridge's own screen state (see each module for its meaning)."""
     __slots__ = ("sel", "selection", "more", "status", "scrub", "partners", "opened", "static", "op_kind",
-                 "open_groups", "search", "handlers")
+                 "open_groups", "search", "handlers", "agent")
 
     def __init__(self, opened):
         self.sel, self.selection, self.more, self.status = "", [], False, ""
@@ -34,6 +34,7 @@ class KitState:
         self.op_kind = (None, "")           # the selection's field operation and kind
         self.open_groups, self.search = set(), ""
         self.handlers = {}                  # parts.handle / invoke
+        self.agent = None                   # agent_watch.AgentWatch (the bridge makes it)
 
 
 def _is_kit(cls) -> bool:

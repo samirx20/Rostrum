@@ -13,7 +13,8 @@ commands),
 `edit_call` (a screen edit -> its operation call), `shown_values` (the values the inspector shows),
 `anim_state` / `animate_calls` (an app with keys: the key mark on a row and what its toggle does),
 `on_page` (fields the page's own controls already show, which the inspector leaves out).
-Selection and rows: bridge_select.py. One history with other documents: bridge_history.py. Edit slots: bridge_edits.py. The settings panel by importance (opt-in
+Selection and rows: bridge_select.py. One history with other documents: bridge_history.py. History rows, Undo all,
+versions, ↶ ↷ labels: bridge_review.py (the agent chip: agent_watch.py). Edit slots: bridge_edits.py. The settings panel by importance (opt-in
 `sections = True`): bridge_sections.py. Slots from other modules: parts.py (mix-ins, `attach`, `handle` / `invoke`).
 The kit's state lives on `self._kit` and its names are guarded (kit_state.py): an app can't overwrite them by accident.
 """
@@ -25,11 +26,14 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_core import RostrumError, Who, codes
 
 from . import kit_state, rows
+from .agent_watch import AgentWatch
 from .bridge_edits import EditSlots
 from .bridge_history import HistoryParts
+from .bridge_review import ReviewSlots
 from .bridge_sections import SectionSlots
 from .bridge_select import SelectSlots
 from .edits import field_call
+from .history_rows import who_name
 from .kit_state import KitState
 from .model import RowsModel
 from .parts import Parts
@@ -39,7 +43,7 @@ def name_of(item: dict) -> str:
     return str(item.get("name") or item["id"])
 
 
-class DocBridge(SelectSlots, SectionSlots, EditSlots, HistoryParts, Parts, QObject):
+class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts, Parts, QObject):
     selectionChanged = Signal()
     docChanged = Signal()
     statusChanged = Signal()
@@ -53,6 +57,7 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, HistoryParts, Parts, QObje
         self._kit = KitState(doc.history.mark())
         self.doc, self.who = doc, who or Who.person("sam")
         self.model = RowsModel(rows.ROLES, self)
+        self._kit.agent = AgentWatch(self)
         self._unsubscribe = doc.subscribe(self._on_doc)
         self.select(self._first())
 
@@ -120,6 +125,12 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, HistoryParts, Parts, QObje
     def historyCount(self):
         return self.changes_since_open()
 
+    # History, ↶ ↷ and the agent chip (reads in bridge_review.py; Qt properties must sit on the QObject class)
+    undoLabel = Property(str, ReviewSlots.next_undo_label, notify=docChanged)        # "" = nothing to undo
+    redoLabel = Property(str, ReviewSlots.next_redo_label, notify=docChanged)
+    versions = Property("QVariantList", ReviewSlots.versions_list, notify=docChanged)
+    agent = Property(QObject, lambda self: self._kit.agent, constant=True)    # agent_watch.AgentWatch
+
     @Property(str, notify=statusChanged)
     def status(self):
         return self._kit.status
@@ -176,10 +187,12 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, HistoryParts, Parts, QObje
         raise RostrumError(codes.UNKNOWN_OPERATION, "inspector", f'"{param}"', "has no expression in this app")
 
     # ---- inside ---------------------------------------------------------------------------------------------
-    def _heard(self, change):
-        """A change made by someone else (an agent, a script, another app) shows in the status as who did what."""
+    def _heard(self, change, doc=None):
+        """A change made by someone else (an agent, a script, another app) shows in the status as who did what
+        ("Claude: Moved title"); the agent watch counts an agent's (doc: where it was made; None = this document)."""
         if change is not None and change.who != self.who:
-            self._set_status(f"{change.who}: {change.label}")
+            self._set_status(f"{who_name(change.who, self.who)}: {change.label}")
+        self._kit.agent.heard(doc or self.doc, change)
         self.docChanged.emit()
 
     def _on_doc(self, event):

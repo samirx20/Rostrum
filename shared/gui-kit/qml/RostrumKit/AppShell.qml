@@ -19,7 +19,15 @@ QQC.ApplicationWindow {
     property alias bottom: bottomSlot.data
     property alias leading: topBar.leading      // the app's left top-bar buttons (File), after the wordmark
     property alias tools: topBar.tools          // the app's own top-bar tools (centred)
-    property alias actions: topBar.actions      // the app's action buttons (right, before the command bar)
+    property alias actions: topBar.actions      // the app's action buttons (Export: right, after the command box)
+    property alias menu: topBar.menu            // the ≡ button, first in the top bar (optional)
+    property alias chips: topBar.chips          // the app's own chips (Sound's loudness), after the agent chip
+    property alias saveWord: topBar.saveWord    // "Saved": the top bar reads "Saved · 14 changes"
+    // History (Ctrl+H, the change count, the agent chip's Review): a sheet over the right column while open.
+    // Apps whose KeyMap makes Ctrl+H too put "history" in its `skip`.
+    property bool historyOpen: false
+    property string historyFocus: ""            // the run it shows ("" = everything)
+    function openHistory(session) { historyFocus = session || ""; historySheet.focusSession = historyFocus; historyOpen = true }
     property alias helpEntries: topBar.helpEntries   // the app's guides in Help (rostrum_gui.guides.entries), then its own
     signal helpPicked(string value)                  // a Help entry that is neither a guide nor About (the app handles it)
     property int leftWidth: Theme.sidePanel - 32   // 0: no left panel (the centre takes its place, no gap)
@@ -47,6 +55,8 @@ QQC.ApplicationWindow {
     }
     Shortcut { sequence: "Ctrl+K"; onActivated: commandBar.open() }
     Shortcut { sequence: "F1"; onActivated: noticesDialog.open() }
+    Shortcut { sequence: "Ctrl+H"; onActivated: win.historyOpen ? (win.historyOpen = false) : win.openHistory("") }
+    Connections { target: win.bridge ? win.bridge.agent : null; function onHistoryAsked(s) { win.openHistory(s) } }
     Shortcut { sequence: StandardKey.Undo; enabled: !commandBar.opened; onActivated: win.bridge.undo() }
     Shortcut { sequences: ["Ctrl+Shift+Z", "Ctrl+Y"]; enabled: !commandBar.opened; onActivated: win.bridge.redo() }
 
@@ -69,6 +79,14 @@ QQC.ApplicationWindow {
                width: (rightSlot.visible ? rightSlot.x - Theme.gap : body.width) - x }
         Item { id: rightSlot; x: body.width - width; width: Math.max(0, win.rightWidth); visible: width > 0; height: leftSlot.height }
         Item { id: bottomSlot; y: body.height - height; width: body.width; height: win.bottomHeight }
+        HistorySheet {  // in the settings panel's place (the right column; its width at least a side panel's)
+            id: historySheet
+            visible: win.historyOpen
+            z: 5
+            width: Math.max(win.rightWidth, Theme.sidePanel); x: body.width - width; height: leftSlot.height
+            bridge: win.bridge
+            onClosed: win.historyOpen = false
+        }
     }
     CommandBar { id: commandBar; bridge: win.bridge }
     GuideDialog { id: guideDialog }
