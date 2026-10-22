@@ -122,7 +122,10 @@ What changed in Sound on `team/sam`:
 
 ## Left open
 
-- Rename by clicking the project name in the top bar (1.19 item 1) is not built.
+- Rename by clicking the project name (S35): `files.rename(name)` renames the folder beside itself and reopens it
+  live; the top bar's name tab opens a field in place (AppShell wires it to the kit's `files`, no app code). An agent
+  that had the old folder open is refused on its next step (its folder is gone); it opens the new one. Layout state
+  `rename-name` (step `name edit`) in both apps. Report a problem (? menu): `rostrum_gui/report.py`.
 - "Exactly where you left it" covers the project only; scene, selection, playhead and zoom are not restored yet.
 - Missing files' **Find…** (1.19 item 6) and **Open the last version that works** on a damaged file (item 7) are not
   built; the refusal offers nothing but its words.
