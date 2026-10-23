@@ -13,7 +13,7 @@ and time it like any layer; you change the product itself in Rostrum3D.
 - It reads the render's **EXR frames**, the hand-off with transparency, so whatever has nothing behind it in 3D is
   see-through in 2D. Colours match the 3D app's own PNG (same colour settings). Render with EXR: `render_still`
   makes PNG + EXR by default; `render_video` needs `exr: true`.
-- A sequence plays at the composition's speed; **Speed**, **Render starts at** and **Loop** work as on a video layer.
+- A sequence plays at the composition's speed; **Speed**, **Render starts at** and **Loop** (Off, Loop or Ping-pong) work as on a video layer.
 
 ## Timing it to the story
 

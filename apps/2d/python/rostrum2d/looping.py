@@ -15,7 +15,8 @@ def mode_of(value) -> str:
 
 def fold(i: int, count: int, mode: str) -> int:
     """The place in 0..count-1 that place `i` (maybe past either end) shows: held at the ends (off), wrapped (loop) or
-    bounced there and back with each end shown once (pingpong)."""
+    bounced there and back with each end shown once (pingpong).
+    The engine has the same rule for video layers: apps/2d/engine/render/src/scene/stage_fx.rs `fold`. Change both together."""
     if mode == "loop":
         return i % count
     if mode == "pingpong" and count > 1:

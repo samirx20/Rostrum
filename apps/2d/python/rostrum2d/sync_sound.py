@@ -20,7 +20,7 @@ from pathlib import Path
 
 from rostrum_core import markers
 
-from . import grain, project_sound, retime, video, video_audio
+from . import grain, looping, project_sound, retime, video, video_audio
 from .names import display_name
 from .sound_cues import LINK
 
@@ -78,7 +78,8 @@ def wanted(folder, doc) -> dict:
 def _pieces(layer: dict, a: float, b: float, speed: float, file_len: float, fps: float) -> list[dict]:
     """The stretches of the file heard from `a` to `b` (comp seconds): one, ending where the file does; a looped layer
     starts again where its picture does (the decoded frames' length, video.pick). Unknown length: one, as the bar."""
-    wrap, loop = (round(file_len * fps) / fps if file_len > 0 else 0.0), bool(layer.get("loop"))
+    # Sound can't play backwards: a ping-pong picture keeps its sound looping forward (as Loop), never reversed.
+    wrap, loop = (round(file_len * fps) / fps if file_len > 0 else 0.0), looping.mode_of(layer.get("loop")) != "off"
     pos, t, out = float(layer.get("offset", 0.0)) + (a - float(layer.get("start", 0.0))) * speed, a, []
     while b - t > 1e-6:
         here = pos % wrap if loop and wrap else pos

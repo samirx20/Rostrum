@@ -47,9 +47,10 @@ def source(item: dict, base: Path | None = None) -> Path:
     return p
 
 
-def pick(n: int, start: float, fps: float, speed: float, offset: float, count: int, loop: bool) -> int:
-    """The clip's frame shown at comp frame `n` (the rule the engine uses, eval.rs `video_src`):
-    floor((n − start·fps) · speed) + round(offset·fps), wrapped when looped, else held at the last frame."""
+def pick(n: int, start: float, fps: float, speed: float, offset: float, count: int, loop: str | bool = "off") -> int:
+    """The clip's frame shown at comp frame `n` (the rule the engine uses, stage_fx.rs `video_picture`):
+    floor((n − start·fps) · speed) + round(offset·fps), then folded by the Loop mode (looping.py: "off" holds the
+    last frame, "loop" wraps, "pingpong" goes back and forth; an older True / False means loop / off)."""
     i = math.floor((n - start * fps) * speed + 1e-6) + round(offset * fps)
     return looping.fold(i, count, looping.mode_of(loop))
 
