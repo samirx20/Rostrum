@@ -47,6 +47,9 @@ pub struct SkiaSceneCache {
     /// Rostrum patch (X6): one entry per open layer (push_layer / push_clip_layer), `Some` for a layer drawn offscreen
     /// because its filter writes buffers to the comp's node cache.
     captures: Vec<Option<Capture>>,
+    /// Rostrum patch (E4): where the canvas being drawn on sits in the frame (device px): (0, 0) for the frame itself, a
+    /// glow capture's top-left for its picture, which covers only the layer's reach. Every draw is shifted by it.
+    origin: (i32, i32),
     /// Rostrum patch (F7 seam, R19): one entry per open layer, `Some` for a clip layer whose edge falls between pixels:
     /// its content is drawn into a layer under a hard clip to the pixels the edge touches, and the soft edge is
     /// applied once to the finished layer at pop (see `push_clip_layer`).
@@ -87,6 +90,8 @@ struct FlatLayer {
     prev: usize,
     /// The base matrices set aside while the layer draws (its own base is the plane -> picture map).
     base_3d: Vec<skia_safe::M44>,
+    /// The origin set aside while the layer draws (its picture is its own plane's, at (0, 0)).
+    origin: (i32, i32),
     alpha: f32,
     blend: peniko::BlendMode,
     /// Picture px -> plane (the coordinates the base matrix maps to the screen).
@@ -106,6 +111,9 @@ struct Capture {
     surface: skia_safe::Surface,
     /// The canvas drawing went to before (the painter's, or an enclosing capture's surface's).
     prev: usize,
+    /// Rostrum patch (E4): the frame px of this capture's (0, 0), and of the canvas before (`SkiaSceneCache::origin`).
+    origin: (i32, i32),
+    prev_origin: (i32, i32),
     alpha: f32,
     blend: peniko::BlendMode,
     transform: kurbo::Affine,
@@ -206,6 +214,7 @@ impl Default for SkiaSceneCache {
             held: None,
             cached: Vec::new(),
             captures: Vec::new(),
+            origin: (0, 0),
             soft_clips: Vec::new(),
             flats: Vec::new(),
             pending_taps: Vec::new(),
@@ -238,9 +247,11 @@ impl SkiaScenePainter<'_> {
             let canvas = surface.canvas();
             canvas.clear(Color::TRANSPARENT);
             let base_3d = std::mem::take(&mut self.cache.base_3d);
+            let origin = std::mem::take(&mut self.cache.origin);
             let mut sub = SkiaScenePainter::new(canvas, &mut *self.cache);
             sub.append_scene(content.clone(), transform);
             self.cache.base_3d = base_3d;
+            self.cache.origin = origin;
         }
         Some(surface.image_snapshot())
     }
@@ -266,10 +277,28 @@ impl SkiaScenePainter<'_> {
 
     fn set_matrix(&self, transform: kurbo::Affine) {
         let m = sk_kurbo::m44_from_affine(transform);
-        match self.cache.base_3d.last() {
-            Some(base) => self.inner.set_matrix(&skia_safe::M44::concat(base, &m)),
+        match self.base() {
+            Some(base) => self.inner.set_matrix(&skia_safe::M44::concat(&base, &m)),
             None => self.inner.set_matrix(&m),
         };
+    }
+
+    /// The matrix under every draw on this canvas: the canvas's origin shift (E4), then the innermost base matrix.
+    fn base(&self) -> Option<skia_safe::M44> {
+        let (ox, oy) = self.cache.origin;
+        let shift = ((ox, oy) != (0, 0)).then(|| skia_safe::M44::translate(-ox as f32, -oy as f32, 0.0));
+        match (shift, self.cache.base_3d.last()) {
+            (Some(s), Some(b)) => Some(skia_safe::M44::concat(&s, b)),
+            (s, b) => s.or_else(|| b.cloned()),
+        }
+    }
+
+    /// Rostrum patch (E4): `image`, a picture whose (0, 0) is frame px `at`, drawn at its place on this canvas.
+    fn draw_at_origin(&self, image: &skia_safe::Image, at: (i32, i32), paint: Option<&Paint>) {
+        self.inner.save();
+        self.inner.reset_matrix();
+        self.inner.draw_image(image, (at.0 - self.cache.origin.0, at.1 - self.cache.origin.1), paint);
+        self.inner.restore();
     }
 
     fn concat_matrix(&self, transform: kurbo::Affine) {
@@ -278,14 +307,20 @@ impl SkiaScenePainter<'_> {
 
     /// Rostrum patch (X6, E3): a layer whose content is drawn into a surface of the canvas's size (`Capture`), so it can be
     /// used as an image when the layer is popped. False when no surface could be made (nothing pushed).
+    /// Rostrum patch (E4): with `region` (frame px, inside the enclosing clips), the surface covers only that.
     #[allow(clippy::too_many_arguments)]
-    fn push_capture(&mut self, fill: peniko::Fill, blend: peniko::BlendMode, alpha: f32, transform: kurbo::Affine, clip: &impl kurbo::Shape, filter: Option<Arc<Filter>>, glows: Vec<(Arc<Filter>, f32, kurbo::Rect)>, body_clip: Option<kurbo::Rect>) -> bool {
-        let info = self.inner.image_info();
+    fn push_capture(&mut self, fill: peniko::Fill, blend: peniko::BlendMode, alpha: f32, transform: kurbo::Affine, clip: &impl kurbo::Shape, filter: Option<Arc<Filter>>, glows: Vec<(Arc<Filter>, f32, kurbo::Rect)>, body_clip: Option<kurbo::Rect>, region: Option<skia_safe::IRect>) -> bool {
+        let base = self.inner.image_info();
+        let (info, origin) = match region {
+            Some(r) => (skia_safe::ImageInfo::new((r.width(), r.height()), base.color_type(), skia_safe::AlphaType::Premul, base.color_space()), (r.left, r.top)),
+            None => (base, self.cache.origin),
+        };
         let Some(mut surface) = self.inner.new_surface(&info, None) else { return false };
         // The enclosing clips stay: content outside them is not part of the layer, so not of the filter's source.
-        let device_clip = self.inner.device_clip_bounds();
+        let device_clip = self.inner.device_clip_bounds().filter(|_| region.is_none());
         let canvas = surface.canvas() as *const Canvas;
-        let cap = Capture { surface, prev: self.inner as *const Canvas as usize, alpha, blend, transform, fill, clip_rect: clip.as_rect(), clip_path: clip.to_path(0.01), filter, glows, body_clip };
+        let prev_origin = std::mem::replace(&mut self.cache.origin, origin);
+        let cap = Capture { surface, prev: self.inner as *const Canvas as usize, origin, prev_origin, alpha, blend, transform, fill, clip_rect: clip.as_rect(), clip_path: clip.to_path(0.01), filter, glows, body_clip };
         // SAFETY: the canvas belongs to the surface, which the capture keeps alive until its pop_layer switches back.
         self.inner = unsafe { &*canvas };
         self.inner.clear(Color::TRANSPARENT);
@@ -316,8 +351,7 @@ impl SkiaScenePainter<'_> {
             None => self.replay_clip(cap),
         }
         self.inner.save_layer(&SaveLayerRec::default().paint(&self.cache.paint));
-        self.inner.reset_matrix();
-        self.inner.draw_image(src, (0, 0), None);
+        self.draw_at_origin(src, cap.origin, None);
         self.inner.restore();
         self.inner.restore();
     }
@@ -336,7 +370,9 @@ impl SkiaScenePainter<'_> {
     fn write_tap(&mut self, cap: &Capture, src: &skia_safe::Image, id: FilterId, path: &str) -> Result<(), String> {
         let filter = cap.filter.as_deref().ok_or("a tapped layer needs its filter")?;
         let region = filter.region.ok_or("a tapped filter needs a filter region")?;
-        let dev = cap.transform.transform_rect_bbox(region);
+        let (ox, oy) = self.cache.origin;
+        let to_device = kurbo::Affine::translate((-ox as f64, -oy as f64)) * cap.transform;
+        let dev = to_device.transform_rect_bbox(region);
         let info = self.inner.image_info();
         let (x0, y0, x1, y1) = (dev.x0.round(), dev.y0.round(), dev.x1.round(), dev.y1.round());
         let off_grid = [dev.x0 - x0, dev.y0 - y0, dev.x1 - x1, dev.y1 - y1].iter().any(|d| d.abs() > 1e-3);
@@ -350,7 +386,7 @@ impl SkiaScenePainter<'_> {
             if let Some(clip) = self.inner.device_clip_bounds() {
                 c.clip_irect(clip, None);
             }
-            c.set_matrix(&sk_kurbo::m44_from_affine(cap.transform));
+            c.set_matrix(&sk_kurbo::m44_from_affine(to_device));
             match cap.clip_rect {
                 Some(r) => {
                     c.clip_rect(sk_kurbo::rect_from(r), None, true);
@@ -370,7 +406,7 @@ impl SkiaScenePainter<'_> {
             }
             c.save_layer(&SaveLayerRec::default().paint(&paint));
             c.reset_matrix();
-            c.draw_image(src, (0, 0), None);
+            c.draw_image(src, (cap.origin.0 - ox, cap.origin.1 - oy), None);
             c.restore();
         }
         // Read back and written once the paint is submitted (`SkiaSceneCache::finish_taps`).
@@ -403,7 +439,7 @@ impl SkiaScenePainter<'_> {
 
     /// Rostrum patch (round 14, H5): the innermost base matrix when it has perspective.
     fn perspective_base(&self) -> Option<skia_safe::M44> {
-        self.cache.base_3d.last().filter(|b| crate::plane::has_perspective(b)).cloned()
+        self.base().filter(|b| crate::plane::has_perspective(b))
     }
 
     /// Rostrum patch (round 14, H5): opens a `FlatLayer` when the base matrix has perspective: drawing goes to an
@@ -431,7 +467,8 @@ impl SkiaScenePainter<'_> {
         let canvas = surface.canvas() as *const Canvas;
         let to_plane = kurbo::Affine::translate((region.x0, region.y0)) * kurbo::Affine::scale(1.0 / k);
         let base_3d = std::mem::replace(&mut self.cache.base_3d, vec![sk_kurbo::m44_from_affine(to_plane.inverse())]);
-        self.cache.flats.push(Some(FlatLayer { surface, prev: self.inner as *const Canvas as usize, base_3d, alpha, blend, to_plane }));
+        let origin = std::mem::take(&mut self.cache.origin);
+        self.cache.flats.push(Some(FlatLayer { surface, prev: self.inner as *const Canvas as usize, base_3d, origin, alpha, blend, to_plane }));
         self.cache.captures.push(None);
         self.cache.soft_clips.push(None);
         // SAFETY: the canvas belongs to the surface, which the flat layer keeps alive until its pop_layer switches back.
@@ -458,6 +495,7 @@ impl SkiaScenePainter<'_> {
         // SAFETY: `prev` is the canvas in use when the layer was pushed, alive for longer than the layer.
         self.inner = unsafe { &*(flat.prev as *const Canvas) };
         self.cache.base_3d = flat.base_3d;
+        self.cache.origin = flat.origin;
         self.reset_paint();
         self.set_paint_alpha(flat.alpha);
         self.set_paint_blend_mode(flat.blend);
@@ -821,20 +859,14 @@ impl PaintScene for SkiaScenePainter<'_> {
     /// Rostrum patch (round 10): the held picture at device pixels (its own size is the canvas's), over the layer.
     fn draw_held(&mut self) -> bool {
         let Some(image) = self.cache.held.clone() else { return false };
-        self.inner.save();
-        self.inner.reset_matrix();
-        self.inner.draw_image(&image, (0, 0), None);
-        self.inner.restore();
+        self.draw_at_origin(&image, (0, 0), None);
         true
     }
 
     /// Rostrum patch (E2): kept picture `k` at device pixels, over the layer (as `draw_held`).
     fn draw_cached(&mut self, k: usize) -> bool {
         let Some(image) = self.cache.cached.get(k).cloned() else { return false };
-        self.inner.save();
-        self.inner.reset_matrix();
-        self.inner.draw_image(&image, (0, 0), None);
-        self.inner.restore();
+        self.draw_at_origin(&image, (0, 0), None);
         true
     }
 
@@ -929,7 +961,7 @@ impl PaintScene for SkiaScenePainter<'_> {
         }
 
         // Rostrum patch (X6): a filter with taps draws its content offscreen (see `Capture`).
-        if filter.as_ref().is_some_and(|f| !f.taps.is_empty()) && backdrop_filter.is_none() && self.push_capture(fill, blend, alpha, transform, clip, filter.clone(), vec![], None) {
+        if filter.as_ref().is_some_and(|f| !f.taps.is_empty()) && backdrop_filter.is_none() && self.push_capture(fill, blend, alpha, transform, clip, filter.clone(), vec![], None, None) {
             return;
         }
         self.cache.captures.push(None);
@@ -1024,6 +1056,7 @@ impl PaintScene for SkiaScenePainter<'_> {
         let src = surface.image_snapshot();
         // SAFETY: `prev` is the canvas in use when the layer was pushed, alive for longer than the layer.
         self.inner = unsafe { &*(cap.prev as *const Canvas) };
+        self.cache.origin = cap.prev_origin;
         for (id, path) in cap.filter.iter().flat_map(|f| f.taps.iter()) {
             // A tap's file is named by its content (compCache.ts): one already there, or drawn earlier in this paint, is kept.
             if self.cache.pending_taps.iter().any(|t| t.path == *path) || std::path::Path::new(path).exists() {
@@ -1039,12 +1072,7 @@ impl PaintScene for SkiaScenePainter<'_> {
             self.draw_capture(&cap, &src, *strength, plus, Some(glow), Some(*clip));
         }
         match (cap.glows.is_empty(), cap.body_clip) {
-            (false, None) => {
-                self.inner.save();
-                self.inner.reset_matrix();
-                self.inner.draw_image(&src, (0, 0), None);
-                self.inner.restore();
-            }
+            (false, None) => self.draw_at_origin(&src, cap.origin, None),
             (_, clip) => self.draw_capture(&cap, &src, cap.alpha, cap.blend, cap.filter.as_deref(), clip),
         }
     }
@@ -1058,19 +1086,23 @@ impl PaintScene for SkiaScenePainter<'_> {
         clip: Option<kurbo::Rect>,
         filter: Option<Arc<Filter>>,
     ) -> bool {
-        // The content is captured only where it shows (the canvas, inside the enclosing clips), but a blur reads past
-        // that: Skia's own filter layer reads what is drawn just outside the canvas too. So a layer whose reach (its
-        // clips, filters' spread included) crosses the enclosing clip is left to the caller's layers, as is a layer
-        // under a base matrix (a view, a 3D plane).
+        // The content is captured into a picture covering only the layer's reach (its clips, filters' spread included;
+        // E4: it was the whole canvas), cut to where it shows. A blur reads past that: Skia's own filter layer reads what
+        // is drawn just outside the frame too. So a layer whose reach crosses the enclosing clip is left to the caller's
+        // layers, as is a layer under a base matrix (a view, a 3D plane).
         let Some(first) = glows.first() else { return false };
         let all = glows.iter().fold(clip.unwrap_or(first.2), |a, g| a.union(g.2));
+        let (ox, oy) = (self.cache.origin.0 as f64, self.cache.origin.1 as f64);
         let reach = transform.transform_rect_bbox(all);
         let Some(c) = self.inner.device_clip_bounds() else { return false };
-        let inside = reach.x0 >= c.left as f64 && reach.y0 >= c.top as f64 && reach.x1 <= c.right as f64 && reach.y1 <= c.bottom as f64;
-        if !inside || !self.cache.base_3d.is_empty() {
+        let shown = irect_to_kurbo(c) + kurbo::Vec2::new(ox, oy);
+        let inside = reach.x0 >= shown.x0 && reach.y0 >= shown.y0 && reach.x1 <= shown.x1 && reach.y1 <= shown.y1;
+        let region = reach.expand().intersect(shown);
+        if !inside || !self.cache.base_3d.is_empty() || region.is_zero_area() {
             return false;
         }
-        self.push_capture(peniko::Fill::NonZero, blend.unwrap_or(peniko::Mix::Normal.into()), alpha, transform, &all, filter, glows.to_vec(), clip)
+        let region = skia_safe::IRect::new(region.x0 as i32, region.y0 as i32, region.x1 as i32, region.y1 as i32);
+        self.push_capture(peniko::Fill::NonZero, blend.unwrap_or(peniko::Mix::Normal.into()), alpha, transform, &all, filter, glows.to_vec(), clip, Some(region))
     }
 
     fn stroke<'a>(
