@@ -27,6 +27,7 @@ with group("list", x=240, y=180, w=600, anchorX=0, anchorY=0, layout="column", g
 | `wrap`, `rowGap` | a new line when the next layer doesn't fit (row / column), and the space between lines |
 | `columns` | grid: equal columns `gap` apart, rows `rowGap` apart, each as tall as its tallest layer |
 | `hugWidth`, `hugHeight` | the group's size follows what is inside it |
+| `hugPin` | on (the default): a hugging group grows right and down from its top-left, as a design tool's frame (the left edge of a row, the top of a column; across a row by `align`) |
 | a layer's `layoutGrow` | takes this share of the room left along the line (shapes, images, groups) |
 | a layer's `layoutApart` | the layout leaves it alone: placed by its own `x`, `y` (a badge on a card) |
 
@@ -34,8 +35,10 @@ with group("list", x=240, y=180, w=600, anchorX=0, anchorY=0, layout="column", g
 `bgColor`, `bgRadius` (corners; half the height or more is a pill), and an optional outline (`bgStroke`,
 `bgStrokeColor`, `bgStrokeWidth`). With auto layout and hugging on, the box hugs the layers with the `padding` all
 round, so a lower-third is one group: a name with a pill around it that grows with the name. In the settings panel
-it is the group's Background section. A hugging group grows around its anchor: give it `anchorX=0` (as below) so a
-longer name pushes the pill's right end, not both ends.
+it is the group's Background section. A hugging group keeps its top-left fixed and grows right and down (`hugPin`, "Keep top-left fixed" in the panel), so a
+longer name pushes the pill's right end only. Move the anchor off the middle (`anchorX=1` grows leftward) or turn `hugPin`
+off and it grows around its anchor instead. In a script, give the group its anchor (`anchorX=0` as below puts the left
+edge at `x`); with the middle anchor the edge is where the group's own `w` × `h` box puts it. Files made before this keep their old look (`hugPin` off) until you turn it on.
 
 ```python
 with group("lower_third", x=120, y=900, anchorX=0, anchorY=0.5, layout="row", padding=18, hugWidth=True,

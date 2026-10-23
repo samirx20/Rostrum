@@ -13,7 +13,8 @@ IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 ON = {"not": IS("layout", "none")}
 FLOW = {"any": [IS("layout", "row"), IS("layout", "column")]}
 GRID = IS("layout", "grid")
-IN_LAYOUT = {"fact": "inLayout"}
+HUGGING = {"all": [ON, {"any": [IS("hugWidth", True), IS("hugHeight", True)]}]}
+IN_LAYOUT ={"fact": "inLayout"}
 PLACED = {"all": [IN_LAYOUT, IS("layoutApart", False)]}       # the layout sets this layer's x, y
 FREE_XY = {"not": PLACED}
 
@@ -51,6 +52,10 @@ GROUP = [
        help="Space between wrapped lines (between rows in a grid)"),
     _t("hugWidth", "Width hugs layers", False, ON, help="The group's width follows what is inside it"),
     _t("hugHeight", "Height hugs layers", False, ON, help="The group's height follows what is inside it"),
+    _t("hugPin", "Keep top-left fixed", True, HUGGING,
+       help="A group that hugs its layers grows right and down from its top-left (left of a row, top of a column), "
+            "as a design tool's frame does; off, it grows around its anchor. An anchor you moved off the middle "
+            "always keeps its own place."),
 ]
 
 CHILD_APART = _t("layoutApart", "Set apart", False, IN_LAYOUT, imp="deep",

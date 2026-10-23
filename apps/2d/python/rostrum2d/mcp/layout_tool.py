@@ -29,7 +29,7 @@ def inspect_layout(ctx, args):
             raise RostrumError(codes.NOT_FOUND, ctx.tool, f'group "{args["group"]}"', "has no auto layout in this composition",
                                hint="Turn one on with group.set layout=row (or column, grid).")
     placed = solve(comp, t)
-    keys = ("layout", "gap", "padding", "justify", "align", "wrap", "columns", "rowGap", "hugWidth", "hugHeight", "background")
+    keys = ("layout", "gap", "padding", "justify", "align", "wrap", "columns", "rowGap", "hugWidth", "hugHeight", "hugPin", "background")
     rows = [{"group": g["id"], "settings": {k: g.get(k) for k in keys if k in g},
              **({"size": placed[g["id"]]} if g["id"] in placed else {}),
              "layers": [{"id": c["id"], **placed[c["id"]]} for c in g.get("layers", []) if c["id"] in placed]}
