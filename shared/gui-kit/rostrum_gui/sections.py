@@ -1,6 +1,8 @@
 """The settings panel by importance (opt-in: a bridge with `sections = True`), built from each param's `importance`
 and `group` only, never per kind:
 - **Essentials**: the `primary` params in data order, no headings; a small gap (label "") where the group changes.
+- **A group that has essentials is never named again**: its other params (the ones that apply) follow its essentials
+  in place, so no name in the row of names repeats a setting already shown ("Shape", "Fill").
 - **Every other group by name**: one fold row per group with a non-primary param, then its `secondary` and `deep`
   params (rank, then data order). Only an OPEN group shows (its fold row is its heading, a click folds it); a group
   with a value changed from its default is open until the person folds it (you see what you changed).
@@ -23,8 +25,11 @@ def layout(op, kind: str = "") -> list[dict]:
     if op is None:
         return []
     params = [p for p in op.params if p.type != "id"]
-    essentials = [p for p in params if p.importance == "primary"]
-    rest = [p for p in params if p.importance != "primary"]
+    shown = {p.group for p in params if p.importance == "primary"}      # a group with an essential is shown whole, in place
+    essentials = [p for p in params if p.importance == "primary" or p.group in shown]
+    order = list(dict.fromkeys(p.group for p in essentials))
+    essentials.sort(key=lambda p: (order.index(p.group), RANK[p.importance]))      # stable: data order inside
+    rest = [p for p in params if p not in essentials]
     rows: list[dict] = []
     for i, p in enumerate(essentials):
         if i and p.group != essentials[i - 1].group:     # a gap where the group changes, never a heading
