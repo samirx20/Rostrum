@@ -7,8 +7,9 @@ panel shows Tilt → angle / size only then. The painting kit takes the lean as 
 """
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QObject, Signal
+from PySide6.QtCore import QEvent, Signal
 from PySide6.QtGui import QInputDevice, QPointingDevice
+from rostrum_gui.gui_filter import GuiFilter
 
 PEN_TYPES = {QInputDevice.DeviceType.Stylus, QInputDevice.DeviceType.Airbrush}
 TABLET = {QEvent.Type.TabletPress, QEvent.Type.TabletMove, QEvent.Type.TabletRelease}
@@ -18,20 +19,17 @@ def _tilts(device) -> bool:
     return device is not None and bool(device.capabilities() & QInputDevice.Capability.XTilt)
 
 
-class PenTilt(QObject):
+class PenTilt(GuiFilter):
     changed = Signal()              # has_tilt changed
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._lean, self.has_tilt = None, any(_tilts(d) for d in QInputDevice.devices())
 
-    def watch(self, win):
-        win.installEventFilter(self)
-
     def lean(self):
         return self._lean
 
-    def eventFilter(self, obj, ev):     # noqa: N802  (Qt's name)
+    def on_event(self, obj, ev):
         t = ev.type()
         if t in TABLET:
             device = ev.pointingDevice()

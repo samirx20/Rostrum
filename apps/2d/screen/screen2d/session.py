@@ -43,6 +43,8 @@ class Session:
                                           "onion": bridge.painter.provider, "brushes": bridge.painter.previews,
                                           "paintthumbs": bridge._paint_layers.thumbs})
         bridge.painter.tilt.watch(win)                   # the pen's lean: Qt Quick's handlers don't give it
+        bridge.colourPick.watch(win)                     # Alt picks a colour (paint_pick.py)
+        self.space.watch(win)                            # Space: tap plays, hold pans (spacekey.py)
         old = (self.bridge, self.engine, self.win)
         self.bridge, self.engine, self.win = bridge, engine, win
         if old[0] is not None:                           # the window and its bindings first, then what they read

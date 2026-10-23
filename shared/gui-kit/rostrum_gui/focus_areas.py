@@ -3,18 +3,20 @@ accent line on its top edge (AppShell.pressedAt). Watched here, before any item 
 canvas or list takes for itself never reaches a handler on the shell. `start` installs it on every AppShell window."""
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QMetaObject, QObject, Q_ARG
+from PySide6.QtCore import QEvent, QMetaObject, Q_ARG
+
+from .gui_filter import GuiFilter
 
 PRESSES = (QEvent.Type.MouseButtonPress, QEvent.Type.TabletPress, QEvent.Type.TouchBegin)
 
 
-class FocusAreas(QObject):
+class FocusAreas(GuiFilter):
     def __init__(self, win):
         super().__init__(win)
         self.win = win
-        win.installEventFilter(self)
+        self.watch(win)
 
-    def eventFilter(self, obj, event):
+    def on_event(self, obj, event):
         if obj is self.win and event.type() in PRESSES:
             p = event.points()[0].position() if hasattr(event, "points") and event.points() else event.position()
             QMetaObject.invokeMethod(self.win, "pressedAt", Q_ARG("QVariant", p.x()), Q_ARG("QVariant", p.y()))

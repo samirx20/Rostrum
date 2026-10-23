@@ -2,24 +2,27 @@
 coming up and calls hub.keyUp(job). A key held while the window loses focus is let go then too, so a held "hear the
 original" never sticks on. Installed by the action hub only when the app's map has a hold key; auto-repeats are
 ignored, and a press the shortcuts didn't run (typing in a field) has no release to run (the hub checks).
+The hub has no window, so this one watches the whole app; gui_filter.py keeps it off Qt's own threads.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QObject
+from PySide6.QtCore import QEvent
 from PySide6.QtGui import QGuiApplication, QKeySequence
 
+from .gui_filter import GuiFilter
 
-class KeyHold(QObject):
+
+class KeyHold(GuiFilter):
     def __init__(self, hub, keymap):
         super().__init__(hub)
         self.hub, self.keymap = hub, keymap
         self.jobs = [e["job"] for e in keymap.entries() if e["hold"]]
         app = QGuiApplication.instance()
         if self.jobs and isinstance(app, QGuiApplication):      # (a windowless Qt app has no keys to watch)
-            app.installEventFilter(self)
+            self.watch(app)
             app.applicationStateChanged.connect(self._state)
 
-    def eventFilter(self, obj, event):
+    def on_event(self, obj, event):
         if event.type() == QEvent.Type.KeyRelease and not event.isAutoRepeat():
             name = QKeySequence(event.key()).toString()
             if name:
