@@ -3,8 +3,6 @@ use kurbo::{Affine, Shape};
 use peniko::{BlendMode, Fill, Mix};
 use std::{cell::Cell, sync::Arc};
 
-const LAYER_LIMIT: u32 = 1024;
-
 #[derive(Default)]
 pub(crate) struct LayerManager {
     layers_used: Cell<u32>,
@@ -91,11 +89,10 @@ impl LayerManager {
         }
         self.layers_wanted.update(|x| x + 1);
 
-        // Check if clips are above limit
-        let layers_available = self.layers_used.get() <= LAYER_LIMIT;
-        if !layers_available {
-            return false;
-        }
+        // Rostrum patch (H41): no layer cap. Upstream refused every layer after the 1024th of a frame (a Vello
+        // budget) and drew on without it, so in a busy frame the late layers silently lost their blend, opacity,
+        // filter or clip: a multiply vignette drawn last came out as a plain white oval over the whole film. Skia
+        // costs memory per *open* layer (the depth), not per layer used, so every wanted layer is pushed.
 
         // Actually push the layer. A blended or isolated group is a real layer even at full opacity:
         // its content composites onto the backdrop as one.

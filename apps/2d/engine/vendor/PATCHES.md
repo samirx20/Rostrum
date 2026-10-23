@@ -242,3 +242,9 @@ Not crates (`render/src`): `depth_tests.rs` — a parent's `perspective: 800px` 
 | Crate | Patch | Why |
 |---|---|---|
 | blitz-paint | `ink.rs` + `render.rs`: an opacity / filter layer on an element whose children may overflow it (overflow: visible) covers where its subtree paints (its boxes, grown by box / text shadows, CSS filters, outlines and a font size of glyph overhang), plus 2 device pixels so the clip's edge never meets an edge inside; unbounded as before when that can't be known (a transformed, fixed or SVG descendant, a filter by `url(#id)`) | the round-4 patch made such layers unbounded, so Skia sized each to the whole frame: a 1080p comp of 200 half-transparent layers cleared and composited 200 full frames, ≈ 26 ms of GPU a frame (now ≈ 5 ms); pictures unchanged (≤ 1/255 in blurred shadows, 6/255 on a few pixels) |
+
+## H41 (2026-10-23)
+
+| Crate | Patch | Why |
+|---|---|---|
+| blitz-paint | `layers.rs`: no 1024-layer cap; every wanted layer is pushed | upstream refused each layer past the 1024th of a frame and drew on without it, so a busy frame's late layers silently lost their blend, opacity, filter or clip (Night Bloom's multiply vignette drew as a white oval over the film for ~1 s at the drop, in look and export). Test: `render/src/blend_budget_tests.rs` |
