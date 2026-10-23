@@ -1,5 +1,5 @@
 """Frame-by-frame operations on drawing layers: add a drawing at a frame (blank, or copying another to redraw on),
-remove one, hold one for N frames. Painting itself is the shared kit's (`stroke.add`, `paint.clear` …: kind.py
+remove one, hold one for N frames, move one to another frame. Painting itself is the shared kit's (`stroke.add`, `paint.clear` …: kind.py
 registers it). A drawing's frames stay sorted by `at` (the kind's check refuses anything else).
 """
 from __future__ import annotations
@@ -38,15 +38,17 @@ def _place(frames, at) -> int:
 
 
 @R.operation("frame.add", "Add a drawing at a frame to a drawing layer or a painted element (blank, or a copy of "
-             "another drawing to redraw on). It shows until the next drawing; Draw each frame turns on in the same change.",
+             "another drawing to redraw on). It shows until the next drawing; Draw each frame turns on in the same change. "
+             "Frame left out: after the last drawing, its hold being the layer's New ones hold (newHold, default 2).",
              target=("drawing", *paint_fields.TYPES), label="New drawing",
-             params=[Param.number("at", label="Frame", min=0, max=10**7, integer=True, required=True),
+             params=[Param.number("at", label="Frame", min=0, max=10**7, integer=True),
                      Param.id("copy", kind="frame", label="Copy of", importance="secondary",
                               help="A frame id whose paint layers are copied"),
                      Param.text("id", label="Id", importance="deep")])
 def frame_add(ctx, targets, args):
     for t in targets:
         frames = ctx.item(t).get("frames", [])
+        args = {**args, "at": args["at"] if args.get("at") is not None else next_at(ctx.item(t))}
         if any(f["at"] == args["at"] for f in frames):
             ctx.fail(codes.BAD_ARGUMENT, f'at={args["at"]}', f"{t} already has a drawing at that frame")
         if args.get("copy"):
@@ -61,6 +63,12 @@ def frame_add(ctx, targets, args):
         ctx.insert(t, "frames", frame, _place(frames, args["at"]))
         if not ctx.item(t).get("eachFrame"):
             ctx.set(t, "eachFrame", True)
+
+
+def next_at(item: dict) -> int:
+    """Where a new drawing goes when no frame is given: the last one's start + the layer's New ones hold."""
+    frames = item.get("frames", [])
+    return frames[-1]["at"] + int(item.get("newHold") or 2) if frames else 0
 
 
 def _copy_ids(ctx, frame):
@@ -105,3 +113,20 @@ def frame_hold(ctx, targets, args):
         shift = frames[i]["at"] + args["frames"] - frames[i + 1]["at"]
         for f in frames[i + 1:]:
             ctx.set(f["id"], "at", f["at"] + shift)
+
+
+@R.operation("frame.move", "Move a drawing to another frame; the others stay where they are (the one before it is held "
+             "until it, or until the next). Refused where another drawing already starts.",
+             target="frame", label="Move drawing", importance="secondary",
+             params=[Param.number("to", label="Frame", min=0, max=10**7, integer=True, required=True)])
+def frame_move(ctx, targets, args):
+    if len(targets) != 1:
+        ctx.fail(codes.BAD_ARGUMENT, "target", "move one drawing at a time", hint="Call frame.move once per drawing.")
+    t, to = targets[0], args["to"]
+    parent = index(ctx.doc, ctx.kind.lists)[t].parent
+    frames = ctx.item(parent)["frames"]
+    if any(f["at"] == to and f["id"] != t for f in frames):
+        ctx.fail(codes.BAD_ARGUMENT, f"to={to}", f"{parent} already has a drawing at that frame")
+    others = [f for f in frames if f["id"] != t]
+    ctx.set(t, "at", to)
+    ctx.move(t, parent, "frames", _place(others, to))

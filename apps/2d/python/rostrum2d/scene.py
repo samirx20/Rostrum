@@ -24,7 +24,7 @@ def python_only(kind: str) -> set[str]:
     """The fields of an item type the engine never sees: auto layout's, stepped timing's and swap sets' (all
     applied here), the scene's soundtrack (Sound's engine plays it, not 2D's) and a text's style link (its values are
     already on the text: text_styles.py)."""
-    return (py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END, "locked", "hidden", "eachFrame", "soundtrack", "textStyle"} | swap.PY_ONLY.get(kind, set())
+    return (py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END, "locked", "hidden", "eachFrame", "newHold", "soundtrack", "textStyle"} | swap.PY_ONLY.get(kind, set())
             | paint_fields.NAMES | fill_fields.NAMES)
 
 

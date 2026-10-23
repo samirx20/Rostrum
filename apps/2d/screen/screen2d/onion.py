@@ -12,9 +12,6 @@ from PySide6.QtQuick import QQuickImageProvider
 from rostrum2d.drawing import canvas_size, frame_at, neighbours
 from rostrum_paint import canvas, see
 
-REACH = 2                 # how many drawings each way
-
-
 class OnionProvider(QQuickImageProvider):
     def __init__(self):
         super().__init__(QQuickImageProvider.ImageType.Image)
@@ -29,12 +26,13 @@ class OnionProvider(QQuickImageProvider):
             return self._image
 
 
-def build(drawing: dict, n: int) -> QImage | None:
-    """The tinted neighbours of the drawing shown at frame n; None when there are none to show."""
+def build(drawing: dict, n: int, reach_before: int = 2, reach_after: int = 2) -> QImage | None:
+    """The tinted neighbours of the drawing shown at frame n (so many each way); None when there are none to show."""
     here = frame_at(drawing, n)
     if here is None:
         return None
-    before, after = neighbours(drawing, here["id"], REACH)
+    before, after = neighbours(drawing, here["id"], max(reach_before, reach_after))
+    before, after = before[:reach_before], after[:reach_after]
     if not before and not after:
         return None
     cw, ch = canvas_size(drawing)

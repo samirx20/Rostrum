@@ -96,10 +96,17 @@ Rectangle {
         visible: !name.renaming
         opacity: name.rowData.hidden ? 0.45 : 1
         x: icon.visible ? icon.x + icon.width + Theme.gap : name.indent + 16
-        width: parent.width - x - Theme.gap - (name.isLayer ? 38 : 0); anchors.verticalCenter: parent.verticalCenter
+        width: parent.width - x - Theme.gap - (name.isLayer ? 38 : 0) - (frameNote.visible ? frameNote.implicitWidth + Theme.gap : 0)
+        anchors.verticalCenter: parent.verticalCenter
         text: name.rowData.label; elide: Text.ElideRight; font.family: uiFont
         HoverTip { text: labelText.truncated ? name.rowData.label : ""; hovered: hover.containsMouse }   // the whole name
         font.pixelSize: name.isLayer ? Theme.body : Theme.label + 1
         color: name.isLayer || name.selected ? Theme.fg : Theme.fg2
+    }
+    Text {      // a frame-by-frame layer: "9 drawings · on twos"
+        id: frameNote
+        visible: !name.renaming && (name.rowData.frameNote || "") !== "" && !hover.containsMouse
+        anchors.right: parent.right; anchors.rightMargin: Theme.gap + 38; anchors.verticalCenter: parent.verticalCenter
+        text: name.rowData.frameNote || ""; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
     }
 }

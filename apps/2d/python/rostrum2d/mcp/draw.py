@@ -73,7 +73,10 @@ def blank(w, h):
 @tools.tool("look_drawing", {"required": ["layer"], "properties": {
     **ITEM, **LAYER, **FRAME, **ZOOM, **GRID, **SAMPLING,
     "paint": {"type": "string", "description": "Show only this paint layer of the frame (its id). Default: all paint layers together."},
-    "onion": {"type": "boolean", "default": False, "description": "Also show the 2 drawings before (red) and 2 after (green), faint, under this one."},
+    "onion": {"anyOf": [{"type": "boolean"}, {"type": "object", "additionalProperties": False, "properties": {
+        "before": {"type": "integer", "minimum": 0, "maximum": 5}, "after": {"type": "integer", "minimum": 0, "maximum": 5}}}],
+        "default": False, "description": "Also show the drawings before (red) and after (green), faint, under this one: "
+                                         "true = 2 each way, or {before, after} = so many each way (0 – 5), as the screen's onion skin."},
     "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": 1200, "description": "Picture width in px."}}})
 def look_drawing(ctx, args):
     """One drawing of a drawing layer, in canvas pixels: the frame shown at a frame number, optionally zoomed, with a labelled
@@ -87,8 +90,12 @@ def look_drawing(ctx, args):
     if paint is not None and paint not in [p["id"] for p in frame.get("paints", [])]:
         raise RostrumError.not_found(ctx.tool, "paint layer", paint, [p["id"] for p in frame.get("paints", [])], f"frame {frame['id']}")
     img = canvas.layer_rgba(frame, paint, w, h) if paint else canvas.rgba8(frame, w, h)
-    if args.get("onion"):
-        before, after = D.neighbours(drawing, frame["id"], 2)
+    onion = args.get("onion")
+    if onion:
+        reach = onion if isinstance(onion, dict) else {}
+        b, a = reach.get("before", 2), reach.get("after", 2)
+        before, after = D.neighbours(drawing, frame["id"], max(a, b))
+        before, after = before[:b], after[:a]
         img = see.onion(img, [canvas.rgba8(f, w, h) for f in before], [canvas.rgba8(f, w, h) for f in after])
     note = f'{drawing["id"]} frame {n} (drawing {frame["id"]} at {frame["at"]})' + (f", paint {paint}" if paint else "") + (", onion skin" if args.get("onion") else "")
     try:

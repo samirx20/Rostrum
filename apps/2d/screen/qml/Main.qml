@@ -67,8 +67,8 @@ AppShell {
     // frame by frame, on the selected drawing (INTERACTION Part 2: , and . step drawings, = and − hold; Alt+arrows nudge)
     // , and . : the playhead to the previous / next thing that happens (a key, a marker, a drawing, a layer's start or end)
     // of the selected layers, or of everything when none is selected (backend.stepEvent, screen2d/key_edits.py)
-    Shortcut { sequence: ","; enabled: !shell.typing; onActivated: backend.stepEvent(-1) }
-    Shortcut { sequence: "."; enabled: !shell.typing; onActivated: backend.stepEvent(1) }
+    Shortcut { sequence: ","; enabled: !shell.typing; onActivated: painter.drawingId !== "" ? painter.goFrame(-1) : backend.stepEvent(-1) }   // a frame-by-frame layer: its drawings
+    Shortcut { sequence: "."; enabled: !shell.typing; onActivated: painter.drawingId !== "" ? painter.goFrame(1) : backend.stepEvent(1) }
     // Shift+, and Shift+. : the previous / next beat of the project's sound (the key map's prev_beat / next_beat;
     // "<" and ">" are what a US keyboard sends for them), only while the sound has a tempo (backend.soundtrack)
     Shortcut { sequences: ["Shift+,", "<"]; enabled: !shell.typing && backend.soundtrack.hasBeats; onActivated: backend.soundtrack.stepBeat(-1) }

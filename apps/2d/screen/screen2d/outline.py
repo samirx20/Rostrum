@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from rostrum2d import fields as F
 from rostrum2d.anims import PRESET_LABELS, animations
+from rostrum2d.drawing import each_frame
 from rostrum2d.names import display_name
 from rostrum2d.retime import END, FIELD
 from rostrum_core.keys import animated, keys_of, marked
@@ -133,8 +134,9 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset()) -> li
                            startMarker=lay.get(FIELD) or "", endMarker=lay.get(END) or "")
             row.update(locked=bool(lay.get("locked")), hidden=bool(lay.get("hidden")))
             row["fold"] = "" if not inside else "open" if is_open else "closed"
-            if lay["type"] == "drawing":
+            if lay["type"] == "drawing" or (lay.get("frames") and each_frame(lay)):   # drawings, as cells (FrameMarks.qml)
                 row["frames"] = framing.marks(lay, comp["fps"], duration)
+                row["frameNote"] = framing.note(lay) if each_frame(lay) else ""
             out.append(row)
             out.extend(lines)                      # overlapping animations: a line each under the layer (SPEC §9.4)
             if not is_open:

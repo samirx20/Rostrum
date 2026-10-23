@@ -29,11 +29,13 @@ class Painter(BrushPanel):
         self._target = None                             # (document state, layer, what the pen paints on): target()
         self.brush = Brush(bridge.comp().get("background", ""))
         self._serial, self._built, self._rev = 0, None, 0        # _rev: the document changed (the onion is stale)
+        self._reach = {"before": 2, "after": 1}         # onion skin: how many drawings each way (screen state)
         self.provider = onion.OnionProvider()
         self.model = RowsModel(rows.ROLES, self)
         self.model.reset(self.brush.rows())
         bridge.docChanged.connect(self._doc_changed)
         bridge.outlineChanged.connect(self._refresh)
+        bridge.timeChanged.connect(self._refresh)          # the navigator and the onion follow the playhead
         self.changed.connect(self.brushChanged)         # the header names what the pen paints on
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
@@ -72,6 +74,12 @@ class Painter(BrushPanel):
         return framing.marks(self.b.placed_item(d["id"]), self.b.comp()["fps"], self.b.comp()["duration"]) if d else []     # composition seconds
 
     onionOn = Property(bool, lambda self: self._onion, notify=changed)
+    onionReach = Property("QVariantMap", lambda self: dict(self._reach), notify=changed)
+
+    @Property(int, notify=changed)
+    def newHold(self):
+        d = self.drawing()
+        return int(d.get("newHold") or 2) if d else 2
 
     @Property(int, notify=changed)
     def onionSerial(self):
@@ -165,11 +173,57 @@ class Painter(BrushPanel):
         d = self.drawing()
         if d is not None:
             calls, label = make(d)
-            self.b.guard(lambda: self.b.done(self.b.doc.apply(calls, self.b.who, label=label), ""))
+            return self.b.guard(lambda: self.b.done(self.b.doc.apply(calls, self.b.who, label=label), ""))
+        return False
 
     @Slot(bool)
     def newFrame(self, copy):
-        self._frame_edit(lambda d: framing.new_frame(d, self._n(), copy))
+        """New (Alt+N) or Copy (Alt+Shift+N): the playhead goes to the new drawing, so the next stroke lands in it."""
+        d = self.drawing()
+        if d is None:
+            return
+        calls, label, at = framing.new_frame(d, self._n(), copy)
+        if self._frame_edit(lambda _d: (calls, label)) is not False:
+            self._go(at, d["id"])
+
+    @Slot(str, int)
+    def holdFrame(self, frame_id, frames):
+        """A cell's right edge dragged: that drawing held this many frames (later ones move with it)."""
+        self._frame_edit(lambda d: ([{"op": "frame.hold", "target": [frame_id], "args": {"frames": max(1, frames)}}],
+                                    "Hold drawing"))
+
+    @Slot(str, int)
+    def moveFrame(self, frame_id, to):
+        """A cell dragged to another frame (frame.move): the others stay."""
+        self._frame_edit(lambda d: ([{"op": "frame.move", "target": [frame_id], "args": {"to": max(0, to)}}],
+                                    "Move drawing"))
+
+    @Slot(str, int)
+    def copyFrameTo(self, frame_id, at):
+        """Alt+drag a cell: a copy of that drawing at another frame (a reused drawing, for cycles)."""
+        self._frame_edit(lambda d: ([{"op": "frame.add", "target": [d["id"]], "args": {"at": max(0, at), "copy": frame_id}}],
+                                    "Copy drawing"))
+
+    @Slot(str)
+    def removeFrame(self, frame_id):
+        """Delete a cell: the drawing before is held over the gap."""
+        self._frame_edit(lambda d: ([{"op": "frame.remove", "target": [frame_id]}], "Delete drawing"))
+
+    @Slot(int)
+    def setNewHold(self, frames):
+        """New ones hold 1 · 2 · 3 · 4: a setting of the layer (newHold), so agents' frame.add lands the same way."""
+        self._frame_edit(lambda d: ([{"op": f'{d["type"]}.set', "target": [d["id"]], "args": {"newHold": frames}}],
+                                    "New ones hold"))
+
+    @Slot(int)
+    def goToFrame(self, at):
+        """A cell clicked: the playhead to where that drawing starts (it is the one painted into)."""
+        d = self.drawing()
+        if d is not None:
+            self._go(at, d["id"])
+
+    def _go(self, at, layer):
+        self.b.setTime(at / self.b.comp()["fps"] + self.b.offset(layer))
 
     @Slot()
     def clearDrawing(self):
@@ -189,11 +243,17 @@ class Painter(BrushPanel):
         d = self.drawing()
         at = framing.state(d, self._n())["prev" if direction < 0 else "next"] if d else None
         if at is not None:
-            self.b.setTime(at / self.b.comp()["fps"] + self.b.offset(d["id"]))
+            self._go(at, d["id"])
 
     @Slot(bool)
     def setOnion(self, on):
         self._onion, self._built = on, None
+        self._refresh()
+
+    @Slot(str, int)
+    def setOnionReach(self, side, count):
+        """Onion skin › Before / After: 0 – 5 drawings that way."""
+        self._reach[side], self._built = max(0, min(5, count)), None
         self._refresh()
 
     # ---- inside -----------------------------------------------------------------------------------------------
@@ -213,7 +273,7 @@ class Painter(BrushPanel):
         key = (d["id"], here and here["id"], self._rev)
         if key == self._built:
             return
-        image = onion.build(d, self._n())
+        image = onion.build(d, self._n(), self._reach["before"], self._reach["after"])
         self._built = key
         self.provider.put(image if image is not None else onion.QImage())
         self._serial += 1
