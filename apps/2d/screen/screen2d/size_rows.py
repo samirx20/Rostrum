@@ -1,4 +1,4 @@
-"""Scene settings › Size: a choice among the named frame sizes (rostrum2d/frame_sizes.py, one list of data), first in the
+"""Scene settings › Format: a choice among the named frame sizes (rostrum2d/frame_sizes.py, one list of data), first in the
 Frame group; the scene's own Width and Height rows stay under it for any other numbers. Not a stored field: the pick is
 the agents' `comp.size`, and the row shows whichever named size the scene's numbers match (else "Custom"). No Qt."""
 from __future__ import annotations
@@ -15,7 +15,7 @@ def rows(rows: list[dict], item: dict | None) -> list[dict]:
     if at is None:
         return rows
     w, h = item.get("width", 1920), item.get("height", 1080)
-    row = {**rows[at], "id": ROW, "label": "Size", "type": "choice", "options": frame_sizes.options(w, h),
+    row = {**rows[at], "id": ROW, "label": "Format", "type": "choice", "options": frame_sizes.options(w, h),
            "value": frame_sizes.named(w, h) or "custom", "min": None, "max": None, "unit": "", "anim": "", "help": "A named frame size; "
            "or type Width and Height below"}
     return rows[:at] + [row] + rows[at:]

@@ -1,6 +1,7 @@
 """Dragging a key square on the motion path moves only that key's x and y, as one undo step."""
 from rostrum_core.keys import keys_of
 from test_screen import bridge  # noqa: F401  (the shared fixture: a small document, the engine stood in)
+from rostrum2d import run_source
 
 
 def test_key_square_drag_moves_only_that_key_in_one_step(bridge):  # noqa: F811
@@ -55,3 +56,31 @@ def test_key_square_snaps_to_the_frame_centre_unless_free(bridge):  # noqa: F811
     mp.drag(3, 2, False)
     bridge.endDrag()
     assert (xs(), ys()) == (163, 92)
+
+
+def test_camera_key_lands_under_the_pointer_with_the_playhead_between_keys(bridge):  # noqa: F811
+    """The canvas is seen through the camera the drag changes: the view holds as at the press, so the square follows
+    the pointer exactly, and the picture follows the camera again at the drop."""
+    bridge.doc.run_script("cam.py", run_source(CAM, "cam.py"))
+    bridge.select("cam")
+    bridge.setTime(1.0)                            # between the camera's keys at 0 s and 2 s
+    mp = bridge.motionPath
+    square = lambda: next(k for p in mp.paths if p["id"] == "cam" for k in p["keys"] if k["t"] == 2.0)["pos"]   # noqa: E731
+    x0, y0 = square()
+    assert mp.beginKey("cam", 2.0) and bridge.held_view is not None
+    bridge.snap.keys(True, False)                  # Ctrl: free
+    for dx, dy in ((20, -10), (60, -40), (95, -41)):
+        mp.drag(dx, dy, False)
+        x, y = square()
+        assert abs(x - (x0 + dx)) < 0.5 and abs(y - (y0 + dy)) < 0.5
+    bridge.endDrag()
+    assert bridge.held_view is None
+
+
+CAM = '''
+comp("c", width=320, height=180, fps=10, duration=2)
+cam = camera("cam")
+cam.key("x", {0.0: 160, 2.0: 220})
+cam.key("y", {0.0: 90, 2.0: 70})
+cam.key("zoom", {0.0: 1, 2.0: 1.4})
+'''

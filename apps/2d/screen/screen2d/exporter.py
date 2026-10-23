@@ -13,12 +13,12 @@ from pathlib import Path
 
 from PySide6.QtCore import Property, Signal, Slot
 from rostrum2d import project_sound
-from rostrum2d.io import formats as table
+from rostrum2d.io import formats as table, gif_size
 from rostrum2d.mcp import export_name, exporting
 from rostrum_core.mcp.files import RENDER_DIR
 from rostrum_gui.export_sheet import ExportSheet
 
-from . import export_rows
+from . import export_rows, gif_guess
 
 
 class Exporter(ExportSheet):
@@ -29,6 +29,7 @@ class Exporter(ExportSheet):
         self._engine_factory, self._engine = engine_factory, None
         self.changed.connect(self.own)                # (a subclass's property can't notify on the kit's signal: PySide6 crashes)
         self._comp_id = bridge.comp_id          # the comp shown, until another is picked
+        self.guess = gif_guess.GifGuess(self.changed.emit, self)      # a GIF's size, measured off the GUI thread
         self._choice = "mp4"
         self._values = {}
         self.chose()
@@ -108,9 +109,7 @@ class Exporter(ExportSheet):
                               lambda done, total: progress(done / total if total else 0.0), make_engine,
                               name=p["name"], overwrite=p["overwrite"])
         version = Path(facts["file"]).parent.name if p["out"] is None else ""
-        size = (facts.get("checked") or {}).get("size")
-        return {**facts, "version": version if re.fullmatch(r"v\d+", version) else "",
-                "summary": f'{facts["frames"]} frames at {facts["fps"]:g} fps' + (f' · {"×".join(map(str, size))}' if size else "")}
+        return {**facts, "version": version if re.fullmatch(r"v\d+", version) else "", "summary": export_rows.result(facts)}
 
     def stop(self):
         if self._engine is not None:
@@ -134,17 +133,31 @@ class Exporter(ExportSheet):
     @Property("QVariantList", notify=own)
     def settings(self):
         v = self._values
-        if "size" in v:                               # a GIF: what its choices come to, about, before anything is drawn
-            p = self.bridge.doc.item(self._comp_id)
-            span = self.range_times() or (0.0, self._duration())
-            v = {**v, "estimate": export_rows.gif_estimate(p.get("width", 1920), p.get("height", 1080), p.get("fps", 30),
-                                                           span[1] - span[0], v)}
+        if "size" in v and self._open and self._state != "done":   # a GIF: what its choices come to (done: the result line)
+            p, span = self._comp(), self.range_times() or (0.0, self._duration())
+            v = {**v, "file": export_rows.gif_line(p.get("width", 1920), p.get("height", 1080), p.get("fps", 30),
+                                                   span[1] - span[0], v, self._gif_bytes(span))}
         return export_rows.settings(self._row(), v)
+
+    def _gif_bytes(self, span):
+        """The GIF's measured size for the document as it is now and these choices (gif_guess; None while working)."""
+        v, doc, comp = dict(self._values), self.bridge.doc, self._comp_id
+
+        def prepare():
+            scene, factory = exporting.snapshot(doc, comp, "gif"), self._engine_factory or exporting._engine
+
+            def job():
+                with factory() as eng:
+                    eng.load(scene)
+                    return gif_size.estimate(eng, span[0], span[1], v["alpha"], v["size"], v["rate"])
+            return job
+        key = (comp, doc.seq, span, v["alpha"], v["size"], v["rate"])
+        return self.guess.bytes_for(key, prepare)
 
     @Property("QVariantList", notify=own)
     def facts(self):
         """The result in words, read back from the file: [{label, text}]."""
-        return export_rows.facts(self._row(), self._result, self.path) if self._state == "done" and self._result else []
+        return export_rows.facts(self._result) if self._state == "done" and self._result else []
 
     @Property("QVariantList", notify=own)
     def report(self):
@@ -168,4 +181,5 @@ class Exporter(ExportSheet):
         if self.running() or key not in self._values:
             return
         self._values[key] = {"depth": int, "alpha": bool, "quality": str, "sound": bool, "size": str, "rate": str}[key](value)
+        self.stale()
         self.changed.emit()

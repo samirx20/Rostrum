@@ -17,7 +17,7 @@ FIELDS = [
     Param.toggle("background", label="On", group=G, default=False, importance="secondary",
                  help="A colour box behind the group's layers, as big as the group (with auto layout and hugging on, "
                       "it hugs them with the padding: a name on a pill)"),
-    Param.color("bgColor", label="Background colour", group=G, default="#1d4ed8", importance="secondary", valid_when=ON),
+    Param.color("bgColor", label="Background colour", group=G, default="#334155", importance="secondary", valid_when=ON),
     Param.number("bgRadius", label="Corner radius", group=G, min=0, max=10000, step=1, unit="px", default=0.0,
                  importance="secondary", valid_when=ON, help="Rounds the box's corners; half its height or more makes a pill"),
     Param.toggle("bgStroke", label="Outline", group=G, default=False, importance="secondary", valid_when=ON),

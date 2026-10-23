@@ -11,7 +11,8 @@ Column {
     readonly property int labelColumn: Theme.labelColumnFor(width)
     readonly property real fieldW: width - labelColumn - Theme.keyGutter
     readonly property real wide: Theme.wideFor(width)
-    readonly property real holdW: 52
+    readonly property real holdW: Math.ceil(holdWords.advanceWidth) + 2      // as wide as the longest hold label says
+    TextMetrics { id: holdWords; font.pixelSize: Theme.body; font.family: uiFont; text: "to the end" }
     readonly property var now: painter.now
     readonly property var counts: [0, 1, 2, 3, 4, 5].map(k => ({ value: k, label: k === 1 ? "1 drawing" : k + " drawings" }))
 

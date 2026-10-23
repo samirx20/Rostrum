@@ -73,6 +73,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         self.outlineChanged.connect(self._layers_check)     # first: every later listener reads the new rows
         self.frames = FrameRenderer(self)
         self._scene = None                                  # the engine's scene, described once per change (_render)
+        self.held_view = None                               # a camera-key drag: the scene as at the press (motion_path.py)
         self.frames.ready.connect(self._on_frame)
         self.frames.failed.connect(self._fail)
         self.frames.note.connect(self._set_status)         # no graphics driver: said once (frames.py)
@@ -293,9 +294,11 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
 
     # ---- inside -----------------------------------------------------------------------------------------------
     def _render(self):
-        """The document, the markers or a 3D render changed: describe the scene again, then show the playhead."""
+        """The document, the markers or a 3D render changed: describe the scene again, then show the playhead. While a
+        camera-key drag holds the view (`held_view`), the picture stays as at the press and is drawn once at the drop."""
         self._scene = None
-        self._show()
+        if self.held_view is None:
+            self._show()
 
     def _show(self):
         """The frame at the playhead. The scene doesn't depend on the playhead (the engine evaluates every time), so it

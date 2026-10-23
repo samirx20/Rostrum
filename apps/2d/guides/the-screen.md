@@ -59,7 +59,7 @@ The whole list: Group, Ungroup, Clip to a box, Auto layout, Make swap set, Make 
 
 ## 4. The settings panel
 
-1. The panel on the right shows the settings of what is picked. Its heading is the layer's name, and the line under it says what kind of thing it is. When several things are picked it says how many, and shows what they share: a value that differs says "Mixed", and a change sets it on all of them as one step.
+1. The panel on the right shows the settings of what is picked. Its heading is the layer's name (a text you haven't renamed is called by its words), and the line under it says what kind of thing it is. When several things are picked it says how many, and shows what they share: a value that differs says "Mixed", and a change sets it on all of them as one step.
 2. A few **essential** settings come first. Under them, only the groups that fit this kind of layer. A group where you changed something from its starting value shows open, so you see what you changed. Every other group is a name in one short line ("Paragraph · Font · Outline · Depth · Timing …"): click a name to open that group, and click its heading to fold it back into the line. A small blue dot by a name means something in that folded group was changed. The groups you open or fold stay that way when you pick another layer.
    The line at the very bottom, **Last changed by …**, sits on its own under a thin line; click it to open History.
 3. **Find a setting** (**Ctrl+F**) finds any setting by its name or a word of what it does ("opacity", "angle", "gradient"): pick one from the list and its group opens and it is shown. A word that names an effect you have not added yet, such as "blur", shows a line **Add Blur**.

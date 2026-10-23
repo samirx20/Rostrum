@@ -183,14 +183,20 @@ class ExportSheet(QObject):
             return
         self._choice = value
         self.chose()
+        self.stale()
+        self.changed.emit()
+
+    def stale(self):
+        """A choice changed: the last result's line no longer describes what Export would make (the sheet says what the
+        new choices come to instead). Never during a run."""
         if self._state != "running":
             self._state, self._note = "", ""
-        self.changed.emit()
 
     @Slot(str)
     def setRange(self, value):
         if not self.running() and value in [r["value"] for r in self.ranges_list()]:
             self._range = value
+            self.stale()
             self.changed.emit()
 
     def range_times(self) -> tuple[float, float] | None:

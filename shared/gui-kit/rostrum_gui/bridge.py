@@ -186,6 +186,11 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         screen); the inspector leaves them out, and a group whose members all went goes too."""
         return set()
 
+    def starts(self, item: dict) -> dict:
+        """{field: value} a new item of this kind may start with besides the field's default (a tool's own start): a
+        settings group opens only for a value the person changed from both."""
+        return {}
+
     def anim_state(self, item: dict, param: str) -> str:
         return ""
 

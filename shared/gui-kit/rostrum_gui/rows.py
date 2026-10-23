@@ -77,12 +77,13 @@ def _param_row(p) -> dict:
 
 
 def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=None, expr=None, choices=None,
-             opened=(), query: str = "", elsewhere=frozenset()) -> list[dict]:
+             opened=(), query: str = "", elsewhere=frozenset(), starts=None) -> list[dict]:
     """The rows with `valid`, `value`, `anim` and `expr` filled in for these values (`item`: the item's values as
     the screen shows them, e.g. at the playhead). `anim(name)` gives a param's key state; none: no keys.
     `expr(name)` gives {"text", "note"} for a param driven by an expression or binding; none: no param is.
     Rows with `in` (sections.py): `opened` is the person's choice per group ({name: open?}; a set = those open); a
-    group with no choice is open when a value in it differs from its default. A non-blank `query` keeps only matches.
+    group with no choice is open when a value in it differs from its default and from `starts` (the values this kind
+    may start with instead, bridge.starts: a text placed by the Text tool starts at its top-left). A non-blank `query` keeps only matches.
     `elsewhere`: params the screen shows in another place (bridge.on_page); here they count as not applying, so a
     group is never opened or named for them alone."""
     picks = {r["id"]: choices(r["id"]) if choices else [] for r in static if r.get("control") == "pick"}
@@ -90,7 +91,7 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
                                                             or bool(item.get(r["id"], r["default"])))
           for r in static if r["row"] == "param"}
     ok.update(dict.fromkeys(set(elsewhere) & ok.keys(), False))
-    opened = _open_groups(static, item, ok, opened)
+    opened = _open_groups(static, item, ok, opened, starts or {})
     out = []
     for r in static:
         r = dict(r)
@@ -123,14 +124,16 @@ class _Opened(set):
     changed: set
 
 
-def _open_groups(static, item, ok, choice) -> _Opened:
-    """Which groups are open: the person's choice, else open when changed (a value that applies, not at its default)."""
+def _open_groups(static, item, ok, choice, starts) -> _Opened:
+    """Which groups are open: the person's choice, else open when changed (a value that applies, at neither its
+    default nor the kind's own start)."""
     choice = choice if isinstance(choice, dict) else {g: True for g in choice}
     params = {r["id"]: r for r in static if r["row"] == "param"}
     out = _Opened()
     out.changed = set()
     for f in (r for r in static if "fold" in r):
-        if any(ok[m] and params[m]["default"] is not None and item.get(m, params[m]["default"]) != params[m]["default"]
+        if any(ok[m] and params[m]["default"] is not None
+               and item.get(m, params[m]["default"]) not in (params[m]["default"], starts.get(m, params[m]["default"]))
                for m in f["members"]):
             out.changed.add(f["fold"])
         if choice.get(f["fold"], f["fold"] in out.changed):

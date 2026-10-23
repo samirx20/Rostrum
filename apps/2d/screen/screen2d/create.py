@@ -161,7 +161,7 @@ class Create(QObject):
     def beginText(self, x, y, width):
         """Start typing at (x, y) (the text's top-left); width > 0 = a box the words wrap in."""
         self.finish()
-        place = {"x": round(x, 2), "y": round(y, 2), "anchorX": 0, "anchorY": 0, "align": "left"}
+        place = {"x": round(x, 2), "y": round(y, 2), **F.STARTS["text"]}
         if width > 0:
             place["boxWidth"] = round(width, 2)
         self._text = Session(self.b, None, {"size": self._start_size(), **self._style}, place)

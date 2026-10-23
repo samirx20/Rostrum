@@ -40,7 +40,7 @@ GROUP = [
        help="Arrange the group's layers in a row, a column or a grid, again on every frame (a layer that grows "
             "pushes the others along)"),
     _n("gap", "Gap", 16.0, ON, help="Space between layers (between columns in a grid)"),
-    _n("padding", "Padding", 0.0, ON, help="Space inside the group's edge, all round"),
+    _n("padding", "Padding", 10.0, ON, help="Space inside the group's edge, all round"),
     _c("justify", ["start", "center", "end", "between"], "Spread", "start", FLOW,
        {"start": "From the start", "center": "Centred", "end": "To the end", "between": "Space between"}),
     _c("align", ["start", "center", "end", "stretch"], "Align", "start", ON,

@@ -3,6 +3,8 @@ settings, only the ones that apply to it (from io/formats.py data, nothing place
 back from the file. The range (everything, marker to marker) is the kit sheet's own row."""
 from __future__ import annotations
 
+from pathlib import Path
+
 from rostrum2d.io import formats as table
 
 # What each format is for, in words; its file type beside it, one way for all (MP4, PNG …: a frames folder's rows say
@@ -34,8 +36,8 @@ def settings(row: dict, values: dict) -> list[dict]:
         for key, label, words in (("size", "Size", table.GIF_SIZES), ("rate", "Frame rate", table.GIF_RATES)):
             out.append({"key": key, "kind": "choice", "label": label, "value": values[key],
                         "options": [{"value": k, "label": w} for k, w in words.items()]})
-        if values.get("estimate"):
-            out.append({"key": "estimate", "kind": "note", "label": "File size", "value": values["estimate"]})
+        if values.get("file"):                    # what they come to (gif_line); gone once the result line says it
+            out.append({"key": "file", "kind": "note", "label": "File", "value": values["file"]})
     if "sound" in values:                         # only an MP4 of a project that has sound (exporter.chose)
         out.append({"key": "sound", "kind": "toggle", "label": "Project sound", "value": values["sound"]})
     return out
@@ -45,29 +47,35 @@ def megabytes(n: int) -> str:
     return f"{n / 1e6:.1f} MB" if n >= 1e5 else f"{max(1, round(n / 1e3))} KB"
 
 
-def gif_estimate(w: int, h: int, fps: float, seconds: float, values: dict) -> str:
-    """"about 3.2 MB · 960×540 · 15 frames a second", worked out from the GIF's choices (no picture is drawn for it)."""
+def line(weight: str, size, frames: int, fps: float) -> str:
+    """The file in one line, the one way the sheet says it, before (the estimate) and after (the result):
+    "about 9 KB · 960×540 · 150 frames at 15 fps". `size`: (w, h) or None."""
+    parts = [weight] + (["×".join(map(str, size))] if size else []) + [f"{frames} frames at {fps:g} fps"]
+    return " · ".join(p for p in parts if p)
+
+
+def gif_line(w: int, h: int, fps: float, seconds: float, values: dict, found) -> str:
+    """Before export: what the GIF's choices come to. `found`: its measured bytes (gif_guess), None while being worked
+    out, or the failure in words."""
     ow, oh, ofps, n = table.gif_shape(w, h, fps, max(1, round(seconds * fps)), values["size"], values["rate"])
-    return f"about {megabytes(table.gif_estimate(w, h, fps, seconds, values['size'], values['rate']))} · {ow}×{oh} · {n} frames"
+    weight = (f"about {megabytes(found)}" if isinstance(found, int) else "size: working it out…" if found is None else found)
+    return line(weight, (ow, oh), n, ofps)
 
 
-def facts(row: dict, f: dict, path: str) -> list[dict]:
-    """The finished file in words: [{label, text}]. Its name and folder are the sheet's Where (not said twice)."""
-    out = [{"label": "Frames", "text": f'{f["frames"]} at {f["fps"]:g} fps'}]
+def result(f: dict) -> str:
+    """After export: the file as written (its bytes on disk, its size and frames read back): the sheet's result line."""
+    weight = sum(Path(x).stat().st_size for x in f.get("files") or [] if Path(x).is_file())
+    return line(megabytes(weight) if weight else "", (f.get("checked") or {}).get("size"), f["frames"], f["fps"])
+
+
+def facts(f: dict) -> list[dict]:
+    """What the finished file holds that neither the result line (weight, size, frames: result()) nor the settings rows
+    above (transparency, bit depth, quality, sound) already say: [{label, text}]."""
+    out = []
     c = f.get("checked") or {}
-    if c.get("size"):
-        out.append({"label": "Size", "text": "×".join(str(n) for n in c["size"])})
     if isinstance(c.get("layers"), list):                     # motion samples: which layers, how often
         out.append({"label": "Moving layers", "text": ", ".join(c["layers"])})
         out.append({"label": "Samples", "text": f'{c["samples"]} each, {c["rate"]:g} a second'})
-    if row["alpha"]:
-        out.append({"label": "Transparency", "text": "kept" if f["alpha"] else "not kept"})
-    if len(row["depths"]) > 1:
-        out.append({"label": "Bit depth", "text": f'{f["depth"]}-bit'})
-    if f.get("sound"):
-        out.append({"label": "Sound", "text": "the project's mix"})
-    if f.get("quality"):
-        out.append({"label": "Quality", "text": f'{f["quality"]} (each frame gets what it needs)'})
     if f.get("encoded"):
         out.append({"label": "Encoded", "text": f["encoded"]})
     if f.get("kbps"):
