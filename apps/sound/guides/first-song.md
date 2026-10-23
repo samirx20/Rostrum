@@ -66,7 +66,9 @@ The **Colour** row shows the colour the track is drawn in.
 3. **Select several:** Ctrl+click adds or removes one, Shift+click takes everything between, and dragging across
    empty space draws a box. **Ctrl+A** selects all, **Esc** clears.
 4. **The settings panel** on the right names the selection ("5 notes") and shows its actions first, as buttons, such
-   as **Quantise** and **Transpose**; **More** holds the rest. There is no bar floating over the arrangement: the
+   as **Quantise** and **Transpose**, each always in the same place; **⋯** at the end of that row holds the less used
+   ones (when only those fit, there is no row: use right-click or **Ctrl+K**). The bottom line, **Last changed by …**,
+   sits on its own under a thin line; click it to open History. There is no bar floating over the arrangement: the
    actions live there. **Right-click** is a short menu: Cut, Copy, Paste, Duplicate, Delete, and for tracks Group,
    Move up / down, Lock and Rename. On empty lane space it offers Paste here, Add marker here and Select all on this
    track; on the ruler, Add marker here, Make a section from here and Show seconds. **Ctrl+K** finds every action by

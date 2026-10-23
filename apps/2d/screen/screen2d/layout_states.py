@@ -106,7 +106,12 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("action-menu", ["--sample"], ["selectmany dot rule", "actionmenu"]),
         # H60: keys a frame apart on a zoomed-out timeline: one dot standing for the run (a second diamond behind it)
         ("close-keys", close_keys(), ["select title", "showanim", "timeline full"]),
-        ("two-shapes", ["--sample"], ["selectmany dot rule"]),               # H49: compact actions, slim key-span bars
+        ("two-shapes", ["--sample"], ["selectmany dot rule"]),
+        # F11: the settings panel by kind (essentials, changed groups open, the rest in one row of names); fixed actions
+        ("f11-shape", ["--sample"], ["select card"]),
+        ("f11-text", ["--sample"], ["select title"]),
+        ("f11-group", ["--sample"], ["selectmany dot rule", "do layer:group"]),
+        ("f11-camera", ["--sample"], ["add camera"]),               # H49: compact actions, slim key-span bars
         ("gradient-handles", ["--sample"], ["select card", "clickname swatch", "clickname fillType:linear"]),
         # H47: the frame drives the layout (SPEC 2d-design-v2 §1.2): tall and square scenes put the timeline beside it
         *[(f"scene-{w}x{h}", ["--sample"], ["select screen_sample", f"set width {w}", f"set height {h}", "select title"])

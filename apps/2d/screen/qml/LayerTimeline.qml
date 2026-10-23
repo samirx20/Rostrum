@@ -11,6 +11,7 @@ import RostrumKit
 Rectangle {
     id: tl
     property int labelWidth: 240
+    Item { property bool menuAvoid: true; x: 0; y: 0; width: tl.labelWidth; height: tl.height }   // menus and flyouts keep off the names (MenuPlace.js)
     signal resized(real height)                 // the top edge dragged to this height (Main.qml clamps it)
     property bool compact: false
     property bool canCompact: true              // false beside a tall frame (one height there): the switch is absent

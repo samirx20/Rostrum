@@ -48,7 +48,7 @@ Item {
     }      // the project's new name, typed on its tab (Enter or leaving the field)
     signal historyClicked()
     implicitHeight: Theme.topBar
-    function openHelp() { helpMenu.open() }
+    function openHelp() { helpMenu.openFrom(help, "right") }
     function openHistory(session) {
         historyFocus = session || ""
         historyClicked()
@@ -262,10 +262,9 @@ Item {
             objectName: "helpButton"
             anchors.verticalCenter: parent.verticalCenter
             icon: "help"; kind: "ghost"; tip: "Help"; help: "Guides, keys, connecting an AI agent, reporting a problem, About."; down: helpMenu.opened
-            onClicked: helpMenu.open()
+            onClicked: helpMenu.openFrom(help, "right")
             Menu {
                 id: helpMenu
-                x: parent.width - width - Theme.gap; y: parent.height + Theme.gap      // off the window edge, a step below the bar
                 width: 240
                 entries: [{ value: "guides", label: "Guides", keys: "F1" }, { value: "keys", label: "Keys", keys: "Ctrl /" }]
                     .concat(typeof agents !== "undefined" && agents ? [{ value: "agents", label: "Connect an AI agent…" }] : [])

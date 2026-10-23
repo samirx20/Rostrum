@@ -136,7 +136,8 @@ class ActionList:
                     "id": a.id, "label": a.label_for(facts), "keys": self.keys_of(a),
                     "importance": "primary" if first == 0 else a.importance,    # promoted: a button while it holds
                     "group": "edit" if a.edit else a.group, "bar": a.bar, "calls": calls, "do": a.do,
-                    "edit": a.edit, "rank": a.rank, "job": self.job_of(a), "release": a.release, "panel": a.panel, "icon": a.icon}))
+                    "edit": a.edit, "rank": a.rank, "job": self.job_of(a), "release": a.release, "panel": a.panel, "icon": a.icon,
+                    "min_targets": a.min_targets}))
         return [e for _, e in sorted(out, key=lambda x: x[0])]
 
     def why_not(self, facts, typed: str) -> str:

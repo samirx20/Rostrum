@@ -92,7 +92,7 @@ class SelectSlots(SlotMixin):
         static = k.static if k.op_kind[1] else many.own_rules(k.static, self.doc.kind.registry.field_op(it["type"]))
         evaluated = rows.evaluate(static, self.shown_values(it), self.doc.kind.facts(it, self.doc), k.more,
                                   lambda name: self.anim_state(it, name), lambda name: self.expr_state(it, name),
-                                  lambda name: self.list_choices(it, name), k.open_groups, k.search)
+                                  lambda name: self.list_choices(it, name), k.open_groups, k.search, self.on_page(it))
         return rows.omit(evaluated, self.on_page(it))
 
     def _refresh(self):

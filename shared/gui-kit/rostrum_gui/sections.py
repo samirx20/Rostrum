@@ -1,10 +1,11 @@
 """The settings panel by importance (opt-in: a bridge with `sections = True`), built from each param's `importance`
 and `group` only, never per kind:
 - **Essentials**: the `primary` params in data order, no headings; a small gap (label "") where the group changes.
-- **Every other group folded to its name**: one fold row per group with a non-primary param, then its `secondary`
-  and `deep` params (rank, then data order), shown only while the group is open. A fold row always says its
-  group's name (the S26 "the first row already names it" rule is for headings only), and every non-primary param
-  sits inside its group's fold.
+- **Every other group by name**: one fold row per group with a non-primary param, then its `secondary` and `deep`
+  params (rank, then data order). Only an OPEN group shows (its fold row is its heading, a click folds it); a group
+  with a value changed from its default is open until the person folds it (you see what you changed).
+- **One row of names** last (row "folds"): every group that applies to this item and is folded, "Depth · Timing ·
+  Blend"; a click on a name opens that group just above it. A group with nothing that applies is not named at all.
 - **Search**: a separate layout, every param under its group's heading (`rows.layout`'s heading rules, deep params
   included); `rows.evaluate(query=...)` keeps only valid params that `rows.matches` the search.
 Param rows carry `in`: "" (shown when valid) or the fold's group (shown when valid and that group is open).
@@ -36,6 +37,8 @@ def layout(op, kind: str = "") -> list[dict]:
         members = sorted((p for p in rest if p.group == g), key=lambda p: RANK[p.importance])    # stable
         rows.append({"row": "fold", "id": "fold:" + g, "label": g, "fold": g, "members": [p.name for p in members]})
         rows += [{**_param_row(p), "in": g} for p in members]
+    if rest:
+        rows.append({"row": "folds", "id": "folds", "label": "", "members": [p.name for p in rest]})
     return pair_up(rows)
 
 

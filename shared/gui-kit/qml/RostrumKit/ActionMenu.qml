@@ -31,7 +31,7 @@ QQC.Popup {
     closePolicy: QQC.Popup.CloseOnEscape | QQC.Popup.CloseOnPressOutside
     width: Math.max(180, Math.min(320, Math.ceil(widest.labelW + widest.keysW + menu.checkW + Theme.gap + Theme.pad + 2 * padding + 16)))
     height: list.implicitHeight + 2 * padding
-    background: Rectangle { color: Theme.raised; radius: Theme.radiusCtl; border.color: Theme.popupEdge }
+    background: MenuBackground { }        // the one menu look: edge + soft shadow
     enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
     exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }
 
