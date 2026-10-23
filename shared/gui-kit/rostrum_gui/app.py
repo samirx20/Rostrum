@@ -50,6 +50,8 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     ctx.setContextProperty("sharedKeys", KeyMap("Rostrum").entries())
     from rostrum_gui.guides import GuidePages        # Help → a guide, read by the kit's guide viewer
     ctx.setContextProperty("guidePages", GuidePages(engine))
+    from rostrum_gui.colour_bank import bank         # every colour picker's swatches and eyedropper (colour_bank.py)
+    ctx.setContextProperty("colourBank", bank())
     for k, v in context.items():
         ctx.setContextProperty(k, v)
     engine.load(QUrl.fromLocalFile(str(main_qml)))

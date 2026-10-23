@@ -182,7 +182,23 @@ def open_doc(cls, folder, item, kind):
         raise RostrumError(codes.CHECK_FAILED, "open", str(p["doc"]), "is damaged: it doesn't hold together "
                            f"({'; '.join(problems[:3])}{' …' if len(problems) > 3 else ''})",
                            hint="Nothing was saved over it.")
+    _upgrade(doc, kind, p["doc"])
     return doc
+
+
+def _upgrade(doc, kind, path):
+    """An older file brought up to date (DocKind.upgrade) as one change by Rostrum; one that wouldn't pass the
+    document check is refused loudly, never opened half-converted."""
+    up = kind.upgrade(doc.data, kind.lists) if kind.upgrade else None
+    if up is None:
+        return
+    new, label = up
+    problems = kind.problems(new)
+    if problems:
+        raise RostrumError(codes.CHECK_FAILED, "open", str(path), f"can't be brought up to date ({'; '.join(problems[:3])})",
+                           hint="Nothing was saved over it.")
+    from .diff import diff
+    doc.commit(new, diff(doc.data, new, kind.lists), Who.outside("Rostrum (older file)"), label)
 
 
 def _as_written(text, file) -> bool:

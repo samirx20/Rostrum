@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from rostrum2d import fields as F
 
-from . import beat_words, exprs, outline, route, size_rows, soundtrack_rows, swap_rows
+from . import beat_words, exprs, outline, fill_rows, route, size_rows, soundtrack_rows, swap_rows
 
 SIBLING_PICKS = {"matte": lambda s: True,                          # any layer beside it can be its track matte
                  "pathLayer": lambda s: s.get("type") == "path",   # text follows a path layer beside it
@@ -33,13 +33,15 @@ class Hooks2D:
     def edit_call(self, item_id, param, value):
         if param == size_rows.ROW and self.doc.item(item_id)["type"] == "comp":      # Scene settings › Size: comp.size
             return size_rows.call(item_id, value)
+        if param == fill_rows.ROW:                       # the Fill row's paint: layer.fill (fill_rows.py)
+            return fill_rows.call(item_id, value)
         if isinstance(value, str) and value.lstrip().startswith("="):    # typed "=pulse()" into a field: the expr.set agents call
             return exprs.typed_call(item_id, param, value)
         return route.edit_call(self.doc, item_id, param, swap_rows.edit_value(self.doc.item(item_id), param, value), self.own_t(item_id))
 
     def _rows(self):          # a swap set's "Shows" is a choice among its children (swap_rows.py); the scene's
         item = self.doc.item(self._sel) if self._sel else None     # Soundtrack among the project's Sound items
-        return size_rows.rows(soundtrack_rows.rows(swap_rows.rows(super()._rows(), item, self._t), item, self.doc.folder), item)
+        return fill_rows.rows(size_rows.rows(soundtrack_rows.rows(swap_rows.rows(super()._rows(), item, self._t), item, self.doc.folder), item), item)
 
     def shown_values(self, item):
         return route.shown_values(self.placed_item(item["id"]), self._t)     # keys on a marker read as seconds

@@ -10,7 +10,7 @@ the Python side (`python_only`): the engine never sees them. Rigs, long IK chain
 """
 from __future__ import annotations
 
-from . import drawing, exprbake, fields as F, layoutbake, paint_fields, project_sound, render3d, retime, stepped, swap, video
+from . import drawing, exprbake, fields as F, fill_fields, fill_paint, layoutbake, paint_fields, project_sound, render3d, retime, stepped, swap, video
 from .layout_fields import py_only
 from rostrum_core.keys import after, animated, keys_of, springs
 
@@ -25,7 +25,7 @@ def python_only(kind: str) -> set[str]:
     applied here), the scene's soundtrack (Sound's engine plays it, not 2D's) and a text's style link (its values are
     already on the text: text_styles.py)."""
     return (py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END, "locked", "hidden", "eachFrame", "soundtrack", "textStyle"} | swap.PY_ONLY.get(kind, set())
-            | paint_fields.NAMES)
+            | paint_fields.NAMES | fill_fields.NAMES)
 
 
 def _key(key: dict) -> dict:
@@ -48,11 +48,15 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | 
             "props": {p.name: item.get(p.name, p.default) for p in F.FIELDS[item["type"]]
                        if p.name not in python_only(item["type"])}}
     anim = {**_anim(item, (where or {}).get("until", 0.0)), **(baked or {}).get(item["id"], {})}
+    anim = {k: v for k, v in anim.items() if k not in fill_fields.NAMES}      # a gradient fill goes as its effect (below)
     if anim:
         node["anim"] = anim
     for key in ("effects", "masks", "layers"):
         if item.get(key):
             node[key] = [_node(child, fps, baked, where) for child in item[key] if not child.get("hidden")]   # hidden: not drawn
+    fill = fill_paint.lower(item) if item["type"] in fill_fields.OWNERS else None
+    if fill is not None:                # a gradient fill: the engine's gradient effect, first; it takes the place of any other
+        node["effects"] = [_node(fill, fps, None, where)] + [e for e in node.get("effects", []) if e["type"] != "gradient"]
     if item["type"] == "rig":           # bones, iks and binds are nodes of their own (RIG.md § Scene description)
         node["rig"] = [_node(c, fps, baked, where) for key in ("bones", "iks", "binds") for c in item.get(key, [])]
     if item["type"] == "drawing":       # the painting kit makes each drawing's picture once; the engine only reads it

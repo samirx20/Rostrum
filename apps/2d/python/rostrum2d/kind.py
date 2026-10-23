@@ -14,20 +14,22 @@ from __future__ import annotations
 import rostrum_paint
 from rostrum_core import DocKind, Registry
 
-from . import exprbake, fields as F, fontcheck, paint_fields, pathdata, widthprofile
+from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, paint_fields, pathdata, widthprofile
 from .rig import model as rig_model
 
 OWNED = ["effects", "masks", "keys"]
-LISTS = {"doc": ["comps", "textStyles"], "comp": ["layers"], "group": ["layers", *OWNED], "drawing": ["frames", *OWNED],
+LISTS = {"doc": ["comps", "textStyles", "swatches"], "comp": ["layers"], "group": ["layers", *OWNED], "drawing": ["frames", *OWNED],
          "frame": rostrum_paint.CANVAS_LISTS, **rostrum_paint.LISTS,
          "rig": ["layers", "bones", "iks", "binds", "poses", *OWNED], "bone": ["keys"], "ik": ["keys"], "camera": ["keys"],
          **{t: OWNED for t in ("shape", "text", "image", "video", "render3d", "path")},
          **{t: ["frames", *OWNED] for t in paint_fields.TYPES},     # paint on an element (paint_fields.py)
-         **{t: ["keys"] for t in (*F.EFFECTS, "mask")}}
+         **{t: ["keys"] for t in (*F.EFFECTS, "mask", "stop")}}
+for _t in fill_fields.OWNERS:          # a gradient fill's stops (fill_fields.py)
+    LISTS[_t] = [*LISTS[_t], "stops"]
 for _t, _owned in LISTS.items():       # whatever animates a field may also hold its expression (ops_expr.py)
     if _t in F.ANIMATED_OWNERS and "exprs" not in _owned:
         _owned.append("exprs")
-HOLDS = {"comps": ("comp",), "layers": F.LAYERS, "effects": F.EFFECTS, "masks": ("mask",), "keys": ("key",),
+HOLDS = {"comps": ("comp",), "stops": ("stop",), "swatches": ("swatch",), "layers": F.LAYERS, "effects": F.EFFECTS, "masks": ("mask",), "keys": ("key",),
          "exprs": ("expr",), "textStyles": ("textstyle",),
          "frames": ("frame",), "bones": ("bone",), "iks": ("ik",), "binds": ("bind",), "poses": ("pose",), **rostrum_paint.HOLDS}
 
@@ -140,7 +142,7 @@ def check(data: dict, items=None) -> list[str]:
     return problems + exprbake.problems_of_doc(data) + fontcheck.problems_of_doc(texts)
 
 
-KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts,
+KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts, upgrade=fill_paint.upgrade,
                new=lambda: {"id": "root", "type": "doc", "comps": []})
 
 rostrum_paint.register(REGISTRY, canvas_types=("frame",))
@@ -157,4 +159,5 @@ from . import ops_clip  # noqa: E402,F401  (layer.paste: copy / cut / paste of l
 from . import ops_paint, ops_fill, paint_transform  # noqa: E402,F401  (paint.stroke, paint.fill, stroke.transform: paint, fill and move paint on any element or drawing)
 from . import ops_frame  # noqa: E402,F401  (comp.size, layer.fill_frame)
 from . import ops_keytime, ops_stagger  # noqa: E402,F401  (key.scale, key.paste, layer.stagger: retiming)
+from . import ops_fill_paint  # noqa: E402,F401  (layer.fill, swatch.add / remove / rename: the fill as a paint, project colours)
 from . import text_styles  # noqa: E402  (style.define, style.use, style.detach, style.remove: named text styles)
