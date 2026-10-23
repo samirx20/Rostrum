@@ -12,6 +12,7 @@ Rectangle {
     id: a
     property alias headerWidth: timeline.headerWidth
     property bool compact: false                       // a small window: the position and key show short
+    readonly property bool tight: a.width < 700        // a squeezed panel (a drawer open on a small window): − + fold away (Ctrl −/+, Fit stay)
     readonly property alias picture: corner
     readonly property bool empty: !backend.tracks.some(r => !r.mix)
     signal addTrack()
@@ -84,13 +85,13 @@ Rectangle {
                                                      : "Snapping is off: everything moves freely. Click or Shift+G to turn it on"; hovered: parent.hovered } }
             Item { width: Theme.gap; height: 1 }
             Text {   // while zoomed in: how far
-                visible: !backend.viewFit && !a.compact; anchors.verticalCenter: parent.verticalCenter; rightPadding: Theme.gap
+                visible: !backend.viewFit && !a.compact && !a.tight; anchors.verticalCenter: parent.verticalCenter; rightPadding: Theme.gap
                 text: "Zoom " + (Math.round(backend.song.length / backend.viewSpan * 10) / 10) + "×"
                 color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
             }
-            IconButton { glyph: "−"; kind: "ghost"; tip: "Zoom out (Ctrl −)"; width: Theme.field; height: Theme.field
+            IconButton { visible: !a.tight; glyph: "−"; kind: "ghost"; tip: "Zoom out (Ctrl −)"; width: Theme.field; height: Theme.field
                          onClicked: backend.zoomStep(0.8) }
-            IconButton { glyph: "+"; kind: "ghost"; tip: "Zoom in (Ctrl +)"; width: Theme.field; height: Theme.field
+            IconButton { visible: !a.tight; glyph: "+"; kind: "ghost"; tip: "Zoom in (Ctrl +)"; width: Theme.field; height: Theme.field
                          onClicked: backend.zoomStep(1.25) }
             Button { text: "Fit"; kind: "ghost"; down: backend.viewFit; height: Theme.field; onClicked: backend.fitView()
                      HoverTip { text: "Show the whole song (Ctrl 0)"; hovered: parent.hovered } }
