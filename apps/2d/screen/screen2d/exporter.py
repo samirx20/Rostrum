@@ -15,7 +15,6 @@ from PySide6.QtCore import Property, Signal, Slot
 from rostrum2d import project_sound
 from rostrum2d.io import formats as table, gif_size
 from rostrum2d.mcp import export_name, exporting
-from rostrum_core.mcp.files import RENDER_DIR
 from rostrum_gui.export_sheet import ExportSheet
 
 from . import export_rows, gif_guess
@@ -63,8 +62,7 @@ class Exporter(ExportSheet):
         return out
 
     def default_folder(self):
-        base = exporting.project_renders(self.bridge.doc.folder, self.bridge.doc.item_id)
-        return str(base) if base else str(RENDER_DIR)
+        return str(exporting.default_folder(self.bridge.doc.folder, self.bridge.doc.item_id))
 
     def file_name(self):
         return self._stem() + ("" if self._row()["sequence"] else self._row()["ext"])

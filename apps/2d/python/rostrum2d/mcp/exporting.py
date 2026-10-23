@@ -93,8 +93,14 @@ def _engine():
 
 def project_renders(folder, item) -> Path | None:
     """The one rule for where an export goes when no path is chosen, for every format: the project's
-    renders/<item>/ (a new vNNN version folder each time), else (no project yet) the render cache, RENDER_DIR."""
+    renders/<item>/ (a new vNNN version folder each time), else None (no project yet: see default_folder)."""
     return Path(folder) / "renders" / item if folder and item else None
+
+
+def default_folder(folder, item) -> Path:
+    """The folder a no-path export is written into: the one rule the Export sheet shows and `run` writes by. A project's
+    renders/<item>/ (the version folder goes inside), else the person's Videos (a scripted run's scratch home)."""
+    return project_renders(folder, item) or app_settings.videos_dir()
 
 
 def _manifest(item, doc_seq, comp_id, fmt, s, facts, version, names, size) -> dict:
@@ -111,7 +117,7 @@ def _manifest(item, doc_seq, comp_id, fmt, s, facts, version, names, size) -> di
 def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_seq=0, out=None, progress=None, engine_factory=None,
         name=None, overwrite=False) -> dict:
     """Export `scene` as `fmt` with settings `s` (from settings()). Where it goes: `out` (a file; for a sequence a folder), else
-    project_renders(folder, item) for every format, else the render cache.
+    project_renders(folder, item) for every format, else default_folder (Videos, or a scripted run's scratch home).
     Written under a .partial name and renamed when read back right; a failed or cancelled run removes what it wrote. Returns the facts: file, frames, fps, alpha, depth, checked,
     files (what was written), report (Lottie: what it couldn't carry).
     `name`: the file's name without its extension (export_name.stem_of: the project's and the composition's); default item_composition.
@@ -134,7 +140,7 @@ def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_
         facts["files"] = [str(done / n) for n in names]
         facts["file"] = str(done / (Path(seq_name(stem)).name if png else name))
         return facts
-    final = Path(out) if out else app_settings.videos_dir() / f"{stem}_{time.strftime('%Y%m%d_%H%M%S')}{'' if png else row['ext']}"
+    final = Path(out) if out else default_folder(folder, item) / f"{stem}_{time.strftime('%Y%m%d_%H%M%S')}{'' if png else row['ext']}"
     if not png and final.suffix.lower() != row["ext"]:
         raise RostrumError(codes.BAD_ARGUMENT, where, f'path "{final}"', f"must end in {row['ext']} for {fmt}")
     if png and final.exists():
