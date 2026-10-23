@@ -74,7 +74,10 @@ def register(tools: Tools):
         doc = ctx.document(args.get("item"))
         if "id" not in args:
             outline = [{"id": it["id"], "type": it.get("type")} for it in doc.items()]
-            return Reply(f"{len(outline)} items in {_kind_name(doc)} document, history step {doc.seq}.", {"seq": doc.seq, "items": outline})
+            warn = doc.kind.warnings(doc.data)
+            return Reply(f"{len(outline)} items in {_kind_name(doc)} document, history step {doc.seq}."
+                         + (f" {len(warn)} things it holds are no longer made (see warnings)." if warn else ""),
+                         {"seq": doc.seq, "items": outline, "no_longer_made": warn})
         part = doc.item(args["id"])
         lists = {k for ks in getattr(doc.kind, "lists", {}).values() for k in ks}
         values = {k: v for k, v in part.items() if k not in lists}

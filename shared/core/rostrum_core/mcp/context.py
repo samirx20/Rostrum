@@ -65,6 +65,7 @@ class ToolContext:
     tool: str                   # the tool being run, for error messages
     tools: object = None        # the server's Tools (for inspect_operations-style lookups)
     notes: list = field(default_factory=list)   # `note`: choices the tool made for the caller, sent as warnings
+    seen: list = field(default_factory=list)    # the documents the call was about: their kind's warnings are sent too
 
     def note(self, text: str):
         """Tell the caller about a choice made for them ("Composition \"film\" (the longest of 2)"); the server
@@ -72,17 +73,22 @@ class ToolContext:
         if text not in self.notes:
             self.notes.append(text)
 
+    def _saw(self, doc):
+        if doc not in self.seen:
+            self.seen.append(doc)
+        return doc
+
     def document(self, item: str | None = None):
         """The document a call is about: `item`, or the only open one."""
         docs = self.app.documents
         if item is None:
             if len(docs) == 1:
-                return next(iter(docs.values()))
+                return self._saw(next(iter(docs.values())))
             raise RostrumError(codes.BAD_ARGUMENT, self.tool, "argument \"item\"",
                                "is needed: " + ("no document is open" if not docs else "several documents are open"), sorted(docs))
         if item not in docs:
             raise RostrumError.not_found(self.tool, "open document", item, docs, "the open documents")
-        return docs[item]
+        return self._saw(docs[item])
 
     def apply(self, doc, calls, label: str | None = None, group: str | None = None):
         return doc.apply(calls, self.who, label=label, session=group or self.group)

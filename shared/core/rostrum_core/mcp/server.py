@@ -68,7 +68,8 @@ class Runtime:
                 reply = tool.fn(ctx, checked)
             if not isinstance(reply, Reply):
                 raise TypeError(f"tool {name} returned {type(reply).__name__}, not Reply")
-            reply.warnings.extend(n for n in ctx.notes if n not in reply.warnings)
+            said = ctx.notes + [w for d in ctx.seen for w in d.kind.warnings(d.data)]   # never silent (kind.warn)
+            reply.warnings.extend(n for n in dict.fromkeys(said) if n not in reply.warnings)
             return reply.to_dict(), reply.images
         except RostrumError as e:
             return error_dict(e.within(name) if not e.where.startswith(name) else e), []

@@ -1,11 +1,11 @@
 """Sound's Problems list (the kit's ProblemsChip, rostrum_gui/problems.py): what is wrong with the song now, in words with
-what to do. Today one source: the newest render's loudest peak over full scale (clipping, red). Missing files and
+what to do: the song's warnings (what it holds that is no longer made, KIND.warn) and the newest render's loudest peak over full scale (clipping, red). Missing files and
 missing models are said where they happen (the clip, the model question) and are not listed here yet.
 """
 from __future__ import annotations
 
 from rostrum_core import RostrumError
-from rostrum_gui.problems import ProblemsList
+from rostrum_gui.problems import ProblemsList, warning_rows
 
 from .strips import MASTER
 
@@ -27,5 +27,8 @@ def make(bridge) -> ProblemsList:
             return
         bridge.select(row["item"])
     plist = ProblemsList(jump, bridge)
-    bridge.renderChanged.connect(lambda *_: plist.show_rows(rows(bridge.lastRender or {})))
+    def show(*_):
+        plist.show_rows(rows(bridge.lastRender or {}) + warning_rows(bridge.doc))
+    bridge.renderChanged.connect(show)
+    bridge.timelineChanged.connect(show)
     return plist

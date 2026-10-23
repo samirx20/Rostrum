@@ -44,6 +44,8 @@ class Param:
     integer: bool = False
     options: list = field(default_factory=list)
     labels: dict = field(default_factory=dict)   # for type "choice": value -> the words screens show (else plain_words)
+    kept: list = field(default_factory=list)     # for type "choice": values old files may hold (they still open and read)
+                                                 # but nothing offers or newly sets: not in `options`, pickers, schemas
     words: dict = field(default_factory=dict)    # for type "number": a value that means something, in words
                                                  # ({36000.0: "End of comp"}): screens show the words, not the number
     kind: str | None = None          # for type "id": the item kind it must point at
@@ -72,7 +74,7 @@ class Param:
         if self.type == "time" and self.default is None:
             self.default = {"seconds": 0}
         self.label = self.label or self.name.replace("_", " ").capitalize()
-        unknown = [v for v in self.labels if v not in self.options]
+        unknown = [v for v in self.labels if v not in self.options and v not in self.kept]
         if unknown:
             raise ValueError(f"param {self.name}: labels for {unknown} which are not options")
 
@@ -110,7 +112,8 @@ class Param:
                      options=self.options, kind=self.kind, unit=self.unit)
 
     def check(self, value, where: str):
-        """The value, checked (and an integer number made an int). Out of range is an error, never a clamp."""
+        """The value, checked (and an integer number made an int). Out of range is an error, never a clamp. A `kept`
+        choice is refused here too (nothing newly sets it); only a stored value may hold it (DocKind.bad_values)."""
         def bad(problem, accepted=(), hint=None):
             raise RostrumError(codes.BAD_ARGUMENT, where, f"{self.name}={value!r}", problem, accepted, hint)
         t = self.type
@@ -132,7 +135,8 @@ class Param:
                 bad("must be true or false", ["true", "false"])
         elif t == "choice":
             if value not in self.options:
-                bad("is not one of the choices", self.options, did_you_mean(value, self.options))
+                bad("is not one of the choices" + (" (no longer offered)" if value in self.kept else ""),
+                    self.options, did_you_mean(value, self.options))
             return self.options[self.options.index(value)]   # the option itself (a screen's 48000.0 is 48000)
         elif t == "color":
             if not isinstance(value, str) or not HEX.match(value):

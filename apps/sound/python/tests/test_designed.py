@@ -42,4 +42,4 @@ def test_an_old_song_with_a_whoosh_opens_and_names_it(tmp_path):
     from rostrum_sound.opening import open_whole
     old = open_whole(str(tmp_path), "song")
     assert old.item("ui.riser1000")["design"] == "whoosh"
-    assert "ui.riser1000: this song has a whoosh, which Rostrum no longer makes; remove it or replace it" in old.notes
+    assert "ui.riser1000: this song has a whoosh, which Rostrum no longer makes; remove it or replace it" in KIND.warnings(old.data)
