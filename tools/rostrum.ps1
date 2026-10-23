@@ -11,7 +11,10 @@
   -Doc <folder> <item>   open another project
   -Shot <file.png>       save a picture of the window and close it (to check that the app opens)
   -Step "<a>; <b>"       scripted steps before the picture, as the app's own --step (e.g. -Step "page mix; time 14.9")
-  -FromShortcut          problems show in a message box (the desktop shortcuts use this)
+  -FromShortcut          problems show in a message box that stays until closed, and every run keeps its log in
+                         %LOCALAPPDATA%\Rostrum\logs (tools\release\rostrum.pyw, as the installed app; the shortcuts use this)
+elease
+ostrum.pyw, as the installed app; the shortcuts use this)
 
   It uses the one Python environment (C:\Users\Sam\.rostrum\venv; made by tools\setup-python.ps1 when missing) and
   this checkout's engine (built once through the machine's job lock when missing). Anything else missing stops it
@@ -117,14 +120,10 @@ if ($Shot) { $argv += @("--shot", $Shot) }
 # 4. Open it. The window stays until you close it; this prompt waits for it.
 Write-Host "Opening $($a.Name) $(if ($folder) { "on $folder ($item)" } else { "(your last file, else a new one)" }) ..."
 if ($FromShortcut) {
-    $logs = Join-Path $HOME ".rostrum\logs"; New-Item -ItemType Directory -Force $logs | Out-Null
-    $log = Join-Path $logs "open-$App.log"
-    $p = Start-Process -FilePath $py -ArgumentList ($argv | ForEach-Object { '"' + $_ + '"' }) -NoNewWindow -Wait -PassThru `
-        -RedirectStandardOutput $log -RedirectStandardError "$log.err"
-    if ($p.ExitCode -ne 0) {
-        $last = (Get-Content "$log.err" -Tail 3 -ErrorAction SilentlyContinue) -join "`n"
-        Fail "$($a.Name) stopped with a problem. The last lines it wrote:`n$last`n`nFull log: $log.err"
-    }
+    # The installed app's watcher, the one place for this: a log per run in %LOCALAPPDATA%\Rostrum\logs (the newest 20
+    # kept), and a message box that stays until closed for a crash, an error, or a fatal line before a "fine" close.
+    $env:ROSTRUM_ROOT = $Repo
+    & $py (Join-Path $Repo "tools\release\rostrum.pyw") $App @($argv | Select-Object -Skip 1)
 } else {
     & $py @argv
     if ($LASTEXITCODE -ne 0) { Fail "$($a.Name) stopped with a problem (the lines above say what)." }
