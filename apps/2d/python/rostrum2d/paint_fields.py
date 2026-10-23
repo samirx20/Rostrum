@@ -27,4 +27,15 @@ ELEMENT = [
 ]
 DRAWING = [Param.toggle("eachFrame", label="Draw each frame", group="Drawing", default=False, importance="secondary",
                         help=EACH_FRAME_HELP + " (missing on an older drawing: on when it has several drawings)")]
+
+
+def _new_hold(group, when):
+    return Param.number("newHold", label="New ones hold", group=group, min=1, max=4, step=1, unit="frames", integer=True,
+                        default=2, importance="secondary", valid_when=when,
+                        help="How many frames a new drawing is held (1: on ones, 2: on twos …); frame.add uses it when "
+                             "its frame is left out")
+
+
+ELEMENT.append(_new_hold(G, {"all": [HAS_PAINT, {"is": ["eachFrame", True]}]}))
+DRAWING.append(_new_hold("Drawing", {"is": ["eachFrame", True]}))
 NAMES = {p.name for p in ELEMENT}          # never sent to the engine (scene.python_only); paintW / paintH are still

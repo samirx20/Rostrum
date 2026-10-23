@@ -3,7 +3,7 @@ import RostrumKit
 
 // The settings panel's paint layers group, under "Painting on" (PaintTarget.qml; backend.paintLayers).
 // The paint layers, top first: the eye, the name (click: strokes and fills go on it; drag: reorder; right-click ›
-// Delete); under the list the highlighted layer's Opacity and Blend; then Onion skin while drawing each frame.
+// Delete); under the list the highlighted layer's Opacity and Blend.
 // Absent until what the pen paints on holds paint.
 Column {
     id: po
@@ -90,11 +90,5 @@ Column {
             options: po.pl.modes; current: po.cur ? po.cur.mode : "normal"
             onPicked: (v) => po.pl.setLayer(po.cur.id, "mode", v)
         }
-    }
-    Line {
-        visible: po.pl.onionApplies
-        Label { text: "Onion skin" }
-        Toggle { x: po.labelColumn; anchors.verticalCenter: parent.verticalCenter; checked: painter.onionOn
-                 onToggled: (v) => painter.setOnion(v) }
     }
 }

@@ -113,7 +113,7 @@ Rectangle {
             delegate: KeyDot { row: track; shift: bar.x; room: bar.width }
         }
     }
-    FrameMarks { anchors.fill: parent; frames: track.rowData.frames; timeRuler: track.ruler }   // a drawing's frames, on its bar
+    FrameMarks { anchors.fill: parent; frames: track.rowData.frames || []; timeRuler: track.ruler; owner: track.rowData.owner }   // a drawing's cells
     Repeater {   // a tied end: a small flag with the marker's name on hover
         model: [{ at: "start", name: track.rowData.startMarker || "" }, { at: "end", name: track.rowData.endMarker || "" }]
         delegate: Rectangle {

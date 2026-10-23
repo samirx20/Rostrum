@@ -26,7 +26,7 @@ def keytap(win, key: str, mods: list[str]):
     m = Qt.KeyboardModifier.NoModifier
     for w in mods:
         m |= getattr(Qt.KeyboardModifier, MODS[w])
-    code = {"[": Qt.Key.Key_BracketLeft, "]": Qt.Key.Key_BracketRight}.get(key) or getattr(Qt.Key, "Key_" + (key.upper() if len(key) == 1 else key.capitalize()))
+    code = {"[": Qt.Key.Key_BracketLeft, "]": Qt.Key.Key_BracketRight, ",": Qt.Key.Key_Comma, ".": Qt.Key.Key_Period}.get(key) or getattr(Qt.Key, "Key_" + (key.upper() if len(key) == 1 else key.capitalize()))
     QTest.keyClick(win, code, m)
     QTest.qWait(50)
 

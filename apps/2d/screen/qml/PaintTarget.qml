@@ -4,7 +4,7 @@ import RostrumKit
 // Under the brush's quick rows while painting (painting design §2.1, §2.2, mockup paint-01): "Edit brush ›" (every
 // brush setting on the same grid: painter.setEditing), Close gaps while Fill is on, then "Painting on": Layer ▾ (the
 // selected layer, the other painted layers, New drawing: painter.targetChoices), Inside the outline (an element only:
-// a drawing has no outline) and Draw each frame (backend.paintLayers.toggles), then the paint layers (PaintOn.qml).
+// a drawing has no outline) and Draw each frame (backend.paintLayers.toggles), then the drawing tools while it is on (DrawEachFrame.qml), the paint layers (PaintOn.qml).
 // Absent while editing the brush.
 Column {
     id: tg
@@ -64,5 +64,6 @@ Column {
             HoverTip { hovered: tHover.hovered; text: tl.modelData.help || "" }
         }
     }
+    DrawEachFrame { }
     PaintOn { }
 }

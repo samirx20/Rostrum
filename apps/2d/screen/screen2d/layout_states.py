@@ -17,6 +17,8 @@ LONG_STATUS = "No graphics driver, so drawing is slower"
 LONG_PROJECT = "Summer_launch_film_for_the_new_headphones_-_final_cut_v3"   # a step's words: _ for spaces
 PICTURE = (Path(__file__).resolve().parents[2] / "guides" / "pictures" / "draw-tool.png").as_posix()   # any picture: a fill
 PAINTED = ["select card", "tool draw", "draw 600 300 900 330 1200 300"]
+FRAMES = ["tool draw", "draw 300 300 500 320 700 300", "newframe", "draw 320 320 520 340 720 320", "newframe copy",
+          "draw 340 340 540 360 740 340"]
 LONG_PAINT = 'paint_3 name "Line art for the summer launch film, cleaned up"'     # the third paint layer, renamed
 TWELVE = ["select card"] + [f"set {'xy'[n % 2]} {500 + n}" for n in range(12)]   # 12 changes (x, y in turn: no merging)
 # What the check leaves out on purpose: the canvas' own handles are small drag targets on the picture by design.
@@ -202,6 +204,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                                f"picturefile {PICTURE}", "clickobj picturePaint:fit 0.62 0.5"]),
         ("fill-gradient-handles", ["--sample"], ["shape star 700 300 1000 600", "clickobj swatch", "clickobj fillType:linear"]),
         ("paint-long-target", long(), [*busy, "select card", "tool draw"]),
+        # H52 (painting phase 2): Draw each frame on, three drawings on twos, the onion skin's Before / After rows, the
+        # cells on the timeline
+        ("draw-each-frame", ["--sample"], [*FRAMES, "onion on", "frame prev"]),
+        ("draw-each-frame-long", long(), [*busy, "tool draw", "draw 300 300 500 320 700 300", *FRAMES[2:], "onion on"]),
         ("library-brand", long_project(), ["select title_card_for_the_summer_launch_film", "do layer:style_save",
                                            "brand colors Summer_launch_coral_for_the_headphones_campaign #ff7a59",
                                            "brand colors Night #101820",
