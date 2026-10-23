@@ -14,7 +14,7 @@ from __future__ import annotations
 import rostrum_paint
 from rostrum_core import DocKind, Registry
 
-from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, paint_fields, pathdata, shared_paints, widthprofile
+from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, paint_fields, pathdata, refusals, shared_paints, widthprofile
 from .rig import model as rig_model
 
 OWNED = ["effects", "masks", "keys"]
@@ -101,6 +101,8 @@ def _check_owner(item: dict, problems: list, opening: bool = False):
                         f'(use layer.fill with stops, or set the fill type through layer.fill, which adds them)')
     if item.get("type") in F.ANIMATED_OWNERS:
         _check_keys(item, problems)
+    if not opening:
+        problems += refusals.problems(item)
     if item.get("type") == "rig":
         problems += rig_model.problems_of(item)
     if item.get("type") == "path":

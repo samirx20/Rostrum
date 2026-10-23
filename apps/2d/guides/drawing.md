@@ -33,6 +33,8 @@ Paint always belongs to something. Paint on a shape, a text, a picture or a path
 
 When the brush is on, the timeline shrinks to its compact height: the header row and only the drawing's own row. Click the button at the right end of the ruler to bring all the rows back; each tool remembers the height you last used with it.
 
+Paint only goes on a layer you can see. If the layer is hidden, or has no opacity at the playhead, the stroke is refused and the top bar says so ("title isn't showing at 2.4 s"): show it, or move the playhead to where it shows.
+
 ## 2. The settings panel while you paint
 
 The right-hand panel is headed "Painting", with the name and kind of what you paint on. There is no bar over the canvas; everything is here, never in two places.
@@ -79,7 +81,7 @@ Press **I**, or hold **Alt** while painting. The pointer becomes a picker, and a
 
 1. Press **S** (or choose **Select**), then drag a loop round the strokes and fills you want; or hold **Ctrl** and drag while painting. Anything with most of its length inside the loop is picked, and outlined.
 2. A small strip over the canvas shows **Copy**, **Paste** and **Delete**. Drag the picked strokes to move them; drag a corner of their box to scale them and the knob to turn them. They stay strokes, so they stay sharp.
-3. **Ctrl+C** copies them and **Ctrl+V** pastes them a little down and right of the originals. **Delete** removes them. **Esc** lets go.
+3. **Ctrl+C** copies them and **Ctrl+V** pastes them a little down and right of the originals; the pasted copy is what stays picked, so **Delete**, a drag or a turn acts on it, not on the original. **Delete** removes the picked strokes. A single straight stroke can be picked and dragged too. **Esc** lets go.
 
 Each of these is one change, so **Ctrl+Z** takes back a move, a paste or a delete. Only paint layers that are not locked can be picked from.
 
@@ -89,7 +91,7 @@ Each of these is one change, so **Ctrl+Z** takes back a move, a paste or a delet
 2. Press **G**, or choose **Fill** in the brush panel. The panel shows **Close gaps** (Small, Medium, Large) in place of Edit brush; the fill uses the brush's colour and opacity.
 3. Click inside the area. It fills right up to the lines and a little under them, so no thin light edge shows between line and colour.
 4. Lines that don't quite meet: pick **Medium** or **Large** under **Close gaps** and click again.
-5. A click on a line, or in an area that is open to the edge of the painting, fills nothing and says why at the bottom.
+5. A click on a line, or in an area that is open to the edge of the painting, fills nothing and says why in plain words in the top bar ("This area has a gap. Try Medium or Large under Close gaps.").
 6. The fill finds its edges in **all** the visible paint layers of the drawing, so you can fill "Colour" up to the lines of "Ink". A locked layer refuses a fill.
 7. Press **G** again to go back to the brush.
 
@@ -108,7 +110,7 @@ Under the brush, **Painting on** shows:
    - Drag a row up or down to change the order.
    - Double-click a name to rename it.
    - Right-click a row: **Hide**, **Lock**, **Rename**, **Duplicate**, **Delete**. Duplicate puts a copy with all its strokes just above, named "… copy", and highlights it; Delete removes the layer and its strokes.
-   - Under the list, the highlighted layer's own **Blend** (Normal, Multiply, Screen, Add), **Opacity** and **Lock**. A locked layer refuses paint and fill: lock the line art before you colour under it. Click the lock on its row to unlock it.
+   - Under the list, the highlighted layer's own **Blend** (Normal, Multiply, Screen, Add), **Opacity** and **Lock**. A locked layer refuses paint and fill, and says so in the top bar ("Paint 2 is locked. Turn off its Lock to paint on it."): lock the line art before you colour under it. Click the lock on its row to unlock it.
 
    Every one of these is one change, so **Ctrl+Z** takes back exactly one. In a thing that draws each frame, the paint layers belong to the thing and are shared by all its drawings (part 7): **+**, rename, order, eye, lock, blend, opacity, Duplicate and Delete act on every drawing at once. Each drawing keeps its own strokes in each layer.
 

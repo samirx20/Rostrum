@@ -360,7 +360,7 @@ A step that leaves an error in the status line fails the run.
   couldn't carry), and the document gets a version "Exported v003". A failure is red, in words; no unfinished file is left.
 - The formats and their settings are data (`rostrum2d.io.formats.FORMATS` + Lottie, listed by `rostrum2d.mcp.exporting`); the
   MCP tool `render_export` runs the same code (`exporting.run`), so a person and an agent get the same files.
-- **Include the project's sound** (a switch, only for MP4 and only when the project has sound; on by default): the scene's
+- **Project sound** (a toggle in the settings, like Transparency, only for MP4 and only when the project has sound; on by default): the scene's
   soundtrack, else the project's main mix (`rostrum2d/project_sound.py`), mixed by RostrumSound's engine, cut to the
   export's range and put under the picture by the bundled LGPL FFmpeg (`rostrum2d/io/export_sound.py`) before the file is
   renamed. If the mix or the muxing fails, the export fails: never a silent MP4 when sound was asked. Agents:

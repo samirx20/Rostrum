@@ -23,6 +23,10 @@ cam.key("x", {0: 760, 4: 1300}, ease="easeInOut")      # a pan
 cam.key("zoom", {1.5: 1, 4: 1.35}, ease="easeInOut")   # a push in
 ```
 
+A camera can also ride a path layer beside it: `layer.ride target=cam path=road at=along`, then key `rideAlong` 0 → 1.
+Where it looks sits on the path, its own `x` / `y` become an offset, and `turn=true` rolls it with the path's direction
+(see `shape-and-path-animation`).
+
 No camera showing (between cameras, or none at all): every layer is drawn exactly as placed. A camera cannot sit inside a group
 or rig, and cannot have effects or masks; a zoom of 0 or less is refused, even where an ease swings past a limit.
 
@@ -85,5 +89,5 @@ the group. Text length is estimated (0.6 × size per letter) before layout; `amo
 
 ## Not yet
 
-Handheld shake or camera noise, a look-at target, depth of field, a camera with perspective in depth (depth is parallax
+Handheld shake or camera noise, a look-at target that follows a layer (it can ride a path, see "A layer riding a path" in `shape-and-path-animation`), depth of field, a camera with perspective in depth (depth is parallax
 scaling, not 3D).

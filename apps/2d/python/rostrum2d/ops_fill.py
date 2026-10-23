@@ -64,7 +64,8 @@ def paint_fill(ctx, targets, args):
             outline = region(_edges(frame, w, h, only), (x, y), args.get("gap", "small"))
         except NotClosed as e:
             ctx.fail(codes.BAD_ARGUMENT, f'at {args["at"][0]}', f"has nothing to fill: {e}",
-                     hint="Click inside an area closed by lines, or try a larger gap.")
+                     hint="Click inside an area closed by lines, or try a larger gap.",
+                     plain=e.plain or "There is nothing to fill there. Click inside an area closed by lines.")
         fid = args.get("id") if len(targets) == 1 and args.get("id") else ctx.new_id("fill")
         if fid in ctx.idx:
             ctx.fail(codes.BAD_ARGUMENT, f'id "{fid}"', "is already used in this document")

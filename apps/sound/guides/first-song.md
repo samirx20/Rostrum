@@ -7,13 +7,17 @@ For a person using the RostrumSound app. This page takes you from an empty song 
 - **Top bar:** **≡** (the menu), the song's name, **Search** (Ctrl+K), the **loudness chip** ("−14.2 LUFS · target −14"
   with a dot: green within 1 of the target, amber outside; click it to open the Mixer) and **Export** (both once the
   song makes a sound), and **?** (help).
-- **Middle: the arrangement.** Every track is a row over time. Its header strip holds **+ Add**, ⏮ ▶, the metronome
-  icon (Shift+K), the position ("3.2 · 0:04.80": bar.beat, then the time), and the song's tempo, beats and key as
-  fields; **Grid ▾**, **Snap**, zoom − + and **Fit** sit at its right. The ruler counts **bars**: plain numbers, one per
+- **Middle: the arrangement.** Every track is a row over time. Its header strip holds **+ Add**, then the transport, always
+  there: ⏮ (to the start), ▶ (play / stop, the one blue button), the loop button, **Record** and the metronome; then
+  the position ("3.2  0:04.80": bars.beats, then the time), and the song's tempo, beats and key as fields; **Grid ▾**, **Snap**, zoom − + and **Fit** sit at its right. The ruler counts **bars**: plain numbers, one per
   bar. For a seconds scale, right-click the ruler and choose **Show seconds** (the same entry hides it).
 - **Under it: the dock.** **Editor** (E) shows the selected track up close; **Mixer** (X) shows the faders. ▾ folds
   it away.
-- **Right: the settings panel.** It shows what is selected, or the song when nothing is.
+- **Right: the settings panel.** It shows what is selected, or the song when nothing is. Times there read in
+  **bars.beats**, like the ruler: At **5.3** is bar 5, beat 3 (**5.3.480** when it falls between beats; 960 ticks make
+  a beat), and a Length counts from 0 (**0.2** is two beats, **2.0** two bars). Hover the label for the seconds. Type
+  `5.3`, `5.3.240`, `5` (a bar), `9.6 s` or `0:09.6`; it is stored the way the item was written (beats stay beats,
+  seconds stay seconds, a marker time stays on its marker). A pitch reads as a note name (G4); type G4 or a number.
 - **Left: the Library** (Ctrl+L), where every track starts from a sound.
 
 ## 1. Start a new song
@@ -86,7 +90,10 @@ The **Colour** row shows the colour the track is drawn in.
 
 - **Space** plays and stops. **Home** (or ⏮) goes to the start.
 - The **metronome icon** beside play turns the click on and off (**Shift+K**); it is lit while on. It is only for you while you work; it is never in an export.
-- With a time range drawn, **Shift+L** loops it.
+- The **loop button** (**Shift+L**) is always there. It loops the time range on the ruler; with no range drawn it
+  makes one first: the selection's span, else the bar at the playhead and the next three. The loop shows as a solid
+  blue band on the ruler's top strip; drag either edge to change it, double-click the band to clear it (that also
+  ends the loop).
 - Click the ruler to move the playhead there.
 - Each track's header shows a small picture of what it holds (keyboard: notes, drum, waveform: sound files,
   microphone: voice), its name and its volume, then its buttons: **R** gets it ready to record, **M** mutes it, **S**

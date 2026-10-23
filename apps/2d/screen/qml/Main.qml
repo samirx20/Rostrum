@@ -24,6 +24,11 @@ AppShell {
     // the frame again only when that layout changes (Stage.qml), never when a panel's contents change.
     // ⊟ folds the timeline to its header (screen state, never the document).
     property bool timelineFolded: false
+    // Each tool remembers its own timeline height (the-screen.md §2.7): Brush starts compact, every other tool full
+    property var foldedFor: ({ "draw": true })
+    readonly property string toolNow: backend.tool
+    onToolNowChanged: timelineFolded = foldedFor[toolNow] === true
+    function fold(on) { const m = Object.assign({}, foldedFor); m[toolNow] = on; foldedFor = m; timelineFolded = on }
     frameAspect: startScreen.visible ? 0 : (backend.frameInfo.width || 16) / (backend.frameInfo.height || 9)
     frameChrome: Qt.size(rail.width + Theme.gap + 2 * Theme.pad, 2 * Theme.pad)   // the rail's column, then the stage's padding round the well
     timelineLeast: 7 * Theme.row + Theme.gap      // the header row, then 6 rows of 28 px (204: §1.2), never the content
@@ -146,7 +151,7 @@ AppShell {
     actions: [
         ViewControls { id: viewControls; view: stage.view; typing: shell.typing; onFitSelection: stage.fitSelection()
                        Component.onCompleted: stage.viewControls = viewControls },   // "Fit · 57 % ▾", off the canvas
-        Button { text: "Export"; kind: "primary"; down: backend.exporter.open; onClicked: shell.setExportOpen(!backend.exporter.open) }
+        Button { text: "Export"; kind: "primary"; onClicked: shell.setExportOpen(!backend.exporter.open) }
     ]
     // the start screen (kit): at launch with nothing to reopen, or ≡ › Start screen…; over everything while shown
     StartScreen { id: startScreen; anchors.fill: parent; z: 100; onGuideAsked: (url) => shell.openGuide(url)
@@ -194,7 +199,7 @@ AppShell {
         anchors.fill: parent
         compact: shell.timelineFolded && !shell.bottomBeside
         canCompact: !shell.bottomBeside
-        onResized: (h) => { shell.timelineFolded = false; shell.setAsked("bottom", h) }   // its top edge, dragged: the person's height
-        onCompactAsked: (on) => shell.timelineFolded = on
+        onResized: (h) => { shell.fold(false); shell.setAsked("bottom", h) }   // its top edge, dragged: the person's height
+        onCompactAsked: (on) => shell.fold(on)
     }
 }

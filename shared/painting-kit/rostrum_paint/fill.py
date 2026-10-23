@@ -20,7 +20,11 @@ GAPS = {"small": 3, "medium": 6, "large": 12}      # Close gaps: lines this far 
 
 
 class NotClosed(ValueError):
-    """The click is on a line, or its area is not closed (it reaches the canvas's edge)."""
+    """The click is on a line, or its area is not closed (it reaches the canvas's edge). `plain`: what to tell a person."""
+
+    def __init__(self, message: str, plain: str = ""):
+        super().__init__(message)
+        self.plain = plain
 
 
 def _grow(m: np.ndarray, r: int) -> np.ndarray:
@@ -74,16 +78,18 @@ def region(alpha: np.ndarray, at, gap: str = "small") -> list[list[float]]:
     h, w = alpha.shape
     x, y = int(np.floor(at[0])), int(np.floor(at[1]))
     if not (0 <= x < w and 0 <= y < h):
-        raise NotClosed(f"({at[0]:g}, {at[1]:g}) is outside the painting ({w}×{h} px)")
+        raise NotClosed(f"({at[0]:g}, {at[1]:g}) is outside the painting ({w}×{h} px)", "That click is outside the painting.")
     r = GAPS[gap]
     line = alpha >= 0.5
     walls = _grow(line, r)
     if walls[y, x]:
-        raise NotClosed(f"({at[0]:g}, {at[1]:g}) is on a line (or within the {gap} gap of one): click inside an area")
+        raise NotClosed(f"({at[0]:g}, {at[1]:g}) is on a line (or within the {gap} gap of one): click inside an area",
+                        "That click is on a line. Click inside an area instead.")
     area = _flood(~walls, x, y)
     if area[0].any() or area[-1].any() or area[:, 0].any() or area[:, -1].any():
         raise NotClosed(f"the area at ({at[0]:g}, {at[1]:g}) is not closed: it reaches the edge of the painting "
-                        f"(close the lines, or a larger Close gaps)")
+                        f"(close the lines, or a larger Close gaps)",
+                        "This area has a gap. Try Medium or Large under Close gaps.")
     area = _grow(_grow(area, r) & ~line, 1)
     return [[float(px), float(py), ring] for ring, loop in enumerate(_loops(area)) for px, py in loop]
 

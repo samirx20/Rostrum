@@ -51,7 +51,7 @@ QQC.Popup {
                 Text {
                     id: keys
                     visible: !!row.modelData.keys
-                    anchors { right: parent.right; rightMargin: Theme.gap - menu.padding; verticalCenter: parent.verticalCenter }
+                    anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
                     text: row.modelData.keys || ""; color: Theme.fg2; font.pixelSize: Theme.label; font.family: uiFont
                 }
                 MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor

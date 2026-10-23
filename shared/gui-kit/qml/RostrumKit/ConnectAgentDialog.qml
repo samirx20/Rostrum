@@ -18,7 +18,7 @@ QQC.Popup {
     readonly property var hand: rows.find(r => r.id === handId) || rows[0] || null
     parent: QQC.Overlay.overlay
     x: Math.round((parent.width - width) / 2); y: Math.round((parent.height - height) / 2)
-    width: 640    // as tall as its rows (scrolls past the window's room)
+    width: 520    // as tall as its rows (scrolls past the window's room)
     height: Math.min(parent.height - 2 * Theme.groupGap * 2, head.height + list.height + 3 * Theme.groupGap + Theme.grid)
     padding: 0
     objectName: "connectAgentDialog"
@@ -83,13 +83,9 @@ QQC.Popup {
                     Repeater { model: sec.modelData.rows; delegate: agentRow }
                 }
             }
-            Text {   // the one way in to setting an agent up by hand
-                text: dlg.byHand ? "Hide setting up by hand" : "Set up by hand…"; leftPadding: Theme.grid
-                height: Math.max(implicitHeight, 16); verticalAlignment: Text.AlignVCenter
-                color: handLink.hovered ? Theme.fg : Theme.accent
-                font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold
-                HoverHandler { id: handLink; cursorShape: Qt.PointingHandCursor }
-                TapHandler { onTapped: dlg.byHand = !dlg.byHand }
+            Button {   // the one way in to setting an agent up by hand
+                text: dlg.byHand ? "Hide setting up by hand" : "Set up by hand…"; kind: "ghost"
+                onClicked: dlg.byHand = !dlg.byHand
             }
             Column {  // by hand: the exact text to copy, from the same source as the guides
                 visible: dlg.byHand && !!dlg.hand
@@ -159,12 +155,12 @@ QQC.Popup {
                                     : error ? a.state.slice(7) : !a.installed ? "Not found on this computer: set it up by hand." : ""
         width: list.width
         height: body.height
-        radius: Theme.radiusCtl; color: Theme.sunken
+        radius: Theme.radiusCtl; color: a.installed ? Theme.sunken : "transparent"   // only agents we can act on are cards
         Column {
             id: body
             x: Theme.pad; width: parent.width - 2 * Theme.pad
             Item {
-                width: parent.width; height: 44
+                width: parent.width; height: row.a.installed ? 44 : Theme.button + Theme.grid
                 Text { id: nameText; anchors { left: parent.left; verticalCenter: parent.verticalCenter }
                        text: row.a.name; color: row.a.installed ? Theme.fg : Theme.fg2
                        font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold }
@@ -185,6 +181,11 @@ QQC.Popup {
                         visible: row.a.installed && row.a.state === "none" && dlg.asking !== row.a.id && !row.busy
                         text: "Add"
                         onClicked: dlg.asking = row.a.id
+                    }
+                    Button {   // not found here: the way in is its exact text to copy
+                        visible: !row.a.installed
+                        text: "Set up by hand"; kind: "ghost"
+                        onClicked: dlg.showHand(row.a.id)
                     }
                     Button {
                         visible: row.a.state === "ours" && !row.busy

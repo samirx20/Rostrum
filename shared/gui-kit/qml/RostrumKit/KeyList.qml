@@ -22,9 +22,13 @@ QQC.Popup {
         }
         return out
     }
+    // a chip reads in words: a lone "," or "." (or "Shift ,") would look like an empty box
+    function chip(k) { return k.replace(/\+/g, " ").replace(/(^| )\,$/, "$1Comma").replace(/(^| )\.$/, "$1Period") }
     signal done()
     parent: QQC.Overlay.overlay
-    width: Math.min(parent.width - 4 * Theme.groupGap, 560); height: parent.height - 4 * Theme.groupGap
+    // as wide as its longest chip row needs (chips stay next to their words), as tall as its rows (scrolls past the window's room)
+    width: Math.min(parent.width - 4 * Theme.groupGap, 440)
+    height: Math.min(parent.height - 4 * Theme.groupGap, 2 * Theme.pad + title.height + find.height + 2 * Theme.gap + list.contentHeight)
     x: Math.round((parent.width - width) / 2); y: Math.round((parent.height - height) / 2)
     modal: true; focus: true; padding: Theme.pad
     QQC.Overlay.modal: Rectangle { color: Theme.scrim }
@@ -51,7 +55,7 @@ QQC.Popup {
             required property var modelData
             width: list.width; height: modelData.head ? Theme.rowDense + Theme.grid : Theme.rowDense
             Text { visible: !!parent.modelData.head; anchors.bottom: parent.bottom; text: parent.modelData.head || ""
-                   color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold
+                   color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold
                    font.capitalization: Font.AllUppercase; font.letterSpacing: Theme.capsSpacing }
             Text { visible: !parent.modelData.head; anchors.verticalCenter: parent.verticalCenter
                    width: parent.width - keysRow.width - Theme.gap; elide: Text.ElideRight
@@ -62,7 +66,7 @@ QQC.Popup {
                 anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
                 spacing: Theme.grid
                 Repeater { model: parent.parent.modelData.keys || []
-                           KeyHint { required property string modelData; text: modelData.replace(/\+/g, " ") } }
+                           KeyHint { required property string modelData; text: dlg.chip(modelData) } }
             }
         }
         EmptyHint { visible: list.count === 0; width: list.width; y: Theme.groupGap

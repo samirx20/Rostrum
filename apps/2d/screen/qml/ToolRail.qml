@@ -4,7 +4,7 @@ import QtQuick.Dialogs
 import RostrumKit
 
 // The tool rail (design v2 §2.1): icons only, its own column left of the canvas, never over it. Groups from the top:
-// Select, Shapes, Pen, Text, Brush | Media, Sound, Camera | Hand / Zoom, Bones. A group with one entry is a plain
+// Select, Shapes, Pen, Text, Brush | Media, Sound, Camera | Hand / Zoom | Bones. A group with one entry is a plain
 // button; a group with more opens its flyout beside the rail (ToolFlyout.qml). A tool group's icon is its last-used
 // tool (pick Star once and the Shapes icon is a star), and it reads that from backend.tool, so a key (R, O, H, Z)
 // moves it too. The Shapes flyout lists every shape kind (backend.create.kinds = fields.SHAPE_KINDS), each its own icon. Only what can be used now is listed (rule of individuality): a 3D render only with Rostrum3D, Sound
@@ -43,9 +43,10 @@ Rectangle {
         { id: "view", items: [
             { name: "Hand", icon: "hand", job: "hand_tool", tool: "hand", help: "Drag to move the view." },
             { name: "Zoom", icon: "zoom", job: "zoom_tool", tool: "zoom", help: "Click to zoom in; Alt and click to zoom out." }] },
+        { sep: true, when: backend.boneTool.available },      // the Bone tool is its own group, set off from Hand / Zoom
         { id: "bone", items: backend.boneTool.available ? [{ name: "Bone", icon: "bone", job: "bone_tool", tool: "bone",
             help: "Click joint after joint (or drag from a joint to the tip) to draw the rig's bones. Esc ends the chain." }] : [] }
-    ].filter(g => g.sep || g.items.length > 0)
+    ].filter(g => g.sep ? g.when !== false : g.items.length > 0)
 
     function groupOf(tool) { return rail.groups.find(g => !g.sep && g.items.some(e => e.tool === tool)) }
     function shown(g) {        // the entry on the group's icon: its last-used tool, else the first

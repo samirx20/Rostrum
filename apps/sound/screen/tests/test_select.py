@@ -124,3 +124,15 @@ def test_landing_a_bar_on_a_marker_is_one_undo_step(bridge):
     assert len(doc.history.changes) == n + 3             # add, rename, land: one step each
     bridge.undo()
     assert doc.data["tempo"] == 120
+
+
+def test_loop_with_no_range_makes_one_and_clearing_it_ends_the_loop(bridge):
+    bridge.setTime(0.0)
+    bridge.toggleLoop()
+    assert bridge.looping and len(bridge.timeRange) == 2 and bridge.timeRange[1] > bridge.timeRange[0]
+    assert bridge.transport.loop == tuple(bridge.timeRange)
+    bridge.clearRange()
+    assert not bridge.looping and bridge.transport.loop is None
+    bridge.toggleLoop()
+    bridge.toggleLoop()
+    assert not bridge.looping and bridge.timeRange        # off, the range stays

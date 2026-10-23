@@ -146,18 +146,33 @@ def shown(rows: list[dict]) -> tuple[list[str], list[str]]:
 
 def omit(rows: list[dict], gone: set[str]) -> list[dict]:
     """The evaluated rows without the params in `gone` (shown elsewhere on the page); a group whose members all
-    went goes too."""
+    went goes too. A group left with ONE of several members gives up its heading and joins the group above (a
+    heading over a lone leftover reads wrong: "Mix" over just "Tone"); with no group above it just loses the heading."""
     if not gone:
         return rows
     kept = [r for r in rows if not (r["row"] == "param" and r["id"] in gone)]
     holds = {r["id"]: r["holds"] for r in kept if r["row"] == "param"}
+    left = {id(r): [m for m in r.get("members", []) if m in holds] for r in kept if r["row"] != "param"}
+    join, above = {}, None             # lone param id -> the group (row) it joins
+    for r in kept:
+        if r["row"] != "group" or r.get("by") == "holds" or not left[id(r)]:
+            continue
+        if len(left[id(r)]) == 1 and len(r.get("members", [])) > 1:
+            join[left[id(r)][0]] = above
+        else:
+            above = r["id"]
     out = []
     for r in kept:
-        if r["row"] != "param":
-            members = [m for m in r.get("members", []) if m in holds]
-            if not members:
-                continue
-            r = {**r, "members": members}
-            r["holds"] = any(holds[m] for m in members)
-        out.append(r)
+        if r["row"] == "param":
+            if r["id"] in join and join[r["id"]]:
+                r = {**r, "group": join[r["id"]][6:]}
+            out.append(r)
+            continue
+        members = left[id(r)]
+        if not members:
+            continue
+        if members[0] in join and len(members) == 1 and r["row"] == "group":
+            continue                   # the heading goes; its lone member stays
+        members = members + [j for j, g in join.items() if g == r["id"]]
+        out.append({**r, "members": members, "holds": any(holds[m] for m in members)})
     return _headers(out)

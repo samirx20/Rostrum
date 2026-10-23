@@ -64,5 +64,7 @@ def check(edits, idx, lists, where, locked_by=None, who=None) -> None:
         it = idx[changed].item if changed in idx else getattr(e, "item", None) or {"id": changed}
         subject, problem = ((whose, "is locked") if held["id"] == changed else
                             (f'"{it.get("name") or changed}" ({changed})', f"is inside {whose}, which is locked"))
+        label = it.get("name") or "That layer"
+        words = f"{label} is locked" if held["id"] == changed else f"{label} is inside {held.get('name') or 'a group'}, which is locked"
         raise RostrumError(codes.CHECK_FAILED, where, subject, problem + (f" by {by}" if by else ""),
-                           hint="Unlock it first, then try again.")
+                           hint="Unlock it first, then try again.", plain=f"{words}. Unlock it first, then try again.")

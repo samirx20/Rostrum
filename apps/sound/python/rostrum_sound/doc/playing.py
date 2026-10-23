@@ -92,7 +92,7 @@ EXPRESSION = [
       help="Speed of the vibrato lane's wobble."),
     N("vibratoDepth", 0, 200, "Expression", "cents", "secondary", when=HAS_VIBRATO, default=25, label="Vibrato depth",
       help="How wide the vibrato lane's wobble is at 1."),
-    N("bendRange", 0, 24, "Expression", "semitones", "secondary", when=HAS_BEND, default=2, label="Bend range",
+    N("bendRange", 0, 24, "Expression", "st", "secondary", when=HAS_BEND, default=2, label="Bend range",
       help="How far the bend lane moves the pitch at its top (and bottom)."),
 ]
 VIBRATO = [N("rate", 0.1, 20, "Vibrato", "Hz"), N("depth", 0, 200, "Vibrato", "cents"),

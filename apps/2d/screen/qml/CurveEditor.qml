@@ -57,6 +57,8 @@ Item {
                     text: entry.modelData.keys.length ? ed.range(entry.modelData) : ""
                     font.family: uiFont; font.pixelSize: Theme.label; color: Theme.fg2; font.features: { "tnum": 1 }
                 }
+                Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: -1 }
+                            height: 1; color: Theme.border }      // a line between the curves' rows
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                             onClicked: backend.curves.toggleField(entry.modelData.id) }
             }
@@ -77,8 +79,8 @@ Item {
             delegate: Rectangle { required property int index
                                   x: 0; width: plot.width; y: ed.padY + index * ed.plotH / 2; height: 1; color: Theme.border }
         }
-        Repeater {   // one curve alone: its lowest and highest key value at the right edge (several: see the legend)
-            model: ed.shown.length === 1 ? ed.shown[0].keys.length ? [ed.shown[0]] : [] : []
+        Repeater {   // each curve's lowest and highest key value at the right edge, in the curve's own colour
+            model: ed.shown.filter(f => f.keys.length)
             delegate: Item {
                 id: axis
                 required property var modelData
@@ -89,7 +91,7 @@ Item {
                         required property real modelData
                         x: plot.width - width - 10; y: ed.py(axis.modelData, modelData) - height - 3
                         text: Math.round(modelData * 100) / 100; font.family: uiFont; font.pixelSize: Theme.label
-                        color: Theme.fg4; font.features: { "tnum": 1 }
+                        color: axis.modelData.color; opacity: 0.8; font.features: { "tnum": 1 }
                     }
                 }
             }

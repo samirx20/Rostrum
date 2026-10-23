@@ -9,7 +9,9 @@ a test, anything running from a team worktree) must never touch them, or its thr
     locked(path)  hold an exclusive lock around a read-modify-write of one settings file (two windows at once)
 
 A scripted run is one with: ROSTRUM_SCRIPTED_HOME set (a parent run chose a scratch home; children share it), or
---shot / --step / --check-layout in the arguments, or pytest running, or this code living under .t3/worktrees.
+--shot / --step / --check-layout in the arguments, or pytest running, or this code living under .t3/worktrees, or a
+screen that opened without a person's launch: an app's main.py calls person_start() (the one place that says "a person
+is starting this"), and any other code that opens a screen (a driver importing Session) is scripted whatever its name.
 ROSTRUM_REAL_HOME=1 forces the real home (a person deliberately running from a worktree).
 """
 from __future__ import annotations
@@ -28,6 +30,20 @@ from .errors import RostrumError, codes
 FLAGS = ("--shot", "--step", "--check-layout")
 WAIT_S = 5.0
 _made: Path | None = None            # the scratch home this process created (and removes at exit)
+_person = False                      # an app's main.py said a person launched it
+_screen = False                      # a Qt screen was opened in this process (rostrum_gui.app.qt_app)
+
+
+def person_start() -> None:
+    """A person's launch of an app (its main.py, before anything reads a setting)."""
+    global _person
+    _person = True
+
+
+def screen_opened() -> None:
+    """A screen is being opened (called by qt_app): from here on a run no person launched counts as scripted."""
+    global _screen
+    _screen = True
 
 
 def scripted() -> str | None:
@@ -40,6 +56,8 @@ def scripted() -> str | None:
         return flag.split("=", 1)[0]
     if "pytest" in sys.modules or os.environ.get("PYTEST_CURRENT_TEST"):
         return "pytest"
+    if _screen and not _person:
+        return "a screen opened by a script, not a person's launch"
     here = str(Path(__file__).resolve()).lower()
     if "\\.t3\\worktrees\\" in here or "/.t3/worktrees/" in here:
         return "running from a team worktree"

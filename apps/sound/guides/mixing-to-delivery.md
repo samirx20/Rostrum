@@ -12,7 +12,8 @@ track (instrument, notes / clips) → its effect chain → its fader and pan →
   bus or the master). **Sends:** `send.add` on a track (`bus`, `level`, `pre` = before the fader).
 - **Effects:** `effect.add` on a track, bus or master (`effect` names the kind; settings depend on it: an EQ has `bands`,
   a compressor `threshold`, `ratio`, `attack`, `release`, `makeup`, `knee`, a reverb `space`, `mix`, `decay`).
-  `effect.set` changes one, `bypass` switches it off without losing settings. Plug-ins (CLAP / VST3) go in the same
+  `effect.set` changes one, `bypass` switches it off without losing settings. On screen an effect's amounts (mix,
+  feedback, drive, width, damping) read in percent (stored 0–1: type "20 %" or 0.2) and a ratio reads "3 :1". Plug-ins (CLAP / VST3) go in the same
   chain (inspect_plugins).
 - **Ducks:** `duck.add` on a track with `under` = the tracks that push it down (music under dialogue), and `depth`,
   `attack`, `release`, `hold`. The `voice` setting listens for speech only. On the screen: "+ Duck" on a strip.
@@ -31,14 +32,14 @@ The Mixer (X) has one strip per track, then the groups (buses), then the master.
   panel), one row per group it feeds (drag the slider), **+ Send** while there is a group it doesn't feed yet,
   and its ducks with **+ Duck**;
 - where it plays to: "→ Master", or a pick of the groups when there are any;
-- **Pan** (C = centre) and its slider;
+- **Pan** (C = centre) and its slider, which fills from the centre toward the side you pan to (double-click: back to the centre);
 - the fader with a dB scale beside it (+6, 0, −6 … −∞), and the meter with the highest level of the last render
   above it. The meter is green below −6 dB, amber from −6 to 0 and red over 0, on every strip and the master; it is
   empty until a render has measured the track. Rest the pointer on it for the track's loudness;
 - **M** (mute, amber), **S** (solo, green) and **R** (arm for recording, red), tracks only for S and R;
 - its volume in dB.
 
-In a low dock the sends and ducks move into **Sends ▾** on the output line (click it: the reverb send, the group
+The fader takes all the height the dock has left (the dock gets taller, the fader, its dB scale and the meter grow with it). In a dock under about 460 px (a laptop screen) the sends and ducks move into **Sends ▾** on the output line (click it: the reverb send, the group
 sends and **+ Duck** open above it); the fader, M S R and the volume stay. Every fader starts at the same height,
 the master's too.
 
@@ -47,7 +48,7 @@ the master's too.
 The strips sit side by side from the left, the Master right after the last one; with many tracks they scroll sideways
 and the Master stays in place. The rest of the width is the loudness panel: its title names the target ("Loudness ·
 target −14 LUFS (Streaming)"), then three numbers, **Integrated** (the whole mix; "so far" while playing),
-**Short-term** (the 3 seconds before the playhead) and **True peak** ("so far" while playing), and under them
+**Short-term** (the 3 seconds before the playhead; before the first 3 seconds, or when stopped at the start, it shows the last value in grey, and is absent until the song has had one) and **True peak** ("so far" while playing), and under them
 the short-term loudness over the song, with the target as a dashed line and the playhead. Integrated is green within
 1 of the target and amber outside; True peak is amber only over the ceiling. The Master strip's meter number is the
 same true peak. Rest the pointer on a number for what it means.

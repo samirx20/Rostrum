@@ -52,3 +52,19 @@ def test_keys_work_after_typing_and_renaming_end_with_esc_or_ctrl_enter(screen):
     assert b.comp()["layers"][1]["x"] == x + 2
     _steps(b, win, "keytap z ctrl")                       # each press is its own step
     assert b.comp()["layers"][1]["x"] == x + 1
+
+    # Audit A3b: editing a text, however the typing ends (Esc, Ctrl+Enter, a click on the canvas), is one undo step, and the
+    # arrows and Delete work right after (one window: a second screen in the same run gets no keyboard from Qt's test harness)
+    body = lambda: next(l["body"] for l in b.comp()["layers"] if l["id"] == "title")
+    x = lambda: next(l["x"] for l in b.comp()["layers"] if l["id"] == "title")
+    old, x0 = body(), x()
+    for ending in ("keytap escape", "keytap return ctrl", "mouseclick 150 600"):
+        _steps(b, win, "select title", "keytap return")
+        _steps(b, win, "typekeys Edited", ending)
+        assert not win.property("typing") and body() == "Edited", ending
+        _steps(b, win, "keytap z ctrl")
+        assert body() == old, ending                       # the whole edit is one step
+    _steps(b, win, "select title", "keytap right", "keytap right")
+    assert x() == x0 + 2
+    _steps(b, win, "keytap delete")
+    assert all(l["id"] != "title" for l in b.comp()["layers"])

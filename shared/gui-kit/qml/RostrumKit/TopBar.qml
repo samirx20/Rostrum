@@ -158,7 +158,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: bar.bridge.status || ""
                 elide: Text.ElideRight
-                color: /^Error/.test(bar.bridge.status) ? Theme.danger : Theme.fg3
+                color: bar.bridge.statusFailed ? Theme.danger : Theme.fg3
                 font.family: uiFont; font.pixelSize: Theme.label
                 HoverHandler { id: messageHover }
                 HoverTip { text: message.truncated ? bar.bridge.status : ""; hovered: messageHover.hovered }
@@ -261,7 +261,7 @@ Item {
                 id: helpMenu
                 x: parent.width - width
                 width: 240
-                entries: [{ value: "guides", label: "Guides   F1" }, { value: "keys", label: "Keys   Ctrl /" }]
+                entries: [{ value: "guides", label: "Guides", keys: "F1" }, { value: "keys", label: "Keys", keys: "Ctrl /" }]
                     .concat(typeof agents !== "undefined" && agents ? [{ value: "agents", label: "Connect an AI agent…" }] : [])
                     .concat(bar.helpEntries.filter(e => !/^file:.*\.md$/i.test(e.value)))
                     .concat(typeof notices !== "undefined" && notices ? [{ value: "report", label: "Report a problem…" }] : [])

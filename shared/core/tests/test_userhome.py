@@ -44,3 +44,19 @@ def test_two_writers_never_share_a_temp_name(tmp_path):
     [t.start() for t in ts]
     [t.join() for t in ts]
     assert not errors and json.loads(f.read_text())["i"] == 29
+
+
+def _reason(steps: str) -> str:
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("ROSTRUM_", "PYTEST"))}
+    env["PYTHONPATH"] = os.pathsep.join(sys.path)
+    r = subprocess.run([sys.executable, "-c", f"import sys; sys.argv = ['driver.py']; from rostrum_core import userhome as u; "
+                        f"{steps}; print(u.scripted())"], env=env, capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, r.stderr
+    return r.stdout.strip()
+
+
+def test_a_driver_that_opens_a_screen_without_the_apps_launch_is_scripted():
+    """Audit A3b: a script importing the screen to drive it (no --shot / --step) wrote the person's panels.json. Opening a
+    screen without a person's launch (an app's main.py calls person_start) is a scripted run; a person's launch is not."""
+    assert "screen opened by a script" in _reason("u.screen_opened()")
+    assert "screen opened by a script" not in _reason("u.person_start(); u.screen_opened()")

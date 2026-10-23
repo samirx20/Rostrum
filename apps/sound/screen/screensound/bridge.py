@@ -158,7 +158,9 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         return output_pick.choices(self.doc, item, self.label_of) if param == output_pick.FIELD else []
 
     def _rows(self):
-        return output_pick.without_none(super()._rows())
+        rows = output_pick.without_none(super()._rows())
+        sel = self._kit.selection          # times in bars.beats, pitches as names (inspect.musical_rows)
+        return inspect.musical_rows(self.doc.item(sel[0]), rows, self.doc.data) if len(sel) == 1 else rows
 
     # ---- screen state -----------------------------------------------------------------------------------------
     @Slot()

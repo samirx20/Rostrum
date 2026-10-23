@@ -16,11 +16,23 @@ import math
 from rostrum2d.drawing import frame_number
 from rostrum2d.placement import canvas_points
 from rostrum2d.evaluate import resolve
+from rostrum2d.names import display_name
+from rostrum_core.errors import RostrumError, codes
 from rostrum_core.ids import random_id
 from rostrum_gui.edits import Drag
 
 MIN_STEP = 0.5            # canvas px: a move closer than this to the last point adds nothing
 LEAN_STEP = 100.0         # composition px: the lean's direction is measured over this far (the canvas rounds to 0.01)
+
+
+def check_showing(item: dict, own_t: float, playhead: float) -> None:
+    """Paint only where the layer can be seen, as Procreate refuses a hidden layer: a stroke on a layer that is hidden, or
+    has no opacity at the playhead, would be drawn and never seen. Refused loudly, naming the layer and the moment."""
+    if item.get("hidden") or resolve(item, own_t).get("opacity", 1) <= 0:
+        name = display_name(item)
+        raise RostrumError(codes.CHECK_FAILED, "paint", f'"{name}"', f"is not showing at {playhead:.1f} s",
+                           hint="Show it, or move the playhead to where it shows, then paint.",
+                           plain=f"{name} isn't showing at {playhead:.1f} s. Show it or move the playhead, then paint.")
 
 
 class StrokeDrag:

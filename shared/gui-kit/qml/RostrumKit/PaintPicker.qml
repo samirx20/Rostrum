@@ -56,7 +56,7 @@ Column {
         id: typeRow
         width: parent.width; spacing: 2
         readonly property int count: pp.types.length + 1 + (wholeShape.visible ? 1 : 0)
-        readonly property real cell: Math.min(28, (pp.width - spacing * count) / count)
+        readonly property real cell: Math.min(28, (pp.width - spacing * (count + 1) - 1) / count)
         Repeater {
             model: pp.types
             delegate: IconButton {
@@ -68,7 +68,7 @@ Column {
                 PaintIcon { anchors.centerIn: parent; kind: parent.modelData; ink: parent.ink }
             }
         }
-        Item { width: Math.max(0, pp.width - typeRow.cell * typeRow.count - typeRow.spacing * typeRow.count); height: 1 }
+        Rectangle { visible: pp.gradient; width: 1; height: 16; anchors.verticalCenter: parent.verticalCenter; color: Theme.border }  // types | gradient's own buttons
         IconButton {   // only once the canvas handles set the gradient's own length: back to covering the whole shape
             id: wholeShape
             objectName: "wholeShape"; visible: pp.gradient && !!pp.paint && pp.paint.span === "points"

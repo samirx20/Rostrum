@@ -2,9 +2,9 @@ import QtQuick
 import QtQuick.Dialogs
 import RostrumKit
 
-// The arrangement, always in the middle (DESIGN.md §2.2, INTERACTION.md §1.1): a header strip — + Add, ⏮ ▶, ⟳ (only
-// with a time range), Record
-// (while a track is armed), the position and tempo · beats · key (click: the tempo / key popover), then at the right
+// The arrangement, always in the middle (DESIGN.md §2.2, INTERACTION.md §1.1): a header strip, every control one height (Theme.field),
+// ghost style, the play button the one accent — + Add, ⏮ ▶ loop (always there), Record (always there; Take, the level
+// and Record keys join it while a track is armed), the metronome, the position and tempo · beats · key (click: the tempo / key popover), then at the right
 // the picture's switch (while the song has one), Grid ▾ and Snap, and the zoom (− + Fit) — then the Timeline (ruler, sections,
 // markers, track headers and lanes, + Track, the Master row last). A new song says what to do first (W1): "Start with
 // a sound." with Add a track and Bring in a picture. The picture floats at the top right while it is open.
@@ -35,7 +35,7 @@ Rectangle {
             anchors { left: parent.left; verticalCenter: parent.verticalCenter }
             spacing: Theme.grid
             Button {        // + Add: a track with a sound (the Library), a picture to work to, a file
-                id: add; text: "+ Add"; down: addMenu.visible; height: Theme.button
+                id: add; text: "+ Add"; kind: "ghost"; down: addMenu.visible; height: Theme.field
                 onClicked: { if (addMenu.visible) { addMenu.close(); return }
                              const p = add.mapToItem(null, 0, add.height + 2); addMenu.openAt(p.x, p.y) }
                 ActionMenu {    // the kit's menu with keys
@@ -47,26 +47,30 @@ Rectangle {
                 }
             }
             Item { width: Theme.gap; height: 1 }
-            IconButton {   // ⏮ to the start, drawn (the font's ⏮ is a colour emoji)
-                id: toStart; kind: "ghost"; tip: "To the start (Home)"; anchors.verticalCenter: parent.verticalCenter
+            IconButton {   // ⏮ to the start (Home), drawn (the font's ⏮ is a colour emoji)
+                id: toStart; kind: "ghost"; tip: "To the start (Home)"; width: Theme.field; height: Theme.field
+                anchors.verticalCenter: parent.verticalCenter
                 onClicked: backend.setTime(0)
-                Rectangle { x: 9; anchors.verticalCenter: parent.verticalCenter; width: 2; height: 10
+                Rectangle { x: 7; anchors.verticalCenter: parent.verticalCenter; width: 2; height: 10
                             color: toStart.hovered ? Theme.fg : Theme.fg2 }
-                Text { x: 10; anchors.verticalCenter: parent.verticalCenter; text: "◀"; font.pixelSize: 11
+                Text { x: 8; anchors.verticalCenter: parent.verticalCenter; text: "◀"; font.pixelSize: 11
                        color: toStart.hovered ? Theme.fg : Theme.fg2 }
             }
-            PlayButton { playing: backend.playing; onClicked: backend.togglePlay(); anchors.verticalCenter: parent.verticalCenter }
-            IconButton {   // ⟳ loop: only while a time range exists (Shift+L)
-                visible: backend.timeRange.length === 2; glyph: "⟳"; kind: "ghost"; down: backend.looping
-                tip: backend.looping ? "Looping the time range (Shift+L)" : "Loop the time range (Shift+L)"
+            PlayButton {   // play / stop (Space): the strip's one accent
+                primary: true; playing: backend.playing; onClicked: backend.togglePlay()
+                width: Theme.field; height: Theme.field; anchors.verticalCenter: parent.verticalCenter
+            }
+            IconButton {   // loop (Shift+L): always there; with no time range it makes one (the selection, else four bars)
+                mark: "loop"; kind: "ghost"; down: backend.looping; width: Theme.field; height: Theme.field
+                tip: backend.looping ? "Looping (Shift+L): click to stop" : "Loop (Shift+L): the time range, the selection, else four bars from here"
                 anchors.verticalCenter: parent.verticalCenter; onClicked: backend.toggleLoop()
             }
-            IconButton {   // the metronome (Shift+K), on while it is down; folds away in a squeezed panel (the key stays)
-                visible: a.width >= 900; icon: "metronome"; kind: "ghost"; down: backend.clickOn
+            RecordControls { anchors.verticalCenter: parent.verticalCenter }
+            IconButton {   // the metronome (Shift+K), on while it is down
+                icon: "metronome"; kind: "ghost"; down: backend.clickOn; width: Theme.field; height: Theme.field
                 tip: backend.clickOn ? "Metronome click is on (Shift+K)" : "Metronome click (Shift+K)"
                 anchors.verticalCenter: parent.verticalCenter; onClicked: backend.toggleClick()
             }
-            RecordControls { anchors.verticalCenter: parent.verticalCenter }
             Item { width: Theme.gap; height: 1 }
             SongReadout { id: readout; compact: a.compact; anchors.verticalCenter: parent.verticalCenter }
         }

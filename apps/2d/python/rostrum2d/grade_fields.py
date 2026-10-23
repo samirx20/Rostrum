@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from rostrum_core import Param
 
-G = "Colour"
+G = "Colour grade"
 ADJUST, LEVELS, CURVES = ({"is": [n, True]} for n in ("adjust", "levels", "curves"))
 HAS_LUT = {"not": {"is": ["lut", ""]}}
 STRAIGHT = "0,0 1,1"

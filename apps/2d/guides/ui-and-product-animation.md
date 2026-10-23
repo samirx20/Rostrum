@@ -66,8 +66,6 @@ inside.
 
 ### Track mattes
 
-**Not drawn yet (KNOWN OPEN, H14):** the fields and checks below exist, but the engine refuses a layer with a `matte` when it draws, because the renderer does not apply the matte yet. Use a mask meanwhile.
-
 A track matte uses another whole layer as the mask: its shape, letters or picture, animated with its own keys. Set
 `matte` on the layer to show (the id of a layer in the same group or comp) and `matteMode`:
 
