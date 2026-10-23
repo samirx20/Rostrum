@@ -95,7 +95,7 @@ Item {
     readonly property real tabFloor: documentName !== "" ? Math.min(tab.implicitWidth, 160) : 0      // the name's own room
     readonly property real tabWidth: tabFloor ? tabFloor + Math.max(0, Math.min(tab.implicitWidth - tabFloor, afterCommand)) : 0
     readonly property real afterTab: afterCommand - (tabWidth - tabFloor)
-    readonly property real messageWidth: fit(message.implicitWidth, afterTab - Theme.gap, 24)
+    readonly property real messageWidth: fit(message.implicitWidth, afterTab - sp, 24)
     // a part gets its natural width or what is there; below `least` it gives way entirely (a short name that fits whole
     // always shows: "t1 •" is narrower than `least`)
     function fit(natural, there, least) { const w = Math.min(natural, Math.max(0, there)); return w >= Math.min(least, natural) && w > 0 ? w : 0 }
@@ -147,15 +147,16 @@ Item {
         id: rightGroup
         anchors.right: parent.right; anchors.rightMargin: bar.edgeRight; anchors.verticalCenter: parent.verticalCenter
         spacing: bar.sp
-        Row {
+        Row {   // the message: its own piece, apart from the save state (they never read as one line)
             anchors.verticalCenter: parent.verticalCenter
             spacing: Theme.gap
+            visible: bar.messageWidth > 0 && !bar.agentShown     // (not message.visible: a child's reads its parent's)
             Text {  // the last thing that happened (or what failed): gives way first, hover shows all of it
                 id: message
                 visible: bar.messageWidth > 0 && !bar.agentShown
                 width: bar.messageWidth
                 anchors.verticalCenter: parent.verticalCenter
-                text: bar.bridge.status ? bar.bridge.status + (count.visible ? "  ·" : "") : ""
+                text: bar.bridge.status || ""
                 elide: Text.ElideRight
                 color: /^Error/.test(bar.bridge.status) ? Theme.danger : Theme.fg3
                 font.family: uiFont; font.pixelSize: Theme.label
@@ -170,20 +171,19 @@ Item {
                 BarLink { text: "Play"; onClicked: bar.job.play() }
                 Dot { }
                 BarLink { text: "Show in folder"; onClicked: bar.job.showInFolder() }
-                Dot { }
             }
-            Text {  // "Saved · 14 changes" ("Saved" with none): its own piece, never shrinks, the door to History.
-                id: count   // While the agent chip shows, the count is the chip's ("Claude · 6 changes"): "Saved" alone
-                anchors.verticalCenter: parent.verticalCenter
-                readonly property int n: bar.agentShown ? 0 : bar.bridge.historyCount
-                height: Math.max(implicitHeight, 16); verticalAlignment: Text.AlignVCenter     // a click target of at least 16 px
-                text: [bar.saveWord, n > 0 ? n + (n === 1 ? " change" : " changes") : ""].filter(w => w).join(" · ")
-                visible: text !== ""
-                color: countHover.hovered ? Theme.fg : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
-                HoverHandler { id: countHover; cursorShape: Qt.PointingHandCursor }
-                TapHandler { onTapped: bar.openHistory("") }
-                HoverTip { text: "Open History  Ctrl H"; hovered: countHover.hovered }
-            }
+        }
+        Text {  // "Saved · 14 changes" ("Saved" with none): its own piece, never shrinks, the door to History.
+            id: count   // While the agent chip shows, the count is the chip's ("Claude · 6 changes"): "Saved" alone
+            anchors.verticalCenter: parent.verticalCenter
+            readonly property int n: bar.agentShown ? 0 : bar.bridge.historyCount
+            height: Math.max(implicitHeight, 16); verticalAlignment: Text.AlignVCenter     // a click target of at least 16 px
+            text: [bar.saveWord, n > 0 ? n + (n === 1 ? " change" : " changes") : ""].filter(w => w).join(" · ")
+            visible: text !== ""
+            color: countHover.hovered ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
+            HoverHandler { id: countHover; cursorShape: Qt.PointingHandCursor }
+            TapHandler { onTapped: bar.openHistory("") }
+            HoverTip { text: "Open History  Ctrl H"; hovered: countHover.hovered }
         }
         Row {  // the app's tools (kept for apps that still use them; never shrinks)
             id: toolsSlot
@@ -255,7 +255,7 @@ Item {
             id: help
             objectName: "helpButton"
             anchors.verticalCenter: parent.verticalCenter
-            glyph: "?"; kind: "ghost"; tip: "Help"; help: "Guides, keys, connecting an AI agent, reporting a problem, About."; down: helpMenu.opened
+            icon: "help"; kind: "ghost"; tip: "Help"; help: "Guides, keys, connecting an AI agent, reporting a problem, About."; down: helpMenu.opened
             onClicked: helpMenu.open()
             Menu {
                 id: helpMenu

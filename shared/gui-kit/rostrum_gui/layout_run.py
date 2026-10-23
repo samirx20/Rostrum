@@ -60,6 +60,7 @@ def sweep(app, win, out, name, ready, ignore=(), sizes=SIZES):
     """Resize `win` to each size, wait until `ready()` and the layout settles, check, mark; then exit the app
     (code 0: no fault, 5: faults). Results are added to <out>/faults.json under `name`."""
     from PySide6.QtCore import QTimer
+    from .settle import settle
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # a fault names on-screen words (⇄, →) on any console
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
@@ -74,7 +75,13 @@ def sweep(app, win, out, name, ready, ignore=(), sizes=SIZES):
     def wait(i, n):
         if not ready() and n < 100:
             return QTimer.singleShot(100, lambda: wait(i, n + 1))
-        QTimer.singleShot(500, lambda: look(i))        # the 160 ms reveals and relayouts have finished
+        settle(win, lambda img: look(i), lambda why: unsettled(i, why))   # frames until the screen holds still
+
+    def unsettled(i, why):
+        w, h = sizes[i]
+        found[f"{w}x{h}"] = [why]
+        print(f"layout {name} {w}x{h}: FAIL {why}")
+        step(i + 1)
 
     def look(i):
         w, h = sizes[i]

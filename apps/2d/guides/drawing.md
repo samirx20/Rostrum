@@ -19,7 +19,7 @@ Paint always belongs to something. Paint on a shape, a text, a picture or a path
    | **Pick** | I | takes a colour from the picture |
    | **Select** | S | picks strokes to move, copy or delete (part 4) |
 
-   Press a tool's key again to go back to the brush.
+   Rest the pointer on a tool to see its name and key. Press a tool's key again to go back to the brush.
 3. Under them are **19 brushes in five groups**: Sketch, Ink, Paint, Light and Texture. Each shows a real stroke of itself; rest the pointer on one and its stroke shows larger. Click one; it sets every brush setting but your colour.
 4. Last come **My brushes**: the brushes you saved, from this project and from your own library (see "Save your own brush" below). A brush kept in only one of the two says which, small, on the corner of its stroke: **project** or **library**. Right-click one for what you can do with it: **Rename** (type, then Enter), **Duplicate** (a copy named "… copy", to change without losing the first), **Also keep in my library** or **Also keep in this project** (when it is only in one), **Remove from this project** or **Remove from my library** (when it is in both), and **Delete** (gone from both).
 
@@ -49,7 +49,7 @@ The right-hand panel is headed "Painting", with the name and kind of what you pa
    - **Hardness** and **Mode**: how crisp the edge is, and how the stroke meets what is there (multiply glazes, screen and add light up). Mode leaves out erase: that is the Eraser tool.
    - **Pen**: **Pressure → size**, **Pressure → opacity** and **Steadiness** (the line trails the pen and smooths a shaky hand). With a pen that tilts, **Tilt → angle** and **Tilt → size** appear. **Taper start** and **Taper end** make a stroke begin or end thin.
    - **Tip picture**: a picture as the tip's shape (sponge, speckle, streaks, ragged, charcoal, or one loaded into the project). It turns with the stroke.
-   - **Spacing**, **Even soft edge**, **Scatter**, **Size jitter**, **Angle jitter**, **Tip turns with the stroke** and **Tip angle**.
+   - **Spacing**, **Even soft edge**, **Scatter**, **Size jitter**, **Angle jitter**, **Tip follows stroke** and **Tip angle**. Spacing and Scatter are a share of the tip (10 % = dabs a tenth of the tip apart); Taper start and end are in tip sizes (2 × size = thin over two tip widths).
    - **Paper grain** and **Paper** (tooth, canvas, cold press, laid, rough, or the project's own) with **Paper scale**: the paper's tooth breaks up the paint and stays put on the canvas.
    - **Colour drift** and **Hue drift**.
    - **Wet (smudge)**, **Wetness** and **Pick up layers below**: the brush drags the paint under it.
@@ -57,7 +57,7 @@ The right-hand panel is headed "Painting", with the name and kind of what you pa
 
 ### Save your own brush
 
-Once a brush is how you like it, click **+ Save this brush**: at the right of **‹ Back** on Edit brush, or beside **My brushes** in the brush panel. A name box opens in place with the brush's name; type a name and press **Enter** (**Esc** leaves it). The brush joins **My brushes** with a stroke of itself, and it is the brush you paint with. It keeps every setting but the colour, including a tip picture or paper you loaded. A saved brush is kept in two places: in the project, so agents working on it see and use the same ones, and in your own library, so it is in **My brushes** in every project you open. A tip picture or paper you loaded goes into your library with it, so the brush paints the same in another project (the picture is copied into that project when you pick the brush). The right-click menu takes it out of either place. With no project open, it goes into your library alone.
+Once a brush is how you like it, click **+ Save this brush**: at the right of **‹ Back** on Edit brush, or the last tile under **My brushes** in the brush panel. A name box opens in place with the brush's name; type a name and press **Enter** (**Esc** leaves it). The brush joins **My brushes** with a stroke of itself, and it is the brush you paint with. It keeps every setting but the colour, including a tip picture or paper you loaded. A saved brush is kept in two places: in the project, so agents working on it see and use the same ones, and in your own library, so it is in **My brushes** in every project you open. A tip picture or paper you loaded goes into your library with it, so the brush paints the same in another project (the picture is copied into that project when you pick the brush). The right-click menu takes it out of either place. With no project open, it goes into your library alone.
 
 ![Save this brush on Edit brush: the name box open](pictures/brush-save.png)
 

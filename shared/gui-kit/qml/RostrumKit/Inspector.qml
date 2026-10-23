@@ -62,6 +62,7 @@ Panel {
         objectName: "inspectorScroll"    // scripted steps scroll it (an app's `inspectorscroll` step)
         anchors { left: parent.left; right: parent.right; top: find.visible ? find.bottom : kind.bottom
                   bottom: panel.hasLast ? lastLine.top : parent.bottom; topMargin: Theme.gap   // scrolled rows stop short of the subtitle
+                  bottomMargin: panel.hasLast ? Theme.gap : 0                                     // ... and of the last line
                   rightMargin: Theme.padRight - panel.bodyPad }   // wider than the header: rows end 4 px from the panel's edge (grid)
         contentHeight: list.height; clip: true; boundsBehavior: Flickable.StopAtBounds
         Column {
@@ -77,7 +78,7 @@ Panel {
                     delegate: Item {
                         id: nline
                         required property var modelData
-                        width: list.width; height: Theme.row
+                        width: Theme.wideFor(list.width); height: Theme.row     // the chevron ends on the fields' right edge
                         Rectangle { anchors.fill: parent; radius: Theme.radiusCtl; color: Theme.hover; visible: narrowArea.containsMouse }
                         Text { anchors.left: parent.left; anchors.leftMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter
                                text: nline.modelData.label; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
@@ -111,7 +112,7 @@ Panel {
         NameLabel { anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                     text: panel.hasLast ? "Last changed by " + panel.last.who + (panel.last.ago ? " · " + panel.last.ago : "") : ""
                     help: panel.hasLast ? panel.last.label : ""
-                    color: lastArea.containsMouse ? Theme.fg2 : Theme.fg3; font.pixelSize: Theme.label }
+                    color: lastArea.containsMouse ? Theme.fg : Theme.fg2; font.pixelSize: Theme.label }
         MouseArea { id: lastArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: panel.bridge.agent.askHistory(panel.last.session) }
     }

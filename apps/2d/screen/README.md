@@ -57,7 +57,8 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   drag a rectangle or ellipse (Shift square / round, Alt from the centre, a click = 200 × 200), one change, selected,
   back to Move; T: click or drag a box and type on the canvas, one change per typing session (previews `text.set` per
   key), Esc / Ctrl+Enter ends; double-click a text to type in it again. While typing the context bar has Font, Weight,
-  Size, Colour, Done (`qml/ToolOptions.qml`). Steps: `shape`, `shapedrag`, `text`, `textbox`, `typetext`, `edittext`.
+  Size, Colour (`qml/ToolOptions.qml`; no Done: Esc, Ctrl+Enter or a click outside ends), and from the first letter
+  the new text is selected, so the settings panel shows its settings. Steps: `shape`, `shapedrag`, `text`, `textbox`, `typetext`, `edittext`.
 - **The view** (`qml/CanvasView.qml`, `ViewInput.qml`, `ViewControls.qml`, `screen2d/spacekey.py`, `view_steps.py`):
   one mapping (Stage's `compScale`, `toComp`, `fromComp`, `inWell`) for everything over the canvas. Ctrl+wheel / pinch
   at the pointer, Space+drag or middle-drag, Ctrl+0, Ctrl+1, F (Shift+2), Ctrl+= / Ctrl+−; the "Fit · 43 % ▾" menu. The
@@ -183,14 +184,14 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - **Loud, never silent:** no engine, a broken song, a missing marker or no sound output is said once in the status
   line and stays on the Sound row in red; the picture keeps its own clock.
 - **Screen:** the Sound row is the layers list's footer (`LayerRows.qml`; kept in compact, `compactHeight` counts
-  it), right-click › Open in RostrumSound (`tools/rostrum.ps1 sound -Doc`). The ruler's ▾ (only while the song has a
-  tempo) › Show beats draws `BeatLines.qml`; Shift+, / Shift+. step beats (`stepBeat`; the key map's `prev_beat` /
+  it); its name (or a right-click) opens its menu: Show beats (only while the song has a tempo) draws `BeatLines.qml`,
+  Open in RostrumSound (`tools/rostrum.ps1 sound -Doc`); its speaker mutes the sound in 2D only; Shift+, / Shift+. step beats (`stepBeat`; the key map's `prev_beat` /
   `next_beat`). `beat_times()` / `bar_times()` feed time snapping (`time_snap.py`). Scene settings › Soundtrack is a
   choice of the project's Sound items (`soundtrack_rows.py`), absent when there are none.
 - **Agents:** `inspect_soundtrack` (what plays: item, length, tempo, bars, markers) and `comp.set {soundtrack}`.
   The field never reaches the 2D engine (`scene.python_only`).
 - Steps (`soundtrack_steps.py`): `sound wait | mute on|off | beats on|off | beat prev|next | scrub <s> | play <s> |
-  wav <path> | pick <item|-> | menu | open [dry] | problem <png>`, `rulermenu`. Layout states: `sound-row`,
+  wav <path> | pick <item|-> | menu | open [dry] | problem <png>`. Layout states: `sound-row`,
   `sound-beats`, `sound-compact`, `sound-menu` (a project made by `soundtrack_steps.sound_project`).
 
 ## H33 (rig): the Bone tool, Mirror pose, faint marks past the keys, beat words

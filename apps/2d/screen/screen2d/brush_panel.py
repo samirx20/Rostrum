@@ -85,7 +85,7 @@ class BrushPanel(QObject):
     @Property("QVariantMap", notify=brushChanged)
     def selectedItem(self):
         if self.brush.editing:
-            return {"id": "brush", "label": self.brush.label(), "kind": "brush", "kindLabel": "Brush"}
+            return {"id": "brush", "label": self.brush.label(), "kind": "brush", "subtitle": ""}   # its first group says "Brush"
         d = self._aim()
         name, kind = (display_name(d), self.b.kind_label(d)) if d else ("New drawing", "")
         on = name if kind in ("", name) else f"{name} · {kind}"     # "Drawing", not "Drawing · Drawing"

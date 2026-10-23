@@ -36,26 +36,26 @@ Item {
         return null
     }
 
-    Column {   // the legend
-        x: 0; y: ed.padY; width: ed.labelWidth; spacing: 2
+    Column {   // the legend: in the name column, on the layer rows' own grid (top, height, spacing, text x: LayerName)
+        x: Theme.gap; y: 0; width: ed.labelWidth - Theme.gap; spacing: 2
         Repeater {
             model: ed.fs
             delegate: Item {
                 id: entry
                 required property var modelData
-                width: ed.labelWidth; height: Theme.rowDense
+                width: parent.width; height: Theme.row
                 opacity: modelData.shown ? 1 : 0.4
-                Rectangle { x: Theme.gap; anchors.verticalCenter: parent.verticalCenter; width: 10; height: 3; radius: 1.5
+                Rectangle { x: Theme.gap + 3; anchors.verticalCenter: parent.verticalCenter; width: 12; height: 3; radius: 1.5
                             color: entry.modelData.color }
                 Text {
-                    x: Theme.gap + 18; width: parent.width - x - 64; anchors.verticalCenter: parent.verticalCenter
+                    x: Theme.gap + 24; width: parent.width - x - 72; anchors.verticalCenter: parent.verticalCenter
                     elide: Text.ElideRight; text: entry.modelData.label; font.family: uiFont; font.pixelSize: Theme.body
-                    color: entry.modelData.selected ? Theme.fg : Theme.fg2
+                    color: Theme.fg; font.weight: entry.modelData.selected ? Font.DemiBold : Font.Normal   // its curve is drawn thicker
                 }
                 Text {
-                    anchors { right: parent.right; rightMargin: Theme.gap + 4; verticalCenter: parent.verticalCenter }
+                    anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
                     text: entry.modelData.keys.length ? ed.range(entry.modelData) : ""
-                    font.family: uiFont; font.pixelSize: Theme.label; color: Theme.fg3; font.features: { "tnum": 1 }
+                    font.family: uiFont; font.pixelSize: Theme.label; color: Theme.fg2; font.features: { "tnum": 1 }
                 }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                             onClicked: backend.curves.toggleField(entry.modelData.id) }

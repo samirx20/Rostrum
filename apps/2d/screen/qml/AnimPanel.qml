@@ -3,9 +3,10 @@ import RostrumKit
 
 // The settings panel as the picked animation (SPEC §9.3, mockup 04), shown over the layer's settings while a stretch
 // is picked in the timeline (backend.stretch, screen2d/stretch_select.py). On the settings grid (Theme.labelColumnFor /
-// fieldFor / halfFor / wideFor): ‹ back (Esc does the same) · Move · "title · Position"; From → to, one row per number
-// (from | → to); Start, Length; Easing presets four across, the chosen one lit; its curve (handles to drag where the ease
-// is a cubic) and the four numbers; Reverse | Delete. Every edit is one operation call (anim.ease, key.set, key.handles).
+// fieldFor / halfFor / wideFor): ‹ back (Esc does the same) · Move · "title · Position"; one row per number (from | to);
+// Start, Length; the easing presets, at most four across, every row as wide as the panel, the chosen one lit; its curve
+// (handles to drag where the ease is a cubic) and the four numbers; Reverse | Delete. No headings over the groups: each
+// field says what it is (a gap parts them). Every edit is one operation call (anim.ease, key.set, key.handles).
 Rectangle {
     id: panel
     readonly property var s: backend.stretch
@@ -16,7 +17,7 @@ Rectangle {
     MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onWheel: (e) => e.accepted = true }   // the layer's settings under it stay untouched
 
     component Words: Text { color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body; verticalAlignment: Text.AlignVCenter }
-    component Head: Words { height: Theme.row; color: Theme.fg3; font.pixelSize: Theme.label }
+    component Gap: Item { width: 1; height: Theme.gap }
     component Line: Item { width: panel.w; height: Theme.row }
 
     SheetScroll {   // a short window (1280 × 720): the panel scrolls, never runs under the timeline
@@ -30,7 +31,7 @@ Rectangle {
             Words { anchors { left: word.right; leftMargin: Theme.gap; verticalCenter: parent.verticalCenter }
                     text: (panel.info.ownerLabel || "") + " · " + (panel.info.label || ""); color: Theme.fg3; font.pixelSize: Theme.label }
         }
-        Head { text: "From → to" }
+        Gap { }
         Repeater {
             model: panel.info.rows || []
             delegate: Line {
@@ -51,7 +52,7 @@ Rectangle {
                 }
             }
         }
-        Head { text: "Time" }
+        Gap { }
         Repeater {
             model: [{ label: "Start", key: "start" }, { label: "Length", key: "length" }]
             delegate: Line {
@@ -64,18 +65,25 @@ Rectangle {
                 }
             }
         }
-        Head { text: "Easing" }
-        Grid {   // the presets, four across
+        Gap { }
+        Flow {   // the presets: as few rows as four across allows, shared out evenly, each row the panel's width
+            id: presets
             objectName: "animPresets"
-            columns: 4; spacing: 4
-            readonly property real cell: (Theme.wideFor(panel.w) - 3 * spacing) / 4
+            width: Theme.wideFor(panel.w); spacing: 4
+            readonly property int n: panel.s.presets.length
+            readonly property int across: Math.ceil(n / Math.ceil(n / 4))       // 7: 4 + 3; 6: 3 + 3; 5: 3 + 2
+            function cellW(i) {                                                 // the last row's cells widen to fill it
+                const inRow = Math.min(across, n - Math.floor(i / across) * across)
+                return (width - (inRow - 1) * spacing) / inRow
+            }
             Repeater {
                 model: panel.s.presets
                 delegate: Rectangle {
                     required property var modelData
+                    required property int index
                     readonly property bool chosen: panel.info.preset === modelData.value
                     objectName: "preset:" + modelData.value
-                    width: parent.cell; height: 40; radius: Theme.radiusCtl
+                    width: presets.cellW(index); height: 40; radius: Theme.radiusCtl
                     color: chosen ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.18) : presetArea.containsMouse ? Theme.raised : Theme.sunken
                     border.width: 1; border.color: chosen ? Theme.accent : Theme.border
                     Canvas {
@@ -129,13 +137,13 @@ Rectangle {
         Line {
             visible: (panel.info.handles || []).length === 4
             Words { width: Theme.labelColumnFor(panel.w); height: parent.height; text: "Curve" }
-            Words { x: Theme.labelColumnFor(panel.w); height: parent.height; font.family: monoFont; font.pixelSize: Theme.label
-                    text: (panel.info.handles || []).map(v => v.toFixed(2)).join(", ") }
+            Words { x: Theme.labelColumnFor(panel.w); leftPadding: Theme.gap; height: parent.height   // on the fields' text
+                    text: (panel.info.handles || []).map(v => v.toFixed(2)).join("  ") }
         }
         Item { width: 1; height: Theme.gap }
         Line {   // Reverse | Delete: the field column's two halves
             Button { x: Theme.labelColumnFor(panel.w); width: Theme.halfFor(panel.w); anchors.verticalCenter: parent.verticalCenter
-                     text: "⇄ Reverse"; help: "From and to swap"; onClicked: panel.s.reverse() }
+                     text: "Reverse"; help: "From and to swap"; onClicked: panel.s.reverse() }
             Button { x: Theme.labelColumnFor(panel.w) + Theme.halfFor(panel.w) + Theme.pairGap; width: Theme.halfFor(panel.w)
                      anchors.verticalCenter: parent.verticalCenter
                      text: "Delete"; help: "Removes this animation (undo brings it back)"; onClicked: panel.s.remove() }

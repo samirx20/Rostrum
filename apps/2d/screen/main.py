@@ -27,6 +27,7 @@ checkout_paths.use_this_checkout()
 
 from PySide6.QtCore import QTimer
 from rostrum_gui.app import qt_app
+from rostrum_gui.settle import settle
 
 from rostrum_core import Document
 from rostrum_core.storage import paths
@@ -125,19 +126,21 @@ def main():
                                               app.exit(4)))
             wait_frame(0)
 
-    def wait_frame(n):       # the newest frame has landed, then the 160 ms reveals have finished
+    def wait_frame(n):       # the newest frame has landed, then the screen holds still
         bridge = session.bridge
-        if bridge.frames.idle() and bridge.frame > 0:
-            QTimer.singleShot(600, lambda: guarded(shoot))
+        if bridge.frames.idle() and bridge.frame > 0:      # then frames until the screen holds still (settle.py)
+            settle(session.win, lambda img: guarded(lambda: shoot(img)), lambda why: guarded(lambda: fail(why)))
         else:
             QTimer.singleShot(100, lambda: guarded(lambda: wait_frame(n + 1)))
 
-    def shoot():
+    def fail(why):
+        raise RuntimeError(why)
+
+    def shoot(img):
         bridge = session.bridge
         if bridge.status.startswith("Error"):
             raise RuntimeError(bridge.status)
-        img = session.win.grabWindow()
-        if img.isNull() or not img.save(args.shot):
+        if not img.save(args.shot):
             raise RuntimeError(f"could not save {args.shot}")
         print(f"saved {args.shot} {img.width()}x{img.height()}  history={bridge.historyCount}  "
               f"selected={bridge.selected}  shown={bridge.shown()}")

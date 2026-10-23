@@ -857,7 +857,8 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
   points → layers → nothing). In the layers list: click, Ctrl+click adds / removes, Shift+click picks a range (Windows
   list habit). In the timeline's bar area: click a bar picks its layer; drag on empty bar area box-selects **keys**.
 - **Where and when:** everywhere; canvas, rows and settings always agree (one selection).
-- **Feedback:** selected layers: a box with handles on the canvas (one box around several), highlighted rows, and the
+- **Feedback:** selected layers: a box with handles on the canvas (one box around several), in the timeline the name lit
+  (accent text, a slim accent bar at its left) and the bar drawn brighter with an accent outline (no box across the row), and the
   settings panel's header says what: "title · Text" or "3 layers". Hovering a layer on the canvas outlines it thinly
   first, so you see what a click will pick.
 - **Undo and adjust:** selection is not a document change (no undo step), but Undo restores the selection that went
@@ -1099,8 +1100,8 @@ operation is one (`mask.make`).
   **Time** and **Value**. Pick or drag; every selected key changes. Right-click on a key gives the same Ease list.
 - **Where and when:** in the timeline header, only while keys are selected; the settings panel keeps showing the
   layer, with the keyed setting highlighted (decision 5).
-- **Feedback:** the ease shows on the bar between keys as a tiny shape (a straight line for linear, a curve for eased,
-  a step for jump); the canvas plays the stretch once when you pick an ease (turn off in the key bar's ⋯), so you see
+- **Feedback:** the ease shows in the key bar and the settings panel (the bar itself is slim and blank, no mark
+  between keys); the canvas plays the stretch once when you pick an ease (turn off in the key bar's ⋯), so you see
   the feel at once.
 - **Undo and adjust:** one step per pick or curve drag.
 - **Keys:** F9 smooth (the After Effects habit); Shift+F9 ease in; Ctrl+Shift+F9 ease out; Ctrl+Alt+J jump.
@@ -1515,7 +1516,7 @@ operation is one (`mask.make`).
 
 ### Beat grid · Now (H31)
 - **Goal:** land things on the beat.
-- **Steps:** when Sound has a tempo map, the ruler's ▾ › **Show beats** draws faint beat lines and bar numbers;
+- **Steps:** when Sound has a tempo map, the Sound row's menu (click its name) › **Show beats** draws faint beat lines and bar numbers;
   snapping includes beats (bars stronger). Shift+`,` and Shift+`.` jump to the previous / next beat.
 - **Agent:** key times can be written as beats `"bar 5"` *(new form)*.
 
@@ -1766,7 +1767,7 @@ right-click and Ctrl+K always agree. Some selections **promote** the action they
 |---|---|
 | Pen | Click: corner · Drag: curve · Click the first point to close · **Close path** · **Done** |
 | Editing points | **Smooth / Corner** · **Delete point** · **Done** |
-| Text, while typing | Font ▾ · Weight ▾ · Size · Colour ■ · **Done** |
+| Text, while typing | Font ▾ · Weight ▾ · Size · Colour ■ (Esc, Ctrl+Enter or a click outside ends it; no Done) |
 | Paint | brush ▾ · Size · Colour ■ · Opacity · Eraser E · Painting on: *x* ▸ |
 | Paint, strokes selected | *12 strokes* · Move to depth ▾ · Copy · Delete · **Done** |
 | Notes | Marker colour ■ · Write a note… · Resolve |
@@ -2174,7 +2175,7 @@ The project has music from RostrumSound with the markers "intro", "drop" and "ou
 |---|---|---|---|
 | 1 | Open | Click the project on the start screen (the music's row and markers are already there) | 1 |
 | 2 | Listen | Space · Space | 2 |
-| 3 | See the beat | Ruler ▾ · **Show beats** | 2 |
+| 3 | See the beat | Sound row's name · **Show beats** | 2 |
 | 4 | Tie to the moments | Drag the title bar's start onto "intro" · the logo bar's start onto "drop" · the cards' bar end onto "out" | 3 |
 | 5 | Pulse on the beat | Click the logo · Scale field · type `=100 + 6 * pulse()` · Enter | 4 |
 | 6 | The music changes | Sound moves "drop" later: nothing to do; the logo follows | 0 |

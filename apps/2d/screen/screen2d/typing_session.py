@@ -3,7 +3,8 @@
 A new text is not in the document until the first letter: `layer.add` + `text.set` are previewed together, then every
 key previews `text.set {body}` on top, and the session's end saves ONE change ("Add text"). Editing a text previews
 `text.set {body}` the same way ("Edit text"). An empty result changes nothing (cancelled). A style choice made while
-typing (font, weight, size, colour) rides in the same change and is remembered as the next text's start.
+typing (font, weight, size, colour) rides in the same change and is remembered as the next text's start. From the
+first letter the new text is selected, so the settings panel shows its settings while typing.
 """
 from __future__ import annotations
 
@@ -40,6 +41,8 @@ class Session:
             return                                     # nothing typed yet: nothing in the document
         self._open()
         self.drag.preview(self._calls(body=body))
+        if self.layer is None and self.b.selected != self.id and self.b.doc.has(self.id):
+            self.b.select(self.id)                     # the first letter: the settings panel shows the new text's
 
     def restyle(self, name: str, value):
         self.style[name], self.restyled = value, True
@@ -54,5 +57,8 @@ class Session:
             return None
         empty = not self.body.strip()
         same = self.layer is not None and self.body == self.start and not self.restyled
+        mine = self.layer is None and self.b.selected == self.id
         change = self.drag.end(cancel=empty or same)
+        if mine and empty:
+            self.b.select("")                          # a new text typed and emptied again: it is gone, as before it
         return None if empty or same else change

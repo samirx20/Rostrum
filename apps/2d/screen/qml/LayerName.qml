@@ -3,7 +3,8 @@ import RostrumKit
 
 // A timeline row's name side (LayerRows.qml): the fold arrow, the layer's icon and name, indented by depth. Click
 // selects; Ctrl+click adds or removes it, Shift+click selects the range from the first selected (as any Windows list);
-// every selected layer's row is lit. Double-click (or F2, Ctrl+K "Rename layer") renames; right-click opens the
+// a selected layer's name is lit: accent text and a slim accent bar at the row's left edge (Sam: no box across the
+// row; its bar in the track lights too, LayerTrack.qml). Double-click (or F2, Ctrl+K "Rename layer") renames; right-click opens the
 // layer menu; pulling a layer row up or down moves it (not a setting, effect or mask row). A setting row selects its
 // layer; it has no icon.
 Rectangle {
@@ -16,7 +17,12 @@ Rectangle {
     readonly property bool inSelected: !selected && isLayer && backend.multi.ids.indexOf(rowData.id) >= 0   // a key, effect or mask of it is selected
     readonly property int indent: Theme.gap + rowData.depth * 16
     radius: Theme.radiusCtl
-    color: selected ? Theme.accentSoft : hover.containsMouse || inSelected ? Theme.hover : "transparent"
+    color: hover.containsMouse || inSelected ? Theme.hover : "transparent"
+    Rectangle {  // the selection mark: a slim accent bar at the row's left edge
+        visible: name.selected
+        width: 2; height: parent.height - 8; radius: 1; anchors.verticalCenter: parent.verticalCenter
+        color: Theme.accent
+    }
 
     property bool renaming: false
     function beginRename() { if (isLayer) { renaming = true; nameBox.text = rowData.label; nameBox.forceActiveFocus(); nameBox.selectAll() } }
@@ -101,6 +107,6 @@ Rectangle {
         text: name.rowData.label; elide: Text.ElideRight; font.family: uiFont
         HoverTip { text: labelText.truncated ? name.rowData.label : ""; hovered: hover.containsMouse }   // the whole name
         font.pixelSize: name.isLayer ? Theme.body : Theme.label + 1
-        color: name.isLayer || name.selected ? Theme.fg : Theme.fg2
+        color: name.selected ? Theme.accentHover : name.isLayer ? Theme.fg : Theme.fg2
     }
 }

@@ -1,0 +1,50 @@
+"""Waiting until a scripted window has settled, before its picture is taken (--shot) or its layout checked.
+
+An offscreen window draws only when asked, and its animations step one frame per drawn frame: a picture taken
+on a timer alone showed the state of a few frames in (a tool highlight half-way, icons still loading, a menu not
+yet open). `settle` draws frame after frame, letting events (image loads, Loaders) run in between, until the
+picture stays the same for `still` frames in a row; it fails loudly when that never happens within `limit` seconds
+(something keeps moving). Pictures still loading (an Image or a Loader with `asynchronous`) keep it waiting too.
+"""
+from __future__ import annotations
+
+import time
+
+STILL = 4          # this many frames in a row with the same picture = settled (a caret blink rarely spans it)
+LIMIT = 10.0       # seconds; then it fails, naming the wait
+
+
+def settle(win, then, fail, still: int = STILL, limit: float = LIMIT) -> None:
+    """Draw `win` until its picture holds still, then call then(image); fail(message) when it never does."""
+    from PySide6.QtCore import QTimer
+    end = time.monotonic() + limit
+    state = {"last": None, "same": 0}
+
+    def frame():
+        img = win.grabWindow()                 # draws one frame: animations step, finished loads show
+        if img.isNull():
+            return fail("settle: the window gave no picture")
+        state["same"] = state["same"] + 1 if state["last"] is not None and img == state["last"] else 0
+        state["last"] = img
+        try:
+            done = state["same"] >= still and not loading(win.contentItem())
+        except Exception as e:  # noqa: BLE001  a check that breaks must say so, never hang the run
+            return fail(f"settle: {e}")
+        if done:
+            return then(img)
+        if time.monotonic() > end:
+            return fail(f"settle: the screen was still changing after {limit:g} s (an endless animation, or "
+                        "something that keeps loading); no picture taken")
+        QTimer.singleShot(10, frame)           # events in between: image loads, Loaders, queued signals
+
+    frame()
+
+
+def loading(item) -> bool:
+    """Something under `item` is still loading: a picture or an asynchronous Loader with a source and its `progress`
+    short of 1 (PySide can't read their `status` enum)."""
+    if item.isVisible() and str(item.property("source") or ""):
+        p = item.property("progress")
+        if isinstance(p, float) and p < 1:
+            return True
+    return any(loading(c) for c in item.childItems())

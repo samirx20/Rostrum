@@ -2,14 +2,15 @@ import QtQuick
 import RostrumKit
 
 // A timeline row's time side (LayerRows.qml), under the ruler (x = ruler.x - 8). A layer row draws a slim bar from its
-// first key to its last (vertically centred, no text; no keys, no bar); a selected layer's row is tinted, its bar in
-// the accent (Sam, H49: no box around the whole row). Drag the bar to move the layer in time: backend.beginBarDrag /
+// first key to its last (vertically centred, blank: no text, no ease mark; no keys, no bar); a selected layer's bar
+// is drawn brighter with an accent outline, the row itself stays as it is (Sam, H49: no box across the whole row). Drag the bar to move the layer in time: backend.beginBarDrag /
 // barDragTo / endDrag (one gesture = one change; near a marker or the playhead it snaps). When it shows (Starts at /
 // Ends at) is set in the panel; an end tied to a marker is a small flag at that time.
 // Keys sit on it as diamonds (all the layer's keys); a drawing's frames lie on it (FrameMarks). Setting, effect and
 // mask rows show their keys only. Click a diamond: the key is selected (the inspector shows its ease); drag it: key.set
 // t (it lands on a marker within 6 px). Between two keys of one setting a stretch can be clicked (StretchBand.qml). A click anywhere else on the row selects its layer, a drag there draws a box
-// that picks every key it touches (on several rows); between two keys a tiny shape shows the ease. The ruler scrubs.
+// that picks every key it touches (on several rows). The ease shows in the settings panel when a stretch or key is
+// clicked, not on the row. The ruler scrubs.
 // Past the last key, Repeat and Back and forth show faint copies of the keys; a spring cut short by its next key, a
 // faint tail to where it would have settled (screen2d/key_ghosts.py, from the evaluator's own functions).
 Rectangle {
@@ -24,8 +25,7 @@ Rectangle {
     readonly property bool cells: (rowData.frames || []).length > 0     // a drawing's cells are its bar: no second one over them
     readonly property var barKeys: isLayer && rowData.bar === true && !cells ? rowData.keys.filter(k => onBar(k)) : []
     radius: Theme.radiusCtl
-    color: lit && isLayer ? Qt.tint(Theme.sunken, Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.07))
-         : isLayer ? Theme.sunken : Qt.darker(Theme.panel, 1.15)
+    color: isLayer ? Theme.sunken : Qt.darker(Theme.panel, 1.15)
 
     property Item rows                  // the LayerRows it lies in: a box dragged here picks keys on every row it touches
     // Right-click anywhere on the row (its empty part, its bar, a stretch, a key): the one short menu (actions.SHORT_MENU)
@@ -54,30 +54,6 @@ Rectangle {
         }
         onCanceled: { if (boxing) track.rows.boxEnd("cancel"); boxing = false }
     }
-    Repeater {   // the ease between two keys, a tiny shape on the row: a line (linear), a curve (eased), a step (jump);
-                 // a layer's lines draw theirs as clickable stretches instead (StretchBand.qml)
-        model: !track.rowData.stretches && track.rowData.keys.length > 1 ? track.rowData.keys.slice(0, -1) : []
-        delegate: Canvas {
-            required property var modelData
-            required property int index
-            readonly property real x0: track.xOf(modelData.t)
-            readonly property real x1: track.xOf(track.rowData.keys[index + 1].t)
-            visible: x1 - x0 > 26
-            width: 12; height: 8; x: (x0 + x1) / 2 - width / 2; y: (track.height - height) / 2; z: 1
-            opacity: 0.7
-            property string shape: modelData.ease || "curve"
-            onShapeChanged: requestPaint()
-            onPaint: {
-                const ctx = getContext("2d")
-                ctx.reset(); ctx.strokeStyle = Theme.fg3; ctx.lineWidth = 1.2; ctx.beginPath()
-                if (shape === "line") { ctx.moveTo(0, height); ctx.lineTo(width, 0) }
-                else if (shape === "step") { ctx.moveTo(0, height); ctx.lineTo(width, height); ctx.moveTo(width, height); ctx.lineTo(width, 0) }
-                else { ctx.moveTo(0, height); ctx.bezierCurveTo(width * 0.9, height, width * 0.1, 0, width, 0) }
-                ctx.stroke()
-            }
-        }
-    }
-
     Rectangle {  // the bar: first key to last key, centred in the row
         id: bar
         visible: track.barKeys.length > 0
@@ -86,7 +62,8 @@ Rectangle {
         x: track.barKeys.length ? track.xOf(track.barKeys[0].t) - pad : 0
         width: track.barKeys.length ? track.xOf(track.barKeys[track.barKeys.length - 1].t) + pad - x : 0
         height: 12; y: Math.round((parent.height - height) / 2); radius: height / 2
-        color: track.lit ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.30) : Theme.raised
+        color: track.lit ? Qt.tint(Theme.raised, Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.45)) : Theme.raised
+        border.width: track.lit ? 1 : 0; border.color: Theme.accent
         MouseArea {
             id: barArea
             anchors.fill: parent; hoverEnabled: true; preventStealing: true

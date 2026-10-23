@@ -10,7 +10,7 @@ Item {
     id: fade
     property Flickable flick
     property color color: Theme.panel
-    property int size: 14
+    property int size: Theme.row      // a whole row: a half-cut row reads as fading, not cut
     enabled: false                 // no mouse: the wheel and clicks reach the rows under it
     Rectangle {
         visible: fade.flick && fade.flick.contentY > 1

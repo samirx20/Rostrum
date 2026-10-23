@@ -15,9 +15,10 @@ Item {
         objectName: "saveBrush"
         visible: !sb.naming
         anchors { verticalCenter: parent.verticalCenter; right: sb.align === Text.AlignRight ? parent.right : undefined
-                  left: sb.align === Text.AlignRight ? undefined : parent.left; leftMargin: 4; rightMargin: 4 }
-        text: "+ Save this brush"; color: linkArea.containsMouse ? Theme.fg : Theme.fg2
-        font.family: uiFont; font.pixelSize: Theme.label
+                  horizontalCenter: sb.align === Text.AlignHCenter ? parent.horizontalCenter : undefined
+                  left: sb.align === Text.AlignLeft ? parent.left : undefined; leftMargin: 4; rightMargin: 4 }
+        text: "+ Save this brush"; color: linkArea.containsMouse ? Theme.accent : Theme.fg
+        font.family: uiFont; font.pixelSize: Theme.body
         MouseArea { id: linkArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: { nameEdit.text = painter.brushNow.name; sb.naming = true; nameEdit.forceActiveFocus(); nameEdit.selectAll() } }
     }

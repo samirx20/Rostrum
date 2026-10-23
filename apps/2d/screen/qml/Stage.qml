@@ -260,6 +260,7 @@ Rectangle {
                     required property var modelData
                     box: modelData; fit: view.zoom; space: marks
                     visible: !(well.drawing && backend.paintEdge.layer === modelData.id)   // painting: its true edge instead
+                             && !(backend.create.typing && backend.selected === modelData.id)   // typing: the typing box instead
                     editable: backend.multi.count === 1 && !well.drawing && backend.tool !== "bone" && modelData.type !== "path" && !backend.pen.on
                 }
             }

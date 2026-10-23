@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// Show beats (the ruler's ▾, backend.soundtrack.beats: the song's tempo grid from Sound): a faint line per beat and a
+// Show beats (the Sound row's menu, backend.soundtrack.beats: the song's tempo grid from Sound): a faint line per beat and a
 // stronger one per bar across the rows, the bar's number at the top of the ruler, left of its line. Lines closer than
 // a few px are left out (zoomed out, the bars stay); a number that would touch the next is left out too.
 Item {

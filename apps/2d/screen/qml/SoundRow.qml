@@ -4,7 +4,10 @@ import RostrumKit
 // The Sound row, the last row of the layers list while the project has sound (backend.soundtrack, soundtrack.py;
 // UX_SPEC 3.28). Its name on the left; on the right the mix's waveform under the ruler, drawn from the peaks read once
 // per render (waveform.py), never worked out here. A problem (no engine, no sound output, a broken song) is said on
-// the row in words, never an empty row passed off as silence. Right-click: Open in RostrumSound.
+// the row in words, never an empty row passed off as silence. Its name opens the row's menu (so does a right-click):
+// Show beats (only while the song has a tempo; BeatLines.qml draws them), Open in RostrumSound. The speaker at the
+// name side's right end mutes the sound in 2D only (not the project). The well lies as a layer's track does (x =
+// ruler.x - 8, 8 px wider each side), so every row's box starts and ends at the same x.
 Item {
     id: row
     objectName: "soundRow"
@@ -14,22 +17,37 @@ Item {
     visible: st.present
     height: st.present ? Theme.row : 0
 
-    Rectangle {   // the name, like a layer's
+    Rectangle {   // the name, like a layer's: a click opens the row's menu
         x: Theme.gap; width: row.labelWidth - Theme.gap; height: parent.height
-        radius: Theme.radiusCtl; color: "transparent"
+        radius: Theme.radiusCtl; color: nameArea.containsMouse || menu.visible ? Theme.hover : "transparent"
+        MouseArea { id: nameArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: row.openMenu() }
         Text {
-            x: Theme.pad; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 2 * Theme.pad
+            id: songName
+            x: Theme.pad; anchors.verticalCenter: parent.verticalCenter
+            width: Math.min(implicitWidth, parent.width - x - mute.width - Theme.pad - 2 * Theme.gap - 12)
             text: "♪  " + (row.st.name || "Sound"); elide: Text.ElideRight
             color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
         }
+        Chevron { anchors.left: songName.right; anchors.leftMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter
+                  open: menu.visible; color: nameArea.containsMouse ? Theme.fg : Theme.fg3 }
+        IconButton {   // the sound in 2D only, not the project (backend.soundtrack.setMuted)
+            id: mute
+            objectName: "soundMute"
+            anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter
+            width: 22; height: 22; kind: "ghost"; down: row.st.muted
+            icon: row.st.muted ? "sound-off" : "sound"
+            tip: row.st.muted ? "Sound is muted here (only in 2D): click to hear it" : "Mute the sound here (only in 2D, not the project)"
+            onClicked: row.st.setMuted(!row.st.muted)
+        }
     }
-    Rectangle {   // the track well, as long as the scene
+    Rectangle {   // the track well, as long as the scene, as wide as a layer's track (8 px room each side)
         id: well
-        x: row.ruler.x; width: row.ruler.width; height: parent.height
+        x: row.ruler.x - 8; width: row.ruler.width + 16; height: parent.height
         color: Theme.sunken; radius: Theme.radiusCtl
         Canvas {
             id: wave
-            anchors.fill: parent
+            x: 8; width: parent.width - 16; height: parent.height
             visible: row.st.problem === "" && row.st.peaks.length > 0
             opacity: row.st.muted ? 0.35 : 1
             property var peaks: row.st.peaks
@@ -55,7 +73,7 @@ Item {
             model: wave.visible ? row.st.lines : []
             delegate: Rectangle {
                 required property var modelData
-                x: modelData.t * row.ruler.perSec; y: 2; height: well.height - 4
+                x: 8 + modelData.t * row.ruler.perSec; y: 2; height: well.height - 4
                 width: Math.max(4, (modelData.end - modelData.t) * row.ruler.perSec - 2)
                 radius: Theme.radiusCtl; color: Qt.rgba(0, 0, 0, 0.55); border.color: Theme.line; clip: true
                 Text { x: 4; width: parent.width - 8; anchors.verticalCenter: parent.verticalCenter
@@ -75,11 +93,12 @@ Item {
         anchors.fill: parent; acceptedButtons: Qt.RightButton
         onClicked: (m) => { menu.x = Math.min(m.x, row.width - menu.width); menu.y = m.y; menu.open() }
     }
-    function openMenu() { menu.x = row.labelWidth / 2; menu.y = 0; menu.open() }   // (steps: the right-click) on the song's own row
+    function openMenu() { menu.x = Theme.gap; menu.y = 0; menu.open() }   // over the name (steps: `sound menu`)
     Menu {
         id: menu
         width: 200
-        entries: [{ value: "open", label: "Open in RostrumSound" }]
-        onPicked: (v) => { if (v === "open") row.st.openInSound() }
+        entries: (row.st.hasBeats ? [{ value: "beats", label: row.st.showBeats ? "Hide beats" : "Show beats" }] : [])
+                 .concat([{ value: "open", label: "Open in RostrumSound" }])
+        onPicked: (v) => { if (v === "beats") row.st.setShowBeats(!row.st.showBeats); else if (v === "open") row.st.openInSound() }
     }
 }

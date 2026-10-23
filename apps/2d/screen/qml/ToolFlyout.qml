@@ -2,8 +2,8 @@ import QtQuick
 import QtQuick.Controls as QQC
 import RostrumKit
 
-// A rail group's flyout (design v2 §2.1, mockup 02): beside the rail at the group's icon, its entries as icon + name,
-// the key in the corner; no descriptions. A shape kind's icon is ShapeIcon.qml. A click picks one and closes it; Esc or a click anywhere else closes it.
+// A rail group's flyout (design v2 §2.1, mockup 02): beside the rail at the group's icon, its entries as icon + name;
+// the key, where there is one, in the hover tip (as the brush panel's tools); no descriptions. A shape kind's icon is ShapeIcon.qml. A click picks one and closes it; Esc or a click anywhere else closes it.
 QQC.Popup {
     id: fly
     property string group: ""
@@ -44,14 +44,11 @@ QQC.Popup {
                     anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 7 }
                     width: parent.width - 6; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
                     text: cell.modelData.name; color: cell.on || hover.hovered ? Theme.fg : Theme.fg2
-                    font.family: uiFont; font.pixelSize: Theme.label
-                }
-                Text {     // its key, small, in the corner
-                    anchors { right: parent.right; top: parent.top; margins: 4 }
-                    text: cell.modelData.job && Window.window && Window.window.keyFor ? Window.window.keyFor(cell.modelData.job) : ""
-                    color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label - 2
+                    font.family: uiFont; font.pixelSize: Theme.body
                 }
                 HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
+                HoverTip { hovered: hover.hovered; pressed: tap.pressed; text: cell.modelData.name     // its key, as every tile's
+                           key: cell.modelData.job && cell.Window.window && cell.Window.window.keyFor ? cell.Window.window.keyFor(cell.modelData.job) : "" }
                 MouseArea { id: tap; anchors.fill: parent; onClicked: fly.picked(cell.modelData) }
             }
         }

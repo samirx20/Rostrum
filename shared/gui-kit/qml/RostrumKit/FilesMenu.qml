@@ -17,14 +17,14 @@ IconButton {
     property bool keysOn: true               // off while a dialog of the app's own has the keys
     readonly property bool menuOpen: menu.visible
     signal picked(string value)              // one of `extra`'s values
-    glyph: "≡"; kind: "ghost"; tip: "Menu"; help: "New, open, duplicate, versions and the start screen"
+    icon: "menu"; kind: "ghost"; tip: "Menu"; help: "New, open, duplicate, versions and the start screen"
     down: menu.visible
     onClicked: menu.visible ? menu.close() : openMenu()
 
     function openMenu() {
         menu.entries = source.menu().concat(extra)
-        const p = root.mapToItem(null, 0, root.height + 2)
-        menu.openAt(p.x, p.y)
+        const p = root.mapToItem(null, 0, root.height + 2)    // under ≡, its left edge on the panels' (the window's gap):
+        menu.openAt(Theme.gap, p.y)                            // it covers the column below whole, never a sliver of it
     }
     function closeMenu() { menu.close() }
     function ask(v) {           // the file actions that need the window: a dialog, or History's name field
@@ -47,7 +47,8 @@ IconButton {
     Connections {
         target: root.source
         function onWanted(v) { root.ask(v) }
-        function onCopied(name) { notice.open() }
+        function onCopied(name) { if (!root.source.startShown) notice.open() }   // the start screen says it itself
+        function onChanged() { if (root.source.startShown) notice.close() }      // ...and takes it over when it opens
     }
     Instantiator {      // the file keys, from the key map
         model: root.source ? [["new", root.source.keys.new], ["open", root.source.keys.open],

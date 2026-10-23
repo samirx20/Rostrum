@@ -1,10 +1,12 @@
 import QtQuick
 import "."
 
-// The kit's one set of tool icons: clean line drawings on a 20 x 20 grid, 1.5 px strokes, round ends, one ink.
+// The kit's one set of tool icons: clean line drawings on a 20 x 20 grid, round ends, one ink; the stroke is 1.5 px on
+// screen at any size (a smaller icon is not a thinner one: the rail's and the settings panel's icons match).
 // Every app's tool rail and flyouts use these by `name` (2D's rail; Sound can reuse them). An unknown name draws
 // nothing, so a missing icon shows up at once.
-// select, rect, ellipse, pen, text, brush, picture, video, render3d, import, library, sound, camera, hand, zoom, bone,
+// select, rect, ellipse, pen, text, brush, picture, video, render3d, import, library, sound, sound-off, camera, hand, zoom, bone,
+// menu, help,
 // align-left / -hcenter / -right / -top / -vcenter / -bottom, distribute-x / -y, union, subtract, intersect, exclude,
 // align-left / -hcenter / -right / -top / -vcenter / -bottom, distribute-x / -y, union, subtract, intersect, exclude, metronome
 Canvas {
@@ -18,7 +20,7 @@ Canvas {
         const g = getContext("2d")
         g.reset()
         g.scale(width / 20, height / 20)
-        g.strokeStyle = ink; g.fillStyle = ink; g.lineWidth = 1.5; g.lineCap = "round"; g.lineJoin = "round"
+        g.strokeStyle = ink; g.fillStyle = ink; g.lineWidth = 1.5 * 20 / width; g.lineCap = "round"; g.lineJoin = "round"
         const line = (pts) => { g.beginPath(); g.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]); g.stroke() }
         const box = (x, y, w, h, r) => { g.beginPath(); g.roundedRect(x, y, w, h, r, r); g.stroke() }
         const ring = (x, y, r) => { g.beginPath(); g.ellipse(x - r, y - r, 2 * r, 2 * r); g.stroke() }
@@ -56,6 +58,9 @@ Canvas {
             g.closePath(); g.stroke()
             g.beginPath(); g.arc(10, 10, 3.5, -0.3 * Math.PI, 0.3 * Math.PI); g.stroke()
             g.beginPath(); g.arc(10, 10, 6.5, -0.3 * Math.PI, 0.3 * Math.PI); g.stroke(); break
+        case "sound-off":    // the speaker, its waves crossed out (muted)
+            g.beginPath(); g.moveTo(3, 8); g.lineTo(6, 8); g.lineTo(10, 4.5); g.lineTo(10, 15.5); g.lineTo(6, 12); g.lineTo(3, 12)
+            g.closePath(); g.stroke(); line([13, 7.5, 18, 12.5]); line([18, 7.5, 13, 12.5]); break
         case "camera":       // a film camera body and its lens
             box(2.5, 6, 11, 9, 2); g.beginPath(); g.moveTo(13.5, 9); g.lineTo(17.5, 7); g.lineTo(17.5, 14); g.lineTo(13.5, 12); g.stroke()
             ring(6, 4, 1.8); ring(10.5, 4, 1.8); break
@@ -68,6 +73,12 @@ Canvas {
             g.quadraticCurveTo(3, 10.8, 4.2, 10.3); g.quadraticCurveTo(5.2, 10, 6, 11); g.stroke(); break
         case "zoom": ring(8.5, 8.5, 5); line([12.2, 12.2, 16.5, 16.5]); line([6.5, 8.5, 10.5, 8.5]); line([8.5, 6.5, 8.5, 10.5]); break
         case "bone": line([6, 14, 14, 6]); ring(4.8, 15.2, 2); ring(15.2, 4.8, 2); break
+        // the top bar's ≡ (the app's menu) and ? (Help)
+        case "menu": line([4, 5.5, 16, 5.5]); line([4, 10, 16, 10]); line([4, 14.5, 16, 14.5]); break
+        case "help":
+            ring(10, 10, 7.5)
+            g.beginPath(); g.arc(10, 8, 2.4, Math.PI, 2.25 * Math.PI); g.quadraticCurveTo(10, 10, 10, 11.6); g.stroke()
+            dot(10, 14.2, 0.95); break
         // the settings panel's actions: Align (a line, two bars on it), Distribute, Combine (two boxes, what stays filled)
         case "align-left": line([3.5, 3, 3.5, 17]); box(6.5, 5, 10, 4, 1); box(6.5, 11, 6, 4, 1); break
         case "align-hcenter": line([10, 3, 10, 17]); box(4, 5, 12, 4, 1); box(6.5, 11, 7, 4, 1); break

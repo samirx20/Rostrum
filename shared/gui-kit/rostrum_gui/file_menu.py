@@ -24,7 +24,7 @@ class FileMenuSlots:
             out += [{"value": "duplicate", "label": "Duplicate…", "keys": k["duplicate"], "group": "file"},
                     {"value": "version", "label": "Save a version", "keys": k["version"], "group": "file"},
                     {"value": "folder", "label": "Show folder", "group": "file"},
-                    {"value": "start", "label": "Start screen…", "group": "file"}]
+                    {"value": "start", "label": "Start screen…", "group": "screen"}]   # a place, not a file action
         if self._rescue:
             out.append({"value": "rescue", "label": "Open the last version that works", "group": "repair"})
         if self._missing():

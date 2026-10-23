@@ -22,6 +22,9 @@ class Hooks2D:
     def kind_label(self, item):          # the panel's subtitle and Ctrl+K hints: "Scene", never the raw "Comp"
         return F.LABELS.get(item.get("type", ""), super().kind_label(item))
 
+    def subtitle(self, item):            # a camera is named "Camera": its line says whose it is, not the name again
+        return "Scene camera" if item.get("type") == "camera" else super().subtitle(item)
+
     def selection_label(self, ids):      # several selected: "2 layers" (any other mix: the kit's "N items")
         if len(ids) > 1 and all(self.doc.item(i)["type"] in F.LAYERS for i in ids):
             return f"{len(ids)} layers"

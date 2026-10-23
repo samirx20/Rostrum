@@ -2,7 +2,7 @@ import QtQuick
 import "."
 
 // A small square button with a glyph (a short text such as "+", "×", "⋯"), a drawn `mark` ("loop": a font's ↻ draws
-// thin and faint) or a kit `icon` (a ToolIcon name, 16 px), all in the one icon colour.
+// thin and faint) or a kit `icon` (a ToolIcon name, 18 px), all in the one icon colour.
 // Same hover and press as Button; `kind`: "normal" (raised) or "ghost" (no box until hovered); `danger` colours the
 // glyph red. Click, Space or Enter: one clicked().
 Item {
@@ -51,7 +51,7 @@ Item {
             g.beginPath(); g.moveTo(10.6, 0.6); g.lineTo(10.8, 4.6); g.lineTo(6.9, 3.6); g.closePath(); g.fill()
         }
     }
-    ToolIcon { anchors.centerIn: parent; visible: b.icon !== ""; name: b.icon; ink: b.ink; width: 16; height: 16 }
+    ToolIcon { anchors.centerIn: parent; visible: b.icon !== ""; name: b.icon; ink: b.ink; width: 18; height: 18 }
     MouseArea { id: area; anchors.fill: parent; onClicked: b.clicked() }
     HoverTip { text: b.tip; help: b.help; key: b.job && b.Window.window && b.Window.window.keyFor ? b.Window.window.keyFor(b.job) : ""
                hovered: b.hovered; pressed: area.pressed || b.down }

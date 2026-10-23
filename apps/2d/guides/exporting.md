@@ -9,18 +9,18 @@ Turn your project into a video, pictures or another file you can share or hand o
 
 ![The Export panel](pictures/export-panel.png)
 
-## 2. Pick a format
+## 2. Pick what it is for
 
-The **Format** picker lists:
+The panel lists what each export is for, with its file type at the right. Click one:
 
-- **MP4 (H.264)**: a normal video that plays almost anywhere. Good for sharing and for most video editors. It cannot carry transparency.
-- **ProRes 4444**: a high-quality video (.mov) that keeps transparency. Big files. For handing to a video editor.
-- **WebM (VP9)**: a video for web pages. Can keep transparency.
-- **GIF**: a small looping picture. Limited colours, no sound.
-- **PNG sequence**: one picture for every frame, in a folder. Keeps transparency.
-- **EXR sequence (for the Editor)**: one picture for every frame, made to be opened in Rostrum Editor.
-- **Lottie (JSON)**: moving graphics for apps and web pages. It cannot carry everything. After the export, the panel lists what it left out under "Lottie couldn't carry".
-- **Motion samples (for RostrumSound)**: not a picture. It is the movement of your layers, for placing sounds against.
+- **Video to share** (MP4): a normal video that plays almost anywhere. Good for sharing and for most video editors. It cannot carry transparency.
+- **Video for editing, with transparency** (MOV, ProRes 4444): a high-quality video that keeps transparency. Big files. For handing to a video editor.
+- **Video for the web** (WEBM): a video for web pages. Can keep transparency.
+- **Moving picture for a chat or a page** (GIF): a small looping picture. Limited colours, no sound.
+- **Still frames** (PNG): one picture for every frame, in a folder. Keeps transparency.
+- **Frames for the Editor** (EXR): one picture for every frame, made to be opened in Rostrum Editor.
+- **Animation for apps and websites** (JSON, Lottie): moving graphics for apps and web pages. It cannot carry everything. After the export, the panel lists what it left out under "Lottie couldn't carry".
+- **Motion for RostrumSound** (JSON): not a picture. It is the movement of your layers, for placing sounds against.
 
 ## 3. Settings
 

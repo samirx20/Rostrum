@@ -198,7 +198,8 @@ Item {
                  onScrubStarted: row.bridge.beginScrub(row.model.id)
                  onScrubbed: (v) => row.bridge.scrub(row.model.id, v)
                  onScrubEnded: row.bridge.endScrub() }
-        Loader { id: amountField; anchors.right: parent.right; width: row.model.display === "db" ? Theme.amountField : Theme.amountFieldShort; height: parent.height
+        Loader { id: amountField; anchors.right: parent.right; height: parent.height     // as wide as its words need ("Mixed")
+                 width: Math.max(row.model.display === "db" ? Theme.amountField : Theme.amountFieldShort, item ? item.restNeeds : 0)
                  sourceComponent: number }
     } }
     Component { id: number; NumberField {

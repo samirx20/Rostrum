@@ -41,7 +41,7 @@ Rectangle {
         readonly property real room: compactSwitch.x - Theme.pad - x
         readonly property real others: {
             let w = 0
-            for (const c of [play, readout, mute, marker, keysCurves, frameTools, keyBar])
+            for (const c of [play, readout, marker, keysCurves, frameTools, keyBar])
                 if (c.visible) w += c.width + spacing
             return w
         }
@@ -49,15 +49,6 @@ Rectangle {
                      playing: backend.playing; onClicked: backend.togglePlay() }
         TimeReadout { id: readout; anchors.verticalCenter: parent.verticalCenter; width: 112 }
         PlayOptions { anchors.verticalCenter: parent.verticalCenter; roomy: header.others + shownWidth <= header.room }
-        IconButton {   // 🔊: the project's sound in 2D only (backend.soundtrack), only while there is sound
-            id: mute
-            objectName: "soundMute"
-            visible: backend.soundtrack.present
-            anchors.verticalCenter: parent.verticalCenter; implicitWidth: 26; implicitHeight: 26; kind: "ghost"
-            glyph: backend.soundtrack.muted ? "🔇" : "🔊"; down: backend.soundtrack.muted
-            tip: backend.soundtrack.muted ? "Sound is muted here (only in 2D): click to hear it" : "Mute the sound here (only in 2D, not the project)"
-            onClicked: backend.soundtrack.setMuted(!backend.soundtrack.muted)
-        }
         AddMarker { id: marker; anchors.verticalCenter: parent.verticalCenter }
         Segmented {   // Keys: the rows' diamonds; Curves: the value curves inside this same area
             id: keysCurves
@@ -113,7 +104,7 @@ Rectangle {
         x: Theme.pad; y: tl.rowsTop + Theme.gap * 2; width: tl.width - 2 * Theme.pad
         text: "Your layers appear here as bars. Drag a bar to change when it shows."
     }
-    BeatLines { ruler: ruler; bottomY: tl.height - Theme.gap }   // Show beats (the ruler's ▾): beat and bar lines
+    BeatLines { ruler: ruler; bottomY: tl.height - Theme.gap }   // Show beats (the Sound row's menu): beat and bar lines
     Repeater {   // the project's shared markers, a faint line across every row (their flags are on the ruler)
         model: backend.markers
         delegate: Rectangle {
