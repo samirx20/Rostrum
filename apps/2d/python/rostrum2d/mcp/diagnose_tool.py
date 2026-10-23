@@ -13,7 +13,7 @@ tools = Tools()
     "type": "boolean", "description": "Also ask the engine (fonts it can't find, anything it refuses when the scene loads). Default true."}}})
 def inspect_diagnose(ctx, args):
     """Everything wrong in a composition, each with the item, what is wrong in words and how to fix it. Kinds:
-    refused (the engine won't draw the scene), missing-font, missing-file (image, video, LUT), broken-link (a text's
+    refused (the engine won't draw the scene), missing-font, missing-file (image, video, LUT; names the layer and the file), outside-project (a file kept outside the project folder: it will not travel with it), broken-link (a text's
     path layer, a track matte), missing-marker (an expression's marker("…")), expression, invisible (a layer never
     seen: opacity 0, zero size, outside its times), off-canvas (never inside the frame), unused-keys (after the end,
     outside the layer's time, under an expression or auto layout, or all one value). Read-only. An empty list = nothing

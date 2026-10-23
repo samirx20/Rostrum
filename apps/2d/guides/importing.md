@@ -36,6 +36,8 @@ Bring a picture, a video, a PDF page, a Photoshop file or a Figma frame into you
 
 You can also use **Media**, then **Picture** or **Video**, and pick the file there. It is the same result for one picture or clip.
 
+A picture or video you import is **copied into the project** (its `media` folder), so you can move, copy or rename the project folder and the layers still find their files, even after the original is deleted. Projects made before this are updated when you open them (one step in Undo). If a layer's file goes missing, the problems list and the export name the layer and the file. A file you point a layer at by hand, outside the project, stays where it is; the problems list says "File outside the project" because it will not travel with the project.
+
 ## 7. Figma
 
 1. Choose **Figma** under **From**.

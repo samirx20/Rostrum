@@ -15,6 +15,8 @@ from pathlib import Path
 
 from PIL import Image, ImageFont
 
+from rostrum_core import project
+
 from .. import settings
 from . import tree as T
 from .figma import figma_tree
@@ -62,16 +64,20 @@ def _size_of(kind: str, path: Path) -> tuple[int, int]:
     return streams[0]["width"], streams[0]["height"]
 
 
-def media_calls(doc_data: dict, comp: dict, into: str, kind: str, path: Path, at=None) -> list[dict]:
-    """layer.add + image.set / video.set: the file's own size (shrunk to fit the frame), centred (or centred on `at`, (x, y))."""
+def media_calls(doc_data: dict, comp: dict, into: str, kind: str, path: Path, at=None, folder=None) -> list[dict]:
+    """layer.add + image.set / video.set: the file's own size (shrunk to fit the frame), centred (or centred on `at`, (x, y)).
+    `folder` (the project): the file is copied into it first and the layer names it by its place there."""
     from rostrum_core import ids
     from rostrum_core.tree import index
     from ..kind import KIND
     w, h = _size_of(kind, path)
     k = min(1.0, comp["width"] / w, comp["height"] / h)
+    src = str(path)
+    if folder is not None:                       # the file is kept in the project (media/<kind>/), stored relative: the project can move
+        src = project.add_file(folder, kind, path.stem, path)["file"]
     lid = ids.counted(index(doc_data, KIND.lists), kind)
     return [{"op": "layer.add", "target": [into], "args": {"type": kind, "id": lid, "name": path.stem}},
-            {"op": f"{kind}.set", "target": [lid], "args": {"src": str(path), "w": round(w * k), "h": round(h * k),
+            {"op": f"{kind}.set", "target": [lid], "args": {"src": src, "w": round(w * k), "h": round(h * k),
                                                            "x": at[0] if at else comp["width"] / 2,
                                                            "y": at[1] if at else comp["height"] / 2}}]
 
@@ -149,7 +155,7 @@ def plan(doc, comp_id: str, path=None, kind: str | None = None, page: int = 1, t
         if not path.is_file():
             raise ValueError(f"no file at {path}")
         _stage(progress, cancelled, 0.3, f"Reading {path.name}")
-        calls, report, name = media_calls(doc.data, comp, into, kind, path, at), [], path.name
+        calls, report, name = media_calls(doc.data, comp, into, kind, path, at, Path(doc.folder) if doc.folder else None), [], path.name
     else:
         _stage(progress, cancelled, 0.1, "Downloading the frame" if kind == "figma" else f"Reading the {kind.upper()}")
         tr = tree_of(kind, path, page, text, figma)

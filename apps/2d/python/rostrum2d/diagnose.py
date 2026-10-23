@@ -14,7 +14,7 @@ from pathlib import Path
 from rostrum_core.keys import animated, key_value, keys_of, marked
 from rostrum_core.marker_times import lookup
 
-from . import fields as F, follow, render3d, retime
+from . import fields as F, follow, media, render3d, retime
 from .engine import EngineError
 from .expr import ExprError, find
 from .grain import is_recipe
@@ -22,7 +22,7 @@ from .exprbake import exprs_of, items_of, parse_cached, problems as expr_problem
 from .layoutbake import uses_layout
 from .seen import unseen
 
-KINDS = ("refused", "missing-font", "missing-file", "broken-link", "missing-marker", "expression",
+KINDS = ("refused", "missing-font", "missing-file", "outside-project", "broken-link", "missing-marker", "expression",
          "invisible", "off-canvas", "unused-keys", "missing-render", "stale-render")
 
 
@@ -89,8 +89,11 @@ def _files(items: dict, folder) -> list[dict]:
         for field in ("src", "lut"):
             path = item.get(field, "")
             if path and not is_recipe(path) and not (Path(path) if Path(path).is_absolute() else Path(folder or ".") / path).exists():
-                out.append(_p("missing-file", item["id"], f'{item["id"]}.{field}: no file at "{path}"',
+                out.append(_p("missing-file", item["id"], f'{item.get("name") or item["id"]} ({item["id"]}).{field}: no file at "{path}"',
                               "Point it at the file again (absolute, or relative to the project folder)"))
+            elif field == "src" and media.outside(folder, item):
+                out.append(_p("outside-project", item["id"], f'{item.get("name") or item["id"]} ({item["id"]}): its file is kept outside '
+                              f'the project ("{path}"), so it will not travel with it', "Import the file again to keep a copy in the project"))
     return out
 
 

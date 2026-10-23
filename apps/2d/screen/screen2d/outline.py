@@ -69,10 +69,14 @@ def _stretches(owner: dict, anims: list[dict]) -> list[dict]:
     return out
 
 
-def _lines(lay: dict, depth: int) -> tuple[dict, list[dict]]:
+def _lines(lay: dict, depth: int, is_open: bool) -> tuple[dict, list[dict]]:
     """(line 0's stretches and the key ids on other lines, the rows of lines 1, 2 …): a layer's animations that overlap
-    in time go on lines of their own under it (anims.py packs them), each named by its settings, in grey."""
+    in time go on lines of their own under it (anims.py packs them), each named by its settings, in grey. Those lines
+    are rows under the layer like any other: only while it is open. Folded, its one row holds every key (the later lines' stretches wait for it to be
+    opened: drawn on one row they would lie over each other)."""
     anims = animations(lay)
+    if not is_open:
+        return {"stretches": _stretches(lay, [a for a in anims if a["line"] == 0]), "elsewhere": set()}, []
     rows, elsewhere = [], set()
     for n in range(1, 1 + max((a["line"] for a in anims), default=0)):
         mine = [a for a in anims if a["line"] == n]
@@ -118,12 +122,12 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset()) -> li
     def walk(layers, depth):
         for lay in reversed(layers):
             fields = _fields(lay)
-            first, lines = _lines(lay, depth)
-            summary = _one_per_frame(sorted((k for o, p in fields for k in _keys(o, p) if k["id"] not in first["elsewhere"]),
-                                            key=lambda k: k["t"]), comp["fps"])
             inside = bool(fields or _owned(lay) or lay.get("layers"))
             only = lay["id"] in anim_only
             is_open = bool(fields) if only else inside and (bool(lay.get("layers")) != (lay["id"] in flipped))
+            first, lines = _lines(lay, depth, is_open)
+            summary = _one_per_frame(sorted((k for o, p in fields for k in _keys(o, p) if k["id"] not in first["elsewhere"]),
+                                            key=lambda k: k["t"]), comp["fps"])
             row = _row("layer", lay, depth, label_of(lay), summary)
             row["stretches"] = first["stretches"]
             row.update(past(fields))
