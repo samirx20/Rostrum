@@ -154,15 +154,14 @@ Item {
                        visible: !row.second
                        width: row.labelColumn - Theme.gap
                        anchors.verticalCenter: parent.verticalCenter
+                       height: row.model.type === "toggle" ? parent.height : implicitHeight   // a switch's words: the line's full height to click
+                       verticalAlignment: Text.AlignVCenter
                        text: row.model.label; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
                        wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; lineHeight: 0.9   // never cut to "Width along the…"
                        HoverHandler { id: labelHover }
+                       TapHandler { enabled: row.model.type === "toggle"; onTapped: row.set(!row.model.value) }   // a switch's words flip it too (F12, F13)
                        HoverTip { text: row.model.help || label.truncated ? row.model.label : ""; help: row.model.help || ""
                                   hovered: labelHover.hovered } }   // hover help: the setting's name and its one sentence
-                Item {  // a switch's words flip it too: the whole label cell, the line's full height (a one-line label is under 16 px; F12, F13)
-                    visible: !row.second && row.model.type === "toggle"
-                    width: label.width; height: parent.height
-                    TapHandler { onTapped: row.set(!row.model.value) } }
                 Loader {
                     id: widget
                     objectName: row.model.type === "toggle" ? "" : "grid:field"   // the layout check reads the grid from these two names
