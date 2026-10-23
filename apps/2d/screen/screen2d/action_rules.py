@@ -162,8 +162,17 @@ def _pose(f: Facts) -> list[dict]:
 POSE_WORDS = {"x": "position", "y": "position", "scale": "scale", "rotation": "rotation", "opacity": "opacity"}
 
 
+def cutter_name(call: dict, doc) -> str:
+    """A mask.make call's cutter in words (the top layer of the selection cuts the others): `"Circle"`."""
+    c = call["args"].get("cutter", "")
+    return f'"{display_name(doc.item(c))}"' if c and doc.has(c) else "the top layer"
+
+
 def said(calls: list[dict], label: str, doc) -> str:
     """The words a change is recorded and shown with: K says what it keyed ("Keyed 4 settings on 3 layers")."""
+    cut = next((c for c in calls if c["op"] == "mask.make"), None)
+    if cut:
+        return f"{label} — {cutter_name(cut, doc)} is the cutter"
     pose = [c for c in calls if c["op"] == "key.add" and c["args"].get("fields") == "pose"]
     if not pose:
         return label

@@ -67,9 +67,11 @@ class Adder(QObject):
 
     @Slot(str, str)
     def addFile(self, type_, url):
-        """An image or video picked in the dialog (a file:// url or a path): one layer, centred, selected."""
+        """An image or video picked in the dialog (a file:// url or a path): one layer, centred, selected. The file is
+        copied into the project like Import's (media/), so no layer depends on a file outside it."""
         path = Path(QUrl(url).toLocalFile() if url.startswith("file:") else url)
-        self._apply(lambda: importing.media_calls(self.b.doc.data, self.b.comp(), self.b.comp_id, type_, path), f"Add {type_}")
+        self._apply(lambda: importing.media_calls(self.b.doc.data, self.b.comp(), self.b.comp_id, type_, path,
+                                                      folder=Path(self.b.doc.folder) if self.b.doc.folder else None), f"Add {type_}")
 
     def _apply(self, make, label) -> bool:
         """One change (all the calls, or nothing); an error goes to the status line, never a half layer."""

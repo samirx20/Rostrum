@@ -16,6 +16,7 @@ AppShell {
     leftOver: true                      // it and the guides float over the canvas: the rail stays put, the canvas keeps its size
     rail: [ ToolRail { id: rail; visible: !startScreen.visible; anchors { top: parent.top; bottom: parent.bottom } } ]   // its own column, never over the canvas
     left: [ LibraryDrawer { anchors.fill: parent; visible: backend.library.open } ]
+    onPressedIn: (area) => { if ((area === "right" || area === "bottom") && backend.create.typing) backend.create.commitText(backend.create.body) }   // a click in the settings or the timeline ends typing
     areaNames: ({ centre: "canvas", right: "settings", bottom: "timeline" })   // inspect_screen's words for the focused area
     saveWord: backend.isLive ? "Saved" : ""      // a project is live: every change is already on disk
     // The frame drives the layout (the kit's FrameLayout.js, SPEC 2d-design-v2 §1.2): the settings panel's width and

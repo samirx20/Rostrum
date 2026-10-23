@@ -12,7 +12,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from . import grain, settings
+from . import grain, looping, settings
 
 CACHE_DIR = settings.cache_dir("2d-video")
 CACHE_BYTES = 6 << 30            # size of CACHE_DIR before the oldest clips' folders go

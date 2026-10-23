@@ -16,7 +16,7 @@ This page takes you from an empty project to something that moves, and shows you
 
 ![The Shapes panel beside the tool rail](pictures/shapes-panel.png)
 
-2. Press **T**, then click on the picture where the words go and type. A row appears in the timeline at the bottom. **Esc** or **Ctrl+Enter** ends the typing, and the text stays picked, so the panel on the right shows its settings.
+2. Press **T**, then click on the picture where the words go and type. A row appears in the timeline at the bottom. **Esc**, **Ctrl+Enter** or a click outside the text ends the typing, and the text stays picked, so the panel on the right shows its settings.
 3. In the panel, change **Size**, **Weight** and **Colour** (a swatch plus a hex box) in the short list.
 
 ## 3. Pick, move and change things

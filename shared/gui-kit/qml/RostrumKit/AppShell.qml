@@ -66,6 +66,7 @@ QQC.ApplicationWindow {
     property int timelineLeast: Theme.timeline
     property int frameFolded: -1
     signal layoutChanged()
+    signal pressedIn(string area)                    // every press anywhere, with its area ("left", "right", "bottom"…): an app ends a typing on it
     property int askedRev: 0                       // bumps when a hand size changes (panelSizes is not a binding)
     function asked(kind, panel) { askedRev; return typeof panelSizes !== "undefined" ? panelSizes.get(kind, panel) : -1 }
     function setAsked(panel, size) {
@@ -117,7 +118,7 @@ QQC.ApplicationWindow {
         const p = body.mapFromItem(null, x, y)
         if (p.x >= 0 && p.x < railSlot.width && p.y >= 0 && p.y < railSlot.height) { focusArea = "centre"; return }   // the rail works the view
         for (const [name, it] of areas())
-            if (p.x >= it.x && p.x < it.x + it.width && p.y >= it.y && p.y < it.y + it.height) { focusByKeys = false; focusArea = name; return }
+            if (p.x >= it.x && p.x < it.x + it.width && p.y >= it.y && p.y < it.y + it.height) { focusByKeys = false; focusArea = name; pressedIn(name); return }
     }
     function nextArea() {                       // F6
         const order = areas()

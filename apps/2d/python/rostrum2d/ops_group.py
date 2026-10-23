@@ -20,7 +20,7 @@ from .ops_path import to_parent
 from .retime import END, END_OF_COMP, FIELD
 
 AS = {"group": "Group", "clip": "Clip", "layout": "Layout", "swap": "Swap set"}
-AS_SET = {"clip": {"clip": True}, "layout": {"layout": "row"}, "swap": {"swap": True}}
+AS_SET = {"clip": {"clip": True}, "layout": {"layout": "row", "hugWidth": True, "hugHeight": True}, "swap": {"swap": True}}
 HOLDERS = ("comp", "group", "rig")          # what layers can be wrapped inside (in a rig, the new group takes over their bind)
 PLACE = ("x", "y", "scale", "rotation", "opacity", "anchorX", "anchorY", "scaleX", "scaleY")
 PLAIN = {"blend": "normal", "matte": "", "depth": 0.0, "screenLock": False, "clip": False, "layout": "none", "swap": False,

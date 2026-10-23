@@ -72,10 +72,9 @@ Column {
             onPicked: (v) => painter.setNewHold(Number(v))
         }
     }
-    Line {      // Onion skin; while on, Before (red) and After (green) share the line
-        Label { text: "Onion skin" }
-        Toggle { objectName: "onionSkin"; x: de.labelColumn; anchors.verticalCenter: parent.verticalCenter
-                 checked: painter.onionOn; onToggled: (v) => painter.setOnion(v) }
+    SwitchRow {      // Onion skin; while on, Before (red) and After (green) share the line
+        switchName: "onionSkin"; height: Theme.tightFor(Window.height) ? Theme.rowTight : Theme.row; labelColumn: de.labelColumn; label: "Onion skin"
+        checked: painter.onionOn; onToggled: (v) => painter.setOnion(v)
     }
     Repeater {      // how many drawings each way
         model: painter.onionOn ? [{ side: "before", label: "Before", colour: Theme.danger },
