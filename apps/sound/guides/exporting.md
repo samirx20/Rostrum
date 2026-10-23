@@ -85,7 +85,8 @@ A new song starts with the rate set in Preferences. MP3 offers only 44.1 and 48 
 Each export goes into its own numbered folder in the song's folder, `renders\<song>\v001`, then `v002` and so on.
 Nothing is overwritten.
 
-- The mix: `<song>_mix` in the chosen format.
+- The mix: `<song>_mix` in the chosen format. The sheet shows this exact name and the next version folder before you
+  export; **Browse** copies the mix into your folder under the same name.
 - With stems: one file per track (named after it) and one per group. A track with nothing in it still gets its file, silent; the
   result line names it ("silent: Recording").
 - A manifest saying which file is which, and what format and rate was used.

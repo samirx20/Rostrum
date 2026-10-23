@@ -121,7 +121,7 @@ def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: b
     part = begin_render(folder, item)
     try:
         rng = {} if opts.start is None else {"from": opts.start, "to": opts.end}       # the engine renders the range itself
-        r = engine.request("render", schedule=schedule, out=str(part / f"{item}_mix.wav"),
+        r = engine.request("render", schedule=schedule, out=str(part / deliver.mix_name(item)),
                            stems="all" if stems == "groups" else stems, stemsDir=str(part), **rng)
     except Exception as e:
         raise RostrumError(codes.JOB_FAILED, "render", str(part), f"failed and stays unfinished: {e}") from e
