@@ -2,9 +2,10 @@
 document of the project sees: `<project>/brand.json`. This module is the only reader and writer, so when the project
 service takes the file over (a request to Team Sam: rostrum_core, for Sound and the Editor too) only this file changes.
 
-    {"colors": [{"name", "value"}], "textStyles": [{"name", font, size, weight, color, …}], "logos": [{"name", "file"}]}
+    {"colors": [{"name", "value"}], "textStyles": [{"name", font, size, weight, color, …}], "logos": [{"name", "item", "file"}]}
 
-A logo's file is copied into `<project>/media/brand/` so the project carries it; `file` is relative to the project.
+A logo's file is kept in the project as a content-named item (rostrum_core.project.add_file, kind "brand"): `item` is
+its id and `file` its path, relative to the project.
 Using an entry on a document is ordinary operations (`use_calls`), so it is one change with undo and agents call the
 same: a colour sets the layers' colour field, a text style becomes (or refreshes) the document's style of that name and
 the texts follow it, a logo is imported (rostrum2d.io.importing). Fails loudly: a bad value or a missing file is refused.
@@ -12,9 +13,9 @@ the texts follow it, a logo is imported (rostrum2d.io.importing). Fails loudly: 
 from __future__ import annotations
 
 import json
-import shutil
 from pathlib import Path
 
+from rostrum_core import project
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.storage import write_atomic
 
@@ -24,7 +25,7 @@ from .ops_look import COLOUR
 
 FILE = "brand.json"
 SECTIONS = ("colors", "textStyles", "logos")
-LOGO_DIR = Path("media") / "brand"
+LOGO_KIND = "brand"
 
 
 def _fail(subject: str, problem: str, accepted=()):
@@ -59,11 +60,8 @@ def _check(folder, section: str, entry: dict) -> dict:
     if not src.is_file():
         _fail(f'file "{entry.get("file")}"', "doesn't exist")
     kind_of(str(src))                                    # refused (ValueError) when the importer can't read it
-    dest = Path(folder) / LOGO_DIR / src.name
-    if src.resolve() != dest.resolve():
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(src, dest)
-    return {"name": name, "file": dest.relative_to(folder).as_posix()}
+    row = project.add_file(folder, LOGO_KIND, name, src)
+    return {"name": name, "item": row["id"], "file": row["file"]}
 
 
 def add(folder, section: str, entry: dict) -> dict:

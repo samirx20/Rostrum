@@ -1,7 +1,8 @@
 """Layers timed from a shared marker: the one place a layer's own times become composition times.
 
 A layer whose `marker` names a shared marker ("logo lands") counts its times from that marker: its `start`, `end`,
-keys, and those of everything inside it (effects, masks, child layers, a rig's bones, a drawing's frames). Move the
+keys, and those of everything inside it (effects, masks, child layers, a gradient's stops, a rig's bones, a drawing's
+frames). Move the
 marker in any app and the whole layer moves with it (AGENTS.md rule 8: cross-app timing by named markers, never
 copied numbers). A layer inside a timed group with a `marker` of its own counts from its own marker. `endMarker` ends a layer on
 another marker ("the phone shot ends on reveal"); `start` may be below 0 (a lead-in before its marker).
@@ -26,7 +27,8 @@ from rostrum_core.marker_times import lookup
 from . import fields as F
 
 FIELD, END = "marker", "endMarker"
-CHILDREN = ("effects", "masks", "layers", "bones", "iks", "binds")
+# every list whose items have keys of their own (kind.LISTS): one left out keeps "#marker" key times unresolved
+CHILDREN = ("effects", "masks", "layers", "bones", "iks", "binds", "stops")
 END_OF_COMP = 36000.0               # `end`'s "End of comp" word (fields.py): stays the end of the comp
 
 
