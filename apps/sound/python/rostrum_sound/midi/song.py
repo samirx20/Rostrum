@@ -1,7 +1,7 @@
 """A MIDI file's events as a song, in beats: what both the import operation and the script layer build from.
 
     song = from_events(division, tracks)
-      {"tempo": 96, "beatsPerBar": 4, "tempos": [(beat, bpm), …], "meters": [(beat, beats per bar), …], "keys": [(beat, "D minor"), …],
+      {"tempo": 96, "beatsPerBar": 4, "tempos": [(beat, bpm), …], "beatUnit": 4, "meters": [(beat, beats per bar, beat unit), …], "keys": [(beat, "D minor"), …],
        "markers": [(beat, name), …], "sections": [(name, beat, end beat), …],
        "tracks": [{"name", "builtIn" | "kit", "notes": [{pitch, at, dur, vel}], "hits": [{drum, at, vel}]}],
        "skipped": ["…why…"]}
@@ -72,7 +72,7 @@ def _track(events, division, n, skipped) -> list[dict]:
 
 
 def from_events(division: int, tracks: list[list]) -> dict:
-    song = {"tempo": 120.0, "beatsPerBar": 4, "tempos": [], "meters": [], "keys": [], "markers": [],
+    song = {"tempo": 120.0, "beatsPerBar": 4, "beatUnit": 4, "tempos": [], "meters": [], "keys": [], "markers": [],
             "sections": [], "tracks": [], "skipped": []}
     cues = {}
     for events in tracks:                       # meta events may sit on any track (format 1: usually the first)
@@ -86,9 +86,9 @@ def from_events(division: int, tracks: list[list]) -> dict:
                     song["tempos"].append((b, bpm))
             elif kind == "timesig":
                 if tick == 0:
-                    song["beatsPerBar"] = data[0]
+                    song["beatsPerBar"], song["beatUnit"] = data
                 else:
-                    song["meters"].append((b, data[0]))
+                    song["meters"].append((b, *data))
             elif kind == "key":
                 song["keys"].append((b, K.from_signature(*data)))
             elif kind == "marker" and data:

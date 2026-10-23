@@ -5,13 +5,13 @@ import RostrumKit
 // all one width) and what plays there — tempo, beats per bar, key — as fields: their one home (drag or type the tempo,
 // pick the beats and key; nothing has to be selected first). Then the
 // sound's state when there is one to tell (rendering, no output here, a failed render: red). Bars and beats follow
-// the tempo map (song.beats). `compact` (a small window, §2.5): bar.beat only (the time on hover) and the key short.
+// the bar map (song.bars, song.beats: each count, an eighth in 6/8). `compact` (a small window, §2.5): bar.beat only (the time on hover) and the key short.
 Row {
     id: ro
     property bool compact: false
     spacing: Theme.gap
     readonly property var song: backend.song
-    readonly property int bpb: song.beatsPerBar
+    readonly property string meter: song.beatsPerBar + "/" + song.beatUnit
     function lastAt(list, t, timeOf) {   // the last entry at or before t (lists are in time order), -1 when none
         var lo = 0, hi = list.length - 1, best = -1
         while (lo <= hi) {
@@ -24,7 +24,9 @@ Row {
         var m = Math.floor(t / 60), s = t - 60 * m
         return m + ":" + (s < 10 ? "0" : "") + s.toFixed(2)
     }
-    readonly property int beat: Math.max(0, lastAt(song.beats, backend.time, b => b))
+    readonly property int bar: Math.max(0, lastAt(song.bars, backend.time, b => b))
+    readonly property int beat: Math.max(0, lastAt(song.beats, backend.time, b => b)
+                                            - lastAt(song.beats, (song.bars[bar] || 0), b => b))   // counts since the bar line
     readonly property int tempoAt: Math.max(0, lastAt(song.tempos, backend.time, c => c.t))
     readonly property int keyAt: lastAt(song.keys, backend.time, c => c.t)
     readonly property string key: keyAt >= 0 ? song.keys[keyAt].key : ""
@@ -33,7 +35,7 @@ Row {
 
     Text {
         id: place
-        text: (Math.floor(ro.beat / ro.bpb) + 1) + "." + (ro.beat % ro.bpb + 1) + (ro.compact ? "" : "  ·  " + ro.clock(backend.time))
+        text: (ro.bar + 1) + "." + (ro.beat + 1) + (ro.compact ? "" : "  ·  " + ro.clock(backend.time))
         color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body; font.features: { "tnum": 1 }
         anchors.verticalCenter: parent.verticalCenter
         HoverHandler { id: placeHover }
@@ -51,10 +53,11 @@ Row {
             HoverTip { text: "Tempo (beats a minute) here: drag or type"; hovered: parent.hovered }
         }
         ChoiceField {
-            width: 56; current: ro.bpb
-            options: [2, 3, 4, 5, 6, 7, 8, 9, 12].map(n => ({ value: n, label: n + "/4" }))
-            onPicked: (v) => songPanel.setValue("beatsPerBar", v)
-            HoverTip { text: "Beats in a bar"; hovered: parent.hovered && !parent.opened }
+            width: 56; current: ro.meter
+            options: ["2/4", "3/4", "4/4", "5/4", "6/4", "7/4", "3/8", "5/8", "6/8", "7/8", "9/8", "12/8", "2/2"]
+                .map(m => ({ value: m, label: m }))
+            onPicked: (v) => songPanel.setMeter(v)
+            HoverTip { text: "Time signature: beats in a bar / what a beat is"; hovered: parent.hovered && !parent.opened }
         }
         ChoiceField {   // the key playing here: tonic (or "No key" until one is chosen), then the mode
             width: ro.key !== "" ? 56 : 84; current: ro.tonic

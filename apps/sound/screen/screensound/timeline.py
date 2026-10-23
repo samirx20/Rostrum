@@ -14,6 +14,7 @@ from rostrum_core import marker_times
 from rostrum_sound import names, voice_lines
 from rostrum_sound.doc import keys as K
 from rostrum_sound.doc import markers as mk
+from rostrum_sound.doc import meter
 
 from . import groups, lanes, music_map, pick, timing
 from .handles import level_y
@@ -228,13 +229,14 @@ def song(root: dict) -> dict:
     to a whole bar plus SPARE_BARS, never under EMPTY_BARS (the mix itself still ends at its last sound + 2 s)."""
     ends = [b["t"] + b["dur"] for t in root.get("tracks", []) for b in blocks(t, root)]
     ends += [m["t"] for m in markers(root)] + [s["end"] for s in music_map.sections(root)]
-    bar = int(root.get("beatsPerBar", 4)) * timing.spb(root)
+    bar = meter.start_bar(root) * timing.spb(root)
     if root.get("length") is not None:
         length = timing.sec(root["length"], root)
     else:
         length = max(EMPTY_BARS, math.ceil(max(ends, default=0) / bar) + SPARE_BARS) * bar
     length = max(length, 1.0)
-    return {"length": length, "spb": timing.spb(root), "beatsPerBar": int(root.get("beatsPerBar", 4)),
+    return {"length": length, "spb": timing.spb(root), "beatsPerBar": meter.start_per_bar(root),
+            "beatUnit": meter.start_unit(root), "barBeats": meter.start_bar(root),
             "tempo": float(root.get("tempo", 120)), **music_map.grid(root, length)}
 
 

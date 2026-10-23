@@ -51,6 +51,21 @@ def test_a_three_four_bar_mid_song_moves_later_bars_and_undo_restores_them():
     assert meter.bar_at(doc.data, 12) == 3.0 and doc.data == _doc().data
 
 
+def test_six_eight_bars_are_three_beats_click_on_one_and_four_and_survive_midi(tmp_path):
+    doc = _doc()
+    old = meter.bar_beats(doc.data, 20)                                    # no beat unit: x/4, as before
+    assert old == [0, 4, 8, 12, 16, 20] and meter.plain(doc.data)
+    doc.apply({"op": "meter.add", "args": {"at": {"beat": 8}, "beatsPerBar": 6, "beatUnit": 8}}, Who.agent("t"))
+    root = doc.data
+    assert meter.bar_beats(root, 14) == [0, 4, 8, 11, 14]                  # a 6/8 bar lasts three quarters
+    assert meter.click_seconds(root, 10) == [0, .5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5.5, 7, 8.5, 10]   # 1 and 4 (at 60 bpm)
+    out = tmp_path / "six-eight.mid"
+    assert midi.export(root, out) == []
+    back = Document.new(KIND)
+    back.apply(midi.import_calls(back.data, out)[0], Who.agent("t"), label="Import MIDI")
+    assert meter.segments(back.data) == meter.segments(root)
+
+
 def test_section_move_moves_everything_inside_as_one_step():
     doc = _doc()
     before = doc.seq

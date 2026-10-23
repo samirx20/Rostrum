@@ -1,6 +1,6 @@
 """The Sound script layer for `run_script`: Python source -> the document tree it describes.
 
-    tempo(96); length(bar(9)); beats_per_bar(4)
+    tempo(96); length(bar(9)); beats_per_bar(4)                        # 6/8: beats_per_bar(6); beat_unit(8)
     marker("drop", at=bar(5)); tempo_change(bar(5), 132); key("D minor"); section("verse", bar(1), bar(5))
     s = track("strings", sfz=r"C:\\...\\Violins.sfz", volume=0.8)      # instrument inferred from sfz= / builtIn= / kit=
     s.note("D4", at=beat(0), dur=beats(4), vel=0.7); s.chord(["D3", "A3", "F4"], at="#drop", dur=beats(2))
@@ -30,8 +30,8 @@ from .doc import KIND, meter
 
 SAFE_BUILTINS = {f.__name__: f for f in (range, len, min, max, abs, round, enumerate, zip, list, dict, tuple,
                                           float, int, str, sorted, sum, reversed)}
-API = ["tempo(bpm)", "length(time)", "beats_per_bar(n)", "sample_rate(hz)", "track(id, **fields)",
-       "marker(name, at)", "tempo_change(at, bpm, ramp=False)", "meter_change(at, beats_per_bar)", "key(key, at)", "section(name, at, end)", "import_midi(path)",
+API = ["tempo(bpm)", "length(time)", "beats_per_bar(n)", "beat_unit(n)", "sample_rate(hz)", "track(id, **fields)",
+       "marker(name, at)", "tempo_change(at, bpm, ramp=False)", "meter_change(at, beats_per_bar, beat_unit=4)", "key(key, at)", "section(name, at, end)", "import_midi(path)",
        "master(**fields)", "beat(n)", "beats(n)", "bar(n)", "vel_curve(points, start, end)"]
 
 
@@ -51,6 +51,7 @@ def scope(song: Song) -> dict:
         "tempo": lambda bpm: song.set(tempo=bpm),
         "length": lambda t: song.set(length=t),
         "beats_per_bar": lambda n: song.set(beatsPerBar=n),
+        "beat_unit": lambda n: song.set(beatUnit=n),
         "sample_rate": lambda hz: song.set(sampleRate=hz),
         "track": song.track, "marker": song.marker, "master": song.master,
         "tempo_change": song.tempo_change, "meter_change": song.meter_change, "key": song.key, "section": song.section, "import_midi": song.import_midi,

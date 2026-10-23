@@ -43,11 +43,13 @@ def calls_for(root: dict, song: dict, song_map: bool = True) -> list[dict]:
     calls = []
     if song_map:
         calls.append({"op": "doc.set", "target": ["root"], "args": {"tempo": song["tempo"],
-                                                                    "beatsPerBar": song["beatsPerBar"]}})
+                                                                    "beatsPerBar": song["beatsPerBar"],
+                                                                    "beatUnit": song["beatUnit"]}})
         old = [i for k in ("tempos", "meters", "keys") for i in root.get(k, [])]
         calls += [{"op": f"{i['type']}.remove", "target": [i["id"]]} for i in old]
         calls += [{"op": "tempo.add", "args": {"at": {"beat": b}, "bpm": bpm}} for b, bpm in song["tempos"]]
-        calls += [{"op": "meter.add", "args": {"at": {"beat": b}, "beatsPerBar": per}} for b, per in song["meters"]]
+        calls += [{"op": "meter.add", "args": {"at": {"beat": b}, "beatsPerBar": per, "beatUnit": unit}}
+                  for b, per, unit in song["meters"]]
         calls += [{"op": "key.add", "args": {"at": {"beat": b}, "key": k}} for b, k in song["keys"]]
     names = {n for n, _ in markers.items(root)}
     for b, name in song["markers"]:

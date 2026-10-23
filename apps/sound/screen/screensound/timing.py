@@ -26,10 +26,13 @@ class Grid:
     def __init__(self):
         self.value, self.on, self.auto_beats = "1/16", True, 0.25
 
-    def beats(self, root: dict) -> float:
-        """One step in beats; for "bar", the song's first bar (`snap` follows each bar's own length)."""
+    def beats(self, root: dict, at: float = 0.0) -> float:
+        """One step in beats at beat `at`; for "bar", that bar's length (`snap` follows each bar's own); "beat" is
+        the time signature's count there (an eighth in 6/8)."""
         if self.value == "bar":
-            return float(meter.start_per_bar(root))
+            return meter.seg_at(root, at).bar
+        if self.value == "beat":
+            return meter.count(meter.seg_at(root, at))
         return self.auto_beats if self.value == "auto" else self.STEPS[self.value]
 
     def follow_zoom(self, span_beats: float, width_px: float = 1200.0, min_px: float = 16.0):
@@ -69,7 +72,8 @@ def snap(t: float, root: dict, free: bool, grid: Grid | None = None) -> float:
     grid = grid or DEFAULT
     if free or not grid.on:
         return max(0.0, round(t, 4))
-    b = meter.snap(root, tempo.beat_at(root, t), None if grid.value == "bar" else grid.beats(root))
+    b = tempo.beat_at(root, t)
+    b = meter.snap(root, b, None if grid.value == "bar" else grid.beats(root, b))
     return max(0.0, round(tempo.seconds_at(root, b), 6))
 
 

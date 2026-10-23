@@ -84,17 +84,19 @@ class Recording(QObject):
     def configure(self, at=None):
         """The player's set-up: the song's beats the metronome and count-in click on, armed or not (each render
         brings them up to date), and for what is armed the microphone and the keyboard (keys_record.py). The beats:
-        its tempo, or, when the tempo changes, every beat's time from the tempo map (tempo.beats, the one
-        beat-to-seconds place), so a count-in anywhere clicks at that tempo; the accents: every bar's start from the
-        bar map when the time signature changes (meter.py); the count-in counts the bar where the take starts."""
+        its tempo, or, when the tempo changes or a main beat is not a quarter (6/8 clicks on 1 and 4), every main
+        beat's time from the bar map (meter.click_seconds, through the one beat-to-seconds place), so a count-in
+        anywhere clicks at that tempo; the accents: every bar's start from the bar map when the time signature
+        changes (meter.py); the count-in counts a real bar where the take starts: its main beats."""
         root = self.bridge.doc.data
         at = self.clock.start_time() if at is None and self._taking else at
-        opts = {"bpm": round(tempo.start_bpm(root), 4), "beats": meter.per_bar_at(root, tempo.beat_at(root, at or 0.0))}
+        here = meter.seg_at(root, tempo.beat_at(root, at or 0.0))
+        opts = {"bpm": round(tempo.start_bpm(root), 4), "beats": meter.main_beats(here)[0]}
         SCRATCH.mkdir(parents=True, exist_ok=True)
-        if len(tempo.segments(root)) > 1:
+        if len(tempo.segments(root)) > 1 or not meter.plain(root):
             beats = SCRATCH / "beat-times.json"
-            beats.write_text(json.dumps(tempo.beats(root, BEATS_UNTIL)), encoding="utf-8")
-            opts.update(beat_times=str(beats), tempo=json.dumps(tempo.contract(root)))   # a new tempo reopens the player
+            beats.write_text(json.dumps(meter.click_seconds(root, BEATS_UNTIL)), encoding="utf-8")
+            opts.update(beat_times=str(beats), tempo=json.dumps([tempo.contract(root), meter.segments(root)]))   # a new map reopens the player
         if root.get("meters"):
             bars = SCRATCH / "bar-times.json"
             bars.write_text(json.dumps(meter.bar_seconds(root, BEATS_UNTIL)), encoding="utf-8")

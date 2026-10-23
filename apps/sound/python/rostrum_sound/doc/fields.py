@@ -28,6 +28,8 @@ FIELDS = {
         N("tempo", 20, 400, "Time", "bpm"),
         V.time("length", group="Time", help="How long the mix is (a time); left out = the last sound + 2 s."),
         N("beatsPerBar", 1, 16, "Time", imp="secondary", integer=True, label="Beats per bar"),
+        Param.choice("beatUnit", [2, 4, 8, 16], group="Time", importance="secondary", label="Beat unit",
+                     help="What one beat of the time signature is (its bottom number): 4 quarters, 8 eighths (6/8)."),
         Param.choice("sampleRate", list(deliver.RATE_LABELS), group="Output", importance="deep", label="Sample rate",
                      labels=deliver.RATE_LABELS, help="How finely this song's sound is stored; export uses it unless "
                                                       "you pick another."),

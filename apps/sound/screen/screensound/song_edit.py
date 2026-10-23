@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from rostrum_core import RostrumError, codes
 from rostrum_sound.doc import keys as K
-from rostrum_sound.doc import tempo
+from rostrum_sound.doc import meter, tempo
 
 from . import timing
 
@@ -94,7 +94,7 @@ def key_call(root: dict, t: float, tonic: str, mode: str, new_here: bool) -> dic
 def add_section_call(root: dict, t: float) -> dict:
     """A section from the playhead, four bars long, in beats."""
     b = _beat_at(root, t)
-    bars = SECTION_BARS * int(root.get("beatsPerBar", 4))
+    bars = SECTION_BARS * meter.start_bar(root)
     name = _name({s.get("name") for s in root.get("sections", [])})
     return {"op": "section.add", "target": [], "args": {"name": name, "at": {"beat": b}, "end": {"beat": b + bars}}}
 

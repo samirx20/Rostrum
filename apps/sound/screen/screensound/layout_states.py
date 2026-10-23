@@ -21,11 +21,14 @@ IGNORE = ()
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 
-SONG_FLAGS = ('agent Tempo glide, a 3/4 bar and a key|[{"op":"tempo.add","target":[],"args":{"at":{"beat":8},"bpm":100,"ramp":true}},'
+SONG_FLAGS = ('agent Tempo glide, a 3/4 bar, 6/8 and a key|[{"op":"tempo.add","target":[],"args":{"at":{"beat":8},"bpm":100,"ramp":true}},'
               '{"op":"tempo.add","target":[],"args":{"at":{"beat":20},"bpm":132}},'
               '{"op":"meter.add","target":[],"args":{"at":{"beat":12},"beatsPerBar":3}},'
-              '{"op":"meter.add","target":[],"args":{"at":{"beat":15},"beatsPerBar":4}},'
+              '{"op":"meter.add","target":[],"args":{"at":{"beat":15},"beatsPerBar":6,"beatUnit":8}},'
               '{"op":"key.add","target":[],"args":{"at":{"beat":15},"key":"D minor"}}]')
+
+SIX_EIGHT = 'agent Song in 6/8|[{"op":"doc.set","target":["root"],"args":{"beatsPerBar":6,"beatUnit":8}}]'
+
 
 def long_project() -> list[str]:
     """Start args for a saved song in a folder with a long name (a fresh folder each time)."""
@@ -66,6 +69,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("key-out-of-key-dots", ["--sample"], ['agent Set the key|[{"op":"key.add","target":[],"args":{"at":0,"key":"F# major"}}]', "select melody", "dock editor"]),
         ("song-flags", ["--sample"], [SONG_FLAGS]),
         ("tempo-ramp-selected", ["--sample"], [SONG_FLAGS, "select tempo_1"]),       # S54: the ramp toggle in the inspector
+        ("six-eight-selected", ["--sample"], [SONG_FLAGS, SIX_EIGHT, "select meter_2"]),   # S55: 6/8 header, flag, beat unit
         ("velocity-strip-drums", ["--sample"], ["select drums", "dock editor"]),
         ("velocity-folded", ["--sample"], ["select melody", "dock editor", "vel-fold"]),
         ("group-open", ["--sample"], [GROUP.format(name="Band")]),

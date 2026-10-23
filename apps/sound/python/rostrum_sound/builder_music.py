@@ -25,9 +25,11 @@ class MusicMap:
         self._add("tempos", "tempo", {"at": at, "bpm": bpm, **({"ramp": True} if ramp else {})}, id,
                   f"tempo change at {at!r}")
 
-    def meter_change(self, at, beats_per_bar, id=None):
-        """From `at` (beat(32), or seconds) on, `beats_per_bar` beats in a bar (a new bar starts there)."""
-        self._add("meters", "meter", {"at": at, "beatsPerBar": beats_per_bar}, id, f"time signature change at {at!r}")
+    def meter_change(self, at, beats_per_bar, beat_unit=4, id=None):
+        """From `at` (beat(32), or seconds) on, `beats_per_bar` beats of `beat_unit` in a bar (6, 8: 6/8); a new bar
+        starts there."""
+        self._add("meters", "meter", {"at": at, "beatsPerBar": beats_per_bar, **({"beatUnit": beat_unit} if beat_unit != 4 else {})},
+                  id, f"time signature change at {at!r}")
 
     def key(self, key, at=0, id=None):
         """The key from `at` on ("D minor", "F# major", "Bb dorian"): for agents and the screen, not heard."""
@@ -43,11 +45,11 @@ class MusicMap:
         from . import midi
         song = midi.read(path)
         if song_map:
-            self.set(tempo=song["tempo"], beatsPerBar=song["beatsPerBar"])
+            self.set(tempo=song["tempo"], beatsPerBar=song["beatsPerBar"], beatUnit=song["beatUnit"])
             for b, bpm in song["tempos"]:
                 self.tempo_change({"beat": b}, bpm)
-            for b, per in song["meters"]:
-                self.meter_change({"beat": b}, per)
+            for b, per, unit in song["meters"]:
+                self.meter_change({"beat": b}, per, unit)
             for b, k in song["keys"]:
                 self.key(k, {"beat": b})
         names = {m["name"] for m in self.markers}

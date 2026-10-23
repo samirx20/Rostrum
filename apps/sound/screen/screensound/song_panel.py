@@ -22,7 +22,7 @@ from rostrum_sound import main_mix
 from . import music_map, song_edit
 
 UP_FRONT = ("length",)                               # always in sight, whatever their importance in the field list
-ELSEWHERE = ("tempo", "beatsPerBar", "picture")      # their home is the header / the Picture corner: never rows here
+ELSEWHERE = ("tempo", "beatsPerBar", "beatUnit", "picture")      # their home is the header / the Picture corner: never rows here
 UNSET = -1                                           # the length row's value while the song has none: shown in words
 UNSET_WORDS = {"length": "until the last sound"}
 
@@ -104,6 +104,13 @@ class SongPanel(QObject):
     def toggleMore(self):
         self._more = not self._more
         self._refresh()
+
+    @Slot(str)
+    def setMeter(self, text):
+        """The song's time signature, "6/8": beats in a bar and the beat unit, one undo step."""
+        b, (per, unit) = self.bridge, (int(x) for x in text.split("/"))
+        b._guard(lambda: b._apply([b.edit_call(self._root, "beatsPerBar", per), b.edit_call(self._root, "beatUnit", unit)],
+                                  f"Time signature {per}/{unit}"))
 
     @Slot(str, str)
     def setKey(self, tonic, mode):

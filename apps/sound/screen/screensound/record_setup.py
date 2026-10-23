@@ -118,14 +118,14 @@ class RecordSetup(QObject):
     # ---- what a take reads ----------------------------------------------------------------------------------------
     def bar_seconds(self, t: float) -> float:
         root = self.bridge.doc.data
-        return tempo.beat_seconds(root, t) * meter.per_bar_at(root, tempo.beat_at(root, t))
+        return tempo.beat_seconds(root, t) * meter.seg_at(root, tempo.beat_at(root, t)).bar
 
     def count_in(self, t: float) -> tuple[int, float]:
         """(clicks, seconds between them) before a take starting at `t`; (0, …) when count-in is off."""
         root = self.bridge.doc.data
-        per = meter.per_bar_at(root, tempo.beat_at(root, t))
+        per, length = meter.main_beats(meter.seg_at(root, tempo.beat_at(root, t)))     # 6/8: 2 clicks a bar
         beats = per * self.values["countInBars"] if self.values["countIn"] else 0
-        return beats, tempo.beat_seconds(root, t)
+        return beats, tempo.beat_seconds(root, t) * length
 
     def punch(self):
         return (self.values["punchIn"], self.values["punchOut"]) if self.values["punch"] else None

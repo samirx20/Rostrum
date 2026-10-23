@@ -1538,7 +1538,7 @@ change the sound." "Find the key" (picker button) suggests one from the notes wr
 
 #### 3.6c Beats per bar (metre)
 
-**How it works.** Top bar "4/4": click → choose beats per bar (2–12, plus 6/8 written as 6). One metre for the song.
+**How it works.** Top bar "4/4": click → choose the time signature (2/4 … 7/4, 3/8 … 12/8, 2/2). A 6/8 bar lasts three quarters; the grid's beat lines are its eighths; the click plays its main beats (1 and 4; 9/8: 1, 4, 7; 12/8: 1, 4, 7, 10) with beat 1 accented, and the count-in counts a real bar. Changes partway through carry their own beat unit.
 **Decision:** metre changes mid-song (a 7/8 bar) are **later** (new, schema: metre changes like tempo changes); none
 of the six jobs needs them.
 **Agent.** `doc.set {beatsPerBar}` (exists).

@@ -68,7 +68,7 @@ class LivePlay(QObject):
 
     def configure(self, **opts):
         """mic (takes folder), midi (device), instrument (live.json), bpm, beats, beat_times / bar_times (JSON files of
-        the beats / bar starts in seconds, when the tempo / time signature changes): reopen when they changed. Other keys only mark a change."""
+        the main beats the click plays / bar starts in seconds, when the tempo / time signature changes or a main beat is not a quarter): reopen when they changed. Other keys only mark a change."""
         opts = {k: v for k, v in opts.items() if v is not None}
         if opts != self.opts:
             self.opts = opts

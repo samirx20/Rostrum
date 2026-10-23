@@ -27,7 +27,8 @@ def tempo_marks(root: dict) -> list[dict]:
 
 def meter_marks(root: dict) -> list[dict]:
     """The time signature changes as flags ("3/4"; the song's own at the start is the header's)."""
-    return _sorted({"id": c["id"], "t": timing.sec(c["at"], root, c["id"]), "per": int(c["beatsPerBar"])}
+    return _sorted({"id": c["id"], "t": timing.sec(c["at"], root, c["id"]), "per": int(c["beatsPerBar"]),
+                    "unit": int(c.get("beatUnit", 4))}
                    for c in root.get("meters", []) if "at" in c and "beatsPerBar" in c)
 
 
@@ -47,6 +48,6 @@ def sections(root: dict) -> list[dict]:
 
 def grid(root: dict, length: float) -> dict:
     """What song() adds for the ruler, grid, readout and section band."""
-    return {"beats": tempo.beats(root, length), "bars": meter.bar_seconds(root, length), "tempos": tempos(root),
+    return {"beats": meter.count_seconds(root, length), "bars": meter.bar_seconds(root, length), "tempos": tempos(root),
             "tempoMarks": tempo_marks(root), "meterMarks": meter_marks(root), "keys": key_changes(root),
             "sections": sections(root), "key": keys.key_at(root, 0.0) or ""}

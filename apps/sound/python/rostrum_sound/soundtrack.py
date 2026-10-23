@@ -89,7 +89,8 @@ def _trim():
 
 def grid(root: dict, end: float) -> dict:
     """The song's tempo map as times: every beat and every bar start from 0 to `end` seconds (doc/tempo.py)."""
-    return {"bpm": tempo.start_bpm(root), "beatsPerBar": meter.start_per_bar(root), "changes": bool(root.get("tempos")),
+    return {"bpm": tempo.start_bpm(root), "beatsPerBar": meter.start_per_bar(root), "beatUnit": meter.start_unit(root),
+            "changes": bool(root.get("tempos")),
             "meterChanges": bool(root.get("meters")), "beats": tempo.beats(root, end), "bars": meter.bar_seconds(root, end)}
 
 

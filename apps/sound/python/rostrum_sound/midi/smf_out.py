@@ -63,7 +63,8 @@ def _tempo_steps(root) -> list[tuple[float, float]]:
 
 
 def _map_track(root) -> list:
-    ev = [(round(beat * DIVISION), 0, _meta(0x58, bytes([per, 2, 24, 8]))) for beat, per, _ in meter.segments(root)]
+    ev = [(round(s.start * DIVISION), 0, _meta(0x58, bytes([s.per, s.unit.bit_length() - 1, round(24 * meter.main_beats(s)[1]), 8])))
+          for s in meter.segments(root)]        # (the third: MIDI clocks per click, 36 on 6/8's dotted quarter)
     for beat, bpm in _tempo_steps(root):
         ev.append((round(beat * DIVISION), 0, _meta(0x51, round(60_000_000 / bpm).to_bytes(3, "big"))))
     for k in root.get("keys", []):

@@ -14,7 +14,7 @@ Item {
     readonly property var range: backend.timeRange
     readonly property var song: backend.song
     readonly property real length: song.length
-    readonly property real barSec: song.spb * song.beatsPerBar
+    readonly property real barSec: song.spb * song.barBeats
     readonly property real start: backend.viewStart
     readonly property real perSec: kit.perSec
     function visibleX(x) { return x >= -1 && x <= width + 1 }

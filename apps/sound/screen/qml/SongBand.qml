@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// The song's tempo, time signature and key changes on the ruler, each a small flag at its time ("♩ 96", "♩ 90 ↗" gliding up to the next, "3/4", "D minor").
+// The song's tempo, time signature and key changes on the ruler, each a small flag at its time ("♩ 96", "♩ 90 ↗" gliding up to the next, "3/4", "6/8", "D minor").
 // Click selects it (the inspector edits it; Delete removes it); drag moves it (one gesture = one undo step; a tempo
 // change on its beat, a quarter beat grid, Ctrl = free). The key at the start is not flagged (the header strip and the song view say it). Absent while the song has none. Clicks are taken here in
 // one place, as in MarkerBand.
@@ -11,7 +11,7 @@ Item {
     readonly property var song: backend.song
     readonly property var marks: {      // flags at the same moment sit side by side (dx: the widths before it)
         var out = song.tempoMarks.map(c => ({ id: c.id, t: c.t, text: "♩ " + Math.round(c.bpm) + (c.ramp > 0 ? " ↗" : c.ramp < 0 ? " ↘" : ""), tempo: true }))
-                  .concat(song.meterMarks.map(c => ({ id: c.id, t: c.t, text: c.per + "/4", tempo: true })))
+                  .concat(song.meterMarks.map(c => ({ id: c.id, t: c.t, text: c.per + "/" + c.unit, tempo: true })))
                   .concat(song.keys.filter(k => k.t > 0.001).map(k => ({ id: k.id, t: k.t, text: k.key, tempo: false })))
         for (var i = 0; i < out.length; i++) {
             out[i].dx = 0

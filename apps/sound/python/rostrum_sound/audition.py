@@ -25,7 +25,7 @@ from rostrum_core.cache import put_file
 from . import settings
 from .builder import Song
 from .compile import compile as compile_doc
-from .doc import times
+from .doc import meter, times
 
 MAX_S = 6.0
 BARS = 4
@@ -62,7 +62,7 @@ def _own_notes(doc: dict, track: str, start: float, bars: int) -> list[dict]:
     t = next((x for x in doc.get("tracks", []) if x["id"] == track), None)
     if t is None:
         raise RostrumError.not_found("render_audition", "track", track, [x["id"] for x in doc.get("tracks", [])])
-    span = bars * doc.get("beatsPerBar", 4) * 60 / doc.get("tempo", 120)
+    span = bars * meter.start_bar(doc) * 60 / doc.get("tempo", 120)
     out = []
     for kind in ("notes", "hits"):
         for n in t.get(kind, []):
@@ -79,7 +79,7 @@ def _own_notes(doc: dict, track: str, start: float, bars: int) -> list[dict]:
 def _song(entry: dict, kind: str, notes: list[dict], doc: dict | None) -> Song:
     s = Song()
     if doc:
-        s.set(tempo=doc.get("tempo", 120), beatsPerBar=doc.get("beatsPerBar", 4))
+        s.set(tempo=doc.get("tempo", 120), beatsPerBar=doc.get("beatsPerBar", 4), beatUnit=doc.get("beatUnit", 4))
     fields = {k: v for k, v in entry.items() if k not in ("name", "in", "length", "media")}
     if kind == "file":
         media = Path(entry["media"])
@@ -92,7 +92,7 @@ def _song(entry: dict, kind: str, notes: list[dict], doc: dict | None) -> Song:
         s.track("a").sound(fields.pop("design"), at=0, **fields)
     elif kind == "kit":
         t = s.track("a", **fields)
-        bar = s.root.get("beatsPerBar", 4) * 60 / s.root.get("tempo", 120)
+        bar = meter.start_bar(s.root) * 60 / s.root.get("tempo", 120)
         hits = [r for r in notes if "drum" in r] or [
             {"drum": d, "at": round(f * bar, 4), "vel": v} for d, (f, v) in GM.items()] + [
             {"drum": "hat", "at": round(f * bar, 4), "vel": 0.4} for f in (0.125, 0.375, 0.625, 0.875)]
