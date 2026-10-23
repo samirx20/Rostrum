@@ -10,7 +10,7 @@ left             the Sounds panel (L, + Track, + Add): instruments, drum kits, m
                  arrangement on a wide window, floats over it below 1500 px and closes after use
 centre           the arrangement, always (Arrangement.qml + Timeline.qml): zoom strip, ruler, sections, markers, a row
                  per track, + Track, groups, Master; under it the dock (Dock.qml): Editor (E: the selection's track up
-                 close, EditorDock.qml) or Mixer (X: strips, the Master pinned right, Mixer.qml), folds away
+                 close, EditorDock.qml) or Mixer (X: strips, the Master right after them, the loudness panel, Mixer.qml), folds away
 right            the settings panel: the selection's settings (the kit's Inspector), or the song while nothing is
                  selected (SongSettings.qml, `songPanel`)
 dialog           Deliver (Ctrl+Shift+E): target, file, quality, stems, the live check, Deliver, then Show file
@@ -72,7 +72,10 @@ Switching songs rebuilds the bridge and its parts and reloads the window (`main.
   true peak follow the playhead, read from the series of the render that plays (preview ≡ export). While playing, the
   integrated loudness is the one so far ("Integrated so far": BS.1770's gated mean of the render's 400 ms blocks up to
   the playhead, `loudness.integrated`); stopped, it is the whole mix's, from the engine. The curve shows the short-term
-  series with the target as a dashed line. The first 3 s show "—" (the first short-term window ends at 3 s).
+  series with the target as a dashed line. The first 3 s show "—" (the first short-term window ends at 3 s). On the
+  screen it is the panel right of the Master strip (Integrated · Short-term · True peak, then the curve), taking the width
+  the strips leave (at least 300 px: strips scroll sideways first). The target is the master's own `loudness` (`goal`,
+  the same the top bar's chip uses), named after the delivery target while Normalize applies it.
 - **Delivery target** (`delivery.py`: a small table of published specs with a source per row; streaming −14 / −1,
   Apple Music −16 / −1, EBU R128 −23 / −1, ATSC A/85 −24 / −2, podcast −16 / −1). It follows the fields' valid_when
   (`delivery.applying`): the true peak ceiling always applies, the loudness target only with Normalize on. choosing a target
@@ -96,7 +99,7 @@ Switching songs rebuilds the bridge and its parts and reloads the window (`main.
 ## Recording
 
 Everything goes through the engine's live transport, the same process that plays the song, so a take is placed
-against what was heard, to the sample. Arm a track (Rec on its header): the microphone opens in the player
+against what was heard, to the sample. Arm a track (R on its header): the microphone opens in the player
 (`--mic`), its level shows in the record cluster of the top bar. Press the red Record button or R: the engine counts
 in if asked (its own clicks), plays from the playhead and records; Stop and the take becomes one clip (one undo step)
 in `<project>/media/<track>-take-<n>.wav` at the engine's `start` (its clock, minus the microphone's delay when
@@ -124,7 +127,7 @@ in `<project>/media/<track>-take-<n>.wav` at the engine's `start` (its clock, mi
   playhead and the piano roll's time axis. Ctrl + wheel or a pinch zooms around the pointer; Shift + wheel or a sideways
   swipe scrolls (a plain wheel scrolls in time when the rows have nothing to scroll up and down); Ctrl + / Ctrl - /
   Ctrl 0 (show all); a slim scrollbar while zoomed in. Playing keeps the playhead on screen. Screen state, not an edit.
-- **Automation lanes.** A track's "Auto" chip opens a lane under its row: volume, pan, expression (notes tracks) and
+- **Automation lanes.** A track's **A** button opens a lane under its row: volume, pan, expression (notes tracks) and
   each send's level (`screensound/lanes.py`). Click adds a point, drag moves it (stays between its neighbours; quarter
   beat grid, Shift = free), Delete removes it; each is one `automation.set` with the whole point list, one gesture = one
   undo step. Times keep the form they were written in. Effects' envelope settings and each EQ band's frequency, gain

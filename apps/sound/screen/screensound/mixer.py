@@ -9,14 +9,14 @@ from __future__ import annotations
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui.model import RowsModel
 
-from . import ducks, playback, problems, strips
+from . import ducks, playback, problems, strips, timeline
 from .cleaning import CleanedTake
 from .export import RenderExport
 from .loudness import LoudnessMeter
 from .plugins import PluginHub
 
-ROLES = ("id", "name", "volume", "pan", "mute", "solo", "effects", "meter", "canSolo", "output", "outputId", "outputs",
-         "sends", "sendTargets", "ducks", "duckTargets")
+ROLES = ("id", "name", "reverb", "hue", "volume", "pan", "mute", "solo", "effects", "meter", "canSolo", "canArm", "canMute", "canPan",
+         "output", "outputId", "outputs", "sends", "sendTargets", "ducks", "duckTargets")
 
 
 class MixPage(QObject):
@@ -90,7 +90,7 @@ class MixPage(QObject):
     def addEffect(self, item_id, effect_type):
         """effect.add on that track or the master (one change), then select the new effect."""
         self.bridge.select(item_id)
-        if not self.bridge.run("effect.add:" + effect_type):
+        if not self._call({"op": "effect.add", "target": [item_id], "args": {"effect": effect_type}}, "Add " + strips.effect_name(effect_type)):
             return False
         self.bridge.select(self.doc.item(item_id)["effects"][-1]["id"])
         return True
@@ -130,8 +130,9 @@ class MixPage(QObject):
         buses, vendor = self._bus_items(), self._plugins.vendor_of
         tracks = [t for t in self.doc.items() if t["type"] == "track"]
         self._tracks.update([strips.strip(t, label(t), strips.meter_of(render, t["id"]),
-                                          {**strips.routing(t, buses, label), **ducks.strip_ducks(t, tracks, label)}, vendor)
-                             for t in tracks])
+                                          {**strips.routing(t, buses, label), **ducks.strip_ducks(t, tracks, label)}, vendor,
+                                          timeline.hue(t, i))
+                             for i, t in enumerate(tracks)])
         self._buses.update([strips.strip(b, label(b), strips.meter_of(render, b["id"]), strips.routing(b, buses, label), vendor)
                             for b in buses])
         m = self.doc.item(strips.MASTER)

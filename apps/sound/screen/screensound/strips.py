@@ -47,7 +47,8 @@ def meter_of(render: dict, track_id: str) -> dict:
 def master_meter(render: dict) -> dict:
     if "lufs" not in render:
         return {}
-    return {"peak": db(render.get("peak")), "lufs": _num(render.get("lufs")), "truePeak": _num(render.get("truePeak")),
+    tp = _num(render.get("truePeak"))       # the master's meter reads true peak: the same number as the loudness panel's
+    return {"peak": tp if tp is not None else db(render.get("peak")), "lufs": _num(render.get("lufs")), "truePeak": _num(render.get("truePeak")),
             "lra": _num(render.get("lra"))}
 
 
@@ -55,12 +56,17 @@ def _num(v):
     return round(float(v), 1) if isinstance(v, (int, float)) and v > -120 else None
 
 
-def strip(item: dict, name: str, meter: dict, routing: dict | None = None, vendor_of=None) -> dict:
+NEUTRAL = "#8a8a8a"         # the cap of a bus and the master (the kit's fg3): only tracks carry a colour
+
+
+def strip(item: dict, name: str, meter: dict, routing: dict | None = None, vendor_of=None, hue: str = NEUTRAL) -> dict:
     """`routing` (tracks and buses, `routing()` below) adds where it plays to and its sends; `vendor_of(plugin
-    record)` names the vendor so a plug-in's chip can drop it."""
-    return {"id": item["id"], "name": name, "volume": item.get("volume", 1), "pan": item.get("pan", 0),
+    record)` names the vendor so a plug-in's chip can drop it; `hue` is the track's arrangement colour (its cap)."""
+    kind = item["type"]
+    return {"id": item["id"], "name": name, "hue": hue, "volume": item.get("volume", 1), "pan": item.get("pan", 0),
             "mute": bool(item.get("mute")), "solo": bool(item.get("solo")), "effects": chain(item, vendor_of), "meter": meter,
-            "canSolo": item["type"] == "track", **(routing or ROUTING_NONE)}
+            "reverb": item.get("reverb", 0) if kind == "track" else None, "canSolo": kind == "track", "canArm": kind == "track", "canMute": kind != MASTER, "canPan": kind != MASTER,
+            **(routing or ROUTING_NONE)}
 
 
 ROUTING_NONE = {"output": "", "outputId": "", "outputs": [], "sends": [], "sendTargets": [], "ducks": [], "duckTargets": []}
@@ -83,7 +89,7 @@ def routing(item: dict, buses: list[dict], label) -> dict:
     track, its sends (one per bus) and the buses it doesn't send to yet."""
     by_id = {b["id"]: b for b in buses}
     now = item.get("output", MASTER)
-    to = f"to {label(by_id[now])} bus" if now in by_id else "to Master"
+    to = f"→ {label(by_id[now])} bus" if now in by_id else "→ Master"
     choices = [{"id": MASTER, "label": "Master"}] + [
         {"id": b["id"], "label": label(b) + " bus"} for b in buses
         if b["id"] != item["id"] and not (item["type"] == "bus" and _feeds(by_id, b["id"], item["id"]))]

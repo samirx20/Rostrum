@@ -17,8 +17,41 @@ track (instrument, notes / clips) → its effect chain → its fader and pan →
 - **Ducks:** `duck.add` on a track with `under` = the tracks that push it down (music under dialogue), and `depth`,
   `attack`, `release`, `hold`. The `voice` setting listens for speech only. On the screen: "+ Duck" on a strip.
 - **Automation:** `automation.set` with `lane` and the whole `points` list. Mix values, effect settings and plug-in
-  parameters can be automated (inspect_operations lists the lanes). In the arrangement: a row's "Auto" chip opens its lanes;
+  parameters can be automated (inspect_operations lists the lanes). In the arrangement: a row's **A** button opens its lanes;
   click adds a point, drag moves it, Delete removes it; one drag = one undo step.
+
+## The Mixer's strips
+
+The Mixer (X) has one strip per track, then the groups (buses), then the master. Each strip, top to bottom:
+
+- a bar in the track's colour (the same as in the arrangement; groups and the master are grey) and the name;
+- its effects, one line each in the order they play (click one to edit it in the settings panel; a switched-off one
+  is dim), and **+ Effect** under them on every strip;
+- its sends: **Reverb send** (how much goes to the master's reverb, in %; the same setting as Reverb in the settings
+  panel), one row per group it feeds (drag the slider), **+ Send** while there is a group it doesn't feed yet,
+  and its ducks with **+ Duck**;
+- where it plays to: "→ Master", or a pick of the groups when there are any;
+- **Pan** (C = centre) and its slider;
+- the fader with a dB scale beside it (+6, 0, −6 … −∞), and the meter with the highest level of the last render
+  above it. The meter is green below −6 dB, amber from −6 to 0 and red over 0, on every strip and the master; it is
+  empty until a render has measured the track. Rest the pointer on it for the track's loudness;
+- **M** (mute, amber), **S** (solo, green) and **R** (arm for recording, red), tracks only for S and R;
+- its volume in dB.
+
+In a low dock the sends and ducks move into **Sends ▾** on the output line (click it: the reverb send, the group
+sends and **+ Duck** open above it); the fader, M S R and the volume stay. Every fader starts at the same height,
+the master's too.
+
+## The Mixer's loudness panel
+
+The strips sit side by side from the left, the Master right after the last one; with many tracks they scroll sideways
+and the Master stays in place. The rest of the width is the loudness panel: its title names the target ("Loudness ·
+target −14 LUFS (Streaming)"), then three numbers, **Integrated** (the whole mix; "so far" while playing),
+**Short-term** (the 3 seconds before the playhead) and **True peak** ("so far" while playing), and under them
+the short-term loudness over the song, with the target as a dashed line and the playhead. Integrated is green within
+1 of the target and amber outside; True peak is amber only over the ceiling. The Master strip's meter number is the
+same true peak. Rest the pointer on a number for what it means.
+An open effect's settings or a duck sit at the right end while they are open.
 
 ## Loudness words, briefly
 

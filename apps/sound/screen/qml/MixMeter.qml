@@ -2,15 +2,20 @@ import QtQuick
 import RostrumKit
 import "MixFormat.js" as F
 
-// A level bar from the last render's peak (dBFS) on the fader's own scale. Absent (not zero) without a measurement.
+// A level bar from the last render's peak (dBFS) on the fader's own scale, coloured by F.levelTone (one rule for every
+// strip and the master). Unmeasured: the empty sunken well, so a strip keeps its shape.
 Rectangle {
     id: m
     property var peak: null            // dBFS, or null: not measured
-    visible: peak !== null && peak !== undefined
-    width: 6; radius: 3; color: Theme.sunken
+    property string tip: ""            // the words under it while the pointer rests on it
+    readonly property bool measured: peak !== null && peak !== undefined
+    width: 8; radius: 2; color: Theme.sunken
     Rectangle {
-        anchors.bottom: parent.bottom; width: parent.width; radius: 3
-        height: parent.height * F.posOfDb(m.peak === null ? -100 : m.peak)
-        color: m.peak > 0 ? Theme.danger : m.peak > -6 ? Theme.warn : Theme.ok
+        visible: m.measured
+        anchors.bottom: parent.bottom; width: parent.width; radius: 2
+        height: parent.height * F.posOfDb(m.measured ? m.peak : -100)
+        color: Theme[F.levelTone(m.peak)]
     }
+    HoverHandler { id: hover }
+    HoverTip { text: m.tip; hovered: hover.hovered }
 }

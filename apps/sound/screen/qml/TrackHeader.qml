@@ -1,11 +1,13 @@
 import QtQuick
 import RostrumKit
+import "MixFormat.js" as F
 
-// A track's header in the arrangement: its colour, its name (click selects the track; Ctrl / Shift add; right-click
-// its actions; double-click the name or F2 renames it in place, double-click elsewhere opens the Editor), a lock
-// (track.lock / track.unlock: nobody, agents included, can change a locked track; shown on hover or when locked), and the two quick
-// toggles, mute and solo (each a track.set operation; lit when on), and the "Rec" arm button for recording
-// (on hover of the row and while armed, red when armed; arming is screen state, not an edit).
+// A track's header in the arrangement, laid out like a desk channel's head (Logic, Ableton, Bitwig):
+// line 1 its colour, a small picture of what it holds (TrackIcon), its name (click selects the track; Ctrl / Shift
+// add; right-click its actions; double-click the name or F2 renames it in place, double-click elsewhere opens the
+// Editor) and its volume in dB (set in the Mixer); line 2 its buttons, always there (TrackButtons: R M S A and the
+// lock); line 3 a thin level bar from the last render (TrackMeter). A short row folds to one line: the name and the
+// buttons (when narrow too: R, A and the lock only when on or on hover), the volume and the bar left out.
 Rectangle {
     id: h
     property var track
@@ -15,11 +17,15 @@ Rectangle {
     signal dragMoved(real x, real y)        // the header is being dragged (pointer in this header's coordinates): into / out of a group
     signal dragEnded(real x, real y, bool dropped)
     property bool dragging: false           // set by the host while its drop marks show; the header dims
+    readonly property bool tall: height >= 45                 // room for the buttons on a line of their own
+    readonly property bool metered: height >= 51              // and for the level bar under them
+    // too narrow for all the buttons (beside a name of 80 px on one line): R, A and the lock only when on or on hover
+    readonly property bool cramped: width - Theme.gap - 11 - Theme.grid < buttons.fullWidth + (tall ? 0 : 100)
+    readonly property real lineTop: tall ? Math.round((height - (metered ? 47 : 39)) / 2) : 0
     radius: Theme.radiusCtl
     color: on ? Theme.accentSoft : area.containsMouse ? Theme.raised : "transparent"
     Behavior on color { ColorAnimation { duration: Theme.fast } }
     opacity: dragging ? 0.55 : 1
-    HoverHandler { id: hover }
 
     Repeater {   // an agent just changed this track: the 1-second outline
         model: backend.agent.flash.indexOf(h.track.id) >= 0 ? 1 : 0
@@ -45,81 +51,55 @@ Rectangle {
             else backend.clickSelect(h.track.id, (m.modifiers & Qt.ControlModifier) !== 0, (m.modifiers & Qt.ShiftModifier) !== 0)
         }
         onDoubleClicked: (m) => {
-            if (m.x >= nameText.x && m.x <= nameText.x + nameText.implicitWidth) backend.startRename(h.track.id)
+            var nx = nameText.mapToItem(h, 0, 0).x
+            if (m.x >= nx && m.x <= nx + nameText.implicitWidth && m.y >= line1.y && m.y <= line1.y + line1.height) backend.startRename(h.track.id)
             else { backend.select(h.track.id); workspace.setDock("editor") }
         }
     }
+    HoverHandler { id: hover }
     Rectangle { x: Theme.gap; anchors.verticalCenter: parent.verticalCenter; width: 3; radius: 1.5
-                height: Math.min(parent.height - 8, 18); color: h.track.hue }
-    NameLabel {
-        x: Theme.gap + 11; width: toggles.x - x - Theme.gap; anchors.verticalCenter: parent.verticalCenter
-        id: nameText
-        text: h.track.name
-        color: h.track.mute ? Theme.fg3 : Theme.fg
-        visible: !rename.visible
-    }
-    TextInput {   // F2 / double-click the name: rename in place (Enter keeps it, Esc or clicking away cancels)
-        id: rename
-        visible: backend.renaming === h.track.id
-        x: nameText.x - 3; width: nameText.width + 3; anchors.verticalCenter: parent.verticalCenter
-        font.family: uiFont; font.pixelSize: Theme.body; color: Theme.fg; selectByMouse: true; clip: true
-        selectionColor: Theme.accent
-        onVisibleChanged: if (visible) { text = h.track.name; forceActiveFocus(); selectAll() }
-        onAccepted: backend.finishRename(h.track.id, text)
-        Keys.onEscapePressed: backend.finishRename(h.track.id, "")
-        onActiveFocusChanged: if (!activeFocus && visible) backend.finishRename(h.track.id, "")
-        Rectangle { z: -1; anchors.fill: parent; anchors.margins: -2; radius: 3; color: Theme.sunken; border.color: Theme.accent }
-    }
-    Row {
-        id: toggles
-        anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter
-        spacing: 2
-        Item {   // the lock: a drawn padlock, lit when locked
-            id: lock
-            visible: hover.hovered || !!h.track.locked
-            width: 18; height: 18
-            Rectangle { x: 5; y: 3; width: 8; height: 8; radius: 4; color: "transparent"; border.width: 1.5
-                        border.color: h.track.locked ? Theme.warn : lockArea.containsMouse ? Theme.fg : Theme.fg3 }
-            Rectangle { x: 3; y: 8; width: 12; height: 8; radius: 2
-                        color: h.track.locked ? Theme.warn : lockArea.containsMouse ? Theme.fg : Theme.fg3 }
-            MouseArea { id: lockArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: backend.toggleLock(h.track.id) }
-            HoverTip { text: h.track.locked ? "Locked: nobody can change this track, agents included. Click to unlock (Ctrl+Shift+L)"
-                                            : "Lock this track: nobody can change it, agents included (Ctrl+Shift+L)"
-                       hovered: lockArea.containsMouse; pressed: lockArea.pressed }
+                height: h.tall ? parent.height - 10 : Math.min(parent.height - 8, 18); color: h.track.hue }
+    Item {   // line 1: picture, name, volume (one line high; centred in a short row)
+        id: line1
+        x: Theme.gap + 11; y: h.tall ? h.lineTop : (h.height - height) / 2
+        width: (h.tall ? h.width - Theme.grid : buttons.x - Theme.gap) - x; height: 16
+        TrackIcon { id: icon; anchors.verticalCenter: parent.verticalCenter; icon: h.track.icon || "empty"
+                    visible: !(h.cramped && !h.tall)   // a short, narrow row: the name keeps the room, R M S stay
+                    ink: h.track.mute ? Theme.fg4 : Theme.fg2 }
+        NameLabel {
+            id: nameText
+            x: icon.visible ? icon.width + 6 : 0; width: (volume.visible ? volume.x - Theme.gap : parent.width) - x
+            anchors.verticalCenter: parent.verticalCenter
+            text: h.track.name
+            color: h.track.mute ? Theme.fg3 : Theme.fg
+            visible: !rename.visible
         }
-        LaneToggle { visible: h.showAuto && (hover.hovered || h.track.autoUsed || !!h.track.auto); track: h.track }   // on hover or in use
-        Rectangle {   // "Rec": arm this track for recording; on hover of the row, and while armed (lit red, like M / S lit)
-            id: arm
-            readonly property bool lit: recorder.armed === h.track.id
-            visible: hover.hovered || lit
-            width: 28; height: 18; radius: 4
-            color: lit ? Theme.danger : armArea.containsMouse ? Theme.hover : "transparent"
-            Behavior on color { ColorAnimation { duration: Theme.fast } }
-            Text { anchors.centerIn: parent; text: "Rec"; font.family: uiFont
-                   font.pixelSize: Theme.label; font.weight: Font.DemiBold
-                   color: arm.lit ? Theme.app : armArea.containsMouse ? Theme.fg : Theme.fg3 }
-            MouseArea { id: armArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: recorder.arm(h.track.id) }
-            HoverTip { text: arm.lit ? "Armed: press Record (R) to record on this track. Click to disarm."
-                                     : "Get this track ready to record: then press Record (R)"
-                       hovered: armArea.containsMouse; pressed: armArea.pressed }
+        Text {   // the track's volume (its fader, in the Mixer)
+            id: volume
+            visible: h.tall
+            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+            text: F.faderText(h.track.volume === undefined ? 1 : h.track.volume)
+            font.family: uiFont; font.pixelSize: Theme.label; font.features: { "tnum": 1 }; color: Theme.fg3
         }
-        Repeater {
-            model: [{ field: "mute", letter: "M", lit: Theme.warn }, { field: "solo", letter: "S", lit: Theme.ok }]
-            delegate: Rectangle {
-                id: t
-                required property var modelData
-                readonly property bool lit: h.track[modelData.field]
-                width: 20; height: 18; radius: 4
-                color: lit ? modelData.lit : tArea.containsMouse ? Theme.hover : "transparent"
-                Behavior on color { ColorAnimation { duration: Theme.fast } }
-                Text { anchors.centerIn: parent; text: t.modelData.letter; font.family: uiFont
-                       font.pixelSize: Theme.label; font.weight: Font.DemiBold
-                       color: t.lit ? Theme.app : tArea.containsMouse ? Theme.fg : Theme.fg3 }
-                MouseArea { id: tArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            onClicked: backend.toggleTrack(h.track.id, t.modelData.field) }
-            }
+        TextInput {   // F2 / double-click the name: rename in place (Enter keeps it, Esc or clicking away cancels)
+            id: rename
+            visible: backend.renaming === h.track.id
+            x: nameText.x - 3; width: nameText.width + 3; anchors.verticalCenter: parent.verticalCenter
+            font.family: uiFont; font.pixelSize: Theme.body; color: Theme.fg; selectByMouse: true; clip: true
+            selectionColor: Theme.accent
+            onVisibleChanged: if (visible) { text = h.track.name; forceActiveFocus(); selectAll() }
+            onAccepted: backend.finishRename(h.track.id, text)
+            Keys.onEscapePressed: backend.finishRename(h.track.id, "")
+            onActiveFocusChanged: if (!activeFocus && visible) backend.finishRename(h.track.id, "")
+            Rectangle { z: -1; anchors.fill: parent; anchors.margins: -2; radius: 3; color: Theme.sunken; border.color: Theme.accent }
         }
     }
+    TrackButtons {   // line 2 (a short row: at the right of line 1)
+        id: buttons
+        x: h.tall ? line1.x : h.width - width - Theme.grid
+        y: h.tall ? line1.y + line1.height + 3 : (h.height - height) / 2
+        track: h.track; showAuto: h.showAuto; compact: h.cramped; hovered: hover.hovered
+    }
+    TrackMeter { visible: h.metered; x: line1.x; y: buttons.y + buttons.height + 5; width: h.width - Theme.grid - x
+                 trackId: h.track.id }
 }

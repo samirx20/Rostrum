@@ -1759,7 +1759,7 @@ paper) sometimes. Job F: an agent can't sing, but it can set up the take (track,
      job with two gestures everyone already knows.
    - **Flatten:** "Keep only the chosen parts", in the stack's right-click or context bar. It throws away the unused
      takes from the song (their files stay in `media` until Clean up files) and leaves ordinary clips.
-9. **Recording on several tracks.** Arm several tracks (click each Rec pill, or select tracks, then right-click ›
+9. **Recording on several tracks.** Arm several tracks (click each track's R button, or select tracks, then right-click ›
    Arm). One press of R records them all at the same moment, each from its own **Input**. Each lands as its own take.
    One undo step for all of them.
 10. **Microphone delay (calibration).** The Take panel's last line says either "Delay measured: 147 ms ✓" or "Delay not
@@ -1779,7 +1779,7 @@ the top bar's Record cluster, or the Take panel. It never fails silently.
 
 | Problem | What you see |
 |---|---|
-| No microphone at all | The Rec pill still arms, but the meter shows "No microphone found. Plug one in, or choose one in Settings." (link) and ● Record is absent. Plugging one in brings it back within 2 s. |
+| No microphone at all | The R button still arms, but the meter shows "No microphone found. Plug one in, or choose one in Settings." (link) and ● Record is absent. Plugging one in brings it back within 2 s. |
 | Microphone busy (another app holds it) | "The microphone *USB Mic* is being used by another program. Close that program (Zoom, Teams, a browser tab) and try again." **Try again** button. |
 | Windows blocks microphone access | "Windows is not letting RostrumSound use the microphone. Open Windows' microphone privacy settings" (a button that opens them). |
 | Microphone unplugged while recording | Recording stops. What was captured is kept as a take: "The microphone was unplugged at 0:12. The first 12 seconds are kept as Take 2." |

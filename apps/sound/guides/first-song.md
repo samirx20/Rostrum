@@ -87,7 +87,11 @@ The **Colour** row shows the colour the track is drawn in.
 - **Click** turns the metronome on and off (**Shift+K**). It is only for you while you work; it is never in an export.
 - With a time range drawn, **Shift+L** loops it.
 - Click the ruler to move the playhead there.
-- **M** / **S** on a track's row mute it or play it alone.
+- Each track's header shows a small picture of what it holds (keyboard: notes, drum, waveform: sound files,
+  microphone: voice), its name and its volume, then its buttons: **R** gets it ready to record, **M** mutes it, **S**
+  plays it alone, **A** opens its automation lane, the padlock locks it. Under them a thin bar shows how loud the
+  track was in the last render (green, amber near 0 dB, red over). When rows are short the header is one line;
+  if it is narrow too, A and the padlock show only when on or under the mouse (R, M and S always stay).
 - After an edit the sound is prepared again in a moment, so playback follows what you changed.
 
 ## 6. Tempo, beats and key

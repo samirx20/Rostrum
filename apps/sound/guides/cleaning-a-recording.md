@@ -5,7 +5,7 @@ inspect_guide `cleanup` and `apps/sound/CLEANUP.md`; this page is the job from s
 
 ## 1. Record or bring in the take
 
-- **On the screen:** arm a track (Rec on its header), press Record or R. The mix plays from the playhead and the
+- **On the screen:** arm a track (**R** on its header), press Record or R. The mix plays from the playhead and the
   take becomes one clip (one undo step) in `<project>/media/`. Count-in, punch-in over a range and the input level
   are in the record controls. Use headphones: a take recorded against speakers hears them.
 - **As an agent:** `clip.add` with `media` = the file and `at` = where it starts.

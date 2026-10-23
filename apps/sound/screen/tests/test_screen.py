@@ -61,3 +61,16 @@ def test_script_rerun_keeps_a_persons_note_move(bridge):
     bridge.doc.run_script("song.py", run_source(SRC, "song.py"))
     assert bridge.doc.item("lead.n2000")["at"] == {"beat": 4.5}
     assert bridge.doc.item("lead.n3000")["at"] == {"beat": 6}
+
+
+def test_plus_effect_adds_one_step_on_a_track_and_the_master(bridge):
+    """The Mixer's "+ Effect" is the effect.add operation on that strip (it once called a command id that no longer
+    existed and failed on every strip): one change each, the new effect selected."""
+    from screensound.mixer import MixPage
+    doc, mix = bridge.doc, MixPage(bridge)
+    for owner in ("lead", "master"):
+        before = len(doc.history.changes)
+        assert mix.addEffect(owner, "delay"), bridge.status
+        assert len(doc.history.changes) == before + 1
+        assert doc.item(owner)["effects"][-1]["effect"] == "delay"
+        assert bridge.selected == doc.item(owner)["effects"][-1]["id"]

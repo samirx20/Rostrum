@@ -4,7 +4,7 @@ import RostrumKit
 // A group's header in the arrangement (DESIGN.md §3.1d): a bus that tracks play into, drawn as a row above them with
 // a fold arrow (click folds the tracks behind this one row, Alt+click folds or unfolds every group), its name (click
 // selects the group: Ctrl+Shift+G ungroups it) and, folded, how many tracks it holds. Folding is the person's own
-// screen state, not the song. M / S at the right mute the group or solo its tracks. Its fader and effects are in the
+// screen state, not the song. A M S at the right: its automation lane, mute the group, solo its tracks. Its fader and effects are in the
 // Mixer; a group inside a group is indented. Dropping a track header on it (Timeline) puts the track into the group.
 Rectangle {
     id: h
@@ -15,7 +15,6 @@ Rectangle {
     radius: Theme.radiusCtl
     color: on ? Theme.accentSoft : area.containsMouse ? Theme.raised : "transparent"
     Behavior on color { ColorAnimation { duration: Theme.fast } }
-    HoverHandler { id: hover }
 
     MouseArea {
         id: area; anchors.fill: parent; hoverEnabled: true
@@ -42,7 +41,7 @@ Rectangle {
     }
     NameLabel {
         id: nameText
-        x: arrow.x + arrow.width + 2; width: count.x - x - Theme.gap; anchors.verticalCenter: parent.verticalCenter
+        x: arrow.x + arrow.width + 2; width: (count.visible ? count.x : autoChip.visible ? autoChip.x : toggles.x) - x - Theme.gap; anchors.verticalCenter: parent.verticalCenter
         text: h.track.name; font.pixelSize: Theme.label; font.weight: Font.DemiBold
         color: h.track.mute ? Theme.fg3 : Theme.fg
     }
@@ -55,7 +54,6 @@ Rectangle {
     }
     GroupToggles { id: toggles; track: h.track
                    anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter } }
-    LaneToggle { id: autoChip; visible: h.showAuto && (hover.hovered || h.track.autoUsed || !!h.track.auto);   // on hover or in use
-                 track: h.track
+    LaneToggle { id: autoChip; visible: h.showAuto; track: h.track
                  anchors { right: toggles.left; rightMargin: 2; verticalCenter: parent.verticalCenter } }
 }
