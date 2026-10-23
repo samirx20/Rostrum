@@ -27,7 +27,7 @@ BUDGET = 1200 << 20              # bytes of kept layer states in memory
 CHECKPOINT = 24                  # during a long replay, keep a state every N strokes
 _HERE = Path(__file__).resolve().parent
 ENGINE_VERSION = hashlib.sha1(b"".join((_HERE / f).read_bytes() for f in ("marks.py", "brush.py", "canvas.py",
-                                                                           "compose.py", "fill.py", "shape.py"))).hexdigest()[:12]
+                                                                           "compose.py", "fill.py", "shape.py", "pictures.py"))).hexdigest()[:12]
 
 
 @dataclass
@@ -90,11 +90,15 @@ def _h(*parts) -> str:
     return hashlib.sha1("\x1f".join(parts).encode("utf-8")).hexdigest()
 
 
-def _paper(w, h):
-    if (w, h) not in _PAPER:
-        _PAPER.clear()
-        _PAPER[(w, h)] = marks.Paper(h, w, 0, 3.0)
-    return _PAPER[(w, h)]
+def _paper(w, h, picture="tooth", scale=1.0):
+    """The canvas's paper (kept: a stroke and the next on the same paper share it). Strokes made before paper
+    choice name none: the engine's tooth, at its first size."""
+    key = (w, h, picture, scale)
+    if key not in _PAPER:
+        if len(_PAPER) > 4:
+            _PAPER.clear()
+        _PAPER[key] = marks.Paper(h, w, 0, 3.0 * scale, picture, scale)
+    return _PAPER[key]
 
 
 def stamp(layer_px, s: dict, w, h, masks: dict, under=None):
@@ -108,9 +112,11 @@ def stamp(layer_px, s: dict, w, h, masks: dict, under=None):
                   seed=s["seed"], angle=None if s["follow"] else s["angle"], grain=s["grain"], mode=s["mode"],
                   color_jitter=s["color_jitter"], hue_jitter=s["hue_jitter"], size_pressure=s["size_pressure"],
                   opacity_pressure=s["opacity_pressure"], wet=s["wet"] if s["smudge"] else 0.0,
-                  sample_all=bool(s["smudge"] and s["pickup"]), **{k: s.get(k, 0.0) for k in shape.KEYS})
+                  sample_all=bool(s["smudge"] and s["pickup"]), **{k: s.get(k, 0.0) for k in shape.KEYS},
+                  even=s.get("even", False), texture=s.get("texture", "none"))   # absent: made before they were
+    paper = _paper(w, h, s.get("paper", "tooth"), s.get("paper_scale", 1.0))
     return brush.stamp_stroke(layer_px, s["points"], rgb, s["size"], s["brush"], mask=mask,
-                              under=under if params["sample_all"] else None, paper=_paper(w, h), lay=LAY, **params)
+                              under=under if params["sample_all"] else None, paper=paper, lay=LAY, **params)
 
 
 def _chain(paint, w, h, masks, below_key) -> list[str]:
