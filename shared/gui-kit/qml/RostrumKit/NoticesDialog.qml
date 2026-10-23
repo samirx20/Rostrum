@@ -38,7 +38,8 @@ QQC.Popup {
         Text { text: "MIT licence, HireMyLens Media"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
         Text {
             width: parent.width; wrapMode: Text.WordWrap
-            text: dlg.data ? dlg.data.where : ""; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+            text: (dlg.data ? dlg.data.where + " " : "") + "Each component below is used under its own licence, and each asks that its notice is kept; a line says when one asks more."
+            color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
         }
     }
     Text {
@@ -65,7 +66,8 @@ QQC.Popup {
                 id: row
                 required property var modelData
                 required property int index
-                readonly property bool sameAsks: index > 0 && dlg.items[index - 1].asks === modelData.asks
+                // what a licence asks is said once, on its first row; the usual "Keep the notice" is said once at the top
+                readonly property bool sameAsks: modelData.asks === "Keep the notice" || dlg.items.findIndex(i => i.asks === modelData.asks) < index
                 // a licence cell may carry notes ("MIT-0 (metadata); its LICENSE text is …"): the name sits at the right,
                 // the notes wrap under what the licence asks, never cut
                 readonly property var cut: /^(.*?)(?:; |\. | \()(.*)$/.exec(modelData.licence || "")

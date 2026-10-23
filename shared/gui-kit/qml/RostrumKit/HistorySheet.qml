@@ -16,6 +16,7 @@ Panel {
     property var rows: []
     signal closed()
     title: "History"
+    bodyRight: Theme.fieldEdge                 // its buttons end where the settings column's fields end
     focus: visible
     Keys.onEscapePressed: closed()
     function reload() {

@@ -66,6 +66,7 @@ QtObject {
     readonly property int padLeft: 12
     readonly property int padRight: 4
     readonly property int keyGutter: 28
+    readonly property int fieldEdge: padRight + keyGutter   // where the settings column's controls end, from the panel's right edge: a sheet in its place ends there too
     readonly property int fieldMax: 200
     readonly property int pairGap: 4        // between the two halves of Position (X | Y) and Size (W | H), the only pairs
     readonly property int amountField: 64   // an amount's value box beside its slider, for the widest words ("−60.0 dB")

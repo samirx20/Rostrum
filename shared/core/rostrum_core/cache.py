@@ -69,14 +69,28 @@ def _size(folder: Path) -> int:
 WRITING = ".writing"          # the temporary files of `put_file`, kept apart so a trim's glob never sees them
 
 
-def put_file(out, make: Callable[[Path], object], where: str = "cache") -> Path:
+LEVELS = ".levels.json"       # the strips' live meters the engine writes beside every mix (read by the player)
+
+
+def used_at(out) -> float:
+    """When a cached file was last used: its own time or its sidecar's (a hit renews the sidecar, see put_file)."""
+    out = Path(out)
+    times = [p.stat().st_mtime for p in (out, out.with_suffix(LEVELS)) if p.is_file()]
+    return max(times, default=0.0)
+
+
+def put_file(out, make: Callable[[Path], object], where: str = "cache", beside: tuple[str, ...] = ()) -> Path:
     """The cached file `out`, made by `make(tmp)` if missing. `tmp` is unique to this writer (same suffix as `out`)
     in `<folder>/.writing/`; it moves into place only when written. Two writers of one key both succeed (the
-    first one stands); `make` raising, or writing nothing, is loud and leaves nothing behind. A hit renews the time."""
+    first one stands); `make` raising, or writing nothing, is loud and leaves nothing behind. A hit renews the time.
+    `beside`: the files `make` writes next to `tmp` that belong to `out` (a mix's `.levels.json`: keyed to the mix's
+    size and time, so it moves with it and the mix itself is never touched again). A file missing is loud too, and an
+    older entry made without them is made again."""
     out = Path(out)
-    if out.is_file():
+    sides = lambda p: [(p.with_suffix(x)) for x in beside]  # noqa: E731
+    if out.is_file() and all(q.is_file() for q in sides(out)):
         try:
-            os.utime(out)                       # the newest used stays when the folder is trimmed
+            os.utime(sides(out)[0] if beside else out)      # the newest used stays when the folder is trimmed
         except OSError:
             pass                                # open in a player: still a hit
         return out
@@ -86,13 +100,20 @@ def put_file(out, make: Callable[[Path], object], where: str = "cache") -> Path:
         make(tmp)
         if not tmp.is_file() or tmp.stat().st_size == 0:
             raise RostrumError(codes.RENDER_FAILED, where, out.name, f"the job answered but wrote no file at {tmp}")
+        for q in sides(tmp):
+            if not q.is_file():
+                raise RostrumError(codes.RENDER_FAILED, where, out.name, f"the job wrote no {q.name[len(tmp.stem):]} beside {tmp}")
         try:
+            for q, dest in zip(sides(tmp), sides(out)):
+                os.replace(q, dest)             # before the file itself: whoever sees the mix finds its meters
             os.replace(tmp, out)
         except OSError:
             if not out.is_file():               # not "another writer won and a reader holds it open": a real failure
                 raise
     finally:
         tmp.unlink(missing_ok=True)
+        for q in sides(tmp):
+            q.unlink(missing_ok=True)
     return out
 
 

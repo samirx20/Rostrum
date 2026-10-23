@@ -97,7 +97,7 @@ Item {
             x: Math.round(r.xOf(v)); y: r.height - height
             width: 1; height: big ? 7 : 3; color: big ? Theme.lineHover : Theme.line
             Text { visible: parent.big && parent.x >= 0 && parent.x + 4 + implicitWidth <= r.width
-                   x: 4; y: -r.height + r.labelTop + (r.upper.length ? 13 : 0) + parent.height
+                   x: 4; y: r.upper.length ? -r.height + r.labelTop + 13 + parent.height : -implicitHeight - 2   // always just above its tick, with or without the flag row
                    text: r.label(parent.v); color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
                    font.features: { "tnum": 1 } }
         }
