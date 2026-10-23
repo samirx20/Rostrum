@@ -157,18 +157,39 @@ class KeyBar(QObject):
             return False
         return self._apply([{"op": "key.set", "target": lasts, "args": {"after": value}}], f"After the last key: {last_key.WORDS[value]}")
 
+    @Slot(str)
+    def hold(self, field):
+        """A Key field's caret went in (Time, Value): what it commits goes to the keys picked now (the kit's rule)."""
+        self.b.hold_ids(f"key.{field}", self.picked())
+
+    @Slot(str)
+    def release(self, field):
+        held = self.b._kit.held
+        if held and held[0] == f"key.{field}":
+            self.b._kit.held = None
+
+    def _typed_for(self, field):
+        """The keys a typed Time / Value is for: those held when its typing started, else those picked now."""
+        ids = [k for k in self.b.held_ids(f"key.{field}", self.picked()) if "prop" in self.b.doc.item(k)]
+        if not ids:
+            self.b._fail(f"Error: key {field}: the key it was typed for is gone; the value is dropped.",
+                         "The typed value was dropped: the key it was typed for is gone.")
+        return ids
+
     @Slot(float, result=bool)
     def setTime(self, t):
         """One key's time (composition seconds), on a whole frame; another key of that setting there refuses."""
-        if not self.one:
+        ids = self._typed_for("time")
+        if len(ids) != 1:
             return False
-        fps, kid = self.b.comp()["fps"], self.picked()[0]
+        fps, kid = self.b.comp()["fps"], ids[0]
         own = self.b.own_t(self.b.doc.parent_of(kid)[0], round(t * fps) / fps)
-        return self._apply(self._all({"t": round(own, 6)}), "Key time")
+        return self._apply([{"op": "key.set", "target": ids, "args": {"t": round(own, 6)}}], "Key time")
 
     @Slot(float, result=bool)
     def setValue(self, v):
-        return self.hasValue and self._apply(self._all({"v": v}), "Key value")
+        ids = self._typed_for("value")
+        return bool(ids) and self._apply([{"op": "key.set", "target": ids, "args": {"v": v}}], "Key value")
 
     # ---- drags: the small curve's handles and the spring sliders, one change per drag -------------------------
     @Slot(str, result=bool)

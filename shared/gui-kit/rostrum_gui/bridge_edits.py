@@ -31,7 +31,7 @@ class EditSlots(SlotMixin):
     @Slot(str)
     def holdEdit(self, param):
         """A settings field's caret went in: what it commits goes to the items selected now (pending.py)."""
-        self._kit.held = (param, list(self._kit.selection))
+        self.hold_ids(param, self._kit.selection)
 
     @Slot(str)
     def releaseEdit(self, param):
@@ -39,10 +39,18 @@ class EditSlots(SlotMixin):
         if self._kit.held and self._kit.held[0] == param:
             self._kit.held = None
 
-    def _targets(self, param):
+    def hold_ids(self, param, ids):
+        """One rule for every typed field: it belongs to these items from its caret going in (the key panel's too)."""
+        self._kit.held = (param, list(ids))
+
+    def held_ids(self, param, current):
+        """The items a typed value is for: those held for `param` (still in the document), else `current`."""
         held = self._kit.held
-        ids = held[1] if held and held[0] == param else self._kit.selection
+        ids = held[1] if held and held[0] == param else current
         return [i for i in ids if self.doc.has(i)]
+
+    def _targets(self, param):
+        return self.held_ids(param, self._kit.selection)
 
     @Slot(str)
     def toggleAnimate(self, param):
