@@ -4,12 +4,20 @@ it, and the playhead's page-follow."""
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Slot
+from rostrum_sound.doc import musical
 
 from .signals import SoundSignals as S
 
 
 class ViewSlots:
     timeView = Property(QObject, lambda self: self._tv, constant=True)     # HScroll's view
+
+    @Slot(float, "QVariant", result=str)
+    def positionText(self, t, _song=None):
+        """A time as people read it: bars.beats, then the clock ("5.3  0:09.60"), from the one formatter (musical.py)
+        that every field and agent report uses; the ticks are left off here. QML passes `backend.song` so the text
+        follows a tempo or time signature edit, not only the playhead."""
+        return ".".join(musical.position(t, self.doc.data).split(".")[:2]) + "  " + musical.clock(t)
 
     @Property(float, notify=S.viewChanged)
     def viewStart(self):

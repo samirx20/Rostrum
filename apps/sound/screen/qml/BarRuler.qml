@@ -51,7 +51,7 @@ Item {
         anchors.fill: parent
         duration: r.length; fps: 1000                        // (whole milliseconds: the grid does the snapping)
         value: backend.time; view: backend.timeView; upper: r.barMarks; seconds: workspace.seconds
-        rangeBand: true; range: r.range.length === 2 ? { start: r.range[0], end: r.range[1] } : null
+        rangeBand: true; rangeActive: backend.looping; range: r.range.length === 2 ? { start: r.range[0], end: r.range[1] } : null
         onScrubbed: (t) => backend.setTime(t)
         onRangeSet: (a, b) => backend.setRange(a, b, false)
         onRangeCleared: backend.clearRange()

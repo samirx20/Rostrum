@@ -11,7 +11,7 @@ Rectangle {
     id: s
     required property var model          // roles: mixer.py ROLES (id, name, hue, volume, pan, effects, meter, canSolo, canArm, output, sends, …)
     readonly property bool selected: backend.selected === model.id
-    readonly property bool low: height < 330          // a low dock: sends and ducks fold away, the fader keeps the height
+    readonly property bool low: height < 460          // a low dock (most laptops): sends and ducks fold into "Sends ▾", the fader keeps the height
     readonly property bool routed: model.output !== ""
     property real head: 0                 // the tallest strip's parts above the fader (set by the Mixer)
     readonly property real naturalHead: headCol.implicitHeight
@@ -40,8 +40,8 @@ Rectangle {
                 font.pixelSize: Theme.title; font.weight: Font.DemiBold
                 MouseArea { anchors.fill: parent; onPressed: s.pick() }
             }
-            MixChain {   // one line per effect, then "+ Effect"; scrolls past three lines (one in a low dock)
-                Layout.fillWidth: true; Layout.preferredHeight: Math.min(contentHeight, s.low ? 46 : 94)
+            MixChain {   // one line per effect, then "+ Effect"; scrolls past three lines
+                Layout.fillWidth: true; Layout.preferredHeight: Math.min(contentHeight, s.low ? 72 : 94)
                 chips: s.model.effects; ownerId: s.model.id
             }
             Flickable {   // sends and ducks (a low dock: they open from "Sends" on the output line); scrolls when many
@@ -93,7 +93,7 @@ Rectangle {
                        font.features: { "tnum": 1 }; Layout.minimumWidth: 42 }
                 Slider {
                     Layout.fillWidth: true; implicitWidth: 10
-                    from: -1; to: 1; step: 0.01; value: s.model.pan
+                    from: -1; to: 1; step: 0.01; value: s.model.pan; origin: 0; defaultValue: 0
                     onScrubStarted: { s.pick(); backend.beginScrub("pan") }
                     onScrubbed: (v) => backend.scrub("pan", v)
                     onScrubEnded: backend.endScrub()
@@ -103,7 +103,7 @@ Rectangle {
         }
         }
         MixLevel {
-            Layout.alignment: Qt.AlignHCenter; Layout.fillHeight: true; Layout.minimumHeight: 72
+            Layout.alignment: Qt.AlignHCenter; Layout.fillHeight: true; Layout.minimumHeight: 72; Layout.preferredHeight: 1000
             gain: s.model.volume; meter: s.model.meter
             onScrubStarted: { s.pick(); backend.beginScrub("volume") }
             onScrubbed: (g) => backend.scrub("volume", g)

@@ -194,6 +194,7 @@ Item {
                  value: row.model.value ?? 0; from: row.model.min ?? 0; to: row.model.max ?? 1
                  step: row.model.step ? row.model.step : 0.01; display: row.model.display || ""
                  defaultValue: row.model.default ?? null
+                 origin: row.model.display === "pan" ? 0 : null      // pan fills from the centre
                  onEdited: (v) => row.set(v)
                  onScrubStarted: row.bridge.beginScrub(row.model.id)
                  onScrubbed: (v) => row.bridge.scrub(row.model.id, v)

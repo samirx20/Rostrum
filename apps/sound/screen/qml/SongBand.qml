@@ -30,7 +30,7 @@ Item {
         }
         return best
     }
-    FontMetrics { id: arrowMetrics; font.family: uiFont; font.pixelSize: Theme.body + 3 }
+    FontMetrics { id: arrowMetrics; font.family: uiFont; font.pixelSize: Theme.label }   // the flag text's size: a bigger glyph is cut by the band
     FontMetrics { id: metrics; font.family: uiFont; font.pixelSize: Theme.label; font.features: { "tnum": 1 } }
 
     Repeater {
@@ -47,7 +47,7 @@ Item {
                    color: parent.on ? Theme.fg : Theme.fg; font.family: uiFont; font.pixelSize: Theme.label
                    font.features: { "tnum": 1 } }
             Text { visible: !!modelData.arrow; x: flagText.x + flagText.width + 4; anchors.verticalCenter: parent.verticalCenter
-                   text: modelData.arrow || ""; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body + 3 }
+                   text: modelData.arrow || ""; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.label }
         }
     }
     MouseArea {

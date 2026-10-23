@@ -111,10 +111,29 @@ class Recording(QObject):
 
     @Slot()
     def toggleRecord(self):
+        """Record / Stop (the button is always there; R). With no track armed it arms the selected track, else the
+        first that can take sound, or says why not."""
         if self._taking:
             self.stop()
-        elif self._armed and not self._settle.isActive():
+            return
+        if not self._armed:
+            track = self._default_track()
+            if not track:
+                return self.bridge.say("Nothing to record on: add a Microphone track (+ Add, Track with a sound)")
+            self.arm(track)
+        if self._armed and not self._settle.isActive():
             self._guard(self._begin)
+
+    def _default_track(self):
+        """The track a bare Record arms: the selected one (or the one holding the selected item) that takes sound,
+        else the first audio track."""
+        doc = self.bridge.doc
+        rows = {r["id"]: r for r in self.bridge.tracks if not r.get("mix")}
+        for i in self.bridge._picks.ids:
+            t = i if i in rows else (doc.parent_of(i) or [None])[0] if doc.has(i) else None
+            if t in rows and rows[t]["kind"] in ("audio", "empty"):
+                return t
+        return next((i for i, r in rows.items() if r["kind"] in ("audio", "empty")), "")
 
     def _begin(self):
         if not self.player.alive:

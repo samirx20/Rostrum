@@ -18,12 +18,18 @@ Item {
     property real step: 0.01
     property var defaultValue: null                  // the setting's own default; null = none (no reset)
     property string display: ""
+    property var origin: null                        // the value the filled part starts from (pan: 0, fills from the centre); null = from the left end
     readonly property var showRange: VK.range(display, from, to)          // [lo, hi] in shown units
     readonly property real showStep: VK.step(display, step)
     readonly property real shown: { const n = VK.shown(display, value); return isFinite(n) ? n : showRange[0] }
     readonly property bool hovered: hoverHandler.hovered
     readonly property bool pressed: drag.pressed
     readonly property real ratio: showRange[1] > showRange[0] ? (Math.max(showRange[0], Math.min(showRange[1], shown)) - showRange[0]) / (showRange[1] - showRange[0]) : 0
+    readonly property real originRatio: {
+        if (origin === null || origin === undefined || showRange[1] <= showRange[0]) return 0
+        const n = VK.shown(display, Number(origin))
+        return isFinite(n) ? Math.max(0, Math.min(1, (n - showRange[0]) / (showRange[1] - showRange[0]))) : 0
+    }
     signal edited(real value)
     signal scrubStarted()
     signal scrubbed(real value)
@@ -54,7 +60,8 @@ Item {
         x: knob.width / 2; width: parent.width - knob.width; height: 4; radius: 2
         color: s.hovered ? Theme.lineHover : Theme.active
         Behavior on color { ColorAnimation { duration: Theme.fast } }
-        Rectangle { width: parent.width * s.ratio; height: parent.height; radius: 2; color: Theme.accent }
+        Rectangle { x: parent.width * Math.min(s.ratio, s.originRatio); width: parent.width * Math.abs(s.ratio - s.originRatio)
+                    height: parent.height; radius: 2; color: Theme.accent }
     }
     Rectangle {  // knob
         id: knob

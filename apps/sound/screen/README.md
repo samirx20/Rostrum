@@ -3,7 +3,7 @@
 One workspace on one Sound document (apps/sound/DESIGN.md §2), built from the shared GUI kit (`shared/gui-kit/`).
 
 ```
-top bar          RostrumSound · File · song · ⏮ ▶ · Record (only while a track is armed) · bar.beat · time ·
+top bar          RostrumSound · File · song · ⏮ ▶ loop · Record (always; Take and the level while armed) · metronome · bars.beats · time ·
                  ♩ tempo · beats · key (click: the tempo / key popover) · Loudness against the target (once there is
                  sound; click: the Mixer) · history · + Add · Export (once there is sound) · Ctrl+K · Help
 left             the Sounds panel (L, + Track, + Add): instruments, drum kits, microphone, voices, my sounds; pushes the
@@ -100,7 +100,7 @@ Switching songs rebuilds the bridge and its parts and reloads the window (`main.
 
 Everything goes through the engine's live transport, the same process that plays the song, so a take is placed
 against what was heard, to the sample. Arm a track (R on its header): the microphone opens in the player
-(`--mic`), its level shows in the record cluster of the top bar. Press the red Record button or R: the engine counts
+(`--mic`), its level shows in the record cluster of the transport strip. Record with no track armed arms the selected (else first) audio track. Press the red Record button or R: the engine counts
 in if asked (its own clicks), plays from the playhead and records; Stop and the take becomes one clip (one undo step)
 in `<project>/media/<track name>-take-<n>.wav` at the engine's `start` (its clock, minus the microphone's delay when
 `rostrum-sound play --calibrate` measured it; `rostrum_sound.record.land_take`).

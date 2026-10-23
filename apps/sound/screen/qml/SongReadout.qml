@@ -1,11 +1,10 @@
 import QtQuick
 import RostrumKit
 
-// The arrangement header's position and song: where the playhead is ("5.3 · 0:09.60": bar.beat, then the time; digits
-// all one width) and what plays there — tempo, beats per bar, key — as fields: their one home (drag or type the tempo,
+// The arrangement header's position and song: where the playhead is ("5.3  0:09.60": bars.beats, then the time, from the one formatter, musical.py via
+// backend.positionText(time); digits all one width) and what plays there — tempo, beats per bar, key — as fields: their one home (drag or type the tempo,
 // pick the beats and key; nothing has to be selected first). Then the
-// sound's state when there is one to tell (rendering, no output here, a failed render: red). Bars and beats follow
-// the bar map (song.bars, song.beats: each count, an eighth in 6/8). `compact` (a small window, §2.5): bar.beat only (the time on hover) and the key short.
+// sound's state when there is one to tell (rendering, no output here, a failed render: red). `compact` (a small window, §2.5): bar.beat only (the time on hover) and the key short.
 Row {
     id: ro
     property bool compact: false
@@ -20,13 +19,6 @@ Row {
         }
         return best
     }
-    function clock(t) {
-        var m = Math.floor(t / 60), s = t - 60 * m
-        return m + ":" + (s < 10 ? "0" : "") + s.toFixed(2)
-    }
-    readonly property int bar: Math.max(0, lastAt(song.bars, backend.time, b => b))
-    readonly property int beat: Math.max(0, lastAt(song.beats, backend.time, b => b)
-                                            - lastAt(song.beats, (song.bars[bar] || 0), b => b))   // counts since the bar line
     readonly property int tempoAt: Math.max(0, lastAt(song.tempos, backend.time, c => c.t))
     readonly property int keyAt: lastAt(song.keys, backend.time, c => c.t)
     readonly property string key: keyAt >= 0 ? song.keys[keyAt].key : ""
@@ -35,11 +27,13 @@ Row {
 
     Text {
         id: place
-        text: (ro.bar + 1) + "." + (ro.beat + 1) + (ro.compact ? "" : "  ·  " + ro.clock(backend.time))
+        readonly property string full: backend.positionText(backend.time, ro.song)
+        readonly property var parts: full.split("  ")     // bars.beats, then the clock (musical.py)
+        text: ro.compact ? parts[0] : full
         color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body; font.features: { "tnum": 1 }
         anchors.verticalCenter: parent.verticalCenter
         HoverHandler { id: placeHover }
-        HoverTip { text: ro.compact ? ro.clock(backend.time) : ""; hovered: placeHover.hovered }
+        HoverTip { text: ro.compact ? place.parts[1] : ""; hovered: placeHover.hovered }
     }
     Row {   // tempo, beats per bar and key: their one home. Each edits what plays at the playhead (song_panel.py)
         anchors.verticalCenter: parent.verticalCenter; spacing: Theme.grid

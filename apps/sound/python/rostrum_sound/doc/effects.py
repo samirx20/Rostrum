@@ -28,7 +28,7 @@ class F(NamedTuple):
 TOGGLE, SPACE, BANDS = "toggle", "space", "bands"
 EFFECTS = {
     "eq": {"bands": F(BANDS)},
-    "compressor": {"threshold": F(-18, -80, 0, True, "dB"), "ratio": F(3, 1, 30, True),
+    "compressor": {"threshold": F(-18, -80, 0, True, "dB"), "ratio": F(3, 1, 30, True, ":1"),
                    "attack": F(0.01, 0.0001, 1, unit="s", importance="secondary"),
                    "release": F(0.15, 0.001, 5, unit="s", importance="secondary"),
                    "makeup": F(0, -24, 36, True, "dB"), "knee": F(6, 0, 24, unit="dB", importance="deep")},
@@ -40,7 +40,7 @@ EFFECTS = {
     "tape": {"wow": F(0.2, 0, 1, True), "flutter": F(0.2, 0, 1, True), "age": F(0.2, 0, 1, True)},
     "limiter": {"ceiling": F(-1, -24, 0, unit="dB"), "release": F(0.1, 0.001, 2, unit="s", importance="secondary")},
     "width": {"width": F(1, 0, 2, True), "monoBelow": F(120, 0, 1000, unit="Hz", importance="secondary")},
-    "gate": {"threshold": F(-45, -100, 0, unit="dB"), "ratio": F(4, 1, 100), "range": F(30, 0, 100, unit="dB"),
+    "gate": {"threshold": F(-45, -100, 0, unit="dB"), "ratio": F(4, 1, 100, unit=":1"), "range": F(30, 0, 100, unit="dB"),
              "attack": F(0.002, 0.0001, 1, unit="s", importance="secondary"),
              "hold": F(0.05, 0, 2, unit="s", importance="secondary"),
              "release": F(0.12, 0.001, 5, unit="s", importance="secondary")},
@@ -77,6 +77,8 @@ def _param(field_name, specs, kind):
     if first.default == TOGGLE:
         return Param.toggle(field_name, default=False, **kw)
     lo, hi = min(s.lo for s in specs), max(s.hi for s in specs)
+    if not first.unit and lo == 0 and hi <= 2:          # a unit-less amount (mix, feedback, drive, width): a percent
+        kw["display"] = "percent"
     if any(s.env for s in specs):
         return V.env(field_name, lo, hi, unit=first.unit, default=first.default, **kw)
     return Param.number(field_name, min=lo, max=hi, step=V.step(lo, hi, first.unit), unit=first.unit, default=first.default, **kw)

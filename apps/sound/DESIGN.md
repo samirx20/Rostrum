@@ -230,7 +230,7 @@ every dialog, the sizes and the wireframes.
 
 **Arrangement header strip** (above the ruler; the same place as 2D's timeline header) *(S30)*, left to right:
 - **+ Add**.
-- **Transport:** ⏮ (to start, Home) · ▶ / ■ (Space) · **⟳ loop** (only while a time range exists; lit when on; Shift+L) · **click** (the metronome, Shift+K) · **● Record** and the **input meter** (only while a track is armed).
+- **Transport:** ⏮ (to start, Home) · ▶ / ■ (Space) · **loop** (always there; Shift+L; with no range it makes one: the selection's span, else four bars from the playhead; solid band on the ruler, edges drag) · **click** (the metronome, Shift+K) · **● Record** (always; with no track armed it arms the selected / first audio track) and the **input meter** (only while a track is armed). One height, ghost style, play the one accent.
 - **Position:** bar.beat.tick and time ("5.3.1 · 0:09.60"); click to type a place to jump to.
 - **Tempo · beats per bar · key** ("♩ 100 · 4/4 · C major"); click = the Song popover (§2.4).
 - then *Grid 1/16 ▾* · *Snap* · zoom − + · fit at its right end.

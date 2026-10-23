@@ -99,13 +99,27 @@ class KeySlots:
 
     @Slot()
     def toggleLoop(self):
-        """Shift+L: loop the time range on / off (nothing to loop without one: the message line says so)."""
-        if not self._picks.range:
-            self.say("Loop needs a time range: drag on the ruler's top band")
-            return
-        self._loop = not getattr(self, "_loop", False)
+        """Shift+L, or the loop button: loop on / off. With no time range, turning it on makes one: the selection's
+        span, else the bar at the playhead and the next three (it shows on the ruler, its edges drag)."""
+        if getattr(self, "_loop", False):
+            self._loop = False
+        else:
+            if not self._picks.range:
+                a, b = self._default_loop()
+                self.setRange(a, b, True)
+                if not self._picks.range:
+                    return self.say("Loop needs a time range: drag on the ruler's top band")
+            self._loop = True
         self.transport.loop = tuple(self._picks.range) if self._loop else None
         self.loopChanged.emit()
+
+    def _default_loop(self):
+        e = self.selectionExtent()
+        if e and e["t1"] - e["t0"] > 1e-3 and not (e.get("tracks") and e["t1"] - e["t0"] >= self._length() - 1e-3):
+            return e["t0"], e["t1"]
+        bars = list(self._view["song"]["bars"]) or [0.0]
+        i = max((k for k, t in enumerate(bars) if t <= self._t + 1e-6), default=0)
+        return bars[i], bars[i + 4] if i + 4 < len(bars) else self._length()
 
     # ---- click (the metronome; screen state) ------------------------------------------------------------------
     @Property(bool, notify=loopChanged)
@@ -120,7 +134,8 @@ class KeySlots:
 
     def _range_moved(self):
         if getattr(self, "_loop", False):
-            self.transport.loop = tuple(self._picks.range) if self._picks.range else None
+            self._loop = bool(self._picks.range)          # clearing the range ends the loop
+            self.transport.loop = tuple(self._picks.range) if self._loop else None
         self.loopChanged.emit()
 
     @Slot()

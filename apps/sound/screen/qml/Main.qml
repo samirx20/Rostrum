@@ -39,7 +39,7 @@ AppShell {
     Shortcut { sequence: "Ctrl+I"; onActivated: arrangement.addFromFile() }
     Shortcut { sequence: "Ctrl+,"; onActivated: settingsPanel.open() }
     Shortcut { sequence: "Ctrl+Q"; onActivated: Qt.quit() }
-    Shortcut { sequence: "R"; enabled: recorder.armed !== ""; onActivated: recorder.toggleRecord() }
+    Shortcut { sequence: "R"; onActivated: recorder.toggleRecord() }
 
     // ONE key map for the window (the kit's KeyMap, INTERACTION.md Part 2): every shared key and Sound's own
     // (screensound/keys.py) call backend.actions.key(job): an action on the selection when it applies (else the

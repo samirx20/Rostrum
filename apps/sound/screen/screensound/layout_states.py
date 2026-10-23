@@ -118,4 +118,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("two-tracks-mixed", ["--sample"], ["select-many pad melody"]),               # S49: "Mixed" in a unit field, no unit over it
         ("actions-range", ["--sample"], ["range 2 4"]),
         ("actions-marker-ask", ["--sample"], ["marker-add", "ask fit_bar"]),
+        # P41: the full transport (loop on, a track armed), times in bars.beats, the Mixer with an effect selected
+        ("transport-loop-armed", ["--sample"], ["time 9", "loop", "arm door"]),
+        ("note-musical-times", ["--sample"], ["dock editor", "select melody.n9600"]),
+        ("six-eight-note", ["--sample"], [SONG_FLAGS, SIX_EIGHT, "dock editor", "select melody.n9600"]),
+        ("mixer-effect", ["--sample"], ['agent Add a delay|[{"op":"effect.add","target":["drums"],"args":{"effect":"delay"}}]',
+                                        "dock mixer", "select drums.delay_1"]),
     ]
