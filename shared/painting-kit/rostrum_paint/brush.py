@@ -11,6 +11,7 @@ import colorsys, math
 from types import SimpleNamespace
 import numpy as np
 
+from . import shape as shaping
 from .marks import ALONG, K, MODES, PARAMS, TIPS, Coverage, Paper, _noise1, _ss, _up, apply_paint
 
 
@@ -27,7 +28,7 @@ def check(brush, params):
 def stamp_stroke(layer, points, color, size, brush="round", *, mask=None, under=None, paper=None, lay=None, **params):
     """Paint one stroke into `layer` (HxWx4 premultiplied float32, changed in place).
 
-    points: (x, y[, pressure[, tilt]]) in layer pixels. mask: HxW 0..1 or None. under: HxWx3
+    points: (x, y[, pressure[, tilt x°, tilt y°]]) in layer pixels. mask: HxW 0..1 or None. under: HxWx3
     composite below this layer, needed for `sample_all=True`. lay: what lays the dabs (`dabs`, or the native
     stamper's). Returns Coverage (or None if the stroke is entirely off the layer)."""
     check(brush, params)
@@ -43,9 +44,10 @@ def plan(shape, points, color, size, tip, paper, params):
     wet, cj, sp = float(p["wet"]), p["color_jitter"], p["size_pressure"]
     H, W = shape
     rng = np.random.default_rng(p["seed"])
-    pts = np.array([(q[0], q[1], q[2] if len(q) > 2 else 1.0) for q in points], float)
-    if not len(pts):
+    if not len(points):
         raise ValueError("a stroke needs at least one point")
+    full = shaping.steady(shaping.points(points), p["steady"])     # x, y, pressure, tilt x, tilt y
+    pts = full[:, :3]
     # resample the path: one stamp every spacing * (local tip length) pixels
     seg = np.hypot(*np.diff(pts[:, :2], axis=0).T) if len(pts) > 1 else np.zeros(0)
     L = np.concatenate([[0], np.cumsum(seg)])
@@ -53,7 +55,7 @@ def plan(shape, points, color, size, tip, paper, params):
     t = [0.0]
     while t[-1] < L[-1]:
         pr = np.interp(t[-1], L, pts[:, 2])
-        t.append(t[-1] + max(0.3, step * (1 - sp * (1 - pr))))
+        t.append(t[-1] + max(0.3, step * (1 - sp * (1 - pr)) * shaping.step_scale(t[-1], L[-1], size, p)))
     t = np.minimum(np.array(t), L[-1])
     X, Y, Pr = (np.interp(t, L, pts[:, k]) if L[-1] > 0 else pts[:1, k] for k in range(3))
     S = t / L[-1] if L[-1] > 0 else np.zeros(1)
@@ -63,6 +65,7 @@ def plan(shape, points, color, size, tip, paper, params):
     X = X + rng.normal(0, p["jitter"] * size, n)
     Y = Y + rng.normal(0, p["jitter"] * size, n)
     R = (size / 2) * (1 - sp * (1 - Pr))
+    th, R = shaping.dabs(p, th, R, t, L, full, size, p["seed"])
     A = p["opacity"] * (1 - p["opacity_pressure"] * (1 - Pr))
     A, R = A * np.minimum(1, R / 0.5), np.maximum(R, 0.5)  # thinner than a pixel fades, never breaks
     Kr = max(K, int(2 * R.max()) + 1)

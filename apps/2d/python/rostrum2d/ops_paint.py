@@ -30,8 +30,9 @@ MASK = next(p for p in rostrum_paint.FIELDS["stroke"] if p.name == "mask")
              "is the element's own look: kept inside its outline (Keep inside the outline), stretched over its box, moving "
              "with it. Makes the drawing at that frame and the paint layer if missing; several calls in one list are one "
              "undo step.", target=PAINTABLE, label="Paint",
-             params=[Param.points("points", label="Path", min=2, max=4, required=True,
-                                  help="[[x, y, pressure 0..1], …]; pressure 1 when left out"),
+             params=[Param.points("points", label="Path", min=2, max=5, required=True,
+                                  help="[[x, y, pressure 0..1, tilt x°, tilt y°], …]; pressure 1 and no lean when "
+                                       "left out (tilt: the pen's lean each way, -60..60)"),
                      Param.choice("space", ["comp", "canvas"], label="Points in", default="comp", importance="secondary",
                                   labels={"comp": "Composition px", "canvas": "Paint canvas px"},
                                   help="comp: where the element is at `frame`; canvas: the paint's own px (look_drawing's)"),
