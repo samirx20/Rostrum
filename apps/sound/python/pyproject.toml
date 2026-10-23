@@ -28,6 +28,3 @@ rostrum-sound-mcp = "rostrum_sound.mcp.server:main"
 
 [tool.setuptools.package-data]
 rostrum_sound = ["library_data/*.json"]          # guides: apps/sound/guides/ (read from the source tree, like 2D skills/)
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]

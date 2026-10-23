@@ -9,6 +9,7 @@ import os
 import checkout_paths
 
 checkout_paths.use_this_checkout()
+checkout_paths.check_this_checkout()
 
 try:
     from PySide6.QtGui import QGuiApplication
