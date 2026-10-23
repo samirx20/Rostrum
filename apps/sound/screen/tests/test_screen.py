@@ -33,6 +33,9 @@ class FakeEngine:
     def close(self):
         pass
 
+    def abort(self):
+        pass
+
 
 @pytest.fixture
 def bridge(monkeypatch):

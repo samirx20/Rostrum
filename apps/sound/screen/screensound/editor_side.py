@@ -18,7 +18,7 @@ class EditorSide(QObject):
         super().__init__(parent)
         self.bridge, self._typing = bridge, {}
         self.voice = VoiceMaker(bridge, self)
-        for s in (self.voice.changed, bridge.timelineChanged, bridge.docChanged):
+        for s in (self.voice.changed, bridge.timelineChanged, bridge.rollChanged, bridge.docChanged):
             s.connect(self.changed)
         bridge.voiceWanted.connect(self.voice.start)
         bridge.side = self                                    # the scripted steps reach it (line-type)

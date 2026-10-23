@@ -35,6 +35,9 @@ class FakeEngine:
     def close(self):
         pass
 
+    def abort(self):
+        pass
+
 
 def pump(s, until=lambda: False):
     """Run the screen's events until `until()` is true (a generous limit, never a fixed wait) or `s` seconds pass."""

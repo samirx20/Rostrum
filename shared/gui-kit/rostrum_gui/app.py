@@ -110,6 +110,18 @@ def stop(engine, win=None, then=None):
         finish()
 
 
+def free(*objs):
+    """Destroy the Qt side of a closed document's objects (its bridge and the parts made for it), after `stop`.
+    A Python callable connected to a signal (a lambda, a closure) is kept alive by Qt for as long as the sender
+    lives, and it holds the bridge: so a closed song's bridge, its document and everything it drew stayed in memory,
+    and its watchers kept running (S60: +18 MB per song opened, every click slower). Destroying the Qt object drops
+    all its connections and its children at once; Python then frees the rest."""
+    import shiboken6
+    for o in objs:
+        if o is not None and shiboken6.isValid(o):
+            shiboken6.delete(o)
+
+
 def link_in_accent(app):
     """Links in a guide (Markdown text) take the application palette's link colour, not the Text's linkColor, so the
     palette gets Theme.qml's accent (read from there: one place for the colour). Qt's default is a dark blue."""

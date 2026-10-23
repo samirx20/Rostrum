@@ -20,8 +20,6 @@ from rostrum_core import project
 from .. import settings
 from . import tree as T
 from .figma import figma_tree
-from .pdf import pdf_pages, pdf_tree
-from .psd import psd_tree
 from .svg import svg_tree
 
 IMAGES = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tif", ".tiff"}
@@ -94,8 +92,10 @@ def tree_of(kind: str, path=None, page: int = 1, text: str = "text", figma: dict
     if kind == "svg":
         return svg_tree(path, text)
     if kind == "pdf":
+        from .pdf import pdf_tree                  # pypdf / pdfium load when a PDF is read (io/__init__.py)
         return pdf_tree(path, max(page, 1) - 1)
     if kind == "psd":
+        from .psd import psd_tree                  # psd_tools loads when a PSD is read
         return psd_tree(path)
     raise ValueError(f"unknown kind {kind!r}: {', '.join(KINDS)}")
 
@@ -118,6 +118,7 @@ def _pages(doc, comp, path, progress=None, cancelled=None) -> dict:
     from rostrum_core.tree import index
     from ..kind import KIND
     _stage(progress, cancelled, 0.1, "Reading the PDF")
+    from .pdf import pdf_pages
     trees, taken = pdf_pages(path), set(index(doc.data, KIND.lists))
     calls, report, comps = [], [], []
     for i, tr in enumerate(trees):

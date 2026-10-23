@@ -27,15 +27,13 @@ import checkout_paths  # noqa: E402  (this checkout's code first, before any Ros
 
 checkout_paths.use_this_checkout()
 
-import shiboken6
-from PySide6.QtCore import Q_ARG, QMetaObject, QTimer, QUrl
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtCore import Q_ARG, QMetaObject, QTimer
 
 from rostrum_core import Document, RostrumError
 from rostrum_core import userhome
 from rostrum_core.storage import paths
 from rostrum_gui import guides, layout_run, qt_faults, start
-from rostrum_gui.app import qt_app
+from rostrum_gui.app import free, qt_app, stop
 from rostrum_gui.settle import settle
 from rostrum_sound import KIND, run_source
 from rostrum_gui.project_files import ProjectFiles
@@ -96,13 +94,9 @@ class Screen:
         self.settings = SettingsPage()
 
     def show(self, doc):
+        """Open `doc` in a new window; the old window goes first, then the old song's bridge and parts are closed and
+        freed (the kit's stop and free: nothing of a closed song stays alive or keeps listening)."""
         name = title(doc.folder, doc.item_id) if doc.folder else self.unnamed
-        old_win, old_parts = self.win, self.parts
-        if old_win is not None:
-            QGuiApplication.instance().setQuitOnLastWindowClosed(False)   # the next window comes at once: don't quit
-            old_win.close()
-        if old_parts:
-            self._close(old_parts)
         bridge = SoundBridge(doc, name)            # live when the song has a folder
         mixer, recorder, side = MixPage(bridge), Recording(bridge), EditorSide(bridge)
         keys, library = KeysRecording(bridge, recorder), LibraryPanel(bridge)
@@ -111,40 +105,29 @@ class Screen:
                    "adder": Adder(bridge), "songPanel": SongPanel(bridge), "editorSide": side, "fileIn": FileIn(bridge),
                    "soundLibrary": library, "guides": GUIDES}
         self.ctx_adder, self.ctx_file_in = context["adder"], context["fileIn"]
-        if self.engine is None:
-            _, self.engine, self.win = start(MAIN_QML, context, self.size)
-        else:
-            ctx = self.engine.rootContext()
-            for k, v in context.items():
-                ctx.setContextProperty(k, v)
-            self.engine.load(QUrl.fromLocalFile(str(MAIN_QML)))
-            self.win = self.engine.rootObjects()[-1]
-            self.win.resize(*self.size)
-        if old_win is not None:
-            old_win.deleteLater()
-            QGuiApplication.instance().setQuitOnLastWindowClosed(True)
+        old = (self.engine, self.win, self.parts)
+        _, self.engine, self.win = start(MAIN_QML, context, self.size)
         self.parts = {"bridge": bridge, "mixer": mixer, "recorder": recorder, "keys": keys, "side": side,
                       "library": library, "context": context}   # every object QML reads lives as long as the window
+        if old[0] is not None:
+            stop(old[0], old[1], then=lambda: self._close(old[2]))
 
     @staticmethod
     def _close(parts):
+        """A song's parts closed (engines, watchers, clocks), then freed: the window reading them is already gone."""
         for k in ("keys", "recorder", "library", "side", "mixer", "bridge"):
             parts[k].close()
+        ctx = parts["context"]
+        free(*(v for k, v in ctx.items() if k not in ("files", "settingsPage", "guides")), parts["side"])
 
     @property
     def bridge(self):
         return self.parts["bridge"] if self.parts else None
 
     def close(self):
-        """The window and its engine go first, then what their bindings read: closed the other way round, every
-        binding still alive re-reads a context object that is already gone ("Cannot read property … of null")."""
-        if self.win is not None:
-            self.win.close()
-        if self.engine is not None:
-            shiboken6.delete(self.engine)            # destroys the window and every binding with it, now
-            self.engine = self.win = None
-        if self.parts:
-            self._close(self.parts)
+        """At quit: the window and its bindings go first (the kit's stop), then what they read."""
+        stop(self.engine, self.win, then=(lambda p=self.parts: self._close(p)) if self.parts else None)
+        self.engine = self.win = None
         self.files.close()
 
 
