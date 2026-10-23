@@ -54,6 +54,11 @@ They are then one sound: `clip.set` moving or re-levelling one moves them all; `
 
 ## Older songs
 
+Risers, reverse cymbals, sub drops and big impacts no longer ship in the library (PURPOSE.md: no synthetic transition
+sounds; build with strings, a cymbal roll or a piano run). A song whose clip still uses one of those recordings opens, and
+the Problems chip names the clip and the kind ("clip "c1" uses a cinematic.riser recording … that Rostrum no longer
+offers"); the clip stays in the file and still plays until you replace it.
+
 Rostrum used to make a few sounds from settings (a click, a hit, a riser, a sub drop). It no longer does. An older
 song that still has one opens and says so on the Problems chip (and in every agent reply, and in `inspect_diagnose`), naming it, its time
 and its track, for example: *fx: this song has a designed sound ("riser" at 2 s) that Rostrum no longer makes; it is

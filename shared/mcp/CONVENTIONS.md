@@ -125,7 +125,7 @@ A failed call returns `ok: false` and is marked as an error in MCP. It never say
 | `INTERNAL` | A bug in Rostrum. Includes the log path |
 
 - **Edits are all or nothing.** If operation 2 of 3 fails, none of them are applied.
-- **Files are written whole or not at all.** Renders write to a `.partial` name, check the result (frame count, readable, no empty frames), then rename. A failed render keeps the `.partial` folder and says where it is.
+- **Files are written whole or not at all.** Renders write to a `.partial` name, check the result (frame count, readable, no empty frames), then rename. A failed or stopped render removes its `.partial` folder and says why.
 - **Never guess.** An unknown colour, unit or name is an error, not a silent default.
 
 ## 7. Long work: jobs

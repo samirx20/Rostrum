@@ -29,7 +29,7 @@ The top-level project layout belongs to the project service contract. Hand-offs 
         manifest.json     what this render is (§5)
         <item-id>.1001.exr  …  <item-id>.1240.exr
       v002/
-      v003.partial/       a render in progress, or one that failed (never linked)
+      v003.partial/       a render in progress (never linked); a failed or stopped one is removed
     <sound-item-id>/
       v001/
         manifest.json
@@ -38,7 +38,7 @@ The top-level project layout belongs to the project service contract. Hand-offs 
 ```
 
 - **One folder per version.** A render never overwrites an earlier version. Old versions are cleared by the project service's clean-up, never by an app.
-- **Written whole or not at all.** A render writes into `vNNN.partial/`. It is renamed to `vNNN/` only after every check in §5 passes. A failed render stays `.partial`, and the job's error names it.
+- **Written whole or not at all.** A render writes into `vNNN.partial/`. It is renamed to `vNNN/` only after every check in §5 passes. A failed or stopped render removes its `.partial` folder, and the job's error says why.
 - `item-id` is the project item's stable id. File names use only letters, digits, `_` and `-`.
 
 The content-keyed cache is not in the project: it is one machine-wide folder (`C:\Users\<user>\.rostrum\cache\`), see the project service contract › The shared cache.

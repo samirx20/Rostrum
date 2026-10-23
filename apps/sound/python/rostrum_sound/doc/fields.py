@@ -61,8 +61,8 @@ FIELDS = {
     "hit": [
         V.drum("drum", group="Hit", help="A drum name or a GM key number."), V.time("at", group="Hit"),
         N("vel", 0, 1, "Hit", label="Velocity", display="percent"), N("pan", **PAN, group="Hit", imp="secondary"),
-        N("tune", 0.25, 4, "Hit", imp="secondary", help="Pitch ratio (synth kit only)."),
-        N("decay", 0.1, 4, "Hit", imp="secondary", help="Factor of the hit's length."),
+        N("tune", 0.25, 4, "Hit", "×", imp="secondary", help="Pitch ratio (synth kit only)."),
+        N("decay", 0.1, 4, "Hit", "×", imp="secondary", help="Factor of the hit's length."),
     ],
     "clip": [
         Param.text("media", group="Clip", label="File", control="file",

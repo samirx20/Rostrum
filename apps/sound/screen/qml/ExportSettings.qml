@@ -64,9 +64,9 @@ Column {
     }
     Text {   // the live check: the sound that plays now against the target (only once both exist)
         width: root.width; wrapMode: Text.WordWrap
-        visible: root.target.shown && !!root.target.verdict && !!root.target.verdict.text
-        text: root.target.verdict && root.target.verdict.text ? (root.target.verdict.ok ? "✓ " : "") + root.target.verdict.text : ""
-        color: root.target.verdict && root.target.verdict.ok ? Theme.ok : Theme.warn
+        visible: root.target.shown && !!root.job.check && !!root.job.check.text
+        text: root.job.check && root.job.check.text ? (root.job.check.ok ? "✓ " : "") + root.job.check.text : ""
+        color: root.job.check && root.job.check.ok ? Theme.ok : Theme.warn
         font.family: uiFont; font.pixelSize: Theme.body
     }
     Text {   // no target chosen (the master's numbers match none): said, so the list above is not read as unanswered

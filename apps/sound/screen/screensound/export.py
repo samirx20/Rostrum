@@ -25,7 +25,7 @@ from rostrum_sound import compile as compile_doc
 from rostrum_sound import deliver, handoff, midi, presets
 from rostrum_sound.doc import markers
 
-from . import delivery, export_stems, playback
+from . import delivery, export_stems, loudness, playback
 from .export_versions import Versions, ranges, schedule_for
 
 
@@ -284,11 +284,24 @@ class RenderExport(ExportSheet):
         self._trim = bool(on)
         self.changed.emit()
 
+    def _measured(self) -> dict:
+        """The render that plays now, with the loudness and peak of the exported range alone when one is chosen (the file
+        is the range, so the check reads the range, not the whole song). The whole song's when the range can't be measured."""
+        r, span = self.bridge.lastRender or {}, self.range_times()
+        return {**r, **loudness.for_span(r.get("series") or {}, *span)} if span else r
+
+    @Property("QVariantMap", notify=own)
+    def check(self):
+        """{ok, text}: the live pass / miss of what will be exported (the chosen range, else the whole song) against the target."""
+        t = self._loud.target if self._loud is not None else {}
+        m, fields = self._loud._fields() if self._loud is not None else ({}, [])
+        return delivery.verdict(m, self._measured(), fields) if t.get("shown") else {}
+
     @Property("QVariantList", notify=own)
     def more(self):
         """The extra delivery rows ("+ Another version"): {target, format, rate, verdict}."""
         m = self.bridge.doc.item("master")
-        return self._more.shown(m, self.bridge.lastRender or {}, self.bridge.doc.data.get("sampleRate", 48000))
+        return self._more.shown(m, self._measured(), self.bridge.doc.data.get("sampleRate", 48000))
 
     @Property("QVariantList", constant=True)
     def targets(self):
