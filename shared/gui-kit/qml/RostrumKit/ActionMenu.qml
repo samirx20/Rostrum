@@ -23,6 +23,7 @@ QQC.Popup {
     readonly property bool checks: entries.some(e => e.checked !== undefined)   // reserve the ✓ column
     readonly property int checkW: checks ? 18 : 0
     signal picked(string value)
+    signal rested(string value)              // the pointer is on an entry ("" when it left or the menu closed): a hover preview follows it
 
     parent: QQC.Overlay.overlay
     padding: Theme.grid
@@ -73,10 +74,11 @@ QQC.Popup {
         s.openAt(p.x, p.y - padding, left)
     }
     onAboutToShow: highlighted = Math.max(0, entries.findIndex(e => !!e.checked))
-    onClosed: if (subLoader.item) subLoader.item.close()
+    onClosed: { rested(""); if (subLoader.item) subLoader.item.close() }
     Connections {
         target: subLoader.item; ignoreUnknownSignals: true
         function onPicked(v) { menu.picked(v) }
+        function onRested(v) { menu.rested(v) }
         function onClosed() { list.forceActiveFocus() }
     }
     Loader { id: subLoader; active: false; source: "ActionMenu.qml" }
@@ -154,6 +156,7 @@ QQC.Popup {
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onEntered: {
                             menu.highlighted = row.index
+                            if (!row.sub) menu.rested(row.modelData.value)
                             if (row.sub) menu.openSub(row.index)
                             else if (subLoader.item) subLoader.item.close()
                         }
