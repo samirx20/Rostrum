@@ -16,7 +16,7 @@ sits on top of it.
 | **Search or run a command** | Ctrl+K: every action and setting by name |
 | **Shot camera** | Which camera the viewport looks through: the shot camera, a free camera, or through the selected light |
 | **Look: Quick · Final** | Quick is the live view. Final draws the render's own picture in place. Shown once the viewport offers Final |
-| **Materials** | The project's materials. Pick one to edit it in the settings panel, or make a **New material** |
+| **Materials** | The project's materials, each a rendered ball with how many items use it. Click one to edit it in the settings panel, drag one onto an item to give it that material, or make a **New material** (materials.md) |
 | **Render** | One final picture of the playhead's frame through the shot camera (F12). Esc cancels it |
 | **?** | Guides (F1), keys (Ctrl+/), Connect an AI agent, About |
 
@@ -43,6 +43,10 @@ The panel shows what is selected: an item, a material, a shot or a key. Its rows
 
 The diamond at a row's right end keys that setting at the playhead.
 
+**An item's material** sits under its settings: the **Material** row (click its ball to pick another, or start a new one
+from a substance), and under it the material's own settings, including "Used by 3 items" and **Make its own** when the
+material is shared. See the guide *materials*.
+
 **Several things selected.** Pick more in the scene list: Ctrl+click adds one (or takes it out), Shift+click picks the
 run from the first one. The panel then shows the settings they share, and a change goes to all of them. With two or
 more solids (shapes or combines in the same group) the top of the panel offers **Combine: Union · Subtract ·
@@ -54,7 +58,8 @@ shown, so with one thing selected there is no Combine.
 
 - **Left:** the scene as a tree. A group's items sit indented under it, and the arrow folds them. A **combine** is a row with its own icon and its
   inputs indented under it; in a Subtract the cutters carry a minus sign. Ctrl+click and Shift+click pick several. Each row shows its
-  material's name, dimmed; click that name to edit the material. Click a row to select the item.
+  material's name, dimmed; click that name to edit the material. Click a row to select the item. Drop a material ball on a row to give
+  that item the material.
 - **Right, on the same rows:** the item's keys as diamonds.
   - The selected item opens a row for each animated setting.
   - Click a diamond to select its key; drag it to move it (whole frames, one undo step).

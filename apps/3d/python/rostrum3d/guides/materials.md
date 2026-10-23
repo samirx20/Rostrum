@@ -4,6 +4,34 @@ Rostrum3D has one material type: a physically based surface (`material.add`, `ma
 
 Look at the result, not the numbers: render a still with `cycles`. Storm, the fast view, only approximates glass and coat, and doesn't show brushing, sheen, coat colour or thin film at all (see "What the fast view can't show" below).
 
+## Giving an item a material (on the screen)
+
+Select a mesh (or a combine, or an imported part). Its **Material** row in the settings panel shows the material's ball and name.
+
+1. **Click the ball** — the picker opens under it: **This project** (every material the project has, each as a rendered ball, with how many items use it), then **Start from** (the starting points, below).
+2. **Click one.** A project material is given to the item. A starting point makes a **new** material from that substance's settings, named after the item ("case material"), and gives it to the item. Then change anything in the settings under it.
+
+Two clicks, one undo step.
+
+- **The settings under the Material row are the material's own:** Surface (colour, metallic, roughness) always open; Glass, Coat, Sheen, Brushed, Relief, Glow open once changed, the rest as one row of names you click to open.
+- **Shared materials.** When other items use the same material, a grey line says **Used by 3 items**: changing a setting changes every one of them (that is what sharing is). **Make its own** gives this item its own copy in one click; the others keep the original.
+- **Edit** opens the material alone in the settings panel.
+- **Drag a ball** (from the picker or the Materials list) onto an item in the viewport or the scene list to give it that material.
+- **The header's Materials chip** lists the project's materials (ball, name, how many items use each). Click one to edit it; **+ New material** makes one.
+- **Colours** are a swatch and a hex code: type the hex, or click the swatch for the colour picker.
+
+The balls are real renders through the same fast view as the viewport, made once per material setting and kept (a changed material is drawn again).
+
+### Starting points
+
+Matte plastic, Glossy plastic, Rubber, Polished metal, Brushed metal, Glass, Frosted glass, Ceramic, Fabric, Wood, Car paint, Screen. Each is the physical settings of a substance (glass = transmission 1, index of refraction 1.5, roughness 0), never a colour scheme or a lighting look; the colour is yours to set. The rest of this guide explains each setting they use.
+
+## For agents: the same, as operations
+
+- **`material.from`** `start` (one of the starting points above, e.g. `"brushed metal"`), optional `name`, `id`, any material field to override, and `to` (a list of item ids): makes one new material from the start's values and gives it to those items, as one undo step. In a script: `material("alu", start="brushed metal", baseColor="#c9ccd1")`.
+- **`material.split`** on items: each gets its own copy of the material it shares ("<item> material"); the other users keep the original. It refuses loudly when the item has no material or is already its only user.
+- `material.add / set / assign / remove` as before. Check the result with `look_frame` (`final` for glass, metal and coat).
+
 ## The four fields that decide most surfaces
 
 - **`metallic`** — 0 for everything that isn't bare metal (plastic, paint, glass, wood, skin, rubber). 1 for bare metal. In between is almost never physical; use it only for dirt or wear seen through a texture.

@@ -2,7 +2,7 @@
 rostrum_core merges that tree in (`doc.run_script`), so a re-run never wipes what someone else changed (a light a
 person moved stays where they put it).
 
-    alu = material("alu", baseColor="#c9ccd1", metallic=1, roughness=0.32)
+    alu = material("alu", start="brushed metal", baseColor="#c9ccd1")   # a start's values, then the given fields
     with group("device", ry=-12) as device:                  # items made inside go into the group
         mesh("body", shape="box", width=0.074, height=0.017, depth=0.098, bevel=0.004, material=alu)
     device.key("ry", {0: -12, 2: 12}, ease="smooth")         # {seconds: value} or {seconds: (value, ease)}
@@ -28,6 +28,7 @@ from rostrum_core.keys import key_id
 
 from . import build, fields as F
 from .kind import KIND, PRIM_ID
+from .material_starts import STARTS, start_key, start_values
 
 SAFE = {n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__builtins__, n)
         for n in ("range", "len", "min", "max", "abs", "round", "enumerate", "zip", "list", "dict", "float", "int",
@@ -154,6 +155,16 @@ def _reserved(source: str) -> set[str]:
         return set()
 
 
+def _start(name, values: dict) -> dict:
+    """A starting point's values (material_starts.py) by key or label, any case; the script's own fields win."""
+    if name is None:
+        return values
+    key = start_key(name)
+    if key is None:
+        raise ValueError(f'start "{name}" is not a starting point; starts: {", ".join(STARTS)}')
+    return start_values(key, values)
+
+
 def _import(name, *args, **kw):
     if name == "math":
         return math
@@ -161,7 +172,7 @@ def _import(name, *args, **kw):
 
 
 API = ["group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
-       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "material(id, **fields)", "shot(id, camera=, fps=, start=, end=)",
+       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "material(id, start=, **fields)", "shot(id, camera=, fps=, start=, end=)",
        "item.set(**fields)", "item.key(field, {seconds: value}, ease=)", "item.aim(item or (x, y, z), roll=)",
        "import.part(path, material=, visible=)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...):"]
 
@@ -170,7 +181,7 @@ def run_source(source: str, name: str) -> dict:
     """Python source → the document tree it builds. Any error is a loud BAD_ARGUMENT naming the line; nothing merged."""
     b = Build(_reserved(source))
     scope = {"__builtins__": {**SAFE, "__import__": _import}, "math": math,
-             "material": lambda id=None, **v: b.add("material", id, v, b.root["materials"]),
+             "material": lambda id=None, start=None, **v: b.add("material", id, _start(start, v), b.root["materials"]),
              "shot": lambda id=None, **v: b.add("shot", id, v, b.root["shots"]),
              "import_usd": lambda id=None, **v: b.item("import", id, **v),
              **{t: (lambda id=None, _t=t, **v: b.item(_t, id, **v)) for t in ("group", "mesh", "combine", "light", "camera", "rig")}}
