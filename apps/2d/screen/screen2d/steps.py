@@ -82,7 +82,7 @@ def steps_export(bridge, step, rest):
             job.setRange(v.replace("_", " "))
             if job.range != v.replace("_", " "):
                 raise ValueError(f"step {step!r}: no range {v!r} in {[r['value'] for r in job.ranges_list()]}")
-        elif key in ("alpha", "depth", "quality"):
+        elif key in ("alpha", "depth", "quality", "size", "rate"):
             job.setSetting(key, v in ("on", "true", "1") if key == "alpha" else v)
         else:
             raise ValueError(f"step {step!r}: unknown setting {key!r}")

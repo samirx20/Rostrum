@@ -59,12 +59,16 @@ def _picks(n: int) -> list[int]:
 def _gif_facts(path: Path) -> dict:
     with Image.open(path) as im:
         n, size = im.n_frames, im.size
+        ms = 0
+        for i in range(n):
+            im.seek(i)
+            ms += int(im.info.get("duration", 0))
         low = 255
         for i in _picks(n):
             im.seek(i)
             low = min(low, int(np.asarray(im.convert("RGBA"))[..., 3].min()))
     # A GIF's transparency is one palette slot, written when a pixel is see-through; an opaque picture needs none.
-    return {"frames": n, "size": size, "min_alpha": low, "alpha_channel": True}
+    return {"frames": n, "size": size, "min_alpha": low, "alpha_channel": True, "ms": ms}
 
 
 def _png_facts(out: Path) -> dict:
@@ -104,9 +108,10 @@ def _exr_facts(out: Path) -> dict:
     return facts
 
 
-def check(fmt: str, out: str | Path, frames: int, w: int, h: int, alpha: bool, depth: int = 8) -> dict:
+def check(fmt: str, out: str | Path, frames: int, w: int, h: int, alpha: bool, depth: int = 8, seconds: float | None = None) -> dict:
     """Facts about the exported file(s); raises ExportError when they don't match what was asked for.
-    `out` is the file, or for png the pattern holding {frame}."""
+    `out` is the file, or for png the pattern holding {frame}. A GIF merges identical neighbouring frames (fewer frames
+    than asked is right) and must last `seconds`."""
     out = Path(out)
     if fmt == "png":
         facts = _png_facts(out)
@@ -126,7 +131,9 @@ def check(fmt: str, out: str | Path, frames: int, w: int, h: int, alpha: bool, d
         facts["alpha_channel"] = "yuva" in pf or pf.startswith(("rgba", "bgra", "argb")) or fmt == "webm"
         if facts["alpha_channel"]:
             facts["min_alpha"] = min(_video_frame_alpha(out, i, w, h) for i in _picks(facts["frames"]))
-    if facts["frames"] != frames:
+    if fmt == "gif" and seconds is not None and abs(facts["ms"] - 1000 * seconds) > 30:
+        raise ExportError(f"the GIF lasts {facts['ms'] / 1000:g} s, the scene {seconds:g} s", facts)
+    if facts["frames"] != frames and not (fmt == "gif" and 0 < facts["frames"] < frames):
         raise ExportError(f"expected {frames} frames, the file has {facts['frames']}", facts)
     if facts["size"] != (w, h):
         raise ExportError(f"expected {w}x{h}, the file is {facts['size']}", facts)

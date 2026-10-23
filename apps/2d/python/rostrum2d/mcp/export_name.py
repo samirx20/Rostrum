@@ -1,4 +1,4 @@
-"""What an exported file is called: the project's name and the composition's, in plain words ("Title walk - Main.mp4"), for the
+"""What an exported file is called: the item you worked in ("loop", "Title walk") and, only when it says something, the composition's, in plain words ("Title walk - Credits.mp4"), for the
 screen's Export button and `render_export` alike. Letters of any language and spaces are kept; only what Windows and macOS
 don't allow in a file name is dropped."""
 from __future__ import annotations
@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 
 _BAD = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
-_PLAIN = {"main", "default", "composition", "comp"}   # a composition name that says nothing the project's name doesn't
+_PLAIN = {"main", "default", "composition", "comp", "scene"}   # a composition name that says nothing the project's name doesn't
 
 
 def clean(text: str) -> str:
@@ -32,8 +32,11 @@ def project_name(folder) -> str:
 
 
 def stem_of(doc, comp_id: str) -> str:
-    """The file stem for a composition of an open document (project folder name + composition name)."""
-    return file_stem(project_name(doc.folder), doc.data.get("comps", []), comp_id, doc.item_id or "")
+    """The file stem for a composition of an open document: the item worked in (the project's name when the item is the
+    default "main"), then the composition's name when it says something."""
+    item = clean(doc.item_id or "")
+    named = item if item and item.lower() not in _PLAIN else project_name(doc.folder)
+    return file_stem(named, doc.data.get("comps", []), comp_id, doc.item_id or "")
 
 
 def free_path(path: Path) -> Path:

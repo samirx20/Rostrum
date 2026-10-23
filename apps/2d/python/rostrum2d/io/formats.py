@@ -2,13 +2,14 @@
 
 Licences: prores_ks is FFmpeg's own native encoder and libvpx is BSD, so both are in an LGPL FFmpeg build.
 MP4 (H.264) is written by the engine through the operating system's own encoder (Windows Media Foundation; the GPU's
-encoder when there is one), never libx264 (GPL) and no FFmpeg. GIF, PNG and EXR are written by the engine itself too.
+encoder when there is one), never libx264 (GPL) and no FFmpeg. PNG and EXR are written by the engine itself too; a GIF by gif_encode.py.
 EXR is the hand-off to the Editor (shared/HANDOFFS.md § 2): `<stem>.<frame>.exr` from 1001, half float ACEScg,
 premultiplied, the beauty as part `rgba`.
 """
 from __future__ import annotations
 
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, NamedTuple
@@ -104,8 +105,41 @@ def _webm(out, w, h, fps, depth, first, rate):     # libvpx-vp9: BSD, LGPL build
         "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709"], out)
 
 
-def _gif(out, w, h, fps, depth, first, rate):
-    return {"program": str(find_exe()), "args": ["encode-gif", out, str(w), str(h), str(fps)]}
+# GIF: a size and a frame rate to choose (a full-HD GIF at the scene's rate is tens of MB), and an estimate of the file
+# before it is made. The picture is encoded by gif_encode.py (one palette, ordered dither), not the engine's encode-gif.
+GIF_SIZES = {"full": "Full size", "half": "Half size", "480": "480 px wide"}
+GIF_RATES = {"15": "15 frames a second", "scene": "The scene's rate"}
+GIF_DEFAULTS = {"size": "half", "rate": "15"}
+GIF_BYTES = 0.012                            # per pixel per frame, measured on the sample and a drawing (gif_encode.py)
+
+
+def gif_shape(w: int, h: int, fps: float, frames: int, size: str = "half", rate: str = "15") -> tuple[int, int, float, int]:
+    """(width, height, fps, frames) of the GIF for a scene of w × h at fps with `frames` frames: the chosen size (never
+    larger than the scene) and rate (never faster than the scene)."""
+    if size not in GIF_SIZES or rate not in GIF_RATES:
+        raise ValueError(f"GIF size is one of {', '.join(GIF_SIZES)} and rate one of {', '.join(GIF_RATES)}; got {size}, {rate}")
+    ow = {"full": w, "half": max(1, round(w / 2)), "480": min(w, 480)}[size]
+    oh = max(1, round(h * ow / w))
+    ofps = min(fps, 15.0) if rate == "15" else fps
+    return ow, oh, ofps, max(1, round(frames * ofps / fps))
+
+
+def gif_estimate(w: int, h: int, fps: float, seconds: float, size: str = "half", rate: str = "15") -> int:
+    """About how many bytes the GIF will be (a guess from its size and length: flat motion graphics come out smaller,
+    busy pictures and gradients larger)."""
+    ow, oh, ofps, n = gif_shape(w, h, fps, max(1, round(seconds * fps)), size, rate)
+    return round(ow * oh * n * GIF_BYTES)
+
+
+def gif_encode(out, w, h, fps, size="half", rate="15") -> dict:
+    """The encoder command for a GIF of a scene w × h at fps, at the chosen size and rate."""
+    ow, oh, ofps, _ = gif_shape(w, h, fps, 1, size, rate)
+    return {"program": sys.executable, "args": ["-I", str(Path(__file__).with_name("gif_encode.py")), str(out), str(w), str(h),
+                                                 f"{fps:g}", str(ow), str(oh), f"{ofps:g}"]}
+
+
+def _gif(out, w, h, fps, depth, first, rate):       # the table's own: full size at the scene's rate (export() passes the chosen ones)
+    return gif_encode(out, w, h, fps, "full", "scene")
 
 
 def _png(out, w, h, fps, depth, first, rate):

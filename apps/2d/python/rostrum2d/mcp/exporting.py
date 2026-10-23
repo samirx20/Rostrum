@@ -16,7 +16,7 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum2d import settings as app_settings
 from rostrum2d.io import formats as table
 
-from .export_settings import DATA, LABELS, QUALITY_ARGS, formats, info, see_through, settings  # noqa: F401  (callers read them here)
+from .export_settings import DATA, LABELS, QUALITY_ARGS, GIF_ARGS, formats, info, see_through, settings  # noqa: F401  (callers read them here)
 from .render import _fail
 
 
@@ -68,7 +68,7 @@ def _to_file(where: str, scene: dict, fmt: str, s: dict, target: Path, progress,
     try:
         with (engine_factory or _engine)() as eng:
             eng.load(scene)
-            facts = export(eng, fmt, target, s["alpha"], s["depth"], s["start"], s["end"], progress, s.get("quality"), s.get("bitrate"))
+            facts = export(eng, fmt, target, s["alpha"], s["depth"], s["start"], s["end"], progress, s.get("quality"), s.get("bitrate"), s.get("gif"))
     except Exception as e:  # noqa: BLE001  the engine, the encoder, or the read-back: one loud failure naming what was drawn
         raise _fail(where, f"the {fmt} export {target.name}", e) from e
     return with_sound(where, facts, target, s, folder)

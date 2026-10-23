@@ -22,6 +22,7 @@ tools = Tools()
     "alpha": {"type": "boolean", "description": "Keep transparency. Default: on only for a format that can carry it (not mp4, not lottie) and a transparent composition background."},
     "depth": {"type": "integer", "enum": [8, 16], "description": "Bits per channel; png only (default 8)."},
     **exporting.QUALITY_ARGS,
+    **exporting.GIF_ARGS,
     "sound": {"type": "boolean", "description": "mp4 only: put the project's sound under the picture (the scene's soundtrack, else the project's main mix, mixed by RostrumSound's engine and cut to start..end). Default: on for mp4 when the project has sound. If the mix or putting it under the picture fails, the export fails; never a silent file."},
     "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0. Not for lottie or motion (both always hold the whole composition)."},
     "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition. Not for lottie or motion."},
@@ -35,7 +36,8 @@ def render_export(ctx, args):
     fmt = args["format"]
     s = exporting.settings(ctx.tool, fmt, comp.get("duration", 5.0), args.get("alpha"), args.get("depth"), args.get("start"), args.get("end"),
                                 args.get("quality"), args.get("bitrate"), comp.get("background", "#000000"),
-                                project_sound.for_export(doc.folder, comp.get("soundtrack", ""), fmt, args.get("sound")))
+                                project_sound.for_export(doc.folder, comp.get("soundtrack", ""), fmt, args.get("sound")),
+                           args.get("size"), args.get("rate"))
     out = None
     if "path" in args:
         out = Path(args["path"])
