@@ -8,9 +8,10 @@ The person's step is the marker and the clip together (rostrum_core.joint: one s
 so Ctrl+Z takes both back and Redo brings both back; both are the person's). The marker follows its layer (`marker.follow`,
 rostrum_core.links): kept on the layer's start by LINK, 2D's sound link, never an Undo step of its own.
 
-    cue(folder, doc, "logo", "C:/…/whoosh.wav", who, at=0.1)     # the marker and the clip: one Undo step
+    cue(folder, doc, "logo", "note:piano", who)                  # a note on the song's piano on the layer's start
+    cue(folder, doc, "logo", "C:/…/my-tap.wav", who, at=0.1)     # or a recording: marker and clip, one Undo step
     follow(folder, doc)                                           # after any 2D change: markers back on their layers
-    choices("whoosh")                                             # sounds to pick from: Sound's library + your folders
+    choices(folder=folder)                                        # music first, then your recordings (sound_cue_music)
 """
 from __future__ import annotations
 
@@ -19,7 +20,7 @@ from pathlib import Path
 from rostrum_core import RostrumError, Who, codes, joint, links, markers
 
 from . import fields as F
-from . import project_sound, retime
+from . import project_sound, retime, sound_cue_music
 from .names import display_name
 
 TRACK, TRACK_NAME = "cues_2d", "Cues from 2D"
@@ -53,15 +54,15 @@ def _marker(folder, doc, layer_id: str, who) -> str:
 
 def cue(folder, doc, layer_id: str, sound, who, at: float = 0.0, chosen: str = "", about: str = "",
         group: str | None = None) -> dict:
-    """Put `sound` (a file) under layer `layer_id`, `at` seconds after its start, in the song that plays (`chosen`: the
+    """Put `sound` (a file, or a musical answer "note:<track>" / "hit:<track>": sound_cue_music) under layer `layer_id`, `at` seconds after its start, in the song that plays (`chosen`: the
     scene's soundtrack; empty = the main mix). `about`: the sound's name in the step's label (default: the file's).
     Returns {song, track, clip, marker, file}. Loud on any missing piece."""
     if not folder:
         raise RostrumError(codes.BAD_ARGUMENT, "sound.cue", "the document", "is not in a project folder")
     if not doc.has(layer_id) or doc.item(layer_id)["type"] not in F.LAYERS:
         raise RostrumError(codes.NOT_FOUND, "sound.cue", f'layer "{layer_id}"', "is not a layer of this document")
-    file = Path(sound)
-    if not file.is_file():
+    music, file = sound_cue_music.is_music(str(sound)), Path(sound)
+    if not music and not file.is_file():
         raise RostrumError(codes.NOT_FOUND, "sound.cue", f'sound "{sound}"', "is not a file",
                            hint="Pick one with inspect_sounds (Sound's library and your sound folders).")
     song = project_sound.song(folder, chosen)
@@ -73,11 +74,16 @@ def cue(folder, doc, layer_id: str, sound, who, at: float = 0.0, chosen: str = "
         snd = project_sound.open_song(folder, song["id"])   # live: one door with Sound's own window and 2D's Undo
         ids = {t["id"] for t in snd.data.get("tracks", [])}
         clip_id = _free_id(snd, f"cue_{layer_id}")
-        calls = [] if TRACK in ids else [{"op": "track.add", "args": {"id": TRACK, "name": TRACK_NAME}}]
         when = f"#{name}" + (f"{at:+g}" if at else "")
-        calls.append({"op": "clip.add", "target": [TRACK], "args": {"id": clip_id, "media": str(file), "at": when}})
+        if music:
+            calls, track = sound_cue_music.calls(snd, str(sound), when), str(sound).partition(":")[2]
+        else:
+            calls = [] if TRACK in ids else [{"op": "track.add", "args": {"id": TRACK, "name": TRACK_NAME}}]
+            calls.append({"op": "clip.add", "target": [TRACK], "args": {"id": clip_id, "media": str(file), "at": when}})
+            track = TRACK
         snd.apply(calls, who, label=f"Add a sound here: {about or file.stem} at {name}", session=group)
-    return {"song": song["id"], "track": TRACK, "clip": clip_id, "marker": name, "at": when, "file": str(file)}
+    return {"song": song["id"], "track": track, "clip": None if music else clip_id, "marker": name, "at": when,
+            "file": "" if music else str(file), "music": str(sound) if music else ""}
 
 
 def _free_id(snd, base: str) -> str:
@@ -104,21 +110,28 @@ def follow(folder, doc) -> list[str]:
     return links.refresh(folder, LINK, docs={doc.item_id: doc}, only=[doc.item_id])
 
 
-def choices(words: str = "", limit: int = 40) -> list[dict]:
-    """Recordings to pick from, all `words` matching: Sound's installed library first, then the person's own sound
-    folders (read-only). [{path, about, seconds, where}]; a source that isn't there is skipped."""
+def choices(words: str = "", limit: int = 40, folder=None, chosen: str = "") -> list[dict]:
+    """What to pick from, music first (apps/sound/PURPOSE.md): with no words, a note / hit on the song's own instruments
+    (sound_cue_music, when the project has a song), then the person's own recordings; never an effect first. With
+    words: the person's recordings, then Sound's installed library, all words matching. [{path, about, seconds, where}];
+    a source that isn't there is skipped."""
     out = []
-    try:
-        from rostrum_sound import library
-        for p in library.find("recordings", words)[:limit]:
-            d = library.describe(p)
-            out.append({"path": d["path"], "about": d["about"], "seconds": d.get("seconds"), "where": "Library"})
-    except FileNotFoundError:
-        pass                                         # no library installed: the person's folders only
+    if not words.strip():
+        song = project_sound.song(folder, chosen) if folder else None
+        if song:
+            out += sound_cue_music.rows(project_sound.open_song(folder, song["id"]))
     from rostrum_sound import userlib
     for s in userlib.search(words=words or None, limit=limit)["sounds"]:
         if s.get("start", 0) == 0:                   # whole files only: a cue plays a file from its start
             out.append({"path": s["path"], "about": s["about"], "seconds": s.get("seconds"), "where": "Your sounds"})
+    if words.strip():
+        try:
+            from rostrum_sound import library
+            for p in library.find("recordings", words)[:limit]:
+                d = library.describe(p)
+                out.append({"path": d["path"], "about": d["about"], "seconds": d.get("seconds"), "where": "Library"})
+        except FileNotFoundError:
+            pass                                     # no library installed: the person's folders only
     return out[:limit]
 
 

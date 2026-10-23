@@ -88,7 +88,7 @@ they grow and settle. A smear frame should read as one stretched shape; if the s
 ## Motion samples (the hand-off to RostrumSound)
 
 `render_export format="motion"` (the Export panel's **Motion samples**) writes where each moving layer is, many times a
-second, as one JSON file. RostrumSound's `edit_sounds_from_motion samples=<file>` reads it and places a whoosh on each
+second, as one JSON file. RostrumSound's `edit_sounds_from_motion samples=<file>` reads it and suggests a musical answer (a note or hit on a landing, a string or cymbal rise into it) for each
 move, a click where something lands, presses, snaps and ticks. Nothing is rendered; it is read from the composition as
 it plays (`rostrum2d/motion_samples.py`, through the same geometry as the look tools), so layers timed from markers,
 groups and auto layouts are where they show.
@@ -103,7 +103,7 @@ groups and auto layouts are where they show.
   included); `opacity`: with its groups', 0 outside its start / end. One value per sample, sample `i` at `i / rate` s.
   `w`, `h`: the largest box it shows at.
 - Layers are placed in the scene **without the camera**; each camera that moves is its own entry `camera:<id>` (the
-  scene's centre point through that camera, its zoom as `scale`), so a camera whip is one whoosh, not one per layer.
+  scene's centre point through that camera, its zoom as `scale`), so a camera whip is one moment, not one per layer.
 - Off its time a layer holds still (its nearest place), so a cut is never a move. Cameras never step.
 - Default layers: every layer and camera whose own values change while it shows. `layers=[…]` picks them.
 - Read-only for Sound: change the picture, export again, run `edit_sounds_from_motion` again; it moves its sounds and

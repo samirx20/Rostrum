@@ -360,7 +360,7 @@ PLAN's list or the H28 draft.
 | Shared markers on the ruler | From Sound and every app; add, rename, move | Now | 3.28 |
 | Beat grid and snapping to beats | When Sound has a tempo map | Now (H31) | 3.28 |
 | Sync sound | A video's own sound; a cue tied to a beat | Next | 3.28 |
-| Motion samples to Sound | So Sound can place whooshes where things move | Now | 3.30 |
+| Motion samples to Sound | So Sound can answer the motion with music: a note or hit on a landing, a string or cymbal rise into it | Now | 3.30 |
 
 ### L. Watching and delivering
 
@@ -1523,7 +1523,7 @@ operation is one (`mask.make`).
 - **Goal:** a video's own sound; a click tied to a button press.
 - **Steps:** a video's sound plays as a sub-row tied to its bar (moves with it). A one-off cue: drag a sound file onto
   a layer's bar → it is tied to the layer's start (Sound places and renders it). Everything else (music, voice, sound
-  design) is made in RostrumSound; **Motion samples** export (3.30) lets Sound place whooshes where things move.
+  design) is made in RostrumSound; **Motion samples** export (3.30) lets Sound answer the motion with music (a note on the land, a rise into it).
 - **Agent:** `sound.cue {layer, file, at}` *(new; stored in Sound's document)*.
 - **3E:** follows rule 9 exactly.
 

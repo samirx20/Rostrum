@@ -71,7 +71,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("sound-beats", with_sound(), ["sound beats on", "rulermenu"]),       # Show beats, the ruler's ▾ menu
         ("sound-compact", with_sound(), ["sound wait", "select logo", "timeline compact"]),
         ("sound-menu", with_sound(), ["sound wait", "sound menu"]),           # Open in RostrumSound
-        ("sound-cue-picker", with_sound(), ["sound wait", "select logo", "sound cue whoosh"]),   # H32: Add a sound here…
+        ("sound-cue-picker", with_sound(), ["sound wait", "select logo", "sound cue"]),   # H32: Add a sound here…
         ("export-sheet-sound", with_sound(), ["sound wait", "exportsheet open mp4"]),          # H32: Include the project's sound
         ("video-sound-row", with_video_sound(), ["sound wait", "select talk", "sound video"]),  # H33: a video's own sound
         ("video-sound-muted", with_video_sound(), ["sound wait", "sound video talk on", "timeline compact"]),
