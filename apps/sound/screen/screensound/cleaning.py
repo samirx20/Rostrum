@@ -25,6 +25,18 @@ from .clean_process import CleanProcess
 from .model_fetch import ModelFetch
 
 
+STEP_WORDS = {"isolate": "keeping the voice", "denoise": "taking out noise", "dereverb": "taking out echo", "stems": "separating the stem"}
+
+
+def progress_words(text: str, doc) -> str:
+    """An engine note ("c3: media/take.wav", "c3: isolate: take.wav") as one line with the clip's name once:
+    "Cleaning take.wav: keeping the voice…"."""
+    clip, _, rest = text.partition(": ")
+    step = rest.partition(": ")[0]
+    name = inspect.in_words(clip, doc)
+    return f"Cleaning {name}: {STEP_WORDS[step]}…" if step in STEP_WORDS else f"Cleaning {name}…"
+
+
 PENDING = "The cleaned take is not made yet: the clip plays its original until it is."
 
 
@@ -184,7 +196,7 @@ class CleanedTake(QObject):
         clip = text.split(":", 1)[0]
         if clip in self._steps:
             self._steps[clip][0] += 1
-        self._status = inspect.in_words(text, self.bridge.doc)
+        self._status = progress_words(text, self.bridge.doc)
         self.changed.emit()
 
     def _finish(self, error):
