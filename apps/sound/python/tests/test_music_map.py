@@ -102,3 +102,24 @@ def test_keyboard_take_lands_where_it_was_played():
     drums = keyboard.take_call({"id": "drums", "instrument": "kit"}, notes, 0.0, root)
     assert drums == {"op": "hit.add_many", "target": ["drums"],
                      "args": {"hits": [{"drum": "kick", "at": {"beat": 2.0}, "vel": 1.0}]}}
+
+
+def test_a_tempo_ramp_lands_beats_at_the_exact_integrated_times_and_the_engine_agrees():
+    import math
+    from rostrum_sound.engine import Engine
+    doc = Document.new(KIND)
+    doc.run_script("r.py", run_source('tempo(100)\ntempo_change(beat(0), 100, ramp=True); tempo_change(bar(9), 140)\n'
+                                      'p = track("k", builtIn="feltPiano"); p.note("C4", at=beat(0), dur=0.5)', "r.py"),
+                   Who.script("r.py"))
+    root, k = doc.data, 40 / 32                                            # 100 -> 140 bpm over 8 bars: k bpm per beat
+    exact = [60 / k * math.log1p(k * b / 100) if b <= 32 else 60 / k * math.log(1.4) + (b - 32) * 60 / 140
+             for b in (8, 16, 32, 36)]
+    assert [round(tempo.seconds_at(root, b), 9) for b in (8, 16, 32, 36)] == [round(t, 9) for t in exact]
+    assert [round(tempo.beat_at(root, t), 9) for t in exact] == [8, 16, 32, 36]
+    assert tempo.beats(root, exact[1])[-1] == round(exact[1], 6)           # the grid and the click
+    assert meter.bar_seconds(root, exact[3])[1:] == [round(tempo.seconds_at(root, b), 6) for b in (4, 8, 12, 16, 20, 24, 28, 32, 36)]
+    s = compile(root)
+    s["tracks"][0]["notes"] = [{**s["tracks"][0]["notes"][0], "at": {"beat": b}} for b in (8, 16, 32, 36)]
+    with Engine() as e:
+        got = [n["at"] for n in e.request("check", schedule=s)["resolved"]["tracks"][0]["notes"]]
+    assert [round(t, 9) for t in got] == [round(t, 9) for t in exact]

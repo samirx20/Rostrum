@@ -1,5 +1,5 @@
 """A Sound document as a Standard MIDI File (format 1, 480 ticks per quarter note): the notes and drum hits of
-every track, the tempo map, the time signature, key changes, markers, and sections (as cue points "<name>" at
+every track, the tempo map (a ramp as exact sixteenth steps), the time signature, key changes, markers, and sections (as cue points "<name>" at
 the start and "<name>/end" at the end, which `song.py` reads back as sections).
 
     data, skipped = to_bytes(root)            # skipped: what MIDI can't hold (a drum with no GM key), said aloud
@@ -47,9 +47,24 @@ def _tick(root, sec: float) -> int:
     return max(0, round(tempo.beat_at(root, sec) * DIVISION))
 
 
+def _tempo_steps(root) -> list[tuple[float, float]]:
+    """(beat, bpm) per MIDI tempo event. MIDI can't glide, so a ramp is one event per sixteenth, each the tempo that
+    makes that sixteenth last exactly as long as in the ramp: every sixteenth lands where it plays."""
+    out = []
+    for b0, bpm0, _, bpm1, b1 in tempo.segments(root):
+        if bpm1 == bpm0:
+            out.append((b0, bpm0))
+            continue
+        n = max(1, round((b1 - b0) * 4))
+        for i in range(n):
+            a, b = b0 + (b1 - b0) * i / n, b0 + (b1 - b0) * (i + 1) / n
+            out.append((a, 60.0 * (b - a) / (tempo.seconds_at(root, b) - tempo.seconds_at(root, a))))
+    return out
+
+
 def _map_track(root) -> list:
     ev = [(round(beat * DIVISION), 0, _meta(0x58, bytes([per, 2, 24, 8]))) for beat, per, _ in meter.segments(root)]
-    for beat, bpm, _ in tempo.segments(root):
+    for beat, bpm in _tempo_steps(root):
         ev.append((round(beat * DIVISION), 0, _meta(0x51, round(60_000_000 / bpm).to_bytes(3, "big"))))
     for k in root.get("keys", []):
         sharps, minor = K.signature(k["key"])

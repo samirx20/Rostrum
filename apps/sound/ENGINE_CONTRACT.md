@@ -42,7 +42,7 @@ The engine's code for this page lives in `engine/src/contract/`. Anything not on
 | `contract` | string | required | `"rostrum-sound-schedule/1"` |
 | `sampleRate` | 22050 … 192000 | 48000 | The mix's rate |
 | `length` | time | end of the last sound + 2 s | How long the mix is; nothing past it is heard |
-| `tempo` | number or list | 120 | A number (bpm), or tempo segments `[{"beat": b, "bpm": x}, …]` sorted by beat, the first at beat 0; tempo is constant inside a segment |
+| `tempo` | number or list | 120 | A number (bpm), or tempo segments `[{"beat": b, "bpm": x}, …]` sorted by beat, the first at beat 0; tempo is constant inside a segment, or with `"ramp": true` glides evenly per beat to the next segment's bpm (exact: seconds = 60/k·ln(bpm/bpm₀), k bpm per beat; not on the last segment) |
 | `master` | object | see below | The master bus |
 | `tracks` | list | required (may be empty only with `length`) | Tracks, summed in this order |
 | `buses` | list | `[]` | Buses tracks feed and send to (§ Buses and sends) |
