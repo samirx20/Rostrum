@@ -16,6 +16,7 @@ Panel {
     visible: pop.bl.open
     title: "Blinks on " + pop.bl.what
     onVisibleChanged: if (visible) forceActiveFocus()
+    Component.onCompleted: if (visible) forceActiveFocus()      // made already open (FirstUse): Esc works at once
     Keys.onEscapePressed: pop.close()
     function close() { pop.bl.close() }
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close  Esc"; onClicked: pop.close() }

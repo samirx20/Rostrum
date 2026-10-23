@@ -8,5 +8,6 @@ Loader {
     active: false
     onWhenChanged: if (when) active = true
     Component.onCompleted: if (when) active = true
+    function close() { if (item && typeof item.close === "function") item.close() }   // (a Panel closes the other sheets by this)
     function get() { active = true; return item }
 }

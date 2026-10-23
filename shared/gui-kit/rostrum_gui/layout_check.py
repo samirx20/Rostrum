@@ -121,7 +121,9 @@ def clickable(node: Node) -> bool:
 
 def bare(node: Node) -> bool:
     """An invisible click area on its own (not a drawn control)."""
-    return cls(node.item).startswith("QQuickMouseArea")
+    # (a plain Item whose only job is a TapHandler, like a switch's whole label cell, is the same thing)
+    return cls(node.item).startswith("QQuickMouseArea") or (cls(node.item) == "QQuickItem" and clickable(node)
+                                                            and not any(hasattr(ch, "childItems") for ch in node.item.children()))
 
 
 def has_text(node: Node) -> bool:
@@ -157,7 +159,8 @@ def near(a: QRectF, b: QRectF) -> bool:
 
 
 def inside(a: QRectF, b: QRectF) -> bool:
-    return a.adjusted(SLACK, SLACK, -SLACK, -SLACK).intersected(b) == a.adjusted(SLACK, SLACK, -SLACK, -SLACK)
+    # (edge by edge: a sliver thinner than 2*SLACK made an empty rect when shrunk, and an empty rect is never "inside")
+    return a.left() >= b.left() - SLACK and a.top() >= b.top() - SLACK and a.right() <= b.right() + SLACK and a.bottom() <= b.bottom() + SLACK
 
 
 def is_under(n: Node, up: Node) -> bool:

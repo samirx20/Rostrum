@@ -188,10 +188,14 @@ AppShell {
                                color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont }
                         DrawEachFrame { visible: true }
                     }
-                    sheets: [LipSyncSheet { }, BlinkSheet { }] },   // Lip sync… / Add blinks… in the panel's place
-        Inspector { id: settingsDraw; anchors.fill: parent; bridge: painter; visible: backend.tool === "draw"
-                    above: BrushHead { }      // the brush's own row (or ‹ back while editing it), then its quick rows
-                    below: PaintTarget { } }, // Edit brush ›, Painting on (Layer, Inside the outline, Draw each frame), paint layers
+                    sheets: [   // Lip sync… / Add blinks… in the panel's place; each is made when first opened (FirstUse, H66)
+                        FirstUse { anchors.fill: parent; visible: backend.lipsync.open; when: visible; sourceComponent: Component { LipSyncSheet { } } },
+                        FirstUse { anchors.fill: parent; visible: backend.blinks.open; when: visible; sourceComponent: Component { BlinkSheet { } } } ] },
+        FirstUse { id: settingsDraw; anchors.fill: parent; visible: backend.tool === "draw"; when: visible   // the painting settings: made when Draw is first picked
+                   sourceComponent: Component {
+                       Inspector { anchors.fill: parent; bridge: painter
+                                   above: BrushHead { }      // the brush's own row (or ‹ back while editing it), then its quick rows
+                                   below: PaintTarget { } } } },   // Edit brush ›, Painting on (Layer, Inside the outline, Draw each frame), paint layers
         AnimPanel { anchors.fill: parent }    // a stretch picked in the timeline: its animation, over the layer's settings (stretch_select.py)
     ]
     bottom: LayerTimeline {
