@@ -104,11 +104,17 @@ Rectangle {
                         }
                     }
                     Words { anchors.horizontalCenter: parent.horizontalCenter; y: 21; height: 14; text: modelData.label
-                            font.pixelSize: Theme.label; color: parent.chosen ? Theme.fg : Theme.fg2 }
+                            font.pixelSize: Theme.label; color: parent.chosen ? Theme.fg : Theme.fg2
+                            font.weight: parent.chosen ? Font.DemiBold : Font.Normal }
                     MouseArea { id: presetArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                 onClicked: panel.s.setEase(parent.modelData.value) }
                 }
             }
+        }
+        Line {   // an ease none of the buttons is (a script's "Snappy"): said in words, so the panel always shows which ease is on
+            visible: !!panel.info.easeName
+            Words { width: Theme.labelColumnFor(panel.w); height: parent.height; text: "Ease" }
+            Words { x: Theme.labelColumnFor(panel.w); height: parent.height; text: panel.info.easeName || ""; color: Theme.fg }
         }
         Repeater {   // a spring: Bounce and Speed (the same key fields as the key bar's, H41), one change per drag
             model: panel.info.ease === "spring" && (panel.info.feel || []).length === 2 ? ["Bounce", "Speed"] : []

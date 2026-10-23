@@ -6,7 +6,8 @@ import "ValueKinds.js" as VK
 // One generic inspector row: a group header, a param, the More row or a fold row — nothing placed per control.
 // A fold row (rows by importance) is a group's name with a chevron: click opens or closes the group
 // (bridge.toggleGroup(model.fold)); only an open group shows its fold row. The "folds" row is every folded group's
-// name in one wrapping line ("Depth · Timing · Blend"); a click on a name opens that group. `flash()` briefly marks the row and `focusWidget()` puts the keys in its widget
+// name in one short wrapping line ("+ Depth  + Timing  + Blend", at most `shortLine` names, then "+ N more"); a click on a
+// name opens that group (the "+" says it is a control, so a lone name never reads as an empty heading). `flash()` briefly marks the row and `focusWidget()` puts the keys in its widget
 // (revealField). Several items selected and their values differ (model.mixed): the field says "Mixed" until edited.
 // The widget comes from the param's `type` only. The row owns its reveal: when `valid` changes, height and
 // opacity ease over Theme.reveal (160 ms); the Column below just follows. A new selection shows at once: a new
@@ -121,10 +122,14 @@ Item {
                 visible: row.model.row === "folds"
                 anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: Theme.grid
                           rightMargin: row.keyMarks ? row.gutter : 0 }     // ends with the fields, not under the key marks
-                spacing: 0
-                readonly property int count: (row.model.names || []).length
+                spacing: Theme.pad
+                readonly property int shortLine: 4
+                property bool all: false
+                readonly property var entries: row.model.row === "folds" ? row.model.names || [] : []
+                readonly property bool cut: !all && entries.length > shortLine + 1      // one extra name is no saving: show it
+                readonly property int count: cut ? shortLine : entries.length
                 Repeater {
-                    model: row.model.row === "folds" ? row.model.names || [] : []
+                    model: names.entries.slice(0, names.count)
                     delegate: Row {
                         id: nameItem
                         required property var modelData
@@ -132,7 +137,7 @@ Item {
                         height: Theme.rowDense
                         Text {
                             objectName: "fold:" + nameItem.modelData.group     // scripted steps open a group by it
-                            text: nameItem.modelData.group; font.family: uiFont; font.pixelSize: Theme.body
+                            text: "+ " + nameItem.modelData.group ; font.family: uiFont; font.pixelSize: Theme.body
                             color: nameArea.containsMouse ? Theme.fg : Theme.fg2; anchors.verticalCenter: parent.verticalCenter
                             font.underline: nameArea.containsMouse
                             Rectangle {  // changed but folded by hand: a small dot says something in here differs from its default
@@ -141,9 +146,14 @@ Item {
                             MouseArea { id: nameArea; anchors.fill: parent; anchors.margins: -3; hoverEnabled: true
                                         cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.toggleGroup(nameItem.modelData.group) }
                         }
-                        Text { visible: nameItem.index < names.count - 1; text: " · "; color: Theme.fg4; font.family: uiFont   // after a name:
-                               font.pixelSize: Theme.body; anchors.verticalCenter: parent.verticalCenter }                      // no line starts with "·"
                     }
+                }
+                Text {  // the names left out of the short line
+                    visible: names.cut; height: Theme.rowDense; verticalAlignment: Text.AlignVCenter
+                    text: "+ " + (names.entries.length - names.count) + " more"; font.family: uiFont; font.pixelSize: Theme.body
+                    color: restArea.containsMouse ? Theme.fg : Theme.fg3
+                    MouseArea { id: restArea; anchors.fill: parent; anchors.margins: -3; hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor; onClicked: names.all = true }
                 }
             }
             Item {  // a param: label column, then the widget (a pair's halves each take only their own part of the line)

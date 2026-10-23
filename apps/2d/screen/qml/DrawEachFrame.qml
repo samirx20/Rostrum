@@ -2,7 +2,7 @@ import QtQuick
 import RostrumKit
 
 // Under "Draw each frame" while it is on (painting design §2.5, mockup paint-03): the drawing navigator (‹ Drawing 5 of 9 ›,
-// also , and .) with the drawing's hold at its right ("hold 2" frames, "to end"), New and Copy (keys in their hover help), New ones hold 1 · 2 · 3 · 4 (the layer's
+// also , and .) with the drawing's hold at its right ("2 frames", "to the end"), New and Copy (keys in their hover help), New ones hold 1 · 2 · 3 · 4 (the layer's
 // newHold), Onion skin and, while it is on, how many drawings Before (red) and After (green) it shows (painter).
 Column {
     id: de
@@ -50,7 +50,7 @@ Column {
             x: de.wide - de.holdW; width: de.holdW; anchors.verticalCenter: parent.verticalCenter
             horizontalAlignment: Text.AlignRight; elide: Text.ElideRight
             color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont; font.features: { "tnum": 1 }
-            text: de.now.last ? "to end" : "hold " + de.now.held
+            text: de.now.last ? "to the end" : de.now.held + (de.now.held === 1 ? " frame" : " frames")
         }
     }
     Line {      // New · Copy (their keys are in the hover help)
@@ -72,13 +72,13 @@ Column {
             onPicked: (v) => painter.setNewHold(Number(v))
         }
     }
-    SwitchRow {      // Onion skin; while on, Before (red) and After (green) share the line
+    SwitchRow {      // Onion skin; while on, Show before (red) and Show after (green)
         switchName: "onionSkin"; height: Theme.tightFor(Window.height) ? Theme.rowTight : Theme.row; labelColumn: de.labelColumn; label: "Onion skin"
         checked: painter.onionOn; onToggled: (v) => painter.setOnion(v)
     }
     Repeater {      // how many drawings each way
-        model: painter.onionOn ? [{ side: "before", label: "Before", colour: Theme.danger },
-                                  { side: "after", label: "After", colour: Theme.ok }] : []
+        model: painter.onionOn ? [{ side: "before", label: "Show before", colour: Theme.danger },
+                                  { side: "after", label: "Show after", colour: Theme.ok }] : []
         delegate: Line {
             id: ol
             required property var modelData

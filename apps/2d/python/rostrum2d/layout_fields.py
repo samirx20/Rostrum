@@ -50,8 +50,8 @@ GROUP = [
     _n("columns", "Columns", 3, GRID, lo=1, hi=100, unit="", integer=True),
     _n("rowGap", "Line gap", 16.0, {"any": [GRID, {"all": [FLOW, IS("wrap", True)]}]},
        help="Space between wrapped lines (between rows in a grid)"),
-    _t("hugWidth", "Width hugs layers", False, ON, help="The group's width follows what is inside it"),
-    _t("hugHeight", "Height hugs layers", False, ON, help="The group's height follows what is inside it"),
+    _t("hugWidth", "Width hugs layers", True, ON, help="The group's width follows what is inside it"),
+    _t("hugHeight", "Height hugs layers", True, ON, help="The group's height follows what is inside it"),
     _t("hugPin", "Keep top-left fixed", True, HUGGING,
        help="A group that hugs its layers grows right and down from its top-left (left of a row, top of a column), "
             "as a design tool's frame does; off, it grows around its anchor. An anchor you moved off the middle "

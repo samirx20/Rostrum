@@ -12,12 +12,10 @@ tools = Tools()
 @tools.tool("inspect_diagnose", {"properties": {**ITEM_COMP, "engine": {
     "type": "boolean", "description": "Also ask the engine (fonts it can't find, anything it refuses when the scene loads). Default true."}}})
 def inspect_diagnose(ctx, args):
-    """Everything wrong in a composition, each with the item, what is wrong in words and how to fix it. Kinds:
-    refused (the engine won't draw the scene), missing-font, missing-file (image, video, LUT; names the layer and the file), outside-project (a file kept outside the project folder: it will not travel with it), broken-link (a text's
-    path layer, a track matte), missing-marker (an expression's marker("…")), expression, invisible (a layer never
-    seen: opacity 0, zero size, outside its times), off-canvas (never inside the frame), unused-keys (after the end,
-    outside the layer's time, under an expression or auto layout, or all one value). Read-only. An empty list = nothing
-    found; it does not judge how the piece looks (look_frame, look_sheet and look_motion do the seeing)."""
+    """Everything wrong in a composition, each with the item, what is wrong in words and how to fix it: the engine refusing
+    the scene, missing fonts and files, files outside the project folder, broken links (text path, track matte, marker),
+    bad expressions, layers never seen (opacity 0, no size, outside their times, off the canvas) and keys that do nothing.
+    Read-only; an empty list = nothing found. It does not judge the look (look_frame, look_sheet, look_motion do)."""
     from .. import diagnose, diagnose_engine      # here: diagnose reads mcp/geometry.py, which this package imports
     doc, comp = doc_and_comp(ctx, args, as_written=True)   # diagnose times it itself and reports a missing marker
     times = markers.times(doc.folder) if doc.folder else None

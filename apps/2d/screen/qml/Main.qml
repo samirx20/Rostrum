@@ -184,7 +184,7 @@ AppShell {
                                     RigPoses { } }
                     below: Column {                       // a frame-by-frame layer: the same drawing tools as in Draw (DrawEachFrame.qml)
                         width: parent.width; visible: painter.drawingId !== ""; topPadding: Theme.gap
-                        Text { height: Theme.row; verticalAlignment: Text.AlignVCenter; text: "Draw each frame"
+                        Text { height: Theme.row; verticalAlignment: Text.AlignVCenter; text: "Drawings"
                                color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont }
                         DrawEachFrame { visible: true }
                     }

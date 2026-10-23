@@ -17,6 +17,12 @@ QUALITY_ARGS = {
     "bitrate": {"type": "number", "exclusiveMinimum": 0, "maximum": table.MAX_MBIT, "description": "mp4 only: an exact bitrate in Mbit/s, instead of quality."}}                # not pictures: no engine, never a versioned picture render
 
 
+# The GIF arguments, as render_export takes them (a GIF is for chats and pages: size and rate decide its weight).
+GIF_ARGS = {
+    "size": {"type": "string", "enum": list(table.GIF_SIZES), "description": f"gif only: full | half | 480 (480 px wide) of the scene's size (default {table.GIF_DEFAULTS['size']}; a full-HD GIF is tens of MB)."},
+    "rate": {"type": "string", "enum": list(table.GIF_RATES), "description": f"gif only: 15 (frames a second) | scene (the scene's own rate; default {table.GIF_DEFAULTS['rate']})."}}
+
+
 def formats() -> list[dict]:
     """Every format and what it takes: alpha (can carry it), depths (bits; first = default), range (start / end apply),
     sequence (one file per frame, written into a folder), qualities (the quality choices it takes; quality = the default)."""
@@ -41,11 +47,12 @@ def see_through(background) -> bool:
 
 
 def settings(where: str, fmt: str, duration: float, alpha=None, depth=None, start=None, end=None, quality=None, bitrate=None,
-             background="#000000", sound=None) -> dict:
+             background="#000000", sound=None, size=None, rate=None) -> dict:
     """The settings that apply to `fmt`, defaults filled; one that doesn't apply (alpha on mp4, depth on gif, quality on png, any on
     Lottie) is refused. `bitrate` (Mbit/s, exact) replaces `quality`. Transparency defaults on only where the format can carry
     it and the composition's `background` is transparent (a solid background has nothing to keep). `sound`: the Sound item
-    whose mix goes under the picture (project_sound.song; MP4 only, io/export_sound.py), None for a silent file."""
+    whose mix goes under the picture (project_sound.song; MP4 only, io/export_sound.py), None for a silent file. `size` and `rate`
+    (GIF only: table.GIF_SIZES, GIF_RATES) are filled with the GIF defaults."""
     row = info(where, fmt)
     bad = lambda what, why: RostrumError(codes.BAD_ARGUMENT, where, what, why)
     if alpha and not row["alpha"]:
@@ -63,7 +70,13 @@ def settings(where: str, fmt: str, duration: float, alpha=None, depth=None, star
         raise RostrumError(codes.BAD_ARGUMENT, where, f'quality "{quality}"', "is not a quality choice", row["qualities"])
     if bitrate is not None and not 0 < bitrate <= table.MAX_MBIT:
         raise bad(f"bitrate {bitrate:g} Mbit/s", f"must be above 0 and at most {table.MAX_MBIT}")
+    if (size is not None or rate is not None) and fmt != "gif":
+        raise bad("size / rate", f"{fmt} has no size or rate to choose; only gif does")
+    for what, got, words in (("size", size, table.GIF_SIZES), ("rate", rate, table.GIF_RATES)):
+        if got is not None and got not in words:
+            raise RostrumError(codes.BAD_ARGUMENT, where, f'GIF {what} "{got}"', "is not a choice", list(words))
     if sound and fmt != "mp4":
         raise bad("sound", f"{fmt} carries no sound; only mp4 does")
     return {"sound": sound or None, "alpha": row["alpha"] and see_through(background) if alpha is None else bool(alpha), "depth": depth or (row["depths"][0] if row["depths"] else None),
-            "start": start, "end": end, "quality": quality or row["quality"], "bitrate": bitrate}
+            "start": start, "end": end, "quality": quality or row["quality"], "bitrate": bitrate,
+            "gif": {"size": size or table.GIF_DEFAULTS["size"], "rate": rate or table.GIF_DEFAULTS["rate"]} if fmt == "gif" else None}

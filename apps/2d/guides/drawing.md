@@ -119,7 +119,7 @@ Under the brush, **Painting on** shows:
 
 Turn on **Draw each frame** under Painting on. The same panel grows the drawing tools:
 
-1. **Drawing 2 of 3** with **‹** and **›** steps between the drawings (the **,** and **.** keys do the same), and how long this drawing holds at its right (**hold 2** frames, or **to end** on the last one).
+1. **Drawing 2 of 3** with **‹** and **›** steps between the drawings (the **,** and **.** keys do the same), and how long this drawing holds at its right (**2 frames**, or **to the end** on the last one).
 2. **New** starts a blank drawing after this one (or at the playhead, on an empty frame), with the same paint layers, empty (hover it for its key, **Alt+N**). **Copy** starts it as a copy of this one, its strokes in the same paint layers, to change part of it (**Alt+Shift+N**).
 3. **New ones hold** **1 · 2 · 3 · 4**: how many frames each new drawing lasts (2 is "on twos").
 4. The **=** and **−** keys make the current drawing last more or fewer frames.
@@ -141,7 +141,7 @@ In the timeline the drawing's row shows its drawings as numbered cells; a drawin
 ## 8. Onion skin
 
 1. Turn on **Onion skin** under the drawing tools (or press **Alt+O**). The neighbouring drawings show faintly over the picture, so you can see where the last one was.
-2. **Before** is tinted red and **After** green. Each has its own count: none, 1 drawing, up to 5 drawings.
+2. **Show before** is tinted red and **Show after** green. Each has its own count: none, 1 drawing, up to 5 drawings.
 3. Turn it off the same way. The faint pictures are for you only; they never appear in an export.
 
 ## 9. Play it, and more than one drawing layer

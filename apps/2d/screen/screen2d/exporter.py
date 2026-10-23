@@ -13,6 +13,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Property, Signal, Slot
 from rostrum2d import project_sound
+from rostrum2d.io import formats as table
 from rostrum2d.mcp import export_name, exporting
 from rostrum_core.mcp.files import RENDER_DIR
 from rostrum_gui.export_sheet import ExportSheet
@@ -75,6 +76,8 @@ class Exporter(ExportSheet):
         bit depth, its default quality; for an MP4 of a project with sound, its sound (on)."""
         r = self._row()
         self._values = {"alpha": r["alpha"] and exporting.see_through(self._comp().get("background", "#000000")), "depth": r["depths"][0] if r["depths"] else None, "quality": r["quality"]}
+        if self._choice == "gif":
+            self._values.update(table.GIF_DEFAULTS)
         if self._has_sound():
             self._values["sound"] = True
         if not r["range"]:
@@ -91,7 +94,7 @@ class Exporter(ExportSheet):
         v, span = self._values, self.range_times() or (0.0, self._duration())
         sound = project_sound.for_export(self.bridge.doc.folder, self._comp().get("soundtrack", ""), self._choice, v.get("sound"))
         s = exporting.settings("export", self._choice, self._duration(), v["alpha"], v["depth"], span[0], span[1], v["quality"],
-                               background=self._comp().get("background", "#000000"), sound=sound)
+                               background=self._comp().get("background", "#000000"), sound=sound, size=v.get("size"), rate=v.get("rate"))
         doc = self.bridge.doc
         return {"scene": exporting.snapshot(doc, self._comp_id, self._choice), "fmt": self._choice, "s": s,
                 "folder": doc.folder, "item": doc.item_id, "seq": doc.seq, "name": self._stem(), "out": out,
@@ -130,7 +133,13 @@ class Exporter(ExportSheet):
 
     @Property("QVariantList", notify=own)
     def settings(self):
-        return export_rows.settings(self._row(), self._values)
+        v = self._values
+        if "size" in v:                               # a GIF: what its choices come to, about, before anything is drawn
+            p = self.bridge.doc.item(self._comp_id)
+            span = self.range_times() or (0.0, self._duration())
+            v = {**v, "estimate": export_rows.gif_estimate(p.get("width", 1920), p.get("height", 1080), p.get("fps", 30),
+                                                           span[1] - span[0], v)}
+        return export_rows.settings(self._row(), v)
 
     @Property("QVariantList", notify=own)
     def facts(self):
@@ -158,5 +167,5 @@ class Exporter(ExportSheet):
     def setSetting(self, key, value):
         if self.running() or key not in self._values:
             return
-        self._values[key] = {"depth": int, "alpha": bool, "quality": str, "sound": bool}[key](value)
+        self._values[key] = {"depth": int, "alpha": bool, "quality": str, "sound": bool, "size": str, "rate": str}[key](value)
         self.changed.emit()

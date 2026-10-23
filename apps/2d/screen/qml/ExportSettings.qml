@@ -35,6 +35,9 @@ Column {
                 Text { visible: srow.wide; x: 32 + Theme.gap; width: parent.width - x; height: parent.height
                        verticalAlignment: Text.AlignVCenter; text: srow.modelData.label; color: Theme.fg2
                        font.family: uiFont; font.pixelSize: Theme.body; elide: Text.ElideRight }
+                Text { visible: srow.modelData.kind === "note"; width: parent.width; height: parent.height; verticalAlignment: Text.AlignVCenter
+                       text: srow.modelData.kind === "note" ? srow.modelData.value : ""; color: Theme.fg; elide: Text.ElideRight
+                       font.family: uiFont; font.pixelSize: Theme.body }
                 ChoiceField { visible: srow.modelData.kind === "choice"; anchors.verticalCenter: parent.verticalCenter; width: parent.width
                               options: srow.modelData.options || []; current: String(srow.modelData.value)
                               onPicked: (v) => root.job.setSetting(srow.modelData.key, v) }

@@ -14,9 +14,10 @@ def _engine_request(eng: Engine, req: dict, **kw) -> dict:
 
 def export(eng: Engine, fmt: str, out, alpha: bool | None = None, depth: int | None = None,
            start: float = 0.0, end: float | None = None, progress=None, quality: str | None = None,
-           bitrate: float | None = None) -> dict:
+           bitrate: float | None = None, gif: dict | None = None) -> dict:
     """Export the engine's loaded scene (seconds `start`..`end`) as `fmt`; returns the facts read back from the file.
-    `quality` (formats.QUALITY) or an exact `bitrate` (Mbit/s): for the formats that take one (mp4)."""
+    `quality` (formats.QUALITY) or an exact `bitrate` (Mbit/s): for the formats that take one (mp4). `gif`: its {size, rate}
+    (formats.GIF_SIZES, GIF_RATES; the defaults when left out)."""
     f = formats.get(fmt)
     if eng.scene is None:
         raise EngineError("no scene loaded (Engine.load)")
@@ -35,8 +36,10 @@ def export(eng: Engine, fmt: str, out, alpha: bool | None = None, depth: int | N
     target = str(out) if f.video else formats.pattern(f, out)
     Path(target).parent.mkdir(parents=True, exist_ok=True)
     first = f.first + round(start * fps)
-    req = {"start": start, "end": end, "alpha": alpha, "progress": progress is not None,
-           "encode": f.build(target, w, h, fps, depth, first, rate)}
+    n = max(1, round((end - start) * fps))                       # the engine's own count of the frames it sends
+    shape = formats.gif_shape(w, h, fps, n, **{**formats.GIF_DEFAULTS, **(gif or {})}) if fmt == "gif" else None
+    encode = formats.gif_encode(target, w, h, fps, **{**formats.GIF_DEFAULTS, **(gif or {})}) if fmt == "gif"         else f.build(target, w, h, fps, depth, first, rate)
+    req = {"start": start, "end": end, "alpha": alpha, "progress": progress is not None, "encode": encode}
     if f.video:
         req["file"] = target
     if depth != 8:                                   # the engine sends 16-bit frames only while loaded that way
@@ -46,8 +49,12 @@ def export(eng: Engine, fmt: str, out, alpha: bool | None = None, depth: int | N
     finally:
         if depth != 8:
             _engine_request(eng, {"scene": eng.scene, "depth": 8})
-    facts = readback.check(fmt, target, reply["frames"], w, h, alpha, depth)
-    return {"file": target, "frames": reply["frames"], "fps": fps, "alpha": alpha, "depth": depth, "checked": facts,
+    if shape:                                        # a GIF has its own size, rate and frame count
+        w, h, fps, count = shape
+    else:
+        count = reply["frames"]
+    facts = readback.check(fmt, target, count, w, h, alpha, depth, seconds=(end - start) if shape else None)
+    return {"file": target, "frames": count, "fps": fps, "alpha": alpha, "depth": depth, "checked": facts,
             **({"kbps": rate.kbps} if rate.kbps and rate.quality is None else {}),
             **({"quality": quality or formats.DEFAULT_QUALITY} if rate.quality is not None else {}),
             **(encoded(reply["encoder"]) if reply.get("encoder") else {})}
