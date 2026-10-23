@@ -120,7 +120,7 @@ DEFAULTS = {
     "note": dict(vel=0.8),
     "hit": dict(vel=0.85),
     "clip": dict(**{"in": 0}, volume=1, **FC.DEFAULTS),
-    "sound": dict(design="whoosh"),
+    "sound": dict(design="click"),
     "line": dict(seed=1, volume=1),
     "marker": {},
     "master": dict(volume=1, normalize=False, loudness=-16, truePeak=-1, glue=0, reverb="dry",

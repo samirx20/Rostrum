@@ -1,30 +1,33 @@
-"""Motion events (read.py) -> recordings from the user's own sound library, placed as `clip`s the way a careful sound
-designer would (the P7 listening page's placement, proofs/p7-sfx-sources):
+"""Motion events (read.py) -> real recordings from the user's own sound library, placed as `clip`s, only for the
+events a person or agent chose (score.py: nothing is added by itself; no whooshes, PURPOSE.md):
 
-  move   a whoosh whose loudest moment sits on the move's fastest moment, panned with the layer across the frame,
-         louder for faster moves, trimmed with a fade a little after the move ends; a click where it lands hard
+  move   a click (or a real impact) where it lands hard
   snap   a bright click on its most sudden moment
   press  a press click at the deepest point, and the same click higher and softer on the release
   step   a tick, each a little different: another of the nearest takes, a little pitch, a little level
 
 Each sound is chosen by searching the index (userlib.search.closest) for the kind and shape the event asks for: a
-fast short move gets a short bright whoosh, a slow big one a longer, darker one; a take already used is pushed back
+big layer's landing gets a darker click than a small one's; a take already used is pushed back
 so a scene doesn't repeat one recording. Deterministic: the same events and library give the same picks. Levels
 are evened out by each sound's measured loudness, so a quiet recording isn't lost and a hot one doesn't jump out.
 """
 from __future__ import annotations
 
-import math
 from collections import Counter
 
 from rostrum_core import RostrumError, codes
 
 from ..userlib.search import closest, sound_id
-from .score import AIR_PX_S, TRACKS, _norm_speed, _pan, _size
+
+TRACKS = {"land": "ui_clicks", "snap": "ui_clicks", "press": "ui_clicks", "step": "ui_ticks"}
 
 REF_LUFS = -18.0                   # every pick is brought to this loudness before its own volume
 CLICKS = ["click", "ui", "hit"]
 TICKS = ["click", "ui"]
+
+
+def _pan(x: float, width: float) -> float:
+    return round(max(-0.9, min(0.9, (x - width / 2) / (width / 2))), 3)
 
 
 def _level(s: dict, volume: float) -> float:
@@ -55,7 +58,7 @@ def _clip(s: dict, moment: float, align: str, tail: float | None = None, **f) ->
     return {**out, **f}
 
 
-def clips(events: list[dict], width: float, height: float, lib: list[dict]) -> list[tuple[str, dict]]:
+def clips(events: list[dict], width: float, lib: list[dict]) -> list[tuple[str, dict]]:
     """(track id, clip fields) for every event, picked from `lib` (userlib.search.library())."""
     if not lib:
         raise RostrumError(codes.NOT_FOUND, "edit_sounds_from_motion", "your sound library", "has no sounds yet",
@@ -66,19 +69,9 @@ def clips(events: list[dict], width: float, height: float, lib: list[dict]) -> l
     for e in events:
         k = e["kind"]
         if k == "move":
-            n, dur = _norm_speed(e["peak_speed"]), e["end"] - e["at"]
-            size = _size(e["area"], width * height)
-            target = {"seconds": dur + 0.35 + 0.6 * size * (1 - n), "brightness": 0.35 + 0.55 * n,
-                      "attack_ms": max(20.0, 600 * dur * (1 - n))}
-            if e["peak_speed"] >= AIR_PX_S:                     # a slower drift moves no air: no whoosh
-                s = _pick(lib, ["whoosh"], target, used, "whoosh")
-                loud = min(1.0, 0.45 + 0.55 * math.log10(max(e["peak_speed"], 800) / 800) / math.log10(40))
-                out.append((TRACKS["move"], _clip(s, e["peak_at"], "peak", tail=e["end"] - e["peak_at"] + 0.35,
-                                                  volume=_level(s, loud), pan=_pan(e["x"][0], width),
-                                                  panTo=_pan(e["x"][-1], width))))
             land = e.get("lands")
             if land and land["hardness"] >= 0.15:
-                c = _pick(lib, CLICKS, {"seconds": 0.15, "brightness": 0.85 - 0.3 * size, "attack_ms": 4}, used, "click")
+                c = _pick(lib, CLICKS, {"seconds": 0.15, "brightness": 0.85 - 0.3 * min(1.0, e.get("area", 0) ** 0.5 / width), "attack_ms": 4}, used, "click")
                 out.append((TRACKS["land"], _clip(c, land["at"], "onset", volume=_level(c, 0.4 + 0.6 * land["hardness"]),
                                                   pan=_pan(e["x"][-1], width))))
         elif k == "snap":

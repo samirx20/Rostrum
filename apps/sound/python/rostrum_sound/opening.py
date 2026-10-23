@@ -12,6 +12,7 @@ from pathlib import Path
 
 from rostrum_core import Document, RostrumError, codes
 from .doc import KIND
+from .doc import fields_design as FDS
 from .doc import markers
 
 APPS = {"rostrum-2d": "Rostrum2D", "rostrum-3d": "Rostrum3D", "rostrum-editor": "Rostrum Editor"}
@@ -24,7 +25,9 @@ def open_whole(folder, item) -> Document:
     name = f'The song "{Path(folder).name}"'
     try:
         with markers.project(folder):       # its check sees the project's shared markers ("#hush-2.2"), not only its own
-            return Document.open(folder, item, KIND)
+            doc = Document.open(folder, item, KIND)
+        doc.notes += FDS.retired(doc.data)  # a whoosh from before PURPOSE.md: opens, said plainly, refused at render
+        return doc
     except RostrumError as e:
         raise _refused(name, e) from e
     except (KeyError, TypeError, ValueError, AttributeError, IndexError) as e:   # readable, but the wrong shape

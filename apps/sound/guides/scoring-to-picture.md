@@ -78,5 +78,7 @@ person watching and listening; say so in your report.
 
 ## Sound from motion
 
-`edit_sounds_from_motion` turns a 2D animation's motion samples into placed sound events (see inspect_guide
-`designed-sounds`). It is a starting placement to edit, not a finished track.
+`edit_sounds_from_motion` reads a 2D animation's motion samples and suggests musical answers (a hit or note on a
+landing, a rise built from an instrument, or nothing). It adds a sound only when asked, and only music or a real
+recorded sound (see inspect_guide `designed-sounds`). Score motion with instruments on named markers: a string rise, a
+cymbal swell or a piano run into a landing, a struck bell or hit on it, a held silence before a big change.

@@ -1,4 +1,4 @@
-//! The synthesized effect presets (a port of sfxFoley.ts): risers, sweeps, booms, whooshes, chimes,
+//! The synthesized effect presets (a port of sfxFoley.ts): risers, sweeps, booms, chimes,
 //! pops, beds and clicks; one sample at a time (render_sfx drives it). The social-video set is kit.rs.
 
 use std::f64::consts::PI;
@@ -77,15 +77,6 @@ pub(super) fn synth(preset: &str, ph: &mut (f64, f64), t: f64, u: f64, n: f64, l
             let saw = (TAU * f * t).sin() + (TAU * f * (if sting { 1.189 } else { 2.0 }) * t).sin() * 0.65 + (TAU * f * 3.0 * t).sin() * 0.45 + (TAU * f * 4.0 * t).sin() * 0.25;
             sig_l = (saw * 1.5).tanh() * env * 0.7;
             sig_r = ((saw + (TAU * f * 1.005 * t).sin() * 0.5) * 1.5).tanh() * env * 0.7;
-        }
-        "whoosh" | "swoosh" => {
-            let sw = preset == "swoosh";
-            let bell = (PI * u).sin();
-            let f = ((if sw { 340.0 } else { 150.0 }) + (if sw { 880.0 } else { 480.0 }) * bell) * pitch;
-            ph1 += TAU * f / sr;
-            let air = ((if sw { n * 0.45 + lp * 0.4 } else { lp * 0.75 }) + ph1.sin() * 0.35) * bell.powf(if sw { 1.8 } else { 1.2 });
-            sig_l = air;
-            sig_r = air;
         }
         "shimmer" | "portal" | "warp" => {
             let base = if preset == "shimmer" { 659.25 } else if preset == "portal" { 440.0 } else { 329.63 };

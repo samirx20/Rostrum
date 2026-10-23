@@ -3,7 +3,7 @@ from — instruments, drum kits, the microphone, voices — searched by words an
 one `track.add` call (one undo step, what an agent would call), then the new track is selected so the Editor and
 the settings panel show it. With a track of the same kind selected (an instrument for a notes track, a kit for a drum
 track, a voice for a voice track) the panel asks first and then changes that track's sound instead (`swap`: one
-`track.set`; the notes stay). Designed sounds (whoosh, riser, impact …) are placed at the playhead on the Effects
+`track.set`; the notes stay). Designed sounds (riser, impact, click …) are placed at the playhead on the Effects
 track instead (`place`). The person's own sound files are the library (library_panel.py), listed under "My
 sounds". Exposed to QML as `adder`.
 """
@@ -23,8 +23,7 @@ from .cards import FAMILY, spaced
 KINDS = [("", "All"), ("instrument", "Instruments"), ("drums", "Drums"), ("record", "Record"), ("voice", "Voice"),
          ("designed", "Designed"), ("mine", "My sounds")]
 # Designed sounds (doc/fields_design.py): placed at the playhead on the "Effects" track, not a new track each time.
-DESIGNED = {"whoosh": ("Whoosh", "Air rushing past: a move, a swipe", {"dur": 0.8}),
-            "riser": ("Riser", "Builds up to a moment", {"dur": 2.0}),
+DESIGNED = {"riser": ("Riser", "Builds up to a moment", {"dur": 2.0}),
             "hit": ("Impact", "A big hit with a tail: a logo lands", {}),
             "click": ("Click", "A short tick: a button, a UI tap", {}),
             "subDrop": ("Sub drop", "A deep fall after a hit", {"dur": 1.5})}
@@ -77,7 +76,7 @@ OLD_KEYS = {"piano": "builtIn:grandPiano", "strings": "builtIn:analogStrings", "
 
 def placed_at(b, lead: float = 0.0):
     """(time, marker name) for a sound placed at the playhead whose moment comes `lead` seconds into it (a riser's
-    end, a whoosh's loudest point, a hit's onset): that moment lands on the playhead. On a marker the time is tied to
+    end, a hit's onset): that moment lands on the playhead. On a marker the time is tied to
     it ("#logo lands", "#logo lands-2"; the selected marker first), so it follows when the marker moves."""
     here = sorted((m for m in b._view["markers"] if abs(m["t"] - b._t) < 1e-3),
                   key=lambda m: m["id"] not in b.selectedIds)

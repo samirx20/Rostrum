@@ -30,7 +30,7 @@ def two_songs(root: str, open_item: str, long_name: bool = False) -> list[str]:
 def cues_song(root: str, marker: str = "Logo lands") -> list[str]:
     """A song with a pad and 2D's cue track: two clips tied to project markers (one with an offset)."""
     folder = _project(root)
-    sound = folder.parent / "whoosh.wav"
+    sound = folder.parent / "cue.wav"
     with wave.open(str(sound), "wb") as w:
         w.setnchannels(1), w.setsampwidth(2), w.setframerate(24000), w.writeframes(b"\x40\x10" * 24000 * 2)
     who = Who.person()

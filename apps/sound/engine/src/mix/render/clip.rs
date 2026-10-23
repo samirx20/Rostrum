@@ -23,6 +23,7 @@ fn render_clip(c: &Clip, sr: f64) -> Result<(Vec<f32>, Vec<f32>), String> {
     let mut stretched = false;
     match &c.content {
         Content::Score { voices } => voices::score::render_score(voices, &mut l, &mut r, sr)?,
+        Content::Sfx { preset, .. } if crate::design::RETIRED.contains(&preset.as_str()) => return Err(crate::design::retired(preset)),
         Content::Sfx { preset, material, duration, volume, pitch, pan_from, pan_to } => {
             sfx::render_sfx(&sfx::Sfx { preset, material: material.as_ref(), duration: *duration, volume: *volume, pitch: *pitch, pan_from: *pan_from, pan_to: *pan_to }, &mut l, &mut r, sr)
         }

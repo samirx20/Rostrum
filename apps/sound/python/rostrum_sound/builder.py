@@ -76,7 +76,7 @@ class Track(Inserts):
                 for t in takes]
 
     def sound(self, design, at, id=None, **fields):
-        """A designed sound: sound("whoosh", at=1.0, dur=0.8, speed=[[0, 0], [0.4, 1], [1, 0]], panPath=[[0, -0.8], [1, 0.2]]),
+        """A designed sound: sound("click", at=1.0, material=0.8),
         sound("click", at=3.8, material=0.5, pitch=2400). Fields: inspect_guide 'designed-sounds'."""
         self.sounds.append((id, checked("sound", {"design": design, "at": at, **fields}, f"track {self.id} › sound",
                                         FD.DEFAULTS["sound"])))

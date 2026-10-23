@@ -151,8 +151,8 @@ Said once, in plain language; the screen uses the plain word and gives the techn
 
 - **Track**: one row of the song; it plays one instrument, or holds recordings or spoken lines.
 - **Note**: one pitch held for a time. **Velocity**: how hard a note or drum hit is played (soft … loud).
-- **Hit**: one drum stroke. **Clip**: a piece of a sound file placed on a track. **Designed sound**: a whoosh,
-  impact, riser or click made by Rostrum from settings, not a recording. **Line**: one spoken line on a voice track.
+- **Hit**: one drum stroke. **Clip**: a piece of a sound file placed on a track. **Designed sound**: an
+  impact, riser or click made by Rostrum from settings, not a recording (never a whoosh: PURPOSE.md). **Line**: one spoken line on a voice track.
 - **Bar / beat**: a bar is one count of "1-2-3-4" in a 4/4 song; each count is a beat. **Tempo**: beats per minute.
 - **Quantise**: move notes onto the nearest grid line. **Key / scale**: the set of notes a song uses (D minor).
 - **Group** (the song file calls it a **bus**): a channel several tracks play into before the master, so they share
@@ -176,7 +176,7 @@ Said once, in plain language; the screen uses the plain word and gives the techn
 
 | Person | What they want from Sound | How often | What they already know | What that means for the screen |
 |---|---|---|---|---|
-| **Motion designer** (the main 2D user) | Music and sound effects that hit the moments of a 2D film: the logo lands, the card slides, the drop | Every project, a short session (30–90 min) at the end of the animation | After Effects, Premiere, maybe GarageBand. Knows "timeline", "keyframe", "marker". Doesn't know "bus", "LUFS", "sidechain" | The project's markers are on the ruler from the first second; sounds are placed *on* a marker; designed sounds (whoosh, impact, riser) are one search away; loudness is a word and a colour, not a unit |
+| **Motion designer** (the main 2D user) | Music and sound effects that hit the moments of a 2D film: the logo lands, the card slides, the drop | Every project, a short session (30–90 min) at the end of the animation | After Effects, Premiere, maybe GarageBand. Knows "timeline", "keyframe", "marker". Doesn't know "bus", "LUFS", "sidechain" | The project's markers are on the ruler from the first second; sounds are placed *on* a marker; a string rise, a cymbal swell or a hit is one search away; real recorded sounds (a click, metal, glass) come from the person's own library; loudness is a word and a colour, not a unit |
 | **Video maker doing a voice-over** | Record their voice, cut the mistakes, make it clean and even, deliver at the right loudness | Weekly; the same steps every time | Premiere / CapCut / Descript, a USB mic. Knows "cut", "fade". Thinks "too quiet", not "−18 dB" | Recording is one key once a mic track exists; the take appears as you speak; clean-up and "even out" act on the selection; Export offers "Podcast" and "YouTube" by name |
 | **Musician writing a score or a song** | Write parts with instruments, build the song, mix it | Long sessions, many times a week | GarageBand / Logic / Ableton. Knows piano roll, quantise, tempo, bars, often a MIDI keyboard | The arrangement and piano roll behave like GarageBand/Logic (E opens the editor below, same keys where we can); nothing taught that they already know |
 | **An agent** working for any of them | Do the job through MCP: write parts, place sounds, mix, deliver; check by "ears" tools | Any time, often while a person watches | Every operation by name; the guides in `apps/sound/guides/` | Every action is an operation taking the selected ids; the agent can read what the person selected; its changes show live and never move the person's selection, playhead or scroll (same rule as 2D) |
@@ -195,7 +195,7 @@ The six jobs of DESIGN.md §2, plus two I found missing (G, H). Each in two line
 | **A · Write a song** | Pick instruments, write or play notes, build verse/chorus, shape the sounds. | A song they can play through and deliver as a WAV. |
 | **B · Score to picture** | Bring in a 2D film or a video, mark the hits, fit the tempo, write music that lands on them. | Music that hits each marker, checked by playing with the picture. |
 | **C · Voice-over** | Record (or generate) a voice, cut the fluffs, clean it, even it out. | A clean voice file at podcast or video loudness. |
-| **D · Sound for motion** | Find or design whooshes, hits and clicks and place them on the 2D markers. | Effects that stay on their moments even when 2D is re-timed. |
+| **D · Sound for motion** | Score the 2D markers with instruments (a rise, a swell, a hit on the land) and real recorded sounds where the picture needs them. | Sounds that stay on their moments even when 2D is re-timed. |
 | **E · Mix to delivery** | Balance, group, add effects, duck, hit a loudness target, deliver with stems. | Files that pass the target, plus stems if asked. |
 | **F · Agent and person together** | An agent builds; the person watches, tweaks a selection, hands parts back. | One song, one history, nobody's edits wiped. |
 | **G · Fix the sound of a recorded video** *(found missing)* | Bring in a video with its own camera sound (an interview, a vlog), clean it, level it, add music under it. | The video's voice is clean and the music ducks under it; delivered back to the project. Common for video makers; today it means splitting the job by hand. |
@@ -1476,7 +1476,7 @@ it. Because single letters are shortcuts in Rostrum, it is a **mode you switch o
 - If the song is empty, the file's tempo, metre and key come with it. If not, a bar asks inline: **"Use the file's
   tempo and key?"** [Keep mine] [Use the file's].
 - **Export:** ≡ › Export MIDI… (the whole song), or right-click selected tracks › **Export as MIDI…** (just those).
-  What MIDI can't carry is listed afterwards ("2 hits on 'whoosh' skipped"), never dropped silently.
+  What MIDI can't carry is listed afterwards ("2 hits on 'tom 3' skipped"), never dropped silently.
 **Agent.** `edit_import_midi {path, song_map}` (exists) — **(new)** `at` and `track` params; `render_midi {path}`
 (exists) — **(new)** `tracks` param.
 **Why this way (3E).** Drag-and-drop where you want it. **Rejected:** import always at bar 1 into new tracks only.
@@ -1610,7 +1610,7 @@ Easy: the result has no gaps or overlaps unless you ask.
    dragged; remembered.
 2. Top: **search** (focused when opened). Searching looks in everything at once; results grouped by section, best
    matches first. Under the search, filter chips appear only when they help (after a search with many results): for
-   files — Kind (whoosh, impact, riser, click, ambience …), Length (short / medium / long), Brightness (dark / mid /
+   files — Kind (impact, riser, click, ambience, foley …), Length (short / medium / long), Brightness (dark / mid /
    bright), Attack (sharp / soft); for instruments — Kind (keys, strings, pads, bass, plucked, mallets …).
 3. Sections (folded except the first two; each remembers being open):
 
@@ -1622,7 +1622,7 @@ Easy: the result has no gaps or overlaps unless you ask.
 | Sampled (SFZ) | SFZ instruments in your folders | your folders |
 | Plug-in instruments | installed CLAP / VST3 | scanned |
 | Voices | text-to-speech voices | voice model (download on first use) |
-| Designed sounds | whoosh, click, riser, hit, sub drop — sounds Rostrum makes from settings | ships |
+| Designed sounds | click, riser, hit, sub drop — sounds Rostrum makes from settings (no whoosh; Sam judges these by ear) | ships |
 | My sounds | sounds you saved (3.2g) | your sounds folder |
 | My files | your sound-effect folders, each sound found inside each file | your library folders |
 
@@ -1631,7 +1631,7 @@ Easy: the result has no gaps or overlaps unless you ask.
    Designed sounds play with default settings. Instruments: 3.2b. Auditions play through the engine.
 5. **Place** — any of:
    - **drag** onto a track lane: a ghost shows where it lands and what it snaps to; **dropped on a marker, a library
-     sound puts its onset (where the ear hears it start) on the marker**; a whoosh puts its **loudest moment** there
+     sound puts its onset (where the ear hears it start) on the marker**; a swell or riser puts its **loudest moment** there
      (both from the library's measurements, so a drop is in sync without nudging). The tag reads "on #logo".
    - **double-click / Enter**: onto the selected track at the playhead (tied to the marker if the playhead sits on
      one); with no suitable track selected, a new track.
@@ -1894,7 +1894,7 @@ Job B (placing a stinger on a cut). Job A (a recorded part, a sample loop). Job 
    **Overlapping clips that are not crossfaded both play.** This is deliberate: layering effects needs it. The overlap
    is shaded so it is visible.
 9. **Stretch (time).** Drag the clip's **bottom-right corner**. The sound gets longer or shorter **without changing
-   pitch**, and the label shows "×1.25". It snaps to markers and the grid, so you can drag a whoosh's end onto a marker
+   pitch**, and the label shows "×1.25". It snaps to markers and the grid, so you can drag a riser's or swell's end onto a marker
    (`clip.set {stretch}`, exists). Dropping the corner on a marker ties the clip's end to it: if the marker moves, the
    stretch follows. That is `length: {"to": "#land"}` on clips **(new: ties exist for notes only — STATUS gap 5)**.
 10. **Pitch.** In the inspector, the clip's **Pitch** group has two fields:
@@ -1918,8 +1918,8 @@ Job B (placing a stinger on a cut). Job A (a recorded part, a sample loop). Job 
     **Alt-click** (proposed) to pick one clip inside the layer; the inspector then edits only that one
     (`clip.set_one`, exists).
 14. **Reverse.** Right-click or the context bar › **Reverse**: the clip plays backwards. This is a field `reverse`
-    **(new in the contract; the engine already has it)**. It is in now, not Later, because a reversed cymbal or whoosh
-    is one of the most common sound-design moves (3.13).
+    **(new in the contract; the engine already has it)**. It is in now, not Later, because a reversed cymbal
+    is one of the most common ways to build into a moment (3.13).
 15. **Slip** (move the sound inside the clip without moving the clip). In the Editor (E), drag the waveform sideways:
     the clip's window stays put and the file slides under it (`clip.set {in}`, exists). In the arrangement:
     **Ctrl+Alt drag** on the clip body does the same (proposed). The waveform slides; the edges stay.
@@ -2392,19 +2392,21 @@ Ctrl while dragging = no snapping.
 
 ### 3.13 Sound design for motion
 
-**Goal.** "Every move on screen gets its sound: a whoosh as the card flies in, a click as it lands, a riser into the
-logo. Quick to place, quick to swap until it feels right."
+**Goal.** "Score the moves that matter with instruments: a string rise into the logo, a hit on the beat where the card
+lands, a held silence before the big change, a real click on the button. Quick to place, quick to swap until it feels
+right." No whooshes, swishes or transition sounds, ever (PURPOSE.md): a move earns a sound only when someone decides
+it needs one, and then it is music or a real recorded sound. Sync is through named markers.
 
-**Who / when.** Job D every time, job B (hits), job F (the agent places sounds from the 2D motion, the person
+**Who / when.** Job D every time, job B (hits), job F (the agent scores the 2D motion on its markers, the person
 auditions and swaps).
 
 **How it works.**
 1. **Find a sound: the Library (L).** It has three tabs: **Designed**, **My sounds** and **Instruments**. A
    search box sits on top and searches across all three.
-   - **Designed:** Whoosh, Click, Riser, Impact (`hit`), Sub drop, each with a one-line description ("a move through
-     the air: follows a move's speed"). **Click a row's ▶ to hear it** with its default settings: rendered once and
-     kept.
-   - **My sounds:** the user's library folders (`inspect_library`, exists). There are kind chips (Whoosh, Impact,
+   - **Designed:** Click, Riser, Impact (`hit`), Sub drop, each with a one-line description ("a short tap, glass to
+     metal"). Instruments come first in the tab order and in search results (string rise, cymbal swell, piano run,
+     struck bell). **Click a row's ▶ to hear it** with its default settings: rendered once and kept.
+   - **My sounds:** the user's library folders (`inspect_library`, exists). There are kind chips (Impact,
      Click, Riser, UI, Ambience, Foley …), length chips (short / medium / long) and brightness chips. Each row shows
      the name, a mini waveform, the length, and words like "short · bright · sharp". **Hover plays it** (once the
      setting "Play on hover" is on; it is on by default here, off for Instruments). **+ Add a folder** sits at the
@@ -2416,8 +2418,8 @@ auditions and swaps).
    - drag the sound onto a track at a time; it snaps to markers and **ties if dropped on one**;
    - with a track selected, **double-click** the row or press **Enter**, which places it at the playhead.
 
-   Dropping below the last track makes a new track named after its kind ("Whooshes").
-   - **A library sound** is placed so that **its loudest moment (whoosh) or its start as the ear hears it (click,
+   Dropping below the last track makes a new track named after its kind ("Impacts").
+   - **A library sound** is placed so that **its loudest moment (a swell or riser) or its start as the ear hears it (click,
      impact) lands on the drop point**, not the file's first sample. It uses `peak_s` / `onset_s` from the library's
      measurements (exists), so dropping on a marker means it *sounds* on the marker. This is a `clip.add` whose `at` is
      computed (an align helper **(new on screen)**).
@@ -2426,8 +2428,7 @@ auditions and swaps).
 
    | Design | Essentials (always shown) | Folded |
    |---|---|---|
-   | Whoosh | Length, Brightness, Size | Speed curve, Pan path, Doppler, Whistle, Air, Texture |
-   | Click | Pitch, Material, Snap | Tight, Body, Air, Knock / pop |
+      | Click | Pitch, Material, Snap | Tight, Body, Air, Knock / pop |
    | Riser | Length, Pitch, Brightness | Curve, Whistle, Air, Texture |
    | Impact | Pitch, Size, Tail | Brightness, Drive |
    | Sub drop | Length, Lands on (pitch), Drop | Drive |
@@ -2440,7 +2441,7 @@ auditions and swaps).
    - **Riser into a moment:** drop the right edge on the marker. The end is tied (`dur {"to": "#drop"}`), so a riser
      always peaks on "drop" even if 2D moves it. This exists for designed sounds' `dur`, and is new for clips.
    - **Pitch:** a designed sound's Pitch. On a library clip, "Pitch only" (`shift`) or Ctrl+↑/↓.
-   - **Reverse** a whoosh or cymbal, as in 3.9 (new field).
+   - **Reverse** a cymbal, as in 3.9 (new field).
 5. **Layer.** Select several sounds or clips on one spot, then **Ctrl+G** "Layer as one sound" (3.9). For example a
    designed click plus a library thud plus a riser tail. They move, level and swap position as one; Alt-click edits
    one layer.
@@ -2460,15 +2461,14 @@ auditions and swaps).
 7. **Sounds placed from 2D motion.** When the picture is a 2D item of the project, the Picture panel's ⋯ menu (and
    Ctrl+K) has **"Add sounds from its motion…"**. A small panel asks:
    - **which layers** (default: all that move on their own, a checklist with the layer names from 2D);
-   - **from:** Designed sounds / My sounds (the library);
+   - **what to add:** the events it found, each with a suggested answer (a hit or note on the land, a rise built from an instrument, or nothing), all off until ticked; **from:** Instruments / My sounds (real recordings);
    - **Add**.
 
    Rostrum asks 2D for the motion samples itself **(new: today a person must export "Motion samples" in 2D first)**,
-   then runs `edit_sounds_from_motion` (exists). The sounds land on tracks "ui whoosh", "ui click" … playing into a
-   **ui group channel** with a short shared room and light compressor. Each placed sound is ordinary: select it,
+   then runs `edit_sounds_from_motion` (exists). Nothing is added until it is asked for. The chosen sounds land on tracks "ui hits", "ui click" …
+   playing into a **ui group channel** with a short shared room and light compressor. Each placed sound is ordinary: select it,
    shape it, swap it. **Running it again** after the animation changes ("Update sounds from motion") moves the sounds
-   with the motion and **keeps what you changed** (exists). The status line says "Placed 34 sounds (12 whooshes,
-   18 clicks, 4 ticks). Loudest cut for overlaps: −6 dB on ui whoosh."
+   with the motion and **keeps what you changed** (exists). The status line says "Placed 12 sounds (8 hits, 4 clicks). Loudest cut for overlaps: −6 dB on ui hits."
 8. **A recorded effects library** is "My sounds" (step 1). **Recording your own foley** is 3.8 onto an audio track;
    **"Add to my sounds"** on a clip's right-click copies its file into a chosen library folder and indexes it
    **(new)**.
@@ -2508,13 +2508,14 @@ layer · Ctrl+D duplicate a sound right after (a repeated tick) · Alt drag copy
 **Rejected:**
 - A separate "SFX page": job D happens in the arrangement, against picture and music.
 - Swap by opening a browser window and dragging again: it loses alignment and level and costs four times the gestures.
-- Stock "look presets" (e.g. "Apple-style whoosh"): tools, not taste.
+- Stock "look presets" (e.g. "Apple-style hit"): tools, not taste.
+- Synthetic whooshes, swishes and transition sounds: Sam's rule (PURPOSE.md). Not built, not a library kind, not a preset.
 
 **Studied.**
 - Soundly and Pro Tools' Soundminer: search plus audition, with "spot" placing a sound at the playhead aligned. We
   take audition on hover and place at the playhead.
 - Logic's Loop browser: hear in tempo and in context. We take "hear it in context".
-- Krotos / Boom's Whoosh plug-ins: designed whooshes with a few settings. We take few essentials and fold the rest.
+- Krotos / Boom's designer plug-ins: a few settings per sound. We take the idea of few essentials and fold the rest, for the designs we keep (click, riser, hit, sub drop).
 - Reaper's media explorer: insert at the edit cursor. We take Enter = place at the playhead.
 
 **Later.**
@@ -2778,7 +2779,7 @@ per strip, one track at a time; no selection action, no "under a group".
 **Goal.** "Fade the strings in over the intro, pull the music down under the line at 0:42, open the filter in the
 build."
 
-**Who / when.** E always; B (fades to picture) often; A (builds, filter sweeps) sometimes; D (a whoosh panned left to
+**Who / when.** E always; B (fades to picture) often; A (builds, filter sweeps) sometimes; D (a note or hit panned left to
 right) sometimes.
 
 **How it works.**
@@ -3356,7 +3357,7 @@ total also includes getting to a delivered file.
 | B · Score: load picture, 3 markers, tempo so bar 5 lands | ~10 + **blocked** (no markers on screen) | **12 clicks + 7 keys** (6 + 1 if 2D made the markers) | 21 clicks + 10 keys | 3 popups → 1 (picture chooser) |
 | C · Voice-over: record, cut a fluff, clean, even out, podcast | ~16 + **blocked** (no split / normalise) | **9 clicks + 6 keys** | same | 2 → 1 (Export) |
 | C′ · Spoken lines (generated voice) | **blocked** | **3 clicks + 2 keys** | 5 clicks + 2 keys | — → 0 |
-| D · SFX: a whoosh and an impact on two markers | **blocked** | **6 clicks + 1 key** | 8 clicks + 1 key | — → 0 |
+| D · Sound for motion: a rise and a hit on two markers | **blocked** | **6 clicks + 1 key** | 8 clicks + 1 key | — → 0 |
 | E · Mix: 3 faders, group 3 tracks, 2 effects, target, WAV + stems | ~18 clicks | **13 clicks + 3 keys** | same | 1 page + 3 pickers → 1 dialog |
 | F · Agent + person | 1 (history) | **2 clicks + 1 key** to tweak, 0 to watch | — | 0 → 0 |
 | Fix a mix an agent made | not walked (≈ 14, Mix page, render cut off) | **9 clicks + 2 keys** | same | → 1 (Export) |
@@ -3414,21 +3415,20 @@ total also includes getting to a delivered file.
 | 4 | Export → Export | 2 | |
 | | **Total** | **5** | **2** |
 
-### D · Sound for motion (a whoosh and an impact on two 2D markers)
+### D · Sound for motion (a rise and a hit on two 2D markers)
 
 | # | Do | Clicks | Keys |
 |---|---|---|---|
 | 1 | Click marker "card in" on the ruler (playhead moves there) | 1 | |
-| 2 | L → type "whoosh" → double-click **Whoosh** | 2 | 1 |
-| 3 | Click marker "logo lands" → double-click **Impact** (panel still open at 1646; at 1280 it closed: +1 key) | 2 | |
-| 4 | Click the whoosh → **Make another like it** until it fits (optional) | 1 | |
+| 2 | L → type "swell" → double-click **Cymbal swell** (an instrument; counts from the old walk, redo when the screen exists) | 2 | 1 |
+| 3 | Click marker "logo lands" → double-click **Impact** (a hit on the beat) (panel still open at 1646; at 1280 it closed: +1 key) | 2 | |
+| 4 | Click the swell → **Make another like it** until it fits (optional) | 1 | |
 | | *Same steps as today: 6 clicks + 1 key (today blocked)* | | |
 | 5 | Export → Export | 2 | |
 | | **Total** | **8** | **1** |
 
 Each sound is placed on an "Effects" track made the first time, and **tied to its marker** because the playhead was
-on one: when 2D moves "logo lands", the impact moves with it. (Whether a whoosh *ends* rather than starts on its
-marker is writer 3's "sound for motion" section.)
+on one: when 2D moves "logo lands", the impact moves with it. (A swell or rise *ends* on its marker: step 4 of 3.13.)
 
 ### E · Mix to delivery
 
@@ -3949,8 +3949,8 @@ buses. We have no transcript yet (open point 3); until then the waveform with sp
 
 | Step | Thinking | Needs | Doesn't need |
 |---|---|---|---|
-| 1 See the motion | "Where does it whoosh / hit?" | Picture or the 2D markers on the ruler | Piano roll |
-| 2 Find / make a sound | "A whoosh, 0.6 s" | Library: my library (search by kind), **designed sounds** (whoosh, impact, riser … with their settings), audition | — |
+| 1 See the motion | "Where does it land / build?" | Picture or the 2D markers on the ruler | Piano roll |
+| 2 Find / make a sound | "A rise into it, a hit on it" | Instruments (string rise, cymbal swell, piano run, struck bell), my library (real sounds, search by kind), **designed sounds** (impact, click … with their settings), audition | — |
 | 3 Place it | "On 'logo lands'" | Drop at a marker / the playhead; it stays on the marker when 2D moves | — |
 | 4 Shape it | "Faster, darker, layer a thud" | The selected sound's settings (inspector), layer = group of clips/sounds | Track instrument settings |
 | 5 Sit it in | "Under the music" | Level, duck under voice | Delivery |
@@ -4002,7 +4002,7 @@ their fixes (Output as a picker, "Group channel", "Loudest peak").
 | B. Score to picture: load video, 3 hit markers, tempo to land bar 5 | ~10 + **blocked**: no way to add a marker on screen (`marker.add` needs a name; not in Ctrl+K either) | 3 popups (Picture, project list, Song popup) | Markers come only from 2D or scripts; Song popup covers the roll (`picture-02-song-popup.png`); picture corner shoots black offscreen (Read) | ~9, markers with M |
 | C. Voice-over: record, cut a fluff, clean, normalise, podcast deliver | ~16 + **blocked**: no split, no trim by dragging, no normalise | 2 (Take panel, Mix page for loudness / delivery) | Empty piano-roll area shows "Nothing on this track yet" (`voice-03-recording.png`); clean-up only one clip at a time; loudness only on Mix | ~12, 0 page changes |
 | C'. Voice track (spoken lines) | **blocked**: no way to add a line (card text: "add one with line.add", `voice-04-voice-track.png`) | — | Jargon to a person; lines only on the Instruments card | 2 (select voice track, Add line) |
-| D. SFX for motion: a whoosh + impact on two markers | **blocked**: Library panel is built but never shown (`soundLibrary` not wired, `sfx-01-library.png`); designed sounds (`sound.add`) have no screen | — | The only way is a script / agent | ~6 |
+| D. Sound for motion: a rise + a hit on two markers | **blocked**: Library panel is built but never shown (`soundLibrary` not wired, `sfx-01-library.png`); designed sounds (`sound.add`) have no screen | — | The only way is a script / agent | ~6 |
 | E. Mix: 3 faders, group the drums + 2 tracks, 2 effects, streaming target, WAV + stems | ~18 (1 page, 3 drags, **group: 1 + 3 × 3 = 10 (empty "+ Bus" then route each)**, 4 effects, 2 target, 1 render) | 1 page + 3 pickers | Delivery crammed into the master strip: with Normalize on, **Render is cut off** under the Listen pane (`mix-01-deliver.png`); "+ Duck" on every strip; jargon (LUFS-S, dBTP, pk, Glue) partly fixed in S26 | ~11 (group: 3 + 1) |
 | F. Agent + person | 1 to see history | 0 | Works: one document, one history. Missing: the person can't hand a *selection* to the agent (single selection only; Ctrl+K gets one id) | same, with multi-select |
 | Bus from 3 tracks (select-first check) | 10 | 3 pickers | Empty container first | 4 (click, Ctrl-click ×2, "Send to a new group") |

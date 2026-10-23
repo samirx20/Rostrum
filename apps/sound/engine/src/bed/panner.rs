@@ -1,6 +1,6 @@
 //! The surround panner: a track's stereo signal (after its inserts) placed in the bed (bed/mod.rs). A
 //! position is an object's — azimuth, elevation, distance — plus its spread, its centre share and an
-//! LFE send, each a number or an envelope over song time (the effects' Param), so a whoosh can fly
+//! LFE send, each a number or an envelope over song time (the effects' Param), so a sound can fly
 //! around the room. TypeScript resolved every default (src/core/soundDsl/soundtrack/surround.ts).
 //!
 //! - Direction: VBAP over the ring's adjacent speaker pair (Pulkki 1997; tangent law, power-normalised),

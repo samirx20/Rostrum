@@ -37,7 +37,7 @@ def clip(track: str, at, root, taken, where="clip") -> str:
 
 
 def sound(track: str, design: str, at, root, taken, where="sound") -> str:
-    """`ui.whoosh1000`: the design and where it starts."""
+    """`ui.click1000`: the design and where it starts."""
     return timed(track, design, at, root, taken, where)
 
 

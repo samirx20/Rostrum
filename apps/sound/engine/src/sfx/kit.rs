@@ -1,4 +1,4 @@
-//! The social-video sound effects (whooshes, risers, impacts, pops, clicks, dings): built the way
+//! The social-video sound effects (risers, impacts, pops, clicks, dings; no whooshes: PURPOSE.md): built the way
 //! sound designers layer them — swept band-passed noise in stereo, a tonal riser with an
 //! accelerating gate, an impact as sub boom + crack + body + tail, FM bells, short bright clicks.
 //! Deterministic (seeded noise per channel). Other presets are presets.rs.
@@ -9,7 +9,7 @@ use super::{Rng, Svf};
 
 const TAU: f64 = 2.0 * PI;
 
-pub const PRESETS: &[&str] = &["whoosh", "swoosh", "swipe", "riser", "uplifter", "impact", "boom", "hit", "hitHard", "pop", "click", "tap", "tick", "key", "toggle", "ding", "chime", "notification", "success", "error"];
+pub const PRESETS: &[&str] = &["riser", "uplifter", "impact", "boom", "hit", "hitHard", "pop", "click", "tap", "tick", "key", "toggle", "ding", "chime", "notification", "success", "error"];
 
 fn saw(p: f64) -> f64 {
     2.0 * (p - p.floor()) - 1.0
@@ -27,20 +27,6 @@ pub fn render(preset: &str, dur: f64, pitch: f64, sr: f64, mut out: impl FnMut(u
         let (a, b) = (nl.n(), nr.n());
         let tail = ((dur - t) / 0.006).clamp(0.0, 1.0);
         let (l, r) = match preset {
-            "whoosh" | "swoosh" => {
-                let sw = preset == "swoosh";
-                // Rises over 65 % of its length, falls faster: the object passing.
-                let peak = 0.62;
-                let env = if u < peak { (u / peak).powf(2.2) } else { (1.0 - (u - peak) / (1.0 - peak)).max(0.0).powf(1.6) };
-                let bell = (PI * u).sin();
-                let centre = (if sw { 900.0 } else { 350.0 }) * pitch * 2f64.powf(bell * if sw { 2.6 } else { 2.4 });
-                let (_, bl, _) = f[0].run(a, centre, 0.9, sr);
-                let (_, br, _) = f[1].run(b, centre * 1.06, 0.9, sr);
-                let (lo, _, _) = f[2].run(a + b, centre * 0.5, 1.4, sr);
-                let pan = (u - 0.5) * 1.2;
-                let g = env * 1.6;
-                ((bl + lo * 0.35) * g * (1.0 - pan.max(0.0)), (br + lo * 0.35) * g * (1.0 + pan.min(0.0)))
-            }
             "riser" | "uplifter" => {
                 let up = preset == "uplifter";
                 let env = u.powf(1.8) * tail;
@@ -102,16 +88,6 @@ pub fn render(preset: &str, dur: f64, pitch: f64, sr: f64, mut out: impl FnMut(u
                 let low = (TAU * 420.0 * pitch * t).sin() * (-t / 0.012).exp() * body;
                 let e = (-t / dec).exp() * 1.4;
                 ((bl * e + tick + low) * tail, (br * e + tick + low) * tail)
-            }
-            "swipe" => {
-                // A finger swipe: a short bright band of noise sweeping up (fast in, softer out), moving left to right.
-                let env = (u / 0.15).min(1.0) * (1.0 - u).powf(1.4);
-                let centre = 1800.0 * pitch * 2f64.powf(u * 2.2);
-                let (_, bl, _) = f[0].run(a, centre, 0.8, sr);
-                let (_, br, _) = f[1].run(b, centre * 1.05, 0.8, sr);
-                let pan = (u - 0.5) * 1.4;
-                let g = env * 1.5;
-                (bl * g * (1.0 - pan.max(0.0)) * tail, br * g * (1.0 + pan.min(0.0)) * tail)
             }
             "toggle" => {
                 // A switch: a low click, then a brighter one 45 ms later as it lands.
@@ -179,14 +155,11 @@ mod tests {
     }
 
     #[test]
-    fn a_riser_rises_and_a_whoosh_passes() {
+    fn a_riser_rises() {
         let r = take("riser", 2.0);
         assert!(rms(&r, 1.6, 1.9) > 4.0 * rms(&r, 0.2, 0.5));
-        let w = take("whoosh", 0.5);
-        let peak = rms(&w, 0.27, 0.35);
-        assert!(peak > 3.0 * rms(&w, 0.0, 0.05) && peak > 3.0 * rms(&w, 0.46, 0.5));
         // Stereo: the two channels are different noise.
-        assert!(w.iter().any(|(l, r)| (l - r).abs() > 1e-3));
+        assert!(r.iter().any(|(l, r)| (l - r).abs() > 1e-3));
     }
 
     #[test]

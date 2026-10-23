@@ -4,7 +4,7 @@ song would sound like (one audio engine). Nothing in the person's document chang
 
     entry = {"instrument": "builtIn", "builtIn": "grandPiano"}    # an instrument (builtIn / synth / model / sfz / plugin)
           | {"instrument": "kit"}                                # a drum kit (kit / kitSfz)
-          | {"design": "whoosh", "dur": 0.8}                     # a designed sound, as itself
+          | {"design": "click", "material": 0.8}                 # a designed sound, as itself
           | {"media": r"C:\\...\\door.wav", "in": 0.4, "length": 1.2}   # a sound file (or a stretch of one), as itself
     render_audition(engine, entry, doc=doc.data, track="pad")    # -> {"file", "seconds", "cached", "what"}
 
