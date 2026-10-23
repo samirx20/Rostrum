@@ -105,7 +105,7 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
             r["value"], r["anim"], r["expr"] = None, "", ""
             r["holds"] = any(ok[m] for m in r["members"])
         out.append(r)
-    pair_valid(out)
+    pair_valid(out, item)
     return _headers(out)
 
 

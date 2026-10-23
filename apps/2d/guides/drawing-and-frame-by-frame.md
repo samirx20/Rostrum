@@ -36,7 +36,8 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
   so fill a colour layer under a line layer; `gap` closes line ends that don't quite meet. The fill is a `fill` item
   (its outline, ring 0 outside, 1.. holes) in the paint layer's `strokes`: sharp, one undo step, removed with
   `stroke.remove`. A point on a line or in an open area is refused with the reason; nothing changes.
-- Paint layers: `stroke.add`/`paint.stroke` with `layer: "new"` starts one; `paint.set` (name, mode, opacity,
+- Paint layers: `paint.add {name}` on a drawing (frame) adds one on top (the screen's **Paint layers +**);
+  `stroke.add`/`paint.stroke` with `layer: "new"` starts one with the stroke; `paint.set` (name, mode, opacity,
   visible, locked), `paint.move {index}` (0 = bottom), `paint.remove`.
 
 ## The brush (`inspect_operations name: stroke.add` lists every setting)

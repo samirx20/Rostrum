@@ -96,7 +96,9 @@ def panel(entries: list[dict], short: tuple | None = None) -> dict:
     """The settings panel's actions, first (SPEC 2d-design-v2 §8.3): every valid action but the short menu's and the
     ones marked `panel: False`. The primary ones are buttons, in order; actions sharing a `bar` are one titled row
     ("Combine": Union, Subtract …), the others one untitled row where its first one ranks. The secondary ones are one
-    "More" menu at the end (folded like right-click). {rows: [{title, cols, items: [{id, label, keys}]}], more: [...]}"""
+    "More" menu at the end (folded like right-click), only beside buttons: with no button row the menu would sit alone
+    on its own line, so it is absent (the same actions stay on right-click and in the command bar).
+    {rows: [{title, cols, items: [{id, label, keys}]}], more: [...]}"""
     menu_jobs = {j for _, jobs in (short or ()) for j in jobs} - set(KEEP)
     mine = [e for e in entries if not e["edit"] and e["job"] not in menu_jobs and e.get("panel", True)]
     rows, by = [], {}
@@ -109,4 +111,4 @@ def panel(entries: list[dict], short: tuple | None = None) -> dict:
                                   "icon": e.get("icon", ""), "full": e["label"]})
     for r in rows:
         r["cols"] = _cols([i["label"] for i in r["items"]])
-    return {"rows": rows, "more": _fold([e for e in mine if e["importance"] != "primary"])}
+    return {"rows": rows, "more": _fold([e for e in mine if e["importance"] != "primary"]) if rows else []}

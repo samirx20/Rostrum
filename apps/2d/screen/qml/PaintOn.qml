@@ -1,17 +1,19 @@
 import QtQuick
 import RostrumKit
 
-// The settings panel's paint layers group, under "Painting on" (PaintTarget.qml; backend.paintLayers).
-// The paint layers, top first: the eye, the name (click: strokes and fills go on it; drag: reorder; right-click ›
-// Delete); under the list the highlighted layer's Opacity and Blend.
-// Absent until what the pen paints on holds paint.
+// "Paint layers +", under "Painting on" (painting design §2.3, mockup paint-02; backend.paintLayers). One paint layer:
+// only the heading line with its +. Two or more: the list, top first, each row eye · thumbnail · name, in grey its blend
+// and opacity when not Normal · 100 %, a lock when locked. Click a row: strokes and fills go on it (blue); drag:
+// reorder; double-click: rename; right-click: Hide, Lock, Rename, Delete. Under the list the highlighted layer's
+// Blend, Opacity and Lock. Absent until what the pen paints on holds paint.
 Column {
     id: po
     readonly property var pl: backend.paintLayers
     readonly property var cur: { for (const l of pl.layers) if (l.current) return l; return null }
     width: parent ? parent.width : 0
     readonly property int labelColumn: Theme.labelColumnFor(width)     // the settings rows' own column and field width
-    visible: pl.title !== ""
+    readonly property real wide: Theme.wideFor(width)
+    visible: pl.canAdd
 
     component Label: Text {
         width: po.labelColumn - Theme.gap; anchors.verticalCenter: parent.verticalCenter
@@ -19,7 +21,15 @@ Column {
     }
     component Line: Item { width: po.width; height: Theme.row }
 
-    Item { width: po.width; height: Theme.gap }     // no heading: the bar already says what the brush paints on
+    Item {      // the heading: "Paint layers" and its + at the row's end
+        width: po.width; height: Theme.groupGap + Theme.rowDense
+        Text { anchors.left: parent.left; anchors.verticalCenter: plus.verticalCenter
+               text: "Paint layers"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
+        IconButton { id: plus; objectName: "paintLayerAdd"; x: po.wide - width; anchors.bottom: parent.bottom
+                     width: Theme.field; height: Theme.field; kind: "ghost"; glyph: "+"
+                     tip: "Add paint layer"; help: "A new paint layer on top; the next stroke goes into it"
+                     onClicked: po.pl.add() }
+    }
     Repeater {      // the paint layers, top first
         id: layerRows
         model: po.pl.layers
@@ -27,27 +37,63 @@ Column {
             id: lr
             required property var modelData
             required property int index
-            width: po.width; height: Theme.rowDense; radius: Theme.radiusCtl
+            objectName: "paintLayer:" + modelData.name
+            property bool renaming: false
+            width: po.wide; height: Theme.row; radius: Theme.radiusCtl
             color: modelData.current ? Theme.accentSoft : rowArea.containsMouse ? Theme.hover : "transparent"
+            border.width: modelData.current ? 1 : 0; border.color: Theme.accent
             z: rowArea.moving ? 2 : 0
             Item {      // the eye (the layers panel's own; crossed out when hidden)
                 id: eye
+                objectName: "paintEye:" + lr.modelData.name.replace(/ /g, "_")     // (a walk's clickname: _ for spaces)
                 x: Theme.grid; width: 18; height: parent.height
                 LayerSwitchIcon { anchors.centerIn: parent; kind: "hidden"; on: !lr.modelData.visible; hot: eyeArea.containsMouse }
                 MouseArea { id: eyeArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: po.pl.setLayer(lr.modelData.id, "visible", !lr.modelData.visible) }
                 HoverTip { hovered: eyeArea.containsMouse; text: lr.modelData.visible ? "Hide" : "Show" }
             }
+            Rectangle {     // the thumbnail: the layer's own paint on a light card
+                id: thumb
+                anchors.left: eye.right; anchors.leftMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter
+                width: Theme.field - 2; height: width; radius: 3; color: "#ededed"; clip: true
+                opacity: lr.modelData.visible ? 1 : 0.4
+                Image { anchors.fill: parent; source: lr.modelData.thumb; fillMode: Image.PreserveAspectFit
+                        smooth: true; cache: false }
+            }
             Text {
                 id: nameText
-                anchors.left: eye.right; anchors.leftMargin: Theme.grid; anchors.right: parent.right; anchors.rightMargin: Theme.gap
+                visible: !lr.renaming
+                anchors.left: thumb.right; anchors.leftMargin: Theme.grid + 2
+                anchors.right: note.left; anchors.rightMargin: Theme.gap
                 anchors.verticalCenter: parent.verticalCenter
-                text: lr.modelData.name; color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont; elide: Text.ElideRight
+                text: lr.modelData.name; color: lr.modelData.visible ? Theme.fg : Theme.fg3
+                font.pixelSize: Theme.body; font.family: uiFont; elide: Text.ElideRight
+            }
+            Text {      // its blend and opacity, only when not Normal · 100 % and the whole name fits beside it (a name is
+                        // never cut for a note: the highlighted layer's Blend and Opacity rows say it anyway)
+                id: note
+                readonly property real room: lock.x - thumb.x - thumb.width - 2 * Theme.grid - 2 - 2 * Theme.gap
+                anchors.right: lock.left; anchors.rightMargin: lock.visible ? Theme.grid : Theme.gap
+                anchors.verticalCenter: parent.verticalCenter
+                width: visible ? implicitWidth : 0
+                visible: lr.modelData.note !== "" && nameText.implicitWidth + implicitWidth <= room
+                text: lr.modelData.note; color: Theme.fg3; font.pixelSize: Theme.label; font.family: uiFont
+            }
+            Item {      // a lock when locked (click: unlock)
+                id: lock
+                visible: lr.modelData.locked
+                anchors.right: parent.right; anchors.rightMargin: Theme.grid
+                width: visible ? 18 : 0; height: parent.height
+                LayerSwitchIcon { anchors.centerIn: parent; kind: "locked"; on: true; hot: lockArea.containsMouse }
+                MouseArea { id: lockArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onClicked: po.pl.setLayer(lr.modelData.id, "locked", false) }
+                HoverTip { hovered: lockArea.containsMouse; text: "Unlock" }
             }
             MouseArea {     // click: strokes go on it; drag up or down: reorder (drop on another row's place)
                 id: rowArea
-                anchors.fill: nameText; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton
-                preventStealing: true
+                anchors.left: thumb.left; anchors.right: note.right; anchors.top: parent.top; anchors.bottom: parent.bottom
+                hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton
+                preventStealing: true; enabled: !lr.renaming
                 property real y0: 0
                 property real dy: 0
                 property bool moving: false
@@ -64,15 +110,41 @@ Column {
                     moving = false; dy = 0
                     if (to !== lr.index) po.pl.moveTo(lr.modelData.id, to)
                 }
+                onDoubleClicked: (ev) => { if (ev.button === Qt.LeftButton) lr.startRename() }
                 onCanceled: { moving = false; dy = 0 }
             }
             HoverTip { hovered: rowArea.containsMouse && !rowArea.moving && nameText.truncated; text: lr.modelData.name }
+            TextInput {     // rename in place: Enter keeps it, Esc or a click elsewhere leaves the name as it was
+                id: nameEdit
+                visible: lr.renaming
+                anchors.left: nameText.left; anchors.right: nameText.right; anchors.verticalCenter: parent.verticalCenter
+                color: Theme.fg; selectionColor: Theme.accent; font.pixelSize: Theme.body; font.family: uiFont
+                onAccepted: { lr.renaming = false; if (text.trim() && text !== lr.modelData.name) po.pl.setLayer(lr.modelData.id, "name", text.trim()) }
+                Keys.onEscapePressed: lr.renaming = false
+                onActiveFocusChanged: if (!activeFocus) lr.renaming = false
+            }
+            function startRename() { nameEdit.text = modelData.name; renaming = true; nameEdit.forceActiveFocus(); nameEdit.selectAll() }
             transform: Translate { y: rowArea.moving ? rowArea.dy : 0 }
-            Menu { id: rowMenu; y: lr.height; entries: [{ value: "delete", label: "Delete" }]
-                   onPicked: (v) => po.pl.remove(lr.modelData.id) }
+            Menu { id: rowMenu; y: lr.height
+                   entries: [{ value: "visible", label: lr.modelData.visible ? "Hide" : "Show" },
+                             { value: "locked", label: lr.modelData.locked ? "Unlock" : "Lock" },
+                             { value: "rename", label: "Rename" }, { value: "delete", label: "Delete" }]
+                   onPicked: (v) => v === "delete" ? po.pl.remove(lr.modelData.id)
+                                  : v === "rename" ? lr.startRename()
+                                  : po.pl.setLayer(lr.modelData.id, v, !lr.modelData[v]) }
         }
     }
-    Line {      // the highlighted layer's opacity and blend
+    Line {      // the highlighted layer's own rows
+        visible: po.cur !== null
+        Label { text: "Blend" }
+        ChoiceField {
+            objectName: "paintLayerBlend"
+            x: po.labelColumn; width: parent.width - po.labelColumn - Theme.keyGutter; anchors.verticalCenter: parent.verticalCenter
+            options: po.pl.modes; current: po.cur ? po.cur.mode : "normal"
+            onPicked: (v) => po.pl.setLayer(po.cur.id, "mode", v)
+        }
+    }
+    Line {
         visible: po.cur !== null
         Label { text: "Opacity" }
         NumberField {
@@ -84,11 +156,10 @@ Column {
     }
     Line {
         visible: po.cur !== null
-        Label { text: "Blend" }
-        ChoiceField {
-            x: po.labelColumn; width: parent.width - po.labelColumn - Theme.keyGutter; anchors.verticalCenter: parent.verticalCenter
-            options: po.pl.modes; current: po.cur ? po.cur.mode : "normal"
-            onPicked: (v) => po.pl.setLayer(po.cur.id, "mode", v)
-        }
+        Label { text: "Lock" }
+        Toggle { x: po.labelColumn; anchors.verticalCenter: parent.verticalCenter; checked: po.cur ? po.cur.locked : false
+                 onToggled: (v) => po.pl.setLayer(po.cur.id, "locked", v) }
+        HoverHandler { id: lockHover }
+        HoverTip { hovered: lockHover.hovered; text: "A locked layer refuses paint and fill" }
     }
 }

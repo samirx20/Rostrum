@@ -1,19 +1,22 @@
-"""The settings panel's "Paint on <element>" group while Draw is on (UX_SPEC.md §3.8, Paint layers inside an element):
-the element's paint layers at the playhead (eye, the highlighted one's opacity and blend, reorder, delete), Keep inside
-the outline, Draw each frame, and Onion skin while drawing each frame.
+"""The settings panel's paint groups while Brush is on (painting design §2.3, mockup paint-02): Inside the outline and
+Draw each frame (`toggles`), and "Paint layers +": the paint layers of the drawing the pen paints on now (eye,
+thumbnail, name, its blend and opacity in grey when not Normal · 100 %, a lock when locked), top first. With one paint
+layer only the "Paint layers +" line shows; + adds one on top, highlighted (the next stroke goes into it).
 
-Every edit is one operation of the painting kit or the element's own field operation, one change each (paint.set,
-paint.move, paint.remove, <type>.set); an opacity scrub is one gesture. Which layer is highlighted is screen state:
-the pen's strokes and fills go on it (`current`). Absent (empty) when the pen paints on a new drawing.
+Every edit is one operation of the painting kit or the element's own field operation, one change and one undo step
+each (paint.add, paint.set name / mode / opacity / visible / locked, paint.move, paint.remove, <type>.set); an opacity
+scrub is one gesture. Which layer is highlighted is screen state: the pen's strokes and fills go on it (`current`).
+Absent (empty) when the pen paints on a new drawing.
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum2d import paint_fields
-from rostrum2d.drawing import each_frame, frame_at
-from rostrum2d.names import display_name
+from rostrum2d.drawing import canvas_size, each_frame, frame_at
 from rostrum_gui.edits import Drag
 from rostrum_paint.fields import LAYER_MODES
+
+from .paint_thumbs import ThumbProvider
 
 
 class PaintLayers(QObject):
@@ -22,6 +25,7 @@ class PaintLayers(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.b, self._picked, self._drag = bridge, "", None
+        self.thumbs = ThumbProvider()                     # image://paintthumbs (session.py)
         for sig in (bridge.docChanged, bridge.outlineChanged, bridge.toolChanged, bridge.frameChanged):
             sig.connect(self.changed)
         bridge.painter.changed.connect(self._painter_changed)
@@ -49,20 +53,24 @@ class PaintLayers(QObject):
         return self._picked if self._picked in ids else ""
 
     # ---- reads for QML ----------------------------------------------------------------------------------------------
-    @Property(str, notify=changed)
-    def title(self):
-        d = self._item()                            # an element with no paint yet has nothing here: no empty heading
-        return f"Paint on {display_name(d)}" if d and (d["type"] == "drawing" or d.get("frames")) else ""
+    @Property(bool, notify=changed)
+    def canAdd(self):
+        """The "Paint layers +" line: once what the pen paints on holds paint (before that the first stroke makes one)."""
+        return self._frame() is not None
 
     @Property("QVariantList", notify=changed)
     def layers(self):
-        """Top first, as the list shows them: [{id, name, visible, opacity, mode, current}]."""
+        """Top first, as the list shows them: [{id, name, visible, locked, opacity, mode, note, thumb, current}];
+        empty while there is one paint layer (nothing to choose between)."""
         f = self._frame()
-        if not f:
+        if not f or len(f["paints"]) < 2:
             return []
         now = self.current() or next((p["id"] for p in reversed(f["paints"]) if not p.get("locked")), "")
-        return [{"id": p["id"], "name": p["name"], "visible": p["visible"], "opacity": p["opacity"], "mode": p["mode"],
-                 "current": p["id"] == now} for p in reversed(f["paints"])]
+        w, h = canvas_size(self._item())
+        return [{"id": p["id"], "name": p["name"], "visible": p["visible"], "locked": bool(p.get("locked")),
+                 "opacity": p["opacity"], "mode": p["mode"], "note": _note(p), "current": p["id"] == now,
+                 "thumb": "image://paintthumbs/" + self.thumbs.key(f, p, w, h) if w and h else ""}
+                for p in reversed(f["paints"])]
 
     @Property("QVariantList", constant=True)
     def modes(self):
@@ -94,9 +102,25 @@ class PaintLayers(QObject):
         self._picked = paint_id
         self.changed.emit()
 
+    @Slot()
+    def add(self):
+        """+ : a new paint layer on top ("Paint 2", "Paint 3" …), highlighted: the next stroke goes into it."""
+        f = self._frame()
+        if not f:
+            return
+        names, n = {p["name"] for p in f["paints"]}, len(f["paints"]) + 1
+        while f"Paint {n}" in names:
+            n += 1
+        before = {p["id"] for p in f["paints"]}
+        self._apply([{"op": "paint.add", "target": [f["id"]], "args": {"name": f"Paint {n}"}}], "Add paint layer")
+        f = self._frame()
+        self.pick(next((p["id"] for p in f["paints"] if p["id"] not in before), "") if f else "")
+
     @Slot(str, str, "QVariant")
     def setLayer(self, paint_id, name, value):
-        self._apply([{"op": "paint.set", "target": [paint_id], "args": {name: value}}], "Paint layer")
+        label = {"name": "Rename paint layer", "locked": "Lock paint layer" if value else "Unlock paint layer",
+                 "visible": "Show paint layer" if value else "Hide paint layer", "mode": "Paint layer blend"}
+        self._apply([{"op": "paint.set", "target": [paint_id], "args": {name: value}}], label.get(name, "Paint layer"))
 
     @Slot(str)
     def remove(self, paint_id):
@@ -132,3 +156,10 @@ class PaintLayers(QObject):
         got, self._drag = self._drag, None
         if got:
             self.b.guard(lambda: self.b.done(got[1].end(), ""))
+
+
+def _note(p: dict) -> str:
+    """The grey words after a paint layer's name: its blend and opacity, only when not Normal · 100 %."""
+    if p["mode"] == "normal" and p["opacity"] >= 0.995:
+        return ""
+    return f'{p["mode"].capitalize()} · {round(p["opacity"] * 100)} %'
