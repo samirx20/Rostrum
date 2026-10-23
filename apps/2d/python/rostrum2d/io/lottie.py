@@ -33,7 +33,7 @@ NOT_EXPORTED = {"drawing": "frame-by-frame drawings are not exported (Lottie has
 
 def _layers(children: list[dict], ctx: Ctx, assets: list[dict], start_ind: int = 1) -> list[dict]:
     """Our layers (bottom first) → Lottie layers (top first)."""
-    out = []
+    out, ctx.siblings = [], children
     for node in children:
         ctx.layer = node["id"]
         kind = node["type"]

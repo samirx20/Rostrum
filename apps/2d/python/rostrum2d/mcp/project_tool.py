@@ -16,6 +16,7 @@ from rostrum_core import Document, live
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 from rostrum_core.storage import paths
+from rostrum_paint import library
 
 from rostrum2d import KIND
 from .. import lastproject as last
@@ -51,6 +52,7 @@ def open_project(app, folder: str | None, items: list[str]) -> None:
     """Make `folder` / `items` the app's open documents (nothing open when there is no folder)."""
     app.documents = open_documents(folder, items) if folder else {}
     app.folder = str(folder) if folder else None
+    library.use_project(app.folder)
 
 
 def with_no_project_sentence(runtime) -> None:

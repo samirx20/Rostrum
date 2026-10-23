@@ -2,4 +2,4 @@
 
 A small background program all four apps talk to: project items, shared named markers, live links between apps, the content-keyed cache, and one jobs queue for the whole machine (heavy jobs take turns on the one GPU and the 16 GB of memory).
 
-Contract: [`CONTRACT.md`](CONTRACT.md). Built so far, in `rostrum_core`: the item list and renders (`project.py`) and the shared markers (`markers.py`, how-to in [`MARKERS.md`](MARKERS.md)). No background program yet. The service's own language is chosen when it is built (Stage 2); apps reach it through `rostrum_core`.
+Contract: [`CONTRACT.md`](CONTRACT.md). Built so far, in `rostrum_core`: the item list and renders (`project.py`; `add_file` keeps a file such as a brush tip or paper picture as an item, id from its content, copied into `media/`) and the shared markers (`markers.py`, how-to in [`MARKERS.md`](MARKERS.md)). No background program yet. The service's own language is chosen when it is built (Stage 2); apps reach it through `rostrum_core`.

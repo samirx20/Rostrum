@@ -20,7 +20,7 @@ from rostrum_core.mcp import App, Guides, Runtime, build_server
 
 from rostrum2d import run_source
 from . import at, curves, diagnose_tool, draw, export_tool, import_tool, layout_tool, look, motion, project_tool, rig, video
-from . import background_tool, brand_tool, lipsync, sound_cue_tool, soundtrack_tool, swap_tool
+from . import background_tool, brand_tool, lipsync, picture_tool, sound_cue_tool, soundtrack_tool, swap_tool
 from .project_tool import open_documents, start_choice, with_no_project_sentence   # noqa: F401  (open_documents: its old import path)
 
 GUIDES = Path(__file__).resolve().parents[3] / "guides"
@@ -38,7 +38,8 @@ def app_tools():
             .merged_with(draw.tools).merged_with(rig.tools).merged_with(lipsync.tools).merged_with(curves.tools).merged_with(export_tool.tools)
             .merged_with(layout_tool.tools).merged_with(swap_tool.tools).merged_with(import_tool.tools).merged_with(diagnose_tool.tools)
             .merged_with(background_tool.tools).merged_with(project_tool.tools).merged_with(soundtrack_tool.tools)
-            .merged_with(sound_cue_tool.tools).merged_with(brand_tool.tools))
+            .merged_with(sound_cue_tool.tools).merged_with(brand_tool.tools)
+            .merged_with(picture_tool.tools))
 
 
 def make_app(project: str | None = None, items: list[str] | None = None, documents: dict | None = None) -> App:
@@ -52,6 +53,8 @@ def make_runtime(app: App) -> Runtime:
     from rostrum_core import markers
     from rostrum2d import placement
     placement.use(placement.Host(markers=lambda: markers.times(app.folder) if app.folder else None, folder=lambda: app.folder))   # comp-px strokes see the project's markers and renders
+    from rostrum_paint import library
+    library.use_project(app.folder)                  # the project's own tip and paper pictures are brush choices
     runtime = Runtime(app, app_tools())
     with_no_project_sentence(runtime)
     return runtime

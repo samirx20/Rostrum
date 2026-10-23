@@ -7,6 +7,7 @@ Our anchor is a fraction of the box that sits at (x, y); Lottie's `a` is a point
 from __future__ import annotations
 
 from .. import blends, pathdata
+from .lottie_camera import ride_keys
 from .lottie_props import Ctx, build, frozen
 from .lottie_shapes import shape_value
 
@@ -66,14 +67,14 @@ def common(node: dict, ctx: Ctx, ty: int, ind: int, extra_masks: list[dict] = ()
         if pr[key] != 0 or key in node.get("anim", {}):
             ctx.say("2.5D tilt is not in Lottie; the layer is drawn flat")
             break
-    if pr.get("ridePath"):
-        ctx.say(f'riding the path "{pr["ridePath"]}" is not exported; the layer sits at its own X, Y (its offset from the path)')
     for fx in node.get("effects", []):             # a gradient is a fill (lottie_shapes / lottie_text); any other is said
         if fx["type"] != "gradient":
             ctx.say(f'{EFFECT_SAYS.get(fx["type"], fx["type"])} effect is not exported (Lottie players ignore effects)')
     layer = {"ddd": 0, "ind": ind, "ty": ty, "nm": node["id"], "sr": 1, "ks": transform(node, ctx),
              "ao": 0, "ip": round(pr["start"] * ctx.fps, 4), "op": round(min(pr["end"], ctx.duration) * ctx.fps, 4),
              "st": 0, "bm": blends.LOTTIE[pr["blend"]]}
+    if pr.get("ridePath") or "ridePath" in node.get("anim", {}):
+        layer["ks"].update(ride_keys(node, ctx))
     if masks:
         layer["hasMask"] = True
         layer["masksProperties"] = [_mask(m, ctx, i == 0) for i, m in enumerate(masks)]

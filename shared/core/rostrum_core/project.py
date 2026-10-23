@@ -2,7 +2,8 @@
 shared/HANDOFFS.md § 1, § 5). The minimal first piece of the project service: enough for one app to list the
 others' items and pick a finished render (Sound picking a 2D render as its picture).
 
-An item is a document in `docs/` (its kind from the file's extension) or a row in `project.json`'s "items".
+An item is a document in `docs/` (its kind from the file's extension) or a row in `project.json`'s "items" (a file
+the project keeps in `media/`, added by `add_file`: a brush tip picture, a paper …).
 Its renders are the finished version folders `renders/<item>/vNNN/`, each with a `manifest.json`;
 `vNNN.partial/` (in progress or failed) is never listed. Writers use begin_render / finish_render.
 """
@@ -61,7 +62,7 @@ def items(folder, kind: str | None = None) -> list[dict]:
                              "file": f"docs/{f.name}"}
     if (folder / "project.json").is_file():
         for row in _read_json(folder / "project.json", "project").get("items", []):
-            found[row["id"]] = {**found.get(row["id"], {}), **{k: row[k] for k in ("id", "kind", "name", "file")
+            found[row["id"]] = {**found.get(row["id"], {}), **{k: row[k] for k in ("id", "kind", "name", "file", "hash")
                                                               if k in row}}
     out = [{**it, "name": it.get("name") or it["id"], "renders": renders(folder, it["id"])} for it in found.values()]
     return sorted((it for it in out if kind is None or it["kind"] == kind), key=lambda it: it["name"].lower())
@@ -100,6 +101,31 @@ def set_main(folder, kind: str, item_id: str | None):
     marks = {k: v for k, v in data.pop("main", {}).items() if k != kind} | ({kind: item_id} if item_id else {})
     from .storage import write_atomic
     write_atomic(meta, json.dumps(data | ({"main": marks} if marks else {}), indent=1, ensure_ascii=False))
+
+
+def add_file(folder, kind: str, name: str, source) -> dict:
+    """Keep the file `source` in the project as an item of `kind`: copied to `media/<kind>/`, a row in project.json.
+    Its id comes from its content (`<kind>_<hash 12>`), so the same picture added twice is one item, and anything
+    pointing at the id points at exactly that content. Paths in the row are relative: the project can move."""
+    from .cache import file_hash
+    from .storage import write_atomic
+    source = Path(source)
+    if not source.is_file():
+        raise RostrumError(codes.NOT_FOUND, "project", str(source), "is not a file")
+    if not _SAFE_ID.match(kind):
+        raise RostrumError(codes.BAD_ARGUMENT, "project", f'kind "{kind}"', "may use only letters, digits, _ and -")
+    digest = file_hash(source)
+    row = {"id": f"{kind}_{digest[:12]}", "kind": kind, "name": name or source.stem,
+           "file": f"media/{kind}/{digest[:12]}{source.suffix.lower()}", "hash": digest}
+    dest = Path(folder) / row["file"]
+    if not dest.is_file():
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, dest)
+    meta = Path(folder) / "project.json"
+    data = _read_json(meta, "project") if meta.is_file() else {}
+    data["items"] = [r for r in data.get("items", []) if r.get("id") != row["id"]] + [row]
+    write_atomic(meta, json.dumps(data, indent=1, ensure_ascii=False))
+    return row
 
 
 def latest_render(folder, item_id: str, kind: str | None = None) -> dict | None:

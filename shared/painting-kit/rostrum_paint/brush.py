@@ -24,8 +24,7 @@ def check(brush, params):
         raise ValueError(f"brush must be one of {TIPS}, got {brush!r}")
     if params.get("mode", "normal") not in MODES:
         raise ValueError(f"mode must be one of {MODES}, got {params['mode']!r}")
-    if params.get("texture", "none") not in pictures.TEXTURES:
-        raise ValueError(f"texture must be one of {pictures.TEXTURES}, got {params['texture']!r}")
+    pictures.tip(params.get("texture", "none"))     # an unknown or missing picture fails here, naming itself
 
 
 def stamp_stroke(layer, points, color, size, brush="round", *, mask=None, under=None, paper=None, lay=None, **params):
