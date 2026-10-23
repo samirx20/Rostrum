@@ -10,7 +10,6 @@
 #include <pxr/usd/sdf/primSpec.h>
 #include <pxr/usd/usd/references.h>
 #include <pxr/usd/usdGeom/mesh.h>
-#include <pxr/usd/usdGeom/primvarsAPI.h>
 #include <pxr/usd/usdGeom/subset.h>
 #include <pxr/usd/usdGeom/xform.h>
 #include <pxr/usd/usdShade/material.h>
@@ -20,7 +19,7 @@
 #include "extrude.h"
 #include "item_track.h"
 #include "materials.h"
-#include "primitives.h"
+#include "mesh_build.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
@@ -50,8 +49,6 @@ void author_transform(Item& it, const UsdPrim& prim) {
   });
 }
 
-namespace {
-
 void bind_material(Item& it, const UsdPrim& prim, const std::string& mat, const std::string& where, const TfToken& strength) {
   if (mat.empty()) return;
   const auto& ids = it.ctx.materials;
@@ -64,49 +61,7 @@ void bind_material(Item& it, const UsdPrim& prim, const std::string& mat, const 
     fail(where, "could not bind material \"" + mat + "\" to " + prim.GetPath().GetString(), "a material of this scene");
 }
 
-// `groups` gets the faces of each part (front, bevel, side, back) for an outline; other shapes leave it empty.
-MeshData shape(Reader& p, FaceGroups& groups) {
-  const std::string s = p.one_of("shape", {"box", "sphere", "cylinder", "plane", "disc", "torus", "outline"});
-  const bool smooth = p.flag("smooth");
-  auto size = [&](const char* key) { return float(p.num_min(key, 0.0, false)); };
-  auto bevel = [&](float most) {
-    const float b = float(p.num_min("bevel", 0.0, true));
-    if (b > most) fail(p.at("bevel"), std::to_string(b) + " is too big for the shape", "0 .. " + std::to_string(most));
-    return b;
-  };
-  if (s == "box") {
-    const float w = size("width"), h = size("height"), d = size("depth");
-    const float b = bevel(std::min({w, h, d}) / 2);
-    return make_box(w, h, d, b, p.count("segments", 1, 256), smooth);
-  }
-  if (s == "cylinder") {
-    const float r = size("radius"), h = size("height");
-    const float b = bevel(std::min(r, h / 2));
-    return make_cylinder(r, h, b, p.count("segments", 3, 1024), smooth);
-  }
-  if (s == "sphere") {
-    const float r = size("radius");
-    return make_sphere(r, p.count("segments", 3, 1024), smooth);
-  }
-  if (s == "torus") {
-    const float r = size("radius"), tube = size("tube");
-    return make_torus(r, tube, p.count("segments", 3, 1024), smooth);
-  }
-  if (s == "disc") {
-    const float r = size("radius");
-    return make_disc(r, p.count("segments", 3, 1024));
-  }
-  if (s == "outline") {
-    const float d = float(p.num_min("depth", 0.0, true));
-    const float b = bevel(d / 2);
-    const std::vector<OutlineShape> shapes = read_outline(p.list("outline"), p.at("outline"));
-    Extruded e = make_extrusion(shapes, d, b, p.count("segments", 1, 1024), smooth, p.where());
-    groups = std::move(e.groups);
-    return std::move(e.mesh);
-  }
-  const float w = size("width"), d = size("depth");
-  return make_plane(w, d);
-}
+namespace {
 
 // An outline's parts as a "materialBind" partition of GeomSubsets (Storm and Cycles' Hydra plug-in both
 // read them), each bound to its material: "" = the mesh's material, and for the bevel the front's.
@@ -136,17 +91,7 @@ void build_mesh(Item& it, const SdfPath& path) {
   author_transform(it, m.GetPrim());
   FaceGroups groups;
   const MeshData d = shape(it.props, groups);
-  m.CreatePointsAttr().Set(d.points);
-  m.CreateNormalsAttr().Set(d.normals);
-  m.SetNormalsInterpolation(UsdGeomTokens->vertex);  // Cycles ignores face-varying normals
-  m.CreateFaceVertexCountsAttr().Set(d.counts);
-  m.CreateFaceVertexIndicesAttr().Set(d.indices);
-  m.CreateSubdivisionSchemeAttr().Set(UsdGeomTokens->none);
-  UsdGeomPrimvarsAPI(m.GetPrim())
-      .CreatePrimvar(TfToken("st"), SdfValueTypeNames->TexCoord2fArray, UsdGeomTokens->faceVarying)
-      .Set(d.st);
-  VtVec3fArray extent;
-  if (UsdGeomPointBased::ComputeExtent(d.points, &extent)) m.CreateExtentAttr().Set(extent);
+  write_mesh(m, d);
   const std::string mat = it.props.str("material");
   bind_material(it, m.GetPrim(), mat, it.props.at("material"), UsdShadeTokens->fallbackStrength);
   if (!groups[kFront].empty()) bind_parts(it, m, groups, mat);
@@ -216,7 +161,7 @@ void build_item(ItemsContext& ctx, const JsValue& value, const SdfPath& parent, 
   if (!ctx.ids.insert(id).second) fail(where + ".id", "\"" + id + "\" is used twice", "ids unique in the scene");
   Reader r(value.GetJsObject(), id);
   r.str("id");
-  const std::string type = r.one_of("type", {"group", "mesh", "import", "light", "camera"});
+  const std::string type = r.one_of("type", {"group", "mesh", "combine", "import", "light", "camera"});
   const SdfPath path = parent.AppendChild(TfToken(id));
   if (ctx.stage->GetPrimAtPath(path))
     fail(r.at("id"), "\"" + id + "\" is the name of a prim inside the imported file", "an id the file doesn't use");
@@ -224,15 +169,14 @@ void build_item(ItemsContext& ctx, const JsValue& value, const SdfPath& parent, 
   ++ctx.items;
   if (type == "group") author_transform(it, UsdGeomXform::Define(ctx.stage, path).GetPrim());
   if (type == "mesh") build_mesh(it, path);
+  if (type == "combine") build_combine(it, r.list("children"), path);
   if (type == "import") build_import(it, path);
   if (type == "light") build_light(it, path);
   if (type == "camera") build_camera(it, path);
   if ((type == "group" || type == "import") && r.has("children"))
     build_items(ctx, r.list("children"), path, id + ".children");
   // shape / kind fields the chosen shape or kind doesn't use (the compiler sends every field)
-  if (type == "mesh")
-    it.props.known({"width", "height", "depth", "radius", "tube", "bevel", "segments", "outline", "frontMaterial",
-                    "bevelMaterial", "sideMaterial", "backMaterial"});
+  if (type == "mesh") mesh_known(it.props);
   if (type == "light") it.props.known({"width", "height", "length", "radius", "angle", "texture"});
   it.finish();
   r.finish();
