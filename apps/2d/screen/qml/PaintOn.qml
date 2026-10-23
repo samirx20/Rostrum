@@ -52,11 +52,12 @@ Column {
                             onClicked: po.pl.setLayer(lr.modelData.id, "visible", !lr.modelData.visible) }
                 HoverTip { hovered: eyeArea.containsMouse; text: lr.modelData.visible ? "Hide" : "Show" }
             }
-            Rectangle {     // the thumbnail: the layer's own paint on a light card
+            Item {          // the thumbnail: the layer's own paint on a mid-grey checker, so ink of any colour reads
                 id: thumb
                 anchors.left: eye.right; anchors.leftMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter
-                width: Theme.field - 2; height: width; radius: 3; color: "#ededed"; clip: true
+                width: Theme.field - 2; height: width
                 opacity: lr.modelData.visible ? 1 : 0.4
+                Checker { anchors.fill: parent; radius: 3; cell: 4; light: "#7a7a7a"; dark: "#5a5a5a" }
                 Image { anchors.fill: parent; source: lr.modelData.thumb; fillMode: Image.PreserveAspectFit
                         smooth: true; cache: false }
             }

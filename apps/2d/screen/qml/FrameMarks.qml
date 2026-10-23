@@ -7,6 +7,8 @@ import RostrumKit
 // (after) line under their cell. Sits in a track whose x is the ruler's x - 8, like the key diamonds.
 // Click a cell: the playhead goes to it (it is the drawing painted into). Drag it: it moves to another frame (Alt: a
 // copy goes there). Drag its right edge (a cell wide enough to grab it): it is held longer or shorter. Right-click: Delete. Each is one change (painter).
+// The layer's key diamonds lie over the cells (barless, LayerTrack.qml): every click area here steps around them (`free`),
+// and one with under 16 px left has none (zoom in), so a cell and a key never take the same click at any zoom.
 Item {
     id: m
     property var frames: []
@@ -17,6 +19,19 @@ Item {
     readonly property bool onion: painter.onionOn && painter.drawingId === owner
     function framesOf(dx) { return Math.round(dx / m.timeRuler.perSec * m.fps) }
     property bool drawing: false          // a drawing layer's row (its frames may be none yet)
+    property var keys: []                 // the row's keys ({t}): each diamond's 16 px, centred on its time
+    function keyX(k) { return 8 + Math.round(m.timeRuler.xOf(k.t)) }
+    // The widest stretch of [x0, x1] no diamond covers, as [a, b]; null when under 16 px is left.
+    function free(x0, x1) {
+        let best = null, a = x0
+        const cuts = m.keys.map(k => m.keyX(k)).filter(c => c + 8 > x0 && c - 8 < x1).sort((p, q) => p - q)
+        for (const c of [...cuts, x1 + 8]) {
+            const b = Math.min(x1, c - 8)
+            if (b - a >= 16 && (!best || b - a > best[1] - best[0])) best = [a, b]
+            a = Math.max(a, c + 8)
+        }
+        return best
+    }
     // The empty frames before the first drawing (or all of them, with none): a faint "+" on each, or (frames under
     // 16 px wide) one "+" over the whole empty stretch; a click there is a new drawing on the frame under the pointer
     // (painter.newFrame on an empty frame puts it at the playhead).
@@ -31,7 +46,7 @@ Item {
             objectName: "emptyFrame" + index
             x: 8 + Math.round(m.timeRuler.xOf(index / m.fps)); height: m.height
             width: m.wide ? Math.floor(m.step) : Math.max(16, Math.round(m.timeRuler.xOf(m.empty / m.fps) - m.timeRuler.xOf(0)) - 1)
-            visible: x + width > 0 && x < m.width
+            visible: x + width > 0 && x < m.width && m.free(x, x + width) !== null
             horizontalAlignment: m.wide ? Text.AlignHCenter : Text.AlignLeft; leftPadding: m.wide ? 0 : 4
             verticalAlignment: Text.AlignVCenter
             text: "+"; color: Theme.fg3; opacity: plus.containsMouse ? 0.9 : 0.35
@@ -52,8 +67,12 @@ Item {
                 : modelData.n < m.cur && m.cur - modelData.n <= painter.onionReach.before ? -1
                 : modelData.n > m.cur && modelData.n - m.cur <= painter.onionReach.after ? 1 : 0
             readonly property bool last: modelData.n === m.frames.length
-            x: 8 + Math.round(m.timeRuler.xOf(modelData.t0)) + (area.moving ? area.dx : 0)
-            width: Math.max(3, Math.round(m.timeRuler.xOf(modelData.t1) - m.timeRuler.xOf(modelData.t0)) - 1 + edge.dx)
+            readonly property real x0: 8 + Math.round(m.timeRuler.xOf(modelData.t0))      // where it lies, not dragged
+            readonly property real w0: Math.max(3, Math.round(m.timeRuler.xOf(modelData.t1) - m.timeRuler.xOf(modelData.t0)) - 1)
+            readonly property bool grip: !last && w0 >= 32 && m.free(x0 + w0 - 16, x0 + w0) !== null
+            readonly property var span: m.free(x0, x0 + Math.max(16, w0 - (grip ? 16 : 0)))   // its click area, clear of keys
+            x: x0 + (area.moving ? area.dx : 0)
+            width: w0 + edge.dx
             height: m.height
             z: area.moving || edge.pressed ? 2 : 0
             Rectangle {     // the cell: the bar's height and roundness, centred
@@ -79,7 +98,7 @@ Item {
             MouseArea {     // click: go to it; drag: move (Alt: copy)
                 id: area
                 y: cell.y; height: cell.height        // never under 16 px wide: a narrow cell's area reaches under the next one
-                width: Math.max(16, cell.width - (edge.visible ? 16 : 0))
+                visible: f.span !== null; x: f.span ? f.span[0] - f.x0 : 0; width: f.span ? f.span[1] - f.span[0] : 0
                 acceptedButtons: Qt.LeftButton | Qt.RightButton; preventStealing: true
                 cursorShape: moving ? Qt.ClosedHandCursor : Qt.PointingHandCursor
                 property real x0: 0
@@ -106,7 +125,7 @@ Item {
             }
             MouseArea {     // the right edge: hold longer or shorter, in whole frames (later drawings move with it)
                 id: edge
-                visible: !f.last && f.width >= 32       // narrower: = / − or zoom in (a handle must be 16 px to grab)
+                visible: f.grip       // narrower (or a key on it): = / − or zoom in (a handle must be 16 px to grab)
                 x: parent.width - 16; width: 16; y: cell.y     // inside its own cell: never over the next one's; height: cell.height; z: 1
                 cursorShape: Qt.SizeHorCursor; preventStealing: true
                 property real x0: 0
