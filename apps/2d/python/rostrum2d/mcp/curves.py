@@ -1,4 +1,5 @@
-"""inspect_curve: a number field's value curve over time, with its keys and Bézier handles (no rendering)."""
+"""inspect_curve: a number field's value curve over time, with its keys and Bézier handles (no rendering); inspect_animations
+(anim.list): a layer's animations, stretches and lines."""
 from __future__ import annotations
 
 from rostrum_core.errors import RostrumError
@@ -7,6 +8,7 @@ from rostrum_core.mcp import Reply, Tools
 from rostrum_core import markers
 from rostrum_core.keys import animated
 from .. import retime
+from ..anims import animations
 from ..ops_keys import curve_of
 from .pick import ITEM_COMP
 
@@ -38,3 +40,21 @@ def inspect_curve(ctx, args):
     words = [f'{k["t"]:g} s{" (" + k["marker"] + ")" if "marker" in k else ""} = {k["v"]:g} ({k["ease"]}{" " + str(list(k["handles"].values())) if k["handles"] else ""})' for k in ks]
     return Reply(f'{args["owner"]}.{args["prop"]}: {len(ks)} keys, values {lo:g} to {hi:g}: ' + "; ".join(words) + ".",
                  {"owner": args["owner"], "prop": args["prop"], "range": [lo, hi], **curve})
+
+
+@tools.tool("inspect_animations", {"required": ["owner"], "properties": {
+    "item": ITEM_COMP["item"],
+    "owner": {"type": "string", "description": "The id of the layer (or effect, mask) whose animations to list."}}})
+def inspect_animations(ctx, args):
+    """anim.list: a layer's animations, as the timeline shows them (anims.py, the one source). Per setting (X and Y of
+    Position are one): its keys, its stretches (neighbouring key pairs: ids = the keys a stretch starts at, start,
+    length, ease, preset, from / to values) and its line (animations overlapping in time go on separate lines, packed
+    first-free; the others share line 0). Times are the owner's own seconds. Ease stretches with the anim.ease
+    operation (one change); move or stretch them with key.set / key.scale."""
+    doc = ctx.document(args.get("item"))
+    owner = doc.item(args["owner"])
+    times = markers.times(doc.folder) if doc.folder else None
+    anims = animations(owner, times, retime.offset_of(doc.data, owner["id"], times))
+    words = [f'{a["label"]} {a["start"]:g}–{a["end"]:g} s (line {a["line"] + 1}, {len(a["stretches"])} stretches)' for a in anims]
+    return Reply(f'{args["owner"]}: {len(anims)} animations' + (": " + "; ".join(words) if words else "") + ".",
+                 {"owner": args["owner"], "animations": anims})

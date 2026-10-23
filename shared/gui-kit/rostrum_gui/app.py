@@ -50,6 +50,8 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     ctx.setContextProperty("sharedKeys", KeyMap("Rostrum").entries())
     from rostrum_gui.guides import GuidePages        # Help → a guide, read by the kit's guide viewer
     ctx.setContextProperty("guidePages", GuidePages(engine))
+    from rostrum_gui.panel_sizes import PanelSizes   # the panel sizes a person dragged (AppShell's frame layout)
+    ctx.setContextProperty("panelSizes", PanelSizes(app_id(main_qml), engine))
     for k, v in context.items():
         ctx.setContextProperty(k, v)
     engine.load(QUrl.fromLocalFile(str(main_qml)))

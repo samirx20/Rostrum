@@ -8,6 +8,9 @@ What counts as a fault (AGENTS.md › Rules: every look pass runs it, at several
             control wholly inside a much bigger one — a button on the canvas, a row's own button — is not a fault)
   cut       text cut off: elided with no hover to show the whole line, wider than its box, or cut by a clipping panel
   outside   a control partly outside the window, or sticking out of the panel it sits on
+  grid      a settings row's field or key diamond off the panel's columns (SPEC 8.0, Theme.qml fieldFor / labelColumnFor):
+            every field starts at its row's field column and is a whole field or a pair half wide, every diamond sits in
+            the gutter at the row's right, and every row of one list has its field at the same x
   small     something clickable smaller than MIN_CLICK in either direction
   stray     text that shows as a mark, not words: a sliver of a half-scrolled line, or text elided to "…" or one character
             (see stray())
@@ -240,7 +243,36 @@ def check(win, ignore=()) -> list[Fault]:
             say("outside", a, f"sticks out of its panel {tail(panel.path, 2)}", a.seen)
         if clickable(a) and min(a.rect.width(), a.rect.height()) < MIN_CLICK:
             say("small", a, f"clickable area {a.rect.width():.0f}x{a.rect.height():.0f} px (under {MIN_CLICK} px)", a.rect)
+    grid(nodes, say)
     return found
+
+
+def grid(nodes: list[Node], say) -> None:
+    """Settings rows (InspectorRow: objectName "row:<id>", fields "grid:field", key marks "grid:key") sit on the grid."""
+    left: dict[str, tuple[float, Node]] = {}          # the list's first field's window x, to compare the rest with
+    for n in nodes:
+        name = n.item.objectName()
+        if name not in ("grid:field", "grid:key"):
+            continue
+        row = n.parent
+        while row is not None and not row.item.objectName().startswith("row:"):
+            row = row.parent
+        if row is None or row.item.property("labelColumn") is None:
+            continue
+        x, w, rw = n.rect.x() - row.rect.x(), n.rect.width(), row.rect.width()
+        lc, gut = row.item.property("labelColumn"), row.item.property("gutter")
+        if name == "grid:key":
+            if abs(x + w / 2 - (rw - gut / 2)) > SLACK:
+                say("grid", n, f"key mark centred at {x + w / 2:.0f}, not in the gutter (centre {rw - gut / 2:.0f})")
+            continue
+        field = rw - gut - lc
+        half = (field - 4) / 2
+        ok = (abs(x - lc) <= SLACK and (abs(w - field) <= SLACK or abs(w - half) <= SLACK))             or (abs(x - (lc + half + 4)) <= SLACK and abs(w - half) <= SLACK)
+        if not ok:
+            say("grid", n, f"field at {x:.0f} ({w:.0f} wide), the columns are {lc:.0f} ({field:.0f} wide, pair halves {half:.0f})")
+        first = left.setdefault(row.parent.path if row.parent else "", (n.rect.x(), n))
+        if abs(first[0] - n.rect.x()) > SLACK and not abs(x - (lc + half + 4)) <= SLACK:
+            say("grid", n, f"field starts at window x {n.rect.x():.0f}, the list's other fields at {first[0]:.0f}")
 
 
 def ancestors(n: Node):

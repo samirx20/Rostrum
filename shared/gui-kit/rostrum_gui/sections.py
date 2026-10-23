@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from itertools import takewhile
 
+from .pairs import pair_up
 from .rows import RANK, _grouped, _param_row
 
 
@@ -35,12 +36,13 @@ def layout(op, kind: str = "") -> list[dict]:
         members = sorted((p for p in rest if p.group == g), key=lambda p: RANK[p.importance])    # stable
         rows.append({"row": "fold", "id": "fold:" + g, "label": g, "fold": g, "members": [p.name for p in members]})
         rows += [{**_param_row(p), "in": g} for p in members]
-    return rows
+    return pair_up(rows)
 
 
 def search_layout(op, kind: str = "") -> list[dict]:
     """Every param under its group's heading, for a search (what shows is decided by `rows.matches`)."""
     if op is None:
         return []
-    return [{**r, "in": ""} if r["row"] == "param" else r for r in _grouped([p for p in op.params if p.type != "id"], kind)]
+    return pair_up([{**r, "in": ""} if r["row"] == "param" else r
+                    for r in _grouped([p for p in op.params if p.type != "id"], kind)])
 

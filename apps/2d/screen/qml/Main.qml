@@ -16,18 +16,17 @@ AppShell {
     left: [ LibraryDrawer { anchors.fill: parent; visible: backend.library.open } ]
     areaNames: ({ centre: "canvas", right: "settings", bottom: "timeline" })   // inspect_screen's words for the focused area
     saveWord: backend.isLive ? "Saved" : ""      // a project is live: every change is already on disk
-    // The timeline's height is the person's choice (⊟ compact, or its edge dragged), never changed by a tool.
-    // {compact, asked}: asked = the height its edge was dragged to (-1: the default for this window). Screen state,
-    // never the document.
-    property var timelineNow: ({ compact: false, asked: -1 })
-    function setTimeline(compact, asked) {
-        timelineNow = { compact: compact, asked: asked === undefined || asked === null ? timelineNow.asked : asked }
-    }
-    // the start screen is not the workspace: no timeline under it (a guide opened from it takes the full height)
-    bottomHeight: startScreen.visible ? -Theme.gap : timelineNow.compact ? timeline.compactHeight
-                : Math.round(Math.max(150, Math.min(height * 0.6, timelineNow.asked >= 0 ? timelineNow.asked
-                                                                  : Math.min(timeline.wantedHeight, Math.max(220, Math.min(380, height * 0.32))))))
-    Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
+    // The frame drives the layout (the kit's FrameLayout.js, SPEC 2d-design-v2 §1.2): the settings panel's width and
+    // the timeline's size and place (below the frame, or beside it for tall and square scenes) follow the scene's
+    // aspect and the window; a panel edge dragged by hand wins (remembered in the person's settings). The canvas fits
+    // the frame again only when that layout changes (Stage.qml), never when a panel's contents change.
+    // ⊟ folds the timeline to its header (screen state, never the document).
+    property bool timelineFolded: false
+    frameAspect: startScreen.visible ? 0 : (backend.frameInfo.width || 16) / (backend.frameInfo.height || 9)
+    frameChrome: Qt.size(rail.width + Theme.gap + 2 * Theme.pad, 2 * Theme.pad)   // the rail, then the stage's padding round the well
+    timelineLeast: 7 * Theme.row + Theme.gap      // the header row, then 6 rows of 28 px (204: §1.2), never the content
+    frameFolded: timelineFolded && !bottomBeside ? timeline.compactHeight : -1
+    bottomHeight: -Theme.gap            // the start screen is not the workspace: no timeline under it
 
     // the tools: V move, P pen, B draw, Esc back to move (screen state, backend.setTool)
     Shortcut { sequence: "V"; enabled: !shell.typing; onActivated: backend.setTool("move") }
@@ -116,7 +115,10 @@ AppShell {
     exporter: backend.exporter
     exportSettings: ExportSettings { }
     problems: backend.problems
+    onLayoutChanged: stage.fitAll()     // the window's layout changed: fit the frame once (never otherwise)
     actions: [
+        ViewControls { id: viewControls; view: stage.view; typing: shell.typing; onFitSelection: stage.fitSelection()
+                       Component.onCompleted: stage.viewControls = viewControls },   // "Fit · 57 % ▾", off the canvas
         Button { text: "Export"; kind: "primary"; down: backend.exporter.open; onClicked: shell.setExportOpen(!backend.exporter.open) }
     ]
     // the start screen (kit): at launch with nothing to reopen, or ≡ › Start screen…; over everything while shown
@@ -143,19 +145,20 @@ AppShell {
     menu: FilesMenu { id: fileMenu }    // ≡: New, Open, Open recent, Duplicate, Save a version … (kit; saving is automatic)
     right: [
         Inspector { id: settingsMove; anchors.fill: parent; bridge: backend; keyMarks: true; effects: true
-                    visible: backend.tool !== "draw" && !(backend.create.typing && backend.selected === "")   // a new text: no layer to show yet
+                    visible: backend.tool !== "draw" && !backend.stretch.shown && !(backend.create.typing && backend.selected === "")   // a new text: no layer to show yet
                     highlight: backend.keys.props         // the settings whose keys are picked (key_select.py)
                     above: RigPoses { }                   // a rig in hand: its pose library first (rig_poses.py)
                     sheets: [LipSyncSheet { }, BlinkSheet { }] },   // Lip sync… / Add blinks… in the panel's place
         Inspector { id: settingsDraw; anchors.fill: parent; bridge: painter; visible: backend.tool === "draw"
-                    below: PaintOn { } }      // under the brush: the paint layers and switches of what it paints on
+                    below: PaintOn { } },     // under the brush: the paint layers and switches of what it paints on
+        AnimPanel { anchors.fill: parent }    // a stretch picked in the timeline: its animation, over the layer's settings (stretch_select.py)
     ]
     bottom: LayerTimeline {
         id: timeline
         visible: !startScreen.visible
         anchors.fill: parent
-        compact: shell.timelineNow.compact
-        onResized: (h) => shell.setTimeline(false, h)   // its top edge, dragged (clamped above): every row again
-        onCompactAsked: (on) => shell.setTimeline(on, null)
+        compact: shell.timelineFolded && !shell.bottomBeside
+        onResized: (h) => { shell.timelineFolded = false; shell.setAsked("bottom", h) }   // its top edge, dragged: the person's height
+        onCompactAsked: (on) => shell.timelineFolded = on
     }
 }

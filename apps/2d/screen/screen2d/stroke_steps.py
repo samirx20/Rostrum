@@ -107,6 +107,15 @@ def _click_item(win, o):
     QTest.qWait(400)
 
 
+def _named(item, name):
+    """The first shown item called `name` in the drawn tree (childItems), or None."""
+    if not item.isVisible():
+        return None
+    if item.objectName() == name:
+        return item
+    return next((hit for c in item.childItems() if (hit := _named(c, name)) is not None), None)
+
+
 def do_stroke_step(bridge, win, word, rest, step):
     pick, sel = bridge.colourPick, bridge.strokeSelect
     if word == "shot":
@@ -164,7 +173,7 @@ def do_stroke_step(bridge, win, word, rest, step):
             raise RuntimeError(f"step {step!r}: nothing visible is called {' '.join(rest)!r}; near it: {_texts(win, rest[0])}")
         _click_item(win, hits[0])
     elif word == "clickname":                      # clickname <objectName>: a control that has no words (the Effects row's +)
-        found = win.findChild(QObject, rest[0])
+        found = win.findChild(QObject, rest[0]) or _named(win.contentItem(), rest[0])   # a Repeater's items: only in the drawn tree
         if found is None:
             raise RuntimeError(f"step {step!r}: nothing on screen is named {rest[0]!r}")
         _click_item(win, found)

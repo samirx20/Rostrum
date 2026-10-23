@@ -59,6 +59,7 @@ def sweep(app, win, out, name, ready, ignore=(), sizes=SIZES):
     """Resize `win` to each size, wait until `ready()` and the layout settles, check, mark; then exit the app
     (code 0: no fault, 5: faults). Results are added to <out>/faults.json under `name`."""
     from PySide6.QtCore import QTimer
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # a fault names on-screen words (⇄, →) on any console
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     found: dict[str, list[str]] = {}

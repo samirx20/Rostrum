@@ -78,8 +78,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("rows-open", ["--sample"], ["select title", "open title"]),
         ("two-selected", ["--sample"], ["selectmany title card"]),
         ("action-menu", ["--sample"], ["selectmany dot rule", "actionmenu"]),
-        ("context-bar-one", ["--sample"], ["select title"]),
-        ("context-bar-two", ["--sample"], ["selectmany title card"]),
+        # H47: the frame drives the layout (SPEC 2d-design-v2 §1.2): tall and square scenes put the timeline beside it
+        *[(f"scene-{w}x{h}", ["--sample"], ["select screen_sample", f"set width {w}", f"set height {h}", "select title"])
+          for w, h in ((1080, 1920), (1080, 1080), (1080, 1350))],
+        ("animation-picked", ["--sample"], ["select title", "clickname stretch:title.opacity.k200"]),   # §9.3: the animation view
         ("right-click", ["--sample"], ["selectmany title card", "canvasmenu"]),
         ("ctrl-k", ["--sample"], ["selectmany title card", "commands"]),
         ("find-setting", ["--sample"], ["select title", "find marker"]),

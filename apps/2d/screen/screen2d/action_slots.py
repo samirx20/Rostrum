@@ -127,6 +127,8 @@ class ActionSlots(SlotMixin):
         in the timeline take Delete first (key_select.py)."""
         if how in ("delete", "layer:delete") and self._keys.count:
             return self._keys.remove()
+        if how in ("delete", "layer:delete") and self._stretch.shown:     # a picked stretch: its animation (stretch_select.py)
+            return self._stretch.remove()
         entry, why = LIST.on_key(self._facts(), how)
         if entry is None:
             if why:
@@ -151,10 +153,11 @@ class ActionSlots(SlotMixin):
     def stepBack(self, state):
         """Esc: the one step the kit's ladder takes now (selection_rules.esc_step). "cancel" and "close" are the
         screen's own (it closes its panel or menu); "clear" clears the selection here."""
-        step = esc_step({**state, "inner": bool(self._keys.count), "selected": bool(self.selected_layers())})
+        step = esc_step({**state, "inner": bool(self._keys.count or self._stretch.shown), "selected": bool(self.selected_layers())})
         if step == "clear_inner":                   # keys picked in the timeline go first, the layer stays picked
             layer = self.selected_layers()
             self._keys.clear()
+            self._stretch.clear()                   # a picked stretch goes back to its layer the same way
             self.selectMany(layer)
         elif step == "clear":
             self.clearSelection()

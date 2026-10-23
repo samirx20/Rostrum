@@ -105,7 +105,7 @@ ListView {
         id: row
         required property var modelData
         width: ListView.view.width
-        readonly property real own: modelData.row === "layer" ? Theme.row : Theme.rowDense - 2
+        readonly property real own: modelData.row === "layer" || modelData.line ? Theme.row : Theme.rowDense - 2   // a layer's second line: as tall
         readonly property var sound: modelData.row === "layer" ? backend.soundtrack.videos.rows[modelData.id] : undefined
         height: own + (sound ? Theme.rowDense - 2 : 0)     // a video with sound: its sound's row under it (VideoSoundRow)
         opacity: list.dragId === modelData.id ? 0.45 : 1

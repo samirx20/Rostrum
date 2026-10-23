@@ -28,6 +28,7 @@ from .rig_view import RigView
 from .snapper import Snapper
 from .stagger import Stagger
 from .stroke_select import StrokeSelect
+from .stretch_select import StretchSelect
 from .time_snap import TimeSnap
 from .depth_typed import DepthTyped
 from .ease_play import EasePlay
@@ -39,6 +40,7 @@ class ToolSlots(SlotMixin):
         self._multi = Multi(self)                           # several layers selected (multi.py): backend.multi
         self._keys = KeySelect(self)                        # keys picked in the timeline (key_select.py): backend.keys
         self._keys.changed.connect(self._curves.changed)    # the curve editor shows the picked key's handles
+        self._stretch = StretchSelect(self)                 # the stretch picked in the timeline (stretch_select.py): backend.stretch
         self._key_bar = KeyBar(self)                        # the timeline header's key bar (key_bar.py): backend.keyBar
         self._stagger = Stagger(self)                       # Stagger…'s popover (stagger.py): backend.stagger
         self._depth_typed = DepthTyped(self)                # Set depth ▾ › Other depth…'s popover (depth_typed.py): backend.depthTyped
@@ -84,6 +86,11 @@ class ToolSlots(SlotMixin):
     def keys(self):
         """The keys picked in the timeline: Ctrl+click adds, Shift+click a run (key_select.py)."""
         return self._keys
+
+    @Property(QObject, constant=True)
+    def stretch(self):
+        """The stretch picked in the timeline and its animation in the settings panel (stretch_select.py)."""
+        return self._stretch
 
     @Property(QObject, constant=True)
     def keyBar(self):

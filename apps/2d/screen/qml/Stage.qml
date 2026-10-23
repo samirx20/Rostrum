@@ -42,12 +42,16 @@ Rectangle {
     function zoomPercent(p) { view.show(p / 100) }
     function centreOn(x, y) { view.centreOn(x, y) }
     function panBy(dx, dy) { view.panBy(dx, dy) }
-    function openViewMenu() { controls.openMenu() }
+    property Item viewControls: null                // the "Fit · 57 % ▾" chip, in the top bar (Main.qml)
+    function openViewMenu() { viewControls.openMenu() }
+    readonly property alias view: view
     function fitSelection() {                       // F: the selection; nothing selected: everything
         const e = backend.selectionExtent()
         if (e.x0 === undefined) view.fitAll(); else view.fitBox(e.x0, e.y0, e.x1, e.y1)
     }
     onCompScaleChanged: backend.setView(compScale, Screen.devicePixelRatio)
+    readonly property string sceneSize: info.width + "x" + info.height     // a string: a new frameInfo object alone is no change
+    onSceneSizeChanged: Qt.callLater(view.fitAll)   // a new scene size: the old view no longer makes sense
     Component.onCompleted: { backend.setView(compScale, Screen.devicePixelRatio); settle.restart() }
     // Past Full the visible part is drawn again at the size shown (backend.sharp: screen2d/sharp.py), once the view settles.
     readonly property var visibleKey: [view.zoom, view.ox, view.oy, well.width, well.height]
@@ -65,7 +69,7 @@ Rectangle {
         clip: true
         readonly property bool drawing: backend.tool === "draw"
         CanvasView { id: view; wellW: well.width; wellH: well.height; compW: panel.info.width || 1; compH: panel.info.height || 1
-                     top: bar.height + 2 * Theme.gap }
+}
 
         Item {
             id: frame
@@ -273,12 +277,6 @@ Rectangle {
             onTapped: (ev) => panel.openMenu(ev.position.x, ev.position.y)
         }
         ViewTools { anchors.fill: parent; view: view }   // H: drag moves the view; Z: click zooms in, Alt+click out
-        ViewControls {
-            id: controls
-            anchors { right: parent.right; bottom: parent.bottom; margins: Theme.gap }
-            view: view; typing: panel.typing
-            onFitSelection: panel.fitSelection()
-        }
         ContextBar {   // select, then act: the kit's bar at the top-centre (backend.actions);
                        // with Pen, Paint or typing on, that tool's options instead (ToolOptions.qml)
             id: bar
@@ -289,7 +287,9 @@ Rectangle {
             anchors.topMargin: Math.max(Theme.gap, frame.y - bar.height - Theme.gap)
             maxWidth: well.width - 2 * Theme.gap
             toolOptions: panel.toolMode !== "" ? optionsComponent : null
-            dragging: canvas.pressed || backend.playing || (backend.tool !== "move" && panel.toolMode === "")
+            // only a tool's options float here: the selection's actions are on right-click and Ctrl+K (SPEC 2d-design-v2
+            // §1: nothing sits on the frame)
+            dragging: canvas.pressed || backend.playing || panel.toolMode === ""
         }
         Component { id: optionsComponent; ToolOptions { mode: panel.toolMode; room: well.width - 2 * Theme.gap } }
     }

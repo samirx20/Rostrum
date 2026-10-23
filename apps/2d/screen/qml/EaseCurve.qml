@@ -4,11 +4,13 @@ import RostrumKit
 // The key bar's small curve (UX_SPEC 3.18): the first picked key's ease drawn from 0 to 1 (backend.keyBar.curve, the one
 // evaluation), and, where the ease is a cubic, its two handles to drag (like a CSS cubic curve). A whole drag is one
 // change on every picked key (backend.keyBar.begin / curveTo / end: key.handles). y may leave the box (overshoot).
+// `source`: whatever offers curve, handles, begin / curveTo / end (the key bar, or a picked stretch: backend.stretch).
 Item {
     id: c
     implicitWidth: 96; implicitHeight: Theme.field
-    readonly property var pts: backend.keyBar.curve
-    readonly property var h: backend.keyBar.handles
+    property var source: backend.keyBar
+    readonly property var pts: source.curve
+    readonly property var h: source.handles
     readonly property real pad: 4
     function px(x) { return pad + x * (width - 2 * pad) }
     function py(y) { return height - pad - y * (height - 2 * pad) }
@@ -59,7 +61,7 @@ Item {
         cursorShape: which >= 0 || containsMouse && nearest(mouseX, mouseY) >= 0 ? Qt.SizeAllCursor : Qt.ArrowCursor
         onPressed: (m) => {
             const i = nearest(m.x, m.y)
-            if (i < 0 || !backend.keyBar.begin("curve")) { m.accepted = false; return }
+            if (i < 0 || !c.source.begin("curve")) { m.accepted = false; return }
             which = i
         }
         onPositionChanged: (m) => {
@@ -67,9 +69,9 @@ Item {
             const x = (m.x - c.pad) / (c.width - 2 * c.pad), y = (c.height - c.pad - m.y) / (c.height - 2 * c.pad)
             const v = c.h.slice()
             v[2 * which] = x; v[2 * which + 1] = y
-            backend.keyBar.curveTo(v[0], v[1], v[2], v[3])
+            c.source.curveTo(v[0], v[1], v[2], v[3])
         }
-        onReleased: { if (which >= 0) backend.keyBar.end(); which = -1 }
-        onCanceled: { if (which >= 0) backend.keyBar.end(); which = -1 }
+        onReleased: { if (which >= 0) c.source.end(); which = -1 }
+        onCanceled: { if (which >= 0) c.source.end(); which = -1 }
     }
 }

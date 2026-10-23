@@ -18,10 +18,11 @@ from __future__ import annotations
 from rostrum_core.conditions import holds
 
 from .match import starts
+from .pairs import pair_up, pair_valid
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
 ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit", "display",
-         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default")
+         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default", "half", "letter")
 # anim: "" (can't be animated), "still" (could be), "keyed" (has keys), "onkey" (has a key at the playhead).
 # expr: "" for most rows; a param driven by an expression or binding has {"text", "note"}: the row shows them (and a
 # way to clear it) instead of its widget.
@@ -47,7 +48,7 @@ def layout(op, kind: str = "") -> list[dict]:
     if deep:
         rows.append({"row": "more", "id": "more", "label": "More", "members": [p.name for p in deep]})
         rows += [_param_row(p) for p in deep]
-    return rows
+    return pair_up(rows)
 
 
 def _grouped(params, kind: str) -> list[dict]:
@@ -102,6 +103,7 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
             r["value"], r["anim"], r["expr"] = None, "", ""
             r["holds"] = any(ok[m] for m in r["members"])
         out.append(r)
+    pair_valid(out)
     return _headers(out)
 
 
