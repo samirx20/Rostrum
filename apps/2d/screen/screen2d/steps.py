@@ -179,7 +179,7 @@ def do_step(bridge, win, step):
     elif word == "tool":
         bridge.setTool(rest[0])
     elif word == "timeline":                     # timeline compact|full: the button at the timeline header's right end
-        QMetaObject.invokeMethod(win, "setTimeline", Q_ARG("QVariant", rest[0] == "compact"), Q_ARG("QVariant", None))
+        win.setProperty("timelineFolded", rest[0] == "compact")
     elif word == "find":
         bridge.setSearch(" ".join(rest))
     elif word == "group":

@@ -54,7 +54,8 @@ Panel {
         id: scroller
         objectName: "inspectorScroll"    // scripted steps scroll it (an app's `inspectorscroll` step)
         anchors { left: parent.left; right: parent.right; top: find.visible ? find.bottom : kind.bottom
-                  bottom: panel.hasLast ? lastLine.top : parent.bottom; topMargin: Theme.gap }   // scrolled rows stop short of the subtitle
+                  bottom: panel.hasLast ? lastLine.top : parent.bottom; topMargin: Theme.gap   // scrolled rows stop short of the subtitle
+                  rightMargin: Theme.padRight - panel.bodyPad }   // wider than the header: rows end 4 px from the panel's edge (grid)
         contentHeight: list.height; clip: true; boundsBehavior: Flickable.StopAtBounds
         Column {
             id: list

@@ -11,10 +11,12 @@ ids whose default was turned round).
 from __future__ import annotations
 
 from rostrum2d import fields as F
+from rostrum2d.anims import PRESET_LABELS, animations
 from rostrum2d.names import display_name
 from rostrum2d.retime import END, FIELD
 from rostrum_core.keys import animated, keys_of, marked
 
+from . import eases
 from .eases import shape_of
 
 from . import framing, key_ghosts
@@ -52,6 +54,36 @@ def _keys(owner: dict, prop: str) -> list[dict]:
              **({"marker": marked.label(k["ref"])} if "ref" in k else {})} for k in keys_of(owner, prop)]
 
 
+def _stretches(owner: dict, anims: list[dict]) -> list[dict]:
+    """The clickable stretches of these animations (anims.py), as the track draws them: from key to key, with the ease's
+    glyph and the tooltip words ("Position · 1.00 → 2.00 s · Out"). A Hold moves nothing: drawn and picked as nothing."""
+    out = []
+    for a in anims:
+        for s in a["stretches"]:
+            if s["ease"] == "hold":
+                continue
+            end = s["start"] + s["length"]
+            words = PRESET_LABELS.get(s["preset"], eases.label_of(s["ease"]))
+            out.append({"owner": owner["id"], "ids": s["ids"], "endIds": s["endIds"], "t0": s["start"], "t1": end,
+                        "glyph": s["preset"] or "custom", "tip": f'{a["label"]} · {s["start"]:.2f} → {end:.2f} s · {words}'})
+    return out
+
+
+def _lines(lay: dict, depth: int) -> tuple[dict, list[dict]]:
+    """(line 0's stretches and the key ids on other lines, the rows of lines 1, 2 …): a layer's animations that overlap
+    in time go on lines of their own under it (anims.py packs them), each named by its settings, in grey."""
+    anims = animations(lay)
+    rows, elsewhere = [], set()
+    for n in range(1, 1 + max((a["line"] for a in anims), default=0)):
+        mine = [a for a in anims if a["line"] == n]
+        elsewhere |= {k["id"] for a in mine for k in a["keys"]}
+        row = _row("field", lay, depth + 1, ", ".join(a["label"] for a in mine),
+                   sorted((k for a in mine for p in a["props"] for k in _keys(lay, p)), key=lambda k: k["t"]))
+        row.update(id=f'{lay["id"]}#line{n}', line=True, stretches=_stretches(lay, mine))
+        rows.append(row)
+    return {"stretches": _stretches(lay, [a for a in anims if a["line"] == 0]), "elsewhere": elsewhere}, rows
+
+
 def _row(kind: str, owner: dict, depth: int, label: str, keys: list, prop: str = "") -> dict:
     """kind: "layer", "field" (one animated setting of the layer) or "owned" (an effect or mask)."""
     return {"row": kind, "id": owner["id"] if kind != "field" else f"{owner['id']}.{prop}", "owner": owner["id"],
@@ -86,11 +118,14 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset()) -> li
     def walk(layers, depth):
         for lay in reversed(layers):
             fields = _fields(lay)
-            summary = _one_per_frame(sorted((k for o, p in fields for k in _keys(o, p)), key=lambda k: k["t"]), comp["fps"])
+            first, lines = _lines(lay, depth)
+            summary = _one_per_frame(sorted((k for o, p in fields for k in _keys(o, p) if k["id"] not in first["elsewhere"]),
+                                            key=lambda k: k["t"]), comp["fps"])
             inside = bool(fields or _owned(lay) or lay.get("layers"))
             only = lay["id"] in anim_only
             is_open = bool(fields) if only else inside and (bool(lay.get("layers")) != (lay["id"] in flipped))
             row = _row("layer", lay, depth, label_of(lay), summary)
+            row["stretches"] = first["stretches"]
             row.update(past(fields))
             if F.param(lay["type"], "start") is not None:   # a camera, a shape …: when it shows, as a bar
                 row.update(bar=True, start=min(max(lay.get("start", 0.0), 0.0), duration),
@@ -101,6 +136,7 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset()) -> li
             if lay["type"] == "drawing":
                 row["frames"] = framing.marks(lay, comp["fps"], duration)
             out.append(row)
+            out.extend(lines)                      # overlapping animations: a line each under the layer (SPEC §9.4)
             if not is_open:
                 continue
             out.extend({**_row("field", lay, depth + 1, F.param(lay["type"], p).label, _keys(lay, p), p), **past([(lay, p)])}

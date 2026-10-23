@@ -18,7 +18,10 @@ import "ValueKinds.js" as VK
 // reset, so the menu is absent. Mixed values count as not at the default.
 // A number with a `display` kind (model.display; ValueKinds.js) shows in that kind's words ("80 %", "−1.9 dB", "L 30");
 // an amount (VK.slides: pan, a gain, a 0..1 amount) gets the kit Slider with its NumberField beside it.
-// The label column is Theme.labelColumnFor(width), the same for every row, so every field starts and ends alike.
+// The settings grid (Theme.settingsGrid numbers, SPEC 8.0): the label column is Theme.labelColumnFor(width), then ONE field
+// column Theme.fieldFor(width) wide, then the key gutter (always reserved, empty without a key mark), so every field starts
+// and ends alike. Only Position (X | Y) and Size (W | H) share a row (rows.py `half`: "first" / "second"): the second half's
+// row has no height of its own and draws on the first's line, each half Theme.halfFor(width) wide with its small letter inside.
 Item {
     id: row
     required property var model           // roles from rostrum_gui.rows.ROLES
@@ -26,9 +29,11 @@ Item {
     property var bridge
     property bool keyMarks: false
     property bool highlighted: false      // marked while it is in focus elsewhere (2D: its keys picked in the timeline)
-    readonly property int gutter: keyMarks ? Theme.keyGutter : 0
+    readonly property int gutter: Theme.keyGutter
+    readonly property bool second: model.half === "second"      // the right half of a pair: it sits on the previous row's line
+    readonly property bool paired: model.half === "first" || second
     readonly property int labelColumn: Theme.labelColumnFor(width)
-    readonly property bool amount: model.type === "number" && VK.slides(model.display || "", model.min ?? 0, model.max ?? 1e9)
+    readonly property bool amount: model.type === "number" && !paired && VK.slides(model.display || "", model.min ?? 0, model.max ?? 1e9)
     readonly property bool driven: model.row === "param" && !!model.expr      // an expression decides (model.expr)
     readonly property bool tall: model.type === "list" || model.control === "curve"    // a widget taller than a field (top-aligned)
     readonly property int full: model.row === "group" ? Theme.groupGap + (model.label ? Theme.rowDense : 0)   // "": a gap only
@@ -43,10 +48,10 @@ Item {
     property real reveal: model.valid ? 1 : 0
     Behavior on reveal { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
     width: parent ? parent.width : 0
-    height: Math.round(full * reveal)
+    height: second ? 0.01 : Math.round(full * reveal)
     opacity: reveal
     visible: reveal > 0
-    clip: reveal < 1
+    clip: reveal < 1 && !second
 
     Text {  // group header
         visible: row.model.row === "group"
@@ -89,14 +94,18 @@ Item {
         MouseArea { id: foldArea; anchors.fill: parent; hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.toggleGroup(row.model.fold) }
     }
-    Item {  // a param: label column, then the widget
+    Item {  // a param: label column, then the widget (a pair's halves each take only their own part of the line)
+        id: cell
         visible: row.model.row === "param"
-        anchors.left: parent.left; anchors.right: parent.right
-        anchors.verticalCenter: row.driven || row.tall ? undefined : parent.verticalCenter
+        x: row.second ? row.labelColumn + Theme.halfFor(row.width) + Theme.pairGap : 0
+        width: row.second ? Theme.halfFor(row.width) : row.paired ? row.labelColumn + Theme.halfFor(row.width) : row.width
+        anchors.verticalCenter: row.driven || row.tall || row.second ? undefined : parent.verticalCenter
         anchors.top: row.driven || row.tall ? parent.top : undefined
+        y: row.second ? -Theme.row : 0               // the right half draws on the line above (its own row is 0 high)
         height: Theme.row
-        Text { id: label   // an amount's label is only as wide as its words: its slider starts right after them
-               width: row.amount ? Math.min(row.labelColumn - Theme.gap, Math.ceil(implicitWidth)) : row.labelColumn - Theme.gap
+        Text { id: label   // the label sits in its own column, one per row (a pair has one: Position, Size)
+               visible: !row.second
+               width: row.labelColumn - Theme.gap
                anchors.verticalCenter: parent.verticalCenter
                text: row.model.label; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
                wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; lineHeight: 0.9   // never cut to "Width along the…"
@@ -105,12 +114,14 @@ Item {
                           hovered: labelHover.hovered } }   // hover help: the setting's name and its one sentence
         Loader {
             id: widget
-            // an amount's slider starts right after its label's words, so it gets the row's length (the value
-            // box still ends where every field ends); every other widget starts at the label column
-            x: row.amount ? Math.min(row.labelColumn, Math.ceil(label.implicitWidth) + 2 * Theme.gap) : row.labelColumn
+            objectName: row.model.type === "toggle" ? "" : "grid:field"   // the layout check reads the grid from these two names
+            // every widget starts at the field column (a slider and its value box share it); the right half of a pair
+            // starts at its own cell (after the left half and the pair gap)
+            x: row.second ? 0 : row.labelColumn
             anchors.verticalCenter: row.tall ? undefined : parent.verticalCenter
             y: row.tall ? (Theme.row - Theme.field) / 2 : 0
-            width: row.model.type === "toggle" ? (item ? item.implicitWidth : 0) : parent.width - x - row.gutter
+            width: row.model.type === "toggle" ? (item ? item.implicitWidth : 0)
+                 : row.paired ? Theme.halfFor(row.width) : Theme.fieldFor(row.width)
             height: row.tall && item ? item.implicitHeight : Theme.field
             active: row.model.row === "param" && !row.driven
             sourceComponent: row.model.control === "curve" ? curve
@@ -145,16 +156,19 @@ Item {
             acceptedButtons: Qt.RightButton; enabled: row.canReset
             onTapped: (pt) => { resetMenu.active = true; resetMenu.item.openAt(pt.scenePosition.x, pt.scenePosition.y) }
         }
-        Item {  // the key mark
-            visible: row.keyMarks && !!row.model.anim
-            anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-            width: row.gutter - 4; height: Theme.field
-            KeyMark { anchors.centerIn: parent; filled: row.model.anim === "onkey"
-                      color: row.model.anim === "still" ? (markArea.containsMouse ? Theme.fg2 : rowHover.hovered ? Theme.fg3 : Theme.fg4)
-                           : markArea.containsMouse ? Theme.accentHover : Theme.accent }
-            MouseArea { id: markArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: row.bridge.toggleAnimate(row.model.id) }
-        }
+    }
+
+    Item {  // the key mark: centred in the gutter at the row's right (a pair has one, on its first half's line)
+        objectName: "grid:key"
+        visible: row.keyMarks && !!row.model.anim && !row.second
+        x: row.width - row.gutter + 2; y: cell.y + (cell.height - height) / 2
+        width: row.gutter - 4; height: Theme.field
+        KeyMark { anchors.centerIn: parent; filled: row.model.anim === "onkey"
+                  color: row.model.anim === "still" ? (markArea.containsMouse ? Theme.fg2 : rowHover.hovered ? Theme.fg3 : Theme.fg4)
+                       : markArea.containsMouse ? Theme.accentHover : Theme.accent }
+        MouseArea { id: markArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: { row.bridge.toggleAnimate(row.model.id)        // a pair (X | Y) animates both halves
+                                 if (row.model.partner) row.bridge.toggleAnimate(row.model.partner) } }
     }
 
     Loader {   // made at the first right-click only: a panel has many rows
@@ -197,6 +211,8 @@ Item {
         expressions: row.bridge.typesExpressions === true     // a bridge without the flag (a sub-panel) takes no typed =…
         display: row.model.display || ""
         defaultValue: row.model.default === undefined ? null : row.model.default   // double-click puts it back
+        leading: [Text { visible: !!row.model.letter; text: row.model.letter || ""; color: Theme.fg3     // a pair's small letter
+                         font.family: uiFont; font.pixelSize: Theme.label }]
         onEdited: (v) => row.set(v)
         onTypedExpression: (t) => row.set(t)
         onScrubStarted: row.bridge.beginScrub(row.model.id)

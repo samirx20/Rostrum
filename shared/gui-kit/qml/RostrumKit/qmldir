@@ -28,6 +28,7 @@ CommandBar 1.0 CommandBar.qml
 TopBar 1.0 TopBar.qml
 AppShell 1.0 AppShell.qml
 Ruler 1.0 Ruler.qml
+PanelEdge 1.0 PanelEdge.qml
 KeyRows 1.0 KeyRows.qml
 Menu 1.0 Menu.qml
 CurveField 1.0 CurveField.qml

@@ -7,7 +7,7 @@ import RostrumKit
 // = one change; near a marker or the playhead it snaps, and an end dropped on a marker is tied to it: a small flag).
 // Keys sit on it as diamonds (all the layer's keys); a drawing's frames lie on it (FrameMarks). Setting, effect and
 // mask rows show their keys only. Click a diamond: the key is selected (the inspector shows its ease); drag it: key.set
-// t (it lands on a marker within 6 px). A click anywhere else on the row selects its layer, a drag there draws a box
+// t (it lands on a marker within 6 px). Between two keys of one setting a stretch can be clicked (StretchBand.qml). A click anywhere else on the row selects its layer, a drag there draws a box
 // that picks every key it touches (on several rows); between two keys a tiny shape shows the ease. The ruler scrubs.
 // Past the last key, Repeat and Back and forth show faint copies of the keys; a spring cut short by its next key, a
 // faint tail to where it would have settled (screen2d/key_ghosts.py, from the evaluator's own functions).
@@ -41,8 +41,9 @@ Rectangle {
         }
         onCanceled: { if (boxing) track.rows.boxEnd("cancel"); boxing = false }
     }
-    Repeater {   // the ease between two keys, a tiny shape on the row: a line (linear), a curve (eased), a step (jump)
-        model: track.rowData.keys.length > 1 ? track.rowData.keys.slice(0, -1) : []
+    Repeater {   // the ease between two keys, a tiny shape on the row: a line (linear), a curve (eased), a step (jump);
+                 // a layer's lines draw theirs as clickable stretches instead (StretchBand.qml)
+        model: !track.rowData.stretches && track.rowData.keys.length > 1 ? track.rowData.keys.slice(0, -1) : []
         delegate: Canvas {
             required property var modelData
             required property int index
@@ -92,6 +93,10 @@ Rectangle {
             onReleased: { if (held) backend.endDrag(); held = "" }
             onCanceled: { if (held) backend.endDrag(); held = "" }
         }
+        Repeater {   // the stretches of the animations on the layer's first line, under its keys (SPEC §9.2)
+            model: bar.visible ? track.rowData.stretches || [] : []
+            delegate: StretchBand { row: track; shift: bar.x; room: bar.width }
+        }
         Repeater {   // a layer's keys lie in its bar: pressed on a key, the key moves; anywhere else, the bar
             model: bar.visible ? track.rowData.keys.filter(k => track.onBar(k)) : []
             delegate: KeyDot { row: track; shift: bar.x; room: bar.width }
@@ -128,6 +133,10 @@ Rectangle {
             x: track.xOf(modelData) - width / 2; y: (track.height - height) / 2
             color: "transparent"; border.width: 1; border.color: Theme.fg2; opacity: 0.45
         }
+    }
+    Repeater {   // a line's stretches (or a barless layer's), under its keys
+        model: bar.visible ? [] : track.rowData.stretches || []
+        delegate: StretchBand { row: track }
     }
     Repeater {   // the keys of a row with no bar (a setting, an effect, a mask)
         model: bar.visible ? track.rowData.keys.filter(k => !track.onBar(k)) : track.rowData.keys

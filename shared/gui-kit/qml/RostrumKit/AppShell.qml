@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls as QQC
 import "."
+import "FrameLayout.js" as FrameLayout
 
 // The window layout every Rostrum app uses:
 //   top bar
@@ -49,6 +50,34 @@ QQC.ApplicationWindow {
     property int leftWidth: Theme.sidePanel - 32   // 0: no left panel (the centre takes its place, no gap)
     property int rightWidth: Theme.sidePanel       // 0: no right panel
     property int bottomHeight: Theme.timeline
+    // The frame drives the layout (FrameLayout.js, SPEC 2d-design-v2 §1.2): an app with a frame sets `frameAspect`
+    // (> 0), what its centre column spends besides the frame's well (`frameChrome`) and the timeline's least height;
+    // the shell then sizes the settings panel and the timeline (below the frame, or beside it for tall and square
+    // frames) and rightWidth / bottomHeight are not used. `frameFolded` >= 0: the timeline folded to that height.
+    // A panel edge dragged by hand wins and is remembered per arrangement (panelSizes, the person's settings);
+    // a double-click on the edge gives it back. `layoutChanged()`: the time to fit the frame again (never otherwise).
+    property real frameAspect: 0
+    property size frameChrome: Qt.size(0, 0)
+    property int timelineLeast: Theme.timeline
+    property int frameFolded: -1
+    signal layoutChanged()
+    property int askedRev: 0                       // bumps when a hand size changes (panelSizes is not a binding)
+    function asked(kind, panel) { askedRev; return typeof panelSizes !== "undefined" ? panelSizes.get(kind, panel) : -1 }
+    function setAsked(panel, size) {
+        if (typeof panelSizes === "undefined" || !frameLayout) return
+        panelSizes.set(frameLayout.kind, panel, size < 0 ? -1 : Math.round(size)); askedRev++
+    }
+    readonly property var frameLayout: frameAspect > 0 && body.width > 0 && body.height > 0 ? FrameLayout.solve({
+        W: body.width, H: body.height, aspect: frameAspect, gap: Theme.gap, chromeW: frameChrome.width, chromeH: frameChrome.height,
+        tlLeast: timelineLeast,
+        asked: { stacked: { right: asked("stacked", "right"), bottom: asked("stacked", "bottom") },
+                 side: { right: asked("side", "right"), bottom: asked("side", "bottom") } } }) : null
+    readonly property bool bottomBeside: !!frameLayout && frameLayout.kind === "side"
+    readonly property int rightNow: frameLayout ? frameLayout.right : rightWidth
+    // folding the timeline moves nothing else: the canvas area grows, the frame stays where it is (§4.1)
+    readonly property int bottomNow: frameLayout ? (bottomBeside ? body.height : frameFolded >= 0 ? frameFolded : frameLayout.bottom) : bottomHeight
+    readonly property string frameKey: frameLayout ? [frameLayout.kind, frameLayout.right, frameLayout.bottom, Math.round(frameLayout.frameW), Math.round(frameLayout.frameH)].join(" ") : ""
+    onFrameKeyChanged: Qt.callLater(win.layoutChanged)
     readonly property alias commandBar: commandBar
     // the key for a key map job ("Ctrl+E"), for hover help (Button / IconButton `job`); "" without one
     readonly property var allKeys: bridge && bridge.actions ? bridge.actions.keys
@@ -141,7 +170,8 @@ QQC.ApplicationWindow {
         id: body
         anchors { left: parent.left; right: parent.right; top: topBar.bottom; bottom: parent.bottom
                   leftMargin: Theme.gap; rightMargin: Theme.gap; bottomMargin: Theme.gap }
-        readonly property int rightNow: win.panelsFolded ? 0 : Math.max(0, win.rightWidth)
+        readonly property int rightNow: win.panelsFolded ? 0 : Math.max(0, win.rightNow)
+        readonly property int besideNow: win.bottomBeside ? win.frameLayout.bottom + Theme.gap : 0   // a timeline beside the frame
         GuidesDrawer {  // the guides: the left drawer, pushing the main view aside (never over it); the left panel's place
             id: guidesDrawer
             visible: win.guidesOpen
@@ -150,19 +180,34 @@ QQC.ApplicationWindow {
             onClosed: win.closeGuides()
         }
         Item { id: leftSlot; x: 0; width: win.guidesOpen || win.panelsFolded ? 0 : Math.max(0, win.leftWidth)
-               visible: width > 0; height: bottomSlot.y - Theme.gap }
+               visible: width > 0; height: win.bottomBeside ? body.height : bottomSlot.y - Theme.gap }
         Item { id: centreSlot
                x: guidesDrawer.visible ? guidesDrawer.width + Theme.gap : leftSlot.visible ? leftSlot.width + Theme.gap : 0
                height: leftSlot.height
-               width: (body.rightNow > 0 ? rightSlot.x - Theme.gap : body.width) - x }
-        Item { id: rightSlot; x: body.width - width; width: body.rightNow; height: leftSlot.height
+               width: (body.rightNow > 0 ? rightSlot.x - Theme.gap : body.width) - body.besideNow - x }
+        Item { id: rightSlot; x: body.width - width; width: body.rightNow; height: win.bottomBeside ? body.height : bottomSlot.y - Theme.gap
                visible: width > 0 && !win.historyOpen && !win.exportOpen }   // a sheet takes this column's place: what it hides is not on screen
-        Item { id: bottomSlot; y: body.height - height; width: body.width; height: win.bottomHeight }
+        Item { id: bottomSlot   // across the bottom, or beside the frame (between the centre and the settings panel)
+               x: win.bottomBeside ? centreSlot.x + centreSlot.width + Theme.gap : 0
+               y: body.height - height; height: win.bottomNow
+               width: win.bottomBeside ? win.frameLayout.bottom : body.width }
+        PanelEdge {     // the settings panel's edge: dragged, its width is the person's; double-click: automatic again
+            visible: !!win.frameLayout && rightSlot.visible; vertical: true
+            x: rightSlot.x - Theme.gap; y: 0; width: Theme.gap; height: rightSlot.height
+            onMoved: (d) => win.setAsked("right", win.frameLayout.right - d)
+            onReset: win.setAsked("right", -1)
+        }
+        PanelEdge {     // a timeline beside the frame: its left edge sets its width
+            visible: win.bottomBeside; vertical: true
+            x: bottomSlot.x - Theme.gap; y: 0; width: Theme.gap; height: bottomSlot.height
+            onMoved: (d) => win.setAsked("bottom", win.frameLayout.bottom - d)
+            onReset: win.setAsked("bottom", -1)
+        }
         HistorySheet {  // in the settings panel's place (the right column; its width at least a side panel's)
             id: historySheet
             visible: win.historyOpen
             z: 5
-            width: Math.max(win.rightWidth, Theme.sidePanel); x: body.width - width; height: leftSlot.height
+            width: Math.max(win.rightNow, Theme.sidePanel); x: body.width - width; height: rightSlot.height
             bridge: win.bridge
             onClosed: { win.historyOpen = false; win.backToWork() }
         }
@@ -170,7 +215,7 @@ QQC.ApplicationWindow {
             id: exportSheet
             visible: win.exportOpen
             z: 5
-            width: Math.max(win.rightWidth, Theme.sidePanel); x: body.width - width; height: leftSlot.height
+            width: Math.max(win.rightNow, Theme.sidePanel); x: body.width - width; height: rightSlot.height
             model: win.exporter
         }
         Rectangle {     // the focused area's accent edge, only when keys go somewhere other than the main view (home)

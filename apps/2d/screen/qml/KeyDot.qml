@@ -17,6 +17,7 @@ Item {
     readonly property real at: row.xOf(modelData.t) - shift - width / 2      // where the diamond is centred, minus half
     readonly property var ids: modelData.ids || [modelData.id]
     readonly property bool on: backend.keys.count > 0 && backend.keys.has(ids)
+                               || backend.stretch.shown && ids.some(i => backend.stretch.ids.indexOf(i) >= 0)   // a picked stretch's keys
     x: room < 0 ? at : Math.max(0, Math.min(room - width, at))
     width: 16; height: parent.height        // the track's height, or the bar's when it lies in a bar
     KeyMark {

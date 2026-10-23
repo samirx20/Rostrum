@@ -56,11 +56,22 @@ QtObject {
     readonly property int button: 28
     readonly property int curveBox: 132     // the inspector's curve control (CurveField), a square
     readonly property int labelColumn: 104  // the label column's least width ("Shadow softness" fits)
-    readonly property int keyGutter: 22     // the key-mark column at a settings row's right (an app with keys)
+    // The settings grid (SPEC 8.0), the one source of truth for every panel of every app. A panel P wide: 12 left
+    // padding, label column, ONE field column, 28 key gutter (empty when a setting can't animate), 4 right padding.
+    // `w` below is a settings row's own width = P - padLeft - padRight (the Inspector's list). Every field is fieldFor(w)
+    // wide, every pair half halfFor(w), every label starts at x 0 and every field at labelColumnFor(w), every key mark
+    // is centred in the last keyGutter px. Wide rows (curve, presets, action buttons) span label + field.
+    readonly property int padLeft: 12
+    readonly property int padRight: 4
+    readonly property int keyGutter: 28
+    readonly property int fieldMax: 200
+    readonly property int pairGap: 4        // between the two halves of Position (X | Y) and Size (W | H), the only pairs
     readonly property int amountField: 64   // an amount's value box beside its slider, for the widest words ("−60.0 dB")
     readonly property int amountFieldShort: 46   // ... for "100 %" and "L 30": the slider gets the rest of the row
-    // a settings row's label column at this row width: 45 % (a 296 px panel fits "Keep inside the outline" on one line)
-    function labelColumnFor(w) { return Math.max(labelColumn, Math.round(w * 0.45)) }
+    function fieldFor(w) { return Math.floor(Math.min(fieldMax, Math.max(80, w + padLeft + padRight - 140)) / 2) * 2 }   // even: a pair splits whole
+    function labelColumnFor(w) { return w - keyGutter - fieldFor(w) }       // the label text + its 8 px gap
+    function halfFor(w) { return (fieldFor(w) - pairGap) / 2 }
+    function wideFor(w) { return w - keyGutter }                           // a wide row: label + field, gutter empty
     readonly property int sidePanel: 280
     readonly property int timeline: 184
     readonly property int popupRow: 26

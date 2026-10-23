@@ -157,4 +157,5 @@ from . import ops_clip  # noqa: E402,F401  (layer.paste: copy / cut / paste of l
 from . import ops_paint, ops_fill, paint_transform  # noqa: E402,F401  (paint.stroke, paint.fill, stroke.transform: paint, fill and move paint on any element or drawing)
 from . import ops_frame  # noqa: E402,F401  (comp.size, layer.fill_frame)
 from . import ops_keytime, ops_stagger  # noqa: E402,F401  (key.scale, key.paste, layer.stagger: retiming)
+from . import ops_anim  # noqa: E402,F401  (anim.ease: ease whole stretches; anims.py: anim.list)
 from . import text_styles  # noqa: E402  (style.define, style.use, style.detach, style.remove: named text styles)
