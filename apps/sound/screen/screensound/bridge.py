@@ -11,10 +11,11 @@ renamed in another app re-renders the sound, and a rename is followed as one rec
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, Slot
+from PySide6.QtCore import Property, QObject, Slot
 from rostrum_gui import DocBridge
 from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
+from rostrum_gui.model import RowsModel
 from rostrum_gui.timeview import TimeViewObject
 from rostrum_core import live
 from rostrum_sound import clean_clips, compile as compile_doc
@@ -50,6 +51,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self.workspace = Workspace(lambda line: self._fail(line), lambda: self.model.reset(self._rows()))
         self._drag = self._grab = None
         self._view: dict = {}
+        self._lanes = RowsModel(("track",), None)   # the arrangement's rows by track id: a row that stays keeps its delegate
         self._tv = TimeViewObject()         # which stretch of the song is on screen (screen state, not an edit)
         self._zoom = self._tv.view
         self._open: dict = {}               # track id -> (item id, lane) of the automation lane shown under its row
@@ -59,6 +61,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self._picture_open = False
         MK.use_project(doc.folder)          # the screen works in this document's project (its shared markers)
         super().__init__(doc, parent=parent)
+        self._lanes.setParent(self)
         self.link = None
         if doc.folder and doc.item_id:      # live: one door for every save, shared with agents' servers (rostrum_core.live)
             live.keep(doc)
@@ -109,6 +112,13 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
     @Property("QVariantList", notify=S.timelineChanged)
     def tracks(self):
         return self._view["rows"]
+
+    @Property(QObject, constant=True)
+    def trackRows(self):
+        """The rows of `tracks` as a list model keyed by track id: a change redraws the rows that changed in place
+        (their lanes keep their picture until it is redrawn); only a row added or removed is made or freed. A plain
+        list made every row again on every change, so every lane showed blank until it painted (S63, after a take)."""
+        return self._lanes
 
     @Property("QVariantList", notify=S.timelineChanged)
     def markers(self):
@@ -223,6 +233,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
                       "roll": self._roll(rows)}
         self._tv.setLength(self._length())        # the view is the person's: nothing new on screen zooms or scrolls it
         self.timelineChanged.emit()
+        self._lanes.update([{"id": r["id"], "track": r} for r in rows], instant=True)   # after: `tracks` is new for the rows made
         self.rollChanged.emit()
         self.viewChanged.emit()
 

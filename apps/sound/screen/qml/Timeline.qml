@@ -10,7 +10,7 @@ import RostrumKit
 // Ctrl + / Ctrl - / Ctrl 0 (fit) from the keyboard, a slim scrollbar while zoomed in; playing keeps the playhead
 // on screen. The view is backend.viewStart / viewSpan, shared by the ruler, markers, rows and the piano roll.
 // A track's "Auto" chip opens its automation lane under the row (AutomationLane): click adds a point, drag moves
-// it, Delete removes it; each is one `automation.set`. `slim`: no lanes and no bus / master rows (unused now).
+// it, Delete removes it; each is one `automation.set`. `slim`: no lanes (unused now).
 // Under the tracks: "+ Track" (addTrack: the Sounds panel), then compact rows for the groups (buses) and the master,
 // the Master last; they carry their lanes. A ducked track's row shows where its ducks pull it down (DuckDips).
 Rectangle {
@@ -19,7 +19,7 @@ Rectangle {
     property int headerWidth: 224
     signal addTrack()
     readonly property real addH: slim ? 0 : 28          // the "+ Track" row, between the tracks and the group / master rows
-    readonly property var rows: slim ? backend.tracks.filter(r => !r.mix) : backend.tracks   // buses + master: lanes only
+    readonly property var rows: backend.tracks   // in the order of backend.trackRows (the Repeater); buses + master: lanes only
     readonly property real mixH: 20          // a bus's or the master's compact row
     readonly property real groupH: 24        // a group's header row
     readonly property int mixRows: rows.filter(r => r.mix && !r.group).length
@@ -52,7 +52,7 @@ Rectangle {
     function autoOf(r) { return slim ? null : r.auto }
     function hOf(r) { return r.group ? groupH : r.mix ? mixH : rowH }
     function bottomMix(r) { return !!r.mix && !r.group }                    // a bus or the master in the compact rows, not a group header
-    function addAbove(i) { return bottomMix(rows[i]) && (i === 0 || !bottomMix(rows[i - 1])) ? addH : 0 }   // + Track sits above the first mix row
+    function addAbove(i) { return i < rows.length && bottomMix(rows[i]) && (i === 0 || !bottomMix(rows[i - 1])) ? addH : 0 }   // + Track sits above the first mix row
     function slot(y) {   // which row is at height y of the list: its index, whether y is in its automation lane, where that starts
         var top = 0
         for (var i = 0; i < rows.length; i++) {
@@ -96,12 +96,13 @@ Rectangle {
             id: column
             z: 1      // above the lanes' mouse area: the chips and headers take their own clicks, the rest falls through
             width: list.width; spacing: tl.rowGap
-            Repeater {
-                model: tl.rows
+            Repeater {   // keyed by track id (backend.trackRows): a change redraws a row in place, never makes every row again
+                model: backend.trackRows
                 delegate: Item {
                     id: row
-                    required property var modelData
+                    required property var track
                     required property int index
+                    readonly property var modelData: track
                     readonly property var auto: tl.autoOf(modelData)
                     readonly property real h: tl.hOf(modelData)
                     readonly property real top0: tl.addAbove(index)
@@ -141,6 +142,10 @@ Rectangle {
                         BeatGrid { anchors.fill: parent; ruler: bars }
                         LaneBlocks { anchors.fill: parent; track: row.modelData; ruler: bars }
                         DuckDips { anchors.fill: parent; trackId: row.modelData.id; ruler: bars }
+                        Loader {   // the take growing while this track records (made only on the armed row)
+                            anchors.fill: parent; active: recorder.take.track === row.modelData.id
+                            sourceComponent: LiveTake { take: recorder.take; ruler: bars; hue: row.modelData.hue }
+                        }
                     }
                     Loader {   // the automation lane: made when a lane is open on this row
                         active: !!row.auto
