@@ -135,7 +135,13 @@ class ExportSheet(QObject):
 
     @Property(str, notify=changed)
     def where(self):
-        return self._folder or self.default_folder()
+        """Where the file goes: the folder chosen; once an export is done, the folder it really wrote into (the result's
+        own path, never the next version's); else what the next export will write."""
+        if self._folder:
+            return self._folder
+        if self._state == "done" and self.path:
+            return str(Path(self.path).parent)
+        return self.default_folder()
 
     @Property(str, notify=changed)
     def fileName(self):

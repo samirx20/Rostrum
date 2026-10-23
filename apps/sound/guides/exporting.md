@@ -78,7 +78,7 @@ A new song starts with the rate set in Preferences. MP3 offers only 44.1 and 48 
 ## 6. Export
 
 1. Click **Export**. It says **Exporting…** and works in the background; you can keep working.
-2. When done, the sheet says "Exported · Play · Show in folder" (once; the top bar says it only while the sheet is closed). Click **Show in folder** to open it.
+2. When done, the sheet says "Exported · Play · Show in folder" (once; the top bar says it only while the sheet is closed). Click **Show in folder** to open it. While it says "Exported", the folder line shows where that file really went; change a choice and the line shows where the next export will go.
 3. If something went wrong, the sheet says so in red, in one sentence.
 
 ## What files appear
