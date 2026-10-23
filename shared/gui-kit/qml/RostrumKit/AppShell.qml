@@ -5,7 +5,7 @@ import "FrameLayout.js" as FrameLayout
 
 // The window layout every Rostrum app uses:
 //   top bar
-//   left panel | centre (the app's viewer) | right panel (inspector)
+//   tool rail | left panel | centre (the app's viewer) | right panel (inspector)
 //   timeline — the FULL width, under both side panels
 // Panels sit on the app background with a gap (background steps, no lines). The shell also owns the
 // keys that every app shares: Ctrl+K command bar, Ctrl+Z undo, Ctrl+Shift+Z / Ctrl+Y redo (the person's own),
@@ -20,6 +20,7 @@ QQC.ApplicationWindow {
     property string appName: "Rostrum"
     property string documentName: ""
     property alias left: leftSlot.data
+    property alias rail: railSlot.data          // the app's tool rail: always at the window's left edge (its own width)
     property alias centre: centreSlot.data
     property alias right: rightSlot.data
     property alias bottom: bottomSlot.data
@@ -48,6 +49,10 @@ QQC.ApplicationWindow {
     property alias helpEntries: topBar.helpEntries   // the app's guides (rostrum_gui.guides.entries; the drawer lists them), then its own
     signal helpPicked(string value)                  // a Help entry that is neither a guide nor About (the app handles it)
     property int leftWidth: Theme.sidePanel - 32   // 0: no left panel (the centre takes its place, no gap)
+    // true: the left column (the left panel, or the guides drawer in its place) is a drawer that floats over the main
+    // view beside the rail, so opening it neither moves the rail nor squeezes the canvas (2D's Library; F5, audit 38).
+    // false: a docked panel that pushes the main view aside (Sound's Library).
+    property bool leftOver: false
     property int rightWidth: Theme.sidePanel       // 0: no right panel
     property int bottomHeight: Theme.timeline
     // The frame drives the layout (FrameLayout.js, SPEC 2d-design-v2 §1.2): an app with a frame sets `frameAspect`
@@ -91,7 +96,7 @@ QQC.ApplicationWindow {
     function keyFor(job) { return keyNames[job] || "" }
     // the guides drawer (F1, ? › Guides): on the left beside the main view, in the left panel's place while open
     property bool guidesOpen: false
-    readonly property int guidesWidth: guidesOpen ? guidesDrawer.width + Theme.gap : 0   // a full-window cover (the start screen) leaves this much room
+    readonly property int guidesWidth: guidesOpen ? guidesDrawer.x + guidesDrawer.width + Theme.gap : 0   // a full-window cover (the start screen) leaves this much room
     function openGuides() { guidesOpen = true; focusArea = "guides"; guidesDrawer.forceActiveFocus() }
     function closeGuides() { guidesOpen = false; backToWork() }
     // focus: which area takes the keys ("guides", "left", "centre", "right", "bottom"); apps may name them for
@@ -109,6 +114,7 @@ QQC.ApplicationWindow {
     }
     function pressedAt(x, y) {                  // a press anywhere in the window (focus_areas.py): its area
         const p = body.mapFromItem(null, x, y)
+        if (p.x >= 0 && p.x < railSlot.width && p.y >= 0 && p.y < railSlot.height) { focusArea = "centre"; return }   // the rail works the view
         for (const [name, it] of areas())
             if (p.x >= it.x && p.x < it.x + it.width && p.y >= it.y && p.y < it.y + it.height) { focusArea = name; return }
     }
@@ -172,17 +178,21 @@ QQC.ApplicationWindow {
                   leftMargin: Theme.gap; rightMargin: Theme.gap; bottomMargin: Theme.gap }
         readonly property int rightNow: win.panelsFolded ? 0 : Math.max(0, win.rightNow)
         readonly property int besideNow: win.bottomBeside ? win.frameLayout.bottom + Theme.gap : 0   // a timeline beside the frame
-        GuidesDrawer {  // the guides: the left drawer, pushing the main view aside (never over it); the left panel's place
+        readonly property int railNow: railSlot.width > 0 ? railSlot.width + Theme.gap : 0
+        Item { id: railSlot; x: 0; width: childrenRect.width; height: leftSlot.height }
+        GuidesDrawer {  // the guides: the left drawer beside the rail, in the left panel's place (leftOver: over the view)
             id: guidesDrawer
             visible: win.guidesOpen
-            x: 0; width: visible ? Math.min(360, Math.round(body.width * 0.3)) : 0; height: leftSlot.height
+            z: 3
+            x: body.railNow; width: visible ? Math.min(360, Math.round(body.width * 0.3)) : 0; height: leftSlot.height
             entries: win.helpEntries
             onClosed: win.closeGuides()
         }
-        Item { id: leftSlot; x: 0; width: win.guidesOpen || win.panelsFolded ? 0 : Math.max(0, win.leftWidth)
+        Item { id: leftSlot; x: body.railNow; z: 3; width: win.guidesOpen || win.panelsFolded ? 0 : Math.max(0, win.leftWidth)
                visible: width > 0; height: win.bottomBeside ? body.height : bottomSlot.y - Theme.gap }
         Item { id: centreSlot
-               x: guidesDrawer.visible ? guidesDrawer.width + Theme.gap : leftSlot.visible ? leftSlot.width + Theme.gap : 0
+               x: body.railNow + (win.leftOver ? 0 : guidesDrawer.visible ? guidesDrawer.width + Theme.gap
+                                                         : leftSlot.visible ? leftSlot.width + Theme.gap : 0)
                height: leftSlot.height
                width: (body.rightNow > 0 ? rightSlot.x - Theme.gap : body.width) - body.besideNow - x }
         Item { id: rightSlot; x: body.width - width; width: body.rightNow; height: win.bottomBeside ? body.height : bottomSlot.y - Theme.gap

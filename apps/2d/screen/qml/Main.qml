@@ -2,7 +2,7 @@ import QtQml
 import QtQuick
 import RostrumKit
 
-// Rostrum2D, one workspace (apps/2d/DESIGN.md). Centre: the tool rail (ToolRail.qml), then the canvas (the engine's frame). Right: the inspector (from the selected item's field operation, values at the playhead, key marks); while
+// Rostrum2D, one workspace (apps/2d/DESIGN.md). Left edge: the tool rail (ToolRail.qml); centre: the canvas (the engine's frame). Right: the inspector (from the selected item's field operation, values at the playhead, key marks); while
 // the Draw tool is on, the brush (the next stroke's settings, from the brush settings' own rules).
 // Bottom, full width, always there: the timeline, which is also the layers list (a row and a bar per layer). Its top
 // edge drags to make it taller or shorter.
@@ -12,7 +12,9 @@ AppShell {
     appName: "Rostrum2D"
     helpEntries: guides                 // Help's guides (screen2d/session.py), in the kit's guide viewer
     documentName: files.hasProject ? files.name : "Untitled"   // the project (the kit's files: rostrum_gui/project_files.py)
-    leftWidth: backend.library.open ? Theme.sidePanel : 0      // the Library drawer (LibraryDrawer.qml) pushes the canvas
+    leftWidth: backend.library.open ? Theme.sidePanel : 0      // the Library drawer (LibraryDrawer.qml), beside the rail
+    leftOver: true                      // it and the guides float over the canvas: the rail stays put, the canvas keeps its size
+    rail: [ ToolRail { id: rail; visible: !startScreen.visible; anchors { top: parent.top; bottom: parent.bottom } } ]   // its own column, never over the canvas
     left: [ LibraryDrawer { anchors.fill: parent; visible: backend.library.open } ]
     areaNames: ({ centre: "canvas", right: "settings", bottom: "timeline" })   // inspect_screen's words for the focused area
     saveWord: backend.isLive ? "Saved" : ""      // a project is live: every change is already on disk
@@ -23,7 +25,7 @@ AppShell {
     // ⊟ folds the timeline to its header (screen state, never the document).
     property bool timelineFolded: false
     frameAspect: startScreen.visible ? 0 : (backend.frameInfo.width || 16) / (backend.frameInfo.height || 9)
-    frameChrome: Qt.size(rail.width + Theme.gap + 2 * Theme.pad, 2 * Theme.pad)   // the rail, then the stage's padding round the well
+    frameChrome: Qt.size(rail.width + Theme.gap + 2 * Theme.pad, 2 * Theme.pad)   // the rail's column, then the stage's padding round the well
     timelineLeast: 7 * Theme.row + Theme.gap      // the header row, then 6 rows of 28 px (204: §1.2), never the content
     frameFolded: timelineFolded && !bottomBeside ? timeline.compactHeight : -1
     bottomHeight: -Theme.gap            // the start screen is not the workspace: no timeline under it
@@ -145,8 +147,7 @@ AppShell {
     DepthPopover { x: (shell.width - width) / 2; y: 104 }     // Set depth ▾ › Other depth… (depth_typed.py): under the bar
     SoundCuePopover { x: (shell.width - width) / 2; y: 104 }  // Add a sound here… (sound_cue_pick.py): under the bar
     centre: [
-        ToolRail { id: rail; anchors { left: parent.left; top: parent.top; bottom: parent.bottom } },   // its own column, never over the canvas
-        Stage { id: stage; anchors.fill: parent; anchors.leftMargin: rail.width + Theme.gap; typing: shell.typing },   // typing: F stays a letter (ViewControls.qml)
+        Stage { id: stage; anchors.fill: parent; typing: shell.typing },   // typing: F stays a letter (ViewControls.qml)
         EmptyHint {     // a new scene (the kit's empty state, INTERACTION.md 1.16): gone with the first layer
             visible: backend.layers.length === 0 && backend.tool === "move"
             anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: Theme.groupGap * 3 }

@@ -7,7 +7,11 @@ import "."
 //  - an entry with `sub` (a list of entries) opens a side menu on hover or Right; Left or Esc closes it;
 //  - openAt(x, y [, xIfFlipped]) opens at a point in window coordinates and stays on screen (flips left / up);
 //  - Up / Down move, Enter picks, Esc closes. Choosing sends picked(value) from the top menu, whatever its depth.
-//  - when any entry has `checked`, a fixed left column shows ✓ on the checked ones (the chosen entry);
+//  - when any entry has `checked`, a fixed left column shows ✓ on the checked ones (the chosen entry), and the
+//    highlight opens on it, so the hover and the tick agree;
+//  - an entry's `heading` is a small title drawn once above it, for a set of choices that would otherwise repeat a
+//    label on every row ("After the last key" over Stay, Repeat …; F5, audit 44/45);
+//  - every row is named "menu:" + its value, so a scripted walk clicks it (clickobj), as in Menu.qml;
 // Long labels shorten with "…" and show whole on hover. Width fits the longest label + key (180 to 320).
 QQC.Popup {
     id: menu
@@ -15,6 +19,7 @@ QQC.Popup {
     property int highlighted: 0
     property var owner: null                 // the menu this one is a side menu of
     readonly property int dividerHeight: 9
+    readonly property int headingHeight: 22
     readonly property bool checks: entries.some(e => e.checked !== undefined)   // reserve the ✓ column
     readonly property int checkW: checks ? 18 : 0
     signal picked(string value)
@@ -67,7 +72,7 @@ QQC.Popup {
         s.entries = entries[i].sub; s.owner = menu
         s.openAt(p.x, p.y - padding, left)
     }
-    onAboutToShow: highlighted = 0
+    onAboutToShow: highlighted = Math.max(0, entries.findIndex(e => !!e.checked))
     onClosed: if (subLoader.item) subLoader.item.close()
     Connections {
         target: subLoader.item; ignoreUnknownSignals: true
@@ -82,7 +87,7 @@ QQC.Popup {
     FontMetrics { id: tk; font.pixelSize: Theme.label; font.family: uiFont }
     QtObject {
         id: widest
-        property real labelW: { let w = 0; for (const e of menu.entries) w = Math.max(w, tm.advanceWidth(e.label)); return w }
+        property real labelW: { let w = 0; for (const e of menu.entries) w = Math.max(w, tm.advanceWidth(e.label), e.heading ? tm.advanceWidth(e.heading) - menu.checkW : 0); return w }
         property real keysW: { let w = 0; for (const e of menu.entries) if (e.keys) w = Math.max(w, tk.advanceWidth(e.keys) + Theme.gap); return w }
     }
 
@@ -105,13 +110,22 @@ QQC.Popup {
                 required property var modelData
                 readonly property bool divided: index > 0 && menu.entries[index - 1].group !== modelData.group
                 readonly property bool sub: !!(modelData.sub && modelData.sub.length)
-                width: menu.availableWidth; height: Theme.popupRow + (divided ? menu.dividerHeight : 0)
+                readonly property int lead: (divided ? menu.dividerHeight : 0) + (modelData.heading ? menu.headingHeight : 0)
+                width: menu.availableWidth; height: Theme.popupRow + lead
                 Rectangle {
                     visible: row.divided; x: Theme.gap - menu.padding; width: parent.width - 2 * (Theme.gap - menu.padding)
                     y: menu.dividerHeight / 2; height: 1; color: Theme.border
                 }
+                Text {
+                    visible: !!row.modelData.heading
+                    x: Theme.gap - menu.padding; y: row.lead - menu.headingHeight; height: menu.headingHeight
+                    verticalAlignment: Text.AlignVCenter
+                    text: row.modelData.heading || ""; color: Theme.fg2; font.pixelSize: Theme.label; font.family: uiFont
+                    font.weight: Font.DemiBold
+                }
                 Rectangle {
-                    y: row.divided ? menu.dividerHeight : 0; width: parent.width; height: Theme.popupRow; radius: 4
+                    objectName: "menu:" + row.modelData.value       // a walk clicks an entry by its value (clickobj)
+                    y: row.lead; width: parent.width; height: Theme.popupRow; radius: 4
                     color: row.index === menu.highlighted ? Theme.hover : "transparent"
                     Text {
                         visible: menu.checks && !!row.modelData.checked

@@ -22,11 +22,23 @@ Column {
         pic.switching = false
     }
 
-    Button {
-        objectName: "picturePaint:file"
-        width: parent.width
-        text: pic.file ? decodeURIComponent(pic.file.split(/[\\/]/).pop()) : "Choose picture…"
-        onClicked: pic.choose(false)
+    Item {                                // the file's name (shown here only) and a button that chooses another
+        width: parent.width; height: Theme.field
+        Text {
+            visible: pic.file !== ""
+            anchors.left: parent.left; anchors.right: fileButton.left; anchors.rightMargin: Theme.gap
+            anchors.verticalCenter: parent.verticalCenter
+            text: pic.file ? decodeURIComponent(pic.file.split(/[\\/]/).pop()) : ""
+            elide: Text.ElideMiddle; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
+        }
+        Button {
+            id: fileButton
+            objectName: "picturePaint:file"
+            anchors.right: parent.right
+            width: pic.file ? implicitWidth : parent.width
+            text: pic.file ? "Change…" : "Choose picture…"
+            onClicked: pic.choose(false)
+        }
     }
     Segmented {
         objectName: "picturePaint:fit"

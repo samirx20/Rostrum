@@ -59,13 +59,13 @@ Row {
         objectName: "keyMore"
         anchors.verticalCenter: parent.verticalCenter
         glyph: "⋯"; tip: "More"
-        onClicked: more.open()
-        Menu {
+        onClicked: { const g = mapToItem(null, 0, height + 2); more.openAt(g.x, g.y) }
+        ActionMenu {    // the kit's menu: one "After the last key" heading over its choices, then the ease option
             id: more
-            width: 236
-            entries: bar.kb.afters.map(a => ({ value: "after:" + a.value, label: "After the last key: " + a.label,
-                                               checked: bar.kb.after === a.value }))
-                     .concat([{ value: "play", label: "Play the ease when picked", checked: backend.easePlay.on }])
+            entries: bar.kb.afters.map((a, i) => ({ value: "after:" + a.value, label: a.label, group: "after",
+                                                    heading: i === 0 ? "After the last key" : "",
+                                                    checked: bar.kb.after === a.value }))
+                     .concat([{ value: "play", label: "Play the ease when picked", group: "play", checked: backend.easePlay.on }])
             onPicked: (v) => v === "play" ? backend.easePlay.setOn(!backend.easePlay.on) : bar.kb.setAfter(v.slice(6))
         }
     }

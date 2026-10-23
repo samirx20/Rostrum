@@ -8,7 +8,8 @@ import "."
 QQC.Popup {
     id: dlg
     property var data
-    readonly property var items: opened && data ? data.items : []     // read only once the screen is opened
+    // read only once the screen is opened; grouped by licence, so what a licence asks is said once over its run (F5, audit 51)
+    readonly property var items: opened && data ? data.items.slice().sort((a, b) => (a.licence || "").localeCompare(b.licence || "")) : []
     parent: QQC.Overlay.overlay
     x: Math.round((parent.width - width) / 2); y: Math.round((parent.height - height) / 2)
     width: 680; height: Math.min(parent.height - 2 * Theme.groupGap * 2, 620)
@@ -63,6 +64,8 @@ QQC.Popup {
             delegate: Item {
                 id: row
                 required property var modelData
+                required property int index
+                readonly property bool sameAsks: index > 0 && dlg.items[index - 1].asks === modelData.asks
                 // a licence cell may carry notes ("MIT-0 (metadata); its LICENSE text is …"): the name sits at the right,
                 // the notes wrap under what the licence asks, never cut
                 readonly property var cut: /^(.*?)(?:; |\. | \()(.*)$/.exec(modelData.licence || "")
@@ -89,7 +92,9 @@ QQC.Popup {
                     id: askText
                     anchors { left: parent.left; leftMargin: Theme.gap; right: parent.right; rightMargin: Theme.gap
                               top: nameText.bottom; topMargin: 3 }
-                    text: row.notes ? row.modelData.asks + " · Licence: " + row.notes : row.modelData.asks
+                    visible: text !== ""; height: visible ? implicitHeight : 0
+                    text: row.notes ? (row.sameAsks ? "" : row.modelData.asks + " · ") + "Licence: " + row.notes
+                                    : row.sameAsks ? "" : row.modelData.asks
                     wrapMode: Text.WordWrap
                     color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
                 }

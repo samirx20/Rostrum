@@ -2,11 +2,12 @@ import QtQuick
 import "."
 
 // The selection's actions at the top of the settings panel (SPEC 2d-design-v2 §8.3, "actions first"): the app's one
-// action list as `hub.panel` (rostrum_gui/action_views.panel) — only what this selection allows, in its order. Compact
+// action list as `hub.panel` (rostrum_gui/action_views.panel) — only what this selection allows, buttons first, then
+// the icon runs, then "⋯", the same order for every item. Compact
 // like a pro tool's (H49): actions sharing a bar name whose every action has an icon are one tight run of small icon
 // buttons (Align: six; Combine: four; the name on hover); a bar without icons is one "Mask ▾" button with its menu;
 // the rest small buttons. The runs flow on the panel grid, a wider gap between runs, wrapping when the panel is
-// narrow. The less used ones (secondary) are one "⋯" menu last, folded like right-click.
+// narrow. The less used ones (secondary) are one "⋯" menu at the end of the last run, folded like right-click.
 // No hover preview yet: drawing a would-be result needs the engine to render one (left for later, said in H48).
 Flow {
     id: section
@@ -26,6 +27,7 @@ Flow {
         delegate: Row {
             id: run
             required property var modelData
+            required property int index
             readonly property bool icons: modelData.items.every(i => !!i.icon)
             readonly property bool folded: !icons && modelData.title !== ""
             spacing: icons ? 2 : Theme.grid
@@ -58,15 +60,15 @@ Flow {
                 onClicked: section.openMenu(barButton, run.modelData.items.map(i => ({ value: i.id, label: i.label,
                                                                                          keys: i.keys, group: "", sub: [] })))
             }
+            IconButton {    // "⋯" ends the last run, so it never wraps onto a line of its own (F5, audit 9)
+                id: moreButton
+                objectName: "actionsMore"
+                visible: run.index === section.rows.length - 1 && section.more.length > 0
+                width: section.size; height: section.size
+                kind: "ghost"; glyph: "⋯"; tip: "More"; help: "The other actions for this selection"
+                onClicked: section.openMenu(moreButton, section.more)
+            }
         }
-    }
-    IconButton {    // "⋯", the same icon button as the context bar's: the word More is the Song panel's fold of fields
-        id: moreButton
-        objectName: "actionsMore"
-        visible: section.more.length > 0
-        width: section.size; height: section.size
-        kind: "ghost"; glyph: "⋯"; tip: "More"; help: "The other actions for this selection"
-        onClicked: section.openMenu(moreButton, section.more)
     }
     ActionMenu { id: menu; onPicked: (v) => section.hub.run(v) }
 }

@@ -2,7 +2,7 @@ import QtQuick
 import "."
 
 // The guides drawer (INTERACTION.md 1.17): the how-to guides in a drawer on the left, beside the main view, so you
-// follow along while you work (it pushes the view aside, never covers it; AppShell places it). F1 or ? › Guides opens
+// follow along while you work (beside the tool rail; AppShell places it: pushing the view aside, or over its left edge in an app whose left column floats, `leftOver`). F1 or ? › Guides opens
 // it. With no guide open it lists the app's guides; "Find in the guides" searches their titles and text. Links between
 // guides open here (Back returns); a web link or any other file opens in the computer's own program. Pictures wider
 // than the drawer are scaled to fit (guidePages.readAt). Esc or × closes it, and the keys go back to the work.

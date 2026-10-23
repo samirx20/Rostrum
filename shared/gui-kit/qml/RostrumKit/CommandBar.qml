@@ -59,7 +59,9 @@ QQC.Popup {
                     id: tail
                     anchors.right: parent.right; anchors.rightMargin: Theme.gap; anchors.verticalCenter: parent.verticalCenter
                     spacing: Theme.gap
-                    Text { text: cmd.modelData.hint || ""; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+                    // what a command acts on ("2 layers") once, on the first row of a run, never on every row (F5, audit 49)
+                    Text { text: cmd.index > 0 && (bar.shown[cmd.index - 1] || {}).hint === cmd.modelData.hint ? "" : cmd.modelData.hint || ""
+                           color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
                            visible: text !== ""; anchors.verticalCenter: parent.verticalCenter }
                     Text { text: cmd.modelData.keys || ""; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
                            visible: text !== ""; anchors.verticalCenter: parent.verticalCenter }

@@ -2,7 +2,8 @@ import QtQuick
 import QtQuick.Dialogs
 import RostrumKit
 
-// The Library drawer (UX_SPEC 3.27), on the canvas's left; it pushes the canvas aside, never covers it. Ctrl+L or the
+// The Library drawer (UX_SPEC 3.27), beside the tool rail over the canvas's left edge (AppShell.leftOver: the rail
+// stays put and the canvas keeps its size). Ctrl+L or the
 // rail's Media › Library. Brand kit: the project's colours, text styles and logos (every document of the project sees
 // them: screen2d/brand_view.py, rostrum2d/brand_kit.py); then this document's own text styles. Click an entry to put
 // it on the selection (a colour on shapes, paths and texts; a style on texts) or, for a logo, onto the canvas.
@@ -20,7 +21,7 @@ Rectangle {
         font.weight: Font.DemiBold; font.letterSpacing: Theme.capsSpacing
     }
     IconButton { anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: head.verticalCenter }
-                 glyph: "✕"; kind: "ghost"; tip: "Close the library"; onClicked: drawer.lib.setOpen(false) }
+                 glyph: "×"; kind: "ghost"; tip: "Close the library"; job: "library"; onClicked: drawer.lib.setOpen(false) }
     FileDialog {
         id: logoDialog
         title: "Choose a logo for the brand kit"
@@ -71,10 +72,9 @@ Rectangle {
         Column {
             id: col
             width: parent.width; spacing: 2
-            Text { visible: !drawer.lib.hasProject; width: col.width; wrapMode: Text.Wrap; color: Theme.fg3
-                   text: "The brand kit belongs to a project: save this scene in a project to keep colours, styles and logos for all its scenes."
-                   font.family: uiFont; font.pixelSize: Theme.body }
-            Heading { visible: drawer.lib.hasProject; text: "Brand kit · colours" }
+            EmptyHint { visible: !drawer.lib.hasProject; width: col.width; topPadding: Theme.gap   // one line, no box
+                        text: "A project's scenes share colours, text styles and logos here." }
+            Heading { visible: drawer.lib.hasProject; text: "Colours" }
             Repeater { model: drawer.lib.colors
                        delegate: Row2 { required property var modelData; title: modelData.name; swatch: modelData.value
                                         sub: modelData.name.toUpperCase() !== modelData.value.toUpperCase() ? modelData.value.toUpperCase() : ""
@@ -82,7 +82,7 @@ Rectangle {
                                         onRemoved: drawer.lib.remove("colors", modelData.name) } }
             AddPicked { visible: drawer.lib.hasProject && drawer.lib.picked !== "" && drawer.lib.picked !== "texts"
                         text: "+ This colour"; help: "Keep the selected layer's colour in the project's brand kit." }
-            Heading { visible: drawer.lib.hasProject; text: "Brand kit · text styles" }
+            Heading { visible: drawer.lib.hasProject; text: "Text styles" }
             Repeater { model: drawer.lib.textStyles
                        delegate: Row2 { required property var modelData; title: modelData.name; swatch: modelData.color || "transparent"
                                         sub: (modelData.font || "") + (modelData.size ? " · " + modelData.size + " px" : "")
@@ -91,7 +91,7 @@ Rectangle {
                                         onRemoved: drawer.lib.remove("textStyles", modelData.name) } }
             AddPicked { visible: drawer.lib.hasProject && drawer.lib.picked === "texts"
                         text: "+ This text's style"; help: "Keep the selected text's style in the project's brand kit." }
-            Heading { visible: drawer.lib.hasProject; text: "Brand kit · logos" }
+            Heading { visible: drawer.lib.hasProject; text: "Logos" }
             Repeater { model: drawer.lib.logos
                        delegate: Row2 { required property var modelData; title: modelData.name; sub: modelData.file
                                         onPicked: drawer.lib.placeLogo(modelData.name)
@@ -99,7 +99,7 @@ Rectangle {
             Button { visible: drawer.lib.hasProject; kind: "ghost"; text: "+ Logo…"
                      help: "Keep a logo file in the project's brand kit."
                      onClicked: logoDialog.open() }
-            Heading { visible: drawer.lib.docStyles.length > 0; text: "This scene · text styles" }
+            Heading { visible: drawer.lib.docStyles.length > 0; text: "This scene's text styles" }
             Repeater { model: drawer.lib.docStyles
                        delegate: Row2 { required property var modelData; title: modelData.name; swatch: modelData.color
                                         sub: modelData.font + " · " + modelData.size + " px · " + modelData.weight

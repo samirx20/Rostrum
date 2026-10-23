@@ -15,7 +15,8 @@ LONG_ERROR = ("The drawing engine stopped and could not be restarted: the engine
 LONG_AGENT = "Claude: moved the title card, changed its colour, and re-timed the whole opening against the music"
 LONG_STATUS = "No graphics driver, so drawing is slower"
 LONG_PROJECT = "Summer_launch_film_for_the_new_headphones_-_final_cut_v3"   # a step's words: _ for spaces
-PICTURE = (Path(__file__).resolve().parents[2] / "guides" / "pictures" / "draw-tool.png").as_posix()   # any picture: a fill
+PICTURE = (Path(__file__).resolve().parents[4] / "proofs" / "3d-painterly" / "paint" / "textures" / "cloth.png").as_posix()  # a real
+# picture for a fill (a screenshot of the app, dark, reads as a broken fill)
 PAINTED = ["select card", "tool draw", "draw 600 300 900 330 1200 300"]
 FRAMES = ["tool draw", "draw 300 300 500 320 700 300", "newframe", "draw 320 320 520 340 720 320", "newframe copy",
           "draw 340 340 540 360 740 340"]
@@ -189,7 +190,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                           "keypick logo.x.k1000"]),
         # H33 (rig, round 2): Styles ▾ on a text with a saved style; the Library drawer without a project and with a
         # brand kit of long names
-        ("styles-menu", ["--sample"], ["select title", "do layer:style_save", "add text", "clickbtn Styles", "wait 300"]),
+        ("styles-menu", ["--sample"], ["select title", "do layer:style_save", "add text", "clickobj actionBar:Styles", "wait 300"]),   # Styles ▾ (ActionsSection)
         ("library-no-project", ["--sample"], ["library open", "select title"]),
         # S47: colour rows are a swatch square + hex box; a gradient fill shows its name in the box
         ("fill-solid-hex", ["--sample"], ["select card"]),
