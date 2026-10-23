@@ -116,6 +116,16 @@ impl Sink {
         self.in_order
     }
 
+    /// The encoder it used, as encode_mp4.rs names it on stderr ("encode-mp4: encoder <name> (graphics card)" or
+    /// "(processor: …)"): {name, gpu}; None from an encoder that doesn't say (FFmpeg, pictures).
+    pub fn encoder(&self) -> Option<serde_json::Value> {
+        let said = self.said.lock().unwrap();
+        let line = said.lines().find_map(|l| l.strip_prefix("encode-mp4: encoder "))?;
+        let gpu = line.ends_with("(graphics card)");
+        let name = line.rsplit_once(" (").map_or(line, |(n, _)| n);
+        Some(serde_json::json!({ "name": name, "gpu": gpu }))
+    }
+
     /// Closes the encoder's input and waits for it: its exit code, or an error with what it said.
     pub fn finish(&mut self) -> Result<i32, String> {
         drop(self.tx.take());

@@ -49,4 +49,10 @@ def export(eng: Engine, fmt: str, out, alpha: bool | None = None, depth: int | N
     facts = readback.check(fmt, target, reply["frames"], w, h, alpha, depth)
     return {"file": target, "frames": reply["frames"], "fps": fps, "alpha": alpha, "depth": depth, "checked": facts,
             **({"kbps": rate.kbps} if rate.kbps and rate.quality is None else {}),
-            **({"quality": quality or formats.DEFAULT_QUALITY} if rate.quality is not None else {})}
+            **({"quality": quality or formats.DEFAULT_QUALITY} if rate.quality is not None else {}),
+            **(encoded(reply["encoder"]) if reply.get("encoder") else {})}
+
+
+def encoded(encoder: dict) -> dict:
+    """Which encoder made the MP4 (the engine's reply `encoder`: its name, on the graphics card or not), in words."""
+    return {"encoded": "on the graphics card" if encoder["gpu"] else "on the processor", "encoder": encoder["name"]}

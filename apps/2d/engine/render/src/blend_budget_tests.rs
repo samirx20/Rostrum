@@ -22,7 +22,7 @@ fn a_multiply_layer_after_many_layers_still_multiplies() {
     let mut painter = crate::painter::Painter::cpu(S, S, spec.surface_space()).unwrap();
     painter.paint(false, |scene| blitz_paint::paint_scene(scene, &mut doc, 1.0, S, S, 0, 0)).unwrap();
     let mut px = vec![];
-    crate::color::output(&spec, &painter.read(), S, false, false, 0, &mut px);
+    crate::color::output(&spec, &painter.read().unwrap(), S, false, false, 0, &mut px);
     let at = |x: u32, y: u32| &px[((y * S + x) * 4) as usize..((y * S + x) * 4 + 3) as usize];
     for (x, y) in [(32, 32), (60, 60), (10, 50)] {
         let p = at(x, y);
