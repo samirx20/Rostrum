@@ -293,6 +293,24 @@ pub trait PaintScene: RenderContext {
         false
     }
 
+    /// Rostrum patch (E3): a layer whose content is captured as one picture, then drawn as each glow (the picture
+    /// with the glow's filter, at its strength, added: `plus-lighter`, under the glow's clip), then as itself: in a
+    /// layer with `alpha`, `blend` (normal when None) and `filter` under `clip`, or as it is when `clip` is None (no
+    /// layer). Clips are in `transform`'s space. Popped with `pop_layer`. False when the backend can't (nothing is
+    /// pushed; the caller draws each glow as its own layer of the content).
+    #[allow(clippy::too_many_arguments)]
+    fn push_glow_layer(
+        &mut self,
+        _glows: &[(Arc<Filter>, f32, Rect)],
+        _alpha: f32,
+        _blend: Option<BlendMode>,
+        _transform: Affine,
+        _clip: Option<Rect>,
+        _filter: Option<Arc<Filter>>,
+    ) -> bool {
+        false
+    }
+
     /// Strokes a shape using the specified style and brush.
     fn stroke<'a>(
         &mut self,

@@ -256,3 +256,11 @@ Not crates (`render/src`): `depth_tests.rs` — a parent's `perspective: 800px` 
 | anyrender | `PaintScene::draw_cached(k)` (default false) | a backend's kept picture drawn in a node's place |
 | anyrender_skia | `SkiaSceneCache::cached` (the kept pictures) and `draw_cached`: picture `k` at device pixels inside the pushed layers, as `draw_held` | a run of still layers painted once is laid over each motion-blur sample |
 | blitz-paint | `runs.rs`: a per-thread paint plan by node (`Run::Skip`, `Run::Cached(k)`), checked at the top of `render_node`; an empty plan (the default) draws everything | the engine paints one run of still layers alone, then each sample with the run's picture in its place (render/src/still_runs.rs), and times each layer alone (render_costs.rs) |
+
+## E3 (glow drawn from the layer's own picture; 2026-10-23)
+
+| Crate | Patch | Why |
+|---|---|---|
+| anyrender | `PaintScene::push_glow_layer(glows, alpha, blend, transform, clip, filter)` (default false) | a layer whose content is drawn once and laid on as each glow and as itself |
+| anyrender_skia | `push_glow_layer` as a `Capture` (X6's content-to-image layer, now `push_capture` / `draw_capture`): each glow is the image blurred, at its strength, `Plus`, under its own clip; then the image with the layer's alpha, blend and filter. Only when the layer's whole reach lies inside the enclosing clip and no base matrix is set (else false) | a glow was a second copy of the layer's markup: laid out and drawn twice (nested glows: 2^depth). Skia's filter layer reads content just off-canvas; a capture doesn't, so edge-crossing layers keep the old drawing |
+| blitz-paint | `glow.rs`: `data-glow="radius strength;…"` read; `render_element` draws the content once into `push_glow_layer`, or (no hook, a blend inside reaching the element, an edge-crossing layer) once per glow as its own `Plus` layer, then as itself. `blend.rs`: a glow-marked element counts as blending (`blends_inside`), so its stacking context isolates it as the copy's `plus-lighter` did | the 2D stage (scene/stage.rs) writes a layer once with its glows marked, instead of a blurred copy per glow |

@@ -8,6 +8,7 @@ mod color;
 mod debug_overlay;
 mod filters;
 mod svg_filter;
+mod glow;
 mod gradient;
 mod ink;
 mod kurbo_css;
