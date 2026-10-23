@@ -154,7 +154,7 @@ class ActionList:
             return ""
         if a.why:
             return a.why
-        label, what = a.label_for(facts), " or ".join(plural(k) for k in a.kinds) if a.kinds else plural(self.noun)
+        label, what = a.label_for(facts).rstrip("…. "), " or ".join(plural(k) for k in a.kinds) if a.kinds else plural(self.noun)
         if reason == "few":
             n = a.min_targets
             if n == 1:

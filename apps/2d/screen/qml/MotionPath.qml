@@ -13,6 +13,8 @@ Item {
     property real ox: 0
     property real oy: 0
     property bool interactive: true
+    property real compW: 0                      // the picture's size in composition px: the camera's frames are cut at its edge
+    property real compH: 0
     readonly property var paths: backend.motionPath.paths
     readonly property int hit: 18               // the invisible click target round a square or a handle end (≥ the kit's 16)
     function cx(p) { return mp.ox + p[0] * mp.fit }
@@ -30,9 +32,13 @@ Item {
                 const ac = Qt.rgba(a.r, a.g, a.b, alpha)
                 g.lineWidth = 1
                 g.strokeStyle = Qt.rgba(a.r, a.g, a.b, row.faint ? 0.25 : 0.5)
+                g.save()                                                       // frames stay inside the picture, never run into the margin
+                if (mp.compW > 0) { g.beginPath(); g.rect(mp.ox, mp.oy, mp.compW * mp.fit, mp.compH * mp.fit); g.clip() }
                 for (const f of row.frames) poly(g, f, true)                   // the camera at each key
                 g.strokeStyle = ac
                 if (row.now.length) poly(g, row.now, true)                     // the camera's frame now
+                g.restore()
+                g.strokeStyle = ac
                 poly(g, row.points, false)
                 g.fillStyle = ac
                 for (const p of row.ticks) { g.beginPath(); g.arc(mp.cx(p), mp.cy(p), row.faint ? 1.2 : 1.6, 0, 2 * Math.PI); g.fill() }
@@ -52,7 +58,8 @@ Item {
         }
         Connections { target: mp; function onPathsChanged() { ink.requestPaint() }
                       function onFitChanged() { ink.requestPaint() } function onOxChanged() { ink.requestPaint() }
-                      function onOyChanged() { ink.requestPaint() } }
+                      function onOyChanged() { ink.requestPaint() }
+                      function onCompWChanged() { ink.requestPaint() } function onCompHChanged() { ink.requestPaint() } }
     }
 
     // Key squares and handle ends: a small mark with a larger invisible target. The Repeaters count marks (an int

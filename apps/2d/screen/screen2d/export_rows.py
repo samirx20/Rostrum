@@ -58,7 +58,7 @@ def gif_line(w: int, h: int, fps: float, seconds: float, values: dict, found) ->
     """Before export: what the GIF's choices come to. `found`: its measured bytes (gif_guess), None while being worked
     out, or the failure in words."""
     ow, oh, ofps, n = table.gif_shape(w, h, fps, max(1, round(seconds * fps)), values["size"], values["rate"])
-    weight = (f"about {megabytes(found)}" if isinstance(found, int) else "size: working it out…" if found is None else found)
+    weight = (f"about {megabytes(found)}" if isinstance(found, int) else "Working out the size…" if found is None else found)
     return line(weight, (ow, oh), n, ofps)
 
 

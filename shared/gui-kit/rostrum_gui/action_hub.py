@@ -17,6 +17,7 @@ from . import commands as command_box
 from . import action_views as views
 from .actions import ActionList
 from .keyhold import KeyHold
+from .match import starts
 
 
 class ActionHub(QObject):
@@ -81,7 +82,23 @@ class ActionHub(QObject):
     def commands(self, query):
         facts, entries = self._now()
         found = views.commands(entries, self._what(facts))
-        return command_box.search(found, query) if query.strip() else found
+        found = command_box.search(found, query) if query.strip() else found
+        return found + self.whys(query, found)
+
+    def whys(self, query, found) -> list[dict]:
+        """Ctrl+K: an action typed by name (the start of its label, id or bar words) that exists but doesn't fit this
+        selection shows why ("Stagger needs two or more layers selected."), never "nothing called". One line, only when
+        nothing else matched or the action is not already listed; choosing it says it again in the status."""
+        words, facts = query.strip().lower().split(), self._facts()
+        if sum(len(w) for w in words) < 3:
+            return []
+        have = {c["key"] for c in found}
+        for a in self.list.actions:
+            if a.id not in have and starts(words, f"{a.id} {a.label_for(facts)} {a.bar or ''}".lower()):
+                why = self.list._sentence(a, facts)
+                if why:
+                    return [{"key": a.id, "label": why, "hint": "Not available now", "keys": ""}]
+        return []
 
     @Slot(str, result=str)
     def whyNot(self, typed):
