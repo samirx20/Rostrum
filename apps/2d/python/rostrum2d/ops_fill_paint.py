@@ -34,7 +34,7 @@ def parse_stop(ctx, text: str) -> dict:
     return {"at": round(at, 4), "color": m[1][:7].lower(), "opacity": round(opacity * alpha, 4)}
 
 
-@R.operation("layer.fill", "Set the fill of shapes, paths or texts in one change: none, a solid colour, or a linear / radial / "
+@R.operation("layer.fill", "Set the fill of shapes, paths or texts in one change: none, a solid colour (and its `opacity`, 0 … 1), or a linear / radial / "
              "angular gradient with its stops (\"#ff7a59 0\", \"#7c4dff 100\"; a third number is the stop's opacity %) and "
              "its angle (linear: 90 = left to right; angular: where the sweep starts, 0 = up) or centre (fractions of the box), or "
              "span=\"points\": linear from (x1, y1) to (x2, y2), radial radii rx, ry (fractions of the box); or a picture "
@@ -43,6 +43,7 @@ def parse_stop(ctx, text: str) -> dict:
              target=FF.OWNERS, label="Fill",
              params=[Param.choice("type", ["none", *FF.TYPES], label="Fill type"),
                      Param.color("color", label="Colour", help="The solid colour (a text's letters)"),
+                     Param.number("opacity", label="Opacity", min=0, max=1, help="A solid fill's opacity, 0 … 1 (a gradient's is its stops')"),
                      Param.list("stops", "text", label="Stops", min_items=2, help="Each \"<colour> <position %> [<opacity %>]\""),
                      Param.number("angle", label="Angle", min=-360, max=360, unit="°"),
                      Param.number("cx", label="Centre X", min=-5, max=6), Param.number("cy", label="Centre Y", min=-5, max=6),
@@ -67,6 +68,10 @@ def fill_set(ctx, targets, args):
         ctx.set(t, "fillType", kind)
         if "color" in args:
             _put(ctx, item, fill_paint.colour_field(item), args["color"], args.get("at"))
+        if "opacity" in args:
+            if kind != "solid":
+                ctx.fail(codes.BAD_ARGUMENT, f"{t}.opacity", f"is for a solid fill; a {kind} fill's opacity is each stop's")
+            _put(ctx, item, "fillOpacity", args["opacity"], args.get("at"))
         if kind == "picture" and item["type"] == "text":
             ctx.fail(codes.BAD_ARGUMENT, f'text "{t}"', "takes no picture fill yet; use a colour or a gradient")
         for field, name in (("gradAngle", "angle"), ("gradX", "cx"), ("gradY", "cy"), ("fillPicture", "picture"),

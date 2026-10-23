@@ -185,6 +185,20 @@ fn mix(a: &[f64; 4], b: &[f64; 4], p: f64) -> String {
     s
 }
 
+/// A solid fill's opacity (`fillOpacity`, 0 … 1; a scene without the field is 1) from an item's props, at its own time.
+pub fn fill_opacity(props: &Map<String, Value>) -> f64 {
+    props.get("fillOpacity").and_then(Value::as_f64).unwrap_or(1.0).clamp(0.0, 1.0)
+}
+
+/// `hex` (`#rrggbb` or `#rrggbbaa`) with its alpha times `opacity`, written `#rrggbbaa` while it is see-through.
+pub fn faded(hex: &str, opacity: f64) -> String {
+    if opacity >= 1.0 || parse_hex(hex).is_none() {
+        return hex.to_string();
+    }
+    let (rgb, a) = split_alpha(hex);
+    format!("{rgb}{:02x}", ((a * opacity).clamp(0.0, 1.0) * 255.0).round_ties_even() as u8)
+}
+
 /// A colour split into `#rrggbb` and its alpha (1 for `#rrggbb`), for what draws the two apart (gradient stops).
 pub fn split_alpha(hex: &str) -> (&str, f64) {
     match hex.len() {

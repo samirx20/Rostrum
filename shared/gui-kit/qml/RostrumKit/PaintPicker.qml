@@ -11,7 +11,7 @@ Column {
     property var paint: ({ type: "solid", color: "#ffffff" })
     property var types: ["none", "solid", "linear", "radial", "angular"]
     property int maxStops: 8
-    property bool stopOpacity: true       // false: stops have no alpha strip
+    property bool stopOpacity: true       // false: stops and a solid colour have no alpha strip
     property var project: []
     property var brand: []
     property string brandName: ""
@@ -94,13 +94,14 @@ Column {
     ColorPicker {
         visible: pp.type === "solid" || pp.gradient
         hex: pp.gradient && pp.stop ? pp.stop.color : pp.base
-        alpha: pp.gradient && pp.stop && pp.stop.opacity !== undefined ? pp.stop.opacity : 1
-        showAlpha: pp.gradient && pp.stopOpacity
+        alpha: pp.gradient ? (pp.stop && pp.stop.opacity !== undefined ? pp.stop.opacity : 1)
+                           : (pp.paint && pp.paint.opacity !== undefined ? pp.paint.opacity : 1)    // solid: the fill's own
+        showAlpha: (pp.gradient || pp.type === "solid") && pp.stopOpacity
         extra: pp.gradient && pp.stop ? String(Math.round(pp.stop.at * 100)) : ""
         project: pp.project; brand: pp.brand; brandName: pp.brandName
         onChanged: (hx, a) => {
             if (pp.gradient) pp.change({ stops: pp.stopsWith(pp.sel, { color: hx, opacity: a }) })
-            else pp.change({ color: hx })
+            else pp.change(pp.paint && pp.paint.opacity !== undefined ? { color: hx, opacity: a } : { color: hx })
         }
         onExtraEdited: (t) => pp.moveStop(t)
         onSwatchAdd: (hx) => pp.swatchAdd(hx)

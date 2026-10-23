@@ -35,6 +35,23 @@ Useful facts:
 - A layer with frosted glass (`backdrop`) can't have a blend other than normal (refused, loudly).
 - The list lives in one file, `apps/2d/python/rostrum2d/blends.txt`; the settings panel's labels come from it.
 
+## A see-through solid fill
+
+A shape, path or text with a solid colour has its own `fillOpacity` (0 to 1, 1 by default, so older files look the
+same): only the fill fades, not the outline and not the layer's other parts (the layer's `opacity` fades everything).
+It is keyable like any number, and a letter-by-letter text follows it too.
+
+```python
+card = shape("card", w=900, h=500, fill="#4f8cff", fillOpacity=0.4)
+card.key("fillOpacity", {0.0: 0.0, 1.0: 0.4})
+```
+
+- Agents: `layer.fill {target, type: "solid", color, opacity: 0.4}`; on an animated opacity it needs `at` (a key there).
+  A gradient's opacity is each stop's (`"#7c4dff 100 80"`), so `opacity` on a gradient fill is refused.
+- On the screen: open the Fill colour square; a solid colour has an opacity strip and percentage under the hue, like a
+  gradient stop's. A colour of 100 % shows no change.
+- Preview and export draw it the same way, with the same engine.
+
 ## Colour effects
 
 Every layer has four colour effects. Each is off until you turn it on, and its controls appear only then. They act on
