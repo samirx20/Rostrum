@@ -34,7 +34,9 @@ rostrum_gui/            the Python side (uv pip install -e shared/gui-kit)
   rows.py               the inspector's rows from a field operation: order, groups, More, validity (no Qt)
   sections.py           opt-in rows by importance (`sections = True` on a bridge): essentials, every other group
                         folded to its name, the "Find a setting" search; bridge_sections.py: toggleGroup / setSearch /
-                        revealField (open its group, scroll to it, focus it) and the `search` property
+                        revealField (open its group, scroll to it, focus it) and the `search` property. Open-if-changed groups are
+                        this same layout: `sections.OWN[kind] = group` makes that group always open (the thing itself);
+                        every other group opens when changed from its start. 3D-style light: demo/groups_preview.py
   many.py               several items selected (`selectMany`): the settings they share, "Mixed" values; an edit is
                         one change on all of them
   edits.py              screen edit -> operation call, its history label, the scrub gesture (no Qt)

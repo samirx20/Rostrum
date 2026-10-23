@@ -22,7 +22,7 @@ from .pairs import pair_up, pair_valid
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
 ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit", "display",
-         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default", "half", "letter", "more", "names")
+         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default", "half", "letter", "more", "names", "own")
 # more: "" for most rows; a choice whose list can grow names the last entry that adds one ("Load picture…"):
 # picking it opens a file dialog (filters) and calls bridge.loadChoice(id, path).
 # anim: "" (can't be animated), "still" (could be), "keyed" (has keys), "onkey" (has a key at the playhead).
@@ -33,6 +33,7 @@ ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options",
 # A "pick" param (control "pick", a text naming one other item, "" = none) shows as a choice: "None" first, then what
 # the app's `choices(name)` gives (e.g. the layers a track matte may use). Never a bare text box of ids; with nothing
 # to pick (and nothing picked) the row is absent.
+# own: a fold row of the kind's own group (sections.OWN): always open, never folded.
 # fold: the group a fold row opens; open: that group is open now (None when nothing inside applies: the row is absent).
 # names: the "folds" row's folded groups that apply, [{"group", "changed"}] in panel order (sections.py).
 # mixed: several items selected and their values differ (the widget says "Mixed"; many.py).
@@ -136,7 +137,7 @@ def _open_groups(static, item, ok, choice, starts) -> _Opened:
                and item.get(m, params[m]["default"]) not in (params[m]["default"], starts.get(m, params[m]["default"]))
                for m in f["members"]):
             out.changed.add(f["fold"])
-        if choice.get(f["fold"], f["fold"] in out.changed):
+        if f.get("own") or choice.get(f["fold"], f["fold"] in out.changed):
             out.add(f["fold"])
     return out
 

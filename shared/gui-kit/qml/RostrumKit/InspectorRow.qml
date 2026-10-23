@@ -107,14 +107,14 @@ Item {
             Item {  // a fold row: chevron + the group's name
                 visible: row.model.row === "fold"
                 anchors.fill: parent
-                Chevron { id: foldChev; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                Chevron { id: foldChev; visible: !row.model.own; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
                           rotation: row.model.open ? 0 : -90; color: foldArea.containsMouse ? Theme.fg : Theme.fg3
                           Behavior on rotation { NumberAnimation { duration: Theme.fast; easing.type: Theme.revealEasing } } }
-                Text { anchors.left: foldChev.right; anchors.leftMargin: Theme.grid + 2
+                Text { anchors.left: foldChev.right; anchors.leftMargin: row.model.own ? -foldChev.width : Theme.grid + 2
                        anchors.verticalCenter: parent.verticalCenter; text: row.model.label
                        color: foldArea.containsMouse ? Theme.fg : Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
                        font.weight: Font.DemiBold }
-                MouseArea { id: foldArea; anchors.fill: parent; hoverEnabled: true
+                MouseArea { id: foldArea; anchors.fill: parent; hoverEnabled: true; enabled: !row.model.own
                             cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.toggleGroup(row.model.fold) }
             }
             Flow {  // the "folds" row: the folded groups' names, a click opens one
