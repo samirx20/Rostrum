@@ -32,6 +32,7 @@ class MixPage(QObject):
         self._buses = RowsModel(ROLES, self)
         self._master: dict = {}
         self._live: dict = {}
+        self._peaks: dict = {}
         bridge.transport.player.levels.connect(self._levels)
         self._plugins = PluginHub(bridge, playback.open_engine, self)
         self._ducks, self._loudness = ducks.DuckHub(bridge, self), LoudnessMeter(bridge, self)
@@ -91,7 +92,14 @@ class MixPage(QObject):
     def live(self):
         return self._live
 
+    @Property("QVariantMap", notify=liveChanged)
+    def peaks(self):
+        """{id: dBFS}: each strip's highest peak since play started, held after the stop until the next play."""
+        return self._peaks
+
     def _levels(self, strips_now: dict):
+        if strips_now:
+            self._peaks = strips.held_peaks(self._peaks, strips_now, fresh=not self._live)
         self._live = strips_now
         self.liveChanged.emit()
 

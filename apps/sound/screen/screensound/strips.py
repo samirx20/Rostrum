@@ -44,6 +44,17 @@ def meter_of(render: dict, track_id: str) -> dict:
     return {}
 
 
+def held_peaks(held: dict, now: dict, fresh: bool) -> dict:
+    """The one peak number of every strip (tracks, groups, Master): the highest engine peak (dBFS) since play started.
+    `held` is what was held so far, `now` the engine's latest {id: [peak, rms]}, `fresh` True on the first line of a play
+    (the old numbers are dropped). The stop leaves `held` alone: the numbers stay until the next play."""
+    out = {} if fresh else dict(held)
+    for sid, v in now.items():
+        if v:                                  # a strip that has made no sound yet holds the floor (shown "−∞")
+            out[sid] = max(out.get(sid, -120.0), round(float(v[0]), 1))
+    return out
+
+
 def master_meter(render: dict) -> dict:
     if "lufs" not in render:
         return {}

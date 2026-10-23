@@ -79,3 +79,11 @@ def test_mixer_mute_and_header_mute_say_the_same_words_and_volume_stays_in_the_p
     doc.apply([call], Who.person("sam"))
     assert moves.toggle_call(doc, tid, "mute")[1] == "Unmute pad"
     assert "volume" not in onpage.fields("mixer", "track") | onpage.fields("mixer", "master")
+
+
+def test_strip_peak_is_held_since_play_started_for_tracks_groups_and_master():
+    from screensound import strips
+    a = strips.held_peaks({}, {"t1": [-23.2, -30], "bus": [-3.3, -9], "master": [-2.0, -8]}, fresh=True)
+    b = strips.held_peaks(a, {"t1": [-30.0, -40], "bus": [-1.0, -9]}, fresh=False)
+    assert b == {"t1": -23.2, "bus": -1.0, "master": -2.0}                      # the highest so far, one rule for every strip
+    assert strips.held_peaks(b, {"t1": [-50.0, -60]}, fresh=True) == {"t1": -50.0}   # the next play clears the old numbers

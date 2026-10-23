@@ -24,8 +24,11 @@ Item {
         if (live) {
             peakDb = Math.max(peakDb, live[0]); rmsDb = Math.max(rmsDb, live[1])
             if (live[0] >= holdDb) { holdDb = live[0]; holdAt = Date.now() }
+            if (!ticker.running) { last = Date.now(); ticker.running = true }
+        } else {                                  // stopped: the bars are empty (the strip's number holds the peak)
+            peakDb = rmsDb = holdDb = F.FLOOR
+            ticker.running = false
         }
-        if (!ticker.running) { last = Date.now(); ticker.running = true }
     }
     Timer {   // the fall between the engine's lines and after the stop
         id: ticker
