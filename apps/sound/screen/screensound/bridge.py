@@ -17,7 +17,7 @@ from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
 from rostrum_gui.timeview import TimeViewObject
 from rostrum_core import live
-from rostrum_sound import compile as compile_doc
+from rostrum_sound import clean_clips, compile as compile_doc
 from rostrum_sound.doc import markers as MK
 from rostrum_sound.doc import ops_mix
 
@@ -182,7 +182,8 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         """The compiled song. A song with nothing in it yet (a new one, or an instrument with no notes) is still a
         song: it renders as silence the length the screen shows, instead of the engine refusing an empty schedule."""
         side = getattr(self, "side", None)                 # lines being spoken right now play once they are made
-        s = compile_doc(voice_card.without(self.doc, side.voice.making() | side.voice.waiting()) if side else self.doc)
+        doc = clean_clips.without_pending(self.doc)        # a clip whose cleaned take is not made yet plays its original
+        s = compile_doc(voice_card.without(doc, side.voice.making() | side.voice.waiting()) if side else doc)
         if "length" not in s and not any(t.get(k) for t in s["tracks"] for k in SOUNDING):
             s["length"] = self._length()
         return s

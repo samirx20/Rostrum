@@ -7,7 +7,7 @@ is set). Set them with `clip.set`. Order: stem / isolate, then noise, then rever
 
 The audio is not made by editing: call the `render_cleanup` tool (optional `ids`). It makes each missing take (a job: ask
 `inspect_job` if it did not finish) and answers per clip with `media`, `file`, `generated` or cached and `steps`.
-Rendering a clip whose take is not made fails and names the clip (`clip "<id>"'s cleaned take is not made yet`).
+Rendering a clip whose take is not made fails and names the clip (`clip "<id>"'s cleaned take is not made yet`); that is what export and the MCP renders do. The screen's own playback never stops for it: until the take is made, the clip plays its original and the Clean up bar says so.
 
 `clip.split_stems` on a clip adds four tracks (`<track> · vocals` … `other`), each with a copy of the clip playing one
 stem, and sets the original clip's volume to 0; one undo step; a second split of the same clip fails. Then `render_cleanup`.

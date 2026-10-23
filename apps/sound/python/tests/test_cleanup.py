@@ -7,7 +7,7 @@ import wave
 
 import pytest
 from rostrum_core import Document, RostrumError, Who
-from rostrum_sound import KIND, cleanup, compile
+from rostrum_sound import KIND, clean_clips, cleanup, compile
 from rostrum_sound.cleanup import chain
 
 AGENT = Who.agent("test")
@@ -49,6 +49,20 @@ def test_a_cleaned_clip_plays_its_take_or_fails_loudly(tmp_path, monkeypatch):
 
     doc.apply([{"op": "clip.set", "target": ["dlg.take"], "args": {"useCleaned": False}}], Who.person())
     assert compile(doc)["tracks"][0]["clips"][0]["media"] == str(media)
+
+
+def test_a_pending_take_never_stops_the_screen_from_playing(tmp_path, monkeypatch):
+    monkeypatch.setenv("ROSTRUM_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setattr(chain, "_steps", lambda recipe: [(FAKE, {})] if recipe else [])
+    media = _wav(tmp_path / "take.wav")
+    doc = make_doc(media)
+    doc.apply([{"op": "clip.set", "target": ["dlg.take"], "args": {"denoise": 0.6}}], Who.person())
+    assert clean_clips.pending(doc) == ["dlg.take"]
+    playing = clean_clips.without_pending(doc)                       # what the screen plays meanwhile
+    assert compile(playing)["tracks"][0]["clips"][0]["media"] == str(media)
+    assert doc.item("dlg.take")["useCleaned"] is True                # the document is untouched
+    with pytest.raises(RostrumError):                                # export still refuses to ship the wrong sound
+        compile(doc)
 
 
 def test_split_stems_once_and_undo(tmp_path):
