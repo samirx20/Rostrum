@@ -22,7 +22,8 @@ class StretchSelect(QObject):
         super().__init__(parent)
         self.b, self._owner, self._ids, self._own, self._drag = bridge, "", [], False, None
         bridge.selectedItemsChanged.connect(self._followed)
-        bridge.docChanged.connect(self.changed)
+        for sig in (bridge.docChanged, bridge.docStepped):     # the curve follows its handle's drag live
+            sig.connect(self.changed)
 
     # ---- what is picked -----------------------------------------------------------------------------------------
     def _found(self):

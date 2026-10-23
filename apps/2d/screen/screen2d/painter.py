@@ -41,6 +41,7 @@ class Painter(BrushPanel):
         self.model.reset(self.brush.rows(bool(self.b.doc.folder)))
         self.refreshBrushes()
         bridge.docChanged.connect(self._doc_changed)
+        bridge.docStepped.connect(self._doc_changed)       # a drag's step moves what the onion shows too
         bridge.outlineChanged.connect(self._refresh)
         bridge.timeChanged.connect(self._refresh)          # the navigator and the onion follow the playhead
         self.changed.connect(self.brushChanged)         # the header names what the pen paints on

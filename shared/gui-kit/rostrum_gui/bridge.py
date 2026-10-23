@@ -1,6 +1,7 @@
 """The document bridge: what QML sees of one rostrum_core Document, and the only way QML changes it.
 
-Every edit is an operation through doc.apply (a scrub through doc.gesture: one change for the whole drag),
+Every edit is an operation through doc.apply (a scrub through doc.gesture: one change for the whole drag; its steps
+send `docStepped`, its end `docChanged`),
 recorded with the person's name, so undo, history and "who changed what" work the same as for agents.
 The bridge listens to the document (doc.subscribe), so an agent's or script's change shows up in place too.
 Selection (one item, or several: `selectMany`, the panel then shows what they share, many.py), the More row, open
@@ -46,7 +47,8 @@ def name_of(item: dict) -> str:
 class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts, Parts, QObject):
     selectionChanged = Signal()             # what the selection shows changed: its items, name, kind or the More row
     selectedItemsChanged = Signal()         # which items are selected changed (never a mere document edit)
-    docChanged = Signal()
+    docChanged = Signal()                   # the document changed for good: an edit, undo, a drag's drop or Escape
+    docStepped = Signal()                   # a step of an open drag (a preview): only what the person watches move follows
     statusChanged = Signal()
     searchChanged = Signal()
     rowsChanged = Signal()                  # the rows' values or validity changed (nothingFound follows it)
@@ -211,7 +213,12 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         self.docChanged.emit()
 
     def _on_doc(self, event):
+        """A drag's step (a gesture preview) is only docStepped: the rows' values and the picture follow it live; the
+        actions row, history, ↶ ↷ and item lists wait for docChanged, sent once when the drag ends (its change or reset)."""
         self._follow_doc()
+        if event.kind == "preview":
+            self.docStepped.emit()
+            return
         self._heard(event.change if event.kind == "change" else None)
 
     @Slot(str)
