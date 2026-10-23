@@ -163,6 +163,14 @@ class Engine:
     def info(self) -> dict:
         return self._request({"info": {}})
 
+    def release(self):
+        """End the process on purpose (no restart notice): the next request starts a fresh one and sends the scene again.
+        All its graphics memory goes back (the viewport leaving the Final look: ending one Hydra Cycles engine inside a
+        running process is not safe, ending the process is)."""
+        self.close()
+        with self._lock:
+            self.proc, self._hash = None, None
+
     def close(self):
         with self._lock:
             self._close_shm()

@@ -9,7 +9,7 @@ operations and history that agents use through the MCP server (`rostrum3d.mcp`).
 ```
 top bar        Rostrum3D · the shot's name · [Render]                   history · Search or run a command (Ctrl K)
 left           Outliner: Scene (the item tree), Materials, Shots
-centre         the live viewport (Storm, through the shot camera or a free camera); the last render over it
+centre         the live viewport (Quick = Storm, Final = Cycles; through the shot camera or a free camera); the last render over it
 right          Inspector: the selected thing's settings at the playhead, with key marks
 bottom (full)  Timeline: the shot's frames, the playhead, play, and the keys of what moves
 ```
@@ -49,6 +49,14 @@ bottom (full)  Timeline: the shot's frames, the playhead, play, and the keys of 
 - **Viewport bar** (top right of the viewport): Shot camera, Exposure, Studio light (only while the studio lights the view),
   Scene lights, Contact shadows with its strength (only while on; H20), Depth of field (only through a shot camera whose
   depth of field is on; H20).
+- **Look: Quick / Final** (Shift+F, or the "Final" toggle in the viewport bar). Final runs Cycles in the viewport with the
+  Render button's settings (one place: `screen3d/render_job.py` SETTINGS; 128 samples, noise clean-up on); it cleans up
+  sample by sample, and a thin progress line along the bottom reads "Final · 64 of 128 samples · 12 s" (then "Final · done ·
+  128 samples · 31 s"). Orbiting, editing or moving the playhead restarts it. Exposure, Studio light, Scene lights, Contact
+  shadows and Depth of field are Quick-only and are hidden in Final. With under about 300 MB of graphics memory free it
+  steps down to half the pixels ("Final at half size: the graphics card is nearly full"); if still short, or Cycles fails, it
+  goes back to Quick and says why in the viewport's status line. While the Render button's render runs, Final waits
+  ("Final waits for the render"), so two Cycles never share the card.
 - **Screen state is not the document:** selection, playhead, folding, the viewport's camera and light settings.
 - **Rule of individuality:** controls that don't apply are absent, never greyed out (the inspector from
   `valid_when`; Render turns into "Rendering frame n…" while it runs).

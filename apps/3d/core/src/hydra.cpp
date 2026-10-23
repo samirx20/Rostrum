@@ -42,6 +42,16 @@ void throw_usd_errors(const TfErrorMark& mark, const std::string& where) {
   throw Error(where + ": USD/Hydra reported errors: " + msg);
 }
 
+// Cycles' Hydra plug-in counts every samples / integrator setting as a change and starts over (render_delegate.cpp,
+// SetRenderSetting), even with the same value: set only what differs, so the Final look keeps refining
+void cycles_settings(UsdImagingGLEngine& e, const DrawSettings& s) {
+  const auto set = [&](const char* key, const VtValue& v) {
+    if (e.GetRendererSetting(TfToken(key)) != v) e.SetRendererSetting(TfToken(key), v);
+  };
+  set("cycles:samples", VtValue(s.samples));
+  set("cycles:integrator:use_denoise", VtValue(s.denoise));
+}
+
 UsdGeomCamera camera_at(const UsdStageRefPtr& stage, const SdfPath& path) {
   UsdGeomCamera cam(stage->GetPrimAtPath(path));
   if (!cam) throw Error("render.camera: no camera at " + path.GetString());
@@ -157,10 +167,7 @@ Picture Hydra::draw(const std::string& renderer, const SdfPath& camera, int fram
   const UsdGeomCamera cam = camera_at(stage_, camera);
   TfErrorMark mark;
   auto& e = engine(renderer);
-  if (renderer == "cycles") {
-    e.SetRendererSetting(TfToken("cycles:samples"), VtValue(s.samples));
-    e.SetRendererSetting(TfToken("cycles:integrator:use_denoise"), VtValue(s.denoise));
-  }
+  if (renderer == "cycles") cycles_settings(e, s);
   if (renderer != "cycles")  // a render never sees the studio
     e.light_raster(stage_, frame, true, {}, cam.GetCamera(UsdTimeCode(frame)).GetFrustum());
   e.SetCameraPath(camera);
@@ -236,6 +243,49 @@ ViewDrawn Hydra::view(const std::string& renderer, const GfFrustum& frustum, int
     throw_usd_errors(mark, "view (selection mask)");
     out.mask = mf.color_texture();
   }
+  return out;
+}
+
+ViewDrawn Hydra::view_final(const SdfPath& camera, const GfFrustum& frustum, int frame, int w, int h,
+                            const DrawSettings& s, GpuMemWatch& mem) {
+  TfErrorMark mark;
+  auto& e = engine("cycles", true);
+  cycles_settings(e, s);
+  if (camera.IsEmpty()) {
+    e.SetCameraPath(SdfPath());
+    e.SetCameraState(frustum.ComputeViewMatrix(), frustum.ComputeProjectionMatrix());
+  } else {  // exactly as draw(): the camera's own path, so its lens and depth of field are Cycles' own
+    camera_at(stage_, camera);
+    e.SetCameraPath(camera);
+    e.SetOverrideWindowPolicy(CameraUtilMatchHorizontally);
+  }
+  e.SetRenderBufferSize(GfVec2i(w, h));
+  e.SetFraming(CameraUtilFraming(GfRect2i(GfVec2i(0, 0), w, h)));
+  UsdImagingGLRenderParams params;
+  params.frame = UsdTimeCode(frame);
+  params.colorCorrectionMode = TfToken("disabled");
+  params.clearColor = GfVec4f(0, 0, 0, 0);
+  auto& fb = framebuffer(w, h);
+  fb.bind_and_clear();
+  e.Render(stage_->GetPseudoRoot(), params);
+  gl_.finish();
+  mem.sample();
+  throw_usd_errors(mark, "view (cycles, frame " + std::to_string(frame) + ")");
+  FinalPass fp;
+  fp.converged = e.IsConverged();
+  const VtDictionary st = e.GetRenderStats();
+  const auto num = [&](const char* k) {
+    auto it = st.find(k);
+    return it != st.end() && it->second.IsHolding<double>() ? it->second.UncheckedGet<double>() : 0.0;
+  };
+  fp.fraction = fp.converged ? 1.0 : num("fractionDone");
+  fp.seconds = num("totalClockTime") - num("loadClockTime");
+  if (auto it = st.find("totalMemory"); it != st.end() && it->second.IsHolding<size_t>())
+    fp.cyclesMb = double(it->second.UncheckedGet<size_t>()) / (1 << 20);
+  if (auto it = st.find("renderProgressAnnotation"); it != st.end() && it->second.IsHolding<std::string>())
+    fp.status = it->second.UncheckedGet<std::string>();
+  ViewDrawn out{fb.color_texture(), fb.depth_texture()};
+  out.final = fp;
   return out;
 }
 

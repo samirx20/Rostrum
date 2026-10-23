@@ -33,7 +33,7 @@ Light falls off with the square of the distance, so a product a few centimetres 
 - **`normalize` off:** divide by the panel's area (width × height, or length × width for a strip, π × radius² for a disk): the same 0.3 m panel at 0.5 m needs about 1 ÷ 0.09 ≈ 11 for the same picture.
 - **Metal and gloss show the panel itself**, not the light it throws: a strip's reflection reads about intensity ÷ its area (with `normalize` on), so a small strip looks much brighter in a reflection than its light on a matte surface. Judge highlights in `look_frame quality=final`.
 - **Check it:** `inspect_exposure` renders one quick frame and says how much is blown out or crushed and where the brightest and darkest parts are (and what is there). Use `quality=final` for metal, glass and anything a panel reflects in.
-- The quick view (Storm) is within about 10 % of these numbers for rect and disk panels and about 20 % brighter for strips; it ignores `spread`.
+- The quick view (Storm) is within about 10 % of these numbers for rect and disk panels and about 20 % brighter for strips; it ignores `spread`. On the person's screen, the viewport's Final look (Shift+F) is Cycles itself and shows `spread`, reflections of panels and the rest, cleaning up sample by sample.
 
 ## Aiming
 

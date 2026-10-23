@@ -19,6 +19,7 @@ AppShell {
     Shortcut { sequence: "Left"; onActivated: backend.setFrame(backend.frame - 1) }
     Shortcut { sequence: "Right"; onActivated: backend.setFrame(backend.frame + 1) }
     Shortcut { sequence: "F12"; onActivated: backend.renderStill() }
+    Shortcut { sequence: "Shift+F"; onActivated: viewport.toggleLook() }   // Look: Quick <-> Final
     Shortcut { sequence: "Escape"; enabled: backend.renderJob.state === "done" || backend.renderJob.state === "failed"
                onActivated: backend.renderJob.dismiss() }
 
