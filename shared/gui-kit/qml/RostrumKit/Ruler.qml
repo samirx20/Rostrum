@@ -30,6 +30,7 @@ Item {
     property var view: null            // TimeViewObject: which stretch is on screen (none: all of it)
     property bool rangeBand: false     // the app has a time range (loop, export, notes)
     property var range: null           // {start, end} in seconds, or null
+    property bool rangeActive: false   // the range is doing a job (a loop that is on): drawn solid
     property bool seconds: true        // the seconds scale (ticks and labels); an app whose `upper` line is its main scale can hide it
     property var upper: []             // the scale's upper line: [{at, text}] in seconds; empty: one line
     property bool canShare: false      // the document is in a project: new markers may be shared
@@ -115,7 +116,7 @@ Item {
         visible: r.rangeBand; width: parent.width; height: r.bandH; color: Theme.sunken
         readonly property var shown: area.ranging ? [Math.min(area.a, area.b), Math.max(area.a, area.b)]
                                      : r.range ? [r.range.start, r.range.end] : null
-        Rectangle { visible: !!parent.shown; color: Theme.accentSoft; border.color: Theme.accent; height: parent.height
+        Rectangle { visible: !!parent.shown; color: r.rangeActive ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.55) : Theme.accentSoft; border.color: Theme.accent; height: parent.height
                     x: parent.shown ? Math.max(0, r.xOfSec(parent.shown[0])) : 0
                     width: parent.shown ? Math.max(1, Math.min(r.width, r.xOfSec(parent.shown[1])) - x) : 0 }
         HoverHandler { id: bandHover }
@@ -127,13 +128,20 @@ Item {
         anchors.fill: parent
         preventStealing: true
         hoverEnabled: true
-        cursorShape: r.rangeBand && mouseY < r.bandH ? Qt.IBeamCursor : Qt.PointingHandCursor
+        cursorShape: r.rangeBand && mouseY < r.bandH ? (edgeAt(mouseX) ? Qt.SizeHorCursor : Qt.IBeamCursor) : Qt.PointingHandCursor
         property bool ranging: false
         property real a: 0
         property real b: 0
+        function edgeAt(x) {   // 1: the range's start edge is under x, 2: its end edge, 0: neither
+            if (!r.rangeBand || !r.range) return 0
+            const d1 = Math.abs(x - r.xOfSec(r.range.start)), d2 = Math.abs(x - r.xOfSec(r.range.end))
+            return Math.min(d1, d2) > 5 ? 0 : d1 <= d2 ? 1 : 2
+        }
         onPressed: (m) => {
             ranging = r.rangeBand && m.y < r.bandH
-            if (ranging) { a = r.secOf(m.x); b = a } else r.scrubbed(r.tOf(m.x))
+            const e = ranging ? edgeAt(m.x) : 0        // an edge of the range: drag it, the other end stays
+            if (e) { a = e === 1 ? r.range.end : r.range.start; b = r.secOf(m.x) }
+            else if (ranging) { a = r.secOf(m.x); b = a } else r.scrubbed(r.tOf(m.x))
         }
         onPositionChanged: (m) => { if (!pressed) return; if (ranging) b = r.secOf(m.x); else r.scrubbed(r.tOf(m.x)) }
         onReleased: { if (ranging && Math.abs(r.xOfSec(b) - r.xOfSec(a)) >= 2) r.rangeSet(Math.min(a, b), Math.max(a, b))

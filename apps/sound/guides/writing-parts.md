@@ -5,10 +5,10 @@ The script API is in inspect_guide `script`; instruments in `library`.
 
 ## Notes are data
 
-A note is `pitch` (MIDI number, 60 = middle C), `at` (a time: seconds, `{"beat": n}` or `"#marker"`), `dur` (seconds
+A note is `pitch` (MIDI number, 60 = middle C; the screen shows and takes names like G4), `at` (a time: seconds, `{"beat": n}` or `"#marker"`), `dur` (seconds
 or `{"beats": n}`), `vel` (0..1), plus the instrument's own playing settings when they apply (an articulation `art`
 on an articulated SFZ, `position` / `damping` on a plucked string, `bend`, `vibrato` …). Only the settings the track's
-instrument can use are offered (the screen hides the rest). Drum tracks use hits (`hit.add`: `drum`, `at`, `vel`).
+instrument can use are offered (the screen hides the rest). On the screen a note's At and Length read in bars.beats (At **5.3** = bar 5, beat 3; Length **0.2** = two beats) and take `5.3`, `9.6 s` or `0:09.6` typed; the file keeps the form it had. Drum tracks use hits (`hit.add`: `drum`, `at`, `vel`).
 
 - One note: `note.add`. Many in one undo step: `note.add_many` with `notes`. Change: `note.set`. Remove: `note.remove`.
 

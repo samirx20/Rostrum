@@ -1,14 +1,17 @@
-"""How the inspector shows and edits Sound items (no Qt): times read in seconds whatever form they were written
-in, a typed time written back in that same form (beats stay beats, "#drop+0.5" stays on its marker), and the
-names items go by (a note by its pitch, a hit by its drum, a clip by its file).
+"""How the inspector shows and edits Sound items (no Qt): every time and length reads in bars.beats ("5.3", ticks only
+between counts; seconds on hover) whatever form it was written in, a typed time ("5.3", "5", "9.6 s", "0:09.6") is
+written back in that same form (beats stay beats, "#drop+0.5" stays on its marker), pitches read as note names, and
+the names items go by (a note by its pitch, a hit by its drum, a clip by its file). Formatting is doc/musical.py's.
 """
 from __future__ import annotations
 
 import re
 
+from rostrum_core import RostrumError, codes
 from rostrum_gui.edits import field_call
 
 from rostrum_sound.doc import fields as FD
+from rostrum_sound.doc import musical
 
 from . import timeline, timing
 
@@ -39,9 +42,33 @@ def shown(item: dict, root: dict) -> dict:
     return out
 
 
+def musical_rows(item: dict, rows: list[dict], root: dict) -> list[dict]:
+    """The evaluated rows with each time / length as a text field in bars.beats (its seconds in the hover help) and
+    a note's pitch as a name. The one place; every panel's time fields come through here."""
+    sh, out = shown(item, root), []
+    for r in rows:
+        kind = _time_kind(item, r["id"]) if r["row"] == "param" else ""
+        if kind and isinstance(sh.get(r["id"]), (int, float)) and not isinstance(sh[r["id"]], bool):
+            sec = float(sh[r["id"]])
+            text = musical.position(sec, root) if kind == "time" else musical.length(sec, root, _start(item, root))
+            help_ = f"{r['help']} " if r["help"] else ""
+            r = {**r, "type": "text", "value": text, "unit": "", "display": "", "control": "",
+                 "help": f"{help_}Now {sec:.2f} s. Type bars.beats (5.3), seconds (9.6 s) or a clock (0:09.6)."}
+        elif r["row"] == "param" and item["type"] == "note" and r["id"] == "pitch" and r["value"] is not None:
+            r = {**r, "value": musical.note_name(r["value"])}
+        out.append(r)
+    return out
+
+
 def edit_call(doc, item_id, param, value) -> dict:
     item = doc.item(item_id)
     kind = _time_kind(item, param)
+    if kind and isinstance(value, str):             # typed words: bars.beats or seconds, as seconds
+        start = _start(item, doc.data)
+        try:
+            value = musical.parse(value, doc.data, kind == "length", start)
+        except ValueError as e:
+            raise RostrumError(codes.BAD_ARGUMENT, "set", f"{param}={value!r}", str(e)) from None
     if kind and isinstance(value, (int, float)) and not isinstance(value, bool) and item.get(param) is not None:
         old = item[param]
         value = timing.write_time(old, float(value), doc.data) if kind == "time" else             timing.write_length(old, float(value), doc.data, _start(item, doc.data))
@@ -49,22 +76,30 @@ def edit_call(doc, item_id, param, value) -> dict:
 
 
 KIND_WORDS = {"tempo": "Tempo change", "meter": "Time signature", "key": "Key change", "section": "Section",
-              "marker": "Marker", "track": "Track", "bus": "Bus", "group": "Group", "line": "Line", "doc": "Song"}
+              "marker": "Marker", "track": "Track", "bus": "Bus", "group": "Group", "line": "Line", "doc": "Song",
+              "effect": "Effect", "lane": "Automation", "send": "Send", "duck": "Duck", "note": "Note", "hit": "Hit",
+              "clip": "Clip"}
+EFFECT_WORDS = {"eq": "EQ", "compressor": "Compressor", "reverb": "Reverb", "delay": "Delay", "saturate": "Saturation",
+                "tape": "Tape", "limiter": "Limiter", "width": "Stereo width", "gate": "Gate", "deess": "De-esser",
+                "dehum": "De-hum", "plugin": "Plug-in"}
 COUNTED = ("track", "bus", "group")           # several of these share a word: "Track 2"
-_MADE_ID = re.compile(r"^([a-z]+)_\d+$")         # the ids the document hands out ("tempo_1", "meter_2")
+# the ids the document hands out: "tempo_1", "meter_2", and the ones inside a track: "pad.delay_1", "pad.n1500", "marker.drop"
+_MADE_ID = re.compile(r"^([a-z]+)_\d+$|^[^.\s]+\.[^\s]+$")
 
 
 def name_of(item: dict) -> str:
     """What an item is called: its name; with none, its id only when a person chose it, else its kind in words
-    (a made-up id never reaches a title, a list or Ctrl K)."""
+    (a made-up id never reaches a title, a list or Ctrl K; an effect is its effect type: "Delay")."""
     if item.get("name"):
         return str(item["name"])
     made = _MADE_ID.match(str(item["id"]))
     if not made and item["id"]:
         return str(item["id"])
-    t = item.get("type") or (made.group(1) if made else "")
+    t = item.get("type") or (made.group(1) if made and made.group(1) else "")
+    if t == "effect" and item.get("effect"):
+        return EFFECT_WORDS.get(item["effect"]) or str(item["effect"]).replace("_", " ").capitalize()
     word = KIND_WORDS.get(t) or t.replace("_", " ").capitalize() or "Item"
-    n = item["id"].rsplit("_", 1)[-1] if made else ""
+    n = item["id"].rsplit("_", 1)[-1] if made and made.group(1) else ""
     return f"{word} {n}" if n and t in COUNTED else word
 
 

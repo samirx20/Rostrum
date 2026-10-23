@@ -18,8 +18,10 @@ If you must use speakers, leave **Hear input** off (see below).
 1. Pick the track you want to record on. The quickest: open the **Library** (Ctrl+L), click the **Record** chip and
    double-click **Microphone**. The new track comes armed, ready to record.
 2. Click **R** on the track's header. It turns red when armed. Click it again to disarm. Hovering over it explains it.
-3. Once a track is armed, a group of controls appears in the arrangement's header strip, after ⏮ ▶: **Record**,
-   **Take**, a small level bar and (with a keyboard) **Record keys**. With nothing armed it is not shown.
+3. **Record** is always in the arrangement's header strip, after ⏮ ▶ and loop. Once a track is armed, **Take**, a
+   small level bar and (with a keyboard) **Record keys** join it. You can also skip arming: with no track armed,
+   **Record** (or R) arms the selected track, else the first one that takes sound, and records; if there is none it
+   says so in the message line.
 
 ## 4. Check the level
 
