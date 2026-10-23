@@ -15,6 +15,7 @@ LONG_ERROR = ("The drawing engine stopped and could not be restarted: the engine
 LONG_AGENT = "Claude: moved the title card, changed its colour, and re-timed the whole opening against the music"
 LONG_STATUS = "No graphics driver, so drawing is slower"
 LONG_PROJECT = "Summer_launch_film_for_the_new_headphones_-_final_cut_v3"   # a step's words: _ for spaces
+PICTURE = (Path(__file__).resolve().parents[2] / "guides" / "pictures" / "draw-tool.png").as_posix()   # any picture: a fill
 PAINTED = ["select card", "tool draw", "draw 600 300 900 330 1200 300"]
 LONG_PAINT = 'paint_3 name "Line art for the summer launch film, cleaned up"'     # the third paint layer, renamed
 TWELVE = ["select card"] + [f"set {'xy'[n % 2]} {500 + n}" for n in range(12)]   # 12 changes (x, y in turn: no merging)
@@ -193,6 +194,13 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("brush-panel", ["--sample"], ["select card", "flyout brush"]),
         ("brush-edit", ["--sample"], ["select card", "tool draw", "brushedit on"]),
         ("paint-new-drawing", ["--sample"], ["tool draw"]),
+        # H51: each shape kind's own settings (a star, an arrow drawn start to end); the picture fill's picker;
+        # the gradient's canvas handles with the picker open
+        ("shape-star", ["--sample"], ["shape star 700 300 1000 600"]),
+        ("shape-arrow", ["--sample"], ["shape arrow 600 700 1100 500"]),
+        ("fill-picture-picker", ["--sample"], ["shape star 700 300 1000 600", "clickobj swatch", "clickobj fillType:picture",
+                                               f"picturefile {PICTURE}", "clickobj picturePaint:fit 0.62 0.5"]),
+        ("fill-gradient-handles", ["--sample"], ["shape star 700 300 1000 600", "clickobj swatch", "clickobj fillType:linear"]),
         ("paint-long-target", long(), [*busy, "select card", "tool draw"]),
         ("library-brand", long_project(), ["select title_card_for_the_summer_launch_film", "do layer:style_save",
                                            "brand colors Summer_launch_coral_for_the_headphones_campaign #ff7a59",

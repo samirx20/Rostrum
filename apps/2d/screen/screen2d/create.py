@@ -1,13 +1,18 @@
-"""The creation tools: Rectangle (R), Ellipse (O), Text (T), and typing on the canvas (backend.create).
+"""The creation tools: the shapes (Rectangle R, Ellipse O, and every other kind in `fields.SHAPE_KINDS`), Text (T),
+and typing on the canvas (backend.create).
 
-Shapes: press-drag-release on the canvas draws one at that place and size: one change ("Draw rectangle"), selected,
-the tool back to Move. Shift = square / circle, Alt = from the centre, a click under `slop` = 200 x 200 centred on it.
+Shapes: press-drag-release on the canvas draws one at that place and size: one change ("Draw star"), selected, the
+tool back to Move. Shift = square / circle, Alt = from the centre, a click under `slop` = 200 x 200 centred on it.
+A line or an arrow is drawn from where the press was to where it lets go (its length and its turn; Shift = in steps
+of 45°), as tall as its line or head.
 Text: a click starts a text there (left-aligned, it grows as you type), a dragged box wraps inside; typing is one
 undo step (typing_session.py). All coordinates in and out are composition px; the screen maps them (Stage's mapping only).
 `box` is the live outline / typing box for QML: {kind, x, y, w, h, label} (x, y = its top-left). Every action is
 also a plain operation (`layer.add` + the type's field operation) that agents call themselves.
 """
 from __future__ import annotations
+
+import math
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum2d import fields as F
@@ -16,7 +21,8 @@ from . import adding, bounds
 from .typing_session import Session
 
 DEFAULT_SIZE = 200.0                       # a click without a drag: this big
-LABELS = {"rect": "rectangle", "ellipse": "ellipse"}
+LABELS = {k: F.SHAPE_WORDS[k].lower() for k in F.SHAPE_KINDS}
+ALONG = ("line", "arrow")                  # drawn start → end, not as a box
 LOOK = ("font", "weight", "size", "color", "align")
 
 
@@ -29,6 +35,15 @@ def shape_box(x0, y0, x1, y1, shift=False, alt=False) -> tuple[float, float, flo
     if alt:
         return x0, y0, 2 * abs(dx), 2 * abs(dy)
     return x0 + dx / 2, y0 + dy / 2, abs(dx), abs(dy)
+
+
+def along_box(x0, y0, x1, y1, shift=False) -> tuple[float, float, float, float]:
+    """A line's or arrow's drag as (centre x, centre y, length, turn in degrees, clockwise on screen); Shift = 45° steps."""
+    length, turn = math.hypot(x1 - x0, y1 - y0), math.degrees(math.atan2(y1 - y0, x1 - x0))
+    if shift:
+        turn = round(turn / 45) * 45
+        x1, y1 = x0 + length * math.cos(math.radians(turn)), y0 + length * math.sin(math.radians(turn))
+    return (x0 + x1) / 2, (y0 + y1) / 2, length, turn
 
 
 class Create(QObject):
@@ -44,6 +59,11 @@ class Create(QObject):
         self.typingChanged.connect(self.canEditChanged)
 
     # ---- reads for QML ------------------------------------------------------------------------------------------
+    @Property("QVariantList", constant=True)
+    def kinds(self):
+        """The shape kinds the Shapes flyout lists, in order: [{kind, name}] (fields.SHAPE_KINDS / SHAPE_WORDS)."""
+        return [{"kind": k, "name": F.SHAPE_WORDS[k]} for k in F.SHAPE_KINDS]
+
     @Property("QVariantMap", notify=boxChanged)
     def box(self):
         """The shape being dragged, or the text being typed in (see the module note); {} = nothing."""
@@ -82,7 +102,7 @@ class Create(QObject):
     @Slot(str, float, float, float)
     def beginShape(self, kind, x, y, slop):
         if kind not in LABELS:
-            return self.b._fail(f"Error: shape: {kind!r} is not a shape here (rect, ellipse).")
+            return self.b._fail(f"Error: shape: {kind!r} is not a shape here ({', '.join(LABELS)}).")
         self._press = (kind, x, y, slop)
         self._set_box({})
 
@@ -93,6 +113,12 @@ class Create(QObject):
         kind, x0, y0, slop = self._press
         if abs(x - x0) + abs(y - y0) <= slop:
             return self._set_box({})
+        if kind in ALONG:
+            cx, cy, length, turn = along_box(x0, y0, x, y, shift)
+            dx, dy = length / 2 * math.cos(math.radians(turn)), length / 2 * math.sin(math.radians(turn))
+            return self._set_box({"kind": kind, "x0": cx - dx, "y0": cy - dy, "x1": cx + dx, "y1": cy + dy,
+                                  "x": min(cx - dx, cx + dx), "y": min(cy - dy, cy + dy), "w": abs(2 * dx), "h": abs(2 * dy),
+                                  "label": f"{round(length)} px · {round(turn)}°"})
         cx, cy, w, h = shape_box(x0, y0, x, y, shift, alt)
         self._set_box({"kind": kind, "x": cx - w / 2, "y": cy - h / 2, "w": w, "h": h, "label": f"{round(w)} × {round(h)}"})
 
@@ -104,16 +130,28 @@ class Create(QObject):
         self._press = None
         self._set_box({})
         click = abs(x - x0) + abs(y - y0) <= slop
+        if kind in ALONG:
+            cx, cy, length, turn = (x0, y0, DEFAULT_SIZE, 0.0) if click else along_box(x0, y0, x, y, shift)
+            return self.addShape(kind, cx, cy, length, 0.0, turn)
         cx, cy, w, h = (x0, y0, DEFAULT_SIZE, DEFAULT_SIZE) if click else shape_box(x0, y0, x, y, shift, alt)
         if w < 1 or h < 1:
             return self.b._fail("Error: shape: draw it at least 1 px wide and high (hold Alt to draw from the centre).")
         self.addShape(kind, cx, cy, w, h)
 
     @Slot(str, float, float, float, float)
-    def addShape(self, kind, cx, cy, w, h):
-        """The operation behind the tool: one layer, `{shape, x, y, w, h}` at its centre, selected, one change."""
+    @Slot(str, float, float, float, float, float)
+    def addShape(self, kind, cx, cy, w, h, turn=0.0):
+        """The operation behind the tool: one layer, `{shape, x, y, w, h}` at its centre, selected, one change.
+        A line or an arrow: `w` is its length, `turn` its rotation, and it is as tall as its line or its head."""
+        if kind not in LABELS:
+            return self.b._fail(f"Error: shape: {kind!r} is not a shape here ({', '.join(LABELS)}).")
         calls, lid = adding.new_layer_calls(self.b.doc, self.b.comp(), "shape")
-        calls[1]["args"].update({"shape": kind, "w": round(w, 2), "h": round(h, 2), "x": round(cx, 2), "y": round(cy, 2)})
+        args = {"shape": kind, "w": round(w, 2), "h": round(h, 2), "x": round(cx, 2), "y": round(cy, 2)}
+        if kind in ALONG:
+            args["h"] = F.param("shape", "headSize" if kind == "arrow" else "lineWidth").default
+            if turn:
+                args["rotation"] = round(turn, 2)
+        calls[1]["args"].update(args)
         if self.b.guard(lambda: self.b.done(self.b.doc.apply(calls, self.b.who, label=f"Draw {LABELS[kind]}"), "")):
             self.b.select(lid)
             self.b.setTool("move")

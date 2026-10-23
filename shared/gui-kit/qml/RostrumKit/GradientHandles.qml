@@ -10,10 +10,15 @@ import "."
 // renderer's CSS one (linear-gradient(<a>deg), radial-gradient(closest-side at cx cy), conic-gradient(from <a>deg at
 // cx cy)). Dragging emits a whole new paint through edited(paint) (the input is never changed): began() before the
 // first change and ended() after the last make one undo step; stopPicked(index) on a click. Dots keep their screen size.
+// With `points` (the layer takes "From point to point": shapes and paths) a linear's two ends and a radial's two radius
+// dots set length as well as direction: the paint's span becomes "points" with x1, y1, x2, y2 (linear) or rx, ry
+// (radial), fractions of the box; a box-span paint is converted on its first such drag. Dots are named grad_start,
+// grad_end, grad_stop<i>, grad_centre, grad_arm, grad_rx, grad_ry (scripted drags: click_steps.py dragobj).
 Item {
     id: root
     property var paint: ({type: "linear", stops: [], angle: 90, cx: 0.5, cy: 0.5})
     property int selected: -1
+    property bool points: true                 // the layer takes point-to-point spans (not a text's letters)
     signal edited(var paint)
     signal began()
     signal ended()
@@ -24,15 +29,19 @@ Item {
     readonly property real ang: paint && paint.angle !== undefined ? paint.angle : 0
     readonly property real ccx: (paint && paint.cx !== undefined ? paint.cx : 0.5) * width
     readonly property real ccy: (paint && paint.cy !== undefined ? paint.cy : 0.5) * height
-    readonly property real rx: Math.max(0, Math.min(ccx, width - ccx))
-    readonly property real ry: Math.max(0, Math.min(ccy, height - ccy))
+    readonly property bool spanned: points && !!paint && paint.span === "points" && (kind === "linear" || kind === "radial")
+    function num(k, d) { return paint && paint[k] !== undefined ? paint[k] : d }
+    readonly property real rx: spanned ? Math.abs(num("rx", 0.5)) * width : Math.max(0, Math.min(ccx, width - ccx))
+    readonly property real ry: spanned ? Math.abs(num("ry", 0.5)) * height : Math.max(0, Math.min(ccy, height - ccy))
     readonly property real arm: 0.35 * Math.min(width, height)
     // linear: the unit direction and the line's two ends
     readonly property real dx: Math.sin(ang * Math.PI / 180)
     readonly property real dy: -Math.cos(ang * Math.PI / 180)
     readonly property real half: (width * Math.abs(dx) + height * Math.abs(dy)) / 2
-    readonly property point p0: Qt.point(width / 2 - dx * half, height / 2 - dy * half)
-    readonly property point p1: Qt.point(width / 2 + dx * half, height / 2 + dy * half)
+    readonly property point p0: spanned ? Qt.point(num("x1", 0) * width, num("y1", 0.5) * height)
+                                        : Qt.point(width / 2 - dx * half, height / 2 - dy * half)
+    readonly property point p1: spanned ? Qt.point(num("x2", 1) * width, num("y2", 0.5) * height)
+                                        : Qt.point(width / 2 + dx * half, height / 2 + dy * half)
 
     // every dot: role (start / end / stop / centre / arm), stop index, centre in box px
     readonly property var dots: {
@@ -43,8 +52,13 @@ Item {
                 out.push({role: "stop", index: i, x: p0.x + (p1.x - p0.x) * stops[i].at, y: p0.y + (p1.y - p0.y) * stops[i].at, color: col(i)})
             out.push({role: "end", index: n - 1, x: p1.x, y: p1.y, color: col(n - 1)})
         } else {
-            if (kind === "radial")
+            if (kind === "radial") {
                 for (let i = 1; i < n; i++) out.push({role: "stop", index: i, x: ccx + rx * stops[i].at, y: ccy, color: col(i)})
+                if (points) {                          // the two radii: left and below the centre
+                    out.push({role: "rx", index: -1, x: ccx - rx, y: ccy, color: "#ffffff"})
+                    out.push({role: "ry", index: -1, x: ccx, y: ccy + ry, color: "#ffffff"})
+                }
+            }
             else out.push({role: "arm", index: n - 1, x: ccx + arm * dx, y: ccy + arm * dy, color: col(n - 1)})
             out.push({role: "centre", index: 0, x: ccx, y: ccy, color: col(0)})
         }
@@ -58,9 +72,29 @@ Item {
         return a > 180 ? a - 360 : a
     }
     function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
+    function toPoints(p) {                       // a box-span paint as the same look, point to point
+        if (p.span === "points") return
+        p.span = "points"
+        if (kind === "linear") { p.x1 = p0.x / width; p.y1 = p0.y / height; p.x2 = p1.x / width; p.y2 = p1.y / height }
+        else { p.rx = rx / width; p.ry = ry / height }
+    }
     function drag(dot, px, py, shift) {          // pointer in box px -> the new paint
         const p = clone()
-        if (dot.role === "start" || dot.role === "end") {
+        if (points && kind === "linear" && (dot.role === "start" || dot.role === "end")) {
+            toPoints(p)
+            const o = dot.role === "end" ? p0 : p1          // the other end stays; Shift: 15° steps, same length
+            if (shift) {
+                const a = angleOf(px - o.x, py - o.y, true) * Math.PI / 180, len = Math.hypot(px - o.x, py - o.y)
+                px = o.x + Math.sin(a) * len; py = o.y - Math.cos(a) * len
+            }
+            const k = dot.role === "end" ? "2" : "1"
+            p["x" + k] = clamp(px / width, -5, 6); p["y" + k] = clamp(py / height, -5, 6)
+        } else if (dot.role === "rx" || dot.role === "ry") {
+            toPoints(p)
+            const r = dot.role === "rx" ? Math.abs(px - ccx) : Math.abs(py - ccy)    // Shift: a circle on screen
+            if (dot.role === "rx" || shift) p.rx = clamp(r / width, 0.001, 6)
+            if (dot.role === "ry" || shift) p.ry = clamp(r / height, 0.001, 6)
+        } else if (dot.role === "start" || dot.role === "end") {
             const s = dot.role === "end" ? 1 : -1
             p.angle = angleOf(s * (px - width / 2), s * (py - height / 2), shift)
         } else if (dot.role === "arm") {
@@ -106,22 +140,24 @@ Item {
         Item {
             id: dot
             readonly property var d: root.dots[index] || ({x: 0, y: 0, color: 'white', index: -1, role: ''})
+            objectName: "grad_" + dot.d.role + (dot.d.role === "stop" ? dot.d.index : "")
             x: dot.d.x - 10; y: dot.d.y - 10; width: 20; height: 20
             property bool moved: false
             Rectangle {                                    // dark halo, white ring, the stop's colour
                 anchors.centerIn: parent; width: 18; height: 18; radius: 9; color: Qt.rgba(0, 0, 0, 0.35)
-                Rectangle {
-                    anchors.centerIn: parent; width: 14; height: 14; radius: 7
+                Rectangle {                                // a radius dot: smaller, square
+                    readonly property bool radius_: dot.d.role === "rx" || dot.d.role === "ry"
+                    anchors.centerIn: parent; width: radius_ ? 10 : 14; height: width; radius: radius_ ? 2 : 7
                     color: dot.d.color
                     border.width: 2
-                    border.color: root.selected === dot.d.index && dot.d.role !== "arm" ? Theme.accent : "white"
+                    border.color: dot.d.index >= 0 && root.selected === dot.d.index && dot.d.role !== "arm" ? Theme.accent : "white"
                 }
             }
             MouseArea {
                 anchors.fill: parent
                 cursorShape: Qt.SizeAllCursor
                 preventStealing: true
-                onPressed: root.stopPicked(dot.d.index)
+                onPressed: if (dot.d.index >= 0) root.stopPicked(dot.d.index)
                 onPositionChanged: mouse => {
                     if (!pressed) return
                     if (!dot.moved) { dot.moved = true; root.began() }

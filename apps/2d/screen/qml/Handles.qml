@@ -80,6 +80,7 @@ Item {
         visible: h.editable && PaintSession.gradient
         paint: PaintSession.paint || ({})
         selected: PaintSession.selected
+        points: h.box.type !== "text"            // a text's letters take no point-to-point span
         onBegan: backend.beginScrub("paint")
         onEdited: (p) => backend.scrub("paint", p)
         onEnded: backend.endScrub()

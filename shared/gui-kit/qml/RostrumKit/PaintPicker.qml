@@ -5,18 +5,17 @@ import "ColourMath.js" as M
 // The whole fill picker: the fill type (none · solid · linear · radial · angular · picture), for a gradient its bar and
 // the reverse button, then the colour picker for the solid colour or the chosen stop. Every change is a new `paint`
 // object out (`edited`), the one in is never touched.
-//   paint: {type, color, stops: [{at, color, opacity}], angle, cx, cy, image}
+//   paint: {type, color, stops: [{at, color, opacity}], angle, cx, cy, picture, fit, scale}
 Column {
     id: pp
     property var paint: ({ type: "solid", color: "#ffffff" })
-    property var types: ["none", "solid", "linear", "radial", "angular", "image"]
+    property var types: ["none", "solid", "linear", "radial", "angular"]
     property int maxStops: 8
     property bool stopOpacity: true       // false: stops have no alpha strip
     property var project: []
     property var brand: []
     property string brandName: ""
     signal edited(var paint)
-    signal chooseImage()
     signal swatchAdd(string hex)          // the "+": the field ends its open change first, then saves (PaintField)
 
     readonly property string type: paint && paint.type ? paint.type : "solid"
@@ -26,16 +25,17 @@ Column {
     readonly property var stop: gradient && stops.length ? stops[sel] : null
     readonly property string base: paint && paint.color ? paint.color : "#ffffff"      // the colour a switch starts from
     readonly property var names: ({ none: "No fill", solid: "Solid colour", linear: "Linear gradient", radial: "Radial gradient",
-                                    angular: "Angular gradient", image: "Picture" })
+                                    angular: "Angular gradient", picture: "Picture" })
     width: 234; spacing: Theme.gap
 
     function change(fields) { edited(Object.assign({}, paint, fields)) }
     function stopsWith(i, fields) { return stops.map((s, k) => k === i ? Object.assign({}, s, fields) : Object.assign({}, s)) }
     function setType(t) {
         if (t === type) return
+        if (t === "picture" && !(paint && paint.picture)) { picture.choose(true); return }   // the picture first
         const f = { type: t }
         const cur = gradient && stop ? stop.color : base
-        if (t === "solid" || t === "image" || t === "none") f.color = cur
+        if (t === "solid" || t === "picture" || t === "none") f.color = cur
         else {
             if (!stops.length) f.stops = [{ at: 0, color: cur, opacity: 1 }, { at: 1, color: M.shade(cur), opacity: 1 }]
             if (paint.angle === undefined) f.angle = 90
@@ -96,12 +96,12 @@ Column {
         onSwatchAdd: (hx) => pp.swatchAdd(hx)
     }
 
-    Column {   // a picture
-        visible: pp.type === "image"
-        width: parent.width; spacing: Theme.gap
-        Button { text: "Choose picture…"; onClicked: pp.chooseImage() }
-        NameLabel { width: parent.width; color: Theme.fg2; elide: Text.ElideMiddle
-                    text: pp.paint && pp.paint.image ? String(pp.paint.image).split(/[\\/]/).pop() : "No picture yet" }
+    PicturePaint {
+        id: picture
+        visible: pp.type === "picture"
+        width: parent.width
+        paint: pp.paint
+        onChanged: (fields) => pp.change(fields)
     }
     Text { visible: pp.type === "none"; text: "No fill"; color: Theme.fg3; font.pixelSize: Theme.body; font.family: uiFont }
 }

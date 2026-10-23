@@ -53,11 +53,15 @@ AppShell {
     Shortcut { sequence: "Ctrl+I"; enabled: !shell.typing; onActivated: rail.openGroup("media") }  // the kit's add_file: the Media flyout
     Shortcut { sequence: "J"; enabled: !shell.typing && backend.boneTool.available; onActivated: backend.setTool("bone") }   // only with a rig in hand (bone_tool.py)
     Shortcut { sequence: "A"; enabled: !shell.typing; onActivated: backend.showAnimated() }    // only the animated settings of the selection; again folds them
-    Shortcut { sequence: "Escape"; enabled: backend.tool === "draw" || backend.tool === "rect" || backend.tool === "ellipse" || backend.tool === "camera"
-                                            || backend.tool === "bone" || backend.tool === "hand" || backend.tool === "zoom" || (backend.tool === "text" && !backend.create.typing)
-               onActivated: { if (backend.strokeSelect.count > 0 || backend.strokeSelect.armed) backend.strokeSelect.clear()   // picked strokes first
+    // Esc steps back one level at a time: a rail panel closes, then picked strokes are let go, then the tool is Select
+    Shortcut { sequence: "Escape"; enabled: rail.flyoutOpen || (backend.tool !== "move" && backend.tool !== "pen" && !(backend.tool === "text" && backend.create.typing))
+               onActivated: { if (rail.flyoutOpen) rail.openGroup("")
+                              else if (backend.strokeSelect.count > 0 || backend.strokeSelect.armed) backend.strokeSelect.clear()   // picked strokes first
                               else if (backend.tool === "bone" && backend.boneTool.end()) {}     // the bone chain ends first
                               else backend.setTool("move") } }
+    // painting: 1 … 9 = 10 … 90 % brush opacity, 0 = 100 % (as in Photoshop)
+    Repeater { model: 10; delegate: Item { required property int index
+        Shortcut { sequence: String(index); enabled: shell.painting; onActivated: painter.setValue("opacity", index === 0 ? 1 : index / 10) } } }
 
     Connections { target: spaceKey; function onTapped() { backend.togglePlay() } }   // a tap of Space plays; held, it pans (spacekey.py)
     // frame by frame, on the selected drawing (INTERACTION Part 2: , and . step drawings, = and − hold; Alt+arrows nudge)

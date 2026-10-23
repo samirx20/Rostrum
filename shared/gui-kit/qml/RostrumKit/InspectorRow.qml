@@ -228,14 +228,13 @@ Item {
     Component { id: paintC; PaintField {   // a fill; model.options may be {types, maxStops, stopOpacity}
         readonly property var o: row.model.options && !Array.isArray(row.model.options) ? row.model.options : ({})
         paint: row.model.value || ({ type: "none" }); atRest: row.mixed ? "Mixed" : ""; scrubbed: true
-        types: o.types || ["none", "solid", "linear", "radial", "angular", "image"]
+        types: o.types || ["none", "solid", "linear", "radial", "angular"]
         maxStops: o.maxStops || 8
         stopOpacity: o.stopOpacity !== false
         onEdited: (v) => row.set(v)
         onBegan: row.bridge.beginScrub(row.model.id)
         onLive: (v) => row.bridge.scrub(row.model.id, v)
-        onEnded: row.bridge.endScrub()
-        onChooseImage: row.bridge.chooseImage ? row.bridge.chooseImage(row.model.id) : undefined } }
+        onEnded: row.bridge.endScrub() } }
     Component { id: list; ListField {
         values: row.model.value || []; choices: row.model.options || []
         minItems: row.model.minItems || 0; maxItems: row.model.maxItems === undefined ? null : row.model.maxItems

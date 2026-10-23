@@ -37,7 +37,7 @@ from .tools2d import ToolSlots
 from .undo_state import UndoState
 
 
-TOOLS = ("move", "pen", "draw", "rect", "ellipse", "text", "camera", "bone", "hand", "zoom")      # what the mouse does on the canvas (setTool)
+TOOLS = ("move", "pen", "draw", *F.SHAPE_KINDS, "text", "camera", "bone", "hand", "zoom")   # what the mouse does on the canvas (setTool)
 
 
 

@@ -1,7 +1,7 @@
 """Scripted steps for the creation tools (steps.py hands these over); each goes through the calls the mouse and keys make.
 
-    shape <rect|ellipse> x0 y0 x1 y1 [shift] [alt]   press at (x0, y0), drag to (x1, y1), let go (composition px)
-    shapedrag <rect|ellipse> x0 y0 x1 y1 [shift] [alt]   the same, held before letting go (for a picture of the live outline)
+    shape <kind> x0 y0 x1 y1 [shift] [alt]           press at (x0, y0), drag to (x1, y1), let go (composition px)
+    shapedrag <kind> x0 y0 x1 y1 [shift] [alt]       the same, held before letting go (for a picture of the live outline)
     shapeend x1 y1 [shift] [alt]                     let go of a shapedrag
     text <x> <y> <words…>                            T, click at (x, y), type, Esc (_ for spaces, | for a new line)
     textbox <x0> <y0> <x1> <y1> <words…>             T, drag a box, type, Esc
@@ -9,7 +9,7 @@
     edittext <layer> <words…>                        double-click the text, replace all of it, Esc
     endtext                                          Esc
   A hand's real mouse and keys in the window (QTest), at composition px (the Stage's mapping):
-    canvasdrag <x0> <y0> <x1> <y1>                   press, pull, let go
+    canvasdrag <x0> <y0> <x1> <y1> [<x> <y> …] [ctrl|shift|alt]  press, pull through the points, let go (holding that key)
     canvasclick <x> <y> [double]                     one click (or two quick ones)
     typekeys <words…>                                real key presses into what has the focus (_ for spaces)
 """
@@ -30,7 +30,7 @@ def _typed(c, body):
 
 
 def _hand(word, rest):
-    from PySide6.QtCore import QObject, QPoint, QPointF, Qt
+    from PySide6.QtCore import QEvent, QObject, QPoint, QPointF, Qt
     from PySide6.QtGui import QGuiApplication
     from PySide6.QtTest import QTest
     win = next(w for w in QGuiApplication.topLevelWindows() if w.findChild(QObject, "stage"))
@@ -41,7 +41,6 @@ def _hand(word, rest):
         q = stage.mapToScene(QPointF(o.x() + float(x) * k, o.y() + float(y) * k))
         return QPoint(round(q.x()), round(q.y()))
     if word == "typekeys":
-        from PySide6.QtCore import QEvent
         from PySide6.QtGui import QKeyEvent
         for ch in " ".join(rest).replace("_", " "):         # as a keyboard sends them: a press and a release with the letter
             key, mod = Qt.Key(ord(ch.upper())), Qt.ShiftModifier if ch.isupper() else Qt.NoModifier
@@ -56,12 +55,19 @@ def _hand(word, rest):
         else:
             QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, p)
     else:
-        a, b = at(*rest[:2]), at(*rest[2:4])
-        QTest.mouseMove(win, a)
-        QTest.mousePress(win, Qt.LeftButton, Qt.NoModifier, a)
-        for i in range(1, 9):
-            QTest.mouseMove(win, a + (b - a) * i / 8, 10)
-        QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, b)
+        from PySide6.QtGui import QMouseEvent
+        keys = {"ctrl": Qt.ControlModifier, "shift": Qt.ShiftModifier, "alt": Qt.AltModifier}
+        mod = next((keys[w] for w in rest if w in keys), Qt.NoModifier)
+        nums = [w for w in rest if w not in keys]
+        pts = [at(nums[i], nums[i + 1]) for i in range(0, len(nums) - 1, 2)]
+        QTest.mouseMove(win, pts[0])
+        QTest.mousePress(win, Qt.LeftButton, mod, pts[0])
+        for a, b in zip(pts, pts[1:]):
+            for i in range(1, 9):                           # a move carries the held key as a hand's does
+                q = QPointF(a + (b - a) * i / 8)
+                QGuiApplication.sendEvent(win, QMouseEvent(QEvent.MouseMove, q, win.mapToGlobal(q), Qt.NoButton, Qt.LeftButton, mod))
+                QTest.qWait(10)
+        QTest.mouseRelease(win, Qt.LeftButton, mod, pts[-1])
     QTest.qWait(120)
 
 
