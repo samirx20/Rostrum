@@ -17,7 +17,7 @@ Item {
     readonly property real x1: row.xOf(modelData.t1)
     readonly property bool picked: backend.stretch.shown && backend.stretch.ids.indexOf(modelData.ids[0]) >= 0
     x: x0 - shift; width: Math.max(0, x1 - x0)
-    height: Math.min(row.height - 8, parent.height - 2); y: Math.round((parent.height - height) / 2)   // inside what it lies in (a bar is 6 px shorter than its row)
+    height: Math.min(row.height - 8, parent.height - 2); y: Math.round((parent.height - height) / 2)   // inside what it lies in (a layer's slim bar)
     Rectangle {
         anchors.fill: parent; radius: 3
         visible: band.picked || area.containsMouse
@@ -48,6 +48,7 @@ Item {
         id: area
         // between its two keys' click areas (KeyDot: 16 wide, kept inside the bar at its ends), 2 px clear of each
         anchors.fill: parent
+        anchors.topMargin: -Math.max(0, (18 - band.height) / 2); anchors.bottomMargin: anchors.topMargin   // a slim bar: still 18 px to click
         anchors.leftMargin: Math.max(0, band.x0 - band.shift - 8) + 18 - band.x
         anchors.rightMargin: band.x + band.width - (band.room < 0 ? band.x1 - band.shift - 8 : Math.min(band.room - 16, band.x1 - band.shift - 8)) + 2
         visible: width >= 6                       // a stretch too short to click between its keys: the keys only

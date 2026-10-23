@@ -19,7 +19,7 @@ Item {
     readonly property bool on: backend.keys.count > 0 && backend.keys.has(ids)
                                || backend.stretch.shown && ids.some(i => backend.stretch.ids.indexOf(i) >= 0)   // a picked stretch's keys
     x: room < 0 ? at : Math.max(0, Math.min(room - width, at))
-    width: 16; height: parent.height        // the track's height, or the bar's when it lies in a bar
+    width: 16; height: Math.max(18, parent.height); y: Math.round((parent.height - height) / 2)   // the track's height; in a slim bar, 18
     KeyMark {
         anchors.centerIn: parent; anchors.horizontalCenterOffset: key.at - key.x   // the diamond stays on its time
         size: key.row.isLayer ? 8 : 7

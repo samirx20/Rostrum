@@ -4,7 +4,9 @@ import "."
 // The kit's one set of tool icons: clean line drawings on a 20 x 20 grid, 1.5 px strokes, round ends, one ink.
 // Every app's tool rail and flyouts use these by `name` (2D's rail; Sound can reuse them). An unknown name draws
 // nothing, so a missing icon shows up at once.
-// select, rect, ellipse, pen, text, brush, picture, video, render3d, import, library, sound, camera, hand, zoom, bone
+// select, rect, ellipse, pen, text, brush, picture, video, render3d, import, library, sound, camera, hand, zoom, bone,
+// align-left / -hcenter / -right / -top / -vcenter / -bottom, distribute-x / -y, union, subtract, intersect, exclude,
+// align-left / -hcenter / -right / -top / -vcenter / -bottom, distribute-x / -y, union, subtract, intersect, exclude
 Canvas {
     id: c
     property string name: ""
@@ -63,6 +65,25 @@ Canvas {
             g.quadraticCurveTo(3, 10.8, 4.2, 10.3); g.quadraticCurveTo(5.2, 10, 6, 11); g.stroke(); break
         case "zoom": ring(8.5, 8.5, 5); line([12.2, 12.2, 16.5, 16.5]); line([6.5, 8.5, 10.5, 8.5]); line([8.5, 6.5, 8.5, 10.5]); break
         case "bone": line([6, 14, 14, 6]); ring(4.8, 15.2, 2); ring(15.2, 4.8, 2); break
+        // the settings panel's actions: Align (a line, two bars on it), Distribute, Combine (two boxes, what stays filled)
+        case "align-left": line([3.5, 3, 3.5, 17]); box(6.5, 5, 10, 4, 1); box(6.5, 11, 6, 4, 1); break
+        case "align-hcenter": line([10, 3, 10, 17]); box(4, 5, 12, 4, 1); box(6.5, 11, 7, 4, 1); break
+        case "align-right": line([16.5, 3, 16.5, 17]); box(3.5, 5, 10, 4, 1); box(7.5, 11, 6, 4, 1); break
+        case "align-top": line([3, 3.5, 17, 3.5]); box(5, 6.5, 4, 10, 1); box(11, 6.5, 4, 6, 1); break
+        case "align-vcenter": line([3, 10, 17, 10]); box(5, 4, 4, 12, 1); box(11, 6.5, 4, 7, 1); break
+        case "align-bottom": line([3, 16.5, 17, 16.5]); box(5, 3.5, 4, 10, 1); box(11, 7.5, 4, 6, 1); break
+        case "distribute-x": line([3, 4, 3, 16]); line([17, 4, 17, 16]); box(7.5, 6, 5, 8, 1); break
+        case "distribute-y": line([4, 3, 16, 3]); line([4, 17, 16, 17]); box(6, 7.5, 8, 5, 1); break
+        case "union": case "subtract": case "intersect": case "exclude": {
+            const a = () => { g.beginPath(); g.roundedRect(3, 3, 9, 9, 1.5, 1.5) }
+            const b = () => { g.beginPath(); g.roundedRect(8, 8, 9, 9, 1.5, 1.5) }
+            g.save(); g.globalAlpha = 0.8
+            if (name === "union") { a(); g.fill(); b(); g.fill() }
+            else if (name === "subtract") { a(); g.fill(); g.globalCompositeOperation = "destination-out"; g.globalAlpha = 1; b(); g.fill() }
+            else if (name === "intersect") { a(); g.clip(); b(); g.fill() }
+            else { a(); g.fill(); g.globalCompositeOperation = "xor"; b(); g.fill() }
+            g.restore(); g.lineWidth = 1.2; a(); g.stroke(); b(); g.stroke(); break
+        }
         }
     }
 }

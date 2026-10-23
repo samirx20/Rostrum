@@ -46,6 +46,7 @@ class Action:
     group: str = ""                           # menu divider group
     bar: str = ""                             # the bar button it sits under ("Align"); the settings panel's row title
     panel: bool = True                        # listed in the settings panel's actions (False: keys / Ctrl+K only)
+    icon: str = ""                            # a ToolIcon name: in the settings panel an icon button (name on hover)
     calls: Callable | None = None             # calls(facts) -> [operation calls]
     do: str = ""                              # an app's own non-operation action ("copy", "rename")
     why: str = ""                             # the app's own sentence for why it isn't offered
@@ -134,7 +135,7 @@ class ActionList:
                 out.append(((first, a.rank, i), {
                     "id": a.id, "label": a.label_for(facts), "keys": self.keys_of(a), "importance": a.importance,
                     "group": "edit" if a.edit else a.group, "bar": a.bar, "calls": calls, "do": a.do,
-                    "edit": a.edit, "rank": a.rank, "job": self.job_of(a), "release": a.release, "panel": a.panel}))
+                    "edit": a.edit, "rank": a.rank, "job": self.job_of(a), "release": a.release, "panel": a.panel, "icon": a.icon}))
         return [e for _, e in sorted(out, key=lambda x: x[0])]
 
     def why_not(self, facts, typed: str) -> str:

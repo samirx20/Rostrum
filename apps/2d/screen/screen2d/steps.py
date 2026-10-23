@@ -306,6 +306,11 @@ def do_step(bridge, win, step):
         QTest.mouseRelease(win, Qt.LeftButton, mod, QPoint(x1, y1))
         if "altmid" in rest[4:]:
             QTest.keyRelease(win, Qt.Key_Alt)
+    elif word == "mousemove":                    # mousemove <x> <y>: the pointer moves there in the window (hover)
+        from PySide6.QtCore import QPoint
+        from PySide6.QtTest import QTest
+        QTest.mouseMove(win, QPoint(int(rest[0]), int(rest[1])))
+        QTest.qWait(150)
     elif word == "mouseclick":                   # mouseclick <x> <y> [right] [ctrl|shift]: a real click in the window
         from PySide6.QtCore import QPoint, Qt
         from PySide6.QtTest import QTest

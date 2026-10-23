@@ -1,14 +1,15 @@
 import QtQuick
 import "."
 
-// A small square button with a glyph (a short text such as "+", "×", "⋯") or a drawn `mark` ("loop": a font's ↻ draws
-// thin and faint), both in the one icon colour.
+// A small square button with a glyph (a short text such as "+", "×", "⋯"), a drawn `mark` ("loop": a font's ↻ draws
+// thin and faint) or a kit `icon` (a ToolIcon name, 16 px), all in the one icon colour.
 // Same hover and press as Button; `kind`: "normal" (raised) or "ghost" (no box until hovered); `danger` colours the
 // glyph red. Click, Space or Enter: one clicked().
 Item {
     id: b
     property string glyph: ""
     property string mark: ""             // a drawn mark instead of the glyph: "loop"
+    property string icon: ""             // a ToolIcon instead of the glyph ("align-left")
     property string kind: "normal"
     property bool danger: false
     property bool down: false            // shown pressed (e.g. a toggled-on tool)
@@ -32,7 +33,7 @@ Item {
     readonly property color ink: b.danger ? Theme.danger : b.hovered || b.down ? Theme.fg : Theme.fg2
     Text {
         anchors.centerIn: parent
-        visible: b.mark === ""
+        visible: b.mark === "" && b.icon === ""
         text: b.glyph; font.pixelSize: Theme.heading; font.family: uiFont
         color: b.ink
     }
@@ -50,6 +51,7 @@ Item {
             g.beginPath(); g.moveTo(10.6, 0.6); g.lineTo(10.8, 4.6); g.lineTo(6.9, 3.6); g.closePath(); g.fill()
         }
     }
+    ToolIcon { anchors.centerIn: parent; visible: b.icon !== ""; name: b.icon; ink: b.ink; width: 16; height: 16 }
     MouseArea { id: area; anchors.fill: parent; onClicked: b.clicked() }
     HoverTip { text: b.tip; help: b.help; key: b.job && b.Window.window && b.Window.window.keyFor ? b.Window.window.keyFor(b.job) : ""
                hovered: b.hovered; pressed: area.pressed || b.down }
