@@ -127,7 +127,7 @@ it lists what would have worked. Edits are all or nothing, so nothing changed.
 | `camera-parallax-motion-blur` | you want a camera, depth between layers, motion blur, smears, trails |
 | `import-and-export` | you bring in SVG, PDF, PSD, Figma, or hand over MP4, WebM, GIF, ProRes 4444, PNG sequence, Lottie |
 | `easing-and-overlap` | you choose how a move travels (ease curves) and check that moves overlap as you meant |
-| `text-on-a-path`, `curve-editor`, `expressions` | not yet: S10 (Team Sam) |
+| `text-on-a-path`, `curve-editor`, `expressions` | text follows a curve; you shape the easing by hand; you drive a value from a formula |
 
 Each guide says what exists today, with the tool, operation or field name. Where something is planned but missing, it says
 "not yet".
