@@ -2955,6 +2955,30 @@
     "end",
     "number",
     null
+   ],
+   [
+    "ridePath",
+    "text",
+    null
+   ],
+   [
+    "rideAt",
+    "choice",
+    [
+     "end",
+     "start",
+     "along"
+    ]
+   ],
+   [
+    "rideAlong",
+    "number",
+    null
+   ],
+   [
+    "rideTurn",
+    "toggle",
+    null
    ]
   ],
   "trail": [
@@ -3362,7 +3386,8 @@
    "x",
    "y",
    "zoom",
-   "rotation"
+   "rotation",
+   "rideAlong"
   ],
   "trail": [
    "spacing",

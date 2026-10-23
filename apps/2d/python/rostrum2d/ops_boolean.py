@@ -17,7 +17,7 @@ from rostrum_core.tree import index
 from . import pathdata as PD
 from .kind import REGISTRY as R
 from .ops_items import ID, new_item
-from .ops_path import _LOOK, to_parent
+from .ops_path import _LOOK, shape_paths, to_parent
 
 MODES = {"union": pathops.PathOp.UNION, "subtract": pathops.PathOp.DIFFERENCE,
          "intersect": pathops.PathOp.INTERSECTION, "exclude": pathops.PathOp.XOR}
@@ -27,7 +27,7 @@ def outline(item: dict) -> str:
     """The filled area of a path or shape layer, as path data in its own box."""
     if item["type"] == "path":
         return item["d"]
-    return PD.ellipse(item["w"], item["h"]) if item["shape"] == "ellipse" else PD.rect(item["w"], item["h"], item["radius"])
+    return shape_paths([{**item, "stroke": False}])[0]["d"]
 
 
 def skia_path(cmds, evenodd: bool) -> pathops.Path:

@@ -80,6 +80,19 @@ RIDING = {"not": IS("ridePath", "")}
 RIDE_AT = ["end", "start", "along"]
 RIDE_AT_WORDS = {"end": "Drawn-on tip", "start": "Trim start", "along": "Set place"}
 
+# Riding a path layer beside it (engine: scene/follow.rs; rostrum2d/follow.py layer.ride): the layer's anchor (a
+# camera: where it looks) sits on that path on every frame, its own X, Y an offset from there. Every layer and the camera.
+RIDE = [
+    X("ridePath", "Rides path", "Ride", "", S, control="pick",       # screens: a choice of the layer's path siblings
+      help="Id of a path layer in the same group or comp: this layer's anchor sits on it as it is reshaped, moved or "
+           "drawn on, and X, Y become an offset from that point. Empty = none (layer.ride sets it)"),
+    CH("rideAt", RIDE_AT, "Rides at", "Ride", "end", S, RIDING, labels=RIDE_AT_WORDS,
+       help="The tip of the drawn-on part (Trim end), its start (Trim start), or a set place along the whole path"),
+    N("rideAlong", "Along path", "Ride", 0, 1, 0.001, "", S, {"all": [RIDING, IS("rideAt", "along")]}, display="percent",
+      help="How far along the path: 0 = its start, 1 = its end (key it to move along)"),
+    T("rideTurn", "Turn with path", "Ride", False, S, RIDING, help="Adds the path's direction there to the layer's rotation"),
+]
+
 # Every layer has these (position is where its anchor sits in the composition, in px).
 TRANSFORM = [      # x, y are absent while a group's auto layout places the layer (layout_fields.py)
     N("x", "X", "Transform", -20000, 20000, 1, "px", when=_layout.FREE_XY, default=960.0,
@@ -110,16 +123,7 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
                  labels={"alpha": "Its shape", "alphaInverted": "Outside its shape", "luma": "Its brightness",
                          "lumaInverted": "Its darkness"},
                  help="Shape = where the matte layer is drawn; brightness = how light it is; the inverted ones swap"),
-    # Riding a path layer beside it (engine: scene/follow.rs; rostrum2d/follow.py layer.ride): the layer's anchor sits
-    # on that path on every frame, its own X, Y an offset from there.
-    X("ridePath", "Rides path", "Ride", "", S, control="pick",       # screens: a choice of the layer's path siblings
-      help="Id of a path layer in the same group or comp: this layer's anchor sits on it as it is reshaped, moved or "
-           "drawn on, and X, Y become an offset from that point. Empty = none (layer.ride sets it)"),
-    CH("rideAt", RIDE_AT, "Rides at", "Ride", "end", S, RIDING, labels=RIDE_AT_WORDS,
-       help="The tip of the drawn-on part (Trim end), its start (Trim start), or a set place along the whole path"),
-    N("rideAlong", "Along path", "Ride", 0, 1, 0.001, "", S, {"all": [RIDING, IS("rideAt", "along")]}, display="percent",
-      help="How far along the path: 0 = its start, 1 = its end (key it to move along)"),
-    T("rideTurn", "Turn with path", "Ride", False, S, RIDING, help="Adds the path's direction there to the layer's rotation"),
+    *RIDE,
 ] + _grade.COLOUR  # colour effects: adjust, levels, curves, LUT (grade_fields.py; engine: scene/grade.rs)
 
 STROKE = IS("stroke", True)

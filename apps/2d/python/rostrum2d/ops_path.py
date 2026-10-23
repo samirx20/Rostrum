@@ -11,6 +11,7 @@ from rostrum_core.errors import codes
 from rostrum_core.tree import index
 
 from . import boxes, fields as F, pathdata as PD
+from .engine import EngineError
 from .kind import REGISTRY as R
 from .ops_items import ID, new_item
 
@@ -150,30 +151,49 @@ def path_fit(ctx, targets, args):
             ctx.set(t, k, v)
 
 
+def shape_paths(items: list[dict]) -> list[dict]:
+    """Each shape as path fields: `d` in its own box, plus what a path needs to draw it the same. A rectangle's or
+    ellipse's outline is inset by half its outline width (the stage draws a box's outline inside it), so a centred path
+    stroke covers the same pixels; every other kind comes from the engine, which draws them as paths already."""
+    out, ask = [{} for _ in items], {}
+    for i, it in enumerate(items):
+        if it["shape"] in ("rect", "ellipse"):
+            inset = it["strokeWidth"] / 2 if it.get("stroke") else 0.0
+            radius = tuple(it.get(f"radius{c}", 0.0) for c in ("TL", "TR", "BR", "BL")) if it.get("eachCorner") else it.get("radius", 0.0)
+            out[i] = {"d": PD.ellipse(it["w"], it["h"], inset) if it["shape"] == "ellipse" else PD.rect(it["w"], it["h"], radius, inset)}
+        else:
+            ask[str(i)] = it
+    if ask:
+        from .textsize import _engine
+        got = _engine().shapes([{k: v for k, v in it.items() if not isinstance(v, (list, dict))} | {"id": i} for i, it in ask.items()])
+        for i in ask:
+            out[int(i)] = got[i]
+    return out
+
+
 def shape_d(item: dict) -> str:
-    """A shape's outline as path data in its own box (its outline is drawn inside the box: inset by half its width,
-    so a centred path stroke covers the same pixels)."""
-    inset = item["strokeWidth"] / 2 if item.get("stroke") else 0.0
-    if item["shape"] == "ellipse":
-        return PD.ellipse(item["w"], item["h"], inset)
-    return PD.rect(item["w"], item["h"], item.get("radius", 0.0), inset)
+    """A shape's outline as path data in its own box (shape_paths)."""
+    return shape_paths([item])[0]["d"]
 
 
-@R.operation("shape.to_path", "Turn rect / ellipse shapes into editable paths (same id, place, look, effects, "
-             "masks and keys).", target="shape", label="Convert to path", importance="secondary")
+@R.operation("shape.to_path", "Turn shapes of any kind into editable paths (same id, place, look, effects, masks "
+             "and keys). A line or spiral becomes a path drawn by its outline.", target="shape", label="Convert to path",
+             importance="secondary")
 def shape_to_path(ctx, targets, args):
     for t in targets:
-        shape, loc = ctx.item(t), index(ctx.doc, ctx.kind.lists)[t]
-        if shape["shape"] not in ("rect", "ellipse"):
-            ctx.fail(codes.BAD_ARGUMENT, f'target "{t}"', f'is a {shape["shape"]}; Convert to path takes rectangles and '
-                     "ellipses for now (the engine draws the other shapes from their numbers)")
-        bad = {k["prop"] for k in shape.get("keys", [])} - set(F.animatable("path"))
+        bad = {k["prop"] for k in ctx.item(t).get("keys", [])} - set(F.animatable("path"))
         if bad:
             ctx.fail(codes.BAD_ARGUMENT, f'target "{t}"', f"has keys on {', '.join(sorted(bad))}, which a path "
                      "can't animate; remove them first")
+    try:
+        drawn = shape_paths([ctx.item(t) for t in targets])
+    except EngineError as e:  # the engine names the shape and the field
+        ctx.fail(codes.BAD_ARGUMENT, "shape", str(e))
+    for t, geom in zip(targets, drawn):
+        shape, loc = ctx.item(t), index(ctx.doc, ctx.kind.lists)[t]
         path = {**{k: v for k, v in shape.items() if k not in _SHAPE_ONLY}, **F.defaults("path"),
                 **{k: shape[k] for k in ("fill", "stroke", "strokeColor", "strokeWidth", "w", "h", *_TRANSFORM)},
-                "type": "path", "d": shape_d(shape), "cap": "butt", "join": "miter"}
+                "type": "path", "cap": "butt", "join": "miter", **geom}
         ctx.remove(t)
         ctx.insert(loc.parent, loc.key, path, loc.index)
 

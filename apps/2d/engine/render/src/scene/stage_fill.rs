@@ -17,7 +17,11 @@ struct Stop {
 /// The stops in order of position: the `stops` children, else color1 (0), color3 at `mid` (middle on), color2 (1).
 fn stops(e: &Item) -> Vec<Stop> {
     if !e.stops.is_empty() {
-        let mut out: Vec<Stop> = e.stops.iter().map(|s| Stop { at: s.num("at"), hex: s.str("color").into(), alpha: s.num("opacity").clamp(0.0, 1.0) }).collect();
+        let mut out: Vec<Stop> = e.stops.iter().map(|s| {
+            // A see-through colour (#rrggbbaa, keyed ones mixed so too) multiplies into the stop's opacity.
+            let (hex, a) = super::eval::split_alpha(s.str("color"));
+            Stop { at: s.num("at"), hex: hex.into(), alpha: (s.num("opacity") * a).clamp(0.0, 1.0) }
+        }).collect();
         out.sort_by(|a, b| a.at.total_cmp(&b.at));
         return out;
     }

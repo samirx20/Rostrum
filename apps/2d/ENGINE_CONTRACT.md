@@ -22,6 +22,7 @@ The engine holds the scene and evaluates every frame itself. The request header 
 | `{"bones": {"t": 1.25}}` | `{"ok": true, "rigs": {"<rig id>": {"bones": {"<id>": {"x", "y", "tipX", "tipY", "angle"}}, "iks": {"<id>": {"targetX", "targetY", "gap", "bones"}}}}}` | Every rig's posed bones (pivot, tip, angle) and each IK's (held) target and how far its tip misses it (two-bone and long chains alike; `bones` = the chain's bones, top first), at `t`, in comp px (tilt left out). The agents' eyes on a character ([`RIG.md`](RIG.md)). |
 | `{"outline": {"id": "p", "t": 0.5}}` | `{"ok": true, "d": "M …"}` (`d` null for an even stroke, "" when nothing shows) | A path's varied stroke (tapers, width profile) as the filled outline the stage draws, in the path's px: the Lottie export carries it as a fill (`rostrum2d/io/lottie_outline.py`). |
 | `{"measure": {"items": [{"id": "title", "body", "font", "size", "weight", "stretch", "tracking", "lineHeight", "align", "boxWidth", "features"?, "axes"?, "ligatures"?, "figures"?, "smallCaps"?, "slant"?, "grade"?, "path"?, "pathOffset"?, "pathAlign"?, "pathOverflow"?, "letterDelay"?, "letterSplit"?}, …]}}` | `{"ok": true, "sizes": {"title": [w, h]}}` | Each text's box in its own px (before scale and turn): the box the renderer lays it out in, by the same code that draws it (one line, or `boxWidth` wide and wrapped; letter by letter or on a path, the box its letters are placed in). The fields are the text's evaluated values (no time: evaluate keys first); a type field left out is fields.py's default. The whole list is one round trip and one layout. Needs no scene; with one loaded, its fonts. A font not found, or a field the text doesn't have or with a wrong value, fails as `scene` does, naming the id. Python: `Engine.measure`, cached by `rostrum2d/textsize.py`. |
+| `{"shapes": {"items": [{"id": "s", "shape": "star", "w", "h", …the shape's fields}, …]}}` | `{"ok": true, "paths": {"s": {"d": "M…", …}}}` | Each parametric shape (arc, triangle, polygon, star, line, arrow, spiral) as the path it is drawn as: `d` in its own box px plus the path fields its own don't already give (a line or spiral: its stroke from its fill and line). Fields a shape doesn't have are left out, so a document layer goes as it is; a wrong value fails as `scene` does. Needs no scene. Python: `Engine.shapes`, through `ops_path.shape_paths` (Convert to path, combining). |
 
 Errors are `{"error": "…"}` naming the item id and field; the process keeps serving. The engine never draws a frame it couldn't fully understand.
 
@@ -50,7 +51,7 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - **Every field is present** in `props` (defaults filled in by Python), so the engine needs no defaults table of its own. The fields, their types and ranges are `rostrum2d/fields.py` (the one table).
 - **Layers draw in list order**: the first is at the bottom. A `group` has its own `layers`, drawn inside its box.
 - `effects` and `masks` belong to the layer; effects, masks and layers may each have `anim`.
-- Ids are unique in the scene. Times are **seconds**; lengths are **px** in the composition's frame; angles **degrees**; colours `#rrggbb`.
+- Ids are unique in the scene. Times are **seconds**; lengths are **px** in the composition's frame; angles **degrees**; colours `#rrggbb`, or `#rrggbbaa` (see-through; keys mix the alpha too; a gradient stop multiplies it into its `opacity`).
 - Produced by `rostrum2d.scene.describe(doc.data, comp_id)`.
 - **`fonts`** (optional, top level, beside `comp`): `{"Family": "D:/My Film/fonts/Display.ttf", …}` (absolute paths), the project's own fonts. They win over the app's; each file is checked when the scene loads. The `scene` reply lists every family the text may name (`fonts`), for agents and the font picker.
 - **`drawing`** (added S6, same version): a layer drawn frame by frame with the shared painting kit. `props` has `w`, `h`
@@ -167,7 +168,7 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
   the painter draws the matte layer's own markup (`data-track-matte`, vendor/blitz-paint/src/track_matte.rs) as the
   mask, so a matte looks exactly as that layer would on its own. Refused when the scene loads or is edited: a matte that
   is no layer beside it, the layer itself, the camera, or a layer that has a matte of its own.
-- **Riding a path layer** (every layer but the camera; `scene/follow.rs`, the same place a text's `pathLayer` is
+- **Riding a path layer** (every layer and the camera, whose `x`, `y` are where it looks; `scene/follow.rs`, the same place a text's `pathLayer` is
   resolved): `ridePath` = the id of a `path` layer beside it (same group or comp; "" = none). At every time the layer's
   anchor sits on that path as it is then (its `d`, box and transform: anchor, rotation, scale, stretch; tilt and smear
   are left out): `rideAt` `end` = the tip of the drawn-on part (`trimEnd`, never before `trimStart`), `start` =
@@ -214,6 +215,7 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - S9 (same version): text `pathOverflow`.
 - S10 (same version): text `pathLayer` (a text follows a path layer, per frame); a text on a path now takes its colour and outline when not played letter by letter.
 - H41 (same version): every layer may ride a path layer (`ridePath`, `rideAt`, `rideAlong`, `rideTurn`), per frame.
+- E9 (same version): the camera rides a path too; colours may be `#rrggbbaa`; the `shapes` request; an arrow is one merged outline.
 - H10 (same version): rig layers, bones, IK, binds; the `bones` request.
 - H16 (same version): the `measure` request (a text's laid-out box, for auto layout and the screen's boxes).
 - H29 (same version): `paint` on shape, text, image, video and path layers.

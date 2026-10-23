@@ -146,22 +146,36 @@ fn srgb(c: f64) -> f64 {
     if c <= 0.0031308 { c * 12.92 } else { 1.055 * c.powf(1.0 / 2.4) - 0.055 }
 }
 
-/// `#rrggbb` decoded to linear light; None if it isn't one.
-pub fn parse_hex(s: &str) -> Option<[f64; 3]> {
+/// `#rrggbb` or `#rrggbbaa` decoded: red, green, blue in linear light, then alpha (1 when left out); None if it isn't one.
+pub fn parse_hex(s: &str) -> Option<[f64; 4]> {
     let b = s.as_bytes();
-    if b.len() != 7 || b[0] != b'#' || !s[1..].bytes().all(|c| c.is_ascii_hexdigit()) {
+    if !matches!(b.len(), 7 | 9) || b[0] != b'#' || !s[1..].bytes().all(|c| c.is_ascii_hexdigit()) {
         return None;
     }
-    let ch = |i: usize| u8::from_str_radix(&s[i..i + 2], 16).ok().map(|v| lin(v as f64 / 255.0));
-    Some([ch(1)?, ch(3)?, ch(5)?])
+    let byte = |i: usize| u8::from_str_radix(&s[i..i + 2], 16).ok().map(|v| v as f64 / 255.0);
+    let a = if b.len() == 9 { byte(7)? } else { 1.0 };
+    Some([lin(byte(1)?), lin(byte(3)?), lin(byte(5)?), a])
 }
 
-/// Two colours mixed in linear light, written `#rrggbb` (rounded half to even, as Python's `round`).
-fn mix(a: &[f64; 3], b: &[f64; 3], p: f64) -> String {
+/// Two colours mixed in linear light (alpha straight), written `#rrggbb`, or `#rrggbbaa` while it is see-through
+/// (rounded half to even, as Python's `round`).
+fn mix(a: &[f64; 4], b: &[f64; 4], p: f64) -> String {
     let mut s = String::from("#");
     for i in 0..3 {
         let v = (srgb(a[i] + (b[i] - a[i]) * p) * 255.0).round_ties_even() as u8;
         s += &format!("{v:02x}");
     }
+    let alpha = ((a[3] + (b[3] - a[3]) * p).clamp(0.0, 1.0) * 255.0).round_ties_even() as u8;
+    if alpha < 255 {
+        s += &format!("{alpha:02x}");
+    }
     s
+}
+
+/// A colour split into `#rrggbb` and its alpha (1 for `#rrggbb`), for what draws the two apart (gradient stops).
+pub fn split_alpha(hex: &str) -> (&str, f64) {
+    match hex.len() {
+        9 => (&hex[..7], u8::from_str_radix(&hex[7..9], 16).map_or(1.0, |v| v as f64 / 255.0)),
+        _ => (hex, 1.0),
+    }
 }
