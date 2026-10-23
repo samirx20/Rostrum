@@ -24,7 +24,8 @@ Panel {
     property var highlight: []           // field ids marked as in focus (2D: the settings whose keys are picked)
     property alias above: aboveSlot.data // an app's own group above the rows, in the same scroll (2D: a rig's Poses)
     property alias below: belowSlot.data // an app's own group under the rows, in the same scroll (2D: "Paint on …")
-    readonly property string kindText: panel.bridge.selectedItem.kindLabel || Theme.sentence(panel.bridge.selectedItem.kind)
+    readonly property string kindText: panel.bridge.selectedItem.subtitle !== undefined ? panel.bridge.selectedItem.subtitle
+                                       : panel.bridge.selectedItem.kindLabel || Theme.sentence(panel.bridge.selectedItem.kind)
     readonly property bool finds: !!panel.bridge.sectioned
     property int tick: 0                 // "2 min ago" ages while the panel stays open
     readonly property var narrow: { panel.bridge.selection; return panel.bridge.narrowLines ? panel.bridge.narrowLines() : [] }
@@ -35,10 +36,10 @@ Panel {
                 anchors.left: parent.left; anchors.right: parent.right }   // a long name, whole on hover
     Text { id: kind; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
            readonly property bool same: panel.kindText.toLowerCase() === String(name.text || "").trim().toLowerCase()
-           text: same ? "" : panel.kindText; visible: !same
-           height: same ? 0 : kindLine.height     // from the font, not implicitHeight: that one reads `height` back (binding loop)
+           text: same ? "" : panel.kindText; visible: !same && panel.kindText !== ""
+           height: !visible ? 0 : kindLine.height     // from the font, not implicitHeight: that one reads `height` back (binding loop)
            FontMetrics { id: kindLine; font: kind.font }
-           anchors.top: name.bottom; anchors.topMargin: same ? 0 : 2 }
+           anchors.top: name.bottom; anchors.topMargin: visible ? 2 : 0 }
     FieldFrame {
         id: find
         objectName: "findSetting"

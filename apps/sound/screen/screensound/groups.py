@@ -1,5 +1,5 @@
 """Groups in the arrangement (DESIGN.md §3.1d): a bus that tracks play into is drawn as a header row above its tracks,
-which sit under it indented; folded, the tracks hide behind the header, whose lane shows their blocks faintly. No Qt.
+which sit under it indented; open or folded, the header's lane shows its tracks' blocks faintly (folded, the tracks hide behind it). No Qt.
 
 `arrange` puts the track rows (doc order) and the compact bus / master rows into the order the arrangement draws.
 A track's place in the document does not change: a group's tracks are drawn together where its first track is.
@@ -34,7 +34,7 @@ def arrange(root: dict, tracks: list[dict], mix: list[dict], folded) -> list[dic
         under, fold = [by_id[k] for k in below(bus) if not by_id[k].get("mix")], bus in folded
         out.append({**by_id[bus], "group": True, "depth": depth, "folded": fold, "count": len(under),
                     "solo": bool(under) and all(r.get("solo") for r in under),     # lit when every track in it is soloed
-                    "blocks": [b for r in under for b in r["blocks"]] if fold else []})
+                    "blocks": [b for r in under for b in r["blocks"]]})      # open or folded, its lane shows theirs, dimmed
         if fold:
             seen.update(below(bus))
             return

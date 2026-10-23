@@ -32,10 +32,18 @@ def _srgb(c: float) -> float:
     return c * 12.92 if c <= 0.0031308 else 1.055 * c ** (1 / 2.4) - 0.055
 
 
+def _alpha(c: str) -> float:
+    return int(c[7:9], 16) / 255 if len(c) == 9 else 1.0
+
+
 def mix_color(a: str, b: str, p: float) -> str:
+    """Two `#rrggbb` / `#rrggbbaa` colours mixed in linear light, alpha straight; written `#rrggbbaa` only while the
+    result is see-through (the same as the engine's `mix`)."""
     ca = [_lin(int(a[i:i + 2], 16) / 255) for i in (1, 3, 5)]
     cb = [_lin(int(b[i:i + 2], 16) / 255) for i in (1, 3, 5)]
-    return "#" + "".join(f"{round(_srgb(x + (y - x) * p) * 255):02x}" for x, y in zip(ca, cb))
+    out = "#" + "".join(f"{round(_srgb(x + (y - x) * p) * 255):02x}" for x, y in zip(ca, cb))
+    alpha = round(min(1.0, max(0.0, _alpha(a) + (_alpha(b) - _alpha(a)) * p)) * 255)
+    return out if alpha == 255 else out + f"{alpha:02x}"
 
 
 def key_value(key: dict):

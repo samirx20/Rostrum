@@ -7,7 +7,7 @@ import "ColourMath.js" as M
 // (# optional, 3 / 6 / 8 digits) and goes out on Enter or on leaving the box as `typed("#rrggbb")`, one change; a
 // value that is not a colour is refused in place: the box turns red and says why, the old colour stays. With `words`
 // set (a gradient: "Linear · 3 stops", "None", "Mixed") the box shows them instead and a click on it opens the picker.
-//   look: {type: "solid" | "none" | "linear" | "radial" | "angular" | "image", color, stops}
+//   look: {type: "solid" | "none" | "mixed" | "linear" | "radial" | "angular" | "image", color, stops}; "mixed": several colours, an empty swatch
 Item {
     id: s
     property var look: ({ type: "solid", color: "#ffffff" })
@@ -35,6 +35,7 @@ Item {
                 g.reset()
                 g.roundedRect(0, 0, w, w, Theme.radiusCtl, Theme.radiusCtl); g.clip()
                 if (t === "solid" || t === "image") { g.fillStyle = M.rgba(s.lookHex, 1); g.fillRect(0, 0, w, w) }
+                else if (t === "mixed") { /* the checker alone: no one colour to show */ }
                 else if (t === "none") { g.strokeStyle = "#c0392b"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(2, w - 2); g.lineTo(w - 2, 2); g.stroke() }
                 else {
                     const grad = t === "radial" ? g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w * 0.7)

@@ -148,6 +148,8 @@ class PluginHub(QObject):
     # ---- settings ----------------------------------------------------------------------------------------------
     @Slot(str, result=QObject)
     def panel(self, owner_id):
+        """The settings panel of an owner; for no owner ("") an empty one that is kept for good (the Mixer's
+        settings view always holds one, so it must never be freed while the document has no such item)."""
         if owner_id not in self._panels:
             self._panels[owner_id] = PluginPanel(self, owner_id, self)
         return self._panels[owner_id]
@@ -223,7 +225,7 @@ class PluginHub(QObject):
         self._refresh()
 
     def _refresh(self):
-        for owner in [o for o in self._panels if not self.bridge.doc.has(o)]:
+        for owner in [o for o in self._panels if o and not self.bridge.doc.has(o)]:
             self._panels.pop(owner).deleteLater()
         for p in self._panels.values():
             p.refresh()

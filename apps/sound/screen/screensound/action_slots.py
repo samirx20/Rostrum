@@ -53,7 +53,7 @@ class SoundHub(ActionHub):
 
 class ActionSlots:
     libraryWanted = Signal(str)       # "Place a sound": the Library opens on this chip
-    cleanWanted = Signal()            # "Clean up…": the host opens the clean-up popover
+    cleanWanted = Signal()            # "Clean up…": the host opens the Cleanup group with its presets
     askWanted = Signal(str, str, float)   # an action asks one number first (Land a bar: "Bar", the nearest)
     mainMixChanged = Signal()         # the main-mix mark moved (the Song panel's mark and button re-read)
     voiceWanted = Signal(str)         # a voice track's lines need their speech made (editor_side starts the job)
@@ -152,9 +152,15 @@ class ActionSlots:
             return False
         return self._act(C.fit_bar(f, int(bar)), f"Land bar {int(bar)} on {f.items[0].get('name')}")
 
+    @Slot(result="QVariantMap")
+    def cleanState(self):
+        """Which presets are on for the first selected clip: {voice, noise, echo}."""
+        clip = next((self.doc.item(i) for i in self._picks.ids if self.doc.item(i)["type"] == "clip"), {})
+        return {"voice": bool(clip.get("isolate")), "noise": bool(clip.get("denoise")), "echo": bool(clip.get("dereverb"))}
+
     @Slot(bool, bool, bool, result=bool)
     def cleanSelected(self, voice, noise, echo):
-        """The clean-up popover's Clean: the steps set on every selected clip (one change); the screen then starts
+        """A Cleanup preset: the steps set on every selected clip (one change); the screen then starts
         the cleaned takes (mixer.cleaning.makeFor)."""
         args = {"isolate": bool(voice), "denoise": 0.6 if noise else 0, "dereverb": 0.6 if echo else 0}
         clips = [i for i in self._picks.ids if self.doc.item(i)["type"] == "clip"]
@@ -181,6 +187,8 @@ class ActionSlots:
             out.append({"value": f"at:all:{track_id}", "label": "Select all on this track", "keys": "", "group": "select"})
         else:
             out.append({"value": f"at:section:{t}", "label": "Make a section from here", "keys": "", "group": "here"})
+            out.append({"value": "at:seconds:0", "label": "Hide seconds" if self.workspace.seconds else "Show seconds",
+                        "keys": "", "group": "view"})
         return out
 
     @Slot(str, result=bool)
@@ -192,6 +200,9 @@ class ActionSlots:
             return self._paste(parts[2], float(parts[3]))
         if what == "all":
             return self._pick([b["id"] for r in self._view["rows"] if r["id"] == parts[2] for b in r["blocks"]]) or True
+        if what == "seconds":
+            self.workspace.toggleSeconds()
+            return True
         t = float(parts[-1])
         if what == "marker":
             return self.markerAt(t)

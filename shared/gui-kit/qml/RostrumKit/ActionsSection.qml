@@ -6,7 +6,7 @@ import "."
 // like a pro tool's (H49): actions sharing a bar name whose every action has an icon are one tight run of small icon
 // buttons (Align: six; Combine: four; the name on hover); a bar without icons is one "Mask ▾" button with its menu;
 // the rest small buttons. The runs flow on the panel grid, a wider gap between runs, wrapping when the panel is
-// narrow. The less used ones (secondary) are one "More ▾" menu last, folded like right-click.
+// narrow. The less used ones (secondary) are one "⋯" menu last, folded like right-click.
 // No hover preview yet: drawing a would-be result needs the engine to render one (left for later, said in H48).
 Flow {
     id: section
@@ -60,12 +60,12 @@ Flow {
             }
         }
     }
-    Button {
+    IconButton {    // "⋯", the same icon button as the context bar's: the word More is the Song panel's fold of fields
         id: moreButton
         objectName: "actionsMore"
         visible: section.more.length > 0
-        implicitHeight: section.size
-        kind: "ghost"; text: "More  ▾"; help: "The other actions for this selection"
+        width: section.size; height: section.size
+        kind: "ghost"; glyph: "⋯"; tip: "More"; help: "The other actions for this selection"
         onClicked: section.openMenu(moreButton, section.more)
     }
     ActionMenu { id: menu; onPicked: (v) => section.hub.run(v) }

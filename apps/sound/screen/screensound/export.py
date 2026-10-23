@@ -148,6 +148,11 @@ class RenderExport(ExportSheet):
     def rates(self):
         return [{"value": str(c["id"]), "label": option_label(c)} for c in deliver.rates_for(self._format)]
 
+    @Property(str, constant=True)
+    def sheetTitle(self):
+        """The sheet's heading: always "Export" (the first target's name below it is not a second title)."""
+        return "Export"
+
     @Property(str, notify=own)
     def format(self):
         return self._format

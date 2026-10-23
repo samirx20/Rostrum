@@ -30,6 +30,7 @@ Item {
     property var view: null            // TimeViewObject: which stretch is on screen (none: all of it)
     property bool rangeBand: false     // the app has a time range (loop, export, notes)
     property var range: null           // {start, end} in seconds, or null
+    property bool seconds: true        // the seconds scale (ticks and labels); an app whose `upper` line is its main scale can hide it
     property var upper: []             // the scale's upper line: [{at, text}] in seconds; empty: one line
     property bool canShare: false      // the document is in a project: new markers may be shared
     property var markerSource: null    // a MarkerWatch: gives the right-click menu and runs its choices
@@ -84,10 +85,10 @@ Item {
     readonly property int flagTop: bandH
     readonly property bool flagRow: markers.length > 0 || editMarkers
     readonly property int labelTop: bandH + (flagRow && height >= bandH + 30 + (upper.length ? 12 : 0) ? 18 : 5)
-    implicitHeight: bandH + (flagRow ? 18 : 0) + (upper.length ? 34 : 22)
+    implicitHeight: bandH + (flagRow ? 18 : 0) + (upper.length ? (seconds ? 34 : 20) : 22)
 
     Repeater {   // the time scale
-        model: Math.max(0, Math.floor((r.origin + r.span) / r.minor + 1e-6) - r.tick0 + 1)
+        model: !r.seconds ? 0 : Math.max(0, Math.floor((r.origin + r.span) / r.minor + 1e-6) - r.tick0 + 1)
         delegate: Rectangle {
             required property int index
             readonly property real v: (r.tick0 + index) * r.minor

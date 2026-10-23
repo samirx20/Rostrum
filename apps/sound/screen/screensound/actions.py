@@ -66,9 +66,9 @@ ACTIONS = [
     act("ungroup", "Ungroup", lambda f: bool(C.group_buses(f)) and C.tries(f, [C.call("bus.ungroup", C.group_buses(f))]),
         lambda f: [C.call("bus.ungroup", C.group_buses(f))], "Ctrl+Shift+G", "primary", "make"),
     act("mute", C.flip("mute", "Mute", "Unmute"), TRACK, C.toggle_all("mute"), "Shift+M", group="track",
-        promoted_when=lambda f: f.count >= 2, needs="Mute needs tracks selected"),
+        needs="Mute needs tracks selected"),
     act("solo", C.flip("solo", "Solo", "Unsolo"), TRACK, C.toggle_all("solo"), "Shift+S", group="track",
-        promoted_when=lambda f: f.count >= 2, needs="Solo needs tracks selected"),
+        needs="Solo needs tracks selected"),
     *[act(f"effect_{e}", f"Add {WORDS.get(e, e)}", lambda f: f.one in ("track", "clip"),
           lambda f, e=e: [C.call("effect.add", f.ids, effect=e)], group="effect", menu="Add effect")
       for e in EFFECTS],
@@ -99,7 +99,8 @@ ACTIONS = [
         do="speak", needs="Speak again needs voice lines selected"),
     act("take_prev", "Earlier take", V.take_valid(-1), V.take_calls(-1), group="line"),
     act("take_next", "Later take", V.take_valid(1), V.take_calls(1), group="line"),
-    act("add_line", "Type a line", V.voice_track, importance="primary", group="line", do="addline"),
+    act("add_line", "Type a line", V.voice_track, group="line", do="addline",
+        panel=False),                                   # the Lines panel has the field: keys and Ctrl+K only
     # the song itself (nothing selected): absent once it is the main mix
     act("main_mix", "Make this the main mix", _can_make_main, importance="secondary", group="song", do="mainmix",
         panel=False),                                   # the Song panel has its own button for it

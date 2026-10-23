@@ -13,6 +13,7 @@ Item {
     property string hint: ""
     property bool danger: false
     property bool down: false            // shown pressed (e.g. a panel that is open)
+    property bool flushLeft: false            // the words at the left edge (in a column of list-like rows), not centred
     property string tip: ""              // the name in the hover help when the text alone doesn't say it
     property string help: ""             // one plain sentence of what it does
     property string job: ""              // its key map job: the key in the hover help (AppShell.keyFor)
@@ -38,7 +39,7 @@ Item {
     }
     Text {
         id: label
-        x: b.hint ? Theme.pad : Math.max(Theme.pad, (b.width - width) / 2)
+        x: b.hint || b.flushLeft ? Theme.pad : Math.max(Theme.pad, (b.width - width) / 2)
         anchors.verticalCenter: parent.verticalCenter
         text: b.text; font.pixelSize: Theme.body; font.family: uiFont
         width: Math.min(implicitWidth, Math.max(0, b.width - 2 * Theme.pad - (b.hint ? hintBox.width + Theme.gap : 0)))

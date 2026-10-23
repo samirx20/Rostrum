@@ -106,6 +106,17 @@ class KeySlots:
         self.transport.loop = tuple(self._picks.range) if self._loop else None
         self.loopChanged.emit()
 
+    # ---- click (the metronome; screen state) ------------------------------------------------------------------
+    @Property(bool, notify=loopChanged)
+    def clickOn(self):
+        return bool(self.transport.player.state.get("metronome"))
+
+    @Slot()
+    def toggleClick(self):
+        """Shift+K, or Click beside play: the engine's metronome on / off (it clicks every beat while playing)."""
+        self.transport.player.set_state(metronome=not self.clickOn)
+        self.loopChanged.emit()
+
     def _range_moved(self):
         if getattr(self, "_loop", False):
             self.transport.loop = tuple(self._picks.range) if self._picks.range else None

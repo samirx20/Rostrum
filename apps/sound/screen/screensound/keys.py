@@ -30,7 +30,7 @@ ROUTES = {
     "play": ("togglePlay",), "to_start": ("setTime", 0.0),
     "frame_back": ("playheadStep", -1), "frame_on": ("playheadStep", 1),
     "frame_back_ten": ("playheadStep", -10), "frame_on_ten": ("playheadStep", 10),
-    "prev_event": ("jump", -1), "next_event": ("jump", 1), "loop": ("toggleLoop",),
+    "prev_event": ("jump", -1), "next_event": ("jump", 1), "loop": ("toggleLoop",), "click": ("toggleClick",),
     "range_start": ("rangeEdge", "in"), "range_end": ("rangeEdge", "out"),
     "select_all": ("selectAll",), "step_back": ("clearSelection",), "delete": ("removeSelected",),
     "marker": ("markerHere",), "fit": ("fitSelection",), "fit_all": ("fitView",),

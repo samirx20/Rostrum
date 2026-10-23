@@ -66,7 +66,7 @@ AppShell {
     SettingsPanel { id: settingsPanel }
     actions: [          // the top bar's chips, then Export (kit TopBar: its `actions` slot sits before Search)
         LoudnessReadout { visible: shell.hasSound; compact: shell.width < 1366; anchors.verticalCenter: parent.verticalCenter },
-        Button { visible: shell.hasSound; text: "Export"; kind: "primary"; down: mixer.export.open
+        Button { visible: shell.hasSound && !mixer.export.open; text: "Export"; kind: "primary"; down: mixer.export.open
                  anchors.verticalCenter: parent.verticalCenter
                  onClicked: mixer.export.setOpen(!mixer.export.open)
                  HoverTip { text: "Export the song (Ctrl+E). Ctrl+Shift+E exports again with the last settings"; hovered: parent.hovered } }
@@ -99,15 +99,14 @@ AppShell {
         id: side
         anchors.fill: parent
         Inspector { visible: backend.selected !== ""; bridge: backend; actions: backend.actions   // the clean-up's result: under Cleanup
-                    below: [LayerRows { }, CleanTakeBar { width: parent ? parent.width : 0; height: implicitHeight }]
+                    below: [LayerRows { }, CleanPresets { id: presets }, CleanTakeBar { width: parent ? parent.width : 0; height: implicitHeight }]
                     anchors.fill: parent }
         SongSettings { visible: backend.selected === ""; anchors.fill: parent }
-        // an action that asks first opens beside the panel, at its top (Clean up…; Land a bar here: which bar)
-        CleanPopover { id: clean; x: -width - Theme.gap; y: Theme.pad }
+        // an action that asks first opens beside the panel, at its top (Land a bar here: which bar)
         AskPopover { id: ask }
         Connections {
             target: backend
-            function onCleanWanted() { clean.open() }
+            function onCleanWanted() { presets.wanted = true; backend.revealField("isolate") }
             function onAskWanted(key, label, value) {
                 ask.key = key; ask.label = label; ask.value = value
                 const g = side.mapToItem(null, 0, 0); ask.openAtPoint(g.x - ask.width - Theme.gap, g.y + Theme.pad)

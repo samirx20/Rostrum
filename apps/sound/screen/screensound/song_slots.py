@@ -8,10 +8,10 @@ from . import layers, moves, song_edit, timeline
 
 
 class SongSlots:
-    def kind_label(self, item):
-        """The inspector's subtitle: the kind, and for a clip tied to a project marker which one (2D's cues)."""
-        words = timeline.tie_words(item)
-        return f"{super().kind_label(item)} · {words}" if words else super().kind_label(item)
+    def subtitle(self, item):
+        """The inspector's subtitle: none (the name and the fields say the kind), but for a clip tied to a project
+        marker, which one (2D's cues)."""
+        return timeline.tie_words(item) or ""
 
     @Slot(result="QVariantMap")
     def layers(self):

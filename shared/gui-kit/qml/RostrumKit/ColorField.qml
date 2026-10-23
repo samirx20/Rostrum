@@ -20,7 +20,7 @@ SwatchHex {
     property string shown: hex           // what the swatch shows while the picker is open
     property bool changing: false
     onHexChanged: shown = hex
-    look: ({ type: "solid", color: f.shown })
+    look: f.atRest !== "" ? ({ type: "mixed" }) : ({ type: "solid", color: f.shown })   // several colours: an empty swatch, not one of them
     words: f.atRest
     engaged: picker.visible
     onPick: f.open()

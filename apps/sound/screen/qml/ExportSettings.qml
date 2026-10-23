@@ -47,7 +47,7 @@ Column {
         model: root.job.presets
         delegate: Button {
             required property var modelData
-            width: root.width; text: modelData.label; kind: root.job.preset === modelData.value ? "primary" : "ghost"
+            width: root.width; flushLeft: true; text: modelData.label; kind: root.job.preset === modelData.value ? "primary" : "ghost"
             onClicked: root.job.usePreset(modelData.value)
             HoverHandler { id: presetHover }
             HoverTip { text: modelData.detail; hovered: presetHover.hovered }
