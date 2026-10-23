@@ -157,7 +157,8 @@ pub(crate) fn markup(scene: &Scene, t: f64, alpha: bool) -> Result<(Vec<String>,
 }
 
 /// A frame's stage markup, built before it is drawn (scene_export.rs builds the next frames' on another thread):
-/// the frame's own pieces and, motion-blurred, each sub-frame's (empty when nothing moves while the shutter is open).
+/// the frame's own pieces (empty when motion-blurred and not drawn: `stage_at`) and, motion-blurred, each sub-frame's
+/// (empty when nothing moves while the shutter is open).
 pub(crate) struct Staged {
     pub t: f64,
     pieces: Vec<String>,
@@ -166,12 +167,13 @@ pub(crate) struct Staged {
 }
 
 /// The stage markup of the frame `req` asks for at `t` (keys, easing, motion-blur sub-frames): no page, no paint.
+/// A motion-blurred frame's own stage is built only when it is drawn (serve.rs `frame`: `held` paints it over the
+/// sum, `boxes` lays it out); otherwise the picture is the sub-frames' sum alone and its stage is left empty.
 pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, String> {
     let alpha = req["alpha"].as_bool() == Some(true);
-    let (pieces, mut eval_ms) = markup(scene, t, alpha)?;
     // Motion blur (crate::motion, MOTION.md): the stage at each sub-frame of the open shutter, averaged by serve.rs.
     let (angle, n) = crate::motion::shutter(&scene.comp, req)?;
-    let mut samples = vec![];
+    let (mut samples, mut eval_ms) = (vec![], 0.0);
     if angle > 0.0 && n > 1 {
         for ts in crate::motion::sample_times(t, scene.fps(), angle, n) {
             let (mk, ms) = markup(scene, ts, alpha)?;
@@ -181,13 +183,19 @@ pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, Str
     }
     // Nothing moves while the shutter is open: every sub-frame is the same picture, so their average is that one
     // picture, drawn once (the same pixels, within the sum's rounding).
-    let mut pieces = pieces;
     if samples.windows(2).all(|w| w[0] == w[1]) {
         if let Some(only) = samples.pop() {
-            pieces = only;
-            samples.clear();
+            return Ok(Staged { t, pieces: only, samples: vec![], eval_ms });
         }
     }
+    let own_drawn = samples.is_empty() || req["held"].as_bool() == Some(true) || req["boxes"].as_bool() == Some(true);
+    let pieces = if own_drawn {
+        let (pieces, ms) = markup(scene, t, alpha)?;
+        eval_ms += ms;
+        pieces
+    } else {
+        vec![]
+    };
     Ok(Staged { t, pieces, samples, eval_ms })
 }
 
