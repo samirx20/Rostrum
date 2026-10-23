@@ -2,8 +2,8 @@ import QtQuick
 import RostrumKit
 
 // 2D's part of the kit Export sheet (AppShell.exportSettings): the composition (only when there is more than one), the
-// chosen format's settings (only the ones that apply: backend.exporter.settings, screen2d/export_rows.py), and after
-// it is done, the result read back from the file and, for Lottie, what it couldn't carry.
+// chosen format's settings (only the ones that apply: backend.exporter.settings, screen2d/export_rows.py; a GIF's ends
+// with what it comes to), and after it is done, what the file holds beyond the kit's result line and, for Lottie, what it couldn't carry.
 Column {
     id: root
     readonly property var job: backend.exporter
@@ -28,15 +28,16 @@ Column {
             required property var modelData
             readonly property bool wide: modelData.kind === "switch"     // a switch says what it does beside it
             Label { visible: !srow.wide; text: srow.modelData.label }
-            Item {
-                width: srow.wide ? root.width : root.width - root.labelW; height: Theme.row
+            Item {      // a note (what a GIF comes to) wraps onto a second line rather than lose its end
+                width: srow.wide ? root.width : root.width - root.labelW
+                height: srow.modelData.kind === "note" ? Math.max(Theme.row, note.implicitHeight) : Theme.row
                 Toggle { visible: srow.modelData.kind === "toggle" || srow.wide; anchors.verticalCenter: parent.verticalCenter
                          checked: !!srow.modelData.value; onToggled: (v) => root.job.setSetting(srow.modelData.key, v) }
                 Text { visible: srow.wide; x: 32 + Theme.gap; width: parent.width - x; height: parent.height
                        verticalAlignment: Text.AlignVCenter; text: srow.modelData.label; color: Theme.fg2
                        font.family: uiFont; font.pixelSize: Theme.body; elide: Text.ElideRight }
-                Text { visible: srow.modelData.kind === "note"; width: parent.width; height: parent.height; verticalAlignment: Text.AlignVCenter
-                       text: srow.modelData.kind === "note" ? srow.modelData.value : ""; color: Theme.fg; elide: Text.ElideRight
+                Text { id: note; visible: srow.modelData.kind === "note"; width: parent.width; anchors.verticalCenter: parent.verticalCenter
+                       text: srow.modelData.kind === "note" ? srow.modelData.value : ""; color: Theme.fg; wrapMode: Text.Wrap
                        font.family: uiFont; font.pixelSize: Theme.body }
                 ChoiceField { visible: srow.modelData.kind === "choice"; anchors.verticalCenter: parent.verticalCenter; width: parent.width
                               options: srow.modelData.options || []; current: String(srow.modelData.value)

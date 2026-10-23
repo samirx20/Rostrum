@@ -48,7 +48,7 @@ class MyExport(ExportSheet):
         return {"scene": snapshot(self.bridge.doc), "out": out, "overwrite": overwrite}
     def work(self, plan, progress):                            # worker thread: write under a temporary name, then rename
         ...; progress(0.5); ...
-        return {"files": [path], "file": path, "version": "v003", "summary": "150 frames at 25 fps · 1920×1080"}
+        return {"files": [path], "file": path, "version": "v003", "summary": "12.4 MB · 1920×1080 · 150 frames at 25 fps"}
     def stop(self):              self._engine.kill()           # optional: without it there is no Cancel
 
     @Property(str, notify=own)

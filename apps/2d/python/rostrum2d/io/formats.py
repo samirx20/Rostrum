@@ -105,12 +105,11 @@ def _webm(out, w, h, fps, depth, first, rate):     # libvpx-vp9: BSD, LGPL build
         "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709"], out)
 
 
-# GIF: a size and a frame rate to choose (a full-HD GIF at the scene's rate is tens of MB), and an estimate of the file
-# before it is made. The picture is encoded by gif_encode.py (one palette, ordered dither), not the engine's encode-gif.
+# GIF: a size and a frame rate to choose (a full-HD GIF at the scene's rate is tens of MB); how big the file will be is
+# measured before it is made (gif_size.py). The picture is encoded by gif_encode.py (one palette, ordered dither), not the engine's encode-gif.
 GIF_SIZES = {"full": "Full size", "half": "Half size", "480": "480 px wide"}
 GIF_RATES = {"15": "15 frames a second", "scene": "The scene's rate"}
 GIF_DEFAULTS = {"size": "half", "rate": "15"}
-GIF_BYTES = 0.012                            # per pixel per frame, measured on the sample and a drawing (gif_encode.py)
 
 
 def gif_shape(w: int, h: int, fps: float, frames: int, size: str = "half", rate: str = "15") -> tuple[int, int, float, int]:
@@ -122,13 +121,6 @@ def gif_shape(w: int, h: int, fps: float, frames: int, size: str = "half", rate:
     oh = max(1, round(h * ow / w))
     ofps = min(fps, 15.0) if rate == "15" else fps
     return ow, oh, ofps, max(1, round(frames * ofps / fps))
-
-
-def gif_estimate(w: int, h: int, fps: float, seconds: float, size: str = "half", rate: str = "15") -> int:
-    """About how many bytes the GIF will be (a guess from its size and length: flat motion graphics come out smaller,
-    busy pictures and gradients larger)."""
-    ow, oh, ofps, n = gif_shape(w, h, fps, max(1, round(seconds * fps)), size, rate)
-    return round(ow * oh * n * GIF_BYTES)
 
 
 def gif_encode(out, w, h, fps, size="half", rate="15") -> dict:

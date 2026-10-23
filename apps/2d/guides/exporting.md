@@ -28,7 +28,7 @@ Only the settings that apply to the chosen format are shown.
 
 1. **Quality** (MP4): **Standard**, **High** or **Best**. Higher keeps more detail and makes a bigger file.
 2. **Transparency**: a switch for formats that can keep it. Turn it on to keep see-through areas see-through.
-3. **Size** and **Frame rate** (GIF): **Full size**, **Half size** (the default) or **480 px wide**; **15 frames a second** (the default) or **The scene's rate**. Below them **File size** says about how big the file will be (a guess from its size and length: flat graphics come out smaller, busy pictures and gradients larger), and its pixel size and frame count. One palette for the whole GIF and a fixed dither pattern keep it small; it never makes the GIF larger than the scene or faster than the scene.
+3. **Size** and **Frame rate** (GIF): **Full size**, **Half size** (the default) or **480 px wide**; **15 frames a second** (the default) or **The scene's rate**. Below them one line, **File**, says what they come to: about how big the file will be, its pixel size and its frames, such as "about 0.3 MB · 960×540 · 150 frames at 15 fps". The size is measured, not guessed: the app draws a few frames in the background and makes a small GIF of them, so it says "size: working it out…" for a few seconds first. A drawing held for several frames or a still background costs almost nothing; a moving full-screen gradient costs a lot. After you export, this line goes and the result line below **Export** says the same facts for the real file. One palette for the whole GIF and a fixed dither pattern keep it small; it never makes the GIF larger than the scene or faster than the scene.
 4. **Bit depth** (PNG): how finely colour is kept, **8-bit** or **16-bit**.
 4. **Include the project's sound** (MP4 only, and only when the project has sound): a switch.
 5. **Range**: a picker at the top of the sheet, above the list of formats. **Everything** (with the length in seconds) is the first choice; after it come the stretches between your markers, one for each pair of neighbouring markers, such as "intro → drop". It shows only when the project has at least two markers to pick from; with none, you export everything.
@@ -44,7 +44,7 @@ Only the settings that apply to the chosen format are shown.
 ## 5. Export
 
 1. Click **Export**. A progress bar runs, and **Cancel** appears beside it while it works.
-2. When it finishes, the panel says **Exported** and the file's real name (for a run of pictures: how many, and the first and last, such as "48 pictures, Scene_0001.png to Scene_0048.png"), with **Play** and **Show in folder**, and lists what was made: its frames, its size and the rest.
+2. When it finishes, the panel says **Exported** and the file's real name (for a run of pictures: how many, and the first and last, such as "48 pictures, Scene_0001.png to Scene_0048.png"), with **Play** and **Show in folder**. One line above it says the file as written: its size on disk, its pixel size and its frames, such as "0.2 MB · 960×540 · 150 frames at 15 fps". Only what that line and the settings above don't already say is listed under the settings (for an MP4: how it was encoded). Change a setting and the result line goes, because it no longer describes what **Export** would make.
 3. Click **Show in folder** to open where it went.
 4. If something goes wrong the panel says so in red. Nothing is reported as done unless the file was made.
 
