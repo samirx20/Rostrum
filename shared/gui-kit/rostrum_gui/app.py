@@ -48,6 +48,10 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
         QQuickStyle.setStyle("Basic")  # we draw every control ourselves; Basic is only the Popup base
         _styled = True
     app = qt_app()
+    from rostrum_gui.notices import NAMES, app_id
+    from .qml_cache import name_app
+    if not app.organizationName():                      # unnamed ("python"): its own compiled-QML cache, capped (qml_cache.py)
+        name_app(app, NAMES.get(app_id(main_qml), "Rostrum"))
     link_in_accent(app)
     families = set(QFontDatabase.families())
     pick = lambda wanted: next((f for f in wanted if f in families), QGuiApplication.font().family())  # noqa: E731
@@ -61,7 +65,7 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     ctx = engine.rootContext()
     ctx.setContextProperty("uiFont", pick(UI_FONTS))
     ctx.setContextProperty("monoFont", pick(MONO_FONTS))
-    from rostrum_gui.notices import Notices, app_id   # the Help → About and licences screen (every app has one)
+    from rostrum_gui.notices import Notices           # the Help → About and licences screen (every app has one)
     ctx.setContextProperty("notices", Notices(app_id(main_qml), engine))
     if app_id(main_qml) in ("2d", "sound"):           # Help → Connect an AI agent (apps with an agent server to add)
         from rostrum_gui.agents import Agents

@@ -17,7 +17,7 @@ Rectangle {
     width: 48
     color: Theme.panel; radius: Theme.radiusPanel
     property var last: ({ shapes: "rect", view: "hand" })      // group -> its last-used tool (screen state)
-    readonly property bool flyoutOpen: flyout.visible || brushes.visible
+    readonly property bool flyoutOpen: flyout.visible || brushOpen
     readonly property bool menuOpen: flyout.visible       // a group's menu; the brush panel is part of the Brush tool, not a menu
     readonly property bool canCue: { backend.actions.bar; backend.selected; return JSON.stringify(backend.actions.menu()).indexOf('"sound_here"') >= 0 }   // folded menus nest it
     readonly property bool has3d: backend.adder.entries.some(e => e.type === "render3d")
@@ -72,11 +72,11 @@ Rectangle {
     function openBrushes() {   // painting on, and the brush panel beside the Brush icon (B; B again reopens it)
         flyout.close()
         if (backend.tool !== "draw") backend.paintTool.use("brush")
-        brushes.show(buttons.itemAt(rail.groups.findIndex(g => g.id === "brush")))
+        brushes.get().show(buttons.itemAt(rail.groups.findIndex(g => g.id === "brush")))
     }
     function openGroup(id) {   // the flyout of group `id` (Ctrl+I: media; scripted steps), or "" to close it
         if (id === "brush") { openBrushes(); return true }
-        brushes.close()
+        if (brushes.item) brushes.item.close()
         const i = rail.groups.findIndex(g => g.id === id)
         if (i < 0 || rail.groups[i].items.length < 2) { flyout.close(); return false }
         flyout.show(rail.groups[i], buttons.itemAt(i))
@@ -124,7 +124,7 @@ Rectangle {
                 MouseArea {
                     id: area
                     anchors.fill: parent; enabled: !slot.g.sep
-                    onClicked: slot.brush ? (brushes.visible ? brushes.close() : rail.openBrushes())
+                    onClicked: slot.brush ? (rail.brushOpen ? brushes.item.close() : rail.openBrushes())
                              : slot.many ? (flyout.visible && flyout.group === slot.g.id ? flyout.close() : rail.openGroup(slot.g.id))
                                          : rail.pick(slot.e)
                     pressAndHoldInterval: 350
@@ -141,7 +141,8 @@ Rectangle {
         }
     }
     ToolFlyout { id: flyout; onPicked: (e) => rail.pick(e) }
-    BrushFlyout { id: brushes }
+    readonly property bool brushOpen: !!brushes.item && brushes.item.visible
+    FirstUse { id: brushes; sourceComponent: Component { BrushFlyout { } } }   // made at its first opening: its strokes are painted then (H65)
 
     FileDialog {    // Media › Picture / Video: the file first, then one layer, centred (backend.adder.addFile)
         id: dialog

@@ -21,10 +21,11 @@ Item {
     property var cut: ({})        // block ids whose label is cut short (painted last): their whole name shows on hover
     HoverHandler { id: over; onPointChanged: tipAt.x = point.position.x }
     Item { id: tipAt; y: 0; width: 1; height: lane.height
-           HoverTip { id: nameTip; hovered: over.hovered; text: {
+           Loader { id: tipPlace; anchors.fill: parent; active: over.hovered   // made only while hovered: one per lane (H65)
+               sourceComponent: HoverTip { parent: tipPlace; hovered: over.hovered; text: {
                over.point.position; const b = (lane.track.blocks || []).find(b => lane.cut[b.id] && b.label
                    && lane.ruler.xOf(b.t) <= over.point.position.x && over.point.position.x <= lane.ruler.xOf(b.t) + lane.ruler.wOf(b.dur))
-               return b ? b.label : "" } } }
+               return b ? b.label : "" } } } }
 
     Canvas {
         id: c

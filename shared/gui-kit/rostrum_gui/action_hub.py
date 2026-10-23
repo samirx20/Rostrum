@@ -27,6 +27,7 @@ class ActionHub(QObject):
                  preview_fn=None, unpreview_fn=None):
         super().__init__(parent)
         self.list = action_list
+        self._jobs = None
         self._facts, self._what, self._apply, self._do, self._say = facts_fn, what_fn, apply_fn, do_fn, message_fn
         self._preview, self._unpreview = preview_fn, unpreview_fn      # an app's hover preview (previewStart / previewEnd)
         self._bar: dict = {"what": "", "items": [], "more": []}
@@ -55,7 +56,9 @@ class ActionHub(QObject):
     @Property("QVariantList", constant=True)
     def jobs(self):
         """The key map jobs some action runs: the shortcuts the hub answers (KeyMap.qml's `skip` is the rest)."""
-        return sorted({j for j in (self.list.job_of(a) for a in self.list.actions) if j})
+        if self._jobs is None:          # worked out once: QML reads it for every key (3,400 reads at start, S59)
+            self._jobs = sorted({j for j in (self.list.job_of(a) for a in self.list.actions) if j})
+        return self._jobs
 
     @Slot()
     def refresh(self):

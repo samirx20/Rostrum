@@ -134,10 +134,10 @@ QQC.ApplicationWindow {
     title: documentName ? documentName + " — " + appName : appName
     color: Theme.app
 
-    function openAbout() { noticesDialog.open() }
+    function openAbout() { noticesDialog.get().open() }
     function openConnectAgent(handFor) {  // handFor: an agent id whose Set up by hand opens with it (scripted steps)
-        agentsDialog.open()
-        if (handFor) agentsDialog.showHand(handFor)
+        agentsDialog.get().open()
+        if (handFor) agentsDialog.item.showHand(handFor)
     }
     function openHelp() { topBar.openHelp() }
     function openGuide(url) { guidesDrawer.show(url); openGuides() }
@@ -146,10 +146,10 @@ QQC.ApplicationWindow {
         if (e) openGuide(e.value)
         return !!e
     }
-    function openKeys() { keyList.open() }
+    function openKeys() { keyList.get().open() }
     Shortcut { sequence: "Ctrl+K"; onActivated: commandBar.open() }
     Shortcut { sequence: "F1"; onActivated: win.guidesOpen ? win.closeGuides() : win.openGuides() }
-    Shortcut { sequence: "Ctrl+/"; onActivated: keyList.opened ? keyList.close() : keyList.open() }
+    Shortcut { sequence: "Ctrl+/"; onActivated: keyList.item && keyList.item.opened ? keyList.item.close() : keyList.get().open() }
     Shortcut { sequence: "F6"; onActivated: win.nextArea() }
     Shortcut { sequence: "Ctrl+\\"; onActivated: { win.panelsFolded = !win.panelsFolded; if (win.panelsFolded) win.historyOpen = false } }
     Shortcut { sequence: "Ctrl+H"; onActivated: win.historyOpen ? (win.historyOpen = false) : win.openHistory("") }
@@ -167,11 +167,11 @@ QQC.ApplicationWindow {
         onRenameAsked: (name) => files.rename(name)
         job: win.exporter
         onCommandClicked: commandBar.open()
-        onAboutClicked: noticesDialog.open()
-        onConnectAgentClicked: agentsDialog.open()
+        onAboutClicked: win.openAbout()
+        onConnectAgentClicked: win.openConnectAgent("")
         onGuideClicked: (url) => win.openGuide(url)
         onGuidesClicked: win.openGuides()
-        onKeysClicked: keyList.open()
+        onKeysClicked: win.openKeys()
         onHelpPicked: (value) => win.helpPicked(value)
     }
     Item {
@@ -239,7 +239,10 @@ QQC.ApplicationWindow {
         }
     }
     CommandBar { id: commandBar; bridge: win.bridge; onClosed: win.backToWork() }
-    KeyList { id: keyList; keys: win.allKeys; onDone: win.backToWork() }
-    NoticesDialog { id: noticesDialog; data: typeof notices !== "undefined" ? notices : null; onClosed: win.backToWork() }
-    ConnectAgentDialog { id: agentsDialog; data: typeof agents !== "undefined" ? agents : null; onClosed: win.backToWork() }
+    // made the first time they open (FirstUse.qml): nobody sees them at start (H65)
+    FirstUse { id: keyList; sourceComponent: Component { KeyList { keys: win.allKeys; onDone: win.backToWork() } } }
+    FirstUse { id: noticesDialog; sourceComponent: Component {      // the licence list is read only then too
+        NoticesDialog { data: typeof notices !== "undefined" ? notices : null; onClosed: win.backToWork() } } }
+    FirstUse { id: agentsDialog; sourceComponent: Component {
+        ConnectAgentDialog { data: typeof agents !== "undefined" ? agents : null; onClosed: win.backToWork() } } }
 }

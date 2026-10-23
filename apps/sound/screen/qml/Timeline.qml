@@ -106,9 +106,10 @@ Rectangle {
                     readonly property real h: tl.hOf(modelData)
                     readonly property real top0: tl.addAbove(index)
                     width: column.width; height: top0 + h + (auto ? tl.laneGap + tl.laneH : 0)
-                    Button {   // + Track: the Sounds panel (adding a track is choosing its sound)
-                        visible: row.top0 > 0 && backend.tracks.some(r => !r.mix); text: "+ Track"; kind: "ghost"; height: Theme.field
-                        x: Theme.grid; y: (row.top0 - height) / 2 - tl.rowGap / 2; onClicked: tl.addTrack()
+                    Loader {   // + Track: made only in the rows that show it
+                        active: row.top0 > 0 && backend.tracks.some(r => !r.mix)
+                        x: Theme.grid; y: item ? (row.top0 - item.height) / 2 - tl.rowGap / 2 : 0
+                        sourceComponent: Button { text: "+ Track"; kind: "ghost"; height: Theme.field; onClicked: tl.addTrack() }
                     }
                     TrackHeader { visible: !row.modelData.mix; x: (row.modelData.depth || 0) * 14; y: row.top0
                                   width: tl.headerWidth - x; height: row.h; track: row.modelData; showAuto: !tl.slim
@@ -124,8 +125,16 @@ Rectangle {
                         visible: tl.dropWhat === "leave" && row.modelData.id === tl.dropOver
                         y: row.top0; width: tl.headerWidth; height: row.h; radius: Theme.radiusCtl
                         color: "transparent"; border.width: 1; border.color: Theme.fg3 }
-                    GroupHeader { visible: !!row.modelData.group; y: row.top0; width: tl.headerWidth; height: row.h; track: row.modelData; showAuto: !tl.slim }
-                    MixRowHeader { visible: tl.bottomMix(row.modelData); y: row.top0; width: tl.headerWidth; height: row.h; track: row.modelData; showAuto: !tl.slim }
+                    Loader {   // group and bottom-mix headers: made only for the rows that are one
+                        active: !!row.modelData.group
+                        y: row.top0; width: tl.headerWidth; height: row.h
+                        sourceComponent: GroupHeader { track: row.modelData; showAuto: !tl.slim }
+                    }
+                    Loader {
+                        active: tl.bottomMix(row.modelData)
+                        y: row.top0; width: tl.headerWidth; height: row.h
+                        sourceComponent: MixRowHeader { track: row.modelData; showAuto: !tl.slim }
+                    }
                     Rectangle {
                         x: bars.x - list.x; y: row.top0; width: bars.width; height: row.h
                         radius: Theme.radiusCtl - 2; color: Theme.sunken; clip: true
@@ -133,10 +142,10 @@ Rectangle {
                         LaneBlocks { anchors.fill: parent; track: row.modelData; ruler: bars }
                         DuckDips { anchors.fill: parent; trackId: row.modelData.id; ruler: bars }
                     }
-                    AutomationLane {
-                        visible: !!row.auto
+                    Loader {   // the automation lane: made when a lane is open on this row
+                        active: !!row.auto
                         y: row.top0 + row.h + tl.laneGap; width: parent.width; height: tl.laneH
-                        row: row.modelData; ruler: bars; plotX: bars.x - list.x
+                        sourceComponent: AutomationLane { row: row.modelData; ruler: bars; plotX: bars.x - list.x }
                     }
                 }
             }
