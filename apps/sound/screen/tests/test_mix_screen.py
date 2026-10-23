@@ -67,3 +67,4 @@ def test_delivering_with_normalize_off_turns_it_on():
     m = doc.item("master")
     assert m["normalize"] and m["truePeak"] == -2.0 and m["loudness"] == -24.0
     assert doc.history.changes[-1].label != "Run t.py" and len(doc.history.changes) == 2    # setup + this one
+

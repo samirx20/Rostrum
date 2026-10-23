@@ -71,3 +71,16 @@ def test_a_preset_name_that_does_not_exist_is_refused_naming_the_real_ones(bridg
     sheet.usePreset("For")
     err = capsys.readouterr().err
     assert 'no preset named "For"' in err and all(k in err for k in presets.PRESETS) and sheet.preset == before
+
+
+def test_plus_effect_adds_one_step_on_a_track_and_the_master(bridge):
+    """The Mixer's "+ Effect" is the effect.add operation on that strip (it once called a command id that no longer
+    existed and failed on every strip): one change each, the new effect selected."""
+    from screensound.mixer import MixPage
+    doc, mix = bridge.doc, MixPage(bridge)
+    for owner in ("lead", "master"):
+        before = len(doc.history.changes)
+        assert mix.addEffect(owner, "delay"), bridge.status
+        assert len(doc.history.changes) == before + 1
+        assert doc.item(owner)["effects"][-1]["effect"] == "delay"
+        assert bridge.selected == doc.item(owner)["effects"][-1]["id"]

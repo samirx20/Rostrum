@@ -171,8 +171,13 @@ def kind_of(track: dict) -> str:
     return "audio" if track.get("clips") else "empty"
 
 
+def icon_of(track: dict) -> str:
+    """The small picture on a track's header: "voice" (a voice track), else its kind (notes, drums, audio, empty)."""
+    return "voice" if track.get("instrument") == "voice" else kind_of(track)
+
+
 def rows(root: dict, open_lanes: dict | None = None, folded=frozenset()) -> list[dict]:
-    """One row per track for the arrangement: name, hue, mute / solo, kind, and its blocks with lanes 0..1 (top to
+    """One row per track for the arrangement: name, hue, mute / solo, kind, header icon, volume (gain), and its blocks with lanes 0..1 (top to
     bottom: notes by pitch, one per key of a chord; hits by drum row) so a row reads like a small piano roll.
     `open_lanes` (track id -> (item id, lane)) adds `auto`: the automation lane drawn under that track's row.
     The buses and the master follow as compact rows (`mix`: true) that hold only their automation lanes; a bus that
@@ -191,6 +196,7 @@ def rows(root: dict, open_lanes: dict | None = None, folded=frozenset()) -> list
         pick.stack(bl)                       # overlapping clips / sounds share the lane in rows
         out.append({"id": t["id"], "name": t.get("name") or t["id"], "hue": hue(t, i),
                     "mute": bool(t.get("mute")), "solo": bool(t.get("solo")), "locked": bool(t.get("locked")), "kind": kind_of(t), "blocks": bl,
+                    "icon": icon_of(t), "volume": float(t.get("volume", 1)),
                     "autoUsed": lanes.used(t),
                     "auto": lanes.lane_data(t, root, *open_lanes[t["id"]]) if t["id"] in (open_lanes or {}) else None})
     return groups.arrange(root, out, lanes.mix_rows(root, open_lanes or {}), folded)

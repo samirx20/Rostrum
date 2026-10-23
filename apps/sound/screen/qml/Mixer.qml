@@ -1,45 +1,77 @@
 import QtQuick
 import RostrumKit
 
-// The Mixer in the bottom dock (DESIGN.md §2.2, W3): a strip per track, then per group (bus), left to right, scrolling
-// sideways when they don't fit; the Master pinned at the right (fader, meter, loudness). The selected plug-in effect's
-// settings or the open duck sit beside the master while there is one. Clicking a strip selects its track everywhere.
+// The Mixer in the bottom dock (DESIGN.md §2.2, W3; mockup s51 #2): strips side by side from the left (tracks, then
+// groups, then "+ Group"), the Master strip right after them, and the room left over to the right is the loudness
+// panel (MixLoudness). Too many strips: they scroll sideways and the Master stays pinned after the visible ones. The
+// selected plug-in effect's settings or the open duck sit at the right end while there is one, taking room from the
+// loudness panel. Clicking a strip selects its track everywhere.
 Rectangle {
     id: page
     color: Theme.panel; radius: Theme.radiusPanel; clip: true
+    readonly property real loudMin: 200          // the loudness panel's least width: strips come first, it takes what is left
+    readonly property bool side: plug.visible || duck.visible
+    readonly property real head: {   // the tallest strip's parts above its fader: every fader, the master's too, starts there
+        let m = master.naturalHead
+        for (let i = 0; i < row.children.length; i++)
+            if (row.children[i].naturalHead !== undefined && row.children[i].visible) m = Math.max(m, row.children[i].naturalHead)
+        return m
+    }
 
     Item {
+        id: body
         anchors { fill: parent; margins: Theme.gap }
-        Flickable {   // the track strips (scroll sideways when there are many)
+        Flickable {   // tracks and groups (scroll sideways when there are many)
             id: scroller
             anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
-            width: Math.min(parent.width - master.width - Theme.gap - (plug.visible || duck.visible ? plug.width + Theme.gap : 0), row.width)
+            readonly property real room: body.width - master.width - Theme.gap - page.loudMin - Theme.gap
+                                         - (page.side ? plug.width + Theme.gap : 0)
+            // whole strips only: when they overflow, the view ends on a strip's edge, never through one
+            width: row.width <= room ? row.width
+                 : Math.max(0, Math.floor((room + Theme.gap) / (master.width + Theme.gap)) * (master.width + Theme.gap) - Theme.gap)
             contentWidth: row.width; clip: true; boundsBehavior: Flickable.StopAtBounds
+            flickableDirection: Flickable.HorizontalFlick
             Row {
                 id: row
-                height: scroller.height
+                height: scroller.height - (bar.visible ? bar.height + 2 : 0)
                 spacing: Theme.gap
-                Repeater { id: strips; model: mixer.tracks; delegate: MixStrip { height: row.height } }
-                Repeater { model: mixer.buses; delegate: MixStrip { height: row.height } }   // groups, before the master
+                Item {   // an empty song: the hint where the strips will be
+                    visible: strips.count === 0; width: 220; height: row.height
+                    Text { anchors.centerIn: parent; width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
+                           text: "Your tracks' faders will be here."; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.title }
+                }
+                Repeater { id: strips; model: mixer.tracks; delegate: MixStrip { height: row.height; head: page.head } }
+                Repeater { model: mixer.buses; delegate: MixStrip { height: row.height; head: page.head } }   // groups, before the master
                 Item {   // "+ Group" at the end of the strips, level with the strip names
                     width: addGroup.width; height: row.height
                     Button { id: addGroup; y: Theme.gap + 2 + (22 - height) / 2; text: "+ Group"; kind: "ghost"
                              tip: "New group"; help: "A shared channel several tracks play into (a bus)"; onClicked: mixer.addBus() }
                 }
             }
+            Rectangle {   // where the view is along the strips, only while they overflow (drag or wheel to scroll)
+                id: bar
+                visible: scroller.contentWidth > scroller.width + 1
+                y: scroller.height - height; height: Theme.scrollWidth; radius: height / 2; color: Theme.line
+                x: scroller.contentX + scroller.contentX / scroller.contentWidth * scroller.width
+                width: scroller.width * scroller.width / scroller.contentWidth
+            }
         }
-        Text {
-            visible: strips.count === 0
-            anchors.centerIn: scroller
-            text: "Your tracks' faders will be here."
-            color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.title
+        MixStrip {   // the Master: right after the last strip, pinned there when the strips scroll
+            id: master
+            model: mixer.master; head: page.head
+            anchors { left: scroller.right; leftMargin: scroller.width > 0 ? Theme.gap : 0; top: parent.top; bottom: parent.bottom
+                      bottomMargin: bar.visible ? bar.height + 2 : 0 }   // level with the strips above the scroll bar
+        }
+        MixLoudness {
+            anchors { left: master.right; leftMargin: Theme.gap; right: page.side ? plug.left : parent.right
+                      rightMargin: page.side ? Theme.gap : 0; top: parent.top; bottom: parent.bottom }
         }
         Rectangle {   // the selected plug-in effect's settings (only while one is selected)
             id: plug
             readonly property var panel: mixer.plugins.selectedPanel
             visible: !!panel
-            width: 280; color: Theme.app; radius: Theme.radiusPanel
-            anchors { right: master.left; rightMargin: Theme.gap; top: parent.top; bottom: parent.bottom }
+            width: Theme.sidePanel; color: Theme.app; radius: Theme.radiusPanel
+            anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
             Flickable {
                 anchors { fill: parent; margins: Theme.gap + 2 }
                 contentHeight: settings.height; clip: true; boundsBehavior: Flickable.StopAtBounds
@@ -50,13 +82,12 @@ Rectangle {
             id: duck
             visible: !!mixer.ducks.panel.id
             width: plug.width; color: Theme.app; radius: Theme.radiusPanel
-            anchors { right: master.left; rightMargin: Theme.gap; top: parent.top; bottom: parent.bottom }
+            anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
             Flickable {
                 anchors { fill: parent; margins: Theme.gap + 2 }
                 contentHeight: duckSettings.height; clip: true; boundsBehavior: Flickable.StopAtBounds
                 DuckPanel { id: duckSettings }
             }
         }
-        MixMaster { id: master; anchors { right: parent.right; top: parent.top; bottom: parent.bottom } }
     }
 }

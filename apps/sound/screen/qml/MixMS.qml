@@ -2,14 +2,18 @@ import QtQuick
 import QtQuick.Layouts
 import RostrumKit
 
-// A strip's mute / solo pair (a letter button each, lit while on). `compact`: the small pair beside the name in a low dock.
+// A strip's M S R row: mute (amber when on), solo (green, tracks only) and record arm (red, tracks only), the same
+// colours as the arrangement's track header. Arming is the recorder's screen state (recorder.arm), not an edit.
 RowLayout {
     id: r
     required property var strip
-    property bool compact: false
+    readonly property var m: strip.model
     spacing: Theme.grid
-    MixSwitch { Layout.fillWidth: true; compact: r.compact; text: "M"; on: r.strip.model.mute; tint: Theme.warn
+    MixSwitch { Layout.fillWidth: true; visible: r.m.canMute; text: "M"; on: r.m.mute; tint: Theme.warn; tip: "Mute"
                 onToggled: (v) => { r.strip.pick(); backend.setValue("mute", v) } }
-    MixSwitch { Layout.fillWidth: true; compact: r.compact; visible: r.strip.model.canSolo; text: "S"; on: r.strip.model.solo; tint: Theme.accent
+    MixSwitch { Layout.fillWidth: true; visible: r.m.canSolo; text: "S"; on: r.m.solo; tint: Theme.ok; tip: "Solo"
                 onToggled: (v) => { r.strip.pick(); backend.setValue("solo", v) } }
+    MixSwitch { Layout.fillWidth: true; visible: r.m.canArm; text: "R"; on: recorder.armed === r.m.id; tint: Theme.danger
+                tip: on ? "Armed: press Record (R) to record on this track. Click to disarm." : "Arm this track for recording"
+                onToggled: recorder.arm(r.m.id) }
 }

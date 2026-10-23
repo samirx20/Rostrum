@@ -1,9 +1,8 @@
 import QtQuick
 import RostrumKit
-import "MixFormat.js" as F
 
 // The short-term loudness over the song (one value per hop) with the delivery target as a dashed line and the playhead.
-// `values[k]` ends at k * hop + window seconds. `target` is a LUFS number, or null while there is no target to show.
+// The target's number is the loudness panel's title, not repeated here. `values[k]` ends at k * hop + window seconds. `target` is a LUFS number, or null while there is no target to show.
 Item {
     id: c
     property var values: []
@@ -75,12 +74,6 @@ Item {
             Text { x: index === 0 ? 2 : -width / 2; y: c.plotH + 1; text: c.clock(parent.at); color: Theme.fg3
                    font.family: uiFont; font.pixelSize: Theme.label - 2; font.features: { "tnum": 1 } }
         }
-    }
-    Text {
-        visible: c.target !== null
-        anchors { right: parent.right; rightMargin: 4; top: parent.top; topMargin: 2 }
-        text: "target " + F.num(c.target, 0) + " LUFS"; color: Theme.ok
-        font.family: uiFont; font.pixelSize: Theme.label - 1
     }
     Rectangle {   // the playhead
         x: Math.min(c.width - 1, c.now / c.span * c.width); width: 1; height: c.plotH; color: Theme.fg
