@@ -554,25 +554,6 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
                     .or_else(|| convert_filters(&effects.backdrop_filter.0))
                     .map(Arc::new);
 
-                // Adjust effect layer clip by filter expansion area
-                //
-                // Returns a rectangle centered at the origin representing how much the filter
-                // expands the processing region in each direction. The rect coordinates are:
-                // - x0: negative left expansion
-                // - y0: negative top expansion
-                // - x1: positive right expansion
-                // - y1: positive bottom expansion
-                let filter_expansion_area = filter
-                    .as_ref()
-                    .map(|f| f.expansion_rect())
-                    .unwrap_or(Rect::ZERO);
-
-                let mut effect_layer_clip = cx.frame.border_box_path().bounding_box();
-                effect_layer_clip.x0 += filter_expansion_area.x0;
-                effect_layer_clip.y0 += filter_expansion_area.y0;
-                effect_layer_clip.x1 += filter_expansion_area.x1;
-                effect_layer_clip.y1 += filter_expansion_area.y1;
-
                 // Rostrum patch: a blend mode (mix-blend-mode) or an isolated group (blend.rs) is a layer too.
                 let blend = crate::blend::css_blend(&styles);
                 let group = blend != peniko::Mix::Normal.into() || crate::blend::isolates(self.dom, node, &styles);
@@ -588,40 +569,46 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
                 }
                 let backdrop_filter: Option<Arc<anyrender::Filter>> = None;
                 let effect = has_opacity || filter.is_some();
-                // A layer only for blending must not cut what overflows the box (opacity / filter layers still do: upstream TODO below).
-                if group && !effect {
-                    effect_layer_clip = Rect::new(-1e7, -1e7, 1e7, 1e7);
-                }
-                // Rostrum patch: an opacity / filter layer on an element that lets its children overflow
-                // (overflow: visible) covers what they paint outside its box (their shadows, blurs, moved
-                // children), as in Chromium: a blurred or fading group no longer cuts its children's
-                // shadows to its own box. Leaf elements keep the tight box (cheap layers for text spans).
-                // Rostrum patch (H27): the layer covers where the subtree paints (ink.rs), not the whole frame,
-                // when that can be known; a few device pixels wider, so its clip's edge never meets an edge it holds.
                 let has_element_children = node.children.iter().any(|&id| self.dom.tree()[id].is_element());
-                if effect && !should_clip && has_element_children {
-                    effect_layer_clip = match crate::ink::subtree_ink(self.dom.as_ref(), node, self.scale) {
-                        Some(ink) => {
-                            let grow = crate::ink::device_px(cx.transform, 2.0);
-                            let ink = Rect::new(ink.x0 + filter_expansion_area.x0, ink.y0 + filter_expansion_area.y0, ink.x1 + filter_expansion_area.x1, ink.y1 + filter_expansion_area.y1);
-                            effect_layer_clip.union(ink).inflate(grow, grow)
-                        }
-                        None => Rect::new(-1e7, -1e7, 1e7, 1e7),
-                    };
-                }
+                // The layer's clip: the border box grown by what its filter spreads (`expansion`, a rectangle around the
+                // origin: negative left / top growth, positive right / bottom).
+                let layer_clip = |expansion: Rect, effect: bool| {
+                    let mut clip = cx.frame.border_box_path().bounding_box();
+                    clip.x0 += expansion.x0;
+                    clip.y0 += expansion.y0;
+                    clip.x1 += expansion.x1;
+                    clip.y1 += expansion.y1;
+                    // A layer only for blending must not cut what overflows the box (opacity / filter layers still do: upstream TODO below).
+                    if group && !effect {
+                        return Rect::new(-1e7, -1e7, 1e7, 1e7);
+                    }
+                    // Rostrum patch: an opacity / filter layer on an element that lets its children overflow
+                    // (overflow: visible) covers what they paint outside its box (their shadows, blurs, moved
+                    // children), as in Chromium: a blurred or fading group no longer cuts its children's
+                    // shadows to its own box. Leaf elements keep the tight box (cheap layers for text spans).
+                    // Rostrum patch (H27): the layer covers where the subtree paints (ink.rs), not the whole frame,
+                    // when that can be known; a few device pixels wider, so its clip's edge never meets an edge it holds.
+                    if effect && !should_clip && has_element_children {
+                        return match crate::ink::subtree_ink(self.dom.as_ref(), node, self.scale) {
+                            Some(ink) => {
+                                let grow = crate::ink::device_px(cx.transform, 2.0);
+                                let ink = Rect::new(ink.x0 + expansion.x0, ink.y0 + expansion.y0, ink.x1 + expansion.x1, ink.y1 + expansion.y1);
+                                clip.union(ink).inflate(grow, grow)
+                            }
+                            None => Rect::new(-1e7, -1e7, 1e7, 1e7),
+                        };
+                    }
+                    clip
+                };
+                let effect_layer_clip = layer_clip(filter.as_ref().map(|f| f.expansion_rect()).unwrap_or(Rect::ZERO), effect);
+                // Rostrum patch (E3): the element's glows, drawn from its content's own picture (glow.rs).
+                let glows = crate::glow::of(node);
+                let glows: Vec<_> = glows.into_iter().map(|(f, s)| (layer_clip(f.expansion_rect(), true), f, s)).map(|(clip, f, s)| (f, s, clip)).collect();
+                let layer_transform = cx.transform;
 
-                // Opacity/Filter layer if box has opacity or a filter.
-                // Clipped to border-box as it needs to include the background and borders.
-                self.layer_manager.maybe_with_blend_layer(
-                    scene,
-                    effect || group,
-                    opacity,
-                    group.then_some(blend),
-                    cx.transform,
-                    &effect_layer_clip,
-                    filter,
-                    backdrop_filter,
-                    |scene| {
+                // The content: background, borders and children (drawn once, or once per glow when it can't be captured).
+                let mut draw_content = |scene: &mut _| {
+                        cx.transform = unscrolled_transform;
                         cx.draw_background(scene);
                         cx.draw_inset_box_shadow(scene);
                         cx.draw_table_row_backgrounds(scene);
@@ -682,8 +669,31 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
                             cx.transform = unscrolled_transform;
                             cx.draw_scrollbars(scene);
                         }
-                    },
-                );
+                };
+                let captured = !glows.is_empty()
+                    && (filter.is_some() || !crate::blend::blends_inside(self.dom, node))
+                    && scene.push_glow_layer(&glows, opacity, group.then_some(blend), layer_transform, (effect || group).then_some(effect_layer_clip), filter.clone());
+                if captured {
+                    draw_content(scene);
+                    scene.pop_layer();
+                } else {
+                    for (f, strength, clip) in &glows {
+                        self.layer_manager.maybe_with_blend_layer(scene, true, *strength, Some(crate::glow::plus()), layer_transform, clip, Some(f.clone()), None, |scene| draw_content(scene));
+                    }
+                    // Opacity/Filter layer if box has opacity or a filter.
+                    // Clipped to border-box as it needs to include the background and borders.
+                    self.layer_manager.maybe_with_blend_layer(
+                        scene,
+                        effect || group,
+                        opacity,
+                        group.then_some(blend),
+                        layer_transform,
+                        &effect_layer_clip,
+                        filter,
+                        backdrop_filter,
+                        |scene| draw_content(scene),
+                    );
+                }
 
                 // Apply the CSS `mask` (if any) to the content drawn above
                 cx.transform = unscrolled_transform;

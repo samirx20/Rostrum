@@ -48,18 +48,18 @@ pub(crate) fn isolates(doc: &BaseDocument, node: &Node, styles: &ComputedValues)
     if styles.get_box().isolation == Isolation::Isolate {
         return true;
     }
-    if !stacking_context(styles) {
-        return false;
-    }
-    fn inside(doc: &BaseDocument, node: &Node) -> bool {
-        node.children.iter().any(|&id| {
-            let child = &doc.tree()[id];
-            match child.primary_styles() {
-                Some(s) if blends(&s) => true,
-                Some(s) if stacking_context(&s) => false,
-                _ => inside(doc, child),
-            }
-        })
-    }
-    inside(doc, node)
+    stacking_context(styles) && blends_inside(doc, node)
+}
+
+/// Whether an element inside blends (a glow-marked one adds its glows: glow.rs), not counting ones inside a nested
+/// stacking context.
+pub(crate) fn blends_inside(doc: &BaseDocument, node: &Node) -> bool {
+    node.children.iter().any(|&id| {
+        let child = &doc.tree()[id];
+        match child.primary_styles() {
+            Some(s) if blends(&s) || crate::glow::marked(child) => true,
+            Some(s) if stacking_context(&s) => false,
+            _ => blends_inside(doc, child),
+        }
+    })
 }

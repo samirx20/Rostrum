@@ -5,7 +5,7 @@
 //!
 //! Exact only where "over" regroups: a run's pieces drawn one by one onto the picture below equal the run drawn on its
 //! own and then laid over that picture, when every piece in it composites normally. A piece with a blend mode (its own
-//! or a child's: multiply, screen, a glow's plus-lighter), a backdrop effect (frosted glass), a held element or a tap
+//! or a child's: multiply, screen, a glow's plus-lighter or `data-glow`), a backdrop effect (frosted glass), a held element or a tap
 //! for the node cache is drawn every sample as before, and it ends the run. Pieces are never moved past one another,
 //! so a still piece above a moving one stays above it.
 
@@ -42,7 +42,7 @@ pub fn of(samples: &[Vec<String>]) -> Vec<Range<usize>> {
 fn regroups(piece: &str) -> bool {
     const KEY: &str = "mix-blend-mode:";
     let blends_plainly = piece.match_indices(KEY).all(|(at, _)| piece[at + KEY.len()..].trim_start().starts_with("normal"));
-    blends_plainly && !["backdrop-filter", "data-shutter-held", "data-tap", "mix-blend-mode=", "mix-blend-mode :"].iter().any(|k| piece.contains(k))
+    blends_plainly && !["backdrop-filter", "data-shutter-held", "data-tap", "data-glow", "mix-blend-mode=", "mix-blend-mode :"].iter().any(|k| piece.contains(k))
 }
 
 /// The paint plan that draws only run `r` (every other stage child skipped).

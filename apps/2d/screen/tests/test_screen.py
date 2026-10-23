@@ -36,6 +36,7 @@ class FakeEngine:
         QImage(4, 4, QImage.Format.Format_RGB32).save(str(png))
 
     placed = {}
+    timing = {}                # the last pixels frame's own split (engine.py), read by the screen's stats
 
     def pixels(self, t, samples=None, scale=1.0, view=None, place=None):
         self.placed = {i: self.place(t, [i])[i] for i in place or []}

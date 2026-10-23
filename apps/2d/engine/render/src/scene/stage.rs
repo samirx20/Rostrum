@@ -231,13 +231,26 @@ fn layer(it: &Item) -> R<String> {
         }
         boxed(extra, &html, true)
     };
-    let mut body = masked(&style, &filters, true);
+    // A glow is a blurred copy of the layer behind it, added light. When the copy would be the layer's own picture
+    // (its own colours and paint, no shadow), the layer is written once and its glows marked on it (`data-glow`:
+    // radius and strength per glow): the painter draws the layer once and blurs that picture (blitz-paint glow.rs).
+    // A glow in a single colour (or under a shadow) is a different picture: a copy in that colour, as before.
+    let mut copies = String::new();
+    let mut own = vec![];
     for g in it.effects.iter().filter(|e| e.kind == "glow") {
-        // A blurred copy behind, added light (in the layer's own colours, its paint too).
         let color = if g.on("ownColor") { None } else { Some(g.str("color")) };
         let (gs, _) = content(it, Look { color, ..look })?;
-        body = masked(&gs, &format!("filter:blur({}px);opacity:{};mix-blend-mode:plus-lighter;", v(g, "radius"), g.num("strength").min(1.0)), color.is_none()) + &body;
+        if gs == style && (color.is_none() || !paint::shows(it)) {
+            own.push(format!("{} {}", v(g, "radius"), g.num("strength").min(1.0)));
+        } else {
+            copies = masked(&gs, &format!("filter:blur({}px);opacity:{};mix-blend-mode:plus-lighter;", v(g, "radius"), g.num("strength").min(1.0)), color.is_none()) + &copies;
+        }
     }
+    let mut body = masked(&style, &filters, true);
+    if !own.is_empty() {
+        body = body.replacen("<div ", &format!("<div data-glow=\"{}\" ", own.join(";")), 1);
+    }
+    let body = copies + &body;
     // Colour effects (grade.rs) act on the layer's own look and its effects; frosted glass stays as it sees what is behind.
     let body = super::grade::wrap(it, body)?;
     let body = super::grain::wrap(it, body)?;
