@@ -11,11 +11,11 @@ fn layer(id: &str, matte: &str) -> Node {
     let mut props = Map::new();
     props.insert("matte".into(), json!(matte));
     props.insert("matteMode".into(), json!("alpha"));
-    Node { id: id.into(), kind: "shape", role: Role::Layer, props, anim: vec![], effects: vec![], masks: vec![], layers: vec![], frames: vec![], paint: vec![], paint_inside: true, rig: vec![] }
+    Node { id: id.into(), kind: "shape", role: Role::Layer, props, anim: vec![], effects: vec![], masks: vec![], layers: vec![], frames: vec![], paint: vec![], paint_inside: true, rig: vec![], stops: vec![] }
 }
 
 fn comp(layers: Vec<Node>) -> Node {
-    Node { id: "main".into(), kind: "comp", role: Role::Comp, props: Map::new(), anim: vec![], effects: vec![], masks: vec![], layers, frames: vec![], paint: vec![], paint_inside: true, rig: vec![] }
+    Node { id: "main".into(), kind: "comp", role: Role::Comp, props: Map::new(), anim: vec![], effects: vec![], masks: vec![], layers, frames: vec![], paint: vec![], paint_inside: true, rig: vec![], stops: vec![] }
 }
 
 #[test]

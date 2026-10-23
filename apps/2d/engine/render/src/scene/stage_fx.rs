@@ -1,4 +1,4 @@
-//! Stage pieces of S8-C (ENGINE_CONTRACT.md § 4): conic / off-centre gradients, frosted glass (`backdrop`), masks that
+//! Stage pieces of S8-C (ENGINE_CONTRACT.md § 4; gradients are stage_fill.rs): frosted glass (`backdrop`), masks that
 //! feather, invert and turn (soft wipes), and video layers. stage.rs calls these; what it can't draw is refused.
 
 use std::fmt::Write;
@@ -10,16 +10,6 @@ use super::stage::{percent, v};
 use super::Node;
 
 type R<T> = Result<T, String>;
-
-/// The CSS gradient of a gradient effect, given its colour stops (`linear`, `radial` or `conic`; centre as fractions of the box).
-pub fn gradient(e: &Item, stops: &str) -> String {
-    let at = format!("at {:.3}% {:.3}%", e.num("cx") * 100.0, e.num("cy") * 100.0);
-    match e.str("style") {
-        "radial" => format!("radial-gradient(closest-side {at}, {stops})"),
-        "conic" => format!("conic-gradient(from {}deg {at}, {stops})", v(e, "angle")),
-        _ => format!("linear-gradient({}deg, {stops})", v(e, "angle")),
-    }
-}
 
 /// The clip picture showing at time `t`: source frame floor((n − start·fps)·speed) + round(offset·fps), n = floor(t·fps),
 /// wrapped when `loop`, else held at the last frame (rostrum2d/video.py `pick` is the same rule). "" with no frames.
