@@ -9,18 +9,21 @@ is found among the app's windows (the one with AppShell's functions).
     area <name>               the accent edge on that area (guides, left, centre, right, bottom)
     hover <objectName>        the pointer rests on that control (its hover help shows after 500 ms)
     name edit                 the project's name on the top bar, clicked: its rename field is open
+    click <words>             a real mouse click (press, release) on the visible text that starts with these words,
+                              e.g. "click +  New", "click Open the sample": the way a hand presses it
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Q_ARG, QMetaObject, QObject
 from PySide6.QtGui import QGuiApplication
 
-WORDS = ("guides", "keylist", "panels", "area", "hover", "name")
+WORDS = ("guides", "keylist", "panels", "area", "hover", "name", "click")
 
 
 def window():
     """The open AppShell window (the newest, when a session opened several)."""
-    wins = [w for w in QGuiApplication.topLevelWindows() if w.metaObject().indexOfMethod("openGuides()") >= 0]
+    wins = [w for w in QGuiApplication.topLevelWindows()
+            if w.isVisible() and w.metaObject().indexOfMethod("openGuides()") >= 0]
     if not wins:
         raise RuntimeError("no Rostrum window (AppShell) is open")
     return wins[-1]
@@ -47,6 +50,8 @@ def do(step: str) -> bool:
         win.setProperty("focusArea", verb)
     elif word == "hover" and verb:
         _hover(win, verb)
+    elif word == "click" and rest:
+        _click(win, rest)
     elif step == "name edit":
         tab = win.findChild(QObject, "projectName")
         if tab is None or not tab.property("visible"):
@@ -66,3 +71,23 @@ def _hover(win, name):
     p = it.mapToScene(QPointF(it.width() / 2, it.height() / 2))
     for dx in (-3, 0):          # two moves: hover needs a move, not just a position
         QTest.mouseMove(win, QPoint(int(p.x()) + dx, int(p.y())))
+
+
+def _click(win, words):
+    """Press and release the left button on the centre of the first visible Text starting with `words`."""
+    from PySide6.QtCore import QCoreApplication, QPoint, QPointF, Qt
+    from PySide6.QtTest import QTest
+
+    def visible(it):                  # the drawn tree (childItems), only through shown items
+        if it.isVisible() and it.opacity() > 0:
+            yield it
+            for c in it.childItems():
+                yield from visible(c)
+    hit = next((it for it in visible(win.contentItem()) if str(it.property("text") or "").startswith(words)), None)
+    if hit is None:
+        raise ValueError(f"click: no visible text starting with {words!r} in this window")
+    p = hit.mapToScene(QPointF(hit.width() / 2, hit.height() / 2))
+    at = QPoint(int(p.x()), int(p.y()))
+    QTest.mouseMove(win, at)
+    QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, at)
+    QCoreApplication.processEvents()        # the click's own handlers run (and a window it replaced goes) here

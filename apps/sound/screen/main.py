@@ -22,13 +22,18 @@ import os
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+import checkout_paths  # noqa: E402  (this checkout's code first, before any Rostrum import)
+
+checkout_paths.use_this_checkout()
+
 import shiboken6
 from PySide6.QtCore import Q_ARG, QMetaObject, QTimer, QUrl
 from PySide6.QtGui import QGuiApplication
 
 from rostrum_core import Document, RostrumError
 from rostrum_core.storage import paths
-from rostrum_gui import guides, layout_run, start
+from rostrum_gui import guides, layout_run, qt_faults, start
 from rostrum_sound import KIND, run_source
 from rostrum_gui.project_files import ProjectFiles
 from screensound.adder import Adder
@@ -246,7 +251,7 @@ def main():
         QTimer.singleShot(180000, lambda: (print("FAIL: timeout", file=sys.stderr), app.exit(4)))
     app.exec()
     screen.close()
-    sys.exit(code[0])
+    sys.exit(qt_faults.code(code[0]))    # a Qt fault fails a scripted run (rostrum_gui/qt_faults.py)
 
 
 if __name__ == "__main__":

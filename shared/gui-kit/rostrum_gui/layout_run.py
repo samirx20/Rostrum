@@ -86,6 +86,10 @@ def sweep(app, win, out, name, ready, ignore=(), sizes=SIZES):
         step(i + 1)
 
     def finish():
+        from . import qt_faults                        # Qt's "not supported" warnings are faults of the state too
+        if qt_faults.found():
+            found["qt"] = qt_faults.found()
+            print("\n".join(f"  Qt fault: {f}" for f in found["qt"]))
         record(out, name, found)
         app.exit(5 if any(found.values()) else 0)
 
