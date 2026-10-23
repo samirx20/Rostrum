@@ -37,6 +37,7 @@ class FakeEngine:
 
 
 def pump(s, until=lambda: False):
+    """Run the screen's events until `until()` is true (a generous limit, never a fixed wait) or `s` seconds pass."""
     end = time.monotonic() + s
     while time.monotonic() < end and not until():
         QCoreApplication.processEvents()
@@ -106,9 +107,10 @@ def test_keyboard_take_is_one_step_on_the_beats_of_its_mix_times(bridge):
     bridge.setTime(1.0)
     before = bridge.historyCount
     k.toggleRecord()
-    pump(1.6)
+    pump(30, lambda: k.notes == 2)                          # both notes reported by the player, however busy the machine
+    assert k.notes == 2, f"the fake keyboard reported {k.notes} of 2 notes within 30 s"
     k.toggleRecord()
-    pump(2, lambda: bridge.doc.item("keys").get("notes"))
+    pump(30, lambda: bridge.doc.item("keys").get("notes"))
     notes = sorted(bridge.doc.item("keys")["notes"], key=lambda n: n["at"]["beat"])
     assert [n["pitch"] for n in notes] == [60, 64]
     assert notes[0]["at"]["beat"] == pytest.approx(tempo.beat_at(bridge.doc.data, 1.2), abs=0.05)

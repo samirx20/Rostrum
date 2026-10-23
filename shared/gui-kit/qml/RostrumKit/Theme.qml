@@ -52,6 +52,8 @@ QtObject {
     readonly property int header: 32      // panel header
     readonly property int row: 28         // inspector row
     readonly property int rowDense: 24    // lists
+    readonly property int rowTight: 24    // a settings row on a short window (tightFor)
+    function tightFor(h) { return h < 800 }                                // 1280×720 and 1366×768: the painting panel packs tighter
     readonly property int field: 24       // every field box (number, text, choice, colour)
     readonly property int button: 28
     readonly property int curveBox: 132     // the inspector's curve control (CurveField), a square

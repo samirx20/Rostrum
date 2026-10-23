@@ -14,15 +14,16 @@ Column {
     readonly property int labelColumn: Theme.labelColumnFor(width)     // the settings rows' own column and field width
     readonly property real wide: Theme.wideFor(width)
     visible: pl.canAdd
+    readonly property int rowH: Theme.tightFor(Window.height) ? Theme.rowTight : Theme.row     // 720 / 768 high: rows 24
 
     component Label: Text {
         width: po.labelColumn - Theme.gap; anchors.verticalCenter: parent.verticalCenter
         color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont; elide: Text.ElideRight
     }
-    component Line: Item { width: po.width; height: Theme.row }
+    component Line: Item { width: po.width; height: po.rowH }
 
     Item {      // the heading: "Paint layers" and its + at the row's end
-        width: po.width; height: Theme.groupGap + Theme.rowDense
+        width: po.width; height: (Theme.tightFor(Window.height) ? Theme.gap : Theme.groupGap) + Theme.rowDense
         Text { anchors.left: parent.left; anchors.verticalCenter: plus.verticalCenter
                text: "Paint layers"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
         IconButton { id: plus; objectName: "paintLayerAdd"; x: po.wide - width; anchors.bottom: parent.bottom
@@ -39,7 +40,7 @@ Column {
             required property int index
             objectName: "paintLayer:" + modelData.name.replace(/ /g, "_")     // (a walk's clickobj: _ for spaces)
             property bool renaming: false
-            width: po.wide; height: Theme.row; radius: Theme.radiusCtl
+            width: po.wide; height: po.rowH; radius: Theme.radiusCtl
             color: modelData.current ? Theme.accentSoft : rowArea.containsMouse ? Theme.hover : "transparent"
             border.width: modelData.current ? 1 : 0; border.color: Theme.accent
             z: rowArea.moving ? 2 : 0
