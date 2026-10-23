@@ -1,6 +1,6 @@
 //! The one animation model (ENGINE_CONTRACT.md § 3), ported from `apps/2d/python/rostrum2d/evaluate.py` and
 //! `scene.py` `frame_at`: a field with keys is decided by its keys alone; between key a and key b,
-//! p = ease_a((t − a.t) / (b.t − a.t)) and the value is a + (b − a)·p; before the first key and after the last the
+//! p = ease_a((t − a.t) / (b.t − a.t)) and the value is a + (b − a)·p (bent by spatial handles: `between`); before the first key and after the last the
 //! value holds. Colours mix in linear light; a path's shape blends point by point (morph.rs). A layer outside start ≤ t < end is left out.
 
 use serde_json::{Map, Value};
@@ -118,7 +118,7 @@ pub fn track_value(keys: &[Key], t: f64) -> Value {
             let p = k0.ease.at((t - k0.t) / (k1.t - k0.t));
             return match (&k0.value, &k1.value) {
                 (KeyValue::Color(_, a), KeyValue::Color(_, b)) => Value::String(mix(a, b, p.clamp(0.0, 1.0))),
-                (KeyValue::Number(a), KeyValue::Number(b)) => Value::from(a + (b - a) * p),
+                (KeyValue::Number(a), KeyValue::Number(b)) => Value::from(between(*a, *b, k0.out, k1.inn, p)),
                 (KeyValue::Path(a), KeyValue::Path(b)) => Value::String(super::morph::blend("path", a, b, p).unwrap_or_else(|e| panic!("{e} (checked at load)"))),
                 (KeyValue::Profile(_, a), KeyValue::Profile(_, b)) => Value::String(super::width_profile::write(&super::width_profile::blend(a, b, p))),
                 _ => unreachable!("a field's keys are all numbers, all colours, all shapes or all width profiles (checked at load)"),
@@ -126,6 +126,19 @@ pub fn track_value(keys: &[Key], t: f64) -> Value {
         }
     }
     keys[keys.len() - 1].value.as_json()
+}
+
+/// A number between key a and key b at eased progress p (rostrum_core/keys/spatial.py `between`): straight without
+/// handles (a's `out`, b's `in`), bit for bit as before; with either, the cubic Bézier a, a + out, b + in, b at p (a
+/// missing handle is a third of the way along the straight line). Speed along the curve follows p, not arc length.
+pub fn between(a: f64, b: f64, out: Option<f64>, inn: Option<f64>, p: f64) -> f64 {
+    if out.is_none() && inn.is_none() {
+        return a + (b - a) * p;
+    }
+    let c1 = a + out.unwrap_or((b - a) / 3.0);
+    let c2 = b + inn.unwrap_or(-(b - a) / 3.0);
+    let q = 1.0 - p;
+    q * q * q * a + 3.0 * q * q * p * c1 + 3.0 * q * p * p * c2 + p * p * p * b
 }
 
 impl KeyValue {

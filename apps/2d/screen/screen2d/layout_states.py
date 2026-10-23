@@ -23,8 +23,9 @@ FRAMES = ["tool draw", "draw 300 300 500 320 700 300", "newframe", "draw 320 320
           "draw 340 340 540 360 740 340"]
 LONG_PAINT = 'paint_3 name "Line art for the summer launch film, cleaned up"'     # the third paint layer, renamed
 TWELVE = ["select card"] + [f"set {'xy'[n % 2]} {500 + n}" for n in range(12)]   # 12 changes (x, y in turn: no merging)
-# What the check leaves out on purpose: the canvas' own handles are small drag targets on the picture by design.
-IGNORE = ()
+# What the check leaves out on purpose: the canvas' own handles are small drag targets on the picture by design (a motion
+# path's key squares and handle ends lie where the path goes, so close keys put them on each other).
+IGNORE = ("/MotionPath#",)
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen), in
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
 QUICK = ("workspace", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
@@ -286,6 +287,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                                "flyout brush", "clickobj mybrush_1 right", "clickobj menu:drop:library",
                                                "flyout brush", "clickobj mybrush_2 right", "clickobj menu:drop:project",
                                                "flyout brush", "clickobj mybrush_2 right"]),
+        # H67: the motion path of a selected moving shape (dots per frame, key squares); the camera selected with a move
+        ("motion-path", ["--sample"], ["select card", "animate x", "animate y", "time 2", "set x 1300", "set y 300", "time 1"]),
+        ("motion-path-camera", ["--sample"], ["add camera", "animate x", "animate y", "animate zoom", "time 2.5", "set x 1200",
+                                              "set y 420", "set zoom 1.4", "time 1"]),
         ("paint-layer-menu", ["--sample"], [*PAINTED, "paintlayer", "draw 600 400 1200 420", "paintlayer", f"paintset {LONG_PAINT}",
                                             "clickobj paintLayer:Paint_2 right"]),
     ]

@@ -90,6 +90,15 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 
 - A field with an `anim` list is **animated**: its keys alone decide its value; the value in `props` is ignored. Otherwise it is still.
 - Keys are sorted by `t`. Before the first key and after the last, the value holds. Between key *a* and key *b*, progress `p = ease_a((t − a.t) / (b.t − a.t))` and the value is `a + (b − a) · p`. `p` may leave 0..1 (spring, custom curves overshoot).
+- **Spatial handles** (a number key only; in practice `x` and `y`, the path a moving layer or camera travels): a key may
+  carry `out` (the handle leaving it) and `in` (the handle arriving at it), offsets from its value in the field's own
+  units (px for x / y). For the stretch from *a* to *b*: if *a* has no `out` and *b* no `in`, the value is
+  `a + (b − a) · p` exactly as before. Otherwise it is the cubic Bézier through `a`, `a + a.out`, `b + b.in`, `b` at
+  parameter `p` (a missing handle is a third of the way along the straight line: `(b − a)/3` out, `−(b − a)/3` in);
+  `p` outside 0..1 carries the curve on. x and y each do this with their own ease, so x and y keys with the same ease
+  travel a true 2D Bézier path. Known simplification: the speed along the curve follows `p`, not the distance
+  travelled (no re-timing by arc length). `out` / `in` on a colour, shape or width-profile key is refused at load,
+  naming the id and field. Reference: `rostrum_core/keys/spatial.py` `between`; engine: `scene/eval.rs` `between`.
 - Numbers: `v`. Colours: `c`, mixed in **linear light** (sRGB decoded, mixed, encoded).
 - Shapes (a path's `d`): `d`, path data, blended point by point (`scene/morph.rs`): both become cubic segments; subpaths
   pair in order and must be as many; the one with fewer segments has its longest segment halved until the counts
@@ -211,6 +220,7 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 
 - S5: version 1 written; until the engine took `scene`, Python evaluated each frame and sent page markup (the stopgap).
 - H6: the engine evaluates scenes itself, pixel for pixel as the stopgap did (`proofs/2d-engine-scene/README.md`).
+- H67: number keys may carry spatial handles `out` / `in` (§ 3). An optional key field: same version; a scene without them evaluates bit for bit as before.
 - S7: the Python stopgap is deleted; drawing layers are drawn by the engine; `scene` takes `cpu`, `frame.index` defaults to round(t · fps), `export` takes `images` and `progress`, `edit` is all or nothing.
 - S9 (same version): text `pathOverflow`.
 - S10 (same version): text `pathLayer` (a text follows a path layer, per frame); a text on a path now takes its colour and outline when not played letter by letter.

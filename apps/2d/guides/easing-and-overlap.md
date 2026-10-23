@@ -56,3 +56,12 @@ that the file says what you decided.
 - `key.paste {from: [key ids], at}` on layers puts copies of those keys on the same settings, the first at `at`, the
   others keeping their spacing, values and eases.
 - `key.set {ease}` on many keys at once changes them in one step; `key.handles` shapes a custom curve.
+
+## Bending the path a layer travels
+
+The ease decides how fast a layer goes; spatial handles decide which way. `key.path_handles {t, out: [dx, dy], in: [dx, dy]}`
+on a layer or the camera bends the path at its position key at `t` (it needs an x and a y key there): `out` is the handle
+leaving that key, `in` the one arriving at it, in px from the key's place; `null` removes one (a straight line again
+when both ends of a stretch have none). Give the x and y keys the same ease for a true curve. The speed along the
+curve follows the ease, not the distance. `look_path {layer}` reads the path back: per sample its own x / y and where it
+is seen on screen, the keys with their handles, the path's length and its peak speed.

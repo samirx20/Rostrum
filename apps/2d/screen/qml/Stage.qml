@@ -250,6 +250,12 @@ Rectangle {
         CameraOverlay { anchors.fill: parent; stage: panel }   // C: drag pans the camera, Alt+drag pushes in
         BoneTool { anchors.fill: parent; stage: panel }        // J: draw a rig's bones joint by joint (bone_tool.py)
         CreateOverlay { anchors.fill: parent; stage: panel }   // R / O / T: drag a shape, click or drag and type
+        MotionPath {    // where the selection (or the camera) travels: dots per frame, key squares, handles (motion_path.py)
+            anchors.fill: parent
+            visible: !backend.playing && !well.drawing && !backend.pen.on
+            interactive: backend.tool === "move" || backend.tool === "camera"
+            fit: view.zoom; ox: view.ox; oy: view.oy
+        }
         Item {  // outlines of the selected layers (turned with them) and the handles of a single one; over the pen's overlay
             id: marks
             x: view.ox; y: view.oy

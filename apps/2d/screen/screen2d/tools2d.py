@@ -16,6 +16,7 @@ from .importer import Importer
 from .brand_view import LibraryView
 from .key_bar import KeyBar
 from .key_select import KeySelect
+from .motion_path import MotionPath
 from .multi import Multi
 from .paint_layers import PaintLayers
 from .paint_pick import ColourPick
@@ -52,6 +53,7 @@ class ToolSlots(SlotMixin):
         self._problems = Problems(self)
         self._problems.failed.connect(self._fail)
         self._camera = CameraTool(self)                     # the Camera tool (C): pan and push in (camera_tool.py): backend.cameraTool
+        self._motion = MotionPath(self)                     # the selection's motion path on the canvas (motion_path.py): backend.motionPath
         self._create = Create(self)                         # R / O / T and typing on the canvas (create.py): backend.create
         self._snap = Snapper(self)                          # canvas drags snap (snapper.py): backend.snap
         self._paint_layers = PaintLayers(self)              # Draw's "Paint on …" group (paint_layers.py): backend.paintLayers
@@ -73,6 +75,11 @@ class ToolSlots(SlotMixin):
     def cameraTool(self):
         """The Camera tool: drag pans the camera, Alt+drag pushes in (camera_tool.py)."""
         return self._camera
+
+    @Property(QObject, constant=True)
+    def motionPath(self):
+        """Where the selected layer (or the camera) travels, its keys and handles on the canvas (motion_path.py)."""
+        return self._motion
 
     @Property(QObject, constant=True)
     def boneTool(self):

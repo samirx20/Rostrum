@@ -49,7 +49,11 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
    - **Filled**: there is a key at the playhead.
    - **Outlined**: the value is animated, but there is no key at this moment.
    - **Faint**: it is not animated yet. Click it to start.
-6. The same keys show as diamonds on the layer's bar in the timeline. Drag a diamond to move that key in time. It snaps to the playhead and to markers. Keys too close to tell apart (a frame or two apart on a long, zoomed-out timeline) show as one diamond with a second one peeking out behind it. Click it to pick them all, or zoom the timeline in to see each one.
+6. **See where it goes.** While a layer with position keys is picked, its **motion path** shows on the picture: a thin line through every place it passes, with one dot per frame. Dots close together mean it moves slowly there; far apart, fast. Each position key is a small square on the line:
+   - Drag a square to move that key's place. Only that key changes, and the whole drag is one step you can undo.
+   - Click a square to pick that key. Its **handles** appear; drag a handle's round end to bend the line into a curve. The other handle turns with it so the curve stays smooth; hold **Alt** to move one handle alone.
+   - The path hides while playing, and for a layer riding a path layer (that path already shows where it goes).
+7. The same keys show as diamonds on the layer's bar in the timeline. Drag a diamond to move that key in time. It snaps to the playhead and to markers. Keys too close to tell apart (a frame or two apart on a long, zoomed-out timeline) show as one diamond with a second one peeking out behind it. Click it to pick them all, or zoom the timeline in to see each one.
 
 ## 6. Change how it feels
 

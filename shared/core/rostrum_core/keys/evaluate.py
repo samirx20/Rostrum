@@ -1,6 +1,6 @@
 """The one animation model: a field is either still (its value on the item) or animated (it has keys; then the
 keys alone decide its value and the item's own value is ignored). Between two keys the first key's ease shapes
-the way; before the first key the value holds, and after the last too unless the last key says otherwise (after.py). Colours travel in linear light.
+the way (a number key's optional `out` / `in` bend the way in space: `between`); before the first key the value holds, and after the last too unless the last key says otherwise (after.py). Colours travel in linear light.
 
 This is the reference the Rust engine implements (ENGINE_CONTRACT.md › Evaluation; checked by the engine's
 scene tests); Python uses it for the inspector's "value now" and the motion facts. Frames are drawn by the engine only.
@@ -11,6 +11,7 @@ from __future__ import annotations
 from .after import after_of, extend
 from .easing import ease
 from .marked import order
+from .spatial import between
 
 
 def keys_of(owner: dict, prop: str) -> list[dict]:
@@ -69,5 +70,6 @@ def track_value(keys: list[dict], t: float):
                 return k0["d"]
             if field == "c":
                 return mix_color(k0["c"], k1["c"], min(1.0, max(0.0, p)))
-            return k0["v"] + (k1["v"] - k0["v"]) * p
+            return between(k0, k1, p)
     return keys[-1][field]
+

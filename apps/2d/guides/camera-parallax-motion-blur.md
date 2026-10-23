@@ -23,6 +23,13 @@ cam.key("x", {0: 760, 4: 1300}, ease="easeInOut")      # a pan
 cam.key("zoom", {1.5: 1, 4: 1.35}, ease="easeInOut")   # a push in
 ```
 
+**On the canvas.** The canvas shows the picture through the camera. Pick the camera (its row is pinned at the top of
+the layers) and you see its moves: its path (where it looks, one dot per frame), a faint frame at each of its keys (what
+it will show there; a push in draws smaller frames), and its keys as squares. Drag a square to move where the camera looks
+at that key (one undo step); click a square and drag its handles to curve the move. So a camera push along a curve is
+two or three keys and a few drags, no typed numbers. The faint path and frames also show while something else is picked;
+switch them off with **Camera frame** in the **Fit · %** menu (a view setting, not saved in the project).
+
 A camera can also ride a path layer beside it: `layer.ride target=cam path=road at=along`, then key `rideAlong` 0 → 1.
 Where it looks sits on the path, its own `x` / `y` become an offset, and `turn=true` rolls it with the path's direction
 (see `shape-and-path-animation`).
@@ -83,6 +90,8 @@ the group. Text length is estimated (0.6 × size per letter) before layout; `amo
 
 - `look_frame` at the fastest moments shows the blur, smear and echoes; `look_sheet` over the move shows how they grow and settle.
 - `look_at x y time`: with a camera, boxes are where the layer shows **on screen** through the camera.
+- `look_path layer=cam` (or any layer): the path it travels, sample by sample: its own x / y and where it shows on
+  screen, its keys with their handles, the path's length and its top speed.
 - `look_motion`: facts from each layer's own keys, the camera's included; it does not add the camera's motion to other layers.
 - `look_rig`, `inspect_rig_motion`: skeletons are drawn where the character shows; the foot-slide check undoes the camera so a
   moving camera is not read as a slide.

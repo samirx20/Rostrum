@@ -9,6 +9,7 @@ of it and the picture, the export and the settings panel agree (preview = export
 from __future__ import annotations
 
 from .easing import BEZIERS, ease
+from .spatial import between
 
 AFTER = ["stay", "repeat", "pingpong", "carry"]
 WORDS = {"stay": "Stay", "repeat": "Repeat", "pingpong": "Back and forth", "carry": "Carry on"}
@@ -40,9 +41,22 @@ def _at(key: dict, t: float, shape: dict | None = None) -> dict:
     return out
 
 
+def _flip(key: dict) -> dict:
+    """A key played backwards: its spatial handles change ends (the way in becomes the way out)."""
+    out = {k: v for k, v in key.items() if k not in ("out", "in")}
+    return out | ({"out": key["in"]} if "in" in key else {}) | ({"in": key["out"]} if "out" in key else {})
+
+
+def _turn(key: dict, nxt: dict) -> dict:
+    """`key` where a cycle turns: it arrives as itself and leaves with the way out of `nxt`, the next cycle's copy."""
+    out = {k: v for k, v in key.items() if k != "out"}
+    return out | ({"out": nxt["out"]} if "out" in nxt else {})
+
+
 def _backwards(keys: list[dict], start: float) -> list[dict]:
     """The keys played backwards from `start` (the first is the last key, which is where the cycle turns)."""
     last, out = keys[-1]["t"], []
+    keys = [_flip(k) for k in keys]
     for i in range(len(keys) - 1, -1, -1):
         k = keys[i]
         shape = _mirror(keys[i - 1]) if i else {"ease": "linear"}
@@ -60,8 +74,10 @@ def _carry(keys: list[dict], until: float) -> list[dict]:
     if "v" not in b or "v" not in a or b["t"] <= a["t"]:
         return keys
     d = 1e-3                    # the speed it arrives with: the last stretch's own slope at its end
-    speed = (b["v"] - a["v"]) * (1 - ease(a, 1 - d)) / d / (b["t"] - a["t"])
-    return [*keys[:-1], _at(b, b["t"], {"ease": "linear"}), _at(b, until, {"ease": "linear"}) | {"v": b["v"] + speed * (until - b["t"])}]
+    speed = (b["v"] - between(a, b, ease(a, 1 - d))) / d / (b["t"] - a["t"])
+    straight = {k: v for k, v in b.items() if k != "out"}               # carrying on is a straight line
+    return [*keys[:-1], _at(straight, b["t"], {"ease": "linear"}),
+            _at({k: v for k, v in straight.items() if k != "in"}, until, {"ease": "linear"}) | {"v": b["v"] + speed * (until - b["t"])}]
 
 
 def extend(keys: list[dict], until: float) -> list[dict]:
@@ -85,10 +101,10 @@ def extend(keys: list[dict], until: float) -> list[dict]:
             out += [_at(keys[0], start + JUMP)] + [_at(k, start + k["t"] - first) for k in keys[1:]]
         elif n % 2:
             back = _backwards(keys, start)
-            out[-1] = _at(out[-1], out[-1]["t"], {k: v for k, v in back[0].items() if k in _SHAPE})
+            out[-1] = _turn(_at(out[-1], out[-1]["t"], {k: v for k, v in back[0].items() if k in _SHAPE}), back[0])
             out += back[1:]
         else:
-            out[-1] = _at(out[-1], out[-1]["t"], {k: keys[0][k] for k in _SHAPE if k in keys[0]})
+            out[-1] = _turn(_at(out[-1], out[-1]["t"], {k: keys[0][k] for k in _SHAPE if k in keys[0]}), keys[0])
             out += [_at(k, start + k["t"] - first) for k in keys[1:]]
         n += 1
         if len(out) > MOST:
