@@ -20,7 +20,7 @@ from rostrum_paint import library
 FORMAT, VERSION = "rostrum-2d-scene", 1
 
 
-KEY_FIELDS = ("t", "v", "c", "d", "ease", "x1", "y1", "x2", "y2", "stiffness", "damping")
+KEY_FIELDS = ("t", "v", "c", "d", "ease", "x1", "y1", "x2", "y2", "stiffness", "damping", "out", "in")   # out / in: spatial handles
 
 
 def python_only(kind: str) -> set[str]:

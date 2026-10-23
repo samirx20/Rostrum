@@ -1,7 +1,8 @@
 """Our keys → Lottie keyframes (bodymovin 5.x). A key's ease shapes the stretch that starts at it.
 
 Named eases, `custom` and `linear` become the keyframe's bezier handles (`o` out, `i` in); `hold` is `h: 1`.
-`spring` and `bounce` are not one bezier: they are baked, one keyframe per frame over that stretch. Colours mix in
+`spring` and `bounce` are not one bezier, nor is a stretch bent by spatial handles (a number key's `out` / `in`,
+rostrum_core.keys.spatial): they are baked, one keyframe per frame over that stretch. Colours mix in
 linear light in ours and in sRGB in Lottie: colour stretches are baked per frame too, so the picture matches.
 `expand` gives the keys in OUR value space; `emit` turns them into Lottie keyframes through a value mapper.
 """
@@ -11,6 +12,7 @@ import math
 
 from rostrum_core.keys import BEZIERS, ease
 from rostrum_core.keys import mix_color
+from rostrum_core.keys.spatial import between
 
 LINEAR = (0.0, 0.0, 1.0, 1.0)
 
@@ -31,8 +33,8 @@ def _value(key: dict):
     return key["c"] if "c" in key else key["v"]
 
 
-def _mix(a, b, p: float, color: bool):
-    return mix_color(a, b, min(1.0, max(0.0, p))) if color else a + (b - a) * p
+def _mix(ka: dict, kb: dict, p: float, color: bool):
+    return mix_color(ka["c"], kb["c"], min(1.0, max(0.0, p))) if color else between(ka, kb, p)
 
 
 def expand(keys: list[dict], fps: float) -> tuple[list[dict], bool]:
@@ -41,12 +43,12 @@ def expand(keys: list[dict], fps: float) -> tuple[list[dict], bool]:
     keys, out, baked = sorted(keys, key=lambda k: k["t"]), [], False
     color = "c" in keys[0]
     for a, b in zip(keys, keys[1:]):
-        name, va, vb = a.get("ease", "smooth"), _value(a), _value(b)
+        name, va = a.get("ease", "smooth"), _value(a)
         if name == "hold":
             out.append({"t": a["t"] * fps, "v": va, "seg": "hold"})
             continue
         bez = handles(a)
-        if bez is not None and not color:
+        if bez is not None and not color and "out" not in a and "in" not in b:
             out.append({"t": a["t"] * fps, "v": va, "seg": bez})
             continue
         baked = True                                           # spring, bounce, or any colour stretch: a keyframe per frame
@@ -54,7 +56,7 @@ def expand(keys: list[dict], fps: float) -> tuple[list[dict], bool]:
         out.append({"t": fa, "v": va, "seg": LINEAR})
         for f in range(math.floor(fa) + 1, math.ceil(fb)):
             p = ease(a, (f - fa) / (fb - fa))
-            out.append({"t": float(f), "v": _mix(va, vb, p, color), "seg": LINEAR})
+            out.append({"t": float(f), "v": _mix(a, b, p, color), "seg": LINEAR})
     out.append({"t": keys[-1]["t"] * fps, "v": _value(keys[-1]), "seg": None})
     return out, baked
 

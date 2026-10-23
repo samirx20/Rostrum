@@ -17,6 +17,7 @@ Item {
         if (key === "fit") view.fitAll()
         else if (key === "sel") vc.fitSelection()
         else if (key === "snap") backend.snap.setOn(!backend.snap.on)
+        else if (key === "camframe") backend.motionPath.setCameraFrame(!backend.motionPath.cameraFrame)
         else if (key === "blur") backend.playback.setBlur(!backend.playback.blur)
         else if (key.startsWith("size:")) backend.playback.setSize(key.slice(5))
         else view.show(Number(key) / 100)
@@ -27,6 +28,8 @@ Item {
             out.push({ value: String(p), label: p + " %", keys: p === 100 ? "Ctrl 1" : "", group: "a" })
         if (backend.selectedLayer !== "") out.push({ value: "sel", label: "Zoom to selection", keys: "F", group: "a" })
         out.push({ value: "snap", label: backend.snap.on ? "Turn snapping off" : "Turn snapping on", group: "b" })
+        if (backend.motionPath.hasCamera)               // the camera's frame and path, even when it isn't selected
+            out.push({ value: "camframe", label: "Camera frame", checked: backend.motionPath.cameraFrame, group: "b" })
         if (backend.frameInfo.previewSize === true)     // a large composition: how big playing frames are drawn (paused frames and exports are Full)
             for (const o of [["full", "Full"], ["half", "Half"], ["quarter", "Quarter"]])     // one heading, not the label ×3
                 out.push({ value: "size:" + o[0], label: o[1], heading: o[0] === "full" ? "Preview while playing" : "",

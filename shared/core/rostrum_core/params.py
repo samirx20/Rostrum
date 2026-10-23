@@ -54,6 +54,7 @@ class Param:
     markers: bool = False            # for type "number" (a time): may also be a shared marker reference, "#drop+0.2"
                                      # (marker_times.py reads it; the app turns it into seconds where it plays)
     max_items: int | None = None
+    nullable: bool = False           # null is a value too (it means "remove": e.g. key.path_handles' out / in)
     control: str = ""                # the screen control when the type alone doesn't say which: "curve" for a text of
                                      # "x,y x,y …" points from 0 to 1 (the kit's CurveField); "pick" for a text naming one
                                      # other item ("" = none; the screen offers the app's choices); "" = the type's own
@@ -116,6 +117,8 @@ class Param:
         choice is refused here too (nothing newly sets it); only a stored value may hold it (DocKind.bad_values)."""
         def bad(problem, accepted=(), hint=None):
             raise RostrumError(codes.BAD_ARGUMENT, where, f"{self.name}={value!r}", problem, accepted, hint)
+        if value is None and self.nullable:
+            return None
         t = self.type
         if t == "number":
             if self.markers and isinstance(value, str):
@@ -203,6 +206,8 @@ class Param:
         if self.type == "number" and self.markers:
             from .marker_times import REF
             s = {"anyOf": [s, {"type": "string", "pattern": REF.pattern}]}
+        if self.nullable:
+            s = {"anyOf": [s, {"type": "null"}]}
         desc = self.help or self.label
         if self.markers:
             desc += ' (seconds, or a shared marker: "#drop", "#drop+0.2", "#hush-0.5")'

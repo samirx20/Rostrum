@@ -84,6 +84,8 @@ def _check_keys(owner: dict, problems: list):
                 check_text(prop, k["d"])
             except ValueError as e:
                 problems.append(f'key {k["id"]}: {owner["id"]}.{prop} at {k.get("t")} s: {e}')
+        if want != "v" and ({"out", "in"} & set(k)):
+            problems.append(f'key {k["id"]}: out / in (spatial handles) belong on a number key only, not a {prop} key')
         if (prop, k.get("t")) in seen:
             problems.append(f'{owner["id"]}: two {prop} keys at {k.get("t")} s')
         seen.add((prop, k.get("t")))
@@ -178,6 +180,7 @@ from . import ops_clip  # noqa: E402,F401  (layer.paste: copy / cut / paste of l
 from . import ops_paint, ops_fill, paint_transform  # noqa: E402,F401  (paint.stroke, paint.fill, stroke.transform: paint, fill and move paint on any element or drawing)
 from . import ops_frame  # noqa: E402,F401  (comp.size, layer.fill_frame)
 from . import ops_keytime, ops_stagger  # noqa: E402,F401  (key.scale, key.paste, layer.stagger: retiming)
+from . import ops_path_handles  # noqa: E402,F401  (key.path_handles: the path a moving layer travels)
 from . import ops_anim  # noqa: E402,F401  (anim.ease: ease whole stretches; anims.py: anim.list)
 from . import ops_fill_paint  # noqa: E402,F401  (layer.fill, swatch.add / remove / rename: the fill as a paint, project colours)
 from . import text_styles  # noqa: E402  (style.define, style.use, style.detach, style.remove: named text styles)

@@ -61,7 +61,7 @@ def build(node: dict, names: list[str], f, ctx: Ctx, what: str = "", bake: bool 
         n = keyed[0]
         steps, baked = expand(anim[n], ctx.fps)
         if baked:
-            kind = "colour mixes in linear light in ours, sRGB in Lottie" if "c" in anim[n][0] else "spring / bounce is not one bezier"
+            kind = "colour mixes in linear light in ours, sRGB in Lottie" if "c" in anim[n][0] else "spring / bounce / a path bent by handles is not one bezier"
             ctx.bake(f'{what or n}: {kind}')
         return {"a": 1, "k": emit(steps, lambda v: f({**props, n: v}))}
     keys = {n: sorted(anim[n], key=lambda k: k["t"]) for n in keyed}

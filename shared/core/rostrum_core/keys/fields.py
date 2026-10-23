@@ -1,5 +1,5 @@
 """The one key shape, as a fields table: the value one field has at one time (`t` seconds; `v` a number, `c` a
-colour, `d` a path's shape) and the `ease` that shapes the stretch to the next key; optionally `from`, a label
+colour, `d` a path's shape) and the `ease` that shapes the stretch to the next key; optionally `out` / `in`, a number key's spatial handles (evaluate.between); optionally `from`, a label
 saying where the key came from ("Voice · line 3": lip sync keys name their sound). Keys without it read as before. Both apps' "key" item type is
 this list. `prop` names the field and never changes."""
 from __future__ import annotations
@@ -40,6 +40,12 @@ KEY_FIELDS = [
     _num("y1", "Curve y1", "Curve", -2, 3, 0.01, when=_IS("ease", "custom"), default=0.1),
     _num("x2", "Curve x2", "Curve", 0, 1, 0.01, when=_IS("ease", "custom"), default=0.25),
     _num("y2", "Curve y2", "Curve", -2, 3, 0.01, when=_IS("ease", "custom"), default=1.0),
+    Param.number("out", label="Path out", group="Path", importance="deep", valid_when={"fact": "number"}, default=None,
+                 unit="px", help="The spatial handle leaving this key, as an offset from its value (x / y: the path a "
+                 "moving layer travels, key.path_handles); left out: a third of the way to the next key"),
+    Param.number("in", label="Path in", group="Path", importance="deep", valid_when={"fact": "number"}, default=None,
+                 unit="px", help="The spatial handle arriving at this key, as an offset from its value; left out: a "
+                 "third of the way back to the key before"),
     _num("bounce", "Bounce", "Spring", 0, 1, 0.01, when=_IS("ease", "spring"), default=0.6),
     _num("speed", "Speed", "Spring", 0, 1, 0.01, when=_IS("ease", "spring"), default=0.5),
     Param.number("stiffness", label="Stiffness", group="Spring", min=1, max=2000, step=1, importance="deep",

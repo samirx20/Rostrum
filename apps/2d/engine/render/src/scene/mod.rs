@@ -40,12 +40,15 @@ pub const FORMAT: &str = "rostrum-2d-scene";
 pub const VERSION: u64 = 1;
 
 /// One key: its time, its value (a number, a colour kept as written and in linear light, a path's shape or width profile) and the ease of
-/// the stretch it starts.
+/// the stretch it starts; a number key's optional spatial handles `out` (leaving it) and `in` (arriving at it), offsets
+/// from its value (eval.rs `between`).
 #[derive(Clone, Debug)]
 pub struct Key {
     pub t: f64,
     pub value: KeyValue,
     pub ease: Ease,
+    pub out: Option<f64>,
+    pub inn: Option<f64>,
 }
 
 #[derive(Clone, Debug)]
@@ -284,7 +287,7 @@ fn track(id: &str, kind: &str, f: &fields::Field, keys: &Value) -> Result<Vec<Ke
     let mut out = vec![];
     for k in list {
         let obj = k.as_object().ok_or_else(|| format!("{id}.{name}: a key must be an object"))?;
-        if let Some(bad) = obj.keys().find(|k| !matches!(k.as_str(), "t" | "v" | "c" | "d" | "ease" | "x1" | "y1" | "x2" | "y2" | "stiffness" | "damping")) {
+        if let Some(bad) = obj.keys().find(|k| !matches!(k.as_str(), "t" | "v" | "c" | "d" | "ease" | "x1" | "y1" | "x2" | "y2" | "stiffness" | "damping" | "out" | "in")) {
             return Err(format!("{id}.{name}: a key has no field \"{bad}\""));
         }
         let t = k["t"].as_f64().ok_or_else(|| format!("{id}.{name}: a key without a time t"))?;
@@ -305,7 +308,15 @@ fn track(id: &str, kind: &str, f: &fields::Field, keys: &Value) -> Result<Vec<Ke
             e => e.as_str().ok_or_else(|| format!("{id}.{name}: ease must be a name"))?,
         };
         let ease = Ease::parse(ease_name, |p| k[p].as_f64()).map_err(|e| format!("{id}.{name}: {e}"))?;
-        out.push(Key { t, value, ease });
+        let handle = |side: &str| -> Result<Option<f64>, String> {
+            match &k[side] {
+                Value::Null => Ok(None),
+                _ if !matches!(value, KeyValue::Number(_)) => Err(format!("{id}.{name}: the key at t={t} has a spatial handle \"{side}\"; only a number key may (not a colour, shape or width profile)")),
+                h => h.as_f64().map(Some).ok_or_else(|| format!("{id}.{name}: the key at t={t} has \"{side}\" {h}, not a number")),
+            }
+        };
+        let (out_h, in_h) = (handle("out")?, handle("in")?);
+        out.push(Key { t, value, ease, out: out_h, inn: in_h });
     }
     out.sort_by(|a, b| a.t.total_cmp(&b.t));
     for w in out.windows(2) {

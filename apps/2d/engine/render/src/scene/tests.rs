@@ -81,6 +81,22 @@ fn a_keyed_scene_evaluates_as_python_does() {
 }
 
 #[test]
+fn spatial_handles_bend_the_way_as_python_does() {
+    // rostrum_core.keys.spatial.between: 0 -> 90 with out = 60 at p = 0.5 is 56.25; no handles stays straight.
+    let r = reference();
+    let mut s = r["scene"].clone();
+    s["comp"]["layers"][0]["anim"]["x"] = serde_json::json!([{"t": 0.0, "v": 0.0, "ease": "linear", "out": 60.0}, {"t": 1.0, "v": 90.0, "ease": "linear"}]);
+    let scene = Scene::load(&s).unwrap();
+    assert!((eval::at(&scene.comp, 0.5).unwrap().layers[0].num("x") - 56.25).abs() < 1e-9);
+    assert_eq!(eval::between(0.0, 90.0, None, None, 0.5), 45.0);
+    s["comp"]["layers"][0]["anim"]["x"][0]["out"] = "far".into();
+    assert!(Scene::load(&s).unwrap_err().contains("\"out\" \"far\", not a number"));
+    s = r["scene"].clone();
+    s["comp"]["layers"][0]["anim"]["fill"][0]["in"] = 5.0.into();
+    assert!(Scene::load(&s).unwrap_err().contains("card.fill: the key at t=0 has a spatial handle \"in\"; only a number key may"));
+}
+
+#[test]
 fn unknown_names_are_refused() {
     let r = reference();
     let bad = |path: &str, v: Value| {

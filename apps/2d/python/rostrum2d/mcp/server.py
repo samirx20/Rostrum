@@ -6,7 +6,7 @@
 With no options the server opens the project the 2D screen would open: the newest row of Open recent still on disk.
 With none, no document is open (inspect_project says so). While running, inspect_recent_projects lists the person's
 projects and run_open_project switches. Every change is saved at once, so the 2D screen process can open the same file.
-Tools: the shared ones from rostrum_core, plus look_frame, look_sheet, look_motion, look_at, render_video, render_export,
+Tools: the shared ones from rostrum_core, plus look_frame, look_sheet, look_motion, look_path, look_at, render_video, render_export,
 run_import, inspect_layout, inspect_swaps, inspect_diagnose, inspect_soundtrack, inspect_recent_projects, run_open_project,
 run_paint_picture, run_brush (My brushes).
 """
