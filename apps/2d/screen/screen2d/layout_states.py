@@ -182,6 +182,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # brand kit of long names
         ("styles-menu", ["--sample"], ["select title", "do layer:style_save", "add text", "clickbtn Styles", "wait 300"]),
         ("library-no-project", ["--sample"], ["library open", "select title"]),
+        # S47: colour rows are a swatch square + hex box; a gradient fill shows its name in the box
+        ("fill-solid-hex", ["--sample"], ["select card"]),
+        ("fill-gradient-name", ["--sample"], ["select card", 'set paint {"type":"linear","angle":90,"stops":['
+                                              '{"at":0,"color":"#ff7a45","opacity":1},{"at":1,"color":"#8a4cff","opacity":1}]}']),
         ("library-brand", long_project(), ["select title_card_for_the_summer_launch_film", "do layer:style_save",
                                            "brand colors Summer_launch_coral_for_the_headphones_campaign #ff7a59",
                                            "brand colors Night #101820",

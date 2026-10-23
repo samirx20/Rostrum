@@ -15,6 +15,7 @@ FocusScope {
     property int elide: Text.ElideRight   // how the text at rest is cut
     property bool editable: false       // typing allowed: a click puts the caret in
     property bool engaged: false        // the field says it is in use (scrubbing, list open): accent look
+    property string problem: ""         // a refused entry, said in a sentence: the field shows red until the next edit
     readonly property bool active: engaged || input.activeFocus
     readonly property bool hovered: hoverHandler.hovered
     property alias input: input
@@ -40,7 +41,7 @@ FocusScope {
     Rectangle {  // the underline: grey at rest, lighter on hover, accent when in use
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         height: 1
-        color: f.active ? Theme.accent : f.hovered ? Theme.lineHover : Theme.line
+        color: f.problem !== "" ? Theme.danger : f.active ? Theme.accent : f.hovered ? Theme.lineHover : Theme.line
         Behavior on color { ColorAnimation { duration: Theme.fast } }
     }
 
@@ -76,9 +77,11 @@ FocusScope {
         enabled: f.editable
         focus: true
         property string sent: ""        // what was last committed, so Enter + focus loss commit once
-        function commit() { if (text !== f.text && text !== sent) { sent = text; f.committed(text) } }
+        // a handler may put text back (a refused value): `sent` is what the box holds after it, so Enter + the focus
+        // loss that follows commit once and never send the put-back text as a new value
+        function commit() { if (text !== f.text && text !== sent) { sent = text; f.committed(text); sent = text } }
         onAccepted: { commit(); f.entered(); focus = false }
-        onActiveFocusChanged: if (activeFocus) sent = ""; else commit()
+        onActiveFocusChanged: if (activeFocus) { sent = ""; f.problem = "" } else commit()
         Keys.onEscapePressed: { text = f.text; focus = false; f.escaped() }
         Keys.onUpPressed: (e) => f.arrow(1, (e.modifiers & Qt.ShiftModifier) !== 0)
         Keys.onDownPressed: (e) => f.arrow(-1, (e.modifiers & Qt.ShiftModifier) !== 0)
@@ -92,8 +95,10 @@ FocusScope {
         id: rest
         visible: !input.activeFocus
         anchors { left: input.left; right: input.right; verticalCenter: parent.verticalCenter }
-        text: f.atRest !== "" ? f.atRest : input.text; elide: f.elide; color: Theme.fg; font: input.font
-        HoverTip { text: rest.truncated ? rest.text : ""; hovered: f.hovered }   // the whole value when it is cut
+        text: f.atRest !== "" ? f.atRest : input.text; elide: f.elide; color: f.problem !== "" ? Theme.danger : Theme.fg; font: input.font
+        HoverTip { text: f.problem !== "" ? f.problem : rest.truncated ? rest.text : ""   // the whole value when it is cut
+                   hovered: f.hovered || f.problem !== "" }
+        Timer { running: f.problem !== ""; interval: 4000; onTriggered: f.problem = "" }
     }
     Text {  // the unit sits right after the value, dim
         visible: f.suffix !== "" && input.text !== ""

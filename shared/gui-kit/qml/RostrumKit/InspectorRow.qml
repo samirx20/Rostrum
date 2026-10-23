@@ -227,7 +227,7 @@ Item {
         onEnded: row.bridge.endScrub() } }
     Component { id: paintC; PaintField {   // a fill; model.options may be {types, maxStops, stopOpacity}
         readonly property var o: row.model.options && !Array.isArray(row.model.options) ? row.model.options : ({})
-        paint: row.model.value || ({ type: "none" }); atRest: row.mixed ? "Mixed" : name; scrubbed: true
+        paint: row.model.value || ({ type: "none" }); atRest: row.mixed ? "Mixed" : ""; scrubbed: true
         types: o.types || ["none", "solid", "linear", "radial", "angular", "image"]
         maxStops: o.maxStops || 8
         stopOpacity: o.stopOpacity !== false
