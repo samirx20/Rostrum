@@ -1,14 +1,17 @@
 """Running the layout check (layout_check.py) on an app: every scripted screen state at every real window size.
 
-    main.py --check-layout <folder>                 # every state in the app's STATES, each in a fresh window
-    main.py --check-layout <folder> --check-only a,b  # only these states, started exactly as the full run starts them
-                                                      # (their own start args and steps: re-check a fault this way)
-    main.py --check-layout <folder> --check-name n  # one state (the steps given with --step), every size; what the
-                                                    # first form starts for each state (a bare --check-name runs no steps)
+    main.py --check-layout <folder>                 # every state in the app's STATES, four sizes
+    main.py --check-layout <folder> --quick         # the app's QUICK states at 1646x900 only: ~2 min, run before reporting
+    main.py --check-layout <folder> --check-only a,b  # only these states (re-check a fault this way)
+    main.py --check-layout <folder> --check-name n  # one state in this process (the steps given with --step), every size
 For each state and size: <folder>/<state>-<w>x<h>.png (faults boxed and numbered) and a line per fault in
 <folder>/faults.txt. Fails loudly (nonzero exit, the list printed) when any state or size has a fault or a state
 fails to run. A state is (name, start args, steps); a "say <words>" step puts the words in the top bar's status, as
 the app would (long messages are a state too).
+The states run BATCH to a process (layout_batch.py: the app starts once, each state opens like File > Open, the scratch
+settings home emptied between); a state that kills its process is reported and the rest go on. Where the time goes
+(ROSTRUM_CHECK_TIMING=1 prints it per state): the app's start ~9 s (imports 3 s, the engine and first frame 4 s), then
+per state its open and steps, then ~1.5 s per size (settle, check, picture).
 """
 from __future__ import annotations
 
@@ -17,12 +20,18 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
-from . import layout_check, layout_mark
+from . import layout_check, layout_mark, qt_faults
 
 # Real windows: the smallest laptops, a common one, Sam's (1920x1080 at 117% = ~1646 wide), a full HD screen.
 SIZES = [(1280, 720), (1366, 768), (1646, 900), (1920, 1080)]
+SAM = SIZES[2]           # the quick check's one size
+BATCH = 12               # states to a process (the app grows slower as it opens one document after another)
+BATCH_TIMEOUT_S = 1800
+RESIZE_PAUSE_MS = 250    # after a resize, before settling: the canvas redraws sharp 150 ms later (Stage.qml's settle Timer);
+                         # without this the picture can be the old frame scaled (a 1-px blur at 1920)
 
 
 def kit_step(bridge, step: str) -> bool:
@@ -58,26 +67,36 @@ def kit_step(bridge, step: str) -> bool:
     return True
 
 
-def sweep(app, win, out, name, ready, ignore=(), sizes=SIZES):
+def wanted_sizes():
+    """SIZES, or just those named in ROSTRUM_CHECK_SIZES ("1646x900", comma-separated: the quick check)."""
+    named = os.environ.get("ROSTRUM_CHECK_SIZES")
+    return [tuple(int(n) for n in s.split("x")) for s in named.split(",")] if named else SIZES
+
+
+def sweep(app, win, out, name, ready, ignore=(), sizes=None, then=None):
     """Resize `win` to each size, wait until `ready()` and the layout settles, check, mark; then exit the app
-    (code 0: no fault, 5: faults). Results are added to <out>/faults.json under `name`."""
+    (code 0: no fault, 5: faults) or, given `then`, call then(code) (layout_batch.py: the next state follows).
+    Results are added to <out>/faults.json under `name`."""
+    sizes = sizes or wanted_sizes()
     from PySide6.QtCore import QTimer
     from .settle import settle
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # a fault names on-screen words (⇄, →) on any console
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     found: dict[str, list[str]] = {}
+    seen_qt = len(qt_faults.found())
+    clock = Timing(name)
 
     def step(i):
         if i == len(sizes):
             return finish()
+        clock.lap("pause" if i == 0 else "mark")
         win.resize(*sizes[i])
-        QTimer.singleShot(250, lambda: wait(i, 0))
+        QTimer.singleShot(RESIZE_PAUSE_MS, lambda: wait(i))
 
-    def wait(i, n):
-        if not ready() and n < 100:
-            return QTimer.singleShot(100, lambda: wait(i, n + 1))
-        settle(win, lambda img: look(i), lambda why: unsettled(i, why))   # frames until the screen holds still
+    def wait(i):                     # frames until the newest frame has landed and the screen holds still (settle.py)
+        clock.lap("resize")
+        settle(win, lambda img: look(i), lambda why: unsettled(i, why), ready=ready)
 
     def unsettled(i, why):
         w, h = sizes[i]
@@ -87,7 +106,9 @@ def sweep(app, win, out, name, ready, ignore=(), sizes=SIZES):
 
     def look(i):
         w, h = sizes[i]
+        clock.lap("settle")
         faults = layout_check.check(win, ignore)
+        clock.lap("check")
         shot = out / f"{name}-{w}x{h}.png"
         layout_mark.mark(win, faults, shot)
         found[f"{w}x{h}"] = [f.line() for f in faults]
@@ -101,10 +122,30 @@ def sweep(app, win, out, name, ready, ignore=(), sizes=SIZES):
         if qt_faults.found():
             found["qt"] = qt_faults.found()
             print("\n".join(f"  Qt fault: {f}" for f in found["qt"]))
+        clock.lap("mark")
         record(out, name, found)
-        app.exit(5 if any(found.values()) else 0)
+        clock.report()
+        code = 5 if any(found.values()) else 0
+        then(code) if then else app.exit(code)
 
     step(0)
+
+
+class Timing:
+    """ROSTRUM_CHECK_TIMING=1: seconds per phase of one state's sweep, printed as `timing <state> <phase>=<s> ...`."""
+    def __init__(self, name):
+        self.name, self.on, self.t, self.sum = name, bool(os.environ.get("ROSTRUM_CHECK_TIMING")), time.monotonic(), {}
+        if os.environ.get("ROSTRUM_CHECK_T0"):       # set by the run that started this process
+            self.sum["boot+steps"] = time.time() - float(os.environ["ROSTRUM_CHECK_T0"])
+
+    def lap(self, phase):
+        now = time.monotonic()
+        self.sum[phase] = self.sum.get(phase, 0) + now - self.t
+        self.t = now
+
+    def report(self):
+        if self.on:
+            print(f"timing {self.name} " + " ".join(f"{k}={v:.2f}" for k, v in self.sum.items()))
 
 
 def record(out: Path, name: str, found: dict):
@@ -114,37 +155,71 @@ def record(out: Path, name: str, found: dict):
     f.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
 
 
-def run_all(main_py: Path, states: list[tuple[str, list[str], list[str]]], out, only: str | None = None) -> int:
-    """Start the app once per state (a fresh window, document and scratch settings home each), wait for each, write
-    faults.txt. `only`: comma-separated state names, run just those (an unknown name fails loudly).
-    Returns the exit code: 0 only when every state ran and found nothing."""
+def run_all(main_py: Path, states: list[tuple[str, list[str], list[str]]], out, only: str | None = None,
+            quick: bool = False) -> int:
+    """Run the states, `BATCH` to a process (the app starts once per batch: layout_batch.py), write faults.txt.
+    `only`: comma-separated state names, just those (an unknown name fails loudly). `quick`: the app's QUICK states at
+    Sam's size only. A state that kills its batch (a crash, a Qt fault, a hang) is reported as not run, and the rest
+    go on in a new one. Returns the exit code: 0 only when every state ran and found nothing."""
+    if quick:
+        os.environ["ROSTRUM_CHECK_SIZES"] = "x".join(str(n) for n in SAM)
     if only:
         names = [n.strip() for n in only.split(",") if n.strip()]
         unknown = sorted(set(names) - {s[0] for s in states})
         if unknown:
             raise SystemExit(f"layout check: no state named {', '.join(unknown)}")
         states = [s for s in states if s[0] in names]
+    elif quick:
+        names = set(app_states(main_py).QUICK)
+        states = [s for s in states if s[0] in names]
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     (out / "faults.json").unlink(missing_ok=True)
     from .app import offscreen_env
     env = {**offscreen_env(), **os.environ}
-    broken = []
-    for name, start, steps in states:
-        cmd = [sys.executable, str(main_py), *start, *sum((["--step", s] for s in steps), []),
-               "--check-layout", str(out), "--check-name", name]
-        with tempfile.TemporaryDirectory(prefix="rostrum-state-") as home:   # its own settings and library too:
-            r = subprocess.run(cmd, env={**env, "ROSTRUM_SCRIPTED_HOME": home},   # no state sees another's
-                               capture_output=True, text=True, timeout=600)
-        print(r.stdout, end="")
-        if r.returncode not in (0, 5):
-            broken.append(f"{name}: the state did not run (exit {r.returncode}): {r.stderr.strip()[-600:]}")
+    batch = getattr(app_states(main_py), "BATCH", BATCH)
+    broken, started, pending = [], time.time(), list(states)
+    while pending:
+        group, pending = pending[:batch], pending[batch:]
+        r, last, err = run_group(main_py, group, out, env)
+        if r not in (0, 5):
+            culprit = last or group[0][0]
+            broken.append(f"{culprit}: the state did not run (exit {r}): {err[-600:]}")
+            pending[:0] = [s for s in group if s[0] != culprit and not done_in(out, s[0])]
     data = json.loads((out / "faults.json").read_text(encoding="utf-8")) if (out / "faults.json").is_file() else {}
     lines = [f"{name} {size}: {line}" for name, sizes in data.items() for size, ls in sizes.items() for line in ls]
     (out / "faults.txt").write_text("\n".join(broken + lines) + "\n", encoding="utf-8")
     total = len(lines)
-    print(f"\nlayout check: {len(states)} states x {len(SIZES)} sizes, {total} fault(s), {len(broken)} state(s) failed"
-          f" -> {out / 'faults.txt'}")
+    print(f"\nlayout check: {len(states)} states x {len(wanted_sizes())} sizes, {total} fault(s), {len(broken)} state(s) failed"
+          f" in {time.time() - started:.0f} s -> {out / 'faults.txt'}")
     for b in broken:
         print(f"FAIL: {b}", file=sys.stderr)
     return 0 if not total and not broken else 5
+
+
+def done_in(out: Path, name: str) -> bool:
+    f = out / "faults.json"
+    return f.is_file() and name in json.loads(f.read_text(encoding="utf-8"))
+
+
+def app_states(main_py: Path):
+    """The app's layout_states module (QUICK: its most important states; BATCH: states to a process, if it says)."""
+    import importlib
+    sys.path.insert(0, str(main_py.parent))
+    pkg = next(p.name for p in main_py.parent.iterdir() if (p / "layout_states.py").is_file())
+    return importlib.import_module(f"{pkg}.layout_states")
+
+
+def run_group(main_py: Path, group, out: Path, env) -> tuple[int, str, str]:
+    """One child process for `group`: (exit code, the state it was on when it ended, its stderr)."""
+    with tempfile.TemporaryDirectory(prefix="rostrum-state-") as home:      # its own settings and library
+        listing = Path(home) / "states.json"
+        listing.write_text(json.dumps(group), encoding="utf-8")
+        cmd = [sys.executable, str(main_py), "--check-layout", str(out), "--check-batch", str(listing)]
+        r = subprocess.run(cmd, env={**env, "ROSTRUM_SCRIPTED_HOME": str(Path(home) / "settings"),
+                                     "ROSTRUM_CHECK_T0": str(time.time())},
+                           capture_output=True, text=True, timeout=BATCH_TIMEOUT_S)
+    print(r.stdout.replace("layout-start ", "start ").replace("layout-done ", "done "), end="")
+    started = [ln.split(" ", 1)[1] for ln in r.stdout.splitlines() if ln.startswith("layout-start ")]
+    ended = {ln.split(" ", 1)[1] for ln in r.stdout.splitlines() if ln.startswith("layout-done ")}
+    return r.returncode, next((n for n in reversed(started) if n not in ended), ""), r.stderr.strip()

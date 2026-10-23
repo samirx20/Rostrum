@@ -14,8 +14,9 @@ STILL = 4          # this many frames in a row with the same picture = settled (
 LIMIT = 10.0       # seconds; then it fails, naming the wait
 
 
-def settle(win, then, fail, still: int = STILL, limit: float = LIMIT) -> None:
-    """Draw `win` until its picture holds still, then call then(image); fail(message) when it never does."""
+def settle(win, then, fail, still: int = STILL, limit: float = LIMIT, ready=None) -> None:
+    """Draw `win` until its picture holds still, then call then(image); fail(message) when it never does. `ready()`
+    (when given) must also be true on that frame: the app's own "the newest frame has landed"."""
     from PySide6.QtCore import QTimer
     end = time.monotonic() + limit
     state = {"last": None, "same": 0}
@@ -27,7 +28,7 @@ def settle(win, then, fail, still: int = STILL, limit: float = LIMIT) -> None:
         state["same"] = state["same"] + 1 if state["last"] is not None and img == state["last"] else 0
         state["last"] = img
         try:
-            done = state["same"] >= still and not loading(win.contentItem())
+            done = (state["same"] >= still and not loading(win.contentItem()) and (ready is None or ready()))
         except Exception as e:  # noqa: BLE001  a check that breaks must say so, never hang the run
             return fail(f"settle: {e}")
         if done:

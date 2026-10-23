@@ -1,7 +1,8 @@
 """RostrumSound's screen states for the layout check (rostrum_gui/layout_run.py): the empty song, the workspace with
 the Editor, the Mixer or the Library open, the Export sheet, the open menus and dialogs, and the long-text
 cases (a long song name, a long track name, many changes, a long status message).
-A state is (name, start args, steps). Add one whenever a screen or panel is added."""
+A state is (name, start args, steps). Add one whenever a screen or panel is added; name it in QUICK when it is one of
+the most important (the quick check runs those)."""
 from __future__ import annotations
 
 import tempfile
@@ -18,6 +19,13 @@ LONG_FOLDER = r"C:\Users\Sam\Music\Rostrum_deliveries\Summer_launch_film_for_the
 TWELVE = [f"select {LONG_TRACK}"] + [f"set volume {0.5 + n / 100}" if n % 2 else f"set pan {n / 100}" for n in range(12)]
 GROUP = 'agent Group the band|[{{"op":"bus.from_tracks","target":["pad","melody","drums"],"args":{{"name":"{name}"}}}}]'
 IGNORE = ()
+# The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen), in
+# about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
+BATCH = 1        # one state to a process: measured, Sound opens a song slower the more windows it has made (10 states
+                 # batched took 95 s, one each 83 s); its time goes to opening the song and its steps, not to starting
+QUICK = ("empty-song", "editor", "mixer", "library", "long-editor", "long-mixer", "long-library", "export-sheet", "file-menu",
+         "start-screen", "song", "settings", "commands", "guide", "about", "group-open", "voice-lines", "clean-before-after",
+         "grid-menu", "problems-chip")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 

@@ -202,15 +202,35 @@ def main():
     a.add_argument("--check-layout", metavar="FOLDER")
     a.add_argument("--check-name")
     a.add_argument("--check-only", help="with --check-layout: only these states (comma-separated), as the full run starts them")
+    a.add_argument("--check-batch", metavar="STATES.JSON", help="with --check-layout: the states a parent run hands this process")
+    a.add_argument("--quick", action="store_true", help="with --check-layout: the QUICK states, at 1646x900 only")
     args = a.parse_args()
-    if args.check_layout and not args.check_name:
+    if args.check_layout and not (args.check_name or args.check_batch):
         from screensound.layout_states import states
-        sys.exit(layout_run.run_all(Path(__file__), states(), args.check_layout, args.check_only))
+        sys.exit(layout_run.run_all(Path(__file__), states(), args.check_layout, args.check_only, args.quick))
 
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
     userhome.person_start()                        # a --shot / --step / --check-layout run is scripted anyway (userhome.scripted)
     app = qt_app()                                 # a picture or step run draws offscreen (rostrum_gui/app.py)
     screen = Screen(tuple(int(n) for n in args.size.lower().split("x")))
+    code = [0]
+    if args.check_batch:                           # several states in this one process (rostrum_gui/layout_batch.py)
+        from rostrum_gui import layout_batch
+        from screensound.layout_states import IGNORE
+
+        def open_state(start):
+            st = a.parse_args(start)
+            screen.unnamed = (Path(st.script).stem if st.script else "Sample song") if (st.script or st.sample) else "Untitled song"
+            doc = load_doc(st)
+            screen.files.launch(st.path, st.new) if doc is None else screen.files.put(doc)
+
+        layout_batch.batch(app, args.check_batch, args.check_layout, open_state,
+                           lambda steps: [layout_run.kit_step(screen.bridge, s) or file_step(screen, s)
+                                          or do_step(screen.bridge, screen.win, s, screen.parts["recorder"]) for s in steps],
+                           lambda: screen.win, lambda: not screen.bridge.transport.busy(), IGNORE)
+        code[0] = app.exec()
+        screen.close()
+        sys.exit(qt_faults.code(code[0]))
     if args.script or args.sample:
         screen.unnamed = Path(args.script).stem if args.script else "Sample song"
     doc = load_doc(args)
@@ -218,7 +238,6 @@ def main():
         screen.files.launch(args.path, args.new)
     else:
         screen.files.put(doc)
-    code = [0]
 
     def guarded(fn):
         try:

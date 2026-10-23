@@ -87,10 +87,12 @@ def main():
     a.add_argument("--check-layout", metavar="FOLDER")
     a.add_argument("--check-name")
     a.add_argument("--check-only", help="with --check-layout: only these states (comma-separated), as the full run starts them")
+    a.add_argument("--check-batch", metavar="STATES.JSON", help="with --check-layout: the states a parent run hands this process")
+    a.add_argument("--quick", action="store_true", help="with --check-layout: the QUICK states, at 1646x900 only")
     args = a.parse_args()
-    if args.check_layout and not args.check_name:
+    if args.check_layout and not (args.check_name or args.check_batch):
         from screen2d.layout_states import states
-        sys.exit(layout_run.run_all(Path(__file__), states(), args.check_layout, args.check_only))
+        sys.exit(layout_run.run_all(Path(__file__), states(), args.check_layout, args.check_only, args.quick))
     if args.shot:
         check_shot_path(args.shot)
 
@@ -99,13 +101,28 @@ def main():
     userhome.person_start()                        # a --shot / --step / --check-layout run is scripted anyway (userhome.scripted)
     app = qt_app()                                 # a picture or step run draws offscreen (rostrum_gui/app.py)
     session = Session(tuple(int(n) for n in args.size.lower().split("x")), args.comp)
+    code = [0]
+    if args.check_batch:                           # several states in this one process (rostrum_gui/layout_batch.py)
+        from rostrum_gui import layout_batch
+        from screen2d.layout_states import IGNORE
+
+        def open_state(start):
+            session.files.put(load_doc(a.parse_args(start)))
+            watchdog.shown_on(session.win)
+
+        layout_batch.batch(app, args.check_batch, args.check_layout, open_state,
+                           lambda steps: [layout_run.kit_step(session.bridge, s) or do_step(session.bridge, session.win, s)
+                                          for s in steps],
+                           lambda: session.win, lambda: session.bridge.frames.idle() and session.bridge.frame > 0, IGNORE)
+        code[0] = app.exec()
+        session.close()
+        sys.exit(qt_faults.code(code[0]))
     doc = load_doc(args)
     if doc is None:
         session.files.launch(args.open)
     else:
         session.files.put(doc)
     watchdog.shown_on(session.win)
-    code = [0]
 
     def guarded(fn):
         try:
