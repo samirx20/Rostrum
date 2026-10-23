@@ -10,9 +10,9 @@ RowLayout {
     readonly property var m: strip.model
     spacing: Theme.grid
     MixSwitch { Layout.fillWidth: true; visible: r.m.canMute; text: "M"; on: r.m.mute; tint: Theme.warn; tip: "Mute"
-                onToggled: (v) => { r.strip.pick(); backend.setValue("mute", v) } }
+                onToggled: { r.strip.pick(); backend.toggleTrack(r.m.id, "mute") } }
     MixSwitch { Layout.fillWidth: true; visible: r.m.canSolo; text: "S"; on: r.m.solo; tint: Theme.ok; tip: "Solo"
-                onToggled: (v) => { r.strip.pick(); backend.setValue("solo", v) } }
+                onToggled: { r.strip.pick(); backend.toggleTrack(r.m.id, "solo") } }
     MixSwitch { Layout.fillWidth: true; visible: r.m.canArm; text: "R"; on: recorder.armed === r.m.id; tint: Theme.danger
                 tip: on ? "Armed: press Record (R) to record on this track. Click to disarm." : "Arm this track for recording"
                 onToggled: recorder.arm(r.m.id) }

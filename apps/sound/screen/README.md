@@ -3,7 +3,7 @@
 One workspace on one Sound document (apps/sound/DESIGN.md §2), built from the shared GUI kit (`shared/gui-kit/`).
 
 ```
-top bar          RostrumSound · File · song · ⏮ ▶ loop · Record (always; Take and the level while armed) · metronome · bars.beats · time ·
+top bar          RostrumSound · File · song · ⏮ ▶ loop · Record (always, one fixed size: red dot when armed, pulsing and "Stop 3.2 s" while recording, the level a thin bar along its foot; right-click: the take panel) · metronome · bars.beats · time ·
                  ♩ tempo · beats · key (click: the tempo / key popover) · Loudness against the target (once there is
                  sound; click: the Mixer) · history · + Add · Export (once there is sound) · Ctrl+K · Help
 left             the Sounds panel (L, + Track, + Add): instruments, drum kits, microphone, voices, my sounds; pushes the
@@ -77,12 +77,12 @@ Switching songs rebuilds the bridge and its parts and reloads the window (`main.
   the strips leave (at least 300 px: strips scroll sideways first). The target is the master's own `loudness` (`goal`,
   the same the top bar's chip uses), named after the delivery target while Normalize applies it.
 - **Delivery target** (`delivery.py`: a small table of published specs with a source per row; streaming −14 / −1,
-  Apple Music −16 / −1, EBU R128 −23 / −1, ATSC A/85 −24 / −2, podcast −16 / −1). It follows the fields' valid_when
+  Apple Music −16 / −1, Broadcast (EBU R128) −23 / −1, US TV (ATSC A/85) −24 / −2, Podcast −16 / −1). It follows the fields' valid_when
   (`delivery.applying`): the true peak ceiling always applies, the loudness target only with Normalize on. choosing a target
   sets those that apply in one `master.set`, and a Pass / Miss line compares the last render to them (within ±1 LU,
   true peak under the ceiling).
-- **A control once per screen** (`onpage.py`): the inspector leaves out what the workspace's own controls show (the master
-  strip's fader; a strip's fader, pan, output; a send's level; the track headers' mute / solo).
+- **A control once per screen** (`onpage.py`): the inspector leaves out what the workspace's own controls show (a strip's
+  pan, output; a send's level; the track headers' mute / solo). Volume stays in the panel while the Mixer is open (it is the typed one).
 - **Export** (`export.py`, the Export sheet; top bar Export, Ctrl+E, Ctrl+Shift+E exports again with the last settings, once the song makes a sound): target,
   file, quality, stems (off by default), trim; the live Pass / Miss line; Export runs the same versioned render as the
   MCP `render_mix` (`handoff.render`) in the background on its own engine process; then "Done", the `vNNN` folder and
@@ -105,7 +105,7 @@ in if asked (its own clicks), plays from the playhead and records; Stop and the 
 in `<project>/media/<track name>-take-<n>.wav` at the engine's `start` (its clock, minus the microphone's delay when
 `rostrum-sound play --calibrate` measured it; `rostrum_sound.record.land_take`).
 
-- **Take panel** ("Take" in the record cluster, `RecordSetup.qml` / `record_setup.py`; screen state, not an edit). Rows
+- **Take panel** (right-click Record while armed, `RecordSetup.qml` / `record_setup.py`; screen state, not an edit). Rows
   show only when usable: **Count-in** (Bars only while on), **Punch in** (the range is dragged on the ruler: drag
   across it, or drag either red edge; a quarter beat grid, Shift free; turning punch on starts a two-bar range at the
   playhead; the engine keeps only the range and the take stops by itself past it; a playhead already past the

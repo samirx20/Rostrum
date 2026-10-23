@@ -14,6 +14,9 @@ Item {
     signal scrubStarted()
     signal scrubbed(real gain)
     signal scrubEnded()
+    signal reset()
+    signal typeIt()
+    signal nudged(real gain)
     readonly property bool measured: !!meter && meter.peak !== undefined && meter.peak !== null
     readonly property bool held: meterBar.holdDb > F.FLOOR
     readonly property var shown: live ? (held ? meterBar.holdDb : null) : (measured ? meter.peak : null)
@@ -33,6 +36,9 @@ Item {
         onScrubStarted: lv.scrubStarted()
         onScrubbed: (g) => lv.scrubbed(g)
         onScrubEnded: lv.scrubEnded()
+        onReset: lv.reset()
+        onTypeIt: lv.typeIt()
+        onNudged: (g) => lv.nudged(g)
     }
     MixMeter {
         id: meterBar

@@ -22,8 +22,8 @@ Panel {
     Keys.onEscapePressed: model.setOpen(false)
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close  Esc"; onClicked: sheet.model.setOpen(false) }
 
-    component Line: Text {                // one line of words, whole: a long name breaks onto the next line, never cut
-        width: parent.width; wrapMode: Text.WrapAnywhere
+    component Line: Text {                // one line of words, whole: a long name breaks at a space, else anywhere, never cut
+        width: parent.width; wrapMode: Text.WrapAtWordBoundaryOrAnywhere
         color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
     }
     component Link: Text {                // a word to click in the result line

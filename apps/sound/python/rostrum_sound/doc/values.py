@@ -64,7 +64,7 @@ def _time(p, v, where, length=False, tied=False):
 def _pitch_one(p, v, where):
     if isinstance(v, bool) or not (isinstance(v, int) and 0 <= v <= 127 or isinstance(v, str) and NOTE.match(v)):
         _bad(p, v, where, "is not a note", ['"D4"', '"F#3"', '"Bb2"', "a MIDI number 0 … 127"])
-    return v
+    return v[0].upper() + v[1:] if isinstance(v, str) else v      # typed "d5" is stored "D5", as a drawn note is
 
 
 def _pitch(p, v, where):

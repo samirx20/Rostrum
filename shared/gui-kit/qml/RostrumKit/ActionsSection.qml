@@ -16,6 +16,12 @@ Item {
     readonly property var rows: hub ? hub.panel.rows : []
     readonly property var more: hub ? hub.panel.more : []
     readonly property var ordered: rows.filter(r => r.items.every(i => !!i.icon)).concat(rows.filter(r => !r.items.every(i => !!i.icon)))
+    // the units that flow: an icon run, a folded bar, or ONE small button (so a row of long names wraps button by button
+    // instead of running under the ⋯)
+    readonly property var units: ordered.reduce((all, r) => all.concat(
+        r.items.every(i => !!i.icon) ? [{ items: r.items, icons: true, title: "" }]
+        : r.title !== "" ? [{ items: r.items, icons: false, title: r.title }]
+        : r.items.map(i => ({ items: [i], icons: false, title: "" }))), [])
     readonly property int size: Theme.field
     visible: rows.length + more.length > 0
     height: visible ? Math.max(runs.height, moreButton.visible ? size : 0) + Theme.pad : 0
@@ -28,12 +34,12 @@ Item {
         width: section.width - (moreButton.visible ? section.size + Theme.gap : 0)
         spacing: 3 * Theme.grid
         Repeater {
-            model: section.ordered
+            model: section.units
             delegate: Row {
                 id: run
                 required property var modelData
-                readonly property bool icons: modelData.items.every(i => !!i.icon)
-                readonly property bool folded: !icons && modelData.title !== ""
+                readonly property bool icons: modelData.icons
+                readonly property bool folded: modelData.title !== ""
                 spacing: icons ? 2 : Theme.grid
                 Repeater {      // an icon run
                     model: run.icons ? run.modelData.items : []

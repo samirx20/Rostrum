@@ -142,11 +142,14 @@ def remove_call(doc, item_id) -> dict:
     return {"op": f"{kind}.remove", "target": [item_id], "args": {}}
 
 
-def toggle_call(doc, track_id, field: str) -> tuple[dict, str]:
+def toggle_call(doc, item_id, field: str) -> tuple[dict, str]:
+    """A quick mute / solo on a track, bus or the master: one call, one set of History words ("Mute pad")."""
     if field not in ("mute", "solo"):
-        raise RostrumError(codes.BAD_ARGUMENT, "track header", f'"{field}"', "is not a quick toggle",
+        raise RostrumError(codes.BAD_ARGUMENT, "quick toggle", f'"{field}"', "is not a quick toggle",
                            ["mute", "solo"])
-    on = not doc.item(track_id).get(field)
-    name = doc.item(track_id).get("name") or track_id
-    return ({"op": "track.set", "target": [track_id], "args": {field: on}},
-            f"{'Turn on' if on else 'Turn off'} {field} on {name}")
+    from rostrum_gui.edits import field_call
+    from .inspect import name_of
+    item = doc.item(item_id)
+    on = not item.get(field)
+    word = {"mute": "Mute" if on else "Unmute", "solo": "Solo" if on else "Unsolo"}[field]
+    return field_call(doc, item_id, field, on), f"{word} {name_of(item)}"

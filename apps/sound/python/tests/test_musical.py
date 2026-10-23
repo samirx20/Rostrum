@@ -40,3 +40,13 @@ def test_inspector_edit_keeps_the_form():
     assert inspect.edit_call(doc, "a", "at", "3.1")["args"] == {"at": {"beat": 8.0}}          # beats stay beats
     assert inspect.edit_call(doc, "m", "at", "2.3")["args"] == {"at": "#land+1.2"}            # a marker stays a marker
     assert inspect.edit_call(doc, "a", "dur", "1.0")["args"] == {"dur": {"beats": 3.0}}       # a bar of 6/8
+
+
+def test_typed_times_that_do_not_exist_are_refused():
+    """KNOWN to matter: a typed beat the bar does not have used to be taken as a later beat (9.9.9 = beat 40)."""
+    import pytest
+    root = _doc().data
+    for bad in ("5.9", "1.5", "2.1.960"):
+        with pytest.raises(ValueError, match="beat|ticks"):
+            musical.parse(bad, root)
+    assert musical.parse("1.4", root) == musical.parse("1.4.0", root)

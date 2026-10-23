@@ -64,9 +64,9 @@ Item {
         visible: row.model.row === "more"
         anchors.fill: parent
         Chevron { id: moreChev; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                  rotation: row.bridge.moreOpen ? 0 : -90; color: moreArea.containsMouse ? Theme.fg : Theme.fg3 }
+                  rotation: row.bridge.moreOpen ? 0 : -90; color: moreArea.containsMouse ? Theme.fg : Theme.fg2 }
         Text { anchors.left: moreChev.right; anchors.leftMargin: Theme.grid + 2; anchors.verticalCenter: parent.verticalCenter
-               text: "More"; color: moreArea.containsMouse ? Theme.fg : Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont }
+               text: "More"; color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont }
         MouseArea { id: moreArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: row.bridge.toggleMore() }
     }

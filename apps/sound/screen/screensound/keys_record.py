@@ -136,6 +136,9 @@ class KeysRecording(QObject):
         if call is not None:
             self.bridge._apply([call], "Record keyboard take")
             self.bridge.select(track["id"])                    # the piano roll shows what was played
+        else:                                                  # a take with no notes is said, never a quiet nothing
+            self.bridge._fail("Keyboard take: no notes were played, so nothing was recorded"
+                              + ("" if self.recorder.player.alive else f" ({self.recorder.player.reason})") + ".")
 
     def _guard(self, fn):
         try:
