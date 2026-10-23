@@ -224,6 +224,7 @@ fn a_rider_sits_on_the_drawn_on_tip() {
     let layers = s["comp"]["layers"].as_array_mut().unwrap();
     let dot = layers.iter_mut().find(|l| l["id"] == "dot").expect("the dot in the reference");
     dot["props"]["ridePath"] = "rail".into();
+    dot["props"]["rideAt"] = "end".into();          // the default is now "along" (F12); this test is about the tip
     dot["props"]["x"] = 0.0.into();
     dot["props"]["y"] = 0.0.into();
     layers.push(serde_json::json!({"id": "rail", "type": "path", "props": rail}));

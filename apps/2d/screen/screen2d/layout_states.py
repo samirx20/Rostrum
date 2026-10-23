@@ -111,7 +111,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("f11-shape", ["--sample"], ["select card"]),
         ("f11-text", ["--sample"], ["select title"]),
         ("f11-group", ["--sample"], ["selectmany dot rule", "do layer:group"]),
-        ("f11-camera", ["--sample"], ["add camera"]),               # H49: compact actions, slim key-span bars
+        # F13: a group's own Background (group_bg.py): its section open, the outline rows shown
+        ("f13-group-background", ["--sample"], ["selectmany dot rule", "do layer:group", "set background true",
+                                                "set bgStroke true"]),
+        ("f11-camera", ["--sample"], ["add camera"]),              # H49: compact actions, slim key-span bars
         ("gradient-handles", ["--sample"], ["select card", "clickname swatch", "clickname fillType:linear"]),
         # H47: the frame drives the layout (SPEC 2d-design-v2 §1.2): tall and square scenes put the timeline beside it
         *[(f"scene-{w}x{h}", ["--sample"], ["select screen_sample", f"set width {w}", f"set height {h}", "select title"])

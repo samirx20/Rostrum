@@ -77,8 +77,8 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - **`video`** (added S8, same version): a layer with `src`, `w`, `h`, `fit`, `radius`, `offset` (s into the clip),
   `speed`, `loop` and the transform. Like a drawing it carries `frames: [{"at": i, "src": png}, …]`, `i` = 0..n−1 over
   the clip decoded at the comp's fps and at `w × h` (the fit applied at decode). At frame `n = floor(t·fps)` the picture
-  is `frames[k]`, `k = floor((n − start·fps)·speed + 1e-6) + round_ties_even(offset·fps)`; with `loop` k wraps
-  (`rem_euclid(count)`), otherwise it is held at 0..count−1. Python decodes once with the `ffmpeg` program into a cache
+  is `frames[k]`, `k = floor((n − start·fps)·speed + 1e-6) + round_ties_even(offset·fps)`; `loop` is "off" (k held at 0..count−1), "loop" (k wraps, `rem_euclid(count)`) or "pingpong" (there and back, each end
+  shown once; `stage_fx.rs fold`, the same rule as `looping.py`). Python decodes once with the `ffmpeg` program into a cache
   folder keyed by the file's content, size, w × h, fit, fps and decoder version (`rostrum2d/video.py`). `w`, `h`,
   `offset`, `speed` can't be animated. No frames, or a missing picture, is an error. The video's own sound is not read.
 - **`rig`** (added H10, same version): a layer with a group's fields (`w`, `h`, `clip`) and `layers`, plus `rig: [...]`,

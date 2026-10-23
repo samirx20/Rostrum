@@ -13,7 +13,7 @@ from dataclasses import replace
 from rostrum_core import Param
 from rostrum_core.keys import KEY_FIELDS
 
-from . import blends as _blends, looping, fill_fields as _fill, grade_fields as _grade, layout_fields as _layout, paint_fields as _paint, stepped as _stepped, swap as _swap
+from . import blends as _blends, group_bg as _group_bg, looping, fill_fields as _fill, grade_fields as _grade, layout_fields as _layout, paint_fields as _paint, stepped as _stepped, swap as _swap
 
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 P = "primary"
@@ -255,7 +255,8 @@ FIELDS: dict[str, list[Param]] = {
         N("radius", "Corner radius", "Video", 0, 10000, 1, "px", S),
         N("offset", "Clip starts at", "Video", 0, 36000, 0.01, "s", S, help="Seconds into the clip where the layer's first frame is taken"),
         N("speed", "Speed", "Video", 0, 100, 0.01, "×", S, default=1.0),
-        T("loop", "Loop", "Video", False, S, help="Start again when the clip ends (otherwise the last frame is held)"),
+        CH("loop", looping.MODES, "Loop", "Video", "off", S, labels=looping.WORDS,
+           help="What happens when the clip ends: Loop starts again, Ping-pong plays it back and forth (Off holds the last frame)"),
     ] + TRANSFORM,
     # A Rostrum3D item's finished render, placed read-only (render3d.py): its EXR frames with their transparency, shown
     # as a video layer. Version 0 follows the newest render; Timed from marker puts its first frame on a marker (retime.py).
@@ -269,7 +270,8 @@ FIELDS: dict[str, list[Param]] = {
         N("radius", "Corner radius", "3D render", 0, 10000, 1, "px", D),
         N("offset", "Render starts at", "3D render", 0, 36000, 0.01, "s", D, help="Seconds into the render where the layer's first frame is taken"),
         N("speed", "Speed", "3D render", 0, 100, 0.01, "×", D, default=1.0),
-        T("loop", "Loop", "3D render", False, D, help="Start again when the render ends (otherwise the last frame is held)"),
+        CH("loop", looping.MODES, "Loop", "3D render", "off", D, labels=looping.WORDS,
+           help="What happens when the render ends: Loop starts again, Ping-pong plays it back and forth (Off holds the last frame)"),
     ] + TRANSFORM,
     "group": [      # a size the auto layout hugs is absent: the layout sets it (layout_fields.py)
         N("w", "Width", "Box", 0, 20000, 1, "px", D, when=_layout.SIZE_SET["w"], default=1920.0),
@@ -384,6 +386,7 @@ FIELDS: dict[str, list[Param]] = {
 
 FIELDS["group"] += _layout.GROUP           # auto layout (layout.py): Python-side, baked into the children's keys
 FIELDS["group"] += _swap.GROUP             # swap sets (swap.py): Python-side, shown as the children's opacity
+FIELDS["group"] += _group_bg.FIELDS       # its own background (group_bg.py): drawn as a shape behind its layers
 FIELDS.update(_rig.FIELDS)
 FIELDS.update(_camera.FIELDS)
 FIELDS.update(_motion.FIELDS)

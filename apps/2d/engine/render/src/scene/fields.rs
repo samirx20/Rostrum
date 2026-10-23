@@ -22,6 +22,8 @@ pub const SHAPE_KINDS: &[&str] = &["rect", "ellipse", "arc", "triangle", "polygo
 pub const HEADS: &[&str] = &["none", "triangle", "open", "circle", "square", "bar"];
 /// How a picture fills a shape (super::stage_fill).
 pub const PICTURE_FITS: &[&str] = &["fill", "fit", "tile", "stretch"];
+/// How a video layer repeats its clip (stage_fx.rs `fold`; the Python layer's looping.py MODES).
+pub const LOOP_MODES: &[&str] = &["off", "loop", "pingpong"];
 /// Where a rider sits on its path (super::follow `ride`): the drawn-on tip, the trim's start, or `rideAlong`.
 const RIDE_AT: &[&str] = &["end", "start", "along"];
 
@@ -85,7 +87,7 @@ pub const FIGURES: &[&str] = &["default", "proportional lining", "tabular lining
 const IMAGE: &[Field] = &[("src", Text), ("w", Number), ("h", Number), ("fit", Choice(&["cover", "contain", "stretch"])), ("radius", Number)];
 const VIDEO: &[Field] = &[
     ("src", Text), ("w", Number), ("h", Number), ("fit", Choice(&["cover", "contain", "stretch"])), ("radius", Number),
-    ("offset", Number), ("speed", Number), ("loop", Toggle),
+    ("offset", Number), ("speed", Number), ("loop", Choice(LOOP_MODES)),
 ];
 const GROUP: &[Field] = &[("w", Number), ("h", Number), ("clip", Toggle)];
 const DRAWING: &[Field] = &[("w", Number), ("h", Number)];

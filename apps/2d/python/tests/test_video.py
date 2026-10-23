@@ -9,6 +9,7 @@ def test_the_frame_for_a_time():
     assert pick(30) == 30
     assert pick(10, start=0.2, speed=2, offset=0.5) == 23       # floor((10 − 6)·2) + round(0.5·30)
     assert pick(70) == 59 and pick(70, loop=True) == 10          # held at the last frame, or wrapped
+    assert [pick(n, count=4, loop="pingpong") for n in range(8)] == [0, 1, 2, 3, 2, 1, 0, 1]     # there and back
     assert pick(0, start=1) == 0 and pick(0, start=1, loop=True) == 30    # before the layer starts: held / wrapped
 
 

@@ -12,7 +12,7 @@ use super::Node;
 type R<T> = Result<T, String>;
 
 /// The clip picture showing at time `t`: source frame floor((n − start·fps)·speed) + round(offset·fps), n = floor(t·fps),
-/// wrapped when `loop`, else held at the last frame (rostrum2d/video.py `pick` is the same rule). "" with no frames.
+/// folded by `loop` (off, loop, pingpong; see `fold`) (rostrum2d/video.py `pick` is the same rule). "" with no frames.
 pub fn video_picture(node: &Node, t: f64, fps: f64) -> &str {
     let count = node.frames.len() as i64;
     if count == 0 {
@@ -21,8 +21,21 @@ pub fn video_picture(node: &Node, t: f64, fps: f64) -> &str {
     let num = |f: &str| node.props.get(f).and_then(Value::as_f64).unwrap_or(0.0);
     let n = (t * fps + 1e-6).floor();
     let i = ((n - num("start") * fps) * num("speed") + 1e-6).floor() as i64 + (num("offset") * fps).round_ties_even() as i64;
-    let i = if node.props.get("loop") == Some(&Value::Bool(true)) { i.rem_euclid(count) } else { i.clamp(0, count - 1) };
-    &node.frames[i as usize].1
+    let mode = node.props.get("loop").and_then(Value::as_str).unwrap_or("off");
+    &node.frames[fold(i, count, mode) as usize].1
+}
+
+/// The place in 0..count-1 that place `i` shows: held at the ends ("off"), wrapped ("loop") or bounced there and back
+/// with each end shown once ("pingpong"). Same rule as apps/2d/python/rostrum2d/looping.py `fold`; change both together.
+pub fn fold(i: i64, count: i64, mode: &str) -> i64 {
+    match mode {
+        "loop" => i.rem_euclid(count),
+        "pingpong" if count > 1 => {
+            let k = i.rem_euclid(2 * count - 2);
+            if k < count { k } else { 2 * count - 2 - k }
+        }
+        _ => i.clamp(0, count - 1),
+    }
 }
 
 /// (style, inner markup) of a video layer's box: the picture the frame time picked (eval.rs), like an image.

@@ -30,6 +30,19 @@ with group("list", x=240, y=180, w=600, anchorX=0, anchorY=0, layout="column", g
 | a layer's `layoutGrow` | takes this share of the room left along the line (shapes, images, groups) |
 | a layer's `layoutApart` | the layout leaves it alone: placed by its own `x`, `y` (a badge on a card) |
 
+**A group's own background.** `background=True` draws a colour box behind the group's layers, as big as the group:
+`bgColor`, `bgRadius` (corners; half the height or more is a pill), and an optional outline (`bgStroke`,
+`bgStrokeColor`, `bgStrokeWidth`). With auto layout and hugging on, the box hugs the layers with the `padding` all
+round, so a lower-third is one group: a name with a pill around it that grows with the name. In the settings panel
+it is the group's Background section. A hugging group grows around its anchor: give it `anchorX=0` (as below) so a
+longer name pushes the pill's right end, not both ends.
+
+```python
+with group("lower_third", x=120, y=900, anchorX=0, anchorY=0.5, layout="row", padding=18, hugWidth=True,
+           hugHeight=True, background=True, bgColor="#1d4ed8", bgRadius=999):
+    text("name", body="Ada Lovelace", size=44)
+```
+
 Layout uses each layer's own box (`w` × `h`) before scale and turn: animate `scale` for a pop that doesn't push the
 others, `w` / `h` for one that does. A layer before its start time or after its end takes no room. Text boxes are
 estimated from size and letters, so a row of texts may sit a little off; put text inside a fixed-size group. While
@@ -45,8 +58,8 @@ stack or into another group; `inspect_item` with no `id` lists the tree.
 |---|---|
 | `shape` | `shape` rect / ellipse, `w`, `h`, `radius` (corner), `fill`, `stroke`, `strokeColor`, `strokeWidth`. |
 | `image` | `src` (relative to the project folder for a file the project holds, e.g. `media/image/…png`; absolute for one kept outside it), `w`, `h`, `fit` cover / contain / stretch, `radius`. |
-| `video` | Same, plus `offset` (seconds into the clip), `speed`, `loop`. Frames are decoded once at the composition's fps; no sound here. |
-| `group` | `w`, `h`, `clip`. A group's opacity, blend, masks and effects apply to it as a whole. |
+| `video` | Same, plus `offset` (seconds into the clip), `speed`, `loop` (`off` holds the last frame, `loop` starts again, `pingpong` plays forward and back). Frames are decoded once at the composition's fps; no sound here. |
+| `group` | `w`, `h`, `clip`, and its own background (`background`, `bgColor`, `bgRadius`, outline: see Auto layout). A group's opacity, blend, masks and effects apply to it as a whole. |
 
 Every layer also has the transform (`x`, `y`, `scale`, `scaleX`, `scaleY`, `rotation`, `opacity`, anchor), `start` / `end`
 (when it exists), `blend` (17 modes) and colour effects (adjust, levels, curves, LUT): see the guide `colour-and-blending`.
