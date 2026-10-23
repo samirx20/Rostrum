@@ -51,9 +51,7 @@ def pick(n: int, start: float, fps: float, speed: float, offset: float, count: i
     """The clip's frame shown at comp frame `n` (the rule the engine uses, eval.rs `video_src`):
     floor((n − start·fps) · speed) + round(offset·fps), wrapped when looped, else held at the last frame."""
     i = math.floor((n - start * fps) * speed + 1e-6) + round(offset * fps)
-    if loop:
-        return i % count
-    return min(max(i, 0), count - 1)
+    return looping.fold(i, count, looping.mode_of(loop))
 
 
 def frames(item: dict, fps: float, base: Path | None = None) -> list[dict]:

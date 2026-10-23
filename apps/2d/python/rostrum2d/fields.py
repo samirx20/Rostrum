@@ -13,7 +13,7 @@ from dataclasses import replace
 from rostrum_core import Param
 from rostrum_core.keys import KEY_FIELDS
 
-from . import blends as _blends, fill_fields as _fill, grade_fields as _grade, layout_fields as _layout, paint_fields as _paint, stepped as _stepped, swap as _swap
+from . import blends as _blends, looping, fill_fields as _fill, grade_fields as _grade, layout_fields as _layout, paint_fields as _paint, stepped as _stepped, swap as _swap
 
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 P = "primary"
@@ -281,6 +281,8 @@ FIELDS: dict[str, list[Param]] = {
     "drawing": [
         N("w", "Canvas width", "Drawing", 16, 8192, 1, "px", S, integer=True, default=1920),
         N("h", "Canvas height", "Drawing", 16, 8192, 1, "px", S, integer=True, default=1080),
+        CH("loop", looping.MODES, "Loop", "Timing", "off", S, labels=looping.WORDS,
+           help="Repeat the drawings for the layer's length: Loop starts again, Ping-pong goes back and forth (Off holds the last drawing)"),
     ] + TRANSFORM,
     # A vector path (pathdata.py): `d` is absolute M, L, C, Z in the layer's own px from its box's top-left.
     # trimStart..trimEnd is the part of the stroke drawn (fractions of its length: the "draw on").
