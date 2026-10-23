@@ -18,6 +18,7 @@ with one plain sentence (GAVE_UP). An export is never sent again (Cancel ends th
 """
 from __future__ import annotations
 
+import inspect
 import json
 import mmap
 import os
@@ -64,6 +65,26 @@ def find_exe() -> Path:
         raise EngineError(f"2D engine not found: none of {', '.join(map(str, settings.engine_candidates()))}; "
                           "build apps/2d/engine (in an install: reinstall Rostrum2D) or set ROSTRUM2D_ENGINE")
     return exe
+
+
+def _clock(s: float) -> str:
+    s = round(s)
+    return f"{s // 60} min {s % 60:02d} s" if s >= 60 else f"{s} s"
+
+
+def _progress(progress, line: dict):
+    """An export's progress line to the caller: (done, total), plus the time so far and left in words to a job's
+    progress (rostrum_core jobs: done, total, note) that takes a note."""
+    if "leftS" not in line:
+        return progress(line["progress"], line["of"])
+    try:
+        params = inspect.signature(progress).parameters
+    except (TypeError, ValueError):
+        params = {}
+    if len(params) < 3 and not any(p.kind == p.VAR_POSITIONAL for p in params.values()):
+        return progress(line["progress"], line["of"])
+    left = "" if line["progress"] >= line["of"] else f", about {_clock(line['leftS'])} left"
+    progress(line["progress"], line["of"], f"{_clock(line['elapsedS'])} so far{left}")
 
 
 class Engine:
@@ -147,10 +168,10 @@ class Engine:
                 if line is None:
                     raise _Died(f"2D engine (pid {self.pid}) ended without a reply; log {self.log_path}")
                 out = json.loads(line)
-                if set(out) != {"progress", "of"}:           # export's per-frame progress lines (keys in any order)
+                if "progress" not in out or "ok" in out:     # export's per-frame progress lines
                     break
                 if progress:
-                    progress(out["progress"], out["of"])
+                    _progress(progress, out)
         except OSError as e:
             raise _Died(f"2D engine (pid {self.pid}) stopped: {e}; log {self.log_path}") from e
         if "error" in out:
@@ -227,7 +248,7 @@ class Engine:
         return view, shm["width"], shm["height"], shm["stride"]
 
     def video(self, mp4: Path, start: float = 0.0, end: float | None = None, progress=None, quality: str | None = None,
-              bitrate: float | None = None) -> dict:
+              bitrate: float | None = None, timing_csv: Path | None = None) -> dict:
         """An MP4 through the formats table's encoder (io/formats.py: the OS's own H.264); `quality` or `bitrate` (Mbit/s)."""
         from .io import formats                      # the table imports find_exe from here
         p = self._props()
@@ -235,12 +256,17 @@ class Engine:
         mp4, f = Path(mp4), formats.get("mp4")
         mp4.parent.mkdir(parents=True, exist_ok=True)
         encode = f.build(str(mp4), w, h, fps, 8, 0, formats.kbps(f, w, h, fps, quality, bitrate))
-        out = self._request({"export": {"start": start, "end": end, "file": str(mp4), "progress": progress is not None,
-                                        "encode": encode}},
+        req = {"start": start, "end": end, "file": str(mp4), "progress": progress is not None, "encode": encode}
+        if timing_csv is not None:
+            req["timingCsv"] = str(timing_csv)
+        out = self._request({"export": req},
                             timeout_s=3600.0, progress=progress)
         if not mp4.is_file() or mp4.stat().st_size == 0:
             raise EngineError(f"export wrote no video: {mp4}; log {self.log_path}")
-        return {"file": str(mp4), "frames": out["frames"], "fps": fps, "timing": out["timing"]}
+        if out.get("warning"):
+            _log_line(f"2D export: {out['warning']}")
+        return {"file": str(mp4), "frames": out["frames"], "fps": fps, "timing": out["timing"], "adapter": out.get("adapter"),
+                "gpu": out.get("gpu"), "warning": out.get("warning")}
 
     def kill(self):
         """End the process on purpose (Cancel): it is never restarted, and a request after this fails."""

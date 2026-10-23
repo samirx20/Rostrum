@@ -12,7 +12,8 @@
 //!   frame from start (default 0) to end (default the comp's duration) at the comp's fps into the encoder; `file`
 //!   is checked to exist and not be empty after. Or `"images": "C:\\…\\f-{frame}.png"`: each frame to a picture.
 //!   With `"alpha": true` the comp's background is left out, so the frames are transparent where nothing is drawn.
-//!   With `"progress": true`, a line `{"progress": i, "of": n}` after each frame, before the reply.
+//!   With `"progress": true`, a line `{"progress": i, "of": n, "elapsedS", "leftS"}` after each frame, before the reply.
+//!   The reply's `timing` sums where the time went (scene_export.rs); `"timingCsv": path` writes it per frame too.
 //! - `{"edit": [{"id", "props"?: {…}, "anim"?: {field: [keys] | null}}, …]}` → `{"ok": true, "edits": n}`: small
 //!   changes to the held scene (a drag), checked as a load is; the next frame shows them.
 //! - `{"bones": {"t": 1.25}}` → `{"ok": true, "rigs": {…}}`: every rig's posed bones and IK targets in comp px (rig/bones.rs, RIG.md).
@@ -33,7 +34,6 @@ use serde_json::{json, Value};
 use crate::painter::Gl;
 use crate::scene::{eval, fonts, stage, Scene};
 use crate::serve::{self, Session};
-use crate::sink::Sink;
 
 /// The scene the engine holds, and whether the open page is its shell.
 #[derive(Default)]
@@ -44,7 +44,7 @@ pub struct Held {
 }
 
 impl Held {
-    fn scene(&self) -> Result<&Scene, String> {
+    pub(crate) fn scene(&self) -> Result<&Scene, String> {
         self.scene.as_ref().ok_or_else(|| "no scene loaded (send {\"scene\": …} first)".to_string())
     }
 }
@@ -138,7 +138,7 @@ fn placed(held: &Held, s: &mut Session, t: f64, ids: &Value, strict: bool) -> Re
 
 /// The stage markup at `t`, one piece per top-level element (restage.rs), and the ms it took.
 /// `alpha`: the comp's background left out (an export with transparency).
-fn markup(scene: &Scene, t: f64, alpha: bool) -> Result<(Vec<String>, f64), String> {
+pub(crate) fn markup(scene: &Scene, t: f64, alpha: bool) -> Result<(Vec<String>, f64), String> {
     let t0 = Instant::now();
     let plan = crate::motion::Plan::of(&scene.comp)?;
     let mut comp = eval::at(&scene.comp, t).expect("the comp always shows");
@@ -169,19 +169,31 @@ pub fn frame(held: &Held, s: &mut Session, req: &Value) -> Result<(Value, Option
     f["stage"] = Value::String(m);
     // Motion blur (crate::motion, MOTION.md): the stage at each sub-frame of the open shutter, averaged by serve.rs.
     let (angle, n) = crate::motion::shutter(&scene.comp, req)?;
+    let mut sample_pieces = vec![];
     if angle > 0.0 && n > 1 {
-        let mut samples = vec![];
         for ts in crate::motion::sample_times(t, scene.fps(), angle, n) {
             let (mk, ms) = markup(scene, ts, alpha)?;
             eval_ms += ms;
-            samples.push(Value::String(mk.concat()));
+            sample_pieces.push(mk);
         }
-        f["samples"] = Value::Array(samples);
+    }
+    // Nothing moves while the shutter is open: every sub-frame is the same picture, so their average is that one
+    // picture, drawn once (the same pixels, within the sum's rounding).
+    let mut own = pieces;
+    if sample_pieces.windows(2).all(|w| w[0] == w[1]) {
+        if let Some(only) = sample_pieces.pop() {
+            f["stage"] = Value::String(only.concat());
+            own = only;
+            sample_pieces.clear();
+        }
+    } else {
+        f["samples"] = Value::Array(sample_pieces.iter().map(|p| Value::String(p.concat())).collect());
     }
     if f.get("index").is_none() {
         f["index"] = json!((t * scene.fps()).round() as u64);
     }
-    s.next_pieces = Some(pieces);              // for the frame's own stage (serve.rs `apply`, restage.rs)
+    s.next_pieces = Some(own);                 // for the frame's own stage (serve.rs `apply`, restage.rs)
+    s.sample_pieces = sample_pieces;           // each sub-frame staged by its changed pieces too
     let (mut reply, px) = serve::frame(s, &f)?;
     if let Some(timing) = reply.get_mut("timing") {
         timing["evalMs"] = json!(eval_ms);
@@ -190,50 +202,4 @@ pub fn frame(held: &Held, s: &mut Session, req: &Value) -> Result<(Value, Option
         reply["place"] = placed(held, s, t, &req["place"], false)?;
     }
     Ok((reply, px))
-}
-
-/// `progress(i, n)` after each frame when the request asks for it (`"progress": true`).
-pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMut(u64, u64)) -> Result<Value, String> {
-    let scene = held.scene()?;
-    let fps = scene.fps();
-    let start = req["start"].as_f64().unwrap_or(0.0);
-    let end = req["end"].as_f64().unwrap_or(scene.duration());
-    let n = (((end - start) * fps).round() as i64).max(1) as u64;
-    let images = req["images"].as_str();
-    match (&req["encode"], images) {
-        (Value::Null, None) => return Err("export needs encode {program, args} or images (a path with {frame})".into()),
-        (Value::Null, Some(p)) if !p.contains("{frame}") => return Err(format!("export images: the path must hold {{frame}}: {p}")),
-        (Value::Null, Some(_)) => {}
-        (e, _) => {
-            let program = e["program"].as_str().ok_or("encode needs program")?;
-            let args: Vec<String> = e["args"].as_array().ok_or("encode needs args")?.iter().filter_map(|a| a.as_str().map(String::from)).collect();
-            s.sink = Some(Sink::start(program, &args)?);
-        }
-    }
-    let t0 = Instant::now();
-    let mut ms = vec![];
-    for i in 0..n {
-        let t = start + i as f64 / fps;
-        let tf = Instant::now();
-        let mut f = json!({ "t": t, "index": (t * fps).round() as u64, "alpha": req["alpha"].as_bool() == Some(true) });
-        match images {
-            Some(p) => f["image"] = json!(p.replace("{frame}", &format!("{:04}", (t * fps).round() as u64))),
-            None => f["encode"] = json!(true),
-        }
-        frame(held, s, &f).map_err(|e| format!("export frame {i} (t={t:.3} s): {e}"))?;
-        ms.push(tf.elapsed().as_secs_f64() * 1000.0);
-        if req["progress"].as_bool() == Some(true) {
-            progress(i + 1, n);
-        }
-    }
-    let code = if images.is_none() { Some(serve::finish(s)?) } else { None };
-    if let Some(file) = req["file"].as_str() {
-        if std::fs::metadata(file).map_or(true, |m| m.len() == 0) {
-            return Err(format!("export wrote no file: {file}"));
-        }
-    }
-    let mut sorted = ms.clone();
-    sorted.sort_by(f64::total_cmp);
-    let timing = json!({ "totalS": t0.elapsed().as_secs_f64(), "medianMs": sorted[sorted.len() / 2], "maxMs": sorted[sorted.len() - 1], "firstMs": ms[0] });
-    Ok(json!({ "ok": true, "frames": n, "fps": fps, "code": code, "timing": timing }))
 }

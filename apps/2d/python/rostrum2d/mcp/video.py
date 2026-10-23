@@ -78,8 +78,11 @@ def render_video(ctx, args):
                 files.append(copy_to)
                 beside = project.save_beside(folder, item, files[0].parent, copy_to.with_name(copy_to.stem + ".project"))
         said = f" The project is saved beside the copy: {beside}." if partial and copy_to else ""
-        return Reply(f'Rendered {comp["id"]}: {info["frames"]} frames at {info["fps"]} fps, {start:g}–{end:g} s.{said}',
+        took = info["timing"]["totalS"]
+        return Reply(f'Rendered {comp["id"]}: {info["frames"]} frames at {info["fps"]} fps, {start:g}–{end:g} s, in {took // 60:.0f} min {took % 60:02.0f} s '
+                     f'on {info.get("adapter") or "the processor"}.{said}',
                      {"frames": info["frames"], "fps": info["fps"], "start": start, "end": end, "sound": info.get("sound"),
-                      "project_copy": str(beside) if said else None}, files, warnings=scene.get("warnings", []))
+                      "project_copy": str(beside) if said else None, "seconds": round(took, 1), "adapter": info.get("adapter"),
+                      "timing": info["timing"]}, files, warnings=scene.get("warnings", []) + [w for w in [info.get("warning")] if w])
 
     return ctx.job(f'render_video {comp["id"]} {start:g}-{end:g}s', job_fn, key=f"video|{doc.item_id}|{comp['id']}|{start}|{end}|{s['quality']}|{s['bitrate']}|{s['sound']}|{doc.seq}|{out}")
