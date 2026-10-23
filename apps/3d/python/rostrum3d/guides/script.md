@@ -47,7 +47,8 @@ The fields, by item (all items also take `x y z rx ry rz sx sy sz visible`; a ri
 - **rig** `rig radius height angle armLength lift swing travel pan tilt handheld shake shakeFrequency shakeMove seed`.
 - **material** `baseColor baseColorTexture metallic roughness roughnessTexture transmission ior coat coatRoughness anisotropy anisotropyRotation bumpTexture bumpStrength emissionColor emissionStrength thinFilm`.
 - **import** `file prim material`; **part** `path material visible`.
-- **shot** `camera fps start end width height background`.
+- **shot** `camera fps start end width height background`; its render settings `renderQuality renderSamples renderDenoise renderSize renderRange renderStart renderEnd`
+  (`inspect_guide` `agents`, "Render settings and the time estimate").
 - Every item also takes `name="…"` (what screens show). Left out, the name is the id.
 - A plane lies flat, facing up: `width` (along X) × `depth` (along Z); it has no `height`.
 - `lightsOnly` takes a handle, a list of handles / ids (`lightsOnly=[device, "floor"]`), or ids separated by spaces.
