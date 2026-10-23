@@ -43,10 +43,8 @@ class Session:
                                           "onion": bridge.painter.provider})
         old = (self.bridge, self.engine, self.win)
         self.bridge, self.engine, self.win = bridge, engine, win
-        if old[0] is not None:
-            stop(old[1], old[2])                         # the window and its bindings first, then what they read
-            old[0]._unsubscribe()
-            old[0].close()
+        if old[0] is not None:                           # the window and its bindings first, then what they read
+            stop(old[1], old[2], then=lambda: (old[0]._unsubscribe(), old[0].close()))
 
     def close(self):
         """At quit: the start screen's picture is kept, then the window and its bindings go (the kit's stop), then the

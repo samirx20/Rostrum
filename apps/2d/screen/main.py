@@ -30,7 +30,7 @@ from PySide6.QtGui import QGuiApplication
 
 from rostrum_core import Document
 from rostrum_core.storage import paths
-from rostrum_gui import layout_run
+from rostrum_gui import layout_run, qt_faults
 from rostrum2d import KIND, run_source
 from screen2d.sample import SOURCE
 from screen2d.session import Session
@@ -149,7 +149,7 @@ def main():
                           lambda: (print("FAIL: timeout: the run went on too long", file=sys.stderr), app.exit(4)))
     app.exec()
     session.close()
-    sys.exit(code[0])
+    sys.exit(qt_faults.code(code[0]))    # a Qt fault fails a scripted run (rostrum_gui/qt_faults.py)
 
 
 if __name__ == "__main__":

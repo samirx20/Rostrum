@@ -7,6 +7,7 @@ from pathlib import Path
 
 KIT_QML = Path(__file__).resolve().parent.parent / "qml"     # holds the RostrumKit module
 UI_FONTS = ["Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", "SF Pro Text", "Helvetica Neue"]
+_styled = False                                              # the Quick Controls style is set (once, before any QML)
 MONO_FONTS = ["Cascadia Mono", "Cascadia Code", "Consolas", "SF Mono", "Menlo"]
 
 
@@ -20,7 +21,12 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     from PySide6.QtQuickControls2 import QQuickStyle
     from PySide6.QtCore import QUrl
 
-    QQuickStyle.setStyle("Basic")      # we draw every control ourselves; Basic is only the Popup base
+    from . import qt_faults
+    qt_faults.watch()                  # Qt's "not supported" warnings fail a scripted run (qt_faults.py)
+    global _styled
+    if not _styled:                    # once per process, before the first engine: a second window must not set it
+        QQuickStyle.setStyle("Basic")  # we draw every control ourselves; Basic is only the Popup base
+        _styled = True
     app = QGuiApplication.instance() or QGuiApplication(sys.argv)
     link_in_accent(app)
     families = set(QFontDatabase.families())
@@ -56,15 +62,28 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     return app, engine, win
 
 
-def stop(engine, win=None):
-    """Close a window started by `start`: the window and its engine go first, now, then the caller releases what their
+def stop(engine, win=None, then=None):
+    """Close a window started by `start`: the window and its engine go first, then `then()` releases what their
     bindings read (the bridge, its parts, image providers). The other way round, every binding still alive re-reads a
-    context object that is already gone ("Cannot read property … of null"). Every app closes its windows through this."""
+    context object that is already gone ("Cannot read property … of null"). Every app closes its windows through this.
+    While the event loop runs (a click opened another project) the window hides now and the deleting waits for the next
+    turn of the loop: the click's own QML handler may still be running, and deleting its item under it is not
+    supported (the start screen's New, H43). At quit (the loop has ended) everything goes at once."""
     import shiboken6
+    from PySide6.QtCore import QCoreApplication, QTimer
     if win is not None:
         win.close()
-    if engine is not None and shiboken6.isValid(engine):
-        shiboken6.delete(engine)                   # destroys the window and every binding with it
+
+    def finish():
+        if engine is not None and shiboken6.isValid(engine):
+            shiboken6.delete(engine)               # destroys the window and every binding with it
+        if then is not None:
+            then()
+    app = QCoreApplication.instance()
+    if app is not None and app.thread().loopLevel() > 0:
+        QTimer.singleShot(0, finish)
+    else:
+        finish()
 
 
 def link_in_accent(app):
