@@ -59,12 +59,16 @@ class ActionHub(QObject):
 
     @Slot()
     def refresh(self):
-        """Call after the selection or the document changed."""
+        """Call after the selection or the document changed. Re-sends only what changed: a drag step that leaves the
+        actions alone redraws neither row."""
         facts, entries = self._now()
-        self._bar = views.bar(entries, self._what(facts))
-        self._panel = views.panel(entries, self.list.short_menu)
-        self.barChanged.emit()
-        self.panelChanged.emit()
+        bar, panel = views.bar(entries, self._what(facts)), views.panel(entries, self.list.short_menu)
+        if bar != self._bar:
+            self._bar = bar
+            self.barChanged.emit()
+        if panel != self._panel:
+            self._panel = panel
+            self.panelChanged.emit()
 
     @Slot(result="QVariantList")
     def menu(self):

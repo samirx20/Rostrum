@@ -20,7 +20,7 @@ class KeyBar(QObject):
         super().__init__(parent)
         self.b, self._drag, self._grab = bridge, None, None
         bridge._keys.changed.connect(self.changed)
-        bridge.selectionChanged.connect(self.changed)
+        bridge.selectedItemsChanged.connect(self.changed)
         bridge.outlineChanged.connect(self.changed)
 
     def picked(self) -> list[str]:

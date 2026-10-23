@@ -51,7 +51,7 @@ class EffectsPart(QObject):
         self._groups: list = []
         self._opening = False
         bridge.docChanged.connect(self._sync)
-        bridge.selectionChanged.connect(self._sync)
+        bridge.selectedItemsChanged.connect(self._sync)
         bridge.searchChanged.connect(self.changed)
         self._sync()
 

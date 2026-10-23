@@ -33,7 +33,7 @@ class DuckHub(QObject):
         self._static = [r for r in rows.layout(self.doc.kind.registry.field_op("duck")) if r["row"] != "group" and r["id"] != "under"]
         self._panel: dict = {}
         bridge.docChanged.connect(self._refresh)
-        bridge.selectionChanged.connect(self._follow)
+        bridge.selectedItemsChanged.connect(self._follow)
 
     @Property(QObject, constant=True)
     def controls(self):

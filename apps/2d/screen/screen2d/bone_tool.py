@@ -28,7 +28,7 @@ class BoneTool(QObject):
         self._from = None                   # (rig px point, parent bone id or None = found from the joint): the chain
         self._press = None                  # (comp px point, the start it makes, on a joint) while the button is down
         self._pointer = None
-        for sig in (bridge.selectionChanged, bridge.docChanged):
+        for sig in (bridge.selectedItemsChanged, bridge.docChanged):
             sig.connect(self._check)
         rig_view.changed.connect(self.changed)
 

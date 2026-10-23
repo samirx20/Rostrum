@@ -24,6 +24,7 @@ from PySide6.QtCore import Slot
 from rostrum_core.tree import index
 from rostrum2d import retime
 
+from . import bounds
 from .playstats import STATS
 
 DRAG_SCALE = 0.5           # the engine's `scale` while dragging
@@ -39,6 +40,7 @@ class ShownState:
     def _shown_init(self):
         self._shown = None          # (doc.data, marker times, t) of the frame on screen; None: none yet (the live state)
         self._shown_placed = None   # (key, the comp placed): worked out once per shown state
+        self._shown_boxes = None    # (placed, t, bounds.boxes): the same, for the overlays' boxes
         self._asked = {}            # id(doc.data) → when a drag made it (for drag→shown)
         self._zoom, self._view = 1.0, 1.0   # the canvas's zoom (screen px per composition px) and its engine scale
 
@@ -112,6 +114,14 @@ class ShownState:
                 return self.placed()
             self._shown_placed = (self._shown, retime.timed(comp.item, self.times(), comp.item["fps"]))
         return self._shown_placed[1]
+
+    def shown_boxes(self) -> list[dict]:
+        """bounds.boxes of the picture on screen, worked out once per picture: the selection box, the group outlines
+        and the agent view all ask on each frame."""
+        placed, t = self.shown_placed(), self.shown_t()
+        if self._shown_boxes is None or self._shown_boxes[0] is not placed or self._shown_boxes[1] != t:
+            self._shown_boxes = (placed, t, bounds.boxes(placed, t))
+        return self._shown_boxes[2]
 
     def shown_item(self, id_: str) -> dict | None:
         """An item of the document as the picture on screen shows it (its own times, as doc.item): None when the

@@ -55,7 +55,7 @@ class Create(QObject):
         super().__init__(parent or bridge)
         self.b, self._press, self._box, self._text, self._style = bridge, None, {}, None, {}
         bridge.toolChanged.connect(self._tool_changed)
-        bridge.selectionChanged.connect(self.canEditChanged)        # canEdit follows the selection and the typing
+        bridge.selectedItemsChanged.connect(self.canEditChanged)        # canEdit follows the selection and the typing
         self.typingChanged.connect(self.canEditChanged)
 
     # ---- reads for QML ------------------------------------------------------------------------------------------

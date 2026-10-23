@@ -55,7 +55,7 @@ class LibraryPanel(QObject):
         self._heard.changed.connect(self.changed)
         self._heard.failed.connect(self._heard_failed)
         self._adder, self._tried = Adder(bridge, self), {}      # a sound tried on the selected track (Keep / Revert)
-        bridge.selectionChanged.connect(self._selection_moved)
+        bridge.selectedItemsChanged.connect(self._selection_moved)
         self._trial = SwapTrial(bridge)
         bridge.picksChanged.connect(self._picked)       # a clip picked: the rows offer Swap; another pick ends a trial
         bridge.docChanged.connect(self.changed)

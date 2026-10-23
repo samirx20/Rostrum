@@ -27,15 +27,27 @@ class SelectSlots(SlotMixin):
         gone = [i for i in ids if not self.doc.has(i)]
         if gone:
             return self._fail(f'Error: select: no item "{gone[0]}".')
+        moved = ids != k.selection
         k.selection, k.sel = ids, ids[0] if ids else ""
         kinds = [self.doc.item(i)["type"] for i in ids]
         reg = self.doc.kind.registry
         k.op_kind = (many.shared_op([reg.field_op(t) for t in kinds]) if ids else None,
                      kinds[0] if len(set(kinds)) == 1 else "")
         k.static = self._layout()
-        self.model.reset(self._rows())      # a new selection swaps the list at once (no reveal animation)
+        self.model.update(self._rows(), instant=True)    # in place and at once: no reveal animation, and only the
+                                                        # rows another kind adds or drops are made or freed
         self.rowsChanged.emit()
-        self.selectionChanged.emit()
+        if moved:
+            self.selectedItemsChanged.emit()
+        self._announce(force=True)
+
+    def _announce(self, force=False):
+        """selectionChanged, when what the selection shows changed (or `force`): a document edit that leaves the
+        name and kind alone (a drag, a typed value) re-sends nothing, so its listeners don't redo their work."""
+        shown = self.selectedItem
+        if force or shown != self._kit.shown_sel:
+            self._kit.shown_sel = shown
+            self.selectionChanged.emit()
 
     @Slot(result="QVariantList")
     def narrowLines(self):
@@ -66,7 +78,7 @@ class SelectSlots(SlotMixin):
     def toggleMore(self):
         self._kit.more = not self._kit.more
         self._refresh()
-        self.selectionChanged.emit()
+        self._announce(force=True)
 
     def shown(self):
         """(on screen, behind More): param names for the selection, in screen order."""
@@ -108,4 +120,4 @@ class SelectSlots(SlotMixin):
             self.selectMany(kept) if len(kept) > 1 else self.select(kept[0] if kept else self._first())
         else:
             self._refresh()
-            self.selectionChanged.emit()                   # its name may have changed (an agent's rename)
+            self._announce()                               # only if its name or kind changed (an agent's rename)

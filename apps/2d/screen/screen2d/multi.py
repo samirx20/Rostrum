@@ -16,14 +16,14 @@ class Multi(QObject):
     def __init__(self, bridge):
         super().__init__(bridge)
         self.b = bridge
-        for s in (bridge.selectionChanged, bridge.outlineChanged, bridge.shownChanged):
+        for s in (bridge.selectedItemsChanged, bridge.outlineChanged, bridge.shownChanged):
             s.connect(self.changed)
 
     @Property("QVariantList", notify=changed)
     def boxes(self):
         """The box of every selected layer (the primary first): the outlines the canvas draws, as the picture on screen
         shows them (shown.py; a layer newer than the picture has none yet)."""
-        by = {x["id"]: x for x in bounds.boxes(self.b.shown_placed(), self.b.shown_t())}
+        by = {x["id"]: x for x in self.b.shown_boxes()}
         return [by[i] for i in self.layers() if i in by]
 
     @Property("QVariantMap", notify=changed)

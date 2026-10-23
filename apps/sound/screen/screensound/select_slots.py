@@ -189,7 +189,7 @@ class SelectSlots:
 
     def _follow_kit(self):
         """The kit's selection is the one list (anything may call its `selectMany`); the order, anchor and range
-        here follow it (bridge.py connects this to selectionChanged)."""
+        here follow it (bridge.py connects this to selectedItemsChanged)."""
         ids = list(self.selection)
         if ids != self._picks.ids:
             self._picks.set(ids, self._picks.anchor if self._picks.anchor in ids else None)

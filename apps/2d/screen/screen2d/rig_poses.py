@@ -18,7 +18,7 @@ class PoseList(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.b, self._drag, self._blend = bridge, None, ("", 0.0)
-        for sig in (bridge.rig.changed, bridge.docChanged, bridge.selectionChanged):
+        for sig in (bridge.rig.changed, bridge.docChanged, bridge.selectedItemsChanged):
             sig.connect(self.changed)
 
     @Property(str, notify=changed)
