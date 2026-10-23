@@ -70,8 +70,8 @@ Rectangle {
             }
         }
 
-        Row {       // New (big), then the other ways in
-            spacing: Theme.groupGap
+        Item {      // New (big), then the other ways in, centred on its height
+            width: parent.width; height: newTile.height
             Rectangle {
                 id: newTile
                 width: Math.max(200, start.cardWidth); height: 112; radius: Theme.radiusPanel
@@ -90,6 +90,7 @@ Rectangle {
             }
             Column {
                 spacing: Theme.gap
+                x: newTile.width + Theme.groupGap
                 anchors.verticalCenter: newTile.verticalCenter
                 width: start.contentWidth - newTile.width - Theme.groupGap
                 Button {
@@ -135,7 +136,7 @@ Rectangle {
                         }
                         Text { id: cardName; x: Theme.pad; y: card.pictured ? start.pictureHeight + 6 : (card.height - 36) / 2
                                width: parent.width - 2 * Theme.pad
-                               text: card.modelData.name; elide: Text.ElideRight; color: Theme.fg
+                               text: card.modelData.name; elide: Text.ElideMiddle; color: Theme.fg
                                font.family: uiFont; font.pixelSize: Theme.body }
                         Text { x: Theme.pad; y: cardName.y + 20; width: parent.width - 2 * Theme.pad; text: card.modelData.when
                                elide: Text.ElideRight; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }

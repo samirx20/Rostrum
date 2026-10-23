@@ -129,7 +129,7 @@ QQC.Popup {
                         id: chip
                         visible: !row.sub && !!row.modelData.keys
                         anchors { right: parent.right; rightMargin: Theme.gap - menu.padding; verticalCenter: parent.verticalCenter }
-                        text: row.modelData.keys || ""; color: Theme.fg3; font.pixelSize: Theme.label; font.family: uiFont
+                        text: row.modelData.keys || ""; color: Theme.fg2; font.pixelSize: Theme.label; font.family: uiFont
                     }
                     Chevron {
                         visible: row.sub; rotation: -90; color: Theme.fg2
