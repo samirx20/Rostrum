@@ -55,7 +55,7 @@ class Pen(QObject):
         self._pick = ("", -1)         # (path layer, its selected point): only that point shows its handles
         bridge.outlineChanged.connect(self.changed)
         bridge.timeChanged.connect(self.changed)
-        bridge.toolChanged.connect(self.changed)
+        bridge.toolChanged.connect(self._tool_changed)
         bridge.shownChanged.connect(self.changed)           # the points follow the picture on screen (shown.py)            # on = the bridge's tool is "pen" (one source of truth)
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
@@ -148,12 +148,14 @@ class Pen(QObject):
             new_path_calls(self.b.comp_id, pid, pts, closed), self.b.who, label="Draw path"), ""))
         if ok:
             self.b.select(pid)
+            self.setOn(False)           # made: back to Move, the path selected (no Done step)
         return ok
 
-    @Slot(result=bool)
-    def close(self) -> bool:
-        """The context bar's Close path: the path ends closed (one change), like a click on its first point."""
-        return self.finish(True)
+    def _tool_changed(self):
+        """Another tool ends the path being drawn (kept, open), as Enter does."""
+        if self._draft and not self.on:
+            self.finish()
+        self.changed.emit()
 
     # ---- editing the selected path's points: one drag = one gesture -------------------------------------------
     @Slot(int, str, result=bool)

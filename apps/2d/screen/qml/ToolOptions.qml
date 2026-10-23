@@ -3,10 +3,11 @@ import RostrumKit
 
 // A tool's few options, shown by the kit's context bar in place of the selection's actions (UX_SPEC 4.3; Stage.qml
 // gives it as ContextBar.toolOptions). `mode`:
-//   pen    how to click, Close path, Done (backend.pen)
+//   pen    how to click (backend.pen; click the first point, Enter / Esc or another tool ends the path: no Done)
 //   paint  PaintOptions.qml: the brush's bar settings (the painting kit's placement table), Eraser (E), Fill (G),
 //          + Paint layer and Painting on: … ▸
-//   text   while typing: Font, Weight, Size, Colour, Done (backend.create.style / setStyle / done: in the typing's one change)
+//   text   while typing: Font, Weight, Size, Colour (backend.create.style / setStyle: in the typing's one change;
+//          a click outside, Esc or Ctrl+Enter ends it: no Done)
 // The settings panel holds everything else.
 Row {
     id: opts
@@ -18,12 +19,9 @@ Row {
                                     { value: 600, label: "Semibold" }, { value: 700, label: "Bold" }, { value: 800, label: "Heavy" }]
 
     component Words: Text { anchors.verticalCenter: parent.verticalCenter; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
-    component Act: Button { anchors.verticalCenter: parent.verticalCenter }
 
     // ---- Pen ----
-    Words { visible: opts.mode === "pen"; text: backend.pen.draft.length === 0 ? "Click: corner  ·  Drag: curve" : "Click the first point to close" }
-    Act { visible: opts.mode === "pen" && backend.pen.draft.length > 2; text: "Close path"; onClicked: { backend.pen.close(); backend.setTool("move") } }
-    Act { visible: opts.mode === "pen"; text: "Done"; onClicked: { backend.pen.finish(); backend.setTool("move") } }
+    Words { visible: opts.mode === "pen"; text: backend.pen.draft.length === 0 ? "Click: corner  ·  Drag: curve" : "Click the first point to close  ·  Enter to finish" }
 
     // ---- Paint (PaintOptions.qml: the brush's bar settings, Eraser, Fill, + Paint layer, Painting on) ----
     PaintOptions { visible: opts.mode === "paint" && backend.strokeSelect.count === 0; room: opts.room; anchors.verticalCenter: parent.verticalCenter }
@@ -48,5 +46,4 @@ Row {
         visible: opts.mode === "text"; anchors.verticalCenter: parent.verticalCenter; width: 96
         hex: opts.look.color || "#ffffff"; onEdited: (v) => backend.create.setStyle("color", v)
     }
-    Act { visible: opts.mode === "text"; text: "Done"; onClicked: backend.create.done() }
 }

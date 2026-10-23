@@ -10,6 +10,10 @@ SIBLING_PICKS = {"matte": lambda s: True,                          # any layer b
                  "ridePath": lambda s: s.get("type") == "path" and not s.get("ridePath")}   # a layer rides one (not a riding one)
 
 
+# A group's and a rig's box is their children's space, not a size to set; a text's words are typed on the canvas only.
+ON_PAGE = {"group": {"w", "h"}, "rig": {"w", "h"}, "text": {"body"}}
+
+
 class Hooks2D:
     def label_of(self, item):
         owner = self.doc.item(self.doc.parent_of(item["id"])[0]) if item.get("type") == "key" else None
@@ -23,8 +27,8 @@ class Hooks2D:
             return f"{len(ids)} layers"
         return super().selection_label(ids)
 
-    def on_page(self, item):             # a group's and a rig's box is their children's space, not a size to set (agents still can)
-        return {"w", "h"} if item.get("type") in ("group", "rig") else super().on_page(item)
+    def on_page(self, item):             # fields the screen shows elsewhere (agents still set them through the operation)
+        return ON_PAGE.get(item.get("type"), set()) | super().on_page(item)
 
     def edit_call(self, item_id, param, value):
         if param == size_rows.ROW and self.doc.item(item_id)["type"] == "comp":      # Scene settings › Size: comp.size

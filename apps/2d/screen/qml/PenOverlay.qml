@@ -3,7 +3,8 @@ import QtQuick.Shapes
 import RostrumKit
 
 // The pen tool and a path's points, over the canvas (screen2d/pen.py does the work; the tool strip turns the pen on).
-// Pen on: click = corner point, press-drag = smooth point, click the first point = close, Enter / Escape = done.
+// Pen on: click = corner point, press-drag = smooth point, click the first point = close, Enter / Escape / another tool = made
+// (open), then Move with the path selected; no Done (the hint is in the context bar, ToolOptions.qml).
 // A selected path layer shows its points (square = corner, round = smooth); click a point to select it and its handles show; dragging one is one
 // change (Alt: move one handle alone). `ox`, `oy`, `fit`: where the frame sits in this item and its scale.
 Item {
@@ -94,12 +95,5 @@ Item {
         }
     }
 
-    Text {
-        visible: ov.pen.on
-        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: Theme.pad }
-        text: ov.pts.length === 0 ? "Click for a corner, drag for a curve"
-            : "Click the first point to close  ·  Enter to finish"
-        color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
-    }
     Shortcut { sequences: ["Return", "Enter", "Escape"]; enabled: ov.pen.on; onActivated: { ov.pen.finish(); ov.pen.setOn(false) } }
 }
