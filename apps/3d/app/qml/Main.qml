@@ -24,6 +24,7 @@ AppShell {
 
     function openFileMenu() { fileMenu.openMenu() }               // (the scripted `file-menu` step)
     function openRailGroup(id) { return rail.openGroup(id) }      // (the scripted `rail <group>` step)
+    function openContext(id) { vp3d.openContext(id) }              // (the scripted `context <id | ->` step)
     function openMaterials() { materialsList.openFrom(materialsChip) }
     function openPicker() { materialRow.openPicker() }           // (the scripted `picker` step)
     function openShots() { shotsMenu.openFrom(crumb, "left") }
@@ -42,6 +43,11 @@ AppShell {
     Shortcut { sequence: "Escape"; enabled: backend.renderJob.state === "done" || backend.renderJob.state === "failed"
                onActivated: backend.renderJob.dismiss() }
     Shortcut { sequence: "Escape"; enabled: backend.renderJob.state === "running"; onActivated: backend.renderJob.cancel() }
+    Shortcut { sequence: "Escape"   // nothing else wants it: let go of the selection (the Scene panel shows)
+               enabled: backend.selected !== "" && !startScreen.visible && (backend.renderJob.state === "idle" || backend.renderJob.state === "")
+               onActivated: backend.select("") }
+    Shortcut { sequence: "`"; enabled: viewport.hasShot && !startScreen.visible   // shot camera <-> free camera
+               onActivated: viewport.setMode(viewport.mode === "shot" ? "free" : "shot") }
     Shortcut { sequence: "Delete"; enabled: backend.adder.canDelete; onActivated: backend.adder.remove() }
     Shortcut { sequence: "Ctrl+D"; enabled: backend.adder.canDuplicate; onActivated: backend.adder.duplicate() }
     Shortcut { sequence: "Ctrl+1"; onActivated: backend.setPage("build") }
@@ -50,6 +56,12 @@ AppShell {
     Shortcut { sequence: "R"; enabled: !startScreen.visible; onActivated: rail.openGroup("shapes") }
     Shortcut { sequence: "L"; enabled: !startScreen.visible; onActivated: rail.openGroup("lights") }
     Shortcut { sequence: "C"; enabled: !startScreen.visible; onActivated: rail.openGroup("camera") }
+    // the gizmo (gizmo_qt.py): V all handles, W move, E turn, S scale; K keys what it moved; D held: the pivot
+    Shortcut { sequence: "V"; enabled: !startScreen.visible; onActivated: gizmo.setShow("all") }
+    Shortcut { sequence: "W"; enabled: !startScreen.visible; onActivated: gizmo.setShow("move") }
+    Shortcut { sequence: "E"; enabled: !startScreen.visible; onActivated: gizmo.setShow("turn") }
+    Shortcut { sequence: "S"; enabled: !startScreen.visible; onActivated: gizmo.setShow("scale") }
+    Shortcut { sequence: "K"; enabled: !startScreen.visible && backend.selected !== ""; onActivated: gizmo.keyMoved() }
 
     menu: FilesMenu {    // ≡ (kit): New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen; then Export
         id: fileMenu
@@ -90,7 +102,7 @@ AppShell {
             id: viewChip
             anchors.verticalCenter: parent.verticalCenter
             kind: "ghost"
-            text: ({ shot: "Shot camera", free: "Free camera", light: "Through the light" })[viewport.mode] || "Shot camera"
+            text: "View  " + (({ shot: "Shot camera", free: "Free camera", light: "Through the light" })[viewport.mode] || "Shot camera")
             onClicked: shell.openView()
             Menu {
                 id: viewMenu
@@ -98,12 +110,16 @@ AppShell {
                 onPicked: (v) => viewport.setMode(v)
             }
         },
-        Segmented {  // Look: Quick | Final, once the viewport offers Final (Team Priyam's brief 12: viewport.look / setLook)
-            visible: viewport.look !== undefined
+        Row {        // Look: Quick | Final (Shift+F)
             anchors.verticalCenter: parent.verticalCenter
-            options: [{ value: "quick", label: "Quick" }, { value: "final", label: "Final" }]
-            current: viewport.look || "quick"
-            onPicked: (v) => viewport.setLook(v)
+            spacing: Theme.gap
+            Text { text: "Look"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body; anchors.verticalCenter: parent.verticalCenter }
+            Segmented {
+                anchors.verticalCenter: parent.verticalCenter
+                options: [{ value: "quick", label: "Quick" }, { value: "final", label: "Final" }]
+                current: viewport.look
+                onPicked: (v) => viewport.setLook(v)
+            }
         },
         Button {    // the project's materials: pick one to edit it, or make a new one
             id: materialsChip
@@ -116,19 +132,22 @@ AppShell {
     ]
     rail: Rail3D { id: rail; height: parent ? parent.height : 0 }
     centre: [
-        Viewport { anchors.fill: parent },
+        Viewport { id: vp3d; anchors.fill: parent },
         RenderView { anchors.fill: parent }
     ]
-    right: Inspector {
-        anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions
-        below: Column {     // the item's material (SPEC §6.1): its row with the picker, then the material's own settings inline
-            width: parent ? parent.width : 0
-            MaterialRow { id: materialRow; width: parent.width }
-            Repeater {
-                model: backend.mats.rows
-                delegate: InspectorRow { bridge: backend.mats; instant: backend.mats.rows.instant }
+    right: Item {   anchors.fill: parent   // the selection's settings, or the Scene (the shot's view, sky and values) with nothing selected
+        Inspector {
+            anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== ""
+            below: Column {     // the item's material (SPEC §6.1): its row with the picker, then the material's own settings inline
+                width: parent ? parent.width : 0
+                MaterialRow { id: materialRow; width: parent.width }
+                Repeater {
+                    model: backend.mats.rows
+                    delegate: InspectorRow { bridge: backend.mats; instant: backend.mats.rows.instant }
+                }
             }
         }
+        ScenePanel { anchors.fill: parent; visible: backend.selected === "" }
     }
     bottom: SceneList { anchors.fill: parent }
 }

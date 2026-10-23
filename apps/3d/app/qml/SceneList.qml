@@ -67,6 +67,8 @@ Rectangle {
         width: 1; height: parent.height - y - Theme.grid; color: Theme.accent; opacity: 0.8
     }
 
+    ContextMenu3D { id: menu }
+
     component SceneRow: Rectangle {
         id: row
         required property var modelData
@@ -76,11 +78,14 @@ Rectangle {
         readonly property int indent: Theme.gap + modelData.depth * 16
         height: field ? Theme.rowDense - 2 : Theme.rowDense; radius: Theme.radiusCtl
         color: selected ? Theme.accentSoft : hover.containsMouse || inSelected ? Theme.hover : "transparent"
-        MouseArea { id: hover; anchors.fill: parent; hoverEnabled: true; onClicked: (m) => {   // Ctrl+click adds or takes out; Shift+click picks the run from the primary
-            if (row.field) backend.select(row.modelData.owner)
-            else if (m.modifiers & Qt.ControlModifier) backend.toggleInSelection(row.modelData.id)
-            else if (m.modifiers & Qt.ShiftModifier) backend.selectRange(row.modelData.id)
-            else backend.select(row.modelData.owner) } }
+        MouseArea { id: hover; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: (m) => {   // Ctrl+click adds or takes out; Shift+click picks the run from the primary; right-click picks and opens the menu
+                        if (m.button === Qt.RightButton) { backend.select(row.modelData.owner); menu.openAt(row, m.x, m.y, row.modelData.owner) }
+                        else if (row.field) backend.select(row.modelData.owner)
+                        else if (m.modifiers & Qt.ControlModifier) backend.toggleInSelection(row.modelData.id)
+                        else if (m.modifiers & Qt.ShiftModifier) backend.selectRange(row.modelData.id)
+                        else backend.select(row.modelData.owner)
+                    } }
         DropArea {  // a material dragged from the picker or the Materials list: this item gets it (the row lights while it hovers)
             anchors.fill: parent; keys: ["rostrum-material"]; enabled: !row.field
             onDropped: (d) => { backend.mats.dropOn(d.source.materialId, row.modelData.id); d.accept() }

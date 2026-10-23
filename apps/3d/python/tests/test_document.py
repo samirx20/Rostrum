@@ -6,7 +6,7 @@ from rostrum_core.errors import RostrumError
 
 from rostrum3d import KIND, run_source
 from rostrum3d import fields as F
-from rostrum3d.compile import AIM_FIELDS, DOCUMENT_ONLY, describe
+from rostrum3d.compile import DOCUMENT_ONLY, RESOLVED, describe
 
 SAM = Who.person()
 SRC = '''
@@ -46,7 +46,7 @@ def test_a_taken_id_is_refused_naming_what_holds_it():
 
 def _check_node(node, n_frames):
     type_ = node["type"]
-    want = {p.name for p in F.FIELDS[type_]} - AIM_FIELDS | ({"parts"} if type_ == "import" else set())
+    want = {p.name for p in F.FIELDS[type_]} - RESOLVED | ({"parts"} if type_ == "import" else set())
     want -= {"turn"} if type_ == "light" else set()                          # a dome's turn is sent as its ry
     want -= DOCUMENT_ONLY if type_ == "mesh" else set()                      # words, fonts, files: compiled to the outline
     assert set(node["props"]) == want, node["id"]
@@ -65,3 +65,14 @@ def test_describe_meets_the_contract():
     assert set(by_id["key"]["props"]) >= {"rx", "ry"} and abs(by_id["key"]["props"]["ry"] - 33.690068) < 1e-4
     assert scene["materials"][0]["props"]["baseColor"][0] < 0.6                     # linear, not sRGB 0.79
     assert by_id["phone"]["props"]["parts"] == [{"path": "Body/Screen", "material": "", "visible": True}]
+
+
+def test_pivot_stays_put_while_turning():
+    """Position is where the pivot stands: turning and scaling around it never moves that point (compile.pivoted)."""
+    from rostrum3d import aim
+    from rostrum3d.compile import pivoted
+    v = {"x": 1.0, "y": 2.0, "z": 3.0, "rx": 30.0, "ry": 45.0, "rz": 10.0, "sx": 2.0, "sy": 1.0, "sz": 0.5,
+         "px": 0.1, "py": -0.2, "pz": 0.3}
+    origin = pivoted(v)
+    world = aim.local({**v, "x": origin[0], "y": origin[1], "z": origin[2]})
+    assert [round(c, 9) for c in aim.point(world, [0.1, -0.2, 0.3])] == [1.0, 2.0, 3.0]

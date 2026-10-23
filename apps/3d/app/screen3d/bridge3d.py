@@ -21,10 +21,11 @@ from rostrum_gui.markers import MarkerWatch
 
 from rostrum3d import fields as F
 
-from . import outline, route
+from . import outline, route, scene_state
 from .action_preview3d import ActionPreview3D
 from .adding import Adder
-from .material_balls import MaterialBalls
+from .context_qt import Context
+from .material_balls import BallRenderer, MaterialBalls
 from .materials import USERS, Materials3D
 from .render_job import RenderJob
 
@@ -64,10 +65,11 @@ class Bridge3D(ActionPreview3D, DocBridge):
         self.join_history(self.marks)                       # marker edits undo with the screen's one history
         self.render = RenderJob(self, render_engine)
         self.add = Adder(self)
+        self.ctx = Context(self)
         self.selectedItemsChanged.connect(self.outlineChanged)     # the scene list lights every selected row
         self._make_actions()                                # the settings panel's actions (Combine) and their hover preview
         self.viewport = viewport(self) if viewport else None
-        self.balls = MaterialBalls(self.viewport._r if self.viewport is not None else None)   # rendered preview balls
+        self.balls = MaterialBalls(BallRenderer() if self.viewport is not None else None)   # rendered preview balls
         self._mats = Materials3D(self, self.balls)   # the picker, the chip, the inline rows
 
     # ---- what the viewport and QML read -----------------------------------------------------------------------
@@ -91,6 +93,11 @@ class Bridge3D(ActionPreview3D, DocBridge):
     def shotInfo(self):
         s = next((s for s in self.doc.data.get("shots", []) if s["id"] == self.shot_id), {"id": self.shot_id})
         return {**self._info, "label": outline.label_of(s)}
+
+    @Property("QVariantMap", notify=outlineChanged)
+    def sceneState(self):
+        """What the panel shows with nothing selected: {shot: {id, label, rows}, sky: {id, label} or {}} (scene_state)."""
+        return scene_state.scene_state(self.doc.data, self.shotInfo)
 
     @Property("QVariantList", notify=markersChanged)
     def markers(self):
@@ -175,6 +182,13 @@ class Bridge3D(ActionPreview3D, DocBridge):
     def on_page(self, item):
         """An item's material shows in its own Material row (MaterialRow.qml, the picker), not as a plain choice."""
         return {"material"} if item.get("type") in USERS else set()
+    @Slot(str, result="QVariantList")
+    def contextEntries(self, item_id):
+        return self.ctx.entries(item_id)
+
+    @Slot(str, str)
+    def contextRun(self, item_id, value):
+        self._guard(lambda: self.ctx.run(item_id, value))
 
     @Property(QObject, constant=True)
     def renderJob(self):
@@ -309,6 +323,8 @@ class Bridge3D(ActionPreview3D, DocBridge):
         self._timer.stop()
         self.marks.close()
         self.endDrag()
+        if self.balls._r is not None:
+            self.balls._r.close()
         if self.viewport is not None and hasattr(self.viewport, "close"):
             self.viewport.close()
 

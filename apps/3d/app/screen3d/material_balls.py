@@ -1,11 +1,11 @@
 """Material balls (SPEC §6.1): a small rendered sphere per material setting, for the picker and the Materials list.
 
-Each ball is a real Storm picture through the viewport's own engine and thread (frames.ViewRenderer.call: in order,
-never dropped), lit by one fixed neutral set-up (two distant lights and the viewport's studio light, on a mid-grey
+Each ball is a real Storm picture through the balls' own engine and thread (BallRenderer: never the viewport's, so a
+ball can never upset the viewport's scene or its selection outline), lit by one fixed neutral set-up (two distant lights and the viewport's studio light, on a mid-grey
 background). A ball is made once per set of field values and engine build, then kept in memory and on disk
 (<cache>/3d/balls/<hash>.png, the oldest beyond CAP removed), and served to QML as image://ball/<hash>.
 
-    balls = MaterialBalls(viewport_renderer)         # None (no engine, tests): url() is "" and nothing fails
+    balls = MaterialBalls(BallRenderer())            # None (no engine, tests): url() is "" and nothing fails
     balls.url(values) -> "image://ball/<hash>", or "" while it renders; `updated` fires when new balls land
 """
 from __future__ import annotations
@@ -19,7 +19,7 @@ from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QImage
 from PySide6.QtQuick import QQuickImageProvider
 from rostrum_core.cache import default_root, put_file
-from rostrum_gui.frames import image_from_pixels
+from rostrum_gui.frames import PictureWorker, image_from_pixels
 
 from rostrum3d import build, fields as F, run_source
 from rostrum3d.compile import describe
@@ -83,6 +83,32 @@ def render_balls(eng, batch: dict[str, dict], size: int = SIZE) -> dict[str, QIm
             raise RuntimeError("a material ball's picture could not be read from the engine's shared memory")
         out[key] = image
     return out
+
+
+class BallRenderer(PictureWorker):
+    """A thread and an engine process of the balls' own. The engine is ended after each batch (its graphics memory goes
+    back); the next batch starts a fresh one."""
+
+    def __init__(self, parent=None):
+        super().__init__("balls3d", parent)
+        self.start()
+
+    def open_engine(self):
+        from rostrum3d.engine import Engine
+        return Engine()
+
+    def call(self, fn):
+        """Run `fn(engine)` here, in order, never dropped."""
+        self.post_ordered(fn)
+
+    def handle(self, eng, job):
+        try:
+            job(eng)
+        finally:
+            eng.release()
+
+    def describe(self, job, error):
+        return f"Error: material balls: {error}"
 
 
 class BallProvider(QQuickImageProvider):

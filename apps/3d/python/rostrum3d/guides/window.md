@@ -14,11 +14,42 @@ sits on top of it.
 | **Build · Animate · Render** | The pages (Ctrl+1, Ctrl+2, Ctrl+3). It is the same scene, camera and selection on every page. Animate gives the keys more rows |
 | **↶ ↷** | Undo and redo (Ctrl+Z, Ctrl+Shift+Z) |
 | **Search or run a command** | Ctrl+K: every action and setting by name |
-| **Shot camera** | Which camera the viewport looks through: the shot camera, a free camera, or through the selected light |
-| **Look: Quick · Final** | Quick is the live view. Final draws the render's own picture in place. Shown once the viewport offers Final |
+| **View: Shot camera** | Which camera the viewport looks through: the shot camera, a free camera, or through the selected light. \` switches between the shot and the free camera. Orbiting in the shot camera turns it into **Free camera** (the shot's own camera stays where it is) |
+| **Look: Quick · Final** | Quick is the live view. Final draws the render's own picture in place (Shift+F) |
 | **Materials** | The project's materials, each a rendered ball with how many items use it. Click one to edit it in the settings panel, drag one onto an item to give it that material, or make a **New material** (materials.md) |
 | **Render** | One final picture of the playhead's frame through the shot camera (F12). Esc cancels it |
 | **?** | Guides (F1), keys (Ctrl+/), Connect an AI agent, About |
+
+## The viewport (middle)
+
+- Through the shot camera, the shot's frame sits in the middle with a thin edge. The scene just outside it is shown
+  too, dimmed, so you see what is in the picture and what is just out of it. (Dim outside, in the Scene panel, turns
+  the dimming off.)
+- Middle-drag or drag on empty space orbits, Shift+drag pans, the wheel zooms. A click selects what is there; a click
+  on empty space selects nothing. Double-click goes back to the shot's view.
+- **Right-click** an item (here or in the scene list): Duplicate, Delete, Look through (lights), Copy material /
+  Paste material (shapes). Right-click empty space: Frame all, New shot.
+
+### The gizmo
+
+The selected item shows its handles: **arrows** move it along X (red), Y (green) and Z (blue), the **square** in the
+middle moves it across the view, the **rings** turn it, and the small **cubes** scale it.
+
+| Key | Does |
+|---|---|
+| V | All the handles |
+| W · E · S | Only move · only turn · only scale |
+| D (hold) | The arrows move the **pivot** (the point it turns and scales around), not the item |
+| K | Keys what the gizmo moved, at the playhead (Position when nothing moved yet) |
+| Ctrl (while dragging) | No snapping |
+
+- Each drag is one undo step, and the settings panel follows as you drag.
+- Moves snap to the ground's 0 and to other items' places, turns to every 15°, scale to ×½, ×1 and ×2 (within 6 px,
+  as in 2D).
+- The label at the top left says what the drag is doing ("X 0.150 m · ball", "Turn 15.0°").
+- An animated setting gets its key at the playhead as you drag.
+- Agents do the same with the same operations: `value.set` and `key.add` on `x y z`, `rx ry rz`, `sx sy sz` and the
+  pivot `px py pz`.
 
 ## The tool rail (left edge)
 
@@ -35,7 +66,16 @@ simulation, import) appear as they are built.
 
 ## The settings panel (right)
 
-The panel shows what is selected: an item, a material, a shot or a key. Its rows come from the item's own settings:
+The panel shows what is selected: an item, a material, a shot or a key. With **nothing selected** (Esc, or a click
+on empty space) it shows the **Scene**:
+
+- **View:** Exposure, Studio light, Scene lights, Shadows (contact shadows, and their strength), Depth of field (when
+  the camera has it) and Dim outside. These are how the viewport looks: never part of the scene, never undone. In
+  Final they are absent (Final uses the Render settings).
+- **Sky:** the scene's sky light (click to edit it), or **Sky +** to add one.
+- **Shot:** size, frame rate, length and camera. Click any of them for the shot's own settings.
+
+An item's rows come from its own settings:
 
 - The thing's **own group** is always open: a shape's size, a light's brightness, a camera's lens.
 - Any other group with a changed value is open too.
