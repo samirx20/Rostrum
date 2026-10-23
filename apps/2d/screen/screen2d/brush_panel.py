@@ -1,14 +1,16 @@
 """The brush panel's side of the Brush tool: the kit's Inspector talks to this object as it does to a DocBridge (the
 same `rows` / `setValue` surface), so the settings panel is built from the brush settings' own rules (painting design
 §2.1): the header "Painting · <layer> · <kind>", the quick rows, or every setting on "Edit brush ›" (`editing`, the
-header then the brush's name). The presets (brush_presets.py) are what the brush flyout shows. The brush is screen
-state (the next stroke), not the document: nothing here is an undo step. Painter (painter.py) is one.
+header then the brush's name). The presets (brush_presets.py) and My brushes (the project's saved brushes,
+rostrum2d/brushes.py: Save this brush, Rename, Delete) are what the brush flyout shows. The brush is screen state (the
+next stroke), not the document: nothing here is an undo step. Painter (painter.py) is one.
 """
 from __future__ import annotations
 
 from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
+from rostrum2d import brushes
 from rostrum2d.names import display_name
 from rostrum_core.errors import RostrumError, codes
 from rostrum_paint import library
@@ -35,6 +37,43 @@ class BrushPanel(QObject):
     def presets(self):
         return brush_presets.groups()
 
+    @Property("QVariantList", notify=brushChanged)
+    def myBrushes(self):
+        """My brushes, by name: [{id, name}] (their strokes: image://brushes/<id>)."""
+        return [{"id": m["id"], "name": m["name"]} for m in self._mine]
+
+    canSave = Property(bool, lambda self: bool(self.b.doc.folder), notify=brushChanged)
+
+    @Slot()
+    def refreshBrushes(self):
+        """Read My brushes again (an agent may have saved one); the brush panel calls this as it opens."""
+        self.b.guard(self._read_mine)
+
+    def _read_mine(self):
+        self._mine = brushes.saved(self.b.doc.folder)
+        self.previews.saved.update({m["id"]: m["settings"] for m in self._mine})
+        if self.brush.preset in self.previews.saved:     # a renamed brush that is the brush: its new name
+            self.brush.saved_name = next((m["name"] for m in self._mine if m["id"] == self.brush.preset), self.brush.saved_name)
+        self.brushChanged.emit()
+
+    @Slot(str, result=bool)
+    def saveBrush(self, name):
+        """Save this brush: the current settings (a loaded tip or paper by its project item) under `name`, in My
+        brushes; it becomes the brush."""
+        def save():
+            self.brush.apply_saved(brushes.save(self.b.doc.folder, name, self.brush.values))
+            self._read_mine()
+            self._rows_changed()
+        return self.b.guard(save)
+
+    @Slot(str, str, result=bool)
+    def renameBrush(self, bid, name):
+        return self.b.guard(lambda: (brushes.rename(self.b.doc.folder, bid, name), self._read_mine()))
+
+    @Slot(str, result=bool)
+    def removeBrush(self, bid):
+        return self.b.guard(lambda: (brushes.remove(self.b.doc.folder, bid), self._read_mine()))
+
     @Property("QVariantMap", notify=brushChanged)
     def selectedItem(self):
         if self.brush.editing:
@@ -53,7 +92,8 @@ class BrushPanel(QObject):
 
     @Slot(str)
     def setPreset(self, pid):
-        self.b.guard(lambda: (self.brush.apply_preset(pid), self._rows_changed()))
+        mine = next((m for m in self._mine if m["id"] == pid), None)
+        self.b.guard(lambda: (self.brush.apply_saved(mine) if mine else self.brush.apply_preset(pid), self._rows_changed()))
 
     @Slot(str, "QVariant", result=bool)
     def setValue(self, param, value):

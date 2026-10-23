@@ -230,4 +230,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                            "brand colors Summer_launch_coral_for_the_headphones_campaign #ff7a59",
                                            "brand colors Night #101820",
                                            f"brand textStyles {LONG_LAYER.replace(' ', '_')} textstyle_1", "library open"]),
+            # H56: My brushes (a saved brush with a long name, chosen), Save this brush's name field on Edit brush ›
+        ("brush-panel-mine", long_project(), ["select title_card_for_the_summer_launch_film", "tool draw", "preset oil",
+                                              "savebrush Bristle_oil_for_the_night_sky_backgrounds", "preset chalk",
+                                              "savebrush Soft_pastel", "flyout brush"]),
+        ("brush-edit-save-name", long_project(), ["select title_card_for_the_summer_launch_film", "tool draw", "brushedit on",
+                                                  "clickobj saveBrush"]),
     ]

@@ -13,7 +13,7 @@ from rostrum2d.ops_paint import PAINTABLE
 from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
-from . import adding, framing, onion
+from . import adding, brush_presets, framing, onion
 from .pen_tilt import PenTilt
 from .brush import Brush
 from .brush_panel import BrushPanel
@@ -35,8 +35,11 @@ class Painter(BrushPanel):
         self._serial, self._built, self._rev = 0, None, 0        # _rev: the document changed (the onion is stale)
         self._reach = {"before": 2, "after": 1}         # onion skin: how many drawings each way (screen state)
         self.provider = onion.OnionProvider()
+        self.previews = brush_presets.PreviewProvider()     # image://brushes: the shipped ones and My brushes
+        self._mine = []                                 # My brushes: the project's saved brushes (brush_panel.py)
         self.model = RowsModel(rows.ROLES, self)
         self.model.reset(self.brush.rows(bool(self.b.doc.folder)))
+        self.refreshBrushes()
         bridge.docChanged.connect(self._doc_changed)
         bridge.outlineChanged.connect(self._refresh)
         bridge.timeChanged.connect(self._refresh)          # the navigator and the onion follow the playhead

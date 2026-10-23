@@ -59,6 +59,12 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
 The screen's 19 shipped brushes (Sketch, Ink, Paint, Light, Texture) are only ready-made sets of these settings; a stroke
 records what it was drawn with, so an agent sets the same ones.
 
+**My brushes** are the project's saved brushes, shared with the person (the brush panel lists them last).
+`run_brush {action: "list"}` gives each one's `id`, `name` and `stroke`: pass `stroke` to `paint.stroke` with your points
+and colour to paint with it. `run_brush {action: "save", name, settings}` keeps a set of these settings as a brush
+(colour and seed are never kept; a loaded tip or paper stays named by its item id). `rename` (id, name) and `delete` (id)
+do what the brush's right-click menu does. A brush is kept by its settings: saving the same settings again renames it.
+
 ## Seeing and checking
 
 - `look_drawing layer=… frame=N`: the drawing shown at frame N, in canvas px with a labelled grid (`grid`, `zoom`

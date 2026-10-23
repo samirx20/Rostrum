@@ -4,7 +4,8 @@ import RostrumKit
 // The top of the settings panel while painting (painting design §2.1, mockup paint-01): the heading "Brush" and the
 // brush's own wide row, its stroke (painted by the engine, image://brushes) and its name ▾; a click opens the brush
 // panel (BrushFlyout.qml). The quick rows follow (the Inspector's, brush.py QUICK). While editing the brush
-// (Edit brush ›) this is "‹ Back" instead, and the rows are every brush setting.
+// (Edit brush ›) this is "‹ Back" instead, with "+ Save this brush" at its right (SaveBrush.qml: into My brushes),
+// and the rows are every brush setting.
 Column {
     id: head
     width: parent ? parent.width : 0
@@ -43,12 +44,15 @@ Column {
         objectName: "brushBack"
         visible: head.editing
         width: head.width; height: Theme.row
-        Rectangle { anchors.fill: parent; radius: Theme.radiusCtl; color: Theme.hover; visible: backArea.containsMouse }
+        Rectangle { anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: save.left }
+                    radius: Theme.radiusCtl; color: Theme.hover; visible: backArea.containsMouse }
         Chevron { id: back; anchors.left: parent.left; anchors.leftMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter
                   rotation: 90; color: backArea.containsMouse ? Theme.fg : Theme.fg2 }
         Text { anchors.left: back.right; anchors.leftMargin: Theme.grid + 2; anchors.verticalCenter: parent.verticalCenter
                text: "Back"; color: backArea.containsMouse ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
-        MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                    onClicked: painter.setEditing(false) }
+        MouseArea { id: backArea; anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: save.left }
+                    hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: painter.setEditing(false) }
+        SaveBrush { id: save; anchors { right: parent.right; rightMargin: Theme.keyGutter - 4; verticalCenter: parent.verticalCenter }
+                    width: naming ? Theme.fieldFor(head.width) : implicitWidth }
     }
 }

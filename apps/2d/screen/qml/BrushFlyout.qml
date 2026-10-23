@@ -6,7 +6,8 @@ import RostrumKit
 // icon. The top row: the five paint tools (backend.paintTool). Below: the brushes as real strokes painted by the kit's
 // engine (image://brushes/<id>, screen2d/brush_presets.py), three across, by group. A click on a brush makes it the
 // brush (the Brush tool goes on) and closes the panel; Esc or a click anywhere else closes it without changing
-// anything. Too tall for the window: the brushes scroll, the tools stay.
+// anything. Too tall for the window: the brushes scroll, the tools stay. Last, My brushes (the project's saved brushes:
+// + Save this brush; right-click one: Rename, Delete). Hovering a brush shows its stroke larger, at the tile.
 QQC.Popup {
     id: fly
     objectName: "brushFlyout"
@@ -31,10 +32,66 @@ QQC.Popup {
         at = p.y - padding
         open()
     }
+    property var hoverTile: null       // the brush the pointer rests on: its stroke shows larger (bigPreview)
+    onAboutToShow: painter.refreshBrushes()    // an agent may have saved one meanwhile
     function pickBrush(id) { painter.setPreset(id); backend.paintTool.use("brush"); close() }
+
+    component BrushTile: Rectangle {
+        id: tile
+        required property var modelData
+        required property int index
+        property bool mine: false                     // a saved brush: right-click renames or deletes it
+        property bool renaming: false
+        readonly property bool on: painter.brushNow.preset === modelData.id
+        readonly property bool hovered: tileTap.containsMouse
+        objectName: mine ? "mybrush_" + index : "brush_" + modelData.id     // My brushes by place: their ids are content
+        width: fly.tileW; height: fly.tileH + 22; radius: Theme.radiusCtl
+        color: tileTap.pressed ? Theme.active : hovered ? Theme.hover : "transparent"
+        border.color: tile.on ? Theme.accent : "transparent"
+        onHoveredChanged: fly.hoverTile = hovered ? tile : (fly.hoverTile === tile ? null : fly.hoverTile)
+        Image {
+            x: 3; y: 3; width: parent.width - 6; height: fly.tileH
+            source: "image://brushes/" + tile.modelData.id
+            asynchronous: true; fillMode: Image.PreserveAspectCrop; smooth: true; mipmap: true
+        }
+        Text {
+            id: tileName
+            visible: !tile.renaming
+            x: 5; anchors { bottom: parent.bottom; bottomMargin: 4 }
+            width: parent.width - 10; elide: Text.ElideRight
+            text: tile.modelData.name; color: tile.on || tile.hovered ? Theme.fg : Theme.fg2
+            font.family: uiFont; font.pixelSize: Theme.label
+        }
+        HoverTip { hovered: tile.hovered && tileName.truncated && !tile.renaming; text: tile.modelData.name }
+        TextInput {     // rename in place: Enter keeps it, Esc or a click elsewhere leaves the name as it was
+            id: nameEdit
+            objectName: "brushName_" + tile.index
+            visible: tile.renaming
+            anchors { left: tileName.left; right: tileName.right; verticalCenter: tileName.verticalCenter }
+            clip: true; color: Theme.fg; selectionColor: Theme.accent; font.pixelSize: Theme.label; font.family: uiFont
+            onAccepted: { tile.renaming = false; if (text.trim() && text !== tile.modelData.name) painter.renameBrush(tile.modelData.id, text.trim()) }
+            Keys.onEscapePressed: tile.renaming = false
+            onActiveFocusChanged: if (!activeFocus) tile.renaming = false
+        }
+        MouseArea {
+            id: tileTap; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+            enabled: !tile.renaming
+            acceptedButtons: tile.mine ? Qt.LeftButton | Qt.RightButton : Qt.LeftButton
+            onClicked: (ev) => ev.button === Qt.RightButton ? tileMenu.open() : fly.pickBrush(tile.modelData.id)
+        }
+        Menu { id: tileMenu; y: tile.height
+               property bool rename: false     // Rename starts once the menu has closed (it hands focus back as it goes)
+               entries: [{ value: "rename", label: "Rename" }, { value: "delete", label: "Delete" }]
+               onPicked: (v) => v === "delete" ? painter.removeBrush(tile.modelData.id) : (rename = true)
+               onClosed: if (rename) { rename = false; nameEdit.text = tile.modelData.name; tile.renaming = true
+                                       nameEdit.forceActiveFocus(); nameEdit.selectAll() } }
+    }
     function pickTool(id) { backend.paintTool.use(id); close() }
 
-    contentItem: Column {
+    contentItem: Item {
+      implicitWidth: content.implicitWidth; implicitHeight: content.implicitHeight
+      Column {
+        id: content
         spacing: 6
         Row {       // the five paint tools, icon over name, the key small beside the name
             spacing: 2
@@ -84,34 +141,42 @@ QQC.Popup {
                             columns: 3; columnSpacing: 8; rowSpacing: 4
                             Repeater {
                                 model: grp.modelData.presets
-                                delegate: Rectangle {
-                                    id: tile
-                                    required property var modelData
-                                    readonly property bool on: painter.brushNow.preset === modelData.id
-                                    objectName: "brush_" + modelData.id
-                                    width: fly.tileW; height: fly.tileH + 22; radius: Theme.radiusCtl
-                                    color: tileTap.pressed ? Theme.active : tileHover.hovered ? Theme.hover : "transparent"
-                                    border.color: tile.on ? Theme.accent : "transparent"
-                                    Image {
-                                        x: 3; y: 3; width: parent.width - 6; height: fly.tileH
-                                        source: "image://brushes/" + tile.modelData.id
-                                        asynchronous: true; fillMode: Image.PreserveAspectCrop; smooth: true; mipmap: true
-                                    }
-                                    Text {
-                                        x: 5; anchors { bottom: parent.bottom; bottomMargin: 4 }
-                                        width: parent.width - 10; elide: Text.ElideRight
-                                        text: tile.modelData.name; color: tile.on || tileHover.hovered ? Theme.fg : Theme.fg2
-                                        font.family: uiFont; font.pixelSize: Theme.label
-                                    }
-                                    HoverHandler { id: tileHover; cursorShape: Qt.PointingHandCursor }
-                                    MouseArea { id: tileTap; anchors.fill: parent; onClicked: fly.pickBrush(tile.modelData.id) }
-                                }
+                                delegate: BrushTile { }
                             }
                         }
                         Item { width: 1; height: 4 }
                     }
                 }
+                Item {      // My brushes: the heading, + Save this brush at its right
+                    width: groups.width; height: 22
+                    Text { text: "My brushes"; anchors.verticalCenter: parent.verticalCenter
+                           color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
+                    SaveBrush { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                                width: naming ? fly.tileW * 2 : implicitWidth }
+                }
+                Grid {
+                    columns: 3; columnSpacing: 8; rowSpacing: 4
+                    Repeater { model: painter.myBrushes; delegate: BrushTile { mine: true } }
+                }
+                Item { width: 1; height: 4 }
             }
         }
+      }
+      Rectangle {     // the brush the pointer rests on, its stroke larger (no text), centred on the tile
+          id: bigPreview
+          objectName: "brushBigPreview"
+          readonly property var t: fly.hoverTile
+          visible: t !== null && !t.renaming && showDelay.done
+          width: 232 + 8; height: 56 + 8; radius: Theme.radiusCtl; z: 10
+          color: Theme.raised; border.color: Theme.popupEdge
+          x: t ? Math.max(0, Math.min(parent.width - width, t.mapToItem(parent, t.width / 2, 0).x - width / 2)) : 0
+          readonly property real ty: t ? t.mapToItem(parent, 0, 0).y : 0
+          y: ty - height - 2 >= 0 ? ty - height - 2 : ty + (t ? t.height : 0) + 2     // above the tile, else below
+          Image { x: 4; y: 4; width: 232; height: 56; asynchronous: true; smooth: true
+                  source: bigPreview.t ? "image://brushes/" + bigPreview.t.modelData.id : "" }
+          Timer { id: showDelay; property bool done: false; interval: 350
+                  onTriggered: done = true }
+          onTChanged: { showDelay.done = false; if (t) showDelay.restart() }
+      }
     }
 }

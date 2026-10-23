@@ -46,7 +46,7 @@ class Brush:
         self.values = {p.name: p.default for p in params}
         if "color" in self.values and background:
             self.values["color"] = starting_colour(background, self.values["color"])
-        self.preset, self.editing, self.tilt_pen = "", False, False
+        self.preset, self.saved_name, self.editing, self.tilt_pen = "", "", False, False
         self.apply_preset(brush_presets.DEFAULT)
 
     def _evaluated(self) -> list[dict]:
@@ -87,7 +87,14 @@ class Brush:
         for k, v in brush_presets.settings(pid).items():
             if k in self._by_name:
                 self.set(k, v)
-        self.preset = pid
+        self.preset, self.saved_name = pid, ""
+
+    def apply_saved(self, saved: dict):
+        """A saved brush (rostrum2d.brushes: {id, name, settings}): every setting it keeps, checked; colour stays."""
+        for k, v in saved["settings"].items():
+            if k in self._by_name:
+                self.set(k, v)
+        self.preset, self.saved_name = saved["id"], saved["name"]
 
     def stroke_args(self) -> dict:
         """The settings the next stroke is made with: only those that apply (a tip angle only when the tip does not
@@ -95,4 +102,4 @@ class Brush:
         return {r["id"]: r["value"] for r in self._evaluated() if r["row"] == "param" and r["holds"]}
 
     def label(self) -> str:
-        return brush_presets.name(self.preset)
+        return self.saved_name or brush_presets.name(self.preset)
