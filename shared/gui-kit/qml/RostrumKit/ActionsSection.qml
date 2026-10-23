@@ -43,6 +43,7 @@ Item {
             delegate: Row {
                 id: run
                 required property var modelData
+                required property int index
                 readonly property bool icons: modelData.icons
                 readonly property bool folded: modelData.title !== ""
                 spacing: icons ? 2 : Theme.grid
@@ -77,15 +78,15 @@ Item {
                     onClicked: section.openMenu(barButton, run.modelData.items.map(i => ({ value: i.id, label: i.label,
                                                                                              keys: i.keys, group: "", sub: [] })))
                 }
+                IconButton {    // "⋯" is part of the last unit, so it can never wrap onto a row of its own
+                    id: moreButton
+                    objectName: "actionsMore"
+                    visible: run.index === section.units.length - 1 && section.more.length > 0
+                    width: section.size; height: section.size
+                    kind: "ghost"; glyph: "⋯"; tip: "More"; help: "The other actions for this selection"
+                    onClicked: section.openMenu(moreButton, section.more)
+                }
             }
-        }
-        IconButton {    // "⋯" last in the row, the same icon button as the context bar's (More is the Song panel's fold)
-        id: moreButton
-        objectName: "actionsMore"
-        visible: section.more.length > 0
-        width: section.size; height: section.size
-        kind: "ghost"; glyph: "⋯"; tip: "More"; help: "The other actions for this selection"
-        onClicked: section.openMenu(moreButton, section.more)
         }
     }
     ActionMenu { id: menu; onPicked: (v) => { delay.stop(); section.hub.run(v) }; onRested: (v) => v === "" ? section.leave() : section.rest(v) }

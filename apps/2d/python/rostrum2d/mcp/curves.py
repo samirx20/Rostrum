@@ -46,11 +46,9 @@ def inspect_curve(ctx, args):
     "item": ITEM_COMP["item"],
     "owner": {"type": "string", "description": "The id of the layer (or effect, mask) whose animations to list."}}})
 def inspect_animations(ctx, args):
-    """anim.list: a layer's animations, as the timeline shows them (anims.py, the one source). Per setting (X and Y of
-    Position are one): its keys, its stretches (neighbouring key pairs: ids = the keys a stretch starts at, start,
-    length, ease, preset, from / to values) and its line (animations overlapping in time go on separate lines, packed
-    first-free; the others share line 0). Times are the owner's own seconds. Ease stretches with the anim.ease
-    operation (one change); move or stretch them with key.set / key.scale."""
+    """A layer's animations as the timeline shows them. Per setting (X and Y of Position are one): its keys, its stretches
+    (neighbouring key pairs: ids, start, length, ease, preset, from / to) and its line (overlapping animations go on separate
+    lines). Times are the owner's own seconds. Ease a stretch with anim.ease; move or stretch with key.set / key.scale."""
     doc = ctx.document(args.get("item"))
     owner = doc.item(args["owner"])
     times = markers.times(doc.folder) if doc.folder else None

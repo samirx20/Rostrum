@@ -25,6 +25,12 @@ PRESETS = {"linear": "linear", "smooth": "smooth", "in": "easeIn", "out": "easeO
 PRESET_LABELS = {"linear": "Linear", "smooth": "Smooth", "in": "In", "out": "Out", "spring": "Spring",
                  "bounce": "Bounce", "hold": "Hold"}
 NAME_OF = {v: k for k, v in PRESETS.items()}
+OTHER_EASES = {"snappy": "Snappy", "natural": "Natural", "heavy": "Heavy", "easeInOut": "Ease in and out", "custom": "Custom"}   # eases no preset button is
+
+
+def ease_name(ease: str) -> str:
+    """What the panel calls an ease no preset button is (a key written by a script: "snappy"); "" for a preset's."""
+    return "" if ease in NAME_OF else OTHER_EASES.get(ease, ease)
 
 
 def setting_of(prop: str) -> str:
@@ -78,7 +84,7 @@ def animations(owner: dict, markers: dict | None = None, origin: float = 0.0) ->
             first = at[t0][0]
             ease = first.get("ease", "smooth")
             stretches.append({"ids": [k["id"] for k in at[t0]], "endIds": [k["id"] for k in at[t1]],
-                              "start": t0, "length": round(t1 - t0, 6), "ease": ease, "preset": NAME_OF.get(ease, ""),
+                              "start": t0, "length": round(t1 - t0, 6), "ease": ease, "preset": NAME_OF.get(ease, ""), "easeName": ease_name(ease),
                               "from": {p: _value(tracks[p], t0) for p in props}, "to": {p: _value(tracks[p], t1) for p in props}})
         out.append({"setting": setting, "label": _label(owner, setting), "word": WORDS.get(setting, _label(owner, setting)),
                     "props": props, "start": times[0], "end": times[-1],

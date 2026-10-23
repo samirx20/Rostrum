@@ -12,6 +12,8 @@ SIBLING_PICKS = {"matte": lambda s: True,                          # any layer b
 
 # A group's and a rig's box is their children's space, not a size to set; a text's words are typed on the canvas only.
 ON_PAGE = {"group": {"w", "h"}, "rig": {"w", "h"}, "text": {"body"}}
+for _t in ("drawing", "shape", "text", "image", "video", "path"):      # the frame-by-frame block under the settings has it
+    ON_PAGE[_t] = ON_PAGE.get(_t, set()) | {"newHold"}
 
 
 class Hooks2D:
