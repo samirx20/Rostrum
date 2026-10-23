@@ -61,3 +61,13 @@ def test_script_rerun_keeps_a_persons_note_move(bridge):
     bridge.doc.run_script("song.py", run_source(SRC, "song.py"))
     assert bridge.doc.item("lead.n2000")["at"] == {"beat": 4.5}
     assert bridge.doc.item("lead.n3000")["at"] == {"beat": 6}
+
+
+def test_a_preset_name_that_does_not_exist_is_refused_naming_the_real_ones(bridge, capsys):
+    from rostrum_sound import presets
+    from screensound.export import RenderExport
+    sheet = RenderExport(bridge)
+    before = sheet.preset
+    sheet.usePreset("For")
+    err = capsys.readouterr().err
+    assert 'no preset named "For"' in err and all(k in err for k in presets.PRESETS) and sheet.preset == before

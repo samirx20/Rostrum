@@ -27,7 +27,7 @@ def register(tools: Tools):
         "mute": {"type": "array", "items": {"type": "string"}, "description": "These track ids are not heard."},
         "master": {"type": "boolean", "default": True, "description": "False: the mix before mastering (no loudness target, glue or master effects)."},
         "stems": {"enum": [True, False, "all", "groups"], "default": True,
-                  "description": "true / \"all\": a file per track (named after the track) and per bus (`<bus name>.bus.<ext>`). \"groups\": a file per group (a bus tracks play into) and per track that is in no group, nothing twice. false: only the mix."},
+                  "description": "true / \"all\": a file per track (named after the track) and per group (named after the group). \"groups\": a file per group (a bus tracks play into) and per track that is in no group, nothing twice. false: only the mix."},
         "preset": {"enum": list(presets.PRESETS), "description": "; ".join(f"{k}: {v['label']} — {v['detail']}" for k, v in presets.PRESETS.items())
                    + ". Sets format, sampleRate, trim and stems (and writes markers.json) unless you give them."},
         "format": {"type": "string", "enum": [f["id"] for f in deliver.FORMATS], "default": deliver.DEFAULT_FORMAT,

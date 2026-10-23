@@ -35,7 +35,7 @@ def test_groups_stems_and_the_editor_preset(tmp_path):
     r = handoff.render(tmp_path, doc, GroupedEngine(doc.data["buses"][0]["id"]), {}, "agent:test", stems=o["stems"], markers_file=o["markers"],
                        master=o["master"], options={k: o[k] for k in ("format", "sampleRate", "trim")})
     folder = Path(r["folder"])
-    assert sorted(p.name for p in folder.glob("*.wav")) == ["Music.bus.wav", "drums.wav", "song_mix.wav"]
+    assert sorted(p.name for p in folder.glob("*.wav")) == ["Music.wav", "drums.wav", "song_mix.wav"]
     assert sf.info(r["file"]).subtype == "FLOAT" and sf.info(r["file"]).samplerate == 48000 and sf.info(r["file"]).duration == 2.0
     data = json.loads((folder / "markers.json").read_text())
     assert {"name": "drop", "seconds": 1.5} in data["markers"]
