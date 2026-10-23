@@ -4,7 +4,7 @@ import QtQuick.Dialogs
 import "."
 
 // Export (INTERACTION.md 1.19 item 8): a sheet in the right column, in the settings panel's place, so the work stays in
-// sight. One heading (its title), then what for (a short list in words, each with its file type) · the chosen one's settings (`settings`: the app
+// sight. One heading (Export), then what for (a short list in words, each with its file type) · the chosen one's settings (`settings`: the app
 // fills it with kit rows) · range (only when the document has more than everything) · where (the project's Renders
 // folder; Browse) · the file's name · Export. A file already there is never replaced without asking: Replace / Keep
 // both / Cancel, the one blocking question. The export runs in the background (the top bar's job chip); done, the
@@ -15,8 +15,8 @@ Panel {
     property var model
     property alias settings: settingsSlot.data      // the chosen item's settings only (the app's rows)
     readonly property bool running: model && model.state === "running"
-    // titled by what it makes: the chosen item's words ("Video to share", "Still frames" …), or the model's own `sheetTitle`
-    title: { if (model && model.sheetTitle) return model.sheetTitle; const c = model ? (model.choices || []).find(x => x.value === model.choice) : null; return c ? c.label : "Export" }
+    // titled by what it is; the chosen item is the list's highlighted row (never said twice), or the model's own `sheetTitle`
+    title: model && model.sheetTitle ? model.sheetTitle : "Export"
     focus: visible
     Keys.onEscapePressed: model.setOpen(false)
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close  Esc"; onClicked: sheet.model.setOpen(false) }
@@ -39,7 +39,8 @@ Panel {
 
     Flickable {
         id: flick
-        anchors { left: parent.left; right: parent.right; top: parent.top; bottom: footer.top }
+        anchors { left: parent.left; right: parent.right; top: parent.top }
+        height: Math.min(contentHeight, parent.height - footer.height)    // Export follows the rows; pinned once they scroll
         contentHeight: col.height + Theme.pad
         clip: true
         boundsBehavior: Flickable.StopAtBounds
@@ -82,7 +83,7 @@ Panel {
             Column {        // where: the file's name, its folder, Browse (they say it; no heading)
                 width: parent.width; spacing: Theme.grid
                 Line { text: sheet.model ? sheet.model.fileName : ""; objectName: "exportFileName" }
-                Line { text: sheet.model ? sheet.model.where : ""; color: Theme.fg3; font.pixelSize: Theme.label }
+                Line { text: sheet.model ? sheet.model.where : ""; color: Theme.fg2 }
                 Row {
                     spacing: Theme.gap
                     Button { text: "Browse…"; enabled: !sheet.running
@@ -95,9 +96,9 @@ Panel {
 
         }
     }
-    Column {        // Export and what it is doing: pinned under the choices, never scrolled out of sight (S36)
+    Column {        // Export and what it is doing: right under the rows, never scrolled out of sight (S36)
         id: footer
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+        anchors { left: parent.left; right: parent.right; top: flick.bottom }
         topPadding: Theme.gap; spacing: Theme.gap
         Button {
             width: footer.width

@@ -3,12 +3,12 @@ import QtQuick.Controls as QQC
 import RostrumKit
 
 // The Brush group's flyout = the brush panel (painting design §2.1, mockup paint-04): beside the rail at the Brush
-// icon. The top row: the five paint tools (backend.paintTool). Below: the brushes as real strokes painted by the kit's
+// icon. The top row: the five paint tools (backend.paintTool; each one's key in its hover tip). Below: the brushes as real strokes painted by the kit's
 // engine (image://brushes/<id>, screen2d/brush_presets.py), three across, by group. A click on a brush makes it the
 // brush (the Brush tool goes on) and closes the panel; Esc or a click anywhere else closes it without changing
 // anything. Too tall for the window: the brushes scroll, the tools stay. Last, My brushes (saved brushes, from the
 // project and the person's own library, each once; a small "project" / "library" on the stroke's corner of one kept in just one
-// place: + Save this brush; right-click one: Rename, Duplicate, Also keep in / Remove from a place, Delete — the
+// place; "+ Save this brush" is the last tile; right-click one: Rename, Duplicate, Also keep in / Remove from a place, Delete — the
 // entries that apply, from painter.myBrushes). Hovering a brush shows its stroke larger, at the tile.
 QQC.Popup {
     id: fly
@@ -62,7 +62,7 @@ QQC.Popup {
             x: 5; anchors { bottom: parent.bottom; bottomMargin: 4 }
             width: parent.width - 10; elide: Text.ElideRight
             text: tile.modelData.name; color: tile.on || tile.hovered ? Theme.fg : Theme.fg2
-            font.family: uiFont; font.pixelSize: Theme.label
+            font.family: uiFont; font.pixelSize: Theme.body
         }
         Rectangle { // where a saved brush is kept, only when it is in just one of the two places: on the stroke's corner
             id: markText
@@ -104,7 +104,7 @@ QQC.Popup {
       Column {
         id: content
         spacing: 6
-        Row {       // the five paint tools, icon over name, the key small beside the name
+        Row {       // the five paint tools, icon over name; the key in the hover tip
             spacing: 2
             Repeater {
                 model: fly.tools
@@ -118,15 +118,11 @@ QQC.Popup {
                     border.color: tool.on ? Theme.accent : "transparent"
                     PaintToolIcon { anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 7 }
                                     name: tool.modelData.id; ink: tool.on || toolHover.hovered ? Theme.fg : Theme.fg2 }
-                    Row {
-                        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 5 }
-                        spacing: 3
-                        Text { text: tool.modelData.name; color: tool.on || toolHover.hovered ? Theme.fg : Theme.fg2
-                               font.family: uiFont; font.pixelSize: Theme.label }
-                        Text { text: tool.modelData.key; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label - 2
-                               anchors.baseline: parent.children[0].baseline }
-                    }
+                    Text { anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 5 }
+                           text: tool.modelData.name; color: tool.on || toolHover.hovered ? Theme.fg : Theme.fg2
+                           font.family: uiFont; font.pixelSize: Theme.body }
                     HoverHandler { id: toolHover; cursorShape: Qt.PointingHandCursor }
+                    HoverTip { hovered: toolHover.hovered; pressed: toolTap.pressed; text: tool.modelData.name; key: tool.modelData.key }
                     MouseArea { id: toolTap; anchors.fill: parent; onClicked: fly.pickTool(tool.modelData.id) }
                 }
             }
@@ -158,16 +154,17 @@ QQC.Popup {
                         Item { width: 1; height: 4 }
                     }
                 }
-                Item {      // My brushes: the heading, + Save this brush at its right
-                    width: groups.width; height: 22
-                    Text { text: "My brushes"; anchors.verticalCenter: parent.verticalCenter
-                           color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
-                    SaveBrush { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                                width: naming ? fly.tileW * 2 : implicitWidth }
-                }
+                Text { text: "My brushes"; height: 22; verticalAlignment: Text.AlignVCenter     // as the groups' headings
+                       color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
                 Grid {
                     columns: 3; columnSpacing: 8; rowSpacing: 4
                     Repeater { model: painter.myBrushes; delegate: BrushTile { mine: true } }
+                    Rectangle {     // + Save this brush: the last tile, its name field in place
+                        width: saveTile.naming ? 2 * fly.tileW + 8 : fly.tileW; height: fly.tileH + 22; radius: Theme.radiusCtl
+                        color: "transparent"; border.color: saveTile.naming ? "transparent" : Theme.popupEdge
+                        SaveBrush { id: saveTile; align: Text.AlignHCenter
+                                    anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: 1 } }
+                    }
                 }
                 Item { width: 1; height: 4 }
             }

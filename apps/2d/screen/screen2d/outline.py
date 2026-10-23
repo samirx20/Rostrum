@@ -18,7 +18,6 @@ from rostrum2d.retime import END, FIELD
 from rostrum_core.keys import animated, keys_of, marked
 
 from . import eases
-from .eases import shape_of
 
 from . import framing, key_ghosts
 
@@ -51,13 +50,13 @@ def _fields(layer: dict) -> list[tuple[dict, str]]:
 
 def _keys(owner: dict, prop: str) -> list[dict]:
     """A field's keys for the timeline; a key on a shared marker (placed by retime.placed) carries its words."""
-    return [{"id": k["id"], "ids": [k["id"]], "t": k["t"], "ease": shape_of(k.get("ease", "smooth")),
+    return [{"id": k["id"], "ids": [k["id"]], "t": k["t"],
              **({"marker": marked.label(k["ref"])} if "ref" in k else {})} for k in keys_of(owner, prop)]
 
 
 def _stretches(owner: dict, anims: list[dict]) -> list[dict]:
-    """The clickable stretches of these animations (anims.py), as the track draws them: from key to key, with the ease's
-    glyph and the tooltip words ("Position · 1.00 → 2.00 s · Out"). A Hold moves nothing: drawn and picked as nothing."""
+    """The clickable stretches of these animations (anims.py), as the track draws them: from key to key, with the
+    tooltip words ("Position · 1.00 → 2.00 s · Out"). A Hold moves nothing: drawn and picked as nothing."""
     out = []
     for a in anims:
         for s in a["stretches"]:
@@ -66,7 +65,7 @@ def _stretches(owner: dict, anims: list[dict]) -> list[dict]:
             end = s["start"] + s["length"]
             words = PRESET_LABELS.get(s["preset"], eases.label_of(s["ease"]))
             out.append({"owner": owner["id"], "ids": s["ids"], "endIds": s["endIds"], "t0": s["start"], "t1": end,
-                        "glyph": s["preset"] or "custom", "tip": f'{a["label"]} · {s["start"]:.2f} → {end:.2f} s · {words}'})
+                        "tip": f'{a["label"]} · {s["start"]:.2f} → {end:.2f} s · {words}'})
     return out
 
 

@@ -81,7 +81,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("lipsync-sheet", with_character(), [*RIGGED, *MOUTHS, "run layer:lipsync"]),             # Lip sync…
         ("blinks-sheet", with_character(), [*RIGGED, "selectmany eyes_open eyes_closed", "run layer:swap", "run layer:blinks"]),
         ("sound-row", with_sound(), ["sound wait", "select logo"]),          # the Sound row, its waveform, 🔊
-        ("sound-beats", with_sound(), ["sound beats on", "rulermenu"]),       # Show beats, the ruler's ▾ menu
+        ("sound-beats", with_sound(), ["sound beats on", "sound menu"]),     # Show beats, the Sound row's menu
         ("sound-compact", with_sound(), ["sound wait", "select logo", "timeline compact"]),
         ("sound-menu", with_sound(), ["sound wait", "sound menu"]),           # Open in RostrumSound
         ("sound-cue-picker", with_sound(), ["sound wait", "select logo", "sound cue"]),   # H32: Add a sound here…

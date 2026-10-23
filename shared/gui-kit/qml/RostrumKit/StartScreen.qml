@@ -1,9 +1,10 @@
 import QtQuick
 import "."
 
-// The start screen (INTERACTION.md 1.19 item 3, kit piece 13): New (big), Continue the last project, Open…, the app's
-// sample (opened as a copy), recent projects as pictures (a plain card with the name and date when there is none) and
-// up to three guide cards. Shown when there is nothing to reopen, or from ≡ › Start screen… (then Back returns).
+// The start screen (INTERACTION.md 1.19 item 3, kit piece 13), one three-column grid: the ways in as tiles (New, the
+// accent; Open…; the app's sample, opened as a copy), recent projects as pictures (a plain card with the name and date
+// when there is none) and up to three guide cards; Continue the last project (at launch) or Back on the title's line.
+// Shown when there is nothing to reopen, or from ≡ › Start screen… (then Back returns).
 // Reads the app's `files` (rostrum_gui/project_files.py). Put it last in the window, filling it:
 //     StartScreen { anchors.fill: parent; z: 100; onGuideAsked: (url) => shell.openGuide(url) }
 // A file refused as damaged or newer, whose history can rebuild it, shows a banner on top: what is wrong, and "Open the
@@ -24,22 +25,47 @@ Rectangle {
     readonly property bool launching: !!source && !source.hasProject && rows.length > 0      // "Continue" the last one
     readonly property var shownRows: launching ? rows.slice(1) : rows
     readonly property int margin: width >= 1600 ? 64 : 40
-    readonly property int contentWidth: Math.min(width - 2 * margin, 1120)
+    // one grid of three columns for everything (the ways in, recent projects, guides): every row shares its edges
     readonly property int cardGap: Theme.groupGap
-    readonly property int columns: Math.max(2, Math.floor((contentWidth + cardGap) / (208 + cardGap)))
+    readonly property int columns: 3
+    readonly property int contentWidth: Math.min(width - 2 * margin, 960)
     readonly property int cardWidth: Math.floor((contentWidth - (columns - 1) * cardGap) / columns)
     readonly property int pictureHeight: Math.round(cardWidth * 9 / 16 * (height >= 900 ? 1 : 0.7))
     readonly property int cardHeight: pictureHeight + 48
     // recent rows that fit under the top row and above the guides (at least one row, at most two)
     readonly property int recentLines: Math.max(1, Math.min(2, Math.floor((height - 2 * margin - 300) / (cardHeight + cardGap))))
+    property string copyName: ""             // Duplicate just made this copy (its notice sits under the title)
+    Connections { target: start.source; function onCopied(name) { start.copyName = name; copyTimer.restart() } }
+    Timer { id: copyTimer; interval: 10000; onTriggered: start.copyName = "" }
+
+    component Way: Rectangle {     // one way in, a tile on the grid: New (the accent), Open…, the sample
+        id: way
+        property string label
+        property string hint                 // its key ("" keeps the line: the tiles share a baseline)
+        property bool main: false
+        readonly property bool hovered: wayHover.hovered
+        signal picked()
+        width: start.cardWidth; height: 112; radius: Theme.radiusPanel
+        color: main ? (wayHover.hovered ? Theme.accentHover : Theme.accent) : (wayHover.hovered ? Theme.raised : Theme.panel)
+        Column {
+            anchors { left: parent.left; right: parent.right; margins: Theme.pad + 4; verticalCenter: parent.verticalCenter }
+            spacing: Theme.grid
+            Text { width: parent.width; text: way.label; elide: Text.ElideRight; color: way.main ? "white" : Theme.fg
+                   font.family: uiFont; font.pixelSize: way.main ? 22 : Theme.heading; font.weight: Font.DemiBold }
+            Text { width: parent.width; text: way.hint; elide: Text.ElideRight
+                   color: way.main ? Qt.rgba(1, 1, 1, 0.7) : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+        }
+        HoverHandler { id: wayHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: way.picked() }
+    }
 
     Column {
         id: page
-        x: (start.width - start.contentWidth) / 2; y: Math.max(start.margin, Math.round((start.height - height) * 0.4))
+        x: (start.width - start.contentWidth) / 2; y: Math.max(start.margin, Math.round((start.height - height) * 0.42))
         width: start.contentWidth
         spacing: Theme.groupGap + Theme.gap
 
-        Item {      // the app's name, and Back when a project is open behind the start screen
+        Item {      // the app's name; on the grid's right edge Back (a project open behind) or Continue (at launch)
             width: parent.width; height: Theme.button
             Text { anchors.verticalCenter: parent.verticalCenter; text: start.appName; color: Theme.fg
                    font.family: uiFont; font.pixelSize: Theme.heading; font.weight: Font.DemiBold }
@@ -47,6 +73,27 @@ Rectangle {
                      text: "Back to your " + (start.source ? start.source.noun : "project")
                      onClicked: start.source.setStart(false)
                      HoverTip { text: start.source ? "Back to " + start.source.name : ""; help: "Esc"; hovered: parent.hovered } }
+            Button {
+                id: cont
+                visible: start.launching; anchors.right: parent.right
+                kind: "primary"
+                width: Math.min(implicitWidth, parent.width - 200)
+                text: start.launching ? "Continue " + start.rows[0].name : ""
+                onClicked: start.source.openRecent(0)
+                HoverTip { text: cont.text; help: start.launching ? start.rows[0].folder : ""; hovered: cont.hovered }
+            }
+        }
+
+        Rectangle {     // after Duplicate: the window stays on the original; the copy is one click away
+            visible: start.copyName !== ""
+            width: parent.width; height: visible ? Theme.button + 2 * Theme.gap : 0
+            radius: Theme.radiusPanel; color: Theme.raised; border.color: Theme.popupEdge
+            Text { anchors { left: parent.left; leftMargin: Theme.pad; right: openCopy.left; rightMargin: Theme.gap
+                             verticalCenter: parent.verticalCenter }
+                   text: "Copy made: " + start.copyName + ". This window stays on the original."; elide: Text.ElideMiddle
+                   color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
+            Button { id: openCopy; anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
+                     text: "Open the copy"; kind: "primary"; onClicked: { start.copyName = ""; start.source.pick("copy") } }
         }
 
         Rectangle {     // a refused file the history can rebuild
@@ -70,45 +117,17 @@ Rectangle {
             }
         }
 
-        Row {       // New (big), then the other ways in
-            spacing: Theme.groupGap
-            Rectangle {
-                id: newTile
-                width: Math.max(200, start.cardWidth); height: 112; radius: Theme.radiusPanel
-                color: newHover.hovered ? Theme.accentHover : Theme.accent
-                Column {
-                    anchors { left: parent.left; leftMargin: Theme.pad + 4; verticalCenter: parent.verticalCenter }
-                    spacing: Theme.grid
-                    Text { text: "+  New"; color: "white"; font.family: uiFont; font.pixelSize: 22; font.weight: Font.DemiBold }
-                    Text { text: start.source && start.source.keys.new ? start.source.keys.new : ""; color: Qt.rgba(1, 1, 1, 0.7)
-                           font.family: uiFont; font.pixelSize: Theme.label; visible: text !== "" }
-                }
-                HoverHandler { id: newHover; cursorShape: Qt.PointingHandCursor }
-                TapHandler { onTapped: start.source.pick("new") }
-                HoverTip { text: "New " + (start.source ? start.source.noun : ""); help: "Made at once in your projects folder, saved as you work"
-                           hovered: newHover.hovered }
-            }
-            Column {
-                spacing: Theme.gap
-                anchors.verticalCenter: newTile.verticalCenter
-                width: start.contentWidth - newTile.width - Theme.groupGap
-                Button {
-                    id: cont
-                    visible: start.launching
-                    kind: "primary"
-                    width: Math.min(implicitWidth, parent.width)
-                    text: start.launching ? "Continue " + start.rows[0].name : ""
-                    onClicked: start.source.openRecent(0)
-                    HoverTip { text: cont.text; help: start.launching ? start.rows[0].folder : ""; hovered: cont.hovered }
-                }
-                Row {
-                    spacing: Theme.gap
-                    Button { text: "Open…"; onClicked: start.source.pick("open")
-                             HoverTip { text: "Open a project folder"; key: start.source ? start.source.keys.open : ""; hovered: parent.hovered } }
-                    Button { visible: !!start.source && start.source.hasSample; text: "Open the sample"; onClicked: start.source.openSample()
-                             HoverTip { text: "Open the sample"; help: "Your own copy: the original never changes"; hovered: parent.hovered } }
-                }
-            }
+        Row {       // the ways in: New (big, the accent), Open…, the sample
+            spacing: start.cardGap
+            Way { main: true; label: "+  New"; hint: start.source && start.source.keys.new ? start.source.keys.new : ""
+                  onPicked: start.source.pick("new")
+                  HoverTip { text: "New " + (start.source ? start.source.noun : ""); help: "Made at once in your projects folder, saved as you work"
+                             hovered: parent.hovered } }
+            Way { label: "Open…"; hint: start.source ? start.source.keys.open : ""; onPicked: start.source.pick("open")
+                  HoverTip { text: "Open a project folder"; hovered: parent.hovered } }
+            Way { visible: !!start.source && start.source.hasSample; label: "Open the sample"
+                  onPicked: start.source.openSample()
+                  HoverTip { text: "Open the sample"; help: "Your own copy: the original never changes"; hovered: parent.hovered } }
         }
 
         Column {    // recent projects

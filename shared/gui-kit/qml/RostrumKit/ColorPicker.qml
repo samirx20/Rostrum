@@ -57,11 +57,7 @@ Column {
         function at(m) { p.s = M.clamp01(m.x / width); p.v = 1 - M.clamp01(m.y / height); p.send() }
         MouseArea { anchors.fill: parent; cursorShape: Qt.CrossCursor
                     onPressed: (m) => sv.at(m); onPositionChanged: (m) => { if (pressed) sv.at(m) } }
-        Rectangle {   // the ring on the colour
-            x: p.s * sv.width - 7; y: (1 - p.v) * sv.height - 7; width: 14; height: 14; radius: 7
-            color: "transparent"; border.width: 2; border.color: "#ffffff"
-            Rectangle { anchors.fill: parent; anchors.margins: -1; radius: 8; color: "transparent"; border.width: 1; border.color: Qt.rgba(0, 0, 0, 0.5); z: -1 }
-        }
+        Knob { x: p.s * sv.width - 7; y: (1 - p.v) * sv.height - 7 }
     }
 
     Item {   // hue
@@ -84,8 +80,7 @@ Column {
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                     function at(m) { p.h = M.clamp01((m.x - 7) / (width - 14)); p.send() }
                     onPressed: (m) => at(m); onPositionChanged: (m) => { if (pressed) at(m) } }
-        Rectangle { x: p.h * (parent.width - 14); width: 14; height: 14; radius: 7; color: M.hsvHex(p.h, 1, 1)
-                    border.width: 2; border.color: "#ffffff" }
+        Knob { x: p.h * (parent.width - 14) }
     }
 
     Item {   // alpha
@@ -104,9 +99,7 @@ Column {
         MouseArea { objectName: "alphaStrip"; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                     function at(m) { p.a = M.clamp01((m.x - 7) / (width - 14)); p.send() }
                     onPressed: (m) => at(m); onPositionChanged: (m) => { if (pressed) at(m) } }
-        Rectangle { x: p.a * (parent.width - 14); width: 14; height: 14; radius: 7; color: Qt.rgba(1, 1, 1, 0.9 * (1 - p.a) + 0.1)
-                    border.width: 2; border.color: "#ffffff"
-                    Rectangle { anchors.centerIn: parent; width: 6; height: 6; radius: 3; color: p.current; opacity: p.a } }
+        Knob { x: p.a * (parent.width - 14) }
     }
 
     Row {   // pipette · hex · alpha · extra
@@ -149,24 +142,36 @@ Column {
 
     Column {   // the project's swatches
         spacing: Theme.grid + 2; width: parent.width
-        Text { text: "Project"; color: Theme.fg3; font.pixelSize: Theme.label; font.family: uiFont }
+        Text { text: "Project colours"; color: Theme.fg2; font.pixelSize: Theme.label; font.family: uiFont }
         Flow {
             width: parent.width; spacing: Theme.grid + 2
             Repeater { model: p.project; delegate: Swatch { required property string modelData; hex: modelData } }
-            IconButton { objectName: "swatchAdd"; glyph: "+"; kind: "ghost"; width: 20; height: 20; tip: "Add this colour to the project"
-                         onClicked: p.swatchAdd(p.current) }
+            Rectangle {     // an empty swatch's place: + keeps this colour here
+                objectName: "swatchAdd"; width: 20; height: 20; radius: 4
+                color: addHover.hovered ? Theme.hover : "transparent"; border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.18)
+                Text { anchors.centerIn: parent; text: "+"; color: addHover.hovered ? Theme.fg : Theme.fg2
+                       font.pixelSize: Theme.body; font.family: uiFont }
+                HoverHandler { id: addHover; cursorShape: Qt.PointingHandCursor }
+                TapHandler { id: addTap; onTapped: p.swatchAdd(p.current) }
+                HoverTip { text: "Add this colour to the project"; hovered: addHover.hovered; pressed: addTap.pressed }
+            }
         }
     }
     Column {   // the brand's
         visible: p.brand.length > 0
         spacing: Theme.grid + 2; width: parent.width
-        Text { text: "Brand · " + p.brandName; color: Theme.fg3; font.pixelSize: Theme.label; font.family: uiFont }
+        Text { text: "Brand · " + p.brandName; color: Theme.fg2; font.pixelSize: Theme.label; font.family: uiFont }
         Flow {
             width: parent.width; spacing: Theme.grid + 2
             Repeater { model: p.brand; delegate: Swatch { required property string modelData; hex: modelData } }
         }
     }
 
+    component Knob: Rectangle {     // every handle alike: a white ring with a dark edge, the colour showing through
+        width: 14; height: 14; radius: 7; color: "transparent"; border.width: 2; border.color: "#ffffff"
+        Rectangle { anchors.fill: parent; anchors.margins: -1; radius: 8; color: "transparent"; border.width: 1
+                    border.color: Qt.rgba(0, 0, 0, 0.5); z: -1 }
+    }
     component Swatch: Rectangle {   // a saved colour: a click takes it
         property string hex: "#000000"
         width: 20; height: 20; radius: 4; color: hex

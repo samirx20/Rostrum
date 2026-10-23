@@ -1,19 +1,18 @@
 """Scripted steps for the project's sound (backend.soundtrack, soundtrack.py), through the same calls the screen makes.
 
     sound wait                  wait for the mix (the render, the peaks, the grid) and print what plays
-    sound mute on|off           the 🔊 button              sound beats on|off   the ruler's ▾ › Show beats
+    sound mute on|off           the Sound row's speaker    sound beats on|off   the Sound row's menu › Show beats
     sound beat prev|next        Shift+, / Shift+.         sound scrub <s>      the playhead dragged there (a burst)
     sound play <s> [hold]       play for that long, print where the speaker and the picture are (hold: keep playing)
     sound wav <path>            copy the mix 2D plays to a WAV (to listen to / measure)
     sound pick <item|->         Scene settings › Soundtrack (comp.set {soundtrack}; - = the project's sound)
-    sound menu                  the Sound row's right-click     sound open [dry]   Open in RostrumSound (dry: print it)
+    sound menu                  the Sound row's menu (its name)  sound open [dry]   Open in RostrumSound (dry: print it)
     sound problem <png>         the mix must have failed (no engine …): a picture of the screen saying so, then the
                                 status line is cleared so the walk goes on
     sound cue [words…]          Add a sound here… on the selected layer: the picker, searched for the words
     sound cue pick <n>          tie the picker's n-th sound (1 = the first) to the layer; prints the cue and its marker
     sound cue twice <a> <b>     two searches typed fast (b before a's answer): the list must be b's, never a's
-    sound video [<layer> on|off]  print the Video sound rows; with a layer: its row's 🔊 (mute on / off)
-    rulermenu                   the ruler's ▾ menu
+    sound video [<layer> on|off]  print the Video sound rows; with a layer: its row's speaker (mute on / off)
 """
 from __future__ import annotations
 
@@ -22,7 +21,7 @@ import time
 
 from PySide6.QtCore import QCoreApplication, QMetaObject, QObject
 
-WORDS = ("sound", "rulermenu")
+WORDS = ("sound",)
 
 
 def _settle(bridge, seconds=60.0):
@@ -55,8 +54,6 @@ def _invoke(win, name, fn):
 
 def do_sound_step(bridge, win, word, rest, step):
     st = bridge.soundtrack
-    if word == "rulermenu":
-        return _invoke(win, "timeRuler", "openViewMenu")
     what = rest[0] if rest else "wait"
     if what == "wait":
         _settle(bridge)

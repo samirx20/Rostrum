@@ -60,7 +60,7 @@ Every pattern below follows the same layout:
 ## 1.1 The window's regions
 
 ```
-┌ ≡ App │ Project › Scene ▾ ····· message · Saved · 14 changes │ chips │ ↶ ↷ │ Search Ctrl K │ Export │ ? ┐  top bar
+┌ ≡ App │ Project › Scene ▾ ····· message   Saved · 14 changes │ chips │ ↶ ↷ │ Search Ctrl K │ Export │ ? ┐  top bar
 ├──┬───────────────────────────────────────────────────────────────────────────┬────────────────────────┤
 │T │            ┌ context bar: 3 layers · Group  Mask ▾  Align ▾ ⋯ ┐            │ SETTINGS               │
 │O │                                                                           │ name · Kind            │
@@ -631,9 +631,9 @@ the agent's `inspect_tools`.
    - The app reopens the last project, or the last song in Sound, exactly where you left it: the same scene,
      selection, playhead and zoom.
    - With nothing to reopen, the **start screen** shows:
-     - **New** (big);
+     - the ways in as three tiles on one grid: **New** (the accent), **Open…**, the app's sample (opened as a copy, so
+       the original never changes);
      - recent projects as pictures;
-     - the app's sample (opened as a copy, so the original never changes);
      - three guide cards.
 4. **Versions:**
    - **Ctrl+S** saves a **named version**. The name field opens in place at the top of History, with the time as the
@@ -679,7 +679,8 @@ the agent's `inspect_tools`.
 ## 1.20 Focus and the keyboard
 
 - **Which area takes keys:** the area you last clicked (main view, timeline, settings panel, a dock, the Library).
-  A thin accent line on its top edge shows which one. **F6** moves to the next area.
+  **F6** moves to the next area; an area reached with F6 shows a thin accent line on its top edge (a click shows none:
+  the pointer already says where you are).
 - **Fields:** a text field takes every key until Enter, Tab or Esc. Space types a space; it does not play. Esc in a
   field returns focus to the main view.
 - **Letter keys work only when no field has focus,** so typing a name never switches tools.

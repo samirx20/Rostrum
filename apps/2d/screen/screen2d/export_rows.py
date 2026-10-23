@@ -3,7 +3,8 @@ settings, only the ones that apply to it (from io/formats.py data, nothing place
 back from the file. The range (everything, marker to marker) is the kit sheet's own row."""
 from __future__ import annotations
 
-# What each format is for, in words; its file type beside it. A format not named here shows its own label.
+# What each format is for, in words; its file type beside it, one way for all (MP4, PNG …: a frames folder's rows say
+# "frames" in their words). A format not named here shows its own label.
 WHAT_FOR = {"mp4": "Video to share", "prores4444": "Video for editing, with transparency", "webm": "Video for the web",
             "gif": "Moving picture for a chat or a page", "png": "Still frames", "exr": "Frames for the Editor",
             "lottie": "Animation for apps and websites", "motion": "Motion for RostrumSound"}
@@ -12,7 +13,7 @@ WHAT_FOR = {"mp4": "Video to share", "prores4444": "Video for editing, with tran
 def what_for(formats: list[dict]) -> list[dict]:
     """[{value, label, type}] for the sheet's list, in exporting.formats() order."""
     return [{"value": f["name"], "label": WHAT_FOR.get(f["name"], f["label"]),
-             "type": f'{f["label"].split(" (")[0].replace(" sequence", "")} frames' if f["sequence"] else f["ext"]}
+             "type": (f["ext"] or f["label"].split()[0]).lstrip(".").upper()}
             for f in formats]
 
 

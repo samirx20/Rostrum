@@ -97,6 +97,7 @@ QQC.ApplicationWindow {
     // focus: which area takes the keys ("guides", "left", "centre", "right", "bottom"); apps may name them for
     // inspect_screen (`areaNames`: {centre: "canvas", bottom: "timeline"}), sent to bridge.setFocusArea
     property string focusArea: "centre"
+    property bool focusByKeys: false            // F6 moved the keys: the area shows its accent edge (a click needs none)
     property var areaNames: ({})
     property bool panelsFolded: false           // Ctrl+\: the side panels fold away (the main view takes their room)
     onFocusAreaChanged: if (bridge && bridge.setFocusArea) bridge.setFocusArea(areaNames[focusArea] || focusArea)
@@ -110,12 +111,12 @@ QQC.ApplicationWindow {
     function pressedAt(x, y) {                  // a press anywhere in the window (focus_areas.py): its area
         const p = body.mapFromItem(null, x, y)
         for (const [name, it] of areas())
-            if (p.x >= it.x && p.x < it.x + it.width && p.y >= it.y && p.y < it.y + it.height) { focusArea = name; return }
+            if (p.x >= it.x && p.x < it.x + it.width && p.y >= it.y && p.y < it.y + it.height) { focusByKeys = false; focusArea = name; return }
     }
     function nextArea() {                       // F6
         const order = areas()
         const next = order[(order.findIndex(a => a[0] === focusArea) + 1) % order.length]
-        focusArea = next[0]; next[1].forceActiveFocus()
+        focusByKeys = true; focusArea = next[0]; next[1].forceActiveFocus()
     }
     onActiveFocusItemChanged: if (activeFocusItem === null || activeFocusItem === contentItem) Qt.callLater(win.settle)
     function settle() { if (activeFocusItem === null || activeFocusItem === contentItem) backToWork() }
@@ -218,10 +219,10 @@ QQC.ApplicationWindow {
             width: Math.max(win.rightNow, Theme.sidePanel); x: body.width - width; height: rightSlot.height
             model: win.exporter
         }
-        Rectangle {     // the focused area's accent edge, only when keys go somewhere other than the main view (home)
+        Rectangle {     // the focused area's accent edge: only when F6 moved the keys somewhere other than the main view
             readonly property Item at: ({ guides: guidesDrawer, left: leftSlot, centre: centreSlot, bottom: bottomSlot,
                                           right: win.rightItem() })[win.focusArea] || centreSlot
-            visible: at !== centreSlot && at.visible && at.width > 0
+            visible: win.focusByKeys && at !== centreSlot && at.visible && at.width > 0
             x: at.x + Theme.radiusPanel; width: Math.max(0, at.width - 2 * Theme.radiusPanel); y: at.y; height: 2
             radius: 1; color: Theme.accent; opacity: 0.8; z: 6
         }

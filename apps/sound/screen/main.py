@@ -35,6 +35,7 @@ from rostrum_core import Document, RostrumError
 from rostrum_core.storage import paths
 from rostrum_gui import guides, layout_run, qt_faults, start
 from rostrum_gui.app import qt_app
+from rostrum_gui.settle import settle
 from rostrum_sound import KIND, run_source
 from rostrum_gui.project_files import ProjectFiles
 from screensound.adder import Adder
@@ -234,14 +235,17 @@ def main():
                              lambda: not screen.bridge.transport.busy(), IGNORE)
         elif args.shot:
             wait_render(screen.bridge)
-            QTimer.singleShot(600, lambda: guarded(shoot))     # the 160 ms reveals have finished
+            settle(screen.win, lambda img: guarded(lambda: shoot(img)),      # frames until the screen holds still
+                   lambda why: guarded(lambda: unsettled(why)))
 
-    def shoot():
+    def unsettled(why):
+        raise RuntimeError(why)
+
+    def shoot(img):
         bridge = screen.bridge
         if bridge.status.startswith("Error"):
             raise RuntimeError(bridge.status)
-        img = screen.win.grabWindow()
-        if img.isNull() or not img.save(args.shot):
+        if not img.save(args.shot):
             raise RuntimeError(f"could not save {args.shot}")
         print(f"saved {args.shot} {img.width()}x{img.height()}  history={bridge.historyCount}  "
               f"selected={bridge.selected}  sound={bridge.soundState!r}  lufs={bridge.lastRender.get('lufs')}")

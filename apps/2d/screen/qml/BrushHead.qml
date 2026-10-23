@@ -47,9 +47,9 @@ Column {
         Rectangle { anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: save.left }
                     radius: Theme.radiusCtl; color: Theme.hover; visible: backArea.containsMouse }
         Chevron { id: back; anchors.left: parent.left; anchors.leftMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter
-                  rotation: 90; color: backArea.containsMouse ? Theme.fg : Theme.fg2 }
+                  rotation: 90; color: Theme.fg }
         Text { anchors.left: back.right; anchors.leftMargin: Theme.grid + 2; anchors.verticalCenter: parent.verticalCenter
-               text: "Back"; color: backArea.containsMouse ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
+               text: "Back"; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
         MouseArea { id: backArea; anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: save.left }
                     hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: painter.setEditing(false) }
         SaveBrush { id: save; anchors { right: parent.right; rightMargin: Theme.keyGutter - 4; verticalCenter: parent.verticalCenter }

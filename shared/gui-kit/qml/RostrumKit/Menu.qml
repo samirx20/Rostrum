@@ -52,7 +52,7 @@ QQC.Popup {
                     id: keys
                     visible: !!row.modelData.keys
                     anchors { right: parent.right; rightMargin: Theme.gap - menu.padding; verticalCenter: parent.verticalCenter }
-                    text: row.modelData.keys || ""; color: Theme.fg3; font.pixelSize: Theme.label; font.family: uiFont
+                    text: row.modelData.keys || ""; color: Theme.fg2; font.pixelSize: Theme.label; font.family: uiFont
                 }
                 MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onEntered: menu.highlighted = row.index; onClicked: row.parent.pick(row.index) }

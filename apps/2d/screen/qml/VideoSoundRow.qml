@@ -5,7 +5,7 @@ import RostrumKit
 // UX_SPEC 3.28 Sync sound). The waveform lies along the layer's bar, read from the bar's own times (rowData), so it
 // moves and trims with the bar, live while dragging; it shows only what Sound plays (Clip starts at, Speed, Loop's
 // rounds, cut to its groups' times: info.pieces).
-// RostrumSound mixes it. 🔊 mutes it in Sound's song (one change, Ctrl+Z takes it back). No project sound: it says so.
+// RostrumSound mixes it. The speaker mutes it in Sound's song (one change, Ctrl+Z takes it back). No project sound: it says so.
 Item {
     id: sub
     property var rowData            // the video layer's row (start, end)
@@ -28,7 +28,7 @@ Item {
             anchors.right: parent.right; anchors.rightMargin: Theme.pad; anchors.verticalCenter: parent.verticalCenter
             visible: sub.info.problem === ""
             width: 20; height: 20; kind: "ghost"; down: sub.info.muted
-            glyph: sub.info.muted ? "🔇" : "🔊"
+            icon: sub.info.muted ? "sound-off" : "sound"
             tip: sub.info.muted ? "Unmute this video's sound" : "Mute this video's sound (in Sound's mix)"
             onClicked: backend.soundtrack.videos.setMuted(sub.rowData.id, !sub.info.muted)
         }

@@ -22,11 +22,6 @@ def label_of(ease: str) -> str:
     return next((e["label"] for e in EASES if e["value"] == ease), OTHER.get(ease, ease))
 
 
-def shape_of(ease: str) -> str:
-    """The tiny mark drawn on the bar between two keys: "line" (linear), "step" (jump) or "curve" (anything eased)."""
-    return {"linear": "line", "hold": "step"}.get(ease, "curve")
-
-
 def handles(key: dict) -> list[float]:
     """[x1, y1, x2, y2] the small curve shows and drags: a cubic's own numbers; linear is the diagonal; others (spring,
     jump, bounce) start a custom curve from Smooth's."""

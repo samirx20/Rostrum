@@ -27,6 +27,8 @@ FocusScope {
     signal escaped()                    // Esc while typing (the typing is dropped first)
     implicitWidth: 140
     implicitHeight: Theme.field
+    // the least width its words at rest need uncut ("Mixed", a word value): a narrow box (an amount's) grows to it
+    readonly property real restNeeds: Math.ceil(input.x + rest.implicitWidth + Theme.gap + trailingSlot.width + trailingSlot.anchors.rightMargin)
 
     HoverHandler { id: hoverHandler }
 

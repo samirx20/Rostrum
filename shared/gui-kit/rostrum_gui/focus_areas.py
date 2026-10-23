@@ -1,5 +1,5 @@
-"""Which area of the window the person last pressed in (INTERACTION.md 1.20): the area that takes the keys, with a thin
-accent line on its top edge (AppShell.pressedAt). Watched here, before any item sees the press, because a press that a
+"""Which area of the window the person last pressed in (INTERACTION.md 1.20): the area that takes the keys
+(AppShell.pressedAt; a press shows no mark, only F6 lights the area's top edge). Watched here, before any item sees the press, because a press that a
 canvas or list takes for itself never reaches a handler on the shell. `start` installs it on every AppShell window."""
 from __future__ import annotations
 

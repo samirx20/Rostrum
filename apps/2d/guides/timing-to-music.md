@@ -20,7 +20,7 @@ When your project has music, voice or sound made in RostrumSound, Rostrum2D play
 
 ## 3. Muting the sound
 
-- Click the **speaker button** (🔊) in the timeline's header, at the left of **Add marker**. It turns to 🔇 and the waveform fades. Click it again to hear the sound.
+- Click the **speaker button** at the right end of the Sound row's name. It shows as pressed, with a cross in place of the sound waves, and the waveform fades. Click it again to hear the sound.
 - Muting is only for this window. It does not change the song, and an export from RostrumSound still has all of its sound.
 
 ## 4. Picking which sound plays
@@ -35,11 +35,11 @@ The Soundtrack setting is there only when the project has at least one RostrumSo
 
 ![Show beats on: a faint line on every beat, a stronger line and a number on every bar](pictures/show-beats.png)
 
-1. Click the small **▾** at the left end of the ruler (to the right of the word LAYERS).
+1. Click the song's name on the Sound row (or right-click the row). Its menu opens.
 2. Click **Show beats**. A faint line appears on every beat, and a stronger line with the bar's number on every bar.
-3. To hide them, open **▾** again and click **Hide beats**.
+3. To hide them, open the menu again and click **Hide beats**.
 
-The **▾** menu appears only when the song has a tempo. When you zoom out far, the beat lines leave and only the bar lines stay.
+**Show beats** is in the menu only when the song has a tempo. When you zoom out far, the beat lines leave and only the bar lines stay.
 
 ## 6. Snapping to beats and markers
 
