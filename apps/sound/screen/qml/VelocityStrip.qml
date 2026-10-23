@@ -53,7 +53,7 @@ Item {
                text: "Vel"; color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label }
         MouseArea { id: vh; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: backend.toggleVelocityFold() }
-        HoverTip { text: s.folded ? "Show the velocity strip" : "Velocity: how hard each note plays. Drag a bar, or draw a line across. Click to fold it away"
+        HoverTip { text: s.folded ? (s.roll.played ? "Show the velocity strip and the playing lane" : "Show the velocity strip") : "Velocity: how hard each note plays. Drag a bar, or draw a line across. Click to fold it away" + (s.roll.played ? " (with the playing lane under it)" : "")
                    hovered: vh.containsMouse; pressed: vh.pressed }
     }
     Rectangle { visible: !s.folded; x: s.keysWidth; width: s.width - x; height: s.height; radius: Theme.radiusCtl; color: Theme.sunken

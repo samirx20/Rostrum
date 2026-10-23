@@ -53,6 +53,10 @@ def layered() -> list[str]:
     return ["--script", str(script)]
 
 
+BEND = ('agent Bend the melody|[{"op":"automation.set","target":["melody"],"args":{"lane":"bend","points":'
+        '[[0,0],[1.5,0],[2,0.5],[4,0.5],[4.5,0]]}}]')
+
+
 def states() -> list[tuple[str, list[str], list[str]]]:
     busy = [*TWELVE, f"say {LONG_STATUS}"]
     return [
@@ -65,6 +69,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("clean-result-line", ["--sample"], ["select-clip door", "dock editor", "clean 0 0 1",
                                              "clean-line Background_noise_−18_dB_·_voice_level_−4_dB_·_room_echo_shorter|The_voice_got_quieter_too:_try_less."]),
         ("velocity-strip", ["--sample"], ["select melody", "dock editor", "velocity-line 0 0.2 6 1"]),
+        ("editor-playing-lane", ["--sample"], [BEND, "select melody", "dock editor", "play-lane bend"]),   # S56
+        ("export-midi", long_project(), [*busy, "exportsheet open midi", f"exportwhere {LONG_FOLDER}"]),     # S56
         ("key-shading", ["--sample"], ['agent Set the key|[{"op":"key.add","target":[],"args":{"at":0,"key":"D minor"}}]', "select melody", "dock editor"]),
         ("key-out-of-key-dots", ["--sample"], ['agent Set the key|[{"op":"key.add","target":[],"args":{"at":0,"key":"F# major"}}]', "select melody", "dock editor"]),
         ("song-flags", ["--sample"], [SONG_FLAGS]),

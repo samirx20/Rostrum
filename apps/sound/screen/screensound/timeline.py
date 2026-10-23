@@ -240,9 +240,9 @@ def song(root: dict) -> dict:
             "tempo": float(root.get("tempo", 120)), **music_map.grid(root, length)}
 
 
-def roll(track: dict | None, root: dict, hue: str = HUES[0]) -> dict:
+def roll(track: dict | None, root: dict, hue: str = HUES[0], play_lane: str = "sustain") -> dict:
     """The piano roll of one track: its kind, the key range (notes: at least two octaves around what's there)
-    or the drum rows, and its blocks."""
+    or the drum rows, its blocks, and (notes) its playing lane `play_lane` (sustain, expression or bend)."""
     if track is None:
         return {"id": "", "name": "", "kind": "none", "blocks": [], "lo": 48, "hi": 72, "rowNames": [], "drums": [], "hue": hue}
     bl = blocks(track, root)
@@ -263,4 +263,5 @@ def roll(track: dict | None, root: dict, hue: str = HUES[0]) -> dict:
     row_names = [{"t": 0.0, **spell(K.key_at(root, 0.0))}]
     row_names += [{"t": c["t"], **spell(c["key"])} for c in music_map.key_changes(root) if c["t"] > 0]
     return {"id": track["id"], "name": track.get("name") or track["id"], "kind": kind_of(track), "blocks": bl,
-            "lo": lo, "hi": hi, "rowNames": row_names, "drums": roll_drums(track), "hue": hue}
+            "lo": lo, "hi": hi, "rowNames": row_names, "drums": roll_drums(track), "hue": hue,
+            "played": lanes.played(track, root, play_lane) if kind_of(track) == "notes" else None}

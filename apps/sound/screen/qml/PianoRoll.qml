@@ -101,8 +101,16 @@ Panel {
     VelocityStrip {   // one bar per note or hit; drag a bar, or draw a line across (DESIGN.md §3.3d)
         id: strip
         visible: bars.visible && (p.kind === "notes" || p.kind === "drums")
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+        anchors { left: parent.left; right: parent.right; bottom: played.visible ? played.top : parent.bottom
+                  bottomMargin: played.visible ? Theme.grid : 0 }
         roll: p.roll; ruler: bars; keysWidth: p.keysWidth
+    }
+    AutomationLane {   // the playing lane under the velocity strip: sustain pedal, expression, pitch bend (folds with it)
+        id: played
+        visible: strip.visible && !!p.roll.played && !strip.folded
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+        height: 64; inEditor: true; plotX: p.keysWidth; ruler: bars
+        row: ({ id: p.roll.id, hue: p.roll.hue, auto: p.roll.played })
     }
     ActionMenu { id: rollMenu; onPicked: (v) => backend.menuPick(v) }      // the kit's
     function menuFor(id) {   // the right-click menu on an item (a scripted step: steps_select.py)

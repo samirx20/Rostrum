@@ -29,6 +29,9 @@ vln.note("A4", at=beat(2), dur=beats(0.5), art="spiccato")    # a named articula
 g.note("E3", at=0, dur=1, position=0.4, bend=[(0, -100), (0.08, 0)])   # this note's touch; a scoop up
 vln.dynamics([(bar(13), 0.5), (bar(17), 1.3)])     # CC 11 over the track (0 … 2, multiplies every note)
 vln.vibrato([(0, 0), (bar(3), 0.6)], rate=5.5, depth=25)   # mod wheel 0 … 1 (1 = depth cents at rate Hz)
+vln.bend([(bar(5), -0.25), (bar(5) + 0.5, 0)], range=2)    # pitch wheel -1 … 1 (× range semitones, 2 unless set)
+keys = track("keys", builtIn="feltPiano")
+keys.sustain([(0, 0), (bar(2), 0), (bar(2), 1), (bar(3), 1), (bar(3), 0)])   # pedal CC 64: down bars 2–3 (steps)
 vln.phrase(bar(5), bar(9), vel=[(0, 0.5), (1, 0.9)])  # velocity along the phrase, for notes that wrote no vel
 f = vel_curve([(0, 0.5), (1, 0.9)], bar(5), bar(9)); vln.note("D4", at=bar(6), dur=1, vel=f(bar(6)) + 0.15)
 vln.humanize(seed=3, timing=0.012, velocity=0.06)   # every note / hit on the track, ±12 ms, ±0.06
@@ -40,8 +43,11 @@ vln.humanize(seed=3, timing=0.012, velocity=0.06)   # every note / hit on the tr
   `damping` is plucked strings only; `position` / `hardness` not for violin. Wrong ones fail with the reason.
 - `humanize` and `phrase` write plain numbers into the notes when the script runs. Offsets come from the seed and
   each note's id (made from its written time), so a re-run gives the same values and keeps a person's edit;
-  another seed gives another draw. The `dynamics` / `vibrato` lanes are the same `automation.set` operation as
-  volume / pan (lane `dynamics` / `vibrato`).
+  another seed gives another draw. The `dynamics` / `vibrato` / `sustain` / `bend` lanes are the same
+  `automation.set` operation as volume / pan (lane `dynamics` / `vibrato` / `sustain` / `bend`); the screen calls
+  `dynamics` "Expression" and shows Sustain, Expression and Bend under the Editor's velocity strip. A note let go
+  while the pedal is down (0.5 or more) rings on until it lifts; a bend lane moves every note on the track (put a
+  line that should stay in tune on its own track) and adds to a note's own `bend`.
 
 ## Editing recorded sounds: stretch, shift, layers, plug-ins
 
@@ -97,8 +103,9 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   `in_key`, `snap` (nearest note of the key). They change nothing in the sound.
 - **MIDI:** `edit_import_midi` `{path, song_map}` imports a .mid as one undo step (channel 10 becomes drum hits on
   the synth kit; other channels a built-in instrument from the GM program family, to change after); `render_midi`
-  writes the document's notes, hits, tempo map, time signature, keys, markers and sections (as cue points) to
-  `renders/<item>/midi/<item>.mid`. What MIDI can't carry comes back as a warning. Clips, designed sounds and
+  writes the document's notes, hits, sustain / expression / mod wheel / bend lanes (CC 64, CC 11, CC 1, the pitch
+  wheel, bend range as RPN 0; import reads them back), tempo map, time signature, keys, markers and sections (as
+  cue points) to `renders/<item>/midi/<item>.mid` (the screen: Export › What for › MIDI file). What MIDI can't carry comes back as a warning. Clips, designed sounds and
   voice lines are audio and are not written.
 - **A MIDI keyboard** (screen): arm a track, "Record keys" (shown only with a keyboard connected) records while the
   mix plays; Stop puts the take on the armed track in beats, one undo step. The sound you hear while playing is a

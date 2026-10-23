@@ -31,7 +31,7 @@ MODELS = [*PLUCKED, *BARS, *BOWED]
 WAVES = ["saw", "square", "triangle", "sine"]
 # Which track / master values an automation lane may drive. The expression lanes (CC-style) compile into the
 # track's `expression`; the others into its `automation`.
-EXPRESSION_LANES = ["dynamics", "vibrato"]
+EXPRESSION_LANES = ["dynamics", "vibrato", "sustain", "bend"]   # CC 11, CC 1, CC 64, the pitch wheel
 TRACK_LANES = ["volume", "pan", *EXPRESSION_LANES]
 MASTER_LANES = ["volume"]
 BUS_LANES = ["volume", "pan"]

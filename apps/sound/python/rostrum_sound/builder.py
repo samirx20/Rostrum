@@ -91,6 +91,16 @@ class Track(Inserts):
         self.automate("vibrato", points)
         return self.set(vibratoRate=rate, vibratoDepth=depth)
 
+    def sustain(self, points):
+        """The sustain pedal lane (CC 64): [(time, 0 up … 1 down), …]; a note released while it is down (0.5 or
+        more) rings on until it lifts. A step: two points at one time, sustain([(0, 1), (bar(2), 1), (bar(2), 0)])."""
+        return self.automate("sustain", points)
+
+    def bend(self, points, range=None):
+        """The pitch-wheel lane: [(time, -1 … 1), …]; 1 = up `range` semitones (2 unless set)."""
+        self.automate("bend", points)
+        return self.set(bendRange=range)
+
     def humanize(self, seed, timing=0.012, velocity=0.06):
         """Every note and hit on this track (added before or after) moved by up to ±timing s and ±velocity,
         drawn from (seed, its id): the same every run (`expression.py`)."""

@@ -6,10 +6,13 @@ QML as `mixer.export` (and `backend.exporter`).
 What for = where it is going (delivery.py's targets: Streaming −14 …); choosing one is the one master.set change it
 always was (mixer.loudness.choose). Then the file type, the quality (sample rate), stems, trimming the silent end, and
 the live pass / miss against the target. Browse: the mix is also copied into that folder, under its song's name (the
-version folder keeps everything). A failure is written in words and is the bridge's red error (never a quiet "done").
+version folder keeps everything). "MIDI file" is one more What for choice: the song's notes, playing lanes, tempo map
+and markers as a .mid, written by the same `midi.export` the agents' `render_midi` uses, to the same place
+(`renders/<item>/midi/<item>.mid`); none of the sound's settings apply to it, so none show. A failure is written in words and is the bridge's red error (never a quiet "done").
 """
 from __future__ import annotations
 
+import copy
 import os
 import re
 import shutil
@@ -19,11 +22,14 @@ from PySide6.QtCore import Property, Signal, Slot
 from rostrum_core import RostrumError
 from rostrum_gui.export_sheet import ExportSheet
 from rostrum_sound import compile as compile_doc
-from rostrum_sound import deliver, handoff, presets
+from rostrum_sound import deliver, handoff, midi, presets
 from rostrum_sound.doc import markers
 
 from . import delivery, export_stems, playback
 from .export_versions import Versions, ranges, schedule_for
+
+
+MIDI = "midi"     # the What for choice that writes a MIDI file, not a mix
 
 
 def summary(r: dict) -> str:
@@ -62,6 +68,8 @@ class RenderExport(ExportSheet):
         """The master's target changed (here, by undo, or by an agent): the list shows it. A chosen row whose numbers
         the master still has stays chosen (Podcast and Apple Music ask for the same numbers)."""
         t = self._loud.target if self._loud is not None else {}
+        if self._choice == MIDI:                         # not a loudness target: the master's doesn't move it
+            return
         row = delivery.BY_KEY.get(self._choice)
         if row and t.get("shown") and (t.get("lufs"), t.get("peak")) == (row["lufs"], row["peak"]):
             return
@@ -72,14 +80,19 @@ class RenderExport(ExportSheet):
 
     # ---- the kit's questions --------------------------------------------------------------------------------
     def choices_list(self):
-        return [{"value": c["id"], "label": c["label"], "tip": c["detail"].replace("-", "−")} for c in delivery.choices()]
+        return [*({"value": c["id"], "label": c["label"], "tip": c["detail"].replace("-", "−")} for c in delivery.choices()),
+                {"value": MIDI, "label": "MIDI file", "tip": "Notes, sustain, expression, bend, tempo and markers for "
+                                                             "another music app; no sound"}]
 
     def chose(self):
+        if self._choice == MIDI:
+            return
         if self._loud is not None and self._choice != self._target_key():
             self._loud.choose(self._choice)                # one master.set: Normalize on, its loudness and peak
 
     def ranges_list(self):
-        return ranges(self.bridge.doc, self.bridge._picks.range)
+        all_ = ranges(self.bridge.doc, self.bridge._picks.range)
+        return all_[:1] if self._choice == MIDI else all_       # a MIDI file is the whole song
 
     def default_folder(self):
         doc = self.bridge.doc
@@ -89,12 +102,15 @@ class RenderExport(ExportSheet):
 
     def file_name(self):
         name = re.sub(r'[<>:"/\\|?*]+', " ", self.bridge.docName or self.bridge.doc.item_id or "Song").strip() or "Song"
-        return f"{name}.{deliver.BY_FORMAT[self._format]['ext']}"
+        return f"{name}.{'mid' if self._choice == MIDI else deliver.BY_FORMAT[self._format]['ext']}"
 
     def begin(self, out, overwrite):
         doc = self.bridge.doc
         if not doc.folder or not doc.item_id:
             raise RuntimeError("save the song into a project first (open it with a project folder), so the render has a place to go")
+        if self._choice == MIDI:            # the agents' render_midi path and file
+            return {"midi": Path(doc.folder) / "renders" / doc.item_id / "midi" / f"{doc.item_id}.mid",
+                    "root": copy.deepcopy(doc.data), "out": out}
         # A preset's own render choice (the Editor's: the mix before mastering), while the sheet still shows it chosen.
         master = presets.PRESETS.get(self.preset, {}).get("master", True)
         try:
@@ -115,6 +131,8 @@ class RenderExport(ExportSheet):
         return {"doc": doc, "versions": versions, "who": f"{self.bridge.who.kind}:{self.bridge.who.name}", "out": out}
 
     def work(self, p, progress):
+        if "midi" in p:
+            return self._write_midi(p)
         progress(-1.0)                                     # the engine can't say how far it is
         eng, made = self._open_engine(), []
         try:
@@ -138,6 +156,22 @@ class RenderExport(ExportSheet):
             main, files = str(out), [str(out), *files]
         return {**r, "file": main, "files": files, "version": f"v{int(r['version']):03d}",
                 "summary": " | ".join(summary(m) for m in made), "versions": [f"v{int(m['version']):03d}" for m in made]}
+
+    def _write_midi(self, p):
+        skipped = midi.export(p["root"], p["midi"])
+        files = [str(p["midi"])]
+        if p["out"] is not None:
+            out = Path(p["out"])
+            out.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(p["midi"], out)
+            files.insert(0, str(out))
+        said = f"; skipped: {'; '.join(skipped)}" if skipped else ""
+        return {"file": files[0], "files": files, "summary": f"MIDI file · {Path(files[0]).name}{said}"}
+
+    @Property(bool, notify=own)
+    def isMidi(self):
+        """The MIDI file is chosen: the sound's settings (file type, stems, versions …) don't apply and don't show."""
+        return self._choice == MIDI
 
     # ---- Sound's own settings (qml/ExportSettings.qml) --------------------------------------------------------
     @Property("QVariantList", constant=True)

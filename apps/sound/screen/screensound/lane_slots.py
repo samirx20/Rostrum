@@ -32,6 +32,14 @@ class LaneSlots:
             return self._fail(f'Error: lane: "{lane}" of "{target}" is not a lane on {track_id}.')
         self._rebuild()
 
+    @Slot(str)
+    def openPlayLane(self, lane):
+        """Show `lane` (sustain, dynamics = expression, bend) in the Editor's playing lane."""
+        if lane not in lanes.PLAYED:
+            return self._fail(f'Error: lane: "{lane}" is not a playing lane (one of {", ".join(lanes.PLAYED)}).')
+        self._play_lane = lane
+        self._rebuild()
+
     @Slot(str, str, str, float, float, float, float, bool)
     def laneBegin(self, track_id, target, lane, t, yfrac, tol_t, tol_y, free):
         """Press in a lane (`yfrac` 0 top .. 1 bottom, tolerances: seconds and a fraction of the height): grab

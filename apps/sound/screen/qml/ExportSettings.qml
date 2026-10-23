@@ -8,6 +8,7 @@ import RostrumKit
 // A delivery preset ("For the Editor", presets.py) is one button that sets file, quality, trimming, stems and markers; it
 // shows as chosen while the choices still equal it. Stems: only the mix / every track and group / one per group (only offered
 // when the song has a group). "Write the markers beside the files" only when the song has a marker or section.
+// What for = MIDI file: a .mid, not a mix, so none of these show (job.isMidi).
 Column {
     id: root
     readonly property var job: mixer.export
@@ -36,6 +37,7 @@ Column {
         Text { id: words; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body; anchors.verticalCenter: parent.verticalCenter }
     }
 
+    visible: !job.isMidi
     Text {   // the live check: the sound that plays now against the target (only once both exist)
         width: root.width; wrapMode: Text.WordWrap
         visible: root.target.shown && !!root.target.verdict && !!root.target.verdict.text

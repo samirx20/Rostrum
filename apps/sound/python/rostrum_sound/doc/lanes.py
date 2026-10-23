@@ -15,7 +15,8 @@ from .. import names
 from . import effects as FX
 
 MIX = {"track": names.TRACK_LANES, "master": names.MASTER_LANES, "bus": names.BUS_LANES, "send": names.SEND_LANES}
-MIX_RANGE = {"volume": (0, 4), "pan": (-1, 1), "level": (0, 4), "dynamics": (0, 2), "vibrato": (0, 1)}
+MIX_RANGE = {"volume": (0, 4), "pan": (-1, 1), "level": (0, 4), "dynamics": (0, 2), "vibrato": (0, 1),
+             "sustain": (0, 1), "bend": (-1, 1)}
 PARAM = "param:"
 TARGETS = (*MIX, "effect")
 BAND_RANGE = {p.name: (p.min, p.max) for p in FX.BAND_PARAMS if p.name != "shape"}     # freq, gain, q

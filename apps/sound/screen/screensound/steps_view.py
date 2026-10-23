@@ -7,12 +7,13 @@
     picture <video file> | picture none
     fold <group id> | fold all                                (a group's fold arrow; Alt+click = all)
     vel-fold                                                  (the velocity strip's fold arrow)
+    play-lane <sustain|dynamics|bend>                         (the Editor's playing lane chip)
     group-drop <track id> <row id>                            (drag a track header onto that row: into / out of a group)
     group-toggle <group id> mute|solo                         (M / S on a group's header)
 """
 from __future__ import annotations
 
-WORDS = ("zoom", "scroll", "fit", "lane", "lane-point", "lane-delete", "picture", "fold", "vel-fold", "group-drop", "group-toggle")
+WORDS = ("zoom", "scroll", "fit", "lane", "lane-point", "lane-delete", "picture", "fold", "vel-fold", "play-lane", "group-drop", "group-toggle")
 
 
 def do_view_step(bridge, word, rest):
@@ -31,6 +32,8 @@ def do_view_step(bridge, word, rest):
         bridge.removeSelected()
     elif word == "vel-fold":
         bridge.toggleVelocityFold()
+    elif word == "play-lane":
+        bridge.openPlayLane(rest[0])
     elif word == "group-drop":
         bridge.dropTracks([rest[0]], rest[1])
     elif word == "group-toggle":

@@ -14,6 +14,12 @@ For a person using the RostrumSound app: turn your song into sound files you can
 Pick where it is going: **Streaming**, **Apple Music**, **EBU R128**, **ATSC A/85** or
 **Podcast**. Each choice sets the song's loudness and its loudest peak in one step (one undo).
 
+The last choice, **MIDI file**, writes no sound: it saves the song's notes, drum hits, sustain pedal, expression and
+pitch bend, tempo map, time signature, keys, markers and sections as a `.mid` for another music app. The sound
+settings below (file type, quality, stems, versions, the silent end) don't apply to it, so they disappear; the whole
+song is written. It lands in the project's `renders/<song>/midi/` folder (Browse also copies it where you choose),
+and anything MIDI can't hold is listed when it is done. Agents make the same file with `render_midi`.
+
 Under the choices a line checks the sound that plays now against that target:
 - "✓ Pass: loudness −14.2 LUFS, loudest peak −1.3 dBTP" (green), or
 - "Miss: 2.1 LU too quiet …" (amber).

@@ -1,5 +1,5 @@
 """A Sound document as a Standard MIDI File (format 1, 480 ticks per quarter note): the notes and drum hits of
-every track, the tempo map (a ramp as exact sixteenth steps), the time signature, key changes, markers, and sections (as cue points "<name>" at
+every track, its pedal / expression / mod wheel / pitch wheel lanes (controllers.py), the tempo map (a ramp as exact sixteenth steps), the time signature, key changes, markers, and sections (as cue points "<name>" at
 the start and "<name>/end" at the end, which `song.py` reads back as sections).
 
     data, skipped = to_bytes(root)            # skipped: what MIDI can't hold (a drum with no GM key), said aloud
@@ -16,6 +16,7 @@ from pathlib import Path
 
 from ..doc import keys as K
 from ..doc import markers, meter, tempo, times
+from . import controllers
 from .song import DRUM_CHANNEL, DRUM_TO_GM
 
 DIVISION = 480
@@ -99,6 +100,8 @@ def _track(root, track, channel, skipped) -> list:
         a = _tick(root, times.seconds(h["at"], root, h["id"]))
         ev += [(a, 2, bytes([0x90 | DRUM_CHANNEL, key, _vel(h.get("vel", 0.85))])),
                (a + DIVISION // 8, 1, bytes([0x80 | DRUM_CHANNEL, key, 0]))]
+    if track.get("notes"):
+        ev += controllers.from_lanes(track, root, lambda s: _tick(root, s), channel, skipped)
     return ev
 
 
