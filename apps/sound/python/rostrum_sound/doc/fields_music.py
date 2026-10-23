@@ -40,7 +40,7 @@ FIELDS = {
               Param.choice("beatUnit", [2, 4, 8, 16], group="Time signature", label="Beat unit",
                            help="What one beat is (the bottom number): 4 quarters, 8 eighths (6/8). Left out: 4."),
               V.Value("at", "number", rule=_tempo_time, schema={"anyOf": V.TIME_SCHEMA["anyOf"][:2]}, unit="s", step=0.01,
-                      form="time", group="Time signature", help='Where it starts, a new bar: {"beat": 32} or seconds.')],
+                      form="time", group="Time signature", help='Where it starts, a new bar: on a bar line of the bars before it, {"beat": 32} or seconds.')],
     "key": [V.Value("key", "text", rule=_key, schema={"type": "string"}, group="Key",
                     help='"D minor", "F# major", "Bb dorian": from here to the next key change.'),
             V.time("at", group="Key")],

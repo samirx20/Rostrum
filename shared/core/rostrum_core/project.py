@@ -210,14 +210,22 @@ def latest_render(folder, item_id: str, kind: str | None = None) -> dict | None:
     return next((r for r in renders(folder, item_id) if kind is None or r["kind"] == kind), None)
 
 
-def begin_render(folder, item_id: str) -> Path:
-    """A new, empty `renders/<item>/vNNN.partial/` (the next version number) for a render to write into."""
+def next_render(folder, item_id: str) -> Path:
+    """The `renders/<item>/vNNN/` folder the next render of `item_id` will finish in (nothing is made): the one rule a
+    screen shows the place with and `begin_render` writes by."""
     if not _SAFE_ID.match(item_id):
         raise RostrumError(codes.BAD_ARGUMENT, "render", f'item "{item_id}"', "may use only letters, digits, _ and -")
     base = Path(folder) / "renders" / item_id
-    base.mkdir(parents=True, exist_ok=True)
-    taken = [int(m.group(1)) for d in base.iterdir() if (m := re.match(r"^v(\d{3,})(\.partial)?$", d.name))]
-    part = base / f"v{max(taken, default=0) + 1:03d}.partial"
+    names = [d.name for d in base.iterdir()] if base.is_dir() else []
+    taken = [int(m.group(1)) for n in names if (m := re.match(r"^v(\d{3,})(\.partial)?$", n))]
+    return base / f"v{max(taken, default=0) + 1:03d}"
+
+
+def begin_render(folder, item_id: str) -> Path:
+    """A new, empty `renders/<item>/vNNN.partial/` (the next version number, `next_render`) for a render to write into."""
+    done = next_render(folder, item_id)
+    done.parent.mkdir(parents=True, exist_ok=True)
+    part = done.with_name(done.name + ".partial")
     part.mkdir()
     return part
 

@@ -40,7 +40,9 @@ Right-click **Record** (a track must be armed). The panel shows only what can be
 
 1. Move the playhead where you want to begin.
 2. Click **Record** or press **R**. The song plays from the playhead. With count-in on you see "Count-in" and the number first, then **Stop** with the seconds, the dot pulsing.
-3. Click **Stop** (or press **R** again) to finish.
+3. While it records, the take grows in the armed track's lane from where it started to the playhead, marked
+   "Recording…", with the microphone's level drawn along it: you see at once that the right track is taking sound.
+4. Click **Stop** (or press **R** again) to finish. The growing take becomes its clip a moment later.
 
 ## 7. Where the take goes
 

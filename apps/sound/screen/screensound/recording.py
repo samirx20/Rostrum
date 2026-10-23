@@ -7,6 +7,8 @@ recording and plays from the take's start (take_clock.py: the engine's count-in,
 writes each pass as a take placed at the mix time heard with it (its clock, minus the calibrated microphone delay),
 and the take lands as one `clip.add` (one undo step) at that time. With punch on, the engine keeps only the range and
 the take ends by itself past it. A microphone that cannot open is said loudly and the track is disarmed.
+While it records, `take` is the take growing in its lane: where it starts, how long it is so far and the microphone's
+level along it (the same input level the meter shows), kept on screen until the take lands as its clip.
 """
 from __future__ import annotations
 
@@ -26,6 +28,7 @@ from .take_clock import TakeClock
 BEATS_UNTIL = 3600.0             # beat times handed to the engine reach an hour into the song
 TAKES = SCRATCH / "takes"           # where the engine writes takes before they move to the project's media folder
 SETTLE_MS = 500                     # after stop: the engine's last take line arrives well within this
+FLOOR_DB = -60.0                    # the live take's level drawing: this level is flat, 0 dBFS fills the lane
 
 
 class Recording(QObject):
@@ -40,6 +43,7 @@ class Recording(QObject):
         self.setup.on_set = self._setting
         self.clock = TakeClock(bridge, self.setup, self)
         self._armed, self._taking, self._takes, self._level, self._rolled = "", False, [], None, False
+        self._trace, self._held = [], 0.0          # the live take: [seconds into it, level 0..1]; its length at Stop
         self.player.take.connect(self._took)
         self.player.level.connect(self._heard_level)
         self.player.changed.connect(self._player_changed)
@@ -65,6 +69,15 @@ class Recording(QObject):
     @Property(float, notify=levelChanged)
     def elapsed(self):
         return max(0.0, self.player.position() - self.clock.at) if self._taking and self.player.rolled else 0.0
+
+    @Property("QVariantMap", notify=levelChanged)
+    def take(self):
+        """The take as it grows (from the moment the mix rolls until it lands as a clip): {track, t, dur, levels:
+        [[seconds into the take, 0..1], …]}; {} when there is none."""
+        dur = self.elapsed if self._taking else self._held if self._settle.isActive() else 0.0
+        if dur <= 0:
+            return {}
+        return {"track": self._armed, "t": self.clock.at, "dur": dur, "levels": self._trace}
 
     @Property(int, notify=levelChanged)
     def counting(self):
@@ -140,7 +153,7 @@ class Recording(QObject):
             raise RostrumError(codes.INTERNAL, "record", "the microphone", f"is not open: {self.player.reason}", [],
                                "Check the sound output and the microphone, then arm the track again.")
         self.configure(at=self.clock.start_time())
-        self._taking, self._takes = True, []
+        self._taking, self._takes, self._trace = True, [], []
         self.clock.begin()
         self._tick.start()
         self._show()
@@ -149,6 +162,7 @@ class Recording(QObject):
     @Slot()
     def stop(self):
         if self._taking:
+            self._held = self.elapsed            # the live take stays drawn, this long, until it lands
             self._taking = False
             self._rolled = self.player.rolled
             self.clock.stop()
@@ -170,6 +184,13 @@ class Recording(QObject):
             Path(take.get("file", "")).unlink(missing_ok=True)
 
     def _land(self):
+        try:
+            self._land_takes()
+        finally:                                 # the live take gives way to its clip (or to the message why not)
+            self._held = 0.0
+            self.levelChanged.emit()
+
+    def _land_takes(self):
         takes, self._takes = self._takes, []
         if not takes:
             if self._rolled:
@@ -185,6 +206,8 @@ class Recording(QObject):
 
     def _heard_level(self, db):
         self._level = db
+        if self._taking and self.player.rolled:
+            self._trace.append([round(self.elapsed, 3), round(max(0.0, min(1.0, 1 - db / FLOOR_DB)), 3)])
         self.levelChanged.emit()
 
     def _setting(self, key):

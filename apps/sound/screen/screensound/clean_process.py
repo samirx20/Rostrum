@@ -1,7 +1,7 @@
 """Runs the clean-up job (rostrum_sound.cleanup_job) in a process of its own and reads its lines, so the screen can end
 it: `Cancel` kills the process, the cache keeps nothing that is not whole, and the half-made step folders are swept.
 
-    job = CleanProcess(root, clip_ids, on_progress)      # run it on a worker thread: job.run() -> "" or the error line
+    job = CleanProcess(root, folder, clip_ids, on_progress)   # worker thread: job.run() -> "" or the error line
     job.kill()                                            # from the screen's thread
 """
 from __future__ import annotations
@@ -20,8 +20,9 @@ from rostrum_core.cache import Cache
 
 
 class CleanProcess:
-    def __init__(self, root: dict, ids: list[str], on_progress: Callable[[str], None]):
-        self.root, self.ids, self.on_progress = root, ids, on_progress
+    def __init__(self, root: dict, folder, ids: list[str], on_progress: Callable[[str], None]):
+        """`folder`: the song's project folder, which a take's relative `media` is read under (never the job's own)."""
+        self.root, self.folder, self.ids, self.on_progress = root, folder, ids, on_progress
         self.proc: subprocess.Popen | None = None
         self.cancelled, self.started = False, time.time()
 
@@ -31,7 +32,7 @@ class CleanProcess:
         err, ok = "", False
         try:
             spec = folder / "spec.json"
-            spec.write_text(json.dumps({"root": self.root, "ids": self.ids}), encoding="utf-8")
+            spec.write_text(json.dumps({"root": self.root, "folder": str(self.folder) if self.folder else None, "ids": self.ids}), encoding="utf-8")
             self.proc = subprocess.Popen(          # no -I: the job needs the same import paths as the screen
                 [sys.executable, "-m", "rostrum_sound.cleanup_job", str(spec)], stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT, text=True, encoding="utf-8",

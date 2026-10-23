@@ -168,6 +168,11 @@ def write(path: Path, src: Path, keep: int, rate: int, spec: dict, sf, offset: i
     return over
 
 
+def mix_name(item: str, ext: str = "wav") -> str:
+    """The mix's file name in a render's version folder: the one name the writer uses and the Export sheet shows."""
+    return f"{item}_mix.{ext}"
+
+
 def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dict:
     """Turn the engine's float files in `folder` into the delivered ones. `r` is the engine's answer (`file`,
     `stems` {track id: path}, `busStems` {bus id: path}); `names` maps a track or bus id to the name the screen shows.
@@ -177,8 +182,9 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dic
     each id became) and what was written (`format`, `sampleRate`, `trimmedTo`, `clippedSamples`)."""
     sf = _soundfile()
     spec = opts.spec
-    jobs = [("mix", None, Path(r["file"]), f"{item}_mix")]
-    taken = {f"{item}_mix".lower()}
+    mix = Path(mix_name(item)).stem
+    jobs = [("mix", None, Path(r["file"]), mix)]
+    taken = {mix.lower()}
     for tid, p in (r.get("stems") or {}).items():
         jobs.append(("track", tid, Path(p), safe_name(names.get(tid) or tid, taken)))
     for bid, p in (r.get("busStems") or {}).items():

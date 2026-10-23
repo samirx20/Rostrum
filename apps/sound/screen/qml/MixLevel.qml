@@ -4,8 +4,8 @@ import "MixFormat.js" as F
 
 // A strip's level block, left to right: the dB scale, the fader, the meter with its peak number above it. The scale
 // and the meter sit on the fader's own travel (inset by half the knob), so their marks line up with the knob. While the
-// song plays the meter moves with the sound (`live`, from the engine) and the number is its held peak; stopped, the
-// meter falls to silence and the number is the last render's highest level.
+// song plays the meter moves with the sound (`live`, from the engine); the number is the highest peak since play
+// started (`peak`, one rule for tracks, groups and the Master), held after the stop while the meter falls to silence.
 Item {
     id: lv
     property real gain: 1
@@ -17,14 +17,13 @@ Item {
     signal reset()
     signal typeIt()
     signal nudged(real gain)
-    readonly property bool measured: !!meter && meter.peak !== undefined && meter.peak !== null
-    readonly property bool held: meterBar.holdDb > F.FLOOR
-    readonly property var shown: live ? (held ? meterBar.holdDb : null) : (measured ? meter.peak : null)
+    property var peak: null             // dBFS: the highest peak since play started (mixer.peaks), held after the stop; null: none yet
+    readonly property var shown: peak !== null && peak > F.FLOOR ? peak : null
     implicitWidth: scale.width + fader.width + meterBar.width + 2 * Theme.grid
-    Text {   // the held peak while playing ("−∞": silent), else the render's peak ("—" until a render has measured it)
+    Text {   // the peak since play started, held after the stop ("−∞": silent so far; "—": not played yet)
         id: peakText
         anchors.horizontalCenter: meterBar.horizontalCenter; anchors.top: parent.top
-        text: lv.shown !== null ? F.num(lv.shown, 1) : lv.live ? "−∞" : "—"
+        text: lv.shown !== null ? F.num(lv.shown, 1) : lv.peak !== null || lv.live ? "−∞" : "—"
         color: lv.shown !== null ? Theme[F.levelTone(lv.shown)] : Theme.fg3
         font.family: uiFont; font.pixelSize: Theme.label; font.features: { "tnum": 1 }
     }
@@ -44,10 +43,8 @@ Item {
         id: meterBar
         anchors { left: fader.right; leftMargin: Theme.grid; top: fader.top; bottom: fader.bottom; topMargin: 7; bottomMargin: 7 }
         live: lv.live
-        tip: lv.live ? "Level now: the bar is the average (RMS), the thin bar and the mark the peak"
-             : lv.measured ? "Highest level in the last render: " + F.num(lv.meter.peak, 1) + " dB"
-                           + (lv.meter.lufs !== null && lv.meter.lufs !== undefined ? ", loudness " + F.num(lv.meter.lufs, 1) + " LUFS" : "")
-                           + ". Play to see the level move"
-             : "Not measured yet: render to see the level"
+        tip: lv.live ? "Level now: the bar is the average (RMS), the thin bar and the mark the peak. The number is the highest peak since play started"
+             : lv.peak !== null ? "Highest peak of the last play: " + (lv.shown !== null ? F.num(lv.shown, 1) + " dB" : "silent") + ". Play to start again"
+             : "Play to see the level move"
     }
 }

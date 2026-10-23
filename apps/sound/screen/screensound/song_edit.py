@@ -31,6 +31,12 @@ def _beat_at(root, t, free=False):
 snapped_beat = _beat_at       # where a new change at the playhead is written (song_list.py: is one there already?)
 
 
+def bar_beat(root, t) -> float:
+    """Where a new time signature change at the playhead is written: the nearest bar line (one always starts a whole
+    bar, meter.off_bar). 0 when that is the song's start (its own time signature)."""
+    return meter.bar_start(root, round(meter.bar_at(root, tempo.beat_at(root, t))) + 1)
+
+
 ROLES = ("intro", "verse", "chorus", "bridge", "drop", "outro")
 
 
@@ -88,9 +94,9 @@ def add_tempo_call(root: dict, t: float, bpm: float | None = None) -> dict:
 
 
 def add_meter_call(root: dict, t: float) -> dict:
-    """A time signature change at the playhead, on its beat (a new bar starts there); starts at the time signature
+    """A time signature change on the bar line nearest the playhead (`bar_beat`); starts at the time signature
     already playing there, so the person then picks the new one (3/4 → 6/8) in its settings."""
-    b = _beat_at(root, t)
+    b = bar_beat(root, t)
     if b <= 1e-9:
         raise _bad("meter.add", "the start of the song", "is the song's own time signature: change that one instead")
     seg = meter.seg_at(root, b)

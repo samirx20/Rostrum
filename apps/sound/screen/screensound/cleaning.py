@@ -131,7 +131,7 @@ class CleanedTake(QObject):
         self._status = f"Making the cleaned take{'s' if len(ids) > 1 else ''}…"
         self.changed.emit()
         snapshot = copy.deepcopy(doc.data)                  # the worker reads a copy: edits go on meanwhile
-        self._job = CleanProcess(snapshot, ids, self._progress.emit)
+        self._job = CleanProcess(snapshot, doc.folder, ids, self._progress.emit)
         self._thread = threading.Thread(target=lambda job=self._job: self._done.emit(job.run()), daemon=True)
         self._thread.start()
         return True

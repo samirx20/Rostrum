@@ -3,8 +3,9 @@
 A take recorded into the project (and any file the project holds) is stored RELATIVE to the project folder
 (`media/Recording-take-1.wav`), so copying or moving the folder keeps every take working. A file that lives outside
 the project stays the absolute path it was given. `file(value)` turns either into the path to open: a relative one
-is joined to the project this process works in (markers.use_project / markers.project); a relative one with no
-project is the process's own folder, as before.
+is joined to the project this process works in (markers.use_project / markers.project). A relative one with no
+project is a loud error: it is never read against the folder the process was started from (a desktop shortcut starts
+elsewhere), so every process that reads takes (the screen, an agent server, the clean-up job) names its project.
 
 `upgrade` (DocKind.upgrade, on open) converts an older song's absolute takes: one inside the song's own folder, or
 one that points into the folder this song was copied FROM (same name under media/ here, and the old file is gone or
@@ -16,14 +17,18 @@ import copy
 from contextlib import contextmanager
 from pathlib import Path
 
-from rostrum_core import project as P
+from rostrum_core import RostrumError, codes, project as P
 
 from . import markers
 
 
 def file(value) -> str:
-    """The path to open for a clip's `media` (relative: under the project folder)."""
-    return str(P.media_file(markers._PROJECT[0], value))
+    """The path to open for a clip's `media` (relative: under the project folder; no project: a loud error)."""
+    folder = markers._PROJECT[0]
+    if folder is None and not Path(value).is_absolute():
+        raise RostrumError(codes.NOT_FOUND, "media", f'"{value}"', "is a place in a project, but no project folder is open",
+                           hint="Open the song from its project folder (an absolute path is read as it is).")
+    return str(P.media_file(folder, value))
 
 
 @contextmanager

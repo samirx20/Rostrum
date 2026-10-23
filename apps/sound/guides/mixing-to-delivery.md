@@ -35,9 +35,12 @@ The Mixer (X) has one strip per track, then the groups (buses), then the master.
 - **Pan** (C = centre) and its slider, which fills from the centre toward the side you pan to (double-click: back to the centre);
 - the fader with a dB scale beside it (+6, 0, −6 … −∞), and the meter with a number above it. While the song plays
   the meter moves with what you hear: the wide bar is the average level (RMS), the thin bar beside it the peak, and a
-  mark holds the highest peak for a second before it falls; the number is that held peak. Stopped, the meter falls to
-  silence and the number is the highest level of the last render ("—" until a render has measured the track). The
-  levels are the engine's own, measured on the render that plays. Green below −6 dB, amber from −6 to 0 and red over
+  mark holds the highest peak for a second before it falls. The number is one thing on every strip, group and the
+  master: the highest peak, in dBFS, since play started. It keeps climbing while the song plays and stays after you
+  stop, until the next play starts and clears it ("—" before the first play, "−∞" for a strip that has made no sound).
+  Stopped, the meter bars fall to empty and only the number stays. The levels are the engine's own, measured on the
+  render that plays; a group reads higher than its tracks when sends, reverb or its own effects add to what the tracks
+  put in. Green below −6 dB, amber from −6 to 0 and red over
   0, on every strip, group and the master. Rest the pointer on it for the track's loudness;
 - **M** (mute, amber), **S** (solo, green) and **R** (arm for recording, red), tracks only for S and R;
 - its volume in dB: click it and type (−6, 1.5, −inf); a value outside −60 … +12 dB is refused with that range. The

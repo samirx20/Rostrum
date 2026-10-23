@@ -5,7 +5,7 @@ QML as `mixer.export` (and `backend.exporter`).
 
 What for = where it is going (delivery.py's targets: Streaming −14 …); choosing one is the one master.set change it
 always was (mixer.loudness.choose). Then the file type, the quality (sample rate), stems, trimming the silent end, and
-the live pass / miss against the target. Browse: the mix is also copied into that folder, under its song's name (the
+the live pass / miss against the target. Browse: the mix is also copied into that folder, under the same name (the
 version folder keeps everything). "MIDI file" is one more What for choice: the song's notes, playing lanes, tempo map
 and markers as a .mid, written by the same `midi.export` the agents' `render_midi` uses, to the same place
 (`renders/<item>/midi/<item>.mid`); none of the sound's settings apply to it, so none show. A failure is written in words and is the bridge's red error (never a quiet "done").
@@ -14,12 +14,11 @@ from __future__ import annotations
 
 import copy
 import os
-import re
 import shutil
 from pathlib import Path
 
 from PySide6.QtCore import Property, Signal, Slot
-from rostrum_core import RostrumError
+from rostrum_core import RostrumError, project
 from rostrum_gui.export_sheet import ExportSheet
 from rostrum_sound import compile as compile_doc
 from rostrum_sound import deliver, handoff, midi, presets
@@ -30,6 +29,11 @@ from .export_versions import Versions, ranges, schedule_for
 
 
 MIDI = "midi"     # the What for choice that writes a MIDI file, not a mix
+
+
+def midi_file(doc) -> Path:
+    """Where the MIDI file goes (the agents' render_midi place): shown by the sheet and written by `work`."""
+    return Path(doc.folder) / "renders" / doc.item_id / "midi" / f"{doc.item_id}.mid"
 
 
 def summary(r: dict) -> str:
@@ -98,21 +102,25 @@ class RenderExport(ExportSheet):
         return all_[:1] if self._choice == MIDI else all_       # a MIDI file is the whole song
 
     def default_folder(self):
+        """The exact folder `work` writes into: the next version folder (handoff.render) or the MIDI folder."""
         doc = self.bridge.doc
         if not doc.folder or not doc.item_id:
             return "Nowhere yet: save the song into a project first"
-        return str(Path(doc.folder) / 'renders' / doc.item_id)
+        return str(midi_file(doc).parent if self._choice == MIDI else project.next_render(doc.folder, doc.item_id))
 
     def file_name(self):
-        name = re.sub(r'[<>:"/\\|?*]+', " ", self.bridge.docName or self.bridge.doc.item_id or "Song").strip() or "Song"
-        return f"{name}.{'mid' if self._choice == MIDI else deliver.BY_FORMAT[self._format]['ext']}"
+        """The exact name `work` writes (and Browse copies under): the one rule the writer names it by."""
+        item = self.bridge.doc.item_id or "song"
+        if self._choice == MIDI:
+            return f"{item}.mid"
+        return deliver.mix_name(item, deliver.BY_FORMAT[self._format]["ext"])
 
     def begin(self, out, overwrite):
         doc = self.bridge.doc
         if not doc.folder or not doc.item_id:
             raise RuntimeError("save the song into a project first (open it with a project folder), so the render has a place to go")
         if self._choice == MIDI:            # the agents' render_midi path and file
-            return {"midi": Path(doc.folder) / "renders" / doc.item_id / "midi" / f"{doc.item_id}.mid",
+            return {"midi": midi_file(doc),
                     "root": copy.deepcopy(doc.data), "out": out}
         # A preset's own render choice (the Editor's: the mix before mastering), while the sheet still shows it chosen.
         master = presets.PRESETS.get(self.preset, {}).get("master", True)

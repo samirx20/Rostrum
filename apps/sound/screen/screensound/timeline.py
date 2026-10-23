@@ -173,8 +173,10 @@ def kind_of(track: dict) -> str:
 
 
 def icon_of(track: dict) -> str:
-    """The small picture on a track's header: "voice" (a voice track), else its kind (notes, drums, audio, empty)."""
-    return "voice" if track.get("instrument") == "voice" else kind_of(track)
+    """The small picture on a track's header: "voice" (a voice track), else its kind (notes, drums, audio). A track
+    with no instrument and nothing on it yet takes sound (a recording, a file): it shows "audio" from the start."""
+    kind = kind_of(track)
+    return "voice" if track.get("instrument") == "voice" else "audio" if kind == "empty" else kind
 
 
 def rows(root: dict, open_lanes: dict | None = None, folded=frozenset()) -> list[dict]:

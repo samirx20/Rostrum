@@ -126,8 +126,8 @@ A typed tempo outside 20–400 bpm is refused ("Tempo is 20–400 bpm"), never c
   Drag a flag to move it (one undo step). Click one and the settings panel shows it. A tempo flag has **Bpm**, **At**
   and **Glide to next**: turn that on and the tempo speeds up or slows down evenly to the next change instead of
   jumping; its flag then reads "♩ 100 ↗" (or ↘ when slowing). Time signature changes start a new bar at that place;
-  the ruler's bar numbers follow them. Add one with **+ Time signature change** in the song's panel (or an agent's
-  `meter.add`); the header's time signature sets the one playing at the playhead (the song's own before the first
+  the ruler's bar numbers follow them. Add one with **+ Time signature change** in the song's panel: it lands on the bar
+  line nearest the playhead (an agent's `meter.add` off a bar line is refused, naming the bars on either side); the header's time signature sets the one playing at the playhead (the song's own before the first
   change).
 
 ## 7. Get it out

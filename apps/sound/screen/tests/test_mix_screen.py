@@ -88,3 +88,11 @@ def test_the_export_check_reads_the_chosen_range_alone():
     whole, tail = for_span(series, 0, 10), for_span(series, 5, 10)
     assert tail["truePeak"] == -2.0 and abs(tail["lufs"] - loud) < 0.01 and whole["lufs"] > quiet + 3
     assert for_span(series, 1, 1.2) == {}                    # shorter than one block: no number, never a made-up one
+
+
+def test_strip_peak_is_held_since_play_started_for_tracks_groups_and_master():
+    from screensound import strips
+    a = strips.held_peaks({}, {"t1": [-23.2, -30], "bus": [-3.3, -9], "master": [-2.0, -8]}, fresh=True)
+    b = strips.held_peaks(a, {"t1": [-30.0, -40], "bus": [-1.0, -9]}, fresh=False)
+    assert b == {"t1": -23.2, "bus": -1.0, "master": -2.0}                      # the highest so far, one rule for every strip
+    assert strips.held_peaks(b, {"t1": [-50.0, -60]}, fresh=True) == {"t1": -50.0}   # the next play clears the old numbers
