@@ -4,7 +4,7 @@ and `group` only, never per kind:
 - **A group that has essentials is never named again**: its other params (the ones that apply) follow its essentials
   in place, so no name in the row of names repeats a setting already shown ("Shape", "Fill").
 - **Every other group by name**: one fold row per group with a non-primary param, then its `secondary` and `deep`
-  params (rank, then data order). Only an OPEN group shows (its fold row is its heading, a click folds it); a group
+  params (rank, then data order). A kind's own group (`OWN`) is always open. Only an OPEN group shows (its fold row is its heading, a click folds it); a group
   with a value changed from its default is open until the person folds it (you see what you changed).
 - **One row of names** last (row "folds"): every group that applies to this item and is folded, "Depth · Timing ·
   Blend"; a click on a name opens that group just above it. A group with nothing that applies is not named at all.
@@ -23,6 +23,11 @@ from .rows import RANK, _grouped, _param_row
 # (kind lower-case). An app fills it once (2D: "Font" under Text reads "More type"). The group's key never changes:
 # open / folded choices, `reveal`, `fold:<group>` steps and guides keep using it; only the heading and the name change.
 WORDS: dict[tuple[str, str], str] = {}
+
+# The group a kind IS (a light's "Light", a camera's "Lens"): {kind: group} (kind lower-case). Its fold row is always open
+# (no chevron, no folding): the thing itself never hides behind a click. Every other group follows the changed rule.
+# An app fills it once; with none (2D) every group opens only when changed.
+OWN: dict[str, str] = {}
 
 
 def layout(op, kind: str = "") -> list[dict]:
@@ -45,7 +50,8 @@ def layout(op, kind: str = "") -> list[dict]:
         rows.append({"row": "group", "id": "gap:folds", "label": "", "members": [p.name for p in rest], "by": "holds"})
     for g in dict.fromkeys(p.group for p in rest):
         members = sorted((p for p in rest if p.group == g), key=lambda p: RANK[p.importance])    # stable
-        rows.append({"row": "fold", "id": "fold:" + g, "label": WORDS.get((kind.lower(), g), g), "fold": g, "members": [p.name for p in members]})
+        rows.append({"row": "fold", "id": "fold:" + g, "label": WORDS.get((kind.lower(), g), g), "fold": g, "members": [p.name for p in members],
+                     "own": OWN.get(kind.lower()) == g})
         rows += [{**_param_row(p), "in": g} for p in members]
     if rest:
         rows.append({"row": "folds", "id": "folds", "label": "", "members": [p.name for p in rest]})
