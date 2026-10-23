@@ -49,6 +49,13 @@ fn a_missing_pcm_file_is_an_error_naming_it() {
 }
 
 #[test]
+fn an_old_effect_preset_is_refused_naming_it() {
+    let s = SCHEDULE.replace(r#""preset":"riser""#, r#""preset":"zap""#);
+    let err = render(&Schedule::parse(&s).unwrap()).err().expect("an error");
+    assert!(err.contains("has a zap, which Rostrum no longer makes"), "{err}");
+}
+
+#[test]
 fn a_surround_schedule_renders_its_bed_with_every_stage_on_every_channel() {
     // The same schedule in 5.1: keys placed wide, the fx flying from Ls to Rs with an LFE send, the
     // master reverb, ducks, time warps and a mastering stage — all on six channels, deterministic.

@@ -14,7 +14,7 @@ import threading
 
 from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 from rostrum_sound import userlib
-from rostrum_sound.userlib.kinds import KINDS
+from rostrum_sound.userlib.kinds import OFFERED
 
 from .adder import ENTRIES, Adder, placed_at
 from .auditioner import Auditioner
@@ -121,7 +121,7 @@ class LibraryPanel(QObject):
 
     @Property("QVariantList", constant=True)
     def kindChoices(self):
-        return _choices(KINDS)
+        return _choices(OFFERED)
 
     @Property("QVariantList", constant=True)
     def lengthChoices(self):

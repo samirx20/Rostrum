@@ -1,9 +1,9 @@
-//! The synthesized effect presets (a port of sfxFoley.ts): risers, sweeps, booms, chimes,
+//! The synthesized effect presets (a port of sfxFoley.ts): risers, booms, chimes,
 //! pops, beds and clicks; one sample at a time (render_sfx drives it). The social-video set is kit.rs.
 
 use std::f64::consts::PI;
 
-use super::{js_round, TAU};
+use super::TAU;
 
 /// One stereo sample of `preset` at `t` seconds (`u`: 0 … 1 through the clip; `n`: noise, `lp`: it
 /// low-passed; `ph`: the two oscillator phases, carried from sample to sample).
@@ -25,15 +25,6 @@ pub(super) fn synth(preset: &str, ph: &mut (f64, f64), t: f64, u: f64, n: f64, l
             let f = 220.0 * pitch;
             sig_l = ((TAU * f * t).sin() * 0.45 + (TAU * f * 1.5 * t).sin() * 0.3 + (TAU * f * 1.25 * t).sin() * 0.25) * env;
             sig_r = ((TAU * f * 1.003 * t).sin() * 0.45 + (TAU * f * 1.497 * t).sin() * 0.3 + (TAU * f * 2.0 * t).sin() * 0.25) * env;
-        }
-        "sweep" | "transition" => {
-            let tr = preset == "transition";
-            let bell = (PI * u).sin();
-            let f = ((if tr { 180.0 } else { 120.0 }) + (if tr { 1200.0 } else { 840.0 }) * (PI * u.powf(0.85)).sin()) * pitch;
-            ph1 += TAU * f / sr;
-            let val = (ph1.sin() * 0.45 + lp * 0.55) * bell;
-            sig_l = if tr { val * (1.0 - u * 0.6) } else { val };
-            sig_r = if tr { val * (0.4 + u * 0.6) } else { val };
         }
         "reverseCymbal" => {
             let env = u.powf(3.2) * if u > 0.96 { (1.0 - u) / 0.04 } else { 1.0 };
@@ -78,10 +69,8 @@ pub(super) fn synth(preset: &str, ph: &mut (f64, f64), t: f64, u: f64, n: f64, l
             sig_l = (saw * 1.5).tanh() * env * 0.7;
             sig_r = ((saw + (TAU * f * 1.005 * t).sin() * 0.5) * 1.5).tanh() * env * 0.7;
         }
-        "shimmer" | "portal" | "warp" => {
-            let base = if preset == "shimmer" { 659.25 } else if preset == "portal" { 440.0 } else { 329.63 };
-            let sweep = if preset == "portal" { 180.0 * (PI * u).sin() } else if preset == "warp" { -140.0 * u } else { 40.0 * (TAU * 3.0 * u).sin() };
-            let f = (base + sweep) * pitch;
+        "shimmer" => {
+            let f = (659.25 + 40.0 * (TAU * 3.0 * u).sin()) * pitch;
             ph1 += TAU * f / sr;
             ph2 += TAU * f * 1.5 / sr;
             let env = (PI * u).sin();
@@ -92,21 +81,6 @@ pub(super) fn synth(preset: &str, ph: &mut (f64, f64), t: f64, u: f64, n: f64, l
             ph1 += TAU * (520.0 * (1.0 - u * 0.92).powf(2.6) + 28.0) * pitch / sr;
             let env = if u > 0.88 { (1.0 - u) / 0.12 } else { 1.0 };
             sig_l = (ph1.sin() * 1.4).tanh() * env * 0.8;
-            sig_r = sig_l;
-        }
-        "glitch" => {
-            let step = (u * 12.0).floor();
-            ph1 += TAU * (240.0 + ((step as i64 * 173) % 920) as f64) * pitch / sr;
-            let gate = if (u * 12.0) % 1.0 < 0.75 { 1.0 } else { 0.0 };
-            sig_l = js_round(ph1.sin() * 4.0) / 4.0 * gate * 0.75;
-            sig_r = if step as i64 % 2 == 0 { sig_l } else { -sig_l };
-        }
-        "zap" | "laser" => {
-            let zap = preset == "zap";
-            let f = ((if zap { 2200.0 } else { 1400.0 }) * (-u * if zap { 7.5 } else { 4.5 }).exp() + if zap { 90.0 } else { 130.0 }) * pitch;
-            let fm = if zap { (TAU * 95.0 * t).sin() * 0.35 } else { 0.0 };
-            ph1 += TAU * f * (1.0 + fm) / sr;
-            sig_l = (ph1.sin() * 1.45).tanh() * (-u * if zap { 6.5 } else { 4.5 }).exp();
             sig_r = sig_l;
         }
         "chime" | "ding" | "success" | "notification" => {

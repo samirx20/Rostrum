@@ -114,7 +114,7 @@ Rectangle {
         width: Math.min(420, a.width - timeline.headerWidth - 4 * Theme.gap)
         EmptyHint {     // the kit's empty state (INTERACTION.md 1.16): one line, two buttons, gone with the first track
             width: parent.width
-            text: "Start with a sound, or drop a file here."
+            text: "Start with an instrument, or drop a recording here."
             buttons: [{ value: "track", label: "Add a track" }]
             onPicked: a.addTrack()
         }

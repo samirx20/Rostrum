@@ -14,7 +14,7 @@ N = V.N
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 
 DESIGNS = ["click", "riser", "hit", "subDrop"]
-RETIRED = ("whoosh", "swoosh", "swish", "swipe")      # the engine's design::RETIRED
+RETIRED = ("whoosh", "swoosh", "swish", "swipe", "sweep", "transition", "zap", "laser", "portal", "warp", "glitch")      # the engine's design::RETIRED
 
 # name, lo, hi, importance, label, help — per design (the engine fills the defaults).
 OWN = {

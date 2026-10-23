@@ -63,7 +63,7 @@ pub fn fields(design: &str) -> Option<&'static [F]> {
 }
 
 /// Sounds Rostrum used to make and no longer does (PURPOSE.md: no cheap effects): designs and old effect presets.
-pub const RETIRED: &[&str] = &["whoosh", "swoosh", "swish", "swipe"];
+pub const RETIRED: &[&str] = &["whoosh", "swoosh", "swish", "swipe", "sweep", "transition", "zap", "laser", "portal", "warp", "glitch"];
 
 /// The one sentence a song with a retired sound is refused with.
 pub fn retired(name: &str) -> String {

@@ -6,7 +6,7 @@ from rostrum_core import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
 from .. import library, userlib
-from ..userlib.kinds import KINDS
+from ..userlib.kinds import OFFERED
 
 
 def _instrument(args) -> dict:
@@ -38,8 +38,8 @@ def register(tools: Tools):
 
     @tools.tool("inspect_library", {"properties": {
         "find": {"type": "string", "description": "Words that must appear in the path or the description (case-insensitive), e.g. \"cello\" or \"door slam\"."},
-        "kind": {"type": "string", "enum": ["instruments", "recordings", "sounds", *KINDS], "default": "instruments",
-                 "description": "instruments / recordings: the installed packs. sounds (all) or a sound kind (click, impact, foley, …): "
+        "kind": {"type": "string", "enum": ["instruments", "recordings", "sounds", *OFFERED], "default": "instruments",
+                 "description": "instruments / recordings: the installed packs. sounds (all) or a sound kind (foley, ambience, a struck hit, …): "
                                 "the user's own sound folders, cut into single sounds and measured."},
         "folder": {"type": "string", "description": "Absolute path to one of the user's sound folders (a Sonniss bundle, BOOM, "
                    "Soundly exports, their recordings): listed in their settings and indexed once (later calls read the index)."},
