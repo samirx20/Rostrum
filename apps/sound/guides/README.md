@@ -17,7 +17,7 @@ How-to pages for the tools and the document. They assume MCP tools and operation
 
 - [writing-parts.md](writing-parts.md): writing notes and parts.
 - [scoring-to-picture.md](scoring-to-picture.md): scoring against a picture and shared markers.
-- [designed-sounds.md](designed-sounds.md): made-from-scratch sounds.
+- [scoring-motion.md](scoring-motion.md): answering movement in the picture with instruments.
 - [voice.md](voice.md) and [script.md](script.md): spoken lines.
 - [library.md](library.md): your own sound folders (the Library's My sounds).
 - [cleaning-a-recording.md](cleaning-a-recording.md) and [cleanup.md](cleanup.md): clean-up steps.

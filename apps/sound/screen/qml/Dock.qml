@@ -1,8 +1,8 @@
 import QtQuick
 import RostrumKit
 
-// The bottom dock under the arrangement (DESIGN.md §2.2): one strip — Editor (E) | Mixer (X) · fold ▾ / open ▴ — and the open
-// tool under it: the Editor (the selection's track up close, EditorDock.qml) or the Mixer (Mixer.qml). Folded, only
+// The bottom dock under the arrangement (DESIGN.md §2.2): one strip — Editor (E) | Mixer (X), the Editor's own header
+// (EditorHeader: the track, Select / Draw, Note ▾), fold ▾ / open ▴ — and the open tool under it: the Editor (the selection's track up close, EditorDock.qml) or the Mixer (Mixer.qml). Folded, only
 // the tab row stays (one click away). Drag the top edge to resize; each tool keeps its own height (workspace.heights,
 // screen state). `preferred`: the window size's default height; `room`: the most it may take.
 Item {
@@ -29,6 +29,7 @@ Item {
         }
     }
     IconButton {
+        id: fold
         glyph: d.tool !== "" ? "▾" : "▴"; kind: "ghost"
         tip: d.tool !== "" ? "Fold the dock away" : "Open the Editor"
         anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: tabs.verticalCenter }
@@ -44,6 +45,10 @@ Item {
         onPressed: (m) => { y0 = mapToItem(null, m.x, m.y).y; h0 = d.height }
         onPositionChanged: (m) => workspace.setHeight(d.tool, Math.round(Math.min(d.room, Math.max(tabs.height + 120,
                                                           h0 - (mapToItem(null, m.x, m.y).y - y0)))))
+    }
+    EditorHeader {   // on the same line as the tabs: the Editor has no second header row
+        visible: d.tool === "editor"
+        x: tabs.x + pick.x + pick.width + Theme.pad; width: fold.x - Theme.gap - x; y: tabs.y; height: tabs.height
     }
     Loader {
         anchors { left: parent.left; right: parent.right; top: tabs.bottom; bottom: parent.bottom; topMargin: Theme.grid }

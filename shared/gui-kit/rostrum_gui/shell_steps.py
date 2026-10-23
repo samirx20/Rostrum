@@ -12,13 +12,14 @@ is found among the app's windows (the one with AppShell's functions).
     click <words>             a real mouse click (press, release) on the visible text that starts with these words,
                               e.g. "click +  New", "click Open the sample": the way a hand presses it
     mouseclick <x> <y> [right] [ctrl|shift]   a real click at that point of the window (a clip, a note, a right-click)
+    mousedrag <x0> <y0> <x1> <y1>             a real left-button drag from one point to another, in small moves
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Q_ARG, QMetaObject, QObject
 from PySide6.QtGui import QGuiApplication
 
-WORDS = ("guides", "keylist", "panels", "area", "hover", "name", "click", "mouseclick")
+WORDS = ("guides", "keylist", "panels", "area", "hover", "name", "click", "mouseclick", "mousedrag")
 
 
 def window():
@@ -55,6 +56,8 @@ def do(step: str) -> bool:
         _click(win, rest)
     elif word == "mouseclick" and arg:
         _click_at(win, rest.split())
+    elif word == "mousedrag" and arg:
+        _drag(win, rest.split())
     elif step == "name edit":
         tab = win.findChild(QObject, "projectName")
         if tab is None or not tab.property("visible"):
@@ -94,6 +97,20 @@ def _click(win, words):
     QTest.mouseMove(win, at)
     QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, at)
     QCoreApplication.processEvents()        # the click's own handlers run (and a window it replaced goes) here
+
+
+def _drag(win, words):
+    """mousedrag <x0> <y0> <x1> <y1>: press, move there in ten steps, release (a velocity bar, a note, a fader)."""
+    from PySide6.QtCore import QCoreApplication, QPoint, Qt
+    from PySide6.QtTest import QTest
+    x0, y0, x1, y1 = (float(w) for w in words[:4])
+    QTest.mouseMove(win, QPoint(int(x0), int(y0)))
+    QTest.mousePress(win, Qt.LeftButton, Qt.NoModifier, QPoint(int(x0), int(y0)))
+    for i in range(1, 11):
+        QTest.mouseMove(win, QPoint(int(x0 + (x1 - x0) * i / 10), int(y0 + (y1 - y0) * i / 10)))
+        QCoreApplication.processEvents()
+    QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, QPoint(int(x1), int(y1)))
+    QCoreApplication.processEvents()
 
 
 def _click_at(win, words):

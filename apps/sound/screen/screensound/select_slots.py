@@ -199,7 +199,7 @@ class SelectSlots:
         """The person's undo / redo selects what the step touched again (so the next action is on the same things)."""
         if change is None or change.who != self.who or not (change.undoes or change.redoes):
             return
-        kinds = ("note", "hit", "clip", "line", "track", "marker", "section", "sound")
+        kinds = ("note", "hit", "clip", "line", "track", "marker", "section")
         back = [i for i in dict.fromkeys(e.id for e in change.edits) if self.doc.has(i) and self.doc.item(i)["type"] in kinds]
         if back:
             self._pick(back)

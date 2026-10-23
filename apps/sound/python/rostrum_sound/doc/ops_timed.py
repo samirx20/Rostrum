@@ -11,7 +11,7 @@ from .ops_group import clip_set
 from .registry import REGISTRY, set_fields, taken
 
 ID = Param.text("id", label="Id", help="Optional; made from where it starts when left out.")
-LABELS = {"note": "note", "hit": "drum hit", "clip": "clip", "sound": "designed sound"}
+LABELS = {"note": "note", "hit": "drum hit", "clip": "clip"}
 
 
 def _new_id(type_, track, args, ctx):
@@ -24,8 +24,6 @@ def _new_id(type_, track, args, ctx):
         return ids.note(track, args["at"], ctx.doc, have, ctx.where)
     if type_ == "hit":
         return ids.hit(track, args["drum"], args["at"], ctx.doc, have, ctx.where)
-    if type_ == "sound":
-        return ids.sound(track, args["design"], args["at"], ctx.doc, have, ctx.where)
     return ids.clip(track, args["at"], ctx.doc, have, ctx.where)
 
 
@@ -60,9 +58,9 @@ def register(type_, key, many=False):
                 for one in args[f"{type_}s"]:
                     add(ctx, t, one)
 
-    REGISTRY.operation(f"{type_}.set", f"Change {label}s." + (" A layered one carries its group." if type_ in ("clip", "sound") else ""),
+    REGISTRY.operation(f"{type_}.set", f"Change {label}s." + (" A layered one carries its group." if type_ == "clip" else ""),
                        target=type_, params=FD.params(type_), label=f"Edit {label}", fields=True)(
-        clip_set if type_ in ("clip", "sound") else set_fields)
+        clip_set if type_ == "clip" else set_fields)
 
     @REGISTRY.operation(f"{type_}.remove", f"Delete {label}s.", target=type_, label=f"Delete {label}",
                         importance="secondary")
@@ -74,4 +72,3 @@ def register(type_, key, many=False):
 register("note", "notes", many=True)
 register("hit", "hits", many=True)
 register("clip", "clips")
-register("sound", "sounds", many=True)

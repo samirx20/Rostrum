@@ -3,8 +3,7 @@ from — instruments, drum kits, the microphone, voices — searched by words an
 one `track.add` call (one undo step, what an agent would call), then the new track is selected so the Editor and
 the settings panel show it. With a track of the same kind selected (an instrument for a notes track, a kit for a drum
 track, a voice for a voice track) the panel asks first and then changes that track's sound instead (`swap`: one
-`track.set`; the notes stay). Designed sounds (riser, impact, click …) are placed at the playhead on the Effects
-track instead (`place`). The person's own sound files are the library (library_panel.py), listed under "My
+`track.set`; the notes stay). The person's own sound files are the library (library_panel.py), listed under "My
 sounds". Exposed to QML as `adder`.
 """
 from __future__ import annotations
@@ -21,12 +20,7 @@ from .cards import FAMILY, spaced
 
 # Kind chips, in order ("mine": the person's own library, drawn by the panel from `soundLibrary`).
 KINDS = [("", "All"), ("instrument", "Instruments"), ("drums", "Drums"), ("record", "Record"), ("voice", "Voice"),
-         ("designed", "Designed"), ("mine", "My sounds")]
-# Designed sounds (doc/fields_design.py): placed at the playhead on the "Effects" track, not a new track each time.
-DESIGNED = {"riser": ("Riser", "Builds up to a moment", {"dur": 2.0}),
-            "hit": ("Impact", "A big hit with a tail: a logo lands", {}),
-            "click": ("Click", "A short tick: a button, a UI tap", {}),
-            "subDrop": ("Sub drop", "A deep fall after a hit", {"dur": 1.5})}
+         ("mine", "My sounds")]
 # What a sound adds beyond its name (shown under it; "" when there is nothing to add, and `note` hides a repeat of the name).
 SAID = {"feltPiano": "Soft and close", "warmPad": "Slow start", "analogStrings": "Smooth ensemble",
         "spiccatoStrings": "Short, bouncy", "choirPad": "Held notes", "cinematicBrass": "Big, filmic",
@@ -63,8 +57,6 @@ def _entries() -> list[dict]:
                       {"name": "Audio", "instrument": "none"}))
     out += [_entry(f"voice:{v}", f"Voice: {_said(v)}", "", "voice",
                    {"name": "Voice", "instrument": "voice", "voice": v}) for v in VOICES]
-    out += [_entry(f"design:{d}", label, what, "designed", {"design": d, **extra})
-            for d, (label, what, extra) in DESIGNED.items()]
     return out
 
 
@@ -75,8 +67,8 @@ OLD_KEYS = {"piano": "builtIn:grandPiano", "strings": "builtIn:analogStrings", "
 
 
 def placed_at(b, lead: float = 0.0):
-    """(time, marker name) for a sound placed at the playhead whose moment comes `lead` seconds into it (a riser's
-    end, a hit's onset): that moment lands on the playhead. On a marker the time is tied to
+    """(time, marker name) for a sound placed at the playhead whose moment comes `lead` seconds into it (a
+    recording's onset): that moment lands on the playhead. On a marker the time is tied to
     it ("#logo lands", "#logo lands-2"; the selected marker first), so it follows when the marker moves."""
     here = sorted((m for m in b._view["markers"] if abs(m["t"] - b._t) < 1e-3),
                   key=lambda m: m["id"] not in b.selectedIds)
@@ -149,44 +141,17 @@ class Adder(QObject):
 
     @Slot(str, result=bool)
     def add(self, key):
-        """A new track with that sound (one undo step), selected; false (and said, red) when it can't be made.
-        A designed sound is placed instead (`place`)."""
+        """A new track with that sound (one undo step), selected; false (and said, red) when it can't be made."""
         e = _entry_of(key)
         if e is None:
             self.bridge._fail(f'Error: add track: no sound "{key}".')
             return False
-        if e["kind"] == "designed":
-            return self.place(e)
         b = self.bridge
 
         def go():
             before = {t["id"] for t in b.doc.data.get("tracks", [])}
             b._apply([{"op": "track.add", "args": dict(e["fields"])}], f"Add {_plain(e['label'])}" + ("" if e["kind"] == "voice" else " track"))
             new = [t["id"] for t in b.doc.data.get("tracks", []) if t["id"] not in before]
-            if new:
-                b.select(new[0])
-        return b._guard(go)
-
-    def place(self, e) -> bool:
-        """A designed sound at the playhead on the "Effects" track (made the first time, in the same step), tied to
-        the marker the playhead sits on ("#logo lands"); selected afterwards. One undo step."""
-        b = self.bridge
-        tracks = b.doc.data.get("tracks", [])
-        fx = next((t["id"] for t in tracks if t.get("name") == "Effects" and t.get("instrument", "none") == "none"), "")
-        calls = []
-        if not fx:
-            have, fx = {t["id"] for t in tracks}, "effects"
-            while fx in have:
-                fx += "_2"
-            calls.append({"op": "track.add", "args": {"id": fx, "name": "Effects", "instrument": "none"}})
-        lead = e["fields"].get("dur", 0) if e["fields"]["design"] == "riser" else 0     # a riser ENDS on the moment
-        at, on = placed_at(b, lead)
-        calls.append({"op": "sound.add", "target": [fx], "args": {**e["fields"], "at": at}})
-
-        def go():
-            before = {s["id"] for t in b.doc.data.get("tracks", []) for s in t.get("sounds", [])}
-            b._apply(calls, f"Place {_plain(e['label'])}" + (f" on {on}" if on else ""))
-            new = [s["id"] for t in b.doc.data.get("tracks", []) for s in t.get("sounds", []) if s["id"] not in before]
             if new:
                 b.select(new[0])
         return b._guard(go)

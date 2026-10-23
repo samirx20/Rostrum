@@ -12,7 +12,7 @@ import tempfile
 from pathlib import Path
 
 WORDS = ("swap-demo", "swap-step", "swap-keep", "swap-back", "export-preset", "export-stems", "export-markers", "voice-model-panel")
-LENGTHS = (("short tick", 0.4), ("medium swell", 1.2), ("long riser", 3.0))
+LENGTHS = (("short tick", 0.4), ("medium knock", 1.2), ("long swell", 3.0))
 
 
 def _make_files(folder: Path) -> list[dict]:

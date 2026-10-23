@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// The settings panel's "Layers" group (Main.qml's Inspector `below`): the selected designed sound or clip is one layer
+// The settings panel's "Layers" group (Main.qml's Inspector `below`): the selected clip is one layer
 // of a layered sound, so its group's layers are listed in time order, this one marked; a click selects that layer.
 // Absent unless the selection has a group with another layer (rule of individuality; screensound/layers.py).
 Column {

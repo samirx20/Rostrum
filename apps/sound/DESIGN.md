@@ -108,7 +108,7 @@ The structure (decided in the first round, refined here):
    (only while something applies), in the right-click menu, in Ctrl+K and as keys — all from one list. Never an empty
    container first.
 3. **Adding a track is choosing a sound.** The **Library** (L, or + Add › Track) holds instruments, drum kits,
-   voices, the microphone, the person's own library and designed sounds; picking one makes the track or places the
+   voices, the microphone and the person's own library; picking one makes the track or places the
    sound. A track's settings live once, in the settings panel.
 4. **With nothing selected, the settings panel shows the song** (name, tempo, beats per bar, key, length), as in 2D.
    The Song popup that covered the notes goes.
@@ -151,8 +151,8 @@ Said once, in plain language; the screen uses the plain word and gives the techn
 
 - **Track**: one row of the song; it plays one instrument, or holds recordings or spoken lines.
 - **Note**: one pitch held for a time. **Velocity**: how hard a note or drum hit is played (soft … loud).
-- **Hit**: one drum stroke. **Clip**: a piece of a sound file placed on a track. **Designed sound**: an
-  impact, riser or click made by Rostrum from settings, not a recording (never a whoosh: PURPOSE.md). **Line**: one spoken line on a voice track.
+- **Hit**: one drum stroke. **Clip**: a piece of a sound file placed on a track. Rostrum makes no
+  sounds from settings and never a whoosh (PURPOSE.md). **Line**: one spoken line on a voice track.
 - **Bar / beat**: a bar is one count of "1-2-3-4" in a 4/4 song; each count is a beat. **Tempo**: beats per minute.
 - **Quantise**: move notes onto the nearest grid line. **Key / scale**: the set of notes a song uses (D minor).
 - **Group** (the song file calls it a **bus**): a channel several tracks play into before the master, so they share
@@ -239,7 +239,7 @@ every dialog, the sizes and the wireframes.
   target, amber outside (never red: it is not an error). Click = opens the Mixer with its loudness curve.
 
 **Library** (left, one click away: Ctrl+L *(S30)*, "+ Track", "+ Add › Track with a sound…"; 260 px)
-- Search box (focused on open) and kind chips: *All · Instruments · Drums · Record · Voice · Designed · My sounds*.
+- Search box (focused on open) and kind chips: *All · Instruments · Drums · Record · Voice · My sounds*.
 - A list of entries, each with a ▶ to hear it and a short plain description ("Warm pad, slow start").
 - Click = hear it; **double-click, Enter or drag** = use it: with no track selected (or a track of another kind
   selected) it makes **a new track with that sound**; with a matching track selected it **places it there at the
@@ -256,7 +256,7 @@ every dialog, the sizes and the wireframes.
 - **Track headers** (left column): colour stripe, name, **M** (mute) **S** (solo), **Rec** on tracks that can record,
   a small level meter while playing; "Auto" (automation lanes, A) on hover or when the track has automation.
   Below the last track: **+ Track**. The **Master** row is last, always.
-- **Lanes:** notes as a mini piano roll, drum hits as ticks, clips as waveforms, designed sounds as shaded blocks,
+- **Lanes:** notes as a mini piano roll, drum hits as ticks, clips as waveforms,
   voice lines as word blocks, automation lanes opened under their track.
 - **Context bar** (with a selection that allows actions): at a fixed place, the top-centre of the arrangement just under the ruler (or of the Editor when it has focus), never under the selection *(S30)*.
 - **Picture** (with a tool: only while a picture is set): a floating, resizable panel at the arrangement's top right;
@@ -267,7 +267,7 @@ every dialog, the sizes and the wireframes.
 - A tab row: **Editor (E)** · **Mixer (X)** · fold ▾. Drag the top edge to resize; height remembered per tab.
 - **Editor** shows the selection's detail, built from what is selected: notes → piano roll with the velocity strip;
   drum hits → drum grid; a clip → its waveform with fades, trim and clean-up; voice lines → the lines as text you can
-  edit, with "Speak again"; a designed sound → its shape (length, pitch curve) over its sound. With several tracks
+  edit, with "Speak again". With several tracks
   selected it shows them stacked (a piano roll shows other selected tracks' notes faint, for writing against them).
   Its own header: the track's name (a menu of all tracks), *Grid* and *Snap* (shared with the arrangement), zoom.
 - **Mixer**: one strip per track, then groups, then **Master** pinned at the right. A strip: name, colour, effects
@@ -470,7 +470,7 @@ Export appears once the take exists.
 │ 1        2        3        4        5        6        7 │   [ the frame  │   │ At        0:08.00           │
 │ 0s       2s       4s       6s       8s       10s      12│     at 0:08.0 ]│   │ Used by   2 sounds, 1 note  │
 │ ▌Strings  M S  ━━━━━━━━━━━━━━━━━━━━━━━━━┓               │                │   │                             │
-│ ▌Hits     M S                   ▓ riser ▓┃▓ impact       └───── resize ◢ ┘   │ Moving it in 2D moves them. │
+│ ▌Hits     M S                    ▪ ▪ ▪ ▪ ┃▪ kick+cym    └───── resize ◢ ┘   │ Moving it in 2D moves them. │
 │ + Track                                  ┃                                   │                             │
 │ Master                                   ┃                                   │                             │
 │        [ Place a sound here ] [ Land a bar here ] [ Rename ] [ ⋯ ]      │                             │
@@ -553,7 +553,6 @@ E (tracks, strips), F (the person's selection is what they hand to the agent).
    | Notes | Arrangement mini-roll; Editor piano roll | both |
    | Drum hits | Arrangement ticks; Editor drum grid | both |
    | Clips (recordings, imported audio) | Arrangement lane; Editor waveform | both |
-   | Designed sounds (placed) | Arrangement lane; Editor | both |
    | Voice lines | Arrangement word blocks; Editor text | both |
    | Markers | Marker band on the ruler | Picture panel's time line |
    | Sections | Section band on the ruler | — |
@@ -591,7 +590,6 @@ E (tracks, strips), F (the person's selection is what they hand to the agent).
    | Drum hits | Quantise (Q) · Velocity · Humanise · Duplicate | Change drum ▸ | `hit.quantize`, `hit.set`, `hit.humanize`, `hit.duplicate` |
    | 1 clip | **Clean up** · Even out level · Split at playhead (Ctrl+T, only when the playhead is inside it) · Fade ▾ | Split into parts (stems) · Add effect to this · Duplicate | `clip.set {isolate…}` + `render_cleanup`, `clip.normalize`, `clip.split`, `clip.set {fadeIn…}`, `clip.split_stems`, `effect.add`, `clip.duplicate` |
    | 2+ clips | Clean up · Even out level · **Join** (Ctrl+J, only when they play one file back to back) · **Crossfade** (only when two touch on one track) | Layer as one sound (Ctrl+G) · Fade · Split at playhead · Duplicate | `clip.join`, `clip.crossfade`, `clip.set {group}` |
-   | Designed sounds | Hear · Make another like it · Layer (Ctrl+G) | Duplicate · Effects | `sound.set {seed}`, `sound.duplicate` **(new)**, `sound.set {group}` |
    | Voice lines | Speak again · Voice ▾ · Edit words | Duplicate | `line.set`, `render_voice`, `line.duplicate` **(new)** |
    | 1 marker | **Place a sound here** · Land a bar here · Rename (F2) | Delete marker (Sound's own; a project marker: "Delete from the project", says what is tied to it first) | `marker.set`, `marker.add`, tempo fit **(new: `tempo.fit_bar`)** |
    | 1 section | Duplicate section · Rename · Select what's inside | Delete section (label only) | `section.move`, `section.set`, `section.duplicate` **(new)** |
@@ -687,7 +685,7 @@ operations for move / duplicate / quantise / split / join / crossfade / normalis
 - **Dropping on a marker ties the item to that marker:** its time is stored as `"#logo"`, and if 2D moves the marker,
   the item moves with it. A tied edge shows a small flag. The arrow keys nudge a tied item and keep the tie
   (`"#logo+0.2"`).
-- **Item handles (audio clips and designed sounds).** These appear when the pointer is over the item, or always while
+- **Item handles (audio clips).** These appear when the pointer is over the item, or always while
   it is selected:
   - **left / right edge** trims;
   - **top corners** set the fades;
@@ -746,7 +744,7 @@ first. We take "the first thing you do is pick a sound"; we skip the dialog and 
 | An instrument (built-in, played, synth, SFZ, plug-in) | Instrument | notes | piano roll (3.3) | keys |
 | A drum kit | Drums | hits | drum grid (3.4) | drum |
 | A voice | Voice | spoken lines | the lines (another part of this spec) | mouth |
-| A sound file, a library sound, or **Audio track** (Library, top row "Empty audio track — to record into") | Audio | clips and designed sounds | waveform | wave |
+| A sound file, a library sound, or **Audio track** (Library, top row "Empty audio track — to record into") | Audio | clips | waveform | wave |
 
 4. The empty audio track is the one exception to "no empty track": recording needs a place to land. It is the first
    row of the Library and also offered on a track header's right-click as "New audio track to record".
@@ -1092,9 +1090,11 @@ ready).
 The piano roll is the **Editor** (E) for an instrument track. It opens in the bottom dock when you double-click a part
 or a track's lane, or press E with notes or an instrument track selected; it follows the selected track.
 
-Layout, left to right: a **keyboard** (note names on the C keys, plus every row when tall enough; names spelled in the
-song's key), the **grid** (rows = pitches, columns = time, the same ruler as the arrangement), and under the grid the
-**velocity strip** (one bar per note). A thin **toolbar** at the top of the dock, always: tool (Select / Draw), grid
+Layout, left to right: a **keyboard** (real white and black keys, a C label on every octave, the hovered key's name
+spelled in the song's key; a click plays the key on the track's instrument; S57), the **grid** (rows = pitches, columns = time, the same ruler as the arrangement), and under the grid the
+**velocity strip** (one bar per note; the hovered or selected bar's value written beside it). It opens framed on the track's notes.
+Built (S57): the dock's one top line holds the Editor / Mixer tabs, the track's name, Select / Draw and Note ▾ (the
+length of a new note). Proposed, a thin **toolbar** at the top of the dock, always: tool (Select / Draw), grid
 size, snap on/off, "Show other tracks", "Keep in key", follow playhead, and "Play with keys" (3.5).
 
 #### 3.3a Adding notes: click, draw, play in
@@ -1282,7 +1282,7 @@ Ctrl+K, or a key.
 **Agent.** `note.set {dur: {"to": "#logo"}}` / `{dur: "next"}` (exist).
 **Why this way (3E).** Sync by markers (rule 8) with one drag. **Rejected:** numbers that must be retyped when the cut changes.
 **Studied.** Logic can lock events to SMPTE position, but not to a named marker; nobody ties ends to markers — ours.
-**Later.** Ties for clips and designed sounds (STATUS gap 5).
+**Later.** Ties for clips (STATUS gap 5).
 **Today.** Partial: the document supports it; the inspector shows a tied length as seconds and typing replaces the tie.
 
 #### 3.3i Zoom, scroll, seeing other tracks
@@ -1624,13 +1624,12 @@ Easy: the result has no gaps or overlaps unless you ask.
 | Sampled (SFZ) | SFZ instruments in your folders | your folders |
 | Plug-in instruments | installed CLAP / VST3 | scanned |
 | Voices | text-to-speech voices | voice model (download on first use) |
-| Designed sounds | click, riser, hit, sub drop — sounds Rostrum makes from settings (no whoosh; Sam judges these by ear) | ships |
 | My sounds | sounds you saved (3.2g) | your sounds folder |
 | My files | your sound-effect folders, each sound found inside each file | your library folders |
 
 4. **Hear:** click a row (or ↑/↓ with **Auto-play** on, a toggle at the panel's foot). Files play from the sound's
    own start in the file (a file with 20 hits plays just the one you picked); a small waveform is drawn on the row.
-   Designed sounds play with default settings. Instruments: 3.2b. Auditions play through the engine.
+   Instruments: 3.2b. Auditions play through the engine.
 5. **Place** — any of:
    - **drag** onto a track lane: a ghost shows where it lands and what it snaps to; **dropped on a marker, a library
      sound puts its onset (where the ear hears it start) on the marker**; a swell or riser puts its **loudest moment** there
@@ -1638,9 +1637,8 @@ Easy: the result has no gaps or overlaps unless you ask.
    - **double-click / Enter**: onto the selected track at the playhead (tied to the marker if the playhead sits on
      one); with no suitable track selected, a new track.
    - **drag** into empty space below the tracks: a new track with it.
-   What gets made: a **file** → a clip (only that sound's slice of the file: `in` and `length` set); a **designed
-   sound** → a sound item; an **instrument / kit / voice** → a track (or a swap, 3.2b–c). Files and designed sounds
-   go on audio tracks; dropped onto an instrument track, a new audio track is made right under it.
+   What gets made: a **file** → a clip (only that sound's slice of the file: `in` and `length` set); an **instrument / kit / voice** → a track (or a swap, 3.2b–c). Files go on audio
+   tracks; dropped onto an instrument track, a new audio track is made right under it.
 6. Right-click a row: Show in folder, Copy path, Add to My sounds (instruments), "Find similar" (same kind, nearest
    length and brightness).
 
@@ -1648,7 +1646,7 @@ Easy: the result has no gaps or overlaps unless you ask.
 **Undo and adjust.** Hearing is not a change; placing is one step (a batch when it also makes a track).
 **Keys.** L · ↑/↓ · Enter · Esc · Ctrl+F (in the panel: the search).
 **Agent.** `inspect_library {kind, find, length, brightness, attack_ms, seconds, lufs…}` (exists), `inspect_instrument`,
-`inspect_plugins` (exist); placing = `clip.add {media, at, in, length}`, `sound.add {design, at}`, `track.add`
+`inspect_plugins` (exist); placing = `clip.add {media, at, in, length}`, `track.add`
 (exist); `edit_sounds_from_motion` (exists) for the whole "sounds on the 2D motion" job. **(new)** `clip.add` gains
 `align: "onset" | "peak"` so an agent drops on a marker the way the screen does, instead of computing `at - onset_s`.
 **Why this way (3E).** Effective: one place for every kind of sound (job D was blocked). Efficient: search + arrows +
@@ -1659,7 +1657,7 @@ places); placing a whole multi-sound file (the next sound in the file plays too)
 and Reaper's media explorer (search, waveform, preview, drag). We take Ableton's one browser and Soundly's slice-aware
 preview; the onset / peak alignment is ours, from the library's measurements.
 **Later.** Tags you add yourself; favourites (a star) — Recent covers most of it now.
-**Today.** Missing on screen: `LibraryPanel.qml` is built but not shown; designed sounds have no screen; the indexer and search exist (`inspect_library`).
+**Today.** Missing on screen: `LibraryPanel.qml` is built but not shown; the indexer and search exist (`inspect_library`).
 
 #### 3.7b The person's own library folders
 
@@ -1896,7 +1894,7 @@ Job B (placing a stinger on a cut). Job A (a recorded part, a sample loop). Job 
    **Overlapping clips that are not crossfaded both play.** This is deliberate: layering effects needs it. The overlap
    is shaded so it is visible.
 9. **Stretch (time).** Drag the clip's **bottom-right corner**. The sound gets longer or shorter **without changing
-   pitch**, and the label shows "×1.25". It snaps to markers and the grid, so you can drag a riser's or swell's end onto a marker
+   pitch**, and the label shows "×1.25". It snaps to markers and the grid, so you can drag a swell's end onto a marker
    (`clip.set {stretch}`, exists). Dropping the corner on a marker ties the clip's end to it: if the marker moves, the
    stretch follows. That is `length: {"to": "#land"}` on clips **(new: ties exist for notes only — STATUS gap 5)**.
 10. **Pitch.** In the inspector, the clip's **Pitch** group has two fields:
@@ -2306,11 +2304,11 @@ nudges).
    - Drag its flag: one undo step. A shared marker moves for every app (exists, P15).
    - Double-click or F2 renames it inline. Delete removes it.
    - Right-click: Rename · Share with the project / Make it this song's only · Delete.
-7. **Snapping and tying (the grammar at the top).** Notes, hits, clips, designed sounds, lines, sections and
+7. **Snapping and tying (the grammar at the top).** Notes, hits, clips, lines, sections and
    automation points snap to markers. **Dropping on one ties it.** A tied item shows a small flag on its tied edge;
    hover it to see "On *logo* +0.20 s". Nudging with arrows keeps the tie. In the inspector, a tied time reads
    "**logo** +0.20 s" with a ⋯ menu offering "Untie (keep the time in seconds)" or "Put on another marker…".
-   Note lengths tie their end (`{"to": "#land"}`, exists for notes; clips and designed sounds **new**, STATUS gap 5).
+   Note lengths tie their end (`{"to": "#land"}`, exists for notes; clips **new**, STATUS gap 5).
 8. **Fit the tempo so a bar lands on a marker.**
    - Click a marker, and the context bar shows **"Land a bar here"**. An inline field asks "Bar [5]", suggesting the
      nearest bar. Enter changes the tempo since the last tempo change so bar 5's first beat falls exactly on the
@@ -2403,11 +2401,11 @@ it needs one, and then it is music or a real recorded sound. Sync is through nam
 auditions and swaps).
 
 **How it works.**
-1. **Find a sound: the Library (L).** It has three tabs: **Designed**, **My sounds** and **Instruments**. A
-   search box sits on top and searches across all three.
-   - **Designed:** Click, Riser, Impact (`hit`), Sub drop, each with a one-line description ("a short tap, glass to
-     metal"). Instruments come first in the tab order and in search results (string rise, cymbal swell, piano run,
-     struck bell). **Click a row's ▶ to hear it** with its default settings: rendered once and kept.
+1. **Find a sound: the Library (L).** It has two tabs: **Instruments** and **My sounds**. A search box sits on top
+   and searches across both.
+   - **Instruments** come first in the tab order and in search results. Movement is answered with them: a string
+     rise, a cymbal swell, a piano rise, a kick and cymbal hit, a bell note, a low note, a glass-marimba tap.
+     **Click a row's ▶ to hear it**: rendered once and kept.
    - **My sounds:** the user's library folders (`inspect_library`, exists). There are kind chips (Impact,
      Click, Riser, UI, Ambience, Foley …), length chips (short / medium / long) and brightness chips. Each row shows
      the name, a mini waveform, the length, and words like "short · bright · sharp". **Hover plays it** (once the
@@ -2425,30 +2423,16 @@ auditions and swaps).
      impact) lands on the drop point**, not the file's first sample. It uses `peak_s` / `onset_s` from the library's
      measurements (exists), so dropping on a marker means it *sounds* on the marker. This is a `clip.add` whose `at` is
      computed (an align helper **(new on screen)**).
-   - **A designed sound** is `sound.add {design, at}` (exists).
-3. **Shape it.** Select it; the inspector shows **only that design's settings**, essentials first:
-
-   | Design | Essentials (always shown) | Folded |
-   |---|---|---|
-      | Click | Pitch, Material, Snap | Tight, Body, Air, Knock / pop |
-   | Riser | Length, Pitch, Brightness | Curve, Whistle, Air, Texture |
-   | Impact | Pitch, Size, Tail | Brightness, Drive |
-   | Sub drop | Length, Lands on (pitch), Drop | Drive |
-
-   Volume, Pan and Width are on all of them, plus **Another take**: an action and the key **T** (`seed`). Every value
-   is plain words with units. This comes from `fields_design.py` (exists: valid only for the design that has it).
+   - **An instrument answer** is ordinary notes, chords or drum hits on an instrument track (3.2).
+3. **Shape it.** Select it; the inspector shows that item's own settings, as anywhere else (notes 3.3, clips 3.9).
 4. **Fit it to the motion.**
-   - **Length:** drag the designed sound's right edge. For a library clip, drag the bottom-right corner (stretch,
-     3.9).
-   - **Riser into a moment:** drop the right edge on the marker. The end is tied (`dur {"to": "#drop"}`), so a riser
-     always peaks on "drop" even if 2D moves it. This exists for designed sounds' `dur`, and is new for clips.
-   - **Pitch:** a designed sound's Pitch. On a library clip, "Pitch only" (`shift`) or Ctrl+↑/↓.
+   - **Length:** drag a note's right edge, or a library clip's bottom-right corner (stretch, 3.9).
+   - **A rise into a moment:** drop the note's right edge on the marker. The end is tied (`dur {"to": "#drop"}`), so a
+     string rise always peaks on "drop" even if 2D moves it. This exists for notes, and is new for clips.
+   - **Pitch:** a note's pitch. On a library clip, "Pitch only" (`shift`) or Ctrl+↑/↓.
    - **Reverse** a cymbal, as in 3.9 (new field).
-5. **Layer.** Select several sounds or clips on one spot, then **Ctrl+G** "Layer as one sound" (3.9). For example a
-   designed click plus a library thud plus a riser tail. They move, level and swap position as one; Alt-click edits
-   one layer.
-   - `group` exists on clips. **Designed sounds need the same `group` field (new)**, so a layer can mix designed and
-     recorded sounds.
+5. **Layer.** Select several clips on one spot, then **Ctrl+G** "Layer as one sound" (3.9). For example a library
+   click plus a library thud. They move, level and swap position as one; Alt-click edits one layer (`group`, exists).
 6. **Audition and swap on the same spot.** Select a placed sound, then the context bar's **Swap…** (or **S**,
    proposed).
    1. The Library opens, filtered to the same kind and similar length. The current sound is pinned at the top as
@@ -2457,7 +2441,6 @@ auditions and swaps).
       measured loudness, fades kept). Playback **loops from 1 s before the spot to 1 s after**, so you hear it in
       context with the picture.
    3. **Enter keeps** the one you are on (one undo step). **Esc puts the original back** (nothing in history).
-   - For a designed sound, Swap lists the other designs and "Another take" instead.
    - Op: `clip.set {media, in, length, at, volume}` in one call (exists), with the align / level helper on the screen
      side. For agents, `clip.swap {media}` **(new)** does the same alignment.
 7. **Sounds placed from 2D motion.** When the picture is a 2D item of the project, the Picture panel's ⋯ menu (and
@@ -2494,30 +2477,31 @@ auditions and swaps).
 layer · Ctrl+D duplicate a sound right after (a repeated tick) · Alt drag copy.
 
 **Agent.**
-- `sound.add` / `sound.set` / `sound.remove` / `sound.move` / `sound.duplicate` (exist).
+- `note.*`, `hit.*`, `clip.*` (exist); `motion.score` / `score.parts` write the instrument answers.
 - `inspect_library` (search, exists), `clip.add` with `at = moment − onset_s` (exists, documented in library.md).
 - `edit_sounds_from_motion {samples, source}` (exists).
 - `look_events {expect}` (exists) to check sync.
-- New: `clip.swap`, `group` on sounds, `edit_sounds_from_motion {item}` (fetch 2D's samples by item id), "add to my
+- New: `clip.swap`, `edit_sounds_from_motion {item}` (fetch 2D's samples by item id), "add to my
   sounds".
 
 **Why this way (3E).**
-- *Effective:* designed, library and motion-placed sounds, layered and fitted to markers, with a swap loop to find the
+- *Effective:* instrument answers, library and motion-placed sounds, layered and fitted to markers, with a swap loop to find the
   right one.
 - *Efficient:* drop on a marker and it sounds on the marker; swapping is arrow keys in place, not delete-and-redo.
-- *Easy:* sounds are found by kind and by ear, and settings appear only for the design you chose.
+- *Easy:* sounds are found by kind and by ear, and settings appear only for the item you chose.
 
 **Rejected:**
 - A separate "SFX page": job D happens in the arrangement, against picture and music.
 - Swap by opening a browser window and dragging again: it loses alignment and level and costs four times the gestures.
 - Stock "look presets" (e.g. "Apple-style hit"): tools, not taste.
 - Synthetic whooshes, swishes and transition sounds: Sam's rule (PURPOSE.md). Not built, not a library kind, not a preset.
+- Sounds made from settings (the click, hit, riser and sub drop built until 2026-10-23): dropped by Sam on 2026-10-23.
+  Movement is answered with instruments or real recordings. An older song that has one fails loudly on open, naming it.
 
 **Studied.**
 - Soundly and Pro Tools' Soundminer: search plus audition, with "spot" placing a sound at the playhead aligned. We
   take audition on hover and place at the playhead.
 - Logic's Loop browser: hear in tempo and in context. We take "hear it in context".
-- Krotos / Boom's designer plug-ins: a few settings per sound. We take the idea of few essentials and fold the rest, for the designs we keep (click, riser, hit, sub drop).
 - Reaper's media explorer: insert at the edit cursor. We take Enter = place at the playhead.
 
 **Later.**
@@ -2526,10 +2510,9 @@ layer · Ctrl+D duplicate a sound right after (a repeated tick) · Alt drag copy
 - Search by "sounds like this" (similar sounds by measurement).
 
 **Today.** **Partial.**
-- Exists: designed sounds (engine, fields, ops), the library index and search, sounds from motion (designed and
-  library), ties for designed sounds' length.
-- Missing on screen: the Library itself (the library panel is built but not shown); designed sounds have **no
-  screen at all**; auditions; aligned drops; swap; motion from the Picture panel; group on sounds; reverse.
+- Exists: the library index and search, sounds from motion (instruments and library), ties for notes' length.
+- Missing on screen: auditions; aligned drops; swap; motion from the Picture panel; reverse. (See §7 for what was
+  built after.)
 
 ---
 
@@ -3363,7 +3346,7 @@ total also includes getting to a delivered file.
 | E · Mix: 3 faders, group 3 tracks, 2 effects, target, WAV + stems | ~18 clicks | **13 clicks + 3 keys** | same | 1 page + 3 pickers → 1 dialog |
 | F · Agent + person | 1 (history) | **2 clicks + 1 key** to tweak, 0 to watch | — | 0 → 0 |
 | Fix a mix an agent made | not walked (≈ 14, Mix page, render cut off) | **9 clicks + 2 keys** | same | → 1 (Export) |
-| 15-second sting for a logo reveal | **blocked** (no designed sounds on screen) | — | **17 clicks + 2 keys** | — → 2 |
+| 15-second sting for a logo reveal | **blocked** (no Library on screen) | — | **17 clicks + 2 keys** | — → 2 |
 
 ### A · Write a song (two tracks, a repeat, a section, delivered)
 
@@ -3477,8 +3460,8 @@ The 2D project "Logo reveal" has markers "logo lands" (2.0 s) and "tagline" (9.0
 |---|---|---|---|
 | 1 | Ctrl+N → **Bring in a picture** (empty-song button) → click "Logo reveal" | 2 | 1 |
 | 2 | Settings panel (nothing selected = the song): Length → type 15 s | 1 | |
-| 3 | Click marker "logo lands" → L → type "riser" → double-click **Riser** (ends on the marker, writer 3) | 3 | 1 |
-| 4 | Double-click **Impact** | 1 | |
+| 3 | Click marker "logo lands" → L → type "bell" → double-click **Tubular bell** (a note on the marker) | 3 | 1 |
+| 4 | Double-click **Synth kit** → click kick and cymbal on the marker (a kick and cymbal hit) | 3 | |
 | 5 | Double-click **Warm pad** (new track at the playhead; Editor opens) → click 3 notes of a chord | 4 | |
 | 6 | Box-select the chord → drag its right end to the song's end (snaps to the end) | 2 | |
 | 7 | Click marker "tagline" → double-click **Soft chime** | 2 | |
@@ -3712,7 +3695,7 @@ partial · missing · blocked. "Kit" = the shared GUI kit (Team Hem / Team Sam);
 | 3.10 | Clean-up | Fields, job, cache, models, download question, "Make cleaned take" bar | partial / blocked | Several clips at once, made on release, Before / After (H), measurement line | the isolation model upload (NEEDS_DECISIONS 7); the installer's `cleanup` extra |
 | 3.11 | Voice-over and spoken lines | Recording as 3.8; lines through ops and `render_voice`; cards on the Instruments page | partial | Type lines on the lane, made on finish, take arrows, level the voice, normalise by loudness | `clip.normalize {by: loudness}` (new) |
 | 3.12 | Picture and markers | Picture corner; markers drawn (shared dashed); follow on rename; loud on delete | partial | Floating picture panel, M + name, Shared switch, problem chip, tempo fit, frame step | `marker.add {shared}`, `tempo.fit` (new); kit problem chip |
-| 3.13 | Sound design for motion | Designed sounds in the file and engine; sounds from motion | partial | A screen for designed sounds; aligned drops; Swap; motion from the picture | `clip.swap`, `group` on sounds (schema) |
+| 3.13 | Sound design for motion | Sounds from motion | partial | Aligned drops; Swap; motion from the picture | `clip.swap` |
 | 3.14 | Effects and plug-ins | Chains on tracks, groups, master; plug-in windows; clip effects only in the file | partial | Effects on any selection, reorder, missing-plug-in rule | `effect.move` (new) |
 | 3.15 | Groups, sends, routing | Buses, sends, Output picker; "+ Group channel" (empty first) | partial | Ctrl+G from tracks, groups drawn as headers that fold, ungroup, share a reverb, loops refused at the operation | `bus.release`, `send.to_new_bus` (new) |
 | 3.16 | Ducking | Ducks drawn; "+ Duck" per strip | partial | Duck the selected tracks under a voice or a group | duck under a group (engine) |
@@ -3737,12 +3720,12 @@ step: `C:\Users\Sam\.rostrum\waves\results\sound-redesign\p27\flows.md`.
 | 3.1 Tracks | **Built**: Library first; change a track's sound (asked); `track.move`, `track.duplicate`, lock (Ctrl+Shift+L, refused for everyone) | Groups drawn as headers that fold; parts (schema) |
 | 3.3 / 3.4 Notes, drums | Box, ends, key names; see flows.md for the drum-hit and Draw tool state | Velocity strip, grid menu, key shading, patterns, swing (schema) |
 | 3.6 Tempo, sections | **Built**: `tempo.fit_bar` (Land a bar here), Make a section on a range, `section.duplicate`, rename in place | Ramps (schema), `range.insert` / `range.remove` |
-| 3.7 Library | **Built**: one panel (instruments, drums, record, voice, designed, my sounds); sounds land by their moment (peak / onset), tied to a marker | Audition through the engine |
+| 3.7 Library | **Built**: one panel (instruments, drums, record, voice, my sounds); sounds land by their moment (peak / onset), tied to a marker | Audition through the engine |
 | 3.9 Clips | **Built**: trims, fades, level line, stretch corner; `clip.to_track`; `clip.cut_range` (Shift+Delete); overlapping clips stack | Reverse (schema), close gaps, slip |
 | 3.10 Clean-up | **Built**: Clean up popover on any clips, progress fill on each clip | Made on release; Before / After (H) |
 | 3.11 Voice | Even out level = `clip.normalize {by: loudness}` | Type lines on the lane, Speak again button (flows.md C′) |
 | 3.12 Picture, markers | **Built**: M with name in place, Land a bar here, Place a sound here | Shared switch on M; problem chip; frame step |
-| 3.13 Sound for motion | **Built**: designed sounds on screen (Designed chip, Effects track, riser ends on its marker, Make another like it = `sound.vary`) | Swap; layering (`group`, schema) |
+| 3.13 Sound for motion | **Built** then (sounds made from settings, on screen; dropped 2026-10-23: movement is scored with instruments) | Swap; layering (`group`, schema) |
 | 3.18 / 3.19 Mix, Export | **Built**: Mixer in the dock; Export sheet with the live pass line; Loudness chip | Ranges, "+ Another version", stems by group, "For the Editor" |
 | 3.20–3.23 | — | Kit pieces 11–13 and 21 (History sheet, agent chip and outline, files and start, job chip) — Team Sam |
 | Memory | The screen's own peak on the big song **4,649 → 659 MB** (painted lanes, grid and roll; no unused listen pictures) | The engine's per-track effects still grow with song length (RELEASE line 16) |
@@ -3761,7 +3744,7 @@ Pictures per item in `C:\Users\Sam\.rostrum\waves\results\sound-redesign\p28\` (
 | 3.7 / 3.2b Library | Audition through the engine: `render_audition` (agents too), played on the engine's live player; picking an entry plays it, Esc / a new pick stops it | Keep / revert a tried sound; voices in the Library; loop while browsing |
 | 3.10 Clean-up | Before / After switch (H, Ctrl+K) on clips with a clean-up, a document value (`useCleaned`, one undo step); the cleaned take is made as soon as its settings change | Hold-H (needs key release in the kit's KeyMap); measurement line; Cancel |
 | 3.11 Voice | Type a line on the voice lane (double-click or Add line at playhead), words and a "being spoken" stripe on the block; Speak again (T) as a new take; Earlier / Later take | Take arrows on the block itself; real progress; download question for the voice model |
-| 3.13 Sound for motion | `clip.swap` (S, Swap on Library results): new file, same start, length, fades, matched loudness; layering of clips through `group` (exists) | Stepping through candidates with a loop; designed sounds in a layer (`group` on sounds: schema, Team Sam) |
+| 3.13 Sound for motion | `clip.swap` (S, Swap on Library results): new file, same start, length, fades, matched loudness; layering of clips through `group` (exists) | Stepping through candidates with a loop |
 | 3.19 Export | What = whole song / the time range / a section (`render_mix {from, to}`); "+ Another version" rows, each with its target, file and live line | Ranges rendered by the engine itself (today cut from the whole render: the loudness is the song's); stems by group; "For the Editor" |
 | Engine | Live play keeps real time (shared-mode output no longer reopened: 0.70× → 1.000× over 60 s, in Sound and in 2D; `C:\Users\Sam\.rostrum\waves\results\sound-redesign\p28\play-clock.md`) | Per-track effects memory (RELEASE line 16): planned in p29-notes.md |
 
@@ -3776,7 +3759,7 @@ Pictures and numbers: `C:\Users\Sam\.rostrum\waves\results\sound-redesign\p29\RE
 | 3.7 / 3.2b Library | Trying a sound on a track writes nothing; Keep (one `track.set`) / Revert / Esc; Loop while browsing (through the engine) | Voices auditioned with a sentence; the italic "trying" in the track header |
 | 3.10 Clean-up | Measurement line from `look_cleanup`'s numbers, measured once per take and stored (noise, voice level, room echo; a warning when the voice got quieter); Cancel (the job runs in its own process; nothing half-made kept; the clip plays its original, one undo step) | Hold-H (Team Sam: key release in the kit's KeyMap) |
 | 3.11 Voice | Take arrows on the voice line's block (shown only with more than one take); the voice model in the download registry: a missing model asks the download question | The voice files have no web address yet (not hosted: needs Sam's OK, like UMX-HQ); a real progress figure while speaking |
-| 3.13 Sound for motion | Swap stepping: ↑ / ↓ through the results, each swapped from the original (`clip.swap` with the original's values), a 1 s loop round the spot, Enter keeps (one history entry), Esc puts the original back | Designed sounds in a layer (`group` on sound fields: Team Sam) |
+| 3.13 Sound for motion | Swap stepping: ↑ / ↓ through the results, each swapped from the original (`clip.swap` with the original's values), a 1 s loop round the spot, Enter keeps (one history entry), Esc puts the original back | — |
 | 3.19 Export | The engine renders a range itself (`render {from, to}`: mastered and measured on the range, stems cut, a silent end trimmed); stems by group (`stems: "groups"`); "For the Editor" (§10 #10: WAV 48 kHz 32-bit float, before mastering, a stem per group, `markers.json`) | Nested groups make no stem of their own |
 | Engine | A track renders in blocks of 64k frames, every effect keeping its state (`fx/state.rs`, `Chain`); bit for bit the same output; big song export 1,419 → 945 MB | Still whole: each clip's render, each track's measures, the master stage (the 30-min copy peaks at 3.3 GB) |
 
@@ -3791,7 +3774,7 @@ Pictures and numbers: `C:\Users\Sam\.rostrum\waves\results\sound-redesign\p30\RE
 | 3.11 Voice | Per-word times from the speech model's alignment, stored once per take (`voice_words.py`, `render_voice_words`); 2D's words, lip sync and captions read them (`voice_words.read`, `VOICE.md`) | A word's end is approximate; 2D's side is Team Hem's |
 | 3.12 Markers / 3.21 Files | "Make this the main mix" (`run_set_main_mix`, the Song panel and Ctrl+K; absent when it already is) and the "Main mix" mark; the "Cues from 2D" track shows; a clip tied to a marker shows a diamond and the marker's name, and its settings title says "tied to marker" | Dropping a clip on a marker does not tie it |
 | 3.0 / 3.9 Keys, timeline | Hold H hears Before (the kit's held keys); the kit's time view, scrollbar, ruler and snap (6 px); the kit's name labels | M opens Sound's own marker rename; Marker / Section / Song bands are Sound's own |
-| 3.13 Sound for motion | Designed sounds in a layer group show their layer mates as a Layers group in the settings panel | — |
+| 3.13 Sound for motion | Library clips in a layer group show their layer mates as a Layers group in the settings panel | — |
 
 ---
 
@@ -3804,7 +3787,7 @@ on tracks / clips / groups / master, `<kind>.add_many`, `marker.add` / `marker.s
 `section.move`, `automation.set`, `duck.add`, `send.add`; jobs `render_mix`, `render_cleanup`, `render_voice`.
 
 **New operations** (Sound's own, built by Team Priyam): `track.duplicate` · track order (`track.move`) ·
-`sound.move` / `sound.duplicate` · `line.move` / `line.duplicate` · `section.duplicate` · `range.insert` /
+`line.move` / `line.duplicate` · `section.duplicate` · `range.insert` /
 `range.remove` (moved up from "later": sections ripple on them) · `clip.cut_range` · `clip.remove {close}` ·
 `clip.close_gaps` / `line.close_gaps` · `clip.normalize {by: loudness}` · `clip.swap` · `take.choose` /
 `take.flatten` · `tempo.fit_bar` · `marker.add {shared}` / `marker.unpin` · `effect.move` · `bus.release` ·
@@ -3815,7 +3798,7 @@ heard on the selection without touching the song) · `render_mix {from, to, stem
 **New song-file fields — one batched request to Team Sam** (each has an interim behaviour in its section, none blocks
 the screen work): `part` on notes and hits · `stack` on clips (takes) · `swing` / `swingGrid` on tracks · per-drum
 settings `drums` on tracks · `ramp` on tempo changes (and linear tempo segments in the engine contract) · `input` on
-tracks · `reverse` on clips · `group` on designed sounds · length ties `{"to": "#marker"}` on clips and sounds ·
+tracks · `reverse` on clips · length ties `{"to": "#marker"}` on clips ·
 `curve` on automation points (later) · metre changes (later).
 
 **Shared core and kit** (requests, exact wording in the sections): the selection as a list and `inspect_screen` ·
@@ -3952,14 +3935,13 @@ buses. We have no transcript yet (open point 3); until then the waveform with sp
 | Step | Thinking | Needs | Doesn't need |
 |---|---|---|---|
 | 1 See the motion | "Where does it land / build?" | Picture or the 2D markers on the ruler | Piano roll |
-| 2 Find / make a sound | "A rise into it, a hit on it" | Instruments (string rise, cymbal swell, piano run, struck bell), my library (real sounds, search by kind), **designed sounds** (impact, click … with their settings), audition | — |
+| 2 Find / make a sound | "A rise into it, a hit on it" | Instruments (string rise, cymbal swell, piano run, struck bell), my library (real sounds, search by kind), audition | — |
 | 3 Place it | "On 'logo lands'" | Drop at a marker / the playhead; it stays on the marker when 2D moves | — |
 | 4 Shape it | "Faster, darker, layer a thud" | The selected sound's settings (inspector), layer = group of clips/sounds | Track instrument settings |
 | 5 Sit it in | "Under the music" | Level, duck under voice | Delivery |
 
-**Lesson:** a **Library** (library + designed sounds + instruments) is one place for "find a sound", placed on
-the selected track at the playhead. Today the library panel is built but not shown and designed sounds have no
-screen at all.
+**Lesson:** a **Library** (library + instruments) is one place for "find a sound", placed on
+the selected track at the playhead. Today the library panel is built but not shown.
 
 #### E. Mix to delivery loudness
 
@@ -4004,7 +3986,7 @@ their fixes (Output as a picker, "Group channel", "Loudest peak").
 | B. Score to picture: load video, 3 hit markers, tempo to land bar 5 | ~10 + **blocked**: no way to add a marker on screen (`marker.add` needs a name; not in Ctrl+K either) | 3 popups (Picture, project list, Song popup) | Markers come only from 2D or scripts; Song popup covers the roll (`picture-02-song-popup.png`); picture corner shoots black offscreen (Read) | ~9, markers with M |
 | C. Voice-over: record, cut a fluff, clean, normalise, podcast deliver | ~16 + **blocked**: no split, no trim by dragging, no normalise | 2 (Take panel, Mix page for loudness / delivery) | Empty piano-roll area shows "Nothing on this track yet" (`voice-03-recording.png`); clean-up only one clip at a time; loudness only on Mix | ~12, 0 page changes |
 | C'. Voice track (spoken lines) | **blocked**: no way to add a line (card text: "add one with line.add", `voice-04-voice-track.png`) | — | Jargon to a person; lines only on the Instruments card | 2 (select voice track, Add line) |
-| D. Sound for motion: a rise + a hit on two markers | **blocked**: Library panel is built but never shown (`soundLibrary` not wired, `sfx-01-library.png`); designed sounds (`sound.add`) have no screen | — | The only way is a script / agent | ~6 |
+| D. Sound for motion: a rise + a hit on two markers | **blocked**: Library panel is built but never shown (`soundLibrary` not wired, `sfx-01-library.png`) | — | The only way is a script / agent | ~6 |
 | E. Mix: 3 faders, group the drums + 2 tracks, 2 effects, streaming target, WAV + stems | ~18 (1 page, 3 drags, **group: 1 + 3 × 3 = 10 (empty "+ Bus" then route each)**, 4 effects, 2 target, 1 render) | 1 page + 3 pickers | Delivery crammed into the master strip: with Normalize on, **Render is cut off** under the Listen pane (`mix-01-deliver.png`); "+ Duck" on every strip; jargon (LUFS-S, dBTP, pk, Glue) partly fixed in S26 | ~11 (group: 3 + 1) |
 | F. Agent + person | 1 to see history | 0 | Works: one document, one history. Missing: the person can't hand a *selection* to the agent (single selection only; Ctrl+K gets one id) | same, with multi-select |
 | Bus from 3 tracks (select-first check) | 10 | 3 pickers | Empty container first | 4 (click, Ctrl-click ×2, "Send to a new group") |

@@ -14,7 +14,6 @@ from rostrum_core import RostrumError
 
 from . import clean_clips, names, voice_lines
 from .doc import effects as FX
-from .doc import fields_design as FDS
 from .doc import playing as PL
 from .doc import plugins
 from .doc import markers, tempo, times
@@ -37,7 +36,7 @@ class _Compiler:
         return markers.resolve(self.root, value, where)
 
     def tie(self, note, where):
-        """A note's (or a designed sound's) length as the engine takes it: a tied one (`{"to": …}`, `"next"`) as
+        """A note's length as the engine takes it: a tied one (`{"to": …}`, `"next"`) as
         seconds, else as written."""
         d = note["dur"]
         if d != times.NEXT and not (isinstance(d, dict) and "to" in d):
@@ -97,13 +96,12 @@ class _Compiler:
         out = {"id": track["id"], **self.instrument(track), **{k: track[k] for k in TRACK_KEYS if k in track}}
         if muted:
             out["mute"] = True
-        for key, keys in (("notes", NOTE_KEYS), ("hits", HIT_KEYS), ("sounds", FDS.KEYS)):
+        for key, keys in (("notes", NOTE_KEYS), ("hits", HIT_KEYS)):
             if track.get(key):
                 out[key] = [self.pick(n, keys, f"{w}.{key}[{n['id']}]") for n in track[key]]
-        for key in ("notes", "sounds"):
-            for n, sent in zip(track.get(key, ()), out.get(key, ())):
-                if "dur" in n:
-                    sent["dur"] = self.tie(n, f"{w}.{key}[{n['id']}].dur")
+        for n, sent in zip(track.get("notes", ()), out.get("notes", ())):
+            if "dur" in n:
+                sent["dur"] = self.tie(n, f"{w}.notes[{n['id']}].dur")
         clips = []
         for c in track.get("clips", []):
             cw = f"{w}.clips[{c['id']}]"

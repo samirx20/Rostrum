@@ -1,4 +1,5 @@
-"""Grid ▾ and Snap in the arrangement's header (a slot mix-in for SoundBridge): screen state, never an undo step,
+"""Grid ▾ and Snap in the arrangement's header, and Note ▾ in the Editor's (the length a drawn or double-clicked note gets:
+a quarter at first, a length of its own, or the grid step) (a slot mix-in for SoundBridge): screen state, never an undo step,
 held here per window (`_grid_now`) and passed to the one snapping code (timing.snap). Auto follows the zoom (the finest
 step at least 16 px wide).
 """
@@ -10,6 +11,9 @@ from .timing import Grid
 
 WORDS = {"auto": "Auto", "bar": "Bar", "1/2": "1/2", "beat": "Beat (1/4)", "1/8": "1/8", "1/16": "1/16", "1/32": "1/32",
          "1/8T": "1/8 triplets", "1/16T": "1/16 triplets"}
+
+
+NOTE_CHOICES = ["grid", "bar", "1/2", "beat", "1/8", "1/16", "1/32"]
 
 
 class GridSlots:
@@ -41,6 +45,33 @@ class GridSlots:
         self._grid_now.value = value
         self._follow_zoom()
         self.gridChanged.emit()
+
+    @Property(str, notify=gridChanged)
+    def noteLength(self):
+        """Note ▾: the length of a drawn or double-clicked note: "beat" (a quarter, at first), "1/8", "bar" … or
+        "grid" (one grid step)."""
+        return self.__dict__.get("_note_len", "beat")
+
+    @Property("QVariantList", constant=True)
+    def noteLengthChoices(self):
+        return [{"value": v, "label": "Grid step" if v == "grid" else WORDS[v], "keys": "",
+                 "group": "grid" if v == "grid" else "steps"} for v in NOTE_CHOICES]
+
+    @Slot(str)
+    def setNoteLength(self, value):
+        if value not in NOTE_CHOICES:
+            return self._fail(f'Error: note length: "{value}" is not a length ({", ".join(NOTE_CHOICES)}).')
+        self._note_len = value
+        self.gridChanged.emit()
+
+    def _draw_beats(self, at_beat: float = 0.0) -> float:
+        """How many beats long Draw makes a note: Note ▾'s length, else the grid step."""
+        v = self.noteLength
+        if v == "grid":
+            return self._grid_now.beats(self.doc.data, at_beat)
+        g = Grid()
+        g.value = v
+        return g.beats(self.doc.data, at_beat)
 
     @Slot(bool)
     def setSnap(self, on):

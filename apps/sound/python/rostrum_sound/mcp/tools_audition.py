@@ -1,4 +1,4 @@
-"""render_audition: hear a Library entry (an instrument, a drum kit, a designed sound, a sound file) through the
+"""render_audition: hear a Library entry (an instrument, a drum kit, a sound file) through the
 engine, on the track's own notes when one is given. The document is not touched; the WAV is kept by content."""
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from ..builder import INSTRUMENT_KEYS
 
 ENTRY = {"type": "object", "description": (
     "What to hear. An instrument: {instrument: builtIn|synth|model|sfz|plugin, builtIn|model|sfz|plugin: name}; a drum kit: {instrument: kit} "
-    "or {instrument: kitSfz, kitSfz: path}; a designed sound: {design: click|riser|hit|subDrop, …its fields}; a sound file: "
+    "or {instrument: kitSfz, kitSfz: path}; a sound file: "
     "{media: absolute path, in: seconds, length: seconds}. Omit it (with `track`) to hear the track's own sound.")}
 
 
@@ -22,7 +22,7 @@ def register(tools: Tools):
         "from": {"type": "number", "default": 0, "description": "Seconds into the song where the track's notes are taken from."},
         "bars": {"type": "integer", "default": audition.BARS, "description": "How many bars of the track's notes to play."}}})
     def render_audition(ctx, args):
-        """Render a short audition of a sound without changing the song: the entry plays the track's own notes (or a neutral phrase, a one-bar kit pattern, or the file / designed sound as itself, up to 6 s) through the same engine as render_mix. Returns the WAV path; the same audition again comes from the cache."""
+        """Render a short audition of a sound without changing the song: the entry plays the track's own notes (or a neutral phrase, a one-bar kit pattern, or the file as itself, up to 6 s) through the same engine as render_mix. Returns the WAV path; the same audition again comes from the cache."""
         track, entry = args.get("track"), args.get("entry")
         doc = ctx.document(args.get("item")) if track or not entry else None
         if not entry:

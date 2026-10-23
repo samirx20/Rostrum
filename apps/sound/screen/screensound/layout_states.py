@@ -38,21 +38,6 @@ def long_project() -> list[str]:
     return ["--doc", str(folder), "song", "--script", str(script)]
 
 
-LAYERED = """tempo(100); beats_per_bar(4); length(bar(9))
-hits = track("hits", volume=0.9)
-hits.sound("click", at=2.0, group="a_long_layer_group_name_for_the_door_slam_in_the_second_scene")
-hits.sound("hit", at=2.0, group="a_long_layer_group_name_for_the_door_slam_in_the_second_scene")
-hits.sound("riser", at=1.5, dur=1.0, group="a_long_layer_group_name_for_the_door_slam_in_the_second_scene")
-"""
-
-
-def layered() -> list[str]:
-    """Start args for a song whose designed sounds are layers of one group (a long group name)."""
-    script = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "layered.py"
-    script.write_text(LAYERED, encoding="utf-8")
-    return ["--script", str(script)]
-
-
 BEND = ('agent Bend the melody|[{"op":"automation.set","target":["melody"],"args":{"lane":"bend","points":'
         '[[0,0],[1.5,0],[2,0.5],[4,0.5],[4.5,0]]}}]')
 
@@ -82,7 +67,6 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("group-muted-soloed", ["--sample"], [GROUP.format(name=LONG_TRACK), "group-toggle bus_1 mute", "group-toggle bus_1 solo"]),
         ("group-track-out", ["--sample"], [GROUP.format(name="Band"), "group-drop door bus_1", "group-drop melody door"]),
         ("group-folded", ["--sample"], [GROUP.format(name=LONG_TRACK), "fold bus_1"]),
-        ("designed-layers", layered(), ["dock editor", "select hits.click2000"]),
         ("timeline-zoomed", ["--sample"], ["zoom 4 0.5"]),
         ("draw", ["--sample"], ["select melody", "dock editor", "tool draw"]),
         ("voice-lines", ["--sample"], ["add-track voice:ryan", "dock editor"]),

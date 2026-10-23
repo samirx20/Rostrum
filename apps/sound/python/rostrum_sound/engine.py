@@ -21,7 +21,6 @@ from pathlib import Path
 from rostrum_core import RostrumError, codes
 
 from . import names, settings
-from .doc import fields_design as FDS
 
 TIMEOUT_S = 600
 NOT_TWICE = ("pluginWindow",)        # a request that shows the person something is not repeated behind their back
@@ -167,7 +166,6 @@ class Engine:
             theirs = [g["name"] for g in d[key]] if key == "gmDrums" else d[key]
             if sorted(ours) != sorted(theirs):
                 out.append(f"{key}: python {sorted(set(ours) ^ set(theirs))} differ from the engine")
-        out += FDS.differences(d.get("designs", {}))
         if d["contract"] != names.CONTRACT:
             out.append(f"contract: python {names.CONTRACT}, engine {d['contract']}")
         return out

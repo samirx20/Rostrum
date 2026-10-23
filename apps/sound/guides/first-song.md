@@ -45,10 +45,13 @@ The **Colour** row shows the colour the track is drawn in.
 
 ## 4. Write notes
 
-1. With the track selected, the **Editor** shows its notes on a keyboard (drums: a row per drum; recordings: their
-   waveform).
+1. With the track selected, the **Editor** shows its notes beside a piano keyboard, framed so every note is in view
+   (drums: a row per drum; recordings: their waveform). Each octave's C is labelled (C4 is middle C); **click a key
+   to hear it** on the track's own instrument, or drag down the keys to play each one. The track's name, **Select** /
+   **Draw** and **Note ▾** sit on the dock's top line, beside the Editor / Mixer tabs.
 2. **Double-click** empty space to add a note (on a drum grid: a hit on that drum's row). Or press **B** for the
-   **Draw** tool (top right of the Editor): then every click adds a note or a hit; **V** goes back to **Select**.
+   **Draw** tool: then every click adds a note or a hit; **V** goes back to **Select**. **Note ▾** sets how long a new
+   note is (a quarter at first; 1/8, 1/16, a bar … or one grid step).
    Drag a note to move it in time and pitch.
    - It snaps to the grid. **Grid ▾** in the arrangement's header strip sets the step (Auto follows the zoom; Bar,
      Beat, 1/8, 1/16, 1/32, triplets); **Snap** switches snapping off and on. Hold **Ctrl** while dragging to drag

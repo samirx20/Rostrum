@@ -15,8 +15,7 @@ bridge call a click, a box, a key or a menu makes.
     rename-open <id> (its name field, open) | rename <new name> (Enter in the open field) | open <id> (double-click: select + Editor)
     jump next|prev (`,` / `.`) | playhead-step <n> (Ctrl+arrows) | fit-selection (F)
     marker-add (M: a marker at the playhead, its name field open) | fit-bar <bar> (Land a bar on the selected
-      marker) | ask <action key> (its number field, open: for a picture) | place <design> (the Library's designed sound,
-      double-clicked) | library <chip> (the Library open on a chip) | clean-open (Clean up…: the Cleanup group and its presets, open) |
+      marker) | ask <action key> (its number field, open: for a picture) | library <chip> (the Library open on a chip) | clean-open (Clean up…: the Cleanup group and its presets, open) |
       clean <voice 0|1> <noise 0|1> <echo 0|1> (Clean: the steps on the selected clips, then their cleaned takes)
     tool select|draw (the Editor's tool) | add-hit <t s> <drum row> (a double-click on an empty drum row) |
       draw <t s> <key or drum row> (a click with the Draw tool)
@@ -36,7 +35,7 @@ from PySide6.QtTest import QTest
 WORDS = ("select-many", "select-add", "select-run", "select-all", "box", "range", "range-clear", "action",
          "actions", "menu", "menu-roll", "key", "copy", "cut", "paste", "drag-many", "handle", "lock", "loop",
          "range-edge", "rename-open", "rename", "open", "jump", "playhead-step", "fit-selection", "marker-add",
-         "fit-bar", "ask", "place", "library", "clean-open", "clean", "tool", "add-hit", "draw", "line-type",
+         "fit-bar", "ask", "library", "clean-open", "clean", "tool", "add-hit", "draw", "line-type",
          "speak-again", "line-box", "select-clip", "grid", "snap", "velocity-line", "velocity-bar", "audition", "clean-line")
 
 
@@ -140,10 +139,6 @@ def do_select_step(bridge, win, word, rest):
         bridge.landBar("fit_bar", float(rest[0]))
     elif word == "ask":                       # ask fit_bar: the action that asks a number first, its popover open
         bridge.run(rest[0])
-    elif word == "place":
-        from .adder import Adder
-        if not Adder(bridge).add(f"design:{rest[0]}"):
-            raise RuntimeError(f"place: {bridge.status}")
     elif word == "library":
         bridge.workspace.setLibrary(True)
         bridge.libraryWanted.emit(rest[0])

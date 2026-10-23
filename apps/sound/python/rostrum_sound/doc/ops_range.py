@@ -1,6 +1,6 @@
 """`range.remove` / `range.insert`: take time out of the whole song, or make room in it, across ALL tracks.
 
-Everything the song's own document places in time after the range shifts: notes, hits, clips, designed sounds,
+Everything the song's own document places in time after the range shifts: notes, hits, clips,
 voice lines, automation points, sections, tempo and key changes, the song's own markers and a set song length.
 What lies inside a removed range goes (a clip or note crossing its edge is cut there, a section is cut to what is
 left, the last tempo / key change inside moves to the start of the range so the song keeps playing in it after).
@@ -23,7 +23,7 @@ from .ops_select_place import _cut
 from .registry import LISTS, REGISTRY
 from .select_time import clip_length, start_of
 
-POINTS = ("note", "hit", "sound", "line")                       # a moment each: inside a removed range = gone
+POINTS = ("note", "hit", "line")                       # a moment each: inside a removed range = gone
 CHANGES = ("tempo", "meter", "key")
 
 

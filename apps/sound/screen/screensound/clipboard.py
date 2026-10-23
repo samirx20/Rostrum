@@ -1,4 +1,4 @@
-"""Copy and paste of notes, drum hits, clips, voice lines and designed sounds (no Qt): Ctrl+C keeps the selected items with their
+"""Copy and paste of notes, drum hits, clips and voice lines (no Qt): Ctrl+C keeps the selected items with their
 times relative to the first one and the tracks they came from; Ctrl+V puts them back at the playhead on the selected
 track (several tracks copied: that track and the ones below it, in order; nothing selected: the tracks they came
 from). Paste is operations an agent calls too (`note.add_many`, `hit.add_many`, `clip.add`, `line.add`), all in one
@@ -14,11 +14,11 @@ from rostrum_sound.doc.shift import write_like
 
 from .timeline import kind_of
 
-KINDS = ("note", "hit", "clip", "line", "sound")
-MANY = {"note": "notes", "hit": "hits", "sound": "sounds"}     # kinds with an add_many (one call per track)
+KINDS = ("note", "hit", "clip", "line")
+MANY = {"note": "notes", "hit": "hits"}     # kinds with an add_many (one call per track)
 FITS = {"note": ("notes", "empty"), "hit": ("drums", "empty"), "clip": ("audio", "empty", "notes", "drums"),
-        "line": ("audio",), "sound": ("audio", "empty")}
-WHAT = {"note": "notes", "hit": "drum hits", "clip": "clips", "line": "voice lines", "sound": "designed sounds"}
+        "line": ("audio",)}
+WHAT = {"note": "notes", "hit": "drum hits", "clip": "clips", "line": "voice lines"}
 
 
 def copy_items(doc, ids) -> dict:

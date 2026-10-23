@@ -36,11 +36,6 @@ def clip(track: str, at, root, taken, where="clip") -> str:
     return timed(track, "c", at, root, taken, where)
 
 
-def sound(track: str, design: str, at, root, taken, where="sound") -> str:
-    """`ui.click1000`: the design and where it starts."""
-    return timed(track, design, at, root, taken, where)
-
-
 def effect(parent: str, type_: str, taken) -> str:
     return core_ids.counted(taken, f"{parent}.{type_}")
 

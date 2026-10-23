@@ -56,7 +56,6 @@ The engine's code for this page lives in `engine/src/contract/`. Anything not on
 | `notes` | list | `[]` | Pitched notes and chords |
 | `hits` | list | `[]` | Drum hits |
 | `clips` | list | `[]` | Recorded audio |
-| `sounds` | list | `[]` | Designed sounds: click, riser, hit, sub drop (no whoosh; § Designed sounds) |
 | `volume` | 0 … 4 (gain) | 0.85 | Fader |
 | `pan` | −1 … 1 | 0 | Left … right |
 | `reverb` | 0 … 1 | 0 | Send to the master's track reverb |
@@ -174,25 +173,14 @@ Every effect is `{"type": <name>, …}`. A parameter marked *env* takes a number
 
 Clip `stretch` and `shift` (added 2026-10-21, P8) use the engine's stretcher (Signalsmith Stretch for music, PSOLA when the engine hears a voice in the clip); both may be set together, and with `pitch`. `check` writes `null` for the ones not set.
 
-### Designed sounds (added 2026-10-21, P6)
+### Sounds made from settings (removed 2026-10-23)
 
-A track's `sounds`: `[{"design": "riser", "at": 1.0, "dur": 0.8, …}, …]`. Each is built from layers in the engine
-(`engine/src/design/`), peak-normalized to its design's own level times `volume`, so a sound's level is a choice, never
-an accident of its settings. The field table in `design/mod.rs` is the one source of truth; `describe` answers it under
-`designs` (`common`, `designs`, `lanes`) and the Python side checks itself against it. Every field is optional except
-`design`, `at` and a riser's `dur`.
-
-**No whoosh (2026-10-23, PURPOSE.md).** Rostrum makes no whoosh, swish or transition sound, so the `whoosh` design is gone. An old song that still has one opens, but rendering it is refused with: "this song has a whoosh, which Rostrum no longer makes; remove it or replace it", and `inspect` lists it as a problem. Motion is scored with instruments (string rise, cymbal swell, piano run, hit or note on the beat).
-
-| Design | Its own fields (default) | What it is |
-|---|---|---|
-| all | `volume` 0 … 4 (1), `pan` −1 … 1 (0), `width` 0 … 1 (0.5), `seed` 1 … 999999 (1) | `seed`: another take of the same design |
-| `click` | `pitch` 100 … 12000 Hz (1800), `material` (0.3: plastic 0, glass 0.5, metal 1), `tight` (0.6), `body` (0.6), `transient` (0.7), `air` (0.3), `bend` −1 … 1 (0) | Transient + tuned body (partials from the material) + knock + air; also tick, tap, pop (`bend` < 0) |
-| `riser` | `dur` 0.1 … 20 (required), `pitch` 40 … 2000 (220), `brightness` (0.5), `curve` (0.5), `tone` (0.4), `air` (0.4), `texture` (0.5) | Noise sweep + detuned stack climbing two octaves to its end, accelerating flutter |
-| `hit` | `pitch` 25 … 200 (50), `size` (0.6), `brightness` (0.5), `tail` 0.05 … 6 s (1.2), `drive` (0.3) | Sub thump falling into its pitch, mid body, crack, tail, saturated together |
-| `subDrop` | `dur` 0.1 … 8 (1.2), `pitch` 25 … 200 (40), `drop` 0 … 4 octaves (1.5), `drive` (0.2) | A sine falling into its pitch |
-
-Unmarked ranges are 0 … 1.
+Rostrum no longer makes sounds from settings (Sam, 2026-10-23, PURPOSE.md): movement is scored with instruments
+(notes, chords and drum hits on ordinary tracks) or with real recordings as clips. The Python side never writes a
+track's `sounds` list. An older song that still has one opens, and says so in plain words on the Problems chip, in
+`inspect` and in every agent reply, naming the sound, its time and its track, for example: *fx: this song has a
+designed sound ("riser" at 2 s) that Rostrum no longer makes; it is left out of the mix. Replace it with an
+instrument*. It stays in the file and is never sent to the engine.
 
 ### Plugins (added 2026-10-21, P8)
 

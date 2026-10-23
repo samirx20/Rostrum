@@ -1,7 +1,7 @@
 """Song sections (intro, verse, drop): named stretches of the song, and what moving one moves.
 
 `moves(root, section, by)` plans `section.move`: the section and everything that starts inside it (at ≥ its start,
-before its end) — notes, hits, clips, designed sounds, voice lines, markers, tempo and key changes, other sections,
+before its end) — notes, hits, clips, voice lines, markers, tempo and key changes, other sections,
 and automation points — shifted by `by`: seconds (2.5, -1) or `{"beats": n}` (n may be negative). Every time keeps
 its form: beats stay beats (moved by whole beats when `by` is in beats), seconds stay seconds, a time on a marker
 that moves too follows it untouched, one on a marker that stays keeps the marker with a new offset. All new
@@ -16,7 +16,7 @@ from . import markers, tempo, times
 from .registry import LISTS
 from .shift import write_like
 
-TIMED = ("note", "hit", "clip", "sound", "line", "marker", "tempo", "meter", "key", "section")
+TIMED = ("note", "hit", "clip", "line", "marker", "tempo", "meter", "key", "section")
 
 
 def by_problem(v) -> str | None:

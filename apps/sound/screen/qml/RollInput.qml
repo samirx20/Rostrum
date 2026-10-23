@@ -6,7 +6,7 @@ import RostrumKit
 // drags every selected item in time and (notes) in pitch (Ctrl: no snapping, Shift: only in time, Alt: a copy;
 // one undo step). Empty space: a click clears and puts the playhead there, a drag draws a box (Ctrl adds),
 // a double-click adds a note (or, on the drum rows, a hit). The Draw tool (B; V is Select): a click on empty space adds
-// a note one grid step long (drag on: longer) or a hit. The two tools' buttons are in the Editor's header (PianoRoll). A note's right end sets its length (every selected note by the same amount, one undo
+// a note Note ▾ long (drag on: longer) or a hit. The two tools' buttons are on the dock's top line (EditorHeader). A note's right end sets its length (every selected note by the same amount, one undo
 // step; the pointer shows ↔ over it). Right-click: the selection's actions, or the menu for that time.
 MouseArea {
     id: m
