@@ -435,7 +435,7 @@ processes on one file (each saves; reopen to see the other's).
 
 ## Sizes, Fill the frame, Effects, the Camera tool, Grain (H32 steps)
 
-- **Scene settings › Size** (`size_rows.py`, `rostrum2d/frame_sizes.py` = the one list: Wide 16:9, 4K 16:9, Vertical 9:16,
+- **Scene settings › Format** (`size_rows.py`, `rostrum2d/frame_sizes.py` = the one list: Wide 16:9, 4K 16:9, Vertical 9:16,
   Square 1:1, Post 4:5; "Custom" when the numbers match none; the names alone, the numbers are right under them). A pick is `comp.size`; Width and Height stay typeable.
 - **Fill the frame** / **Fit inside the frame** (`layer.fill_frame`, `ops_frame.py`): scales the selection (turn kept) to cover or
   sit inside its parent's frame, centred; first on the context bar for a picture or clip, else in the ⋯ menu / Ctrl+K.

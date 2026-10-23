@@ -84,9 +84,9 @@ Item {
         width: mp.hit; height: mp.hit
         Rectangle {
             anchors.centerIn: parent
-            width: mark.knob ? 7 : 8; height: width; radius: mark.knob ? width / 2 : 0
+            width: mark.knob ? 10 : 8; height: width; radius: mark.knob ? width / 2 : 0      // a knob lying on the path still shows
             color: mark.knob || mark.info.picked ? Theme.accent : "white"
-            border.width: 1; border.color: Theme.accent
+            border.width: mark.knob ? 2 : 1; border.color: mark.knob ? "white" : Theme.accent
             opacity: mark.info.faint ? 0.6 : 1
         }
         MouseArea {

@@ -21,7 +21,7 @@ with group("list", x=240, y=180, w=600, anchorX=0, anchorY=0, layout="column", g
 
 | Setting | What it does |
 |---|---|
-| `gap`, `padding` | space between layers, and inside the group's edge |
+| `gap`, `padding` | space between layers (16 px at first), and inside the group's edge (10 px at first, as in a design tool; files made before this keep 0) |
 | `justify` | along the line: `start`, `center`, `end`, `between` (row / column) |
 | `align` | across the line (or in a grid cell): `start`, `center`, `end`, `stretch` (fills it) |
 | `wrap`, `rowGap` | a new line when the next layer doesn't fit (row / column), and the space between lines |
@@ -32,7 +32,7 @@ with group("list", x=240, y=180, w=600, anchorX=0, anchorY=0, layout="column", g
 | a layer's `layoutApart` | the layout leaves it alone: placed by its own `x`, `y` (a badge on a card) |
 
 **A group's own background.** `background=True` draws a colour box behind the group's layers, as big as the group:
-`bgColor`, `bgRadius` (corners; half the height or more is a pill), and an optional outline (`bgStroke`,
+`bgColor` (a dark slate at first), `bgRadius` (corners; half the height or more is a pill), and an optional outline (`bgStroke`,
 `bgStrokeColor`, `bgStrokeWidth`). With auto layout and hugging on, the box hugs the layers with the `padding` all
 round, so a lower-third is one group: a name with a pill around it that grows with the name. In the settings panel
 it is the group's Background section. A hugging group keeps its top-left fixed and grows right and down (`hugPin`, "Keep top-left fixed" in the panel), so a

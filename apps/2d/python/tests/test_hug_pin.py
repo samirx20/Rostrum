@@ -8,7 +8,7 @@ from rostrum2d import KIND, layout, run_source
 
 SRC = '''
 comp("c", width=1000, height=400, fps=10, duration=1)
-with group("g", x=300, y=200, w=200, h=100, layout="row", hugWidth=True, hugHeight=True) as g:
+with group("g", x=300, y=200, w=200, h=100, layout="row", padding=0, hugWidth=True, hugHeight=True) as g:
     shape("a", w=200, h=100)
 g.key("w", {0: 200})
 '''
@@ -44,7 +44,7 @@ def test_growing_hug_keeps_left_and_top_and_old_files_keep_their_look():
 
 def test_auto_layout_hugs_by_default_and_old_files_keep_their_size():
     d, g = _group('comp("c", width=1000, height=400, fps=10, duration=1)\nwith group("g", w=300, h=60, layout="row"):\n    shape("a", w=200, h=100)\n')
-    assert layout.solve(d.item("c"), 0.0)["g"]["w"] == 200                  # no switch touched: the box follows its layers
+    assert layout.solve(d.item("c"), 0.0)["g"]["w"] == 220                  # no switch touched: the box hugs its layers, 10 px padding
     data = copy.deepcopy(d.data)                                            # an older file: the group has no hug fields
     for k in ("hugWidth", "hugHeight"):
         data["comps"][0]["layers"][0].pop(k, None)
