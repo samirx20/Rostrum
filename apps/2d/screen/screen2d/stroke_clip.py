@@ -8,10 +8,11 @@ from __future__ import annotations
 import json
 from copy import deepcopy
 
-from PySide6.QtCore import QMimeData, Slot
+from PySide6.QtCore import Slot
 from PySide6.QtGui import QGuiApplication
 from rostrum_core.conditions import holds
 from rostrum_core.errors import RostrumError, codes
+from rostrum_gui import clip
 from rostrum_gui.parts import SlotMixin
 from rostrum_paint.fields import BRUSH
 
@@ -40,9 +41,7 @@ class StrokeClip(SlotMixin):
     @Slot()
     def copy(self):
         items = [deepcopy(self.b.doc.item(i)) | {"comp": self._comp[i]} for i in self._ids]
-        mime = QMimeData()
-        mime.setData(MIME, json.dumps(items).encode("utf-8"))
-        QGuiApplication.clipboard().setMimeData(mime)
+        clip.put({MIME: json.dumps(items).encode("utf-8")})
         self.b._key_clip = []                           # the latest copy wins over copied keys (key_edits.py)
         self.b._set_status(f"Copied {len(items)} stroke{'s' if len(items) != 1 else ''}")
         self.changed.emit()
