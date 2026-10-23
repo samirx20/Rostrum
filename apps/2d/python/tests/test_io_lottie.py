@@ -86,3 +86,20 @@ def _ease_frac(sc, name, t):
     from rostrum_core.keys import track_value
     keys = sc["comp"]["layers"][0]["anim"][name]
     return (track_value(keys, t) - keys[0]["v"]) / (keys[1]["v"] - keys[0]["v"])
+
+
+def _fill_o(lottie):
+    layer = next(l for l in lottie["layers"] if l["nm"] == "box")
+    fill = next(g for g in layer["shapes"] if g["nm"] == "fill")
+    return next(i for i in fill["it"] if i["ty"] == "fl")["o"]
+
+
+def test_a_fill_opacity_goes_to_the_fill_and_an_old_file_stays_full():
+    still, _ = to_lottie(_scene({"fillOpacity": 0.4}))
+    assert _fill_o(still) == {"a": 0, "k": 40.0}
+    keyed, _ = to_lottie(_scene(anim={"fillOpacity": [{"t": 0.0, "v": 1.0}, {"t": 1.0, "v": 0.2}]}))
+    first, last = _fill_o(keyed)["k"]
+    assert (first["s"], last["s"]) == ([100], [20.0])
+    old = _scene()
+    del old["comp"]["layers"][0]["props"]["fillOpacity"]
+    assert _fill_o(to_lottie(old)[0]) == {"a": 0, "k": 100.0}

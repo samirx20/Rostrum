@@ -62,7 +62,7 @@ the picture comes out black. webm and ProRes go through FFmpeg; PNG and EXR are 
 **report** of everything Lottie could not carry. Today:
 
 - Carried: shapes, paths, images (embedded), groups (as precomps, `clip` as a mask), keys with ease, the background as the
-  bottom solid.
+  bottom solid. A solid fill's `fillOpacity` goes to the Lottie fill's own opacity, keyed when it is keyed.
 - Text is exported as glyph outlines, with line baselines placed by the engine's own line-box rule (whole-pixel ascent, descent and line tops), so a wrapped paragraph sits where the engine draws it.
 - Not exported, always listed in the report: text, drawings, video, tilt, effects, conic gradients, soft mask edges.
 
