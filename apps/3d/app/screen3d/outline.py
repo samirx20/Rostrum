@@ -1,9 +1,10 @@
-"""What the outliner and the timeline list, from one 3D document. No Qt.
+"""What the scene list and its keys show, from one 3D document. No Qt.
 
-Outliner: three short sections. Scene: the item tree (a group's or import's children indented under it, an import's
-parts too; the arrow folds them). Materials and Shots: one row each. Every row selects its thing.
-Timeline: one summary row per animated item (all its keys on one line); the selected item (or the owner of the
-selected key) opens into one row per animated field, so its keys can be picked and dragged one by one.
+Scene list (the bottom panel's left column, SPEC §1): the item tree (a group's or import's children indented under it,
+an import's parts too; the arrow folds them), each row with its material's name, dim. The keys sit on the same rows
+(scene_rows): all of an item's keys on its own line; the selected item (or the owner of the selected key) opens into
+one row per animated field, so its keys can be picked and dragged one by one. Materials and shots are not rows here:
+the header's Materials chip and the shot crumb list them (materials(), shots()).
 """
 from __future__ import annotations
 
@@ -26,24 +27,42 @@ def _row(item: dict, depth: int, fold: str = "", row: str = "item") -> dict:
             "animated": bool(item.get("keys")), "material": item.get("material", "")}
 
 
-def outliner_rows(data: dict, folded: set[str]) -> list[dict]:
-    out: list[dict] = [{"row": "section", "id": "section:scene", "label": "Scene", "kind": "", "depth": 0, "fold": "",
-                        "animated": False, "material": ""}]
+def named(data: dict, key: str) -> list[dict]:
+    """The document's materials or shots, for the header's chip and crumb: [{value: id, label: name}]."""
+    return [{"value": m["id"], "label": label_of(m)} for m in data.get(key, [])]
+
+
+def _animated(item: dict) -> list[str]:
+    return [p.name for p in F.FIELDS.get(item["type"], ()) if any(k["prop"] == p.name for k in item.get("keys", []))]
+
+
+def scene_rows(data: dict, folded: set[str], opened: str) -> list[dict]:
+    """The scene list with its keys on the same rows (kit KeyRows' model): {row "layer"|"part"|"field", id, owner,
+    label, kind, depth, fold, material (its name), keys}. `opened`: the item whose animated fields get rows of their own."""
+    mats = {m["id"]: label_of(m) for m in data.get("materials", [])}
+    out: list[dict] = []
+
+    def add(it, depth, fold="", row="layer"):
+        props = _animated(it)
+        keys = list({k["t"]: k for k in sorted((k for p in props for k in _keys(it, p)), key=lambda k: -k["t"])}.values())[::-1]
+        # (one diamond per time on the item's own line: two fields keyed at once share it; their rows split them)
+        out.append({**_row(it, depth, fold, row), "owner": it["id"], "keys": keys,
+                    "material": mats.get(it.get("material", ""), "")})
+        if it["id"] == opened:
+            out.extend({"row": "field", "id": f"{it['id']}.{p}", "owner": it["id"], "label": F.param(it["type"], p).label,
+                        "kind": "", "depth": depth + 1, "fold": "", "material": "", "animated": True,
+                        "keys": _keys(it, p), "prop": p} for p in props)
 
     def walk(items, depth):
         for it in items:
             inside = it.get("children", []) + it.get("parts", [])
-            out.append(_row(it, depth, "" if not inside else ("closed" if it["id"] in folded else "open")))
+            add(it, depth, "" if not inside else ("closed" if it["id"] in folded else "open"))
             if inside and it["id"] not in folded:
                 walk(it.get("children", []), depth + 1)
-                out.extend(_row(p, depth + 1, row="part") for p in it.get("parts", []))
+                for p in it.get("parts", []):
+                    add(p, depth + 1, row="part")
 
     walk(data.get("items", []), 0)
-    for key, title in (("materials", "Materials"), ("shots", "Shots")):
-        if data.get(key):
-            out.append({"row": "section", "id": f"section:{key}", "label": title, "kind": "", "depth": 0, "fold": "",
-                        "animated": False, "material": ""})
-            out.extend(_row(m, 0) for m in data[key])
     return out
 
 
@@ -57,18 +76,3 @@ def scene_items(data: dict):
 
 def _keys(owner: dict, prop: str) -> list[dict]:
     return [{"id": k["id"], "t": k["t"]} for k in keys_of(owner, prop)]
-
-
-def tracks(data: dict, opened: str) -> list[dict]:
-    """Rows for the timeline. `opened`: the item whose fields get their own rows ("" for none)."""
-    out: list[dict] = []
-    for it in scene_items(data):
-        props = [p.name for p in F.FIELDS[it["type"]] if any(k["prop"] == p.name for k in it.get("keys", []))]
-        if not props and it["id"] != opened:
-            continue
-        summary = sorted((k for p in props for k in _keys(it, p)), key=lambda k: k["t"])
-        out.append({"row": "item", "id": it["id"], "label": label_of(it), "keys": summary, "owner": it["id"], "prop": ""})
-        if it["id"] == opened:
-            out += [{"row": "field", "id": f"{it['id']}.{p}", "label": F.param(it["type"], p).label,
-                     "keys": _keys(it, p), "owner": it["id"], "prop": p} for p in props]
-    return out

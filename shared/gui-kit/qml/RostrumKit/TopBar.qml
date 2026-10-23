@@ -23,6 +23,7 @@ Item {
     property string historyFocus: ""         // the run History should show (the agent chip's Review), "" = all
     property alias menu: menuSlot.data
     property alias leading: leadingSlot.data
+    property alias crumb: crumbSlot.data     // right after the document tab: where in the document you are (3D's "› Hero 01 ▾")
     property alias tools: toolsSlot.data
     property alias chips: chipsSlot.data
     property alias actions: actionsSlot.data
@@ -84,7 +85,7 @@ Item {
                                      + problemsChip.fullWidth - problemsChip.narrowWidth + jobChip.fullWidth - jobChip.narrowWidth
     readonly property bool doneLinks: !!job && job.state === "done" && !job.open && job.doneMessage !== "" && bridge.status === job.doneMessage
     readonly property real fixedWidth: edgeLeft + slot(menuSlot) + wordmark.implicitWidth + slot(leadingSlot)
-                                     + (tabFloor ? sp + tabFloor : 0)
+                                     + (tabFloor ? sp + tabFloor : 0) + (crumbSlot.children.length ? crumbSlot.implicitWidth : 0)
                                      + sp + countFull.advanceWidth + slot(toolsSlot)
                                      + (chipsNarrowWidth ? sp + chipsNarrowWidth : 0) + (undoWidth ? sp + undoWidth : 0)
                                      + sp + Theme.button + slot(actionsSlot) + sp + help.width + edgeRight
@@ -108,7 +109,7 @@ Item {
     TextMetrics { id: countFull; font: count.font; text: [bar.saveWord, bar.changesWord].filter(w => w).join(" · ") }
     TextMetrics { id: countShort; font: count.font; text: bar.saveWord && bar.changesWord ? bar.saveWord : "" }
 
-    Row {  // left group: ≡ (the app's menu button), wordmark, leading buttons, the document tab
+    Row {  // left group: ≡ (the app's menu button), wordmark, leading buttons, the document tab, the crumb
         id: leftGroup
         x: bar.edgeLeft; anchors.verticalCenter: parent.verticalCenter
         spacing: bar.sp
@@ -150,6 +151,11 @@ Item {
                               function onActiveFocusChanged() { if (!nameField.input.activeFocus) tab.editing = false } }
             }
         }
+    }
+    Row {  // the crumb, tight after the tab (no group gap: it reads as one "project › shot")
+        id: crumbSlot
+        x: leftGroup.x + leftGroup.width + (tab.visible ? 0 : bar.sp); anchors.verticalCenter: parent.verticalCenter
+        visible: children.length > 0
     }
     Row {  // right group: message, the change count, tools, chips, ↶ ↷, the command box, actions, Help
         id: rightGroup

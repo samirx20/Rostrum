@@ -25,6 +25,7 @@ QQC.ApplicationWindow {
     property alias right: rightSlot.data
     property alias bottom: bottomSlot.data
     property alias leading: topBar.leading      // the app's left top-bar buttons (File), after the wordmark
+    property alias crumb: topBar.crumb          // right after the document name (3D: "› Hero 01 ▾")
     property alias tools: topBar.tools          // the app's own top-bar tools (centred)
     property alias actions: topBar.actions      // the app's action buttons (Export: right, after the command box)
     property alias menu: topBar.menu            // the ≡ button, first in the top bar (optional)

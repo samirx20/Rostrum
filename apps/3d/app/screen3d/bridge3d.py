@@ -1,5 +1,7 @@
 """Rostrum3D's document bridge: the kit's DocBridge plus the shot, the playhead (a frame of the shot), play / pause, the
-outliner and timeline rows, the key drag, the viewport and the Render job. Every change is an operation; a drag is one
+page (Build / Animate / Render: screen state), the scene list with its keys, the key drag, the viewport and the Render job.
+The settings panel is the kit's sections layout (open if changed, the rest a row of names; each kind's own group always
+open: OWN below). Every change is an operation; a drag is one
 doc.gesture = one undo step. How an edit becomes a call lives in route.py only.
 
 What the viewport (viewport.py) reads from it: scene(), frame, shot_info(), selected, select(id), and the signals
@@ -7,10 +9,12 @@ docChanged, frameChanged, selectionChanged.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from rostrum_core.keys import keys_of
 from rostrum3d.compile import describe, shot_info
-from rostrum_gui import DocBridge
+from rostrum_gui import DocBridge, sections
 from rostrum_gui.edits import Drag
 from rostrum_gui.markers import MarkerWatch
 
@@ -21,16 +25,24 @@ from .adding import Adder
 from .render_job import RenderJob
 
 
+# The group each kind IS (SPEC §3.2, the lead's ruling): always open; every other group opens only when changed.
+sections.OWN.update({"mesh": "Shape", "import": "File", "part": "Part", "light": "Light", "camera": "Lens", "rig": "Rig",
+                     "material": "Surface", "shot": "Shot", "key": "Key"})
+PAGES = ("build", "animate", "render")
+
+
 def _viewport(bridge):
     from .viewport import Viewport      # written alongside; imported late so a bridge without a window needs no engine
     return Viewport(bridge)
 
 
 class Bridge3D(DocBridge):
+    sections = True                     # the kit's open-if-changed settings panel (rostrum_gui/sections.py)
     frameChanged = Signal()
     outlineChanged = Signal()
     playingChanged = Signal()
     markersChanged = Signal()
+    pageChanged = Signal()
 
     def __init__(self, doc, shot_id=None, autosave=False, viewport=_viewport, render_engine=None, parent=None):
         shots = doc.data.get("shots", [])
@@ -39,6 +51,7 @@ class Bridge3D(DocBridge):
         self.shot_id, self.autosave = shot_id or shots[0]["id"], autosave
         self._info = shot_info(doc.data, self.shot_id)          # fails loudly at start: a shot needs a camera
         self._frame, self._folded, self._drag, self._grab = self._info["start"], set(), None, None
+        self._page = "build"
         super().__init__(doc, parent=parent)
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
@@ -85,12 +98,30 @@ class Bridge3D(DocBridge):
         return self._timer.isActive()
 
     @Property("QVariantList", notify=outlineChanged)
-    def outline(self):
-        return outline.outliner_rows(self.doc.data, self._folded)
+    def sceneRows(self):
+        """The scene list, its keys on the same rows (outline.scene_rows)."""
+        return outline.scene_rows(self.doc.data, self._folded, self.selectedOwner)
 
     @Property("QVariantList", notify=outlineChanged)
-    def tracks(self):
-        return outline.tracks(self.doc.data, self.selectedOwner)
+    def materials(self):
+        return outline.named(self.doc.data, "materials")
+
+    @Property("QVariantList", notify=outlineChanged)
+    def shots(self):
+        return outline.named(self.doc.data, "shots")
+
+    @Property(str, notify=pageChanged)
+    def page(self):
+        """Build | Animate | Render (screen state, never the document): the same document, camera and selection."""
+        return self._page
+
+    @Slot(str)
+    def setPage(self, page):
+        if page not in PAGES:
+            return self.fail_line(f"Error: page: {page!r} is not one of {', '.join(PAGES)}.")
+        if page != self._page:
+            self._page = page
+            self.pageChanged.emit()
 
     @Property(str, notify=outlineChanged)
     def selectedOwner(self):
@@ -241,3 +272,17 @@ class Bridge3D(DocBridge):
         self.endDrag()
         if self.viewport is not None and hasattr(self.viewport, "close"):
             self.viewport.close()
+
+    # ---- the file pieces (files_3d.py, export3d.py) ----------------------------------------------------------
+    @Property(QObject, constant=True)
+    def exporter(self):
+        """The kit's Export sheet for this shot (export3d.py); made on first ask, so a bridge without a window needs none."""
+        if getattr(self, "_exporter", None) is None:
+            from .export3d import Export3D
+            self._exporter = Export3D(self)
+        return self._exporter
+
+    @Property(str, notify=outlineChanged)
+    def docName(self):
+        """The document's name on the top bar: its project's folder name ("" for a scene in memory: the crumb says the shot)."""
+        return Path(self.doc.folder).name if self.doc.folder else ""
