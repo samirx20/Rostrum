@@ -122,12 +122,15 @@ Column {
             id: hexBox
             objectName: "hexField"
             editable: true
-            width: parent.width - x0 - (p.showAlpha ? 56 + Theme.grid + 2 : 0) - (p.extra !== "" ? 56 + Theme.grid + 2 : 0)
+            width: parent.width - x0 - (p.showAlpha ? 56 + Theme.grid + 2 : 0) - (p.extra !== "" ? 66 + Theme.grid + 2 : 0)
             readonly property real x0: p.canPick ? Theme.field + Theme.grid + 2 : 0
             text: p.current.toUpperCase()
             onCommitted: (t) => {
-                const hx = M.parseHex(t)
-                if (hx) p.choose(hx); else input.text = text      // not a colour: back to what it was
+                const c = M.readHex(t)                        // 3 / 6 / 8 digits (8: with its opacity, where it has one)
+                input.text = text
+                if (!c || (c.a < 1 && !p.showAlpha)) { problem = c ? "No opacity here: type 6 digits" : "“" + t + "” is not a colour"; return }
+                if (p.showAlpha && c.a !== p.a) p.a = c.a
+                p.choose(c.hex)
             }
         }
         FieldFrame {
@@ -138,8 +141,8 @@ Column {
             onArrow: (d, big) => put(Math.round(p.a * 100) + d * (big ? 10 : 1))
         }
         FieldFrame {
-            visible: p.extra !== ""; editable: true; width: 56
-            text: p.extra; suffix: "%"
+            visible: p.extra !== ""; editable: true; width: 66
+            text: p.extra; prefix: "at "; suffix: "%"          // where the stop sits on the bar, not its opacity
             onCommitted: (t) => { if (isNaN(parseFloat(t))) input.text = text; else p.extraEdited(t) }
         }
     }
@@ -171,19 +174,24 @@ Column {
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: p.choose(parent.hex) }
     }
 
-    MouseArea {   // the pipette: the next click anywhere takes the colour under it; Esc cancels
-        id: dropper
+    QQC.Popup {   // the pipette: the next click anywhere takes the colour under it; Esc cancels. Its own modal layer over
+        id: dropper  // the window, so the click lands here and never counts as a click outside the picker (closing it)
         parent: QQC.Overlay.overlay
-        anchors.fill: parent
-        visible: p.picking; enabled: p.picking; z: 100000
-        cursorShape: Qt.CrossCursor
-        focus: p.picking
-        onVisibleChanged: if (visible) forceActiveFocus()
-        Keys.onEscapePressed: p.picking = false
-        onClicked: (m) => {
-            const g = mapToGlobal(m.x, m.y)
-            p.picking = false
-            if (p.canPick) { const hx = M.parseHex(colourBank.pixel(g.x, g.y)); if (hx) p.choose(hx) }
+        x: 0; y: 0; width: parent ? parent.width : 0; height: parent ? parent.height : 0
+        padding: 0; modal: true; dim: false; focus: true
+        closePolicy: QQC.Popup.CloseOnEscape
+        visible: p.picking
+        onClosed: p.picking = false
+        background: Item { }
+        MouseArea {
+            objectName: "dropperLayer"
+            anchors.fill: parent
+            cursorShape: Qt.CrossCursor
+            onClicked: (m) => {
+                const g = mapToGlobal(m.x, m.y)
+                p.picking = false
+                if (p.canPick) { const hx = M.parseHex(colourBank.pixel(g.x, g.y)); if (hx) p.choose(hx) }
+            }
         }
     }
 }

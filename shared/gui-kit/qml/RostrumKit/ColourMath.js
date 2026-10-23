@@ -7,6 +7,12 @@ function parseHex(t) {      // "#rrggbb", "rrggbb", "#rgb" -> "#rrggbb" (lower c
     if (/^[0-9a-f]{3}$/.test(s)) s = s[0] + s[0] + s[1] + s[1] + s[2] + s[2]
     return /^[0-9a-f]{6}$/.test(s) ? "#" + s : ""
 }
+function readHex(t) {       // typed hex, 3 / 6 / 8 digits, # optional -> {hex: "#rrggbb", a: 0..1}; null when not a colour
+    var s = String(t).trim().toLowerCase().replace(/^#/, "")
+    if (/^[0-9a-f]{8}$/.test(s)) return { hex: "#" + s.substr(0, 6), a: parseInt(s.substr(6, 2), 16) / 255 }
+    var h = parseHex(s)
+    return h ? { hex: h, a: 1 } : null
+}
 function rgb(hex) { var h = parseHex(hex) || "#000000"; return [parseInt(h.substr(1, 2), 16), parseInt(h.substr(3, 2), 16), parseInt(h.substr(5, 2), 16)] }
 function toHex(r, g, b) {
     var c = function (x) { var n = Math.max(0, Math.min(255, Math.round(x))).toString(16); return n.length < 2 ? "0" + n : n }
