@@ -271,6 +271,11 @@ Rectangle {
                     editable: backend.multi.count === 1 && !well.drawing && backend.tool !== "bone" && modelData.type !== "path" && !backend.pen.on
                 }
             }
+            Handles {   // several layers: one box round them all with the same knobs, acting on all together (group_slots.py)
+                box: backend.multi.groupBox; fit: view.zoom; space: marks; group: true
+                visible: backend.multi.count > 1
+                editable: backend.multi.count > 1 && !well.drawing && backend.tool !== "bone" && !backend.pen.on
+            }
             Rectangle {   // the selection rides a path: says so over the picture (the view moves with a riding camera, so no outline)
                 visible: backend.multi.ride.id !== undefined && backend.multi.count === 1
                 x: -view.ox + Theme.gap; y: -view.oy + Theme.gap; width: rideWords.width + 2 * Theme.gap; height: rideWords.height + Theme.gap

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from rostrum2d import fields as F
+from rostrum_gui import sections
 
 from . import beat_words, exprs, outline, fill_rows, route, size_rows, soundtrack_rows, swap_rows
 
@@ -14,6 +15,11 @@ SIBLING_PICKS = {"matte": lambda s: True,                          # any layer b
 ON_PAGE = {"group": {"w", "h"}, "rig": {"w", "h"}, "text": {"body"}}
 for _t in ("drawing", "shape", "text", "image", "video", "path"):      # the frame-by-frame block under the settings has it
     ON_PAGE[_t] = ON_PAGE.get(_t, set()) | {"newHold"}
+
+
+# A text's folded groups would echo its essential rows (Font, Colour) as "+ Font" / "+ Fill": they read as what they hold.
+# Only the words on screen change; the groups' keys stay "Font" / "Fill" (kit sections.WORDS).
+sections.WORDS.update({("text", "Font"): "More type", ("text", "Fill"): "Fill style"})
 
 
 class Hooks2D:

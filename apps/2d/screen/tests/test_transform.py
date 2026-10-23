@@ -63,3 +63,26 @@ def test_resize_knobs_show_the_arrow_that_matches_their_screen_direction():
     assert [c(*k, 0) for k in ((1, 0), (0, 1), (1, 1), (1, -1))] == ["hor", "ver", "fdiag", "bdiag"]
     assert [c(*k, 45) for k in ((1, 0), (0, 1), (1, 1), (1, -1))] == ["fdiag", "bdiag", "ver", "hor"]
     assert c(-1, -1, 90) == "bdiag" and c(1, 0, 180) == "hor"
+
+
+def test_group_resize_and_turn_are_one_undo_step_and_leave_unselected_layers_alone(bridge):  # noqa: F811
+    doc = bridge.doc
+    bridge.selectMany(["box", "title"])
+    before = {i: dict(doc.item(i)) for i in ("box", "title", "ra")}
+    n = len(doc.history.changes)
+    assert bridge.beginGroupResize(1, 1)
+    for d in (5, 10, 20):
+        bridge.groupResizeBy(d, d, False, False)
+    bridge.endDrag()
+    assert len(doc.history.changes) == n + 1                            # two layers, three moves: one step
+    assert doc.item("box")["w"] > before["box"]["w"] and doc.item("ra") == before["ra"]
+    assert bridge.beginGroupRotate()
+    b = bridge._multi.groupBox
+    c = (b["x"] + b["w"] / 2, b["y"] + b["h"] / 2)
+    for a in (0, 10, 20):
+        bridge.groupRotateTo(c[0] + 50 * cos(radians(a)), c[1] + 50 * sin(radians(a)), False)
+    bridge.endDrag()
+    assert len(doc.history.changes) == n + 2 and round(doc.item("box")["rotation"], 1) == 20.0
+    bridge.undo()
+    bridge.undo()
+    assert {i: dict(doc.item(i)) for i in before} == before             # both gone, nothing else touched

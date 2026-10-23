@@ -17,6 +17,8 @@ def display_name(item: dict) -> str:
         return id_
     if name == F.LABELS.get(item.get("type")) and not re.fullmatch(rf"{re.escape(item['type'])}_\d+", id_):
         return id_
+    if item.get("type") == "shape" and re.fullmatch(rf"{F.LABELS['shape']}( \d+)?", str(name)) and item.get("shape") in F.SHAPE_WORDS:
+        return F.SHAPE_WORDS[item["shape"]] + str(name)[len(F.LABELS["shape"]):]      # a star not yet renamed is "Star", never "Shape"
     if item.get("type") == "text" and re.fullmatch(rf"{F.LABELS['text']}( \d+)?", str(name)) and words(item):
         return words(item)              # a text the person hasn't named reads as its words, as in a design tool
     return str(name)

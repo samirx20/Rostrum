@@ -98,7 +98,7 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
         if "fold" in r:
             r["open"] = r["fold"] in opened if any(ok[m] for m in r["members"]) else None
         if r["row"] == "folds":
-            r["names"] = [{"group": f["fold"], "changed": f["fold"] in opened.changed} for f in static
+            r["names"] = [{"group": f["fold"], "label": f["label"], "changed": f["fold"] in opened.changed} for f in static
                           if "fold" in f and f["fold"] not in opened and any(ok[m] for m in f["members"])]
         if r["row"] == "param":
             r["value"] = item.get(r["id"], r["default"])

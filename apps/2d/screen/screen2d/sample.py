@@ -1,7 +1,7 @@
 """A small document to open the screen on while developing (a few layers, an effect, a mask, some keys).
 Not a template: it only exercises the screen's panels."""
 SOURCE = '''
-comp("screen_sample", width=1920, height=1080, fps=30, duration=4, background="#0b0d14")
+comp("screen_sample", name="Sample scene", width=1920, height=1080, fps=30, duration=4, background="#0b0d14")
 card = shape("card", w=1000, h=460, radius=36, fill="#1b2233", y=540)
 card.effect("shadow", dy=30, radius=60, strength=0.6)
 card.key("scale", {0.0: 0.92, 0.8: 1.0}, ease="snappy")

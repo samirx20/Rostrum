@@ -61,6 +61,7 @@ class Facts:
         groups = self.kinds == {"group"}
         self.facts = {
             "one": self.count == 1, "same_parent": p is not None, "groupable": groupable,
+            "one_group": self.count == 1 and groups,       # a group alone: Ungroup, not "Group" echoing its own title
             "shapes": self.kinds <= set(SHAPES), "has_text": "text" in self.kinds, "has_camera": "camera" in self.kinds,
             "releasable": groups and all(_why_not(it, doc.item(where[it["id"]][0])) is None for it in self.items),
             "maskable": groupable and all(F.param(it["type"], "matte") for it in self.items),

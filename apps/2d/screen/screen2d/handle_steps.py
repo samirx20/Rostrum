@@ -30,6 +30,22 @@ def steps_handles(bridge, step, rest):
             a = start + math.radians(float(rest[1]) * f)
             bridge.rotateTo(ox + 100 * math.cos(a), oy + 100 * math.sin(a), flags["shift"])
         bridge.endDrag()
+    elif word == "groupresize":                # the box round the selected layers (selectmany first)
+        if rest[0] not in HANDLES or not bridge.beginGroupResize(*HANDLES[rest[0]]):
+            raise RuntimeError(f"step {step!r}: {bridge.status or 'select two or more layers first'} (handles: {', '.join(HANDLES)})")
+        dx, dy = float(rest[1]), float(rest[2])
+        for f in MOVES:
+            bridge.groupResizeBy(dx * f, dy * f, flags["shift"], flags["alt"])
+        bridge.endDrag()
+    elif word == "grouprotate":
+        if not bridge.beginGroupRotate():
+            raise RuntimeError(f"step {step!r}: {bridge.status or 'select two or more layers first'}")
+        b = bridge._multi.groupBox
+        cx, cy = b["x"] + b["w"] / 2, b["y"] + b["h"] / 2
+        for f in (0.0, *MOVES):
+            a = math.radians(float(rest[0]) * f)
+            bridge.groupRotateTo(cx + 100 * math.cos(a), cy + 100 * math.sin(a), flags["shift"])
+        bridge.endDrag()
     elif word == "boxselect":
         bridge._multi.boxSelect(*[float(v) for v in rest[:4]], " ".join(k for k in ("shift", "ctrl") if flags.get(k) or k in rest))   # [shift] [ctrl]
     elif word == "shiftpick":

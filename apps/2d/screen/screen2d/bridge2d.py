@@ -17,6 +17,7 @@ from .drags import DragSlots
 from .command_words import CommandWords
 from .file_commands import FileCommands
 from .frames import FrameRenderer
+from .group_slots import GroupSlots
 from .handle_slots import HandleSlots
 from .hooks import Hooks2D
 from .action_slots import ActionSlots
@@ -44,7 +45,7 @@ TOOLS = ("move", "pen", "draw", *F.SHAPE_KINDS, "text", "camera", "bone", "hand"
 
 
 
-class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, UndoState, ActionSlots, ActionPreview, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
+class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, UndoState, ActionSlots, ActionPreview, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, GroupSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     toolChanged = Signal()
     frameChanged = Signal()
