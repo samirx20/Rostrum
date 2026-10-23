@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Shapes
 import RostrumKit
 
-// The pen tool and a path's points, over the canvas (screen2d/pen.py does the work; the tool strip turns the pen on).
+// The pen tool and a path's points, over the canvas (screen2d/pen.py does the work; the tool rail turns the pen on).
 // Pen on: click = corner point, press-drag = smooth point, click the first point = close, Enter / Escape / another tool = made
 // (open), then Move with the path selected; no Done (the hint is in the context bar, ToolOptions.qml).
 // A selected path layer shows its points (square = corner, round = smooth); click a point to select it and its handles show; dragging one is one

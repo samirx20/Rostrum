@@ -3,8 +3,8 @@
 One workspace on one 2D document (no pages; the design is `../DESIGN.md`), built from the shared GUI kit (`shared/gui-kit/`).
 
 ```
-top bar          Rostrum2D · File · document · what just happened · Undo / Redo · + Add · Import · Export · Ctrl+K · Help
-centre           Canvas: the engine's frame at the playhead, fitted; the tool strip (Move V, Pen P, Draw B) at its top left;
+top bar          Rostrum2D · File · document · what just happened · Undo / Redo · Export · Ctrl+K · Help
+centre           Tool rail (ToolRail.qml: icons only, groups open flyouts) in its own column; then the canvas: the engine's frame at the playhead, fitted;
                  the selected layers' boxes and handles; the context bar at the top-centre
 right            Settings panel (the kit's Inspector): the selected item(s)' field operation, values at the playhead, key
                  marks; essentials first, folded groups, Find a setting (Ctrl+F); with Draw on, the brush instead
@@ -53,7 +53,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 
 ## Creation tools, the view, snapping, painting on any element (H29)
 
-- **R / O / T** (`screen2d/create.py`, `typing_session.py`, `qml/CreateOverlay.qml` in the canvas under the tool strip):
+- **R / O / T** (`screen2d/create.py`, `typing_session.py`, `qml/CreateOverlay.qml` in the canvas beside the tool rail):
   drag a rectangle or ellipse (Shift square / round, Alt from the centre, a click = 200 × 200), one change, selected,
   back to Move; T: click or drag a box and type on the canvas, one change per typing session (previews `text.set` per
   key), Esc / Ctrl+Enter ends; double-click a text to type in it again. While typing the context bar has Font, Weight,
@@ -188,7 +188,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 ## H33 (rig): the Bone tool, Mirror pose, faint marks past the keys, beat words
 
 - **The Bone tool J** (`screen2d/bone_tool.py` as `backend.boneTool`, `qml/BoneTool.qml`; RIG.md › Drawing bones by hand):
-  in the tool strip and on J only while a rig is in hand; draws bones joint by joint with `bone.draw`; the bones overlay
+  in the tool rail and on J only while a rig is in hand; draws bones joint by joint with `bone.draw`; the bones overlay
   stays visible but does not take the pointer while it is on. Leaving the rig ends it (back to Move).
 - **Mirror pose ▾** on the context bar (actions.py `mirror_*`, fact `mirrorable`): `pose.mirror` at the playhead.
 - **Faint marks past the keys** (`screen2d/key_ghosts.py`, rows' `ghosts` / `tails` from `outline.rows`, drawn in
@@ -344,10 +344,12 @@ Steps: `select`, `selectmany`, `act`, `nudge`, `tool move|pen|draw`, `time`, `se
 
 ## Add and import
 
-- **+ Add** (top bar, `qml/AddMenu.qml`, `screen2d/adding.py`): a small menu of only new content, most important first:
-  shape, text, path (turns the Pen on), image, video (each asks for a file), drawing (turns Draw on), camera, 3D render. Groups and rigs
-  are made from a selection (Group, Make rig), never added empty. A choice is one change (`layer.add` + the type's field operation, centred in the
-  composition), selected, one undo step. The list is data (`adding.ENTRIES`); the popup is the kit's `Menu`.
+- **Tool rail** (`qml/ToolRail.qml`, `qml/ToolFlyout.qml`, icons: the kit's `ToolIcon.qml`): icons only, its own column
+  left of the canvas. Select V · Shapes (Rectangle R, Ellipse O) · Pen P · Text T · Brush B | Media Ctrl+I (Picture,
+  Video, 3D render only with Rostrum3D, Import…, Library) · Sound (only while the selection can take a cue) · Camera C
+  (the first use adds one) | Hand H / Zoom Z · Bone J (only with a rig in hand). A group with more than one entry opens a
+  flyout beside the rail; its icon is its last-used tool. Media's entries go through `screen2d/adding.py` (one change,
+  centred, selected, one undo step; picture and video ask for a file first). Step: `flyout <group>|close`.
 - **Import** (top bar, `qml/ImportPanel.qml`, `screen2d/importer.py`): from a file (SVG, PDF with its page, PSD, image,
   video; what the file is decides which settings show) or a Figma file key + frame + your own token (typed into the panel,
   never stored, printed or sent anywhere but Figma). One change, one undo step; afterwards the layers that came in and the
@@ -361,7 +363,7 @@ Steps: `select`, `selectmany`, `act`, `nudge`, `tool move|pen|draw`, `time`, `se
   under one group; **Keep original size** (only shown for those kinds) puts it in at its own size and place.
 - One door: `rostrum2d.io.importing` (`run` = `plan` + `apply`: file → importer tree → calls → one `doc.apply` → report); the MCP
   tool `run_import` calls `run` (its `fit` is off by default: the source's own size and place).
-- Steps: `add <type>` (`add image <path>`), `addmenu open|close`, `import <path> [page=<n>] [text=outline] [keep=on]` (waits),
+- Steps: `add <type>` (`add image <path>`), `flyout <group>|close`, `import <path> [page=<n>] [text=outline] [keep=on]` (waits),
   `importstart <path>` (doesn't wait), `importpanel open [path]|close`.
 
 ## Problems, steps and curves

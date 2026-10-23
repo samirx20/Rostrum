@@ -16,7 +16,7 @@
     a smooth point; composition px) | pointpick <layer> <i> (select a point: its handles show) | pointdrag <layer> <i> <dx> <dy> [in|out] (a point, or its handle)
   Handles: resize <layer> <nw|n|ne|e|se|s|sw|w> <dx> <dy> [shift] [alt] | rotate <layer> <deg> [shift] (turn by that many
     degrees) | boxselect <x0> <y0> <x1> <y1> [shift] [ctrl] (the rubber band) | shiftpick <layer> (add / remove) | movesel <dx> <dy> (move all selected)
-  Add and import: add <type> (the Add menu's entry; image / video: add image <path>) | addmenu open|close |
+  Add and import: add <type> (the Add menu's entry; image / video: add image <path>) | flyout <group>|close (a rail group's flyout) |
     import <path> [page=<n>] [text=outline] [keep=on] (the Import panel's job, waits, fails like it) | importstart <path> … (starts it,
     doesn't wait) | importpanel open [path]|close | drop <path> [x y] | library open|close (the Library drawer) |
     brand <colors|textStyles|logos> <name, _ for spaces> <#rrggbb | text style id | file> (into the project's brand kit)
@@ -339,8 +339,8 @@ def do_step(bridge, win, step):
             bridge.adder.addFile(rest[0], rest[1])
         else:
             bridge.adder.add(rest[0])
-    elif word == "addmenu":
-        QMetaObject.invokeMethod(win, "setAddOpen", Q_ARG("QVariant", rest[0] == "open"))
+    elif word == "flyout":                       # flyout <group> (shapes, media, view) | flyout close: a rail group's flyout
+        QMetaObject.invokeMethod(win, "openFlyout", Q_ARG("QVariant", "" if rest[0] == "close" else rest[0]))
     elif word in ("import", "importstart"):
         steps_import(bridge, step, rest)
     elif word == "drop":                         # drop <path> [<x> <y>]: a file let go on the canvas (comp px)

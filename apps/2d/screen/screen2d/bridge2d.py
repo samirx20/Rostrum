@@ -37,7 +37,7 @@ from .tools2d import ToolSlots
 from .undo_state import UndoState
 
 
-TOOLS = ("move", "pen", "draw", "rect", "ellipse", "text", "camera", "bone")      # what the mouse does on the canvas (setTool)
+TOOLS = ("move", "pen", "draw", "rect", "ellipse", "text", "camera", "bone", "hand", "zoom")      # what the mouse does on the canvas (setTool)
 
 
 FILLS = {"shape", "text", "path"}      # a gradient fills a shape or the letters of a text, not a picture
@@ -238,11 +238,11 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
 
     @Slot(str)
     def setTool(self, tool):
-        """The one tool switch (the strip, V / P / B / Esc, pen.setOn, Add path / drawing). Leaving the pen ends its path."""
+        """The one tool switch (the rail, V / P / B / Esc, pen.setOn, Add path / drawing). Leaving the pen ends its path."""
         if tool not in TOOLS:
             return self._fail(f"Error: tool: {tool!r} is not a tool ({', '.join(TOOLS)}).")
         if tool == "camera" and not self._camera.available:
-            return self._fail("Error: camera: this scene has no camera; + Add › Camera first.")
+            return self._fail("Error: camera: this scene has no camera; the rail's Camera adds one.")
         if tool == "bone" and not self._bone_tool.available:
             return self._fail("Error: bone: select a rig first (Make rig on a character's parts).")
         if tool != self._tool:

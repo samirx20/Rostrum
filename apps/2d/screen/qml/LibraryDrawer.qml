@@ -3,7 +3,7 @@ import QtQuick.Dialogs
 import RostrumKit
 
 // The Library drawer (UX_SPEC 3.27), on the canvas's left; it pushes the canvas aside, never covers it. Ctrl+L or the
-// tool strip's Library. Brand kit: the project's colours, text styles and logos (every document of the project sees
+// rail's Media › Library. Brand kit: the project's colours, text styles and logos (every document of the project sees
 // them: screen2d/brand_view.py, rostrum2d/brand_kit.py); then this document's own text styles. Click an entry to put
 // it on the selection (a colour on shapes, paths and texts; a style on texts) or, for a logo, onto the canvas.
 // The + buttons appear only when they can act (a selection to take from; a project to keep the kit in).

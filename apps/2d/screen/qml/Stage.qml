@@ -21,7 +21,6 @@ import RostrumKit
 Rectangle {
     id: panel
     color: Theme.panel; radius: Theme.radiusPanel; clip: true
-    property alias addMenu: tools.addMenu       // the "+" menu at the tool strip's foot (Main.qml: Esc, setAddOpen)
     objectName: "stage"                 // scripted steps reach the view through it (screen2d/view_steps.py)
     property bool typing: false         // a text field has the focus (Main.qml): single-letter view keys stay off
     // the tool whose options the context bar shows instead of the selection's actions ("" = the actions)
@@ -273,14 +272,14 @@ Rectangle {
             enabled: backend.tool === "move"
             onTapped: (ev) => panel.openMenu(ev.position.x, ev.position.y)
         }
-        ToolStrip { id: tools; anchors { left: parent.left; top: parent.top; margins: Theme.gap } }   // over everything on the canvas
+        ViewTools { anchors.fill: parent; view: view }   // H: drag moves the view; Z: click zooms in, Alt+click out
         ViewControls {
             id: controls
             anchors { right: parent.right; bottom: parent.bottom; margins: Theme.gap }
             view: view; typing: panel.typing
             onFitSelection: panel.fitSelection()
         }
-        ContextBar {   // select, then act: the kit's bar at the top-centre, clear of the tool strip (backend.actions);
+        ContextBar {   // select, then act: the kit's bar at the top-centre (backend.actions);
                        // with Pen, Paint or typing on, that tool's options instead (ToolOptions.qml)
             id: bar
             hub: backend.actions
@@ -288,11 +287,11 @@ Rectangle {
             // one rule: just above the frame's top edge, never over it; Fit keeps this room free (view.top), a zoomed view lets it ride the well's top
             anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
             anchors.topMargin: Math.max(Theme.gap, frame.y - bar.height - Theme.gap)
-            maxWidth: well.width - 2 * (tools.width + 2 * Theme.gap)
+            maxWidth: well.width - 2 * Theme.gap
             toolOptions: panel.toolMode !== "" ? optionsComponent : null
             dragging: canvas.pressed || backend.playing || (backend.tool !== "move" && panel.toolMode === "")
         }
-        Component { id: optionsComponent; ToolOptions { mode: panel.toolMode; room: well.width - 2 * (tools.width + 2 * Theme.gap) } }
+        Component { id: optionsComponent; ToolOptions { mode: panel.toolMode; room: well.width - 2 * Theme.gap } }
     }
     ActionMenu { id: canvasMenu; onPicked: (v) => backend.run(v) }
     // The canvas's right-click menu at (x, y) in the well's px (default: the middle of the selection, for scripts).
