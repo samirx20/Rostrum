@@ -53,7 +53,7 @@ class SoundHub(ActionHub):
 
 class ActionSlots:
     libraryWanted = Signal(str)       # "Place a sound": the Library opens on this chip
-    cleanWanted = Signal()            # "Clean up…": the host opens the Cleanup group with its presets
+    cleanWanted = Signal()            # "Clean up…": the host opens the Cleanup group (its three fields, once)
     askWanted = Signal(str, str, float)   # an action asks one number first (Land a bar: "Bar", the nearest)
     mainMixChanged = Signal()         # the main-mix mark moved (the Song panel's mark and button re-read)
     voiceWanted = Signal(str)         # a voice track's lines need their speech made (editor_side starts the job)

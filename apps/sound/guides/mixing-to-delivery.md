@@ -8,7 +8,7 @@ your call; the tools tell you where you are.
 track (instrument, notes / clips) → its effect chain → its fader and pan → sends to buses → bus chains → master
 (glue, reverb, master effects) → master volume → loudness normalize → true-peak limiter → file.
 
-- **Tracks:** `track.set` for volume, pan, mute. **Buses:** `bus.add` / `bus.set` (`output` routes a bus into another
+- **Tracks:** `track.set` for volume (gain 0 … 4, or in dB: `{"db": -6}`), pan, mute. **Buses:** `bus.add` / `bus.set` (`output` routes a bus into another
   bus or the master). **Sends:** `send.add` on a track (`bus`, `level`, `pre` = before the fader).
 - **Effects:** `effect.add` on a track, bus or master (`effect` names the kind; settings depend on it: an EQ has `bands`,
   a compressor `threshold`, `ratio`, `attack`, `release`, `makeup`, `knee`, a reverb `space`, `mix`, `decay`).
@@ -44,7 +44,7 @@ The Mixer (X) has one strip per track, then the groups (buses), then the master.
   fader's knob drags; the mouse wheel over the fader nudges it (1 dB a notch, Shift 3 dB, Alt 0.1 dB); Alt-click on the
   fader sets 0 dB; double-click the fader to type. The same Volume field is in the settings panel while the Mixer is open.
 
-The fader takes all the height the dock has left (the dock gets taller, the fader, its dB scale and the meter grow with it). In a dock under about 460 px (a laptop screen) the sends and ducks move into **Sends ▾** on the output line (click it: the reverb send, the group
+The fader takes all the height the dock has left (the dock gets taller, the fader, its dB scale and the meter grow with it). In a dock under about 460 px (a laptop screen) the sends and ducks move into **Sends** on the output line (click it: the reverb send, the group
 sends and **+ Duck** open above it); the fader, M S R and the volume stay. Every fader starts at the same height,
 the master's too.
 

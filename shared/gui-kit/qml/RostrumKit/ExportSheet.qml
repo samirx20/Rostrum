@@ -47,6 +47,12 @@ Panel {
             width: flick.width - sheet.edge
             spacing: Theme.gap
 
+            Column {        // FIRST, as in every bounce dialog: what part (only when the document has more than "everything": a time range, markers)
+                visible: sheet.model && sheet.model.ranges.length > 1
+                width: parent.width; spacing: Theme.grid
+                ChoiceField { width: parent.width; options: sheet.model ? sheet.model.ranges : []
+                              current: sheet.model ? sheet.model.range : ""; onPicked: (v) => sheet.model.setRange(v) }
+            }
             Column {        // the app's choices, in words, each with its file type (the sheet's title is the one heading)
                 width: parent.width
                 Repeater {
@@ -58,12 +64,15 @@ Panel {
                         width: col.width; height: Theme.rowDense
                         radius: Theme.radiusCtl
                         color: chosen ? Theme.accentSoft : choiceHover.hovered ? Theme.hover : "transparent"
+                        Rectangle { visible: choiceRow.chosen; width: 3; radius: 1.5; color: Theme.accent
+                                    anchors { left: parent.left; top: parent.top; bottom: parent.bottom; topMargin: 4; bottomMargin: 4 } }
                         Text { id: kindText; anchors.right: parent.right; anchors.rightMargin: Theme.gap; anchors.verticalCenter: parent.verticalCenter
                                text: choiceRow.modelData.type || ""; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
                         Text { anchors { left: parent.left; leftMargin: Theme.gap; right: kindText.left; rightMargin: Theme.gap
                                          verticalCenter: parent.verticalCenter }
-                               text: choiceRow.modelData.label; elide: Text.ElideRight
-                               color: choiceRow.chosen ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
+                               text: (choiceRow.chosen ? "✓  " : "") + choiceRow.modelData.label; elide: Text.ElideRight
+                               color: choiceRow.chosen ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body
+                               font.weight: choiceRow.chosen ? Font.DemiBold : Font.Normal }
                         HoverHandler { id: choiceHover; cursorShape: Qt.PointingHandCursor }
                         TapHandler { onTapped: sheet.model.setChoice(choiceRow.modelData.value) }
                     }
@@ -72,16 +81,17 @@ Panel {
             Column { id: settingsSlot; width: parent.width; spacing: Theme.gap; visible: children.length > 0 }
 
             Item { width: 1; height: Theme.grid }
-            Column {        // only when the document has more than "everything" (markers, a time range); the choice says it, no heading
-                visible: sheet.model && sheet.model.ranges.length > 1
-                width: parent.width; spacing: Theme.grid
-                ChoiceField { width: parent.width; options: sheet.model ? sheet.model.ranges : []
-                              current: sheet.model ? sheet.model.range : ""; onPicked: (v) => sheet.model.setRange(v) }
-            }
             Column {        // where: the file's name, its folder, Browse (they say it; no heading)
                 width: parent.width; spacing: Theme.grid
                 Line { text: sheet.model ? sheet.model.fileName : ""; objectName: "exportFileName" }
-                Line { text: sheet.model ? sheet.model.where : ""; color: Theme.fg2 }
+                Text {   // the folder: one line, the middle left out when it is long (the whole path on hover), never broken mid-word
+                    id: whereText
+                    width: parent.width; elide: Text.ElideMiddle; maximumLineCount: 1
+                    text: sheet.model ? sheet.model.where : ""
+                    color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body
+                    HoverHandler { id: whereHover }
+                    HoverTip { text: whereText.text; hovered: whereHover.hovered && whereText.truncated }
+                }
                 Row {
                     spacing: Theme.gap; topPadding: Theme.grid
                     Button { text: "Browse…"; enabled: !sheet.running

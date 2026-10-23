@@ -69,7 +69,7 @@ def commands(entries: list[dict], what: str) -> list[dict]:
     out = []
     for e in entries:
         c = {"key": e["id"], "label": e["label"], "hint": what, "keys": e["keys"],
-             "words": e["bar"], "weight": 0 if e["importance"] == "primary" else 1}
+             "words": e["bar"], "lead": e["bar"], "weight": 0 if e["importance"] == "primary" else 1}
         out.append({**c, "calls": e["calls"]} if not e["do"] else {**c, "do": e["do"]})
     return out
 

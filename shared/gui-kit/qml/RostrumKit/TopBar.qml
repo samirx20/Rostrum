@@ -82,7 +82,7 @@ Item {
                                            + (appChips ? chipsSlot.implicitWidth : 0) + Math.max(0, chipCount - 1) * Theme.gap
     readonly property real chipsExtra: (agentShown ? agentChip.fullWidth - agentChip.narrowWidth : 0)
                                      + problemsChip.fullWidth - problemsChip.narrowWidth + jobChip.fullWidth - jobChip.narrowWidth
-    readonly property bool doneLinks: !!job && job.state === "done" && job.doneMessage !== "" && bridge.status === job.doneMessage
+    readonly property bool doneLinks: !!job && job.state === "done" && !job.open && job.doneMessage !== "" && bridge.status === job.doneMessage
     readonly property real fixedWidth: edgeLeft + slot(menuSlot) + wordmark.implicitWidth + slot(leadingSlot)
                                      + (tabFloor ? sp + tabFloor : 0)
                                      + sp + countFull.advanceWidth + slot(toolsSlot)

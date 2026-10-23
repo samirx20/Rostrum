@@ -51,7 +51,7 @@ Right-click **Record** (a track must be armed). The panel shows only what can be
 
 If a take has hiss, hum or room echo:
 
-1. Click the clip, then **Clean up…** at the top of the settings panel. It opens the panel's **Cleanup** group and offers three presets: **Dialogue only**, **Less noise** and **Less echo**. A click turns that step on (or off) for every picked clip and starts its cleaned take. The group itself has: **Less noise** and **Less echo** (0 to 1; start low, too much sounds watery), **Dialogue only**, **Play one stem**.
+1. Click the clip, then **Clean up…** at the top of the settings panel. It opens the panel's **Cleanup** group, the one place for the controls. Set the steps, then click **Make cleaned take** under the panel (it runs for every picked clip). The group has: **Less noise** and **Less echo** (0 to 1; start low, too much sounds watery), **Dialogue only**, **Play one stem**.
 2. Once cleanup is set, a box appears under the settings panel: "This clip has cleanup set, but its cleaned take is not made yet." Meanwhile the song keeps playing and the clip plays its original.
 3. Click **Make cleaned take**. The first time, a model may be missing. The box then asks first, giving its size and licence. Click **Download** to continue or **Not now**. You see progress, with **Cancel**; it is checked when done ("Downloaded and checked."). If it fails, use **Try again** or **Close**.
 4. When it is made, the song plays again and the clip uses the cleaned take (the **Use cleaned take** switch turns it on and off).

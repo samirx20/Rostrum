@@ -108,7 +108,9 @@ def search(commands: list[dict], query: str) -> list[dict]:
 
 
 def rank(c: dict, words: list[str]):
-    """0: the label says it; 1: the command's own words say it; 2: anything else it carries says it; None: no match."""
+    """0: the label says it; 1: the label with the menu it sits in (`lead`: "Add effect" for "Add EQ") says it; 2: the
+    command's own words say it; 3: anything else it carries says it; None: no match."""
     own = f"{c['label']} {c.get('words', '')}"
     rest = f"{own} {c['hint']} {c.get('context', '')} {' '.join(k['op'] for k in c.get('calls', []))}"
-    return next((r for r, text in enumerate((c["label"], own, rest)) if starts(words, text.lower())), None)
+    tiers = (c["label"], f"{c['label']} {c.get('lead', '')}", own, rest)
+    return next((r for r, text in enumerate(tiers) if starts(words, text.lower())), None)

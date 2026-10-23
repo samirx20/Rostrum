@@ -69,6 +69,11 @@ Column {
         color: root.target.verdict && root.target.verdict.ok ? Theme.ok : Theme.warn
         font.family: uiFont; font.pixelSize: Theme.body
     }
+    Text {   // no target chosen (the master's numbers match none): said, so the list above is not read as unanswered
+        width: root.width; wrapMode: Text.WordWrap; visible: mixer.export.choice === ""
+        text: "No target chosen: the mix is exported as it plays now."
+        color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+    }
     Field {
         label: "File"
         ChoiceField { width: parent.width; options: root.job.formats; current: root.job.format; onPicked: (v) => root.job.setFormat(v) }
@@ -112,5 +117,13 @@ Column {
              text: "Markers file" }
     Switch { checked: root.job.trim; onToggled: (v) => root.job.setTrim(v)
              text: "Cut the silence at the end" }
-    Action { text: root.more ? "Less" : "More"; onClicked: root.more = !root.more }
+    Item {   // "› More" like every other More: the chevron points down while it is open
+        width: root.width; height: Theme.rowDense
+        Chevron { id: moreChev; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                  rotation: root.more ? 0 : -90; color: moreHover.hovered ? Theme.fg : Theme.fg2 }
+        Text { anchors { left: moreChev.right; leftMargin: Theme.grid + 2; verticalCenter: parent.verticalCenter }
+               text: "More"; color: moreHover.hovered ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
+        HoverHandler { id: moreHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: root.more = !root.more }
+    }
 }

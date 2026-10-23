@@ -84,6 +84,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                               "line-type And now, the news from the whole second verse and bridge"]),
         ("voice-model-question", ["--sample"], ["add-track voice:ryan", "dock editor", "line-type Welcome to the show", "voice-model-panel"]),   # P29: the download question
         ("voice-lane-typing", ["--sample"], ["add-track voice:ryan", "dock editor", "line-box 2"]),
+        ("clean-open", ["--sample"], ["select-clip door", "dock editor", "clean-open"]),            # F16: the three controls once
         ("clean-before-after", ["--sample"], ["select-clip door", "dock editor", "clean 0 0 1"]),
         ("grid-menu", ["--sample"], ["grid-open"]),
         ("export", ["--sample"], ["deliver streaming", "export-open"]),

@@ -58,7 +58,8 @@ Rectangle {
                     anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: sendsBtn.visible ? sendsBtn.left : parent.right
                               rightMargin: sendsBtn.visible ? Theme.grid : 0 }
                     row: true
-                    text: s.model.output; choices: s.model.outputs; tip: "Where this plays to: the master or a bus"
+                    text: s.model.output; choices: s.model.outputs
+                    tip: "Plays to " + s.model.output.replace(/^→\s*/, "") + ". Click to pick the master or a bus"
                     onPicked: (id) => mixer.setOutput(s.model.id, id)
                 }
                 Text {
@@ -72,7 +73,7 @@ Rectangle {
                     id: sendsBtn
                     visible: s.low && s.model.reverb !== null && s.model.reverb !== undefined
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                    height: 20; text: "Sends ▾"; selected: sendsPop.opened
+                    height: 20; text: "Sends"; selected: sendsPop.opened
                     tip: sendsPop.opened ? "" : "Reverb send, sends to groups and ducks"
                     onClicked: sendsPop.opened ? sendsPop.close() : sendsPop.open()
                     QQC.Popup {

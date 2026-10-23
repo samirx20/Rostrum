@@ -92,12 +92,12 @@ Item {
                             onClicked: row.bridge.toggleMore() }
             }
             Rectangle {  // highlighted: a steady soft mark (the flash below is the same colour, brief)
-                anchors.fill: parent; anchors.leftMargin: -Theme.grid; anchors.rightMargin: -Theme.grid
+                anchors.fill: parent; anchors.leftMargin: -Theme.grid; anchors.rightMargin: row.gutter
                 radius: Theme.radiusCtl; color: Theme.accentSoft; visible: row.highlighted
             }
             Rectangle {  // the flash after a jump to this field (revealField)
                 id: flashMark
-                anchors.fill: parent; anchors.leftMargin: -Theme.grid; anchors.rightMargin: -Theme.grid
+                anchors.fill: parent; anchors.leftMargin: -Theme.grid; anchors.rightMargin: row.gutter
                 radius: Theme.radiusCtl; color: Theme.accentSoft; opacity: 0
                 SequentialAnimation on opacity { id: flashAnim; running: false
                     NumberAnimation { to: 1; duration: Theme.fast } PauseAnimation { duration: 700 }

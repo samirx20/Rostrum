@@ -17,7 +17,7 @@ Item {
     readonly property int count: notes ? roll.hi - roll.lo + 1 : roll.kind === "drums" ? Math.max(1, roll.drums.length) : 1
     property int fitRows: 0
     function frame(n) { fitRows = n }
-    readonly property real rowH: notes ? Math.max(viewHeight / count, fitRows > 0 ? Math.max(7, Math.min(16, viewHeight / (fitRows + 2))) : 12)
+    readonly property real rowH: notes ? Math.max(viewHeight / count, fitRows > 0 ? Math.max(9, Math.min(16, viewHeight / (fitRows + 2))) : 12)
                                : roll.kind === "drums" ? Math.min(56, viewHeight / count) : viewHeight
     // a drum's stored name ("openHat", "kick") in words for the row: "Open hat", "Kick"
     function drumName(d) {
