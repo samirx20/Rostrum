@@ -34,6 +34,8 @@ pub struct Gl {
     readback: Option<Readback>,
     /// The exact output step on the GPU (gpu_output.rs), or why it can't run here.
     exact: Result<crate::gpu_output::GpuOutput, String>,
+    /// GPU timestamps around a paint's flush, when profiling (profile.rs).
+    timer: Option<crate::profile::Timer>,
     _context: (PossiblyCurrentContext, GlSurface<WindowSurface>),
 }
 
@@ -232,7 +234,7 @@ pub fn gl_context() -> Result<Gl, String> {
     let attrs = SurfaceAttributesBuilder::<WindowSurface>::new().build(raw_window, NonZeroU32::new(64).unwrap(), NonZeroU32::new(64).unwrap());
     let gl_surface = unsafe { display.create_window_surface(&config, &attrs) }.map_err(|e| format!("GL surface: {e}"))?;
     let ctx = ctx.make_current(&gl_surface).map_err(|e| format!("make current: {e}"))?;
-    let interface = Interface::new_load_with(|name| display.get_proc_address(&CString::new(name).unwrap())).ok_or("no GL interface")?;
+    let interface = Interface::new_load_with(|name| crate::profile::wrap(name, display.get_proc_address(&CString::new(name).unwrap()))).ok_or("no GL interface")?;
     let renderer = unsafe {
         const GL_RENDERER: u32 = 0x1F01;
         let get = display.get_proc_address(c"glGetString");
@@ -260,8 +262,9 @@ pub fn gl_context() -> Result<Gl, String> {
     let mut gr = direct_contexts::make_gl(interface, Some(&opts)).ok_or("Skia GL context failed")?;
     let readback = Readback::new(|name| display.get_proc_address(name));
     let exact = crate::gpu_output::GpuOutput::new(|name| display.get_proc_address(name));
+    let timer = crate::profile::Timer::new(|name| display.get_proc_address(name));
     gr.reset(None);
-    Ok(Gl { gr, renderer, readback, exact, _context: (ctx, gl_surface) })
+    Ok(Gl { gr, renderer, readback, exact, timer, _context: (ctx, gl_surface) })
 }
 
 impl Painter {
@@ -344,6 +347,7 @@ impl Painter {
         // An earlier paint's taps still being written (a caller that did not wait) are finished first.
         self.taps_written()?;
         self.last_gpu_ms = 0.0;
+        crate::profile::reset();
         let t0 = std::time::Instant::now();
         if held {
             self.cache.held = Some(self.acc.as_mut().ok_or("a held paint before accumulate")?.image_snapshot());
@@ -365,11 +369,23 @@ impl Painter {
         self.cache.next_gen();
         let t1 = std::time::Instant::now();
         if let Some(gl) = self.gl.as_mut() {
+            if let Some(t) = &gl.timer {
+                t.mark(0);
+            }
             gl.gr.flush_and_submit();
             gl.gr.perform_deferred_cleanup(GPU_UNUSED, None);
         }
         self.last_draw_ms = (t1 - t0).as_secs_f64() * 1000.0;
         self.last_flush_ms = t1.elapsed().as_secs_f64() * 1000.0;
+        // Profiling (profile.rs): waits for the GPU and writes where this paint's time went.
+        if let Some(gl) = self.gl.as_mut().filter(|g| g.timer.is_some()) {
+            let t = gl.timer.as_ref().unwrap();
+            t.mark(1);
+            let w = std::time::Instant::now();
+            gl.gr.flush_submit_and_sync_cpu();
+            let wait = w.elapsed().as_secs_f64() * 1000.0;
+            crate::profile::row(self.last_draw_ms, self.last_flush_ms, wait, t.ms());
+        }
         // The buffers the paint tapped for the comp's node cache, read back now that it is all submitted.
         (self.last_taps, self.last_tap_read_ms) = self.cache.finish_taps();
         // A shader that did not compile or link fails the frame (AGENTS.md rule 6), naming the effect and Skia's message.

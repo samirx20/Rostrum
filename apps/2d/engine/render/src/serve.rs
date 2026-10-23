@@ -193,15 +193,17 @@ pub(crate) fn time_each(s: &mut Session) -> Result<Vec<(Option<String>, f64)>, S
     let timed = (|| -> Result<(), String> {
         for &k in &kids {
             blitz_paint::set_plan(kids.iter().filter(|&&o| o != k).map(|&o| (o, blitz_paint::Run::Skip)).collect());
+            let id = s.doc.get_node(k).and_then(|n| n.attrs()).and_then(|a| a.iter().find(|a| &*a.name.local == "id").map(|a| a.value.to_string()));
+            crate::profile::label(id.as_deref().unwrap_or("piece"));
             let t = Instant::now();
             paint(s, false)?;
             s.painter.sync();
-            let id = s.doc.get_node(k).and_then(|n| n.attrs()).and_then(|a| a.iter().find(|a| &*a.name.local == "id").map(|a| a.value.to_string()));
             out.push((id, t.elapsed().as_secs_f64() * 1000.0));
         }
         Ok(())
     })();
     blitz_paint::set_plan(Default::default());
+    crate::profile::label("frame");
     timed.map(|_| out)
 }
 
