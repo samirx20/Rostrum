@@ -3,6 +3,7 @@ operation per type (`mesh.set`, `light.set`, `material.set`, `shot.set` …) gen
 
     doc ─ items     ─ group  ─ children (items …) ─ keys
                     ─ import ─ children, parts ─ keys
+                    ─ combine ─ children (2+ meshes / combines) ─ keys
                     ─ mesh | light | camera ─ keys
         ─ materials ─ material
         ─ shots     ─ shot
@@ -58,6 +59,21 @@ def _check_keys(owner: dict, problems: list):
         seen.add((prop, k.get("t")))
 
 
+def _check_combine(item: dict, problems: list):
+    """A combine holds two or more solids (meshes or combines), none of them animated: the core makes the result
+    once per shot (ops_combine.py)."""
+    kids = item.get("children", [])
+    if len(kids) < 2:
+        problems.append(f'combine {item["id"]}: holds {len(kids)} solid{"" if len(kids) == 1 else "s"}; it needs two or '
+                        "more (undo, or add another mesh into it)")
+    for c in kids:
+        if c.get("type") not in F.SOLIDS:
+            problems.append(f'combine {item["id"]}: {c["id"]} is a {c.get("type")}; a combine holds meshes and combines')
+        elif c.get("keys"):
+            problems.append(f"combine {item['id']}: its input {c['id']} has keys; a combine's inputs can't be "
+                            "animated yet (key the combine itself)")
+
+
 def _ref(problems, item, field, value, ids, what):
     if value and value not in ids:
         problems.append(f'{item["id"]}.{field}: no {what} "{value}" (there are: {", ".join(sorted(ids)) or "none"})')
@@ -97,7 +113,9 @@ def check(data: dict) -> list[str]:
         if t == "light" and item.get("kind") != "dome":     # light linking: every named id a real item, not itself
             for linked in item.get("lightsOnly", "").split():
                 _ref(problems, item, "lightsOnly", linked, items - {item["id"]}, "item")
-        if t in ("mesh", "import", "part"):
+        if t == "combine":
+            _check_combine(item, problems)
+        if t in ("mesh", "combine", "import", "part"):
             _ref(problems, item, "material", item.get("material"), materials, "material")
         if t == "mesh":
             for face in ("frontMaterial", "bevelMaterial", "sideMaterial", "backMaterial"):
@@ -112,4 +130,4 @@ def check(data: dict) -> list[str]:
 KIND = DocKind("3d", ".trd", REGISTRY, lists=LISTS, check=check, facts=facts,
                new=lambda: {"id": "root", "type": "doc", "items": [], "materials": [], "shots": []})
 
-from . import ops_items, ops_keys, ops_scene  # noqa: E402,F401  (they register on REGISTRY)
+from . import ops_combine, ops_items, ops_keys, ops_scene  # noqa: E402,F401  (they register on REGISTRY)

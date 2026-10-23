@@ -27,6 +27,7 @@ Each helper returns a handle. Pass a handle (or its id as text) wherever a field
 | `camera(id, **fields)` | a camera (looks along its −Z, Y up) |
 | `rig(id, rig=, **fields)` | a camera rig: `orbit crane dolly` (a holder: `with rig(...):`) |
 | `import_usd(id, file=, parts=[…], **fields)` | a USD file by reference (also a holder) |
+| `combine(id, op=, **fields)` | a live boolean: `union subtract intersect` of the meshes made inside `with combine(...):`, the first the base (guide `modelling`) |
 | `material(id, **fields)` | a material (lists at the top level, not in a group) |
 | `shot(id, camera=, fps=, start=, end=, width=, height=, background=)` | a shot |
 
@@ -47,7 +48,8 @@ The fields, by item (all items also take `x y z rx ry rz sx sy sz px py pz visib
 - **rig** `rig radius height angle armLength lift swing travel pan tilt handheld shake shakeFrequency shakeMove seed`.
 - **material** `baseColor baseColorTexture metallic roughness roughnessTexture transmission ior coat coatRoughness anisotropy anisotropyRotation bumpTexture bumpStrength emissionColor emissionStrength thinFilm`.
 - **import** `file prim material`; **part** `path material visible`.
-- **shot** `camera fps start end width height background`.
+- **shot** `camera fps start end width height background`; its render settings `renderQuality renderSamples renderDenoise renderSize renderRange renderStart renderEnd`
+  (`inspect_guide` `agents`, "Render settings and the time estimate").
 - Every item also takes `name="…"` (what screens show). Left out, the name is the id.
 - A plane lies flat, facing up: `width` (along X) × `depth` (along Z); it has no `height`.
 - `lightsOnly` takes a handle, a list of handles / ids (`lightsOnly=[device, "floor"]`), or ids separated by spaces.
@@ -79,7 +81,7 @@ with import_usd("phone", file=r"C:/assets/phone.usdc", parts=["Body/Screen"]) as
     phone.part("Body/Frame", material=steel)       # material= and visible= on a prim inside the file
 ```
 
-Only a group, a rig or an import holds items. `with` on anything else is an error. An item's transform is relative to its holder.
+Only a group, a rig, an import or a combine holds items (a combine: meshes and combines only). `with` on anything else is an error. An item's transform is relative to its holder.
 Materials and shots always go to the top level, even when made inside a `with`.
 
 ## Handle methods

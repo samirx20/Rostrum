@@ -20,6 +20,7 @@ from rostrum3d import through
 
 from . import shot_frame
 from .final_look import NEXT_MS, FinalLook
+from .render_job import cycles_of
 from .frames import ViewRenderer
 from .viewcam import ViewCam
 
@@ -31,7 +32,7 @@ def scene_ids(scene: dict) -> set[str]:
     while stack:
         node = stack.pop()
         out.add(node["id"])
-        stack += node.get("children", [])
+        stack += node.get("children", []) if node["type"] != "combine" else []    # a combine's inputs aren't drawn
     return out
 
 
@@ -173,7 +174,7 @@ class Viewport(QObject):
         cam = self.sent()[1]
         if self.final.on:
             fw, fh = self.final.size((w, h))
-            return {**cam, "width": fw, "height": fh, **self.final.fields()}
+            return {**cam, "width": fw, "height": fh, **self.final.fields(cycles_of(self.bridge.doc.data, self.bridge.shot_id, self.bridge.shot_info()))}
         return {**cam, "renderer": "storm", "view": "",
                 "exposure": self._exposure, "studio": self._studio, "sceneLights": self._lights,
                 "ao": self._ao if self._ao_on else 0.0, "dof": self._dof,

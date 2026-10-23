@@ -4,6 +4,7 @@ from __future__ import annotations
 from rostrum_core.errors import RostrumError, codes
 
 from rostrum3d.compile import shot_info
+from rostrum3d.render_fields import settings
 
 RENDERERS = ("storm", "cycles", "stylized")
 QUALITY = {"fast": "storm", "final": "cycles"}
@@ -38,6 +39,11 @@ def doc_and_shot(ctx, args: dict) -> tuple[object, dict]:
         raise RostrumError(codes.NOT_FOUND, ctx.tool, f'shot "{want}"', "has no camera, so there is nothing to look through",
                            hint="Add a camera item and set it as the shot's camera.")
     return doc, info
+
+
+def render_settings(doc, info: dict) -> dict:
+    """The shot's stored render settings (quality, size, frames), read the one way (render_fields.settings)."""
+    return settings(next(s for s in doc.data["shots"] if s["id"] == info["id"]), info)
 
 
 def frame_of(ctx, info: dict, args: dict, default: int | None = None) -> int:

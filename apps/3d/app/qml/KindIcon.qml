@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// A small drawn icon per 3D thing: mesh (a cube), group, import (a file), part, light (a bulb), camera, rig (a camera on an arc),
+// A small drawn icon per 3D thing: mesh (a cube), group, combine (two overlapping rounds), import (a file), part, light (a bulb), camera, rig (a camera on an arc),
 // material (a shaded ball), shot (a frame with a play mark).
 Canvas {
     id: c
@@ -21,6 +21,9 @@ Canvas {
             g.lineTo(9, 12); g.stroke()
         } else if (kind === "group") {
             rr(1.5, 4.5, 8, 8, 1.5); g.stroke(); rr(4.5, 1.5, 8, 8, 1.5); g.stroke()
+        } else if (kind === "combine") {  // two overlapping rounds, the overlap drawn (a boolean)
+            g.beginPath(); g.ellipse(1.5, 3, 8, 8); g.stroke(); g.beginPath(); g.ellipse(5, 3, 8, 8); g.stroke()
+            g.beginPath(); g.ellipse(5, 3.5, 4.5, 7); g.fill()
         } else if (kind === "import") {  // a page with a folded corner
             g.beginPath(); g.moveTo(3, 1.5); g.lineTo(8.5, 1.5); g.lineTo(11.5, 4.5); g.lineTo(11.5, 12.5)
             g.lineTo(3, 12.5); g.closePath(); g.moveTo(8.5, 1.5); g.lineTo(8.5, 4.5); g.lineTo(11.5, 4.5); g.stroke()

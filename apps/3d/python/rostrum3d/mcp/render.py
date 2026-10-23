@@ -23,16 +23,16 @@ from rostrum_core.mcp import Reply, Tools
 from rostrum_core.mcp.files import render_cache_folder
 
 from . import draw, estimate
-from .shot import ITEM_SHOT, QUALITY, RENDERERS, TIME, check_frame, doc_and_shot, frame_of, renderer_of, seconds, size_of
+from .shot import ITEM_SHOT, QUALITY, RENDERERS, TIME, check_frame, doc_and_shot, frame_of, render_settings, renderer_of, seconds, size_of
 
 tools = Tools()
 FIRST = 1001                                   # the first frame of every picture hand-off (shared/HANDOFFS.md § 6)
 QUALITY_ARG = {"enum": list(QUALITY), "default": "final", "description": "final = Cycles (path traced), fast = Storm (a draft)."}
 SETTINGS = {
     "renderer": {"enum": list(RENDERERS), "description": "Overrides quality: storm, cycles or stylized."},
-    "width": {"type": "integer", "minimum": 64, "maximum": 8192, "description": "Picture width in px. Default: the shot's own width; the height follows."},
-    "samples": {"type": "integer", "minimum": 1, "maximum": 8192, "default": 128, "description": "Cycles samples per pixel."},
-    "denoise": {"type": "boolean", "default": True, "description": "Cycles denoising."},
+    "width": {"type": "integer", "minimum": 64, "maximum": 8192, "description": "Picture width in px. Default: the shot's render size (renderSize); the height follows."},
+    "samples": {"type": "integer", "minimum": 1, "maximum": 8192, "description": "Cycles samples per pixel. Default: the shot's render quality (draft 32, good 128, final 512)."},
+    "denoise": {"type": "boolean", "description": "Cycles noise clean-up. Default: the shot's render settings (on)."},
     "exposure": {"type": "number", "default": 0, "description": "Stops, applied to the PNG only (the EXR stays scene-linear)."},
 }
 
@@ -51,8 +51,9 @@ class DocView:
         return doc if isinstance(doc, cls) else cls(doc.item_id, doc.seq, copy.deepcopy(doc.data))
 
 
-def _cycles(args: dict, renderer: str) -> dict:
-    return {"samples": args.get("samples", 128), "denoise": args.get("denoise", True)} if renderer == "cycles" else {}
+def _cycles(args: dict, renderer: str, s: dict) -> dict:
+    """Samples and noise clean-up: the call's, else the shot's render settings (render_fields.settings)."""
+    return {"samples": args.get("samples", s["samples"]), "denoise": args.get("denoise", s["denoise"])} if renderer == "cycles" else {}
 
 
 def _manifest(item, doc, info, partial: Path, renderer: str, size, frames: list[int], files: list[str], first_file: int) -> dict:
@@ -113,13 +114,14 @@ def render_still(ctx, args):
     doc, info = doc_and_shot(ctx, args)
     scene, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
     frame, renderer = frame_of(ctx, info, args), renderer_of(args, "final")
-    w, h = size_of(info, args, info["width"])
+    s = render_settings(doc, info)
+    w, h = size_of(info, args, s["width"])
     formats = args.get("formats", ["png", "exr"])
     engine, item = draw.engine_of(ctx), doc.item_id
 
     def job_fn(job):
         done, files, out = still(ctx.tool, doc, info, scene, engine, frame, renderer, (w, h), formats, args.get("exposure", 0),
-                                 _cycles(args, renderer), ctx.app.folder)
+                                 _cycles(args, renderer, s), ctx.app.folder)
         return Reply(f'Rendered frame {frame} ({seconds(info, frame):.3f} s) of {info["id"]}: {w}×{h}, {renderer}, {out["frames"][0]["ms"] / 1000:.1f} s.',
                      {"frame": frame, "time": seconds(info, frame), "renderer": out.get("renderer", renderer), "timing": out.get("timing", {}),
                       "vram": out.get("vram", {}), "folder": str(done)}, files, warnings=engine.take_notices())
@@ -138,16 +140,16 @@ def render_video(ctx, args):
     quality fast = Storm for a draft), then encoded by ffmpeg. A project render with a manifest; `exr` keeps the EXR frames too. Always a
     job: returns a job id at once; ask with inspect_job (wait_s up to 25), which shows 'frames n of m'."""
     doc, info = doc_and_shot(ctx, args)
-    fps, renderer = info["fps"], renderer_of(args, "final")
-    f0 = info["start"] + round(args.get("start", 0.0) * fps)
-    f1 = info["end"] if "end" not in args else info["start"] + round(args["end"] * fps)
+    fps, renderer, s = info["fps"], renderer_of(args, "final"), render_settings(doc, info)
+    f0 = s["start"] if "start" not in args else info["start"] + round(args["start"] * fps)          # default: the shot's render range
+    f1 = s["end"] if "end" not in args else info["start"] + round(args["end"] * fps)
     if f0 > f1:
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"range {f0}–{f1}", "must run forward")
     check_frame(ctx, info, f0), check_frame(ctx, info, f1)
     if shutil.which("ffmpeg") is None:
         raise RostrumError(codes.RENDER_FAILED, ctx.tool, "the ffmpeg program", "was not found on the PATH; the mp4 is encoded with it",
                            hint="Install FFmpeg (LGPL build) and put it on the PATH, or render_still for single pictures.")
-    w, h = size_of(info, args, info["width"])
+    w, h = size_of(info, args, s["width"])
     w, h = w - w % 2, h - h % 2                # H.264 needs even sizes
     scene, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
     engine, item, count = draw.engine_of(ctx), doc.item_id, f1 - f0 + 1
@@ -155,13 +157,13 @@ def render_video(ctx, args):
 
     def job_fn(job):
         t_start = time.perf_counter()
-        probe_ms, probe_note = _probe(ctx.tool, engine, scene, info, (f0 + f1) // 2, renderer, (w, h), args)
+        probe_ms, probe_note = _probe(ctx.tool, engine, scene, info, (f0 + f1) // 2, renderer, (w, h), args, s)
         est = estimate.total_seconds(probe_ms, count)
         note = f"estimated {est:.0f} s ({probe_ms:.0f} ms a frame; {probe_note})"
         data_est = {"estimate_s": round(est, 1), "probe_ms": round(probe_ms), "probe_note": probe_note}
         budget_s = args["budget_min"] * 60 if "budget_min" in args else None
         if budget_s is not None and est > budget_s:
-            fits = estimate.fitting_settings(est, budget_s, renderer, args.get("samples", 128), w)
+            fits = estimate.fitting_settings(est, budget_s, renderer, _cycles(args, renderer, s).get("samples", 0), w)
             raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"{count} frames at {w}×{h}, {renderer}", estimate.over_budget_text(est, budget_s, fits),
                                hint="Nothing was rendered.")
         if args.get("estimate_only"):
@@ -175,7 +177,7 @@ def render_video(ctx, args):
         req = {"png": str(pngs / f"{name}.{{frame}}.png"), **({"exr": str(partial / f"{name}.{{frame}}.exr")} if keep_exr else {})}
         draw.render(ctx.tool, f"frames {f0}–{f1} of {info['id']}", engine, scene, progress=lambda i, n, _=None: job.progress(i, n, f"frames {i} of {n}; {note}"),
                     camera=info["camera"], renderer=renderer, frames=[f0, f1], width=w, height=h, exposure=args.get("exposure", 0),
-                    timeoutS=3600, **req, **_cycles(args, renderer))
+                    timeoutS=3600, **req, **_cycles(args, renderer, s))
         made = sorted(pngs.glob("*.png"))
         if len(made) != count or any(p.stat().st_size == 0 for p in made):        # fail loudly: the .partial stays, nothing is finished
             raise RostrumError(codes.RENDER_FAILED, ctx.tool, f"the frames of {info['id']}", f"are {len(made)} pictures, expected {count}", hint=f"Left in {partial}.")
@@ -195,14 +197,14 @@ def render_video(ctx, args):
     return ctx.job(f'render_video {info["id"]} f{f0}-{f1}', job_fn, key=f"video|{item}|{info['id']}|{f0}|{f1}|{renderer}|{w}|{args}|{doc.seq}")
 
 
-def _probe(where: str, engine, scene: dict, info: dict, frame: int, renderer: str, size: tuple[int, int], args: dict) -> tuple[float, str]:
+def _probe(where: str, engine, scene: dict, info: dict, frame: int, renderer: str, size: tuple[int, int], args: dict, s: dict) -> tuple[float, str]:
     """Time one frame the way the export draws it (same path, size, samples). The engine reports no scene-load or kernel-compile time
     apart from the frame's, so a quick probe is drawn twice and the second is used; a slow one (the first would be as costly as the
     second) is used as it is, and that is said. (ms, how it was measured)"""
     with tempfile.TemporaryDirectory(prefix="rostrum3d_probe_") as tmp:
         def one() -> float:
             r = draw.render(where, f"probe frame {frame} of {info['id']}", engine, scene, camera=info["camera"], renderer=renderer, frame=frame,
-                            width=size[0], height=size[1], png=str(Path(tmp) / "probe.png"), exposure=args.get("exposure", 0), **_cycles(args, renderer))
+                            width=size[0], height=size[1], png=str(Path(tmp) / "probe.png"), exposure=args.get("exposure", 0), **_cycles(args, renderer, s))
             return float(r["frames"][0]["ms"])
         first = one()
         if first >= estimate.WARM_PROBE_MS:

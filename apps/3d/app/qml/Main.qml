@@ -140,7 +140,7 @@ AppShell {
         RenderView { anchors.fill: parent }
     ]
     right: Item {   anchors.fill: parent   // the selection's settings, or the Scene (the shot's view, sky and values) with nothing selected
-        Inspector { anchors.fill: parent; bridge: backend; keyMarks: true; visible: backend.selected !== "" }
+        Inspector { anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== "" }
         ScenePanel { anchors.fill: parent; visible: backend.selected === "" }
     }
     bottom: SceneList { anchors.fill: parent }

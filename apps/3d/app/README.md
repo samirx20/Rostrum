@@ -17,7 +17,9 @@ bottom (full)  the scene list (240 px) with the keys on the same rows; 204 px, 2
 ```
 
 - **Scene list** (SceneList.qml). A group's or import's children sit indented under it (the arrow folds them); an
-  import's parts too. Click a row to select it. A row shows its material's name at the right (while the name has its
+  import's parts too; a combine is a row with the Combine icon, its inputs under it, a minus before a Subtract's cutters.
+  Click a row to select it; Ctrl+click adds, Shift+click picks a run. Two or more solids selected: the settings panel's
+  Combine row (screen3d/actions3d.py, hover preview: action_preview3d.py). A row shows its material's name at the right (while the name has its
   whole room): click it to edit the material. Materials and shots are not rows: the header's Materials chip and the
   shot crumb list them.
 - **Files** (kit): ≡ menu, start screen, Open recent, document name (screen3d/files_3d.py); Export (Ctrl+E) is the
@@ -56,7 +58,7 @@ bottom (full)  the scene list (240 px) with the keys on the same rows; 204 px, 2
   Scene lights, Contact shadows with its strength (only while on; H20), Depth of field (only through a shot camera whose
   depth of field is on; H20).
 - **Look: Quick / Final** (Shift+F, or the "Final" toggle in the viewport bar). Final runs Cycles in the viewport with the
-  Render button's settings (one place: `screen3d/render_job.py` SETTINGS; 128 samples, noise clean-up on); it cleans up
+  Render button's settings (one place: the shot's render settings, `rostrum3d/render_fields.py`, read through `screen3d/render_job.py` cycles_of); it cleans up
   sample by sample, and a thin progress line along the bottom reads "Final · 64 of 128 samples · 12 s" (then "Final · done ·
   128 samples · 31 s"). Orbiting, editing or moving the playhead restarts it. Exposure, Studio light, Scene lights, Contact
   shadows and Depth of field are Quick-only and are hidden in Final. With under about 300 MB of graphics memory free it

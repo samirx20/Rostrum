@@ -19,9 +19,16 @@ from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 from rostrum3d.compile import describe, shot_info
 from rostrum3d.engine import Engine
 from rostrum3d.mcp.render import DocView, still
+from rostrum3d.render_fields import settings
 
-SETTINGS = {"samples": 128, "denoise": True}     # render_still's defaults
 FORMATS = ["png", "exr"]
+
+
+def cycles_of(data: dict, shot_id: str, info: dict) -> dict:
+    """The shot's Cycles settings ({samples, denoise}) as agents read them (render_fields.settings): the one place the
+    Render button, Export and the viewport's Final look take them from."""
+    s = settings(next(x for x in data["shots"] if x["id"] == shot_id), info)
+    return {"samples": s["samples"], "denoise": s["denoise"]}
 CANCELLED = "Render cancelled"
 
 
@@ -68,7 +75,8 @@ class RenderJob(QObject):
         frame, self._at = b.frame, b.frame
         self._stop = stop = threading.Event()
         snap = DocView.of(b.doc)                      # what the manifest records: the same view the render_still tool takes
-        size, folder = (info["width"], info["height"]), b.doc.folder
+        s = settings(next(x for x in b.doc.data["shots"] if x["id"] == b.shot_id), info)   # the shot's render settings, as agents read them
+        size, folder, cyc = (s["width"], s["height"]), b.doc.folder, {"samples": s["samples"], "denoise": s["denoise"]}
         self._state, self._note = "running", f"Rendering frame {frame} with Cycles…"
         self.changed.emit()
         b.say(self._note)
@@ -79,7 +87,7 @@ class RenderJob(QObject):
                 engine = self._engine = self._make_engine()
                 if stop.is_set():
                     raise RuntimeError(CANCELLED)
-                _, files, _ = still("render", snap, info, scene, engine, frame, "cycles", size, FORMATS, 0, SETTINGS, folder)
+                _, files, _ = still("render", snap, info, scene, engine, frame, "cycles", size, FORMATS, 0, cyc, folder)
                 png = next(str(f) for f in files if f.suffix == ".png")
                 self._landed.emit(png, time.monotonic() - t0, "")
             except Exception as e:  # noqa: BLE001  fail loudly, whatever it was

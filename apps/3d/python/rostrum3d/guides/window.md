@@ -83,9 +83,17 @@ An item's rows come from its own settings:
 
 The diamond at a row's right end keys that setting at the playhead.
 
+**Several things selected.** Pick more in the scene list: Ctrl+click adds one (or takes it out), Shift+click picks the
+run from the first one. The panel then shows the settings they share, and a change goes to all of them. With two or
+more solids (shapes or combines in the same group) the top of the panel offers **Combine: Union · Subtract ·
+Intersect**; the first one you picked is the base. Rest the pointer on one for a moment and the viewport shows the
+result; move off and it goes back. Click to make it (one undo step); see the guide *modelling*. Only what applies is
+shown, so with one thing selected there is no Combine.
+
 ## The bottom panel: the scene list and its keys
 
-- **Left:** the scene as a tree. A group's items sit indented under it, and the arrow folds them. Each row shows its
+- **Left:** the scene as a tree. A group's items sit indented under it, and the arrow folds them. A **combine** is a row with its own icon and its
+  inputs indented under it; in a Subtract the cutters carry a minus sign. Ctrl+click and Shift+click pick several. Each row shows its
   material's name, dimmed; click that name to edit the material. Click a row to select the item.
 - **Right, on the same rows:** the item's keys as diamonds.
   - The selected item opens a row for each animated setting.
