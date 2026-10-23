@@ -108,4 +108,11 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("cues-from-2d-selected", cues_song(SCRATCH.name), ["select cue_logo", "dock editor"]),
         ("cues-from-2d-long", cues_song(SCRATCH.name, LONG_MARKER.replace("_", " ")), ["select cue_logo"]),
         ("rename-name", long_project(), ["name edit"]),                       # S35: the name clicked, the kit's rename field
+        # S48: the selection's actions at the top of the settings panel, and the one short right-click menu
+        ("actions-clip", ["--sample"], ["select-clip door", "clean-open"]),
+        ("actions-notes", ["--sample"], ["select melody", "dock editor", "select-many melody.n9600 melody.n10200 melody.n10800",
+                                         "menu-roll melody.n10200"]),
+        ("actions-tracks", ["--sample"], ["select-many pad melody", "menu melody"]),
+        ("actions-range", ["--sample"], ["range 2 4"]),
+        ("actions-marker-ask", ["--sample"], ["marker-add", "ask fit_bar"]),
     ]

@@ -17,7 +17,7 @@
     deliver <streaming|apple|ebu|atsc|podcast> (master target, one change) | export-as <format> [<rate> [trim|full]] | export-more [<target> [<format>]] (+ Another version) | export-what <all|range|section:<id>> | export (the Export sheet's Export, waits) |
     clean-take (Make cleaned take on the selected clip, waits) | model-panel (the download question, for a screenshot) |
     duck-add <track> <under track> | duck-open <duck id> | duck-set <param> <json value> (the open duck)
-    select-many, select-add, select-run, select-all, box, range, action, action-bar, menu, menu-roll, key, copy, cut,
+    select-many, select-add, select-run, select-all, box, range, action, actions, menu, menu-roll, key, copy, cut,
     paste, drag-many (the selection and its actions: steps_select.py)
 A step that leaves an error in the status fails (nonzero exit).
 """

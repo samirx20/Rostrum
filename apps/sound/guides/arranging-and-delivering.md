@@ -8,7 +8,7 @@ spoken lines again, and hand the song on.
 A group is one shared channel that several tracks play into. It gives you one row to mute, solo and fold away.
 
 1. Select two or more tracks (Ctrl+click or Shift+click their names).
-2. Press **Ctrl+G**, or use **Send to a new group** in the context bar. (In the Mixer, **+ Group** makes an empty
+2. Press **Ctrl+G**, or use **Group** at the top of the settings panel. (In the Mixer, **+ Group** makes an empty
    group.)
 3. The group has its own row. Click the arrow at its left to **fold** its tracks away; Alt+click the arrow folds all
    groups. **M** and **S** on the row mute or solo every track in the group.
@@ -18,7 +18,7 @@ A group is one shared channel that several tracks play into. It gives you one ro
 
 Try another sound in the same place, keeping the timing and the notes.
 
-1. Select one clip and press **S**, or choose **Swap…** in the context bar. The Library opens.
+1. Select one clip and press **S**, or choose **Swap…** at the top of the settings panel. The Library opens.
 2. Each result has a **Swap** button next to **Place**. Click it to put that sound where the old one was.
 3. **Ctrl+Z** puts the old one back.
 

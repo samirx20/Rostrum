@@ -95,11 +95,23 @@ AppShell {
             onUsed: shell.used()
         }
     ]
-    right: Item {
+    right: Item {   // the selection's actions first (backend.actions: kit ActionsSection), then its settings
+        id: side
         anchors.fill: parent
-        Inspector { visible: backend.selected !== ""; bridge: backend      // the clean-up's result: in the panel, under Cleanup
+        Inspector { visible: backend.selected !== ""; bridge: backend; actions: backend.actions   // the clean-up's result: under Cleanup
                     below: [LayerRows { }, CleanTakeBar { width: parent ? parent.width : 0; height: implicitHeight }]
                     anchors.fill: parent }
         SongSettings { visible: backend.selected === ""; anchors.fill: parent }
+        // an action that asks first opens beside the panel, at its top (Clean up…; Land a bar here: which bar)
+        CleanPopover { id: clean; x: -width - Theme.gap; y: Theme.pad }
+        AskPopover { id: ask }
+        Connections {
+            target: backend
+            function onCleanWanted() { clean.open() }
+            function onAskWanted(key, label, value) {
+                ask.key = key; ask.label = label; ask.value = value
+                const g = side.mapToItem(null, 0, 0); ask.openAtPoint(g.x - ask.width - Theme.gap, g.y + Theme.pad)
+            }
+        }
     }
 }

@@ -42,7 +42,8 @@ QQC.Popup {
         if (x0 + width > ov.width - Theme.grid) x0 = (flippedX !== undefined ? flippedX : px) - width
         if (y0 + height > ov.height - Theme.grid)
             y0 = (flippedX === undefined && py - height > Theme.grid) ? py - height : ov.height - height - Theme.grid
-        x = Math.max(Theme.grid, x0); y = Math.max(Theme.grid, y0)
+        x = Math.max(Theme.grid, Math.min(x0, ov.width - width - Theme.grid))     // asked from a point off the window:
+        y = Math.max(Theme.grid, Math.min(y0, ov.height - height - Theme.grid))   // still whole on screen
     }
     onHeightChanged: place()                 // the entries were set just before openAt: their size comes a moment later
     Connections { target: menu.parent; function onHeightChanged() { menu.place() } function onWidthChanged() { menu.place() } }   // the window resized: still on screen

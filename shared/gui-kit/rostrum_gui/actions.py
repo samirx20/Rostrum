@@ -133,7 +133,8 @@ class ActionList:
             if reason is None:
                 first = 0 if a.promoted and a.promoted(facts) else 1
                 out.append(((first, a.rank, i), {
-                    "id": a.id, "label": a.label_for(facts), "keys": self.keys_of(a), "importance": a.importance,
+                    "id": a.id, "label": a.label_for(facts), "keys": self.keys_of(a),
+                    "importance": "primary" if first == 0 else a.importance,    # promoted: a button while it holds
                     "group": "edit" if a.edit else a.group, "bar": a.bar, "calls": calls, "do": a.do,
                     "edit": a.edit, "rank": a.rank, "job": self.job_of(a), "release": a.release, "panel": a.panel, "icon": a.icon}))
         return [e for _, e in sorted(out, key=lambda x: x[0])]

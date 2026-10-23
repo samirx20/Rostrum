@@ -20,7 +20,7 @@ instrument can use are offered (the screen hides the rest). Drum tracks use hits
   where every click adds; drag to move (it snaps to the grid set by **Grid ▾**, with **Snap** on; Ctrl = no snapping,
   Alt = a copy, Shift = only in time), drag the end to lengthen, Delete removes. Each drag
   is one undo step. Drum tracks show a row per drum. Select several (Ctrl+click, Shift+click, a box) and act on them
-  from the context bar, the right-click menu or keys: Q quantise, Ctrl+D duplicate, ↑ / ↓ a half step.
+  from the top of the settings panel, the right-click menu or keys: Q quantise, Ctrl+D duplicate, ↑ / ↓ a half step.
 - **MIDI keyboard:** choose the input device (shown only when one is connected), arm the track, record: what you play
   lands in the selected track's piano roll as one undo step for the whole take.
 - The song's tempo, beats per bar and key are in the settings panel while nothing is selected; tempo and key changes

@@ -54,12 +54,13 @@ The **Colour** row shows the colour the track is drawn in.
    - Hold **Shift** to move it only in time.
 3. **Select several:** Ctrl+click adds or removes one, Shift+click takes everything between, and dragging across
    empty space draws a box. **Ctrl+A** selects all, **Esc** clears.
-4. **The context bar** at the top of the area you work in names the selection ("5 notes") and offers its main actions,
-   such as **Quantise**. **⋯** holds the rest. **Right-click** gives the same list as a menu.
+4. **The settings panel** on the right names the selection ("5 notes") and shows its actions first, as buttons, such
+   as **Quantise** and **Transpose**; **More** holds the rest. **Right-click** is a short menu: Cut, Copy, Paste,
+   Duplicate, Delete, and for tracks Group, Move up / down, Lock and Rename. **Ctrl+K** finds every action by name.
 5. **Keys on the selection:**
    - Copy, cut and paste: **Ctrl+C**, **Ctrl+X**, **Ctrl+V**. Duplicate: **Ctrl+D**. Delete: **Delete**.
-   - **A time range:** drag on the ruler's thin top band. Its context bar offers **Make a section**, **Select what's
-     inside** and **Duplicate**. With both a time range and selected notes, Ctrl+D acts on **the one you made last**:
+   - **A time range:** drag on the ruler's thin top band. The settings panel offers **Make a section** and **Select
+     inside**; Ctrl+D duplicates it. With both a time range and selected notes, Ctrl+D acts on **the one you made last**:
      drag a range after clicking notes and Ctrl+D repeats the whole stretch; click notes after drawing a range and it
      copies just those notes. **Shift+Delete** cuts the range out of the clips under it and closes the gap.
    - Arrows nudge in time; ↑ / ↓ move notes a half step (Shift: an octave).

@@ -11,13 +11,14 @@ is found among the app's windows (the one with AppShell's functions).
     name edit                 the project's name on the top bar, clicked: its rename field is open
     click <words>             a real mouse click (press, release) on the visible text that starts with these words,
                               e.g. "click +  New", "click Open the sample": the way a hand presses it
+    mouseclick <x> <y> [right] [ctrl|shift]   a real click at that point of the window (a clip, a note, a right-click)
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Q_ARG, QMetaObject, QObject
 from PySide6.QtGui import QGuiApplication
 
-WORDS = ("guides", "keylist", "panels", "area", "hover", "name", "click")
+WORDS = ("guides", "keylist", "panels", "area", "hover", "name", "click", "mouseclick")
 
 
 def window():
@@ -52,6 +53,8 @@ def do(step: str) -> bool:
         _hover(win, verb)
     elif word == "click" and rest:
         _click(win, rest)
+    elif word == "mouseclick" and arg:
+        _click_at(win, rest.split())
     elif step == "name edit":
         tab = win.findChild(QObject, "projectName")
         if tab is None or not tab.property("visible"):
@@ -91,3 +94,14 @@ def _click(win, words):
     QTest.mouseMove(win, at)
     QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, at)
     QCoreApplication.processEvents()        # the click's own handlers run (and a window it replaced goes) here
+
+
+def _click_at(win, words):
+    """mouseclick <x> <y> [right] [ctrl|shift]: press and release there, as a hand does (moved there first)."""
+    from PySide6.QtCore import QCoreApplication, QPoint, Qt
+    from PySide6.QtTest import QTest
+    at, opts = QPoint(int(float(words[0])), int(float(words[1]))), words[2:]
+    mods = Qt.ControlModifier if "ctrl" in opts else Qt.ShiftModifier if "shift" in opts else Qt.NoModifier
+    QTest.mouseMove(win, at)
+    QTest.mouseClick(win, Qt.RightButton if "right" in opts else Qt.LeftButton, mods, at)
+    QCoreApplication.processEvents()

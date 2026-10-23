@@ -2,7 +2,7 @@
 
 **On the screen:** open the Library (Ctrl+L), double-click a voice ("Voice: Ryan"), and the Editor opens with
 **Type a line** beside it. Type the line and press Enter: it is placed at the playhead and spoken at once (the
-first time, the voice model may ask to be downloaded). Select a line and click **Speak again** on the context bar for
+first time, the voice model may ask to be downloaded). Select a line and click **Speak again** at the top of the settings panel for
 another reading. The lines are listed beside the Editor; click one to change its words, time or level on the right.
 
 **For agents:**
