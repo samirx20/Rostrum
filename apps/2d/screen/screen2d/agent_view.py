@@ -17,7 +17,7 @@ class AgentView(SlotMixin):
         if not self.doc.has(item_id):
             return {}
         layer = bounds.layer_of(self.doc, item_id)
-        return next((b for b in bounds.boxes(self.shown_placed(), self.shown_t()) if b["id"] == layer), {})
+        return next((b for b in self.shown_boxes() if b["id"] == layer), {})
 
     def agent_demo_calls(self, n):
         """n lists of calls, each moving the first layer 10 px further to the right (the layout check's `agent-run`)."""

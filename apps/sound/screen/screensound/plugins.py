@@ -79,7 +79,7 @@ class PluginHub(QObject):
         self._answered.connect(self._window_closed)
         self._failed.connect(self._fail)
         bridge.docChanged.connect(self._refresh)
-        bridge.selectionChanged.connect(self.selectedChanged)
+        bridge.selectedItemsChanged.connect(self.selectedChanged)
 
     def close(self):
         if self._engine is not None:

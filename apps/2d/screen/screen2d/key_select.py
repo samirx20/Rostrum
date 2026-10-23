@@ -23,7 +23,7 @@ class KeySelect(KeyMoves, QObject):
         super().__init__(parent)
         self.b, self._ids, self._drag, self._own = bridge, [], None, False
         self._found, self._anchor = [], 0.0                 # a drag's snap targets and the grabbed key's time (key_moves.py)
-        bridge.selectionChanged.connect(self._followed)
+        bridge.selectedItemsChanged.connect(self._followed)
         bridge.docChanged.connect(self._prune)
 
     # ---- reads ------------------------------------------------------------------------------------------------

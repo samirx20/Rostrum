@@ -41,7 +41,7 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
         QGuiApplication.clipboard().dataChanged.connect(self.changed)       # Paste appears when strokes are copied
         self._at = None                                 # (selected layer, playhead) the strokes were picked at
         bridge.toolChanged.connect(self.clear)
-        for s in (bridge.selectionChanged, bridge.timeChanged):     # these also fire on every document change: only a real move on counts
+        for s in (bridge.selectedItemsChanged, bridge.timeChanged):     # only a real move on counts (the same layer and time keep them)
             s.connect(self._moved_on)
         bridge.docChanged.connect(self._doc_changed)
 

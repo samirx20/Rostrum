@@ -94,7 +94,7 @@ Panel {
             Repeater {
                 id: rowsView
                 model: panel.bridge.rows
-                delegate: InspectorRow { bridge: panel.bridge; keyMarks: panel.keyMarks
+                delegate: InspectorRow { bridge: panel.bridge; keyMarks: panel.keyMarks; instant: panel.bridge.rows.instant
                                          highlighted: model.row === "param" && panel.highlight.indexOf(model.id) >= 0 }
             }
             EffectsRow { part: panel.effects ? panel.bridge.invoke("effects", []) : null }   // "Effects (n) +" (effects.attach)

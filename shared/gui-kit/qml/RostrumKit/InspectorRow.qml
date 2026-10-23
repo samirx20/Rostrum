@@ -9,8 +9,9 @@ import "ValueKinds.js" as VK
 // name in one wrapping line ("Depth · Timing · Blend"); a click on a name opens that group. `flash()` briefly marks the row and `focusWidget()` puts the keys in its widget
 // (revealField). Several items selected and their values differ (model.mixed): the field says "Mixed" until edited.
 // The widget comes from the param's `type` only. The row owns its reveal: when `valid` changes, height and
-// opacity ease over Theme.reveal (160 ms); the Column below just follows. A new selection builds fresh rows
-// at their final state (a Behavior does not animate the first value), so the list swaps at once.
+// opacity ease over Theme.reveal (160 ms); the Column below just follows. A new selection shows at once: a new
+// layout builds fresh rows at their final state (a Behavior does not animate the first value), and the same kind's
+// rows change in place with `instant` true (the list model's, RowsModel.instant), so nothing eases.
 // With `keyMarks` (an app with keys) every param row keeps a gutter at the right for its key mark (model.anim):
 // a filled diamond = a key at the playhead, outlined = animated, faint (always shown, a little stronger on hover) =
 // could be animated (INTERACTION 1.5: always visible, not only on hover).
@@ -31,15 +32,19 @@ Item {
     property var bridge
     property bool keyMarks: false
     property bool highlighted: false      // marked while it is in focus elsewhere (2D: its keys picked in the timeline)
+    property bool instant: false          // the list model's `instant`: this change is a new selection, shown at once
     readonly property int gutter: Theme.keyGutter
     readonly property bool second: model.half === "second"      // the right half of a pair: it sits on the previous row's line
-    readonly property bool paired: model.half === "first" || second
-    readonly property int labelColumn: Theme.labelColumnFor(width)
-    readonly property bool amount: model.type === "number" && !paired && VK.slides(model.display || "", model.min ?? 0, model.max ?? 1e9)
-    readonly property bool driven: model.row === "param" && !!model.expr      // an expression decides (model.expr)
+    // An absent row (not valid, not easing out) reads nothing more than it must: a kind's layout holds every param
+    // and most rows are absent, so each binding below waits for `live` (a kind switch made ~80 absent rows, ~2 ms each).
+    readonly property bool live: model.valid || reveal > 0
+    readonly property bool paired: live && (model.half === "first" || second)
+    readonly property int labelColumn: live ? Theme.labelColumnFor(width) : 0
+    readonly property bool amount: live && model.type === "number" && !paired && VK.slides(model.display || "", model.min ?? 0, model.max ?? 1e9)
+    readonly property bool driven: live && model.row === "param" && !!model.expr      // an expression decides (model.expr)
     readonly property var parts: body.item      // the drawn row (null while absent)
-    readonly property bool tall: model.type === "list" || model.control === "curve"    // a widget taller than a field (top-aligned)
-    readonly property int full: model.row === "group" ? Theme.groupGap + (model.label ? Theme.rowDense : 0)   // "": a gap only
+    readonly property bool tall: live && (model.type === "list" || model.control === "curve")    // a widget taller than a field (top-aligned)
+    readonly property int full: !live ? 0 : model.row === "group" ? Theme.groupGap + (model.label ? Theme.rowDense : 0)   // "": a gap only
                               : model.row === "more" ? Theme.row + Theme.grid
                               : model.row === "fold" ? Theme.row
                               : model.row === "folds" ? (parts ? parts.foldsHeight : 0) + 2 * Theme.grid
@@ -47,10 +52,10 @@ Item {
                               : model.control === "curve" ? Theme.curveBox + Theme.row - Theme.field
                               : tall && parts && parts.widgetItem ? Math.max(Theme.row, parts.widgetItem.implicitHeight + Theme.row - Theme.field)
                               : Math.max(Theme.row, (parts ? parts.labelHeight : 0) + 2 * Theme.grid)    // a long label wraps
-    readonly property bool canReset: model.row === "param" && !driven && model.default !== undefined && model.default !== null
+    readonly property bool canReset: live && model.row === "param" && !driven && model.default !== undefined && model.default !== null
         && (!!model.mixed || JSON.stringify(model.value) !== JSON.stringify(model.default))
     property real reveal: model.valid ? 1 : 0
-    Behavior on reveal { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
+    Behavior on reveal { enabled: !row.instant; NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
     width: parent ? parent.width : 0
     height: second ? 0.01 : Math.round(full * reveal)
     opacity: reveal
@@ -63,7 +68,7 @@ Item {
     Loader {
         id: body
         anchors.fill: parent
-        active: row.model.valid || row.reveal > 0
+        active: row.live
         sourceComponent: Item {
             readonly property real labelHeight: label.implicitHeight     // what `full` reads (the row's own height)
             readonly property real exprHeight: exprBox.height
@@ -222,15 +227,91 @@ Item {
                             onClicked: { row.bridge.toggleAnimate(row.model.id)        // a pair (X | Y) animates both halves
                                          if (row.model.partner) row.bridge.toggleAnimate(row.model.partner) } }
             }
+            Loader {   // made at the first right-click only: a panel has many rows
+                id: resetMenu; active: false
+                sourceComponent: ActionMenu { entries: [{ value: "reset", label: "Reset" }]; onPicked: row.set(row.model.default) }
+            }
+            Loader {  // a choice's "Load …" entry (model.more): the file goes to bridge.loadChoice, which adds the option.
+                id: moreDialog   // made at the first use only, like the Reset menu: a dialog per row made every panel slow to build
+                active: false
+                function open() { active = true; item.open() }
+                sourceComponent: FileDialog {
+                    title: row.model.more ? String(row.model.more).replace("…", "") : ""
+                    nameFilters: (row.model.filters || []).concat(["All files (*)"])
+                    onAccepted: row.loadChoice(decodeURIComponent(String(selectedFile).replace(/^file:\/\//, "")).replace(/^\/(?=[A-Za-z]:)/, ""))
+                }
+            }
+            // The widgets, one per param type: made with the drawn row only (a kind's layout holds every param and
+            // most rows are absent, so per-row Components on every absent row slowed each kind switch).
+            Component { id: toggle; Toggle { checked: !!row.model.value; onToggled: (v) => row.set(v) } }
+            Component { id: amountRow; Item {   // an amount: the slider, then the value in its kind's words (typed there)
+                readonly property var input: amountField.item ? amountField.item.input : null      // focusWidget types here
+                readonly property bool editable: true
+                Slider { anchors.left: parent.left; anchors.right: amountField.left; anchors.rightMargin: Theme.gap + 2
+                         anchors.verticalCenter: parent.verticalCenter
+                         value: row.model.value ?? 0; from: row.model.min ?? 0; to: row.model.max ?? 1
+                         step: row.model.step ? row.model.step : 0.01; display: row.model.display || ""
+                         defaultValue: row.model.default ?? null
+                         origin: row.model.display === "pan" ? 0 : null      // pan fills from the centre
+                         onEdited: (v) => row.set(v)
+                         onScrubStarted: row.bridge.beginScrub(row.model.id)
+                         onScrubbed: (v) => row.bridge.scrub(row.model.id, v)
+                         onScrubEnded: row.bridge.endScrub() }
+                Loader { id: amountField; anchors.right: parent.right; height: parent.height     // as wide as its words need ("Mixed")
+                         width: Math.max(row.model.display === "db" ? Theme.amountField : Theme.amountFieldShort, item ? item.restNeeds : 0)
+                         sourceComponent: number }
+            } }
+            Component { id: number; NumberField {
+                value: row.model.value === null || row.model.value === undefined ? 0 : row.model.value
+                from: row.model.min === null || row.model.min === undefined ? -1e9 : row.model.min
+                to: row.model.max === null || row.model.max === undefined ? 1e9 : row.model.max
+                step: row.model.step ? row.model.step : 1
+                unit: row.model.mixed ? "" : row.model.unit || ""
+                atRest: row.mixed
+                words: row.model.words || []
+                expressions: row.bridge.typesExpressions === true     // a bridge without the flag (a sub-panel) takes no typed =…
+                display: row.model.display || ""
+                defaultValue: row.model.default === undefined ? null : row.model.default   // double-click puts it back
+                leading: [Text { visible: !!row.model.letter; text: row.model.letter || ""; color: Theme.fg3     // a pair's small letter
+                                 font.family: uiFont; font.pixelSize: Theme.label }]
+                onEdited: (v) => row.set(v)
+                onTypedExpression: (t) => row.set(t)
+                onScrubStarted: row.bridge.beginScrub(row.model.id)
+                onScrubbed: (v) => row.bridge.scrub(row.model.id, v)
+                onScrubEnded: row.bridge.endScrub() } }
+            Component { id: choice; ChoiceField { options: row.model.options; current: row.model.value ?? ""; atRest: row.mixed
+                                                  more: row.model.more || ""; onMoreChosen: moreDialog.open()
+                                                  onPicked: (v) => row.set(v) } }
+            Component { id: colour; ColorField { hex: row.model.value || "#000000"; atRest: row.mixed; scrubbed: true
+                onEdited: (v) => row.set(v)
+                onBegan: row.bridge.beginScrub(row.model.id)
+                onLive: (v) => row.bridge.scrub(row.model.id, v)
+                onEnded: row.bridge.endScrub() } }
+            Component { id: paintC; PaintField {   // a fill; model.options may be {types, maxStops, stopOpacity}
+                readonly property var o: row.model.options && !Array.isArray(row.model.options) ? row.model.options : ({})
+                paint: row.model.value || ({ type: "none" }); atRest: row.mixed ? "Mixed" : ""; scrubbed: true
+                types: o.types || ["none", "solid", "linear", "radial", "angular"]
+                maxStops: o.maxStops || 8
+                stopOpacity: o.stopOpacity !== false
+                onEdited: (v) => row.set(v)
+                onBegan: row.bridge.beginScrub(row.model.id)
+                onLive: (v) => row.bridge.scrub(row.model.id, v)
+                onEnded: row.bridge.endScrub() } }
+            Component { id: list; ListField {
+                values: row.model.value || []; choices: row.model.options || []
+                minItems: row.model.minItems || 0; maxItems: row.model.maxItems === undefined ? null : row.model.maxItems
+                onEdited: (v) => row.set(v) } }
+            Component { id: curve; CurveField {   // a curve param's max = the top of its out range (above 1: a multiplier)
+                value: row.model.value || ""; most: row.model.max ? row.model.max : 1; onEdited: (v) => row.set(v) } }
+            Component { id: path; PathField {
+                value: row.model.value || ""; folder: row.model.control === "folder"; nameFilters: row.model.filters || []
+                onEdited: (v) => row.set(v) } }
+            Component { id: text; TextField { value: row.model.value || ""; atRest: row.mixed; onEdited: (v) => row.set(v) } }
         }
     }
 
-    Loader {   // made at the first right-click only: a panel has many rows
-        id: resetMenu; active: false
-        sourceComponent: ActionMenu { entries: [{ value: "reset", label: "Reset" }]; onPicked: row.set(row.model.default) }
-    }
 
-    readonly property string mixed: model.mixed ? "Mixed" : ""       // a field's words at rest ("" = its value)
+    readonly property string mixed: live && model.mixed ? "Mixed" : ""       // a field's words at rest ("" = its value)
     function set(v) { bridge.setValue(model.id, v) }
     function flash() { if (parts) parts.flash() }
     function focusWidget() {
@@ -238,79 +319,5 @@ Item {
         if (!w) return
         if (w.input && w.editable) { w.input.forceActiveFocus(); w.input.selectAll() } else w.forceActiveFocus()
     }
-    Component { id: toggle; Toggle { checked: !!row.model.value; onToggled: (v) => row.set(v) } }
-    Component { id: amountRow; Item {   // an amount: the slider, then the value in its kind's words (typed there)
-        readonly property var input: amountField.item ? amountField.item.input : null      // focusWidget types here
-        readonly property bool editable: true
-        Slider { anchors.left: parent.left; anchors.right: amountField.left; anchors.rightMargin: Theme.gap + 2
-                 anchors.verticalCenter: parent.verticalCenter
-                 value: row.model.value ?? 0; from: row.model.min ?? 0; to: row.model.max ?? 1
-                 step: row.model.step ? row.model.step : 0.01; display: row.model.display || ""
-                 defaultValue: row.model.default ?? null
-                 origin: row.model.display === "pan" ? 0 : null      // pan fills from the centre
-                 onEdited: (v) => row.set(v)
-                 onScrubStarted: row.bridge.beginScrub(row.model.id)
-                 onScrubbed: (v) => row.bridge.scrub(row.model.id, v)
-                 onScrubEnded: row.bridge.endScrub() }
-        Loader { id: amountField; anchors.right: parent.right; height: parent.height     // as wide as its words need ("Mixed")
-                 width: Math.max(row.model.display === "db" ? Theme.amountField : Theme.amountFieldShort, item ? item.restNeeds : 0)
-                 sourceComponent: number }
-    } }
-    Component { id: number; NumberField {
-        value: row.model.value === null || row.model.value === undefined ? 0 : row.model.value
-        from: row.model.min === null || row.model.min === undefined ? -1e9 : row.model.min
-        to: row.model.max === null || row.model.max === undefined ? 1e9 : row.model.max
-        step: row.model.step ? row.model.step : 1
-        unit: row.model.mixed ? "" : row.model.unit || ""
-        atRest: row.mixed
-        words: row.model.words || []
-        expressions: row.bridge.typesExpressions === true     // a bridge without the flag (a sub-panel) takes no typed =…
-        display: row.model.display || ""
-        defaultValue: row.model.default === undefined ? null : row.model.default   // double-click puts it back
-        leading: [Text { visible: !!row.model.letter; text: row.model.letter || ""; color: Theme.fg3     // a pair's small letter
-                         font.family: uiFont; font.pixelSize: Theme.label }]
-        onEdited: (v) => row.set(v)
-        onTypedExpression: (t) => row.set(t)
-        onScrubStarted: row.bridge.beginScrub(row.model.id)
-        onScrubbed: (v) => row.bridge.scrub(row.model.id, v)
-        onScrubEnded: row.bridge.endScrub() } }
-    Component { id: choice; ChoiceField { options: row.model.options; current: row.model.value ?? ""; atRest: row.mixed
-                                          more: row.model.more || ""; onMoreChosen: moreDialog.open()
-                                          onPicked: (v) => row.set(v) } }
-    Loader {  // a choice's "Load …" entry (model.more): the file goes to bridge.loadChoice, which adds the option.
-        id: moreDialog   // made at the first use only, like the Reset menu: a dialog per row made every panel slow to build
-        active: false
-        function open() { active = true; item.open() }
-        sourceComponent: FileDialog {
-            title: row.model.more ? String(row.model.more).replace("…", "") : ""
-            nameFilters: (row.model.filters || []).concat(["All files (*)"])
-            onAccepted: row.loadChoice(decodeURIComponent(String(selectedFile).replace(/^file:\/\//, "")).replace(/^\/(?=[A-Za-z]:)/, ""))
-        }
-    }
     function loadChoice(path) { row.bridge.loadChoice(row.model.id, path) }    // (a scripted step hands a file in: 2D `choicefile`)
-    Component { id: colour; ColorField { hex: row.model.value || "#000000"; atRest: row.mixed; scrubbed: true
-        onEdited: (v) => row.set(v)
-        onBegan: row.bridge.beginScrub(row.model.id)
-        onLive: (v) => row.bridge.scrub(row.model.id, v)
-        onEnded: row.bridge.endScrub() } }
-    Component { id: paintC; PaintField {   // a fill; model.options may be {types, maxStops, stopOpacity}
-        readonly property var o: row.model.options && !Array.isArray(row.model.options) ? row.model.options : ({})
-        paint: row.model.value || ({ type: "none" }); atRest: row.mixed ? "Mixed" : ""; scrubbed: true
-        types: o.types || ["none", "solid", "linear", "radial", "angular"]
-        maxStops: o.maxStops || 8
-        stopOpacity: o.stopOpacity !== false
-        onEdited: (v) => row.set(v)
-        onBegan: row.bridge.beginScrub(row.model.id)
-        onLive: (v) => row.bridge.scrub(row.model.id, v)
-        onEnded: row.bridge.endScrub() } }
-    Component { id: list; ListField {
-        values: row.model.value || []; choices: row.model.options || []
-        minItems: row.model.minItems || 0; maxItems: row.model.maxItems === undefined ? null : row.model.maxItems
-        onEdited: (v) => row.set(v) } }
-    Component { id: curve; CurveField {   // a curve param's max = the top of its out range (above 1: a multiplier)
-        value: row.model.value || ""; most: row.model.max ? row.model.max : 1; onEdited: (v) => row.set(v) } }
-    Component { id: path; PathField {
-        value: row.model.value || ""; folder: row.model.control === "folder"; nameFilters: row.model.filters || []
-        onEdited: (v) => row.set(v) } }
-    Component { id: text; TextField { value: row.model.value || ""; atRest: row.mixed; onEdited: (v) => row.set(v) } }
 }

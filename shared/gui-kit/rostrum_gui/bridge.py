@@ -44,7 +44,8 @@ def name_of(item: dict) -> str:
 
 
 class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts, Parts, QObject):
-    selectionChanged = Signal()
+    selectionChanged = Signal()             # what the selection shows changed: its items, name, kind or the More row
+    selectedItemsChanged = Signal()         # which items are selected changed (never a mere document edit)
     docChanged = Signal()
     statusChanged = Signal()
     searchChanged = Signal()
@@ -74,11 +75,11 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         return self._kit.sel
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
-    @Property(str, notify=selectionChanged)
+    @Property(str, notify=selectedItemsChanged)
     def selected(self):
         return self._kit.sel
 
-    @Property("QVariantList", notify=selectionChanged)
+    @Property("QVariantList", notify=selectedItemsChanged)
     def selection(self):
         return list(self._kit.selection)
 

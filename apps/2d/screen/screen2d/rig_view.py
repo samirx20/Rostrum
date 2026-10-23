@@ -6,7 +6,6 @@ state; every change goes through rig_drag.py's operations. Bones and joints are 
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_core.tree import index
 
 from .rig_drag import RigDrag
 
@@ -15,13 +14,12 @@ NEAR = 0.75                       # comp px: joints this close are one circle
 
 def rig_around(doc, ids: list[str]) -> str:
     """The rig the selection is in or is: the first selected item that is a rig or sits inside one ("" = none)."""
-    idx = index(doc.data, doc.kind.lists)
-    for i in ids:
+    for i in ids:                           # the document's own index (kept per state), never a new one per ask
         cur = i
-        while cur in idx:
-            if idx[cur].item.get("type") == "rig":
+        while cur is not None and doc.has(cur):
+            if doc.item(cur).get("type") == "rig":
                 return cur
-            cur = idx[cur].parent
+            cur = doc.parent_of(cur)[0]
     return ""
 
 
@@ -56,7 +54,7 @@ class RigView(QObject):
         self.b, self._rig, self._posed, self._place, self._key, self._picked = bridge, "", {}, None, None, ""
         self.drag = RigDrag(self)
         self._answer.connect(self._got)
-        for s in (bridge.selectionChanged, bridge.docChanged, bridge.timeChanged, bridge.toolChanged, bridge.frameChanged):
+        for s in (bridge.selectedItemsChanged, bridge.docChanged, bridge.timeChanged, bridge.toolChanged, bridge.frameChanged):
             s.connect(self.refresh)
 
     # ---- what QML reads --------------------------------------------------------------------------------------

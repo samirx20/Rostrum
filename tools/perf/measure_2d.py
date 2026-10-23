@@ -4,6 +4,8 @@ screen: the engine's frame has landed (bridge.frame moved on, the frame worker i
     python tools/perf/measure_2d.py run [N]        # start split, open, drag, scrub, select, number field: median / worst
     python tools/perf/measure_2d.py start          # (child of `run`: one cold start, prints its split as JSON)
     python tools/perf/measure_2d.py soak SECONDS   # the interactions in a loop; RSS every 30 s (memory growth)
+    python tools/perf/measure_2d.py switch SECONDS # open the sample again and again, a click and a selection on
+                                                   # each: memory, live bridges, open time, faults
 """
 import json
 import os
@@ -138,6 +140,32 @@ class Rig:
             out.append((time.perf_counter() - t) * 1000)
         return out
 
+    def switch(self, seconds):
+        """Open the sample over and over (a new bridge and window each time), a click and a selection on each: the
+        old projects' bridges must be gone (gc) and memory flat; a Qt fault on the way is counted."""
+        import gc
+        from PySide6.QtCore import QCoreApplication, QEvent, QPointF, Qt
+        from PySide6.QtGui import QMouseEvent
+        from rostrum_gui import qt_faults
+        from screen2d.bridge2d import Bridge2D
+        t0, nxt, n, base, opens = time.monotonic(), 0, 0, None, []
+        while time.monotonic() - t0 < seconds:
+            opens.append(self.open(1)[0])
+            for kind in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease):
+                QCoreApplication.sendEvent(self.session.win, QMouseEvent(kind, QPointF(400, 300), QPointF(400, 300),
+                                                                         Qt.LeftButton, Qt.LeftButton, Qt.NoModifier))
+            self.drawn(lambda: self.b.select("card"))
+            n += 1
+            if time.monotonic() - t0 >= nxt:
+                self.events()
+                gc.collect()
+                live = sum(1 for o in gc.get_objects() if type(o) is Bridge2D)
+                base = base if base is not None else rss_mb()
+                print(f"t={time.monotonic() - t0:5.0f}s  opens {n:4d}  RSS {rss_mb():.0f} MB  live bridges {live}  "
+                      f"open {statistics.median(opens[-10:]):.0f} ms", flush=True)
+                nxt += 30
+        print(f"RSS growth {rss_mb() - base:+.0f} MB over {n} opens; faults {len(qt_faults.found())}", flush=True)
+
     def close(self):
         self.session.close()
 
@@ -188,6 +216,8 @@ def main():
             while time.perf_counter() - t0 < 15:
                 getattr(rig, k)(10)
             print(f"{k}: {before:.0f} -> {rss_mb():.0f} MB in 15 s", flush=True)
+    elif mode == "switch":
+        rig.switch(float(sys.argv[2]) if len(sys.argv) > 2 else 120)
     elif mode == "soak":
         secs, t0, last = float(sys.argv[2]), time.perf_counter(), 0.0
         print(f"rss 0 s: {rss_mb():.0f} MB", flush=True)

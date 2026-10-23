@@ -18,7 +18,7 @@ Row {
               echo = which === "echo" ? !s.echo : s.echo
         if (backend.cleanSelected(voice, noise, echo)) mixer.cleaning.makeFor(backend.selectedIds)
     }
-    Connections { target: backend; function onSelectionChanged() { presets.wanted = false } }
+    Connections { target: backend; function onSelectedItemsChanged() { presets.wanted = false } }
     Connections { target: backend; function onDocChanged() { presets.now = backend.cleanState() } }
     Button { text: "Dialogue only"; kind: "ghost"; down: presets.now.voice; onClicked: presets.toggle("voice") }
     Button { text: "Less noise"; kind: "ghost"; down: presets.now.noise; onClicked: presets.toggle("noise") }

@@ -21,7 +21,7 @@ class StretchSelect(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.b, self._owner, self._ids, self._own, self._drag = bridge, "", [], False, None
-        bridge.selectionChanged.connect(self._followed)
+        bridge.selectedItemsChanged.connect(self._followed)
         bridge.docChanged.connect(self.changed)
 
     # ---- what is picked -----------------------------------------------------------------------------------------

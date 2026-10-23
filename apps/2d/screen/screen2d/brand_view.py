@@ -21,7 +21,7 @@ class LibraryView(QObject):
         super().__init__(parent or bridge)
         self.b, self._open, self._kit = bridge, False, {s: [] for s in B.SECTIONS}
         bridge.docChanged.connect(self.changed)
-        bridge.selectionChanged.connect(self.changed)
+        bridge.selectedItemsChanged.connect(self.changed)
 
     def _folder(self) -> str:
         return str(self.b.doc.folder or "")

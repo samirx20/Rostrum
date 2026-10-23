@@ -66,7 +66,7 @@ class ActionSlots:
 
     def _make_actions(self):
         self._hub = SoundHub(self, LIST, self._facts, self._what, self._act_apply, self._act_do, self._refuse)
-        for sig in (self.picksChanged, self.rangeChanged, self.docChanged, self.selectionChanged):
+        for sig in (self.picksChanged, self.rangeChanged, self.docChanged):       # picks follow the selected items
             sig.connect(self._hub.refresh)
         self.timeChanged.connect(lambda: None if self.playing else self._hub.refresh())   # Split at playhead
         self._hub.refresh()

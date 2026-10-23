@@ -98,8 +98,8 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         self.r3d.changed.connect(self._problems.touch)
         self._soundtrack = Soundtrack(self)                 # the project's sound, played by Sound's engine (soundtrack.py)
         self._cuepick = CuePick(self, self)                 # Add a sound here… (sound_cue_pick.py)
-        self.selectionChanged.connect(self.outlineChanged)
-        self.selectionChanged.connect(self.shownChanged)
+        self.selectedItemsChanged.connect(self.outlineChanged)
+        self.selectedItemsChanged.connect(self.shownChanged)
         self.link = None
         if doc.folder and doc.item_id:                     # live: one door for every save, shared with agents' servers
             live.keep(doc)
@@ -220,7 +220,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
     def selBox(self):
         """The selected layer's box as the picture on screen shows it (shown.py)."""
         layer = self.selectedLayer
-        return next((b for b in bounds.boxes(self.shown_placed(), self.shown_t()) if b["id"] == layer), {})
+        return next((b for b in self.shown_boxes() if b["id"] == layer), {})
 
     def _first(self):
         layers = self.comp().get("layers", [])

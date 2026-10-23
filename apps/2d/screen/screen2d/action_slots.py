@@ -30,7 +30,7 @@ class ActionSlots(SlotMixin):
         """The one ActionHub, fresh on every selection and document change."""
         self._hub = ActionHub(LIST, self._facts, self._what, self._act_apply, self._act_do, self._set_status, self,
                               preview_fn=self._preview_calls, unpreview_fn=self._preview_end)
-        self.selectionChanged.connect(self._hub.refresh)
+        self.selectedItemsChanged.connect(self._hub.refresh)
         self.docChanged.connect(self._hub.refresh)
         self._keys.changed.connect(self._hub.refresh)       # Ease's keys (F9 …) follow the keys picked
         self._hub.refresh()
