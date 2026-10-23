@@ -2,10 +2,12 @@ import QtQuick
 import RostrumKit
 
 // The settings panel while nothing is selected: the song (DESIGN.md decision 4, W1) — titled "Song" (its name is
-// the top bar's tab, renamed there), its length (the rest of
-// the song's own settings behind More), then what can be added at the playhead (a tempo change, a key change, a
-// section). Tempo, beats per bar and key live in the arrangement header (SongReadout.qml), never here too. The rows
-// are the kit's InspectorRow on `songPanel` (song_panel.py: the `doc.set` fields); each change is one undo step.
+// the top bar's tab, renamed there). First the song's timeline as lists (SongList.qml: Bar 1's tempo and time
+// signature edited in place, every tempo, time signature and key change and the sections; a click selects one and
+// moves the playhead there; "+" adds one at the playhead where that is valid), then the song's own settings under
+// "Song": its length (the rest behind More). The arrangement header (SongReadout.qml) stays the quick way to the
+// tempo, time signature and key; this panel is where every change is seen and added. The Song rows are the kit's
+// InspectorRow on `songPanel` (song_panel.py: the `doc.set` fields); each change is one undo step.
 Panel {
     id: p
     Text { id: kind; text: songPanel.mainMix === "main" ? "Song · Main mix" : "Song"   // its name is the top bar's tab
@@ -24,15 +26,8 @@ Panel {
                 Button { anchors.verticalCenter: parent.verticalCenter; text: "Make this the main mix"
                          onClicked: songPanel.makeMain() }
             }
+            SongList { width: parent.width }      // ends on the "Song" heading for the rows below
             Repeater { model: songPanel.rows; delegate: InspectorRow { bridge: songPanel } }
-            Row {   // a change in the song's own map, at the playhead: only what is valid there
-                readonly property var st: { backend.time; backend.song; return backend.songEdit() }
-                topPadding: Theme.gap; spacing: Theme.gap
-                Button { visible: backend.time > 0.01; text: "+ Tempo change"; onClicked: backend.songDo("add_tempo", "") }
-                Button { visible: parent.st.hasKey && !parent.st.keyAtPlayhead; text: "+ Key change"
-                         onClicked: backend.songDo("add_key", parent.st.tonic + " " + parent.st.mode) }
-                Button { text: "+ Section"; onClicked: backend.songDo("add_section", "") }
-            }
         }
     }
 }

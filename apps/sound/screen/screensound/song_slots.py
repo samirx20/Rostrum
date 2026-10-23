@@ -4,7 +4,9 @@ from __future__ import annotations
 from PySide6.QtCore import Slot
 from rostrum_gui.edits import Drag
 
-from . import layers, moves, song_edit, timeline
+from . import layers, moves, song_edit, song_list, timeline
+
+ADDED = {"add_tempo": "tempos", "add_meter": "meters", "add_key": "keys", "add_section": "sections"}   # selected once added
 
 
 class SongSlots:
@@ -22,14 +24,23 @@ class SongSlots:
     def songEdit(self):
         """What the song view needs now: only what is valid at the playhead."""
         sel = self.doc.item(self._sel) if self._sel and self.doc.has(self._sel) else None
-        return song_edit.state(self.doc.data, sel, self._t)
+        can = song_list.can(self.doc.data, self._t)
+        return {**song_edit.state(self.doc.data, sel, self._t), "canTempo": can["tempo"], "canMeter": can["meter"],
+                "canMarker": can["marker"]}
+
+    @Slot(result="QVariantMap")
+    def songList(self):
+        """The song's timeline as the settings panel lists it: tempo, time signature, key changes, sections, markers."""
+        return song_list.rows(self.doc.data)
 
     @Slot(str, str)
     def songDo(self, action, arg):
-        """One music-map edit from the popup: start_bpm, add_tempo, set_key, add_key, add_section (one undo step each)."""
+        """One music-map edit from the song panel: start_bpm, add_tempo, add_meter, set_key, add_key, add_section (one
+        undo step each). What is added is selected, so its settings show at once."""
         t, root = self._t, self.doc.data
         make = {"start_bpm": lambda: (song_edit.start_tempo_call(float(arg)), "Set tempo"),
                 "add_tempo": lambda: (song_edit.add_tempo_call(root, t), "Add tempo change"),
+                "add_meter": lambda: (song_edit.add_meter_call(root, t), "Add time signature change"),
                 "set_key": lambda: (song_edit.key_call(root, t, *arg.split(" ", 1), False), "Set key"),
                 "add_key": lambda: (song_edit.key_call(root, t, *arg.split(" ", 1), True), "Add key change"),
                 "add_section": lambda: (song_edit.add_section_call(root, t), "Add section")}
@@ -39,9 +50,8 @@ class SongSlots:
         def go():
             call, label = make[action]()
             self._apply([call], label)
-            if action in ("add_tempo", "add_section"):
-                kind = {"add_tempo": "tempos", "add_section": "sections"}[action]
-                self.select(self.doc.data[kind][-1]["id"])
+            if action in ADDED:
+                self.select(self.doc.data[ADDED[action]][-1]["id"])
         self._guard(go)
 
     @Slot(str, str, result=bool)

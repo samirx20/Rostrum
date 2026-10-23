@@ -4,7 +4,7 @@
     drag-note <id> <dt s> <d semitones> | drag-clip <id> <dt s> | drag-marker <id> <dt s> | drag-project-marker <name> <dt s> |
     drag-section <id> <dt s> (it and everything inside: section.move) | drag-tempo <id> <dt s> | drag-key <id> <dt s> |
     drag-edge <section id> at|end <dt s>   (one gesture each)
-    song <start_bpm|add_tempo|set_key|add_key|add_section> [<value>] | song-open (the song, in the settings panel) |
+    song <start_bpm|add_tempo|add_meter|set_key|add_key|add_section> [<value>] | song-open (the song, in the settings panel) |
     choice-open <text shown> (a choice list, open) | picture-start <marker name|none> | picture-link <item id> | picture-pick (the project list, open)
     add-note <t s> <midi key> | delete | mute <track> | solo <track>
     arm <track> | record (start / stop, the real microphone) | record-fake | take-panel | take-set | punch | midi-fake |
@@ -182,7 +182,7 @@ def _do_step(bridge, win, step, recorder=None):
         for f in (0.5, 1.0):
             bridge.dragBy(float(rest[2]) * f, 0, False)
         bridge.endDrag()
-    elif word == "song":                      # song <start_bpm|add_tempo|set_key|add_key|add_section> [<value>]
+    elif word == "song":                      # song <start_bpm|add_tempo|add_meter|set_key|add_key|add_section> [<value>]
         bridge.songDo(rest[0], " ".join(rest[1:]))
     elif word == "song-open":                 # nothing selected: the song in the settings panel
         QMetaObject.invokeMethod(win, "openSong")

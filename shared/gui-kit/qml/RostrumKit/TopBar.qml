@@ -5,10 +5,12 @@ import "."
 //   ≡ (`menu`, optional) · app name · leading buttons (`leading`: File) · document tab · message ·
 //   "Saved · N changes" (the count only when N > 0) · app tools (`tools`, kept for Sound for now) · chips (the agent chip first, Problems
 //   (`problems`), the job (`job`), then `chips`: an app's own, e.g. Sound's loudness) · ↶ ↷ (only when they can act) · command box · `actions` (Export) · ?
-// Never shrunk or hidden: the change count, the tools, ↶ ↷, the actions and ?, and the document tab's first 160 px.
-// When room runs out things give way in one fixed order, never sliding under each other: 1. the message ("…", down
-// to nothing; hover shows it all), 2. the document tab down to 160 px, 3. the command box (280 px, then 150, then
-// its search icon), 4. the chips (dot and count: `chipsNarrow`, which an app chip may read too).
+// Never shrunk or hidden: "Saved" (the door to History), the tools, ↶ ↷, the actions and ?, and the document tab's
+// first 160 px. Nothing is ever cut with "…": when room runs out things give way by priority, never sliding under each
+// other. The room is handed out in this order: 1. the chips at full width (else dot and count: `chipsNarrow`, which an
+// app chip may read too), 2. the message whole (or none of it), 3. the command box (280 px, then 150, then its search
+// icon), 4. the document tab beyond 160 px. A message that is not whole with the full count first drops the count to
+// "Saved" (the count moves into Saved's hover); still too long, it steps aside: Saved's hover says it, History keeps it.
 // While the agent chip shows, the message is not shown: the agent's words are in the chip's dropdown.
 // The change count opens History (historyClicked, and bridge.agent.askHistory, which a kit AppShell listens to).
 Item {
@@ -83,22 +85,28 @@ Item {
     readonly property bool doneLinks: !!job && job.state === "done" && job.doneMessage !== "" && bridge.status === job.doneMessage
     readonly property real fixedWidth: edgeLeft + slot(menuSlot) + wordmark.implicitWidth + slot(leadingSlot)
                                      + (tabFloor ? sp + tabFloor : 0)
-                                     + sp + count.implicitWidth + (doneLinks ? links.implicitWidth + Theme.gap : 0) + slot(toolsSlot)
+                                     + sp + countFull.advanceWidth + slot(toolsSlot)
                                      + (chipsNarrowWidth ? sp + chipsNarrowWidth : 0) + (undoWidth ? sp + undoWidth : 0)
                                      + sp + Theme.button + slot(actionsSlot) + sp + help.width + edgeRight
     readonly property real room: width - fixedWidth                            // what may still be handed out
-    // handed out in the reverse of the give-way order: the chips first, then the command box, the tab, the message
+    // handed out by priority: the chips first, then the whole message, then the command box, then the tab
     readonly property bool chipsNarrow: room < chipsExtra
     readonly property real afterChips: room - (chipsNarrow ? 0 : chipsExtra)
-    readonly property real commandWidth: afterChips >= 150 - Theme.button ? Math.min(280, Theme.button + afterChips) : Theme.button
-    readonly property real afterCommand: afterChips - (commandWidth - Theme.button)
+    // the message with what follows it (Play · Show in folder after an export), whole or not at all
+    readonly property real messageNeed: bridge && bridge.status && !agentShown
+                                        ? sp + message.implicitWidth + (doneLinks ? Theme.gap + links.implicitWidth : 0) : 0
+    readonly property real countSaving: countShort.text !== "" ? countFull.advanceWidth - countShort.advanceWidth : 0
+    readonly property bool messageShown: messageNeed > 0 && messageNeed <= afterChips + countSaving
+    readonly property bool countShortened: messageShown && messageNeed > afterChips     // "Saved" alone, for the message
+    readonly property real afterMessage: afterChips - (messageShown ? messageNeed - (countShortened ? countSaving : 0) : 0)
+    readonly property real commandWidth: afterMessage >= 150 - Theme.button ? Math.min(280, Theme.button + afterMessage) : Theme.button
+    readonly property real afterCommand: afterMessage - (commandWidth - Theme.button)
     readonly property real tabFloor: documentName !== "" ? Math.min(tab.implicitWidth, 160) : 0      // the name's own room
     readonly property real tabWidth: tabFloor ? tabFloor + Math.max(0, Math.min(tab.implicitWidth - tabFloor, afterCommand)) : 0
-    readonly property real afterTab: afterCommand - (tabWidth - tabFloor)
-    readonly property real messageWidth: fit(message.implicitWidth, afterTab - sp, 24)
-    // a part gets its natural width or what is there; below `least` it gives way entirely (a short name that fits whole
-    // always shows: "t1 •" is narrower than `least`)
-    function fit(natural, there, least) { const w = Math.min(natural, Math.max(0, there)); return w >= Math.min(least, natural) && w > 0 ? w : 0 }
+    readonly property int changes: agentShown || !bridge ? 0 : bridge.historyCount   // (the agent chip counts its own)
+    readonly property string changesWord: changes > 0 ? changes + (changes === 1 ? " change" : " changes") : ""
+    TextMetrics { id: countFull; font: count.font; text: [bar.saveWord, bar.changesWord].filter(w => w).join(" · ") }
+    TextMetrics { id: countShort; font: count.font; text: bar.saveWord && bar.changesWord ? bar.saveWord : "" }
 
     Row {  // left group: ≡ (the app's menu button), wordmark, leading buttons, the document tab
         id: leftGroup
@@ -150,18 +158,14 @@ Item {
         Row {   // the message: its own piece, apart from the save state (they never read as one line)
             anchors.verticalCenter: parent.verticalCenter
             spacing: Theme.gap
-            visible: bar.messageWidth > 0 && !bar.agentShown     // (not message.visible: a child's reads its parent's)
-            Text {  // the last thing that happened (or what failed): gives way first, hover shows all of it
+            visible: bar.messageShown     // (not message.visible: a child's reads its parent's)
+            Text {  // the last thing that happened (or what failed): whole or not at all, never "…"
                 id: message
-                visible: bar.messageWidth > 0 && !bar.agentShown
-                width: bar.messageWidth
+                visible: bar.messageShown
                 anchors.verticalCenter: parent.verticalCenter
                 text: bar.bridge.status || ""
-                elide: Text.ElideRight
                 color: bar.bridge.statusFailed ? Theme.danger : Theme.fg3
                 font.family: uiFont; font.pixelSize: Theme.label
-                HoverHandler { id: messageHover }
-                HoverTip { text: message.truncated ? bar.bridge.status : ""; hovered: messageHover.hovered }
             }
             Row {   // after an export: "Exported Main.mp4 · Play · Show in folder ·" (until the next message)
                 id: links
@@ -173,17 +177,19 @@ Item {
                 BarLink { text: "Show in folder"; onClicked: bar.job.showInFolder() }
             }
         }
-        Text {  // "Saved · 14 changes" ("Saved" with none): its own piece, never shrinks, the door to History.
-            id: count   // While the agent chip shows, the count is the chip's ("Claude · 6 changes"): "Saved" alone
+        Text {  // "Saved · 14 changes" ("Saved" with none, or while a message needs the room): its own piece, the door
+            id: count   // to History. While the agent chip shows, the count is the chip's ("Claude · 6 changes"): "Saved" alone
             anchors.verticalCenter: parent.verticalCenter
-            readonly property int n: bar.agentShown ? 0 : bar.bridge.historyCount
             height: Math.max(implicitHeight, 16); verticalAlignment: Text.AlignVCenter     // a click target of at least 16 px
-            text: [bar.saveWord, n > 0 ? n + (n === 1 ? " change" : " changes") : ""].filter(w => w).join(" · ")
+            text: bar.countShortened ? countShort.text : countFull.text
             visible: text !== ""
             color: countHover.hovered ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
             HoverHandler { id: countHover; cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: bar.openHistory("") }
-            HoverTip { text: "Open History  Ctrl H"; hovered: countHover.hovered }
+            // what gave way for the room is said here: the count, or a message that stepped aside
+            HoverTip { text: "Open History"; key: "Ctrl H"; hovered: countHover.hovered
+                       help: [bar.countShortened ? bar.changesWord : "",
+                              bar.messageNeed > 0 && !bar.messageShown ? bar.bridge.status : ""].filter(w => w).join(" · ") }
         }
         Row {  // the app's tools (kept for apps that still use them; never shrinks)
             id: toolsSlot

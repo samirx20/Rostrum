@@ -34,8 +34,8 @@ instrument can use are offered (the screen hides the rest). On the screen a note
 - **MIDI keyboard:** choose the input device (shown only when one is connected), arm the track, record: what you play
   lands in the selected track's piano roll as one undo step for the whole take.
 - The song's tempo, beats per bar and key are fields in the arrangement's header strip; they edit what plays at the
-  playhead. With nothing selected, the settings panel has **+ Tempo change**, **+ Key change** and **+ Section** for the
-  playhead. A tempo flag on the ruler can **Glide to next**. Notes written in beats follow tempo changes.
+  playhead. With nothing selected, the settings panel lists every tempo, time signature and key change, the sections
+  and markers (click one: the playhead jumps there), each list with its **+** for the playhead. A tempo flag on the ruler can **Glide to next**. Notes written in beats follow tempo changes.
 
 ## From a file and back
 

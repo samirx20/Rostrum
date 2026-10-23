@@ -18,12 +18,15 @@ fn freeverb_clip(c: &Clip) -> bool {
     c.reverb_space.as_deref().is_some_and(|s| s.starts_with("freeverb."))
 }
 
+/// Effect presets Rostrum used to make and no longer does (PURPOSE.md: no cheap effects); an old song that has one is refused naming it.
+const RETIRED_PRESETS: &[&str] = &["whoosh", "swoosh", "swish", "swipe", "sweep", "transition", "zap", "laser", "portal", "warp", "glitch"];
+
 fn render_clip(c: &Clip, sr: f64) -> Result<(Vec<f32>, Vec<f32>), String> {
     let (mut l, mut r) = (vec![0.0f32; c.samples], vec![0.0f32; c.samples]);
     let mut stretched = false;
     match &c.content {
         Content::Score { voices } => voices::score::render_score(voices, &mut l, &mut r, sr)?,
-        Content::Sfx { preset, .. } if crate::design::RETIRED.contains(&preset.as_str()) => return Err(crate::design::retired(preset)),
+        Content::Sfx { preset, .. } if RETIRED_PRESETS.contains(&preset.as_str()) => return Err(format!("this song has a {preset}, which Rostrum no longer makes; remove it or replace it")),
         Content::Sfx { preset, material, duration, volume, pitch, pan_from, pan_to } => {
             sfx::render_sfx(&sfx::Sfx { preset, material: material.as_ref(), duration: *duration, volume: *volume, pitch: *pitch, pan_from: *pan_from, pan_to: *pan_to }, &mut l, &mut r, sr)
         }
@@ -47,7 +50,6 @@ fn render_clip(c: &Clip, sr: f64) -> Result<(Vec<f32>, Vec<f32>), String> {
         Content::Speech { pcm, pitch_ratio } => speech::render_speech(pcm, *pitch_ratio, &mut l, &mut r, sr)?,
         Content::VoiceSketch { tokens, base_f0 } => speech::render_voice_sketch(tokens, *base_f0, &mut l, &mut r, sr),
         Content::Waveform { peaks } => speech::render_waveform(peaks, c.duration, &mut l, &mut r, sr),
-        Content::Designed { spec } => crate::design::render(spec, &mut l, &mut r, sr)?,
         Content::Silence => {}
     }
     if let (false, Some(rate)) = (stretched, &c.rate) {

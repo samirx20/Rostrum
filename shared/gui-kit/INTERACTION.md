@@ -500,12 +500,15 @@ the agent's `inspect_tools`.
 - After it: **Saved · 14 changes**.
   - "Saved" confirms the change is on disk.
   - The count is the number of recorded steps since this window opened. **Click it to open History** (Ctrl+H).
-- **When the top bar runs short**, things give way in this fixed order and never slide under each other:
-  1. the message shortens with "…" (hover shows it all);
-  2. the project name shortens (the scene name never does);
-  3. Search becomes its icon;
-  4. chips show only their dot and count.
-- **Never shrunk or hidden:** "Saved · N changes", ↶ ↷, Export, ?.
+- **When the top bar runs short**, nothing is cut with "…" and nothing slides under anything. The room goes out by
+  priority:
+  1. the chips (else each shows only its dot and count);
+  2. the message, **whole or not at all**. If it doesn't fit beside "Saved · 14 changes", the count steps back to
+     "Saved" (hover says "14 changes"). If it still doesn't fit, the message steps aside: hover on "Saved" says it,
+     and History keeps it;
+  3. Search (else its icon);
+  4. the project name beyond its first 160 px (the scene name never shortens).
+- **Never shrunk or hidden:** "Saved" (the door to History), ↶ ↷, Export, ?.
 - **Chips** appear only while they have something to say:
   - **agent** ("● Claude is working · 6 changes", then "Claude: 12 changes · Review · Undo all");
   - **Problems** ("2 problems");
@@ -839,7 +842,7 @@ is found by search. Operation names may differ (they are for agents), but their 
 | 1 | **Saving** | Automatic; no unsaved state; Ctrl+S = save a version | File menu with Save / Save as; an unsaved dot; "Save changes?" on close; Ctrl+S names an untitled song | **Automatic everywhere.** New documents get a name at once in the projects folder. Ctrl+S = save a version. Ctrl+Shift+S = Duplicate. | PLAN: files hidden, saving automatic. Agents edit the same file, so a second "unsaved" copy can't exist. |
 | 2 | **App menu** | ≡ | File | **≡**, the same items in every app (1.19) | It holds more than files (Preferences, Quit), and "File" invites "where is Save?". |
 | 3 | **Top bar contents** | Project-wide only; transport in the timeline header | Transport, position, tempo, loudness, + Add, Deliver in the top bar (two lines at 1646) | **Project-wide only.** Sound's transport, position and tempo move to the arrangement's header strip, + Add to its left end; loudness stays as a chip. | One line at every size; the same place for play and time in every app. |
-| 4 | **Change count** | Dropped ("means nothing") | "N changes", click = History | **Kept:** "Saved · N changes", never cut, click = History | It proves every step is recorded, it is the door to History, and H28 already keeps it from being cut. |
+| 4 | **Change count** | Dropped ("means nothing") | "N changes", click = History | **Kept:** "Saved · N changes", never cut (steps back to "Saved" only so a message fits whole), click = History | It proves every step is recorded, it is the door to History, and H28 already keeps it from being cut. |
 | 5 | **The bar of actions** | "Context bar", fixed at the canvas's top-centre, also holds tool options | "Action bar", floats under the selection and flips above; More ▾ | **Context bar at the top-centre of the main view** (Sound: of the focused area); ⋯ for the rest; tool options too | A fixed place never jumps, never covers neighbouring tracks or art, and is never off-screen. One name. |
 | 6 | **Edit block on the bar** | Duplicate and Delete under ⋯ | Never on the bar | **Never on the bar or its ⋯**; keys and right-click | The bar keeps room for the actions that matter. |
 | 7 | **Adding to a selection in timelines** | Keys: Shift+click adds | Ctrl+click adds, Shift = run; but automation keys used Shift-click to add | **Ctrl+click adds, Shift+click = run** in every list and timeline | A timeline is a list in time; one rule. |

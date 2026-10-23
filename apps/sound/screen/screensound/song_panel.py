@@ -1,8 +1,9 @@
-"""The song's own settings, exposed to QML as `songPanel`. Tempo, beats per bar and the key have ONE home: the
-arrangement header (SongReadout.qml: click and type, drag the tempo), which edits what plays at the playhead through
-the slots below. The settings panel, shown while nothing is selected (SongSettings.qml, the kit's InspectorRow calling
-this object as its "bridge"), holds the rest: length, and behind More the other song fields. The picture to work to
-lives in the Picture corner (+ Add), not here.
+"""The song's own settings, exposed to QML as `songPanel`. The settings panel, shown while nothing is selected
+(SongSettings.qml), lists the song's timeline (SongList.qml, song_list.py): Bar 1's tempo and time signature (the
+song's own fields, edited in place here), every tempo, time signature and key change and the sections (a click
+selects one), then the song's other fields as the kit's InspectorRow calling this object as its "bridge": length,
+and behind More the rest. The arrangement header (SongReadout.qml) is the quick way to the tempo, time signature
+and key playing at the playhead, through the slots below. The picture to work to lives in the Picture corner (+ Add).
 
 The rows come from the `doc.set` field operation (rule of individuality as data: a new song field shows up here by
 itself). Every edit is that operation on the song (one undo step; a drag on a number is one gesture), the key is
@@ -22,7 +23,8 @@ from rostrum_sound import main_mix
 from . import music_map, song_edit
 
 UP_FRONT = ("length",)                               # always in sight, whatever their importance in the field list
-ELSEWHERE = ("tempo", "beatsPerBar", "beatUnit", "picture")      # their home is the header / the Picture corner: never rows here
+ELSEWHERE = ("tempo", "beatsPerBar", "beatUnit", "picture")   # SongList's Bar 1 rows / the Picture corner: never rows here
+METERS = ["2/4", "3/4", "4/4", "5/4", "6/4", "7/4", "3/8", "5/8", "6/8", "7/8", "9/8", "12/8", "2/2"]
 UNSET = -1                                           # the length row's value while the song has none: shown in words
 UNSET_WORDS = {"length": "until the last sound"}
 
@@ -60,6 +62,15 @@ class SongPanel(QObject):
     def noKey(self):
         """The words for a song with no key (the panel's field, the header strip)."""
         return song_edit.NO_KEY
+
+    @Property("QVariantList", constant=True)
+    def meters(self):
+        """The time signatures the pickers offer ("6/8"); the inspector of a change takes any."""
+        return METERS
+
+    @Property("QVariantList", constant=True)
+    def tonics(self):
+        return song_edit.TONICS
 
     @Property(str, notify=changed)
     def mainMix(self):
@@ -105,11 +116,29 @@ class SongPanel(QObject):
         self._more = not self._more
         self._refresh()
 
+    def _meter_here(self, target: str = "") -> str:
+        """The time signature to edit: `target` (a change's id), else the one playing at the playhead (the song's own
+        before the first change) -- the header and the panel edit what plays, like the tempo."""
+        if target:
+            return target
+        t = self.bridge._t
+        change = next((c for c in reversed(music_map.meter_marks(self.doc.data)) if 1e-9 < c["t"] <= t + 1e-6), None)
+        return change["id"] if change else self._root
+
+    @Slot(result=str)
+    def meterHere(self):
+        """The time signature playing at the playhead, "6/8" (the header's readout)."""
+        item = self.doc.item(self._meter_here())
+        return f'{item.get("beatsPerBar", 4)}/{item.get("beatUnit", 4)}'
+
     @Slot(str)
-    def setMeter(self, text):
-        """The song's time signature, "6/8": beats in a bar and the beat unit, one undo step."""
+    @Slot(str, str)
+    def setMeter(self, text, target=""):
+        """A time signature, "6/8": beats in a bar and the beat unit together, one undo step -- on `target` (a
+        change's id) or what plays at the playhead."""
         b, (per, unit) = self.bridge, (int(x) for x in text.split("/"))
-        b._guard(lambda: b._apply([b.edit_call(self._root, "beatsPerBar", per), b.edit_call(self._root, "beatUnit", unit)],
+        item = self._meter_here(target)
+        b._guard(lambda: b._apply([b.edit_call(item, "beatsPerBar", per), b.edit_call(item, "beatUnit", unit)],
                                   f"Time signature {per}/{unit}"))
 
     @Slot(str, str)

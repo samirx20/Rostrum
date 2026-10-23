@@ -86,10 +86,11 @@ def main():
     a.add_argument("--size", default="1600x960", help="the window's size in logical px, WxH (screenshots at a person's screen size)")
     a.add_argument("--check-layout", metavar="FOLDER")
     a.add_argument("--check-name")
+    a.add_argument("--check-only", help="with --check-layout: only these states (comma-separated), as the full run starts them")
     args = a.parse_args()
     if args.check_layout and not args.check_name:
         from screen2d.layout_states import states
-        sys.exit(layout_run.run_all(Path(__file__), states(), args.check_layout))
+        sys.exit(layout_run.run_all(Path(__file__), states(), args.check_layout, args.check_only))
     if args.shot:
         check_shot_path(args.shot)
 

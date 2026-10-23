@@ -2,15 +2,15 @@ import QtQuick
 import RostrumKit
 
 // The arrangement header's position and song: where the playhead is ("5.3  0:09.60": bars.beats, then the time, from the one formatter, musical.py via
-// backend.positionText(time); digits all one width) and what plays there — tempo, beats per bar, key — as fields: their one home (drag or type the tempo,
-// pick the beats and key; nothing has to be selected first). Then the
+// backend.positionText(time); digits all one width) and what plays there — tempo, beats per bar, key — as fields: the quick way to them (drag or type the tempo,
+// pick the beats and key; nothing has to be selected first; every change is listed in the song panel, SongList.qml). Then the
 // sound's state when there is one to tell (rendering, no output here, a failed render: red). `compact` (a small window, §2.5): bar.beat only (the time on hover) and the key short.
 Row {
     id: ro
     property bool compact: false
     spacing: Theme.gap
     readonly property var song: backend.song
-    readonly property string meter: song.beatsPerBar + "/" + song.beatUnit
+    readonly property string meter: { backend.time; song; return songPanel.meterHere() }   // what plays here
     function lastAt(list, t, timeOf) {   // the last entry at or before t (lists are in time order), -1 when none
         var lo = 0, hi = list.length - 1, best = -1
         while (lo <= hi) {
@@ -35,7 +35,7 @@ Row {
         HoverHandler { id: placeHover }
         HoverTip { text: ro.compact ? place.parts[1] : ""; hovered: placeHover.hovered }
     }
-    Row {   // tempo, beats per bar and key: their one home. Each edits what plays at the playhead (song_panel.py)
+    Row {   // tempo, time signature and key: the tempo and key edit what plays at the playhead (song_panel.py)
         anchors.verticalCenter: parent.verticalCenter; spacing: Theme.grid
         readonly property int tempoNow: Math.round(ro.song.tempos[ro.tempoAt].bpm)
         NumberField {   // the unit inside the field: one control, "100 bpm"
@@ -48,15 +48,13 @@ Row {
         }
         ChoiceField {
             width: 56; current: ro.meter
-            options: ["2/4", "3/4", "4/4", "5/4", "6/4", "7/4", "3/8", "5/8", "6/8", "7/8", "9/8", "12/8", "2/2"]
-                .map(m => ({ value: m, label: m }))
+            options: songPanel.meters.map(m => ({ value: m, label: m }))
             onPicked: (v) => songPanel.setMeter(v)
             HoverTip { text: "Time signature: beats in a bar / what a beat is"; hovered: parent.hovered && !parent.opened }
         }
         ChoiceField {   // the key playing here: tonic (or "No key" until one is chosen), then the mode
             width: ro.key !== "" ? 56 : 84; current: ro.tonic
-            options: (ro.key !== "" ? [] : [{ value: "", label: songPanel.noKey }]).concat(
-                ["C", "C#", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"])
+            options: (ro.key !== "" ? [] : [{ value: "", label: songPanel.noKey }]).concat(songPanel.tonics)
             onPicked: (v) => { if (v !== "") songPanel.setKey(v, ro.mode) }
         }
         ChoiceField {

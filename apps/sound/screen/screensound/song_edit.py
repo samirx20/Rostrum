@@ -1,6 +1,6 @@
-"""The song's music map edited from the screen (no Qt): tempo, key and sections as operation calls.
+"""The song's music map edited from the screen (no Qt): tempo, time signature, key and sections as operation calls.
 
-Everything here builds calls for the document's own operations (`doc.set`, `tempo.add`, `key.add` / `key.set`,
+Everything here builds calls for the document's own operations (`doc.set`, `tempo.add`, `meter.add`, `key.add` / `key.set`,
 `section.add` / `section.set`, `*.remove`); the bridge applies them (a drag: one gesture = one undo step). Times keep
 the form they were written in (beats stay beats, a section on a marker stays on it); a new thing is written in beats.
 `state` is what the settings panel's song view needs: only what is valid right now (a delete only with that thing selected).
@@ -26,6 +26,9 @@ def _bad(where, what, why, allowed=()):
 def _beat_at(root, t, free=False):
     b = tempo.beat_at(root, t)
     return round(b, 4) if free else round(b / timing.SNAP_BEATS) * timing.SNAP_BEATS
+
+
+snapped_beat = _beat_at       # where a new change at the playhead is written (song_list.py: is one there already?)
 
 
 def _name(have, base="section"):
@@ -74,6 +77,16 @@ def add_tempo_call(root: dict, t: float, bpm: float | None = None) -> dict:
         raise _bad("tempo.add", "the start of the song", "is the song's own tempo: change that one instead")
     return {"op": "tempo.add", "target": [],
             "args": {"at": {"beat": b}, "bpm": float(bpm or tempo.bpm_at(root, t))}}
+
+
+def add_meter_call(root: dict, t: float) -> dict:
+    """A time signature change at the playhead, on its beat (a new bar starts there); starts at the time signature
+    already playing there, so the person then picks the new one (3/4 → 6/8) in its settings."""
+    b = _beat_at(root, t)
+    if b <= 1e-9:
+        raise _bad("meter.add", "the start of the song", "is the song's own time signature: change that one instead")
+    seg = meter.seg_at(root, b)
+    return {"op": "meter.add", "target": [], "args": {"at": {"beat": b}, "beatsPerBar": seg.per, "beatUnit": seg.unit}}
 
 
 def key_call(root: dict, t: float, tonic: str, mode: str, new_here: bool) -> dict:

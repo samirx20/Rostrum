@@ -6,7 +6,6 @@
 mod buses;
 mod channel;
 mod clip;
-mod designed;
 mod effects;
 mod error;
 mod expression;
@@ -51,7 +50,6 @@ fn handle(req: &Value) -> Result<Value, Error> {
             let mut d = names::describe();
             d["contract"] = json!(schedule::CONTRACT);
             d["engine"] = json!(env!("CARGO_PKG_VERSION"));
-            d["designs"] = designed::describe();
             d
         }
         "check" => {

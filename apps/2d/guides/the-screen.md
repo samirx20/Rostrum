@@ -7,7 +7,7 @@ A tour of the window, from the top and round the edges. There is one workspace: 
 ## 1. The top bar
 
 1. The **≡** button at the far left opens the file menu (see [files.md](files.md)). Next to it are the app's name and the project's name.
-2. The line in the middle says what you did last ("Saved · 3 changes"). If it is cut short, point at it to read the whole line.
+2. The line in the middle says what you did last, then "Saved · 3 changes" (click it for History). In a narrow window the count steps back to "Saved" so the message fits; if the message still doesn't fit, point at "Saved" to read it.
 3. The undo arrow comes next. It appears only when there is something to undo or redo. **Ctrl+Z** undoes; **Ctrl+Shift+Z** or **Ctrl+Y** redoes.
 4. The box that says "Search or run a command" is the **command box**. Press **Ctrl+K**, type a few letters of what you want, and pick it from the list. It lists only what you can do right now, with the shortcut beside each, and it acts on everything you have picked.
 5. **Fit · 54 % ▾** shows the zoom and has the zoom choices (part 2). **Export** opens the Export panel (see [exporting.md](exporting.md)). The **?** at the far right opens **Help**, with these guides.

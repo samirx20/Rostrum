@@ -1,5 +1,6 @@
 """What would break silently when the song's music map is edited on the screen: a tempo-change or section-edge drag
-is one undo step and keeps the time's form (beats stay beats, a marker stays a marker), and a project item as the
+is one undo step and keeps the time's form (beats stay beats, a marker stays a marker), a time signature change
+added from the song panel is one undo step at the time signature playing there, selected, and no second "+" there; a project item as the
 picture resolves to its newest render (a newer one is picked up)."""
 import json
 import sys
@@ -32,6 +33,22 @@ def test_tempo_and_section_edits_are_one_undo_step_each_and_keep_form(bridge):  
     assert doc.item(section_id)["end"] == {"beat": 28.0} and doc.item(section_id)["at"] == {"beat": 8.0}
     bridge.undo()
     assert doc.item(section_id)["end"] == {"beat": 24.0}
+
+
+def test_time_signature_change_from_the_song_panel_is_one_undo_step(bridge):  # noqa: F811
+    doc = bridge.doc
+    bridge.setTime(0.0)
+    assert not bridge.songEdit()["canMeter"]                    # the start is the song's own time signature
+    bridge.setTime(4.0)                                         # beat 8 at 120 bpm
+    assert bridge.songEdit()["canMeter"]
+    n = len(doc.history.changes)
+    bridge.songDo("add_meter", "")
+    assert len(doc.history.changes) == n + 1
+    change = doc.data["meters"][-1]
+    assert change["at"] == {"beat": 8.0} and (change["beatsPerBar"], change["beatUnit"]) == (4, 4)
+    assert bridge.selected == change["id"] and not bridge.songEdit()["canMeter"]
+    bridge.undo()
+    assert not doc.data.get("meters")
 
 
 def test_picture_item_link_follows_the_newest_render(tmp_path):

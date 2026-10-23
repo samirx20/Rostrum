@@ -107,15 +107,23 @@ The **Colour** row shows the colour the track is drawn in.
 - The song's **tempo**, **beats per bar** (4/4, 3/4 …) and **key** are the three fields in the arrangement's header
   strip, and they show what plays at the playhead. Type the tempo or drag it; pick the beats and the key from their
   lists. Nothing has to be selected first.
-- With nothing selected, the settings panel shows the song: its **Length** ("until the last sound" unless you set one),
-  **More**, and buttons to add at the playhead: **+ Tempo change** (after the start), **+ Key change** and
-  **+ Section**.
+- With nothing selected, the settings panel shows the song's timeline as lists: **Tempo**, **Time signature**, **Key**,
+  **Sections** and **Markers**, then **Song** (its **Length**, "until the last sound" unless you set one, and **More**).
+  **Bar 1** under Tempo and Time signature is the song's own start: type or drag the tempo, pick the time signature
+  there. Every change after it is a row ("Bar 5 · drop", its value at the right): click a row and the playhead jumps
+  there and the change is selected, so the panel shows its settings (Delete removes it). A time signature change
+  has its own picker in its row: pick 6/8 there and it changes in one step (one Ctrl+Z takes it back).
+- Under each list, **+ Tempo change**, **+ Time signature change**, **+ Key change**, **+ Section** and **+ Marker**
+  add one at the playhead. A new change starts at what already plays there and is selected, so you change it at once
+  (pick 6 and 8 for a 6/8 bar). A **+** is there only where it makes sense: not at the very start (that is the song's
+  own tempo and time signature) and not where one already sits.
 - Changes sit on the ruler as small flags: "♩ 132" for a tempo, "3/4" for a time signature, "D minor" for a key.
   Drag a flag to move it (one undo step). Click one and the settings panel shows it. A tempo flag has **Bpm**, **At**
   and **Glide to next**: turn that on and the tempo speeds up or slows down evenly to the next change instead of
   jumping; its flag then reads "♩ 100 ↗" (or ↘ when slowing). Time signature changes start a new bar at that place;
-  the ruler's bar numbers follow them. They are written by an agent (`meter.add`) or a script; the header's beats field
-  sets the song's own signature from the start.
+  the ruler's bar numbers follow them. Add one with **+ Time signature change** in the song's panel (or an agent's
+  `meter.add`); the header's time signature sets the one playing at the playhead (the song's own before the first
+  change).
 
 ## 7. Get it out
 
