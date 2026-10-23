@@ -241,7 +241,11 @@ pub(crate) fn apply(s: &mut Session, markup: &str) -> Result<(f64, f64, usize), 
     let t1 = Instant::now();
     keep::apply(&mut s.doc, &s.scratch.0, &edits);
     s.doc.handle_messages();
+    crate::stage_profile::note(crate::stage_profile::APPLY, t1.elapsed().as_secs_f64() * 1000.0);
     s.doc.resolve(0.0);
+    crate::stage_profile::note(crate::stage_profile::EDITS, edits.count() as f64);
+    crate::stage_profile::note(crate::stage_profile::DIFF, diff_ms);
+    crate::stage_profile::row();
     failures(&s.assets)?;
     Ok((diff_ms, t1.elapsed().as_secs_f64() * 1000.0, edits.count()))
 }
