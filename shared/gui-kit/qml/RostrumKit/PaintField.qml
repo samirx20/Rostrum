@@ -8,6 +8,7 @@ import "ColourMath.js" as M
 // With `scrubbed` off, `edited(paint)` is sent once at the close instead (as ColorField does).
 FieldFrame {
     id: f
+    objectName: "paintField"
     property var paint: ({ type: "none" })
     property var types: ["none", "solid", "linear", "radial", "angular", "image"]
     property int maxStops: 8

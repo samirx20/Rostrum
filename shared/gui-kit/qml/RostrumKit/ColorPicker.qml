@@ -101,7 +101,7 @@ Column {
                                              GradientStop { position: 0; color: Qt.rgba(tintBox.tint.r, tintBox.tint.g, tintBox.tint.b, 0) }
                                              GradientStop { position: 1; color: tintBox.tint } } }
         }
-        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+        MouseArea { objectName: "alphaStrip"; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                     function at(m) { p.a = M.clamp01((m.x - 7) / (width - 14)); p.send() }
                     onPressed: (m) => at(m); onPositionChanged: (m) => { if (pressed) at(m) } }
         Rectangle { x: p.a * (parent.width - 14); width: 14; height: 14; radius: 7; color: Qt.rgba(1, 1, 1, 0.9 * (1 - p.a) + 0.1)
@@ -113,7 +113,7 @@ Column {
         spacing: Theme.grid + 2
         width: parent.width
         IconButton {
-            visible: p.canPick; down: p.picking
+            objectName: "eyedropper"; visible: p.canPick; down: p.picking
             width: Theme.field; height: Theme.field; tip: "Pick from the screen"
             onClicked: p.picking = true
             PaintIcon { anchors.centerIn: parent; kind: "pipette"; ink: parent.ink }
@@ -150,7 +150,7 @@ Column {
         Flow {
             width: parent.width; spacing: Theme.grid + 2
             Repeater { model: p.project; delegate: Swatch { required property string modelData; hex: modelData } }
-            IconButton { glyph: "+"; kind: "ghost"; width: 20; height: 20; tip: "Add this colour to the project"
+            IconButton { objectName: "swatchAdd"; glyph: "+"; kind: "ghost"; width: 20; height: 20; tip: "Add this colour to the project"
                          onClicked: p.swatchAdd(p.current) }
         }
     }

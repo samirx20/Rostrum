@@ -66,7 +66,7 @@ Column {
         }
         Item { width: Math.max(0, pp.width - 28 * (pp.types.length + 1) - 2 * pp.types.length); height: 1 }
         IconButton {
-            visible: pp.gradient; kind: "ghost"; width: 28; height: 28; tip: "Reverse the stops"
+            objectName: "reverseStops"; visible: pp.gradient; kind: "ghost"; width: 28; height: 28; tip: "Reverse the stops"
             onClicked: pp.change({ stops: M.reversed(pp.stops) })
             PaintIcon { anchors.centerIn: parent; kind: "swap"; ink: parent.ink }
         }
