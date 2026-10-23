@@ -134,6 +134,7 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
     offset ± half the width along the normal, closed with its `cap` (round = a half circle as wide as the stroke there,
     `butt`, `square`); corners turning more than 10° get a round join whatever `join` says; a closed subpath shown
     whole is a ring with no caps. It is filled (nonzero) with the stroke's colour, gradient or glow colour.
+- **Solid fill opacity:** shape, path and text carry `fillOpacity` (0 … 1, keyable; the fill colour's own alpha times it; the outline is not touched; the scene carries it like every field).
 - **text:** `body`, `font` (family name: first the scene's `fonts`, then the app's folder `apps/2d/engine/fonts/` (installed: `fonts\` beside the program; `ROSTRUM2D_FONTS` overrides); each file is listed under its family name and also without a trailing " Variable". A family found in neither is refused when the scene loads or is edited: `subtitle: font "Helvetica Neue" not found; there is: …`), `size` px, `weight` and `stretch` (variable-font axes), optical size = font size automatically, `tracking` (em), `lineHeight`, `align`, `color`, optional outline.
   - **Type:** `ligatures` (default on; off writes `liga 0, clig 0`), `figures` (`default` | `proportional lining` |
     `tabular lining` | `proportional old-style` | `tabular old-style`), `smallCaps` (`smcp`) and `features` (OpenType

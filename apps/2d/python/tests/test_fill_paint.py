@@ -1,7 +1,8 @@
 """The fill as a paint (fill_paint.py, ops_fill_paint.py). Silent breakage guarded: an old file's gradient effect, moved
 into the fill on open, must reach the engine drawing the same gradient (same look, keys and all), recorded as one change;
 a re-run `layer.fill` must keep a stop's keys."""
-from rostrum_core import Document, Who
+import pytest
+from rostrum_core import Document, RostrumError, Who
 from rostrum_core.storage import save
 
 from rostrum2d import KIND, scene
@@ -100,3 +101,17 @@ def test_a_gradient_with_fewer_than_two_stops_is_refused(tmp_path):
         d.apply([{"op": "shape.set", "target": "card", "args": {"fillType": "linear"}}], SAM)
     d.apply([{"op": "layer.fill", "target": "card", "args": {"type": "linear"}}], SAM)
     assert len(d.item("card")["stops"]) == 2
+
+
+def test_solid_fill_opacity_reaches_the_engine_and_a_re_run_keeps_its_keys():
+    d = Document.new(KIND)
+    d.apply([{"op": "comp.add", "args": {"id": "s"}}, {"op": "layer.add", "target": "s", "args": {"type": "shape", "id": "r"}}], SAM)
+    sent = lambda: scene.describe(d.data)["comp"]["layers"][0]["props"]["fillOpacity"]   # noqa: E731
+    assert sent() == 1.0                                          # an old file / a fresh layer: fully opaque
+    d.apply({"op": "layer.fill", "target": "r", "args": {"type": "solid", "color": "#ff0000", "opacity": 0.4}}, SAM)
+    assert sent() == 0.4
+    d.apply({"op": "key.add", "target": "r", "args": {"prop": "fillOpacity", "t": 1.0, "v": 0.9}}, SAM)
+    d.apply({"op": "layer.fill", "target": "r", "args": {"type": "solid", "opacity": 0.4}}, SAM)   # same value again: keys stay
+    assert d.item("r")["keys"]
+    with pytest.raises(RostrumError, match="solid fill"):
+        d.apply({"op": "layer.fill", "target": "r", "args": {"type": "linear", "opacity": 0.5}}, SAM)

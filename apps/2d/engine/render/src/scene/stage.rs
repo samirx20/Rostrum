@@ -133,7 +133,7 @@ fn content(it: &Item, look: Look) -> R<(String, String)> {
                     inner = p;
                 }
                 (c, g, _) if it.on("filled") || c.is_some() || g.is_some() => {
-                    let _ = write!(s, "background:{};", c.map(str::to_string).or(g.map(str::to_string)).unwrap_or_else(|| v(it, "fill")));
+                    let _ = write!(s, "background:{};", c.map(str::to_string).or(g.map(str::to_string)).unwrap_or_else(|| super::eval::faded(&v(it, "fill"), super::eval::fill_opacity(&it.props))));
                 }
                 _ => {}
             }
@@ -157,7 +157,7 @@ fn content(it: &Item, look: Look) -> R<(String, String)> {
             } else if let Some(g) = grad {
                 let _ = write!(s, "background:{g};-webkit-background-clip:text;background-clip:text;color:transparent;");
             } else {
-                let _ = write!(s, "color:{};", v(it, "color"));
+                let _ = write!(s, "color:{};", super::eval::faded(&v(it, "color"), super::eval::fill_opacity(&it.props)));
             }
             if it.on("stroke") {
                 let _ = write!(s, "-webkit-text-stroke:{}px {};", v(it, "strokeWidth"), v(it, "strokeColor"));

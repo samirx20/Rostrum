@@ -15,7 +15,7 @@ from rostrum_gui.rows import matches
 from . import route
 
 ROW = "paint"
-HIDDEN = {"filled", *fill_fields.NAMES, *(p.name for p in fill_fields.PICTURE)}
+HIDDEN = {"filled", "fillOpacity", *fill_fields.NAMES, *(p.name for p in fill_fields.PICTURE)}
 OPTIONS = {"maxStops": 32, "stopOpacity": True}         # the engine draws any number of stops, see-through too (E8)
 
 
@@ -42,6 +42,8 @@ def call(item_id: str, paint: dict, t: float = 0.0) -> dict:
     args = {"type": paint["type"], "at": t}
     if paint["type"] == "solid" and paint.get("color"):
         args["color"] = paint["color"]
+        if paint.get("opacity") is not None:            # the picker's opacity slider (a solid fill's own)
+            args["opacity"] = round(paint["opacity"], 4)
     if paint["type"] in fill_fields.GRADIENTS:
         args["stops"] = [f'{s["color"]} {round(s["at"] * 100, 2)} {round(s.get("opacity", 1.0) * 100, 2)}'
                          for s in sorted(paint.get("stops", []), key=lambda s: s["at"])] or None
@@ -73,7 +75,8 @@ def _parts(item: dict) -> list[tuple[dict, str]]:
     """(item, field) pairs the mark keys: the solid colour, or each stop's colour and position."""
     kind = fill_paint.kind_of(item)
     if kind == "solid":
-        return [(item, fill_paint.colour_field(item))]
+        faded = item.get("fillOpacity", 1.0) != 1.0 or keys_of(item, "fillOpacity")
+        return [(item, fill_paint.colour_field(item)), *([(item, "fillOpacity")] if faded else [])]
     if kind not in fill_fields.GRADIENTS:
         return []
     stops = fill_paint.stops_of(item)

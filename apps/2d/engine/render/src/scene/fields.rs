@@ -67,13 +67,13 @@ const SHAPE: &[Field] = &[
     ("sides", Number), ("points", Number), ("innerRadius", Number), ("innerCorner", Number), ("tip", Number), ("hole", Number),
     ("startAngle", Number), ("sweep", Number), ("turns", Number), ("lineWidth", Number), ("lineCap", Choice(&["butt", "round", "square"])),
     ("headStart", Choice(HEADS)), ("headEnd", Choice(HEADS)), ("headSize", Number),
-    ("filled", Toggle), ("fill", Color),
+    ("filled", Toggle), ("fill", Color), ("fillOpacity", Number),
     ("stroke", Toggle), ("strokeColor", Color), ("strokeWidth", Number),
     ("fillPicture", Text), ("fillFit", Choice(PICTURE_FITS)), ("fillScale", Number),
 ];
 const TEXT: &[Field] = &[
-    ("body", Text), ("size", Number), ("weight", Number), ("color", Color), ("align", Choice(&["left", "center", "right"])),
-    ("tracking", Number), ("lineHeight", Number), ("font", Text), ("stretch", Number), ("boxWidth", Number),
+    ("body", Text), ("font", Text), ("size", Number), ("weight", Number), ("color", Color), ("fillOpacity", Number), ("align", Choice(&["left", "center", "right"])),
+    ("tracking", Number), ("lineHeight", Number), ("stretch", Number), ("boxWidth", Number),
     ("stroke", Toggle), ("strokeColor", Color), ("strokeWidth", Number),
     // Type (stage_type.rs): OpenType features, variable axes, text on a path, letter by letter.
     ("ligatures", Toggle), ("figures", Choice(FIGURES)), ("smallCaps", Toggle), ("features", Text),
@@ -92,7 +92,7 @@ const VIDEO: &[Field] = &[
 const GROUP: &[Field] = &[("w", Number), ("h", Number), ("clip", Toggle)];
 const DRAWING: &[Field] = &[("w", Number), ("h", Number)];
 const PATH: &[Field] = &[
-    ("d", Text), ("w", Number), ("h", Number), ("filled", Toggle), ("fill", Color), ("fillRule", Choice(&["nonzero", "evenodd"])),
+    ("d", Text), ("w", Number), ("h", Number), ("filled", Toggle), ("fill", Color), ("fillOpacity", Number), ("fillRule", Choice(&["nonzero", "evenodd"])),
     ("stroke", Toggle), ("strokeColor", Color), ("strokeWidth", Number), ("cap", Choice(&["butt", "round", "square"])),
     ("join", Choice(&["miter", "round", "bevel"])), ("miter", Number), ("dash", Number), ("gap", Number), ("dashOffset", Number),
     ("trimStart", Number), ("trimEnd", Number),

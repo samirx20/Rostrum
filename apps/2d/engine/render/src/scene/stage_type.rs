@@ -68,7 +68,7 @@ pub fn letters(it: &Item, mut style: String, gradient: Option<&str>, color: Opti
     let _ = write!(style, "width:{:.3}px;height:{:.3}px;", placed.w, placed.h);
     // The layer's own colour and outline, which every letter inherits unless it plays its own (below).
     if color.is_none() && gradient.is_none() {
-        let _ = write!(style, "color:{};", it.str("color"));
+        let _ = write!(style, "color:{};", eval::faded(it.str("color"), eval::fill_opacity(&it.props)));
     }
     if it.on("stroke") {
         let _ = write!(style, "-webkit-text-stroke:{}px {};", it.num("strokeWidth"), it.str("strokeColor"));
@@ -100,7 +100,7 @@ pub fn letters(it: &Item, mut style: String, gradient: Option<&str>, color: Opti
             // The layer's one gradient, each letter showing its part of it.
             let _ = write!(s, "background:{g};background-size:{:.3}px {:.3}px;background-position:{:.3}px {:.3}px;-webkit-background-clip:text;background-clip:text;color:transparent;", placed.w, placed.h, -left, -top);
         } else if let Some(p) = &own {
-            let _ = write!(s, "color:{};", p["color"].as_str().unwrap_or("#ffffff"));
+            let _ = write!(s, "color:{};", eval::faded(p["color"].as_str().unwrap_or("#ffffff"), eval::fill_opacity(p)));
         }
         if !tf.is_empty() {
             let _ = write!(s, "transform:{};", tf.join(" "));

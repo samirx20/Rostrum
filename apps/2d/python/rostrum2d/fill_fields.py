@@ -33,6 +33,12 @@ LAYER = [
     Param.number("gradY", label="Gradient centre Y", group=G, min=-5, max=6, step=0.01, default=0.5, importance="deep",
                  valid_when=_CENTRED, display="percent", help="Fraction of the layer's box: 0 = top edge, 1 = bottom edge"),
 ]
+# A solid fill's opacity: a field the engine reads itself (a gradient's is its stops'); old files have none = 1.
+OPACITY = [
+    Param.number("fillOpacity", label="Fill opacity", group=G, min=0, max=1, step=0.01, default=1.0, importance="deep",
+                 valid_when={"is": ["fillType", "solid"]}, display="percent",
+                 help="How much of the solid colour shows (the stroke and the layer's own opacity are separate)"),
+]
 _POINTS = {"all": [{"is": ["gradSpan", "points"]}, {"any": [{"is": ["fillType", "linear"]}, {"is": ["fillType", "radial"]}]}]}
 _LIN = {"all": [{"is": ["gradSpan", "points"]}, {"is": ["fillType", "linear"]}]}
 _RAD = {"all": [{"is": ["gradSpan", "points"]}, {"is": ["fillType", "radial"]}]}

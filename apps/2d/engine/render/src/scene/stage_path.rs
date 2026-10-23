@@ -158,7 +158,7 @@ pub fn content(it: &Item, look: Look) -> R<(String, String)> {
     let all: String = subs.iter().map(|s| s.d.as_str()).collect::<Vec<_>>().join(" ");
     if filled && !all.is_empty() {
         let out = if takes && boxed.is_some() { &mut cut } else { &mut svg };
-        let _ = write!(out, "<path d=\"{all}\" fill=\"{}\" fill-rule=\"{}\" stroke=\"none\"/>", paint(v(it, "fill"), true), it.str("fillRule"));
+        let _ = write!(out, "<path d=\"{all}\" fill=\"{}\" fill-opacity=\"{}\" fill-rule=\"{}\" stroke=\"none\"/>", paint(v(it, "fill"), true), crate::scene::eval::fill_opacity(&it.props), it.str("fillRule"));
     }
     if it.on("stroke") && it.num("strokeWidth") > 0.0 {
         let out = if !filled && takes && boxed.is_some() { &mut cut } else { &mut svg };

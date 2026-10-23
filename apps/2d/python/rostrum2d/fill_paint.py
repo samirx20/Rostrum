@@ -1,13 +1,13 @@
 """A layer's fill as one paint (fill_fields.py): read it (`of`), hand it to the engine (`lower`, `engine_props`) and
 bring an old file's gradient effect into the fill (`upgrade`).
 
-    {"type": "none" | "solid" | "linear" | "radial" | "angular" | "picture", "color": "#rrggbb",
+    {"type": "none" | "solid" | "linear" | "radial" | "angular" | "picture", "color": "#rrggbb", "opacity": 0..1 (solid),
      "stops": [{"at": 0..1, "color": "#rrggbb" | "#rrggbbaa", "opacity": 0..1}, …], "angle": °, "cx": 0..1, "cy": 0..1,
      "span": "box" | "points", "x1", "y1", "x2", "y2", "rx", "ry": 0..1, "picture": path, "fit", "scale"}
 
 The engine draws a gradient as its `gradient` effect with the stops as its `stops` children (any number, anywhere in
 0..1, see-through allowed; each stop's colour, position and opacity keyed like any field). A stop colour written
-#rrggbbaa (keyed too) goes as written; the engine multiplies its alpha into the stop's opacity. A picture fill is the layer's own
+#rrggbbaa (keyed too) goes as written; the engine multiplies its alpha into the stop's opacity. A solid fill's opacity is the layer's own `fillOpacity` (the engine multiplies it into the colour's alpha, keys too). A picture fill is the layer's own
 fillPicture / fillFit / fillScale (fill_fields.PICTURE), read by the engine.
 """
 from __future__ import annotations
@@ -41,7 +41,7 @@ def stops_of(item: dict) -> list[dict]:
 
 def of(item: dict) -> dict:
     """The paint as one value (the inspector's Fill row, the picker, inspect)."""
-    return {"type": kind_of(item), "color": item.get(colour_field(item), "#ffffff"),
+    return {"type": kind_of(item), "color": item.get(colour_field(item), "#ffffff"), "opacity": item.get("fillOpacity", 1.0),
             "stops": [{"at": s.get("at", 0.0), "color": s.get("color", "#ffffff"), "opacity": s.get("opacity", 1.0)}
                       for s in stops_of(item)],
             "angle": item.get("gradAngle", 90.0), "cx": item.get("gradX", 0.5), "cy": item.get("gradY", 0.5),

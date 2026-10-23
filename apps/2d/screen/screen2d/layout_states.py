@@ -240,6 +240,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("shape-arrow", ["--sample"], ["shape arrow 600 700 1100 500"]),
         ("fill-picture-picker", ["--sample"], ["shape star 700 300 1000 600", "clickobj swatch", "clickobj fillType:picture",
                                                f"picturefile {PICTURE}", "clickobj picturePaint:fit 0.62 0.5"]),
+        ("fill-solid-opacity", ["--sample"], ["select card", "clickobj swatch", "clickobj alphaStrip 0.4 0.5"]),   # P50: a solid colour's opacity strip
         ("fill-gradient-handles", ["--sample"], ["shape star 700 300 1000 600", "clickobj swatch", "clickobj fillType:linear"]),
         ("paint-long-target", long(), [*busy, "select card", "tool draw"]),
         # H52 (painting phase 2): Draw each frame on, three drawings on twos, the onion skin's Before / After rows, the
