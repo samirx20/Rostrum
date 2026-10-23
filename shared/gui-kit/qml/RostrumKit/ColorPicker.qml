@@ -142,7 +142,7 @@ Column {
 
     Column {   // the project's swatches
         spacing: Theme.grid + 2; width: parent.width
-        Text { text: "Project colours"; color: Theme.fg2; font.pixelSize: Theme.label; font.family: uiFont }
+        Text { visible: p.project.length > 0; text: "Project colours"; color: Theme.fg2; font.pixelSize: Theme.label; font.family: uiFont }
         Flow {
             width: parent.width; spacing: Theme.grid + 2
             Repeater { model: p.project; delegate: Swatch { required property string modelData; hex: modelData } }
@@ -154,6 +154,10 @@ Column {
                 HoverHandler { id: addHover; cursorShape: Qt.PointingHandCursor }
                 TapHandler { id: addTap; onTapped: p.swatchAdd(p.current) }
                 HoverTip { text: "Add this colour to the project"; hovered: addHover.hovered; pressed: addTap.pressed }
+            }
+            Text {      // none kept yet: the + says what it is for, in place of a heading over nothing
+                visible: p.project.length === 0; height: 20; verticalAlignment: Text.AlignVCenter
+                text: "Keep this colour in the project"; color: Theme.fg2; font.pixelSize: Theme.label; font.family: uiFont
             }
         }
     }

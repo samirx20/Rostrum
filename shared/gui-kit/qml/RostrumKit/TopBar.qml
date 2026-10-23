@@ -261,7 +261,7 @@ Item {
                 id: helpMenu
                 x: parent.width - width
                 width: 240
-                entries: [{ value: "guides", label: "Guides   F1" }, { value: "keys", label: "Keys   Ctrl /" }]
+                entries: [{ value: "guides", label: "Guides", keys: "F1" }, { value: "keys", label: "Keys", keys: "Ctrl /" }]
                     .concat(typeof agents !== "undefined" && agents ? [{ value: "agents", label: "Connect an AI agent…" }] : [])
                     .concat(bar.helpEntries.filter(e => !/^file:.*\.md$/i.test(e.value)))
                     .concat(typeof notices !== "undefined" && notices ? [{ value: "report", label: "Report a problem…" }] : [])

@@ -29,9 +29,10 @@ Rectangle {
     Text {
         anchors { left: parent.left; leftMargin: Theme.pad; top: parent.top }
         height: Theme.header; verticalAlignment: Text.AlignVCenter
-        text: "IMPORT"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
-        font.weight: Font.DemiBold; font.letterSpacing: Theme.capsSpacing
+        text: "Import"; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold
     }
+    IconButton { anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: (Theme.header - height) / 2 }
+                 glyph: "×"; kind: "ghost"; tip: "Close"; onClicked: panel.shown = false }
     FileDialog {
         id: dialog
         title: "Choose a file to import"
@@ -65,7 +66,7 @@ Rectangle {
             Button { anchors.verticalCenter: parent.verticalCenter; text: "Choose…"; onClicked: dialog.open() }
             Text { width: col.width - panel.labelW - 72 - Theme.gap; height: parent.height; verticalAlignment: Text.AlignVCenter
                    text: panel.job.fileName || "none chosen"; elide: Text.ElideMiddle
-                   color: panel.job.fileName ? Theme.fg : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body }
+                   color: panel.job.fileName ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
         }
         Row {
             visible: panel.job.kind === "pdf"; height: visible ? Theme.row : 0; spacing: 0
@@ -119,11 +120,10 @@ Rectangle {
         }
         }
         Row {
-            spacing: Theme.gap
+            visible: children[0].visible || children[1].visible; spacing: Theme.gap
             Button { visible: panel.job.ready && !panel.done && panel.job.state !== "running"; text: "Import"; kind: "primary"
                      onClicked: { if (panel.job.source === "figma") { panel.job.runFigma(figma.key, figma.frame, figma.token); figma.token = "" } else panel.job.run() } }
             Button { visible: panel.job.state === "running"; text: "Cancel"; onClicked: panel.job.cancel() }
-            Button { text: "Close"; kind: "ghost"; onClicked: panel.shown = false }
         }
         Rectangle {   // progress
             visible: panel.job.state === "running"

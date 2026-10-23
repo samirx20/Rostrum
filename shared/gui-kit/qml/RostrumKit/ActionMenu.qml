@@ -18,7 +18,7 @@ QQC.Popup {
     property var entries: []
     property int highlighted: 0
     property var owner: null                 // the menu this one is a side menu of
-    readonly property int dividerHeight: 9
+    readonly property int dividerHeight: 8
     readonly property int headingHeight: 22
     readonly property bool checks: entries.some(e => e.checked !== undefined)   // reserve the ✓ column
     readonly property int checkW: checks ? 18 : 0

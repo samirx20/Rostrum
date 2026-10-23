@@ -32,7 +32,7 @@ Pose the character on the canvas by moving its bones. With the rig (or its bones
 
 1. Make a swap set of eye drawings (open, closed, and half closed if you have it). Name the set "eyes" or one drawing "closed".
 2. Select the set. **Add blinks…** appears at the top of the settings panel.
-3. Set **Every** (seconds), **Varies by**, and which drawing is **Eyes open**, **Eyes closed** and **Half closed**.
+3. Set **Every** (seconds), **Varies by**, and which drawing is **Open**, **Closed** and **Half**.
 4. Click **Apply**. Blinks are keyed over the whole scene. They are normal keys you can move.
 
 ## Sound in 2D
@@ -42,7 +42,7 @@ Sound is made in RostrumSound. Rostrum2D plays it with the picture and lets you 
 - **The Sound row** is the last row of the timeline. It shows the waveform and is there only when the project has sound.
 - **Add a sound here…**: select one layer and click **Add a sound** in the tool rail. Search for a sound (type words, then **Enter**), and click one. It is tied to the layer's start, so it moves with the layer. RostrumSound mixes it. This appears only when the project has sound.
 - **A video's own sound** shows as a thin row **Its sound** under the video layer. Its speaker button mutes it in the song's mix. **Ctrl+Z** brings it back.
-- **MP4 with the project's sound:** open **Export**, pick **MP4**, and leave **Include the project's sound** on. It shows only when the project has sound. See [exporting.md](exporting.md).
+- **MP4 with the project's sound:** open **Export**, pick **MP4**, and leave **Project sound** on. It shows only when the project has sound. See [exporting.md](exporting.md).
 
 ## The Camera tool
 

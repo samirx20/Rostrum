@@ -5,7 +5,7 @@ Bring a picture, a video, a PDF page, a Photoshop file or a Figma frame into you
 ## 1. Open the Import panel
 
 1. Click **Media** in the tool rail (or press **Ctrl+I**), then **Import…**. The panel opens at the right of the canvas.
-2. Click **Import…** again, or **Close**, to put it away. Only one of Import, Export and the problems list is open at a time.
+2. Click **Import…** again, or the **×** in its corner, to put it away. Only one of Import, Export and the problems list is open at a time.
 
 ## 2. Choose where it comes from
 

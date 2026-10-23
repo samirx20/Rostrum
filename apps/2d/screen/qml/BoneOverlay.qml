@@ -57,7 +57,8 @@ Item {
                 }
                 onCanceled: { if (on) ov.rig.drag.cancel(); on = false }
             }
-            HoverTip { hovered: area.containsMouse && !area.pressed; text: bone.modelData.name }
+            HoverTip { hovered: area.containsMouse && !area.pressed   // the colour is the kind: orange bends as a chain, blue is picked, white turns alone
+                       text: bone.modelData.name + (bone.modelData.chain !== "" ? " · bends as a chain" : "") }
         }
     }
     Repeater {      // the joints: drag to fix one; a chain's end has Pin on right-click

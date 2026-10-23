@@ -16,11 +16,11 @@ Item {
     Column {
         id: col
         width: parent.width
-        Item {  // the row: "Effects (2)" and the +
-            width: parent.width; height: Theme.row + Theme.groupGap / 2
+        Item {  // the row: "Effects (2)" and the +, ending on the fields' right edge like the other headers
+            width: Theme.wideFor(parent.width); height: Theme.row + Theme.groupGap / 2
             Text { anchors.left: parent.left; anchors.bottom: parent.bottom; anchors.bottomMargin: Theme.grid + 2
-                   text: "Effects" + (fx.on && fx.part.count ? " (" + fx.part.count + ")" : ""); color: Theme.fg3
-                   font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
+                   text: "Effects" + (fx.on && fx.part.count ? " (" + fx.part.count + ")" : ""); color: Theme.fg2
+                   font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold }
             IconButton {
                 id: plus
                 objectName: "addEffect"

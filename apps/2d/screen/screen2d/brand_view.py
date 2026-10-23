@@ -43,8 +43,11 @@ class LibraryView(QObject):
 
     @Property("QVariantList", notify=changed)
     def docStyles(self):
-        """This document's text styles: {id, name, size, weight, color, font}."""
-        return [{"id": s["id"], "name": s["name"], **text_styles.values(s)} for s in text_styles.styles(self.b.doc.data)]
+        """This document's own text styles: {id, name, size, weight, color, font}. One the brand kit already lists (the
+        same look) is not shown twice."""
+        kept = {(k.get("font"), k.get("size"), k.get("weight"), str(k.get("color", "")).lower()) for k in self._kit["textStyles"]}
+        mine = [{"id": s["id"], "name": s["name"], **text_styles.values(s)} for s in text_styles.styles(self.b.doc.data)]
+        return [m for m in mine if (m.get("font"), m.get("size"), m.get("weight"), str(m.get("color", "")).lower()) not in kept]
 
     @Property(str, notify=changed)
     def picked(self):

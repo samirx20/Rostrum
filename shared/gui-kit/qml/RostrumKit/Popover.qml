@@ -5,7 +5,8 @@ import "."
 // A small panel anchored to something, for a few settings that belong to one action (2D's Stagger…, Sound's Land a bar).
 //   Popover { id: pop; title: "Stagger 3 layers"; focusItem: byField
 //             NumberField { id: byField … }  Row { … } }       // children go in the content slot, under the title
-//   pop.openAt(button)            // under `button`, left edges together; above it when there is no room below
+//   pop.openAt(button)            // under `button`, left edges together; above it when there is no room below; a button in the
+//                                 // settings panel (`popupsBeside`) near the window's edge: beside that panel, never over its labels
 //   pop.openAtPoint(x, y)         // at a point in window coordinates
 //   pop.openBy(["action:layer:stagger", "actionsMore"], x, y)   // under the first of these (objectNames) on screen: the button
 //                                 // or menu that opened it; at (x, y) when none is shown (a key or a script opened it)
@@ -57,7 +58,16 @@ QQC.Popup {
         let y0 = p.y
         if (y0 + height > ov.height - Theme.grid && anchor)      // no room below: above the anchor
             y0 = anchor.mapToItem(ov, 0, 0).y - height - Theme.grid
-        x = Math.max(Theme.grid, Math.min(p.x, ov.width - width - Theme.grid))
+        let x0 = p.x
+        if (anchor && x0 + width > ov.width - Theme.grid) {      // it would slide left over the settings panel's labels under
+            for (let it = anchor.parent; it; it = it.parent) if (it.popupsBeside === true) {     // its button: beside the panel instead
+                const s = it.mapToItem(ov, 0, 0)
+                x0 = s.x - width - Theme.gap
+                y0 = anchor.mapToItem(ov, 0, 0).y
+                break
+            }
+        }
+        x = Math.max(Theme.grid, Math.min(x0, ov.width - width - Theme.grid))
         y = Math.max(Theme.grid, Math.min(y0, ov.height - height - Theme.grid))
     }
     onWidthChanged: if (visible) place()

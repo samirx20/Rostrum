@@ -13,6 +13,7 @@ import "."
 Panel {
     id: sheet
     property var model
+    readonly property int edge: 20                  // rows end where the settings panel's fields do (the keyframe column's width)
     property alias settings: settingsSlot.data      // the chosen item's settings only (the app's rows)
     readonly property bool running: model && model.state === "running"
     // titled by what it is; the chosen item is the list's highlighted row (never said twice), or the model's own `sheetTitle`
@@ -43,7 +44,7 @@ Panel {
         boundsBehavior: Flickable.StopAtBounds
         Column {
             id: col
-            width: flick.width
+            width: flick.width - sheet.edge
             spacing: Theme.gap
 
             Column {        // the app's choices, in words, each with its file type (the sheet's title is the one heading)
@@ -95,7 +96,8 @@ Panel {
     }
     Column {        // Export and what it is doing: right under the rows, never scrolled out of sight (S36)
         id: footer
-        anchors { left: parent.left; right: parent.right; top: flick.bottom }
+        anchors { left: parent.left; top: flick.bottom }
+        width: parent.width - sheet.edge
         topPadding: Theme.gap; spacing: Theme.gap
         Button {
             width: footer.width

@@ -88,6 +88,7 @@ Panel {
                                     onClicked: panel.bridge.narrowTo(nline.modelData.kind) }
                     }
                 }
+                Item { width: 1; height: Theme.groupGap }      // a gap before the first setting
             }
             Column { id: aboveSlot; width: parent.width }
             Repeater {
