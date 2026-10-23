@@ -1,10 +1,11 @@
 """Rostrum3D's screen states for the layout check (rostrum_gui/layout_run.py): the one workspace with each kind of thing
 selected (mesh, group, light, dome, camera, material, shot), the playhead on a key, the viewport's modes, the open
 menus and drawers, and the long-text cases (a long item name, a long status message, a failed render line).
+The window is SPEC §1's (brief 1): header, rail and flyouts, scene list with its keys, settings panel.
 A state is (name, start args, steps). Add one whenever a screen or panel is added; name it in QUICK when it is one of
 the most important (the quick check runs those). Every state is the small sample document the screen opens on; none
 starts a final render (that is the GPU's heavy job): the render's own lines are `say` states.
-The redesign (Team Hem's 3D spec) replaces these screens; this list is the baseline it is measured against."""
+"""
 from __future__ import annotations
 
 import tempfile
@@ -17,8 +18,8 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
                "so nothing was shown; check the render folder and try again.")
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
-QUICK = ("workspace", "mesh-selected", "light-selected", "camera-selected", "material-selected", "add-menu", "commands",
-         "guide", "long-name", "long-status")
+QUICK = ("workspace", "mesh-selected", "light-selected", "camera-selected", "material-selected", "shapes-flyout",
+         "lights-flyout", "page-animate", "commands", "guide", "long-name", "long-status", "file-menu", "start-screen")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -51,7 +52,17 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("lights-off", s, ["lights off", "exposure 1"]),
         ("added-item", s, ["add mesh:sphere"]),
         ("history-longer", s, ["select block"] + [f"set y {0.15 + n / 100}" for n in range(8)]),
-        ("add-menu", s, ["addmenu"]),
+        ("shapes-flyout", s, ["rail shapes"]),
+        ("lights-flyout", s, ["rail lights"]),
+        ("camera-flyout", s, ["rail camera"]),
+        ("materials-menu", s, ["materials"]),
+        ("shots-menu", s, ["shots"]),
+        ("view-menu", s, ["select key", "view"]),
+        ("page-animate", s, ["select cam", "page animate"]),
+        ("page-render", s, ["page render"]),
+        ("file-menu", s, ["file-menu"]),
+        ("start-screen", s, ["startscreen open"]),
+        ("export-sheet", s, ["export-open"]),
         ("commands", s, ["commands"]),
         ("commands-search", s, ["commands light"]),
         ("guides-list", s, ["guides open"]),

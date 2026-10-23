@@ -1,6 +1,6 @@
 """Rostrum3D's screen: the scene, the live viewport, the inspector and the shot's timeline on one 3D document.
 
-    python apps/3d/app/main.py                                   # the window, on a small sample document
+    python apps/3d/app/main.py                                   # the last scene where it was left, else the start screen
     python apps/3d/app/main.py --script my_set.py                # on what a script builds
     python apps/3d/app/main.py --doc <project folder> <item>     # open a saved document (made if missing),
                                                                  # saved again after every change
@@ -21,7 +21,7 @@ import checkout_paths  # noqa: E402  (this checkout's code first, before any Ros
 
 checkout_paths.use_this_checkout()
 
-from PySide6.QtCore import QTimer  # noqa: E402
+from PySide6.QtCore import QMetaObject, QTimer  # noqa: E402
 
 from rostrum_core import Document, userhome  # noqa: E402
 from rostrum_core.storage import paths  # noqa: E402
@@ -29,13 +29,16 @@ from rostrum3d import KIND  # noqa: E402
 from rostrum3d.script import run_source  # noqa: E402
 from rostrum_gui import guides, layout_run, qt_faults, start  # noqa: E402
 from rostrum_gui.app import free, qt_app, stop  # noqa: E402
+from rostrum_gui.project_files import ProjectFiles  # noqa: E402
 from screen3d.bridge3d import Bridge3D  # noqa: E402
+from screen3d.files_3d import FILES_3D  # noqa: E402
 from screen3d.sample import SOURCE  # noqa: E402
 from screen3d.scratch_doc import isolated  # noqa: E402
 from screen3d.steps import do_step  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 GUIDES = guides.entries(HERE.parent / "python" / "rostrum3d" / "guides", [      # Help's guides (also the agents' guides)
+    ("window.md", "The Rostrum3D window"),
     ("agents.md", "Working with an AI agent"), ("script.md", "Building a scene with a script"), ("materials.md", "Materials"),
     ("lighting.md", "Lighting"), ("camera-rigs.md", "Camera rigs")])
 
@@ -64,18 +67,25 @@ class Screen:
 
     def __init__(self, size):
         self.size, self.engine, self.win, self.bridge = size, None, None, None
+        self.files = ProjectFiles(FILES_3D, self)      # the file menu, start screen, Open recent (kit; saving is automatic)
 
-    def show(self, doc, shot_id=None, autosave=False):
+    def show(self, doc, shot_id=None, autosave=None):
+        """Open `doc` in a new window (the kit's ProjectFiles calls this with just the document); a document with a
+        folder saves after every change."""
+        autosave = bool(doc.folder) if autosave is None else autosave
         old = (self.engine, self.win, self.bridge)
         self.bridge = bridge = Bridge3D(doc, shot_id, autosave=autosave)
         _, self.engine, self.win = start(HERE / "qml" / "Main.qml",
-                                         {"backend": bridge, "viewport": bridge.viewport, "guides": GUIDES}, self.size,
+                                         {"backend": bridge, "viewport": bridge.viewport, "guides": GUIDES, "files": self.files}, self.size,
                                          providers={"view": bridge.viewport.provider})
         if old[0] is not None:
             stop(old[0], old[1], then=lambda: self._free(old[2]))
 
     @staticmethod
     def _free(bridge):
+        exporter = getattr(bridge, "_exporter", None)
+        if exporter is not None:
+            exporter.close()                            # ends a running export's engine process
         bridge.close()
         free(bridge)
 
@@ -87,6 +97,34 @@ class Screen:
     def close(self):
         stop(self.engine, self.win, then=(lambda b=self.bridge: self._free(b)) if self.bridge else None)
         self.engine = self.win = None
+        if self.files.doc is not None:
+            self.files.close()
+
+
+def files_step(screen, step) -> bool:
+    """The steps for the file menu, the start screen and the Export sheet (as Sound's): `new [name]`, `openproject <path>`,
+    `duplicate <name>`, `version [name]`, `startscreen open|close`, `file-menu`, `export-open`."""
+    word, _, rest = step.partition(" ")
+    files, ok = screen.files, True
+    if word in ("new", "file-new"):
+        ok = files.newProject(rest.replace("_", " "))
+    elif word in ("openproject", "file-open"):
+        ok = files.openPath(rest)
+    elif word in ("duplicate", "duplicateproject", "file-duplicate") and rest:
+        ok = files.duplicate(rest.replace("_", " ") if "/" not in rest and "\\" not in rest else rest)
+    elif word == "version":
+        ok = files.saveVersion(rest.replace("_", " "))
+    elif word == "startscreen":
+        files.setStart(rest == "open")
+    elif word == "file-menu":
+        QMetaObject.invokeMethod(screen.win, "openFileMenu")
+    elif word == "export-open":
+        screen.bridge.exporter.setOpen(True)
+    else:
+        return False
+    if not ok:
+        raise RuntimeError(f"{word}: {screen.bridge.status}")
+    return True
 
 
 def main():
@@ -113,8 +151,14 @@ def main():
     screen = Screen(tuple(int(n) for n in args.size.lower().split("x")))
     code = [0]
 
+    def put(doc, shot_id, autosave):       # a project goes through the kit's files (≡ menu, "Saved", Open recent)
+        if doc.folder and not shot_id:
+            screen.files.put(doc)
+        else:
+            screen.show(doc, shot_id, autosave)
+
     def run_step(s):
-        layout_run.kit_step(screen.bridge, s) or do_step(screen.bridge, screen.win, s)
+        layout_run.kit_step(screen.bridge, s) or files_step(screen, s) or do_step(screen.bridge, screen.win, s)
 
     if args.check_batch:                           # several states in this one process (rostrum_gui/layout_batch.py)
         from rostrum_gui import layout_batch
@@ -122,16 +166,18 @@ def main():
         def open_state(start_args):
             st = a.parse_args(start_args)
             doc, autosave = load_doc(st)
-            screen.show(doc, st.shot_id, autosave)
+            put(doc, st.shot_id, autosave)
 
         layout_batch.batch(app, args.check_batch, args.check_layout, open_state,
                            lambda steps: [run_step(s) for s in steps], lambda: screen.win, screen.ready)
         code[0] = app.exec()
         screen.close()
         sys.exit(qt_faults.code(code[0]))
-    doc, autosave = load_doc(args)
-    screen.show(doc, args.shot_id, autosave)
-    bridge, win = screen.bridge, screen.win
+    if not (args.doc or args.script or userhome.scripted()):      # a person's launch: the last scene, else the start screen
+        screen.files.launch()
+    else:
+        doc, autosave = load_doc(args)
+        put(doc, args.shot_id, autosave)
 
     def guarded(fn):
         try:
@@ -142,31 +188,31 @@ def main():
             app.exit(3)
 
     def run_steps():
-        before = bridge.viewport.serial     # read before the steps: a step that blocks (render) may see its view land
+        before = screen.bridge.viewport.serial     # read before the steps: a step that blocks (render) may see its view land
         for s in args.step:
             run_step(s)
         if args.check_layout:
-            layout_run.sweep(app, win, args.check_layout, args.check_name, screen.ready)
+            layout_run.sweep(app, screen.win, args.check_layout, args.check_name, screen.ready)
         elif args.shot:
             wait_view(before)
 
     def wait_view(before):   # a picture newer than the steps' start has landed, then the 160 ms reveals have finished
-        if bridge.viewport.serial > before or (before == 0 and bridge.viewport.serial > 0):
+        if screen.bridge.viewport.serial > before or (before == 0 and screen.bridge.viewport.serial > 0):
             QTimer.singleShot(600, lambda: guarded(shoot))
-        elif bridge.viewport.status.startswith("Error"):
+        elif screen.bridge.viewport.status.startswith("Error"):
             guarded(shoot)                       # shoot() fails loudly on the viewport's error
         else:
             QTimer.singleShot(100, lambda: guarded(lambda: wait_view(before)))
 
     def shoot():
-        for status in (bridge.status, bridge.viewport.status):
+        for status in (screen.bridge.status, screen.bridge.viewport.status):
             if status.startswith("Error"):
                 raise RuntimeError(status)
-        img = win.grabWindow()
+        img = screen.win.grabWindow()
         if img.isNull() or not img.save(args.shot):
             raise RuntimeError(f"could not save {args.shot}")
-        print(f"saved {args.shot} {img.width()}x{img.height()}  history={bridge.historyCount}  frame={bridge.frame}  "
-              f"selected={bridge.selected}  shown={bridge.shown()}")
+        print(f"saved {args.shot} {img.width()}x{img.height()}  history={screen.bridge.historyCount}  frame={screen.bridge.frame}  "
+              f"selected={screen.bridge.selected}  shown={screen.bridge.shown()}")
         app.quit()
 
     QTimer.singleShot(400, lambda: guarded(run_steps))

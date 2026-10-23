@@ -11,7 +11,7 @@ Item {
     Button {
         id: button
         visible: !parent.running
-        text: "Render"; hint: "F12"
+        text: "Render"; hint: "F12"; kind: "primary"
         onClicked: backend.renderStill()
     }
     Row {

@@ -23,7 +23,7 @@ def isolated(folder, item: str, ext: str) -> Path:
         return Path(folder)
     root = userhome.home() / "projects"
     root.mkdir(parents=True, exist_ok=True)
-    mine = Path(tempfile.mkdtemp(dir=root, prefix=f"{Path(folder).name}-")) / "project"
+    mine = Path(tempfile.mkdtemp(dir=root, prefix="scratch-")) / Path(folder).name     # the project's own name on screen
     if paths(folder, item, ext)["doc"].is_file():
         shutil.copytree(folder, mine, ignore=SKIP)
     return mine

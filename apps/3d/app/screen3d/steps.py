@@ -4,7 +4,8 @@
     keydrag <key id> <frame> | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
     add <menu value, e.g. mesh:sphere | light:distant | camera | material | shot> | duplicate | delete
     wait <ms> | snap <png path> (a screenshot now, the run goes on)
-    addmenu (opens the Add menu) | mouse <x> <y> (a click on the window) | renderstart | cancelrender (both don't wait)
+    rail <shapes|lights|camera> (opens that flyout) | page build|animate|render | materials | shots | view (open the
+    header's menus) | mouse <x> <y> (a click on the window) | renderstart | cancelrender (both don't wait)
     render (Cycles, the playhead frame; waits for the job, up to 10 min) | closerender
   Viewport (screen state, never the document): orbit <dx> <dy> | pan <dx> <dy> | zoom <steps> | mode shot|free
     exposure <stops> | studio <amount> | lights on|off | home | click <x> <y> (viewport pixels: selects what is there)
@@ -68,8 +69,12 @@ def do_step(bridge, win, step):
         bridge.adder.add(rest[0])
     elif word in ("duplicate", "delete"):
         bridge.adder.duplicate() if word == "duplicate" else bridge.adder.remove()
-    elif word == "addmenu":
-        QMetaObject.invokeMethod(win, "openAddMenu")
+    elif word == "rail":
+        QMetaObject.invokeMethod(win, "openRailGroup", Q_ARG("QVariant", rest[0]))
+    elif word == "page":
+        bridge.setPage(rest[0])
+    elif word in ("materials", "shots", "view"):
+        QMetaObject.invokeMethod(win, "open" + word.capitalize())
     elif word == "mouse":
         QTest.qWait(400)                              # let the last step lay out
         QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, QPoint(int(rest[0]), int(rest[1])))

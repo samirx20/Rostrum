@@ -6,22 +6,28 @@ operations and history that agents use through the MCP server (`rostrum3d.mcp`).
 
 ## Layout
 
+The window of docs/3d-design/SPEC.md §1 (brief 1, 2026-10-24; the person's tour: `python/rostrum3d/guides/window.md`).
+
 ```
-top bar        Rostrum3D · the shot's name · [Render]                   history · Search or run a command (Ctrl K)
-left           Outliner: Scene (the item tree), Materials, Shots
-centre         the live viewport (Quick = Storm, Final = Cycles; through the shot camera or a free camera); the last render over it
-right          Inspector: the selected thing's settings at the playhead, with key marks
-bottom (full)  Timeline: the shot's frames, the playhead, play, and the keys of what moves
+top bar        ≡ Rostrum3D  project › shot ▾  Saved · N changes   Build|Animate|Render  ↶ ↷  Search  View  Look  Materials  Render  ?
+rail (left)    Select · Shapes · Lights · Camera (kit ToolRail, flyouts filled from adding.py's `rail`)
+centre         the live viewport (Quick = Storm, Final = Cycles in place; through the shot camera or a free camera); the last render over it
+right          the settings panel: the kit's sections layout (the kind's own group open, changed groups open, a row of names)
+bottom (full)  the scene list (240 px) with the keys on the same rows; 204 px, 284 on the Animate page
 ```
 
-- **Outliner.** A group's or import's children sit indented under it (the arrow folds them); an import's parts too.
-  Click a row to select it. A mesh row shows its material's name at the right: click it to edit the material.
+- **Scene list** (SceneList.qml). A group's or import's children sit indented under it (the arrow folds them); an
+  import's parts too. Click a row to select it. A row shows its material's name at the right (while the name has its
+  whole room): click it to edit the material. Materials and shots are not rows: the header's Materials chip and the
+  shot crumb list them.
+- **Files** (kit): ≡ menu, start screen, Open recent, document name (screen3d/files_3d.py); Export (Ctrl+E) is the
+  kit's sheet (screen3d/export3d.py, qml/ExportSettings3D.qml).
 - **Inspector.** The kit's inspector, built from the selected type's field operation (`mesh.set`, `light.set` …):
   only the settings that apply right now are there (a sphere has no width; turn on depth of field and its f-stop
   appears). Values are shown at the playhead. A number or colour that can move goes through `value.set` at the
   playhead: still, it changes; animated, it gets (or changes) a key at that frame. The key mark at the right of a
   row: outlined = animated, filled = a key at this frame; clicking it starts or stops animating that setting.
-- **Timeline.** One row per item that moves; the selected item opens into one row per animated setting. Click or
+- **Keys** (the right of the bottom panel). On each scene row; the selected item opens into one row per animated setting. Click or
   drag the ruler or a row to move the playhead (the viewport draws that frame). Click a diamond to select the key
   (the inspector shows its time, value and ease); drag it to move it, in whole frames.
   The project's shared markers show as named flags on the ruler (placed in frames); a key drag lands on a marker's frame within 6 px.
@@ -31,15 +37,15 @@ bottom (full)  Timeline: the shot's frames, the playhead, play, and the keys of 
   cache (`%USERPROFILE%\.rostrum\cache\render\`) when the screen has no project folder. The picture then shows over
   the viewport with its file path and time; Close or Esc hides it. A failure shows in red, never as a picture.
 
-- **Add, Duplicate, Delete** (top bar). **+ Add** lists what applies now: mesh shapes, lights, camera, group, material and
-  shot (Shot only once a camera exists). A new item goes into the selected group (or the group holding the selected item),
+- **Add, Duplicate, Delete.** The rail's Shapes, Lights and Camera flyouts add those; the Materials chip has New
+  material; the shot crumb has New shot (only once a camera exists). Groups come with the multi-selection actions (later). A new item goes into the selected group (or the group holding the selected item),
   gets selected, and is one undo step. **Duplicate** (Ctrl D) copies the selected item, material or shot with its keys,
   children and parts under new ids (`item.duplicate`); **Delete** (Del) removes it (`item.remove`, `material.remove`,
-  `shot.remove`). Both show only while something they work on is selected; the shot the screen shows has no Delete.
+  `shot.remove`). Both work only while something they work on is selected; the shot the screen shows has no Delete.
 - **Pickers.** A field that names another item (a mesh's, import's or part's material; a shot's camera) shows as a
   drop-down of those items by name. The field says so itself (`kind` on its param in `fields.py`); `Bridge3D._rows`
   turns such a text row into a choice, the write is still the field's own operation with the id.
-- **Cancel** (top bar while a render runs, or Esc): ends the render's own engine process by its handle, the screen goes back
+- **Cancel** (in Render's place while a render runs, or Esc): ends the render's own engine process by its handle, the screen goes back
   to idle and says "Render cancelled". No picture, nothing red; the half-made render folder stays `.partial` (never listed).
 
 ## Rules it keeps
@@ -77,7 +83,7 @@ bottom (full)  Timeline: the shot's frames, the playhead, play, and the keys of 
 
 Steps (`screen3d/steps.py`): `select <id>`, `frame <n>`, `set <setting> <value>`, `scrub <setting> <v> <v> …`,
 `animate <setting>`, `keydrag <key id> <frame>`, `fold <id>`, `undo`, `redo`, `more`, `commands [text]`,
-`run <command key>`, `play`, `add <mesh:sphere|light:sun…|camera|material|shot>`, `duplicate`, `delete`, `addmenu`, `mouse x y`, `wait ms`,
+`run <command key>`, `play`, `add <mesh:sphere|light:sun…|camera|material|shot>`, `duplicate`, `delete`, `rail shapes|lights|camera`, `page build|animate|render`, `materials`, `shots`, `view`, `mouse x y`, `wait ms`,
 `snap path`, `renderstart` / `cancelrender` (don't wait), `render` (waits for the job), `closerender`; viewport: `orbit dx dy`, `pan dx dy`,
 `zoom n`, `mode shot|free`, `exposure v`, `studio v`, `lights on|off`, `home`, `click x y`.
 A scripted run (--shot, --step, --check-layout) never writes into a real project: `--doc` opens a scratch copy (`screen3d/scratch_doc.py`).
@@ -88,23 +94,24 @@ Offscreen screenshots: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Font
 
 ```
 main.py                 arguments, the document, the window, scripted steps and the screenshot
-screen3d/bridge3d.py    Bridge3D: the kit's DocBridge + shot, playhead, play, outliner / timeline rows, key drag
+screen3d/bridge3d.py    Bridge3D: the kit's DocBridge + shot, playhead, play, page, scene list rows, key drag, own groups
 screen3d/route.py       the one place a screen edit becomes an operation call (value.set at the playhead, key marks)
-screen3d/outline.py     what the outliner and timeline list (no Qt)
+screen3d/outline.py     what the scene list and its keys show (no Qt)
 screen3d/render_job.py  the Render button's job (rostrum3d.mcp.render.still, its own engine process)
 screen3d/steps.py       scripted steps
 screen3d/sample.py      the small sample document (not a template)
 screen3d/layout_states.py  the screen states the layout check runs (add one with every new screen or panel)
 screen3d/scratch_doc.py    scripted runs open a scratch copy of --doc's project
 screen3d/viewport.py, viewcam.py, frames.py, qml/Viewport.qml    the live viewport
-screen3d/adding.py      the Add menu, Duplicate, Delete (operation calls, one undo step each)
-qml/                    Main, AddMenu, Outliner, KindIcon, Timeline, RenderButton, RenderView
+screen3d/adding.py      the rail's flyouts, New material / shot, Duplicate, Delete (operation calls, one undo step each)
+screen3d/files_3d.py, export3d.py   the kit's file pieces and Export sheet, filled for 3D
+qml/                    Main, Rail3D, Icon3D, SceneList, KindIcon, RenderButton, RenderView, Viewport, ExportSettings3D
 ```
 
 ## Not yet
 
 - Renaming, grouping or reordering items from the screen (the operations exist; the command bar runs the ones that need
-  no input). No drag-and-drop in the outliner. An aim target (`aimItem`) is still a typed id.
+  no input). No drag-and-drop in the scene list. An aim target (`aimItem`) is still a typed id.
 - Moving items in the viewport (no move / turn handles yet); a colour picker popup (the kit's).
 - Render settings (samples, size, png / exr) on screen: it uses `render_still`'s defaults. One render at a time. No video render button yet (`render_video` exists for agents).
 - More than one shot on screen at a time (`--shot-id` picks one); keys of materials and shots (they don't animate

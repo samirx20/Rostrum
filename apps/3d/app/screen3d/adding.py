@@ -1,9 +1,10 @@
-"""The Add menu, Delete and Duplicate: new things from the screen, through the operations agents use (`mesh.add`,
-`light.add`, `camera.add`, `group.add`, `material.add`, `shot.add`, `item.remove`, `material.remove`, `shot.remove`,
-`item.duplicate`). Each is one undo step; the new thing is selected.
+"""Adding, Delete and Duplicate: new things from the screen, through the operations agents use (`mesh.add`,
+`light.add`, `camera.add`, `rig.add`, `group.add`, `material.add`, `shot.add`, `item.remove`, `material.remove`,
+`shot.remove`, `item.duplicate`). Each is one undo step; the new thing is selected.
 
-The menu offers only what applies now, most important first (a shot needs a camera, so Shot is absent until there is
-one). A new item goes into the selected group or import (or the group holding the selected item), else the top level.
+Where each is offered: the tool rail's Shapes, Lights and Camera flyouts (`rail`, SPEC §2), the header's Materials chip
+(New material) and the shot crumb (New shot). Only what applies now (a shot needs a camera, so New shot is absent until
+there is one). A new item goes into the selected group or import (or the group holding the selected item), else the top level.
 """
 from __future__ import annotations
 
@@ -14,7 +15,8 @@ from rostrum3d import fields as F
 from rostrum3d.kind import KIND
 from rostrum3d.outline_fields import OUTLINE_SHAPES
 
-LIGHT_NAMES = {"rect": "Rect panel", "disk": "Disk panel", "sphere": "Sphere bulb", "distant": "Sun", "dome": "Sky dome"}
+LIGHT_NAMES = {"rect": "Softbox", "disk": "Round softbox", "strip": "Strip", "sphere": "Bulb", "distant": "Sun", "dome": "Sky"}
+RAIL_SHAPES = ("box", "sphere", "cylinder", "torus", "plane", "disc")       # text, logo and 2D paths: Type & logo (later)
 START = {"camera": {"z": 5}, "light": {"y": 3}}          # where a new camera / light starts (an item starts at the origin)
 REMOVE = {**dict.fromkeys(F.ITEMS, "item.remove"), "part": "item.remove", "material": "material.remove", "shot": "shot.remove"}
 COPIES = (*F.ITEMS, "material", "shot")
@@ -25,6 +27,15 @@ def _entries(cameras: bool) -> list[dict]:
     out += [{"value": f"light:{k}", "label": f"Light · {LIGHT_NAMES.get(k, k.capitalize())}"} for k in F.LIGHT_KINDS]
     out += [{"value": t, "label": F.LABELS[t]} for t in ("camera", "rig", "group", "material")]
     return out + ([{"value": "shot", "label": "Shot"}] if cameras else [])
+
+
+def _rail() -> dict:
+    """The rail's flyouts, filled from today's add operations: {group: [{value (an add choice), name, icon}]}."""
+    return {"shapes": [{"value": f"mesh:{s}", "name": s.capitalize(), "icon": s} for s in RAIL_SHAPES if s in F.SHAPES],
+            "lights": [{"value": f"light:{k}", "name": LIGHT_NAMES.get(k, k.capitalize()), "icon": f"light-{k}"}
+                       for k in F.LIGHT_KINDS],
+            "camera": [{"value": "camera", "name": "Camera", "icon": "camera"},
+                       {"value": "rig", "name": "Camera rig", "icon": "rig"}]}
 
 
 class Adder(QObject):
@@ -40,6 +51,14 @@ class Adder(QObject):
     @Property("QVariantList", notify=changed)
     def entries(self):
         return _entries(any(i.get("type") == "camera" for i in self.b.doc.items()))
+
+    @Property("QVariantMap", constant=True)
+    def rail(self):
+        return _rail()
+
+    @Property(bool, notify=changed)
+    def canAddShot(self):
+        return any(e["value"] == "shot" for e in self.entries)
 
     @Property(str, notify=changed)
     def selectedType(self):
@@ -61,7 +80,7 @@ class Adder(QObject):
     def add(self, choice):
         type_, _, detail = choice.partition(":")
         if choice not in [e["value"] for e in self.entries]:
-            return self.b.fail_line(f"Error: add: {choice!r} is not in the Add menu right now.")
+            return self.b.fail_line(f"Error: add: {choice!r} can't be added right now.")
         new = ids.counted(index(self.b.doc.data, KIND.lists), type_)
         args = {"id": new, **START.get(type_, {})}
         if type_ == "mesh":
