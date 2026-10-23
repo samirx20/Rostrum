@@ -29,20 +29,21 @@ Only the settings that apply to the chosen format are shown.
 1. **Quality** (MP4): **Standard**, **High** or **Best**. Higher keeps more detail and makes a bigger file.
 2. **Transparency**: a switch for formats that can keep it. Turn it on to keep see-through areas see-through.
 3. **Bit depth** (PNG): how finely colour is kept, **8-bit** or **16-bit**.
-4. **From** and **To**: the part of the project to export, in seconds. They start at the whole length.
-5. If the project has more than one picture to choose from, a **Composition** picker appears first.
+4. **Include the project's sound** (MP4 only, and only when the project has sound): a switch.
+5. **Range**: a picker under the settings. **Everything** (with the length in seconds) is the first choice; after it come the stretches between your markers, one for each pair of neighbouring markers, such as "intro → drop". It shows only when the project has at least two markers to pick from; with none, you export everything.
+6. If the project has more than one picture to choose from, a **Composition** picker appears first.
 
 ## 4. Where the file goes
 
-1. Under **Save to** you see the file's name, and "Saved in" with its folder. A project that has its own folder saves inside it, in its own new version folder, so an export never replaces an earlier one.
-2. A document that is not a saved project yet (for example the built-in sample) saves into your **Videos** folder, or your Documents folder if you have no Videos folder. It is never hidden away in a cache. Long folder names wrap at the backslashes so you can read the whole path.
-3. To choose another place, click **Choose…**, pick a folder and a name. **Default** goes back to the usual place.
-4. If a file with that name is already there, the app asks **Replace?** with **Cancel**, **Keep both** and sometimes **Replace**.
+1. Below the range you see the file's name and its folder. A project that has its own folder saves inside it, in its own new version folder, so an export never replaces an earlier one.
+2. A document that is not a saved project yet (for example the built-in sample) saves into your **Videos** folder, or your Documents folder if you have no Videos folder. It is never hidden away in a cache. Long folder names wrap so you can read the whole path.
+3. To choose another place, click **Browse…** and pick a folder. **Renders folder** (shown once you have picked another) goes back to the usual place.
+4. If a file with that name is already there, the app asks "… is already there" with **Cancel**, **Keep both** (the new one gets a number) and, for single files, **Replace**. A folder of frames can't be replaced.
 
 ## 5. Export
 
-1. Click **Export**. A progress bar runs, and the button becomes **Cancel** while it works.
-2. When it finishes, the panel says **Done** and lists what was made: the file, its frames, its size and the rest.
+1. Click **Export**. A progress bar runs, and **Cancel** appears beside it while it works.
+2. When it finishes, the panel says **Exported** and the file's real name (for a run of pictures: how many, and the first and last, such as "48 pictures, Scene_0001.png to Scene_0048.png"), with **Play** and **Show in folder**, and lists what was made: its frames, its size and the rest.
 3. Click **Show in folder** to open where it went.
 4. If something goes wrong the panel says so in red. Nothing is reported as done unless the file was made.
 

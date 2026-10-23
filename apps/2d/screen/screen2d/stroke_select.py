@@ -24,6 +24,9 @@ from .stroke_clip import StrokeClip
 from .stroke_handles import StrokeHandles
 
 
+MIN_BOX = 16.0              # composition px: the picked strokes' box is at least this thick, so a press can hit a straight line
+
+
 class StrokeSelect(StrokeClip, StrokeHandles, QObject):
     changed = Signal()
     knobChanged = Signal()                              # its own: QML sets it from the box, which `changed` moves
@@ -72,7 +75,10 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
     @Property("QVariantMap", notify=changed)
     def box(self):
         b = G.bounds([self._comp[i] for i in self._ids if i in self._comp])
-        return {} if b is None else {"x": b[0], "y": b[1], "w": b[2] - b[0], "h": b[3] - b[1]}
+        if b is None:
+            return {}
+        px, py = max(0.0, (MIN_BOX - (b[2] - b[0])) / 2), max(0.0, (MIN_BOX - (b[3] - b[1])) / 2)   # a straight stroke has a box too
+        return {"x": b[0] - px, "y": b[1] - py, "w": b[2] - b[0] + 2 * px, "h": b[3] - b[1] + 2 * py}
 
     # ---- the mapping: a stroke's canvas px <-> composition px, through the layer's place ---------------------------
     def _target(self) -> dict | None:

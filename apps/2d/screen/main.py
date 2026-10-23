@@ -30,6 +30,7 @@ from rostrum_gui.app import qt_app
 from rostrum_gui.settle import settle
 
 from rostrum_core import Document
+from rostrum_core import userhome
 from rostrum_core.storage import paths
 from rostrum_gui import layout_run, qt_faults
 from rostrum2d import KIND, run_source
@@ -94,6 +95,7 @@ def main():
 
     watchdog.arm()                                 # a start that never shows its window says where it waits
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
+    userhome.person_start()                        # a --shot / --step / --check-layout run is scripted anyway (userhome.scripted)
     app = qt_app()                                 # a picture or step run draws offscreen (rostrum_gui/app.py)
     session = Session(tuple(int(n) for n in args.size.lower().split("x")), args.comp)
     doc = load_doc(args)

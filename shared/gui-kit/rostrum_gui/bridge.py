@@ -224,10 +224,22 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         "what just happened" goes; a line starting "Error" shows red."""
         self._set_status(text)
 
-    def _set_status(self, text):
+    def _set_status(self, text, failed=None):
         self._kit.status = text
+        self._failed = text.startswith("Error") if failed is None else failed
         self.statusChanged.emit()
 
-    def _fail(self, line):
+    @Property(bool, notify=statusChanged)
+    def statusFailed(self):
+        """The status is a refusal (the top bar shows it in red)."""
+        return getattr(self, "_failed", False)
+
+    def _fail_error(self, e, fallback):
+        """An operation's error (or any exception) as a refusal: the full line to the console, the person's words to the top bar."""
+        self._fail(e.line() if hasattr(e, "line") else fallback, e.person() if hasattr(e, "person") else None)
+
+    def _fail(self, line, shown=None):
+        """`line`: the full developer line (console, agents); `shown`: the person's sentence for the top bar
+        (RostrumError.person()); the line itself when none."""
         print(line, file=sys.stderr)
-        self._set_status(line)
+        self._set_status(shown or line, True)

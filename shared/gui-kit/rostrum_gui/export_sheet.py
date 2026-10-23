@@ -16,6 +16,7 @@ the default folder, the file's name, and the work itself (`begin` on the GUI thr
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -298,6 +299,18 @@ class ExportSheet(QObject):
         self._thread = threading.Thread(target=run, name="export", daemon=True)
         self._thread.start()
 
+    def _shown_name(self) -> str:
+        """What the finished export is called to a person: the file's name; a sequence (its path holds {frame}): its real
+        first and last file, "48 pictures, Scene_0001.png to Scene_0048.png"."""
+        name = Path(self.path).name
+        if "{frame}" not in name:
+            return name
+        rx = re.compile(re.escape(name).replace(re.escape("{frame}"), r"\d+") + "$")
+        found = sorted(p.name for p in Path(self.path).parent.iterdir() if rx.match(p.name)) if Path(self.path).parent.is_dir() else []
+        if not found:
+            return name.replace("{frame}", "0001")
+        return found[0] if len(found) == 1 else f"{len(found)} pictures, {found[0]} to {found[-1]}"
+
     def _on_progress(self, p):
         if self._state == "running":
             self._progress = p
@@ -318,7 +331,7 @@ class ExportSheet(QObject):
             mark = getattr(b.doc, "mark_version", None)
             if mark is not None:
                 mark(version_name(result, b.doc.versions() if hasattr(b.doc, "versions") else {}))
-            self._done_message = f"Exported {Path(self.path).name}"
+            self._done_message = f"Exported {self._shown_name()}"
             self._note = result.get("summary") or self._done_message
             b._set_status(self._done_message)
         self._stopping = False

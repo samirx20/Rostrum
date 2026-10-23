@@ -128,5 +128,5 @@ class EditSlots(SlotMixin):
             fn()
             return True
         except RostrumError as e:
-            self._fail(e.line())
+            self._fail(e.line(), e.person())
             return False

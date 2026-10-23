@@ -34,5 +34,5 @@ class Parts:
         try:
             return fn(*args)
         except RostrumError as e:
-            self._fail(e.line())
+            self._fail(e.line(), e.person())
             return None
