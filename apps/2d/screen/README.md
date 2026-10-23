@@ -125,8 +125,8 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 
 ## Animating: the key bar, K, retiming, Stagger, `,` `.` (H30)
 
-- **Key bar** (`qml/KeyBar.qml`, `EaseCurve.qml`, `screen2d/key_bar.py`, `backend.keyBar`; the one ease list in `eases.py`):
-  in the timeline header only while keys are picked. Ease ▾, the small curve (drag its two handles: `key.handles`), one
+- **Key block** (`qml/KeyPanel.qml`, `EaseCurve.qml`, `screen2d/key_bar.py`, `backend.keyBar`; the one ease list in `eases.py`):
+  at the top of the settings panel only while keys are picked. Ease ▾, the curve (drag its two handles: `key.handles`), one
   key's Time and Value, a spring's Bounce and Speed (`key.set {bounce, speed}`; the words become stiffness / damping in one
   place, `rostrum_core/keys/spring.py`, and `scene.py` sends the engine those). Every picked key changes; each pick, edit
   or whole drag is one change. A key's right-click opens the same list; F9 / Shift+F9 / Ctrl+Shift+F9 / Ctrl+Alt+J are
@@ -156,11 +156,11 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   pointer: right for the mouse, steps and agents alike); a thin magenta line at the time it caught, only while snapped.
   SnapLine.qml is the one place 2D's snap colour lives (the canvas's snap lines use it too).
 - **An ease picked plays once** (`screen2d/ease_play.py`, `playback.once`): picking an ease plays the stretch it shapes
-  on the canvas, then the playhead goes back. Screen state only; drags never play; the key bar's ⋯ turns it off.
+  on the canvas, then the playhead goes back. Screen state only; drags never play; the Key block's ⋯ turns it off.
 - **Stagger on picked keys** (`stagger.py`): keys picked on two or more layers → `key.stagger {by, order}` (each
   layer's picked keys move together, one change). The spatial orders compare layers in composition px through their
   groups and the camera (`rostrum2d/placement.centres_at`, the engine's `place`).
-- **After the last key** (key bar ⋯: Stay · Repeat · Back and forth · Carry on; `key.set {after}` on a field's last
+- **After the last key** (Key block ⋯: Stay · Repeat · Back and forth · Carry on; `key.set {after}` on a field's last
   key): written out as plain keys in one place, `rostrum_core/keys/after.py`, read by Python's evaluation and by the
   scene sent to the engine (preview = export).
 - Steps: `keydrag2 <key> <from> <to> [snap] [hold]`, `keystretch … [snap] [hold]`, `bardrag … [snap] [hold]` (`hold`:
@@ -205,7 +205,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   `rostrum_core.keys.after.extend` (what playback and the export read); a spring still moving at its next key shows a faint
   tail to where it would have settled (`easing.spring` with the key's own physics), with a hover tip.
 - **Beat words** (`screen2d/beat_words.py`, the one place): with a tempo in the project's music, a key's label says
-  "… at bar 5" / "bar 5 beat 3" (hooks.label_of), the key bar shows "bar 5 beat 3" beside one key's Time, and the time
+  "… at bar 5" / "bar 5 beat 3" (hooks.label_of), the Key block shows "bar 5 beat 3" beside one key's Time, and the time
   drag's snap label names bars and beats the same way. A time within half a frame of a beat is on it.
 - Steps: `bonedrag`, `boneclick`, `bonehover`, `boneend`, `bonerealclick <bone> [ctrl]` (a real mouse click; Ctrl held).
   Layout states: `bone-tool`, `mirror-pose-menu`, `key-faint-copies`, `key-beat-words`.
@@ -236,7 +236,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   Inspector over `rostrum_paint.fields.BRUSH` minus the bar's settings: settings that don't apply are absent, deep ones
   behind More.
 - **Frames** (`screen2d/framing.py`): a mark where each drawing starts and a bar for its hold (Draw bar and the
-  drawing's Animate row). Buttons (only the ones that apply at the playhead) and shortcuts, each one change:
+  drawing's Animate row). Buttons (in the panel: `DrawEachFrame.qml`, in Draw and in Move; only the ones that apply at the playhead) and shortcuts, each one change:
   Previous / Next (Alt+Left / Alt+Right), New drawing (Alt+N) / New from this (Alt+Shift+N), Hold longer / shorter
   (Alt+Up / Alt+Down), Onion skin (Alt+O, tinted neighbours from `rostrum_paint.see.onion`, over the layer's box).
 - Steps: `draw <x> <y> <x> <y> …` (one stroke, composition px), `brush <setting> <value>`, `newframe [copy]`,

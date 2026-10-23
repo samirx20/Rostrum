@@ -34,7 +34,7 @@ The text follows its path as the path is moved, reshaped or drawn on. Edit the p
 
 1. Click the diamond beside **Start along path** to start animating it.
 2. Move the playhead, change the number. A key is added.
-3. Set the ease of the keys with the key bar (see [curve-editor.md](curve-editor.md)).
+3. Set the ease of the keys with the Key block in the settings panel (see [curve-editor.md](curve-editor.md)).
 
 The text slides along the path between the keys.
 

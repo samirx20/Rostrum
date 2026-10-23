@@ -5,7 +5,7 @@ The curve editor shows how a value changes over time, as a line you can drag. Us
 ## 1. Open it
 
 1. Select a layer that has animated settings (a setting with keys on it).
-2. In the timeline's header, click **Curves** in the **Keys | Curves** switch. The bars area turns into the curve view. The layer list stays on the left, and the ruler stays above, so the time scale and the playhead are the same.
+2. In the timeline's header row, over the layer names, click **Curves** in the **Keys | Curves** switch. The bars area turns into the curve view. The layer list stays on the left, and the ruler stays above, so the time scale and the playhead are the same.
 3. Click **Keys** to go back.
 
 If the layer has nothing animated, the view says "Select a layer with animated fields to see its curves".
@@ -27,7 +27,7 @@ If the layer has nothing animated, the view says "Select a layer with animated f
 
 ## 4. Change the ease without the curve
 
-You don't need the curve editor for a named ease. Select keys (in **Keys**, or by clicking in the curve view) and the **key bar** appears in the timeline header:
+You don't need the curve editor for a named ease. Select keys (in **Keys**, or by clicking in the curve view) and the **Key** block appears at the top of the settings panel:
 
 - **Ease** list: **Linear**, **Ease in**, **Ease out**, **Smooth**, **Spring**, **Jump**, **Custom**. Every selected key changes. Right-click a key for the same list.
 - With **Spring** picked, **Bounce** and **Speed** sliders appear.

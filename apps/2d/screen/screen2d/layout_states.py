@@ -148,6 +148,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("key-list", ["--sample"], ["keylist open"]),                          # Ctrl+/
         ("panels-folded", ["--sample"], ["panels fold"]),                      # Ctrl+\
         ("view-menu", ["--sample"], ["select title", "zoom 400", "viewmenu"]),     # zoomed in, the view's % menu open
+        ("view-menu-blur", ["--sample"], ["select screen_sample", "set shutter 180", "viewmenu"]),   # H61: a blurred scene adds "Motion blur while playing"
         # H29: the creation tools, the context bar's tool options, keys picked in the timeline
         ("rect-drawing", ["--sample"], ["shapedrag rect 300 200 900 600"]),
         ("typing", ["--sample"], ["typetext 300 300 Spring_launch"]),
@@ -224,6 +225,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # H52 (painting phase 2): Draw each frame on, three drawings on twos, the onion skin's Before / After rows, the
         # cells on the timeline
         ("draw-each-frame", ["--sample"], [*FRAMES, "onion on", "frame prev"]),
+        ("move-frame-layer", ["--sample"], [*FRAMES, "tool move"]),   # H61: the drawing's frame rows in the Move panel
         # H59: the drawing keyed where its drawings start and inside one: cells and key dots never cross, at any size
         ("draw-each-frame-keys", ["--sample"], [*FRAMES, "time 0", "keyhere", "time 0.0667", "set x 10", "time 0.5",
                                                 "set x 20", "time 1", "set x 40", "onion on", "time 0.07"]),

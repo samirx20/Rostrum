@@ -4,7 +4,7 @@ Playback follows the clock: each tick puts the playhead where real time says and
 couldn't be drawn in time are skipped, so motion plays at its true speed. While playing only the playhead and the
 frame change; the inspector, layer outline and handles catch up when it stops (they cost more than a frame).
 
-Motion blur draws each frame several times (the composition's Blur steps). With "Blur while playing" off (the
+Motion blur draws each frame several times (the composition's Blur steps). With "Motion blur while playing" off (a checked entry in the canvas view menu) (the
 default), playback asks the engine for one step per frame (its `shutterSamples` override), the same scene and the
 same engine, so it keeps up; a paused frame and every export are the full picture.
 

@@ -31,7 +31,7 @@ Paint always belongs to something. Paint on a shape, a text, a picture or a path
    - **nothing**: **your first stroke makes a new drawing** and picks it. It is one step, so **Ctrl+Z** takes back the drawing and the stroke together.
 6. **Esc** steps back one level at a time: first picked strokes are let go, then you are back on Move (the brush panel closes with the Brush, however you opened it). **V** goes straight to Move.
 
-When the brush is on, the timeline shrinks to its compact height: the top strip, the ruler and only the drawing's own row. Click the button at the right end of the top strip to bring all the rows back; each tool remembers the height you last used with it.
+When the brush is on, the timeline shrinks to its compact height: the header row and only the drawing's own row. Click the button at the right end of the ruler to bring all the rows back; each tool remembers the height you last used with it.
 
 Paint only goes on a layer you can see. If the layer is hidden, or has no opacity at the playhead, the stroke is refused and the top bar says so ("title isn't showing at 2.4 s"): show it, or move the playhead to where it shows.
 

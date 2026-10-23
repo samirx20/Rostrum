@@ -69,20 +69,20 @@ The whole list: Group, Ungroup, Clip to a box, Auto layout, Make swap set, Make 
 
 ## 5. The timeline is the layers list
 
-1. Along the bottom: a top strip, a ruler, and a row for each layer. The names on the left are your layers, newest on top; the bar beside each name shows when the layer is on screen, with its keys as diamonds.
-2. The top strip has the play button, the time, **Add marker**, and **Keys** / **Curves**. **Space** plays and stops.
+1. Along the bottom: one header row, then a row for each layer. The names on the left are your layers, newest on top; the bar beside each name shows when the layer is on screen, with its keys as diamonds.
+2. The header row has, over the layer names, the play button, the time (rest the pointer on it for the frame and the scene's length), the flag button **Add marker** (in a project folder), and **Keys** / **Curves**. Over the layer rows it is the ruler: drag on it to move through time. **Space** plays and stops.
 3. A name's small arrow folds or opens what is inside a layer: a group's layers, its keyed settings, its effects and masks.
 4. Click a name to pick the layer. **Ctrl+click** adds a layer to what is picked or takes it out, and **Shift+click** picks every layer from the last one you clicked to this one; a picked layer's name turns blue, with a thin blue line at its left, and its bar is drawn brighter with a blue outline. Double-click a name (or press **F2**) to rename it. A long name is cut short in the list; point at it to read it whole. Drag it up or down to change what sits in front, or onto a group to put it inside. A line shows where it will land.
 5. At the right of a name sit a **lock** and an **eye**. They show when you point at the row, and stay visible while they are on. A **locked** layer cannot be picked or moved on the canvas, and everything refuses it until you unlock it. A **hidden** layer is not drawn, in the preview or in an export, and its name and bar fade. Click to switch; it is one step.
 6. Drag the middle of a bar to move the layer in time, and an end to trim it. When several layers are picked, dragging one picked bar moves all the picked bars together. Drag a diamond to move a key. They snap to the playhead and to markers. Click a diamond to change how that key eases; **Curves** shows the curves.
    - **Picking keys:** click a diamond to pick it, **Ctrl+click** to add another (on any layer) or take it out, **Shift+click** to pick every key between on that row. A diamond on a layer's bar stands for all that layer's keys at that moment. Drag one picked key and all of them move together, as one step. **Delete** removes the picked keys. **Esc** lets go of the keys first, then of the layers.
    - **A** opens the picked layers to show only their animated settings; **A** again folds them.
-7. **The timeline has two heights.** The full height shows every layer. The **compact** height shows only the top strip, the ruler and the picked layer's row, to give the picture the room; the name there is a menu of all your layers. Switch with the button at the right end of the top strip, or drag the timeline's top edge. Each tool remembers its own height: Select and Pen the full one, Brush the compact one, so picking a tool gives you the right amount of picture.
+7. **The timeline has two heights.** The full height shows every layer. The **compact** height shows only the header row and the picked layer's row, to give the picture the room; the name there is a menu of all your layers. Switch with the button at the right end of the ruler, or drag the timeline's top edge. Each tool remembers its own height: Select and Pen the full one, Brush the compact one, so picking a tool gives you the right amount of picture. Beside a tall or square frame the timeline has one height, so the button is not there.
 
 ## 6. Markers
 
 1. A marker is a named flag on the ruler for a moment you care about.
-2. Click **Add marker** to put one at the playhead.
+2. Click **Add marker** (the flag beside the time) to put one at the playhead.
 3. Drag a flag to move it. Double-click it to rename it. Click its **×** to remove it.
 4. A layer's bar that you let go of on a marker snaps to it and stays tied to it: when the marker moves, the layer follows. A key snaps to a marker too. Other Rostrum apps can follow the same marker, so a sound can be placed on it.
 

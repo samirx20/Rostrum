@@ -179,7 +179,7 @@ def do_step(bridge, win, step):
         steps_cancel(bridge, step, rest)
     elif word == "tool":
         bridge.setTool(rest[0])
-    elif word == "timeline":                     # timeline compact|full: the button at the timeline header's right end
+    elif word == "timeline":                     # timeline compact|full: the button at the ruler's right end
         win.setProperty("timelineFolded", rest[0] == "compact")
     elif word == "find":
         bridge.setSearch(" ".join(rest))

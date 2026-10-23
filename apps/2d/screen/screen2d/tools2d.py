@@ -42,7 +42,7 @@ class ToolSlots(SlotMixin):
         self._keys = KeySelect(self)                        # keys picked in the timeline (key_select.py): backend.keys
         self._keys.changed.connect(self._curves.changed)    # the curve editor shows the picked key's handles
         self._stretch = StretchSelect(self)                 # the stretch picked in the timeline (stretch_select.py): backend.stretch
-        self._key_bar = KeyBar(self)                        # the timeline header's key bar (key_bar.py): backend.keyBar
+        self._key_bar = KeyBar(self)                        # the settings panel's Key block (key_bar.py): backend.keyBar
         self._stagger = Stagger(self)                       # Stagger…'s popover (stagger.py): backend.stagger
         self._depth_typed = DepthTyped(self)                # Set depth ▾ › Other depth…'s popover (depth_typed.py): backend.depthTyped
         self._time_snap = TimeSnap(self)                    # the "+6 f" label of a time drag (time_snap.py): backend.timeSnap
