@@ -3,10 +3,21 @@
 How notes get into a track, by hand, from a keyboard, from a file or from a script, and how to check them.
 The script API is in inspect_guide `script`; instruments in `library`.
 
+## Units agents must know
+
+- **A bare number for a time or a length is SECONDS**, everywhere (`at: 4` is 4 s, never bar 4 or beat 4).
+- **Beats:** a time is `{"beat": 8}` (singular, counted from 0 at the start); a length is `{"beats": 2}` (plural). Using the
+  wrong one is refused and says which to use. Bars and "5.3" are for typing on the screen; in operations and scripts use
+  `{"beat": n}` (or `bar(n)` in a script).
+- **Volume:** a bare number is gain 0 … 4 (1 = 0 dB, 0.5 = -6 dB, 2 = +6 dB). The screen shows dB; agents may give dB too:
+  `"volume": {"db": -6}` or `"volume": "-6 dB"` on a track, bus, clip, line or the master.
+- **The song itself** is the item `"root"`: `{"op": "doc.set", "target": ["root"], "args": {"tempo": 96}}`. (`inspect_operations`
+  lists item *types* in its target column; the ids come from `inspect_item`.)
+
 ## Notes are data
 
 A note is `pitch` (MIDI number, 60 = middle C; the screen shows and takes names like G4), `at` (a time: seconds, `{"beat": n}` or `"#marker"`), `dur` (seconds
-or `{"beats": n}`), `vel` (0..1), plus the instrument's own playing settings when they apply (an articulation `art`
+or `{"beats": n}`; note the plural), `vel` (0..1), plus the instrument's own playing settings when they apply (an articulation `art`
 on an articulated SFZ, `position` / `damping` on a plucked string, `bend`, `vibrato` …). Only the settings the track's
 instrument can use are offered (the screen hides the rest). On the screen a note's At and Length read in bars.beats (At **5.3** = bar 5, beat 3; Length **0.2** = two beats) and take `5.3`, `9.6 s` or `0:09.6` typed; the file keeps the form it had. Drum tracks use hits (`hit.add`: `drum`, `at`, `vel`).
 
@@ -16,7 +27,7 @@ instrument can use are offered (the screen hides the rest). On the screen a note
 
 - **A new track** starts from a sound in the **Library** (Ctrl+L): double-click an instrument. With a notes track
   selected the Library offers to change its instrument instead (the notes stay).
-- **Editor** (the dock under the arrangement, E; the selected track): it opens framed on the track's notes, beside a
+- **Editor** (the dock under the arrangement, E; the selected track): it opens tall (about three quarters of the room under the arrangement) and framed on the track's notes (keys never smaller than 9 px; the view scrolls if the part is wider), beside a
   piano keyboard (a C label on every octave; click a key to hear it on the track's instrument). Its top line, beside
   the Editor / Mixer tabs, holds the track's name, **Select** (V) / **Draw** (B) and **Note ▾** (how long a new note
   is). Double-click to add, or the **Draw** tool where every click adds; drag to move (it snaps to the grid set by **Grid ▾**, with **Snap** on; Ctrl = no snapping,
@@ -25,7 +36,7 @@ instrument can use are offered (the screen hides the rest). On the screen a note
   from the top of the settings panel, the right-click menu or keys: Q quantise, Ctrl+D duplicate, ↑ / ↓ a half step.
 - **Velocity strip** (under the notes): one bar per note, as high as it plays loud. Drag a bar, or draw a line
   across several. The value of the bar under the pointer (or of the selected notes) is written beside it ("70 %").
-- **Playing lane** (under the velocity strip, for an instrument that plays notes): pick **Sustain** (the pedal: up
+- **Playing lane** (under the velocity strip, for an instrument that plays notes; folded to one line "› Sustain · Expression · Bend" while the track has none of them: click it to open): pick **Sustain** (the pedal: up
   at the bottom, down at the top; a note let go while it is down rings on until it lifts), **Expression** (how loud
   the whole part plays, like a swell on the strings) or **Bend** (the pitch wheel: the middle is no bend, the top
   and bottom are up and down by the track's **Bend range**, 2 semitones unless you change it in the settings panel).

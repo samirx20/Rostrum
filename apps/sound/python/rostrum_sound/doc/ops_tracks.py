@@ -9,7 +9,7 @@ from rostrum_core import ids as core_ids
 from . import fields as FD
 from .registry import REGISTRY, set_fields, taken
 
-REGISTRY.operation("doc.set", "Change the tempo, length, beats per bar or sample rate.", target="doc",
+REGISTRY.operation("doc.set", "Change the tempo, length, beats per bar or sample rate of the song. Its target is the id [\"root\"] (the target column names item types, not ids).", target="doc",
                    params=FD.params("doc"), label="Edit song", fields=True)(set_fields)
 REGISTRY.operation("track.set", "Change a track's instrument, level, pan, reverb, tone, mute or solo.",
                    target="track", params=FD.params("track"), label="Edit track", fields=True)(set_fields)

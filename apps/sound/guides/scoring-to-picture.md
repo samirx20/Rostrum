@@ -20,8 +20,8 @@ A marker is a named time (`marker.add` with `name` and `at`). Anything else can 
 
 | Time form | Means |
 |---|---|
-| `12.5` | 12.5 seconds from the start |
-| `{"beat": 32}` | beat 32 on the song's tempo map |
+| `12.5` | 12.5 seconds from the start (a bare number is always seconds) |
+| `{"beat": 32}` | beat 32 on the song's tempo map (a time says `beat`; a length says `{"beats": n}`) |
 | `"#logo"` | the marker named `logo` |
 | `"#logo+0.5"` / `"#logo-1"` | half a second after / one second before it |
 

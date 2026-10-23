@@ -12,7 +12,7 @@ FREEVERB_SPACES = ["freeverb.room", "freeverb.hall", "freeverb.cathedral"]
 SPACES = ["dry", "room", "hall", "cathedral", "shimmer", *FREEVERB_SPACES]
 EQ_SHAPES = ["lowshelf", "highshelf", "peak", "lowpass", "highpass", "notch"]
 BUILT_INS = ["feltPiano", "grandPiano", "warmPad", "analogStrings", "spiccatoStrings", "choirPad",
-             "cinematicBrass", "subBass", "shepardRiser", "glassMarimba"]
+             "cinematicBrass", "subBass", "glassMarimba"]
 KITS = ["synth"]
 SYNTH_DRUMS = ["kick", "snare", "clap", "hat", "openHat", "cymbal", "tom", "rim"]
 # General MIDI drum names an SFZ kit on GM keys answers to (the engine's `describe` gmDrums); a GM key

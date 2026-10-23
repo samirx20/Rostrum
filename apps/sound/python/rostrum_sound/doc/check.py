@@ -28,12 +28,16 @@ def _instrument(track) -> list[str]:
     if kind not in ("none", "voice") and not track.get(kind) and (track.get("notes") or track.get("hits")):
         out.append(f"track {tid}: instrument {kind} needs its {kind} file set before it can play its notes")
     drums = names.SYNTH_DRUMS if kind == "kit" else names.GM_DRUMS
+    unknown: dict = {}      # one message per unknown drum name, not one per hit
     for h in track.get("hits", []) if kind in ("kit", "kitSfz") else []:
         d = h.get("drum")
         if isinstance(d, int) and kind == "kitSfz" and names.GM_KEYS[0] <= d <= names.GM_KEYS[1]:
             continue
         if d not in drums:
-            out.append(f"{h['id']}: drum {d!r} is not on a {kind} kit (accepted: {', '.join(drums)})")
+            unknown.setdefault(d, []).append(h["id"])
+    for d, ids in unknown.items():
+        more = f" and {len(ids) - 1} more hit(s)" if len(ids) > 1 else ""
+        out.append(f"{ids[0]}{more}: drum {d!r} is not on track {tid}'s {'synth' if kind == 'kit' else 'SFZ'} kit (accepted: {', '.join(drums)})")
     return out + playing(track)
 
 

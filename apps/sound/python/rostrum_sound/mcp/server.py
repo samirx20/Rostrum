@@ -30,6 +30,7 @@ def sound_tools() -> Tools:
 def make_runtime(app) -> Runtime:
     runtime = Runtime(app, sound_tools())
     tools_project.with_no_project_sentence(runtime)
+    tools_project.with_sound_edit_help(runtime)
     return runtime
 
 

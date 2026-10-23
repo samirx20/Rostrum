@@ -20,7 +20,7 @@ OUTPUT = Param.text("output", group="Mix", importance="secondary", label="Output
 FIELDS = {
     "bus": [
         Param.text("name", group="Bus", importance="secondary"),
-        N("volume", 0, 4, "Mix", help="Bus fader gain (1 = unchanged).", display="db"), N("pan", **PAN, group="Mix"),
+        V.volume("volume", "Mix", help="Bus fader gain (1 = unchanged)."), N("pan", **PAN, group="Mix"),
         Param.toggle("mute", group="Mix"),
         Param.text("output", group="Mix", importance="secondary", label="Output", control="pick",
                    help='"master" or another bus id (a bus can feed a bus, never in a loop).'),

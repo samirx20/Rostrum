@@ -38,6 +38,29 @@ def with_no_project_sentence(runtime) -> None:
     runtime.tools._tools["inspect_project"] = dataclasses.replace(old, fn=inspect_project)
 
 
+EDIT_DOCUMENT = (
+    "Apply a list of operations, all or nothing, as one change in the history. Read inspect_guide 'start-here' and "
+    "'writing-parts' first; list the operations with inspect_operations (name=... for one's arguments). Targets are item ids "
+    "(the song itself is \"root\"). A bare number for a time or a length is SECONDS: beats are {\"beat\": 8} for a time "
+    "(\"at\") and {\"beats\": 2} for a length (\"dur\", \"length\"). A volume is gain 0 … 4 as a bare number, or in dB as "
+    "{\"db\": -6}. Several parts at once: run_script is shorter.")
+ERROR_HINT = "Check inspect_operations (name=<op>) for the arguments, and inspect_guide 'start-here' for how replies work."
+
+
+def with_sound_edit_help(runtime) -> None:
+    """edit_document is shared; Sound says what an agent can't guess (units, ids, where to read) and gives every
+    failure a hint (a more exact one stays)."""
+    old = runtime.tools.get("edit_document")
+
+    def edit_document(ctx, args):
+        try:
+            return old.fn(ctx, args)
+        except RostrumError as e:
+            e.hint = e.hint or ERROR_HINT
+            raise
+    runtime.tools._tools["edit_document"] = dataclasses.replace(old, fn=edit_document, description=EDIT_DOCUMENT)
+
+
 def register(tools: Tools):
     @tools.tool("inspect_recent_projects", {})
     def inspect_recent_projects(ctx, args):

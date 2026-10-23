@@ -24,7 +24,7 @@ KINDS = [("", "All"), ("instrument", "Instruments"), ("drums", "Drums"), ("recor
 # What a sound adds beyond its name (shown under it; "" when there is nothing to add, and `note` hides a repeat of the name).
 SAID = {"feltPiano": "Soft and close", "warmPad": "Slow start", "analogStrings": "Smooth ensemble",
         "spiccatoStrings": "Short, bouncy", "choirPad": "Held notes", "cinematicBrass": "Big, filmic",
-        "shepardRiser": "A rise that never ends", "glassMarimba": "Glassy, bright"}
+        "glassMarimba": "Glassy, bright"}
 
 
 def _said(name: str) -> str:
