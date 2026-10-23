@@ -55,6 +55,8 @@ the scene once. Code: `render/src/scene/` and `render/src/scene_serve.rs`.
 | `scene/eval.rs` | the animation model from `evaluate.py` / `scene.frame_at`: keys alone decide an animated field; colours mix in linear light (rounded half to even, as Python); layers outside start ≤ t < end are left out |
 | `scene/stage.rs` | an evaluated frame → the stage markup (the Python stopgap's `stopgap_html.py`, moved here); images load by path through the asset cache instead of inline copies |
 | `scene_serve.rs` | the serve requests below |
+| `still_runs.rs` | motion blur: the runs of top-level pieces that are the same in every shutter sample (and blend plainly) painted once and laid over each sample (E2) |
+| `render_costs.rs` | the export's `timing.layers`: each top-level layer painted alone on 1 frame in 30 and timed; the 10 costliest, with their effects (E2) |
 
 | Request | Does | Reply |
 |---|---|---|

@@ -184,6 +184,32 @@ pub(crate) fn page(s: &mut Session, req: &Value) -> Result<Value, String> {
     Ok(json!({ "ok": true, "timing": { "pageMs": t0.elapsed().as_secs_f64() * 1000.0 } }))
 }
 
+/// Each stage child painted alone on the laid-out page, and the ms the GPU took for it (waited for): the export's
+/// "where render time goes" (scene_export.rs). Named by the child's `id` (a layer's id; the background has none).
+pub(crate) fn time_each(s: &mut Session) -> Result<Vec<(Option<String>, f64)>, String> {
+    let kids = stage_kids(s);
+    let mut out = vec![];
+    s.painter.sync();
+    let timed = (|| -> Result<(), String> {
+        for &k in &kids {
+            blitz_paint::set_plan(kids.iter().filter(|&&o| o != k).map(|&o| (o, blitz_paint::Run::Skip)).collect());
+            let t = Instant::now();
+            paint(s, false)?;
+            s.painter.sync();
+            let id = s.doc.get_node(k).and_then(|n| n.attrs()).and_then(|a| a.iter().find(|a| &*a.name.local == "id").map(|a| a.value.to_string()));
+            out.push((id, t.elapsed().as_secs_f64() * 1000.0));
+        }
+        Ok(())
+    })();
+    blitz_paint::set_plan(Default::default());
+    timed.map(|_| out)
+}
+
+/// The stage's children (one per piece when restage.rs cut the stage) in order.
+pub(crate) fn stage_kids(s: &Session) -> Vec<NodeId> {
+    s.doc.get_node(s.stage).map_or(vec![], |n| n.children.to_vec())
+}
+
 fn failures(assets: &Assets) -> Result<(), String> {
     let mut f = assets.failures.lock().unwrap();
     if f.is_empty() {
@@ -356,9 +382,12 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
     let index = req["index"].as_u64().unwrap_or(0) as u32;
     let (mut diff_ms, mut layout_ms, mut edits, mut paint_ms, mut record_ms) = (0.0, 0.0, 0, 0.0, 0.0);
     let (mut taps, mut tap_read_ms, mut tap_write_ms) = (0, 0.0, 0.0);
-    let mut timed = |s: &mut Session, mk: &str, draw: bool, held: bool| -> Result<(), String> {
-        let (d, l, e) = apply(s, mk)?;
-        (diff_ms, layout_ms, edits) = (diff_ms + d, layout_ms + l, edits + e);
+    let (mut still_ms, mut still_pieces) = (0.0, 0);
+    let mut timed = |s: &mut Session, mk: Option<&str>, draw: bool, held: bool| -> Result<(), String> {
+        if let Some(mk) = mk {
+            let (d, l, e) = apply(s, mk)?;
+            (diff_ms, layout_ms, edits) = (diff_ms + d, layout_ms + l, edits + e);
+        }
         if draw {
             let t = Instant::now();
             paint(s, held)?;
@@ -369,21 +398,46 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         Ok(())
     };
     if samples.is_empty() {
-        timed(s, markup, true, false)?;
+        timed(s, Some(markup), true, false)?;
     } else {
         // Motion blur: every sub-frame painted and summed with an equal share (then, held, the stage over the sum).
         // Each sub-frame is staged from its pieces when the caller cut them (restage.rs): only what moved is parsed.
+        // The runs of pieces that are the same in every sub-frame are painted once, at the first (still_runs.rs).
         let own = s.next_pieces.take();
+        let runs = crate::still_runs::of(&s.sample_pieces);
+        let pieces = s.sample_pieces.first().map_or(0, Vec::len);
         let mut cut = std::mem::take(&mut s.sample_pieces).into_iter();
         let k = 1.0 / samples.len() as f32;
-        for (i, mk) in samples.iter().enumerate() {
-            s.next_pieces = cut.next();
-            timed(s, mk, true, false)?;
-            s.painter.accumulate(i == 0, k)?;
-        }
+        let drawn = (|| -> Result<(), String> {
+            for (i, mk) in samples.iter().enumerate() {
+                s.next_pieces = cut.next();
+                timed(s, Some(mk), false, false)?;
+                let kids = stage_kids(s);
+                if runs.is_empty() || kids.len() != pieces {
+                    blitz_paint::set_plan(Default::default());
+                } else {
+                    if i == 0 {
+                        let t = Instant::now();
+                        for r in 0..runs.len() {
+                            blitz_paint::set_plan(crate::still_runs::only(&kids, &runs, r));
+                            timed(s, None, true, false)?;
+                            s.painter.keep_cached();
+                        }
+                        (still_ms, still_pieces) = (t.elapsed().as_secs_f64() * 1000.0, crate::still_runs::count(&runs));
+                    }
+                    blitz_paint::set_plan(crate::still_runs::kept(&kids, &runs));
+                }
+                timed(s, None, true, false)?;
+                s.painter.accumulate(i == 0, k)?;
+            }
+            Ok(())
+        })();
+        blitz_paint::set_plan(Default::default());
+        s.painter.clear_cached();
+        drawn?;
         if held || boxes_wanted {
             s.next_pieces = own;
-            timed(s, markup, held, held)?;
+            timed(s, Some(markup), held, held)?;
         }
     }
     let t2 = Instant::now();
@@ -410,7 +464,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         // The comp-cache buffers the frame tapped are on disk before it is answered (the host looks them up next).
         s.painter.taps_written()?;
         tap_write_ms += s.painter.last_tap_write_ms;
-        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "encodeWaitMs": wait_ms, "decodeMs": decode_ms, "pictures": urls.len(), "decoded": decoded, "gpuMs": s.painter.last_gpu_ms, "taps": taps, "tapReadMs": tap_read_ms, "tapWriteMs": tap_write_ms });
+        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "stillMs": still_ms, "stillPieces": still_pieces, "encodeWaitMs": wait_ms, "decodeMs": decode_ms, "pictures": urls.len(), "decoded": decoded, "gpuMs": s.painter.last_gpu_ms, "taps": taps, "tapReadMs": tap_read_ms, "tapWriteMs": tap_write_ms });
         return Ok((json!({ "ok": true, "timing": timing, "boxes": boxes }), None));
     }
     let image = req["image"].as_str();
@@ -424,7 +478,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         s.painter.taps_written()?;
         tap_write_ms += s.painter.last_tap_write_ms;
         paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
-        let mut timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": 0.0, "edits": edits, "samples": samples.len().max(1), "decodeMs": decode_ms, "pictures": urls.len(), "decoded": decoded, "gpuMs": s.painter.last_gpu_ms, "taps": taps, "tapReadMs": tap_read_ms, "tapWriteMs": tap_write_ms, "gpuOutput": true });
+        let mut timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": 0.0, "edits": edits, "samples": samples.len().max(1), "stillMs": still_ms, "stillPieces": still_pieces, "decodeMs": decode_ms, "pictures": urls.len(), "decoded": decoded, "gpuMs": s.painter.last_gpu_ms, "taps": taps, "tapReadMs": tap_read_ms, "tapWriteMs": tap_write_ms, "gpuOutput": true });
         let boxes = if boxes_wanted { crate::boxes::boxes(&s.doc, w, h) } else { Value::Null };
         let t4 = Instant::now();
         let path = image.unwrap();
@@ -477,7 +531,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         convert(&mut s.painter, &s.color, &mut raw, pw, s.deep, false, index, slot)?;
         taps_done(s, &mut tap_write_ms)?;
         paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
-        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "gpuMs": s.painter.last_gpu_ms, "scale": scale, "flushMs": s.painter.last_flush_ms, "taps": taps, "tapReadMs": tap_read_ms, "gpuCache": s.painter.gpu_cache() });
+        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "stillMs": still_ms, "stillPieces": still_pieces, "gpuMs": s.painter.last_gpu_ms, "scale": scale, "flushMs": s.painter.last_flush_ms, "taps": taps, "tapReadMs": tap_read_ms, "gpuCache": s.painter.gpu_cache() });
         let boxes = if boxes_wanted { crate::boxes::boxes(&s.doc, w, h) } else { Value::Null };
         return Ok((json!({ "ok": true, "width": pw, "height": ph, "shm": info, "timing": timing, "boxes": boxes, "scopes": scopes_out }), None));
     }
@@ -486,7 +540,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
     convert(&mut s.painter, &s.color, &mut raw, w, deep, fast, index, &mut pixels)?;
     taps_done(s, &mut tap_write_ms)?;
     paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
-    let mut timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "decodeMs": decode_ms, "pictures": urls.len(), "decoded": decoded, "gpuMs": s.painter.last_gpu_ms, "taps": taps, "tapReadMs": tap_read_ms, "tapWriteMs": tap_write_ms });
+    let mut timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "stillMs": still_ms, "stillPieces": still_pieces, "decodeMs": decode_ms, "pictures": urls.len(), "decoded": decoded, "gpuMs": s.painter.last_gpu_ms, "taps": taps, "tapReadMs": tap_read_ms, "tapWriteMs": tap_write_ms });
     let boxes = if boxes_wanted { crate::boxes::boxes(&s.doc, w, h) } else { Value::Null };
     if let Some(path) = image {
         let t4 = Instant::now();

@@ -2,6 +2,8 @@
 //! pictures, and where the time went. The reply's `timing` holds the whole run (`totalS`, the median and slowest
 //! frame) and, summed over every frame in seconds, each step serve.rs `frame` times (`evalS`, `diffS`, `layoutS`,
 //! `paintS`, `gpuS`, `readS`, `encodeWaitS` …), so people and agents can see what a slow export spends its time on.
+//! `timing.layers`: where the paint time goes per layer, the 10 costliest (render_costs.rs); `stillPieces`: how many
+//! pieces were drawn once for a frame's motion-blur samples, not per sample (still_runs.rs).
 //! `timingCsv`: the same per frame, one row each. What painted (`gpu`, `adapter`, `fallback`) is in the reply, and
 //! `warning` says in words when that was not the computer's main graphics card.
 
@@ -14,7 +16,7 @@ use crate::serve::{self, Session};
 use crate::sink::Sink;
 
 /// The frame reply's timing fields summed (ms in the reply, seconds in the sum), in this order in the CSV.
-const STEPS: [&str; 10] = ["evalMs", "decodeMs", "diffMs", "layoutMs", "paintMs", "recordMs", "gpuMs", "readMs", "convertMs", "encodeWaitMs"];
+const STEPS: [&str; 11] = ["evalMs", "decodeMs", "diffMs", "layoutMs", "paintMs", "stillMs", "recordMs", "gpuMs", "readMs", "convertMs", "encodeWaitMs"];
 
 /// Words for an adapter that is not a main graphics card: the processor's own graphics or a software stand-in.
 const NOT_MAIN: [&str; 6] = ["intel", "microsoft basic", "gdi generic", "llvmpipe", "swiftshader", "software"];
@@ -58,6 +60,7 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
     let t0 = Instant::now();
     let (mut ms, mut rows) = (vec![], vec![]);
     let mut sums = [0.0f64; STEPS.len()];
+    let (mut costs, mut still) = (crate::render_costs::Costs::default(), 0u64);
     for i in 0..n {
         let t = start + i as f64 / fps;
         let tf = Instant::now();
@@ -68,6 +71,10 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
         }
         let (reply, _) = frame(held, s, &f).map_err(|e| format!("export frame {i} (t={t:.3} s): {e}"))?;
         let took = tf.elapsed().as_secs_f64() * 1000.0;
+        still += reply["timing"]["stillPieces"].as_u64().unwrap_or(0);
+        if i % crate::render_costs::EVERY == crate::render_costs::EVERY / 2 || n <= crate::render_costs::EVERY / 2 && i == 0 {
+            costs.sample(s).map_err(|e| format!("export frame {i}: timing its layers: {e}"))?;
+        }
         ms.push(took);
         let steps: Vec<f64> = STEPS.iter().map(|k| reply["timing"][*k].as_f64().unwrap_or(0.0)).collect();
         for (sum, v) in sums.iter_mut().zip(&steps) {
@@ -99,6 +106,8 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
     for (k, v) in STEPS.iter().zip(sums) {
         timing.insert(k.replace("Ms", "S"), json!(v));
     }
+    timing.insert("stillPieces".into(), json!(still));
+    timing.insert("layers".into(), costs.report(scene));
     let mut reply = json!({ "ok": true, "frames": n, "fps": fps, "code": code, "timing": timing, "warning": warning });
     serve::with_painting(&mut reply, &s.painting);
     Ok(reply)

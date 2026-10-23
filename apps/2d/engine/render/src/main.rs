@@ -35,6 +35,8 @@ mod scopes;
 mod serve;
 mod sink;
 mod sksl;
+mod still_runs;
+mod render_costs;
 mod shm;
 mod styles;
 mod svg_tree;

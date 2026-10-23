@@ -248,3 +248,11 @@ Not crates (`render/src`): `depth_tests.rs` — a parent's `perspective: 800px` 
 | Crate | Patch | Why |
 |---|---|---|
 | blitz-paint | `layers.rs`: no 1024-layer cap; every wanted layer is pushed | upstream refused each layer past the 1024th of a frame and drew on without it, so a busy frame's late layers silently lost their blend, opacity, filter or clip (Night Bloom's multiply vignette drew as a white oval over the film for ~1 s at the drop, in look and export). Test: `render/src/blend_budget_tests.rs` |
+
+## E2 (still layers drawn once per motion-blurred frame; 2026-10-23)
+
+| Crate | Patch | Why |
+|---|---|---|
+| anyrender | `PaintScene::draw_cached(k)` (default false) | a backend's kept picture drawn in a node's place |
+| anyrender_skia | `SkiaSceneCache::cached` (the kept pictures) and `draw_cached`: picture `k` at device pixels inside the pushed layers, as `draw_held` | a run of still layers painted once is laid over each motion-blur sample |
+| blitz-paint | `runs.rs`: a per-thread paint plan by node (`Run::Skip`, `Run::Cached(k)`), checked at the top of `render_node`; an empty plan (the default) draws everything | the engine paints one run of still layers alone, then each sample with the run's picture in its place (render/src/still_runs.rs), and times each layer alone (render_costs.rs) |

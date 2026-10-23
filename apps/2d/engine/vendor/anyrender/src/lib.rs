@@ -287,6 +287,12 @@ pub trait PaintScene: RenderContext {
         false
     }
 
+    /// Rostrum patch (E2): the backend's kept picture `k` (a run of still layers drawn once for a motion-blurred
+    /// frame) drawn at device pixels, inside whatever layers are pushed; false when it has none.
+    fn draw_cached(&mut self, _k: usize) -> bool {
+        false
+    }
+
     /// Strokes a shape using the specified style and brush.
     fn stroke<'a>(
         &mut self,

@@ -377,6 +377,25 @@ impl Painter {
         if shader_errors.is_empty() { Ok(()) } else { Err(shader_errors.join("; ")) }
     }
 
+    /// Keeps the last painted picture (a still run of a motion-blurred frame, still_runs.rs) as kept picture
+    /// `cached().len()`, which a paint plan's `Run::Cached` then draws in its place.
+    pub fn keep_cached(&mut self) {
+        let image = self.surface.image_snapshot();
+        self.cache.cached.push(image);
+    }
+
+    /// Lets the kept pictures go (the frame is done).
+    pub fn clear_cached(&mut self) {
+        self.cache.cached.clear();
+    }
+
+    /// Waits until the GPU has drawn everything submitted (timing one layer's paint, scene_export.rs).
+    pub fn sync(&mut self) {
+        if let Some(gl) = self.gl.as_mut() {
+            gl.gr.flush_submit_and_sync_cpu();
+        }
+    }
+
     /// Waits until the comp-cache buffers the last paint tapped are written (they are written while the frame is read
     /// and converted); a write that failed is the `Err`.
     pub fn taps_written(&mut self) -> Result<(), String> {
