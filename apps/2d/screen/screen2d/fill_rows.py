@@ -15,7 +15,7 @@ from . import route
 
 ROW = "paint"
 HIDDEN = {"filled", *fill_fields.NAMES}
-X
+OPTIONS = {"maxStops": 32, "stopOpacity": True}         # the engine draws any number of stops, see-through too (E8)
 
 
 def rows(rows: list[dict], item: dict | None, t: float = 0.0, fps: float = 30.0) -> list[dict]:
