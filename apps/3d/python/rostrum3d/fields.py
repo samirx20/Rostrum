@@ -72,6 +72,7 @@ SHAPES = ["box", "sphere", "cylinder", "plane", "disc", "torus", *OUTLINE_SHAPES
 from .light_fields import KINDS as LIGHT_KINDS, LIGHT, STILL as LIGHT_STILL  # noqa: E402  (needs the helpers above)
 from .material_fields import MATERIAL  # noqa: E402  (needs the helpers above)
 DOF = IS("dof", True)
+from .render_fields import RENDER  # noqa: E402  (needs the helpers above)
 
 FIELDS: dict[str, list[Param]] = {
     "group": list(TRANSFORM),
@@ -127,6 +128,8 @@ FIELDS: dict[str, list[Param]] = {
         N("width", "Width", "Frame", 16, 16384, 1, "px", S, integer=True, default=1920),
         N("height", "Height", "Frame", 16, 16384, 1, "px", S, integer=True, default=1080),
         C("background", "Background", "Frame", "#000000", S, help="What shows where nothing is (not a light)"),
+
+        *RENDER,
     ],
     # A camera rig (rigs.py): holds the camera; its own transform is the base, without aim or scale.
     "rig": RIG + [dataclasses.replace(p, valid_when=None) for p in TRANSFORM

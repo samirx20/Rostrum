@@ -20,9 +20,35 @@ scene from the document each time you look. Imported USD files stay untouched; y
    If something is too small in frame, check the camera's focal length and the distance before scaling the object.
 5. **Render last.** `render_still` (png for people, exr for the Editor) and `render_video` are jobs: they return a job id at once;
    `inspect_job` with `wait_s` shows `frames n of m`. Draft a video with `quality: "fast"` first.
-   Before a long `render_video`, ask `estimate_only: true` (it times one probe frame at the same settings; measured within about
-   10 % of the real time), or give `budget_min`: over it, nothing renders and the error names lower samples or width that fit.
+   Before a long render, ask `render_estimate` (see "Render settings and the time estimate" below).
    Another job on the same graphics card can make every frame many times slower, and a probe taken then shows it.
+
+## Render settings and the time estimate
+
+A shot carries its own render settings as fields, set like any other shot field in a script
+(`shot("main", camera=cam, renderQuality="final", renderSize="half", renderRange="range", renderStart=1, renderEnd=3)`):
+
+- `renderQuality` `draft` (32 samples), `good` (128, the default), `final` (512), or `custom`. Each preset includes noise clean-up.
+- `renderSamples` and `renderDenoise` exist only with `custom`.
+- `renderSize` `full`, `half` or `double` of the shot's `width` x `height`.
+- `renderRange` `shot` (all of it) or `range`; then `renderStart` and `renderEnd` are seconds from the start of the shot,
+  and the frame at `renderEnd` is the last one.
+
+`render_still`, `render_video` and the Render button all read these same fields, so what you time is what is drawn.
+Asking for something else in a call (`quality`, `width`) changes only that call, not the shot.
+
+`render_estimate` says how long a render will take, measured on this machine, without rendering it. It is a job: ask with `inspect_job`.
+
+- The first call for a scene draws a small probe picture (the middle frame at a quarter of the pixels) and keeps the timing.
+  It can take up to a minute and a half; past that it stops and tells you the job is at least that slow.
+- Asking again answers at once. Changing only samples, size or the frame range answers at once too: the kept timing is re-scaled.
+  Changing the scene (anything you see) measures again.
+- `quality`, `samples`, `size`, `start` / `end` try other settings without touching the shot. `frame` estimates a still.
+  `all_shots: true` gives each shot with its own settings, and a total.
+- `budget_min` is the minutes you can spend. Over it, the reply names one-setting changes that should fit (fewer samples, a smaller size).
+- Look at the probe picture it returns: it is what is about to be drawn.
+- It is a close guide, not a promise: start-up and encoding do not shrink with the settings. Another render on the graphics card
+  at the same time slows the probe and the real job.
 
 ## Techniques
 

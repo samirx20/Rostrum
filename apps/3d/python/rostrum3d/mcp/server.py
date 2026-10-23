@@ -4,7 +4,7 @@
     rostrum-3d --project <folder> --item <id>                                     (the same, as an installed command)
 
 Every change is saved at once, so the 3D screen process can open the same file. Tools: the shared ones from rostrum_core, plus
-look_frame, look_sheet, look_at, render_still, render_video, inspect_usd_file, inspect_shot. One engine process (`rostrum3d-core
+look_frame, look_sheet, look_at, render_still, render_video, render_estimate, inspect_usd_file, inspect_shot. One engine process (`rostrum3d-core
 serve`) is started on first use and kept for the session.
 """
 from __future__ import annotations
@@ -21,7 +21,7 @@ from rostrum_core.storage import paths
 from rostrum3d.engine import Engine
 from rostrum3d.kind import KIND
 from rostrum3d.script import run_source
-from . import facts, look, render
+from . import estimate, facts, look, render
 
 GUIDES = Path(__file__).resolve().parents[1] / "guides"
 INSTRUCTIONS = ("rostrum-3d makes 3D shots: a scene of meshes, imports, lights and cameras, animated by keys and rendered by Hydra "
@@ -35,7 +35,7 @@ class ThreeDState:
 
 
 def app_tools():
-    return look.tools.merged_with(render.tools).merged_with(facts.tools)
+    return look.tools.merged_with(render.tools).merged_with(facts.tools).merged_with(estimate.tools)
 
 
 def open_documents(project: str, items: list[str]) -> dict:
