@@ -37,16 +37,9 @@ Item {
     }
 
     function openMenu() {                       // under the button, right edges lined up (window px: the kit's menu)
-        menu.entries = vc.entries()
-        menu.openAt(0, 0)
-        Qt.callLater(vc.placeMenu)              // its size settles a moment after the entries are set
+        spot.open(vc.entries())
     }
-    function placeMenu() {
-        const p = vc.mapToItem(null, vc.width, 0)
-        menu.at = { px: p.x - menu.width, py: p.y + vc.height + 2 }
-        menu.place()
-    }
-    Connections { target: menu; function onHeightChanged() { if (menu.opened) vc.placeMenu() } }
+    MenuSpot { id: spot; anchor: vc; menu: menu; align: "right" }
     Button {
         id: button
         kind: "normal"

@@ -5,7 +5,8 @@ import "ValueKinds.js" as VK
 
 // One generic inspector row: a group header, a param, the More row or a fold row — nothing placed per control.
 // A fold row (rows by importance) is a group's name with a chevron: click opens or closes the group
-// (bridge.toggleGroup(model.fold)). `flash()` briefly marks the row and `focusWidget()` puts the keys in its widget
+// (bridge.toggleGroup(model.fold)); only an open group shows its fold row. The "folds" row is every folded group's
+// name in one wrapping line ("Depth · Timing · Blend"); a click on a name opens that group. `flash()` briefly marks the row and `focusWidget()` puts the keys in its widget
 // (revealField). Several items selected and their values differ (model.mixed): the field says "Mixed" until edited.
 // The widget comes from the param's `type` only. The row owns its reveal: when `valid` changes, height and
 // opacity ease over Theme.reveal (160 ms); the Column below just follows. A new selection builds fresh rows
@@ -40,6 +41,7 @@ Item {
     readonly property int full: model.row === "group" ? Theme.groupGap + (model.label ? Theme.rowDense : 0)   // "": a gap only
                               : model.row === "more" ? Theme.row + Theme.grid
                               : model.row === "fold" ? Theme.row
+                              : model.row === "folds" ? names.implicitHeight + 2 * Theme.grid
                               : driven ? Theme.row + exprBox.height + Theme.grid
                               : model.control === "curve" ? Theme.curveBox + Theme.row - Theme.field
                               : tall && widget.item ? Math.max(Theme.row, widget.item.implicitHeight + Theme.row - Theme.field)
@@ -94,6 +96,36 @@ Item {
                font.weight: Font.DemiBold }
         MouseArea { id: foldArea; anchors.fill: parent; hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.toggleGroup(row.model.fold) }
+    }
+    Flow {  // the "folds" row: the folded groups' names, a click opens one
+        id: names
+        visible: row.model.row === "folds"
+        anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: Theme.grid
+                  rightMargin: row.keyMarks ? row.gutter : 0 }     // ends with the fields, not under the key marks
+        spacing: 0
+        readonly property int count: (row.model.names || []).length
+        Repeater {
+            model: row.model.row === "folds" ? row.model.names || [] : []
+            delegate: Row {
+                id: nameItem
+                required property var modelData
+                required property int index
+                height: Theme.rowDense
+                Text {
+                    objectName: "fold:" + nameItem.modelData.group     // scripted steps open a group by it
+                    text: nameItem.modelData.group; font.family: uiFont; font.pixelSize: Theme.body
+                    color: nameArea.containsMouse ? Theme.fg : Theme.fg2; anchors.verticalCenter: parent.verticalCenter
+                    font.underline: nameArea.containsMouse
+                    Rectangle {  // changed but folded by hand: a small dot says something in here differs from its default
+                        visible: !!nameItem.modelData.changed; width: 4; height: 4; radius: 2; color: Theme.accent
+                        anchors.left: parent.right; anchors.leftMargin: 2; anchors.top: parent.top; anchors.topMargin: 2 }
+                    MouseArea { id: nameArea; anchors.fill: parent; anchors.margins: -3; hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.toggleGroup(nameItem.modelData.group) }
+                }
+                Text { visible: nameItem.index < names.count - 1; text: " · "; color: Theme.fg4; font.family: uiFont   // after a name:
+                       font.pixelSize: Theme.body; anchors.verticalCenter: parent.verticalCenter }                      // no line starts with "·"
+            }
+        }
     }
     Item {  // a param: label column, then the widget (a pair's halves each take only their own part of the line)
         id: cell

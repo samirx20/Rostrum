@@ -22,9 +22,7 @@ IconButton {
     onClicked: menu.visible ? menu.close() : openMenu()
 
     function openMenu() {
-        menu.entries = source.menu().concat(extra)
-        const p = root.mapToItem(null, 0, root.height + 2)    // under ≡, its left edge on the panels' (the window's gap):
-        menu.openAt(Theme.gap, p.y)                            // it covers the column below whole, never a sliver of it
+        spot.open(source.menu().concat(extra))     // under ≡, its left edge on the window's gap; beside the tool rail, not over it
     }
     function closeMenu() { menu.close() }
     function ask(v) {           // the file actions that need the window: a dialog, or History's name field
@@ -40,6 +38,7 @@ IconButton {
         }
     }
 
+    MenuSpot { id: spot; anchor: root; menu: menu; x0: Theme.gap }
     ActionMenu {
         id: menu
         onPicked: (v) => { if (root.extra.some(e => e.value === v)) root.picked(v); else root.source.pick(v) }
@@ -88,7 +87,7 @@ IconButton {
         y: root.height + Theme.grid
         padding: Theme.gap
         closePolicy: QQC.Popup.CloseOnEscape | QQC.Popup.CloseOnPressOutside
-        background: Rectangle { color: Theme.raised; radius: Theme.radiusCtl; border.color: Theme.popupEdge }
+        background: MenuBackground { }
         onOpened: noticeTimer.restart()
         Timer { id: noticeTimer; interval: 10000; onTriggered: notice.close() }
         contentItem: Row {

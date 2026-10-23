@@ -41,6 +41,8 @@ Ruler 1.0 Ruler.qml
 PanelEdge 1.0 PanelEdge.qml
 KeyRows 1.0 KeyRows.qml
 Menu 1.0 Menu.qml
+MenuBackground 1.0 MenuBackground.qml
+MenuSpot 1.0 MenuSpot.qml
 CurveField 1.0 CurveField.qml
 NoticesDialog 1.0 NoticesDialog.qml
 GuidesDrawer 1.0 GuidesDrawer.qml

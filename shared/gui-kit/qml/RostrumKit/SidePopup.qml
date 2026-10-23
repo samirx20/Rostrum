@@ -14,7 +14,7 @@ QQC.Popup {
     padding: Theme.pad
     focus: true
     closePolicy: QQC.Popup.CloseOnPressOutside | QQC.Popup.CloseOnEscape
-    background: Rectangle { color: Theme.raised; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
+    background: MenuBackground { radius: Theme.radiusPanel }
     enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
     exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }
 

@@ -32,7 +32,7 @@ class KitState:
         self.opened = [opened]              # where each history stood when this window opened (historyCount)
         self.static = []                    # the rows' fixed layout for the selection's kind
         self.op_kind = (None, "")           # the selection's field operation and kind
-        self.open_groups, self.search = set(), ""
+        self.open_groups, self.search = {}, ""      # {group: open?} the person chose (rows._open_groups)
         self.handlers = {}                  # parts.handle / invoke
         self.agent = None                   # agent_watch.AgentWatch (the bridge makes it)
 
