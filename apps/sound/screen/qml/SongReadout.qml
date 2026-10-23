@@ -8,6 +8,7 @@ import RostrumKit
 Row {
     id: ro
     property bool compact: false
+    property bool tight: false                        // a squeezed strip (a drawer open on a small window): the key fields step aside
     spacing: Theme.gap
     readonly property var song: backend.song
     readonly property string meter: song.beatsPerBar + "/" + song.beatUnit
@@ -57,13 +58,13 @@ Row {
             HoverTip { text: "Time signature: beats in a bar / what a beat is"; hovered: parent.hovered && !parent.opened }
         }
         ChoiceField {   // the key playing here: tonic (or "No key" until one is chosen), then the mode
-            width: ro.key !== "" ? 56 : 84; current: ro.tonic
+            visible: !ro.tight; width: ro.key !== "" ? 56 : 84; current: ro.tonic
             options: (ro.key !== "" ? [] : [{ value: "", label: songPanel.noKey }]).concat(
                 ["C", "C#", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"])
             onPicked: (v) => { if (v !== "") songPanel.setKey(v, ro.mode) }
         }
         ChoiceField {
-            visible: ro.key !== ""; width: ro.compact ? 64 : 92; current: ro.mode
+            visible: ro.key !== "" && !ro.tight; width: ro.compact ? 64 : 92; current: ro.mode
             options: ["major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "locrian"]
                 .map(m => ({ value: m, label: ro.compact ? m.charAt(0).toUpperCase() + m.slice(1, 3) : m.charAt(0).toUpperCase() + m.slice(1) }))
             onPicked: (v) => songPanel.setKey(ro.tonic, v)
