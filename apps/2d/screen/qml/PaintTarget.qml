@@ -13,15 +13,19 @@ Column {
     readonly property int labelColumn: Theme.labelColumnFor(width)
     readonly property real fieldW: width - labelColumn - Theme.keyGutter
     readonly property bool filling: backend.paintTool.now === "fill"
+    readonly property bool tight: Theme.tightFor(Window.height)    // 720 / 768 high: rows 24, headings shorter, pressure rows on "Edit brush ›"
+    readonly property int rowH: tight ? Theme.rowTight : Theme.row
+    onTightChanged: painter.setTight(tight)
+    Component.onCompleted: painter.setTight(tight)
 
     component Label: Text {
         width: tg.labelColumn - Theme.gap; anchors.verticalCenter: parent.verticalCenter
         color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont; elide: Text.ElideRight
     }
-    component Line: Item { width: tg.width; height: Theme.row }
+    component Line: Item { width: tg.width; height: tg.rowH }
     component Heading: Item {
         property alias text: words.text
-        width: tg.width; height: Theme.groupGap + Theme.rowDense
+        width: tg.width; height: (tg.tight ? Theme.gap : Theme.groupGap) + Theme.rowDense
         Text { id: words; anchors.left: parent.left; anchors.bottom: parent.bottom; anchors.bottomMargin: Theme.grid + 2
                color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
     }

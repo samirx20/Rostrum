@@ -98,6 +98,13 @@ class BrushPanel(QObject):
         self.brush.editing = on
         self._rows_changed()
 
+    @Slot(bool)
+    def setTight(self, on):
+        """A short window (Theme.tightFor): the pressure rows leave the quick rows (they stay on "Edit brush ›")."""
+        if on != self.brush.tight:
+            self.brush.tight = on
+            self._rows_changed()
+
     @Slot(str)
     def setPreset(self, pid):
         mine = any(m["id"] == pid for m in self._mine)      # a library brush's tip / paper comes into the project first

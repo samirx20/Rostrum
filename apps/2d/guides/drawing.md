@@ -42,7 +42,7 @@ The right-hand panel is headed "Painting", with the name and kind of what you pa
 ![The brush's quick rows and Painting on, with Draw each frame turned on](pictures/draw-each-frame.png)
 
 1. **The brush row**: a stroke of the current brush and its name. Click it to open the brush panel again.
-2. **The quick rows**: **Size**, **Opacity**, **Colour** (a swatch plus a hex box: click the swatch for the picker, or type `#rrggbb`), **Pressure → size** and **Pressure → opacity** for a pressure pen. The ink brushes also show **Steadiness**.
+2. **The quick rows**: **Size**, **Opacity**, **Colour** (a swatch plus a hex box: click the swatch for the picker, or type `#rrggbb`), **Pressure → size** and **Pressure → opacity** for a pressure pen. The ink brushes also show **Steadiness**. On a short window (under 800 px high, such as 1280×720) the two pressure rows are not in the quick rows: they stay under **Edit brush ›**, and the rows below sit a little closer so the whole panel, down to **Lock**, fits without scrolling.
 3. **Edit brush ›** opens every setting, with **‹ Back** to return. Only the settings that apply to the tip you chose are shown:
 
 ![Edit brush: every setting of the brush](pictures/brush-edit.png)

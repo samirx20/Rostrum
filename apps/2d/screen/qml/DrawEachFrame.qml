@@ -19,7 +19,7 @@ Column {
         width: de.labelColumn - Theme.gap; anchors.verticalCenter: parent.verticalCenter
         color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont; elide: Text.ElideRight
     }
-    component Line: Item { width: de.width; height: Theme.row }
+    component Line: Item { width: de.width; height: Theme.tightFor(Window.height) ? Theme.rowTight : Theme.row }
     component Arrow: Item {     // ‹ or ›: one step to the previous / next drawing
         id: ar
         property int step: 1

@@ -18,6 +18,7 @@ from . import brush_presets
 
 QUICK = ("size", "opacity", "color", "steady", "size_pressure", "opacity_pressure")   # the quick rows, in this order
 STEADY_GROUPS = ("Ink",)       # Steadiness is a quick row only on these presets' brushes (clean lines)
+PRESSURE = {"size_pressure", "opacity_pressure"}     # folded into "Edit brush ›" on a short window (tight)
 TILT = {"tilt_angle", "tilt_size"}     # shown only while a tilting pen is connected (pen_tilt.py)
 LIGHT_INK = "#f2f2f2"          # the starting colour on a dark background (a light one keeps the setting's own default)
 
@@ -46,7 +47,7 @@ class Brush:
         self.values = {p.name: p.default for p in params}
         if "color" in self.values and background:
             self.values["color"] = starting_colour(background, self.values["color"])
-        self.preset, self.saved_name, self.editing, self.tilt_pen = "", "", False, False
+        self.preset, self.saved_name, self.editing, self.tilt_pen, self.tight = "", "", False, False, False
         self.apply_preset(brush_presets.DEFAULT)
 
     def _evaluated(self) -> list[dict]:
@@ -72,7 +73,8 @@ class Brush:
         if self.editing:
             return rows.omit(out, {"color", "seed"})
         quick = [r for r in out if r["row"] == "param" and r["id"] in QUICK
-                 and (r["id"] != "steady" or brush_presets.group(self.preset) in STEADY_GROUPS)]
+                 and (r["id"] != "steady" or brush_presets.group(self.preset) in STEADY_GROUPS)
+                 and not (self.tight and r["id"] in PRESSURE)]
         return sorted(quick, key=lambda r: QUICK.index(r["id"]))
 
     def shown(self) -> tuple[list[str], list[str]]:
