@@ -23,7 +23,7 @@ Rectangle {
     function xOf(t) { return 8 + Math.round(ruler.xOf(t)) }
     function onBar(k) { return k.t >= (rowData.start || 0) - 1e-6 && k.t <= (rowData.end || 0) + 1e-6 }   // a key in the layer's time
     function tAt(item, x) { return ruler.tOf(item.mapToItem(track, x, 0).x - 8) }
-    function dots(keys) { return KeyGroups.group(keys, ruler.perSec, 16) }   // keys whose click areas (a dot is 16 px wide, KeyDot.qml) would touch: one dot for the run
+    function dots(keys) { return KeyGroups.group(keys, xOf, 16) }   // keys whose click areas (a dot is 16 px wide, KeyDot.qml) would touch: one dot for the run
     readonly property bool cells: (rowData.frames || []).length > 0     // a drawing's cells are its bar: no second one over them
     readonly property var barKeys: isLayer && rowData.bar === true && !cells ? rowData.keys.filter(k => onBar(k)) : []
     radius: Theme.radiusCtl
@@ -60,7 +60,7 @@ Rectangle {
         id: bar
         visible: track.barKeys.length > 0
         opacity: track.rowData.hidden ? 0.35 : 1       // a hidden layer dims
-        readonly property real pad: 6                  // half a diamond: the end keys sit inside it
+        readonly property real pad: 8                  // half a dot's click area (16, KeyDot.qml): the end dots fit whole, never slid onto a neighbour
         x: track.barKeys.length ? track.xOf(track.barKeys[0].t) - pad : 0
         width: track.barKeys.length ? track.xOf(track.barKeys[track.barKeys.length - 1].t) + pad - x : 0
         height: 12; y: Math.round((parent.height - height) / 2); radius: height / 2

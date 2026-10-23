@@ -50,10 +50,10 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
    - **Outlined**: the value is animated, but there is no key at this moment.
    - **Faint**: it is not animated yet. Click it to start.
 6. **See where it goes.** While a layer with position keys is picked, its **motion path** shows on the picture: a thin line through every place it passes, with one dot per frame. Dots close together mean it moves slowly there; far apart, fast. Each position key is a small square on the line:
-   - Drag a square to move that key's place. Only that key changes, and the whole drag is one step you can undo.
+   - Drag a square to move that key's place. Only that key changes, and the whole drag is one step you can undo. It snaps, like a thing dragged on the picture, to the frame's edges and centre and to other things; hold **Ctrl** or **Alt** to place it freely. A key timed on a marker shows on the path too, at the marker's time, and stays on its marker when you drag it.
    - Click a square to pick that key. Its **handles** appear; drag a handle's round end to bend the line into a curve. The other handle turns with it so the curve stays smooth; hold **Alt** to move one handle alone.
    - The path hides while playing, and for a layer riding a path layer (that path already shows where it goes).
-7. The same keys show as diamonds on the layer's bar in the timeline. Drag a diamond to move that key in time. It snaps to the playhead and to markers. Keys too close to tell apart (a frame or two apart on a long, zoomed-out timeline) show as one diamond with a second one peeking out behind it. Click it to pick them all, or zoom the timeline in to see each one.
+7. The same keys show as diamonds on the layer's bar in the timeline. Drag a diamond to move that key in time. It snaps to the playhead and to markers. Keys too close to tell apart (a frame or two apart on a long, zoomed-out timeline) show as one diamond with a second one peeking out behind it; diamonds never sit on top of each other, even at a bar's very start or end. Click it to pick them all, or zoom the timeline in to see each one.
 
 ## 6. Change how it feels
 

@@ -16,6 +16,7 @@ from __future__ import annotations
 import math
 
 from rostrum2d import boxes as BX, fields as F
+from rostrum2d.camera import view as camera
 from rostrum2d.drawing import frame_number
 from rostrum2d.evaluate import resolve
 from rostrum2d.layout import solve
@@ -47,6 +48,7 @@ def boxes(comp: dict, t: float) -> list[dict]:
     out: list[dict] = []
     fps = comp.get("fps", 30)
     placed: dict[float, dict] = {}
+    cam = camera.shot(comp, t)               # the camera showing at the playhead: every top-level layer is drawn through it
 
     def layout(te):                          # where auto layouts put their layers at time te (rostrum2d/layout.py)
         if te not in placed:
@@ -65,6 +67,8 @@ def boxes(comp: dict, t: float) -> list[dict]:
             if not (p["start"] <= te < p["end"]):
                 continue
             w, h = own_size(lay["type"], p)
+            if not up:                       # top level: the camera's matrix for this layer's depth (the same one for every box)
+                m = camera.layer_matrix(comp, cam, p)
             sx, sy = p["scale"] * p["scaleX"], p["scale"] * p["scaleY"]
             ang = math.atan2(m[1], m[0])
             gx, gy = math.hypot(m[0], m[1]), math.hypot(m[2], m[3])

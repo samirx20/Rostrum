@@ -40,18 +40,24 @@ class Snapper(QObject):
     def keys(self, free, straight):
         self._free, self._straight = bool(free), bool(straight)
 
-    def begin(self, layers) -> None:
+    def begin(self, layers, point=None) -> None:
         """The press: the moving layers' joint extent and what they may catch (the frame first, then the same
-        group's visible layers, then the others; never the moving layers, their groups or what is inside them)."""
+        group's visible layers, then the others; never the moving layers, their groups or what is inside them).
+        `point` (x, y): a motion-path key square instead of a box: it is a box of no size there, and `layers` (its
+        layer) only says what not to catch."""
         boxes = bounds.boxes(self.b.placed(), self.b._t)
         moving = set(layers)
         mine = [b for b in boxes if b["id"] in moving]
         self._free = self._straight = False
-        if not mine:
+        if point is not None:
+            self._start = (point[0], point[1], point[0], point[1])
+        elif not mine:
             self._start = None
             return
-        es = [bounds.extent(b) for b in mine]
-        self._start = (min(e[0] for e in es), min(e[1] for e in es), max(e[2] for e in es), max(e[3] for e in es))
+        else:
+            es = [bounds.extent(b) for b in mine]
+            self._start = (min(e[0] for e in es), min(e[1] for e in es), max(e[2] for e in es), max(e[3] for e in es))
+        mine = mine or [{"up": ()}]
         ups = {g for b in mine for g in b["up"]}
         home = mine[0]["up"][-1:] if mine[0]["up"] else ()
         c = self.b.comp()
