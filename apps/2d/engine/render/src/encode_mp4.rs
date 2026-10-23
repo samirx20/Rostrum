@@ -1,8 +1,10 @@
-//!   rostrum2d-render encode-mp4 <out.mp4> <w> <h> <fps> <bitrate kbps>
+//!   rostrum2d-render encode-mp4 <out.mp4> <w> <h> <fps> <bitrate kbps> [quality 1-100]
 //!   rostrum2d-render encode-mp4 --check     exit 0 when this computer can write MP4, else the reason on stderr
 //! RGBA8 frames (straight alpha, the framing of encode_cmd.rs) → an H.264 MP4 through the operating system's own
 //! encoder, never libx264 (GPL). Windows: Media Foundation's sink writer, the GPU's encoder when there is one, else
-//! Microsoft's software H.264 encoder. High profile, the bitrate given (variable), BT.709 limited range tagged on input
+//! Microsoft's software H.264 encoder. High profile; with a quality, each frame gets the bits that picture quality needs
+//! (constant quality: a still or simple shot is small, a busy one keeps its detail; the bitrate is then only the
+//! file's nominal rate), else the bitrate given (variable). BT.709 limited range tagged on input
 //! and output; frames turn into NV12 here (nv12.rs). The Mac (AVFoundation) is not built yet and says so.
 //! Fails loudly: odd sizes are refused before anything is written; any failed step is named; a frame that only partly
 //! arrived is an error; on any failure the unfinished file is deleted.
@@ -39,7 +41,7 @@ pub fn mp4(args: &[String]) -> Result<u32, String> {
     if args.first().map(String::as_str) == Some("--check") {
         return Ok(0);
     }
-    let out = args.first().ok_or("usage: encode-mp4 <out.mp4> <w> <h> <fps> <bitrate kbps>")?;
+    let out = args.first().ok_or("usage: encode-mp4 <out.mp4> <w> <h> <fps> <bitrate kbps> [quality 1-100]")?;
     let (w, h) = (num(args, 1, "width")?, num(args, 2, "height")?);
     let (fps, kbps) = (num(args, 3, "fps")?, num(args, 4, "bitrate (kbps)")?);
     if w == 0 || h == 0 || w % 2 == 1 || h % 2 == 1 {
@@ -48,7 +50,11 @@ pub fn mp4(args: &[String]) -> Result<u32, String> {
     if fps == 0 || kbps == 0 || kbps > 4_000_000 {
         return Err(format!("fps and bitrate must be above 0 (bitrate at most 4 000 000 kbps); got {fps} fps, {kbps} kbps"));
     }
-    let done = mf::write(out, w, h, fps, kbps); // the writer is released here, so the file can be removed
+    let quality = if args.len() > 5 { Some(num(args, 5, "quality (1-100)")?) } else { None };
+    if quality.is_some_and(|q| !(1..=100).contains(&q)) {
+        return Err(format!("quality is 1 to 100; got {}", quality.unwrap()));
+    }
+    let done = mf::write(out, w, h, fps, kbps, quality); // the writer is released here, so the file can be removed
     if done.is_err() {
         let _ = std::fs::remove_file(out);
     }
@@ -129,18 +135,25 @@ mod mf {
         }
     }
 
-    /// The encoder's own settings: variable bitrate around the average, best quality over speed, a key frame every 2 s.
-    unsafe fn encoder_settings(fps: u32) -> windows::core::Result<IMFAttributes> {
+    /// The encoder's own settings: constant quality (`quality`) or variable bitrate around the average, best quality
+    /// over speed, a key frame every 2 s.
+    unsafe fn encoder_settings(fps: u32, quality: Option<u32>) -> windows::core::Result<IMFAttributes> {
         unsafe {
-            let p = attributes(3)?;
-            p.SetUINT32(&CODECAPI_AVEncCommonRateControlMode, eAVEncCommonRateControlMode_UnconstrainedVBR.0 as u32)?;
+            let p = attributes(4)?;
+            match quality {
+                Some(q) => {
+                    p.SetUINT32(&CODECAPI_AVEncCommonRateControlMode, eAVEncCommonRateControlMode_Quality.0 as u32)?;
+                    p.SetUINT32(&CODECAPI_AVEncCommonQuality, q)?;
+                }
+                None => p.SetUINT32(&CODECAPI_AVEncCommonRateControlMode, eAVEncCommonRateControlMode_UnconstrainedVBR.0 as u32)?,
+            }
             p.SetUINT32(&CODECAPI_AVEncCommonQualityVsSpeed, 100)?;
             p.SetUINT32(&CODECAPI_AVEncMPVGOPSize, fps * 2)?;
             Ok(p)
         }
     }
 
-    pub fn write(out: &str, w: u32, h: u32, fps: u32, kbps: u32) -> Result<u32, String> {
+    pub fn write(out: &str, w: u32, h: u32, fps: u32, kbps: u32, quality: Option<u32>) -> Result<u32, String> {
         unsafe {
             step("starting COM (CoInitializeEx)", CoInitializeEx(None, COINIT_MULTITHREADED).ok())?;
             let mut session = Session { mf: false };
@@ -156,7 +169,7 @@ mod mf {
 
             let output = step("describing the H.264 output", output_type(w, h, fps, kbps))?;
             let input = step("describing the NV12 input", input_type(w, h, fps))?;
-            let params = step("making the encoder's settings", encoder_settings(fps))?;
+            let params = step("making the encoder's settings", encoder_settings(fps, quality))?;
             let stream = step("adding the H.264 stream (AddStream)", writer.AddStream(&output))?;
             step("connecting the encoder to NV12 frames (SetInputMediaType)", writer.SetInputMediaType(stream, &input, &params))?;
             step("starting to write (BeginWriting)", writer.BeginWriting())?;

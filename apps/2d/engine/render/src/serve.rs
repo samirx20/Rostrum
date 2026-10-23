@@ -84,6 +84,8 @@ pub(crate) struct Session {
     /// The pieces the kept stage was staged from (restage.rs), and the next frame's when its caller has them.
     pub(crate) kept_pieces: crate::restage::Kept,
     pub(crate) next_pieces: Option<Vec<String>>,
+    /// The next frame's motion-blur sub-frames cut the same way, one list per sub-frame (`samples` in order).
+    pub(crate) sample_pieces: Vec<Vec<String>>,
     /// The live canvas's shared-memory frames (`pixels`), made on first use and remade at a new frame size.
     shm: Option<crate::shm::Shm>,
     /// What paints (`with_painting`): every open and scene reply says it.
@@ -134,7 +136,7 @@ pub(crate) fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, Str
     let scratch = keep::Scratch::new(|| DocumentConfig { base_url: Some(BASE_URL.into()), ..Default::default() });
     let mut reply = json!({ "ok": true, "depth": if deep { 16 } else { 8 }, "timing": { "pageMs": page_ms, "painterMs": painter_ms } });
     with_painting(&mut reply, &painting);
-    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, kept_pieces: Default::default(), next_pieces: None, shm: None, painting }, reply))
+    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], shm: None, painting }, reply))
 }
 
 /// Adds what paints (`gpu`, `adapter`, `fallback`: the plain reason it paints on the CPU, null on the GPU) to a reply.
@@ -370,12 +372,17 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         timed(s, markup, true, false)?;
     } else {
         // Motion blur: every sub-frame painted and summed with an equal share (then, held, the stage over the sum).
+        // Each sub-frame is staged from its pieces when the caller cut them (restage.rs): only what moved is parsed.
+        let own = s.next_pieces.take();
+        let mut cut = std::mem::take(&mut s.sample_pieces).into_iter();
         let k = 1.0 / samples.len() as f32;
         for (i, mk) in samples.iter().enumerate() {
+            s.next_pieces = cut.next();
             timed(s, mk, true, false)?;
             s.painter.accumulate(i == 0, k)?;
         }
         if held || boxes_wanted {
+            s.next_pieces = own;
             timed(s, markup, held, held)?;
         }
     }
@@ -601,11 +608,11 @@ pub fn run() {
                 Err(e) => reply(&mut out, &json!({ "error": e })),
             }
         } else if let Some(x) = req.get("export") {
-            let mut progress = |i: u64, n: u64| {
-                reply(&mut out, &json!({ "progress": i, "of": n }));
+            let mut progress = |line: Value| {
+                reply(&mut out, &line);
                 out.flush().unwrap();
             };
-            let r = session.as_mut().ok_or_else(|| "export before scene".to_string()).and_then(|s| crate::scene_serve::export(&held, s, x, &mut progress));
+            let r = session.as_mut().ok_or_else(|| "export before scene".to_string()).and_then(|s| crate::scene_export::export(&held, s, x, &mut progress));
             match r {
                 Ok(r) => reply(&mut out, &r),
                 Err(e) => reply(&mut out, &json!({ "error": e })),

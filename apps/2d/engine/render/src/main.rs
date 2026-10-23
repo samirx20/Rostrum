@@ -29,6 +29,7 @@ mod readback;
 mod restage;
 mod rig;
 mod scene;
+mod scene_export;
 mod scene_serve;
 mod scopes;
 mod serve;
