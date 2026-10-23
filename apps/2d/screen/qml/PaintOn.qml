@@ -158,11 +158,10 @@ Column {
             onScrubStarted: po.pl.beginScrub(po.cur.id); onScrubbed: (v) => po.pl.scrub(v); onScrubEnded: po.pl.endScrub()
         }
     }
-    Line {
+    SwitchRow {
         visible: po.cur !== null
-        Label { text: "Lock" }
-        Toggle { x: po.labelColumn; anchors.verticalCenter: parent.verticalCenter; checked: po.cur ? po.cur.locked : false
-                 onToggled: (v) => po.pl.setLayer(po.cur.id, "locked", v) }
+        height: po.rowH; labelColumn: po.labelColumn; label: "Lock"; checked: po.cur ? po.cur.locked : false
+        onToggled: (v) => po.pl.setLayer(po.cur.id, "locked", v)
         HoverHandler { id: lockHover }
         HoverTip { hovered: lockHover.hovered; text: "A locked layer refuses paint and fill" }
     }

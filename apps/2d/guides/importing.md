@@ -2,6 +2,8 @@
 
 Bring a picture, a video, a PDF page, a Photoshop file or a Figma frame into your project, then work on the pieces like any other layer.
 
+Add › Image and Add › Video work the same way: the picture or clip is copied into the project (its `media` folder), so moving the project or the original file never breaks the layer.
+
 ## 1. Open the Import panel
 
 1. Click **Media** in the tool rail (or press **Ctrl+I**), then **Import…**. The panel opens at the right of the canvas.

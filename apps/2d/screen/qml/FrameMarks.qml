@@ -12,6 +12,7 @@ import RostrumKit
 Item {
     id: m
     property var frames: []
+    property var again: []
     property var timeRuler
     property string owner: ""
     readonly property real fps: backend.frameInfo.fps || 30
@@ -55,6 +56,18 @@ Item {
                         onClicked: (ev) => { if (backend.selected !== m.owner) backend.select(m.owner)
                                              painter.goToFrame(m.wide ? parent.index : Math.min(m.empty - 1, Math.floor(ev.x / m.step)))
                                              painter.newFrame(false) } }
+        }
+    }
+    Repeater {      // a looping drawing's later rounds: the same cells again, faint, not to be clicked
+        model: m.again
+        delegate: Rectangle {
+            required property var modelData
+            objectName: "againCell"
+            x: 8 + Math.round(m.timeRuler.xOf(modelData.t0)); width: Math.max(3, Math.round(m.timeRuler.xOf(modelData.t1) - m.timeRuler.xOf(modelData.t0)) - 1)
+            height: 16; y: Math.round((m.height - height) / 2); radius: 3
+            color: modelData.n % 2 ? Theme.raised : Theme.hover; opacity: 0.45
+            Text { visible: parent.width > 16; x: 5; anchors.verticalCenter: parent.verticalCenter; text: modelData.n; color: Theme.fg3
+                   font.family: uiFont; font.pixelSize: Theme.label; font.features: { "tnum": 1 } }
         }
     }
     Repeater {

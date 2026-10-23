@@ -111,7 +111,8 @@ def _paint(ctx, frame: dict, layer: str) -> dict:
         return top
     if paints and layer != "new":
         ctx.fail(codes.CONFLICT, f'drawing {frame["id"]}', "has only locked paint layers",
-                 hint='Unlock one (paint.unlock) or paint with layer: "new".')
+                 hint='Unlock one (paint.unlock) or paint with layer: "new".',
+                 plain="Every paint layer on this drawing is locked. Turn off a Lock to paint on it, or add a new paint layer.")
     paint = build("paint", ctx.new_id("paint"), {"name": "Paint" if not paints else f"Paint {len(paints) + 1}"}, ctx.where)
     shared_paints.add(ctx, frame["id"], paint)
     return ctx.item(paint["id"])

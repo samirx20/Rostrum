@@ -93,7 +93,7 @@ Rectangle {
             delegate: KeyDot { row: track; shift: bar.x; room: bar.width }
         }
     }
-    FrameMarks { anchors.fill: parent; frames: track.rowData.frames || []; keys: track.rowData.keys || []; drawing: track.rowData.row === "layer" && (track.rowData.kind === "drawing" || (track.rowData.frames || []).length > 0); timeRuler: track.ruler; owner: track.rowData.owner }   // a drawing's cells
+    FrameMarks { anchors.fill: parent; frames: track.rowData.frames || []; again: track.rowData.again || []; keys: track.rowData.keys || []; drawing: track.rowData.row === "layer" && (track.rowData.kind === "drawing" || (track.rowData.frames || []).length > 0); timeRuler: track.ruler; owner: track.rowData.owner }   // a drawing's cells
     Repeater {   // a tied end: a small flag with the marker's name on hover
         model: [{ at: "start", name: track.rowData.startMarker || "" }, { at: "end", name: track.rowData.endMarker || "" }]
         delegate: Rectangle {

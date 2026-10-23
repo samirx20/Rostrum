@@ -10,6 +10,8 @@ the Python side (`python_only`): the engine never sees them. Rigs, long IK chain
 """
 from __future__ import annotations
 
+import math
+
 from . import drawing, exprbake, fields as F, fill_fields, fill_paint, layoutbake, media, paint_fields, project_sound, render3d, retime, stepped, swap, video
 from .layout_fields import py_only
 from rostrum_core.keys import after, animated, keys_of, springs
@@ -25,7 +27,7 @@ def python_only(kind: str) -> set[str]:
     """The fields of an item type the engine never sees: auto layout's, stepped timing's and swap sets' (all
     applied here), the scene's soundtrack (Sound's engine plays it, not 2D's) and a text's style link (its values are
     already on the text: text_styles.py)."""
-    return (py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END, "locked", "hidden", "eachFrame", "newHold", "soundtrack", "textStyle"} | swap.PY_ONLY.get(kind, set())
+    return (py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END, "locked", "hidden", "eachFrame", "newHold", "soundtrack", "textStyle"} | ({"loop"} if kind == "drawing" else set()) | swap.PY_ONLY.get(kind, set())
             | paint_fields.NAMES | fill_fields.NAMES)
 
 
@@ -64,9 +66,9 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | 
     if item["type"] == "rig":           # bones, iks and binds are nodes of their own (RIG.md § Scene description)
         node["rig"] = [_node(c, fps, baked, where) for key in ("bones", "iks", "binds") for c in item.get(key, [])]
     if item["type"] == "drawing":       # the painting kit makes each drawing's picture once; the engine only reads it
-        node["frames"] = _pictures(item)
+        node["frames"] = _pictures(item, fps, where)
     elif item.get("frames"):            # paint on an element: drawn over it, stretched over its box (paint_fields.py)
-        node["paint"] = {"frames": _pictures(item), "inside": item.get("paintInside", True)}
+        node["paint"] = {"frames": _pictures(item, fps, where), "inside": item.get("paintInside", True)}
     if item["type"] == "video":         # decoded once (video.py); the engine picks the frame by the time
         node["frames"] = video.frames({**node["props"], "id": item["id"]}, fps)
     if item["type"] == "render3d":      # the 3D item's render, from the project (render3d.py)
@@ -74,9 +76,11 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | 
     return node
 
 
-def _pictures(item: dict) -> list[dict]:
-    """The drawings that can show (the Draw each frame rule, drawing.py), each as its picture."""
-    return [{"at": f["at"], "src": str(drawing.picture(item, f))} for f in drawing.shown_frames(item)]
+def _pictures(item: dict, fps: float, where: dict | None) -> list[dict]:
+    """The drawings that can show (the Draw each frame rule, drawing.py), each as its picture; a looping drawing's
+    run repeated to the layer's end (or the composition's)."""
+    until = min(item.get("end", retime.END_OF_COMP), (where or {}).get("until", 0.0) or 60.0)
+    return [{"at": n, "src": str(drawing.picture(item, f))} for n, f in drawing.repeats(item, math.ceil(until * fps))]
 
 
 def _render3d(node: dict, item: dict, fps: float, where: dict) -> dict:

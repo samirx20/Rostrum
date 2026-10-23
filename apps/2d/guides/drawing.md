@@ -104,6 +104,7 @@ Under the brush, **Painting on** shows:
 1. **Layer ▾**: what the paint goes onto: the picked layer, other painted layers, or **New drawing**.
 2. **Inside the outline**: on by default. Turn it off and the paint can spill over the whole box around the thing. (A drawing has no outline, so it does not have this switch.)
 3. **Draw each frame**: off means the thing has one painting that holds the whole time. On means each frame can have its own drawing (part 7).
+   (On every switch in the panels, clicking its words flips it too, not only the switch itself.)
 4. **Paint layers +**. A thing starts with one paint layer, called "Paint", so at first this is one line with its **+**. To keep lines above colour, press **+**: a new layer, "Paint 2", goes on top and is highlighted, and your next stroke or fill goes into it. With two or more, the list shows, the top one first. Each row has an eye, a small picture of that layer's paint (on grey squares, so white ink shows as well as black) and its name; in grey its blend and opacity when they are not Normal · 100 % ("Multiply · 70 %"), and a lock when it is locked.
    - Click a row to paint on that layer; it is highlighted in blue.
    - The eye hides or shows it.
@@ -135,7 +136,7 @@ The onion skin (next part) still shows the whole drawings before and after.
 
 ![Three drawings sharing a Paint layer and a Colour layer](pictures/paint-layers-shared.png)
 
-In the timeline the drawing's row shows its drawings as numbered cells; a drawing is held until the next cell. The number is its place in the row. When the drawing itself is animated (moved, turned), its keys sit as diamonds on top of the cells: click a diamond for the key, the cell around it for the drawing. Open the row (its ›) to see each animated setting on its own line.
+In the timeline the drawing's row shows its drawings as numbered cells; a drawing is held until the next cell. To repeat a hand-drawn cycle (a walk, a flicker), set the layer's **Loop** (in its Timing settings) to **Loop** or **Ping-pong**: the drawings repeat for the layer's whole length, and the repeats show as fainter cells on the row (they follow the drawings, so change a drawing and every repeat changes). Agents: `set drawing_1 loop "loop"` (`off`, `loop`, `pingpong`). The last drawing is held as long as the one before it. The number is its place in the row. When the drawing itself is animated (moved, turned), its keys sit as diamonds on top of the cells: click a diamond for the key, the cell around it for the drawing. Open the row (its ›) to see each animated setting on its own line.
 
 ## 8. Onion skin
 

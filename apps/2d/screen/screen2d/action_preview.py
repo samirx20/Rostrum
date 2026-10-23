@@ -12,6 +12,8 @@ from __future__ import annotations
 from rostrum_core import run
 from rostrum_core.errors import RostrumError
 
+from .action_rules import cutter_name
+
 PREVIEW_TAG = ("preview",)
 PREVIEWABLE = {"shape.boolean", "layer.align", "layer.distribute", "mask.make"}   # what the panel's Combine, Align, Distribute, Mask run
 PREVIEW_SCALE = 0.5
@@ -19,6 +21,7 @@ PREVIEW_SCALE = 0.5
 
 class ActionPreview:
     _previewing = False
+    _preview_status = ""
 
     def _preview_calls(self, calls) -> None:
         """Draw `calls` as they would leave the document, without applying them."""
@@ -30,10 +33,16 @@ class ActionPreview:
             scene = describe(work, self.comp_id, self.marks.times, self.doc.folder, (0.0, self.comp()["duration"]))
         except RostrumError:
             return                                              # the action is refused now: nothing to show
+        cut = next((c for c in calls if c["op"] == "mask.make"), None)
+        if cut and not self._previewing:                        # a Mask: say which layer is the cutter, until the pointer leaves
+            self._preview_status = self.status
+            self._set_status(f"Mask preview — {cutter_name(cut, self.doc)} is the cutter (the top layer)")
         self._previewing = True
         self.frames.request(scene, self._t, 1, min(self._view, PREVIEW_SCALE), PREVIEW_TAG)
 
     def _preview_end(self) -> None:
         """The pointer left: the canvas goes back to the document (a no-op when no preview is showing)."""
+        if self.status.startswith("Mask preview"):             # the cutter's words go with it
+            self._set_status(self._preview_status)
         if self._previewing:
             self._show()

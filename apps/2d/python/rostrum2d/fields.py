@@ -13,7 +13,7 @@ from dataclasses import replace
 from rostrum_core import Param
 from rostrum_core.keys import KEY_FIELDS
 
-from . import blends as _blends, fill_fields as _fill, grade_fields as _grade, layout_fields as _layout, paint_fields as _paint, stepped as _stepped, swap as _swap
+from . import blends as _blends, looping, fill_fields as _fill, grade_fields as _grade, layout_fields as _layout, paint_fields as _paint, stepped as _stepped, swap as _swap
 
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 P = "primary"
@@ -77,7 +77,7 @@ def timing(start_help: str, end_help: str) -> list:
 
 # Riding a path layer (follow.py `layer.ride`); the engine's RIDE_AT (scene/fields.rs) is the same list.
 RIDING = {"not": IS("ridePath", "")}
-RIDE_AT = ["end", "start", "along"]
+RIDE_AT = ["end", "start", "along"]      # the default is "along": a path set alone rides, and Along path is the setting to key
 RIDE_AT_WORDS = {"end": "End of the drawn part", "start": "Start of the drawn part", "along": "A set place"}
 
 # Riding a path layer beside it (engine: scene/follow.rs; rostrum2d/follow.py layer.ride): the layer's anchor (a
@@ -86,7 +86,7 @@ RIDE = [
     X("ridePath", "Rides path", "Ride", "", S, control="pick",       # screens: a choice of the layer's path siblings
       help="Id of a path layer in the same group or comp: this layer's anchor sits on it as it is reshaped, moved or "
            "drawn on, and X, Y become an offset from that point. Empty = none (layer.ride sets it)"),
-    CH("rideAt", RIDE_AT, "Rides at", "Ride", "end", S, RIDING, labels=RIDE_AT_WORDS,
+    CH("rideAt", RIDE_AT, "Rides at", "Ride", "along", S, RIDING, labels=RIDE_AT_WORDS,
        help="The tip of the drawn-on part (Trim end), its start (Trim start), or a set place along the whole path"),
     N("rideAlong", "Along path", "Ride", 0, 1, 0.001, "", S, {"all": [RIDING, IS("rideAt", "along")]}, display="percent",
       help="How far along the path: 0 = its start, 1 = its end (key it to move along)"),
@@ -215,7 +215,7 @@ FIELDS: dict[str, list[Param]] = {
         CH("headEnd", HEADS, "End head", "Shape", "triangle", when=IS("shape", "arrow"), labels=HEAD_WORDS),
         N("headSize", "Head size", "Shape", 0, 2000, 1, "px", when=IS("shape", "arrow"), default=32.0),
         FILLED,
-        C("fill", "Fill colour", "Fill", "#ffffff", when=IS("filled", True)),
+        C("fill", "Fill colour", "Fill", "#4f8cff", when=IS("filled", True)),
         T("stroke", "Outline", "Outline", False, S, when={"not": _OPEN}),
         C("strokeColor", "Outline colour", "Outline", "#ffffff", S, STROKE),
         N("strokeWidth", "Outline width", "Outline", 0, 500, 0.5, "px", S, STROKE, default=2.0),
@@ -281,6 +281,8 @@ FIELDS: dict[str, list[Param]] = {
     "drawing": [
         N("w", "Canvas width", "Drawing", 16, 8192, 1, "px", S, integer=True, default=1920),
         N("h", "Canvas height", "Drawing", 16, 8192, 1, "px", S, integer=True, default=1080),
+        CH("loop", looping.MODES, "Loop", "Timing", "off", S, labels=looping.WORDS,
+           help="Repeat the drawings for the layer's length: Loop starts again, Ping-pong goes back and forth (Off holds the last drawing)"),
     ] + TRANSFORM,
     # A vector path (pathdata.py): `d` is absolute M, L, C, Z in the layer's own px from its box's top-left.
     # trimStart..trimEnd is the part of the stroke drawn (fractions of its length: the "draw on").

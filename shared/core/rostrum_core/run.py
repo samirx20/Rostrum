@@ -28,7 +28,17 @@ class Context:
 
     def set(self, id_, path, value):
         path = [path] if isinstance(path, str) else list(path)
+        if self._already(id_, path, value):
+            return                                   # setting a value to what it is changes nothing: no edit, no step
         self._do(E.Set(id_, path, value))
+
+    def _already(self, id_, path, value) -> bool:
+        node = self.idx[id_].item if id_ in self.idx else None
+        for k in path:
+            if not isinstance(node, dict) or k not in node:
+                return False
+            node = node[k]
+        return type(node) is type(value) and node == value
 
     def insert(self, parent, key, item, index=None):
         self._do(E.Insert(item["id"], parent, key, 10**9 if index is None else index, item))

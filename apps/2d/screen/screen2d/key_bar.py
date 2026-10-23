@@ -25,7 +25,10 @@ class KeyBar(QObject):
 
     def picked(self) -> list[str]:
         """The keys it acts on: those picked in the timeline or the curve editor (key_select.py)."""
-        return [k for k in self.b._keys.ids if self.b.doc.has(k)]
+        ids = self.b._keys.ids
+        if not isinstance(ids, list):       # the screen is closing: the bridge's key list is already gone (the property object, not a list)
+            return []
+        return [k for k in ids if self.b.doc.has(k) and "prop" in self.b.doc.item(k)]    # keys only, never a layer id
 
     def _first(self) -> dict:
         ids = self.picked()

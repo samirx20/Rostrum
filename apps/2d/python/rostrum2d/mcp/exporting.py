@@ -25,6 +25,10 @@ def snapshot(doc, comp_id: str, fmt: str, layers: list[str] | None = None) -> di
     the samples themselves (read from the composition as it plays)."""
     from . import render
     if fmt != "motion":
+        comp = next((c for c in doc.data.get("comps", []) if c["id"] == comp_id), None)
+        if comp is not None and not any(not lay.get("hidden") for lay in comp.get("layers", [])) and not comp.get("soundtrack"):
+            raise RostrumError(codes.BAD_ARGUMENT, "export", f'composition "{comp_id}"', "has nothing showing to export", hint="Add a layer (or show a hidden one) first.",
+                               plain="There is nothing to export yet: the composition has no layers showing. Add one first.")
         return render.scene_of(doc, comp_id)
     import copy
     from rostrum_core import markers

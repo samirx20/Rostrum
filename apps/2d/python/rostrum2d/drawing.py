@@ -14,6 +14,7 @@ from pathlib import Path
 
 from rostrum_paint import canvas
 
+from . import looping
 from .sizes import own_size
 
 
@@ -30,8 +31,21 @@ def shown_frames(item: dict) -> list[dict]:
     return frames if each_frame(item) else frames[:1]
 
 
+def cycle(drawing: dict) -> tuple[int, int] | None:
+    """(the frame the cycle starts at, its length in frames) for a drawing that loops; None when it holds its last
+    drawing (Loop off) or has no run to repeat. The last drawing is held as long as the one before it."""
+    fr = sorted((f["at"] for f in shown_frames(drawing)))
+    if looping.mode_of(drawing.get("loop")) == "off" or len(fr) < 2:
+        return None
+    return fr[0], fr[-1] - fr[0] + max(fr[-1] - fr[-2], 1)
+
+
 def frame_at(drawing: dict, n: int) -> dict | None:
-    """The drawing exposed at frame number `n`: the last one with at <= n (held until the next); None before the first."""
+    """The drawing exposed at frame number `n`: the last one with at <= n (held until the next); None before the first.
+    A looping drawing (Loop: loop or ping-pong) repeats its run from the first drawing on, through looping.fold."""
+    run = cycle(drawing)
+    if run and n >= run[0]:
+        n = run[0] + looping.fold(n - run[0], run[1], looping.mode_of(drawing.get("loop")))
     shown = None
     for f in shown_frames(drawing):
         if f["at"] <= n:
@@ -39,6 +53,19 @@ def frame_at(drawing: dict, n: int) -> dict | None:
         else:
             break
     return shown
+
+
+def repeats(drawing: dict, last: int) -> list[tuple[int, dict]]:
+    """[(frame number, drawing)] for each change of picture from the first drawing to frame `last`: what a looping
+    drawing shows over its layer's length (the engine reads explicit frames)."""
+    run, out = cycle(drawing), []
+    if not run:
+        return [(f["at"], f) for f in shown_frames(drawing)]
+    for n in range(run[0], max(last, run[0] + 1)):
+        here = frame_at(drawing, n)
+        if not out or out[-1][1] is not here:
+            out.append((n, here))
+    return out
 
 
 def frame_number(t: float, fps: float) -> int:

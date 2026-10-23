@@ -58,12 +58,12 @@ Column {
     }
     Repeater {      // Inside the outline, Draw each frame (paint_fields), before any paint
         model: backend.paintLayers.toggles
-        delegate: Line {
+        delegate: SwitchRow {      // the kit's switch line: the words flip it too
             id: tl
             required property var modelData
-            Label { text: tl.modelData.label }
-            Toggle { x: tg.labelColumn; anchors.verticalCenter: parent.verticalCenter; checked: tl.modelData.value
-                     onToggled: (v) => backend.paintLayers.setToggle(tl.modelData.id, v) }
+            height: tg.rowH; labelColumn: tg.labelColumn
+            label: tl.modelData.label; checked: tl.modelData.value
+            onToggled: (v) => backend.paintLayers.setToggle(tl.modelData.id, v)
             HoverHandler { id: tHover }
             HoverTip { hovered: tHover.hovered; text: tl.modelData.help || "" }
         }

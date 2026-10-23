@@ -167,3 +167,11 @@ def test_an_old_layout_file_opens_unchanged_and_is_saved_in_the_new_one(tmp_path
     assert new.data == old.data and new.seq == 3 and x(new) == 0 and new.item("cam_1")["dof"] is True
     new.restore_version("first", SAM)
     assert x(new) == 5 and new.item("cam_1")["dof"] is False
+
+
+def test_setting_a_value_to_what_it_is_records_nothing():
+    doc = toy.sample()
+    doc.apply({"op": "layer.move", "target": ["card"], "args": {"x": 40}}, SAM)
+    before = doc.seq
+    assert doc.apply({"op": "layer.move", "target": ["card"], "args": {"x": 40}}, SAM) is None
+    assert doc.seq == before and x(doc) == 40

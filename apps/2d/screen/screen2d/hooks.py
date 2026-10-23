@@ -38,6 +38,8 @@ class Hooks2D:
             return size_rows.call(item_id, value)
         if param == fill_rows.ROW:                       # the Fill row's paint: layer.fill (fill_rows.py)
             return fill_rows.call(item_id, value, self.own_t(item_id))
+        if param == "fillType":                          # the Fill type choice: layer.fill, which also gives a gradient its stops
+            return {"op": "layer.fill", "target": [item_id], "args": {"type": value}}
         if param == "ridePath":                          # Rides path: the agents' layer.ride (X, Y become the offset: 0)
             it = self.doc.item(item_id)
             return {"op": "layer.ride", "target": [item_id], "args": {"path": value, "at": it.get("rideAt", "end"),

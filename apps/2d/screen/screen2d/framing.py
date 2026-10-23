@@ -5,7 +5,7 @@ frame is held to the end of the composition, so only a frame with a next one can
 """
 from __future__ import annotations
 
-from rostrum2d.drawing import frame_at, shown_frames
+from rostrum2d.drawing import frame_at, cycle, repeats, shown_frames
 from rostrum_core.ids import random_id
 
 
@@ -13,9 +13,23 @@ def marks(drawing: dict, fps: float, duration: float) -> list[dict]:
     """[{id, n, at, held, t0, t1}] sorted by `at`: each drawing's number (1 …), where it starts, how many frames it is
     held and until when (seconds; the last one to the end of the composition)."""
     fr = sorted(shown_frames(drawing), key=lambda f: f["at"])
-    ends = [f["at"] for f in fr[1:]] + [round(duration * fps)]
+    run = cycle(drawing)       # a looping drawing's own run ends where its cycle does; the rounds after are `again`
+    ends = [f["at"] for f in fr[1:]] + [run[0] + run[1] if run else round(duration * fps)]
     return [{"id": f["id"], "n": i + 1, "at": f["at"], "held": max(end - f["at"], 1), "t0": f["at"] / fps,
              "t1": max(end, f["at"] + 1) / fps} for i, (f, end) in enumerate(zip(fr, ends))]
+
+
+def again(drawing: dict, fps: float, duration: float) -> list[dict]:
+    """[{n, t0, t1}]: the cells a looping drawing shows again after its own run (empty with Loop off), drawn faintly."""
+    run = cycle(drawing)
+    if not run:
+        return []
+    end = round(min(drawing.get("end", duration), duration) * fps)
+    shown = repeats(drawing, end)
+    order = {f["id"]: i + 1 for i, f in enumerate(sorted(shown_frames(drawing), key=lambda f: f["at"]))}
+    stops = [n for n, _ in shown[1:]] + [end]
+    return [{"n": order[f["id"]], "t0": n / fps, "t1": max(stop, n + 1) / fps}
+            for (n, f), stop in zip(shown, stops) if n >= run[0] + run[1]]
 
 
 def state(drawing: dict, n: int) -> dict:
