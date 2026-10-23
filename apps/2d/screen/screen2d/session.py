@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from rostrum_gui import guides, start
-from rostrum_gui.app import stop
+from rostrum_gui.app import free, stop
 from rostrum_gui.project_files import ProjectFiles
 from rostrum2d import textsize
 
@@ -50,7 +50,15 @@ class Session:
         old = (self.bridge, self.engine, self.win)
         self.bridge, self.engine, self.win = bridge, engine, win
         if old[0] is not None:                           # the window and its bindings first, then what they read
-            stop(old[1], old[2], then=lambda: (old[0]._unsubscribe(), old[0].close()))
+            stop(old[1], old[2], then=lambda: self._close(old[0]))
+
+    @staticmethod
+    def _close(bridge):
+        """A project's bridge closed (engine, watchers, clocks), then freed with its parts (the kit's free): a lambda
+        connected to one of its signals would otherwise keep it, its document and its pictures alive for good."""
+        bridge._unsubscribe()
+        bridge.close()
+        free(bridge.painter, bridge)
 
     def close(self):
         """At quit: the start screen's picture is kept, then the window and its bindings go (the kit's stop), then the
@@ -59,4 +67,4 @@ class Session:
         stop(self.engine, self.win)
         self.engine = self.win = None
         if self.bridge is not None:
-            self.bridge.close()
+            self._close(self.bridge)
