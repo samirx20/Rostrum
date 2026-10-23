@@ -16,6 +16,7 @@ import threading
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_sound import cleanup
+from rostrum_sound.doc import media
 from rostrum_sound.cleanup import fetch
 
 from . import voice_actions as V
@@ -189,7 +190,7 @@ class CleanedTake(QObject):
         never hits "take not made yet"; its settings stay and Make cleaned take tries again."""
         doc = self.bridge.doc
         todo = [i for i in ids if doc.has(i) and cleanup.needs_cleanup(doc.item(i))
-                and cleanup.cached(doc.item(i)["media"], cleanup.recipe_of(doc.item(i))) is None]
+                and cleanup.cached(media.file(doc.item(i)["media"]), cleanup.recipe_of(doc.item(i))) is None]
         if todo:
             self.bridge._guard(lambda: self.bridge._apply(
                 [{"op": "clip.set", "target": todo, "args": {"useCleaned": False}}], "Play the original"))
@@ -206,7 +207,7 @@ class CleanedTake(QObject):
             return {}
         c = doc.item(sel)
         recipe = cleanup.recipe_of(c)
-        return self._measure.of(sel, c["media"], recipe) if recipe and not self._busy else {}
+        return self._measure.of(sel, media.file(c["media"]), recipe) if recipe and not self._busy else {}
 
     def demo(self, line: str, warn: str = "", status: str = ""):
         """The layout check's seam: show this result line / warning (and a status) as if measured."""
@@ -238,9 +239,9 @@ class CleanedTake(QObject):
         if sel and doc.has(sel) and doc.item(sel)["type"] == "clip":
             c = doc.item(sel)
             recipe = cleanup.recipe_of(c)
-            key = (c["media"], str(sorted(recipe.items())))
+            key = (media.file(c["media"]), str(sorted(recipe.items())))
             if recipe and key not in self._made:
-                if cleanup.cached(c["media"], recipe) is None:
+                if cleanup.cached(media.file(c["media"]), recipe) is None:
                     clip = sel
                 else:
                     self._made.add(key)

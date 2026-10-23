@@ -191,7 +191,7 @@ def open_doc(cls, folder, item, kind):
 def _upgrade(doc, kind, path):
     """An older file brought up to date (DocKind.upgrade) as one change by Rostrum; one that wouldn't pass the
     document check is refused loudly, never opened half-converted."""
-    up = kind.upgrade(doc.data, kind.lists) if kind.upgrade else None
+    up = kind.upgrade(doc.data, kind.lists, getattr(doc, "folder", None)) if kind.upgrade else None
     if up is None:
         return
     new, label = up

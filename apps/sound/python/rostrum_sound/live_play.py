@@ -8,7 +8,8 @@ to the sample.
     p.configure(mic=dir, midi=n, instrument=file, bpm=b, beats=n)   # a different set-up reopens it (position kept)
     p.set_state(countIn=1, record={"punch": [a, b]}, hear=True)      # remembered and sent again after a reopen
 
-Out: `rolling`, `ended`, `take`, `note`, `level` (input peak dB), `problem` (loud lines), `changed` (opened / gone).
+Out: `rolling`, `ended`, `take`, `note`, `level` (input peak dB), `levels` (every strip's [peak dB, RMS dB] at the
+speaker ~30 times a second while it plays, from the render's own levels; {} once when it stops), `problem` (loud lines), `changed` (opened / gone).
 The process runs on the shared output (`--shared`: the device stays usable by other apps) unless the person chose
 "Use speakers alone" in settings; the chosen speakers, microphone and buffer reach it as the engine's
 environment (settings.engine_env). It is started only when it is first needed. When it cannot open or dies (no output device, no microphone) it says why, loudly, and the
@@ -35,6 +36,7 @@ class LivePlay(QObject):
     take = Signal("QVariantMap")
     note = Signal("QVariantMap")
     level = Signal(float)
+    levels = Signal("QVariantMap")
     problem = Signal(str)
     changed = Signal()
     _line = Signal(int, "QVariantMap")         # from the reader thread, delivered on the screen's thread
@@ -200,6 +202,8 @@ class LivePlay(QObject):
             self.take.emit(m["take"])
         elif "note" in m:
             self.note.emit(m["note"])
+        elif "levels" in m:
+            self.levels.emit((m["levels"] or {}).get("strips") or {})
         elif "input" in m:
             self.level.emit(float(m["input"].get("peakDb", -100.0)))
         elif "error" in m:

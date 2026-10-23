@@ -40,8 +40,9 @@ class DocKind:
     # agent's replies carry them (mcp/server.py), inspect lists them, screens show them on the Problems chip.
     warn: Callable[[dict], list[str]] = _no_problems
     new: Callable[[], dict] | None = None               # a fresh document's root
-    # The app's upgrade: upgrade(data, lists) -> (new data, label) for what an older file holds that Rostrum now
-    # holds another way (2D: a gradient effect becomes the fill), or None. Run once on open (storage.open_doc) and
+    # The app's upgrade: upgrade(data, lists[, folder]) -> (new data, label) for what an older file holds that Rostrum
+    # now holds another way (2D: a gradient effect becomes the fill; Sound: absolute takes become project-relative,
+    # which needs the project `folder`, None without one), or None. Run once on open (storage.open_doc) and
     # recorded as one change, so the history before it replays as written and undo takes it back.
     upgrade: Callable | None = None
 
@@ -58,6 +59,9 @@ class DocKind:
                 return app_facts(item)
             return app_facts(item, self.view(doc) if doc is not None else None)
         self.facts = facts
+        app_up = self.upgrade
+        if app_up is not None and len(inspect.signature(app_up).parameters) < 3:
+            self.upgrade = lambda data, lists, folder=None: app_up(data, lists)
 
     def bad_values(self, items):
         """Each stored field value its kind's own field op refuses (range, kind of value, choices): the same rule

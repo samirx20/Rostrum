@@ -45,7 +45,7 @@ Click **Take**. The panel shows only what can be used now:
 ## 7. Where the take goes
 
 - It becomes one clip on the armed track, at the moment you started. Undo removes it in one step.
-- The sound file is saved in your song's folder, in `media`, named after the track's name and the take number (a track called Recording gives `Recording-take-1.wav`). Keep this in mind if you move the song: move its whole folder.
+- The sound file is saved in your song's folder, in `media`, named after the track's name and the take number (a track called Recording gives `Recording-take-1.wav`). The song remembers the file by its place inside the folder, so you can copy or move the whole song folder and the takes still play. If a take's file is deleted, play and export stop and name the clip, the track and the file.
 
 ## 8. Optional: a cleaner take
 

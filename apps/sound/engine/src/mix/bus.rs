@@ -126,7 +126,8 @@ pub fn master(s: &Schedule, inputs: &[Arc<Tape>]) -> Result<Mix, String> {
         None => (None, Default::default()),
     };
     gain.norm = 10f64.powf(report.gain_db / 20.0);
-    let mut mix = Mix { layout, out: None, peak: 0.0001, sum_sq: 0.0, sums: vec![0.0; nch], clipped: 0, lufs: -70.0, true_peak: -120.0, true_peak_series: vec![], ducks: vec![], tracks: vec![], buses: vec![], stems: vec![], bus_stems: vec![], gain: None, master: report, bands: [-140.0; 5], loud: None };
+    let mut mix = Mix { layout, out: None, peak: 0.0001, sum_sq: 0.0, sums: vec![0.0; nch], clipped: 0, lufs: -70.0, true_peak: -120.0, true_peak_series: vec![], ducks: vec![], tracks: vec![], buses: vec![], stems: vec![], bus_stems: vec![], gain: None, master: report, bands: [-140.0; 5], loud: None, levels: vec![] };
+    let mut win = crate::mix::render::levels::Windows::new(sr);
     let mut file = TapeWriter::new(nch, total)?;
     let (mut lufs, mut peaks, mut balance, mut loud) = (Lufs::new(nch, &weights, sr), Peaks::new(nch), Balance::new(sr, false), crate::analysis::loudstats::Meter::new(nch, &weights, sr));
     // The true peak of each 100 ms hop: the hop's loudest so far, and its frames.
@@ -152,16 +153,18 @@ pub fn master(s: &Schedule, inputs: &[Arc<Tape>]) -> Result<Mix, String> {
             None => gained(at, n)?,
         };
         for i in 0..n {
-            let (mut hot, mut sq) = (false, 0.0);
+            let (mut hot, mut sq, mut top) = (false, 0.0, 0.0f64);
             for (c, ch) in out.iter_mut().enumerate() {
                 let raw = ch[i] as f64;
                 hot |= raw.abs() >= 0.99;
                 let a = if s.safety_clip { safety_clip(raw) } else { raw };
                 ch[i] = a as f32;
-                mix.peak = mix.peak.max(a.abs());
+                top = top.max(a.abs());
                 sq += a * a;
                 mix.sums[c] += a;
             }
+            mix.peak = mix.peak.max(top);
+            win.frame(top, sq / nch as f64);
             mix.clipped += hot as usize;
             mix.sum_sq += sq / nch as f64;
         }
@@ -182,6 +185,7 @@ pub fn master(s: &Schedule, inputs: &[Arc<Tape>]) -> Result<Mix, String> {
     if hop_n > 0 {
         series.push(db(hop_max));
     }
+    mix.levels = win.finish();
     mix.lufs = lufs.finish();
     mix.true_peak = db(most);
     mix.true_peak_series = series;

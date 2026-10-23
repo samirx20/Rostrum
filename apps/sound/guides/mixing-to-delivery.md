@@ -33,9 +33,12 @@ The Mixer (X) has one strip per track, then the groups (buses), then the master.
   and its ducks with **+ Duck**;
 - where it plays to: "→ Master", or a pick of the groups when there are any;
 - **Pan** (C = centre) and its slider, which fills from the centre toward the side you pan to (double-click: back to the centre);
-- the fader with a dB scale beside it (+6, 0, −6 … −∞), and the meter with the highest level of the last render
-  above it. The meter is green below −6 dB, amber from −6 to 0 and red over 0, on every strip and the master; it is
-  empty until a render has measured the track. Rest the pointer on it for the track's loudness;
+- the fader with a dB scale beside it (+6, 0, −6 … −∞), and the meter with a number above it. While the song plays
+  the meter moves with what you hear: the wide bar is the average level (RMS), the thin bar beside it the peak, and a
+  mark holds the highest peak for a second before it falls; the number is that held peak. Stopped, the meter falls to
+  silence and the number is the highest level of the last render ("—" until a render has measured the track). The
+  levels are the engine's own, measured on the render that plays. Green below −6 dB, amber from −6 to 0 and red over
+  0, on every strip, group and the master. Rest the pointer on it for the track's loudness;
 - **M** (mute, amber), **S** (solo, green) and **R** (arm for recording, red), tracks only for S and R;
 - its volume in dB.
 
@@ -50,8 +53,8 @@ and the Master stays in place. The rest of the width is the loudness panel: its 
 target −14 LUFS (Streaming)"), then three numbers, **Integrated** (the whole mix; "so far" while playing),
 **Short-term** (the 3 seconds before the playhead; before the first 3 seconds, or when stopped at the start, it shows the last value in grey, and is absent until the song has had one) and **True peak** ("so far" while playing), and under them
 the short-term loudness over the song, with the target as a dashed line and the playhead. Integrated is green within
-1 of the target and amber outside; True peak is amber only over the ceiling. The Master strip's meter number is the
-same true peak. Rest the pointer on a number for what it means.
+1 of the target and amber outside; True peak is amber only over the ceiling. The Master strip's meter number, when
+stopped, is the same true peak. Rest the pointer on a number for what it means.
 An open effect's settings or a duck sit at the right end while they are open.
 
 ## Loudness words, briefly

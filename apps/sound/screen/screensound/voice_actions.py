@@ -4,6 +4,7 @@ agent has the same doors and each is one undo step. No Qt."""
 from __future__ import annotations
 
 from rostrum_sound import cleanup
+from rostrum_sound.doc import media
 
 from . import action_calls as C
 from . import voice_takes
@@ -39,7 +40,7 @@ def _cleaned(f):
 def ba_valid(f) -> bool:
     """Before / After: clips with a clean-up set; "After" only once the cleaned take is made (never silent)."""
     return _cleaned(f) and (not all(it.get("useCleaned", True) is False for it in f.items)
-                            or all(cleanup.cached(it["media"], cleanup.recipe_of(it)) for it in f.items))
+                            or all(cleanup.cached(media.file(it["media"]), cleanup.recipe_of(it)) for it in f.items))
 
 
 def ba_label(f) -> str:

@@ -37,6 +37,8 @@ pub struct Mix {
     pub master: crate::fx::master::MasterReport,
     /// Energy per band of the file (balance.rs BANDS, dB; a surround bed's stereo fold-down): its tonal balance.
     pub bands: [f64; 5],
+    /// The file's peak and RMS (dB) per 1/30 s window: the master strip's live meter (levels.rs).
+    pub levels: Vec<[f32; 2]>,
     /// The file's momentary / short-term loudness, loudness range and correlation (analysis/loudstats.rs).
     pub loud: Option<crate::analysis::loudstats::Stats>,
 }
@@ -84,6 +86,8 @@ pub struct TrackStats {
     pub speech: Vec<f64>,
     /// In a surround bed: each channel's share of the track's energy (0 … 1, the layout's order).
     pub shares: Option<Vec<f64>>,
+    /// Peak and RMS (dB) per 1/30 s window, song time: the Mixer's live meter (levels.rs).
+    pub levels: Vec<[f32; 2]>,
 }
 
 /// Onsets in 10 ms frame levels (dBFS): a frame above −50 dBFS that is 12 dB over the loudest of
@@ -140,6 +144,7 @@ pub(crate) struct TrackMeter {
     energy: Vec<f64>,
     lufs: crate::analysis::loudness::Lufs,
     balance: crate::analysis::balance::Balance,
+    win: super::levels::Windows,
 }
 
 impl TrackMeter {
@@ -149,6 +154,7 @@ impl TrackMeter {
             name: name.into(), nch, total, sr, at: 0, frame: (sr * 0.01).round().max(1.0) as usize, floor: 10f64.powf(-50.0 / 20.0),
             peak: 0.0, fs: 0.0, f0: 0, sum: 0.0, n: 0, first: None, last: 0, levels: vec![], energy: vec![0.0; nch],
             lufs: crate::analysis::loudness::Lufs::new(nch, &weights, sr), balance: crate::analysis::balance::Balance::new(sr, true),
+            win: super::levels::Windows::new(sr),
         }
     }
 
@@ -189,13 +195,15 @@ impl TrackMeter {
             });
         });
         for i in 0..n {
-            let mut p = 0.0;
+            let (mut p, mut top) = (0.0, 0.0f64);
             for (c, e) in chs.iter().zip(self.energy.iter_mut()) {
                 let a = c[i] as f64;
-                self.peak = self.peak.max(a.abs());
+                top = top.max(a.abs());
                 p += a * a;
                 *e += a * a;
             }
+            self.peak = self.peak.max(top);
+            self.win.frame(top, p / nch);
             self.fs += p / nch;
             let k = self.at + i + 1;
             if k - self.f0 == self.frame || k == self.total {
@@ -216,6 +224,7 @@ impl TrackMeter {
             bands,
             speech,
             shares: (self.nch > 2 && all > 0.0).then(|| self.energy.iter().map(|e| ((e / all) * 1000.0).round() / 1000.0).collect()),
+            levels: self.win.finish(),
             name: self.name,
             peak: self.peak,
         }

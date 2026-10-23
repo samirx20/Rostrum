@@ -1,6 +1,8 @@
 """The Mixer (bottom dock): one strip per track, one per bus, then the master. Exposed to QML as `mixer`.
 
-Strips come from the document (`strips.py`) and the last render's meters; every edit is the bridge's edit on the
+Strips come from the document (`strips.py`) and the last render's meters; `live` is every strip's level while the
+song plays ({id: [peak dB, RMS dB]}, the engine's `levels` lines: the render's own levels at the speaker's time),
+replaced as each line arrives (MixMeter.qml animates the fall and the held peak); every edit is the bridge's edit on the
 strip's item (the strip selects it first), so a fader drag is one scrub = one change. Adding an effect is the
 `effect.add` operation, then the new effect is selected so the inspector edits it.
 """
@@ -21,6 +23,7 @@ ROLES = ("id", "name", "reverb", "hue", "volume", "pan", "mute", "solo", "effect
 
 class MixPage(QObject):
     masterChanged = Signal()
+    liveChanged = Signal()
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
@@ -28,6 +31,8 @@ class MixPage(QObject):
         self._tracks = RowsModel(ROLES, self)
         self._buses = RowsModel(ROLES, self)
         self._master: dict = {}
+        self._live: dict = {}
+        bridge.transport.player.levels.connect(self._levels)
         self._plugins = PluginHub(bridge, playback.open_engine, self)
         self._ducks, self._loudness = ducks.DuckHub(bridge, self), LoudnessMeter(bridge, self)
         self._export, self._cleaning = RenderExport(bridge, self._loudness, parent=self), CleanedTake(bridge, self)
@@ -80,6 +85,14 @@ class MixPage(QObject):
     @Property("QVariantMap", notify=masterChanged)
     def master(self):
         return self._master
+
+    @Property("QVariantMap", notify=liveChanged)
+    def live(self):
+        return self._live
+
+    def _levels(self, strips_now: dict):
+        self._live = strips_now
+        self.liveChanged.emit()
 
     @Property("QVariantList", constant=True)
     def effectTypes(self):

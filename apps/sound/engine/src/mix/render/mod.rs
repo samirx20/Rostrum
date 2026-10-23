@@ -11,6 +11,7 @@
 //! the thread count. Every stage after the panner works on the bed's channels (bed/).
 
 mod clip;
+pub mod levels;
 mod placed;
 pub mod stats;
 pub mod stems;

@@ -10,6 +10,7 @@ from rostrum_core.mcp import Reply, Tools
 
 from .. import clean_clips, cleanup, listen
 from ..cleanup import fetch
+from ..doc import media as media_of
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
 FILES = {"type": "object", "additionalProperties": {"type": "string"},
@@ -40,7 +41,9 @@ def _from_clip(doc, clip_id):
     c = doc.item(clip_id)
     if c.get("type") != "clip":
         raise RostrumError(codes.BAD_ARGUMENT, "look_cleanup", f'"{clip_id}"', "is not a clip")
-    media, recipe = c["media"], cleanup.recipe_of(c)
+    with media_of.of(doc):
+        media = media_of.file(c["media"])
+    recipe = cleanup.recipe_of(c)
     after = _made(media, recipe, clip_id, "cleaned take") if recipe else None
     found = {s: cleanup.cached(media, {"stem": s}) for s in cleanup.STEMS}
     stems = None

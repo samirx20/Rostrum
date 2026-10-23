@@ -66,6 +66,7 @@ FIELDS = {
     ],
     "clip": [
         Param.text("media", group="Clip", label="File", control="file",
+                   help="A path relative to the project folder (media/take.wav), or an absolute path to a file kept elsewhere.",
                    filters=["Sound files (*.wav *.flac *.mp3 *.ogg *.aif *.aiff)"]), V.time("at", group="Clip"),
         N("in", 0, None, "Clip", "s", label="In-point"),
         V.length("length", group="Clip", help="How much of the file plays; left out = to its end."),

@@ -68,8 +68,7 @@ level line, floor and speech level drawn; the stems' levels over time, one row e
   moves it), each with `entry.json` (the step, engine, input and settings). The key is a hash of the input file's
   content, the step's model and version and its settings, so the same take is never made twice; over the cache's size
   cap, the least recently used entries go first.
-- A clip's `media` is used as written (an absolute path, or relative to the folder the app runs in), the same file the
-  engine opens; the cache finds the take by the file's content.
+- A clip's `media` is a path relative to the project folder (a recorded take: `media/<name>.wav`; `doc/media.py` is the one place that turns it into a file) or an absolute path to a file kept elsewhere; it is the same file the engine opens; the cache finds the take by the file's content.
 - Code: `python/rostrum_sound/cleanup/` (the steps and the chain), `clean_clips.py` (which take a clip plays),
   `doc/fields_cleanup.py` (the fields), `doc/ops_cleanup.py` (`clip.split_stems`), `mcp/tools_cleanup.py`,
   `listen/cleanup.py` and `listen/cleanup_draw.py` (the measures and pictures).

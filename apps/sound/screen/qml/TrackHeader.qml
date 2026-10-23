@@ -6,7 +6,7 @@ import "MixFormat.js" as F
 // line 1 its colour, a small picture of what it holds (TrackIcon), its name (click selects the track; Ctrl / Shift
 // add; right-click its actions; double-click the name or F2 renames it in place, double-click elsewhere opens the
 // Editor) and its volume in dB (set in the Mixer); line 2 its buttons, always there (TrackButtons: R M S A and the
-// lock); line 3 a thin level bar from the last render (TrackMeter). A short row folds to one line: the name and the
+// lock); line 3 a thin level bar, live while the song plays (TrackMeter). A short row folds to one line: the name and the
 // buttons (when narrow too: R, A and the lock only when on or on hover), the volume and the bar left out.
 Rectangle {
     id: h

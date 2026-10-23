@@ -7,7 +7,9 @@ microphone takes and keyboard takes can be checked without speakers, a microphon
 
 A microphone take is the source WAV's first seconds, its `start` the mix time it began at minus `--fake-delay` (the
 calibrated microphone delay the engine takes off). Notes ("60@0.2:0.45,64,…" or a MIDI file) are played from the
-moment the mix rolls, reported in mix seconds while recording is armed. Input level every 100 ms with --mic.
+moment the mix rolls, reported in mix seconds while recording is armed. Input level every 100 ms with --mic. The
+strips' levels are the render's own (`<mix>.levels.json`, written by the engine beside the mix), ~30 lines a second
+while it plays and `{"levels": null}` at the stop, as the engine says them; without that file, one error line.
 """
 import json
 import queue
@@ -63,9 +65,32 @@ def notes_of(text):
     return notes
 
 
+def levels_of(mix):
+    """The engine's levels beside the mix ({hop, strips: {id: [peak, rms] per window}}), or None (said, like the engine)."""
+    p = Path(mix).with_suffix(".levels.json")
+    try:
+        v = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        say(error=f"meters: no levels for this mix, the Mixer's meters stay still ({p}: {e})")
+        return None
+    strips = {k: [(w[i] / 10, w[i + 1] / 10) for i in range(0, len(w) - 1, 2)] for k, w in v["strips"].items()}
+    return {"hop": v["hop"], "strips": strips}
+
+
+def levels_line(lv, a, b):
+    i, j = int(max(a, 0) / lv["hop"]), int(max(b, 0) / lv["hop"])
+    i = min(i, j)
+    out = {}
+    for k, w in lv["strips"].items():
+        part = w[i:j + 1]
+        out[k] = [max((p[0] for p in part), default=-120.0), max((p[1] for p in part), default=-120.0)]
+    return {"t": round(b, 3), "strips": out}
+
+
 class Fake:
     def __init__(self, opts, mix):
         self.o, self.length = opts, sf.info(mix).duration
+        self.levels = levels_of(mix)
         self.pos, self.playing, self.count, self.armed, self.bars = float(opts.get("--from", 0)), False, 0.0, None, 0
         self.beat = 60.0 / float(opts.get("--bpm", 120)) * int(opts.get("--beats", 4))     # a bar, in seconds
         self.take, self.taken, self.rolled_at, self.notes = None, 0, None, []
@@ -101,6 +126,7 @@ class Fake:
                 say(error=f"{m['load']}: not found")
             else:
                 self.length = sf.info(m["load"]).duration
+                self.levels = levels_of(m["load"])
         elif "hear" in m or "metronome" in m:
             pass
         else:
@@ -172,6 +198,7 @@ def main(argv):
         if "--mic" in opts else None
     say(ready={"mode": "fake", "rate": 48000, "device": "fake", "seconds": f.length, "mic": mic})
     last, shown, said, level, going = time.monotonic(), None, 0.0, 0.0, True
+    metered, meter_at = None, 0.0
     while going:
         try:
             while True:
@@ -188,6 +215,13 @@ def main(argv):
         if t != shown and now - said >= 0.05:
             say(pos={"t": t, "playing": t is not None})
             shown, said = t, now
+        if f.levels and t is not None and now - meter_at >= 0.033:
+            a = metered if metered is not None and metered <= t < metered + 0.25 else t
+            say(levels=levels_line(f.levels, a, t))
+            metered, meter_at = t, now
+        elif f.levels and t is None and metered is not None:
+            say(levels=None)
+            metered = None
         if mic and now - level >= 0.1:
             level = now
             say(input={"peakDb": -23.0})

@@ -9,6 +9,7 @@
 `land_take` puts a take of the engine's live transport (the screen's, sample-placed) on a track.
 `record_take(doc, track, at, seconds)` does all of it for a script. Nothing here captures audio itself.
 Takes go in `<project folder>/media/` (a document without a folder: `./takes/`), named `<track name>-take-<n>.wav`.
+The clip stores the take relative to the project (`media/Recording-take-1.wav`): copy or move the folder and it still plays.
 """
 from __future__ import annotations
 
@@ -20,7 +21,7 @@ import threading
 import time
 from pathlib import Path
 
-from rostrum_core import RostrumError, codes
+from rostrum_core import RostrumError, codes, project
 
 from . import settings
 from .deliver import safe_name
@@ -49,7 +50,14 @@ def take_path(doc, track_id: str) -> Path:
 
 def take_call(track_id: str, wav, at) -> dict:
     """The one operation that puts a take on a track at time `at`."""
-    return {"op": "clip.add", "target": [track_id], "args": {"media": str(wav), "at": at}}
+    return {"op": "clip.add", "target": [track_id], "args": {"media": media_ref(doc, wav), "at": at}}
+
+
+def media_ref(doc, wav) -> str:
+    """How the clip stores a take: relative to the project folder, so the song can be copied or moved
+    (doc/media.py is the one place that turns it back into a file)."""
+    folder = getattr(doc, "folder", None)
+    return project.media_ref(folder, wav) if folder else str(wav)
 
 
 def land_take(doc, track_id: str, take: dict) -> dict:
@@ -63,7 +71,7 @@ def land_take(doc, track_id: str, take: dict) -> dict:
     dest = take_path(doc, track_id)
     shutil.move(str(src), dest)
     start = float(take["start"])
-    args = {"media": str(dest), "at": round(max(0.0, start), 4)}
+    args = {"media": media_ref(doc, dest), "at": round(max(0.0, start), 4)}
     if start < 0:
         args["in"] = round(-start, 4)
     return {"op": "clip.add", "target": [track_id], "args": args}
