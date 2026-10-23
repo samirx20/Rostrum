@@ -3,6 +3,8 @@ action to the drawn frame (win.grabWindow draws it), as median and worst of N re
 
     python tools/perf/measure_sound.py [--n 20]           # the table
     python tools/perf/measure_sound.py --soak 300         # memory (RSS) over 5 minutes of the same steps, looped
+    python tools/perf/measure_sound.py --switch 300       # 5 minutes of opening a song again and again, each
+                                                          # followed by a click and a selection: memory and live bridges
     python tools/perf/measure_sound.py --profile select   # cProfile of one step's repeats (top 25 by own+callee time)
 """
 import argparse
@@ -157,10 +159,39 @@ def soak(screen, song, seconds):
     print(f"RSS end {rss_mb():.0f} MB (growth {rss_mb() - base:+.0f} MB)", flush=True)
 
 
+def switch(screen, song, seconds):
+    """Open the song over and over (a new bridge and window each time), a click and a selection on each: the old
+    songs' bridges must be gone (gc) and memory flat; a Qt or Python fault on the way fails the run."""
+    import gc
+    from PySide6.QtCore import QPointF, Qt
+    from PySide6.QtGui import QMouseEvent
+    from rostrum_gui import qt_faults
+    from screensound.bridge import SoundBridge
+    t0, nxt, n, base, opens = time.monotonic(), 0, 0, None, []
+    while time.monotonic() - t0 < seconds:
+        opens.append(timed(screen, lambda: screen.files.openPath(str(song))))
+        for kind in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease):     # a click: FocusAreas hears it
+            QCoreApplication.sendEvent(screen.win, QMouseEvent(kind, QPointF(400, 300), QPointF(400, 300),
+                                                               Qt.LeftButton, Qt.LeftButton, Qt.NoModifier))
+        first = next(t["notes"][0]["id"] for t in screen.bridge.doc.data["tracks"] if t.get("notes"))
+        timed(screen, lambda: screen.bridge.select(first))
+        n += 1
+        if time.monotonic() - t0 >= nxt:
+            QCoreApplication.processEvents()
+            gc.collect()
+            live = sum(1 for o in gc.get_objects() if type(o) is SoundBridge)
+            base = base if base is not None else rss_mb()
+            print(f"t={time.monotonic() - t0:5.0f}s  opens {n:4d}  RSS {rss_mb():.0f} MB  live bridges {live}  "
+                  f"open {statistics.median(opens[-10:]):.0f} ms", flush=True)
+            nxt += 30
+    print(f"RSS growth {rss_mb() - base:+.0f} MB over {n} opens; faults {len(qt_faults.found())}", flush=True)
+
+
 def main():
     a = argparse.ArgumentParser()
     a.add_argument("--n", type=int, default=20)
     a.add_argument("--soak", type=float)
+    a.add_argument("--switch", type=float)
     a.add_argument("--profile")
     a.add_argument("--only", help="comma-separated step names (default: all)")
     args = a.parse_args()
@@ -170,7 +201,9 @@ def main():
         print(f"start total {total * 1000:.0f} ms (process start -> drawn): " + ", ".join(
             f"{k} {v * 1000:.0f} ms" for k, v in split.items()) + f", python start {(T0 - _proc_start()) * 1000:.0f} ms", flush=True)
         try:
-            if args.soak:
+            if args.switch:
+                switch(screen, song, args.switch)
+            elif args.soak:
                 soak(screen, song, args.soak)
             elif args.profile:
                 import cProfile
