@@ -14,7 +14,7 @@ from __future__ import annotations
 import rostrum_paint
 from rostrum_core import DocKind, Registry
 
-from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, paint_fields, pathdata, refusals, shared_paints, widthprofile
+from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, media, paint_fields, pathdata, refusals, shared_paints, widthprofile
 from .rig import model as rig_model
 
 OWNED = ["effects", "masks", "keys"]
@@ -150,10 +150,10 @@ def check(data: dict, items=None) -> list[str]:
     return problems + exprbake.problems_of_doc(data) + fontcheck.problems_of_doc(texts)
 
 
-def upgrade(data: dict, lists: dict):
+def upgrade(data: dict, lists: dict, folder=None):
     """An older file brought up to date, one step after another: (new data, label) or None."""
     labels = []
-    for step in (fill_paint.upgrade, shared_paints.upgrade):
+    for step in (fill_paint.upgrade, shared_paints.upgrade, lambda d, l: media.upgrade(d, l, folder)):
         up = step(data, lists)
         if up:
             data, label = up

@@ -10,7 +10,7 @@ the Python side (`python_only`): the engine never sees them. Rigs, long IK chain
 """
 from __future__ import annotations
 
-from . import drawing, exprbake, fields as F, fill_fields, fill_paint, layoutbake, paint_fields, project_sound, render3d, retime, stepped, swap, video
+from . import drawing, exprbake, fields as F, fill_fields, fill_paint, layoutbake, media, paint_fields, project_sound, render3d, retime, stepped, swap, video
 from .layout_fields import py_only
 from rostrum_core.keys import after, animated, keys_of, springs
 from rostrum_paint import library
@@ -53,6 +53,8 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | 
     if anim:
         node["anim"] = anim
     fill_paint.engine_props(item, node["props"])
+    if item["type"] in media.TYPES and (where or {}).get("folder") is not None and item.get("src"):
+        node["props"]["src"] = str(media.file(where["folder"], item))   # stored relative to the project: the file to open
     for key in ("effects", "masks", "layers") + (("stops",) if item["type"] == "gradient" else ()):   # a layer's own stops go as its fill (below)
         if item.get(key):
             node[key] = [_node(child, fps, baked, where) for child in item[key] if not child.get("hidden")]   # hidden: not drawn

@@ -100,6 +100,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("video-sound-row", with_video_sound(), ["sound wait", "select talk", "sound video"]),  # H33: a video's own sound
         ("video-sound-muted", with_video_sound(), ["sound wait", "sound video talk on", "timeline compact"]),
         ("rows-open", ["--sample"], ["select title", "open title"]),
+        ("rows-folded", ["--sample"], ["select title", "open title", "fold title"]),   # a folded layer: its one row, no lines under it
+        ("playhead-on-key", ["--sample"], ["select title", "time 1.0"]),     # the playhead exactly on a key
         ("two-selected", ["--sample"], ["selectmany title card"]),
         ("action-menu", ["--sample"], ["selectmany dot rule", "actionmenu"]),
         # H60: keys a frame apart on a zoomed-out timeline: one dot standing for the run (a second diamond behind it)

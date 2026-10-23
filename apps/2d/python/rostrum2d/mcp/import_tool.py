@@ -15,7 +15,7 @@ tools = Tools()
 
 @tools.tool("run_import", {"properties": {
     **ITEM_COMP,
-    "path": {"type": "string", "description": "The file (absolute, or relative to the project folder). Not for figma."},
+    "path": {"type": "string", "description": "The file (absolute, or relative to the project folder). Not for figma. A picture or video is copied into the project (media/image/, media/video/) and the layer names it by that place, so the project can move."},
     "kind": {"type": "string", "enum": list(importing.KINDS), "description": "Default: from the file's extension (figma: from `figma`)."},
     "page": {"type": "integer", "minimum": 0, "description": "pdf only: the page, counting from 1 (default 1); 0 = every page, each in a new composition (named Page N or the page's label), listed in `comps`."},
     "text": {"type": "string", "enum": ["text", "outline"], "description": "svg only: text as editable text layers (default) or as paths that look exactly like the source."},

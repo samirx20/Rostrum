@@ -44,7 +44,7 @@ stack or into another group; `inspect_item` with no `id` lists the tree.
 | Layer | Controls |
 |---|---|
 | `shape` | `shape` rect / ellipse, `w`, `h`, `radius` (corner), `fill`, `stroke`, `strokeColor`, `strokeWidth`. |
-| `image` | `src` (absolute, or relative to the project folder), `w`, `h`, `fit` cover / contain / stretch, `radius`. |
+| `image` | `src` (relative to the project folder for a file the project holds, e.g. `media/image/…png`; absolute for one kept outside it), `w`, `h`, `fit` cover / contain / stretch, `radius`. |
 | `video` | Same, plus `offset` (seconds into the clip), `speed`, `loop`. Frames are decoded once at the composition's fps; no sound here. |
 | `group` | `w`, `h`, `clip`. A group's opacity, blend, masks and effects apply to it as a whole. |
 
