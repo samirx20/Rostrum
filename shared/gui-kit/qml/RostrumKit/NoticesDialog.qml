@@ -89,7 +89,9 @@ QQC.Popup {
                 }
                 Text {  // the version has its own line: a long one ("12Hz, GGUFs from …") wraps there
                     id: versionText
-                    anchors { left: nameText.left; right: parent.right; rightMargin: Theme.gap; top: nameText.bottom; topMargin: 2 }
+                    anchors { left: nameText.left; right: parent.right; rightMargin: Theme.gap; top: nameText.bottom
+                              // a licence that wraps to several lines is taller than the name: the version starts below it
+                              topMargin: 2 + Math.max(0, licenceText.height - nameText.height) }
                     visible: text !== ""; height: visible ? implicitHeight : 0; wrapMode: Text.Wrap
                     text: row.modelData.version; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
                 }

@@ -7,10 +7,12 @@ entries plus these files) is under the cap; a file used in the last 15 minutes s
 finished (`*.tmp`, an ended process) goes once it is an hour old.
 
     cache_cap.trim()             # -> bytes freed (tests pass root= and cap=)
-    cache_cap.after_render()     # the same, at most once a minute, off the caller's thread
+    cache_cap.after_render()     # the same, at most once a minute, off the caller's thread, and never in the first
+                                 # START_QUIET_S of the process (the window is starting: a scan then costs the start)
 """
 from __future__ import annotations
 
+import os
 import threading
 import time
 from pathlib import Path
@@ -18,19 +20,29 @@ from pathlib import Path
 from rostrum_core.cache import KEEP_RECENT_S, Cache
 
 STALE_TMP_S = 3600
+START_QUIET_S = 45
+_born = time.monotonic()
 _last = [0.0]
 _lock = threading.Lock()
 
 
 def engine_files(root: Path) -> list[tuple[float, int, Path]]:
-    """(last used, bytes, file) of every engine cache file."""
-    out = []
-    for p in (Path(root) / "sound").rglob("*"):
+    """(last used, bytes, file) of every engine cache file. os.scandir hands over each file's size and time with
+    the listing itself (no stat call per file), so a few thousand files cost milliseconds."""
+    out, todo = [], [str(Path(root) / "sound")]
+    while todo:
         try:
-            if p.is_file():
-                st = p.stat()
-                out.append((st.st_mtime, st.st_size, p))
-        except OSError:                       # removed meanwhile by another process
+            with os.scandir(todo.pop()) as it:
+                for e in it:
+                    try:
+                        if e.is_dir(follow_symlinks=False):
+                            todo.append(e.path)
+                        elif e.is_file():
+                            st = e.stat()
+                            out.append((st.st_mtime, st.st_size, Path(e.path)))
+                    except OSError:               # removed meanwhile by another process
+                        continue
+        except OSError:                           # the folder is not there (yet) or went meanwhile
             continue
     return out
 
@@ -52,9 +64,11 @@ def trim(root=None, cap: int | None = None, now: float | None = None) -> int:
     return freed
 
 
-def after_render(min_gap_s: float = 60):
+def after_render(min_gap_s: float = 60, quiet_s: float = START_QUIET_S):
+    """A render ends: trim, but only once the process has been up `quiet_s` (the first renders are the start's own)."""
     with _lock:
-        if time.monotonic() - _last[0] < min_gap_s:
+        now = time.monotonic()
+        if now - _last[0] < min_gap_s or now - _born < quiet_s:
             return
-        _last[0] = time.monotonic()
+        _last[0] = now
     threading.Thread(target=trim, daemon=True, name="sound cache trim").start()

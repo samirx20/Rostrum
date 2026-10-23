@@ -13,6 +13,7 @@ Panel {
     visible: pop.ls.open
     title: "Lip sync · " + pop.ls.what
     onVisibleChanged: if (visible) forceActiveFocus()
+    Component.onCompleted: if (visible) forceActiveFocus()      // made already open (FirstUse): Esc works at once
     Keys.onEscapePressed: pop.close()
     function close() { pop.ls.close() }
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close  Esc"; onClicked: pop.close() }
