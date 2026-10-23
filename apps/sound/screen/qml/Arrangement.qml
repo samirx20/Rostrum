@@ -61,10 +61,10 @@ Rectangle {
                 tip: backend.looping ? "Looping the time range (Shift+L)" : "Loop the time range (Shift+L)"
                 anchors.verticalCenter: parent.verticalCenter; onClicked: backend.toggleLoop()
             }
-            Button {   // Click: the metronome (Shift+K), on while it is down; folds away in a squeezed panel (the key stays)
-                visible: a.width >= 900; text: "Click"; kind: "ghost"; down: backend.clickOn; height: Theme.field
+            IconButton {   // the metronome (Shift+K), on while it is down; folds away in a squeezed panel (the key stays)
+                visible: a.width >= 900; icon: "metronome"; kind: "ghost"; down: backend.clickOn
+                tip: backend.clickOn ? "Metronome click is on (Shift+K)" : "Metronome click (Shift+K)"
                 anchors.verticalCenter: parent.verticalCenter; onClicked: backend.toggleClick()
-                HoverTip { text: "Click (metronome) on / off (Shift+K)"; hovered: parent.hovered }
             }
             RecordControls { anchors.verticalCenter: parent.verticalCenter }
             Item { width: Theme.gap; height: 1 }
@@ -79,7 +79,7 @@ Rectangle {
             Item { visible: backend.picture !== ""; width: Theme.gap; height: 1 }
             Button {   // Grid ▾: the step every snap uses (timing.GRID; screen state)
                 id: gridBtn; kind: "ghost"; height: Theme.field; down: gridMenu.visible
-                text: "Grid " + (backend.gridChoices.find(c => c.value === backend.grid) || {label: ""}).label + " ▾"
+                text: "Grid " + (backend.gridChoices.find(c => c.value === backend.grid) || {label: ""}).label; chevron: true
                 onClicked: { const p = gridBtn.mapToItem(null, 0, gridBtn.height + 2); gridMenu.openAt(p.x, p.y) }
                 HoverTip { text: "The grid notes, clips and ranges snap to (Auto follows the zoom)"; hovered: parent.hovered && !gridMenu.visible }
                 ActionMenu { id: gridMenu; entries: backend.gridChoices; onPicked: (v) => backend.setGrid(v) }

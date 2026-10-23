@@ -18,6 +18,14 @@ Item {
     readonly property var cleaning: mixer.cleaning.progress                // clip id -> 0..1 while cleaning
     opacity: track.mute ? 0.45 : track.group ? 0.5 : 1      // a folded group's tracks, faint
 
+    property var cut: ({})        // block ids whose label is cut short (painted last): their whole name shows on hover
+    HoverHandler { id: over; onPointChanged: tipAt.x = point.position.x }
+    Item { id: tipAt; y: 0; width: 1; height: lane.height
+           HoverTip { id: nameTip; hovered: over.hovered; text: {
+               over.point.position; const b = (lane.track.blocks || []).find(b => lane.cut[b.id] && b.label
+                   && lane.ruler.xOf(b.t) <= over.point.position.x && over.point.position.x <= lane.ruler.xOf(b.t) + lane.ruler.wOf(b.dur))
+               return b ? b.label : "" } } }
+
     Canvas {
         id: c
         anchors.fill: parent
@@ -76,10 +84,15 @@ Item {
                 ctx.lineTo(x + 10, y0 + 12); ctx.lineTo(x + 6, y0 + 8); ctx.closePath(); ctx.fill()
             } else tag = 0
             if (showLabel && b.label) {
-                ctx.save(); ctx.beginPath(); ctx.rect(x + 6 + tag, y0, Math.max(0, w - 10 - tag - (b.canBack || b.canNext ? 38 : 0)), h); ctx.clip()
-                ctx.fillStyle = Theme.fg; ctx.font = (Theme.label - 1) + "px '" + uiFont + "'"; ctx.textBaseline = "top"
-                ctx.fillText(b.label, x + 6 + tag, y0 + 2)
-                ctx.restore()
+                ctx.font = (Theme.label - 1) + "px '" + uiFont + "'"
+                var room = Math.max(0, w - 10 - tag - (b.canBack || b.canNext ? 38 : 0)), text = b.label
+                if (ctx.measureText(text).width > room) {      // cut at a whole letter, with an ellipsis; the whole name on hover
+                    lane.cut[b.id] = true
+                    while (text.length > 1 && ctx.measureText(text + "…").width > room) text = text.slice(0, -1)
+                    text = text.length > 1 || room > 12 ? text + "…" : ""
+                } else delete lane.cut[b.id]
+                ctx.fillStyle = Theme.fg; ctx.textBaseline = "top"
+                ctx.fillText(text, x + 6 + tag, y0 + 2)
             }
         }
 

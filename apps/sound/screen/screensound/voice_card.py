@@ -20,7 +20,9 @@ def when_text(at) -> str:
     """A line's time as it was written: "12.5 s", "beat 8", "#drop+0.5"."""
     if isinstance(at, dict):
         return f"beat {at.get('beat', 0):g}"
-    return f"{at:g} s" if isinstance(at, (int, float)) else str(at)
+    if isinstance(at, (int, float)):
+        return f"{at:g} s" if at else "at the start"       # never a bare "0 s"
+    return str(at)
 
 
 def card_roles(track: dict, state: dict) -> dict:

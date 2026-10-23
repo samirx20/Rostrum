@@ -3,7 +3,7 @@ one sound made of several layers (rostrum_sound/doc/ops_group.py's `mates`: the 
 returned) unless one clip is selected, it has a group, and that group has another member."""
 from __future__ import annotations
 
-from . import inspect, timing
+from . import timing
 
 
 def of(doc, ids: list[str]) -> dict:
@@ -20,6 +20,6 @@ def of(doc, ids: list[str]) -> dict:
         return {}
     layers = sorted([item, *others], key=lambda it: (timing.sec(it["at"], doc.data, it["id"]), it["id"]))
     return {"group": item["group"], "rows": [
-        {"id": it["id"], "label": inspect.label(it), "what": "Clip",
-         "here": it["id"] == ids[0]} for it in layers]}
+        {"id": it["id"], "label": f"Layer {n}", "what": f'at {timing.sec(it["at"], doc.data, it["id"]):g} s',
+         "here": it["id"] == ids[0]} for n, it in enumerate(layers, 1)]}
 
