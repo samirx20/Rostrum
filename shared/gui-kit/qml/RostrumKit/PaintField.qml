@@ -13,7 +13,7 @@ SwatchHex {
     id: f
     objectName: "paintField"
     property var paint: ({ type: "none" })
-    property var types: ["none", "solid", "linear", "radial", "angular", "image"]
+    property var types: ["none", "solid", "linear", "radial", "angular"]
     property int maxStops: 8
     property bool stopOpacity: true
     property bool scrubbed: false
@@ -21,7 +21,6 @@ SwatchHex {
     signal began()
     signal live(var paint)
     signal ended()
-    signal chooseImage()
 
     property var cur: paint               // what the swatch shows while the picker is open
     property bool changing: false
@@ -29,7 +28,7 @@ SwatchHex {
     onPaintChanged: cur = paint
     readonly property string kind: cur && cur.type ? cur.type : "none"
     readonly property int count: cur && cur.stops ? cur.stops.length : 0
-    readonly property string name: ({ none: "None", solid: "Solid", image: "Picture",
+    readonly property string name: ({ none: "None", solid: "Solid", picture: "Picture",
         linear: "Linear · " + count + " stops", radial: "Radial · " + count + " stops",
         angular: "Angular · " + count + " stops" })[kind] || "Solid"
 
@@ -65,7 +64,6 @@ SwatchHex {
                 if (f.scrubbed) { if (!f.changing) f.began(); f.live(p) }
                 f.changing = true
             }
-            onChooseImage: f.chooseImage()
             onSwatchAdd: (hx) => f.saveSwatch(hx)
         }
     }

@@ -2,7 +2,7 @@ import QtQuick
 import "."
 
 // The small drawn icons of the paint pickers, 14 x 14, one `ink` colour: the fill types (none, solid, linear, radial,
-// angular, image) and "pipette" (pick from the screen) and "swap" (reverse the stops).
+// angular, picture) and "pipette" (pick from the screen) and "swap" (reverse the stops).
 Canvas {
     id: c
     property string kind: "solid"
@@ -27,7 +27,7 @@ Canvas {
             else { grad = g.createConicalGradient(7, 7, 0); grad.addColorStop(0, fade(1)); grad.addColorStop(0.5, fade(0.15)); grad.addColorStop(1, fade(1)) }
             g.fillStyle = grad
             g.beginPath(); g.roundedRect(1.5, 1.5, 11, 11, 2.5, 2.5); g.fill()
-        } else if (k === "image") {
+        } else if (k === "picture") {
             g.beginPath(); g.roundedRect(1.5, 1.5, 11, 11, 2.5, 2.5); g.stroke()
             g.beginPath(); g.moveTo(2.5, 10.5); g.lineTo(5.5, 6.5); g.lineTo(8, 9); g.lineTo(9.5, 7.5); g.lineTo(11.5, 10.5); g.stroke()
         } else if (k === "pipette") {

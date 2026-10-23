@@ -15,6 +15,7 @@ Item {
     property real ox: 0
     property real oy: 0
     property rect cover: Qt.rect(0, 0, 0, 0)
+    property bool sizing: false                         // Alt + right-drag sizes the brush: only the ring shows, no swatch
     readonly property var sel: backend.strokeSelect
     readonly property var pick: backend.colourPick      // .swatch: the colour under the pointer while Alt is held; .at: where (composition px)
 
@@ -71,7 +72,7 @@ Item {
         y: (ov.knobBelow ? handles.y + handles.height + 24 : handles.y - 24) - height / 2
     }
     Rectangle {  // the picker: the colour under the pointer, beside it
-        visible: ov.pick.alt && ov.pick.swatch !== ""
+        visible: ov.pick.alt && ov.pick.swatch !== "" && !ov.sizing
         x: ov.ox + ov.pick.at.x * ov.fit + 16; y: ov.oy + ov.pick.at.y * ov.fit + 16
         width: 28; height: 28; radius: 14
         color: ov.pick.swatch || "transparent"; border.width: 2; border.color: "white"

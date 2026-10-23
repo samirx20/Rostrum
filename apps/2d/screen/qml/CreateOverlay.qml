@@ -3,8 +3,9 @@ import QtQuick.Shapes
 import RostrumKit
 
 // The creation tools over the canvas (screen2d/create.py does the work; the tool rail, R, O and T turn them on).
-// Rectangle / Ellipse: press-drag-release draws one (Shift = square / round, Alt = from the centre, a click = 200 px
-// there); the outline and its size ("320 × 180") follow the pointer. Text: click and type, or drag a box to wrap in;
+// A shape kind (Rectangle, Ellipse, Star, … backend.create.kinds): press-drag-release draws one (Shift = square / round,
+// Alt = from the centre, a click = 200 px there); its box (an ellipse as an ellipse) and its size ("320 × 180") follow
+// the pointer. A line or an arrow is dragged from its start to its end (Shift = 45° steps). Text: click and type, or drag a box to wrap in;
 // a click outside, Esc or Ctrl+Enter ends (the text stays selected; no Done), Enter is a new line. Double-click a text
 // (Stage.qml) or Enter with it selected (Main.qml) types in it again, on the canvas only.
 // While typing the engine's own picture shows the words; the box here is transparent text with the cursor, lined up
@@ -15,7 +16,8 @@ Item {
     readonly property var create: backend.create
     readonly property real scale: stage ? stage.compScale : 1
     readonly property string tool: backend.tool
-    readonly property bool creating: tool === "rect" || tool === "ellipse" || tool === "text"
+    readonly property bool shapeTool: create.kinds.some(k => k.kind === tool)
+    readonly property bool creating: shapeTool || tool === "text"
     readonly property var box: create.box
     readonly property var look: create.style
     // the one mapping (Stage.qml), from this overlay's own px (it lies in the canvas well)
@@ -33,7 +35,7 @@ Item {
         property point p0
         property real px: 0
         property real py: 0
-        property bool shape: ov.tool === "rect" || ov.tool === "ellipse"
+        property bool shape: ov.shapeTool
         property bool ending: false                           // this press ended typing: its release makes nothing
         onPressed: (m) => {
             ending = ov.create.typing                         // a press here is outside the typing box (that takes its own):
@@ -59,12 +61,12 @@ Item {
     }
     Item {              // the shape being drawn (an ellipse as an ellipse)
         id: shapeBox
-        readonly property bool on: ov.box.kind === "rect" || ov.box.kind === "ellipse"
+        readonly property bool on: ov.box.kind !== undefined && ov.box.kind !== "text" && ov.box.x0 === undefined
         visible: on
         x: on ? ov.fromComp(ov.box.x, ov.box.y).x : 0; y: on ? ov.fromComp(ov.box.x, ov.box.y).y : 0
         width: on ? ov.box.w * ov.scale : 0; height: on ? ov.box.h * ov.scale : 0
         readonly property color wash: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.15)
-        Rectangle { visible: ov.box.kind === "rect"; anchors.fill: parent; color: shapeBox.wash; border.width: 1.5; border.color: Theme.accent }
+        Rectangle { visible: ov.box.kind !== "ellipse"; anchors.fill: parent; color: shapeBox.wash; border.width: 1.5; border.color: Theme.accent }
         Shape {
             visible: ov.box.kind === "ellipse"; anchors.fill: parent
             ShapePath {
@@ -73,6 +75,15 @@ Item {
                                startAngle: 0; sweepAngle: 360 }
             }
         }
+    }
+    Shape {             // a line or an arrow being drawn: start to end
+        id: along
+        readonly property bool on: ov.box.x0 !== undefined
+        visible: on
+        readonly property point a: on ? ov.fromComp(ov.box.x0, ov.box.y0) : Qt.point(0, 0)
+        readonly property point b: on ? ov.fromComp(ov.box.x1, ov.box.y1) : Qt.point(0, 0)
+        ShapePath { strokeColor: Theme.accent; strokeWidth: 2; fillColor: "transparent"; capStyle: ShapePath.RoundCap
+                    startX: along.a.x; startY: along.a.y; PathLine { x: along.b.x; y: along.b.y } }
     }
     Rectangle {         // the live size, by the pointer
         visible: ov.box.label !== undefined

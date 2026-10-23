@@ -3,7 +3,7 @@ import QtQuick.Controls as QQC
 import RostrumKit
 
 // A rail group's flyout (design v2 §2.1, mockup 02): beside the rail at the group's icon, its entries as icon + name,
-// the key in the corner; no descriptions. A click picks one and closes it; Esc or a click anywhere else closes it.
+// the key in the corner; no descriptions. A shape kind's icon is ShapeIcon.qml. A click picks one and closes it; Esc or a click anywhere else closes it.
 QQC.Popup {
     id: fly
     property string group: ""
@@ -12,6 +12,7 @@ QQC.Popup {
     parent: QQC.Overlay.overlay
     padding: 6
     closePolicy: QQC.Popup.CloseOnPressOutside | QQC.Popup.CloseOnEscape
+    focus: true                        // Esc reaches it: the first Esc closes the panel (Main.qml: the next ones step back)
     background: Rectangle { color: Theme.raised; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
     function show(g, button) {
         group = g.id; items = g.items
@@ -30,11 +31,15 @@ QQC.Popup {
                 id: cell
                 required property var modelData
                 readonly property bool on: modelData.tool !== undefined && modelData.tool === backend.tool
-                objectName: "fly_" + (modelData.tool || modelData.act)
+                objectName: "fly_" + (modelData.tool || modelData.act)   // fly_star, fly_image, …
                 width: 84; height: 58; radius: Theme.radiusCtl
                 color: tap.pressed || cell.on ? Theme.active : hover.hovered ? Theme.hover : "transparent"
                 ToolIcon { anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 9 }
-                           name: cell.modelData.icon; ink: cell.on || hover.hovered ? Theme.fg : Theme.fg2 }
+                           visible: !cell.modelData.shape
+                           name: cell.modelData.shape ? "" : cell.modelData.icon; ink: cell.on || hover.hovered ? Theme.fg : Theme.fg2 }
+                ShapeIcon { anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 9 }
+                           visible: !!cell.modelData.shape
+                            name: cell.modelData.shape ? cell.modelData.icon : ""; ink: cell.on || hover.hovered ? Theme.fg : Theme.fg2 }
                 Text {
                     anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 7 }
                     width: parent.width - 6; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight

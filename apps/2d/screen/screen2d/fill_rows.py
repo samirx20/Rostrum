@@ -42,7 +42,20 @@ def call(item_id: str, paint: dict, t: float = 0.0) -> dict:
         args["stops"] = [f'{s["color"]} {round(s["at"] * 100, 2)} {round(s.get("opacity", 1.0) * 100, 2)}'
                          for s in sorted(paint.get("stops", []), key=lambda s: s["at"])] or None
         args.update({k: paint[k] for k in ("angle", "cx", "cy") if paint.get(k) is not None})
+    if paint["type"] in ("linear", "radial") and paint.get("span") == "points":     # the canvas handles' length too
+        args.update({k: paint[k] for k in ("span", "x1", "y1", "x2", "y2", "rx", "ry") if paint.get(k) is not None})
+    if paint["type"] == "picture":
+        args.update(picture=_path(paint.get("picture") or ""), fit=paint.get("fit"), scale=paint.get("scale"))
     return {"op": "layer.fill", "target": [item_id], "args": {k: v for k, v in args.items() if v is not None}}
+
+
+def _path(picture: str) -> str | None:
+    """The picker's file (the dialog's file:// url, or a path already) as a path."""
+    if picture.startswith("file:"):
+        from urllib.parse import urlparse
+        from urllib.request import url2pathname
+        return url2pathname(urlparse(picture).path)
+    return picture or None
 
 
 def _at(item: dict, t: float) -> dict:

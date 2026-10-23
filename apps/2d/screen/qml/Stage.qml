@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import RostrumKit
+import "Mods.js" as Mods
 
 // The canvas: the engine's frame at the playhead (image://frame, rendered off the GUI thread) on a neutral backdrop,
 // shown through the view (CanvasView.qml: zoom and pan, screen state), with the selected layers' outlines (Handles.qml:
@@ -142,7 +143,7 @@ Rectangle {
                 property real size0: 0
                 property real hard0: 0
                 onActiveChanged: {
-                    on = active && ((centroid.modifiers & Qt.AltModifier) !== 0 || backend.colourPick.alt)   // Alt, as paint_pick.py reads it
+                    on = active && (Mods.alt(centroid) || backend.colourPick.alt)   // Alt, as paint_pick.py reads it
                     if (on) { from = centroid.pressPosition; size0 = painter.brushNow.size; hard0 = painter.brushNow.hardness }
                 }
                 onTranslationChanged: if (on) {
@@ -166,7 +167,7 @@ Rectangle {
                     var p = at()
                     if (active && backend.colourPick.alt) { backend.colourPick.pickAt(p.x, p.y); mode = "" }       // Alt: pick the colour
                     else if (active && backend.fill.on) { backend.fill.fillAt(p.x, p.y); mode = "" }                 // Fill (G): a click fills
-                    else if (active && (backend.strokeSelect.armed || (Qt.application.keyboardModifiers & Qt.ControlModifier))) {
+                    else if (active && (backend.strokeSelect.armed || Mods.ctrl(point))) {
                         backend.strokeSelect.beginLasso(p.x, p.y); mode = "lasso"                                    // a lasso round strokes
                     } else if (active && backend.strokeSelect.handleAt(p.x, p.y, view.zoom) !== "") {
                         backend.strokeSelect.beginHandle(backend.strokeSelect.handleAt(p.x, p.y, view.zoom), p.x, p.y); mode = "handle"   // a corner scales, the knob turns
@@ -189,13 +190,14 @@ Rectangle {
                     if (mode === "stroke") painter.strokeTo(p.x, p.y, pressure)
                     else if (mode === "lasso") backend.strokeSelect.lassoTo(p.x, p.y)
                     else if (mode === "move") backend.strokeSelect.moveBy(p.x - from.x, p.y - from.y)
-                    else if (mode === "handle") backend.strokeSelect.handleTo(p.x, p.y, (Qt.application.keyboardModifiers & Qt.ShiftModifier) !== 0)
+                    else if (mode === "handle") backend.strokeSelect.handleTo(p.x, p.y, Mods.shift(point))
                 }
             }
             StrokeOverlay {     // the lasso, the picked strokes, the colour picker's swatch
                 id: strokes
                 anchors.fill: parent
                 fit: view.zoom; ox: view.ox; oy: view.oy
+                sizing: sizing.active || (sizing.centroid.pressedButtons & Qt.RightButton) !== 0
                 cover: bar.visible ? Qt.rect(bar.x, bar.y, bar.width, bar.height) : Qt.rect(0, 0, 0, 0)    // the turn knob goes below the strokes rather than under the bar
             }
         }
@@ -215,26 +217,26 @@ Rectangle {
             function stop() { if (moving) backend.endDrag(); moving = false; band = false }
             onPressed: (m) => {
                 var p = comp(m)
-                deep = (m.modifiers & Qt.ControlModifier) !== 0
+                deep = Mods.ctrl(m)
                 var hit = backend.multi.target(p.x, p.y, deep ? "deep" : "click")
                 sx = m.x; sy = m.y; band = false; moving = false
                 if (hit === "") { band = true; b0 = p; b1 = p; return }                         // nothing painted: a rubber band
-                if (m.modifiers & Qt.ShiftModifier) backend.multi.toggle(hit)                   // Shift+click: add / remove
+                if (Mods.shift(m)) backend.multi.toggle(hit)                   // Shift+click: add / remove
                 else if (!backend.multi.has(hit)) backend.multi.pick(p.x, p.y, deep ? "deep" : "click")   // else keep the selection and move it
                 moving = backend.multi.has(hit) && backend.beginMove()
             }
             onDoubleClicked: (m) => { var p = comp(m); if (!backend.create.editAt(p.x, p.y)) backend.multi.pick(p.x, p.y, "in") }   // a text: type in it; else one level into the group
             onPositionChanged: (m) => {
                 if (moving) {
-                    backend.snap.keys((m.modifiers & Qt.ControlModifier) !== 0 && !deep, (m.modifiers & Qt.ShiftModifier) !== 0)
+                    backend.snap.keys(Mods.ctrl(m) && !deep, Mods.shift(m))
                     backend.moveBy((m.x - sx) / view.zoom, (m.y - sy) / view.zoom)
                 } else if (band) b1 = comp(m)
             }
             onReleased: (m) => {
                 if (band) {
                     if (Math.abs(m.x - sx) + Math.abs(m.y - sy) < 4) backend.pickAt(b0.x, b0.y)   // a click: the composition
-                    else backend.multi.boxSelect(b0.x, b0.y, b1.x, b1.y, ((m.modifiers & Qt.ShiftModifier) ? "shift " : "")
-                                                 + ((m.modifiers & Qt.ControlModifier) ? "ctrl" : ""))   // Shift adds, Ctrl: the deepest pieces
+                    else backend.multi.boxSelect(b0.x, b0.y, b1.x, b1.y, (Mods.shift(m) ? "shift " : "")
+                                                 + (Mods.ctrl(m) ? "ctrl" : ""))   // Shift adds, Ctrl: the deepest pieces
                 }
                 stop()
             }
@@ -242,7 +244,7 @@ Rectangle {
         }
         PenOverlay {  // the pen tool and the selected path's points (not while playing: they'd lag)
             anchors.fill: parent
-            visible: !backend.playing && !well.drawing && ["rect", "ellipse", "text", "camera", "bone"].indexOf(backend.tool) < 0   // one input layer per tool
+            visible: !backend.playing && !well.drawing && ["text", "camera", "bone"].concat(backend.create.kinds.map(k => k.kind)).indexOf(backend.tool) < 0   // one input layer per tool
             fit: view.zoom; ox: view.ox; oy: view.oy
         }
         CameraOverlay { anchors.fill: parent; stage: panel }   // C: drag pans the camera, Alt+drag pushes in

@@ -6,8 +6,8 @@ import RostrumKit
 // The tool rail (design v2 §2.1): icons only, its own column left of the canvas, never over it. Groups from the top:
 // Select, Shapes, Pen, Text, Brush | Media, Sound, Camera | Hand / Zoom, Bones. A group with one entry is a plain
 // button; a group with more opens its flyout beside the rail (ToolFlyout.qml). A tool group's icon is its last-used
-// tool (pick Ellipse once and the Shapes icon is an ellipse), and it reads that from backend.tool, so a key (R, O, H, Z)
-// moves it too. Only what can be used now is listed (rule of individuality): a 3D render only with Rostrum3D, Sound
+// tool (pick Star once and the Shapes icon is a star), and it reads that from backend.tool, so a key (R, O, H, Z)
+// moves it too. The Shapes flyout lists every shape kind (backend.create.kinds = fields.SHAPE_KINDS), each its own icon. Only what can be used now is listed (rule of individuality): a 3D render only with Rostrum3D, Sound
 // only while the selection can take a cue, Bones only with a rig in hand. The one tool switch is backend.setTool.
 // Brush is its own kind of group: a click turns painting on and opens the brush panel (BrushFlyout.qml: the five
 // paint tools and the brushes); its icon is the paint tool last used (backend.paintTool.now).
@@ -23,9 +23,8 @@ Rectangle {
     // entry: {name, icon, job (key map job: the key shown), help, tool (a canvas tool) or act (does it now)}
     readonly property var groups: [
         { id: "select", items: [{ name: "Select", icon: "select", job: "move_tool", tool: "move", help: "Pick layers, move them, and drag their handles." }] },
-        { id: "shapes", items: [
-            { name: "Rectangle", icon: "rect", job: "rect_tool", tool: "rect", help: "Drag out a rectangle." },
-            { name: "Ellipse", icon: "ellipse", job: "ellipse_tool", tool: "ellipse", help: "Drag out an ellipse." }] },
+        { id: "shapes", name: "Shapes", items: backend.create.kinds.map(k => ({ name: k.name, icon: k.kind, shape: true, tool: k.kind,
+            job: k.kind === "rect" || k.kind === "ellipse" ? k.kind + "_tool" : "" })) },
         { id: "pen", items: [{ name: "Pen", icon: "pen", job: "pen_tool", tool: "pen", help: "Click and drag points to draw a path." }] },
         { id: "text", items: [{ name: "Text", icon: "text", job: "text_tool", tool: "text", help: "Click or drag a box on the canvas, then type." }] },
         { id: "brush", items: [{ name: "Brush", icon: "brush", job: "paint_tool", tool: "draw", help: "Paint strokes, on a drawing or on the selected layer." }] },
@@ -105,8 +104,10 @@ Rectangle {
                     color: area.pressed || slot.on ? Theme.active : hover.hovered ? Theme.hover : "transparent"
                     Behavior on color { ColorAnimation { duration: Theme.fast } }
                 }
-                ToolIcon { visible: !slot.g.sep && !slot.brush; anchors.centerIn: parent; name: slot.e ? slot.e.icon : ""
+                ToolIcon { visible: !slot.g.sep && !slot.brush && !(slot.e && slot.e.shape); anchors.centerIn: parent; name: slot.e ? slot.e.icon : ""
                            ink: slot.on || hover.hovered ? Theme.fg : Theme.fg2 }
+                ShapeIcon { visible: !!(slot.e && slot.e.shape); anchors.centerIn: parent; name: slot.e && slot.e.shape ? slot.e.icon : ""
+                            ink: slot.on || hover.hovered ? Theme.fg : Theme.fg2 }
                 PaintToolIcon { visible: slot.brush; anchors.centerIn: parent; name: backend.paintTool.now
                                 ink: slot.on || hover.hovered ? Theme.fg : Theme.fg2 }
                 Canvas {   // the corner mark of a group with a flyout

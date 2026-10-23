@@ -13,6 +13,7 @@ QQC.Popup {
     parent: QQC.Overlay.overlay
     padding: 8
     closePolicy: QQC.Popup.CloseOnPressOutside | QQC.Popup.CloseOnEscape
+    focus: true                        // Esc reaches it: the first Esc closes the panel (Main.qml: the next ones step back)
     background: Rectangle { color: Theme.raised; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
     readonly property int tileW: 112
     readonly property int tileH: 27
