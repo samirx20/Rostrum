@@ -1,12 +1,13 @@
 import QtQuick
 import RostrumKit
+import "KeyGroups.js" as KeyGroups
 
 // A timeline row's time side (LayerRows.qml), under the ruler (x = ruler.x - 8). A layer row draws a slim bar from its
 // first key to its last (vertically centred, blank: no text, no ease mark; no keys, no bar); a selected layer's bar
 // is drawn brighter with an accent outline, the row itself stays as it is (Sam, H49: no box across the whole row). Drag the bar to move the layer in time: backend.beginBarDrag /
 // barDragTo / endDrag (one gesture = one change; near a marker or the playhead it snaps). When it shows (Starts at /
 // Ends at) is set in the panel; an end tied to a marker is a small flag at that time.
-// Keys sit on it as diamonds (all the layer's keys); a drawing's frames lie on it (FrameMarks). Setting, effect and
+// Keys sit on it as diamonds (all the layer's keys; keys closer than a diamond share one, a second diamond behind it, until zoomed in: KeyGroups.js); a drawing's frames lie on it (FrameMarks). Setting, effect and
 // mask rows show their keys only. Click a diamond: the key is selected (the inspector shows its ease); drag it: key.set
 // t (it lands on a marker within 6 px). Between two keys of one setting a stretch can be clicked (StretchBand.qml). A click anywhere else on the row selects its layer, a drag there draws a box
 // that picks every key it touches (on several rows). The ease shows in the settings panel when a stretch or key is
@@ -22,6 +23,7 @@ Rectangle {
     function xOf(t) { return 8 + Math.round(ruler.xOf(t)) }
     function onBar(k) { return k.t >= (rowData.start || 0) - 1e-6 && k.t <= (rowData.end || 0) + 1e-6 }   // a key in the layer's time
     function tAt(item, x) { return ruler.tOf(item.mapToItem(track, x, 0).x - 8) }
+    function dots(keys) { return KeyGroups.group(keys, ruler.perSec, 9) }   // keys that would touch: one dot for the run
     readonly property bool cells: (rowData.frames || []).length > 0     // a drawing's cells are its bar: no second one over them
     readonly property var barKeys: isLayer && rowData.bar === true && !cells ? rowData.keys.filter(k => onBar(k)) : []
     radius: Theme.radiusCtl
@@ -87,7 +89,7 @@ Rectangle {
             delegate: StretchBand { row: track; shift: bar.x; room: bar.width }
         }
         Repeater {   // a layer's keys lie in its bar: pressed on a key, the key moves; anywhere else, the bar
-            model: bar.visible ? track.rowData.keys.filter(k => track.onBar(k)) : []
+            model: bar.visible ? track.dots(track.rowData.keys.filter(k => track.onBar(k))) : []
             delegate: KeyDot { row: track; shift: bar.x; room: bar.width }
         }
     }
@@ -128,7 +130,7 @@ Rectangle {
         delegate: StretchBand { row: track }
     }
     Repeater {   // the keys of a row with no bar (a setting, an effect, a mask)
-        model: bar.visible ? track.rowData.keys.filter(k => !track.onBar(k)) : track.rowData.keys
+        model: track.dots(bar.visible ? track.rowData.keys.filter(k => !track.onBar(k)) : track.rowData.keys)
         delegate: KeyDot { row: track }
     }
 }

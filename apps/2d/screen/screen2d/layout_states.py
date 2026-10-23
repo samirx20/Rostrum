@@ -35,6 +35,16 @@ def long_project() -> list[str]:
     return ["--doc", str(folder), "main", "--script", str(script)]
 
 
+CLOSE_KEYS = SOURCE.replace("duration=4", "duration=12").replace("{0.2: 0, 0.9: 1}", "{1.0: 0, 1.0333: 0.3, 1.0667: 0.6, 4.0: 1}")
+
+
+def close_keys() -> list[str]:
+    """Start args for a 12 s scene whose title has keys one frame apart (zoomed out they would sit on each other)."""
+    script = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "close_keys.py"
+    script.write_text(CLOSE_KEYS, encoding="utf-8")
+    return ["--script", str(script)]
+
+
 def with_sound() -> list[str]:
     """Start args for a project with sound (sound_sample.sound_project), made fresh in the temp folder."""
     from .sound_sample import sound_project
@@ -92,6 +102,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("rows-open", ["--sample"], ["select title", "open title"]),
         ("two-selected", ["--sample"], ["selectmany title card"]),
         ("action-menu", ["--sample"], ["selectmany dot rule", "actionmenu"]),
+        # H60: keys a frame apart on a zoomed-out timeline: one dot standing for the run (a second diamond behind it)
+        ("close-keys", close_keys(), ["select title", "showanim", "timeline full"]),
         ("two-shapes", ["--sample"], ["selectmany dot rule"]),               # H49: compact actions, slim key-span bars
         ("gradient-handles", ["--sample"], ["select card", "clickname swatch", "clickname fillType:linear"]),
         # H47: the frame drives the layout (SPEC 2d-design-v2 §1.2): tall and square scenes put the timeline beside it

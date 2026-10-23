@@ -37,7 +37,7 @@ def test_one_paint_stroke_is_one_undo_step():
     assert not egg.get("frames") and not egg.get("paintW")
 
 
-@pytest.mark.skipif(settings.engine_exe() is None, reason="needs a built engine")
+@pytest.mark.skipif(settings.engine_missing_reason() is not None, reason=settings.engine_missing_reason() or "")
 def test_paint_stays_inside_the_outline(tmp_path):
     from rostrum2d.engine import Engine
     seen = {}

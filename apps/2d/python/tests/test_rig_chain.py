@@ -1,12 +1,11 @@
 """Long IK chains are the engine's (rig/fabrik.rs): the scene sends the ik with its `chain`, and the engine's `bones`
 answer reports the chain reaching its target, so look_rig and inspect_rig_motion see it. Poses: save, apply and blend
 keys the rig in one step."""
-import os
 
 import pytest
 from rostrum_core import Document, Who
 
-from rostrum2d import KIND, run_source
+from rostrum2d import KIND, run_source, settings
 from rostrum2d.scene import describe
 
 SAM = Who.person("sam")
@@ -31,7 +30,7 @@ def doc():
     return d
 
 
-@pytest.mark.skipif(not os.environ.get("ROSTRUM2D_ENGINE"), reason="needs a built engine (ROSTRUM2D_ENGINE)")
+@pytest.mark.skipif(settings.engine_missing_reason() is not None, reason=settings.engine_missing_reason() or "")
 def test_the_engine_solves_a_long_chain_and_reports_it():
     from rostrum2d.engine import Engine
     scene = describe(doc().data)

@@ -2,7 +2,7 @@
 import pytest
 from rostrum_core import Document, Who
 
-from rostrum2d import KIND
+from rostrum2d import KIND, settings
 from rostrum2d.engine import EngineError, find_exe
 from rostrum2d.io import import_into, svg_tree
 
@@ -17,7 +17,7 @@ def test_svg_round_trip(tmp_path):
     try:
         find_exe()
     except EngineError:
-        pytest.skip("2D engine not built")
+        pytest.skip(settings.engine_missing_reason())
     (tmp_path / "t.svg").write_text(SVG, encoding="utf-8")
     doc = Document.new(KIND, folder=str(tmp_path / "doc"), item="t")
     me = Who.agent("test")

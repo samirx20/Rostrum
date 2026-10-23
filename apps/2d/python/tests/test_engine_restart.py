@@ -1,14 +1,13 @@
 """S27 H1: an engine that dies is started again with the scene, the frame still comes and the person is told once;
 one that dies again right away is not retried, and says so in one sentence. Cancel's kill is never restarted."""
-import os
 
 import pytest
 from rostrum_core import Document
 
-from rostrum2d import KIND, run_source
+from rostrum2d import KIND, run_source, settings
 from rostrum2d.scene import describe
 
-pytestmark = pytest.mark.skipif(not os.environ.get("ROSTRUM2D_ENGINE"), reason="needs a built engine (ROSTRUM2D_ENGINE)")
+pytestmark = pytest.mark.skipif(settings.engine_missing_reason() is not None, reason=settings.engine_missing_reason() or "")
 SRC = '''
 comp("c", width=64, height=36, duration=1, fps=10, background="#204060")
 shape("box", w=20, h=20, fill="#ff7a59", x=32, y=18)

@@ -20,6 +20,13 @@ Item {
                                || backend.stretch.shown && ids.some(i => backend.stretch.ids.indexOf(i) >= 0)   // a picked stretch's keys
     x: room < 0 ? at : Math.max(0, Math.min(room - width, at))
     width: 16; height: Math.max(18, parent.height); y: Math.round((parent.height - height) / 2)   // the track's height; in a slim bar, 18
+    readonly property int n: modelData.n || 1          // more than one: keys too close to tell apart, shown as one dot
+    KeyMark {   // the second diamond peeking out behind: this dot holds several keys
+        visible: key.n > 1
+        anchors.centerIn: parent; anchors.horizontalCenterOffset: key.at - key.x + 4
+        size: key.row.isLayer ? 8 : 7
+        color: key.on ? Theme.accent : Theme.fg3; opacity: 0.85
+    }
     KeyMark {
         anchors.centerIn: parent; anchors.horizontalCenterOffset: key.at - key.x   // the diamond stays on its time
         size: key.row.isLayer ? 8 : 7
@@ -29,7 +36,7 @@ Item {
         id: keyArea; anchors.fill: parent; hoverEnabled: true; preventStealing: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.SizeHorCursor
-        HoverTip { hovered: keyArea.containsMouse; text: "Click to change its ease; drag a box on an empty part of the row to pick several" }
+        HoverTip { hovered: keyArea.containsMouse; text: key.n > 1 ? key.n + " keys close together: click to pick them all, zoom in to tell them apart" : "Click to change its ease; drag a box on an empty part of the row to pick several" }
         property string held: ""        // "one" | "many" | ""
         function rowIds() { return key.row.rowData.keys.map(k => k.ids || [k.id]) }
         onPressed: (m) => {

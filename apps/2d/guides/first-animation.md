@@ -49,7 +49,7 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
    - **Filled**: there is a key at the playhead.
    - **Outlined**: the value is animated, but there is no key at this moment.
    - **Faint**: it is not animated yet. Click it to start.
-6. The same keys show as diamonds on the layer's bar in the timeline. Drag a diamond to move that key in time. It snaps to the playhead and to markers.
+6. The same keys show as diamonds on the layer's bar in the timeline. Drag a diamond to move that key in time. It snaps to the playhead and to markers. Keys too close to tell apart (a frame or two apart on a long, zoomed-out timeline) show as one diamond with a second one peeking out behind it. Click it to pick them all, or zoom the timeline in to see each one.
 
 ## 6. Change how it feels
 

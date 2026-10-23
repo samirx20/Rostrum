@@ -46,11 +46,11 @@ def test_a_tapered_stroke_without_the_engine_is_reported_not_dropped(monkeypatch
     assert any(s["ty"] == "st" for s in next(l for l in lottie["layers"] if l["nm"] == "p")["shapes"][0]["it"])
 
 
-def test_a_tapered_stroke_is_a_filled_outline():              # needs the built engine (ROSTRUM2D_ENGINE)
-    import os
+def test_a_tapered_stroke_is_a_filled_outline():              # needs the built engine
     import pytest
-    if not os.environ.get("ROSTRUM2D_ENGINE"):
-        pytest.skip("ROSTRUM2D_ENGINE not set")
+    from rostrum2d import settings
+    if reason := settings.engine_missing_reason():
+        pytest.skip(reason)
     lottie, report = to_lottie(_tapered())
     items = next(l for l in lottie["layers"] if l["nm"] == "p")["shapes"][0]["it"]
     assert [i["ty"] for i in items if i["ty"] in ("st", "fl")] == ["fl"] and any(i["ty"] == "sh" for i in items), report
