@@ -37,23 +37,37 @@ Column {
         Text { id: words; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body; anchors.verticalCenter: parent.verticalCenter }
     }
 
+    component Action: Text {           // a quiet word to click, at the same left edge as the labels
+        signal clicked()
+        color: actHover.hovered ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body
+        height: Theme.rowDense; verticalAlignment: Text.AlignVCenter
+        HoverHandler { id: actHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: parent.clicked() }
+    }
+
     visible: !job.isMidi
+    height: visible ? implicitHeight : 0      // a hidden column keeps its height, which was the hole under the list for MIDI
+    Repeater {   // delivery presets: a row like the sheet's list rows, chosen while the sheet matches it
+        model: root.job.presets
+        delegate: Rectangle {
+            id: pr
+            required property var modelData
+            readonly property bool chosen: root.job.preset === modelData.value
+            width: root.width; height: Theme.rowDense; radius: Theme.radiusCtl
+            color: chosen ? Theme.accentSoft : prHover.hovered ? Theme.hover : "transparent"
+            Text { anchors { left: parent.left; leftMargin: Theme.gap; verticalCenter: parent.verticalCenter }
+                   text: pr.modelData.label; color: pr.chosen ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
+            HoverHandler { id: prHover; cursorShape: Qt.PointingHandCursor }
+            TapHandler { onTapped: root.job.usePreset(pr.modelData.value) }
+            HoverTip { text: pr.modelData.detail; hovered: prHover.hovered }
+        }
+    }
     Text {   // the live check: the sound that plays now against the target (only once both exist)
         width: root.width; wrapMode: Text.WordWrap
         visible: root.target.shown && !!root.target.verdict && !!root.target.verdict.text
         text: root.target.verdict && root.target.verdict.text ? (root.target.verdict.ok ? "✓ " : "") + root.target.verdict.text : ""
         color: root.target.verdict && root.target.verdict.ok ? Theme.ok : Theme.warn
         font.family: uiFont; font.pixelSize: Theme.body
-    }
-    Repeater {   // delivery presets: one button each, chosen while the sheet matches it
-        model: root.job.presets
-        delegate: Button {
-            required property var modelData
-            width: root.width; flushLeft: true; text: modelData.label; kind: root.job.preset === modelData.value ? "primary" : "ghost"
-            onClicked: root.job.usePreset(modelData.value)
-            HoverHandler { id: presetHover }
-            HoverTip { text: modelData.detail; hovered: presetHover.hovered }
-        }
     }
     Field {
         label: "File"
@@ -75,7 +89,7 @@ Column {
                 width: parent.width; spacing: Theme.gap
                 Text { width: parent.width - Theme.field - Theme.gap; anchors.verticalCenter: parent.verticalCenter
                        text: "Version " + (ver.index + 2); color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
-                IconButton { glyph: "✕"; kind: "ghost"; tip: "Take this version out"; onClicked: root.job.removeVersion(ver.index) }
+                IconButton { glyph: "×"; kind: "ghost"; tip: "Take this version out"; onClicked: root.job.removeVersion(ver.index) }
             }
             ChoiceField { width: parent.width; options: root.job.targets; current: ver.modelData.target
                           onPicked: (v) => root.job.setVersion(ver.index, "target", v) }
@@ -89,7 +103,7 @@ Column {
                    font.family: uiFont; font.pixelSize: Theme.body }
         }
     }
-    Button { text: "+ Another version"; kind: "ghost"; onClicked: root.job.addVersion() }
+    Action { text: "+ Another version"; onClicked: root.job.addVersion() }
     Field {
         label: "Stems"; tip: "Separate files for the Editor or a mix elsewhere; they add up to the mix"
         ChoiceField { width: parent.width; options: root.job.stemChoices; current: root.job.stemsMode; onPicked: (v) => root.job.setStemsMode(v) }
@@ -98,5 +112,5 @@ Column {
              text: "Markers file" }
     Switch { checked: root.job.trim; onToggled: (v) => root.job.setTrim(v)
              text: "Cut the silence at the end" }
-    Button { text: root.more ? "Less" : "More"; kind: "ghost"; onClicked: root.more = !root.more }
+    Action { text: root.more ? "Less" : "More"; onClicked: root.more = !root.more }
 }

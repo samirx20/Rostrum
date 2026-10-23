@@ -49,7 +49,7 @@ FieldFrame {
         if (display) return parts.text
         let d = decimals
         while (d < decimals + 1 && Math.abs(v * Math.pow(10, d) - Math.round(v * Math.pow(10, d))) > 1e-6) d++
-        return Number(v).toFixed(d)
+        return Number(v).toFixed(d).replace("-", "−")      // a real minus, like the rest of the app
     }
     function reset() { if (hasDefault) { f.edited(Math.max(from, Math.min(to, Number(defaultValue)))); f.input.focus = false } }
 

@@ -12,7 +12,7 @@ QQC.Popup {
     // as tall as its rows need (no empty band under More), up to what the window leaves
     property real rowsHeight: 0
     function recount() { let h = 0; for (let i = 0; i < measure.count; i++) h += measure.itemAt(i) ? measure.itemAt(i).h : 0; rowsHeight = h }
-    height: Math.min(parent.height - 80, rowsHeight + Theme.header + 64 + foot.height + 2 * Theme.pad)
+    height: Math.min(parent.height - 80, rowsHeight + 36 + foot.height + 2 * Theme.pad)
     modal: true; closePolicy: QQC.Popup.CloseOnEscape | QQC.Popup.CloseOnPressOutside
     QQC.Overlay.modal: Rectangle { color: Theme.scrim }
     onAboutToShow: settingsPage.reload()
@@ -32,7 +32,7 @@ QQC.Popup {
     contentItem: Item {
         Inspector {
             anchors { left: parent.left; right: parent.right; top: parent.top; bottom: foot.top }
-            title: "Preferences"; bridge: settingsPage
+            bridge: settingsPage
         }
         Column {
             id: foot

@@ -42,8 +42,9 @@ def summary(r: dict) -> str:
             f"{r['seconds']:.1f} s{cut} · {stems}")
 
 
-def option_label(c: dict) -> str:
-    return f"{c['label']} — {c['detail']}"
+def option(c: dict) -> dict:
+    """A choice's short name (the closed field shows only it) and what it means (the open list shows it under the name)."""
+    return {"label": c["label"], "detail": c["detail"]}
 
 
 class RenderExport(ExportSheet):
@@ -176,16 +177,16 @@ class RenderExport(ExportSheet):
     # ---- Sound's own settings (qml/ExportSettings.qml) --------------------------------------------------------
     @Property("QVariantList", constant=True)
     def formats(self):
-        return [{"value": c["id"], "label": option_label(c)} for c in deliver.choices()["formats"]]
+        return [{"value": c["id"], **option(c)} for c in deliver.choices()["formats"]]
 
     @Property("QVariantList", notify=own)
     def rates(self):
-        return [{"value": str(c["id"]), "label": option_label(c)} for c in deliver.rates_for(self._format)]
+        return [{"value": str(c["id"]), **option(c)} for c in deliver.rates_for(self._format)]
 
     @Property(str, constant=True)
     def sheetTitle(self):
-        """The sheet's heading: always "Export" (the first target's name below it is not a second title)."""
-        return "Export"
+        """The sheet's heading: what it makes ("Export" is the button under it, so the title is not a second one)."""
+        return "Make the file"
 
     @Property(str, notify=own)
     def format(self):
@@ -290,7 +291,7 @@ class RenderExport(ExportSheet):
 
     @Slot(str, result="QVariantList")
     def ratesFor(self, fmt):
-        return [{"value": str(c["id"]), "label": option_label(c)} for c in deliver.rates_for(fmt)] if fmt in deliver.BY_FORMAT else []
+        return [{"value": str(c["id"]), **option(c)} for c in deliver.rates_for(fmt)] if fmt in deliver.BY_FORMAT else []
 
     @Slot()
     def addVersion(self):
