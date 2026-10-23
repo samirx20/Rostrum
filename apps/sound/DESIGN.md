@@ -629,7 +629,7 @@ E (tracks, strips), F (the person's selection is what they hand to the agent).
      With several selected, every selected item's same end changes by the same amount.
    - **Arrows**: ← → one grid step (Shift: one bar; **Alt**: fine, 10 ms or 1/32 of a beat; Ctrl+← → always move the
      playhead *(S30)*). ↑ ↓: notes a half step
-     (Shift: an octave); clips and sounds to the track above / below. Tracks: Ctrl+] / Ctrl+[ move them down / up in
+     (Shift: an octave); clips and sounds to the track above / below. Tracks: Ctrl+] / Ctrl+[ move them up / down in
      the list (2D's "order" keys).
    - **Delete** removes; on a time range inside one clip it cuts that part out and closes the gap on that track
      (voice editing, job C; op **(new: `clip.cut_range`)**); elsewhere a time range's Delete is later (§9).
@@ -3637,7 +3637,7 @@ that don't touch, the velocity strip without notes, Loop without a range. The da
 | | ← → | Nudge a grid step (Shift: a bar; **Alt: fine**, 10 ms or 1/32 beat) | shared · changed (fine was Ctrl) |
 | | ↑ ↓ | Notes: half step (Shift: octave); clips / sounds: track above / below | shared meaning (move the selection) |
 | | Ctrl+↑ / Ctrl+↓ | Notes: a scale step in the key; clips: pitch only, a half step | Sound |
-| | Ctrl+] / Ctrl+[ | Move selected tracks down / up | shared |
+| | Ctrl+] / Ctrl+[ | Move selected tracks up / down (like 2D: forward = up the list) | shared |
 | | Alt+[ / Alt+] | Trim the selection's start / end to the playhead | shared · new |
 | | Ctrl while dragging · Alt while dragging · Shift while dragging | No snapping · a copy · only in time | shared |
 | | Ctrl+Shift+L | Lock / unlock the selected tracks (agents too) | shared · new |

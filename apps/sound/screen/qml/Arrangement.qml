@@ -64,11 +64,6 @@ Rectangle {
             Item { width: Theme.gap; height: 1 }
             SongReadout { id: readout; compact: a.compact; anchors.verticalCenter: parent.verticalCenter }
         }
-        Item {   // the arrangement's context bar sits here, between the transport and the view controls: in the
-                 // header, never over the clips and notes (Timeline.qml places it)
-            id: barSlot
-            anchors { left: leftRow.right; right: rightRow.left; top: parent.top; bottom: parent.bottom; leftMargin: Theme.gap; rightMargin: Theme.gap }
-        }
         Row {
             id: rightRow
             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
@@ -104,7 +99,6 @@ Rectangle {
     Timeline {
         id: timeline
         anchors { left: parent.left; right: parent.right; top: strip.bottom; bottom: parent.bottom }
-        barSlot: barSlot
         onAddTrack: a.addTrack()
     }
     Column {   // a new song: what to do first

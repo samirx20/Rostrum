@@ -5,7 +5,7 @@ import RostrumKit
 // (name, mute, solo) and its notes, hits and clips; the playhead and marker lines across every row.
 // Select first, then act (LaneInput: click, Ctrl+click, Shift+click, box; drag moves every selected item, one undo
 // step, Ctrl = no snapping, Shift = only in time, Alt = a copy). A drag on the ruler is a time range (shaded over
-// every lane). The kit's ContextBar sits at the top centre; right-click opens the kit's ActionMenu (backend.actions).
+// every lane). Right-click opens the kit's one short menu (backend.actions); the rest is in the settings panel's actions.
 // Zoom and scroll: Ctrl + wheel (or a pinch) zooms around the pointer, Shift + wheel or a sideways swipe scrolls,
 // Ctrl + / Ctrl - / Ctrl 0 (fit) from the keyboard, a slim scrollbar while zoomed in; playing keeps the playhead
 // on screen. The view is backend.viewStart / viewSpan, shared by the ruler, markers, rows and the piano roll.
@@ -17,7 +17,6 @@ Rectangle {
     id: tl
     property bool slim: false
     property int headerWidth: 224
-    property Item barSlot: null          // where the context bar sits (the header strip, Arrangement.qml)
     signal addTrack()
     readonly property real addH: slim ? 0 : 28          // the "+ Track" row, between the tracks and the group / master rows
     readonly property var rows: slim ? backend.tracks.filter(r => !r.mix) : backend.tracks   // buses + master: lanes only
@@ -206,20 +205,6 @@ Rectangle {
         SnapLine { visible: !!parent.s.name && lanes.busy && bars.visibleX(bars.xOf(parent.s.t))
                    at: bars.xOf(parent.s.t || 0); name: parent.s.name || "" }
     }
-    ContextBar {   // the kit's: a fixed place, the header strip's centre, so it never covers a clip or a note
-        id: cbar       // (INTERACTION.md §1.2: top centre of the arrangement; Sound's header is that top)
-        parent: tl.barSlot || tl
-        hub: backend.actions
-        anchors.centerIn: parent; maxWidth: parent.width
-        dragging: lanes.busy || menu.visible || clean.visible || ask.visible || backend.area !== "arrange"
-    }
     ActionMenu { id: menu; onPicked: (v) => backend.menuPick(v) }          // the kit's: keys on rows, dividers
     LaneLineBox { tl: tl; bars: bars }   // typing a voice line right on its lane
-    CleanPopover { id: clean; parent: cbar; x: (cbar.width - width) / 2; y: cbar.height + 2 }   // under the bar
-    AskPopover { id: ask }
-    Connections {
-        target: backend
-        function onCleanWanted() { if (backend.area === "arrange") clean.open() }
-        function onAskWanted(key, label, value) { ask.key = key; ask.label = label; ask.value = value; ask.openAt(cbar) }
-    }
 }

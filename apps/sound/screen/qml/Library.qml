@@ -24,7 +24,7 @@ Panel {
     onVisibleChanged: if (visible) { search.input.forceActiveFocus(); current = 0 }
     Keys.onEscapePressed: (e) => { if (soundLibrary.swapping) soundLibrary.swapBack(); else if (soundLibrary.auditioning !== "" || soundLibrary.trying.key !== undefined) soundLibrary.revert(); else e.accepted = false }
     Connections { target: workspace; function onChanged() { if (!workspace.library) { soundLibrary.swapBack(); soundLibrary.stopAudition() } } }   // closed: it stops
-    Connections { target: backend; function onLibraryWanted(chip) { p.chip = chip } }   // "Place a sound here"
+    Connections { target: backend; function onLibraryWanted(chip) { p.chip = chip } }   // "Place a sound"
     onFoundChanged: current = 0
     // the row of the sound being tried, however the try started (a click, an agent, a step); -1 when none
     readonly property int triedAt: soundLibrary.trying.key === undefined ? -1 : found.findIndex(e => e.key === soundLibrary.trying.key)

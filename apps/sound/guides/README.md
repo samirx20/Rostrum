@@ -5,7 +5,7 @@
 Short pages in everyday words, with the names of the real buttons.
 
 1. [Making your first song](first-song.md): the screen, a new song, a track from the Library, notes in the Editor,
-   selecting and the context bar, keys, playing.
+   selecting and the selection's actions, keys, playing.
 2. [Recording](recording.md): choose a microphone, arm a track, record, punch in, and make a cleaner take.
 3. [Exporting](exporting.md): the Export sheet: what for, file, quality, stems, and where the files go.
 4. [Groups, versions and delivery](arranging-and-delivering.md): groups, Swap, Before / After, Speak again, For the Editor, the main mix, Cues from 2D.

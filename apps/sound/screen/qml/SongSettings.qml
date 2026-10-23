@@ -17,6 +17,7 @@ Panel {
         Column {
             id: list
             width: parent.width
+            ActionsSection { width: parent.width; hub: backend.actions }   // a time range's actions (Make a section …)
             Item {   // not the main mix yet: the one action for it (absent once it is, the title says so)
                 visible: songPanel.mainMix === "other"
                 width: parent.width; height: visible ? Theme.row + Theme.grid : 0

@@ -5,7 +5,7 @@ bridge call a click, a box, a key or a menu makes.
     box <track id>[,<track id>…] <t0> <t1>   (a box on the arrangement's lanes) | box roll <t0> <t1> <row0> <row1>
     range <t0> <t1> (a drag on the ruler) | range-clear
     action <id> (an action of the list: quantize, transpose_up, join …, or an at:… empty-space entry)
-    action-bar [arrange|roll] (that area has the focus; fails when the context bar would be empty)
+    actions [arrange|roll] (that area has the focus; fails when the settings panel would show no actions)
     menu <id> (the right-click menu on that item, open in the arrangement) | menu-roll <id> (in the Editor)
     key <sequence> (a key to the window: "Ctrl+D", "Q", "Shift+Up") | copy | cut | paste
     drag-many <dt s> [<d semitones>] [ctrl|shift|alt …] [to=<track>] (the selection, held by its first item, one
@@ -14,7 +14,7 @@ bridge call a click, a box, a key or a menu makes.
     lock <track> (the header's lock: lock / unlock) | loop (Shift+L) | range-edge in|out (Shift+I / Shift+O)
     rename-open <id> (its name field, open) | rename <new name> (Enter in the open field) | open <id> (double-click: select + Editor)
     jump next|prev (`,` / `.`) | playhead-step <n> (Ctrl+arrows) | fit-selection (F)
-    marker-add (M: a marker at the playhead, its name field open) | fit-bar <bar> (Land a bar here on the selected
+    marker-add (M: a marker at the playhead, its name field open) | fit-bar <bar> (Land a bar on the selected
       marker) | ask <action key> (its number field, open: for a picture) | place <design> (the Library's designed sound,
       double-clicked) | library <chip> (the Library open on a chip) | clean-open (the Clean up popover, open) |
       clean <voice 0|1> <noise 0|1> <echo 0|1> (Clean: the steps on the selected clips, then their cleaned takes)
@@ -34,7 +34,7 @@ from PySide6.QtGui import QKeySequence
 from PySide6.QtTest import QTest
 
 WORDS = ("select-many", "select-add", "select-run", "select-all", "box", "range", "range-clear", "action",
-         "action-bar", "menu", "menu-roll", "key", "copy", "cut", "paste", "drag-many", "handle", "lock", "loop",
+         "actions", "menu", "menu-roll", "key", "copy", "cut", "paste", "drag-many", "handle", "lock", "loop",
          "range-edge", "rename-open", "rename", "open", "jump", "playhead-step", "fit-selection", "marker-add",
          "fit-bar", "ask", "place", "library", "clean-open", "clean", "tool", "add-hit", "draw", "line-type",
          "speak-again", "line-box", "select-clip", "grid", "snap", "velocity-line", "velocity-bar", "audition", "clean-line")
@@ -80,11 +80,11 @@ def do_select_step(bridge, win, word, rest):
         bridge.clearRange()
     elif word == "action":
         bridge.run(rest[0].removeprefix("sel:"))
-    elif word == "action-bar":
+    elif word == "actions":
         bridge.focusArea(rest[0] if rest else "arrange")
         bridge.actions.refresh()
-        if not bridge.actions.bar["items"]:
-            raise RuntimeError("action-bar: nothing to show for this selection")
+        if not (bridge.actions.panel["rows"] or bridge.actions.panel["more"]):
+            raise RuntimeError("actions: nothing to show for this selection")
     elif word in ("menu", "menu-roll"):
         host = _find(win.contentItem(), "mixRows" if word == "menu" else "keysWidth")
         if host is None:

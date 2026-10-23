@@ -7,7 +7,6 @@ import RostrumKit
 // (one undo step; Ctrl = no snapping, Shift = only in time, Alt = a copy). The context bar sits at the top centre.
 Panel {
     id: p
-    property Item barSlot: null          // the dock's tab row: where the context bar sits (never over the notes)
     readonly property var roll: backend.roll
     readonly property string kind: roll.kind
     readonly property int keysWidth: kind === "drums" ? 76 : 52     // drum names ("Open hat") are longer than note names
@@ -97,13 +96,6 @@ Panel {
             readonly property var s: backend.snapLine
             SnapLine { visible: !!parent.s.name && input.busy && bars.visibleX(bars.xOf(parent.s.t))
                        at: bars.xOf(parent.s.t || 0); name: parent.s.name || "" }
-        }
-        ContextBar {   // the kit's: a fixed place, the Editor's top centre = the dock's tab row (INTERACTION.md §1.2)
-            parent: p.barSlot || well
-            hub: backend.actions
-            anchors.horizontalCenter: parent.horizontalCenter; y: p.barSlot ? (parent.height - height) / 2 : Theme.grid
-            maxWidth: parent.width
-            dragging: input.busy || rollMenu.visible || backend.area !== "roll"
         }
     }
     VelocityStrip {   // one bar per note or hit; drag a bar, or draw a line across (DESIGN.md §3.3d)

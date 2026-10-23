@@ -1,5 +1,5 @@
 """Sound on the kit's one action list (shared/gui-kit/ACTIONS.md): one `SoundHub` (the kit's ActionHub) hosted as
-`backend.actions` feeds the kit's ContextBar, ActionMenu, Ctrl+K and KeyMap from actions.LIST, so every door agrees
+`backend.actions` feeds the settings panel's actions, the kit's short ActionMenu, Ctrl+K and KeyMap from actions.LIST, so every door agrees
 and a key whose action doesn't apply says why. Each action is one change; what a duplicate, split, paste or new
 section made is selected afterwards. The hub also answers the shared keys that are not actions on the selection
 (keys.ROUTES: play, the playhead, nudges, the loop, zoom …), so the window has ONE key map. A slot mix-in for
@@ -52,9 +52,9 @@ class SoundHub(ActionHub):
 
 
 class ActionSlots:
-    libraryWanted = Signal(str)       # "Place a sound here": the Library opens on this chip
+    libraryWanted = Signal(str)       # "Place a sound": the Library opens on this chip
     cleanWanted = Signal()            # "Clean up…": the host opens the clean-up popover
-    askWanted = Signal(str, str, float)   # an action asks one number first (Land a bar here: "Bar", the nearest)
+    askWanted = Signal(str, str, float)   # an action asks one number first (Land a bar: "Bar", the nearest)
     mainMixChanged = Signal()         # the main-mix mark moved (the Song panel's mark and button re-read)
     voiceWanted = Signal(str)         # a voice track's lines need their speech made (editor_side starts the job)
 
@@ -145,7 +145,7 @@ class ActionSlots:
 
     @Slot(str, float, result=bool)
     def landBar(self, _key, bar):
-        """The popover's answer for Land a bar here: `tempo.fit_bar` with that bar (one step)."""
+        """The popover's answer for Land a bar: `tempo.fit_bar` with that bar (one step)."""
         f = self._facts()
         if not (f.one == "marker" and f.count == 1):
             self._refuse("Land a bar needs one marker selected (placed in seconds)")
