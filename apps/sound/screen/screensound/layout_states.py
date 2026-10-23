@@ -113,6 +113,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("actions-notes", ["--sample"], ["select melody", "dock editor", "select-many melody.n9600 melody.n10200 melody.n10800",
                                          "menu-roll melody.n10200"]),
         ("actions-tracks", ["--sample"], ["select-many pad melody", "menu melody"]),
+        ("two-tracks-mixed", ["--sample"], ["select-many pad melody"]),               # S49: "Mixed" in a unit field, no unit over it
         ("actions-range", ["--sample"], ["range 2 4"]),
         ("actions-marker-ask", ["--sample"], ["marker-add", "ask fit_bar"]),
     ]

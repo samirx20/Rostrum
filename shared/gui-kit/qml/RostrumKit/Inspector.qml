@@ -36,7 +36,8 @@ Panel {
     Text { id: kind; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
            readonly property bool same: panel.kindText.toLowerCase() === String(name.text || "").trim().toLowerCase()
            text: same ? "" : panel.kindText; visible: !same
-           height: same ? 0 : implicitHeight
+           height: same ? 0 : kindLine.height     // from the font, not implicitHeight: that one reads `height` back (binding loop)
+           FontMetrics { id: kindLine; font: kind.font }
            anchors.top: name.bottom; anchors.topMargin: same ? 0 : 2 }
     FieldFrame {
         id: find
