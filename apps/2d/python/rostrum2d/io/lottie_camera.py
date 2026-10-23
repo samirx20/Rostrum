@@ -1,7 +1,8 @@
 """The 2D camera in a Lottie file. Lottie has no camera like ours, so its move is baked into the file and the picture
 stays the preview's: one invisible null layer per depth does what the camera does to layers at that depth (the
 engine's maths, camera/view.py `parts`; a camera riding a path where follow.ride puts it), with a keyframe every
-frame, and each of the composition's own layers is parented to its depth's null. A layer Locked to screen gets none; layers inside a group follow their group.
+frame, and each of the composition's own layers is parented to its depth's null. A layer riding a path is baked the
+same way (`ride_keys`: where follow.ride puts it, a keyframe every frame). A layer Locked to screen gets none; layers inside a group follow their group.
 
 A cut from one camera to the next is a hold keyframe, so a player drawing between frames never blends two shots.
 """
@@ -36,6 +37,19 @@ def _track(values: list, cuts: set[int]) -> dict:
     steps = [{"t": float(f), "v": v, "seg": None if f == len(values) - 1 else "hold" if f + 1 in cuts else LINEAR}
              for f, v in enumerate(values)]
     return {"a": 1, "k": emit(steps, lambda v: v)}
+
+
+def ride_keys(node: dict, ctx: Ctx) -> dict:
+    """A rider's position and turn (`ks` "p", "r"), a keyframe every frame where follow.ride puts it on its path, the
+    camera's ride; a frame where the path is gone keeps the layer's own X, Y and rotation (as the engine draws it)."""
+    from ..follow import ride      # follow imports the field tables, which import this package
+    frames = round(ctx.duration * ctx.fps)
+    own = ("x", "y", "rotation")
+    got = [ride(node, ctx.siblings, f / ctx.fps, _at) or {k: _at(node, k, f / ctx.fps) for k in own}
+           for f in range(frames + 1)]
+    ctx.bake(f'riding the path "{node["props"].get("ridePath", "")}": a keyframe every frame')
+    return {"p": _track([[round(g["x"], 4), round(g["y"], 4), 0] for g in got], set()),
+            "r": _track([round(g["rotation"], 4) for g in got], set())}
 
 
 def _null(name: str, ks: dict, frames: int) -> dict:

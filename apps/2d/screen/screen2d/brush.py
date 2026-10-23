@@ -10,6 +10,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from rostrum_gui import rows
+from rostrum_paint import library
 from rostrum_paint.fields import BAR_VALUE, BRUSH
 
 from . import brush_presets
@@ -36,7 +37,7 @@ class Brush:
     def __init__(self, background: str = ""):
         params = [p for p in getattr(BRUSH, "params", BRUSH) if p.type not in ("id", "points")]
         self._by_name = {p.name: p for p in params}
-        self._static = rows.layout(SimpleNamespace(params=params))
+        self._params, self._static, self._gen = params, rows.layout(SimpleNamespace(params=params)), library.generation
         self.values = {p.name: p.default for p in params}
         if "color" in self.values and background:
             self.values["color"] = starting_colour(background, self.values["color"])
@@ -44,6 +45,8 @@ class Brush:
         self.apply_preset(brush_presets.DEFAULT)
 
     def _evaluated(self) -> list[dict]:
+        if self._gen != library.generation:          # the project's own tip / paper pictures changed: new choices
+            self._static, self._gen = rows.layout(SimpleNamespace(params=self._params)), library.generation
         return rows.evaluate(self._static, self.values, {}, True)
 
     def rows(self) -> list[dict]:

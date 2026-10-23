@@ -13,6 +13,7 @@ from __future__ import annotations
 from . import drawing, exprbake, fields as F, fill_fields, fill_paint, layoutbake, paint_fields, project_sound, render3d, retime, stepped, swap, video
 from .layout_fields import py_only
 from rostrum_core.keys import after, animated, keys_of, springs
+from rostrum_paint import library
 
 FORMAT, VERSION = "rostrum-2d-scene", 1
 
@@ -121,6 +122,7 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     comps = doc_data.get("comps", [])
     if not comps:
         raise ValueError("the document has no composition yet (comp.add)")
+    library.use_project(folder)                      # strokes may name the project's own tip / paper pictures
     comp = comps[0] if comp_id is None else next((c for c in comps if c["id"] == comp_id), None)
     if comp is None:
         raise ValueError(f'no composition "{comp_id}"; there are: {", ".join(c["id"] for c in comps)}')

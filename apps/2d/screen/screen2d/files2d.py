@@ -10,6 +10,7 @@ from pathlib import Path
 from rostrum2d import KIND, settings
 from rostrum_core import Document, RostrumError, Who, codes
 from rostrum_gui.docfiles import AppFiles
+from rostrum_paint import library
 
 ITEM = "main"                                     # the item a new project's document gets
 BLANK = {"id": "main", "name": "Main", "width": 1920, "height": 1080, "fps": 25, "duration": 10.0}
@@ -61,6 +62,11 @@ def repoint(copy: Document, old, new) -> None:
         copy.save()
 
 
+def open_doc(folder, item):
+    library.use_project(folder)          # its own tip and paper pictures become brush choices
+    return Document.open(folder, item, KIND)
+
+
 def snapshot(bridge):
     """The canvas as last drawn: the start screen's picture of this project."""
     return bridge.frames.provider.requestImage("", None, None)
@@ -68,7 +74,7 @@ def snapshot(bridge):
 
 FILES2D = AppFiles(
     app="2d", title="Rostrum2D", noun="project", ext=KIND.ext, untitled="Untitled", folder=settings.projects_dir,
-    blank=blank, open=lambda folder, item: Document.open(folder, item, KIND), resolve=resolve, sample="lull",
+    blank=blank, open=open_doc, resolve=resolve, sample="lull",
     guides=[(GUIDES / "first-animation.md", "Making your first animation"), (GUIDES / "the-screen.md", "The screen"),
             (GUIDES / "drawing.md", "Drawing")],
     after_copy=repoint, snapshot=snapshot)

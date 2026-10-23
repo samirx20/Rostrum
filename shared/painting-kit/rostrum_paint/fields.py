@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from rostrum_core import Param
 
+from . import library
 from .marks import MODES, TIPS
 from .pictures import PAPERS, TEXTURES
 
@@ -41,7 +42,8 @@ BRUSH = [
     A("opacity", "Opacity", 1.0),
     A("hardness", "Hardness", 0.5, help="0 = soft edge, 1 = hard edge"),
     Param.choice("texture", TEXTURES, label="Tip picture", group="Brush", default="none", importance=D,
-                 help="A picture as the tip's shape (sponge, speckle, streaks, ragged, charcoal); it turns with the tip"),
+                 help="A picture as the tip's shape (sponge, speckle, streaks, ragged, charcoal, or one loaded into the "
+                      "project); it turns with the tip"),
     Param.choice("mode", MODES, label="Mode", group="Brush", default="normal", importance=S,
                  help="normal paints over, multiply glazes, erase removes, screen / add paint light"),
     A("size_pressure", "Pressure → size", 0.8, group="Pen"),
@@ -73,6 +75,18 @@ BRUSH = [
     N("seed", "Seed", 0, 2**31 - 1, 1, 0, D, integer=True, group="Repeat",
       help="Same seed = the same bristles and drift; set once when the stroke is made"),
 ]
+
+
+def _pictures():
+    """The tip and paper choices: the built-in pictures, then the open project's own (library.py, the one list)."""
+    for p in BRUSH:
+        if p.name in ("texture", "paper"):
+            own = library.choices("tip" if p.name == "texture" else "paper")
+            p.options = [c["value"] for c in own]
+            p.labels = {c["value"]: c["label"] for c in own}
+
+
+library.listen(_pictures)
 
 # Where each brush setting lives on a screen while painting: the one table the context bar and the brush panel both
 # read, so nothing shows twice. "bar": above the canvas, the few changed while painting (in this order); the rest is

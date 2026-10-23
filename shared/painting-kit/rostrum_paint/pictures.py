@@ -3,7 +3,8 @@ licence; no downloaded image). A tip picture is the tip's shape inside the dab (
 tile repeated over the canvas, so its grain stays put under the stroke and moves only with the layer.
 
 Every picture is a float32 0..1 array, made once and kept. "none" / "tooth" are the engine's first ones: a stroke
-that names neither paints exactly as before.
+that names neither paints exactly as before. A name that is not built in is one of the project's own pictures, an
+item id (library.py).
 """
 from __future__ import annotations
 
@@ -77,18 +78,30 @@ def _paper(name):
     return _norm(_periodic(n, 2, rng) + 0.8 * _periodic(n, 9, rng))   # rough: coarse, deep tooth
 
 
-@lru_cache(maxsize=None)
 def tip(name: str):
     """The tip picture `name` (TIP_N square, u along the stroke, rows across it), or None for "none"."""
-    if name not in TEXTURES:
-        raise ValueError(f"texture must be one of {TEXTURES}, got {name!r}")
+    if name in TEXTURES:
+        return _built_tip(name)
+    from .library import picture
+    return picture(name, "tip")
+
+
+def paper_tile(name: str):
+    if name == "tooth":
+        raise ValueError("the tooth paper is the engine's own, not a picture")
+    if name in PAPERS:
+        return _built_paper(name)
+    from .library import picture
+    return picture(name, "paper")
+
+
+@lru_cache(maxsize=None)
+def _built_tip(name):
     return None if name == "none" else np.ascontiguousarray(_tip(name), np.float32)
 
 
 @lru_cache(maxsize=None)
-def paper_tile(name: str):
-    if name not in PAPERS or name == "tooth":
-        raise ValueError(f"a paper picture is one of {PAPERS[1:]}, got {name!r}")
+def _built_paper(name):
     return np.ascontiguousarray(_paper(name), np.float32)
 
 

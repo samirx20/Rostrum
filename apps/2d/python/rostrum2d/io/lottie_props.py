@@ -20,6 +20,7 @@ class Ctx:
     baked: list[str] = field(default_factory=list)      # what is carried as a keyframe every frame: looks the same, bigger file
     layer: str = ""
     outlines: object = None          # lottie_outline.Outlines: asks the engine for varied-stroke outlines
+    siblings: list = field(default_factory=list)   # the scene nodes beside the current layer (a rider's path is one)
 
     def say(self, text: str) -> None:
         line = f'layer "{self.layer}": {text}'
