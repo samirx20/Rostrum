@@ -8,6 +8,7 @@
     render (Cycles, the playhead frame; waits for the job, up to 10 min) | closerender
   Viewport (screen state, never the document): orbit <dx> <dy> | pan <dx> <dy> | zoom <steps> | mode shot|free
     exposure <stops> | studio <amount> | lights on|off | home | click <x> <y> (viewport pixels: selects what is there)
+    look quick|final (Final: progressive Cycles in place; `wait` lets it refine)
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
@@ -22,7 +23,7 @@ VIEW = {"orbit": lambda v, a: v.orbit(float(a[0]), float(a[1])), "pan": lambda v
         "zoom": lambda v, a: v.zoom(float(a[0])), "mode": lambda v, a: v.setMode(a[0]),
         "exposure": lambda v, a: v.setExposure(float(a[0])), "studio": lambda v, a: v.setStudio(float(a[0])),
         "lights": lambda v, a: v.setSceneLights(a[0] == "on"), "home": lambda v, a: v.home(),
-        "click": lambda v, a: v.click(float(a[0]), float(a[1]))}
+        "click": lambda v, a: v.click(float(a[0]), float(a[1])), "look": lambda v, a: v.setLook(a[0])}
 
 
 def value(text):

@@ -166,8 +166,16 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
 
 JsObject Core::view(const JsObject& o) {
   Args a(o, "view", {"camera", "eye", "target", "fov", "frame", "width", "height", "renderer", "exposure", "studio",
-                     "sceneLights", "selected", "view", "ao", "aoRadius", "dof"});
+                     "sceneLights", "selected", "view", "ao", "aoRadius", "dof", "samples", "denoise"});
   need_scene("view");
+  const std::string renderer = a.str("renderer", "storm");
+  const bool final_look = renderer == "cycles";  // the Final look: progressive Cycles with the render's settings
+  DrawSettings s;
+  s.samples = a.whole("samples", s.samples);
+  s.denoise = a.flag("denoise", s.denoise);
+  if (s.samples < 1 || s.samples > 65536) throw Error("view.samples: must be 1..65536");
+  if (!final_look && (a.has("samples") || a.has("denoise")))
+    throw Error("view.samples/denoise: only for renderer cycles (the Final look)");
   const ViewCamera vc = read_view_camera(a, [&](const std::string& id) { return camera(id, "view"); });
   const int f = a.whole("frame"), w = a.whole("width"), h = a.whole("height");
   check_frame(f, "view.frame");
@@ -198,13 +206,15 @@ JsObject Core::view(const JsObject& o) {
   post.aoRadius = a.num("aoRadius", post.aoRadius);
   if (post.aoRadius <= 0 || post.aoRadius > 100) throw Error("view.aoRadius: must be more than 0, up to 100 (scene units)");
   const std::optional<Lens> lens = lens_of(stage_, vc, f);
-  if (a.flag("dof", true)) post.lens = lens;
+  if (a.flag("dof", true) && !final_look) post.lens = lens;  // Cycles blurs with the camera's own lens
+  if (final_look) post.ao = 0;  // contact shading is the quick view's stand-in; Cycles shades contacts itself
   background(stage_, post.background);
   const GfFrustum frustum = frustum_of(stage_, vc, f, w, h);
   post.projection = frustum.ComputeProjectionMatrix();
   const auto t0 = Clock::now();
   auto& hy = hydra();
-  const ViewDrawn pic = hy.view(a.str("renderer", "storm"), frustum, f, w, h, look, mem_);
+  const ViewDrawn pic = final_look ? hy.view_final(vc.camera, frustum, f, w, h, s, mem_)
+                                   : hy.view(renderer, frustum, f, w, h, look, mem_);
   post.color = pic.color;
   post.depth = pic.depth;
   post.mask = pic.mask;
@@ -221,11 +231,21 @@ JsObject Core::view(const JsObject& o) {
   if (pic.sun)
     sun = JsValue(JsObject{{"toward", vec3(GfVec3d(pic.sun->toward[0], pic.sun->toward[1], pic.sun->toward[2]))},
                            {"share", JsValue(pic.sun->share)}, {"angleDeg", JsValue(pic.sun->angleDeg)}});
+  JsValue final;  // null: the quick look
+  if (pic.final)
+    final = JsValue(JsObject{{"fraction", JsValue(pic.final->fraction)}, {"converged", JsValue(pic.final->converged)},
+                             {"samples", JsValue(int(std::lround(pic.final->fraction * s.samples)))},
+                             {"of", JsValue(s.samples)}, {"seconds", JsValue(r1(pic.final->seconds))},
+                             {"cyclesMb", JsValue(r1(pic.final->cyclesMb))}, {"status", JsValue(pic.final->status)}});
+  const GpuMem now = mem_.sample();
   JsArray missing;  // product lighting the quick view can't show (light_extras.h): said, never faked
   for (const std::string& note : light_extras().stormNotes) missing.push_back(JsValue(note));
   return JsObject{{"ok", JsValue(true)}, {"width", JsValue(w)}, {"height", JsValue(h)}, {"shm", JsValue(info)},
                   {"sceneDome", JsValue(pic.sceneDome)}, {"sun", sun}, {"cameraDof", JsValue(bool(lens))},
-                  {"notInQuickView", JsValue(missing)},
+                  {"notInQuickView", JsValue(missing)}, {"final", final},
+                  {"vram", JsValue(JsObject{{"processMb", JsValue(r1(now.processMb))},
+                                            {"gpuUsedMb", JsValue(r1(now.gpuUsedMb))},
+                                            {"gpuTotalMb", JsValue(r1(now.gpuTotalMb))}})},
                   {"timing", JsValue(JsObject{{"drawMs", JsValue(r1(draw_ms))}, {"totalMs", JsValue(r1(ms_since(t0)))}})}};
 }
 

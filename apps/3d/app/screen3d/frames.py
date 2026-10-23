@@ -1,4 +1,4 @@
-"""The viewport picture: Storm frames from the 3D engine's `view` request (ENGINE_CONTRACT.md § 4), off the GUI
+"""The viewport picture: Storm frames (Cycles steps in the Final look) from the 3D engine's `view` request (ENGINE_CONTRACT.md § 4), off the GUI
 thread, newest request wins (a view asked for while one renders replaces any waiting one). The newest picture is
 served to QML as image://view/<serial>. The worker itself is the kit's (rostrum_gui.frames.PictureWorker); this
 file is what is 3D's: the engine, the scene sent again only when it changed (`ensure_scene`), and picks.
@@ -23,13 +23,15 @@ def open_engine():
 
 
 class ViewRenderer(PictureWorker):
-    ready = Signal(int, float, bool, bool)  # serial of the newest picture, its time in ms, whether the scene's dome lit it,
-    #                                        whether the camera looked through has depth of field
+    ready = Signal(int, float, bool, bool, object)  # serial of the newest picture, its time in ms, whether the scene's
+    #   dome lit it, whether the camera looked through has depth of field, and the Final look's progress and the card's
+    #   memory ({"final": … or None, "vram": …}, ENGINE_CONTRACT.md § 4)
     picked = Signal(str)         # item id under the click, "" for empty space
     notice = Signal(str)         # the engine was started again (never silent)
 
     def __init__(self, parent=None):
         super().__init__("view3d", parent)
+        self._final = False                          # the last view was the Final look (Cycles), worker thread only
         self.start()
 
     def request(self, scene: dict, req: dict):
@@ -47,6 +49,11 @@ class ViewRenderer(PictureWorker):
         kind, scene, req = job
         if sys.platform != "win32":
             raise RuntimeError("the live viewport reads the engine's shared memory, Windows only for now")
+        final = req.get("renderer") == "cycles"
+        if kind == "view" and self._final and not final:                # leaving the Final look: a fresh engine, the card's memory back
+            eng.release()
+        if kind == "view":
+            self._final = final
         eng.ensure_scene(scene)
         if kind == "pick":
             out = eng.pick(**req)
@@ -57,7 +64,8 @@ class ViewRenderer(PictureWorker):
             if image.isNull():
                 raise RuntimeError("the engine's picture could not be read from its shared memory")
             self.ready.emit(self.publish(image), float(reply.get("ms", 0.0)), bool(reply.get("sceneDome", False)),
-                            bool(reply.get("cameraDof", False)))
+                            bool(reply.get("cameraDof", False)),
+                            {"final": reply.get("final"), "vram": reply.get("vram")})
         for line in eng.take_notices():
             self.notice.emit(line)
 

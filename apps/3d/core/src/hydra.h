@@ -31,12 +31,22 @@ struct SunSeen {
   double angleDeg = 0;           // its apparent size
 };
 
+// how far the viewport's Final look (progressive Cycles) has got
+struct FinalPass {
+  double fraction = 0;    // 0..1 of the samples
+  bool converged = false; // all samples done (and the noise clean-up, when on)
+  double seconds = 0;     // Cycles' own render time since it last started over
+  double cyclesMb = 0;    // Cycles' own memory use (device), MB
+  std::string status;     // Cycles' status line ("Sample 12/128", or its error)
+};
+
 // one live viewport picture, left on the graphics card for view_post.h (valid until the next draw)
 struct ViewDrawn {
   unsigned color = 0, depth = 0;  // scene-linear RGBA32F and Storm's depth, GL rows bottom up
   unsigned mask = 0;              // the selected items alone (alpha > 0.5 where they are); 0 = nothing selected
   bool sceneDome = false;         // the scene's own dome lit it (the studio light was not used)
   std::optional<SunSeen> sun;     // Storm drew the dome's sun as a light
+  std::optional<FinalPass> final; // the Final look's progress (Cycles only)
 };
 
 struct DrawSettings {
@@ -60,6 +70,11 @@ class Hydra {
   // one live viewport picture through `frustum` (a scene camera's or the free camera's)
   ViewDrawn view(const std::string& renderer, const PXR_NS::GfFrustum& frustum, int frame, int width, int height,
                  const ViewLook& look, GpuMemWatch& mem);
+  // the viewport's Final look: one step of progressive Cycles, with the render's settings and, for a scene `camera`,
+  // the render's own camera path (so it matches the Render button); empty `camera` = the free camera's `frustum`.
+  // Returns at once with the picture as far as it has got; the same request again continues, any change starts over.
+  ViewDrawn view_final(const PXR_NS::SdfPath& camera, const PXR_NS::GfFrustum& frustum, int frame, int width,
+                       int height, const DrawSettings& s, GpuMemWatch& mem);
   // the prim under pixel (x, y) of a width x height picture through `frustum`; empty path when nothing is there
   PXR_NS::SdfPath pick(const PXR_NS::GfFrustum& frustum, int frame, int width, int height, double x, double y,
                        PXR_NS::GfVec3d* point);

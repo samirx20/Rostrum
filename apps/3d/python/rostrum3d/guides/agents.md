@@ -29,7 +29,8 @@ scene from the document each time you look. Imported USD files stay untouched; y
 - **Frame first, light second, detail third.** A box-and-sphere blockout with the right camera and light already shows if the shot
   works. Add detail only where the camera sees it (a part that never reaches the frame costs render time and gives nothing).
 - **A look at fast quality is not a look at final.** Storm has no true glass, soft shadows or global light. Judge shape and timing in
-  Storm, then confirm light and materials with one `final` look at the frame that matters most.
+  Storm, then confirm light and materials with one `final` look at the frame that matters most. (A person on the screen gets the
+  same with Shift+F, Look: Final: the viewport itself runs Cycles with the Render button's settings and cleans up sample by sample.)
 - **Depth of field is a choice of three numbers.** The focus distance is the distance from the camera to what must be sharp. Get
   it from `look_at` (its `distance`) instead of measuring by eye.
 - **Time.** `at` is seconds from the start of the shot; `frame` is the shot's own frame number. Both are valid in every tool; the

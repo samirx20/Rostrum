@@ -4,17 +4,20 @@ the studio light never touch the document or its history. Clicking picks through
 (empty space selects nothing, as clicking the empty 2D canvas selects the composition).
 
 It starts looking through the shot camera; orbiting, panning or zooming there switches to the free camera from
-the shot camera's view. With a panel, bulb or sun light selected it can look through that light (to aim it by eye),
+the shot camera's view. Look: Final (Shift+F, final_look.py) draws progressive Cycles in place with the Render button's
+settings; any change starts it over, and while the Render button's own render runs it waits (one Cycles on the card).
+With a panel, bulb or sun light selected it can look through that light (to aim it by eye),
 following the light while it moves; moving the view there continues freely from it (the light stays where it is). It draws again when the document, the playhead frame or the selection changes.
 """
 from __future__ import annotations
 
 import sys
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from rostrum3d import through
 
+from .final_look import NEXT_MS, FinalLook
 from .frames import ViewRenderer
 from .viewcam import ViewCam
 
@@ -47,14 +50,17 @@ class Viewport(QObject):
         self._cam_dof = False                        # the engine said the camera looked through has depth of field on
         self._size, self._scale = None, 1.0          # request size (picture pixels); picture px per screen px
         self._scene, self._shot, self._started = None, None, False
+        self.final = FinalLook()
+        self._next = QTimer(self, singleShot=True, interval=NEXT_MS, timeout=self.redraw)   # the next Final step
         self._r.ready.connect(self._on_ready)
         self._r.picked.connect(self._on_picked)
-        self._r.failed.connect(self._set_status)
+        self._r.failed.connect(self._on_failed)
         self._r.notice.connect(self._set_status)
         bridge.docChanged.connect(self._on_doc)
         bridge.frameChanged.connect(self.redraw)
         bridge.selectionChanged.connect(self.redraw)
         bridge.selectionChanged.connect(lambda *_: self.settingsChanged.emit())   # canThroughLight follows it
+        bridge.render.changed.connect(self._on_render_job)     # Final waits while the Render button renders
 
     # --- QML properties
     serial = Property(int, lambda s: s._serial, notify=serialChanged)
@@ -75,6 +81,9 @@ class Viewport(QObject):
     dof = Property(bool, lambda s: s._dof, notify=settingsChanged)
     # depth of field only matters when the camera looked through has it on (the engine says which, per picture)
     cameraDof = Property(bool, lambda s: s._cam_dof, notify=settingsChanged)
+    look = Property(str, lambda s: "final" if s.final.on else "quick", notify=settingsChanged)
+    finalLine = Property(str, lambda s: s.final.line, notify=serialChanged)
+    finalFraction = Property(float, lambda s: s.final.fraction, notify=serialChanged)
 
     # --- the scene and the shot (compiled once per document change, not per mouse move)
     def _on_doc(self, *_):
@@ -131,6 +140,8 @@ class Viewport(QObject):
             else:                                                           # deleted, or no longer a panel or bulb
                 self.cam.mode = "free"
                 self.settingsChanged.emit()
+        if self.final.on:
+            return {**self.cam.request(self.bridge.frame, *self.final.size((w, h))), **self.final.fields()}
         return {**self.cam.request(self.bridge.frame, w, h), "renderer": "storm", "view": "",
                 "exposure": self._exposure, "studio": self._studio, "sceneLights": self._lights,
                 "ao": self._ao if self._ao_on else 0.0, "dof": self._dof,
@@ -138,6 +149,10 @@ class Viewport(QObject):
 
     @Slot()
     def redraw(self):
+        self._next.stop()
+        if self.final.on and self.bridge.render.running():
+            self.final.line = "Final waits for the render"
+            return self.serialChanged.emit()
         if self._size is not None:
             self._guard(lambda: self._r.request(self._compiled(), self._request()))
 
@@ -186,6 +201,23 @@ class Viewport(QObject):
             self.settingsChanged.emit()
             self.redraw()
 
+    @Slot(str)
+    def setLook(self, look):
+        """"quick" (Storm) or "final" (progressive Cycles with the Render button's settings)."""
+        if (look == "final") != self.final.on:
+            self.final.start() if look == "final" else self.final.stop()
+            self.settingsChanged.emit()
+            self.serialChanged.emit()
+            self.redraw()
+
+    @Slot()
+    def toggleLook(self):
+        self.setLook("quick" if self.final.on else "final")
+
+    def _on_render_job(self):
+        if self.final.on and not self.bridge.render.running() and self.final.line.startswith("Final waits"):
+            self.redraw()
+
     def _setting(self, name, value):
         if getattr(self, name) != value:
             setattr(self, name, value)
@@ -224,16 +256,31 @@ class Viewport(QObject):
                                                                 "x": round(x * self._scale), "y": round(y * self._scale)}))
 
     def close(self):
+        self._next.stop()
         self._r.close()
 
     # --- answers from the worker
-    def _on_ready(self, serial, ms, dome, cam_dof=False):
+    def _on_ready(self, serial, ms, dome, cam_dof=False, extra=None):
         self._serial, self._ms = serial, ms
+        if self.final.on and (extra or {}).get("final") is not None:
+            step = self.final.take(extra)
+            if step == "leave":
+                line = self.final.line
+                self.setLook("quick")
+                return self._set_status(line)
+            if step in ("next", "smaller"):
+                self._next.start()
         if dome != self._dome or cam_dof != self._cam_dof:
             self._dome, self._cam_dof = dome, cam_dof
             self.settingsChanged.emit()
         self._set_status("")                         # a picture came: the last failure or restart notice is over
         self.serialChanged.emit()
+
+    def _on_failed(self, line):
+        if self.final.on:                            # Cycles could not go on: back to Quick, and the line says why
+            self.setLook("quick")
+            line = f"{line}  ·  Final stopped, back to Quick"
+        self._set_status(line)
 
     def _on_picked(self, item):
         if item != self.bridge.selected:
