@@ -83,7 +83,7 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
 ```
 
 - **One tempo map.** Every beat time (`beat(n)`, `bar(n)`, `beats(n)`) goes through the tempo map: the doc's `tempo`
-  to the first change, then each change's bpm (no ramps: a ramp is several changes). The screen's ruler, the ids,
+  to the first change, then each change's bpm (a change with `ramp=True` glides evenly to the next one's). The screen's ruler, the ids,
   the checks and the engine's render all read the same map. A tempo change can't sit on a marker.
 - **What follows a tempo change:** things written in beats stay on their beat (they move in seconds); things in
   seconds stay at their moment (their beat moves). Markers follow the same rule: a marker at `bar(5)` stays on bar 5,

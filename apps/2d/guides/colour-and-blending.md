@@ -33,7 +33,7 @@ Useful facts:
   on white letters).
 - To blend only inside a shape, give the blending layer a track matte (`matte`, see `ui-and-product-animation`).
 - A layer with frosted glass (`backdrop`) can't have a blend other than normal (refused, loudly).
-- The list lives in one file, `apps/2d/python/rostrum2d/blends.txt`; the inspector's labels come from it.
+- The list lives in one file, `apps/2d/python/rostrum2d/blends.txt`; the settings panel's labels come from it.
 
 ## Colour effects
 

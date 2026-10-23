@@ -11,7 +11,8 @@ from . import values as V
 from .registry import REGISTRY, set_fields, taken
 
 ID = Param.text("id", label="Id", help="Optional; counted (tempo_1 …) or made from the name when left out.")
-LABELS = {"tempo": ("tempos", "tempo change", "Add a tempo change: the tempo from that beat (or moment) on."),
+LABELS = {"tempo": ("tempos", "tempo change", "Add a tempo change: the tempo from that beat (or moment) on. With ramp on it glides evenly to the next "
+                                                        "change's tempo instead (\"Glide to next\"; the ruler flag reads ♩ 100 ↗)."),
           "meter": ("meters", "time signature change", "Add a time signature change: the beats per bar and the beat "
                                                        "unit (6 and 8: 6/8) from that beat (or moment) on, starting a new bar there."),
           "key": ("keys", "key change", 'Add a key change ("D minor") from a time on: for agents and the screen, '

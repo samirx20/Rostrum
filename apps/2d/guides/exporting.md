@@ -4,8 +4,8 @@ Turn your project into a video, pictures or another file you can share or hand o
 
 ## 1. Open the Export panel
 
-1. Click the arrow button at the top right, next to **Import**. The **Export** panel opens at the right of the canvas.
-2. Click the arrow button again, or **Close**, to put it away.
+1. Click **Export** at the top right (or press **Ctrl+E**). The **Export** panel opens at the right of the canvas.
+2. Click **Export** at the top again, or the × at the panel's top right, to put it away.
 
 ![The Export panel](pictures/export-panel.png)
 

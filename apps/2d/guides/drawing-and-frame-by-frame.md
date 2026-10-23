@@ -1,7 +1,7 @@
 # Drawing and frame-by-frame
 
 How to draw in Rostrum2D with the shared painting kit: real brush strokes in the document, the same ones a person draws
-with a pen when the Draw tool is on. This guide is about the tools; what you draw is yours.
+with a pen when the Brush is on. This guide is about the tools; what you draw is yours.
 
 ## The parts
 
@@ -27,7 +27,9 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
 - Or `run_script`: `d = drawing("fx", w=800, h=1000)`, `f = d.frame(0)`, `ink = f.paint("ink")`,
   `ink.stroke([(x, y, p), …], color="#rrggbb", size=24, brush="bristle")`. Ids you write (`"ink"`) stay put; a re-run
   merges stroke by stroke, so a drawing a person redrew is kept (the reply lists what was held).
-- New drawing: `frame.add at=N` (blank) or `frame.add at=N copy=<frame id>` (start from a copy and change it).
+- New drawing: `frame.add at=N` (blank) or `frame.add at=N copy=<frame id>` (start from a copy and change it). `at` left out
+  puts it after the last drawing, held by the layer's `newHold` (1–4, default 2: the screen's "New ones hold"). It turns
+  `eachFrame` (the screen's "Draw each frame") on.
 - Redraw: `paint.clear` on the paint layer, then new strokes; or `stroke.remove` single strokes.
 - Fill a closed area: `paint.fill {target: <layer>, at: [[x, y]], color, opacity, gap: small|medium|large, layer}`
   (composition px; `space: "canvas"` for canvas px). The edges come from every visible paint layer of that drawing,
@@ -43,16 +45,24 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
 |---|---|
 | `brush` | `round` soft dab · `bristle` dry brush with streaks · `chalk` broken by paper grain · `flat` wide flat brush · `block` square-ended block-in · `line` crisp thin line |
 | `size`, `opacity`, `hardness` | width in px; 0..1; soft to hard edge |
-| `mode` | `normal`, `multiply` (glaze), `erase`, `screen` / `add` (light that builds up) |
+| `mode` | `normal`, `multiply` (glaze), `erase`, `screen` / `add` (light that builds up), `overlay`, `soft_light`, `color`. A paint layer's own `mode` is `normal`, `multiply`, `screen` or `add` |
 | `smudge` + `wet` (+ `pickup`) | the brush drags the paint under it (and from the layers below) |
-| `grain`, `color_jitter`, `hue_jitter`, `jitter`, `spacing` | paper tooth, colour drift along the stroke, scatter, dab spacing |
+| `steady` | Steadiness: the line trails the pen and smooths a shaky hand (0 = raw) |
+| `size_pressure`, `opacity_pressure`, `tilt_angle`, `tilt_size` | what a pen's pressure and lean change (a stroke's points may carry tilt: `[x, y, pressure, tiltX, tiltY]`) |
+| `taper_start`, `taper_end` | the stroke starts / ends thin over this many tip sizes |
+| `texture` | tip picture: `none`, `sponge`, `speckle`, `streaks`, `ragged`, `charcoal`, or a picture in the project's library; it turns with the tip |
+| `paper`, `paper_scale`, `grain` | the paper's tooth (`tooth`, `canvas`, `cold press`, `laid`, `rough`, or the project's own) and how much it breaks up the paint; it stays put on the canvas |
+| `color_jitter`, `hue_jitter`, `jitter`, `size_jitter`, `angle_jitter`, `spacing`, `even` | colour drift along the stroke, scatter, random size and turn per dab, dab spacing, softer tips closer together |
 | `follow` / `angle` | the tip turns with the stroke, or keeps a fixed angle |
+
+The screen's 19 shipped brushes (Sketch, Ink, Paint, Light, Texture) are only ready-made sets of these settings; a stroke
+records what it was drawn with, so an agent sets the same ones.
 
 ## Seeing and checking
 
 - `look_drawing layer=… frame=N`: the drawing shown at frame N, in canvas px with a labelled grid (`grid`, `zoom`
-  `[x0, y0, x1, y1]` for detail, `paint` for one paint layer, `onion=true` for the 2 drawings before (red) and after
-  (green)).
+  `[x0, y0, x1, y1]` for detail, `paint` for one paint layer, `onion=true` for 2 drawings before (red) and after
+  (green), or `onion={before, after}` with 0 – 5 each way, as the screen's onion skin).
 - `look_drawing_change`: before / after of the last change to that drawing, with the changed box.
 - `inspect_drawing_at x y`: the colour there, each paint layer's colour, the top stroke and who drew it.
 - `inspect_stroke_landed stroke=…`: did the paint land on the path (mean / worst px off); give `path` to compare with

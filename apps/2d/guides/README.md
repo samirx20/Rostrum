@@ -5,15 +5,15 @@
 Short pages in everyday words, with the names of the real buttons. The app is one workspace (the picture, the settings of what you picked, and a timeline that is also the layers list), so these pages follow the work, not pages of the screen.
 
 1. [Making your first animation](first-animation.md): start a project, add text, pick and move, animate a value in place with the diamonds, play, do something to several layers, undo.
-2. [The screen](the-screen.md): the top bar, the canvas and its tools, select first then act (the context bar, right-click, Ctrl+K), the settings panel, the timeline and its two heights, lock and hide, markers.
-3. [Drawing](drawing.md): the Draw tool, the brush, strokes, frames, hold and onion skin.
+2. [The screen](the-screen.md): the top bar, the canvas and its tools, select first then act (the settings panel's buttons, right-click, Ctrl+K), the settings panel, the timeline and its two heights, lock and hide, markers.
+3. [Drawing](drawing.md): the brush panel and its five tools, the settings panel, strokes, Fill, Draw each frame, hold and onion skin.
 4. [Importing pictures and files](importing.md): bring in pictures, video, SVG, PDF, PSD and Figma frames, then work on the pieces.
 5. [Exporting a video](exporting.md): the formats in plain words, the settings, and where the file goes.
 6. [Files and settings](files.md): saving is automatic; New, Open, Open recent, the sample, Duplicate, versions and the start screen.
 7. [Timing to music](timing-to-music.md): hear the project's sound from RostrumSound, the Sound row, mute, pick the soundtrack, show beats, snap and tie to beats and markers, jump beat to beat, open the song in RostrumSound.
 8. [Text on a path](text-on-a-path.md): draw a path, put text on it, slide and align it, animate along it.
 9. [The curve editor](curve-editor.md): open Curves, read the lines, drag keys and handles, change an ease, the ease keys.
-10. [Characters, sound, camera and styles](characters-sound-camera.md): bones, poses, lip sync and blinks, Add a sound here, the Camera tool, text Styles, the Library and Brand kit, the + Add button.
+10. [Characters, sound, camera and styles](characters-sound-camera.md): bones, poses, lip sync and blinks, Add a sound here, the Camera tool, text Styles, the Library and Brand kit, the Media group.
 
 ## For agents
 

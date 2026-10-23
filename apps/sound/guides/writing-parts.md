@@ -23,9 +23,9 @@ instrument can use are offered (the screen hides the rest). Drum tracks use hits
   from the top of the settings panel, the right-click menu or keys: Q quantise, Ctrl+D duplicate, ↑ / ↓ a half step.
 - **MIDI keyboard:** choose the input device (shown only when one is connected), arm the track, record: what you play
   lands in the selected track's piano roll as one undo step for the whole take.
-- The song's tempo, beats per bar and key are in the settings panel while nothing is selected; tempo and key changes
-  at the playhead come from the tempo · beats · key readout in the arrangement's header strip. Notes written in beats
-  follow tempo changes.
+- The song's tempo, beats per bar and key are fields in the arrangement's header strip; they edit what plays at the
+  playhead. With nothing selected, the settings panel has **+ Tempo change**, **+ Key change** and **+ Section** for the
+  playhead. A tempo flag on the ruler can **Glide to next**. Notes written in beats follow tempo changes.
 
 ## From a file and back
 

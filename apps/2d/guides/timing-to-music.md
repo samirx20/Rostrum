@@ -20,7 +20,7 @@ When your project has music, voice or sound made in RostrumSound, Rostrum2D play
 
 ## 3. Muting the sound
 
-- Click the **speaker button** (🔊) in the timeline's header, next to **Preview size**. It turns to 🔇 and the waveform fades. Click it again to hear the sound.
+- Click the **speaker button** (🔊) in the timeline's header, at the left of **Add marker**. It turns to 🔇 and the waveform fades. Click it again to hear the sound.
 - Muting is only for this window. It does not change the song, and an export from RostrumSound still has all of its sound.
 
 ## 4. Picking which sound plays

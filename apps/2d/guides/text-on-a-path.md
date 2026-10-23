@@ -4,7 +4,7 @@ Make words run along a line or a curve. The words stay real text: you can still 
 
 ## 1. Make the path
 
-1. Press **P** (the **Pen** tool in the tool strip).
+1. Press **P** (the **Pen** tool in the tool rail).
 2. Click for a corner, drag for a curve. Click the first point to close the shape, or press **Enter** to leave it open.
 3. The path is now a layer in the timeline.
 

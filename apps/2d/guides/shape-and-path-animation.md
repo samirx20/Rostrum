@@ -125,7 +125,7 @@ How the shapes are paired, so you can steer the in-between:
   Draw both shapes in the **same direction** (both clockwise): opposite directions turn the shape inside out half way.
 - Open and closed pieces may be paired; the piece closes from half way.
 
-Check the in-between with `look_sheet` over the stretch; the inspector's "value now" shows the shape of the key that
+Check the in-between with `look_sheet` over the stretch; the settings panel's "value now" shows the shape of the key that
 starts the stretch (the engine draws the blend). The Lottie export holds a morphing path at its first shape and says so.
 
 Other ways to change a shape over time: `scale` / `scaleX` / `scaleY`, `rotation`, a mask, or a rig bind (a path bound
