@@ -11,7 +11,7 @@ Every project window is live: each change is on disk at once, shared with agents
     python apps/2d/screen/main.py --sample --step "select title" --step "page animate" --step "time 1.2" --shot out.png
     python apps/2d/screen/main.py --check-layout <folder>             # the layout check: every screen state at every
                                                                     # real window size (rostrum_gui/layout_run.py)
-Steps and --shot go with any start (no file named: the plain start, so a walk can check it). Steps: see screen2d/steps.py (file steps: screen2d/file_steps.py). With --shot the window quits by itself; a failed
+Steps and --shot go with any start (no file named: the plain start, so a walk can check it). Steps: see screen2d/steps.py (file steps: screen2d/file_steps.py). With --shot, or steps alone, the window quits by itself; a failed
 step or frame exits nonzero.
 A --shot / --step run draws offscreen by itself (rostrum_gui.app.qt_app); set QT_QPA_PLATFORM=windows to watch one.
 """
@@ -145,6 +145,8 @@ def main():
             QTimer.singleShot(30000, lambda: (print("FAIL: timeout: the closing picture's frame never landed", file=sys.stderr),
                                               app.exit(4)))
             wait_frame(0)
+        elif args.step and os.environ.get("QT_QPA_PLATFORM") == "offscreen":   # steps alone: done when they are (a watched run stays open)
+            app.exit(code[0])
 
     def wait_frame(n):       # the newest frame has landed, then the screen holds still
         bridge = session.bridge
