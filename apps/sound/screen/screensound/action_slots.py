@@ -107,10 +107,10 @@ class ActionSlots:
                 self._act(C.delete(C.Facts(self.doc, ids)), f"Cut {words}")
         elif name == "paste":
             self._paste(self._paste_track())
-        elif name == "library":                                 # the playhead on the marker, the Library on designed
+        elif name == "library":                                 # the playhead on the marker, the Library on My sounds
             self.setTime(ST.start_of(self.doc.data, self.doc.item(ids[0])))
             self.workspace.setLibrary(True)
-            self.libraryWanted.emit("designed")
+            self.libraryWanted.emit("mine")
         elif name == "swap":                                    # the Library opens on My sounds; ↑ / ↓ step (swap_trial.py)
             self.workspace.setLibrary(True)
             self.libraryWanted.emit("mine")

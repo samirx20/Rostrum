@@ -2,8 +2,8 @@
 
 *Team Priyam, P7, 2026-10-21. For Sam to choose. All terms were read on 2026-10-21. This is not legal advice.*
 
-Sam's verdict on P6 was that the designed sounds were "the same thing, just more metallic". Making the sounds from
-scratch doesn't reach an Apple launch film. The tools that read the motion, sync each sound and glue them on one bus
+Sam's verdict on P6 was that the sounds Rostrum made from settings were "the same thing, just more metallic". Making the sounds from
+scratch doesn't reach an Apple launch film (they were dropped on 2026-10-23; movement is scored with instruments). The tools that read the motion, sync each sound and glue them on one bus
 are right. What's missing is better recordings to start from. This page lists every source we may use under our
 rules (MIT app; nothing GPL or non-commercial).
 
@@ -25,7 +25,7 @@ glue bus. **Only the recordings change.** All are at −16 LUFS (the same loudne
 | `C:\Users\Sam\.rostrum\waves\results\stage2\sound-sources\slides-free-to-ship.mp4` | Freesound CC0 sweeps + Kenney CC0 clicks and ticks | **Yes** |
 | `C:\Users\Sam\.rostrum\waves\results\stage2\sound-sources\slides-freesound.mp4` | Freesound CC0 only | Yes |
 | `C:\Users\Sam\.rostrum\waves\results\stage2\sound-sources\slides-kenney.mp4` | Kenney CC0 only. its sweep slots use UI "sweep" sounds | Yes |
-| `C:\Users\Sam\.rostrum\waves\results\stage2\sound-sources\slides-designed-p6.mp4` | P6's designed sounds, for comparison | (ours) |
+| `C:\Users\Sam\.rostrum\waves\results\stage2\sound-sources\slides-designed-p6.mp4` | P6's sounds made from settings (since dropped), for comparison | (ours) |
 
 The `.wav` file next to each video is the same sound without the picture.
 

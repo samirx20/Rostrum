@@ -49,22 +49,3 @@ def test_compile_writes_stretch_shift_and_plugins_as_the_contract():
                                             "id": "org.tape", "params": {"drive": 0.4, "mix": [[0, 0], [4.0, 1]]},
                                             "state": "AAEC"}]            # `name` is ours; marker times are seconds
     assert out["tracks"][1]["instrument"]["plugin"]["id"] == "org.tape"
-
-
-def test_a_designed_sound_layers_with_clips_and_a_bad_group_is_loud():
-    """`group` on a designed sound (schema, S35): it moves with its clip layer; a group that isn't text is refused;
-    a sound without one (every older file) is unchanged."""
-    import pytest
-    from rostrum_core import RostrumError
-    doc = Document.new(KIND)
-    doc.run_script("door.py", run_source(DOOR + 'd.sound("click", at=2.0, group="door")\nd.sound("hit", at=6.0)\n',
-                                         "door.py"), Who.script("door.py"))
-    thud = doc.item("door")["clips"][0]["id"]
-    click, hit = [s["id"] for s in doc.item("door")["sounds"]]
-    doc.apply({"op": "clip.set", "target": [thud], "args": {"at": 3.0}}, Who.person())
-    assert doc.item(click)["at"] == 3.0 and doc.item(hit)["at"] == 6.0 and "group" not in doc.item(hit)
-    doc.apply({"op": "sound.set", "target": [click], "args": {"at": 4.0}}, Who.person())     # and the other way round
-    assert doc.item(thud)["at"] == 4.0
-    with pytest.raises(RostrumError):
-        doc.apply({"op": "sound.set", "target": [hit], "args": {"group": 5}}, Who.person())
-    assert "group" not in compile(doc)["tracks"][0]["sounds"][0]          # the layer is ours, not the engine's

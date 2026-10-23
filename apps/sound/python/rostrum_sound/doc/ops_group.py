@@ -1,5 +1,5 @@
-"""Layered sounds: clips and designed sounds of one track that share a `group` name are one sound made of several
-takes (a designed click + a library thud).
+"""Layered sounds: clips of one track that share a `group` name are one sound made of several takes (a recorded
+click + a library thud).
 
 `clip.set` on a grouped clip carries the whole group: a new `at` moves every clip of the group by the same time
 (each keeps the way its own time is written), a new `volume` scales them all by the same factor. One call = one
@@ -18,14 +18,13 @@ VOLUME_MAX = 4.0
 
 
 def mates(ctx, clip_id: str) -> list[dict]:
-    """The other members of this clip's or sound's group (same track, same `group`: clips and designed sounds); none
-    when it has no group."""
+    """The other members of this clip's group (same track, same `group`); none when it has no group."""
     loc = index(ctx.doc, LISTS)[clip_id]
     group = loc.item.get("group")
     if not group:
         return []
     track = ctx.item(loc.parent)
-    return [c for key in ("clips", "sounds") for c in track.get(key, []) if c.get("group") == group and c["id"] != clip_id]
+    return [c for c in track.get("clips", []) if c.get("group") == group and c["id"] != clip_id]
 
 
 def clip_set(ctx, targets, args):

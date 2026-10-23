@@ -67,7 +67,7 @@ BY = V.Value("by", "number", rule=_by, required=True, unit="s", group="Section",
 
 
 @REGISTRY.operation("section.move", "Move sections and everything that starts inside them (notes, hits, clips, "
-                    "sounds, lines, markers, tempo and key changes, automation points) by an amount, as one step.",
+                    "lines, markers, tempo and key changes, automation points) by an amount, as one step.",
                     target="section", params=[BY], label="Move section")
 def section_move(ctx, targets, args):
     plan: dict = {}

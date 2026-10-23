@@ -12,11 +12,11 @@ from rostrum_gui import snap
 from . import song_edit, timing
 from .timeline import kind_of
 
-MANY = ("note", "hit", "clip", "line", "sound")          # what moves together when several are selected
-MOVABLE = ("note", "hit", "clip", "line", "sound", "marker", "section", "tempo", "meter", "key")
-REMOVABLE = ("note", "hit", "clip", "line", "sound", "marker", "track", "effect", "automation", "bus", "send", "duck",
+MANY = ("note", "hit", "clip", "line")          # what moves together when several are selected
+MOVABLE = ("note", "hit", "clip", "line", "marker", "section", "tempo", "meter", "key")
+REMOVABLE = ("note", "hit", "clip", "line", "marker", "track", "effect", "automation", "bus", "send", "duck",
              "tempo", "meter", "key", "section")
-LABELS = {"sound": "Move sound", "note": "Move note", "hit": "Move drum hit", "clip": "Move clip", "line": "Move line", "marker": "Move marker",
+LABELS = {"note": "Move note", "hit": "Move drum hit", "clip": "Move clip", "line": "Move line", "marker": "Move marker",
           "section": "Move section", "tempo": "Move tempo change", "meter": "Move time signature change", "key": "Move key change",
           "edge": "Resize section"}
 
@@ -80,9 +80,9 @@ def many_calls(doc, g: dict, dt: float, dsemi: int, free: bool, only_time: bool,
 
 
 def track_calls(doc, g: dict, dest: str) -> list[dict]:
-    """Clips and designed sounds dragged onto another row: one `clip.to_track` when that track can hold them (an
+    """Clips dragged onto another row: one `clip.to_track` when that track can hold them (an
     audio or empty track, not a voice track); none otherwise (they stay on their own tracks)."""
-    movers = [x["id"] for x in g["items"] if x["type"] in ("clip", "sound")]
+    movers = [x["id"] for x in g["items"] if x["type"] == "clip"]
     if not movers or not dest or not doc.has(dest) or doc.item(dest)["type"] != "track":
         return []
     if kind_of(doc.item(dest)) not in ("audio", "empty") or doc.item(dest).get("instrument") == "voice":

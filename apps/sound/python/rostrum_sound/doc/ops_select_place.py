@@ -1,5 +1,5 @@
 """Where the selected things live: `track.move` (the tracks' order), `track.duplicate` (a whole track, new ids),
-`clip.to_track` (clips and designed sounds onto another track that can hold them) and `clip.cut_range` (cut a stretch
+`clip.to_track` (clips onto another track that can hold them) and `clip.cut_range` (cut a stretch
 out of clips and close the gap on that track: voice editing). Each one operation over the selection, one undo step;
 an agent calls the same ones the screen does (Ctrl+] / Ctrl+[, Duplicate track, ↑ ↓, Delete on a time range).
 """
@@ -22,8 +22,7 @@ TRACK = Param.text("track", required=True, label="Track", group="Track",
                    help="The id of the track they go to (it must hold that kind: not a voice track for clips).")
 FROM = V.time("at", required=True, group="Cut", label="From", help="Where the stretch to cut out starts.")
 TO = V.time("end", required=True, group="Cut", label="To", help="Where it ends; what follows on the track moves up.")
-TIMED = ("notes", "hits", "clips", "sounds", "lines")
-KEY = {"clip": "clips", "sound": "sounds"}
+TIMED = ("notes", "hits", "clips", "lines")
 
 
 @REGISTRY.operation("track.move", "Move tracks up or down in the track list (their order among themselves stays).",
@@ -66,8 +65,8 @@ def track_duplicate(ctx, targets, args):
         ctx.insert("root", "tracks", new, ctx.idx[t].index + 1)
 
 
-@REGISTRY.operation("clip.to_track", "Move clips or designed sounds onto another track (a layered clip takes its "
-                    "layers along); their times stay.", target=("clip", "sound"), params=[TRACK],
+@REGISTRY.operation("clip.to_track", "Move clips onto another track (a layered clip takes its "
+                    "layers along); their times stay.", target="clip", params=[TRACK],
                     label="Move to track")
 def to_track(ctx, targets, args):
     dest = args["track"]
@@ -76,10 +75,10 @@ def to_track(ctx, targets, args):
     if ctx.item(dest).get("instrument") == "voice":
         ctx.fail(codes.BAD_ARGUMENT, f'track "{dest}"', "is a voice track: it holds spoken lines, not clips",
                  hint="Choose an audio track.")
-    every = list(dict.fromkeys(targets + [m["id"] for t in targets if ctx.item(t)["type"] == "clip" for m in mates(ctx, t)]))
+    every = list(dict.fromkeys(targets + [m["id"] for t in targets for m in mates(ctx, t)]))
     for t in every:
         if ctx.idx[t].parent != dest:
-            ctx.move(t, dest, KEY[ctx.item(t)["type"]])
+            ctx.move(t, dest, "clips")
 
 
 @REGISTRY.operation("clip.cut_range", "Cut a stretch of time out of the selected clips (one track) and close the gap: "

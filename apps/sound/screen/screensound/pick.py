@@ -44,11 +44,11 @@ def roll_at(roll: dict, t: float, row: float, tol: float) -> str:
     return best
 
 
-STACKED = ("clip", "line", "sound")
+STACKED = ("clip", "line")
 
 
 def stack(blocks: list[dict]) -> None:
-    """Clips, lines and designed sounds that overlap in time on one lane share it in rows (each its own `row` of
+    """Clips and lines that overlap in time on one lane share it in rows (each its own `row` of
     `rows`, labels readable) instead of drawing over each other; `lanes` = the middle of its row, so a click picks
     the one under the pointer (block_at). Each overlapping group takes as few rows as it needs."""
     items = sorted((b for b in blocks if b["type"] in STACKED), key=lambda b: (b["t"], b["id"]))

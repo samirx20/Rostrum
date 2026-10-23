@@ -9,10 +9,9 @@ import math
 from rostrum_core import RostrumError, run
 from rostrum_sound.doc import meter
 from rostrum_sound.doc import select_time as ST
-from rostrum_sound.doc.shift import write_like
 
 TIMED = ("note", "hit", "clip")                       # what has `<kind>.duplicate` / `.move`
-REMOVABLE = ("note", "hit", "clip", "line", "track", "marker", "section", "sound")
+REMOVABLE = ("note", "hit", "clip", "line", "track", "marker", "section")
 
 
 class Facts:
@@ -144,24 +143,14 @@ def inside(f):
     """The ids of notes, hits and clips that start inside the range (any track)."""
     t0, t1 = f.range
     root = f.doc.data
-    return [it["id"] for t in root.get("tracks", []) for k in ("notes", "hits", "clips", "sounds") for it in t.get(k, [])
+    return [it["id"] for t in root.get("tracks", []) for k in ("notes", "hits", "clips") for it in t.get(k, [])
             if t0 - 1e-6 <= ST.start_of(root, it) < t1 - 1e-6]
 
 
 def range_duplicate(f):
-    """Ctrl+D on a time range: everything inside, copied by the range's length (one change). Designed sounds have
-    no `.duplicate`, so they come back as `sound.add_many` on their own tracks (their times in their own form)."""
+    """Ctrl+D on a time range: everything inside, copied by the range's length (one change)."""
     by = round(f.range[1] - f.range[0], 4)
-    held = Facts(f.doc, inside(f)).by_kind(TIMED + ("sound",))
-    out = [call(f"{k}.duplicate", ids, by=by) for k, ids in held.items() if k != "sound"]
-    per: dict[str, list] = {}
-    root = f.doc.data
-    for i in held.get("sound", []):
-        it = f.doc.item(i)
-        args = {k: v for k, v in it.items() if k not in ("id", "type")}
-        args["at"] = write_like(it["at"], ST.start_of(root, it) + by, root)
-        per.setdefault(f.doc.parent_of(i)[0], []).append(args)
-    return out + [call("sound.add_many", [t], sounds=many) for t, many in per.items()]
+    return [call(f"{k}.duplicate", ids, by=by) for k, ids in Facts(f.doc, inside(f)).by_kind(TIMED).items()]
 
 
 def section(f):

@@ -1,5 +1,5 @@
-"""`section.duplicate`: a copy of a section and everything that starts inside it (notes, drum hits, clips, designed
-sounds on every track), placed right after it: the copy section starts where the original ends. One operation, one
+"""`section.duplicate`: a copy of a section and everything that starts inside it (notes, drum hits and clips
+on every track), placed right after it: the copy section starts where the original ends. One operation, one
 undo step; nothing after the section moves (the copy sits on top of what is there, as Ctrl+D does for items).
 """
 from __future__ import annotations
@@ -11,7 +11,7 @@ from .ops_select_move import _new_id
 from .registry import REGISTRY, taken
 from .select_time import moved, start_of
 
-KINDS = {"notes": "note", "hits": "hit", "clips": "clip", "sounds": "sound"}
+KINDS = {"notes": "note", "hits": "hit", "clips": "clip"}
 
 
 @REGISTRY.operation("section.duplicate", "Copy sections with everything that starts inside them to right after "
@@ -28,10 +28,7 @@ def duplicate(ctx, targets, args):
         for track, key, it in inside:
             new = copy.deepcopy(it)
             new["at"] = moved(ctx, it, by)
-            if KINDS[key] == "sound":
-                new["id"] = ids.sound(track, it["design"], new["at"], root, taken(ctx))
-            else:
-                new["id"] = _new_id(KINDS[key], track, new, ctx)
+            new["id"] = _new_id(KINDS[key], track, new, ctx)
             for fx in new.get("effects", []):
                 fx["id"] = ids.effect(new["id"], fx.get("effect", "effect"), taken(ctx) | {new["id"]})
             ctx.insert(track, key, new)

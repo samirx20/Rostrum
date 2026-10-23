@@ -28,7 +28,7 @@ reaches the Sound app through a sampler in this proof until Rostrum2D hands it o
   `Engine.check_names` compares the Python table with the engine's `describe`.
 - **Motion → sound** (`rostrum_sound/motion/`): `read.py` reads the motion data and finds moves (with their speed
   curve), landings, snaps, presses and steps. `score.py` gives each one a matched sound as a starting point, plus the
-  `ui` glue bus (short room, light compressor). MCP tool: `edit_sounds_from_motion`. Guide: `designed-sounds`.
+  `ui` glue bus (short room, light compressor). MCP tool: `edit_sounds_from_motion`. Guide: `designed-sounds` (now `scoring-motion`: the designed sounds were dropped 2026-10-23, movement is scored with instruments).
 - **Library recordings:** none used in the new score. The designed sounds beat the installed kenney and freesound
   UI takes because they take the move's shape and timing, which a fixed recording can't. Sonniss GDC bundles were not
   downloaded.

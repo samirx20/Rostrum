@@ -16,11 +16,15 @@ instrument can use are offered (the screen hides the rest). Drum tracks use hits
 
 - **A new track** starts from a sound in the **Library** (Ctrl+L): double-click an instrument. With a notes track
   selected the Library offers to change its instrument instead (the notes stay).
-- **Editor** (the dock under the arrangement, E; the selected track): double-click to add, or the **Draw** tool (B)
-  where every click adds; drag to move (it snaps to the grid set by **Grid ▾**, with **Snap** on; Ctrl = no snapping,
+- **Editor** (the dock under the arrangement, E; the selected track): it opens framed on the track's notes, beside a
+  piano keyboard (a C label on every octave; click a key to hear it on the track's instrument). Its top line, beside
+  the Editor / Mixer tabs, holds the track's name, **Select** (V) / **Draw** (B) and **Note ▾** (how long a new note
+  is). Double-click to add, or the **Draw** tool where every click adds; drag to move (it snaps to the grid set by **Grid ▾**, with **Snap** on; Ctrl = no snapping,
   Alt = a copy, Shift = only in time), drag the end to lengthen, Delete removes. Each drag
   is one undo step. Drum tracks show a row per drum. Select several (Ctrl+click, Shift+click, a box) and act on them
   from the top of the settings panel, the right-click menu or keys: Q quantise, Ctrl+D duplicate, ↑ / ↓ a half step.
+- **Velocity strip** (under the notes): one bar per note, as high as it plays loud. Drag a bar, or draw a line
+  across several. The value of the bar under the pointer (or of the selected notes) is written beside it ("70 %").
 - **Playing lane** (under the velocity strip, for an instrument that plays notes): pick **Sustain** (the pedal: up
   at the bottom, down at the top; a note let go while it is down rings on until it lifts), **Expression** (how loud
   the whole part plays, like a swell on the strings) or **Bend** (the pitch wheel: the middle is no bend, the top

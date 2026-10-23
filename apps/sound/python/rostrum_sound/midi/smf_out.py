@@ -6,8 +6,8 @@ the start and "<name>/end" at the end, which `song.py` reads back as sections).
     write(root, path)
 
 Times go through the tempo map (doc/tempo.py), so a note in seconds lands on the beat it plays at. Track 1 holds
-the song's map; each Sound track with notes or hits is one MIDI track (drum hits on channel 10). Recorded clips,
-designed sounds and voice lines are audio, not MIDI: they are not written.
+the song's map; each Sound track with notes or hits is one MIDI track (drum hits on channel 10). Recorded clips
+and voice lines are audio, not MIDI: they are not written.
 """
 from __future__ import annotations
 

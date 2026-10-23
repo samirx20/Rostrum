@@ -64,7 +64,7 @@ A sound is a clip of its file, starting at its `start`:
 Answers the events you choose with recordings of real things, not synthetic effects: a click or knock where
 something lands hard, a press and its release (the same click higher and softer), a real hit under a big landing.
 Each sound is chosen by kind and shape; a recording already used is pushed back. Rostrum makes no whooshes: score a
-move with an instrument instead (`inspect_guide 'designed-sounds'`). Change any clip with `clip.set` (or move it in
+move with an instrument instead (`inspect_guide 'scoring-motion'`). Change any clip with `clip.set` (or move it in
 the arrangement); running it again keeps your changes. Missing a kind (no clicks in your folders) is an error that
 says which kind to add.
 

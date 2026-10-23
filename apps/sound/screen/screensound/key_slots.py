@@ -44,13 +44,12 @@ class KeySlots:
 
     @Slot(int, result=bool)
     def pitchStep(self, semis):
-        """↑ ↓: notes by `semis`; clips and designed sounds to the next track up (semis > 0) or down that holds
-        them."""
+        """↑ ↓: notes by `semis`; clips to the next track up (semis > 0) or down that holds them."""
         kinds = set(self._kinds())
         if kinds == {"note"}:
             return self._act([{"op": "note.transpose", "target": self._picks.ids, "args": {"semitones": semis}}],
                              "Transpose " + self.selectionWords)
-        if kinds and kinds <= {"clip", "sound"}:
+        if kinds == {"clip"}:
             order = [t["id"] for t in self.doc.data.get("tracks", [])]
             here = order.index(self.doc.parent_of(self._picks.ids[0])[0])
             step = -1 if semis > 0 else 1

@@ -33,7 +33,7 @@ from .keys import KEYMAP
 
 EFFECTS = ("eq", "compressor", "reverb", "delay", "saturate", "tape", "limiter", "width", "gate", "deess")
 WORDS = {"eq": "EQ", "deess": "De-ess"}
-CLIPS = {"note", "hit", "clip", "line", "sound"}
+CLIPS = {"note", "hit", "clip", "line"}
 
 
 def act(key, label, valid_when, calls=None, shortcut="", importance="secondary", group="", menu="", do="",
@@ -88,13 +88,11 @@ ACTIONS = [
     *[act(f"transpose_{k}", label, lambda f: f.one == "note", lambda f, n=n: [C.call("note.transpose", f.ids, semitones=n)],
           keys, "primary", "pitch", "Transpose") for k, n, label, keys in _STEPS],
     act("humanize", "Humanise", NOTES, lambda f: [C.call(f"{f.one}.humanize", f.ids)], importance="primary", group="time"),
-    # markers (the song's own, placed in seconds) and designed sounds
+    # markers (the song's own, placed in seconds)
     act("place_sound", "Place a sound", lambda f: f.one == "marker" and f.count == 1, importance="primary",
         group="marker", do="library"),
     act("fit_bar", "Land a bar…", MARKER, importance="primary", group="marker", do="fit",
         needs="Land a bar needs one marker selected (placed in seconds)"),       # asks the bar first (a popover)
-    act("vary", "Make a variation", lambda f: f.one == "sound", lambda f: [C.call("sound.vary", f.ids)],
-        importance="primary", group="sound"),
     act("speak_again", "Speak again", lambda f: f.one == "line", shortcut="T", importance="primary", group="line",
         do="speak", needs="Speak again needs voice lines selected"),
     act("take_prev", "Earlier take", V.take_valid(-1), V.take_calls(-1), group="line"),

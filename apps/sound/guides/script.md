@@ -95,8 +95,8 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   seconds stay at their moment (their beat moves). Markers follow the same rule: a marker at `bar(5)` stays on bar 5,
   a marker at `12.0` stays at 12 s. Write in beats what belongs to the music, in seconds what belongs to the picture.
 - **Moving a section:** `edit_document` `{"op": "section.move", "target": ["section.drop"], "args": {"by": {"beats": 8}}}`
-  (or `"by": -2.5` seconds) moves the section and everything that starts inside it (notes, hits, clips, designed
-  sounds, voice lines, markers, tempo and key changes, other sections, automation points) in one undo step. Each
+  (or `"by": -2.5` seconds) moves the section and everything that starts inside it (notes, hits, clips, voice
+  lines, markers, tempo and key changes, other sections, automation points) in one undo step. Each
   time keeps its form; a time on a marker that moves with it follows it. Effect envelopes inside effects don't move.
   In the arrangement: drag the section's bar (Ctrl = off the grid).
 - **Keys** are for you and the screen (the readout shows the key at the playhead): `doc/keys.py` has `scale`,
@@ -105,7 +105,7 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   the synth kit; other channels a built-in instrument from the GM program family, to change after); `render_midi`
   writes the document's notes, hits, sustain / expression / mod wheel / bend lanes (CC 64, CC 11, CC 1, the pitch
   wheel, bend range as RPN 0; import reads them back), tempo map, time signature, keys, markers and sections (as
-  cue points) to `renders/<item>/midi/<item>.mid` (the screen: Export › What for › MIDI file). What MIDI can't carry comes back as a warning. Clips, designed sounds and
+  cue points) to `renders/<item>/midi/<item>.mid` (the screen: Export › What for › MIDI file). What MIDI can't carry comes back as a warning. Clips and
   voice lines are audio and are not written.
 - **A MIDI keyboard** (screen): arm a track, "Record keys" (shown only with a keyboard connected) records while the
   mix plays; Stop puts the take on the armed track in beats, one undo step. The sound you hear while playing is a

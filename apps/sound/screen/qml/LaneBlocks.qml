@@ -3,7 +3,7 @@ import RostrumKit
 
 // One track's things in an arrangement row, drawn only (clicks are the Timeline's): notes as thin bars placed
 // by pitch (a chord: one per key), drum hits as ticks placed by drum, recorded clips as blocks with their
-// waveform; clips and designed sounds that overlap share the lane in rows (pick.stack); a clip being cleaned fills
+// waveform; clips and lines that overlap share the lane in rows (pick.stack); a clip being cleaned fills
 // left to right. Every selected one is drawn in the accent colour (backend.picked). `ruler` gives the time mapping.
 // One painted surface per row, not a few items per note: a song of 14,000 notes made over a hundred thousand
 // items and over a gigabyte of screen memory. Only what is on screen is painted, and it is painted again only
@@ -109,7 +109,7 @@ Item {
             var h = lane.height - 2 * lane.pad, n = blocks.length
             for (var pass = 0; pass < 3; pass++) {            // clips under, then the rest, then what is selected
                 for (var i = 0; i < n; i++) {
-                    var b = blocks[i], on = !!picked[b.id], isClip = b.type === "clip" || b.type === "line" || b.type === "sound"
+                    var b = blocks[i], on = !!picked[b.id], isClip = b.type === "clip" || b.type === "line"
                     if ((pass === 0 ? !isClip || on : pass === 1 ? isClip || on : !on)) continue
                     var x = Math.round(r.xOf(b.t))
                     var w = b.type === "hit" ? (on ? 3 : 2) : Math.max(2, r.wOf(b.dur) - 1)

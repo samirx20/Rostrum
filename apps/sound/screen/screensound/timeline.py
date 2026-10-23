@@ -111,20 +111,6 @@ def clip_block(c, root):
             **({"tie": tie_of(c)["name"]} if tie_of(c) else {})}                         # a marker tag on the block
 
 
-SOUND_SECONDS = {"click": 0.08, "hit": 1.2}       # designed sounds without a length: how long their block is drawn
-
-
-def sound_block(sd, root):
-    """A designed sound, drawn as a clip with its design's name (its length, or the tail, or a short default)."""
-    dur = sd.get("dur") or sd.get("tail") or SOUND_SECONDS.get(sd["design"], 0.5)
-    return {"id": sd["id"], "type": "sound", "t": timing.sec(sd["at"], root, sd["id"]), "dur": float(dur),
-            "label": spaced_design(sd["design"]), "peaks": []}
-
-
-def spaced_design(d: str) -> str:
-    return {"subDrop": "Sub drop", "hit": "Impact"}.get(d, d.capitalize())
-
-
 def line_block(track, ln, root):
     """A voice line, drawn as a clip on its take (its words as the label); before its take is made, a block as long
     as the words would take to say (~0.4 s a word), marked "not made"."""
@@ -157,8 +143,7 @@ def blocks(track: dict, root: dict) -> list[dict]:
     return ([note_block(n, root) for n in track.get("notes", [])]
             + [hit_block(h, root) for h in track.get("hits", [])]
             + clips
-            + [line_block(track, ln, root) for ln in track.get("lines", [])]
-            + [sound_block(sd, root) for sd in track.get("sounds", [])])
+            + [line_block(track, ln, root) for ln in track.get("lines", [])])
 
 
 def drums_of(track: dict) -> list[str]:
@@ -183,7 +168,7 @@ def kind_of(track: dict) -> str:
         return "drums"
     if track.get("instrument") not in (None, "none") or track.get("notes"):
         return "notes"
-    return "audio" if track.get("clips") or track.get("sounds") else "empty"
+    return "audio" if track.get("clips") else "empty"
 
 
 def rows(root: dict, open_lanes: dict | None = None, folded=frozenset()) -> list[dict]:

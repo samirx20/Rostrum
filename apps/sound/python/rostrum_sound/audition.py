@@ -4,14 +4,13 @@ song would sound like (one audio engine). Nothing in the person's document chang
 
     entry = {"instrument": "builtIn", "builtIn": "grandPiano"}    # an instrument (builtIn / synth / model / sfz / plugin)
           | {"instrument": "kit"}                                # a drum kit (kit / kitSfz)
-          | {"design": "click", "material": 0.8}                 # a designed sound, as itself
           | {"media": r"C:\\...\\door.wav", "in": 0.4, "length": 1.2}   # a sound file (or a stretch of one), as itself
     render_audition(engine, entry, doc=doc.data, track="pad")    # -> {"file", "seconds", "cached", "what"}
 
 An instrument plays the track's own notes (`track` given and it has some: the first `bars` bars from `start`), else
-a short neutral phrase across its range; a kit plays a one-bar pattern. A file or designed sound is trimmed to
-MAX_S. The WAV is kept by content in the engine's share of the one cache (`sound/auditions/`, under the cache cap):
-the same audition again is the same file, found at once.
+a short neutral phrase across its range; a kit plays a one-bar pattern. A file is trimmed to MAX_S. The WAV is kept
+by content in the engine's share of the one cache (`sound/auditions/`, under the cache cap): the same audition
+again is the same file, found at once.
 """
 from __future__ import annotations
 
@@ -33,6 +32,7 @@ LOW = ("bass", "sub")                       # a bass-like sound is tried an octa
 PHRASE = ["C3", "E3", "G3", "C4", "E4", "G4", "C5"]
 PHRASE_LOW = ["C1", "E1", "G1", "C2", "E2", "G2", "C3"]
 STEP = 0.4
+KEY_S = 0.8                                  # a clicked key sounds this long
 GM = {"kick": (0, 1.0), "hat": (0.25, 0.5), "snare": (0.5, 0.9)}        # drum -> (beat fraction of a bar, vel)
 
 
@@ -43,8 +43,6 @@ def _fail(problem: str, subject="audition", hint=None):
 def _kind(entry: dict) -> str:
     if "media" in entry:
         return "file"
-    if "design" in entry:
-        return "designed"
     inst = entry.get("instrument")
     if inst in ("kit", "kitSfz"):
         return "kit"
@@ -53,7 +51,7 @@ def _kind(entry: dict) -> str:
               f"voice {entry.get('voice', '')}", "Add the voice track, then listen to it with render_mix.")
     if inst in ("builtIn", "synth", "model", "sfz", "plugin"):
         return "instrument"
-    _fail("is not something that can be tried: give an instrument, a drum kit, a designed sound or a sound file",
+    _fail("is not something that can be tried: give an instrument, a drum kit or a sound file",
           json.dumps(entry)[:80])
 
 
@@ -88,8 +86,6 @@ def _song(entry: dict, kind: str, notes: list[dict], doc: dict | None) -> Song:
         t0 = float(entry.get("in") or 0)
         length = min(float(entry.get("length") or MAX_S), MAX_S)
         s.track("a").clip(str(media), at=0, in_=t0 if t0 else None, length=round(length, 4), fadeOut=0.04)
-    elif kind == "designed":
-        s.track("a").sound(fields.pop("design"), at=0, **fields)
     elif kind == "kit":
         t = s.track("a", **fields)
         bar = meter.start_bar(s.root) * 60 / s.root.get("tempo", 120)
@@ -125,13 +121,31 @@ def render_audition(engine, entry: dict, doc: dict | None = None, track: str | N
     kind = _kind(entry)
     notes = _own_notes(doc, track, start, bars) if doc and track and kind in ("instrument", "kit") else []
     schedule = compile_doc(_song(entry, kind, notes, doc).tree(), master=False)
+    what = {"instrument": "its own notes" if notes else "a short phrase", "kit": "its own hits" if notes else "a one-bar pattern",
+            "file": "the sound file"}[kind]
+    return {**_render(engine, schedule, entry, out_dir), "what": what}
+
+
+def render_key(engine, doc: dict, track: str, pitch: int, out_dir: Path | None = None) -> dict:
+    """One key of `track`'s instrument, as the song would play it (its own sound settings and effects; the Editor's
+    keyboard: click a key, hear it). Returns {file, seconds, cached, what}."""
+    t = next((x for x in doc.get("tracks", []) if x["id"] == track), None)
+    if t is None:
+        raise RostrumError.not_found("render_key", "track", track, [x["id"] for x in doc.get("tracks", [])])
+    note = {"id": "n_key", "type": "note", "pitch": int(pitch), "at": 0, "dur": KEY_S, "vel": 0.8}
+    lone = {**t, "notes": [note], "hits": [], "clips": [], "automation": [], "mute": False, "solo": False,
+            "output": "master"}
+    root = {**doc, "tracks": [lone], "markers": [], "buses": [], "length": KEY_S + 1.5}
+    return {**_render(engine, compile_doc(root, master=False), {}, out_dir), "what": "one key"}
+
+
+def _render(engine, schedule: dict, entry: dict, out_dir: Path | None) -> dict:
+    """The schedule rendered once into the content-keyed cache: {file, seconds, cached}."""
     folder = Path(out_dir) if out_dir else settings.cache_dir() / "sound" / "auditions"
     out = folder / f"{_key(schedule, entry)}.wav"
-    what = {"instrument": "its own notes" if notes else "a short phrase", "kit": "its own hits" if notes else "a one-bar pattern",
-            "designed": "the designed sound", "file": "the sound file"}[kind]
     if out.is_file():
-        return {"file": str(out), "seconds": None, "cached": True, "what": what}
+        return {"file": str(out), "seconds": None, "cached": True}
     r = {}
     put_file(out, lambda tmp: r.update(engine.request("render", schedule=schedule, out=str(tmp), stems=[]) or {}),
              "render_audition")
-    return {"file": str(out), "seconds": r.get("seconds"), "cached": False, "what": what}
+    return {"file": str(out), "seconds": r.get("seconds"), "cached": False}

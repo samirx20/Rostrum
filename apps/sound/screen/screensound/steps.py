@@ -235,7 +235,7 @@ def _do_step(bridge, win, step, recorder=None):
         bridge.run(rest[0])
     elif word == "select-last":               # select-last <n>: the last n notes / hits / clips made on the Editor's track
         t = bridge.doc.item(bridge._track)
-        made = [i["id"] for k in ("notes", "hits", "clips", "sounds", "lines") for i in t.get(k, [])][-int(rest[0]):]
+        made = [i["id"] for k in ("notes", "hits", "clips", "lines") for i in t.get(k, [])][-int(rest[0]):]
         bridge.pickMany(made)
     elif word == "handle-first":              # handle-first <part> <dt s>: a handle drag on the first selected item
         do_select_step(bridge, win, "handle", [bridge.selectedIds[0], *rest])

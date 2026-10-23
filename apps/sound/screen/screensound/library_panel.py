@@ -5,7 +5,7 @@ Rule of individuality: with no folder yet the panel offers only "Add a sound fol
 and the results appear once there is something to search. Indexing a folder runs off the screen's thread (the first
 time a large folder takes a while; an unchanged one comes back from the index at once). Auditioning renders the entry
 through the engine and plays it on the engine's live player (auditioner.py): a file's own stretch, or an adder entry
-(an instrument on the selected track's notes, a kit, a designed sound). Placing is one operation call (`clip.add`, plus
+(an instrument on the selected track's notes, a kit). Placing is one operation call (`clip.add`, plus
 `track.add` when there is no track to put it on), so it is one undo step, exactly what an agent would call.
 """
 from __future__ import annotations

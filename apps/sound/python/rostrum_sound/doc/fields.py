@@ -12,7 +12,6 @@ from .. import deliver, names
 from . import effects
 from . import fields_buses as FB
 from . import fields_cleanup as FC
-from . import fields_design as FDS
 from . import fields_music as FM
 from . import playing as PL
 from . import plugins
@@ -88,7 +87,6 @@ FIELDS = {
         N("volume", 0, 4, "Line", display="db"), N("fadeIn", 0, 600, "Fades", "s", "secondary", label="Fade in"),
         N("fadeOut", 0, 600, "Fades", "s", "secondary", label="Fade out"),
     ],
-    "sound": FDS.params(),
     **FB.FIELDS,
     **FM.FIELDS,
     "effect": [Param.choice("effect", effects.TYPES, group="Effect", label="Effect type"),
@@ -122,7 +120,6 @@ DEFAULTS = {
     "note": dict(vel=0.8),
     "hit": dict(vel=0.85),
     "clip": dict(**{"in": 0}, volume=1, **FC.DEFAULTS),
-    "sound": dict(design="click"),
     "line": dict(seed=1, volume=1),
     "marker": {},
     "master": dict(volume=1, normalize=False, loudness=-16, truePeak=-1, glue=0, reverb="dry",
@@ -130,7 +127,7 @@ DEFAULTS = {
 }
 # The field that holds each instrument form's value (the form's name).
 INSTRUMENT_FIELD = {k: k for k in names.INSTRUMENTS if k != "none"}
-REQUIRED = {"duck": ["under"], "note": ["pitch", "at", "dur"], "hit": ["drum", "at"], "clip": ["media", "at"], "sound": ["design", "at"], "line": ["text", "at"], "marker": ["name", "at"], **FM.REQUIRED}
+REQUIRED = {"duck": ["under"], "note": ["pitch", "at", "dur"], "hit": ["drum", "at"], "clip": ["media", "at"], "line": ["text", "at"], "marker": ["name", "at"], **FM.REQUIRED}
 
 
 def params(type_: str, required=False) -> list[Param]:

@@ -2,7 +2,7 @@
 a fresh document, and the whole-document check.
 
     root (doc: tempo, length, beatsPerBar, sampleRate)
-      tracks[]   track: notes[] hits[] clips[] sounds[] (designed sounds) (clip: effects[]) lines[] (a voice track) effects[] automation[] sends[] ducks[]
+      tracks[]   track: notes[] hits[] clips[] (clip: effects[]) lines[] (a voice track) effects[] automation[] sends[] ducks[]
       buses[]    bus: effects[] automation[]   (a track's `output` and a send's `bus` name a bus id)
       markers[]  marker: name, at
       master[]   the one master (id "master"): effects[] automation[]
@@ -13,9 +13,9 @@ from __future__ import annotations
 from rostrum_core import DocKind
 
 from .. import names
+from . import dropped
 from . import fields as FD
 from . import ops_bus_tracks, ops_buses, ops_cleanup, ops_mix, ops_music, ops_range, ops_fit, ops_section_copy, ops_select_clips, ops_select_move, ops_select_notes, ops_select_place, ops_select_tracks, ops_swap, ops_timed, ops_tracks, ops_voice  # noqa: F401  (they register the operations)
-from . import fields_design as FDS
 from .check import check
 from .registry import LISTS, MASTER_ID, REGISTRY
 
@@ -44,4 +44,4 @@ def facts(item: dict, doc=None) -> dict:
     return {"vibratoLane": "vibrato" in lanes, "bendLane": "bend" in lanes, **_playing(item)}
 
 
-KIND = DocKind("sound", ".trk", REGISTRY, lists=LISTS, check=check, warn=FDS.retired, new=blank, facts=facts)
+KIND = DocKind("sound", ".trk", REGISTRY, lists=LISTS, check=check, warn=dropped.warn, new=blank, facts=facts)

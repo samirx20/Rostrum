@@ -58,8 +58,6 @@ def label(item: dict) -> str:
         return str(item["media"]).replace("\\", "/").rsplit("/", 1)[-1]
     if t == "line":
         return f'“{item.get("text", "")}”'
-    if t == "sound":
-        return timeline.spaced_design(item.get("design", "sound"))
     if t == "doc":
         return "Song"
     return name_of(item)
