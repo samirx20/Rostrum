@@ -40,6 +40,7 @@ class Engine:
         self._lock = threading.Lock()
         self._n = 0
         self._err, self.restarted = "", ""
+        self._aborted = False                # abort(): this engine is done; nothing starts it again
 
     @property
     def pid(self) -> int | None:
@@ -74,6 +75,8 @@ class Engine:
             self._n += 1
             req = {"id": self._n, "do": do, **fields}
             line = self._ask(req, timeout)
+            if line is None and self._aborted:
+                raise RostrumError(codes.INTERNAL, f"sound engine › {do}", "the engine", "was stopped (abort)")
             if line is None and do not in NOT_TWICE:
                 self._log(f"the sound engine stopped (exit code {self._code()}) during {do!r} and was restarted; "
                           "asked again")
@@ -102,6 +105,8 @@ class Engine:
 
     def _ask(self, req: dict, timeout: float):
         """Send one request (starting the engine if needed) and wait for its line; None if the engine died."""
+        if self._aborted:
+            return None
         if self._proc is None or self._proc.poll() is not None:
             self._start()
         self._err = ""
@@ -143,6 +148,15 @@ class Engine:
         run it off the screen's thread). `spec` is the document's plugin record."""
         from .doc import plugins
         return self.request("pluginWindow", timeout=timeout, plugin=plugins.engine_form(spec))
+
+    def abort(self):
+        """Ends the engine process now, even mid-request, from any thread (a screen closing a song does not wait for a
+        render nobody will hear): the waiting request fails at once and the engine is never started again."""
+        self._aborted = True
+        p = self._proc
+        if p and p.poll() is None:
+            p.kill()
+            p.wait(timeout=5)
 
     def close(self):
         """Ends the engine process this object started (by its own handle, never by name)."""

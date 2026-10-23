@@ -113,7 +113,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
     def markers(self):
         return self._view["markers"]
 
-    @Property("QVariantMap", notify=S.timelineChanged)
+    @Property("QVariantMap", notify=S.rollChanged)
     def roll(self):
         """The piano roll of the selection's track (or the last one picked)."""
         return self._view["roll"]
@@ -173,12 +173,19 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         i = self._sel
         while i and self.doc.has(i) and self.doc.item(i)["type"] not in ("track", "doc", "master", "marker"):
             i = self.doc.parent_of(i)[0]
+        was = self._track
         if i and self.doc.has(i) and self.doc.item(i)["type"] == "track":
             self._track = i
         elif not (self._track and self.doc.has(self._track)):
             self._track = next((t["id"] for t in self.doc.data.get("tracks", [])), "")
-        if self._view:
-            self._rebuild()
+        if self._view and self._track != was:
+            self._show_roll()
+
+    def _show_roll(self):
+        """The Editor shows another track: only the roll is made again, the arrangement's rows stay (rebuilding every
+        row on a click cost ~250 ms on a 16-track song, S59)."""
+        self._view["roll"] = self._roll(self._view["rows"])
+        self.rollChanged.emit()
 
     def _schedule(self) -> dict:
         """The compiled song. A song with nothing in it yet (a new one, or an instrument with no notes) is still a
@@ -210,18 +217,29 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self._open = {k: v for k, v in self._open.items() if self.doc.has(k)
                       and v in lanes.applicable(self.doc.item(k), root)}
         rows = timeline.rows(root, self._open, self._folded)
-        hue = next((r["hue"] for r in rows if r["id"] == self._track), timeline.HUES[0])
-        track = self.doc.item(self._track) if self._track and self.doc.has(self._track) else None
+        self._marks_on(rows)
         self._view = {"rows": rows, "markers": timeline.markers(root), "song": timeline.song(root),
-                      "roll": timeline.roll(track, root, hue, self._play_lane)}
-        side = getattr(self, "side", None)               # lines being spoken say so on their blocks
-        if side:
-            voice_card.mark_speaking([*rows, self._view["roll"]], side.voice.making())
-            voice_card.mark_waiting([*rows, self._view["roll"]], side.voice.waiting())
-            voice_takes.mark_takes([*rows, self._view["roll"]], root)
+                      "roll": self._roll(rows)}
         self._tv.setLength(self._length())        # the view is the person's: nothing new on screen zooms or scrolls it
         self.timelineChanged.emit()
+        self.rollChanged.emit()
         self.viewChanged.emit()
+
+    def _roll(self, rows) -> dict:
+        """The Editor's piano roll of the current track (`_track`), in its row's colour."""
+        root = self.doc.data
+        hue = next((r["hue"] for r in rows if r["id"] == self._track), timeline.HUES[0])
+        track = self.doc.item(self._track) if self._track and self.doc.has(self._track) else None
+        roll = timeline.roll(track, root, hue, self._play_lane)
+        self._marks_on([roll])
+        return roll
+
+    def _marks_on(self, rows):
+        side = getattr(self, "side", None)               # lines being spoken say so on their blocks
+        if side:
+            voice_card.mark_speaking(rows, side.voice.making())
+            voice_card.mark_waiting(rows, side.voice.waiting())
+            voice_takes.mark_takes(rows, self.doc.data)
 
     def _on_doc(self, event):
         super()._on_doc(event)

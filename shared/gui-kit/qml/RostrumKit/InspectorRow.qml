@@ -37,15 +37,16 @@ Item {
     readonly property int labelColumn: Theme.labelColumnFor(width)
     readonly property bool amount: model.type === "number" && !paired && VK.slides(model.display || "", model.min ?? 0, model.max ?? 1e9)
     readonly property bool driven: model.row === "param" && !!model.expr      // an expression decides (model.expr)
+    readonly property var parts: body.item      // the drawn row (null while absent)
     readonly property bool tall: model.type === "list" || model.control === "curve"    // a widget taller than a field (top-aligned)
     readonly property int full: model.row === "group" ? Theme.groupGap + (model.label ? Theme.rowDense : 0)   // "": a gap only
                               : model.row === "more" ? Theme.row + Theme.grid
                               : model.row === "fold" ? Theme.row
-                              : model.row === "folds" ? names.implicitHeight + 2 * Theme.grid
-                              : driven ? Theme.row + exprBox.height + Theme.grid
+                              : model.row === "folds" ? (parts ? parts.foldsHeight : 0) + 2 * Theme.grid
+                              : driven ? Theme.row + (parts ? parts.exprHeight : 0) + Theme.grid
                               : model.control === "curve" ? Theme.curveBox + Theme.row - Theme.field
-                              : tall && widget.item ? Math.max(Theme.row, widget.item.implicitHeight + Theme.row - Theme.field)
-                              : Math.max(Theme.row, label.implicitHeight + 2 * Theme.grid)    // a long label wraps
+                              : tall && parts && parts.widgetItem ? Math.max(Theme.row, parts.widgetItem.implicitHeight + Theme.row - Theme.field)
+                              : Math.max(Theme.row, (parts ? parts.labelHeight : 0) + 2 * Theme.grid)    // a long label wraps
     readonly property bool canReset: model.row === "param" && !driven && model.default !== undefined && model.default !== null
         && (!!model.mixed || JSON.stringify(model.value) !== JSON.stringify(model.default))
     property real reveal: model.valid ? 1 : 0
@@ -56,153 +57,170 @@ Item {
     visible: reveal > 0
     clip: reveal < 1 && !second
 
-    Text {  // group header
-        visible: row.model.row === "group"
-        anchors.left: parent.left; anchors.bottom: parent.bottom; anchors.bottomMargin: Theme.grid + 2
-        text: row.model.label; color: Theme.fg3; font.family: uiFont
-        font.pixelSize: Theme.label; font.weight: Font.DemiBold
-    }
-    Item {  // the More row (deep params live behind it)
-        visible: row.model.row === "more"
+    // Everything the row draws is made only while it is on screen (valid, or still easing out). A kind's layout holds
+    // every param and most rows are absent at any time; building all their parts (chevrons, hover tips, widgets) made
+    // each new selection slow (S59: ~0.35 s for a Sound track). An absent row is just its id and its `reveal`.
+    Loader {
+        id: body
         anchors.fill: parent
-        Chevron { id: moreChev; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                  rotation: row.bridge.moreOpen ? 0 : -90; color: moreArea.containsMouse ? Theme.fg : Theme.fg2 }
-        Text { anchors.left: moreChev.right; anchors.leftMargin: Theme.grid + 2; anchors.verticalCenter: parent.verticalCenter
-               text: "More"; color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont }
-        MouseArea { id: moreArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                    onClicked: row.bridge.toggleMore() }
-    }
-    Rectangle {  // highlighted: a steady soft mark (the flash below is the same colour, brief)
-        anchors.fill: parent; anchors.leftMargin: -Theme.grid; anchors.rightMargin: -Theme.grid
-        radius: Theme.radiusCtl; color: Theme.accentSoft; visible: row.highlighted
-    }
-    Rectangle {  // the flash after a jump to this field (revealField)
-        id: flashMark
-        anchors.fill: parent; anchors.leftMargin: -Theme.grid; anchors.rightMargin: -Theme.grid
-        radius: Theme.radiusCtl; color: Theme.accentSoft; opacity: 0
-        SequentialAnimation on opacity { id: flashAnim; running: false
-            NumberAnimation { to: 1; duration: Theme.fast } PauseAnimation { duration: 700 }
-            NumberAnimation { to: 0; duration: 400 } }
-    }
-    Item {  // a fold row: chevron + the group's name
-        visible: row.model.row === "fold"
-        anchors.fill: parent
-        Chevron { id: foldChev; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                  rotation: row.model.open ? 0 : -90; color: foldArea.containsMouse ? Theme.fg : Theme.fg3
-                  Behavior on rotation { NumberAnimation { duration: Theme.fast; easing.type: Theme.revealEasing } } }
-        Text { anchors.left: foldChev.right; anchors.leftMargin: Theme.grid + 2
-               anchors.verticalCenter: parent.verticalCenter; text: row.model.label
-               color: foldArea.containsMouse ? Theme.fg : Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
-               font.weight: Font.DemiBold }
-        MouseArea { id: foldArea; anchors.fill: parent; hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.toggleGroup(row.model.fold) }
-    }
-    Flow {  // the "folds" row: the folded groups' names, a click opens one
-        id: names
-        visible: row.model.row === "folds"
-        anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: Theme.grid
-                  rightMargin: row.keyMarks ? row.gutter : 0 }     // ends with the fields, not under the key marks
-        spacing: 0
-        readonly property int count: (row.model.names || []).length
-        Repeater {
-            model: row.model.row === "folds" ? row.model.names || [] : []
-            delegate: Row {
-                id: nameItem
-                required property var modelData
-                required property int index
-                height: Theme.rowDense
-                Text {
-                    objectName: "fold:" + nameItem.modelData.group     // scripted steps open a group by it
-                    text: nameItem.modelData.group; font.family: uiFont; font.pixelSize: Theme.body
-                    color: nameArea.containsMouse ? Theme.fg : Theme.fg2; anchors.verticalCenter: parent.verticalCenter
-                    font.underline: nameArea.containsMouse
-                    Rectangle {  // changed but folded by hand: a small dot says something in here differs from its default
-                        visible: !!nameItem.modelData.changed; width: 4; height: 4; radius: 2; color: Theme.accent
-                        anchors.left: parent.right; anchors.leftMargin: 2; anchors.top: parent.top; anchors.topMargin: 2 }
-                    MouseArea { id: nameArea; anchors.fill: parent; anchors.margins: -3; hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.toggleGroup(nameItem.modelData.group) }
+        active: row.model.valid || row.reveal > 0
+        sourceComponent: Item {
+            readonly property real labelHeight: label.implicitHeight     // what `full` reads (the row's own height)
+            readonly property real exprHeight: exprBox.height
+            readonly property var widgetItem: widget.item
+            readonly property real foldsHeight: names.implicitHeight
+            function flash() { flashAnim.restart() }
+            Text {  // group header
+                visible: row.model.row === "group"
+                anchors.left: parent.left; anchors.bottom: parent.bottom; anchors.bottomMargin: Theme.grid + 2
+                text: row.model.label; color: Theme.fg3; font.family: uiFont
+                font.pixelSize: Theme.label; font.weight: Font.DemiBold
+            }
+            Item {  // the More row (deep params live behind it)
+                visible: row.model.row === "more"
+                anchors.fill: parent
+                Chevron { id: moreChev; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                          rotation: row.bridge.moreOpen ? 0 : -90; color: moreArea.containsMouse ? Theme.fg : Theme.fg2 }
+                Text { anchors.left: moreChev.right; anchors.leftMargin: Theme.grid + 2; anchors.verticalCenter: parent.verticalCenter
+                       text: "More"; color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont }
+                MouseArea { id: moreArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onClicked: row.bridge.toggleMore() }
+            }
+            Rectangle {  // highlighted: a steady soft mark (the flash below is the same colour, brief)
+                anchors.fill: parent; anchors.leftMargin: -Theme.grid; anchors.rightMargin: -Theme.grid
+                radius: Theme.radiusCtl; color: Theme.accentSoft; visible: row.highlighted
+            }
+            Rectangle {  // the flash after a jump to this field (revealField)
+                id: flashMark
+                anchors.fill: parent; anchors.leftMargin: -Theme.grid; anchors.rightMargin: -Theme.grid
+                radius: Theme.radiusCtl; color: Theme.accentSoft; opacity: 0
+                SequentialAnimation on opacity { id: flashAnim; running: false
+                    NumberAnimation { to: 1; duration: Theme.fast } PauseAnimation { duration: 700 }
+                    NumberAnimation { to: 0; duration: 400 } }
+            }
+            Item {  // a fold row: chevron + the group's name
+                visible: row.model.row === "fold"
+                anchors.fill: parent
+                Chevron { id: foldChev; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                          rotation: row.model.open ? 0 : -90; color: foldArea.containsMouse ? Theme.fg : Theme.fg3
+                          Behavior on rotation { NumberAnimation { duration: Theme.fast; easing.type: Theme.revealEasing } } }
+                Text { anchors.left: foldChev.right; anchors.leftMargin: Theme.grid + 2
+                       anchors.verticalCenter: parent.verticalCenter; text: row.model.label
+                       color: foldArea.containsMouse ? Theme.fg : Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
+                       font.weight: Font.DemiBold }
+                MouseArea { id: foldArea; anchors.fill: parent; hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.toggleGroup(row.model.fold) }
+            }
+            Flow {  // the "folds" row: the folded groups' names, a click opens one
+                id: names
+                visible: row.model.row === "folds"
+                anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: Theme.grid
+                          rightMargin: row.keyMarks ? row.gutter : 0 }     // ends with the fields, not under the key marks
+                spacing: 0
+                readonly property int count: (row.model.names || []).length
+                Repeater {
+                    model: row.model.row === "folds" ? row.model.names || [] : []
+                    delegate: Row {
+                        id: nameItem
+                        required property var modelData
+                        required property int index
+                        height: Theme.rowDense
+                        Text {
+                            objectName: "fold:" + nameItem.modelData.group     // scripted steps open a group by it
+                            text: nameItem.modelData.group; font.family: uiFont; font.pixelSize: Theme.body
+                            color: nameArea.containsMouse ? Theme.fg : Theme.fg2; anchors.verticalCenter: parent.verticalCenter
+                            font.underline: nameArea.containsMouse
+                            Rectangle {  // changed but folded by hand: a small dot says something in here differs from its default
+                                visible: !!nameItem.modelData.changed; width: 4; height: 4; radius: 2; color: Theme.accent
+                                anchors.left: parent.right; anchors.leftMargin: 2; anchors.top: parent.top; anchors.topMargin: 2 }
+                            MouseArea { id: nameArea; anchors.fill: parent; anchors.margins: -3; hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.toggleGroup(nameItem.modelData.group) }
+                        }
+                        Text { visible: nameItem.index < names.count - 1; text: " · "; color: Theme.fg4; font.family: uiFont   // after a name:
+                               font.pixelSize: Theme.body; anchors.verticalCenter: parent.verticalCenter }                      // no line starts with "·"
+                    }
                 }
-                Text { visible: nameItem.index < names.count - 1; text: " · "; color: Theme.fg4; font.family: uiFont   // after a name:
-                       font.pixelSize: Theme.body; anchors.verticalCenter: parent.verticalCenter }                      // no line starts with "·"
+            }
+            Item {  // a param: label column, then the widget (a pair's halves each take only their own part of the line)
+                id: cell
+                visible: row.model.row === "param"
+                x: row.second ? row.labelColumn + Theme.halfFor(row.width) + Theme.pairGap : 0
+                width: row.second ? Theme.halfFor(row.width) : row.paired ? row.labelColumn + Theme.halfFor(row.width) : row.width
+                anchors.verticalCenter: row.driven || row.tall || row.second ? undefined : parent.verticalCenter
+                anchors.top: row.driven || row.tall ? parent.top : undefined
+                y: row.second ? -Theme.row : 0               // the right half draws on the line above (its own row is 0 high)
+                height: Theme.row
+                Text { id: label   // the label sits in its own column, one per row (a pair has one: Position, Size)
+                       visible: !row.second
+                       width: row.labelColumn - Theme.gap
+                       anchors.verticalCenter: parent.verticalCenter
+                       text: row.model.label; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
+                       wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; lineHeight: 0.9   // never cut to "Width along the…"
+                       HoverHandler { id: labelHover }
+                       TapHandler { enabled: row.model.type === "toggle"; onTapped: row.set(!row.model.value) }   // a switch's words flip it too
+                       HoverTip { text: row.model.help || label.truncated ? row.model.label : ""; help: row.model.help || ""
+                                  hovered: labelHover.hovered } }   // hover help: the setting's name and its one sentence
+                Loader {
+                    id: widget
+                    objectName: row.model.type === "toggle" ? "" : "grid:field"   // the layout check reads the grid from these two names
+                    // every widget starts at the field column (a slider and its value box share it); the right half of a pair
+                    // starts at its own cell (after the left half and the pair gap)
+                    x: row.second ? 0 : row.labelColumn
+                    anchors.verticalCenter: row.tall ? undefined : parent.verticalCenter
+                    y: row.tall ? (Theme.row - Theme.field) / 2 : 0
+                    width: row.model.type === "toggle" ? (item ? item.implicitWidth : 0)
+                         : row.paired ? Theme.halfFor(row.width) : Theme.fieldFor(row.width)
+                    height: row.tall && item ? item.implicitHeight : Theme.field
+                    // made only while the row is on screen (valid, or still easing out): a kind's layout holds every param and
+                    // most are absent, so building all their widgets made each selection change slow (S59)
+                    active: row.model.row === "param" && !row.driven && (row.model.valid || row.reveal > 0)
+                    sourceComponent: row.model.control === "curve" ? curve
+                                   : row.amount ? amountRow
+                                   : row.model.control === "file" || row.model.control === "folder" ? path
+                                   : ({ toggle: toggle, number: number, choice: choice, color: colour, paint: paintC, text: text, list: list })[row.model.type] || text
+                }
+                // A param driven by an expression or binding (model.expr = {text, note}): in place of the widget a note
+                // and a clear button on the label line, the expression on its own full-width line under it.
+                Text { visible: row.driven; anchors.right: clearMark.left; anchors.rightMargin: Theme.gap
+                       anchors.verticalCenter: parent.verticalCenter; text: row.driven ? row.model.expr.note : ""
+                       color: Theme.fg3; font.pixelSize: Theme.label; font.family: uiFont }
+                Item {  // the clear button: a whole field-sized square left of the key-mark gutter, its click area = its box
+                    id: clearMark; visible: row.driven
+                    anchors.right: parent.right; anchors.rightMargin: row.gutter; anchors.verticalCenter: parent.verticalCenter
+                    width: Theme.field; height: Theme.field
+                    Text { anchors.centerIn: parent; text: "×"; font.pixelSize: Theme.heading
+                           color: clearArea.containsMouse ? Theme.fg : Theme.fg3 }
+                    MouseArea { id: clearArea; anchors.fill: parent; hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.clearExpression(row.model.id) } }
+                Rectangle {
+                    id: exprBox
+                    visible: row.driven
+                    y: Theme.row; width: parent.width; height: exprText.implicitHeight + 2 * Theme.gap
+                    radius: Theme.radiusCtl; color: Theme.accentSoft
+                    Text { id: exprText; x: Theme.gap; y: Theme.gap; width: parent.width - 2 * Theme.gap
+                           text: row.driven ? "= " + row.model.expr.text : ""; color: Theme.fg; font.pixelSize: Theme.body
+                           font.family: monoFont; wrapMode: Text.WrapAnywhere }
+                }
+                HoverHandler { id: rowHover }
+                TapHandler {  // right-click › Reset (left clicks and drags stay with the widgets)
+                    acceptedButtons: Qt.RightButton; enabled: row.canReset
+                    onTapped: (pt) => { resetMenu.active = true; resetMenu.item.openAt(pt.scenePosition.x, pt.scenePosition.y) }
+                }
+            }
+
+            Item {  // the key mark: centred in the gutter at the row's right (a pair has one, on its first half's line)
+                objectName: "grid:key"
+                visible: row.keyMarks && !!row.model.anim && !row.second
+                x: row.width - row.gutter + 2; y: cell.y + (cell.height - height) / 2
+                width: row.gutter - 4; height: Theme.field
+                KeyMark { anchors.centerIn: parent; filled: row.model.anim === "onkey"
+                          color: row.model.anim === "still" ? (markArea.containsMouse ? Theme.fg2 : rowHover.hovered ? Theme.fg3 : Theme.fg4)
+                               : markArea.containsMouse ? Theme.accentHover : Theme.accent }
+                MouseArea { id: markArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onClicked: { row.bridge.toggleAnimate(row.model.id)        // a pair (X | Y) animates both halves
+                                         if (row.model.partner) row.bridge.toggleAnimate(row.model.partner) } }
             }
         }
-    }
-    Item {  // a param: label column, then the widget (a pair's halves each take only their own part of the line)
-        id: cell
-        visible: row.model.row === "param"
-        x: row.second ? row.labelColumn + Theme.halfFor(row.width) + Theme.pairGap : 0
-        width: row.second ? Theme.halfFor(row.width) : row.paired ? row.labelColumn + Theme.halfFor(row.width) : row.width
-        anchors.verticalCenter: row.driven || row.tall || row.second ? undefined : parent.verticalCenter
-        anchors.top: row.driven || row.tall ? parent.top : undefined
-        y: row.second ? -Theme.row : 0               // the right half draws on the line above (its own row is 0 high)
-        height: Theme.row
-        Text { id: label   // the label sits in its own column, one per row (a pair has one: Position, Size)
-               visible: !row.second
-               width: row.labelColumn - Theme.gap
-               anchors.verticalCenter: parent.verticalCenter
-               text: row.model.label; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
-               wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; lineHeight: 0.9   // never cut to "Width along the…"
-               HoverHandler { id: labelHover }
-               TapHandler { enabled: row.model.type === "toggle"; onTapped: row.set(!row.model.value) }   // a switch's words flip it too
-               HoverTip { text: row.model.help || label.truncated ? row.model.label : ""; help: row.model.help || ""
-                          hovered: labelHover.hovered } }   // hover help: the setting's name and its one sentence
-        Loader {
-            id: widget
-            objectName: row.model.type === "toggle" ? "" : "grid:field"   // the layout check reads the grid from these two names
-            // every widget starts at the field column (a slider and its value box share it); the right half of a pair
-            // starts at its own cell (after the left half and the pair gap)
-            x: row.second ? 0 : row.labelColumn
-            anchors.verticalCenter: row.tall ? undefined : parent.verticalCenter
-            y: row.tall ? (Theme.row - Theme.field) / 2 : 0
-            width: row.model.type === "toggle" ? (item ? item.implicitWidth : 0)
-                 : row.paired ? Theme.halfFor(row.width) : Theme.fieldFor(row.width)
-            height: row.tall && item ? item.implicitHeight : Theme.field
-            active: row.model.row === "param" && !row.driven
-            sourceComponent: row.model.control === "curve" ? curve
-                           : row.amount ? amountRow
-                           : row.model.control === "file" || row.model.control === "folder" ? path
-                           : ({ toggle: toggle, number: number, choice: choice, color: colour, paint: paintC, text: text, list: list })[row.model.type] || text
-        }
-        // A param driven by an expression or binding (model.expr = {text, note}): in place of the widget a note
-        // and a clear button on the label line, the expression on its own full-width line under it.
-        Text { visible: row.driven; anchors.right: clearMark.left; anchors.rightMargin: Theme.gap
-               anchors.verticalCenter: parent.verticalCenter; text: row.driven ? row.model.expr.note : ""
-               color: Theme.fg3; font.pixelSize: Theme.label; font.family: uiFont }
-        Item {  // the clear button: a whole field-sized square left of the key-mark gutter, its click area = its box
-            id: clearMark; visible: row.driven
-            anchors.right: parent.right; anchors.rightMargin: row.gutter; anchors.verticalCenter: parent.verticalCenter
-            width: Theme.field; height: Theme.field
-            Text { anchors.centerIn: parent; text: "×"; font.pixelSize: Theme.heading
-                   color: clearArea.containsMouse ? Theme.fg : Theme.fg3 }
-            MouseArea { id: clearArea; anchors.fill: parent; hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.clearExpression(row.model.id) } }
-        Rectangle {
-            id: exprBox
-            visible: row.driven
-            y: Theme.row; width: parent.width; height: exprText.implicitHeight + 2 * Theme.gap
-            radius: Theme.radiusCtl; color: Theme.accentSoft
-            Text { id: exprText; x: Theme.gap; y: Theme.gap; width: parent.width - 2 * Theme.gap
-                   text: row.driven ? "= " + row.model.expr.text : ""; color: Theme.fg; font.pixelSize: Theme.body
-                   font.family: monoFont; wrapMode: Text.WrapAnywhere }
-        }
-        HoverHandler { id: rowHover }
-        TapHandler {  // right-click › Reset (left clicks and drags stay with the widgets)
-            acceptedButtons: Qt.RightButton; enabled: row.canReset
-            onTapped: (pt) => { resetMenu.active = true; resetMenu.item.openAt(pt.scenePosition.x, pt.scenePosition.y) }
-        }
-    }
-
-    Item {  // the key mark: centred in the gutter at the row's right (a pair has one, on its first half's line)
-        objectName: "grid:key"
-        visible: row.keyMarks && !!row.model.anim && !row.second
-        x: row.width - row.gutter + 2; y: cell.y + (cell.height - height) / 2
-        width: row.gutter - 4; height: Theme.field
-        KeyMark { anchors.centerIn: parent; filled: row.model.anim === "onkey"
-                  color: row.model.anim === "still" ? (markArea.containsMouse ? Theme.fg2 : rowHover.hovered ? Theme.fg3 : Theme.fg4)
-                       : markArea.containsMouse ? Theme.accentHover : Theme.accent }
-        MouseArea { id: markArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                    onClicked: { row.bridge.toggleAnimate(row.model.id)        // a pair (X | Y) animates both halves
-                                 if (row.model.partner) row.bridge.toggleAnimate(row.model.partner) } }
     }
 
     Loader {   // made at the first right-click only: a panel has many rows
@@ -212,9 +230,9 @@ Item {
 
     readonly property string mixed: model.mixed ? "Mixed" : ""       // a field's words at rest ("" = its value)
     function set(v) { bridge.setValue(model.id, v) }
-    function flash() { flashAnim.restart() }
+    function flash() { if (parts) parts.flash() }
     function focusWidget() {
-        const w = widget.item
+        const w = parts ? parts.widgetItem : null
         if (!w) return
         if (w.input && w.editable) { w.input.forceActiveFocus(); w.input.selectAll() } else w.forceActiveFocus()
     }
@@ -257,11 +275,15 @@ Item {
     Component { id: choice; ChoiceField { options: row.model.options; current: row.model.value ?? ""; atRest: row.mixed
                                           more: row.model.more || ""; onMoreChosen: moreDialog.open()
                                           onPicked: (v) => row.set(v) } }
-    FileDialog {  // a choice's "Load …" entry (model.more): the file goes to bridge.loadChoice, which adds the option
-        id: moreDialog
-        title: row.model.more ? String(row.model.more).replace("…", "") : ""
-        nameFilters: (row.model.filters || []).concat(["All files (*)"])
-        onAccepted: row.loadChoice(decodeURIComponent(String(selectedFile).replace(/^file:\/\//, "")).replace(/^\/(?=[A-Za-z]:)/, ""))
+    Loader {  // a choice's "Load …" entry (model.more): the file goes to bridge.loadChoice, which adds the option.
+        id: moreDialog   // made at the first use only, like the Reset menu: a dialog per row made every panel slow to build
+        active: false
+        function open() { active = true; item.open() }
+        sourceComponent: FileDialog {
+            title: row.model.more ? String(row.model.more).replace("…", "") : ""
+            nameFilters: (row.model.filters || []).concat(["All files (*)"])
+            onAccepted: row.loadChoice(decodeURIComponent(String(selectedFile).replace(/^file:\/\//, "")).replace(/^\/(?=[A-Za-z]:)/, ""))
+        }
     }
     function loadChoice(path) { row.bridge.loadChoice(row.model.id, path) }    // (a scripted step hands a file in: 2D `choicefile`)
     Component { id: colour; ColorField { hex: row.model.value || "#000000"; atRest: row.mixed; scrubbed: true

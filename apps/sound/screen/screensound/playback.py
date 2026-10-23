@@ -36,6 +36,7 @@ class Renderer(QObject):
         super().__init__(parent)
         self._cv = threading.Condition()
         self._pending, self._busy, self._stop, self._serial = None, False, False, 0
+        self._eng = None                 # the worker's engine (close() aborts a render still running on it)
         SCRATCH.mkdir(parents=True, exist_ok=True)
         self._thread = threading.Thread(target=self._run, name="render-sound", daemon=True)
         self._thread.start()
@@ -50,7 +51,6 @@ class Renderer(QObject):
             return self._pending is None and not self._busy
 
     def _run(self):
-        eng = None
         try:
             while True:
                 with self._cv:
@@ -60,7 +60,7 @@ class Renderer(QObject):
                         return
                     schedule, self._pending, self._busy = self._pending, None, True
                 try:
-                    eng = eng or open_engine()
+                    eng = self._eng = self._eng or open_engine()
                     self._serial += 1
                     out = SCRATCH / f"play-{self._serial}.wav"
                     result = eng.request("render", schedule=schedule, out=str(out), stems="all")
@@ -70,6 +70,8 @@ class Renderer(QObject):
                     note = eng.take_restarted()          # the engine died during it and was started again
                     self.rendered.emit({**result, "restarted": note} if note else result)
                 except Exception as e:  # noqa: BLE001  any failure is reported, loudly
+                    if self._stop:       # closed mid-render (close() aborted the engine): nobody waits for it
+                        return
                     line = f"Error: render: {getattr(e, 'line', lambda: e)()}"
                     print(line, file=sys.stderr)
                     self.failed.emit(line)
@@ -77,8 +79,8 @@ class Renderer(QObject):
                     with self._cv:
                         self._busy = False
         finally:
-            if eng is not None:
-                eng.close()
+            if self._eng is not None:
+                self._eng.close()
 
     def _tidy(self):
         """Delete renders older than the last KEEP (files and their stems folders)."""
@@ -90,7 +92,10 @@ class Renderer(QObject):
     def close(self):
         with self._cv:
             self._stop = True
+            running = self._eng if self._busy else None
             self._cv.notify()
+        if running is not None:          # a render still running is for a song being closed: stop it, don't wait
+            running.abort()
         self._thread.join(timeout=30)
         for _ in range(20):          # a file another reader still holds is let go a moment later (Windows)
             shutil.rmtree(SCRATCH, ignore_errors=True)

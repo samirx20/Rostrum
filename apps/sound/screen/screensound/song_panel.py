@@ -15,6 +15,7 @@ import dataclasses
 from types import SimpleNamespace
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
+from rostrum_core import RostrumError
 from rostrum_gui import rows
 from rostrum_gui.edits import Scrub, edit_label
 from rostrum_gui.model import RowsModel
@@ -31,6 +32,7 @@ UNSET_WORDS = {"length": "until the last sound"}
 
 class SongPanel(QObject):
     changed = Signal()
+    mainMixChanged = Signal()
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
@@ -42,8 +44,9 @@ class SongPanel(QObject):
         self._rows = RowsModel(rows.ROLES, self)
         self._more, self._scrub = False, None
         self._refresh()
+        self._read_main()
         bridge.docChanged.connect(self._refresh)
-        bridge.mainMixChanged.connect(self.changed)
+        bridge.mainMixChanged.connect(self._read_main)
 
     @property
     def _root(self) -> str:
@@ -72,12 +75,21 @@ class SongPanel(QObject):
     def tonics(self):
         return song_edit.TONICS
 
-    @Property(str, notify=changed)
+    @Property(str, notify=mainMixChanged)
     def mainMix(self):
         """"main" (this song is the project's main mix: the panel marks it), "other" (the panel offers "Make this the
-        main mix") or "" (the song is not in a project folder yet)."""
+        main mix") or "" (the song is not in a project folder yet). Read from the project once, and again when the
+        mark moves: reading project.json and every item on each edit cost ~50 ms a binding (S59)."""
+        return self._main
+
+    def _read_main(self):
         f = self.doc.folder
-        return "" if not f else "main" if main_mix.is_main(f, self.doc.item_id) else "other"
+        try:
+            self._main = "" if not f else "main" if main_mix.is_main(f, self.doc.item_id) else "other"
+        except RostrumError as e:          # a mark naming a gone item: said loudly; the panel offers to mark this one
+            self._main = "other"
+            self.bridge._fail(str(e))
+        self.mainMixChanged.emit()
 
     @Slot()
     def makeMain(self):

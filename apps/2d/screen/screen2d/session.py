@@ -11,6 +11,7 @@ from pathlib import Path
 from rostrum_gui import guides, start
 from rostrum_gui.app import stop
 from rostrum_gui.project_files import ProjectFiles
+from rostrum2d import textsize
 
 from .bridge2d import Bridge2D
 from .files2d import FILES2D
@@ -30,6 +31,7 @@ class Session:
         self.size, self.bridge, self.engine, self.win, self.comp_id = size, None, None, None, comp_id
         self.files = ProjectFiles(FILES2D, self)
         self.space = None                                # Space: tap plays, hold + drag pans (spacekey.py; one per app)
+        textsize.warm()                                  # the text-measuring engine starts while the window loads
 
     def show(self, doc):
         """Open `doc` in a new window; the old window closes (nothing to ask: every change is already on disk)."""

@@ -34,6 +34,7 @@ from .render3d_watch import Render3DWatch
 from .shown import ShownState
 from .sound_cue_pick import CuePick
 from .soundtrack import Soundtrack
+from .timeline_rows import TimelineRows
 from .tools2d import ToolSlots
 from .undo_state import UndoState
 
@@ -43,12 +44,13 @@ TOOLS = ("move", "pen", "draw", *F.SHAPE_KINDS, "text", "camera", "bone", "hand"
 
 
 
-class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, ActionSlots, ActionPreview, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
+class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, UndoState, ActionSlots, ActionPreview, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     toolChanged = Signal()
     frameChanged = Signal()
     shownChanged = Signal()                                 # a new frame is on screen: the overlays follow it (shown.py)
     outlineChanged = Signal()
+    layersChanged = Signal()                                # the timeline's rows really changed (timeline_rows.py)
     playingChanged = Signal()
     _sel_layer = None                                       # (document state, selection, its layer): selectedLayer
     _comp_at = _placed_idx = None                           # comp() and placed_item()'s, kept per document state
@@ -68,6 +70,7 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
         self.marks = None                                   # made below (it needs this QObject); the first rows have none
         self._shown_init()
         super().__init__(doc, parent=parent)
+        self.outlineChanged.connect(self._layers_check)     # first: every later listener reads the new rows
         self.frames = FrameRenderer(self)
         self._scene = None                                  # the engine's scene, described once per change (_render)
         self.frames.ready.connect(self._on_frame)
@@ -80,6 +83,7 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
         self.play.changed.connect(self.playingChanged)
         self.marks = MarkerWatch(doc.folder, self, self.who, self._fail, "2d")   # shared markers: flags, edits, snap
         self.marks.changed.connect(self.markersChanged)
+        self.marks.changed.connect(self._layers_check)      # keys timed on a marker move with it
         self.marks.changed.connect(lambda: self.model.update(self._rows()))   # the marker picks list them
         self._marker_saved()                                # (remembers the last change: only later ones are announced)
         self.marks.changed.connect(self._marker_saved)
@@ -196,10 +200,11 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
         """The ruler's marker edits (add at the playhead, move, rename, delete): rostrum_gui.markers.MarkerWatch."""
         return self.marks
 
-    @Property("QVariantList", notify=outlineChanged)
+    @Property("QVariantList", notify=layersChanged)
     def layers(self):
-        """The timeline's rows, which are the layers list too (outline.rows): bars, keys, frames, fields, effects."""
-        return outline.rows(self.placed(), self._flipped, self._anim_only)
+        """The timeline's rows, which are the layers list too (outline.rows): bars, keys, frames, fields, effects.
+        Announced only when they change (timeline_rows.py)."""
+        return self.layer_rows()
 
     @Property(str, notify=outlineChanged)
     def selectedLayer(self):

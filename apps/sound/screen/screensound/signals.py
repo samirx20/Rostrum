@@ -9,6 +9,7 @@ class SoundSignals:
     timeChanged = Signal()
     playingChanged = Signal()
     timelineChanged = Signal()
+    rollChanged = Signal()          # the Editor's piano roll only (a selection on another track): the rows stay
     renderChanged = Signal()
     soundChanged = Signal()
     viewChanged = Signal()
