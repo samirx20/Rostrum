@@ -16,13 +16,18 @@ def test_hold_h_has_a_release():
     assert next(a for a in LIST.actions if a.id == "before_after").release == "hear_back"
 
 
-def test_layers_only_with_mates(bridge):  # noqa: F811
+def test_layers_only_with_mates(bridge, tmp_path):  # noqa: F811
+    import wave
+    wav = tmp_path / "slam.wav"
+    with wave.open(str(wav), "wb") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(48000); w.writeframes(bytes(9600))
     doc = bridge.doc
     track = doc.data["tracks"][0]["id"]
-    doc.apply([{"op": "sound.add", "target": [track], "args": {"design": "click", "at": 1.0, "group": "slam"}}], Who.person("sam"))
-    first = doc.data["tracks"][0]["sounds"][0]["id"]
+    add = {"op": "clip.add", "target": [track], "args": {"media": str(wav), "at": 1.0, "group": "slam"}}
+    doc.apply([add], Who.person("sam"))
+    first = doc.data["tracks"][0]["clips"][-1]["id"]
     assert layers.of(doc, [first]) == {}                           # a group of one is not layered
-    doc.apply([{"op": "sound.add", "target": [track], "args": {"design": "hit", "at": 1.0, "group": "slam"}}], Who.person("sam"))
+    doc.apply([{**add, "args": {**add["args"], "at": 1.2}}], Who.person("sam"))
     got = layers.of(doc, [first])
     assert got["group"] == "slam" and [r["here"] for r in got["rows"]].count(True) == 1 and len(got["rows"]) == 2
     assert layers.of(doc, []) == {}

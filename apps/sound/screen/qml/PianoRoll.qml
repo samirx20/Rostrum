@@ -4,41 +4,14 @@ import RostrumKit
 // The Editor (bottom dock): the selection's track up close. Notes: bars on a keyboard (drag = time and pitch,
 // double-click empty space = a new note, Delete removes). Drums: one row per drum. Recorded clips: their
 // waveforms. Select first, then act (RollInput): click, Ctrl / Shift+click, a box; a drag moves every selected one
-// (one undo step; Ctrl = no snapping, Shift = only in time, Alt = a copy). The context bar sits at the top centre.
+// (one undo step; Ctrl = no snapping, Shift = only in time, Alt = a copy). The keyboard at the left is a real one
+// (RollGrid: a click plays the key). Its header (the track, Select / Draw, Note ▾) is on the dock's line (EditorHeader).
+// It opens framed on the track's notes: the rows fit every note in view, centred on them.
 Panel {
     id: p
     readonly property var roll: backend.roll
     readonly property string kind: roll.kind
-    readonly property int keysWidth: kind === "drums" ? 76 : 52     // drum names ("Open hat") are longer than note names
-    function toolHint(tool) {   // what the Select / Draw tool does here, said on hover (not as a line on the screen)
-        var free = "Ctrl drags freely"
-        return kind === "notes" ? "  ·  " + (tool === "draw" ? "Click to add a note" : "Double-click to add a note") + "  ·  " + free
-             : kind === "drums" || kind === "audio" ? "  ·  " + free : ""
-    }
-    title: roll.name !== "" ? roll.name : "Piano roll"
-    headerRight: [
-        BeforeAfter { anchors.verticalCenter: parent.verticalCenter; rightPadding: Theme.gap },
-        Row {   // the Editor's two tools (Select V, Draw B; INTERACTION 1.1): a click adds in Draw (backend.tool)
-            anchors.verticalCenter: parent.verticalCenter; spacing: 2; rightPadding: Theme.gap
-            visible: p.kind === "notes" || p.kind === "drums"
-            Repeater {
-                model: [{ v: "select", label: "Select", key: "V" }, { v: "draw", label: "Draw", key: "B" }]
-                delegate: Rectangle {
-                    required property var modelData
-                    readonly property bool on: backend.tool === modelData.v
-                    width: t.implicitWidth + 2 * Theme.gap; height: 22; radius: 4
-                    color: on ? Theme.accentSoft : ta.containsMouse ? Theme.hover : Theme.raised
-                    border.color: on ? Theme.accent : Theme.popupEdge
-                    Text { id: t; anchors.centerIn: parent; text: parent.modelData.label; color: parent.on ? Theme.fg : Theme.fg2
-                           font.family: uiFont; font.pixelSize: Theme.label }
-                    MouseArea { id: ta; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                onClicked: backend.setTool(parent.modelData.v) }
-                    HoverTip { text: parent.modelData.label + "  " + parent.modelData.key + p.toolHint(parent.modelData.v); hovered: ta.containsMouse; pressed: ta.pressed }
-                }
-            }
-        },
-    ]
-
+    readonly property int keysWidth: kind === "drums" ? 76 : 72     // drum names ("Open hat"); a keyboard wide enough to play
     BarRuler {
         id: bars
         visible: p.kind !== "none" && p.kind !== "empty"
@@ -63,14 +36,17 @@ Panel {
                 onMenuAt: (entries, px, py) => { rollMenu.entries = entries; var q = input.mapToItem(null, px, py); rollMenu.openAt(q.x, q.y) }
             }
             Component.onCompleted: centre()
-            function centre() {   // the notes in view
+            function centre() {   // framed on the notes: the rows fit them all (grid.frame), the view centred on them
                 var ks = [], b = p.roll.blocks
                 for (var i = 0; i < b.length; i++) if (b[i].keys) ks = ks.concat(b[i].keys)
-                if (!ks.length || p.kind !== "notes") { contentY = 0; return }
-                var mid = (Math.max.apply(null, ks) + Math.min.apply(null, ks)) / 2
-                contentY = Math.max(0, Math.min(contentHeight - height, (p.roll.hi - mid) * grid.rowH - height / 2))
+                if (!ks.length || p.kind !== "notes") { grid.frame(0); contentY = 0; return }
+                var lo = Math.min.apply(null, ks), hi = Math.max.apply(null, ks)
+                grid.frame(hi - lo + 1)
+                contentY = Math.max(0, Math.min(contentHeight - height, (p.roll.hi - (hi + lo) / 2 + 0.5) * grid.rowH - height / 2))
             }
-            Connections { target: p; function onKindChanged() { view.centre() } }
+            onHeightChanged: centre()
+            readonly property string shown: p.roll.id + "/" + p.kind      // another track (or kind): framed again
+            onShownChanged: centre()
         }
         Repeater {   // marker lines
             model: backend.markers

@@ -230,5 +230,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         if self.link:
             self.link.close()
         self.endDrag()
+        if self.__dict__.get("_keys_heard"):
+            self._keys_heard.close()
         self._marks.close()
         self.transport.close()

@@ -4,6 +4,7 @@ process so a song that is playing is left alone. Picking another entry, Esc or c
 plays. A failed render or player is said (`failed`), never a silent nothing.
 
     a = Auditioner(bridge); a.start(entry, "Grand piano", track="pad"); a.stop()
+    a.start({"key": 60}, "C4", track="melody")      # one key of the track's own instrument (the Editor's keyboard)
 `busy` is "" when idle, else what is being rendered or played ("Grand piano"); `playing` is True once it is sounding.
 `program` is the player's test seam (as LivePlay.program).
 `loop` True: a sound that runs out starts again (through the same engine player, never Qt Multimedia) until it is
@@ -56,11 +57,12 @@ class Auditioner(QObject):
 
     # ---- inside -----------------------------------------------------------------------------------------------
     def _render(self, n, entry, doc, track):
-        from rostrum_sound.audition import render_audition
+        from rostrum_sound.audition import render_audition, render_key
         from .playback import open_engine
         try:
             self._engine = self._engine or open_engine()
-            r = render_audition(self._engine, entry, doc, track)
+            r = (render_key(self._engine, doc, track, entry["key"]) if "key" in entry
+                 else render_audition(self._engine, entry, doc, track))
             self._made.emit(n, r["file"], "")
         except Exception as e:  # noqa: BLE001  said on the screen, never swallowed
             self._made.emit(n, "", f"Error: audition: {getattr(e, 'line', lambda: e)()}")

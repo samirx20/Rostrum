@@ -42,7 +42,8 @@ class EditSlots:
 
         def go():
             before = {n["id"] for n in self.doc.item(self._track).get("notes", [])}
-            self._apply([moves.add_note_call(self.doc, self._track, t, key, grid=self._grid_now)], "Add note")
+            self._apply([moves.add_note_call(self.doc, self._track, t, key, beats=self._draw_beats(timing.beat(t, self.doc.data)),
+                                              grid=self._grid_now)], "Add note")
             new = [n["id"] for n in self.doc.item(self._track)["notes"] if n["id"] not in before]
             if new:
                 self.select(new[0])
@@ -60,16 +61,28 @@ class EditSlots:
 
     @Slot(float, float, result=str)
     def drawAt(self, t, row):
-        """The Draw tool's click on empty space in the Editor: a note one grid step long on that key, or a hit on
+        """The Draw tool's click on empty space in the Editor: a note Note ▾ long (the grid step by default) on that key, or a hit on
         that drum row; one step, selected. Returns the new id (a drag on then sets the note's length)."""
         if self._view["roll"].get("kind") == "drums":
             return self.addHit(t, row)
         if not self._track:
             return ""
         grid = self._grid_now
-        call = moves.add_note_call(self.doc, self._track, t, int(round(row)), beats=timing.step_beats(self.doc.data, grid),
+        call = moves.add_note_call(self.doc, self._track, t, int(round(row)), beats=self._draw_beats(timing.beat(t, self.doc.data)),
                                    grid=grid)
         return self._add_one("notes", call, "Draw note")
+
+    @Slot(int)
+    def playKey(self, key):
+        """The Editor's keyboard: a click on a key plays it on the track's own instrument, through the engine
+        (rostrum_sound.audition.render_key, cached: the second click is at once). Nothing in the song changes."""
+        if not self._track or self._view["roll"].get("kind") != "notes":
+            return
+        if self.__dict__.get("_keys_heard") is None:
+            from .auditioner import Auditioner
+            self._keys_heard = Auditioner(self)
+            self._keys_heard.failed.connect(self._fail)
+        self._keys_heard.start({"key": int(key)}, timing.name(int(key)), self._track)
 
     def _add_one(self, key, call, label):
         before = {x["id"] for x in self.doc.item(self._track).get(key, [])}

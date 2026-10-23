@@ -6,7 +6,8 @@ import RostrumKit
 // Alt = all to the same height). Drag across empty space: a line, and each note under it (the selected ones, when
 // some are) takes the line's height. One drag is one undo step (backend.beginVelocity … endVelocity); the number
 // beside the pointer is the height being set. The fold arrow at the left folds it to one thin row (the person's own
-// screen state: backend.velocityFolded); the roll takes the room.
+// screen state: backend.velocityFolded); the roll takes the room. The value of the stem under the pointer, else of the
+// selected one (several: their range), is written beside it ("70 %").
 Item {
     id: s
     property var roll
@@ -26,6 +27,19 @@ Item {
     property real px: 0
     property real py: 0
     height: folded ? foldedHeight : fullHeight
+    property string hoverId: ""
+    readonly property var shown: {   // {x, y, text} of the value readout, or null
+        var b = roll.blocks || [], ids = hoverId !== "" ? [hoverId] : Object.keys(picked), vs = [], x = 1e9, top = 0
+        for (var i = 0; i < b.length; i++) {
+            if ((b[i].type !== "note" && b[i].type !== "hit") || ids.indexOf(b[i].id) < 0) continue
+            vs.push(b[i].vel)
+            var bx = ruler.xOf(b[i].t)
+            if (bx < x) { x = bx; top = b[i].vel }
+        }
+        if (!vs.length || mode === "bar" || mode === "line") return null
+        var lo = Math.round(100 * Math.min.apply(null, vs)), hi = Math.round(100 * Math.max.apply(null, vs))
+        return { x: x, v: top, text: lo === hi ? lo + " %" : lo + "–" + hi + " %" }
+    }
     function vAt(y) { return Math.max(0, Math.min(1, 1 - (y - padTop) / plotH)) }
     function nearest(x) {                       // the bar under x (within 5 px), "" for none
         var b = roll.blocks || [], best = "", d = 6
@@ -50,7 +64,7 @@ Item {
                        c.closePath(); c.fill() }
         }
         Text { x: Theme.gap + 14; anchors.verticalCenter: parent.verticalCenter
-               text: "Vel"; color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label }
+               text: "Velocity"; color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label }
         MouseArea { id: vh; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: backend.toggleVelocityFold() }
         HoverTip { text: s.folded ? (s.roll.played ? "Show the velocity strip and the playing lane" : "Show the velocity strip") : "Velocity: how hard each note plays. Drag a bar, or draw a line across. Click to fold it away" + (s.roll.played ? " (with the playing lane under it)" : "")
@@ -100,19 +114,29 @@ Item {
         visible: s.mode === "bar" || s.mode === "line"
         x: Math.min(s.width - width - 2, s.keysWidth + s.px + 10); y: Math.max(0, s.py - height - 4)
         width: tip.implicitWidth + 2 * Theme.grid; height: tip.implicitHeight + 4; radius: 3; color: Theme.raised; border.color: Theme.popupEdge
-        Text { id: tip; anchors.centerIn: parent; text: s.v.toFixed(2); color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.label
+        Text { id: tip; anchors.centerIn: parent; text: Math.round(100 * s.v) + " %"; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.label
                font.features: { "tnum": 1 } }
+    }
+    Rectangle {   // the hovered or selected stem's value
+        readonly property var r: s.shown
+        visible: !s.folded && r !== null && s.ruler.visibleX(r.x)
+        x: r ? Math.max(s.keysWidth, Math.min(s.width - width - 2, s.keysWidth + r.x + 6)) : 0
+        y: r ? Math.max(1, Math.min(s.height - height - 1, s.padTop + s.plotH * (1 - r.v) - height / 2)) : 0
+        width: rt.implicitWidth + 2 * Theme.grid; height: rt.implicitHeight + 2; radius: 3; color: Theme.raised; border.color: Theme.popupEdge
+        Text { id: rt; anchors.centerIn: parent; text: parent.r ? parent.r.text : ""; color: Theme.fg; font.family: uiFont
+               font.pixelSize: Theme.label; font.features: { "tnum": 1 } }
     }
     MouseArea {
         id: m
         enabled: !s.folded
+        onExited: s.hoverId = ""
         x: s.keysWidth; width: s.width - x; height: s.height
         preventStealing: true; cursorShape: s.nearest(mouseX) !== "" ? Qt.SizeVerCursor : Qt.CrossCursor; hoverEnabled: true
         onWheel: (w) => backend.viewWheel(w.angleDelta.x, w.angleDelta.y, (w.modifiers & Qt.ControlModifier) !== 0,
                                          (w.modifiers & Qt.ShiftModifier) !== 0, w.x / width, true)
         onPressed: (e) => { backend.focusArea("roll"); s.hit = s.nearest(e.x); s.mode = "press"; s.x0 = s.px = e.x; s.y0 = s.py = e.y }
         onPositionChanged: (e) => {
-            if (!pressed) return
+            if (!pressed) { s.hoverId = s.nearest(e.x); return }
             s.px = e.x; s.py = e.y; s.v = s.vAt(e.y)
             if (s.mode === "press" && (Math.abs(e.x - s.x0) >= 4 || Math.abs(e.y - s.y0) >= 4))
                 s.mode = backend.beginVelocity(s.hit) ? (s.hit !== "" ? "bar" : "line") : ""
