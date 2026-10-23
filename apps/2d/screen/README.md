@@ -4,7 +4,7 @@ One workspace on one 2D document (no pages; the design is `../DESIGN.md`), built
 
 ```
 top bar          Rostrum2D · File · document · what just happened · Undo / Redo · Export · Ctrl+K · Help
-centre           Tool rail (ToolRail.qml: icons only, groups open flyouts) in its own column; then the canvas: the engine's frame at the playhead, fitted;
+centre           Tool rail (qml/Rail2D.qml on the kit's ToolRail: icons only, groups open flyouts) in its own column; then the canvas: the engine's frame at the playhead, fitted;
                  the selected layers' boxes and handles; the context bar at the top-centre
 right            Settings panel (the kit's Inspector): the selected item(s)' field operation, values at the playhead, key
                  marks; essentials first, folded groups, Find a setting (Ctrl+F); with Draw on, the brush instead
@@ -368,7 +368,7 @@ A step that leaves an error in the status line fails the run.
 
 ## Add and import
 
-- **Tool rail** (`qml/ToolRail.qml`, `qml/ToolFlyout.qml`, icons: the kit's `ToolIcon.qml`): icons only, its own column
+- **Tool rail** (`qml/Rail2D.qml` fills the kit's `ToolRail.qml` / `ToolFlyout.qml` with 2D's tools; icons: the kit's `ToolIcon.qml`, 2D's `ShapeIcon.qml` and `PaintToolIcon.qml`): icons only, its own column
   left of the canvas. Select V · Shapes (Rectangle R, Ellipse O) · Pen P · Text T · Brush B | Media Ctrl+I (Picture,
   Video, 3D render only with Rostrum3D, Import…, Library) · Sound (only while the selection can take a cue) · Camera C
   (the first use adds one) | Hand H / Zoom Z · Bone J (only with a rig in hand). A group with more than one entry opens a

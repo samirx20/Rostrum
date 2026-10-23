@@ -2,7 +2,7 @@ import QtQml
 import QtQuick
 import RostrumKit
 
-// Rostrum2D, one workspace (apps/2d/DESIGN.md). Left edge: the tool rail (ToolRail.qml); centre: the canvas (the engine's frame). Right: the inspector (from the selected item's field operation, values at the playhead, key marks); while
+// Rostrum2D, one workspace (apps/2d/DESIGN.md). Left edge: the tool rail (Rail2D.qml, the kit's ToolRail); centre: the canvas (the engine's frame). Right: the inspector (from the selected item's field operation, values at the playhead, key marks); while
 // the Draw tool is on, the brush (the next stroke's settings, from the brush settings' own rules).
 // Bottom, full width, always there: the timeline, which is also the layers list (a row and a bar per layer). Its top
 // edge drags to make it taller or shorter.
@@ -14,7 +14,7 @@ AppShell {
     documentName: files.hasProject ? files.name : "Untitled"   // the project (the kit's files: rostrum_gui/project_files.py)
     leftWidth: backend.library.open ? Theme.sidePanel : 0      // the Library drawer (LibraryDrawer.qml), beside the rail
     leftOver: true                      // it and the guides float over the canvas: the rail stays put, the canvas keeps its size
-    rail: [ ToolRail { id: rail; visible: !startScreen.visible; anchors { top: parent.top; bottom: parent.bottom } } ]   // its own column, never over the canvas
+    rail: [ Rail2D { id: rail; visible: !startScreen.visible; anchors { top: parent.top; bottom: parent.bottom } } ]   // its own column, never over the canvas
     left: [ LibraryDrawer { anchors.fill: parent; visible: backend.library.open } ]
     onPressedIn: (area) => { if ((area === "right" || area === "bottom") && backend.create.typing) backend.create.commitText(backend.create.body) }   // a click in the settings or the timeline ends typing
     areaNames: ({ centre: "canvas", right: "settings", bottom: "timeline" })   // inspect_screen's words for the focused area
