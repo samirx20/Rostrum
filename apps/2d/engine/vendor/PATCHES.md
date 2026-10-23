@@ -272,3 +272,9 @@ Not crates (`render/src`): `depth_tests.rs` — a parent's `perspective: 800px` 
 | anyrender_skia | `SkiaSceneCache::origin`: where the canvas being drawn on sits in the frame. `push_glow_layer` captures into a picture covering only the layer's reach (its glows' and own clips, cut to the enclosing clip), not the whole canvas; `set_matrix` (through `base()`), `draw_held`, `draw_cached`, `draw_capture`, taps, flat layers and offscreen pictures all draw shifted by it (`draw_at_origin`) | E3 cleared and laid on a full-frame picture for every glowing layer (60 a frame in Night Bloom's garden, × 4 motion-blur samples), which cost what drawing the content once had saved |
 | anyrender | `shader_errors`: one list per thread | two paints at once (the engine's tests, run in parallel as cargo runs them) took each other's shader errors |
 | anyrender_skia | `skips`: `ROSTRUM2D_PROFILE_SKIP=glow,blur,gradient` leaves those effects out (gradients flat grey, blurs none) | E5, measurement only: time what each effect costs. Unset, nothing changes |
+
+## E17 (where staging a page's time goes; 2026-10-23)
+
+| Crate | Patch | Why |
+|---|---|---|
+| blitz-dom | `util::PHASE_NANOS`: `resolve` adds the ns of each phase (style, damage, construct, pconstruct, layout, transform, paint_tree, clear damage) to a process-wide sum; the engine's staging profile (`ROSTRUM2D_PROFILE_STAGE`, render `stage_profile.rs`) reads and clears it | measurement only: split the per-sample "layout" time into restyle and layout. Two clock reads per phase; nothing else changes |

@@ -329,3 +329,13 @@ pub fn inline_relative_offset(doc: &crate::BaseDocument, from: Option<blitz_trai
     }
     (x, y)
 }
+
+/// Rostrum measurement patch (E17): ns spent in each `resolve` phase on this process, summed (style, damage, construct,
+/// pconstruct, layout, transform, paint_tree, c_damage); the engine's staging profile reads and clears them.
+pub static PHASE_NANOS: [std::sync::atomic::AtomicU64; 8] = [const { std::sync::atomic::AtomicU64::new(0) }; 8];
+
+pub(crate) fn phase(i: usize, lap: &mut std::time::Instant) {
+    let now = std::time::Instant::now();
+    PHASE_NANOS[i].fetch_add((now - *lap).as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
+    *lap = now;
+}
