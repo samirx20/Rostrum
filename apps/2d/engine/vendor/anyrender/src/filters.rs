@@ -734,17 +734,21 @@ pub struct RuntimeShaderFilter {
 
 /// Errors from shader programs the backend could not compile or feed, collected during a paint so the
 /// caller can fail the frame naming them (Rostrum patch, round 5: never draw on without an effect).
+/// Rostrum patch (E4): one list per thread, the thread that paints: two paints at once (tests run in parallel, a second
+/// painter) never take each other's errors.
 pub mod shader_errors {
-    use std::sync::Mutex;
-    static ERRORS: Mutex<Vec<String>> = Mutex::new(Vec::new());
+    use std::cell::RefCell;
+    thread_local!(static ERRORS: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) });
     pub fn push(e: String) {
-        let mut v = ERRORS.lock().unwrap();
-        if !v.contains(&e) {
-            v.push(e);
-        }
+        ERRORS.with(|v| {
+            let mut v = v.borrow_mut();
+            if !v.contains(&e) {
+                v.push(e);
+            }
+        });
     }
     pub fn take() -> Vec<String> {
-        std::mem::take(&mut *ERRORS.lock().unwrap())
+        ERRORS.with(|v| std::mem::take(&mut *v.borrow_mut()))
     }
 }
 
