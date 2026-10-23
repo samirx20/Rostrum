@@ -111,6 +111,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("rows-folded", ["--sample"], ["select title", "open title", "fold title"]),   # a folded layer: its one row, no lines under it
         ("playhead-on-key", ["--sample"], ["select title", "time 1.0"]),     # the playhead exactly on a key
         ("two-selected", ["--sample"], ["selectmany title card"]),
+        ("group-box-rotated", ["--sample"], ["selectmany title card dot", "grouprotate 20"]),
         ("action-menu", ["--sample"], ["selectmany dot rule", "actionmenu"]),
         # H60: keys a frame apart on a zoomed-out timeline: one dot standing for the run (a second diamond behind it)
         ("close-keys", close_keys(), ["select title", "showanim", "timeline full"]),

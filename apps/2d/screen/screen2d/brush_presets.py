@@ -72,12 +72,13 @@ def groups() -> list[dict]:
 
 
 # ---- previews: a short S-stroke, light -> firm -> light, painted by the kit's engine ----------------------------
+SMEAR_BANDS = [(0.85, 0.45, 0.30), (0.30, 0.45, 0.85)]
 W, H, INK, BG = 232, 56, (0.93, 0.90, 0.84), (0.137, 0.141, 0.157)
 
 
-def _points(pad=14, reach=0.55):
+def _points(pad=14, reach=0.55, turns=1.0, ypad=None):
     xs = np.linspace(pad, W - pad, 60)
-    ys = H / 2 + (H / 2 - pad) * reach * np.sin((xs - pad) / (W - 2 * pad) * 2 * np.pi)
+    ys = H / 2 + (H / 2 - (pad if ypad is None else ypad)) * reach * np.sin((xs - pad) / (W - 2 * pad) * 2 * np.pi * turns)
     pr = np.sin(np.linspace(0.08, np.pi - 0.08, 60)) ** 0.7
     return [(float(x), float(y), float(p)) for x, y, p in zip(xs, ys, pr)]
 
@@ -96,17 +97,18 @@ def preview_of(s: dict) -> QImage:
     through the kit's one stroke-to-engine step (`canvas.stamp`), as on the canvas. Wet brushes get two bands of paint
     to drag; multiply and add get a ground to show what they do."""
     layer, under, ink, lay = np.zeros((H, W, 4), np.float32), np.broadcast_to(np.array(BG, np.float32), (H, W, 3)).copy(), INK, _lay()
-    if s.get("smudge"):
-        for i, c in enumerate([(0.85, 0.45, 0.30), (0.30, 0.45, 0.85)]):
-            y = H * (0.30 + 0.40 * i)
-            stamp_stroke(layer, [(10, y, 1), (W - 10, y, 1)], c, 12, "round", hardness=.9, color_jitter=0, lay=lay)
+    smudge = bool(s.get("smudge"))
+    if smudge:        # two bands of wet paint meeting at the middle; the stroke crosses the join up and down and drags each into the other
+        for i, c in enumerate(SMEAR_BANDS):
+            stamp_stroke(layer, [(0, H * (0.25 + 0.5 * i), 1), (W, H * (0.25 + 0.5 * i), 1)], c, H / 2 + 6, "block", hardness=1, spacing=.05, color_jitter=0, lay=lay)
+        ink = SMEAR_BANDS[0]       # the brush carries paint of its own: the first band's colour, so the drag is the picture
     if s.get("mode") == "multiply":
         stamp_stroke(layer, [(10, H / 2, 1), (W - 10, H / 2, 1)], (0.85, 0.75, 0.55), 40, "block", hardness=.9, color_jitter=0, lay=lay)
         ink = (0.45, 0.35, 0.65)
     elif s.get("mode") == "add":
         ink = (0.95, 0.55, 0.25)
     hex_ink = "#" + "".join(f"{round(c * 255):02x}" for c in ink)
-    canvas.stamp(layer, {**s, "type": "stroke", "color": hex_ink, "seed": 7, "points": _points(reach=1.0 if s.get("smudge") else 0.55), "mask": ""}, W, H, {}, under)
+    canvas.stamp(layer, {**s, "type": "stroke", "color": hex_ink, "seed": 7, "points": _points(reach=1.0, turns=1.5, ypad=6) if smudge else _points(reach=0.55), "mask": ""}, W, H, {}, under)
     a = layer[..., 3:]
     rgb = np.clip(under + layer[..., :3], 0, 1) if s.get("mode") == "add" else layer[..., :3] + (1 - a) * under
     px = np.ascontiguousarray((np.clip(rgb, 0, 1) * 255).astype(np.uint8))

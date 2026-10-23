@@ -137,7 +137,7 @@ Item {
                         height: Theme.rowDense
                         Text {
                             objectName: "fold:" + nameItem.modelData.group     // scripted steps open a group by it
-                            text: "+ " + nameItem.modelData.group ; font.family: uiFont; font.pixelSize: Theme.body
+                            text: "+ " + (nameItem.modelData.label || nameItem.modelData.group) ; font.family: uiFont; font.pixelSize: Theme.body
                             color: nameArea.containsMouse ? Theme.fg : Theme.fg2; anchors.verticalCenter: parent.verticalCenter
                             font.underline: nameArea.containsMouse
                             Rectangle {  // changed but folded by hand: a small dot says something in here differs from its default

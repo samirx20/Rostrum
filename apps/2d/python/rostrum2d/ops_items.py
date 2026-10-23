@@ -37,7 +37,8 @@ def _all_ids(ctx):
 def _names(ctx) -> set[str]:
     """The names a person reads in the layers list (a layer named only "Text" with a meaningful id shows its id, so
     it doesn't take the name "Text" from the next new text)."""
-    return {display_name(loc.item) for loc in _all_ids(ctx).values() if loc.item.get("type") != "doc"}
+    items = [loc.item for loc in _all_ids(ctx).values() if loc.item.get("type") != "doc"]
+    return {display_name(i) for i in items} | {i["name"] for i in items if i.get("name")}     # a star named "Shape" still holds that name
 
 
 @R.operation("comp.add", "Add a composition (one shot: its frame size, frame rate and length).", label="Add composition",

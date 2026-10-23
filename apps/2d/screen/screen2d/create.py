@@ -18,6 +18,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum2d import fields as F
 
 from . import adding, bounds
+from .text_ink import ink_for
 from .typing_session import Session
 
 DEFAULT_SIZE = 200.0                       # a click without a drag: this big
@@ -54,6 +55,7 @@ class Create(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent or bridge)
         self.b, self._press, self._box, self._text, self._style = bridge, None, {}, None, {}
+        self._ink = "#ffffff"                  # the new text's starting colour (text_ink.py), set when typing starts
         bridge.toolChanged.connect(self._tool_changed)
         bridge.selectedItemsChanged.connect(self.canEditChanged)        # canEdit follows the selection and the typing
         self.typingChanged.connect(self.canEditChanged)
@@ -82,6 +84,7 @@ class Create(QObject):
         item = self.b.doc.item(self._text.id) if self.b.doc.has(self._text.id) else {}
         d = {k: F.defaults("text")[k] for k in LOOK}
         d["size"] = self._start_size()
+        d["color"] = self._ink
         return {**d, **self._style, **{k: item[k] for k in d if k in item}}
 
     @Property(bool, notify=canEditChanged)
@@ -164,7 +167,8 @@ class Create(QObject):
         place = {"x": round(x, 2), "y": round(y, 2), **F.STARTS["text"]}
         if width > 0:
             place["boxWidth"] = round(width, 2)
-        self._text = Session(self.b, None, {"size": self._start_size(), **self._style}, place)
+        self._ink = ink_for(self.b.colourPick.colour_at(x + 6, y + 6), self.b.comp().get("background", ""))
+        self._text = Session(self.b, None, {"size": self._start_size(), "color": self._ink, **self._style}, place)
         self.b.select("")
         self._text_box()
 

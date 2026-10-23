@@ -15,7 +15,7 @@
   Paths (tool pen): pen <x,y> <x,y,hx,hy> … [close] (one new path: a point, or a press at x,y dragged to hx,hy =
     a smooth point; composition px) | pointpick <layer> <i> (select a point: its handles show) | pointdrag <layer> <i> <dx> <dy> [in|out] (a point, or its handle)
   Handles: resize <layer> <nw|n|ne|e|se|s|sw|w> <dx> <dy> [shift] [alt] | rotate <layer> <deg> [shift] (turn by that many
-    degrees) | boxselect <x0> <y0> <x1> <y1> [shift] [ctrl] (the rubber band) | shiftpick <layer> (add / remove) | movesel <dx> <dy> (move all selected)
+    degrees) | boxselect <x0> <y0> <x1> <y1> [shift] [ctrl] (the rubber band) | shiftpick <layer> (add / remove) | movesel <dx> <dy> (move all selected) | groupresize <nw|n|ne|e|se|s|sw|w> <dx> <dy> [shift] [alt] / grouprotate <deg> [shift] (the box round several selected layers)
   Add and import: add <type> (the Add menu's entry; image / video: add image <path>) | flyout <group>|close (a rail group's flyout) |
     import <path> [page=<n>] [text=outline] [keep=on] (the Import panel's job, waits, fails like it) | importstart <path> … (starts it,
     doesn't wait) | importpanel open [path]|close | drop <path> [x y] | library open|close (the Library drawer) |
@@ -206,7 +206,7 @@ def do_step(bridge, win, step):
         for f in (0.25, 0.5, 0.75, 1.0):             # a few moves, as a hand would make
             bridge.moveBy(dx * f, dy * f)
         bridge.endDrag()
-    elif word in ("resize", "rotate", "boxselect", "shiftpick", "movesel"):
+    elif word in ("resize", "rotate", "boxselect", "shiftpick", "movesel", "groupresize", "grouprotate"):
         from .handle_steps import steps_handles
         steps_handles(bridge, step, rest)
     elif word == "keydrag":

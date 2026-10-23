@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// One selected layer's outline on the canvas, turned with the layer (about its anchor). With `editable` it also has
+// One selected layer's outline (or, with `group`, the one box round several, whose handles act on all of them) on the canvas, turned with the layer (about its anchor). With `editable` it also has
 // 4 corner + 4 edge resize knobs and a turn zone just outside each corner (screen2d/handle_slots.py: one gesture =
 // one undo step each; Shift = same proportion / 15° steps, Alt = from the centre). `box` is a bounds.boxes entry in
 // composition px; `fit` is canvas px per composition px; `space` is the (unturned) item the pointer is read in.
@@ -12,6 +12,7 @@ Item {
     property real fit: 1
     property Item space
     property bool editable: false
+    property bool group: false          // the one box round several selected layers: its drags act on all of them (group_slots.py)
     readonly property real bw: (box.w || 0) * fit
     readonly property real bh: (box.h || 0) * fit
     x: (box.x || 0) * fit; y: (box.y || 0) * fit; width: bw; height: bh
@@ -33,8 +34,8 @@ Item {
                 preventStealing: true
                 property bool on: false
                 function at(m) { var q = mapToItem(h.space, m.x, m.y); return Qt.point(q.x / h.fit, q.y / h.fit) }
-                onPressed: (m) => { on = backend.beginRotate(); if (on) { var q = at(m); backend.rotateTo(q.x, q.y, false) } }
-                onPositionChanged: (m) => { if (on) { var q = at(m); backend.rotateTo(q.x, q.y, (m.modifiers & Qt.ShiftModifier) !== 0) } }
+                onPressed: (m) => { on = (h.group ? backend.beginGroupRotate() : backend.beginRotate()); if (on) { var q = at(m); h.group ? backend.groupRotateTo(q.x, q.y, false) : backend.rotateTo(q.x, q.y, false) } }
+                onPositionChanged: (m) => { if (on) { var q = at(m); var sh = (m.modifiers & Qt.ShiftModifier) !== 0; h.group ? backend.groupRotateTo(q.x, q.y, sh) : backend.rotateTo(q.x, q.y, sh) } }
                 onReleased: { if (on) backend.endDrag(); on = false }
                 onCanceled: { if (on) backend.endDrag(); on = false }
             }
@@ -60,12 +61,14 @@ Item {
                 property bool on: false
                 property point p0
                 function at(m) { var q = mapToItem(h.space, m.x, m.y); return Qt.point(q.x / h.fit, q.y / h.fit) }
-                onPressed: (m) => { on = backend.beginResize(knob.hx, knob.hy); p0 = at(m) }
+                onPressed: (m) => { on = h.group ? backend.beginGroupResize(knob.hx, knob.hy) : backend.beginResize(knob.hx, knob.hy); p0 = at(m) }
                 onPositionChanged: (m) => {
                     if (!on) return
                     var q = at(m)
                     backend.snap.keys((m.modifiers & Qt.ControlModifier) !== 0, false)   // Ctrl: no snapping (snapper.py)
-                    backend.resizeBy(q.x - p0.x, q.y - p0.y, (m.modifiers & Qt.ShiftModifier) !== 0, (m.modifiers & Qt.AltModifier) !== 0)
+                    var sh = (m.modifiers & Qt.ShiftModifier) !== 0, al = (m.modifiers & Qt.AltModifier) !== 0
+                    if (h.group) backend.groupResizeBy(q.x - p0.x, q.y - p0.y, sh, al)
+                    else backend.resizeBy(q.x - p0.x, q.y - p0.y, sh, al)
                 }
                 onReleased: { if (on) backend.endDrag(); on = false }
                 onCanceled: { if (on) backend.endDrag(); on = false }
@@ -75,7 +78,7 @@ Item {
     // the fill's gradient handles, over the box while the Fill row's picker is open on a gradient (one drag = one change)
     GradientHandles {
         anchors.fill: parent
-        visible: h.editable && PaintSession.gradient
+        visible: h.editable && !h.group && PaintSession.gradient
         paint: PaintSession.paint || ({})
         selected: PaintSession.selected
         points: h.box.type !== "text"            // a text's letters take no point-to-point span

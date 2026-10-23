@@ -48,7 +48,7 @@ _DEPTHS = {"far": 3.0, "middle": 1.0, "near": 0.25}        # the camera depths b
 _MASK = lambda m: _op("mask.make", "stack_but_top", cutter="$top", mode=m, id="$new:group", at="$at")   # noqa: E731
 
 DATA = [
-    _a("group", "Group", rank=10, importance="primary", group="make", job="group", when=FACT("groupable"),
+    _a("group", "Group", rank=10, importance="primary", group="make", job="group", when={"all": [FACT("groupable"), NOT("one_group")]},
        calls=_op("group.make", "stack", id="$new:group", **{"as": "group"})),
     _a("ungroup", "Ungroup", rank=10, importance="primary", group="make", job="ungroup", when=FACT("releasable"),
        calls=_op("group.release", "ids")),

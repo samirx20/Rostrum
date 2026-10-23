@@ -10,7 +10,7 @@ Popover {
     readonly property var st: backend.stagger
     property bool cancelled: false
     title: "Stagger " + pop.st.what
-    modal: true                         // the closing click does nothing else
+    modal: true                         // the closing click does nothing else (the kit's Popover never dims the window)
     focusItem: byField
     onEscaped: cancelled = true         // takes it back
     onAccepted: close()                 // keeps it
@@ -19,7 +19,7 @@ Popover {
     Connections {   // opened by the action; closed when the stagger ends anywhere else (a key, a step, an undo)
         target: pop.st
         function onOpened() { pop.openBy(["action:layer:stagger", "actionsMore"], (shell.width - pop.width) / 2, 104) }
-        function onChanged() { if (!pop.st.open && pop.opened) pop.close() }
+        function onChanged() { if (!pop.st.open && pop.visible) pop.close() }    // `visible`, not `opened`: also while it is still fading in
     }
     Column {
         spacing: Theme.gap

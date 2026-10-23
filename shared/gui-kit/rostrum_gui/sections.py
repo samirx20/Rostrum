@@ -19,6 +19,11 @@ from itertools import takewhile
 from .pairs import pair_up
 from .rows import RANK, _grouped, _param_row
 
+# What a folded group is CALLED on screen when its own name would echo an essential row above it: {(kind, group): words}
+# (kind lower-case). An app fills it once (2D: "Font" under Text reads "More type"). The group's key never changes:
+# open / folded choices, `reveal`, `fold:<group>` steps and guides keep using it; only the heading and the name change.
+WORDS: dict[tuple[str, str], str] = {}
+
 
 def layout(op, kind: str = "") -> list[dict]:
     """Essentials, then one fold per other group (static: the same rows for every item of a kind)."""
@@ -40,7 +45,7 @@ def layout(op, kind: str = "") -> list[dict]:
         rows.append({"row": "group", "id": "gap:folds", "label": "", "members": [p.name for p in rest], "by": "holds"})
     for g in dict.fromkeys(p.group for p in rest):
         members = sorted((p for p in rest if p.group == g), key=lambda p: RANK[p.importance])    # stable
-        rows.append({"row": "fold", "id": "fold:" + g, "label": g, "fold": g, "members": [p.name for p in members]})
+        rows.append({"row": "fold", "id": "fold:" + g, "label": WORDS.get((kind.lower(), g), g), "fold": g, "members": [p.name for p in members]})
         rows += [{**_param_row(p), "in": g} for p in members]
     if rest:
         rows.append({"row": "folds", "id": "folds", "label": "", "members": [p.name for p in rest]})

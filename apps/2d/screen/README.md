@@ -58,7 +58,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   back to Move; T: click or drag a box and type on the canvas, one change per typing session (previews `text.set` per
   key), Esc / Ctrl+Enter ends; double-click a text to type in it again. While typing the context bar has Font, Weight,
   Size, Colour (`qml/ToolOptions.qml`; no Done: Esc, Ctrl+Enter or a click outside ends), and from the first letter
-  the new text is selected, so the settings panel shows its settings. Steps: `shape`, `shapedrag`, `text`, `textbox`, `typetext`, `edittext`.
+  the new text is selected, so the settings panel shows its settings. A new text's colour is `text_ink.py` (one place): dark on a light spot of the frame, white on a dark one, read where it is created (a colour picked while typing wins). The settings panel's folded groups read "More type" / "Fill style" for a text (kit `sections.WORDS`; the group keys stay Font / Fill). Steps: `shape`, `shapedrag`, `text`, `textbox`, `typetext`, `edittext`.
 - **The view** (`qml/CanvasView.qml`, `ViewInput.qml`, `ViewControls.qml`, `screen2d/spacekey.py`, `view_steps.py`):
   one mapping (Stage's `compScale`, `toComp`, `fromComp`, `inWell`) for everything over the canvas. Ctrl+wheel / pinch
   at the pointer, Space+drag or middle-drag, Ctrl+0, Ctrl+1, F (Shift+2), Ctrl+= / Ctrl+−; the "Fit · 43 % ▾" menu. The
@@ -139,7 +139,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   playhead (`key.paste {from, at}`, one call per layer, one change).
 - **`,` / `.`** (`key_edits.stepEvent`): keys, markers, drawings, bar starts and ends; of the selected layers or all.
 - **Stagger…** (`qml/StaggerPopover.qml`, `screen2d/stagger.py`, `backend.stagger`): an action on the bar (2+ layers);
-  the popover previews `layer.stagger {by, order}` live in one open gesture; click away keeps it, Esc takes it back.
+  the popover (kit Popover: light, never dims the window) previews `layer.stagger {by, order}` live in one open gesture; Enter or click away keeps it and closes it, Esc takes it back.
 - Steps (`key_steps.py`): `keybox`, `keystretch`, `ease`, `easekey`, `easecurve`, `spring`, `keytime`, `keyvalue`,
   `easemenu`, `keyhere`, `keycopy`, `keypaste`, `stagger <f> [order] [open]`, `event prev|next`.
 
@@ -262,7 +262,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   loudly; a layer in an auto layout changes size only (the layout places it). Each drag is one undo step.
 - **Several layers** (`screen2d/multi.py`, `backend.multi`): drag on empty canvas = a rubber band; layers whose boxes touch it
   are selected (not a layer inside a selected group). **Shift+click** adds / removes one. The first is the inspector's;
-  every outline shows, handles only for a single layer. Dragging any one moves them all in one undo step (not layers in
+  every outline shows, and one **box round all of them** (`Multi.groupBox`) has the same knobs and turn zones as a single layer: resize scales every layer about the opposite side (Alt: the centre), turn turns them about the box's centre, one drag = one undo step (`screen2d/group_slots.py`, `qml/Handles.qml` with `group: true`). A resized shape / image / group changes Width / Height, any other type its Scale (corner) or Stretch (edge); each layer keeps its place inside the box. Refused loudly for a layer in an auto layout or driven by an expression. Dragging any one moves them all in one undo step (not layers in
   an auto layout or driven by an expression: refused loudly). A plain click on another layer resets to one.
 - One source for "where a layer's box is on screen": `bounds.boxes` carries each layer through its groups' whole chain (position,
   turn, scale, anchor), so a layer inside a turned group outlines, picks, resizes and moves where it shows (drags are read in the
@@ -270,7 +270,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   group or the composition), so the outline sits on the drawn picture, not the playhead's. A turned group with uneven scale
   (a skew) is approximated. Resize knobs show the arrow matching their on-screen direction (`transform.resize_cursor`, 45° snaps).
 - Steps: `resize <layer> <nw|n|ne|e|se|s|sw|w> <dx> <dy> [shift] [alt]`, `rotate <layer> <deg> [shift]`,
-  `boxselect <x0> <y0> <x1> <y1>`, `shiftpick <layer>`, `movesel <dx> <dy>`.
+  `boxselect <x0> <y0> <x1> <y1>`, `shiftpick <layer>`, `movesel <dx> <dy>`, `groupresize <handle> <dx> <dy> [shift] [alt]` and `grouprotate <deg> [shift]` (the box round the selected layers; `selectmany` first).
 
 ## Curves
 

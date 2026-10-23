@@ -12,7 +12,7 @@ import "."
 //                                 // or menu that opened it; at (x, y) when none is shown (a key or a script opened it)
 // Closes on Esc (first `escaped()`, so an app can take the change back; typing in a field is dropped with it)
 // and on a click outside. A `modal` popover
-// swallows the click that closes it. `accepted()` is Enter pressed anywhere in it that no field used (the app decides
+// swallows the click that closes it (and never dims the window: `dim` is off). `accepted()` is Enter pressed anywhere in it that no field used (the app decides
 // whether that closes it: pop.close()). The popover stays inside the window, whatever the size. Keyboard focus goes
 // into `focusItem` (else the popover itself) on opening and goes back to what had it when it closes.
 QQC.Popup {
@@ -30,6 +30,7 @@ QQC.Popup {
     parent: QQC.Overlay.overlay
     padding: Theme.pad
     focus: true
+    dim: false                                      // a small popover is light: even a modal one never dims the window
     closePolicy: QQC.Popup.CloseOnPressOutside      // Esc: the Shortcut below (not while a list opened from inside has the keys)
     background: MenuBackground { radius: Theme.radiusPanel }
     enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }

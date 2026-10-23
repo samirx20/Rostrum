@@ -17,13 +17,13 @@ This page takes you from an empty project to something that moves, and shows you
 ![The Shapes panel beside the tool rail](pictures/shapes-panel.png)
 
 2. Press **T**, then click on the picture where the words go and type. A row appears in the timeline at the bottom. **Esc**, **Ctrl+Enter** or a click outside the text ends the typing, and the text stays picked, so the panel on the right shows its settings.
-3. In the panel, change **Size**, **Weight** and **Colour** (a swatch plus a hex box) in the short list.
+3. In the panel, change **Size**, **Weight** and **Colour** (a swatch plus a hex box) in the short list. A new text starts dark on a light spot (a light shape, a picture) and white on a dark one (the empty canvas, a dark shape), judged where you click, so it can be read at once. Pick the colour while typing, or in the panel, and your choice stays for the next text.
 
 ## 3. Pick, move and change things
 
 1. Click a thing in the picture, or its name in the timeline, to pick it. Small squares appear round it.
 2. Drag it to move it. Drag a square on its edge to resize it. The arrow keys nudge the picked layers by 1 pixel, and **Shift** with an arrow by 10. Each press is one change you can undo.
-3. The panel on the right shows a few essential settings first (for text: the words, size, weight, colour, position, opacity). The rest are in named groups below them, such as **Text**, **Font** and **Outline**. Click a group's name to open it, and again to fold it.
+3. The panel on the right shows a few essential settings first (for text: the words, size, weight, colour, position, opacity). The rest are in named groups below them, such as **Paragraph**, **More type** (width, slant and other font settings) and **Outline**. Click a group's name to open it, and again to fold it.
 4. Not sure where a setting is? Click **Find a setting** at the top of the panel (or press **Ctrl+F**), type a word such as "opacity", and pick the setting from the list. Its group opens and it is shown to you. A word such as "blur" names an effect: it shows a line **Add Blur**, and the effect's settings appear under **Effects** once it is added.
 5. A setting appears only when it can be used. Turn something on and the settings that go with it appear; turn it off and they go. Nothing sits there greyed out.
 6. To rename a layer, double-click its name in the timeline (or press **F2**) and type.
@@ -71,7 +71,7 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
 3. Drag a picked diamond to move them all. Hold **Alt** and drag the first or the last picked diamond to stretch or squeeze them all in time.
 4. **Ctrl+C** copies the picked keys. Pick other layers, move the playhead and press **Ctrl+V**: the keys land on the same settings of those layers, starting at the playhead and keeping their spacing.
 5. **,** and **.** jump the playhead to the previous or next thing that happens: a key, a marker, a drawing, or where a layer starts or ends. With layers picked, only theirs.
-6. To make layers start one after another, pick them and click **Stagger…** at the top of the settings panel. A small box opens under the button. Set "Each starts [2 f] after the one before" and an **Order** (stack, as picked, left to right, top to bottom, from the centre, random). The bars spread as you change it. Click away to keep it (one step), or press Esc to take it back. Open Stagger again to change it.
+6. To make layers start one after another, pick them and click **Stagger…** at the top of the settings panel. A small box opens under the button (the picture stays as it is: nothing dims). Set "Each starts [2 f] after the one before" and an **Order** (stack, as picked, left to right, top to bottom, from the centre, random). The bars spread as you change it. Press Enter or click away to keep it (one step; the box closes), or press Esc to take it back. Open Stagger again to change it.
 
 ## 8. Play it
 
@@ -80,7 +80,7 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
 
 ## 9. Do something to several layers at once
 
-Select first, then act. Hold **Shift** and click more things in the picture, or **Ctrl+click** more names in the timeline, or drag a box round them on empty canvas, or press **Ctrl+A** for every layer. The panel then shows the settings they share ("Mixed" where they differ); change one and it changes on all of them, as one step.
+Select first, then act. Hold **Shift** and click more things in the picture, or **Ctrl+click** more names in the timeline, or drag a box round them on empty canvas, or press **Ctrl+A** for every layer. The panel then shows the settings they share ("Mixed" where they differ); change one and it changes on all of them, as one step. One box is drawn round everything picked: drag its squares to resize them all together, or just outside a corner to turn them all (one undo step each).
 
 The top of the **settings panel** shows only what applies to them: **Combine** (two or more shapes), **Group**, **Mask**, **Align**, **Distribute** (three or more); **…** (more) holds the rest. Right-click gives the short menu (cut, copy, group, order, hide, lock, rename); everything is also in **Ctrl+K**, and in a few shortcuts (Ctrl+G groups, Ctrl+Shift+G ungroups).
 
