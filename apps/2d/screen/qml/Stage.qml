@@ -255,6 +255,7 @@ Rectangle {
             visible: !backend.playing && !well.drawing && !backend.pen.on
             interactive: backend.tool === "move" || backend.tool === "camera"
             fit: view.zoom; ox: view.ox; oy: view.oy
+            compW: panel.info.width || 0; compH: panel.info.height || 0
         }
         Item {  // outlines of the selected layers (turned with them) and the handles of a single one; over the pen's overlay
             id: marks
@@ -298,11 +299,11 @@ Rectangle {
                     transform: Rotation { origin.x: (change.b.ax || 0) * change.width; origin.y: (change.b.ay || 0) * change.height; angle: change.b.rot || 0 }
                 }
             }
-            Rectangle {  // the rubber band
+            HaloLine {  // the rubber band
                 visible: canvas.band && (canvas.b0.x !== canvas.b1.x || canvas.b0.y !== canvas.b1.y)
                 x: Math.min(canvas.b0.x, canvas.b1.x) * view.zoom; y: Math.min(canvas.b0.y, canvas.b1.y) * view.zoom
                 width: Math.abs(canvas.b1.x - canvas.b0.x) * view.zoom; height: Math.abs(canvas.b1.y - canvas.b0.y) * view.zoom
-                color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.12); border.width: 1; border.color: Theme.accent
+                fillOpacity: 0.12
             }
             Repeater {  // what a drag snapped to: thin magenta lines, gone on release (backend.snap.lines, composition px)
                 model: backend.snap.lines

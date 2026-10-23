@@ -17,10 +17,7 @@ Item {
     x: (box.x || 0) * fit; y: (box.y || 0) * fit; width: bw; height: bh
     transform: Rotation { origin.x: (h.box.ax || 0) * h.bw; origin.y: (h.box.ay || 0) * h.bh; angle: h.box.rot || 0 }
 
-    Rectangle {
-        anchors.fill: parent; anchors.margins: -1
-        color: "transparent"; border.width: 1; border.color: Theme.accent
-    }
+    HaloLine { anchors.fill: parent; anchors.margins: -1 }
     // the turn zones sit under the knobs
     Repeater {
         model: h.editable ? [[-1, -1], [1, -1], [1, 1], [-1, 1]] : []
@@ -53,6 +50,7 @@ Item {
             readonly property bool edge: hx === 0 || hy === 0
             visible: !edge || (hx === 0 ? h.bw : h.bh) > 36          // a small box keeps only its corners
             width: 9; height: 9; color: "white"; border.width: 1; border.color: Theme.accent
+            Rectangle { anchors.fill: parent; anchors.margins: -1; color: "transparent"; border.width: 1; border.color: Qt.rgba(0, 0, 0, 0.6) }   // the halo
             x: (hx + 1) / 2 * h.bw - width / 2; y: (hy + 1) / 2 * h.bh - height / 2
             MouseArea {
                 anchors.fill: parent; anchors.margins: -4
