@@ -8,7 +8,8 @@ import numpy as np
 from PIL import Image
 
 TIPS = ("round", "bristle", "chalk", "flat", "block", "line")
-MODES = ("normal", "multiply", "erase", "screen", "add")
+MODES = ("normal", "multiply", "erase", "screen", "add", "overlay", "soft_light", "color")
+UNDER = ("overlay", "soft_light", "color")   # the modes that read a copy of what was under the stroke
 K = 64  # samples across the tip for per-bristle profiles (upsampled for wide tips)
 ALONG = {"round": 1.0, "chalk": 1.0, "line": 1.0, "bristle": 0.4, "flat": 0.3, "block": 0.5}
 PARAMS = dict(opacity=1.0, hardness=0.5, spacing=0.1, jitter=0.0, seed=0, angle=None, wet=0.0,
@@ -82,7 +83,32 @@ def curve(*pts, n=32, pressure=(1.0, 1.0, 1.0)):
     return [(float(x), float(y), float(p)) for (x, y), p in zip(xy, pr)]
 
 
-def apply_paint(region, c0, c1, col, mode, k=1.0):
+def _lum(c):
+    return 0.3 * c[..., 0:1] + 0.59 * c[..., 1:2] + 0.11 * c[..., 2:3]
+
+
+def blend_under(base, col, mode):
+    """overlay / soft_light / color of straight `col` over `base` (premultiplied, what was under the stroke): the
+    premultiplied result, alpha unchanged. W3C compositing formulas, all in f64 (stamp/src/paint.rs: the same steps)."""
+    base = base.astype(np.float64)
+    a = base[..., 3:]
+    b = np.clip(np.divide(base[..., :3], a, out=np.zeros_like(base[..., :3]), where=a > 0), 0, 1)
+    s = np.clip(np.asarray(col, np.float64), 0, 1)
+    if mode == "overlay":
+        out = np.where(b <= 0.5, 2 * b * s, 1 - 2 * (1 - b) * (1 - s))
+    elif mode == "soft_light":
+        d = np.where(b <= 0.25, ((16 * b - 12) * b + 4) * b, np.sqrt(b))
+        out = np.where(s <= 0.5, b - (1 - 2 * s) * b * (1 - b), b + (2 * s - 1) * (d - b))
+    else:                                         # color: the paint's hue and saturation, the lightness under it
+        c = s + (_lum(b) - _lum(s))
+        L, n, x = _lum(c), c.min(axis=-1, keepdims=True), c.max(axis=-1, keepdims=True)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            c = np.where(n < 0, L + (c - L) * L / (L - n), c)
+            out = np.where(x > 1, L + (c - L) * (1 - L) / (x - L), c)
+    return out * a
+
+
+def apply_paint(region, c0, c1, col, mode, k=1.0, base=None):
     """The one place paint meets a layer. region: hxwx4 premultiplied view; c0 -> c1: the stroke's coverage there
     before and after this dab (hxw 0..1, c1 >= c0); k: the share of it that is paint (1 - wetness); col: straight
     sRGB (3,) or hxwx3. normal = paint over, multiply = glaze, erase = remove, screen / add = light (glows and haze
@@ -90,7 +116,11 @@ def apply_paint(region, c0, c1, col, mode, k=1.0):
 
     A stroke is one mark, not a pile of dabs: each mode lays the step c0 -> c1 so that all of a stroke's dabs
     together equal laying its final coverage once (dabs overlap many times along a stroke, so a per-dab error shows
-    as ridges at dab spacing). Strokes do stack: two light strokes give twice the light."""
+    as ridges at dab spacing). Strokes do stack: two light strokes give twice the light.
+
+    overlay / soft_light / color blend the paint with `base`, a copy of what was under the stroke before it began
+    (default: the region now, right for one-shot laying), and lay that like normal paint, alpha unchanged: dabs
+    re-blending the stroke's own paint would stack."""
     inc = (k * (c1 - c0) / (1.0001 - c0))[..., None]          # the over-step: 1 - (1-c0)(1-inc) = c1
     lo, hi = (k * c0)[..., None], (k * c1)[..., None]
     if mode == "normal":
@@ -109,5 +139,8 @@ def apply_paint(region, c0, c1, col, mode, k=1.0):
         else:                                                 # adds c*col once per stroke; strokes sum. Light is
             rgb[...] = np.minimum(rgb + (hi - lo) * col, 1)   # never cut down to the alpha: the alpha grows to
             a[...] = np.maximum(a, rgb.max(axis=-1, keepdims=True))   # carry it (premultiplied rgb <= a)
+    elif mode in UNDER:
+        t = blend_under(region if base is None else base, col, mode)
+        region[..., :3] += inc * (t - region[..., :3])
     else:
         raise ValueError(f"mode must be one of {MODES}, got {mode!r}")

@@ -50,7 +50,7 @@ canvas) both resample smoothly.
 |---|---|
 | `fields` | the item types and their fields: paint layer, stroke (the brush), paint mask; `BRUSH` |
 | `ops` | the operations on a host's registry; `build`, the one item builder (also used by an app's script layer) |
-| `marks`, `brush` | the brush engine (carried over from P-PAINT): tips round, bristle, chalk, flat, block, line; pressure; colour and hue drift; paper grain; wet smudge and pick-up; modes normal, multiply, erase, screen, add. Seeded: same stroke, same pixels. A stroke is one mark: its dabs together lay its coverage once in every mode, and light strokes (add) sum without being cut down to the alpha (`marks.apply_paint`) |
+| `marks`, `brush` | the brush engine (carried over from P-PAINT): tips round, bristle, chalk, flat, block, line; pressure; colour and hue drift; paper grain; wet smudge and pick-up; modes normal, multiply, erase, screen, add, and overlay, soft_light, color (blended with a copy of what was under the stroke, so it still lands as one mark). Seeded: same stroke, same pixels. A stroke is one mark: its dabs together lay its coverage once in every mode, and light strokes (add) sum without being cut down to the alpha (`marks.apply_paint`) |
 | `canvas` | where pixels are made: chain-keyed layer states, content-keyed PNGs |
 | `compose` | layers together (normal, multiply, screen, add over transparency); masks as pixels |
 | `where` | `what` is at a pixel; `landed` (P-PAINT's measure) |
