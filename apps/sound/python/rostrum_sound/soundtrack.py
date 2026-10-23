@@ -24,7 +24,7 @@ from rostrum_core.cache import put_file
 
 from . import names, settings
 from .compile import compile as compile_doc
-from .doc import markers, tempo
+from .doc import markers, meter, tempo
 
 KEEP = 6                     # mixes kept in the cache folder (each a few MB for a song)
 
@@ -89,10 +89,8 @@ def _trim():
 
 def grid(root: dict, end: float) -> dict:
     """The song's tempo map as times: every beat and every bar start from 0 to `end` seconds (doc/tempo.py)."""
-    per = int(root.get("beatsPerBar", 4))
-    beats = tempo.beats(root, end)
-    return {"bpm": tempo.start_bpm(root), "beatsPerBar": per, "changes": bool(root.get("tempos")),
-            "beats": beats, "bars": beats[::per]}
+    return {"bpm": tempo.start_bpm(root), "beatsPerBar": meter.start_per_bar(root), "changes": bool(root.get("tempos")),
+            "meterChanges": bool(root.get("meters")), "beats": tempo.beats(root, end), "bars": meter.bar_seconds(root, end)}
 
 
 def facts(folder, item: str = "") -> dict | None:
@@ -107,5 +105,5 @@ def facts(folder, item: str = "") -> dict | None:
     seconds = tempo.seconds_at(root, float(length["beat"])) if isinstance(length, dict) else float(length or 0.0)
     g = grid(root, seconds)
     return {"item": song["id"], "name": song["name"], "seconds": round(seconds, 3), "bpm": g["bpm"],
-            "beatsPerBar": g["beatsPerBar"], "tempoChanges": g["changes"], "bars": g["bars"],
+            "beatsPerBar": g["beatsPerBar"], "tempoChanges": g["changes"], "meterChanges": g["meterChanges"], "bars": g["bars"],
             "markers": marks}

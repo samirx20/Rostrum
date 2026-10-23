@@ -1,4 +1,4 @@
-"""The song's music map as operations: tempo changes, key changes and sections (add / set / remove), and
+"""The song's music map as operations: tempo changes, time signature changes, key changes and sections (add / set / remove), and
 `section.move` (a section and everything inside it, one undo step: `sections.py`)."""
 from __future__ import annotations
 
@@ -12,6 +12,8 @@ from .registry import REGISTRY, set_fields, taken
 
 ID = Param.text("id", label="Id", help="Optional; counted (tempo_1 …) or made from the name when left out.")
 LABELS = {"tempo": ("tempos", "tempo change", "Add a tempo change: the tempo from that beat (or moment) on."),
+          "meter": ("meters", "time signature change", "Add a time signature change: the beats per bar from that "
+                                                       "beat (or moment) on, starting a new bar there."),
           "key": ("keys", "key change", 'Add a key change ("D minor") from a time on: for agents and the screen, '
                                         "not heard."),
           "section": ("sections", "section", 'Add a named part of the song ("verse"): where it starts and ends.')}

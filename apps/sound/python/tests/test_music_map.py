@@ -4,7 +4,7 @@ notes and tempo, and a keyboard take that lands where it was played."""
 from rostrum_core import Document, Who
 
 from rostrum_sound import KIND, compile, midi, run_source
-from rostrum_sound.doc import keys, tempo, times
+from rostrum_sound.doc import keys, meter, tempo, times
 from rostrum_sound.midi import keyboard
 
 SONG = """
@@ -33,6 +33,22 @@ def test_times_follow_the_tempo_map():
     assert tempo.beat_at(root, 6.0) == 10.0
     assert compile(root)["tempo"] == [{"beat": 0.0, "bpm": 120.0}, {"beat": 8.0, "bpm": 60.0}]
     assert root["tracks"][0]["notes"][2]["id"] == "lead.n8000"           # ids read the map too (bar 4 = 8 s)
+
+
+def test_a_three_four_bar_mid_song_moves_later_bars_and_undo_restores_them():
+    doc = _doc()
+    a4 = {"beat": 12}                                                      # the A4 note: bar 4's downbeat in 4/4
+    assert meter.bar_at(doc.data, 12) == 3.0
+    for at, per in ((8, 3), (11, 4)):                                      # bar 3 becomes one 3/4 bar
+        doc.apply({"op": "meter.add", "args": {"at": {"beat": at}, "beatsPerBar": per}}, Who.agent("t"))
+    root = doc.data
+    assert next(n for n in doc.item("lead")["notes"] if n["pitch"] == "A4")["at"] == a4    # notes stay on their beats
+    assert meter.bar_at(root, 12) == 3.25                                  # ...so A4 is now bar 4, beat 2
+    assert [meter.bar_start(root, n) for n in (3, 4, 5)] == [8, 11, 15]
+    assert meter.bar_beats(root, 16) == [0, 4, 8, 11, 15]                  # the ruler's and the click's bars
+    assert meter.snap(root, 12.4, 2.0) == 13.0                             # the grid counts from bar 4's line
+    doc.undo(Who.agent("t")); doc.undo(Who.agent("t"))
+    assert meter.bar_at(doc.data, 12) == 3.0 and doc.data == _doc().data
 
 
 def test_section_move_moves_everything_inside_as_one_step():

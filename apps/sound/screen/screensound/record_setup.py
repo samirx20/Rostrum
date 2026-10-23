@@ -7,7 +7,7 @@ microphone is open, the keyboard rows only on a notes or drum track), most impor
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_sound.doc import tempo
+from rostrum_sound.doc import meter, tempo
 
 from .timeline import kind_of
 from .timing import snap
@@ -118,12 +118,13 @@ class RecordSetup(QObject):
     # ---- what a take reads ----------------------------------------------------------------------------------------
     def bar_seconds(self, t: float) -> float:
         root = self.bridge.doc.data
-        return tempo.beat_seconds(root, t) * int(root.get("beatsPerBar", 4))
+        return tempo.beat_seconds(root, t) * meter.per_bar_at(root, tempo.beat_at(root, t))
 
     def count_in(self, t: float) -> tuple[int, float]:
         """(clicks, seconds between them) before a take starting at `t`; (0, …) when count-in is off."""
         root = self.bridge.doc.data
-        beats = int(root.get("beatsPerBar", 4)) * self.values["countInBars"] if self.values["countIn"] else 0
+        per = meter.per_bar_at(root, tempo.beat_at(root, t))
+        beats = per * self.values["countInBars"] if self.values["countIn"] else 0
         return beats, tempo.beat_seconds(root, t)
 
     def punch(self):

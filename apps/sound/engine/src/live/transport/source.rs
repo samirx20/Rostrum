@@ -71,7 +71,7 @@ impl crate::live::wasapi::Source for Transport {
                 if b != self.last_beat {
                     self.last_beat = b;
                     if self.metronome {
-                        self.click = Some((k, b.rem_euclid(self.per_bar as i64) == 0));
+                        self.click = Some((k, self.downbeat(b)));
                     }
                 }
                 self.pos += 1;

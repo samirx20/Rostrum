@@ -1,4 +1,4 @@
-"""The script layer's music map: tempo changes, key changes and sections, checked by the same fields the
+"""The script layer's music map: tempo changes, time signature changes, key changes and sections, checked by the same fields the
 operations use (doc/fields_music.py). Mixed into `builder.Song`; the items live in the song's root lists."""
 from __future__ import annotations
 
@@ -23,6 +23,10 @@ class MusicMap:
         """From `at` (beat(32), or seconds) on, the song plays at `bpm`, until the next change."""
         self._add("tempos", "tempo", {"at": at, "bpm": bpm}, id, f"tempo change at {at!r}")
 
+    def meter_change(self, at, beats_per_bar, id=None):
+        """From `at` (beat(32), or seconds) on, `beats_per_bar` beats in a bar (a new bar starts there)."""
+        self._add("meters", "meter", {"at": at, "beatsPerBar": beats_per_bar}, id, f"time signature change at {at!r}")
+
     def key(self, key, at=0, id=None):
         """The key from `at` on ("D minor", "F# major", "Bb dorian"): for agents and the screen, not heard."""
         self._add("keys", "key", {"key": key, "at": at}, id, f"key {key!r}")
@@ -40,6 +44,8 @@ class MusicMap:
             self.set(tempo=song["tempo"], beatsPerBar=song["beatsPerBar"])
             for b, bpm in song["tempos"]:
                 self.tempo_change({"beat": b}, bpm)
+            for b, per in song["meters"]:
+                self.meter_change({"beat": b}, per)
             for b, k in song["keys"]:
                 self.key(k, {"beat": b})
         names = {m["name"] for m in self.markers}

@@ -72,6 +72,8 @@ synth = track("lead", instrument="plugin", plugin={"format": "vst3", "path": r"C
 tempo(96)                                   # the starting tempo
 tempo_change(bar(9), 132)                   # from bar 9 on (a beat: it stays on its beat), until the next change
 tempo_change(42.0, 100)                     # or at seconds: it stays at that moment
+meter_change(bar(17), 3)                    # 3 beats a bar from bar 17 on (a new bar starts there), until the next
+meter_change(bar(18), 4)                    #   change: one 3/4 bar. bar(n) counts them, so change before using later bars
 key("D minor"); key("F major", at=bar(17))  # the key from a time on ("F# major", "Bb dorian" …): data, not heard
 section("intro", bar(1), bar(5)); section("drop", bar(9), bar(17))
 tracks = import_midi(r"C:\...\sketch.mid")  # its tracks, markers, sections, tempo map and keys; returns the tracks

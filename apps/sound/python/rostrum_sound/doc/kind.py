@@ -21,7 +21,7 @@ from .registry import LISTS, MASTER_ID, REGISTRY
 
 
 def blank() -> dict:
-    return {"id": "root", "type": "doc", **FD.DEFAULTS["doc"], "tracks": [], "buses": [], "markers": [], "tempos": [], "keys": [], "sections": [],
+    return {"id": "root", "type": "doc", **FD.DEFAULTS["doc"], "tracks": [], "buses": [], "markers": [], "tempos": [], "meters": [], "keys": [], "sections": [],
             "master": [{"id": MASTER_ID, "type": "master", **FD.DEFAULTS["master"], "effects": [], "automation": []}]}
 
 

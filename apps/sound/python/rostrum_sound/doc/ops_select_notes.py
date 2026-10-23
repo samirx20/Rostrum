@@ -8,7 +8,7 @@ import random
 
 from rostrum_core import Param, codes
 
-from . import keys, tempo
+from . import keys, meter, tempo
 from . import values as V
 from .registry import REGISTRY
 from .select_time import at_seconds, end_of, start_of
@@ -34,7 +34,7 @@ LABELS = {"note": "note", "hit": "drum hit"}
 
 def _snap(root, sec, grid, strength):
     b = tempo.beat_at(root, sec)
-    return tempo.seconds_at(root, b + (round(b / grid) * grid - b) * strength)
+    return tempo.seconds_at(root, b + (meter.snap(root, b, grid) - b) * strength)
 
 
 def _new_length(root, item, start, new_start, new_end):

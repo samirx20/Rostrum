@@ -11,7 +11,7 @@ default (1/16, Snap on) is used.
 from __future__ import annotations
 
 from rostrum_sound.doc import keys as K
-from rostrum_sound.doc import tempo, times
+from rostrum_sound.doc import meter, tempo, times
 from rostrum_sound.doc.shift import spb, write_like
 
 SNAP_BEATS = 0.25          # the music map's own snap (tempo / key changes, sections): a quarter beat
@@ -27,8 +27,9 @@ class Grid:
         self.value, self.on, self.auto_beats = "1/16", True, 0.25
 
     def beats(self, root: dict) -> float:
+        """One step in beats; for "bar", the song's first bar (`snap` follows each bar's own length)."""
         if self.value == "bar":
-            return float(root.get("beatsPerBar", 4))
+            return float(meter.start_per_bar(root))
         return self.auto_beats if self.value == "auto" else self.STEPS[self.value]
 
     def follow_zoom(self, span_beats: float, width_px: float = 1200.0, min_px: float = 16.0):
@@ -68,8 +69,7 @@ def snap(t: float, root: dict, free: bool, grid: Grid | None = None) -> float:
     grid = grid or DEFAULT
     if free or not grid.on:
         return max(0.0, round(t, 4))
-    step = grid.beats(root)
-    b = round(tempo.beat_at(root, t) / step) * step
+    b = meter.snap(root, tempo.beat_at(root, t), None if grid.value == "bar" else grid.beats(root))
     return max(0.0, round(tempo.seconds_at(root, b), 6))
 
 

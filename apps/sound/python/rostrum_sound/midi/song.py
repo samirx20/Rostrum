@@ -1,7 +1,7 @@
 """A MIDI file's events as a song, in beats: what both the import operation and the script layer build from.
 
     song = from_events(division, tracks)
-      {"tempo": 96, "beatsPerBar": 4, "tempos": [(beat, bpm), …], "keys": [(beat, "D minor"), …],
+      {"tempo": 96, "beatsPerBar": 4, "tempos": [(beat, bpm), …], "meters": [(beat, beats per bar), …], "keys": [(beat, "D minor"), …],
        "markers": [(beat, name), …], "sections": [(name, beat, end beat), …],
        "tracks": [{"name", "builtIn" | "kit", "notes": [{pitch, at, dur, vel}], "hits": [{drum, at, vel}]}],
        "skipped": ["…why…"]}
@@ -72,8 +72,8 @@ def _track(events, division, n, skipped) -> list[dict]:
 
 
 def from_events(division: int, tracks: list[list]) -> dict:
-    song = {"tempo": 120.0, "beatsPerBar": 4, "tempos": [], "keys": [], "markers": [], "sections": [],
-            "tracks": [], "skipped": []}
+    song = {"tempo": 120.0, "beatsPerBar": 4, "tempos": [], "meters": [], "keys": [], "markers": [],
+            "sections": [], "tracks": [], "skipped": []}
     cues = {}
     for events in tracks:                       # meta events may sit on any track (format 1: usually the first)
         for tick, kind, data in events:
@@ -84,8 +84,11 @@ def from_events(division: int, tracks: list[list]) -> dict:
                     song["tempo"] = bpm
                 else:
                     song["tempos"].append((b, bpm))
-            elif kind == "timesig" and tick == 0:
-                song["beatsPerBar"] = data[0]
+            elif kind == "timesig":
+                if tick == 0:
+                    song["beatsPerBar"] = data[0]
+                else:
+                    song["meters"].append((b, data[0]))
             elif kind == "key":
                 song["keys"].append((b, K.from_signature(*data)))
             elif kind == "marker" and data:
@@ -98,6 +101,6 @@ def from_events(division: int, tracks: list[list]) -> dict:
     song["markers"] += [(b, name) for name, b in cues.items()]      # a cue point with no end is a marker
     for n, events in enumerate(tracks, 1):
         song["tracks"] += _track(events, division, n, song["skipped"])
-    for k in ("tempos", "keys", "markers", "sections"):
+    for k in ("tempos", "meters", "keys", "markers", "sections"):
         song[k] = sorted(set(song[k]), key=lambda x: x[1] if k == "sections" else x[0])
     return song

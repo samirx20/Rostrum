@@ -10,6 +10,8 @@ from __future__ import annotations
 from PySide6.QtCore import Property, Signal, Slot
 
 from . import action_calls as C
+from rostrum_sound.doc import meter
+
 from . import moves, selection, timing
 
 
@@ -33,7 +35,7 @@ class KeySlots:
 
     @Slot(str, int, result=bool)
     def nudge(self, how, sign):
-        beats = {"grid": timing.step_beats(self.doc.data, self._grid_now), "bar": float(self.doc.data.get("beatsPerBar", 4)), "fine": 1 / 32}[how]
+        beats = {"grid": timing.step_beats(self.doc.data, self._grid_now), "bar": meter.bar_length_beats(self.doc.data, timing.beat(self._t, self.doc.data)), "fine": 1 / 32}[how]
         by = C.Facts(self.doc, self._picks.ids).by_kind()
         if not by:
             return False

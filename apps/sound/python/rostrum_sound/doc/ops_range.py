@@ -24,7 +24,7 @@ from .registry import LISTS, REGISTRY
 from .select_time import clip_length, start_of
 
 POINTS = ("note", "hit", "sound", "line")                       # a moment each: inside a removed range = gone
-CHANGES = ("tempo", "key")
+CHANGES = ("tempo", "meter", "key")
 
 
 class Map:

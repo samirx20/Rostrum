@@ -16,7 +16,7 @@ from . import markers, tempo, times
 from .registry import LISTS
 from .shift import write_like
 
-TIMED = ("note", "hit", "clip", "sound", "line", "marker", "tempo", "key", "section")
+TIMED = ("note", "hit", "clip", "sound", "line", "marker", "tempo", "meter", "key", "section")
 
 
 def by_problem(v) -> str | None:

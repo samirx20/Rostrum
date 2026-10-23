@@ -26,12 +26,12 @@ from rostrum_core.merge import check_output
 
 from . import expression as EX
 from .builder import Song
-from .doc import KIND
+from .doc import KIND, meter
 
 SAFE_BUILTINS = {f.__name__: f for f in (range, len, min, max, abs, round, enumerate, zip, list, dict, tuple,
                                           float, int, str, sorted, sum, reversed)}
 API = ["tempo(bpm)", "length(time)", "beats_per_bar(n)", "sample_rate(hz)", "track(id, **fields)",
-       "marker(name, at)", "tempo_change(at, bpm)", "key(key, at)", "section(name, at, end)", "import_midi(path)",
+       "marker(name, at)", "tempo_change(at, bpm)", "meter_change(at, beats_per_bar)", "key(key, at)", "section(name, at, end)", "import_midi(path)",
        "master(**fields)", "beat(n)", "beats(n)", "bar(n)", "vel_curve(points, start, end)"]
 
 
@@ -40,7 +40,7 @@ def scope(song: Song) -> dict:
         """The start of bar n (bar(1) is the start of the song)."""
         if n < 1:
             raise ValueError("bars count from 1")
-        return {"beat": (n - 1) * song.root.get("beatsPerBar", 4)}
+        return {"beat": meter.bar_start(song.root, n)}
 
     def vel_curve(points, start, end):
         """f(time) -> the velocity a phrase curve gives at that time (for accents on top of a phrase)."""
@@ -53,7 +53,7 @@ def scope(song: Song) -> dict:
         "beats_per_bar": lambda n: song.set(beatsPerBar=n),
         "sample_rate": lambda hz: song.set(sampleRate=hz),
         "track": song.track, "marker": song.marker, "master": song.master,
-        "tempo_change": song.tempo_change, "key": song.key, "section": song.section, "import_midi": song.import_midi,
+        "tempo_change": song.tempo_change, "meter_change": song.meter_change, "key": song.key, "section": song.section, "import_midi": song.import_midi,
         "beat": lambda n: {"beat": n}, "beats": lambda n: {"beats": n}, "bar": bar, "vel_curve": vel_curve,
     }
 
