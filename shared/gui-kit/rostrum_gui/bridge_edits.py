@@ -18,9 +18,31 @@ from .parts import SlotMixin
 class EditSlots(SlotMixin):
     @Slot(str, "QVariant", result=bool)
     def setValue(self, param, value):
-        """One inspector edit = one change (quick repeats of the same field merge: the core's nudge)."""
-        return self._guard(lambda: self._apply([self.edit_call(i, param, value) for i in self._kit.selection],
-                                               self._many(edit_label(self.doc, self._kit.sel, param, value))))
+        """One inspector edit = one change on the items it is for (quick repeats of the same field merge: the core's
+        nudge). A typed value goes to the items held when its typing started (holdEdit), whatever is selected now."""
+        ids = self._targets(param)
+        if not ids:
+            self._fail(f"Error: setValue {param}: the item(s) it was typed for are gone; {value!r} dropped.",
+                       "The typed value was dropped: the item it was typed for is gone.")
+            return False
+        return self._guard(lambda: self._apply([self.edit_call(i, param, value) for i in ids],
+                                               self._many(edit_label(self.doc, ids[0], param, value), len(ids))))
+
+    @Slot(str)
+    def holdEdit(self, param):
+        """A settings field's caret went in: what it commits goes to the items selected now (pending.py)."""
+        self._kit.held = (param, list(self._kit.selection))
+
+    @Slot(str)
+    def releaseEdit(self, param):
+        """The field's caret left (after its commit)."""
+        if self._kit.held and self._kit.held[0] == param:
+            self._kit.held = None
+
+    def _targets(self, param):
+        held = self._kit.held
+        ids = held[1] if held and held[0] == param else self._kit.selection
+        return [i for i in ids if self.doc.has(i)]
 
     @Slot(str)
     def toggleAnimate(self, param):
@@ -107,8 +129,8 @@ class EditSlots(SlotMixin):
         made = [calls_of(i) for i in ids]
         self._apply([c for calls, _ in made for c in calls], self._many(made[0][1]) if len(made) > 1 else made[0][1])
 
-    def _many(self, label):
-        n = len(self._kit.selection)
+    def _many(self, label, n=None):
+        n = len(self._kit.selection) if n is None else n
         return f"{label} on {n} items" if n > 1 else label
 
     def _close_scrub(self, cancel):

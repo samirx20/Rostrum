@@ -22,6 +22,8 @@ FocusScope {
     property alias leading: leadingSlot.data
     property alias trailing: trailingSlot.data
     signal committed(string text)       // Enter or focus loss with changed text
+    signal typingStarted()              // the caret went in (a settings row holds its item(s) from here) ...
+    signal typingEnded()                // ... and left, after its commit (the row lets go)
     signal entered()                    // Enter, whether or not the text changed
     signal arrow(int direction, bool big)  // Up / Down while typing (Shift = big)
     signal escaped()                    // Esc while typing (the typing is dropped first)
@@ -79,11 +81,14 @@ FocusScope {
         enabled: f.editable
         focus: true
         property string sent: ""        // what was last committed, so Enter + focus loss commit once
+        // typing not yet entered; a selection change first makes any field let go, so typing lands on the item it was
+        // typed for (rostrum_gui/pending.py: this property marks a kit field)
+        readonly property bool pending: activeFocus && text !== f.text && text !== sent
         // a handler may put text back (a refused value): `sent` is what the box holds after it, so Enter + the focus
         // loss that follows commit once and never send the put-back text as a new value
         function commit() { if (text !== f.text && text !== sent) { sent = text; f.committed(text); sent = text } }
         onAccepted: { commit(); f.entered(); focus = false }
-        onActiveFocusChanged: if (activeFocus) { sent = ""; f.problem = "" } else commit()
+        onActiveFocusChanged: if (activeFocus) { sent = ""; f.problem = ""; f.typingStarted() } else { commit(); f.typingEnded() }
         Keys.onEscapePressed: { text = f.text; focus = false; f.escaped() }
         Keys.onUpPressed: (e) => f.arrow(1, (e.modifiers & Qt.ShiftModifier) !== 0)
         Keys.onDownPressed: (e) => f.arrow(-1, (e.modifiers & Qt.ShiftModifier) !== 0)

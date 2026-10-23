@@ -10,6 +10,7 @@ from PySide6.QtCore import Slot
 
 from . import commands, many, rows
 from .history_rows import who_name
+from .pending import finish_typing
 from .parts import SlotMixin
 
 
@@ -28,6 +29,9 @@ class SelectSlots(SlotMixin):
         if gone:
             return self._fail(f'Error: select: no item "{gone[0]}".')
         moved = ids != k.selection
+        if moved:
+            finish_typing()                 # a field's typing lands on the items it was typed for, before they change
+            k.held = None
         k.selection, k.sel = ids, ids[0] if ids else ""
         kinds = [self.doc.item(i)["type"] for i in ids]
         reg = self.doc.kind.registry
