@@ -13,7 +13,7 @@ import numpy as np
 
 from . import shape as shaping
 from . import pictures
-from .marks import ALONG, EVEN, K, MODES, PARAMS, TIPS, Coverage, Paper, _noise1, _ss, _up, apply_paint
+from .marks import ALONG, EVEN, K, MODES, PARAMS, TIPS, UNDER, Coverage, Paper, _noise1, _ss, _up, apply_paint
 
 
 def check(brush, params):
@@ -152,6 +152,7 @@ def dabs(layer, P, mask=None, under=None):
     bx0, by0, bx1, by1 = P.bbox
     cov = np.zeros((by1 - by0, bx1 - bx0), np.float32)  # max coverage so far in this stroke
     D, res = P.D, None
+    under0 = layer[by0:by1, bx0:bx1].copy() if P.mode in UNDER else None   # what was under the stroke
     for i in range(P.n):
         r = R[i]
         x0, x1, y0, y1 = P.box[i].tolist()
@@ -209,5 +210,6 @@ def dabs(layer, P, mask=None, under=None):
             lay, take = P.wetk[i]
             region += (a * lay)[..., None] * (res[win] - region)
             res += take * (pick - res)
-        apply_paint(region, c0, c1, col, P.mode, 1 - wet)
+        apply_paint(region, c0, c1, col, P.mode, 1 - wet,
+                    None if under0 is None else under0[y0 - by0:y1 - by0, x0 - bx0:x1 - bx0])
     return Coverage(cov, P.bbox)

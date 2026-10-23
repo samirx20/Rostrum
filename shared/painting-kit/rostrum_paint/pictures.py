@@ -48,22 +48,26 @@ def _tip(name):
     if name == "streaks":           # lines along the stroke, the dry-brush drag
         row = _ss((_periodic(n, 3, rng)[0] - 0.25) / 0.4) * (0.6 + 0.4 * _periodic(n, 12, rng)[0])
         return np.repeat(row[:, None], n, 1)
-    if name == "ragged":            # a torn, uneven edge round a solid middle
-        edge = 0.7 + 0.28 * _periodic(n, 10, rng)[0][((np.arctan2(v, u) + math.pi) / (2 * math.pi) * (n - 1)).astype(int)]
-        return _ss((edge - r) / 0.06)
+    if name == "ragged":            # a torn edge round a solid middle: big bites, a fine fibrous fringe, flecks off it
+        at = ((np.arctan2(v, u) + math.pi) / (2 * math.pi) * (n - 1)).astype(int)
+        edge = (0.62 + 0.2 * _periodic(n, 14, rng)[0][at] + 0.14 * _periodic(n, 2, rng)[1][at] ** 2
+                + 0.06 * _periodic(n, 1, rng))
+        fleck = _ss((_periodic(n, 2, rng) - 0.62) / 0.06) * _ss((r - edge + 0.12) / 0.06) * _ss((0.98 - r) / 0.05)
+        return np.maximum(_ss((edge - r) / 0.025), fleck)
     return _ss((0.45 * _periodic(n, 1.5, rng) + 0.55 * _periodic(n, 5, rng) - 0.3) / 0.45)   # charcoal
 
 
 def _paper(name):
     rng, n = np.random.default_rng(PAPERS.index(name) + 21), PAPER_N
     y, x = np.mgrid[0:n, 0:n]
-    if name == "canvas":            # a plain weave: threads over and under, a little uneven
-        p = 8
+    if name == "canvas":            # a plain weave of fine threads: each crossing a raised grain, gaps between threads
+        p = 4
+        fx, fy = (x % p + 0.5) / p, (y % p + 0.5) / p
         over = ((x // p + y // p) % 2).astype(bool)
-        thread_y, thread_x = rng.uniform(0.6, 1, n // p)[y // p], rng.uniform(0.6, 1, n // p)[x // p]   # uneven yarn
-        bump = np.where(over, thread_x * np.sin(math.pi * (y % p + 0.5) / p) ** 0.7,
-                        thread_y * np.sin(math.pi * (x % p + 0.5) / p) ** 0.7)
-        return _norm(0.6 * bump + 0.4 * _periodic(n, 2.5, rng))
+        row, col = rng.uniform(0.7, 1, n // p)[y // p], rng.uniform(0.7, 1, n // p)[x // p]   # uneven yarn
+        across, along = np.sin(math.pi * fy) ** 0.6, np.sin(math.pi * fx) ** 0.6
+        bump = np.where(over, row * across * (0.5 + 0.5 * along), col * along * (0.5 + 0.5 * across))
+        return _norm(0.75 * bump + 0.15 * _periodic(n, 1, rng) + 0.1 * _periodic(n, 24, rng))
     if name == "cold press":        # watercolour paper: soft round hills and dimples
         return _norm(_periodic(n, 6, rng) ** 1.4 + 0.6 * _periodic(n, 18, rng) + 0.2 * _periodic(n, 1.5, rng))
     if name == "laid":              # fine laid lines, chain lines across them

@@ -15,8 +15,9 @@ mod tip;
 use paint::Mode;
 use tip::Tip;
 
-/// The layout of `params` and `dabs` (the kit's native.py writes the same); a stamper of another layout refuses.
-pub const LAYOUT: f64 = 2.0;
+/// The layout of `params` and `dabs` and the meaning of the tip / mode ids (the kit's native.py writes the same).
+/// Bump it with any change to the call: native.py reads `rostrum2d_stamp_layout` on load and refuses another build.
+pub const LAYOUT: f64 = 3.0;
 const P_LAYOUT: usize = 0;
 const P_TIP: usize = 1;
 const P_MODE: usize = 2;
@@ -126,6 +127,12 @@ unsafe fn stroke<'a>(p: &[f64], profiles: *const f64, mask: *const f32, g: *cons
         return Err("grain and chalk need the paper".into());
     }
     Ok(st)
+}
+
+/// The layout this build reads (`LAYOUT`): what native.py checks before its first call.
+#[no_mangle]
+pub extern "C" fn rostrum2d_stamp_layout() -> f64 {
+    LAYOUT
 }
 
 /// # Safety

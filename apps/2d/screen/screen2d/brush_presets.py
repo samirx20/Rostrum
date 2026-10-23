@@ -19,7 +19,7 @@ DEFAULT = "hard"
 # (id, name, group, size, settings): the settings a preset sets; every other brush setting goes back to its default
 PRESETS = [
     ("pencil", "Pencil", "Sketch", 5, dict(brush="chalk", hardness=.75, grain=.55, opacity=.9, size_pressure=.3, opacity_pressure=.8, color_jitter=0)),
-    ("charcoal", "Charcoal", "Sketch", 16, dict(brush="chalk", hardness=.3, grain=.8, opacity=.95, size_pressure=.5, opacity_pressure=.8, color_jitter=.02)),
+    ("charcoal", "Charcoal", "Sketch", 16, dict(brush="chalk", hardness=.3, grain=.8, opacity=.95, size_pressure=.5, opacity_pressure=.8, color_jitter=.02, texture="charcoal")),
     ("rough", "Rough line", "Sketch", 4, dict(brush="round", hardness=.6, opacity=.55, size_pressure=.5, opacity_pressure=.6, jitter=.06, color_jitter=0)),
     ("ink", "Ink pen", "Ink", 8, dict(brush="line", hardness=1, size_pressure=1, opacity_pressure=0, color_jitter=0)),
     ("mono", "Fine liner", "Ink", 4, dict(brush="line", hardness=1, size_pressure=0, opacity_pressure=0, color_jitter=0)),
@@ -35,7 +35,7 @@ PRESETS = [
     ("glaze", "Glaze", "Light", 44, dict(brush="round", hardness=.1, mode="multiply", opacity=.6, spacing=.03, size_pressure=0, opacity_pressure=.8)),
     ("glow", "Glow", "Light", 44, dict(brush="round", hardness=0, mode="add", opacity=.3, spacing=.03, size_pressure=0, opacity_pressure=.8)),
     ("chalk", "Pastel", "Texture", 26, dict(brush="chalk", hardness=.5, grain=.6, opacity_pressure=.6, color_jitter=.05)),
-    ("scumble", "Dry brush", "Texture", 30, dict(brush="bristle", hardness=.5, grain=.55, opacity=.85, spacing=.15, color_jitter=.06)),
+    ("scumble", "Dry brush", "Texture", 30, dict(brush="bristle", hardness=.5, grain=.45, opacity=1, spacing=.15, color_jitter=.06, texture="streaks")),
     ("spatter", "Spatter", "Texture", 5, dict(brush="round", hardness=.85, jitter=1.6, spacing=.9, size_pressure=.6, opacity_pressure=0, color_jitter=.1)),
 ]
 BY_ID = {p[0]: p for p in PRESETS}
@@ -74,11 +74,8 @@ def _points(pad=14):
 
 
 def _lay():
-    try:
-        from rostrum_paint import native
-        return native.lay if native.available() else None
-    except Exception:              # the Python stamper paints the same pixels, only slower
-        return None
+    from rostrum_paint import native   # not built: the Python stamper paints the same pixels, only slower; out of
+    return native.lay if native.available() else None   # date: native.OutOfDate, loudly (never a quiet fallback)
 
 
 def preview(pid: str) -> QImage:

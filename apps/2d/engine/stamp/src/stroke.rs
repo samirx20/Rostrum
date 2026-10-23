@@ -14,6 +14,12 @@ pub fn lay(st: &Stroke, dabs: &[Dab], (h, w): (usize, usize), bbox: [usize; 4], 
     let mut res: Option<Vec<f32>> = None;
     let mut pick = vec![0f32; d * d * 4];
     let mut across = Vec::with_capacity(st.kr);
+    // What was under the stroke, for the modes that blend with it (its bbox, RGBA).
+    let under0: Vec<f32> = if st.mode.reads_under() {
+        (bbox[1]..bbox[3]).flat_map(|y| layer[(y * w + bx0) * 4..(y * w + bx1) * 4].iter().copied()).collect()
+    } else {
+        Vec::new()
+    };
     for dab in dabs {
         let [x0, x1, y0, y1] = dab.bx;
         if x1 <= x0 || y1 <= y0 {
@@ -70,7 +76,8 @@ pub fn lay(st: &Stroke, dabs: &[Dab], (h, w): (usize, usize), bbox: [usize; 4], 
                         px[ch] = (px[ch] as f64 + la * (r[ch] - px[ch]) as f64) as f32;
                     }
                 }
-                paint::apply(px, c0, c1, col, st.mode, k);
+                let base = if under0.is_empty() { &[][..] } else { &under0[((y - by0) * cw + (x - bx0)) * 4..][..4] };
+                paint::apply(px, c0, c1, col, st.mode, k, base);
             }
         }
         if let Some(res) = res.as_mut() {

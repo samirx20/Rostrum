@@ -3,7 +3,8 @@ dabs (`brush.plan`) with the same pixels as `brush.dabs`, bit for bit, many time
 signature, so `brush.stamp_stroke(..., lay=native.lay)` uses it.
 
 The library: `ROSTRUM_STAMP_LIB`, else the engine's working build in this checkout. `available()` says whether it
-loads; `lay` fails loudly when it doesn't.
+is built; `lay` fails loudly when it isn't. A build of another layout (its `rostrum2d_stamp_layout`, missing in builds
+before layout 3) is refused on load with what to rebuild: calling it would read the arguments wrongly and crash.
 """
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ import numpy as np
 
 from .marks import ALONG, MODES, TIPS, Coverage
 
-LAYOUT, PARAMS, DAB = 2.0, 21, 21           # apps/2d/engine/stamp/src/lib.rs: the same numbers
+LAYOUT, PARAMS, DAB = 3.0, 21, 21           # apps/2d/engine/stamp/src/lib.rs: the same numbers
 _NAME = {"nt": "rostrum2d_stamp.dll", "posix": "librostrum2d_stamp.dylib"}[os.name]
 _LIB = None
 
@@ -30,9 +31,10 @@ def _lib():
     if _LIB is None:
         path = lib_path()
         if not path.is_file():
-            raise RuntimeError(f"the native stamper is not built: {path} (cargo build -p rostrum2d-stamp, or set "
+            raise RuntimeError(f"the native stamper is not built: {path} (cargo build --profile agent -p rostrum2d-stamp in apps/2d/engine, or set "
                                f"ROSTRUM_STAMP_LIB)")
         lib = ctypes.CDLL(str(path))
+        check_layout(lib, path)
         f = lib.rostrum2d_stamp_dabs
         f.restype = ctypes.c_int32
         f.argtypes = [ctypes.c_void_p] * 2 + [ctypes.c_size_t] + [ctypes.c_void_p] * 8 + [ctypes.c_size_t,
@@ -41,10 +43,32 @@ def _lib():
     return _LIB
 
 
+class OutOfDate(RuntimeError):
+    pass
+
+
+def check_layout(lib, path) -> None:
+    """Refuses a library built for another layout (an old build has no `rostrum2d_stamp_layout`: layout 2 or less)."""
+    try:
+        f = lib.rostrum2d_stamp_layout
+    except AttributeError:
+        built = "2 or older"
+    else:
+        f.restype, f.argtypes = ctypes.c_double, []
+        built = f()
+        if built == LAYOUT:
+            return
+    raise OutOfDate(f"the native stamper is out of date (built for layout {built}, this code needs {LAYOUT}): "
+                    f"cargo build --profile agent -p rostrum2d-stamp in apps/2d/engine ({path})")
+
+
 def available() -> bool:
+    """Whether the native stamper is built; an out-of-date build raises (OutOfDate), never falls back quietly."""
     try:
         _lib()
         return True
+    except OutOfDate:
+        raise
     except (RuntimeError, OSError):
         return False
 

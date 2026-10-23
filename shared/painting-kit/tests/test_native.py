@@ -6,10 +6,26 @@ import pytest
 
 from rostrum_paint import brush as B, compose, marks, native, pictures
 
-pytestmark = pytest.mark.skipif(not native.available(), reason="the native stamper is not built (apps/2d/engine/stamp)")
+needs_native = pytest.mark.skipif(not native.available(), reason="the native stamper is not built (apps/2d/engine/stamp)")
 H, W = 120, 200
 
 
+def test_out_of_date_stamper_refused():
+    """A stale build (no layout export, or another layout) is refused with what to rebuild, never called: calling it
+    read the arguments wrongly and crashed ("access violation writing 0x0")."""
+    class Old:                                        # a build from before layout 3: no rostrum2d_stamp_layout
+        pass
+
+    class Other:
+        rostrum2d_stamp_layout = staticmethod(lambda: 7.0)
+
+    for lib, built in ((Old(), "2 or older"), (Other(), "7.0")):
+        with pytest.raises(native.OutOfDate, match=f"built for layout {built}, this code needs 3.0.*cargo build --profile agent -p "
+                                                     f"rostrum2d-stamp"):
+            native.check_layout(lib, "x.dll")
+
+
+@needs_native
 def test_native_dabs_equal_numpy():
     rng = np.random.default_rng(0)
     base = (rng.random((H, W, 4)) * 0.6).astype(np.float32)
@@ -20,13 +36,14 @@ def test_native_dabs_equal_numpy():
     for k, tip in enumerate(marks.TIPS):
         for m, mode in enumerate(marks.MODES):
             s = dict(mode=mode, seed=k * 5 + m, grain=0.4 * (m % 2), wet=0.5 * (k % 2), sample_all=bool(m % 2),
-                     hardness=0.2 + 0.15 * m, even=bool(k % 2), texture=pictures.TEXTURES[(k + m) % 6])
+                     hardness=min(0.95, 0.2 + 0.15 * m), even=bool(k % 2), texture=pictures.TEXTURES[(k + m) % 6])
             paper = marks.Paper(H, W, picture=pictures.PAPERS[m % 5], scale=0.5 + 0.4 * k)
             if m % 2:   # the stroke shaping (shape.py): steadiness, tilt, taper, jitter
                 s.update(steady=0.3, tilt_angle=0.7, tilt_size=0.5, taper_start=1, taper_end=2, size_jitter=0.3,
                          angle_jitter=25)
-            pts = [[-10 + 30 * k, 10 + 20 * m, 0.3, 20, -10], [60 + 20 * k, 40 + 15 * m, 1.0, -30, 40],
-                   [150 + 12 * k, 20 * m]]
+            row = m % 5                                   # every stroke on the canvas
+            pts = [[-10 + 30 * k, 10 + 20 * row, 0.3, 20, -10], [60 + 20 * k, 40 + 15 * row, 1.0, -30, 40],
+                   [150 + 12 * k, 20 * row]]
             got = [B.stamp_stroke(layer, pts, (0.8, 0.2 + 0.1 * m, 0.4), 8 + 4 * k, tip, paper=paper, lay=lay,
                                   mask=mask if k == 2 else None, under=under, **s) for layer, lay in
                    ((ours, native.lay), (theirs, B.dabs))]
