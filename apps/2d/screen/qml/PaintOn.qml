@@ -4,7 +4,7 @@ import RostrumKit
 // "Paint layers +", under "Painting on" (painting design §2.3, mockup paint-02; backend.paintLayers). One paint layer:
 // only the heading line with its +. Two or more: the list, top first, each row eye · thumbnail · name, in grey its blend
 // and opacity when not Normal · 100 %, a lock when locked. Click a row: strokes and fills go on it (blue); drag:
-// reorder; double-click: rename; right-click: Hide, Lock, Rename, Delete. Under the list the highlighted layer's
+// reorder; double-click: rename; right-click: Hide, Lock, Rename, Duplicate, Delete. Under the list the highlighted layer's
 // Blend, Opacity and Lock. Absent until what the pen paints on holds paint.
 Column {
     id: po
@@ -37,7 +37,7 @@ Column {
             id: lr
             required property var modelData
             required property int index
-            objectName: "paintLayer:" + modelData.name
+            objectName: "paintLayer:" + modelData.name.replace(/ /g, "_")     // (a walk's clickobj: _ for spaces)
             property bool renaming: false
             width: po.wide; height: Theme.row; radius: Theme.radiusCtl
             color: modelData.current ? Theme.accentSoft : rowArea.containsMouse ? Theme.hover : "transparent"
@@ -128,8 +128,10 @@ Column {
             Menu { id: rowMenu; y: lr.height
                    entries: [{ value: "visible", label: lr.modelData.visible ? "Hide" : "Show" },
                              { value: "locked", label: lr.modelData.locked ? "Unlock" : "Lock" },
-                             { value: "rename", label: "Rename" }, { value: "delete", label: "Delete" }]
+                             { value: "rename", label: "Rename" }, { value: "duplicate", label: "Duplicate" },
+                             { value: "delete", label: "Delete" }]
                    onPicked: (v) => v === "delete" ? po.pl.remove(lr.modelData.id)
+                                  : v === "duplicate" ? po.pl.duplicate(lr.modelData.id)
                                   : v === "rename" ? lr.startRename()
                                   : po.pl.setLayer(lr.modelData.id, v, !lr.modelData[v]) }
         }

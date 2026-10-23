@@ -4,7 +4,8 @@ thumbnail, name, its blend and opacity in grey when not Normal · 100 %, a lock 
 layer only the "Paint layers +" line shows; + adds one on top, highlighted (the next stroke goes into it).
 
 Every edit is one operation of the painting kit or the element's own field operation, one change and one undo step
-each (paint.add, paint.set name / mode / opacity / visible / locked, paint.move, paint.remove, <type>.set); an opacity
+each (paint.add, paint.set name / mode / opacity / visible / locked, paint.move, paint.duplicate, paint.remove,
+<type>.set); an opacity
 scrub is one gesture. Which layer is highlighted is screen state: the pen's strokes and fills go on it (`current`).
 Absent (empty) when the pen paints on a new drawing.
 """
@@ -121,6 +122,15 @@ class PaintLayers(QObject):
         label = {"name": "Rename paint layer", "locked": "Lock paint layer" if value else "Unlock paint layer",
                  "visible": "Show paint layer" if value else "Hide paint layer", "mode": "Paint layer blend"}
         self._apply([{"op": "paint.set", "target": [paint_id], "args": {name: value}}], label.get(name, "Paint layer"))
+
+    @Slot(str)
+    def duplicate(self, paint_id):
+        """A copy just above, with every stroke and fill ("<name> copy"), highlighted: the next stroke goes into it."""
+        f = self._frame()
+        before = {p["id"] for p in f["paints"]} if f else set()
+        self._apply([{"op": "paint.duplicate", "target": [paint_id]}], "Duplicate paint layer")
+        f = self._frame()
+        self.pick(next((p["id"] for p in f["paints"] if p["id"] not in before), self._picked) if f else "")
 
     @Slot(str)
     def remove(self, paint_id):

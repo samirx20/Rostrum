@@ -15,6 +15,7 @@ QQC.Popup {
     y: parent ? parent.height + 2 : 0
     width: 168
     padding: Theme.grid
+    margins: Theme.grid                 // never past the window's edge: it moves inside (a menu under a low tile)
     focus: true
     onAboutToShow: highlighted = 0
     background: Rectangle { color: Theme.raised; radius: Theme.radiusCtl; border.color: Theme.popupEdge }
@@ -33,6 +34,7 @@ QQC.Popup {
                 id: row
                 required property int index
                 required property var modelData
+                objectName: "menu:" + modelData.value          // a walk clicks an entry by its value (clickobj)
                 width: menu.availableWidth; height: Theme.popupRow; radius: 4
                 color: index === menu.highlighted ? Theme.hover : "transparent"
                 Text {

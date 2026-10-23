@@ -1,8 +1,9 @@
 """The brush panel's side of the Brush tool: the kit's Inspector talks to this object as it does to a DocBridge (the
 same `rows` / `setValue` surface), so the settings panel is built from the brush settings' own rules (painting design
 §2.1): the header "Painting · <layer> · <kind>", the quick rows, or every setting on "Edit brush ›" (`editing`, the
-header then the brush's name). The presets (brush_presets.py) and My brushes (the project's saved brushes,
-rostrum2d/brushes.py: Save this brush, Rename, Delete) are what the brush flyout shows. The brush is screen state (the
+header then the brush's name). The presets (brush_presets.py) and My brushes (saved brushes, in the project and / or
+the person's own library: rostrum2d/brushes.py; Save this brush, and on right-click the entries `myBrushes` gives each)
+are what the brush flyout shows. The brush is screen state (the
 next stroke), not the document: nothing here is an undo step. Painter (painter.py) is one.
 """
 from __future__ import annotations
@@ -39,10 +40,11 @@ class BrushPanel(QObject):
 
     @Property("QVariantList", notify=brushChanged)
     def myBrushes(self):
-        """My brushes, by name: [{id, name}] (their strokes: image://brushes/<id>)."""
-        return [{"id": m["id"], "name": m["name"]} for m in self._mine]
-
-    canSave = Property(bool, lambda self: bool(self.b.doc.folder), notify=brushChanged)
+        """My brushes, by name: [{id, name, mark, markTip, menu}] (their strokes: image://brushes/<id>). `mark` only
+        where needed: with a project open, a brush kept in just one of the two places says which; `menu` is its
+        right-click entries, only those that apply (brush_menu)."""
+        return [{"id": m["id"], "name": m["name"], **_mark(m["where"], bool(self.b.doc.folder)),
+                 "menu": brush_menu(m["where"], bool(self.b.doc.folder))} for m in self._mine]
 
     @Slot()
     def refreshBrushes(self):
@@ -70,9 +72,15 @@ class BrushPanel(QObject):
     def renameBrush(self, bid, name):
         return self.b.guard(lambda: (brushes.rename(self.b.doc.folder, bid, name), self._read_mine()))
 
-    @Slot(str, result=bool)
-    def removeBrush(self, bid):
-        return self.b.guard(lambda: (brushes.remove(self.b.doc.folder, bid), self._read_mine()))
+    @Slot(str, str, result=bool)
+    def brushAction(self, bid, act):
+        """A My brushes right-click entry (brush_menu): duplicate, delete, keep:<place>, drop:<place>."""
+        verb, _, place = act.partition(":")
+        do = {"duplicate": lambda: brushes.duplicate(self.b.doc.folder, bid),
+              "delete": lambda: brushes.remove(self.b.doc.folder, bid),
+              "keep": lambda: brushes.keep(self.b.doc.folder, bid, place),
+              "drop": lambda: brushes.drop(self.b.doc.folder, bid, place)}[verb]
+        return self.b.guard(lambda: (do(), self._read_mine()))
 
     @Property("QVariantMap", notify=brushChanged)
     def selectedItem(self):
@@ -92,8 +100,9 @@ class BrushPanel(QObject):
 
     @Slot(str)
     def setPreset(self, pid):
-        mine = next((m for m in self._mine if m["id"] == pid), None)
-        self.b.guard(lambda: (self.brush.apply_saved(mine) if mine else self.brush.apply_preset(pid), self._rows_changed()))
+        mine = any(m["id"] == pid for m in self._mine)      # a library brush's tip / paper comes into the project first
+        self.b.guard(lambda: (self.brush.apply_saved(brushes.use(self.b.doc.folder, pid)) if mine
+                              else self.brush.apply_preset(pid), self._rows_changed()))
 
     @Slot(str, "QVariant", result=bool)
     def setValue(self, param, value):
@@ -133,3 +142,23 @@ class BrushPanel(QObject):
     @Slot(str)
     def toggleAnimate(self, param):
         pass
+
+
+PLACE = {"project": "this project", "library": "my library"}
+
+
+def _mark(where: list, project_open: bool) -> dict:
+    if not project_open or len(where) == 2:
+        return {"mark": "", "markTip": ""}
+    return {"mark": "project" if where == ["project"] else "library",
+            "markTip": "Kept only in this project" if where == ["project"] else "Kept only in your library, not in this project"}
+
+
+def brush_menu(where: list, project_open: bool) -> list[dict]:
+    """A saved brush's right-click entries, only those that apply: Rename, Duplicate, Also keep in <the other place>,
+    Remove from <a place> (while it is in both), Delete (everywhere)."""
+    places = [p for p in PLACE if p == "library" or project_open]
+    return ([{"value": "rename", "label": "Rename"}, {"value": "duplicate", "label": "Duplicate"}]
+            + [{"value": f"keep:{p}", "label": f"Also keep in {PLACE[p]}"} for p in places if p not in where]
+            + ([{"value": f"drop:{p}", "label": f"Remove from {PLACE[p]}"} for p in where] if len(where) == 2 else [])
+            + [{"value": "delete", "label": "Delete"}])
