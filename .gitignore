@@ -46,3 +46,6 @@ references/
 .idea/
 .DS_Store
 Thumbs.db
+
+# the app's own FFmpeg build, fetched by tools/release/extras.py (never committed)
+apps/*/ffmpeg/

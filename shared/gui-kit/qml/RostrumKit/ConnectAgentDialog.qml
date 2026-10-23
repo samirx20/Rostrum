@@ -37,7 +37,7 @@ QQC.Popup {
     }
 
     IconButton {
-        glyph: "×"; kind: "ghost"; tip: "Close"; z: 2
+        glyph: "×"; kind: "normal"; tip: "Close"; z: 2
         anchors { right: parent.right; top: parent.top; margins: Theme.gap }
         onClicked: dlg.close()
     }

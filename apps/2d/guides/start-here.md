@@ -6,10 +6,14 @@ whatever you build stays editable by hand, and whatever they move stays moved.
 ## The document
 
 ```
-document ─ comps ─ comp ─ layers ─ shape | text | image | group (a group holds layers)
-                          each layer ─ effects (blur, glow, gradient, shadow)
-                                     ─ masks (the part that shows)
-                                     ─ keys  (the animation)
+document
+  comps
+    comp
+      layers: shape | text | image | group (a group holds layers)
+        each layer has:
+          effects  (blur, glow, gradient, shadow)
+          masks    (the part that shows)
+          keys     (the animation)
 ```
 
 - Every part has an **id** (`title`, `bg`, `title.opacity.k200`). Use ids, never names or positions. `inspect_item` with no `id`

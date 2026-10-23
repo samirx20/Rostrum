@@ -51,7 +51,7 @@ Sound is made in RostrumSound. Rostrum2D plays it with the picture and lets you 
 3. Drag on the canvas to pan. The picture follows your pointer.
 4. Hold **Alt** and drag up to push in, down to pull out.
 
-If the camera's settings are animated, a drag adds a key at the playhead. Otherwise it changes the camera's start look. One drag is one undo step. The camera's settings (**Looks at X**, **Looks at Y**, **Zoom**, **Roll**) are in the settings panel. While the project plays, the tool is off.
+If the camera's settings are animated, a drag adds a key at the playhead. Otherwise it changes the camera's start look. One drag is one undo step. The camera's settings (**Looks at** with its X and Y boxes, **Zoom**, **Roll**) are in the settings panel. While the project plays, the tool is off.
 
 ## Styles
 
