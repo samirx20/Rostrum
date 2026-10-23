@@ -6,10 +6,15 @@ state (the next stroke), not the document: nothing here is an undo step. Painter
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum2d.names import display_name
+from rostrum_core.errors import RostrumError, codes
+from rostrum_paint import library
 
 from . import brush_presets
+from .brush import LOADS
 
 
 class BrushPanel(QObject):
@@ -54,12 +59,23 @@ class BrushPanel(QObject):
     def setValue(self, param, value):
         return self.b.guard(lambda: self._brush_set(param, value))
 
+    @Slot(str, str, result=bool)
+    def loadChoice(self, param, path):
+        """Load picture… on Tip picture or Paper: the file is kept in the project (library.load) and becomes the
+        brush's choice; the lists grow by themselves (library.generation)."""
+        def load():
+            if not self.b.doc.folder:
+                raise RostrumError(codes.BAD_ARGUMENT, "picture.load", path, "this document isn't saved in a project yet, "
+                                   "so there is no project to keep the picture in", hint="Save it first.")
+            self._brush_set(param, library.load(self.b.doc.folder, path, LOADS[param], Path(path).stem)["id"])
+        return self.b.guard(load)
+
     def _brush_set(self, param, value):
         self.brush.set(param, value)
         self._rows_changed()
 
     def _rows_changed(self):
-        self.model.update(self.brush.rows())
+        self.model.update(self.brush.rows(bool(self.b.doc.folder)))
         self.brushChanged.emit()
 
     @Slot(str)

@@ -36,7 +36,7 @@ class Painter(BrushPanel):
         self._reach = {"before": 2, "after": 1}         # onion skin: how many drawings each way (screen state)
         self.provider = onion.OnionProvider()
         self.model = RowsModel(rows.ROLES, self)
-        self.model.reset(self.brush.rows())
+        self.model.reset(self.brush.rows(bool(self.b.doc.folder)))
         bridge.docChanged.connect(self._doc_changed)
         bridge.outlineChanged.connect(self._refresh)
         bridge.timeChanged.connect(self._refresh)          # the navigator and the onion follow the playhead
@@ -249,6 +249,16 @@ class Painter(BrushPanel):
         at = framing.state(d, self._n())["prev" if direction < 0 else "next"] if d else None
         if at is not None:
             self._go(at, d["id"])
+
+    @Slot(int, result=int)
+    def flipFrame(self, direction):
+        """Hold , or . (FlipThrough.qml): the next / previous drawing, round at the ends; the frames until the next flip."""
+        d = self.drawing()
+        got = framing.flip(d, self._n(), direction) if d else None
+        if got is None:
+            return 0
+        self._go(got[0], d["id"])
+        return got[1]
 
     @Slot(bool)
     def setOnion(self, on):

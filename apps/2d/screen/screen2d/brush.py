@@ -35,6 +35,9 @@ def starting_colour(background: str, default: str) -> str:
     return LIGHT_INK if 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.5 else default
 
 
+LOADS = {"texture": "tip", "paper": "paper"}     # the choices a person can add their own picture to (library.load)
+
+
 class Brush:
     def __init__(self, background: str = ""):
         params = [p for p in getattr(BRUSH, "params", BRUSH) if p.type not in ("id", "points")]
@@ -51,12 +54,15 @@ class Brush:
             self._static, self._gen = rows.layout(SimpleNamespace(params=self._params)), library.generation
         return rows.evaluate(self._static, self.values, {}, True)
 
-    def rows(self) -> list[dict]:
+    def rows(self, can_load: bool = False) -> list[dict]:
         """The settings panel's brush rows: the quick ones (no headings: the panel's Brush row heads them), or, while
         editing the brush, every setting but the colour (a quick row) and the seed (set once per stroke). A setting
-        whose one value is a tool (mode's "erase": Eraser) keeps its other values here."""
+        whose one value is a tool (mode's "erase": Eraser) keeps its other values here. `can_load`: the document is in a
+        project folder, where a loaded picture is kept (Tip picture and Paper then end with "Load picture…")."""
         out = [r for r in self._evaluated() if r["row"] != "more"]
         for r in out:
+            if can_load and r["row"] == "param" and r["id"] in LOADS:             # Tip picture / Paper end with "Load picture…"
+                r["more"], r["filters"] = "Load picture…", ["Pictures (*.png *.jpg *.jpeg *.webp *.tif *.tiff *.bmp)"]
             if r["row"] == "param" and r["id"] in BAR_VALUE:
                 bar_value = BAR_VALUE[r["id"]]
                 r["options"] = [o for o in r["options"] if o["value"] != bar_value]

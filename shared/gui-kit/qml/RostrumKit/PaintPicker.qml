@@ -52,22 +52,32 @@ Column {
         change({ stops: out })
     }
 
-    Row {   // the type and the reverse
+    Row {   // the type, then (a gradient) whole shape and reverse: the buttons narrow a little when all are there
+        id: typeRow
         width: parent.width; spacing: 2
+        readonly property int count: pp.types.length + 1 + (wholeShape.visible ? 1 : 0)
+        readonly property real cell: Math.min(28, (pp.width - spacing * count) / count)
         Repeater {
             model: pp.types
             delegate: IconButton {
                 required property string modelData
                 objectName: "fillType:" + modelData        // scripted clicks find it (2D click_steps.py)
                 kind: "ghost"; down: modelData === pp.type
-                width: 28; height: 28; tip: pp.names[modelData]
+                width: typeRow.cell; height: 28; tip: pp.names[modelData]
                 onClicked: pp.setType(modelData)
                 PaintIcon { anchors.centerIn: parent; kind: parent.modelData; ink: parent.ink }
             }
         }
-        Item { width: Math.max(0, pp.width - 28 * (pp.types.length + 1) - 2 * pp.types.length); height: 1 }
+        Item { width: Math.max(0, pp.width - typeRow.cell * typeRow.count - typeRow.spacing * typeRow.count); height: 1 }
+        IconButton {   // only once the canvas handles set the gradient's own length: back to covering the whole shape
+            id: wholeShape
+            objectName: "wholeShape"; visible: pp.gradient && !!pp.paint && pp.paint.span === "points"
+            kind: "ghost"; width: typeRow.cell; height: 28; tip: "Cover the whole shape again"
+            onClicked: pp.change({ span: "box" })
+            PaintIcon { anchors.centerIn: parent; kind: "whole"; ink: parent.ink }
+        }
         IconButton {
-            objectName: "reverseStops"; visible: pp.gradient; kind: "ghost"; width: 28; height: 28; tip: "Reverse the stops"
+            objectName: "reverseStops"; visible: pp.gradient; kind: "ghost"; width: typeRow.cell; height: 28; tip: "Reverse the stops"
             onClicked: pp.change({ stops: M.reversed(pp.stops) })
             PaintIcon { anchors.centerIn: parent; kind: "swap"; ink: parent.ink }
         }

@@ -35,6 +35,10 @@ class Hooks2D:
             return size_rows.call(item_id, value)
         if param == fill_rows.ROW:                       # the Fill row's paint: layer.fill (fill_rows.py)
             return fill_rows.call(item_id, value, self.own_t(item_id))
+        if param == "ridePath":                          # Rides path: the agents' layer.ride (X, Y become the offset: 0)
+            it = self.doc.item(item_id)
+            return {"op": "layer.ride", "target": [item_id], "args": {"path": value, "at": it.get("rideAt", "end"),
+                    "along": it.get("rideAlong", 0.0), "turn": it.get("rideTurn", False)}}
         if isinstance(value, str) and value.lstrip().startswith("="):    # typed "=pulse()" into a field: the expr.set agents call
             return exprs.typed_call(item_id, param, value)
         return route.edit_call(self.doc, item_id, param, swap_rows.edit_value(self.doc.item(item_id), param, value), self.own_t(item_id))

@@ -16,6 +16,32 @@ Item {
     readonly property int cur: { for (const f of frames) if (backend.time >= f.t0 - 1e-6 && backend.time < f.t1 - 1e-6) return f.n; return 0 }
     readonly property bool onion: painter.onionOn && painter.drawingId === owner
     function framesOf(dx) { return Math.round(dx / m.timeRuler.perSec * m.fps) }
+    property bool drawing: false          // a drawing layer's row (its frames may be none yet)
+    // The empty frames before the first drawing (or all of them, with none): a faint "+" on each, or (frames under
+    // 16 px wide) one "+" over the whole empty stretch; a click there is a new drawing on the frame under the pointer
+    // (painter.newFrame on an empty frame puts it at the playhead).
+    readonly property real step: m.timeRuler.perSec / m.fps
+    readonly property bool wide: step >= 16
+    readonly property int empty: !drawing ? 0 : frames.length ? Math.round(frames[0].t0 * m.fps)
+                                 : Math.round((backend.frameInfo.duration || 0) * m.fps)
+    Repeater {
+        model: m.empty === 0 ? 0 : m.wide ? m.empty : 1
+        delegate: Text {
+            required property int index
+            objectName: "emptyFrame" + index
+            x: 8 + Math.round(m.timeRuler.xOf(index / m.fps)); height: m.height
+            width: m.wide ? Math.floor(m.step) : Math.max(16, Math.round(m.timeRuler.xOf(m.empty / m.fps) - m.timeRuler.xOf(0)) - 1)
+            visible: x + width > 0 && x < m.width
+            horizontalAlignment: m.wide ? Text.AlignHCenter : Text.AlignLeft; leftPadding: m.wide ? 0 : 4
+            verticalAlignment: Text.AlignVCenter
+            text: "+"; color: Theme.fg3; opacity: plus.containsMouse ? 0.9 : 0.35
+            font.family: uiFont; font.pixelSize: Theme.label
+            MouseArea { id: plus; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: (ev) => { if (backend.selected !== m.owner) backend.select(m.owner)
+                                             painter.goToFrame(m.wide ? parent.index : Math.min(m.empty - 1, Math.floor(ev.x / m.step)))
+                                             painter.newFrame(false) } }
+        }
+    }
     Repeater {
         model: m.frames
         delegate: Item {
@@ -53,7 +79,7 @@ Item {
             MouseArea {     // click: go to it; drag: move (Alt: copy)
                 id: area
                 y: cell.y; height: cell.height        // never under 16 px wide: a narrow cell's area reaches under the next one
-                width: Math.max(16, cell.width - (edge.visible ? 8 : 0))
+                width: Math.max(16, cell.width - (edge.visible ? 16 : 0))
                 acceptedButtons: Qt.LeftButton | Qt.RightButton; preventStealing: true
                 cursorShape: moving ? Qt.ClosedHandCursor : Qt.PointingHandCursor
                 property real x0: 0
@@ -81,7 +107,7 @@ Item {
             MouseArea {     // the right edge: hold longer or shorter, in whole frames (later drawings move with it)
                 id: edge
                 visible: !f.last && f.width >= 32       // narrower: = / − or zoom in (a handle must be 16 px to grab)
-                x: parent.width - 8; width: 16; y: cell.y; height: cell.height; z: 1
+                x: parent.width - 16; width: 16; y: cell.y     // inside its own cell: never over the next one's; height: cell.height; z: 1
                 cursorShape: Qt.SizeHorCursor; preventStealing: true
                 property real x0: 0
                 property real dx: 0
