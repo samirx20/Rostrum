@@ -11,7 +11,9 @@ In the project folder:
 
 The history file is appended to (a crash mid-append cuts only its last line, left out loudly on open); the others are
 written whole (temp file, then rename; retried while Windows holds the file). A live document (live.py) appends after
-each change and writes the document file on Save, so the document file can be some steps behind: opening takes it as
+each change and writes the document file on Save, on close and every live.FOLD_STEPS steps, so the document file can be
+some steps behind (a program reading only the document file sees the song as of its last write; use the history for the
+latest): opening takes it as
 step "at" and plays the steps after it. A document file whose contents don't match its "hash" (or an old one without)
 is checked against the whole history; one changed by something without history is recorded first as a change by
 `outside`.

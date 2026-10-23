@@ -26,6 +26,9 @@ from . import edits as E
 from .userhome import locked
 
 
+FOLD_STEPS = 20       # the document file is brought up to date at least this often (steps behind the history file)
+
+
 def keep(doc) -> "Live":
     """Make `doc` (saved in a project folder) live: every change is locked, caught up and saved at once. A document
     already live stays as it is (the kit's file model and the window's bridge both ask)."""
@@ -42,6 +45,7 @@ def keep(doc) -> "Live":
 class Live:
     def __init__(self, doc):
         self.doc, self.p, self._depth, self._started = doc, paths(doc.folder, doc.item_id, doc.kind.ext), 0, False
+        self._filed = doc.seq                    # the step the document file last got from us (or was at when we began)
 
     def _mine(self):
         h = self.doc.history
@@ -51,7 +55,9 @@ class Live:
     def door(self):
         """Held around one change (re-entrant: undo inside a run of steps takes it once). Yields the steps caught up
         on entry, so a change planned on an older picture knows to rebase. A change appends to the history file only;
-        the document file is written by the first door (a new document) and by Save."""
+        the document file is written by the first door (a new document), by Save, when the window closes, and every
+        FOLD_STEPS steps, so a reader of the document file alone is never more than that far behind the history file
+        (which stays the truth: opening plays whatever the document file lacks)."""
         if self._depth:
             yield []
             return
@@ -63,7 +69,10 @@ class Live:
                 yield caught
                 first = not self._started and not (self.p["history"].exists() and self.p["doc"].exists())
                 if self._mine() != before or first:     # a first look at a saved document writes nothing
-                    save(self.doc, document=first or not self.p["doc"].exists())
+                    behind = self.doc.seq - self._filed >= FOLD_STEPS
+                    save(self.doc, document=first or behind or not self.p["doc"].exists())
+                    if first or behind:
+                        self._filed = self.doc.seq
                 self._started = True
             finally:
                 self._depth -= 1
