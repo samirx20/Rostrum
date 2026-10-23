@@ -54,3 +54,13 @@ def test_an_older_songs_absolute_take_is_made_relative_on_open(tmp_path):
     media = {c["id"]: c["media"] for c in opened.data["tracks"][0]["clips"]}
     assert media == {"a": "media/Voice-take-1.wav", "b": str(outside)}      # a file kept elsewhere is left alone
     assert Path(compile(opened)["tracks"][0]["clips"][0]["media"]).parent == copy / "media"
+
+
+def test_a_full_path_typed_inside_the_song_is_stored_as_a_place(tmp_path):
+    song, doc = _song(tmp_path)
+    (song / "media").mkdir(parents=True)
+    inside, outside = _wav(song / "media" / "door.wav"), _wav(tmp_path / "mine.wav")
+    doc.apply([{"op": "clip.add", "target": ["voice"], "args": {"id": "a", "media": str(inside), "at": 0}},
+               {"op": "clip.add", "target": ["voice"], "args": {"id": "b", "media": str(outside), "at": 1}}], Who.person())
+    media = {c["id"]: c["media"] for c in doc.data["tracks"][0]["clips"]}
+    assert media == {"a": "media/door.wav", "b": str(outside)}

@@ -44,4 +44,4 @@ def facts(item: dict, doc=None) -> dict:
     return {"vibratoLane": "vibrato" in lanes, "bendLane": "bend" in lanes, **_playing(item)}
 
 
-KIND = DocKind("sound", ".trk", REGISTRY, lists=LISTS, check=check, warn=dropped.warn, new=blank, facts=facts, upgrade=media.upgrade)
+KIND = DocKind("sound", ".trk", REGISTRY, lists=LISTS, check=check, warn=dropped.warn, new=blank, facts=facts, upgrade=media.upgrade, tidy=media.tidy)

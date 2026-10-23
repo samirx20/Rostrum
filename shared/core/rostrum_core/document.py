@@ -138,6 +138,8 @@ class Document:
         if self._gesture is not None:
             raise RostrumError(codes.CONFLICT, "apply", "the document", "is being dragged by a person right now",
                                hint="Try again in a moment.")
+        if self.kind.tidy:
+            calls = self.kind.tidy(run.normalize(calls), self.folder)
         work, edits, calls, idx = run.plan_indexed(self.kind, self.data, calls, self.locked_by, who, self._index())
         if based_on is not None:
             self._check_based_on(edits, based_on)
