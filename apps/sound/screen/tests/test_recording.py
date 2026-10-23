@@ -88,6 +88,25 @@ def test_mic_take_is_one_undoable_clip_at_the_engines_start(bridge, tmp_path, at
     r.close()
 
 
+def test_a_stopped_take_leaves_the_other_tracks_lanes_drawn(bridge, tmp_path):
+    """The take grows in its lane while it records, and landing it redraws only its own row: the arrangement's rows
+    are kept by track id, so the other tracks' lanes keep their delegates and pictures. A plain list made every row
+    again, and the whole song showed blank right after a take (the critic's 32-take.png)."""
+    rows, seen = bridge.trackRows, []
+    rows.modelReset.connect(lambda: seen.append("reset"))
+    rows.rowsRemoved.connect(lambda *a: seen.append("removed"))
+    rows.rowsInserted.connect(lambda *a: seen.append("inserted"))
+    rows.dataChanged.connect(lambda a, *_: seen.append(rows.rows[a.row()]["id"]))
+    r = armed(bridge, "vox", "--fake-source", str(tmp_path / "src.wav"))
+    r.toggleRecord()
+    pump(3, lambda: r.take.get("levels"))
+    assert r.take["track"] == "vox" and r.take["dur"] > 0           # drawn while it records, not only at Stop
+    r.toggleRecord()
+    pump(3, lambda: bridge.doc.item("vox").get("clips"))
+    assert bridge.doc.item("vox").get("clips") and set(seen) == {"vox"}
+    r.close()
+
+
 def test_punch_take_covers_only_the_range_and_ends_by_itself(bridge, tmp_path):
     r = armed(bridge, "vox", "--fake-source", str(tmp_path / "src.wav"))
     bridge.setTime(0.5)
