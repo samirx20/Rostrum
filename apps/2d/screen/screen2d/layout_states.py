@@ -89,7 +89,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("two-selected", ["--sample"], ["selectmany title card"]),
         ("action-menu", ["--sample"], ["selectmany dot rule", "actionmenu"]),
         ("two-shapes", ["--sample"], ["selectmany dot rule"]),               # H49: compact actions, slim key-span bars
-        ("gradient-handles", ["--sample"], ["select card", "clickname paintField", "clickname fillType:linear"]),
+        ("gradient-handles", ["--sample"], ["select card", "clickname swatch", "clickname fillType:linear"]),
         # H47: the frame drives the layout (SPEC 2d-design-v2 §1.2): tall and square scenes put the timeline beside it
         *[(f"scene-{w}x{h}", ["--sample"], ["select screen_sample", f"set width {w}", f"set height {h}", "select title"])
           for w, h in ((1080, 1920), (1080, 1080), (1080, 1350))],
