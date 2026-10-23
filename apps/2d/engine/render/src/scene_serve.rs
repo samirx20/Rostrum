@@ -26,6 +26,8 @@
 //! - `{"measure": {"items": [{"id", "body", "font", "size", "weight", "stretch", "tracking", "lineHeight", "align", "boxWidth", …}]}}`
 //!   → `{"ok": true, "sizes": {id: [w, h]}}`: each text's laid-out box in its own px, by the path that draws it (scene/measure.rs);
 //!   with the loaded scene's fonts, else the app's. Needs no scene and no open page.
+//! - `{"shapes": {"items": [{"id", "shape", "w", "h", …}]}}` → `{"ok": true, "paths": {id: {"d", …path look}}}`: each
+//!   parametric shape as the path it is drawn as (scene/shape_cmd.rs; Convert to path's source). Needs no scene.
 
 use std::time::Instant;
 
@@ -104,6 +106,10 @@ pub fn edit(held: &mut Held, edits: &Value) -> Result<Value, String> {
 
 pub fn measure(held: &Held, req: &Value) -> Result<Value, String> {
     crate::scene::measure::measure(req, held.scene.as_ref().map(|s| s.fonts.as_slice()))
+}
+
+pub fn shapes(req: &Value) -> Result<Value, String> {
+    crate::scene::shape_cmd::shapes(req)
 }
 
 pub fn bones(held: &Held, req: &Value) -> Result<Value, String> {

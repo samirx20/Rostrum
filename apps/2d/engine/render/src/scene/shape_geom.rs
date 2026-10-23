@@ -1,7 +1,8 @@
 //! The parametric shape kinds (ENGINE_CONTRACT.md § 4 shape; design v2 SPEC § 5): arc / ring, triangle, polygon,
 //! star, line, arrow and spiral, each worked out from its numbers at this frame as path data in the layer's w × h box
 //! and drawn as a path (stage_path.rs), so they take fills, gradients, pictures, outlines and shadows as a path does.
-//! Angles: 0° = up, clockwise. Closed outlines run clockwise on screen (arrow pieces join by the nonzero rule).
+//! Angles: 0° = up, clockwise. Closed outlines run clockwise on screen. An arrow's shaft and heads are merged into
+//! one outline (Skia's PathOps), so its outline traces the arrow's edge, not each piece's.
 //! Line and spiral are open: drawn as a line `lineWidth` wide in the fill's paint.
 
 use std::f64::consts::{PI, TAU};
@@ -100,7 +101,10 @@ fn outline(it: &Item) -> R<(D, bool)> {
             spiral(&mut d, (cx, cy, rx, ry), it.num("turns").clamp(0.05, 100.0), it.num("hole").clamp(0.0, 1.0));
             return Ok((d, true));
         }
-        "arrow" => arrow(&mut d, it, w, cy),
+        "arrow" => {
+            arrow(&mut d, it, w, cy);
+            d = merged(&d).map_err(|e| format!("{}: {e}", it.id))?;
+        }
         k => return Err(format!("{}: a {k} shape is not drawn by this engine yet", it.id)),
     }
     Ok((d, false))
@@ -157,6 +161,33 @@ fn spiral(d: &mut D, (cx, cy, rx, ry): (f64, f64, f64, f64), turns: f64, hole: f
         let (p0, p1, t0, t1) = (at(s), at(e), tan(s), tan(e));
         d.c((p0.0 + t0.0 * step / 3.0, p0.1 + t0.1 * step / 3.0), (p1.0 - t1.0 * step / 3.0, p1.1 - t1.1 * step / 3.0), p1);
     }
+}
+
+/// The area `d` covers (nonzero) as one outline with no piece inside another: Skia's PathOps (BSD-3-Clause, in
+/// skia-safe), its curves kept as curves, written back as M L C Z.
+fn merged(d: &D) -> R<D> {
+    let mut path = skia_safe::Path::from_svg(d.0.trim_end()).ok_or("its outline could not be read for merging")?;
+    path.set_fill_type(skia_safe::PathFillType::Winding);
+    let one = path.simplify().ok_or("its pieces could not be merged into one outline")?;
+    let bez = kurbo::BezPath::from_svg(&one.to_svg()).map_err(|e| format!("its merged outline is not path data: {e}"))?;
+    let mut out = D::default();
+    let mut at = (0.0, 0.0);
+    let pt = |p: kurbo::Point| (p.x, p.y);
+    for el in bez.elements() {
+        match *el {
+            kurbo::PathEl::MoveTo(p) => { out.m(pt(p)); at = pt(p); }
+            kurbo::PathEl::LineTo(p) => { out.l(pt(p)); at = pt(p); }
+            kurbo::PathEl::QuadTo(q, p) => {
+                // The same curve in cubic form.
+                let (q, p) = (pt(q), pt(p));
+                out.c((at.0 + 2.0 / 3.0 * (q.0 - at.0), at.1 + 2.0 / 3.0 * (q.1 - at.1)), (p.0 + 2.0 / 3.0 * (q.0 - p.0), p.1 + 2.0 / 3.0 * (q.1 - p.1)), p);
+                at = p;
+            }
+            kurbo::PathEl::CurveTo(a, b, p) => { out.c(pt(a), pt(b), pt(p)); at = pt(p); }
+            kurbo::PathEl::ClosePath => out.z(),
+        }
+    }
+    Ok(out)
 }
 
 /// A closed polygon, turned clockwise on screen so overlapping pieces join (nonzero).

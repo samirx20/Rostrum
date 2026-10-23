@@ -25,6 +25,10 @@ pub const PICTURE_FITS: &[&str] = &["fill", "fit", "tile", "stretch"];
 /// Where a rider sits on its path (super::follow `ride`): the drawn-on tip, the trim's start, or `rideAlong`.
 const RIDE_AT: &[&str] = &["end", "start", "along"];
 
+/// Riding a path layer beside it (super::follow): its id ("" = none), where on it, and turning with it. Every layer
+/// and the camera (where it looks rides the path).
+pub const RIDE: &[Field] = &[("ridePath", Text), ("rideAt", Choice(RIDE_AT)), ("rideAlong", Number), ("rideTurn", Toggle)];
+
 const TRANSFORM: &[Field] = &[
     ("x", Number), ("y", Number), ("scale", Number), ("rotation", Number), ("opacity", Number),
     ("anchorX", Number), ("anchorY", Number), ("scaleX", Number), ("scaleY", Number),
@@ -36,8 +40,9 @@ const TRANSFORM_AFTER_BLEND: &[Field] = &[
     ("depth", Number), ("screenLock", Toggle),
     // A track matte (super::matte): a sibling layer's id ("" = none) and how its drawing is read.
     ("matte", Text), ("matteMode", Choice(super::matte::MODES)),
-    // Riding a path layer beside it (super::follow): its id ("" = none), where on it, and turning with it.
-    ("ridePath", Text), ("rideAt", Choice(RIDE_AT)), ("rideAlong", Number), ("rideTurn", Toggle),
+];
+/// After the ride (RIDE).
+const COLOUR: &[Field] = &[
     // Colour effects (super::grade): adjust, levels, curves (points as text, "x,y x,y …"), a .cube LUT ("" = none).
     ("adjust", Toggle), ("exposure", Number), ("contrast", Number), ("saturation", Number), ("temperature", Number),
     ("tint", Number), ("hue", Number),
@@ -48,7 +53,7 @@ const TRANSFORM_AFTER_BLEND: &[Field] = &[
 
 /// Every layer's transform, look and colour fields, in the table's order.
 fn transform() -> impl Iterator<Item = Field> {
-    TRANSFORM.iter().copied().chain([("blend", Choice(super::blends::names()))]).chain(TRANSFORM_AFTER_BLEND.iter().copied())
+    TRANSFORM.iter().copied().chain([("blend", Choice(super::blends::names()))]).chain(TRANSFORM_AFTER_BLEND.iter().chain(RIDE).chain(COLOUR).copied())
 }
 
 const COMP: &[Field] = &[("width", Number), ("height", Number), ("fps", Number), ("duration", Number), ("background", Color)];
@@ -130,7 +135,7 @@ pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
     let layer = |own: &[Field]| Some((Role::Layer, own.iter().copied().chain(transform()).collect()));
     match kind {
         "comp" => Some((Role::Comp, COMP.iter().chain(crate::motion::COMP).copied().collect())),
-        "camera" => Some((Role::Layer, crate::camera::FIELDS.to_vec())),
+        "camera" => Some((Role::Layer, crate::camera::FIELDS.iter().chain(RIDE).copied().collect())),
         "shape" => layer(SHAPE),
         "text" => layer(TEXT),
         "image" => layer(IMAGE),

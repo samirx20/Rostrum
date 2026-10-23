@@ -1,9 +1,10 @@
 """The camera's fields (apps/2d/CAMERA.md). The Rust engine reads the same names and kinds (engine/render/src/camera/
 mod.rs `FIELDS`), so change both together. Merged into `rostrum2d.fields.FIELDS` and `LABELS`. A camera has no
-transform of its own: its x, y are where it looks, not where it is placed. Every field can be keyed except start/end."""
+transform of its own: its x, y are where it looks, not where it is placed. Every field can be keyed except start/end (and the ride's
+path and where on it)."""
 from __future__ import annotations
 
-from ..fields import N, P, S, timing  # noqa: F401  (the table helpers)
+from ..fields import N, P, RIDE, S, timing  # noqa: F401  (the table helpers)
 
 FIELDS = {
     "camera": [
@@ -14,6 +15,7 @@ FIELDS = {
           help="2 = twice as close; far layers (depth) grow less"),
         N("rotation", "Roll", "Lens", -36000, 36000, 0.1, "°", S, help="Turns the camera clockwise, so the picture turns the other way"),
         *timing("From this time this camera is the one used (a cut)", "From this time it isn't"),
+        *RIDE,      # a camera rides a path as a layer does (layer.ride): where it looks sits on the path
     ],
 }
 LABELS = {"camera": "Camera"}

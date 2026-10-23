@@ -17,6 +17,7 @@ pub mod measure;
 pub mod morph;
 pub mod outline_cmd;
 pub mod path_data;
+pub mod shape_cmd;
 pub mod shape_geom;
 pub mod stage;
 pub mod stage_type;
@@ -50,7 +51,7 @@ pub struct Key {
 #[derive(Clone, Debug)]
 pub enum KeyValue {
     Number(f64),
-    Color(String, [f64; 3]),
+    Color(String, [f64; 4]),
     /// A path's `d`, blended to the next key's by morph.rs.
     Path(String),
     /// A path's `widthProfile` as written and read, blended to the next key's by width_profile::blend.
@@ -267,7 +268,7 @@ fn check_value(id: &str, f: &fields::Field, v: &Value) -> Result<(), String> {
         Kind::Number => "a number".to_string(),
         Kind::Toggle => "true or false".to_string(),
         Kind::Text => "text".to_string(),
-        Kind::Color => "a colour #rrggbb".to_string(),
+        Kind::Color => "a colour #rrggbb or #rrggbbaa".to_string(),
         Kind::Choice(o) => format!("one of {}", o.join(", ")),
     };
     Err(format!("{id}.{}: {v} is not {want}", f.0))
@@ -289,8 +290,8 @@ fn track(id: &str, kind: &str, f: &fields::Field, keys: &Value) -> Result<Vec<Ke
         let t = k["t"].as_f64().ok_or_else(|| format!("{id}.{name}: a key without a time t"))?;
         let value = match f.1 {
             Kind::Color => {
-                let c = k["c"].as_str().ok_or_else(|| format!("{id}.{name}: a colour key needs c (#rrggbb) at t={t}"))?;
-                KeyValue::Color(c.to_string(), eval::parse_hex(c).ok_or_else(|| format!("{id}.{name}: {c} is not a colour #rrggbb"))?)
+                let c = k["c"].as_str().ok_or_else(|| format!("{id}.{name}: a colour key needs c (#rrggbb or #rrggbbaa) at t={t}"))?;
+                KeyValue::Color(c.to_string(), eval::parse_hex(c).ok_or_else(|| format!("{id}.{name}: {c} is not a colour #rrggbb or #rrggbbaa"))?)
             }
             Kind::Text if name == "widthProfile" => {
                 let text = k["d"].as_str().ok_or_else(|| format!("{id}.{name}: a widthProfile key needs d (the profile text, \"pos,mult …\") at t={t}"))?;

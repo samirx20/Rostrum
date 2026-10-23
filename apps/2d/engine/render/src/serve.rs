@@ -647,6 +647,11 @@ pub fn run() {
                 Ok(r) => reply(&mut out, &r),
                 Err(e) => reply(&mut out, &json!({ "error": e })),
             }
+        } else if let Some(sh) = req.get("shapes") {
+            match crate::scene_serve::shapes(sh) {
+                Ok(r) => reply(&mut out, &r),
+                Err(e) => reply(&mut out, &json!({ "error": e })),
+            }
         } else if let Some(b) = req.get("bones") {
             match crate::scene_serve::bones(&held, b) {
                 Ok(r) => reply(&mut out, &r),

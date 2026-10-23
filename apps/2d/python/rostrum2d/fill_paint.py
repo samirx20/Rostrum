@@ -7,7 +7,7 @@ bring an old file's gradient effect into the fill (`upgrade`).
 
 The engine draws a gradient as its `gradient` effect with the stops as its `stops` children (any number, anywhere in
 0..1, see-through allowed; each stop's colour, position and opacity keyed like any field). A stop colour written
-#rrggbbaa goes as #rrggbb with its alpha folded into the stop's opacity. A picture fill is the layer's own
+#rrggbbaa (keyed too) goes as written; the engine multiplies its alpha into the stop's opacity. A picture fill is the layer's own
 fillPicture / fillFit / fillScale (fill_fields.PICTURE), read by the engine.
 """
 from __future__ import annotations
@@ -69,8 +69,8 @@ def lower(item: dict) -> dict | None:
     if len(stops) < 2:
         raise ValueError(f'{item["id"]}: its {kind} fill has {len(stops)} stop{"s" * (len(stops) != 1)} (a gradient needs 2)')
     fx = {"id": f'{item["id"]}.fill', "type": "gradient", "style": STYLE[kind], "angle": item.get("gradAngle", 90.0),
-          "cx": item.get("gradX", 0.5), "cy": item.get("gradY", 0.5), "color1": _rgb(stops[0].get("color", "#ffffff")),
-          "color2": _rgb(stops[-1].get("color", "#ffffff")), "middle": False,
+          "cx": item.get("gradX", 0.5), "cy": item.get("gradY", 0.5), "color1": stops[0].get("color", "#ffffff")[:7],
+          "color2": stops[-1].get("color", "#ffffff")[:7], "middle": False,
           **{short: item.get(name, _default(name)) for name, short in GEOMETRY.items()},
           "keys": [], "stops": [_stop(item, i, s) for i, s in enumerate(stops)]}
     for field, prop in {**LAYER_GEOMETRY, **GEOMETRY}.items():
@@ -78,22 +78,11 @@ def lower(item: dict) -> dict | None:
     return fx
 
 
-def _rgb(colour: str) -> str:
-    return colour[:7]
-
-
-def _alpha(colour: str) -> float:
-    return int(colour[7:9], 16) / 255 if len(colour) == 9 else 1.0
-
-
 def _stop(item: dict, i: int, stop: dict) -> dict:
-    """One stop as the engine's `stop` item: #rrggbbaa split into the colour and the opacity (an alpha in a keyed
-    colour is left out: the engine mixes colours as #rrggbb)."""
-    colour, a = stop.get("color", "#ffffff"), _alpha(stop.get("color", "#ffffff"))
-    keys = [{**k, "c": _rgb(k["c"])} if k.get("prop") == "color" and "c" in k else
-            {**k, "v": k["v"] * a} if k.get("prop") == "opacity" and "v" in k else k for k in stop.get("keys", [])]
-    return {"id": stop.get("id") or f'{item["id"]}.stop{i}', "type": "stop", "at": stop.get("at", 0.0), "color": _rgb(colour),
-            "opacity": stop.get("opacity", 1.0) * a, "keys": keys}
+    """One stop as the engine's `stop` item. A #rrggbbaa colour goes as written, keyed ones too: the engine mixes the
+    alpha with the colour and multiplies it into the stop's opacity (scene/stage_fill.rs)."""
+    return {"id": stop.get("id") or f'{item["id"]}.stop{i}', "type": "stop", "at": stop.get("at", 0.0),
+            "color": stop.get("color", "#ffffff"), "opacity": stop.get("opacity", 1.0), "keys": stop.get("keys", [])}
 
 
 def engine_props(item: dict, props: dict) -> dict:

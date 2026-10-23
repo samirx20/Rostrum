@@ -32,7 +32,7 @@ from pathlib import Path
 from . import settings
 
 LOG_DIR = settings.logs_dir()
-RETRY = {"frame", "bones", "outline", "measure", "scene", "place"}     # short requests that are safe to send again
+RETRY = {"frame", "bones", "outline", "measure", "shapes", "scene", "place"}     # short requests that are safe to send again
 QUICK_S = 30.0                                                  # dying again this soon after a restart: give up
 # Short, so the top bar's status line shows them whole; the log line says the rest (exit code, the old log).
 RESTARTED = "The drawing engine restarted. Nothing was lost."
@@ -223,6 +223,12 @@ class Engine:
         Callers go through textsize.py, which keeps what was measured."""
         sizes = self._request({"measure": {"items": items}})["sizes"]
         return {k: (float(w), float(h)) for k, (w, h) in sizes.items()}
+
+    def shapes(self, items: list[dict]) -> dict[str, dict]:
+        """Each parametric shape (arc, triangle, polygon, star, line, arrow, spiral) as the path it is drawn as: items
+        are shape layers' fields with an id; {id: {path field: value}}, `d` in its own box px plus the path settings and
+        (a line, a spiral) the stroke it draws with. One round trip; needs no scene loaded (ENGINE_CONTRACT.md § 1 `shapes`)."""
+        return self._request({"shapes": {"items": items}})["paths"]
 
     def pixels(self, t: float, samples: int | None = None, scale: float = 1.0, view: dict | None = None,
                place: list[str] | None = None) -> tuple[memoryview, int, int, int]:

@@ -175,16 +175,22 @@ def fit(cmds) -> tuple[list[tuple], tuple[float, float, float, float]]:
 
 # ---- shapes and primitives ----
 
-def rect(w: float, h: float, r: float = 0.0, inset: float = 0.0) -> str:
+def rect(w: float, h: float, r: float | tuple = 0.0, inset: float = 0.0) -> str:
+    """A rectangle; `r` one radius or four (top-left, top-right, bottom-right, bottom-left). Radii too big for a side
+    shrink together, as the stage's CSS box draws them."""
     x0, y0, x1, y1 = inset, inset, w - inset, h - inset
-    r = max(0.0, min(r - inset, (x1 - x0) / 2, (y1 - y0) / 2))
-    if r == 0:
-        return write([("M", x0, y0), ("L", x1, y0), ("L", x1, y1), ("L", x0, y1), ("Z",)])
-    k = r * (1 - K)
-    return write([("M", x0 + r, y0), ("L", x1 - r, y0), ("C", x1 - k, y0, x1, y0 + k, x1, y0 + r),
-                  ("L", x1, y1 - r), ("C", x1, y1 - k, x1 - k, y1, x1 - r, y1), ("L", x0 + r, y1),
-                  ("C", x0 + k, y1, x0, y1 - k, x0, y1 - r), ("L", x0, y0 + r), ("C", x0, y0 + k, x0 + k, y0, x0 + r, y0),
-                  ("Z",)])
+    tl, tr, br, bl = (max(0.0, c - inset) for c in (r if isinstance(r, (tuple, list)) else (r,) * 4))
+    sides = [(x1 - x0, tl + tr), (y1 - y0, tr + br), (x1 - x0, br + bl), (y1 - y0, bl + tl)]
+    f = min([1.0] + [max(side, 0.0) / need for side, need in sides if need > 0])
+    tl, tr, br, bl = tl * f, tr * f, br * f, bl * f
+    c = lambda r, ax, ay, bx, by, px, py: [("C", ax + (px - ax) * K, ay + (py - ay) * K,  # noqa: E731
+                                            bx + (px - bx) * K, by + (py - by) * K, bx, by)] if r else []
+    cmds = [("M", x0 + tl, y0), ("L", x1 - tr, y0), *c(tr, x1 - tr, y0, x1, y0 + tr, x1, y0),
+            ("L", x1, y1 - br), *c(br, x1, y1 - br, x1 - br, y1, x1, y1), ("L", x0 + bl, y1),
+            *c(bl, x0 + bl, y1, x0, y1 - bl, x0, y1), ("L", x0, y0 + tl), *c(tl, x0, y0 + tl, x0 + tl, y0, x0, y0)]
+    # A line to where the pen already is (a square corner, a side all corner) is no point; nor is one back to the start.
+    out = [cmds[0]] + [q for p, q in zip(cmds, cmds[1:]) if q[0] != "L" or q[-2:] != p[-2:]]
+    return write(out[:-1] + [("Z",)] if out[-1][0] == "L" and out[-1][-2:] == out[0][-2:] else out + [("Z",)])
 
 
 def ellipse(w: float, h: float, inset: float = 0.0) -> str:

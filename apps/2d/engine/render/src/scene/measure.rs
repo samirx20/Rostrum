@@ -30,7 +30,7 @@ fn plain() -> Map<String, Value> {
 }
 
 /// Every field of `kind`, set to what changes nothing: no move, no turn, full size and opacity, showing always.
-fn neutral(kind: &str) -> Map<String, Value> {
+pub(super) fn neutral(kind: &str) -> Map<String, Value> {
     let mut m = Map::new();
     for (name, k) in fields::of(kind).expect("a known type").1 {
         let v = match (name, k) {
