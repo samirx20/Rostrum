@@ -68,3 +68,19 @@ The button only appears for a song in a project that is not yet its main mix.
 When a 2D animation in the same project adds sounds at its markers, they arrive on a track called **Cues from 2D**.
 Each clip there is tied to a named marker such as "logo lands". Select a clip and the settings panel says which marker
 it is tied to. If the marker moves in 2D, the clip follows it. Move or swap such a clip as any other.
+
+## 8. The Problems chip (what is wrong with the song)
+
+When something about the song needs you, a **Problems** chip appears in the top bar with a count (it is gone when there is
+nothing). Click it for the list; each line says what is wrong and what to do, and clicking a line selects that clip or track.
+It lists, in one place:
+
+- **Missing file**: a clip's sound file is not where the song says (the line names the clip and the file).
+- **File outside the song**: a clip's file lives outside the song's folder, so it will not travel if you copy or move the
+  song. Record or import it again to keep a copy inside.
+- **Cleaned take not made**: a clip is set to a cleaned take that is not made yet; until it is, the original plays.
+  Select the clip and press Make cleaned take.
+- **No longer made**: a designed sound an older song still holds (see *scoring-motion*).
+- **Clipping** (red): the newest mix goes over full scale.
+
+Agents get the same list, except clipping, from the `inspect_diagnose` tool (each problem: kind, item, message, fix).
