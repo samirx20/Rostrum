@@ -51,7 +51,7 @@ Sound is made in RostrumSound. Rostrum2D plays it with the picture and lets you 
 3. Drag on the canvas to pan. The picture follows your pointer.
 4. Hold **Alt** and drag up to push in, down to pull out.
 
-If the camera's settings are animated, a drag adds a key at the playhead. Otherwise it changes the camera's start look. One drag is one undo step. The camera's settings (**Looks at** with its X and Y boxes, **Zoom**, **Roll**) are in the settings panel. While the project plays, the tool is off.
+If the camera's settings are animated, a drag adds a key at the playhead. Otherwise it changes the camera's start look. One drag is one undo step. When you let go, the picture slides to the camera's new view in about a tenth of a second instead of jumping; that is only how the screen shows it (the file and the export are not touched). The camera's settings (**Looks at** with its X and Y boxes, **Zoom**, **Roll**) are in the settings panel. While the project plays, the tool is off.
 
 Pick the camera to see where it goes: its frame now is outlined, a faint outline shows its frame at each of its keys (cut at the picture's edge, never drawn into the grey margin), and a line with a dot per frame shows the point it looks at travelling. Drag a key's square or handles to change the move, as for any moving thing (see [the-screen.md](the-screen.md)). While you drag a camera key, the picture holds still as it was when you pressed, so the square stays under your pointer even with the playhead between two keys; when you let go, the picture shows what the camera now sees. **Camera frame** in the **Fit · 54 % ▾** menu (on at first) keeps the camera's frame and path showing even when the camera isn't picked.
 

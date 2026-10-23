@@ -49,6 +49,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
     timeChanged = Signal()
     toolChanged = Signal()
     frameChanged = Signal()
+    viewGlide = Signal("QVariantList")                     # a camera key was dropped: the box the new view starts from (camera_glide.py)
     shownChanged = Signal()                                 # a new frame is on screen: the overlays follow it (shown.py)
     outlineChanged = Signal()
     layersChanged = Signal()                                # the timeline's rows really changed (timeline_rows.py)

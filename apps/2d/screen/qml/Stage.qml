@@ -73,6 +73,7 @@ Rectangle {
         CanvasView { id: view; wellW: well.width; wellH: well.height; compW: panel.info.width || 1; compH: panel.info.height || 1
 }
 
+        ViewGlide { id: glide; serial: backend.frame; zoom: view.zoom; width: panel.info.width || 1; height: panel.info.height || 1 }
         Item {
             id: frame
             x: view.ox; y: view.oy
@@ -84,12 +85,13 @@ Rectangle {
             }
             Image {
                 anchors.fill: parent
-                source: backend.frame > 0 ? "image://frame/" + backend.frame : ""
+                transform: [Scale { xScale: glide.sx; yScale: glide.sy }, Translate { x: glide.tx; y: glide.ty }]   // the camera glide (ViewGlide.qml)
+                source: glide.shown > 0 ? "image://frame/" + glide.shown : ""
                 cache: false; smooth: view.zoom < 2; mipmap: view.zoom < 1   // from 200 %: the export's own pixels, unblurred
             }
             Image {  // past Full: the visible part drawn again at the size shown (backend.sharp), over the enlarged frame
                 readonly property var c: backend.sharp.picture
-                visible: c.serial !== undefined
+                visible: c.serial !== undefined && !glide.running && !glide.pending
                 x: (c.x || 0) * view.zoom; y: (c.y || 0) * view.zoom
                 width: (c.w || 0) * view.zoom; height: (c.h || 0) * view.zoom
                 source: c.serial ? "image://framecrop/" + c.serial : ""
@@ -97,7 +99,7 @@ Rectangle {
             }
             Image {  // onion skin: the neighbouring drawings, tinted, over the selected drawing's box
                 readonly property var b: backend.selBox
-                visible: painter.onionSerial > 0 && b.w !== undefined
+                visible: painter.onionSerial > 0 && b.w !== undefined && !glide.running
                 x: (b.x || 0) * view.zoom; y: (b.y || 0) * view.zoom
                 width: (b.w || 0) * view.zoom; height: (b.h || 0) * view.zoom
                 source: painter.onionSerial > 0 ? "image://onion/" + painter.onionSerial : ""

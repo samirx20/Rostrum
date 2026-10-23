@@ -50,7 +50,6 @@ Rectangle {
                 contentHeight: routes.height; clip: true; boundsBehavior: Flickable.StopAtBounds; interactive: contentHeight > height
                 MixRoutes { id: routes; width: parent.width; strip: s }
             }
-            TextMetrics { id: outText; text: s.model.output; font.family: uiFont; font.pixelSize: Theme.label }
             Item {   // where it plays to: a pick when there is a bus to choose, plain words when the master is the only place
                 visible: s.routed
                 Layout.fillWidth: true; Layout.preferredHeight: 20
@@ -75,8 +74,7 @@ Rectangle {
                     visible: s.low && s.model.reverb !== null && s.model.reverb !== undefined
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                     height: 20; selected: sendsPop.opened
-                    // the output's name first: "Sends" gives way to "…" when the name would be cut beside it
-                    text: s.model.outputs.length <= 1 || parent.width - 60 - Theme.grid >= outText.width + Theme.gap * 2 ? "Sends" : "…"
+                    text: "…"   // the same on every strip: the output's name keeps the room
                     tip: sendsPop.opened ? "" : "Reverb send, sends to groups and ducks"
                     onClicked: sendsPop.opened ? sendsPop.close() : sendsPop.open()
                     QQC.Popup {
