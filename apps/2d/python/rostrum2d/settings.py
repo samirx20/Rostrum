@@ -51,6 +51,13 @@ def engine_exe() -> Path | None:
     return next((p for p in engine_candidates() if p.is_file()), None)
 
 
+def engine_missing_reason() -> str | None:
+    """None when an engine exists; else one sentence naming where it was looked (what a test skips with)."""
+    if (exe := engine_exe()) and exe.is_file():
+        return None
+    return "2D engine not built: looked in " + ", ".join(str(p) for p in engine_candidates())
+
+
 # ---- ffmpeg -------------------------------------------------------------------------------------------------------
 def ffmpeg_dir() -> Path:
     """The folder holding the app's own LGPL FFmpeg: ROSTRUM_FFMPEG_DIR, else <root>/apps/2d/ffmpeg."""

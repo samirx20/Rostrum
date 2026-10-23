@@ -1,15 +1,14 @@
 """E10: one running engine draws comps of different sizes one after another (the app switches comps all the time).
 A larger comp loaded after a smaller one used to fail its first frame on the GPU (GL error 0x0501): the new comp's
 painter made a second GL context beside the old one (painter.rs `into_gl`)."""
-import os
 
 import pytest
 from rostrum_core import Document
 
-from rostrum2d import KIND, run_source
+from rostrum2d import KIND, run_source, settings
 from rostrum2d.scene import describe
 
-pytestmark = pytest.mark.skipif(not os.environ.get("ROSTRUM2D_ENGINE"), reason="needs a built engine (ROSTRUM2D_ENGINE)")
+pytestmark = pytest.mark.skipif(settings.engine_missing_reason() is not None, reason=settings.engine_missing_reason() or "")
 SRC = '''
 comp("small", width=64, height=36, duration=1, fps=10, background="#204060")
 shape("a", w=20, h=20, fill="#ff0000", x=32, y=18)

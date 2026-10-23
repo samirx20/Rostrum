@@ -90,7 +90,8 @@ AppShell {
     readonly property bool typing: backend.create.typing || textFocus
     property Item lastFocus: null
     onActiveFocusItemChanged: lastFocus = activeFocusItem
-    onTextFocusChanged: if (!textFocus && lastFocus && !lastFocus.visible) { lastFocus.focus = false; shell.contentItem.forceActiveFocus() }
+    function releaseHiddenFocus() { if (!textFocus && lastFocus && !lastFocus.visible) { lastFocus.focus = false; shell.contentItem.forceActiveFocus() } }
+    onTextFocusChanged: Qt.callLater(releaseHiddenFocus)      // later: moving the focus inside its own change is a binding loop
     readonly property bool canvasKeys: backend.tool === "move" && !typing
     KeyMap {
         hub: backend.actions

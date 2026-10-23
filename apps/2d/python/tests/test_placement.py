@@ -25,7 +25,7 @@ def scene_doc() -> Document:
     return d
 
 
-@pytest.mark.skipif(settings.engine_exe() is None, reason="needs a built engine")
+@pytest.mark.skipif(settings.engine_missing_reason() is not None, reason=settings.engine_missing_reason() or "")
 def test_a_stroke_lands_under_its_point(tmp_path):
     from rostrum2d.engine import Engine
     with Engine() as eng:

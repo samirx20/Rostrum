@@ -1,14 +1,14 @@
 """The keyboard must come back to the workspace when an in-place editor closes, whichever way it closes (Esc after
 typing or a rename, Ctrl+Enter): the shortcuts (Ctrl+Z, P, the arrows) went dead once, with the focus left on a hidden
-editor. Real key presses into the real window; needs the engine (ROSTRUM2D_ENGINE) like any scripted run."""
-import os
+editor. Real key presses into the real window; needs the built engine like any scripted run."""
 import sys
 from pathlib import Path
 
 import pytest
+from rostrum2d import settings
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-pytestmark = pytest.mark.skipif(not os.environ.get("ROSTRUM2D_ENGINE"), reason="needs the built engine (ROSTRUM2D_ENGINE)")
+pytestmark = pytest.mark.skipif(settings.engine_missing_reason() is not None, reason=settings.engine_missing_reason() or "")
 
 
 @pytest.fixture
@@ -27,6 +27,7 @@ def screen(tmp_path):
     QTest.qWait(800)                                      # the window lays itself out first, as a person waits
     yield session.bridge, session.win
     app.processEvents()
+    session.close()                                       # the window first, then the bridge it reads (Session.close)
 
 
 def _steps(b, win, *steps):
