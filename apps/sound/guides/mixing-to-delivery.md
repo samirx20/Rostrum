@@ -37,7 +37,9 @@ The Mixer (X) has one strip per track, then the groups (buses), then the master.
   above it. The meter is green below −6 dB, amber from −6 to 0 and red over 0, on every strip and the master; it is
   empty until a render has measured the track. Rest the pointer on it for the track's loudness;
 - **M** (mute, amber), **S** (solo, green) and **R** (arm for recording, red), tracks only for S and R;
-- its volume in dB.
+- its volume in dB: click it and type (−6, 1.5, −inf); a value outside −60 … +12 dB is refused with that range. The
+  fader's knob drags; the mouse wheel over the fader nudges it (1 dB a notch, Shift 3 dB, Alt 0.1 dB); Alt-click on the
+  fader sets 0 dB; double-click the fader to type. The same Volume field is in the settings panel while the Mixer is open.
 
 The fader takes all the height the dock has left (the dock gets taller, the fader, its dB scale and the meter grow with it). In a dock under about 460 px (a laptop screen) the sends and ducks move into **Sends ▾** on the output line (click it: the reverb send, the group
 sends and **+ Duck** open above it); the fader, M S R and the volume stay. Every fader starts at the same height,

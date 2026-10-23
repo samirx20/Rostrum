@@ -15,7 +15,7 @@ Rectangle {
     readonly property bool routed: model.output !== ""
     property real head: 0                 // the tallest strip's parts above the fader (set by the Mixer)
     readonly property real naturalHead: headCol.implicitHeight
-    width: 132
+    width: 148
     color: Theme.app
     radius: Theme.radiusPanel
     border.width: selected ? 1 : 0; border.color: Theme.accent
@@ -86,21 +86,21 @@ Rectangle {
                     }
                 }
             }
-            RowLayout {  // pan: its value and the slider on one line 
-                visible: s.model.canPan
-                Layout.fillWidth: true; Layout.preferredHeight: 20; spacing: Theme.grid
-                Text { text: "Pan " + F.panText(s.model.pan); color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
-                       font.features: { "tnum": 1 }; Layout.minimumWidth: 42 }
-                Slider {
-                    Layout.fillWidth: true; implicitWidth: 10
-                    from: -1; to: 1; step: 0.01; value: s.model.pan; origin: 0; defaultValue: 0
-                    onScrubStarted: { s.pick(); backend.beginScrub("pan") }
-                    onScrubbed: (v) => backend.scrub("pan", v)
-                    onScrubEnded: backend.endScrub()
-                    onEdited: (v) => { s.pick(); backend.beginScrub("pan"); backend.scrub("pan", v); backend.endScrub() }   // wheel, ← / →: one change
-                }
-            }
         }
+        }
+        RowLayout {  // pan: its value and the slider on one line, under the padded head so every strip's pan sits on one line
+            opacity: s.model.canPan ? 1 : 0; enabled: s.model.canPan       // the master has none: its room stays, faders level
+            Layout.fillWidth: true; Layout.preferredHeight: 20; spacing: Theme.grid
+            Text { text: "Pan " + F.panText(s.model.pan); color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+                   font.features: { "tnum": 1 }; Layout.minimumWidth: 42 }
+            Slider {
+                Layout.fillWidth: true; implicitWidth: 10
+                from: -1; to: 1; step: 0.01; value: s.model.pan; origin: 0; defaultValue: 0
+                onScrubStarted: { s.pick(); backend.beginScrub("pan") }
+                onScrubbed: (v) => backend.scrub("pan", v)
+                onScrubEnded: backend.endScrub()
+                onEdited: (v) => { s.pick(); backend.beginScrub("pan"); backend.scrub("pan", v); backend.endScrub() }   // wheel, ← / →: one change
+            }
         }
         MixLevel {
             Layout.alignment: Qt.AlignHCenter; Layout.fillHeight: true; Layout.minimumHeight: 72; Layout.preferredHeight: 1000
@@ -108,12 +108,19 @@ Rectangle {
             onScrubStarted: { s.pick(); backend.beginScrub("volume") }
             onScrubbed: (g) => backend.scrub("volume", g)
             onScrubEnded: backend.endScrub()
+            onReset: { s.pick(); backend.setValue("volume", 1) }
+            onNudged: (g) => { s.pick(); backend.setValue("volume", g) }
+            onTypeIt: { level.forceActiveFocus(); level.input.forceActiveFocus(); level.input.selectAll() }
         }
         MixMS { strip: s; Layout.fillWidth: true; Layout.preferredHeight: 24; Layout.minimumHeight: 24; Layout.maximumHeight: 24; opacity: s.model.canMute || s.model.canSolo || s.model.canArm ? 1 : 0 }   // the master: its room stays, faders level
-        Text {
-            Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter
-            text: F.faderText(s.model.volume); color: Theme.fg
-            font.family: uiFont; font.pixelSize: Theme.body; font.features: { "tnum": 1 }
+        NumberField {   // the level in dB: click to type (a value outside −60 … +12 is refused with the range), wheel and arrows nudge
+            id: level
+            Layout.fillWidth: true; Layout.preferredHeight: 24
+            from: 0; to: 4; step: 0.1; display: "db"; label: "Volume"; value: s.model.volume; defaultValue: 1
+            onScrubStarted: { s.pick(); backend.beginScrub("volume") }
+            onScrubbed: (v) => backend.scrub("volume", v)
+            onScrubEnded: backend.endScrub()
+            onEdited: (v) => { s.pick(); backend.setValue("volume", v) }
         }
     }
 }

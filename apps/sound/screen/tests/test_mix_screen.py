@@ -68,3 +68,14 @@ def test_delivering_with_normalize_off_turns_it_on():
     assert m["normalize"] and m["truePeak"] == -2.0 and m["loudness"] == -24.0
     assert doc.history.changes[-1].label != "Run t.py" and len(doc.history.changes) == 2    # setup + this one
 
+
+
+def test_mixer_mute_and_header_mute_say_the_same_words_and_volume_stays_in_the_panel():
+    from screensound import moves, onpage
+    doc, _ = setup()
+    tid = doc.data["tracks"][0]["id"]
+    call, label = moves.toggle_call(doc, tid, "mute")
+    assert label == "Mute pad"
+    doc.apply([call], Who.person("sam"))
+    assert moves.toggle_call(doc, tid, "mute")[1] == "Unmute pad"
+    assert "volume" not in onpage.fields("mixer", "track") | onpage.fields("mixer", "master")

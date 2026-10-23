@@ -12,8 +12,9 @@ Rectangle {
     property string tip: ""
     property bool dot: false            // a small dot in the corner: something is there (automation written)
     property color dotColor: Theme.fg3
+    readonly property real size: 22     // one size for every header key (R M S A, the lock): easy to hit, still inside a 27 px row
     signal clicked()
-    width: 20; height: 20; radius: 4
+    width: size; height: size; radius: 4
     color: lit ? (soft ? Theme.accentSoft : litColor) : area.containsMouse ? Theme.hover : Theme.raised
     border.width: 1
     border.color: lit ? litColor : area.containsMouse ? Theme.lineHover : Theme.line
