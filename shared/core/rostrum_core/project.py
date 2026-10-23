@@ -137,6 +137,31 @@ def media_ref(folder, path) -> str:
         return str(path)
 
 
+def media_place(folder, value: str) -> str | None:
+    """The place IN the project (relative) that a stored absolute path stands for, or None to leave it as it is: a file
+    inside the folder, or one an older copy of the project still names from the folder it was copied FROM (the same
+    place under `media/` here, and the old file is gone or the same size). A relative path or a file kept elsewhere: None."""
+    p = Path(value)
+    if not p.is_absolute():
+        return None
+    rel = media_ref(folder, p)
+    if rel != str(p):
+        return rel
+    parts = p.parts
+    if "media" not in parts:
+        return None
+    tail = Path(*parts[len(parts) - 1 - parts[::-1].index("media"):])
+    here = Path(folder) / tail
+    if here.is_file() and (not p.is_file() or p.stat().st_size == here.stat().st_size):
+        return tail.as_posix()
+    return None
+
+
+def media_outside(folder, value: str) -> bool:
+    """True for an absolute path to a file the project does not hold (it will not travel with the project)."""
+    return bool(folder) and bool(value) and Path(value).is_absolute() and media_ref(folder, value) == value
+
+
 def media_file(folder, value) -> Path:
     """The file a stored reference (`media_ref`) points to: an absolute path as it is, a relative one under the
     project folder (no folder: relative to the process, as a path always was)."""

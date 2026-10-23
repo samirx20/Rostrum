@@ -49,20 +49,24 @@ def upgrade(data: dict, lists: dict, folder=None):
     for track in new.get("tracks", []):
         for clip in track.get("clips", []):
             m = clip.get("media")
-            rel = _inside(folder, m) if isinstance(m, str) else None
+            rel = P.media_place(folder, m) if isinstance(m, str) else None
             if rel:
                 clip["media"], n = rel, n + 1
     return (new, f"{n} recorded take{'s' if n != 1 else ''} made relative to the project") if n else None
 
 
-def _inside(folder, value: str) -> str | None:
-    p = Path(value)
-    if not p.is_absolute():
-        return None
-    rel = P.media_ref(folder, p)
-    if rel != str(p):
-        return rel
-    here = Path(folder) / "media" / p.name           # a copy's takes still name the original folder
-    if p.parent.name == "media" and here.is_file() and (not p.is_file() or p.stat().st_size == here.stat().st_size):
-        return f"media/{p.name}"
-    return None
+def tidy(calls: list[dict], folder=None) -> list[dict]:
+    """A full path typed by hand (a person, an agent) inside the song's folder is stored as a place in it, like a
+    recorded take. A path outside stays as given."""
+    if folder is None:
+        return calls
+
+    def fix(v):
+        if isinstance(v, dict):
+            return {k: (_place(folder, x) if k == "media" else fix(x)) for k, x in v.items()}
+        return [fix(x) for x in v] if isinstance(v, list) else v
+    return [{**c, "args": fix(c["args"])} for c in calls]
+
+
+def _place(folder, value):
+    return P.media_ref(folder, value) if isinstance(value, str) and Path(value).is_absolute() else value

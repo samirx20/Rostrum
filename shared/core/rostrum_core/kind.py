@@ -45,6 +45,9 @@ class DocKind:
     # which needs the project `folder`, None without one), or None. Run once on open (storage.open_doc) and
     # recorded as one change, so the history before it replays as written and undo takes it back.
     upgrade: Callable | None = None
+    # The app's tidy: tidy(calls, folder) -> calls, run on every call list before it is checked (Sound: a full path typed
+    # inside the song's folder is stored as a place in it). Only the way a value is written changes, never its meaning.
+    tidy: Callable | None = None
 
     def __post_init__(self):
         app_check = self.check

@@ -30,8 +30,7 @@ def file(folder, item: dict) -> Path:
 
 def outside(folder, item: dict) -> bool:
     """True for a file the project does not hold (an absolute path outside its folder)."""
-    src = item.get("src", "")
-    return bool(folder) and bool(src) and Path(src).is_absolute() and P.media_ref(folder, src) == src
+    return P.media_outside(folder, item.get("src", ""))
 
 
 def _layers(node):
@@ -49,24 +48,7 @@ def upgrade(data: dict, lists: dict, folder=None):
         return None
     new, n = copy.deepcopy(data), 0
     for layer in _layers(new):
-        rel = _inside(folder, layer["src"])
+        rel = P.media_place(folder, layer["src"])
         if rel:
             layer["src"], n = rel, n + 1
     return (new, f"{n} picture or video file{'s' if n != 1 else ''} made relative to the project") if n else None
-
-
-def _inside(folder, value: str) -> str | None:
-    p = Path(value)
-    if not p.is_absolute():
-        return None
-    rel = P.media_ref(folder, p)
-    if rel != str(p):
-        return rel
-    parts = p.parts                                   # a copy's layers still name the original folder: same place under media/
-    if "media" not in parts:
-        return None
-    tail = Path(*parts[len(parts) - 1 - parts[::-1].index("media"):])
-    here = Path(folder) / tail
-    if here.is_file() and (not p.is_file() or p.stat().st_size == here.stat().st_size):
-        return tail.as_posix()
-    return None
