@@ -8,7 +8,7 @@ groups and the search are screen state, not document changes. A refused edit fai
 line goes to the console and to `status` (the top bar shows it in red).
 
 An app adapts it by overriding the hooks (the one place each decision lives): `label_of` (an item's name),
-`kind_label` (its kind in words), `selection_label` (several items: "2 layers"), `extra_commands` (its own Ctrl K
+`kind_label` (its kind in words), `subtitle` (the line under the panel's name), `selection_label` (several items: "2 layers"), `extra_commands` (its own Ctrl K
 commands),
 `edit_call` (a screen edit -> its operation call), `shown_values` (the values the inspector shows),
 `anim_state` / `animate_calls` (an app with keys: the key mark on a row and what its toggle does),
@@ -93,7 +93,8 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         one = len(kinds) == 1
         return {"id": its[0]["id"], "label": self.selection_label(self._kit.selection),
                 "kind": its[0]["type"] if one else "", "count": len(its),
-                "kindLabel": self.kind_label(its[0]) if one else "Different kinds"}
+                "kindLabel": self.kind_label(its[0]) if one else "Different kinds",
+                "subtitle": self.subtitle(its[0]) if one else "Different kinds"}
 
     @Property("QVariantList", notify=docChanged)
     def items(self):
@@ -163,6 +164,11 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
     def kind_label(self, item: dict) -> str:
         """An item's kind in words, for the panel's subtitle and Ctrl K's hints (default: its type, capitalised)."""
         return item["type"][:1].upper() + item["type"][1:]
+
+    def subtitle(self, item: dict) -> str:
+        """The grey line under the panel's name (default: the kind in words; an app whose name and fields already say
+        it returns "" or a word of its own)."""
+        return self.kind_label(item)
 
     def edit_call(self, item_id, param, value) -> dict:
         return field_call(self.doc, item_id, param, value)

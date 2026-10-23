@@ -15,8 +15,8 @@ Panel {
     property var model
     property alias settings: settingsSlot.data      // the chosen item's settings only (the app's rows)
     readonly property bool running: model && model.state === "running"
-    // titled by what it makes: the chosen item's words ("Video to share", "Still frames" …)
-    title: { const c = model ? (model.choices || []).find(x => x.value === model.choice) : null; return c ? c.label : "Export" }
+    // titled by what it makes: the chosen item's words ("Video to share", "Still frames" …), or the model's own `sheetTitle`
+    title: { if (model && model.sheetTitle) return model.sheetTitle; const c = model ? (model.choices || []).find(x => x.value === model.choice) : null; return c ? c.label : "Export" }
     focus: visible
     Keys.onEscapePressed: model.setOpen(false)
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close  Esc"; onClicked: sheet.model.setOpen(false) }

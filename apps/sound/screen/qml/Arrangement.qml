@@ -61,6 +61,11 @@ Rectangle {
                 tip: backend.looping ? "Looping the time range (Shift+L)" : "Loop the time range (Shift+L)"
                 anchors.verticalCenter: parent.verticalCenter; onClicked: backend.toggleLoop()
             }
+            Button {   // Click: the metronome (Shift+K), on while it is down; folds away in a squeezed panel (the key stays)
+                visible: a.width >= 900; text: "Click"; kind: "ghost"; down: backend.clickOn; height: Theme.field
+                anchors.verticalCenter: parent.verticalCenter; onClicked: backend.toggleClick()
+                HoverTip { text: "Click (metronome) on / off (Shift+K)"; hovered: parent.hovered }
+            }
             RecordControls { anchors.verticalCenter: parent.verticalCenter }
             Item { width: Theme.gap; height: 1 }
             SongReadout { id: readout; compact: a.compact; anchors.verticalCenter: parent.verticalCenter }

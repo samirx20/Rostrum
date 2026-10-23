@@ -55,7 +55,7 @@ Panel {
             id: view
             anchors.fill: parent
             contentHeight: grid.height; boundsBehavior: Flickable.StopAtBounds; interactive: false
-            RollGrid { id: grid; width: view.width; viewHeight: view.height; roll: p.roll; ruler: bars; keysWidth: p.keysWidth }
+            RollGrid { id: grid; width: view.width; viewHeight: view.height; scrollY: view.contentY; roll: p.roll; ruler: bars; keysWidth: p.keysWidth }
             RollInput {   // every click, drag, box and right-click on the roll (select first, then act)
                 id: input
                 x: p.keysWidth; width: grid.width - x; height: grid.height

@@ -87,6 +87,12 @@ class LoudnessMeter(QObject):
         the first block ends, or when the render carries no blocks."""
         return self._now["integrated"]
 
+    @Property(float, notify=changed)
+    def goal(self):
+        """The loudness the master is aimed at, always: its own `loudness` number (the top bar shows it whether or not
+        Normalize is on; `target` is the Mixer's, only while Normalize applies it)."""
+        return float(self.bridge.doc.item(strips.MASTER).get("loudness", -16))
+
     @Property("QVariantMap", notify=changed)
     def target(self):
         """{shown, lufs, peak, label, verdict}: the master's own target; `verdict` is {ok, text} once a render exists."""

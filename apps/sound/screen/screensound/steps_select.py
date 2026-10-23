@@ -16,7 +16,7 @@ bridge call a click, a box, a key or a menu makes.
     jump next|prev (`,` / `.`) | playhead-step <n> (Ctrl+arrows) | fit-selection (F)
     marker-add (M: a marker at the playhead, its name field open) | fit-bar <bar> (Land a bar on the selected
       marker) | ask <action key> (its number field, open: for a picture) | place <design> (the Library's designed sound,
-      double-clicked) | library <chip> (the Library open on a chip) | clean-open (the Clean up popover, open) |
+      double-clicked) | library <chip> (the Library open on a chip) | clean-open (Clean up…: the Cleanup group and its presets, open) |
       clean <voice 0|1> <noise 0|1> <echo 0|1> (Clean: the steps on the selected clips, then their cleaned takes)
     tool select|draw (the Editor's tool) | add-hit <t s> <drum row> (a double-click on an empty drum row) |
       draw <t s> <key or drum row> (a click with the Draw tool)

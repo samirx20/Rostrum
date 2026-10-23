@@ -2,7 +2,7 @@
 set and its cleaned take is not made yet. Pressing it runs the same job as the MCP `render_cleanup`
 (`rostrum_sound.clean_clips.make_clips`) in the background; the status line follows its progress and a failure is
 written in words (and is the bridge's red error), never a quiet "done". Exposed to QML as `mixer.cleaning`. The
-context bar's "Clean up…" popover starts the same job for every selected clip (`makeFor`) and asks `missingWords`
+"Clean up…" (the presets in the Cleanup group) starts the same job for every selected clip (`makeFor`)
 whether the clean-up models are on this computer.
 Making a take never edits the document (it lives in the cache); the sound is re-rendered once it is made.
 The job runs in its own process (clean_process.py): `cancel` ends it, nothing half-made is kept, and the clips that

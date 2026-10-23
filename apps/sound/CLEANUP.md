@@ -10,9 +10,9 @@ read it (nothing is made while you play or render).
 | Field | Label | What it does |
 |---|---|---|
 | `stem` | Play one stem | `none` (the whole clip), `vocals`, `drums`, `bass`, `other`: the clip plays that one stem |
-| `isolate` | Keep only the dialogue | The voice separated from music and effects. Absent while a stem is chosen (a stem already separates) |
-| `denoise` | Noise reduction | 0..1: steady background noise out (hiss, hum, room tone); 0 = off |
-| `dereverb` | Reverb reduction | 0..1: the room's echo out; 0 = off |
+| `isolate` | Dialogue only | The voice separated from music and effects. Absent while a stem is chosen (a stem already separates) |
+| `denoise` | Less noise | 0..1: steady background noise out (hiss, hum, room tone); 0 = off |
+| `dereverb` | Less echo | 0..1: the room's echo out; 0 = off |
 | `useCleaned` | Use cleaned take | On (default): the clip plays its cleaned take; off: the original file. Shown only while a step above is set |
 
 The steps run in this order: stem or isolate (separation), then noise, then reverb. Each step is its own cache entry,

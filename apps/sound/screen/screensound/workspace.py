@@ -17,7 +17,7 @@ class Workspace(QObject):
     def __init__(self, fail, on_dock, parent=None):
         super().__init__(parent)
         self._fail, self._on_dock = fail, on_dock        # bridge._fail; called after the dock changes
-        self._dock, self._library = "", False
+        self._dock, self._library, self._seconds = "", False, False
         self._heights = {"editor": 0, "mixer": 0}
 
     @Property(str, notify=changed)
@@ -27,6 +27,16 @@ class Workspace(QObject):
     @Property(bool, notify=changed)
     def library(self):
         return self._library
+
+    @Property(bool, notify=changed)
+    def seconds(self):
+        """The rulers' seconds scale under the bar numbers (off: bar numbers only; the ruler's right-click turns it on)."""
+        return self._seconds
+
+    @Slot()
+    def toggleSeconds(self):
+        self._seconds = not self._seconds
+        self.changed.emit()
 
     @Property("QVariantMap", notify=changed)
     def heights(self):

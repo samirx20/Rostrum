@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// The song's ruler: the kit's Ruler (range band, seconds scale, playhead, scrub, the wheel's zoom and scroll through
+// The song's ruler: the kit's Ruler (range band, seconds scale only when the right-click menu turned it on, playhead, scrub, the wheel's zoom and scroll through
 // backend.timeView) with Sound's bars on its upper line, plus what is Sound's own: the punch range (with a take
 // armed and punch on: a drag across the scale sets it, its edges drag; takeSetup.setPunch, a quarter beat grid,
 // Ctrl = free; screen state, not an edit) and the right-click menu (menuAt). The range band's drag is one
@@ -29,9 +29,9 @@ Item {
         if (!punchOn) return 0
         return Math.abs(x - xOf(punch[0])) <= 5 ? 1 : Math.abs(x - xOf(punch[1])) <= 5 ? 2 : 0
     }
-    readonly property var barMarks: {   // "Bar 5" at every `every`-th bar
+    readonly property var barMarks: {   // "5" (plain bar numbers) at every `every`-th bar
         var out = [], per = song.beatsPerBar * every
-        for (var i = 0; i * per < song.beats.length; i++) out.push({ at: song.beats[i * per], text: "Bar " + (i * every + 1) })
+        for (var i = 0; i * per < song.beats.length; i++) out.push({ at: song.beats[i * per], text: String(i * every + 1) })
         return out
     }
     implicitHeight: kit.implicitHeight
@@ -50,7 +50,7 @@ Item {
         id: kit
         anchors.fill: parent
         duration: r.length; fps: 1000                        // (whole milliseconds: the grid does the snapping)
-        value: backend.time; view: backend.timeView; upper: r.barMarks
+        value: backend.time; view: backend.timeView; upper: r.barMarks; seconds: workspace.seconds
         rangeBand: true; range: r.range.length === 2 ? { start: r.range[0], end: r.range[1] } : null
         onScrubbed: (t) => backend.setTime(t)
         onRangeSet: (a, b) => backend.setRange(a, b, false)

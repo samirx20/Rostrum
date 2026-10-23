@@ -10,6 +10,7 @@ Item {
     property var ruler
     property int keysWidth: 52
     property real viewHeight: 400
+    property real scrollY: 0               // how far the view is scrolled: a row name shows only while its row is whole
     readonly property bool notes: roll.kind === "notes"
     readonly property int count: notes ? roll.hi - roll.lo + 1 : roll.kind === "drums" ? Math.max(1, roll.drums.length) : 1
     readonly property real rowH: notes ? Math.max(12, viewHeight / count)
@@ -50,7 +51,8 @@ Item {
             Rectangle { width: g.keysWidth - 6; height: parent.height - 1; x: 0
                         color: g.notes && g.black(parent.key) ? Theme.app : Theme.panel }
             Text {
-                visible: g.notes ? parent.key % 12 === 0 || g.rowH >= 16 : true
+                visible: (g.notes ? parent.key % 12 === 0 || g.rowH >= 16 : true)
+                         && parent.y >= g.scrollY - 1 && parent.y + parent.height <= g.scrollY + g.viewHeight + 1
                 x: Theme.gap; width: g.keysWidth - Theme.gap - 6; height: parent.height     // fits its row: a short row
                 verticalAlignment: Text.AlignVCenter; fontSizeMode: Text.Fit; minimumPixelSize: 7  // shrinks the name
                 elide: Text.ElideRight
