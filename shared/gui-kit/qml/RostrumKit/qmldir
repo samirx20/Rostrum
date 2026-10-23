@@ -30,6 +30,7 @@ PlayButton 1.0 PlayButton.qml
 Panel 1.0 Panel.qml
 InspectorRow 1.0 InspectorRow.qml
 Inspector 1.0 Inspector.qml
+ActionsSection 1.0 ActionsSection.qml
 ItemList 1.0 ItemList.qml
 CommandBar 1.0 CommandBar.qml
 TopBar 1.0 TopBar.qml

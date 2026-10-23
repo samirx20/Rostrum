@@ -34,10 +34,9 @@ Item {
         function rowIds() { return key.row.rowData.keys.map(k => k.ids || [k.id]) }
         onPressed: (m) => {
             held = ""
-            if (m.button === Qt.RightButton) {                  // the Ease list, for the picked keys (this one picked first)
+            if (m.button === Qt.RightButton) {                  // the row's short menu (Cut, Copy … act on the picked keys)
                 if (!backend.keys.has(key.ids)) backend.keys.click(key.ids, "", rowIds())
-                const g = keyArea.mapToItem(null, m.x, m.y)
-                backend.keyBar.askMenu(g.x, g.y)
+                key.row.openMenu(keyArea, m.x, m.y)
                 return
             }
             if ((m.modifiers & Qt.AltModifier) && backend.keys.has(key.ids)          // Alt+drag an end: stretch them all

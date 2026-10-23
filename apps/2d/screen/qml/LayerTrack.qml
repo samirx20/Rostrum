@@ -24,17 +24,26 @@ Rectangle {
     color: isLayer ? Theme.sunken : Qt.darker(Theme.panel, 1.15)
 
     property Item rows                  // the LayerRows it lies in: a box dragged here picks keys on every row it touches
+    // Right-click anywhere on the row (its empty part, its bar, a stretch, a key): the one short menu (actions.SHORT_MENU)
+    function openMenu(item, x, y) { const p = item.mapToItem(rows, x, y); rows.openMenu(rowData.owner, p.x, p.y) }
     MouseArea {   // the row's empty part: a click selects its layer, a drag draws a box that picks keys
         anchors.fill: parent
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         property point from
         property bool boxing: false
-        onPressed: (m) => { from = Qt.point(m.x, m.y); boxing = false }
+        onPressed: (m) => {
+            boxing = false
+            if (m.button === Qt.RightButton) { from = Qt.point(-1e6, -1e6); track.openMenu(this, m.x, m.y); return }
+            from = Qt.point(m.x, m.y)
+        }
         onPositionChanged: (m) => {
+            if (from.x < -1e5) return                     // a right press: the menu, no box
             if (!boxing && Math.abs(m.x - from.x) + Math.abs(m.y - from.y) < 5) return
             if (!boxing) { boxing = true; track.rows.boxStart(mapToItem(track.rows.contentItem, from.x, from.y)) }
             track.rows.boxTo(mapToItem(track.rows.contentItem, m.x, m.y))
         }
         onReleased: (m) => {
+            if (m.button === Qt.RightButton) return
             if (boxing) track.rows.boxEnd(m.modifiers & Qt.ControlModifier ? "ctrl" : m.modifiers & Qt.ShiftModifier ? "shift" : "")
             else { backend.keys.clear(); backend.select(track.rowData.owner) }   // a click on the row lets picked keys go
             boxing = false

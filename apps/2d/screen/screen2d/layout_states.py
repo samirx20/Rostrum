@@ -49,6 +49,16 @@ def with_character() -> list[str]:
     return character_project(Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "Character")
 
 
+def picture() -> str:
+    """A plain picture file in the temp folder (Mask's state: a picture and a shape)."""
+    from PySide6.QtGui import QColor, QImage
+    path = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "sunset.png"
+    img = QImage(400, 300, QImage.Format_RGB32)
+    img.fill(QColor("#d08040"))
+    img.save(str(path))
+    return path.as_posix()
+
+
 RIGGED = ["select max", "run layer:rig", "run layer:guess_bones", "bones"]     # H32: a rig with bones from part names
 MOUTHS = ["selectmany mouth_rest mouth_M_B_P mouth_E mouth_O mouth_A mouth_F_V", "run layer:swap"]
 
@@ -83,6 +93,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
           for w, h in ((1080, 1920), (1080, 1080), (1080, 1350))],
         ("animation-picked", ["--sample"], ["select title", "clickname stretch:title.opacity.k200"]),   # §9.3: the animation view
         ("right-click", ["--sample"], ["selectmany title card", "canvasmenu"]),
+        # H48: the selection's actions at the top of the settings panel; right-click is the one short menu
+        ("picture-shape", ["--sample"], [f"drop {picture()} 900 500", "selectmany image_1 card"]),     # Mask first
+        ("animation-spring", ["--sample"], ["select title", "clickname stretch:title.opacity.k200", "clickname preset:spring"]),
         ("ctrl-k", ["--sample"], ["selectmany title card", "commands"]),
         ("find-setting", ["--sample"], ["select title", "find marker"]),
         ("draw-tool", ["--sample"], ["select title", "tool draw"]),

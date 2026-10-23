@@ -45,6 +45,7 @@ QQC.Popup {
         x = Math.max(Theme.grid, x0); y = Math.max(Theme.grid, y0)
     }
     onHeightChanged: place()                 // the entries were set just before openAt: their size comes a moment later
+    Connections { target: menu.parent; function onHeightChanged() { menu.place() } function onWidthChanged() { menu.place() } }   // the window resized: still on screen
     onWidthChanged: place()
     function hasSub(i) { return !!(entries[i] && entries[i].sub && entries[i].sub.length) }
     function pick(i) {

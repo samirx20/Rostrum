@@ -9,7 +9,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum2d import fields as F
 from rostrum2d.names import display_name
 from rostrum2d.anims import PRESET_LABELS, PRESETS, animations
-from rostrum_core.keys import ease as ease_at
+from rostrum_core.keys import ease as ease_at, springs
 from rostrum_gui.edits import Drag
 
 from . import eases
@@ -55,12 +55,12 @@ class StretchSelect(QObject):
         owner = self.b.doc.item(self._owner)
         key = self.b.placed_item(s["ids"][0])
         ease = key.get("ease", "smooth")
-        rows = [{"prop": p, "label": (F.param(owner["type"], p).label if F.param(owner["type"], p) else p),
-                 "from": s["from"][p], "to": s["to"][p]} for p in a["props"]]
+        rows = [{"prop": p, "from": s["from"][p], "to": s["to"][p], **_kind(F.param(owner["type"], p), p)} for p in a["props"]]
         return {"owner": self._owner, "ownerLabel": display_name(owner), "word": a["word"], "label": a["label"],
                 "rows": rows, "start": s["start"], "length": s["length"], "preset": s["preset"], "ease": ease,
                 "easeLabel": PRESET_LABELS.get(s["preset"], eases.label_of(ease)),
                 "handles": eases.handles(key) if ease in ("linear", "custom", *eases.BEZIERS) else [],
+                "feel": list(springs.feel_of(key)) if ease == "spring" else [],      # [bounce, speed] (H41's key fields)
                 "curve": [[i / 24, ease_at(key, i / 24)] for i in range(25)]}
 
     @Property("QVariantList", notify=changed)
@@ -174,7 +174,7 @@ class StretchSelect(QObject):
             return False
 
         def go():
-            self._drag = Drag(self.b.doc, self.b.who, "Ease curve")
+            self._drag = Drag(self.b.doc, self.b.who, "Spring" if what == "spring" else "Ease curve")
         return self.b.guard(go)
 
     @Slot(float, float, float, float)
@@ -186,8 +186,25 @@ class StretchSelect(QObject):
                     x2=round(min(max(x2, 0), 1), 3), y2=round(min(max(y2, -2), 3), 3))
         self.b.guard(lambda: self._drag.preview([{"op": "anim.ease", "target": f[1]["ids"], "args": args}]))
 
+    @Slot(float, float)
+    def springTo(self, bounce, speed):
+        """A spring's Bounce or Speed, dragged or typed (one change per drag, begin … end)."""
+        f = self._found()
+        if self._drag is None or not f:
+            return
+        args = {"bounce": round(min(max(bounce, 0), 1), 3), "speed": round(min(max(speed, 0), 1), 3)}
+        self.b.guard(lambda: self._drag.preview([{"op": "key.set", "target": f[1]["ids"], "args": args}]))
+
     @Slot()
     def end(self):
         d, self._drag = self._drag, None
         if d is not None:
             self.b.guard(lambda: self.b.done(d.end(), ""))
+
+
+def _kind(param, prop) -> dict:
+    """A From → to row's name and how its numbers show: the setting's unit and display kind ("0 % → 100 %", px, °)."""
+    if param is None:
+        return {"label": prop, "unit": "", "display": "", "step": 0.01}
+    return {"label": param.label, "unit": param.unit if param.unit != "×" else "", "display": param.display,
+            "step": param.step or 0.01}

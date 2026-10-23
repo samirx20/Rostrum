@@ -21,6 +21,10 @@ from rostrum_core.conditions import holds
 from .keymap import normal
 
 EDIT_JOBS = ("copy", "cut", "paste", "duplicate", "rename", "delete", "delete_close_gap")    # keys + right-click's last block only
+# Right-click, the same short menu everywhere (Sam, H48): these jobs only, in this order, a divider between blocks.
+# Everything else on a selection lives at the top of the settings panel (`action_views.panel`) and in Ctrl+K.
+SHORT_MENU = (("edit", ("cut", "copy", "paste", "duplicate", "delete")), ("make", ("group", "ungroup")),
+              ("order", ("forward", "backward")), ("state", ("hide", "lock", "rename")))
 NUMBERS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}
 
 
@@ -40,7 +44,8 @@ class Action:
     job: str = ""                             # a key map job ("group"): its key comes from the key map
     keys: str = ""                            # an app-only key, which must be in the app's key map
     group: str = ""                           # menu divider group
-    bar: str = ""                             # the bar button it sits under ("Align")
+    bar: str = ""                             # the bar button it sits under ("Align"); the settings panel's row title
+    panel: bool = True                        # listed in the settings panel's actions (False: keys / Ctrl+K only)
     calls: Callable | None = None             # calls(facts) -> [operation calls]
     do: str = ""                              # an app's own non-operation action ("copy", "rename")
     why: str = ""                             # the app's own sentence for why it isn't offered
@@ -80,8 +85,9 @@ def plural(kind: str) -> str:
 
 
 class ActionList:
-    def __init__(self, actions, keymap, noun: str = "item"):
-        self.actions, self.keymap, self.noun = list(actions), keymap, noun
+    def __init__(self, actions, keymap, noun: str = "item", short_menu: tuple | None = None):
+        """`short_menu`: right-click lists only those jobs (SHORT_MENU); None = every valid action (not moved yet)."""
+        self.actions, self.keymap, self.noun, self.short_menu = list(actions), keymap, noun, short_menu
         ids = [a.id for a in self.actions]
         if len(set(ids)) != len(ids):
             raise ValueError(f"two actions share an id: {sorted({i for i in ids if ids.count(i) > 1})}")
@@ -128,7 +134,7 @@ class ActionList:
                 out.append(((first, a.rank, i), {
                     "id": a.id, "label": a.label_for(facts), "keys": self.keys_of(a), "importance": a.importance,
                     "group": "edit" if a.edit else a.group, "bar": a.bar, "calls": calls, "do": a.do,
-                    "edit": a.edit, "rank": a.rank, "job": self.job_of(a), "release": a.release}))
+                    "edit": a.edit, "rank": a.rank, "job": self.job_of(a), "release": a.release, "panel": a.panel}))
         return [e for _, e in sorted(out, key=lambda x: x[0])]
 
     def why_not(self, facts, typed: str) -> str:
@@ -176,4 +182,4 @@ class ActionList:
         return None, self._sentence(near, facts)
 
 
-from .action_views import bar, commands, menu  # noqa: E402,F401  (the views live beside: one import for apps)
+from .action_views import bar, commands, menu, panel  # noqa: E402,F401  (the views live beside: one import for apps)

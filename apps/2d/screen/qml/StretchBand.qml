@@ -16,7 +16,8 @@ Item {
     readonly property real x0: row.xOf(modelData.t0)
     readonly property real x1: row.xOf(modelData.t1)
     readonly property bool picked: backend.stretch.shown && backend.stretch.ids.indexOf(modelData.ids[0]) >= 0
-    x: x0 - shift; width: Math.max(0, x1 - x0); y: 4; height: row.height - 8
+    x: x0 - shift; width: Math.max(0, x1 - x0)
+    height: Math.min(row.height - 8, parent.height - 2); y: Math.round((parent.height - height) / 2)   // inside what it lies in (a bar is 6 px shorter than its row)
     Rectangle {
         anchors.fill: parent; radius: 3
         visible: band.picked || area.containsMouse
