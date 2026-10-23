@@ -169,17 +169,20 @@ def media_file(folder, value) -> Path:
     return p if p.is_absolute() or folder is None else Path(folder) / p
 
 
-def media_problems(folder, refs) -> list[dict]:
-    """The file problems of a document, for any app: `refs` is [(item id, what it is called, stored path)]. A file that is
-    not there is "missing-file" (names the item and the file); one the project does not hold is "outside-project" (it
-    will not travel with the project). Rows are {kind, item, message, fix}."""
+def media_problems(folder, refs, outside: bool = True) -> list[dict]:
+    """The file problems of a document, for any app: `refs` is [(item id, what it is called, stored path)], each with an
+    optional fourth part naming which of the item's fields holds the file (".src"). A file that is not there is
+    "missing-file" (names the item and the file); one the project does not hold is "outside-project" (it will not travel
+    with the project; `outside=False` for files that are meant to stay where they are, like a LUT). Rows are
+    {kind, item, message, fix}."""
     out = []
-    for item, name, value in refs:
+    for item, name, value, *field in refs:
+        name = f'{name} ({item}){field[0] if field else ""}'
         if not media_file(folder, value).is_file():
-            out.append({"kind": "missing-file", "item": item, "message": f'{name} ({item}): no file at "{value}"',
+            out.append({"kind": "missing-file", "item": item, "message": f'{name}: no file at "{value}"',
                         "fix": "Put the file back, or point it at the file again (absolute, or relative to the project folder)"})
-        elif media_outside(folder, value):
-            out.append({"kind": "outside-project", "item": item, "message": f'{name} ({item}): its file is kept outside the project '
+        elif outside and media_outside(folder, value):
+            out.append({"kind": "outside-project", "item": item, "message": f'{name}: its file is kept outside the project '
                         f'("{value}"), so it will not travel with it', "fix": "Record or import the file again to keep a copy in the project"})
     return out
 
