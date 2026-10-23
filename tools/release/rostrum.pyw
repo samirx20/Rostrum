@@ -3,6 +3,9 @@
     runtime\\python\\pythonw.exe runtime\\rostrum.pyw 2d|sound [<project>\\docs\\<item>.mtn|.trk] [app options, e.g. --shot x.png]
     runtime\\python\\pythonw.exe runtime\\rostrum.pyw 2d|sound --open-sample      (the Start menu's Samples entries)
 
+The development launcher (tools\\rostrum.ps1 -FromShortcut: a checkout's desktop shortcuts) runs this same file with
+ROSTRUM_ROOT=<the checkout> (2d, sound and 3d), so a problem is told the same way there.
+
 No file: the app starts as it does on its own: the person's last file (its own Open recent list), else a new empty
 one. --open-sample: the Lull sample, copied once to Documents\\Rostrum\\Samples so it can be saved
 (rostrum_core.samples, the same helper as File › Open sample).
@@ -11,6 +14,8 @@ A problem never disappears silently. Everything the app writes goes to a log in 
 newest 20 are kept), and the person is told in plain words, whichever way it went wrong:
 - a Python error inside the running screen (a button's handler): a message box; the app stays open (`told`);
 - a failed start, or the app stopping with an error: a message box naming the log;
+- the app closing itself with exit code 0 after a fatal line in its output (Qt's "This behavior is NOT supported!",
+  a fatal Python error): a message box with those lines. A normal close (the person closes the window) shows nothing;
 - a hard crash (Qt or a native library) or the app ended from outside (Task Manager): the app runs in a second
   process (`--run`) watched by this one, which writes what happened at the end of the log and says so;
 - this watcher ended too (a whole process tree ended, the computer stopped): its `<app>-<pid>.running` mark is still
@@ -30,12 +35,16 @@ import time
 import traceback
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]                # the install folder (mirrors the repo layout)
-APPS = {"2d": ("Rostrum2D", ".mtn"), "sound": ("RostrumSound", ".trk")}
+ROOT = Path(os.environ.get("ROSTRUM_ROOT") or Path(__file__).resolve().parents[1])   # the install folder, or a checkout
+APPS = {"2d": ("Rostrum2D", ".mtn", "apps/2d/screen/main.py"),       # (name, project file, main)
+        "sound": ("RostrumSound", ".trk", "apps/sound/screen/main.py"),
+        "3d": ("Rostrum3D", None, "apps/3d/app/main.py")}           # 3d: checkouts only
 LOGS = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "Rostrum" / "logs"
 ENDED = "--- ended normally, exit code "                  # the run's last line when Python itself finished
-CRASHES = {0xC0000005: "a memory access fault", 0xC0000409: "a fatal error check", 0xC00000FD: "a stack overflow",
+CRASHES = {3: "a fatal error (Qt's own, or an abort)", 0xC0000005: "a memory access fault",
+           0xC0000409: "a fatal error check", 0xC00000FD: "a stack overflow",
            0xC0000374: "damaged memory", 0xC000001D: "an instruction the processor can't run"}
+ALARMS = ("This behavior is NOT supported", "Fatal Python error", "Windows fatal exception")   # fatal, even at exit 0
 
 
 def now():
@@ -46,7 +55,7 @@ def message(title: str, text: str, wait=True):
     """A Windows message box; wait=False shows it beside the running app (its window keeps working)."""
     if os.environ.get("ROSTRUM_NO_MESSAGE_BOX"):           # set by automated checks, which read the log instead
         return
-    box = lambda: ctypes.windll.user32.MessageBoxW(None, text, title, 0x30 | 0x10000)   # warning, in front  # noqa: E731
+    box = lambda: ctypes.windll.user32.MessageBoxW(None, text, title, 0x30 | 0x50000)   # warning, on top  # noqa: E731
     box() if wait else threading.Thread(target=box, daemon=True).start()
 
 
@@ -109,16 +118,26 @@ def watch(app: str, name: str, rest: list[str]) -> int:
     mark.write_text(json.dumps({"pid": os.getpid(), "log": str(log), "started": now()}), encoding="utf-8")
     try:
         env = {**os.environ, "ROSTRUM_LOG": str(log)}
-        code = subprocess.call([sys.executable, __file__, "--run", app, *rest], env=env)
-        if ENDED not in tail(log, 1):                     # Python never reached its last line: it was stopped
+        with open(log, "ab") as out:                       # Qt and native libraries write to the process's own
+            code = subprocess.call([sys.executable, __file__, "--run", app, *rest], env=env, stdin=subprocess.DEVNULL,
+                                   stdout=out, stderr=subprocess.STDOUT)            # handles: into the log too
+        lines = [line for line in open(log, encoding="utf-8", errors="replace") if not line.startswith("---")]
+        alarms = [i for i, line in enumerate(lines) if any(a in line for a in ALARMS)]
+        if f"{ENDED}0" in tail(log, 1) and alarms:        # it closed itself "fine" after a fatal line
+            append(log, f"--- {now()}: {name} closed itself after a fatal error (the lines above).")
+            said = "".join(lines[max(alarms[0] - 1, 0):alarms[-1] + 2][:8])
+            message(name, f"{name} closed unexpectedly after this error:\n\n{said}\n"
+                    f"If you had unsaved work, {name} offers it back when you open it again.\n\nFull log: {log}")
+        elif ENDED not in tail(log, 1):                     # Python never reached its last line: it was stopped
             code &= 0xFFFFFFFF
-            fatal = [line.strip() for line in open(log, encoding="utf-8", errors="replace")
+            fatal = [line.strip() for line in lines
                      if line.startswith(("Fatal Python error", "Windows fatal exception"))]   # faulthandler's trace
             why = (f"{name} crashed ({fatal[-1] if fatal else CRASHES.get(code, 'a Windows error')})"
-                   if fatal or code >= 0xC0000000 else f"{name} was ended from outside (for example in Task Manager)")
+                   if fatal or code in CRASHES or code >= 0xC0000000
+                   else f"{name} was ended from outside (for example in Task Manager)")
             append(log, f"--- {now()}: {why}, exit code 0x{code:08X}. The lines above are the last it wrote.")
-            message(name, f"{why}.\n\nIf you had unsaved work, {name} offers it back when you open it again."
-                    f"\n\nWhat it was doing is written in:\n{log}")
+            message(name, f"{why}. The last lines it wrote:\n\n{''.join(lines[-4:])}\nIf you had unsaved work, "
+                    f"{name} offers it back when you open it again.\n\nFull log: {log}")
         return code
     finally:
         mark.unlink(missing_ok=True)
@@ -129,8 +148,8 @@ def watch(app: str, name: str, rest: list[str]) -> int:
 def doc_args(app: str, rest: list[str]) -> list[str]:
     """A project file -> --doc <project folder> <item>; --open-sample -> the person's copy of the Lull sample;
     nothing -> no document (the app opens its last file or a new one); other options pass through."""
-    name, ext = APPS[app]
-    files = [a for a in rest if a.lower().endswith(ext)]
+    name, ext, _ = APPS[app]
+    files = [a for a in rest if ext and a.lower().endswith(ext)]
     others = [a for a in rest if a not in files and a != "--open-sample"]
     if files:
         doc = Path(files[0]).resolve()
@@ -168,14 +187,16 @@ def told(name: str, log: Path):
 def run(app: str, rest: list[str]) -> int:
     name = APPS[app][0]
     log = Path(os.environ.pop("ROSTRUM_LOG"))
-    out = open(log, "a", encoding="utf-8", buffering=1)
+    out = open(1, "w", encoding="utf-8", buffering=1, closefd=False)   # the watcher's handle on the log: one writer
     sys.stdout = sys.stderr = out                         # pythonw has no console: everything lands in the log
     faulthandler.enable(out)                              # a hard crash (Qt, a native library) still writes a trace
     sys.excepthook, threading.excepthook = told(name, log)
     os.environ["ROSTRUM_APP"] = app
-    os.environ["ROSTRUM_NOTICES"] = str(ROOT / "apps" / app / "notices.json")
-    os.environ.setdefault("ROSTRUM_SAMPLES", str(ROOT / "runtime" / "samples"))   # rostrum_core.samples' originals
-    main_py = ROOT / "apps" / app / "screen" / "main.py"
+    if (ROOT / "runtime").is_dir():                       # installed; a checkout keeps its own defaults
+        os.environ["ROSTRUM_NOTICES"] = str(ROOT / "apps" / app / "notices.json")
+        os.environ.setdefault("ROSTRUM_SAMPLES", str(ROOT / "runtime" / "samples"))   # rostrum_core.samples' originals
+    main_py = ROOT / APPS[app][2]
+    test_crash(os.environ.pop("ROSTRUM_TEST_CRASH", ""))
     code = 0
     try:
         sys.argv = [str(main_py), *doc_args(app, rest)]
@@ -195,6 +216,26 @@ def run(app: str, rest: list[str]) -> int:
     return code
 
 
+def test_crash(kind: str):
+    """ROSTRUM_TEST_CRASH=native|qt, for checks only: once the window shows, a hard crash, or Qt's "NOT supported"
+    lines followed by the app closing itself with exit code 0 (what the Start screen's New did on 2026-10-23)."""
+    if not kind:
+        return
+
+    def later():
+        from PySide6.QtCore import QMetaObject, Qt
+        from PySide6.QtGui import QGuiApplication
+        while not ((app := QGuiApplication.instance()) and any(w.isExposed() for w in app.topLevelWindows())):
+            time.sleep(0.2)
+        time.sleep(3)
+        if kind == "native":
+            faulthandler._sigsegv()                        # a real memory access fault, as a native library's
+        os.write(2, b"Object 0x0 destroyed while one of its QML signal handlers is in progress.\n"
+                    b"This behavior is NOT supported!\n")
+        QMetaObject.invokeMethod(app, "quit", Qt.QueuedConnection)
+    threading.Thread(target=later, daemon=True).start()
+
+
 def main():
     child = sys.argv[1:2] == ["--run"]
     args = sys.argv[2:] if child else sys.argv[1:]
@@ -203,7 +244,7 @@ def main():
         message("Rostrum", f"Say which app to open: rostrum.pyw 2d or rostrum.pyw sound (got {app!r}).")
         return 2
     name = APPS[app][0]
-    if not (ROOT / "apps" / app / "screen" / "main.py").is_file():
+    if not (ROOT / APPS[app][2]).is_file():
         message(name, f"{name} is not installed in {ROOT}. Run the Rostrum installer again and tick {name}.")
         return 2
     return run(app, args[1:]) if child else watch(app, name, args[1:])
