@@ -6,7 +6,7 @@
     add <menu value, e.g. mesh:sphere | light:distant | camera | material | shot> | duplicate | delete
     wait <ms> | snap <png path> (a screenshot now, the run goes on)
     rail <shapes|lights|camera> (opens that flyout) | page build|animate|render | materials | shots | view (open the
-    header's menus) | mouse <x> <y> (a click on the window) | renderstart | cancelrender (both don't wait)
+    header's menus) | picker (the selected item's material picker) | startfrom <start> | split (Make its own) | assign <material id> | mouse <x> <y> (a click on the window) | renderstart | cancelrender (both don't wait)
     render (Cycles, the playhead frame; waits for the job, up to 10 min) | closerender
   Viewport (screen state, never the document): orbit <dx> <dy> | pan <dx> <dy> | zoom <steps> | mode shot|free
     exposure <stops> | studio <amount> | lights on|off | home | click <x> <y> (viewport pixels: selects what is there)
@@ -82,7 +82,13 @@ def do_step(bridge, win, step):
         QMetaObject.invokeMethod(win, "openRailGroup", Q_ARG("QVariant", rest[0]))
     elif word == "page":
         bridge.setPage(rest[0])
-    elif word in ("materials", "shots", "view"):
+    elif word == "startfrom":
+        bridge.mats.startFrom(" ".join(rest))
+    elif word == "assign":
+        bridge.mats.assign(rest[0])
+    elif word == "split":
+        bridge.mats.split()
+    elif word in ("materials", "shots", "view", "picker"):
         QMetaObject.invokeMethod(win, "open" + word.capitalize())
     elif word == "mouse":
         QTest.qWait(400)                              # let the last step lay out

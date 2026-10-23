@@ -81,6 +81,12 @@ Rectangle {
             else if (m.modifiers & Qt.ControlModifier) backend.toggleInSelection(row.modelData.id)
             else if (m.modifiers & Qt.ShiftModifier) backend.selectRange(row.modelData.id)
             else backend.select(row.modelData.owner) } }
+        DropArea {  // a material dragged from the picker or the Materials list: this item gets it (the row lights while it hovers)
+            anchors.fill: parent; keys: ["rostrum-material"]; enabled: !row.field
+            onDropped: (d) => { backend.mats.dropOn(d.source.materialId, row.modelData.id); d.accept() }
+            Rectangle { anchors.fill: parent; radius: Theme.radiusCtl; color: "transparent"; visible: parent.containsDrag
+                        border.width: 1; border.color: Theme.accent }
+        }
         Item {  // the fold arrow (absent when there is nothing to fold)
             x: row.indent - 2; width: 14; height: parent.height
             visible: row.modelData.fold !== ""

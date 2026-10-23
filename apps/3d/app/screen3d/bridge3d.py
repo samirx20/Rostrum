@@ -24,6 +24,8 @@ from rostrum3d import fields as F
 from . import outline, route
 from .action_preview3d import ActionPreview3D
 from .adding import Adder
+from .material_balls import MaterialBalls
+from .materials import USERS, Materials3D
 from .render_job import RenderJob
 
 
@@ -65,6 +67,8 @@ class Bridge3D(ActionPreview3D, DocBridge):
         self.selectedItemsChanged.connect(self.outlineChanged)     # the scene list lights every selected row
         self._make_actions()                                # the settings panel's actions (Combine) and their hover preview
         self.viewport = viewport(self) if viewport else None
+        self.balls = MaterialBalls(self.viewport._r if self.viewport is not None else None)   # rendered preview balls
+        self._mats = Materials3D(self, self.balls)   # the picker, the chip, the inline rows
 
     # ---- what the viewport and QML read -----------------------------------------------------------------------
     def scene(self) -> dict:
@@ -165,6 +169,12 @@ class Bridge3D(ActionPreview3D, DocBridge):
     def adder(self):
         """The Add menu, Delete and Duplicate (adding.py)."""
         return self.add
+
+    mats = Property(QObject, lambda self: self._mats, constant=True)    # QML: backend.mats (materials.py)
+
+    def on_page(self, item):
+        """An item's material shows in its own Material row (MaterialRow.qml, the picker), not as a plain choice."""
+        return {"material"} if item.get("type") in USERS else set()
 
     @Property(QObject, constant=True)
     def renderJob(self):
