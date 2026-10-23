@@ -1,6 +1,6 @@
 # What RostrumSound is for
 
-*Draft for Sam to confirm (manager, 2026-10-23). When this and another doc disagree, this wins.*
+*Confirmed by Sam, 2026-10-23. When this and another doc disagree, this wins.*
 
 RostrumSound makes the sound of a video: its **music**, its **voice** and the few **real sounds** the picture needs,
 mixed and finished to the level of the reference films (Apple launch films, Fortiche, film-grade sound).
