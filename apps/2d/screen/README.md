@@ -321,7 +321,7 @@ Steps: `select`, `selectmany`, `act`, `nudge`, `tool move|pen|draw`, `time`, `se
 | Make things | `shape rect\|ellipse x0 y0 x1 y1`, `text <x> <y> <words>`, `textbox …`, `edittext <layer> <words>`, `pen …`, `draw …`, `add <type>` |
 | Settings | `set <field> <json>`, `scrub`, `animate <field>`, `find <text>`, `group <name>`, `reveal <field>` |
 | Time | `time <s>`, `play <s>`, `marker add\|move\|rename\|remove`, `bardrag`, `keydrag`, `event prev\|next` |
-| Look | `--shot <png>` (after the last step), `--lookcheck`; `--check-layout <folder>` runs every screen state |
+| Look | `--shot <png>` (after the last step), `--lookcheck`; `--check-layout <folder>` runs every screen state (`--quick`: the important ones at 1646×900, ~2 min) |
 
 A step that leaves an error in the status line fails the run.
 

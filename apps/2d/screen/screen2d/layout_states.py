@@ -1,7 +1,8 @@
 """Rostrum2D's screen states for the layout check (rostrum_gui/layout_run.py): the one workspace with each tool and
 timeline height, one and several selected, the open panels and menus,
 and the long-text cases (a long project name, a long layer name, many changes, a long status message).
-A state is (name, start args, steps). Add one whenever a screen or panel is added."""
+A state is (name, start args, steps). Add one whenever a screen or panel is added; name it in QUICK when it is one of
+the most important (the quick check runs those)."""
 from __future__ import annotations
 
 import tempfile
@@ -24,6 +25,12 @@ LONG_PAINT = 'paint_3 name "Line art for the summer launch film, cleaned up"'   
 TWELVE = ["select card"] + [f"set {'xy'[n % 2]} {500 + n}" for n in range(12)]   # 12 changes (x, y in turn: no merging)
 # What the check leaves out on purpose: the canvas' own handles are small drag targets on the picture by design.
 IGNORE = ()
+# The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen), in
+# about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
+QUICK = ("workspace", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
+         "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
+         "panels-folded", "animation-picked", "key-bar-spring", "brush-panel", "paint-layers", "fill-gradient-handles",
+         "sound-row", "rig-bones", "camera-ride", "scene-1080x1920", "long-status-line")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 
