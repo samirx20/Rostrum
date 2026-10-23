@@ -11,7 +11,7 @@ import math
 from functools import lru_cache
 
 from rostrum_core import marker_times
-from rostrum_sound import names, voice_lines
+from rostrum_sound import clean_clips, names, voice_lines
 from rostrum_sound.doc import keys as K
 from rostrum_sound.doc import media as mediafile
 from rostrum_sound.doc import markers as mk
@@ -53,7 +53,7 @@ def media(path: str) -> tuple[float, tuple[float, ...]]:
 
 def clip_span(c: dict, root: dict) -> tuple[float, float, tuple]:
     """(start, seconds, peaks) of a clip, as it plays."""
-    total, peaks = media(mediafile.file(c["media"]))
+    total, peaks = media(clean_clips.played_file(c))
     dur = timing.length_sec(c["length"], root, timing.sec(c["at"], root, c["id"])) if c.get("length") is not None else max(total - c.get("in", 0), 0)
     if total and peaks:
         a, b = c.get("in", 0) / total, min(1.0, (c.get("in", 0) + dur) / total)

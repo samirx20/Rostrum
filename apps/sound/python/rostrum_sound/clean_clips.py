@@ -34,6 +34,15 @@ def media_of(clip: dict, where: str) -> str:
     return made
 
 
+def played_file(clip: dict) -> str:
+    """The file a screen draws the clip from: the cleaned take when the clip plays one, else its own media (no error: a take
+    not made yet plays the original meanwhile, see without_pending). One source for what the clip plays and what it shows."""
+    path = media.file(clip["media"])
+    if cleanup.needs_cleanup(clip):
+        return cleanup.cached(path, cleanup.recipe_of(clip)) or path
+    return path
+
+
 def pending(doc) -> list[str]:
     """The ids of clips that need a cleaned take which is not made yet."""
     with media.of(doc):

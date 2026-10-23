@@ -11,7 +11,7 @@ import RostrumKit
 Panel {
     id: p
     Text { id: kind; text: songPanel.mainMix === "main" ? "Song · Main mix" : "Song"   // its name is the top bar's tab
-           color: songPanel.mainMix === "main" ? Theme.accent : Theme.fg; font.family: uiFont
+           color: Theme.fg; font.family: uiFont
            font.pixelSize: Theme.heading; font.weight: Font.DemiBold }
     Flickable {
         anchors { left: parent.left; right: parent.right; top: kind.bottom; bottom: parent.bottom; topMargin: Theme.gap }

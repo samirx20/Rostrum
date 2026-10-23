@@ -100,7 +100,7 @@ def routing(item: dict, buses: list[dict], label) -> dict:
     track, its sends (one per bus) and the buses it doesn't send to yet."""
     by_id = {b["id"]: b for b in buses}
     now = item.get("output", MASTER)
-    to = f"→ {label(by_id[now])} bus" if now in by_id else "→ Master"
+    to = f"→ {label(by_id[now])}" if now in by_id else "→ Master"
     choices = [{"id": MASTER, "label": "Master"}] + [
         {"id": b["id"], "label": label(b) + " bus"} for b in buses
         if b["id"] != item["id"] and not (item["type"] == "bus" and _feeds(by_id, b["id"], item["id"]))]

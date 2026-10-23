@@ -31,6 +31,7 @@ When a clip has a clean-up (see [recording.md](recording.md)), a **Before | Afte
 - Or hold **H** to hear the other side, and let go to come back.
 
 The switch is absent while a clip has no clean-up.
+The clip in the lane draws the sound it plays: the cleaned take while **Use cleaned take** is on (silent if the clean-up removed everything), the original otherwise.
 
 ## 4. Spoken lines: Speak again
 

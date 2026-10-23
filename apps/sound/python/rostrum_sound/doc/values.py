@@ -155,7 +155,11 @@ def volume(name, group, label="", help="", imp="primary") -> Value:
             if isinstance(db, bool) or not isinstance(db, (int, float)) or db > 20 * math.log10(4):
                 _bad(p, v, where, f"is out of range (at most +{20 * math.log10(4):.1f} dB)", ['{"db": -6}', '"-6 dB"', "gain 0 … 4"])
             v = round(10 ** (db / 20), 4)
-        return _number(p, v, where)
+        try:
+            return _number(p, v, where)
+        except RostrumError as e:
+            e.hint = e.hint or 'A bare number is gain 0 … 4; for decibels write {"db": -6} or "-6 dB".'
+            raise
     schema = {"anyOf": [{"type": "number", "minimum": 0, "maximum": 4}, {"type": "object", "properties": {"db": {"type": "number"}},
                                                                          "required": ["db"]}, {"type": "string", "pattern": _DB.pattern}]}
     return Value(name, "number", rule=rule, schema=schema, min=0, max=4, step=0.01, group=group, importance=imp, label=label,

@@ -24,7 +24,7 @@ Rectangle {
     Text {
         id: label; text: chip.text
         x: chip.row ? Theme.gap : (chip.width - width) / 2; anchors.verticalCenter: parent.verticalCenter
-        width: Math.min(implicitWidth, chip.width - Theme.gap * 2); elide: Text.ElideRight
+        width: Math.min(implicitWidth, chip.width - Theme.gap * 2); elide: chip.row ? Text.ElideMiddle : Text.ElideRight   // a row's name: both ends show (two groups differ at the end)
         color: chip.selected ? Theme.fg : chip.plus || chip.flat ? Theme.fg2 : Theme.fg
         font.family: uiFont; font.pixelSize: chip.plus ? Theme.title : Theme.label
     }

@@ -117,12 +117,12 @@ def register(tools: Tools):
             op = ops[args["name"]]
             return Reply(f"{op.name}: {op.summary}", {"operations": [op.schema()]})
         full = args.get("detail") == "full"
-        rows = [o.schema() if full else {"name": o.name, "summary": o.summary, "target": o.targets and list(o.targets)} for o in ops.values()]
+        rows = [o.schema() if full else {"name": o.name, "summary": o.summary, "target": o.shown_targets()} for o in ops.values()]
         return Reply(f"{len(ops)} operations: {', '.join(ops)}. Ask with name for one's arguments.", {"operations": rows})
 
     @tools.tool("inspect_guide", {"properties": {"topic": {"type": "string"}}})
     def inspect_guide(ctx, args):
-        """A how-to guide by topic. With no topic, the list of topics (also served as MCP resources rostrum://guide/<topic>)."""
+        """A how-to guide by topic; read 'start-here' first. With no topic, the list of topics (also served as MCP resources rostrum://guide/<topic>)."""
         g = ctx.app.guides
         if "topic" not in args:
             return Reply(f"{len(g.topics())} guides: {', '.join(g.topics())}.", {"topics": [{"topic": t, "title": g.title(t)} for t in g.topics()]})

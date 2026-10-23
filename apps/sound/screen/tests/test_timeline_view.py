@@ -42,3 +42,18 @@ def test_picture_is_a_field_and_a_missing_file_is_refused(bridge, tmp_path):  # 
     assert bridge.doc.data["picture"] == str(clip) and bridge.picture == str(clip)
     bridge.setPicture(str(tmp_path / "gone.mp4"))
     assert bridge.statusFailed and "is not a file" in bridge.status and bridge.picture == str(clip)
+
+
+def test_clip_draws_the_sound_it_plays(tmp_path, monkeypatch):
+    """A clip playing a cleaned take draws the take's waveform (silent here), not the original's; switched off, the original's."""
+    import numpy as np
+    import soundfile as sf
+    from rostrum_sound import cleanup
+    from screensound import timeline
+    orig, cleaned = tmp_path / "o.wav", tmp_path / "c.wav"
+    sf.write(orig, 0.5 * np.sin(np.arange(48000) / 5).astype("float32"), 48000)
+    sf.write(cleaned, np.zeros(48000, dtype="float32"), 48000)
+    monkeypatch.setattr(cleanup, "cached", lambda media, recipe: str(cleaned))
+    clip = {"id": "c1", "media": str(orig), "at": 0, "denoise": 0.6}
+    assert max(timeline.clip_span(clip, {"tempo": 120})[2]) == 0
+    assert max(timeline.clip_span({**clip, "useCleaned": False}, {"tempo": 120})[2]) > 0.9

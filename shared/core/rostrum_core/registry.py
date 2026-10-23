@@ -31,11 +31,15 @@ class Operation:
     def param(self, name) -> Param | None:
         return next((p for p in self.params if p.name == name), None)
 
+    def shown_targets(self) -> list | None:
+        """The targets as an agent writes them: the song / document itself is the id "root", not its item type "doc"."""
+        return [("root" if t == "doc" else t) for t in self.targets] if self.targets else None
+
     def schema(self) -> dict:
         props = {p.name: p.json_schema() for p in self.params}
         required = [p.name for p in self.params if p.required]
         return {"name": self.name, "summary": self.summary, "label": self.label,
-                "target": list(self.targets) if self.targets else None,
+                "target": self.shown_targets(),
                 "arguments": {"type": "object", "properties": props, "required": required,
                               "additionalProperties": False},
                 "params": [p.to_dict() for p in self.params],

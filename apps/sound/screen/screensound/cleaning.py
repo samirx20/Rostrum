@@ -194,6 +194,7 @@ class CleanedTake(QObject):
         else:
             for i in ids:
                 self._measure.forget(i)                   # a take was just made: measure it once
+            self.bridge._rebuild()                        # draw the cleaned take's waveform (the clip shows what it plays)
             self.bridge.transport.changed()               # play the cleaned take: render again
         self.changed.emit()
         self._check()
