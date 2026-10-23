@@ -10,7 +10,7 @@ import dataclasses
 from rostrum_core import RostrumError, codes
 from rostrum_core import edits as E
 
-from . import ops_music, tempo, times
+from . import media, ops_music, tempo, times
 from .shift import write_like
 
 BY = dataclasses.replace(ops_music.BY, required=False, group="Move", label="By",
@@ -61,7 +61,7 @@ def source_length(item: dict, root: dict) -> float:
 def file_seconds(item: dict) -> float:
     import soundfile as sf
     try:
-        return float(sf.info(str(item["media"])).duration)
+        return float(sf.info(media.file(item["media"])).duration)
     except Exception as e:  # noqa: BLE001 - libsndfile's errors are plain RuntimeErrors
         raise RostrumError(codes.BAD_ARGUMENT, item["id"], f'media {item["media"]!r}',
                            f"could not be read to find its length ({e})", hint="Set the clip's length first.") from None

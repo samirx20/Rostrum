@@ -128,6 +128,22 @@ def add_file(folder, kind: str, name: str, source) -> dict:
     return row
 
 
+def media_ref(folder, path) -> str:
+    """How a document stores the file `path`: relative to the project folder (forward slashes) when it lies inside
+    it, so the project can be copied or moved; else the path as given (a file the person keeps elsewhere)."""
+    try:
+        return Path(path).resolve().relative_to(Path(folder).resolve()).as_posix()
+    except (ValueError, OSError):
+        return str(path)
+
+
+def media_file(folder, value) -> Path:
+    """The file a stored reference (`media_ref`) points to: an absolute path as it is, a relative one under the
+    project folder (no folder: relative to the process, as a path always was)."""
+    p = Path(value)
+    return p if p.is_absolute() or folder is None else Path(folder) / p
+
+
 def change_file_item(folder, item_id: str, name: str | None) -> None:
     """Rename a kept file's item (`name`), or remove it (None): its row leaves project.json and its file goes with
     it. An id that is no kept file of this project is loud."""

@@ -244,6 +244,10 @@ Every answer is `{"id": …, "ok": true, "result": {…}}` or `{"id": …, "ok":
 
 Files: the mix and the stems are 32-bit float WAV at `sampleRate`, stereo. A stem is its track as it reaches the master (after its effects, fader and ducks), then through the master's linear gain only (master fader and its lane, fades, the gain to the loudness target — computed once, in `mix/bus.rs`, and used by the mix and the stems alike), before master effects, glue and limiter. So the stems add up to the mix wherever those did not act. The render answer carries `master`: `{gainDb, glueMaxReductionDb, limiterMaxReductionDb, insertsOnMix}` (dB; `insertsOnMix`: master effects, reverb or time warps exist) so the hand-off manifest can say how far they differ. Meters are measured on the same signal.
 
+### Live meters: `<out>.levels.json` and `rostrum-sound play` (added 2026-10-23, H62)
+
+Every `render` also writes `<out stem>.levels.json` beside the mix: each track's, each bus' and the master's peak and RMS per 1/30 s window, measured on the same signals as the answer's meters (a track or bus as it reaches the master, the master as the file holds it), in the file's time. `{"contract": "rostrum-sound-levels/1", "mix": {"bytes", "modified"}, "hop": 0.0333, "strips": {"<track id>" | "<bus id>" | "master": [peak, rms, peak, rms, …]}}`, values in tenths of a dB (−1200 = silence). `mix` is the WAV's size and modified time when it was written: a levels file for another render of the same name is refused. `rostrum-sound play <mix.wav>` (the live transport, `engine/src/live/play.rs`) reads it for the file it plays and for every `{"load"}`, and while the mix rolls prints `{"levels": {"t": <mix seconds at the speaker>, "strips": {"<id>": [peakDb, rmsDb], …, "master": [peakDb, rmsDb]}}}` about 30 times a second (each strip's loudest window since the previous line, so no peak is skipped), and `{"levels": null}` once when it stops. Without a levels file it prints one `{"error": "meters: …"}` line and no levels: they are never guessed.
+
 ## 4. How far this version goes (2026-10-21)
 
 - Done: everything above.

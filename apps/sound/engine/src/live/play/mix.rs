@@ -8,6 +8,7 @@ use crate::bed::Layout;
 use crate::live::frames::{self, Frames};
 use crate::fx::master::MasterSpec;
 use crate::live::monitor::{self, Device, Monitor};
+use crate::mix::render::levels::Levels;
 
 /// A mix as read: stereo, ready to play; or a surround bed for the monitor to place.
 pub enum Mix {
@@ -15,24 +16,26 @@ pub enum Mix {
     Bed(Vec<Vec<f32>>, Layout),
 }
 
-/// The mix in a file (and its rate). A stereo WAV is read as it always was (sfz.rs), so what plays is
-/// sample for sample what played before surround monitoring.
-pub fn read(path: &str) -> Result<(Mix, f64), String> {
+/// The mix in a file, its rate, and its strips' live meters (levels.rs: the render's own, or why there are none).
+/// A stereo WAV is read as it always was (sfz.rs), so what plays is sample for sample what played before surround monitoring.
+pub fn read(path: &str) -> Result<(Mix, f64, Result<Levels, String>), String> {
     if path.ends_with(".json") {
         let s = crate::mix::schedule::Schedule::parse(&std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?)?;
         let m = crate::mix::render::render(&s)?;
         let chs = m.channels()?;
+        let levels = Ok(Levels::of(&m, s.sample_rate as f64, s.range.map_or(0, |r| r.0)));
         let mix = if m.layout == Layout::Stereo { Mix::Stereo(Frames::from_channels(&chs, 0x3)) } else { Mix::Bed(chs, m.layout) };
-        return Ok((mix, s.sample_rate as f64));
+        return Ok((mix, s.sample_rate as f64, levels));
     }
+    let levels = Levels::beside(std::path::Path::new(path));
     if let Ok((chs, sr)) = crate::mix::wavio::read(path) {
         if chs.len() > 2 {
             let layout = Layout::of_channels(chs.len()).map_err(|e| format!("{path}: {e}"))?;
-            return Ok((Mix::Bed(chs, layout), sr));
+            return Ok((Mix::Bed(chs, layout), sr, levels));
         }
     }
     let s = crate::instruments::sfz::read_wav(std::path::Path::new(path))?;
-    Ok((Mix::Stereo(Frames::stereo(&s.frames)), s.rate))
+    Ok((Mix::Stereo(Frames::stereo(&s.frames)), s.rate, levels))
 }
 
 /// How a session monitors: asked (`--monitor`), the mastering spec its folds are held to (`--master`),
@@ -117,7 +120,7 @@ mod tests {
         // Before surround monitoring: sfz::read_wav, then the transport's stereo resample.
         let old = crate::instruments::sfz::read_wav(&file).unwrap();
         let before = Frames::stereo(&crate::live::transport::resample(&old.frames, old.rate, 48000.0));
-        let (mix, from) = read(&path).unwrap();
+        let (mix, from, _) = read(&path).unwrap();
         let m = Monitoring { asked: None, master: None, chosen: Mutex::new(None) };
         for dev in [Device { rate: 48000, channels: 2, mask: 0x3, form_factor: 3, name: "headphones".into() }, Device { rate: 48000, channels: 6, mask: 0x3F, form_factor: 1, name: "5.1".into() }] {
             assert_eq!(m.first(&mix, from, &dev).unwrap(), before, "{}", dev.name);

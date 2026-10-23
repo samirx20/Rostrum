@@ -5,14 +5,15 @@ take (`cleanup/`). `compile.py` plays `media_of(clip)`, which fails loudly where
 `make_clips` makes the missing takes, one clip at a time (each step's model loads for it and is released), for
 the `render_cleanup` tool and the screen.
 
-A clip's `media` is used as written, the way the engine opens it (an absolute path, or one relative to the
-process's folder): the cleaned take is found by the file's content, so either form finds the same take.
+A clip's `media` is resolved by `doc/media.py` (relative: under the project folder; absolute: as written); a missing file
+is a loud error naming the clip, its track and the file. The cleaned take is found by the file's content, so either form finds the same take.
 """
 from __future__ import annotations
 
 from rostrum_core import RostrumError, codes
 
 from . import cleanup
+from .doc import media
 
 HINT = ("On the Timeline: select the clip and press Make cleaned take, or turn its Use cleaned take off. "
         "Agents: run the render_cleanup tool (or rostrum_sound.cleanup.make), or set useCleaned false.")
@@ -20,9 +21,13 @@ HINT = ("On the Timeline: select the clip and press Make cleaned take, or turn i
 
 def media_of(clip: dict, where: str) -> str:
     """The file the clip plays: its cleaned take while it needs one, else its own media."""
+    path = media.file(clip["media"])
+    if not media.exists(path):
+        raise RostrumError(codes.NOT_FOUND, where, f'clip "{clip["id"]}"\'s file {clip["media"]}', "is missing",
+                           hint="Put the file back (a take is in the project's media folder), or swap the clip's sound (clip.swap).")
     if not cleanup.needs_cleanup(clip):
-        return clip["media"]
-    made = cleanup.cached(clip["media"], cleanup.recipe_of(clip))
+        return path
+    made = cleanup.cached(path, cleanup.recipe_of(clip))
     if made is None:
         raise RostrumError(codes.NOT_FOUND, where, f'clip "{clip["id"]}"\'s cleaned take', "is not made yet",
                            hint=HINT)
@@ -31,7 +36,8 @@ def media_of(clip: dict, where: str) -> str:
 
 def pending(doc) -> list[str]:
     """The ids of clips that need a cleaned take which is not made yet."""
-    return [c["id"] for _, c in clips(doc) if cleanup.cached(c["media"], cleanup.recipe_of(c)) is None]
+    with media.of(doc):
+        return [c["id"] for _, c in clips(doc) if cleanup.cached(media.file(c["media"]), cleanup.recipe_of(c)) is None]
 
 
 def without_pending(doc):
@@ -74,14 +80,15 @@ def make_clips(doc, ids=None, progress=None) -> list[dict]:
     """Make every missing cleaned take (of all clips that play one, or the given ids); one answer per clip, in
     document order: id, track, media (the original), file (the cleaned take), generated, steps."""
     out = []
-    for t, c in clips(doc, ids):
-        if progress:
-            progress(f'{c["id"]}: {c["media"]}')
-        try:
-            r = cleanup.make(c["media"], cleanup.recipe_of(c),
-                             progress=(lambda note, i=c["id"]: progress(f"{i}: {note}")) if progress else None)
-        except RostrumError as e:
-            raise RostrumError(e.code, f"clip {c['id']}", e.subject, e.problem, hint=e.hint) from e
-        out.append({"id": c["id"], "track": t["id"], "media": c["media"], "file": r.file, "generated": r.generated,
-                    "steps": r.steps})
+    with media.of(doc):
+        for t, c in clips(doc, ids):
+            if progress:
+                progress(f'{c["id"]}: {c["media"]}')
+            try:
+                r = cleanup.make(media.file(c["media"]), cleanup.recipe_of(c),
+                                 progress=(lambda note, i=c["id"]: progress(f"{i}: {note}")) if progress else None)
+            except RostrumError as e:
+                raise RostrumError(e.code, f"clip {c['id']}", e.subject, e.problem, hint=e.hint) from e
+            out.append({"id": c["id"], "track": t["id"], "media": c["media"], "file": r.file, "generated": r.generated,
+                        "steps": r.steps})
     return out

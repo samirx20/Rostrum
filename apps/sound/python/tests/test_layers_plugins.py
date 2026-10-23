@@ -34,7 +34,8 @@ def test_a_layer_moves_and_levels_together_in_one_undo_step():
     assert doc.item(thud)["at"] == 2.0 and doc.item(creak)["at"] == "#hit+0.5" and doc.item(creak)["volume"] == 0.5
 
 
-def test_compile_writes_stretch_shift_and_plugins_as_the_contract():
+def test_compile_writes_stretch_shift_and_plugins_as_the_contract(monkeypatch):
+    monkeypatch.setattr("rostrum_sound.doc.media.exists", lambda path: True)      # the contract only; no real files here
     doc = _doc()
     clip = doc.item("door")["clips"][0]["id"]
     doc.apply({"op": "clip.set", "target": [clip], "args": {"stretch": 2, "shift": -3}}, Who.person())

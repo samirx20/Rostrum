@@ -5,7 +5,10 @@
 //!   {"on": 60, "velocity": 0.8} {"off": 60} {"load": "<new mix.wav>"} {"quit": true}
 //! Out on stdout, one JSON object per line: {"ready": …}, {"pos": {t, playing}} every 50 ms while it
 //! changes (the mix time at the speaker), {"rolling": t}, {"wrapped": t}, {"end": t}, {"note": {key,
-//! velocity, start, end}} (recorded, in mix seconds), {"input": {peakDb}} every 100 ms with --mic (the input level), {"take": {file, start, seconds, rate, peakDb}}
+//! velocity, start, end}} (recorded, in mix seconds), {"levels": {t, strips: {<track | bus id | "master">: [peakDb,
+//! rmsDb]}}} ~30 times a second while rolling (each strip's loudest 1/30 s window since the last line, at the speaker's
+//! mix time, read from the render's `<mix>.levels.json`: mix/render/levels.rs) and {"levels": null} once when it stops,
+//! (no levels file beside the mix, or one for another render: one {"error": "meters: …"} line, and no levels), {"input": {peakDb}} every 100 ms with --mic (the input level), {"take": {file, start, seconds, rate, peakDb}}
 //! (a microphone take, one per pass), {"heard": …} per played note, {"error": …}, and {"done": …}.
 //! Options: --shared, --midi <n>, --instrument <live.json>, --mic <takes dir>, --bpm <b>, --beats <n>,
 //! --beat-times <file.json> (the beats in seconds, when the tempo changes: the metronome follows them),
@@ -22,6 +25,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 pub mod mix;
+mod meters;
 mod protocol;
 mod takes;
 
@@ -31,6 +35,7 @@ use crate::live::transport::{Clock, Cmd, Out, Transport};
 use crate::live::midi;
 use crate::live::record;
 use crate::live::wasapi;
+use meters::Meters;
 use protocol::{arg, Msg};
 use takes::{Calibrating, Takes};
 
@@ -42,7 +47,8 @@ fn json_file<T: serde::de::DeserializeOwned>(args: &[String], name: &str) -> Res
 }
 
 pub fn run(args: &[String]) -> Result<(), String> {
-    let (mix, mix_rate) = crate::live::play::mix::read(&args[1])?;
+    let (mix, mix_rate, levels) = crate::live::play::mix::read(&args[1])?;
+    let mut meters = Meters::new(levels);
     let monitoring = Monitoring::from_args(args)?;
     let flag = |n: &str| args.iter().any(|a| a == n);
     let mut spec: Option<LiveSpec> = json_file(args, "--instrument")?;
@@ -134,6 +140,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     println!("{}", serde_json::json!({ "error": "hear: no microphone is open (start play with --mic <takes folder>)" }));
                 }
             }
+            Ok(Msg::Load(c, levels)) => {
+                meters = Meters::new(levels);
+                let _ = ctx.send(c);
+            }
             Ok(Msg::Cmd(c)) => {
                 if let Cmd::Record(r) = &c {
                     armed = *r;
@@ -194,6 +204,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 last_pos = t;
             }
         }
+        meters.show(clock.mix_at(wasapi::now()));
         if audio.is_finished() {
             break;
         }

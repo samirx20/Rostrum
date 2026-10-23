@@ -16,6 +16,7 @@ import dataclasses
 from rostrum_core import Param, codes
 
 from . import fields as FD
+from . import media as media_of
 from . import values as V
 from .registry import REGISTRY
 from .select_time import clip_length, file_seconds, length_like, source_length, speed, start_of
@@ -70,10 +71,10 @@ def swap(ctx, targets, args):
             ctx.set(t, "volume", c["volume"])
         if args.get("match", True) and c.get("media"):
             try:
-                was = _loudness(c["media"], float(c.get("in", 0)), min(clip_length(c, root) * speed(c), file_seconds(c)))
+                was = _loudness(media_of.file(c["media"]), float(c.get("in", 0)), min(clip_length(c, root) * speed(c), file_seconds(c)))
             except Exception:  # noqa: BLE001  (an unreadable old file: nothing to match)
                 was = None
-            now = _loudness(media, start, source)
+            now = _loudness(media_of.file(media), start, source)
             if was is not None and now is not None:
                 ctx.set(t, "volume", round(min(4.0, float(c.get("volume", 1)) * 10 ** ((was - now) / 20)), 4))
         ctx.set(t, "media", media)
