@@ -9,7 +9,7 @@ pub const SPACES: &[&str] = &["dry", "room", "hall", "cathedral", "shimmer", "fr
 /// EQ band shapes (fx/eq.rs biquad).
 pub const EQ_SHAPES: &[&str] = &["lowshelf", "highshelf", "peak", "lowpass", "highpass", "notch"];
 /// Synthesized instruments (instruments/voices/tones.rs).
-pub const BUILT_INS: &[&str] = &["feltPiano", "grandPiano", "warmPad", "analogStrings", "spiccatoStrings", "choirPad", "cinematicBrass", "subBass", "shepardRiser", "glassMarimba"];
+pub const BUILT_INS: &[&str] = &["feltPiano", "grandPiano", "warmPad", "analogStrings", "spiccatoStrings", "choirPad", "cinematicBrass", "subBass", "glassMarimba"];
 /// The synthesized drum kit (instruments/voices/tones.rs drum voices).
 pub const SYNTH_DRUMS: &[&str] = &["kick", "snare", "clap", "hat", "openHat", "cymbal", "tom", "rim"];
 /// General MIDI percussion keys an SFZ kit on GM keys answers to.

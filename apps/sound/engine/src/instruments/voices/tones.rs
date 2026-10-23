@@ -9,7 +9,7 @@ fn warm_saw(p: f64) -> f64 {
 }
 
 #[derive(Clone, Copy, PartialEq)]
-pub(super) enum Inst { FeltPiano, GrandPiano, WarmPad, AnalogStrings, Spiccato, Choir, Brass, SubBass, Shepard, Marimba, Pluck }
+pub(super) enum Inst { FeltPiano, GrandPiano, WarmPad, AnalogStrings, Spiccato, Choir, Brass, SubBass, Marimba, Pluck }
 
 impl Inst {
     pub(super) fn parse(name: &str) -> Inst {
@@ -22,7 +22,6 @@ impl Inst {
             "choirPad" => Inst::Choir,
             "cinematicBrass" => Inst::Brass,
             "subBass" => Inst::SubBass,
-            "shepardRiser" => Inst::Shepard,
             "glassMarimba" => Inst::Marimba,
             _ => Inst::Pluck,
         }
@@ -127,14 +126,6 @@ impl Voice {
                 self.advance(sr, [1.0, 2.0, 0.0], f);
                 let s = ((self.p[0].sin() * 0.88 + self.p[1].sin() * 0.22 * (-t * 3.5).exp()) * 1.35).tanh() * att * rel;
                 (s, s, 190.0, 0.9)
-            }
-            Inst::Shepard => {
-                let u = (t / dur.max(0.25)).min(1.0);
-                let sweep = 2f64.powf(u);
-                self.advance(sr, [0.5 * sweep, sweep, 2.0 * sweep], f);
-                let env = (PI * (u * 0.98).min(1.0)).sin() * u.powf(0.4);
-                let s = (warm_saw(self.p[0]) * 0.45 + warm_saw(self.p[1]) * 0.4 + self.p[2].sin() * (1.0 - u) * 0.2) * env;
-                (s, s, 280.0 + 1900.0 * u.powf(1.4), 0.68)
             }
             Inst::Marimba => {
                 let env = (1.0 - (-t * 240.0).exp()) * (-t * 6.0).exp();

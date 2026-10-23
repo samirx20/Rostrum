@@ -101,7 +101,7 @@ Panel {
                 IconButton { glyph: "▶"; kind: "ghost"; tip: "Hear it"; onClicked: p.pick(row.index) }
             }
             Column {
-                anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: Theme.gap; rightMargin: Theme.gap + (hear.visible ? hear.width : 0) }
+                anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: 5; leftMargin: Theme.gap; rightMargin: Theme.gap + (hear.visible ? hear.width : 0) }   // names on one line down the list, with or without a note
                 spacing: 2
                 NameLabel { width: parent.width; text: row.modelData.label }
                 Text { id: noteText; visible: row.modelData.note !== ""; width: parent.width; text: row.modelData.note

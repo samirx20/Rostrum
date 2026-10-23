@@ -41,7 +41,7 @@ Rectangle {
     }
     NameLabel {
         id: nameText
-        x: arrow.x + arrow.width + 2; width: (count.visible ? count.x : autoChip.visible ? autoChip.x : toggles.x) - x - Theme.gap; anchors.verticalCenter: parent.verticalCenter
+        x: arrow.x + arrow.width + 2; width: (count.visible ? count.x : autoChip.visible ? autoChip.x : toggles.x) - x - Theme.grid; anchors.verticalCenter: parent.verticalCenter
         text: h.track.name; font.pixelSize: Theme.label; font.weight: Font.DemiBold
         color: h.track.mute ? Theme.fg3 : Theme.fg
     }

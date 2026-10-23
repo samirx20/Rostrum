@@ -34,6 +34,10 @@ def problem(value, length=False, tied=False) -> str | None:
         return None if value >= 0 else "can't be negative"
     key = "beats" if length else "beat"
     if isinstance(value, dict):
+        other = "beat" if length else "beats"
+        if other in value and key not in value:
+            return (f'uses "{other}": a {"length" if length else "time"} in beats is {{"{key}": n}} '
+                    f'({"a time takes singular" if not length else "a length takes plural"} "{key}")')
         n = value.get(key)
         if set(value) != {key} or isinstance(n, bool) or not isinstance(n, (int, float)) or n < 0:
             return f'must be {{"{key}": n}} with n ≥ 0'

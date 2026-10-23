@@ -10,7 +10,8 @@ Item {
     property real preferred: 380
     property real room: 1000
     readonly property string tool: workspace.dock
-    readonly property real want: tool === "" ? 0 : (workspace.heights[tool] || preferred + (tool === "mixer" ? 60 : 0))   // the Mixer: fader travel first
+    readonly property real want: tool === "" ? 0 : (workspace.heights[tool] || (tool === "editor" ? Math.max(preferred, Math.round(room * 0.72))   // the Editor: tall enough to frame a whole part
+                                                                : preferred + 60))   // the Mixer: fader travel first
     height: tool === "" ? tabs.height : Math.max(tabs.height + 120, Math.min(room, want))
     Behavior on height { enabled: !edge.pressed; NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
 

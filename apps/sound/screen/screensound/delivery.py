@@ -92,5 +92,9 @@ def verdict(master: dict, render: dict, fields=ALL) -> dict:
     if problems:
         return {"ok": False, "text": f"Miss: {' and '.join(problems)} ({measured})"}
     if "loudness" not in fields:                       # only the ceiling applies: no target to pass
+        if abs(off) > LUFS_TOLERANCE:                  # the top bar still measures against the goal: say where it stands
+            return {"ok": False, "text": f"Loudest peak is under the limit, but the mix is {abs(off):.1f} LU too "
+                                         f"{'loud' if off > 0 else 'quiet'} for the {_n(goal)} LUFS target; pick a target "
+                                         f"above to bring it there ({measured})"}
         return {"ok": True, "text": f"Loudest peak is under the limit ({measured})"}
     return {"ok": True, "text": f"Pass: {measured}"}

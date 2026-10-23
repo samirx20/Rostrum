@@ -35,7 +35,7 @@ Change one step at a time. Each step is cached on its own, so changing `dereverb
 
 - **Agent:** `render_cleanup` (optional `ids`), then `look_cleanup` with `clip` = the clip id: before / after numbers
   and spectrograms on one colour scale. A bigger gap between floor and speech = cleaner; a bigger reverb-tail fall = drier.
-- **Screen:** click the clip, then **Clean up…** at the top of the settings panel: the **Cleanup** group opens with the presets **Dialogue only**, **Less noise** and **Less echo**. "Make cleaned take" appears under the settings panel while the clip has a step and no take yet; until it is made, the song keeps playing and the clip plays its original. Switch
+- **Screen:** click the clip, then **Clean up…** at the top of the settings panel: the **Cleanup** group opens and shows its three controls once: **Dialogue only**, **Less noise** and **Less echo** (no second copy of them elsewhere). "Make cleaned take" appears under the settings panel while the clip has a step and no take yet; until it is made, the song keeps playing and the clip plays its original. Switch
   **Use cleaned take** off and on to compare by ear.
 
 Numbers can say the noise went down; only listening says whether the voice still sounds like the person. Watch for

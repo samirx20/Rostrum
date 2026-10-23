@@ -77,13 +77,31 @@ Panel {
     VelocityStrip {   // one bar per note or hit; drag a bar, or draw a line across (DESIGN.md §3.3d)
         id: strip
         visible: bars.visible && (p.kind === "notes" || p.kind === "drums")
-        anchors { left: parent.left; right: parent.right; bottom: played.visible ? played.top : parent.bottom
-                  bottomMargin: played.visible ? Theme.grid : 0 }
+        anchors { left: parent.left; right: parent.right; bottom: played.visible ? played.top : laneFold.visible ? laneFold.top : parent.bottom
+                  bottomMargin: played.visible || laneFold.visible ? Theme.grid : 0 }
         roll: p.roll; ruler: bars; keysWidth: p.keysWidth
+    }
+    // The playing lane (sustain, expression, bend) stays folded while the track has none of them: a one-line "›" opens it.
+    readonly property bool laneUsed: !!p.roll.played && p.roll.played.choices.some(c => c.used)
+    property bool lanesOpen: false
+    readonly property string laneTrack: p.roll.id + "/" + p.kind
+    onLaneTrackChanged: lanesOpen = false
+    Item {
+        id: laneFold
+        visible: strip.visible && !!p.roll.played && !strip.folded && !played.visible
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+        height: 18
+        Chevron { id: laneChev; x: 4; anchors.verticalCenter: parent.verticalCenter; rotation: -90
+                  color: laneHover.hovered ? Theme.fg : Theme.fg3 }
+        Text { anchors { left: laneChev.right; leftMargin: Theme.grid + 2; verticalCenter: parent.verticalCenter }
+               text: "Sustain · Expression · Bend"; color: laneHover.hovered ? Theme.fg : Theme.fg3
+               font.family: uiFont; font.pixelSize: Theme.label }
+        HoverHandler { id: laneHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: p.lanesOpen = true }
     }
     AutomationLane {   // the playing lane under the velocity strip: sustain pedal, expression, pitch bend (folds with it)
         id: played
-        visible: strip.visible && !!p.roll.played && !strip.folded
+        visible: strip.visible && !!p.roll.played && !strip.folded && (p.lanesOpen || p.laneUsed)
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         height: 64; inEditor: true; plotX: p.keysWidth; ruler: bars
         row: ({ id: p.roll.id, hue: p.roll.hue, auto: p.roll.played })

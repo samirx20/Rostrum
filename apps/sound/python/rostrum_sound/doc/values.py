@@ -28,14 +28,14 @@ PITCH_ONE = {"anyOf": [{"type": "string", "pattern": NOTE.pattern}, {"type": "in
                                                                     "maximum": 127}]}
 
 
-def _bad(p, value, where, problem, accepted=()):
-    raise RostrumError(codes.BAD_ARGUMENT, where, f"{p.name}={value!r}", problem, accepted)
+def _bad(p, value, where, problem, accepted=(), hint=None):
+    raise RostrumError(codes.BAD_ARGUMENT, where, f"{p.name}={value!r}", problem, accepted, hint)
 
 
 def _described(p, schema):
     schema = dict(schema)
     base = Param.json_schema(p)
-    schema["description"] = base["description"]
+    schema["description"] = (base["description"] + " " + p.hint).strip() if getattr(p, "hint", "") else base["description"]
     return schema
 
 
@@ -46,6 +46,7 @@ class Value(Param):
     rule: Callable | None = None
     schema: dict | None = None
     form: str = ""
+    hint: str = ""        # said in the tool description after the help: the unit and the spelling an agent can't guess
 
     def check(self, value, where):
         return self.rule(self, value, where)
@@ -57,7 +58,7 @@ class Value(Param):
 def _time(p, v, where, length=False, tied=False):
     why = times.problem(v, length, tied)
     if why:
-        _bad(p, v, where, why, times.forms(length, tied))
+        _bad(p, v, where, why, times.forms(length, tied), LENGTH_HINT if length else TIME_HINT)
     return v
 
 
@@ -97,14 +98,21 @@ def _env(p, v, where):
     return [list(pt) for pt in v]
 
 
+TIME_HINT = ('A time: a bare number is SECONDS from the start (4 = 4 s, never bar 4); beats are {"beat": 8} (singular '
+             '"beat": beats from the start, 0 = the first beat); "#drop" or "#drop+0.5" is a marker.')
+LENGTH_HINT = ('A length: a bare number is SECONDS; beats are {"beats": 2} (plural "beats", unlike the time key '
+               '"beat"). On a note, {"to": time} or "next" tie it.')
+
+
 def time(name, **kw) -> Value:
-    return Value(name, "number", rule=_time, schema=TIME_SCHEMA, unit="s", step=0.01, form="time", **kw)
+    return Value(name, "number", rule=_time, schema=TIME_SCHEMA, unit="s", step=0.01, form="time", hint=TIME_HINT, **kw)
 
 
 def length(name, tied=False, **kw) -> Value:
     """A length; `tied` (a note's) may also end on a time (`{"to": "#land"}`) or hold to the next note (`"next"`)."""
     return Value(name, "number", rule=lambda p, v, w: _time(p, v, w, True, tied),
-                 schema=TIED_SCHEMA if tied else LENGTH_SCHEMA, unit="s", step=0.01, form="length", **kw)
+                 schema=TIED_SCHEMA if tied else LENGTH_SCHEMA, unit="s", step=0.01, form="length",
+                 hint=LENGTH_HINT, **kw)
 
 
 def pitch(name, **kw) -> Value:
@@ -131,6 +139,27 @@ def N(name, lo, hi, group, unit="", imp="primary", when=None, integer=False, def
     return Param.number(name, min=lo, max=hi, step=step(lo, hi, unit, integer), group=group, unit=unit,
                         importance=imp, valid_when=when, integer=integer, default=default, label=label, help=help,
                         display=display)     # how screens show it: "db", "pan", "percent" (the kit's ValueKinds.js)
+
+
+VOLUME_HINT = ('Level: a bare number is GAIN 0 … 4 (1 = 0 dB, 0.5 = -6 dB, 2 = +6 dB); in dB write {"db": -6} or "-6 dB" '
+               '(the screen shows dB).')
+_DB = re.compile(r"^\s*(-?\d+(?:\.\d+)?)\s*dB\s*$", re.I)
+
+
+def volume(name, group, label="", help="", imp="primary") -> Value:
+    """A fader level, stored as gain 0 … 4 and shown in dB on screen. Agents may also give dB (`{"db": -6}`, `"-6 dB"`):
+    turned into the stored gain here, the one place, for every volume field."""
+    def rule(p, v, where):
+        db = v["db"] if isinstance(v, dict) and set(v) == {"db"} else (float(m[1]) if isinstance(v, str) and (m := _DB.match(v)) else None)
+        if db is not None:
+            if isinstance(db, bool) or not isinstance(db, (int, float)) or db > 20 * math.log10(4):
+                _bad(p, v, where, f"is out of range (at most +{20 * math.log10(4):.1f} dB)", ['{"db": -6}', '"-6 dB"', "gain 0 … 4"])
+            v = round(10 ** (db / 20), 4)
+        return _number(p, v, where)
+    schema = {"anyOf": [{"type": "number", "minimum": 0, "maximum": 4}, {"type": "object", "properties": {"db": {"type": "number"}},
+                                                                         "required": ["db"]}, {"type": "string", "pattern": _DB.pattern}]}
+    return Value(name, "number", rule=rule, schema=schema, min=0, max=4, step=0.01, group=group, importance=imp, label=label,
+                 help=help, display="db", hint=VOLUME_HINT)
 
 
 def env(name, lo, hi, **kw) -> Value:

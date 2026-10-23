@@ -6,7 +6,8 @@ For a person using the RostrumSound app: turn your song into sound files you can
 
 - **Export** in the top bar, **≡ › Export…**, or **Ctrl+E**. It appears once the song makes a sound.
 - The sheet (titled **Make the file**; its button says **Export**) opens on the right, in the settings panel's place, so the song stays in sight. × or Ctrl+E
-  closes it.
+  closes it. It reads top to bottom like a bounce dialog: the **range** first (only when the song has a time range or sections), then **what for**, the file type, **More**, and the folder with its file name just above **Export**.
+  The chosen target is marked with a check and a bar. A long folder path is shortened in the middle (the whole path on hover).
 - **Ctrl+Shift+E** exports again with the last settings, without opening the sheet.
 
 ## 1. What for
@@ -70,14 +71,14 @@ A new song starts with the rate set in Preferences. MP3 offers only 44.1 and 48 
   end is not cut for a range. Agents: `render_mix` with `from` and `to` (seconds, a beat or a marker).
 - **+ Another version** adds a row with its own target, file type and quality (for example Streaming WAV and a
   Podcast MP3 from one click). Each row has its own line: how far up or down the sound that plays now will be turned
-  to reach it, and whether the loudest peak stays under the limit. **Export** makes every row, each in its own
+  to reach it, and whether the loudest peak stays under the limit (when Normalize is off the line also says plainly how far the mix is from the song's loudness target, in amber, never a green tick). **Export** makes every row, each in its own
   numbered folder. A version's target does not change the song's own target. Stems come with the first version only.
   Agents: one `render_mix` per version.
 
 ## 6. Export
 
 1. Click **Export**. It says **Exporting…** and works in the background; you can keep working.
-2. When done, the sheet says "Exported · Version 3 · …". Click **Show in folder** to open it.
+2. When done, the sheet says "Exported · Play · Show in folder" (once; the top bar says it only while the sheet is closed). Click **Show in folder** to open it.
 3. If something went wrong, the sheet says so in red, in one sentence.
 
 ## What files appear
