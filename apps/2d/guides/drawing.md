@@ -33,7 +33,9 @@ bar's own **⋯** button; Size and the colour always stay.
 2. **Mode**: how the stroke meets what is already there (multiply darkens like a glaze, screen and add light it up).
    It is not shown while the eraser is on: an eraser only takes paint away.
 3. Under **Pen**, **Pressure → size** and **Pressure → opacity** say how much a pressure-sensitive pen changes
-   the stroke. A mouse has no pressure.
+   the stroke. A mouse has no pressure. **Steadiness** makes the line trail the pen and smooths a shaky hand; the ink
+   brushes start with some and show it beside the pressure rows. With a pen that tilts connected, **Tilt → angle**
+   and **Tilt → size** appear: the tip turns the way the pen leans and widens as you lay it on its side.
 4. **More** opens the rest (spacing, scatter, paper grain, colour drift, wet paint). Only the settings that apply to
    the tip you chose are shown.
 

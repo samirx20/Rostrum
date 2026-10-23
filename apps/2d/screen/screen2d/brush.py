@@ -16,7 +16,9 @@ from rostrum_paint.fields import BAR_VALUE, BRUSH
 from . import brush_presets
 
 
-QUICK = ("size", "opacity", "color", "size_pressure", "opacity_pressure")   # the quick rows, in this order
+QUICK = ("size", "opacity", "color", "steady", "size_pressure", "opacity_pressure")   # the quick rows, in this order
+STEADY_GROUPS = ("Ink",)       # Steadiness is a quick row only on these presets' brushes (clean lines)
+TILT = {"tilt_angle", "tilt_size"}     # shown only while a tilting pen is connected (pen_tilt.py)
 LIGHT_INK = "#f2f2f2"          # the starting colour on a dark background (a light one keeps the setting's own default)
 
 
@@ -41,7 +43,7 @@ class Brush:
         self.values = {p.name: p.default for p in params}
         if "color" in self.values and background:
             self.values["color"] = starting_colour(background, self.values["color"])
-        self.preset, self.editing = "", False
+        self.preset, self.editing, self.tilt_pen = "", False, False
         self.apply_preset(brush_presets.DEFAULT)
 
     def _evaluated(self) -> list[dict]:
@@ -59,9 +61,12 @@ class Brush:
                 bar_value = BAR_VALUE[r["id"]]
                 r["options"] = [o for o in r["options"] if o["value"] != bar_value]
                 r["valid"] = r["valid"] and r["value"] != bar_value
+        if not self.tilt_pen:
+            out = rows.omit(out, TILT)
         if self.editing:
             return rows.omit(out, {"color", "seed"})
-        quick = [r for r in out if r["row"] == "param" and r["id"] in QUICK]
+        quick = [r for r in out if r["row"] == "param" and r["id"] in QUICK
+                 and (r["id"] != "steady" or brush_presets.group(self.preset) in STEADY_GROUPS)]
         return sorted(quick, key=lambda r: QUICK.index(r["id"]))
 
     def shown(self) -> tuple[list[str], list[str]]:

@@ -21,10 +21,14 @@ PRESETS = [
     ("pencil", "Pencil", "Sketch", 5, dict(brush="chalk", hardness=.75, grain=.55, opacity=.9, size_pressure=.3, opacity_pressure=.8, color_jitter=0)),
     ("charcoal", "Charcoal", "Sketch", 16, dict(brush="chalk", hardness=.3, grain=.8, opacity=.95, size_pressure=.5, opacity_pressure=.8, color_jitter=.02, texture="charcoal")),
     ("rough", "Rough line", "Sketch", 4, dict(brush="round", hardness=.6, opacity=.55, size_pressure=.5, opacity_pressure=.6, jitter=.06, color_jitter=0)),
-    ("ink", "Ink pen", "Ink", 8, dict(brush="line", hardness=1, size_pressure=1, opacity_pressure=0, color_jitter=0)),
-    ("mono", "Fine liner", "Ink", 4, dict(brush="line", hardness=1, size_pressure=0, opacity_pressure=0, color_jitter=0)),
-    ("brushpen", "Brush pen", "Ink", 12, dict(brush="round", hardness=.92, spacing=.05, size_pressure=1, opacity_pressure=0, color_jitter=0)),
-    ("dryink", "Dry ink", "Ink", 14, dict(brush="bristle", hardness=.85, spacing=.06, size_pressure=.85, opacity_pressure=.1, color_jitter=0)),
+    ("ink", "Ink pen", "Ink", 8, dict(brush="line", hardness=1, size_pressure=1, opacity_pressure=0, color_jitter=0,
+                                      steady=.3, taper_start=.5, taper_end=1)),
+    ("mono", "Fine liner", "Ink", 4, dict(brush="line", hardness=1, size_pressure=0, opacity_pressure=0, color_jitter=0,
+                                          steady=.15, taper_start=.3, taper_end=.5)),
+    ("brushpen", "Brush pen", "Ink", 12, dict(brush="round", hardness=.92, spacing=.05, size_pressure=1, opacity_pressure=0,
+                                              color_jitter=0, steady=.3, taper_start=1, taper_end=2)),
+    ("dryink", "Dry ink", "Ink", 14, dict(brush="bristle", hardness=.85, spacing=.06, size_pressure=.85, opacity_pressure=.1,
+                                          color_jitter=0, steady=.15, taper_start=.5, taper_end=1)),
     ("hard", "Round hard", "Paint", 22, dict(brush="round", hardness=.9, size_pressure=.4, opacity_pressure=.2, color_jitter=.02)),
     ("air", "Airbrush", "Paint", 46, dict(brush="round", hardness=0, opacity=.35, spacing=.03, size_pressure=0, opacity_pressure=1, color_jitter=0)),
     ("oil", "Bristle oil", "Paint", 30, dict(brush="bristle", hardness=.6, color_jitter=.1, hue_jitter=3, size_pressure=.5, opacity_pressure=.4)),
@@ -43,6 +47,10 @@ BY_ID = {p[0]: p for p in PRESETS}
 
 def name(pid: str) -> str:
     return BY_ID[pid][1] if pid in BY_ID else "Custom brush"
+
+
+def group(pid: str) -> str:
+    return BY_ID[pid][2] if pid in BY_ID else ""
 
 
 def settings(pid: str) -> dict:

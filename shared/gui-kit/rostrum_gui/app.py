@@ -11,6 +11,24 @@ _styled = False                                              # the Quick Control
 MONO_FONTS = ["Cascadia Mono", "Cascadia Code", "Consolas", "SF Mono", "Menlo"]
 
 
+def offscreen_env() -> dict:
+    """The environment of a window that draws offscreen (the layout check's runs and every picture or step run)."""
+    return {"QT_QPA_PLATFORM": "offscreen", **({"QT_QPA_FONTDIR": "C:/Windows/Fonts"} if os.name == "nt" else {})}
+
+
+def qt_app():
+    """The one Qt app. A run that takes pictures or clicks by script (--shot / --step / --check-layout) draws offscreen:
+    a real window draws only while the screen is on (Windows stops drawing it on a locked or sleeping screen), and a
+    run on one froze every animation and clicked a layout that was never redrawn (H53: the onion switch showed off
+    while on, its click missed). QT_QPA_PLATFORM set by hand wins (a run meant to be watched)."""
+    from PySide6.QtGui import QGuiApplication
+    from rostrum_core.userhome import FLAGS
+    if QGuiApplication.instance() is None and any(a.split("=", 1)[0] in FLAGS for a in sys.argv[1:]):
+        for k, v in offscreen_env().items():
+            os.environ.setdefault(k, v)
+    return QGuiApplication.instance() or QGuiApplication(sys.argv)
+
+
 def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | None = None, imports=()):
     """Make the app and load main_qml with `context` as context properties (plus uiFont / monoFont),
     `providers` as image providers ({"frame": provider} -> image://frame/...) and extra QML import folders.
@@ -27,7 +45,7 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     if not _styled:                    # once per process, before the first engine: a second window must not set it
         QQuickStyle.setStyle("Basic")  # we draw every control ourselves; Basic is only the Popup base
         _styled = True
-    app = QGuiApplication.instance() or QGuiApplication(sys.argv)
+    app = qt_app()
     link_in_accent(app)
     families = set(QFontDatabase.families())
     pick = lambda wanted: next((f for f in wanted if f in families), QGuiApplication.font().family())  # noqa: E731

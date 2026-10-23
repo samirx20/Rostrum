@@ -42,6 +42,7 @@ class Session:
                                      "guides": GUIDES, "spaceKey": self.space}, self.size,
                                providers={"frame": bridge.frames.provider, "framecrop": bridge.frames.crops,
                                           "onion": bridge.painter.provider, "brushes": brush_presets.PreviewProvider()})
+        bridge.painter.tilt.watch(win)                   # the pen's lean: Qt Quick's handlers don't give it
         old = (self.bridge, self.engine, self.win)
         self.bridge, self.engine, self.win = bridge, engine, win
         if old[0] is not None:                           # the window and its bindings first, then what they read

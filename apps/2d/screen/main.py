@@ -13,7 +13,7 @@ Every project window is live: each change is on disk at once, shared with agents
                                                                     # real window size (rostrum_gui/layout_run.py)
 Steps and --shot go with any start (no file named: the plain start, so a walk can check it). Steps: see screen2d/steps.py (file steps: screen2d/file_steps.py). With --shot the window quits by itself; a failed
 step or frame exits nonzero.
-Offscreen screenshots: QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts.
+A --shot / --step run draws offscreen by itself (rostrum_gui.app.qt_app); set QT_QPA_PLATFORM=windows to watch one.
 """
 import argparse
 import os
@@ -26,7 +26,7 @@ import checkout_paths  # noqa: E402  (this checkout's code first, before any Ros
 checkout_paths.use_this_checkout()
 
 from PySide6.QtCore import QTimer
-from PySide6.QtGui import QGuiApplication
+from rostrum_gui.app import qt_app
 
 from rostrum_core import Document
 from rostrum_core.storage import paths
@@ -93,7 +93,7 @@ def main():
 
     watchdog.arm()                                 # a start that never shows its window says where it waits
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
-    app = QGuiApplication.instance() or QGuiApplication(sys.argv)
+    app = qt_app()                                 # a picture or step run draws offscreen (rostrum_gui/app.py)
     session = Session(tuple(int(n) for n in args.size.lower().split("x")), args.comp)
     doc = load_doc(args)
     if doc is None:
