@@ -78,7 +78,7 @@ def test_cancelled_cleanup_leaves_the_original_playing(panel, tmp_path, monkeypa
     b._apply([{"op": "clip.set", "target": [clip], "args": {"denoise": 0.5}}], "Clean")
     take = CleanedTake(b)
     n = len(b.doc.history.changes)
-    take._busy, take._steps, take._job = True, {clip: [0, 2]}, CleanProcess(b.doc.data, [clip], lambda _t: None)
+    take._busy, take._steps, take._job = True, {clip: [0, 2]}, CleanProcess(b.doc.data, b.doc.folder, [clip], lambda _t: None)
     take._job.cancelled = True
     take._finish("")
     item = b.doc.item(clip)

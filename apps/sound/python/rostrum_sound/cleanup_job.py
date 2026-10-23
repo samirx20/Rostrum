@@ -3,7 +3,7 @@ model in the middle of a step, which a thread cannot be made to do. The cache pu
 (rostrum_core.cache: made under a temporary name, renamed at the end), so a stopped job leaves nothing a take could be
 read from.
 
-    python -I -m rostrum_sound.cleanup_job <spec.json>      spec = {"root": the document's data, "ids": [clip ids]}
+    python -I -m rostrum_sound.cleanup_job <spec.json>      spec = {"root": the document's data, "folder": its project folder, "ids": [clip ids]}
 
 Prints one line per event: `P <note>` (progress, the same notes as clean_clips.make_clips), then `OK`, or
 `E <the error in plain words>` and exit code 1.
@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 from . import clean_clips
+from .doc import markers
 
 
 def _say(tag: str, text: str = ""):
@@ -23,6 +24,7 @@ def _say(tag: str, text: str = ""):
 
 def main(argv: list[str]) -> int:
     spec = json.loads(Path(argv[0]).read_text(encoding="utf-8"))
+    markers.use_project(spec.get("folder"))     # a take's relative media is read under the song's folder
     try:
         clean_clips.make_clips(spec["root"], spec["ids"], progress=lambda note: _say("P", note))
     except Exception as e:  # noqa: BLE001  the screen shows it in words, whatever it was
