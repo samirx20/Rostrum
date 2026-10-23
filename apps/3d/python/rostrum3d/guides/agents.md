@@ -75,6 +75,9 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   top face with `rx=-90`, it faces up and its tops point to −Z, so it reads from a camera on the +Z side looking down; `ry=180`
   then turns it to read from −Z. Upside down = turned 180° (fix with `ry` when it lies flat); mirrored = seen from behind (it is
   facing away: fix with `rx` / `ry` by 180°, never by a negative scale).
+- **Cut, join, keep the overlap.** A port, a slot or a recess is a live boolean: `combine.make` on the base and the cutters
+  (`op: subtract`), or `with combine("case", op="subtract"):` in a script. The cutters stay items; move one and look again.
+  Guide `modelling` has the whole technique and its errors.
 - **Memory.** `look_frame` replies carry the video memory the render used; a 4 GB card holds a modest scene at 1080p. If a
   render fails with a memory message, lower `width` or the number of lights before anything else.
 

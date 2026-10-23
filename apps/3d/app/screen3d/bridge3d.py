@@ -16,11 +16,13 @@ from rostrum_core.keys import keys_of
 from rostrum3d.compile import describe, shot_info
 from rostrum_gui import DocBridge, sections
 from rostrum_gui.edits import Drag
+from rostrum_gui.selection_rules import click
 from rostrum_gui.markers import MarkerWatch
 
 from rostrum3d import fields as F
 
 from . import outline, route
+from .action_preview3d import ActionPreview3D
 from .adding import Adder
 from .render_job import RenderJob
 
@@ -36,7 +38,7 @@ def _viewport(bridge):
     return Viewport(bridge)
 
 
-class Bridge3D(DocBridge):
+class Bridge3D(ActionPreview3D, DocBridge):
     sections = True                     # the kit's open-if-changed settings panel (rostrum_gui/sections.py)
     frameChanged = Signal()
     outlineChanged = Signal()
@@ -60,11 +62,14 @@ class Bridge3D(DocBridge):
         self.join_history(self.marks)                       # marker edits undo with the screen's one history
         self.render = RenderJob(self, render_engine)
         self.add = Adder(self)
+        self.selectedItemsChanged.connect(self.outlineChanged)     # the scene list lights every selected row
+        self._make_actions()                                # the settings panel's actions (Combine) and their hover preview
         self.viewport = viewport(self) if viewport else None
 
     # ---- what the viewport and QML read -----------------------------------------------------------------------
     def scene(self) -> dict:
-        return describe(self.doc.data, self.shot_id)
+        """The shot's scene for the engine: the document's, or the hovered action's result (action_preview3d.py)."""
+        return self._previewed if self._previewed is not None else describe(self.doc.data, self.shot_id)
 
     def shot_info(self) -> dict:
         return dict(self._info)
@@ -132,6 +137,29 @@ class Bridge3D(DocBridge):
         if it["type"] == "key":
             return self.doc.parent_of(self._sel)[0]
         return self._sel if it["type"] in route.F.ITEMS else ""
+
+    actions = Property(QObject, lambda self: self._hub, constant=True)     # the panel's actions (action_preview3d.py)
+
+    @Property("QVariantList", notify=outlineChanged)
+    def selectedRows(self):
+        """The scene items selected together (the primary first): the scene list lights them all."""
+        return [i for i in self.selection if i in self._item_ids()]
+
+    def _item_ids(self) -> set:
+        return {it["id"] for it in outline.scene_items(self.doc.data)}
+
+    @Slot(str)
+    def toggleInSelection(self, item_id):
+        """Ctrl+click in the scene list: add the item to the selection, or take it out."""
+        self.selectMany(click(self.selection, None, item_id, {"ctrl"}, "list")[0] or [])
+
+    @Slot(str)
+    def selectRange(self, item_id):
+        """Shift+click in the scene list: every item row from the primary to this one, as the list shows them."""
+        order = [r["id"] for r in self.sceneRows if r["row"] == "layer"]
+        here = self.selected if self.selected in order else item_id
+        run = click(self.selection, here, item_id, {"shift"}, "list", order)[0]
+        self.selectMany([here] + [i for i in run if i != here] if here in run else run)
 
     @Property(QObject, constant=True)
     def adder(self):
@@ -253,6 +281,7 @@ class Bridge3D(DocBridge):
         self.setFrame(self._info["start"] if nxt > self._info["end"] else nxt)
 
     def _on_doc(self, event):
+        self._previewed = None                 # a real change ends any hover preview (the viewport redraws on docChanged)
         try:                                   # a shot edit may change its length, rate or camera
             self._info = shot_info(self.doc.data, self.shot_id)
         except ValueError as e:

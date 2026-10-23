@@ -93,7 +93,7 @@ class Adder(QObject):
             args["name"] = LIGHT_NAMES.get(detail, detail.capitalize())
         elif type_ == "shot":
             args["camera"] = self._camera()
-        if type_ in F.ITEMS and (into := self._holder()):
+        if type_ in F.ITEMS and (into := self._holder(type_)):
             args["into"] = into
         self._apply([{"op": f"{type_}.add", "args": args}], f"Add {F.LABELS[type_].lower()}", new)
 
@@ -121,15 +121,18 @@ class Adder(QObject):
             return sel["id"]
         return next(i["id"] for i in self.b.doc.items() if i.get("type") == "camera")
 
-    def _holder(self) -> str:
-        """The group or import a new item goes into: the selected one, or the one holding the selected item."""
+    def _holder(self, type_: str = "mesh") -> str:
+        """The group or import a new item goes into: the selected one, or the one holding the selected item. A combine
+        only takes solids (meshes): anything else goes where the combine itself sits."""
         if not self.b.selected:
             return ""
-        item = self.b.doc.item(self.b.selected)
-        if item["type"] in F.HOLDERS:
-            return item["id"]
-        parent = self.b.doc.parent_of(item["id"])[0]
-        return parent if parent != self.b.doc.data["id"] and self.b.doc.item(parent)["type"] in F.HOLDERS else ""
+        doc, here = self.b.doc, self.b.selected
+        while here != doc.data["id"]:        # the selected item, then each parent: the first that may hold this
+            item = doc.item(here)
+            if item["type"] in F.HOLDERS and (item["type"] != "combine" or type_ == "mesh"):
+                return item["id"]
+            here = doc.parent_of(here)[0]
+        return ""
 
     def _apply(self, calls, label, select):
         def go():

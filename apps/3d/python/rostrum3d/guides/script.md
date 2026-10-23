@@ -27,6 +27,7 @@ Each helper returns a handle. Pass a handle (or its id as text) wherever a field
 | `camera(id, **fields)` | a camera (looks along its −Z, Y up) |
 | `rig(id, rig=, **fields)` | a camera rig: `orbit crane dolly` (a holder: `with rig(...):`) |
 | `import_usd(id, file=, parts=[…], **fields)` | a USD file by reference (also a holder) |
+| `combine(id, op=, **fields)` | a live boolean: `union subtract intersect` of the meshes made inside `with combine(...):`, the first the base (guide `modelling`) |
 | `material(id, **fields)` | a material (lists at the top level, not in a group) |
 | `shot(id, camera=, fps=, start=, end=, width=, height=, background=)` | a shot |
 
@@ -80,7 +81,7 @@ with import_usd("phone", file=r"C:/assets/phone.usdc", parts=["Body/Screen"]) as
     phone.part("Body/Frame", material=steel)       # material= and visible= on a prim inside the file
 ```
 
-Only a group, a rig or an import holds items. `with` on anything else is an error. An item's transform is relative to its holder.
+Only a group, a rig, an import or a combine holds items (a combine: meshes and combines only). `with` on anything else is an error. An item's transform is relative to its holder.
 Materials and shots always go to the top level, even when made inside a `with`.
 
 ## Handle methods

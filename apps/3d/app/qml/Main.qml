@@ -123,6 +123,6 @@ AppShell {
         Viewport { anchors.fill: parent },
         RenderView { anchors.fill: parent }
     ]
-    right: Inspector { anchors.fill: parent; bridge: backend; keyMarks: true }
+    right: Inspector { anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions }
     bottom: SceneList { anchors.fill: parent }
 }

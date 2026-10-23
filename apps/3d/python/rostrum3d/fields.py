@@ -68,6 +68,8 @@ TRANSFORM = [
       help="Turns an aimed item around the way it points: 90 stands a strip light on end, tilts a camera's horizon"),
 ]
 
+COMBINE_OPS = ["union", "subtract", "intersect"]
+SOLIDS = ("mesh", "combine")                                   # what a combine combines
 SHAPES = ["box", "sphere", "cylinder", "plane", "disc", "torus", *OUTLINE_SHAPES]
 from .light_fields import KINDS as LIGHT_KINDS, LIGHT, STILL as LIGHT_STILL  # noqa: E402  (needs the helpers above)
 from .material_fields import MATERIAL  # noqa: E402  (needs the helpers above)
@@ -93,6 +95,14 @@ FIELDS: dict[str, list[Param]] = {
         N("segments", "Segments", "Shape", 1, 256, 1, "", D, NOT("shape", "plane"), integer=True, default=24,
           help="Box: steps around each bevel. Round shapes: steps around"),
         T("smooth", "Smooth shading", "Shape", True, S, help="Smooth normals; off = flat facets"),
+        X("material", "Material", "Material", "", help='A material id, or "" for none', refers="material"),
+    ] + TRANSFORM,
+    # A live boolean (Manifold, ops_combine.py): its children are the solids (meshes or combines), the first the base;
+    # moving a child re-makes the result. The core draws only the result, never the children.
+    "combine": [
+        CH("op", COMBINE_OPS, "Operation", "Combine", "subtract",
+           help="Union joins the solids; Subtract cuts every later one out of the first; Intersect keeps only where "
+                "all of them overlap"),
         X("material", "Material", "Material", "", help='A material id, or "" for none', refers="material"),
     ] + TRANSFORM,
     "import": [
@@ -137,15 +147,17 @@ FIELDS: dict[str, list[Param]] = {
     "key": KEY_FIELDS,                   # the one key shape (t in seconds, v or c, ease), shared with 2D
 }
 
-ITEMS = ("group", "mesh", "import", "light", "camera", "rig")      # scene items (USD prims)
-HOLDERS = ("group", "import", "rig")
+ITEMS = ("group", "mesh", "combine", "import", "light", "camera", "rig")      # scene items (USD prims)
+HOLDERS = ("group", "import", "rig", "combine")
 LISTS = {"doc": ["items", "materials", "shots"], "group": ["children", "keys"],     # where child items live
          "import": ["children", "parts", "keys"], "mesh": ["keys"], "light": ["keys"], "camera": ["keys"],
+         "combine": ["children", "keys"],
          "rig": ["children", "keys"]}
 STILL = {"mesh": {p.name for p in FIELDS["mesh"] if p.group == "Shape"},     # a mesh's shape is built once
          "light": LIGHT_STILL,
+         "combine": {"op"},
          "*": {"aim"}}
-LABELS = {"group": "Group", "mesh": "Mesh", "import": "Import", "part": "Part", "light": "Light", "camera": "Camera", "rig": "Camera rig",
+LABELS = {"group": "Group", "mesh": "Mesh", "combine": "Combine", "import": "Import", "part": "Part", "light": "Light", "camera": "Camera", "rig": "Camera rig",
           "material": "Material", "shot": "Shot", "key": "Key"}
 
 

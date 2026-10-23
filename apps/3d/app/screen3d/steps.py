@@ -1,6 +1,7 @@
 """Scripted steps for screenshots and checks. Each goes through the same bridge (or viewport) call a click or drag makes.
 
-    select <id> | frame <n> | set <param> <json value> | scrub <param> <v> <v> … | animate <param> (the key mark)
+    select <id> | selectmany <id> <id> … (the first is the base) | action <id> (a settings panel action, e.g. combine:subtract)
+    preview <id> / unpreview (the hover preview of a panel action: what resting the pointer on it shows; leaving) | frame <n> | set <param> <json value> | scrub <param> <v> <v> … | animate <param> (the key mark)
     keydrag <key id> <frame> | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
     add <menu value, e.g. mesh:sphere | light:distant | camera | material | shot> | duplicate | delete
     wait <ms> | snap <png path> (a screenshot now, the run goes on)
@@ -38,6 +39,14 @@ def do_step(bridge, win, step):
     word, *rest = step.split()
     if word == "select":
         bridge.select(rest[0])
+    elif word == "selectmany":
+        bridge.selectMany(rest)
+    elif word == "action":
+        bridge.actions.run(rest[0])
+    elif word == "preview":
+        bridge.actions.previewStart(rest[0])
+    elif word == "unpreview":
+        bridge.actions.previewEnd()
     elif word == "frame":
         bridge.setFrame(int(rest[0]))
     elif word == "set":
