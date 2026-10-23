@@ -4,7 +4,8 @@
 //! the flush), and GL calls counted and timed on the CPU through wrappers put into Skia's GL interface (`wrap`):
 //! shader compiles / links, texture and buffer uploads, render-target switches, draws, waits and error checks.
 //! Waiting after every paint removes the CPU / GPU overlap an export has; it is for splitting the time, not totals.
-//! Windows x64 only (WGL); every wrapped GL function takes integer / pointer arguments, forwarded as 9 words.
+//! Windows x64 only (WGL); every wrapped GL function takes integer / pointer arguments, forwarded as 10 words (glBlitFramebuffer
+//! takes 10: with 9 its filter was garbage and every blit failed while profiling, unseen with Skia's checks on).
 
 use std::cell::RefCell;
 use std::ffi::c_void;
@@ -28,10 +29,10 @@ pub fn label(l: &str) {
 }
 
 type Word = usize;
-type Fn9 = extern "system" fn(Word, Word, Word, Word, Word, Word, Word, Word, Word) -> Word;
+type Fn10 = extern "system" fn(Word, Word, Word, Word, Word, Word, Word, Word, Word, Word) -> Word;
 
 /// The GL calls counted: name, kind (index into `KINDS`).
-const WRAPPED: [(&str, usize); 24] = [
+const WRAPPED: [(&str, usize); 34] = [
     ("glCompileShader", 0),
     ("glLinkProgram", 1),
     ("glTexImage2D", 2),
@@ -56,21 +57,31 @@ const WRAPPED: [(&str, usize); 24] = [
     ("glTexStorage2D", 9),
     ("glCopyTexSubImage2D", 9),
     ("glGenerateMipmap", 9),
+    ("glCheckFramebufferStatus", 10),
+    ("glFramebufferTexture2D", 11),
+    ("glFramebufferRenderbuffer", 11),
+    ("glRenderbufferStorageMultisample", 11),
+    ("glGenTextures", 12),
+    ("glDeleteTextures", 12),
+    ("glGenFramebuffers", 12),
+    ("glDeleteFramebuffers", 12),
+    ("glBindTexture", 13),
+    ("glTexParameteri", 13),
 ];
-pub const KINDS: [&str; 10] = ["compiles", "links", "texUploads", "bufUploads", "fboBinds", "draws", "useProgram", "syncs", "getError", "texAlloc"];
+pub const KINDS: [&str; 14] = ["compiles", "links", "texUploads", "bufUploads", "fboBinds", "draws", "useProgram", "syncs", "getError", "texAlloc", "fbStatus", "fbAttach", "genDelete", "bindTex"];
 
-static ORIG: [AtomicUsize; 24] = [const { AtomicUsize::new(0) }; 24];
-static COUNT: [AtomicU64; 10] = [const { AtomicU64::new(0) }; 10];
-static NANOS: [AtomicU64; 10] = [const { AtomicU64::new(0) }; 10];
+static ORIG: [AtomicUsize; 34] = [const { AtomicUsize::new(0) }; 34];
+static COUNT: [AtomicU64; 14] = [const { AtomicU64::new(0) }; 14];
+static NANOS: [AtomicU64; 14] = [const { AtomicU64::new(0) }; 14];
 
 macro_rules! tramp {
     ($($i:literal),*) => {
-        const TRAMPS: [Fn9; 24] = [$({
-            extern "system" fn t(a: Word, b: Word, c: Word, d: Word, e: Word, f: Word, g: Word, h: Word, i: Word) -> Word {
-                let orig: Fn9 = unsafe { std::mem::transmute(ORIG[$i].load(Relaxed)) };
+        const TRAMPS: [Fn10; 34] = [$({
+            extern "system" fn t(a: Word, b: Word, c: Word, d: Word, e: Word, f: Word, g: Word, h: Word, i: Word, j: Word) -> Word {
+                let orig: Fn10 = unsafe { std::mem::transmute(ORIG[$i].load(Relaxed)) };
                 let k = WRAPPED[$i].1;
                 let t0 = std::time::Instant::now();
-                let r = orig(a, b, c, d, e, f, g, h, i);
+                let r = orig(a, b, c, d, e, f, g, h, i, j);
                 NANOS[k].fetch_add(t0.elapsed().as_nanos() as u64, Relaxed);
                 COUNT[k].fetch_add(1, Relaxed);
                 r
@@ -79,7 +90,7 @@ macro_rules! tramp {
         }),*];
     };
 }
-tramp!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23);
+tramp!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33);
 
 /// Skia's GL loader goes through this: a counted function gets its wrapper when profiling.
 pub fn wrap(name: &str, p: *const c_void) -> *const c_void {
