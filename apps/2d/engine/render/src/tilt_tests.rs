@@ -65,7 +65,7 @@ fn a_tilted_clipping_panel_draws_and_reports_its_children_where_the_tilt_puts_th
     let mut painter = crate::painter::Painter::cpu(W, H, None).unwrap();
     painter.paint(false, |scene| blitz_paint::paint_scene(scene, &mut doc, 1.0, W, H, 0, 0)).unwrap();
     let mut px = vec![];
-    crate::color::output(&crate::color::Spec::default(), &painter.read(), W, false, false, 0, &mut px);
+    crate::color::output(&crate::color::Spec::default(), &painter.read().unwrap(), W, false, false, 0, &mut px);
     let at = |(x, y): (f64, f64)| {
         let i = (y.round() as usize * W as usize + x.round() as usize) * 4;
         [px[i], px[i + 1], px[i + 2]]

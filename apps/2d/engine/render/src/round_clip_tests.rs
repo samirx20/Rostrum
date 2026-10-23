@@ -17,7 +17,7 @@ fn rounded_inset_clip_cuts_the_corners() {
     let mut painter = crate::painter::Painter::cpu(S, S, spec.surface_space()).unwrap();
     painter.paint(false, |scene| blitz_paint::paint_scene(scene, &mut doc, 1.0, S, S, 0, 0)).unwrap();
     let mut px = vec![];
-    crate::color::output(&spec, &painter.read(), S, false, false, 0, &mut px);
+    crate::color::output(&spec, &painter.read().unwrap(), S, false, false, 0, &mut px);
     let red = |x: u32, y: u32| px[((y * S + x) * 4) as usize];
     for (x, y) in [(2, 2), (97, 2), (2, 97), (97, 97)] {
         assert!(red(x, y) < 10, "corner ({x}, {y}) should be cut away, red = {}", red(x, y));

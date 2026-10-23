@@ -108,7 +108,7 @@ fn draw(markup: &str, w: u32, h: u32, fonts: &[super::fonts::Font]) -> Vec<u8> {
     let mut painter = crate::painter::Painter::cpu(w, h, None).unwrap();
     painter.paint(false, |scene| blitz_paint::paint_scene(scene, &mut doc, 1.0, w, h, 0, 0)).unwrap();
     let mut px = vec![];
-    crate::color::output(&crate::color::Spec::default(), &painter.read(), w, false, false, 0, &mut px);
+    crate::color::output(&crate::color::Spec::default(), &painter.read().unwrap(), w, false, false, 0, &mut px);
     px
 }
 

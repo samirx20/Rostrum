@@ -22,7 +22,7 @@ fn frame(mode: &str, colour: &str) -> Vec<u8> {
     let mut painter = crate::painter::Painter::cpu(W, H, None).unwrap();
     painter.paint(false, |scene| blitz_paint::paint_scene(scene, &mut doc, 1.0, W, H, 0, 0)).unwrap();
     let mut px = vec![];
-    crate::color::output(&crate::color::Spec::default(), &painter.read(), W, false, false, 0, &mut px);
+    crate::color::output(&crate::color::Spec::default(), &painter.read().unwrap(), W, false, false, 0, &mut px);
     px
 }
 

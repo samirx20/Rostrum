@@ -140,6 +140,15 @@ impl Timer {
     }
 }
 
+/// The flush split (E16): Skia's submit, its cleanup of unused GPU memory, our one error check after (painter.rs `paint`).
+pub fn parts(ms: [f64; 3]) {
+    PARTS.with(|p| p.set(ms));
+}
+
+thread_local! {
+    static PARTS: std::cell::Cell<[f64; 3]> = const { std::cell::Cell::new([0.0; 3]) };
+}
+
 /// Clears the GL counters (a paint starts).
 pub fn reset() {
     for k in 0..KINDS.len() {
@@ -148,16 +157,17 @@ pub fn reset() {
     }
 }
 
-/// Appends one paint's row: label, record / flush / wait / gpu ms, then each GL kind's count and CPU ms.
+/// Appends one paint's row: label, record / flush / wait / gpu ms, the flush's parts (`parts`), then each GL kind's count and CPU ms.
 pub fn row(record: f64, flush: f64, wait: f64, gpu: f64) {
     let Some(p) = path() else { return };
     let new = !std::path::Path::new(p).exists();
     let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(p) else { return };
     if new {
         let kinds: Vec<String> = KINDS.iter().flat_map(|k| [k.to_string(), format!("{k}Ms")]).collect();
-        let _ = writeln!(f, "label,recordMs,flushMs,waitMs,gpuMs,{}", kinds.join(","));
+        let _ = writeln!(f, "label,recordMs,flushMs,waitMs,gpuMs,submitMs,cleanupMs,checkMs,{}", kinds.join(","));
     }
     let gl: Vec<String> = (0..KINDS.len()).map(|k| format!("{},{:.3}", COUNT[k].load(Relaxed), NANOS[k].load(Relaxed) as f64 / 1e6)).collect();
     let l = LABEL.with(|x| x.borrow().clone());
-    let _ = writeln!(f, "{l},{record:.3},{flush:.3},{wait:.3},{gpu:.3},{}", gl.join(","));
+    let [submit, cleanup, check] = PARTS.with(|p| p.get());
+    let _ = writeln!(f, "{l},{record:.3},{flush:.3},{wait:.3},{gpu:.3},{submit:.3},{cleanup:.3},{check:.3},{}", gl.join(","));
 }

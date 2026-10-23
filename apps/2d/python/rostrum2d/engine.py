@@ -257,6 +257,7 @@ class Engine:
               bitrate: float | None = None, timing_csv: Path | None = None) -> dict:
         """An MP4 through the formats table's encoder (io/formats.py: the OS's own H.264); `quality` or `bitrate` (Mbit/s)."""
         from .io import formats                      # the table imports find_exe from here
+        from .io.export import encoded
         p = self._props()
         fps, end, w, h = p["fps"], p["duration"] if end is None else end, p["width"], p["height"]
         mp4, f = Path(mp4), formats.get("mp4")
@@ -272,7 +273,8 @@ class Engine:
         if out.get("warning"):
             _log_line(f"2D export: {out['warning']}")
         return {"file": str(mp4), "frames": out["frames"], "fps": fps, "timing": out["timing"], "adapter": out.get("adapter"),
-                "gpu": out.get("gpu"), "warning": out.get("warning")}
+                "gpu": out.get("gpu"), "warning": out.get("warning"),
+                **(encoded(out["encoder"]) if out.get("encoder") else {})}
 
     def kill(self):
         """End the process on purpose (Cancel): it is never restarted, and a request after this fails."""

@@ -59,7 +59,7 @@ fn ink_share(stretch: &str) -> f64 {
     let mut painter = crate::painter::Painter::cpu(W, H, None).unwrap();
     painter.paint(false, |scene| blitz_paint::paint_scene(scene, &mut doc, 1.0, W, H, 0, 0)).unwrap();
     let mut px = vec![];
-    crate::color::output(&crate::color::Spec::default(), &painter.read(), W, false, false, 0, &mut px);
+    crate::color::output(&crate::color::Spec::default(), &painter.read().unwrap(), W, false, false, 0, &mut px);
     let lit = |x: u32| (0..H).any(|y| px[((y * W + x) * 4) as usize] > 128);
     let (first, last) = ((0..W).find(|x| lit(*x)).unwrap(), (0..W).rev().find(|x| lit(*x)).unwrap());
     (last - first) as f64 / laid_out

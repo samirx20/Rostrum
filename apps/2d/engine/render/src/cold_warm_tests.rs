@@ -38,7 +38,7 @@ fn page(weight: u32, dy: f32) -> HtmlDocument {
 fn draw(painter: &mut Painter, weight: u32, dy: f32) -> Vec<u8> {
     let mut doc = page(weight, dy);
     painter.paint(false, |scene| blitz_paint::paint_scene(scene, &mut doc, 1.0, W, H, 0, 0)).unwrap();
-    painter.read()
+    painter.read().unwrap()
 }
 
 #[test]

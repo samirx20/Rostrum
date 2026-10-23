@@ -49,6 +49,8 @@ def facts(row: dict, f: dict, path: str) -> list[dict]:
         out.append({"label": "Sound", "text": "the project's mix"})
     if f.get("quality"):
         out.append({"label": "Quality", "text": f'{f["quality"]} (each frame gets what it needs)'})
+    if f.get("encoded"):
+        out.append({"label": "Encoded", "text": f["encoded"]})
     if f.get("kbps"):
         out.append({"label": "Bitrate", "text": f'{f["kbps"] / 1000:.1f} Mbit/s'})
     return out

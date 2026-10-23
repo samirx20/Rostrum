@@ -52,7 +52,7 @@ fn render(gpu: bool, three_d: bool, working: &str) -> Vec<u8> {
     let mut painter = if gpu { crate::painter::Painter::gpu(W, H, spec.surface_space()) } else { crate::painter::Painter::cpu(W, H, spec.surface_space()) }.unwrap();
     painter.paint(false, |scene| blitz_paint::paint_scene(scene, &mut doc, 1.0, W, H, 0, 0)).unwrap();
     let mut px = vec![];
-    crate::color::output(&spec, &painter.read(), W, false, false, 0, &mut px);
+    crate::color::output(&spec, &painter.read().unwrap(), W, false, false, 0, &mut px);
     px
 }
 
@@ -100,7 +100,7 @@ fn a_clip_off_the_pixel_grid_keeps_its_soft_edge() {
     let mut painter = crate::painter::Painter::cpu(120, 60, None).unwrap();
     painter.paint(false, |scene| blitz_paint::paint_scene(scene, &mut doc, 1.0, 120, 60, 0, 0)).unwrap();
     let mut px = vec![];
-    crate::color::output(&crate::color::Spec::default(), &painter.read(), 120, false, false, 0, &mut px);
+    crate::color::output(&crate::color::Spec::default(), &painter.read().unwrap(), 120, false, false, 0, &mut px);
     let g = |x: usize, y: usize| px[(y * 120 + x) * 4 + 1];
     assert_eq!(g(30, 30), 255, "inside the soft clip");
     assert!((100..200).contains(&g(10, 30)), "the soft clip's half-covered left column: {}", g(10, 30));

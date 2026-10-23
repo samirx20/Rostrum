@@ -465,7 +465,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
                 wait_ms += collect(s)?;
             }
         } else {
-            let raw = s.painter.read();
+            let raw = s.painter.read()?;
             paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
             let t3 = Instant::now();
             let px = Pixels { raw, spec: s.color, width: w, deep: s.deep, index };
@@ -501,7 +501,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
     // Scopes and samples measure the frame as stored; anything else goes through the output step on the GPU when it can
     // (`convert`), which reads nothing else back.
     let analyse = req.get("scopes").is_some() || !req["sample"].is_null();
-    let mut raw = if analyse { Some(s.painter.read()) } else { None };
+    let mut raw = if analyse { Some(s.painter.read()?) } else { None };
     // The frame's taps are written while it is read back and converted; on disk before it is answered.
     let taps_done = |s: &mut Session, ms: &mut f64| -> Result<(), String> {
         s.painter.taps_written()?;
@@ -589,7 +589,7 @@ fn convert(p: &mut crate::painter::Painter, spec: &crate::color::Spec, raw: &mut
         if let Some(done) = p.output_into(spec, deep, out) {
             return done;
         }
-        *raw = Some(p.read());
+        *raw = Some(p.read()?);
     }
     let t = Instant::now();
     crate::color::output_into(spec, raw.as_ref().unwrap(), w, deep, fast, index, out);

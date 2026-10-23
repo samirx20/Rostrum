@@ -5,7 +5,8 @@
 //! `timing.layers`: where the paint time goes per layer, the 10 costliest (render_costs.rs); `stillPieces`: how many
 //! pieces were drawn once for a frame's motion-blur samples, not per sample (still_runs.rs).
 //! `timingCsv`: the same per frame, one row each. What painted (`gpu`, `adapter`, `fallback`) is in the reply, and
-//! `warning` says in words when that was not the computer's main graphics card.
+//! `warning` says in words when that was not the computer's main graphics card; `encoder` names the MP4 encoder
+//! used and whether it ran on the graphics card (sink.rs `encoder`).
 //!
 //! Two stages run side by side (E7): a worker thread builds the next frames' stage markup (keys, easing, the
 //! motion-blur sub-frames; scene_serve.rs `stage_at`) while this thread lays out and paints the current one, so the
@@ -117,7 +118,8 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
     }
     timing.insert("stillPieces".into(), json!(still));
     timing.insert("layers".into(), costs.report(scene));
-    let mut reply = json!({ "ok": true, "frames": n, "fps": fps, "code": code, "timing": timing, "warning": warning });
+    let encoder = s.sink.as_ref().and_then(Sink::encoder);
+    let mut reply = json!({ "ok": true, "frames": n, "fps": fps, "code": code, "timing": timing, "warning": warning, "encoder": encoder });
     serve::with_painting(&mut reply, &s.painting);
     Ok(reply)
 }
