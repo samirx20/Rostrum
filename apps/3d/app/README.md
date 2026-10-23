@@ -61,7 +61,10 @@ bottom (full)  Timeline: the shot's frames, the playhead, play, and the keys of 
 ... main.py --script my_set.py                                         # on what a script builds
 ... main.py --doc <project folder> <item>                              # a saved document (made if missing), saved after every change
 ... main.py --step "select cam" --step "frame 24" --step "orbit 40 0" --shot out.png    # scripted, quits by itself
-.venv\Scripts\python.exe -m pytest -q apps\3d\app\tests                # four tests, about two seconds
+... main.py --size 1646x900 ...                                         # the window's size (default 1600x960)
+... main.py --check-layout <folder> [--quick]                           # the layout check: every state in screen3d/layout_states.py
+                                                                        # at 1280x720, 1366x768, 1646x900, 1920x1080 (--quick: QUICK states, 1646x900)
+.venv\Scripts\python.exe -m pytest -q apps\3d\app\tests                # six tests, about two seconds
 ```
 
 Steps (`screen3d/steps.py`): `select <id>`, `frame <n>`, `set <setting> <value>`, `scrub <setting> <v> <v> …`,
@@ -69,6 +72,7 @@ Steps (`screen3d/steps.py`): `select <id>`, `frame <n>`, `set <setting> <value>`
 `run <command key>`, `play`, `add <mesh:sphere|light:sun…|camera|material|shot>`, `duplicate`, `delete`, `addmenu`, `mouse x y`, `wait ms`,
 `snap path`, `renderstart` / `cancelrender` (don't wait), `render` (waits for the job), `closerender`; viewport: `orbit dx dy`, `pan dx dy`,
 `zoom n`, `mode shot|free`, `exposure v`, `studio v`, `lights on|off`, `home`, `click x y`.
+A scripted run (--shot, --step, --check-layout) never writes into a real project: `--doc` opens a scratch copy (`screen3d/scratch_doc.py`).
 Offscreen screenshots: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts`. The kit must be importable
 (`uv pip install -e shared/gui-kit`, or `PYTHONPATH=shared/gui-kit`).
 
@@ -82,6 +86,8 @@ screen3d/outline.py     what the outliner and timeline list (no Qt)
 screen3d/render_job.py  the Render button's job (rostrum3d.mcp.render.still, its own engine process)
 screen3d/steps.py       scripted steps
 screen3d/sample.py      the small sample document (not a template)
+screen3d/layout_states.py  the screen states the layout check runs (add one with every new screen or panel)
+screen3d/scratch_doc.py    scripted runs open a scratch copy of --doc's project
 screen3d/viewport.py, viewcam.py, frames.py, qml/Viewport.qml    the live viewport
 screen3d/adding.py      the Add menu, Duplicate, Delete (operation calls, one undo step each)
 qml/                    Main, AddMenu, Outliner, KindIcon, Timeline, RenderButton, RenderView

@@ -9,6 +9,7 @@ AppShell {
     id: shell
     bridge: backend
     appName: "Rostrum3D"
+    helpEntries: guides                 // Help's guides (main.py), in the kit's guide viewer
     documentName: backend.shotInfo.label
     leftWidth: 248
     bottomHeight: Math.min(260, 92 + backend.tracks.length * 26)

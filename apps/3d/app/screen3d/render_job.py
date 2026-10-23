@@ -13,13 +13,12 @@ from __future__ import annotations
 import threading
 import time
 from pathlib import Path
-from types import SimpleNamespace
 
 from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 
 from rostrum3d.compile import describe, shot_info
 from rostrum3d.engine import Engine
-from rostrum3d.mcp.render import still
+from rostrum3d.mcp.render import DocView, still
 
 SETTINGS = {"samples": 128, "denoise": True}     # render_still's defaults
 FORMATS = ["png", "exr"]
@@ -68,7 +67,7 @@ class RenderJob(QObject):
             return self._finish("", 0.0, f"Error: render: {e}")
         frame, self._at = b.frame, b.frame
         self._stop = stop = threading.Event()
-        snap = SimpleNamespace(item_id=b.doc.item_id, seq=b.doc.seq)     # what the manifest records
+        snap = DocView.of(b.doc)                      # what the manifest records: the same view the render_still tool takes
         size, folder = (info["width"], info["height"]), b.doc.folder
         self._state, self._note = "running", f"Rendering frame {frame} with Cycles…"
         self.changed.emit()
