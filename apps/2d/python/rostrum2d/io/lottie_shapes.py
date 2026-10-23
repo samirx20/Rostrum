@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 
 from .. import pathdata
-from .lottie_props import Ctx, build, frozen, rgb
+from .lottie_props import Ctx, build, fill_opacity, frozen, rgb
 
 CAP, JOIN, RULE = {"butt": 1, "round": 2, "square": 3}, {"miter": 1, "round": 2, "bevel": 3}, {"nonzero": 1, "evenodd": 2}
 _TR = {"ty": "tr", "p": {"a": 0, "k": [0, 0]}, "a": {"a": 0, "k": [0, 0]}, "s": {"a": 0, "k": [100, 100]},
@@ -71,7 +71,7 @@ def _fill(node: dict, ctx: Ctx, grad: dict | None) -> dict:
     if grad:
         return {**grad, "r": 1}
     return {"ty": "fl", "nm": "fill", "c": build(node, ["fill"], lambda p: rgb(p["fill"]), ctx, "fill colour"),
-            "o": _STILL(100), "r": 1}
+            "o": fill_opacity(node, ctx), "r": 1}
 
 
 def _stroke(node: dict, ctx: Ctx, grad: dict | None, path: bool) -> dict:

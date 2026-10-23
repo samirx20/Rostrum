@@ -19,7 +19,7 @@ The panel lists what each export is for, with its file type at the right. Click 
 - **Moving picture for a chat or a page** (GIF): a small looping picture. Limited colours, no sound. It starts at half the size and 15 frames a second, so a 4-second full-HD scene comes out well under 1 MB for flat motion graphics (a full-size GIF at the scene's rate is many times that).
 - **Still frames** (PNG): one picture for every frame, in a folder. Keeps transparency.
 - **Frames for the Editor** (EXR): one picture for every frame, made to be opened in Rostrum Editor.
-- **Animation for apps and websites** (JSON, Lottie): moving graphics for apps and web pages. It cannot carry everything. After the export, the panel lists what it left out under "Lottie couldn't carry".
+- **Animation for apps and websites** (JSON, Lottie): moving graphics for apps and web pages. It cannot carry everything. After the export, the panel lists what it left out under "Lottie couldn't carry". A solid fill's opacity (and its keys) is carried; a file saved before fill opacity existed exports as fully opaque, as before. PSD is for bringing files in only: the app has no PSD export.
 - **Motion for RostrumSound** (JSON): not a picture. It is the movement of your layers, for placing sounds against.
 
 ## 3. Settings

@@ -74,3 +74,8 @@ def build(node: dict, names: list[str], f, ctx: Ctx, what: str = "", bake: bool 
         steps.append({"t": float(fr), "v": values, "seg": LINEAR if fr < f1 else None})
     ctx.bake(f'{what or "/".join(keyed)}: {" and ".join(keyed)} drive one Lottie value together')
     return {"a": 1, "k": emit(steps, f)}
+
+
+def fill_opacity(node: dict, ctx: Ctx) -> dict:
+    """A solid fill's opacity (`fillOpacity`, 0..1 → Lottie's 0..100), keyed if it is keyed; a file from before it has none = 100."""
+    return build(node, ["fillOpacity"], lambda p: p.get("fillOpacity", 1.0) * 100, ctx, "fill opacity")

@@ -23,7 +23,7 @@ from fontTools.ttLib import TTFont
 from .. import settings, textsize
 from .lottie_glyphs import baseline, lines as _lines, metrics, shaper
 from .lottie_layer import common
-from .lottie_props import Ctx, build, frozen, rgb
+from .lottie_props import Ctx, build, fill_opacity, frozen, rgb
 from .lottie_shapes import _STILL, _stroke, gradient, group
 
 HELD = ["body", "font", "size", "weight", "stretch", "tracking", "lineHeight", "align", "boxWidth", "slant", "grade", "stroke"]
@@ -153,7 +153,7 @@ def text_layer(node: dict, ctx: Ctx, ind: int) -> dict:
     layer = common(sized, ctx, 4, ind)
     fx = next((e for e in node.get("effects", []) if e["type"] == "gradient"), None)
     grad = gradient(fx, sized, ctx)
-    fill = {**grad, "r": 1} if grad else {"ty": "fl", "nm": "fill", "o": _STILL(100), "r": 1,
+    fill = {**grad, "r": 1} if grad else {"ty": "fl", "nm": "fill", "o": fill_opacity(node, ctx), "r": 1,
                                          "c": build(node, ["color"], lambda q: rgb(q["color"]), ctx, "text colour")}
     glyphs = [{"ty": "sh", "nm": "glyph", "ks": _STILL(s)} for s in shapes]
     parts = [*glyphs]
