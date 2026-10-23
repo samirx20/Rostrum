@@ -50,7 +50,8 @@ def musical_rows(item: dict, rows: list[dict], root: dict) -> list[dict]:
         kind = _time_kind(item, r["id"]) if r["row"] == "param" else ""
         if kind and isinstance(sh.get(r["id"]), (int, float)) and not isinstance(sh[r["id"]], bool):
             sec = float(sh[r["id"]])
-            text = musical.position(sec, root) if kind == "time" else musical.length(sec, root, _start(item, root))
+            text = (musical.position(sec, root) if kind == "time" else
+                    f"{sec:.2f} s" if item["type"] == "clip" else musical.length(sec, root, _start(item, root)))   # a sound's length is in seconds
             help_ = f"{r['help']} " if r["help"] else ""
             r = {**r, "type": "text", "value": text, "unit": "", "display": "", "control": "",
                  "help": f"{help_}Now {sec:.2f} s. Type bars.beats (5.3), seconds (9.6 s) or a clock (0:09.6)."}
