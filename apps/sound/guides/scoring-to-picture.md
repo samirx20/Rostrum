@@ -54,8 +54,10 @@ the render, naming the note; it is never played as a silent note. Typing a lengt
 
 ## 3. Make the grid serve the picture
 
-- **Tempo map:** `tempo.add` (`bpm`, `at`) adds a tempo change, `tempo.set` / `tempo.remove` edit it. On the screen,
-  the tempo readout opens the tempo controls; tempo changes sit on the ruler and drag (one undo step per drag).
+- **Tempo map:** `tempo.add` (`bpm`, `at`, `ramp`) adds a tempo change, `tempo.set` / `tempo.remove` edit it. With
+  `ramp: true` the tempo glides evenly from this change's bpm to the next change's (an accelerando into a reveal, a
+  slow-down into the last shot); the flag on the ruler shows ↗ or ↘. On the screen, the tempo readout opens the
+  tempo controls; tempo changes sit on the ruler and drag (one undo step per drag).
 - To make a downbeat fall on a moment, work out the tempo from the gap: beats between two moments ÷ seconds between
   them × 60 = bpm. Check it with `look_beats` (below) rather than trusting the arithmetic.
 - **Key:** `key.add` / `key.set` (`key` like `"D minor"`, `at`). **Sections:** `section.add` (`name`, `at`, `end`),

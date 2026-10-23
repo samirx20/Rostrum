@@ -31,7 +31,7 @@ from .doc import KIND, meter
 SAFE_BUILTINS = {f.__name__: f for f in (range, len, min, max, abs, round, enumerate, zip, list, dict, tuple,
                                           float, int, str, sorted, sum, reversed)}
 API = ["tempo(bpm)", "length(time)", "beats_per_bar(n)", "sample_rate(hz)", "track(id, **fields)",
-       "marker(name, at)", "tempo_change(at, bpm)", "meter_change(at, beats_per_bar)", "key(key, at)", "section(name, at, end)", "import_midi(path)",
+       "marker(name, at)", "tempo_change(at, bpm, ramp=False)", "meter_change(at, beats_per_bar)", "key(key, at)", "section(name, at, end)", "import_midi(path)",
        "master(**fields)", "beat(n)", "beats(n)", "bar(n)", "vel_curve(points, start, end)"]
 
 

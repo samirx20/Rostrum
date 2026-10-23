@@ -33,7 +33,10 @@ def fit_bar(ctx, targets, args):
     beat = meter.bar_start(root, int(args["bar"]))
     segs = tempo.segments(root)
     i = max(k for k, s in enumerate(segs) if s[0] <= beat + 1e-9)
-    b0, _, s0 = segs[i]
+    b0, _, s0, *_ = segs[i]
+    if any(s[3] != s[1] for s in segs[max(0, i - 1):i + 1]):
+        ctx.fail(codes.BAD_ARGUMENT, f"bar {args['bar']}", "sits in or after a tempo ramp, so no single tempo decides "
+                 "where it lands", hint="Turn the ramp off first, or choose a bar after a held tempo.")
     if t <= s0 + 1e-6 or beat <= b0:
         ctx.fail(codes.BAD_ARGUMENT, f"bar {args['bar']}", f"can't start on \"{name}\" ({t:.2f} s): a tempo change "
                  "before it already decides where it lands", hint="Choose a later bar, or a later marker.")

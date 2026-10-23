@@ -14,13 +14,15 @@ def _sorted(items):
 
 def tempos(root: dict) -> list[dict]:
     """The tempo from each change on: the start first."""
-    return [{"t": round(s, 6), "bpm": bpm} for _, bpm, s in tempo.segments(root)]
+    return [{"t": round(s, 6), "bpm": bpm} for _, bpm, s, *_ in tempo.segments(root)]
 
 
 def tempo_marks(root: dict) -> list[dict]:
-    """The tempo changes as items the screen can select and drag (the start tempo is the document's own)."""
-    return _sorted({"id": c["id"], "t": timing.sec(c["at"], root, c["id"]), "bpm": c["bpm"]}
-                   for c in root.get("tempos", []) if "at" in c and "bpm" in c)
+    """The tempo changes as items the screen can select and drag (the start tempo is the document's own); `ramp`
+    is +1 / -1 while it glides up / down to the next change, else 0."""
+    glide = {round(s[2], 6): (s[3] > s[1]) - (s[3] < s[1]) for s in tempo.segments(root)}
+    return _sorted({"id": c["id"], "t": (t := timing.sec(c["at"], root, c["id"])), "bpm": c["bpm"],
+                    "ramp": glide.get(round(t, 6), 0)} for c in root.get("tempos", []) if "at" in c and "bpm" in c)
 
 
 def meter_marks(root: dict) -> list[dict]:

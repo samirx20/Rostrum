@@ -32,7 +32,9 @@ TEMPO_AT = V.Value("at", "number", rule=_tempo_time, schema={"anyOf": V.TIME_SCH
                    step=0.01, form="time", group="Tempo", help='Where the new tempo starts: {"beat": 32} (stays on its beat) or '
                    "seconds (stays at that moment).")
 FIELDS = {
-    "tempo": [V.N("bpm", 20, 400, "Tempo", "bpm", help="The tempo from here to the next change."), TEMPO_AT],
+    "tempo": [V.N("bpm", 20, 400, "Tempo", "bpm", help="The tempo from here to the next change."), TEMPO_AT,
+              Param.toggle("ramp", group="Tempo", label="Glide to next",
+                           help="Speed up or slow down evenly from here to the next change's tempo, instead of jumping.")],
     "meter": [V.N("beatsPerBar", 1, 16, "Time signature", integer=True, label="Beats per bar",
                   help="Beats in each bar from here to the next change (3: 3/4, 6: 6/8 counted in eighths)."),
               V.Value("at", "number", rule=_tempo_time, schema={"anyOf": V.TIME_SCHEMA["anyOf"][:2]}, unit="s", step=0.01,

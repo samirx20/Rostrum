@@ -19,9 +19,11 @@ class MusicMap:
             raise RostrumError(codes.BAD_ARGUMENT, "script", f'{type_} "{id_}"', "is made twice")
         items.append({"id": id_, "type": type_, **checked(type_, fields, where)})
 
-    def tempo_change(self, at, bpm, id=None):
-        """From `at` (beat(32), or seconds) on, the song plays at `bpm`, until the next change."""
-        self._add("tempos", "tempo", {"at": at, "bpm": bpm}, id, f"tempo change at {at!r}")
+    def tempo_change(self, at, bpm, ramp=False, id=None):
+        """From `at` (beat(32), or seconds) on, the song plays at `bpm`, until the next change; `ramp=True` glides
+        from `bpm` to the next change's tempo instead of jumping there."""
+        self._add("tempos", "tempo", {"at": at, "bpm": bpm, **({"ramp": True} if ramp else {})}, id,
+                  f"tempo change at {at!r}")
 
     def meter_change(self, at, beats_per_bar, id=None):
         """From `at` (beat(32), or seconds) on, `beats_per_bar` beats in a bar (a new bar starts there)."""
