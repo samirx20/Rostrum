@@ -71,12 +71,16 @@ Rectangle {
         id: row
         required property var modelData
         readonly property bool field: modelData.row === "field"
-        readonly property bool selected: !field && modelData.id === backend.selected
+        readonly property bool selected: !field && (modelData.id === backend.selected || backend.selectedRows.length > 1 && backend.selectedRows.indexOf(modelData.id) >= 0)
         readonly property bool inSelected: !selected && modelData.owner === backend.selectedOwner && !field
         readonly property int indent: Theme.gap + modelData.depth * 16
         height: field ? Theme.rowDense - 2 : Theme.rowDense; radius: Theme.radiusCtl
         color: selected ? Theme.accentSoft : hover.containsMouse || inSelected ? Theme.hover : "transparent"
-        MouseArea { id: hover; anchors.fill: parent; hoverEnabled: true; onClicked: backend.select(row.modelData.owner) }
+        MouseArea { id: hover; anchors.fill: parent; hoverEnabled: true; onClicked: (m) => {   // Ctrl+click adds or takes out; Shift+click picks the run from the primary
+            if (row.field) backend.select(row.modelData.owner)
+            else if (m.modifiers & Qt.ControlModifier) backend.toggleInSelection(row.modelData.id)
+            else if (m.modifiers & Qt.ShiftModifier) backend.selectRange(row.modelData.id)
+            else backend.select(row.modelData.owner) } }
         Item {  // the fold arrow (absent when there is nothing to fold)
             x: row.indent - 2; width: 14; height: parent.height
             visible: row.modelData.fold !== ""
@@ -96,11 +100,11 @@ Rectangle {
             id: name
             anchors { left: icon.left; leftMargin: row.field ? 0 : icon.width + Theme.gap; verticalCenter: parent.verticalCenter
                       right: matName.visible ? matName.left : parent.right; rightMargin: Theme.gap }
-            text: row.modelData.label; elide: Text.ElideRight; font.family: uiFont
+            text: (row.modelData.cutter ? "− " : "") + row.modelData.label; elide: Text.ElideRight; font.family: uiFont
             font.pixelSize: row.field ? Theme.label + 1 : Theme.body
             color: row.field || row.modelData.row === "part" && !row.selected ? Theme.fg2 : Theme.fg
             HoverHandler { id: nameHover }
-            HoverTip { text: name.truncated ? row.modelData.label : ""; hovered: nameHover.hovered }
+            HoverTip { text: name.truncated ? name.text : ""; hovered: nameHover.hovered }
         }
         Text {  // its material: click to edit it (only while the name has its whole room: the name comes first)
             id: matName

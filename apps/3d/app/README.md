@@ -17,7 +17,9 @@ bottom (full)  the scene list (240 px) with the keys on the same rows; 204 px, 2
 ```
 
 - **Scene list** (SceneList.qml). A group's or import's children sit indented under it (the arrow folds them); an
-  import's parts too. Click a row to select it. A row shows its material's name at the right (while the name has its
+  import's parts too; a combine is a row with the Combine icon, its inputs under it, a minus before a Subtract's cutters.
+  Click a row to select it; Ctrl+click adds, Shift+click picks a run. Two or more solids selected: the settings panel's
+  Combine row (screen3d/actions3d.py, hover preview: action_preview3d.py). A row shows its material's name at the right (while the name has its
   whole room): click it to edit the material. Materials and shots are not rows: the header's Materials chip and the
   shot crumb list them.
 - **Files** (kit): ≡ menu, start screen, Open recent, document name (screen3d/files_3d.py); Export (Ctrl+E) is the

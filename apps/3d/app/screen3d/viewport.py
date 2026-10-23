@@ -29,7 +29,7 @@ def scene_ids(scene: dict) -> set[str]:
     while stack:
         node = stack.pop()
         out.add(node["id"])
-        stack += node.get("children", [])
+        stack += node.get("children", []) if node["type"] != "combine" else []    # a combine's inputs aren't drawn
     return out
 
 

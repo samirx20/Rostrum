@@ -19,7 +19,7 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "mesh-selected", "light-selected", "camera-selected", "material-selected", "shapes-flyout",
-         "lights-flyout", "page-animate", "commands", "guide", "long-name", "long-status", "file-menu", "start-screen")
+         "lights-flyout", "page-animate", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -39,6 +39,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("mesh-selected", s, ["select block"]),
         ("mesh-more", s, ["select block", "more"]),
         ("group-selected", s, ["select set"]),
+        ("two-solids", s, ["selectmany block vase"]),
+        ("two-solids-hover", s, ["selectmany block vase", "preview combine:subtract", "wait 600"]),
+        ("combine-selected", s, ["selectmany block vase", "action combine:subtract"]),
+        ("combine-folded", s, ["selectmany block vase", "action combine:union", "fold combine_1"]),
         ("light-selected", s, ["select key"]),
         ("dome-selected", s, ["select sky"]),
         ("camera-selected", s, ["select cam"]),
