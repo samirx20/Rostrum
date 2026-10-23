@@ -10,7 +10,7 @@ from rostrum_core.errors import codes
 from rostrum_core.tree import index
 from rostrum_paint.ops import build
 
-from . import background as B, drawing as D
+from . import background as B, drawing as D, shared_paints
 from .kind import REGISTRY as R
 from .ops_draw import _fresh, starter_frame
 from .ops_items import new_item
@@ -95,6 +95,10 @@ def background_move(ctx, targets, args):
             if s.get("mask") and src["id"] != dst["id"]:
                 _carry_mask(ctx, s, src, dst, frame, copies)
         if item["type"] == "paint":
+            for d in (src, dst):
+                if len(d.get("frames", [])) > 1:
+                    ctx.fail(codes.CONFLICT, f'"{t}"', f"can't move whole: {d['id']} has several drawings sharing its "
+                             "paint layers", hint="Move its strokes instead (target the strokes).")
             ctx.move(t, frame["id"], "paints")
         else:
             ctx.move(t, _paint_for(ctx, frame, args.get("paint"), _parent(ctx, t)), "strokes")
@@ -139,7 +143,7 @@ def _paint_for(ctx, frame, paint_id, src_paint) -> str:
         if p.get("name") == name:
             return p["id"]
     new = build("paint", _fresh(ctx, "paint"), {"name": name}, ctx.where)
-    ctx.insert(frame["id"], "paints", new)
+    shared_paints.add(ctx, frame["id"], new)
     return new["id"]
 
 

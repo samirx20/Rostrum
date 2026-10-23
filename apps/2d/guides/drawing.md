@@ -90,7 +90,7 @@ Each of these is one change, so **Ctrl+Z** takes back a move, a paste or a delet
 3. Click inside the area. It fills right up to the lines and a little under them, so no thin light edge shows between line and colour.
 4. Lines that don't quite meet: pick **Medium** or **Large** under **Close gaps** and click again.
 5. A click on a line, or in an area that is open to the edge of the painting, fills nothing and says why at the bottom.
-6. The fill finds its edges in **all** the paint layers of the thing.
+6. The fill finds its edges in **all** the visible paint layers of the drawing, so you can fill "Colour" up to the lines of "Ink". A locked layer refuses a fill.
 7. Press **G** again to go back to the brush.
 
 A fill is kept as a shape, not as dots of colour, so it stays as sharp as your strokes. Each fill is one change: **Ctrl+Z** takes it back.
@@ -110,16 +110,28 @@ Under the brush, **Painting on** shows:
    - Right-click a row: **Hide**, **Lock**, **Rename**, **Duplicate**, **Delete**. Duplicate puts a copy with all its strokes just above, named "… copy", and highlights it; Delete removes the layer and its strokes.
    - Under the list, the highlighted layer's own **Blend** (Normal, Multiply, Screen, Add), **Opacity** and **Lock**. A locked layer refuses paint and fill: lock the line art before you colour under it. Click the lock on its row to unlock it.
 
-   Every one of these is one change, so **Ctrl+Z** takes back exactly one. In a drawing that draws each frame, **+** adds a layer to the current drawing only.
+   Every one of these is one change, so **Ctrl+Z** takes back exactly one. In a thing that draws each frame, the paint layers belong to the thing and are shared by all its drawings (part 7): **+**, rename, order, eye, lock, blend, opacity, Duplicate and Delete act on every drawing at once. Each drawing keeps its own strokes in each layer.
 
 ## 7. Draw each frame: one drawing after another
 
 Turn on **Draw each frame** under Painting on. The same panel grows the drawing tools:
 
 1. **Drawing 2 of 3 · held 2 frames** with **‹** and **›** steps between the drawings. The **,** and **.** keys do the same.
-2. **New** starts a blank drawing after this one (or at the playhead, on an empty frame). **Alt+N**. **Copy** starts it as a copy of this one, to change part of it. **Alt+Shift+N**.
+2. **New** starts a blank drawing after this one (or at the playhead, on an empty frame), with the same paint layers, empty. **Alt+N**. **Copy** starts it as a copy of this one, its strokes in the same paint layers, to change part of it. **Alt+Shift+N**.
 3. **New ones hold** **1 · 2 · 3 · 4**: how many frames each new drawing lasts (2 is "on twos").
 4. The **=** and **−** keys make the current drawing last more or fewer frames.
+
+**Paint layers across drawings.** The paint layers are the same in every drawing, so a common way to work is:
+
+1. Draw the lines: a new drawing's first paint layer is "Ink". Press **Paint layers +**, drag the new layer below "Ink", and rename it "Colour" (right-click › Rename, or double-click its name).
+2. Lock "Ink" (right-click › Lock), so colour can't land on the lines.
+3. Fill or paint on "Colour" up to the lines.
+4. Step to the next drawing with **.** The highlighted layer stays "Colour", so you can colour drawing after drawing without picking it again.
+5. **Clear paint** and strokes stay per drawing; hiding, locking and the rest apply to all drawings.
+
+The onion skin (next part) still shows the whole drawings before and after.
+
+![Three drawings sharing a Paint layer and a Colour layer](pictures/paint-layers-shared.png)
 
 In the timeline the drawing's row shows its drawings as numbered cells; a drawing is held until the next cell. The number is its place in the row.
 

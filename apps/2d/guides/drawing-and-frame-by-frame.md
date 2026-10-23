@@ -15,7 +15,8 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
   first. Drawings on twos = a drawing every 2 frames. `frame.hold frames=3` makes one last 3 frames and moves the later
   ones.
 - A **paint** layer (blend `normal`, `multiply`, `screen`, `add`; opacity; visible; locked) holds **strokes** in painting
-  order. Several paint layers on one drawing: e.g. a base and a light layer in `add`.
+  order. Several paint layers on one layer: e.g. a base and a light layer in `add`. In a layer that draws each frame
+  the paint layers belong to the layer and are shared by all its drawings; each drawing keeps its own strokes in each.
 - A **stroke** is a path `[[x, y, pressure], …]` in canvas px plus a brush. Pressure 0..1 thins and fades the mark
   (`size_pressure`, `opacity_pressure`). The seed is fixed when it is made, so it repaints identically.
 - A **paint mask** is a polygon; a stroke with `mask` set paints only inside it (`invert` = outside).
@@ -29,17 +30,26 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
   merges stroke by stroke, so a drawing a person redrew is kept (the reply lists what was held).
 - New drawing: `frame.add at=N` (blank) or `frame.add at=N copy=<frame id>` (start from a copy and change it). `at` left out
   puts it after the last drawing, held by the layer's `newHold` (1–4, default 2: the screen's "New ones hold"). It turns
-  `eachFrame` (the screen's "Draw each frame") on.
-- Redraw: `paint.clear` on the paint layer, then new strokes; or `stroke.remove` single strokes.
+  `eachFrame` (the screen's "Draw each frame") on. A blank drawing starts with the same paint layers, empty; a copy
+  puts the current drawing's strokes into those same paint layers.
+- Redraw: `paint.clear` on the paint layer, then new strokes; or `stroke.remove` single strokes. Both stay per drawing:
+  they touch only that drawing's strokes.
 - Fill a closed area: `paint.fill {target: <layer>, at: [[x, y]], color, opacity, gap: small|medium|large, layer}`
   (composition px; `space: "canvas"` for canvas px). The edges come from every visible paint layer of that drawing,
-  so fill a colour layer under a line layer; `gap` closes line ends that don't quite meet. The fill is a `fill` item
+  so fill a colour layer under a line layer; pass `edges: "layer"` to use only the paint layer's own lines. A locked
+  paint layer refuses paint and fill. `gap` closes line ends that don't quite meet. The fill is a `fill` item
   (its outline, ring 0 outside, 1.. holes) in the paint layer's `strokes`: sharp, one undo step, removed with
   `stroke.remove`. A point on a line or in an open area is refused with the reason; nothing changes.
-- Paint layers: `paint.add {name}` on a drawing (frame) adds one on top (the screen's **Paint layers +**);
-  `stroke.add`/`paint.stroke` with `layer: "new"` starts one with the stroke; `paint.set` (name, mode, opacity,
-  visible, locked), `paint.move {index}` (0 = bottom), `paint.duplicate` (a copy just above with every stroke and
-  fill, "<name> copy", the same pixels; the screen's right-click **Duplicate**), `paint.remove`.
+- Paint layers: `paint.add {name}` adds one on top (the screen's **Paint layers +**); on a layer that draws each frame
+  it adds it to every drawing at once (empty in the others). `stroke.add`/`paint.stroke` with `layer: "new"` starts one
+  with the stroke; `paint.set` (name, mode, opacity, visible, locked), `paint.move {index}` (0 = bottom),
+  `paint.duplicate` (a copy just above with every stroke and fill, "<name> copy", the same pixels; the screen's
+  right-click **Duplicate**), `paint.remove`, `paint.unlock`. On one drawing's paint layer these act on all its copies
+  in every drawing; each copy of a duplicate holds that drawing's own strokes. One edit is one undo step.
+- Every paint layer of a layer that draws each frame carries a shared key, the field `layer` on the paint item, the same
+  in every drawing. `paint.stroke` and `paint.fill` take `layer` = a paint layer's id or that key, so one key paints
+  "Colour" in whichever drawing you aim at. `background.move` refuses a whole paint layer of a layer with several
+  drawings; move its strokes instead.
 
 ## The brush (`inspect_operations name: stroke.add` lists every setting)
 
@@ -89,6 +99,15 @@ does. Every saved brush is its own brush, even with the same settings as another
 - **Other layers:** the `hold` ease makes any field jump at the next key instead of travelling: `layer.key("x", {0: 100, 0.2: 300}, ease="hold")`
   steps a layer; keys every 2 frames with `hold` give a stepped move. `linear` between keys is smooth motion.
 - A drawing layer's own keys (opacity, position, scale) work like any layer's.
+
+## Paint layers across drawings
+
+1. Draw the lines on one paint layer ("Ink", a new drawing's first), add a second ("Colour") and move it below the lines.
+2. Lock the line layer before colouring, so a fill or stroke can't land on it by mistake.
+3. Fill "Colour" up to the lines: by default the fill stops at the lines of all visible paint layers.
+4. Go to the next drawing (`frame` on `paint.stroke` / `paint.fill`, with `layer` = Colour's key). The same two layers
+   are there, empty or copied; on the screen "Colour" stays highlighted, drawing after drawing.
+5. Hiding, locking, blend and opacity apply to every drawing at once, so one eye hides all the colour.
 
 ## Frame-by-frame working method
 
