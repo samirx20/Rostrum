@@ -9,7 +9,7 @@ import copy
 
 from rostrum_sound import compile as compile_doc
 from rostrum_sound import deliver
-from rostrum_sound.doc import markers, times
+from rostrum_sound.doc import markers, musical, times
 
 from . import delivery
 
@@ -19,17 +19,13 @@ def ranges(doc, picked) -> list[dict]:
     and each section. Times in seconds."""
     out = [{"value": "all", "label": "Whole song", "start": 0, "end": 0}]
     if picked:
-        out.append({"value": "range", "label": f"Time range · {_clock(picked[0])}–{_clock(picked[1])}",
+        out.append({"value": "range", "label": f"Time range · {musical.clock(picked[0])}–{musical.clock(picked[1])}",
                     "start": picked[0], "end": picked[1]})
     with markers.project(doc.folder):
         for s in doc.data.get("sections", []):
             a, b = times.seconds(s["at"], doc.data, s["id"]), times.seconds(s["end"], doc.data, s["id"])
             out.append({"value": f"section:{s['id']}", "label": f"Section · {s.get('name') or s['id']}", "start": a, "end": b})
     return out
-
-
-def _clock(t: float) -> str:
-    return f"{int(t // 60)}:{t % 60:04.1f}"
 
 
 class Versions:

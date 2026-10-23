@@ -68,7 +68,7 @@ Panel {
         Column {
             id: list
             width: parent.width
-            ActionsSection { width: Theme.wideFor(parent.width); hub: panel.actions; visible: !!panel.actions && rows.length + more.length > 0 && !panel.bridge.search }
+            ActionsSection { width: Theme.wideFor(parent.width); hub: panel.actions; visible: !!panel.actions && rows.length > 0 && !panel.bridge.search }
             Column {  // mixed kinds: one line per kind, a click narrows the selection to it
                 width: parent.width; visible: panel.narrow.length > 0
                 Text { text: "Show only"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
@@ -105,12 +105,14 @@ Panel {
     }
     EdgeFade { flick: scroller; anchors.fill: scroller }   // a half-scrolled row fades, never a stray "." (S36)
     VScrollBar { flick: scroller }
-    Item {  // the last line: who changed the selection last (a click opens History)
-        id: lastLine
+    Item {  // the last line: who changed the selection last (a click opens History); its own strip under a hairline,
+        id: lastLine   // so the last group never fades into it
         visible: panel.hasLast
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-        height: visible ? Theme.row : 0
-        NameLabel { anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+        height: visible ? Theme.row + Theme.grid : 0
+        Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top } height: 1; color: Theme.border }
+        NameLabel { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+                    anchors.bottomMargin: (Theme.row - height) / 2
                     text: panel.hasLast ? "Last changed by " + panel.last.who + (panel.last.ago ? " · " + panel.last.ago : "") : ""
                     help: panel.hasLast ? panel.last.label : ""
                     color: lastArea.containsMouse ? Theme.fg : Theme.fg2; font.pixelSize: Theme.label }

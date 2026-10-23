@@ -48,6 +48,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("empty-song", ["--new"], []),
         ("editor", ["--sample"], ["dock editor", "select melody"]),
         ("mixer", ["--sample"], ["dock mixer", "select drums"]),
+        ("f11-track", ["--sample"], ["select melody"]),                         # F11: the track's settings panel
+        ("f11-clip", ["--sample"], ["select-clip door"]),                       # F11: a clip's settings panel
         ("library", ["--sample"], ["library"]),
         ("library-auditioning", ["--sample"], ["select melody", "library", "audition builtIn:grandPiano"]),
         ("library-trying-long", long_project(), [*busy, f"select {LONG_TRACK}", "library", "audition builtIn:grandPiano"]),   # P29: Keep / Revert

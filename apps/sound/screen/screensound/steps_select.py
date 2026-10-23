@@ -74,7 +74,7 @@ def do_select_step(bridge, win, word, rest):
             bridge.boxSelect(rest[0].split(","), float(rest[1]), float(rest[2]), False)
         bridge.endBox()
     elif word == "range":
-        bridge.setRange(float(rest[0]), float(rest[1]), False)
+        bridge.setRange(float(rest[0]), float(rest[1]), True)      # seconds typed: exactly those seconds
     elif word == "range-clear":
         bridge.clearRange()
     elif word == "action":

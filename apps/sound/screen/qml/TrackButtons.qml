@@ -12,7 +12,7 @@ Row {
     property bool compact: false            // a short, narrow row: R, A and the lock only when on, in use or under the mouse
     property bool hovered: false            // the pointer is on the row
     readonly property bool all: !compact || hovered
-    readonly property real fullWidth: (showAuto ? 5 : 4) * 20 + (showAuto ? 4 : 3) * spacing    // all of them shown
+    readonly property real fullWidth: (showAuto ? 5 : 4) * 22 + (showAuto ? 4 : 3) * spacing    // all of them shown
     spacing: 2
     HeaderButton {
         letter: "R"; lit: recorder.armed === r.track.id; litColor: Theme.danger
@@ -32,7 +32,7 @@ Row {
         tip: lit ? "Locked: nobody can change this track, agents included. Click to unlock (Ctrl+Shift+L)"
                  : "Lock this track: nobody can change it, agents included (Ctrl+Shift+L)"
         onClicked: backend.toggleLock(r.track.id)
-        Rectangle { x: 7; y: 4; width: 6; height: 7; radius: 3; color: "transparent"; border.width: 1.5; border.color: lock.ink }
-        Rectangle { x: 5; y: 8; width: 10; height: 7; radius: 1.5; color: lock.ink }
+        Rectangle { x: 8; y: 5; width: 6; height: 7; radius: 3; color: "transparent"; border.width: 1.5; border.color: lock.ink }
+        Rectangle { x: 6; y: 9; width: 10; height: 7; radius: 1.5; color: lock.ink }
     }
 }

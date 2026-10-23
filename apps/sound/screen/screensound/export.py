@@ -37,6 +37,8 @@ def summary(r: dict) -> str:
     stems = (f"{n_track + n_bus} stems by group" if r.get("stemsBy") else
              f"{n_track} track stems" + (f" + {n_bus} group stems" if n_bus else "")) if n_track or n_bus else "no stems"
     stems += ", markers beside" if r.get("markersFile") else ""
+    if r.get("silentStems"):
+        stems += " (silent: " + ", ".join(r["silentStems"]) + ")"
     cut = f", {r['songSeconds'] - r['seconds']:.1f} s of silence trimmed" if r.get("trimmed") else ""
     return (f"Version {r['version']} · {r.get('format', {}).get('label', '')}, {r.get('sampleRate', 0) / 1000:g} kHz · "
             f"{r['seconds']:.1f} s{cut} · {stems}")

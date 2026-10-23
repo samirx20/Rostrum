@@ -95,10 +95,11 @@ def _in_row(label: str, title: str) -> str:
 def panel(entries: list[dict], short: tuple | None = None) -> dict:
     """The settings panel's actions, first (SPEC 2d-design-v2 §8.3): every valid action but the short menu's and the
     ones marked `panel: False`. The primary ones are buttons, in order; actions sharing a `bar` are one titled row
-    ("Combine": Union, Subtract …), the others one untitled row where its first one ranks; the rows of plain buttons
-    come first and the icon runs (Align, Combine) after, the same order for every kind of item (F5, audit 9/47).
-    The secondary ones are one "⋯" menu at the end of the last row (folded like right-click), never alone on a line;
-    with no row at all it is absent (the same actions stay on right-click and in the command bar).
+    ("Combine": Union, Subtract …), the others one untitled row where its first one ranks.
+    Fixed slots (F11): what applies to ONE item comes first, then what needs two or more, each by rank; so selecting
+    one more item only adds actions after the ones already there (Align keeps its place on a text, two shapes or a
+    mix). The secondary ones are one "⋯" menu at the very end of the row (folded like right-click); with no main
+    action at all there is no row (a lone "⋯" is never shown: those actions stay on right-click and in Ctrl+K).
     {rows: [{title, cols, items: [{id, label, keys}]}], more: [...]}"""
     menu_jobs = {j for _, jobs in (short or ()) for j in jobs} - set(KEEP)
     mine = [e for e in entries if not e["edit"] and e["job"] not in menu_jobs and e.get("panel", True)]
@@ -108,9 +109,10 @@ def panel(entries: list[dict], short: tuple | None = None) -> dict:
         if title not in by:
             by[title] = {"title": title, "items": []}
             rows.append(by[title])
+            by[title]["slot"] = (min(e.get("min_targets", 1), 2), e["rank"])
         by[title]["items"].append({"id": e["id"], "label": _in_row(e["label"], title), "keys": e["keys"],
                                   "icon": e.get("icon", ""), "full": e["label"]})
     for r in rows:
         r["cols"] = _cols([i["label"] for i in r["items"]])
-    rows.sort(key=lambda r: all(i["icon"] for i in r["items"]))    # one order for every item: buttons, then icon runs
+    rows.sort(key=lambda r: r.pop("slot"))     # fixed slots: one-item actions first, then by rank (stable sort)
     return {"rows": rows, "more": _fold([e for e in mine if e["importance"] != "primary"]) if rows else []}

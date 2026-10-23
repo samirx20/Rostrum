@@ -34,11 +34,10 @@ QQC.Popup {
     component Caption: Text {
         leftPadding: Theme.grid
         color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold
-        font.letterSpacing: Theme.capsSpacing; font.capitalization: Font.AllUppercase
     }
 
     IconButton {
-        glyph: "×"; kind: "ghost"; tip: "Close"; z: 2
+        glyph: "×"; kind: "normal"; tip: "Close"; z: 2
         anchors { right: parent.right; top: parent.top; margins: Theme.gap }
         onClicked: dlg.close()
     }
@@ -184,7 +183,7 @@ QQC.Popup {
                     }
                     Button {   // not found here: the way in is its exact text to copy
                         visible: !row.a.installed
-                        text: "Set up by hand"; kind: "ghost"
+                        text: "Show the steps"; kind: "ghost"
                         onClicked: dlg.showHand(row.a.id)
                     }
                     Button {

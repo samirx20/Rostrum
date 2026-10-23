@@ -17,7 +17,7 @@ QQC.Popup {
     padding: 8
     closePolicy: QQC.Popup.CloseOnPressOutside      // not on Esc: Esc is Main.qml's, one step back from the Brush to Select, closing the panel with it
     focus: true
-    background: Rectangle { color: Theme.raised; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
+    background: MenuBackground { radius: Theme.radiusPanel }
     readonly property int tileW: 112
     readonly property int tileH: 27
     readonly property var tools: [
@@ -26,11 +26,15 @@ QQC.Popup {
     property real room: 10000          // the brushes' most height: the window's, less the tools row
     property real at: 8                // the Brush icon's top: the panel starts there, moved up as far as it must fit
     // a binding, not set once in show(): the list's height settles only after the positioners lay it out
-    y: Math.max(8, Math.min(at, (parent ? parent.height : 0) - implicitHeight - 8))
+    property real floor: 10000         // the lowest it may reach (above the timeline's names column)
+    MenuSpot { id: spot }
+    y: Math.max(8, Math.min(at, Math.min(floor, parent ? parent.height : 0) - implicitHeight))
     function show(button) {
         const p = button.mapToItem(parent, button.width, 0)
-        room = parent.height - 16 - 2 * padding - 48 - 1 - 2 * 6
+        spot.anchor = button
         x = p.x + 8
+        floor = spot.floorBelow(x, 3 * tileW + 2 * 8 + 2 * padding, p.y)     // above the timeline's names, not over them
+        room = floor - 8 - 2 * padding - 48 - 1 - 2 * 6
         at = p.y - padding
         open()
     }

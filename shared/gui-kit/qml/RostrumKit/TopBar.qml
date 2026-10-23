@@ -48,7 +48,7 @@ Item {
     }      // the project's new name, typed on its tab (Enter or leaving the field)
     signal historyClicked()
     implicitHeight: Theme.topBar
-    function openHelp() { helpMenu.open() }
+    function openHelp() { helpMenu.openFrom(help, "right") }
     function openHistory(session) {
         historyFocus = session || ""
         historyClicked()
@@ -131,7 +131,7 @@ Item {
             objectName: "projectName"
             property bool editing: false
             function rename() { editing = true; nameField.input.forceActiveFocus(); nameField.input.selectAll() }
-            color: !editing && tabArea.containsMouse ? Theme.hover : Theme.panel
+            color: editing ? Theme.panel : tabArea.containsMouse ? Theme.hover : "transparent"   // plain text at rest, as in Figma; a box only when hovered or renamed
             Text { id: tabLabel; anchors.fill: parent; anchors.leftMargin: Theme.pad; anchors.rightMargin: Theme.pad
                    visible: !tab.editing; verticalAlignment: Text.AlignVCenter; elide: Text.ElideMiddle
                    text: bar.documentName; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
@@ -262,10 +262,9 @@ Item {
             objectName: "helpButton"
             anchors.verticalCenter: parent.verticalCenter
             icon: "help"; kind: "ghost"; tip: "Help"; help: "Guides, keys, connecting an AI agent, reporting a problem, About."; down: helpMenu.opened
-            onClicked: helpMenu.open()
+            onClicked: helpMenu.openFrom(help, "right")
             Menu {
                 id: helpMenu
-                x: parent.width - width
                 width: 240
                 entries: [{ value: "guides", label: "Guides", keys: "F1" }, { value: "keys", label: "Keys", keys: "Ctrl /" }]
                     .concat(typeof agents !== "undefined" && agents ? [{ value: "agents", label: "Connect an AI agent…" }] : [])

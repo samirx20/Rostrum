@@ -41,6 +41,7 @@
     strokesturn <deg> [scale] | strokesdelete | strokescopy | strokespaste | strokesclear | clickarea canvas|timeline|settings
   Sound (soundtrack_steps.py): sound wait | mute on|off | beats on|off | beat prev|next | scrub <s> | play <s> |
     wav <path> | pick <item|-> | menu | open [dry] | problem <png>
+  Hover preview (H63): hoverobj <objectName> [ms] (click_steps.py: rest on a control) | canvasreport (the canvas's fingerprint + history length)
   View (view_steps.py): zoom <percent|fit> [x y] | pan <dx> <dy> | fitsel | viewmenu | draghold <layer> <dx> <dy> [ctrl] [shift]
 A step that leaves an error in the status fails (nonzero exit).
 """
@@ -419,6 +420,10 @@ def do_step(bridge, win, step):
         do_stroke_step(bridge, win, word, rest, step)
     elif word in RIG_WORDS:                      # bones, posing, poses, Lip sync…, Add blinks… (rig_steps.py)
         do_rig_step(bridge, word, rest, step)
+    elif word == "canvasreport":                 # canvasreport: print the canvas picture's fingerprint and the history length (hover-preview walks)
+        import hashlib
+        img = bridge.frames.provider.requestImage("", None, None)
+        print(f"canvasreport: canvas {hashlib.md5(bytes(img.constBits())).hexdigest()[:10]} history {bridge.doc.seq} previewing {bridge._previewing}")
     elif word in CLICK_WORDS:                    # clickobj / dragobj: a real click on a named control (click_steps.py)
         do_click_step(win, word, rest, step)
     else:

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls as QQC
 import "."
+import "MenuPlace.js" as Place
 
 // A small popup list of actions under whatever it sits in (a button's Add menu). `entries`: [{value, label, keys, checked}];
 // choosing one closes it and sends picked(value). Up / Down move, Enter picks, Esc closes. When any entry has
@@ -18,7 +19,22 @@ QQC.Popup {
     margins: Theme.grid                 // never past the window's edge: it moves inside (a menu under a low tile)
     focus: true
     onAboutToShow: highlighted = 0
-    background: Rectangle { color: Theme.raised; radius: Theme.radiusCtl; border.color: Theme.popupEdge }
+    // openFrom(button, "right"): by the kit's one placement rule (MenuPlace.js), clear of the rail, settings panel and names column
+    property Item spotAnchor: null
+    property string spotAlign: "left"
+    function openFrom(anchor, align) { spotAnchor = anchor; spotAlign = align || "left"; reposition(); open() }
+    function reposition() {
+        const ov = QQC.Overlay.overlay
+        if (!ov || !spotAnchor || !parent || !spotAnchor.Window.window) return
+        const q = Place.near(spotAnchor, width, height, spotAnchor.Window.window.contentItem, ov, { align: spotAlign })
+        const p = parent.mapFromItem(ov, q.x, q.y)
+        x = p.x; y = p.y
+    }
+    onHeightChanged: if (visible && spotAnchor) reposition()
+    onWidthChanged: if (visible && spotAnchor) reposition()
+    onOpened: Qt.callLater(reposition)       // its size has settled by now
+    onClosed: spotAnchor = null
+    background: MenuBackground { }
     enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
     exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }
     contentItem: Column {

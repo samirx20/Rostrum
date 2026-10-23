@@ -12,7 +12,7 @@ Rectangle {
     id: a
     property alias headerWidth: timeline.headerWidth
     property bool compact: false                       // a small window: the position and key show short
-    readonly property bool tight: a.width < 700        // a squeezed panel (a drawer open on a small window): − + fold away (Ctrl −/+, Fit stay)
+    readonly property bool tight: a.width < 860        // a squeezed panel (a drawer open on a small window): − + fold away (Ctrl −/+, Fit stay)
     readonly property alias picture: corner
     readonly property bool empty: !backend.tracks.some(r => !r.mix)
     signal addTrack()
@@ -48,7 +48,7 @@ Rectangle {
             }
             Item { width: Theme.gap; height: 1 }
             IconButton {   // ⏮ to the start (Home), drawn (the font's ⏮ is a colour emoji)
-                id: toStart; kind: "ghost"; tip: "To the start (Home)"; width: Theme.field; height: Theme.field
+                id: toStart; visible: !a.tight; kind: "ghost"; tip: "To the start (Home)"; width: Theme.field; height: Theme.field
                 anchors.verticalCenter: parent.verticalCenter
                 onClicked: backend.setTime(0)
                 Rectangle { x: 7; anchors.verticalCenter: parent.verticalCenter; width: 2; height: 10
@@ -67,12 +67,12 @@ Rectangle {
             }
             RecordControls { anchors.verticalCenter: parent.verticalCenter }
             IconButton {   // the metronome (Shift+K), on while it is down
-                icon: "metronome"; kind: "ghost"; down: backend.clickOn; width: Theme.field; height: Theme.field
+                visible: !a.tight; icon: "metronome"; kind: "ghost"; down: backend.clickOn; width: Theme.field; height: Theme.field
                 tip: backend.clickOn ? "Metronome click is on (Shift+K)" : "Metronome click (Shift+K)"
                 anchors.verticalCenter: parent.verticalCenter; onClicked: backend.toggleClick()
             }
             Item { width: Theme.gap; height: 1 }
-            SongReadout { id: readout; compact: a.compact; anchors.verticalCenter: parent.verticalCenter }
+            SongReadout { id: readout; compact: a.compact || a.tight; tight: a.tight; anchors.verticalCenter: parent.verticalCenter }
         }
         Row {
             id: rightRow

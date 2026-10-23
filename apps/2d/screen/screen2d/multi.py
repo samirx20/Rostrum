@@ -26,6 +26,18 @@ class Multi(QObject):
         by = {x["id"]: x for x in bounds.boxes(self.b.shown_placed(), self.b.shown_t())}
         return [by[i] for i in self.layers() if i in by]
 
+    @Property("QVariantMap", notify=changed)
+    def ride(self):
+        """The path the primary selected layer (or the camera) rides, with the words the canvas shows for it
+        (its `id`, `label`). {} when the selection rides nothing."""
+        ids = self.layers()
+        rider = self.b.doc.item(ids[0]) if ids else {}
+        path = rider.get("ridePath", "")
+        if not path or not self.b.doc.has(path):
+            return {}
+        what = "Camera" if rider.get("type") == "camera" else rider.get("name") or ids[0]
+        return {"id": path, "label": f"{what} rides {self.b.doc.item(path).get('name') or path}"}
+
     @Property(int, notify=changed)
     def count(self):
         return len(self.layers())

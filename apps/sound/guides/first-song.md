@@ -9,7 +9,7 @@ For a person using the RostrumSound app. This page takes you from an empty song 
   song makes a sound), and **?** (help).
 - **Middle: the arrangement.** Every track is a row over time. Its header strip holds **+ Add**, then the transport, always
   there: ⏮ (to the start), ▶ (play / stop, the one blue button), the loop button, **Record** and the metronome; then
-  the position ("3.2  0:04.80": bars.beats, then the time), and the song's tempo, beats and key as fields; **Grid ▾**, **Snap**, zoom − + and **Fit** sit at its right. The ruler counts **bars**: plain numbers, one per
+  the position ("3.2  0:04.80": bars.beats, then the time; click it and type **5.3** or **9.6 s** to jump there; a beat the bar does not have, like 5.9 in 4/4, is refused with the reason), and the song's tempo, beats and key as fields; **Grid ▾**, **Snap**, zoom − + and **Fit** sit at its right. The ruler counts **bars**: plain numbers, one per
   bar. For a seconds scale, right-click the ruler and choose **Show seconds** (the same entry hides it).
 - **Under it: the dock.** **Editor** (E) shows the selected track up close; **Mixer** (X) shows the faders. ▾ folds
   it away.
@@ -66,7 +66,9 @@ The **Colour** row shows the colour the track is drawn in.
 3. **Select several:** Ctrl+click adds or removes one, Shift+click takes everything between, and dragging across
    empty space draws a box. **Ctrl+A** selects all, **Esc** clears.
 4. **The settings panel** on the right names the selection ("5 notes") and shows its actions first, as buttons, such
-   as **Quantise** and **Transpose**; **More** holds the rest. There is no bar floating over the arrangement: the
+   as **Quantise** and **Transpose**, each always in the same place; **⋯** at the end of that row holds the less used
+   ones (when only those fit, there is no row: use right-click or **Ctrl+K**). The bottom line, **Last changed by …**,
+   sits on its own under a thin line; click it to open History. There is no bar floating over the arrangement: the
    actions live there. **Right-click** is a short menu: Cut, Copy, Paste, Duplicate, Delete, and for tracks Group,
    Move up / down, Lock and Rename. On empty lane space it offers Paste here, Add marker here and Select all on this
    track; on the ruler, Add marker here, Make a section from here and Show seconds. **Ctrl+K** finds every action by
@@ -104,6 +106,8 @@ The **Colour** row shows the colour the track is drawn in.
 
 ## 6. Tempo, beats and key
 
+A typed tempo outside 20–400 bpm is refused ("Tempo is 20–400 bpm"), never changed to the nearest.
+
 - The song's **tempo**, **beats per bar** (4/4, 3/4 …) and **key** are the three fields in the arrangement's header
   strip, and they show what plays at the playhead. Type the tempo or drag it; pick the beats and the key from their
   lists. Nothing has to be selected first.
@@ -117,6 +121,7 @@ The **Colour** row shows the colour the track is drawn in.
   add one at the playhead. A new change starts at what already plays there and is selected, so you change it at once
   (pick 6 and 8 for a 6/8 bar). A **+** is there only where it makes sense: not at the very start (that is the song's
   own tempo and time signature) and not where one already sits.
+- A new section is named for its next musical role (intro, verse, chorus …); rename it in the settings panel.
 - Changes sit on the ruler as small flags: "♩ 132" for a tempo, "3/4" for a time signature, "D minor" for a key.
   Drag a flag to move it (one undo step). Click one and the settings panel shows it. A tempo flag has **Bpm**, **At**
   and **Glide to next**: turn that on and the tempo speeds up or slows down evenly to the next change instead of

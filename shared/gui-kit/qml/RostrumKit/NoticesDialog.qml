@@ -38,7 +38,8 @@ QQC.Popup {
         Text { text: "MIT licence, HireMyLens Media"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
         Text {
             width: parent.width; wrapMode: Text.WordWrap
-            text: dlg.data ? dlg.data.where : ""; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+            text: (dlg.data ? dlg.data.where + " " : "") + "Each component below is used under its own licence, and each asks that its notice is kept; a line says when one asks more."
+            color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
         }
     }
     Text {
@@ -65,33 +66,37 @@ QQC.Popup {
                 id: row
                 required property var modelData
                 required property int index
-                readonly property bool sameAsks: index > 0 && dlg.items[index - 1].asks === modelData.asks
+                // what a licence asks is said once, on its first row; the usual "Keep the notice" is said once at the top
+                readonly property bool sameAsks: modelData.asks === "Keep the notice" || dlg.items.findIndex(i => i.asks === modelData.asks) < index
                 // a licence cell may carry notes ("MIT-0 (metadata); its LICENSE text is …"): the name sits at the right,
                 // the notes wrap under what the licence asks, never cut
                 readonly property var cut: /^(.*?)(?:; |\. | \()(.*)$/.exec(modelData.licence || "")
                 readonly property string licenceName: cut ? cut[1] : (modelData.licence || "")
                 readonly property string notes: cut ? (modelData.licence.slice(cut[1].length).replace(/^[;.]?\s*/, "")) : ""
-                width: ListView.view.width; height: askText.y + askText.height + Theme.gap
+                width: ListView.view.width; height: Math.max(askText.y + askText.height, licenceText.y + licenceText.height) + Theme.gap
                 Text {
                     id: nameText
                     anchors { left: parent.left; leftMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
-                    width: Math.min(implicitWidth, parent.width * 0.6)
-                    text: row.modelData.name; elide: Text.ElideRight
-                    color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
+                    // the name wraps in what is left beside the licence; nothing is cut or runs into its neighbour
+                    width: parent.width - licenceText.width - 3 * Theme.gap; wrapMode: Text.Wrap
+                    text: row.modelData.name; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
                 }
                 Text {
-                    anchors { left: nameText.right; leftMargin: Theme.gap; baseline: nameText.baseline }
-                    text: row.modelData.version; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
-                }
-                Text {
-                    anchors { right: parent.right; rightMargin: Theme.gap; baseline: nameText.baseline }
-                    width: parent.width * 0.36; horizontalAlignment: Text.AlignRight; elide: Text.ElideRight
+                    id: licenceText
+                    anchors { right: parent.right; rightMargin: Theme.gap; top: nameText.top }
+                    width: Math.min(implicitWidth, parent.width * 0.3); wrapMode: Text.Wrap; horizontalAlignment: Text.AlignRight
                     text: row.licenceName; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
+                }
+                Text {  // the version has its own line: a long one ("12Hz, GGUFs from …") wraps there
+                    id: versionText
+                    anchors { left: nameText.left; right: parent.right; rightMargin: Theme.gap; top: nameText.bottom; topMargin: 2 }
+                    visible: text !== ""; height: visible ? implicitHeight : 0; wrapMode: Text.Wrap
+                    text: row.modelData.version; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
                 }
                 Text {
                     id: askText
                     anchors { left: parent.left; leftMargin: Theme.gap; right: parent.right; rightMargin: Theme.gap
-                              top: nameText.bottom; topMargin: 3 }
+                              top: versionText.bottom; topMargin: 3 }
                     visible: text !== ""; height: visible ? implicitHeight : 0
                     text: row.notes ? (row.sameAsks ? "" : row.modelData.asks + " · ") + "Licence: " + row.notes
                                     : row.sameAsks ? "" : row.modelData.asks
@@ -100,6 +105,7 @@ QQC.Popup {
                 }
             }
         }
+        EdgeFade { flick: list; anchors.fill: list; color: Theme.sunken }
         VScrollBar { flick: list; anchors.rightMargin: 0 }
     }
 }

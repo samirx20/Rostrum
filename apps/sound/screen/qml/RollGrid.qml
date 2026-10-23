@@ -74,7 +74,7 @@ Item {
                     visible: (k % 12 === 0 || parent.lit) && g.rowH >= 7
                              && parent.parent.y >= g.scrollY - 1 && parent.parent.y + parent.parent.height <= g.scrollY + g.viewHeight + 1
                     anchors { right: parent.right; rightMargin: 4; verticalCenter: parent.verticalCenter }
-                    text: k % 12 === 0 ? "C" + (Math.floor(k / 12) - 1) : g.rowNames[parent.parent.index]
+                    text: k % 12 === 0 ? "C" + (Math.floor(k / 12) - 1) : (g.rowNames[parent.parent.index] || "")
                     color: g.black(k) ? "#e6e6e6" : "#3c3c3c"
                     font.family: uiFont; font.pixelSize: Math.min(Theme.label - 1, Math.max(9, g.rowH)); font.features: { "tnum": 1 }
                     font.weight: k % 12 === 0 ? Font.DemiBold : Font.Normal

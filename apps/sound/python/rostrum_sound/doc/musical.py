@@ -54,13 +54,26 @@ def length(secs: float, root: dict, start: float = 0.0, fine: bool = False) -> s
 
 def _music_beat(m, root: dict, is_length: bool, start_beat: float) -> float:
     bar, cnt, ticks = int(m.group(1)), int(m.group(2) or (0 if is_length else 1)), int(m.group(3) or 0)
+    if ticks >= TICKS:
+        raise ValueError(f"A count has {TICKS} ticks: type 0–{TICKS - 1} after the second dot")
     if is_length:
         seg = meter.seg_at(root, start_beat)
+        _count_in_bar(cnt, seg.per, 0)
         return start_beat + (bar * seg.per + cnt + ticks / TICKS) * meter.count(seg)
     if bar < 1 or cnt < 1:
         raise ValueError("bars and beats count from 1")
     b = meter.bar_start(root, bar)
-    return b + (cnt - 1 + ticks / TICKS) * meter.count(meter.seg_at(root, b))
+    seg = meter.seg_at(root, b)
+    _count_in_bar(cnt, seg.per, 1, bar)
+    return b + (cnt - 1 + ticks / TICKS) * meter.count(seg)
+
+
+def _count_in_bar(cnt: int, per: int, first: int, bar: int | None = None) -> None:
+    """Refuse a count the bar does not have (5.9 in 4/4), saying how many it has."""
+    if cnt > per - 1 + first:
+        where = f"Bar {bar} has" if bar else "A bar has"
+        raise ValueError(f"{where} {per} beats: {cnt} is not one of them" if first else
+                         f"A bar has {per} beats, so a length counts 0–{per - 1} beats after the bars: {cnt} is too many")
 
 
 def parse(text: str, root: dict, is_length: bool = False, start: float = 0.0) -> float:

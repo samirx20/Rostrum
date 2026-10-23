@@ -1,8 +1,8 @@
 """The settings panel's screen state (a slot mix-in for DocBridge, see parts.py): which groups are open, the search
 text, and jumping to one field. Opt-in: a bridge with `sections = True` lays its rows out by importance
 (sections.py: essentials, every other group folded to its name, search); every other bridge keeps the More row.
-None of this is a document change. Open groups are remembered by name across selections (Timing opened on one
-layer is open on the next). The mix-in uses the bridge's `_kit` (op_kind, static, open_groups, search), `model`,
+None of this is a document change. Open and folded groups are remembered by name across selections (Timing opened
+on one layer is open on the next). The mix-in uses the bridge's `_kit` (op_kind, static, open_groups, search), `model`,
 `_refresh`, `_set_status`, `searchChanged` and `fieldRevealed`.
 """
 from __future__ import annotations
@@ -25,7 +25,9 @@ class SectionSlots(SlotMixin):
 
     @Slot(str)
     def toggleGroup(self, group):
-        self._kit.open_groups ^= {group}
+        """Fold or open a group (from its heading or its name in the row of names); the choice outlives the selection."""
+        row = next((r for r in self.model.rows if r.get("fold") == group), None)
+        self._kit.open_groups[group] = not (row and row["open"])
         self._refresh()
 
     @Slot(str)
@@ -54,7 +56,7 @@ class SectionSlots(SlotMixin):
             self.setSearch("")
             row = self._param(name)
         if row.get("in"):
-            self._kit.open_groups.add(row["in"])
+            self._kit.open_groups[row["in"]] = True
             self._refresh()
         elif "in" not in row and not row["valid"]:      # behind the More row
             self.toggleMore()

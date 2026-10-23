@@ -9,10 +9,10 @@ from __future__ import annotations
 
 ON_SCREEN = {
     "*": {"track": ("mute", "solo")},                                   # the arrangement's track headers
-    "mixer": {"track": ("volume", "pan", "output", "reverb"),           # MixStrip: fader, pan, where it plays to, reverb send
-              "bus": ("volume", "pan", "mute", "output"),
+    "mixer": {"track": ("pan", "output", "reverb"),                     # MixStrip: pan, where it plays to, reverb send (Volume stays in the panel: it is the typed one)
+              "bus": ("pan", "mute", "output"),
               "send": ("level",),                                       # MixSends
-              "master": ("volume",)},                                   # the Master strip's fader
+              "master": ()},
 }
 
 

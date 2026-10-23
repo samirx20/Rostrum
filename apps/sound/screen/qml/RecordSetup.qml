@@ -40,5 +40,10 @@ QQC.Popup {
                               onPicked: (v) => takeSetup.set(row.modelData.key, v) }
             }
         }
+        Button {   // a keyboard take (keys_record.py): only with a keyboard, on a notes or drum track
+            visible: typeof keys !== "undefined" && keys.usable && !recorder.recording
+            text: "Record keys"; kind: "ghost"; height: Theme.field
+            onClicked: { takeSetup.setOpen(false); keys.toggleRecord() }
+        }
     }
 }

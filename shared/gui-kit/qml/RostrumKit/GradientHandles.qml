@@ -143,11 +143,10 @@ Item {
             objectName: "grad_" + dot.d.role + (dot.d.role === "stop" ? dot.d.index : "")
             x: dot.d.x - 10; y: dot.d.y - 10; width: 20; height: 20
             property bool moved: false
-            Rectangle {                                    // dark halo, white ring, the stop's colour
+            Rectangle {                                    // dark halo, white ring, the stop's colour: every dot alike
                 anchors.centerIn: parent; width: 18; height: 18; radius: 9; color: Qt.rgba(0, 0, 0, 0.35)
-                Rectangle {                                // a radius dot: smaller, square
-                    readonly property bool radius_: dot.d.role === "rx" || dot.d.role === "ry"
-                    anchors.centerIn: parent; width: radius_ ? 10 : 14; height: width; radius: radius_ ? 2 : 7
+                Rectangle {
+                    anchors.centerIn: parent; width: 14; height: 14; radius: 7
                     color: dot.d.color
                     border.width: 2
                     border.color: dot.d.index >= 0 && root.selected === dot.d.index && dot.d.role !== "arm" ? Theme.accent : "white"

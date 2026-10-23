@@ -19,6 +19,19 @@ class ViewSlots:
         follows a tempo or time signature edit, not only the playhead."""
         return ".".join(musical.position(t, self.doc.data).split(".")[:2]) + "  " + musical.clock(t)
 
+    @Slot(str, result=str)
+    def jumpTo(self, text):
+        """The position field: typed bars.beats ("5.3", "5.3.480"), a clock ("0:09.6") or seconds ("9.6 s") moves the playhead
+        there (the one parser, musical.py). "" when it did; else the refusal, in words, for the field to show."""
+        try:
+            t = musical.parse(text.split("  ")[0], self.doc.data)
+        except ValueError as e:
+            return str(e)
+        if t > self._view["song"]["length"] + 1e-6:
+            return f"The song is {musical.clock(self._view['song']['length'])} long: {musical.clock(t)} is past its end"
+        self.setTime(t)
+        return ""
+
     @Property(float, notify=S.viewChanged)
     def viewStart(self):
         """The time (seconds) at the left edge of every timeline: ruler, rows, markers, playhead, piano roll."""

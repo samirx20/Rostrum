@@ -3,7 +3,7 @@ that share one line, each half with its small letter inside. Everything else is 
 The rule is data on the rows: `half` ("first" / "second") and `letter`; the first half's label becomes the pair's name.
 The letter is the axis, the last word of the label ("Looks at X" -> X, "Width" -> W), never a label's first letter (a
 camera's "Looks at X" showed "L", read as a box-drawing corner). An item that rides something (`ridePath`) has its
-position measured from there: the Position pair then reads "Offset".
+position measured from there: the Position pair then reads "Offset from path".
 Two rows pair only when they sit one after the other and are the same in every way that decides whether they show
 (group, importance, where they are folded, when they are valid), so a pair is never half on screen."""
 from __future__ import annotations
@@ -19,7 +19,8 @@ def pair_up(rows: list[dict]) -> list[dict]:
         a, b = out[i], out[i + 1]
         name = PAIRS.get((a.get("id"), b.get("id")))
         if name and a["row"] == b["row"] == "param" and a["type"] == "number" and all(a.get(k) == b.get(k) for k in SAME):
-            out[i] = {**a, "half": "first", "letter": _axis(a["label"]), "label": name, "partner": b["id"]}
+            looks = a["label"].startswith("Looks at ")       # a camera's pair says what it is: where it looks
+            out[i] = {**a, "half": "first", "letter": _axis(a["label"]), "label": "Looks at" if looks else name, "partner": b["id"]}
             out[i + 1] = {**b, "half": "second", "letter": _axis(b["label"])}
     return out
 
@@ -34,6 +35,6 @@ def pair_valid(rows: list[dict], item: dict | None = None) -> None:
     for a, b in zip(rows, rows[1:]):
         if a.get("half") == "first" and b.get("half") == "second":
             a["valid"] = b["valid"] = a["valid"] or b["valid"]
-            if a["label"] == "Position" and (item or {}).get("ridePath"):
-                a["label"] = "Offset"
+            if a["label"] in ("Position", "Looks at") and (item or {}).get("ridePath"):
+                a["label"] = "Offset from path"
 

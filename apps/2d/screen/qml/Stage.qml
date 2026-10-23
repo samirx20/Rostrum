@@ -264,6 +264,13 @@ Rectangle {
                     editable: backend.multi.count === 1 && !well.drawing && backend.tool !== "bone" && modelData.type !== "path" && !backend.pen.on
                 }
             }
+            Rectangle {   // the selection rides a path: says so over the picture (the view moves with a riding camera, so no outline)
+                visible: backend.multi.ride.id !== undefined && backend.multi.count === 1
+                x: -view.ox + Theme.gap; y: -view.oy + Theme.gap; width: rideWords.width + 2 * Theme.gap; height: rideWords.height + Theme.gap
+                radius: Theme.radiusCtl; color: Theme.accent
+                Text { id: rideWords; anchors.centerIn: parent; text: backend.multi.ride.label || ""; color: "white"
+                       font.family: uiFont; font.pixelSize: Theme.label }
+            }
             BoneOverlay { fit: view.zoom; space: marks }   // a rig in hand: its bones and joints, posing and fixing drags (rig_view.py)
             Shape {  // painting: the target's true edge, the limit its paint stays inside (backend.paintEdge, composition px)
                 visible: well.drawing && backend.paintEdge.path !== ""

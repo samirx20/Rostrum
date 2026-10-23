@@ -8,6 +8,7 @@ import RostrumKit
 Row {
     id: ro
     property bool compact: false
+    property bool tight: false                        // a squeezed strip (a drawer open on a small window): the key fields step aside
     spacing: Theme.gap
     readonly property var song: backend.song
     readonly property string meter: { backend.time; song; return songPanel.meterHere() }   // what plays here
@@ -25,21 +26,24 @@ Row {
     readonly property string tonic: key.split(" ")[0]
     readonly property string mode: key.split(" ")[1] || "major"
 
-    Text {
+    FieldFrame {   // type "5.3" (bars.beats) or "9.6 s" and Enter to jump there; a refusal says why
         id: place
         readonly property string full: backend.positionText(backend.time, ro.song)
         readonly property var parts: full.split("  ")     // bars.beats, then the clock (musical.py)
         text: ro.compact ? parts[0] : full
-        color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body; font.features: { "tnum": 1 }
+        editable: true
+        width: Math.ceil(measure.width) + 2 * Theme.gap + 4
         anchors.verticalCenter: parent.verticalCenter
-        HoverHandler { id: placeHover }
-        HoverTip { text: ro.compact ? place.parts[1] : ""; hovered: placeHover.hovered }
+        TextMetrics { id: measure; font: place.input.font; text: ro.compact ? "999.9" : "999.9  0:00.00" }
+        onCommitted: (t) => { const why = backend.jumpTo(t); if (why !== "") place.problem = why }
+        HoverTip { text: place.problem === "" ? (ro.compact ? place.parts[1] + " · type a bar.beat or seconds to jump" : "Type a bar.beat (5.3) or seconds (9.6 s) to jump") : ""
+                   hovered: place.hovered && !place.active }
     }
     Row {   // tempo, time signature and key: the tempo and key edit what plays at the playhead (song_panel.py)
         anchors.verticalCenter: parent.verticalCenter; spacing: Theme.grid
         readonly property int tempoNow: Math.round(ro.song.tempos[ro.tempoAt].bpm)
         NumberField {   // the unit inside the field: one control, "100 bpm"
-            width: 76; value: parent.tempoNow; from: 20; to: 400; step: 1; unit: "bpm"
+            width: 76; label: "Tempo"; value: parent.tempoNow; from: 20; to: 400; step: 1; unit: "bpm"
             onEdited: (v) => songPanel.setTempo(v)
             onScrubStarted: songPanel.beginTempo()
             onScrubbed: (v) => songPanel.scrubTempo(v)
@@ -53,12 +57,12 @@ Row {
             HoverTip { text: "Time signature: beats in a bar / what a beat is"; hovered: parent.hovered && !parent.opened }
         }
         ChoiceField {   // the key playing here: tonic (or "No key" until one is chosen), then the mode
-            width: ro.key !== "" ? 56 : 84; current: ro.tonic
+            visible: !ro.tight; width: ro.key !== "" ? 56 : 84; current: ro.tonic
             options: (ro.key !== "" ? [] : [{ value: "", label: songPanel.noKey }]).concat(songPanel.tonics)
             onPicked: (v) => { if (v !== "") songPanel.setKey(v, ro.mode) }
         }
         ChoiceField {
-            visible: ro.key !== ""; width: ro.compact ? 64 : 92; current: ro.mode
+            visible: ro.key !== "" && !ro.tight; width: ro.compact ? 64 : 92; current: ro.mode
             options: ["major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "locrian"]
                 .map(m => ({ value: m, label: ro.compact ? m.charAt(0).toUpperCase() + m.slice(1, 3) : m.charAt(0).toUpperCase() + m.slice(1) }))
             onPicked: (v) => songPanel.setKey(ro.tonic, v)

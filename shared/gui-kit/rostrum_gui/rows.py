@@ -22,7 +22,7 @@ from .pairs import pair_up, pair_valid
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
 ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit", "display",
-         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default", "half", "letter", "more")
+         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default", "half", "letter", "more", "names")
 # more: "" for most rows; a choice whose list can grow names the last entry that adds one ("Load picture…"):
 # picking it opens a file dialog (filters) and calls bridge.loadChoice(id, path).
 # anim: "" (can't be animated), "still" (could be), "keyed" (has keys), "onkey" (has a key at the playhead).
@@ -34,6 +34,7 @@ ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options",
 # the app's `choices(name)` gives (e.g. the layers a track matte may use). Never a bare text box of ids; with nothing
 # to pick (and nothing picked) the row is absent.
 # fold: the group a fold row opens; open: that group is open now (None when nothing inside applies: the row is absent).
+# names: the "folds" row's folded groups that apply, [{"group", "changed"}] in panel order (sections.py).
 # mixed: several items selected and their values differ (the widget says "Mixed"; many.py).
 # display: how a number shows ("percent", "db", "pan"; "" = plain), ValueKinds.js; amounts get a slider too.
 # default: the param's own default (None = none: no reset); a number field puts itself back to it on a double-click.
@@ -76,20 +77,28 @@ def _param_row(p) -> dict:
 
 
 def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=None, expr=None, choices=None,
-             opened=(), query: str = "") -> list[dict]:
+             opened=(), query: str = "", elsewhere=frozenset()) -> list[dict]:
     """The rows with `valid`, `value`, `anim` and `expr` filled in for these values (`item`: the item's values as
     the screen shows them, e.g. at the playhead). `anim(name)` gives a param's key state; none: no keys.
     `expr(name)` gives {"text", "note"} for a param driven by an expression or binding; none: no param is.
-    Rows with `in` (sections.py): `opened` are the open groups' names; a non-blank `query` keeps only matches."""
+    Rows with `in` (sections.py): `opened` is the person's choice per group ({name: open?}; a set = those open); a
+    group with no choice is open when a value in it differs from its default. A non-blank `query` keeps only matches.
+    `elsewhere`: params the screen shows in another place (bridge.on_page); here they count as not applying, so a
+    group is never opened or named for them alone."""
     picks = {r["id"]: choices(r["id"]) if choices else [] for r in static if r.get("control") == "pick"}
     ok = {r["id"]: holds(r["valid_when"], item, facts) and (r["id"] not in picks or bool(picks[r["id"]])
                                                             or bool(item.get(r["id"], r["default"])))
           for r in static if r["row"] == "param"}
+    ok.update(dict.fromkeys(set(elsewhere) & ok.keys(), False))
+    opened = _open_groups(static, item, ok, opened)
     out = []
     for r in static:
         r = dict(r)
         if "fold" in r:
             r["open"] = r["fold"] in opened if any(ok[m] for m in r["members"]) else None
+        if r["row"] == "folds":
+            r["names"] = [{"group": f["fold"], "changed": f["fold"] in opened.changed} for f in static
+                          if "fold" in f and f["fold"] not in opened and any(ok[m] for m in f["members"])]
         if r["row"] == "param":
             r["value"] = item.get(r["id"], r["default"])
             r["anim"] = anim(r["id"]) if anim else ""
@@ -109,6 +118,26 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
     return _headers(out)
 
 
+class _Opened(set):
+    """The open groups (a set), plus `changed`: the groups holding a value away from its default."""
+    changed: set
+
+
+def _open_groups(static, item, ok, choice) -> _Opened:
+    """Which groups are open: the person's choice, else open when changed (a value that applies, not at its default)."""
+    choice = choice if isinstance(choice, dict) else {g: True for g in choice}
+    params = {r["id"]: r for r in static if r["row"] == "param"}
+    out = _Opened()
+    out.changed = set()
+    for f in (r for r in static if "fold" in r):
+        if any(ok[m] and params[m]["default"] is not None and item.get(m, params[m]["default"]) != params[m]["default"]
+               for m in f["members"]):
+            out.changed.add(f["fold"])
+        if choice.get(f["fold"], f["fold"] in out.changed):
+            out.add(f["fold"])
+    return out
+
+
 def _open(r: dict, more_open: bool, opened, query: str) -> bool:
     """A param's own place is open: its fold (or More, for a deep param) is open, and it matches the search."""
     if "in" not in r:
@@ -123,6 +152,10 @@ def _headers(rows: list[dict]) -> list[dict]:
     for r in rows:
         if r["row"] == "group" and r.get("by") != "holds":
             r["valid"] = any(on.get(m, False) for m in r["members"])
+        elif r["row"] == "folds":
+            r["valid"] = bool(r["names"])
+        elif "fold" in r:                  # a group's heading shows only while it is open (folded: a name in "folds")
+            r["valid"] = r["holds"] and bool(r["open"])
         elif r["row"] != "param":
             r["valid"] = r["holds"]
     return rows

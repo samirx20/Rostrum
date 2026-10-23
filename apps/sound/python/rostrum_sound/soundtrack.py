@@ -20,7 +20,7 @@ from pathlib import Path
 from rostrum_core import RostrumError, codes
 from rostrum_core import markers as shared
 from rostrum_core import project
-from rostrum_core.cache import put_file
+from rostrum_core.cache import LEVELS, put_file, used_at
 
 from . import names, settings
 from .compile import compile as compile_doc
@@ -73,16 +73,17 @@ def render(engine, folder, root: dict) -> Path:
         schedule = compile_doc(root)
     key = hashlib.sha256((json.dumps(schedule, sort_keys=True, default=str) + _engine_id(engine)).encode()).hexdigest()
     out = cache() / f"{key[:24]}.wav"
-    put_file(out, lambda tmp: engine.request("render", schedule=schedule, out=str(tmp)), "soundtrack")
+    put_file(out, lambda tmp: engine.request("render", schedule=schedule, out=str(tmp)), "soundtrack", beside=(LEVELS,))
     _trim()
     return out
 
 
 def _trim():
-    files = sorted(cache().glob("*.wav"), key=lambda p: p.stat().st_mtime, reverse=True)
+    files = sorted(cache().glob("*.wav"), key=used_at, reverse=True)
     for p in files[KEEP:]:
         try:
             p.unlink()
+            p.with_suffix(LEVELS).unlink(missing_ok=True)
         except OSError:
             pass                            # still open in a player: the next trim takes it
 

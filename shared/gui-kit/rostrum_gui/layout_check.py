@@ -25,7 +25,6 @@ from dataclasses import dataclass
 from PySide6.QtCore import QRectF
 
 MIN_CLICK = 16            # px (logical): smaller than this is hard to hit with a mouse
-LIST_INDENT = 40   # Qt reports a rich-text list's indent in contentWidth though its lines wrap inside the box (the guide page)
 SLACK = 2                 # px: anti-aliasing and rounding never count
 SHORT = 80                # px: a text taller than this is a block of text, not a row (a sliver of it is just scrolling)
 CONTAIN = 4               # a control wholly inside one this many times its area is layered on it, not crossing it
@@ -238,7 +237,7 @@ def check(win, ignore=()) -> list[Fault]:
                 say("cut", n, f"text cut off to make room for {short(beside.item)} beside it (a hover tip doesn't excuse that)")
             elif t.property("truncated") and not hover_shows(n):
                 say("cut", n, "text cut off (elided, and no hover shows the whole line)")
-            elif t.property("contentWidth") > w + SLACK + (LIST_INDENT if str(t.property("text")).startswith("<!DOCTYPE") else 0):
+            elif t.property("contentWidth") > w + SLACK:
                 say("cut", n, f"text {t.property('contentWidth'):.0f} px wide in a {w:.0f} px box")
             elif t.property("contentHeight") > t.height() + SLACK and t.property("lineCount") > 1:
                 say("cut", n, f"text {t.property('contentHeight'):.0f} px tall in a {t.height():.0f} px box")

@@ -13,6 +13,7 @@ import RostrumKit
 // paint tools and the brushes); its icon is the paint tool last used (backend.paintTool.now).
 Rectangle {
     id: rail
+    property bool menuAvoid: true          // menus and flyouts open beside the rail, not over it (MenuPlace.js)
     width: 48
     color: Theme.panel; radius: Theme.radiusPanel
     property var last: ({ shapes: "rect", view: "hand" })      // group -> its last-used tool (screen state)

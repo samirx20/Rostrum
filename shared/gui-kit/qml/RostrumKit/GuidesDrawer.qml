@@ -34,9 +34,9 @@ Panel {
         const b = back.slice(); const u = b.pop(); back = b; load(u)
     }
     headerRight: [
-        Button { visible: drawer.url !== "" && !drawer.listing; text: "Back"; kind: "ghost"; onClicked: drawer.goBack()
+        Button { visible: drawer.url !== "" && !drawer.listing; text: "Back"; kind: "normal"; onClicked: drawer.goBack()
                  help: drawer.back.length ? "Back to the guide you came from." : "Back to the list of guides." },
-        IconButton { glyph: "×"; kind: "ghost"; tip: "Close the guides"; job: "guides"; onClicked: drawer.closed() }
+        IconButton { glyph: "×"; kind: "normal"; tip: "Close the guides"; job: "guides"; onClicked: drawer.closed() }
     ]
     Keys.onEscapePressed: drawer.closed()
 
