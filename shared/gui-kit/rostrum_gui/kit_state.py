@@ -12,7 +12,7 @@ from __future__ import annotations
 
 # What an app may override (call super() where it extends rather than replaces).
 HOOKS = frozenset({
-    "label_of", "kind_label", "subtitle", "edit_call", "shown_values", "on_page", "anim_state", "list_choices", "animate_calls",
+    "label_of", "kind_label", "starts", "subtitle", "edit_call", "shown_values", "on_page", "anim_state", "list_choices", "animate_calls",
     "expr_state", "clear_expr_calls", "sections", "selection_label", "extra_commands",
     "select", "run", "open_item", "say", "commands", "historyCount", "undoLabel", "redoLabel", "_commands", "_rows", "_first", "_on_doc",
     "staticMetaObject",

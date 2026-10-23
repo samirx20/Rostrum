@@ -104,8 +104,8 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
     N("opacity", "Opacity", "Transform", 0, 1, 0.01, default=1.0, display="percent"),
     N("anchorX", "Anchor X", "Anchor", -10, 10, 0.01, "", S, default=0.5, help="0 = left edge, 1 = right edge"),
     N("anchorY", "Anchor Y", "Anchor", -10, 10, 0.01, "", S, default=0.5, help="0 = top edge, 1 = bottom edge"),
-    N("scaleX", "Stretch X", "Anchor", 0, 100, 0.01, "×", D, default=1.0, display="percent"),
-    N("scaleY", "Stretch Y", "Anchor", 0, 100, 0.01, "×", D, default=1.0, display="percent"),
+    N("scaleX", "Stretch X", "Stretch", 0, 100, 0.01, "×", D, default=1.0, display="percent"),
+    N("scaleY", "Stretch Y", "Stretch", 0, 100, 0.01, "×", D, default=1.0, display="percent"),
     N("tiltX", "Tilt X", "Depth", -180, 180, 0.1, "°", D, help="Turn around the horizontal axis (2.5D)"),
     N("tiltY", "Tilt Y", "Depth", -180, 180, 0.1, "°", D, help="Turn around the vertical axis (2.5D)"),
     *timing("The layer appears at this time", "The layer is gone from this time"),
@@ -231,7 +231,8 @@ FIELDS: dict[str, list[Param]] = {
         N("tracking", "Letter spacing", "Paragraph", -0.5, 2, 0.001, "em", S, help="Space between letters"),
         N("lineHeight", "Line height", "Paragraph", 0.5, 4, 0.01, "×", S, default=1.1),
         N("stretch", "Width", "Font", 25, 200, 1, "%", D, default=100.0, help="Variable font width"),
-        N("boxWidth", "Box width", "Paragraph", 0, 20000, 1, "px", D, help="0 = one line, as wide as the text"),
+        N("boxWidth", "Box width", "Paragraph", 0, 20000, 1, "px", D, words={0: "Auto"},
+          help="Auto (0) = one line, as wide as the text; a width wraps the words in it"),
         T("stroke", "Outline", "Outline", False, D),
         C("strokeColor", "Outline colour", "Outline", "#ffffff", D, STROKE),
         N("strokeWidth", "Outline width", "Outline", 0, 100, 0.5, "px", D, STROKE, default=1.0),
@@ -428,6 +429,11 @@ FIELDS["text"].append(X("textStyle", "Text style", "Font", "", S, control="pick"
                         help="The named text style this text follows (its font, size, weight, colour …): changing the style "
                              "changes the text. Empty = its own. Setting one of those fields by hand detaches it"))
 STILL["textstyle"], LABELS["textstyle"] = set(STYLED), "Text style"
+
+
+# What a kind's own tool starts it with where that differs from the field's default (the Text tool places a text by
+# its top-left, left-aligned). The tool writes these; the settings panel counts them as unchanged (hooks.py starts).
+STARTS = {"text": {"anchorX": 0.0, "anchorY": 0.0, "align": "left"}}
 
 
 def param(kind: str, name: str) -> Param | None:

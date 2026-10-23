@@ -35,8 +35,11 @@ class Hooks2D:
     def on_page(self, item):             # fields the screen shows elsewhere (agents still set them through the operation)
         return ON_PAGE.get(item.get("type"), set()) | super().on_page(item)
 
+    def starts(self, item):              # the Text tool's top-left start isn't a change (a group opens only for one)
+        return F.STARTS.get(item.get("type"), {})
+
     def edit_call(self, item_id, param, value):
-        if param == size_rows.ROW and self.doc.item(item_id)["type"] == "comp":      # Scene settings › Size: comp.size
+        if param == size_rows.ROW and self.doc.item(item_id)["type"] == "comp":      # Scene settings › Format: comp.size
             return size_rows.call(item_id, value)
         if param == fill_rows.ROW:                       # the Fill row's paint: layer.fill (fill_rows.py)
             return fill_rows.call(item_id, value, self.own_t(item_id))
