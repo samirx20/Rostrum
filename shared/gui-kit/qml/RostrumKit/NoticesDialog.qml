@@ -75,17 +75,20 @@ QQC.Popup {
                 Text {
                     id: nameText
                     anchors { left: parent.left; leftMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
-                    width: Math.min(implicitWidth, parent.width * 0.6)
+                    // what is left of the row after the licence column and the version: the name is cut, never run into them
+                    width: Math.max(0, Math.min(implicitWidth, parent.width - licenceText.width - versionText.width - 4 * Theme.gap))
                     text: row.modelData.name; elide: Text.ElideRight
                     color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
                 }
                 Text {
+                    id: versionText
                     anchors { left: nameText.right; leftMargin: Theme.gap; baseline: nameText.baseline }
                     text: row.modelData.version; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
                 }
                 Text {
+                    id: licenceText
                     anchors { right: parent.right; rightMargin: Theme.gap; baseline: nameText.baseline }
-                    width: parent.width * 0.36; horizontalAlignment: Text.AlignRight; elide: Text.ElideRight
+                    width: Math.min(implicitWidth, parent.width * 0.3); horizontalAlignment: Text.AlignRight; elide: Text.ElideRight
                     text: row.licenceName; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
                 }
                 Text {

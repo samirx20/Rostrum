@@ -28,11 +28,19 @@ def _beat_at(root, t, free=False):
     return round(b, 4) if free else round(b / timing.SNAP_BEATS) * timing.SNAP_BEATS
 
 
-def _name(have, base="section"):
+ROLES = ("intro", "verse", "chorus", "bridge", "drop", "outro")
+
+
+def _name(have):
+    """A new section's name, in words: its next musical role (intro, verse, chorus …), then "part-7" (a section's name
+    is part of its id, so it has no spaces); never a made-up "section_1"."""
+    for r in ROLES:
+        if r not in have:
+            return r
     n = 1
-    while f"{base}_{n}" in have:
+    while f"part-{n}" in have:
         n += 1
-    return f"{base}_{n}"
+    return f"part-{n}"
 
 
 # ---- what the popup shows ----------------------------------------------------------------------------------

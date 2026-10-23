@@ -78,11 +78,12 @@ def edit_call(doc, item_id, param, value) -> dict:
 KIND_WORDS = {"tempo": "Tempo change", "meter": "Time signature", "key": "Key change", "section": "Section",
               "marker": "Marker", "track": "Track", "bus": "Bus", "group": "Group", "line": "Line", "doc": "Song",
               "effect": "Effect", "lane": "Automation", "send": "Send", "duck": "Duck", "note": "Note", "hit": "Hit",
-              "clip": "Clip"}
+              "clip": "Clip", "master": "Master"}
 EFFECT_WORDS = {"eq": "EQ", "compressor": "Compressor", "reverb": "Reverb", "delay": "Delay", "saturate": "Saturation",
                 "tape": "Tape", "limiter": "Limiter", "width": "Stereo width", "gate": "Gate", "deess": "De-esser",
                 "dehum": "De-hum", "plugin": "Plug-in"}
-COUNTED = ("track", "bus", "group")           # several of these share a word: "Track 2"
+ONLY_ONE = ("master", "doc")                   # one per song: never called by its id
+COUNTED = ("track", "bus", "group", "section")           # several of these share a word: "Track 2"
 # the ids the document hands out: "tempo_1", "meter_2", and the ones inside a track: "pad.delay_1", "pad.n1500", "marker.drop"
 _MADE_ID = re.compile(r"^([a-z]+)_\d+$|^[^.\s]+\.[^\s]+$")
 
@@ -90,16 +91,23 @@ _MADE_ID = re.compile(r"^([a-z]+)_\d+$|^[^.\s]+\.[^\s]+$")
 def name_of(item: dict) -> str:
     """What an item is called: its name; with none, its id only when a person chose it, else its kind in words
     (a made-up id never reaches a title, a list or Ctrl K; an effect is its effect type: "Delay")."""
-    if item.get("name"):
-        return str(item["name"])
+    name = item.get("name")
+    if name and not (item.get("type") == "section" and re.match(r"^[a-z]+_\d+$", str(name))):      # an old "section_1" is a made-up name too
+        return str(name)
     made = _MADE_ID.match(str(item["id"]))
-    if not made and item["id"]:
+    if name:
+        made = re.match(r"^([a-z]+)_\d+$", str(name))
+        item = {**item, "id": str(name)}
+    elif item.get("type") in ONLY_ONE:
+        made = None
+    elif not made and item["id"]:
         return str(item["id"])
     t = item.get("type") or (made.group(1) if made and made.group(1) else "")
     if t == "effect" and item.get("effect"):
         return EFFECT_WORDS.get(item["effect"]) or str(item["effect"]).replace("_", " ").capitalize()
     word = KIND_WORDS.get(t) or t.replace("_", " ").capitalize() or "Item"
     n = item["id"].rsplit("_", 1)[-1] if made and made.group(1) else ""
+    n = n if n.isdigit() else ""
     return f"{word} {n}" if n and t in COUNTED else word
 
 
@@ -117,3 +125,12 @@ def label(item: dict) -> str:
     if t == "doc":
         return "Song"
     return name_of(item)
+
+
+def in_words(text: str, doc) -> str:
+    """A line meant for a person (a status, an error) with every item id in it said as its name: "track_1.c0: denoise"
+    reads "Recording-take-1.wav: denoise". One place for every line built from engine output."""
+    for i in sorted((i["id"] for i in doc.items() if i.get("id")), key=len, reverse=True):
+        if i in text:
+            text = re.sub(rf"(?<![\w.]){re.escape(i)}(?![\w])", lambda _m, i=i: label(doc.item(i)), text)
+    return text

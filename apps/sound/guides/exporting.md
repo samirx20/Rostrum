@@ -13,7 +13,7 @@ For a person using the RostrumSound app: turn your song into sound files you can
 
 The file types in the list show their short name; open the list to read what each one means. **For the Editor** is a row like the others and stays marked while the choices still match it. Choosing **MIDI file** leaves only the file name and folder. The file's whole name sits just above the **Export** button.
 
-Pick where it is going: **Streaming**, **Apple Music**, **EBU R128**, **ATSC A/85** or
+Pick where it is going: **Streaming**, **Apple Music**, **Broadcast** (EBU R128), **US TV** (ATSC A/85) or
 **Podcast**. Each choice sets the song's loudness and its loudest peak in one step (one undo).
 
 The last choice, **MIDI file**, writes no sound: it saves the song's notes, drum hits, sustain pedal, expression and
@@ -86,5 +86,6 @@ Each export goes into its own numbered folder in the song's folder, `renders\<so
 Nothing is overwritten.
 
 - The mix: `<song>_mix` in the chosen format.
-- With stems: one file per track (named after it) and one per group.
+- With stems: one file per track (named after it) and one per group. A track with nothing in it still gets its file, silent; the
+  result line names it ("silent: Recording").
 - A manifest saying which file is which, and what format and rate was used.

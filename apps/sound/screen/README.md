@@ -77,7 +77,7 @@ Switching songs rebuilds the bridge and its parts and reloads the window (`main.
   the strips leave (at least 300 px: strips scroll sideways first). The target is the master's own `loudness` (`goal`,
   the same the top bar's chip uses), named after the delivery target while Normalize applies it.
 - **Delivery target** (`delivery.py`: a small table of published specs with a source per row; streaming −14 / −1,
-  Apple Music −16 / −1, EBU R128 −23 / −1, ATSC A/85 −24 / −2, podcast −16 / −1). It follows the fields' valid_when
+  Apple Music −16 / −1, Broadcast (EBU R128) −23 / −1, US TV (ATSC A/85) −24 / −2, Podcast −16 / −1). It follows the fields' valid_when
   (`delivery.applying`): the true peak ceiling always applies, the loudness target only with Normalize on. choosing a target
   sets those that apply in one `master.set`, and a Pass / Miss line compares the last render to them (within ±1 LU,
   true peak under the ceiling).

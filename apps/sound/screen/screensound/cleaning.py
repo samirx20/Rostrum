@@ -18,7 +18,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_sound import cleanup
 from rostrum_sound.cleanup import fetch
 
-from . import voice_actions as V
+from . import inspect, voice_actions as V
 from .clean_measure import Measures
 from .clean_process import CleanProcess
 from .model_fetch import ModelFetch
@@ -95,7 +95,20 @@ class CleanedTake(QObject):
 
     @Slot(result=bool)
     def make(self):
-        return self.makeFor([self._clip] if self._clip else [])
+        if self._clip:
+            return self.makeFor([self._clip])
+        self._status = self._why_nothing()      # never a quiet "did not start": say why there is nothing to make
+        self.changed.emit()
+        return False
+
+    def _why_nothing(self) -> str:
+        sel, doc = self.bridge.selected, self.bridge.doc
+        if self._busy:
+            return "A cleaned take is already being made."
+        if sel and doc.has(sel) and doc.item(sel)["type"] == "clip":
+            return ("The cleaned take is already made." if cleanup.recipe_of(doc.item(sel))
+                    else "This clip has no clean-up step on: turn on Less noise, Less echo or Dialogue only first.")
+        return "Select a clip with a clean-up step to make its cleaned take."
 
     @Slot("QVariantList", result=bool)
     def makeFor(self, ids):
@@ -166,13 +179,13 @@ class CleanedTake(QObject):
         clip = text.split(":", 1)[0]
         if clip in self._steps:
             self._steps[clip][0] += 1
-        self._status = text
+        self._status = inspect.in_words(text, self.bridge.doc)
         self.changed.emit()
 
     def _finish(self, error):
         ids, cancelled = list(self._steps), self._job is not None and self._job.cancelled
         self._busy, self._steps, self._job = False, {}, None
-        self._status = error
+        self._status = error = inspect.in_words(error, self.bridge.doc)
         if cancelled:
             self._status = self._back_to_originals(ids)
         elif error:

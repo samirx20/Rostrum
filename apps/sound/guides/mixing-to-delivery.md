@@ -67,7 +67,7 @@ An open effect's settings or a duck sit at the right end while they are open.
 ## Setting the target
 
 `master.set` with `normalize` on, `loudness` (LUFS) and `truePeak` (dBTP ceiling). On the screen, the Export sheet
-(Ctrl+E) has a "What for" chooser with published targets (streaming, Apple Music, EBU R128, ATSC A/85, podcast; each
+(Ctrl+E) has a "What for" chooser with published targets (Streaming, Apple Music, Broadcast = EBU R128, US TV = ATSC A/85, Podcast; each
 row cites its source in `screensound/delivery.py`) that sets both in one step, and a Pass / Miss line from the sound
 that plays now. The top bar's Loudness chip shows the song's loudness against the target; it opens the Mixer.
 

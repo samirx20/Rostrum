@@ -111,7 +111,7 @@ A typed tempo outside 20–400 bpm is refused ("Tempo is 20–400 bpm"), never c
   lists. Nothing has to be selected first.
 - With nothing selected, the settings panel shows the song: its **Length** ("until the last sound" unless you set one),
   **More**, and buttons to add at the playhead: **+ Tempo change** (after the start), **+ Key change** and
-  **+ Section**.
+  **+ Section** (a new section is named for its next role: intro, verse, chorus …; rename it in the settings panel).
 - Changes sit on the ruler as small flags: "♩ 132" for a tempo, "3/4" for a time signature, "D minor" for a key.
   Drag a flag to move it (one undo step). Click one and the settings panel shows it. A tempo flag has **Bpm**, **At**
   and **Glide to next**: turn that on and the tempo speeds up or slows down evenly to the next change instead of

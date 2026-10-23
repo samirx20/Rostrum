@@ -86,6 +86,21 @@ def write_markers(part: Path, doc, folder, span=None) -> None:
     (part / MARKERS_FILE).write_text(json.dumps({"unit": "seconds", "markers": found, "sections": secs}, indent=2), encoding="utf-8")
 
 
+SILENT_DB = -90.0
+
+
+def silent_stems(r: dict, names: dict) -> list[str]:
+    """The names of stems that came out silent (an empty track): they are written all the same, so the export says so."""
+    meters = {t["id"]: t for t in [*r.get("tracks", []), *r.get("buses", [])]}
+    out = []
+    for i in [*r.get("stems", {}), *r.get("busStems", {})]:
+        m = meters.get(i) or {}
+        peak = m.get("peak", m.get("truePeak"))
+        if i in meters and (peak is None or peak <= SILENT_DB):
+            out.append(names.get(i, i))
+    return out
+
+
 def names_of(doc, ids) -> dict:
     """{id: the name the screen shows} for tracks and buses (the id when it has no name)."""
     return {i: (doc.item(i).get("name") or i) if doc.has(i) else i for i in ids}
@@ -127,6 +142,6 @@ def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: b
     version = int(part.name[1:-len(".partial")])
     done = finish_render(part, manifest(item, version, r, doc, who, master, names))
     moved = lambda p: str(done / Path(p).name)   # noqa: E731
-    return {**r, "file": moved(r["file"]), "stems": {k: moved(p) for k, p in r.get("stems", {}).items()},
+    return {**r, "silentStems": silent_stems(r, names), "file": moved(r["file"]), "stems": {k: moved(p) for k, p in r.get("stems", {}).items()},
             "busStems": {k: moved(p) for k, p in r.get("busStems", {}).items()},
             "version": version, "folder": str(done)}
