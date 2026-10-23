@@ -1,7 +1,7 @@
 """The 2D camera in a Lottie file. Lottie has no camera like ours, so its move is baked into the file and the picture
 stays the preview's: one invisible null layer per depth does what the camera does to layers at that depth (the
-engine's maths, camera/view.py `parts`), with a keyframe every frame, and each of the composition's own layers is
-parented to its depth's null. A layer Locked to screen gets none; layers inside a group follow their group.
+engine's maths, camera/view.py `parts`; a camera riding a path where follow.ride puts it), with a keyframe every
+frame, and each of the composition's own layers is parented to its depth's null. A layer Locked to screen gets none; layers inside a group follow their group.
 
 A cut from one camera to the next is a hold keyframe, so a player drawing between frames never blends two shots.
 """
@@ -9,15 +9,19 @@ from __future__ import annotations
 
 from rostrum_core.keys import track_value
 
+from .. import fields as F
 from ..camera import view
 from .lottie_keys import LINEAR, emit
 from .lottie_props import Ctx
 
 
 def _at(node: dict, name: str, t: float):
-    """A scene node's field at t (its keys when keyed, else its still value)."""
+    """A scene node's field at t (its keys when keyed, else its still value; a field left out is its default, as the
+    engine reads it)."""
     keys = node.get("anim", {}).get(name)
-    return track_value(sorted(keys, key=lambda k: k["t"]), t) if keys else node["props"][name]
+    if keys:
+        return track_value(sorted(keys, key=lambda k: k["t"]), t)
+    return node["props"][name] if name in node["props"] else F.param(node["type"], name).default
 
 
 def has_camera(comp: dict) -> bool:

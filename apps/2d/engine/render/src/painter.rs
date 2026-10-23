@@ -349,6 +349,23 @@ impl Painter {
         Ok(())
     }
 
+    /// Ends this painter and gives back its GL context (None on the CPU), for the next painter: one process keeps one
+    /// context. A second context made beside this one left the old one's resources freed while the new one was current
+    /// (a larger comp loaded into a running engine failed its next frame with GL error 0x0501). Frames still in flight
+    /// are collected and dropped first, so the next painter starts with no stale reads; the surfaces and cached images
+    /// go while the context is still alive and current.
+    pub fn into_gl(mut self) -> Option<Gl> {
+        while self.reads_in_flight() > 0 {
+            let _ = self.finish_read();
+        }
+        let mut gl = self.gl.take();
+        drop(self);
+        if let Some(g) = gl.as_mut() {
+            while (g.get_error)() != 0 {} // the old painter's errors are not the next one's
+        }
+        gl
+    }
+
     /// The size of the pictures it paints (`set_view`'s).
     pub fn size(&self) -> (u32, u32) {
         (self.width, self.height)

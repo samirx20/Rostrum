@@ -85,7 +85,7 @@ pub fn load(held: &mut Held, session: &mut Option<Session>, warm: &mut Option<Re
     let same = session.as_ref().is_some_and(|s| (s.width, s.height, s.deep) == (w, h, deep));
     if !same {
         let open = json!({ "width": w, "height": h, "html": stage::shell(w, h, &scene.fonts)?, "cpu": req["cpu"].as_bool() == Some(true), "depth": if deep { 16 } else { 8 } });
-        *session = Some(serve::open(&open, warm)?.0);
+        serve::reopen(session, &open, warm)?;
     } else if held.shell != Some((w, h)) {
         serve::page(session.as_mut().unwrap(), &json!({ "html": stage::shell(w, h, &scene.fonts)? }))?;
     }

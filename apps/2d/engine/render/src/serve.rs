@@ -92,8 +92,18 @@ pub(crate) struct Session {
     pub(crate) painting: Value,
 }
 
-/// `warm`: the GL context made as the process started (taken by the first GPU open).
-pub(crate) fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, String>>) -> Result<(Session, Value), String> {
+/// Opens a session in place of the running one (`session`), on the running one's GL context (painter.rs `into_gl`): one
+/// context per process. `warm`: the GL context made as the process started (taken by the first GPU open).
+pub(crate) fn reopen(session: &mut Option<Session>, req: &Value, warm: &mut Option<Result<crate::painter::Gl, String>>) -> Result<Value, String> {
+    if let Some(gl) = session.take().and_then(|s| s.painter.into_gl()) {
+        *warm = Some(Ok(gl));
+    }
+    let (s, reply) = open(req, warm)?;
+    *session = Some(s);
+    Ok(reply)
+}
+
+fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, String>>) -> Result<(Session, Value), String> {
     let width = req["width"].as_u64().ok_or("open needs width")? as u32;
     let height = req["height"].as_u64().ok_or("open needs height")? as u32;
     let html = req["html"].as_str().ok_or("open needs html")?;
@@ -680,11 +690,8 @@ pub fn run() {
             }
         } else if let Some(o) = req.get("open") {
             held.shell = None;
-            match open(o, &mut warm) {
-                Ok((s, r)) => {
-                    session = Some(s);
-                    reply(&mut out, &r);
-                }
+            match reopen(&mut session, o, &mut warm) {
+                Ok(r) => reply(&mut out, &r),
                 Err(e) => reply(&mut out, &json!({ "error": e })),
             }
         } else if let Some(f) = req.get("frame") {
