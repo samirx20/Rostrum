@@ -59,6 +59,10 @@ class CleanedTake(QObject):
         self._on_release()
         self._check()
 
+    def making(self) -> set:
+        """The clips whose cleaned take is being made right now (work in progress, not a problem)."""
+        return set(self._steps) if self._busy else set()
+
     @Property(str, notify=changed)
     def clip(self):
         """The selected clip's id while it needs its cleaned take made ("" otherwise: the button is absent)."""

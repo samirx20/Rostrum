@@ -80,7 +80,8 @@ It lists, in one place:
 - **File outside the song**: a clip's file lives outside the song's folder, so it will not travel if you copy or move the
   song. Record or import it again to keep a copy inside.
 - **Cleaned take not made**: a clip is set to a cleaned take that is not made yet; until it is, the original plays.
-  Select the clip and press Make cleaned take.
+  Select the clip and press Make cleaned take. While it is being made it is work in progress, not a problem: the Clean up
+  bar shows it and the chip does not count it.
 - **No longer made**: a designed sound an older song still holds (see *scoring-motion*).
 - **Clipping** (red): the newest mix goes over full scale.
 

@@ -19,6 +19,9 @@ TICKS = 960                    # ticks in one count (Logic's resolution)
 _EPS = 1e-6
 _MUSIC = re.compile(r"^\s*(\d+)(?:\.(\d+)(?:\.(\d+))?)?\s*$")
 _SECS = re.compile(r"^\s*(?:(\d+):(\d+(?:\.\d*)?)|(\d+(?:\.\d*)?|\.\d+)\s*(?:s|sec|secs|seconds?))\s*$")
+_FRACTION = re.compile(r"^\s*(dotted\s+)?1/(\d+)\s*$", re.I)
+NOTE_LENGTHS = {1 / 32: "1/32", 3 / 64: "dotted 1/32", 1 / 16: "1/16", 3 / 32: "dotted 1/16", 1 / 8: "1/8", 3 / 16: "dotted 1/8",
+                1 / 4: "1/4", 3 / 8: "dotted 1/4", 1 / 2: "1/2", 3 / 4: "dotted 1/2", 1.0: "1/1"}   # fractions of a whole note
 NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
 
@@ -52,6 +55,17 @@ def length(secs: float, root: dict, start: float = 0.0, fine: bool = False) -> s
     return _join(bars, n, ticks, fine)
 
 
+def note_length(secs: float, root: dict, start: float = 0.0) -> str:
+    """A note's length in note values ("1/8", "dotted 1/4") when it is one to the tick; otherwise `length`'s bars.beats.ticks.
+    ("0.1" read as nothing: bars and beats are a position's words.) `parse` takes these back."""
+    b0 = tempo.beat_at(root, max(0.0, float(start)))
+    whole = (tempo.beat_at(root, max(0.0, float(start) + max(0.0, float(secs)))) - b0) / 4      # a beat is a quarter note
+    for frac, name in NOTE_LENGTHS.items():
+        if abs(whole - frac) * 4 * TICKS < 0.5:
+            return name
+    return length(secs, root, start)
+
+
 def _music_beat(m, root: dict, is_length: bool, start_beat: float) -> float:
     bar, cnt, ticks = int(m.group(1)), int(m.group(2) or (0 if is_length else 1)), int(m.group(3) or 0)
     if ticks >= TICKS:
@@ -80,6 +94,11 @@ def parse(text: str, root: dict, is_length: bool = False, start: float = 0.0) ->
     """Typed words as seconds (a length: seconds long from `start`). Raises ValueError, naming the forms, when they
     are neither."""
     s = str(text).strip()
+    f = _FRACTION.match(s) if is_length else None
+    if f and int(f.group(2)):                       # a note value: "1/8", "dotted 1/4"
+        b0 = tempo.beat_at(root, max(0.0, float(start)))
+        quarters = 4 / int(f.group(2)) * (1.5 if f.group(1) else 1)
+        return tempo.seconds_at(root, b0 + quarters) - tempo.seconds_at(root, b0)
     m = _MUSIC.match(s)
     if m:
         b0 = tempo.beat_at(root, max(0.0, float(start)))
@@ -88,7 +107,7 @@ def parse(text: str, root: dict, is_length: bool = False, start: float = 0.0) ->
     m = _SECS.match(s.replace(",", "."))
     if m:
         return float(m.group(1)) * 60 + float(m.group(2)) if m.group(1) else float(m.group(3))
-    raise ValueError(f'"{text}" is not a time: type bars.beats ("5.3"), bars.beats.ticks ("5.3.480") or seconds ("9.6 s")')
+    raise ValueError(f'"{text}" is not a time: type bars.beats ("5.3"), bars.beats.ticks ("5.3.480"), a note value for a length ("1/8") or seconds ("9.6 s")')
 
 
 def clock(sec: float) -> str:

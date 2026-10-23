@@ -23,6 +23,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtGui import QImage
 from rostrum_gui.frames import ImageProvider, PictureWorker, image_from_pixels
 from rostrum2d import settings
+from rostrum_core import scratch
 
 from .playstats import STATS
 
@@ -65,6 +66,7 @@ class FrameRenderer(PictureWorker):
         self._crop_serial = 0
         self._loaded = None
         SCRATCH.mkdir(parents=True, exist_ok=True)
+        scratch.sweep_later(SCRATCH.parent)      # folders killed runs left (a day old, no process owns): once, well after the start
         self.start()
 
     def request(self, scene: dict, t: float, samples: int | None = None, scale: float = 1.0, tag=None, crop=None, place=None):

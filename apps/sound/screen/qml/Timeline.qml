@@ -146,6 +146,15 @@ Rectangle {
                             anchors.fill: parent; active: recorder.take.track === row.modelData.id
                             sourceComponent: LiveTake { take: recorder.take; ruler: bars; hue: row.modelData.hue }
                         }
+                        Rectangle {   // the time range, shaded on each track lane only (never the empty space below them); a loop that is on is shaded more and edged, as on the ruler
+                            readonly property var r: backend.timeRange
+                            visible: r.length === 2 && !row.modelData.mix
+                            x: visible ? Math.max(0, bars.xOf(r[0])) : 0; height: parent.height
+                            width: visible ? Math.max(1, Math.min(bars.width, bars.xOf(r[1])) - x) : 0
+                            color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, backend.looping ? 0.13 : 0.07)
+                            Rectangle { visible: backend.looping; width: 1; height: parent.height; color: Theme.accent }
+                            Rectangle { visible: backend.looping; x: parent.width - 1; width: 1; height: parent.height; color: Theme.accent }
+                        }
                     }
                     Loader {   // the automation lane: made when a lane is open on this row
                         active: !!row.auto
@@ -205,17 +214,6 @@ Rectangle {
         openMenu(entries, Qt.point(bars.x + Math.max(0, bars.xOf(e.t0 || 0)) + 12, sp ? sp.bottom : bars.y + bars.height))
     }
     Connections { target: bars; function onMenuAt(t, px, py) { tl.openMenu(backend.atMenu("", t), bars.mapToItem(tl, px, py)) } }
-    Rectangle {   // the time range: a shaded band over the ruler and every lane
-        readonly property var r: backend.timeRange
-        visible: r.length === 2
-        x: visible ? bars.x + Math.max(0, bars.xOf(r[0])) : 0; y: bars.y + bars.height
-        width: visible ? Math.max(1, Math.min(bars.width, bars.xOf(r[1])) - Math.max(0, bars.xOf(r[0]))) : 0
-        height: list.y + Math.min(list.height, column.height - list.contentY) - y      // down to the last row
-        // faint over the rows (the band shows it strongly); a loop that is on is shaded more and edged, as on the ruler
-        color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, backend.looping ? 0.13 : 0.07)
-        Rectangle { visible: backend.looping; width: 1; height: parent.height; color: Theme.accent }
-        Rectangle { visible: backend.looping; x: parent.width - 1; width: 1; height: parent.height; color: Theme.accent }
-    }
     Item {   // what a drag snapped to: the kit's snap line (a marker's or the playhead's name in its chip)
         x: bars.x; y: bars.y; width: bars.width; height: list.y + list.height - y
         readonly property var s: backend.snapLine

@@ -27,6 +27,9 @@ Under the choices a line checks the sound that plays now against that target. Wi
 - "✓ Pass: loudness −14.2 LUFS, loudest peak −1.3 dBTP" (green), or
 - "Miss: 2.1 LU too quiet …" (amber).
 
+When the master's numbers match none of the choices the list says "No target chosen" and the check line is not shown:
+there is no target to pass or miss until you pick one.
+
 The top bar's **Loudness** chip shows the same: the song's loudness, the target, and a green dot within 1 of it
 (amber outside). Click the chip to open the Mixer.
 

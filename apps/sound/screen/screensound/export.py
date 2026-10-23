@@ -303,6 +303,8 @@ class RenderExport(ExportSheet):
         """{ok, text}: the live pass / miss of what will be exported (the chosen range, else the whole song) against the target."""
         t = self._loud.target if self._loud is not None else {}
         m, fields = self._loud._fields() if self._loud is not None else ({}, [])
+        if self._choice in ("", MIDI):              # no target chosen: nothing to judge against ("No target chosen" says so)
+            return {}
         return delivery.verdict(m, self._measured(), fields) if t.get("shown") else {}
 
     @Property("QVariantList", notify=own)

@@ -38,7 +38,7 @@ class MixPage(QObject):
         self._ducks, self._loudness = ducks.DuckHub(bridge, self), LoudnessMeter(bridge, self)
         self._export, self._cleaning = RenderExport(bridge, self._loudness, parent=self), CleanedTake(bridge, self)
         bridge.mix = self                                 # the scripted steps (steps.py) reach these through the bridge
-        self._problems = problems.make(bridge)
+        self._problems = problems.make(bridge, self._cleaning)
         bridge.exporter, bridge.problems = self._export, self._problems   # the kit's sheet, chips and steps (EXPORT.md)
         self._refresh()
         self._plugins.catalogChanged.connect(self._refresh)      # the scan names the vendors the chips drop

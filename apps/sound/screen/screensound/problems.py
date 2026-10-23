@@ -24,11 +24,13 @@ WORDS = {"missing-file": "Missing file", "outside-project": "File outside the so
          "no-longer-made": "No longer made"}
 
 
-def doc_rows(doc) -> list[dict]:
-    return [{**p, "label": WORDS[p["kind"]], "danger": p["kind"] == "missing-file"} for p in problems(doc)]
+def doc_rows(doc, making=frozenset()) -> list[dict]:
+    """The song's problems; a cleaned take that is being made now is activity (the Clean up bar shows it), not a problem."""
+    return [{**p, "label": WORDS[p["kind"]], "danger": p["kind"] == "missing-file"} for p in problems(doc)
+            if not (p["kind"] == "pending-take" and p["item"] in making)]
 
 
-def make(bridge) -> ProblemsList:
+def make(bridge, cleaning=None) -> ProblemsList:
     def jump(row):
         try:
             bridge.doc.item(row.get("item") or "")
@@ -37,7 +39,9 @@ def make(bridge) -> ProblemsList:
         bridge.select(row["item"])
     plist = ProblemsList(jump, bridge)
     def show(*_):
-        plist.show_rows(rows(bridge.lastRender or {}) + doc_rows(bridge.doc))
+        plist.show_rows(rows(bridge.lastRender or {}) + doc_rows(bridge.doc, cleaning.making() if cleaning else ()))
+    if cleaning:
+        cleaning.changed.connect(show)               # a take finished (or began): the chip follows
     bridge.renderChanged.connect(show)
     bridge.timelineChanged.connect(show)
     return plist

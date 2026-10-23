@@ -94,7 +94,7 @@ The **Colour** row shows the colour the track is drawn in.
 - The **metronome icon** beside play turns the click on and off (**Shift+K**); it is lit while on. It is only for you while you work; it is never in an export.
 - The **loop button** (**Shift+L**) is always there. It loops the time range on the ruler; with no range drawn it
   makes one first: the selection's span, else the bar at the playhead and the next three. The loop shows as a solid
-  blue band on the ruler's top strip, with the rows under it shaded and edged to match; drag either edge to change it, double-click the band to clear it (that also
+  blue band on the ruler's top strip, with the track lanes under it (only the lanes, not the empty space below) shaded and edged to match; drag either edge to change it, double-click the band to clear it (that also
   ends the loop).
 - Click the ruler to move the playhead there.
 - Each track's header shows a small picture of what it holds (keyboard: notes, drum, waveform: sound files,

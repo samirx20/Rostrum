@@ -50,3 +50,12 @@ def test_typed_times_that_do_not_exist_are_refused():
         with pytest.raises(ValueError, match="beat|ticks"):
             musical.parse(bad, root)
     assert musical.parse("1.4", root) == musical.parse("1.4.0", root)
+
+
+def test_note_length_in_note_values():
+    """A note's length reads as a note value when it is one (0.1 read as nothing); the same words type back."""
+    root = {"tempo": 120, "meter": "4/4"}
+    from rostrum_sound.doc import musical as M
+    for words, sec in (("1/4", 0.5), ("1/8", 0.25), ("1/16", 0.125), ("dotted 1/4", 0.75), ("1/1", 2.0)):
+        assert M.note_length(sec, root) == words and abs(M.parse(words, root, True) - sec) < 1e-6
+    assert M.note_length(0.3, root) == M.length(0.3, root)       # not a note value: bars.beats.ticks

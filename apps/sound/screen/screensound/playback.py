@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal
+from rostrum_core import scratch
 from rostrum_sound import settings
 
 SCRATCH = settings.cache_dir() / "screensound" / str(os.getpid())
@@ -38,6 +39,7 @@ class Renderer(QObject):
         self._pending, self._busy, self._stop, self._serial = None, False, False, 0
         self._eng = None                 # the worker's engine (close() aborts a render still running on it)
         SCRATCH.mkdir(parents=True, exist_ok=True)
+        scratch.sweep_later(SCRATCH.parent)      # folders killed runs left (a day old, no process owns): once, well after the start
         self._thread = threading.Thread(target=self._run, name="render-sound", daemon=True)
         self._thread.start()
 

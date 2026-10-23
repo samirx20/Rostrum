@@ -51,10 +51,10 @@ def musical_rows(item: dict, rows: list[dict], root: dict) -> list[dict]:
         if kind and isinstance(sh.get(r["id"]), (int, float)) and not isinstance(sh[r["id"]], bool):
             sec = float(sh[r["id"]])
             text = (musical.position(sec, root) if kind == "time" else
-                    f"{sec:.2f} s" if item["type"] == "clip" else musical.length(sec, root, _start(item, root)))   # a sound's length is in seconds
+                    f"{sec:.2f} s" if item["type"] == "clip" else musical.note_length(sec, root, _start(item, root)))   # a sound's length is in seconds
             help_ = f"{r['help']} " if r["help"] else ""
             r = {**r, "type": "text", "value": text, "unit": "", "display": "", "control": "",
-                 "help": f"{help_}Now {sec:.2f} s. Type bars.beats (5.3), seconds (9.6 s) or a clock (0:09.6)."}
+                 "help": f"{help_}Now {sec:.2f} s. Type " + ("a note value (1/8), " if kind == "length" and item["type"] != "clip" else "") + "bars.beats (5.3), seconds (9.6 s) or a clock (0:09.6)."}
         elif r["row"] == "param" and item["type"] == "note" and r["id"] == "pitch" and r["value"] is not None:
             r = {**r, "value": musical.note_name(r["value"])}
         out.append(r)
