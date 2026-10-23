@@ -16,6 +16,7 @@ import "."
 Panel {
     id: panel
     property var bridge
+    readonly property bool popupsBeside: true   // a colour or fill picker opens beside the whole panel (SidePopup)
     property bool effects: false         // the "Effects (n) +" section (an app that called rostrum_gui.effects.attach)
     property bool keyMarks: false        // an app with keys: rows show key marks (see InspectorRow)
     property var highlight: []           // field ids marked as in focus (2D: the settings whose keys are picked)

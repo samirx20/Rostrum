@@ -17,6 +17,7 @@ Column {
     property string brandName: ""
     signal edited(var paint)
     signal chooseImage()
+    signal swatchAdd(string hex)          // the "+": the field ends its open change first, then saves (PaintField)
 
     readonly property string type: paint && paint.type ? paint.type : "solid"
     readonly property bool gradient: type === "linear" || type === "radial" || type === "angular"
@@ -92,7 +93,7 @@ Column {
             else pp.change({ color: hx })
         }
         onExtraEdited: (t) => pp.moveStop(t)
-        onSwatchAdd: (hx) => { if (typeof colourBank !== "undefined") colourBank.add(hx) }
+        onSwatchAdd: (hx) => pp.swatchAdd(hx)
     }
 
     Column {   // a picture
