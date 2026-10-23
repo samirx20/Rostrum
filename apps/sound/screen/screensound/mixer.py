@@ -41,7 +41,8 @@ class MixPage(QObject):
         bridge.exporter, bridge.problems = self._export, self._problems   # the kit's sheet, chips and steps (EXPORT.md)
         self._refresh()
         self._plugins.catalogChanged.connect(self._refresh)      # the scan names the vendors the chips drop
-        bridge.docChanged.connect(self._refresh)
+        for sig in (bridge.docChanged, bridge.docStepped):     # the strips follow a fader drag live
+            sig.connect(self._refresh)
         bridge.renderChanged.connect(self._refresh)
 
     def close(self):

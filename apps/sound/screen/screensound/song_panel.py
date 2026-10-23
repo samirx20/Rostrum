@@ -45,7 +45,8 @@ class SongPanel(QObject):
         self._more, self._scrub = False, None
         self._refresh()
         self._read_main()
-        bridge.docChanged.connect(self._refresh)
+        for sig in (bridge.docChanged, bridge.docStepped):     # the rows follow a drag live
+            sig.connect(self._refresh)
         bridge.mainMixChanged.connect(self._read_main)
 
     @property

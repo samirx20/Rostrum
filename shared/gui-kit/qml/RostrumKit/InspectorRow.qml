@@ -278,12 +278,16 @@ Item {
                 onTypedExpression: (t) => row.set(t)
                 onScrubStarted: row.bridge.beginScrub(row.model.id)
                 onScrubbed: (v) => row.bridge.scrub(row.model.id, v)
-                onScrubEnded: row.bridge.endScrub() } }
+                onScrubEnded: row.bridge.endScrub()
+                onTypingStarted: row.hold(true)
+                onTypingEnded: row.hold(false) } }
             Component { id: choice; ChoiceField { options: row.model.options; current: row.model.value ?? ""; atRest: row.mixed
                                                   more: row.model.more || ""; onMoreChosen: moreDialog.open()
                                                   onPicked: (v) => row.set(v) } }
             Component { id: colour; ColorField { hex: row.model.value || "#000000"; atRest: row.mixed; scrubbed: true
                 onEdited: (v) => row.set(v)
+                onTypingStarted: row.hold(true)
+                onTypingEnded: row.hold(false)
                 onBegan: row.bridge.beginScrub(row.model.id)
                 onLive: (v) => row.bridge.scrub(row.model.id, v)
                 onEnded: row.bridge.endScrub() } }
@@ -294,6 +298,8 @@ Item {
                 maxStops: o.maxStops || 8
                 stopOpacity: o.stopOpacity !== false
                 onEdited: (v) => row.set(v)
+                onTypingStarted: row.hold(true)
+                onTypingEnded: row.hold(false)
                 onBegan: row.bridge.beginScrub(row.model.id)
                 onLive: (v) => row.bridge.scrub(row.model.id, v)
                 onEnded: row.bridge.endScrub() } }
@@ -305,14 +311,21 @@ Item {
                 value: row.model.value || ""; most: row.model.max ? row.model.max : 1; onEdited: (v) => row.set(v) } }
             Component { id: path; PathField {
                 value: row.model.value || ""; folder: row.model.control === "folder"; nameFilters: row.model.filters || []
-                onEdited: (v) => row.set(v) } }
-            Component { id: text; TextField { value: row.model.value || ""; atRest: row.mixed; onEdited: (v) => row.set(v) } }
+                onEdited: (v) => row.set(v)
+                onTypingStarted: row.hold(true)
+                onTypingEnded: row.hold(false) } }
+            Component { id: text; TextField { value: row.model.value || ""; atRest: row.mixed; onEdited: (v) => row.set(v)
+                                                onTypingStarted: row.hold(true)
+                                                onTypingEnded: row.hold(false) } }
         }
     }
 
 
     readonly property string mixed: live && model.mixed ? "Mixed" : ""       // a field's words at rest ("" = its value)
     function set(v) { bridge.setValue(model.id, v) }
+    // A typed value lands on the item(s) it was typed for: the bridge holds them from the caret going in to its leaving
+    // (a sub-panel's bridge, an effect's, has one item and no hold)
+    function hold(on) { if (bridge.holdEdit) on ? bridge.holdEdit(model.id) : bridge.releaseEdit(model.id) }
     function flash() { if (parts) parts.flash() }
     function focusWidget() {
         const w = parts ? parts.widgetItem : null

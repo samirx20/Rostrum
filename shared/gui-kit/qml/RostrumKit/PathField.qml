@@ -11,6 +11,8 @@ Item {
     property bool folder: false           // true: pick a folder; false: pick a file
     property var nameFilters: []          // for a file: ["SFZ instruments (*.sfz)"]; empty = any file
     signal edited(string value)
+    signal typingStarted()                // the typed path's caret went in / left (FieldFrame)
+    signal typingEnded()
     implicitWidth: 220
     implicitHeight: Theme.field
 
@@ -33,6 +35,8 @@ Item {
         placeholder: "Default"            // empty means the setting's default (its help says which)
         elide: Text.ElideMiddle           // the whole path, cut in the middle when too long; hover shows all of it
         onEdited: (v) => f.edited(v)
+        onTypingStarted: f.typingStarted()
+        onTypingEnded: f.typingEnded()
     }
     IconButton {  // small, so the name keeps the room in a narrow inspector; its tip says what it does
         id: browse

@@ -78,7 +78,8 @@ class PluginHub(QObject):
         self._panels: dict[str, PluginPanel] = {}
         self._answered.connect(self._window_closed)
         self._failed.connect(self._fail)
-        bridge.docChanged.connect(self._refresh)
+        for sig in (bridge.docChanged, bridge.docStepped):     # a knob drag shows live
+            sig.connect(self._refresh)
         bridge.selectedItemsChanged.connect(self.selectedChanged)
 
     def close(self):

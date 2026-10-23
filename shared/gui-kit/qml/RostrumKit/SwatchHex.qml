@@ -15,6 +15,8 @@ Item {
     property bool engaged: false
     signal pick()
     signal typed(string hex)
+    signal typingStarted()      // the hex box's caret went in / left (FieldFrame)
+    signal typingEnded()
     readonly property string lookKind: look && look.type ? look.type : "none"
     readonly property string lookHex: look && look.color ? String(look.color) : "#ffffff"
     implicitWidth: 140
@@ -71,6 +73,8 @@ Item {
         text: s.lookHex.replace(/^#/, "").toUpperCase()
         prefix: s.words === "" ? "#" : ""
         atRest: s.words
+        onTypingStarted: s.typingStarted()
+        onTypingEnded: s.typingEnded()
         onCommitted: (t) => {
             const c = M.readHex(t)
             const why = !c ? "“" + t + "” is not a colour: type 3 or 6 hex digits, like 4AA3FF"

@@ -32,7 +32,8 @@ class DuckHub(QObject):
         self._rows = RowsModel(rows.ROLES, self)
         self._static = [r for r in rows.layout(self.doc.kind.registry.field_op("duck")) if r["row"] != "group" and r["id"] != "under"]
         self._panel: dict = {}
-        bridge.docChanged.connect(self._refresh)
+        for sig in (bridge.docChanged, bridge.docStepped):     # the duck's rows follow a drag live
+            sig.connect(self._refresh)
         bridge.selectedItemsChanged.connect(self._follow)
 
     @Property(QObject, constant=True)

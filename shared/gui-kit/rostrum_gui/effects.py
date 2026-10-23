@@ -50,7 +50,8 @@ class EffectsPart(QObject):
         self.opened: set = set()
         self._groups: list = []
         self._opening = False
-        bridge.docChanged.connect(self._sync)
+        for sig in (bridge.docChanged, bridge.docStepped):     # an effect's values follow a drag live
+            sig.connect(self._sync)
         bridge.selectedItemsChanged.connect(self._sync)
         bridge.searchChanged.connect(self.changed)
         self._sync()
