@@ -75,7 +75,7 @@ QtObject {
     readonly property int sidePanel: 280
     readonly property int timeline: 184
     readonly property int popupRow: 26
-    readonly property int scrollWidth: 4  // the thin scroll bar
+    readonly property int scrollWidth: 6  // the thin scroll bar
 
     // radii
     readonly property int radiusCtl: 6

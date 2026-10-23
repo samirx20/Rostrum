@@ -16,6 +16,7 @@ from PySide6.QtCore import Q_ARG, Q_RETURN_ARG, QMetaObject, QObject, QUrl, Slot
 from PySide6.QtGui import QImageReader, QTextBlockFormat, QTextCursor, QTextDocument
 
 LINE_HEIGHT = 125      # % for lines of text; a line holding a picture keeps its own height (no blank band under it)
+LIST_INDENT = 40      # px: Qt's indent of a list level; a picture inside a list item has that much less room
 PICTURE_WIDTH = 720    # px: the default text column; the drawer passes its own (readAt), wider pictures fit it
 
 
@@ -53,7 +54,10 @@ def page_html(markdown: str, folder: Path | None = None, width: int = PICTURE_WI
 
 
 def _fit_pictures(block, folder: Path, width: int = PICTURE_WIDTH):
-    """A picture wider than the viewer (a full-window screenshot) is shown at the viewer's width, never cut."""
+    """A picture wider than the viewer (a full-window screenshot) is shown at the viewer's width, never cut: less the
+    indent it sits at (a picture in a list item)."""
+    lst = block.textList()
+    width -= LIST_INDENT * (lst.format().indent() if lst is not None else block.blockFormat().indent())
     for f in list(_fragments(block)):
         fmt = f.charFormat().toImageFormat()
         size = QImageReader(str(folder / fmt.name())).size()

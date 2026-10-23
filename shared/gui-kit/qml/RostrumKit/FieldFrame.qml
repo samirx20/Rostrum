@@ -111,7 +111,7 @@ FocusScope {
     Text {
         visible: input.text === ""
         anchors.left: input.left; anchors.verticalCenter: parent.verticalCenter
-        text: f.placeholder; color: Theme.fg4; font: input.font
+        text: f.placeholder; color: Theme.fg3; font: input.font
     }
     Row {
         id: trailingSlot

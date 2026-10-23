@@ -52,7 +52,7 @@ Item {
         id: track
         anchors.verticalCenter: parent.verticalCenter
         x: knob.width / 2; width: parent.width - knob.width; height: 4; radius: 2
-        color: s.hovered ? Theme.lineHover : Theme.active
+        color: s.hovered ? Theme.fg3 : Theme.lineHover      // a track you can see at 0 %, not a lone knob
         Behavior on color { ColorAnimation { duration: Theme.fast } }
         Rectangle { width: parent.width * s.ratio; height: parent.height; radius: 2; color: Theme.accent }
     }

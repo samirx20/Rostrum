@@ -15,7 +15,7 @@ Item {
         width: parent.width; radius: width / 2
         height: bar.needed ? Math.max(Theme.field, bar.height * bar.flick.height / bar.flick.contentHeight) : 0
         y: bar.needed ? (bar.height - height) * bar.flick.contentY / Math.max(1, bar.flick.contentHeight - bar.flick.height) : 0
-        color: bar.flick && bar.flick.moving ? Theme.fg2 : Theme.fg3
+        color: bar.flick && bar.flick.moving ? Theme.fg : Theme.fg2
         Behavior on color { ColorAnimation { duration: Theme.fast } }
     }
 }

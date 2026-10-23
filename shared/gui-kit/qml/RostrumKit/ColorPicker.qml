@@ -102,7 +102,7 @@ Column {
         Knob { x: p.a * (parent.width - 14) }
     }
 
-    Row {   // pipette · hex · alpha · extra
+    Row {   // pipette · hex · alpha
         spacing: Theme.grid + 2
         width: parent.width
         IconButton {
@@ -115,7 +115,7 @@ Column {
             id: hexBox
             objectName: "hexField"
             editable: true
-            width: parent.width - x0 - (p.showAlpha ? 56 + Theme.grid + 2 : 0) - (p.extra !== "" ? 66 + Theme.grid + 2 : 0)
+            width: parent.width - x0 - (p.showAlpha ? 56 + Theme.grid + 2 : 0)
             readonly property real x0: p.canPick ? Theme.field + Theme.grid + 2 : 0
             text: p.current.toUpperCase()
             onCommitted: (t) => {
@@ -133,9 +133,15 @@ Column {
             onCommitted: (t) => { const n = parseFloat(t); if (isNaN(n)) input.text = text; else put(n) }
             onArrow: (d, big) => put(Math.round(p.a * 100) + d * (big ? 10 : 1))
         }
+    }
+
+    Row {   // where the selected stop sits on the bar: a labelled row of its own (a gradient only)
+        visible: p.extra !== ""; spacing: Theme.grid + 2; width: parent.width
+        Text { anchors.verticalCenter: parent.verticalCenter; text: "Stop position"; color: Theme.fg2
+               font.pixelSize: Theme.label; font.family: uiFont; width: parent.width - 80 - Theme.grid - 2 }
         FieldFrame {
-            visible: p.extra !== ""; editable: true; width: 66
-            text: p.extra; prefix: "at "; suffix: "%"          // where the stop sits on the bar, not its opacity
+            objectName: "stopAtField"; editable: true; width: 80
+            text: p.extra; suffix: "%"
             onCommitted: (t) => { if (isNaN(parseFloat(t))) input.text = text; else p.extraEdited(t) }
         }
     }
