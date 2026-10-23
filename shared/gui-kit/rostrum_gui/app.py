@@ -52,6 +52,8 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     ctx.setContextProperty("guidePages", GuidePages(engine))
     from rostrum_gui.panel_sizes import PanelSizes   # the panel sizes a person dragged (AppShell's frame layout)
     ctx.setContextProperty("panelSizes", PanelSizes(app_id(main_qml), engine))
+    from rostrum_gui.colour_bank import bank         # every colour picker's swatches and eyedropper (colour_bank.py)
+    ctx.setContextProperty("colourBank", bank())
     for k, v in context.items():
         ctx.setContextProperty(k, v)
     engine.load(QUrl.fromLocalFile(str(main_qml)))

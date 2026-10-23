@@ -127,7 +127,7 @@ Item {
             sourceComponent: row.model.control === "curve" ? curve
                            : row.amount ? amountRow
                            : row.model.control === "file" || row.model.control === "folder" ? path
-                           : ({ toggle: toggle, number: number, choice: choice, color: colour, text: text, list: list })[row.model.type] || text
+                           : ({ toggle: toggle, number: number, choice: choice, color: colour, paint: paintC, text: text, list: list })[row.model.type] || text
         }
         // A param driven by an expression or binding (model.expr = {text, note}): in place of the widget a note
         // and a clear button on the label line, the expression on its own full-width line under it.
@@ -220,7 +220,22 @@ Item {
         onScrubEnded: row.bridge.endScrub() } }
     Component { id: choice; ChoiceField { options: row.model.options; current: row.model.value ?? ""; atRest: row.mixed
                                           onPicked: (v) => row.set(v) } }
-    Component { id: colour; ColorField { hex: row.model.value || "#000000"; atRest: row.mixed; onEdited: (v) => row.set(v) } }
+    Component { id: colour; ColorField { hex: row.model.value || "#000000"; atRest: row.mixed; scrubbed: true
+        onEdited: (v) => row.set(v)
+        onBegan: row.bridge.beginScrub(row.model.id)
+        onLive: (v) => row.bridge.scrub(row.model.id, v)
+        onEnded: row.bridge.endScrub() } }
+    Component { id: paintC; PaintField {   // a fill; model.options may be {types, maxStops, stopOpacity}
+        readonly property var o: row.model.options && !Array.isArray(row.model.options) ? row.model.options : ({})
+        paint: row.model.value || ({ type: "none" }); atRest: row.mixed ? "Mixed" : name; scrubbed: true
+        types: o.types || ["none", "solid", "linear", "radial", "angular", "image"]
+        maxStops: o.maxStops || 8
+        stopOpacity: o.stopOpacity !== false
+        onEdited: (v) => row.set(v)
+        onBegan: row.bridge.beginScrub(row.model.id)
+        onLive: (v) => row.bridge.scrub(row.model.id, v)
+        onEnded: row.bridge.endScrub()
+        onChooseImage: row.bridge.chooseImage ? row.bridge.chooseImage(row.model.id) : undefined } }
     Component { id: list; ListField {
         values: row.model.value || []; choices: row.model.options || []
         minItems: row.model.minItems || 0; maxItems: row.model.maxItems === undefined ? null : row.model.maxItems

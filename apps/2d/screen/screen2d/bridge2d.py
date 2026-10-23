@@ -12,7 +12,7 @@ from rostrum_core import live, marker_times
 from rostrum_core.tree import index
 from rostrum2d import fields as F, placement, project_sound, retime
 
-from . import bounds, outline, screen_seen
+from . import bounds, colour_feed, outline, screen_seen
 from .drags import DragSlots
 from .command_words import CommandWords
 from .file_commands import FileCommands
@@ -40,7 +40,6 @@ from .undo_state import UndoState
 TOOLS = ("move", "pen", "draw", "rect", "ellipse", "text", "camera", "bone", "hand", "zoom")      # what the mouse does on the canvas (setTool)
 
 
-FILLS = {"shape", "text", "path"}      # a gradient fills a shape or the letters of a text, not a picture
 
 
 class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, ActionSlots, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
@@ -102,9 +101,9 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
             self.link = LiveLink(self, "2d", screen_seen.state)
         self._make_actions()                                # the one action list's hub: bar, menus, Ctrl+K, keys
         effects.attach(self, effects.EffectsSpec(           # the panel's "Effects (n) +" (the kit's row; PANEL.md)
-            types=[effects.EffectType(e, F.LABELS[e], valid=(lambda it: it["type"] in FILLS) if e == "gradient" else None)
-                   for e in F.EFFECTS],
+            types=[effects.EffectType(e, F.LABELS[e]) for e in F.EFFECTS if e != "gradient"],   # a gradient is a fill now
             kinds=tuple(t for t in F.LAYERS if t != "camera"), label=lambda eff: F.LABELS[eff["type"]]))
+        colour_feed.attach(self)                            # the colour pickers' project and brand swatches
         self._render()
         self._problems.touch()
 

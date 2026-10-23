@@ -52,6 +52,7 @@ import time
 from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject
 
 from .create_steps import WORDS as CREATE_WORDS, do_create_step
+from .click_steps import WORDS as CLICK_WORDS, do_click_step
 from .export_steps import WORDS as EXPORT_WORDS, do_export_step
 from .key_steps import WORDS as KEY_WORDS, do_key_step
 from .file_steps import WORDS as FILE_WORDS, do_file_step
@@ -401,6 +402,8 @@ def do_step(bridge, win, step):
         do_stroke_step(bridge, win, word, rest, step)
     elif word in RIG_WORDS:                      # bones, posing, poses, Lip sync…, Add blinks… (rig_steps.py)
         do_rig_step(bridge, word, rest, step)
+    elif word in CLICK_WORDS:                    # clickobj / dragobj: a real click on a named control (click_steps.py)
+        do_click_step(win, word, rest, step)
     else:
         raise ValueError(f"unknown step {step!r}")
     if bridge.status.startswith("Error"):

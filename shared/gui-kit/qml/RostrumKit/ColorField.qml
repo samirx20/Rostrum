@@ -1,44 +1,55 @@
 import QtQuick
-import QtQuick.Controls as QQC
 import "."
 
-// A colour: the swatch alone fills the field box; a click (or Enter / Space) opens the picker under it, where the hex
-// value is typed ("#rrggbb", "#" optional; Enter sets it, Esc closes). The app checks the value (a bad one is refused
-// by the operation, loudly). `atRest` ("Mixed") shows in words beside a small swatch.
+// A colour: the swatch alone fills the field box; a click (or Enter / Space) opens the colour picker beside it (to its
+// left): square, hue, hex, pipette, the project's and the brand's swatches. `atRest` ("Mixed") shows in words beside a
+// small swatch. Project / brand swatches come from the app's optional `colourBank`.
+// One picker session = one undo: with `scrubbed` set (the inspector does) the changes go out as began() / live(hex) ...
+// ended(); otherwise `edited(hex)` is sent once, with the last colour, when the picker closes.
 FieldFrame {
     id: f
     property string hex: "#ffffff"
+    property bool scrubbed: false
     signal edited(string value)
+    signal began()
+    signal live(string hex)
+    signal ended()
 
+    property string shown: hex           // what the swatch shows while the picker is open
+    property bool changing: false
+    onHexChanged: shown = hex
     activeFocusOnTab: true
     engaged: picker.visible
     text: ""
     leading: Rectangle {
         width: f.atRest ? 14 : f.width - 2 * Theme.gap; height: 14; radius: 3
-        color: f.hex; border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.18)
+        color: f.shown; border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.18)
     }
-    TapHandler { onTapped: picker.open() }
-    Keys.onReturnPressed: picker.open()
-    Keys.onSpacePressed: picker.open()
+    function open() { picker.openBeside(f) }
+    TapHandler { onTapped: f.open() }
+    Keys.onReturnPressed: f.open()
+    Keys.onSpacePressed: f.open()
 
-    QQC.Popup {
+    SidePopup {
         id: picker
-        y: f.height + 2
-        width: Math.max(f.width, 160); padding: Theme.grid
-        focus: true
-        background: Rectangle { color: Theme.raised; radius: Theme.radiusCtl; border.color: Theme.popupEdge }
-        onOpened: { hexField.input.text = f.hex.toUpperCase(); hexField.input.forceActiveFocus(); hexField.input.selectAll() }
-        contentItem: FieldFrame {
-            id: hexField
-            editable: true
-            text: f.hex.toUpperCase()
-            leading: Rectangle { width: 14; height: 14; radius: 3; color: f.hex; border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.18) }
-            onCommitted: (t) => {
-                const v = t.trim().toLowerCase()
-                f.edited(v.charAt(0) === "#" ? v : "#" + v)
+        readonly property bool banked: typeof colourBank !== "undefined"
+        onClosed: {
+            if (!f.changing) return
+            f.changing = false
+            if (f.scrubbed) f.ended(); else f.edited(f.shown)
+        }
+        ColorPicker {
+            hex: f.shown; showAlpha: false
+            project: picker.banked ? colourBank.project : []
+            brand: picker.banked ? colourBank.brand : []
+            brandName: picker.banked ? colourBank.brandName : ""
+            onChanged: (hx) => {
+                if (hx === f.shown) return
+                f.shown = hx
+                if (f.scrubbed) { if (!f.changing) f.began(); f.live(hx) }
+                f.changing = true
             }
-            onEntered: picker.close()
-            onEscaped: picker.close()
+            onSwatchAdd: (hx) => { if (picker.banked) colourBank.add(hx) }
         }
     }
 }

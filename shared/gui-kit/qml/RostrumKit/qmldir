@@ -15,6 +15,13 @@ TextField 1.0 TextField.qml
 PathField 1.0 PathField.qml
 ChoiceField 1.0 ChoiceField.qml
 ColorField 1.0 ColorField.qml
+ColorPicker 1.0 ColorPicker.qml
+GradientBar 1.0 GradientBar.qml
+PaintPicker 1.0 PaintPicker.qml
+PaintField 1.0 PaintField.qml
+PaintIcon 1.0 PaintIcon.qml
+Checker 1.0 Checker.qml
+SidePopup 1.0 SidePopup.qml
 Slider 1.0 Slider.qml
 KeyMark 1.0 KeyMark.qml
 NameLabel 1.0 NameLabel.qml
@@ -60,3 +67,4 @@ ViewControl 1.0 ViewControl.qml
 EdgeFade 1.0 EdgeFade.qml
 SheetScroll 1.0 SheetScroll.qml
 ToolIcon 1.0 ToolIcon.qml
+GradientHandles 1.0 GradientHandles.qml

@@ -40,6 +40,10 @@ class DocKind:
     # agent's replies carry them (mcp/server.py), inspect lists them, screens show them on the Problems chip.
     warn: Callable[[dict], list[str]] = _no_problems
     new: Callable[[], dict] | None = None               # a fresh document's root
+    # The app's upgrade: upgrade(data, lists) -> (new data, label) for what an older file holds that Rostrum now
+    # holds another way (2D: a gradient effect becomes the fill), or None. Run once on open (storage.open_doc) and
+    # recorded as one change, so the history before it replays as written and undo takes it back.
+    upgrade: Callable | None = None
 
     def __post_init__(self):
         app_check = self.check

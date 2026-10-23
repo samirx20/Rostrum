@@ -13,7 +13,7 @@ from dataclasses import replace
 from rostrum_core import Param
 from rostrum_core.keys import KEY_FIELDS
 
-from . import blends as _blends, grade_fields as _grade, layout_fields as _layout, paint_fields as _paint, stepped as _stepped, swap as _swap
+from . import blends as _blends, fill_fields as _fill, grade_fields as _grade, layout_fields as _layout, paint_fields as _paint, stepped as _stepped, swap as _swap
 
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 P = "primary"
@@ -362,8 +362,12 @@ for _t in LAYERS:
 for _t in _paint.TYPES:                    # paint on an element (paint_fields.py): its Paint group
     FIELDS[_t] += _paint.ELEMENT
 FIELDS["drawing"] += _paint.DRAWING
+for _t in _fill.OWNERS:                    # the fill as a paint (fill_fields.py): its type, gradient geometry, stops
+    FIELDS[_t] += _fill.LAYER
+FIELDS["stop"] = _fill.STOP
+FIELDS["swatch"] = [C("color", "Colour", "Colour", "#ffffff")]     # a project colour (ops_fill_paint.py)
 EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", "grain", *_motion.EFFECTS)
-ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask",) + _rig.OWNED_KEYS
+ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask", "stop") + _rig.OWNED_KEYS
 STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h"}, "path": {"w", "h"},
          "group": {"columns"},
          "video": {"w", "h", "offset", "speed"},
@@ -371,7 +375,7 @@ STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name f
          "text": {"letterDelay", "letterSeed"},
          **_rig.STILL, **_camera.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth", "locked", "hidden", "paintW", "paintH"}}
 LABELS = {"comp": "Scene", "shape": "Shape", "text": "Text", "image": "Image", "video": "Video", "render3d": "3D render", "group": "Group", "drawing": "Drawing", "path": "Path", "frame": "Drawing frame",
-          "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "grain": "Grain", "mask": "Mask", "key": "Key",
+          "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "grain": "Grain", "mask": "Mask", "key": "Key", "stop": "Gradient stop", "swatch": "Project colour",
           **_rig.LABELS, **_camera.LABELS, **_motion.LABELS}
 
 # Named text styles (text_styles.py): a style holds the type of a text, the same fields as a text's (one table); a text's
