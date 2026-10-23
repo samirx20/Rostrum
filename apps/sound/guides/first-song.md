@@ -21,14 +21,15 @@ For a person using the RostrumSound app. This page takes you from an empty song 
 Open **≡**, then **New** (Ctrl+N). It is called "Untitled song" and lives in your projects folder.
 
 Saving is automatic: every change is on disk as you make it. There is no Save button and nothing to lose. Ctrl+S
-just tells you so; named versions come later with the History sheet.
+just tells you so; named versions come later with the History sheet. (The song's own file is brought fully up to date when
+you close the window and every 20 changes; the change log beside it always has the latest, and opening the song plays it.)
 
 ## 2. Add a track
 
 1. Click **Add a track** in the middle of the empty song, **+ Track** under the last track, or **+ Add › Track with a
    sound…**. You can also press **Ctrl+L**. The **Library** opens on the left.
-2. Type to search ("warm", "bass", "voice"), or click a chip: **Instruments**, **Drums**, **Record**, **Voice**,
-   **My sounds**.
+2. Type to search ("warm", "bass", "voice"), or click a chip: **All**, **Instruments**, **Drums**, **Record**,
+   **Voice**, **My sounds**.
 3. **Double-click** a sound, or select it and press **Enter**. A new track with that sound appears, selected, and the
    **Editor** opens under the arrangement.
    - **Microphone** makes a track that is ready to record (see [recording.md](recording.md)).

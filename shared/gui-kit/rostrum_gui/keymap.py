@@ -82,6 +82,9 @@ SHARED = [
 ]
 
 
+_MODIFIER_KEYS = {"ctrl", "control", "alt", "altgr", "shift", "meta", "super", "capslock"}
+
+
 def normal(key: str) -> str:
     """One spelling per key: "ctrl+shift+g" and "Shift+Ctrl+G" are both "Ctrl+Shift+G"; Escape is Esc."""
     parts = [p.strip() for p in key.replace("++", "+plus").split("+")]
@@ -154,7 +157,10 @@ class KeyMap:
         return row["where"] if row else ""
 
     def held(self, key_name: str) -> list[str]:
-        """The hold jobs a released key ends ("H" -> ["hear_original"]); modifiers held with it don't matter."""
+        """The hold jobs a released key ends ("H" -> ["hear_original"]); modifiers held with it don't matter.
+        A modifier on its own (Qt names it "Control", "Shift" ...) ends nothing: hold keys never carry one."""
+        if key_name.strip().lower() in _MODIFIER_KEYS:
+            return []
         name = normal(key_name).split("+")[-1]
         return [r["job"] for r in self._rows if r["hold"] and any(k.split("+")[-1] == name for k in r["keys"])]
 

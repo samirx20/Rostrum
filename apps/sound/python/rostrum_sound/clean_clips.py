@@ -29,6 +29,28 @@ def media_of(clip: dict, where: str) -> str:
     return made
 
 
+def pending(doc) -> list[str]:
+    """The ids of clips that need a cleaned take which is not made yet."""
+    return [c["id"] for _, c in clips(doc) if cleanup.cached(c["media"], cleanup.recipe_of(c)) is None]
+
+
+def without_pending(doc):
+    """The document as a *playing* screen reads it: a clip whose cleaned take is not made yet plays its original
+    meanwhile (the screen says the take is pending and re-renders when it lands). Never used by export or the MCP
+    render, which fail loudly rather than ship the wrong sound."""
+    ids = pending(doc)
+    if not ids:
+        return doc
+    import copy
+    from types import SimpleNamespace
+    data = copy.deepcopy(doc.data)
+    for t in data.get("tracks", []):
+        for c in t.get("clips", []):
+            if c["id"] in ids:
+                c["useCleaned"] = False
+    return SimpleNamespace(data=data, folder=getattr(doc, "folder", None))
+
+
 def clips(doc, ids=None) -> list[tuple[dict, dict]]:
     """(track, clip) for the given clip ids, or every clip that plays a cleaned take; an unknown id is a loud error,
     and so is a given clip with no cleanup step set."""

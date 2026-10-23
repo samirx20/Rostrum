@@ -268,7 +268,10 @@ class RenderExport(ExportSheet):
     def usePreset(self, name):
         """A delivery preset (presets.py): sets the file, quality, trimming, stems and markers in one go."""
         p = presets.PRESETS.get(name)
-        if p is None or self.running():
+        if p is None:           # a typo must not leave the old choices standing as if it had worked
+            self.bridge._fail(f'Error: export: no preset named "{name}". Use one of: {", ".join(presets.PRESETS)}.')
+            return
+        if self.running():
             return
         self._format, self._rate, self._trim, self._stems, self._markers = p["format"], p["sampleRate"], p["trim"], p["stems"], p["markers"]
         self.changed.emit()

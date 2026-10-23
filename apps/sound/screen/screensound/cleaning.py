@@ -24,6 +24,9 @@ from .clean_process import CleanProcess
 from .model_fetch import ModelFetch
 
 
+PENDING = "The cleaned take is not made yet: the clip plays its original until it is."
+
+
 class CleanedTake(QObject):
     changed = Signal()
     _progress = Signal(str)
@@ -244,5 +247,5 @@ class CleanedTake(QObject):
         if clip != self._clip:
             self._clip = clip
             if not self._busy:
-                self._status = ""
+                self._status = PENDING if clip else ""
             self.changed.emit()

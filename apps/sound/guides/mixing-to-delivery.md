@@ -49,7 +49,7 @@ ceiling, the mix is denser than the target allows: turn the loud parts down at t
 
 ## Stems and handoff
 
-`render_mix` with `stems: true` writes one WAV per track and per bus (`<bus>.bus.wav`) beside the mix in
+`render_mix` with `stems: true` writes one WAV per track and per bus (`<group name>.wav`) beside the mix in
 `renders/<item>/vNNN/`. On the screen: the Export sheet (Ctrl+E) with **Stems** on, then **Export**.
 **The rule, in plain words:** a stem leaves through the master's *volume* (master fader and its automation, the
 fades, and the gain that brings the mix to its loudness target) but not through the master's *glue compressor,

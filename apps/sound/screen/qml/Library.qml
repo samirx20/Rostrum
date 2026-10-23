@@ -2,7 +2,7 @@ import QtQuick
 import RostrumKit
 
 // The Library (DESIGN.md §2.2, decision 3; INTERACTION.md "Library", Ctrl+L): adding a track is choosing its sound. A search box (focused on open),
-// a kind dropdown (All · Instruments · Drums · Record · Voice · My sounds) and the list (adder.find). Click picks an entry;
+// kind chips (All · Instruments · Drums · Record · Voice · My sounds; the picked one is lit) and the list (adder.find). Click picks an entry;
 // double-click or Enter uses it: a new track with that sound (one operation, one undo step), selected, the Editor
 // open on it — the microphone's track comes armed, ready to record. With a track of the same kind selected it asks
 // "Change Piano to Strings? The notes stay." and changes that track's sound instead (adder.swap, one undo step). "My sounds" is the person's own library
@@ -57,13 +57,17 @@ Panel {
         onEscaped: soundLibrary.swapping ? soundLibrary.swapBack() : soundLibrary.stopAudition()
         onEntered: soundLibrary.swapping ? soundLibrary.swapKeep() : p.use(p.current)
     }
-    Row {      // one row: the kind; for "My sounds" also the Filter (length, tone, kind of recording)
+    Flow {      // the kinds as chips, one click each, wrapping when narrow; for "My sounds" also the Filter (length, tone, kind of recording)
         id: chips
         anchors { left: parent.left; right: parent.right; top: search.bottom; topMargin: Theme.gap }
         spacing: Theme.grid
-        ChoiceField { width: parent.width - (filterBtn.visible ? filterBtn.width + parent.spacing : 0)
-                      options: adder.kinds.map(k => ({ value: k.value, label: k.label })); current: p.chip
-                      onPicked: (v) => p.chip = v }
+        Repeater {
+            model: adder.kinds
+            delegate: Button { required property var modelData
+                               text: modelData.label; height: Theme.button
+                               kind: p.chip === modelData.value ? "primary" : "normal"
+                               onClicked: p.chip = modelData.value }
+        }
         Button { id: filterBtn; visible: p.chip === "mine" && soundLibrary.hasFolders; kind: "ghost"; height: Theme.field
                  text: soundLibrary.filterCount > 0 ? "Filter · " + soundLibrary.filterCount + " ▾" : "Filter ▾"
                  down: mine.filterOpen; onClicked: mine.openFilter(filterBtn) }

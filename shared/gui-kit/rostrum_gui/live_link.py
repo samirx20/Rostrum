@@ -47,5 +47,7 @@ class LiveLink(QObject):
 
     def close(self):
         self._timer.stop()
+        if self.bridge.doc.live is not None:
+            self.bridge.doc.save()                # fold the history into the document file: readers of the file alone see the end
         if self.bridge.doc.folder is not None:
             screen_state.clear(self.bridge.doc.folder, self.app)

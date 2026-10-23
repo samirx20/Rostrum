@@ -5,7 +5,7 @@ One workspace on one Sound document (apps/sound/DESIGN.md §2), built from the s
 ```
 top bar          RostrumSound · File · song · ⏮ ▶ · Record (only while a track is armed) · bar.beat · time ·
                  ♩ tempo · beats · key (click: the tempo / key popover) · Loudness against the target (once there is
-                 sound; click: the Mixer) · history · + Add · Deliver (once there is sound) · Ctrl+K · Help
+                 sound; click: the Mixer) · history · + Add · Export (once there is sound) · Ctrl+K · Help
 left             the Sounds panel (L, + Track, + Add): instruments, drum kits, microphone, voices, my sounds; pushes the
                  arrangement on a wide window, floats over it below 1500 px and closes after use
 centre           the arrangement, always (Arrangement.qml + Timeline.qml): zoom strip, ruler, sections, markers, a row
@@ -13,7 +13,7 @@ centre           the arrangement, always (Arrangement.qml + Timeline.qml): zoom 
                  close, EditorDock.qml) or Mixer (X: strips, the Master pinned right, Mixer.qml), folds away
 right            the settings panel: the selection's settings (the kit's Inspector), or the song while nothing is
                  selected (SongSettings.qml, `songPanel`)
-dialog           Deliver (Ctrl+Shift+E): target, file, quality, stems, the live check, Deliver, then Show file
+dialog           Export (Ctrl+E; Ctrl+Shift+E exports again): target, file, quality, stems, the live check, Export, then Show file
 ```
 Screen state (never saved in the song): `workspace` (screensound/workspace.py: the dock, its height per tool, the
 Sounds panel).
@@ -22,7 +22,7 @@ Sounds panel).
 
 - **Individuality from data.** The settings panel shows a track's "Instrument" fields whose `valid_when` holds: a
   plucked string shows position and damping, a synth attack and brightness, because of
-  `rostrum_sound/doc/playing.py`, never a list per instrument. Record, Deliver, the loudness readout and the dock
+  `rostrum_sound/doc/playing.py`, never a list per instrument. Record, Export, the loudness readout and the dock
   are absent until they apply.
 - **Every action is an operation, one history.** Inspector edits, mute / solo, fader and pan drags, adding an
   effect, adding / deleting / dragging notes, clips and markers. Each drag is one `doc.gesture` = one undo step.
@@ -66,7 +66,7 @@ Switching songs rebuilds the bridge and its parts and reloads the window (`main.
 `file-duplicate` still work), `file-menu`, `settings`, `add-track <sound key>` (adder.py: `builtIn:grandPiano`, `kit`,
 `mic`, `voice:ryan` …), `press <Ctrl+Shift+S>` (a key chord into the window).
 
-## Mixer and Deliver: loudness, delivery, export, ducks, cleaned takes
+## Mixer and Export: loudness, delivery, export, ducks, cleaned takes
 
 - **Master loudness, live** (`loudness.py`, `MixLoudness.qml`, `LoudnessCurve.qml`): the short-term loudness (LUFS-S) and the
   true peak follow the playhead, read from the series of the render that plays (preview ≡ export). While playing, the
@@ -80,8 +80,8 @@ Switching songs rebuilds the bridge and its parts and reloads the window (`main.
   true peak under the ceiling).
 - **A control once per screen** (`onpage.py`): the inspector leaves out what the workspace's own controls show (the master
   strip's fader; a strip's fader, pan, output; a send's level; the track headers' mute / solo).
-- **Deliver** (`export.py`, `DeliverDialog.qml`; top bar Deliver, Ctrl+Shift+E, once the song makes a sound): target,
-  file, quality, stems (off by default), trim; the live Pass / Miss line; Deliver runs the same versioned render as the
+- **Export** (`export.py`, the Export sheet; top bar Export, Ctrl+E, Ctrl+Shift+E exports again with the last settings, once the song makes a sound): target,
+  file, quality, stems (off by default), trim; the live Pass / Miss line; Export runs the same versioned render as the
   MCP `render_mix` (`handoff.render`) in the background on its own engine process; then "Done", the `vNNN` folder and
   "Show file". Needs a project folder (`--doc`); without one it says so in red. The top bar's loudness readout
   (`LoudnessReadout.qml`) is the whole song's loudness against the target (green dot within ±1, amber outside).
@@ -99,7 +99,7 @@ Everything goes through the engine's live transport, the same process that plays
 against what was heard, to the sample. Arm a track (Rec on its header): the microphone opens in the player
 (`--mic`), its level shows in the record cluster of the top bar. Press the red Record button or R: the engine counts
 in if asked (its own clicks), plays from the playhead and records; Stop and the take becomes one clip (one undo step)
-in `<project>/media/<track>-take-<n>.wav` at the engine's `start` (its clock, minus the microphone's delay when
+in `<project>/media/<track name>-take-<n>.wav` at the engine's `start` (its clock, minus the microphone's delay when
 `rostrum-sound play --calibrate` measured it; `rostrum_sound.record.land_take`).
 
 - **Take panel** ("Take" in the record cluster, `RecordSetup.qml` / `record_setup.py`; screen state, not an edit). Rows

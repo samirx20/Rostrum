@@ -8,7 +8,7 @@
 
 `land_take` puts a take of the engine's live transport (the screen's, sample-placed) on a track.
 `record_take(doc, track, at, seconds)` does all of it for a script. Nothing here captures audio itself.
-Takes go in `<project folder>/media/` (a document without a folder: `./takes/`), named `<track>-take-<n>.wav`.
+Takes go in `<project folder>/media/` (a document without a folder: `./takes/`), named `<track name>-take-<n>.wav`.
 """
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ from pathlib import Path
 from rostrum_core import RostrumError, codes
 
 from . import settings
+from .deliver import safe_name
 from .engine import find_engine
 
 READY_S = 6          # the microphone must be running by then
@@ -34,10 +35,12 @@ def _fail(problem, hint=""):
 
 
 def take_path(doc, track_id: str) -> Path:
-    """The next free `<track>-take-<n>.wav` in the project's media folder (made when missing)."""
+    """The next free `<track name>-take-<n>.wav` in the project's media folder (made when missing). The name is the
+    track's own name as the person sees it ("Recording", "Vocals"), made safe as a file name; the id when it has none."""
     folder = (Path(doc.folder) / "media") if getattr(doc, "folder", None) else Path.cwd() / "takes"
     folder.mkdir(parents=True, exist_ok=True)
-    stem = track_id.replace(".", "-")
+    item = doc.item(track_id) if doc.has(track_id) else None
+    stem = safe_name((item or {}).get("name") or track_id, set()).replace(".", "-")
     n = 1
     while (folder / f"{stem}-take-{n}.wav").exists():
         n += 1

@@ -2,7 +2,7 @@
 
 The engine renders 32-bit float WAV files (the mix and one stem per track and bus, named by id) at the sample rate
 the schedule asks for. `deliver` turns those into the chosen files in the same folder: `Song.wav`, `pad.wav`,
-`drums.wav`, `<bus>.bus.wav`, in the format asked for, all cut to the same length so the stems still line up with
+`drums.wav`, `<group>.wav`, in the format asked for, all cut to the same length so the stems still line up with
 the mix. The choices are plain data (`FORMATS`, `RATES`) so the screen and the MCP tool list the same ones, each with
 its words; `Options.read` checks a request and says in words what is wrong (MP3 has no 96 kHz, say).
 
@@ -182,7 +182,7 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dic
     for tid, p in (r.get("stems") or {}).items():
         jobs.append(("track", tid, Path(p), safe_name(names.get(tid) or tid, taken)))
     for bid, p in (r.get("busStems") or {}).items():
-        jobs.append(("bus", bid, Path(p), safe_name(names.get(bid) or bid, taken) + ".bus"))
+        jobs.append(("bus", bid, Path(p), safe_name(names.get(bid) or bid, taken)))
     info = {j[2]: last_audible(j[2], sf) for j in jobs}
     frames, rate = max(i[0] for i in info.values()), next(iter(info.values()))[2]
     if any(i[2] != opts.sample_rate for i in info.values()):
@@ -192,6 +192,7 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dic
     ranged = opts.start is not None and r.get("range") is not None      # the engine rendered the range itself
     if ranged:
         first = 0
+        keep = min(frames, round((opts.end - opts.start) * rate))     # exactly the stretch asked for: the engine's ring-out past it is cut
         if opts.trim and heard:        # its silent end goes, as a whole song's does
             keep = min(frames, max(heard + int(TAIL * rate), int(MIN_SECONDS * rate)))
     elif opts.start is not None:       # a whole-song render (a test's, an old engine's): the cut is made here
