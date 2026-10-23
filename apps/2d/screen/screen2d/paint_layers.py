@@ -70,11 +70,13 @@ class PaintLayers(QObject):
 
     @Property("QVariantList", notify=changed)
     def toggles(self):
-        """The element's own paint switches that apply now: [{id, label, help, value}] (paint_fields)."""
+        """What the pen paints on's own paint switches: [{id, label, help, value}] (paint_fields): Inside the outline
+        (an element: a drawing has no outline) and Draw each frame, from the first moment, before any paint, so an
+        animation can start on an empty layer (painting design §2.2, §2.5)."""
         d = self._item()
         if not d:
             return []
-        params = paint_fields.DRAWING if d["type"] == "drawing" else (paint_fields.ELEMENT if d.get("frames") else [])
+        params = paint_fields.DRAWING if d["type"] == "drawing" else paint_fields.ELEMENT
         return [{"id": p.name, "label": p.label, "help": p.help, "value": d.get(p.name, p.default)}
                 for p in params if p.type == "toggle"]
 

@@ -1,14 +1,20 @@
-"""The brush panel's side of the Draw tool: the kit's Inspector talks to this object as it does to a DocBridge (the
-same `rows` / `setValue` / `toggleMore` surface), so the panel is built from the brush settings' own rules. The
-brush is screen state (the next stroke), not the document: nothing here is an undo step. Painter (painter.py) is one.
+"""The brush panel's side of the Brush tool: the kit's Inspector talks to this object as it does to a DocBridge (the
+same `rows` / `setValue` surface), so the settings panel is built from the brush settings' own rules (painting design
+§2.1): the header "Painting · <layer> · <kind>", the quick rows, or every setting on "Edit brush ›" (`editing`, the
+header then the brush's name). The presets (brush_presets.py) are what the brush flyout shows. The brush is screen
+state (the next stroke), not the document: nothing here is an undo step. Painter (painter.py) is one.
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
+from rostrum2d.names import display_name
+
+from . import brush_presets
 
 
 class BrushPanel(QObject):
-    """Needs `self.b` (the bridge), `self.brush` (brush.Brush) and `self.model` (the panel's RowsModel)."""
+    """Needs `self.b` (the bridge), `self.brush` (brush.Brush), `self.model` (the panel's RowsModel) and `self._aim()`
+    (what the pen paints on)."""
     brushChanged = Signal()
 
     @Property(QObject, constant=True)
@@ -17,17 +23,32 @@ class BrushPanel(QObject):
 
     @Property("QVariantMap", notify=brushChanged)
     def brushNow(self):
-        """The context bar's brush controls (PaintOptions.qml): the next stroke's values, and `bar`, the settings the
-        bar shows (Brush.bar(): the kit's placement table; `fillBar` while Fill is on); the panel shows the rest."""
-        return {**self.brush.values, "bar": self.brush.bar(), "fillBar": self.brush.bar("fill")}
+        """The next stroke's values, its preset and its name (the Brush row, [ and ], the brush ring)."""
+        return {**self.brush.values, "preset": self.brush.preset, "name": self.brush.label()}
+
+    @Property("QVariantList", constant=True)
+    def presets(self):
+        return brush_presets.groups()
 
     @Property("QVariantMap", notify=brushChanged)
     def selectedItem(self):
-        return {"id": "brush", "label": self.brush.label(), "kind": "next stroke"}
+        if self.brush.editing:
+            return {"id": "brush", "label": self.brush.label(), "kind": "brush", "kindLabel": "Brush"}
+        d = self._aim()
+        name, kind = (display_name(d), self.b.kind_label(d)) if d else ("New drawing", "")
+        on = name if kind in ("", name) else f"{name} · {kind}"     # "Drawing", not "Drawing · Drawing"
+        return {"id": "brush", "label": "Painting", "kind": "brush", "kindLabel": on}
 
-    @Property(bool, notify=brushChanged)
-    def moreOpen(self):
-        return self.brush.more
+    editing = Property(bool, lambda self: self.brush.editing, notify=brushChanged)
+
+    @Slot(bool)
+    def setEditing(self, on):
+        self.brush.editing = on
+        self._rows_changed()
+
+    @Slot(str)
+    def setPreset(self, pid):
+        self.b.guard(lambda: (self.brush.apply_preset(pid), self._rows_changed()))
 
     @Slot(str, "QVariant", result=bool)
     def setValue(self, param, value):
@@ -35,6 +56,9 @@ class BrushPanel(QObject):
 
     def _brush_set(self, param, value):
         self.brush.set(param, value)
+        self._rows_changed()
+
+    def _rows_changed(self):
         self.model.update(self.brush.rows())
         self.brushChanged.emit()
 
@@ -49,12 +73,6 @@ class BrushPanel(QObject):
     @Slot()
     def endScrub(self):
         pass
-
-    @Slot()
-    def toggleMore(self):
-        self.brush.more = not self.brush.more
-        self.model.update(self.brush.rows())
-        self.brushChanged.emit()
 
     @Slot(str)
     def toggleAnimate(self, param):

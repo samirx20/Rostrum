@@ -1,10 +1,10 @@
 import QtQuick
 import RostrumKit
 
-// The settings panel's paint layers group, under the brush while Draw is on (UX_SPEC 3.8; backend.paintLayers).
+// The settings panel's paint layers group, under "Painting on" (PaintTarget.qml; backend.paintLayers).
 // The paint layers, top first: the eye, the name (click: strokes and fills go on it; drag: reorder; right-click ›
-// Delete); under the list the highlighted layer's Opacity and Blend; then the element's paint switches (Keep inside
-// the outline, Draw each frame) and Onion skin while drawing each frame. Absent while the pen paints on a new drawing.
+// Delete); under the list the highlighted layer's Opacity and Blend; then Onion skin while drawing each frame.
+// Absent until what the pen paints on holds paint.
 Column {
     id: po
     readonly property var pl: backend.paintLayers
@@ -89,19 +89,6 @@ Column {
             x: po.labelColumn; width: parent.width - po.labelColumn - Theme.keyGutter; anchors.verticalCenter: parent.verticalCenter
             options: po.pl.modes; current: po.cur ? po.cur.mode : "normal"
             onPicked: (v) => po.pl.setLayer(po.cur.id, "mode", v)
-        }
-    }
-    Repeater {      // the element's paint switches (paint_fields)
-        model: po.pl.toggles
-        delegate: Line {
-            id: tl
-            required property var modelData
-            height: Math.max(Theme.row, tlab.implicitHeight + 2 * Theme.grid)
-            Label { id: tlab; text: tl.modelData.label; wrapMode: Text.WordWrap; maximumLineCount: 2; lineHeight: 0.9 }
-            Toggle { x: po.labelColumn; anchors.verticalCenter: parent.verticalCenter; checked: tl.modelData.value
-                     onToggled: (v) => po.pl.setToggle(tl.modelData.id, v) }
-            HoverHandler { id: tHover }
-            HoverTip { hovered: tHover.hovered; text: tl.modelData.help || "" }
         }
     }
     Line {

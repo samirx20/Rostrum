@@ -31,7 +31,18 @@ AppShell {
     // the tools: V move, P pen, B draw, Esc back to move (screen state, backend.setTool)
     Shortcut { sequence: "V"; enabled: !shell.typing; onActivated: backend.setTool("move") }
     Shortcut { sequence: "P"; enabled: !shell.typing; onActivated: backend.setTool(backend.tool === "pen" ? "move" : "pen") }
-    Shortcut { sequence: "B"; enabled: !shell.typing; onActivated: backend.setTool("draw") }
+    Shortcut { sequence: "B"; enabled: !shell.typing; onActivated: { backend.paintTool.use("brush"); rail.openBrushes() } }   // the brush panel (BrushFlyout.qml)
+    // painting: the Brush group's other tools (paint_tool.py), and [ ] size, Shift+[ ] hardness (the brush ring shows it)
+    readonly property bool painting: backend.tool === "draw" && !shell.typing
+    Shortcut { sequence: "E"; enabled: shell.painting; onActivated: backend.paintTool.use(backend.paintTool.now === "eraser" ? "brush" : "eraser") }
+    Shortcut { sequence: "G"; enabled: shell.painting; onActivated: backend.paintTool.use(backend.paintTool.now === "fill" ? "brush" : "fill") }
+    Shortcut { sequence: "I"; enabled: shell.painting; onActivated: backend.paintTool.use(backend.paintTool.now === "pick" ? "brush" : "pick") }
+    Shortcut { sequence: "S"; enabled: shell.painting; onActivated: backend.paintTool.use(backend.paintTool.now === "select" ? "brush" : "select") }
+    function brushBy(name, f, lo, hi) { painter.setValue(name, Math.max(lo, Math.min(hi, Math.round(painter.brushNow[name] * f * 100) / 100))) }
+    Shortcut { sequence: "["; enabled: shell.painting; onActivated: shell.brushBy("size", 1 / 1.25, 0.5, 2000) }
+    Shortcut { sequence: "]"; enabled: shell.painting; onActivated: shell.brushBy("size", 1.25, 0.5, 2000) }
+    Shortcut { sequences: ["Shift+[", "{"]; enabled: shell.painting; onActivated: painter.setValue("hardness", Math.max(0, Math.round(painter.brushNow.hardness * 10 - 1) / 10)) }
+    Shortcut { sequences: ["Shift+]", "}"]; enabled: shell.painting; onActivated: painter.setValue("hardness", Math.min(1, Math.round(painter.brushNow.hardness * 10 + 1) / 10)) }
     Shortcut { sequence: "R"; enabled: !shell.typing; onActivated: backend.setTool("rect") }       // creation tools (create.py)
     Shortcut { sequence: "O"; enabled: !shell.typing; onActivated: backend.setTool("ellipse") }
     Shortcut { sequence: "T"; enabled: !shell.typing; onActivated: backend.setTool("text") }
@@ -150,7 +161,8 @@ AppShell {
                     above: RigPoses { }                   // a rig in hand: its pose library first (rig_poses.py)
                     sheets: [LipSyncSheet { }, BlinkSheet { }] },   // Lip sync… / Add blinks… in the panel's place
         Inspector { id: settingsDraw; anchors.fill: parent; bridge: painter; visible: backend.tool === "draw"
-                    below: PaintOn { } },     // under the brush: the paint layers and switches of what it paints on
+                    above: BrushHead { }      // the brush's own row (or ‹ back while editing it), then its quick rows
+                    below: PaintTarget { } }, // Edit brush ›, Painting on (Layer, Inside the outline, Draw each frame), paint layers
         AnimPanel { anchors.fill: parent }    // a stretch picked in the timeline: its animation, over the layer's settings (stretch_select.py)
     ]
     bottom: LayerTimeline {

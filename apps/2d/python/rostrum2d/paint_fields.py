@@ -15,7 +15,7 @@ G = "Paint"
 EACH_FRAME_HELP = "On: each frame can have its own drawing (hand-drawn animation; Alt+N adds the next). Off: one painting"
 
 ELEMENT = [
-    Param.toggle("paintInside", label="Keep inside the outline", group=G, default=True, importance="secondary",
+    Param.toggle("paintInside", label="Inside the outline", group=G, default=True, importance="secondary",
                  valid_when=HAS_PAINT, help="On: the paint shows only where the element itself is drawn. Off: it covers the whole box"),
     Param.toggle("eachFrame", label="Draw each frame", group=G, default=False, importance="secondary",
                  valid_when=HAS_PAINT, help=EACH_FRAME_HELP),

@@ -1,6 +1,7 @@
 """Hold Alt while Draw is on: the pointer picks the colour under it (UX_SPEC.md §3.8, Keys). The colour is the one in the
 engine's frame the canvas shows (what the person sees, not a guess from layer data); a click makes it the brush's colour,
 as typing it into the bar's Colour does (`painter.setValue("color", …)`); letting go of Alt goes back to painting.
+The Brush panel's Pick (I) arms the same pick without Alt (`arm`): one click picks, then the brush is back.
 A QObject part, read in QML as `backend.colourPick`. The Alt key is read for the whole window by an event filter here
 (a lone modifier key has no key event on an item without the keyboard focus).
 """
@@ -15,20 +16,21 @@ class ColourPick(QObject):
 
     def __init__(self, bridge):
         super().__init__(bridge)
-        self.b, self._alt, self._at, self._swatch = bridge, False, (0.0, 0.0), ""
+        self.b, self._alt, self._at, self._swatch, self._armed = bridge, False, (0.0, 0.0), "", False
         app = QGuiApplication.instance()
         if app is not None:
             app.installEventFilter(self)
-        bridge.toolChanged.connect(lambda: self.setAlt(False))
+        bridge.toolChanged.connect(lambda: (self.setAlt(False), self.arm(False)))
 
-    alt = Property(bool, lambda self: self._alt and self.b.tool == "draw", notify=changed)
-    swatch = Property(str, lambda self: self._swatch if self._alt else "", notify=changed)    # the colour under the pointer
+    alt = Property(bool, lambda self: (self._alt or self._armed) and self.b.tool == "draw", notify=changed)
+    armed = Property(bool, lambda self: self._armed, notify=changed)       # Pick (I) is the tool, not Alt held
+    swatch = Property(str, lambda self: self._swatch if self._alt or self._armed else "", notify=changed)    # the colour under the pointer
     at = Property("QVariantMap", lambda self: {"x": self._at[0], "y": self._at[1]}, notify=changed)   # where, composition px
 
     @Slot(float, float)
     def look(self, x, y):
         """The pointer is at (x, y) (composition px): while Alt is held the swatch shows the colour there."""
-        self._at, self._swatch = (x, y), self.colour_at(x, y) if self._alt else ""
+        self._at, self._swatch = (x, y), self.colour_at(x, y) if self._alt or self._armed else ""
         self.changed.emit()
 
     def eventFilter(self, obj, event):          # noqa: N802 (Qt's name)
@@ -38,6 +40,12 @@ class ColourPick(QObject):
         elif t == QEvent.Type.WindowDeactivate:
             self.setAlt(False)
         return False
+
+    @Slot(bool)
+    def arm(self, on):
+        if on != self._armed:
+            self._armed = on
+            self.look(*self._at)
 
     @Slot(bool)
     def setAlt(self, on):
@@ -71,6 +79,7 @@ class ColourPick(QObject):
             self.b._set_status("Nothing to pick there: the frame is clear")
             return False
         ok = self.b.painter.setValue("color", c)
+        self.arm(False)                         # Pick picks once, then the brush is back
         if ok:
             self.b._set_status(f"Brush colour {c}")
         return ok

@@ -12,6 +12,7 @@ from rostrum_gui import guides, start
 from rostrum_gui.app import stop
 from rostrum_gui.project_files import ProjectFiles
 
+from . import brush_presets
 from .bridge2d import Bridge2D
 from .files2d import FILES2D
 from .spacekey import SpaceKey
@@ -40,7 +41,7 @@ class Session:
         _, engine, win = start(QML, {"backend": bridge, "painter": bridge.painter, "files": self.files,
                                      "guides": GUIDES, "spaceKey": self.space}, self.size,
                                providers={"frame": bridge.frames.provider, "framecrop": bridge.frames.crops,
-                                          "onion": bridge.painter.provider})
+                                          "onion": bridge.painter.provider, "brushes": brush_presets.PreviewProvider()})
         old = (self.bridge, self.engine, self.win)
         self.bridge, self.engine, self.win = bridge, engine, win
         if old[0] is not None:                           # the window and its bindings first, then what they read

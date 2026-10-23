@@ -188,6 +188,12 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("fill-solid-hex", ["--sample"], ["select card"]),
         ("fill-gradient-name", ["--sample"], ["select card", 'set paint {"type":"linear","angle":90,"stops":['
                                               '{"at":0,"color":"#ff7a45","opacity":1},{"at":1,"color":"#8a4cff","opacity":1}]}']),
+        # H50 (painting phase 1): the brush panel beside the rail; Edit brush › (every setting); painting with nothing
+        # selected (a new drawing); a long layer name in "Painting on"
+        ("brush-panel", ["--sample"], ["select card", "flyout brush"]),
+        ("brush-edit", ["--sample"], ["select card", "tool draw", "brushedit on"]),
+        ("paint-new-drawing", ["--sample"], ["tool draw"]),
+        ("paint-long-target", long(), [*busy, "select card", "tool draw"]),
         ("library-brand", long_project(), ["select title_card_for_the_summer_launch_film", "do layer:style_save",
                                            "brand colors Summer_launch_coral_for_the_headphones_campaign #ff7a59",
                                            "brand colors Night #101820",

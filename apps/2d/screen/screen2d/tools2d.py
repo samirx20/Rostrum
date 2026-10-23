@@ -19,6 +19,7 @@ from .key_select import KeySelect
 from .multi import Multi
 from .paint_layers import PaintLayers
 from .paint_pick import ColourPick
+from .paint_tool import PaintTool
 from .pen import Pen
 from .problems import Problems
 from .rig_blinks import BlinkSheet
@@ -57,6 +58,7 @@ class ToolSlots(SlotMixin):
         self._filler = Filler(self)                         # Fill, G while Draw is on (filler.py): backend.fill
         self._pick = ColourPick(self)                       # Alt picks a colour (paint_pick.py): backend.colourPick
         self._strokes = StrokeSelect(self)                  # lasso, move, copy, delete strokes (stroke_select.py): backend.strokeSelect
+        self._paint_tool = PaintTool(self)                  # Brush, Eraser, Fill, Pick, Select: which is on (paint_tool.py): backend.paintTool
         self._rig = RigView(self)                           # the rig in hand's bones on the canvas (rig_view.py): backend.rig
         self._bone_tool = BoneTool(self, self._rig)         # the Bone tool (J): draw bones by hand (bone_tool.py): backend.boneTool
         self._poses = PoseList(self)                        # the rig's pose library in the settings (rig_poses.py): backend.poses
@@ -136,6 +138,11 @@ class ToolSlots(SlotMixin):
     def colourPick(self):
         """Hold Alt while Draw is on: pick the colour under the pointer (paint_pick.py)."""
         return self._pick
+
+    @Property(QObject, constant=True)
+    def paintTool(self):
+        """The Brush group's five tools: which is on, and switching (paint_tool.py)."""
+        return self._paint_tool
 
     @Property(QObject, constant=True)
     def strokeSelect(self):
