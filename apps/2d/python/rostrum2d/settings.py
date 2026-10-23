@@ -3,7 +3,7 @@
 One root, <root>: this checkout, or the installed Rostrum folder, which has the same layout (tools/release/bundle.py
 copies the repo's own paths: apps\\2d\\python, apps\\2d\\engine\\target\\agent\\rostrum2d-render.exe, runtime\\python …).
 So every place below is the same in both; an environment variable, when set, is the only place looked at.
-    engine        ROSTRUM2D_ENGINE  ·  <root>/apps/2d/engine/target/release/, then …/agent/   rostrum2d-render.exe
+    engine        ROSTRUM2D_ENGINE  ·  the newest of <root>/apps/2d/engine/target/release/ and …/agent/   rostrum2d-render.exe
     ffmpeg        ROSTRUM_FFMPEG_DIR  ·  <root>/apps/2d/ffmpeg/   ffmpeg.exe, ffprobe.exe and their DLLs (LGPL build;
                   WebM, ProRes, video import). Never from PATH: the app runs only the FFmpeg it ships. MP4 needs none.
     fonts         ROSTRUM2D_FONTS  ·  <root>/apps/2d/engine/fonts
@@ -23,6 +23,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from rostrum_core import builds, userhome
+
 APP = Path(__file__).resolve().parents[2]                          # <root>/apps/2d
 ROOT = APP.parents[1]
 EXE = ".exe" if os.name == "nt" else ""
@@ -38,17 +40,17 @@ def _env_path(name: str) -> Path | None:
 
 # ---- the engine ---------------------------------------------------------------------------------------------------
 def engine_candidates() -> list[Path]:
-    """Where the engine is looked for, in order: ROSTRUM2D_ENGINE alone when set, else the release then agent build."""
+    """Where the engine is looked for: ROSTRUM2D_ENGINE alone when set, else the release and agent builds."""
     if _env_path("ROSTRUM2D_ENGINE"):
         return [_env_path("ROSTRUM2D_ENGINE")]
     return [APP / "engine" / "target" / profile / f"rostrum2d-render{EXE}" for profile in ("release", "agent")]
 
 
 def engine_exe() -> Path | None:
-    """The 2D engine program (ROSTRUM2D_ENGINE as given, else the first that exists); None = not built or installed."""
+    """The 2D engine program (ROSTRUM2D_ENGINE as given, else the newest build); None = not built or installed."""
     if _env_path("ROSTRUM2D_ENGINE"):
         return _env_path("ROSTRUM2D_ENGINE")
-    return next((p for p in engine_candidates() if p.is_file()), None)
+    return builds.newest(engine_candidates(), "the 2D engine")
 
 
 def engine_missing_reason() -> str | None:
@@ -95,7 +97,12 @@ def documents_dir() -> Path:
 
 
 def videos_dir() -> Path:
-    """Where an export with no project goes: the person's Videos (Movies on a Mac) folder, else their Documents."""
+    """Where an export with no project goes: the person's Videos (Movies on a Mac) folder, else their Documents.
+    A scripted run's goes to its scratch home (userhome.output_dir)."""
+    return userhome.output_dir("exports", _people_videos())
+
+
+def _people_videos() -> Path:
     if sys.platform == "win32":
         import ctypes
         from ctypes import wintypes
@@ -109,7 +116,7 @@ def videos_dir() -> Path:
 
 def projects_dir() -> Path:
     """Where New puts projects: ROSTRUM2D_PROJECTS, else <Documents>/Rostrum2D."""
-    d = _env_path("ROSTRUM2D_PROJECTS") or documents_dir() / "Rostrum2D"
+    d = _env_path("ROSTRUM2D_PROJECTS") or userhome.output_dir("projects", documents_dir() / "Rostrum2D")
     d.mkdir(parents=True, exist_ok=True)
     return d
 

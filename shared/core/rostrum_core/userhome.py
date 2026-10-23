@@ -127,3 +127,13 @@ def locked(path, where="settings", who="another Rostrum window"):
             yield
         finally:
             _unlock(fh)
+
+
+def output_dir(kind: str, default) -> Path:
+    """Where a default output folder (exports, renders, recordings, projects) is: `default` for a person, a folder of
+    the scratch home for a scripted run, so an agent's export never lands in the person's Videos or Documents."""
+    if scripted():
+        d = home() / "out" / kind
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+    return Path(default)
