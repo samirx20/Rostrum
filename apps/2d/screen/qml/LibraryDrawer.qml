@@ -33,7 +33,21 @@ Rectangle {
         width: col.width; topPadding: Theme.gap
         color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold
     }
-    component AddPicked: Button { kind: "ghost"; onClicked: drawer.lib.addFromSelection() }   // under its own section
+    component AddRow: Rectangle {   // "+ …" under a list: its + sits in the swatch column, its words in the names' column
+        id: add
+        property string text: ""
+        property string help: ""
+        signal clicked()
+        width: col.width; height: Theme.row; radius: Theme.radiusCtl
+        color: addArea.containsMouse ? Theme.hover : "transparent"
+        Text { x: Theme.grid; width: 18; height: parent.height; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+               text: "+"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.heading }
+        Text { x: Theme.grid + 18 + Theme.gap; height: parent.height; verticalAlignment: Text.AlignVCenter
+               text: add.text; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
+        MouseArea { id: addArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: add.clicked() }
+        HoverTip { text: add.text; help: add.help; hovered: addArea.containsMouse }
+    }
+    component AddPicked: AddRow { onClicked: drawer.lib.addFromSelection() }   // under its own section
     component Row2: Rectangle {     // one clickable entry: a name and a small line under it, × on hover
         id: entry
         property string title: ""
@@ -81,7 +95,7 @@ Rectangle {
                                         onPicked: drawer.lib.use("colors", modelData.name)
                                         onRemoved: drawer.lib.remove("colors", modelData.name) } }
             AddPicked { visible: drawer.lib.hasProject && drawer.lib.picked !== "" && drawer.lib.picked !== "texts"
-                        text: "+ This colour"; help: "Keep the selected layer's colour in the project's brand kit." }
+                        text: "This colour"; help: "Keep the selected layer's colour in the project's brand kit." }
             Heading { visible: drawer.lib.hasProject; text: "Text styles" }
             Repeater { model: drawer.lib.textStyles
                        delegate: Row2 { required property var modelData; title: modelData.name; swatch: modelData.color || "transparent"
@@ -90,13 +104,13 @@ Rectangle {
                                         onPicked: drawer.lib.use("textStyles", modelData.name)
                                         onRemoved: drawer.lib.remove("textStyles", modelData.name) } }
             AddPicked { visible: drawer.lib.hasProject && drawer.lib.picked === "texts"
-                        text: "+ This text's style"; help: "Keep the selected text's style in the project's brand kit." }
+                        text: "This text's style"; help: "Keep the selected text's style in the project's brand kit." }
             Heading { visible: drawer.lib.hasProject; text: "Logos" }
             Repeater { model: drawer.lib.logos
                        delegate: Row2 { required property var modelData; title: modelData.name; sub: modelData.file
                                         onPicked: drawer.lib.placeLogo(modelData.name)
                                         onRemoved: drawer.lib.remove("logos", modelData.name) } }
-            Button { visible: drawer.lib.hasProject; kind: "ghost"; text: "+ Logo…"
+            AddRow { visible: drawer.lib.hasProject; text: "Logo…"
                      help: "Keep a logo file in the project's brand kit."
                      onClicked: logoDialog.open() }
             Heading { visible: drawer.lib.docStyles.length > 0; text: "This scene's text styles" }

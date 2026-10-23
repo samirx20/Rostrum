@@ -21,7 +21,7 @@ Panel {
     function show(u) { back = []; query = ""; find.input.text = ""; load(u) }
     function showList() { back = []; url = ""; html = "" }
     function search(q) { showList(); find.input.text = q; query = q.trim() }
-    function load(u) { url = u; html = guidePages.readAt(u, Math.floor(page.width)); flick.contentY = 0 }
+    function load(u) { url = u; html = guidePages.readAt(u, Math.floor(page.width)); flick.contentY = 0; relay.restart() }   // again once the drawer has its width: pictures fit it
     function follow(link) {
         if (/^(https?|mailto):/i.test(link)) { Qt.openUrlExternally(link); return }
         if (link.charAt(0) === "#") return                       // a heading on this page
@@ -55,11 +55,11 @@ Panel {
         anchors { left: parent.left; right: parent.right; top: find.bottom; bottom: parent.bottom; topMargin: Theme.gap }
         clip: true; boundsBehavior: Flickable.StopAtBounds
         model: drawer.found
-        spacing: 2
+        spacing: 0
         delegate: Rectangle {
             id: row
             required property var modelData
-            width: list.width; height: words.height + 2 * Theme.grid; radius: Theme.radiusCtl
+            width: list.width; height: words.height + 2 * Theme.gap; radius: Theme.radiusCtl
             color: rowArea.containsMouse ? Theme.hover : "transparent"
             Column {
                 id: words
@@ -70,6 +70,8 @@ Panel {
                 Text { width: parent.width; visible: text !== ""; text: row.modelData.line; elide: Text.ElideRight
                        color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
             }
+            Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: Theme.grid; rightMargin: Theme.grid }
+                        height: 1; color: Theme.border }      // a line between the guides
             MouseArea { id: rowArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: drawer.show(row.modelData.value) }
         }
@@ -91,13 +93,15 @@ Panel {
         Text {
             id: page
             width: flick.width - Theme.grid
-            textFormat: Text.RichText; wrapMode: Text.Wrap  // the guide as rich text (guides.page_html): line spacing
+            textFormat: Text.RichText; wrapMode: Text.WrapAtWordBoundaryOrAnywhere  // the guide as rich text (guides.page_html): line spacing
             text: drawer.html; baseUrl: drawer.url          // on text only; pictures load from beside the guide
             color: Theme.fg; linkColor: Theme.accent
-            font.family: uiFont; font.pixelSize: Theme.body
+            font.family: uiFont; font.pixelSize: Theme.body + 1        // a page is read, not scanned
             onLinkActivated: (link) => drawer.follow(link)
             HoverHandler { cursorShape: page.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
         }
     }
+    EdgeFade { flick: flick; visible: flick.visible; anchors.fill: flick }      // a half-scrolled line fades, never cut
+    EdgeFade { flick: list; visible: list.visible; anchors.fill: list }
     VScrollBar { flick: flick; visible: flick.visible }
 }

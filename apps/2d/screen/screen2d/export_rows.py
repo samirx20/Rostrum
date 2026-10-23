@@ -29,7 +29,7 @@ def settings(row: dict, values: dict) -> list[dict]:
         out.append({"key": "quality", "kind": "choice", "label": "Quality", "value": values["quality"],
                     "options": [{"value": q, "label": q.capitalize()} for q in row["qualities"]]})
     if "sound" in values:                         # only an MP4 of a project that has sound (exporter.chose)
-        out.append({"key": "sound", "kind": "switch", "label": "Include the project's sound", "value": values["sound"]})
+        out.append({"key": "sound", "kind": "toggle", "label": "Project sound", "value": values["sound"]})
     return out
 
 

@@ -30,6 +30,8 @@ def open_named(win, file: str):
     """A scripted step: open Help's guide `file` (e.g. "first-song.md") in the viewer; one not in Help fails loudly."""
     if not QMetaObject.invokeMethod(win, "openGuideNamed", Q_RETURN_ARG("QVariant"), Q_ARG("QVariant", file)):
         raise ValueError(f"guide {file!r} is not in this app's Help menu")
+    if not win.property("guidesOpen"):    # a state that names the guide must show it, never another screen with no fault
+        raise RuntimeError(f"guide {file!r} did not open: the guides drawer is not showing")
 
 
 def page_html(markdown: str, folder: Path | None = None, width: int = PICTURE_WIDTH) -> str:

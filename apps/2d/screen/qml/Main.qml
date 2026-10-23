@@ -145,7 +145,7 @@ AppShell {
     actions: [
         ViewControls { id: viewControls; view: stage.view; typing: shell.typing; onFitSelection: stage.fitSelection()
                        Component.onCompleted: stage.viewControls = viewControls },   // "Fit · 57 % ▾", off the canvas
-        Button { text: "Export"; kind: "primary"; down: backend.exporter.open; onClicked: shell.setExportOpen(!backend.exporter.open) }
+        Button { text: "Export"; kind: "primary"; onClicked: shell.setExportOpen(!backend.exporter.open) }
     ]
     // the start screen (kit): at launch with nothing to reopen, or ≡ › Start screen…; over everything while shown
     StartScreen { id: startScreen; anchors.fill: parent; z: 100; onGuideAsked: (url) => shell.openGuide(url)

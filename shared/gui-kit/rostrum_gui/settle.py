@@ -42,8 +42,9 @@ def settle(win, then, fail, still: int = STILL, limit: float = LIMIT) -> None:
 
 def loading(item) -> bool:
     """Something under `item` is still loading: a picture or an asynchronous Loader with a source and its `progress`
-    short of 1 (PySide can't read their `status` enum)."""
-    if item.isVisible() and str(item.property("source") or ""):
+    short of 1, not an inactive one (PySide can't read their `status` enum)."""
+    if item.isVisible() and item.property("active") is not False and str(item.property("source") or ""):   # an inactive Loader
+        # (a menu's side menu, loaded on first use) never loads: not waited for
         p = item.property("progress")
         if isinstance(p, float) and p < 1:
             return True

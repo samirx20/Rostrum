@@ -184,12 +184,12 @@ QQC.ApplicationWindow {
         GuidesDrawer {  // the guides: the left drawer beside the rail, in the left panel's place (leftOver: over the view)
             id: guidesDrawer
             visible: win.guidesOpen
-            z: 3
+            z: 10      // over the view's edge on purpose: its own layer in the layout check (layout_check.walk)
             x: body.railNow; width: visible ? Math.min(360, Math.round(body.width * 0.3)) : 0; height: leftSlot.height
             entries: win.helpEntries
             onClosed: win.closeGuides()
         }
-        Item { id: leftSlot; x: body.railNow; z: 3; width: win.guidesOpen || win.panelsFolded ? 0 : Math.max(0, win.leftWidth)
+        Item { id: leftSlot; x: body.railNow; z: 10; width: win.guidesOpen || win.panelsFolded ? 0 : Math.max(0, win.leftWidth)
                visible: width > 0; height: win.bottomBeside ? body.height : bottomSlot.y - Theme.gap }
         Item { id: centreSlot
                x: body.railNow + (win.leftOver ? 0 : guidesDrawer.visible ? guidesDrawer.width + Theme.gap
@@ -234,7 +234,7 @@ QQC.ApplicationWindow {
                                           right: win.rightItem() })[win.focusArea] || centreSlot
             visible: win.focusByKeys && at !== centreSlot && at.visible && at.width > 0
             x: at.x + Theme.radiusPanel; width: Math.max(0, at.width - 2 * Theme.radiusPanel); y: at.y; height: 2
-            radius: 1; color: Theme.accent; opacity: 0.8; z: 6
+            radius: 1; color: Theme.accent; opacity: 0.8; z: 11
         }
     }
     CommandBar { id: commandBar; bridge: win.bridge; onClosed: win.backToWork() }
