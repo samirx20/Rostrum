@@ -122,6 +122,8 @@ An `sfz` instrument may also name **articulations**: `{"sfz": "<sustain.sfz>", "
 
 A track may carry `expression`: `{"dynamics": [[time, level 0 … 2], …], "vibrato": [[time, amount 0 … 1], …], "vibratoRate": 5.5, "vibratoDepth": 25}`. Times are times (seconds or beats). Like a MIDI player's CC 11 (expression) and CC 1 (mod wheel): the lanes run across notes, straight lines between points, held before the first and after the last. `dynamics` multiplies every note's level (with the note's own `dynamics`); `vibrato` is the mod wheel, 1 = `vibratoDepth` cents at `vibratoRate` Hz, 0 = none (a note's own `vibrato` adds to it). Works on every pitched instrument (sampled, built-in, synth, model).
 
+Added 2026-10-23 (S56): `"sustain": [[time, 0 … 1], …]` is the pedal (CC 64): a note whose end falls while it is 0.5 or more rings on until it next drops below 0.5 (a pedal never lifted lets go at its last point); the note's resolved `dur` stays as written. `"bend": [[time, -1 … 1], …]` is the pitch wheel, 1 = up `bendRange` semitones (0 … 24, default 2), added to a note's own `bend`. A step is two points at one time. A track with none of these plays exactly as before.
+
 ### Hit
 
 | Field | Type | Default |

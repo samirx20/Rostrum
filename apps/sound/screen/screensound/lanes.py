@@ -11,8 +11,10 @@ from rostrum_sound.doc import lanes as LN
 
 from . import timing
 
-LABELS = {"volume": "Volume", "pan": "Pan", "dynamics": "Dynamics", "vibrato": "Vibrato", "level": "Send level"}
-MELODIC_ONLY = ("dynamics", "vibrato")      # expression lanes: for a track that plays notes
+LABELS = {"volume": "Volume", "pan": "Pan", "dynamics": "Expression", "vibrato": "Vibrato", "sustain": "Sustain",
+          "bend": "Bend", "level": "Send level"}
+MELODIC_ONLY = ("dynamics", "vibrato", "sustain", "bend")   # expression lanes: for a track that plays notes
+PLAYED = ("sustain", "dynamics", "bend")    # the Editor's playing lane, under its velocity strip: pedal, CC 11, wheel
 BAND_WORDS = {"freq": "frequency", "gain": "gain", "q": "width (Q)"}
 GAIN_LANES = ("volume", "level")            # 0 … 4, drawn 0 … 2 unless a point is higher
 EFFECT_NAMES = {"eq": "EQ", "deess": "De-ess", "dehum": "De-hum"}
@@ -83,6 +85,15 @@ def lane_data(track: dict, root: dict, target: str, lane: str) -> dict:
             "base": LN.base(owner, lane),
             "choices": [{"target": tg, "lane": ln, "label": choice_label(track, root, tg, ln),
                          "used": bool(raw_points(owner_of(track, tg), ln))} for tg, ln in applicable(track, root)]}
+
+
+def played(track: dict, root: dict, lane: str) -> dict:
+    """The Editor's playing lane (a track that plays notes): `lane` of the track, with only the playing lanes on
+    offer. The same lane, points and edits as the Timeline's (one source)."""
+    out = lane_data(track, root, track["id"], lane if lane in PLAYED else PLAYED[0])
+    by = {c["lane"]: c for c in out["choices"] if c["target"] == track["id"]}
+    out["choices"] = [by[ln] for ln in PLAYED if ln in by]
+    return out
 
 
 def mix_rows(root: dict, open_lanes: dict) -> list[dict]:

@@ -72,11 +72,12 @@ class _Compiler:
         return form if holder.get("effect") == "plugin" else {"plugin": form}
 
     def lanes(self, holder, where):
-        """`automation` (volume, pan) and `expression` (dynamics, vibrato lanes + the vibrato's rate / depth)."""
+        """`automation` (volume, pan) and `expression` (dynamics, vibrato, sustain, bend lanes + the vibrato's rate /
+        depth and the bend's range)."""
         lanes = {a["lane"]: self.env(a["points"], f"{where}.automation.{a['lane']}")
                  for a in holder.get("automation", [])}
         expr = {k: lanes.pop(k) for k in names.EXPRESSION_LANES if k in lanes}
-        expr |= {k: holder[k] for k in ("vibratoRate", "vibratoDepth") if k in holder}
+        expr |= {k: holder[k] for k in ("vibratoRate", "vibratoDepth", "bendRange") if k in holder}
         return {**_nonempty("automation", lanes), **_nonempty("expression", expr)}
 
     def instrument(self, track):

@@ -74,6 +74,7 @@ pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String], bus_ids
             return Err(Error::new("BAD_ARGUMENT", &no.at("dur"), "dur", "must be more than 0 s"));
         }
         no.put("dur", json!(dur));
+        let dur = expression::held(&lanes, at_s, dur);      // the pedal holds it (the note itself keeps its length)
         let vel = no.num("vel", 0.0, 1.0, Some(0.8))?;
         let npan = no.num("pan", -1.0, 1.0, Some(0.0))?;
         let freqs: Vec<f64> = keys.iter().map(|&k| pitch::freq(k)).collect();

@@ -66,5 +66,9 @@ class MusicMap:
                 tr.note(**n)
             for h in t["hits"]:
                 tr.hit(**h)
+            for ln, pts in t.get("lanes", {}).items():
+                tr.automate(ln, pts)
+            if "bendRange" in t:
+                tr.set(bendRange=t["bendRange"])
             made.append(tr)
         return made

@@ -1204,7 +1204,8 @@ from: 0.4, to: 1.0}` for relative and ramp changes in one call (what the drag do
 **Why this way (3E).** Effective: single, group and ramp edits. Efficient: crescendo in one drag. Easy: you see loud vs soft.
 **Rejected:** velocity only in the inspector (today).
 **Studied.** Logic's velocity lane and Ableton's velocity editor with line drawing — taken.
-**Later.** Other lanes in the strip: the note's dynamics, bend, articulation (the fields exist; shown in the settings panel until then).
+**S56.** Under the strip, the track's playing lane: Sustain · Expression · Bend chips, the arrangement's lane drawing
+(the same `automation.set`), folding with the strip. **Later.** The note's own dynamics, bend, articulation.
 **Today.** Missing (inspector number only).
 
 #### 3.3e Chords, scale and key highlighting
@@ -1475,7 +1476,8 @@ it. Because single letters are shortcuts in Rostrum, it is a **mode you switch o
   (channel 10) become hits on a drum track.
 - If the song is empty, the file's tempo, metre and key come with it. If not, a bar asks inline: **"Use the file's
   tempo and key?"** [Keep mine] [Use the file's].
-- **Export:** ≡ › Export MIDI… (the whole song), or right-click selected tracks › **Export as MIDI…** (just those).
+- **Export:** Export sheet › What for › **MIDI file** (S56: the whole song, `render_midi`'s file); right-click
+  selected tracks › **Export as MIDI…** (just those) is later.
   What MIDI can't carry is listed afterwards ("2 hits on 'tom 3' skipped"), never dropped silently.
 **Agent.** `edit_import_midi {path, song_map}` (exists) — **(new)** `at` and `track` params; `render_midi {path}`
 (exists) — **(new)** `tracks` param.

@@ -83,14 +83,17 @@ INSTRUMENT = [
       in SYNTH_FIELDS],
     plugins.record(IS("instrument", "plugin")),
 ]
-# The track's CC-style expression settings (its dynamics / vibrato lanes are automation lanes); shown only
-# while the track has a vibrato lane (the kind's fact, kind.py).
+# The track's CC-style expression settings (its dynamics / vibrato / sustain / bend lanes are automation lanes);
+# each shown only while the track has the lane it shapes (the kind's facts, kind.py).
 HAS_VIBRATO = {"fact": "vibratoLane"}
+HAS_BEND = {"fact": "bendLane"}
 EXPRESSION = [
     N("vibratoRate", 0.1, 20, "Expression", "Hz", "secondary", when=HAS_VIBRATO, default=5.5, label="Vibrato rate",
       help="Speed of the vibrato lane's wobble."),
     N("vibratoDepth", 0, 200, "Expression", "cents", "secondary", when=HAS_VIBRATO, default=25, label="Vibrato depth",
       help="How wide the vibrato lane's wobble is at 1."),
+    N("bendRange", 0, 24, "Expression", "semitones", "secondary", when=HAS_BEND, default=2, label="Bend range",
+      help="How far the bend lane moves the pitch at its top (and bottom)."),
 ]
 VIBRATO = [N("rate", 0.1, 20, "Vibrato", "Hz"), N("depth", 0, 200, "Vibrato", "cents"),
            N("delay", 0, 30, "Vibrato", "s")]

@@ -3,17 +3,20 @@
     song = from_events(division, tracks)
       {"tempo": 96, "beatsPerBar": 4, "tempos": [(beat, bpm), …], "beatUnit": 4, "meters": [(beat, beats per bar, beat unit), …], "keys": [(beat, "D minor"), …],
        "markers": [(beat, name), …], "sections": [(name, beat, end beat), …],
-       "tracks": [{"name", "builtIn" | "kit", "notes": [{pitch, at, dur, vel}], "hits": [{drum, at, vel}]}],
+       "tracks": [{"name", "builtIn" | "kit", "notes": [{pitch, at, dur, vel}], "hits": [{drum, at, vel}],
+                   "lanes": {"sustain" | "dynamics" | "vibrato" | "bend": [[{"beat": b}, value], …]}, "bendRange"?}],
        "skipped": ["…why…"]}
 
 Channel 10 is drums: its notes become hits on a synth kit (GM key -> drum name; keys the kit has no drum for are
 listed in `skipped`, never dropped silently). Other channels' notes go on a built-in instrument picked from the
 General MIDI program family (change it after the import). Cue points "<name>" … "<name>/end" are sections; every
-other marker is a marker. Times are `{"beat": n}`, lengths `{"beats": n}`, velocities 0 … 1.
+other marker is a marker. Times are `{"beat": n}`, lengths `{"beats": n}`, velocities 0 … 1. The pedal (CC 64),
+expression (CC 11), mod wheel (CC 1) and pitch wheel become the played track's lanes (controllers.py).
 """
 from __future__ import annotations
 
 from ..doc import keys as K
+from . import controllers
 
 DRUM_CHANNEL = 9
 GM_TO_SYNTH = {35: "kick", 36: "kick", 37: "rim", 38: "snare", 40: "snare", 39: "clap", 42: "hat", 44: "hat",
@@ -65,7 +68,10 @@ def _track(events, division, n, skipped) -> list[dict]:
             tones.append({"pitch": key, "at": at, "dur": {"beats": round((end - start) / division, 4)}, "vel": v})
     out = []
     if tones:
-        out.append({"name": name, "builtIn": FAMILY[program // 8], "notes": tones, "hits": []})
+        played = [e for e in events if e[1] in ("cc", "bend") and e[2][0] != DRUM_CHANNEL]
+        lanes, bend_range = controllers.to_lanes(played, division)
+        out.append({"name": name, "builtIn": FAMILY[program // 8], "notes": tones, "hits": [], "lanes": lanes,
+                    **({"bendRange": bend_range} if bend_range is not None else {})})
     if drums:
         out.append({"name": f"{name} drums" if tones else name, "kit": "synth", "notes": [], "hits": drums})
     return out

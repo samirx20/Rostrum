@@ -40,7 +40,8 @@ def facts(item: dict, doc=None) -> dict:
         return _playing(track) if track else {}
     if item.get("type") != "track":
         return {}
-    return {"vibratoLane": any(a.get("lane") == "vibrato" for a in item.get("automation", [])), **_playing(item)}
+    lanes = {a.get("lane") for a in item.get("automation", [])}
+    return {"vibratoLane": "vibrato" in lanes, "bendLane": "bend" in lanes, **_playing(item)}
 
 
 KIND = DocKind("sound", ".trk", REGISTRY, lists=LISTS, check=check, warn=FDS.retired, new=blank, facts=facts)

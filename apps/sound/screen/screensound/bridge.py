@@ -55,6 +55,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self._open: dict = {}               # track id -> (item id, lane) of the automation lane shown under its row
         self._edit = None                   # the automation point being dragged (lanes.PointEdit)
         self._apt: tuple | None = None      # the selected automation point: (track id, item id, lane, index)
+        self._play_lane = "sustain"         # the Editor's playing lane (sustain, dynamics, bend): the person's view
         self._picture_open = False
         MK.use_project(doc.folder)          # the screen works in this document's project (its shared markers)
         super().__init__(doc, parent=parent)
@@ -209,7 +210,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         hue = next((r["hue"] for r in rows if r["id"] == self._track), timeline.HUES[0])
         track = self.doc.item(self._track) if self._track and self.doc.has(self._track) else None
         self._view = {"rows": rows, "markers": timeline.markers(root), "song": timeline.song(root),
-                      "roll": timeline.roll(track, root, hue)}
+                      "roll": timeline.roll(track, root, hue, self._play_lane)}
         side = getattr(self, "side", None)               # lines being spoken say so on their blocks
         if side:
             voice_card.mark_speaking([*rows, self._view["roll"]], side.voice.making())

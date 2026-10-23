@@ -2,8 +2,8 @@
 SMF 1.0 layout: chunks, variable-length numbers, running status, meta and sysex events.
 
     division, tracks = read_events(path)      # tracks: [[(tick, kind, data), …], …], ticks from the track start
-    kinds: on (channel, key, velocity 1 … 127) · off (channel, key) · program (channel, number) · tempo (µs per
-           quarter) · timesig (numerator, denominator) · key (sharps -7 … 7, minor) · marker / cue / name (text)
+    kinds: on (channel, key, velocity 1 … 127) · off (channel, key) · program (channel, number) · cc (channel,
+           controller, value 0 … 127) · bend (channel, -8192 … 8191) · tempo (µs per quarter) · timesig (numerator, denominator) · key (sharps -7 … 7, minor) · marker / cue / name (text)
 
 A broken file is a loud BAD_ARGUMENT naming the file and the byte where it broke; nothing half-read is returned.
 """
@@ -91,6 +91,10 @@ def _track(b: bytes) -> list[tuple[int, str, object]]:
             out.append((tick, "off", (ch, d[0])))
         elif high == 0xC0:
             out.append((tick, "program", (ch, d[0])))
+        elif high == 0xB0:
+            out.append((tick, "cc", (ch, d[0], d[1])))
+        elif high == 0xE0:
+            out.append((tick, "bend", (ch, (d[0] | d[1] << 7) - 8192)))
     return out
 
 

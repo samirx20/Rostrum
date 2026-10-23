@@ -4,7 +4,8 @@
     doc.apply(calls, who, label="Import MIDI")                  # one undo step
     skipped = export(doc.data, "renders/cue/cue.mid")           # what MIDI can't hold is listed, never dropped quietly
 
-An import adds tracks (one per MIDI track; drums on channel 10 become drum hits), markers and sections; with
+An import adds tracks (one per MIDI track; drums on channel 10 become drum hits; the pedal, expression, mod wheel
+and pitch wheel become the track's sustain / dynamics / vibrato / bend lanes), markers and sections; with
 `song_map=True` (the default) the file's tempo map, time signature and key changes replace the document's. All in
 beats, so the notes follow the tempo map. Our own reader and writer (smf_in.py / smf_out.py): no dependency.
 """
@@ -66,6 +67,10 @@ def calls_for(root: dict, song: dict, song_map: bool = True) -> list[dict]:
             calls.append({"op": "note.add_many", "target": [tid], "args": {"notes": t["notes"]}})
         if t["hits"]:
             calls.append({"op": "hit.add_many", "target": [tid], "args": {"hits": t["hits"]}})
+        calls += [{"op": "automation.set", "target": [tid], "args": {"lane": ln, "points": pts}}
+                  for ln, pts in t.get("lanes", {}).items()]
+        if "bendRange" in t:            # after the bend lane: the range is a setting of a track that has one
+            calls.append({"op": "track.set", "target": [tid], "args": {"bendRange": t["bendRange"]}})
     return calls
 
 

@@ -6,22 +6,27 @@ import RostrumKit
 // straight lines, the track's own setting as a faint baseline, the selected point's value. Drawing only: presses and
 // drags are the Timeline's (backend.laneBegin / laneDrag), so a drag keeps going while the lane is redrawn.
 // `ruler` gives the time mapping; `plotX` is where the time axis starts in this row.
+// `inEditor`: the Editor's playing lane under its velocity strip (sustain, expression, bend): the chips sit in a row
+// above the plot, no close mark, and the lane takes its own presses (the same backend.laneBegin / laneDrag).
 Item {
     id: a
     property var row
     property var ruler
     property real plotX: 0
+    property bool inEditor: false
+    readonly property real chipsH: inEditor ? 20 : 0
     readonly property var none: ({ target: "", lane: "", lo: 0, hi: 1, points: [], choices: [], base: null })
     readonly property var auto: row.auto || none      // (built while the lane is closed too: nothing to read then)
     readonly property real pad: 8
-    readonly property real plotH: height - 2 * pad
+    readonly property real plotH: height - chipsH - 2 * pad
     readonly property int sel: backend.point.track === row.id && backend.point.item === auto.target
                                && backend.point.lane === auto.lane ? backend.point.index : -1
     function yOf(v) { return pad + (1 - (v - auto.lo) / (auto.hi - auto.lo)) * plotH }
     function show(v) { return (auto.lo < 0 && v > 0 ? "+" : "") + Number(v).toFixed(2) }
 
     Flow {   // which lane: one chip each
-        x: Theme.gap + 11; y: 2; width: plotX - x - 22 - Theme.gap; spacing: 3
+        x: a.inEditor ? plotX : Theme.gap + 11; y: 2; spacing: 3
+        width: a.inEditor ? ruler.width : plotX - x - 22 - Theme.gap
         Repeater {
             model: a.auto.choices
             delegate: Rectangle {
@@ -36,11 +41,13 @@ Item {
                       Text { id: chipText; text: modelData.label; color: on ? Theme.fg : Theme.fg2
                              font.family: uiFont; font.pixelSize: Theme.label - 1 } }
                 MouseArea { id: chipArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            onClicked: backend.openLane(a.row.id, modelData.target, modelData.lane) }
+                            onClicked: a.inEditor ? backend.openPlayLane(modelData.lane)
+                                                  : backend.openLane(a.row.id, modelData.target, modelData.lane) }
             }
         }
     }
     Text {   // close
+        visible: !a.inEditor
         x: plotX - width - Theme.gap; y: 3; text: "×"; color: closeArea.containsMouse ? Theme.fg : Theme.fg3
         font.family: uiFont; font.pixelSize: Theme.title
         MouseArea { id: closeArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true
@@ -49,7 +56,7 @@ Item {
 
     Rectangle {
         id: plot
-        x: plotX; width: ruler.width; height: parent.height; radius: Theme.radiusCtl - 2; color: Theme.sunken; clip: true
+        x: plotX; y: a.chipsH; width: ruler.width; height: parent.height - a.chipsH; radius: Theme.radiusCtl - 2; color: Theme.sunken; clip: true
         BeatGrid { anchors.fill: parent; ruler: a.ruler }
         Repeater {   // the scale: top and bottom
             model: [a.auto.hi, a.auto.lo]
@@ -93,5 +100,16 @@ Item {
                        font.features: { "tnum": 1 } }
             }
         }
+    }
+    MouseArea {   // the Editor's lane takes its own presses (on the Timeline, LaneInput does)
+        enabled: a.inEditor; visible: enabled
+        x: plotX; y: a.chipsH; width: ruler.width; height: parent.height - a.chipsH
+        preventStealing: true
+        function yFrac(y) { return Math.max(0, Math.min(1, (y - a.pad) / a.plotH)) }
+        onPressed: (e) => { backend.focusArea("roll")
+            backend.laneBegin(a.row.id, a.auto.target, a.auto.lane, a.ruler.tOf(e.x), yFrac(e.y), 7 / a.ruler.perSec,
+                              7 / a.plotH, (e.modifiers & Qt.ShiftModifier) !== 0) }
+        onPositionChanged: (e) => { if (pressed) backend.laneDrag(a.ruler.tOf(e.x), yFrac(e.y), (e.modifiers & Qt.ShiftModifier) !== 0) }
+        onReleased: backend.endDrag()
     }
 }

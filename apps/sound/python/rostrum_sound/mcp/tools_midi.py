@@ -1,5 +1,5 @@
 """MIDI files: edit_import_midi puts a .mid into the document (one change, one undo step); render_midi writes the
-document's notes, hits, tempo map, keys, markers and sections as `renders/<item>/midi/<item>.mid` (a job, as every
+document's notes, hits, sustain / expression / bend lanes, tempo map, keys, markers and sections as `renders/<item>/midi/<item>.mid` (a job, as every
 render_* tool). What MIDI can't carry (a drum key the synth kit lacks, a drum with no GM key) comes back as a
 warning, never dropped quietly."""
 from __future__ import annotations
@@ -18,7 +18,8 @@ def register(tools: Tools):
                      "signature and key changes (replacing the document's). False: only tracks, markers, sections."}}})
     def edit_import_midi(ctx, args):
         """Import a MIDI file: one track per MIDI track (notes in beats on a built-in instrument picked from the GM
-        program; channel 10 as drum hits on the synth kit), its markers, cue-point sections and (song_map) tempo map
+        program; channel 10 as drum hits on the synth kit; the sustain pedal CC 64, expression CC 11, mod wheel CC 1
+        and pitch wheel as the track's sustain / dynamics / vibrato / bend lanes, RPN 0 as its bendRange), its markers, cue-point sections and (song_map) tempo map
         and keys. One change in the history. Then set each new track's instrument with track.set."""
         doc = ctx.document(args.get("item"))
         before = {t["id"] for t in doc.data.get("tracks", [])}
@@ -34,7 +35,8 @@ def register(tools: Tools):
     @tools.tool("render_midi", {"properties": {**ITEM,
         "path": {"type": "string", "description": "Where to write the .mid; left out = renders/<item>/midi/<item>.mid."}}})
     def render_midi(ctx, args):
-        """Write the document as a MIDI file (format 1): every track's notes and drum hits (channel 10), the tempo
+        """Write the document as a MIDI file (format 1): every track's notes and drum hits (channel 10), its sustain,
+        dynamics, vibrato and bend lanes (CC 64, CC 11, CC 1, the pitch wheel; bendRange as RPN 0), the tempo
         map, time signature, key changes, markers, and sections as cue points. Returns a job."""
         doc = ctx.document(args.get("item"))
         item, root = doc.item_id, doc.data
