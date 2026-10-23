@@ -58,7 +58,7 @@ def bar_beats(root: dict, end_beat: float) -> list[float]:
     """The beat every bar starts on, from 0 to `end_beat`: the ruler, the grid and the metronome's accents."""
     out, segs = [], segments(root)
     for i, (b0, per, _) in enumerate(segs):
-        stop = segs[i + 1][0] if i + 1 < len(segs) else end_beat + 1e-9
+        stop = segs[i + 1][0] if i + 1 < len(segs) else float("inf")      # end_beat itself counts, as in beats()
         b = b0
         while b < stop - 1e-9 and b <= end_beat + 1e-9:
             out.append(round(b, 6))
