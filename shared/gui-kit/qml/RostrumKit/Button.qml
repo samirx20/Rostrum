@@ -41,6 +41,8 @@ Item {
         x: b.hint ? Theme.pad : Math.max(Theme.pad, (b.width - width) / 2)
         anchors.verticalCenter: parent.verticalCenter
         text: b.text; font.pixelSize: Theme.body; font.family: uiFont
+        width: Math.min(implicitWidth, Math.max(0, b.width - 2 * Theme.pad - (b.hint ? hintBox.width + Theme.gap : 0)))
+        elide: Text.ElideRight           // a button narrower than its words (a grid cell): the name whole on hover
         font.weight: b.kind === "primary" ? Font.DemiBold : Font.Normal
         color: b.primary ? "white" : b.danger ? Theme.danger : Theme.fg
     }

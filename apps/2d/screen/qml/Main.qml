@@ -144,7 +144,7 @@ AppShell {
     ]
     menu: FilesMenu { id: fileMenu }    // ≡: New, Open, Open recent, Duplicate, Save a version … (kit; saving is automatic)
     right: [
-        Inspector { id: settingsMove; anchors.fill: parent; bridge: backend; keyMarks: true; effects: true
+        Inspector { id: settingsMove; anchors.fill: parent; bridge: backend; keyMarks: true; effects: true; actions: backend.actions
                     visible: backend.tool !== "draw" && !backend.stretch.shown && !(backend.create.typing && backend.selected === "")   // a new text: no layer to show yet
                     highlight: backend.keys.props         // the settings whose keys are picked (key_select.py)
                     above: RigPoses { }                   // a rig in hand: its pose library first (rig_poses.py)

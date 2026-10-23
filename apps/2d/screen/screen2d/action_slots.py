@@ -1,5 +1,6 @@
 """The screen's side of Rostrum2D's action list (actions.py): one kit ActionHub (rostrum_gui/action_hub.py, read in
-QML as `backend.actions`) feeds the context bar, the right-click menus, Ctrl+K's "Do" group and the keys, so they
+QML as `backend.actions`) feeds the settings panel's actions, the one short right-click menu (canvas, layers list,
+timeline: rostrum_gui.actions.SHORT_MENU), Ctrl+K's "Do" group and the keys, so they
 agree and only offer what the selection allows. Each action is one change (its operations in one batch = one undo
 step) and what it made is selected after. A slot mix-in for Bridge2D (layer_order.py has the selection it reads)."""
 from __future__ import annotations
@@ -117,6 +118,8 @@ class ActionSlots(SlotMixin):
         """Ctrl+K, a menu or a script: an action of the list through the hub (one change), else the kit's."""
         if not LIST.owns(key):
             return super().run(key)
+        if key == "layer:delete" and (self._keys.count or self._stretch.shown):   # the short menu's Delete on picked keys
+            return self.layerCommand("delete")
         entry = next((e for e in LIST.available(self._facts()) if e["id"] == key), None)
         self._hub.run(key)                          # not valid now: the hub says why in the status
         return entry is not None

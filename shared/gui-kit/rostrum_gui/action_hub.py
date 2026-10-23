@@ -4,7 +4,7 @@ document: what the selection is (`facts_fn`), how to say it ("3 layers": `what_f
 step (`apply_fn`), how to run an app's own non-operation action (`do_fn`: copy, rename) and where a plain message
 goes (`message_fn`: the status line).
 
-QML reads `bar` (the context bar), calls `menu()` on right-click, `commands(query)` for Ctrl+K's "Do" group,
+QML reads `bar` (the context bar), `panel` (the settings panel's actions at its top), calls `menu()` on right-click, `commands(query)` for Ctrl+K's "Do" group,
 `run(id)` for a click, and `key(job)` from the key map's shortcuts (`keys`); a hold key's release comes as
 `keyUp(job)` (keyhold.py), and runs the release of the action its press ran: nothing if the press ran nothing. Every door re-reads the list at the
 moment it is used, so a stale bar can never run an action that is no longer valid: it says why instead.
@@ -21,12 +21,14 @@ from .keyhold import KeyHold
 
 class ActionHub(QObject):
     barChanged = Signal()
+    panelChanged = Signal()
 
     def __init__(self, action_list: ActionList, facts_fn, what_fn, apply_fn, do_fn, message_fn, parent=None):
         super().__init__(parent)
         self.list = action_list
         self._facts, self._what, self._apply, self._do, self._say = facts_fn, what_fn, apply_fn, do_fn, message_fn
         self._bar: dict = {"what": "", "items": [], "more": []}
+        self._panel: dict = {"rows": [], "more": []}
         self._held: dict[str, dict] = {}       # hold job -> the entry its press ran, until the key comes up
         self._hold = KeyHold(self, action_list.keymap)     # watches releases only when the map has hold keys
 
@@ -37,6 +39,11 @@ class ActionHub(QObject):
     @Property("QVariantMap", notify=barChanged)
     def bar(self):
         return self._bar
+
+    @Property("QVariantMap", notify=panelChanged)
+    def panel(self):
+        """The settings panel's actions for this selection (action_views.panel), at its top."""
+        return self._panel
 
     @Property("QVariantList", constant=True)
     def keys(self):
@@ -53,11 +60,13 @@ class ActionHub(QObject):
         """Call after the selection or the document changed."""
         facts, entries = self._now()
         self._bar = views.bar(entries, self._what(facts))
+        self._panel = views.panel(entries, self.list.short_menu)
         self.barChanged.emit()
+        self.panelChanged.emit()
 
     @Slot(result="QVariantList")
     def menu(self):
-        return views.menu(self._now()[1])
+        return views.menu(self._now()[1], self.list.short_menu)
 
     @Slot(str, result="QVariantList")
     def commands(self, query):

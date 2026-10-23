@@ -73,6 +73,7 @@ class Facts:
             "fills": self.kinds <= {"shape", "text", "path"},
             "texts": self.kinds == {"text"}, "styled": bool(self.lists["styled"]),    # Styles ▾ (text_styles.py)
             "picture": self.kinds <= {"image", "video", "render3d"},     # Fill the frame comes first for a photo or clip
+            "picture_mix": bool(self.kinds & {"image", "video", "render3d"}) and bool(self.kinds & {"shape", "path", "text"}),   # Mask comes first
             "has_sound": bool(self.state.get("sound")) and "camera" not in self.kinds,   # Add a sound here (sound_cue_pick.py)
             # a character (rig/guess.py, rig_mouths.py): Bones from part names, Lip sync…, Add blinks…
             "bones_guessable": self.count == 1 and guessable(self.items[0]),

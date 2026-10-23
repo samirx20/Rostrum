@@ -7,7 +7,7 @@ PLAIN DATA, read into the kit's one action list (rostrum_gui/actions.py, ACTIONS
 its key comes from the key map, shared or keys2d.py), importance ("primary" = on the context bar, "secondary" = under ⋯
 and in menus), rank (lower first), group (menu divider), bar (the button or side menu it sits under: Combine, Mask,
 Align, Make, Match, Order), min_targets / max_targets / kinds, `when` (a condition on the selection's facts, in the
-one condition language: action_rules.Facts lists them), `promoted` (True, or a fact: while it holds the action comes
+one condition language: action_rules.Facts lists them), `panel` (False: not in the settings panel's actions — keys, Ctrl+K), `promoted` (True, or a fact: while it holds the action comes
 first; a secondary one is then the context bar's first button, out of its `bar` menu: Make rig on parts named like a
 body), `calls` (an operation, a target rule and argument rules: action_rules.py) or `do` (not a document change: the clipboard, copy style, rename). A selection holding a locked
 layer is offered only what is marked `locked_ok` (Unlock, Paste).
@@ -15,7 +15,7 @@ layer is offered only what is marked `locked_ok` (Unlock, Paste).
 from __future__ import annotations
 
 from rostrum2d import fields as F
-from rostrum_gui.actions import Action, ActionList
+from rostrum_gui.actions import SHORT_MENU, Action, ActionList
 
 from .action_rules import Facts, calls_of
 from .eases import EASES
@@ -33,16 +33,16 @@ def _op(name, target, **args):
 
 
 def _a(id_, label, *, rank=100, importance="secondary", group="", bar="", job="", when=None, calls=None, do="",
-       min_targets=1, max_targets=None, kinds=None, locked_ok=False, promoted=False, why=""):
-    return {"id": id_, "label": label, "rank": rank, "importance": importance, "group": group, "bar": bar, "job": job,
+       min_targets=1, max_targets=None, kinds=None, locked_ok=False, promoted=False, why="", panel=True):
+    return {"panel": panel, "id": id_, "label": label, "rank": rank, "importance": importance, "group": group, "bar": bar, "job": job,
             "when": when, "calls": calls, "do": do, "min_targets": min_targets, "max_targets": max_targets,
             "kinds": kinds, "locked_ok": locked_ok, "promoted": promoted, "why": why}
 
 
-_MATTES = {"luma": "Use its brightness", "alphaInverted": "Outside its shape", "lumaInverted": "Use its darkness"}
-_EDGES = {"left": ("Align left", "align_left"), "hcenter": ("Centre across", "centre_across"),
+_MATTES = {"luma": "By its brightness", "alphaInverted": "Outside its shape", "lumaInverted": "By its darkness"}
+_EDGES = {"left": ("Align left", "align_left"), "hcenter": ("Align centre", "centre_across"),
           "right": ("Align right", "align_right"), "top": ("Align top", "align_top"),
-          "vcenter": ("Centre up and down", "centre_down"), "bottom": ("Align bottom", "align_bottom")}
+          "vcenter": ("Align middle", "centre_down"), "bottom": ("Align bottom", "align_bottom")}
 _ORDER = {"front": "Bring to front", "forward": "Bring forward", "backward": "Send backward", "back": "Send to back"}
 _DEPTHS = {"far": 3.0, "middle": 1.0, "near": 0.25}        # the camera depths background.add's defaults use (far → near)
 _MASK = lambda m: _op("mask.make", "stack_but_top", cutter="$top", mode=m, id="$new:group", at="$at")   # noqa: E731
@@ -71,11 +71,11 @@ DATA = [
                          ("swap", "Swap left and right"))],
     _a("lipsync", "Lip sync…", rank=8, importance="primary", group="make", max_targets=1, when=FACT("mouth_set"), do="lipsync"),
     _a("blinks", "Add blinks…", rank=8, importance="primary", group="make", max_targets=1, when=FACT("eyes_set"), do="blinks"),
-    _a("mask", "Mask with top layer", rank=20, importance="primary", group="mask", bar="Mask", job="mask", min_targets=2,
-       when=FACT("maskable"), calls=_MASK("alpha")),
-    *[_a(f"mask_{m}", f"Mask: {words.lower()}", rank=70, group="mask", bar="Mask", min_targets=2, when=FACT("maskable"),
-         calls=_MASK(m)) for m, words in _MATTES.items()],
-    _a("release_mask", "Release mask", rank=20, group="mask", bar="Mask", when=FACT("matted"), calls=_op("mask.release", "ids")),
+    _a("mask", "Mask: by its shape", rank=20, importance="primary", group="mask", bar="Mask", job="mask", min_targets=2,
+       when=FACT("maskable"), calls=_MASK("alpha"), promoted="picture_mix"),
+    *[_a(f"mask_{m}", f"Mask: {words.lower()}", rank=20, importance="primary", group="mask", bar="Mask", min_targets=2, when=FACT("maskable"),
+         calls=_MASK(m), promoted="picture_mix") for m, words in _MATTES.items()],
+    _a("release_mask", "Release mask", rank=20, importance="primary", group="mask", bar="Mask", when=FACT("matted"), calls=_op("mask.release", "ids")),
     *[_a(op, op.capitalize(), rank=5, importance="primary", group="shape", bar="Combine", job=op, min_targets=2,
          when=ALL("shapes", "same_parent"), promoted=True, calls=_op("shape.boolean", "stack", op=op, id="$new:path"))
       for op in ("union", "subtract", "intersect", "exclude")],
@@ -101,9 +101,10 @@ DATA = [
     _a("stagger", "Stagger…", rank=35, importance="primary", group="arrange", min_targets=2, do="stagger"),
     _a("sound_here", "Add a sound here…", rank=40, group="arrange", max_targets=1, when=FACT("has_sound"), do="sound_here",
        why="Ties a sound from Sound's library to the layer's start; RostrumSound mixes it"),
-    _a("key_here", "Key here", rank=45, group="animate", job="key_here", calls={"rule": "pose"}),
+    _a("key_here", "Key here", rank=45, group="animate", job="key_here", calls={"rule": "pose"}, panel=False),   # K; the diamonds
+
     *[_a(f"ease_{e['value']}", f"Ease: {e['label']}", rank=50, group="animate", bar="Ease", job=e["job"],
-         when=FACT("keys_picked"), calls=_op("key.set", "keys", ease=e["value"])) for e in EASES if e["value"] != "custom"],
+         when=FACT("keys_picked"), calls=_op("key.set", "keys", ease=e["value"]), panel=False) for e in EASES if e["value"] != "custom"],
     # Styles ▾ on texts (rostrum2d/text_styles.py): the document's styles come first (_List.available adds them)
     _a("style_save", "Save as style", rank=81, importance="primary", group="look", bar="Styles", kinds=("text",),
        max_targets=1, when=NOT("styled"), calls=_op("style.define", "ids")),
@@ -123,7 +124,7 @@ DATA = [
        locked_ok=True),
     _a("duplicate", "Duplicate", rank=100, group="edit", job="duplicate", calls=_op("layer.duplicate", "ids")),
     _a("delete", "Delete", rank=100, group="edit", job="delete", calls=_op("layer.remove", "ids")),
-    *[_a(k, label, rank=110, group="order", bar="Order", job=k, calls={"rule": "order", "how": k}) for k, label in _ORDER.items()],
+    *[_a(k, label, rank=110, group="order", bar="Order", job=k, calls={"rule": "order", "how": k}, panel=False) for k, label in _ORDER.items()],
     _a("rename", "Rename", rank=110, group="order", job="rename", max_targets=1, do="rename"),
 ]
 
@@ -137,7 +138,7 @@ def _action(d: dict) -> Action:
     calls = (lambda f, spec=d["calls"]: calls_of(spec, f, f.at)) if d["calls"] else None
     return Action(f"layer:{d['id']}", d["label"], when=when, kinds=d["kinds"], min_targets=d["min_targets"],
                   max_targets=d["max_targets"], importance=d["importance"], rank=d["rank"], job=d["job"],
-                  group=d["group"], bar=d["bar"], calls=calls, do=d["do"], why=d["why"],
+                  group=d["group"], bar=d["bar"], calls=calls, do=d["do"], why=d["why"], panel=d["panel"],
                   promoted=_promoted(d["promoted"]))
 
 
@@ -178,4 +179,4 @@ def _style_uses(f) -> list[dict]:
 
 
 ACTIONS = [_action(d) for d in DATA]
-LIST = _List(ACTIONS, KEYS2D, noun="layer")
+LIST = _List(ACTIONS, KEYS2D, noun="layer", short_menu=SHORT_MENU)

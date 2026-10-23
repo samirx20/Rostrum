@@ -51,8 +51,14 @@ def _fold(entries: list[dict]) -> list[dict]:
     return out
 
 
-def menu(entries: list[dict]) -> list[dict]:
-    """Right-click: the valid actions, primary first, then the edit block as the last group."""
+def menu(entries: list[dict], short: tuple | None = None) -> list[dict]:
+    """Right-click. With `short` (actions.SHORT_MENU): only those jobs, in its order and blocks, everywhere the same.
+    Without: the valid actions, primary first, then the edit block as the last group."""
+    if short:
+        order = {job: (b, n) for b, (_, jobs) in enumerate(short) for n, job in enumerate(jobs)}
+        block = {job: name for name, jobs in short for job in jobs}
+        mine = sorted((e for e in entries if e["job"] in order), key=lambda e: order[e["job"]])
+        return [{"value": e["id"], "label": e["label"], "keys": e["keys"], "group": block[e["job"]], "sub": []} for e in mine]
     plain = sorted((e for e in entries if not e["edit"]), key=lambda e: e["importance"] != "primary")
     return _fold(plain) + [{"value": e["id"], "label": e["label"], "keys": e["keys"], "group": "edit", "sub": []}
                            for e in entries if e["edit"]]
@@ -66,3 +72,40 @@ def commands(entries: list[dict], what: str) -> list[dict]:
              "words": e["bar"], "weight": 0 if e["importance"] == "primary" else 1}
         out.append({**c, "calls": e["calls"]} if not e["do"] else {**c, "do": e["do"]})
     return out
+
+
+KEEP = ("group", "ungroup")     # in the short menu AND first in the panel: the most used way to make a selection one
+
+
+def _cols(labels: list[str]) -> int:
+    """Buttons a line in the panel's wide row: as many as fit the longest name (up to four)."""
+    n, longest = len(labels), max(len(t) for t in labels)
+    return min(n, 4 if longest <= 10 else 3 if longest <= 13 else 2)
+
+
+def _in_row(label: str, title: str) -> str:
+    """A name inside its titled row, without the title said again: "Align left" under Align is "Left"."""
+    for sep in (": ", " "):
+        if title and label.lower().startswith(title.lower() + sep):
+            rest = label[len(title) + len(sep):]
+            return rest[:1].upper() + rest[1:]
+    return label
+
+
+def panel(entries: list[dict], short: tuple | None = None) -> dict:
+    """The settings panel's actions, first (SPEC 2d-design-v2 §8.3): every valid action but the short menu's and the
+    ones marked `panel: False`. The primary ones are buttons, in order; actions sharing a `bar` are one titled row
+    ("Combine": Union, Subtract …), the others one untitled row where its first one ranks. The secondary ones are one
+    "More" menu at the end (folded like right-click). {rows: [{title, cols, items: [{id, label, keys}]}], more: [...]}"""
+    menu_jobs = {j for _, jobs in (short or ()) for j in jobs} - set(KEEP)
+    mine = [e for e in entries if not e["edit"] and e["job"] not in menu_jobs and e.get("panel", True)]
+    rows, by = [], {}
+    for e in (e for e in mine if e["importance"] == "primary"):
+        title = e["bar"]
+        if title not in by:
+            by[title] = {"title": title, "items": []}
+            rows.append(by[title])
+        by[title]["items"].append({"id": e["id"], "label": _in_row(e["label"], title), "keys": e["keys"]})
+    for r in rows:
+        r["cols"] = _cols([i["label"] for i in r["items"]])
+    return {"rows": rows, "more": _fold([e for e in mine if e["importance"] != "primary"])}

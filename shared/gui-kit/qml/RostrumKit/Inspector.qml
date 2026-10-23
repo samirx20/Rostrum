@@ -10,6 +10,7 @@ import "."
 // that kind (bridge.narrowTo). The last line: who changed the selection last and when (bridge.lastChanged); a click
 // opens History (bridge.agent.askHistory). Both are absent when there is nothing to say.
 // The name shows once: the kind line is absent when it says the same as the name ("Camera" / "Camera").
+// `actions`: an app's ActionHub; the selection's actions come first (ActionsSection, SPEC 2d-design-v2 §8.3).
 // `above`: an app's own group first, above the rows (2D: a rig's Poses); `below`: one under them; `sheets` (Panel): a
 // sheet that takes the whole panel's place while shown (2D: Lip sync, Add blinks). No caption over the panel.
 // An app with `effects: true` (after rostrum_gui.effects.attach(bridge, spec)) also gets the "Effects (n) +" section under the rows (EffectsRow).
@@ -18,6 +19,7 @@ Panel {
     property var bridge
     property bool effects: false         // the "Effects (n) +" section (an app that called rostrum_gui.effects.attach)
     property bool keyMarks: false        // an app with keys: rows show key marks (see InspectorRow)
+    property var actions: null           // the app's ActionHub: the selection's actions first (ActionsSection), above everything
     property var highlight: []           // field ids marked as in focus (2D: the settings whose keys are picked)
     property alias above: aboveSlot.data // an app's own group above the rows, in the same scroll (2D: a rig's Poses)
     property alias below: belowSlot.data // an app's own group under the rows, in the same scroll (2D: "Paint on …")
@@ -60,6 +62,7 @@ Panel {
         Column {
             id: list
             width: parent.width
+            ActionsSection { width: parent.width; hub: panel.actions; visible: !!panel.actions && rows.length + more.length > 0 && !panel.bridge.search }
             Column {  // mixed kinds: one line per kind, a click narrows the selection to it
                 width: parent.width; visible: panel.narrow.length > 0
                 Text { text: "Show only"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label

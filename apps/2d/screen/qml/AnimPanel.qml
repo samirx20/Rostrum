@@ -39,12 +39,14 @@ Rectangle {
                 NumberField {
                     x: Theme.labelColumnFor(panel.w); width: Theme.halfFor(panel.w); anchors.verticalCenter: parent.verticalCenter
                     visible: typeof modelData.from === "number"; value: modelData.from || 0
+                    unit: modelData.unit || ""; display: modelData.display || ""; step: modelData.step || 0.01
                     onEdited: (v) => panel.s.setValue(modelData.prop, "from", v)
                 }
                 NumberField {
                     x: Theme.labelColumnFor(panel.w) + Theme.halfFor(panel.w) + Theme.pairGap; width: Theme.halfFor(panel.w)
                     anchors.verticalCenter: parent.verticalCenter
                     visible: typeof modelData.to === "number"; value: modelData.to || 0
+                    unit: modelData.unit || ""; display: modelData.display || ""; step: modelData.step || 0.01
                     onEdited: (v) => panel.s.setValue(modelData.prop, "to", v)
                 }
             }
@@ -97,6 +99,24 @@ Rectangle {
                             font.pixelSize: Theme.label; color: parent.chosen ? Theme.fg : Theme.fg2 }
                     MouseArea { id: presetArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                 onClicked: panel.s.setEase(parent.modelData.value) }
+                }
+            }
+        }
+        Repeater {   // a spring: Bounce and Speed (the same key fields as the key bar's, H41), one change per drag
+            model: panel.info.ease === "spring" && (panel.info.feel || []).length === 2 ? ["Bounce", "Speed"] : []
+            delegate: Line {
+                required property string modelData
+                required property int index
+                Words { width: Theme.labelColumnFor(panel.w); height: parent.height; text: modelData }
+                Slider {
+                    objectName: "spring" + modelData
+                    x: Theme.labelColumnFor(panel.w); width: Theme.fieldFor(panel.w); anchors.verticalCenter: parent.verticalCenter
+                    value: panel.info.feel[index]
+                    function feelTo(v) { const f = panel.info.feel; panel.s.springTo(index === 0 ? v : f[0], index === 1 ? v : f[1]) }
+                    onScrubStarted: panel.s.begin("spring")
+                    onScrubbed: (v) => feelTo(v)
+                    onScrubEnded: panel.s.end()
+                    onEdited: (v) => { panel.s.begin("spring"); feelTo(v); panel.s.end() }
                 }
             }
         }
