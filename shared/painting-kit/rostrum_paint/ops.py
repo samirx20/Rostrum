@@ -9,6 +9,7 @@ recorded with who painted it. A live pen stroke is one gesture: `stroke.add` onc
 from __future__ import annotations
 
 import zlib
+from copy import deepcopy as copy_item
 
 from rostrum_core import Param
 from rostrum_core.errors import RostrumError, codes, did_you_mean
@@ -96,6 +97,18 @@ def register(registry, canvas_types=("frame",)):
     def paint_remove(ctx, targets, args):
         for t in targets:
             ctx.remove(t)
+
+    @registry.operation("paint.duplicate", "Copy paint layers with all their strokes and fills, each copy just above "
+                        "its layer, named \"<name> copy\" (same seeds: it paints the same pixels).", target="paint",
+                        label="Duplicate paint layer", importance="secondary")
+    def paint_duplicate(ctx, targets, args):
+        for t in targets:
+            holder, layer = canvas_of(ctx.doc, ctx.kind.lists, t), ctx.item(t)
+            at = next(i for i, p in enumerate(holder["paints"]) if p["id"] == t) + 1
+            copy = {**copy_item(layer), "id": ctx.new_id("paint"), "name": f'{layer["name"]} copy', "strokes": []}
+            ctx.insert(holder["id"], "paints", copy, at)
+            for s in layer["strokes"]:
+                ctx.insert(copy["id"], "strokes", {**copy_item(s), "id": ctx.new_id(s["type"])})
 
     @registry.operation("paint.move", "Move a paint layer up or down among its canvas's paint layers (0 = bottom).",
                         target="paint", label="Reorder paint layer", importance="secondary",

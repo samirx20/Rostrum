@@ -3,13 +3,12 @@ import RostrumKit
 
 // "+ Save this brush" (painting design §2.1 step 6): a click opens the name field in place, holding the brush's
 // name, all selected; Enter keeps the brush in My brushes (painter.saveBrush), Esc or a click elsewhere leaves it.
-// Only there while the document is in a project (where saved brushes are kept).
+// It is kept in the project and in the person's own library (with no project open: the library alone).
 Item {
     id: sb
     property bool naming: false
     property int align: Text.AlignRight
     signal saved()
-    visible: painter.canSave
     implicitWidth: link.implicitWidth + 8; implicitHeight: Theme.rowDense
     Text {
         id: link

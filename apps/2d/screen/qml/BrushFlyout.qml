@@ -6,8 +6,10 @@ import RostrumKit
 // icon. The top row: the five paint tools (backend.paintTool). Below: the brushes as real strokes painted by the kit's
 // engine (image://brushes/<id>, screen2d/brush_presets.py), three across, by group. A click on a brush makes it the
 // brush (the Brush tool goes on) and closes the panel; Esc or a click anywhere else closes it without changing
-// anything. Too tall for the window: the brushes scroll, the tools stay. Last, My brushes (the project's saved brushes:
-// + Save this brush; right-click one: Rename, Delete). Hovering a brush shows its stroke larger, at the tile.
+// anything. Too tall for the window: the brushes scroll, the tools stay. Last, My brushes (saved brushes, from the
+// project and the person's own library, each once; a small "project" / "library" on the stroke's corner of one kept in just one
+// place: + Save this brush; right-click one: Rename, Duplicate, Also keep in / Remove from a place, Delete — the
+// entries that apply, from painter.myBrushes). Hovering a brush shows its stroke larger, at the tile.
 QQC.Popup {
     id: fly
     objectName: "brushFlyout"
@@ -40,7 +42,7 @@ QQC.Popup {
         id: tile
         required property var modelData
         required property int index
-        property bool mine: false                     // a saved brush: right-click renames or deletes it
+        property bool mine: false                     // a saved brush: right-click shows its menu
         property bool renaming: false
         readonly property bool on: painter.brushNow.preset === modelData.id
         readonly property bool hovered: tileTap.containsMouse
@@ -62,7 +64,16 @@ QQC.Popup {
             text: tile.modelData.name; color: tile.on || tile.hovered ? Theme.fg : Theme.fg2
             font.family: uiFont; font.pixelSize: Theme.label
         }
-        HoverTip { hovered: tile.hovered && tileName.truncated && !tile.renaming; text: tile.modelData.name }
+        Rectangle { // where a saved brush is kept, only when it is in just one of the two places: on the stroke's corner
+            id: markText
+            visible: tile.mine && !!tile.modelData.mark
+            anchors { right: parent.right; top: parent.top; margins: 3 }
+            width: markLabel.implicitWidth + 8; height: markLabel.implicitHeight + 2; radius: 3; color: Theme.raised
+            Text { id: markLabel; anchors.centerIn: parent; text: tile.mine ? tile.modelData.mark : ""; color: Theme.fg2
+                   font.family: uiFont; font.pixelSize: Theme.label - 2 }
+        }
+        HoverTip { hovered: tile.hovered && !tile.renaming && (tileName.truncated || markText.visible)
+                   text: markText.visible ? tile.modelData.name + " · " + tile.modelData.markTip : tile.modelData.name }
         TextInput {     // rename in place: Enter keeps it, Esc or a click elsewhere leaves the name as it was
             id: nameEdit
             objectName: "brushName_" + tile.index
@@ -79,10 +90,10 @@ QQC.Popup {
             acceptedButtons: tile.mine ? Qt.LeftButton | Qt.RightButton : Qt.LeftButton
             onClicked: (ev) => ev.button === Qt.RightButton ? tileMenu.open() : fly.pickBrush(tile.modelData.id)
         }
-        Menu { id: tileMenu; y: tile.height
+        Menu { id: tileMenu; y: tile.height; width: 208     // "Also keep in this project" in full
                property bool rename: false     // Rename starts once the menu has closed (it hands focus back as it goes)
-               entries: [{ value: "rename", label: "Rename" }, { value: "delete", label: "Delete" }]
-               onPicked: (v) => v === "delete" ? painter.removeBrush(tile.modelData.id) : (rename = true)
+               entries: tile.mine ? tile.modelData.menu : []
+               onPicked: (v) => v === "rename" ? (rename = true) : painter.brushAction(tile.modelData.id, v)
                onClosed: if (rename) { rename = false; nameEdit.text = tile.modelData.name; tile.renaming = true
                                        nameEdit.forceActiveFocus(); nameEdit.selectAll() } }
     }

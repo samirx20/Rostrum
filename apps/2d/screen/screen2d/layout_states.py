@@ -236,4 +236,14 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                               "savebrush Soft_pastel", "flyout brush"]),
         ("brush-edit-save-name", long_project(), ["select title_card_for_the_summer_launch_film", "tool draw", "brushedit on",
                                                   "clickobj saveBrush"]),
+        # H57: My brushes from the project and the person's library: one only in the project (long name, "project"),
+        # one only in the library ("library"), one in both (no mark); a brush's right-click menu; a paint layer's
+        ("brush-mine-places", long_project(), ["select title_card_for_the_summer_launch_film", "tool draw", "preset oil",
+                                               "savebrush Bristle_oil_for_the_night_sky_backgrounds", "preset chalk",
+                                               "savebrush Charcoal_rough", "preset air", "savebrush Air_soft",
+                                               "flyout brush", "clickobj mybrush_1 right", "clickobj menu:drop:library",
+                                               "flyout brush", "clickobj mybrush_2 right", "clickobj menu:drop:project",
+                                               "flyout brush", "clickobj mybrush_2 right"]),
+        ("paint-layer-menu", ["--sample"], [*PAINTED, "paintlayer", "draw 600 400 1200 420", "paintlayer", f"paintset {LONG_PAINT}",
+                                            "clickobj paintLayer:Paint_2 right"]),
     ]

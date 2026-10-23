@@ -38,7 +38,8 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
   `stroke.remove`. A point on a line or in an open area is refused with the reason; nothing changes.
 - Paint layers: `paint.add {name}` on a drawing (frame) adds one on top (the screen's **Paint layers +**);
   `stroke.add`/`paint.stroke` with `layer: "new"` starts one with the stroke; `paint.set` (name, mode, opacity,
-  visible, locked), `paint.move {index}` (0 = bottom), `paint.remove`.
+  visible, locked), `paint.move {index}` (0 = bottom), `paint.duplicate` (a copy just above with every stroke and
+  fill, "<name> copy", the same pixels; the screen's right-click **Duplicate**), `paint.remove`.
 
 ## The brush (`inspect_operations name: stroke.add` lists every setting)
 
@@ -59,11 +60,15 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
 The screen's 19 shipped brushes (Sketch, Ink, Paint, Light, Texture) are only ready-made sets of these settings; a stroke
 records what it was drawn with, so an agent sets the same ones.
 
-**My brushes** are the project's saved brushes, shared with the person (the brush panel lists them last).
-`run_brush {action: "list"}` gives each one's `id`, `name` and `stroke`: pass `stroke` to `paint.stroke` with your points
-and colour to paint with it. `run_brush {action: "save", name, settings}` keeps a set of these settings as a brush
-(colour and seed are never kept; a loaded tip or paper stays named by its item id). `rename` (id, name) and `delete` (id)
-do what the brush's right-click menu does. A brush is kept by its settings: saving the same settings again renames it.
+**My brushes** are saved brushes, shared with the person (the brush panel lists them last). Each is kept in the
+project, in the person's own library (there in every project), or in both; listed once either way.
+`run_brush {action: "list"}` gives each one's `id`, `name`, `where` (`project`, `library`) and `stroke`. To paint with
+one, `run_brush {action: "use", id}` (it copies a loaded tip or paper from the library into the project if it must),
+then pass `stroke` to `paint.stroke` with your points and colour. `run_brush {action: "save", name, settings, where}`
+keeps a set of these settings as a new brush (default: both places; colour and seed are never kept; a loaded tip or
+paper stays named by its item id, and keeping the brush in the library copies that picture there too). `duplicate`
+(id), `rename` (id, name), `delete` (id, everywhere), `keep` / `drop` (id, place) do what the brush's right-click menu
+does. Every saved brush is its own brush, even with the same settings as another.
 
 ## Seeing and checking
 

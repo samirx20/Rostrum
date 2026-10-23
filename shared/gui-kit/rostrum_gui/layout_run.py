@@ -14,6 +14,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from . import layout_check, layout_mark
@@ -105,7 +106,8 @@ def record(out: Path, name: str, found: dict):
 
 
 def run_all(main_py: Path, states: list[tuple[str, list[str], list[str]]], out) -> int:
-    """Start the app once per state (a fresh window and document each), wait for each, write faults.txt.
+    """Start the app once per state (a fresh window, document and scratch settings home each), wait for each, write
+    faults.txt.
     Returns the exit code: 0 only when every state ran and found nothing."""
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
@@ -116,7 +118,9 @@ def run_all(main_py: Path, states: list[tuple[str, list[str], list[str]]], out) 
     for name, start, steps in states:
         cmd = [sys.executable, str(main_py), *start, *sum((["--step", s] for s in steps), []),
                "--check-layout", str(out), "--check-name", name]
-        r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=600)
+        with tempfile.TemporaryDirectory(prefix="rostrum-state-") as home:   # its own settings and library too:
+            r = subprocess.run(cmd, env={**env, "ROSTRUM_SCRIPTED_HOME": home},   # no state sees another's
+                               capture_output=True, text=True, timeout=600)
         print(r.stdout, end="")
         if r.returncode not in (0, 5):
             broken.append(f"{name}: the state did not run (exit {r.returncode}): {r.stderr.strip()[-600:]}")
