@@ -4,10 +4,13 @@ For a person using the RostrumSound app. This page takes you from an empty song 
 
 ## The screen in one look
 
-- **Top bar:** **≡** (the menu), the song's name, what just happened and how many changes, the **Loudness** chip and
-  **Export** (once the song makes a sound), **Search** (Ctrl+K) and **?** (help).
-- **Middle: the arrangement.** Every track is a row over time. Its header strip holds **+ Add**, ⏮ ▶, the position,
-  and the tempo · beats · key; zoom − + **Fit** sit at its right.
+- **Top bar:** **≡** (the menu), the song's name, **Search** (Ctrl+K), the **loudness chip** ("−14.2 LUFS · target −14"
+  with a dot: green within 1 of the target, amber outside; click it to open the Mixer) and **Export** (both once the
+  song makes a sound), and **?** (help).
+- **Middle: the arrangement.** Every track is a row over time. Its header strip holds **+ Add**, ⏮ ▶, **Click** (the
+  metronome, Shift+K), the position ("3.2 · 0:04.80": bar.beat, then the time), and the song's tempo, beats and key as
+  fields; **Grid ▾**, **Snap**, zoom − + and **Fit** sit at its right. The ruler counts **bars**: plain numbers, one per
+  bar. For a seconds scale, right-click the ruler and choose **Show seconds** (the same entry hides it).
 - **Under it: the dock.** **Editor** (E) shows the selected track up close; **Mixer** (X) shows the faders. ▾ folds
   it away.
 - **Right: the settings panel.** It shows what is selected, or the song when nothing is.
@@ -15,7 +18,7 @@ For a person using the RostrumSound app. This page takes you from an empty song 
 
 ## 1. Start a new song
 
-Open **≡**, then **New song** (Ctrl+N). It is called "Untitled song" and lives in your projects folder.
+Open **≡**, then **New** (Ctrl+N). It is called "Untitled song" and lives in your projects folder.
 
 Saving is automatic: every change is on disk as you make it. There is no Save button and nothing to lose. Ctrl+S
 just tells you so; named versions come later with the History sheet.
@@ -55,8 +58,11 @@ The **Colour** row shows the colour the track is drawn in.
 3. **Select several:** Ctrl+click adds or removes one, Shift+click takes everything between, and dragging across
    empty space draws a box. **Ctrl+A** selects all, **Esc** clears.
 4. **The settings panel** on the right names the selection ("5 notes") and shows its actions first, as buttons, such
-   as **Quantise** and **Transpose**; **More** holds the rest. **Right-click** is a short menu: Cut, Copy, Paste,
-   Duplicate, Delete, and for tracks Group, Move up / down, Lock and Rename. **Ctrl+K** finds every action by name.
+   as **Quantise** and **Transpose**; **More** holds the rest. There is no bar floating over the arrangement: the
+   actions live there. **Right-click** is a short menu: Cut, Copy, Paste, Duplicate, Delete, and for tracks Group,
+   Move up / down, Lock and Rename. On empty lane space it offers Paste here, Add marker here and Select all on this
+   track; on the ruler, Add marker here, Make a section from here and Show seconds. **Ctrl+K** finds every action by
+   name.
 5. **Keys on the selection:**
    - Copy, cut and paste: **Ctrl+C**, **Ctrl+X**, **Ctrl+V**. Duplicate: **Ctrl+D**. Delete: **Delete**.
    - **A time range:** drag on the ruler's thin top band. The settings panel offers **Make a section** and **Select
@@ -65,7 +71,8 @@ The **Colour** row shows the colour the track is drawn in.
      copies just those notes. **Shift+Delete** cuts the range out of the clips under it and closes the gap.
    - Arrows nudge in time; ↑ / ↓ move notes a half step (Shift: an octave).
    - **Q** quantises. **Ctrl+T** splits a clip at the playhead and **Ctrl+J** joins clips.
-   - **Ctrl+G** puts the selected tracks into a group.
+   - **Ctrl+G** puts the selected tracks into a group. **Ctrl+]** and **Ctrl+[** move the selected tracks up and
+     down the list.
    - **Shift+M** mutes the selected tracks and **Shift+S** solos them.
    - **M** puts a marker at the playhead.
 6. Zoom with **Ctrl + wheel** and scroll in time with **Shift + wheel**. **Fit** (Ctrl+0) shows the whole song.
@@ -74,16 +81,26 @@ The **Colour** row shows the colour the track is drawn in.
 ## 5. Play it
 
 - **Space** plays and stops. **Home** (or ⏮) goes to the start.
+- **Click** turns the metronome on and off (**Shift+K**). It is only for you while you work; it is never in an export.
+- With a time range drawn, **Shift+L** loops it.
 - Click the ruler to move the playhead there.
 - **M** / **S** on a track's row mute it or play it alone.
 - After an edit the sound is prepared again in a moment, so playback follows what you changed.
 
 ## 6. Tempo, beats and key
 
-- With nothing selected, the settings panel shows the song: **Key**, **Tempo**, **Length** ("until the last sound"
-  unless you set one) and **Beats per bar**.
-- Click the tempo · beats · key in the header strip for a small box to add a tempo change or a key change at the
-  playhead.
+- The song's **tempo**, **beats per bar** (4/4, 3/4 …) and **key** are the three fields in the arrangement's header
+  strip, and they show what plays at the playhead. Type the tempo or drag it; pick the beats and the key from their
+  lists. Nothing has to be selected first.
+- With nothing selected, the settings panel shows the song: its **Length** ("until the last sound" unless you set one),
+  **More**, and buttons to add at the playhead: **+ Tempo change** (after the start), **+ Key change** and
+  **+ Section**.
+- Changes sit on the ruler as small flags: "♩ 132" for a tempo, "3/4" for a time signature, "D minor" for a key.
+  Drag a flag to move it (one undo step). Click one and the settings panel shows it. A tempo flag has **Bpm**, **At**
+  and **Glide to next**: turn that on and the tempo speeds up or slows down evenly to the next change instead of
+  jumping; its flag then reads "♩ 100 ↗" (or ↘ when slowing). Time signature changes start a new bar at that place;
+  the ruler's bar numbers follow them. They are written by an agent (`meter.add`) or a script; the header's beats field
+  sets the song's own signature from the start.
 
 ## 7. Get it out
 

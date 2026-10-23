@@ -11,12 +11,12 @@ wobble that never ends, a bar that is always half as wide as another. For a hand
   Script: `shadow.link("x", of="logo", field="x", offset=12)`.
 - **Write an expression**: `expr.set {target: "title", prop: "rotation", source: "sin(time * 2) * 6"}`.
   Script: `title.expr("rotation", "sin(time * 2) * 6")`.
-- **On the screen**: type `=` and the formula into any number field of the inspector, e.g. `=sin(time * 2) * 6`.
+- **On the screen**: type `=` and the formula into any number field of the settings panel, e.g. `=sin(time * 2) * 6`.
   It does the same `expr.set`, as one change you can undo. Type just `=` (or press the × on a driven field) to take it off.
 
-A bind is only an expression written for you (`logo.x + 12`); the inspector shows it as one. `expr.clear {prop}` takes
+A bind is only an expression written for you (`logo.x + 12`); the settings panel shows it as one. `expr.clear {prop}` takes
 either off. The field's own value and keys are **ignored while an expression is on it** (they come back when it is
-cleared); the inspector says "overrides its keys".
+cleared); the settings panel says "overrides its keys".
 
 ## What you can write
 

@@ -36,7 +36,7 @@ that the file says what you decided.
 - `layer.stagger {ids, by, order}` spreads layers so each starts `by` seconds after the one before, counting from the
   earliest start among them, in an order: `stack`, `picked`, `left_to_right`, `top_to_bottom`, `centre` (equal
   distances start together) or `random` (the same every time). Calling it again re-spreads them, so the rhythm is one
-  number. In the screen: Stagger… on the context bar.
+  number. In the screen: **Stagger…** at the top of the settings panel.
 - A stagger in a script is easiest to keep consistent with a loop: the start time is `base + i * step`, so changing
   `step` changes the whole rhythm in one place.
 - `look_sheet` over just the entrance window (`start`, `end`) shows what the overlap looks like.

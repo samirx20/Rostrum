@@ -6,21 +6,37 @@ A tour of the window, from the top and round the edges. There is one workspace: 
 
 ## 1. The top bar
 
-1. **File** at the far left opens the file menu (see [files.md](files.md)). Next to it is the project's name. A small dot after the name means there are changes not saved yet.
-2. The line on the right says what you did last, and how many changes you have made since you opened the project. If it is cut short, point at it to read the whole line.
-3. The undo and redo arrows come next. They appear only when there is something to undo or redo. **Ctrl+Z** undoes; **Ctrl+Shift+Z** or **Ctrl+Y** redoes.
-4. **+ Add** puts something new in the picture: a shape, text, a path, an image, a video, a drawing, a camera or a 3D render. **Import** brings in a file (see [importing.md](importing.md)). The arrow button opens **Export** (see [exporting.md](exporting.md)).
-5. The box that says "Search or run a command" is the **command box**. Press **Ctrl+K**, type a few letters of what you want, and pick it from the list. It lists only what you can do right now, with the shortcut beside each, and it acts on everything you have picked.
-6. The **?** at the far right opens **Help**, with these guides.
+1. The **≡** button at the far left opens the file menu (see [files.md](files.md)). Next to it are the app's name and the project's name.
+2. The line in the middle says what you did last ("Saved · 3 changes"). If it is cut short, point at it to read the whole line.
+3. The undo arrow comes next. It appears only when there is something to undo or redo. **Ctrl+Z** undoes; **Ctrl+Shift+Z** or **Ctrl+Y** redoes.
+4. The box that says "Search or run a command" is the **command box**. Press **Ctrl+K**, type a few letters of what you want, and pick it from the list. It lists only what you can do right now, with the shortcut beside each, and it acts on everything you have picked.
+5. **Fit · 54 % ▾** shows the zoom and has the zoom choices (part 2). **Export** opens the Export panel (see [exporting.md](exporting.md)). The **?** at the far right opens **Help**, with these guides.
+6. Making new things is not up here: it lives in the tool rail beside the canvas (part 2). A file comes in through its **Media** group.
 7. When the window is narrow, things give way in a fixed order and never slide under each other: first the line that says what you did last gets shorter, then the project's name, then the search box becomes just its icon.
 
 ## 2. The canvas
 
-1. The big rectangle in the middle is your picture, as it will come out. Its size and speed show at the top right of the canvas.
-2. The **tool strip** at the top left of the canvas has six tools: **Move** (V), **Pen** (P), **Draw** (B), **Rectangle** (R), **Ellipse** (O) and **Text** (T). Move picks, moves and resizes. Pen draws shapes point by point. Draw paints by hand, on the picked thing or as a new drawing (see [drawing.md](drawing.md)). The tool you pick changes what the mouse does and what the right-hand panel shows.
-   - **Rectangle and Ellipse:** press R or O, then drag on the picture where the shape goes. A small label shows its size as you drag. Hold **Shift** for a square or a circle, **Alt** to draw out from the centre. A click without dragging makes a 200 × 200 shape there. The new shape is picked and the tool goes back to Move. It is one step.
-   - **Text:** press T, click where the words go (they grow as you type) or drag a box (they wrap inside it), and type. **Enter** starts a new line; **Esc** or **Ctrl+Enter** ends, and the text stays picked. All the typing is one step, so **Ctrl+Z** takes back the whole text. While you type, the bar at the top of the canvas has the **font**, **weight**, **size** and **colour**. **Double-click** a text with Move to type in it again.
-   - **Zoom and move around:** **Ctrl+wheel** zooms in and out around the pointer; the wheel scrolls (with **Shift**: sideways); hold **Space** and drag, or drag with the middle button, to move the view. **Ctrl+0** fits the whole picture, **Ctrl+1** shows it at 100 %, **F** fits what is picked, **Ctrl+=** and **Ctrl+−** zoom a step. The control at the bottom right of the canvas ("Fit · 60 % ▾") shows the zoom and has the same choices. Zooming is only your view: it is never a change and never undone. The picture is always drawn sharp at the size you see it.
+1. The big rectangle in the middle is your picture, as it will come out. With nothing picked, its size and speed are in the settings panel.
+2. The **tool rail** is the column of icons at the left of the canvas. Only icons: point at one for its name and key. A small corner mark means the icon holds a group; click it to open a panel beside the rail, and the icon then shows the tool you used last from that group.
+
+   ![The Shapes panel beside the tool rail](pictures/shapes-panel.png)
+
+   - **Select** (V): picks, moves and resizes.
+   - **Shapes** (R for Rectangle, O for Ellipse): nine shapes: Rectangle, Ellipse, Arc, Triangle, Polygon, Star, Line, Arrow and Spiral.
+   - **Pen** (P): draws shapes point by point.
+   - **Text** (T).
+   - **Brush** (B): paints by hand, on the picked thing or as a new drawing (see [drawing.md](drawing.md)).
+   - **Media**: Picture, Video, Import… (see [importing.md](importing.md)) and Library (Ctrl+L). A 3D render shows here when Rostrum3D is there.
+
+   ![The Media panel](pictures/media-panel.png)
+
+   - **Add a sound**, **Camera** (C) and **Bone** (J) show when they apply: a sound needs a picked layer, the Bone tool needs a rig (see [characters-sound-camera.md](characters-sound-camera.md)).
+   - **Hand** (H) and **Zoom** (Z) are at the foot.
+
+   The tool you pick changes what the mouse does and what the right-hand panel shows. **Esc** steps back one level, down to Select.
+   - **Drawing a shape:** press R or O (or pick a shape in the Shapes panel), then drag on the picture where it goes. A line or an arrow is dragged from its start to its end. A small label shows its size as you drag. Hold **Shift** for a square or a circle, **Alt** to draw out from the centre. A click without dragging makes a 200 × 200 shape there. The new shape is picked and the tool goes back to Select. It is one step. Its **Shape** setting changes it into another kind afterwards, and each kind shows only its own settings (a star has **Points** and **Inner radius**).
+   - **Text:** press T, click where the words go (they grow as you type) or drag a box (they wrap inside it), and type. **Enter** starts a new line; **Esc** or **Ctrl+Enter** ends, and the text stays picked. All the typing is one step, so **Ctrl+Z** takes back the whole text. While you type, a small bar at the top of the canvas has the **font**, **weight**, **size** and **colour**. **Double-click** a text with Move to type in it again.
+   - **Zoom and move around:** **Ctrl+wheel** zooms in and out around the pointer; the wheel scrolls (with **Shift**: sideways); hold **Space** and drag, or drag with the middle button, to move the view. **Ctrl+0** fits the whole picture, **Ctrl+1** shows it at 100 %, **F** fits what is picked, **Ctrl+=** and **Ctrl+−** zoom a step. The **Fit · 54 % ▾** control in the top bar shows the zoom and has the same choices. Zooming is only your view: it is never a change and never undone. The picture is always drawn sharp at the size you see it.
 3. **Picking.** A click on a thing picks it. It goes to what is painted: the empty part of a drawing, or an empty group, does not catch the click. If the thing is inside a group, the click picks the outermost group (so the whole logo moves); **double-click** goes one level in; **Ctrl+click** picks the piece under the pointer straight away. **Shift+click** adds a thing to what is picked or takes it out. Drag a box on empty canvas to pick everything it touches. **Ctrl+A** picks every layer, and **Esc** lets go of the picking.
 4. Drag a picked thing to move it, or drag a small square on its edge to resize it. The box and the picture move together. While you drag, it **snaps** to the edges and centre lines of the picture and of other layers when it comes within a few pixels, and a thin magenta line shows what it caught. Hold **Ctrl** during the drag to place it freely; hold **Shift** to keep it moving straight across or straight up and down. While you drag, the picture is drawn a little smaller so it keeps up; one full-size picture follows when you let go.
 5. **Nudge** with the arrow keys: 1 pixel, 10 with **Shift**, or a tenth of a pixel with **Alt**, for every picked layer. Each press is one change.
@@ -31,7 +47,7 @@ A tour of the window, from the top and round the edges. There is one workspace: 
 
 Anything that relates layers to each other starts from what you have picked: you pick the things, then act. The same short list of actions shows up in four places, and only what applies to your picking is ever in it:
 
-1. The **top of the settings panel**: the actions that fit what is picked, as buttons, and only those: **Combine** (two or more shapes: union, subtract, intersect, exclude), **Group** / **Ungroup**, **Mask** (by its shape, brightness or darkness; a picture and a shape put it first), **Align**, **Distribute** (three or more layers), **Stagger…**, **Styles** for text. **More ▾** under them holds the less used ones (Clip to a box, Auto layout, Make swap set, Make rig, Match size, Fill the frame, Copy / Paste style …).
+1. The **top of the settings panel**: the actions that fit what is picked, as buttons, and only those: **Combine** (two or more shapes: union, subtract, intersect, exclude), **Group** / **Ungroup**, **Mask** (by its shape, brightness or darkness; a picture and a shape put it first), **Align**, **Distribute** (three or more layers), **Stagger…**, **Styles** for text. **…** (more) under them holds the less used ones (Clip to a box, Auto layout, Make swap set, Make rig, Match size, Fill the frame, Copy / Paste style …).
 2. A **right-click** (on the canvas, a layer's name or its row in the timeline) opens the same short menu everywhere: Cut, Copy, Paste, Duplicate, Delete · Group / Ungroup · Bring forward / Send backward · Hide, Lock, Rename.
 3. **Ctrl+K**, by name.
 4. Shortcuts: **Ctrl+G** group, **Ctrl+Shift+G** ungroup, **Ctrl+D** duplicate, **Ctrl+C** / **Ctrl+X** / **Ctrl+V** copy, cut and paste, **Delete**, **F2** rename, **Ctrl+]** and **Ctrl+[** bring forward and send backward (with **Shift**: to the front, to the back), **Alt+A** / **Alt+D** / **Alt+W** / **Alt+S** align left, right, top, bottom, **Alt+H** / **Alt+V** align centre or middle, **Ctrl+Alt+M** mask, **Ctrl+Alt+U** / **S** / **I** / **X** union, subtract, intersect, exclude, **Shift+A** auto layout, **Ctrl+Shift+H** hide, **Ctrl+Shift+L** lock, **Ctrl+Alt+C** / **Ctrl+Alt+V** copy and paste style. A key does its action only when the action fits what is picked.
@@ -45,19 +61,23 @@ The whole list: Group, Ungroup, Clip to a box, Auto layout, Make swap set, Make 
 3. **Find a setting** (**Ctrl+F**) finds any setting by a word: pick one from the list and its group opens and it is shown.
 4. It shows only the settings that apply. Turn something on and the settings that go with it appear; turn it off and they go away. Nothing sits there greyed out.
 5. A diamond at the right of a setting is its key mark (see [first-animation.md](first-animation.md)).
-6. With the Draw tool on, the same panel shows the **Brush** instead (see [drawing.md](drawing.md)).
+6. **Colour fields** are a swatch plus a hex box: type `#rrggbb`, or click the swatch for the picker. A fill's picker has six kinds: no fill, solid, linear, radial and angular gradient, and **Picture** (pick a file, then **Fill**, **Fit**, **Tile** or **Stretch**, and a scale). A shape, text or path can all be filled with a picture.
+
+   ![A star's settings, with the fill picker open](pictures/fill-picker.png)
+
+7. With the Brush on, the same panel is headed "Painting" and shows the brush instead (see [drawing.md](drawing.md)).
 
 ## 5. The timeline is the layers list
 
 1. Along the bottom: a top strip, a ruler, and a row for each layer. The names on the left are your layers, newest on top; the bar beside each name shows when the layer is on screen, with its keys as diamonds.
-2. The top strip has the play button, the time, **Preview size** (**Full**, **Half**, **Quarter**), **Add marker**, and **Keys** / **Curves**. **Space** plays and stops.
+2. The top strip has the play button, the time, **Add marker**, and **Keys** / **Curves**. **Space** plays and stops.
 3. A name's small arrow folds or opens what is inside a layer: a group's layers, its keyed settings, its effects and masks.
 4. Click a name to pick the layer. **Ctrl+click** adds a layer to what is picked or takes it out, and **Shift+click** picks every layer from the last one you clicked to this one; every picked row and bar is lit. Double-click a name (or press **F2**) to rename it. A long name is cut short in the list; point at it to read it whole. Drag it up or down to change what sits in front, or onto a group to put it inside. A line shows where it will land.
 5. At the right of a name sit a **lock** and an **eye**. They show when you point at the row, and stay visible while they are on. A **locked** layer cannot be picked or moved on the canvas, and everything refuses it until you unlock it. A **hidden** layer is not drawn, in the preview or in an export, and its name and bar fade. Click to switch; it is one step.
 6. Drag the middle of a bar to move the layer in time, and an end to trim it. When several layers are picked, dragging one picked bar moves all the picked bars together. Drag a diamond to move a key. They snap to the playhead and to markers. Click a diamond to change how that key eases; **Curves** shows the curves.
    - **Picking keys:** click a diamond to pick it, **Ctrl+click** to add another (on any layer) or take it out, **Shift+click** to pick every key between on that row. A diamond on a layer's bar stands for all that layer's keys at that moment. Drag one picked key and all of them move together, as one step. **Delete** removes the picked keys. **Esc** lets go of the keys first, then of the layers.
    - **A** opens the picked layers to show only their animated settings; **A** again folds them.
-7. **The timeline has two heights.** The full height shows every layer. The **compact** height shows only the top strip, the ruler and the picked layer's row, to give the picture the room; the name there is a menu of all your layers. Switch with the button at the right end of the top strip, or drag the timeline's top edge. Each tool remembers its own height: Move and Pen the full one, Draw the compact one, so picking a tool gives you the right amount of picture.
+7. **The timeline has two heights.** The full height shows every layer. The **compact** height shows only the top strip, the ruler and the picked layer's row, to give the picture the room; the name there is a menu of all your layers. Switch with the button at the right end of the top strip, or drag the timeline's top edge. Each tool remembers its own height: Select and Pen the full one, Brush the compact one, so picking a tool gives you the right amount of picture.
 
 ## 6. Markers
 

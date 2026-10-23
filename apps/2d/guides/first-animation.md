@@ -6,18 +6,18 @@ This page takes you from an empty project to something that moves, and shows you
 
 ## 1. Start a new project
 
-1. Click **File** at the top left, then **New project** (or press Ctrl+N).
-2. An empty black picture opens, called "Untitled 1". Its size and speed show at the top right of the canvas, for example "1920 × 1080 · 25 fps".
+1. Click **≡** at the top left, then **New** (or press Ctrl+N).
+2. An empty black picture opens, called "Untitled 1". Its size and speed are in the settings panel, for example "1920 × 1080 · 25 fps".
 3. With nothing picked, the panel on the right shows the picture's own settings: **Width**, **Height**, **Frame rate**, **Length** and **Background**. Change them here if you need a different size or length.
 
 ## 2. Add text
 
-1. Click **+ Add** at the top. A short list opens with only new things: **Shape**, **Text**, **Path**, **Image**, **Video**, **Drawing**, **Camera** and **3D render**.
+1. Making things lives in the **tool rail**, the column of icons at the left of the canvas: **Shapes**, **Pen**, **Text**, **Brush**, **Media** (pictures, video, files), **Camera**.
 
-![The Add menu](pictures/add-menu.png)
+![The Shapes panel beside the tool rail](pictures/shapes-panel.png)
 
-2. Click **Text**. A word appears in the middle of the picture, and a row appears in the timeline at the bottom. The new layer is picked, so the panel on the right shows its settings.
-3. In the panel, click the **Text** box, type your own words and press Enter. Change **Size** and **Colour** in the same short list.
+2. Press **T**, then click on the picture where the words go and type. A row appears in the timeline at the bottom. **Esc** or **Ctrl+Enter** ends the typing, and the text stays picked, so the panel on the right shows its settings.
+3. In the panel, change **Size**, **Weight** and **Colour** (a swatch plus a hex box) in the short list.
 
 ## 3. Pick, move and change things
 
@@ -67,20 +67,20 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
 3. Drag a picked diamond to move them all. Hold **Alt** and drag the first or the last picked diamond to stretch or squeeze them all in time.
 4. **Ctrl+C** copies the picked keys. Pick other layers, move the playhead and press **Ctrl+V**: the keys land on the same settings of those layers, starting at the playhead and keeping their spacing.
 5. **,** and **.** jump the playhead to the previous or next thing that happens: a key, a marker, a drawing, or where a layer starts or ends. With layers picked, only theirs.
-6. To make layers start one after another, pick them and click **Stagger…** on the context bar. Set "Each starts [2 f] after the one before" and an **Order** (stack, as picked, left to right, top to bottom, from the centre, random). The bars spread as you change it. Click away to keep it (one step), or press Esc to take it back. Open Stagger again to change it.
+6. To make layers start one after another, pick them and click **Stagger…** at the top of the settings panel. Set "Each starts [2 f] after the one before" and an **Order** (stack, as picked, left to right, top to bottom, from the centre, random). The bars spread as you change it. Click away to keep it (one step), or press Esc to take it back. Open Stagger again to change it.
 
 ## 8. Play it
 
 1. Press **Space**, or click the play button, to play from the playhead. Press Space again to stop.
-2. **Preview size** (**Full**, **Half**, **Quarter**) makes playback lighter on a slow computer. It does not change what you export.
+2. **Preview size** (**Full**, **Half**, **Quarter**) is in the **Fit · 54 % ▾** menu in the top bar. It makes playback lighter on a slow computer. It does not change what you export.
 
 ## 9. Do something to several layers at once
 
 Select first, then act. Hold **Shift** and click more things in the picture, or **Ctrl+click** more names in the timeline, or drag a box round them on empty canvas, or press **Ctrl+A** for every layer. The panel then shows the settings they share ("Mixed" where they differ); change one and it changes on all of them, as one step.
 
-The top of the **settings panel** shows only what applies to them: **Combine** (two or more shapes), **Group**, **Mask**, **Align**, **Distribute** (three or more); **More ▾** holds the rest. Right-click gives the short menu (cut, copy, group, order, hide, lock, rename); everything is also in **Ctrl+K**, and in a few shortcuts (Ctrl+G groups, Ctrl+Shift+G ungroups).
+The top of the **settings panel** shows only what applies to them: **Combine** (two or more shapes), **Group**, **Mask**, **Align**, **Distribute** (three or more); **…** (more) holds the rest. Right-click gives the short menu (cut, copy, group, order, hide, lock, rename); everything is also in **Ctrl+K**, and in a few shortcuts (Ctrl+G groups, Ctrl+Shift+G ungroups).
 
-![The context bar at the top-centre of the canvas, two layers picked](pictures/action-bar.png)
+![Two layers picked: their actions are the buttons at the top of the settings panel](pictures/settings-actions.png)
 
 ## 10. Undo a mistake
 

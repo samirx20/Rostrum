@@ -4,8 +4,8 @@ Bring a picture, a video, a PDF page, a Photoshop file or a Figma frame into you
 
 ## 1. Open the Import panel
 
-1. Click **Import** at the top. The panel opens at the right of the canvas.
-2. Click **Import** again, or **Close**, to put it away. Only one of Import, Export and the problems list is open at a time.
+1. Click **Media** in the tool rail (or press **Ctrl+I**), then **Import…**. The panel opens at the right of the canvas.
+2. Click **Import…** again, or **Close**, to put it away. Only one of Import, Export and the problems list is open at a time.
 
 ## 2. Choose where it comes from
 
@@ -29,12 +29,12 @@ Bring a picture, a video, a PDF page, a Photoshop file or a Figma frame into you
 
 1. Click a piece's name in the timeline to pick it, or click it in the picture. Pieces can be moved, changed and animated like any other layer.
 2. To change several pieces together, pick them first: **Shift+click** on the canvas, or drag a box round them on empty canvas. The panel on the right then shows what they share, and a change applies to all of them as one step.
-3. Look at the top of the settings panel for what you can do to them together: **Group**, **Align**, **Distribute**, **Mask**, **Combine** for shapes, and **More ▾** (see [the-screen.md](the-screen.md)).
+3. Look at the top of the settings panel for what you can do to them together: **Group**, **Align**, **Distribute**, **Mask**, **Combine** for shapes, and **…** (more) (see [the-screen.md](the-screen.md)).
 4. **Hide** (the eye at the right of a piece's name) takes a piece out of the picture and the export without deleting it. **Lock** keeps a piece from being moved by mistake.
 
 ## 6. A single picture or video
 
-You can also use **+ Add**, then **Image** or **Video**, and pick the file there. It is the same result for one picture or clip.
+You can also use **Media**, then **Picture** or **Video**, and pick the file there. It is the same result for one picture or clip.
 
 ## 7. Figma
 
