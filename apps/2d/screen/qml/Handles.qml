@@ -5,6 +5,7 @@ import RostrumKit
 // 4 corner + 4 edge resize knobs and a turn zone just outside each corner (screen2d/handle_slots.py: one gesture =
 // one undo step each; Shift = same proportion / 15° steps, Alt = from the centre). `box` is a bounds.boxes entry in
 // composition px; `fit` is canvas px per composition px; `space` is the (unturned) item the pointer is read in.
+// While the Fill row's picker is open on a gradient, the kit's GradientHandles lie over the box (backend scrub "paint").
 Item {
     id: h
     property var box: ({})
@@ -72,5 +73,17 @@ Item {
                 onCanceled: { if (on) backend.endDrag(); on = false }
             }
         }
+    }
+    // the fill's gradient handles, over the box while the Fill row's picker is open on a gradient (one drag = one change)
+    GradientHandles {
+        anchors.fill: parent
+        visible: h.editable && PaintSession.gradient
+        paint: PaintSession.paint || ({})
+        selected: PaintSession.selected
+        onBegan: backend.beginScrub("paint")
+        onEdited: (p) => backend.scrub("paint", p)
+        onEnded: backend.endScrub()
+        HoverHandler { onHoveredChanged: PaintSession.hold = hovered && parent.visible }   // a press here keeps the picker open
+        onVisibleChanged: if (!visible) PaintSession.hold = false
     }
 }

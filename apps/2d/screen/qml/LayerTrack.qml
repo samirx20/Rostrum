@@ -1,10 +1,11 @@
 import QtQuick
 import RostrumKit
 
-// A timeline row's time side (LayerRows.qml), under the ruler (x = ruler.x - 8). A layer row draws its bar from when
-// it appears to when it goes (composition seconds): the selected layer's in the accent tint. Drag the bar's middle to
-// move the layer in time, an end (its outer 6 px) to trim it: backend.beginBarDrag / barDragTo / endDrag (one gesture
-// = one change; near a marker or the playhead it snaps, and an end dropped on a marker is tied to it: a small flag).
+// A timeline row's time side (LayerRows.qml), under the ruler (x = ruler.x - 8). A layer row draws a slim bar from its
+// first key to its last (vertically centred, no text; no keys, no bar); a selected layer's row is tinted, its bar in
+// the accent (Sam, H49: no box around the whole row). Drag the bar to move the layer in time: backend.beginBarDrag /
+// barDragTo / endDrag (one gesture = one change; near a marker or the playhead it snaps). When it shows (Starts at /
+// Ends at) is set in the panel; an end tied to a marker is a small flag at that time.
 // Keys sit on it as diamonds (all the layer's keys); a drawing's frames lie on it (FrameMarks). Setting, effect and
 // mask rows show their keys only. Click a diamond: the key is selected (the inspector shows its ease); drag it: key.set
 // t (it lands on a marker within 6 px). Between two keys of one setting a stretch can be clicked (StretchBand.qml). A click anywhere else on the row selects its layer, a drag there draws a box
@@ -20,8 +21,10 @@ Rectangle {
     function xOf(t) { return 8 + Math.round(ruler.xOf(t)) }
     function onBar(k) { return k.t >= (rowData.start || 0) - 1e-6 && k.t <= (rowData.end || 0) + 1e-6 }   // a key in the layer's time
     function tAt(item, x) { return ruler.tOf(item.mapToItem(track, x, 0).x - 8) }
+    readonly property var barKeys: isLayer && rowData.bar === true ? rowData.keys.filter(k => onBar(k)) : []
     radius: Theme.radiusCtl
-    color: isLayer ? Theme.sunken : Qt.darker(Theme.panel, 1.15)
+    color: lit && isLayer ? Qt.tint(Theme.sunken, Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.07))
+         : isLayer ? Theme.sunken : Qt.darker(Theme.panel, 1.15)
 
     property Item rows                  // the LayerRows it lies in: a box dragged here picks keys on every row it touches
     // Right-click anywhere on the row (its empty part, its bar, a stretch, a key): the one short menu (actions.SHORT_MENU)
@@ -74,26 +77,25 @@ Rectangle {
         }
     }
 
-    Rectangle {  // the bar
+    Rectangle {  // the bar: first key to last key, centred in the row
         id: bar
-        visible: track.rowData.bar === true
+        visible: track.barKeys.length > 0
         opacity: track.rowData.hidden ? 0.35 : 1       // a hidden layer dims
-        x: track.xOf(track.rowData.start || 0); width: Math.max(4, track.xOf(track.rowData.end || 0) - x)
-        y: 3; height: parent.height - 6; radius: 4
-        color: track.lit ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.34) : Theme.raised
-        border.width: 1; border.color: track.lit ? Theme.accent : Theme.border
+        readonly property real pad: 6                  // half a diamond: the end keys sit inside it
+        x: track.barKeys.length ? track.xOf(track.barKeys[0].t) - pad : 0
+        width: track.barKeys.length ? track.xOf(track.barKeys[track.barKeys.length - 1].t) + pad - x : 0
+        height: 12; y: Math.round((parent.height - height) / 2); radius: height / 2
+        color: track.lit ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.30) : Theme.raised
         MouseArea {
             id: barArea
             anchors.fill: parent; hoverEnabled: true; preventStealing: true
-            readonly property real grip: Math.min(6, width / 3)
-            function part(x) { return x < grip ? "start" : x > width - grip ? "end" : "move" }
-            cursorShape: pressed ? (held === "move" ? Qt.ClosedHandCursor : Qt.SizeHorCursor)
-                       : part(mouseX) === "move" ? Qt.OpenHandCursor : Qt.SizeHorCursor
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            cursorShape: held ? Qt.ClosedHandCursor : Qt.OpenHandCursor
             property string held: ""
-            onPressed: (m) => {          // a selected bar's middle moves every selected bar (drags.py); else it is selected alone
-                const p = part(m.x)
-                if (!(p === "move" && backend.multi.has(track.rowData.id))) backend.select(track.rowData.id)
-                held = backend.beginBarDrag(track.rowData.id, p, track.tAt(barArea, m.x)) === false ? "" : p
+            onPressed: (m) => {          // a selected bar moves every selected bar (drags.py); else it is selected alone
+                if (m.button === Qt.RightButton) { track.openMenu(barArea, m.x, m.y); return }
+                if (!backend.multi.has(track.rowData.id)) backend.select(track.rowData.id)
+                held = backend.beginBarDrag(track.rowData.id, "move", track.tAt(barArea, m.x)) === false ? "" : "move"
             }
             onPositionChanged: (m) => {
                 if (!held) return
@@ -116,8 +118,8 @@ Rectangle {
         model: [{ at: "start", name: track.rowData.startMarker || "" }, { at: "end", name: track.rowData.endMarker || "" }]
         delegate: Rectangle {
             required property var modelData
-            visible: bar.visible && modelData.name !== ""
-            x: modelData.at === "start" ? bar.x : bar.x + bar.width - width; y: 1
+            visible: track.rowData.bar === true && modelData.name !== ""
+            x: track.xOf(modelData.at === "start" ? track.rowData.start || 0 : track.rowData.end || 0) - (modelData.at === "start" ? 0 : width); y: 1
             width: 7; height: 7; radius: 1; color: Theme.warn
             HoverHandler { id: flagHover }
             HoverTip { hovered: flagHover.hovered; text: (modelData.at === "start" ? "Starts at marker " : "Ends at marker ") + modelData.name }

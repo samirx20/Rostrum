@@ -3,8 +3,8 @@ import "."
 
 // The selected item's settings: ONE generic list of InspectorRow built from the item kind's field operation
 // (bridge.rows). Nothing in here knows about cameras or lights.
-// A bridge with rows by importance (bridge.sectioned) also gets a "Find a setting" box under the name (Ctrl F
-// focuses it, Esc clears it; bridge.setSearch), "No setting matches" when nothing does, and the jump to a field:
+// A bridge with rows by importance (bridge.sectioned) also gets a "Find a setting" box under the name, only while
+// finding (design v2: Ctrl F opens and focuses it; Esc, or leaving it empty, clears and closes it; bridge.setSearch), "No setting matches" when nothing does, and the jump to a field:
 // bridge.revealField opens its group, then `fieldRevealed` scrolls here, flashes the row and focuses its widget.
 // Several items of different kinds: a line per kind at the top ("3 layers ›", bridge.narrowLines); a click keeps only
 // that kind (bridge.narrowTo). The last line: who changed the selection last and when (bridge.lastChanged); a click
@@ -41,18 +41,20 @@ Panel {
     FieldFrame {
         id: find
         objectName: "findSetting"
-        visible: panel.finds && panel.bridge.selected !== ""
+        property bool open: false
+        visible: panel.finds && panel.bridge.selected !== "" && (open || panel.bridge.search !== "")
         anchors { left: parent.left; right: parent.right; top: kind.bottom; topMargin: Theme.gap }
         height: visible ? Theme.field : 0
         editable: true
         placeholder: "Find a setting"
         text: panel.finds ? panel.bridge.search : ""
         Connections { target: find.input; function onTextEdited() { panel.bridge.setSearch(find.input.text) } }
-        onEscaped: panel.bridge.setSearch("")
+        onEscaped: { panel.bridge.setSearch(""); open = false }
+        Connections { target: find.input; function onActiveFocusChanged() { if (!find.input.activeFocus && find.input.text === "") find.open = false } }
         trailing: KeyHint { text: "Ctrl F"; visible: find.input.text === "" && !find.input.activeFocus }
     }
-    Shortcut { sequences: [StandardKey.Find]; enabled: find.visible && panel.visible
-               onActivated: { find.input.forceActiveFocus(); find.input.selectAll() } }
+    Shortcut { sequences: [StandardKey.Find]; enabled: panel.finds && panel.bridge.selected !== "" && panel.visible
+               onActivated: { find.open = true; find.input.forceActiveFocus(); find.input.selectAll() } }
     Flickable {      // a long inspector scrolls (wheel or touch, thin bar in the panel's margin); a short one never moves
         id: scroller
         objectName: "inspectorScroll"    // scripted steps scroll it (an app's `inspectorscroll` step)
@@ -63,7 +65,7 @@ Panel {
         Column {
             id: list
             width: parent.width
-            ActionsSection { width: parent.width; hub: panel.actions; visible: !!panel.actions && rows.length + more.length > 0 && !panel.bridge.search }
+            ActionsSection { width: Theme.wideFor(parent.width); hub: panel.actions; visible: !!panel.actions && rows.length + more.length > 0 && !panel.bridge.search }
             Column {  // mixed kinds: one line per kind, a click narrows the selection to it
                 width: parent.width; visible: panel.narrow.length > 0
                 Text { text: "Show only"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label

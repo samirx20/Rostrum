@@ -1,11 +1,13 @@
 import QtQuick
+import QtQuick.Controls as QQC
 import "."
 import "ColourMath.js" as M
 
 // A fill in the inspector: a small preview (the colour, the gradient, a chequer for none) and its name ("Solid",
 // "Linear · 3 stops"); never the hex as text. A click opens the PaintPicker beside it (to its left).
 // One picker session = one undo: began() on the first change, live(paint) while it goes on, ended() when the picker closes.
-// With `scrubbed` off, `edited(paint)` is sent once at the close instead (as ColorField does).
+// With `scrubbed` off, `edited(paint)` is sent once at the close instead (as ColorField does). While open it is
+// PaintSession.field, so the canvas can show the gradient's handles (`stop`: the picked stop).
 FieldFrame {
     id: f
     objectName: "paintField"
@@ -22,6 +24,7 @@ FieldFrame {
 
     property var cur: paint               // what the swatch shows while the picker is open
     property bool changing: false
+    readonly property int stop: body.sel
     onPaintChanged: cur = paint
     readonly property string kind: cur && cur.type ? cur.type : "none"
     readonly property int count: cur && cur.stops ? cur.stops.length : 0
@@ -71,8 +74,12 @@ FieldFrame {
     SidePopup {
         id: picker
         readonly property bool banked: typeof colourBank !== "undefined"
-        onClosed: f.settle()
+        closePolicy: PaintSession.hold && PaintSession.field === f ? QQC.Popup.CloseOnEscape
+                                                                   : QQC.Popup.CloseOnPressOutside | QQC.Popup.CloseOnEscape
+        onOpened: PaintSession.field = f
+        onClosed: { f.settle(); if (PaintSession.field === f) PaintSession.field = null }
         PaintPicker {
+            id: body
             paint: f.cur; types: f.types; maxStops: f.maxStops; stopOpacity: f.stopOpacity
             project: picker.banked ? colourBank.project : []
             brand: picker.banked ? colourBank.brand : []

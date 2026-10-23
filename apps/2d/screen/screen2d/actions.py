@@ -33,8 +33,8 @@ def _op(name, target, **args):
 
 
 def _a(id_, label, *, rank=100, importance="secondary", group="", bar="", job="", when=None, calls=None, do="",
-       min_targets=1, max_targets=None, kinds=None, locked_ok=False, promoted=False, why="", panel=True):
-    return {"panel": panel, "id": id_, "label": label, "rank": rank, "importance": importance, "group": group, "bar": bar, "job": job,
+       min_targets=1, max_targets=None, kinds=None, locked_ok=False, promoted=False, why="", panel=True, icon=""):
+    return {"icon": icon, "panel": panel, "id": id_, "label": label, "rank": rank, "importance": importance, "group": group, "bar": bar, "job": job,
             "when": when, "calls": calls, "do": do, "min_targets": min_targets, "max_targets": max_targets,
             "kinds": kinds, "locked_ok": locked_ok, "promoted": promoted, "why": why}
 
@@ -77,12 +77,12 @@ DATA = [
          calls=_MASK(m), promoted="picture_mix") for m, words in _MATTES.items()],
     _a("release_mask", "Release mask", rank=20, importance="primary", group="mask", bar="Mask", when=FACT("matted"), calls=_op("mask.release", "ids")),
     *[_a(op, op.capitalize(), rank=5, importance="primary", group="shape", bar="Combine", job=op, min_targets=2,
-         when=ALL("shapes", "same_parent"), promoted=True, calls=_op("shape.boolean", "stack", op=op, id="$new:path"))
+         when=ALL("shapes", "same_parent"), promoted=True, calls=_op("shape.boolean", "stack", op=op, id="$new:path"), icon=op)
       for op in ("union", "subtract", "intersect", "exclude")],
     *[_a(f"align_{e}", words, rank=30, importance="primary", group="arrange", bar="Align", job=job, when=FACT("groupable"),
-         calls=_op("layer.align", "ids", edge=e, at="$at")) for e, (words, job) in _EDGES.items()],
+         calls=_op("layer.align", "ids", edge=e, at="$at"), icon="align-" + e) for e, (words, job) in _EDGES.items()],
     *[_a(f"distribute_{ax}", words, rank=40, importance="primary", group="arrange", bar="Distribute", min_targets=3,
-         when=FACT("same_parent"), calls=_op("layer.distribute", "ids", axis=ax, at="$at"))
+         when=FACT("same_parent"), calls=_op("layer.distribute", "ids", axis=ax, at="$at"), icon="distribute-" + ax)
       for ax, words in (("x", "Even gaps across"), ("y", "Even gaps down"))],
     *[_a(f"match_{d}", words, rank=70, group="arrange", bar="Match", min_targets=2,
          when={"all": [FACT("same_parent"), NOT("has_text"), NOT("has_camera")]},
@@ -139,7 +139,7 @@ def _action(d: dict) -> Action:
     return Action(f"layer:{d['id']}", d["label"], when=when, kinds=d["kinds"], min_targets=d["min_targets"],
                   max_targets=d["max_targets"], importance=d["importance"], rank=d["rank"], job=d["job"],
                   group=d["group"], bar=d["bar"], calls=calls, do=d["do"], why=d["why"], panel=d["panel"],
-                  promoted=_promoted(d["promoted"]))
+                  promoted=_promoted(d["promoted"]), icon=d["icon"])
 
 
 def _promoted(p):

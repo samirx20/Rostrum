@@ -105,7 +105,8 @@ def panel(entries: list[dict], short: tuple | None = None) -> dict:
         if title not in by:
             by[title] = {"title": title, "items": []}
             rows.append(by[title])
-        by[title]["items"].append({"id": e["id"], "label": _in_row(e["label"], title), "keys": e["keys"]})
+        by[title]["items"].append({"id": e["id"], "label": _in_row(e["label"], title), "keys": e["keys"],
+                                  "icon": e.get("icon", ""), "full": e["label"]})
     for r in rows:
         r["cols"] = _cols([i["label"] for i in r["items"]])
     return {"rows": rows, "more": _fold([e for e in mine if e["importance"] != "primary"])}
