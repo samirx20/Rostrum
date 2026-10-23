@@ -1,9 +1,9 @@
 """The song's music map as the Timeline draws it (no Qt): every beat's time (the ruler and grid follow tempo
-changes), the tempo and key changes, and the sections (SectionBand.qml). All times in seconds, from the one
+changes and time signatures), the tempo, time signature and key changes, and the sections (SectionBand.qml). All times in seconds, from the one
 tempo map (rostrum_sound.doc.tempo)."""
 from __future__ import annotations
 
-from rostrum_sound.doc import keys, tempo
+from rostrum_sound.doc import keys, meter, tempo
 
 from . import timing
 
@@ -23,6 +23,12 @@ def tempo_marks(root: dict) -> list[dict]:
                    for c in root.get("tempos", []) if "at" in c and "bpm" in c)
 
 
+def meter_marks(root: dict) -> list[dict]:
+    """The time signature changes as flags ("3/4"; the song's own at the start is the header's)."""
+    return _sorted({"id": c["id"], "t": timing.sec(c["at"], root, c["id"]), "per": int(c["beatsPerBar"])}
+                   for c in root.get("meters", []) if "at" in c and "beatsPerBar" in c)
+
+
 def key_changes(root: dict) -> list[dict]:
     return _sorted({"id": k["id"], "t": timing.sec(k.get("at", 0), root, k["id"]), "key": k.get("key", "")}
                    for k in root.get("keys", []))
@@ -39,5 +45,6 @@ def sections(root: dict) -> list[dict]:
 
 def grid(root: dict, length: float) -> dict:
     """What song() adds for the ruler, grid, readout and section band."""
-    return {"beats": tempo.beats(root, length), "tempos": tempos(root), "tempoMarks": tempo_marks(root), "keys": key_changes(root),
+    return {"beats": tempo.beats(root, length), "bars": meter.bar_seconds(root, length), "tempos": tempos(root),
+            "tempoMarks": tempo_marks(root), "meterMarks": meter_marks(root), "keys": key_changes(root),
             "sections": sections(root), "key": keys.key_at(root, 0.0) or ""}

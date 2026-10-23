@@ -30,8 +30,8 @@ Item {
         return Math.abs(x - xOf(punch[0])) <= 5 ? 1 : Math.abs(x - xOf(punch[1])) <= 5 ? 2 : 0
     }
     readonly property var barMarks: {   // "5" (plain bar numbers) at every `every`-th bar
-        var out = [], per = song.beatsPerBar * every
-        for (var i = 0; i * per < song.beats.length; i++) out.push({ at: song.beats[i * per], text: String(i * every + 1) })
+        var out = [], bars = song.bars                 // each bar's start, time signature changes included
+        for (var i = 0; i < bars.length; i += every) out.push({ at: bars[i], text: String(i + 1) })
         return out
     }
     implicitHeight: kit.implicitHeight

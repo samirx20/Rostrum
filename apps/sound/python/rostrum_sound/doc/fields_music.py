@@ -1,4 +1,4 @@
-"""The song's music map: tempo changes, key changes and sections (named stretches: intro, verse, drop).
+"""The song's music map: tempo changes, time signature changes, key changes and sections (named stretches: intro, verse, drop).
 Fields, defaults and must-haves, merged into `fields.py`."""
 from __future__ import annotations
 
@@ -33,6 +33,10 @@ TEMPO_AT = V.Value("at", "number", rule=_tempo_time, schema={"anyOf": V.TIME_SCH
                    "seconds (stays at that moment).")
 FIELDS = {
     "tempo": [V.N("bpm", 20, 400, "Tempo", "bpm", help="The tempo from here to the next change."), TEMPO_AT],
+    "meter": [V.N("beatsPerBar", 1, 16, "Time signature", integer=True, label="Beats per bar",
+                  help="Beats in each bar from here to the next change (3: 3/4, 6: 6/8 counted in eighths)."),
+              V.Value("at", "number", rule=_tempo_time, schema={"anyOf": V.TIME_SCHEMA["anyOf"][:2]}, unit="s", step=0.01,
+                      form="time", group="Time signature", help='Where it starts, a new bar: {"beat": 32} or seconds.')],
     "key": [V.Value("key", "text", rule=_key, schema={"type": "string"}, group="Key",
                     help='"D minor", "F# major", "Bb dorian": from here to the next key change.'),
             V.time("at", group="Key")],
@@ -41,5 +45,5 @@ FIELDS = {
                 V.time("at", group="Section", help="Where it starts."),
                 V.time("end", group="Section", help="Where it ends (the next part starts here).")],
 }
-DEFAULTS = {"tempo": {}, "key": {}, "section": {}}
-REQUIRED = {"tempo": ["bpm", "at"], "key": ["key", "at"], "section": ["name", "at", "end"]}
+DEFAULTS = {"tempo": {}, "meter": {}, "key": {}, "section": {}}
+REQUIRED = {"tempo": ["bpm", "at"], "meter": ["beatsPerBar", "at"], "key": ["key", "at"], "section": ["name", "at", "end"]}

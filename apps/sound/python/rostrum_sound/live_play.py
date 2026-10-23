@@ -67,8 +67,8 @@ class LivePlay(QObject):
             self._open()                             # armed before the first render: the microphone opens now
 
     def configure(self, **opts):
-        """mic (takes folder), midi (device), instrument (live.json), bpm, beats, beat_times (a JSON file of the
-        beats in seconds, when the tempo changes): reopen when they changed. Other keys only mark a change."""
+        """mic (takes folder), midi (device), instrument (live.json), bpm, beats, beat_times / bar_times (JSON files of
+        the beats / bar starts in seconds, when the tempo / time signature changes): reopen when they changed. Other keys only mark a change."""
         opts = {k: v for k, v in opts.items() if v is not None}
         if opts != self.opts:
             self.opts = opts
@@ -128,7 +128,7 @@ class LivePlay(QObject):
         if not settings.load()["exclusive"]:
             args.append("--shared")
         for key, flag in (("mic", "--mic"), ("midi", "--midi"), ("instrument", "--instrument"), ("bpm", "--bpm"),
-                          ("beats", "--beats"), ("beat_times", "--beat-times")):
+                          ("beats", "--beats"), ("beat_times", "--beat-times"), ("bar_times", "--bar-times")):
             if key in o:
                 args += [flag, str(o[key])]
         return head + args

@@ -173,7 +173,7 @@ class Song(MusicMap):
     def tree(self) -> dict:
         root = {**self.root, "markers": self.markers}
         taken = {m["id"] for m in self.markers} | {t.id for t in self.tracks} | {MASTER_ID}
-        taken |= {i["id"] for k in ("tempos", "keys", "sections") for i in self.root.get(k, [])}
+        taken |= {i["id"] for k in ("tempos", "meters", "keys", "sections") for i in self.root.get(k, [])}
         holders = [*self.tracks, self.master, *(c for t in self.tracks for c in t.clips)]
         taken |= {e[0] for h in holders for e in getattr(h, "notes", []) + getattr(h, "hits", []) + h.effects if e[0]}
         taken |= {c.id for t in self.tracks for c in t.clips if c.id}

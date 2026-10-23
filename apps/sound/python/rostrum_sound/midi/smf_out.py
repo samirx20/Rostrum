@@ -15,7 +15,7 @@ import struct
 from pathlib import Path
 
 from ..doc import keys as K
-from ..doc import markers, tempo, times
+from ..doc import markers, meter, tempo, times
 from .song import DRUM_CHANNEL, DRUM_TO_GM
 
 DIVISION = 480
@@ -48,7 +48,7 @@ def _tick(root, sec: float) -> int:
 
 
 def _map_track(root) -> list:
-    ev = [(0, 0, _meta(0x58, bytes([int(root.get("beatsPerBar", 4)), 2, 24, 8])))]
+    ev = [(round(beat * DIVISION), 0, _meta(0x58, bytes([per, 2, 24, 8]))) for beat, per, _ in meter.segments(root)]
     for beat, bpm, _ in tempo.segments(root):
         ev.append((round(beat * DIVISION), 0, _meta(0x51, round(60_000_000 / bpm).to_bytes(3, "big"))))
     for k in root.get("keys", []):

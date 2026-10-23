@@ -58,6 +58,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("velocity-strip", ["--sample"], ["select melody", "dock editor", "velocity-line 0 0.2 6 1"]),
         ("key-shading", ["--sample"], ['agent Set the key|[{"op":"key.add","target":[],"args":{"at":0,"key":"D minor"}}]', "select melody", "dock editor"]),
         ("key-out-of-key-dots", ["--sample"], ['agent Set the key|[{"op":"key.add","target":[],"args":{"at":0,"key":"F# major"}}]', "select melody", "dock editor"]),
+        ("song-flags", ["--sample"], ['agent Tempo, a 3/4 bar and a key|[{"op":"tempo.add","target":[],"args":{"at":{"beat":8},"bpm":132}},'
+                                      '{"op":"meter.add","target":[],"args":{"at":{"beat":12},"beatsPerBar":3}},'
+                                      '{"op":"meter.add","target":[],"args":{"at":{"beat":15},"beatsPerBar":4}},'
+                                      '{"op":"key.add","target":[],"args":{"at":{"beat":15},"key":"D minor"}}]']),
         ("velocity-strip-drums", ["--sample"], ["select drums", "dock editor"]),
         ("velocity-folded", ["--sample"], ["select melody", "dock editor", "vel-fold"]),
         ("group-open", ["--sample"], [GROUP.format(name="Band")]),

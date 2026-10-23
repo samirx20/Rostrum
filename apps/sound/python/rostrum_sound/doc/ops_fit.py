@@ -8,7 +8,7 @@ import random
 
 from rostrum_core import Param, codes
 
-from . import markers, tempo
+from . import markers, meter, tempo
 from .registry import REGISTRY
 
 MARKER = Param.text("marker", required=True, label="Marker", group="Fit",
@@ -30,7 +30,7 @@ def fit_bar(ctx, targets, args):
         ctx.fail(codes.BAD_ARGUMENT, f'marker "{name}"', "is placed on a beat, so it moves with the tempo",
                  hint="Fit a bar to a marker placed in seconds (the picture's, or one from 2D).")
     t = markers.time_of(root, name)
-    beat = (int(args["bar"]) - 1) * int(root.get("beatsPerBar", 4))
+    beat = meter.bar_start(root, int(args["bar"]))
     segs = tempo.segments(root)
     i = max(k for k, s in enumerate(segs) if s[0] <= beat + 1e-9)
     b0, _, s0 = segs[i]

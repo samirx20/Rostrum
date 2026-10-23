@@ -110,7 +110,7 @@ def _ref_holders(data: dict, items, marks: list):
     """The items whose marker references need checking: only the changed ones while the markers are the very same
     items as the last check saw and no tempo changed (a version shares unchanged items: rostrum_core edits.fork), else every item."""
     own = data.get("markers", [])
-    same = (items is not None and not any(i.get("type") in ("doc", "tempo") for i in items) and marks == _SEEN["marks"] and len(own) == len(_SEEN["markers"])
+    same = (items is not None and not any(i.get("type") in ("doc", "tempo", "meter") for i in items) and marks == _SEEN["marks"] and len(own) == len(_SEEN["markers"])
             and all(a is b for a, b in zip(own, _SEEN["markers"])))
     _SEEN.update(markers=list(own), marks=marks)
     return items if same else walk(data, LISTS)

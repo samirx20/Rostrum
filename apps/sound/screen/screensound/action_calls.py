@@ -7,6 +7,7 @@ from __future__ import annotations
 import math
 
 from rostrum_core import RostrumError, run
+from rostrum_sound.doc import meter
 from rostrum_sound.doc import select_time as ST
 from rostrum_sound.doc.shift import write_like
 
@@ -175,7 +176,7 @@ def bar_near(f) -> int:
     """The bar nearest the selected marker at today's tempo (the popover's starting number)."""
     root = f.doc.data
     t = ST.start_of(root, f.items[0])
-    return max(2, round(ST.tempo.beat_at(root, t) / int(root.get("beatsPerBar", 4))) + 1)
+    return max(2, round(meter.bar_at(root, ST.tempo.beat_at(root, t))) + 1)
 
 
 def fit_bar(f, bar=None):

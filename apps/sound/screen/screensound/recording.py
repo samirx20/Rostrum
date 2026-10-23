@@ -17,7 +17,7 @@ from pathlib import Path
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from rostrum_core import RostrumError, codes
 from rostrum_sound import record as rec
-from rostrum_sound.doc import tempo
+from rostrum_sound.doc import meter, tempo
 
 from .playback import SCRATCH
 from .record_setup import RecordSetup
@@ -44,6 +44,7 @@ class Recording(QObject):
         self.player.level.connect(self._heard_level)
         self.player.changed.connect(self._player_changed)
         self.player.ended.connect(self._song_ended)
+        bridge.transport.renderChanged.connect(lambda: None if self._taking else self.configure())
         self._tick = QTimer(self, interval=50, timeout=lambda: self.levelChanged.emit())
         self._settle = QTimer(self, singleShot=True, interval=SETTLE_MS, timeout=lambda: self._guard(self._land))
 
@@ -81,18 +82,26 @@ class Recording(QObject):
             self.armedChanged.emit()
 
     def configure(self, at=None):
-        """The player's set-up for what is armed: the microphone, the keyboard (keys_record.py), and the song's
-        beats the metronome and count-in click on: its tempo, or, when the tempo changes, every beat's time from
-        the tempo map (tempo.beats, the one beat-to-seconds place), so a count-in anywhere clicks at that tempo."""
-        opts = {}
+        """The player's set-up: the song's beats the metronome and count-in click on, armed or not (each render
+        brings them up to date), and for what is armed the microphone and the keyboard (keys_record.py). The beats:
+        its tempo, or, when the tempo changes, every beat's time from the tempo map (tempo.beats, the one
+        beat-to-seconds place), so a count-in anywhere clicks at that tempo; the accents: every bar's start from the
+        bar map when the time signature changes (meter.py); the count-in counts the bar where the take starts."""
+        root = self.bridge.doc.data
+        at = self.clock.start_time() if at is None and self._taking else at
+        opts = {"bpm": round(tempo.start_bpm(root), 4), "beats": meter.per_bar_at(root, tempo.beat_at(root, at or 0.0))}
+        SCRATCH.mkdir(parents=True, exist_ok=True)
+        if len(tempo.segments(root)) > 1:
+            beats = SCRATCH / "beat-times.json"
+            beats.write_text(json.dumps(tempo.beats(root, BEATS_UNTIL)), encoding="utf-8")
+            opts.update(beat_times=str(beats), tempo=json.dumps(tempo.contract(root)))   # a new tempo reopens the player
+        if root.get("meters"):
+            bars = SCRATCH / "bar-times.json"
+            bars.write_text(json.dumps(meter.bar_seconds(root, BEATS_UNTIL)), encoding="utf-8")
+            opts.update(bar_times=str(bars), meters=json.dumps(meter.segments(root)))
         if self._armed:
             TAKES.mkdir(parents=True, exist_ok=True)
-            root = self.bridge.doc.data
-            opts = {"mic": str(TAKES), "bpm": round(tempo.start_bpm(root), 4), "beats": int(root.get("beatsPerBar", 4))}
-            if len(tempo.segments(root)) > 1:
-                beats = TAKES.parent / "beat-times.json"
-                beats.write_text(json.dumps(tempo.beats(root, BEATS_UNTIL)), encoding="utf-8")
-                opts.update(beat_times=str(beats), tempo=json.dumps(tempo.contract(root)))   # a new tempo reopens the player
+            opts["mic"] = str(TAKES)
             if self.keys is not None:
                 opts.update(self.keys.player_opts())
         self.player.configure(**opts)

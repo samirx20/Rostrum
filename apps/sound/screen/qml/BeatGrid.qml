@@ -21,15 +21,15 @@ Item {
                       function onPerSecChanged() { c.requestPaint() } }
         onPaint: {
             var ctx = getContext("2d"); ctx.reset()
-            var b = g.song.beats, per = g.song.beatsPerBar, ps = g.perSec, t0 = g.from - 2 / ps, t1 = g.from + (width + 2) / ps
-            var lo = 0, hi = b.length
-            while (lo < hi) { var m = (lo + hi) >> 1; if (b[m] < t0) lo = m + 1; else hi = m }     // first beat on screen
+            var b = g.song.beats, bl = g.song.bars, ps = g.perSec, t0 = g.from - 2 / ps, t1 = g.from + (width + 2) / ps
+            function first(a) { var lo = 0, hi = a.length
+                while (lo < hi) { var m = (lo + hi) >> 1; if (a[m] < t0) lo = m + 1; else hi = m }
+                return lo }                                                                        // first one on screen
             var bars = [], beats = []
-            for (var i = lo; i < b.length && b[i] <= t1; i++) {
-                var bar = i % per === 0
+            for (var j0 = first(bl); j0 < bl.length && bl[j0] <= t1; j0++) bars.push(Math.round((bl[j0] - g.from) * ps))
+            for (var i = first(b); i < b.length && b[i] <= t1; i++) {
                 var gap = i + 1 < b.length ? b[i + 1] - b[i] : g.song.spb
-                if (bar) bars.push(Math.round((b[i] - g.from) * ps))
-                else if (gap * ps >= 14) beats.push(Math.round((b[i] - g.from) * ps))
+                if (gap * ps >= 14) beats.push(Math.round((b[i] - g.from) * ps))   // (a bar line paints over its beat)
             }
             ctx.fillStyle = Theme.panel
             for (var j = 0; j < beats.length; j++) ctx.fillRect(beats[j], 0, 1, height)

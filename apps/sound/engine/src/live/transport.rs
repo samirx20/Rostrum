@@ -60,6 +60,8 @@ pub struct Transport {
     beat: f64,
     /// The song's beats in frames when its tempo changes (TypeScript's tempo map, src/core/tempoMap.ts); empty: every `beat` frames.
     beat_frames: Vec<usize>,
+    /// Each bar's first frame when the time signature changes: the beats on them are accented; empty: every `per_bar`-th.
+    bar_frames: Vec<usize>,
     per_bar: u32,
     /// Frames of count-in left; the click it plays.
     count_in: usize,
@@ -93,7 +95,7 @@ impl Transport {
     #[allow(clippy::too_many_arguments)]
     pub fn new(mix: Arc<Frames>, rate: u32, bpm: f64, per_bar: u32, inst: Option<(Instrument, Sender<Event>)>, cmds: Receiver<Cmd>, notes: Receiver<Event>, out: Sender<Out>) -> Transport {
         Transport {
-            mix, rate: rate as f64, pos: 0, playing: false, looped: None, metronome: false, beat: 60.0 / bpm.max(20.0) * rate as f64, beat_frames: vec![], per_bar: per_bar.max(1), count_in: 0, count_in_total: 0, count_in_bars: 0, count_beat: 0, count_beat_len: 0.0, click: None, chirp: false, last_beat: -1,
+            mix, rate: rate as f64, pos: 0, playing: false, looped: None, metronome: false, beat: 60.0 / bpm.max(20.0) * rate as f64, beat_frames: vec![], bar_frames: vec![], per_bar: per_bar.max(1), count_in: 0, count_in_total: 0, count_in_bars: 0, count_beat: 0, count_beat_len: 0.0, click: None, chirp: false, last_beat: -1,
             armed: None, held: vec![], inst, scratch: vec![], cmds, notes, out, blocks: Default::default(), hear: None,
         }
     }
@@ -102,6 +104,22 @@ impl Transport {
     pub fn with_beats(mut self, seconds: &[f64]) -> Transport {
         self.beat_frames = seconds.iter().map(|s| (s * self.rate).round() as usize).collect();
         self
+    }
+
+    /// Bar start times (seconds) for a song whose time signature changes: the metronome accents them.
+    pub fn with_bars(mut self, seconds: &[f64]) -> Transport {
+        self.bar_frames = seconds.iter().map(|s| (s * self.rate).round() as usize).collect();
+        self
+    }
+
+    /// Whether beat `b` (from 0) starts a bar: on the bar map when there is one, else every `per_bar`-th beat.
+    fn downbeat(&self, b: i64) -> bool {
+        if self.bar_frames.is_empty() || b < 0 {
+            return b.rem_euclid(self.per_bar as i64) == 0;
+        }
+        let f = match self.beat_frames.get(b as usize) { Some(&f) => f as f64, None => b as f64 * self.beat };
+        let i = self.bar_frames.partition_point(|&x| (x as f64) < f - 2.0);
+        self.bar_frames.get(i).is_some_and(|&x| (x as f64 - f).abs() <= 2.0)
     }
 
     /// Calibrating: the sweep instead of the click.

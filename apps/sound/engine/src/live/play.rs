@@ -9,6 +9,7 @@
 //! (a microphone take, one per pass), {"heard": …} per played note, {"error": …}, and {"done": …}.
 //! Options: --shared, --midi <n>, --instrument <live.json>, --mic <takes dir>, --bpm <b>, --beats <n>,
 //! --beat-times <file.json> (the beats in seconds, when the tempo changes: the metronome follows them),
+//! --bar-times <file.json> (each bar's start in seconds, when the time signature changes: accented clicks),
 //! --from <s>, --loop <a> <b>, --metronome, --count-in <bars>, --record, --punch <a> <b>, --autoplay,
 //! --until-end (quit when playback ends), --measure <notes> (a test pattern on the instrument),
 //! --monitor auto|surround|binaural|stereo (a surround mix on this output: monitor.rs; `ready.monitor` says
@@ -47,6 +48,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let mut spec: Option<LiveSpec> = json_file(args, "--instrument")?;
     let (bpm, beats) = (arg::<f64>(args, "--bpm", 0)?.unwrap_or(120.0), arg::<u32>(args, "--beats", 0)?.unwrap_or(4));
     let beat_times: Vec<f64> = json_file(args, "--beat-times")?.unwrap_or_default();
+    let bar_times: Vec<f64> = json_file(args, "--bar-times")?.unwrap_or_default();
     let takes_dir = args.iter().position(|a| a == "--mic").map(|i| args.get(i + 1).cloned().ok_or("--mic takes a folder for the takes")).transpose()?;
     let (ctx, crx) = channel();
     let (ntx, nrx) = channel();
@@ -85,7 +87,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
             }
             None => None,
         };
-        Ok(Transport::new(Arc::new(chosen.first(&mix, mix_rate, dev)?), rate, bpm, beats, inst, crx, nrx, otx).with_beats(&beat_times).with_hear(hear).with_chirp(calibrate))
+        Ok(Transport::new(Arc::new(chosen.first(&mix, mix_rate, dev)?), rate, bpm, beats, inst, crx, nrx, otx).with_beats(&beat_times).with_bars(&bar_times).with_hear(hear).with_chirp(calibrate))
     };
     let (opened, audio) = wasapi::start_on(make, stop.clone(), !flag("--shared"), Some(mix_rate as u32))?;
     if let Some(p) = plugin.as_mut() {

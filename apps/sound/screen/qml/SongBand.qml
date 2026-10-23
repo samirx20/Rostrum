@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// The song's tempo changes and key changes on the ruler, each a small flag at its time ("♩ 96", "D minor").
+// The song's tempo, time signature and key changes on the ruler, each a small flag at its time ("♩ 96", "3/4", "D minor").
 // Click selects it (the inspector edits it; Delete removes it); drag moves it (one gesture = one undo step; a tempo
 // change on its beat, a quarter beat grid, Ctrl = free). The key at the start is not flagged (the header strip and the song view say it). Absent while the song has none. Clicks are taken here in
 // one place, as in MarkerBand.
@@ -9,15 +9,23 @@ Item {
     id: band
     property var ruler
     readonly property var song: backend.song
-    readonly property var marks: song.tempoMarks.map(c => ({ id: c.id, t: c.t, text: "♩ " + Math.round(c.bpm), tempo: true }))
-                                 .concat(song.keys.filter(k => k.t > 0.001).map(k => ({ id: k.id, t: k.t, text: k.key, tempo: false })))
+    readonly property var marks: {      // flags at the same moment sit side by side (dx: the widths before it)
+        var out = song.tempoMarks.map(c => ({ id: c.id, t: c.t, text: "♩ " + Math.round(c.bpm), tempo: true }))
+                  .concat(song.meterMarks.map(c => ({ id: c.id, t: c.t, text: c.per + "/4", tempo: true })))
+                  .concat(song.keys.filter(k => k.t > 0.001).map(k => ({ id: k.id, t: k.t, text: k.key, tempo: false })))
+        for (var i = 0; i < out.length; i++) {
+            out[i].dx = 0
+            for (var j = 0; j < i; j++) if (Math.abs(out[j].t - out[i].t) < 1e-6) out[i].dx += flagWidth(out[j].text)
+        }
+        return out
+    }
     clip: true
     visible: marks.length > 0
     function flagWidth(text) { return metrics.advanceWidth(text) + 14 }
     function markAt(x) {
         var best = ""
         for (var i = 0; i < marks.length; i++) {
-            var mx = ruler.xOf(marks[i].t)
+            var mx = ruler.xOf(marks[i].t) + marks[i].dx
             if (x >= mx - 4 && x <= mx + flagWidth(marks[i].text)) best = marks[i].id
         }
         return best
@@ -29,7 +37,7 @@ Item {
         delegate: Rectangle {
             required property var modelData
             readonly property bool on: modelData.id === backend.selected
-            x: Math.round(band.ruler.xOf(modelData.t)); y: 1
+            x: Math.round(band.ruler.xOf(modelData.t) + modelData.dx); y: 1
             visible: x + width > 0 && x < band.width
             width: band.flagWidth(modelData.text) - 2; height: band.height - 2
             radius: 3; color: on ? Theme.accent : Theme.raised

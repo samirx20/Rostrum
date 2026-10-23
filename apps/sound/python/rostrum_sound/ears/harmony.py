@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from ..doc import keys, tempo
+from ..doc import keys, meter, tempo
 from ..listen.core import load, mono, num
 from ..listen.dsp import frames_to_time, resample
 from ..listen.dsp_events import chroma
@@ -14,11 +14,20 @@ MIN_SHARE = 0.15                # a pitch class counts in a window when it sound
 
 def windows(root: dict, end: float, per: str) -> list[tuple[float, float, int, int]]:
     """(start, end, bar, beat in bar) per beat (or per bar) of the document's tempo map, up to `end` seconds."""
-    bpb = int(root.get("beatsPerBar", 4))
     b = tempo.beats(root, end) + [end]
-    step = bpb if per == "bar" else 1
-    return [(b[i], min(b[min(i + step, len(b) - 1)], end), i // bpb + 1, i % bpb + 1)
-            for i in range(0, len(b) - 1, step) if b[i] < end]
+    out = []
+    for i in range(len(b) - 1):
+        if b[i] >= end:
+            break
+        bar = meter.bar_at(root, i)
+        n = int(bar + 1e-9)
+        beat_in = int(round((bar - n) * meter.per_bar_at(root, i))) + 1
+        if per != "bar":
+            out.append((b[i], min(b[i + 1], end), n + 1, beat_in))
+        elif beat_in == 1:
+            stop = min(i + int(meter.bar_length_beats(root, i)), len(b) - 1)
+            out.append((b[i], min(b[stop], end), n + 1, 1))
+    return out
 
 
 def chart_from_notes(notes, wins, key_at=lambda s: None) -> list[dict]:
