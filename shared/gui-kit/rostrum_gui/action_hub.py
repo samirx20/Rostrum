@@ -5,7 +5,7 @@ step (`apply_fn`), how to run an app's own non-operation action (`do_fn`: copy, 
 goes (`message_fn`: the status line).
 
 QML reads `bar` (the context bar), `panel` (the settings panel's actions at its top), calls `menu()` on right-click, `commands(query)` for Ctrl+K's "Do" group,
-`run(id)` for a click, and `key(job)` from the key map's shortcuts (`keys`); a hold key's release comes as
+`run(id)` for a click, `previewStart(id)` / `previewEnd()` for a hover preview (an app that has one), and `key(job)` from the key map's shortcuts (`keys`); a hold key's release comes as
 `keyUp(job)` (keyhold.py), and runs the release of the action its press ran: nothing if the press ran nothing. Every door re-reads the list at the
 moment it is used, so a stale bar can never run an action that is no longer valid: it says why instead.
 """
@@ -23,10 +23,12 @@ class ActionHub(QObject):
     barChanged = Signal()
     panelChanged = Signal()
 
-    def __init__(self, action_list: ActionList, facts_fn, what_fn, apply_fn, do_fn, message_fn, parent=None):
+    def __init__(self, action_list: ActionList, facts_fn, what_fn, apply_fn, do_fn, message_fn, parent=None,
+                 preview_fn=None, unpreview_fn=None):
         super().__init__(parent)
         self.list = action_list
         self._facts, self._what, self._apply, self._do, self._say = facts_fn, what_fn, apply_fn, do_fn, message_fn
+        self._preview, self._unpreview = preview_fn, unpreview_fn      # an app's hover preview (previewStart / previewEnd)
         self._bar: dict = {"what": "", "items": [], "more": []}
         self._panel: dict = {"rows": [], "more": []}
         self._held: dict[str, dict] = {}       # hold job -> the entry its press ran, until the key comes up
@@ -92,6 +94,20 @@ class ActionHub(QObject):
             self._say(self.list.why_not(facts, id_) or f'"{id_}" can\'t run now.')
             return
         self._go(entry)
+
+    @Slot(str)
+    def previewStart(self, id_):
+        """The pointer rests on an action: the app shows its would-be result, recording nothing (`preview_fn(calls)`).
+        An action not valid now, one that is not a plain change (copy, rename) or an app with no preview: nothing."""
+        entry = next((e for e in self._now()[1] if e["id"] == id_), None) if self._preview else None
+        if entry and not entry["do"] and entry["calls"]:
+            self._preview(entry["calls"])
+
+    @Slot()
+    def previewEnd(self):
+        """The pointer left (or the row went): the app takes its preview back."""
+        if self._unpreview:
+            self._unpreview()
 
     @Slot(str)
     def key(self, job):

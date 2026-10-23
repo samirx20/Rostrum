@@ -20,6 +20,7 @@ from .frames import FrameRenderer
 from .handle_slots import HandleSlots
 from .hooks import Hooks2D
 from .action_slots import ActionSlots
+from .action_preview import PREVIEW_TAG, ActionPreview
 from .agent_view import AgentView
 from .layer_order import LayerOrder
 from .painter import Painter
@@ -42,7 +43,7 @@ TOOLS = ("move", "pen", "draw", *F.SHAPE_KINDS, "text", "camera", "bone", "hand"
 
 
 
-class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, ActionSlots, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
+class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, ActionSlots, ActionPreview, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     toolChanged = Signal()
     frameChanged = Signal()
@@ -295,6 +296,7 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
         """The frame at the playhead. The scene doesn't depend on the playhead (the engine evaluates every time), so it
         is described once per change, never per frame: playing and scrubbing only send `t`."""
         from rostrum2d.scene import describe
+        self._previewing = False                            # the document's own picture is drawn again (action_preview.py)
         if self._scene is None:
             try:        # a 3D render layer's render missing, a video file gone …: said on screen, no frame drawn
                 with STATS.stage("describe"):
@@ -313,6 +315,8 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
     def _on_frame(self, serial, tag):
         self._frame = serial
         self.frameChanged.emit()                            # the picture and the overlays change together
+        if tag == PREVIEW_TAG:                              # an action's hover preview: not the document, the overlays stay
+            return
         self._frame_shown(tag)
         STATS.frame_shown(self._t)
 

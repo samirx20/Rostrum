@@ -9,7 +9,8 @@ import "."
 // selection has (the row never jumps between selections); the runs flow on the panel grid, a wider gap between runs,
 // wrapping when the panel is narrow. The less used ones (secondary) are one "⋯" menu pinned at the section's top-right
 // corner, folded like right-click: the same place on every selection.
-// No hover preview yet: drawing a would-be result needs the engine to render one (left for later, said in H48).
+// Resting on an action (about 250 ms) shows its would-be result on the canvas, recorded nowhere (hub.previewStart; H63);
+// moving off (or the row changing, or a click) takes it back. An app whose hub has no preview shows nothing.
 Item {
     id: section
     property var hub: null
@@ -25,6 +26,11 @@ Item {
     readonly property int size: Theme.field
     visible: rows.length + more.length > 0
     height: visible ? Math.max(runs.height, moreButton.visible ? size : 0) + Theme.pad : 0
+    property string resting: ""          // the action the pointer is on; its preview starts after the delay
+    function rest(id) { resting = id; delay.restart() }
+    function leave() { resting = ""; delay.stop(); if (hub) hub.previewEnd() }
+    Timer { id: delay; interval: 250; onTriggered: if (section.resting !== "" && section.hub) section.hub.previewStart(section.resting) }
+    onRowsChanged: leave()                // another selection: whatever was shown goes back
     function openMenu(button, entries) {
         const g = button.mapToItem(null, 0, button.height)
         menu.entries = entries; menu.openAt(g.x, g.y)
@@ -49,7 +55,8 @@ Item {
                         width: section.size; height: section.size
                         icon: modelData.icon; kind: "ghost"; tip: modelData.full || modelData.label
                         help: modelData.keys ? "Key: " + modelData.keys : ""
-                        onClicked: section.hub.run(modelData.id)
+                        onHoveredChanged: hovered ? section.rest(modelData.id) : section.leave()
+                        onClicked: { delay.stop(); section.hub.run(modelData.id) }
                     }
                 }
                 Repeater {      // the untitled actions: small buttons
@@ -59,7 +66,8 @@ Item {
                         objectName: "action:" + modelData.id
                         implicitHeight: section.size; text: modelData.label; tip: modelData.label
                         help: modelData.keys ? modelData.label + " (" + modelData.keys + ")" : ""
-                        onClicked: section.hub.run(modelData.id)
+                        onHoveredChanged: hovered ? section.rest(modelData.id) : section.leave()
+                        onClicked: { delay.stop(); section.hub.run(modelData.id) }
                     }
                 }
                 Button {        // a bar without icons: one button, its actions in a menu
@@ -82,5 +90,5 @@ Item {
         kind: "ghost"; glyph: "⋯"; tip: "More"; help: "The other actions for this selection"
         onClicked: section.openMenu(moreButton, section.more)
     }
-    ActionMenu { id: menu; onPicked: (v) => section.hub.run(v) }
+    ActionMenu { id: menu; onPicked: (v) => { delay.stop(); section.hub.run(v) }; onRested: (v) => v === "" ? section.leave() : section.rest(v) }
 }

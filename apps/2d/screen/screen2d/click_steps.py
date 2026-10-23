@@ -1,6 +1,7 @@
 """Scripted steps that click any control the way a hand would (QTest, the real mouse path), found by its objectName:
     clickobj <objectName> [fx fy] [right]   the control's point at fractions fx, fy of its box (default its centre);
                                        `right`: a right-click
+    hoverobj <objectName> [ms]         the pointer rests on the control (default 700 ms: past the hover-preview delay, then the preview is drawn)
     typekeys <text>                    type it on the keyboard into what has focus (_ for a space)
     dragobj <objectName> fx0 fy0 fx1 fy1   press at one point of the control's box, move, release at the other
     picturefile <path>                 the open paint picker's picture dialog picks this file (after clickobj fillType:picture)
@@ -8,7 +9,7 @@
 Used for the colour picker's proofs (the Fill row "row:paint", the picker's own named parts)."""
 from __future__ import annotations
 
-WORDS = {"clickobj", "dragobj", "picturefile", "choicefile", "typekeys"}
+WORDS = {"clickobj", "dragobj", "hoverobj", "picturefile", "choicefile", "typekeys"}
 
 
 def do_click_step(win, word, rest, step):
@@ -44,6 +45,10 @@ def do_click_step(win, word, rest, step):
     def at(fx, fy):
         q = item.mapToScene(QPointF(float(fx) * item.property("width"), float(fy) * item.property("height")))
         return QPoint(round(q.x()), round(q.y()))
+    if word == "hoverobj":
+        QTest.mouseMove(win, at(0.5, 0.5))
+        QTest.qWait(int(rest[1]) if rest[1:] else 700)
+        return
     if word == "clickobj":
         right = rest[-1] == "right"
         p = at(*([w for w in rest[1:3] if w != "right"] or (0.5, 0.5)))
