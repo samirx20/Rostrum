@@ -7,11 +7,13 @@ like 2D's) from the PNG frames and written whole or not at all.
 """
 from __future__ import annotations
 
+import copy
 import re
 import shutil
 import subprocess
 import tempfile
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 from rostrum_core import project
@@ -33,6 +35,20 @@ SETTINGS = {
     "denoise": {"type": "boolean", "default": True, "description": "Cycles denoising."},
     "exposure": {"type": "number", "default": 0, "description": "Stops, applied to the PNG only (the EXR stays scene-linear)."},
 }
+
+
+@dataclass(frozen=True)
+class DocView:
+    """What a render reads of a document, frozen when the render is asked for: the item, the history step and a copy of the data
+    (so edits made while it runs are not in it, and its manifest says exactly which state it shows). The one view both the tools
+    and the screen's Render button hand to `still`: never a stripped-down stand-in, so a field the manifest needs can't be missing."""
+    item_id: str
+    seq: int
+    data: dict
+
+    @classmethod
+    def of(cls, doc) -> "DocView":
+        return doc if isinstance(doc, cls) else cls(doc.item_id, doc.seq, copy.deepcopy(doc.data))
 
 
 def _cycles(args: dict, renderer: str) -> dict:
@@ -77,6 +93,7 @@ def still(where: str, doc, info: dict, scene: dict, engine, frame: int, renderer
     """One picture of a shot frame through its camera, as a whole project render version (or in the render cache without a
     project folder). The one code path of the render_still tool and the 3D screen's Render button. Blocking: call it from a job.
     Returns (the finished folder, its files, the engine's reply); a failure raises RENDER_FAILED and leaves only a .partial."""
+    doc = DocView.of(doc)
     partial, is_version = _folder(folder, doc, info)
     item, (w, h) = doc.item_id, size
     name = f'{item or "doc"}_{info["id"]}_f{frame:04d}'
@@ -94,10 +111,11 @@ def render_still(ctx, args):
     """One final picture of a shot through the shot camera (Cycles by default), as a project render with a manifest: png (sRGB, through
     OpenColorIO) and/or exr (scene-linear, for the Editor). Always a job: it returns a job id at once; ask with inspect_job (wait_s up to 25)."""
     doc, info = doc_and_shot(ctx, args)
+    scene, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
     frame, renderer = frame_of(ctx, info, args), renderer_of(args, "final")
     w, h = size_of(info, args, info["width"])
     formats = args.get("formats", ["png", "exr"])
-    scene, engine, item = draw.scene_of(doc, info["id"]), draw.engine_of(ctx), doc.item_id
+    engine, item = draw.engine_of(ctx), doc.item_id
 
     def job_fn(job):
         done, files, out = still(ctx.tool, doc, info, scene, engine, frame, renderer, (w, h), formats, args.get("exposure", 0),
@@ -131,7 +149,8 @@ def render_video(ctx, args):
                            hint="Install FFmpeg (LGPL build) and put it on the PATH, or render_still for single pictures.")
     w, h = size_of(info, args, info["width"])
     w, h = w - w % 2, h - h % 2                # H.264 needs even sizes
-    scene, engine, item, count = draw.scene_of(doc, info["id"]), draw.engine_of(ctx), doc.item_id, f1 - f0 + 1
+    scene, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
+    engine, item, count = draw.engine_of(ctx), doc.item_id, f1 - f0 + 1
     keep_exr = args.get("exr", False)
 
     def job_fn(job):

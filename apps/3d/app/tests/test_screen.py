@@ -108,3 +108,54 @@ def test_cancel_ends_the_engine_process_and_never_says_done(bridge, monkeypatch)
     assert job.wait(5)
     QGuiApplication.processEvents()
     assert Proc.killed and job.state == "" and job.note == CANCELLED and job.picture == ""
+
+
+def test_render_from_the_screen_makes_a_picture_and_its_record(tmp_path):
+    """The Render button once failed every time (its stand-in for the document lacked what the manifest reads): a render
+    asked for on the screen ends as a picture on disk and a manifest naming the step and state it shows."""
+    import json
+
+    class Engine:                                       # a core that draws a 1-pixel picture per requested file
+        proc = None
+        def ensure_scene(self, scene): return True
+        def render(self, progress=None, **req):
+            for k in ("png", "exr"):
+                if k in req:
+                    Path(req[k]).write_bytes(b"x")
+            return {"ok": True, "frames": [{"frame": req["frame"], "ms": 5}], "renderer": "cycles", "timing": {}}
+        def close(self): pass
+
+    QGuiApplication.instance() or QGuiApplication([])
+    doc = Document.new(KIND, folder=tmp_path, item="p")
+    doc.run_script("s.py", run_source(SRC, "s.py"))
+    doc.save()
+    b = Bridge3D(doc, viewport=None)
+    try:
+        b.render._make_engine = Engine
+        b.render.start()
+        assert b.render.wait(10)
+        QGuiApplication.processEvents()
+        assert b.render.state == "done", b.render.note
+        assert Path(b.render.path).is_file()
+        record = json.loads((Path(b.render.path).parent / "manifest.json").read_text(encoding="utf-8"))
+        assert record["source"]["history_entry"] == doc.seq and record["source"]["shot"] == "s"
+    finally:
+        b.close()
+
+
+def test_a_scripted_run_opens_a_scratch_copy_never_the_real_project(tmp_path):
+    """The A8 audit's test sphere was saved into the real sample: a scripted --doc must edit a copy only."""
+    from rostrum_core import userhome
+    from screen3d.scratch_doc import isolated
+
+    real = tmp_path / "real"
+    doc = Document.new(KIND, folder=real, item="p")
+    doc.run_script("s.py", run_source(SRC, "s.py"))
+    doc.save()
+    assert userhome.scripted()                                  # pytest counts as a scripted run
+    mine = isolated(real, "p", KIND.ext)
+    assert mine != real and (mine / "docs" / f"p{KIND.ext}").is_file()
+    copy = Document.open(mine, "p", KIND)
+    copy.apply([{"op": "mesh.add", "args": {"id": "extra", "shape": "sphere"}}], Bridge3D(copy, viewport=None).who)
+    copy.save()
+    assert not Document.open(real, "p", KIND).has("extra") and Document.open(mine, "p", KIND).has("extra")
