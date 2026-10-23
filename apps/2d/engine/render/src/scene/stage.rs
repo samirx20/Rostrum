@@ -81,13 +81,9 @@ fn each_sibling(parent: &Item, mut place: impl FnMut(&Item, String) -> String) -
     Ok(out)
 }
 
-fn gradient(e: &Item) -> String {
-    let mut stops = vec![v(e, "color1")];
-    if e.on("middle") {
-        stops.push(format!("{} {:.1}%", v(e, "color3"), e.num("mid") * 100.0));
-    }
-    stops.push(v(e, "color2"));
-    super::stage_fx::gradient(e, &stops.join(", "))
+/// A layer's box (w × h px), when it has one (a text's is its letters).
+fn size(it: &Item) -> Option<(f64, f64)> {
+    it.props.contains_key("w").then(|| (it.num("w"), it.num("h")))
 }
 
 fn transform(p: &Item) -> String {
@@ -120,14 +116,31 @@ fn content(it: &Item, look: Look) -> R<(String, String)> {
     match it.kind {
         "shape" => {
             let mut s = format!("width:{}px;height:{}px;box-sizing:border-box;", v(it, "w"), v(it, "h"));
-            s += &if it.str("shape") == "ellipse" { "border-radius:50%;".to_string() } else { format!("border-radius:{}px;", v(it, "radius")) };
-            if it.on("filled") || look.color.is_some() || grad.is_some() {
-                let _ = write!(s, "background:{};", look.color.map(str::to_string).or(grad.map(str::to_string)).unwrap_or_else(|| v(it, "fill")));
+            s += &match it.str("shape") {
+                "ellipse" => "border-radius:50%;".to_string(),
+                _ if it.on("eachCorner") => format!("border-radius:{}px {}px {}px {}px;", v(it, "radiusTL"), v(it, "radiusTR"), v(it, "radiusBR"), v(it, "radiusBL")),
+                _ => format!("border-radius:{}px;", v(it, "radius")),
+            };
+            let picture = super::stage_fill::picture(it, it.num("w"), it.num("h"), 0.0)?;
+            if picture.is_some() && grad.is_some() {
+                return Err(format!("{}: a shape has a picture fill and a gradient; it takes one fill", it.id));
+            }
+            let mut inner = String::new();
+            match (look.color, grad, picture) {
+                (None, None, Some(p)) if it.on("filled") => {
+                    // The pictures clipped by the box's own corners.
+                    s += "overflow:hidden;position:relative;";
+                    inner = p;
+                }
+                (c, g, _) if it.on("filled") || c.is_some() || g.is_some() => {
+                    let _ = write!(s, "background:{};", c.map(str::to_string).or(g.map(str::to_string)).unwrap_or_else(|| v(it, "fill")));
+                }
+                _ => {}
             }
             if it.on("stroke") {
                 let _ = write!(s, "border:{}px solid {};", v(it, "strokeWidth"), v(it, "strokeColor"));
             }
-            Ok((s, String::new()))
+            Ok((s, inner))
         }
         "text" => {
             let mut s = format!(
@@ -199,7 +212,10 @@ fn boxed(style: &str, inner: &str, full: bool) -> String {
 fn layer(it: &Item) -> R<String> {
     let held;
     let it = if stage_type::animated(it) { held = stage_type::container(it); &held } else { it };
-    let grad = it.effects.iter().find(|e| e.kind == "gradient").map(gradient);
+    // A parametric shape (shape_geom.rs) is drawn as the path of its outline.
+    let outlined;
+    let it = if super::shape_geom::is_path(it) { outlined = super::shape_geom::as_path(it)?; &outlined } else { it };
+    let grad = it.effects.iter().find(|e| e.kind == "gradient").map(|e| super::stage_fill::css(e, size(it))).transpose()?;
     let look = Look { gradient: grad.as_deref(), color: None };
     let (mut style, inner) = content(it, look)?;
     let blur: f64 = it.effects.iter().filter(|e| e.kind == "blur").map(|e| e.num("radius")).sum();

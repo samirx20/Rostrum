@@ -164,11 +164,14 @@ def shape_d(item: dict) -> str:
 def shape_to_path(ctx, targets, args):
     for t in targets:
         shape, loc = ctx.item(t), index(ctx.doc, ctx.kind.lists)[t]
+        if shape["shape"] not in ("rect", "ellipse"):
+            ctx.fail(codes.BAD_ARGUMENT, f'target "{t}"', f'is a {shape["shape"]}; Convert to path takes rectangles and '
+                     "ellipses for now (the engine draws the other shapes from their numbers)")
         bad = {k["prop"] for k in shape.get("keys", [])} - set(F.animatable("path"))
         if bad:
             ctx.fail(codes.BAD_ARGUMENT, f'target "{t}"', f"has keys on {', '.join(sorted(bad))}, which a path "
                      "can't animate; remove them first")
-        path = {**{k: v for k, v in shape.items() if k not in ("shape", "radius")}, **F.defaults("path"),
+        path = {**{k: v for k, v in shape.items() if k not in _SHAPE_ONLY}, **F.defaults("path"),
                 **{k: shape[k] for k in ("fill", "stroke", "strokeColor", "strokeWidth", "w", "h", *_TRANSFORM)},
                 "type": "path", "d": shape_d(shape), "cap": "butt", "join": "miter"}
         ctx.remove(t)
@@ -176,5 +179,6 @@ def shape_to_path(ctx, targets, args):
 
 
 _TRANSFORM = [p.name for p in F.TRANSFORM]
+_SHAPE_ONLY = {p.name for p in F.FIELDS["shape"]} - {p.name for p in F.FIELDS["path"]}
 _LOOK = ("filled", "fill", "fillRule", "stroke", "strokeColor", "strokeWidth", "cap", "join", "miter", "dash", "gap")
 from . import ops_boolean  # noqa: E402,F401  (path.boolean registers on REGISTRY)

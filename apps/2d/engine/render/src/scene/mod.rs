@@ -17,8 +17,10 @@ pub mod measure;
 pub mod morph;
 pub mod outline_cmd;
 pub mod path_data;
+pub mod shape_geom;
 pub mod stage;
 pub mod stage_type;
+pub mod stage_fill;
 pub mod stage_fx;
 pub mod stroke_width;
 pub mod type_font;
@@ -75,6 +77,8 @@ pub struct Node {
     pub paint_inside: bool,
     /// A rig's bones, iks and binds (crate::rig; RIG.md).
     pub rig: Vec<Node>,
+    /// A gradient's colour stops (stage_fill.rs).
+    pub stops: Vec<Node>,
 }
 
 #[derive(Clone, Debug)]
@@ -161,14 +165,14 @@ impl Scene {
 impl Node {
     pub fn walk(&self, f: &mut impl FnMut(&Node) -> Result<(), String>) -> Result<(), String> {
         f(self)?;
-        self.effects.iter().chain(&self.masks).chain(&self.layers).chain(&self.rig).try_for_each(|c| c.walk(f))
+        self.effects.iter().chain(&self.masks).chain(&self.layers).chain(&self.rig).chain(&self.stops).try_for_each(|c| c.walk(f))
     }
 
     fn find_mut(&mut self, id: &str) -> Option<&mut Node> {
         if self.id == id {
             return Some(self);
         }
-        self.effects.iter_mut().chain(&mut self.masks).chain(&mut self.layers).chain(&mut self.rig).find_map(|c| c.find_mut(id))
+        self.effects.iter_mut().chain(&mut self.masks).chain(&mut self.layers).chain(&mut self.rig).chain(&mut self.stops).find_map(|c| c.find_mut(id))
     }
 }
 
@@ -185,8 +189,8 @@ fn node(v: &Value, parent: &str) -> Result<Node, String> {
     let kind = fields::TYPES.iter().copied().find(|t| *t == ty).ok_or_else(|| format!("{id}: unknown item type \"{ty}\"; this engine draws: {}", fields::TYPES.join(", ")))?;
     let (role, fields) = fields::of(kind).unwrap();
     for k in obj.keys() {
-        if !matches!(k.as_str(), "id" | "type" | "props" | "anim" | "effects" | "masks" | "layers") && !(k == "frames" && matches!(kind, "drawing" | "video")) && !(k == "rig" && kind == "rig") && !(k == "paint" && PAINTED.contains(&kind)) {
-            return Err(format!("{id}: unknown part \"{k}\" (an item has id, type, props, anim, effects, masks, layers; a drawing or video also frames; a rig also rig; a {} also paint)", PAINTED.join(", ")));
+        if !matches!(k.as_str(), "id" | "type" | "props" | "anim" | "effects" | "masks" | "layers") && !(k == "frames" && matches!(kind, "drawing" | "video")) && !(k == "rig" && kind == "rig") && !(k == "stops" && kind == "gradient") && !(k == "paint" && PAINTED.contains(&kind)) {
+            return Err(format!("{id}: unknown part \"{k}\" (an item has id, type, props, anim, effects, masks, layers; a drawing or video also frames; a rig also rig; a gradient also stops; a {} also paint)", PAINTED.join(", ")));
         }
     }
     let props = v["props"].as_object().ok_or_else(|| format!("{id}: no props"))?.clone();
@@ -221,6 +225,7 @@ fn node(v: &Value, parent: &str) -> Result<Node, String> {
         masks: kids("masks", layer, &[Role::Mask])?,
         layers: kids("layers", role == Role::Comp || matches!(kind, "group" | "rig"), &[Role::Layer])?,
         rig: kids("rig", kind == "rig", &[Role::Rig])?,
+        stops: kids("stops", kind == "gradient", &[Role::Stop])?,
         frames: if matches!(kind, "drawing" | "video") { drawings(&id, &v["frames"])? } else { vec![] },
         paint: if v.get("paint").is_some() { drawings(&format!("{id}.paint"), &v["paint"]["frames"])? } else { vec![] },
         paint_inside: v["paint"]["inside"].as_bool().unwrap_or(true),

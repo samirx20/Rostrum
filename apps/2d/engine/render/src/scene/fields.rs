@@ -17,6 +17,11 @@ use Kind::*;
 pub type Field = (&'static str, Kind);
 
 const SHAPES: &[&str] = &["rect", "ellipse"];
+/// A shape layer's kinds (super::shape_geom draws all but rect and ellipse as a path).
+pub const SHAPE_KINDS: &[&str] = &["rect", "ellipse", "arc", "triangle", "polygon", "star", "line", "arrow", "spiral"];
+pub const HEADS: &[&str] = &["none", "triangle", "open", "circle", "square", "bar"];
+/// How a picture fills a shape (super::stage_fill).
+pub const PICTURE_FITS: &[&str] = &["fill", "fit", "tile", "stretch"];
 /// Where a rider sits on its path (super::follow `ride`): the drawn-on tip, the trim's start, or `rideAlong`.
 const RIDE_AT: &[&str] = &["end", "start", "along"];
 
@@ -48,8 +53,16 @@ fn transform() -> impl Iterator<Item = Field> {
 
 const COMP: &[Field] = &[("width", Number), ("height", Number), ("fps", Number), ("duration", Number), ("background", Color)];
 const SHAPE: &[Field] = &[
-    ("shape", Choice(SHAPES)), ("w", Number), ("h", Number), ("radius", Number), ("filled", Toggle), ("fill", Color),
+    ("shape", Choice(SHAPE_KINDS)), ("w", Number), ("h", Number), ("radius", Number),
+    // Each corner its own radius (rect): top-left, top-right, bottom-right, bottom-left.
+    ("eachCorner", Toggle), ("radiusTL", Number), ("radiusTR", Number), ("radiusBR", Number), ("radiusBL", Number),
+    // The parametric kinds (super::shape_geom).
+    ("sides", Number), ("points", Number), ("innerRadius", Number), ("innerCorner", Number), ("tip", Number), ("hole", Number),
+    ("startAngle", Number), ("sweep", Number), ("turns", Number), ("lineWidth", Number), ("lineCap", Choice(&["butt", "round", "square"])),
+    ("headStart", Choice(HEADS)), ("headEnd", Choice(HEADS)), ("headSize", Number),
+    ("filled", Toggle), ("fill", Color),
     ("stroke", Toggle), ("strokeColor", Color), ("strokeWidth", Number),
+    ("fillPicture", Text), ("fillFit", Choice(PICTURE_FITS)), ("fillScale", Number),
 ];
 const TEXT: &[Field] = &[
     ("body", Text), ("size", Number), ("weight", Number), ("color", Color), ("align", Choice(&["left", "center", "right"])),
@@ -76,6 +89,7 @@ const PATH: &[Field] = &[
     ("stroke", Toggle), ("strokeColor", Color), ("strokeWidth", Number), ("cap", Choice(&["butt", "round", "square"])),
     ("join", Choice(&["miter", "round", "bevel"])), ("miter", Number), ("dash", Number), ("gap", Number), ("dashOffset", Number),
     ("trimStart", Number), ("trimEnd", Number),
+    ("fillPicture", Text), ("fillFit", Choice(PICTURE_FITS)), ("fillScale", Number),
     // A varied width (super::width_profile, drawn by super::stroke_width); widthProfile keys blend by width_profile::blend.
     ("taperStart", Number), ("taperEnd", Number), ("widthProfile", Text), ("taperAlong", Choice(&["line", "drawn"])),
 ];
@@ -84,7 +98,11 @@ const GLOW: &[Field] = &[("radius", Number), ("strength", Number), ("ownColor", 
 const GRADIENT: &[Field] = &[
     ("style", Choice(&["linear", "radial", "conic"])), ("angle", Number), ("cx", Number), ("cy", Number), ("color1", Color), ("color2", Color),
     ("middle", Toggle), ("color3", Color), ("mid", Number),
+    // Free geometry (span "points"): linear from (x1, y1) to (x2, y2), radial radii rx, ry; fractions of the box.
+    ("span", Choice(&["box", "points"])), ("x1", Number), ("y1", Number), ("x2", Number), ("y2", Number), ("rx", Number), ("ry", Number),
 ];
+/// A gradient's colour stop (its `stops`; replace color1 / color2 / middle when there are any).
+const STOP: &[Field] = &[("at", Number), ("color", Color), ("opacity", Number)];
 const BACKDROP: &[Field] = &[("radius", Number), ("fillAmount", Number), ("saturate", Number), ("brightness", Number)];
 /// Film grain (super::grain); `frame` is not a field: eval.rs writes the frame number now.
 const GRAIN: &[Field] = &[("amount", Number), ("size", Number), ("colour", Toggle), ("still", Toggle), ("seed", Number)];
@@ -103,6 +121,8 @@ pub enum Role {
     Mask,
     /// A rig's part: bone, ik or bind (crate::rig::fields).
     Rig,
+    /// A gradient's colour stop.
+    Stop,
 }
 
 /// An item type's role and fields (a layer's are its own, then the transform's); None for an unknown type.
@@ -125,6 +145,7 @@ pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
         "shadow" => Some((Role::Effect, SHADOW.to_vec())),
         "grain" => Some((Role::Effect, GRAIN.to_vec())),
         "mask" => Some((Role::Mask, MASK.to_vec())),
+        "stop" => Some((Role::Stop, STOP.to_vec())),
         "trail" | "smear" => crate::motion::fields(kind).map(|f| (Role::Effect, f.to_vec())),
         "bone" | "ik" | "bind" => crate::rig::fields::of(kind).map(|f| (Role::Rig, f.to_vec())),
         _ => None,
@@ -132,7 +153,7 @@ pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
 }
 
 /// Every type the engine reads (for error messages and the fields.py check).
-pub const TYPES: &[&str] = &["comp", "shape", "text", "image", "video", "group", "drawing", "path", "blur", "glow", "gradient", "backdrop", "shadow", "grain", "mask", "rig", "bone", "ik", "bind", "camera", "trail", "smear"];
+pub const TYPES: &[&str] = &["comp", "shape", "text", "image", "video", "group", "drawing", "path", "blur", "glow", "gradient", "backdrop", "shadow", "grain", "mask", "stop", "rig", "bone", "ik", "bind", "camera", "trail", "smear"];
 
 /// Fields keys may drive: numbers, colours, a path's shape `d` and its `widthProfile`, except those that describe the item rather than a moment
 /// (fields.py `STILL`).

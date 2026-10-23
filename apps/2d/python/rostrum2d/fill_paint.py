@@ -1,13 +1,14 @@
-"""A layer's fill as one paint (fill_fields.py): read it (`of`), hand it to the engine (`lower`) and bring an old
-file's gradient effect into the fill (`upgrade`).
+"""A layer's fill as one paint (fill_fields.py): read it (`of`), hand it to the engine (`lower`, `engine_props`) and
+bring an old file's gradient effect into the fill (`upgrade`).
 
-    {"type": "none" | "solid" | "linear" | "radial" | "angular", "color": "#rrggbb",
-     "stops": [{"at": 0..1, "color": "#rrggbb", "opacity": 0..1}, …], "angle": °, "cx": 0..1, "cy": 0..1}
+    {"type": "none" | "solid" | "linear" | "radial" | "angular" | "picture", "color": "#rrggbb",
+     "stops": [{"at": 0..1, "color": "#rrggbb" | "#rrggbbaa", "opacity": 0..1}, …], "angle": °, "cx": 0..1, "cy": 0..1,
+     "span": "box" | "points", "x1", "y1", "x2", "y2", "rx", "ry": 0..1, "picture": path, "fit", "scale"}
 
-The engine draws a gradient as its `gradient` effect (two colours at 0 % and 100 %, an optional middle one), so a
-gradient fill goes to it as that effect, its stop keys as the effect's colour keys. What the engine can't draw yet (more
-than three stops, an end stop off 0 % / 100 %, a see-through stop) is refused in words, never drawn wrong (ENGINE_REQUEST
-in this file: the engine's next step).
+The engine draws a gradient as its `gradient` effect with the stops as its `stops` children (any number, anywhere in
+0..1, see-through allowed; each stop's colour, position and opacity keyed like any field). A stop colour written
+#rrggbbaa goes as #rrggbb with its alpha folded into the stop's opacity. A picture fill is the layer's own
+fillPicture / fillFit / fillScale (fill_fields.PICTURE), read by the engine.
 """
 from __future__ import annotations
 
@@ -20,8 +21,7 @@ from . import fill_fields as FF
 STYLE = {"linear": "linear", "radial": "radial", "angular": "conic"}       # fill type -> the engine effect's style
 AS_FILL = {v: k for k, v in STYLE.items()}
 LAYER_GEOMETRY = {"gradAngle": "angle", "gradX": "cx", "gradY": "cy"}      # layer field -> effect field
-ENGINE_REQUEST = ("the drawing engine draws a gradient fill of up to 3 stops, the first at 0 %, the last at 100 %, "
-                  "all fully opaque, until it learns stop lists")
+GEOMETRY = {"gradSpan": "span", "gradX1": "x1", "gradY1": "y1", "gradX2": "x2", "gradY2": "y2", "gradRX": "rx", "gradRY": "ry"}
 
 
 def colour_field(item: dict) -> str:
@@ -44,7 +44,13 @@ def of(item: dict) -> dict:
     return {"type": kind_of(item), "color": item.get(colour_field(item), "#ffffff"),
             "stops": [{"at": s.get("at", 0.0), "color": s.get("color", "#ffffff"), "opacity": s.get("opacity", 1.0)}
                       for s in stops_of(item)],
-            "angle": item.get("gradAngle", 90.0), "cx": item.get("gradX", 0.5), "cy": item.get("gradY", 0.5)}
+            "angle": item.get("gradAngle", 90.0), "cx": item.get("gradX", 0.5), "cy": item.get("gradY", 0.5),
+            **{short: item.get(name, _default(name)) for name, short in GEOMETRY.items()},
+            "picture": item.get("fillPicture", ""), "fit": item.get("fillFit", "fill"), "scale": item.get("fillScale", 1.0)}
+
+
+def _default(name: str):
+    return next(p.default for p in FF.LAYER if p.name == name)
 
 
 def _renamed(keys: list[dict], prop: str) -> list[dict]:
@@ -53,38 +59,48 @@ def _renamed(keys: list[dict], prop: str) -> list[dict]:
 
 def lower(item: dict) -> dict | None:
     """The gradient effect item the engine draws for this layer's gradient fill (None: not a gradient). Raises
-    ValueError, in words, for a gradient the engine can't draw yet."""
+    ValueError, in words, for a gradient it can't be (fewer than 2 stops)."""
     kind = kind_of(item)
+    if kind == "picture" and item["type"] == "text":
+        raise ValueError(f'{item["id"]}: a text’s letters take no picture fill yet; use a colour or a gradient')
     if kind not in FF.GRADIENTS:
         return None
     stops = stops_of(item)
-    why = _undrawable(stops)
-    if why:
-        raise ValueError(f'{item["id"]}: its {kind} fill {why}; {ENGINE_REQUEST}')
-    first, last = stops[0], stops[-1]
+    if len(stops) < 2:
+        raise ValueError(f'{item["id"]}: its {kind} fill has {len(stops)} stop{"s" * (len(stops) != 1)} (a gradient needs 2)')
     fx = {"id": f'{item["id"]}.fill', "type": "gradient", "style": STYLE[kind], "angle": item.get("gradAngle", 90.0),
-          "cx": item.get("gradX", 0.5), "cy": item.get("gradY", 0.5), "color1": first.get("color", "#ffffff"),
-          "color2": last.get("color", "#ffffff"), "middle": len(stops) == 3,
-          "keys": _renamed(keys_of(first, "color"), "color1") + _renamed(keys_of(last, "color"), "color2")}
-    for field, prop in LAYER_GEOMETRY.items():
+          "cx": item.get("gradX", 0.5), "cy": item.get("gradY", 0.5), "color1": _rgb(stops[0].get("color", "#ffffff")),
+          "color2": _rgb(stops[-1].get("color", "#ffffff")), "middle": False,
+          **{short: item.get(name, _default(name)) for name, short in GEOMETRY.items()},
+          "keys": [], "stops": [_stop(item, i, s) for i, s in enumerate(stops)]}
+    for field, prop in {**LAYER_GEOMETRY, **GEOMETRY}.items():
         fx["keys"] += _renamed(keys_of(item, field), prop)
-    if len(stops) == 3:
-        mid = stops[1]
-        fx.update(color3=mid.get("color", "#ffffff"), mid=mid.get("at", 0.5))
-        fx["keys"] += _renamed(keys_of(mid, "color"), "color3") + _renamed(keys_of(mid, "at"), "mid")
     return fx
 
 
-def _undrawable(stops: list[dict]) -> str:
-    if len(stops) < 2:
-        return f"has {len(stops)} stop{'s' * (len(stops) != 1)} (a gradient needs 2)"
-    if len(stops) > 3:
-        return f"has {len(stops)} stops"
-    if stops[0].get("at", 0.0) != 0.0 or stops[-1].get("at", 0.0) != 1.0 or keys_of(stops[0], "at") or keys_of(stops[-1], "at"):
-        return "has an end stop away from 0 % or 100 %"
-    if any(s.get("opacity", 1.0) != 1.0 or keys_of(s, "opacity") for s in stops):
-        return "has a see-through stop"
-    return ""
+def _rgb(colour: str) -> str:
+    return colour[:7]
+
+
+def _alpha(colour: str) -> float:
+    return int(colour[7:9], 16) / 255 if len(colour) == 9 else 1.0
+
+
+def _stop(item: dict, i: int, stop: dict) -> dict:
+    """One stop as the engine's `stop` item: #rrggbbaa split into the colour and the opacity (an alpha in a keyed
+    colour is left out: the engine mixes colours as #rrggbb)."""
+    colour, a = stop.get("color", "#ffffff"), _alpha(stop.get("color", "#ffffff"))
+    keys = [{**k, "c": _rgb(k["c"])} if k.get("prop") == "color" and "c" in k else
+            {**k, "v": k["v"] * a} if k.get("prop") == "opacity" and "v" in k else k for k in stop.get("keys", [])]
+    return {"id": stop.get("id") or f'{item["id"]}.stop{i}', "type": "stop", "at": stop.get("at", 0.0), "color": _rgb(colour),
+            "opacity": stop.get("opacity", 1.0) * a, "keys": keys}
+
+
+def engine_props(item: dict, props: dict) -> dict:
+    """A shape's or path's props as sent: its picture only while the fill type is picture."""
+    if "fillPicture" in props and kind_of(item) != "picture":
+        props["fillPicture"] = ""
+    return props
 
 
 # ── old files: a gradient effect becomes the fill (one way, on open: rostrum_core DocKind.upgrade) ──────────────────

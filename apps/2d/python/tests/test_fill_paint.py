@@ -1,5 +1,5 @@
 """The fill as a paint (fill_paint.py, ops_fill_paint.py). Silent breakage guarded: an old file's gradient effect, moved
-into the fill on open, must reach the engine exactly as before (same look, keys and all), recorded as one change;
+into the fill on open, must reach the engine drawing the same gradient (same look, keys and all), recorded as one change;
 a re-run `layer.fill` must keep a stop's keys."""
 from rostrum_core import Document, Who
 from rostrum_core.storage import save
@@ -22,8 +22,18 @@ def _old_file(tmp_path):
 
 
 def _gradient_node(data):
+    """The gradient the engine draws, as (geometry, geometry keys, stops with their keys): an old effect's color1 /
+    color3 at mid / color2 and a fill's `stops` children (E8) read the same."""
     node = scene.describe(data)["comp"]["layers"][0]["effects"][0]
-    return {k: v for k, v in node.items() if k != "id"}
+    props, anim = node["props"], node.get("anim", {})
+    geometry = {k: props[k] for k in ("style", "angle", "cx", "cy")}
+    if node.get("stops"):
+        stops = [(s["props"]["at"], s["props"]["color"], s["props"]["opacity"], s.get("anim", {})) for s in node["stops"]]
+    else:
+        ends = [(0.0, "color1", None), *([(props["mid"], "color3", "mid")] if props["middle"] else []), (1.0, "color2", None)]
+        stops = [(at, props[c], 1.0, {**({"color": anim[c]} if c in anim else {}), **({"at": anim[a]} if a in anim else {})})
+                 for at, c, a in ends]
+    return geometry, {k: v for k, v in anim.items() if k in geometry}, stops
 
 
 def test_old_gradient_effect_opens_as_the_fill_looking_the_same(tmp_path):
@@ -60,3 +70,20 @@ def test_picker_edit_on_animated_stop_keys_it_at_the_playhead():
     d.apply([{"op": "layer.fill", "target": "a", "args": {"type": "linear", "at": 1.0, "stops": ["#00ff00 0", "#0000ff 100"]}}], SAM)
     assert [(k["t"], k["c"]) for k in d.item(first)["keys"]] == [(0.0, "#ff0000"), (1.0, "#00ff00")]
     assert d.item(first)["color"] == "#ff0000" and not d.item(last)["keys"]
+
+
+def test_any_stops_and_a_left_picture_reach_the_engine_as_set():
+    """E8: five stops (one #rrggbbaa: its alpha becomes the stop's opacity) go as the gradient's stops; a picture chosen
+    and then left for a gradient is kept in the document but not drawn."""
+    d = Document.new(KIND)
+    d.apply([{"op": "comp.add", "args": {"id": "s"}},
+             {"op": "layer.add", "target": "s", "args": {"type": "shape", "id": "a"}},
+             {"op": "shape.set", "target": "a", "args": {"shape": "star"}},
+             {"op": "layer.fill", "target": "a", "args": {"type": "picture", "picture": "C:/pic.png", "fit": "tile"}},
+             {"op": "layer.fill", "target": "a", "args": {"type": "linear", "stops": [
+                 "#ff0000 0", "#ffff00 20", "#00ff0080 45", "#00ffff 70", "#0000ff 100"]}}], SAM)
+    node = scene.describe(d.data)["comp"]["layers"][0]
+    stops = node["effects"][0]["stops"]
+    assert [s["props"]["at"] for s in stops] == [0.0, 0.2, 0.45, 0.7, 1.0]
+    assert stops[2]["props"]["color"] == "#00ff00" and abs(stops[2]["props"]["opacity"] - 128 / 255) < 1e-3
+    assert node["props"]["fillPicture"] == "" and d.item("a")["fillPicture"] == "C:/pic.png"

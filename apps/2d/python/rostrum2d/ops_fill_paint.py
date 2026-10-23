@@ -19,23 +19,26 @@ from . import fill_fields as FF, fill_paint
 from .evaluate import resolve
 from .kind import REGISTRY as R
 
-_STOP = re.compile(r"^\s*(#[0-9a-fA-F]{6})\s+(-?\d+(?:\.\d+)?)\s*%?(?:\s+(\d+(?:\.\d+)?)\s*%?)?\s*$")
+_STOP = re.compile(r"^\s*(#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?)\s+(-?\d+(?:\.\d+)?)\s*%?(?:\s+(\d+(?:\.\d+)?)\s*%?)?\s*$")
 SWATCHES = "swatches"
 
 
 def parse_stop(ctx, text: str) -> dict:
     m = _STOP.match(text or "")
     if not m:
-        ctx.fail(codes.BAD_ARGUMENT, f'stop "{text}"', 'is not "<colour> <position %> [<opacity %>]"', ["#ff7a59 0", "#7c4dff 100 80"])
+        ctx.fail(codes.BAD_ARGUMENT, f'stop "{text}"', 'is not "<colour #rrggbb or #rrggbbaa> <position %> [<opacity %>]"', ["#ff7a59 0", "#7c4dff 100 80"])
     at, opacity = float(m[2]) / 100, (float(m[3]) / 100 if m[3] else 1.0)
     if not (0 <= at <= 1 and 0 <= opacity <= 1):
         ctx.fail(codes.BAD_ARGUMENT, f'stop "{text}"', "has a position or opacity outside 0 … 100 %")
-    return {"at": round(at, 4), "color": m[1].lower(), "opacity": round(opacity, 4)}
+    alpha = int(m[1][7:9], 16) / 255 if len(m[1]) == 9 else 1.0     # "#rrggbbaa": its alpha folds into the opacity
+    return {"at": round(at, 4), "color": m[1][:7].lower(), "opacity": round(opacity * alpha, 4)}
 
 
 @R.operation("layer.fill", "Set the fill of shapes, paths or texts in one change: none, a solid colour, or a linear / radial / "
              "angular gradient with its stops (\"#ff7a59 0\", \"#7c4dff 100\"; a third number is the stop's opacity %) and "
-             "its angle (linear: 90 = left to right; angular: where the sweep starts, 0 = up) or centre (fractions of the box). "
+             "its angle (linear: 90 = left to right; angular: where the sweep starts, 0 = up) or centre (fractions of the box), or "
+             "span=\"points\": linear from (x1, y1) to (x2, y2), radial radii rx, ry (fractions of the box); or a picture "
+             "(file, fit fill / fit / tile / stretch, scale) clipped to a shape or path. "
              "Each stop's colour and position animate with key.add on the stop; an animated one changes at `at` (a key there).",
              target=FF.OWNERS, label="Fill",
              params=[Param.choice("type", ["none", *FF.TYPES], label="Fill type"),
@@ -43,6 +46,11 @@ def parse_stop(ctx, text: str) -> dict:
                      Param.list("stops", "text", label="Stops", min_items=2, help="Each \"<colour> <position %> [<opacity %>]\""),
                      Param.number("angle", label="Angle", min=-360, max=360, unit="°"),
                      Param.number("cx", label="Centre X", min=-5, max=6), Param.number("cy", label="Centre Y", min=-5, max=6),
+                     Param.choice("span", ["box", "points"], label="Span"),
+                     *(Param.number(n, label=n, min=-5, max=6) for n in ("x1", "y1", "x2", "y2", "rx", "ry")),
+                     Param.text("picture", label="Picture", help="A picture file (fill type picture)"),
+                     Param.choice("fit", ["fill", "fit", "tile", "stretch"], label="Picture fit"),
+                     Param.number("scale", label="Picture scale", min=0.01, max=100),
                      Param.number("at", label="At", help="The time an animated colour or stop changes at (a key there)")])
 def fill_set(ctx, targets, args):
     stops = [parse_stop(ctx, s) for s in args["stops"]] if args.get("stops") else None
@@ -59,7 +67,10 @@ def fill_set(ctx, targets, args):
         ctx.set(t, "fillType", kind)
         if "color" in args:
             _put(ctx, item, fill_paint.colour_field(item), args["color"], args.get("at"))
-        for field, name in (("gradAngle", "angle"), ("gradX", "cx"), ("gradY", "cy")):
+        if kind == "picture" and item["type"] == "text":
+            ctx.fail(codes.BAD_ARGUMENT, f'text "{t}"', "takes no picture fill yet; use a colour or a gradient")
+        for field, name in (("gradAngle", "angle"), ("gradX", "cx"), ("gradY", "cy"), ("fillPicture", "picture"),
+                            ("fillFit", "fit"), ("fillScale", "scale"), *((f, s) for f, s in fill_paint.GEOMETRY.items())):
             if name in args:
                 ctx.set(t, field, args[name])
         if kind in FF.GRADIENTS:

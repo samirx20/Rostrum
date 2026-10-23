@@ -32,6 +32,14 @@ def C(name, label, group, default, imp=P, when=None):
 
 
 RECT_WORDS = {"rect": "Rectangle"}
+# A shape layer's kinds (the engine's shape_geom.rs draws all but rect and ellipse as their outline path).
+SHAPE_KINDS = ["rect", "ellipse", "arc", "triangle", "polygon", "star", "line", "arrow", "spiral"]
+SHAPE_WORDS = {"rect": "Rectangle", "ellipse": "Ellipse", "arc": "Arc", "triangle": "Triangle", "polygon": "Polygon",
+               "star": "Star", "line": "Line", "arrow": "Arrow", "spiral": "Spiral"}
+HEADS = ["none", "triangle", "open", "circle", "square", "bar"]
+HEAD_WORDS = {"none": "None", "triangle": "Triangle", "open": "Open", "circle": "Circle", "square": "Square", "bar": "Bar"}
+_OPEN = {"any": [IS("shape", "line"), IS("shape", "spiral")]}         # drawn as a line in the fill's paint
+_LINES = {"any": [IS("shape", "line"), IS("shape", "spiral"), IS("shape", "arrow")]}
 
 
 def CH(name, options, label, group, default, imp=P, when=None, help="", labels=None):
@@ -177,15 +185,37 @@ FIELDS: dict[str, list[Param]] = {
           "scene: the project's main mix by default (empty). Rendered by Sound's engine"),
     ],
     "shape": [
-        CH("shape", ["rect", "ellipse"], "Shape", "Shape", "rect", labels=RECT_WORDS),
-        N("w", "Width", "Shape", 0, 20000, 1, "px", default=200.0),
+        CH("shape", SHAPE_KINDS, "Shape", "Shape", "rect", labels=SHAPE_WORDS),
+        N("w", "Width", "Shape", 0, 20000, 1, "px", default=200.0, help="A line's or arrow's length"),
         N("h", "Height", "Shape", 0, 20000, 1, "px", default=200.0),
-        N("radius", "Corner radius", "Shape", 0, 10000, 1, "px", when=IS("shape", "rect")),
+        N("radius", "Corner radius", "Shape", 0, 10000, 1, "px", when={"any": [{"all": [IS("shape", "rect"), IS("eachCorner", False)]},
+                                                                         *(IS("shape", k) for k in ("triangle", "polygon", "star"))]}),
+        T("eachCorner", "Each corner", "Shape", False, D, IS("shape", "rect"), help="A radius per corner"),
+        *(N(f"radius{c}", f"Corner radius {w}", "Shape", 0, 10000, 1, "px", when={"all": [IS("shape", "rect"), IS("eachCorner", True)]})
+          for c, w in (("TL", "top left"), ("TR", "top right"), ("BR", "bottom right"), ("BL", "bottom left"))),
+        N("sides", "Sides", "Shape", 3, 60, 1, "", when=IS("shape", "polygon"), default=6.0),
+        N("points", "Points", "Shape", 3, 60, 1, "", when=IS("shape", "star"), default=5.0),
+        N("innerRadius", "Inner radius", "Shape", 0, 1, 0.01, "", when=IS("shape", "star"), default=0.5, display="percent"),
+        N("innerCorner", "Inner corner radius", "Shape", 0, 10000, 1, "px", S, IS("shape", "star")),
+        N("tip", "Tip position", "Shape", 0, 1, 0.01, "", when=IS("shape", "triangle"), default=0.5, display="percent",
+          help="Where the top corner sits along the top edge"),
+        N("hole", "Inner radius", "Shape", 0, 1, 0.01, "", when={"any": [IS("shape", "arc"), IS("shape", "spiral")]}, display="percent",
+          help="Arc: 0 = a pie slice, more = a ring. Spiral: where it starts"),
+        N("startAngle", "Start angle", "Shape", -360, 360, 1, "°", when=IS("shape", "arc"), help="0° = straight up, clockwise"),
+        N("sweep", "Sweep", "Shape", -360, 360, 1, "°", when=IS("shape", "arc"), default=270.0),
+        N("turns", "Turns", "Shape", 0.05, 100, 0.05, "", when=IS("shape", "spiral"), default=3.0),
+        N("lineWidth", "Line width", "Shape", 0, 1000, 0.5, "px", when=_LINES, default=8.0),
+        CH("lineCap", ["butt", "round", "square"], "Line ends", "Shape", "round", S, {"any": [IS("shape", "line"), IS("shape", "spiral")]},
+           labels={"butt": "Flat", "round": "Round", "square": "Square"}),
+        CH("headStart", HEADS, "Start head", "Shape", "none", when=IS("shape", "arrow"), labels=HEAD_WORDS),
+        CH("headEnd", HEADS, "End head", "Shape", "triangle", when=IS("shape", "arrow"), labels=HEAD_WORDS),
+        N("headSize", "Head size", "Shape", 0, 2000, 1, "px", when=IS("shape", "arrow"), default=32.0),
         FILLED,
         C("fill", "Fill colour", "Fill", "#ffffff", when=IS("filled", True)),
-        T("stroke", "Outline", "Outline", False, S),
+        T("stroke", "Outline", "Outline", False, S, when={"not": _OPEN}),
         C("strokeColor", "Outline colour", "Outline", "#ffffff", S, STROKE),
         N("strokeWidth", "Outline width", "Outline", 0, 500, 0.5, "px", S, STROKE, default=2.0),
+        *_fill.PICTURE,
     ] + TRANSFORM,
     "text": [
         X("body", "Text", "Text", "Text"),
@@ -269,6 +299,7 @@ FIELDS: dict[str, list[Param]] = {
         N("dashOffset", "Dash offset", "Dashes", -100000, 100000, 0.5, "px", D, STROKE, help="Animate it to march the dashes"),
         N("trimStart", "Trim start", "Draw on", 0, 1, 0.001, "", S, STROKE, help="Where the drawn part of the stroke starts (0..1)"),
         N("trimEnd", "Trim end", "Draw on", 0, 1, 0.001, "", S, STROKE, default=1.0, help="Animate 0 → 1 to draw the stroke on"),
+        *_fill.PICTURE,
         N("taperStart", "Taper start", "Width", 0, 1, 0.01, "", S, STROKE, help="How much of the line the width takes to grow from 0 at the start (0..1)"),
         N("taperEnd", "Taper end", "Width", 0, 1, 0.01, "", S, STROKE, help="How much of the line the width takes to shrink to 0 at the end (0..1)"),
         Param.text("widthProfile", label="Width along the line", group="Width", importance=S, valid_when=STROKE, default="",
@@ -304,6 +335,7 @@ FIELDS: dict[str, list[Param]] = {
         T("middle", "Middle colour", "Gradient", False, S),
         C("color3", "Middle", "Gradient", "#c0c0c0", S, IS("middle", True)),
         N("mid", "Middle at", "Gradient", 0, 1, 0.01, "", S, IS("middle", True), default=0.5),
+        *_fill.GEOMETRY,
     ],
     # Frosted glass: blurs what is behind the layer inside its box (and corner radius); the layer's own look is on top.
     "backdrop": [

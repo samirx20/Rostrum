@@ -1,7 +1,7 @@
 """The inspector's Fill row: one paint (kit PaintField: a swatch and "Linear · 3 stops"; a click opens the picker) in
 place of the colour row and the fill's own fields (on / off, type, gradient angle and centre: the picker and the canvas
 handles set those). Not a stored field: the row is rostrum2d.fill_paint.of(item) and an edit is the agents'
-`layer.fill`. What the engine can draw today bounds the picker (fill_paint.ENGINE_REQUEST).
+`layer.fill`. The engine draws any number of stops anywhere in 0..1, see-through too (E8).
 The row's key mark (`anim_state`, `animate_calls`): a solid fill is its colour's; a gradient's is its stops' colours (and an
 inner stop's position): keyed when any is, a click keys them all at the playhead or stops them all. The picker shows the
 paint at the playhead and an edit keys what is animated there (layer.fill `at`). No Qt."""
@@ -15,14 +15,14 @@ from . import route
 
 ROW = "paint"
 HIDDEN = {"filled", *fill_fields.NAMES}
-OPTIONS = {"maxStops": 3, "stopOpacity": False}          # the engine's gradient today (fill_paint.ENGINE_REQUEST)
+X
 
 
 def rows(rows: list[dict], item: dict | None, t: float = 0.0, fps: float = 30.0) -> list[dict]:
     if not item or item.get("type") not in fill_fields.OWNERS:
         return rows
     colour = fill_paint.colour_field(item)
-    types = (["none"] if item["type"] != "text" else []) + list(fill_fields.TYPES)
+    types = (["none"] if item["type"] != "text" else []) + list(fill_fields.TYPES if item["type"] != "text" else fill_fields.TEXT_TYPES)
     out = []
     for r in rows:
         if r["row"] == "param" and r["id"] == colour:
@@ -51,15 +51,14 @@ def _at(item: dict, t: float) -> dict:
 
 
 def _parts(item: dict) -> list[tuple[dict, str]]:
-    """(item, field) pairs the mark keys: the solid colour, or each stop's colour and an inner stop's position (the
-    end stops stay at 0 % / 100 %: fill_paint.ENGINE_REQUEST)."""
+    """(item, field) pairs the mark keys: the solid colour, or each stop's colour and position."""
     kind = fill_paint.kind_of(item)
     if kind == "solid":
         return [(item, fill_paint.colour_field(item))]
     if kind not in fill_fields.GRADIENTS:
         return []
     stops = fill_paint.stops_of(item)
-    return [(s, "color") for s in stops] + [(s, "at") for s in stops[1:-1]]
+    return [(s, "color") for s in stops] + [(s, "at") for s in stops]
 
 
 def anim_state(item: dict, t: float, fps: float) -> str:

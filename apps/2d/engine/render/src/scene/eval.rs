@@ -20,6 +20,8 @@ pub struct Item<'a> {
     pub effects: Vec<Item<'a>>,
     pub masks: Vec<Item<'a>>,
     pub layers: Vec<Item<'a>>,
+    /// A gradient's colour stops.
+    pub stops: Vec<Item<'a>>,
 }
 
 impl Item<'_> {
@@ -82,6 +84,7 @@ fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
         effects: node.effects.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
         masks: node.masks.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
         layers: node.layers.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
+        stops: node.stops.iter().filter_map(|c| eval(c, t, all, fps)).collect(),
         props,
     };
     super::follow::resolve(node, &mut item.layers, t);

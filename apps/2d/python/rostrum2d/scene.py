@@ -51,7 +51,8 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | 
     anim = {k: v for k, v in anim.items() if k not in fill_fields.NAMES}      # a gradient fill goes as its effect (below)
     if anim:
         node["anim"] = anim
-    for key in ("effects", "masks", "layers"):
+    fill_paint.engine_props(item, node["props"])
+    for key in ("effects", "masks", "layers") + (("stops",) if item["type"] == "gradient" else ()):   # a layer's own stops go as its fill (below)
         if item.get(key):
             node[key] = [_node(child, fps, baked, where) for child in item[key] if not child.get("hidden")]   # hidden: not drawn
     fill = fill_paint.lower(item) if item["type"] in fill_fields.OWNERS else None

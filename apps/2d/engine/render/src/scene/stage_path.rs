@@ -12,7 +12,7 @@ use std::fmt::Write;
 use kurbo::ParamCurveArclen;
 
 use super::{escape, v, Item, Look, R};
-use crate::scene::{stroke_width, width_profile};
+use crate::scene::{stage_fill as fill, stroke_width, width_profile};
 
 /// More visible dash pieces than this in one frame is refused (a dash of 0.01 px over a long path).
 const MAX_PIECES: usize = 20_000;
@@ -118,36 +118,6 @@ pub(crate) fn outline_d(it: &Item) -> R<Option<String>> {
     Ok(Some(varied_d(it, &subs, &visible(it, &subs, (s, e), dash, total)?, &profile, (s, e), total)))
 }
 
-/// The SVG gradient for a gradient effect over a w × h box (CSS geometry: angle 180 = top to bottom; radial =
-/// the ellipse touching the box's nearest sides around its centre `cx`, `cy`, fractions of the box), as
-/// `stage::gradient` writes it for CSS. SVG has no conic gradient: refused.
-fn gradient_def(e: &Item, gid: &str, w: f64, h: f64) -> R<String> {
-    let mut stops = format!("<stop offset=\"0\" stop-color=\"{}\"/>", v(e, "color1"));
-    if e.on("middle") {
-        let _ = write!(stops, "<stop offset=\"{}\" stop-color=\"{}\"/>", e.num("mid").clamp(0.0, 1.0), v(e, "color3"));
-    }
-    let _ = write!(stops, "<stop offset=\"1\" stop-color=\"{}\"/>", v(e, "color2"));
-    match e.str("style") {
-        "radial" => {
-            let frac = |f: &str| e.props.get(f).and_then(|x| x.as_f64()).unwrap_or(0.5);
-            let (cx, cy) = (frac("cx") * w, frac("cy") * h);
-            let (rx, ry) = (cx.min(w - cx).abs().max(0.01), cy.min(h - cy).abs().max(0.01));
-            Ok(format!("<radialGradient id=\"{gid}\" gradientUnits=\"userSpaceOnUse\" cx=\"0\" cy=\"0\" r=\"1\" gradientTransform=\"translate({cx:.3} {cy:.3}) scale({rx:.3} {ry:.3})\">{stops}</radialGradient>"))
-        }
-        "linear" => {
-            let a = e.num("angle").to_radians();
-            let (dx, dy) = (a.sin(), -a.cos());
-            let half = (w * dx.abs() + h * dy.abs()) / 2.0;
-            let (cx, cy) = (w / 2.0, h / 2.0);
-            Ok(format!(
-                "<linearGradient id=\"{gid}\" gradientUnits=\"userSpaceOnUse\" x1=\"{:.3}\" y1=\"{:.3}\" x2=\"{:.3}\" y2=\"{:.3}\">{stops}</linearGradient>",
-                cx - dx * half, cy - dy * half, cx + dx * half, cy + dy * half
-            ))
-        }
-        s => Err(format!("{}: a {s} gradient on a path is not drawn by this engine yet", e.id)),
-    }
-}
-
 /// (style, inner markup) of a path layer's box.
 pub fn content(it: &Item, look: Look) -> R<(String, String)> {
     let (w, h) = (it.num("w"), it.num("h"));
@@ -157,23 +127,41 @@ pub fn content(it: &Item, look: Look) -> R<(String, String)> {
     let subs = parse(it.id, it.str("d"))?;
     let id = escape(it.id);
     let gid = format!("{id}__fill");
-    // The gradient fills the path; with no fill it colours the stroke. A glow's single colour paints both.
+    // The fill paint (gradient or picture) fills the path; with no fill it paints the stroke. A glow's single colour
+    // paints both. A paint SVG can't hold (conic, picture) paints a box cut by those parts (stage_fill::masked).
     let grad = look.gradient.and_then(|_| it.effects.iter().find(|e| e.kind == "gradient"));
     let filled = it.on("filled");
-    let paint = |own: String, takes_gradient: bool| match (look.color, grad) {
+    let pad = if it.on("stroke") { it.num("strokeWidth").max(0.0) + 2.0 } else { 2.0 };
+    let picture = fill::picture(it, w, h, pad)?;
+    if grad.is_some() && picture.is_some() {
+        return Err(format!("{}: a path has a picture fill and a gradient; it takes one fill", it.id));
+    }
+    // (CSS background, inner markup) of the box a paint SVG can't hold is drawn in.
+    let boxed = match (look.color, grad, picture) {
+        (Some(_), ..) => None,
+        (None, Some(e), _) if fill::css_only(e) => Some((fill::conic_padded(e, w, h, pad), String::new())),
+        (None, None, Some(p)) => Some((String::new(), p)),
+        _ => None,
+    };
+    let takes = look.color.is_none() && (grad.is_some() || boxed.is_some());
+    let paint = |own: String, takes_paint: bool| match (look.color, grad) {
         (Some(c), _) => c.to_string(),
-        (None, Some(_)) if takes_gradient => format!("url(#{gid})"),
+        _ if takes_paint && takes && boxed.is_some() => "#000".to_string(),
+        (None, Some(_)) if takes_paint => format!("url(#{gid})"),
         _ => own,
     };
-    let mut svg = format!("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" viewBox=\"0 0 {w} {h}\" preserveAspectRatio=\"none\" style=\"display:block;overflow:visible;\">");
-    if let (None, Some(e)) = (look.color, grad) {
-        svg += &format!("<defs>{}</defs>", gradient_def(e, &gid, w, h)?);
+    let mut svg = String::new();
+    let mut cut = String::new();
+    if let (None, Some(e), None) = (look.color, grad, &boxed) {
+        svg += &format!("<defs>{}</defs>", fill::svg_def(e, &gid, w, h)?);
     }
     let all: String = subs.iter().map(|s| s.d.as_str()).collect::<Vec<_>>().join(" ");
     if filled && !all.is_empty() {
-        let _ = write!(svg, "<path d=\"{all}\" fill=\"{}\" fill-rule=\"{}\" stroke=\"none\"/>", paint(v(it, "fill"), true), it.str("fillRule"));
+        let out = if takes && boxed.is_some() { &mut cut } else { &mut svg };
+        let _ = write!(out, "<path d=\"{all}\" fill=\"{}\" fill-rule=\"{}\" stroke=\"none\"/>", paint(v(it, "fill"), true), it.str("fillRule"));
     }
     if it.on("stroke") && it.num("strokeWidth") > 0.0 {
+        let out = if !filled && takes && boxed.is_some() { &mut cut } else { &mut svg };
         let mut common = format!(
             "fill=\"none\" stroke=\"{}\" stroke-width=\"{}\" stroke-linecap=\"{}\" stroke-linejoin=\"{}\" stroke-miterlimit=\"{}\"",
             paint(v(it, "strokeColor"), !filled), v(it, "strokeWidth"), it.str("cap"), it.str("join"), it.num("miter").max(1.0)
@@ -184,10 +172,10 @@ pub fn content(it: &Item, look: Look) -> R<(String, String)> {
         if varied(it) {
             let profile = width_profile::read(it.id, it.str("widthProfile"))?;
             if e > s && total > 0.0 {
-                svg += &varied_stroke(it, &subs, &visible(it, &subs, (s, e), dash, total)?, &profile, (s, e), total, &paint(v(it, "strokeColor"), !filled));
+                *out += &varied_stroke(it, &subs, &visible(it, &subs, (s, e), dash, total)?, &profile, (s, e), total, &paint(v(it, "strokeColor"), !filled));
             }
         } else if (s, e) == (0.0, 1.0) && dash.is_none() {
-            let _ = write!(svg, "<path d=\"{all}\" {common}/>");
+            let _ = write!(out, "<path d=\"{all}\" {common}/>");
         } else if e > s && total > 0.0 {
             common += " stroke-dasharray=\"";
             for (sub, list) in subs.iter().zip(visible(it, &subs, (s, e), dash, total)?) {
@@ -200,9 +188,14 @@ pub fn content(it: &Item, look: Look) -> R<(String, String)> {
                 }
                 let period: f64 = arr.iter().sum();
                 let nums = arr.iter().map(|x| format!("{x:.3}")).collect::<Vec<_>>().join(" ");
-                let _ = write!(svg, "<path d=\"{}\" {common}{nums}\" stroke-dashoffset=\"{:.3}\"/>", sub.d, period - first);
+                let _ = write!(out, "<path d=\"{}\" {common}{nums}\" stroke-dashoffset=\"{:.3}\"/>", sub.d, period - first);
             }
         }
+    }
+    let open = format!("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" viewBox=\"0 0 {w} {h}\" preserveAspectRatio=\"none\" style=\"display:block;position:relative;overflow:visible;\">");
+    let mut svg = open + &svg;
+    if let Some((background, inner)) = &boxed {
+        svg = fill::masked(&id, w, h, pad, (background, inner), &cut) + &svg;
     }
     svg += "</svg>";
     Ok((format!("width:{w}px;height:{h}px;"), svg))
