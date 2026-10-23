@@ -12,6 +12,8 @@ click on a row's empty part, or Esc) lets them go.
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
+from rostrum_gui.pending import finish_typing
+
 from .bounds import layer_of
 from .key_moves import KeyMoves
 
@@ -79,7 +81,10 @@ class KeySelect(KeyMoves, QObject):
         self._set([])
 
     def _set(self, ids):
-        self._ids = list(dict.fromkeys(ids))
+        ids = list(dict.fromkeys(ids))
+        if ids != self._ids:
+            finish_typing()                            # a Key field's typing lands on the keys it was typed for (pending.py)
+        self._ids = ids
         layers = self._layers()
         if layers and set(layers) != set(self.b.selected_layers()):
             self._own = True                           # the keys' layers become the selection; the keys stay picked

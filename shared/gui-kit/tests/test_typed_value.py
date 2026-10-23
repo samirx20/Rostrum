@@ -64,3 +64,15 @@ def test_typing_then_picking_another_item_edits_the_first_only():
     assert bridge.doc.item("card")["x"] == 0
     assert len(bridge.doc.history.changes) == 1         # one undo step
     stop(engine, window, then=lambda: free(bridge))     # the window first, then what its bindings read
+
+
+def test_a_held_field_keeps_its_items_and_drops_the_gone_ones():
+    """The rule the 2D Key block shares (hold_ids / held_ids): items held for a field stay its targets whatever is picked
+    later; one that is gone leaves the list (apps/2d/screen/tests/test_key_typed.py has the key case)."""
+    bridge = DocBridge(toy.sample())
+    bridge.hold_ids("key.value", ["title"])
+    assert bridge.held_ids("key.value", ["card"]) == ["title"]
+    assert bridge.held_ids("key.time", ["card"]) == ["card"]            # another field has its own
+    bridge.hold_ids("key.value", ["title", "nothing"])
+    assert bridge.held_ids("key.value", ["card"]) == ["title"]
+    free(bridge)

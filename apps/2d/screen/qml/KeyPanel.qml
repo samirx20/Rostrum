@@ -73,6 +73,8 @@ Column {
             x: kp.lab; width: Theme.fieldFor(kp.full); anchors.verticalCenter: parent.verticalCenter
             value: kp.kb.time; from: 0; to: backend.frameInfo.duration; step: 0.01; unit: " s"
             onEdited: (v) => kp.kb.setTime(v)
+            onTypingStarted: kp.kb.hold("time")
+            onTypingEnded: kp.kb.release("time")
         }
     }
     Line {   // on a beat of the music: "bar 5 beat 3"
@@ -86,6 +88,8 @@ Column {
             x: kp.lab; width: Theme.fieldFor(kp.full); anchors.verticalCenter: parent.verticalCenter
             value: kp.kb.value; step: 0.01
             onEdited: (v) => kp.kb.setValue(v)
+            onTypingStarted: kp.kb.hold("value")
+            onTypingEnded: kp.kb.release("value")
         }
     }
     Item {  // the end of the group: a line and a group's gap
