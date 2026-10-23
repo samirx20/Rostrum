@@ -13,12 +13,12 @@ Item {
     required property var modelData
     property Item row               // the LayerTrack it belongs to (not "track": a delegate's "track: track" would bind to itself)
     property real shift: 0
-    property real room: -1             // the bar's width: at the bar's very ends the click area stays inside it
+    property real room: -1             // the bar's width (its pad is half a dot, so a dot never needs sliding)
     readonly property real at: row.xOf(modelData.t) - shift - width / 2      // where the diamond is centred, minus half
     readonly property var ids: modelData.ids || [modelData.id]
     readonly property bool on: backend.keys.count > 0 && backend.keys.has(ids)
                                || backend.stretch.shown && ids.some(i => backend.stretch.ids.indexOf(i) >= 0)   // a picked stretch's keys
-    x: room < 0 ? at : Math.max(0, Math.min(room - width, at))
+    x: at
     width: 16; height: Math.max(18, parent.height); y: Math.round((parent.height - height) / 2)   // the track's height; in a slim bar, 18
     readonly property int n: modelData.n || 1          // more than one: keys too close to tell apart, shown as one dot
     KeyMark {   // the second diamond peeking out behind: this dot holds several keys

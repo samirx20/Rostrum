@@ -26,7 +26,7 @@ cam.key("zoom", {1.5: 1, 4: 1.35}, ease="easeInOut")   # a push in
 **On the canvas.** The canvas shows the picture through the camera. Pick the camera (its row is pinned at the top of
 the layers) and you see its moves: its path (where it looks, one dot per frame), a faint frame at each of its keys (what
 it will show there; a push in draws smaller frames), and its keys as squares. Drag a square to move where the camera looks
-at that key (one undo step); click a square and drag its handles to curve the move. So a camera push along a curve is
+at that key (one undo step; it snaps to the frame's edges and centre, **Ctrl** or **Alt** frees it); click a square and drag its handles to curve the move. So a camera push along a curve is
 two or three keys and a few drags, no typed numbers. The faint path and frames also show while something else is picked;
 switch them off with **Camera frame** in the **Fit · %** menu (a view setting, not saved in the project).
 

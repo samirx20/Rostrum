@@ -134,7 +134,10 @@ class MotionPath(QObject):
             return False
         self.b._keys.click(k["ids"], "", [])
         ids = {self.b.doc.item(i)["prop"]: (i, float(self.b.doc.item(i)["v"])) for i in k["ids"]}
-        return self.b._begin("Move a path key", KeyGrab(oid, ids, m))
+        if not self.b._begin("Move a path key", KeyGrab(oid, ids, m)):
+            return False
+        self.b._snap.begin([oid], k["pos"])           # the square snaps as a layer does (snapper.py; Ctrl or Alt: free)
+        return True
 
     @Slot(str, float, str, result=bool)
     def beginHandle(self, oid: str, t: float, side: str) -> bool:
@@ -151,6 +154,8 @@ class MotionPath(QObject):
         g = self.b._grab
         if self.b._drag is None or not isinstance(g, (KeyGrab, HandleGrab)):
             return
+        if isinstance(g, KeyGrab):
+            dx, dy = self.b._snap.move(dx, dy)
         ox, oy = G.back(g.m, dx, dy)
         if isinstance(g, KeyGrab):
             moved = {"x": ox, "y": oy}

@@ -4,7 +4,7 @@ import "Mods.js" as Mods
 
 // The motion path over the canvas (screen2d/motion_path.py does the work): where the selected layer travels, a dot per
 // frame (close dots: slow, far apart: fast), a square per key (filled when picked) and the picked or bent keys' handles;
-// for the camera, its frame now and a faint one at each key. Drag a square: the key moves; drag a handle end: the path
+// for the camera, its frame now and a faint one at each key. Drag a square: the key moves, snapping as a layer does (Ctrl or Alt: free); drag a handle end: the path
 // bends, the opposite handle mirrored (Alt: not). One drag = one change. Hidden while playing. Positions come in
 // composition px as the canvas shows them; fit / ox / oy are the Stage's one mapping (canvas px = o + comp px × fit).
 Item {
@@ -105,6 +105,7 @@ Item {
             onPositionChanged: (m) => {
                 if (!going) return
                 const q = mapToItem(mp, m.x, m.y)
+                backend.snap.keys(Mods.ctrl(m) || Mods.alt(m), false)             // Ctrl or Alt: place freely
                 backend.motionPath.drag((q.x - sx) / mp.fit, (q.y - sy) / mp.fit, Mods.alt(m))
             }
             onReleased: { if (going) backend.endDrag(); going = false }
