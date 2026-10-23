@@ -6,7 +6,8 @@ from rostrum2d import fields as F
 from . import beat_words, exprs, outline, route, size_rows, soundtrack_rows, swap_rows
 
 SIBLING_PICKS = {"matte": lambda s: True,                          # any layer beside it can be its track matte
-                 "pathLayer": lambda s: s.get("type") == "path"}   # text follows a path layer beside it
+                 "pathLayer": lambda s: s.get("type") == "path",   # text follows a path layer beside it
+                 "ridePath": lambda s: s.get("type") == "path" and not s.get("ridePath")}   # a layer rides one (not a riding one)
 
 
 class Hooks2D:

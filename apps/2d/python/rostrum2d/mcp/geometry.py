@@ -52,8 +52,8 @@ def flatten(comp: dict, t: float) -> list[dict]:
                 continue
             p = {**resolve(layer, t), **placed.get(layer["id"], {})}
             w, h = own_size(layer["type"], p)
-            if took := follow.taken(layer, layers, t):     # a text on a path layer: the path's place and box
-                w, h = took.pop("w"), took.pop("h")
+            if took := follow.taken(layer, layers, t):     # a text on a path layer (its place and box) or a rider (its place)
+                w, h = took.pop("w", w), took.pop("h", h)
                 p.update(took)
             outer = parent_m if path else camera.layer_matrix(comp, cam, p)
             m = _mul(outer, boxes.matrix(p, w, h))
@@ -61,7 +61,7 @@ def flatten(comp: dict, t: float) -> list[dict]:
             in_time = parent_in_time and p["start"] <= t < p["end"]
             out.append({"id": layer["id"], "type": layer["type"], "name": layer.get("name", ""), "props": p, "opacity": opacity,
                         "in_time": in_time, "matrix": m, "size": (w, h), "within": path,
-                        "paint": boxes.painted(layer, w, h, frame_number(t, comp.get("fps", 30))),
+                        "paint": boxes.painted(layer, w, h, frame_number(t, comp.get("fps", 30)), p),
                         "broken": follow.problem(layer, layers),
                         "matte_for": mattes.get(layer["id"], []), "matte_missing": _missing_matte(layer, layers),
                         "corners": [_apply(m, x, y) for x, y in ((0, 0), (w, 0), (w, h), (0, h))]})
@@ -95,6 +95,15 @@ def _missing_matte(layer: dict, layers: list[dict]) -> str:
 def aabb(corners) -> tuple[float, float, float, float]:
     xs, ys = [c[0] for c in corners], [c[1] for c in corners]
     return min(xs), min(ys), max(xs), max(ys)
+
+
+def drawn_box(node: dict) -> tuple[float, float, float, float]:
+    """(x0, y0, x1, y1) in the comp of what the layer paints itself (a path's curve, a drawing's strokes), else of its
+    whole box."""
+    if not node["paint"]:
+        return aabb(node["corners"])
+    x0, y0, x1, y1 = node["paint"]
+    return aabb([_apply(node["matrix"], x, y) for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))])
 
 
 def covers(node: dict, x: float, y: float) -> bool:

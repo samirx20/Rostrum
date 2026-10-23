@@ -3,7 +3,7 @@ rostrum_core merges that tree in (`run_script`), so a re-run never wipes what so
 
     comp("intro", width=1920, height=1080, fps=30, duration=3, background="#05050a")
     title = text("title", body="Rostrum", size=220, weight=780)
-    title.key("opacity", {0.2: 0, 0.9: 1}, ease="snappy")            # {time: value} or {time: (value, ease)}
+    title.key("opacity", {0.2: 0, 0.9: 1}, ease="snappy")            # {time: value}, {time: (value, ease)} or {time: (value, "spring", {"bounce": 0.3, "speed": 0.4})}
     title.effect("gradient", color1="#ffffff", color2="#ff7a59")    # gradient letters
     title.mask("title_wipe", w=0).key("w", {0.2: 0, 1.0: 1400})
     title.expr("y", "540 + sin(time * 3) * 12")                      # a field driven by a small safe expression
@@ -25,6 +25,7 @@ import math
 from rostrum_core import ids
 from rostrum_core.errors import RostrumError, codes, did_you_mean
 from rostrum_core.keys import key_id, marked
+from rostrum_core.keys.ops import SHAPE_EASE
 
 from . import fields as F, pathdata
 from .expr import ExprError, parse
@@ -57,11 +58,19 @@ class Item:
                              f"{', '.join(allowed)}" + _hint(prop, allowed))
         p = F.param(self.node["type"], prop)
         for t, v in sorted(keys.items(), key=lambda kv: marked.order(kv[0])):   # a time: seconds or "#drop+0.2"
-            value, e = v if isinstance(v, tuple) else (v, ease)
+            value, e, *shape = v if isinstance(v, tuple) else (v, ease)
+            if len(shape) > 1 or (shape and not isinstance(shape[0], dict)):
+                raise ValueError(f'{self.id}.{prop}: a key is value, (value, "ease") or (value, "ease", {{"bounce": 0.3, "speed": 0.4}})')
             t = F.param("key", "t").check(t, f"{self.id}.{prop} key time")
             k = {"id": key_id(self.id, prop, t), "type": "key", "prop": prop, "t": t if isinstance(t, str) else float(t),
                  F.key_field(self.node["type"], prop): p.check(value, f"{self.id}.{prop} at {t} s"), "ease": e}
             F.param("key", "ease").check(e, f"{self.id}.{prop} at {t} s")
+            for name, x in (shape[0] if shape else {}).items():          # a spring's bounce / speed, a custom ease's handles
+                if name not in SHAPE_EASE:
+                    raise ValueError(f'{self.id}.{prop} at {t} s: "{name}" is not a curve field; they are {", ".join(SHAPE_EASE)}' + _hint(name, SHAPE_EASE))
+                if e != SHAPE_EASE[name]:
+                    raise ValueError(f'{self.id}.{prop} at {t} s: "{name}" only applies to a {SHAPE_EASE[name]} ease, this key is {e}')
+                k[name] = F.param("key", name).check(x, f"{self.id}.{prop} at {t} s {name}")
             self.node["keys"].append(k)
         return self
 

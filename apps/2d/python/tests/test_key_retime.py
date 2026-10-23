@@ -97,3 +97,17 @@ def test_after_the_last_key_reaches_the_engine_as_the_value_python_reads(doc):
         assert abs(track_value(sent, t) - value_at(doc.item("a"), "opacity", t)) < 1e-9
     v = lambda t: value_at(doc.item("a"), "opacity", t)  # noqa: E731
     assert v(2.5) == pytest.approx(v(1.5)) and v(3.0) == 0 and v(4.5) == pytest.approx(v(1.5))       # back, then forth
+
+
+def test_spring_bounce_speed_are_key_fields_and_script_tuple_round_trips(doc):
+    from rostrum_core.errors import RostrumError
+    from rostrum2d.script import run_source
+    doc.apply({"op": "key.add", "target": "a", "args": {"prop": "x", "t": 1.0, "v": 5, "ease": "spring", "bounce": 0.3, "speed": 0.4}}, SAM)
+    k = doc.item("a.x.k1000")
+    assert (k["bounce"], k["speed"]) == (0.3, 0.4)
+    for bad in ({"ease": "spring", "bounce": 2}, {"bounce": 0.3}):          # out of range; bounce on a smooth key
+        with pytest.raises(RostrumError):
+            doc.apply({"op": "key.add", "target": "a", "args": {"prop": "x", "t": 2.0, "v": 5, **bad}}, SAM)
+    tree = run_source('comp("c", duration=2)\nshape("s").key("x", {0: 0, 1: (9, "spring", {"bounce": 0.3, "speed": 0.4})})', "t.py")
+    key = tree["comps"][0]["layers"][0]["keys"][1]
+    assert (key["ease"], key["bounce"], key["speed"]) == ("spring", 0.3, 0.4)

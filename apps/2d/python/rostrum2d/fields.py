@@ -67,6 +67,11 @@ def timing(start_help: str, end_help: str) -> list:
               words={36000.0: "End of composition"}), *MARKER_TIMING]
 
 
+# Riding a path layer (follow.py `layer.ride`); the engine's RIDE_AT (scene/fields.rs) is the same list.
+RIDING = {"not": IS("ridePath", "")}
+RIDE_AT = ["end", "start", "along"]
+RIDE_AT_WORDS = {"end": "Drawn-on tip", "start": "Trim start", "along": "Set place"}
+
 # Every layer has these (position is where its anchor sits in the composition, in px).
 TRANSFORM = [      # x, y are absent while a group's auto layout places the layer (layout_fields.py)
     N("x", "X", "Transform", -20000, 20000, 1, "px", when=_layout.FREE_XY, default=960.0,
@@ -97,6 +102,16 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
                  labels={"alpha": "Its shape", "alphaInverted": "Outside its shape", "luma": "Its brightness",
                          "lumaInverted": "Its darkness"},
                  help="Shape = where the matte layer is drawn; brightness = how light it is; the inverted ones swap"),
+    # Riding a path layer beside it (engine: scene/follow.rs; rostrum2d/follow.py layer.ride): the layer's anchor sits
+    # on that path on every frame, its own X, Y an offset from there.
+    X("ridePath", "Rides path", "Ride", "", S, control="pick",       # screens: a choice of the layer's path siblings
+      help="Id of a path layer in the same group or comp: this layer's anchor sits on it as it is reshaped, moved or "
+           "drawn on, and X, Y become an offset from that point. Empty = none (layer.ride sets it)"),
+    CH("rideAt", RIDE_AT, "Rides at", "Ride", "end", S, RIDING, labels=RIDE_AT_WORDS,
+       help="The tip of the drawn-on part (Trim end), its start (Trim start), or a set place along the whole path"),
+    N("rideAlong", "Along path", "Ride", 0, 1, 0.001, "", S, {"all": [RIDING, IS("rideAt", "along")]}, display="percent",
+      help="How far along the path: 0 = its start, 1 = its end (key it to move along)"),
+    T("rideTurn", "Turn with path", "Ride", False, S, RIDING, help="Adds the path's direction there to the layer's rotation"),
 ] + _grade.COLOUR  # colour effects: adjust, levels, curves, LUT (grade_fields.py; engine: scene/grade.rs)
 
 STROKE = IS("stroke", True)
@@ -149,6 +164,8 @@ def _unless_following(p: Param) -> Param:
     return replace(p, valid_when=NOT_FOLLOWING if p.valid_when is None else {"all": [p.valid_when, NOT_FOLLOWING]})
 
 
+FILLED = T("filled", "Fill", "Fill", True)     # the fill's on/off switch: shapes and paths share it
+
 FIELDS: dict[str, list[Param]] = {
     "comp": [
         N("width", "Width", "Frame", 16, 8192, 1, "px", integer=True, default=1920),
@@ -164,7 +181,8 @@ FIELDS: dict[str, list[Param]] = {
         N("w", "Width", "Shape", 0, 20000, 1, "px", default=200.0),
         N("h", "Height", "Shape", 0, 20000, 1, "px", default=200.0),
         N("radius", "Corner radius", "Shape", 0, 10000, 1, "px", when=IS("shape", "rect")),
-        C("fill", "Fill", "Fill", "#ffffff"),
+        FILLED,
+        C("fill", "Fill colour", "Fill", "#ffffff", when=IS("filled", True)),
         T("stroke", "Outline", "Outline", False, S),
         C("strokeColor", "Outline colour", "Outline", "#ffffff", S, STROKE),
         N("strokeWidth", "Outline width", "Outline", 0, 500, 0.5, "px", S, STROKE, default=2.0),
@@ -237,7 +255,7 @@ FIELDS: dict[str, list[Param]] = {
           help="Absolute M x y, L x y, C x1 y1 x2 y2 x y, Z in the layer's own px; the pen tool writes it. A new path has no points"),
         N("w", "Box width", "Points", 1, 20000, 1, "px", D, default=100.0, help="The box the anchor and gradients use"),
         N("h", "Box height", "Points", 1, 20000, 1, "px", D, default=100.0),
-        T("filled", "Fill", "Fill", True),
+        FILLED,
         C("fill", "Fill colour", "Fill", "#ffffff", when=IS("filled", True)),
         CH("fillRule", ["nonzero", "evenodd"], "Fill rule", "Overlaps", "nonzero", D, IS("filled", True)),
         T("stroke", "Outline", "Outline", False),

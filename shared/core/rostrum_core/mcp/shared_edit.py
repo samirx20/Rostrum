@@ -46,7 +46,8 @@ def register(tools: Tools):
         **_ITEM, "source": {"type": "string", "description": "Python source for this app's script layer."},
         "name": {"type": "string", "default": "agent_script.py", "description": "The script's name; a script run again under the same name merges."},
         "force": {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {"type": "string"}}],
-                  "description": "Overwrite what a person changed: true for all held-back values, or a list of their keys."}}})
+                  "description": "Overwrite what a person changed: true for all held-back values, or a list of their keys."},
+        "detail": {"type": "boolean", "default": False, "description": "List every removed item in the reply's data (else counts and the first few)."}}})
     def run_script(ctx, args):
         """Run a Python script that builds the document tree and merge it in. What a person moved by hand stays; held-back values are listed."""
         if ctx.app.run_source is None:
@@ -56,7 +57,7 @@ def register(tools: Tools):
         report = ctx.run_script(doc, name, tree, args.get("force", False))
         held = [dict(h) for h in report.held]
         changed = {"seq": report.change.seq, "ops": [c["op"] for c in report.change.calls], "group": report.change.session} if report.change else None
-        return Reply(report.summary(), {"held": held, "removed": report.removed, "seq": doc.seq}, warnings=report.warnings(), changed=changed)
+        return Reply(report.summary(), {"held": held, "removed": report.removed if args.get("detail") else {"count": len(report.removed), "first": report.removed[:5]}, "seq": doc.seq}, warnings=report.warnings(), changed=changed)
 
     @tools.tool("inspect_job", {"required": ["job_id"], "properties": {
         "job_id": {"type": "string"}, "wait_s": {"type": "number", "minimum": 0, "maximum": MAX_WAIT_S, "default": 0}}})

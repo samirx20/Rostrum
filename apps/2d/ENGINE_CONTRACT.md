@@ -101,7 +101,7 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 
 - **Transform:** the layer's anchor (`anchorX`, `anchorY`, fractions of its box; 0.5 = centre) sits at (`x`, `y`) in its parent's space. Order: tilt (`tiltX`, `tiltY`, 2.5D, perspective 1600 px per layer), then `rotation`, then scale (`scale·scaleX`, `scale·scaleY`), all about the anchor. Then `opacity`, then `blend` (`normal`, `screen`, `add`, `multiply`, `overlay`, `soft-light`).
 - **Box:** shape and image `w × h`; group `w × h` (`clip` hides children outside it); text: its laid-out size (one line, or `boxWidth` wide and wrapped).
-- **shape:** `rect` (corner `radius`) or `ellipse`; `fill`; optional outline (`stroke`, `strokeColor`, `strokeWidth`), drawn inside the box.
+- **shape:** `rect` (corner `radius`) or `ellipse`; `filled` → `fill` (with `filled` off only the outline is drawn); optional outline (`stroke`, `strokeColor`, `strokeWidth`), drawn inside the box.
 - **path:** `filled` → `fill` with `fillRule` (`nonzero`, `evenodd`); `stroke` → `strokeColor`, `strokeWidth`, centred on
   the line, `cap` (`butt`, `round`, `square`), `join` (`miter`, `round`, `bevel`), `miter` (limit, ≥ 1). Dashes: `dash` px
   drawn, `gap` px skipped (`dash` 0 = solid), shifted by `dashOffset`; they start again at each subpath. Trim: only
@@ -167,6 +167,15 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
   the painter draws the matte layer's own markup (`data-track-matte`, vendor/blitz-paint/src/track_matte.rs) as the
   mask, so a matte looks exactly as that layer would on its own. Refused when the scene loads or is edited: a matte that
   is no layer beside it, the layer itself, the camera, or a layer that has a matte of its own.
+- **Riding a path layer** (every layer but the camera; `scene/follow.rs`, the same place a text's `pathLayer` is
+  resolved): `ridePath` = the id of a `path` layer beside it (same group or comp; "" = none). At every time the layer's
+  anchor sits on that path as it is then (its `d`, box and transform: anchor, rotation, scale, stretch; tilt and smear
+  are left out): `rideAt` `end` = the tip of the drawn-on part (`trimEnd`, never before `trimStart`), `start` =
+  `trimStart`, `along` = `rideAlong` (0..1, keyable) of the whole length, subpath after subpath as trim counts. The
+  layer's own `x`, `y` are added as an offset from that point (0, 0 = the anchor on the line); `rideTurn` on adds the
+  path's direction there (in the path's parent) to its own `rotation`. A path with no length leaves the layer at its
+  own x, y. Refused when the scene loads or is edited: a `ridePath` that names nothing beside it or a layer that isn't a
+  path, a path that itself rides one (no chains), or a text that also follows a path layer (`pathLayer`).
 - **Blend:** `blend` is one of the modes in `apps/2d/python/rostrum2d/blends.txt`, the one list (Python reads it at
   import; the engine compiles it in, `scene/blends.rs`): normal, multiply, screen, add, overlay, soft-light,
   hard-light, darken, lighten, color-dodge, color-burn, difference, exclusion, hue, saturation, color, luminosity.
@@ -204,6 +213,7 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - S7: the Python stopgap is deleted; drawing layers are drawn by the engine; `scene` takes `cpu`, `frame.index` defaults to round(t · fps), `export` takes `images` and `progress`, `edit` is all or nothing.
 - S9 (same version): text `pathOverflow`.
 - S10 (same version): text `pathLayer` (a text follows a path layer, per frame); a text on a path now takes its colour and outline when not played letter by letter.
+- H41 (same version): every layer may ride a path layer (`ridePath`, `rideAt`, `rideAlong`, `rideTurn`), per frame.
 - H10 (same version): rig layers, bones, IK, binds; the `bones` request.
 - H16 (same version): the `measure` request (a text's laid-out box, for auto layout and the screen's boxes).
 - H29 (same version): `paint` on shape, text, image, video and path layers.

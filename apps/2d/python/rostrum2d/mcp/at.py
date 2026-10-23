@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from rostrum_core.mcp import Reply, Tools
 
-from .geometry import aabb, comp_size, covers, flatten, problems_showing
+from rostrum2d.camera import view as camera
+
+from .geometry import comp_size, covers, drawn_box, flatten, problems_showing
 from .pick import ITEM_COMP, TIME, doc_and_comp, time_of
 
 tools = Tools()
@@ -24,7 +26,7 @@ def look_at(ctx, args):
         if not covers(n, x, y):
             continue
         why = problems_showing(n, w, h)
-        box = [round(v, 1) for v in aabb(n["corners"])]
+        box = [round(v, 1) for v in drawn_box(n)]
         rows.append({"id": n["id"], "type": n["type"], "box": {"left": box[0], "top": box[1], "right": box[2], "bottom": box[3]},
                      "values": {k: n["props"][k] for k in SHOWN if k in n["props"]}, "visible": not why, "why_not_visible": why,
                      "inside": list(n["within"])})
@@ -32,4 +34,8 @@ def look_at(ctx, args):
     lines = [f'{r["id"]} ({r["type"]}){"" if r["visible"] else " [not visible: " + ", ".join(r["why_not_visible"]) + "]"}' for r in rows]
     where = f"({x:g}, {y:g}) px at {t:.3f} s (frame {frame}){'' if inside else ', which is outside the frame'}"
     summary = f"At {where}: " + (f'{len(rows)} layer{"s" * (len(rows) != 1)}, top first: {"; ".join(lines)}.' if rows else "no layer's box covers it.")
-    return Reply(summary + " Approximate boxes.", {"time": t, "frame": frame, "point": [x, y], "inside_frame": inside, "layers": rows})
+    cam = camera.shot(comp, t)
+    cam_says = f" Camera: x {cam[0]:g}, y {cam[1]:g}, zoom {cam[2]:g}." if cam else " No camera."
+    return Reply(summary + " Approximate boxes." + cam_says,
+                 {"time": t, "frame": frame, "point": [x, y], "inside_frame": inside, "layers": rows,
+                  "camera": {"x": cam[0], "y": cam[1], "zoom": cam[2]} if cam else None})

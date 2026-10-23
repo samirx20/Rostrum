@@ -131,6 +131,29 @@ starts the stretch (the engine draws the blend). The Lottie export holds a morph
 Other ways to change a shape over time: `scale` / `scaleX` / `scaleY`, `rotation`, a mask, or a rig bind (a path bound
 to two bones bends; see `character-rigging-and-lip-sync`).
 
+## A layer riding a path
+
+Any layer (a spark, a pen nib, a car, a group) can ride a path layer beside it (same composition or group), so it sits
+on the tip of a line as the line draws on, with no arc-length maths in your script:
+
+```
+layer.ride target=spark path=line                 # rides the drawn-on tip (Trim end)
+layer.ride target=spark path=line turn=true       # ... and turns with the line's direction
+layer.ride target=car path=road at=along along=0  # a set place; key rideAlong 0 → 1 to drive along the whole road
+layer.ride target=spark path=                     # stop riding (stays where it was at 0 s)
+```
+
+- **Where it sits:** the layer's anchor lands on the path (Anchor X / Y pick which point of the layer that is). Its X, Y
+  become an offset from there (layer.ride sets them to 0); key them to bob above the line.
+- **Rides at:** `end` = the tip of the part drawn so far (key `trimEnd` and the layer travels with the drawing), `start`
+  = Trim start (a line drawn off from behind), `along` = `rideAlong` (0 = the path's start, 1 = its end) whatever the trim.
+- **The path can move:** reshaping (`d` keys), moving, turning or scaling the path carries the rider with it on every
+  frame. A path's tilt is not followed.
+- Trails, smears and motion blur see the ride (they sample the same frames).
+- A ridden path can't ride a path itself, and a text following a path layer (`text.follow`) can't also ride one.
+- **The camera** has no follow setting yet: to keep a rider in frame, key the camera's `x` / `y` (`look_sheet` over the
+  shot shows where the rider is at each time).
+
 ## Seeing and checking
 
 - `look_frame` at the extremes, `look_sheet` over a draw-on (the spacing of tiles is the ease).
@@ -140,5 +163,5 @@ to two bones bends; see `character-rigging-and-lip-sync`).
 
 ## Not yet
 
-Offset or stroke-to-outline, text to outlines (only through SVG import `text="outline"`), a
-path-following layer.
+Offset or stroke-to-outline, text to outlines (only through SVG import `text="outline"`), a camera that follows a
+layer.

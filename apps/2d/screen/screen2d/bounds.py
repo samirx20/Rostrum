@@ -71,7 +71,7 @@ def boxes(comp: dict, t: float) -> list[dict]:
             ax_s, ay_s = m[0] * p["x"] + m[2] * p["y"] + m[4], m[1] * p["x"] + m[3] * p["y"] + m[5]
             W, H = w * sx * gx, h * sy * gy
             opacity = seen * min(1.0, max(0.0, p["opacity"]))
-            paint = BX.painted(lay, w, h, frame_number(te, fps)) if lay["id"] not in mattes else None
+            paint = BX.painted(lay, w, h, frame_number(te, fps), p) if lay["id"] not in mattes else None
             out.append({"up": up, "opacity": opacity,
                         "paint": [v / (w or 1) if i % 2 == 0 else v / (h or 1) for i, v in enumerate(paint)] if paint else None,
                         "id": lay["id"], "type": lay["type"], "x": ax_s - p["anchorX"] * W, "y": ay_s - p["anchorY"] * H,
