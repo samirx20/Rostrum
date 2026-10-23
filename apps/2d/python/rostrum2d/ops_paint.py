@@ -17,7 +17,9 @@ from rostrum_core import Param
 from rostrum_core.errors import codes
 from rostrum_paint.ops import build
 
-from . import drawing as D, paint_fields, placement
+from rostrum_paint import linked
+
+from . import drawing as D, paint_fields, placement, shared_paints
 from .engine import EngineError
 from .evaluate import resolve
 from .kind import REGISTRY as R
@@ -37,7 +39,8 @@ MASK = next(p for p in rostrum_paint.FIELDS["stroke"] if p.name == "mask")
                                   labels={"comp": "Composition px", "canvas": "Paint canvas px"},
                                   help="comp: where the element is at `frame`; canvas: the paint's own px (look_drawing's)"),
                      Param.text("layer", label="Paint layer", default="", importance="secondary",
-                                help='"new" = a new paint layer on top; a paint layer id; empty = the top unlocked one'),
+                                help='"new" = a new paint layer on top (in every drawing of the layer); a paint layer '
+                                     'id or its shared key (the same in every drawing); empty = the top unlocked one'),
                      Param.number("frame", label="Frame", min=0, max=10**7, integer=True, importance="secondary",
                                   help="Which frame's drawing (with Draw each frame on; otherwise the one painting). Default 0"),
                      Param.text("id", label="Stroke id", importance="deep", help="Optional; counted when left out"),
@@ -86,7 +89,7 @@ def _frame(ctx, t: str, n: int) -> dict:
     if here is not None:
         return here
     at = n if D.each_frame(item) else 0
-    frame = {"id": ctx.new_id("frame"), "type": "frame", "at": at, "paints": [], "paintmasks": []}
+    frame = shared_paints.blank_frame(ctx, item, at) if item.get("frames") else         {"id": ctx.new_id("frame"), "type": "frame", "at": at, "paints": [], "paintmasks": []}
     ctx.insert(t, "frames", frame, sum(1 for f in item.get("frames", []) if f["at"] < at))
     return ctx.item(frame["id"])
 
@@ -94,7 +97,7 @@ def _frame(ctx, t: str, n: int) -> dict:
 def _paint(ctx, frame: dict, layer: str) -> dict:
     paints = frame["paints"]
     if layer and layer != "new":
-        found = next((p for p in paints if p["id"] == layer), None)
+        found = next((p for p in paints if layer in (p["id"], linked.key(p))), None)
         if found is None:
             ctx.fail(codes.NOT_FOUND, f'layer "{layer}"', f'is not a paint layer of drawing {frame["id"]}',
                      ["new", *(p["id"] for p in paints)])
@@ -108,5 +111,5 @@ def _paint(ctx, frame: dict, layer: str) -> dict:
         ctx.fail(codes.CONFLICT, f'drawing {frame["id"]}', "has only locked paint layers",
                  hint='Unlock one (paint.unlock) or paint with layer: "new".')
     paint = build("paint", ctx.new_id("paint"), {"name": "Paint" if not paints else f"Paint {len(paints) + 1}"}, ctx.where)
-    ctx.insert(frame["id"], "paints", paint)
+    shared_paints.add(ctx, frame["id"], paint)
     return ctx.item(paint["id"])

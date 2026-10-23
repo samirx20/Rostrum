@@ -14,7 +14,7 @@ from __future__ import annotations
 import rostrum_paint
 from rostrum_core import DocKind, Registry
 
-from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, paint_fields, pathdata, widthprofile
+from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, paint_fields, pathdata, shared_paints, widthprofile
 from .rig import model as rig_model
 
 OWNED = ["effects", "masks", "keys"]
@@ -111,6 +111,7 @@ def _check_owner(item: dict, problems: list):
         ats = [f["at"] for f in item["frames"]]
         if ats != sorted(set(ats)):
             problems.append(f'{item["id"]}: drawings must be at different frames, in order (they are at {ats})')
+        problems += shared_paints.problems(item)       # every drawing holds the layer's paint layers
 
 
 def check(data: dict, items=None) -> list[str]:
@@ -142,10 +143,21 @@ def check(data: dict, items=None) -> list[str]:
     return problems + exprbake.problems_of_doc(data) + fontcheck.problems_of_doc(texts)
 
 
-KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts, upgrade=fill_paint.upgrade,
+def upgrade(data: dict, lists: dict):
+    """An older file brought up to date, one step after another: (new data, label) or None."""
+    labels = []
+    for step in (fill_paint.upgrade, shared_paints.upgrade):
+        up = step(data, lists)
+        if up:
+            data, label = up
+            labels.append(label)
+    return (data, "; ".join(labels)) if labels else None
+
+
+KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts, upgrade=upgrade,
                new=lambda: {"id": "root", "type": "doc", "comps": []})
 
-rostrum_paint.register(REGISTRY, canvas_types=("frame",))
+rostrum_paint.register(REGISTRY, canvas_types=("frame",), peers=shared_paints.peers)
 from . import ops_draw, ops_expr, ops_items, ops_keys  # noqa: E402,F401  (they register on REGISTRY)
 from . import follow  # noqa: E402,F401  (text.follow: a text on a path layer)
 from . import ops_path, ops_stroke  # noqa: E402,F401  (vector paths, booleans, stroke width)

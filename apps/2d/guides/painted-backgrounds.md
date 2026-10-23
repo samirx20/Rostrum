@@ -34,7 +34,7 @@ with `background.move` (below).
 |---|---|
 | `background.add` on a composition, `depths: [3, 1, 0.25]` | Adds one drawing layer per depth, far to near, at the bottom of the stack (or at `index`), named Far / Mid / Near (or `names`), each sized and placed to cover the camera's whole move at its depth. Key the camera first. |
 | `background.fit` on drawing layers | Resizes a layer to cover the camera's move at its depth again (after you changed the camera or the depth). Strokes keep their place in the composition. |
-| `background.move` on paint layers or strokes, `into: <drawing layer>` | Moves them into another drawing layer, keeping where they sit in the composition (points and sizes are converted). A paint layer moves whole; strokes go into a paint layer of the same name there (made if missing) or into `paint`. Masks the strokes use come along. |
+| `background.move` on paint layers or strokes, `into: <drawing layer>` | Moves them into another drawing layer, keeping where they sit in the composition (points and sizes are converted). A paint layer moves whole (refused for a layer with several drawings: move its strokes instead); strokes go into a paint layer of the same name there (made if missing) or into `paint`. Masks the strokes use come along. |
 
 A drawing is at most 8192 px a side; `background.add` / `fit` refuse (and say why) when a layer would need more:
 give it a larger depth, a shorter move, or split it.

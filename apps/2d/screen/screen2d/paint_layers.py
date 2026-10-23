@@ -8,6 +8,10 @@ each (paint.add, paint.set name / mode / opacity / visible / locked, paint.move,
 <type>.set); an opacity
 scrub is one gesture. Which layer is highlighted is screen state: the pen's strokes and fills go on it (`current`).
 Absent (empty) when the pen paints on a new drawing.
+
+A layer's drawings share its paint layers (painting spec §2.3.6, rostrum_paint.linked): the list is the layer's, every
+edit acts on every drawing, and the highlighted one is kept by its shared key, so it stays highlighted from drawing
+to drawing.
 """
 from __future__ import annotations
 
@@ -15,6 +19,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum2d import paint_fields
 from rostrum2d.drawing import canvas_size, each_frame, frame_at
 from rostrum_gui.edits import Drag
+from rostrum_paint import linked
 from rostrum_paint.fields import LAYER_MODES
 
 from .paint_thumbs import ThumbProvider
@@ -48,10 +53,10 @@ class PaintLayers(QObject):
         return frame_at(d, self.b.painter._n()) if each_frame(d) else d["frames"][0]
 
     def current(self) -> str:
-        """The highlighted paint layer's id when it is in the drawing at the playhead, else "" (the top unlocked one)."""
+        """The highlighted paint layer's id in the drawing at the playhead (picked by its shared key), else "" (the
+        top unlocked one)."""
         f = self._frame()
-        ids = [p["id"] for p in f["paints"]] if f else []
-        return self._picked if self._picked in ids else ""
+        return next((p["id"] for p in f["paints"] if linked.key(p) == self._picked), "") if f and self._picked else ""
 
     # ---- reads for QML ----------------------------------------------------------------------------------------------
     @Property(bool, notify=changed)
@@ -100,7 +105,8 @@ class PaintLayers(QObject):
 
     @Slot(str)
     def pick(self, paint_id):
-        self._picked = paint_id
+        f = self._frame()
+        self._picked = next((linked.key(p) for p in f["paints"] if p["id"] == paint_id), "") if f else ""
         self.changed.emit()
 
     @Slot()

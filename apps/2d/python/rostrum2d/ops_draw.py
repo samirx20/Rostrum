@@ -9,17 +9,15 @@ import copy
 from rostrum_core import Param
 from rostrum_core.errors import codes
 from rostrum_core.tree import index
-from rostrum_paint.ops import build
+from rostrum_paint import linked
 
-from . import paint_fields
+from . import paint_fields, shared_paints
 from .kind import REGISTRY as R
 
 
 def starter_frame(ctx, at: int = 0, id_: str | None = None) -> dict:
-    """A new drawing: one frame holding one paint layer."""
-    frame = {"id": id_ or ctx.new_id("frame"), "type": "frame", "at": at, "paints": [], "paintmasks": []}
-    frame["paints"].append(build("paint", _fresh(ctx, "paint", frame), {"name": "Ink"}))
-    return frame
+    """A new layer's first drawing: one frame holding one paint layer ("Ink")."""
+    return shared_paints.blank_frame(ctx, {}, at, id_)
 
 
 def _fresh(ctx, type_, *pending) -> str:
@@ -39,7 +37,9 @@ def _place(frames, at) -> int:
 
 @R.operation("frame.add", "Add a drawing at a frame to a drawing layer or a painted element (blank, or a copy of "
              "another drawing to redraw on). It shows until the next drawing; Draw each frame turns on in the same change. "
-             "Frame left out: after the last drawing, its hold being the layer's New ones hold (newHold, default 2).",
+             "Frame left out: after the last drawing, its hold being the layer's New ones hold (newHold, default 2). "
+             "Every drawing of a layer has the same paint layers: a blank one starts with them empty, a copy with the "
+             "copied strokes in them.",
              target=("drawing", *paint_fields.TYPES), label="New drawing",
              params=[Param.number("at", label="Frame", min=0, max=10**7, integer=True),
                      Param.id("copy", kind="frame", label="Copy of", importance="secondary",
@@ -55,11 +55,14 @@ def frame_add(ctx, targets, args):
             src = ctx.item(args["copy"])
             if src["type"] != "frame":
                 ctx.fail(codes.BAD_ARGUMENT, f'copy "{args["copy"]}"', f"is a {src['type']}, not a drawing frame")
+            if frames and index(ctx.doc, ctx.kind.lists)[src["id"]].parent != t:
+                ctx.fail(codes.BAD_ARGUMENT, f'copy "{args["copy"]}"', f"is a drawing of another layer: {t}'s drawings "
+                         "share their own paint layers", hint="Copy one of its own drawings.")
             frame = copy.deepcopy(src)
             frame.update(id=args.get("id") or ctx.new_id("frame"), at=args["at"])
             _copy_ids(ctx, frame)
         else:
-            frame = starter_frame(ctx, args["at"], args.get("id"))
+            frame = shared_paints.blank_frame(ctx, ctx.item(t), args["at"], args.get("id"))
         ctx.insert(t, "frames", frame, _place(frames, args["at"]))
         if not ctx.item(t).get("eachFrame"):
             ctx.set(t, "eachFrame", True)
@@ -81,6 +84,7 @@ def _copy_ids(ctx, frame):
         taken.add(f"{type_}_{n}")
         return f"{type_}_{n}"
     for p in frame["paints"]:
+        p["layer"] = linked.key(p)          # the copy stays in the same shared paint layer
         p["id"] = fresh("paint")
         for s in p["strokes"]:
             s["id"] = fresh("stroke")

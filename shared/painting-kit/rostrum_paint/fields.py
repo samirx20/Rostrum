@@ -102,6 +102,9 @@ FIELDS: dict[str, list[Param]] = {
         N("opacity", "Opacity", 0, 1, 0.01, 1.0, group="Layer"),
         Param.toggle("visible", label="Visible", default=True),
         Param.toggle("locked", label="Locked", default=False, importance=S, help="A locked layer refuses paint"),
+        Param.text("layer", label="Shared key", importance=D,
+                   help="Links this paint layer's copies in the drawings that share paint layers (linked.py); set by "
+                        "Rostrum, left out = its own id"),
     ],
     "stroke": [
         Param.points("points", label="Path", min=2, max=5, importance=D, group="Path",

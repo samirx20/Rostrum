@@ -15,7 +15,7 @@ from rostrum_core import Param
 from rostrum_core.errors import RostrumError, codes, did_you_mean
 from rostrum_core.tree import index
 
-from . import fields as F
+from . import fields as F, linked
 
 ID = Param.text("id", label="Id", importance="deep", help="Optional; counted per type when left out (stroke_1 …)")
 INDEX = Param.number("index", label="Position", min=0, max=100000, integer=True, importance="deep",
@@ -79,42 +79,64 @@ def _check_mask(ctx, paint_or_stroke_id, mask_id, where_id):
                  names)
 
 
-def register(registry, canvas_types=("frame",)):
-    """Add the kit's operations to an app's registry. `canvas_types`: the host item types that are canvases."""
+def _alone(ctx, canvas_id):
+    return [canvas_id]
+
+
+def register(registry, canvas_types=("frame",), peers=_alone):
+    """Add the kit's operations to an app's registry. `canvas_types`: the host item types that are canvases;
+    `peers(ctx, canvas_id)`: the canvases sharing paint layers with it (linked.py), itself included."""
     canvas_types = tuple(canvas_types)
-    for type_ in ("paint", "stroke", "fill", "paintmask"):
+
+    def every(ctx, targets):
+        """Each target paint layer with its copies in the canvases sharing with it, each once, in order."""
+        out = []
+        for t in targets:
+            out += [c for c in linked.copies(ctx, t, canvas_of(ctx.doc, ctx.kind.lists, t)["id"], peers) if c not in out]
+        return out
+    _field_op(registry, "paint", every)
+    for type_ in ("stroke", "fill", "paintmask"):
         _field_op(registry, type_)
 
-    @registry.operation("paint.add", "Add a paint layer to a canvas (on top unless index is given).", target=canvas_types,
+    @registry.operation("paint.add", "Add a paint layer to a canvas (on top unless index is given); where canvases share paint "
+                        "layers (the drawings of a Draw each frame layer) an empty copy goes into each of them.", target=canvas_types,
                         label="Add paint layer", params=[ID, *F.FIELDS["paint"], INDEX])
     def paint_add(ctx, targets, args):
         for t in targets:
-            ctx.insert(t, "paints", _new(ctx, "paint", args if len(targets) == 1 else {**args, "id": None}),
-                       args.get("index"))
+            linked.add(ctx, t, _new(ctx, "paint", args if len(targets) == 1 else {**args, "id": None}),
+                       args.get("index"), peers)
 
-    @registry.operation("paint.remove", "Delete paint layers with their strokes.", target="paint",
+    @registry.operation("paint.remove", "Delete paint layers with their strokes (in every drawing sharing them).", target="paint",
                         label="Delete paint layer", importance="secondary")
     def paint_remove(ctx, targets, args):
-        for t in targets:
+        for t in every(ctx, targets):
             ctx.remove(t)
 
     @registry.operation("paint.duplicate", "Copy paint layers with all their strokes and fills, each copy just above "
-                        "its layer, named \"<name> copy\" (same seeds: it paints the same pixels).", target="paint",
+                        "its layer, named \"<name> copy\" (same seeds: it paints the same pixels); in every drawing sharing it, each "
+                        "copy with that drawing's own strokes.", target="paint",
                         label="Duplicate paint layer", importance="secondary")
     def paint_duplicate(ctx, targets, args):
-        for t in targets:
-            holder, layer = canvas_of(ctx.doc, ctx.kind.lists, t), ctx.item(t)
-            at = next(i for i, p in enumerate(holder["paints"]) if p["id"] == t) + 1
-            copy = {**copy_item(layer), "id": ctx.new_id("paint"), "name": f'{layer["name"]} copy', "strokes": []}
-            ctx.insert(holder["id"], "paints", copy, at)
+        for group in [linked.copies(ctx, t, canvas_of(ctx.doc, ctx.kind.lists, t)["id"], peers) for t in targets]:
+            key = None
+            for t in group:             # each canvas's copy holds that canvas's own strokes, under one new key
+                holder, layer = canvas_of(ctx.doc, ctx.kind.lists, t), ctx.item(t)
+                at = next(i for i, p in enumerate(holder["paints"]) if p["id"] == t) + 1
+                copy = {**copy_item(layer), "id": ctx.new_id("paint"), "name": f'{layer["name"]} copy', "strokes": []}
+                copy.pop("layer", None)
+                if key:
+                    copy["layer"] = key
+                key = key or copy["id"]
+                ctx.insert(holder["id"], "paints", copy, at)
             for s in layer["strokes"]:
                 ctx.insert(copy["id"], "strokes", {**copy_item(s), "id": ctx.new_id(s["type"])})
 
-    @registry.operation("paint.move", "Move a paint layer up or down among its canvas's paint layers (0 = bottom).",
+    @registry.operation("paint.move", "Move a paint layer up or down among its canvas's paint layers (0 = bottom), in every "
+                        "drawing sharing it.",
                         target="paint", label="Reorder paint layer", importance="secondary",
                         params=[_required(INDEX)])
     def paint_move(ctx, targets, args):
-        for t in targets:
+        for t in every(ctx, targets):
             holder = canvas_of(ctx.doc, ctx.kind.lists, t)
             ctx.move(t, holder["id"], "paints", min(args["index"], len(holder["paints"]) - 1))
 
@@ -128,7 +150,7 @@ def register(registry, canvas_types=("frame",)):
     @registry.operation("paint.unlock", "Unlock paint layers so they take paint again.", target="paint",
                         label="Unlock", importance="secondary", valid_when={"is": ["locked", True]})
     def paint_unlock(ctx, targets, args):
-        for t in targets:
+        for t in every(ctx, targets):
             ctx.set(t, "locked", False)
 
     @registry.operation("stroke.add", "Paint one stroke into a paint layer: a path of points and a brush. Several "
@@ -169,9 +191,9 @@ def _required(p: Param) -> Param:
     return replace(p, required=True)
 
 
-def _field_op(registry, type_):
+def _field_op(registry, type_, every=lambda ctx, targets: targets):
     def set_fields(ctx, targets, args):
-        for t in targets:
+        for t in every(ctx, targets):
             for k, v in args.items():
                 if k == "points" and type_ == "stroke":
                     v = with_pressure(v)
