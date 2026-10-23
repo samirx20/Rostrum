@@ -55,7 +55,7 @@ They are then one sound: `clip.set` moving or re-levelling one moves them all; `
 ## Older songs
 
 Rostrum used to make a few sounds from settings (a click, a hit, a riser, a sub drop). It no longer does. An older
-song that still has one opens and says so on the Problems chip (and in every agent reply), naming it, its time
+song that still has one opens and says so on the Problems chip (and in every agent reply, and in `inspect_diagnose`), naming it, its time
 and its track, for example: *fx: this song has a designed sound ("riser" at 2 s) that Rostrum no longer makes; it is
 left out of the mix. Replace it with an instrument*. It stays in the file, unplayed; answer the move from the table above.
 

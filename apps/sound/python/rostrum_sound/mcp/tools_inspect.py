@@ -36,6 +36,15 @@ def register(tools: Tools):
             return Reply(f"Plays {r['low']}–{r['high']}{gaps}, {r.get('layers', 1)} velocity layers.", r)
         return Reply(f"Drums: {', '.join(r['drums'])}.", r)
 
+    @tools.tool("inspect_diagnose", {"properties": {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}})
+    def inspect_diagnose(ctx, args):
+        """Everything wrong with a song, each with the item, what is wrong in words and how to fix it: missing-file (a clip's file is not there; names the clip and the file), outside-project (a clip's file is kept outside the song's folder, so it will not travel with it), pending-take (a clip needs a cleaned take that is not made yet: render_cleanup), no-longer-made (a designed sound an older song still holds). The same list as the Problems chip. Read-only; an empty list means nothing found (it does not judge how the song sounds: look_* and the ears tools do that)."""
+        from ..diagnose import problems
+        doc = ctx.document(args.get("item"))
+        found = problems(doc)
+        words = "; ".join(f'{p["kind"]}: {p["message"]}' for p in found) or "nothing wrong found"
+        return Reply(f"{doc.item_id}: {len(found)} problem(s). {words}", {"problems": found})
+
     @tools.tool("inspect_library", {"properties": {
         "find": {"type": "string", "description": "Words that must appear in the path or the description (case-insensitive), e.g. \"cello\" or \"door slam\"."},
         "kind": {"type": "string", "enum": ["instruments", "recordings", "sounds", *OFFERED], "default": "instruments",
