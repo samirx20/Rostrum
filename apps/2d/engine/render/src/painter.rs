@@ -36,6 +36,8 @@ pub struct Gl {
     exact: Result<crate::gpu_output::GpuOutput, String>,
     /// GPU timestamps around a paint's flush, when profiling (profile.rs).
     timer: Option<crate::profile::Timer>,
+    /// glGetError, for the one check after each paint (`gpu_failed`).
+    get_error: extern "system" fn() -> u32,
     _context: (PossiblyCurrentContext, GlSurface<WindowSurface>),
 }
 
@@ -259,12 +261,41 @@ pub fn gl_context() -> Result<Gl, String> {
     // frames; turning it off brought the drift back through the triangulating renderer's cache). At its default 4
     // samples a big letter's edge has 3 in-between levels and steps visibly; 16 is as smooth as the glyph atlas was.
     opts.internal_multisample_count = 16;
+    // No GL error check after each of Skia's GL calls (E6): on NVIDIA's driver every glGetError waits for the driver's
+    // own thread to catch up, ~314 of them a paint took 69 % of its time (E5). One check after each paint's flush
+    // (`gpu_failed`) still fails the frame when a GL call failed or the card ran out of memory (AGENTS.md rule 6).
+    opts.skip_gl_error_checks = skia_safe::gpu::ganesh::context_options::Enable::Yes;
     let mut gr = direct_contexts::make_gl(interface, Some(&opts)).ok_or("Skia GL context failed")?;
     let readback = Readback::new(|name| display.get_proc_address(name));
     let exact = crate::gpu_output::GpuOutput::new(|name| display.get_proc_address(name));
     let timer = crate::profile::Timer::new(|name| display.get_proc_address(name));
+    let get_error = display.get_proc_address(c"glGetError");
+    if get_error.is_null() {
+        return Err("no glGetError".into());
+    }
+    let get_error = unsafe { std::mem::transmute::<*const std::ffi::c_void, extern "system" fn() -> u32>(get_error) };
     gr.reset(None);
-    Ok(Gl { gr, renderer, readback, exact, timer, _context: (ctx, gl_surface) })
+    Ok(Gl { gr, renderer, readback, exact, timer, get_error, _context: (ctx, gl_surface) })
+}
+
+/// What failed on the GPU since the last check, in plain words: a GL error (out of memory first of all) or a lost
+/// context. Called once after each paint's flush and after each frame read, in place of Skia's check after every GL call.
+fn gpu_failed(gl: &mut Gl) -> Result<(), String> {
+    let mut errors = vec![];
+    for _ in 0..8 {
+        match (gl.get_error)() {
+            0 => break,
+            0x0505 => errors.push("the graphics card ran out of memory (GL_OUT_OF_MEMORY)".to_string()),
+            e => errors.push(format!("a graphics call failed (GL error 0x{e:04X})")),
+        }
+    }
+    if gl.gr.abandoned() || gl.gr.is_device_lost() {
+        errors.push("the graphics driver was lost (device lost or reset)".into());
+    }
+    if gl.gr.oomed() && !errors.iter().any(|e| e.contains("memory")) {
+        errors.push("the graphics card ran out of memory".into());
+    }
+    if errors.is_empty() { Ok(()) } else { Err(format!("drawing on the GPU failed: {}", errors.join("; "))) }
 }
 
 impl Painter {
@@ -374,6 +405,7 @@ impl Painter {
             }
             gl.gr.flush_and_submit();
             gl.gr.perform_deferred_cleanup(GPU_UNUSED, None);
+            gpu_failed(gl)?;
         }
         self.last_draw_ms = (t1 - t0).as_secs_f64() * 1000.0;
         self.last_flush_ms = t1.elapsed().as_secs_f64() * 1000.0;
@@ -483,6 +515,7 @@ impl Painter {
         let r = self.gl.as_mut().and_then(|g| g.readback.as_mut()).ok_or("no readback in flight")?.finish_oldest();
         self.last_read_ms = t0.elapsed().as_secs_f64() * 1000.0;
         let index = self.in_flight.pop_front().unwrap_or(0);
+        gpu_failed(self.gl.as_mut().unwrap())?;
         r.map(|(raw, _)| (raw, index))
     }
 
@@ -656,6 +689,21 @@ mod tests {
                 assert!(off.is_none(), "{color} deep {deep}: first different byte {off:?} of {}", gpu.len());
             }
         }
+    }
+
+    /// With Skia's own GL checks off, a GL call that fails during a frame still fails that frame's paint, in plain words
+    /// (`gpu_failed`); the next paint is clean again. The failure is forced with an invalid `glEnable` while drawing.
+    #[test]
+    fn a_failed_gl_call_fails_the_paint() {
+        #[link(name = "opengl32")]
+        unsafe extern "system" {
+            fn glEnable(cap: u32);
+        }
+        let mut p = Painter::gpu(32, 32, None).expect("GPU");
+        p.paint(false, |_| {}).expect("a clean paint");
+        let e = p.paint(false, |_| unsafe { glEnable(0xFFFF) }).expect_err("a failed GL call");
+        assert!(e.starts_with("drawing on the GPU failed: a graphics call failed (GL error 0x0500)"), "{e}");
+        p.paint(false, |_| {}).expect("clean again");
     }
 
     /// The GPU output step (`read_output8`) gives what the CPU's playing frames give (color.rs `output` with `fast`, the same
