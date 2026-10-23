@@ -36,6 +36,10 @@ pub struct Sink {
     /// The end of the encoder's stderr (what it says when it fails).
     said: Arc<Mutex<String>>,
     reader: Option<JoinHandle<()>>,
+    /// Frames queued so far, and whether each came right after the one before (an export checks both).
+    pushed: u64,
+    last: Option<u32>,
+    in_order: bool,
 }
 
 impl Sink {
@@ -74,7 +78,7 @@ impl Sink {
             }
             Ok(())
         });
-        Ok(Sink { tx: Some(tx), writer: Some(writer), child, said, reader: Some(reader) })
+        Ok(Sink { tx: Some(tx), writer: Some(writer), child, said, reader: Some(reader), pushed: 0, last: None, in_order: true })
     }
 
     fn stopped(&mut self) -> String {
@@ -85,6 +89,8 @@ impl Sink {
 
     /// Queues a frame's pixels (waits while two are queued).
     pub fn push(&mut self, pixels: Pixels) -> Result<(), String> {
+        self.in_order &= self.last.map_or(true, |l| pixels.index == l + 1);
+        (self.pushed, self.last) = (self.pushed + 1, Some(pixels.index));
         let sent = self.tx.as_ref().ok_or("the encoder is finished")?.send(pixels);
         if sent.is_err() {
             // The writer quit: the encoder closed its input.
@@ -98,6 +104,16 @@ impl Sink {
             return Err(self.stopped());
         }
         Ok(())
+    }
+
+    /// How many frames were queued.
+    pub fn pushed(&self) -> u64 {
+        self.pushed
+    }
+
+    /// Whether every frame's number was one more than the frame before.
+    pub fn in_order(&self) -> bool {
+        self.in_order
     }
 
     /// Closes the encoder's input and waits for it: its exit code, or an error with what it said.
