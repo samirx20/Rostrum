@@ -705,6 +705,12 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
         parent_style_transform: Affine,
         clip_rect: Rect,
     ) {
+        // Rostrum patch (E2): a still run's node skipped, or its kept picture drawn in its place (runs.rs).
+        match crate::runs::planned(node_id) {
+            Some(crate::runs::Run::Skip) => return,
+            Some(crate::runs::Run::Cached(k)) if scene.draw_cached(k) => return,
+            _ => {}
+        }
         let node = &self.dom.as_ref().tree()[node_id];
 
         match &node.data {

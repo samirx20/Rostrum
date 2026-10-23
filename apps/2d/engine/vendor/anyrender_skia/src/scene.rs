@@ -42,6 +42,8 @@ pub struct SkiaSceneCache {
     glyph_pos_buf: Vec<Point>,
     /// Rostrum patch (round 10): the picture `draw_held` draws (set by the caller around one paint).
     pub held: Option<skia_safe::Image>,
+    /// Rostrum patch (E2): the pictures `draw_cached` draws (still runs of a motion-blurred frame, set by the caller).
+    pub cached: Vec<skia_safe::Image>,
     /// Rostrum patch (X6): one entry per open layer (push_layer / push_clip_layer), `Some` for a layer drawn offscreen
     /// because its filter writes buffers to the comp's node cache.
     captures: Vec<Option<Capture>>,
@@ -197,6 +199,7 @@ impl Default for SkiaSceneCache {
             glyph_id_buf: Default::default(),
             glyph_pos_buf: Default::default(),
             held: None,
+            cached: Vec::new(),
             captures: Vec::new(),
             soft_clips: Vec::new(),
             flats: Vec::new(),
@@ -766,6 +769,16 @@ impl PaintScene for SkiaScenePainter<'_> {
     /// Rostrum patch (round 10): the held picture at device pixels (its own size is the canvas's), over the layer.
     fn draw_held(&mut self) -> bool {
         let Some(image) = self.cache.held.clone() else { return false };
+        self.inner.save();
+        self.inner.reset_matrix();
+        self.inner.draw_image(&image, (0, 0), None);
+        self.inner.restore();
+        true
+    }
+
+    /// Rostrum patch (E2): kept picture `k` at device pixels, over the layer (as `draw_held`).
+    fn draw_cached(&mut self, k: usize) -> bool {
+        let Some(image) = self.cache.cached.get(k).cloned() else { return false };
         self.inner.save();
         self.inner.reset_matrix();
         self.inner.draw_image(&image, (0, 0), None);
