@@ -13,14 +13,13 @@ ID = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
 
 def shot(comp: dict, t: float, at=value_at):
     """(x, y, zoom, roll) of the camera showing at t, or None. Two showing at once: the later one in the list wins.
-    `at(layer, field, t)` reads a field: the document's layers by default (a camera riding a path where the ride puts
-    it, follow.taken); the Lottie export passes the scene's."""
+    `at(layer, field, t)` reads a field: the document's layers by default; the Lottie export passes the scene's. A
+    camera riding a path is where the ride puts it (follow.ride), either way."""
+    from ..follow import ride      # follow imports the field tables, which import this package
     for layer in reversed(comp.get("layers", [])):
         if layer["type"] == "camera" and at(layer, "start", t) <= t < at(layer, "end", t):
             got = {f: float(at(layer, f, t)) for f in ("x", "y", "zoom", "rotation")}
-            if at is value_at and layer.get("ridePath"):
-                from ..follow import taken      # follow imports the field tables, which import this package
-                got.update(taken(layer, comp["layers"], t) or {})
+            got.update(ride(layer, comp["layers"], t, at) or {})
             return got["x"], got["y"], got["zoom"], got["rotation"]
     return None
 

@@ -8,7 +8,8 @@ with **Locked to screen** (`screenLock`) ignores the camera completely: a title,
 
 A camera can **ride a path layer** beside it, as any layer does (`layer.ride`; `ridePath`, `rideAt`, `rideAlong`,
 `rideTurn`, resolved in the engine's `scene/follow.rs`): where it looks sits on the path on every frame, its own `x`,
-`y` an offset from there, and with `rideTurn` it rolls with the path's direction.
+`y` an offset from there, and with `rideTurn` it rolls with the path's direction. The look tools and the Lottie export
+place it with the same ride (Python `follow.ride`, the engine's rule).
 
 Code: engine `apps/2d/engine/render/src/camera/mod.rs`; Python `apps/2d/python/rostrum2d/camera/` (`fields.py` the
 fields, `view.py` the same maths for the look tools).

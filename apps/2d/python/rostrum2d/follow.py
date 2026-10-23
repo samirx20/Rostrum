@@ -13,7 +13,7 @@ from rostrum_core import Param
 from rostrum_core.errors import codes
 
 from . import fields as F, pathdata
-from .evaluate import resolve
+from .evaluate import resolve, value_at
 from .kind import LISTS, REGISTRY as R
 
 
@@ -64,13 +64,7 @@ def taken(layer: dict, siblings: list[dict], t: float) -> dict | None:
     """The values a following text takes from its path layer at time t (its transform fields, w, h), or a rider's
     place and turn on its path (x, y, rotation); None if neither."""
     if riding(layer):
-        path, _ = _target(layer, siblings, "ridePath")
-        own = resolve(layer, t)
-        on = _ride(resolve(path, t), own["rideAt"], own["rideAlong"]) if path else None
-        if on is None:
-            return None
-        x, y, turn = on
-        return {"x": own["x"] + x, "y": own["y"] + y, "rotation": own["rotation"] + (turn if own["rideTurn"] else 0.0)}
+        return ride(layer, siblings, t) if _target(layer, siblings, "ridePath")[0] else None
     path, _ = _target(layer, siblings) if following(layer) else (None, "")
     if path is None:
         return None
@@ -78,7 +72,29 @@ def taken(layer: dict, siblings: list[dict], t: float) -> dict | None:
     return {**{f: p[f] for f in F.TAKEN}, "w": p["w"], "h": p["h"]}
 
 
-def _ride(p: dict, at: str, along: float) -> tuple[float, float, float] | None:
+def ride(layer: dict, siblings: list[dict], t: float, at=value_at) -> dict | None:
+    """A rider's place and turn on its path at t (x, y, rotation), or None when it rides none (or the path is gone).
+    `at(item, field, t)` reads a field: the document's layers by default; the Lottie export passes the scene's."""
+    name = at(layer, "ridePath", t)
+    path = next((s for s in siblings if s["id"] == name and s["type"] == "path"), None) if name else None
+    if path is None:
+        return None
+
+    class Read:                                  # the fields at t, read when _ride asks for them
+        def __init__(self, item):
+            self.item = item
+
+        def __getitem__(self, f):
+            return at(self.item, f, t)
+    own = Read(layer)
+    on = _ride(Read(path), own["rideAt"], own["rideAlong"])
+    if on is None:
+        return None
+    x, y, turn = on
+    return {"x": own["x"] + x, "y": own["y"] + y, "rotation": own["rotation"] + (turn if own["rideTurn"] else 0.0)}
+
+
+def _ride(p, at: str, along: float) -> tuple[float, float, float] | None:
     """Where a rider sits on a path layer with fields `p` (its parent's px) and the path's direction there (degrees),
     as engine scene/follow.rs `ride` says; measured here on the outline cut into short lines, for approximate boxes."""
     s, e = (min(max(p[f], 0.0), 1.0) for f in ("trimStart", "trimEnd"))
