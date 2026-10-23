@@ -4,7 +4,8 @@ An offscreen window draws only when asked, and its animations step one frame per
 on a timer alone showed the state of a few frames in (a tool highlight half-way, icons still loading, a menu not
 yet open). `settle` draws frame after frame, letting events (image loads, Loaders) run in between, until the
 picture stays the same for `still` frames in a row; it fails loudly when that never happens within `limit` seconds
-(something keeps moving). Pictures still loading (an Image or a Loader with `asynchronous`) keep it waiting too.
+(something keeps moving). Pictures still loading (an Image or a Loader with `asynchronous`) keep it waiting too, and so
+does any animation or transition still running (a list sliding in can match its picture for 4 frames mid-way and look settled).
 """
 from __future__ import annotations
 
@@ -28,7 +29,7 @@ def settle(win, then, fail, still: int = STILL, limit: float = LIMIT, ready=None
         state["same"] = state["same"] + 1 if state["last"] is not None and img == state["last"] else 0
         state["last"] = img
         try:
-            done = (state["same"] >= still and not loading(win.contentItem()) and (ready is None or ready()))
+            done = (state["same"] >= still and not loading(win.contentItem()) and not animating(win.contentItem()) and (ready is None or ready()))
         except Exception as e:  # noqa: BLE001  a check that breaks must say so, never hang the run
             return fail(f"settle: {e}")
         if done:
@@ -50,3 +51,15 @@ def loading(item) -> bool:
         if isinstance(p, float) and p < 1:
             return True
     return any(loading(c) for c in item.childItems())
+
+
+def animating(obj) -> bool:
+    """Any Animation, Behavior's animation or Transition under `obj` is running and will end (an endless one, loops
+    Infinite, is a spinner or a blink: not waited for). Walks `children()` (items and the animations they own)."""
+    for o in obj.children():
+        name = o.metaObject().className()
+        if ("Animation" in name or "Transition" in name) and o.property("running") is True and o.property("loops") != -2:
+            return True
+        if animating(o):
+            return True
+    return False

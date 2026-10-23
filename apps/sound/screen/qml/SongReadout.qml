@@ -8,6 +8,7 @@ import RostrumKit
 Row {
     id: ro
     property bool compact: false
+    property real room: -1                            // the strip's width left of the right-hand buttons: the state text steps aside (elides) to fit
     property bool tight: false                        // a squeezed strip (a drawer open on a small window): the key fields step aside
     spacing: Theme.gap
     readonly property var song: backend.song
@@ -68,6 +69,9 @@ Row {
             onPicked: (v) => songPanel.setKey(ro.tonic, v)
         }
     }
-    Text { visible: text !== ""; text: backend.soundState; anchors.verticalCenter: parent.verticalCenter
-           color: /^Render failed/.test(text) ? Theme.danger : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+    Text { visible: text !== "" && (ro.room < 0 || width > 0); text: backend.soundState; anchors.verticalCenter: parent.verticalCenter
+           elide: Text.ElideRight; width: ro.room < 0 ? implicitWidth : Math.max(0, Math.min(implicitWidth, ro.room - x))
+           color: /^Render failed/.test(text) ? Theme.danger : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+           MouseArea { id: stateHover; anchors.fill: parent; hoverEnabled: true }
+           HoverTip { text: parent.truncated ? backend.soundState : ""; hovered: stateHover.containsMouse } }
 }
