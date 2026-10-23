@@ -24,7 +24,7 @@ from rostrum3d.script import run_source
 from . import facts, look, render
 
 GUIDES = Path(__file__).resolve().parents[1] / "guides"
-INSTRUCTIONS = ("rostrum-3d makes 3D shots: a scene of meshes, imports, lights and cameras, animated by keys and rendered by Hydra "
+INSTRUCTIONS = ("rostrum-3d makes 3D shots: a scene of meshes (cut and joined live by combines), imports, lights and cameras, animated by keys and rendered by Hydra "
                 "(Storm for quick looks, Cycles for the final picture). Read inspect_guide 'agents', build with run_script, then check "
                 "your work through the shot's camera with look_frame, look_sheet and look_at before any render_still or render_video.")
 
