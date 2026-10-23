@@ -18,8 +18,8 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
                "so nothing was shown; check the render folder and try again.")
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
-QUICK = ("workspace", "mesh-selected", "light-selected", "camera-selected", "material-selected", "shapes-flyout",
-         "lights-flyout", "page-animate", "commands", "guide", "long-name", "long-status", "file-menu", "start-screen")
+QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "shapes-flyout",
+         "lights-flyout", "page-animate", "commands", "guide", "long-name", "long-status", "file-menu", "start-screen", "context-item")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -36,6 +36,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
     s: list[str] = []                       # the plain sample document: no start arguments
     return [
         ("workspace", s, []),
+        ("nothing-selected", s, ["deselect"]),
+        ("nothing-selected-free", s, ["deselect", "mode free"]),
         ("mesh-selected", s, ["select block"]),
         ("mesh-more", s, ["select block", "more"]),
         ("group-selected", s, ["select set"]),
@@ -57,6 +59,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("camera-flyout", s, ["rail camera"]),
         ("materials-menu", s, ["materials"]),
         ("shots-menu", s, ["shots"]),
+        ("context-item", s, ["context block"]),
+        ("context-empty", s, ["context -"]),
         ("view-menu", s, ["select key", "view"]),
         ("page-animate", s, ["select cam", "page animate"]),
         ("page-render", s, ["page render"]),

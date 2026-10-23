@@ -14,9 +14,11 @@ from __future__ import annotations
 import sys
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
+from PySide6.QtGui import QGuiApplication
 
 from rostrum3d import through
 
+from . import shot_frame
 from .final_look import NEXT_MS, FinalLook
 from .frames import ViewRenderer
 from .viewcam import ViewCam
@@ -37,6 +39,7 @@ class Viewport(QObject):
     serialChanged = Signal()
     settingsChanged = Signal()
     statusChanged = Signal()
+    picked = Signal(str)             # a click's answer (the item under it, "" for none): the right-click menu opens on it
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent or bridge)
@@ -50,6 +53,8 @@ class Viewport(QObject):
         self._cam_dof = False                        # the engine said the camera looked through has depth of field on
         self._size, self._scale = None, 1.0          # request size (picture pixels); picture px per screen px
         self._scene, self._shot, self._started = None, None, False
+        self._wide, self._frame = None, (0.0, 0.0, 1.0, 1.0)  # the scene with the wider shot camera; the frame (0..1)
+        self._dim = True                             # dim the scene outside the shot frame (screen state)
         self.final = FinalLook()
         self._next = QTimer(self, singleShot=True, interval=NEXT_MS, timeout=self.redraw)   # the next Final step
         self._r.ready.connect(self._on_ready)
@@ -61,6 +66,8 @@ class Viewport(QObject):
         bridge.selectionChanged.connect(self.redraw)
         bridge.selectionChanged.connect(lambda *_: self.settingsChanged.emit())   # canThroughLight follows it
         bridge.render.changed.connect(self._on_render_job)     # Final waits while the Render button renders
+        from .gizmo_qt import Gizmo
+        self.gizmo = Gizmo(bridge, self)                       # the selected item's handles (gizmo_qt.py)
 
     # --- QML properties
     serial = Property(int, lambda s: s._serial, notify=serialChanged)
@@ -84,10 +91,13 @@ class Viewport(QObject):
     look = Property(str, lambda s: "final" if s.final.on else "quick", notify=settingsChanged)
     finalLine = Property(str, lambda s: s.final.line, notify=serialChanged)
     finalFraction = Property(float, lambda s: s.final.fraction, notify=serialChanged)
+    dim = Property(bool, lambda s: s._dim, notify=settingsChanged)
+    # the shot frame in the viewport, as parts of its width and height [x, y, w, h]; shown in the shot camera only
+    frameRect = Property("QVariantList", lambda s: list(s._frame), notify=settingsChanged)
 
     # --- the scene and the shot (compiled once per document change, not per mouse move)
     def _on_doc(self, *_):
-        self._scene = self._shot = None
+        self._scene = self._shot = self._wide = None
         self.redraw()
 
     def _compiled(self):
@@ -101,6 +111,26 @@ class Viewport(QObject):
                 self.cam.mode, self._started = "shot", True
                 self.settingsChanged.emit()
         return self._scene
+
+    def _fit(self):
+        """The shot frame for this viewport size, and the scene with the shot camera made that much wider."""
+        w, h = self._size
+        dpr = QGuiApplication.primaryScreen().devicePixelRatio() if QGuiApplication.primaryScreen() else 1.0
+        x, y, fw, fh = shot_frame.fit(w, h, self._shot["width"], self._shot["height"], shot_frame.MARGIN * dpr * self._scale)
+        frame = (x / w, y / h, fw / w, fh / h)
+        if frame != self._frame:
+            self._frame = frame
+            self.settingsChanged.emit()
+        self._wide = shot_frame.overscan(self._scene, self._shot["camera"], w / fw)
+
+    def sent(self) -> tuple[dict, dict]:
+        """(scene, camera part) as the engine gets them: through the shot camera, its wider copy (shot_frame.py)."""
+        scene, cam = self._compiled(), self.cam.request(self.bridge.frame, *self._size)
+        if self.cam.mode != "shot":
+            return scene, cam
+        if self._wide is None:
+            self._fit()
+        return self._wide, {**cam, "camera": shot_frame.VIEW_CAMERA}
 
     def _home(self):
         w, h = self._size or (16, 9)
@@ -140,9 +170,11 @@ class Viewport(QObject):
             else:                                                           # deleted, or no longer a panel or bulb
                 self.cam.mode = "free"
                 self.settingsChanged.emit()
+        cam = self.sent()[1]
         if self.final.on:
-            return {**self.cam.request(self.bridge.frame, *self.final.size((w, h))), **self.final.fields()}
-        return {**self.cam.request(self.bridge.frame, w, h), "renderer": "storm", "view": "",
+            fw, fh = self.final.size((w, h))
+            return {**cam, "width": fw, "height": fh, **self.final.fields()}
+        return {**cam, "renderer": "storm", "view": "",
                 "exposure": self._exposure, "studio": self._studio, "sceneLights": self._lights,
                 "ao": self._ao if self._ao_on else 0.0, "dof": self._dof,
                 "selected": [sel] if sel in scene_ids(self._scene) else []}    # a material or key has no outline
@@ -154,7 +186,7 @@ class Viewport(QObject):
             self.final.line = "Final waits for the render"
             return self.serialChanged.emit()
         if self._size is not None:
-            self._guard(lambda: self._r.request(self._compiled(), self._request()))
+            self._guard(lambda: self._r.request(self.sent()[0], self._request()))
 
     # --- slots for QML
     @Slot(float, float)
@@ -163,7 +195,7 @@ class Viewport(QObject):
         self._scale = min(1.0, MAX_WIDTH / max(w, 1.0))
         size = (max(16, round(w * self._scale)), max(16, round(h * self._scale)))
         if size != self._size:
-            self._size = size
+            self._size, self._wide = size, None
             self.redraw()
 
     def _move(self, fn):
@@ -224,6 +256,10 @@ class Viewport(QObject):
             self.settingsChanged.emit()
             self.redraw()
 
+    @Slot(bool)
+    def setDim(self, b):
+        self._setting("_dim", bool(b))
+
     @Slot(float)
     def setExposure(self, v):
         self._setting("_exposure", max(-4.0, min(4.0, float(v))))
@@ -252,8 +288,11 @@ class Viewport(QObject):
     def click(self, x, y):
         """A click at (x, y) device pixels: select what is there."""
         if self._size is not None:
-            self._guard(lambda: self._r.pick(self._compiled(), {**self.cam.request(self.bridge.frame, *self._size),
-                                                                "x": round(x * self._scale), "y": round(y * self._scale)}))
+            self._guard(lambda: self._r.pick(*self._pick_at(x, y)))
+
+    def _pick_at(self, x, y):
+        scene, cam = self.sent()
+        return scene, {**cam, "x": round(x * self._scale), "y": round(y * self._scale)}
 
     def close(self):
         self._next.stop()
@@ -285,6 +324,7 @@ class Viewport(QObject):
     def _on_picked(self, item):
         if item != self.bridge.selected:
             self.bridge.select(item)
+        self.picked.emit(item or "")
 
     def _set_status(self, text):
         if text != self._status:

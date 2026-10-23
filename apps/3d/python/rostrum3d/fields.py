@@ -56,6 +56,10 @@ TRANSFORM = [
     N("sx", "Scale X", "Scale", 0, 1000, 0.01, "×", D, default=1.0),
     N("sy", "Scale Y", "Scale", 0, 1000, 0.01, "×", D, default=1.0),
     N("sz", "Scale Z", "Scale", 0, 1000, 0.01, "×", D, default=1.0),
+    N("px", "Pivot X", "Pivot", -1e5, 1e5, 0.001, "m", D,
+      help="Where the item turns and scales around, from its own middle (D with the gizmo moves it)"),
+    N("py", "Pivot Y", "Pivot", -1e5, 1e5, 0.001, "m", D),
+    N("pz", "Pivot Z", "Pivot", -1e5, 1e5, 0.001, "m", D),
     T("visible", "Visible", "Display", True, S),
     CH("aim", ["none", "point", "item"], "Aim at", "Aim", "none", S,
        help="Point the item's −Z (where cameras and rect/disk lights face) at a point or another item; "

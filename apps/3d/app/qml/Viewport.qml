@@ -3,12 +3,13 @@ import RostrumKit
 
 // The live 3D viewport: the engine's Storm picture (Look: Quick), or progressive Cycles in place with the Render
 // button's settings (Look: Final, Shift+F; a thin line along the bottom shows how far it has got) (image://view, drawn off the GUI thread at this item's size),
-// with a small bar of viewport-only settings. Left drag orbits, middle drag or Shift + left drag pans, the wheel
+// (its viewport-only settings live in the Scene panel, ScenePanel.qml). Left drag orbits, middle drag or Shift + left drag pans, the wheel
 // zooms, a click (press and release without dragging) selects what is there, a double click goes home. In the shot
 // camera, or looking through a light, any camera move continues freely from its view. None of this touches the
 // document or its history.
 Rectangle {
     id: vp
+    objectName: "viewport3d"
     color: Theme.sunken
     radius: Theme.radiusCtl
     clip: true
@@ -26,6 +27,38 @@ Rectangle {
         anchors.fill: parent
         source: viewport.serial > 0 ? "image://view/" + viewport.serial : ""
         cache: false; smooth: true
+    }
+
+    Item {   // the shot frame (shot camera only): the scene outside it dimmed, a thin edge, the shot's name above
+        id: frame
+        visible: viewport.mode === "shot"
+        readonly property var r: viewport.frameRect
+        x: r[0] * vp.width; y: r[1] * vp.height; width: r[2] * vp.width; height: r[3] * vp.height
+        readonly property color shade: Qt.rgba(0, 0, 0, viewport.dim ? 0.65 : 0)
+        Rectangle { color: frame.shade; x: -frame.x; y: -frame.y; width: vp.width; height: frame.y }
+        Rectangle { color: frame.shade; x: -frame.x; y: frame.height; width: vp.width; height: vp.height - frame.y - frame.height }
+        Rectangle { color: frame.shade; x: -frame.x; y: 0; width: frame.x; height: frame.height }
+        Rectangle { color: frame.shade; x: frame.width; y: 0; width: vp.width - frame.x - frame.width; height: frame.height }
+        Rectangle { anchors.fill: parent; color: "transparent"; border.width: 1; border.color: Theme.popupEdge }
+    }
+
+    ContextMenu3D { id: ctx }
+    function openContext(id) { ctx.openAt(vp, width / 2, height / 2, id) }   // (the scripted `context` step)
+    MouseArea {      // right-click: pick what is under the pointer, then the menu for it (the pick answers later)
+        anchors.fill: parent
+        acceptedButtons: Qt.RightButton
+        property real px: 0
+        property real py: 0
+        property bool pending: false
+        onPressed: (m) => { px = m.x; py = m.y; pending = true; viewport.click(m.x * vp.dpr, m.y * vp.dpr) }
+        Connections {
+            target: viewport
+            function onPicked(id) {
+                if (!parent.pending) return
+                parent.pending = false
+                ctx.openAt(vp, parent.px, parent.py, id)
+            }
+        }
     }
 
     MouseArea {
@@ -55,95 +88,7 @@ Rectangle {
         onWheel: (w) => viewport.zoom(w.angleDelta.y / 120)
     }
 
-    Rectangle {  // the viewport-only settings
-        id: bar
-        anchors { top: parent.top; right: parent.right; margins: Theme.gap }
-        width: row.implicitWidth + 2 * Theme.gap; height: Theme.button + Theme.gap
-        radius: Theme.radiusCtl; color: Theme.panel; border.width: 1; border.color: Theme.popupEdge
-        MouseArea { anchors.fill: parent }   // clicks on the bar never pick through it
-
-        Row {
-            id: row
-            anchors.centerIn: parent
-            spacing: Theme.gap
-            component Label: Text {
-                anchors.verticalCenter: parent.verticalCenter
-                color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
-            }
-
-            Label { text: "Shot camera"; visible: viewport.hasShot }
-            Toggle {
-                visible: viewport.hasShot
-                anchors.verticalCenter: parent.verticalCenter
-                checked: viewport.mode === "shot"
-                onToggled: (v) => viewport.setMode(v ? "shot" : "free")
-            }
-            Label { text: "Look through light"; visible: viewport.canThroughLight }
-            Toggle {
-                visible: viewport.canThroughLight   // a panel, bulb or sun is selected (or already looked through)
-                anchors.verticalCenter: parent.verticalCenter
-                checked: vp.throughLight
-                onToggled: (v) => viewport.setMode(v ? "light" : "free")
-            }
-            Label { text: "Final" }
-            Toggle {   // Look: Quick (Storm) or Final (Cycles, as the Render button draws it); Shift+F
-                anchors.verticalCenter: parent.verticalCenter
-                checked: vp.final
-                onToggled: (v) => viewport.setLook(v ? "final" : "quick")
-            }
-            // the rest is the quick look's own: Final uses the render's settings, so they are absent there
-            Label { text: "Exposure"; visible: !vp.final }
-            Slider {
-                visible: !vp.final
-                width: 96; anchors.verticalCenter: parent.verticalCenter
-                from: -4; to: 4; step: 0.1; value: viewport.exposure
-                onScrubbed: (v) => viewport.setExposure(v)
-                onEdited: (v) => viewport.setExposure(v)
-            }
-            Label { text: "Studio light"; visible: viewport.studioInUse && !vp.final }
-            Slider {
-                visible: viewport.studioInUse && !vp.final   // the scene's own dome lights the view: the studio isn't used
-                width: 96; anchors.verticalCenter: parent.verticalCenter
-                from: 0; to: 2; step: 0.05; value: viewport.studio
-                onScrubbed: (v) => viewport.setStudio(v)
-                onEdited: (v) => viewport.setStudio(v)
-            }
-            Label { text: "Scene lights"; visible: !vp.final }
-            Toggle {
-                visible: !vp.final
-                anchors.verticalCenter: parent.verticalCenter
-                checked: viewport.sceneLights
-                onToggled: (v) => viewport.setSceneLights(v)
-            }
-            Label { text: "Contact shadows"; visible: !vp.final }
-            Toggle {
-                visible: !vp.final
-                anchors.verticalCenter: parent.verticalCenter
-                checked: viewport.aoOn
-                onToggled: (v) => viewport.setAoOn(v)
-            }
-            Slider {
-                visible: viewport.aoOn && !vp.final
-                width: 96; anchors.verticalCenter: parent.verticalCenter
-                from: 0.05; to: 2; step: 0.05; value: viewport.aoStrength
-                onScrubbed: (v) => viewport.setAoStrength(v)
-                onEdited: (v) => viewport.setAoStrength(v)
-            }
-            Label { text: "Depth of field"; visible: !vp.free && viewport.cameraDof && !vp.final }
-            Toggle {
-                visible: !vp.free && viewport.cameraDof && !vp.final   // only a scene camera with depth of field on makes it matter
-                anchors.verticalCenter: parent.verticalCenter
-                checked: viewport.dof
-                onToggled: (v) => viewport.setDof(v)
-            }
-            Button {
-                visible: vp.free && viewport.hasShot
-                anchors.verticalCenter: parent.verticalCenter
-                kind: "ghost"; text: "Home"
-                onClicked: viewport.home()
-            }
-        }
-    }
+    Gizmo { anchors.fill: parent }   // the selected item's handles; a press off them falls through to the area above
 
     Rectangle {  // the Final look's progress: a thin line along the bottom edge
         visible: vp.final
@@ -166,7 +111,7 @@ Rectangle {
     Text {  // how to move, only while the free camera is in use
         visible: vp.free && !vp.final
         anchors { left: parent.left; bottom: parent.bottom; margins: Theme.pad }
-        text: "Drag to orbit  ·  Shift-drag to pan  ·  Scroll to zoom"
+        text: "Free camera  ·  drag to orbit  ·  Shift-drag to pan  ·  scroll to zoom" + (viewport.hasShot ? "  ·  ` back to the shot" : "")
         color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label
     }
     Text {  // a failure says so, in place

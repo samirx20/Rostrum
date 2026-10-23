@@ -71,7 +71,7 @@ A strip reflected in a curved, polished edge becomes a thin line of light that f
 
 ## Aiming through the light
 
-To see what a light sees, look through it: in the screen's viewport select a rect, disk, strip, sphere or sun light and switch **Look through light** on; the view stands where the light is and looks the way it shines, and follows the light when it is moved or aimed. What lies in the middle of the view is what the light points at. Dragging in that view continues freely from it (the light stays). Agents: `look_frame` with `through` = the light's id. The view is level with the horizon (it ignores a light's roll).
+To see what a light sees, look through it: in the screen's viewport select a rect, disk, strip, sphere or sun light and pick **View › Through the selected light** in the top bar (or right-click it › **Look through**); the view stands where the light is and looks the way it shines, and follows the light when it is moved or aimed. What lies in the middle of the view is what the light points at. Dragging in that view continues freely from it (the light stays). Agents: `look_frame` with `through` = the light's id. The view is level with the horizon (it ignores a light's roll).
 
 ## Working method
 

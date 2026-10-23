@@ -159,3 +159,10 @@ def test_a_scripted_run_opens_a_scratch_copy_never_the_real_project(tmp_path):
     copy.apply([{"op": "mesh.add", "args": {"id": "extra", "shape": "sphere"}}], Bridge3D(copy, viewport=None).who)
     copy.save()
     assert not Document.open(real, "p", KIND).has("extra") and Document.open(mine, "p", KIND).has("extra")
+
+
+def test_context_menu_never_holds_more_than_six_and_only_what_applies(bridge):
+    for item in ("", "box", "cam", "s"):
+        assert len(bridge.contextEntries(item)) <= 6
+    assert [e["value"] for e in bridge.contextEntries("")] == ["home", "shot"]
+    assert [e["value"] for e in bridge.contextEntries("cam")] == ["duplicate", "delete"]

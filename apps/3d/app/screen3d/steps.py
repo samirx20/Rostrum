@@ -1,7 +1,8 @@
 """Scripted steps for screenshots and checks. Each goes through the same bridge (or viewport) call a click or drag makes.
 
-    select <id> | frame <n> | set <param> <json value> | scrub <param> <v> <v> … | animate <param> (the key mark)
+    select <id> | deselect (nothing selected: the Scene) | frame <n> | set <param> <json value> | scrub <param> <v> <v> … | animate <param> (the key mark)
     keydrag <key id> <frame> | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
+    context <item id | -> (the right-click menu)
     add <menu value, e.g. mesh:sphere | light:distant | camera | material | shot> | duplicate | delete
     wait <ms> | snap <png path> (a screenshot now, the run goes on)
     rail <shapes|lights|camera> (opens that flyout) | page build|animate|render | materials | shots | view (open the
@@ -10,13 +11,15 @@
   Viewport (screen state, never the document): orbit <dx> <dy> | pan <dx> <dy> | zoom <steps> | mode shot|free
     exposure <stops> | studio <amount> | lights on|off | home | click <x> <y> (viewport pixels: selects what is there)
     look quick|final (Final: progressive Cycles in place; `wait` lets it refine)
+  Gizmo (real mouse input on the window): gizmo-drag <handle: move0..2 | plane | turn0..2 | scale0..2> <dx> <dy> [ctrl]
+    (press on that handle, move by dx dy screen px in 8 steps, release) | gizmo-show all|move|turn|scale | key-moved
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
 
 import json
 
-from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject, QPoint, Qt
+from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject, QPoint, QPointF, Qt
 from PySide6.QtTest import QTest
 
 RENDER_WAIT_S = 600
@@ -38,6 +41,8 @@ def do_step(bridge, win, step):
     word, *rest = step.split()
     if word == "select":
         bridge.select(rest[0])
+    elif word == "deselect":
+        bridge.select("")
     elif word == "frame":
         bridge.setFrame(int(rest[0]))
     elif word == "set":
@@ -69,6 +74,8 @@ def do_step(bridge, win, step):
         bridge.adder.add(rest[0])
     elif word in ("duplicate", "delete"):
         bridge.adder.duplicate() if word == "duplicate" else bridge.adder.remove()
+    elif word == "context":        # context <item id | -> : the right-click menu for that item (- = empty space)
+        QMetaObject.invokeMethod(win, "openContext", Q_ARG("QVariant", "" if rest[0] == "-" else rest[0]))
     elif word == "rail":
         QMetaObject.invokeMethod(win, "openRailGroup", Q_ARG("QVariant", rest[0]))
     elif word == "page":
@@ -96,6 +103,12 @@ def do_step(bridge, win, step):
             raise RuntimeError(f"step {step!r}: {bridge.render.note}")
     elif word == "closerender":
         bridge.render.dismiss()
+    elif word == "gizmo-drag":
+        _gizmo_drag(bridge, win, rest[0], float(rest[1]), float(rest[2]), "ctrl" in rest[3:])
+    elif word == "gizmo-show":
+        bridge.viewport.gizmo.setShow(rest[0])
+    elif word == "key-moved":
+        bridge.viewport.gizmo.keyMoved()
     elif word in VIEW:
         if bridge.viewport is None:
             raise RuntimeError(f"step {step!r}: no viewport")
@@ -104,3 +117,24 @@ def do_step(bridge, win, step):
         raise ValueError(f"unknown step {step!r}")
     if bridge.status.startswith("Error"):
         raise RuntimeError(f"step {step!r}: {bridge.status}")
+
+
+def _gizmo_drag(bridge, win, handle, dx, dy, ctrl):
+    """Press on a gizmo handle (its end; a ring at its first point), drag by (dx, dy) screen px, release: real input."""
+    from PySide6.QtQuick import QQuickItem
+    QTest.qWait(600)                                          # the picture and the handles land
+    QCoreApplication.processEvents()
+    hs = {h["id"]: h for h in bridge.viewport.gizmo.handles}
+    if handle not in hs:
+        raise RuntimeError(f"gizmo-drag: no handle {handle!r} (there are: {', '.join(hs) or 'none'})")
+    h, vp = hs[handle], win.findChild(QQuickItem, "viewport3d")
+    fx, fy = h["points"][6] if "points" in h else h["b"]   # a ring: 45° round, off where rings cross
+    at = vp.mapToScene(QPointF(fx * vp.width(), fy * vp.height()))
+    mods = Qt.ControlModifier if ctrl else Qt.NoModifier
+    start = QPoint(round(at.x()), round(at.y()))
+    QTest.mouseMove(win, start)
+    QTest.mousePress(win, Qt.LeftButton, mods, start)
+    for k in range(1, 9):
+        QTest.mouseMove(win, QPoint(round(at.x() + dx * k / 8), round(at.y() + dy * k / 8)))
+        QTest.qWait(30)
+    QTest.mouseRelease(win, Qt.LeftButton, mods, QPoint(round(at.x() + dx), round(at.y() + dy)))

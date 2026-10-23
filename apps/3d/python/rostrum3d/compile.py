@@ -15,6 +15,8 @@ from .light_fields import DOC_ONLY as LIGHT_DOC_ONLY
 FORMAT, VERSION = "rostrum-3d-scene", 1
 AIM_FIELDS = {"aim", "aimX", "aimY", "aimZ", "aimItem", "roll"}      # document-only: the compiler resolves them
 ROTATION = ("rx", "ry", "rz")
+PIVOT = ("px", "py", "pz")                     # document-only: Position is where the pivot is; the core gets the origin
+RESOLVED = AIM_FIELDS | set(PIVOT)             # fields the compiler resolves into others, never sent
 DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"}      # words, font, file … never sent
 
 
@@ -63,6 +65,8 @@ class _Frames:
                 v["rx"], v["ry"], v["rz"] = 0.0, v["turn"], 0.0
             elif v["aim"] != "none":
                 v["rx"], v["ry"], v["rz"] = self._aim(id_, v, f)
+            if any(v.get(p) for p in PIVOT):
+                v.update(zip(("x", "y", "z"), pivoted(v)))
             self._values[(id_, f)] = v
         return self._values[(id_, f)]
 
@@ -95,6 +99,14 @@ class _Frames:
             self._busy.discard((id_, f))
 
 
+def pivoted(v: dict) -> list[float]:
+    """The item's origin in its parent's space when its pivot (px py pz, in its own space) sits at x y z: the turn and
+    scale happen around the pivot, so x y z − (turn · scale)(pivot)."""
+    lin = aim.local({**v, "x": 0.0, "y": 0.0, "z": 0.0})
+    off = aim.point(lin, [v["px"], v["py"], v["pz"]])
+    return [v[k] - o for k, o in zip(("x", "y", "z"), off)]
+
+
 def _out(p, value):
     if p.type == "color":
         return linear(value)
@@ -103,7 +115,7 @@ def _out(p, value):
 
 def _rig_node(item: dict, fr: _Frames) -> dict:
     """A rig goes to the core as a group whose transform is baked per frame (rigs.py)."""
-    params = [p for p in F.FIELDS["group"] if p.name not in AIM_FIELDS]
+    params = [p for p in F.FIELDS["group"] if p.name not in RESOLVED]
     per_frame = {p.name: [fr.values(item["id"], f)[p.name] for f in fr.frames] for p in params}
     turns = rigs.continuous(list(zip(*(per_frame[r] for r in ROTATION))))
     for i, r in enumerate(ROTATION):
@@ -130,7 +142,7 @@ def _node(item: dict, fr: _Frames) -> dict:
     if item["type"] == "rig":
         return _rig_node(item, fr)
     type_, first = item["type"], fr.frames[0]
-    params = [p for p in F.FIELDS[type_] if p.name not in AIM_FIELDS
+    params = [p for p in F.FIELDS[type_] if p.name not in RESOLVED
               and not (type_ == "light" and p.name in LIGHT_DOC_ONLY)]
     v0 = fr.values(item["id"], first)
     node = {"id": item["id"], "type": type_, "props": {p.name: _out(p, v0[p.name]) for p in params}}
@@ -139,7 +151,9 @@ def _node(item: dict, fr: _Frames) -> dict:
     elif type_ == "mesh":
         for name in DOCUMENT_ONLY:
             node["props"].pop(name)
-    animated = {k["prop"] for k in item.get("keys", [])} - AIM_FIELDS
+    animated = {k["prop"] for k in item.get("keys", [])} - RESOLVED
+    if any(v0.get(p) for p in PIVOT) and animated & {"rx", "ry", "rz", "sx", "sy", "sz", *PIVOT}:
+        animated |= {"x", "y", "z"}                            # the origin moves as it turns around its pivot
     if type_ == "light" and v0["kind"] == "dome" and "turn" in animated:
         animated.add("ry")
     per_frame = {}

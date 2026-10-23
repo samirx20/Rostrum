@@ -67,6 +67,8 @@ Rectangle {
         width: 1; height: parent.height - y - Theme.grid; color: Theme.accent; opacity: 0.8
     }
 
+    ContextMenu3D { id: menu }
+
     component SceneRow: Rectangle {
         id: row
         required property var modelData
@@ -76,7 +78,11 @@ Rectangle {
         readonly property int indent: Theme.gap + modelData.depth * 16
         height: field ? Theme.rowDense - 2 : Theme.rowDense; radius: Theme.radiusCtl
         color: selected ? Theme.accentSoft : hover.containsMouse || inSelected ? Theme.hover : "transparent"
-        MouseArea { id: hover; anchors.fill: parent; hoverEnabled: true; onClicked: backend.select(row.modelData.owner) }
+        MouseArea { id: hover; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: (m) => {
+                        backend.select(row.modelData.owner)
+                        if (m.button === Qt.RightButton) menu.openAt(row, m.x, m.y, row.modelData.owner)
+                    } }
         Item {  // the fold arrow (absent when there is nothing to fold)
             x: row.indent - 2; width: 14; height: parent.height
             visible: row.modelData.fold !== ""
