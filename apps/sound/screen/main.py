@@ -201,10 +201,11 @@ def main():
     a.add_argument("--size", default="1600x960", help="window size, WxH (for pictures; the layout check sets its own)")
     a.add_argument("--check-layout", metavar="FOLDER")
     a.add_argument("--check-name")
+    a.add_argument("--check-only", help="with --check-layout: only these states (comma-separated), as the full run starts them")
     args = a.parse_args()
     if args.check_layout and not args.check_name:
         from screensound.layout_states import states
-        sys.exit(layout_run.run_all(Path(__file__), states(), args.check_layout))
+        sys.exit(layout_run.run_all(Path(__file__), states(), args.check_layout, args.check_only))
 
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
     userhome.person_start()                        # a --shot / --step / --check-layout run is scripted anyway (userhome.scripted)

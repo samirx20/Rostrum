@@ -61,7 +61,9 @@ the render, naming the note; it is never played as a silent note. Typing a lengt
   **Glide to next**; flags drag on the ruler (one undo step per drag).
 - **Time signature:** `meter.add` (`beatsPerBar`, `beatUnit`, `at`) starts a new bar at that beat, until the next
   change: 3 and 4 is 3/4; 6 and 8 is 6/8, a bar of six eighths whose click plays its two main beats. A beat unit left
-  out is 4. `meter.set` / `meter.remove` edit it. The ruler's bar numbers, the grid and the click follow it.
+  out is 4. `meter.set` / `meter.remove` edit it. The ruler's bar numbers, the grid and the click follow it. On the
+  screen, select nothing: the settings panel lists every tempo, time signature and key change; **+ Time signature
+  change** adds one at the playhead and its panel has **Beats per bar** and **Beat unit**.
 - To make a downbeat fall on a moment, work out the tempo from the gap: beats between two moments ÷ seconds between
   them × 60 = bpm. Check it with `look_beats` (below) rather than trusting the arithmetic.
 - **Key:** `key.add` / `key.set` (`key` like `"D minor"`, `at`). **Sections:** `section.add` (`name`, `at`, `end`),

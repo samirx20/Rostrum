@@ -1,8 +1,10 @@
 """Running the layout check (layout_check.py) on an app: every scripted screen state at every real window size.
 
     main.py --check-layout <folder>                 # every state in the app's STATES, each in a fresh window
+    main.py --check-layout <folder> --check-only a,b  # only these states, started exactly as the full run starts them
+                                                      # (their own start args and steps: re-check a fault this way)
     main.py --check-layout <folder> --check-name n  # one state (the steps given with --step), every size; what the
-                                                    # first form starts for each state
+                                                    # first form starts for each state (a bare --check-name runs no steps)
 For each state and size: <folder>/<state>-<w>x<h>.png (faults boxed and numbered) and a line per fault in
 <folder>/faults.txt. Fails loudly (nonzero exit, the list printed) when any state or size has a fault or a state
 fails to run. A state is (name, start args, steps); a "say <words>" step puts the words in the top bar's status, as
@@ -112,10 +114,16 @@ def record(out: Path, name: str, found: dict):
     f.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
 
 
-def run_all(main_py: Path, states: list[tuple[str, list[str], list[str]]], out) -> int:
+def run_all(main_py: Path, states: list[tuple[str, list[str], list[str]]], out, only: str | None = None) -> int:
     """Start the app once per state (a fresh window, document and scratch settings home each), wait for each, write
-    faults.txt.
+    faults.txt. `only`: comma-separated state names, run just those (an unknown name fails loudly).
     Returns the exit code: 0 only when every state ran and found nothing."""
+    if only:
+        names = [n.strip() for n in only.split(",") if n.strip()]
+        unknown = sorted(set(names) - {s[0] for s in states})
+        if unknown:
+            raise SystemExit(f"layout check: no state named {', '.join(unknown)}")
+        states = [s for s in states if s[0] in names]
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     (out / "faults.json").unlink(missing_ok=True)

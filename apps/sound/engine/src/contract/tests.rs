@@ -108,29 +108,6 @@ fn buses_and_sends_route_or_fail_loudly() {
 }
 
 #[test]
-fn designed_sounds_fill_defaults_and_refuse_loudly() {
-    let s = |sound: Value| json!({ "contract": "rostrum-sound-schedule/1", "tracks": [{ "id": "ui", "sounds": [sound] }] });
-    let a = answer(&check(s(json!({ "design": "click", "at": 1.0 }))));
-    assert_eq!(a["ok"], json!(true), "{a}");
-    let c = &a["result"]["resolved"]["tracks"][0]["sounds"][0];
-    assert_eq!((c["material"].clone(), c["volume"].clone()), (json!(0.3), json!(1.0)), "{c}");
-    let e = error_of(check(s(json!({ "design": "wooosh", "at": 0 }))));
-    assert_eq!(e["where"], json!("schedule.tracks[0].sounds[0].design"), "{e}");
-    let e = error_of(check(s(json!({ "design": "riser", "at": 0 }))));
-    assert_eq!(e["where"], json!("schedule.tracks[0].sounds[0].dur"), "{e}");
-    let e = error_of(check(s(json!({ "design": "click", "at": 0, "speed": [[0, 1]] }))));
-    assert_eq!(e["where"], json!("schedule.tracks[0].sounds[0].speed"), "{e}");
-}
-
-#[test]
-fn an_old_song_with_a_whoosh_is_refused_naming_it() {
-    let s = json!({ "contract": "rostrum-sound-schedule/1", "tracks": [{ "id": "ui", "sounds": [{ "design": "whoosh", "at": 0, "dur": 0.5 }] }] });
-    let e = error_of(check(s));
-    assert_eq!(e["where"], json!("schedule.tracks[0].sounds[0].design"), "{e}");
-    assert!(e.to_string().contains("has a whoosh, which Rostrum no longer makes; remove it or replace it"), "{e}");
-}
-
-#[test]
 fn plugin_names_fail_loudly_before_the_plugin_loads() {
     let dir = std::env::temp_dir().join(format!("rostrum-sound-plugin-names-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();

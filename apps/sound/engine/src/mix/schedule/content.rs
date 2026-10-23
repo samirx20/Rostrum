@@ -105,8 +105,6 @@ pub enum Content {
     VoiceSketch { tokens: Vec<SpeechToken>, base_f0: f64 },
     /// A placeholder tone shaped by a waveform outline.
     Waveform { peaks: Vec<f64> },
-    /// A designed sound (design/): its resolved fields.
-    Designed { spec: serde_json::Map<String, serde_json::Value> },
     Silence,
 }
 

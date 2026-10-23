@@ -111,7 +111,10 @@ The structure (decided in the first round, refined here):
    voices, the microphone and the person's own library; picking one makes the track or places the
    sound. A track's settings live once, in the settings panel.
 4. **With nothing selected, the settings panel shows the song** (name, tempo, beats per bar, key, length), as in 2D.
-   The Song popup that covered the notes goes.
+   The Song popup that covered the notes goes. *(S58, mockup 3:)* it lists the song's timeline as Logic's global
+   tracks do: Tempo, Time signature (Bar 1, the song's own, edited in place), Key, Sections, Markers — a row per
+   change, click = the playhead there + selected — each with its "+" at the playhead only where valid; then Song
+   (length, More). The header strip stays the quick way to what plays at the playhead.
 5. **Export is its own sheet** in the right column *(S30: was a dialog)*; a small **loudness chip** against the target sits in the top bar once the song makes a sound. The master strip keeps only fader, meter and loudness.
 6. **Tools appear when used:** Record once a track is armed; the Picture panel once a picture is set; automation lanes
    under their track (A); the Editor tool (Select V / Draw B) only in the Editor.

@@ -7,7 +7,7 @@ use super::names::{self, SYNTH_DRUMS, TONES};
 use super::pitch;
 use super::read::{Obj, number};
 use super::time::Tempo;
-use super::{buses, clip, designed, effects, expression};
+use super::{buses, clip, effects, expression};
 use serde_json::{json, Map, Value};
 
 pub struct Track {
@@ -106,13 +106,6 @@ pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String], bus_ids
         Ok(resolved)
     })?;
     o.put("clips", json!(clip_list));
-    let sound_list = o.list("sounds", |c, p| {
-        let (resolved, job, t) = designed::read(c, &p, tempo, sr)?;
-        end = end.max(t);
-        clips.push(job);
-        Ok(resolved)
-    })?;
-    o.put("sounds", json!(sound_list));
     let resolved = Value::Object(o.done()?);
     let head = json!({ "name": id, "tone": tone, "volume": volume, "pan": pan, "reverb": reverb, "mix": !mute,
         "ducks": ducks.into_iter().map(|d| d.1).collect::<Vec<_>>(), "effects": effects::job(&fx, 0.0), "automation": auto,
