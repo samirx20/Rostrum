@@ -150,50 +150,70 @@ pub(crate) fn markup(scene: &Scene, t: f64, alpha: bool) -> Result<(Vec<String>,
     Ok((m, t0.elapsed().as_secs_f64() * 1000.0))
 }
 
+/// A frame's stage markup, built before it is drawn (scene_export.rs builds the next frames' on another thread):
+/// the frame's own pieces and, motion-blurred, each sub-frame's (empty when nothing moves while the shutter is open).
+pub(crate) struct Staged {
+    pub t: f64,
+    pieces: Vec<String>,
+    samples: Vec<Vec<String>>,
+    eval_ms: f64,
+}
+
+/// The stage markup of the frame `req` asks for at `t` (keys, easing, motion-blur sub-frames): no page, no paint.
+pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, String> {
+    let alpha = req["alpha"].as_bool() == Some(true);
+    let (pieces, mut eval_ms) = markup(scene, t, alpha)?;
+    // Motion blur (crate::motion, MOTION.md): the stage at each sub-frame of the open shutter, averaged by serve.rs.
+    let (angle, n) = crate::motion::shutter(&scene.comp, req)?;
+    let mut samples = vec![];
+    if angle > 0.0 && n > 1 {
+        for ts in crate::motion::sample_times(t, scene.fps(), angle, n) {
+            let (mk, ms) = markup(scene, ts, alpha)?;
+            eval_ms += ms;
+            samples.push(mk);
+        }
+    }
+    // Nothing moves while the shutter is open: every sub-frame is the same picture, so their average is that one
+    // picture, drawn once (the same pixels, within the sum's rounding).
+    let mut pieces = pieces;
+    if samples.windows(2).all(|w| w[0] == w[1]) {
+        if let Some(only) = samples.pop() {
+            pieces = only;
+            samples.clear();
+        }
+    }
+    Ok(Staged { t, pieces, samples, eval_ms })
+}
+
 /// `frame` with `t`: the request with the scene's stage at t filled in, drawn by serve.rs `frame`.
 pub fn frame(held: &Held, s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u8>>), String> {
-    let scene = held.scene()?;
     let t = req["t"].as_f64().ok_or("frame needs t (seconds) or stage")?;
+    let staged = stage_at(held.scene()?, t, req)?;
+    draw(held, s, req, staged)
+}
+
+/// Draws a frame from its built stage (serve.rs `frame`): the one path stills, the canvas and exports take.
+pub(crate) fn draw(held: &Held, s: &mut Session, req: &Value, staged: Staged) -> Result<(Value, Option<Vec<u8>>), String> {
+    let scene = held.scene()?;
     if held.shell != Some((s.width, s.height)) {
         return Err("the open page is not the scene's (an open or page came after the scene); send the scene again".into());
     }
-    let alpha = req["alpha"].as_bool() == Some(true);
-    let (pieces, mut eval_ms) = markup(scene, t, alpha)?;
-    let m = pieces.concat();
+    let Staged { t, pieces, samples, eval_ms } = staged;
     let mut f = req.clone();
     if let Some(o) = f.as_object_mut() {
         o.remove("alpha");
         o.remove("shutter");
         o.remove("shutterSamples");
     }
-    f["stage"] = Value::String(m);
-    // Motion blur (crate::motion, MOTION.md): the stage at each sub-frame of the open shutter, averaged by serve.rs.
-    let (angle, n) = crate::motion::shutter(&scene.comp, req)?;
-    let mut sample_pieces = vec![];
-    if angle > 0.0 && n > 1 {
-        for ts in crate::motion::sample_times(t, scene.fps(), angle, n) {
-            let (mk, ms) = markup(scene, ts, alpha)?;
-            eval_ms += ms;
-            sample_pieces.push(mk);
-        }
-    }
-    // Nothing moves while the shutter is open: every sub-frame is the same picture, so their average is that one
-    // picture, drawn once (the same pixels, within the sum's rounding).
-    let mut own = pieces;
-    if sample_pieces.windows(2).all(|w| w[0] == w[1]) {
-        if let Some(only) = sample_pieces.pop() {
-            f["stage"] = Value::String(only.concat());
-            own = only;
-            sample_pieces.clear();
-        }
-    } else {
-        f["samples"] = Value::Array(sample_pieces.iter().map(|p| Value::String(p.concat())).collect());
+    f["stage"] = Value::String(pieces.concat());
+    if !samples.is_empty() {
+        f["samples"] = Value::Array(samples.iter().map(|p| Value::String(p.concat())).collect());
     }
     if f.get("index").is_none() {
         f["index"] = json!((t * scene.fps()).round() as u64);
     }
-    s.next_pieces = Some(own);                 // for the frame's own stage (serve.rs `apply`, restage.rs)
-    s.sample_pieces = sample_pieces;           // each sub-frame staged by its changed pieces too
+    s.next_pieces = Some(pieces);              // for the frame's own stage (serve.rs `apply`, restage.rs)
+    s.sample_pieces = samples;                 // each sub-frame staged by its changed pieces too
     let (mut reply, px) = serve::frame(s, &f)?;
     if let Some(timing) = reply.get_mut("timing") {
         timing["evalMs"] = json!(eval_ms);
