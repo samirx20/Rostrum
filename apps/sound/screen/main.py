@@ -32,6 +32,7 @@ from PySide6.QtCore import Q_ARG, QMetaObject, QTimer, QUrl
 from PySide6.QtGui import QGuiApplication
 
 from rostrum_core import Document, RostrumError
+from rostrum_core import userhome
 from rostrum_core.storage import paths
 from rostrum_gui import guides, layout_run, qt_faults, start
 from rostrum_gui.app import qt_app
@@ -206,6 +207,7 @@ def main():
         sys.exit(layout_run.run_all(Path(__file__), states(), args.check_layout))
 
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
+    userhome.person_start()                        # a --shot / --step / --check-layout run is scripted anyway (userhome.scripted)
     app = qt_app()                                 # a picture or step run draws offscreen (rostrum_gui/app.py)
     screen = Screen(tuple(int(n) for n in args.size.lower().split("x")))
     if args.script or args.sample:

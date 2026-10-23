@@ -102,7 +102,9 @@ def _paint(ctx, frame: dict, layer: str) -> dict:
             ctx.fail(codes.NOT_FOUND, f'layer "{layer}"', f'is not a paint layer of drawing {frame["id"]}',
                      ["new", *(p["id"] for p in paints)])
         if found.get("locked"):
-            ctx.fail(codes.CONFLICT, f'layer "{layer}"', "is locked", hint="paint.unlock it first")
+            ctx.fail(codes.CONFLICT, f'layer "{layer}"', "is locked", hint="paint.unlock it first",
+                     plain=f'"{found["name"]}" is locked. Turn off its Lock to paint on it.' if found.get("name")
+                     else "That paint layer is locked. Turn off its Lock to paint on it.")
         return found
     top = next((p for p in reversed(paints) if not p.get("locked")), None)
     if top is not None and layer != "new":

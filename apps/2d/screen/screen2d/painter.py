@@ -17,7 +17,7 @@ from . import adding, brush_presets, framing, onion
 from .pen_tilt import PenTilt
 from .brush import Brush
 from .brush_panel import BrushPanel
-from .strokes import StrokeDrag
+from .strokes import StrokeDrag, check_showing
 
 
 class Painter(BrushPanel):
@@ -155,6 +155,8 @@ class Painter(BrushPanel):
         layer = "new" if self._new_layer else self.b._paint_layers.current()     # the highlighted paint layer
 
         def go():
+            if not make:
+                check_showing(self.b.doc.item(d["id"]), self.b.own_t(d["id"]), self.b.time)
             self._stroke = StrokeDrag(self.b.doc, self.b.who, d["id"], self.b.time if make else self.b.own_t(d["id"]), c["fps"],
                                       self.brush.stroke_args(), x, y, self.b.place_of, pressure, make, layer,
                                       self.tilt.lean())

@@ -58,7 +58,7 @@ class VideoSound(QObject):
             want = sync_sound.wanted(folder, self.b.doc) if folder and self.b.doc.item_id else {}
             clips = self._clips(folder) if want else None
         except Exception as e:  # noqa: BLE001  said, never an empty timeline passed off as "no sound"
-            return self.b._fail(e.line() if hasattr(e, "line") else f"Error: video sound: {e}")
+            return self.b._fail_error(e, f"Error: video sound: {e}")
         rows = {}
         for lid, w in want.items():
             c = (clips or {}).get(sync_sound.clip_id(self.b.doc.item_id, lid))
@@ -102,7 +102,7 @@ class VideoSound(QObject):
             snd.apply([{"op": "clip.set", "target": ids, "args": {"volume": 0.0 if on else 1.0}}], self.b.who,
                       label=f"{'Mute' if on else 'Unmute'} the sound of {name}")
         except Exception as e:  # noqa: BLE001  loud, in words
-            self.b._fail(e.line() if hasattr(e, "line") else f"Error: video sound: {e}")
+            self.b._fail_error(e, f"Error: video sound: {e}")
             return False
         self.st.check()
         self.refresh()

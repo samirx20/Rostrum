@@ -42,8 +42,8 @@ class Context:
     def new_id(self, type_) -> str:
         return ids.counted(self.idx, type_)
 
-    def fail(self, code, subject, problem, accepted=(), hint=None):
-        raise RostrumError(code, self.where, subject, problem, accepted, hint)
+    def fail(self, code, subject, problem, accepted=(), hint=None, plain=None):
+        raise RostrumError(code, self.where, subject, problem, accepted, hint, plain)
 
 
 def normalize(calls) -> list[dict]:

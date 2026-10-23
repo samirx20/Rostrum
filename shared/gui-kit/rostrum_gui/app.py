@@ -22,7 +22,9 @@ def qt_app():
     run on one froze every animation and clicked a layout that was never redrawn (H53: the onion switch showed off
     while on, its click missed). QT_QPA_PLATFORM set by hand wins (a run meant to be watched)."""
     from PySide6.QtGui import QGuiApplication
+    from rostrum_core import userhome
     from rostrum_core.userhome import FLAGS
+    userhome.screen_opened()                       # a screen nobody launched by main.py is a scripted run (never the person's settings)
     if QGuiApplication.instance() is None and any(a.split("=", 1)[0] in FLAGS for a in sys.argv[1:]):
         for k, v in offscreen_env().items():
             os.environ.setdefault(k, v)

@@ -1,6 +1,6 @@
 """Copy and paste of picked strokes while Draw is on (UX_SPEC.md §3.8, "Select and move paint"): the screen's one
 clipboard (clipboard.py), strokes under their own type, the latest copy wins. A paste is one change through the very
-operations an agent calls (`paint.stroke`, `fill.add`), a little down and right of the copy. A slot mix-in for
+operations an agent calls (`paint.stroke`, `fill.add`), a little down and right of the copy, and becomes the selection. A slot mix-in for
 StrokeSelect (stroke_select.py: the selection, the mapping, `_change`).
 """
 from __future__ import annotations
@@ -64,7 +64,14 @@ class StrokeClip(SlotMixin):
             else:
                 calls.append({"op": "paint.stroke", "target": [d["id"]], "args": {
                     **_brush_of(s), "space": "canvas", "layer": layer, "points": pts, "frame": frame}})
-        return self._change("Paste strokes", lambda: calls)
+        before = {x["id"] for x in self._strokes(d)}
+        if not self._change("Paste strokes", lambda: calls):
+            return False
+        self._ids = [x["id"] for x in self._strokes(self.b.doc.item(d["id"])) if x["id"] not in before]      # the paste is what is picked now:
+        self._at = self._here()                                                      # Delete, move and turn act on it
+        self._load()
+        self.changed.emit()
+        return True
 
     def _paint_for_fill(self, d: dict, layer: str) -> str:
         """The paint layer a pasted fill goes on: the highlighted one, else the top unlocked one of the drawing shown."""

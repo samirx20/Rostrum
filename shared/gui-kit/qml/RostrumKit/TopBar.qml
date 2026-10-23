@@ -158,7 +158,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: bar.bridge.status || ""
                 elide: Text.ElideRight
-                color: /^Error/.test(bar.bridge.status) ? Theme.danger : Theme.fg3
+                color: bar.bridge.statusFailed ? Theme.danger : Theme.fg3
                 font.family: uiFont; font.pixelSize: Theme.label
                 HoverHandler { id: messageHover }
                 HoverTip { text: message.truncated ? bar.bridge.status : ""; hovered: messageHover.hovered }
