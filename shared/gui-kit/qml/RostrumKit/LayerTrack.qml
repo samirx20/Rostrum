@@ -24,12 +24,13 @@ Rectangle {
     function onBar(k) { return k.t >= (rowData.start || 0) - 1e-6 && k.t <= (rowData.end || 0) + 1e-6 }   // a key in the layer's time
     function tAt(item, x) { return ruler.tOf(item.mapToItem(track, x, 0).x - 8) }
     function dots(keys) { return KeyGroups.group(keys, xOf, 16) }   // keys whose click areas (a dot is 16 px wide, KeyDot.qml) would touch: one dot for the run
-    readonly property bool cells: (rowData.frames || []).length > 0     // a drawing's cells are its bar: no second one over them
-    readonly property var barKeys: isLayer && rowData.bar === true && !cells ? rowData.keys.filter(k => onBar(k)) : []
+    readonly property bool hasCells: (rowData.frames || []).length > 0     // a drawing's cells are its bar: no second one over them
+    readonly property var barKeys: isLayer && rowData.bar === true && !hasCells ? rowData.keys.filter(k => onBar(k)) : []
     radius: Theme.radiusCtl
     color: isLayer ? Theme.sunken : Qt.darker(Theme.panel, 1.15)
 
-    property Item rows                  // the LayerRows it lies in: a box dragged here picks keys on every row it touches
+    property Component cells            // the app's own marks on the row, under the keys (2D: FrameMarks.qml)
+    property Item rows                  // the rows it lies in (2D: LayerRows.qml): a box dragged here picks keys on every row it touches
     // Right-click anywhere on the row (its empty part, its bar, a stretch, a key): the one short menu (actions.SHORT_MENU)
     function openMenu(item, x, y) { const p = item.mapToItem(rows, x, y); rows.openMenu(rowData.owner, p.x, p.y) }
     MouseArea {   // the row's empty part: a click selects its layer, a drag draws a box that picks keys
@@ -93,7 +94,7 @@ Rectangle {
             delegate: KeyDot { row: track; shift: bar.x; room: bar.width }
         }
     }
-    FrameMarks { anchors.fill: parent; frames: track.rowData.frames || []; again: track.rowData.again || []; keys: track.rowData.keys || []; drawing: track.rowData.row === "layer" && (track.rowData.kind === "drawing" || (track.rowData.frames || []).length > 0); timeRuler: track.ruler; owner: track.rowData.owner }   // a drawing's cells
+    Loader { anchors.fill: parent; sourceComponent: track.cells }   // the app's own marks on the row (2D: a drawing's cells, FrameMarks.qml)
     Repeater {   // a tied end: a small flag with the marker's name on hover
         model: [{ at: "start", name: track.rowData.startMarker || "" }, { at: "end", name: track.rowData.endMarker || "" }]
         delegate: Rectangle {
@@ -126,7 +127,7 @@ Rectangle {
         }
     }
     Repeater {   // a line's stretches (or a barless layer's), under its keys
-        model: bar.visible || track.cells ? [] : track.rowData.stretches || []
+        model: bar.visible || track.hasCells ? [] : track.rowData.stretches || []
         delegate: StretchBand { row: track }
     }
     Repeater {   // the keys of a row with no bar (a setting, an effect, a mask)

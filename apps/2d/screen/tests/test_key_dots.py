@@ -1,8 +1,8 @@
-"""Key dots on a timeline row never sit closer than their 16 px click area (qml/KeyGroups.js), at the bar's ends too,
+"""Key dots on a timeline row never sit closer than their 16 px click area (the kit's KeyGroups.js), at the bar's ends too,
 merged or apart. Runs the real file through node (skipped where node is missing)."""
 import json, shutil, subprocess, pathlib, pytest
 
-JS = pathlib.Path(__file__).resolve().parents[1] / "qml" / "KeyGroups.js"
+JS = pathlib.Path(__file__).resolve().parents[4] / "shared" / "gui-kit" / "qml" / "RostrumKit" / "KeyGroups.js"
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="node missing")

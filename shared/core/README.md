@@ -67,6 +67,19 @@ spring's words (`bounce`, `speed`, what people and the key bar use) become `stif
 read); a key carrying an app's `rawSpring` fact (no words on it) shows the expert numbers. The same screen rules for "edit at the playhead goes
 through keys" are `shared/gui-kit/rostrum_gui/route.py` (`KeyRoute`).
 
+**Animations** (K2, the key timeline's model): `anims.py` reads an item's animations from its keys
+(`animations(owner, names)`: settings, stretches, overlap lines; what `anim.list` and the kit's `LayerTimeline` rows show),
+in the app's own words (`Names(pairs, labels, words, label)`: 2D pairs X and Y as Position, "Move"). One more call gives
+`anim.ease`, `key.scale`, `key.paste` and `key.stagger` on the app's items:
+
+```python
+register_anim_ops(REGISTRY, owners=ITEMS, put_key=put_key, names=NAMES,
+                  timing=Timing(own_seconds=..., offset=..., group_of=...), orders=Orders(stack=..., places=...))
+```
+
+`timing` says how an item's own seconds sit in the scene (default: plain seconds); `orders` (`stagger.py`) adds the
+stack and on-screen orders to key.stagger (without it: picked and random). 2D's are in `apps/2d/python/rostrum2d/ops_anim.py`.
+
 **Where a key came from** (S36): a key may carry `from`, a few words naming its source ("Voice · line 3": lip sync
 keys name their sound). `key.add` / `key.set` take it; a key without it reads and shows exactly as before (the
 settings panel shows the From row only when it is set).

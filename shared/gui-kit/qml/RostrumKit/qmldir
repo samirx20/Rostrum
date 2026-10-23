@@ -77,3 +77,12 @@ SheetScroll 1.0 SheetScroll.qml
 ToolIcon 1.0 ToolIcon.qml
 GradientHandles 1.0 GradientHandles.qml
 SwatchHex 1.0 SwatchHex.qml
+LayerTimeline 1.0 LayerTimeline.qml
+StretchBand 1.0 StretchBand.qml
+AnimPanel 1.0 AnimPanel.qml
+EaseCurve 1.0 EaseCurve.qml
+LayerTrack 1.0 LayerTrack.qml
+KeyDot 1.0 KeyDot.qml
+TimeRuler 1.0 TimeRuler.qml
+TimeReadout 1.0 TimeReadout.qml
+AddMarker 1.0 AddMarker.qml
