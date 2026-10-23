@@ -26,7 +26,7 @@ Column {
         border.color: Theme.popupEdge
         Image {
             x: 4; y: 4; width: parent.width * 0.6; height: parent.height - 8
-            source: head.brush.preset ? "image://brushes/" + head.brush.preset : ""
+            source: head.visible && head.brush.preset ? "image://brushes/" + head.brush.preset : "" // painted once it shows (H65)
             asynchronous: true; fillMode: Image.PreserveAspectCrop; smooth: true; mipmap: true
         }
         Text {

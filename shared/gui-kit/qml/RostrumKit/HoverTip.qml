@@ -44,4 +44,5 @@ QQC.Popup {
     Timer { id: rest; interval: 500; onTriggered: if (tip.text !== "") tip.open() }
     onHoveredChanged: hovered && !pressed ? rest.restart() : (rest.stop(), tip.close())
     onPressedChanged: if (pressed) { rest.stop(); tip.close() }
+    Component.onCompleted: if (hovered && !pressed) rest.restart()   // made already hovered (a tip loaded on hover)
 }

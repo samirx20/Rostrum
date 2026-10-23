@@ -112,9 +112,12 @@ def steps(screen, song):
     }
 
 
+SMALL = "--sample" in sys.argv                       # the built-in sample song alone (4 tracks) instead of BIG
+
+
 def make_song(folder) -> Path:
     doc = Document.new(KIND, folder=folder, item="perf")
-    doc.run_script("perf.py", run_source(BIG, "perf.py"))
+    doc.run_script("perf.py", run_source(SOURCE if SMALL else BIG, "perf.py"))
     doc.save()
     return Path(folder)
 
@@ -163,6 +166,8 @@ def main():
     a.add_argument("--soak", type=float)
     a.add_argument("--profile")
     a.add_argument("--only", help="comma-separated step names (default: all)")
+    a.add_argument("--sample", action="store_true", help="the sample song (4 tracks), not the 16-track one")
+    a.add_argument("--start", action="store_true", help="only the start line, then close")
     args = a.parse_args()
     with tempfile.TemporaryDirectory(prefix="rostrum-perf-") as folder:
         app, screen, song, split = start(folder)
@@ -172,6 +177,8 @@ def main():
         try:
             if args.soak:
                 soak(screen, song, args.soak)
+            elif args.start:
+                pass
             elif args.profile:
                 import cProfile
                 import pstats
