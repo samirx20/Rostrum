@@ -15,10 +15,11 @@ tools = Tools()
     "type": "string", "description": "Only this laid-out group. Default: every group with an auto layout."}}})
 def inspect_layout(ctx, args):
     """The auto layouts of a composition at a time: for each laid-out group its settings (layout, gap, padding, spread,
-    align, wrap, columns, hug) and each layer it places, in order, with the x, y (its anchor, in the group's px from its
+    align, wrap, columns, hug, background) and each layer it places, in order, with the x, y (its anchor, in the group's px from its
     top-left) and, where the layout sizes it (fill, stretch, hug), w and h. The same values the render uses. Set layouts
     with the group's field operation (group.set layout=row|column|grid gap=… …) and a layer's layoutGrow / layoutApart
-    with its own; a laid-out layer's x and y belong to the layout (set it apart to place it by hand)."""
+    with its own; a laid-out layer's x and y belong to the layout (set it apart to place it by hand). A group's own background (background=true, bgColor, bgRadius,
+    bgStroke…) hugs its layers with the padding when the layout hugs: a name on a pill is one group."""
     doc, comp = doc_and_comp(ctx, args)
     t, _ = time_of(ctx, comp, args)
     groups = [g for g in items_of(comp).values() if has_layout(g)]
@@ -28,7 +29,7 @@ def inspect_layout(ctx, args):
             raise RostrumError(codes.NOT_FOUND, ctx.tool, f'group "{args["group"]}"', "has no auto layout in this composition",
                                hint="Turn one on with group.set layout=row (or column, grid).")
     placed = solve(comp, t)
-    keys = ("layout", "gap", "padding", "justify", "align", "wrap", "columns", "rowGap", "hugWidth", "hugHeight")
+    keys = ("layout", "gap", "padding", "justify", "align", "wrap", "columns", "rowGap", "hugWidth", "hugHeight", "background")
     rows = [{"group": g["id"], "settings": {k: g.get(k) for k in keys if k in g},
              **({"size": placed[g["id"]]} if g["id"] in placed else {}),
              "layers": [{"id": c["id"], **placed[c["id"]]} for c in g.get("layers", []) if c["id"] in placed]}

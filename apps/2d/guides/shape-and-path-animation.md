@@ -13,6 +13,10 @@ A person uses the Pen tool and writes the same path data the operations below wr
 `shape.to_path` turns a shape into a path (same id, place, look, effects, masks, keys; keys on fields a path cannot animate
 must be removed first).
 
+A box that must fit what is on it (a pill behind a name, a button behind its label) is not a separate shape: it is
+the group's own Background (`background`, `bgColor`, `bgRadius`), which hugs the group's layers with an auto layout's
+padding (guide `ui-and-product-animation`, Auto layout).
+
 ## Making a path
 
 In a script:
