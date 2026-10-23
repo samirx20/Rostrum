@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import json
 
-from PySide6.QtCore import QMimeData, Slot
+from PySide6.QtCore import Slot
 from PySide6.QtGui import QGuiApplication
 from rostrum2d import fields as F
 from rostrum2d.ops_clip import copied
+from rostrum_gui import clip
 from rostrum_gui.parts import SlotMixin
 
 MIME = "application/x-rostrum2d-layers"
@@ -27,10 +28,7 @@ class ClipboardSlots(SlotMixin):
             self._set_status("Nothing to copy: select a layer first")
             return False
         text = json.dumps(copied(self.doc.data, self.doc.kind.lists, layers))
-        mime = QMimeData()
-        mime.setData(MIME, text.encode("utf-8"))
-        mime.setText(text)
-        QGuiApplication.clipboard().setMimeData(mime)
+        clip.put({MIME: text.encode("utf-8")}, text)
         self._key_clip = []                         # the latest copy wins: Ctrl+V pastes layers now (key_edits.py)
         self._set_status(f"Copied {self._clip_count(len(layers))}")
         return True
