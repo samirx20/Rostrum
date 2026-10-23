@@ -21,7 +21,7 @@ from rostrum3d.engine import Engine
 from rostrum3d.mcp import draw
 from rostrum3d.mcp.render import FIRST, DocView, _finish, _folder, _manifest, _renumber, still
 
-from .render_job import SETTINGS
+from .render_job import cycles_of
 
 FRAME, SHOT = "frame", "shot"
 FORMATS = {"png": ["png"], "exr": ["exr"], "both": ["png", "exr"]}
@@ -85,7 +85,7 @@ class Export3D(ExportSheet):
         if b.render.running():
             raise RuntimeError("a render is already running; wait for it or cancel it first")
         info = dict(shot_info(b.doc.data, b.shot_id))
-        return {"info": info, "scene": describe(b.doc.data, b.shot_id, b.doc.folder), "doc": DocView.of(b.doc),
+        return {"info": info, "cycles": cycles_of(b.doc.data, b.shot_id, info), "scene": describe(b.doc.data, b.shot_id, b.doc.folder), "doc": DocView.of(b.doc),
                 "frame": b.frame, "folder": b.doc.folder, "out": out, "size": (info["width"], info["height"]),
                 "shot": self._choice == SHOT, "formats": FORMATS[self._format], "stem": self._stem(),
                 "main": FORMATS[self._format][0]}
@@ -109,7 +109,7 @@ class Export3D(ExportSheet):
     @staticmethod
     def _frame(plan, engine, progress):
         done, files, _ = still("export", plan["doc"], plan["info"], plan["scene"], engine, plan["frame"], "cycles",
-                               plan["size"], plan["formats"], 0, SETTINGS, plan["folder"])
+                               plan["size"], plan["formats"], 0, plan["cycles"], plan["folder"])
         return done, files
 
     @staticmethod
@@ -119,7 +119,7 @@ class Export3D(ExportSheet):
         partial, is_version = _folder(plan["folder"], doc, info)
         req = {e: str(partial / f"{name}.{{frame}}.{e}") for e in plan["formats"]}
         draw.render("export", f"frames {f0}-{f1} of {info['id']}", engine, plan["scene"], camera=info["camera"],
-                    renderer="cycles", frames=[f0, f1], width=w, height=h, exposure=0, timeoutS=3600, **SETTINGS,
+                    renderer="cycles", frames=[f0, f1], width=w, height=h, exposure=0, timeoutS=3600, **plan["cycles"],
                     progress=lambda i, n, _=None: progress(i / max(n, 1)), **req)
         for e in plan["formats"]:
             _renumber(partial, name, e, f0, FIRST)

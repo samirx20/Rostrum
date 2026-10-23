@@ -1,5 +1,5 @@
 """The viewport's Final look (SPEC §11.1): progressive Cycles in place, with the Render button's own settings (one place:
-render_job.SETTINGS), so the converged viewport is the Render button's picture. Screen state only: never the document.
+render_job.cycles_of, the shot's render settings), so the converged viewport is the Render button's picture. Screen state only: never the document.
 
 The engine does one step per `view` request and says how far it has got (ENGINE_CONTRACT.md § 4, `final`); this keeps
 the progress line and decides what comes next. The 4 GB card: when it is nearly full the look steps down to half the
@@ -7,7 +7,6 @@ pixels, and when it is still short (or Cycles fails) it goes back to Quick, sayi
 """
 from __future__ import annotations
 
-from .render_job import SETTINGS
 
 FREE_MB = 300                 # under this much free graphics memory, Final steps down (then leaves)
 NEXT_MS = 120                 # how soon the next step is asked for while it refines
@@ -23,9 +22,9 @@ class FinalLook:
     def stop(self):
         self.on, self.scale, self.line, self.fraction = False, 1.0, "", 0.0
 
-    def fields(self) -> dict:
+    def fields(self, cycles: dict) -> dict:
         """What a Final `view` request adds over Quick: the render's renderer and settings, its exposure and view."""
-        return {"renderer": "cycles", "samples": SETTINGS["samples"], "denoise": SETTINGS["denoise"],
+        return {"renderer": "cycles", "samples": cycles["samples"], "denoise": cycles["denoise"],
                 "exposure": 0.0, "view": "", "selected": []}
 
     def size(self, size: tuple[int, int]) -> tuple[int, int]:

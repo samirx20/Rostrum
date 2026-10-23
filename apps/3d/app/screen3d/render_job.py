@@ -22,6 +22,13 @@ from rostrum3d.mcp.render import DocView, still
 from rostrum3d.render_fields import settings
 
 FORMATS = ["png", "exr"]
+
+
+def cycles_of(data: dict, shot_id: str, info: dict) -> dict:
+    """The shot's Cycles settings ({samples, denoise}) as agents read them (render_fields.settings): the one place the
+    Render button, Export and the viewport's Final look take them from."""
+    s = settings(next(x for x in data["shots"] if x["id"] == shot_id), info)
+    return {"samples": s["samples"], "denoise": s["denoise"]}
 CANCELLED = "Render cancelled"
 
 

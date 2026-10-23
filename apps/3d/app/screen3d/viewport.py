@@ -18,6 +18,7 @@ from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from rostrum3d import through
 
 from .final_look import NEXT_MS, FinalLook
+from .render_job import cycles_of
 from .frames import ViewRenderer
 from .viewcam import ViewCam
 
@@ -141,7 +142,7 @@ class Viewport(QObject):
                 self.cam.mode = "free"
                 self.settingsChanged.emit()
         if self.final.on:
-            return {**self.cam.request(self.bridge.frame, *self.final.size((w, h))), **self.final.fields()}
+            return {**self.cam.request(self.bridge.frame, *self.final.size((w, h))), **self.final.fields(cycles_of(self.bridge.doc.data, self.bridge.shot_id, self.bridge.shot_info()))}
         return {**self.cam.request(self.bridge.frame, w, h), "renderer": "storm", "view": "",
                 "exposure": self._exposure, "studio": self._studio, "sceneLights": self._lights,
                 "ao": self._ao if self._ao_on else 0.0, "dof": self._dof,
