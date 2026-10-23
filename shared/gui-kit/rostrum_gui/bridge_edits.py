@@ -83,13 +83,13 @@ class EditSlots(SlotMixin):
     @Slot()
     def undo(self):
         """The person's newest change in this document or a joined one (the markers): one history (desk.py)."""
-        self._guard(lambda: self._step(desk.undo, "Nothing to undo", "Undone"))
+        self._guard(lambda: self._step(desk.undo, "Nothing to undo"))
 
     @Slot()
     def redo(self):
-        self._guard(lambda: self._step(desk.redo, "Nothing to redo", "Redone"))
+        self._guard(lambda: self._step(desk.redo, "Nothing to redo"))
 
-    def _step(self, fn, nothing, said):
+    def _step(self, fn, nothing):
         pairs = [(self.doc, None)] + [(p.history_doc(), p) for p in self._kit.partners]
         pairs = [(d, p) for d, p in pairs if d is not None]
         hit = fn([d for d, _ in pairs], self.who, self.open_item)
@@ -97,7 +97,7 @@ class EditSlots(SlotMixin):
             partner = next((p for d, p in pairs if d is doc), None)
             if partner is not None:
                 partner.stepped(doc)
-        self._done(hit[1] if hit else None, nothing, said)
+        self._done(hit[1] if hit else None, nothing, said=True)
 
     def _apply(self, calls, label):
         self._done(self.doc.apply(calls, self.who, label=label), "")
@@ -116,10 +116,11 @@ class EditSlots(SlotMixin):
         if s is not None:
             self._guard(lambda: self._done(s.end(cancel), ""))
 
-    def _done(self, change, nothing, said=""):
+    def _done(self, change, nothing, said=False):
         """A person's own change clears the message (they see it on screen; its name is on ↶ and in History);
-        undo / redo say what they took back ("Undone: Move title"); no change says `nothing`."""
-        self._set_status(nothing if change is None else f"{said}: {change.label}" if said else "")
+        undo / redo show their change's own label, which the core words once ("Undid: Move title"); no change
+        says `nothing`."""
+        self._set_status(nothing if change is None else change.label if said else "")
 
     def _guard(self, fn) -> bool:
         """Run an edit; a refusal is reported (console + status), never swallowed, never a crash."""

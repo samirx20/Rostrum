@@ -211,6 +211,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # H52 (painting phase 2): Draw each frame on, three drawings on twos, the onion skin's Before / After rows, the
         # cells on the timeline
         ("draw-each-frame", ["--sample"], [*FRAMES, "onion on", "frame prev"]),
+        # H59: the drawing keyed where its drawings start and inside one: cells and key dots never cross, at any size
+        ("draw-each-frame-keys", ["--sample"], [*FRAMES, "time 0", "keyhere", "time 0.0667", "set x 10", "time 0.5",
+                                                "set x 20", "time 1", "set x 40", "onion on", "time 0.07"]),
         # H58: paint layers shared by all drawings: "Colour" added below "Paint", then 3 drawings with the same two layers
         ("paint-layers-shared", ["--sample"], ["tool draw", "draw 300 300 500 320 700 300", "paintlayer",
                                                'paintset paint_2 name "Colour"', "paintmove paint_2 1",

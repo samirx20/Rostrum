@@ -1,8 +1,8 @@
 import QtQuick
 import RostrumKit
 
-// Under "Draw each frame" while it is on (painting design §2.5, mockup paint-03): the drawing navigator (‹ Drawing 5 of 9
-// · held 2 frames ›, also , and .), New and Copy (Alt+N, Alt+Shift+N), New ones hold 1 · 2 · 3 · 4 (the layer's
+// Under "Draw each frame" while it is on (painting design §2.5, mockup paint-03): the drawing navigator (‹ Drawing 5 of 9 ›,
+// also , and .) with the drawing's hold at its right ("hold 2" frames, "to end"), New and Copy (keys in their hover help), New ones hold 1 · 2 · 3 · 4 (the layer's
 // newHold), Onion skin and, while it is on, how many drawings Before (red) and After (green) it shows (painter).
 Column {
     id: de
@@ -11,6 +11,7 @@ Column {
     readonly property int labelColumn: Theme.labelColumnFor(width)
     readonly property real fieldW: width - labelColumn - Theme.keyGutter
     readonly property real wide: Theme.wideFor(width)
+    readonly property real holdW: 52
     readonly property var now: painter.now
     readonly property var counts: [0, 1, 2, 3, 4, 5].map(k => ({ value: k, label: k === 1 ? "1 drawing" : k + " drawings" }))
 
@@ -31,28 +32,35 @@ Column {
         visible: can
     }
 
-    Line {      // the navigator
+    Line {      // the navigator, and how long this drawing holds at the right
         objectName: "drawingNavigator"
-        Rectangle { width: de.wide; height: parent.height - 4; anchors.verticalCenter: parent.verticalCenter
+        readonly property real navW: de.wide - de.holdW - Theme.gap
+        Rectangle { width: parent.navW; height: parent.height - 4; anchors.verticalCenter: parent.verticalCenter
                     radius: Theme.radiusCtl; color: Theme.raised }
         Arrow { step: -1; x: 0 }
         Text {
-            width: de.wide - 2 * Theme.row; x: Theme.row; anchors.verticalCenter: parent.verticalCenter
+            width: parent.navW - 2 * Theme.row; x: Theme.row; anchors.verticalCenter: parent.verticalCenter
             horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
             color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont; font.features: { "tnum": 1 }
-            text: !de.now.has ? "No drawing here" : "Drawing " + de.now.index + " of " + de.now.count
-                  + (de.now.last ? " · held to the end" : " · held " + de.now.held + (de.now.held === 1 ? " frame" : " frames"))
+            text: de.now.has ? "Drawing " + de.now.index + " of " + de.now.count : "No drawing here"
         }
-        Arrow { step: 1; x: de.wide - width }
+        Arrow { step: 1; x: parent.navW - width }
+        Text {      // the hold: "hold 2" frames, or "to end" for the last drawing
+            visible: de.now.has === true
+            x: de.wide - de.holdW; width: de.holdW; anchors.verticalCenter: parent.verticalCenter
+            horizontalAlignment: Text.AlignRight; elide: Text.ElideRight
+            color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont; font.features: { "tnum": 1 }
+            text: de.now.last ? "to end" : "hold " + de.now.held
+        }
     }
-    Line {      // New · Copy
+    Line {      // New · Copy (their keys are in the hover help)
         Row {
             spacing: Theme.grid; anchors.verticalCenter: parent.verticalCenter
-            Button { objectName: "newDrawing"; width: (de.wide - Theme.grid) / 2; text: "New"; hint: "Alt N"
-                     help: "A blank drawing after this one (or at the playhead on an empty frame)"; onClicked: painter.newFrame(false) }
-            Button { objectName: "copyDrawing"; width: (de.wide - Theme.grid) / 2; text: "Copy"; hint: "Alt Shift N"
+            Button { objectName: "newDrawing"; width: (de.wide - Theme.grid) / 2; height: Theme.row - 4; text: "New"; tip: "New drawing"; job: "new_drawing"
+                     help: "A blank drawing after this one (or at the playhead on an empty frame)."; onClicked: painter.newFrame(false) }
+            Button { objectName: "copyDrawing"; width: (de.wide - Theme.grid) / 2; height: Theme.row - 4; text: "Copy"; tip: "Copy drawing"; job: "copy_drawing"
                      visible: de.now.has === true
-                     help: "A copy of this drawing after it, to change part of it"; onClicked: painter.newFrame(true) }
+                     help: "A copy of this drawing after it, to change part of it."; onClicked: painter.newFrame(true) }
         }
     }
     Line {
@@ -64,19 +72,19 @@ Column {
             onPicked: (v) => painter.setNewHold(Number(v))
         }
     }
-    Line {
+    Line {      // Onion skin; while on, Before (red) and After (green) share the line
         Label { text: "Onion skin" }
         Toggle { objectName: "onionSkin"; x: de.labelColumn; anchors.verticalCenter: parent.verticalCenter
                  checked: painter.onionOn; onToggled: (v) => painter.setOnion(v) }
     }
-    Repeater {      // Before (red) · After (green): how many drawings each way
+    Repeater {      // how many drawings each way
         model: painter.onionOn ? [{ side: "before", label: "Before", colour: Theme.danger },
                                   { side: "after", label: "After", colour: Theme.ok }] : []
         delegate: Line {
             id: ol
             required property var modelData
             Label { text: ol.modelData.label }
-            Rectangle { x: de.labelColumn - Theme.gap - width; width: 10; height: 10; radius: 2
+            Rectangle { x: de.labelColumn - Theme.gap - width; width: 8; height: 8; radius: 2
                         anchors.verticalCenter: parent.verticalCenter; color: ol.modelData.colour }
             ChoiceField {
                 x: de.labelColumn; width: de.fieldW; anchors.verticalCenter: parent.verticalCenter

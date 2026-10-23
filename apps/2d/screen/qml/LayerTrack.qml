@@ -21,7 +21,8 @@ Rectangle {
     function xOf(t) { return 8 + Math.round(ruler.xOf(t)) }
     function onBar(k) { return k.t >= (rowData.start || 0) - 1e-6 && k.t <= (rowData.end || 0) + 1e-6 }   // a key in the layer's time
     function tAt(item, x) { return ruler.tOf(item.mapToItem(track, x, 0).x - 8) }
-    readonly property var barKeys: isLayer && rowData.bar === true ? rowData.keys.filter(k => onBar(k)) : []
+    readonly property bool cells: (rowData.frames || []).length > 0     // a drawing's cells are its bar: no second one over them
+    readonly property var barKeys: isLayer && rowData.bar === true && !cells ? rowData.keys.filter(k => onBar(k)) : []
     radius: Theme.radiusCtl
     color: lit && isLayer ? Qt.tint(Theme.sunken, Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.07))
          : isLayer ? Theme.sunken : Qt.darker(Theme.panel, 1.15)
@@ -113,7 +114,7 @@ Rectangle {
             delegate: KeyDot { row: track; shift: bar.x; room: bar.width }
         }
     }
-    FrameMarks { anchors.fill: parent; frames: track.rowData.frames || []; drawing: track.rowData.row === "layer" && (track.rowData.kind === "drawing" || (track.rowData.frames || []).length > 0); timeRuler: track.ruler; owner: track.rowData.owner }   // a drawing's cells
+    FrameMarks { anchors.fill: parent; frames: track.rowData.frames || []; keys: track.rowData.keys || []; drawing: track.rowData.row === "layer" && (track.rowData.kind === "drawing" || (track.rowData.frames || []).length > 0); timeRuler: track.ruler; owner: track.rowData.owner }   // a drawing's cells
     Repeater {   // a tied end: a small flag with the marker's name on hover
         model: [{ at: "start", name: track.rowData.startMarker || "" }, { at: "end", name: track.rowData.endMarker || "" }]
         delegate: Rectangle {
@@ -146,7 +147,7 @@ Rectangle {
         }
     }
     Repeater {   // a line's stretches (or a barless layer's), under its keys
-        model: bar.visible ? [] : track.rowData.stretches || []
+        model: bar.visible || track.cells ? [] : track.rowData.stretches || []
         delegate: StretchBand { row: track }
     }
     Repeater {   // the keys of a row with no bar (a setting, an effect, a mask)
