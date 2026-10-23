@@ -157,6 +157,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("paint-fill", ["--sample"], [*PAINTED, "fillmode on"]),
         ("paint-layers", ["--sample"], [*PAINTED, "paintlayer", "draw 600 400 1200 420", "paintlayer",
                                         "draw 600 500 1200 520", f"paintset {LONG_PAINT}"]),
+        # H55: Paint layers + : a locked layer with a long name and its blend note (Multiply · 70 %) beside it
+        ("paint-layers-locked", ["--sample"], [*PAINTED, "paintlayer", "draw 600 400 1200 420", "paintlayer",
+                                               f"paintset {LONG_PAINT}", 'paintset paint_3 mode "multiply"',
+                                               "paintset paint_3 opacity 0.7", "paintset paint_3 locked true"]),
         # H31: Select strokes armed; strokes picked (their bar); Alt held over a colour; Set depth on a drawing with a camera
         ("paint-select-strokes", ["--sample"], [*PAINTED, "selectstrokes on"]),
         ("paint-strokes-picked", ["--sample"], [*PAINTED, "lasso 500,200 1000,200 1000,400 500,400"]),

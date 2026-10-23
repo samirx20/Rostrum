@@ -23,7 +23,7 @@ When Draw is on, the timeline shrinks to its compact height: the top strip, the 
 Every brush setting lives in **one** place, never two.
 
 **The bar at the top-centre of the canvas** holds what you change while painting: the **tip**, **Size**, the
-**colour**, **Opacity**, **Eraser** (**E**), **Fill** (**G**, see part 4), **+ Paint layer** and **Painting on**.
+**colour**, **Opacity**, **Eraser** (**E**), **Fill** (**G**, see part 4) and **Painting on**.
 **[** and **]** make the brush smaller or bigger. On a narrow window, Opacity, then Eraser, then Fill move under the
 bar's own **⋯** button; Size and the colour always stay.
 
@@ -82,15 +82,22 @@ A fill is kept as a shape, not as dots of colour, so it stays as sharp as your s
 
 ## 5. Paint on: layers and settings of what you paint on
 
-Under the brush, **Paint on Card** (the name of what you paint on) shows:
+Under the brush, **Painting on** names what you paint on, then shows:
 
-1. **The paint layers**, the top one first. A thing starts with one, called "Paint". To keep lines above colour, press
-   **+ Paint layer** in the bar: your next stroke or fill starts a new layer on top.
-   - Click a layer's name to paint on it; it is highlighted.
+1. **Paint layers +**. A thing starts with one paint layer, called "Paint", so at first this is one line with its
+   **+**. To keep lines above colour, press **+**: a new layer, "Paint 2", goes on top and is highlighted, and your
+   next stroke or fill goes into it. With two or more, the list shows, the top one first. Each row has an eye, a small
+   picture of that layer's paint and its name; in grey its blend and opacity when they are not Normal · 100 %
+   ("Multiply · 70 %"), and a lock when it is locked.
+   - Click a row to paint on that layer; it is highlighted in blue.
    - The eye hides or shows it.
-   - Drag a name up or down to change the order.
-   - Right-click a name and pick **Delete** to remove it and its strokes.
-   - **Opacity** and **Blend** under the list belong to the highlighted layer.
+   - Drag a row up or down to change the order.
+   - Double-click a name to rename it.
+   - Right-click a row: **Hide**, **Lock**, **Rename**, **Delete** (Delete removes it and its strokes).
+   - Under the list, the highlighted layer's own **Blend** (Normal, Multiply, Screen, Add), **Opacity** and **Lock**.
+     A locked layer refuses paint and fill: lock the line art before you colour under it. Click the lock on its row to
+     unlock it.
+   Every one of these is one change, so **Ctrl+Z** takes back exactly one.
 2. **Keep inside the outline**: on by default. Turn it off and the paint can spill over the whole box around the
    thing. (A drawing has no outline, so it does not have this switch.)
 3. **Draw each frame**: off means the thing has one painting that holds for the whole time. On means each frame can

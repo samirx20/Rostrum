@@ -251,8 +251,8 @@ def do_step(bridge, win, step):
         bridge.painter.goFrame(1 if rest[0] == "next" else -1)
     elif word == "onion":
         bridge.painter.setOnion(rest[0] == "on")
-    elif word == "paintlayer":                   # "+ Paint layer": the next stroke starts a new paint layer
-        bridge.painter.newPaintLayer()
+    elif word == "paintlayer":                   # "Paint layers +": a new paint layer on top, highlighted
+        bridge._paint_layers.add()
     elif word == "painton":                      # painton selected|new: the "Painting on: … ▸" menu
         bridge.painter.paintOn(rest[0])
     elif word == "marker":                       # the ruler's flag edits, through the same MarkerWatch slots

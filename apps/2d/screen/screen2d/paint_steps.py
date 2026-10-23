@@ -3,7 +3,7 @@
     fill <x> <y>                     G (Fill on), click at (x, y) (composition px); fails like the click (status)
     fillmode on|off | gap small|medium|large     Fill on / off (G) | Close gaps
     paintpick <paint id>             click a paint layer's name: strokes and fills go on it
-    paintset <paint id> visible|opacity|mode|name <json value>    its eye, Opacity, Blend
+    paintset <paint id> visible|opacity|mode|name|locked <json value>    its eye, Opacity, Blend, rename, Lock
     paintmove <paint id> <row>       drag it to that row of the list (0 = top) | paintremove <paint id> (right-click › Delete)
     painttoggle <field> on|off       Inside the outline (paintInside), Draw each frame (eachFrame)
     preset <id> | painttool brush|eraser|fill|pick|select | brushedit on|off    a brush in the brush panel | its top

@@ -144,7 +144,8 @@ layer.ride target=spark path=                     # stop riding (stays where it 
 ```
 
 - **Where it sits:** the layer's anchor lands on the path (Anchor X / Y pick which point of the layer that is). Its X, Y
-  become an offset from there (layer.ride sets them to 0); key them to bob above the line.
+  become an offset from there (layer.ride sets them to 0); key them to bob above the line. On screen the Position row
+  then reads **Offset** (X, Y).
 - **Rides at:** `end` = the tip of the part drawn so far (key `trimEnd` and the layer travels with the drawing), `start`
   = Trim start (a line drawn off from behind), `along` = `rideAlong` (0 = the path's start, 1 = its end) whatever the trim.
 - **The path can move:** reshaping (`d` keys), moving, turning or scaling the path carries the rider with it on every
