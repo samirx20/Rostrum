@@ -173,7 +173,15 @@ AppShell {
         Inspector { id: settingsMove; anchors.fill: parent; bridge: backend; keyMarks: true; effects: true; actions: backend.actions
                     visible: backend.tool !== "draw" && !backend.stretch.shown   // typing: the text's settings (typing_session.py selects it)
                     highlight: backend.keys.props         // the settings whose keys are picked (key_select.py)
-                    above: RigPoses { }                   // a rig in hand: its pose library first (rig_poses.py)
+                    above: Column { width: parent.width    // the picked keys (KeyPanel.qml), then a rig in hand: its pose library (rig_poses.py)
+                                    KeyPanel { }
+                                    RigPoses { } }
+                    below: Column {                       // a frame-by-frame layer: the same drawing tools as in Draw (DrawEachFrame.qml)
+                        width: parent.width; visible: painter.drawingId !== ""; topPadding: Theme.gap
+                        Text { height: Theme.row; verticalAlignment: Text.AlignVCenter; text: "Draw each frame"
+                               color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont }
+                        DrawEachFrame { visible: true }
+                    }
                     sheets: [LipSyncSheet { }, BlinkSheet { }] },   // Lip sync… / Add blinks… in the panel's place
         Inspector { id: settingsDraw; anchors.fill: parent; bridge: painter; visible: backend.tool === "draw"
                     above: BrushHead { }      // the brush's own row (or ‹ back while editing it), then its quick rows
@@ -185,6 +193,7 @@ AppShell {
         visible: !startScreen.visible
         anchors.fill: parent
         compact: shell.timelineFolded && !shell.bottomBeside
+        canCompact: !shell.bottomBeside
         onResized: (h) => { shell.timelineFolded = false; shell.setAsked("bottom", h) }   // its top edge, dragged: the person's height
         onCompactAsked: (on) => shell.timelineFolded = on
     }

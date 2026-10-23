@@ -1,11 +1,11 @@
 import QtQuick
 import RostrumKit
 
-// "Add marker": a shared project marker at the playhead (on its frame). Only in a project folder (markers belong to
-// the project); the new flag can be dragged, renamed (double-click) or deleted (×) on the ruler.
-Button {
+// Add marker: a shared project marker at the playhead (on its frame), in the timeline's play cell. Only in a project
+// folder (markers belong to the project); the new flag can be dragged, renamed (double-click) or deleted (×) on the ruler.
+IconButton {
     visible: backend.markerEdit.available
-    text: "Add marker"; kind: "ghost"; implicitHeight: 24
-    HoverTip { y: -height - 4; text: "A named moment other apps can follow"; hovered: parent.hovered; pressed: parent.down }
+    glyph: "⚑"; kind: "ghost"; implicitWidth: 24; implicitHeight: 24
+    tip: "Add marker"; help: "A named moment at the playhead that other apps can follow"
     onClicked: backend.markerEdit.add(Math.round(backend.time * backend.frameInfo.fps) / backend.frameInfo.fps)
 }

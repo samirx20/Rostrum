@@ -14,7 +14,7 @@ curves, not what to choose; choose by what the move must say, then check by look
 | `easeInOut` | Symmetrical slow-fast-slow. Things travelling between two resting places. |
 | `snappy` | Almost all the travel happens in the first part, then a long soft settle. Reads as quick but not rough. |
 | `heavy` | Like `snappy`, with an even longer, softer landing. The last part crawls. |
-| `spring` | Overshoots the target and settles. Two words control it: `bounce` (0 none – 1 a lot) and `speed` (0 slow – 1 fast); the key bar's sliders are the same two. Experts may write `stiffness` and `damping` instead (bounce 0.6, speed 0.5 is stiffness 170, damping 12). The 0–1 of the stretch is read as one second, so a short stretch squeezes the wobble. |
+| `spring` | Overshoots the target and settles. Two words control it: `bounce` (0 none – 1 a lot) and `speed` (0 slow – 1 fast); the Key block's sliders are the same two. Experts may write `stiffness` and `damping` instead (bounce 0.6, speed 0.5 is stiffness 170, damping 12). The 0–1 of the stretch is read as one second, so a short stretch squeezes the wobble. |
 | `bounce` | Falls onto the target and rebounds. Ends exactly on the value. |
 | `custom` | Your own curve: `x1 y1 x2 y2` (x 0–1; y may go below 0 or above 1 to overshoot). |
 

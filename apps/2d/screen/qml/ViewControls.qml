@@ -17,6 +17,7 @@ Item {
         if (key === "fit") view.fitAll()
         else if (key === "sel") vc.fitSelection()
         else if (key === "snap") backend.snap.setOn(!backend.snap.on)
+        else if (key === "blur") backend.playback.setBlur(!backend.playback.blur)
         else if (key.startsWith("size:")) backend.playback.setSize(key.slice(5))
         else view.show(Number(key) / 100)
     }
@@ -30,6 +31,8 @@ Item {
             for (const o of [["full", "Full"], ["half", "Half"], ["quarter", "Quarter"]])     // one heading, not the label ×3
                 out.push({ value: "size:" + o[0], label: o[1], heading: o[0] === "full" ? "Preview while playing" : "",
                            checked: backend.playback.size === o[0], group: "c" })
+        if (backend.frameInfo.blur === true)            // motion blur: full blur is slower; off plays one blur step a frame
+            out.push({ value: "blur", label: "Motion blur while playing", checked: backend.playback.blur, group: "c" })
         return out
     }
 

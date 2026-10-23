@@ -1,10 +1,10 @@
 import QtQuick
 import RostrumKit
 
-// The key bar's small curve (UX_SPEC 3.18): the first picked key's ease drawn from 0 to 1 (backend.keyBar.curve, the one
+// The Key block's curve (UX_SPEC 3.18): the first picked key's ease drawn from 0 to 1 (backend.keyBar.curve, the one
 // evaluation), and, where the ease is a cubic, its two handles to drag (like a CSS cubic curve). A whole drag is one
 // change on every picked key (backend.keyBar.begin / curveTo / end: key.handles). y may leave the box (overshoot).
-// `source`: whatever offers curve, handles, begin / curveTo / end (the key bar, or a picked stretch: backend.stretch).
+// `source`: whatever offers curve, handles, begin / curveTo / end (the Key block, or a picked stretch: backend.stretch).
 Item {
     id: c
     implicitWidth: 96; implicitHeight: Theme.field

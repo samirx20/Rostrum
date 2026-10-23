@@ -1,4 +1,4 @@
-"""The key bar (UX_SPEC 3.18, INTERACTION 1.5 point 6): in the timeline header while keys are picked. Ease ▾, a small
+"""The key bar (UX_SPEC 3.18, INTERACTION 1.5 point 6): the settings panel's Key block (KeyPanel.qml) while keys are picked. Ease ▾, a small
 curve to drag, for one key its Time and Value, and for a spring Bounce and Speed. Every picked key changes; each pick,
 field edit or whole drag is ONE change (key.set, key.handles: the operations an agent calls). Offered to QML as
 `backend.keyBar`. Screen state only; the keys picked are key_select.py's.

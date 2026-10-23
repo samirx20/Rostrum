@@ -2,17 +2,18 @@ import QtQuick
 import RostrumKit
 
 // The timeline, bottom, full width, always there; it is also the layers list (apps/2d/DESIGN.md › The layer rows).
-// Header: play, the time, how playing frames are drawn, Add marker, Keys | Curves and, for a selected drawing, its
-// frame buttons. Under it the ruler (it scrubs; the project's marker flags sit on it) and one row per layer: its name
+// One header row: play and the time over the names, the ruler over the rows (it scrubs; the project's marker flags sit
+// on it), Keys | Curves and the height switch at its right end. Under it one row per layer: its name
 // on the left (LayerName.qml), its bar, keys and frames on the right (LayerTrack.qml). Curves shows the selected
 // layer's value curves in the same place. The thin strip above the top edge drags to make the timeline taller.
 // Compact (DESIGN.md › two heights): only the selected layer's row; its name opens a list of every layer, so another
-// is one click away. The button at the header's right end switches; Main.qml remembers it per tool.
+// is one click away. The button at the ruler row's right end switches; Main.qml remembers it per tool.
 Rectangle {
     id: tl
     property int labelWidth: 240
     signal resized(real height)                 // the top edge dragged to this height (Main.qml clamps it)
     property bool compact: false
+    property bool canCompact: true              // false beside a tall frame (one height there): the switch is absent
     signal compactAsked(bool on)
     readonly property real compactHeight: rowsTop + Theme.rowDense + 2 * Theme.gap
                                           + (backend.soundtrack.present ? Theme.row + 2 : 0)   // the Sound row stays
@@ -34,45 +35,42 @@ Rectangle {
                     color: edge.pressed ? Theme.accent : Theme.fg4; visible: edge.containsMouse || edge.pressed }
     }
 
-    Row {  // the header
-        id: header
-        x: Theme.gap; y: Theme.gap; height: Theme.header; spacing: Theme.pad   // y: room for the edge's grab above it
-        // gives way when it would reach the compact switch: the play options go first (the key bar matters more)
-        readonly property real room: compactSwitch.x - Theme.pad - x
-        readonly property real others: {
-            let w = 0
-            for (const c of [play, readout, marker, keysCurves, frameTools, keyBar])
-                if (c.visible) w += c.width + spacing
-            return w
-        }
-        PlayButton { id: play; anchors.verticalCenter: parent.verticalCenter; implicitHeight: 24; implicitWidth: 24
+    // The header row (SPEC §9.5): over the layer names, play, the time, Add marker (in a project folder) and Keys | Curves;
+    // over the rows, the ruler, with the height switch at its right end. One row instead of two: the height is the rows'.
+    readonly property real headY: Theme.gap                                   // room for the edge's grab above it
+    readonly property real headH: Math.max(30, ruler.height)
+    Row {
+        id: playCell
+        x: Theme.gap; y: tl.headY; height: tl.headH; spacing: Theme.gap
+        PlayButton { objectName: "timelinePlay"; anchors.verticalCenter: parent.verticalCenter; implicitHeight: 24; implicitWidth: 24
                      playing: backend.playing; onClicked: backend.togglePlay() }
-        TimeReadout { id: readout; anchors.verticalCenter: parent.verticalCenter; width: 112 }
-        PlayOptions { anchors.verticalCenter: parent.verticalCenter; roomy: header.others + shownWidth <= header.room }
-        AddMarker { id: marker; anchors.verticalCenter: parent.verticalCenter }
-        Segmented {   // Keys: the rows' diamonds; Curves: the value curves inside this same area
-            id: keysCurves
-            anchors.verticalCenter: parent.verticalCenter; implicitHeight: 26
-            options: [{ value: "keys", label: "Keys" }, { value: "curves", label: "Curves" }]
-            current: backend.curves.on ? "curves" : "keys"
-            onPicked: (v) => backend.curves.setOn(v === "curves")
-        }
-        FrameTools { id: frameTools; anchors.verticalCenter: parent.verticalCenter; visible: painter.drawingId !== "" && !keyBar.visible && backend.tool !== "draw" }   // a frame-by-frame layer, no keys picked
-        KeyBar { id: keyBar; anchors.verticalCenter: parent.verticalCenter }   // only while keys are picked
+        TimeReadout { anchors.verticalCenter: parent.verticalCenter }
+        AddMarker { anchors.verticalCenter: parent.verticalCenter }
+    }
+    Segmented {   // Keys: the rows' diamonds; Curves: the value curves inside this same area
+        id: keysCurves
+        objectName: "keysCurves"
+        anchors { right: ruler.left; rightMargin: Theme.pad + 8; verticalCenter: ruler.verticalCenter }   // the names column's right edge
+        implicitHeight: 26
+        options: [{ value: "keys", label: "Keys" }, { value: "curves", label: "Curves" }]
+        current: backend.curves.on ? "curves" : "keys"
+        onPicked: (v) => backend.curves.setOn(v === "curves")
+    }
+    TimeRuler {
+        id: ruler
+        x: tl.labelWidth + Theme.gap + 8; y: tl.headY   // 8: room for a key at 0
+        width: (compactSwitch.visible ? compactSwitch.x - Theme.grid : parent.width - Theme.pad) - 8 - x; height: backend.markers.length > 0 ? 34 : 30   // 34: a row for marker flags
+        duration: backend.frameInfo.duration; fps: backend.frameInfo.fps; time: backend.time
     }
     IconButton {  // every row, or only the selected layer's
         id: compactSwitch
-        anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: header.verticalCenter }
+        objectName: "timelineHeight"
+        visible: tl.canCompact
+        anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: ruler.verticalCenter }
         implicitWidth: 26; implicitHeight: 26; kind: "ghost"
         glyph: tl.compact ? "⌃" : "⌄"
         tip: tl.compact ? "Show every layer" : "Show only the selected layer"
         onClicked: tl.compactAsked(!tl.compact)
-    }
-    TimeRuler {
-        id: ruler
-        x: tl.labelWidth + Theme.gap + 8; y: header.y + header.height   // 8: room for a key at 0
-        width: parent.width - x - Theme.pad - 8; height: backend.markers.length > 0 ? 34 : 22   // 34: a row for marker flags
-        duration: backend.frameInfo.duration; fps: backend.frameInfo.fps; time: backend.time
     }
     readonly property real rowsTop: ruler.y + ruler.height + Theme.grid
     CurveEditor {
@@ -113,7 +111,7 @@ Rectangle {
             width: 1; height: tl.height - y - Theme.gap; color: Theme.warn; opacity: 0.35
         }
     }
-    Menu {   // a key's right-click: the same Ease list as the key bar (backend.keyBar)
+    Menu {   // a key's right-click: the same Ease list as the key panel (backend.keyBar)
         id: easeMenu
         width: 140
         entries: backend.keyBar.eases

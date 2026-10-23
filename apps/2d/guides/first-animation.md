@@ -53,12 +53,12 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
 
 ## 6. Change how it feels
 
-1. Click a diamond on the bar. The **key bar** appears in the timeline's top strip: **Ease** (Linear, Ease in, Ease out, Smooth, Spring, Jump, Custom), a small curve, and for one key its **Time** and **Value**. The ease is how the value speeds up and slows down on its way to the next key.
+1. Click a diamond on the bar. The **Key** block appears at the top of the settings panel: **Ease** (Linear, Ease in, Ease out, Smooth, Spring, Jump, Custom), a small curve, and for one key its **Time** and **Value**. The ease is how the value speeds up and slows down on its way to the next key.
 2. Pick an ease. Every picked key changes at once, as one step. You can also right-click a diamond for the same list, or press **F9** (Smooth), **Shift+F9** (Ease in), **Ctrl+Shift+F9** (Ease out) or **Ctrl+Alt+J** (Jump).
 3. Drag the two small dots on the curve to shape it by hand: the ease becomes **Custom**.
 4. **Spring** overshoots and settles. Two sliders appear: **Bounce** (none to a lot) and **Speed** (slow to fast).
 5. The bar itself stays plain. To see an animation's ease, click the bar between its two keys: the settings panel shows it, with its curve.
-6. Click **Curves** in the timeline's top strip to see each value's curve between its keys. Click **Keys** to go back to the diamonds.
+6. Click **Curves** at the left of the timeline's header row, over the layer names, to see each value's curve between its keys. Click **Keys** to go back to the diamonds.
 
 ## 7. Key many layers at once, and retime
 

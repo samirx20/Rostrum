@@ -2,7 +2,7 @@ import QtQuick
 import RostrumKit
 
 // One key on a timeline row (LayerTrack.qml): a diamond at its time; on a layer's bar it stands for every key of the
-// layer at that frame (modelData.ids). Click picks it (the key bar shows its ease; the panel keeps the layer, its keyed setting highlighted); Ctrl+click adds or removes
+// layer at that frame (modelData.ids). Click picks it (the settings panel's Key block shows its ease; the panel keeps the layer, its keyed setting highlighted); Ctrl+click adds or removes
 // it, Shift+click picks the run between (backend.keys, screen2d/key_select.py). Drag moves it, or every picked key
 // together (key.set t, one change; within 6 px the grabbed key snaps: screen2d/time_snap.py; Ctrl: free; the "+6 f"
 // label beside the key: DragLabel.qml). Alt+drag the first or last picked

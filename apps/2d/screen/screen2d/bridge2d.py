@@ -179,7 +179,7 @@ class Bridge2D(AgentView, ShownState, KeyEdits, ClipboardSlots, UndoState, Actio
 
     @Property(QObject, constant=True)
     def playback(self):
-        """Playing's settings (Blur while playing): screen2d/playback.py."""
+        """Playing's settings (Motion blur while playing, in the canvas view menu): screen2d/playback.py."""
         return self.play
 
     @Property(int, notify=frameChanged)
