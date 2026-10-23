@@ -7,8 +7,8 @@ For a person using the RostrumSound app. This page takes you from an empty song 
 - **Top bar:** **≡** (the menu), the song's name, **Search** (Ctrl+K), the **loudness chip** ("−14.2 LUFS · target −14"
   with a dot: green within 1 of the target, amber outside; click it to open the Mixer) and **Export** (both once the
   song makes a sound), and **?** (help).
-- **Middle: the arrangement.** Every track is a row over time. Its header strip holds **+ Add**, ⏮ ▶, **Click** (the
-  metronome, Shift+K), the position ("3.2 · 0:04.80": bar.beat, then the time), and the song's tempo, beats and key as
+- **Middle: the arrangement.** Every track is a row over time. Its header strip holds **+ Add**, ⏮ ▶, the metronome
+  icon (Shift+K), the position ("3.2 · 0:04.80": bar.beat, then the time), and the song's tempo, beats and key as
   fields; **Grid ▾**, **Snap**, zoom − + and **Fit** sit at its right. The ruler counts **bars**: plain numbers, one per
   bar. For a seconds scale, right-click the ruler and choose **Show seconds** (the same entry hides it).
 - **Under it: the dock.** **Editor** (E) shows the selected track up close; **Mixer** (X) shows the faders. ▾ folds
@@ -55,7 +55,7 @@ The **Colour** row shows the colour the track is drawn in.
    note is (a quarter at first; 1/8, 1/16, a bar … or one grid step).
    Drag a note to move it in time and pitch.
    - It snaps to the grid. **Grid ▾** in the arrangement's header strip sets the step (Auto follows the zoom; Bar,
-     Beat, 1/8, 1/16, 1/32, triplets); **Snap** switches snapping off and on. Hold **Ctrl** while dragging to drag
+     1/2, 1/4, 1/8, 1/16, 1/32, triplets; the current one is ticked); **Snap** switches snapping off and on. Hold **Ctrl** while dragging to drag
      without snapping once.
    - Hold **Alt** to drag a copy.
    - Hold **Shift** to move it only in time.
@@ -85,7 +85,7 @@ The **Colour** row shows the colour the track is drawn in.
 ## 5. Play it
 
 - **Space** plays and stops. **Home** (or ⏮) goes to the start.
-- **Click** turns the metronome on and off (**Shift+K**). It is only for you while you work; it is never in an export.
+- The **metronome icon** beside play turns the click on and off (**Shift+K**); it is lit while on. It is only for you while you work; it is never in an export.
 - With a time range drawn, **Shift+L** loops it.
 - Click the ruler to move the playhead there.
 - **M** / **S** on a track's row mute it or play it alone.

@@ -4,8 +4,9 @@ names items go by (a note by its pitch, a hit by its drum, a clip by its file).
 """
 from __future__ import annotations
 
+import re
+
 from rostrum_gui.edits import field_call
-from rostrum_gui.bridge import name_of
 
 from rostrum_sound.doc import fields as FD
 
@@ -45,6 +46,26 @@ def edit_call(doc, item_id, param, value) -> dict:
         old = item[param]
         value = timing.write_time(old, float(value), doc.data) if kind == "time" else             timing.write_length(old, float(value), doc.data, _start(item, doc.data))
     return field_call(doc, item_id, param, value)
+
+
+KIND_WORDS = {"tempo": "Tempo change", "meter": "Time signature", "key": "Key change", "section": "Section",
+              "marker": "Marker", "track": "Track", "bus": "Bus", "group": "Group", "line": "Line", "doc": "Song"}
+COUNTED = ("track", "bus", "group")           # several of these share a word: "Track 2"
+_MADE_ID = re.compile(r"^([a-z]+)_\d+$")         # the ids the document hands out ("tempo_1", "meter_2")
+
+
+def name_of(item: dict) -> str:
+    """What an item is called: its name; with none, its id only when a person chose it, else its kind in words
+    (a made-up id never reaches a title, a list or Ctrl K)."""
+    if item.get("name"):
+        return str(item["name"])
+    made = _MADE_ID.match(str(item["id"]))
+    if not made and item["id"]:
+        return str(item["id"])
+    t = item.get("type") or (made.group(1) if made else "")
+    word = KIND_WORDS.get(t) or t.replace("_", " ").capitalize() or "Item"
+    n = item["id"].rsplit("_", 1)[-1] if made else ""
+    return f"{word} {n}" if n and t in COUNTED else word
 
 
 def label(item: dict) -> str:

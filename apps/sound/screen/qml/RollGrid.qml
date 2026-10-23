@@ -173,7 +173,12 @@ Item {
                 }
                 ctx.save(); ctx.beginPath(); ctx.rect(x + 8, y, Math.max(0, w - 16 - (b.canBack || b.canNext ? 38 : 0)), h); ctx.clip()      // the label stays inside its block, clear of the take arrows
                 ctx.fillStyle = Theme.fg2; ctx.font = Theme.label + "px '" + uiFont + "'"; ctx.textBaseline = "top"
-                ctx.fillText(b.label || "", x + 8, y + 6)
+                var room = Math.max(0, w - 16 - (b.canBack || b.canNext ? 38 : 0)), text = b.label || ""
+                if (ctx.measureText(text).width > room) {      // a whole letter, then an ellipsis
+                    while (text.length > 1 && ctx.measureText(text + "…").width > room) text = text.slice(0, -1)
+                    text += "…"
+                }
+                ctx.fillText(text, x + 8, y + 6)
                 ctx.restore()
             }
             onPaint: {

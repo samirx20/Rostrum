@@ -44,13 +44,16 @@ class Agents(QObject):
 
     @Slot()
     def refresh(self):
-        self._rows = [self._row(f) for f in connect.agents_found()]
+        self._load()
         self.changed.emit()
+
+    def _load(self):
+        self._rows = [self._row(f) for f in connect.agents_found()]
 
     @Property("QVariantList", notify=changed)
     def rows(self) -> list:
         if not self._rows:
-            self.refresh()
+            self._load()          # no `changed` from inside a read: that is a binding loop in the screen
         return self._rows
 
     @Property(str, constant=True)

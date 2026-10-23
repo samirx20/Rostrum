@@ -42,7 +42,7 @@ Panel {
         color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
         elide: Text.ElideRight
     }
-    component Act: Button { kind: "ghost"; height: Theme.rowDense; implicitHeight: Theme.rowDense }
+    component Act: Button { kind: "normal"; height: Theme.rowDense; implicitHeight: Theme.rowDense }
 
     Loader {   // the list is built only while the sheet is open
         id: pageLoader
@@ -63,7 +63,7 @@ Panel {
                     width: list.width
                     spacing: Theme.gap
                     Item { width: 1; height: Theme.grid }
-                    Small { text: "VERSIONS"; font.weight: Font.DemiBold; font.letterSpacing: Theme.capsSpacing; color: Theme.fg3 }
+                    Small { text: "Versions"; font.weight: Font.DemiBold; color: Theme.fg3 }
                     Repeater {
                         model: sheet.bridge ? sheet.bridge.versions : []
                         delegate: Item {

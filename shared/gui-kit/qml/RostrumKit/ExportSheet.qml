@@ -21,12 +21,9 @@ Panel {
     Keys.onEscapePressed: model.setOpen(false)
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close  Esc"; onClicked: sheet.model.setOpen(false) }
 
-    component Line: Text {                // one line that shortens in the middle; hover shows all of it
-        id: line
-        width: parent.width; elide: Text.ElideMiddle
+    component Line: Text {                // one line of words, whole: a long name breaks onto the next line, never cut
+        width: parent.width; wrapMode: Text.WrapAnywhere
         color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
-        HoverHandler { id: lineHover }
-        HoverTip { text: line.truncated ? line.text : ""; hovered: lineHover.hovered }
     }
     component Link: Text {                // a word to click in the result line
         signal clicked()
@@ -81,14 +78,13 @@ Panel {
             }
             Column {        // where: the file's name, its folder, Browse (they say it; no heading)
                 width: parent.width; spacing: Theme.grid
-                Line { text: sheet.model ? sheet.model.fileName : ""; objectName: "exportFileName" }
                 Line { text: sheet.model ? sheet.model.where : ""; color: Theme.fg3; font.pixelSize: Theme.label }
                 Row {
-                    spacing: Theme.gap
+                    spacing: Theme.gap; topPadding: Theme.grid
                     Button { text: "Browse…"; enabled: !sheet.running
                              onClicked: { if (sheet.model.folder) folderDialog.currentFolder = "file:///" + sheet.model.folder.replace(/\\/g, "/")
                                           folderDialog.open() } }
-                    Button { visible: sheet.model && sheet.model.folder !== ""; text: "Renders folder"; kind: "ghost"
+                    Button { visible: sheet.model && sheet.model.folder !== ""; text: "Renders folder"
                              enabled: !sheet.running; onClicked: sheet.model.setFolder("") }
                 }
             }
@@ -98,7 +94,8 @@ Panel {
     Column {        // Export and what it is doing: pinned under the choices, never scrolled out of sight (S36)
         id: footer
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-        topPadding: Theme.gap; spacing: Theme.gap
+        topPadding: Theme.groupGap; spacing: Theme.gap
+        Line { text: sheet.model ? sheet.model.fileName : ""; objectName: "exportFileName" }   // the file's whole name, with the button it belongs to
         Button {
             width: footer.width
             visible: !sheet.running

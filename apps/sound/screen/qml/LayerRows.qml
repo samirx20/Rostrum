@@ -8,7 +8,7 @@ Column {
     id: lr
     readonly property var info: { backend.selection; backend.historyCount; return backend.layers() }
     visible: !!info.group
-    width: parent ? parent.width : 0
+    width: parent ? parent.width - Theme.keyGutter : 0     // ends where the fields above end (the key gutter is theirs)
     Text { text: "Layers"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
            height: Theme.groupGap + Theme.rowDense; verticalAlignment: Text.AlignBottom }
     NameLabel { width: parent.width; height: Theme.rowDense; text: lr.info.group || ""; color: Theme.fg2

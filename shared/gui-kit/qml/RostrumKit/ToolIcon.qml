@@ -6,7 +6,7 @@ import "."
 // nothing, so a missing icon shows up at once.
 // select, rect, ellipse, pen, text, brush, picture, video, render3d, import, library, sound, camera, hand, zoom, bone,
 // align-left / -hcenter / -right / -top / -vcenter / -bottom, distribute-x / -y, union, subtract, intersect, exclude,
-// align-left / -hcenter / -right / -top / -vcenter / -bottom, distribute-x / -y, union, subtract, intersect, exclude
+// align-left / -hcenter / -right / -top / -vcenter / -bottom, distribute-x / -y, union, subtract, intersect, exclude, metronome
 Canvas {
     id: c
     property string name: ""
@@ -27,6 +27,9 @@ Canvas {
         case "select":       // the arrow pointer
             g.beginPath(); g.moveTo(5, 3); g.lineTo(5, 16); g.lineTo(8.5, 12.5); g.lineTo(11, 17.5); g.lineTo(13, 16.5)
             g.lineTo(10.5, 11.5); g.lineTo(15, 11.5); g.closePath(); g.stroke(); break
+        case "metronome":    // a tapering case, its swinging arm and weight
+            g.beginPath(); g.moveTo(7.5, 3.5); g.lineTo(12.5, 3.5); g.lineTo(16, 17); g.lineTo(4, 17); g.closePath(); g.stroke()
+            line([10, 13.5, 13.5, 6]); dot(12.2, 8.8, 1.2); break
         case "rect": box(3.5, 4.5, 13, 11, 2); break
         case "ellipse": g.beginPath(); g.ellipse(3, 4, 14, 12); g.stroke(); break
         case "pen":          // a pen nib over its point

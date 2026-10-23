@@ -56,9 +56,10 @@ AppShell {
     Connections { target: backend; function onPicksChanged() { if (shell.typing && backend.renaming === "") shell.contentItem.forceActiveFocus() } }
     menu: FilesMenu {    // ≡ (kit): New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen; then Sound's own
         id: fileMenu
-        extra: [{ value: "settings", label: "Preferences…", keys: "Ctrl+,", group: "app" },
-                { value: "quit", label: "Quit", keys: "Ctrl+Q", group: "app" }]
-        onPicked: (v) => { if (v === "settings") settingsPanel.open(); else if (v === "quit") Qt.quit() }
+        extra: (shell.hasSound ? [{ value: "export", label: "Export…", keys: "Ctrl+E", group: "app" }] : []).concat([
+                { value: "settings", label: "Preferences…", keys: "Ctrl+,", group: "app" },
+                { value: "quit", label: "Quit", keys: "Ctrl+Q", group: "app" }])
+        onPicked: (v) => { if (v === "export") shell.exporter.setOpen(true); else if (v === "settings") settingsPanel.open(); else if (v === "quit") Qt.quit() }
     }
     // the start screen (kit): at launch with nothing to reopen, or ≡ › Start screen…; over everything while shown
     StartScreen { id: startScreen; anchors.fill: parent; z: 100; onGuideAsked: (url) => shell.openGuide(url)

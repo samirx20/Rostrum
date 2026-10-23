@@ -33,7 +33,7 @@ class SettingsPage(QObject):
     # ---- what the kit's Inspector reads ----------------------------------------------------------------------
     @Property("QVariantMap", notify=selectionChanged)
     def selectedItem(self):
-        return {"id": "settings", "label": "RostrumSound on this computer", "kind": ""}
+        return {"id": "settings", "label": "Preferences", "kind": ""}
 
     @Property(QObject, constant=True)
     def rows(self):

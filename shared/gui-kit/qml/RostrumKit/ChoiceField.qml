@@ -14,6 +14,7 @@ FieldFrame {
     signal picked(var value)              // the option's own value, type kept (a number stays a number)
     function valueAt(i) { const o = options[i]; return typeof o === "string" ? o : o.value }
     function labelAt(i) { const o = options[i]; return typeof o === "string" ? o : o.label }
+    function detailAt(i) { const o = options[i]; return typeof o === "string" ? "" : (o.detail || "") }   // an option's longer words: shown in the open list under its name, never in the closed field
     function same(a, b) { return String(a) === String(b) }
     function indexOf(v) { for (let i = 0; i < options.length; i++) if (same(valueAt(i), v)) return i; return -1 }
     function open() { menu.highlighted = Math.max(0, indexOf(current)); menu.open() }
@@ -50,13 +51,22 @@ FieldFrame {
                 delegate: Rectangle {
                     id: opt
                     required property int index
-                    width: menu.availableWidth; height: Theme.popupRow; radius: 4
+                    readonly property string detail: f.detailAt(index)
+                    width: menu.availableWidth; height: detail ? Theme.popupRow + detailText.implicitHeight + 2 : Theme.popupRow; radius: 4
                     color: index === menu.highlighted ? Theme.hover : "transparent"
                     Text {  // same left inset as the field's own text, so the list lines up with it
                         anchors.left: parent.left; anchors.leftMargin: Theme.gap - menu.padding
-                        anchors.right: tick.left; anchors.verticalCenter: parent.verticalCenter
+                        anchors.right: tick.left; y: opt.detail ? 4 : (parent.height - height) / 2
                         text: f.labelAt(opt.index); elide: Text.ElideRight
                         color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont
+                    }
+                    Text {
+                        id: detailText
+                        visible: opt.detail !== ""
+                        anchors.left: parent.left; anchors.leftMargin: Theme.gap - menu.padding
+                        anchors.right: parent.right; anchors.rightMargin: Theme.gap
+                        y: Theme.popupRow - 4; wrapMode: Text.WordWrap
+                        text: opt.detail; color: Theme.fg3; font.pixelSize: Theme.label; font.family: uiFont
                     }
                     Rectangle {  // the current option: a small accent dot at the right
                         id: tick

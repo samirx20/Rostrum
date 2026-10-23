@@ -26,7 +26,7 @@ Rectangle {
             visible: bar.job.info.line !== undefined && bar.job.info.line !== ""
             width: parent.width; wrapMode: Text.WordWrap
             text: bar.job.info.line || ""
-            color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
+            color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
         }
         Text {
             visible: bar.job.info.warn !== undefined && bar.job.info.warn !== ""

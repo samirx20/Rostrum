@@ -4,12 +4,14 @@ For a person using the RostrumSound app: turn your song into sound files you can
 
 ## Where
 
-- **Export** in the top bar, or **Ctrl+E**. It appears once the song makes a sound.
-- The **Export sheet** opens on the right, in the settings panel's place, so the song stays in sight. × or Ctrl+E
+- **Export** in the top bar, **≡ › Export…**, or **Ctrl+E**. It appears once the song makes a sound.
+- The sheet (titled **Make the file**; its button says **Export**) opens on the right, in the settings panel's place, so the song stays in sight. × or Ctrl+E
   closes it.
 - **Ctrl+Shift+E** exports again with the last settings, without opening the sheet.
 
 ## 1. What for
+
+The file types in the list show their short name; open the list to read what each one means. **For the Editor** is a row like the others and stays marked while the choices still match it. Choosing **MIDI file** leaves only the file name and folder. The file's whole name sits just above the **Export** button.
 
 Pick where it is going: **Streaming**, **Apple Music**, **EBU R128**, **ATSC A/85** or
 **Podcast**. Each choice sets the song's loudness and its loudest peak in one step (one undo).

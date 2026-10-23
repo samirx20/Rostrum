@@ -54,7 +54,7 @@ Flow {
                 id: barButton
                 visible: run.folded
                 objectName: "actionBar:" + run.modelData.title
-                implicitHeight: section.size; text: run.modelData.title + "  ▾"
+                implicitHeight: section.size; text: run.modelData.title; chevron: true
                 onClicked: section.openMenu(barButton, run.modelData.items.map(i => ({ value: i.id, label: i.label,
                                                                                          keys: i.keys, group: "", sub: [] })))
             }

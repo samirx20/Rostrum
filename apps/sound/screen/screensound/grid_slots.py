@@ -9,8 +9,8 @@ from PySide6.QtCore import Property, Signal, Slot
 
 from .timing import Grid
 
-WORDS = {"auto": "Auto", "bar": "Bar", "1/2": "1/2", "beat": "Beat (1/4)", "1/8": "1/8", "1/16": "1/16", "1/32": "1/32",
-         "1/8T": "1/8 triplets", "1/16T": "1/16 triplets"}
+WORDS = {"auto": "Auto", "bar": "Bar", "1/2": "1/2", "beat": "1/4", "1/8": "1/8", "1/16": "1/16", "1/32": "1/32",
+         "1/8T": "1/8 triplet", "1/16T": "1/16 triplet"}
 
 
 NOTE_CHOICES = ["grid", "bar", "1/2", "beat", "1/8", "1/16", "1/32"]
@@ -32,10 +32,11 @@ class GridSlots:
     def snapOn(self):
         return self._grid_now.on
 
-    @Property("QVariantList", constant=True)
+    @Property("QVariantList", notify=gridChanged)
     def gridChoices(self):
-        """[{value, label, keys, group}] for the kit's ActionMenu."""
-        return [{"value": v, "label": WORDS[v], "keys": "", "group": "auto" if v == "auto" else "steps"}
+        """[{value, label, keys, group, checked}] for the kit's ActionMenu (the current one is ticked)."""
+        return [{"value": v, "label": WORDS[v], "keys": "", "group": "auto" if v == "auto" else "steps",
+                 "checked": v == self.grid}
                 for v in Grid.CHOICES]
 
     @Slot(str)

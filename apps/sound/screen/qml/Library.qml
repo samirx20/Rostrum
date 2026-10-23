@@ -18,7 +18,7 @@ Panel {
     property int current: 0
     readonly property string query: search.input.activeFocus ? search.input.text : search.text
     readonly property var found: chip === "mine" ? [] : adder.find(query, chip)
-    headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close (Ctrl+L)"; width: Theme.field; height: Theme.field
+    headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close (Ctrl+L)"; width: 28; height: 28
                               onClicked: workspace.setLibrary(false) }
     onVisibleChanged: if (visible) { search.input.forceActiveFocus(); current = 0 }
     Keys.onEscapePressed: (e) => { if (soundLibrary.swapping) soundLibrary.swapBack(); else if (soundLibrary.auditioning !== "" || soundLibrary.trying.key !== undefined) soundLibrary.revert(); else e.accepted = false }
@@ -75,16 +75,18 @@ Panel {
     ListView {
         id: list
         visible: p.chip !== "mine"
-        anchors { left: parent.left; right: parent.right; top: chips.bottom; bottom: heard.top; topMargin: Theme.gap; bottomMargin: Theme.gap }
-        clip: true; spacing: 2; boundsBehavior: Flickable.StopAtBounds
-        footer: Item { width: list.width; height: Theme.pad }   // the last row scrolls fully into view
+        readonly property int rowH: 40
+        readonly property real room: parent.height - chips.y - chips.height - Theme.gap - (heard.visible ? heard.height + Theme.gap : 0) - foot.height - Theme.gap
+        anchors { left: parent.left; right: parent.right; top: chips.bottom; topMargin: Theme.gap }
+        height: Math.max(rowH, Math.floor((room + spacing) / (rowH + spacing)) * (rowH + spacing) - spacing)   // whole rows only: the strip never slices one
+        clip: true; spacing: 2; boundsBehavior: Flickable.StopAtBounds; snapMode: ListView.SnapToItem
         model: p.found
         currentIndex: p.current
         delegate: Rectangle {
             id: row
             required property var modelData
             required property int index
-            width: list.width; height: row.modelData.note !== "" ? 44 : 32; radius: Theme.radiusCtl
+            width: list.width; height: list.rowH; radius: Theme.radiusCtl
             color: p.shownAt === index ? Theme.accentSoft : hover.hovered ? Theme.hover : "transparent"
             HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: p.pick(row.index); onDoubleTapped: p.use(row.index) }
@@ -127,7 +129,7 @@ Panel {
     Button {
         id: foot
         anchors { left: parent.left; bottom: parent.bottom }
-        text: "Add a folder of my sounds…"; kind: "ghost"
+        text: "Add a folder of my sounds…"; kind: "normal"
         onClicked: { p.chip = "mine"; mine.addFolder() }
     }
     Item {      // only while something plays or is tried: what it is, and Keep / Revert (or the way to stop it)
@@ -138,7 +140,7 @@ Panel {
         anchors { left: parent.left; right: parent.right; bottom: foot.top }
         Column {
             id: heardCol
-            width: parent.width; spacing: Theme.grid
+            x: Theme.gap; width: parent.width - 2 * Theme.gap; spacing: Theme.grid
             Text { width: parent.width; wrapMode: Text.WrapAnywhere
                    text: heard.trying ? "Trying " + soundLibrary.trying.label + " on " + soundLibrary.trying.trackName
                                       : "Hearing " + soundLibrary.auditioning
@@ -146,7 +148,7 @@ Panel {
             Row { spacing: Theme.grid; layoutDirection: Qt.RightToLeft; width: parent.width
                   Button { visible: !heard.trying; text: "■ Stop"; kind: "ghost"; onClicked: soundLibrary.stopAudition() }
                   Button { visible: heard.trying; text: "Keep"; kind: "primary"; onClicked: { if (soundLibrary.keep()) p.used() } }
-                  Button { visible: heard.trying; text: "Revert"; kind: "ghost"; onClicked: soundLibrary.revert() } }
+                  Button { visible: heard.trying; text: "Revert"; kind: "normal"; onClicked: soundLibrary.revert() } }
         }
     }
     Prompt {    // a track of the same kind is selected: change its sound (the notes stay), or make a new track

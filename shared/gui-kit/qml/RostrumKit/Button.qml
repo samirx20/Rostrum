@@ -13,6 +13,7 @@ Item {
     property string hint: ""
     property bool danger: false
     property bool down: false            // shown pressed (e.g. a panel that is open)
+    property bool chevron: false              // the thin dropdown arrow after the words (a button that opens a menu)
     property bool flushLeft: false            // the words at the left edge (in a column of list-like rows), not centred
     property string tip: ""              // the name in the hover help when the text alone doesn't say it
     property string help: ""             // one plain sentence of what it does
@@ -22,7 +23,7 @@ Item {
     readonly property bool primary: kind === "primary" && !down
     signal clicked()
     implicitHeight: Theme.button
-    implicitWidth: label.implicitWidth + (hint ? hintBox.width + Theme.gap : 0) + 2 * Theme.pad
+    implicitWidth: label.implicitWidth + (chevron ? 16 : 0) + (hint ? hintBox.width + Theme.gap : 0) + 2 * Theme.pad
     activeFocusOnTab: true
     Keys.onSpacePressed: clicked()
     Keys.onReturnPressed: clicked()
@@ -39,7 +40,7 @@ Item {
     }
     Text {
         id: label
-        x: b.hint || b.flushLeft ? Theme.pad : Math.max(Theme.pad, (b.width - width) / 2)
+        x: b.hint || b.flushLeft ? Theme.pad : Math.max(Theme.pad, (b.width - width - (b.chevron ? 16 : 0)) / 2)
         anchors.verticalCenter: parent.verticalCenter
         text: b.text; font.pixelSize: Theme.body; font.family: uiFont
         width: Math.min(implicitWidth, Math.max(0, b.width - 2 * Theme.pad - (b.hint ? hintBox.width + Theme.gap : 0)))
@@ -47,6 +48,8 @@ Item {
         font.weight: b.kind === "primary" ? Font.DemiBold : Font.Normal
         color: b.primary ? "white" : b.danger ? Theme.danger : Theme.fg
     }
+    Chevron { visible: b.chevron; x: label.x + label.width + 6; anchors.verticalCenter: parent.verticalCenter
+              color: b.primary ? "white" : Theme.fg2 }
     KeyHint { id: hintBox; visible: b.hint !== ""; text: b.hint
               anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter }
     MouseArea { id: area; anchors.fill: parent; onClicked: b.clicked() }
