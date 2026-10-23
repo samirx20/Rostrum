@@ -1,10 +1,14 @@
 """What would break silently when the song's music map is edited on the screen: a tempo-change or section-edge drag
 is one undo step and keeps the time's form (beats stay beats, a marker stays a marker), a time signature change
-added from the song panel is one undo step at the time signature playing there, selected, and no second "+" there; a project item as the
+added from the song panel is one undo step at the time signature playing there, on the nearest bar line, selected, and no
+second "+" there (an agent's change off a bar line is refused); a project item as the
 picture resolves to its newest render (a newer one is picked up)."""
 import json
 import sys
 from pathlib import Path
+
+import pytest
+from rostrum_core import RostrumError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from screensound import picture  # noqa: E402
@@ -49,6 +53,13 @@ def test_time_signature_change_from_the_song_panel_is_one_undo_step(bridge):  # 
     assert bridge.selected == change["id"] and not bridge.songEdit()["canMeter"]
     bridge.undo()
     assert not doc.data.get("meters")
+    bridge.setTime(4.6)                                         # between bar lines: the nearest one (bar 3, beat 8)
+    bridge.songDo("add_meter", "")
+    assert doc.data["meters"][-1]["at"] == {"beat": 8.0}
+    bridge.undo()
+    with pytest.raises(RostrumError, match="not on a bar line"):    # an agent's change off a bar line is refused
+        doc.apply([{"op": "meter.add", "target": [], "args": {"at": {"beat": 9.5}, "beatsPerBar": 6, "beatUnit": 8}}],
+                  bridge.who)
 
 
 def test_picture_item_link_follows_the_newest_render(tmp_path):

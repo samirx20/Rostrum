@@ -65,5 +65,5 @@ def can(root: dict, t: float) -> dict:
     at_beat = {round(tempo.beat_at(root, c["t"]), 4) for c in music_map.tempo_marks(root)}
     meters = {round(tempo.beat_at(root, c["t"]), 4) for c in music_map.meter_marks(root)}
     return {"tempo": beat > 1e-9 and round(beat, 4) not in at_beat,
-            "meter": beat > 1e-9 and round(beat, 4) not in meters,
+            "meter": (bar := round(song_edit.bar_beat(root, t), 4)) > 1e-9 and bar not in meters,
             "marker": all(abs(m["t"] - t) >= NEAR for m in timeline.markers(root))}

@@ -3,7 +3,7 @@
 A song's beat (tempo, `{"beat": n}`, every length in beats) is always the quarter note. The song starts at the
 document's `beatsPerBar` / `beatUnit` (4/4 unless set; 6/8 is six eighths); each time signature change (`meters[]`,
 type "meter": {at, beatsPerBar, beatUnit}) sets a new bar from its time on, held until the next change, and starts
-a new bar there (a change between bar lines cuts the bar before it short). A bar lasts beatsPerBar × 4 / beatUnit
+a new bar there; it must sit on a bar line of the bars before it (`off_bar`: a new change elsewhere is refused). A bar lasts beatsPerBar × 4 / beatUnit
 beats: 3 in 6/8, 4.5 in 9/8; a beat unit left out is 4, so older songs read exactly as before. Like a tempo change
 it sits at a beat (`{"beat": 32}`, the usual way) or at seconds, never on a marker. Bars, the ruler, the grid, the
 metronome, quantise and `bar(n)` all read this map.
@@ -71,6 +71,20 @@ def segments(root: dict) -> list[Seg]:
             continue
         segs.append(_seg(b, c["beatsPerBar"], unit, last.bars + int(-(-(b - last.start - 1e-9) // last.bar))))
     return segs
+
+
+def off_bar(root: dict, change: dict) -> str | None:
+    """Why a time signature change is not on a bar line of the bars before it (None: it is). A change always starts a
+    whole bar, as in every DAW: one between bar lines would leave a broken part-bar before it."""
+    at = change.get("at")
+    b = float(at["beat"]) if isinstance(at, dict) and "beat" in at else tempo.beat_at(root, float(at))
+    before = seg_at({**root, "meters": [m for m in root.get("meters", []) if m.get("id") != change.get("id")]}, b)
+    n = (b - before.start) / before.bar
+    if abs(n - round(n)) * before.bar <= 1e-6:
+        return None
+    lo, hi = before.start + int(n) * before.bar, before.start + (int(n) + 1) * before.bar
+    return (f'time signature change "{change.get("id")}" at beat {b:g} is not on a bar line: a change starts a new bar, '
+            f'so put it at {{"beat": {lo:g}}} (bar {before.bars + int(n) + 1}) or {{"beat": {hi:g}}} (bar {before.bars + int(n) + 2})')
 
 
 def seg_at(root: dict, beat: float) -> Seg:
