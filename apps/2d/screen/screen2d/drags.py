@@ -137,12 +137,15 @@ class DragSlots(SlotMixin):
     @Slot()
     def endDrag(self):
         d, g, self._drag, self._grab = self._drag, self._grab, None, None
+        held, self.held_view = self.held_view, None     # a camera-key drag held the view: it follows the camera again
         self._snap.end()                                # the snap lines go with the drag
         self.timeSnap.clear()                           # and the "+6 f" label
         if d is not None and isinstance(g, BarGrab) and g.tie_calls():      # let go on a marker: the layer is tied to it
             self._guard(lambda: d.preview(g.tie_calls()))
         if d is not None:
             self._guard(lambda: self._done(d.end(), ""))
+        if held is not None and self._scene is None:    # drawn once, at the drop
+            self._show()
 
     def _begin(self, label, grab) -> bool:
         self.endDrag()

@@ -7,6 +7,9 @@ shown). The maths is motion_geo.py; the document is read once per change and sel
 Drags are one gesture = one undo step each (drags.py `_begin`): a key square moves that key's x and y (key.set v) by the
 pointer's offset taken back into the layer's own px; a handle end bends the path (key.path_handles), its opposite handle
 mirrored so the curve stays smooth (Alt: not mirrored). A click on a key square picks its keys (backend.keys).
+A camera key's drag changes the camera the canvas is seen through, so for its length the view holds still: the picture
+and these paths are drawn through the scene as it was at the press (bridge `held_view`), the square stays under the
+pointer, and the canvas follows the camera again once, at the drop.
 """
 from __future__ import annotations
 
@@ -42,8 +45,8 @@ class MotionPath(QObject):
         super().__init__(parent or bridge)
         self.b, self._camera_frame = bridge, True
         self._tracks = None            # (doc.data, selection, camera frame on, [(owner id, track, camera keys)])
-        self._view = None              # (tracks key, t, the canvas paths)
-        for sig in (bridge.docChanged, bridge.selectedItemsChanged, bridge.timeChanged, bridge.markersChanged):
+        self._view = None              # (tracks key, t, the view held or None, the canvas paths)
+        for sig in (bridge.docChanged, bridge.docStepped, bridge.selectedItemsChanged, bridge.timeChanged, bridge.markersChanged):
             sig.connect(self.changed)
 
     # ---- the View menu's switch (screen state, never the document) -------------------------------------------
@@ -87,14 +90,14 @@ class MotionPath(QObject):
     @Property("QVariantList", notify=changed)
     def paths(self):
         """[{id, camera, faint, points, ticks, keys, frames, now}] in composition px as the canvas shows them."""
-        tracks = self._read()
-        t = self.b._t
-        if self._view is not None and self._view[0] is tracks and self._view[1] == t:
-            return self._view[2]
+        tracks, t, held = self._read(), self.b._t, self.b.held_view
+        if self._view is not None and self._view[0] is tracks and self._view[1] == t and self._view[2] is held:
+            return self._view[3]
         comp, out, picked = self.b.placed(), [], set(self.b._keys.ids)
+        seen = held or comp                              # a camera-key drag: the view as at the press
         for oid, faint, tr, cam_keys in tracks[1]:
             owner = self.b.placed_item(oid)
-            m = G.mapping(comp, owner, t)
+            m = G.mapping(seen, owner, t)
             row = {"id": oid, "camera": owner["type"] == "camera", "faint": faint, "points": [], "ticks": [], "keys": [],
                    "frames": [], "now": []}
             if tr:
@@ -106,7 +109,7 @@ class MotionPath(QObject):
                 row["now"] = G.frame_at(comp, owner, t, m)
                 row["frames"] = [G.frame_at(comp, owner, kt, m) for kt in cam_keys if abs(kt - t) > 1e-6]
             out.append(row)
-        self._view = (tracks, t, out)
+        self._view = (tracks, t, held, out)
         return out
 
     # ---- drags ------------------------------------------------------------------------------------------------
@@ -136,6 +139,7 @@ class MotionPath(QObject):
         ids = {self.b.doc.item(i)["prop"]: (i, float(self.b.doc.item(i)["v"])) for i in k["ids"]}
         if not self.b._begin("Move a path key", KeyGrab(oid, ids, m)):
             return False
+        self._hold(oid)
         self.b._snap.begin([oid], k["pos"])           # the square snaps as a layer does (snapper.py; Ctrl or Alt: free)
         return True
 
@@ -144,9 +148,17 @@ class MotionPath(QObject):
         k, m = self._key_row(oid, t)
         if k is None or k.get(side + "Own") is None or self._owner_ok(oid) is None:
             return False
-        return self.b._begin("Bend the path", HandleGrab(oid, self.b.own_t(oid, t), side,
+        if not self.b._begin("Bend the path", HandleGrab(oid, self.b.own_t(oid, t), side,
                                                            k[("in" if side == "out" else "out") + "Own"] is not None,
-                                                           tuple(k[side + "Own"]), m))
+                                                           tuple(k[side + "Own"]), m)):
+            return False
+        self._hold(oid)
+        return True
+
+    def _hold(self, oid: str):
+        """A camera's key or handle: the view holds still for the drag (drags.py endDrag lets it go)."""
+        if self.b.placed_item(oid)["type"] == "camera":
+            self.b.held_view = self.b.placed()
 
     @Slot(float, float, bool)
     def drag(self, dx: float, dy: float, alt: bool):
@@ -168,3 +180,4 @@ class MotionPath(QObject):
                 args["in" if g.side == "out" else "out"] = [-d[0], -d[1]]
             calls = [{"op": "key.path_handles", "target": [g.owner], "args": args}]
         self.b._guard(lambda: self.b._drag.preview(calls))
+

@@ -100,7 +100,8 @@ def _click(win, words):
 
 
 def _drag(win, words):
-    """mousedrag <x0> <y0> <x1> <y1>: press, move there in ten steps, release (a velocity bar, a note, a fader)."""
+    """mousedrag <x0> <y0> <x1> <y1> [hold]: press, move there in ten steps, release (a velocity bar, a note, a fader);
+    hold: not let go (a picture mid-drag)."""
     from PySide6.QtCore import QCoreApplication, QPoint, Qt
     from PySide6.QtTest import QTest
     x0, y0, x1, y1 = (float(w) for w in words[:4])
@@ -109,6 +110,8 @@ def _drag(win, words):
     for i in range(1, 11):
         QTest.mouseMove(win, QPoint(int(x0 + (x1 - x0) * i / 10), int(y0 + (y1 - y0) * i / 10)))
         QCoreApplication.processEvents()
+    if "hold" in words[4:]:
+        return
     QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, QPoint(int(x1), int(y1)))
     QCoreApplication.processEvents()
 
