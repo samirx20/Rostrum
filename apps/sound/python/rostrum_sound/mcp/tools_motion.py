@@ -28,7 +28,8 @@ def register(tools: Tools):
                 '"snap2:note", "press3:library"). Empty: nothing is added, only the suggestions come back.'},
         "key": {"type": "string", "default": "C major", "description": 'The key the notes are in ("D minor", "Bb major").'},
         "glue": {"type": "boolean", "default": True, "description": "Route library-recording tracks into the ui bus "
-                 "(short room + light compressor), made if missing."}}})
+                 "(short room + light compressor), made if missing."},
+        "detail": {"type": "boolean", "default": False, "description": "List every removed item in the reply's data (else counts and the first few)."}}})
     def edit_sounds_from_motion(ctx, args):
         """Read the motion (moves and where they land, snaps, presses, steps) and suggest musical answers for the
         moments that could earn a sound: a struck note or a hit on a landing, a rise into it from strings, a cymbal
@@ -72,4 +73,5 @@ def register(tools: Tools):
         text = (f"Added {said} on {', '.join(tracks)}."
                 + (f" Kept a person's changes: {', '.join(held)}." if held else ""))
         return Reply(text, {"suggestions": shown, "added": [f"{s['id']}:{a}" for s, a in chosen], "tracks": tracks,
-                            "held": held, "removed": report.removed}, warnings=report.warnings())
+                            "held": held,
+                            "removed": report.removed if args.get("detail") else {"count": len(report.removed), "first": report.removed[:5]}}, warnings=report.warnings())

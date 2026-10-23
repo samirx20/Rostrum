@@ -2,8 +2,8 @@ import QtQuick
 import QtQuick.Controls as QQC
 import RostrumKit
 
-// Add a sound here… (UX_SPEC 3.28 Sync sound): one layer selected → this popover under the context bar lists sounds
-// from Sound's library and the person's sound folders; type words to narrow it (Enter); a click ties the sound to the
+// Add a sound here… (UX_SPEC 3.28 Sync sound): one layer selected → this popover under the context bar lists a note / hit
+// on the song's instruments first, then the person's recordings (typed words search Sound's library too); type words to narrow it (Enter); a click ties the sound to the
 // layer's start (backend.cuePick, screen2d/sound_cue_pick.py) and closes it. Esc or a click outside closes it.
 QQC.Popup {
     id: pop
@@ -18,7 +18,7 @@ QQC.Popup {
         spacing: Theme.gap
         Text { width: parent.width; text: "Add a sound to " + pop.cp.what; color: Theme.fg; font.family: uiFont
                font.pixelSize: Theme.body; font.weight: Font.DemiBold; elide: Text.ElideRight }
-        TextField { width: parent.width; value: pop.cp.words; placeholder: "Search sounds (whoosh, click …)"
+        TextField { width: parent.width; value: pop.cp.words; placeholder: "Search recordings (cello, tap …)"
                     onEdited: (v) => pop.cp.search(v) }
         Text { visible: pop.cp.sounds.length === 0 || pop.cp.searching; width: parent.width; wrapMode: Text.Wrap
                text: pop.cp.searching ? "Searching…" : "No sounds match. Try fewer words, or add a sound folder in RostrumSound."

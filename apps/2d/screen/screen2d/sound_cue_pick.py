@@ -1,5 +1,6 @@
 """Add a sound here… (UX_SPEC 3.28 Sync sound): one layer selected, in a project with sound → the action opens a small
-popover listing sounds (Sound's library and the person's sound folders, read-only), with a search box; a click ties
+popover listing music first (a note / hit on the song's instruments), then the person's recordings; typed words
+search their recordings and Sound's library (read-only); a click ties
 that sound to the layer's start (rostrum2d/sound_cues.cue: the clip goes into Sound's song, timed by a marker that
 follows the layer). The agents' edit_sound_cue runs the same function. Offered to QML as `backend.cuePick`.
 The search reads the libraries off the screen's thread (a second or two), newest words win (the kit's PictureWorker:
@@ -22,9 +23,9 @@ class _Search(PictureWorker):
         return None                 # reads files only, no engine
 
     def handle(self, eng, job):
-        n, words = job
+        n, words, folder, chosen = job
         self.found.emit(n, [{**r, "label": r["about"], "hint": f'{r["seconds"]:g} s · {r["where"]}' if r.get("seconds")
-                             else r["where"]} for r in sound_cues.choices(words, 40)])
+                             else r["where"]} for r in sound_cues.choices(words, 40, folder, chosen)])
 
     def describe(self, job, error):
         return error.line() if hasattr(error, "line") else f"Error: sounds: {error}"
@@ -66,7 +67,7 @@ class CuePick(QObject):
     def search(self, words):
         """Look for `words` off the screen's thread; the list shown stays until the newest answer arrives."""
         self._words, self._asked = words, self._asked + 1
-        self._search.post_latest((self._asked, words))
+        self._search.post_latest((self._asked, words, self.b.doc.folder, self.b.comp().get("soundtrack", "")))
         self.changed.emit()
 
     def _take(self, n, rows):

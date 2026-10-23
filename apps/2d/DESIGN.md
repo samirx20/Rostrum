@@ -122,7 +122,7 @@ whole screen and not just the settings panel.
 | 2. Hear it | "Where is the beat?" | **The project's music playing with the picture** (through Sound's engine) and its waveform under the ruler — *missing today* | — |
 | 3. Put layers on the moments | "The logo lands on the drop" | Drag the layer's bar onto the marker: it snaps and ties | Typing times |
 | 4. The music changes | "Sound moved the drop" | The tied layers follow by themselves | Re-timing by hand |
-| 5. Hand back to Sound | "Whooshes where things move" | Export › Motion samples | — |
+| 5. Hand back to Sound | "Music on the moments: a note on a landing, a rise into it" | Export › Motion samples | — |
 
 ### F8 · An agent builds a piece while a person tweaks it
 
