@@ -30,13 +30,13 @@ def export(eng: Engine, fmt: str, out, alpha: bool | None = None, depth: int | N
     p = eng.scene["comp"]["props"]
     w, h, fps = p["width"], p["height"], p["fps"]
     end = p["duration"] if end is None else end
-    kbps = formats.kbps(f, w, h, fps, quality, bitrate)
+    rate = formats.rate(f, w, h, fps, quality, bitrate)
     out = Path(out)
     target = str(out) if f.video else formats.pattern(f, out)
     Path(target).parent.mkdir(parents=True, exist_ok=True)
     first = f.first + round(start * fps)
     req = {"start": start, "end": end, "alpha": alpha, "progress": progress is not None,
-           "encode": f.build(target, w, h, fps, depth, first, kbps)}
+           "encode": f.build(target, w, h, fps, depth, first, rate)}
     if f.video:
         req["file"] = target
     if depth != 8:                                   # the engine sends 16-bit frames only while loaded that way
@@ -48,4 +48,5 @@ def export(eng: Engine, fmt: str, out, alpha: bool | None = None, depth: int | N
             _engine_request(eng, {"scene": eng.scene, "depth": 8})
     facts = readback.check(fmt, target, reply["frames"], w, h, alpha, depth)
     return {"file": target, "frames": reply["frames"], "fps": fps, "alpha": alpha, "depth": depth, "checked": facts,
-            **({"kbps": kbps} if kbps else {})}
+            **({"kbps": rate.kbps} if rate.kbps and rate.quality is None else {}),
+            **({"quality": quality or formats.DEFAULT_QUALITY} if rate.quality is not None else {})}

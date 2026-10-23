@@ -153,6 +153,33 @@ mod mf {
         }
     }
 
+    /// Which encoder Media Foundation picked, said on stderr for the export's log (Sam: "is it using the GPU?"):
+    /// its own name, and whether it is the graphics card's (a hardware transform) or the processor's.
+    unsafe fn encoder_name(writer: &IMFSinkWriter, stream: u32) -> String {
+        use windows::core::Interface;
+        unsafe {
+            let found = (|| -> windows::core::Result<String> {
+                let ex: IMFSinkWriterEx = writer.cast()?;
+                for i in 0.. {
+                    let (mut cat, mut t) = (GUID::zeroed(), None);
+                    ex.GetTransformForStream(stream, i, Some(&mut cat), &mut t)?;
+                    if cat != MFT_CATEGORY_VIDEO_ENCODER {
+                        continue;
+                    }
+                    let a = t.expect("GetTransformForStream gave a transform").GetAttributes()?;
+                    let mut name = [0u16; 256];
+                    let mut len = 0u32;
+                    let named = a.GetString(&MFT_FRIENDLY_NAME_Attribute, &mut name, Some(&mut len)).is_ok();
+                    let hw = a.GetStringLength(&MFT_ENUM_HARDWARE_URL_Attribute).is_ok();
+                    let name = if named { String::from_utf16_lossy(&name[..len as usize]) } else { "unnamed".into() };
+                    return Ok(format!("{name} ({})", if hw { "graphics card" } else { "processor: no graphics card encoder" }));
+                }
+                unreachable!()
+            })();
+            found.unwrap_or_else(|e| format!("unknown ({e})"))
+        }
+    }
+
     pub fn write(out: &str, w: u32, h: u32, fps: u32, kbps: u32, quality: Option<u32>) -> Result<u32, String> {
         unsafe {
             step("starting COM (CoInitializeEx)", CoInitializeEx(None, COINIT_MULTITHREADED).ok())?;
@@ -173,6 +200,7 @@ mod mf {
             let stream = step("adding the H.264 stream (AddStream)", writer.AddStream(&output))?;
             step("connecting the encoder to NV12 frames (SetInputMediaType)", writer.SetInputMediaType(stream, &input, &params))?;
             step("starting to write (BeginWriting)", writer.BeginWriting())?;
+            eprintln!("encode-mp4: encoder {}", encoder_name(&writer, stream));
 
             let (wu, hu) = (w as usize, h as usize);
             let size = wu * hu * 3 / 2;

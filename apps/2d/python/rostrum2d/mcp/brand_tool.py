@@ -43,7 +43,7 @@ def inspect_brand_kit(ctx, args):
     "do": {"type": "string", "enum": ["add", "remove"]}, "section": SECTION,
     "name": {"type": "string", "description": "The entry's name; adding a name that is there replaces it (an update)."},
     "value": {"type": "string", "description": "colors: the colour, #rrggbb."},
-    "file": {"type": "string", "description": "logos: the picture (svg, png, pdf, psd …), relative to the project or absolute; copied into media/brand/."},
+    "file": {"type": "string", "description": "logos: the picture (svg, png, pdf, psd …), relative to the project or absolute; kept in the project (media/brand/, named by its content)."},
     "style": {"type": "string", "description": "textStyles: the id of a document text style to copy into the kit (its values)."},
     "item": {"type": "string", "description": "With `style`: the document holding it. Optional when one is open."}},
     "required": ["do", "section", "name"]})

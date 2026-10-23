@@ -261,7 +261,7 @@ class Engine:
         fps, end, w, h = p["fps"], p["duration"] if end is None else end, p["width"], p["height"]
         mp4, f = Path(mp4), formats.get("mp4")
         mp4.parent.mkdir(parents=True, exist_ok=True)
-        encode = f.build(str(mp4), w, h, fps, 8, 0, formats.kbps(f, w, h, fps, quality, bitrate))
+        encode = f.build(str(mp4), w, h, fps, 8, 0, formats.rate(f, w, h, fps, quality, bitrate))
         req = {"start": start, "end": end, "file": str(mp4), "progress": progress is not None, "encode": encode}
         if timing_csv is not None:
             req["timingCsv"] = str(timing_csv)

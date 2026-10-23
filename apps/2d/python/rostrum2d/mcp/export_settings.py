@@ -13,7 +13,7 @@ LABELS = {"mp4": "MP4 (H.264)", "prores4444": "ProRes 4444", "webm": "WebM (VP9)
 DATA = ("lottie", "motion")
 # The MP4 quality arguments, as render_export and render_video both take them.
 QUALITY_ARGS = {
-    "quality": {"type": "string", "enum": list(table.QUALITY), "description": f"mp4 only: how much detail the file keeps (default {table.DEFAULT_QUALITY}; at 1080p 25 fps standard ≈ 12, high ≈ 25, best ≈ 50 Mbit/s; scales with size and fps)."},
+    "quality": {"type": "string", "enum": list(table.QUALITY), "description": f"mp4 only: how much detail the file keeps (default {table.DEFAULT_QUALITY}; the encoder's constant quality: each frame gets the bits its picture needs, so simple motion graphics stay small and a busy shot keeps its detail)."},
     "bitrate": {"type": "number", "exclusiveMinimum": 0, "maximum": table.MAX_MBIT, "description": "mp4 only: an exact bitrate in Mbit/s, instead of quality."}}                # not pictures: no engine, never a versioned picture render
 
 
