@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Shapes
 import RostrumKit
 
-// The Bone tool over the canvas (screen2d/bone_tool.py does the work; J or the tool strip, only with a rig in hand).
+// The Bone tool over the canvas (screen2d/bone_tool.py does the work; J or the tool rail, only with a rig in hand).
 // Click joint after joint, or press at a joint and drag to the bone's tip: each bone is one change, and the next starts
 // at its tip. A press on a joint the rig has starts there (a branch). Esc ends the chain (Main.qml). The line from the
 // chain's end to the pointer shows the bone a click would make. Points go through the Stage's mapping (composition px).

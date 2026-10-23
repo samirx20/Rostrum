@@ -19,6 +19,8 @@ OWN = [
     {"job": "text_tool", "keys": ["T"], "label": "Text"},
     {"job": "camera_tool", "keys": ["C"], "label": "Camera"},
     {"job": "bone_tool", "keys": ["J"], "label": "Bone"},
+    {"job": "hand_tool", "keys": ["H"], "label": "Hand"},
+    {"job": "zoom_tool", "keys": ["Z"], "label": "Zoom"},
     {"job": "auto_layout", "keys": ["Shift+A"], "label": "Auto layout"},
     {"job": "align_left", "keys": ["Alt+A"], "label": "Align left"},
     {"job": "align_right", "keys": ["Alt+D"], "label": "Align right"},

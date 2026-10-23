@@ -2,8 +2,7 @@ import QtQml
 import QtQuick
 import RostrumKit
 
-// Rostrum2D, one workspace (apps/2d/DESIGN.md). Centre: the canvas (the engine's frame) with the tool strip (Move,
-// Pen, Draw). Right: the inspector (from the selected item's field operation, values at the playhead, key marks); while
+// Rostrum2D, one workspace (apps/2d/DESIGN.md). Centre: the tool rail (ToolRail.qml), then the canvas (the engine's frame). Right: the inspector (from the selected item's field operation, values at the playhead, key marks); while
 // the Draw tool is on, the brush (the next stroke's settings, from the brush settings' own rules).
 // Bottom, full width, always there: the timeline, which is also the layers list (a row and a bar per layer). Its top
 // edge drags to make it taller or shorter.
@@ -37,11 +36,15 @@ AppShell {
     Shortcut { sequence: "R"; enabled: !shell.typing; onActivated: backend.setTool("rect") }       // creation tools (create.py)
     Shortcut { sequence: "O"; enabled: !shell.typing; onActivated: backend.setTool("ellipse") }
     Shortcut { sequence: "T"; enabled: !shell.typing; onActivated: backend.setTool("text") }
-    Shortcut { sequence: "C"; enabled: !shell.typing; onActivated: backend.setTool("camera") }     // only with a camera (camera_tool.py)
+    Shortcut { sequence: "C"; enabled: !shell.typing; onActivated: { if (!backend.cameraTool.available) backend.adder.add("camera")   // the first use adds one
+                                                                    backend.setTool("camera") } }
+    Shortcut { sequence: "H"; enabled: !shell.typing; onActivated: backend.setTool("hand") }       // view tools (Stage.qml)
+    Shortcut { sequence: "Z"; enabled: !shell.typing; onActivated: backend.setTool("zoom") }
+    Shortcut { sequence: "Ctrl+I"; enabled: !shell.typing; onActivated: rail.openGroup("media") }  // the kit's add_file: the Media flyout
     Shortcut { sequence: "J"; enabled: !shell.typing && backend.boneTool.available; onActivated: backend.setTool("bone") }   // only with a rig in hand (bone_tool.py)
     Shortcut { sequence: "A"; enabled: !shell.typing; onActivated: backend.showAnimated() }    // only the animated settings of the selection; again folds them
     Shortcut { sequence: "Escape"; enabled: backend.tool === "draw" || backend.tool === "rect" || backend.tool === "ellipse" || backend.tool === "camera"
-                                            || backend.tool === "bone" || (backend.tool === "text" && !backend.create.typing)
+                                            || backend.tool === "bone" || backend.tool === "hand" || backend.tool === "zoom" || (backend.tool === "text" && !backend.create.typing)
                onActivated: { if (backend.strokeSelect.count > 0 || backend.strokeSelect.armed) backend.strokeSelect.clear()   // picked strokes first
                               else if (backend.tool === "bone" && backend.boneTool.end()) {}     // the bone chain ends first
                               else backend.setTool("move") } }
@@ -81,10 +84,10 @@ AppShell {
     Shortcut {
         sequence: "Escape"; enabled: shell.canvasKeys
         onActivated: {
-            const open = backend.exporter.open || importPanel.shown || fileMenu.menuOpen || stage.addMenu.menuOpen
+            const open = backend.exporter.open || importPanel.shown || fileMenu.menuOpen || rail.flyoutOpen
             if (backend.stepBack({ popover: open }) === "close") {
                 shell.setExportOpen(false); shell.setImportOpen(false)
-                fileMenu.closeMenu(); stage.addMenu.menuOpen = false
+                fileMenu.closeMenu(); rail.openGroup("")
             }
         }
     }
@@ -106,7 +109,7 @@ AppShell {
     function setFileMenuOpen(open) { if (open) fileMenu.openMenu(); else fileMenu.closeMenu() }
     function openLayerMenu(id) { timeline.openMenu(id) }
     function openCanvasMenu() { stage.openMenu() }
-    function setAddOpen(open) { stage.addMenu.menuOpen = open }
+    function openFlyout(group) { return rail.openGroup(group) }    // a rail group's flyout ("": close it)
 
     // Export: the kit sheet in the inspector's place (Ctrl+E; Ctrl+Shift+E again), filled with 2D's formats
     // (screen2d/exporter.py); the job chip comes with it. Problems: the kit chip, only while something is wrong.
@@ -123,14 +126,15 @@ AppShell {
     DepthPopover { x: (shell.width - width) / 2; y: 104 }     // Set depth ▾ › Other depth… (depth_typed.py): under the bar
     SoundCuePopover { x: (shell.width - width) / 2; y: 104 }  // Add a sound here… (sound_cue_pick.py): under the bar
     centre: [
-        Stage { id: stage; anchors.fill: parent; typing: shell.typing },   // typing: F stays a letter (ViewControls.qml)
+        ToolRail { id: rail; anchors { left: parent.left; top: parent.top; bottom: parent.bottom } },   // its own column, never over the canvas
+        Stage { id: stage; anchors.fill: parent; anchors.leftMargin: rail.width + Theme.gap; typing: shell.typing },   // typing: F stays a letter (ViewControls.qml)
         EmptyHint {     // a new scene (the kit's empty state, INTERACTION.md 1.16): gone with the first layer
             visible: backend.layers.length === 0 && backend.tool === "move"
             anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: Theme.groupGap * 3 }
             width: Math.min(460, parent.width - 4 * Theme.gap)
             text: "Draw a shape (R), type (T), paint (B), or drop a file here."
         },
-        ImportPanel {   // opened by the + menu's Import…, on the canvas (opening the Export sheet closes it)
+        ImportPanel {   // opened by the rail's Media › Import…, on the canvas (opening the Export sheet closes it)
             id: importPanel
             Connections { target: backend.importer; function onWantPanel() { shell.setImportOpen(true) } }
             anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }

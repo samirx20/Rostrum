@@ -2,13 +2,13 @@ import QtQuick
 import QtQuick.Shapes
 import RostrumKit
 
-// The creation tools over the canvas (screen2d/create.py does the work; the tool strip, R, O and T turn them on).
+// The creation tools over the canvas (screen2d/create.py does the work; the tool rail, R, O and T turn them on).
 // Rectangle / Ellipse: press-drag-release draws one (Shift = square / round, Alt = from the centre, a click = 200 px
 // there); the outline and its size ("320 × 180") follow the pointer. Text: click and type, or drag a box to wrap in;
 // a click outside, Esc or Ctrl+Enter ends (the text stays selected; no Done), Enter is a new line. Double-click a text
 // (Stage.qml) or Enter with it selected (Main.qml) types in it again, on the canvas only.
 // While typing the engine's own picture shows the words; the box here is transparent text with the cursor, lined up
-// through the Stage's mapping only (compScale, fromComp, toComp). It lies in the canvas, under the tool strip (Stage.qml).
+// through the Stage's mapping only (compScale, fromComp, toComp). It lies in the canvas (Stage.qml).
 Item {
     id: ov
     property Item stage
@@ -18,7 +18,7 @@ Item {
     readonly property bool creating: tool === "rect" || tool === "ellipse" || tool === "text"
     readonly property var box: create.box
     readonly property var look: create.style
-    // the one mapping (Stage.qml), from this overlay's own px (it lies in the canvas well, under the tool strip)
+    // the one mapping (Stage.qml), from this overlay's own px (it lies in the canvas well)
     function toComp(x, y) { const q = ov.mapToItem(stage, x, y); return stage.toComp(q.x, q.y) }
     function fromComp(x, y) { const q = stage.fromComp(x, y); return ov.mapFromItem(stage, q.x, q.y) }
     function atMouse(m) { return ov.toComp(m.x, m.y) }

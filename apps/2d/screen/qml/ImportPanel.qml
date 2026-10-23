@@ -5,7 +5,7 @@ import RostrumKit
 // Import: a file (SVG, PDF page, PSD, image, video) or a Figma frame into the open composition, as one change. Only the
 // settings that apply to what was chosen are here (a page for a PDF, text handling for an SVG, key / frame / token for Figma).
 // Afterwards the settings go: only what came in and the list of what didn't come across stay (and the panel closes by
-// itself when everything came across: the status line says what was imported). Opened from the tool strip's + menu (Import…).
+// itself when everything came across: the status line says what was imported). Opened from the rail's Media › Import….
 Rectangle {
     id: panel
     // Always `panel.job`, never bare `job`: inside a kit Button / IconButton a bare `job` is the button's own key-map name
