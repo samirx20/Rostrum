@@ -19,7 +19,7 @@ import json
 from pathlib import Path
 
 from rostrum_core import RostrumError, codes
-from rostrum_core.cache import put_file
+from rostrum_core.cache import LEVELS, put_file
 
 from . import settings
 from .builder import Song
@@ -143,9 +143,9 @@ def _render(engine, schedule: dict, entry: dict, out_dir: Path | None) -> dict:
     """The schedule rendered once into the content-keyed cache: {file, seconds, cached}."""
     folder = Path(out_dir) if out_dir else settings.cache_dir() / "sound" / "auditions"
     out = folder / f"{_key(schedule, entry)}.wav"
-    if out.is_file():
+    if out.is_file() and out.with_suffix(LEVELS).is_file():
         return {"file": str(out), "seconds": None, "cached": True}
     r = {}
     put_file(out, lambda tmp: r.update(engine.request("render", schedule=schedule, out=str(tmp), stems=[]) or {}),
-             "render_audition")
+             "render_audition", beside=(LEVELS,))
     return {"file": str(out), "seconds": r.get("seconds"), "cached": False}
