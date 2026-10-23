@@ -17,7 +17,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from rostrum_core import RostrumError, codes, did_you_mean, userhome
+from rostrum_core import RostrumError, builds, codes, did_you_mean, userhome
 from rostrum_core.cache import default_root
 from rostrum_core.storage import write_atomic
 
@@ -125,9 +125,10 @@ def engine_candidates() -> list[Path]:
 
 def engine_path() -> Path:
     found = engine_candidates()
-    for p in found:
-        if p.is_file():
-            return p
+    dev = [p for p in found if DEV_BUILD in p.parents]        # a chosen or installed engine wins; the dev builds: newest
+    if (p := next((p for p in found if p.is_file() and p not in dev), None)) or (
+            p := builds.newest(dev, "the Sound engine")):
+        return p
     raise RostrumError(codes.INTERNAL, "sound engine", "rostrum-sound", "is not installed", [str(p) for p in found],
                        "Reinstall RostrumSound, pick the program under Settings › Files › Sound engine program, or "
                        "(developers) build it: cargo build --profile agent -j 4 in apps/sound/engine.")
@@ -142,7 +143,7 @@ def models_dir() -> Path:
 
 
 def projects_dir() -> Path:
-    return _folder("ROSTRUM_PROJECTS_DIR", "projects", PROJECTS)
+    return _env_path("ROSTRUM_PROJECTS_DIR") or Path(load()["projects"] or userhome.output_dir("projects", PROJECTS))
 
 
 def assets_dir() -> Path:

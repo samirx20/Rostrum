@@ -23,7 +23,11 @@ _LIB = None
 
 def lib_path() -> Path:
     env = os.environ.get("ROSTRUM_STAMP_LIB")
-    return Path(env) if env else Path(__file__).resolve().parents[3] / "apps" / "2d" / "engine" / "target" / "agent" / _NAME
+    if env:
+        return Path(env)
+    target = Path(__file__).resolve().parents[3] / "apps" / "2d" / "engine" / "target"
+    from rostrum_core import builds
+    return builds.newest([target / p / _NAME for p in ("release", "agent")], "the native stamper") or target / "agent" / _NAME
 
 
 def _lib():
