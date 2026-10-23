@@ -29,6 +29,10 @@ Rectangle {
         cache: false; smooth: true
     }
 
+    DropArea {  // a material ball dragged from the picker or the Materials list: the item under the pointer gets it
+        anchors.fill: parent; keys: ["rostrum-material"]
+        onDropped: (d) => { viewport.dropMaterial(d.source.materialId, d.x * vp.dpr, d.y * vp.dpr); d.accept() }
+    }
     Item {   // the shot frame (shot camera only): the scene outside it dimmed, a thin edge, the shot's name above
         id: frame
         visible: viewport.mode === "shot"

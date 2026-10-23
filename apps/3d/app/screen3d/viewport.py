@@ -295,6 +295,12 @@ class Viewport(QObject):
         scene, cam = self.sent()
         return scene, {**cam, "x": round(x * self._scale), "y": round(y * self._scale)}
 
+    @Slot(str, float, float)
+    def dropMaterial(self, material_id, x, y):
+        """A material dropped at (x, y) device pixels: the item there gets it (picked like a click, never selected)."""
+        self._drop = material_id
+        self.click(x, y)
+
     def close(self):
         self._next.stop()
         self._r.close()
@@ -323,6 +329,9 @@ class Viewport(QObject):
         self._set_status(line)
 
     def _on_picked(self, item):
+        drop, self._drop = getattr(self, "_drop", ""), ""
+        if drop:
+            return self.bridge.mats.dropOn(drop, item)
         if item != self.bridge.selected:
             self.bridge.select(item)
         self.picked.emit(item or "")

@@ -18,7 +18,7 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
                "so nothing was shown; check the render folder and try again.")
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
-QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "shapes-flyout",
+QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
          "lights-flyout", "page-animate", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
@@ -50,6 +50,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("camera-selected", s, ["select cam"]),
         ("camera-dof", s, ["select cam", "set dof true"]),
         ("material-selected", s, ["select glass"]),
+        ("material-picker", s, ["select block", "picker", "wait 300"]),
+        ("material-shared", s, ["select vase", "assign clay"]),
+        ("material-started", s, ["select block", "startfrom matte plastic"]),
         ("shot-selected", s, ["select hero"]),
         ("playhead-mid-move", s, ["select cam", "frame 24"]),
         ("key-selected", s, ["select cam", "frame 24", "keydrag cam.x.k2000 36"]),

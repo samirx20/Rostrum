@@ -25,6 +25,8 @@ from . import outline, route, scene_state
 from .action_preview3d import ActionPreview3D
 from .adding import Adder
 from .context_qt import Context
+from .material_balls import BallRenderer, MaterialBalls
+from .materials import USERS, Materials3D
 from .render_job import RenderJob
 
 
@@ -67,6 +69,8 @@ class Bridge3D(ActionPreview3D, DocBridge):
         self.selectedItemsChanged.connect(self.outlineChanged)     # the scene list lights every selected row
         self._make_actions()                                # the settings panel's actions (Combine) and their hover preview
         self.viewport = viewport(self) if viewport else None
+        self.balls = MaterialBalls(BallRenderer() if self.viewport is not None else None)   # rendered preview balls
+        self._mats = Materials3D(self, self.balls)   # the picker, the chip, the inline rows
 
     # ---- what the viewport and QML read -----------------------------------------------------------------------
     def scene(self) -> dict:
@@ -173,6 +177,11 @@ class Bridge3D(ActionPreview3D, DocBridge):
         """The Add menu, Delete and Duplicate (adding.py)."""
         return self.add
 
+    mats = Property(QObject, lambda self: self._mats, constant=True)    # QML: backend.mats (materials.py)
+
+    def on_page(self, item):
+        """An item's material shows in its own Material row (MaterialRow.qml, the picker), not as a plain choice."""
+        return {"material"} if item.get("type") in USERS else set()
     @Slot(str, result="QVariantList")
     def contextEntries(self, item_id):
         return self.ctx.entries(item_id)
@@ -314,6 +323,8 @@ class Bridge3D(ActionPreview3D, DocBridge):
         self._timer.stop()
         self.marks.close()
         self.endDrag()
+        if self.balls._r is not None:
+            self.balls._r.close()
         if self.viewport is not None and hasattr(self.viewport, "close"):
             self.viewport.close()
 

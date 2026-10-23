@@ -25,7 +25,8 @@ AppShell {
     function openFileMenu() { fileMenu.openMenu() }               // (the scripted `file-menu` step)
     function openRailGroup(id) { return rail.openGroup(id) }      // (the scripted `rail <group>` step)
     function openContext(id) { vp3d.openContext(id) }              // (the scripted `context <id | ->` step)
-    function openMaterials() { materialsMenu.openFrom(materialsChip, "right") }
+    function openMaterials() { materialsList.openFrom(materialsChip) }
+    function openPicker() { materialRow.openPicker() }           // (the scripted `picker` step)
     function openShots() { shotsMenu.openFrom(crumb, "left") }
     function openView() {          // its choices are read as it opens (the light choice follows the selection)
         viewMenu.entries = [{ value: "shot", label: "Shot camera", checked: viewport.mode === "shot" },
@@ -125,12 +126,7 @@ AppShell {
             anchors.verticalCenter: parent.verticalCenter
             kind: "ghost"; text: "Materials"
             onClicked: shell.openMaterials()
-            Menu {
-                id: materialsMenu
-                width: 200
-                entries: backend.materials.concat([{ value: "+material", label: "New material" }])
-                onPicked: (v) => v === "+material" ? backend.adder.add("material") : backend.select(v)
-            }
+            MaterialsList { id: materialsList }    // ball, name, how many use it; click edits, drag gives
         },
         RenderButton { anchors.verticalCenter: parent.verticalCenter }
     ]
@@ -140,7 +136,17 @@ AppShell {
         RenderView { anchors.fill: parent }
     ]
     right: Item {   anchors.fill: parent   // the selection's settings, or the Scene (the shot's view, sky and values) with nothing selected
-        Inspector { anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== "" }
+        Inspector {
+            anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== ""
+            below: Column {     // the item's material (SPEC §6.1): its row with the picker, then the material's own settings inline
+                width: parent ? parent.width : 0
+                MaterialRow { id: materialRow; width: parent.width }
+                Repeater {
+                    model: backend.mats.rows
+                    delegate: InspectorRow { bridge: backend.mats; instant: backend.mats.rows.instant }
+                }
+            }
+        }
         ScenePanel { anchors.fill: parent; visible: backend.selected === "" }
     }
     bottom: SceneList { anchors.fill: parent }

@@ -42,11 +42,18 @@ class ViewRenderer(PictureWorker):
         """What is at req's x, y (Engine.pick's fields); answered by `picked`."""
         self.post_ordered(("pick", scene, req))
 
+    def call(self, fn):
+        """Run `fn(engine)` on this thread and engine, in order with picks and never dropped (material balls). `fn`
+        reports its own failures; the next view sends the viewport's scene again (ensure_scene)."""
+        self.post_ordered(("call", fn, {}))
+
     def open_engine(self):
         return open_engine()
 
     def handle(self, eng, job):
         kind, scene, req = job
+        if kind == "call":
+            return scene(eng)
         if sys.platform != "win32":
             raise RuntimeError("the live viewport reads the engine's shared memory, Windows only for now")
         final = req.get("renderer") == "cycles"
