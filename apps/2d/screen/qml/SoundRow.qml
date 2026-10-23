@@ -58,8 +58,10 @@ Item {
                 x: modelData.t * row.ruler.perSec; y: 2; height: well.height - 4
                 width: Math.max(4, (modelData.end - modelData.t) * row.ruler.perSec - 2)
                 radius: Theme.radiusCtl; color: Qt.rgba(0, 0, 0, 0.55); border.color: Theme.line; clip: true
+                opacity: modelData.pending ? 0.6 : 1     // its take is not made yet (RostrumSound's Make voice): silent
                 Text { x: 4; width: parent.width - 8; anchors.verticalCenter: parent.verticalCenter
-                       text: modelData.text; elide: Text.ElideRight; color: Theme.fg
+                       text: modelData.pending ? modelData.text + " · not made yet" : modelData.text
+                       elide: Text.ElideRight; color: Theme.fg
                        font.family: uiFont; font.pixelSize: Theme.label }
             }
         }

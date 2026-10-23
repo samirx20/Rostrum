@@ -46,12 +46,7 @@ Panel {
                 }
             }
         }
-        Row {
-            anchors.right: parent.right
-            spacing: Theme.grid
-            Button { text: "Cancel"; onClicked: pop.close() }
-            Button { text: "Apply"; kind: "primary"; onClicked: pop.bl.apply()
-                     help: "Key blinks over the whole scene: one change you can undo." }
-        }
+        Button { anchors.right: parent.right; text: "Apply"; kind: "primary"; onClicked: pop.bl.apply()
+                 help: "Key blinks over the whole scene: one change you can undo." }   // × or Esc closes: no second way
     }
 }

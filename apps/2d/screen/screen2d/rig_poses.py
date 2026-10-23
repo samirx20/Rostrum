@@ -1,7 +1,9 @@
 """The pose library in the settings panel (UX_SPEC 3.23 › Pose library; `backend.poses`, qml/RigPoses.qml): with a rig
 in hand, its saved poses as a list. Save pose keeps the pose at the playhead (`pose.save`); a click on a pose keys it
 at the playhead (`pose.apply`, one change); its slider goes part of the way from the pose there now (`pose.apply
-{amount}` previewed while dragging: one change on release); right-click › Delete (`pose.remove`). Screen state only.
+{amount}` previewed while dragging: one change on release); ⋯ › Rename (`item.rename`), Delete (`pose.remove`).
+`shown`: only while a pose can apply, the rig or its bones picked (not a part with a bone: Attach to bone's
+selection). Screen state only.
 """
 from __future__ import annotations
 
@@ -16,12 +18,22 @@ class PoseList(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.b, self._drag, self._blend = bridge, None, ("", 0.0)
-        bridge.rig.changed.connect(self.changed)
-        bridge.docChanged.connect(self.changed)
+        for sig in (bridge.rig.changed, bridge.docChanged, bridge.selectionChanged):
+            sig.connect(self.changed)
 
     @Property(str, notify=changed)
     def rig(self):
         return self.b.rig.rig
+
+    @Property(bool, notify=changed)
+    def shown(self):
+        """A rig in hand and nothing but it or its bones / IK handles picked: a pose applies to what is picked."""
+        rig = self.b.rig.rig
+        if not rig:
+            return False
+        item = self.b.doc.item(rig)
+        posable = {rig} | {i["id"] for key in ("bones", "iks") for i in item.get(key, [])}
+        return set(self.b._kit.selection) <= posable
 
     @Property("QVariantList", notify=changed)
     def poses(self):
@@ -72,6 +84,11 @@ class PoseList(QObject):
         if d is not None:
             self.b.guard(lambda: self.b.done(d.end(), ""))
         self.changed.emit()
+
+    @Slot(str, str)
+    def rename(self, pose, name):
+        self.b.guard(lambda: self.b._apply([{"op": "item.rename", "target": [pose], "args": {"name": name}}],
+                                          f"Rename pose {name}"))
 
     @Slot(str)
     def remove(self, pose):
