@@ -1,0 +1,119 @@
+<!doctype html><html><head><meta charset="utf-8"><title>08-render-sheet</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1646px;height:900px;overflow:hidden;background:#111214;color:#e4e5e9;font:12px/1.3 'Segoe UI',system-ui,sans-serif;position:relative}
+.abs{position:absolute}
+.hdr{left:0;top:0;width:1646px;height:44px;background:#17181b;border-bottom:1px solid #26272c;display:flex;align-items:center;padding:0 10px;gap:10px}
+.hdr .brand{font-weight:600;font-size:13px;color:#fff;margin-left:4px}
+.hdr .crumb{color:#c9cad0;padding:4px 6px;border-radius:5px;white-space:nowrap;display:flex;align-items:center;gap:4px}
+.hdr .crumb b{color:#fff;font-weight:600}
+.dim{color:#80838c}
+.chip{background:#222328;border:1px solid #2d2e34;border-radius:6px;padding:4px 9px;color:#c9cad0;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.btn{background:#4d8dff;color:#fff;border-radius:6px;padding:6px 14px;font-weight:600;white-space:nowrap}
+.ib{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#a9abb3;flex:none}
+.tabs{display:flex;background:#1e1f23;border:1px solid #2a2b30;border-radius:7px;padding:2px}
+.tabs span{padding:4px 14px;border-radius:5px;color:#9a9ca4;white-space:nowrap}
+.tabs span.on{background:#34363d;color:#fff;font-weight:600}
+.rail{background:#17181b;border-right:1px solid #26272c;display:flex;flex-direction:column;align-items:center;padding-top:8px;gap:2px}
+.tool{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#b9bbc3;position:relative}
+.tool.on{background:#4d8dff;color:#fff}
+.tool.open{background:#2b2d33;color:#fff}
+.tool .more{position:absolute;right:3px;bottom:3px;border-left:4px solid transparent;border-bottom:4px solid #8d9099}
+.tool.on .more{border-bottom-color:#dbe6ff}
+.sep{width:24px;height:1px;background:#2c2d33;margin:5px 0}
+.vp{background:#0c0d0f;overflow:hidden}
+.frame{overflow:hidden;box-shadow:0 0 0 1px #000}
+.frame img{width:100%;height:100%;object-fit:cover;display:block}
+.insp{background:#17181b;border-left:1px solid #26272c;overflow:hidden}
+.ihead{height:44px;display:flex;align-items:center;gap:8px;padding-left:12px;border-bottom:1px solid #25262b;white-space:nowrap}
+.ihead .nm{font-size:14px;font-weight:600;color:#fff} .ihead .knd{color:#80838c;overflow:hidden;text-overflow:ellipsis}
+.r{display:grid;grid-template-columns:96px 160px 28px;height:28px;align-items:center;padding-left:12px}
+.r .lb{color:#9a9ca4;white-space:nowrap;overflow:hidden;padding-right:8px}
+.r .wide{grid-column:1 / 3}
+.sh{height:34px;padding:12px 0 0 12px;font-size:11px;font-weight:600;color:#8d9099;border-top:1px solid #25262b;display:grid;grid-template-columns:256px 28px}
+.sh.first{border-top:0}
+.sh .plus{text-align:center;color:#8d9099;font-weight:400;font-size:15px;line-height:11px}
+.names{border-top:1px solid #25262b;padding:9px 12px 0;height:36px;color:#9a9ca4;white-space:nowrap;font-size:11.5px}
+.names span{color:#c9cad0;border-bottom:1px dotted #5b5e66}
+.f{background:#232428;border:1px solid #2d2e34;border-radius:4px;height:24px;padding:0 7px;display:flex;align-items:center;gap:5px;color:#e4e5e9;white-space:nowrap;overflow:hidden;width:100%}
+.f.act{box-shadow:0 0 0 1px #4d8dff;border-color:#4d8dff}
+.f .u{color:#71747c} .f .k{color:#71747c;font-size:10.5px;flex:none}
+.f .mx{color:#8d9099;font-style:italic}
+.f .ch{margin-left:auto;display:flex}
+.pair{display:grid;grid-template-columns:78.0px 78.0px;column-gap:4px}
+.trip{display:grid;grid-template-columns:repeat(3,1fr);column-gap:3px}
+.trip .f{padding:0 5px;gap:4px}
+.dia{width:9px;height:9px;transform:rotate(45deg);border:1.5px solid #5b5e66;justify-self:center}
+.dia.on{background:#4d8dff;border-color:#4d8dff}
+.sw{width:14px;height:14px;border-radius:3px;flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+.ball{width:14px;height:14px;border-radius:7px;flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
+.seg{display:flex;background:#232428;border:1px solid #2d2e34;border-radius:4px;height:24px;width:100%}
+.seg span{flex:1;display:flex;align-items:center;justify-content:center;color:#9a9ca4;border-radius:3px;white-space:nowrap}
+.seg span.on{background:#383a41;color:#fff}
+.tg{width:28px;height:16px;border-radius:8px;background:#4d8dff;position:relative}
+.tg:after{content:'';position:absolute;right:2px;top:2px;width:12px;height:12px;border-radius:6px;background:#fff}
+.tg.off{background:#3a3c43} .tg.off:after{right:auto;left:2px}
+.sl{position:relative;height:4px;border-radius:2px;background:#3a3c43;flex:1}
+.sl i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:#4d8dff}
+.sl b{position:absolute;top:-4px;width:12px;height:12px;border-radius:6px;background:#fff;margin-left:-6px}
+.ez{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;width:100%}
+.ab{background:#232428;border:1px solid #2d2e34;border-radius:5px;height:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#c9cad0;font-size:10.5px}
+.ab.on{background:#24314a;border-color:#4d8dff;color:#fff}
+.bt{background:#232428;border:1px solid #2d2e34;border-radius:5px;height:24px;display:flex;align-items:center;justify-content:center;gap:5px;color:#d4d5da;white-space:nowrap;flex:1}
+.bt.pri{background:#4d8dff;border-color:#4d8dff;color:#fff;font-weight:600}
+.lchip{background:#262a33;border:1px solid #333a48;border-radius:11px;padding:2px 8px;color:#d4d5da;white-space:nowrap;display:inline-flex;gap:5px;align-items:center}
+.lchip.off{background:transparent;border-color:#2d2e34;color:#8d9099}
+.note{color:#e0b25c;font-size:11px}
+.tl{background:#141518;border-top:1px solid #26272c;overflow:hidden}
+.th{position:absolute;left:0;top:0;right:0;height:30px;border-bottom:1px solid #222328}
+.tr{white-space:nowrap;position:absolute;left:0;top:0;width:240px;height:30px;display:flex;align-items:center;gap:4px;padding:0 6px;border-right:1px solid #222328}
+.time{font-variant-numeric:tabular-nums;color:#fff;font-weight:600;margin-left:2px}
+.ruler{position:absolute;left:240px;top:0;right:0;height:30px;color:#7d8088;font-size:10px}
+.tk{position:absolute;top:2px;height:28px;border-left:1px solid #2b2c31;padding:0 0 0 4px}
+.tk.mn{top:22px;height:8px;border-color:#34353b}
+.lay{position:absolute;left:0;top:30px;width:240px;bottom:0;border-right:1px solid #222328;overflow:hidden}
+.lr{height:28px;display:flex;align-items:center;gap:6px;padding-right:10px;color:#c9cad0;white-space:nowrap}
+.lr.sel{background:#1f2a3d;color:#fff} .lr.sub{color:#7d8088;font-size:11px}
+.lr .ic{width:14px;color:#8d9099;display:flex;justify-content:center}
+.lr .tw{width:12px;color:#6f727a;font-size:9px;text-align:center}
+.lr .tag{margin-left:auto;color:#6f727a;font-size:11px}
+.lanes{position:absolute;left:240px;top:30px;right:0;bottom:0;overflow:hidden}
+.lane{height:28px;position:relative}
+.lane.sel{background:#182030}
+.bar{position:absolute;top:5px;bottom:5px;border-radius:4px;background:#202125;border:1px solid #2c2d33}
+.lane.sel .bar{background:#1d2a44;border-color:#2c4270}
+.kd{position:absolute;top:9px;width:10px;height:10px;margin-left:-5px;transform:rotate(45deg);background:#a3a6ae}
+.kd.sm{top:10px;width:8px;height:8px;margin-left:-4px}
+.kd.s{background:#4d8dff;box-shadow:0 0 0 1.5px #cfe0ff}
+.sp{position:absolute;top:4px;bottom:4px;border-radius:3px}
+.sp.sel{background:rgba(77,141,255,.38);border:1px solid #4d8dff}
+.eg{position:absolute;top:9px;margin-left:-6px;color:#8d9099}
+.eg.s{color:#fff}
+.cache{position:absolute;top:4px;bottom:4px;border-radius:3px;border:1px solid #3fae8a;color:#bfe9da;font-size:10px;padding:3px 0 0 8px;white-space:nowrap;
+ background:repeating-linear-gradient(135deg,rgba(63,174,138,.30) 0 6px,rgba(63,174,138,.14) 6px 12px)}
+.ph{position:absolute;top:0;bottom:0;width:1px;background:#4d8dff}
+.ph:before{content:'';position:absolute;left:-5px;top:2px;width:11px;height:9px;border-radius:2px;background:#4d8dff}
+.mk{position:absolute;top:15px;font-size:10px;color:#111;background:#f2b84b;border-radius:3px;padding:0 4px;line-height:13px;white-space:nowrap}
+.mkl{position:absolute;top:0;bottom:0;width:0;border-left:1px dashed rgba(242,184,75,.45)}
+.scroll{position:absolute;right:2px;width:4px;border-radius:2px;background:#3a3c43}
+.fly,.pop{background:#1d1e22;border:1px solid #33353c;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.55)}
+.fly{padding:10px}
+.tile{width:64px;height:62px;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:#c9cad0;font-size:10.5px;position:relative}
+.tile.on{background:#2b2d33;color:#fff}
+.tile .kk{position:absolute;right:5px;top:3px;font-size:9px;color:#6f727a}
+.fh{color:#8d9099;font-size:11px;font-weight:600;margin:8px 2px 5px}
+.bru{display:flex;flex-direction:column;gap:3px;width:104px;padding:4px;border-radius:6px;color:#c9cad0;font-size:10.5px}
+.bru.on{background:#24314a;box-shadow:0 0 0 1px #4d8dff;color:#fff}
+.mono{font-family:Consolas,monospace;font-size:11px}
+.qrow{display:flex;align-items:center;gap:10px;height:44px;padding:0 12px;border-bottom:1px solid #1f2024;white-space:nowrap}
+.prog{height:4px;border-radius:2px;background:#2a2b30;position:relative;width:180px}
+.prog i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:#4d8dff}
+.thumb{width:48px;height:27px;border-radius:3px;object-fit:cover;flex:none}
+.est{margin:10px 12px 0;padding:8px 10px;border-radius:6px;background:#1c2230;border:1px solid #2a3550;color:#dfe6f5;line-height:1.45}
+</style></head><body><div class="abs hdr">
+ <div class="ib"><svg width="16" height="16" viewBox="0 0 18 18"><path d="M3 5h12M3 9h12M3 13h12" stroke="currentColor" stroke-width="1.5"/></svg></div><span class="brand">Rostrum3D</span>
+ <span class="crumb">Aurora <span class="dim">›</span> <b>Hero 01</b><svg width="12" height="12" viewBox="0 0 18 18"><path d="M5 7l4 4 4-4" fill="none" stroke="#80838c" stroke-width="1.5"/></svg></span><span class="dim" style="white-space:nowrap">Rendering Hero 01 · 34 / 120</span>
+ <div style="flex:1"></div><div class="tabs"><span class="">Build</span><span class="">Animate</span><span class="on">Render</span></div><div style="flex:1"></div>
+ <div class="ib"><svg width="16" height="16" viewBox="0 0 18 18"><path d="M6 4L2.5 7.5 6 11M3 7.5h7a4.5 4.5 0 0 1 0 9H8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><div class="ib"><svg width="16" height="16" viewBox="0 0 18 18"><path d="M12 4l3.5 3.5L12 11M15 7.5H8a4.5 4.5 0 0 0 0 9h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><span class="chip" style="width:200px"><svg width="13" height="13" viewBox="0 0 18 18"><circle cx="8" cy="8" r="5" fill="none" stroke="#80838c" stroke-width="1.6"/><path d="M12 12l4 4" stroke="#80838c" stroke-width="1.6"/></svg><span class="dim">Search or run a command</span></span>
+ <span class="chip"><span class="dim">View</span> Shot camera<svg width="12" height="12" viewBox="0 0 18 18"><path d="M5 7l4 4 4-4" fill="none" stroke="#80838c" stroke-width="1.5"/></svg></span>
+ <div class="tabs"><span class="dim" style="padding:4px 6px 4px 8px">Look</span><span class="">Quick</span><span class="on">Final</span></div>
+ <span class="chip">Materials</span><div class="ib"><svg width="16" height="16" viewBox="0 0 18 18"><circle cx="9" cy="9" r="7" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7 7a2 2 0 1 1 2.5 2c-.5.2-.5.6-.5 1.3" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="9" cy="12.8" r=".9" fill="currentColor"/></svg></div></div><div class="abs rail" style="left:0;top:44px;width:48px;height:572px"><div class="tool on"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M9 2v14M2 9h14M9 2l-2 2M9 2l2 2M9 16l-2-2M9 16l2-2M2 9l2-2M2 9l2 2M16 9l-2-2M16 9l-2 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg><span class=more></span></div><div class="sep"></div><div class="tool"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M3 3h12v6H3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M5 12l-1 3M9 12v3.5M13 12l1 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg><span class=more></span></div><div class="tool"><svg width="18" height="18" viewBox="0 0 18 18"><rect x="2" y="5" width="10" height="8.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 8l4-2.5v7.5L12 10.5z" fill="currentColor"/></svg><span class=more></span></div></div><div class="abs vp" style="left:48px;top:44px;width:1298px;height:572px"></div><div class="abs frame" style="left:217.0px;top:60.0px;width:960.0px;height:540.0px"><img src="assets/still-life-final.jpg" style="object-position:50% 50%"><div class="abs" style="left:0;top:0"></div></div><div class="abs insp" style="left:1346px;top:44px;width:300px;height:572px"><div class="ihead"><svg width="16" height="16" viewBox="0 0 18 18"><rect x="2" y="3.5" width="14" height="11" rx="1.5" fill="none" stroke="#9a9ca4" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M5 3.5v11M13 3.5v11" fill="none" stroke="#9a9ca4" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="nm">Render</span><span class="knd">Hero 01</span></div><div class="sh first"><span>What</span></div><div class="r"><div class="wide"><div class="seg"><span class="">This frame</span><span class="on">Hero 01</span><span class="">All shots</span></div></div></div><div class="sh"><span>Quality</span></div><div class="r"><div class="wide"><div class="seg"><span class="">Draft</span><span class="">Good</span><span class="on">Final</span></div></div></div><div class="r"><span class="lb">More</span><div><div class="f "><span class="dim">256 samples · noise cleaned</span><span class="ch"><svg width="12" height="12" viewBox="0 0 18 18"><path d="M7 5l4 4-4 4" fill="none" stroke="#71747c" stroke-width="1.5"/></svg></span></div></div></div><div class="sh"><span>Output</span></div><div class="r"><span class="lb">Size</span><div><div class="f ">1920 × 1080 · 120 frames<span class="ch"><svg width="12" height="12" viewBox="0 0 18 18"><path d="M5 7l4 4 4-4" fill="none" stroke="#71747c" stroke-width="1.5"/></svg></span></div></div></div><div class="r"><span class="lb">Folder</span><div><div class="f "><svg width="13" height="13" viewBox="0 0 18 18"><path d="M2 4.5h5l1.5 1.8H16v8.2H2z" fill="none" stroke="#8d9099" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>renders\Hero 01\v004</div></div></div><div class="sh"><span>Layers for the Editor</span></div><div class="r" style="height:auto;padding:2px 0 4px 12px"><div class="wide" style="display:flex;flex-wrap:wrap;gap:5px"><span class="lchip"><svg width="11" height="11" viewBox="0 0 18 18"><path d="M3.5 9.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Beauty</span><span class="lchip"><svg width="11" height="11" viewBox="0 0 18 18"><path d="M3.5 9.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Depth</span><span class="lchip"><svg width="11" height="11" viewBox="0 0 18 18"><path d="M3.5 9.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Object IDs</span><span class="lchip"><svg width="11" height="11" viewBox="0 0 18 18"><path d="M3.5 9.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Shadow catcher</span><span class="lchip off">+ Normals</span><span class="lchip off">+ Light groups</span></div></div><div class="est"><b>about 6 min</b> · 3 s a frame on this laptop<br><span class="dim">from a quarter-size test frame on the RTX 3050 · EXR layers, live link on</span></div><div style="padding:10px 12px 0 12px;display:flex;gap:6px"><div class="bt pri" style="height:32px">Render 120 frames</div></div></div><div class="abs tl" style="left:0;top:616px;width:1646px;height:284px"><div class="th"><div class="tr"><b style="color:#fff">Shots</b><div style="flex:1"></div><span class="dim">3</span></div><div class="ruler" style="display:flex;align-items:center;padding-left:12px;color:#fff;font-size:12px;font-weight:600">Render queue</div></div><div class="lay"><div class="lr sel" style="height:44px;padding-left:10px;gap:9px"><img class="thumb" src="assets/still-life-final.jpg"><div><div>Hero 01</div><div class="dim" style="font-size:11px">5.0 s · 24 fps</div></div></div><div class="lr" style="height:44px;padding-left:10px;gap:9px"><img class="thumb" src="assets/wordmark.jpg"><div><div>Close 02</div><div class="dim" style="font-size:11px">3.0 s · 24 fps</div></div></div><div class="lr" style="height:44px;padding-left:10px;gap:9px"><img class="thumb" src="assets/still-life-quick.jpg"><div><div>Drop 03</div><div class="dim" style="font-size:11px">4.0 s · 24 fps</div></div></div></div><div class="lanes"><div class="qrow"><span style="width:150px;color:#fff">Hero 01 · Final</span><span class="dim" style="width:90px">frames 1–120</span><div class="prog"><i style="width:28.000000000000004%;"></i></div><span class="dim" style="flex:1">34 of 120 · about 4 min left</span><div class="bt" style="flex:none;padding:0 12px">Pause</div></div><div class="qrow"><span style="width:150px;color:#fff">Close 02 · Good</span><span class="dim" style="width:90px">frames 1–72</span><div class="prog"><i style="width:0%;"></i></div><span class="dim" style="flex:1">waiting · about 1 min</span><div class="bt" style="flex:none;padding:0 12px">Remove</div></div><div class="qrow"><span style="width:150px;color:#fff">Hero 01 · Draft</span><span class="dim" style="width:90px">frames 1–120</span><div class="prog"><i style="width:100%;background:#3fae8a"></i></div><span class="dim" style="flex:1">done 10:42 · placed in the Editor (live link)</span><div class="bt" style="flex:none;padding:0 12px">Send to 2D</div></div></div></div></body></html>
