@@ -13,7 +13,8 @@ K = 64  # samples across the tip for per-bristle profiles (upsampled for wide ti
 ALONG = {"round": 1.0, "chalk": 1.0, "line": 1.0, "bristle": 0.4, "flat": 0.3, "block": 0.5}
 PARAMS = dict(opacity=1.0, hardness=0.5, spacing=0.1, jitter=0.0, seed=0, angle=None, wet=0.0,
               sample_all=False, grain=0.0, mode="normal", color_jitter=0.04, hue_jitter=0.0,
-              size_pressure=0.8, opacity_pressure=0.3)
+              size_pressure=0.8, opacity_pressure=0.3, steady=0.0, tilt_angle=0.0, tilt_size=0.0,
+              taper_start=0.0, taper_end=0.0, size_jitter=0.0, angle_jitter=0.0)
 
 
 class Coverage(NamedTuple):

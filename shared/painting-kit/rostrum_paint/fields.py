@@ -17,6 +17,7 @@ LISTS = {"paint": ["strokes"], "stroke": [], "fill": [], "paintmask": []}
 HOLDS = {"paints": ("paint",), "strokes": ("stroke", "fill"), "paintmasks": ("paintmask",)}   # a fill is laid in order too
 P, S, D = "primary", "secondary", "deep"
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
+TURNS = {"not": {"any": [IS("brush", t) for t in ("round", "chalk", "line")]}}   # tips whose turn shows
 
 
 def N(name, label, lo, hi, step, default, imp=P, unit="", when=None, group="Brush", integer=False, help="", display=""):
@@ -40,8 +41,15 @@ BRUSH = [
                  help="normal paints over, multiply glazes, erase removes, screen / add paint light"),
     A("size_pressure", "Pressure → size", 0.8, group="Pen"),
     A("opacity_pressure", "Pressure → opacity", 0.3, group="Pen"),
+    A("steady", "Steadiness", 0.0, group="Pen", help="The line trails the pen and smooths a shaky hand; 0 = raw"),
+    A("tilt_angle", "Tilt → angle", 0.0, D, when=TURNS, group="Pen", help="The tip turns the way the pen leans"),
+    A("tilt_size", "Tilt → size", 0.0, D, group="Pen", help="The tip widens as the pen leans (shading on its side)"),
+    N("taper_start", "Taper start", 0, 20, 0.1, 0.0, D, group="Pen", help="Starts thin over this many tip sizes"),
+    N("taper_end", "Taper end", 0, 20, 0.1, 0.0, D, group="Pen", help="Ends thin over this many tip sizes"),
     N("spacing", "Spacing", 0.02, 2, 0.01, 0.1, D, help="Distance between dabs, in tip lengths"),
     N("jitter", "Scatter", 0, 2, 0.01, 0.0, D, help="Dabs wander off the path, in tip sizes"),
+    A("size_jitter", "Size jitter", 0.0, D, help="Each dab up to this much smaller, at random"),
+    N("angle_jitter", "Angle jitter", 0, 180, 1, 0.0, D, "°", TURNS, help="Each dab turned up to this much, at random"),
     Param.toggle("follow", label="Tip turns with the stroke", group="Brush", default=True, importance=D),
     N("angle", "Tip angle", -360, 360, 1, 0.0, D, "°", IS("follow", False)),
     A("grain", "Paper grain", 0.0, D, help="How much the paper's tooth breaks up the paint"),
@@ -72,8 +80,9 @@ FIELDS: dict[str, list[Param]] = {
         Param.toggle("locked", label="Locked", default=False, importance=S, help="A locked layer refuses paint"),
     ],
     "stroke": [
-        Param.points("points", label="Path", min=2, max=4, importance=D, group="Path",
-                     help="[[x, y, pressure 0..1, tilt], …] in canvas px; pressure 1 when left out"),
+        Param.points("points", label="Path", min=2, max=5, importance=D, group="Path",
+                     help="[[x, y, pressure 0..1, tilt x°, tilt y°], …] in canvas px; pressure 1 and no lean when "
+                          "left out (tilt: the pen's lean each way, -60..60, as Qt reports it)"),
         *BRUSH,
         Param.text("mask", label="Mask", default="", importance=S, group="Mask",
                    help="A paint mask's id: the stroke only paints inside it (empty = no mask)"),
