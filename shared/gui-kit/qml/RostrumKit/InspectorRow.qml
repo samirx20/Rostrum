@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Dialogs
 import "."
 import "ValueKinds.js" as VK
 
@@ -219,7 +220,15 @@ Item {
         onScrubbed: (v) => row.bridge.scrub(row.model.id, v)
         onScrubEnded: row.bridge.endScrub() } }
     Component { id: choice; ChoiceField { options: row.model.options; current: row.model.value ?? ""; atRest: row.mixed
+                                          more: row.model.more || ""; onMoreChosen: moreDialog.open()
                                           onPicked: (v) => row.set(v) } }
+    FileDialog {  // a choice's "Load …" entry (model.more): the file goes to bridge.loadChoice, which adds the option
+        id: moreDialog
+        title: row.model.more ? String(row.model.more).replace("…", "") : ""
+        nameFilters: (row.model.filters || []).concat(["All files (*)"])
+        onAccepted: row.loadChoice(decodeURIComponent(String(selectedFile).replace(/^file:\/\//, "")).replace(/^\/(?=[A-Za-z]:)/, ""))
+    }
+    function loadChoice(path) { row.bridge.loadChoice(row.model.id, path) }    // (a scripted step hands a file in: 2D `choicefile`)
     Component { id: colour; ColorField { hex: row.model.value || "#000000"; atRest: row.mixed; scrubbed: true
         onEdited: (v) => row.set(v)
         onBegan: row.bridge.beginScrub(row.model.id)

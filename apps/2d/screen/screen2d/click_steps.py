@@ -2,10 +2,11 @@
     clickobj <objectName> [fx fy]      the control's point at fractions fx, fy of its box (default its centre)
     dragobj <objectName> fx0 fy0 fx1 fy1   press at one point of the control's box, move, release at the other
     picturefile <path>                 the open paint picker's picture dialog picks this file (after clickobj fillType:picture)
+    choicefile <row id> <path>         a choice's "Load …" dialog (Tip picture's Load picture…) picks this file
 Used for the colour picker's proofs (the Fill row "row:paint", the picker's own named parts)."""
 from __future__ import annotations
 
-WORDS = {"clickobj", "dragobj", "picturefile"}
+WORDS = {"clickobj", "dragobj", "picturefile", "choicefile"}
 
 
 def do_click_step(win, word, rest, step):
@@ -20,6 +21,15 @@ def do_click_step(win, word, rest, step):
             raise RuntimeError(f"step {step!r}: the paint picker isn't open")
         QMetaObject.invokeMethod(pic, "accept", Q_ARG("QVariant", QUrl.fromLocalFile(str(Path(rest[0]).resolve())).toString()))
         QTest.qWait(150)
+        return
+    if word == "choicefile":
+        from pathlib import Path
+        from PySide6.QtCore import Q_ARG, QMetaObject
+        row = _named(win, f"row:{rest[0]}")
+        if row is None:
+            raise RuntimeError(f"step {step!r}: no settings row {rest[0]!r} on screen")
+        QMetaObject.invokeMethod(row, "loadChoice", Q_ARG("QVariant", str(Path(rest[1]).resolve())))
+        QTest.qWait(300)
         return
     item = _named(win, rest[0])
     if item is None:

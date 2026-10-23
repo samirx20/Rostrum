@@ -6,7 +6,8 @@
 What counts as a fault (AGENTS.md › Rules: every look pass runs it, at several real window sizes):
   overlap   two visible controls in the same layer cross each other (a popup over the page is another layer; a small
             control wholly inside a much bigger one — a button on the canvas, a row's own button — is not a fault)
-  cut       text cut off: elided with no hover to show the whole line, wider than its box, or cut by a clipping panel
+  cut       text cut off: elided with no hover to show the whole line (or elided to make room for a text beside it,
+            hover or not), wider than its box, or cut by a clipping panel
   outside   a control partly outside the window, or sticking out of the panel it sits on
   grid      a settings row's field or key diamond off the panel's columns (SPEC 8.0, Theme.qml fieldFor / labelColumnFor):
             every field starts at its row's field column and is a whole field or a pair half wide, every diamond sits in
@@ -183,6 +184,13 @@ def hover_shows(node: Node) -> bool:
     return False
 
 
+def squeezed_by(n: Node, nodes: list[Node]) -> "Node | None":
+    """The sibling text an elided text gives way to (H54: a layer's name cut to "Dra…" for its "2 drawings" note). A
+    hover tip excuses text cut by the panel's edge, never text cut for a secondary line on the same row."""
+    return next((o for o in nodes if o.parent is n.parent and o is not n and has_text(o) and o.rect.left() >= n.rect.right() - SLACK
+                 and o.rect.top() < n.rect.bottom() and n.rect.top() < o.rect.bottom()), None)
+
+
 def stray(n: Node, say, nodes: list[Node]) -> None:
     """Text that shows as a stray mark, not as words (S36: a "." above "Last changed by" was the top 5 px of the next
     row's "Group" header peeking out of the settings list's bottom edge):
@@ -224,7 +232,10 @@ def check(win, ignore=()) -> list[Fault]:
     for n in nodes:
         if has_text(n):
             t, w = n.item, n.item.width()
-            if t.property("truncated") and not hover_shows(n):
+            beside = squeezed_by(n, nodes) if t.property("truncated") else None
+            if beside is not None:
+                say("cut", n, f"text cut off to make room for {short(beside.item)} beside it (a hover tip doesn't excuse that)")
+            elif t.property("truncated") and not hover_shows(n):
                 say("cut", n, "text cut off (elided, and no hover shows the whole line)")
             elif t.property("contentWidth") > w + SLACK:
                 say("cut", n, f"text {t.property('contentWidth'):.0f} px wide in a {w:.0f} px box")

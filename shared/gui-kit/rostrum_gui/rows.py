@@ -22,7 +22,9 @@ from .pairs import pair_up, pair_valid
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
 ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit", "display",
-         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default", "half", "letter")
+         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default", "half", "letter", "more")
+# more: "" for most rows; a choice whose list can grow names the last entry that adds one ("Load picture…"):
+# picking it opens a file dialog (filters) and calls bridge.loadChoice(id, path).
 # anim: "" (can't be animated), "still" (could be), "keyed" (has keys), "onkey" (has a key at the playhead).
 # expr: "" for most rows; a param driven by an expression or binding has {"text", "note"}: the row shows them (and a
 # way to clear it) instead of its widget.

@@ -9,9 +9,6 @@ from rostrum2d.drawing import frame_at, shown_frames
 from rostrum_core.ids import random_id
 
 
-HOLDS = {1: "on ones", 2: "on twos", 3: "on threes", 4: "on fours"}
-
-
 def marks(drawing: dict, fps: float, duration: float) -> list[dict]:
     """[{id, n, at, held, t0, t1}] sorted by `at`: each drawing's number (1 …), where it starts, how many frames it is
     held and until when (seconds; the last one to the end of the composition)."""
@@ -19,15 +16,6 @@ def marks(drawing: dict, fps: float, duration: float) -> list[dict]:
     ends = [f["at"] for f in fr[1:]] + [round(duration * fps)]
     return [{"id": f["id"], "n": i + 1, "at": f["at"], "held": max(end - f["at"], 1), "t0": f["at"] / fps,
              "t1": max(end, f["at"] + 1) / fps} for i, (f, end) in enumerate(zip(fr, ends))]
-
-
-def note(drawing: dict) -> str:
-    """The row's note: "9 drawings · on twos" (the usual hold, when most drawings share one)."""
-    fr = sorted(shown_frames(drawing), key=lambda f: f["at"])
-    holds = [b["at"] - a["at"] for a, b in zip(fr, fr[1:])]
-    common = max(set(holds), key=holds.count) if holds else 0
-    word = f"{len(fr)} drawing" + ("" if len(fr) == 1 else "s")
-    return f"{word} · {HOLDS[common]}" if common in HOLDS and holds.count(common) * 2 > len(holds) else word
 
 
 def state(drawing: dict, n: int) -> dict:
@@ -41,6 +29,18 @@ def state(drawing: dict, n: int) -> dict:
             "id": here["id"] if here else "", "last": nxt is None,
             "prev": next((f["at"] for f in reversed(fr) if f["at"] < n), None), "next": nxt["at"] if nxt else None,
             "held": held, "canHold": bool(held), "canShorten": held > 1}
+
+
+def flip(drawing: dict, n: int, direction: int) -> tuple[int, int] | None:
+    """Holding , or .: the next (or previous) drawing's start, round to the first (or the last) at the end, and how
+    many frames it shows before the next flip (its hold; the last one: one frame). None with no drawings."""
+    fr = sorted(shown_frames(drawing), key=lambda f: f["at"])
+    if not fr:
+        return None
+    s = state(drawing, n)
+    at = s["next" if direction > 0 else "prev"]
+    at = at if at is not None else fr[0 if direction > 0 else -1]["at"]
+    return at, max(1, state(drawing, at)["held"])
 
 
 def new_frame(drawing: dict, n: int, copy: bool) -> tuple[list[dict], str, int]:

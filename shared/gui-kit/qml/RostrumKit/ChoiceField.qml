@@ -8,7 +8,9 @@ FieldFrame {
     id: f
     property var options: []              // [{value, label}] or plain strings: the field shows the label, sends the value
     property var current: ""              // a value of any type: matched to the options as text (48000 == "48000")
+    property string more: ""              // a last entry that adds an option ("Load picture…"): picking it is moreChosen()
     readonly property bool opened: menu.opened
+    signal moreChosen()
     signal picked(var value)              // the option's own value, type kept (a number stays a number)
     function valueAt(i) { const o = options[i]; return typeof o === "string" ? o : o.value }
     function labelAt(i) { const o = options[i]; return typeof o === "string" ? o : o.label }
@@ -66,6 +68,17 @@ FieldFrame {
                     MouseArea { anchors.fill: parent; hoverEnabled: true
                                 onEntered: menu.highlighted = opt.index; onClicked: parent.parent.pick(opt.index) }
                 }
+            }
+            Rectangle {  // "Load picture…": after a thin line, in the secondary colour (it adds a choice, it isn't one)
+                objectName: "choiceMore"
+                visible: f.more !== ""
+                width: menu.availableWidth; height: visible ? Theme.popupRow : 0; radius: 4
+                color: moreArea.containsMouse ? Theme.hover : "transparent"
+                Rectangle { width: parent.width; height: 1; color: Theme.popupEdge }
+                Text { anchors.left: parent.left; anchors.leftMargin: Theme.gap - menu.padding; anchors.verticalCenter: parent.verticalCenter
+                       text: f.more; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont }
+                MouseArea { id: moreArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onClicked: { menu.close(); f.moreChosen() } }
             }
         }
     }

@@ -210,6 +210,18 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("draw-each-frame-long", long(), [*busy, "tool draw", "draw 300 300 500 320 700 300", *FRAMES[2:], "onion on"]),
         # H53: an ink brush adds Steadiness to the quick rows, beside Draw each frame's rows (the longest brush panel)
         ("draw-ink-brush", ["--sample"], [*FRAMES, "preset brushpen", "onion on"]),
+        # H54: the drawing layer's name in full (no note beside it), empty frames' "+", a tick per frame; the Tip picture
+        # list with Load picture…; a picture fill's thumbnail; a gradient with its own length (Cover the whole shape
+        # again); the camera's Ride rows
+        ("draw-empty-frames", ["--sample"], ["time 0.5", *FRAMES]),
+        ("brush-edit-tip-list", long_project(), ["select card", "tool draw", "brushedit on", "clickobj row:texture 0.8 0.5"]),
+        ("fill-picture-swatch", ["--sample"], ["shape star 700 300 1000 600", f'set paint {{"type":"picture","picture":"{PICTURE}"}}']),
+        ("fill-gradient-own-length", ["--sample"], ["shape star 700 300 1000 600", 'set paint {"type":"linear","angle":90,'
+                                                    '"span":"points","x1":0.2,"y1":0.5,"x2":0.6,"y2":0.5,"stops":[{"at":0,'
+                                                    '"color":"#ff7a59","opacity":1},{"at":1,"color":"#101820","opacity":1}]}',
+                                                    "clickobj swatch"]),
+        ("camera-ride", ["--sample"], ["tool pen", "pen 300,300 900,500 1500,300", "tool move", "select path_1",
+                                       "add camera", 'set ridePath "path_1"', "group Ride"]),
         ("library-brand", long_project(), ["select title_card_for_the_summer_launch_film", "do layer:style_save",
                                            "brand colors Summer_launch_coral_for_the_headphones_campaign #ff7a59",
                                            "brand colors Night #101820",

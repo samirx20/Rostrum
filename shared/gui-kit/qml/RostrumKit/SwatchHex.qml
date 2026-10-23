@@ -7,7 +7,7 @@ import "ColourMath.js" as M
 // (# optional, 3 / 6 / 8 digits) and goes out on Enter or on leaving the box as `typed("#rrggbb")`, one change; a
 // value that is not a colour is refused in place: the box turns red and says why, the old colour stays. With `words`
 // set (a gradient: "Linear · 3 stops", "None", "Mixed") the box shows them instead and a click on it opens the picker.
-//   look: {type: "solid" | "none" | "mixed" | "linear" | "radial" | "angular" | "image", color, stops}; "mixed": several colours, an empty swatch
+//   look: {type: "solid" | "none" | "mixed" | "linear" | "radial" | "angular" | "image" | "picture", color, stops, picture}; "mixed": several colours, an empty swatch
 Item {
     id: s
     property var look: ({ type: "solid", color: "#ffffff" })
@@ -35,7 +35,7 @@ Item {
                 g.reset()
                 g.roundedRect(0, 0, w, w, Theme.radiusCtl, Theme.radiusCtl); g.clip()
                 if (t === "solid" || t === "image") { g.fillStyle = M.rgba(s.lookHex, 1); g.fillRect(0, 0, w, w) }
-                else if (t === "mixed") { /* the checker alone: no one colour to show */ }
+                else if (t === "mixed" || t === "picture") { /* the checker alone (a picture: its thumbnail lies on it) */ }
                 else if (t === "none") { g.strokeStyle = "#c0392b"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(2, w - 2); g.lineTo(w - 2, 2); g.stroke() }
                 else {
                     const grad = t === "radial" ? g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w * 0.7)
@@ -45,6 +45,14 @@ Item {
                     g.fillStyle = grad; g.fillRect(0, 0, w, w)
                 }
             }
+        }
+        Image {     // a picture fill: a small thumbnail of the picture itself (look.picture: a path or a file:// url)
+            readonly property string file: s.lookKind === "picture" && s.look.picture ? String(s.look.picture) : ""
+            visible: file !== "" && status === Image.Ready
+            anchors.fill: parent; anchors.margins: 1
+            source: file === "" ? "" : /^[a-z]{2,}:/i.test(file) ? file : "file:///" + file.replace(/\\/g, "/").replace(/^\//, "")
+            sourceSize: Qt.size(2 * Theme.field, 2 * Theme.field); fillMode: Image.PreserveAspectCrop
+            asynchronous: true; cache: true; smooth: true
         }
         Rectangle { anchors.fill: parent; radius: Theme.radiusCtl; color: "transparent"
                     border.width: s.engaged || square.activeFocus ? 2 : 1
