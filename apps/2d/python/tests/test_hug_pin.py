@@ -40,3 +40,14 @@ def test_growing_hug_keeps_left_and_top_and_old_files_keep_their_look():
     assert new["comps"][0]["layers"][0]["hugPin"] is False
     assert abs(layout.solve(new["comps"][0], 0.0)["g"].get("x", 300) - 300) < 1e-6   # old look: grows round the anchor
     assert KIND.upgrade(new, KIND.lists) is None
+
+
+def test_auto_layout_hugs_by_default_and_old_files_keep_their_size():
+    d, g = _group('comp("c", width=1000, height=400, fps=10, duration=1)\nwith group("g", w=300, h=60, layout="row"):\n    shape("a", w=200, h=100)\n')
+    assert layout.solve(d.item("c"), 0.0)["g"]["w"] == 200                  # no switch touched: the box follows its layers
+    data = copy.deepcopy(d.data)                                            # an older file: the group has no hug fields
+    for k in ("hugWidth", "hugHeight"):
+        data["comps"][0]["layers"][0].pop(k, None)
+    new, _ = KIND.upgrade(data, KIND.lists)
+    grp = new["comps"][0]["layers"][0]
+    assert grp["hugWidth"] is False and grp["hugHeight"] is False

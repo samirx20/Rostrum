@@ -12,7 +12,7 @@ A layer's `x`, `y` is where its **anchor** sits, in the parent's pixels (`anchor
 frame, so a layer that grows (its `w` / `h` keyed) pushes the others along:
 
 ```python
-with group("list", x=240, y=180, w=600, anchorX=0, anchorY=0, layout="column", gap=18, padding=0, hugHeight=True):
+with group("list", x=240, y=180, w=600, anchorX=0, anchorY=0, layout="column", gap=18, padding=0, hugWidth=False, hugHeight=True):
     for i in range(4):
         with group(f"card{i}", w=600, h=116, clip=True) as card:
             ...                                    # the card's own layers, placed by hand inside it
@@ -26,7 +26,7 @@ with group("list", x=240, y=180, w=600, anchorX=0, anchorY=0, layout="column", g
 | `align` | across the line (or in a grid cell): `start`, `center`, `end`, `stretch` (fills it) |
 | `wrap`, `rowGap` | a new line when the next layer doesn't fit (row / column), and the space between lines |
 | `columns` | grid: equal columns `gap` apart, rows `rowGap` apart, each as tall as its tallest layer |
-| `hugWidth`, `hugHeight` | the group's size follows what is inside it |
+| `hugWidth`, `hugHeight` | the group's size follows what is inside it. On by default (as in a design tool): turning auto layout on makes the box grow with its text; turn one off to keep a fixed width or height. Files made before this keep their own size (they are set off) |
 | `hugPin` | on (the default): a hugging group grows right and down from its top-left, as a design tool's frame (the left edge of a row, the top of a column; across a row by `align`) |
 | a layer's `layoutGrow` | takes this share of the room left along the line (shapes, images, groups) |
 | a layer's `layoutApart` | the layout leaves it alone: placed by its own `x`, `y` (a badge on a card) |
