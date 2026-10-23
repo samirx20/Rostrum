@@ -94,7 +94,7 @@ class Item:
 
     def __enter__(self):
         if self.node["type"] not in F.HOLDERS:
-            raise ValueError(f"{self.id} is a {self.node['type']}; only a group or an import holds items")
+            raise ValueError(f"{self.id} is a {self.node['type']}; only a group, rig, import or combine holds items")
         self._b.holders.append(self.node)
         return self
 
@@ -161,9 +161,9 @@ def _import(name, *args, **kw):
 
 
 API = ["group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
-       "import_usd(id, file=, parts=[...])", "material(id, **fields)", "shot(id, camera=, fps=, start=, end=)",
+       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "material(id, **fields)", "shot(id, camera=, fps=, start=, end=)",
        "item.set(**fields)", "item.key(field, {seconds: value}, ease=)", "item.aim(item or (x, y, z), roll=)",
-       "import.part(path, material=, visible=)", "with group(...): / with rig(...): / with import_usd(...):"]
+       "import.part(path, material=, visible=)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...):"]
 
 
 def run_source(source: str, name: str) -> dict:
@@ -173,7 +173,7 @@ def run_source(source: str, name: str) -> dict:
              "material": lambda id=None, **v: b.add("material", id, v, b.root["materials"]),
              "shot": lambda id=None, **v: b.add("shot", id, v, b.root["shots"]),
              "import_usd": lambda id=None, **v: b.item("import", id, **v),
-             **{t: (lambda id=None, _t=t, **v: b.item(_t, id, **v)) for t in ("group", "mesh", "light", "camera", "rig")}}
+             **{t: (lambda id=None, _t=t, **v: b.item(_t, id, **v)) for t in ("group", "mesh", "combine", "light", "camera", "rig")}}
     try:
         exec(compile(source, name, "exec"), scope)
     except Exception as e:
