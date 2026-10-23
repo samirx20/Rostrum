@@ -1,18 +1,21 @@
 import QtQuick
 import QtQuick.Controls as QQC
-import RostrumKit
+import "."
 
 // A rail group's flyout (design v2 §2.1, mockup 02): beside the rail at the group's icon, its entries as icon + name;
-// the key, where there is one, in the hover tip (as the brush panel's tools); no descriptions. A shape kind's icon is ShapeIcon.qml. A click picks one and closes it; Esc or a click anywhere else closes it.
+// the key, where there is one, in the hover tip; no descriptions. An entry's icon is RailIcon's. A click picks one and
+// closes it; Esc or a click anywhere else closes it. ToolRail owns it.
 QQC.Popup {
     id: fly
     property string group: ""
     property var items: []
+    property string current: ""        // the active tool: its entry reads as on
+    property var kinds: ({})           // ToolRail.iconKinds
     signal picked(var entry)
     parent: QQC.Overlay.overlay
     padding: 6
     closePolicy: QQC.Popup.CloseOnPressOutside | QQC.Popup.CloseOnEscape
-    focus: true                        // Esc reaches it: the first Esc closes the panel (Main.qml: the next ones step back)
+    focus: true                        // Esc reaches it: the first Esc closes the panel (the app's next ones step back)
     background: Rectangle { color: Theme.raised; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
     function show(g, button) {
         group = g.id; items = g.items
@@ -30,16 +33,12 @@ QQC.Popup {
             delegate: Rectangle {
                 id: cell
                 required property var modelData
-                readonly property bool on: modelData.tool !== undefined && modelData.tool === backend.tool
+                readonly property bool on: modelData.tool !== undefined && modelData.tool === fly.current
                 objectName: "fly_" + (modelData.tool || modelData.act)   // fly_star, fly_image, …
                 width: 84; height: 58; radius: Theme.radiusCtl
                 color: tap.pressed || cell.on ? Theme.active : hover.hovered ? Theme.hover : "transparent"
-                ToolIcon { anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 9 }
-                           visible: !cell.modelData.shape
-                           name: cell.modelData.shape ? "" : cell.modelData.icon; ink: cell.on || hover.hovered ? Theme.fg : Theme.fg2 }
-                ShapeIcon { anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 9 }
-                           visible: !!cell.modelData.shape
-                            name: cell.modelData.shape ? cell.modelData.icon : ""; ink: cell.on || hover.hovered ? Theme.fg : Theme.fg2 }
+                RailIcon { anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 9 }
+                           entry: cell.modelData; kinds: fly.kinds; ink: cell.on || hover.hovered ? Theme.fg : Theme.fg2 }
                 Text {
                     anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 7 }
                     width: parent.width - 6; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight

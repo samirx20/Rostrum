@@ -77,3 +77,6 @@ SheetScroll 1.0 SheetScroll.qml
 ToolIcon 1.0 ToolIcon.qml
 GradientHandles 1.0 GradientHandles.qml
 SwatchHex 1.0 SwatchHex.qml
+RailIcon 1.0 RailIcon.qml
+ToolFlyout 1.0 ToolFlyout.qml
+ToolRail 1.0 ToolRail.qml
