@@ -9,6 +9,12 @@ from __future__ import annotations
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 
+def warning_rows(doc) -> list[dict]:
+    """The document's warnings (DocKind.warn: it opens, but holds what is no longer made), as amber rows."""
+    return [{"label": "No longer made", "danger": False, "item": w.split(":", 1)[0] if ":" in w else "",
+             "message": w, "fix": "Remove it or replace it."} for w in doc.kind.warnings(doc.data)]
+
+
 class ProblemsList(QObject):
     changed = Signal()
 

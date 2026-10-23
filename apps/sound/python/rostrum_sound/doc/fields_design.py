@@ -2,8 +2,8 @@
 (engine/src/design/mod.rs, answered by `describe` › designs) is the authority; `Engine.check_names` compares this
 table with it. Each design's own fields are valid only while that design is chosen (rule of individuality): pick
 "click" and the riser's length goes, the material appears. Rostrum makes no whoosh or swish (PURPOSE.md): a song
-that still has one opens (the value is still read, labelled as no longer made), `retired` names it in plain words
-for opening and inspecting, and the engine refuses to render it (RETIRED). `group` is the clip's layer name (fields.py): a
+that still has one opens (the value is `kept`: read, never offered), `retired` names it in plain words (the
+kind's warning: replies, inspect, the Problems chip), and the engine refuses to render it (RETIRED). `group` is the clip's layer name (fields.py): a
 designed sound and library clips with one group name on one track are one layered sound (ops_group.py).
 """
 from __future__ import annotations
@@ -57,7 +57,7 @@ def _when(designs: list[str]):
 def params() -> list:
     """The `sound` item's Params: design, at, common fields, then each field once, valid for the designs that have it."""
     from rostrum_core import Param
-    out = [Param.choice("design", DESIGNS + list(RETIRED), group="Sound", label="Design",
+    out = [Param.choice("design", DESIGNS, group="Sound", label="Design", kept=list(RETIRED),
                         labels={d: f"{d.capitalize()} (no longer made)" for d in RETIRED}), V.time("at", group="Sound", help="When it "
            "starts: seconds, {\"beat\": n} or a marker (\"#logo+0.1\").")]
     out += [N(n, lo, hi, "Sound", imp=imp, label=lab, help=h, integer=n == "seed", display=COMMON_DISPLAY.get(n, "")) for n, lo, hi, imp, lab, h in COMMON]

@@ -35,6 +35,10 @@ class DocKind:
     # (doc.parent(item), doc.item(id)), so a child can be valid by its parent (a note by its track's instrument).
     # A one-argument facts(item) still works.
     facts: Callable = _no_facts
+    # The app's warnings: warn(data) -> plain sentences about what the file may hold but Rostrum no longer makes (a
+    # retired design). Unlike `check`, they never stop a file opening or a call; they are never silent either: the
+    # agent's replies carry them (mcp/server.py), inspect lists them, screens show them on the Problems chip.
+    warn: Callable[[dict], list[str]] = _no_problems
     new: Callable[[], dict] | None = None               # a fresh document's root
 
     def __post_init__(self):
@@ -59,7 +63,7 @@ class DocKind:
             op = self.registry.field_op(item.get("type"))
             for name, value in (fields(item, self.lists).items() if op else ()):
                 p = op.param(name)
-                if p is None:
+                if p is None or value in getattr(p, "kept", ()):   # a kept choice: an old file's, still read
                     continue
                 try:
                     p.check(value, f'{item.get("type")} "{item.get("id")}"')
@@ -73,6 +77,13 @@ class DocKind:
             out = [f"{e.where}: {e.subject} {e.problem}" + (f" ({', '.join(e.accepted)})" if e.accepted else "")
                    for e in self.bad_values(walk(data, self.lists) if items is None else items)]
             return out + list(self.check(data, items))
+        except SHAPE_ERRORS as e:
+            return [f"{type(e).__name__}: {e}"]
+
+    def warnings(self, data: dict) -> list[str]:
+        """What the document holds that still opens but is no longer made (`warn`), in words."""
+        try:
+            return list(self.warn(data))
         except SHAPE_ERRORS as e:
             return [f"{type(e).__name__}: {e}"]
 
