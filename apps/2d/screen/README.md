@@ -73,12 +73,20 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   drawing. Each stroke is one `paint.stroke` change (the agent's operation too). Frame keys: `,` `.` step drawings,
   `=` `−` hold. Steps: `draw`, `paintlayer`, `painton selected|new`.
 
-## One brush panel, Fill, paint layers (H30)
+## The brush panel and the settings panel while painting (H50, painting design phase 1)
 
-- **Each brush setting in one place** (`rostrum_paint.fields.BAR` / `BAR_VALUE`, the kit's table both read):
-  `Brush.bar()` gives the context bar's few (tip, Size, Colour, Opacity; `PaintOptions.qml` builds them by type), and
-  `Brush.rows()` the panel's rest (`rows.omit` of the bar's; Mode without its "erase" value, absent while erasing:
-  the bar's Eraser E is that value). The bar never wraps: Opacity, then Eraser, then Fill fold into the bar's own ⋯.
+- **The Brush group's flyout is the brush panel** (`BrushFlyout.qml`): the five paint tools Brush B, Eraser E,
+  Fill G, Pick I, Select S (`paint_tool.py` as `backend.paintTool`: which is on is read from the brush's erase mode,
+  Fill, Pick and Select strokes, so they never disagree; the rail's Brush icon is the last one used), then the 19
+  shipped brushes (`brush_presets.py`: only existing brush settings, never a colour) as real strokes painted by the
+  kit's engine (`image://brushes/<id>`). No context bar while painting (only the picked strokes' StrokeBar).
+- **The settings panel** (`brush_panel.py`, the kit Inspector on the painter): "Painting · <layer> · <kind>", the
+  brush's row (`BrushHead.qml`: stroke + name ▾ opens the panel), the quick rows (`brush.QUICK`: Size, Opacity, Colour,
+  Pressure → size / opacity), "Edit brush ›" (every setting, `Brush.editing`), then "Painting on" (`PaintTarget.qml`:
+  Layer ▾, Inside the outline, Draw each frame, from the first moment) and the paint layers (`PaintOn.qml`).
+- **On the canvas**: the target's edge dashed; the pointer is the brush ring; `[` `]` size, Shift+`[` `]` hardness,
+  Alt + right-drag sizes (left–right) and softens (up–down). Steps: `preset`, `painttool`, `brushedit`, `keytap`,
+  `mousedrag … right altkey [hold]`.
 - **Fill** (`filler.py` as `backend.fill`, G or the bar's Fill while the target has paint): a click is one
   `paint.fill` (ops_fill.py) with the brush's colour and opacity, on the highlighted paint layer (or a new one when
   + Paint layer is armed), Close gaps small / medium / large in the bar. The fill is a kit **fill** item in the paint

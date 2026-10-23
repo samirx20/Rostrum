@@ -12,8 +12,9 @@ import RostrumKit
 // touches (boxSelect, not locked ones; Shift+box adds, Ctrl+box picks the deepest pieces). One gesture = one undo step (backend.beginMove / moveBy / endDrag; an animated
 // x / y gets a key at the playhead). Layers outside the frame can still be grabbed.
 // With the Draw tool on, a press draws instead: one stroke = one gesture = one undo step (painter.beginStroke / strokeTo /
-// endStroke). A pen reports its pressure; a mouse is 1. The onion skin lies over the drawing's box. With the Pen tool
-// on, PenOverlay takes the clicks.
+// endStroke). A pen reports its pressure; a mouse is 1. The onion skin lies over the drawing's box. The pointer is the
+// brush ring; Alt + right-drag sizes the brush. What the pen paints on shows its edge dashed. With the Pen tool on,
+// PenOverlay takes the clicks.
 // View: Ctrl+wheel / pinch zooms around the pointer, wheel / Shift+wheel scroll, Space+drag or middle-drag pans;
 // the keys and the "Fit · 50 % ▾" menu are ViewControls.qml. The engine draws the frame at the size shown, up to Full, and past
 // Full the visible part again at the size shown (backend.setView: screen2d/shown.py; backend.sharp: screen2d/sharp.py).
@@ -25,7 +26,7 @@ Rectangle {
     property bool typing: false         // a text field has the focus (Main.qml): single-letter view keys stay off
     // the tool whose options the context bar shows instead of the selection's actions ("" = the actions)
     readonly property string toolMode: backend.create.typing ? "text" : backend.tool === "pen" ? "pen"
-                                     : backend.tool === "draw" ? "paint" : ""
+                                     : backend.tool === "draw" && backend.strokeSelect.count > 0 ? "paint" : ""
     readonly property var info: backend.frameInfo
     readonly property Item canvasFrame: frame      // the picture's box
     // The one mapping between composition px and this item's px (everything over the canvas uses it: the action bar,
@@ -114,9 +115,44 @@ Rectangle {
         Item {  // the pen
             anchors.fill: parent
             visible: well.drawing
+            // the brush ring: the pointer is the brush's outline at its size on screen (Brush, Eraser); [ ] and
+            // Alt + right-drag size it (left-right size, up-down hardness: `sizing`), the ring staying where the drag began
+            readonly property bool ringTool: !backend.colourPick.alt && (backend.paintTool.now === "brush" || backend.paintTool.now === "eraser")
+            Item {
+                id: ring
+                visible: parent.ringTool && hover.hovered || sizing.sizingNow
+                readonly property point at: sizing.sizingNow ? sizing.from : hover.point.position
+                readonly property real d: Math.max(3, painter.brushNow.size * view.zoom)
+                x: at.x; y: at.y
+                Rectangle { x: -ring.d / 2; y: -ring.d / 2; width: ring.d; height: ring.d; radius: ring.d / 2
+                            color: "transparent"; border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.85)
+                            Rectangle { anchors.centerIn: parent; width: parent.width + 2; height: width; radius: width / 2
+                                        color: "transparent"; border.width: 1; border.color: Qt.rgba(0, 0, 0, 0.45) }
+                            Rectangle { anchors.centerIn: parent; width: ring.d * Math.max(0.05, painter.brushNow.hardness); height: width
+                                        radius: width / 2; visible: sizing.sizingNow; color: "transparent"; border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.4) } }
+                Rectangle { x: -1.5; y: -1.5; width: 3; height: 3; radius: 1.5; color: "white"; border.color: Qt.rgba(0, 0, 0, 0.5) }
+            }
+            DragHandler {       // Alt + right-drag: Alt is read once, as the drag starts (moves need not repeat it)
+                id: sizing
+                target: null
+                acceptedButtons: Qt.RightButton
+                property bool on: false
+                readonly property bool sizingNow: active && on
+                property point from
+                property real size0: 0
+                property real hard0: 0
+                onActiveChanged: {
+                    on = active && ((centroid.modifiers & Qt.AltModifier) !== 0 || backend.colourPick.alt)   // Alt, as paint_pick.py reads it
+                    if (on) { from = centroid.pressPosition; size0 = painter.brushNow.size; hard0 = painter.brushNow.hardness }
+                }
+                onTranslationChanged: if (on) {
+                    painter.setValue("size", Math.max(0.5, Math.min(2000, Math.round((size0 + translation.x * 2 / view.zoom) * 2) / 2)))
+                    painter.setValue("hardness", Math.max(0, Math.min(1, Math.round((hard0 - translation.y / 200) * 100) / 100)))
+                }
+            }
             HoverHandler {      // Alt held: the pointer picks a colour (the swatch beside it shows the colour under it)
                 id: hover
-                cursorShape: backend.colourPick.alt ? Qt.PointingHandCursor : Qt.CrossCursor
+                cursorShape: backend.colourPick.alt ? Qt.PointingHandCursor : parent.ringTool ? Qt.BlankCursor : Qt.CrossCursor
                 onPointChanged: { const p = panel.inWell(point.position.x, point.position.y); backend.colourPick.look(p.x, p.y) }
             }
             PointHandler {
@@ -229,8 +265,9 @@ Rectangle {
             Shape {  // painting: the target's true edge, the limit its paint stays inside (backend.paintEdge, composition px)
                 visible: well.drawing && backend.paintEdge.path !== ""
                 scale: view.zoom; transformOrigin: Item.TopLeft
-                ShapePath {
+                ShapePath {     // dashed: the limit, not a selection
                     strokeWidth: 1.5 / view.zoom; strokeColor: Theme.accent; fillColor: "transparent"
+                    strokeStyle: ShapePath.DashLine; dashPattern: [4, 3]
                     PathSvg { path: backend.paintEdge.path }
                 }
             }

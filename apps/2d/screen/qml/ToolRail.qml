@@ -9,12 +9,14 @@ import RostrumKit
 // tool (pick Ellipse once and the Shapes icon is an ellipse), and it reads that from backend.tool, so a key (R, O, H, Z)
 // moves it too. Only what can be used now is listed (rule of individuality): a 3D render only with Rostrum3D, Sound
 // only while the selection can take a cue, Bones only with a rig in hand. The one tool switch is backend.setTool.
+// Brush is its own kind of group: a click turns painting on and opens the brush panel (BrushFlyout.qml: the five
+// paint tools and the brushes); its icon is the paint tool last used (backend.paintTool.now).
 Rectangle {
     id: rail
     width: 48
     color: Theme.panel; radius: Theme.radiusPanel
     property var last: ({ shapes: "rect", view: "hand" })      // group -> its last-used tool (screen state)
-    readonly property bool flyoutOpen: flyout.visible
+    readonly property bool flyoutOpen: flyout.visible || brushes.visible
     readonly property bool canCue: { backend.actions.bar; backend.selected; return JSON.stringify(backend.actions.menu()).indexOf('"sound_here"') >= 0 }   // folded menus nest it
     readonly property bool has3d: backend.adder.entries.some(e => e.type === "render3d")
 
@@ -65,7 +67,14 @@ Rectangle {
         else if (e.act === "cue") backend.run("sound_here")
         else backend.adder.add(e.act)          // image / video ask for their file (fileWanted below); 3D render
     }
+    function openBrushes() {   // painting on, and the brush panel beside the Brush icon (B; B again reopens it)
+        flyout.close()
+        if (backend.tool !== "draw") backend.paintTool.use("brush")
+        brushes.show(buttons.itemAt(rail.groups.findIndex(g => g.id === "brush")))
+    }
     function openGroup(id) {   // the flyout of group `id` (Ctrl+I: media; scripted steps), or "" to close it
+        if (id === "brush") { openBrushes(); return true }
+        brushes.close()
         const i = rail.groups.findIndex(g => g.id === id)
         if (i < 0 || rail.groups[i].items.length < 2) { flyout.close(); return false }
         flyout.show(rail.groups[i], buttons.itemAt(i))
@@ -86,6 +95,7 @@ Rectangle {
                 readonly property var e: g.sep ? null : rail.shown(g)
                 readonly property bool many: !!(!g.sep && g.items.length > 1)
                 readonly property bool on: !g.sep && g.items.some(x => x.tool && x.tool === backend.tool) || (flyout.visible && flyout.group === g.id)
+                readonly property bool brush: g.id === "brush"
                 width: Theme.button + 8; height: g.sep ? 9 : Theme.button + 8
                 objectName: g.sep ? "" : "rail_" + g.id
                 Rectangle { visible: !!slot.g.sep; anchors.centerIn: parent; width: parent.width - 8; height: 1; color: Theme.popupEdge }
@@ -95,10 +105,12 @@ Rectangle {
                     color: area.pressed || slot.on ? Theme.active : hover.hovered ? Theme.hover : "transparent"
                     Behavior on color { ColorAnimation { duration: Theme.fast } }
                 }
-                ToolIcon { visible: !slot.g.sep; anchors.centerIn: parent; name: slot.e ? slot.e.icon : ""
+                ToolIcon { visible: !slot.g.sep && !slot.brush; anchors.centerIn: parent; name: slot.e ? slot.e.icon : ""
                            ink: slot.on || hover.hovered ? Theme.fg : Theme.fg2 }
+                PaintToolIcon { visible: slot.brush; anchors.centerIn: parent; name: backend.paintTool.now
+                                ink: slot.on || hover.hovered ? Theme.fg : Theme.fg2 }
                 Canvas {   // the corner mark of a group with a flyout
-                    visible: slot.many
+                    visible: slot.many || slot.brush
                     anchors { right: parent.right; bottom: parent.bottom; margins: 3 }
                     width: 5; height: 5
                     onPaint: { const c = getContext("2d"); c.reset(); c.fillStyle = Theme.fg3
@@ -108,7 +120,8 @@ Rectangle {
                 MouseArea {
                     id: area
                     anchors.fill: parent; enabled: !slot.g.sep
-                    onClicked: slot.many ? (flyout.visible && flyout.group === slot.g.id ? flyout.close() : rail.openGroup(slot.g.id))
+                    onClicked: slot.brush ? (brushes.visible ? brushes.close() : rail.openBrushes())
+                             : slot.many ? (flyout.visible && flyout.group === slot.g.id ? flyout.close() : rail.openGroup(slot.g.id))
                                          : rail.pick(slot.e)
                     pressAndHoldInterval: 350
                     onPressAndHold: if (slot.many) rail.openGroup(slot.g.id)
@@ -118,12 +131,13 @@ Rectangle {
                     text: slot.many ? (slot.g.name || slot.e.name) : slot.e ? slot.e.name : ""
                     help: !slot.many && slot.e && slot.e.help ? slot.e.help : ""
                     key: slot.e && slot.e.job && slot.Window.window && slot.Window.window.keyFor ? slot.Window.window.keyFor(slot.many && slot.g.job ? slot.g.job : slot.e.job) : ""
-                    hovered: hover.hovered && !flyout.visible; pressed: area.pressed
+                    hovered: hover.hovered && !rail.flyoutOpen; pressed: area.pressed
                 }
             }
         }
     }
     ToolFlyout { id: flyout; onPicked: (e) => rail.pick(e) }
+    BrushFlyout { id: brushes }
 
     FileDialog {    // Media › Picture / Video: the file first, then one layer, centred (backend.adder.addFile)
         id: dialog

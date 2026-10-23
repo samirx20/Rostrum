@@ -35,7 +35,7 @@
   Keys (key_steps.py): keypick | keybox | keydrag2 | keystretch | keydelete | showanim | ease | easekey | easecurve |
     spring | keytime | keyvalue | easemenu | keyhere (K) | keycopy | keypaste | stagger <f> [order] [open] | event prev|next
   Creation tools (create_steps.py): shape <rect|ellipse> x0 y0 x1 y1 [shift] [alt] | text <x> <y> <words> | textbox x0 y0 x1 y1 <words> | edittext <layer> <words>
-  Paint (paint_steps.py): fill <x> <y> | fillmode on|off | gap <size> | paintpick|paintremove <paint> | paintset <paint> <field> <v> |
+  Paint (paint_steps.py): preset <id> | painttool <tool> | brushedit on|off | keytap <key> [mods] | fill <x> <y> | fillmode on|off | gap <size> | paintpick|paintremove <paint> | paintset <paint> <field> <v> |
     paintmove <paint> <row> | painttoggle <field> on|off
   Strokes (stroke_steps.py): altpick <x> <y> [click] | altoff | lasso <x,y> … [open] | selectstrokes on|off | strokesmove <dx> <dy> |
     strokesturn <deg> [scale] | strokesdelete | strokescopy | strokespaste | strokesclear | clickarea canvas|timeline|settings
@@ -291,20 +291,26 @@ def do_step(bridge, win, step):
         box = win.findChild(QObject, "layersList")
         for name, v in (("dragId", rest[0]), ("dropWhere", rest[1]), ("dropRow", rest[2])):
             box.setProperty(name, v)
-    elif word == "mousedrag":                    # mousedrag <x0> <y0> <x1> <y1> [right]: a real press, pull and release in the window
+    elif word == "mousedrag":                    # mousedrag <x0> <y0> <x1> <y1> [right] [alt] [hold]: a real press, pull and release in the window
         from PySide6.QtCore import QPoint, Qt
         from PySide6.QtTest import QTest
         x0, y0, x1, y1 = (int(v) for v in rest[:4])
         mod = Qt.AltModifier if "alt" in rest[4:] else Qt.NoModifier           # mousedrag … alt: pressed with Alt held (the Camera tool pushes in)
-        QTest.mousePress(win, Qt.LeftButton, mod, QPoint(x0, y0))
+        button = Qt.RightButton if "right" in rest[4:] else Qt.LeftButton      # … right: Alt + right-drag sizes the brush
+        if "altkey" in rest[4:]:                 # … altkey: the Alt key held down first, as a person does
+            QTest.keyPress(win, Qt.Key_Alt)
+            mod = Qt.AltModifier
+        QTest.mousePress(win, button, mod, QPoint(x0, y0))
         for k in range(1, 9):
             if k == 5 and "altmid" in rest[4:]:  # mousedrag … altmid: Alt goes down halfway through the drag
                 QTest.keyPress(win, Qt.Key_Alt)
                 mod = Qt.AltModifier
             QTest.mouseMove(win, QPoint(x0 + (x1 - x0) * k // 8, y0 + (y1 - y0) * k // 8))
             QCoreApplication.processEvents()
-        QTest.mouseRelease(win, Qt.LeftButton, mod, QPoint(x1, y1))
-        if "altmid" in rest[4:]:
+        if "hold" in rest[4:]:                   # … hold: not let go (a picture mid-drag)
+            return
+        QTest.mouseRelease(win, button, mod, QPoint(x1, y1))
+        if "altmid" in rest[4:] or "altkey" in rest[4:]:
             QTest.keyRelease(win, Qt.Key_Alt)
     elif word == "mousemove":                    # mousemove <x> <y>: the pointer moves there in the window (hover)
         from PySide6.QtCore import QPoint
@@ -406,7 +412,7 @@ def do_step(bridge, win, step):
     elif word in CREATE_WORDS:
         do_create_step(bridge, word, rest, step)
     elif word in PAINT_WORDS:                    # Fill, the paint layers panel (paint_steps.py)
-        do_paint_step(bridge, word, rest, step)
+        do_paint_step(bridge, word, rest, step, win)
     elif word in SOUND_WORDS:                    # the project's sound, Show beats (soundtrack_steps.py)
         do_sound_step(bridge, win, word, rest, step)
     elif word in STROKE_WORDS:                   # Alt picks a colour, the lasso, the focused area (stroke_steps.py)

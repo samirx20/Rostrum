@@ -34,6 +34,7 @@ class Painter(BrushPanel):
         self.model.reset(self.brush.rows())
         bridge.docChanged.connect(self._doc_changed)
         bridge.outlineChanged.connect(self._refresh)
+        self.changed.connect(self.brushChanged)         # the header names what the pen paints on
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
     def target(self) -> dict | None:
@@ -76,7 +77,7 @@ class Painter(BrushPanel):
     def onionSerial(self):
         return self._serial if self._onion and self._built else 0
 
-    # ---- what the pen paints on (ToolOptions.qml: "Painting on: … ▸", "+ Paint layer") -------------------------
+    # ---- what the pen paints on (PaintTarget.qml: "Painting on · Layer ▾") ---------------------------------------
     def _aim(self) -> dict | None:
         """The target, unless "New drawing" was picked for this selection."""
         return None if self._fresh == self.b.selectedLayer and self._fresh is not None else self.target()
@@ -86,15 +87,28 @@ class Painter(BrushPanel):
         d = self._aim()
         return display_name(d) if d else "New drawing"
 
+    @Property(str, notify=changed)
+    def targetValue(self):
+        """Which of targetChoices is on: "selected" or "new"."""
+        return "selected" if self._aim() else "new"
+
     @Property("QVariantList", notify=changed)
     def targetChoices(self):
+        """Painting on › Layer ▾: the selected layer, the other painted layers (newest first), New drawing."""
         d = self.target()
-        return ([{"value": "selected", "label": display_name(d)}] if d else []) + [{"value": "new", "label": "New drawing"}]
+        painted = [it for it in reversed(list(self.b.doc.items())) if it["type"] in PAINTABLE
+                   and (it["type"] == "drawing" or it.get("frames")) and (not d or it["id"] != d["id"])]
+        return ([{"value": "selected", "label": display_name(d)}] if d else []) +             [{"value": it["id"], "label": display_name(it)} for it in painted] + [{"value": "new", "label": "New drawing"}]
 
     @Slot(str)
     def paintOn(self, which):
-        """"new": the next stroke makes a new drawing (for this selection); "selected": back to the selected layer."""
-        self._fresh = self.b.selectedLayer if which == "new" else None
+        """"new": the next stroke makes a new drawing (for this selection); "selected": back to the selected layer;
+        another layer's id: it is selected, so the pen paints on it."""
+        if which not in ("new", "selected"):
+            self._fresh = None
+            self.b.select(which)
+        else:
+            self._fresh = self.b.selectedLayer if which == "new" else None
         self.changed.emit()
 
     @Property(bool, notify=changed)

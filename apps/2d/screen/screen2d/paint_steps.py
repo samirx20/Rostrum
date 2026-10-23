@@ -5,19 +5,43 @@
     paintpick <paint id>             click a paint layer's name: strokes and fills go on it
     paintset <paint id> visible|opacity|mode|name <json value>    its eye, Opacity, Blend
     paintmove <paint id> <row>       drag it to that row of the list (0 = top) | paintremove <paint id> (right-click › Delete)
-    painttoggle <field> on|off       Keep inside the outline (paintInside), Draw each frame (eachFrame)
+    painttoggle <field> on|off       Inside the outline (paintInside), Draw each frame (eachFrame)
+    preset <id> | painttool brush|eraser|fill|pick|select | brushedit on|off    a brush in the brush panel | its top
+                                     row | Edit brush › / ‹ Back
+    keytap <key> [shift|alt|ctrl]    a real key press in the window ("[", "]", "E", "Ctrl+Z" as `keytap z ctrl`)
     depthtyped <depth> [open|cancel]  Set depth ▾ › Other depth…, type the number, Enter (open: leave the popover open)
 """
 from __future__ import annotations
 
 import json
 
-WORDS = ("fill", "fillmode", "gap", "paintpick", "paintset", "paintmove", "paintremove", "painttoggle", "depthtyped")
+WORDS = ("fill", "fillmode", "gap", "paintpick", "paintset", "paintmove", "paintremove", "painttoggle", "depthtyped",
+         "preset", "painttool", "brushedit", "keytap")
+MODS = {"shift": "ShiftModifier", "alt": "AltModifier", "ctrl": "ControlModifier"}
 
 
-def do_paint_step(bridge, word, rest, step):
+def keytap(win, key: str, mods: list[str]):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    m = Qt.KeyboardModifier.NoModifier
+    for w in mods:
+        m |= getattr(Qt.KeyboardModifier, MODS[w])
+    code = {"[": Qt.Key.Key_BracketLeft, "]": Qt.Key.Key_BracketRight}.get(key) or getattr(Qt.Key, "Key_" + (key.upper() if len(key) == 1 else key.capitalize()))
+    QTest.keyClick(win, code, m)
+    QTest.qWait(50)
+
+
+def do_paint_step(bridge, word, rest, step, win=None):
     fill, layers = bridge.fill, bridge.paintLayers
-    if word == "fill":
+    if word == "preset":
+        bridge.painter.setPreset(rest[0])
+    elif word == "painttool":
+        bridge.paintTool.use(rest[0])
+    elif word == "brushedit":
+        bridge.painter.setEditing(rest[0] == "on")
+    elif word == "keytap":
+        keytap(win, rest[0], rest[1:])
+    elif word == "fill":
         fill.setOn(True)
         if not fill.fillAt(float(rest[0]), float(rest[1])):
             raise RuntimeError(f"step {step!r}: {bridge.status}")
