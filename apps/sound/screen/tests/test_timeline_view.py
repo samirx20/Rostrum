@@ -41,4 +41,4 @@ def test_picture_is_a_field_and_a_missing_file_is_refused(bridge, tmp_path):  # 
     bridge.setPicture(str(clip))
     assert bridge.doc.data["picture"] == str(clip) and bridge.picture == str(clip)
     bridge.setPicture(str(tmp_path / "gone.mp4"))
-    assert bridge.status.startswith("Error") and bridge.picture == str(clip)
+    assert bridge.statusFailed and "is not a file" in bridge.status and bridge.picture == str(clip)
