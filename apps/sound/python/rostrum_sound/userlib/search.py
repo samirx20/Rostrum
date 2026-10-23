@@ -16,7 +16,7 @@ from rostrum_core import RostrumError, codes
 
 from . import folders as user_folders
 from . import index, measure
-from .kinds import KINDS
+from .kinds import KINDS, OFFERED
 
 RANGES = {"seconds": "seconds", "brightness_range": "brightness", "attack_ms": "attack_ms", "lufs": "lufs"}
 
@@ -55,7 +55,7 @@ def search(kind=None, words=None, length=None, brightness=None, attack=None, sec
     kinds = _list(kind)
     bad = [k for k in kinds if k not in KINDS and k != "other"]
     if bad:
-        raise RostrumError(codes.BAD_ARGUMENT, "search", f"kind {bad}", "is not a sound kind", list(KINDS))
+        raise RostrumError(codes.BAD_ARGUMENT, "search", f"kind {bad}", "is not a sound kind", list(OFFERED))
     want = [w.lower() for w in (words or "").split()]
     spans = {f: _spans(s, v) for s, f, v in (("length", "seconds", length), ("brightness", "brightness", brightness),
                                              ("attack", "attack_ms", attack)) if _list(v)}

@@ -36,7 +36,7 @@ Item {
         visible: !soundLibrary.hasFolders && soundLibrary.busy === ""
         width: parent.width; spacing: Theme.gap; topPadding: Theme.pad
         Text { width: parent.width; wrapMode: Text.WordWrap
-               text: "Use sound effects you own: a Sonniss bundle, BOOM, your recordings. Nothing is copied."
+               text: "Use recordings you own: your own takes, a Sonniss bundle, BOOM. Nothing is copied."
                color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body }
         Button { kind: "primary"; text: "Add a folder…"; onClicked: picker.open() }
         Text { visible: soundLibrary.status !== ""; width: parent.width; wrapMode: Text.WordWrap; text: soundLibrary.status

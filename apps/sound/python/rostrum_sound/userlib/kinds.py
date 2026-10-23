@@ -34,6 +34,9 @@ UCS = {"WHSH": "whoosh", "SWSH": "whoosh", "UI": "ui", "BEEP": "beep", "AMB": "a
        "SWTCH": "click", "MECH": "click", "COMP": "glitch", "SCI": "glitch"}
 UCS_SUB = {"Click": "click", "Beep": "beep", "Rise": "riser", "Risr": "riser", "Impt": "impact", "Boom": "impact",
            "Hit": "hit", "Whsh": "whoosh", "Swsh": "whoosh", "Drn": "drone", "Drone": "drone", "Glitch": "glitch"}
+# What the Library's kind filter offers, real and musical sounds first (PURPOSE.md). Whoosh and glitch are still
+# sorted (facts), never offered: a person's own whoosh is found by its name.
+OFFERED = ("drone", "beep", "ambience", "foley", "hit", "impact", "click", "ui", "riser")
 SOURCES = (("name", 3.0), ("meta", 2.0), ("folder", 1.0))
 
 
