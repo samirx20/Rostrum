@@ -28,7 +28,7 @@ class FakeEngine:
                 "tracks": [{"id": "drums", "lufs": -20.0, "peak": -3.0}]}
 
 
-def test_a_render_is_a_version_and_a_failed_one_stays_partial(tmp_path):
+def test_a_render_is_a_version_and_a_failed_one_leaves_no_partial_folder(tmp_path):
     doc = Document.new(KIND, folder=tmp_path, item="song")
     doc.save()
     r = handoff.render(tmp_path, doc, FakeEngine(), {}, "agent:test")
@@ -39,7 +39,7 @@ def test_a_render_is_a_version_and_a_failed_one_stays_partial(tmp_path):
 
     with pytest.raises(RostrumError) as e:
         handoff.render(tmp_path, doc, FakeEngine(fail=True), {}, "agent:test")
-    assert "v002.partial" in str(e.value)
+    assert not list((tmp_path / "renders" / "song").glob("*.partial"))
     assert [v["version"] for v in project.renders(tmp_path, "song")] == [1]
 
 

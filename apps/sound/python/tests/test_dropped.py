@@ -35,3 +35,16 @@ def test_diagnose_lists_an_outside_file_and_names_a_missing_one(tmp_path):
     found = {p["item"]: p for p in diagnose.problems(doc)}
     assert found["far"]["kind"] == "outside-project" and "kept.wav" in found["far"]["message"]
     assert found["lost"]["kind"] == "missing-file" and "media/gone.wav" in found["lost"]["message"]
+
+
+def test_a_retired_transition_recording_is_named_but_a_real_one_is_not(tmp_path, monkeypatch):
+    from rostrum_sound import library
+    pack = tmp_path / "lib" / "freesound"
+    pack.mkdir(parents=True)
+    monkeypatch.setattr(library, "LIBRARY", tmp_path / "lib")
+    old, ok = pack / "685256.ogg", pack / "glass.ogg"
+    for f in (old, ok):
+        f.write_bytes(b"x")
+    data = {"tracks": [{"id": "fx", "clips": [{"id": "c1", "media": str(old)}, {"id": "c2", "media": str(ok)}]}]}
+    said = KIND.warnings(data)
+    assert len(said) == 1 and said[0].startswith("fx:") and "cinematic.riser" in said[0] and '"c1"' in said[0]

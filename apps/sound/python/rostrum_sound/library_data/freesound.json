@@ -2,62 +2,6 @@
  "about": "What each freesound recording is (from the experiment's hand-picked list, licences checked 2026-10-12).",
  "files": [
   {
-   "path": "685256.ogg",
-   "title": "Riser sound effect short.wav",
-   "name": "cinematic.riser",
-   "author": "syntheffects",
-   "page": "https://freesound.org/people/syntheffects/sounds/685256/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "244249.ogg",
-   "title": "impact riser 01",
-   "name": "cinematic.riser",
-   "author": "soramoosic",
-   "page": "https://freesound.org/people/soramoosic/sounds/244249/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "354172.ogg",
-   "title": "Long Panned Riser v2",
-   "name": "cinematic.riser",
-   "author": "gerainsan",
-   "page": "https://freesound.org/people/gerainsan/sounds/354172/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "561207.ogg",
-   "title": "Riser",
-   "name": "cinematic.riser",
-   "author": "Rizzard",
-   "page": "https://freesound.org/people/Rizzard/sounds/561207/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "503818.ogg",
-   "title": "riser 3.wav",
-   "name": "cinematic.riser",
-   "author": "reathance",
-   "page": "https://freesound.org/people/reathance/sounds/503818/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "683667.ogg",
-   "title": "dark riser buildup",
-   "name": "cinematic.riser",
-   "author": "CogFireStudios",
-   "page": "https://freesound.org/people/CogFireStudios/sounds/683667/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "715353.ogg",
-   "title": "Riser Hit sfx 062",
-   "name": "cinematic.riser",
-   "author": "AudioPapkin",
-   "page": "https://freesound.org/people/AudioPapkin/sounds/715353/",
-   "licence": "CC0-1.0"
-  },
-  {
    "path": "647712.ogg",
    "title": "Braam",
    "name": "cinematic.braam",
@@ -79,126 +23,6 @@
    "name": "cinematic.braam",
    "author": "brktkrgll",
    "page": "https://freesound.org/people/brktkrgll/sounds/856173/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "428073.ogg",
-   "title": "Sub Drop Smooth.wav",
-   "name": "cinematic.sub-drop",
-   "author": "newagesoup",
-   "page": "https://freesound.org/people/newagesoup/sounds/428073/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "212768.ogg",
-   "title": "Bass Drop",
-   "name": "cinematic.sub-drop",
-   "author": "qubodup",
-   "page": "https://freesound.org/people/qubodup/sounds/212768/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "475005.ogg",
-   "title": "Synth Bass Drop Impact",
-   "name": "cinematic.sub-drop",
-   "author": "AlexLane",
-   "page": "https://freesound.org/people/AlexLane/sounds/475005/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "346316.ogg",
-   "title": "Ramon's Sexy Sub Drop 6000",
-   "name": "cinematic.sub-drop",
-   "author": "IV_Studios_666",
-   "page": "https://freesound.org/people/IV_Studios_666/sounds/346316/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "222517.ogg",
-   "title": "Dramatic Hit",
-   "name": "cinematic.impact-big",
-   "author": "qubodup",
-   "page": "https://freesound.org/people/qubodup/sounds/222517/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "408141.ogg",
-   "title": "Cinematic Low Pitch Impact",
-   "name": "cinematic.impact-big",
-   "author": "Jofae",
-   "page": "https://freesound.org/people/Jofae/sounds/408141/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "430977.ogg",
-   "title": "Big impact.wav",
-   "name": "cinematic.impact-big",
-   "author": "AudioPapkin",
-   "page": "https://freesound.org/people/AudioPapkin/sounds/430977/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "255111.ogg",
-   "title": "Cinematic_Boom_Rhapsodize.wav",
-   "name": "cinematic.impact-big",
-   "author": "rhapsodize",
-   "page": "https://freesound.org/people/rhapsodize/sounds/255111/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "165109.ogg",
-   "title": "Low Movie Boom.mp3",
-   "name": "cinematic.impact-big",
-   "author": "rickeyc",
-   "page": "https://freesound.org/people/rickeyc/sounds/165109/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "671306.ogg",
-   "title": "Cinematic Hit Bass (title)",
-   "name": "cinematic.impact-big",
-   "author": "xkeril",
-   "page": "https://freesound.org/people/xkeril/sounds/671306/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "189779.ogg",
-   "title": "Big Boom",
-   "name": "cinematic.impact-big",
-   "author": "unfa",
-   "page": "https://freesound.org/people/unfa/sounds/189779/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "110218.ogg",
-   "title": "reverse crash.wav",
-   "name": "cinematic.reverse-cymbal",
-   "author": "genocidalguitar",
-   "page": "https://freesound.org/people/genocidalguitar/sounds/110218/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "23127.ogg",
-   "title": "reverse cymbal.wav",
-   "name": "cinematic.reverse-cymbal",
-   "author": "John Rayson",
-   "page": "https://freesound.org/people/John%20Rayson/sounds/23127/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "165154.ogg",
-   "title": "Rpeople_RevCrash2.wav",
-   "name": "cinematic.reverse-cymbal",
-   "author": "rhythmpeople",
-   "page": "https://freesound.org/people/rhythmpeople/sounds/165154/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "244868.ogg",
-   "title": "Rev Cymb 18 reverb.wav",
-   "name": "cinematic.reverse-cymbal",
-   "author": "JarredGibb",
-   "page": "https://freesound.org/people/JarredGibb/sounds/244868/",
    "licence": "CC0-1.0"
   },
   {
@@ -371,7 +195,7 @@
   }
  ],
  "retired": {
-  "why": "Whooshes and swishes: Rostrum offers none (apps/sound/PURPOSE.md). The library hides these files.",
+  "why": "Whooshes, swishes and cinematic transition sounds (risers, reverse cymbals, sub drops, big impacts): Rostrum offers none (apps/sound/PURPOSE.md). The library hides these files.",
   "files": [
    "60013.ogg",
    "683101.ogg",
@@ -380,7 +204,53 @@
    "27281.ogg",
    "649445.ogg",
    "495390.ogg",
-   "391448.ogg"
-  ]
+   "391448.ogg",
+   "685256.ogg",
+   "244249.ogg",
+   "354172.ogg",
+   "561207.ogg",
+   "503818.ogg",
+   "683667.ogg",
+   "715353.ogg",
+   "428073.ogg",
+   "212768.ogg",
+   "475005.ogg",
+   "346316.ogg",
+   "222517.ogg",
+   "408141.ogg",
+   "430977.ogg",
+   "255111.ogg",
+   "165109.ogg",
+   "671306.ogg",
+   "189779.ogg",
+   "110218.ogg",
+   "23127.ogg",
+   "165154.ogg",
+   "244868.ogg"
+  ],
+  "names": {
+   "685256.ogg": "cinematic.riser",
+   "244249.ogg": "cinematic.riser",
+   "354172.ogg": "cinematic.riser",
+   "561207.ogg": "cinematic.riser",
+   "503818.ogg": "cinematic.riser",
+   "683667.ogg": "cinematic.riser",
+   "715353.ogg": "cinematic.riser",
+   "428073.ogg": "cinematic.sub-drop",
+   "212768.ogg": "cinematic.sub-drop",
+   "475005.ogg": "cinematic.sub-drop",
+   "346316.ogg": "cinematic.sub-drop",
+   "222517.ogg": "cinematic.impact-big",
+   "408141.ogg": "cinematic.impact-big",
+   "430977.ogg": "cinematic.impact-big",
+   "255111.ogg": "cinematic.impact-big",
+   "165109.ogg": "cinematic.impact-big",
+   "671306.ogg": "cinematic.impact-big",
+   "189779.ogg": "cinematic.impact-big",
+   "110218.ogg": "cinematic.reverse-cymbal",
+   "23127.ogg": "cinematic.reverse-cymbal",
+   "165154.ogg": "cinematic.reverse-cymbal",
+   "244868.ogg": "cinematic.reverse-cymbal"
+  }
  }
 }

@@ -12,6 +12,11 @@ Rectangle {
     property bool showAuto: true
     readonly property bool on: !!backend.picked[track.id]
     readonly property real indent: (track.depth || 0) * 14
+    // The name comes first: the track count, then the automation button, give way when the name would be cut (an open
+    // automation lane keeps its button, so it can be closed). The name's own hover tip shows it whole when still too long.
+    readonly property real nameRoom: width - (arrow.x + arrow.width + 2) - toggles.width - Theme.grid * 3 - Theme.grid
+    readonly property bool autoFits: nameRoom - autoChip.width - 2 >= nameText.implicitWidth
+    readonly property bool countFits: nameRoom - (autoChip.visible ? autoChip.width + 2 : 0) - count.implicitWidth - Theme.grid >= nameText.implicitWidth
     radius: Theme.radiusCtl
     color: on ? Theme.accentSoft : area.containsMouse ? Theme.raised : "transparent"
     Behavior on color { ColorAnimation { duration: Theme.fast } }
@@ -47,13 +52,13 @@ Rectangle {
     }
     Text {
         id: count
-        visible: !!h.track.folded && h.width >= 200      // narrow: the name gets the room
+        visible: !!h.track.folded && h.countFits
         anchors { right: autoChip.visible ? autoChip.left : toggles.left; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
         text: h.track.count + (h.track.count === 1 ? " track" : " tracks")
         font.family: uiFont; font.pixelSize: Theme.label - 1; color: Theme.fg3
     }
     GroupToggles { id: toggles; track: h.track
                    anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter } }
-    LaneToggle { id: autoChip; visible: h.showAuto; track: h.track
+    LaneToggle { id: autoChip; visible: h.showAuto && (h.autoFits || !!h.track.auto); track: h.track
                  anchors { right: toggles.left; rightMargin: 2; verticalCenter: parent.verticalCenter } }
 }

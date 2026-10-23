@@ -23,7 +23,7 @@ listed under `skipped` with the reason.
 | Field | Meaning |
 |---|---|
 | `path`, `start`, `end` | the file, and where this one sound sits in it (seconds) |
-| `kind`, `kinds` | riser, impact, hit, click, ui, beep, ambience, foley, drone, glitch and others: from the library's UCS category, the file name, its metadata (BWF description, iXML, INFO), its folders, and its measured shape. `kinds` lists every kind with evidence, strongest first |
+| `kind`, `kinds` | impact, hit, click, ui, beep, ambience, foley, drone, glitch and others: from the library's UCS category, the file name, its metadata (BWF description, iXML, INFO), its folders, and its measured shape. `kinds` lists every kind with evidence, strongest first |
 | `seconds` | its length |
 | `onset_s`, `peak_s` | from its start: where it begins as the ear hears it, and its loudest moment |
 | `attack_ms` | onset to peak: 3 ms is a click, 300 ms a slow swell |
@@ -49,7 +49,7 @@ A sound is a clip of its file, starting at its `start`:
     t.clip(r"D:\Sounds\…\Switch_04.wav", at=3.475 - 0.0175, in_=0.0024, length=0.094)
 
 - **On a moment** (a card landing, a beat): put the sound's `onset_s` on it: `at = moment - onset_s`.
-- **A swell or riser on a build**: put its `peak_s` on the moment it builds to: `at = moment - peak_s`. If that is
+- **A recorded swell on a build**: put its `peak_s` on the moment it builds to: `at = moment - peak_s`. If that is
   before 0, start later in the file instead (`in_ = start - at`, `at = 0`).
 - **Only this sound**: keep `length` ≤ `end - in_`, so the next sound in the same file doesn't play too.
 - **Levels**: sounds in one library differ by 15 dB or more. `lufs` tells you how loud each is; raise `volume` for a

@@ -1,6 +1,6 @@
 """A Sound render as a versioned hand-off (shared/HANDOFFS.md § 1, § 3, § 5): the mix and every track's stem
 written into `renders/<item>/vNNN.partial/`, then the manifest, then renamed to `vNNN/`. So the Editor and the
-project list (rostrum_core.project) see it, and a failed render stays `.partial`, never listed.
+project list (rostrum_core.project) see it. A failed or stopped render removes its `.partial` folder: nothing half-written is left behind.
 
     r = handoff.render(folder, doc, engine, schedule, who="agent:claude-code")
     r["file"], r["stems"], r["version"], r["folder"]        # paths in the finished vNNN/ folder
@@ -8,6 +8,7 @@ project list (rostrum_core.project) see it, and a failed render stays `.partial`
 from __future__ import annotations
 
 import json
+import shutil
 import time
 from pathlib import Path
 
@@ -109,22 +110,29 @@ def names_of(doc, ids) -> dict:
 def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: bool = True, options: dict | None = None,
            markers_file: bool = False) -> dict:
     """Render `schedule` into the next version of the document's item. Returns the engine's answer with
-    `file` / `stems` pointing into the finished folder, plus `version` and `folder`. Any failure raises; the
-    `.partial` folder stays, named in the error (HANDOFFS § 1). `options` is `deliver.Options.read`'s request: the
+    `file` / `stems` pointing into the finished folder, plus `version` and `folder`. Any failure or stop raises, and the
+    `.partial` folder is removed (HANDOFFS § 1). `options` is `deliver.Options.read`'s request: the
     file format, sample rate and trimming the silent end (default: 24-bit WAV at the song's rate, trimmed). The
     files are named after the tracks; the manifest keeps the id → file mapping. `stems`: "all" (a file per track and per group),
     a list of track ids, [] (none) or "groups" (a stem per group and per ungrouped track: stem_groups.py).
     `markers_file`: also write `markers.json` beside the files (the Editor preset)."""
+    opts = deliver.Options.read(options, doc.data.get("sampleRate", 48000))      # a wrong choice answers before any folder is made
+    part = begin_render(folder, doc.item_id)
+    try:
+        return _render(part, folder, doc, engine, {**schedule, "sampleRate": opts.sample_rate}, who, stems, master, opts, markers_file)
+    except BaseException:                  # failed, or stopped (a cancel): no `vNNN.partial` is left to look like a render
+        shutil.rmtree(part, ignore_errors=True)
+        raise
+
+
+def _render(part, folder, doc, engine, schedule, who, stems, master, opts, markers_file) -> dict:
     item = doc.item_id
-    opts = deliver.Options.read(options, doc.data.get("sampleRate", 48000))
-    schedule = {**schedule, "sampleRate": opts.sample_rate}
-    part = begin_render(folder, item)
     try:
         rng = {} if opts.start is None else {"from": opts.start, "to": opts.end}       # the engine renders the range itself
         r = engine.request("render", schedule=schedule, out=str(part / f"{item}_mix.wav"),
                            stems="all" if stems == "groups" else stems, stemsDir=str(part), **rng)
     except Exception as e:
-        raise RostrumError(codes.JOB_FAILED, "render", str(part), f"failed and stays unfinished: {e}") from e
+        raise RostrumError(codes.JOB_FAILED, "render", str(part), f"failed: {e}") from e
     if not Path(r["file"]).is_file():
         raise RostrumError(codes.JOB_FAILED, "render", str(part), "the engine answered but wrote no mix")
     try:
@@ -138,7 +146,7 @@ def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: b
     except RostrumError:
         raise
     except Exception as e:
-        raise RostrumError(codes.JOB_FAILED, "render", str(part), f"could not write the {opts.spec['label']} files and stays unfinished: {e}") from e
+        raise RostrumError(codes.JOB_FAILED, "render", str(part), f"could not write the {opts.spec['label']} files: {e}") from e
     version = int(part.name[1:-len(".partial")])
     done = finish_render(part, manifest(item, version, r, doc, who, master, names))
     moved = lambda p: str(done / Path(p).name)   # noqa: E731

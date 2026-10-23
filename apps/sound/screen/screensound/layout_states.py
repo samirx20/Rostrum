@@ -92,6 +92,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("export-sheet", long_project(), [*busy, "exportsheet open streaming", f"exportwhere {LONG_FOLDER}"]),   # S34: the kit sheet
         ("export-versions", long_project(), [*busy, "range 1 3", "exportsheet open streaming", "export-what range",
                                              "export-more podcast mp3", "export-more ebu flac"]),     # P28: What + two more versions
+        ("export-range", long_project(), [*busy, "range 1 3", "exportsheet open streaming", "export-what range",
+                                          f"exportwhere {LONG_FOLDER}"]),     # a range chosen: its own loudness check, one line
         ("export-for-the-editor", ["--sample"], [GROUP.format(name="Music"), "exportsheet open streaming", "export-preset editor"]),   # P29: preset, stems by group
         ("swap-stepping", ["--sample"], ["select-clip door", "swap-demo", "swap-step 1", "swap-step 1"]),                    # P29: Trying in place
         ("problems-chip", long_project(), [*busy, "problems-demo", "problems open"]),

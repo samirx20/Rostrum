@@ -79,3 +79,12 @@ def test_mixer_mute_and_header_mute_say_the_same_words_and_volume_stays_in_the_p
     doc.apply([call], Who.person("sam"))
     assert moves.toggle_call(doc, tid, "mute")[1] == "Unmute pad"
     assert "volume" not in onpage.fields("mixer", "track") | onpage.fields("mixer", "master")
+
+
+def test_the_export_check_reads_the_chosen_range_alone():
+    from screensound.loudness import for_span
+    quiet, loud = -30.0, -10.0
+    series = {"hop": 0.1, "momentaryWindow": 0.4, "momentary": [quiet] * 50 + [loud] * 50, "truePeak": [-20.0] * 50 + [-2.0] * 50}
+    whole, tail = for_span(series, 0, 10), for_span(series, 5, 10)
+    assert tail["truePeak"] == -2.0 and abs(tail["lufs"] - loud) < 0.01 and whole["lufs"] > quiet + 3
+    assert for_span(series, 1, 1.2) == {}                    # shorter than one block: no number, never a made-up one

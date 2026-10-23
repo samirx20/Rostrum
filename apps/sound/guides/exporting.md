@@ -23,7 +23,7 @@ settings below (file type, quality, stems, versions, the silent end) don't apply
 song is written. It lands in the project's `renders/<song>/midi/` folder (Browse also copies it where you choose),
 and anything MIDI can't hold is listed when it is done. Agents make the same file with `render_midi`.
 
-Under the choices a line checks the sound that plays now against that target:
+Under the choices a line checks the sound that plays now against that target. With a range chosen it reads that range alone (its loudness and loudest peak), because that is the file you get:
 - "✓ Pass: loudness −14.2 LUFS, loudest peak −1.3 dBTP" (green), or
 - "Miss: 2.1 LU too quiet …" (amber).
 

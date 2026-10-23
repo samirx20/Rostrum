@@ -2,7 +2,7 @@
 choose a recording without hearing every file. One place answers "what is this file": a description from the
 pack's own data when there is one (`library_data/<pack>.json`, shipped with the app, or a `takes.json` the pack
 carries), else the words of its folders and file name; plus its length in seconds for recordings. A file the pack's
-data lists as `retired` (whooshes: PURPOSE.md, no cheap effects) is never offered.
+data lists as `retired` (whooshes, risers, reverse cymbals, sub drops, big impacts: PURPOSE.md, no cheap effects) is never offered.
 """
 from __future__ import annotations
 
@@ -39,6 +39,22 @@ def _known(pack: str) -> dict[str, dict]:
             rows.append({"path": rel, "title": t.get("label", ""), "author": t.get("author", ""),
                          "licence": t.get("licence", ""), "page": t.get("source_url", "")})
     return {r["path"].replace("\\", "/").lower(): r for r in rows}
+
+
+def retired_name(path: str) -> str | None:
+    """The category a shipped-and-retired recording had (e.g. "cinematic.riser") when `path` is one inside the library, else None."""
+    try:
+        rel = Path(path).resolve().relative_to(LIBRARY.resolve())
+    except (ValueError, OSError):
+        return None
+    if len(rel.parts) < 2:
+        return None
+    pack, inner = rel.parts[0], Path(*rel.parts[1:]).as_posix().lower()
+    if not _known(pack).get(inner, {}).get("retired"):
+        return None
+    shipped = DATA / f"{pack}.json"
+    names = json.loads(shipped.read_text(encoding="utf-8")).get("retired", {}).get("names", {}) if shipped.is_file() else {}
+    return next((v for k, v in names.items() if k.lower() == inner), "a transition sound")
 
 
 def _seconds(p: Path) -> float | None:

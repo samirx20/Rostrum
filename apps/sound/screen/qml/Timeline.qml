@@ -206,7 +206,10 @@ Rectangle {
         x: visible ? bars.x + Math.max(0, bars.xOf(r[0])) : 0; y: bars.y + bars.height
         width: visible ? Math.max(1, Math.min(bars.width, bars.xOf(r[1])) - Math.max(0, bars.xOf(r[0]))) : 0
         height: list.y + Math.min(list.height, column.height - list.contentY) - y      // down to the last row
-        color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.07)     // faint over the rows (the band shows it strongly)
+        // faint over the rows (the band shows it strongly); a loop that is on is shaded more and edged, as on the ruler
+        color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, backend.looping ? 0.13 : 0.07)
+        Rectangle { visible: backend.looping; width: 1; height: parent.height; color: Theme.accent }
+        Rectangle { visible: backend.looping; x: parent.width - 1; width: 1; height: parent.height; color: Theme.accent }
     }
     Item {   // what a drag snapped to: the kit's snap line (a marker's or the playhead's name in its chip)
         x: bars.x; y: bars.y; width: bars.width; height: list.y + list.height - y

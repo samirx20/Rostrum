@@ -37,6 +37,18 @@ def integrated(momentary: list, n: int):
     return float(-0.691 + 10 * np.log10(kept.mean()))
 
 
+def for_span(series: dict, a: float, b: float) -> dict:
+    """{lufs, truePeak} of the stretch a..b (seconds) alone, from the render's series: the gated mean of the 400 ms blocks
+    that lie inside it, and the highest true peak of its hops. {} when the stretch holds no whole block or the render has none."""
+    import math
+    hop, win = series.get("hop", 0.1), series.get("momentaryWindow", 0.4)
+    blocks, peaks = series.get("momentary") or [], series.get("truePeak") or []
+    first, last = math.ceil(a / hop - 1e-9), math.floor((b - win) / hop + 1e-9)
+    lufs = integrated(blocks[first:last + 1], last - first + 1) if last >= first else None
+    top = [v for v in peaks[math.floor(a / hop + 1e-9):math.ceil(b / hop - 1e-9)] if v > FLOOR]
+    return {"lufs": lufs, "truePeak": max(top)} if lufs is not None and top else {}
+
+
 def running_max(values: list) -> list:
     out, top = [], float(FLOOR)
     for v in values:
