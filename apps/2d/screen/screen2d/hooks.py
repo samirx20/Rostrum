@@ -34,22 +34,27 @@ class Hooks2D:
         if param == size_rows.ROW and self.doc.item(item_id)["type"] == "comp":      # Scene settings › Size: comp.size
             return size_rows.call(item_id, value)
         if param == fill_rows.ROW:                       # the Fill row's paint: layer.fill (fill_rows.py)
-            return fill_rows.call(item_id, value)
+            return fill_rows.call(item_id, value, self.own_t(item_id))
         if isinstance(value, str) and value.lstrip().startswith("="):    # typed "=pulse()" into a field: the expr.set agents call
             return exprs.typed_call(item_id, param, value)
         return route.edit_call(self.doc, item_id, param, swap_rows.edit_value(self.doc.item(item_id), param, value), self.own_t(item_id))
 
     def _rows(self):          # a swap set's "Shows" is a choice among its children (swap_rows.py); the scene's
         item = self.doc.item(self._sel) if self._sel else None     # Soundtrack among the project's Sound items
-        return fill_rows.rows(size_rows.rows(soundtrack_rows.rows(swap_rows.rows(super()._rows(), item, self._t), item, self.doc.folder), item), item)
+        return fill_rows.rows(size_rows.rows(soundtrack_rows.rows(swap_rows.rows(super()._rows(), item, self._t), item, self.doc.folder), item),
+                              item, item and self.own_t(item["id"]), self.comp()["fps"])
 
     def shown_values(self, item):
         return route.shown_values(self.placed_item(item["id"]), self._t)     # keys on a marker read as seconds
 
     def anim_state(self, item, param):
+        if param == fill_rows.ROW:                       # the Fill row's mark: its colour's or its stops' keys
+            return fill_rows.anim_state(item, self.own_t(item["id"]), self.comp()["fps"])
         return route.anim_state(self.placed_item(item["id"]), param, self._t, self.comp()["fps"])
 
     def animate_calls(self, item_id, param):
+        if param == fill_rows.ROW:
+            return fill_rows.animate_calls(self.doc.item(item_id), self.own_t(item_id))
         calls, label = route.animate_calls(self.placed_item(item_id), param, self._t)      # built in composition seconds
         off = self.offset(item_id)
         for c in calls:                                  # the document writes the layer's own seconds

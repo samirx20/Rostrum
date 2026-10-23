@@ -4,7 +4,8 @@ gradient's stops and geometry (fill_fields.py, fill_paint.py). The project's col
 
 A stop is written "<colour> <position %> [<opacity %>]": "#ff7a59 0", "#7c4dff 100", "#ffffff 40 50". Stops already on
 the layer are changed in place, in order, so their keys stay (a re-run never wipes an animated stop); extra ones are
-added, missing ones deleted.
+added, missing ones deleted. A colour or stop field that is animated gets a key at `at` (value.set), never a still
+value its keys would hide; without `at` a change there is refused in words (a re-run writing the same value passes).
 """
 from __future__ import annotations
 
@@ -12,8 +13,10 @@ import re
 
 from rostrum_core import Param
 from rostrum_core.errors import codes
+from rostrum_core.keys import keys_of
 
 from . import fill_fields as FF, fill_paint
+from .evaluate import resolve
 from .kind import REGISTRY as R
 
 _STOP = re.compile(r"^\s*(#[0-9a-fA-F]{6})\s+(-?\d+(?:\.\d+)?)\s*%?(?:\s+(\d+(?:\.\d+)?)\s*%?)?\s*$")
@@ -33,13 +36,14 @@ def parse_stop(ctx, text: str) -> dict:
 @R.operation("layer.fill", "Set the fill of shapes, paths or texts in one change: none, a solid colour, or a linear / radial / "
              "angular gradient with its stops (\"#ff7a59 0\", \"#7c4dff 100\"; a third number is the stop's opacity %) and "
              "its angle (linear: 90 = left to right; angular: where the sweep starts, 0 = up) or centre (fractions of the box). "
-             "Each stop's colour and position animate with key.set on the stop.",
+             "Each stop's colour and position animate with key.add on the stop; an animated one changes at `at` (a key there).",
              target=FF.OWNERS, label="Fill",
              params=[Param.choice("type", ["none", *FF.TYPES], label="Fill type"),
                      Param.color("color", label="Colour", help="The solid colour (a text's letters)"),
                      Param.list("stops", "text", label="Stops", min_items=2, help="Each \"<colour> <position %> [<opacity %>]\""),
                      Param.number("angle", label="Angle", min=-360, max=360, unit="°"),
-                     Param.number("cx", label="Centre X", min=-5, max=6), Param.number("cy", label="Centre Y", min=-5, max=6)])
+                     Param.number("cx", label="Centre X", min=-5, max=6), Param.number("cy", label="Centre Y", min=-5, max=6),
+                     Param.number("at", label="At", help="The time an animated colour or stop changes at (a key there)")])
 def fill_set(ctx, targets, args):
     stops = [parse_stop(ctx, s) for s in args["stops"]] if args.get("stops") else None
     for t in targets:
@@ -54,12 +58,12 @@ def fill_set(ctx, targets, args):
             ctx.set(t, "filled", True)
         ctx.set(t, "fillType", kind)
         if "color" in args:
-            ctx.set(t, fill_paint.colour_field(item), args["color"])
+            _put(ctx, item, fill_paint.colour_field(item), args["color"], args.get("at"))
         for field, name in (("gradAngle", "angle"), ("gradX", "cx"), ("gradY", "cy")):
             if name in args:
                 ctx.set(t, field, args[name])
         if kind in FF.GRADIENTS:
-            _set_stops(ctx, t, stops or (None if item.get("stops") else _first_stops(item)))
+            _set_stops(ctx, t, stops or (None if item.get("stops") else _first_stops(item)), args.get("at"))
 
 
 def _first_stops(item: dict) -> list[dict]:
@@ -68,14 +72,26 @@ def _first_stops(item: dict) -> list[dict]:
             {"at": 1.0, "color": "#000000", "opacity": 1.0}]
 
 
-def _set_stops(ctx, t: str, stops: list[dict] | None):
+def _put(ctx, owner: dict, prop: str, value, at):
+    """A still field changes; an animated one gets a key at `at` (the generic value.set) when it isn't that already."""
+    if not keys_of(owner, prop):
+        if owner.get(prop) != value:
+            ctx.set(owner["id"], prop, value)
+    elif at is None:
+        if owner.get(prop) == value:                     # a re-run writing what it wrote before: the keys stay
+            return
+        ctx.fail(codes.BAD_ARGUMENT, '"at"', f'is needed: {owner["id"]}.{prop} is animated', hint="Give the time.")
+    elif resolve(owner, at)[prop] != value:
+        R.get("value.set").fn(ctx, [owner["id"]], {"prop": prop, "at": at, ("c" if prop == "color" or prop == "fill" else "v"): value})
+
+
+def _set_stops(ctx, t: str, stops: list[dict] | None, at=None):
     if stops is None:
         return
     have = fill_paint.stops_of(ctx.item(t))
     for old, new in zip(have, stops):
         for k, v in new.items():
-            if old.get(k) != v:
-                ctx.set(old["id"], k, v)
+            _put(ctx, old, k, v, at)
     for new in stops[len(have):]:
         ctx.insert(t, "stops", {"id": ctx.new_id("stop"), "type": "stop", "name": "Gradient stop", **new, "keys": []})
     for old in have[len(stops):]:

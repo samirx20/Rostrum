@@ -47,3 +47,16 @@ def test_rerun_fill_keeps_stop_keys(tmp_path):
     d.apply([{"op": "key.add", "target": stop, "args": {"prop": "color", "t": 1.0, "c": "#00ff00"}}], SAM)
     d.apply([run[2]], SAM)
     assert d.item(stop)["keys"]
+
+
+def test_picker_edit_on_animated_stop_keys_it_at_the_playhead():
+    """The Fill row's picker on an animated gradient: the change lands as a key at `at`, the other stops get no key."""
+    d = Document.new(KIND)
+    d.apply([{"op": "comp.add", "args": {"id": "s"}},
+             {"op": "layer.add", "target": "s", "args": {"type": "shape", "id": "a"}},
+             {"op": "layer.fill", "target": "a", "args": {"type": "linear", "stops": ["#ff0000 0", "#0000ff 100"]}}], SAM)
+    first, last = (s["id"] for s in d.item("a")["stops"])
+    d.apply([{"op": "key.add", "target": first, "args": {"prop": "color", "t": 0.0, "c": "#ff0000"}}], SAM)
+    d.apply([{"op": "layer.fill", "target": "a", "args": {"type": "linear", "at": 1.0, "stops": ["#00ff00 0", "#0000ff 100"]}}], SAM)
+    assert [(k["t"], k["c"]) for k in d.item(first)["keys"]] == [(0.0, "#ff0000"), (1.0, "#00ff00")]
+    assert d.item(first)["color"] == "#ff0000" and not d.item(last)["keys"]

@@ -26,6 +26,12 @@ FieldFrame {
         color: f.shown; border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.18)
     }
     function open() { picker.openBeside(f) }
+    function settle() {           // the picker's open change ends: at the close, and before "+" saves a colour (a
+        if (!f.changing) return   // document change of its own; the next edit in the picker starts a new undo step)
+        f.changing = false
+        if (f.scrubbed) f.ended(); else f.edited(f.shown)
+    }
+    function saveSwatch(hx) { f.settle(); if (picker.banked) colourBank.add(hx) }
     TapHandler { onTapped: f.open() }
     Keys.onReturnPressed: f.open()
     Keys.onSpacePressed: f.open()
@@ -33,11 +39,7 @@ FieldFrame {
     SidePopup {
         id: picker
         readonly property bool banked: typeof colourBank !== "undefined"
-        onClosed: {
-            if (!f.changing) return
-            f.changing = false
-            if (f.scrubbed) f.ended(); else f.edited(f.shown)
-        }
+        onClosed: f.settle()
         ColorPicker {
             hex: f.shown; showAlpha: false
             project: picker.banked ? colourBank.project : []
@@ -49,7 +51,7 @@ FieldFrame {
                 if (f.scrubbed) { if (!f.changing) f.began(); f.live(hx) }
                 f.changing = true
             }
-            onSwatchAdd: (hx) => { if (picker.banked) colourBank.add(hx) }
+            onSwatchAdd: (hx) => f.saveSwatch(hx)
         }
     }
 }
