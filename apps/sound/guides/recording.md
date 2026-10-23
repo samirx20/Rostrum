@@ -18,18 +18,18 @@ If you must use speakers, leave **Hear input** off (see below).
 1. Pick the track you want to record on. The quickest: open the **Library** (Ctrl+L), click the **Record** chip and
    double-click **Microphone**. The new track comes armed, ready to record.
 2. Click **R** on the track's header. It turns red when armed. Click it again to disarm. Hovering over it explains it.
-3. **Record** is always in the arrangement's header strip, after ⏮ ▶ and loop. Once a track is armed, **Take**, a
-   small level bar and (with a keyboard) **Record keys** join it. You can also skip arming: with no track armed,
+3. **Record** is always in the arrangement's header strip, after ⏮ ▶ and loop, and it never moves. Once a track is
+   armed its dot is red; while recording the dot pulses and the word becomes **Stop** with the seconds. You can also skip arming: with no track armed,
    **Record** (or R) arms the selected track, else the first one that takes sound, and records; if there is none it
    says so in the message line.
 
 ## 4. Check the level
 
-The small bar next to **Take** shows how loud the microphone is. Green is fine, yellow is getting loud, red means too loud: move back or turn the input down in Windows. Speak or play as you will in the take, and watch it.
+The thin bar along the bottom of the **Record** button shows how loud the microphone is while a track is armed. Green is fine, yellow is getting loud, red means too loud: move back or turn the input down in Windows. Speak or play as you will in the take, and watch it.
 
 ## 5. Choose how the take is made (optional)
 
-Click **Take**. The panel shows only what can be used now:
+Right-click **Record** (a track must be armed). The panel shows only what can be used now:
 
 - **Count-in**: clicks before you start. Turn it on and **Bars** appears (1 to 8).
 - **Punch in**: record only over a range. Turn it on and the range appears as red edges on the ruler, starting two bars from the playhead. Drag across the ruler to draw it, or drag either red edge. The take stops by itself after the range. If the playhead is already past the start, playback starts one bar before it.
@@ -39,7 +39,7 @@ Click **Take**. The panel shows only what can be used now:
 ## 6. Record
 
 1. Move the playhead where you want to begin.
-2. Click **Record** or press **R**. The song plays from the playhead. With count-in on you see "Count-in" and the number first, then **REC** with the seconds.
+2. Click **Record** or press **R**. The song plays from the playhead. With count-in on you see "Count-in" and the number first, then **Stop** with the seconds, the dot pulsing.
 3. Click **Stop** (or press **R** again) to finish.
 
 ## 7. Where the take goes

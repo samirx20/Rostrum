@@ -103,14 +103,14 @@ AppShell {
                     below: [LayerRows { }, CleanPresets { id: presets }, CleanTakeBar { width: parent ? parent.width : 0; height: implicitHeight }]
                     anchors.fill: parent }
         SongSettings { visible: backend.selected === ""; anchors.fill: parent }
-        // an action that asks first opens beside the panel, at its top (Land a bar here: which bar)
+        // an action that asks first opens beside the panel, below the toolbar (Land a bar here: which bar)
         AskPopover { id: ask }
         Connections {
             target: backend
             function onCleanWanted() { presets.wanted = true; backend.revealField("isolate") }
             function onAskWanted(key, label, value) {
                 ask.key = key; ask.label = label; ask.value = value
-                const g = side.mapToItem(null, 0, 0); ask.openAtPoint(g.x - ask.width - Theme.gap, g.y + Theme.pad)
+                const g = side.mapToItem(null, 0, 0); ask.openAtPoint(g.x - ask.width - Theme.gap, g.y + 6 * Theme.field)   // below the toolbar (Grid, Snap), by the panel's fields
             }
         }
     }

@@ -53,7 +53,7 @@ Item {
         value: backend.time; view: backend.timeView; upper: r.barMarks; seconds: workspace.seconds
         rangeBand: true; rangeActive: backend.looping; range: r.range.length === 2 ? { start: r.range[0], end: r.range[1] } : null
         onScrubbed: (t) => backend.setTime(t)
-        onRangeSet: (a, b) => backend.setRange(a, b, false)
+        onRangeSet: (a, b) => backend.setRange(a, b, workspace.seconds)   // drawn on the seconds scale: exact seconds, no grid
         onRangeCleared: backend.clearRange()
     }
     MouseArea {   // above the kit's: the right-click menu, and the punch range while a take is armed with punch on

@@ -25,21 +25,24 @@ Row {
     readonly property string tonic: key.split(" ")[0]
     readonly property string mode: key.split(" ")[1] || "major"
 
-    Text {
+    FieldFrame {   // type "5.3" (bars.beats) or "9.6 s" and Enter to jump there; a refusal says why
         id: place
         readonly property string full: backend.positionText(backend.time, ro.song)
         readonly property var parts: full.split("  ")     // bars.beats, then the clock (musical.py)
         text: ro.compact ? parts[0] : full
-        color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body; font.features: { "tnum": 1 }
+        editable: true
+        width: Math.ceil(measure.width) + 2 * Theme.gap + 4
         anchors.verticalCenter: parent.verticalCenter
-        HoverHandler { id: placeHover }
-        HoverTip { text: ro.compact ? place.parts[1] : ""; hovered: placeHover.hovered }
+        TextMetrics { id: measure; font: place.input.font; text: ro.compact ? "999.9" : "999.9  0:00.00" }
+        onCommitted: (t) => { const why = backend.jumpTo(t); if (why !== "") place.problem = why }
+        HoverTip { text: place.problem === "" ? (ro.compact ? place.parts[1] + " · type a bar.beat or seconds to jump" : "Type a bar.beat (5.3) or seconds (9.6 s) to jump") : ""
+                   hovered: place.hovered && !place.active }
     }
     Row {   // tempo, beats per bar and key: their one home. Each edits what plays at the playhead (song_panel.py)
         anchors.verticalCenter: parent.verticalCenter; spacing: Theme.grid
         readonly property int tempoNow: Math.round(ro.song.tempos[ro.tempoAt].bpm)
         NumberField {   // the unit inside the field: one control, "100 bpm"
-            width: 76; value: parent.tempoNow; from: 20; to: 400; step: 1; unit: "bpm"
+            width: 76; label: "Tempo"; value: parent.tempoNow; from: 20; to: 400; step: 1; unit: "bpm"
             onEdited: (v) => songPanel.setTempo(v)
             onScrubStarted: songPanel.beginTempo()
             onScrubbed: (v) => songPanel.scrubTempo(v)
