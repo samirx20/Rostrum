@@ -61,7 +61,8 @@ class LayerOrder(SlotMixin):
     @Slot(float, float, result=bool)
     def nudge(self, dx, dy):
         """An arrow key: every selected layer moves (px, in its parent's px) at the playhead (an animated x / y gets a
-        key there). One change; a locked layer, or one an auto layout or expression places, refuses loudly."""
+        key there). One change per press (never joined to the one before); a locked layer, or one an auto layout or expression
+        places, refuses loudly."""
         layers = self.selected_layers()
         if not layers:
             return False
@@ -71,7 +72,7 @@ class LayerOrder(SlotMixin):
             now = resolve(item, t)
             calls += [route.value_call(item, p, round(now[p] + d, 2), t) for p, d in (("x", dx), ("y", dy)) if d]
         label = f"Nudge {self.label_of(self.doc.item(layers[0]))}" if len(layers) == 1 else f"Nudge {len(layers)} layers"
-        return self._guard(lambda: self._apply(calls, label))
+        return self._guard(lambda: self._done(self.doc.apply(calls, self.who, label=label, join=False), ""))
 
     # ---- the Layers list ------------------------------------------------------------------------------------------
     @Slot(str, str, str, result=bool)

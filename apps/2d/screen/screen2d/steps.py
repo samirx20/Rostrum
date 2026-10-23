@@ -22,9 +22,9 @@
     brand <colors|textStyles|logos> <name, _ for spaces> <#rrggbb | text style id | file> (into the project's brand kit)
     (a file let go on the canvas) | pastetext <text> (the clipboard holds it, then Ctrl+V: a Figma link opens Import)
     problems open|close (the kit's Problems chip list, after the list is worked out: layout_run.kit_step) | inspectorscroll <px>
-  Select, then act: selectmany <id> <id> … (those layers, the first is the primary) | act <action> (an entry of the one
-    list on the selection: group, ungroup, mask, union, align_left, distribute_x, match_w, lock, hide, delete, front …;
-    fails when the selection doesn't allow it) | nudge <dx> <dy> (the arrow keys, px) | actionmenu | actionbar (print what they offer)
+  Select, then act: selectmany <id> <id> … (those layers, the first is the primary) | act <job> (an action that has a key:
+    group, ungroup, mask, union, align_left, lock, hide, delete, front …) | do <action id> (any action of the list, as a menu click:
+    distribute_x, match_w, effect_grain …); both fail, saying why, when the selection doesn't allow it | nudge <dx> <dy> (the arrow keys, px) | actionmenu | actionbar (print what they offer)
   Inspector kit: find <text> (the search box; alone clears it) | group <name> (fold / open a group) | reveal <field> (bring a field into view)
   Export (the kit's Export sheet): export <mp4|prores4444|webm|gif|png|exr|lottie> [alpha=on|off] [depth=8|16]
     [quality=<q>] [range=<a→b>] (the sheet's Export; waits for it) | exportpanel open [format]|close (= exportsheet) |

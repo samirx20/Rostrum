@@ -17,6 +17,7 @@ Rectangle {
     color: Theme.panel; radius: Theme.radiusPanel
     property var last: ({ shapes: "rect", view: "hand" })      // group -> its last-used tool (screen state)
     readonly property bool flyoutOpen: flyout.visible || brushes.visible
+    readonly property bool menuOpen: flyout.visible       // a group's menu; the brush panel is part of the Brush tool, not a menu
     readonly property bool canCue: { backend.actions.bar; backend.selected; return JSON.stringify(backend.actions.menu()).indexOf('"sound_here"') >= 0 }   // folded menus nest it
     readonly property bool has3d: backend.adder.entries.some(e => e.type === "render3d")
 

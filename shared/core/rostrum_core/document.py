@@ -132,8 +132,9 @@ class Document:
         return c.who if c is not None else None
 
     @_through_door
-    def apply(self, calls, who: Who, label=None, session=None, based_on=None) -> Change | None:
-        """Run a list of operations as one change, all or nothing. Nothing changed = nothing recorded (None)."""
+    def apply(self, calls, who: Who, label=None, session=None, based_on=None, join=True) -> Change | None:
+        """Run a list of operations as one change, all or nothing. Nothing changed = nothing recorded (None).
+        `join=False`: never merge into the person's previous change (an arrow-key press is one step each)."""
         if self._gesture is not None:
             raise RostrumError(codes.CONFLICT, "apply", "the document", "is being dragged by a person right now",
                                hint="Try again in a moment.")
@@ -143,7 +144,7 @@ class Document:
         label = label or ", ".join(dict.fromkeys(self.kind.registry.get(c["op"]).label for c in calls))
         if not edits:
             return None
-        if self._nudge(who, label, edits, calls, work, idx):
+        if join and self._nudge(who, label, edits, calls, work, idx):
             return self.history.changes[-1]
         return self.commit(work, edits, who, label, calls, session, idx=idx)
 

@@ -53,12 +53,13 @@ AppShell {
     Shortcut { sequence: "Ctrl+I"; enabled: !shell.typing; onActivated: rail.openGroup("media") }  // the kit's add_file: the Media flyout
     Shortcut { sequence: "J"; enabled: !shell.typing && backend.boneTool.available; onActivated: backend.setTool("bone") }   // only with a rig in hand (bone_tool.py)
     Shortcut { sequence: "A"; enabled: !shell.typing; onActivated: backend.showAnimated() }    // only the animated settings of the selection; again folds them
-    // Esc steps back one level at a time: a rail panel closes, then picked strokes are let go, then the tool is Select
-    Shortcut { sequence: "Escape"; enabled: rail.flyoutOpen || (backend.tool !== "move" && backend.tool !== "pen" && !(backend.tool === "text" && backend.create.typing))
-               onActivated: { if (rail.flyoutOpen) rail.openGroup("")
+    // Esc steps back one level at a time, the same whichever way the tool was entered (key, rail or a step): a rail menu closes, then
+    // picked strokes are let go, then the tool is Select (the Brush's panel closes with the Brush; it is no step of its own)
+    Shortcut { sequence: "Escape"; enabled: rail.menuOpen || (backend.tool !== "move" && backend.tool !== "pen" && !(backend.tool === "text" && backend.create.typing))
+               onActivated: { if (rail.menuOpen) rail.openGroup("")
                               else if (backend.strokeSelect.count > 0 || backend.strokeSelect.armed) backend.strokeSelect.clear()   // picked strokes first
                               else if (backend.tool === "bone" && backend.boneTool.end()) {}     // the bone chain ends first
-                              else backend.setTool("move") } }
+                              else { rail.openGroup(""); backend.setTool("move") } } }
     // painting: 1 … 9 = 10 … 90 % brush opacity, 0 = 100 % (as in Photoshop)
     Repeater { model: 10; delegate: Item { required property int index
         Shortcut { sequence: String(index); enabled: shell.painting; onActivated: painter.setValue("opacity", index === 0 ? 1 : index / 10) } } }
@@ -83,7 +84,13 @@ AppShell {
     // select, then act: every action's key comes from the one key map (screen2d/keys2d.py) and runs through the one
     // action list (backend.actions): only when valid now, else the status line says why. Not while typing. Delete is
     // run here: keys picked in the timeline go before layers (backend.layerCommand, key_select.py)
-    readonly property bool typing: backend.create.typing || shell.activeFocusItem !== null && typeof shell.activeFocusItem.selectAll === "function"
+    // A text field counts only while it is shown: an editor that closes (rename, typing on the canvas: Esc, Enter, Ctrl+Enter, a click
+    // away) can leave the focus on itself, hidden, and every key would stay "typing" for good. The focus then goes back to the window.
+    readonly property bool textFocus: shell.activeFocusItem !== null && shell.activeFocusItem.visible && typeof shell.activeFocusItem.selectAll === "function"
+    readonly property bool typing: backend.create.typing || textFocus
+    property Item lastFocus: null
+    onActiveFocusItemChanged: lastFocus = activeFocusItem
+    onTextFocusChanged: if (!textFocus && lastFocus && !lastFocus.visible) { lastFocus.focus = false; shell.contentItem.forceActiveFocus() }
     readonly property bool canvasKeys: backend.tool === "move" && !typing
     KeyMap {
         hub: backend.actions

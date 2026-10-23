@@ -5,8 +5,8 @@ import RostrumKit
 // The Brush group's flyout = the brush panel (painting design §2.1, mockup paint-04): beside the rail at the Brush
 // icon. The top row: the five paint tools (backend.paintTool). Below: the brushes as real strokes painted by the kit's
 // engine (image://brushes/<id>, screen2d/brush_presets.py), three across, by group. A click on a brush makes it the
-// brush (the Brush tool goes on) and closes the panel; Esc or a click anywhere else closes it without changing
-// anything. Too tall for the window: the brushes scroll, the tools stay. Last, My brushes (saved brushes, from the
+// brush (the Brush tool goes on) and closes the panel; a click anywhere else closes it without changing
+// anything, and Esc leaves the Brush (the panel goes with it). Too tall for the window: the brushes scroll, the tools stay. Last, My brushes (saved brushes, from the
 // project and the person's own library, each once; a small "project" / "library" on the stroke's corner of one kept in just one
 // place: + Save this brush; right-click one: Rename, Duplicate, Also keep in / Remove from a place, Delete — the
 // entries that apply, from painter.myBrushes). Hovering a brush shows its stroke larger, at the tile.
@@ -15,8 +15,8 @@ QQC.Popup {
     objectName: "brushFlyout"
     parent: QQC.Overlay.overlay
     padding: 8
-    closePolicy: QQC.Popup.CloseOnPressOutside | QQC.Popup.CloseOnEscape
-    focus: true                        // Esc reaches it: the first Esc closes the panel (Main.qml: the next ones step back)
+    closePolicy: QQC.Popup.CloseOnPressOutside      // not on Esc: Esc is Main.qml's, one step back from the Brush to Select, closing the panel with it
+    focus: true
     background: Rectangle { color: Theme.raised; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
     readonly property int tileW: 112
     readonly property int tileH: 27

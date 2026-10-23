@@ -32,6 +32,19 @@ Item {
             }
             ActionMenu { id: choices; onPicked: (v) => fx.part.add(v) }
         }
+        Repeater {     // a search for an effect the layer doesn't have yet ("blur"): one line to add it
+            model: fx.on ? fx.part.found : []
+            delegate: Item {
+                id: hit
+                required property var modelData
+                width: col.width; height: Theme.row
+                Rectangle { anchors.fill: parent; radius: Theme.radiusCtl; color: Theme.hover; visible: hitArea.containsMouse }
+                Text { anchors.left: parent.left; anchors.leftMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter
+                       text: "Add " + hit.modelData.label; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
+                MouseArea { id: hitArea; objectName: "addFound:" + hit.modelData.value; anchors.fill: parent; hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor; onClicked: fx.part.add(hit.modelData.value) }
+            }
+        }
         Repeater {
             model: fx.on ? fx.part.groups : []
             delegate: Column {

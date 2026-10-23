@@ -10,6 +10,7 @@ from __future__ import annotations
 from rostrum2d import fill_fields, fill_paint
 from rostrum2d.evaluate import resolve
 from rostrum_core.keys import keys_of
+from rostrum_gui.rows import matches
 
 from . import route
 
@@ -18,15 +19,18 @@ HIDDEN = {"filled", *fill_fields.NAMES}
 OPTIONS = {"maxStops": 32, "stopOpacity": True}         # the engine draws any number of stops, see-through too (E8)
 
 
-def rows(rows: list[dict], item: dict | None, t: float = 0.0, fps: float = 30.0) -> list[dict]:
+def rows(rows: list[dict], item: dict | None, t: float = 0.0, fps: float = 30.0, query: str = "") -> list[dict]:
     if not item or item.get("type") not in fill_fields.OWNERS:
         return rows
     colour = fill_paint.colour_field(item)
     types = (["none"] if item["type"] != "text" else []) + list(fill_fields.TYPES if item["type"] != "text" else fill_fields.TEXT_TYPES)
     out = []
+    # The one row stands for the colour and every fill field it hides, so a search for any of them (gradient, angle, picture)
+    # finds it, whether or not that field applies now, and a search for anything else (blur) leaves it out.
+    own = bool(query.strip()) and any(r["row"] == "param" and r["id"] in HIDDEN and matches(r, query) for r in rows)
     for r in rows:
         if r["row"] == "param" and r["id"] == colour:
-            out.append({**r, "id": ROW, "label": "Fill" if colour == "fill" else "Colour", "type": "paint", "valid": True,
+            out.append({**r, "id": ROW, "label": "Fill" if colour == "fill" else "Colour", "type": "paint", "valid": r["valid"] or own,
                         "value": fill_paint.of(_at(item, t)), "options": {**OPTIONS, "types": types},
                         "anim": anim_state(item, t, fps), "default": None})
         elif not (r["row"] == "param" and r["id"] in HIDDEN) and not (r.get("members") and set(r["members"]) <= HIDDEN):

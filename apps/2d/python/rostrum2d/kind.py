@@ -92,8 +92,13 @@ def _check_keys(owner: dict, problems: list):
 _LEAVES = frozenset(t for t, owned in rostrum_paint.LISTS.items() if not owned)   # strokes, fills: nothing inside
 
 
-def _check_owner(item: dict, problems: list):
-    """What one item's own fields and lists must satisfy (its keys, a rig's parts, a path's data, its drawings' order)."""
+def _check_owner(item: dict, problems: list, opening: bool = False):
+    """What one item's own fields and lists must satisfy (its keys, a rig's parts, a path's data, its drawings' order,
+    a gradient's two stops). `opening`: a file being opened is not refused for a fill it already had (export still says)."""
+    if not opening and item.get("fillType") in fill_fields.GRADIENTS and len(item.get("stops", [])) < 2:
+        n = len(item.get("stops", []))
+        problems.append(f'{item["id"]}: a {item["fillType"]} fill needs at least 2 colour stops, it has {n} '
+                        f'(use layer.fill with stops, or set the fill type through layer.fill, which adds them)')
     if item.get("type") in F.ANIMATED_OWNERS:
         _check_keys(item, problems)
     if item.get("type") == "rig":
@@ -134,7 +139,7 @@ def check(data: dict, items=None) -> list[str]:
                 if t not in _LEAVES:            # thousands of strokes: only their kind is looked at
                     stack.append(child)
         if changed is None:
-            _check_owner(item, problems)
+            _check_owner(item, problems, opening=True)
     if changed is not None:
         for item in {id(i): i for i in [*owners, *items]}.values():
             _check_owner(item, problems)
