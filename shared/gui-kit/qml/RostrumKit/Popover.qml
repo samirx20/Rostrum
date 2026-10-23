@@ -7,6 +7,8 @@ import "."
 //             NumberField { id: byField … }  Row { … } }       // children go in the content slot, under the title
 //   pop.openAt(button)            // under `button`, left edges together; above it when there is no room below
 //   pop.openAtPoint(x, y)         // at a point in window coordinates
+//   pop.openBy(["action:layer:stagger", "actionsMore"], x, y)   // under the first of these (objectNames) on screen: the button
+//                                 // or menu that opened it; at (x, y) when none is shown (a key or a script opened it)
 // Closes on Esc (first `escaped()`, so an app can take the change back; typing in a field is dropped with it)
 // and on a click outside. A `modal` popover
 // swallows the click that closes it. `accepted()` is Enter pressed anywhere in it that no field used (the app decides
@@ -34,6 +36,20 @@ QQC.Popup {
 
     function openAt(item) { anchor = item; place(); open() }
     function openAtPoint(px, py) { anchor = null; point = Qt.point(px, py); place(); open() }
+    function openBy(names, px, py) {
+        const root = parent && parent.Window.window ? parent.Window.window.contentItem : null
+        for (const n of names) {
+            const it = root ? shown(root, n) : null
+            if (it) { openAt(it); return }
+        }
+        openAtPoint(px, py)
+    }
+    function shown(item, name) {          // the visible item called `name` under `item` (depth first), or null
+        if (!item.visible) return null
+        if (item.objectName === name && item.width > 0) return item
+        for (const c of item.children) { const f = shown(c, name); if (f) return f }
+        return null
+    }
     function place() {
         const ov = parent
         if (!ov) return
@@ -46,6 +62,11 @@ QQC.Popup {
     }
     onWidthChanged: if (visible) place()
     onHeightChanged: if (visible) place()
+    Connections {       // the window resized while open: placed again, so it stays inside and by its anchor
+        target: pop.parent
+        function onWidthChanged() { if (pop.visible) pop.place() }
+        function onHeightChanged() { if (pop.visible) pop.place() }
+    }
 
     readonly property var focused: parent && parent.Window.window ? parent.Window.window.activeFocusItem : null
     readonly property bool typing: !!focused && focused.cursorPosition !== undefined     // a text field has the keys: it takes Enter first

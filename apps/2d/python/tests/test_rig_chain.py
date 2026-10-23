@@ -54,3 +54,11 @@ def test_poses_save_apply_and_blend():
     at2 = {k["prop"]: k["v"] for k in hip["keys"] if k["t"] == 2}
     assert at2["moveX"] == pytest.approx(30) and at2["rotation"] == pytest.approx(7.5)
     assert len(d.history.since(seq)) == 1                                   # one undo step
+
+
+def test_a_pose_is_renamed_by_the_one_rename_operation():
+    d = doc()
+    d.apply({"op": "pose.save", "target": "pup", "args": {"id": "start", "name": "Pose", "t": 0}}, SAM)
+    d.apply({"op": "item.rename", "target": "start", "args": {"name": "Crouch"}}, SAM)
+    assert d.item("start")["name"] == "Crouch"
+    d.apply({"op": "pose.apply", "target": "pup", "args": {"pose": "Crouch", "t": 1}}, SAM)   # found by its new name

@@ -1,24 +1,31 @@
 import QtQuick
 import RostrumKit
 
-// The settings panel's "Poses" group while a rig is in hand (UX_SPEC 3.23 › Pose library; backend.poses:
-// screen2d/rig_poses.py). Save pose keeps the pose at the playhead; a click on a pose keys it there; its slider goes
-// part of the way from the pose there now (one change on release); right-click › Delete. Absent without a rig.
+// The settings panel's "Poses" group while a rig (or one of its bones) is in hand (UX_SPEC 3.23 › Pose library;
+// backend.poses: screen2d/rig_poses.py). Laid on the settings rows' own columns: name in the label column, the amount
+// slider and its value in the field column, ⋯ in the key-mark gutter. Save pose keeps the pose at the playhead; a click
+// on a pose keys it there; its slider keys part of the way from the pose there now (one change on release); ⋯ or
+// right-click › Rename, Delete; double-click renames. A rig with no poses yet shows Save pose alone. Absent when a
+// pose can't apply (no rig, or a part picked with a bone: Attach to bone's selection).
 Column {
     id: pl
     readonly property var p: backend.poses
-    width: parent ? parent.width : 0
-    visible: p.rig !== ""
+    readonly property real full: parent ? parent.width : 0
+    readonly property real wide: Theme.wideFor(full)          // label + field: every row ends where the fields end
+    readonly property bool any: p.poses.length > 0
+    width: full
+    visible: p.shown
     spacing: 2
 
-    Item {  // the heading, like a group's, with Save pose at its right
-        width: pl.width; height: Theme.groupGap + Theme.row
+    Item {  // the heading, like a group's, with Save pose at its right; no poses yet: Save pose alone
+        width: pl.wide; height: Theme.groupGap + Theme.row
         Text {
+            visible: pl.any
             anchors { left: parent.left; bottom: parent.bottom; bottomMargin: Theme.grid + 4 }
             text: "Poses"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold
         }
         Button {
-            anchors { right: parent.right; bottom: parent.bottom }
+            x: pl.any ? parent.width - width : 0; anchors.bottom: parent.bottom
             text: "Save pose"; help: "Pose the character on the canvas, then keep its pose at the playhead in the library."
             onClicked: pl.p.save()
         }
@@ -28,42 +35,71 @@ Column {
         delegate: Rectangle {
             id: row
             required property var modelData
-            width: pl.width; height: Theme.row; radius: Theme.radiusCtl
+            property bool renaming: false
+            readonly property real labelW: Theme.labelColumnFor(pl.full)
+            width: pl.full; height: Theme.row; radius: Theme.radiusCtl
             color: rowArea.containsMouse ? Theme.hover : "transparent"
-            Text {
-                anchors { left: parent.left; leftMargin: Theme.grid; verticalCenter: parent.verticalCenter }
-                width: parent.width * 0.45; elide: Text.ElideRight
-                text: row.modelData.name; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
+            function startRename() { nameEdit.text = modelData.name; renaming = true; nameEdit.forceActiveFocus(); nameEdit.selectAll() }
+            NameLabel {
+                id: nameText
+                visible: !row.renaming
+                anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+                width: row.labelW - Theme.gap
+                text: row.modelData.name; help: "Click: key this pose at the playhead · double-click: rename"
+            }
+            TextInput {     // rename in place: Enter keeps it, Esc or a click elsewhere leaves the name as it was
+                id: nameEdit
+                visible: row.renaming
+                anchors { left: nameText.left; right: nameText.right; verticalCenter: parent.verticalCenter }
+                color: Theme.fg; selectionColor: Theme.accent; font.pixelSize: Theme.body; font.family: uiFont
+                onAccepted: { row.renaming = false; if (text.trim() && text.trim() !== row.modelData.name) pl.p.rename(row.modelData.id, text.trim()) }
+                Keys.onEscapePressed: row.renaming = false
+                onActiveFocusChanged: if (!activeFocus) row.renaming = false
             }
             MouseArea {
                 id: rowArea
                 anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
-                width: parent.width * 0.5
+                width: row.labelW
+                enabled: !row.renaming
                 hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton
-                onClicked: (m) => {
-                    if (m.button === Qt.RightButton) { const g = rowArea.mapToItem(null, m.x, m.y); poseMenu.pose = row.modelData.id; poseMenu.openAt(g.x, g.y) }
-                    else pl.p.apply(row.modelData.id)
-                }
+                onClicked: (m) => { if (m.button === Qt.RightButton) row.openMenu(m.x, m.y); else pl.p.apply(row.modelData.id) }
+                onDoubleClicked: (m) => { if (m.button === Qt.LeftButton) row.startRename() }
             }
-            HoverTip { hovered: rowArea.containsMouse; text: "Click: key this pose at the playhead" }
             Slider {
-                anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
-                width: parent.width * 0.45
-                from: 0; to: 1; value: row.modelData.amount
+                id: amount
+                anchors { left: parent.left; leftMargin: row.labelW; right: value.left; rightMargin: Theme.gap + 2; verticalCenter: parent.verticalCenter }
+                from: 0; to: 1; value: row.modelData.amount; display: "percent"
                 onScrubbed: (v) => pl.p.blendTo(row.modelData.id, v)
                 onEdited: (v) => { pl.p.blendTo(row.modelData.id, v); pl.p.endBlend() }
                 onScrubEnded: pl.p.endBlend()
+                HoverTip { hovered: amount.hovered && !amount.pressed; text: "How much of the pose to key"
+                           help: "Drag to key part of the way from the pose there now to this one (one change on release)." }
             }
+            Text {
+                id: value
+                anchors { right: parent.right; rightMargin: Theme.keyGutter; verticalCenter: parent.verticalCenter }
+                width: Theme.amountFieldShort; horizontalAlignment: Text.AlignRight
+                text: Math.round(row.modelData.amount * 100) + " %"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body
+            }
+            IconButton {
+                id: more
+                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                width: Theme.keyGutter - 4; height: Theme.field
+                glyph: "⋯"; kind: "ghost"; tip: "Rename or delete"
+                onClicked: row.openMenu(more.x, more.y + more.height)
+            }
+            function openMenu(x, y) { const g = row.mapToItem(null, x, y); poseMenu.pose = row.modelData.id; poseMenu.row = row; poseMenu.openAt(g.x, g.y) }
         }
     }
     Item {  // the end of the group: a line and a group's gap, so the settings below don't read as poses
-        width: pl.width; height: Theme.groupGap
-        Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 1; color: Theme.line }
+        width: pl.wide; height: Theme.groupGap
+        Rectangle { visible: pl.any; anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 1; color: Theme.line }
     }
     ActionMenu {
         id: poseMenu
         property string pose: ""
-        entries: [{ value: "delete", label: "Delete pose" }]
-        onPicked: (v) => pl.p.remove(pose)
+        property var row: null
+        entries: [{ value: "rename", label: "Rename" }, { value: "delete", label: "Delete pose" }]
+        onPicked: (v) => v === "rename" ? row.startRename() : pl.p.remove(pose)
     }
 }

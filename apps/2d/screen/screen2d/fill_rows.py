@@ -1,6 +1,6 @@
 """The inspector's Fill row: one paint (kit PaintField: a swatch and "Linear · 3 stops"; a click opens the picker) in
 place of the colour row and the fill's own fields (on / off, type, gradient angle and centre: the picker and the canvas
-handles set those). Not a stored field: the row is rostrum2d.fill_paint.of(item) and an edit is the agents'
+handles set those; a picture's file, fit and scale too: the picker shows them once). Not a stored field: the row is rostrum2d.fill_paint.of(item) and an edit is the agents'
 `layer.fill`. The engine draws any number of stops anywhere in 0..1, see-through too (E8).
 The row's key mark (`anim_state`, `animate_calls`): a solid fill is its colour's; a gradient's is its stops' colours (and an
 inner stop's position): keyed when any is, a click keys them all at the playhead or stops them all. The picker shows the
@@ -15,7 +15,7 @@ from rostrum_gui.rows import matches
 from . import route
 
 ROW = "paint"
-HIDDEN = {"filled", *fill_fields.NAMES}
+HIDDEN = {"filled", *fill_fields.NAMES, *(p.name for p in fill_fields.PICTURE)}
 OPTIONS = {"maxStops": 32, "stopOpacity": True}         # the engine draws any number of stops, see-through too (E8)
 
 

@@ -6,13 +6,19 @@ New, H43). Those are faults: in a scripted run (rostrum_core.userhome.scripted: 
 check, a test) the first one ends the run with exit code 6, so a screen test can never pass over one. In a person's
 run it goes to the log as "FAULT: …".
 
-    watch()     install the handler (idempotent)
+A Python error that escapes into Qt (a slot, a QML call into Python, an event filter, a worker thread) is a fault the
+same way: PySide would only print it and carry on, so `watch` routes it here (sys.excepthook, threading.excepthook)
+with its traceback. The app survives it; a scripted run fails on it.
+
+    watch()     install the handlers (idempotent)
+    python_error(where)  report the Python error being handled now (gui_filter.py's guard calls it)
     found()     the faults seen so far, in order
     code(c)     the run's exit code: c, else EXIT when a scripted run saw a fault (the app's last line: sys.exit(code(c)))
 """
 from __future__ import annotations
 
 import sys
+import traceback
 
 FAULTS = (
     "destroyed while one of its QML signal handlers is in progress",
@@ -33,26 +39,45 @@ def code(c: int) -> int:
     return c or (EXIT if _found and scripted() else 0)
 
 
+def _fault(message: str, where: str = ""):
+    _found.append(message + where)
+    from rostrum_core.userhome import scripted
+    if scripted():
+        print(f"FAIL: {message}{where}", file=sys.stderr, flush=True)
+        from PySide6.QtCore import QCoreApplication
+        app = QCoreApplication.instance()
+        if app is not None:
+            app.exit(EXIT)
+    else:
+        print(f"FAULT: {message}{where}", file=sys.stderr, flush=True)
+
+
+def _python(kind, value, tb, where=""):
+    text = "".join(traceback.format_exception(kind, value, tb)).rstrip()
+    print(text, file=sys.stderr, flush=True)
+    _fault(f"Python error{where}: {kind.__name__}: {value}")
+
+
+def python_error(where: str):
+    """Report the exception being handled now (call inside `except`), raised in `where`."""
+    _python(*sys.exc_info(), where=f" in {where}")
+
+
 def watch():
     global _installed
     if _installed:
         return
-    from PySide6.QtCore import QCoreApplication, qInstallMessageHandler
-    from rostrum_core.userhome import scripted
+    import threading
+    from PySide6.QtCore import qInstallMessageHandler
 
     def handler(_kind, context, message):
         if not any(f in message for f in FAULTS):
             print(message, file=sys.stderr, flush=True)
             return
-        where = f" ({context.file}:{context.line})" if context.file else ""
-        _found.append(message + where)
-        if scripted():
-            print(f"FAIL: Qt fault: {message}{where}", file=sys.stderr, flush=True)
-            app = QCoreApplication.instance()
-            if app is not None:
-                app.exit(EXIT)
-        else:
-            print(f"FAULT: {message}{where}", file=sys.stderr, flush=True)
+        _fault(f"Qt fault: {message}", f" ({context.file}:{context.line})" if context.file else "")
 
     qInstallMessageHandler(handler)
+    sys.excepthook = _python                                    # a slot's or a QML call's error (PySide reports here)
+    threading.excepthook = lambda a: _python(a.exc_type, a.exc_value, a.exc_traceback,
+                                             f" in thread {a.thread.name if a.thread else '?'}")
     _installed = True

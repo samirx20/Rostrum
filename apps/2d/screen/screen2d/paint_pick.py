@@ -3,23 +3,21 @@ engine's frame the canvas shows (what the person sees, not a guess from layer da
 as typing it into the bar's Colour does (`painter.setValue("color", …)`); letting go of Alt goes back to painting.
 The Brush panel's Pick (I) arms the same pick without Alt (`arm`): one click picks, then the brush is back.
 A QObject part, read in QML as `backend.colourPick`. The Alt key is read for the whole window by an event filter here
-(a lone modifier key has no key event on an item without the keyboard focus).
+(a lone modifier key has no key event on an item without the keyboard focus), on the window (Session.show), never the
+whole app (the kit's gui_filter.py says why).
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QEvent, QObject, Qt, Signal, Slot
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtCore import Property, QEvent, Qt, Signal, Slot
+from rostrum_gui.gui_filter import GuiFilter
 
 
-class ColourPick(QObject):
+class ColourPick(GuiFilter):
     changed = Signal()
 
     def __init__(self, bridge):
         super().__init__(bridge)
         self.b, self._alt, self._at, self._swatch, self._armed = bridge, False, (0.0, 0.0), "", False
-        app = QGuiApplication.instance()
-        if app is not None:
-            app.installEventFilter(self)
         bridge.toolChanged.connect(lambda: (self.setAlt(False), self.arm(False)))
 
     alt = Property(bool, lambda self: (self._alt or self._armed) and self.b.tool == "draw", notify=changed)
@@ -33,7 +31,7 @@ class ColourPick(QObject):
         self._at, self._swatch = (x, y), self.colour_at(x, y) if self._alt or self._armed else ""
         self.changed.emit()
 
-    def eventFilter(self, obj, event):          # noqa: N802 (Qt's name)
+    def on_event(self, obj, event):
         t = event.type()
         if t in (QEvent.Type.KeyPress, QEvent.Type.KeyRelease) and event.key() == Qt.Key.Key_Alt:
             self.setAlt(t == QEvent.Type.KeyPress)

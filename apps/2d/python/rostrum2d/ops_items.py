@@ -105,7 +105,8 @@ def layer_duplicate(ctx, targets, args):
         ctx.set(copy, "name", unique_name(_names(ctx), f"{display_name(loc.item)} copy"))
 
 
-@R.operation("item.rename", "Rename a composition, layer, effect or mask.", target=("comp", *F.LAYERS, *F.EFFECTS, "mask"),
+@R.operation("item.rename", "Rename a composition, layer, effect, mask or a rig's saved pose.",
+             target=("comp", *F.LAYERS, *F.EFFECTS, "mask", "pose"),
              label="Rename", params=[Param.text("name", label="Name", required=True)], importance="secondary")
 def item_rename(ctx, targets, args):
     for t in targets:

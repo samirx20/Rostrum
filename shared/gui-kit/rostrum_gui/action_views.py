@@ -95,9 +95,10 @@ def _in_row(label: str, title: str) -> str:
 def panel(entries: list[dict], short: tuple | None = None) -> dict:
     """The settings panel's actions, first (SPEC 2d-design-v2 §8.3): every valid action but the short menu's and the
     ones marked `panel: False`. The primary ones are buttons, in order; actions sharing a `bar` are one titled row
-    ("Combine": Union, Subtract …), the others one untitled row where its first one ranks. The secondary ones are one
-    "More" menu at the end (folded like right-click), only beside buttons: with no button row the menu would sit alone
-    on its own line, so it is absent (the same actions stay on right-click and in the command bar).
+    ("Combine": Union, Subtract …), the others one untitled row where its first one ranks; the rows of plain buttons
+    come first and the icon runs (Align, Combine) after, the same order for every kind of item (F5, audit 9/47).
+    The secondary ones are one "⋯" menu at the end of the last row (folded like right-click), never alone on a line;
+    with no row at all it is absent (the same actions stay on right-click and in the command bar).
     {rows: [{title, cols, items: [{id, label, keys}]}], more: [...]}"""
     menu_jobs = {j for _, jobs in (short or ()) for j in jobs} - set(KEEP)
     mine = [e for e in entries if not e["edit"] and e["job"] not in menu_jobs and e.get("panel", True)]
@@ -111,4 +112,5 @@ def panel(entries: list[dict], short: tuple | None = None) -> dict:
                                   "icon": e.get("icon", ""), "full": e["label"]})
     for r in rows:
         r["cols"] = _cols([i["label"] for i in r["items"]])
+    rows.sort(key=lambda r: all(i["icon"] for i in r["items"]))    # one order for every item: buttons, then icon runs
     return {"rows": rows, "more": _fold([e for e in mine if e["importance"] != "primary"]) if rows else []}

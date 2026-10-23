@@ -14,11 +14,11 @@ A character is a **rig**: its parts (head, arms, legs ...) tied to bones, so you
 
 ### Posing and Poses
 
-Pose the character on the canvas by moving its bones. With a rig selected, the settings panel has a **Poses** group:
+Pose the character on the canvas by moving its bones. With the rig (or its bones) selected, the settings panel has a **Poses** group:
 
-- **Save pose** keeps the pose at the playhead.
-- Click a saved pose to key it at the playhead. Its slider goes part of the way there.
-- Right-click a pose, then **Delete**, to remove it.
+- **Save pose** keeps the pose at the playhead. A rig with no poses yet shows only this button.
+- Click a saved pose to key it at the playhead. Drag its slider to key only part of the way there from the pose the rig has now; the number beside it shows how much.
+- Click **⋯** at the end of a pose's row (or right-click it) to **Rename** or **Delete** it. Double-click a name to rename it too.
 - **Mirror pose** in the settings panel copies the left side onto the right, or the other way, or swaps them.
 
 ### Lip sync
@@ -26,7 +26,7 @@ Pose the character on the canvas by moving its bones. With a rig selected, the s
 1. Make a swap set of mouth drawings (select the drawings, then **Make swap set**). Name them by mouth shape, or name the set "mouth".
 2. Select the set. **Lip sync…** appears at the top of the settings panel.
 3. In the sheet, click a **Voice line**. Voice lines come from RostrumSound. Check the drawing shown for each mouth shape and change a wrong one in its list.
-4. Click **Apply**. The mouth is keyed to the voice in one change. **Cancel** or **Esc** leaves everything as it was.
+4. Click **Apply**. The mouth is keyed to the voice in one change. **×** or **Esc** closes the sheet and leaves everything as it was. A voice line whose voice is not made yet in RostrumSound is not listed; the sheet says how many are waiting.
 
 ### Add blinks
 
@@ -64,7 +64,7 @@ A style keeps the look of a text (font, size, weight, colour ...) so other texts
 
 ## Library and Brand kit
 
-Press **Ctrl+L**, or click **Media** in the tool rail then **Library**, to open the **Library** on the left of the canvas. It pushes the canvas aside and never covers it. Press again to close.
+Press **Ctrl+L**, or click **Media** in the tool rail then **Library**, to open the **Library** beside the tool rail, over the left edge of the canvas; the rail stays where it is and the canvas keeps its size. Press again to close.
 
 - **Brand kit** keeps the project's **colours**, **text styles** and **logos**. Every scene of the project sees them. It needs the scene to be in a project; if it is not, the drawer says so.
 - Click a colour: the selected shapes, paths and texts take it. Click a text style: the selected texts follow it. Click a logo: it goes onto the canvas.

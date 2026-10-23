@@ -19,7 +19,7 @@ Panel {
     component Words: Text { color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body; elide: Text.ElideRight }
     SheetScroll {
         spacing: Theme.grid
-        Words { text: "Voice line"; color: Theme.fg3; font.pixelSize: Theme.label }
+        Words { text: "Voice line"; color: Theme.fg3; font.pixelSize: Theme.label; visible: pop.ls.lines.length > 0 }
         Repeater {          // the project's voice lines with a voice: click one
             model: pop.ls.lines
             delegate: Rectangle {
@@ -53,12 +53,7 @@ Panel {
                 }
             }
         }
-        Row {
-            anchors.right: parent.right
-            spacing: Theme.grid
-            Button { text: "Cancel"; onClicked: pop.close() }
-            Button { text: "Apply"; kind: "primary"; visible: pop.ls.ready; onClicked: pop.ls.apply()
-                     help: "Key the mouth to the voice line: one change you can undo." }
-        }
+        Button { anchors.right: parent.right; text: "Apply"; kind: "primary"; visible: pop.ls.ready; onClicked: pop.ls.apply()
+                 help: "Key the mouth to the voice line: one change you can undo." }   // × or Esc closes: no second way
     }
 }

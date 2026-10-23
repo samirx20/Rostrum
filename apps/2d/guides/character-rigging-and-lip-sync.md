@@ -108,7 +108,7 @@ A pose library keeps named poses on the rig, so a person or an agent can reuse a
   `amount=0.5` goes half way from what is there; `with=other mix=0.3` keys a blend of two poses (a swap set's drawing
   jumps at the half, never blends).
 - **Ways to use it:** block a shot with key poses first, then key the in-betweens; keep a library per character
-  (`pose.set` renames, `note` says what one is for); make a variation by blending two poses a little instead of
+  (`item.rename target=wave_up name="Wave up"` renames; `pose.remove` deletes); make a variation by blending two poses a little instead of
   posing a third by hand.
 - Not yet: mirroring a pose, copying poses between rigs.
 

@@ -16,6 +16,7 @@ When your project has music, voice or sound made in RostrumSound, Rostrum2D play
 - The **Sound row** is the last row of the timeline, under every layer. Its name is the song's name, with a ♪ before it. On the right is the waveform: tall where the sound is loud, flat where it is quiet.
 - It is there only when the project has sound.
 - When the timeline is folded to its small height (the button at the far right of the timeline's header), the Sound row stays, under the selected layer.
+- A voice line whose voice is not made yet in RostrumSound shows faded, with "not made yet" after its words. It is silent until RostrumSound makes it (its **Make voice**); the scene opens and plays as usual. An export that includes the sound stops and says which line is missing.
 - If something is wrong, the row says so in red words instead of a waveform. For example, RostrumSound is not installed, the song can't be read, or your computer has no sound output. The same words show at the top of the window. The picture still plays.
 
 ## 3. Muting the sound

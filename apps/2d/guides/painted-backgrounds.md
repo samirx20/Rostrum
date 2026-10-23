@@ -22,7 +22,9 @@ Paint first, then set depths: select first, then act.
 2. Select a drawing in the timeline or on the canvas. The settings panel shows **Set depth ▾** at its top.
 3. Pick **Far** (depth 3), **Middle** (1) or **Near** (0.25). The drawing moves to that depth and is resized so it still
    covers everything the camera shows of it. Do the same for each drawing. One pick is one change: **Ctrl+Z** takes it
-   back. For another value, type it in the drawing's **Depth** setting and run `background.fit` (below).
+   back. For another value pick **Other depth…**: a small box opens under the button; type or drag the number
+   (0 = on the camera's plane, higher = farther) and the drawing moves as it changes. Click away or press Enter to
+   keep it (one change), Esc to take it back.
 4. Without a camera, **Set depth** is not in the panel. Press **Ctrl+K** and type "set depth": it says why.
 
 To split one painting into depth layers, pick its strokes with a lasso (**Ctrl**+drag, see `drawing`) and move them

@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// Stagger… (UX_SPEC 3.19): the context bar's action opens this small popover under the bar. "Each starts [2 f] after
+// Stagger… (UX_SPEC 3.19): the action opens this small popover under its button (or under "⋯" when it is in that menu). "Each starts [2 f] after
 // the one before", Order. The bars and keys spread live as the number or the order changes; clicking away keeps it as
 // one change, Esc takes it back (backend.stagger, screen2d/stagger.py). Modal, so the click that closes it does
 // nothing else.
@@ -18,7 +18,7 @@ Popover {
     onClosed: cancelled ? st.cancel() : st.end()
     Connections {   // opened by the action; closed when the stagger ends anywhere else (a key, a step, an undo)
         target: pop.st
-        function onOpened() { pop.openAtPoint((shell.width - pop.width) / 2, 104) }
+        function onOpened() { pop.openBy(["action:layer:stagger", "actionsMore"], (shell.width - pop.width) / 2, 104) }
         function onChanged() { if (!pop.st.open && pop.opened) pop.close() }
     }
     Column {
