@@ -72,7 +72,7 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter; onClicked: backend.toggleClick()
             }
             Item { width: Theme.gap; height: 1 }
-            SongReadout { id: readout; compact: a.compact || a.tight; tight: a.tight; anchors.verticalCenter: parent.verticalCenter }
+            SongReadout { id: readout; room: rightRow.x - leftRow.x - x - Theme.gap; compact: a.compact || a.tight; tight: a.tight; anchors.verticalCenter: parent.verticalCenter }
         }
         Row {
             id: rightRow
