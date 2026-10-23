@@ -8,6 +8,7 @@
     painttoggle <field> on|off       Inside the outline (paintInside), Draw each frame (eachFrame)
     preset <id> | painttool brush|eraser|fill|pick|select | brushedit on|off    a brush in the brush panel | its top
                                      row | Edit brush › / ‹ Back
+    savebrush <name with _ for spaces>   + Save this brush, the name typed, Enter (My brushes)
     keytap <key> [shift|alt|ctrl]    a real key press in the window ("[", "]", "E", "Ctrl+Z" as `keytap z ctrl`)
     depthtyped <depth> [open|cancel]  Set depth ▾ › Other depth…, type the number, Enter (open: leave the popover open)
 """
@@ -16,7 +17,7 @@ from __future__ import annotations
 import json
 
 WORDS = ("fill", "fillmode", "gap", "paintpick", "paintset", "paintmove", "paintremove", "painttoggle", "depthtyped",
-         "preset", "painttool", "brushedit", "keytap")
+         "preset", "painttool", "brushedit", "keytap", "savebrush")
 MODS = {"shift": "ShiftModifier", "alt": "AltModifier", "ctrl": "ControlModifier"}
 
 
@@ -41,6 +42,9 @@ def do_paint_step(bridge, word, rest, step, win=None):
         bridge.painter.setEditing(rest[0] == "on")
     elif word == "keytap":
         keytap(win, rest[0], rest[1:])
+    elif word == "savebrush":
+        if not bridge.painter.saveBrush(" ".join(rest).replace("_", " ")):
+            raise RuntimeError(f"step {step!r}: {bridge.status}")
     elif word == "fill":
         fill.setOn(True)
         if not fill.fillAt(float(rest[0]), float(rest[1])):

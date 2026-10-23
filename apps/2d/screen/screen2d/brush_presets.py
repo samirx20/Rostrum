@@ -1,7 +1,8 @@
 """The shipped brushes (painting design §3.2): each preset is only settings the painting kit already has
 (`rostrum_paint.fields.BRUSH`), never a colour (the colour is the person's). The brush panel (BrushFlyout.qml) shows
 each as a real stroke, painted by the kit's own engine (`preview`), served to QML as image://brushes/<id>.
-A read-only table for now; saved brushes (a project library item) come later (design §5, P6).
+The shipped set is this read-only table; My brushes (saved ones, rostrum2d/brushes.py) are painted the same way
+(`preview_of`), served as image://brushes/<saved id>.
 """
 from __future__ import annotations
 
@@ -10,9 +11,9 @@ import threading
 import numpy as np
 from PySide6.QtGui import QImage
 from PySide6.QtQuick import QQuickImageProvider
+from rostrum_paint import canvas
 from rostrum_paint.brush import stamp_stroke
 from rostrum_paint.fields import brush_defaults
-from rostrum_paint.marks import Paper
 
 GROUPS = ("Sketch", "Ink", "Paint", "Light", "Texture")
 DEFAULT = "hard"
@@ -87,11 +88,14 @@ def _lay():
 
 
 def preview(pid: str) -> QImage:
-    """Preset `pid`'s stroke on the panel's dark ground, W x H. Wet brushes get two bands of paint to drag;
-    multiply and add get a ground to show what they do."""
-    _, _, _, size, s = BY_ID[pid]
+    return preview_of(settings(pid))
+
+
+def preview_of(s: dict) -> QImage:
+    """A brush's stroke (every brush setting `s`, as a stroke holds them) on the panel's dark ground, W x H, painted
+    through the kit's one stroke-to-engine step (`canvas.stamp`), as on the canvas. Wet brushes get two bands of paint
+    to drag; multiply and add get a ground to show what they do."""
     layer, under, ink, lay = np.zeros((H, W, 4), np.float32), np.broadcast_to(np.array(BG, np.float32), (H, W, 3)).copy(), INK, _lay()
-    params = {k: v for k, v in s.items() if k not in ("brush", "smudge") and (k != "wet" or s.get("smudge"))}
     if s.get("smudge"):
         for i, c in enumerate([(0.85, 0.45, 0.30), (0.30, 0.45, 0.85)]):
             y = H * (0.33 + 0.34 * i)
@@ -101,7 +105,8 @@ def preview(pid: str) -> QImage:
         ink = (0.45, 0.35, 0.65)
     elif s.get("mode") == "add":
         ink = (0.95, 0.55, 0.25)
-    stamp_stroke(layer, _points(), ink, size, s.get("brush", "round"), under=under, paper=Paper(H, W), seed=7, lay=lay, **params)
+    hex_ink = "#" + "".join(f"{round(c * 255):02x}" for c in ink)
+    canvas.stamp(layer, {**s, "type": "stroke", "color": hex_ink, "seed": 7, "points": _points(), "mask": ""}, W, H, {}, under)
     a = layer[..., 3:]
     rgb = np.clip(under + layer[..., :3], 0, 1) if s.get("mode") == "add" else layer[..., :3] + (1 - a) * under
     px = np.ascontiguousarray((np.clip(rgb, 0, 1) * 255).astype(np.uint8))
@@ -109,17 +114,21 @@ def preview(pid: str) -> QImage:
 
 
 class PreviewProvider(QQuickImageProvider):
-    """image://brushes/<id>: painted once per run, on QML's loader thread (Image { asynchronous: true })."""
+    """image://brushes/<id>: painted once per run, on QML's loader thread (Image { asynchronous: true }). A saved
+    brush's id is its content, so its picture never goes stale; `saved` (id -> settings) is kept by the brush panel."""
 
     def __init__(self):
         super().__init__(QQuickImageProvider.ImageType.Image)
-        self._lock, self._made = threading.Lock(), {}
+        self._lock, self._made, self.saved = threading.Lock(), {}, {}
 
     def requestImage(self, id_, size, requested):  # noqa: N802 (Qt's name)
         pid = id_.split("?")[0]
         with self._lock:
             if pid not in self._made:
-                if pid not in BY_ID:
-                    raise KeyError(f"no brush preset {pid!r}")
-                self._made[pid] = preview(pid)
+                if pid in self.saved:
+                    self._made[pid] = preview_of({**brush_defaults(), **self.saved[pid]})
+                elif pid in BY_ID:
+                    self._made[pid] = preview(pid)
+                else:
+                    raise KeyError(f"no brush {pid!r}")
             return self._made[pid]

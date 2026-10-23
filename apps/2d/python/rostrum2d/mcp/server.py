@@ -7,7 +7,8 @@ With no options the server opens the project the 2D screen would open: the newes
 With none, no document is open (inspect_project says so). While running, inspect_recent_projects lists the person's
 projects and run_open_project switches. Every change is saved at once, so the 2D screen process can open the same file.
 Tools: the shared ones from rostrum_core, plus look_frame, look_sheet, look_motion, look_at, render_video, render_export,
-run_import, inspect_layout, inspect_swaps, inspect_diagnose, inspect_soundtrack, inspect_recent_projects, run_open_project.
+run_import, inspect_layout, inspect_swaps, inspect_diagnose, inspect_soundtrack, inspect_recent_projects, run_open_project,
+run_paint_picture, run_brush (My brushes).
 """
 from __future__ import annotations
 
@@ -20,7 +21,7 @@ from rostrum_core.mcp import App, Guides, Runtime, build_server
 
 from rostrum2d import run_source
 from . import at, curves, diagnose_tool, draw, export_tool, import_tool, layout_tool, look, motion, project_tool, rig, video
-from . import background_tool, brand_tool, lipsync, picture_tool, sound_cue_tool, soundtrack_tool, swap_tool
+from . import background_tool, brand_tool, brush_tool, lipsync, picture_tool, sound_cue_tool, soundtrack_tool, swap_tool
 from .project_tool import open_documents, start_choice, with_no_project_sentence   # noqa: F401  (open_documents: its old import path)
 
 GUIDES = Path(__file__).resolve().parents[3] / "guides"
@@ -39,7 +40,7 @@ def app_tools():
             .merged_with(layout_tool.tools).merged_with(swap_tool.tools).merged_with(import_tool.tools).merged_with(diagnose_tool.tools)
             .merged_with(background_tool.tools).merged_with(project_tool.tools).merged_with(soundtrack_tool.tools)
             .merged_with(sound_cue_tool.tools).merged_with(brand_tool.tools)
-            .merged_with(picture_tool.tools))
+            .merged_with(picture_tool.tools).merged_with(brush_tool.tools))
 
 
 def make_app(project: str | None = None, items: list[str] | None = None, documents: dict | None = None) -> App:

@@ -1,12 +1,14 @@
 """Scripted steps that click any control the way a hand would (QTest, the real mouse path), found by its objectName:
-    clickobj <objectName> [fx fy]      the control's point at fractions fx, fy of its box (default its centre)
+    clickobj <objectName> [fx fy] [right]   the control's point at fractions fx, fy of its box (default its centre);
+                                       `right`: a right-click
+    typekeys <text>                    type it on the keyboard into what has focus (_ for a space)
     dragobj <objectName> fx0 fy0 fx1 fy1   press at one point of the control's box, move, release at the other
     picturefile <path>                 the open paint picker's picture dialog picks this file (after clickobj fillType:picture)
     choicefile <row id> <path>         a choice's "Load …" dialog (Tip picture's Load picture…) picks this file
 Used for the colour picker's proofs (the Fill row "row:paint", the picker's own named parts)."""
 from __future__ import annotations
 
-WORDS = {"clickobj", "dragobj", "picturefile", "choicefile"}
+WORDS = {"clickobj", "dragobj", "picturefile", "choicefile", "typekeys"}
 
 
 def do_click_step(win, word, rest, step):
@@ -21,6 +23,10 @@ def do_click_step(win, word, rest, step):
             raise RuntimeError(f"step {step!r}: the paint picker isn't open")
         QMetaObject.invokeMethod(pic, "accept", Q_ARG("QVariant", QUrl.fromLocalFile(str(Path(rest[0]).resolve())).toString()))
         QTest.qWait(150)
+        return
+    if word == "typekeys":
+        QTest.keyClicks(win, " ".join(rest).replace("_", " "))
+        QTest.qWait(100)
         return
     if word == "choicefile":
         from pathlib import Path
@@ -39,9 +45,10 @@ def do_click_step(win, word, rest, step):
         q = item.mapToScene(QPointF(float(fx) * item.property("width"), float(fy) * item.property("height")))
         return QPoint(round(q.x()), round(q.y()))
     if word == "clickobj":
-        p = at(*(rest[1:3] or (0.5, 0.5)))
+        right = rest[-1] == "right"
+        p = at(*([w for w in rest[1:3] if w != "right"] or (0.5, 0.5)))
         QTest.mouseMove(win, p)
-        QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, p)
+        QTest.mouseClick(win, Qt.RightButton if right else Qt.LeftButton, Qt.NoModifier, p)
     else:
         a, b = at(*rest[1:3]), at(*rest[3:5])
         QTest.mouseMove(win, a)

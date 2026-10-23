@@ -128,6 +128,24 @@ def add_file(folder, kind: str, name: str, source) -> dict:
     return row
 
 
+def change_file_item(folder, item_id: str, name: str | None) -> None:
+    """Rename a kept file's item (`name`), or remove it (None): its row leaves project.json and its file goes with
+    it. An id that is no kept file of this project is loud."""
+    from .storage import write_atomic
+    meta = Path(folder) / "project.json"
+    data = _read_json(meta, "project") if meta.is_file() else {}
+    rows = data.get("items", [])
+    row = next((r for r in rows if r.get("id") == item_id), None)
+    if row is None:
+        raise RostrumError.not_found("project", "item", item_id, [r.get("id") for r in rows])
+    if name is None:
+        data["items"] = [r for r in rows if r is not row]
+        (Path(folder) / row["file"]).unlink(missing_ok=True)
+    else:
+        row["name"] = name
+    write_atomic(meta, json.dumps(data, indent=1, ensure_ascii=False))
+
+
 def latest_render(folder, item_id: str, kind: str | None = None) -> dict | None:
     """The newest finished render of an item ("pictures" / "sound" to pick one kind), or None."""
     return next((r for r in renders(folder, item_id) if kind is None or r["kind"] == kind), None)

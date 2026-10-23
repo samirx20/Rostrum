@@ -20,15 +20,16 @@ Paint always belongs to something. Paint on a shape, a text, a picture or a path
    | **Select** | S | picks strokes to move, copy or delete (part 4) |
 
    Press a tool's key again to go back to the brush.
-3. Under them are **19 brushes in five groups**: Sketch, Ink, Paint, Light and Texture. Each shows a real stroke of itself. Click one; it sets every brush setting but your colour.
+3. Under them are **19 brushes in five groups**: Sketch, Ink, Paint, Light and Texture. Each shows a real stroke of itself; rest the pointer on one and its stroke shows larger. Click one; it sets every brush setting but your colour.
+4. Last come **My brushes**, the brushes saved in this project (see "Save your own brush" below). Right-click one to **Rename** it (type, then Enter) or **Delete** it.
 
-![The brush panel beside the tool rail](pictures/brush-panel.png)
+![The brush panel beside the tool rail, with two saved brushes under My brushes](pictures/brush-panel.png)
 
-4. What you paint on depends on what is picked:
+5. What you paint on depends on what is picked:
    - **a shape, a text, a picture or a path**: the paint goes onto it, kept inside its outline. Strokes that go past the edge are simply not shown there. Its edge is drawn dashed so you can see what you are painting on.
    - **a drawing**: the paint goes onto the drawing.
    - **nothing**: **your first stroke makes a new drawing** and picks it. It is one step, so **Ctrl+Z** takes back the drawing and the stroke together.
-5. **Esc** steps back one level at a time: first the brush panel closes, then picked strokes are let go, then you are back on Move. **V** goes straight to Move.
+6. **Esc** steps back one level at a time: first the brush panel closes, then picked strokes are let go, then you are back on Move. **V** goes straight to Move.
 
 When the brush is on, the timeline shrinks to its compact height: the top strip, the ruler and only the drawing's own row. Click the button at the right end of the top strip to bring all the rows back; each tool remembers the height you last used with it.
 
@@ -53,6 +54,12 @@ The right-hand panel is headed "Painting", with the name and kind of what you pa
    - **Colour drift** and **Hue drift**.
    - **Wet (smudge)**, **Wetness** and **Pick up layers below**: the brush drags the paint under it.
 4. Under the brush, **Painting on** holds where the paint goes (part 6).
+
+### Save your own brush
+
+Once a brush is how you like it, click **+ Save this brush**: at the right of **‹ Back** on Edit brush, or beside **My brushes** in the brush panel. A name box opens in place with the brush's name; type a name and press **Enter** (**Esc** leaves it). The brush joins **My brushes** with a stroke of itself, and it is the brush you paint with. It keeps every setting but the colour, including a tip picture or paper you loaded. Saved brushes are kept in the project, so agents working on it see and use the same ones. (A document not yet saved in a project has nowhere to keep them, so the button is not there.)
+
+![Save this brush on Edit brush: the name box open](pictures/brush-save.png)
 
 ## 3. Draw a stroke
 
