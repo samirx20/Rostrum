@@ -11,7 +11,7 @@
 // asked: {stacked: {right, bottom}, side: {right, bottom}} (sizes set by hand, -1 = automatic; side.bottom = width)}.
 // Returns {kind, right, bottom (stacked: height; side: width), frameW, frameH}.
 
-var M = 16, INSP_MIN = 280, INSP_DEF = 300, INSP_MAX = 380, TL_MAX = 0.45, SIDE_TL = 520
+var M = 16, INSP_MIN = 280, INSP_DEF = 300, INSP_MAX = 380, TL_MAX = 0.45, SIDE_TL = 520, STACK_KEEP = 0.7
 
 function stacked(o, a) {
     var I = a.right >= 0 ? a.right : INSP_DEF, T = a.bottom >= 0 ? a.bottom : o.tlLeast
@@ -47,5 +47,5 @@ function side(o, a) {
 function solve(o) {
     var none = { right: -1, bottom: -1 }, asked = o.asked || {}
     var st = stacked(o, asked.stacked || none), sd = side(o, asked.side || none)
-    return sd.waste < st.waste ? sd : st
+    return st.frameH >= STACK_KEEP * sd.frameH || st.waste <= sd.waste ? st : sd
 }

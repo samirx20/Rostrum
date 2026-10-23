@@ -63,7 +63,7 @@ class Notices(QObject):
                 self._where = f"Full licence texts: {Path(given).with_name('NOTICES.txt')}"
             else:
                 self._data = generate(self.app)
-                self._where = "Development checkout: the installer ships the full licence texts as NOTICES.txt beside the app."
+                self._where = "The full licence texts come with the installed app, in NOTICES.txt beside it."
         return self._data
 
     @Property(str, constant=True)

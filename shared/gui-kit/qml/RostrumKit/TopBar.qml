@@ -131,7 +131,7 @@ Item {
             objectName: "projectName"
             property bool editing: false
             function rename() { editing = true; nameField.input.forceActiveFocus(); nameField.input.selectAll() }
-            color: !editing && tabArea.containsMouse ? Theme.hover : Theme.panel
+            color: editing ? Theme.panel : tabArea.containsMouse ? Theme.hover : "transparent"   // plain text at rest, as in Figma; a box only when hovered or renamed
             Text { id: tabLabel; anchors.fill: parent; anchors.leftMargin: Theme.pad; anchors.rightMargin: Theme.pad
                    visible: !tab.editing; verticalAlignment: Text.AlignVCenter; elide: Text.ElideMiddle
                    text: bar.documentName; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body

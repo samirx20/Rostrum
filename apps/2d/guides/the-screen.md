@@ -6,7 +6,7 @@ A tour of the window, from the top and round the edges. There is one workspace: 
 
 ## 1. The top bar
 
-1. The **≡** button at the far left opens the file menu (see [files.md](files.md)). Next to it are the app's name and the project's name.
+1. The **≡** button at the far left opens the file menu (see [files.md](files.md)). Next to it are the app's name and the project's name, plain text; click the name to rename the project.
 2. The line in the middle says what you did last, then "Saved · 3 changes" (click it for History). In a narrow window the count steps back to "Saved" so the message fits; if the message still doesn't fit, point at "Saved" to read it.
 3. The undo arrow comes next. It appears only when there is something to undo or redo. **Ctrl+Z** undoes; **Ctrl+Shift+Z** or **Ctrl+Y** redoes.
 4. The box that says "Search or run a command" is the **command box**. Press **Ctrl+K**, type a few letters of what you want, and pick it from the list. It lists only what you can do right now, with the shortcut beside each, and it acts on everything you have picked.
@@ -71,7 +71,7 @@ The whole list: Group, Ungroup, Clip to a box, Auto layout, Make swap set, Make 
 
 ## 5. The timeline is the layers list
 
-1. Along the bottom: one header row, then a row for each layer. The names on the left are your layers, newest on top; the bar beside each name shows when the layer is on screen, with its keys as diamonds.
+1. Along the bottom: one header row, then a row for each layer. The names on the left are your layers, newest on top; the bar beside each name shows when the layer is on screen, with its keys as diamonds (keys less than a diamond's width apart share one diamond with a second peeking out behind it; zoom in and they come apart).
 2. The header row has, over the layer names, the play button, the time (rest the pointer on it for the frame and the scene's length), the flag button **Add marker** (in a project folder), and **Keys** / **Curves**. Over the layer rows it is the ruler: drag on it to move through time. **Space** plays and stops.
 3. A name's small arrow folds or opens what is inside a layer: a group's layers, its keyed settings, its effects and masks.
 4. Click a name to pick the layer. **Ctrl+click** adds a layer to what is picked or takes it out, and **Shift+click** picks every layer from the last one you clicked to this one; a picked layer's name turns blue, with a thin blue line at its left, and its bar is drawn brighter with a blue outline. Double-click a name (or press **F2**) to rename it. A long name is cut short in the list; point at it to read it whole. Drag it up or down to change what sits in front, or onto a group to put it inside. A line shows where it will land.
@@ -79,7 +79,7 @@ The whole list: Group, Ungroup, Clip to a box, Auto layout, Make swap set, Make 
 6. Drag the middle of a bar to move the layer in time, and an end to trim it. When several layers are picked, dragging one picked bar moves all the picked bars together. Drag a diamond to move a key. They snap to the playhead and to markers. Click a diamond to change how that key eases; **Curves** shows the curves.
    - **Picking keys:** click a diamond to pick it, **Ctrl+click** to add another (on any layer) or take it out, **Shift+click** to pick every key between on that row. A diamond on a layer's bar stands for all that layer's keys at that moment. Drag one picked key and all of them move together, as one step. **Delete** removes the picked keys. **Esc** lets go of the keys first, then of the layers.
    - **A** opens the picked layers to show only their animated settings; **A** again folds them.
-7. **The timeline has two heights.** The full height shows every layer. The **compact** height shows only the header row and the picked layer's row, to give the picture the room; the name there is a menu of all your layers. Switch with the button at the right end of the ruler, or drag the timeline's top edge. Each tool remembers its own height: Select and Pen the full one, Brush the compact one, so picking a tool gives you the right amount of picture. Beside a tall or square frame the timeline has one height, so the button is not there.
+7. **The timeline has two heights.** The full height shows every layer. The **compact** height shows only the header row and the picked layer's row, to give the picture the room; the name there is a menu of all your layers. Switch with the button at the right end of the ruler, or drag the timeline's top edge. Each tool remembers its own height: Select and Pen the full one, Brush the compact one, so picking a tool gives you the right amount of picture. A tall or square frame (a phone-shaped 1080 × 1920 or 1080 × 1350 picture) keeps the timeline across the bottom, as After Effects does, as long as the picture stays a good size; only when that would shrink the picture too much does the timeline move up beside it, with one height and no button.
 
 ## 6. Markers
 

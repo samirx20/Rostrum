@@ -74,6 +74,14 @@ Item {
         x: ruler.x - 8; width: ruler.width + 16; height: parent.height; radius: Theme.radiusCtl; color: Theme.sunken
         clip: true
 
+        // a value label lies at the right edge; a key there (a curve that keys late) would sit on it: the label moves left of it
+        function clearOfKeys(x, y, w, h) {
+            for (const f of ed.shown) for (const k of f.keys) {
+                const kx = ed.px(k.t), ky = ed.py(f, k.v)
+                if (ky > y - 8 && ky < y + h + 8 && kx > x - 8 && kx < x + w + 8) x = Math.min(x, kx - w - 12)
+            }
+            return x
+        }
         Repeater {   // faint guides at the top, middle and bottom of the value range
             model: 3
             delegate: Rectangle { required property int index
@@ -84,12 +92,14 @@ Item {
             delegate: Item {
                 id: axis
                 required property var modelData
+                required property int index       // each curve's labels stand one step further left: two curves' values at one height never overprint
                 readonly property var vs: modelData.keys.map(k => k.v)
                 Repeater {
                     model: [Math.max(...axis.vs), Math.min(...axis.vs)]
                     delegate: Text {
                         required property real modelData
-                        x: plot.width - width - 10; y: ed.py(axis.modelData, modelData) - height - 3
+                        y: ed.py(axis.modelData, modelData) - height - 3
+                        x: plot.clearOfKeys(plot.width - width - 10 - axis.index * 36, y, width, height)   // at the right edge, never on a key
                         text: Math.round(modelData * 100) / 100; font.family: uiFont; font.pixelSize: Theme.label
                         color: axis.modelData.color; opacity: 0.8; font.features: { "tnum": 1 }
                     }

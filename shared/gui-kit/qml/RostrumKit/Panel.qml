@@ -14,6 +14,7 @@ Rectangle {
     property alias sheets: sheetSlot.data
     readonly property bool sheetShown: { for (const c of sheetSlot.children) if (c.visible) return true; return false }
     property int bodyPad: Theme.pad
+    property int bodyRight: bodyPad          // the body's right margin (a sheet in the settings column: Theme.fieldEdge)
     color: Theme.panel
     radius: Theme.radiusPanel
     clip: true
@@ -40,7 +41,7 @@ Rectangle {
         visible: !panel.sheetShown
         anchors { left: parent.left; right: parent.right; top: header.bottom; bottom: parent.bottom
                   topMargin: header.height > 0 ? 0 : panel.bodyPad
-                  leftMargin: panel.bodyPad; rightMargin: panel.bodyPad; bottomMargin: panel.bodyPad }
+                  leftMargin: panel.bodyPad; rightMargin: panel.bodyRight; bottomMargin: panel.bodyPad }
     }
     property var _wired: []                 // one sheet at a time: a sheet that shows closes the others (their close())
     Item {
