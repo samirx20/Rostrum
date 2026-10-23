@@ -152,3 +152,4 @@ Every third-party library, model, asset source and tool that ships in or is down
 | protobuf | 7.36.2 | BSD-3-Clause | Sound: onnxruntime's dependency | Python package | ships | Keep the notice | https://github.com/protocolbuffers/protobuf |
 | flatbuffers | 25.12.19 | Apache-2.0 | Sound: onnxruntime's dependency | Python package | ships | Keep the notice | https://github.com/google/flatbuffers |
 | tomlkit | 0.15.2 | MIT | rostrum_connect (shared/mcp): edits Codex's config.toml keeping the person's comments and layout | Python import | ships | Keep the MIT notice | https://github.com/python-poetry/tomlkit |
+| Built-in tip and paper pictures (sponge, speckle, streaks, ragged, charcoal; canvas, cold press, laid, rough) | 2026-10-23 | MIT (our own: made by code in `shared/painting-kit/rostrum_paint/pictures.py`, no downloaded image) | Painting kit (Rostrum2D brushes) | data (generated at run time) | ships | Nothing beyond our licence | this repo |

@@ -78,6 +78,9 @@ pub fn coverage(st: &Stroke, d: &Dab, across: &[f64], x: usize, y: usize) -> (f6
     if matches!(st.tip, Tip::Bristle | Tip::Flat) {
         a *= across[idx];
     }
+    if let Some(t) = st.tex {
+        a *= texture(t, st.tex_n, u / along, vv);
+    }
     a *= d.a;
     if let Some(g) = st.grain {
         let tg = g as f32 * (1.0f32 - st.paper_g.expect("grain has its paper")[y * st.w + x]);
@@ -87,4 +90,15 @@ pub fn coverage(st: &Stroke, d: &Dab, across: &[f64], x: usize, y: usize) -> (f6
         a *= m[y * st.w + x] as f64;
     }
     (a, idx)
+}
+
+/// brush.py `_texture`: the tip picture under the dab, bilinear (u along the tip, v across, -1..1 each), in f64 as
+/// numpy's (the picture's f32 values widened).
+fn texture(t: &[f32], n: usize, u: f64, v: f64) -> f64 {
+    let fx = (u.max(-1.0).min(1.0) + 1.0) * (n - 1) as f64 / 2.0;
+    let fy = (v.max(-1.0).min(1.0) + 1.0) * (n - 1) as f64 / 2.0;
+    let (x0, y0) = ((fx as i32 as usize).min(n - 2), (fy as i32 as usize).min(n - 2));
+    let (gx, gy) = (fx - x0 as f64, fy - y0 as f64);
+    let at = |y: usize, x: usize| t[y * n + x] as f64;
+    (at(y0, x0) * (1.0 - gx) + at(y0, x0 + 1) * gx) * (1.0 - gy) + (at(y0 + 1, x0) * (1.0 - gx) + at(y0 + 1, x0 + 1) * gx) * gy
 }

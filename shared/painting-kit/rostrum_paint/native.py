@@ -15,7 +15,7 @@ import numpy as np
 
 from .marks import ALONG, MODES, TIPS, Coverage
 
-LAYOUT, PARAMS, DAB = 1.0, 20, 21           # apps/2d/engine/stamp/src/lib.rs: the same numbers
+LAYOUT, PARAMS, DAB = 2.0, 21, 21           # apps/2d/engine/stamp/src/lib.rs: the same numbers
 _NAME = {"nt": "rostrum2d_stamp.dll", "posix": "librostrum2d_stamp.dylib"}[os.name]
 _LIB = None
 
@@ -35,7 +35,7 @@ def _lib():
         lib = ctypes.CDLL(str(path))
         f = lib.rostrum2d_stamp_dabs
         f.restype = ctypes.c_int32
-        f.argtypes = [ctypes.c_void_p] * 2 + [ctypes.c_size_t] + [ctypes.c_void_p] * 7 + [ctypes.c_size_t,
+        f.argtypes = [ctypes.c_void_p] * 2 + [ctypes.c_size_t] + [ctypes.c_void_p] * 8 + [ctypes.c_size_t,
                                                                                          ctypes.c_char_p, ctypes.c_size_t]
         _LIB = lib
     return _LIB
@@ -70,7 +70,8 @@ def lay(layer, P, mask=None, under=None):
     bx0, by0, bx1, by1 = P.bbox
     grain = float(P.grain) if P.G is not None and P.grain > 0 else 0.0
     params = np.array([LAYOUT, TIPS.index(P.tip), MODES.index(P.mode), P.Kr, P.soft, ALONG[P.tip], P.cj, P.wet,
-                       P.sample_all, grain, P.R[0], P.R[-1], P.L[-1], bx0, by0, bx1, by1, P.D, H, W], np.float64)
+                       P.sample_all, grain, P.R[0], P.R[-1], P.L[-1], bx0, by0, bx1, by1, P.D, H, W,
+                       0 if P.tex is None else P.tex.shape[0]], np.float64)
     col = lambda a: np.asarray(a, np.float64).reshape(P.n, -1)  # noqa: E731
     weak = [type(k[1]) is float for k in P.wetk]                    # numpy takes up a Python float in f32
     rows = np.ascontiguousarray(np.hstack([col(P.X), col(P.Y), col(P.R), col(P.A), col(P.cs), col(P.t), col(P.S),
@@ -88,6 +89,7 @@ def lay(layer, P, mask=None, under=None):
     code = _lib().rostrum2d_stamp_dabs(_ptr(params), _ptr(rows), P.n, _ptr(prof), _ptr(layer), _ptr(cov),
                                        _ptr(_f32(mask, (H, W))), _ptr(_f32(P.G, (H, W)) if grain else None),
                                        _ptr(_f32(P.F, (H, W)) if P.tip == "chalk" else None),
+                                       _ptr(None if P.tex is None else _f32(P.tex, (P.tex.shape[0],) * 2)),
                                        _ptr(under) if P.sample_all else None, under_row, err, len(err))
     if code:
         raise RuntimeError(f"the native stamper refused a stroke: {err.value.decode('utf-8', 'replace')}")

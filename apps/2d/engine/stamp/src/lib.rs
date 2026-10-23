@@ -2,10 +2,11 @@
 //! random draws and the tip profiles stay in numpy) laid into a layer with the same pixels as numpy's, bit for bit, so
 //! the kit's replay and cache stay exact whichever lays them. The Python side is the kit's `native.py` (ctypes).
 //!
-//! `rostrum2d_stamp_dabs(params, dabs, n, profiles, layer, cov, mask, paper_g, paper_f, under, under_row, err, err_len)`:
+//! `rostrum2d_stamp_dabs(params, dabs, n, profiles, layer, cov, mask, paper_g, paper_f, tex, under, under_row, err,
+//! err_len)`:
 //! `params` (P_* below), `dabs` n rows of D_* f64, `profiles` four rows of `kr` f64 (prof, start, end, streak), `layer`
 //! H×W×4 f32 changed in place, `cov` the stroke's bbox of f32 zeros (filled), `mask` / `paper_g` / `paper_f` H×W f32
-//! or null, `under` the composite below (RGB f32, `under_row` floats a row, 4 a pixel) or null. 0, or 1 with a
+//! or null, `tex` the tip picture (P_TEX x P_TEX f32) or null, `under` the composite below (RGB f32, `under_row` floats a row, 4 a pixel) or null. 0, or 1 with a
 //! message in `err`.
 
 mod paint;
@@ -15,7 +16,7 @@ use paint::Mode;
 use tip::Tip;
 
 /// The layout of `params` and `dabs` (the kit's native.py writes the same); a stamper of another layout refuses.
-pub const LAYOUT: f64 = 1.0;
+pub const LAYOUT: f64 = 2.0;
 const P_LAYOUT: usize = 0;
 const P_TIP: usize = 1;
 const P_MODE: usize = 2;
@@ -33,7 +34,8 @@ const P_BBOX: usize = 13; // x0, y0, x1, y1
 const P_D: usize = 17;
 const P_H: usize = 18;
 const P_W: usize = 19;
-pub const PARAMS: usize = 20;
+const P_TEX: usize = 20; // the tip picture's side; 0: none
+pub const PARAMS: usize = 21;
 pub const DAB: usize = 21; // x y r a cos sin t s lay take take_weak wv x0 x1 y0 y1 oy ox r g b
 
 pub struct Stroke<'a> {
@@ -57,6 +59,9 @@ pub struct Stroke<'a> {
     pub mask: Option<&'a [f32]>,
     pub paper_g: Option<&'a [f32]>,
     pub paper_f: Option<&'a [f32]>,
+    /// The tip picture (`tex_n` square, rows across the tip), or none.
+    pub tex: Option<&'a [f32]>,
+    pub tex_n: usize,
 }
 
 /// One dab's numbers (a row of `dabs`).
@@ -96,7 +101,7 @@ pub use stroke::lay;
 
 /// Reads `params` into a Stroke (the slices borrowed from the caller's arrays).
 #[allow(clippy::too_many_arguments)]
-unsafe fn stroke<'a>(p: &[f64], profiles: *const f64, mask: *const f32, g: *const f32, f: *const f32) -> Result<Stroke<'a>, String> {
+unsafe fn stroke<'a>(p: &[f64], profiles: *const f64, mask: *const f32, g: *const f32, f: *const f32, tex: *const f32) -> Result<Stroke<'a>, String> {
     if p[P_LAYOUT] != LAYOUT {
         return Err(format!("the native stamper reads layout {LAYOUT}, was given {}", p[P_LAYOUT]));
     }
@@ -104,6 +109,7 @@ unsafe fn stroke<'a>(p: &[f64], profiles: *const f64, mask: *const f32, g: *cons
     let prof = std::slice::from_raw_parts(profiles, 4 * kr);
     let field = |q: *const f32| (!q.is_null()).then(|| std::slice::from_raw_parts(q, hw));
     let grain = (p[P_GRAIN] > 0.0).then_some(p[P_GRAIN]);
+    let tex_n = p[P_TEX] as usize;
     let st = Stroke {
         tip: Tip::from_id(p[P_TIP]).ok_or("unknown tip")?,
         mode: Mode::from_id(p[P_MODE]).ok_or("unknown mode")?,
@@ -111,7 +117,11 @@ unsafe fn stroke<'a>(p: &[f64], profiles: *const f64, mask: *const f32, g: *cons
         r0: p[P_R0], rl: p[P_RL], length: p[P_LENGTH], w: p[P_W] as usize,
         prof: &prof[..kr], start: &prof[kr..2 * kr], end: &prof[2 * kr..3 * kr], streak: &prof[3 * kr..],
         mask: field(mask), paper_g: field(g), paper_f: field(f),
+        tex: (!tex.is_null() && tex_n >= 2).then(|| std::slice::from_raw_parts(tex, tex_n * tex_n)), tex_n,
     };
+    if tex_n > 0 && st.tex.is_none() {
+        return Err("a tip picture needs its pixels (and a side of 2 or more)".into());
+    }
     if (st.grain.is_some() && st.paper_g.is_none()) || (st.tip == Tip::Chalk && st.paper_f.is_none()) {
         return Err("grain and chalk need the paper".into());
     }
@@ -124,12 +134,12 @@ unsafe fn stroke<'a>(p: &[f64], profiles: *const f64, mask: *const f32, g: *cons
 #[allow(clippy::too_many_arguments)]
 pub unsafe extern "C" fn rostrum2d_stamp_dabs(
     params: *const f64, dabs: *const f64, n: usize, profiles: *const f64, layer: *mut f32, cov: *mut f32,
-    mask: *const f32, paper_g: *const f32, paper_f: *const f32, under: *const f32, under_row: usize,
+    mask: *const f32, paper_g: *const f32, paper_f: *const f32, tex: *const f32, under: *const f32, under_row: usize,
     err: *mut u8, err_len: usize,
 ) -> i32 {
     let p = std::slice::from_raw_parts(params, PARAMS);
     let run = || -> Result<(), String> {
-        let st = stroke(p, profiles, mask, paper_g, paper_f)?;
+        let st = stroke(p, profiles, mask, paper_g, paper_f, tex)?;
         let (h, w) = (p[P_H] as usize, p[P_W] as usize);
         let bbox = [P_BBOX, P_BBOX + 1, P_BBOX + 2, P_BBOX + 3].map(|k| p[k] as usize);
         let layer = std::slice::from_raw_parts_mut(layer, h * w * 4);

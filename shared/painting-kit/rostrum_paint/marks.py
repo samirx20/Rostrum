@@ -14,7 +14,8 @@ ALONG = {"round": 1.0, "chalk": 1.0, "line": 1.0, "bristle": 0.4, "flat": 0.3, "
 PARAMS = dict(opacity=1.0, hardness=0.5, spacing=0.1, jitter=0.0, seed=0, angle=None, wet=0.0,
               sample_all=False, grain=0.0, mode="normal", color_jitter=0.04, hue_jitter=0.0,
               size_pressure=0.8, opacity_pressure=0.3, steady=0.0, tilt_angle=0.0, tilt_size=0.0,
-              taper_start=0.0, taper_end=0.0, size_jitter=0.0, angle_jitter=0.0)
+              taper_start=0.0, taper_end=0.0, size_jitter=0.0, angle_jitter=0.0, even=False, texture="none")
+EVEN = 0.13   # even soft edge: a dab every EVEN * sqrt(radius * edge width) px at most (ridges under ~1.5/255)
 
 
 class Coverage(NamedTuple):
@@ -44,11 +45,17 @@ def _up(p, n):
 
 
 class Paper:
-    """Paper / canvas tooth shared by every stroke of a document (lazy, deterministic)."""
-    def __init__(self, h, w, seed=0, size=3.0):
+    """Paper / canvas tooth shared by every stroke of a document (lazy, deterministic): the engine's own procedural
+    tooth, or `picture` (a pictures.PAPERS name) tiled over the canvas at `scale`. Either is fixed to the canvas."""
+    def __init__(self, h, w, seed=0, size=3.0, picture="tooth", scale=1.0):
         self.h, self.w, self.seed, self.size, self._g = h, w, seed, size, None
+        self.picture, self.scale = picture, scale
 
     def fields(self):
+        if self._g is None and self.picture != "tooth":
+            from .pictures import paper_tile, tiled
+            g = tiled(paper_tile(self.picture), self.h, self.w, self.scale)
+            self._g = (g, g)
         if self._g is None:
             rng, s = np.random.default_rng(self.seed), self.size
             g = 0.6 * _noise(self.h, self.w, s, rng) + 0.4 * _noise(self.h, self.w, s * 4, rng)

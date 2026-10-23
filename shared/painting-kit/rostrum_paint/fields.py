@@ -10,6 +10,7 @@ from __future__ import annotations
 from rostrum_core import Param
 
 from .marks import MODES, TIPS
+from .pictures import PAPERS, TEXTURES
 
 LAYER_MODES = ("normal", "multiply", "screen", "add")
 CANVAS_LISTS = ["paints", "paintmasks"]                  # a host's canvas type holds these
@@ -17,7 +18,9 @@ LISTS = {"paint": ["strokes"], "stroke": [], "fill": [], "paintmask": []}
 HOLDS = {"paints": ("paint",), "strokes": ("stroke", "fill"), "paintmasks": ("paintmask",)}   # a fill is laid in order too
 P, S, D = "primary", "secondary", "deep"
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
-TURNS = {"not": {"any": [IS("brush", t) for t in ("round", "chalk", "line")]}}   # tips whose turn shows
+GRAINY = {"any": [IS("brush", "chalk"), {"not": IS("grain", 0.0)}]}   # the paper shows: chalk, or any grain
+TURNS = {"any": [{"not": {"any": [IS("brush", t) for t in ("round", "chalk", "line")]}},   # tips whose turn shows,
+                 {"not": IS("texture", "none")}]}                                         # or a tip picture's
 
 
 def N(name, label, lo, hi, step, default, imp=P, unit="", when=None, group="Brush", integer=False, help="", display=""):
@@ -37,6 +40,8 @@ BRUSH = [
                  help="round, bristle (dry brush), chalk, flat, block (square block-in), line (crisp thin line)"),
     A("opacity", "Opacity", 1.0),
     A("hardness", "Hardness", 0.5, help="0 = soft edge, 1 = hard edge"),
+    Param.choice("texture", TEXTURES, label="Tip picture", group="Brush", default="none", importance=D,
+                 help="A picture as the tip's shape (sponge, speckle, streaks, ragged, charcoal); it turns with the tip"),
     Param.choice("mode", MODES, label="Mode", group="Brush", default="normal", importance=S,
                  help="normal paints over, multiply glazes, erase removes, screen / add paint light"),
     A("size_pressure", "Pressure → size", 0.8, group="Pen"),
@@ -47,12 +52,17 @@ BRUSH = [
     N("taper_start", "Taper start", 0, 20, 0.1, 0.0, D, group="Pen", help="Starts thin over this many tip sizes"),
     N("taper_end", "Taper end", 0, 20, 0.1, 0.0, D, group="Pen", help="Ends thin over this many tip sizes"),
     N("spacing", "Spacing", 0.02, 2, 0.01, 0.1, D, help="Distance between dabs, in tip lengths"),
+    Param.toggle("even", label="Even soft edge", group="Brush", default=True, importance=D,
+                 help="Dabs come closer the softer the tip, so a soft stroke stays smooth (no rings)"),
     N("jitter", "Scatter", 0, 2, 0.01, 0.0, D, help="Dabs wander off the path, in tip sizes"),
     A("size_jitter", "Size jitter", 0.0, D, help="Each dab up to this much smaller, at random"),
     N("angle_jitter", "Angle jitter", 0, 180, 1, 0.0, D, "°", TURNS, help="Each dab turned up to this much, at random"),
     Param.toggle("follow", label="Tip turns with the stroke", group="Brush", default=True, importance=D),
     N("angle", "Tip angle", -360, 360, 1, 0.0, D, "°", IS("follow", False)),
     A("grain", "Paper grain", 0.0, D, help="How much the paper's tooth breaks up the paint"),
+    Param.choice("paper", PAPERS, label="Paper", group="Brush", default="tooth", importance=D, valid_when=GRAINY,
+                 help="The paper's tooth; it stays put on the canvas (or moves with the layer), never with the stroke"),
+    N("paper_scale", "Paper scale", 0.25, 4, 0.05, 1.0, D, when=GRAINY, help="How big the paper's tooth is"),
     A("color_jitter", "Colour drift", 0.04, D, group="Colour drift"),
     N("hue_jitter", "Hue drift", 0, 180, 0.5, 0.0, D, "°", group="Colour drift"),
     Param.toggle("smudge", label="Wet (smudge)", group="Wet", default=False, importance=D,

@@ -12,7 +12,8 @@ from types import SimpleNamespace
 import numpy as np
 
 from . import shape as shaping
-from .marks import ALONG, K, MODES, PARAMS, TIPS, Coverage, Paper, _noise1, _ss, _up, apply_paint
+from . import pictures
+from .marks import ALONG, EVEN, K, MODES, PARAMS, TIPS, Coverage, Paper, _noise1, _ss, _up, apply_paint
 
 
 def check(brush, params):
@@ -23,6 +24,8 @@ def check(brush, params):
         raise ValueError(f"brush must be one of {TIPS}, got {brush!r}")
     if params.get("mode", "normal") not in MODES:
         raise ValueError(f"mode must be one of {MODES}, got {params['mode']!r}")
+    if params.get("texture", "none") not in pictures.TEXTURES:
+        raise ValueError(f"texture must be one of {pictures.TEXTURES}, got {params['texture']!r}")
 
 
 def stamp_stroke(layer, points, color, size, brush="round", *, mask=None, under=None, paper=None, lay=None, **params):
@@ -52,6 +55,9 @@ def plan(shape, points, color, size, tip, paper, params):
     seg = np.hypot(*np.diff(pts[:, :2], axis=0).T) if len(pts) > 1 else np.zeros(0)
     L = np.concatenate([[0], np.cumsum(seg)])
     step = max(0.3 if tip == "line" else 0.5, p["spacing"] * size * ALONG[tip] * (0.6 if wet > 0 else 2))
+    if p["even"] and tip not in ("line", "block"):   # a soft edge shows the dabs as ridges unless they come closer
+        r0 = size / 2
+        step = min(step, max(0.5, EVEN * math.sqrt(r0 * max(1.0, (1 - p["hardness"]) * r0))))
     t = [0.0]
     while t[-1] < L[-1]:
         pr = np.interp(t[-1], L, pts[:, 2])
@@ -110,7 +116,7 @@ def plan(shape, points, color, size, tip, paper, params):
             lt = math.hypot(X[i] - X[i - 1], Y[i] - Y[i - 1]) / (2 * R[i] * ALONG[tip]) if i else 0
             wetk.append((1 - (1 - 0.97 * wet) ** max(lt, 0.05), 1 - (0.6 * wet) ** max(lt, 0.05)))
         at = np.stack([np.round(Y).astype(int) - D // 2, np.round(X).astype(int) - D // 2], 1)
-    return SimpleNamespace(tip=tip, mode=p["mode"], wet=wet, cj=cj, sample_all=bool(p["sample_all"]),
+    return SimpleNamespace(tip=tip, mode=p["mode"], tex=pictures.tip(p["texture"]), wet=wet, cj=cj, sample_all=bool(p["sample_all"]),
                            grain=p["grain"], soft=soft, n=n, X=X, Y=Y, R=R, A=A, t=t, S=S, L=L, Kr=Kr, prof=prof,
                            start=start, end=end, streak=streak, wv=wv, cols=cols, G=G, F=F,
                            bbox=(bx0, by0, bx1, by1), D=D, box=box, cs=cs, wetk=wetk, at=at)
@@ -124,6 +130,18 @@ def _hsv_to_rgb(h, s, v):
     i = i.astype(int) % 6
     pick = lambda *c: np.choose(i, c)  # noqa: E731
     return np.stack([pick(v, q, p, p, t, v), pick(t, v, v, q, p, p), pick(p, p, t, v, v, q)], 1)
+
+
+def _texture(T, u, v):
+    """The tip picture under the dab (bilinear; u along the tip, v across, -1..1 each). The native stamper repeats
+    these steps in the same order and precision."""
+    n = T.shape[0]
+    fx = (np.clip(u, -1, 1) + 1) * (n - 1) / 2
+    fy = (np.clip(v, -1, 1) + 1) * (n - 1) / 2
+    x0, y0 = np.minimum(fx.astype(np.int32), n - 2), np.minimum(fy.astype(np.int32), n - 2)
+    gx, gy = fx - x0, fy - y0
+    return ((T[y0, x0] * (1 - gx) + T[y0, x0 + 1] * gx) * (1 - gy)
+            + (T[y0 + 1, x0] * (1 - gx) + T[y0 + 1, x0 + 1] * gx) * gy)
 
 
 def dabs(layer, P, mask=None, under=None):
@@ -162,6 +180,8 @@ def dabs(layer, P, mask=None, under=None):
                  * _ss((P.L[-1] + ALONG[tip] * R[-1] - end[idx] * R[-1] - al) / ew) * prof[idx])
         if tip in ("bristle", "flat"):
             a = a * (prof * _ss((S[i] - start) / 0.06) * _ss((1 - end - S[i]) / 0.06))[idx]
+        if P.tex is not None:
+            a = a * _texture(P.tex, u / ALONG[tip], vv)
         a = a * P.A[i]
         if G is not None and P.grain > 0:
             tg = P.grain * (1 - G[y0:y1, x0:x1])
