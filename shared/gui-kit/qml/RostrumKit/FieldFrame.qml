@@ -101,7 +101,7 @@ FocusScope {
         Timer { running: f.problem !== ""; interval: 4000; onTriggered: f.problem = "" }
     }
     Text {  // the unit sits right after the value, dim
-        visible: f.suffix !== "" && input.text !== ""
+        visible: f.suffix !== "" && input.text !== "" && f.atRest === ""   // words at rest ("Mixed") stand alone: no unit after them
         x: input.x + Math.min(input.contentWidth, input.width) + (/^[a-z]/i.test(f.suffix) ? 4 : 1)
         anchors.verticalCenter: parent.verticalCenter
         text: f.suffix; color: Theme.fg3; font: input.font
