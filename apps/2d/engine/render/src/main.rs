@@ -24,6 +24,7 @@ mod motion;
 mod nv12;
 mod painter;
 mod pixels;
+mod profile;
 mod place;
 mod readback;
 mod restage;

@@ -544,6 +544,9 @@ impl SkiaScenePainter<'_> {
                     self.cache.paint.set_color4f(c, &ColorSpace::new_srgb());
                 }
             }
+            anyrender::Paint::Gradient(_) if skips("gradient") => {
+                self.cache.paint.set_color4f(skia_safe::Color4f::new(0.5, 0.5, 0.5, 0.5), None);
+            }
             anyrender::Paint::Gradient(gradient) => {
                 self.cache
                     .paint
@@ -1068,7 +1071,7 @@ impl PaintScene for SkiaScenePainter<'_> {
         }
         // Rostrum patch (E3): each glow is the content blurred, added; then the content itself.
         let plus = peniko::BlendMode::new(peniko::Mix::Normal, peniko::Compose::Plus);
-        for (glow, strength, clip) in &cap.glows {
+        for (glow, strength, clip) in cap.glows.iter().filter(|_| !skips("glow")) {
             self.draw_capture(&cap, &src, *strength, plus, Some(glow), Some(*clip));
         }
         match (cap.glows.is_empty(), cap.body_clip) {
@@ -1259,6 +1262,9 @@ fn lerp_f32(a: f32, b: f32, t: f32) -> f32 {
 fn gaussian_blur(sigma: f32, input: Option<ImageFilter>) -> Option<ImageFilter> {
     use skia_safe::{image_filters, FilterMode, Matrix, MipmapMode, SamplingOptions};
     const FULL_RATE_SIGMA: f32 = 8.0;
+    if skips("blur") {
+        return input;
+    }
     let mut levels = 0;
     while sigma / (1u32 << levels) as f32 > FULL_RATE_SIGMA && levels < 6 {
         levels += 1;
@@ -1274,6 +1280,14 @@ fn gaussian_blur(sigma: f32, input: Option<ImageFilter>) -> Option<ImageFilter> 
     let k = (1u32 << levels) as f32;
     f = image_filters::blur((sigma / k, sigma / k), None, f, None);
     image_filters::matrix_transform(&Matrix::scale((k, k)), linear, f)
+}
+
+/// Rostrum patch (E5), measurement only: `ROSTRUM2D_PROFILE_SKIP=glow,blur,gradient` leaves those effects out of
+/// every paint (gradients become a flat half-grey, blurs nothing) to time what they cost. The pictures are wrong on
+/// purpose; unset, nothing changes.
+fn skips(what: &str) -> bool {
+    static SKIP: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    SKIP.get_or_init(|| std::env::var("ROSTRUM2D_PROFILE_SKIP").unwrap_or_default()).split(',').any(|w| w.trim() == what)
 }
 
 thread_local! {
