@@ -16,7 +16,7 @@ from . import fields as F
 from .kind import REGISTRY as R
 from .ops_items import LAYER_HOLDERS
 
-LAYER_LINKS = ("matte", "pathLayer")      # fields naming another layer by id (fields.py); kept only within the paste
+LAYER_LINKS = ("matte", "pathLayer", "ridePath")      # fields naming another layer by id (fields.py); kept only within the paste
 
 
 def copied(data: dict, lists: dict, ids_: list[str]) -> list[dict]:

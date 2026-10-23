@@ -17,6 +17,8 @@ use Kind::*;
 pub type Field = (&'static str, Kind);
 
 const SHAPES: &[&str] = &["rect", "ellipse"];
+/// Where a rider sits on its path (super::follow `ride`): the drawn-on tip, the trim's start, or `rideAlong`.
+const RIDE_AT: &[&str] = &["end", "start", "along"];
 
 const TRANSFORM: &[Field] = &[
     ("x", Number), ("y", Number), ("scale", Number), ("rotation", Number), ("opacity", Number),
@@ -29,6 +31,8 @@ const TRANSFORM_AFTER_BLEND: &[Field] = &[
     ("depth", Number), ("screenLock", Toggle),
     // A track matte (super::matte): a sibling layer's id ("" = none) and how its drawing is read.
     ("matte", Text), ("matteMode", Choice(super::matte::MODES)),
+    // Riding a path layer beside it (super::follow): its id ("" = none), where on it, and turning with it.
+    ("ridePath", Text), ("rideAt", Choice(RIDE_AT)), ("rideAlong", Number), ("rideTurn", Toggle),
     // Colour effects (super::grade): adjust, levels, curves (points as text, "x,y x,y …"), a .cube LUT ("" = none).
     ("adjust", Toggle), ("exposure", Number), ("contrast", Number), ("saturation", Number), ("temperature", Number),
     ("tint", Number), ("hue", Number),
@@ -44,7 +48,7 @@ fn transform() -> impl Iterator<Item = Field> {
 
 const COMP: &[Field] = &[("width", Number), ("height", Number), ("fps", Number), ("duration", Number), ("background", Color)];
 const SHAPE: &[Field] = &[
-    ("shape", Choice(SHAPES)), ("w", Number), ("h", Number), ("radius", Number), ("fill", Color),
+    ("shape", Choice(SHAPES)), ("w", Number), ("h", Number), ("radius", Number), ("filled", Toggle), ("fill", Color),
     ("stroke", Toggle), ("strokeColor", Color), ("strokeWidth", Number),
 ];
 const TEXT: &[Field] = &[

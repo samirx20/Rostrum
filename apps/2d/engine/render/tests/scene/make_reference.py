@@ -14,7 +14,7 @@ from rostrum2d.evaluate import resolve
 from rostrum2d.scene import FORMAT, VERSION, python_only
 
 HERE = Path(__file__).with_name("reference.json")
-SCENE_TYPES = [t for t in F.FIELDS if t not in ("key", "frame", "pose", "render3d")]  # a drawing's frame, a saved pose: document items, not scene ones; a 3D render reaches the engine as a video (scene.py)
+SCENE_TYPES = [t for t in F.FIELDS if t not in ("key", "frame", "pose", "render3d", "textstyle")]  # a drawing's frame, a saved pose, a named text style: document items, not scene ones; a 3D render reaches the engine as a video (scene.py)
 
 
 def item(id, type, anim=None, **props):

@@ -88,8 +88,8 @@ def test_untouched_items_follow_the_script_including_delete_and_reorder():
     out["layers"] = [l for l in out["layers"] if l["id"] != "logo"]
     r = doc.run_script("intro.py", out, SCRIPT)
     assert not doc.has("logo")
-    assert r.removed == [{"id": "logo", "type": "rect"}] and "removed: logo (rect)" in r.summary()     # the reply names what went
-    assert any("Removed \"logo\"" in w for w in r.warnings())
+    assert r.removed == [{"id": "logo", "type": "rect"}] and "removed 1 rect (first: logo)" in r.summary()     # the reply names what went
+    assert any("Removed 1 rect (first: logo)" in w for w in r.warnings())
 
 
 def test_bad_script_value_is_refused_whole():

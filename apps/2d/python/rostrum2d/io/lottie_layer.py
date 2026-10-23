@@ -66,6 +66,8 @@ def common(node: dict, ctx: Ctx, ty: int, ind: int, extra_masks: list[dict] = ()
         if pr[key] != 0 or key in node.get("anim", {}):
             ctx.say("2.5D tilt is not in Lottie; the layer is drawn flat")
             break
+    if pr.get("ridePath"):
+        ctx.say(f'riding the path "{pr["ridePath"]}" is not exported; the layer sits at its own X, Y (its offset from the path)')
     for fx in node.get("effects", []):             # a gradient is a fill (lottie_shapes / lottie_text); any other is said
         if fx["type"] != "gradient":
             ctx.say(f'{EFFECT_SAYS.get(fx["type"], fx["type"])} effect is not exported (Lottie players ignore effects)')

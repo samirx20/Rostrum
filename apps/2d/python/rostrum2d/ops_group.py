@@ -25,7 +25,8 @@ HOLDERS = ("comp", "group", "rig")          # what layers can be wrapped inside 
 PLACE = ("x", "y", "scale", "rotation", "opacity", "anchorX", "anchorY", "scaleX", "scaleY")
 PLAIN = {"blend": "normal", "matte": "", "depth": 0.0, "screenLock": False, "clip": False, "layout": "none", "swap": False,
          "start": 0.0, "end": END_OF_COMP, FIELD: "", END: "", "tiltX": 0.0, "tiltY": 0.0,
-         "adjust": False, "levels": False, "curves": False, "lut": ""}       # what a group may have and still be released
+         "adjust": False, "levels": False, "curves": False, "lut": "", "ridePath": ""}   # what a group may have and still be released
+PATH_LINKS = ("pathLayer", "ridePath")      # a text following / a layer riding a path layer: it must stay beside it (follow.py)
 AT = Param.number("at", label="Measured at", min=0, max=36000, unit=" s", importance="deep",
                   help="The time (own seconds) the layers' box is measured at; 0 when left out")
 
@@ -63,6 +64,9 @@ def make_group(ctx, ids: list[str], type_: str, name: str, args: dict) -> str:
             ctx.fail(codes.BAD_ARGUMENT, f'target "{it["id"]}"', "is a camera; it stays on the composition")
         if it.get("matte") and it["matte"] not in ids:
             ctx.fail(codes.BAD_ARGUMENT, f'target "{it["id"]}"', f'is seen through the matte "{it["matte"]}", which is not selected too')
+        for link in PATH_LINKS:
+            if it.get(link) and it[link] not in ids:
+                ctx.fail(codes.BAD_ARGUMENT, f'target "{it["id"]}"', f'follows the path layer "{it[link]}", which is not selected too')
         for p in ("x", "y"):
             if source_of(it, p):
                 ctx.fail(codes.CONFLICT, f'{it["id"]}.{p}', f"is driven by an expression ({source_of(it, p)}), which would no longer fit",
@@ -70,6 +74,9 @@ def make_group(ctx, ids: list[str], type_: str, name: str, args: dict) -> str:
     for sib in parent["layers"]:
         if sib["id"] not in ids and sib.get("matte") in ids:
             ctx.fail(codes.BAD_ARGUMENT, f'target "{sib["matte"]}"', f'is the matte of "{sib["id"]}", which is not selected too')
+        for link in PATH_LINKS:
+            if sib["id"] not in ids and sib.get(link) in ids:
+                ctx.fail(codes.BAD_ARGUMENT, f'target "{sib[link]}"', f'is the path "{sib["id"]}" follows, which is not selected too')
     x0, y0, x1, y1 = (f(v) for f, v in zip((min, min, max, max), zip(*(boxes.box(it, args.get("at", 0.0)) for it in items))))
     w, h = max(x1 - x0, 1.0), max(y1 - y0, 1.0)
     group = new_item(ctx, type_, {k: v for k, v in args.items() if k == "id"} | {"name": unique_name(_names(ctx), name)})

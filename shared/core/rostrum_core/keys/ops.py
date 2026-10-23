@@ -17,6 +17,7 @@ from ..params import Param
 from ..tree import index
 from .easing import NAMES as EASES
 from .evaluate import key_value, keys_of, track_value
+from .fields import KEY_FIELDS
 from .marked import id_part, marked, order, same_time
 
 TIME = dict(min=0, max=36000, unit="s")                         # a moment to read or set a value at
@@ -26,6 +27,23 @@ C = Param.color("c", label="Colour", help="For a colour field")
 EASE = Param.choice("ease", EASES, label="Ease", help="Shapes the way to the next key")
 FROM = Param.text("from", label="From", importance="deep",
                   help="Optional words on where the key came from (lip sync: the sound it was made from)")
+# the curve of a key, as fields: a custom ease's handles, a spring's bounce and speed (each valid only for its ease)
+SHAPE_EASE = {"x1": "custom", "y1": "custom", "x2": "custom", "y2": "custom", "bounce": "spring", "speed": "spring"}
+SHAPE = [p for p in KEY_FIELDS if p.name in SHAPE_EASE]
+
+
+def checked_shape(ctx, args: dict, ease, where: str) -> dict:
+    """The curve fields in `args` ({"bounce": 0.3}), range-checked and only for the ease they belong to (`ease`: the
+    key's ease after this change). Refused loudly otherwise."""
+    out = {}
+    for p in SHAPE:
+        if p.name not in args:
+            continue
+        if ease != SHAPE_EASE[p.name]:
+            ctx.fail(codes.BAD_ARGUMENT, f'"{p.name}"', f"only applies to a {SHAPE_EASE[p.name]} ease, and this key's ease is "
+                     f"{ease or 'smooth'}", hint=f'Give ease: "{SHAPE_EASE[p.name]}" too.')
+        out[p.name] = p.check(args[p.name], where)
+    return out
 
 
 def key_id(owner: str, prop: str, t) -> str:
@@ -57,11 +75,15 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
         settable(ctx, owner, prop)
         field, value = check_key(ctx, owner, prop, args)
         existing = next((k for k in keys_of(owner, prop) if same_time(k["t"], t)), None)
+        shape = checked_shape(ctx, args, args.get("ease", existing.get("ease", "smooth") if existing else "smooth"),
+                              f"{ctx.where} › {owner_id}.{prop}")
         if existing:
             ctx.set(existing["id"], field, value)
             for k in ("ease", "from"):
                 if k in args:
                     ctx.set(existing["id"], k, args[k])
+            for k, v in shape.items():
+                ctx.set(existing["id"], k, v)
             return
         taken = index(ctx.doc, ctx.kind.lists)
         id_ = key_id(owner_id, prop, t)
@@ -69,12 +91,12 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
             id_ = ids.counted(taken, id_)
         after = sum(1 for k in owner.get("keys", []) if (k["prop"], order(k["t"])) < (prop, order(t)))
         ctx.insert(owner_id, "keys", {"id": id_, "type": "key", "prop": prop, "t": t, field: value,
-                                      "ease": args.get("ease", "smooth"),
+                                      "ease": args.get("ease", "smooth"), **shape,
                                       **({"from": args["from"]} if args.get("from") else {})}, after)
 
     @registry.operation("key.add", "Set a field's value at a time (adds a key, or changes the one at that time). "
                         + key_add_help, target=owners, label="Add key",
-                        params=[PROP, *sets, Param.number("t", label="Time", required=True, **KEY_TIME), *vals, EASE, FROM])
+                        params=[PROP, *sets, Param.number("t", label="Time", required=True, **KEY_TIME), *vals, EASE, *SHAPE, FROM])
     def key_add(ctx, targets, args):
         if "fields" in args:
             return _key_set(ctx, targets, args)

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import math
 
+from . import pathdata
 from .drawing import canvas_size, frame_at
 from .evaluate import resolve
 from .sizes import own_size
@@ -41,12 +42,26 @@ def box(layer: dict, t: float = 0.0) -> tuple[float, float, float, float]:
     return extent(corners(layer, t))
 
 
-def painted(layer: dict, w: float, h: float, n: int) -> tuple[float, float, float, float] | None:
+def _drawn(p: dict, w: float, h: float):
+    """A path's drawn extent in its own px: its curve's bounds widened by half the outline (the whole box when it has
+    no points yet, so a new path can still be picked)."""
+    cmds = pathdata.commands(p.get("d", ""))
+    if not cmds:
+        return (0.0, 0.0, w, h)
+    x0, y0, x1, y1 = pathdata.bounds(cmds)
+    r = p["strokeWidth"] / 2 if p.get("stroke") else 0.0
+    return x0 - r, y0 - r, x1 + r, y1 + r
+
+
+def painted(layer: dict, w: float, h: float, n: int, p: dict | None = None) -> tuple[float, float, float, float] | None:
     """The part of a layer's own box (x0, y0, x1, y1 in its own px) that its own picture covers, at composition frame n:
     what a click picks (the screen and the agents' look_at alike). A group paints nothing of its own (only its layers
-    do); a drawing only where the strokes of the drawing showing at frame n lie (with their brush size); None: nothing."""
+    do); a path only its drawn curve (`p`: its evaluated values); a drawing only where the strokes of the drawing
+    showing at frame n lie (with their brush size); None: nothing."""
     if layer["type"] == "group":
         return None
+    if layer["type"] == "path" and p is not None:
+        return _drawn(p, w, h)
     if layer["type"] != "drawing":
         return (0.0, 0.0, w, h)
     frame = frame_at(layer, n)

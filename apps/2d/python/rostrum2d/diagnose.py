@@ -34,7 +34,7 @@ def problems(comp: dict, folder=None, markers: dict | None = None) -> list[dict]
     """The document-side problems (no engine). `markers`: the project's {name: seconds}; None = no project folder."""
     items = items_of(comp)
     exprs = exprs_of(items)
-    out = [_p("broken-link", "", m, "Point it at a path layer beside it, or clear its Path field") for m in follow.problems(comp)]
+    out = [_p("broken-link", "", m, "Point it at a path layer beside it, or clear its Follows path / Rides path field") for m in follow.problems(comp)]
     out += _links(items) + _files(items, folder) + _markers(exprs, markers) + _renders(items, folder)
     timing = _timed_from(items, markers)
     out += timing + [_p("expression", e.split(":", 1)[0], e, "Fix or clear the expression") for e in expr_problems(items, exprs)]

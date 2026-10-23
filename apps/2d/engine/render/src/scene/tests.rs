@@ -157,13 +157,8 @@ fn an_unknown_font_is_refused() {
     assert!(err.starts_with(&format!("{id}: font \"No Such Sans\" not found")) && err.contains("Roboto Flex") && err.contains("Inter"), "{err}");
 }
 
-/// A text following a path layer (follow.rs) takes the path's transform and trim window at every time, and a
-/// missing path is refused at load (never drawn as a straight line).
-#[test]
-fn a_text_follows_its_path_layer_on_every_frame() {
-    let mut s = reference()["scene"].clone();
-    let layers = s["comp"]["layers"].as_array_mut().unwrap();
-    let mut text = layers.iter().find(|l| l["type"] == "text").expect("a text layer in the reference").clone();
+/// A straight path layer's fields: `M 0 200 L 900 200` in a 900 × 400 box at (400, 400), anchored at its centre, fully drawn.
+fn rail_props() -> serde_json::Map<String, Value> {
     let mut path = serde_json::Map::new();
     for (name, kind) in fields::of("path").unwrap().1 {
         let v = match (name, kind) {
@@ -180,6 +175,17 @@ fn a_text_follows_its_path_layer_on_every_frame() {
         };
         path.insert(name.into(), v);
     }
+    path
+}
+
+/// A text following a path layer (follow.rs) takes the path's transform and trim window at every time, and a
+/// missing path is refused at load (never drawn as a straight line).
+#[test]
+fn a_text_follows_its_path_layer_on_every_frame() {
+    let mut s = reference()["scene"].clone();
+    let layers = s["comp"]["layers"].as_array_mut().unwrap();
+    let mut text = layers.iter().find(|l| l["type"] == "text").expect("a text layer in the reference").clone();
+    let path = rail_props();
     text["id"] = "rider".into();
     text["props"]["body"] = "ABCDEFGH".into();
     text["props"]["letterDelay"] = 0.0.into();
@@ -204,4 +210,25 @@ fn a_text_follows_its_path_layer_on_every_frame() {
     let shown = |t: f64| super::letters::place(&rider(t)).unwrap().letters.len();
     assert_eq!(shown(0.0), 0, "nothing of the path is drawn yet, so no letter shows");
     assert!(shown(0.2) > 0 && shown(0.2) < 8 && shown(1.0) == 8, "letters show as the path is drawn on: {} {} {}", shown(0.0), shown(0.2), shown(1.0));
+}
+
+/// A layer riding a path layer (follow.rs `ride`) sits at the drawn-on tip in the path's parent space: half drawn on
+/// (trimEnd 0.5), a straight line's tip is its midpoint, wherever the path's box and anchor put it.
+#[test]
+fn a_rider_sits_on_the_drawn_on_tip() {
+    let mut s = reference()["scene"].clone();
+    let mut rail = rail_props();
+    for (f, v) in [("x", 100.0), ("y", 50.0), ("anchorX", 0.0), ("anchorY", 0.0), ("trimEnd", 0.5)] {
+        rail.insert(f.into(), Value::from(v));
+    }
+    let layers = s["comp"]["layers"].as_array_mut().unwrap();
+    let dot = layers.iter_mut().find(|l| l["id"] == "dot").expect("the dot in the reference");
+    dot["props"]["ridePath"] = "rail".into();
+    dot["props"]["x"] = 0.0.into();
+    dot["props"]["y"] = 0.0.into();
+    layers.push(serde_json::json!({"id": "rail", "type": "path", "props": rail}));
+    let scene = Scene::load(&s).unwrap();
+    let dot = eval::at(&scene.comp, 0.5).unwrap().layers.into_iter().find(|l| l.id == "dot").unwrap();
+    let (x, y) = (dot.num("x"), dot.num("y"));
+    assert!((x - 550.0).abs() < 0.01 && (y - 250.0).abs() < 0.01, "the dot sits at the line's midpoint (550, 250), not ({x}, {y})");
 }

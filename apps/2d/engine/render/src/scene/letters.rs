@@ -61,7 +61,7 @@ pub fn place(it: &Item) -> R<Placed> {
     if lines.len() > 1 {
         return Err(format!("{}.body: text on a path is one line (no line breaks)", it.id));
     }
-    let along = Along::new(it, path)?;
+    let along = Along::new(it.id, path)?;
     // A text following a path layer sits on the part of it that is drawn (its trim window, follow.rs).
     let followed = super::follow::window(it);
     let (from, to) = followed.map_or((0.0, along.total), |((a, b), _)| (a * along.total, b.max(a) * along.total));
@@ -108,16 +108,17 @@ impl Units {
     }
 }
 
-/// A path walked by length: its segments (zero-length ones left out) and where each starts.
-struct Along {
+/// A path walked by length: its segments (zero-length ones left out) and where each starts. Also where a layer
+/// riding a path layer sits (follow.rs `ride`).
+pub(super) struct Along {
     path: BezPath,
     segs: Vec<(PathSeg, f64, f64)>,
-    total: f64,
+    pub(super) total: f64,
 }
 
 impl Along {
-    fn new(it: &Item, d: &str) -> R<Along> {
-        let path = BezPath::from_svg(d).map_err(|e| format!("{}.path: {e}", it.id))?;
+    pub(super) fn new(id: &str, d: &str) -> R<Along> {
+        let path = BezPath::from_svg(d).map_err(|e| format!("{id}.path: {e}"))?;
         let mut segs = vec![];
         let mut total = 0.0;
         for s in path.segments() {
@@ -128,14 +129,14 @@ impl Along {
             }
         }
         if segs.is_empty() {
-            return Err(format!("{}.path: the path has no length", it.id));
+            return Err(format!("{id}.path: the path has no length"));
         }
         Ok(Along { path, segs, total })
     }
 
     /// The point at length `s` along the path and the direction there (degrees); before the start and past the
     /// end the path goes on straight.
-    fn at(&self, s: f64) -> (Point, f64) {
+    pub(super) fn at(&self, s: f64) -> (Point, f64) {
         let i = self.segs.iter().rposition(|(_, from, _)| *from <= s).unwrap_or(0);
         let (seg, from, len) = &self.segs[i];
         let local = s - from;

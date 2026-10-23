@@ -121,7 +121,9 @@ fn content(it: &Item, look: Look) -> R<(String, String)> {
         "shape" => {
             let mut s = format!("width:{}px;height:{}px;box-sizing:border-box;", v(it, "w"), v(it, "h"));
             s += &if it.str("shape") == "ellipse" { "border-radius:50%;".to_string() } else { format!("border-radius:{}px;", v(it, "radius")) };
-            let _ = write!(s, "background:{};", look.color.map(str::to_string).or(grad.map(str::to_string)).unwrap_or_else(|| v(it, "fill")));
+            if it.on("filled") || look.color.is_some() || grad.is_some() {
+                let _ = write!(s, "background:{};", look.color.map(str::to_string).or(grad.map(str::to_string)).unwrap_or_else(|| v(it, "fill")));
+            }
             if it.on("stroke") {
                 let _ = write!(s, "border:{}px solid {};", v(it, "strokeWidth"), v(it, "strokeColor"));
             }
