@@ -54,6 +54,20 @@ def _engine():
     return _own
 
 
+def warm() -> None:
+    """Start this module's own measuring engine now, on a thread of its own: an engine takes over a second to give its
+    first answer, and the screen's first boxes (while its window loads) would otherwise wait for it on the GUI thread.
+    A start that fails here fails again, loudly, at the first real measure (the engine is then still None)."""
+    def start():
+        with _lock:
+            if _own is None:
+                try:
+                    _engine().measure([])
+                except Exception:  # noqa: BLE001  said by the first real measure, which starts it again
+                    pass
+    threading.Thread(target=start, daemon=True, name="textsize-warm").start()
+
+
 def key(p: dict) -> tuple:
     """The fields of a text that decide its box (`p`: its evaluated fields, evaluate.resolve)."""
     return tuple(p[f] for f in FIELDS)

@@ -124,7 +124,7 @@ class SelectSlots:
         """A click on empty lane space: that track is the one the Editor shows and Paste goes to (not a selection)."""
         if self.doc.has(track_id) and track_id != self._track:
             self._track = track_id
-            self._rebuild()
+            self._show_roll()
 
     @Slot(result="QVariantMap")
     def selectionExtent(self):

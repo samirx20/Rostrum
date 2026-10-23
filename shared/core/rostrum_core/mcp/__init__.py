@@ -1,10 +1,18 @@
-"""MCP plumbing for every Rostrum app (contract: shared/mcp/CONVENTIONS.md). Needs the `mcp` extra."""
-from .context import App, Groups, ToolContext
-from .guides import Guides
-from .jobs import InProcessJobs, Job, Jobs
-from .reply import Reply, error_dict
-from .server import Runtime, build_server, run_stdio, serve_stdio
-from .tools import Tool, Tools, default_tools, tool
+"""MCP plumbing for every Rostrum app (contract: shared/mcp/CONVENTIONS.md). Needs the `mcp` extra.
 
-__all__ = ["App", "Groups", "ToolContext", "Guides", "InProcessJobs", "Job", "Jobs", "Reply", "error_dict",
-           "Runtime", "build_server", "run_stdio", "serve_stdio", "Tool", "Tools", "default_tools", "tool"]
+Each name loads its module on first use (PEP 562): the screens import plain helpers from here (files.RENDER_DIR) at
+start, and the MCP SDK under `server` costs over a second to import, so a window never pays for a server it doesn't run.
+"""
+from importlib import import_module
+
+_FROM = {"App": "context", "Groups": "context", "ToolContext": "context", "Guides": "guides",
+         "InProcessJobs": "jobs", "Job": "jobs", "Jobs": "jobs", "Reply": "reply", "error_dict": "reply",
+         "Runtime": "server", "build_server": "server", "run_stdio": "server", "serve_stdio": "server",
+         "Tool": "tools", "Tools": "tools", "default_tools": "tools", "tool": "tools"}
+__all__ = list(_FROM)
+
+
+def __getattr__(name):
+    if name not in _FROM:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    return getattr(import_module(f".{_FROM[name]}", __name__), name)

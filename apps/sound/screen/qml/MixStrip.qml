@@ -104,7 +104,7 @@ Rectangle {
         }
         MixLevel {
             Layout.alignment: Qt.AlignHCenter; Layout.fillHeight: true; Layout.minimumHeight: 72; Layout.preferredHeight: 1000
-            gain: s.model.volume; meter: s.model.meter; live: mixer.live[s.model.id] || null
+            gain: s.model.volume; meter: s.model.meter; live: s.visible ? mixer.live[s.model.id] || null : null   // hidden (the Editor shows): the meter rests
             onScrubStarted: { s.pick(); backend.beginScrub("volume") }
             onScrubbed: (g) => backend.scrub("volume", g)
             onScrubEnded: backend.endScrub()

@@ -50,11 +50,20 @@ Item {
         visible: d.tool === "editor"
         x: tabs.x + pick.x + pick.width + Theme.pad; width: fold.x - Theme.gap - x; y: tabs.y; height: tabs.height
     }
+    // Each tool is made the first time it opens, then kept (hidden while the other shows): making the Mixer's strips
+    // again on every E / X cost ~0.6 s on a 16-track song (S59). A hidden Mixer's meters rest (MixStrip: live).
+    property var made: ({})
+    function mark() { if (tool !== "" && !made[tool]) { let m = Object.assign({}, made); m[tool] = true; made = m } }
+    onToolChanged: mark()
+    Component.onCompleted: mark()
     Loader {
         anchors { left: parent.left; right: parent.right; top: tabs.bottom; bottom: parent.bottom; topMargin: Theme.grid }
-        active: d.tool !== ""
-        sourceComponent: d.tool === "mixer" ? mixerTool : editorTool
+        active: !!d.made.editor; visible: d.tool === "editor"
+        sourceComponent: EditorDock { }
     }
-    Component { id: editorTool; EditorDock { } }
-    Component { id: mixerTool; Mixer {} }
+    Loader {
+        anchors { left: parent.left; right: parent.right; top: tabs.bottom; bottom: parent.bottom; topMargin: Theme.grid }
+        active: !!d.made.mixer; visible: d.tool === "mixer"
+        sourceComponent: Mixer { }
+    }
 }

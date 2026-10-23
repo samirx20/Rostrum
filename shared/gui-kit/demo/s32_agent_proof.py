@@ -104,6 +104,7 @@ def sound():
             Path(out).write_bytes(b"")
             return {"file": out, "lufs": -20.0, "tracks": [], "stems": {}}
         def take_restarted(self): return ""
+        def abort(self): pass
         def close(self): pass
     playback.open_engine = Fake
     Path(SCRATCH, "engine.exe").write_bytes(b"")
