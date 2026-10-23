@@ -14,6 +14,7 @@ from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
 from . import adding, framing, onion
+from .pen_tilt import PenTilt
 from .brush import Brush
 from .brush_panel import BrushPanel
 from .strokes import StrokeDrag
@@ -28,6 +29,9 @@ class Painter(BrushPanel):
         self._fresh, self._new_layer = None, False      # "New drawing" picked for this selection; next stroke: new paint layer
         self._target = None                             # (document state, layer, what the pen paints on): target()
         self.brush = Brush(bridge.comp().get("background", ""))
+        self.tilt = PenTilt(self)                       # the pen's lean (Session.show watches the window with it)
+        self.brush.tilt_pen = self.tilt.has_tilt
+        self.tilt.changed.connect(self._tilt_pen)
         self._serial, self._built, self._rev = 0, None, 0        # _rev: the document changed (the onion is stale)
         self._reach = {"before": 2, "after": 1}         # onion skin: how many drawings each way (screen state)
         self.provider = onion.OnionProvider()
@@ -149,7 +153,8 @@ class Painter(BrushPanel):
 
         def go():
             self._stroke = StrokeDrag(self.b.doc, self.b.who, d["id"], self.b.time if make else self.b.own_t(d["id"]), c["fps"],
-                                      self.brush.stroke_args(), x, y, self.b.place_of, pressure, make, layer)
+                                      self.brush.stroke_args(), x, y, self.b.place_of, pressure, make, layer,
+                                      self.tilt.lean())
             if make:
                 self._fresh = None
                 self.b.select(d["id"])
@@ -158,7 +163,7 @@ class Painter(BrushPanel):
     @Slot(float, float, float)
     def strokeTo(self, x, y, pressure):
         if self._stroke is not None:
-            self.b.guard(lambda: self._stroke.move(x, y, pressure))
+            self.b.guard(lambda: self._stroke.move(x, y, pressure, self.tilt.lean()))
 
     @Slot()
     def endStroke(self):
@@ -257,6 +262,11 @@ class Painter(BrushPanel):
         self._refresh()
 
     # ---- inside -----------------------------------------------------------------------------------------------
+    def _tilt_pen(self):
+        """A tilting pen showed up: the brush panel gains Tilt → angle / size."""
+        self.brush.tilt_pen = self.tilt.has_tilt
+        self._rows_changed()
+
     def _doc_changed(self):
         self._rev += 1
 

@@ -34,6 +34,7 @@ from PySide6.QtGui import QGuiApplication
 from rostrum_core import Document, RostrumError
 from rostrum_core.storage import paths
 from rostrum_gui import guides, layout_run, qt_faults, start
+from rostrum_gui.app import qt_app
 from rostrum_sound import KIND, run_source
 from rostrum_gui.project_files import ProjectFiles
 from screensound.adder import Adder
@@ -204,7 +205,7 @@ def main():
         sys.exit(layout_run.run_all(Path(__file__), states(), args.check_layout))
 
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
-    app = QGuiApplication.instance() or QGuiApplication(sys.argv)
+    app = qt_app()                                 # a picture or step run draws offscreen (rostrum_gui/app.py)
     screen = Screen(tuple(int(n) for n in args.size.lower().split("x")))
     if args.script or args.sample:
         screen.unnamed = Path(args.script).stem if args.script else "Sample song"

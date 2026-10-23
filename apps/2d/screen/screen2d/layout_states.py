@@ -208,6 +208,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # cells on the timeline
         ("draw-each-frame", ["--sample"], [*FRAMES, "onion on", "frame prev"]),
         ("draw-each-frame-long", long(), [*busy, "tool draw", "draw 300 300 500 320 700 300", *FRAMES[2:], "onion on"]),
+        # H53: an ink brush adds Steadiness to the quick rows, beside Draw each frame's rows (the longest brush panel)
+        ("draw-ink-brush", ["--sample"], [*FRAMES, "preset brushpen", "onion on"]),
         ("library-brand", long_project(), ["select title_card_for_the_summer_launch_film", "do layer:style_save",
                                            "brand colors Summer_launch_coral_for_the_headphones_campaign #ff7a59",
                                            "brand colors Night #101820",

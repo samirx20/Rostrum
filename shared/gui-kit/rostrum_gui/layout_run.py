@@ -110,8 +110,8 @@ def run_all(main_py: Path, states: list[tuple[str, list[str], list[str]]], out) 
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     (out / "faults.json").unlink(missing_ok=True)
-    env = {**os.environ, "QT_QPA_PLATFORM": os.environ.get("QT_QPA_PLATFORM", "offscreen"),
-           "QT_QPA_FONTDIR": os.environ.get("QT_QPA_FONTDIR", "C:/Windows/Fonts")}
+    from .app import offscreen_env
+    env = {**offscreen_env(), **os.environ}
     broken = []
     for name, start, steps in states:
         cmd = [sys.executable, str(main_py), *start, *sum((["--step", s] for s in steps), []),

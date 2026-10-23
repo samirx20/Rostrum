@@ -154,3 +154,18 @@ def test_group_from_the_selection_is_one_change_and_undo_takes_it_back(bridge):
     assert {c["id"] for c in groups[0]["layers"]} == {"title", "box"}
     bridge.undo()
     assert not [i for i in bridge.doc.items() if i["type"] == "group" and i["id"] != "row"]
+
+
+def test_pen_lean_turns_with_a_turned_layer(bridge):
+    """A pen leaning right on screen, on a drawing turned a quarter clockwise, leans up on its canvas (each point's
+    4th and 5th numbers), by the same amount; a mouse (no lean) adds no numbers."""
+    from screen2d.strokes import StrokeDrag
+    doc = bridge.doc
+    doc.apply([{"op": "layer.add", "target": ["c"], "args": {"type": "drawing", "id": "pad"}},
+               {"op": "drawing.set", "target": ["pad"], "args": {"w": 320, "h": 180}}], bridge.who)
+    turned = {"m": [0, -1, 180, 1, 0, 0, 0, 0, 1], "w": 320.0, "h": 180.0, "edge": ""}
+    s = StrokeDrag(doc, bridge.who, "pad", 0.0, 10, {}, 50, 50, lambda _id: turned, 1.0, lean=(30, 0))
+    s.move(60, 70, 1.0, (30, 0))
+    s.move(70, 90, 1.0, None)
+    assert s.points[0][3:] == [0.0, -30.0] and s.points[1][3:] == [0.0, -30.0] and len(s.points[2]) == 3
+    s.cancel()
