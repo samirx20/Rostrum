@@ -46,7 +46,7 @@ class Hooks2D:
     def _rows(self):          # a swap set's "Shows" is a choice among its children (swap_rows.py); the scene's
         item = self.doc.item(self._sel) if self._sel else None     # Soundtrack among the project's Sound items
         return fill_rows.rows(size_rows.rows(soundtrack_rows.rows(swap_rows.rows(super()._rows(), item, self._t), item, self.doc.folder), item),
-                              item, item and self.own_t(item["id"]), self.comp()["fps"])
+                              item, item and self.own_t(item["id"]), self.comp()["fps"], self._kit.search)
 
     def shown_values(self, item):
         return route.shown_values(self.placed_item(item["id"]), self._t)     # keys on a marker read as seconds

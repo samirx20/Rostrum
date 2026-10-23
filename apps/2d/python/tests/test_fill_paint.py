@@ -87,3 +87,16 @@ def test_any_stops_and_a_left_picture_reach_the_engine_as_set():
     assert [s["props"]["at"] for s in stops] == [0.0, 0.2, 0.45, 0.7, 1.0]
     assert stops[2]["props"]["color"] == "#00ff00" and abs(stops[2]["props"]["opacity"] - 128 / 255) < 1e-3
     assert node["props"]["fillPicture"] == "" and d.item("a")["fillPicture"] == "C:/pic.png"
+
+
+def test_a_gradient_with_fewer_than_two_stops_is_refused(tmp_path):
+    """Setting the fill type to a gradient through the plain field must not leave a fill the export can only fail on;
+    layer.fill (the picker's path) adds its two stops and passes."""
+    import pytest
+    from rostrum_core.errors import RostrumError
+    d = Document(KIND, None, tmp_path, "film")
+    d.apply([{"op": "comp.add", "args": {"id": "s"}}, {"op": "layer.add", "target": "s", "args": {"type": "shape", "id": "card"}}], SAM)
+    with pytest.raises(RostrumError, match="at least 2 colour stops"):
+        d.apply([{"op": "shape.set", "target": "card", "args": {"fillType": "linear"}}], SAM)
+    d.apply([{"op": "layer.fill", "target": "card", "args": {"type": "linear"}}], SAM)
+    assert len(d.item("card")["stops"]) == 2

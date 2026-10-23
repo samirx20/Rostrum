@@ -86,7 +86,8 @@ DATA = [
       for ax, words in (("x", "Even gaps across"), ("y", "Even gaps down"))],
     *[_a(f"match_{d}", words, rank=70, group="arrange", bar="Match", min_targets=2,
          when={"all": [FACT("same_parent"), NOT("has_text"), NOT("has_camera")]},
-         calls=_op("layer.match_size", "rest", to="$first", dims=d, at="$at"))
+         calls=_op("layer.match_size", "rest", to="$first", dims=d, at="$at"),
+         why=f"{words} needs two or more layers (shapes, pictures, groups) in one place. Text and a camera have no size of their own: leave them out.")
       for d, words in (("w", "Match width"), ("h", "Match height"), ("both", "Match size"))],
     _a("fill_frame", "Fill the frame", rank=65, group="arrange", when={"all": [FACT("groupable"), NOT("has_text")]}, promoted="picture",
        calls=_op("layer.fill_frame", "ids", mode="cover", at="$at")),

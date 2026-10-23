@@ -309,6 +309,21 @@ Steps: `select`, `selectmany`, `act`, `nudge`, `tool move|pen|draw`, `time`, `se
 `export <format> [alpha=on|off] [depth=8|16] [quality=<q>] [range=<a→b>]`, `exportpanel open [format]|close` (`screen2d/steps.py`), and the kit's
 `exportsheet open [format]|close`, `exportwhere <folder>`, `exportnow [replace|both|cancel]`, `job-show <percent>`, `job-failed <words>`. Offscreen: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts`.
 
+### Step names for scripted runs (`--step "<name> <words>"`; the full list with every word is the docstring of `screen2d/steps.py`)
+
+| To do this | Step |
+|---|---|
+| Real mouse and keys in the window | `mouseclick <x> <y> [right] [ctrl\|shift]`, `mousedrag <x0> <y0> <x1> <y1> [right] [alt] [hold]`, `mousemove <x> <y>`, `keytap <key> [shift\|alt\|ctrl]` (`keytap z ctrl`, `keytap escape`, `keytap f2`), `typekeys <text>` (`_` is a space) |
+| Click or drag a named control | `clickobj <objectName> [fx fy] [right]`, `dragobj <objectName> fx0 fy0 fx1 fy1`, `clickarea canvas\|timeline\|settings` |
+| Pick | `select <id>`, `selectmany <id> <id> …`, `pick <x> <y>`, `boxselect <x0> <y0> <x1> <y1>`, `shiftpick <layer>` |
+| Run an action of the list | `act <job>` (an action that has a key: `group`, `delete`, `front`, `align_left` …) · `do <action id>` (any action of the list: `distribute_x`, `match_w` …) · `nudge <dx> <dy>` |
+| Make things | `shape rect\|ellipse x0 y0 x1 y1`, `text <x> <y> <words>`, `textbox …`, `edittext <layer> <words>`, `pen …`, `draw …`, `add <type>` |
+| Settings | `set <field> <json>`, `scrub`, `animate <field>`, `find <text>`, `group <name>`, `reveal <field>` |
+| Time | `time <s>`, `play <s>`, `marker add\|move\|rename\|remove`, `bardrag`, `keydrag`, `event prev\|next` |
+| Look | `--shot <png>` (after the last step), `--lookcheck`; `--check-layout <folder>` runs every screen state |
+
+A step that leaves an error in the status line fails the run.
+
 ## Files (≡ menu, Ctrl+N / Ctrl+O / Ctrl+Shift+S / Ctrl+S; the kit's one model: shared/gui-kit/FILES.md)
 
 - **Saving is automatic.** Every project window is live (`rostrum_core.live` + `LiveLink` in `Bridge2D`, for any

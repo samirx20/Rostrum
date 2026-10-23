@@ -29,7 +29,7 @@ Paint always belongs to something. Paint on a shape, a text, a picture or a path
    - **a shape, a text, a picture or a path**: the paint goes onto it, kept inside its outline. Strokes that go past the edge are simply not shown there. Its edge is drawn dashed so you can see what you are painting on.
    - **a drawing**: the paint goes onto the drawing.
    - **nothing**: **your first stroke makes a new drawing** and picks it. It is one step, so **Ctrl+Z** takes back the drawing and the stroke together.
-6. **Esc** steps back one level at a time: first the brush panel closes, then picked strokes are let go, then you are back on Move. **V** goes straight to Move.
+6. **Esc** steps back one level at a time: first picked strokes are let go, then you are back on Move (the brush panel closes with the Brush, however you opened it). **V** goes straight to Move.
 
 When the brush is on, the timeline shrinks to its compact height: the top strip, the ruler and only the drawing's own row. Click the button at the right end of the top strip to bring all the rows back; each tool remembers the height you last used with it.
 

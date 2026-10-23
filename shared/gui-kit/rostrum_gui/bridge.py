@@ -120,7 +120,9 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
     @Property(bool, notify=rowsChanged)
     def nothingFound(self):
         """A search is typed and no setting that applies matches it ("No setting matches")."""
-        return bool(self._kit.search.strip()) and not any(r["valid"] for r in self.model.rows if r["row"] == "param")
+        fx = self._kit.handlers.get("effects")         # an effect the search names counts as a match (effects.py)
+        effect = fx is not None and fx().shown
+        return bool(self._kit.search.strip()) and not effect and not any(r["valid"] for r in self.model.rows if r["row"] == "param")
 
     @Property(bool, constant=True)
     def typesExpressions(self):

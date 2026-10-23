@@ -18,6 +18,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_core.conditions import holds
 
 from .effects_group import EffectGroup
+from .match import starts
 
 
 @dataclass(frozen=True)
@@ -51,12 +52,26 @@ class EffectsPart(QObject):
         self._opening = False
         bridge.docChanged.connect(self._sync)
         bridge.selectionChanged.connect(self._sync)
+        bridge.searchChanged.connect(self.changed)
         self._sync()
 
     # ---- what QML reads ---------------------------------------------------------------------------------------
     @Property(bool, notify=changed)
     def shown(self):
-        return self._layer() is not None and bool(self._groups or self.addable())
+        """While a setting is searched for, the row stays only when an effect matches it (an added one, or one + may add)."""
+        return self._layer() is not None and bool(self._groups or self.addable()) and (not self._words() or bool(self.found or self._matching_groups()))
+
+    @Property("QVariantList", notify=changed)
+    def found(self):
+        """[{value, label}]: the effects the search names that the layer doesn't have yet ("blur" finds Blur to add)."""
+        words, have = self._words(), {self.bridge.doc.item(g.id)["type"] for g in self._groups}
+        return [a for a in self.addable() if words and a["value"] not in have and starts(words, a["label"].lower())]
+
+    def _words(self) -> list[str]:
+        return self.bridge._kit.search.lower().split()
+
+    def _matching_groups(self) -> list:
+        return [g for g in self._groups if starts(self._words(), g.label.lower())]
 
     @Property(int, notify=changed)
     def count(self):
