@@ -13,16 +13,18 @@ good is for your ear.
 
 ## Listen first
 
-The same 10-second slide deck from P6, scored four ways. The placement is identical in each: every whoosh peaks when
+*Old listening page (2026-10: before the no-whoosh rule, PURPOSE.md). Rostrum no longer makes or ships whooshes; the page stays as a record of how the recordings compare.*
+
+The same 10-second slide deck from P6, scored four ways. The placement is identical in each: every sweep peaks when
 its card moves fastest, the sound pans with the card, clicks land on the frame, and all of it goes through the same
 glue bus. **Only the recordings change.** All are at −16 LUFS (the same loudness).
 
 | File | Recordings used | Can we ship them? |
 |---|---|---|
 | `C:\Users\Sam\.rostrum\waves\results\stage2\sound-sources\slides-sonniss.mp4` | Sonniss GDC bundles (professional sound designers, 96–192 kHz) | **No.** The user must download them |
-| `C:\Users\Sam\.rostrum\waves\results\stage2\sound-sources\slides-free-to-ship.mp4` | Freesound CC0 whooshes + Kenney CC0 clicks and ticks | **Yes** |
+| `C:\Users\Sam\.rostrum\waves\results\stage2\sound-sources\slides-free-to-ship.mp4` | Freesound CC0 sweeps + Kenney CC0 clicks and ticks | **Yes** |
 | `C:\Users\Sam\.rostrum\waves\results\stage2\sound-sources\slides-freesound.mp4` | Freesound CC0 only | Yes |
-| `C:\Users\Sam\.rostrum\waves\results\stage2\sound-sources\slides-kenney.mp4` | Kenney CC0 only. Kenney has no real whooshes, so its whoosh slots use UI "sweep" sounds | Yes |
+| `C:\Users\Sam\.rostrum\waves\results\stage2\sound-sources\slides-kenney.mp4` | Kenney CC0 only. its sweep slots use UI "sweep" sounds | Yes |
 | `C:\Users\Sam\.rostrum\waves\results\stage2\sound-sources\slides-designed-p6.mp4` | P6's designed sounds, for comparison | (ours) |
 
 The `.wav` file next to each video is the same sound without the picture.
@@ -32,11 +34,11 @@ What the measurements say:
 - **The Freesound files** are the site's MP3 previews, the only thing we can get without an account. Their sound stops
   near 14 kHz, which is the preview format's limit, not the recordings'. The originals behind them are WAV files.
   These were the first search hits, not hand-picked. A person choosing by ear for an hour or two would do much better.
-- **Kenney** is small, clean game-UI clicks, fine for ticks and presses. It has no whooshes.
-- **Sync** (checked with `proofs/p6-motion-sfx/check_sync.py`): the whooshes peak within 5 ms of their card's fastest
+- **Kenney** is small, clean game-UI clicks, fine for ticks and presses. Clean and small.
+- **Sync** (checked with `proofs/p6-motion-sfx/check_sync.py`): the sweeps peak within 5 ms of their card's fastest
   moment, except Sonniss's snapping card at 43 ms (its take has two swells). Every click and tick is within one frame (under 33 ms). Two exceptions: the four exits overlap, so the
   checker can't measure them separately; and the landing click under the snapping card is measured 35 ms off because
-  that card's whoosh covers it.
+  that card's sweep covers it.
 
 ## 1. Sound-effect libraries
 
@@ -45,14 +47,14 @@ What the measurements say:
 
 | Library | What it has | Measured quality | Licence in one line | Verdict |
 |---|---|---|---|---|
-| **Sonniss GDC bundles** (free, 2015–2026, about 200 GB in total) | Everything: whooshes, UI, mechanical clicks, trailer hits, risers, transitions, from many pro designers | Best of all: 24-bit, 96–192 kHz, very low hiss | Free for the user's own projects. Not allowed to "supply the sound effects as sound effects … as part of a … software development kit or anything similar". No AI use at all | **User brings it** |
-| **BOOM Library free packs** | Cinematic hits, whooshes, motion | (needs an account; not downloaded) 96 kHz / 24-bit by their description | Royalty-free in the user's work; "may not be resold or redistributed as audio assets"; no AI training | **User brings it** |
+| **Sonniss GDC bundles** (free, 2015–2026, about 200 GB in total) | Real recordings: UI, mechanical clicks, foley, trailer hits, risers, from many pro designers (we use the real sounds, never its whooshes or transition effects) | Best of all: 24-bit, 96–192 kHz, very low hiss | Free for the user's own projects. Not allowed to "supply the sound effects as sound effects … as part of a … software development kit or anything similar". No AI use at all | **User brings it** |
+| **BOOM Library free packs** | Cinematic hits, foley, motion | (needs an account; not downloaded) 96 kHz / 24-bit by their description | Royalty-free in the user's work; "may not be resold or redistributed as audio assets"; no AI training | **User brings it** |
 | **Freesound, CC0 sounds** | Anything, of very mixed quality | From phone recordings to studio grade; must be picked by ear | CC0 (public domain) per sound | **Ship** a hand-picked set (downloaded once, by a person with an account). Not on demand: Freesound's terms say commercial use of the API is "negotiated on a case by case basis" |
 | **Freesound, CC-BY sounds** | Same | Same | Free with credit | **Ship with a credits list**. CC-BY-NC sounds are **not allowed** |
-| **Kenney** (UI Audio, Interface, Digital, Impact) | Clicks, ticks, toggles, soft impacts. No whooshes | Clean but small, game-style | CC0 | **Ship** |
-| **OpenGameArt** (CC0 items only) | A few swishes | Hobby level, noisy | Per item | Ship CC0 items; little value |
+| **Kenney** (UI Audio, Interface, Digital, Impact) | Clicks, ticks, toggles, soft impacts | Clean but small, game-style | CC0 | **Ship** |
+| **OpenGameArt** (CC0 items only) | A few UI sounds | Hobby level, noisy | Per item | Ship CC0 items; little value |
 | Pro Sound Effects free packs, Soundly free library | Broad pro libraries | Not downloaded (account needed) | Their licence text wouldn't open | **User brings it** (the cautious reading) |
-| Zapsplat, Mixkit, Pixabay, Uppbeat | Lots of UI and whooshes | Not downloaded | All forbid handing the files on as files ("standalone", "without altering") or need an account | **User brings it** |
+| Zapsplat, Mixkit, Pixabay, Uppbeat | Lots of UI sounds | Not downloaded | All forbid handing the files on as files ("standalone", "without altering") or need an account | **User brings it** |
 | 99Sounds | Cinematic packs | — | "no right to sell or redistribute (even for free)" | User brings it; can't ship |
 | BBC Sound Effects | Huge archive | — | Non-commercial only | **Not allowed** |
 
@@ -95,10 +97,10 @@ licence we read.
 version is the only one at the level of the reference, and Sonniss is free for the user to download. Our part is
 making a folder of it quick to use:
 1. **Bring your own library:** point Rostrum at a folder (a Sonniss bundle, BOOM, Soundly exports …). It indexes and
-   cuts the sounds once, and the agent and the person search them by kind ("whoosh, short, bright"), length and
-   measured shape. The motion tools then place them the way this listening page does.
+   cuts the sounds once, and the agent and the person search them by kind ("click, short, bright"), length and
+   measured shape. The motion tools place real sounds from it only when asked.
 2. **A starter set in the installer:** a person picks about 150–300 CC0 sounds by ear, from Freesound originals and
-   Kenney. It covers the basics (whooshes, clicks, ticks, pops, risers, hits) at "good", not "Apple", level. It needs
+   Kenney. It covers real sounds the picture needs (clicks, ticks, pops, impacts, foley), never whooshes or swishes (PURPOSE.md), at "good", not "Apple", level. It needs
    one or two hours of listening by someone with ears.
 3. **Later, optional:** a sound-from-words model, behind the user's own choice (Stable Audio 3 Small SFX downloaded on
    request, or ElevenLabs with their key), after a short proof on this laptop.

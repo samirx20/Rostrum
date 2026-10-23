@@ -242,70 +242,6 @@
    "licence": "CC0-1.0"
   },
   {
-   "path": "60013.ogg",
-   "title": "Whoosh",
-   "name": "whoosh.fast",
-   "author": "qubodup",
-   "page": "https://freesound.org/people/qubodup/sounds/60013/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "683101.ogg",
-   "title": "quick woosh",
-   "name": "whoosh.fast",
-   "author": "florianreichelt",
-   "page": "https://freesound.org/people/florianreichelt/sounds/683101/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "171321.ogg",
-   "title": "Fast Swoosh.wav",
-   "name": "whoosh.fast",
-   "author": "swidmark",
-   "page": "https://freesound.org/people/swidmark/sounds/171321/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "369698.ogg",
-   "title": "Whoosh.wav",
-   "name": "whoosh.slow",
-   "author": "crackles04",
-   "page": "https://freesound.org/people/crackles04/sounds/369698/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "27281.ogg",
-   "title": "Epic whoosh.wav",
-   "name": "whoosh.slow",
-   "author": "EcoDTR",
-   "page": "https://freesound.org/people/EcoDTR/sounds/27281/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "649445.ogg",
-   "title": "Cinematic Woosh SFX-015.wav",
-   "name": "whoosh.slow",
-   "author": "AudioPapkin",
-   "page": "https://freesound.org/people/AudioPapkin/sounds/649445/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "495390.ogg",
-   "title": "Foley_Whoosh_Clothes.wav",
-   "name": "whoosh.cloth",
-   "author": "Nox_Sound",
-   "page": "https://freesound.org/people/Nox_Sound/sounds/495390/",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "391448.ogg",
-   "title": "Shirt Whoosh 1.wav",
-   "name": "whoosh.cloth",
-   "author": "saturdaysoundguy",
-   "page": "https://freesound.org/people/saturdaysoundguy/sounds/391448/",
-   "licence": "CC0-1.0"
-  },
-  {
    "path": "203306.ogg",
    "title": "Room Tone Office 13",
    "name": "ambience.room-tone-office",
@@ -433,5 +369,18 @@
    "page": "https://freesound.org/people/florianreichelt/sounds/447388/",
    "licence": "CC0-1.0"
   }
- ]
+ ],
+ "retired": {
+  "why": "Whooshes and swishes: Rostrum offers none (apps/sound/PURPOSE.md). The library hides these files.",
+  "files": [
+   "60013.ogg",
+   "683101.ogg",
+   "171321.ogg",
+   "369698.ogg",
+   "27281.ogg",
+   "649445.ogg",
+   "495390.ogg",
+   "391448.ogg"
+  ]
+ }
 }

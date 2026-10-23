@@ -1,7 +1,8 @@
-"""edit_sounds_from_motion: sounds placed from the picture's motion (data the 2D app hands over, read-only), either
-designed by the engine or picked from the user's own sound library. Every sound is a `sound` or `clip` item made
-through the script merge, so running it again after the picture changes moves the sounds with it and keeps what a
-person changed."""
+"""edit_sounds_from_motion: musical answers to the picture's motion (data the 2D app hands over, read-only). It adds
+nothing by itself (PURPOSE.md): it lists the moments that could earn a sound and what could answer each (a note or a
+hit, a rise from strings / cymbal / piano, or a real recording from the person's library); only the answers asked
+for in `add` are written, through the script merge, so running it again after the picture changes moves them and
+keeps what a person changed."""
 from __future__ import annotations
 
 import json
@@ -21,19 +22,18 @@ def register(tools: Tools):
     @tools.tool("edit_sounds_from_motion", {"required": ["samples"], "properties": {
         "item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."},
         "samples": {"type": "string", "description": "Absolute path to the motion samples JSON from Rostrum2D render_export format=motion (per layer x, y, scale, "
-                    "opacity at `rate` per second; see inspect_guide 'designed-sounds')."},
-        "glue": {"type": "boolean", "default": True, "description": "Route the UI tracks into the ui bus (short "
-                 "room + light compressor), made if missing."},
-        "source": {"type": "string", "enum": ["designed", "library"], "default": "designed", "description":
-                   "designed: sounds made by the engine. library: recordings from the user's own sound folders "
-                   "(inspect_library folder=…), chosen by kind and shape for each event and placed as clips."}}})
+                    "opacity at `rate` per second; see inspect_guide 'scoring-to-picture')."},
+        "add": {"type": "array", "items": {"type": "string"}, "default": [], "description":
+                'The answers to write, each "<moment id>:<answer>" from the suggestions (e.g. "land1:strings", '
+                '"snap2:note", "press3:library"). Empty: nothing is added, only the suggestions come back.'},
+        "key": {"type": "string", "default": "C major", "description": 'The key the notes are in ("D minor", "Bb major").'},
+        "glue": {"type": "boolean", "default": True, "description": "Route library-recording tracks into the ui bus "
+                 "(short room + light compressor), made if missing."}}})
     def edit_sounds_from_motion(ctx, args):
-        """Read the motion events (moves with their speed curves, landings, snaps, presses, steps) and place a sound on
-        each: a whoosh on the move's fastest moment, panned with it, a click where it lands hard, a press and release,
-        a tick per step. source="designed" makes them with the engine (shaped by the move's own speed); "library"
-        picks recordings from the user's sound folders (inspect_guide 'library'). A starting point: change any sound
-        or clip with sound.set / clip.set; re-running keeps those changes. Answers the events with their times and the
-        sounds made."""
+        """Read the motion (moves and where they land, snaps, presses, steps) and suggest musical answers for the
+        moments that could earn a sound: a struck note or a hit on a landing, a rise into it from strings, a cymbal
+        roll or a piano run, a real recorded click from the person's library for a press. Adds nothing unless asked:
+        pass `add` with the chosen "<id>:<answer>" pairs. Silence is an answer; most moves need none."""
         p = Path(args["samples"])
         if not p.is_file():
             raise RostrumError(codes.NOT_FOUND, "edit_sounds_from_motion", f'samples "{p}"', "is not a file")
@@ -43,23 +43,33 @@ def register(tools: Tools):
             raise RostrumError(codes.BAD_ARGUMENT, "edit_sounds_from_motion", f'samples "{p}"',
                                f'is not a {FORMAT} file' + (f' (no {", ".join(missing)})' if missing else ""),
                                hint='Write one with Rostrum2D: render_export format="motion" (or Export › Motion samples).')
+        rows = score.suggest(read.events(samples))
+        shown = [{k: v for k, v in r.items() if k != "event"} | {"says": {a: score.SAYS[a] for a in r["answers"]}} for r in rows]
+        by_id, chosen = {r["id"]: r for r in rows}, []
+        for pick in args.get("add", []):
+            sid, _, answer = pick.partition(":")
+            if sid not in by_id or answer not in by_id[sid]["answers"]:
+                raise RostrumError(codes.BAD_ARGUMENT, "edit_sounds_from_motion", f'add "{pick}"', "is not one of the suggestions",
+                                   hint="Pick from: " + ", ".join(f'{r["id"]}:{a}' for r in rows for a in r["answers"]))
+            chosen.append((by_id[sid], answer))
+        if not chosen:
+            text = (f"{len(rows)} moments could earn a sound; nothing added. Choose with add=[\"<id>:<answer>\"], "
+                    "or leave them silent." if rows else "No moment here needs a sound; nothing added.")
+            return Reply(text, {"suggestions": shown, "added": []})
         doc = ctx.document(args.get("item"))
-        evs = read.events(samples)
-        kind = args.get("source", "designed")
-        lib = userlib.library() if kind == "library" else None
-        source, tracks, cut_db = score.script(evs, samples["width"], samples["height"], kind, lib)
+        lib = userlib.library() if any(a == "library" for _, a in chosen) else None
+        try:
+            source, tracks = score.script(chosen, args.get("key", "C major"), samples["width"], lib)
+        except ValueError as e:
+            raise RostrumError(codes.BAD_ARGUMENT, "edit_sounds_from_motion", f'key "{args.get("key")}"', str(e)) from None
         report = ctx.run_script(doc, "sounds-from-motion.py", run_source(source, "sounds-from-motion.py"))
         if args.get("glue", True):
             ops = score.glue_ops(doc.data, tracks)
             if ops:
                 ctx.apply(doc, ops, label="UI glue bus")
-        kinds = {k: sum(1 for e in evs if e["kind"] == k) for k in ("move", "snap", "press", "step")}
         held = [h["key"] for h in report.held]
-        text = (f"{len(evs)} motion events ({', '.join(f'{n} {k}' for k, n in kinds.items() if n)}) -> "
-                f"{'library recordings' if kind == 'library' else 'designed sounds'} on {', '.join(tracks)}."
-                + (f" Sounds that overlap on a track are each turned down (a crowd plays at about one sound's "
-                   f"loudness; up to -{cut_db} dB here): turn the track up for a bigger crowd." if cut_db else "")
+        said = ", ".join(f"{s['id']}: {score.SAYS[a]}" for s, a in chosen)
+        text = (f"Added {said} on {', '.join(tracks)}."
                 + (f" Kept a person's changes: {', '.join(held)}." if held else ""))
-        return Reply(text, {"events": [{k: v for k, v in e.items() if k not in ("speed", "x")} for e in evs],
-                            "tracks": tracks, "held": held, "removed": report.removed, "source": kind, "crowd_cut_db": cut_db},
-                     warnings=report.warnings())
+        return Reply(text, {"suggestions": shown, "added": [f"{s['id']}:{a}" for s, a in chosen], "tracks": tracks,
+                            "held": held, "removed": report.removed}, warnings=report.warnings())

@@ -23,7 +23,7 @@ listed under `skipped` with the reason.
 | Field | Meaning |
 |---|---|
 | `path`, `start`, `end` | the file, and where this one sound sits in it (seconds) |
-| `kind`, `kinds` | whoosh, riser, impact, hit, click, ui, beep, ambience, foley, drone, glitch: from the library's UCS category (a name like `WHSHSwsh_…`), the file name, its metadata (BWF description, iXML, INFO), its folders, and its measured shape. `kinds` lists every kind with evidence, strongest first |
+| `kind`, `kinds` | riser, impact, hit, click, ui, beep, ambience, foley, drone, glitch and others: from the library's UCS category, the file name, its metadata (BWF description, iXML, INFO), its folders, and its measured shape. `kinds` lists every kind with evidence, strongest first |
 | `seconds` | its length |
 | `onset_s`, `peak_s` | from its start: where it begins as the ear hears it, and its loudest moment |
 | `attack_ms` | onset to peak: 3 ms is a click, 300 ms a slow swell |
@@ -34,7 +34,7 @@ listed under `skipped` with the reason.
 
 ## Search
 
-    inspect_library kind="whoosh" length="short" brightness="bright"
+    inspect_library kind="impact" length="short" brightness="dark"
     inspect_library kind="click" attack_ms=[0, 8] seconds=[0, 0.2]
     inspect_library kind="sounds" find="metal" lufs=[-30, null]
 
@@ -49,8 +49,8 @@ A sound is a clip of its file, starting at its `start`:
     t.clip(r"D:\Sounds\…\Switch_04.wav", at=3.475 - 0.0175, in_=0.0024, length=0.094)
 
 - **On a moment** (a card landing, a beat): put the sound's `onset_s` on it: `at = moment - onset_s`.
-- **A whoosh on a move**: put its `peak_s` on the move's fastest moment: `at = fastest - peak_s`. If that is before
-  0, start later in the file instead (`in_ = start - at`, `at = 0`).
+- **A swell or riser on a build**: put its `peak_s` on the moment it builds to: `at = moment - peak_s`. If that is
+  before 0, start later in the file instead (`in_ = start - at`, `at = 0`).
 - **Only this sound**: keep `length` ≤ `end - in_`, so the next sound in the same file doesn't play too.
 - **Levels**: sounds in one library differ by 15 dB or more. `lufs` tells you how loud each is; raise `volume` for a
   quiet one rather than guessing.
@@ -61,13 +61,12 @@ A sound is a clip of its file, starting at its `start`:
 
     edit_sounds_from_motion samples="…\samples.json" source="library"
 
-Places library sounds the way the designed version places designed ones: a whoosh with its loudest moment on each
-move's fastest moment, panned with the layer (`pan` → `panTo`), louder for faster moves, trimmed with a fade after the
-move; a click where it lands hard; a press and its release (the same click higher and softer); ticks that differ a
-little in take, pitch and level. Each sound is chosen by kind and shape: a fast short move gets a short bright whoosh,
-a slow big one a longer, darker one; a recording already used is pushed back. Change any clip with `clip.set` (or
-move it in the arrangement); running it again keeps your changes. Missing a kind (no clicks in your folders) is an
-error that says which kind to add.
+Answers the events you choose with recordings of real things, not synthetic effects: a click or knock where
+something lands hard, a press and its release (the same click higher and softer), a real hit under a big landing.
+Each sound is chosen by kind and shape; a recording already used is pushed back. Rostrum makes no whooshes: score a
+move with an instrument instead (`inspect_guide 'designed-sounds'`). Change any clip with `clip.set` (or move it in
+the arrangement); running it again keeps your changes. Missing a kind (no clicks in your folders) is an error that
+says which kind to add.
 
 ## Licences
 

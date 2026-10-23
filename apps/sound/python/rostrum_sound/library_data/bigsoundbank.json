@@ -674,134 +674,6 @@
    "licence": "CC0-1.0"
   },
   {
-   "path": "0572.ogg",
-   "title": "Whoosh #1",
-   "name": "whoosh.basic",
-   "author": "Joseph Sardin",
-   "page": "https://bigsoundbank.com/whoosh-1-s0572.html",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "0573.ogg",
-   "title": "Whoosh #2",
-   "name": "whoosh.basic",
-   "author": "Joseph Sardin",
-   "page": "https://bigsoundbank.com/whoosh-2-s0573.html",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "0128.ogg",
-   "title": "Sword Through the Air",
-   "name": "whoosh.sword-through-the-air",
-   "author": "Joseph Sardin",
-   "page": "https://bigsoundbank.com/sword-through-the-air-s0128.html",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "1795.ogg",
-   "title": "Whoosh #3",
-   "name": "whoosh.basic",
-   "author": "Joseph Sardin",
-   "page": "https://bigsoundbank.com/whoosh-3-s1795.html",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "1796.ogg",
-   "title": "Whoosh #4",
-   "name": "whoosh.basic",
-   "author": "Joseph Sardin",
-   "page": "https://bigsoundbank.com/whoosh-4-s1796.html",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "1797.ogg",
-   "title": "Whoosh #5",
-   "name": "whoosh.basic",
-   "author": "Joseph Sardin",
-   "page": "https://bigsoundbank.com/whoosh-5-s1797.html",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "1798.ogg",
-   "title": "Whoosh #10",
-   "name": "whoosh.basic",
-   "author": "Joseph Sardin",
-   "page": "https://bigsoundbank.com/whoosh-10-s1798.html",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "1799.ogg",
-   "title": "Whoosh #6",
-   "name": "whoosh.basic",
-   "author": "Joseph Sardin",
-   "page": "https://bigsoundbank.com/whoosh-6-s1799.html",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "1802.ogg",
-   "title": "Whoosh #9",
-   "name": "whoosh.basic",
-   "author": "Joseph Sardin",
-   "page": "https://bigsoundbank.com/whoosh-9-s1802.html",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "1800.ogg",
-   "title": "Whoosh #7",
-   "name": "whoosh.basic",
-   "author": "Joseph Sardin",
-   "page": "https://bigsoundbank.com/whoosh-7-s1800.html",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "1801.ogg",
-   "title": "Whoosh #8",
-   "name": "whoosh.basic",
-   "author": "Joseph Sardin",
-   "page": "https://bigsoundbank.com/whoosh-8-s1801.html",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "1787.ogg",
-   "title": "Flag #1",
-   "name": "whoosh.flag",
-   "author": "Joseph Sardin",
-   "page": "https://bigsoundbank.com/flag-1-s1787.html",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "1788.ogg",
-   "title": "Flag #2",
-   "name": "whoosh.flag",
-   "author": "Joseph Sardin",
-   "page": "https://bigsoundbank.com/flag-2-s1788.html",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "1789.ogg",
-   "title": "Flag #3",
-   "name": "whoosh.flag",
-   "author": "Joseph Sardin",
-   "page": "https://bigsoundbank.com/flag-3-s1789.html",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "1790.ogg",
-   "title": "Flag #4",
-   "name": "whoosh.flag",
-   "author": "Joseph Sardin",
-   "page": "https://bigsoundbank.com/flag-4-s1790.html",
-   "licence": "CC0-1.0"
-  },
-  {
-   "path": "1104.ogg",
-   "title": "Synthetic Coat Rubbed",
-   "name": "whoosh.synthetic-coat-rubbed",
-   "author": "Joseph Sardin",
-   "page": "https://bigsoundbank.com/synthetic-coat-rubbed-s1104.html",
-   "licence": "CC0-1.0"
-  },
-  {
    "path": "1807.ogg",
    "title": "Explosion #1",
    "name": "cinematic.explosion",
@@ -1681,5 +1553,26 @@
    "page": "https://bigsoundbank.com/robin-3-s1669.html",
    "licence": "CC0-1.0"
   }
- ]
+ ],
+ "retired": {
+  "why": "Whooshes and swishes: Rostrum offers none (apps/sound/PURPOSE.md). The library hides these files.",
+  "files": [
+   "0572.ogg",
+   "0573.ogg",
+   "0128.ogg",
+   "1795.ogg",
+   "1796.ogg",
+   "1797.ogg",
+   "1798.ogg",
+   "1799.ogg",
+   "1802.ogg",
+   "1800.ogg",
+   "1801.ogg",
+   "1787.ogg",
+   "1788.ogg",
+   "1789.ogg",
+   "1790.ogg",
+   "1104.ogg"
+  ]
+ }
 }

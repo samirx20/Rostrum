@@ -23,7 +23,7 @@ pub(crate) const SCHEDULE: &str = r#"{"version":6,"sampleRate":44100,"totalSampl
         {"startSample":2205,"samples":60000,"duration":1.2,"content":{"kind":"score","voices":[{"kind":"note","instrument":"warmPad","freqs":[261.63,329.63,392],"startIdx":0,"duration":1.2,"velocity":0.8,"pan":0}]},
          "rate":null,"reverse":null,"glitch":null,"filterSweep":{"fromHz":400,"toHz":9000,"linear":false},"tone":"neutral","fadeIn":0.1,"fadeOut":0.2,"volume":1,"pan":0,"reverb":0.3}]},
       {"name":"fx","tone":"neutral","volume":0.9,"pan":0,"reverb":0.2,"ducks":[],"clips":[
-        {"startSample":11025,"samples":20000,"duration":0.4,"content":{"kind":"sfx","preset":"whoosh","material":null,"duration":0.4,"volume":0.9,"pitch":0,"panFrom":-0.8,"panTo":0.8},
+        {"startSample":11025,"samples":20000,"duration":0.4,"content":{"kind":"sfx","preset":"riser","material":null,"duration":0.4,"volume":0.9,"pitch":0,"panFrom":-0.8,"panTo":0.8},
          "rate":{"from":0.8,"to":null,"preservePitch":false},"reverse":null,"glitch":{"stutterRate":20,"repeats":4},"filterSweep":null,"tone":"bright","fadeIn":0,"fadeOut":0,"volume":1,"pan":0,"reverb":0},
         {"startSample":30000,"samples":30000,"duration":0.6,"content":{"kind":"sfx","preset":"impact","material":{"baseFreq":1820,"ratios":[1,2.32,4.18],"decay":8.5,"noiseMix":0.12},"duration":0.6,"volume":0.9,"pitch":0,"panFrom":0,"panTo":0},
          "rate":null,"reverse":0.65,"glitch":null,"filterSweep":null,"tone":"neutral","fadeIn":0.27,"fadeOut":0.015,"volume":1,"pan":0,"reverb":0}]}]}"#;
@@ -43,7 +43,7 @@ fn renders_the_same_every_time() {
 
 #[test]
 fn a_missing_pcm_file_is_an_error_naming_it() {
-    let s = SCHEDULE.replace(r#"{"kind":"sfx","preset":"whoosh","material":null,"duration":0.4,"volume":0.9,"pitch":0,"panFrom":-0.8,"panTo":0.8}"#, r#"{"kind":"media","pcm":{"file":"nowhere/take.f32","channels":2,"frames":100}}"#);
+    let s = SCHEDULE.replace(r#"{"kind":"sfx","preset":"riser","material":null,"duration":0.4,"volume":0.9,"pitch":0,"panFrom":-0.8,"panTo":0.8}"#, r#"{"kind":"media","pcm":{"file":"nowhere/take.f32","channels":2,"frames":100}}"#);
     let err = render(&Schedule::parse(&s).unwrap()).err().expect("an error");
     assert!(err.contains("nowhere/take.f32"), "{err}");
 }

@@ -19,4 +19,4 @@ What is here and works (checked on the 106 Sonniss evaluation files, not listene
   on screen yet.
 
 Not done: the panel's Play button and the library-scored slide deck were never listened to; kinds read from shape are
-rough (UI sounds also get a weak "whoosh" tag). Test: `python/tests/test_userlib.py`.
+rough (UI sounds may get a wrong tag). Test: `python/tests/test_userlib.py`.

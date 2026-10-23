@@ -12,7 +12,7 @@ import tempfile
 from pathlib import Path
 
 WORDS = ("swap-demo", "swap-step", "swap-keep", "swap-back", "export-preset", "export-stems", "export-markers", "voice-model-panel")
-LENGTHS = (("short tick", 0.4), ("medium whoosh", 1.2), ("long riser", 3.0))
+LENGTHS = (("short tick", 0.4), ("medium swell", 1.2), ("long riser", 3.0))
 
 
 def _make_files(folder: Path) -> list[dict]:
@@ -25,8 +25,8 @@ def _make_files(folder: Path) -> list[dict]:
         x = (0.4 * np.sin(2 * np.pi * (300 + 500 * i) * t) * np.minimum(1, (n - np.arange(n)) / 4410)).astype("float32")
         path = folder / f"{name}.wav"
         sf.write(str(path), x, 44100)
-        rows.append({"path": str(path), "start": 0.0, "end": seconds, "name": path.name, "kind": "whoosh", "peak_s": 0, "onset_s": 0,
-                     "what": f"whoosh · {seconds:.2f} s · mid · soft attack", "inFile": ""})
+        rows.append({"path": str(path), "start": 0.0, "end": seconds, "name": path.name, "kind": "impact", "peak_s": 0, "onset_s": 0,
+                     "what": f"impact · {seconds:.2f} s · mid · soft attack", "inFile": ""})
     return rows
 
 

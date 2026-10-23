@@ -76,7 +76,7 @@ pub fn render_sfx(p: &Sfx, left: &mut [f32], right: &mut [f32], sr: f64) {
     if p.material.is_none() && crate::sfx::kit::PRESETS.contains(&p.preset) {
         let n = left.len().min(len);
         // Each preset's level, set so the set sits together (a click near −6 dBFS, an impact's body near −4).
-        let trim = match p.preset { "impact" | "boom" | "hit" | "hitHard" => 0.7, "riser" | "uplifter" => 0.65, "swoosh" => 0.75, "click" | "tap" | "tick" | "key" => 0.7, "ding" | "chime" | "notification" | "success" => 1.3, _ => 1.0 };
+        let trim = match p.preset { "impact" | "boom" | "hit" | "hitHard" => 0.7, "riser" | "uplifter" => 0.65, "click" | "tap" | "tick" | "key" => 0.7, "ding" | "chime" | "notification" | "success" => 1.3, _ => 1.0 };
         crate::sfx::kit::render(p.preset, dur, pitch, sr, |i, u, l, r| {
             let (l, r) = (l * trim, r * trim);
             if i < n {

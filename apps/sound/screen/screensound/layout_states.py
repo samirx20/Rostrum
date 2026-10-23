@@ -33,7 +33,7 @@ LAYERED = """tempo(100); beats_per_bar(4); length(bar(9))
 hits = track("hits", volume=0.9)
 hits.sound("click", at=2.0, group="a_long_layer_group_name_for_the_door_slam_in_the_second_scene")
 hits.sound("hit", at=2.0, group="a_long_layer_group_name_for_the_door_slam_in_the_second_scene")
-hits.sound("whoosh", at=1.5, dur=1.0, group="a_long_layer_group_name_for_the_door_slam_in_the_second_scene")
+hits.sound("riser", at=1.5, dur=1.0, group="a_long_layer_group_name_for_the_door_slam_in_the_second_scene")
 """
 
 

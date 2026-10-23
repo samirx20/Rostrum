@@ -10,7 +10,7 @@ from ..builder import INSTRUMENT_KEYS
 
 ENTRY = {"type": "object", "description": (
     "What to hear. An instrument: {instrument: builtIn|synth|model|sfz|plugin, builtIn|model|sfz|plugin: name}; a drum kit: {instrument: kit} "
-    "or {instrument: kitSfz, kitSfz: path}; a designed sound: {design: whoosh|click|riser|hit|subDrop, …its fields}; a sound file: "
+    "or {instrument: kitSfz, kitSfz: path}; a designed sound: {design: click|riser|hit|subDrop, …its fields}; a sound file: "
     "{media: absolute path, in: seconds, length: seconds}. Omit it (with `track`) to hear the track's own sound.")}
 
 

@@ -1,7 +1,8 @@
 """The installed sound library (`<assets>/sounds/<pack>/…`, settings.assets_dir) and what each sound in it is, so an agent can
 choose a recording without hearing every file. One place answers "what is this file": a description from the
 pack's own data when there is one (`library_data/<pack>.json`, shipped with the app, or a `takes.json` the pack
-carries), else the words of its folders and file name; plus its length in seconds for recordings.
+carries), else the words of its folders and file name; plus its length in seconds for recordings. A file the pack's
+data lists as `retired` (whooshes: PURPOSE.md, no cheap effects) is never offered.
 """
 from __future__ import annotations
 
@@ -29,7 +30,8 @@ def _known(pack: str) -> dict[str, dict]:
     rows = []
     shipped = DATA / f"{pack}.json"
     if shipped.is_file():
-        rows += json.loads(shipped.read_text(encoding="utf-8"))["files"]
+        data = json.loads(shipped.read_text(encoding="utf-8"))
+        rows += data["files"] + [{"path": p, "retired": True} for p in data.get("retired", {}).get("files", [])]
     takes = LIBRARY / pack / "takes.json"
     if takes.is_file():
         for t in json.loads(takes.read_text(encoding="utf-8")):
@@ -75,6 +77,8 @@ def find(kind: str = "instruments", words: str = "") -> list[Path]:
             continue
         rel = p.relative_to(LIBRARY)
         row = _known(rel.parts[0]).get(Path(*rel.parts[1:]).as_posix().lower(), {})
+        if row.get("retired"):
+            continue
         text = " ".join([str(rel), row.get("title", ""), row.get("name", "")]).lower()
         if all(w in text for w in ws):
             out.append(p)
