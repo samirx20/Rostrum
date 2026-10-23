@@ -9,7 +9,8 @@ The rules, like a design tool's auto layout (fields: layout_fields.py):
   starts a new line (`rowGap` apart) when the next layer doesn't fit.
 - Grid: `columns` equal columns `gap` apart, rows `rowGap` apart, each row as tall as its tallest layer;
   `align` places a layer in its cell (stretch fills the cell).
-- `hugWidth` / `hugHeight`: the group's size follows what is inside it (no wrapping along a hugged line).
+- `hugWidth` / `hugHeight`: the group's size follows what is inside it (no wrapping along a hugged line). With `hugPin`
+  (on for new groups) it grows from its top-left, as a design tool's frame: see `hugged`.
 - A layer outside its start..end takes no room; a layer `layoutApart` keeps its own x, y.
 - Layers are placed by their anchor: x = slot left + anchorX × w (a group's layers live in its px from its top-left).
 - Only shapes, images and groups change size (fill, stretch, hug); other layers keep theirs.
@@ -18,7 +19,7 @@ from __future__ import annotations
 
 import math
 
-from . import textsize
+from . import boxes, textsize
 from .evaluate import resolve
 from .exprbake import items_of
 from .layout_fields import SIZED
@@ -84,18 +85,38 @@ def solve(comp: dict, t: float, props=None) -> dict[str, dict]:
                 place(child, (w, h))
             for child in item.get("layers", []):
                 if child["id"] not in out:
-                    place(child, measure(child))
+                    free(child)
         else:                                      # a plain group may hold laid-out groups
             for child in item.get("layers", []):
-                place(child, measure(child))
+                free(child)
+
+    def free(child):
+        """A layer no layout places: its own x, y, with a hugging group's size (and pinned edge) from its layers."""
+        size = measure(child)
+        if has_layout(child) and size != own_size(child["type"], p_of(child)):
+            out[child["id"]] = hugged(p_of(child), size)
+        place(child, size)
 
     textsize.prime([p_of(i) for i in items_of(comp).values() if i["type"] == "text"])    # the frame's texts, one engine trip
     for layer in comp.get("layers", []):
-        size = measure(layer)
-        if has_layout(layer) and size != own_size(layer["type"], p_of(layer)):
-            out[layer["id"]] = {"w": round(size[0], 4), "h": round(size[1], 4)}       # a hugging top-level group
-        place(layer, size)
+        free(layer)
     return out
+
+
+def hugged(p: dict, size) -> dict:
+    """A hugging group's own w, h and, with `hugPin`, its x, y moved so the edge the layout starts from stays where it
+    was: left for a row (top for a column, both for a grid), the other way across a row by `align`. An anchor off the
+    middle is the person's choice: that axis keeps the anchor's own place, as it always did."""
+    w0, h0 = own_size("group", p)
+    o = {"w": size[0], "h": size[1]}
+    if p["hugPin"]:
+        across = {"start": 0.0, "stretch": 0.0, "center": 0.5, "end": 1.0}[p["align"]]
+        fx, fy = {"row": (0.0, across), "column": (across, 0.0)}.get(p["layout"], (0.0, 0.0))
+        gx = (p["anchorX"] - fx) * (size[0] - w0) if abs(p["anchorX"] - 0.5) < 1e-9 else 0.0
+        gy = (p["anchorY"] - fy) * (size[1] - h0) if abs(p["anchorY"] - 0.5) < 1e-9 else 0.0
+        a, b, c, d, _, _ = boxes.matrix(p, w0, h0)          # the box's own axes in the parent (scale and turn)
+        o["x"], o["y"] = p["x"] + a * gx + c * gy, p["y"] + b * gx + d * gy
+    return {k: round(v, 4) for k, v in o.items()}
 
 
 def _flow(p, kids, measure, grow, W, H):
