@@ -34,11 +34,14 @@ def shape_box(x0, y0, x1, y1, shift=False, alt=False) -> tuple[float, float, flo
 class Create(QObject):
     boxChanged = Signal()
     typingChanged = Signal()
+    canEditChanged = Signal()
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent or bridge)
         self.b, self._press, self._box, self._text, self._style = bridge, None, {}, None, {}
         bridge.toolChanged.connect(self._tool_changed)
+        bridge.selectionChanged.connect(self.canEditChanged)        # canEdit follows the selection and the typing
+        self.typingChanged.connect(self.canEditChanged)
 
     # ---- reads for QML ------------------------------------------------------------------------------------------
     @Property("QVariantMap", notify=boxChanged)
@@ -60,6 +63,12 @@ class Create(QObject):
         d = {k: F.defaults("text")[k] for k in LOOK}
         d["size"] = self._start_size()
         return {**d, **self._style, **{k: item[k] for k in d if k in item}}
+
+    @Property(bool, notify=canEditChanged)
+    def canEdit(self):
+        """The selection is one text, not being typed in: Enter (or a double-click) types in it on the canvas."""
+        sel = self.b.selected
+        return self._text is None and bool(sel) and self.b.doc.has(sel) and self.b.doc.item(sel)["type"] == "text"
 
     @Property(str, notify=typingChanged)
     def body(self):
@@ -159,11 +168,6 @@ class Create(QObject):
         """End typing (Esc, Ctrl+Enter, a click elsewhere) with the box's final words."""
         if self._text is not None and body != self._text.body:
             self.typeText(body)
-        self.finish()
-
-    @Slot()
-    def done(self):
-        """The context bar's Done."""
         self.finish()
 
     @Slot()

@@ -5,7 +5,8 @@ import RostrumKit
 // The creation tools over the canvas (screen2d/create.py does the work; the tool strip, R, O and T turn them on).
 // Rectangle / Ellipse: press-drag-release draws one (Shift = square / round, Alt = from the centre, a click = 200 px
 // there); the outline and its size ("320 × 180") follow the pointer. Text: click and type, or drag a box to wrap in;
-// Esc or Ctrl+Enter ends (the text stays selected), Enter is a new line. Double-click a text (Move) to type in it again.
+// a click outside, Esc or Ctrl+Enter ends (the text stays selected; no Done), Enter is a new line. Double-click a text
+// (Stage.qml) or Enter with it selected (Main.qml) types in it again, on the canvas only.
 // While typing the engine's own picture shows the words; the box here is transparent text with the cursor, lined up
 // through the Stage's mapping only (compScale, fromComp, toComp). It lies in the canvas, under the tool strip (Stage.qml).
 Item {
@@ -25,7 +26,7 @@ Item {
     MouseArea {
         id: area
         anchors.fill: parent
-        enabled: ov.creating && !backend.playing && !spaceKey.held     // Space held: the view pans (ViewInput.qml)
+        enabled: (ov.creating || ov.create.typing) && !backend.playing && !spaceKey.held   // Space held: the view pans (ViewInput.qml)
         visible: enabled                                  // out of the way (and of the layout check) unless a creation tool is on
         cursorShape: Qt.CrossCursor
         preventStealing: true
@@ -33,8 +34,10 @@ Item {
         property real px: 0
         property real py: 0
         property bool shape: ov.tool === "rect" || ov.tool === "ellipse"
+        property bool ending: false                           // this press ended typing: its release makes nothing
         onPressed: (m) => {
-            if (ov.create.typing) return                      // the click that ends typing is handled by `ender` below
+            ending = ov.create.typing                         // a press here is outside the typing box (that takes its own):
+            if (ending) return ov.create.commitText(editor.text)   // the text is made / kept, one change
             p0 = ov.atMouse(m); px = m.x; py = m.y
             if (shape) ov.create.beginShape(ov.tool, p0.x, p0.y, 4 / ov.scale)
         }
@@ -46,34 +49,13 @@ Item {
             }
         }
         onReleased: (m) => {
-            if (ov.create.typing) return
+            if (ov.create.typing || ending) return
             const p = ov.atMouse(m), moved = Math.abs(m.x - ov.fromComp(p0.x, p0.y).x) + Math.abs(m.y - ov.fromComp(p0.x, p0.y).y) > 4
             if (shape) ov.create.endShape(p.x, p.y, (m.modifiers & Qt.ShiftModifier) !== 0, (m.modifiers & Qt.AltModifier) !== 0)
             else if (moved) ov.create.beginText(Math.min(p0.x, p.x), Math.min(p0.y, p.y), Math.abs(p.x - p0.x))
             else ov.create.beginText(p0.x, p0.y, 0)
         }
         onCanceled: if (shape) ov.create.endShape(p0.x, p0.y, false, false)
-    }
-    PointHandler {      // passive, the press goes on: a press outside the typing box ends typing (the text stays);
-        id: ender       // two quick presses on a text with the Move tool = double-click: type in it (Stage's click selects)
-        acceptedButtons: Qt.LeftButton
-        property real lastAt: 0
-        property point lastPos
-        onActiveChanged: {
-            if (!active) return
-            const x = point.position.x, y = point.position.y
-            if (ov.create.typing) {
-                const q = editor.mapFromItem(ov, x, y)
-                if (q.x < -6 || q.y < -6 || q.x > editor.width + 6 || q.y > editor.height + 6) ov.create.commitText(editor.text)
-                return
-            }
-            const now = Date.now()
-            if (ov.tool === "move" && now - lastAt < 450 && Math.abs(x - lastPos.x) + Math.abs(y - lastPos.y) < 6) {
-                const p = ov.toComp(x, y)
-                ov.create.editAt(p.x, p.y)
-                lastAt = 0
-            } else { lastAt = now; lastPos = Qt.point(x, y) }
-        }
     }
     Item {              // the shape being drawn (an ellipse as an ellipse)
         id: shapeBox

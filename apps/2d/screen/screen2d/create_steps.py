@@ -8,10 +8,15 @@
     typetext <x> <y> <words…>                        the same, but typing is not ended (for a picture of the cursor)
     edittext <layer> <words…>                        double-click the text, replace all of it, Esc
     endtext                                          Esc
+  A hand's real mouse and keys in the window (QTest), at composition px (the Stage's mapping):
+    canvasdrag <x0> <y0> <x1> <y1>                   press, pull, let go
+    canvasclick <x> <y> [double]                     one click (or two quick ones)
+    typekeys <words…>                                real key presses into what has the focus (_ for spaces)
 """
 from __future__ import annotations
 
-WORDS = ("shape", "shapedrag", "shapeend", "text", "textbox", "typetext", "edittext", "endtext")
+WORDS = ("shape", "shapedrag", "shapeend", "text", "textbox", "typetext", "edittext", "endtext", "canvasdrag", "canvasclick",
+         "typekeys")
 SLOP = 4.0
 
 
@@ -24,7 +29,45 @@ def _typed(c, body):
         c.typeText(body[:i])
 
 
+def _hand(word, rest):
+    from PySide6.QtCore import QObject, QPoint, QPointF, Qt
+    from PySide6.QtGui import QGuiApplication
+    from PySide6.QtTest import QTest
+    win = next(w for w in QGuiApplication.topLevelWindows() if w.findChild(QObject, "stage"))
+    stage = win.findChild(QObject, "stage")
+    o, k = stage.property("compOrigin"), stage.property("compScale")
+
+    def at(x, y):
+        q = stage.mapToScene(QPointF(o.x() + float(x) * k, o.y() + float(y) * k))
+        return QPoint(round(q.x()), round(q.y()))
+    if word == "typekeys":
+        from PySide6.QtCore import QEvent
+        from PySide6.QtGui import QKeyEvent
+        for ch in " ".join(rest).replace("_", " "):         # as a keyboard sends them: a press and a release with the letter
+            key, mod = Qt.Key(ord(ch.upper())), Qt.ShiftModifier if ch.isupper() else Qt.NoModifier
+            for kind in (QEvent.KeyPress, QEvent.KeyRelease):
+                QGuiApplication.sendEvent(win, QKeyEvent(kind, key, mod, ch))
+            QTest.qWait(10)
+    elif word == "canvasclick":
+        p = at(*rest[:2])
+        QTest.mouseMove(win, p)
+        if rest[2:3] == ["double"]:
+            QTest.mouseDClick(win, Qt.LeftButton, Qt.NoModifier, p)
+        else:
+            QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, p)
+    else:
+        a, b = at(*rest[:2]), at(*rest[2:4])
+        QTest.mouseMove(win, a)
+        QTest.mousePress(win, Qt.LeftButton, Qt.NoModifier, a)
+        for i in range(1, 9):
+            QTest.mouseMove(win, a + (b - a) * i / 8, 10)
+        QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, b)
+    QTest.qWait(120)
+
+
 def do_create_step(bridge, word, rest, step):
+    if word in ("canvasdrag", "canvasclick", "typekeys"):
+        return _hand(word, rest)
     c = bridge.create
     flags = [w for w in rest if w in ("shift", "alt")]
     rest = [w for w in rest if w not in ("shift", "alt")]
