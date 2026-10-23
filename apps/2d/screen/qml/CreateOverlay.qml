@@ -66,7 +66,7 @@ Item {
         x: on ? ov.fromComp(ov.box.x, ov.box.y).x : 0; y: on ? ov.fromComp(ov.box.x, ov.box.y).y : 0
         width: on ? ov.box.w * ov.scale : 0; height: on ? ov.box.h * ov.scale : 0
         readonly property color wash: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.15)
-        Rectangle { visible: ov.box.kind !== "ellipse"; anchors.fill: parent; color: shapeBox.wash; border.width: 1.5; border.color: Theme.accent }
+        HaloLine { visible: ov.box.kind !== "ellipse"; anchors.fill: parent; lineWidth: 1.5; fillOpacity: 0.15 }
         Shape {
             visible: ov.box.kind === "ellipse"; anchors.fill: parent
             ShapePath {
@@ -103,7 +103,7 @@ Item {
         width: on ? (ov.box.wrap ? ov.box.w * ov.scale : Math.max(ov.box.w * ov.scale, edit.contentWidth) + 4) : 0
         height: on ? Math.max(ov.box.h * ov.scale, edit.contentHeight) : 0
         property alias text: edit.text
-        Rectangle { anchors.fill: parent; anchors.margins: -4; color: "transparent"; border.width: 1; border.color: Theme.accent; radius: 2 }
+        HaloLine { anchors.fill: parent; anchors.margins: -4; radius: 2 }
         TextEdit {
             id: edit
             anchors.fill: parent

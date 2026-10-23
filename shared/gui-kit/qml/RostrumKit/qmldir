@@ -57,6 +57,7 @@ KeyMap 1.0 KeyMap.qml
 AgentChip 1.0 AgentChip.qml
 HistorySheet 1.0 HistorySheet.qml
 ChangeOutline 1.0 ChangeOutline.qml
+HaloLine 1.0 HaloLine.qml
 StartScreen 1.0 StartScreen.qml
 FilesMenu 1.0 FilesMenu.qml
 ExportSheet 1.0 ExportSheet.qml

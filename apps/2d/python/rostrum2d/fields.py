@@ -15,6 +15,7 @@ from rostrum_core.keys import KEY_FIELDS
 
 from . import blends as _blends, group_bg as _group_bg, looping, fill_fields as _fill, grade_fields as _grade, layout_fields as _layout, paint_fields as _paint, stepped as _stepped, swap as _swap
 
+NEW_FILL = "#d9d9d9"  # a new shape or path starts in this light grey: never the accent, so a selection shows on it (Figma's choice too)
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 P = "primary"
 S = "secondary"
@@ -215,7 +216,7 @@ FIELDS: dict[str, list[Param]] = {
         CH("headEnd", HEADS, "End head", "Shape", "triangle", when=IS("shape", "arrow"), labels=HEAD_WORDS),
         N("headSize", "Head size", "Shape", 0, 2000, 1, "px", when=IS("shape", "arrow"), default=32.0),
         FILLED,
-        C("fill", "Fill colour", "Fill", "#4f8cff", when=IS("filled", True)),
+        C("fill", "Fill colour", "Fill", NEW_FILL, when=IS("filled", True)),
         *_fill.OPACITY,
         T("stroke", "Outline", "Outline", False, S, when={"not": _OPEN}),
         C("strokeColor", "Outline colour", "Outline", "#ffffff", S, STROKE),
@@ -297,7 +298,7 @@ FIELDS: dict[str, list[Param]] = {
         N("w", "Box width", "Points", 1, 20000, 1, "px", D, default=100.0, help="The box the anchor and gradients use"),
         N("h", "Box height", "Points", 1, 20000, 1, "px", D, default=100.0),
         FILLED,
-        C("fill", "Fill colour", "Fill", "#ffffff", when=IS("filled", True)),
+        C("fill", "Fill colour", "Fill", NEW_FILL, when=IS("filled", True)),
         *_fill.OPACITY,
         CH("fillRule", ["nonzero", "evenodd"], "Fill rule", "Overlaps", "nonzero", D, IS("filled", True)),
         T("stroke", "Outline", "Outline", False),

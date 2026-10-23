@@ -47,6 +47,7 @@ Item {
         x: ov.ox + (b.x || 0) * ov.fit - 4; y: ov.oy + (b.y || 0) * ov.fit - 4
         width: (b.w || 0) * ov.fit + 8; height: (b.h || 0) * ov.fit + 8
         color: "transparent"; border.width: 1; border.color: Theme.accent
+        Rectangle { anchors.fill: parent; anchors.margins: -1; color: "transparent"; border.width: 1; border.color: Qt.rgba(0, 0, 0, 0.6) }   // dark halo
     }
     readonly property bool knobBelow: {
         const kx = handles.x + handles.width / 2, ky = handles.y - 24, m = 8
@@ -54,7 +55,10 @@ Item {
                                               && ky > cover.y - m && ky < cover.y + cover.height + m))
     }
     onKnobBelowChanged: sel.knobBelow = knobBelow
-    component Grip: Rectangle { width: 9; height: 9; color: "white"; border.width: 1.5; border.color: Theme.accent; visible: handles.visible }
+    component Grip: Rectangle {
+        width: 9; height: 9; color: "white"; border.width: 1.5; border.color: Theme.accent; visible: handles.visible
+        Rectangle { anchors.fill: parent; anchors.margins: -1; color: "transparent"; border.width: 1; border.color: Qt.rgba(0, 0, 0, 0.6) }
+    }
     Repeater {
         model: [[0, 0], [1, 0], [0, 1], [1, 1]]
         delegate: Grip {
