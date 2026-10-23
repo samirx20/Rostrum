@@ -11,7 +11,8 @@ Rectangle {
     id: panel
     readonly property var s: backend.stretch
     readonly property var info: s.info
-    visible: s.shown && backend.tool !== "draw"
+    property bool allowed: true                 // the app may hide it (2D: while drawing)
+    visible: s.shown && allowed
     color: Theme.panel; z: 2
     readonly property real w: width - Theme.padLeft - Theme.padRight
     MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onWheel: (e) => e.accepted = true }   // the layer's settings under it stay untouched

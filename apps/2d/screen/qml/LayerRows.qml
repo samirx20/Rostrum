@@ -120,6 +120,10 @@ ListView {
         LayerTrack {
             x: list.ruler.x - 8; width: list.ruler.width + 16; height: row.own
             rowData: row.modelData; ruler: list.ruler; rows: list
+            cells: Component { FrameMarks {   // a drawing's cells
+                frames: row.modelData.frames || []; again: row.modelData.again || []; keys: row.modelData.keys || []
+                drawing: row.modelData.row === "layer" && (row.modelData.kind === "drawing" || (row.modelData.frames || []).length > 0)
+                timeRuler: list.ruler; owner: row.modelData.owner } }
         }
         Loader {   // the video's own sound, tied to the bar above (screen2d/video_sound.py)
             active: row.sound !== undefined

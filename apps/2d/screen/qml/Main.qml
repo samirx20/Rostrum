@@ -196,7 +196,7 @@ AppShell {
                        Inspector { anchors.fill: parent; bridge: painter
                                    above: BrushHead { }      // the brush's own row (or ‹ back while editing it), then its quick rows
                                    below: PaintTarget { } } } },   // Edit brush ›, Painting on (Layer, Inside the outline, Draw each frame), paint layers
-        AnimPanel { anchors.fill: parent }    // a stretch picked in the timeline: its animation, over the layer's settings (stretch_select.py)
+        AnimPanel { anchors.fill: parent; allowed: backend.tool !== "draw" }    // a stretch picked in the timeline: its animation, over the layer's settings (stretch_select.py)
     ]
     bottom: LayerTimeline {
         id: timeline
@@ -206,5 +206,11 @@ AppShell {
         canCompact: !shell.bottomBeside
         onResized: (h) => { shell.fold(false); shell.setAsked("bottom", h) }   // its top edge, dragged: the person's height
         onCompactAsked: (on) => shell.fold(on)
+        compactExtra: backend.soundtrack.present ? Theme.row + 2 : 0      // the Sound row stays
+        frameTicks: painter.drawingId !== ""
+        rows: LayerRows { ruler: timeline.ruler; labelWidth: timeline.labelWidth; compact: timeline.compact }
+        curves: CurveEditor { visible: backend.curves.on; ruler: timeline.ruler; labelWidth: timeline.labelWidth }
+        overlay: BeatLines { ruler: timeline.ruler; bottomY: timeline.height - Theme.gap }   // Show beats (the Sound row's menu): beat and bar lines
+        Connections { target: timeline.ruler; function onScrubbed(t) { backend.soundtrack.scrub(t) } }   // a scrub plays a short burst of the sound
     }
 }

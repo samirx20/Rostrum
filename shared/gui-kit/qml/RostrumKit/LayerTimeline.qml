@@ -1,13 +1,14 @@
 import QtQuick
 import RostrumKit
 
-// The timeline, bottom, full width, always there; it is also the layers list (apps/2d/DESIGN.md › The layer rows).
-// One header row: play and the time over the names, the ruler over the rows (it scrubs; the project's marker flags sit
-// on it), Keys | Curves and the height switch at its right end. Under it one row per layer: its name
-// on the left (LayerName.qml), its bar, keys and frames on the right (LayerTrack.qml). Curves shows the selected
-// layer's value curves in the same place. The thin strip above the top edge drags to make the timeline taller.
+// The key timeline, bottom, full width, always there; it is also the layers list (apps/2d/DESIGN.md › The layer rows;
+// TIMELINE.md › The key timeline: what `backend` offers it). One header row: play and the time over the names, the
+// ruler over the rows (it scrubs; the project's marker flags sit on it), Keys | Curves and the height switch at its
+// right end. Under it one row per item, plugged in by the app (`rows`: a Flickable of rows, each a name and a
+// LayerTrack.qml); Curves (`curves`) shows the selected item's value curves in the same place; `overlay` draws over
+// the rows (2D: beat lines). The thin strip above the top edge drags to make the timeline taller.
 // Compact (DESIGN.md › two heights): only the selected layer's row; its name opens a list of every layer, so another
-// is one click away. The button at the ruler row's right end switches; Main.qml remembers it per tool.
+// is one click away. The button at the ruler row's right end switches; the app remembers it per tool.
 Rectangle {
     id: tl
     property int labelWidth: 240
@@ -16,10 +17,19 @@ Rectangle {
     property bool compact: false
     property bool canCompact: true              // false beside a tall frame (one height there): the switch is absent
     signal compactAsked(bool on)
-    readonly property real compactHeight: rowsTop + Theme.rowDense + 2 * Theme.gap
-                                          + (backend.soundtrack.present ? Theme.row + 2 : 0)   // the Sound row stays
-    readonly property real wantedHeight: rowsTop + rows.contentHeight + 2 * Theme.gap   // header, ruler and every row: Main.qml's default height, up to its cap
+    property Flickable rows                     // the app's rows (2D: LayerRows.qml), laid in place under the ruler
+    property Item curves                        // the app's curve view, in the same place while Curves is on
+    property Item overlay                       // drawn over the rows, under the markers and the playhead (2D: BeatLines.qml)
+    property real compactExtra: 0               // rows that stay in compact too (2D: the Sound row)
+    property bool frameTicks: false             // one tick per frame on the ruler (2D: a drawing selected)
+    readonly property alias ruler: ruler
+    readonly property real compactHeight: rowsTop + Theme.rowDense + 2 * Theme.gap + compactExtra
+    readonly property real wantedHeight: rowsTop + (rows ? rows.contentHeight : 0) + 2 * Theme.gap   // header, ruler and every row: the app's default height, up to its cap
     function openMenu(id, px, py) { rows.openMenu(id, px, py) }
+    function plug(item, into, z) { if (item) { item.parent = into; item.z = z; item.anchors.fill = into } }
+    onRowsChanged: plug(rows, rowsBox, -1)          // under the fade and scroll bar that share its box
+    onCurvesChanged: plug(curves, curvesBox, 0)
+    onOverlayChanged: plug(overlay, overlayBox, 0)
     color: Theme.panel; radius: Theme.radiusPanel
 
     MouseArea {  // the top edge: in the gap above the timeline, so it never takes a click meant for the canvas
@@ -61,7 +71,7 @@ Rectangle {
         id: ruler
         x: tl.labelWidth + Theme.gap + 8; y: tl.headY   // 8: room for a key at 0
         width: (compactSwitch.visible ? compactSwitch.x - Theme.grid : parent.width - Theme.pad) - 8 - x; height: backend.markers.length > 0 ? 34 : 30   // 34: a row for marker flags
-        duration: backend.frameInfo.duration; fps: backend.frameInfo.fps; time: backend.time
+        duration: backend.frameInfo.duration; fps: backend.frameInfo.fps; time: backend.time; frameTicks: tl.frameTicks
     }
     IconButton {  // every row, or only the selected layer's
         id: compactSwitch
@@ -74,21 +84,20 @@ Rectangle {
         onClicked: tl.compactAsked(!tl.compact)
     }
     readonly property real rowsTop: ruler.y + ruler.height + Theme.grid
-    CurveEditor {
+    Item {   // where `curves` lies
+        id: curvesBox
         visible: backend.curves.on
-        ruler: ruler; labelWidth: tl.labelWidth
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; top: parent.top
                   topMargin: tl.rowsTop; rightMargin: Theme.gap; bottomMargin: Theme.gap }   // x as the ruler's
     }
-    LayerRows {
-        id: rows
+    Item {   // where `rows` lies, with its fade and scroll bar
+        id: rowsBox
         visible: !backend.curves.on
-        ruler: ruler; labelWidth: tl.labelWidth; compact: tl.compact
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; top: parent.top
                   topMargin: tl.rowsTop; rightMargin: Theme.gap; bottomMargin: Theme.gap }   // x as the ruler's
+        EdgeFade { flick: tl.rows; anchors.fill: parent; color: Theme.panel }   // a half-shown row fades, never a sliver
+        VScrollBar { flick: tl.rows; visible: !!tl.rows && needed }
     }
-    EdgeFade { flick: rows; visible: rows.visible; x: rows.x; y: rows.y; width: rows.width; height: rows.height; color: Theme.panel }   // a half-shown row fades, never a sliver
-    VScrollBar { flick: rows; visible: rows.visible && needed }
     MouseArea {  // compact: the one row's name is a list of every layer
         visible: tl.compact && !backend.curves.on && backend.layers.length > 0
         x: 0; y: tl.rowsTop; width: tl.labelWidth; height: Theme.rowDense; z: 2
@@ -103,7 +112,7 @@ Rectangle {
         x: Theme.pad; y: tl.rowsTop + Theme.gap * 2; width: tl.width - 2 * Theme.pad
         text: "Your layers appear here as bars. Drag a bar to change when it shows."
     }
-    BeatLines { ruler: ruler; bottomY: tl.height - Theme.gap }   // Show beats (the Sound row's menu): beat and bar lines
+    Item { id: overlayBox; anchors.fill: parent }   // where `overlay` lies
     Repeater {   // the project's shared markers, a faint line across every row (their flags are on the ruler)
         model: backend.markers
         delegate: Rectangle {
@@ -131,8 +140,8 @@ Rectangle {
         width: 1; height: tl.height - y - Theme.gap; color: Theme.accent; opacity: 0.8
     }
     DragLabel {  // "+6 f · drop" beside the dragged edge or key, on its layer's row (time_snap.py); no row shown: under the ruler
-        readonly property real mid: rows.visible && backend.timeSnap.text !== "" ? rows.rowMid(backend.timeSnap.row) : -1
-        at: Qt.point(ruler.x + ruler.xOf(backend.timeSnap.t), mid >= 0 ? rows.y + mid : ruler.y + ruler.height + 12)
+        readonly property real mid: tl.rows && rowsBox.visible && backend.timeSnap.text !== "" ? tl.rows.rowMid(backend.timeSnap.row) : -1
+        at: Qt.point(ruler.x + ruler.xOf(backend.timeSnap.t), mid >= 0 ? rowsBox.y + mid : ruler.y + ruler.height + 12)
     }
     SnapLine {   // what a time drag caught (a marker, key, bar end, beat, the playhead), only while snapped (time_snap.py)
         visible: backend.timeSnap.caught
