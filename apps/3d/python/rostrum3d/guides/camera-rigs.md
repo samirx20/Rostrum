@@ -97,7 +97,8 @@ Agents: `shot.set` with `motionBlur` and `shutter` (degrees, 1–360).
 Things to know:
 - **Quick shows no motion blur** (the setting's tip says so). Switch the viewport to **Final** to see it, and every render
   (Render button, `render_still`, `render_video`) draws the same blur: it is part of the shot, not of the render.
-- **The camera's own move blurs** (an orbit, a crane, a dolly, a handheld drift). A keyed object moving in front of a
-  still camera stays sharp for now.
+- **Everything that moves blurs**: the camera's own move (an orbit, a crane, a dolly, a handheld drift) and any keyed
+  object moving, turning or growing in front of it, both at once. A mesh that changes its own shape (bending, morphing)
+  stays sharp for now; moving, turning and scaling it blurs.
 - Each frame's smear is centred on that frame: the sharp picture of a frame sits in the middle of its blur.
 - A faster move or a longer shutter smears more. If a turntable looks smeary, slow the turn or lower the shutter.

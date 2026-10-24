@@ -1008,7 +1008,7 @@ kit `C:\Users\Sam\Documents\CODE\Rostrum\shared\` on 2026-10-24.
 | Piece | State | Where |
 |---|---|---|
 | Rect, disk, strip, bulb, sun, sky; colour, intensity, exposure, temperature | Exists | `python\rostrum3d\light_fields.py`, `core\src\lights_cameras.cpp` |
-| Spread, visible card, light linking, sky turn, sky not seen | Exists (Final; patched Cycles) | `light_fields.py`, `core\src\light_extras.*`, `cycles_lights.*`, `libs\cycles-rostrum-lights.patch` |
+| Spread, visible card, light linking, sky turn, sky not seen | Exists (Final; patched Cycles) | `light_fields.py`, `core\src\light_extras.*`, `cycles_lights.*`, `libs\cycles-rostrum.patch` |
 | Aim with roll | Exists | `python\rostrum3d\aim.py`, `fields.py` (`roll`) |
 | Look through a light | Exists | `python\rostrum3d\through.py`, viewport, `look_frame through=` |
 | Spot | Missing | — |

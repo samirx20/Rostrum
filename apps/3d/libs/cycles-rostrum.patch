@@ -1,0 +1,288 @@
+diff --git a/src/hydra/geometry.h b/src/hydra/geometry.h
+index 5ac38e6d..f9b10e02 100644
+--- a/src/hydra/geometry.h
++++ b/src/hydra/geometry.h
+@@ -8,6 +8,7 @@
+ #include "hydra/config.h"
+ 
+ #include <pxr/imaging/hd/rprim.h>
++#include <pxr/imaging/hd/timeSampleArray.h>
+ 
+ HDCYCLES_NAMESPACE_OPEN_SCOPE
+ 
+@@ -42,6 +43,8 @@ template<typename Base, typename CyclesBase> class HdCyclesGeometry : public Bas
+   void InitializeInstance(const int index);
+ 
+   PXR_NS::GfMatrix4d _geomTransform;
++  /* Rostrum: the transform sampled over the shutter, for object motion blur. */
++  PXR_NS::HdTimeSampleArray<PXR_NS::GfMatrix4d, 3> _geomSamples;
+ };
+ 
+ HDCYCLES_NAMESPACE_CLOSE_SCOPE
+diff --git a/src/hydra/geometry.inl b/src/hydra/geometry.inl
+index 9c1f3e45..f8d3ec3e 100644
+--- a/src/hydra/geometry.inl
++++ b/src/hydra/geometry.inl
+@@ -111,8 +111,17 @@ void HdCyclesGeometry<Base, CyclesBase>::Sync(HdSceneDelegate *sceneDelegate,
+ 
+   if (HdChangeTracker::IsTransformDirty(*dirtyBits, id)) {
+     _geomTransform = GfMatrix4d(1.0);
++    _geomSamples.Resize(0);
+     if (auto matrixDs = HdXformSchema::GetFromParent(primDs).GetMatrix()) {
+       _geomTransform = matrixDs->GetTypedValue(0.0f);
++      /* Rostrum: sample the transform over the shutter the session was given, like the camera does
++       * (camera.cpp); Cycles spreads the samples evenly over the shutter, so they must sit at its open,
++       * centre and close. */
++      const auto *const session = static_cast<const HdCyclesSession *>(renderParam);
++      if (session->GetShutterClose() > session->GetShutterOpen()) {
++        SampleTyped<GfMatrix4d, 3>(
++            matrixDs, session->GetShutterOpen(), session->GetShutterClose(), &_geomSamples);
++      }
+     }
+   }
+ 
+@@ -158,6 +167,17 @@ void HdCyclesGeometry<Base, CyclesBase>::Sync(HdSceneDelegate *sceneDelegate,
+       const Transform tfm = transform_scale(make_float3(metersPerUnit)) *
+                             convert_transform(_geomTransform * transforms[i]);
+       _instances[i]->set_tfm(tfm);
++
++      /* Rostrum: object motion blur. Cycles drops the motion again when every sample is the same. */
++      array<Transform> motion;
++      if (_geomSamples.count > 1) {
++        motion.resize(_geomSamples.count);
++        for (size_t s = 0; s < _geomSamples.count; ++s) {
++          motion[s] = transform_scale(make_float3(metersPerUnit)) *
++                      convert_transform(_geomSamples.values[s] * transforms[i]);
++        }
++      }
++      _instances[i]->set_motion(motion);
+     }
+   }
+ 
+@@ -167,6 +187,19 @@ void HdCyclesGeometry<Base, CyclesBase>::Sync(HdSceneDelegate *sceneDelegate,
+     }
+   }
+ 
++  {
++    /* Rostrum: light linking, the receiver light set our core's Hydra filter hands over
++     * (apps/3d/core/src/light_extras.h); 0 = not linked. */
++    static const TfToken lightSetToken("rostrumLightSet");
++    uint set = 0;
++    if (auto ds = HdTypedSampledDataSource<int>::Cast(primDs ? primDs->Get(lightSetToken) : nullptr)) {
++      set = uint(ds->GetTypedValue(0.0f));
++    }
++    for (Object *instance : _instances) {
++      instance->set_receiver_light_set(set);
++    }
++  }
++
+   // Must happen after material ID update, so that attribute decisions can be made
+   // based on it (e.g. check whether an attribute is actually needed)
+   bool rebuild = false;
+diff --git a/src/hydra/light.cpp b/src/hydra/light.cpp
+index 1457e775..0d8201af 100644
+--- a/src/hydra/light.cpp
++++ b/src/hydra/light.cpp
+@@ -31,6 +31,7 @@ TF_DEFINE_PRIVATE_TOKENS(_tokens,
+     (visibleInPrimaryRay)
+     (treatAsPoint)
+     (falloff)
++    (rostrumLightSets)
+ );
+ // clang-format on
+ 
+@@ -134,7 +135,25 @@ void HdCyclesLight::Sync(HdSceneDelegate *sceneDelegate,
+         area_light->set_sizev(ds->GetTypedValue(0.0f));
+       }
+     }
+-    else if (_lightType == HdPrimTypeTokens->sphereLight) {
++    if (_lightType == HdPrimTypeTokens->rectLight || _lightType == HdPrimTypeTokens->diskLight) {
++      /* Rostrum: a panel's spread is UsdLux's shaping cone (its half angle); none = fully diffuse. */
++      float spread = M_PI_F;
++      if (auto ds = GetTypedDataSource<float>(lightDs, HdLightTokens->shapingConeAngle)) {
++        spread = std::min(float(GfDegreesToRadians(ds->GetTypedValue(0.0f))) * 2.0f, M_PI_F);
++      }
++      static_cast<AreaLight *>(_light)->set_spread(spread);
++    }
++
++    {
++      /* Rostrum: light linking, the Cycles light sets this light lights (apps/3d/core/src/light_extras.h). */
++      uint64_t sets = ~uint64_t(0);
++      if (auto ds = GetTypedDataSource<int64_t>(lightDs, _tokens->rostrumLightSets)) {
++        sets = uint64_t(ds->GetTypedValue(0.0f));
++      }
++      _object->set_light_set_membership(sets);
++    }
++
++    if (_lightType == HdPrimTypeTokens->sphereLight) {
+       SpotLight *spot_light = static_cast<SpotLight *>(_light);
+       const bool treatAsPoint = GetTypedValue<bool>(lightDs, _tokens->treatAsPoint, false);
+       if (treatAsPoint) {
+@@ -184,6 +203,14 @@ void HdCyclesLight::Sync(HdSceneDelegate *sceneDelegate,
+   if (_light->is_modified()) {
+     _light->tag_update(lock.scene);
+   }
++  if (_lightType == HdPrimTypeTokens->domeLight && _object->visibility_is_modified()) {
++    /* Rostrum: the background follows the dome's camera visibility (session.cpp), which only runs when the
++     * light manager needs an update; a change of visibility alone wouldn't trigger it. */
++    lock.scene->light_manager->tag_update(lock.scene, LightManager::LIGHT_MODIFIED);
++  }
++  if (_object->is_modified()) {
++    _object->tag_update(lock.scene); /* Rostrum: camera visibility and light sets live on the object */
++  }
+ 
+   *dirtyBits = DirtyBits::Clean;
+ }
+@@ -396,7 +423,10 @@ void HdCyclesLight::Initialize(HdRenderParam *renderParam)
+ 
+   _object->set_geometry(_light);
+   _object->set_random_id(hash_uint2(hash_string(_light->name.c_str()), 0));
+-  _object->set_visibility(PATH_RAY_VISIBILITY_ALL & ~PATH_RAY_VISIBILITY_CAMERA);
++  /* Rostrum: a dome is seen by the camera unless visibleInPrimaryRay says otherwise (session.cpp). */
++  _object->set_visibility(_lightType == HdPrimTypeTokens->domeLight ?
++                              PATH_RAY_VISIBILITY_ALL :
++                              PATH_RAY_VISIBILITY_ALL & ~PATH_RAY_VISIBILITY_CAMERA);
+ 
+   Shader *const shader = lock.scene->create_node<Shader>();
+   array<Node *> used_shaders;
+diff --git a/src/hydra/render_delegate.cpp b/src/hydra/render_delegate.cpp
+index 3cda4a57..7ef721ce 100644
+--- a/src/hydra/render_delegate.cpp
++++ b/src/hydra/render_delegate.cpp
+@@ -18,6 +18,7 @@
+ #include "hydra/session.h"
+ #include "hydra/volume.h"
+ #include "scene/integrator.h"
++#include "scene/object.h"
+ #include "scene/scene.h"
+ #include "session/session.h"
+ 
+@@ -413,6 +414,14 @@ void HdCyclesDelegate::SetRenderSetting(const PXR_NS::TfToken &key, const PXR_NS
+     _renderParam->SetStageMetersPerUnit(
+         VtValue::Cast<double>(value).GetWithDefault(_renderParam->GetStageMetersPerUnit()));
+   }
++  else if (key == HdCyclesRenderSettingsTokens->shutterOpen) {
++    _renderParam->SetShutter(float(VtValue::Cast<double>(value).GetWithDefault(0.0)),
++                             _renderParam->GetShutterClose());
++  }
++  else if (key == HdCyclesRenderSettingsTokens->shutterClose) {
++    _renderParam->SetShutter(_renderParam->GetShutterOpen(),
++                             float(VtValue::Cast<double>(value).GetWithDefault(0.0)));
++  }
+   else if (key == HdCyclesRenderSettingsTokens->timeLimit) {
+     session->set_time_limit(
+         VtValue::Cast<double>(value).GetWithDefault(session->params.time_limit));
+@@ -436,6 +445,18 @@ void HdCyclesDelegate::SetRenderSetting(const PXR_NS::TfToken &key, const PXR_NS
+       const ustring socketName(keyString, sizeof("cycles:integrator:") - 1);
+       if (const SocketType *socket = scene->integrator->type->find_input(socketName)) {
+         SetNodeValue(scene->integrator, *socket, value);
++        /* Rostrum: switching motion_blur must redo every object's motion and the scene BVH.
++         * The integrator only tags the objects MOTION_BLUR_MODIFIED: the BVH was not rebuilt
++         * (with OptiX an object that already had motion stayed sharp) and the objects' motion
++         * data was written only for objects whose motion had just changed (the others shaded
++         * with garbage: a dark smear). */
++        if (socketName == "motion_blur") {
++          for (Object *object : scene->objects) {
++            object->tag_motion_modified();
++          }
++          scene->integrator->tag_update(scene, 0);
++          scene->object_manager->tag_update(scene, ObjectManager::TRANSFORM_MODIFIED);
++        }
+         ++_settingsVersion;
+       }
+     }
+@@ -450,6 +471,12 @@ VtValue HdCyclesDelegate::GetRenderSetting(const TfToken &key) const
+   if (key == HdCyclesRenderSettingsTokens->stageMetersPerUnit) {
+     return VtValue(_renderParam->GetStageMetersPerUnit());
+   }
++  if (key == HdCyclesRenderSettingsTokens->shutterOpen) {
++    return VtValue(double(_renderParam->GetShutterOpen()));
++  }
++  if (key == HdCyclesRenderSettingsTokens->shutterClose) {
++    return VtValue(double(_renderParam->GetShutterClose()));
++  }
+   if (key == HdCyclesRenderSettingsTokens->device) {
+     return VtValue(TfToken(Device::string_from_type(session->params.device.type)));
+   }
+diff --git a/src/hydra/render_delegate.h b/src/hydra/render_delegate.h
+index f6148481..5efa8761 100644
+--- a/src/hydra/render_delegate.h
++++ b/src/hydra/render_delegate.h
+@@ -14,7 +14,7 @@ HDCYCLES_NAMESPACE_OPEN_SCOPE
+ 
+ // clang-format off
+ #define HD_CYCLES_RENDER_SETTINGS_TOKENS \
+-    (stageMetersPerUnit) \
++    (stageMetersPerUnit)     ((shutterOpen, "rostrum:shutterOpen"))     ((shutterClose, "rostrum:shutterClose")) \
+     ((device, "cycles:device")) \
+     ((threads, "cycles:threads")) \
+     ((timeLimit, "cycles:time_limit")) \
+diff --git a/src/hydra/session.cpp b/src/hydra/session.cpp
+index ae1ede13..afa1db60 100644
+--- a/src/hydra/session.cpp
++++ b/src/hydra/session.cpp
+@@ -100,6 +100,7 @@ void HdCyclesSession::UpdateScene()
+   // Update background depending on presence of a background light
+   if (scene->light_manager->need_update()) {
+     Light *background_light = nullptr;
++    Object *background_object = nullptr;
+     bool have_lights = false;
+     for (Object *object : scene->objects) {
+       if (!object->get_geometry()->is_light()) {
+@@ -111,6 +112,7 @@ void HdCyclesSession::UpdateScene()
+       Light *light = static_cast<Light *>(object->get_geometry());
+       if (light->is_background_light()) {
+         background_light = light;
++        background_object = object;
+         break;
+       }
+     }
+@@ -130,7 +132,11 @@ void HdCyclesSession::UpdateScene()
+     }
+     else {
+       scene->background->set_shader(background_light->get_shader());
+-      scene->background->set_transparent(false);
++      /* Rostrum: a dome the camera doesn't see still lights and shows in reflections; the film is clear there. */
++      const bool seen = background_object->get_visibility() & PATH_RAY_VISIBILITY_CAMERA;
++      scene->background->set_visibility(seen ? PATH_RAY_VISIBILITY_ALL :
++                                               PATH_RAY_VISIBILITY_ALL & ~PATH_RAY_VISIBILITY_CAMERA);
++      scene->background->set_transparent(!seen);
+     }
+ 
+     scene->background->tag_update(scene);
+diff --git a/src/hydra/session.h b/src/hydra/session.h
+index 4c4e8ff6..52d86352 100644
+--- a/src/hydra/session.h
++++ b/src/hydra/session.h
+@@ -40,6 +40,22 @@ class HdCyclesSession final : public PXR_NS::HdRenderParam {
+     _stageMetersPerUnit = stageMetersPerUnit;
+   }
+ 
++  /* Rostrum: the shutter (frames, relative to the frame) that objects sample their moves over for
++   * motion blur, set by the rostrum:shutterOpen / rostrum:shutterClose render settings. */
++  float GetShutterOpen() const
++  {
++    return _shutterOpen;
++  }
++  float GetShutterClose() const
++  {
++    return _shutterClose;
++  }
++  void SetShutter(const float open, const float close)
++  {
++    _shutterOpen = open;
++    _shutterClose = close;
++  }
++
+   PXR_NS::HdRenderPassAovBinding GetDisplayAovBinding() const
+   {
+     return _displayAovBinding;
+@@ -65,6 +81,8 @@ class HdCyclesSession final : public PXR_NS::HdRenderParam {
+  private:
+   const bool _ownCyclesSession;
+   double _stageMetersPerUnit = 0.01;
++  float _shutterOpen = 0.0f;
++  float _shutterClose = 0.0f;
+   PXR_NS::HdRenderPassAovBindingVector _aovBindings;
+   PXR_NS::HdRenderPassAovBinding _displayAovBinding;
+ };
