@@ -13,7 +13,7 @@ Short pages in everyday words, with the names of the real buttons. The app is on
 7. [Timing to music](timing-to-music.md): hear the project's sound from RostrumSound, the Sound row, mute, pick the soundtrack, show beats, snap and tie to beats and markers, jump beat to beat, open the song in RostrumSound.
 8. [Text on a path](text-on-a-path.md): draw a path, put text on it, slide and align it, animate along it.
 9. [The curve editor](curve-editor.md): open Curves, read the lines, drag keys and handles, change an ease, the ease keys.
-10. [Characters, sound, camera and styles](characters-sound-camera.md): bones, poses, lip sync and blinks, Add a sound here, the Camera tool, text Styles, the Library and Brand kit, Add from a file.
+10. [Characters, sound, camera and styles](characters-sound-camera.md): bones, poses, lip sync and blinks, Add a sound here, moving the frame (the camera), text Styles, the Library and Brand kit, Add from a file.
 
 ## For agents
 

@@ -9,14 +9,36 @@ from PySide6.QtCore import Slot
 from rostrum_core.keys import keys_of, marked
 from rostrum_gui.edits import Drag
 
+from rostrum2d.retime import END, END_OF_COMP
+
 from . import time_snap
 from .bounds import layer_of
+
+
+def ends_of(b, layers) -> dict:
+    """The ends these layers had when a key drag began (`end_follows` needs them): only layers with an end of their
+    own; one tied to a marker is left alone (its end is where it is on purpose)."""
+    out = {}
+    for lay in layers:
+        item = b.placed_item(lay)
+        if item.get("end", END_OF_COMP) < END_OF_COMP and not item.get(END):
+            out[lay] = item["end"]
+    return out
+
+
+def end_follows(was: dict, latest: dict) -> list[dict]:
+    """A key dragged past its layer's end takes the end along, so the key stays on the bar: the end is the later of what
+    it was and the key's time (the one rule, for one key or many; `latest`: layer -> its furthest dragged key, in
+    composition seconds). Drag the key back and the end goes back. Absolute, so previews don't pile up."""
+    return [{"op": "layer.trim", "target": [lay], "args": {"end": round(max(end, latest[lay]), 6)}}
+            for lay, end in was.items() if lay in latest]
 
 
 class KeyMoves:
     def _begin(self, key_id, t0, label) -> bool:
         self._anchor, self._t0 = self.b.placed_item(key_id)["t"], t0
         self._row = layer_of(self.b.doc, key_id)          # the grabbed key's layer: the drag label's row
+        self._ends = ends_of(self.b, {layer_of(self.b.doc, k) for k in self._ids})   # what an end was: it follows a key past it
         self._found = time_snap.targets(self.b, skip_keys=self._ids)       # never snaps to the keys it moves
 
         def go():
@@ -78,7 +100,7 @@ class KeyMoves:
         if not -first <= dt <= c["duration"] - last:
             dt, caught = min(max(dt, -first), c["duration"] - last), None
         moving = {k for k, _ in self._grab}
-        calls = []
+        calls, latest = [], {}
         for kid, key in self._grab:
             owner = self.b.placed_item(self.b.doc.parent_of(kid)[0])
             t = key["t"] + dt
@@ -86,6 +108,9 @@ class KeyMoves:
                 return                                            # another key of that setting is there: stay
             to = marked.moved(key["ref"], dt) if "ref" in key else t - self.b.offset(owner["id"])
             calls.append({"op": "key.set", "target": [kid], "args": {"t": to}})
+            lay = layer_of(self.b.doc, kid)
+            latest[lay] = max(latest.get(lay, 0.0), t)
+        calls += end_follows(self._ends, latest)
         self.b.timeSnap.show(dt, c["fps"], caught, self._anchor + dt, self._row)
         self.b.guard(lambda: self._drag.preview(calls))
 

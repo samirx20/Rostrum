@@ -1,15 +1,16 @@
 """The motion path on the canvas (backend.motionPath, MotionPath.qml): where the selected layer travels between its
-position keys, one dot per frame (their spacing shows speed), a square per key, and a key's spatial handles; for the
-camera, its frame at the playhead and a faint one at each key. The View menu's "Camera frame" (screen state, on by
-default) shows the camera's frame and path even when it isn't selected. A layer riding a path shows none (the ride is
-shown). The maths is motion_geo.py; the document is read once per change and selection, a playhead move only maps again.
+position keys, one dot per frame (their spacing shows speed), a square per key, and a key's spatial handles; a jump (a
+key with the `hold` ease, then the next key: for the frame, a cut) is a dashed line with no dots. For the frame, also a
+faint outline of it (turned and zoomed) at each of its keys. The View menu's "Show the frame's path" (screen state, on
+at first, never an undo step) keeps the frame's path and key outlines showing, faint, while something else is picked.
+A layer riding a path shows none (the ride is shown). Everything is in world px, drawn through the Stage's one mapping.
+The maths is motion_geo.py; the document is read once per change and selection, a playhead move only maps again, a pan
+or zoom of the view costs nothing here.
 
 Drags are one gesture = one undo step each (drags.py `_begin`): a key square moves that key's x and y (key.set v) by the
 pointer's offset taken back into the layer's own px; a handle end bends the path (key.path_handles), its opposite handle
-mirrored so the curve stays smooth (Alt: not mirrored). A click on a key square picks its keys (backend.keys).
-A camera key's drag changes the camera the canvas is seen through, so for its length the view holds still: the picture
-and these paths are drawn through the scene as it was at the press (bridge `held_view`), the square stays under the
-pointer, and the canvas follows the camera again once, at the drop.
+mirrored so the curve stays smooth (Alt: not mirrored). A click on a key square picks its keys (backend.keys). The
+frame's keys are moved the same way: the canvas is the world, so the view never moves with them.
 """
 from __future__ import annotations
 
@@ -18,7 +19,7 @@ from dataclasses import dataclass
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from . import motion_geo as G
-from .camera_tool import active_camera
+from rostrum2d.frame import TYPE as FRAME, view as frame_view
 
 
 @dataclass
@@ -43,73 +44,64 @@ class MotionPath(QObject):
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent or bridge)
-        self.b, self._camera_frame = bridge, True
-        self._tracks = None            # (doc.data, selection, camera frame on, [(owner id, track, camera keys)])
-        self._view = None              # (tracks key, t, the view held or None, the canvas paths)
+        self.b, self._frame_path = bridge, True
+        self._tracks = None            # (doc.data, selection, frame path on, [(owner id, faint, track, frame keys)])
+        self._view = None              # (tracks, t, the canvas paths)
         for sig in (bridge.docChanged, bridge.docStepped, bridge.selectedItemsChanged, bridge.timeChanged, bridge.markersChanged):
             sig.connect(self.changed)
 
-    # ---- the View menu's switch (screen state, never the document) -------------------------------------------
+    # ---- the View menu's "Show the frame's path" (screen state, never the document) -------------------------
     @Property(bool, notify=changed)
-    def cameraFrame(self) -> bool:
-        return self._camera_frame
+    def framePath(self) -> bool:
+        return self._frame_path
 
     @Slot(bool)
-    def setCameraFrame(self, on: bool):
-        self._camera_frame = bool(on)
+    def setFramePath(self, on: bool):
+        self._frame_path = bool(on)
         self.changed.emit()
-
-    @Property(bool, notify=changed)
-    def hasCamera(self) -> bool:
-        return any(c["type"] == "camera" for c in self.b.comp().get("layers", []))
 
     # ---- reads ------------------------------------------------------------------------------------------------
     def _owners(self) -> list[tuple[str, bool]]:
-        """(id, faint) of what shows a path: the selected single layer, and the camera when the switch is on."""
+        """(id, faint) of what shows a path: the selected single layer, and the frame (faint) when the switch is on."""
         out, sel = [], self.b.selectedLayer
         if sel and len(self.b.selected_layers()) == 1 and self.b.doc.has(sel):
             out.append((sel, False))
-        cam = active_camera(self.b.placed(), self.b._t) if self._camera_frame else None
-        if cam is not None and cam["id"] != sel:
-            out.append((cam["id"], True))
+        frame = frame_view.of(self.b.placed()) if self._frame_path else None
+        if frame is not None and frame["id"] != sel:
+            out.append((frame["id"], True))
         return out
 
     def _read(self):
-        key = (id(self.b.placed()), self.b.selectedLayer, self._camera_frame, self.b.placed())   # the last keeps the id alive
+        key = (id(self.b.placed()), self.b.selectedLayer, self._frame_path, self.b.placed())   # the last keeps the id alive
         if self._tracks is None or self._tracks[0][:3] != key[:3]:
-            fps, rows = self.b.comp()["fps"], []
+            comp, rows = self.b.placed(), []
             for oid, faint in self._owners():
                 owner = self.b.placed_item(oid)
                 if owner.get("ridePath"):
                     continue
-                cam = owner["type"] == "camera"
-                rows.append((oid, faint, G.track(owner, fps), G.camera_keys(owner) if cam else []))
+                frames = [G.frame_at(comp, kt) for kt in G.frame_keys(owner)] if owner["type"] == FRAME else []
+                rows.append((oid, faint, G.track(owner, self.b.comp()["fps"]), frames))
             self._tracks = (key, rows)
         return self._tracks
 
     @Property("QVariantList", notify=changed)
     def paths(self):
-        """[{id, camera, faint, points, ticks, keys, frames, now}] in composition px as the canvas shows them."""
-        tracks, t, held = self._read(), self.b._t, self.b.held_view
-        if self._view is not None and self._view[0] is tracks and self._view[1] == t and self._view[2] is held:
-            return self._view[3]
+        """[{id, frame, faint, lines, cuts, ticks, keys, frames}] in world px."""
+        tracks, t = self._read(), self.b._t
+        if self._view is not None and self._view[0] is tracks and self._view[1] == t:
+            return self._view[2]
         comp, out, picked = self.b.placed(), [], set(self.b._keys.ids)
-        seen = held or comp                              # a camera-key drag: the view as at the press
-        for oid, faint, tr, cam_keys in tracks[1]:
+        for oid, faint, tr, frames in tracks[1]:
             owner = self.b.placed_item(oid)
-            m = G.mapping(seen, owner, t)
-            row = {"id": oid, "camera": owner["type"] == "camera", "faint": faint, "points": [], "ticks": [], "keys": [],
-                   "frames": [], "now": []}
+            row = {"id": oid, "frame": owner["type"] == FRAME, "faint": faint, "lines": [], "cuts": [], "ticks": [],
+                   "keys": [], "frames": frames}
             if tr:
-                row.update(G.on_canvas(tr, m))
+                row.update(G.on_canvas(tr, G.mapping(comp, owner, t)))
                 for k in row["keys"]:
                     k["picked"] = bool(picked & set(k["ids"]))
                     k["handles"] = not faint and (k["stored"] or k["picked"])
-            if row["camera"]:
-                row["now"] = G.frame_at(comp, owner, t, m)
-                row["frames"] = [G.frame_at(comp, owner, kt, m) for kt in cam_keys if abs(kt - t) > 1e-6]
             out.append(row)
-        self._view = (tracks, t, held, out)
+        self._view = (tracks, t, out)
         return out
 
     # ---- drags ------------------------------------------------------------------------------------------------
@@ -139,7 +131,6 @@ class MotionPath(QObject):
         ids = {self.b.doc.item(i)["prop"]: (i, float(self.b.doc.item(i)["v"])) for i in k["ids"]}
         if not self.b._begin("Move a path key", KeyGrab(oid, ids, m)):
             return False
-        self._hold(oid)
         self.b._snap.begin([oid], k["pos"])           # the square snaps as a layer does (snapper.py; Ctrl or Alt: free)
         return True
 
@@ -152,13 +143,7 @@ class MotionPath(QObject):
                                                            k[("in" if side == "out" else "out") + "Own"] is not None,
                                                            tuple(k[side + "Own"]), m)):
             return False
-        self._hold(oid)
         return True
-
-    def _hold(self, oid: str):
-        """A camera's key or handle: the view holds still for the drag (drags.py endDrag lets it go)."""
-        if self.b.placed_item(oid)["type"] == "camera":
-            self.b.held_view = self.b.placed()
 
     @Slot(float, float, bool)
     def drag(self, dx: float, dy: float, alt: bool):

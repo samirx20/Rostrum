@@ -1,5 +1,6 @@
-"""A text's Weight row from its family's real weights (rostrum2d/fontlist.py): a family of separate weights (Arial:
-Regular, Bold, Black) picks one of them; a variable family keeps the number, held to the weights it has. No Qt."""
+"""A text's Weight row as names (Regular, Bold, Black …) from its family's real weights (rostrum2d/fontlist.py): a
+family of separate weights picks one of them; a variable family picks among the named weights in its range, and a
+weight set between them (by a script or an agent) is one more choice, named by its nearest name and its number. No Qt."""
 from __future__ import annotations
 
 from rostrum2d import fields as F, fontlist
@@ -9,8 +10,18 @@ NAMES = {100: "Thin", 200: "Extra Light", 300: "Light", 400: "Regular", 500: "Me
 
 
 def word(w: float) -> str:
-    """"Bold 700"; a weight between the named ones by its nearest name."""
-    return f"{NAMES[min(NAMES, key=lambda n: abs(n - w))]} {w:g}"
+    """"Bold"; a weight between the named ones: its nearest name and the number ("Semibold 650")."""
+    near = min(NAMES, key=lambda n: abs(n - w))
+    return NAMES[near] if abs(near - w) < 1e-6 else f"{NAMES[near]} {w:g}"
+
+
+def _choices(fam: dict, now) -> list[float]:
+    """The weights to pick from: the family's own, or the named ones a variable family covers; plus the weight now."""
+    have = [float(w) for w in fam["weights"]] if not fam["variable"] else \
+        [float(n) for n in NAMES if fam["range"][0] <= n <= fam["range"][1]]
+    if isinstance(now, (int, float)) and float(now) not in have:
+        have.append(float(now))
+    return sorted(have)
 
 
 def rows(rows: list[dict], item: dict | None) -> list[dict]:
@@ -25,11 +36,7 @@ def rows(rows: list[dict], item: dict | None) -> list[dict]:
     out = []
     for r in rows:
         if r["row"] == "param" and r["id"] == "weight":
-            if fam["variable"]:                  # the nearest name beside the label: "Weight  Semibold"
-                r = {**r, "min": fam["range"][0], "max": fam["range"][1],
-                     "tag": word(r["value"]).rsplit(" ", 1)[0] if isinstance(r.get("value"), (int, float)) else ""}
-            else:
-                r = {**r, "type": "choice", "options": [{"value": float(w), "label": word(w)} for w in fam["weights"]],
-                     "min": None, "max": None, "unit": ""}
+            r = {**r, "type": "choice", "options": [{"value": w, "label": word(w)} for w in _choices(fam, r.get("value"))],
+                 "min": None, "max": None, "unit": ""}
         out.append(r)
     return out

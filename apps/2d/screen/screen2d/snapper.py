@@ -69,6 +69,12 @@ class Snapper(QObject):
                 continue
             self._targets.append((1 if b["up"][-1:] == tuple(home) else 2, bounds.extent(b)))
 
+    def begin_box(self, box, targets) -> None:
+        """The press of a drag that isn't a layer's (the frame, frame_drag.py): its extent (x0, y0, x1, y1) and what it
+        may catch, [(rank, extent)]."""
+        self._free = self._straight = False
+        self._start, self._targets = tuple(box), list(targets)
+
     def _snap(self, box, xs, ys):
         if not self._on or self._free or self._start is None:
             self._set([])

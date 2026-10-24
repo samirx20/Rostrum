@@ -447,7 +447,7 @@ processes on one file (each saves; reopen to see the other's).
 - Steps (`rig_steps.py`): `bones`, `jointdrag`, `posedrag`, `bonepick`, `pin`, `posesave`, `poseapply`, `poseblend`,
   `lipsync open|line|shape|apply|close`, `blinks open|every|vary|pick|apply|close`. Test character: `rig_sample.py`.
 
-## Sizes, Fill the frame, Effects, the Camera tool, Grain (H32 steps)
+## Sizes, Fill the frame, Effects, the frame, Grain (H32 steps)
 
 - **Scene settings › Format** (`size_rows.py`, `rostrum2d/frame_sizes.py` = the one list: Wide 16:9, 4K 16:9, Vertical 9:16,
   Square 1:1, Post 4:5; "Custom" when the numbers match none; the names alone, the numbers are right under them). A pick is `comp.size`; Width and Height stay typeable.
@@ -457,6 +457,10 @@ processes on one file (each saves; reopen to see the other's).
   Grain, Trail, Smear = `effect.add`. Grain (H33) is drawn by the engine on the layer's own look (`engine/render/src/scene/grain.rs`,
   a shader; amount, size, colour, moving or still, seed); for the whole shot, put it on a group holding everything.
   Old documents' whole-picture grain layer (H32, `grain:` recipe in a video layer's `src`, `P/grain.py`) still opens.
-- **Camera tool (C)** (`camera_tool.py`, `qml/CameraOverlay.qml`, `backend.cameraTool`): in the strip only when the scene has a
-  camera; drag pans, Alt+drag (Alt held at the press) pushes in / out; writes the camera's x, y, zoom through `route.value_call`
-  (a keyed field gets a key at the playhead), one drag = one undo step. Steps: `tool camera`, `key C`, `mousedrag … alt`.
+- **The frame on the canvas** (`frame_drag.py`, `qml/FrameHandles.qml`, `backend.frameDrag`): C or a click on its name tab
+  picks the frame (its outline and tab turn accent blue). Picked: drag inside it (even over layers) or on the tab moves it,
+  snapping its edges and centre to layers' and its centre to home (Ctrl frees, Shift straight); a corner square zooms
+  (bigger box = zoom down, about the centre, Alt: the opposite corner); just outside a corner turns it (Shift: 15° steps,
+  upright within 2°); a click without a drag picks what is under it. Writes x, y, zoom, rotation through `route.value_call`
+  (a keyed field gets a key at the playhead), one drag = one undo step; a locked frame refuses. Steps: `frame pick`,
+  `frame drag <dx> <dy>`, `frame corner <dx>`, `frame turn <deg>`, `frametime drag|zoom|turn [n]` (`frame_steps.py`).

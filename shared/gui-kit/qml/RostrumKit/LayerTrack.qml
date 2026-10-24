@@ -2,11 +2,13 @@ import QtQuick
 import RostrumKit
 import "KeyGroups.js" as KeyGroups
 
-// A timeline row's time side (LayerRows.qml), under the ruler (x = ruler.x - 8). A layer row draws a slim bar from its
-// first key to its last (vertically centred, blank: no text, no ease mark; no keys, no bar); a selected layer's bar
-// is drawn brighter with an accent outline, the row itself stays as it is (Sam, H49: no box across the whole row). Drag the bar to move the layer in time: backend.beginBarDrag /
-// barDragTo / endDrag (one gesture = one change; near a marker or the playhead it snaps). When it shows (Starts at /
-// Ends at) is set in the panel; an end tied to a marker is a small flag at that time.
+// A timeline row's time side (LayerRows.qml), under the ruler (x = ruler.x - 8). A layer row with a time (rowData.bar,
+// start, end) draws its bar from start to end, with or without keys, its name written inside at the left (rowData.trim:
+// 2D); the frame's bar (rowData.frame) is the whole scene and is never dragged. Without start and end (3D) the bar runs
+// from the first key to the last. A selected layer's bar is drawn brighter with an accent outline, the row itself stays
+// as it is (Sam, H49: no box across the whole row). Drag the bar to move the layer in time, drag an end to trim it:
+// backend.beginBarDrag(id, "move" | "start" | "end") / barDragTo / endDrag (one gesture = one change; near a marker or
+// the playhead it snaps; let go on a marker: tied). An end tied to a marker is a small flag at that time.
 // Keys sit on it as diamonds (all the layer's keys; keys closer than a dot's width (16 px) share one, a second diamond behind it, until zoomed in: KeyGroups.js); a drawing's frames lie on it (FrameMarks). Setting, effect and
 // mask rows show their keys only. Click a diamond: the key is selected (the inspector shows its ease); drag it: key.set
 // t (it lands on a marker within 6 px). Between two keys of one setting a stretch can be clicked (StretchBand.qml). A click anywhere else on the row selects its layer, a drag there draws a box
@@ -27,12 +29,15 @@ Rectangle {
     function dots(keys) { return frozen ? KeyGroups.regroup(keys, frozen) : KeyGroups.group(keys, xOf, 16) }   // keys whose click areas (a dot is 16 px wide, KeyDot.qml) would touch: one dot for the run
     function hold() { frozen = barDots.concat(loneDots).map(d => d.members) }
     function release() { frozen = null }
+    readonly property bool fixed: rowData.frame === true       // the frame's bar: the whole scene, never slid or trimmed
+    readonly property bool trims: rowData.trim === true && !fixed   // its ends can be dragged (2D layers; 3D's bar is only its keys)
+    readonly property bool named: rowData.trim === true         // the layer's name is written in the bar
     readonly property bool hasCells: (rowData.frames || []).length > 0     // a drawing's cells are its bar: no second one over them
-    readonly property var barKeys: isLayer && rowData.bar === true && !hasCells ? rowData.keys.filter(k => onBar(k)) : []
+    readonly property bool hasBar: isLayer && rowData.bar === true && !hasCells && (trims || fixed || rowData.keys.some(k => onBar(k)))
     // The dots, as lists: a Repeater over a count keeps its delegates when the data changes (a Repeater over the list
     // itself rebuilds every dot at each change of the document, which dropped a key under the pointer mid-drag).
-    readonly property var barDots: bar.visible ? dots(rowData.keys.filter(k => onBar(k))) : []
-    readonly property var loneDots: dots(bar.visible ? rowData.keys.filter(k => !onBar(k)) : rowData.keys)
+    readonly property var barDots: hasBar ? dots(rowData.keys.filter(k => onBar(k))) : []
+    readonly property var loneDots: dots(hasBar ? rowData.keys.filter(k => !onBar(k)) : rowData.keys)
     radius: Theme.radiusCtl
     color: isLayer ? Theme.sunken : Qt.darker(Theme.panel, 1.15)
 
@@ -64,25 +69,35 @@ Rectangle {
         }
         onCanceled: { if (boxing) track.rows.boxEnd("cancel"); boxing = false }
     }
-    Rectangle {  // the bar: first key to last key, centred in the row
+    Rectangle {  // the bar: start to end (3D: first key to last key), centred in the row
         id: bar
-        visible: track.barKeys.length > 0
+        objectName: "bar:" + track.rowData.id
+        visible: track.hasBar
         opacity: track.rowData.hidden ? 0.35 : 1       // a hidden layer dims
-        readonly property real pad: 8                  // half a dot's click area (16, KeyDot.qml): the end dots fit whole, never slid onto a neighbour
-        x: track.barKeys.length ? track.xOf(track.barKeys[0].t) - pad : 0
-        width: track.barKeys.length ? track.xOf(track.barKeys[track.barKeys.length - 1].t) + pad - x : 0
-        height: 12; y: Math.round((parent.height - height) / 2); radius: height / 2
-        color: track.lit ? Qt.tint(Theme.raised, Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.45)) : Theme.raised
+        readonly property real pad: track.named || track.fixed ? 0 : 8   // 3D: half a dot (16, KeyDot.qml) so the end dots fit whole
+        readonly property var span: track.hasBar ? [track.rowData.start || 0, track.rowData.end || 0] : [0, 0]
+        x: track.xOf(span[0]) - pad
+        width: Math.max(track.named ? 8 : 0, track.xOf(span[1]) + pad - x)
+        height: track.named ? 18 : 12; y: Math.round((parent.height - height) / 2); radius: height / 2
+        color: track.lit ? Qt.tint(Theme.line, Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.5))
+                         : barArea.containsMouse && !track.fixed ? Theme.lineHover : Theme.line
         border.width: track.lit ? 1 : 0; border.color: Theme.accent
+        Text {   // the layer's name, at the left, when there is room
+            visible: track.named && width > 24
+            x: 8; width: bar.width - 12; anchors.verticalCenter: parent.verticalCenter
+            text: track.rowData.label; elide: Text.ElideRight; font.family: uiFont; font.pixelSize: Theme.label
+            color: track.lit ? Theme.fg : Theme.fg2
+        }
         MouseArea {
             id: barArea
             anchors.fill: parent; hoverEnabled: true; preventStealing: true
             acceptedButtons: Qt.LeftButton | Qt.RightButton
-            cursorShape: held ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+            cursorShape: track.fixed ? Qt.ArrowCursor : held ? Qt.ClosedHandCursor : Qt.OpenHandCursor
             property string held: ""
             onPressed: (m) => {          // a selected bar moves every selected bar (drags.py); else it is selected alone
                 if (m.button === Qt.RightButton) { track.openMenu(barArea, m.x, m.y); return }
                 if (!backend.multi.has(track.rowData.id)) backend.select(track.rowData.id)
+                if (track.fixed) return
                 held = backend.beginBarDrag(track.rowData.id, "move", track.tAt(barArea, m.x)) === false ? "" : "move"
             }
             onPositionChanged: (m) => {
@@ -93,8 +108,30 @@ Rectangle {
             onCanceled: { if (held) backend.endDrag(); held = "" }
         }
         Repeater {   // the stretches of the animations on the layer's first line, under its keys (SPEC §9.2)
-            model: bar.visible ? track.rowData.stretches || [] : []
+            model: track.hasBar ? track.rowData.stretches || [] : []
             delegate: StretchBand { row: track; shift: bar.x; room: bar.width }
+        }
+        Repeater {   // the two ends: 16 px each, centred on the edge, drag = trim the layer (start / end); under the keys (a key at the edge wins)
+            model: track.trims ? ["start", "end"] : []
+            delegate: MouseArea {
+                id: grab
+                objectName: "barEnd:" + track.rowData.id + ":" + modelData
+                required property string modelData
+                property string held: ""
+                x: (modelData === "start" ? 0 : bar.width) - width / 2; width: 16; height: bar.height
+                hoverEnabled: true; preventStealing: true; cursorShape: Qt.SizeHorCursor
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onPressed: (m) => {
+                    if (m.button === Qt.RightButton) { track.openMenu(grab, m.x, m.y); return }
+                    if (!backend.multi.has(track.rowData.id)) backend.select(track.rowData.id)
+                    held = backend.beginBarDrag(track.rowData.id, modelData, track.tAt(grab, m.x)) === false ? "" : modelData
+                }
+                onPositionChanged: (m) => {
+                    if (held) backend.barDragTo(track.tAt(grab, m.x), (m.modifiers & Qt.ControlModifier) ? 0 : 6 / track.ruler.perSec)
+                }
+                onReleased: { if (held) backend.endDrag(); held = "" }
+                onCanceled: { if (held) backend.endDrag(); held = "" }
+            }
         }
         Repeater {   // a layer's keys lie in its bar: pressed on a key, the key moves; anywhere else, the bar
             model: track.barDots.length
@@ -111,6 +148,14 @@ Rectangle {
             width: 7; height: 7; radius: 1; color: Theme.warn
             HoverHandler { id: flagHover }
             HoverTip { hovered: flagHover.hovered; text: (modelData.at === "start" ? "Starts at marker " : "Ends at marker ") + modelData.name }
+        }
+    }
+    Repeater {   // the frame's cuts (rowData.cuts): a short orange tick at each, as on the ruler above
+        model: track.rowData.cuts || []
+        delegate: Rectangle {
+            required property var modelData
+            x: track.xOf(modelData) - 1; y: 2; width: 2; height: track.height - 4; radius: 1; z: 3
+            color: Theme.warn
         }
     }
     Repeater {   // a spring still moving at its next key: a faint tail to where it would have settled (key_ghosts.py)
@@ -134,7 +179,7 @@ Rectangle {
         }
     }
     Repeater {   // a line's stretches (or a barless layer's), under its keys
-        model: bar.visible || track.hasCells ? [] : track.rowData.stretches || []
+        model: track.hasBar || track.hasCells ? [] : track.rowData.stretches || []
         delegate: StretchBand { row: track }
     }
     Repeater {   // the keys of a row with no bar (a setting, an effect, a mask)

@@ -10,7 +10,8 @@ Align, Make, Match, Order), min_targets / max_targets / kinds, `when` (a conditi
 one condition language: action_rules.Facts lists them), `panel` (False: not in the settings panel's actions — keys, Ctrl+K), `promoted` (True, or a fact: while it holds the action comes
 first; a secondary one is then the context bar's first button, out of its `bar` menu: Make rig on parts named like a
 body), `calls` (an operation, a target rule and argument rules: action_rules.py) or `do` (not a document change: the clipboard, copy style, rename). A selection holding a locked
-layer is offered only what is marked `locked_ok` (Unlock, Paste).
+layer is offered only what is marked `locked_ok` (Unlock, Paste); one holding the frame (what the scene exports, never
+grouped, masked, copied or deleted) only what is marked `frame_ok` (Lock, Unlock, K and the eases of its keys).
 """
 from __future__ import annotations
 
@@ -33,8 +34,8 @@ def _op(name, target, **args):
 
 
 def _a(id_, label, *, rank=100, importance="secondary", group="", bar="", job="", when=None, calls=None, do="",
-       min_targets=1, max_targets=None, kinds=None, locked_ok=False, promoted=False, why="", panel=True, icon=""):
-    return {"icon": icon, "panel": panel, "id": id_, "label": label, "rank": rank, "importance": importance, "group": group, "bar": bar, "job": job,
+       min_targets=1, max_targets=None, kinds=None, locked_ok=False, frame_ok=False, promoted=False, why="", panel=True, icon=""):
+    return {"frame_ok": frame_ok, "icon": icon, "panel": panel, "id": id_, "label": label, "rank": rank, "importance": importance, "group": group, "bar": bar, "job": job,
             "when": when, "calls": calls, "do": do, "min_targets": min_targets, "max_targets": max_targets,
             "kinds": kinds, "locked_ok": locked_ok, "promoted": promoted, "why": why}
 
@@ -49,7 +50,7 @@ def _to_frame(words: str):
 
 
 _ORDER = {"front": "Bring to front", "forward": "Bring forward", "backward": "Send backward", "back": "Send to back"}
-_DEPTHS = {"far": 3.0, "middle": 1.0, "near": 0.25}        # the camera depths background.add's defaults use (far → near)
+_DEPTHS = {"far": 3.0, "middle": 1.0, "near": 0.25}        # the depths background.add's defaults use (far → near)
 _MASK = lambda m: _op("mask.make", "stack_but_top", cutter="$top", mode=m, id="$new:group", at="$at")   # noqa: E731
 
 DATA = [
@@ -90,9 +91,9 @@ DATA = [
          when=FACT("same_parent"), calls=_op("layer.distribute", "ids", axis=ax, at="$at"), icon="distribute-" + ax)
       for ax, words in (("x", "Even gaps across"), ("y", "Even gaps down"))],
     *[_a(f"match_{d}", words, rank=70, group="arrange", bar="Match", min_targets=2,
-         when={"all": [FACT("same_parent"), NOT("has_text"), NOT("has_camera")]},
+         when={"all": [FACT("same_parent"), NOT("has_text")]},
          calls=_op("layer.match_size", "rest", to="$first", dims=d, at="$at"),
-         why=f"{words} needs two or more layers (shapes, pictures, groups) in one place. Text and a camera have no size of their own: leave them out.")
+         why=f"{words} needs two or more layers (shapes, pictures, groups) in one place. Text has no size of its own: leave it out.")
       for d, words in (("w", "Match width"), ("h", "Match height"), ("both", "Match size"))],
     _a("fill_frame", "Fill the frame", rank=65, group="arrange", bar="Fit to frame",   # one control, two ways (on the bar for a picture or clip, else under ⋯)
        when={"all": [FACT("groupable"), NOT("has_text")]}, calls=_op("layer.fill_frame", "ids", mode="cover", at="$at")),
@@ -100,17 +101,17 @@ DATA = [
        when={"all": [FACT("groupable"), NOT("has_text")]}, calls=_op("layer.fill_frame", "ids", mode="inside", at="$at")),
     *[_a(f"depth_{k}", f"{k.capitalize()} ({v:g})", rank=75, importance="primary", group="arrange", bar="Set depth",
          kinds=("drawing",), when=FACT("depth_ok"), calls={"rule": "depth", "value": v},
-         why="Set depth needs a camera: + › Camera (drawings of the composition, not inside a group).")
+         why="Set depth is for drawings of the scene itself, not inside a group.")
       for k, v in _DEPTHS.items()],
     _a("depth_typed", "Other depth…", rank=76, importance="primary", group="arrange", bar="Set depth", kinds=("drawing",),
-       when=FACT("depth_ok"), do="depth", why="Set depth needs a camera: + › Camera (drawings of the composition, not inside a group)."),
+       when=FACT("depth_ok"), do="depth", why="Set depth is for drawings of the scene itself, not inside a group."),
     _a("stagger", "Stagger…", rank=35, importance="primary", group="arrange", min_targets=2, do="stagger"),
     _a("sound_here", "Add a sound here…", rank=40, group="arrange", max_targets=1, when=FACT("has_sound"), do="sound_here",
        why="Ties a sound from Sound's library to the layer's start; RostrumSound mixes it"),
-    _a("key_here", "Key here", rank=45, group="animate", job="key_here", calls={"rule": "pose"}, panel=False),   # K; the diamonds
+    _a("key_here", "Key here", rank=45, group="animate", job="key_here", calls={"rule": "pose"}, panel=False, frame_ok=True),   # K; the diamonds
 
     *[_a(f"ease_{e['value']}", f"Ease: {e['label']}", rank=50, group="animate", bar="Ease", job=e["job"],
-         when=FACT("keys_picked"), calls=_op("key.set", "keys", ease=e["value"]), panel=False) for e in EASES if e["value"] != "custom"],
+         when=FACT("keys_picked"), calls=_op("key.set", "keys", ease=e["value"]), panel=False, frame_ok=True) for e in EASES if e["value"] != "custom"],
     # Styles ▾ on texts (rostrum2d/text_styles.py): the document's styles come first (_List.available adds them)
     _a("style_save", "Save as style", rank=81, importance="primary", group="look", bar="Styles", kinds=("text",),
        max_targets=1, when=NOT("styled"), calls=_op("style.define", "ids")),
@@ -119,8 +120,9 @@ DATA = [
     _a("copy_style", "Copy style", rank=80, group="look", job="copy_style", max_targets=1, do="copy_style"),
     _a("paste_style", "Paste style", rank=80, group="look", job="paste_style", when=FACT("style_copied"),
        calls=_op("style.apply", "not_copied", **{"from": "$copied"})),
-    _a("lock", "Lock", rank=90, group="state", job="lock", when=FACT("any_unlocked"), calls=_op("layer.lock", "unlocked")),
-    _a("unlock", "Unlock", rank=90, group="state", job="lock", when=FACT("any_locked"), locked_ok=True,
+    _a("lock", "Lock", rank=90, group="state", job="lock", when=FACT("any_unlocked"), calls=_op("layer.lock", "unlocked"),
+       frame_ok=True),
+    _a("unlock", "Unlock", rank=90, group="state", job="lock", when=FACT("any_locked"), locked_ok=True, frame_ok=True,
        calls=_op("layer.unlock", "locked")),
     _a("hide", "Hide", rank=90, group="state", job="hide", when=FACT("any_shown"), calls=_op("layer.hide", "shown", on=True)),
     _a("show", "Show", rank=90, group="state", job="hide", when=FACT("any_hidden"), calls=_op("layer.hide", "hidden", on=False)),
@@ -136,11 +138,13 @@ DATA = [
 
 
 _UNLOCKED = {"not": {"fact": "any_locked"}}
+_NO_FRAME = {"not": {"fact": "has_frame"}}
 
 
 def _action(d: dict) -> Action:
-    """One data entry as a kit Action: the locked rule joins its `when`; its calls are read by action_rules."""
-    when = d["when"] if d["locked_ok"] else {"all": [_UNLOCKED, d["when"]]} if d["when"] else _UNLOCKED
+    """One data entry as a kit Action: the locked and frame rules join its `when`; its calls are read by action_rules."""
+    rules = ([] if d["locked_ok"] else [_UNLOCKED]) + ([] if d["frame_ok"] else [_NO_FRAME]) + ([d["when"]] if d["when"] else [])
+    when = {"all": rules} if len(rules) > 1 else rules[0] if rules else None
     calls = (lambda f, spec=d["calls"]: calls_of(spec, f, f.at)) if d["calls"] else None
     return Action(f"layer:{d['id']}", d["label"], when=when, kinds=d["kinds"], min_targets=d["min_targets"],
                   max_targets=d["max_targets"], importance=d["importance"], rank=d["rank"], job=d["job"],

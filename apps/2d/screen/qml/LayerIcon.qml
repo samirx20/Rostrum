@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// A small drawn icon per item kind: rectangle / ellipse shape, text, image, group, drawing, path, camera, rig, mask, and (any other) effect.
+// A small drawn icon per item kind: rectangle / ellipse shape, text, image, video (a film strip), group, drawing, path, the frame (kind "camera": a box with corner marks), rig, mask, and (any other) effect.
 Canvas {
     id: c
     property string kind: "shape"
@@ -32,8 +32,15 @@ Canvas {
         } else if (kind === "path") {      // a Bézier curve between two square points
             g.beginPath(); g.moveTo(3.5, 10.5); g.bezierCurveTo(3.5, 3, 10.5, 11, 10.5, 3.5); g.stroke()
             g.fillRect(1.5, 9, 3, 3); g.fillRect(9, 2, 3, 3)
-        } else if (kind === "camera") {    // a camera body with its lens
-            rr(1.5, 3.5, 8, 7, 1.5); g.stroke(); g.beginPath(); g.moveTo(9.5, 6); g.lineTo(12.5, 4.2); g.lineTo(12.5, 9.8); g.lineTo(9.5, 8); g.closePath(); g.stroke()
+        } else if (kind === "camera") {    // the frame: a box with a mark across each corner
+            g.beginPath()
+            g.moveTo(1.5, 5); g.lineTo(1.5, 1.5); g.lineTo(5, 1.5); g.moveTo(9, 1.5); g.lineTo(12.5, 1.5); g.lineTo(12.5, 5)
+            g.moveTo(12.5, 9); g.lineTo(12.5, 12.5); g.lineTo(9, 12.5); g.moveTo(5, 12.5); g.lineTo(1.5, 12.5); g.lineTo(1.5, 9)
+            g.stroke(); g.fillRect(5.5, 5.5, 3, 3)
+        } else if (kind === "video") {     // a film strip: a frame with sprocket holes down both sides
+            rr(1.5, 2, 11, 10, 1.5); g.stroke()
+            g.fillRect(3, 3.5, 1.5, 1.5); g.fillRect(3, 6.3, 1.5, 1.5); g.fillRect(3, 9.1, 1.5, 1.5)
+            g.fillRect(9.5, 3.5, 1.5, 1.5); g.fillRect(9.5, 6.3, 1.5, 1.5); g.fillRect(9.5, 9.1, 1.5, 1.5)
         } else if (kind === "rig" || kind === "bone") {    // two joints joined by a bone
             g.beginPath(); g.moveTo(3.5, 10.5); g.lineTo(10.5, 3.5); g.stroke()
             g.beginPath(); g.ellipse(1.5, 8.5, 4, 4); g.fill(); g.beginPath(); g.ellipse(8.5, 1.5, 4, 4); g.fill()

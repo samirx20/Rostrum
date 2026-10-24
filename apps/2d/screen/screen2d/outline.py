@@ -13,6 +13,7 @@ from __future__ import annotations
 from rostrum2d import fields as F
 from rostrum2d.anims import NAMES, animations, setting_of
 from rostrum2d.drawing import each_frame
+from rostrum2d.frame import TYPE as FRAME
 from rostrum2d.names import display_name
 from rostrum2d.retime import END, FIELD
 from rostrum_core.keys import animated, keys_of, marked
@@ -29,6 +30,8 @@ def label_of(item: dict, owner: dict | None = None, beats=None) -> str:
         p = F.param(owner["type"], item["prop"])
         on = beats(item["t"]) if beats and isinstance(item["t"], (int, float)) else ""
         return f"{label_of(owner)} · {p.label if p else item['prop']} at {on or marked.label(item['t'])}"
+    if item.get("type") == FRAME:
+        return F.LABELS[FRAME]                     # the frame is never renamed: always "Frame", whatever an old file called it
     return display_name(item)
 
 
@@ -96,7 +99,7 @@ def _row(kind: str, owner: dict, depth: int, label: str, keys: list, prop: str =
     return {"row": kind, "id": owner["id"] if kind != "field" else f"{owner['id']}.{prop}", "owner": owner["id"],
             "prop": prop, "label": label, "kind": owner["type"], "shape": owner.get("shape", "") if kind == "layer" else "",
             "depth": depth, "owned": kind != "layer", "fold": "", "keys": keys, "frames": [], "bar": False,
-            "ghosts": [], "tails": []}
+            "ghosts": [], "tails": [], "frame": False, "cuts": [], "trim": False}
 
 
 def _one_per_frame(keys: list[dict], fps: float) -> list[dict]:
@@ -112,6 +115,16 @@ def _one_per_frame(keys: list[dict], fps: float) -> list[dict]:
     return list(by_frame.values())
 
 
+def _cuts(frame: dict) -> list[float]:
+    """The times the frame cuts to: a key with the `hold` ease jumps at the next key of its field, so the cut is that
+    next key's time (FRAME.md). One tick per time, however many fields cut together."""
+    out = set()
+    for prop in animated(frame):
+        ks = keys_of(frame, prop)
+        out |= {b["t"] for a, b in zip(ks, ks[1:]) if a.get("ease") == "hold" and isinstance(b["t"], (int, float))}
+    return sorted(out)
+
+
 def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset()) -> list[dict]:
     """`comp` as placed (every time in composition seconds): bridge.placed(). `anim_only`: layers opened by A, showing
     only their animated settings (theirs, their effects' and masks'), not their own layers."""
@@ -123,7 +136,8 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset()) -> li
         return key_ghosts.marks([(keys_of(o, p), duration) for o, p in pairs], comp["fps"])
 
     def walk(layers, depth):
-        for lay in reversed(layers):
+        # the frame is the first of its scene's layers (the bottom of the stack) but its row is pinned on top, always
+        for lay in sorted(reversed(layers), key=lambda l: l["type"] != FRAME) if depth == 0 else reversed(layers):
             fields = _fields(lay)
             inside = bool(fields or _owned(lay) or lay.get("layers"))
             only = lay["id"] in anim_only
@@ -135,9 +149,12 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset()) -> li
             row["stretches"] = first["stretches"]
             row.update(past(fields))
             if F.param(lay["type"], "start") is not None:   # a camera, a shape …: when it shows, as a bar
-                row.update(bar=True, start=min(max(lay.get("start", 0.0), 0.0), duration),
+                row.update(bar=True, trim=True, start=min(max(lay.get("start", 0.0), 0.0), duration),
                            end=min(max(lay.get("end", duration), 0.0), duration),
                            startMarker=lay.get(FIELD) or "", endMarker=lay.get(END) or "")
+            if lay["type"] == FRAME:    # the frame's bar is the whole scene, never trimmed or slid (it always exists)
+                row.update(label="Frame", frame=True, bar=True, start=0.0, end=duration, startMarker="", endMarker="",
+                           cuts=_cuts(lay))
             row.update(locked=bool(lay.get("locked")), hidden=bool(lay.get("hidden")))
             row["fold"] = "" if not inside else "open" if is_open else "closed"
             if lay["type"] == "drawing" or (lay.get("frames") and each_frame(lay)):   # drawings, as cells (FrameMarks.qml)

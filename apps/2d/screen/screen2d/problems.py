@@ -15,7 +15,7 @@ from . import project_picks
 
 WORDS = {"refused": "Can't be drawn", "missing-font": "Missing font", "missing-file": "Missing file", "outside-project": "File outside the project",
          "broken-link": "Broken link", "missing-marker": "Missing marker", "expression": "Expression",
-         "invisible": "Never seen", "off-canvas": "Off the frame", "unused-keys": "Keys that do nothing",
+         "invisible": "Never seen", "unused-keys": "Keys that do nothing",
          "missing-render": "No 3D render", "stale-render": "3D render out of date"}
 
 

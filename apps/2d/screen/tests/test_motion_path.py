@@ -56,23 +56,21 @@ def test_key_square_snaps_to_the_frame_centre_unless_free(bridge):  # noqa: F811
     assert (xs(), ys()) == (163, 92)
 
 
-def test_camera_key_lands_under_the_pointer_with_the_playhead_between_keys(bridge):  # noqa: F811
-    """The canvas is seen through the camera the drag changes: the view holds as at the press, so the square follows
-    the pointer exactly, and the picture follows the camera again at the drop."""
+def test_frame_key_lands_under_the_pointer_with_the_playhead_between_keys(bridge):  # noqa: F811
+    """The canvas is the world, so a frame key's square follows the pointer exactly while the frame it moves changes."""
     bridge.doc.run_script("cam.py", run_source(CAM, "cam.py"))
     bridge.select("frame")
     bridge.setTime(1.0)                            # between the camera's keys at 0 s and 2 s
     mp = bridge.motionPath
     square = lambda: next(k for p in mp.paths if p["id"] == "frame" for k in p["keys"] if k["t"] == 2.0)["pos"]   # noqa: E731
     x0, y0 = square()
-    assert mp.beginKey("frame", 2.0) and bridge.held_view is not None
+    assert mp.beginKey("frame", 2.0)
     bridge.snap.keys(True, False)                  # Ctrl: free
     for dx, dy in ((20, -10), (60, -40), (95, -41)):
         mp.drag(dx, dy, False)
         x, y = square()
         assert abs(x - (x0 + dx)) < 0.5 and abs(y - (y0 + dy)) < 0.5
     bridge.endDrag()
-    assert bridge.held_view is None
 
 
 CAM = '''

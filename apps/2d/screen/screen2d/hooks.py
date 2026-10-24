@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from rostrum2d import fields as F
+from rostrum2d.frame import TYPE as FRAME
 from rostrum_gui import sections
 
 from . import beat_words, exprs, outline, fill_rows, font_rows, project_picks, route, size_rows, soundtrack_rows, swap_rows
@@ -17,11 +18,22 @@ for _t in ("drawing", "shape", "text", "image", "video", "path"):      # the fra
     ON_PAGE[_t] = ON_PAGE.get(_t, set()) | {"newHold"}
 for _t in F.LAYERS:                      # Locked and Hidden: the lock and eye on the layer's timeline row (and its right-click)
     ON_PAGE[_t] = ON_PAGE.get(_t, set()) | {"locked", "hidden"}
+# The frame's panel is Position, Zoom, Rotation and Ride a path (2d-camera SPEC 3.3): its home is never shown (Position's
+# reset puts the frame back there); "Animate on" stays the scene's (agents can still set it on the frame).
+ON_PAGE[FRAME] |= {"homeX", "homeY", "timing"}
 
 
 # A text's folded groups would echo its essential rows (Font, Colour) as "+ Font" / "+ Fill": they read as what they hold.
 # Only the words on screen change; the groups' keys stay "Font" / "Fill" (kit sections.WORDS).
-sections.WORDS.update({("text", "Font"): "More type", ("text", "Fill"): "Fill style"})
+sections.WORDS.update({("text", "Font"): "More type", ("text", "Fill"): "Fill style", (FRAME, "Ride"): "Ride a path"})
+
+
+def _home_reset(rows: list[dict], item: dict | None) -> list[dict]:
+    """The frame's Position resets to home (its homeX, homeY), not to the field's fixed default."""
+    if not item or item.get("type") != FRAME:
+        return rows
+    home = {"x": item.get("homeX"), "y": item.get("homeY")}
+    return [{**r, "default": home[r["id"]]} if r.get("row") == "param" and r.get("id") in home else r for r in rows]
 
 
 class Hooks2D:
@@ -32,8 +44,11 @@ class Hooks2D:
     def kind_label(self, item):          # the panel's subtitle and Ctrl+K hints: "Scene", never the raw "Comp"
         return F.LABELS.get(item.get("type", ""), super().kind_label(item))
 
-    def subtitle(self, item):            # a camera is named "Camera": its line says whose it is, not the name again
-        return "Scene camera" if item.get("type") == "camera" else super().subtitle(item)
+    def subtitle(self, item):            # the frame is named "Frame": its line says what it is and the export's size
+        if item.get("type") != FRAME:
+            return super().subtitle(item)
+        comp, d = self.comp(), F.defaults("comp")
+        return f"What the export shows · {round(comp.get('width', d['width']))} × {round(comp.get('height', d['height']))}"
 
     def selection_label(self, ids):      # several selected: "2 layers" (any other mix: the kit's "N items")
         if len(ids) > 1 and all(self.doc.item(i)["type"] in F.LAYERS for i in ids):
@@ -66,7 +81,7 @@ class Hooks2D:
         rows = fill_rows.rows(font_rows.rows(size_rows.rows(soundtrack_rows.rows(swap_rows.rows(super()._rows(), item, self._t), item, self.doc.folder), item),
                                              item),
                               item and self.placed_item(item["id"]), self._t, self.comp()["fps"], self._kit.search)   # placed: keys on a marker read
-        return project_picks.with_file_names(rows, item, self.doc.folder)     # File: "pic.png", not the store's copy
+        return _home_reset(project_picks.with_file_names(rows, item, self.doc.folder), item)   # File: "pic.png", not the store's copy
 
     def shown_values(self, item):
         return route.shown_values(self.placed_item(item["id"]), self._t)     # keys on a marker read as seconds

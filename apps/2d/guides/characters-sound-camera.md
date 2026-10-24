@@ -44,16 +44,14 @@ Sound is made in RostrumSound. Rostrum2D plays it with the picture and lets you 
 - **A video's own sound** shows as a thin row **Its sound** under the video layer. Its speaker button mutes it in the song's mix. **Ctrl+Z** brings it back.
 - **MP4 with the project's sound:** open **Export**, pick **MP4**, and leave **Project sound** on. It shows only when the project has sound. See [exporting.md](exporting.md).
 
-## The Camera tool
+## Moving the frame (the camera)
 
-1. Press **C**, or click **Camera** in the tool rail. It moves the scene's **frame** (the box that is exported, its camera), which every scene has.
-2. The Camera tool is then on.
-3. Drag on the canvas to pan. The picture follows your pointer.
-4. Hold **Alt** and drag up to push in, down to pull out.
-
-If the frame's settings are animated, a drag adds a key at the playhead. Otherwise it moves the frame for the whole piece. One drag is one undo step. When you let go, the picture slides to the camera's new view in about a tenth of a second instead of jumping; that is only how the screen shows it (the file and the export are not touched). The frame's settings (**X**, **Y**, **Zoom**, **Rotation**) are in the settings panel with the **Frame** row picked. While the project plays, the tool is off.
-
-Pick the camera to see where it goes: its frame now is outlined, a faint outline shows its frame at each of its keys (cut at the picture's edge, never drawn into the grey margin), and a line with a dot per frame shows the point it looks at travelling. Drag a key's square or handles to change the move, as for any moving thing (see [the-screen.md](the-screen.md)). While you drag a camera key, the picture holds still as it was when you pressed, so the square stays under your pointer even with the playhead between two keys; when you let go, the picture shows what the camera now sees. **Camera frame** in the **Fit · 54 % ▾** menu (on at first) keeps the camera's frame and path showing even when the camera isn't picked.
+Every scene has one **frame**: the box that is exported. It is the camera; there is no camera tool. Press **C** (or click
+the frame's name tab, or its **Frame** row at the top of the timeline) to pick it, then drag inside it to move it, drag
+a corner square to zoom, and drag just outside a corner to turn it. With no keys a drag moves it for the whole piece;
+once it has keys, a drag sets a key at the playhead. One drag is one undo step. Its path, a faint outline at each key
+and its cuts show while it is picked. The whole of it is in [the-screen.md](the-screen.md) part 2 and
+[camera-parallax-motion-blur.md](camera-parallax-motion-blur.md).
 
 ## Styles
 

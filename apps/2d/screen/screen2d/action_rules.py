@@ -17,6 +17,7 @@ $first (the first picked) · $copied (the layer whose style was copied). Anythin
 from __future__ import annotations
 
 from rostrum2d import fields as F
+from rostrum2d.frame import TYPE as FRAME
 from rostrum2d.names import display_name
 from rostrum2d.ops_group import HOLDERS, _why_not
 from rostrum2d.rig.bodynames import bodylike
@@ -47,22 +48,22 @@ class Facts:
         parents = {w[0] for w in where.values()}
         self.stack = sorted(ids, key=lambda i: where[i][2])
         p = doc.item(next(iter(parents))) if len(parents) == 1 else None
-        plain = [i for i, it in zip(ids, self.items) if it["type"] != "camera"]
+        plain = [i for i, it in zip(ids, self.items) if it["type"] != FRAME]      # the frame is locked, never hidden
         self.lists = {"ids": ids, "stack": self.stack, "stack_but_top": self.stack[:-1], "rest": ids[1:],
-                      "locked": [i for i in plain if doc.item(i).get("locked")],
+                      "locked": [i for i, it in zip(ids, self.items) if it.get("locked")],
                       "hidden": [i for i in plain if doc.item(i).get("hidden")],
                       "not_copied": [i for i in ids if i != copied], "keys": list(self.state["keys"]),
                       "styled": [i for i, it in zip(ids, self.items) if it.get("textStyle")]}   # texts following a text style
         self.lists["comp"] = [_comp_of(doc, ids[0])] if ids else []   # the whole picture: the composition the layers are in
-        self.lists["unlocked"] = [i for i in plain if i not in self.lists["locked"]]
+        self.lists["unlocked"] = [i for i in ids if i not in self.lists["locked"]]
         self.lists["shown"] = [i for i in plain if i not in self.lists["hidden"]]
         self.copied = copied if copied and doc.has(copied) else ""
-        groupable = bool(p) and p["type"] in HOLDERS and p.get("layout", "none") == "none" and "camera" not in self.kinds
+        groupable = bool(p) and p["type"] in HOLDERS and p.get("layout", "none") == "none" and FRAME not in self.kinds
         groups = self.kinds == {"group"}
         self.facts = {
             "one": self.count == 1, "same_parent": p is not None, "groupable": groupable,
             "one_group": self.count == 1 and groups,       # a group alone: Ungroup, not "Group" echoing its own title
-            "shapes": self.kinds <= set(SHAPES), "has_text": "text" in self.kinds, "has_camera": "camera" in self.kinds,
+            "shapes": self.kinds <= set(SHAPES), "has_text": "text" in self.kinds, "has_frame": FRAME in self.kinds,
             "releasable": groups and all(_why_not(it, doc.item(where[it["id"]][0])) is None for it in self.items),
             "rigable": self.count > 1 or groups,           # Make rig: several parts, or a group of them (one rectangle has nothing to rig)
             "maskable": groupable and all(F.param(it["type"], "matte") for it in self.items),
@@ -76,7 +77,7 @@ class Facts:
             "texts": self.kinds == {"text"}, "styled": bool(self.lists["styled"]),    # Styles ▾ (text_styles.py)
             "picture": self.kinds <= {"image", "video", "render3d"},     # Fill the frame comes first for a photo or clip
             "picture_mix": bool(self.kinds & {"image", "video", "render3d"}) and bool(self.kinds & {"shape", "path", "text"}),   # Mask comes first
-            "has_sound": bool(self.state.get("sound")) and "camera" not in self.kinds,   # Add a sound here (sound_cue_pick.py)
+            "has_sound": bool(self.state.get("sound")) and FRAME not in self.kinds,   # Add a sound here (sound_cue_pick.py)
             # a character (rig/guess.py, rig_mouths.py): Bones from part names, Lip sync…, Add blinks…
             "bones_guessable": self.count == 1 and guessable(self.items[0]),
             "mirrorable": self.count == 1 and self.items[0]["type"] == "rig" and bool(mirror_pairs(self.items[0])),   # Mirror pose ▾ (rig/mirror.py)
@@ -84,8 +85,7 @@ class Facts:
             "body_parts": groupable and p["type"] != "rig" and "rig" not in self.kinds and bodylike(_part_names(self.items)),   # Make rig first
             "mouth_set": self.count == 1 and is_mouth(self.items[0]),
             "eyes_set": self.count == 1 and is_eyes(self.items[0]),
-            "depth_ok": self.kinds == {"drawing"} and bool(p) and p["type"] == "comp"
-            and any(c["type"] == "camera" for c in p.get("layers", []))}      # Set depth: drawings of a comp with a camera
+            "depth_ok": self.kinds == {"drawing"} and bool(p) and p["type"] == "comp"}   # Set depth: drawings of the scene itself
 
 
 def _comp_of(doc, id_: str) -> str:
@@ -161,7 +161,7 @@ def _pose(f: Facts) -> list[dict]:
             else {"op": "key.add", "target": [i], "args": {"fields": "pose", "t": round(f.at(i), 6)}} for i in f.ids]
 
 
-POSE_WORDS = {"x": "position", "y": "position", "scale": "scale", "rotation": "rotation", "opacity": "opacity"}
+POSE_WORDS = {"x": "position", "y": "position", "scale": "scale", "zoom": "zoom", "rotation": "rotation", "opacity": "opacity"}
 
 
 def cutter_name(call: dict, doc) -> str:
@@ -181,12 +181,13 @@ def said(calls: list[dict], label: str, doc) -> str:
     words = {POSE_WORDS[k["prop"]] for c in pose for k in doc.item(c["target"][0]).get("keys", [])
              if k["prop"] in POSE_WORDS and k["t"] == c["args"]["t"]}
     n, m = len(words), len(pose)
-    return f"Keyed {n} setting{'s' if n != 1 else ''} on {m} layer{'s' if m != 1 else ''}"
+    on = "the frame" if m == 1 and doc.item(pose[0]["target"][0])["type"] == FRAME else f"{m} layer{'s' if m != 1 else ''}"
+    return f"Keyed {n} setting{'s' if n != 1 else ''} on {on}"
 
 
 def _depth(f: Facts, value: float) -> list[dict]:
-    """Set depth: each drawing goes to this camera depth (`drawing.set`) and is resized to cover everything the camera
-    shows of it over the shot (`background.fit`): one change. None when every drawing is already there."""
+    """Set depth: each drawing goes to this depth (`drawing.set`) and is resized to cover everything the frame shows of
+    it over the shot (`background.fit`): one change. None when every drawing is already there."""
     todo = [i for i, it in zip(f.ids, f.items) if it.get("depth", 0.0) != value]
     if not todo:
         return []

@@ -30,8 +30,8 @@ This page takes you from an empty project to something that moves, and shows you
 
 ## 4. The timeline is the layers list
 
-1. The names on the left of the timeline are your layers, newest on top. A layer gets a slim bar beside its name once it has keys (part 5): the bar runs from its first key to its last. A new layer has no keys yet, so no bar yet.
-2. Once a layer has a bar, drag the middle of it to show the layer later or earlier, or drag an end of the bar to start it later or end it sooner. A bar snaps to the playhead and to markers (see [the-screen.md](the-screen.md)). Before it has keys, the **Timing** group of the settings panel has the layer's **Starts at** and **Ends at**.
+1. The names on the left of the timeline are your layers, newest on top, under the **Frame** row (the box that is exported). Each layer has a bar beside its name, with its name in it: the time the layer shows, from its start to its end. A new layer's bar runs the whole length; its keys (part 5) sit on it as diamonds.
+2. Drag the middle of a bar to show the layer later or earlier, or drag an end of the bar to start it later or end it sooner. A bar snaps to the playhead and to markers (see [the-screen.md](the-screen.md)). The **Timing** group of the settings panel has the same **Starts at** and **Ends at** as numbers.
 3. The ruler above the bars counts seconds. The blue marker is the **playhead**, the moment you are looking at. Click or drag on the ruler to move it. The time shows beside the play button, for example "1.00 s".
 
 ## 5. Make a value move, right where you are

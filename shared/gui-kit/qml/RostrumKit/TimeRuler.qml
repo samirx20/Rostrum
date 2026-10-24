@@ -8,6 +8,7 @@ import RostrumKit
 Ruler {
     property alias time: r.value
     property bool frameTicks: false     // one tick per frame (2D: a frame-by-frame layer selected)
+    property var cuts: []               // times the frame cuts at (2D): a short orange tick through the ruler, on the Frame row's cut keys
     id: r
     objectName: "timeRuler"
     unit: "seconds"
@@ -18,6 +19,14 @@ Ruler {
     onMarkerRenamed: (id, name) => backend.markerEdit.rename(id, name)
     onMarkerRemoved: (id) => backend.markerEdit.remove(id)
 
+    Repeater {   // the frame's cuts: a vertical tick at each, the whole ruler's height
+        model: r.cuts
+        delegate: Rectangle {
+            required property var modelData
+            x: Math.round(r.xOf(modelData)) - 1; y: 2; width: 2; height: r.height - 4; radius: 1
+            color: Theme.warn
+        }
+    }
     Repeater {   // frameTicks: one small tick per frame (while frames are at least 4 px apart)
         readonly property real fps: backend.frameInfo.fps || 30
         readonly property bool on: r.frameTicks && r.perSec / fps >= 4

@@ -41,7 +41,8 @@ class LayerOrder(SlotMixin):
         """The lock or the eye on a layer's row (which: "locked" | "hidden"): that layer only, one change."""
         item = self.doc.item(layer_id)
         now = bool(item.get(which))
-        call = ({"op": "layer.unlock" if now else "layer.lock", "target": [layer_id], "args": {}} if which == "locked"
+        call = ({"op": "value.set", "target": [layer_id], "args": {"prop": "locked", "v": not now}} if which == "locked" and item["type"] == "camera"
+                else {"op": "layer.unlock" if now else "layer.lock", "target": [layer_id], "args": {}} if which == "locked"
                 else {"op": "layer.hide", "target": [layer_id], "args": {"on": not now}})
         label = {"locked": ("Lock", "Unlock"), "hidden": ("Hide", "Show")}[which][now]
         return self._guard(lambda: self._apply([call], f"{label} {self.label_of(item)}"))

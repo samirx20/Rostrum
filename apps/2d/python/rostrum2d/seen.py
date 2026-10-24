@@ -46,7 +46,8 @@ def own_moments(comp: dict, ids: set | None = None) -> dict[str, set]:
 
 def unseen(comp: dict) -> dict[str, dict[str, int]]:
     """Layers seen at none of the moments: {id: {reason: how many moments it was the reason}}. A layer shown only as
-    another's track matte is left out (that is what it is for)."""
+    another's track matte is left out (that is what it is for). Where a layer is doesn't count: the world around the
+    frame is for designing in (what is in the frame is look_in_frame's question)."""
     w, h = comp_size(comp)
     seen, why = set(), {}
 
@@ -54,7 +55,7 @@ def unseen(comp: dict) -> dict[str, dict[str, int]]:
         for node in flatten(comp, t):
             if only is not None and node["id"] not in only:
                 continue
-            reasons = problems_showing(node, w, h)
+            reasons = problems_showing(node, w, h, frame=False)   # beside the frame is a place, not a problem
             if not reasons:
                 seen.add(node["id"])
             for r in reasons:

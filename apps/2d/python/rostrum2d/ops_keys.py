@@ -66,7 +66,7 @@ def _still_value(ctx, owner: dict, prop: str, args: dict):
     return p.check(args[field], f"{ctx.where} › {owner['id']}.{prop}")
 
 
-POSE = ["x", "y", "scale", "rotation", "opacity"]       # K: position, scale, rotation and opacity (UX_SPEC 3.17)
+POSE = ["x", "y", "scale", "zoom", "rotation", "opacity"]   # K: position, scale, rotation and opacity (UX_SPEC 3.17); the frame's zoom
 
 
 def _value_now(ctx, owner: dict, prop: str, t):

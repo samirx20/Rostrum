@@ -42,6 +42,7 @@
   Sound (soundtrack_steps.py): sound wait | mute on|off | beats on|off | beat prev|next | scrub <s> | play <s> |
     wav <path> | pick <item|-> | menu | open [dry] | problem <png>
   Hover preview (H63): hoverobj <objectName> [ms] (click_steps.py: rest on a control) | canvasreport (the canvas's fingerprint + history length)
+  Frame (frame_steps.py): frame pick | frame drag <dx> <dy> | frame corner <dx> | frame turn <deg> | frametime drag|zoom|turn [n]
   View (view_steps.py): zoom <percent|fit> [x y] | pan <dx> <dy> | fitsel | viewmenu | draghold <layer> <dx> <dy> [ctrl] [shift]
 A step that leaves an error in the status fails (nonzero exit).
 """
@@ -60,6 +61,7 @@ from .file_steps import WORDS as FILE_WORDS, do_file_step
 from .paint_steps import WORDS as PAINT_WORDS, do_paint_step
 from .stroke_steps import WORDS as STROKE_WORDS, do_stroke_step
 from .view_steps import WORDS as VIEW_WORDS, do_view_step
+from .frame_steps import WORDS as FRAME_WORDS, do_frame_step
 from .soundtrack_steps import WORDS as SOUND_WORDS, do_sound_step
 from .rig_steps import WORDS as RIG_WORDS, do_rig_step
 
@@ -172,6 +174,29 @@ def steps_bardrag(bridge, step, rest):
         bridge.endDrag()
 
 
+def steps_bartime(bridge, step, rest):
+    """bartime <layer> <move|start|end> <from s> <to s> <n>: n moves of a bar drag, each one's GUI-thread time (the
+    drag's slot, the document, the rows, the bindings: processed until the screen is idle), then the release's."""
+    import statistics
+    import time
+    from PySide6.QtCore import QCoreApplication
+    layer, part, t0, t1, n = rest[0], rest[1], float(rest[2]), float(rest[3]), int(rest[4])
+    if not bridge.beginBarDrag(layer, part, t0):
+        raise RuntimeError(f"step {step!r}: {bridge.status}")
+    ms = []
+    for i in range(1, n + 1):
+        t = time.perf_counter()
+        bridge.barDragTo(t0 + (t1 - t0) * i / n, 0.1)
+        QCoreApplication.processEvents()
+        ms.append((time.perf_counter() - t) * 1000)
+    t = time.perf_counter()
+    bridge.endDrag()
+    QCoreApplication.processEvents()
+    q = sorted(ms)
+    print(f"bartime {layer} {part}: {n} moves; GUI thread median {statistics.median(q):.1f}, p95 {q[max(0, int(n * 0.95) - 1)]:.1f}, "
+          f"max {q[-1]:.1f} ms; release {(time.perf_counter() - t) * 1000:.1f} ms")
+
+
 def do_step(bridge, win, step):
     word, *rest = step.split()
     if word == "select":
@@ -215,6 +240,8 @@ def do_step(bridge, win, step):
         bridge.endDrag()
     elif word == "bardrag":
         steps_bardrag(bridge, step, rest)
+    elif word == "bartime":
+        steps_bartime(bridge, step, rest)
     elif word == "open":
         bridge.toggleFold(rest[0])
     elif word == "fold":
@@ -248,8 +275,6 @@ def do_step(bridge, win, step):
         bridge.painter.clearDrawing()
     elif word == "hold":
         bridge.painter.holdBy(int(rest[0]))
-    elif word == "frame":
-        bridge.painter.goFrame(1 if rest[0] == "next" else -1)
     elif word == "onion":
         bridge.painter.setOnion(rest[0] == "on")
     elif word == "paintlayer":                   # "Paint layers +": a new paint layer on top, highlighted
@@ -296,7 +321,7 @@ def do_step(bridge, win, step):
         from PySide6.QtCore import QPoint, Qt
         from PySide6.QtTest import QTest
         x0, y0, x1, y1 = (int(v) for v in rest[:4])
-        mod = Qt.AltModifier if "alt" in rest[4:] else Qt.NoModifier           # mousedrag … alt: pressed with Alt held (the Camera tool pushes in)
+        mod = Qt.AltModifier if "alt" in rest[4:] else Qt.NoModifier           # mousedrag … alt: pressed with Alt held (a frame corner zooms about the opposite corner)
         button = Qt.RightButton if "right" in rest[4:] else Qt.LeftButton      # … right: Alt + right-drag sizes the brush
         if "altkey" in rest[4:]:                 # … altkey: the Alt key held down first, as a person does
             QTest.keyPress(win, Qt.Key_Alt)
@@ -410,6 +435,8 @@ def do_step(bridge, win, step):
         do_file_step(bridge, win, word, rest, step)
     elif word in VIEW_WORDS:                     # zoom, pan, fitsel, draghold (view_steps.py)
         do_view_step(bridge, win, word, rest, step)
+    elif word in FRAME_WORDS:                    # frame pick | drag | corner | turn, frametime (frame_steps.py)
+        do_frame_step(bridge, word, rest, step)
     elif word in CREATE_WORDS:
         do_create_step(bridge, word, rest, step)
     elif word in PAINT_WORDS:                    # Fill, the paint layers panel (paint_steps.py)

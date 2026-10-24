@@ -8,17 +8,17 @@ from rostrum_core import Param
 from . import fields as F
 from .kind import REGISTRY as R
 
-LAYERS = F.PLACED
+LAYERS = F.PLACED          # hide: never the frame (it is what is exported); lock: the frame too (its Locked switch)
 
 
 @R.operation("layer.lock", "Lock layers: they can't be picked or dragged on the screen and operations refuse them until "
-             "layer.unlock.", target=LAYERS, label="Lock", importance="secondary")
+             "layer.unlock.", target=F.LAYERS, label="Lock", importance="secondary")
 def layer_lock(ctx, targets, args):
     for t in targets:
         ctx.set(t, "locked", True)
 
 
-@R.operation("layer.unlock", "Unlock layers.", target=LAYERS, label="Unlock", importance="secondary")
+@R.operation("layer.unlock", "Unlock layers.", target=F.LAYERS, label="Unlock", importance="secondary")
 def layer_unlock(ctx, targets, args):
     for t in targets:
         ctx.set(t, "locked", False)
