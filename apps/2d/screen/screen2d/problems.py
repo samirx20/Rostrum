@@ -1,5 +1,6 @@
 """The screen's problems list: what inspect_diagnose finds (rostrum2d/diagnose_engine.everything, the same function),
-worked out off the GUI thread with an engine of its own, newest document wins, half a second after the last change.
+worked out in a process of its own with an engine of its own (problems_proc.py: never holding the screen's Python), newest
+document wins, half a second after the last change.
 The kit's Problems chip in the top bar (ProblemsChip.qml) shows the count only while there are any; its list shows each
 in words with what to do, and a click jumps to it (`jump`: selects the item it is about, and goes to its moment).
 """
@@ -84,17 +85,11 @@ class Problems(PictureWorker):
         self.post_latest((b.doc.data, b.comp_id, b.doc.folder, b.marks.times if b.doc.folder else None))
 
     def open_engine(self):
-        from rostrum2d.engine import Engine
-        from rostrum2d.scene_keep import Keeper
-        self._keeper = Keeper()         # this thread's: its engine is sent only what changed (scene_keep.py)
-        return Engine()
+        from .problems_proc import Looker
+        return Looker()                 # the looks run in a process of their own (problems_proc.py)
 
-    def handle(self, eng, job):
-        from rostrum2d import textsize
-        from rostrum2d.diagnose_engine import everything
-        data, comp_id, folder, markers = job
-        with textsize.use(eng):         # this thread measures texts with its own engine
-            found = everything(data, comp_id, folder, markers, eng, self._keeper)
+    def handle(self, looker, job):
+        found = looker.everything(*job)
         rows = [{**p, "label": WORDS.get(p["kind"], p["kind"]), "danger": p["kind"] == "refused"} for p in found]
         self.found.emit(rows)
 
