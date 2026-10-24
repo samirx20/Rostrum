@@ -26,6 +26,7 @@ from .agent_view import AgentView
 from .layer_order import LayerOrder
 from .painter import Painter
 from .paint_edge import PaintEdge
+from .paint_pictures import PaintPictures
 from .sharp import Sharp
 from .playback import Playback, size_offered
 from .playstats import STATS
@@ -75,6 +76,10 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         self.outlineChanged.connect(self._layers_check)     # first: every later listener reads the new rows
         self.frames = FrameRenderer(self)
         self._scene = None                                  # the engine's scene, described once per change (_render)
+        self._waiting = None                                # the document state whose paint pictures are being made
+        self._pictures = PaintPictures(self)                # ... off this thread (paint_pictures.py)
+        self._pictures.done.connect(self._pictures_made)
+        self._pictures.failed.connect(self._fail)
         self.held_view = None                               # a camera-key drag: the scene as at the press (motion_path.py)
         self.frames.ready.connect(self._on_frame)
         self.frames.failed.connect(self._fail)
@@ -318,19 +323,30 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         from rostrum2d.scene import describe
         self._previewing = False                            # the document's own picture is drawn again (action_preview.py)
         if self._scene is None:
+            later = []
             try:        # a 3D render layer's render missing, a video file gone …: said on screen, no frame drawn
                 with STATS.stage("describe"):
                     self._scene = describe(self.doc.data, self.comp_id, self.marks.times, self.doc.folder,
-                                           (0.0, self.comp()["duration"]))
+                                           (0.0, self.comp()["duration"]), later)
             except Exception as e:  # noqa: BLE001
                 self._scene = False                         # tried; the next change tries again
                 self._fail(str(e))
-        if self._scene:
+            self._waiting = self.doc.data if later and self._scene else None
+            if self._waiting is not None:                   # the frame shown (and wet ink over it) stays meanwhile
+                self._pictures.make(later, self._waiting)
+        if self._scene and self._waiting is None:
             self.frames.request(self._scene, self._t, self.play.samples(), self.frame_scale(), self.frame_tag(),
                                 **self.frame_extras())
         elif self._shown is not None:                       # no picture for this state: the overlays go live
             self._shown = None
             self.shownChanged.emit()
+
+    def _pictures_made(self, token):
+        """The paint pictures of the state described last are made: described again (now with them) and drawn."""
+        if token is self._waiting and token is self.doc.data:
+            self._waiting, self._scene = None, None
+            if self.held_view is None:
+                self._show()
 
     def _on_frame(self, serial, tag):
         self._frame = serial
@@ -355,6 +371,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         self.endDrag()
         placement.drop(self._host)
         self.frames.close()
+        self._pictures.close()
         self._problems.close()
         self._cuepick.close()
         self.r3d.close()

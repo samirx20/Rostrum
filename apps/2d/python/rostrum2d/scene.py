@@ -11,6 +11,7 @@ the Python side (`python_only`): the engine never sees them. Rigs, long IK chain
 from __future__ import annotations
 
 import math
+from functools import lru_cache
 
 from . import drawing, group_bg, exprbake, fields as F, fill_fields, fill_paint, layoutbake, looping, media, paint_fields, project_sound, render3d, retime, stepped, swap, video
 from .layout_fields import py_only
@@ -23,11 +24,12 @@ FORMAT, VERSION = "rostrum-2d-scene", 2      # 2: the scene's frame (FRAME.md) i
 KEY_FIELDS = ("t", "v", "c", "d", "ease", "x1", "y1", "x2", "y2", "stiffness", "damping", "out", "in")   # out / in: spatial handles
 
 
-def python_only(kind: str) -> set[str]:
+@lru_cache(maxsize=None)
+def python_only(kind: str) -> frozenset[str]:
     """The fields of an item type the engine never sees: auto layout's, stepped timing's and swap sets' (all
     applied here), the scene's soundtrack (Sound's engine plays it, not 2D's) and a text's style link (its values are
-    already on the text: text_styles.py)."""
-    return (py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END, "locked", "hidden", "eachFrame", "newHold", "soundtrack", "textStyle"} | ({"loop"} if kind == "drawing" else set()) | (group_bg.NAMES if kind == "group" else set()) | swap.PY_ONLY.get(kind, set())
+    already on the text: text_styles.py). Fixed per type: worked out once (a scene asks for it per field)."""
+    return frozenset(py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END, "locked", "hidden", "eachFrame", "newHold", "soundtrack", "textStyle"} | ({"loop"} if kind == "drawing" else set()) | (group_bg.NAMES if kind == "group" else set()) | swap.PY_ONLY.get(kind, set())
             | paint_fields.NAMES | fill_fields.NAMES)
 
 
@@ -89,7 +91,8 @@ def _pictures(item: dict, fps: float, where: dict | None) -> list[dict]:
     """The drawings that can show (the Draw each frame rule, drawing.py), each as its picture; a looping drawing's
     run repeated to the layer's end (or the composition's)."""
     until = min(item.get("end", retime.END_OF_COMP), (where or {}).get("until", 0.0) or 60.0)
-    return [{"at": n, "src": str(drawing.picture(item, f))} for n, f in drawing.repeats(item, math.ceil(until * fps))]
+    later = (where or {}).get("later")
+    return [{"at": n, "src": str(drawing.picture(item, f, later))} for n, f in drawing.repeats(item, math.ceil(until * fps))]
 
 
 def _render3d(node: dict, item: dict, fps: float, where: dict) -> dict:
@@ -128,12 +131,14 @@ def _placeholder(node: dict, item: dict, name: str) -> dict:
 
 
 def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = None, folder=None,
-             span: tuple[float, float] | None = None) -> dict:
+             span: tuple[float, float] | None = None, later: list | None = None) -> dict:
     """The scene description of one composition (the first when not named). `markers`: the project's shared
     markers {name: seconds} (rostrum_core.markers.times(folder)), for expressions' marker("…"). `folder`: the
     project folder, where 3D render layers find their item's renders. `span`: (first, last) seconds that will be drawn,
     when not the whole composition (looks, a part of a video): a 3D layer not rendered yet is then a placeholder
-    (the scene's `warnings` name it); with no span (a whole-film export) it is refused."""
+    (the scene's `warnings` name it); with no span (a whole-film export) it is refused. `later` (the screen): paint
+    pictures not made yet are listed there instead of made (drawing.picture), with stand-ins in the scene; the screen
+    makes them off its thread, then describes again and draws: the same pictures export makes at once."""
     comps = doc_data.get("comps", [])
     if not comps:
         raise ValueError("the document has no composition yet (comp.add)")
@@ -146,7 +151,8 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     baked = exprbake.bake(comp, fps, markers, lambda: project_sound.beats(folder, comp.get("soundtrack", ""), comp.get("duration", 5.0)))
     for item_id, fields in layoutbake.bake(comp, fps, baked).items():
         baked.setdefault(item_id, {}).update(fields)
-    where = {"folder": folder, "markers": markers, "span": span, "until": comp.get("duration", F.defaults("comp")["duration"])}
+    where = {"folder": folder, "markers": markers, "span": span, "until": comp.get("duration", F.defaults("comp")["duration"]),
+             "later": later}
     node = _node(comp, fps, baked, where)
     node["layers"] = sorted(node.get("layers", []), key=lambda n: n["type"] != "camera")   # the frame first (the contract)
     swap.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)

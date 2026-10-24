@@ -222,6 +222,12 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   key on the timeline (`key.set` t) are each one `doc.gesture`.
 - **Preview ≡ export**: the canvas is rendered by `rostrum2d.engine.Engine`, off the GUI thread, newest request
   wins (`screen2d/frames.py`; `open_engine` is the one line to swap).
+- **Drawings' pictures are made off the GUI thread**: a change to a drawing describes the scene with stand-ins for
+  pictures not made yet (`scene.describe(later=…)`), `screen2d/paint_pictures.py` makes them (the same `canvas.png`
+  export uses), then the scene is described again and drawn. Painting's wet ink (`wet.py`, `wet_ink.py`) shows the
+  stroke meanwhile; its whole-stroke restamp also runs on a worker, and the eraser's ink shows the frame drawn once
+  without its layer. Python's thread hand-over is 1 ms in the screen (`session.SWITCH_S`), so a worker never holds the
+  screen's thread up for longer.
 - Click empty canvas: the composition is selected (size, frame rate, length, background).
 
 ## Draw tool and frame by frame

@@ -10,7 +10,13 @@ import numpy as np
 
 def over(layers, w, h) -> np.ndarray:
     """[(paint item, HxWx4 premultiplied)] bottom first -> HxWx4 premultiplied. Blends are the W3C separable ones
-    (normal, multiply, screen) and a clamped add; a layer's opacity scales it; hidden layers are skipped."""
+    (normal, multiply, screen) and a clamped add; a layer's opacity scales it; hidden layers are skipped. One
+    plain layer (normal, full opacity: most drawings) is itself, clamped as a blend would: the same numbers, no blending."""
+    shown = [(p, px) for p, px in layers if p["visible"] and p["opacity"] > 0]
+    if len(shown) == 1 and shown[0][0]["mode"] == "normal" and shown[0][0]["opacity"] >= 1:
+        out = shown[0][1].copy()
+        np.minimum(out[..., :3], out[..., 3:], out=out[..., :3])
+        return out
     out = np.zeros((h, w, 4), np.float32)
     for paint, px in layers:
         if not paint["visible"] or paint["opacity"] <= 0:
@@ -37,10 +43,25 @@ def over(layers, w, h) -> np.ndarray:
 
 
 def straight8(px: np.ndarray) -> np.ndarray:
-    """Premultiplied float -> straight-alpha RGBA uint8 (what PNGs and the engine read)."""
-    a = px[..., 3:]
-    rgb = np.where(a > 1e-6, px[..., :3] / np.maximum(a, 1e-6), 0)
-    return (np.clip(np.concatenate([rgb, a], axis=2), 0, 1) * 255 + 0.5).astype(np.uint8)
+    """Premultiplied float -> straight-alpha RGBA uint8 (what PNGs and the engine read). Only the painted box is
+    worked out (nothing painted is 0 everywhere), in place, in the same steps and precision as ever."""
+    out = np.zeros(px.shape, np.uint8)
+    seen = px[..., 3] > 0
+    rows, cols = np.flatnonzero(seen.any(axis=1)), np.flatnonzero(seen.any(axis=0))
+    if not len(rows):
+        return out
+    y0, y1, x0, x1 = rows[0], rows[-1] + 1, cols[0], cols[-1] + 1
+    part = px[y0:y1, x0:x1]
+    a = part[..., 3:]
+    f = np.empty(part.shape, np.float32)
+    np.divide(part[..., :3], np.maximum(a, 1e-6), out=f[..., :3])
+    f[..., :3][np.broadcast_to(a <= 1e-6, a.shape[:2] + (3,))] = 0
+    f[..., 3:] = a
+    np.clip(f, 0, 1, out=f)
+    f *= 255
+    f += 0.5
+    out[y0:y1, x0:x1] = f
+    return out
 
 
 def mask_array(mask: dict, w: int, h: int) -> np.ndarray:

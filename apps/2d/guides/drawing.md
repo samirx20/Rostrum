@@ -14,7 +14,7 @@ Paint always belongs to something. Paint on a shape, a text, a picture or a path
    | Tool | Key | Does |
    |---|---|---|
    | **Brush** | B | paints |
-   | **Eraser** | E | takes paint away (never the shape under it) |
+   | **Eraser** | E | takes paint away from what you paint on (never the shape under it). With nothing painted picked there is nothing to erase: the pointer shows a no-entry sign and a press does nothing (it never makes a new drawing) |
    | **Fill** | G | fills a closed area (part 5) |
    | **Pick** | I | takes a colour from the picture |
    | **Select** | S | picks strokes to move, copy or delete (part 4) |

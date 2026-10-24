@@ -776,6 +776,9 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
   medium, large) in the context bar for lines that don't quite meet. Fill finds its edges in **all** the element's
   paint layers, so the colour layer fills up to the lines on the line layer.
 - **Agent:** `stroke.add {erase: true}`, `paint.fill {target, at, colour, gap}` *(new)*.
+- **The eraser never makes a layer:** it erases the painted layer the pen paints on; with none, the pointer is a
+  no-entry sign and a press does nothing. While it moves, what lies under the erased paint shows at once (the frame
+  drawn once without that layer, at the press); on release the stroke is saved once, like any stroke.
 - **3E:** *Effective:* fill with gap closing is what makes colouring hand-drawn frames fast (Toon Boom). *Easy:* the
   eraser is a switch, not a second tool to set up.
 

@@ -96,7 +96,14 @@ def dabs(p, th, R, t, L, pts, size, seed):
 
 
 def step_scale(t, L, size, p) -> float:
-    """How much closer the next dab comes where the taper thins the tip (1 elsewhere)."""
-    if p["taper_start"] <= 0 and p["taper_end"] <= 0:
+    """How much closer the next dab comes where the taper thins the tip (1 elsewhere). Asked once per dab, so it is
+    `taper` worked out on one number with `math` (the same numbers: tests/test_kit.py checks them against `taper`)."""
+    start, end = p["taper_start"], p["taper_end"]
+    if start <= 0 and end <= 0:
         return 1.0
-    return float(taper(np.array([t]), L, size, p["taper_start"], p["taper_end"])[0])
+    t, L, f = float(t), float(L), 1.0
+    for amount, d in ((start, t), (end, L - t)):
+        if amount > 0:
+            span = max(min(amount * size, L / 2), 1e-6)
+            f = f * math.sin(min(max(d / span, 0.0), 1.0) * math.pi / 2) ** 0.8
+    return max(f, 0.04)

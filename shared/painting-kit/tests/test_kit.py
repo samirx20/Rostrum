@@ -35,8 +35,22 @@ def test_cached_pixels_equal_full_replay(doc):
                   strokes("ink", 2, y0=120, smudge=True, wet=0.6, pickup=True)):
         doc.apply(batch, AGENT)
         live = C.render(doc.item("c"), *WH).rgba.copy()      # each look stamps only the new strokes
+    key = C.content_key(doc.item("c"), *WH)                  # each look keys only the new strokes, too
     C.forget()
+    assert C.content_key(doc.item("c"), *WH) == key
     assert np.array_equal(C.render(doc.item("c"), *WH).rgba, live)
+
+
+def test_one_dab_taper_step_equals_the_taper():
+    """brush.plan asks shape.step_scale once per dab (worked out with math); it must be shape.taper's number exactly,
+    or a stroke's dabs would move."""
+    from rostrum_paint import shape
+    rng = np.random.default_rng(5)
+    for _ in range(2000):
+        L, size, start, end = rng.uniform(1, 2000), rng.uniform(1, 120), rng.choice([0, 0.4, 2]), rng.choice([0, 1, 3])
+        t = rng.uniform(0, L)
+        if start or end:
+            assert shape.step_scale(t, L, size, {"taper_start": start, "taper_end": end}) ==                 float(shape.taper(np.array([t]), L, size, start, end)[0])
 
 
 def test_undo_of_a_batch_is_exact(doc):

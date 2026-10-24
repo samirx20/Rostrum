@@ -1,45 +1,67 @@
 """The paint layer list's thumbnails (painting design §2.3, mockup paint-02): each paint layer's own pixels, small, see-through
-(image://paintthumbs/<key>; PaintOn.qml lays them on mid-grey squares, so ink of any colour reads). Drawn by the painting kit (`canvas.layer_rgba`, the same pixels a render
-uses) on the GUI thread when the list asks, kept per layer content, so a layer is drawn again only after it changed.
+(image://paintthumbs/<key>; PaintOn.qml lays them on mid-grey squares, so ink of any colour reads). Drawn by the painting kit
+(`canvas.layer_rgba`, the same pixels a render uses), kept per layer content (`canvas.layer_key`, cheap), so a layer is
+drawn again only after it changed. Drawing one costs a whole canvas, so it is done off the GUI thread: meanwhile the
+layer's last thumbnail stands in under the new name, and `ready` says when the new one is there (the list asks again).
 """
 from __future__ import annotations
 
-import hashlib
-import json
 import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtGui import QImage
 from PySide6.QtQuick import QQuickImageProvider
 from rostrum_paint import canvas
 
 SIDE = 48          # px: twice the row's thumbnail box, so it stays sharp on a high-density screen
 KEEP = 64
+_DRAW = ThreadPoolExecutor(max_workers=1, thread_name_prefix="paint-thumbs")
+
+
+class ThumbsReady(QObject):
+    ready = Signal()     # a thumbnail was drawn (emitted on the worker thread, heard on the GUI's)
 
 
 class ThumbProvider(QQuickImageProvider):
     def __init__(self):
         super().__init__(QQuickImageProvider.ImageType.Image)
-        self._lock, self._images = threading.Lock(), {}
+        self._lock, self._images, self._last, self._asked = threading.Lock(), {}, {}, set()
+        self.notes, self.drawn = ThumbsReady(), 0       # drawn: how many so far (a new one: the list's sources change)
+
+    def source(self, frame: dict, paint: dict, w: int, h: int) -> str:
+        """The thumbnail's image:// address for this layer's content (its last one stands in until it is drawn)."""
+        return f"image://paintthumbs/{self.key(frame, paint, w, h)}/{paint['id']}?{self.drawn}"
 
     def key(self, frame: dict, paint: dict, w: int, h: int) -> str:
-        """The thumbnail's name for this layer's content, drawn now when it isn't kept yet."""
-        k = hashlib.sha1(json.dumps([frame.get("paintmasks", []), paint["strokes"], w, h], sort_keys=True,
-                                    default=str).encode()).hexdigest()[:16]
+        """The thumbnail's name for this layer's content; drawn off the GUI thread when it isn't kept yet."""
+        k = canvas.layer_key(frame, paint["id"], w, h)[:16]
         with self._lock:
-            if k in self._images:
+            if k in self._images or k in self._asked:
                 return k
-        image = _draw(frame, paint["id"], w, h)
-        with self._lock:
-            if len(self._images) >= KEEP:
-                self._images.pop(next(iter(self._images)))
-            self._images[k] = image
+            self._asked.add(k)
+        _DRAW.submit(self._draw, k, frame, paint["id"], w, h)
         return k
 
-    def requestImage(self, id_, size, requested):  # noqa: N802 (Qt's name)
+    def _draw(self, k, frame, paint_id, w, h):
+        try:
+            image = _draw(frame, paint_id, w, h)
+        except KeyError:            # the layer went (an undo) while it was being drawn: nothing to show
+            image = QImage()
         with self._lock:
-            return self._images.get(id_.split("?")[0], QImage())
+            self._asked.discard(k)
+            if len(self._images) >= KEEP:
+                self._images.pop(next(iter(self._images)))
+            self._images[k], self._last[paint_id] = image, image
+            self.drawn += 1
+        self.notes.ready.emit()
+
+    def requestImage(self, id_, size, requested):  # noqa: N802 (Qt's name)
+        k, _, paint_id = id_.split("?")[0].partition("/")
+        with self._lock:
+            got = self._images.get(k)
+            return got if got is not None else self._last.get(paint_id, QImage())
 
 
 def _draw(frame: dict, paint_id: str, w: int, h: int) -> QImage:

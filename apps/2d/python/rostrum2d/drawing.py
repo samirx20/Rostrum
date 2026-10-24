@@ -102,14 +102,19 @@ def paint_size(item: dict, props: dict) -> tuple[int, int]:
 _SHOWN: dict = {}           # frame id -> (the frame as it was, w, h, its PNG): the last picture made of each drawing
 
 
-def picture(item: dict, frame: dict) -> Path:
+def picture(item: dict, frame: dict, later: list | None = None) -> Path:
     """One drawing's picture (content-keyed PNG, canvas size, straight alpha) for the engine to draw. A drawing equal
     to the one last pictured (a document is never changed in place: each change is a new tree) reuses its PNG without
-    keying every stroke again, so a change elsewhere costs a compare, not 10,000 strokes' keys."""
+    keying every stroke again, so a change elsewhere costs a compare, not 10,000 strokes' keys.
+    `later` (a screen, which must not wait for pixels): a picture not made yet is added to it as (frame, w, h) for
+    `canvas.png` to make off the screen's thread, and its last picture (or a blank one) stands in meanwhile."""
     w, h = canvas_size(item)
     got = _SHOWN.get(frame["id"])
     if got and got[1:3] == (w, h) and (got[0] is frame or got[0] == frame) and got[3].is_file():
         return got[3]
+    if later is not None and canvas.made(frame, w, h) is None:
+        later.append((frame, w, h))
+        return got[3] if got and got[1:3] == (w, h) and got[3].is_file() else canvas.png({"paints": []}, w, h)
     path = canvas.png(frame, w, h)
     if len(_SHOWN) > 512:
         _SHOWN.clear()
