@@ -210,12 +210,14 @@ class Engine:
         self._props()
         return self._request({"outline": {"id": id, "t": t}})["d"]
 
-    def place(self, t: float, ids: list[str]) -> dict[str, dict]:
+    def place(self, t: float, ids: list[str], world: bool = False) -> dict[str, dict]:
         """Where each layer is drawn at `t` (ENGINE_CONTRACT.md § 1 `place`), from the page the frame lays out, through its
-        groups, the camera and tilt: {id: {"m": 3×3 own px -> comp px (projective, row-major), "w", "h": its own box,
-        "edge": its true outline in comp px as path data}}. placement.py turns points through it; an undrawn layer fails."""
+        groups, the frame and tilt: {id: {"m": 3×3 own px -> comp px (projective, row-major), "w", "h": its own box,
+        "edge": its true outline in comp px as path data}}. placement.py turns points through it; an undrawn layer fails.
+        `world`: where the canvas's world view draws it (world px, camera spec § 8.3) instead of the export."""
         self._props()
-        return self._request({"place": {"t": t, "ids": list(ids)}})["layers"]
+        req = {"t": t, "ids": list(ids), **({"world": {"x": 0, "y": 0, "w": 1, "h": 1}} if world else {})}
+        return self._request({"place": req})["layers"]
 
     def measure(self, items: list[dict]) -> dict[str, tuple[float, float]]:
         """Each text's laid-out box (w, h) in its own px, by the code that draws it: items are {id, and the text's
@@ -231,19 +233,22 @@ class Engine:
         return self._request({"shapes": {"items": items}})["paths"]
 
     def pixels(self, t: float, samples: int | None = None, scale: float = 1.0, view: dict | None = None,
-               place: list[str] | None = None) -> tuple[memoryview, int, int, int]:
+               place: list[str] | None = None, world: dict | None = None) -> tuple[memoryview, int, int, int]:
         """The frame at `t` as straight-alpha RGBA8 in the engine's shared memory (no PNG, no pipe; Windows):
         (view, width, height, stride). The view is valid until the frame after next is asked for; copy it.
         `samples`: motion-blur steps for this frame instead of the composition's (1 = no blur: fast playback).
         `scale`: 1, 0.5 or 0.25 × the composition's size, the same picture drawn smaller (playing); width and
         height are then the smaller size. `view` {x, y, w, h, scale}: only that part of the composition (comp px),
         drawn at any scale (the zoomed-in canvas, sharp). `place`: layer ids whose `place` (see place) comes with this
-        frame, kept in `self.placed` ({} without)."""
+        frame, kept in `self.placed` ({} without). `world` {x, y, w, h, scale}: the world picture instead (camera spec
+        § 8.4: any world px rectangle, the frame's quad holding the export; `place` then in world px); `self.quad` is
+        the frame's corners in world px at t (None for other frames)."""
         self._props()
         req = {"t": t, "pixels": True, **({"shutterSamples": samples} if samples else {}), **({"scale": scale} if scale != 1 else {}),
-               **({"view": view} if view else {}), **({"place": place} if place else {})}
+               **({"view": view} if view else {}), **({"place": place} if place else {}), **({"world": world} if world else {})}
         out = self._request({"frame": req})
         self.placed, shm, self.timing = out.get("place") or {}, out["shm"], out.get("timing") or {}
+        self.quad = out.get("quad")
         if shm["format"] != "rgba8":
             raise EngineError(f"pixels: the engine sent {shm['format']}; the canvas reads rgba8")
         if self._shm is None or self._shm[0] != shm["name"]:   # a new block when the frame size changes

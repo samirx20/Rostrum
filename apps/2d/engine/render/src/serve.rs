@@ -70,7 +70,12 @@ pub(crate) struct Session {
     pub(crate) doc: HtmlDocument,
     stage: NodeId,
     assets: Assets,
-    painter: Painter,
+    /// A picture laid over the next frame once it is drawn (image, image px → device px, the device polygon it fills):
+    /// the frame's export in the world picture (scene_world.rs). Before the painter: GPU images go before its context.
+    pub(crate) over: Option<(skia_safe::Image, skia_safe::Matrix, skia_safe::Path)>,
+    /// The stage's clip is lifted (`open_stage`).
+    stage_open: bool,
+    pub(crate) painter: Painter,
     pub(crate) width: u32,
     pub(crate) height: u32,
     /// rgba frames are 16-bit.
@@ -146,7 +151,7 @@ fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, String>>) -> R
     let scratch = keep::Scratch::new(|| DocumentConfig { base_url: Some(BASE_URL.into()), ..Default::default() });
     let mut reply = json!({ "ok": true, "depth": if deep { 16 } else { 8 }, "timing": { "pageMs": page_ms, "painterMs": painter_ms } });
     with_painting(&mut reply, &painting);
-    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], shm: None, painting }, reply))
+    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], shm: None, painting, over: None, stage_open: false }, reply))
 }
 
 /// Adds what paints (`gpu`, `adapter`, `fallback`: the plain reason it paints on the CPU, null on the GPU) to a reply.
@@ -190,6 +195,7 @@ pub(crate) fn page(s: &mut Session, req: &Value) -> Result<Value, String> {
     let (doc, stage) = shell(html, page_config(s.width, s.height, &s.assets), &s.assets)?;
     s.doc = doc;
     s.stage = stage;
+    s.stage_open = false;
     s.kept_pieces = Default::default();
     Ok(json!({ "ok": true, "timing": { "pageMs": t0.elapsed().as_secs_f64() * 1000.0 } }))
 }
@@ -248,6 +254,24 @@ pub(crate) fn apply(s: &mut Session, markup: &str) -> Result<(f64, f64, usize), 
     crate::stage_profile::row();
     failures(&s.assets)?;
     Ok((diff_ms, t1.elapsed().as_secs_f64() * 1000.0, edits.count()))
+}
+
+/// Lifts the stage's clip at the comp's edge (`open`: the world picture shows the endless canvas round the frame) or
+/// puts it back (every other frame: the export clips at the frame exactly as before, byte for byte). Only a change is
+/// written, so a run of frames of one kind restyles nothing.
+pub(crate) fn open_stage(s: &mut Session, open: bool) {
+    if s.stage_open == open {
+        return;
+    }
+    let style = blitz_dom::QualName::new(None, blitz_dom::ns!(), blitz_dom::local_name!("style"));
+    let mut m = s.doc.mutate();
+    if open {
+        m.set_attribute(s.stage, style, "overflow: visible");
+    } else {
+        m.clear_attribute(s.stage, style);
+    }
+    drop(m);
+    s.stage_open = open;
 }
 
 /// Paints the kept page (`held`: over the motion-blur sum, painter.rs); an effect shader that failed fails the
@@ -351,7 +375,9 @@ fn preview_view(req: &Value, width: u32, height: u32) -> Result<crate::painter::
     if ![1.0, 0.5, 0.25].contains(&scale) {
         return Err(format!("scale is 1, 0.5 or 0.25; got {scale}"));
     }
-    let view = &req["view"];
+    // The world picture (scene_world.rs): any page px rectangle, the endless canvas around the frame.
+    let page = &req["pageView"];
+    let view = if page.is_null() { &req["view"] } else { page };
     let elsewhere = ["image", "rgba", "encode", "scopes", "sample"].iter().any(|k| !matches!(req[*k], Value::Null | Value::Bool(false)));
     if (scale != 1.0 || !view.is_null()) && (req["pixels"].as_bool() != Some(true) || elsewhere) {
         return Err("scale and view are for pixels frames (the live canvas) only; pictures, scopes and exports are drawn at the comp's size".into());
@@ -364,7 +390,7 @@ fn preview_view(req: &Value, width: u32, height: u32) -> Result<crate::painter::
     }
     let n = |k: &str| view[k].as_f64().filter(|v| v.is_finite()).ok_or_else(|| format!("view needs x, y, w, h, scale (numbers); {k} is {}", view[k]));
     let (x, y, w, h, k) = (n("x")?, n("y")?, n("w")?, n("h")?, n("scale")?);
-    if w <= 0.0 || h <= 0.0 || x < -0.5 || y < -0.5 || x + w > width as f64 + 0.5 || y + h > height as f64 + 0.5 {
+    if w <= 0.0 || h <= 0.0 || page.is_null() && (x < -0.5 || y < -0.5 || x + w > width as f64 + 0.5 || y + h > height as f64 + 0.5) {
         return Err(format!("view {x}, {y}, {w} × {h} is not inside the {width} × {height} comp"));
     }
     if !(k > 0.0 && k <= VIEW_MOST_SCALE) || (w * k).round() > VIEW_MOST_PX || (h * k).round() > VIEW_MOST_PX {
@@ -379,6 +405,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
     // The same laid-out page, drawn smaller (playing) or a crop of it larger (zoomed in): painter.rs `set_view`.
     let view = preview_view(req, s.width, s.height)?;
     s.painter.set_view(view)?;
+    open_stage(s, !req["pageView"].is_null());
     let scale = view.scale;
     let samples: Vec<&str> = req["samples"].as_array().map(|a| a.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
     // The frame's pictures not kept yet, decoded side by side now, so layout and paint (which load one after another) only hit the cache.
@@ -455,6 +482,14 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
             s.next_pieces = own;
             timed(s, Some(markup), held, held)?;
         }
+    }
+    if let Some((image, m, clip)) = s.over.take() {
+        s.painter.draw_over(&image, &m, &clip);
+    }
+    if req["noRead"].as_bool() == Some(true) {
+        // Drawn and kept on the GPU (the frame's export for the world picture, scene_world.rs): nothing read back.
+        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "edits": edits, "samples": samples.len().max(1), "decodeMs": decode_ms });
+        return Ok((json!({ "ok": true, "timing": timing }), None));
     }
     let t2 = Instant::now();
     let (w, h) = (s.width, s.height);

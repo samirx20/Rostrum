@@ -71,6 +71,16 @@ through the plain frame: world(p) = F + z^(s−1) · (p − H − s · (F − H)
 and a frame at home: world(p) = p. `frame/view.py` `layer_matrix` and `world_matrix` give both as 2D matrices, `undo` the
 inverse (a drag turned back into a layer's own values).
 
+The engine draws the world view on request (`frame` with `world {x, y, w, h, scale}`, ENGINE_CONTRACT.md § 1;
+`render/src/scene_world.rs`): the stage written with the world maths (`View::world`, `scene/stage.rs` `world_parts`), so
+page px are world px, painted over that rectangle with what lies wholly outside it culled (blitz-paint `set_viewport`)
+and the stage's clip at the frame lifted for that paint only (serve.rs `open_stage`). The frame's quad is filled with the
+export of the same time, drawn in a second set of surfaces (painter.rs `swap_aside`) at the size it is shown, starting on
+a whole device pixel when the frame is upright, and laid in (`draw_over`, the world paint leaving the quad alone:
+`clip_out`). A frame at home and not motion-blurred needs no second pass (inside the frame the world page equals the
+export); a rectangle inside an upright frame is the export's crop alone. Proved: inside the outline equals the export
+(`python/tests/test_world_picture.py`); exports after a world picture are byte for byte (Lull, 24 frames).
+
 The engine writes the export matrix as a wrapper around each top-level layer:
 `<div id="cam~<layer id>" style="…transform-origin:0 0;transform:matrix(a, b, c, d, e, f);<blend>">`, carrying the
 layer's blend. The wrappers are written for every top-level layer **when the frame ever leaves home** (a key on x, y,

@@ -284,3 +284,9 @@ Not crates (`render/src`): `depth_tests.rs` — a parent's `perspective: 800px` 
 | Crate | Patch | Why |
 |---|---|---|
 | anyrender_skia | `get_or_cache_normalized_typeface`: each normalized coordinate goes to the Skia axis with its `fvar` tag (`avar::fvar_tags`), not the axis at the same place in Skia's list | DirectWrite lists a font's axes in its own order: Source Serif 4 (`fvar`: wght, opsz) was drawn with weight and optical size swapped (weight 200 drew heaviest). Inter and Roboto Flex happened to match |
+
+## Camera F3 (the world picture; 2026-10-24)
+
+| Crate | Patch | Why |
+|---|---|---|
+| blitz-paint | `runs.rs` `set_viewport(Option<Rect>)`: the page px rectangle the next paints on this thread cull against (None: the page's width × height from its top-left, as before) | the 2D engine's world picture draws any part of the endless canvas, left of or above the page's origin too, and skips the layers wholly outside the rectangle shown |

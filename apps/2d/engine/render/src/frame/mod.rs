@@ -17,9 +17,11 @@ pub const STILL: &[&str] = &["homeX", "homeY"];
 
 type R<T> = Result<T, String>;
 
-/// The frame at a comp's time. `lens` None: it never leaves home (markup left exactly as it was).
+/// The frame at a comp's time. `lens` None: it never leaves home (markup left exactly as it was). `world`: the layers
+/// are placed for the world view (the canvas outside Look through, `map`), not the export.
 pub struct View {
     lens: Option<Lens>,
+    world: bool,
 }
 
 struct Lens {
@@ -47,9 +49,9 @@ pub fn leaves_home(frame: &Node, comp: &Node) -> bool {
 impl View {
     /// Refuses a zoom at or below 0 or a depth at or below −1 at this time (keys whose ease swings past a limit).
     pub fn of(comp: &Item) -> R<View> {
-        let Some(frame) = comp.layers.iter().find(|l| l.kind == "camera") else { return Ok(View { lens: None }) };
+        let Some(frame) = comp.layers.iter().find(|l| l.kind == "camera") else { return Ok(View { lens: None, world: false }) };
         if !leaves_home(frame.node, comp.node) {
-            return Ok(View { lens: None });
+            return Ok(View { lens: None, world: false });
         }
         let (t, zoom) = (comp.t, frame.num("zoom"));
         if !(zoom > 0.0) {
@@ -65,19 +67,42 @@ impl View {
             zoom,
             roll: frame.num("rotation"),
         };
-        Ok(View { lens: Some(lens) })
+        Ok(View { lens: Some(lens), world: false })
+    }
+
+    /// The frame for the world view (`map` gives § 8.3's matrix).
+    pub fn world(comp: &Item) -> R<View> {
+        Ok(View { world: true, ..View::of(comp)? })
+    }
+
+    /// Whether the frame shows every layer as placed at this time (no wrappers; the world view equals the export).
+    pub fn at_home(&self) -> bool {
+        self.lens.is_none()
+    }
+
+    /// Output px → world px through the plain frame (depth 0): world(q) = F + R(roll)·z⁻¹·(q − O). The identity at home.
+    pub fn out_to_world(&self) -> Aff {
+        let Some(Lens { o: (ox, oy), at: (x, y), zoom, roll, .. }) = self.lens else { return Aff::ID };
+        Aff::translate(x, y) * Aff::rotate(roll) * Aff::scale(1.0 / zoom, 1.0 / zoom) * Aff::translate(-ox, -oy)
     }
 
     /// Where a top-level layer's world px land in the export: out = O + R(−roll)·zoomˢ·(p − H − s·(F − H)),
     /// s = 1/(1 + depth). The identity for a frame that stays home or a pinned (screenLock) layer.
+    /// In the world view (spec § 8.3) that point carried back through the plain frame:
+    /// world = F + z^(s−1)·(p − H − s·(F − H)); a pinned layer is turned and sized with the frame's box.
     pub fn map(&self, layer: &Item) -> Aff {
         let Some(Lens { o: (ox, oy), home: (hx, hy), at: (x, y), zoom, roll }) = self.lens else { return Aff::ID };
         if layer.on("screenLock") {
-            return Aff::ID;
+            return if self.world { self.out_to_world() } else { Aff::ID };
         }
         let s = 1.0 / (1.0 + layer.num("depth"));
         let z = zoom.powf(s);
-        Aff::translate(ox, oy) * Aff::rotate(-roll) * Aff::scale(z, z) * Aff::translate(-(hx + s * (x - hx)), -(hy + s * (y - hy)))
+        let from = Aff::translate(-(hx + s * (x - hx)), -(hy + s * (y - hy)));
+        if self.world {
+            let k = z / zoom;
+            return Aff::translate(x, y) * Aff::scale(k, k) * from;
+        }
+        Aff::translate(ox, oy) * Aff::rotate(-roll) * Aff::scale(z, z) * from
     }
 
     /// One top-level layer's markup, seen through the frame. The wrapper carries the layer's blend so the layer

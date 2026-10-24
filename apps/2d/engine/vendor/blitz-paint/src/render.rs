@@ -238,7 +238,7 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
         // The root clip rectangle is the viewport (in screen coordinates, with the
         // initial offset already subtracted). Elements outside of this are culled, and
         // scrollports narrow this rectangle further for their descendants.
-        let viewport_clip_rect = Rect::new(0.0, 0.0, self.width as f64, self.height as f64);
+        let viewport_clip_rect = crate::runs::viewport().unwrap_or(Rect::new(0.0, 0.0, self.width as f64, self.height as f64));
 
         self.render_element(
             scene,

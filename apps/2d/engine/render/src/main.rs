@@ -34,6 +34,7 @@ mod rig;
 mod scene;
 mod scene_export;
 mod scene_serve;
+mod scene_world;
 mod scopes;
 mod serve;
 mod sink;

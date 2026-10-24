@@ -142,6 +142,10 @@ pub fn outline(held: &Held, req: &Value) -> Result<Value, String> {
 /// `place {t, ids}` (place.rs): where those layers are drawn at `t` and their edges, from the page laid out at t (no paint).
 pub fn place(held: &Held, s: &mut Session, req: &Value) -> Result<Value, String> {
     let t = req["t"].as_f64().ok_or("place needs t (seconds)")?;
+    if let Some(w) = req.get("world").filter(|w| w.is_object()) {
+        let n = |f: &str| w[f].as_f64().ok_or_else(|| format!("place world needs x, y, w, h; {f} is {}", w[f]));
+        return Ok(json!({ "ok": true, "layers": placed_world(held, s, t, &req["ids"], [n("x")?, n("y")?, n("w")?, n("h")?])? }));
+    }
     Ok(json!({ "ok": true, "layers": placed(held, s, t, &req["ids"], true)? }))
 }
 
@@ -184,6 +188,31 @@ pub(crate) struct Staged {
     eval_ms: f64,
 }
 
+impl Staged {
+    /// A frame's own pieces, not motion-blurred (the world picture's page, scene_world.rs).
+    pub(crate) fn of(t: f64, pieces: Vec<String>) -> Staged {
+        Staged { t, pieces, samples: vec![], eval_ms: 0.0 }
+    }
+}
+
+/// `place` in world px (`place {…, world: {x, y, w, h}}` or a world picture's `place`): the layers as the world view
+/// draws them at t (scene_world.rs), from the world page laid out at t.
+pub(crate) fn placed_world(held: &Held, s: &mut Session, t: f64, ids: &Value, rect: [f64; 4]) -> Result<Value, String> {
+    let scene = held.scene()?;
+    let ids: Vec<&str> = ids.as_array().ok_or("place needs ids (a list of layer ids)")?.iter().map(|v| v.as_str().ok_or("place: ids are layer ids (text)")).collect::<Result<_, _>>()?;
+    if held.shell != Some((s.width, s.height)) {
+        return Err("the open page is not the scene's (an open or page came after the scene); send the scene again".into());
+    }
+    let plan = crate::motion::Plan::of(&scene.comp)?;
+    let mut comp = eval::at(&scene.comp, t).expect("the comp always shows");
+    plan.apply(&scene.comp, &mut comp);
+    let pieces = stage::world_parts(&comp, rect)?;
+    let whole = pieces.concat();
+    s.next_pieces = Some(pieces);
+    serve::apply(s, &whole)?;
+    crate::place::places(&s.doc, s.width, s.height, &eval::whole(&scene.comp, t), &ids, false)
+}
+
 /// The stage markup of the frame `req` asks for at `t` (keys, easing, motion-blur sub-frames): no page, no paint.
 /// A motion-blurred frame's own stage is built only when it is drawn (serve.rs `frame`: `held` paints it over the
 /// sum, `boxes` lays it out); otherwise the picture is the sub-frames' sum alone and its stage is left empty.
@@ -219,6 +248,9 @@ pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, Str
 
 /// `frame` with `t`: the request with the scene's stage at t filled in, drawn by serve.rs `frame`.
 pub fn frame(held: &Held, s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u8>>), String> {
+    if crate::scene_world::wants(req) {
+        return crate::scene_world::world(held, s, req);
+    }
     let t = req["t"].as_f64().ok_or("frame needs t (seconds) or stage")?;
     let staged = stage_at(held.scene()?, t, req)?;
     draw(held, s, req, staged)
@@ -252,6 +284,9 @@ pub(crate) fn draw(held: &Held, s: &mut Session, req: &Value, staged: Staged) ->
     }
     if !req["place"].is_null() {
         reply["place"] = placed(held, s, t, &req["place"], false)?;
+    }
+    if reply["boxes"].is_array() && req.get("pageView").is_none() {
+        crate::boxes::add_world(&mut reply["boxes"], crate::scene_world::to_world(scene, t)?);
     }
     Ok((reply, px))
 }
