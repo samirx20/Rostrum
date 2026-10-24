@@ -108,28 +108,33 @@ def save(doc, document=True):
         h = _sha(body)
         if ch and (ch[-1]._after is doc.data or ch[-1]._hash == h):
             ch[-1].hash_after = h                  # the last step's hash, known for free
-    if _appendable(w, hist, len(ch)):
-        text = histfile.change_line(ch[w.n - 1]) if w.n and ch[w.n - 1].t != w.last_t else ""
-        text += "".join(histfile.change_line(c) for c in ch[w.n:])
-        text += "".join(histfile.version_line(n, s) for n, s in doc.history.versions.items() if w.versions.get(n) != s)
-    else:
-        w, text = None, histfile.head(kind, doc.base) + "".join(histfile.change_line(c) for c in ch)
-        text += "".join(histfile.version_line(n, s) for n, s in doc.history.versions.items())
-    if ch and h and ch[-1]._hash == h:
-        text += histfile.hash_line(ch[-1].seq, h)
-    if w is None:
-        write_atomic(hist, text)
-    elif text:
-        if hist.stat().st_size != w.size:
-            os.truncate(hist, w.size)             # a last line cut off by a crash goes before the next whole one
-        with open(hist, "ab") as fh:              # appending: a seek-and-write handle cost ~6 ms per change on Windows
-            fh.write(text.encode("utf-8"))
-        filestamps.forget(hist)
-    for c in ch[(w.n - 1 if w and w.n else 0):-1]:
-        c._after = None                           # written without its hash: no tree kept for it
-    if w is None or doc.script_bases != w.script:
-        write_atomic(p["script"], json.dumps(doc.script_bases, indent=1, ensure_ascii=False))
-    _wrote(doc, hist)
+    fh = _append_to(w, hist, len(ch))           # one handle: checked, cut, appended to and measured through it
+    try:
+        if fh is not None:
+            text = histfile.change_line(ch[w.n - 1]) if w.n and ch[w.n - 1].t != w.last_t else ""
+            text += "".join(histfile.change_line(c) for c in ch[w.n:])
+            text += "".join(histfile.version_line(n, s) for n, s in doc.history.versions.items() if w.versions.get(n) != s)
+        else:
+            w, text = None, histfile.head(kind, doc.base) + "".join(histfile.change_line(c) for c in ch)
+            text += "".join(histfile.version_line(n, s) for n, s in doc.history.versions.items())
+        if ch and h and ch[-1]._hash == h:
+            text += histfile.hash_line(ch[-1].seq, h)
+        if w is None:
+            write_atomic(hist, text)
+        elif text:
+            if os.fstat(fh.fileno()).st_size != w.size:
+                fh.truncate(w.size)               # a last line cut off by a crash goes before the next whole one
+            fh.write(text.encode("utf-8"))        # appending: a seek-and-write handle cost ~6 ms per change on Windows
+            fh.flush()
+            filestamps.forget(hist)
+        for c in ch[(w.n - 1 if w and w.n else 0):-1]:
+            c._after = None                       # written without its hash: no tree kept for it
+        if w is None or doc.script_bases != w.script:
+            write_atomic(p["script"], json.dumps(doc.script_bases, indent=1, ensure_ascii=False))
+        _wrote(doc, hist, st=os.fstat(fh.fileno()) if fh is not None else None)
+    finally:
+        if fh is not None:
+            fh.close()
     if document:
         saved_by = app_version()
         top = json.dumps({"format": kind.format, "version": kind.version, "saved_by": saved_by, "at": doc.seq,
@@ -138,21 +143,27 @@ def save(doc, document=True):
         doc.saved_by = saved_by
 
 
-def _appendable(w, hist, n) -> bool:
+def _append_to(w, hist, n):
+    """The history file opened to append, when it is still the one we wrote last (same file, not shorter), else None
+    (it is written whole). Asked through the handle: separate stats of the path cost a millisecond each per change."""
     if w is None or w.n > n:
-        return False
+        return None
     try:
-        st = hist.stat()
+        fh = open(hist, "ab")
     except FileNotFoundError:
-        return False
-    return st.st_ino == w.ino and st.st_size >= w.size
+        return None
+    st = os.fstat(fh.fileno())
+    if st.st_ino == w.ino and st.st_size >= w.size:
+        return fh
+    fh.close()
+    return None
 
 
-def _wrote(doc, hist, end=None):
+def _wrote(doc, hist, end=None, st=None):
     """Note where the history file ends now (after writing it; after reading it: `end`, before a cut-off line).
     The script bases are copied shallow: a run replaces its base, never changes it in place (merge.py), so that tells
     a new one apart; a deep copy of every base cost milliseconds on every change."""
-    st, ch = hist.stat(), doc.history.changes
+    st, ch = st or hist.stat(), doc.history.changes
     doc._written = Written(st.st_ino, st.st_size if end is None else end, len(ch), ch[-1].t if ch else 0.0,
                            dict(doc.history.versions), dict(doc.script_bases))
 
