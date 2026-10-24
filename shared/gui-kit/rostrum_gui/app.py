@@ -24,6 +24,15 @@ def background() -> bool:
     return os.environ.get("ROSTRUM_BACKGROUND_WINDOWS") == "1" or userhome.scripted() is not None
 
 
+def show_behind(win):
+    """Show a check's window behind the person's work without taking the keyboard: Windows activates a program's first
+    window unless it is shown without activating (Qt's _q_showWithoutActivating), and it stays at the bottom."""
+    from PySide6.QtCore import Qt
+    win.setProperty("_q_showWithoutActivating", True)
+    win.setFlags(win.flags() | Qt.WindowType.WindowDoesNotAcceptFocus | Qt.WindowType.WindowStaysOnBottomHint)
+    win.setVisible(True)
+
+
 def qt_app():
     """The one Qt app. A run that takes pictures or clicks by script (--shot / --step / --check-layout) draws offscreen:
     a real window draws only while the screen is on (Windows stops drawing it on a locked or sleeping screen), and a
@@ -73,6 +82,7 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     ctx = engine.rootContext()
     ctx.setContextProperty("uiFont", pick(UI_FONTS))
     ctx.setContextProperty("monoFont", pick(MONO_FONTS))
+    ctx.setContextProperty("backgroundWindow", background())    # AppShell opens behind the person's work
     from rostrum_gui.notices import Notices           # the Help → About and licences screen (every app has one)
     ctx.setContextProperty("notices", Notices(app_id(main_qml), engine))
     if app_id(main_qml) in ("2d", "sound"):           # Help → Connect an AI agent (apps with an agent server to add)
@@ -94,8 +104,7 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     win = engine.rootObjects()[0]
     win.resize(*size)
     if background():
-        from PySide6.QtCore import Qt
-        win.setFlags(win.flags() | Qt.WindowType.WindowDoesNotAcceptFocus | Qt.WindowType.WindowStaysOnBottomHint)
+        show_behind(win)
     from rostrum_gui.focus_areas import watch         # the area last pressed takes the keys (AppShell.pressedAt)
     watch(win)
     return app, engine, win
