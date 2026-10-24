@@ -3,10 +3,14 @@ import QtQuick.Controls as QQC
 import "."
 import "ColourMath.js" as M
 
-// A fill in the inspector: a swatch square (the colour, the gradient, a chequer for none) and beside it the hex code
-// of a solid colour (typed in place: one change) or the fill's name ("Linear · 3 stops", "None"). A click on the
-// square (or on the name) opens the PaintPicker beside it (to its left).
-// One picker session = one undo: began() on the first change, live(paint) while it goes on, ended() when the picker closes.
+// A fill in the inspector: a swatch square (the colour, the gradient, a chequer for none, a picture or painting's own
+// picture) and beside it the hex code of a solid colour (typed in place: one change) or the fill's name ("Linear · 3
+// stops", "None", a painting's name). A click on the square (or on the name) opens the PaintPicker beside it (to its left).
+// One picker session = one undo: began() on the first change, live(paint) while it goes on, ended() when the picker closes;
+// a pick that is a whole change by itself (a painting, a fit, a picture file) ends the session at once. Painted's New
+// painting is the app's: `asked(add)` after the open change ends (a new painting is a change of its own).
+// Painted, the paintings to pick (`sources`) and the rows drawn under Fit (`rows`, `rowsBridge`, `rowsHost`) come from
+// the app; InspectorRow hands in its row's.
 // With `scrubbed` off, `edited(paint)` is sent once at the close instead (as ColorField does). While open it is
 // PaintSession.field, so the canvas can show the gradient's handles (`stop`: the picked stop).
 SwatchHex {
@@ -21,6 +25,12 @@ SwatchHex {
     signal began()
     signal live(var paint)
     signal ended()
+    signal asked(string action)
+    property var sources: []
+    property string add: ""               // the app's action for Painted's New painting ("" = no Painted)
+    property var rows: null
+    property var rowsBridge: null
+    property string rowsHost: ""
 
     property var cur: paint               // what the swatch shows while the picker is open
     property bool changing: false
@@ -29,8 +39,9 @@ SwatchHex {
     readonly property string kind: cur && cur.type ? cur.type : "none"
     readonly property int count: cur && cur.stops ? cur.stops.length : 0
     readonly property string name: ({ none: "None", solid: "Solid", picture: "Picture",
+        painted: cur && cur.name ? cur.name : "Painted",
         linear: "Linear · " + count + " stops", radial: "Radial · " + count + " stops",
-        angular: "Angular · " + count + " stops" })[kind] || "Solid"
+        angular: "Angular · " + count + " stops" })[kind] || kind      // a kind it doesn't know reads as itself, never "Solid"
 
     property string atRest: ""
     look: f.cur
@@ -45,6 +56,11 @@ SwatchHex {
         if (f.scrubbed) f.ended(); else f.edited(f.cur)
     }
     function saveSwatch(hx) { f.settle(); if (picker.banked) colourBank.add(hx) }
+    function take(p) {
+        f.cur = p
+        if (f.scrubbed) { if (!f.changing) f.began(); f.live(p) }
+        f.changing = true
+    }
 
     SidePopup {
         id: picker
@@ -52,18 +68,18 @@ SwatchHex {
         closePolicy: PaintSession.hold && PaintSession.field === f ? QQC.Popup.CloseOnEscape
                                                                    : QQC.Popup.CloseOnPressOutside | QQC.Popup.CloseOnEscape
         onOpened: PaintSession.field = f
-        onClosed: { f.settle(); if (PaintSession.field === f) PaintSession.field = null }
+        onClosed: { f.settle(); body.browsing = false; if (PaintSession.field === f) PaintSession.field = null }
         PaintPicker {
             id: body
-            paint: f.cur; types: f.types; maxStops: f.maxStops; stopOpacity: f.stopOpacity
+            paint: f.cur; maxStops: f.maxStops; stopOpacity: f.stopOpacity
             project: picker.banked ? colourBank.project : []
             brand: picker.banked ? colourBank.brand : []
             brandName: picker.banked ? colourBank.brandName : ""
-            onEdited: (p) => {
-                f.cur = p
-                if (f.scrubbed) { if (!f.changing) f.began(); f.live(p) }
-                f.changing = true
-            }
+            sources: f.sources; rows: f.rows; rowsBridge: f.rowsBridge; rowsHost: f.rowsHost
+            types: f.add === "" ? f.types.filter(t => t !== "painted") : f.types
+            onEdited: (p) => f.take(p)
+            onChosen: (p) => { f.take(p); f.settle() }
+            onAdded: { f.settle(); f.asked(f.add) }
             onSwatchAdd: (hx) => f.saveSwatch(hx)
         }
     }

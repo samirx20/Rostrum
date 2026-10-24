@@ -1,6 +1,7 @@
 import QtQuick
 import "."
 import "ColourMath.js" as M
+import "Files.js" as Files
 
 // The one colour row piece (ColorField, PaintField): a swatch square, field-high, and right of it a box with the
 // hex code. A click on the square (or Enter / Space on it) asks for the picker: `pick()`. The hex is typed in place
@@ -8,7 +9,8 @@ import "ColourMath.js" as M
 // value that is not a colour is refused in place: the box turns red and says why, the old colour stays. With `words`
 // set (a gradient: "Linear · 3 stops", "None", "Mixed") the box shows them instead and a click on it opens the picker.
 // `showHex: false` leaves the swatch alone: the picker (with its hex) opens on a click.
-//   look: {type: "solid" | "none" | "mixed" | "linear" | "radial" | "angular" | "image" | "picture", color, stops, picture}; "mixed": several colours, an empty swatch
+//   look: {type: "solid" | "none" | "mixed" | "linear" | "radial" | "angular" | "image" | "picture" | "painted", color, stops,
+//          thumb (a picture or painting's own picture: a path or url)}; "mixed": several colours, an empty swatch
 Item {
     id: s
     property var look: ({ type: "solid", color: "#ffffff" })
@@ -39,7 +41,7 @@ Item {
                 g.reset()
                 g.roundedRect(0, 0, w, w, Theme.radiusCtl, Theme.radiusCtl); g.clip()
                 if (t === "solid" || t === "image") { g.fillStyle = M.rgba(s.lookHex, 1); g.fillRect(0, 0, w, w) }
-                else if (t === "mixed" || t === "picture") { /* the checker alone (a picture: its thumbnail lies on it) */ }
+                else if (t === "mixed" || t === "picture" || t === "painted") { /* the checker alone (a picture: its thumbnail lies on it) */ }
                 else if (t === "none") { g.strokeStyle = "#c0392b"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(2, w - 2); g.lineTo(w - 2, 2); g.stroke() }
                 else {
                     const grad = t === "radial" ? g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w * 0.7)
@@ -50,11 +52,11 @@ Item {
                 }
             }
         }
-        Image {     // a picture fill: a small thumbnail of the picture itself (look.picture: a path or a file:// url)
-            readonly property string file: s.lookKind === "picture" && s.look.picture ? String(s.look.picture) : ""
+        Image {     // a picture or painted fill: a small thumbnail of its picture (look.thumb: a path or a file:// url)
+            readonly property string file: (s.lookKind === "picture" || s.lookKind === "painted") && s.look.thumb ? String(s.look.thumb) : ""
             visible: file !== "" && status === Image.Ready
             anchors.fill: parent; anchors.margins: 1
-            source: file === "" ? "" : /^[a-z]{2,}:/i.test(file) ? file : "file:///" + file.replace(/\\/g, "/").replace(/^\//, "")
+            source: Files.url(file)
             sourceSize: Qt.size(2 * Theme.field, 2 * Theme.field); fillMode: Image.PreserveAspectCrop
             asynchronous: true; cache: true; smooth: true
         }

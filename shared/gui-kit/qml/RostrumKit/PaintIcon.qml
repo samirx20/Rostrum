@@ -2,7 +2,7 @@ import QtQuick
 import "."
 
 // The small drawn icons of the paint pickers, 14 x 14, one `ink` colour: the fill types (none, solid, linear, radial,
-// angular, picture), "whole" (a gradient covering the whole shape), "pipette" (pick from the screen) and "swap" (reverse the stops).
+// angular, picture, painted), "whole" (a gradient covering the whole shape), "pipette" (pick from the screen) and "swap" (reverse the stops).
 Canvas {
     id: c
     property string kind: "solid"
@@ -30,6 +30,10 @@ Canvas {
         } else if (k === "picture") {
             g.beginPath(); g.roundedRect(1.5, 1.5, 11, 11, 2.5, 2.5); g.stroke()
             g.beginPath(); g.moveTo(2.5, 10.5); g.lineTo(5.5, 6.5); g.lineTo(8, 9); g.lineTo(9.5, 7.5); g.lineTo(11.5, 10.5); g.stroke()
+        } else if (k === "painted") {    // a brush: a painting picked like a colour
+            g.beginPath(); g.moveTo(12.5, 1.5); g.lineTo(6.5, 8.5); g.stroke()
+            g.beginPath(); g.moveTo(6.2, 7.2); g.bezierCurveTo(3.5, 7, 2.8, 9.5, 2.2, 12.2); g.bezierCurveTo(5.5, 12, 7.5, 10.8, 7.8, 8.6)
+            g.closePath(); g.fill()
         } else if (k === "whole") {      // the box's four corners: fill it all
             g.beginPath(); g.moveTo(1.5, 5); g.lineTo(1.5, 1.5); g.lineTo(5, 1.5); g.moveTo(9, 1.5); g.lineTo(12.5, 1.5); g.lineTo(12.5, 5)
             g.moveTo(12.5, 9); g.lineTo(12.5, 12.5); g.lineTo(9, 12.5); g.moveTo(5, 12.5); g.lineTo(1.5, 12.5); g.lineTo(1.5, 9); g.stroke()

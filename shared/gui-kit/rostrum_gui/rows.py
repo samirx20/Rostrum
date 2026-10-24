@@ -22,7 +22,7 @@ from .pairs import pair_up, pair_valid
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
 ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit", "display",
-         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default", "half", "letter", "more", "names", "own", "switch", "tag", "tagHelp", "note", "button")
+         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default", "half", "letter", "more", "names", "own", "switch", "tag", "tagHelp", "note", "button", "inside")
 # more: "" for most rows; a choice whose list can grow names the last entry that adds one ("Load picture…"):
 # picking it opens a file dialog (filters) and calls bridge.loadChoice(id, path).
 # anim: "" (can't be animated), "still" (could be), "keyed" (has keys), "onkey" (has a key at the playhead).
@@ -39,6 +39,8 @@ ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options",
 # (None) when there is nothing to say: no gap is left. Worked out live from the document, like every other row value.
 # button: optional (an app adds it from its actions, action_views.row_buttons): {"label", "id", "menu": [{value, label}]}, a
 # small button (or a menu when `menu` has entries) at the right of the field; a click runs the action through bridge.rowAction(id).
+# inside: optional (an app adds it to a param row): the id of another row whose picker draws this one (a fill's Scale,
+# Offset … inside the Fill row's picker: InspectorRow `inside`); the panel's own list leaves it out.
 # own: a fold row of the kind's own group (sections.OWN): always open, never folded.
 # switch: a fold row's param that turns its group on ("" = none, sections.switch_of), with `on` / `off` its values: the
 # group is open exactly while it is not `off`; its name in "folds" adds it (sets `on`) and its heading's remove control
