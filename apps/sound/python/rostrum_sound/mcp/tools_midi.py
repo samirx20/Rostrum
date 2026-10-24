@@ -7,6 +7,7 @@ from __future__ import annotations
 from rostrum_core.mcp import Reply, Tools
 
 from .. import midi
+from ..doc import markers
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
 
@@ -23,7 +24,8 @@ def register(tools: Tools):
         and keys. One change in the history. Then set each new track's instrument with track.set."""
         doc = ctx.document(args.get("item"))
         before = {t["id"] for t in doc.data.get("tracks", [])}
-        calls, skipped = midi.import_calls(doc.data, args["path"], args.get("song_map", True))
+        with markers.project(getattr(doc, "folder", None)):          # the project's markers are known: none is made twice
+            calls, skipped = midi.import_calls(doc.data, args["path"], args.get("song_map", True))
         change = ctx.apply(doc, calls, "Import MIDI")
         new = [t["id"] for t in doc.data.get("tracks", []) if t["id"] not in before]
         notes = sum(len(doc.item(t).get("notes", [])) + len(doc.item(t).get("hits", [])) for t in new)

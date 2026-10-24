@@ -81,7 +81,18 @@ def key_from_notes(notes) -> dict:
     return estimate_key(w)
 
 
-def key_line(est: dict, source: str) -> str:
+def declared_key(root: dict, given: str | None) -> str | None:
+    """The key asked for, else the document's key map (the key playing at the start): what the song says it is in."""
+    return given or keys.key_at(root, 0.0) or (root["keys"][0].get("key") if root.get("keys") else None)
+
+
+def key_line(est: dict, source: str, declared: str | None = None, asked: bool = False) -> str:
+    """"D minor (the song's key)" when the key is declared (the notes' own lean is added only when it differs), else
+    the estimate with how sure it is."""
+    if declared:
+        said = f"{declared} ({'the key you asked for' if asked else 'the song' + chr(39) + 's key'})"
+        heard = est.get("key")
+        return said + (f"; {'the notes lean' if source == 'notes' else 'the audio leans'} to {heard}" if heard and heard != declared and not relative_pair(declared, heard) else "")
     if est["key"] is None:
         return "no key found"
     alt = next((k for k, _ in est["ranked"][1:] if relative_pair(est["key"], k)), None)

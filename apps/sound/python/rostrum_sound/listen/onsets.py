@@ -3,6 +3,7 @@ import numpy as np
 
 from .core import duration, load, mono, name_of, num
 from .dsp_events import onset_times
+from .memo import remembered
 
 HOP = 256
 
@@ -17,8 +18,26 @@ def _refine(m, sr, t, span=0.04):
     return (a + int(np.argmax(seg > 0.5 * seg.max()))) / sr
 
 
+START_S, START_SHARE = 0.01, 0.05     # a sound already at full strength in the first 10 ms (of the file's peak or 5 %)
+
+
+def _starts_at_zero(m, sr):
+    """The detector measures a rise between frames, so a sound that is already there at sample 0 has nothing to rise
+    from. It is an onset all the same: the first 10 ms hold at least 5 % of the file's peak."""
+    top = float(np.max(np.abs(m))) if m.size else 0.0
+    return top > 1e-4 and float(np.max(np.abs(m[:max(1, int(START_S * sr))]))) >= START_SHARE * top
+
+
 def detect(m, sr):
-    return [_refine(m, sr, t) for t in onset_times(m, sr, HOP)]
+    ons = [_refine(m, sr, t) for t in onset_times(m, sr, HOP)]
+    return [0.0] + ons if _starts_at_zero(m, sr) and not (ons and ons[0] < 0.03) else ons
+
+
+@remembered
+def file_onsets(wav):
+    """The onset times of one file (remembered until the file changes)."""
+    y, sr = load(wav)
+    return detect(mono(y), sr)
 
 
 def _nearest(ons, e):
@@ -30,8 +49,7 @@ def which_stem(mix, stems, expect, tolerance=0.04):
     """For each expected time: the stem whose onset is nearest (and how far off, ms; > 0 = late), the next two
     stems, and the mix's own nearest onset: one answer per time instead of one look per stem. Same detector as `onsets`."""
     def of(p):
-        y, sr = load(p)
-        return detect(mono(y), sr)
+        return file_onsets(p)
     found = {k: of(p) for k, p in stems.items()}
     mix_ons = of(mix)
     rows = []
@@ -55,7 +73,7 @@ def onsets(wav, expect=None, tolerance=0.04):
     its nearest onset, the offset in ms (> 0 = sound lands late) and pass/fail against `tolerance`
     seconds (one video frame = 1 / fps)."""
     y, sr = load(wav)
-    ons = detect(mono(y), sr)
+    ons = file_onsets(wav)
     out = {"file": name_of(wav), "duration_s": num(duration(y, sr), 3),
            "onsets_s": [num(t, 4) for t in ons]}
     if expect is not None:

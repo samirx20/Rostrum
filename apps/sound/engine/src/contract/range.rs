@@ -17,13 +17,13 @@ pub fn range(v: &Value, at: &str) -> Result<Value, Error> {
     if v.get("model").is_some() || v.get("synth").is_some() {
         let (_, resolved) = super::instrument::read(Some(v), at, &super::time::Tempo::read(None, at)?.0)?;
         return Ok(json!({ "instrument": resolved, "low": name(21), "high": name(108), "lowKey": 21, "highKey": 108, "gaps": [], "layers": 1,
-                          "drums": [], "note": "procedural / synthesized: plays any key; the piano's range is shown" }));
+                          "drums": [], "note": "procedural / synthesized: plays any key (A0-C8 shown)" }));
     }
     let mut o = Obj::new(v, at)?;
     let out = if o.has("builtIn") {
         let n = o.name("builtIn", names::BUILT_INS, None)?;
         json!({ "instrument": n, "low": name(21), "high": name(108), "lowKey": 21, "highKey": 108, "gaps": [], "layers": 1,
-                "drums": [], "note": "synthesized: plays any key; the piano's own range is shown" })
+                "drums": [], "note": "synthesized: plays any key (A0-C8 shown)" })
     } else if o.has("kit") {
         o.name("kit", &["synth"], None)?;
         json!({ "instrument": "kit synth", "drums": SYNTH_DRUMS })

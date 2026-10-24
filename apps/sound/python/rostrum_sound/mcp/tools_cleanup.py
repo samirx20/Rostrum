@@ -64,14 +64,7 @@ def register(tools: Tools):
         ids = args.get("ids") or None
 
         def work(job):
-            try:
-                made = clean_clips.make_clips(doc, ids, progress=lambda note: job.progress(note=note))
-            except RostrumError as e:
-                if e.code == codes.MODEL_MISSING and e.where == "cleanup" and not e.hint:
-                    m = next((m for m in fetch.ALL if m.id == e.subject), None)
-                    if m:
-                        e.hint = f"Run the run_model_install tool with model \"{m.id}\" first. {fetch.install_hint(m)}"
-                raise
+            made = clean_clips.make_clips(doc, ids, progress=lambda note: job.progress(note=note))
             new = sum(1 for m in made if m["generated"])
             return Reply(f"{len(made)} cleaned takes ready ({new} made now, {len(made) - new} from the cache).",
                          {"clips": made}, [m["file"] for m in made])
@@ -79,20 +72,25 @@ def register(tools: Tools):
         return ctx.long(f"cleanup {doc.item_id}", work, key=f"cleanup:{doc.item_id}:{ids}")
 
     @tools.tool("run_model_install", {"required": ["model"], "properties": {"model": {"type": "string",
-        "enum": [m.id for m in fetch.ALL], "description": "The clean-up model to download: deepfilternet3 (noise, 16 MB) or umxhq (stems and dialogue isolation, 142 MB)."}}})
+        "enum": list(fetch.BUNDLES), "description": "The model to download: " + "; ".join(
+            f"{n} ({what}, {fetch.size_said(n)})" for n, (what, _) in fetch.BUNDLES.items()) + "."}}})
     def run_model_install(ctx, args):
-        """Download a clean-up model that render_cleanup needs (models are not installed with the app). Checked by its fingerprint; a model already there is left alone. Same as the command line `python -m rostrum_sound.cleanup.fetch <model>`."""
-        m = next((m for m in fetch.ALL if m.id == args["model"]), None)
-        if m is None:
-            raise RostrumError.not_found("run_model_install", "model", args["model"], [m.id for m in fetch.ALL], in_="the clean-up models")
+        """Download a model a tool needs (models are not installed with the app): deepfilternet3 and umxhq for render_cleanup, voice for render_voice, speech for render_voice_words. Every "not installed" error names the model to pass here. Each file is checked by its fingerprint; files already there are left alone. Same as the command line `python -m rostrum_sound.cleanup.fetch <model>`."""
+        name = args["model"]
+        if name not in fetch.BUNDLES:
+            raise RostrumError.not_found("run_model_install", "model", name, list(fetch.BUNDLES), in_="the models")
+        files = fetch.BUNDLES[name][1]
 
         def work(job):
-            if not fetch.missing(m):
-                return Reply(f"{m.id} is already installed.", {"model": m.id, "file": str(fetch.target(m))})
-            f = fetch.install(m, progress=lambda done, total: job.progress(note=f"{m.id}: {done / 1e6:.0f} of {total / 1e6:.0f} MB"))
-            return Reply(f"{m.id} installed ({m.licence}).", {"model": m.id, "file": str(f)})
+            todo = fetch.to_install(name)
+            for i, m in enumerate(todo):
+                fetch.install(m, progress=lambda done, total, m=m, i=i: job.progress(
+                    note=f"{name} ({i + 1} of {len(todo)}, {m.file}): {done / 1e6:.0f} of {total / 1e6:.0f} MB"))
+            where = str(fetch.target(files[0]).parent)
+            said = f"{name} installed in {where} ({files[0].licence})." if todo else f"{name} is already installed."
+            return Reply(said, {"model": name, "folder": where, "files": [str(fetch.target(m)) for m in files]})
 
-        return ctx.long(f"install {m.id}", work, key=f"run_model_install:{m.id}")
+        return ctx.long(f"install {name}", work, key=f"run_model_install:{name}")
 
     @tools.tool("look_cleanup", {"properties": {**ITEM,
         "clip": {"type": "string", "description": "A clip id: its file before vs its cleaned take, and its stems when made."},

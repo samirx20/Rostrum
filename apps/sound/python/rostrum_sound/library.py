@@ -41,6 +41,7 @@ def _known(pack: str) -> dict[str, dict]:
     return {r["path"].replace("\\", "/").lower(): r for r in rows}
 
 
+@lru_cache(maxsize=4096)
 def retired_name(path: str) -> str | None:
     """The category a shipped-and-retired recording had (e.g. "cinematic.riser") when `path` is one inside the library, else None."""
     try:

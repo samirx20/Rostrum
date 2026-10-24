@@ -111,7 +111,12 @@ def register(tools: Tools):
         docs = [ctx.document(args["item"])] if "item" in args else list(ctx.app.documents.values())
         ops = {o.name: o for d in docs for o in d.kind.registry.ops()}
         if "name" in args:
-            if args["name"] not in ops:
+            if args["name"] not in ops:         # an alias answers as the operation it stands for
+                for d in docs:
+                    real = d.kind.registry.resolve([{"op": args["name"], "target": [], "args": {}}])[0]["op"]
+                    if real in ops and real != args["name"]:
+                        op = ops[real]
+                        return Reply(f'{args["name"]} is written {op.name} here. {op.name}: {op.summary}', {"operations": [op.schema()]})
                 raise RostrumError(codes.UNKNOWN_OPERATION, "", f'"{args["name"]}"', "is not an operation of this app", sorted(ops),
                                    did_you_mean(args["name"], ops))
             op = ops[args["name"]]

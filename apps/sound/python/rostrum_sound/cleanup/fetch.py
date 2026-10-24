@@ -2,7 +2,11 @@
 Streams to `<file>.partial`, checks size and sha256, then renames: the real file name never holds a half download.
 Any failure or a cancel removes the partial and raises a plain RostrumError.
 
-    python -m rostrum_sound.cleanup.fetch --list | <model id> [<model id> …]       ("voice": the voice model's three files)
+    python -m rostrum_sound.cleanup.fetch --list | <model> [<model> …]
+
+A model is installed by one name (`BUNDLES`: deepfilternet3, umxhq, voice = the voice model's three files, speech = the
+word-timing model's four), the same for the run_model_install tool, the command line and every "not installed" error
+(`next_step`), so an agent or a person always knows the exact next step.
 """
 from __future__ import annotations
 
@@ -17,7 +21,7 @@ from pathlib import Path
 from rostrum_core import RostrumError, codes
 
 from . import models
-from .. import voice_models
+from .. import speech_models, voice_models
 from .models import Model
 
 CHUNK = 1 << 20
@@ -26,6 +30,26 @@ ALL = (models.DFN3, models.UMXHQ)
 # Which models each clean-up step needs (chain.py's recipe fields: stem, isolate, denoise, dereverb).
 NEEDS = {"stem": (models.UMXHQ,), "isolate": (models.UMXHQ, models.DFN3), "denoise": (models.DFN3,), "dereverb": (),
          "voice": voice_models.FILES}          # the voice model: a line that is to be spoken (voice_models.py)
+# Every model by the one name it is installed by: what each is for, and its files.
+BUNDLES = {"deepfilternet3": ("noise removal", (models.DFN3,)),
+           "umxhq": ("splitting music into stems and pulling a voice out of music", (models.UMXHQ,)),
+           "voice": ("spoken lines on a voice track", voice_models.FILES),
+           "speech": ("each spoken word's start and end (render_voice_words)", speech_models.FILES)}
+
+
+def bundle_of(m: Model) -> str:
+    return next(name for name, (_, files) in BUNDLES.items() if m in files)
+
+
+def size_said(name: str) -> str:
+    mb = sum(m.size for m in BUNDLES[name][1]) / 1e6
+    return f"{mb / 1000:.1f} GB" if mb >= 1000 else f"{mb:.0f} MB"
+
+
+def next_step(name: str) -> str:
+    """The exact next step for a missing model, the same words everywhere."""
+    return (f'Install it with the run_model_install tool, model "{name}" (about {size_said(name)}); in a terminal: '
+            f"python -m rostrum_sound.cleanup.fetch {name}.")
 
 
 def target(m: Model) -> Path:
@@ -49,16 +73,20 @@ def needed(what) -> list[Model]:
     return out
 
 
-def command_for(m: Model) -> str:
-    return f"python -m rostrum_sound.cleanup.fetch {m.id}"
-
-
-def install_hint(m: Model) -> str:
-    return f"Download it with: {command_for(m)} (about {m.size / 1e6:.0f} MB)."
-
-
 def _fail(m: Model, problem: str, code=codes.MODEL_MISSING) -> RostrumError:
     return RostrumError(code, "download", m.id, f"could not be downloaded from {m.url}: {problem}")
+
+
+def to_install(name: str) -> list[Model]:
+    """The files of model `name` still missing, checked to be downloadable before any is fetched (a model with a file
+    that has no address yet fails at once, naming the folder to copy it into, instead of after a long download)."""
+    todo = [m for m in BUNDLES[name][1] if missing(m)]
+    stuck = [m for m in todo if not m.url]
+    if stuck:
+        raise RostrumError(codes.MODEL_MISSING, "download", f'model "{name}"', "is not available for download yet "
+                           f"({', '.join(m.file for m in stuck)} have no download address)",
+                           hint=f"Copy those files into {target(stuck[0]).parent} by hand; the download comes when they are published.")
+    return todo
 
 
 def install(m: Model, progress: Callable[[int, int], None] | None = None,
@@ -122,15 +150,22 @@ def main(argv: list[str]) -> int:
         print(__doc__)
         return 0
     if argv[0] == "--list":
-        for m in ALL:
-            print(f"{m.id}: {m.size / 1e6:.0f} MB, {'installed' if not missing(m) else 'not installed'}, {m.licence}")
+        for name, (what, files) in BUNDLES.items():
+            state = "not installed" if any(missing(m) for m in files) else "installed"
+            print(f"{name}: {what}; {size_said(name)}, {state}, {files[0].licence}")
         return 0
-    by_id = {m.id: (m,) for m in ALL} | {"voice": voice_models.FILES}
     for mid in argv:
-        if mid not in by_id:
-            print(f"Error: download: {mid!r} is not a model. Accepted: {', '.join(by_id)}.", file=sys.stderr)
+        if mid not in BUNDLES:
+            print(f"Error: download: {mid!r} is not a model. Accepted: {', '.join(BUNDLES)}.", file=sys.stderr)
             return 2
-        for m in by_id[mid]:
+        try:
+            todo = to_install(mid)
+        except RostrumError as e:
+            print(e.line(), file=sys.stderr)
+            return 1
+        if not todo:
+            print(f"{mid}: already installed at {target(BUNDLES[mid][1][0]).parent}")
+        for m in todo:
             code = _one(m)
             if code:
                 return code

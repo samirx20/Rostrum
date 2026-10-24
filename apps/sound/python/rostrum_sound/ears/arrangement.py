@@ -5,6 +5,8 @@ Times go through `doc/times.py` (the one place they become seconds), so this is 
 """
 from __future__ import annotations
 
+from rostrum_core import RostrumError
+
 from ..doc import keys, markers, meter, tempo, times
 
 ON_MS = 10.0     # a start this close to a marker is "on" it
@@ -18,12 +20,16 @@ def _clip_len(c: dict) -> float:
 def read(data: dict) -> dict:
     """{tracks: [{id, notes: [[start, end, midi, vel]], hits: [[t, drum]], clips: [[start, end]]}], markers, sections,
     bars, end}."""
-    tracks, last = [], 0.0
+    tracks, last, broken = [], 0.0, []
     for t in data.get("tracks", []):
         notes = []
         for n in t.get("notes", []):
             s = times.seconds(n["at"], data, n["id"])
-            e = s + times.length_seconds(n["dur"], data, s, n, n["id"])
+            try:
+                e = s + times.length_seconds(n["dur"], data, s, n, n["id"])
+            except RostrumError:                  # a broken tie is a warning here: drawn as a short stub, listed
+                e = s + 0.05
+                broken.append(n["id"])
             for m in keys.midis(n["pitch"]):
                 notes.append([s, e, m, float(n.get("vel", 0.8) or 0.8)])
         hits = [[times.seconds(h["at"], data, h["id"]), str(h["drum"])] for h in t.get("hits", [])]
@@ -36,7 +42,7 @@ def read(data: dict) -> dict:
     sections = [[s["name"], times.seconds(s["at"], data, "section"), times.seconds(s["end"], data, "section")]
                 for s in data.get("sections", [])]
     return {"tracks": tracks, "markers": markers.all(data), "sections": sections,
-            "bars": meter.bar_seconds(data, end), "end": end}
+            "bars": meter.bar_seconds(data, end), "end": end, "broken": broken}
 
 
 def starts(track: dict) -> list[float]:
@@ -70,4 +76,7 @@ def summary(arr: dict, near: list[dict]) -> str:
     marks = "; ".join(f'"{m["marker"]}" {m["at_s"]:.2f} s: ' + (", ".join(m["on"]) + " start on it" if m["on"] else
                       "nothing starts on it (nearest " + ", ".join(f'{r["track"]} {r["off_ms"]:+.0f} ms' for r in
                       sorted(m["tracks"], key=lambda r: abs(r["off_ms"]))[:2]) + ")") for m in near)
-    return f"{arr['end']:.2f} s, {len(arr['bars'])} bars. Tracks: {busy or 'none'}." + (f" Markers: {marks}." if near else "")
+    broken = arr.get("broken", [])
+    return (f"{arr['end']:.2f} s, {len(arr['bars'])} bars. Tracks: {busy or 'none'}." + (f" Markers: {marks}." if near else "")
+            + (f" {len(broken)} held note(s) end before they start and are drawn short: {', '.join(broken[:5])}"
+               f"{' …' * (len(broken) > 5)} (the warnings say how to fix them)." if broken else ""))

@@ -4,10 +4,12 @@ cleaned takes not made yet, sounds no longer made) and the newest render's loude
 """
 from __future__ import annotations
 
+from PySide6.QtCore import QTimer
 from rostrum_core import RostrumError
 from rostrum_gui.problems import ProblemsList
 from rostrum_sound.diagnose import problems
 
+from .select_slots import SETTLE_MS
 from .strips import MASTER
 
 
@@ -40,8 +42,10 @@ def make(bridge, cleaning=None) -> ProblemsList:
     plist = ProblemsList(jump, bridge)
     def show(*_):
         plist.show_rows(rows(bridge.lastRender or {}) + doc_rows(bridge.doc, cleaning.making() if cleaning else ()))
-    if cleaning:
-        cleaning.changed.connect(show)               # a take finished (or began): the chip follows
-    bridge.renderChanged.connect(show)
-    bridge.timelineChanged.connect(show)
+    later = QTimer(plist, singleShot=True, interval=SETTLE_MS, timeout=show)   # once, after the edit is drawn: the
+    if cleaning:                                     # chip is never what the pointer waits for (a drop ran it twice)
+        cleaning.changed.connect(later.start)        # a take finished (or began): the chip follows
+    bridge.renderChanged.connect(later.start)
+    bridge.timelineChanged.connect(later.start)
+    show()
     return plist

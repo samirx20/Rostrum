@@ -34,6 +34,7 @@ class RowsView:
         self._tv.setLength(self._length())        # the view is the person's: nothing new on screen zooms or scrolls it
         self.songChanged.emit()
         self.timelineChanged.emit()
+        self.markersChanged.emit()
         self._lanes.update([{"id": r["id"], "track": r} for r in rows], instant=True)   # after: `tracks` is new for the rows made
         self.rollChanged.emit()
         self.viewChanged.emit()

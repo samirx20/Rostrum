@@ -71,7 +71,7 @@ def items(doc: dict) -> list[tuple[str, dict]]:
     """[(name, marker item)]: the document's own, then the project's. The one place that decides which exist."""
     own = [(m.get("name", m["id"]), m) for m in doc.get("markers", [])]
     rows = project_rows()
-    shared.refuse_clashes({r["name"]: r["at"] for r in rows}, [n for n, _ in own], "sound markers")
+    shared.refuse_clashes({r["name"]: r["at"] for r in rows}, [n for n, _ in own], "the song's markers")
     return own + [(r["name"], {"id": r["id"], "name": r["name"], "at": r["at"], "shared": True}) for r in rows]
 
 

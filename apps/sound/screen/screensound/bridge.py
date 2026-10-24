@@ -128,7 +128,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         list made every row again on every change, so every lane showed blank until it painted (S63, after a take)."""
         return self._lanes
 
-    @Property("QVariantList", notify=S.timelineChanged)
+    @Property("QVariantList", notify=S.markersChanged)
     def markers(self):
         return self._view["markers"]
 

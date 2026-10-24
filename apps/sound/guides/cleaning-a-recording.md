@@ -14,8 +14,9 @@ inspect_guide `cleanup` and `apps/sound/CLEANUP.md`; this page is the job from s
 
 - `look_spectrum` on the clip's file (`wav`): steady lines are hum or whistle (`hum_lines`), a raised floor across all
   frequencies is hiss or room tone.
-- `look_cleanup` with `before` = the file and no `after` gives its noise floor, speech level, their gap and the reverb
-  tail (how fast the sound dies after a word: a slow fall is a roomy recording).
+- `look_cleanup` compares two files (`before` and `after` together) or a clip with its cleaned take (`clip`), so it
+  reads the noise floor, speech level, their gap and the reverb tail (how fast the sound dies after a word: a slow
+  fall is a roomy recording) once a step is set. Before any step, `look_spectrum` above is the look for one file.
 - Listen for what numbers miss: clicks, mouth noise, a door. Note the times.
 
 ## 3. Choose the steps
@@ -33,7 +34,9 @@ Change one step at a time. Each step is cached on its own, so changing `dereverb
 
 ## 4. Make the cleaned take and compare
 
-- **Agent:** `render_cleanup` (optional `ids`), then `look_cleanup` with `clip` = the clip id: before / after numbers
+- **Agent:** `render_cleanup` (optional `ids`); the models are not installed with the app, and a missing one fails
+  with the exact step: the `run_model_install` tool with model `deepfilternet3` (noise, about 16 MB) or `umxhq`
+  (stems and dialogue only, about 142 MB). Then `look_cleanup` with `clip` = the clip id: before / after numbers
   and spectrograms on one colour scale. A bigger gap between floor and speech = cleaner; a bigger reverb-tail fall = drier.
 - **Screen:** click the clip: the **Cleanup** group at the bottom of the settings panel has the controls, once: **Play one stem**, **Dialogue only**, **Less noise** and **Less echo** (no second copy of them elsewhere; **Clean up…** in Ctrl K jumps to it). "Make cleaned take" appears under the settings panel while the clip has a step and no take yet; until it is made, the song keeps playing and the clip plays its original. Switch
   **Use cleaned take** off and on to compare by ear.

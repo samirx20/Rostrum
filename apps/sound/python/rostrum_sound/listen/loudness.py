@@ -3,6 +3,7 @@ import numpy as np
 
 from . import bs1770
 from .core import db, duration, load, name_of, num, peak_db
+from .memo import remembered
 
 CLIP_LEVEL = 0.999           # full scale: the sample is clipped
 NEAR_CLIP_DB = -1.0          # within 1 dB of full scale: "near clip"
@@ -48,6 +49,7 @@ def clip_moments(y, sr):
             for s, e in runs]
 
 
+@remembered
 def loudness(wav, out_png=None, step=1.0, series=None, limiter=None):
     """Facts about how loud `wav` is. `series` = the engine's own short-term values
     [(time_s, lufs)] (e.g. its 100 ms series), used for the curve instead of computing one.

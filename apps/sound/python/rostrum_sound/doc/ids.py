@@ -45,4 +45,5 @@ def lane(parent: str, lane_: str) -> str:
 
 
 def marker(name: str) -> str:
-    return f"marker.{name}"
+    """`marker.logo_lands` for "logo lands": no spaces, so an id is one word in a list. (Older files keep their ids.)"""
+    return "marker." + "_".join(name.split())

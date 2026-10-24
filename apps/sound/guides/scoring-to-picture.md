@@ -27,12 +27,12 @@ A marker is a named time (`marker.add` with `name` and `at`). Anything else can 
 
 Put hits, clips, sections, automation points and look-tool checks on markers (`"#logo"`), never on a copied number.
 When the cut moves, move the marker once (`marker.move`: `edit_markers` for a project marker, `edit_document` for one of the song's own,
-the same name for both; `marker.set` is read as it; or drag it on the arrangement's marker band) and everything on it
+the same name for both; `marker.set` is read as it, `inspect_operations name=marker.move` answers as marker.set, and an error names the one you sent; `edit_markers` times are seconds only (a plain number): for beats or a time on another marker use `edit_document`; or drag it on the arrangement's marker band) and everything on it
 follows. Times keep the form they were written in: a drag on the screen never turns `"#logo+0.5"` into seconds.
 
 Markers shared with other apps (a 2D "logo lands" read by Sound) come through the project service (`inspect_markers`
 lists them; a project marker shows dashed on the marker band). Drag one there and it moves for every app, as one undo
-step in the project's marker list; a local marker named like a project one is refused.
+step in the project's marker list; a local marker named like a project one is refused, and a MIDI import leaves out (with a warning) file markers named like a project marker.
 
 ### Held parts: tie both ends
 
@@ -55,7 +55,8 @@ refuses it, naming the note and writing out the fix); tied to `"#end"` it just g
 A swell (`dynamics`, the `swell` toggle) is drawn across the note's length, so it stretches with it and still peaks
 where the note ends. A tie that would end at or before its note's start (a marker moved past it) is a warning in every
 reply and the Problems list, naming the note, and the render refuses it; it is never played as a silent note, and the
-song still opens. Typing a length in the settings panel sets a fixed one
+song still opens. `look_arrangement` still draws the song: such notes are drawn short and listed under `broken_notes`;
+`inspect_diagnose` labels them `broken-tie` (a part starting after the song's end: `after-the-end`). Typing a length in the settings panel sets a fixed one
 (the tie is the agent's or the person's choice, kept until someone types over it).
 
 ## 3. Make the grid serve the picture

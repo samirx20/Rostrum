@@ -44,12 +44,14 @@ def models_dir() -> Path:
 
 def path(m: Model) -> Path:
     """The model's file, checked to be there and whole (loud error naming the folder otherwise)."""
+    from .fetch import bundle_of, next_step
     f = models_dir() / m.id / m.file
     if not f.is_file():
-        raise RostrumError(codes.MODEL_MISSING, "cleanup", m.id, f"is not installed (missing {f})")
+        raise RostrumError(codes.MODEL_MISSING, "cleanup", m.id, f"is not installed (missing {f})",
+                           hint=next_step(bundle_of(m)))
     if f.stat().st_size != m.size:
         raise RostrumError(codes.MODEL_MISSING, "cleanup", m.id, f"{f} is {f.stat().st_size} bytes, expected {m.size} "
-                           "(a broken or different download)")
+                           "(a broken or different download)", hint=f"Delete it, then: {next_step(bundle_of(m))}")
     return f
 
 

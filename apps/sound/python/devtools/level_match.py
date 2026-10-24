@@ -3,7 +3,7 @@ the level-match table (`rostrum_sound/library_data/preset_levels.json`, read by 
 
     python devtools/level_match.py [--engine <rostrum-sound.exe>] [--check]
 
-Each preset plays its role's phrase (ROLES: how the six trial sketches of agents wrote a comp, a bass, a lead line, a
+Each preset plays the phrase of its first part in rostrum_sound/roles.py (the phrases: how the six trial sketches of agents wrote a comp, a bass, a lead line, a
 pad and a groove: their notes, lengths and velocities) at the track's volume 1, in a home octave, all in one render;
 the engine reports each track's integrated loudness (LUFS). The median is the reference; every preset gets the gain
 that brings its phrase to it, so equal track volumes sound balanced for parts written like that. `--check` measures
@@ -26,7 +26,7 @@ import checkout_paths  # noqa: E402
 
 checkout_paths.use_this_checkout()
 
-from rostrum_sound import names, run_source  # noqa: E402
+from rostrum_sound import names, roles, run_source  # noqa: E402
 from rostrum_sound.compile import compile  # noqa: E402
 from rostrum_sound.doc import preset_level  # noqa: E402
 from rostrum_sound.engine import Engine  # noqa: E402
@@ -34,16 +34,13 @@ from rostrum_sound.engine import Engine  # noqa: E402
 TABLE = Path(preset_level.__file__).resolve().parents[1] / "library_data" / "preset_levels.json"
 # Four bars at 120 bpm over Dm – Gm – Bb – A (voiced as 4 notes: root, third, fifth, seventh) in the preset's octave.
 BARS = [("D", "F", "A", "C"), ("G", "Bb", "D", "F"), ("Bb", "D", "F", "A"), ("A", "C", "E", "G")]
-ROLE_OF = {"comp": ("feltPiano", "grandPiano", "guitar", "nylonGuitar", "spiccatoStrings"),
-           "pad": ("warmPad", "choirPad", "analogStrings", "cinematicBrass", "saw", "square"),
-           "bass": ("subBass",),
-           "lead": ("glassMarimba", "marimba", "vibraphone", "glockenspiel", "tubularBell", "violin", "triangle", "sine")}
 OCTAVE = {"comp": 3, "pad": 3, "bass": 2, "lead": 4}
 LEAD_OCTAVE = {"glockenspiel": 5, "glassMarimba": 5}
 
 
 def role(name: str) -> str:
-    return next(r for r, names_ in ROLE_OF.items() if name in names_)
+    """The part a preset is measured on: the first of its parts in the one role table (rostrum_sound/roles.py)."""
+    return next(r.parts[0] for k, r in roles.ROLES.items() if k.split(":", 1)[1] == name)
 
 
 def part(name: str) -> str:

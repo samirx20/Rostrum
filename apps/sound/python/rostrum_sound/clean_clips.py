@@ -16,7 +16,7 @@ from . import cleanup
 from .doc import media
 
 HINT = ("On the Timeline: select the clip and press Make cleaned take, or turn its Use cleaned take off. "
-        "Agents: run the render_cleanup tool (or rostrum_sound.cleanup.make), or set useCleaned false.")
+        "Agents: run the render_cleanup tool, or set useCleaned false (clip.set).")
 
 
 def media_of(clip: dict, where: str) -> str:

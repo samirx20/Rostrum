@@ -5,7 +5,9 @@ A clip keeps its original `media`; its cleanup fields describe a cleaned take it
 `denoise` and `dereverb` (0..1, 0 = off), `useCleaned` (on by default; off plays the original; shown only while a step
 is set). Set them with `clip.set`. Order: stem / isolate, then noise, then reverb.
 
-The audio is not made by editing: call the `render_cleanup` tool (optional `ids`). It makes each missing take (a job: ask
+The audio is not made by editing: call the `render_cleanup` tool (optional `ids`). Its models are not installed with
+the app: a missing one fails naming the step, the `run_model_install` tool with model `deepfilternet3` (noise) or
+`umxhq` (stems and isolate). It makes each missing take (a job: ask
 `inspect_job` if it did not finish) and answers per clip with `media`, `file`, `generated` or cached and `steps`.
 Rendering a clip whose take is not made fails and names the clip (`clip "<id>"'s cleaned take is not made yet`); that is what export and the MCP renders do. The screen's own playback never stops for it: until the take is made, the clip plays its original and the Clean up bar says so.
 

@@ -16,6 +16,7 @@ from mcp.server.stdio import stdio_server
 from rostrum_core.mcp import Runtime, Tools, build_server
 
 from . import tools_arrangement, tools_audition, tools_cleanup, tools_ears, tools_inspect, tools_look, tools_main_mix, tools_midi, tools_motion, tools_plugins, tools_project, tools_render, tools_sfx, tools_voice
+from .song_line import with_song_line
 from .app import make_app
 
 
@@ -32,6 +33,7 @@ def make_runtime(app) -> Runtime:
     tools_project.with_no_project_sentence(runtime)
     tools_project.with_sound_edit_help(runtime)
     tools_project.with_script_print(runtime)
+    with_song_line(runtime)
     return runtime
 
 

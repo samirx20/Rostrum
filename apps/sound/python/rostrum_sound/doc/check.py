@@ -79,12 +79,15 @@ def playing(track) -> list[str]:
 def _lane(item, root) -> list[str]:
     """Points in time order and inside the lane's range: an automation child, or an effect's envelope settings."""
     if item["type"] == "automation":
-        return _points(item["id"], item["lane"], item.get("points", []), LN.MIX_RANGE[item["lane"]], root)
+        owner = item["id"].split(".auto_")[0]
+        of = f'track {owner}' if any(t["id"] == owner for t in root.get("tracks", [])) else owner
+        return _points(item["id"], item["lane"], item.get("points", []), LN.MIX_RANGE[item["lane"]], root,
+                       f'the {names.LANE_WORDS.get(item["lane"], item["lane"])} lane of {of}')
     return [p for lane in LN.offered(item) for p in        # (an effect's ranges: FX.problems)
             _points(item["id"], lane, LN.points(item, lane), None, root)]
 
 
-def _points(who, lane, pts, rng, root) -> list[str]:
+def _points(who, lane, pts, rng, root, words=None) -> list[str]:
     out, last = [], -1.0
     for t, v in pts:
         try:
@@ -94,7 +97,7 @@ def _points(who, lane, pts, rng, root) -> list[str]:
         if s < last:
             out.append(f"{who}: {lane} points are not in time order (at {t!r})")
         if rng and not rng[0] <= v <= rng[1]:
-            out.append(f"{who}: {lane} {v} is outside {rng[0]} … {rng[1]}")
+            out.append(f"{words}: {v} is outside {rng[0]} … {rng[1]}" if words else f"{who}: {lane} {v} is outside {rng[0]} … {rng[1]}")
         last = s
     return out
 

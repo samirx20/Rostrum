@@ -21,6 +21,8 @@ from pathlib import Path
 
 from rostrum_core import RostrumError, codes
 
+from .engine_words import plain_where
+
 from . import names, settings
 
 TIMEOUT_S = 600
@@ -103,7 +105,7 @@ class Engine:
         if not reply["ok"]:
             e = reply["error"]
             code = e["code"] if e["code"] in vars(codes).values() else codes.INTERNAL
-            raise RostrumError(code, f"sound engine › {e['where']}", e["subject"], e["problem"], e.get("accepted") or (), e.get("hint") or None)
+            raise RostrumError(code, plain_where(e["where"], req), e["subject"], e["problem"], e.get("accepted") or (), e.get("hint") or None)
         if do == "render":                   # the engine's cache files grew: keep the one cache under its cap
             from . import cache_cap
             cache_cap.after_render()

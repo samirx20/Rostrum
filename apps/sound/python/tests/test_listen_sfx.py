@@ -26,6 +26,8 @@ def test_onsets_expect_within_5ms(tmp_path):
     r = onsets(f, expect=[0.5, 1.2, 2.0])
     assert all(abs(row["offset_ms"]) <= 5 for row in r["expected"]), r["expected"]
     assert r["all_pass"]
+    _clicks(f, [0.0, 1.0])                       # a hit at the very start is an onset too
+    assert onsets(f)["onsets_s"][0] == 0.0
 
 
 def test_pool_cache_reads_then_reanalyses_on_change(tmp_path, monkeypatch):
@@ -49,7 +51,7 @@ def test_a_held_note_is_a_tone_and_mains_hum_is_hum():
     t = np.arange(8 * SR) / SR
     swell = np.interp(t, [0, 3, 6, 8], [0.05, 1.0, 0.3, 0.02])            # a held D3 that swells and fades
     drone = 0.3 * swell * sum(a * np.sin(2 * np.pi * 146.83 * h * t) for h, a in [(1, 1), (2, 0.5), (3, 0.3)])
-    hum = 0.01 * (np.sin(2 * np.pi * 60 * t) + 0.5 * np.sin(2 * np.pi * 120 * t))
+    hum = 0.03 * (np.sin(2 * np.pi * 60 * t) + np.sin(2 * np.pi * 240 * t) + np.sin(2 * np.pi * 360 * t))   # a mains series
 
     def tones(y):
         y = (y + 0.001 * rng.standard_normal(len(t))).astype(np.float32)
@@ -57,5 +59,7 @@ def test_a_held_note_is_a_tone_and_mains_hum_is_hum():
     held = tones(drone)
     assert any(x["note"] == "D3" for x in held) and not any(x["is_hum"] for x in held)
     found = tones(drone + hum)
-    assert [round(x["freq_hz"]) for x in found if x["is_hum"]] == [60]
+    assert [round(x["freq_hz"]) for x in found if x["is_hum"]][:2] == [60, 360]
     assert not any(x["is_hum"] for x in found if x["note"] == "D3")
+    lone = tones(0.3 * np.sin(2 * np.pi * 65.4 * t) + 0 * drone)          # a lone flat steady low note is not hum
+    assert lone and not any(x["is_hum"] for x in lone)

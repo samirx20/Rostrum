@@ -132,9 +132,10 @@ def register(tools: Tools):
         "tracks": {"type": "array", "items": {"type": "string"}, "description": "Only these tracks' stems (up to 12; default all, or the 12 loudest when there are more)."},
         "within_db": {"type": "number", "default": 6, "description": "Two stems clash where both are loud and within this many dB of each other."},
         "floor_db": {"type": "number", "description": "Band level (dB, a full-scale sine is about -3) under which a stem doesn't count as there. Default: 40 dB under the loudest band of the stems, so the count doesn't change when the whole mix gets louder."},
+        "min_over_db": {"type": "number", "default": 3, "description": "Report only where one stem stands at least this many dB over the other (a part buried by this much). Parts at the same level in a band are not a problem."},
         "min_length": {"type": "number", "default": 0.3, "description": "Shortest clash to report, seconds."}}})
     def look_clash(ctx, args):
-        """Where two stems fight in the same frequency band at the same time: spans (start, end, band in Hz, the two tracks, how many dB each stands over the other), worst first, and a time × band picture coloured by pair. Needs the last render's stems."""
+        """Where one stem buries another: both loud in the same frequency band at the same time and one stands at least 3 dB (min_over_db) over the other. Spans (start, end, band in Hz, the two tracks, buried_track, buried_by_db, how many dB each stands over the other) ranked by how far one is buried, and a time × band picture coloured by pair. Parts at the same level are not reported: an empty list means no real problem. Needs the last render's stems."""
         doc, _, stems = _source(ctx, args, "look_clash")
         if not stems:
             raise RostrumError(codes.NOT_FOUND, "look_clash", "stems", "were not rendered", hint="render_mix with stems: true.")
@@ -147,12 +148,16 @@ def register(tools: Tools):
             left_out = [t for t in stems if t not in want]
         levels, hop = C.stem_levels({t: _pick(stems, t, "look_clash") for t in want})
         floor = args["floor_db"] if "floor_db" in args else C.floor_for(levels)
-        spans, maps = C.find_clashes(levels, args.get("within_db", 6), floor, args.get("min_length", 0.3), hop)
+        spans, maps = C.find_clashes(levels, args.get("within_db", 6), floor, args.get("min_length", 0.3), hop, args.get("min_over_db", C.MIN_OVER_DB))
         png = ctx.app.state.look_dir(doc.item_id) / "clash.png"
         clash_picture(png, maps, spans, hop)
         r = {"clashes": _cap(spans, args, 30), "total": len(spans), "tracks": list(levels), "within_db": args.get("within_db", 6),
-             "floor_db": round(floor, 1), "left_out_quietest": left_out, "note": "a clash is both stems loud in one band; `<a>_over_<b>_db` > 0 means a stands over b by that much (b is the one buried)"}
-        return Reply(f"{len(spans)} clashes among {len(levels)} tracks" + (f"; worst: {C.line(spans[0])}" if spans else "") + ".", r, [str(png)], [str(png)])
+             "floor_db": round(floor, 1), "min_over_db": args.get("min_over_db", C.MIN_OVER_DB), "left_out_quietest": left_out,
+             "verdict": "one part buries another in the spans listed" if spans else "no real problem: no part stands over another in a band where both matter",
+             "note": "a clash is both stems loud in one band with one standing at least min_over_db over the other; `<a>_over_<b>_db` > 0 means a stands over b by that much (b is the one buried, `buried_track`)"}
+        said = (f"{len(spans)} clashes among {len(levels)} tracks; worst: {C.line(spans[0])}." if spans
+                else f"No real problem among {len(levels)} tracks: no part stands {r['min_over_db']:g} dB or more over another in a band where both are loud.")
+        return Reply(said, r, [str(png)], [str(png)])
 
     @tools.tool("inspect_harmony", {"properties": {**ITEM, **WAV, **TRACK, **DETAIL,
         "source": {"type": "string", "enum": ["auto", "notes", "audio"], "default": "auto", "description": "auto: the document's notes when it has any, else the audio's chroma."},
@@ -182,8 +187,9 @@ def register(tools: Tools):
             est = engine_ears.key_of_audio(src)        # the engine's key: the one source for audio (ears/engine_ears.py)
             rows = H.chart_from_audio(chroma, ct, H.windows(doc.data, len(y) / sr, per), H.speller(doc.data, args.get("key"), est))
         r["key_estimate"], r["chords"] = est, rows
-        used = args.get("key") or (est["key"] if est["key"] else None)
-        r["key_used_for_checks"] = used
+        declared = H.declared_key(doc.data, args.get("key"))      # the key asked for, else the song's own: never second-guessed by the notes
+        used = declared or est["key"] or None
+        r["key_declared"], r["key_used_for_checks"] = declared, used
         if use_notes and args.get("checks", True):
             ranges, unchecked = {}, {}
             for t in sorted({n["track"] for n in notes}):
@@ -197,14 +203,14 @@ def register(tools: Tools):
                 except Exception as e:                       # the engine said no: say so, don't pretend the range was fine
                     unchecked[t] = f"engine range request failed: {e}"
                     warnings.append(f"range of {t} not checked: {e}")
-            found = [*V.range_problems(notes, ranges), *V.stack_problems(notes), *V.crossings(notes), *V.out_of_key(notes, doc.data, used)]
+            found = [*V.range_problems(notes, ranges), *V.stack_problems(notes), *V.crossings(notes), *V.out_of_key(notes, {**doc.data, "keys": []} if args.get("key") else doc.data, used)]
             found.sort(key=lambda e: e["at_s"])
             r["checks"] = {"problems": _cap(found, {**args, "detail": args.get("detail")}, 40), "total": len(found),
                            "counts": {k: sum(e["kind"] == k for e in found) for k in sorted({e["kind"] for e in found})},
                            "range_unchecked": unchecked, "low_interval_limits": "common orchestration chart, simplified (ears/theory.py LOW_LIMIT)"}
         bars = [x for x in rows if x["beat"] == 1] if per == "beat" else rows
         r["progression"] = " | ".join(x["chord"] for x in bars[:32]) + (" …" if len(bars) > 32 else "")
-        said = f"Key {H.key_line(est, r['source'])}" + (f", checked against {used}" if use_notes else "")
+        said = f"Key {H.key_line(est, r['source'], declared, bool(args.get('key')))}" + (f", checked against {used}" if use_notes else "")
         said += f". Chords: {r['progression']}."
         if "checks" in r:
             c = r["checks"]["counts"]

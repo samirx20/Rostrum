@@ -47,6 +47,19 @@ def removed_text(removed: list) -> str:
     return f"{', '.join(parts)} (first: {first}{more})"
 
 
+_WANTS = {"(add)": "add it", "(remove)": "remove it", "(move)": "move it"}
+
+
+def held_words(h: dict) -> str:
+    """One held-back thing in words: placeholders like "(add)" / "(kept, edited)" say who got there first instead."""
+    who = f'{h["who"]} ("{h["label"]}")' if h["label"] not in ("?", None) else h["who"]
+    if h["script"] in _WANTS:
+        return f'{h["key"]}: the script wanted to {_WANTS[h["script"]]}, but it was already changed by {who}'
+    if h["kept"] == "(kept, edited)":
+        return f'{h["key"]}: script says {h["script"]!r}, but it was already added or edited by {who}'
+    return f'{h["key"]}: script says {h["script"]!r}, kept {h["kept"]!r} ({who})'
+
+
 @dataclass
 class MergeReport:
     script: str
@@ -57,8 +70,7 @@ class MergeReport:
 
     def warnings(self) -> list:
         """One line per thing a caller must not miss: each held-back value, and what the run took out."""
-        held = [f'Held back "{h["key"]}": {h["who"]} set it to {h["kept"]!r}, the script wanted {h["script"]!r}. '
-                f'Pass force: ["{h["key"]}"] to overwrite.' for h in self.held]
+        held = [f'Held back {held_words(h)}. Pass force: ["{h["key"]}"] to take over.' for h in self.held]
         gone = [f"Removed {removed_text(self.removed)}: the script no longer makes them."] if self.removed else []
         return held + gone
 
@@ -68,8 +80,7 @@ class MergeReport:
             text += f"; removed {removed_text(self.removed)}"
         if not self.held:
             return text + "."
-        lines = [f"  {h['key']}: script says {h['script']!r}, kept {h['kept']!r} ({h['who']}, \"{h['label']}\")"
-                 for h in self.held]
+        lines = [f"  {held_words(h)}" for h in self.held]
         return text + f", {len(self.held)} held back to keep other people's work:\n" + "\n".join(lines) + \
             "\nChange them with an operation, or run again with force=[...] to let the script win."
 

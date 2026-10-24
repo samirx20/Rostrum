@@ -73,6 +73,19 @@ def _read_wav(path: str):
     return (data.reshape(-1, n).mean(axis=1) if n > 1 else data), rate
 
 
+def _runtime(where: str):
+    """sherpa-onnx, the program that runs the speech model: a Python package, not a model file."""
+    try:
+        import sherpa_onnx
+    except ImportError as e:
+        import sys
+        raise RostrumError(codes.MODEL_MISSING, where, "sherpa-onnx (the program that runs the speech model)",
+                           "is not installed in the Python this app runs on",
+                           hint=f'Install it with: "{sys.executable}" -m pip install sherpa-onnx==1.13.8 (Apache-2.0), '
+                                "then call render_voice_words again.") from e
+    return sherpa_onnx
+
+
 def recognise(wav: str) -> list[dict]:
     """Listen to a WAV: the words with start / end in seconds from its start. Loud when the model is missing, memory
     is short, or no word is heard."""
@@ -80,10 +93,11 @@ def recognise(wav: str) -> list[dict]:
     d = model_dir()
     missing = [n for n in FILES if not (d / n).is_file()]
     if missing:
+        from .cleanup import fetch
         raise RostrumError(codes.MODEL_MISSING, where, "the speech model", f"is not installed in {d} (missing {', '.join(missing)})",
-                           hint="Install Parakeet TDT v3 (int8) there, or set ROSTRUM_ASR_DIR.")
+                           hint=fetch.next_step("speech"))
+    sherpa_onnx = _runtime(where)
     memory.gate(where, "the speech model", MIN_FREE_GB)
-    import sherpa_onnx
     samples, rate = _read_wav(wav)
     rec = sherpa_onnx.OfflineRecognizer.from_transducer(
         encoder=str(d / FILES[0]), decoder=str(d / FILES[1]), joiner=str(d / FILES[2]), tokens=str(d / FILES[3]),

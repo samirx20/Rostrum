@@ -18,7 +18,8 @@ How-to pages for the tools and the document. They assume MCP tools and operation
 - [writing-parts.md](writing-parts.md): writing notes and parts.
 - [scoring-to-picture.md](scoring-to-picture.md): scoring against a picture and shared markers.
 - [scoring-motion.md](scoring-motion.md): answering movement in the picture with instruments.
-- [voice.md](voice.md) and [script.md](script.md): spoken lines.
+- [script.md](script.md): the Python script API for `run_script` (tracks, notes, times, the song's length).
+- [voice.md](voice.md): spoken lines on a voice track, and the voice models.
 - [library.md](library.md): your own sound folders (the Library's My sounds).
 - [cleaning-a-recording.md](cleaning-a-recording.md) and [cleanup.md](cleanup.md): clean-up steps.
 - [mixing-to-delivery.md](mixing-to-delivery.md): mix, loudness and export.

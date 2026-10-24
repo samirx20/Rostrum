@@ -38,8 +38,9 @@ def _free(word: str, taken: set, fallback: str) -> str:
     return out
 
 
-def calls_for(root: dict, song: dict, song_map: bool = True) -> list[dict]:
-    """The operation calls that put `song` into the document whose data is `root`."""
+def calls_for(root: dict, song: dict, song_map: bool = True, skipped: list | None = None) -> list[dict]:
+    """The operation calls that put `song` into the document whose data is `root`. A file's marker named like a project
+    marker is left out (the project's one already says it) and said in `skipped`."""
     taken = set(index(root, LISTS))
     calls = []
     if song_map:
@@ -53,7 +54,11 @@ def calls_for(root: dict, song: dict, song_map: bool = True) -> list[dict]:
                   for b, per, unit in song["meters"]]
         calls += [{"op": "key.add", "args": {"at": {"beat": b}, "key": k}} for b, k in song["keys"]]
     names = {n for n, _ in markers.items(root)}
+    shared = {markers.key(r["name"]) for r in markers.project_rows()}
     for b, name in song["markers"]:
+        if markers.key(name) in shared:
+            (skipped if skipped is not None else []).append(f'marker "{name}" left out: the project already has a marker of that name')
+            continue
         calls.append({"op": "marker.add", "args": {"name": _free(name, names, "marker"), "at": {"beat": b}}})
     parts = {s.get("name") for s in root.get("sections", [])}
     for name, b0, b1 in song["sections"]:
@@ -77,7 +82,8 @@ def calls_for(root: dict, song: dict, song_map: bool = True) -> list[dict]:
 def import_calls(root: dict, path, song_map: bool = True) -> tuple[list[dict], list[str]]:
     """(calls, what was skipped and why) for importing the MIDI file at `path`."""
     song = read(path)
-    return calls_for(root, song, song_map), song["skipped"]
+    skipped = list(song["skipped"])
+    return calls_for(root, song, song_map, skipped), skipped
 
 
 def export(root: dict, path) -> list[str]:
