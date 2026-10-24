@@ -147,6 +147,24 @@ def test_pen_stroke_is_one_undo_step_and_one_change(bridge):
     assert not strokes() and not any(f["at"] == 5 for f in doc.item("pad")["frames"])   # the frame it added went too
 
 
+def test_a_refused_stroke_leaves_the_document_editable(bridge):
+    """Painting on a locked paint layer is refused; the gesture must still close, or every later edit is refused
+    ("being dragged by a person") until the app restarts."""
+    doc = bridge.doc
+    doc.apply([{"op": "layer.add", "target": ["c"], "args": {"type": "drawing", "id": "pad"}},
+               {"op": "drawing.set", "target": ["pad"], "args": {"w": 320, "h": 180}}], bridge.who)
+    bridge.select("pad")
+    assert bridge.painter.beginStroke(20, 20, 1.0)
+    bridge.painter.strokeTo(80, 60, 1.0)
+    bridge.painter.endStroke()
+    paint = doc.item("pad")["frames"][0]["paints"][0]["id"]
+    doc.apply([{"op": "paint.set", "target": [paint], "args": {"locked": True}}], bridge.who)
+    if bridge.painter.beginStroke(30, 30, 1.0):
+        bridge.painter.strokeTo(90, 70, 1.0)
+        bridge.painter.endStroke()                  # refused: the layer is locked
+    assert bridge.setValue("opacity", 0.5)          # and the document still takes edits
+
+
 def test_eraser_with_nothing_to_erase_does_nothing(bridge):
     """The eraser never makes a layer: with no painted layer to erase, a press changes nothing (the pointer says so)."""
     bridge.select("box")

@@ -42,7 +42,17 @@ class Drag:
     def preview(self, calls):
         self._ctx.preview(calls)
 
-    def end(self, cancel=False):
+    def end(self, cancel=False, calls=None):
+        """Close the drag: one change, or nothing with `cancel`. `calls`: a last preview first (the whole gesture at
+        once, as a wet stroke gives it); if it is refused the drag still closes, with nothing, and the refusal goes on.
+        A drag left open would refuse every later edit ("being dragged by a person")."""
+        if calls is not None and not cancel:
+            try:
+                self._ctx.preview(calls)
+            except BaseException:
+                self._ctx.cancel()
+                self._ctx.__exit__(None, None, None)
+                raise
         if cancel:
             self._ctx.cancel()
         self._ctx.__exit__(None, None, None)

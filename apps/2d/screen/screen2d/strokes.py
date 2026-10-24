@@ -102,9 +102,12 @@ class StrokeDrag:
         if self._drag is None:
             return self.doc.apply([self._call], self.who, label="Paint")
         if self.wet:
-            self._drag.preview([self._call])
-        else:
+            return self._drag.end(calls=[self._call])
+        try:
             self.show()
+        except BaseException:
+            self.cancel()
+            raise
         return self._drag.end()
 
     def cancel(self):
