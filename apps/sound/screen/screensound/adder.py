@@ -19,7 +19,7 @@ from rostrum_core.marker_times import write as marker_time
 from .cards import FAMILY, spaced
 
 # Kind chips, in order ("mine": the person's own library, drawn by the panel from `soundLibrary`).
-KINDS = [("", "All"), ("instrument", "Instruments"), ("drums", "Drums"), ("record", "Record"), ("voice", "Voice"),
+KINDS = [("", "All"), ("instrument", "Instruments"), ("drums", "Drums"), ("record", "Mic and files"), ("voice", "Voice"),
          ("mine", "My sounds")]
 # What a sound adds beyond its name (shown under it; "" when there is nothing to add, and `note` hides a repeat of the name).
 SAID = {"feltPiano": "Soft and close", "warmPad": "Slow start", "analogStrings": "Smooth ensemble",
@@ -27,7 +27,7 @@ SAID = {"feltPiano": "Soft and close", "warmPad": "Slow start", "analogStrings":
         "glassMarimba": "Glassy, bright"}
 
 
-NO_HEAR = {"voice": "A voice is made from a line you type, so there is nothing to hear here. Add it, type a line, then press Play.",
+NO_HEAR = {"voice": "A voice is made from a line you type: add it, type a line, then press Play.",
            "record": ""}        # kinds with no preview (a microphone or a file has nothing to play before it is used)
 
 
@@ -36,9 +36,18 @@ def _said(name: str) -> str:
     return spaced(name).capitalize()
 
 
-def _plain(label: str) -> str:
-    """The name for a sentence ("Add voice: Ryan"): only the first letter drops, so names stay as typed."""
-    return label[:1].lower() + label[1:]
+def _plain(e: dict) -> str:
+    """The sound for a history line ("Add grand piano track", "Add voice Ryan"): a voice's name keeps its capitals."""
+    return f"voice {e['label']}" if e["kind"] == "voice" else e["label"][:1].lower() + e["label"][1:]
+
+
+def _person(v: str) -> str:
+    """"uncle_fu" -> "Uncle Fu": a voice is a name, so every word has a capital."""
+    return " ".join(w.capitalize() for w in spaced(v).split())
+
+
+# The second line of a row that has nothing of its own to say, so every row has the same two-line shape.
+LINE_TWO = {"instrument": "Instrument", "drums": "Drum kit", "record": "Recording", "voice": "Spoken from a line you type"}
 
 
 def _entry(key, label, what, kind, fields, arm=False) -> dict:
@@ -59,7 +68,7 @@ def _entries() -> list[dict]:
                       {"name": "Recording", "instrument": "none"}, arm=True))
     out.append(_entry("files", "Sound files", "Recordings and loops", "record",
                       {"name": "Audio", "instrument": "none"}))
-    out += [_entry(f"voice:{v}", f"Voice: {_said(v)}", "", "voice",
+    out += [_entry(f"voice:{v}", _person(v), "", "voice",
                    {"name": "Voice", "instrument": "voice", "voice": v}) for v in VOICES]
     return out
 
@@ -93,7 +102,7 @@ def _note(e: dict) -> str:
 def find(text: str, kind: str) -> list[dict]:
     """The entries whose words hold every word typed, of that kind ("" = all)."""
     words = text.lower().split()
-    return [{**{k: v for k, v in e.items() if k != "fields"}, "note": _note(e), "hearable": e["kind"] not in NO_HEAR,
+    return [{**{k: v for k, v in e.items() if k != "fields"}, "note": _note(e) or LINE_TWO.get(e["kind"], ""), "hearable": e["kind"] not in NO_HEAR,
              "noHear": NO_HEAR.get(e["kind"], "")} for e in ENTRIES
             if (not kind or e["kind"] == kind) and all(w in f"{e['label']} {e['what']} {e['kind']}".lower() for w in words)]
 
@@ -136,7 +145,7 @@ class Adder(QObject):
         if old and t.get("name") == old["fields"]["name"]:
             args["name"] = e["fields"]["name"]
         return b._guard(lambda: b._apply([{"op": "track.set", "target": [track_id], "args": args}],
-                                         f"Change sound to {_plain(e['label'])}"))
+                                         f"Change sound to {_plain(e)}"))
 
     def _selected_track(self) -> dict | None:
         doc, i = self.bridge.doc, self.bridge.selected
@@ -155,7 +164,7 @@ class Adder(QObject):
 
         def go():
             before = {t["id"] for t in b.doc.data.get("tracks", [])}
-            b._apply([{"op": "track.add", "args": dict(e["fields"])}], f"Add {_plain(e['label'])}" + ("" if e["kind"] == "voice" else " track"))
+            b._apply([{"op": "track.add", "args": dict(e["fields"])}], f"Add {_plain(e)}" + ("" if e["kind"] == "voice" else " track"))
             new = [t["id"] for t in b.doc.data.get("tracks", []) if t["id"] not in before]
             if new:
                 b.select(new[0])
