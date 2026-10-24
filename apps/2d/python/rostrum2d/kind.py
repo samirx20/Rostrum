@@ -14,7 +14,7 @@ from __future__ import annotations
 import rostrum_paint
 from rostrum_core import DocKind, Registry
 
-from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, layout_pin, media, paint_fields, pathdata, refusals, shared_paints, widthprofile
+from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, layout_pin, media, migrations, paint_fields, pathdata, refusals, shared_paints, widthprofile
 from .rig import model as rig_model
 
 OWNED = ["effects", "masks", "keys"]
@@ -164,6 +164,7 @@ def upgrade(data: dict, lists: dict, folder=None):
 
 
 KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts, upgrade=upgrade,
+               version=migrations.FORMAT, migrations=migrations.STEPS,
                new=lambda: {"id": "root", "type": "doc", "comps": []})
 
 rostrum_paint.register(REGISTRY, canvas_types=("frame",), peers=shared_paints.peers)
