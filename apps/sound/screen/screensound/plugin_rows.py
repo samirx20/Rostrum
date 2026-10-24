@@ -23,6 +23,24 @@ def short_name(name: str, vendor: str = "") -> str:
     return rest or n
 
 
+FORMATS = ("clap", "vst3")      # the best format first: a plug-in installed in several formats is listed once
+
+
+def one_each(catalog: list[dict], kind: str, key) -> list[dict]:
+    """[{id, label}] of the scanned plug-ins of this kind, one row per plug-in (same name and vendor) in its best
+    format, listed by name: "Surge XT Effects", never "Surge XT Effects · CLAP" and again "· VST3"."""
+    best: dict = {}
+    for p in catalog:
+        if p.get("kind") != kind:
+            continue
+        name = (p.get("name") or p["id"]).strip()
+        rank = FORMATS.index(str(p["format"]).lower()) if str(p["format"]).lower() in FORMATS else len(FORMATS)
+        k = (name.lower(), (p.get("vendor") or "").lower())
+        if k not in best or rank < best[k][0]:
+            best[k] = (rank, name, p)
+    return sorted(({"id": key(p), "label": name} for _, name, p in best.values()), key=lambda r: r["label"].lower())
+
+
 def has_name(param: dict) -> bool:
     """A real name: a plug-in like Airwindows Consolidated names a slot its current effect doesn't use "-"."""
     return any(ch.isalnum() for ch in str(param.get("name") or ""))

@@ -103,7 +103,8 @@ ACTIONS = [
     act("main_mix", "Make this the main mix", _can_make_main, importance="secondary", group="song", do="mainmix",
         panel=False),                                   # the Song panel has its own button for it
     # clips
-    act("clean", "Clean up…", CLIP, importance="primary", group="clip", do="clean"),
+    act("clean", "Clean up…", CLIP, importance="primary", group="clip", do="clean",
+        panel=False),                                   # the panel's Cleanup group is the one place (its fields are right there); keys and Ctrl+K jump to it
     act("before_after", V.ba_label, V.ba_valid, V.ba_calls, shortcut="H", group="clip",
         needs="Before / After needs clips with a clean-up set", release="hear_back"),   # hold H: the other side, let go: back
     act("swap", "Swap…", lambda f: f.one == "clip" and f.count == 1, shortcut="S", importance="primary", group="clip",

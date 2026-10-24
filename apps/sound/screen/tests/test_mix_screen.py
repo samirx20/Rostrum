@@ -70,7 +70,7 @@ def test_delivering_with_normalize_off_turns_it_on():
 
 
 
-def test_mixer_mute_and_header_mute_say_the_same_words_and_volume_stays_in_the_panel():
+def test_mixer_mute_and_header_mute_say_the_same_words_and_the_panel_leaves_out_what_the_mixer_shows():
     from screensound import moves, onpage
     doc, _ = setup()
     tid = doc.data["tracks"][0]["id"]
@@ -78,7 +78,7 @@ def test_mixer_mute_and_header_mute_say_the_same_words_and_volume_stays_in_the_p
     assert label == "Mute pad"
     doc.apply([call], Who.person("sam"))
     assert moves.toggle_call(doc, tid, "mute")[1] == "Unmute pad"
-    assert "volume" not in onpage.fields("mixer", "track") | onpage.fields("mixer", "master")
+    assert {"volume", "pan", "output", "reverb"} <= onpage.fields("mixer", "track") and "volume" in onpage.fields("mixer", "master")
 
 
 def test_the_export_check_reads_the_chosen_range_alone():
@@ -96,3 +96,11 @@ def test_strip_peak_is_held_since_play_started_for_tracks_groups_and_master():
     b = strips.held_peaks(a, {"t1": [-30.0, -40], "bus": [-1.0, -9]}, fresh=False)
     assert b == {"t1": -23.2, "bus": -1.0, "master": -2.0}                      # the highest so far, one rule for every strip
     assert strips.held_peaks(b, {"t1": [-50.0, -60]}, fresh=True) == {"t1": -50.0}   # the next play clears the old numbers
+
+
+def test_a_target_is_said_never_changed_quietly():
+    """Picking a delivery target changes the master (one step); the Export sheet says what it set, in words."""
+    doc, _ = setup()
+    assert delivery.said(doc.item("master")) == ""
+    doc.apply([delivery.call("ebu")], Who.person("sam"))
+    assert delivery.said(doc.item("master")) == "Loudness set to −23 for Broadcast"

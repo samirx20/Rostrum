@@ -20,10 +20,10 @@ Item {
     property var peak: null             // dBFS: the highest peak since play started (mixer.peaks), held after the stop; null: none yet
     readonly property var shown: peak !== null && peak > F.FLOOR ? peak : null
     implicitWidth: scale.width + fader.width + meterBar.width + 2 * Theme.grid
-    Text {   // the peak since play started, held after the stop ("−∞": silent so far; "—": not played yet)
+    Text {   // the peak since play started, held after the stop ("−∞": silent so far; nothing: not played yet)
         id: peakText
         anchors.horizontalCenter: meterBar.horizontalCenter; anchors.top: parent.top
-        text: lv.shown !== null ? F.num(lv.shown, 1) : lv.peak !== null || lv.live ? "−∞" : "—"
+        text: lv.shown !== null ? F.num(lv.shown, 1) : lv.peak !== null || lv.live ? "−∞" : ""
         color: lv.shown !== null ? Theme[F.levelTone(lv.shown)] : Theme.fg3
         font.family: uiFont; font.pixelSize: Theme.label; font.features: { "tnum": 1 }
     }

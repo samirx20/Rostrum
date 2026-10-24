@@ -18,7 +18,7 @@ OP = "duck.set"
 def strip_ducks(track: dict, tracks: list[dict], label) -> dict:
     """What a track's strip shows: its ducks as chips, and the tracks a new duck could sit under."""
     names = {t["id"]: label(t) for t in tracks}
-    chips = [{"id": d["id"], "label": "under " + ", ".join(names.get(u, u) for u in d["under"])} for d in track.get("ducks", [])]
+    chips = [{"id": d["id"], "label": "Dips under " + ", ".join(names.get(u, u) for u in d["under"])} for d in track.get("ducks", [])]
     return {"ducks": chips, "duckTargets": [{"id": t["id"], "name": label(t)} for t in tracks if t["id"] != track["id"]]}
 
 
@@ -53,7 +53,7 @@ class DuckHub(QObject):
     @Slot(str, str, result=bool)
     def add(self, track_id, under_id):
         """duck.add: this track dips under that one (one change); the new duck opens."""
-        if not self._call({"op": "duck.add", "target": [track_id], "args": {"under": [under_id]}}, "Add duck"):
+        if not self._call({"op": "duck.add", "target": [track_id], "args": {"under": [under_id]}}, "Dip under another track"):
             return False
         self.select(self.doc.item(track_id)["ducks"][-1]["id"])
         return True
@@ -64,15 +64,15 @@ class DuckHub(QObject):
         if not duck:
             return False
         self.close()
-        return self._call({"op": "duck.remove", "target": [duck]}, "Delete duck")
+        return self._call({"op": "duck.remove", "target": [duck]}, "Stop dipping")
 
     @Slot(str, result=bool)
     def addUnder(self, track_id):
-        return self._set_under([*self._item()["under"], track_id], "Duck under another track")
+        return self._set_under([*self._item()["under"], track_id], "Dip under another track")
 
     @Slot(str, result=bool)
     def removeUnder(self, track_id):
-        return self._set_under([u for u in self._item()["under"] if u != track_id], "Duck under fewer tracks")
+        return self._set_under([u for u in self._item()["under"] if u != track_id], "Dip under fewer tracks")
 
     @Slot(str, "QVariant", result=bool)
     def setValue(self, param, value):

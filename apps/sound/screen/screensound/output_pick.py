@@ -10,10 +10,16 @@ FIELD = "output"
 
 def choices(doc, item: dict, label) -> list[dict]:
     """[{value, label}]: the same choices as the Mix page's strip (never itself or a loop)."""
-    if item.get("type") not in ("track", "bus"):
+    if item.get("type") not in ("track", "bus") or nowhere_else(doc.data, item):
         return []
     return [{"value": c["id"], "label": c["label"]}
             for c in strips.routing(item, doc.data.get("buses", []), label)["outputs"]]
+
+
+def nowhere_else(doc_data: dict, item: dict) -> bool:
+    """A track or bus that can only play to the Master (no group to send it to, and it is there now): its Output
+    has nothing to pick, so the row is absent (rule of individuality: only what can be used now)."""
+    return item.get("type") in ("track", "bus") and item.get(FIELD, "master") in ("", "master") and         not any(b["id"] != item["id"] for b in doc_data.get("buses", []))
 
 
 def without_none(rows: list[dict]) -> list[dict]:

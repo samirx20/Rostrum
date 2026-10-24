@@ -55,8 +55,12 @@ TOUCH_KEYS = ["position", "damping", "hardness"]
 INSTRUMENT_WORDS = {"none": "None (clips only)", "builtIn": "Built-in sound", "sfz": "Sampled (SFZ file)",
                     "kit": "Drum kit", "kitSfz": "Sampled drum kit", "model": "Played instrument",
                     "synth": "Synth", "voice": "Spoken voice", "plugin": "Plug-in instrument"}
+KIT_WORDS = {"synth": "Built-in kit"}          # "Synth" is also an instrument: a kit is called what it is
 INSTRUMENT = [
-    Param.choice("instrument", names.INSTRUMENTS, group="Instrument", label="Instrument", labels=INSTRUMENT_WORDS,
+    # The form of the instrument is the track's kind, not a setting a person flips: the Library (Add sound, or a
+    # selected track + a sound there) changes it, an agent sets it here. The screen shows the one choice that is left:
+    # Sound (a built-in sound or a played instrument), Kit, Speaker; an audio track has none (shown="script").
+    Param.choice("instrument", names.INSTRUMENTS, group="Instrument", label="Instrument", labels=INSTRUMENT_WORDS, shown="script",
                  help="What plays the track's notes / hits; none = recorded clips only."),
     Param.choice("builtIn", names.BUILT_INS, group="Instrument", label="Sound", valid_when=IS("instrument", "builtIn")),
     Param.text("sfz", group="Instrument", label="SFZ file", control="file", filters=["SFZ instruments (*.sfz)"], valid_when=IS("instrument", "sfz")),
@@ -67,9 +71,9 @@ INSTRUMENT = [
     V.mapping("articulations", "articulations", group="Instrument", importance="secondary",
               valid_when=IS("instrument", "sfz"), help="Other playing styles of this instrument, each its own SFZ "
               'file ({"spiccato": "…spic.sfz"}); a note picks one with art.'),
-    Param.choice("kit", names.KITS, group="Instrument", label="Drum kit", valid_when=IS("instrument", "kit")),
+    Param.choice("kit", names.KITS, group="Instrument", label="Kit", labels=KIT_WORDS, valid_when=IS("instrument", "kit")),
     Param.text("kitSfz", group="Instrument", label="SFZ drum kit", control="file", filters=["SFZ instruments (*.sfz)"], valid_when=IS("instrument", "kitSfz")),
-    Param.choice("model", names.MODELS, group="Instrument", label="Model", valid_when=MODEL,
+    Param.choice("model", names.MODELS, group="Instrument", label="Sound", valid_when=MODEL,
                  help="A played (procedural) instrument: plucked strings, struck bars or a bowed violin."),
     *touch(),
     Param.choice("voice", voice.VOICES, group="Instrument", label="Speaker", valid_when=VOICE,
