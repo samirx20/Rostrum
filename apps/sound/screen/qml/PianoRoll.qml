@@ -125,16 +125,4 @@ Panel {
         var q = well.mapToItem(null, p.keysWidth + Math.max(0, bars.xOf(e.t1 || 0)) + 8, well.height / 3)
         rollMenu.openAt(q.x, q.y)
     }
-    Column {   // nothing to draw: say what to do, calmly
-        visible: !bars.visible
-        anchors.centerIn: parent; spacing: Theme.gap
-        Text { anchors.horizontalCenter: parent.horizontalCenter; font.family: uiFont; font.pixelSize: Theme.title
-               color: Theme.fg2; text: p.kind === "none" ? "Nothing selected" : "Nothing on this track yet" }
-        Text { visible: p.kind !== "none"; anchors.horizontalCenter: parent.horizontalCenter; font.family: uiFont
-               font.pixelSize: Theme.body; color: Theme.fg3
-               text: recorder.armed !== "" ? "Press Record (R) to record a take on this track."
-                     : "To record: press Rec on the track's row, then press R.
-To write notes: choose an instrument in the inspector." 
-               horizontalAlignment: Text.AlignHCenter }
-    }
 }

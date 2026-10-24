@@ -76,7 +76,7 @@ MouseArea {
         }
         var h = handleUnder(e)
         if (h.id) { hit = h.id; handle = h.handle; rowH = Math.max(1, tl.hOf(u.r) - 8); mode = "hpress"; return }
-        if (hit !== "" && !ctrl(e) && !shift(e) && !backend.picked[hit]) backend.select(hit)
+        if (hit !== "" && !ctrl(e) && !shift(e) && !backend.picked[hit]) backend.pressSelect(hit)
         mode = hit !== "" ? "press" : "empty"
     }
     onPositionChanged: (e) => {

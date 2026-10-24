@@ -7,8 +7,10 @@ person's undo / redo, what that step touched is selected again (read from the ch
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, Signal, Slot
+from PySide6.QtCore import Property, QTimer, Signal, Slot
 from . import selection, timing
+
+SETTLE_MS = 40      # a press's outline and first moves are drawn before the settings panel is made (_settle)
 
 
 class SelectSlots:
@@ -53,20 +55,44 @@ class SelectSlots:
         """One item alone ("" = none)."""
         self._pick([item_id] if item_id else [])
 
+    @Slot(str)
+    def pressSelect(self, item_id):
+        """A press on an item in the arrangement or the Editor: it alone, its outline at once; the settings panel and
+        the Editor's track follow a moment later, or when the drag the press starts ends (`_settle`)."""
+        self._pick([item_id] if item_id else [], later=True)
+        self._settle()
+
     @Slot("QVariantList")
     def pickMany(self, ids):
         """Several ids at once ([] = none); the kit's own `selectMany` is called with the result."""
         self._pick([str(i) for i in ids])
 
-    def _pick(self, ids, anchor=None):
+    def _pick(self, ids, anchor=None, later=False):
+        """`later`, or a drag open (a press on an item, a drawn note): the outline shows at once, the settings panel
+        and the Editor's track follow when the drag ends (`_settle`): making the panel's rows costs frames the press
+        must not wait for."""
         gone = [i for i in ids if not self.doc.has(i)]
         if gone:
             return self._fail(f'Error: select: no item "{gone[0]}".')
         self._picks.set(ids, anchor)
         if ids:
             self.__dict__["_range_newer"] = False        # items picked after the range: actions mean them (Facts)
-        self.selectMany(self._picks.ids)          # the kit: the settings panel + selectionChanged
+        if later or self._drag is not None:
+            self.__dict__["_unsettled"] = True
+        else:
+            self.__dict__["_unsettled"] = False
+            self.selectMany(self._picks.ids)          # the kit: the settings panel + selectionChanged
         self.picksChanged.emit()
+
+    def _settle(self):
+        """A press or a drag that picked has ended: the kit's selection (the settings panel, the Editor's track)
+        follows once, after the press or the drop is drawn."""
+        if self.__dict__.get("_unsettled"):
+            QTimer.singleShot(SETTLE_MS, self, self._settled)
+
+    def _settled(self):
+        if self.__dict__.get("_unsettled") and self._drag is None:
+            self._pick([i for i in self._picks.ids if self.doc.has(i)], self._picks.anchor)
 
     @Slot(str, bool, bool)
     def clickSelect(self, item_id, ctrl, shift):
@@ -79,6 +105,8 @@ class SelectSlots:
             run = selection.run_between(self._order_of(p.anchor), p.anchor, item_id)
             if run:
                 return self._pick(run, p.anchor)
+        if p.ids == [item_id] and self.__dict__.get("_unsettled"):
+            return self._settle()                   # the release of a press that picked it: the panel is on its way
         self._pick([item_id])
 
     def _order_of(self, item_id):

@@ -5,6 +5,7 @@ render while its content is unchanged. An engine error comes back as the same Ro
 accepted, hint), so agents read the engine's words. A dead or silent engine is a loud error, never a hang.
 
     eng = Engine()                       # finds the engine (settings.engine_path), or ROSTRUM_SOUND_ENGINE
+    eng = Engine(background=True)        # below the screen's priority: a render never takes a frame from the window
     eng.request("render", schedule=..., out=r"C:\\...\\mix.wav", stems="all")
 """
 from __future__ import annotations
@@ -25,6 +26,7 @@ from . import names, settings
 TIMEOUT_S = 600
 NOT_TWICE = ("pluginWindow",)        # a request that shows the person something is not repeated behind their back
 WORDS = {"render": "a render", "play": "playback"}
+BELOW_NORMAL = getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0)   # Windows; elsewhere a nice value (_start)
 
 
 def find_engine() -> Path:
@@ -33,8 +35,9 @@ def find_engine() -> Path:
 
 
 class Engine:
-    def __init__(self, exe: Path | None = None):
+    def __init__(self, exe: Path | None = None, background: bool = False):
         self.exe = Path(exe) if exe else find_engine()
+        self.background = background         # a screen's renders: the engine runs below normal priority (_lower)
         self._proc: subprocess.Popen | None = None
         self._lines: queue.Queue = queue.Queue()
         self._lock = threading.Lock()
@@ -48,7 +51,10 @@ class Engine:
 
     def _start(self):
         self._proc = subprocess.Popen([str(self.exe), "serve"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                      stderr=subprocess.PIPE, text=True, encoding="utf-8", bufsize=1)
+                                      stderr=subprocess.PIPE, text=True, encoding="utf-8", bufsize=1,
+                                      creationflags=BELOW_NORMAL if self.background else 0)
+        if self.background and sys.platform != "win32":
+            os.setpriority(os.PRIO_PROCESS, self._proc.pid, 10)
         self._lines = queue.Queue()
         threading.Thread(target=self._read, args=(self._proc, self._lines), daemon=True).start()
         self._stderr: list[str] = []

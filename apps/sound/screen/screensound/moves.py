@@ -81,8 +81,9 @@ def many_calls(doc, g: dict, dt: float, dsemi: int, free: bool, only_time: bool,
 
 def track_calls(doc, g: dict, dest: str) -> list[dict]:
     """Clips dragged onto another row: one `clip.to_track` when that track can hold them (an
-    audio or empty track, not a voice track); none otherwise (they stay on their own tracks)."""
-    movers = [x["id"] for x in g["items"] if x["type"] == "clip"]
+    audio or empty track, not a voice track) for the clips not on it already; none otherwise (they stay on their
+    own tracks: a move along its own row stays a plain move)."""
+    movers = [x["id"] for x in g["items"] if x["type"] == "clip" and doc.parent_of(x["id"])[0] != dest]
     if not movers or not dest or not doc.has(dest) or doc.item(dest)["type"] != "track":
         return []
     if kind_of(doc.item(dest)) not in ("audio", "empty") or doc.item(dest).get("instrument") == "voice":

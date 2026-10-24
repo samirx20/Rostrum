@@ -27,6 +27,7 @@ Rectangle {
     readonly property real rowGap: 2
     readonly property real laneH: 76         // an open automation lane
     readonly property real laneGap: 2
+    readonly property real rulerBottom: bars.y + bars.height   // where the bands and the ruler end (the picture corner floats below)
     readonly property int openLanes: slim ? 0 : rows.filter(r => r.auto).length
     readonly property real rowH: rows.length === mixRows + groupRows ? 24
         : Math.max(slim ? 18 : 24, Math.min(slim ? 26 : 52,
@@ -52,7 +53,7 @@ Rectangle {
     function autoOf(r) { return slim ? null : r.auto }
     function hOf(r) { return r.group ? groupH : r.mix ? mixH : rowH }
     function bottomMix(r) { return !!r.mix && !r.group }                    // a bus or the master in the compact rows, not a group header
-    function addAbove(i) { return i < rows.length && bottomMix(rows[i]) && (i === 0 || !bottomMix(rows[i - 1])) ? addH : 0 }   // + Track sits above the first mix row
+    function addAbove(i) { return i >= 0 && i < rows.length && bottomMix(rows[i]) && (i === 0 || !bottomMix(rows[i - 1])) ? addH : 0 }   // + Track sits above the first mix row (a row going away has index -1)
     function slot(y) {   // which row is at height y of the list: its index, whether y is in its automation lane, where that starts
         var top = 0
         for (var i = 0; i < rows.length; i++) {
@@ -157,9 +158,11 @@ Rectangle {
                         }
                     }
                     Loader {   // the automation lane: made when a lane is open on this row
+                        id: laneLoader
+                        readonly property var laneRow: row.modelData      // (inside the lane, a bare `row` is the lane's own property: it read itself, undefined)
                         active: !!row.auto
                         y: row.top0 + row.h + tl.laneGap; width: parent.width; height: tl.laneH
-                        sourceComponent: AutomationLane { row: row.modelData; ruler: bars; plotX: bars.x - list.x }
+                        sourceComponent: AutomationLane { row: laneLoader.laneRow; ruler: bars; plotX: bars.x - list.x }
                     }
                 }
             }

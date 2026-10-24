@@ -111,7 +111,7 @@ class EditSlots:
         start one gesture for everything selected."""
         self.endDrag()
         if item_id not in self.selectedIds:
-            self.select(item_id)
+            self._pick([item_id], later=True)         # the outline now; the settings panel when the drag ends
 
         def go():
             many = self.doc.item(item_id)["type"] in moves.MANY
@@ -164,6 +164,7 @@ class EditSlots:
             d._ctx.label = handles.label(self.doc, g["grabs"], g["handle"])
         if d is not None:
             self._guard(lambda: self._done(d.end(), ""))
+        self._settle()
 
     @Slot()
     def cancelDrag(self):
@@ -171,6 +172,7 @@ class EditSlots:
         self._set_snap({})
         if d is not None:
             self._guard(lambda: d.end(cancel=True))
+        self._settle()
 
     @Slot(str, float, bool, result=bool)
     def moveSharedMarker(self, marker_id, dt, free):
