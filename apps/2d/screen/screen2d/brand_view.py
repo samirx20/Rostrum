@@ -8,6 +8,8 @@ same operations an agent's run_brand_use makes). Click a logo: it is imported on
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 from rostrum2d import brand_kit as B
 from rostrum2d import fields as F, text_styles
@@ -39,7 +41,17 @@ class LibraryView(QObject):
     hasProject = Property(bool, lambda self: bool(self._folder()), notify=changed)
     colors = Property("QVariantList", lambda self: self._kit["colors"], notify=changed)
     textStyles = Property("QVariantList", lambda self: self._kit["textStyles"], notify=changed)
-    logos = Property("QVariantList", lambda self: self._kit["logos"], notify=changed)
+
+    @Property("QVariantList", notify=changed)
+    def logos(self):
+        """Each logo with `thumb` (the url of its file in the project) and `found` (it can be read: otherwise QML shows the
+        "missing" mark, never a blank)."""
+        folder = Path(self._folder())
+        out = []
+        for logo in self._kit["logos"]:
+            f = folder / logo["file"]
+            out.append({**logo, "found": f.is_file(), "thumb": QUrl.fromLocalFile(str(f)).toString() if f.is_file() else ""})
+        return out
 
     @Property("QVariantList", notify=changed)
     def docStyles(self):
@@ -80,7 +92,6 @@ class LibraryView(QObject):
     @Slot(str)
     def placeLogo(self, name):
         """The logo onto the canvas, centred: the importer's drop (one change, its report if something didn't come)."""
-        from pathlib import Path
         f = Path(self._folder()) / B.entry(self._folder(), "logos", name)["file"]
         self.b.importer.dropFiles([str(f)], float("nan"), float("nan"))
 
@@ -105,7 +116,6 @@ class LibraryView(QObject):
     @Slot(str)
     def addLogo(self, url):
         path = QUrl(url).toLocalFile() if url.startswith("file:") else url
-        from pathlib import Path
         self._add("logos", {"name": Path(path).stem, "file": path})
 
     @Slot(str, str)

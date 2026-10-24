@@ -70,7 +70,7 @@ Press **Ctrl+L**, or click **Library** (the books icon) in the tool rail, to ope
 
 - **Brand kit** keeps the project's **colours**, **text styles** and **logos**. Every scene of the project sees them. It needs the scene to be in a project; if it is not, the drawer says so.
 - The Library shows only what fits what you have picked. **Logos** (with **+ Logo…**) is always there. Pick a shape or path and **Colours** (with **+ This colour**) joins it; pick a text and **Text styles** (with **+ This text's style**) joins it; pick a group and you see only Logos. A section with nothing in it is not shown until you pick something that can fill it.
-- Click a colour: the selected shapes, paths and texts take it. Click a text style: the selected texts follow it. Click a logo: it goes onto the canvas.
+- Click a colour: the selected shapes, paths and texts take it. Click a text style: the selected texts follow it. Each logo shows a small picture of its file (a **?** and "File missing" when the file can't be read); click it and it goes onto the canvas.
 - To add: pick a shape and click **+ This colour**, pick a text and click **+ This text's style**, or click **+ Logo…** to keep a logo file.
 - **This scene's text styles** lists the styles made in this scene (it shows only when there are some).
 

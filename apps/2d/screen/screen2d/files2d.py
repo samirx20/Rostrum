@@ -62,6 +62,21 @@ def repoint(copy: Document, old, new) -> None:
         copy.save()
 
 
+def save_into(doc: Document, folder, item: str = ITEM) -> Document:
+    """The ONE place a scene with no project yet is first saved into a project folder: the document gets the folder, then
+    every picture / video it keeps in the app's temporary store (what an import on an unsaved scene wrote) is copied into
+    the project's media and its layers rewritten, as ONE change "Keep files in the project" in the history (undoable, and
+    a re-run script never wipes it). Nothing in it is then "File outside the project". A scene with nothing in the store
+    saves with no extra change."""
+    from rostrum2d import media
+    doc.folder, doc.item_id = Path(folder), item
+    calls = media.keep_calls([i for i in doc.items() if i.get("type") in media.TYPES and i.get("src")], folder)
+    if calls:
+        doc.apply(calls, Who.person("sam"), label="Keep files in the project")
+    doc.save()
+    return doc
+
+
 def open_doc(folder, item):
     library.use_project(folder)          # its own tip and paper pictures become brush choices
     return Document.open(folder, item, KIND)
