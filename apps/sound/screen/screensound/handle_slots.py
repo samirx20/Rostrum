@@ -38,14 +38,35 @@ class HandleSlots:
     def beginHandle(self, item_id, handle):
         """Press on a handle: a trim, fade, level, stretch or a note's length, for every selected item of that kind
         at once, one gesture."""
-        self.endDrag()
+        drawn = self._drag is not None and bool((self._grab or {}).get("drawn"))   # a note just drawn: its length joins that step
+        if not drawn:
+            self.endDrag()
         if item_id not in self.selectedIds:
             self.select(item_id)
 
         def go():
-            self._grab = {"handle": handle, "grabs": handles.grab(self.doc, self.selectedIds, handle)}
-            self._drag = Drag(self.doc, self.who, handles.NAMES[handle])
+            self._grab = {"handle": handle, "grabs": handles.grab(self.doc, self.selectedIds, handle), "drawn": drawn}
+            if not drawn:
+                self._drag = Drag(self.doc, self.who, handles.NAMES[handle])
         return self._guard(go)
+
+    def _draw_note(self, call):
+        """The Draw tool's press on a key: the new note, selected, inside one open gesture "Draw note" that stays open
+        until the release (`endDrag`), so dragging on to set its length is the same one undo step. Returns its id."""
+        self.endDrag()
+        before = {n["id"] for n in self.doc.item(self._track).get("notes", [])}
+
+        def go():
+            self._drag = Drag(self.doc, self.who, "Draw note")
+            self._grab = {"drawn": True}
+            self._drag.preview([call])
+        if not self._guard(go):
+            self.cancelDrag()
+            return ""
+        new = [n["id"] for n in self.doc.item(self._track)["notes"] if n["id"] not in before]
+        if new:
+            self.select(new[0])
+        return new[0] if new else ""
 
     @Slot(float, float, bool)
     def handleTo(self, dt, dy, free):

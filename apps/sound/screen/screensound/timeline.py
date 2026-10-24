@@ -179,6 +179,11 @@ def icon_of(track: dict) -> str:
     return "voice" if track.get("instrument") == "voice" else "audio" if kind == "empty" else kind
 
 
+def can_record(track: dict) -> bool:
+    """A track takes a microphone or a keyboard unless it is a voice track (spoken lines are typed, not recorded)."""
+    return track.get("instrument") != "voice"
+
+
 def rows(root: dict, open_lanes: dict | None = None, folded=frozenset()) -> list[dict]:
     """One row per track for the arrangement: name, hue, mute / solo, kind, header icon, volume (gain), and its blocks with lanes 0..1 (top to
     bottom: notes by pitch, one per key of a chord; hits by drum row) so a row reads like a small piano roll.
@@ -199,7 +204,7 @@ def rows(root: dict, open_lanes: dict | None = None, folded=frozenset()) -> list
         pick.stack(bl)                       # overlapping clips / sounds share the lane in rows
         out.append({"id": t["id"], "name": t.get("name") or t["id"], "hue": hue(t, i),
                     "mute": bool(t.get("mute")), "solo": bool(t.get("solo")), "locked": bool(t.get("locked")), "kind": kind_of(t), "blocks": bl,
-                    "icon": icon_of(t), "volume": float(t.get("volume", 1)),
+                    "icon": icon_of(t), "canRecord": can_record(t), "volume": float(t.get("volume", 1)),
                     "autoUsed": lanes.used(t),
                     "auto": lanes.lane_data(t, root, *open_lanes[t["id"]]) if t["id"] in (open_lanes or {}) else None})
     return groups.arrange(root, out, lanes.mix_rows(root, open_lanes or {}), folded)
@@ -234,9 +239,10 @@ def song(root: dict) -> dict:
             "tempo": float(root.get("tempo", 120)), **music_map.grid(root, length)}
 
 
-def roll(track: dict | None, root: dict, hue: str = HUES[0], play_lane: str = "sustain") -> dict:
+def roll(track: dict | None, root: dict, hue: str = HUES[0], play_lane: str = "sustain", keep: tuple | None = None) -> dict:
     """The piano roll of one track: its kind, the key range (notes: at least two octaves around what's there)
-    or the drum rows, its blocks, and (notes) its playing lane `play_lane` (sustain, expression or bend)."""
+    or the drum rows, its blocks, and (notes) its playing lane `play_lane` (sustain, expression or bend). `keep` =
+    (lo, hi) the keys already shown: the range only grows from it, so an edit never slides the rows under the pointer."""
     if track is None:
         return {"id": "", "name": "", "kind": "none", "blocks": [], "lo": 48, "hi": 72, "rowNames": [], "drums": [], "hue": hue}
     bl = blocks(track, root)
@@ -246,6 +252,8 @@ def roll(track: dict | None, root: dict, hue: str = HUES[0], play_lane: str = "s
         mid = (lo + hi) // 2
         lo, hi = mid - 12, mid + 12
     lo, hi = max(0, lo), min(127, hi)
+    if keep:
+        lo, hi = min(lo, keep[0]), max(hi, keep[1])
     # The rows' names, by the one speller, once per key in force: [{t, names}] from time 0 (the key before the
     # first change, or none) and at each key change. The screen reads the entry at the view's left edge.
     # `inKey` is the same per row: false for a row outside that key (shaded darker); all true with no key.

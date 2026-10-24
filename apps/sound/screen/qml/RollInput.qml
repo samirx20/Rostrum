@@ -4,7 +4,7 @@ import RostrumKit
 // Every click and drag on the Editor's piano roll / drum rows, in one place (the same rules as LaneInput):
 // click selects alone, Ctrl+click adds / removes, Shift+click the run between; a press that moves 4 px or more
 // drags every selected item in time and (notes) in pitch (Ctrl: no snapping, Shift: only in time, Alt: a copy;
-// one undo step). Empty space: a click clears and puts the playhead there, a drag draws a box (Ctrl adds),
+// one undo step). Empty space: a click clears the selection (the playhead stays; only the ruler moves it), a drag draws a box (Ctrl adds),
 // a double-click adds a note (or, on the drum rows, a hit). The Draw tool (B; V is Select): a click on empty space adds
 // a note Note ▾ long (drag on: longer) or a hit. The two tools' buttons are on the dock's top line (EditorHeader). A note's right end sets its length (every selected note by the same amount, one undo
 // step; the pointer shows ↔ over it). Right-click: the selection's actions, or the menu for that time.
@@ -77,15 +77,17 @@ MouseArea {
             backend.boxRoll(bars.tOf(x0), bars.tOf(x1), grid.rowAt(y0), grid.rowAt(y1), ctrl(e))
     }
     onReleased: (e) => {
+        if (mode === "hpress") backend.endDrag()          // a note just drawn: its one step ends here
         if (mode === "press" || mode === "hpress") backend.clickSelect(hit, ctrl(e), shift(e))
-        else if (mode === "empty") { if (!ctrl(e)) backend.pickMany([]); backend.setTime(bars.tOf(e.x)) }
+        else if (mode === "empty") { if (!ctrl(e)) backend.pickMany([]) }     // only the ruler moves the playhead
         else if (mode === "drag" || mode === "handle") backend.endDrag()
         else if (mode === "box") backend.endBox()
         mode = ""
     }
-    onCanceled: { if (mode === "drag" || mode === "handle") backend.cancelDrag(); if (mode === "box") backend.endBox(); mode = "" }
+    onCanceled: { if (mode === "drag" || mode === "handle" || mode === "hpress") backend.cancelDrag(); if (mode === "box") backend.endBox(); mode = "" }
     onDoubleClicked: (e) => {   // empty space: a note on that key, or a hit on that drum (Select tool; Draw adds on a click)
         if (backend.tool === "draw" || backend.rollAt(bars.tOf(e.x), grid.rowAt(e.y), 0) !== "") return
+        mode = ""                  // the release that follows must not clear the new note's selection
         if (kind === "notes") backend.addNote(bars.tOf(e.x), Math.round(grid.rowAt(e.y)))
         else if (kind === "drums") backend.addHit(bars.tOf(e.x), grid.rowAt(e.y))
     }
