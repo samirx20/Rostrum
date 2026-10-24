@@ -1,6 +1,6 @@
 """Edit mesh's maths (SPEC §4.3): an editable mesh (`shape: "poly"`) seen through the viewport's View: which point, edge
 or face is under the pointer, which are inside a dragged box, the overlay to draw (the mesh's edges, the selection),
-the selection as the selector text the operations read ("faces 3 4", rostrum3d.mesh_select), and the extrude arrow.
+the selection as the selector text the operations read ("faces 3 4", rostrum3d.mesh_select).
 No Qt; mesh_edit_qt.py puts it on screen. Points are in the item's own space; `world` is its world transform.
 """
 from __future__ import annotations
@@ -9,10 +9,10 @@ import math
 
 from rostrum3d import aim, mesh_select
 
+from . import mesh_look
 from .viewcam import _cross, _norm, _sub
 
 NEAR = 8.0                   # how near (screen px) the pointer must be to a point or an edge
-ARROW = 70.0                 # the extrude arrow's length, screen px
 KINDS = ("points", "edges", "faces")
 WORD = {"points": ("point", "points"), "edges": ("edge", "edges"), "faces": ("face", "faces")}
 
@@ -30,6 +30,22 @@ class Geo:
         self.faces = mesh_select.faces_of(item)
         self.edges = mesh_select.edges_of(item)
         self.scr = [view.project(p) for p in self.pts]
+        self._soft, self._seen = None, {}
+
+    @property
+    def soft(self) -> set:
+        """Edges drawn faint (mesh_look.soft_edges): both sides part of one curved run."""
+        if self._soft is None:
+            self._soft = mesh_look.soft_edges(self.pts, self.faces, self.edges)
+        return self._soft
+
+    def seen(self, kind) -> list:
+        """For every element of `kind`: is it visible from the camera (not behind the mesh)? Worked out once per Geo."""
+        if kind not in self._seen:
+            idx = lambda i: [i] if kind == "points" else list(self.edges[i]) if kind == "edges" else self.faces[i]   # noqa: E731
+            spots = [[sum(self.pts[k][c] for k in idx(i)) / len(idx(i)) for c in range(3)] for i in range(self.count(kind))]
+            self._seen[kind] = mesh_look.visible(self.view.eye, spots, mesh_look.triangles(self.pts, self.faces))
+        return self._seen[kind]
 
     def anchor(self, kind, i):
         """The picture point that stands for element i: a point, an edge's middle, a face's centre."""
@@ -38,6 +54,18 @@ class Geo:
         if any(p is None for p in ps):
             return None
         return [sum(p[0] for p in ps) / len(ps), sum(p[1] for p in ps) / len(ps)]
+
+    def places(self, kind, sel) -> set:
+        """Where the elements `sel` are (their points, own space, to 0.1 µm): what a selection is when numbers change."""
+        idx = lambda i: [i] if kind == "points" else list(self.edges[i]) if kind == "edges" else self.faces[i]  # noqa: E731
+        return {self._place(idx(i)) for i in sel if i < self.count(kind)}
+
+    def at_places(self, kind, places) -> set:
+        idx = lambda i: [i] if kind == "points" else list(self.edges[i]) if kind == "edges" else self.faces[i]  # noqa: E731
+        return {i for i in range(self.count(kind)) if self._place(idx(i)) in places}
+
+    def _place(self, ids):
+        return tuple(sorted(tuple(round(c * 1e7) for c in self.item["points"][k]) for k in ids))
 
     def count(self, kind) -> int:
         return len(self.pts) if kind == "points" else len(self.edges) if kind == "edges" else len(self.faces)
@@ -79,43 +107,48 @@ def face_hit(geo, x, y):
     return best
 
 
-def pick(geo, kind, x, y, px=1.0):
+def pick(geo, kind, x, y, px=1.0, xray=False):
     """The element of `kind` under picture point (x, y), or None. Points and edges: the nearest within NEAR screen px
-    that isn't hidden behind a face nearer the camera; faces: the ray hit."""
-    face, depth = face_hit(geo, x, y)
+    that is visible (mesh_look; any with X-ray); faces: the nearest face the ray goes through."""
     if kind == "faces":
-        return face
-    best = None
+        return face_hit(geo, x, y)[0]
+    seen, best = geo.seen(kind), None
     for i in range(geo.count(kind)):
+        if not (xray or seen[i]):
+            continue
         idx = [i] if kind == "points" else list(geo.edges[i])
         ps = [geo.scr[k] for k in idx]
         if any(p is None for p in ps):
             continue
         d = math.hypot(x - ps[0][0], y - ps[0][1]) if kind == "points" else _seg([x, y], ps[0], ps[1])
-        z = min(p[2] for p in ps)
-        if d <= NEAR * px and (depth is None or z <= depth * 1.02 + 1e-4) and (best is None or d < best[0]):
+        if d <= NEAR * px and (best is None or d < best[0]):
             best = (d, i)
     return best[1] if best else None
 
 
-def boxed(geo, kind, rect):
-    """Every element of `kind` whose anchor (point, edge middle, face centre) is inside rect (x0, y0, x1, y1)."""
+def boxed(geo, kind, rect, xray=False):
+    """Every element of `kind` whose anchor (point, edge middle, face centre) is inside rect (x0, y0, x1, y1) and
+    visible (mesh_look), or any with X-ray."""
     x0, x1 = sorted(rect[0::2])
     y0, y1 = sorted(rect[1::2])
-    out = set()
+    out, seen = set(), (None if xray else geo.seen(kind))
     for i in range(geo.count(kind)):
         p = geo.anchor(kind, i)
+        if seen is not None and not seen[i]:
+            continue
         if p and x0 <= p[0] <= x1 and y0 <= p[1] <= y1:
             out.add(i)
     return out
 
 
 def overlay(geo, kind, sel) -> dict:
-    """What to draw, in picture px: every edge (thin), and the selection: points, edges, or faces (tinted polygons)."""
+    """What to draw, in picture px: the edges (`lines` full, `faint` the soft ones inside a curved run), and the
+    selection: points, edges, or faces (tinted polygons)."""
     def xy(k):
         return geo.scr[k][:2] if geo.scr[k] else None
-    lines = [[xy(a), xy(b)] for a, b in geo.edges if xy(a) and xy(b)]
-    out = {"lines": lines, "points": [], "edges": [], "faces": []}
+    segs = [(i, [xy(a), xy(b)]) for i, (a, b) in enumerate(geo.edges) if xy(a) and xy(b)]
+    out = {"lines": [s for i, s in segs if i not in geo.soft], "faint": [s for i, s in segs if i in geo.soft],
+           "points": [], "edges": [], "faces": []}
     if kind == "points":
         out["points"] = [xy(i) for i in sorted(sel) if i < len(geo.pts) and xy(i)]
         out["dots"] = [xy(i) for i in range(len(geo.pts)) if xy(i) and i not in sel]
@@ -154,26 +187,6 @@ def normal(geo, sel):
             c = _cross(_sub(geo.pts[idx[k]], a), _sub(geo.pts[idx[k + 1]], a))
             n = [n[i] + c[i] for i in range(3)]
     return _norm(n) if _dot(n, n) > 1e-18 else [0.0, 1.0, 0.0]
-
-
-def arrow(geo, sel, px=1.0, distance=0.0):
-    """The extrude arrow in picture px: (base, tip, world units per screen px along it), from the selection's centre
-    along its normal; `distance` (m) moves its base with the drag."""
-    c, n = centre(geo, "faces", sel), normal(geo, sel)
-    base = [c[i] + n[i] * distance for i in range(3)]
-    b = geo.view.project(base)
-    if b is None:
-        return None
-    units = geo.view.units(b[2]) * px
-    tip = geo.view.project([base[i] + n[i] * units * ARROW for i in range(3)])
-    return (b[:2], tip[:2], units) if tip else None
-
-
-def along(base, tip, units, start, now) -> float:
-    """Metres the pointer moved along the arrow from `start` to `now` (picture px)."""
-    ax, ay = tip[0] - base[0], tip[1] - base[1]
-    n = math.hypot(ax, ay) or 1e-9
-    return ((now[0] - start[0]) * ax + (now[1] - start[1]) * ay) / n * (ARROW * units / n)
 
 
 def label(kind, n) -> str:

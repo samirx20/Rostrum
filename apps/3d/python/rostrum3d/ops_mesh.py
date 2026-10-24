@@ -11,7 +11,7 @@ from rostrum_core import Param
 from rostrum_core.errors import codes
 from rostrum_core.tree import index
 
-from . import build, compile as C, fields as F, mesh_select as MS, poly
+from . import build, compile as C, fields as F, mesh_book, mesh_select as MS, poly
 from .kind import REGISTRY as R
 
 _GEOMETRY = None          # (doc, item id) -> {"points", "faceCounts", "faceIndices"} as the core drew it
@@ -45,7 +45,7 @@ EDITABLE = F.POLY
 TRANSFORM_KEYS = [p.name for p in F.TRANSFORM]
 
 
-def _chosen(ctx, item, selector, want=None):
+def pick(ctx, item, selector, want=None):
     try:
         kind, chosen = MS.parse(selector, item)
     except MS.BadSelector as e:
@@ -61,6 +61,18 @@ def _chosen(ctx, item, selector, want=None):
 def _store(ctx, id_, points, faces):
     for k, v in poly.pack(points, faces).items():
         ctx.set(id_, k, v)
+
+
+def store_change(ctx, id_, change: poly.Change) -> str:
+    """Set a topology edit's result (faceMaterials and creases follow it, mesh_book.py); its faces' selector."""
+    try:
+        fields = mesh_book.apply(ctx.item(id_), change)
+    except ValueError as e:
+        ctx.fail(codes.BAD_ARGUMENT, f'target "{id_}"', str(e),
+                 hint="Set faceMaterials to [] with mesh.set, then retry.")
+    for k, v in fields.items():
+        ctx.set(id_, k, v)
+    return MS.text("faces", change.kept)
 
 
 @R.operation("mesh.edit", "Turn a shape (box, sphere, text …) or a combine into an editable mesh: its points and "
@@ -82,6 +94,8 @@ def mesh_edit(ctx, targets, args):
         if item["type"] == "mesh":
             ctx.set(t, "shape", "poly")
             _store(ctx, t, points, faces)
+            ctx.set(t, "faceMaterials", [])
+            ctx.set(t, "creases", [])
             out.append(t)
             continue
         loc = index(ctx.doc, ctx.kind.lists)[t]
@@ -102,10 +116,9 @@ def mesh_edit(ctx, targets, args):
                                          default=0.002, help="How far out (negative: in)")])
 def faces_extrude(ctx, targets, args):
     item = ctx.item(targets[0])
-    _, chosen = _chosen(ctx, item, args["faces"], "faces")
-    points, faces, kept = poly.extrude(item["points"], poly.faces_of(item), chosen, args.get("distance", 0.002))
-    _store(ctx, targets[0], points, faces)
-    return {"faces": MS.text("faces", kept)}
+    _, chosen = pick(ctx, item, args["faces"], "faces")
+    change = poly.extrude(item["points"], poly.faces_of(item), chosen, args.get("distance", 0.002))
+    return {"faces": store_change(ctx, targets[0], change)}
 
 
 @R.operation("faces.inset", "Make a smaller copy of each face `width` in from its edges (and `depth` out along it), "
@@ -116,14 +129,13 @@ def faces_extrude(ctx, targets, args):
                                   help="Out along the face (negative: in)")])
 def faces_inset(ctx, targets, args):
     item = ctx.item(targets[0])
-    _, chosen = _chosen(ctx, item, args["faces"], "faces")
+    _, chosen = pick(ctx, item, args["faces"], "faces")
     try:
-        points, faces, kept = poly.inset(item["points"], poly.faces_of(item), chosen, args.get("width", 0.002),
-                                         args.get("depth", 0.0))
+        change = poly.inset(item["points"], poly.faces_of(item), chosen, args.get("width", 0.002),
+                            args.get("depth", 0.0))
     except ValueError as e:
         ctx.fail(codes.BAD_ARGUMENT, '"width"', str(e), hint="Use a smaller width.")
-    _store(ctx, targets[0], points, faces)
-    return {"faces": MS.text("faces", kept)}
+    return {"faces": store_change(ctx, targets[0], change)}
 
 
 @R.operation("mesh.transform", "Move, turn or scale points, edges or faces of an editable mesh, in its own space: "
@@ -134,7 +146,7 @@ def faces_inset(ctx, targets, args):
                      THREE("scale", "Scale", [1.0, 1.0, 1.0], "[x, y, z] times")])
 def mesh_transform(ctx, targets, args):
     item = ctx.item(targets[0])
-    kind, chosen = _chosen(ctx, item, args["select"])
+    kind, chosen = pick(ctx, item, args["select"])
     ids = MS.points_in(item, kind, chosen)
     pts = poly.transform(item["points"], ids, args.get("move", [0, 0, 0]), args.get("turn", [0, 0, 0]),
                          args.get("scale", [1, 1, 1]))

@@ -25,4 +25,12 @@ def shown_values(item: dict, t: float) -> dict:
 
 
 _route = KeyRoute(F, drives, value_at)
-value_call, edit_call, anim_state, animate_calls = _route.value_call, _route.edit_call, _route.anim_state, _route.animate_calls
+value_call, anim_state, animate_calls = _route.value_call, _route.anim_state, _route.animate_calls
+
+
+def edit_call(doc, item_id: str, prop: str, value, t: float) -> dict:
+    """The call for one field edit. Choosing "Editable mesh" for a shape is the conversion `mesh.edit` (the shape's own
+    points become the mesh), never a bare `shape: "poly"` with no points: one source for how a shape turns editable."""
+    if prop == "shape" and value == "poly" and doc.item(item_id).get("shape") != "poly":
+        return {"op": "mesh.edit", "target": [item_id], "args": {}}
+    return _route.edit_call(doc, item_id, prop, value, t)

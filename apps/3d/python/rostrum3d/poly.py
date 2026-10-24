@@ -5,8 +5,22 @@ the result (preview ≡ export). Units are the item's own space, metres.
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass, field
 
 Vec = list[float]
+
+
+@dataclass
+class Change:
+    """What a topology edit made, for mesh_book.apply (the one place faceMaterials and creases follow edits):
+    `parents[n]` is the old face new face n came from (-1: none, it gets the item's material); `chains` maps an old
+    edge (a, b), a < b, that is gone to the points now along it from a to b (a cut edge's halves, a moved edge);
+    `kept` is the faces to hand back as the selection."""
+    points: list
+    faces: list
+    parents: list
+    chains: dict = field(default_factory=dict)
+    kept: set = field(default_factory=set)
 
 
 def sub(a, b): return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
@@ -78,14 +92,15 @@ def weld(points, counts, indices, tol: float = 1e-6) -> tuple[list[Vec], list[li
     return [out[v] for v in used], [[new[v] for v in f] for f in faces]
 
 
-def extrude(points, faces, chosen: set[int], distance: float) -> tuple[list[Vec], list[list[int]], set[int]]:
+def extrude(points, faces, chosen: set[int], distance: float) -> Change:
     """Push the chosen faces out by `distance` along their normals, as one piece: points shared by chosen faces move
     together (each along the average normal of its chosen faces), and walls join the piece's border to where it was.
-    Returns the new points, faces and the indices of the moved faces (still the selection)."""
+    The moved faces stay the selection; each wall takes the material of the face it grew from."""
     points = [list(p) for p in points]
     faces = [list(f) for f in faces]
-    inside = {(f[i], f[(i + 1) % len(f)]) for n in chosen for f in [faces[n]] for i in range(len(f))}
+    inside = {(f[i], f[(i + 1) % len(f)]): n for n in chosen for f in [faces[n]] for i in range(len(f))}
     border = [(a, b) for a, b in inside if (b, a) not in inside]
+    parents = list(range(len(faces))) + [inside[e] for e in border]
     dirs: dict[int, Vec] = {}
     for n in chosen:
         nm = normal(points, faces[n])
@@ -99,14 +114,16 @@ def extrude(points, faces, chosen: set[int], distance: float) -> tuple[list[Vec]
         faces[n] = [moved[v] for v in faces[n]]
     for a, b in border:
         faces.append([a, b, moved[b], moved[a]])
-    return points, faces, set(chosen)
+    chains = {(min(a, b), max(a, b)): [moved[min(a, b)], moved[max(a, b)]] for a, b in inside}
+    return Change(points, faces, parents, chains, set(chosen))
 
 
-def inset(points, faces, chosen: set[int], width: float, depth: float, where: str = "") -> tuple[list[Vec], list[list[int]], set[int]]:
+def inset(points, faces, chosen: set[int], width: float, depth: float, where: str = "") -> Change:
     """Each chosen face gets a smaller copy of itself `width` in from its edges (and `depth` out along its normal),
     joined to its old outline by a ring of faces. The copies stay chosen."""
     points = [list(p) for p in points]
     faces = [list(f) for f in faces]
+    parents = list(range(len(faces)))
     for n in sorted(chosen):
         f = faces[n]
         nm, c = normal(points, f), centre(points, f)
@@ -126,8 +143,9 @@ def inset(points, faces, chosen: set[int], width: float, depth: float, where: st
         for i in range(len(f)):
             j = (i + 1) % len(f)
             faces.append([f[i], f[j], inner[j], inner[i]])
+            parents.append(n)
         faces[n] = inner
-    return points, faces, set(chosen)
+    return Change(points, faces, parents, {}, set(chosen))
 
 
 def turn_matrix(deg: Vec) -> list[Vec]:

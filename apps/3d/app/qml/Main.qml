@@ -52,7 +52,11 @@ AppShell {
     // not while typing in a field: there Tab goes to the next field (Width, Tab, Height)
     Shortcut { sequence: "Tab"; enabled: !startScreen.visible && (meshEdit.on || backend.selected !== "") && !typing
                onActivated: meshEdit.toggle() }
-    Shortcut { sequence: "Escape"; enabled: meshEdit.on; onActivated: meshEdit.leave() }
+    Shortcut { sequence: "Escape"; enabled: meshEdit.on; onActivated: meshEdit.escape() }   // the Knife drops its line first
+    Shortcut { sequence: "Alt+Z"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.toggleXray() }   // X-ray
+    Shortcut { sequence: "K"; enabled: meshEdit.on && !meshEdit.needsEdit && !typing; onActivated: meshEdit.toggleKnife() }
+    Shortcut { sequence: "Return"; enabled: meshEdit.knifing; onActivated: meshEdit.knifeApply() }
+    Shortcut { sequence: "Enter"; enabled: meshEdit.knifing; onActivated: meshEdit.knifeApply() }
     Shortcut { sequence: "1"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("points") }
     Shortcut { sequence: "2"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("edges") }
     Shortcut { sequence: "3"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("faces") }
@@ -72,7 +76,7 @@ AppShell {
     Shortcut { sequence: "W"; enabled: !startScreen.visible; onActivated: gizmo.setShow("move") }
     Shortcut { sequence: "E"; enabled: !startScreen.visible; onActivated: gizmo.setShow("turn") }
     Shortcut { sequence: "S"; enabled: !startScreen.visible; onActivated: gizmo.setShow("scale") }
-    Shortcut { sequence: "K"; enabled: !startScreen.visible && backend.selected !== ""; onActivated: gizmo.keyMoved() }
+    Shortcut { sequence: "K"; enabled: !startScreen.visible && backend.selected !== "" && !meshEdit.on; onActivated: gizmo.keyMoved() }
 
     menu: FilesMenu {    // ≡ (kit): New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen; then Export
         id: fileMenu

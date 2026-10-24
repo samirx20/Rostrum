@@ -7,6 +7,7 @@ selector.
     "top" "bottom" "front" "back" "left" "right"
                                 the outermost faces facing +y, −y, +z (towards the default camera), −z, +x, −x
     "faces facing +y"           every face within 30° of +y (or "faces facing -x within 10")
+    "edges around top"          the border of what a faces selector picks (the loop round the lid's top)
 """
 from __future__ import annotations
 
@@ -18,7 +19,8 @@ from .poly import centre, dot, faces_of, normal
 KINDS = ("points", "edges", "faces")
 AXES = {"+x": [1, 0, 0], "-x": [-1, 0, 0], "+y": [0, 1, 0], "-y": [0, -1, 0], "+z": [0, 0, 1], "-z": [0, 0, -1]}
 SIDES = {"top": "+y", "bottom": "-y", "front": "+z", "back": "-z", "right": "+x", "left": "-x"}
-FORMS = ["all", "faces 3 4", "points 0 1", "edges 0-1 1-5", *SIDES, "faces facing +y", "faces facing -x within 10"]
+FORMS = ["all", "faces 3 4", "points 0 1", "edges 0-1 1-5", *SIDES, "faces facing +y", "faces facing -x within 10",
+         "edges around top"]
 FACING = re.compile(r"faces facing ([+-][xyz])(?: within (\d+(?:\.\d+)?))?$")
 
 
@@ -66,6 +68,12 @@ def parse(selector: str, item: dict) -> tuple[str, set]:
 
     def bad(problem):
         raise BadSelector(f'"{selector}" {problem}. Accepted: ' + " · ".join(f'"{f}"' for f in FORMS))
+    if s.startswith("edges around "):
+        kind, chosen = parse(s.removeprefix("edges around "), item)
+        if kind != "faces":
+            bad(f"goes round {kind}; it takes a faces selector")
+        sides = [(f[i], f[(i + 1) % len(f)]) for n in chosen for f in [faces[n]] for i in range(len(f))]
+        return "edges", {(min(a, b), max(a, b)) for a, b in sides if (b, a) not in set(sides)}
     if s == "all":
         return "faces", set(range(len(faces)))
     if s in SIDES:
