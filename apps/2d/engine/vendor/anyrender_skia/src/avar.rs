@@ -6,6 +6,10 @@
 //! twice: the drawn outlines then belong to another instance than the advances (Roboto Flex remaps `opsz`, so a
 //! title at opsz 40 was drawn as opsz 83). The inverse of each axis's piecewise-linear map is applied first.
 //! `avar` version 2's cross-axis variations are not inverted (only its version 1 segment maps).
+//!
+//! Rostrum patch (fonts, 2026-10-24): Parley's coordinates are in the font's `fvar` order, but the typeface Skia hands
+//! back (DirectWrite on Windows) may list its axes in another order: Source Serif 4 (`fvar`: wght, opsz) had weight
+//! and optical size swapped. `fvar_tags` gives each coordinate's axis, so a value goes to the axis of that tag.
 
 /// Each axis's `avar` segment map, in `fvar` axis order: `(from, to)` normalized pairs, ascending.
 pub(crate) fn segment_maps(avar: &[u8]) -> Vec<Vec<(f32, f32)>> {
@@ -36,4 +40,15 @@ pub(crate) fn unmap(map: &[(f32, f32)], value: f32) -> f32 {
             if to1 == to0 { from0 } else { from0 + (value - to0) * (from1 - from0) / (to1 - to0) }
         })
         .unwrap_or(value)
+}
+
+/// The axis tags in `fvar` order (the order of a run's normalized coordinates).
+pub(crate) fn fvar_tags(fvar: &[u8]) -> Vec<u32> {
+    let u16_at = |at: usize| fvar.get(at..at + 2).map(|b| u16::from_be_bytes([b[0], b[1]]) as usize);
+    let (Some(offset), Some(count), Some(size)) = (u16_at(4), u16_at(8), u16_at(10)) else {
+        return Vec::new();
+    };
+    (0..count)
+        .map_while(|i| fvar.get(offset + i * size..offset + i * size + 4).map(|b| u32::from_be_bytes([b[0], b[1], b[2], b[3]])))
+        .collect()
 }
