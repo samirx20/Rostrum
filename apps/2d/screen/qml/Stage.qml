@@ -25,9 +25,8 @@ Rectangle {
     color: Theme.panel; radius: Theme.radiusPanel; clip: true
     objectName: "stage"                 // scripted steps reach the view through it (screen2d/view_steps.py)
     property bool typing: false         // a text field has the focus (Main.qml): single-letter view keys stay off
-    // the tool whose options the context bar shows instead of the selection's actions ("" = the actions)
-    readonly property string toolMode: backend.create.typing ? "text" : backend.tool === "pen" ? "pen"
-                                     : backend.tool === "draw" && backend.strokeSelect.count > 0 ? "paint" : ""
+    // the context bar holds only what applies to picked strokes (StrokeBar.qml); no tool puts options or hints over the canvas
+    readonly property bool strokesPicked: backend.tool === "draw" && backend.strokeSelect.count > 0
     readonly property var info: backend.frameInfo
     readonly property Item canvasFrame: frame      // the picture's box
     // The one mapping between composition px and this item's px (everything over the canvas uses it: the action bar,
@@ -355,7 +354,7 @@ Rectangle {
         }
         ViewTools { anchors.fill: parent; view: view }   // H: drag moves the view; Z: click zooms in, Alt+click out
         ContextBar {   // select, then act: the kit's bar at the top-centre (backend.actions);
-                       // with Pen, Paint or typing on, that tool's options instead (ToolOptions.qml)
+                       // only while strokes are picked: what applies to them (StrokeBar.qml)
             id: bar
             hub: backend.actions
             showName: false          // the settings panel shows the name
@@ -363,12 +362,12 @@ Rectangle {
             anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
             anchors.topMargin: Math.max(Theme.gap, frame.y - bar.height - Theme.gap)
             maxWidth: well.width - 2 * Theme.gap
-            toolOptions: panel.toolMode !== "" ? optionsComponent : null
+            toolOptions: panel.strokesPicked ? strokesComponent : null
             // only a tool's options float here: the selection's actions are on right-click and Ctrl+K (SPEC 2d-design-v2
             // §1: nothing sits on the frame)
-            dragging: canvas.pressed || backend.playing || panel.toolMode === ""
+            dragging: canvas.pressed || backend.playing || !panel.strokesPicked
         }
-        Component { id: optionsComponent; ToolOptions { mode: panel.toolMode; room: well.width - 2 * Theme.gap } }
+        Component { id: strokesComponent; StrokeBar { } }
     }
     ActionMenu { id: canvasMenu; onPicked: (v) => backend.run(v) }
     // The canvas's right-click menu at (x, y) in the well's px (default: the middle of the selection, for scripts).

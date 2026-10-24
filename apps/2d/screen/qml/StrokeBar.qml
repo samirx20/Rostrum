@@ -9,7 +9,7 @@ Row {
     readonly property var sel: backend.strokeSelect
     Text {
         anchors.verticalCenter: parent.verticalCenter; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
-        text: sb.sel.count + (sb.sel.count === 1 ? " stroke" : " strokes") + "  ·  drag: move · corners: scale · knob: turn"
+        text: sb.sel.count + (sb.sel.count === 1 ? " stroke" : " strokes")      // drag / corners / knob: the canvas shows them, no words over it
     }
     Button { anchors.verticalCenter: parent.verticalCenter; text: "Copy"; onClicked: sb.sel.copy() }
     Button { anchors.verticalCenter: parent.verticalCenter; visible: sb.sel.canPaste; text: "Paste"; onClicked: sb.sel.paste() }

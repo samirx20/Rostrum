@@ -78,6 +78,6 @@ Press **Ctrl+L**, or click **Media** in the tool rail then **Library**, to open 
 In the tool rail, under the picture icon. It holds what is not a drawing tool:
 
 - **Picture** and **Video** pick a file and put it on the canvas.
-- **Import…** brings in files, PDFs, Photoshop files and Figma frames (see [importing.md](importing.md)).
+- **Import…** opens the file picker and brings in pictures, videos, SVG, PDFs and Photoshop files at once; a Figma frame comes in by pasting its link (see [importing.md](importing.md)).
 - **Library** (Ctrl+L) opens the Library.
 - **3D render** adds a Rostrum3D render. It is there only when Rostrum3D is installed.

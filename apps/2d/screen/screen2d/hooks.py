@@ -4,7 +4,7 @@ from __future__ import annotations
 from rostrum2d import fields as F
 from rostrum_gui import sections
 
-from . import beat_words, exprs, outline, fill_rows, route, size_rows, soundtrack_rows, swap_rows
+from . import beat_words, exprs, outline, fill_rows, project_picks, route, size_rows, soundtrack_rows, swap_rows
 
 SIBLING_PICKS = {"matte": lambda s: True,                          # any layer beside it can be its track matte
                  "pathLayer": lambda s: s.get("type") == "path",   # text follows a path layer beside it
@@ -85,6 +85,9 @@ class Hooks2D:
     def list_choices(self, item, param):   # the picks (control "pick"): a shared marker by name, or a sibling layer
         if param in ("marker", "endMarker"):
             return [{"value": m["name"], "label": m["name"]} for m in (self.marks.rows() if self.marks else [])]
+        found = project_picks.choices(item, param, self.doc.folder)     # fonts, the project's Sound and 3D items
+        if found is not None:
+            return found
         if param == "textStyle":                     # the document's text styles (rostrum2d/text_styles.py)
             return [{"value": s["id"], "label": s["name"]} for s in self.doc.data.get("textStyles", [])]
         if param not in SIBLING_PICKS:

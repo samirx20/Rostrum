@@ -1,39 +1,47 @@
 """The Add menu: new layers from the screen, through the operations agents use (`layer.add` + the type's field operation).
 
-One list everywhere, most important first (a 3D render only when Rostrum3D is installed: nothing greyed out). A new layer
-lands centred in the composition, is selected, and is one undo step. Path = the pen tool (the path is made by its clicks);
-a drawing turns the Draw tool on; image and video ask for a file in QML and come back through `addFile` (the same code as
-`run_import`).
+One list everywhere (the rail's flyouts, Ctrl+K), most important first, and only what makes something you can see now:
+a 3D render layer only when the project has a rendered 3D item to show (one entry per item, the layer set to it), never
+an empty one. A new layer lands centred in the composition, is selected, and is one undo step. Path = the pen tool (the
+path is made by its clicks); a drawing turns the Draw tool on; image and video ask for a file in QML and come back
+through `addFile` (the same code as `run_import`).
 """
 from __future__ import annotations
 
 from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
-from rostrum2d import KIND, fields as F, settings
+from rostrum2d import KIND, fields as F, render3d
 from rostrum2d.io import importing
 from rostrum_core import ids
 from rostrum_core.tree import index
 
 ENTRIES = ["shape", "text", "path", "image", "video", "drawing", "camera", "render3d"]      # new content only: groups and rigs are made from a selection (actions.py)
 ASKS_FILE = ("image", "video")
-ONLY_WITH_3D = ("render3d",)            # a Rostrum3D item's render: offered only when Rostrum3D is installed
 
 
-def entries() -> list[str]:
-    """The Add menu's types that can be used here (no 3D render layer without Rostrum3D)."""
-    has3d = settings.has_rostrum3d()
-    return [t for t in ENTRIES if has3d or t not in ONLY_WITH_3D]
+def entries(folder=None) -> list[dict]:
+    """The Add menu's entries that make something now: [{type, label}], a 3D render one per rendered 3D item of the
+    project ({type, label: its name, item}); none without one."""
+    out = []
+    for t in ENTRIES:
+        if t == "render3d":
+            out += [{"type": t, "label": it["name"], "item": it["id"]} for it in render3d.placeable(folder)]
+        else:
+            out.append({"type": t, "label": F.LABELS[t]})
+    return out
 
 
-def new_layer_calls(doc, comp: dict, type_: str) -> tuple[list[dict], str]:
-    """layer.add + the type's field op placing it at the composition's centre (a camera has its own view, not placed)."""
+def new_layer_calls(doc, comp: dict, type_: str, more: dict | None = None) -> tuple[list[dict], str]:
+    """layer.add + the type's field op placing it at the composition's centre (a camera has its own view, not placed);
+    `more`: other fields set in the same call (a 3D render's item)."""
     lid = ids.counted(index(doc.data, KIND.lists), type_)
     calls = [{"op": "layer.add", "target": [comp["id"]], "args": {"type": type_, "id": lid}}]
     if type_ != "camera":
         args = {"x": comp["width"] / 2, "y": comp["height"] / 2}
         if type_ == "text":                     # a first text reads at about 8 % of the picture's height, in round steps of 4
             args["size"] = max(8, round(comp["height"] * 0.08 / 4) * 4)
+        args.update(more or {})
         calls.append({"op": KIND.registry.field_op(type_).name, "target": [lid], "args": args})
     return calls, lid
 
@@ -48,22 +56,37 @@ class Adder(QObject):
 
     @Property("QVariantList", notify=changed)
     def entries(self):
-        """[{type, label}]."""
-        return [{"type": t, "label": F.LABELS[t]} for t in entries()]
+        """[{type, label, item?}] (entries() for this project; read again by `refresh`)."""
+        return entries(self.b.doc.folder if self.b.doc else None)
+
+    @Slot()
+    def refresh(self):
+        """Read the project again (a 3D render may have landed): the rail calls it as the Media flyout opens."""
+        self.changed.emit()
 
     @Slot(str)
     def add(self, type_):
         """The menu's entry: image / video ask for a file; path starts the pen; the rest add a layer now (a drawing
-        also turns the Draw tool on)."""
-        if type_ not in entries():
-            return self.b._fail(f"Error: add: {type_} is not in the Add menu ({', '.join(entries())}).")
+        also turns the Draw tool on). A 3D render: `render3d:<item>`, set to that item's render."""
+        type_, _, item = type_.partition(":")
+        if not any(e["type"] == type_ and e.get("item", item) == item for e in self.entries):
+            have = ", ".join(e["type"] + (":" + e["item"] if "item" in e else "") for e in self.entries)
+            return self.b._fail(f"Error: add: {type_}{':' + item if item else ''} is not in the Add menu ({have}).")
         if type_ in ASKS_FILE:
             self.fileWanted.emit(type_)
         elif type_ == "path":
             self.b.pen.setOn(True)
         else:
-            if self._apply(lambda: new_layer_calls(self.b.doc, self.b.comp(), type_)[0], f"Add {F.LABELS[type_].lower()}")                     and type_ == "drawing":
+            more = {"item": item} if item else None
+            if self._apply(lambda: new_layer_calls(self.b.doc, self.b.comp(), type_, more)[0], f"Add {F.LABELS[type_].lower()}")                     and type_ == "drawing":
                 self.b.setTool("draw")
+
+    def commands(self) -> list[dict]:
+        """Ctrl+K's Add commands: the same entries, each doing what its menu entry does (a file first for a picture)."""
+        return [{"key": "add:" + e["type"] + (":" + e["item"] if "item" in e else ""),
+                 "label": "Add " + (F.LABELS["render3d"].lower() + ": " + e["label"] if "item" in e else e["label"].lower()),
+                 "hint": "Document", "words": "add new layer " + e["type"],
+                 "do": (lambda k=e["type"] + (":" + e["item"] if "item" in e else ""): self.add(k))} for e in self.entries]
 
     @Slot(str, str)
     def addFile(self, type_, url):

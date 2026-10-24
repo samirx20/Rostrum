@@ -8,6 +8,10 @@ and `group` only, never per kind:
   with a value changed from its default is open until the person folds it (you see what you changed).
 - **One row of names** last (row "folds"): every group that applies to this item and is folded, "Depth · Timing ·
   Blend"; a click on a name opens that group just above it. A group with nothing that applies is not named at all.
+- **A group a switch turns on** (`switch_of`: a toggle that every other setting of the group needs on, an outline's
+  Outline, a group's Background): its name in the row of names ADDS it, one change (the switch set on), and the group
+  is open exactly while it is on, its heading carrying a remove control (the switch set off). The switch itself is
+  never a row there: "+ Outline" then an on/off row under it was asking twice (Sam, 2026-10-24).
 - **Search**: a separate layout, every param under its group's heading (`rows.layout`'s heading rules, deep params
   included); `rows.evaluate(query=...)` keeps only valid params that `rows.matches` the search.
 Param rows carry `in`: "" (shown when valid) or the fold's group (shown when valid and that group is open).
@@ -50,12 +54,24 @@ def layout(op, kind: str = "") -> list[dict]:
         rows.append({"row": "group", "id": "gap:folds", "label": "", "members": [p.name for p in rest], "by": "holds"})
     for g in dict.fromkeys(p.group for p in rest):
         members = sorted((p for p in rest if p.group == g), key=lambda p: RANK[p.importance])    # stable
+        sw = switch_of(members)
         rows.append({"row": "fold", "id": "fold:" + g, "label": WORDS.get((kind.lower(), g), g), "fold": g, "members": [p.name for p in members],
-                     "own": OWN.get(kind.lower()) == g})
-        rows += [{**_param_row(p), "in": g} for p in members]
+                     "own": OWN.get(kind.lower()) == g, "switch": sw})
+        rows += [{**_param_row(p), "in": g, **({"switches": g} if p.name == sw else {})} for p in members]
     if rest:
         rows.append({"row": "folds", "id": "folds", "label": "", "members": [p.name for p in rest]})
     return pair_up(rows)
+
+
+def switch_of(members) -> str:
+    """The toggle that turns this group on ("" = none): every other member applies only while it is on (its
+    valid_when asks for it True, alone or in an "all")."""
+    def needs(cond, name) -> bool:
+        return cond == {"is": [name, True]} or (isinstance(cond, dict) and any(needs(c, name) for c in cond.get("all", [])))
+    for s in members:
+        if s.type == "toggle" and len(members) > 1 and all(p is s or needs(p.valid_when, s.name) for p in members):
+            return s.name
+    return ""
 
 
 def search_layout(op, kind: str = "") -> list[dict]:

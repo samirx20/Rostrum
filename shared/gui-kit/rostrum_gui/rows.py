@@ -22,7 +22,7 @@ from .pairs import pair_up, pair_valid
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
 ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit", "display",
-         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default", "half", "letter", "more", "names", "own", "tag", "tagHelp", "note", "button")
+         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default", "half", "letter", "more", "names", "own", "switch", "tag", "tagHelp", "note", "button")
 # more: "" for most rows; a choice whose list can grow names the last entry that adds one ("Load picture…"):
 # picking it opens a file dialog (filters) and calls bridge.loadChoice(id, path).
 # anim: "" (can't be animated), "still" (could be), "keyed" (has keys), "onkey" (has a key at the playhead).
@@ -30,17 +30,21 @@ ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options",
 # way to clear it) instead of its widget.
 # A "list" param (item, minItems, maxItems): `options` are what may be added — its own choices for a list of choices,
 # else what the app's `choices(name)` gives (e.g. the tracks a duck may dip under), [{value, label}].
-# A "pick" param (control "pick", a text naming one other item, "" = none) shows as a choice: "None" first, then what
-# the app's `choices(name)` gives (e.g. the layers a track matte may use). Never a bare text box of ids; with nothing
-# to pick (and nothing picked) the row is absent.
+# A "pick" param (control "pick", a text naming one of a list the app knows) shows as a choice: what the app's
+# `choices(name)` gives (e.g. the layers a track matte may use, the fonts there are: an option may carry `face`, the font
+# family its label is drawn in), after "None" when "" is allowed (its default is "": the label is its words for "", e.g.
+# "Main mix"). Never a bare text box of ids or names; with nothing to pick (and nothing picked) the row is absent.
 # tag, tagHelp: optional (an app adds them to a param row): a small word after the label and its hover sentence.
 # note: optional (an app adds it to a param row): {"text", "kind": "hint" | "warning"}, a short line under the field. Absent
 # (None) when there is nothing to say: no gap is left. Worked out live from the document, like every other row value.
 # button: optional (an app adds it from its actions, action_views.row_buttons): {"label", "id", "menu": [{value, label}]}, a
 # small button (or a menu when `menu` has entries) at the right of the field; a click runs the action through bridge.rowAction(id).
 # own: a fold row of the kind's own group (sections.OWN): always open, never folded.
+# switch: a fold row's toggle that turns its group on ("" = none, sections.switch_of): the group is open exactly while it
+# is on; its name in "folds" adds it (sets it on) and its heading's remove control sets it off. The toggle's own row
+# (marked `switches`) is never shown there.
 # fold: the group a fold row opens; open: that group is open now (None when nothing inside applies: the row is absent).
-# names: the "folds" row's folded groups that apply, [{"group", "changed"}] in panel order (sections.py).
+# names: the "folds" row's folded groups that apply, [{"group", "label", "changed", "switch"}] in panel order (sections.py).
 # mixed: several items selected and their values differ (the widget says "Mixed"; many.py).
 # display: how a number shows ("percent", "db", "pan"; "" = plain), ValueKinds.js; amounts get a slider too.
 # default: the param's own default (None = none: no reset); a number field puts itself back to it on a double-click.
@@ -104,7 +108,8 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
         if "fold" in r:
             r["open"] = r["fold"] in opened if any(ok[m] for m in r["members"]) else None
         if r["row"] == "folds":
-            r["names"] = [{"group": f["fold"], "label": f["label"], "changed": f["fold"] in opened.changed} for f in static
+            r["names"] = [{"group": f["fold"], "label": f["label"], "changed": f["fold"] in opened.changed,
+                           "switch": f.get("switch", "")} for f in static
                           if "fold" in f and f["fold"] not in opened and any(ok[m] for m in f["members"])]
         if r["row"] == "param":
             r["value"] = item.get(r["id"], r["default"])
@@ -114,9 +119,10 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
                 r["options"] = choices(r["id"]) if choices else []
             if r["id"] in picks:
                 r["type"], r["control"] = "choice", ""
-                r["options"] = [{"value": "", "label": "None"}] + picks[r["id"]]
+                none = [{"value": "", "label": next((w["label"] for w in r["words"] if w["value"] == ""), "None")}]
+                r["options"] = (none if r["default"] == "" else []) + picks[r["id"]]
             r["holds"] = ok[r["id"]]
-            r["valid"] = ok[r["id"]] and _open(r, more_open, opened, query)
+            r["valid"] = ok[r["id"]] and _open(r, more_open, opened, query) and "switches" not in r
         else:
             r["value"], r["anim"], r["expr"] = None, "", ""
             r["holds"] = any(ok[m] for m in r["members"])
@@ -142,7 +148,8 @@ def _open_groups(static, item, ok, choice, starts) -> _Opened:
                and item.get(m, params[m]["default"]) not in (params[m]["default"], starts.get(m, params[m]["default"]))
                for m in f["members"]):
             out.changed.add(f["fold"])
-        if f.get("own") or choice.get(f["fold"], f["fold"] in out.changed):
+        sw = f.get("switch")
+        if (bool(item.get(sw, params[sw]["default"])) and ok[sw]) if sw else f.get("own") or choice.get(f["fold"], f["fold"] in out.changed):
             out.add(f["fold"])
     return out
 

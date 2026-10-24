@@ -59,7 +59,12 @@ tests/                  test_bridge.py (one scrub = one change; one edit = one c
   a note its track's instrument); otherwise it is **absent**, never greyed.
 - **Choices show plain words.** A choice row's `options` is `[{value, label}]`: the label is the param's
   `labels={value: words}` if given, else the value in plain words ("warmPad" → "Warm pad"). ChoiceField shows the
-  label and sends the value (plain strings still work).
+  label and sends the value (plain strings still work). A long list (over 8) or a list of fonts (options with `face`:
+  each drawn in its own face) opens with a search line. A field that names one of a list the app knows (a font, an item,
+  a marker: control "pick", rows.py) is that list, never a text box to type a name or id into.
+- **A group you add is added in one click.** A folded group a toggle switches on (`sections.switch_of`: an Outline, a
+  Background) is "+ Outline" in the row of names: the click sets the toggle on (one change) and the group shows open; its
+  heading's − sets it off. The toggle itself is never a row there.
 - **No side panel:** `AppShell { leftWidth: 0 }` (or `rightWidth: 0`) removes that panel and its gap; the centre
   takes the room.
   Groups with nothing valid vanish. `deep` params sit behind a More row. Order: groups as they first appear,
