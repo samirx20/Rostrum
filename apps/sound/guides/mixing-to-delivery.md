@@ -86,7 +86,7 @@ ceiling, the mix is denser than the target allows: turn the loud parts down at t
 2. `look_loudness`: integrated, true peak, range, the short-term curve as a picture, clipped moments.
 3. `look_levels`: each stem's level and how far under the loudest / the mix; flags a buried or dominant track.
 4. `look_clash`: which two tracks fight in which frequency band, and when.
-5. `look_low_end`: each track's share below 150 Hz and 60 Hz. `look_stereo`: balance and mono safety.
+5. `look_low_end`: each track's and the mix's share below 150 Hz, below 60 Hz and in the low mids (150–500 Hz). `look_stereo`: balance and mono safety.
 6. Change one thing, render, look again. Compare numbers between renders, not against a rule.
 
 ## Stems and handoff

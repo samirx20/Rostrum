@@ -117,7 +117,7 @@ def register(tools: Tools):
     @tools.tool("look_clash", {"properties": {**ITEM, **DETAIL,
         "tracks": {"type": "array", "items": {"type": "string"}, "description": "Only these tracks' stems (up to 12; default all, or the 12 loudest when there are more)."},
         "within_db": {"type": "number", "default": 6, "description": "Two stems clash where both are loud and within this many dB of each other."},
-        "floor_db": {"type": "number", "default": -45, "description": "Band level (dB, a full-scale sine is about -3) under which a stem doesn't count as there."},
+        "floor_db": {"type": "number", "description": "Band level (dB, a full-scale sine is about -3) under which a stem doesn't count as there. Default: 40 dB under the loudest band of the stems, so the count doesn't change when the whole mix gets louder."},
         "min_length": {"type": "number", "default": 0.3, "description": "Shortest clash to report, seconds."}}})
     def look_clash(ctx, args):
         """Where two stems fight in the same frequency band at the same time: spans (start, end, band in Hz, the two tracks, how many dB each stands over the other), worst first, and a time × band picture coloured by pair. Needs the last render's stems."""
@@ -132,11 +132,12 @@ def register(tools: Tools):
             want = C.loudest(stems) if len(stems) > C.MAX_STEMS else list(stems)
             left_out = [t for t in stems if t not in want]
         levels, hop = C.stem_levels({t: _pick(stems, t, "look_clash") for t in want})
-        spans, maps = C.find_clashes(levels, args.get("within_db", 6), args.get("floor_db", -45), args.get("min_length", 0.3), hop)
+        floor = args["floor_db"] if "floor_db" in args else C.floor_for(levels)
+        spans, maps = C.find_clashes(levels, args.get("within_db", 6), floor, args.get("min_length", 0.3), hop)
         png = ctx.app.state.look_dir(doc.item_id) / "clash.png"
         clash_picture(png, maps, spans, hop)
         r = {"clashes": _cap(spans, args, 30), "total": len(spans), "tracks": list(levels), "within_db": args.get("within_db", 6),
-             "floor_db": args.get("floor_db", -45), "left_out_quietest": left_out, "note": "a clash is both stems loud in one band; `<a>_over_<b>_db` > 0 means a stands over b by that much (b is the one buried)"}
+             "floor_db": round(floor, 1), "left_out_quietest": left_out, "note": "a clash is both stems loud in one band; `<a>_over_<b>_db` > 0 means a stands over b by that much (b is the one buried)"}
         return Reply(f"{len(spans)} clashes among {len(levels)} tracks" + (f"; worst: {C.line(spans[0])}" if spans else "") + ".", r, [str(png)], [str(png)])
 
     @tools.tool("inspect_harmony", {"properties": {**ITEM, **WAV, **TRACK,

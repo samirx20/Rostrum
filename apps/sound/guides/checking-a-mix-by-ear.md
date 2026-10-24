@@ -15,12 +15,17 @@ order to use them in when checking a whole mix; the table of every tool and what
    (a curve, the worst moments with the dB reduced) and names the tracks that drove each moment. That part is measured from
    the stems, so it is a close estimate, not the engine's exact curve: lower those tracks where it works.
 2. **Balance:** `look_levels`. Which track is far under or over the rest. A track you meant to be quiet is not a problem;
-   one you meant to lead and is buried is. A float stem above 0 dBFS is fine in the file (it only clips if someone converts
+   one you meant to lead and is buried is. Each stem's `db_vs_mix` and the track's `volume_db` are side by side: to
+   move a track N dB against the other tracks, set its volume to `volume_db` + N (`track.set` `{"volume": {"db": …}}`); the
+   master's loudness target turns every stem up or down together, so the gaps between tracks you set stay. A float stem above 0 dBFS is fine in the file (it only clips if someone converts
    it to a 16 or 24-bit file); only a stem marked "clips" is cut flat.
 3. **Fights:** `look_clash`. Which two tracks share a frequency band at the same time, and by how much one stands over the
-   other. Act on clashes between parts that matter (a voice and a pad), not every overlap. On a dense mix, tighten with
-   `within_db` 3 and `floor_db` -35.
-4. **Low end:** `look_low_end`. Each track's share under 150 Hz and 60 Hz; two tracks both heavy there usually fight.
+   other. Act on clashes between parts that matter (a voice and a pad), not every overlap. Its floor follows the mix
+   (40 dB under the loudest band; the reply's `floor_db`), so the count does not change when the whole mix gets louder.
+   On a dense mix, tighten with `within_db` 3 and a `floor_db` 10 dB above the one it used.
+4. **Low end and mud:** `look_low_end`. Each track's and the mix's share under 150 Hz, under 60 Hz and in the low mids
+   (150–500 Hz); two tracks both heavy under 150 Hz usually fight, and several parts heavy in the low mids sound muddy.
+   Compare the mix's numbers before and after a change.
 5. **Width:** `look_stereo`. Balance per section and mono warnings (parts that cancel when summed to mono).
 6. **Timing:** `look_beats` (steadiness, onsets against the grid) and `look_events` with `expect` for hits that must land
    on markers. Add `by_stem: true` to learn which track hits each marker, in one call.
