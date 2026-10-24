@@ -85,16 +85,23 @@ def verdict(master: dict, render: dict, fields=ALL) -> dict:
     off = lufs - goal
     problems = []
     if "loudness" in fields and abs(off) > LUFS_TOLERANCE:
-        problems.append(f"{abs(off):.1f} LU too {'loud' if off > 0 else 'quiet'}")
+        problems.append(f"{abs(off):.1f} dB too {'loud' if off > 0 else 'quiet'}")
     if peak > ceiling:
         problems.append(f"loudest peak {peak - ceiling:.1f} dB over the limit")
-    measured = f"loudness {_n(round(lufs, 1))} LUFS, loudest peak {_n(round(peak, 1))} dBTP"
+    measured = f"loudness {_n(round(lufs, 1))}, loudest peak {_n(round(peak, 1))} dB"
     if problems:
-        return {"ok": False, "text": f"Miss: {' and '.join(problems)} ({measured})"}
+        return {"ok": False, "text": f"Misses the target: {' and '.join(problems)} ({measured})"}
     if "loudness" not in fields:                       # only the ceiling applies: no target to pass
         if abs(off) > LUFS_TOLERANCE:                  # the top bar still measures against the goal: say where it stands
-            return {"ok": False, "text": f"Loudest peak is under the limit, but the mix is {abs(off):.1f} LU too "
-                                         f"{'loud' if off > 0 else 'quiet'} for the {_n(goal)} LUFS target; pick a target "
+            return {"ok": False, "text": f"Loudest peak is under the limit, but the mix is {abs(off):.1f} dB too "
+                                         f"{'loud' if off > 0 else 'quiet'} for the {_n(goal)} target; pick a target "
                                          f"above to bring it there ({measured})"}
         return {"ok": True, "text": f"Loudest peak is under the limit ({measured})"}
-    return {"ok": True, "text": f"Pass: {measured}"}
+    return {"ok": True, "text": f"Right for the target: {measured}"}
+
+
+def said(master: dict) -> str:
+    """What choosing a target did to the song, in words ("" when the master matches no target): the sheet shows it,
+    so the change to the mix is never silent."""
+    t = BY_KEY.get(key_of(master))
+    return f"Loudness set to {_n(t['lufs'])} for {t['label']}" if t and master.get("normalize") else ""

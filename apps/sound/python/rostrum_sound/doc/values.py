@@ -49,10 +49,11 @@ class Value(Param):
     hint: str = ""        # said in the tool description after the help: the unit and the spelling an agent can't guess
 
     def check(self, value, where):
-        return self.rule(self, value, where)
+        return value if value is None and self.nullable else self.rule(self, value, where)
 
     def json_schema(self):
-        return _described(self, self.schema)
+        schema = {"anyOf": [*self.schema["anyOf"], {"type": "null"}]} if self.nullable else self.schema
+        return _described(self, schema)
 
 
 def _time(p, v, where, length=False, tied=False):

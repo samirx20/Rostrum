@@ -16,7 +16,7 @@ track (instrument, notes / clips) → its effect chain → its fader and pan →
   feedback, drive, width, damping) read in percent (stored 0–1: type "20 %" or 0.2) and a ratio reads "3 :1". Plug-ins (CLAP / VST3) go in the same
   chain (inspect_plugins).
 - **Ducks:** `duck.add` on a track with `under` = the tracks that push it down (music under dialogue), and `depth`,
-  `attack`, `release`, `hold`. The `voice` setting listens for speech only. On the screen: "+ Duck" on a strip.
+  `attack`, `release`, `hold`. The `voice` setting listens for speech only. On the screen: **+ Dip under…** on a strip.
 - **Automation:** `automation.set` with `lane` and the whole `points` list. Mix values, effect settings and plug-in
   parameters can be automated (inspect_operations lists the lanes). In the arrangement: a row's **A** button opens its lanes;
   click adds a point, drag moves it, Delete removes it; one drag = one undo step.
@@ -30,14 +30,14 @@ The Mixer (X) has one strip per track, then the groups (buses), then the master.
   is dim), and **+ Effect** under them on every strip;
 - its sends: **Reverb send** (how much goes to the master's reverb, in %; the same setting as Reverb in the settings
   panel), one row per group it feeds (drag the slider), **+ Send** while there is a group it doesn't feed yet,
-  and its ducks with **+ Duck**;
+  and its dips with **+ Dip under…**;
 - where it plays to: "→ Master", or a pick of the groups when there are any;
 - **Pan** (C = centre) and its slider, which fills from the centre toward the side you pan to (double-click: back to the centre);
 - the fader with a dB scale beside it (+6, 0, −6 … −∞), and the meter with a number above it. While the song plays
   the meter moves with what you hear: the wide bar is the average level (RMS), the thin bar beside it the peak, and a
   mark holds the highest peak for a second before it falls. The number is one thing on every strip, group and the
   master: the highest peak, in dBFS, since play started. It keeps climbing while the song plays and stays after you
-  stop, until the next play starts and clears it ("—" before the first play, "−∞" for a strip that has made no sound).
+  stop, until the next play starts and clears it (nothing before the first play, "−∞" for a strip that has made no sound).
   Stopped, the meter bars fall to empty and only the number stays. The levels are the engine's own, measured on the
   render that plays; a group reads higher than its tracks when sends, reverb or its own effects add to what the tracks
   put in. Green below −6 dB, amber from −6 to 0 and red over
@@ -48,7 +48,7 @@ The Mixer (X) has one strip per track, then the groups (buses), then the master.
   fader sets 0 dB; double-click the fader to type. The same Volume field is in the settings panel while the Mixer is open.
 
 The fader takes all the height the dock has left (the dock gets taller, the fader, its dB scale and the meter grow with it). In a dock under about 460 px (a laptop screen) the sends and ducks move into the **…** button on the output line (click it: the reverb send, the group
-sends and **+ Duck** open above it); the fader, M S R and the volume stay. Every fader starts at the same height,
+sends and **+ Dip under…** open above it); the fader, M S R and the volume stay. Every fader starts at the same height,
 the master's too: a new track starts at 0 dB (gain 1), and headroom is the main bus's business, not each track's.
 
 ## The Mixer's loudness panel
@@ -73,8 +73,8 @@ An open effect's settings or a duck sit at the right end while they are open.
 ## Setting the target
 
 `master.set` with `normalize` on, `loudness` (LUFS) and `truePeak` (dBTP ceiling). On the screen, the Export sheet
-(Ctrl+E) has a "What for" chooser with published targets (Streaming, Apple Music, Broadcast = EBU R128, US TV = ATSC A/85, Podcast; each
-row cites its source in `screensound/delivery.py`) that sets both in one step, and a Pass / Miss line from the sound
+(Ctrl+E) has a "What for" picker with published targets (Streaming, Apple Music, Broadcast = EBU R128, US TV = ATSC A/85, Podcast; each
+row cites its source in `screensound/delivery.py`) that sets both in one step (and says so on the sheet), and a "Right for the target" / "Misses the target" line from the sound
 that plays now. The top bar's Loudness chip shows the song's loudness against the target; it opens the Mixer.
 
 Normalizing makes the number right; it does not make the mix right. If the master limiter is working hard to hold the

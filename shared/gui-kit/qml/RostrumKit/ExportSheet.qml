@@ -54,7 +54,13 @@ Panel {
                 ChoiceField { width: parent.width; options: sheet.model ? sheet.model.ranges : []
                               current: sheet.model ? sheet.model.range : ""; onPicked: (v) => sheet.model.setRange(v) }
             }
+            ChoiceField {   // an app with a few plain choices (model.choicesPicker): one picker, each option's `detail` under its name
+                visible: !!sheet.model && sheet.model.choicesPicker
+                width: parent.width; options: sheet.model ? sheet.model.choices : []
+                current: sheet.model ? sheet.model.choice : ""; onPicked: (v) => sheet.model.setChoice(v)
+            }
             Column {        // the app's choices, in words, each with its file type (the sheet's title is the one heading)
+                visible: !(sheet.model && sheet.model.choicesPicker)
                 width: parent.width
                 Repeater {
                     model: sheet.model ? sheet.model.choices : []
@@ -88,10 +94,10 @@ Panel {
                 Text {   // the folder: one line, the middle left out when it is long (the whole path on hover), never broken mid-word
                     id: whereText
                     width: parent.width; elide: Text.ElideMiddle; maximumLineCount: 1
-                    text: sheet.model ? sheet.model.where : ""
+                    text: sheet.model ? sheet.model.whereShort : ""
                     color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body
                     HoverHandler { id: whereHover }
-                    HoverTip { text: whereText.text; hovered: whereHover.hovered && whereText.truncated }
+                    HoverTip { text: sheet.model ? sheet.model.where : ""; hovered: whereHover.hovered && (whereText.truncated || text !== whereText.text) }
                 }
                 Row {
                     spacing: Theme.gap; topPadding: Theme.grid

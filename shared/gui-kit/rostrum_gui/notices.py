@@ -11,6 +11,7 @@ import io
 import json
 import os
 import sysconfig
+import tomllib
 import tempfile
 from argparse import Namespace
 from pathlib import Path
@@ -30,6 +31,18 @@ def app_id(main_qml: Path | None = None) -> str:
     return next((parts[i + 1] for i, p in enumerate(parts[:-1]) if p == "apps"), "")
 
 
+def roots(app: str) -> dict | None:
+    """The packages an app is made of, to list only what it needs from a development venv that holds every app's:
+    its own Python package (with the extras that ship) and the kit. The app says it in its pyproject.toml
+    (`[tool.rostrum] notices-extras = [...]`); an app that does not keeps the whole venv's list."""
+    toml = REPO / "apps" / app / "python" / "pyproject.toml"
+    if not toml.is_file():
+        return None
+    conf = tomllib.loads(toml.read_text(encoding="utf-8"))
+    extras = conf.get("tool", {}).get("rostrum", {}).get("notices-extras")
+    return {conf["project"]["name"]: extras, "rostrum-gui": []} if extras is not None else None
+
+
 def generate(app: str) -> dict:
     """Run the release generator on this interpreter's packages (development checkout only)."""
     tool = REPO / "tools" / "release" / "notices.py"
@@ -42,7 +55,7 @@ def generate(app: str) -> dict:
     with tempfile.TemporaryDirectory(prefix="rostrum-notices-") as tmp:
         out = Path(tmp) / "notices.json"
         args = Namespace(app=app, attributions=str(attributions), site_packages=[sysconfig.get_paths()["purelib"]],
-                         engine_deps=[str(REPO / "apps" / app / "engine" / "DEPENDENCIES.md")], out=str(out), text=None)
+                         engine_deps=[str(REPO / "apps" / app / "engine" / "DEPENDENCIES.md")], out=str(out), text=None, roots=roots(app))
         with contextlib.redirect_stdout(io.StringIO()):
             failed = mod.build(args) != 0
         if failed:

@@ -2,7 +2,7 @@
 (SongSettings.qml), lists the song's timeline (SongList.qml, song_list.py): every tempo, time signature and key
 CHANGE, the sections and markers (a click selects one); the first tempo, time signature and key are edited in the
 top bar only (SongReadout.qml), never twice. Then the song's other fields as the kit's InspectorRow calling this
-object as its "bridge": length, and behind More the rest. The arrangement header (SongReadout.qml) is the quick way to the tempo, time signature
+object as its "bridge": behind More the rest (the song's Length is the picker beside them, below). The arrangement header (SongReadout.qml) is the quick way to the tempo, time signature
 and key playing at the playhead, through the slots below. The picture to work to lives in the Picture corner (+ Add).
 
 The rows come from the `doc.set` field operation (rule of individuality as data: a new song field shows up here by
@@ -11,7 +11,6 @@ itself). Every edit is that operation on the song (one undo step; a drag on a nu
 """
 from __future__ import annotations
 
-import dataclasses
 from types import SimpleNamespace
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
@@ -21,13 +20,13 @@ from rostrum_gui.edits import Scrub, edit_label
 from rostrum_gui.model import RowsModel
 from rostrum_sound import main_mix
 
-from . import music_map, song_edit
+from rostrum_sound.doc import meter, tempo
 
-UP_FRONT = ("length",)                               # always in sight, whatever their importance in the field list
-ELSEWHERE = ("tempo", "beatsPerBar", "beatUnit", "picture")   # SongList's Bar 1 rows / the Picture corner: never rows here
+from . import music_map, song_edit, timing
+
+ELSEWHERE = ("tempo", "beatsPerBar", "beatUnit", "picture", "length")   # SongList's Bar 1 rows / the Picture corner / the Length picker (below): never rows here
+LENGTHS = (4, 8, 16, 32, 64, 128)                    # the bars the Length picker offers, after "Until the last sound"
 METERS = ["2/4", "3/4", "4/4", "5/4", "6/4", "7/4", "3/8", "5/8", "6/8", "7/8", "9/8", "12/8", "2/2"]
-UNSET = -1                                           # the length row's value while the song has none: shown in words
-UNSET_WORDS = {"length": "until the last sound"}
 
 
 class SongPanel(QObject):
@@ -38,8 +37,7 @@ class SongPanel(QObject):
         super().__init__(parent)
         self.bridge, self.doc = bridge, bridge.doc
         op = self.doc.kind.registry.field_op("doc")
-        params = [dataclasses.replace(p, importance="primary") if p.name in UP_FRONT else p
-                  for p in op.params if p.name not in ELSEWHERE]
+        params = [p for p in op.params if p.name not in ELSEWHERE]
         self._layout = [r for r in rows.layout(SimpleNamespace(params=params)) if r["row"] != "group"]
         self._rows = RowsModel(rows.ROLES, self)
         self._more, self._scrub = False, None
@@ -91,6 +89,35 @@ class SongPanel(QObject):
             self._main = "other"
             self.bridge._fail(str(e))
         self.mainMixChanged.emit()
+
+    # ---- the Length picker: "Until the last sound", or a number of bars --------------------------------------------
+    def _bars(self) -> float | None:
+        root = self.doc.data
+        if root.get("length") is None:
+            return None
+        return round(meter.bar_at(root, tempo.beat_at(root, timing.sec(root["length"], root))), 2)
+
+    @Property("QVariantList", notify=changed)
+    def lengthChoices(self):
+        """[{value, label}]: "" is until the last sound; a song whose length is not one of the list (a script set it)
+        keeps its own entry, so the field always says what it is."""
+        bars = self._bars()
+        counts = sorted({*LENGTHS, *([bars] if bars is not None else [])})
+        return [{"value": "", "label": "Until the last sound"},
+                *({"value": f"{n:g}", "label": f"{n:g} bar" + ("" if n == 1 else "s")} for n in counts)]
+
+    @Property(str, notify=changed)
+    def lengthChoice(self):
+        bars = self._bars()
+        return "" if bars is None else f"{bars:g}"
+
+    @Slot(str)
+    def setLength(self, value):
+        """"" puts the length back to the last sound; else that many bars (written in beats: it follows the tempo)."""
+        root = self.doc.data
+        end = None if value == "" else {"beat": meter.bar_start(root, int(float(value)) + 1)}
+        b = self.bridge
+        b._guard(lambda: b._apply([b.edit_call(self._root, "length", end)], "Song length"))
 
     @Slot()
     def makeMain(self):
@@ -195,8 +222,5 @@ class SongPanel(QObject):
         root = self.doc.data
         evaluated = rows.evaluate(self._layout, self.bridge.shown_values(root), self.doc.kind.facts(root, self.doc),
                                   self._more)
-        for r in evaluated:      # a field left out ("until the last sound") says so in words, not as 0
-            if r["row"] == "param" and r["id"] in UNSET_WORDS and root.get(r["id"]) is None:
-                r["value"], r["words"] = UNSET, [{"value": UNSET, "label": UNSET_WORDS[r["id"]]}]
         self._rows.update(evaluated) if self._rows.rows else self._rows.reset(evaluated)
         self.changed.emit()
