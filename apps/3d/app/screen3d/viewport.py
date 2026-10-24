@@ -67,6 +67,7 @@ class Viewport(QObject):
         self._r.failed.connect(self._on_failed)
         self._r.notice.connect(self._set_status)
         bridge.docChanged.connect(self._on_doc)
+        bridge.shotChanged.connect(self._on_shot)
         bridge.frameChanged.connect(self.redraw)
         bridge.selectionChanged.connect(self.redraw)
         bridge.selectionChanged.connect(lambda *_: self.settingsChanged.emit())   # canThroughLight follows it
@@ -79,6 +80,8 @@ class Viewport(QObject):
         _ENGINE_FOR_OPS[0] = self                              # (the newest window's; an old one closing leaves it)
         from .place_light import PlaceLight
         self.place = PlaceLight(self)                          # lights placed by highlight, linked by clicking
+        from .focus_pick import FocusPick
+        self.focus = FocusPick(self)                           # a camera's focus set by clicking (focus_pick.py)
 
     # --- QML properties
     serial = Property(int, lambda s: s._serial, notify=serialChanged)
@@ -110,6 +113,11 @@ class Viewport(QObject):
     def _on_doc(self, *_):
         self._scene = self._shot = self._wide = None
         self.redraw()
+
+    def _on_shot(self):
+        """Another shot is shown: look through its camera, its frame size."""
+        self.cam.camera, self._started = "", False
+        self._on_doc()
 
     def _compiled(self):
         if self._scene is None:
@@ -299,15 +307,20 @@ class Viewport(QObject):
     def click(self, x, y):
         """A click at (x, y) device pixels: select what is there, or place the shape the Shapes flyout armed there (placing
         or linking a light: that instead)."""
-        if self._size is not None and self.place.wants_click():
+        if self._size is not None and self.focus.wants_click():
+            self._guard(lambda: self.focus.click(x, y))
+        elif self._size is not None and self.place.wants_click():
             self._guard(lambda: self.place.click(x, y))
         elif self._size is not None:
             self._guard(lambda: self._r.pick(*self._pick_at(x, y)))
 
     @Slot(float, float)
     def altClick(self, x, y):
-        """Alt+click at (x, y) device pixels: the selected light's highlight lands there."""
-        if self._size is not None:
+        """Alt+click at (x, y) device pixels: the selected light's highlight lands there (picking a camera's focus: the
+        focus follows the item clicked)."""
+        if self._size is not None and self.focus.wants_click():
+            self._guard(lambda: self.focus.click(x, y, on_item=True))
+        elif self._size is not None:
             self._guard(lambda: self.place.alt_click(x, y))
 
     def _pick_at(self, x, y):
@@ -372,7 +385,8 @@ class Viewport(QObject):
                  "px": self._last_click}
         if item:
             on = through.find_item(scene, item, self.bridge.frame)
-            return self.bridge.add.place_at({"point": reply["point"], "normal": reply["normal"], **where}, (on[0], on[1]))
+            return self.bridge.add.place_at({"point": reply["point"], "normal": reply["normal"], "item": item, **where},
+                                            (on[0], on[1]))
         view = View.of(req, scene, self.bridge.frame, req["width"], req["height"])
         hit = placing.ground_hit(view, req["x"], req["y"])
         if hit is None:

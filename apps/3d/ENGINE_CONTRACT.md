@@ -39,7 +39,7 @@ One long-lived process. Each request is one line `{"<request>": {…}}`; each re
 ```json
 {
   "format": "rostrum-3d-scene", "version": 1,
-  "shot": {"id": "hero", "fps": 24, "start": 0, "end": 47},
+  "shot": {"id": "hero", "fps": 24, "start": 0, "end": 47, "shutter": 0.5},
   "world": {"background": [0.0, 0.0, 0.0], "environment": null},
   "materials": [
     {"id": "mat_glass", "props": {"baseColor": [0.97, 0.99, 0.98], "metallic": 0, "roughness": 0, "transmission": 1, "ior": 1.52, "…": "…"}}
@@ -58,6 +58,7 @@ One long-lived process. Each request is one line `{"<request>": {…}}`; each re
 ```
 
 - **Units:** metres, Y up, angles in degrees, time in frames at `shot.fps` (the core's frame *n* is USD time code *n*). `start`/`end` are inclusive.
+- **`shutter`** (v1.7, motion blur): how long the shutter is open, in frames, 0..1 (`0` = no motion blur; the shot's Shutter of 180° is 0.5), centred on each frame. The core writes it as every camera's `shutter:open` = −shutter/2 and `shutter:close` = +shutter/2 (USD's frame-relative shutter) and, for every animated transform, extra time samples at each frame ± shutter/2 (the straight line to the neighbouring frame, what USD reads there anyway): Cycles' Hydra plug-in spreads the samples it finds inside the shutter evenly over it, so they must sit at open, frame and close. A `render` or Final `view` through a camera with an open shutter switches Cycles' `motion_blur` on. **Only the camera's own move blurs** (an orbit, a dolly, a crane): Cycles' Hydra plug-in reads a moving object's transform at the frame only (hydra/geometry.inl), so a keyed object moving in front of a still camera stays sharp until that plug-in is patched. Storm (Quick) shows no motion blur.
 - **Colours are linear** (scene-referred, Rec.709 primaries) as three floats. The document stores `#rrggbb` (sRGB) for people; the compiler converts.
 - **Every field is present** in `props` (the compiler fills in defaults), so the core has no defaults table. The fields, their types and ranges are `rostrum3d/fields.py` (the one table).
 - **Transform** (every item): `x y z` (translate), `rx ry rz` (rotate, degrees, applied X then Y then Z, i.e. USD `xformOp:rotateXYZ`), `sx sy sz` (scale), `visible`. Authored as `translate`, `rotateXYZ`, `scale`, in that order. Aiming at a point is the compiler's job: it turns an aim into `rx ry rz`, frame by frame when animated.
@@ -172,4 +173,5 @@ The document's `emissionRender` (the id of a 2D item of the project) never reach
 - **v1.3** (H21): product lighting: light kind `strip`; `spread`, `card`, `lightsOnly` on lights, `seenByCamera` on domes; `view` reply `notInQuickView`. Cycles needs the patched Hydra plug-in for spread, links and a hidden dome.
 - **v1.5** (Priyam brief 12): `view` renderer `cycles` (the Final look: progressive, one step per request), `samples`, `denoise`; reply `final` and `vram`; leaving Final, the screen ends the engine process (`Engine.release()`) so its graphics memory goes back.
 - **v1.6** (Priyam brief 6): item type `combine` (live booleans: union, subtract, intersect of closed meshes, with Manifold 3.5.4).
+- **v1.7** (Priyam brief 11): `shot.shutter` (motion blur: camera shutter, sub-frame transform samples, Cycles `motion_blur`).
 - **v1.4** (H22): materials: `coatTint`, `coatIor`, `sheen`, `sheenRoughness`, `sheenTint`, `brushDirection`, `emissionTexture`, and a material's `anim.emissionTexture` (a picture per frame).

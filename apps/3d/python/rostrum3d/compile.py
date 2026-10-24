@@ -11,12 +11,14 @@ from . import aim, fields as F, material_scene, outline as outlines, rigs
 from .outline_fields import FIELDS as _OUTLINE_PARAMS, OUTLINE_SHAPES
 from .colors import linear
 from .light_fields import DOC_ONLY as LIGHT_DOC_ONLY
+from .render_fields import shutter_frames
 
 FORMAT, VERSION = "rostrum-3d-scene", 1
 AIM_FIELDS = {"aim", "aimX", "aimY", "aimZ", "aimItem", "roll"}      # document-only: the compiler resolves them
 ROTATION = ("rx", "ry", "rz")
 PIVOT = ("px", "py", "pz")                     # document-only: Position is where the pivot is; the core gets the origin
-RESOLVED = AIM_FIELDS | set(PIVOT)             # fields the compiler resolves into others, never sent
+FOCUS_ITEM = "focusItem"                       # a camera's: the compiler turns it into focusDistance per frame
+RESOLVED = AIM_FIELDS | set(PIVOT) | {FOCUS_ITEM}   # fields the compiler resolves into others, never sent
 DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"}      # words, font, file … never sent
 
 
@@ -112,6 +114,18 @@ def pivoted(v: dict) -> list[float]:
     return [v[k] - o for k, o in zip(("x", "y", "z"), off)]
 
 
+def _focus_on_item(id_: str, fr: _Frames) -> list[float] | None:
+    """A camera's focus distance per frame while it focuses on an item (focusItem): how far in front of the camera
+    (along its −Z, the way a lens measures it) the item's origin is. None when it focuses on a distance."""
+    v0 = fr.values(id_, fr.frames[0])
+    target = v0.get(FOCUS_ITEM) or ""
+    if not v0["dof"] or not target:
+        return None
+    if target not in fr.items:
+        raise ValueError(f'{id_}: focuses on "{target}", which is not an item')
+    return [max(0.001, aim.ahead(fr.world(id_, f), aim.point(fr.world(target, f), [0.0, 0.0, 0.0]))) for f in fr.frames]
+
+
 def _out(p, value):
     if p.type == "color":
         return linear(value)
@@ -170,6 +184,12 @@ def _node(item: dict, fr: _Frames) -> dict:
         if p.name in animated:
             vals = per_frame.get(p.name) or [fr.values(item["id"], f)[p.name] for f in fr.frames]
             anim[p.name] = [_out(p, x) for x in vals]
+    if type_ == "camera" and (focus := _focus_on_item(item["id"], fr)) is not None:
+        p = F.param("camera", "focusDistance")
+        node["props"]["focusDistance"] = _out(p, focus[0])
+        anim.pop("focusDistance", None)
+        if max(focus) - min(focus) > 1e-9:
+            anim["focusDistance"] = [_out(p, x) for x in focus]
     if anim:
         node["anim"] = anim
     if type_ == "import":
@@ -190,7 +210,10 @@ def describe(data: dict, shot_id: str, folder=None) -> dict:
         raise ValueError(f'shot "{shot_id}": its camera "{info["camera"]}" is not a camera in this document')
     return {
         "format": FORMAT, "version": VERSION,
-        "shot": {k: info[k] for k in ("id", "fps", "start", "end")},
+        # shutter: frames the shutter is open, centred on each frame (USD's camera shutter is frame-relative and
+        # Cycles' default motion position is the centre), so the sharp picture of frame n sits in the middle of its
+        # smear and a still frame matches the unblurred one at its own time.
+        "shot": {**{k: info[k] for k in ("id", "fps", "start", "end")}, "shutter": shutter_frames(shot)},
         "world": {"background": linear(shot["background"]), "environment": None},
         "materials": material_scene.materials(data, frames, info["fps"], folder, _out),
         "items": [_node(i, fr) for i in data.get("items", [])],
