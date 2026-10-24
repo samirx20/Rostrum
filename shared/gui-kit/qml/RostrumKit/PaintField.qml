@@ -8,7 +8,8 @@ import "ColourMath.js" as M
 // stops", "None", a painting's name). A click on the square (or on the name) opens the PaintPicker beside it (to its left).
 // One picker session = one undo: began() on the first change, live(paint) while it goes on, ended() when the picker closes;
 // a pick that is a whole change by itself (a painting, a fit, a picture file) ends the session at once. Painted's New
-// painting is the app's: `asked(add)` after the open change ends (a new painting is a change of its own).
+// painting is the app's: `asked(add)` after the open change ends (a new painting is a change of its own); so is Paint it
+// (`asked(paintIt)`: the picker closes and the app's brush paints the painting).
 // Painted, the paintings to pick (`sources`) and the rows drawn under Fit (`rows`, `rowsBridge`, `rowsHost`) come from
 // the app; InspectorRow hands in its row's.
 // With `scrubbed` off, `edited(paint)` is sent once at the close instead (as ColorField does). While open it is
@@ -28,6 +29,8 @@ SwatchHex {
     signal asked(string action)
     property var sources: []
     property string add: ""               // the app's action for Painted's New painting ("" = no Painted)
+    property string paintIt: ""           // the app's action for Paint it ("" = none)
+    property string paintItNote: ""       // the words beside it ("used by 3 layers")
     property var rows: null
     property var rowsBridge: null
     property string rowsHost: ""
@@ -76,10 +79,12 @@ SwatchHex {
             brand: picker.banked ? colourBank.brand : []
             brandName: picker.banked ? colourBank.brandName : ""
             sources: f.sources; rows: f.rows; rowsBridge: f.rowsBridge; rowsHost: f.rowsHost
+            paintIt: f.paintIt; paintItNote: f.paintItNote
             types: f.add === "" ? f.types.filter(t => t !== "painted") : f.types
             onEdited: (p) => f.take(p)
             onChosen: (p) => { f.take(p); f.settle() }
             onAdded: { f.settle(); f.asked(f.add) }
+            onPaintAsked: { picker.close(); f.asked(f.paintIt) }
             onSwatchAdd: (hx) => f.saveSwatch(hx)
         }
     }

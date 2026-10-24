@@ -9,7 +9,8 @@ import "ColourMath.js" as M
 // `sources`, tiles), then how it covers the box (Fill · Fit · Tile · Stretch), then the app's own rows for the rest (Scale,
 // Offset …: `rows`, a model of the settings panel's rows, those marked `inside` this field drawn by the kit's
 // InspectorRow with their key marks, each its own change through `rowsBridge`). Painted with no painting yet asks for a
-// new one at once (`added`); with some, the tiles show first and a click on one uses it.
+// new one at once (`added`); with some, the tiles show first and a click on one uses it. A painted fill ends with Paint it
+// (`paintAsked`: the app's brush paints the painting, through this layer) and how many layers use it.
 //   paint: {type, color, stops: [{at, color, opacity}], angle, cx, cy, picture, painting, fit}
 Column {
     id: pp
@@ -27,6 +28,9 @@ Column {
     signal edited(var paint)
     signal chosen(var paint)
     signal added()                        // Painted's New painting (the field ends its open change first)
+    signal paintAsked()                   // Paint it (the field closes the picker and asks the app)
+    property string paintIt: ""           // the app's Paint it action ("" = no Paint it)
+    property string paintItNote: ""
     signal swatchAdd(string hex)          // the "+": the field ends its open change first, then saves (PaintField)
 
     readonly property string type: paint && paint.type ? paint.type : "solid"
@@ -171,6 +175,14 @@ Column {
                 }
             }
         }
+    }
+    Item {        // Paint it: the brush on the painting, painting it in place on this layer (and every layer using it)
+        objectName: "paintIt"
+        visible: pp.raster && pp.type === "painted" && pp.paintIt !== ""
+        width: parent.width; height: Theme.button + Theme.grid
+        Button { id: paintItButton; anchors.bottom: parent.bottom; text: "Paint it"; hint: "B"; onClicked: pp.paintAsked() }
+        Text { anchors { left: paintItButton.right; leftMargin: Theme.gap; right: parent.right; verticalCenter: paintItButton.verticalCenter }
+               text: pp.paintItNote; elide: Text.ElideRight; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
     }
     Text { visible: pp.shown === "none"; text: "No fill"; color: Theme.fg3; font.pixelSize: Theme.body; font.family: uiFont }
 }

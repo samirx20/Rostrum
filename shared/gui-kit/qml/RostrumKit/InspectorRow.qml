@@ -357,6 +357,7 @@ Item {
                 maxStops: o.maxStops || 8
                 stopOpacity: o.stopOpacity !== false
                 sources: o.sources || []; add: o.add || ""          // Painted: the paintings, and the app's New painting action
+                paintIt: o.paintIt || ""; paintItNote: o.paintItNote || ""   // and its Paint it (the brush on the painting)
                 rows: row.bridge.rows; rowsBridge: row.bridge; rowsHost: row.model.id     // the rows marked inside this one
                 onAsked: (a) => row.bridge.rowAction(a)
                 onEdited: (v) => row.set(v)
