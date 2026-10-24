@@ -10,6 +10,9 @@ from __future__ import annotations
 from . import lanes, stepped, timeline, voice_card, voice_takes
 
 
+MIX_FIELDS = frozenset({"volume", "pan", "reverb", "output"})
+
+
 class RowsView:
     def _show_roll(self):
         """The Editor shows another track: only the roll is made again, the arrangement's rows stay (rebuilding every
@@ -45,6 +48,9 @@ class RowsView:
         when its track is one, the song only when its length moved. A step leaves the list `tracks` as it was; a
         change sends it (timelineChanged). Anything else (a marker, the tempo, tracks added …): everything (_rebuild)."""
         root = self.doc.data
+        if self._mix_only(root):
+            self._shown = root
+            return
         changed = stepped.changed_tracks(self._shown, root)
         if changed is None or (change and self._lanes_now() != self._open):
             return self._rebuild()
@@ -53,18 +59,28 @@ class RowsView:
         rows = timeline.arrange(root, tracks, self._open, self._folded)
         self._marks_on([t for t in tracks if t["id"] in changed])
         self._made, self._shown = {t["id"]: t for t in tracks}, root
+        same = rows == self._view["rows"]             # a fader or a pan moves no row: the screen is told nothing
         self._view["rows"] = rows
         song = timeline.song(root, tracks, self._view["markers"])
         if song != self._view["song"]:
             self._view["song"] = song
             self._tv.setLength(self._length())
             self.songChanged.emit()
+        if same:
+            return
         if change:
             self.timelineChanged.emit()
         self._lanes.update([{"id": r["id"], "track": r} for r in rows], instant=True)
         if self._track in changed:
             self._view["roll"] = self._roll(rows)
             self.rollChanged.emit()
+
+    def _mix_only(self, root) -> bool:
+        """The change (or step) set only a track's own level, pan, reverb or output, and no lane is open: no row,
+        block or roll shows those, so the screen is told nothing (touched.py)."""
+        t = self._kit.touched
+        return (t is not None and not t.structural and bool(t.fields) and not self._open and self._shown is not None
+                and all(f in MIX_FIELDS and self.doc.has(i) and self.doc.item(i)["type"] == "track" for i, f in t.fields))
 
     def _roll(self, rows) -> dict:
         """The Editor's piano roll of the current track (`_track`), in its row's colour."""

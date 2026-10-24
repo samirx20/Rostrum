@@ -19,10 +19,16 @@ from typing import Callable
 from rostrum_core.cache import Cache
 
 
+def _clips_only(root: dict, ids: list[str]) -> dict:
+    """What the job reads of the document: the given clips (their tracks' ids), nothing else (a small spec to write)."""
+    tracks = [{"id": t["id"], "clips": [c for c in t.get("clips", []) if c["id"] in ids]} for t in root.get("tracks", [])]
+    return {"tracks": [t for t in tracks if t["clips"]]}
+
+
 class CleanProcess:
     def __init__(self, root: dict, folder, ids: list[str], on_progress: Callable[[str], None]):
         """`folder`: the song's project folder, which a take's relative `media` is read under (never the job's own)."""
-        self.root, self.folder, self.ids, self.on_progress = root, folder, ids, on_progress
+        self.root, self.folder, self.ids, self.on_progress = _clips_only(root, ids), folder, ids, on_progress
         self.proc: subprocess.Popen | None = None
         self.cancelled, self.started = False, time.time()
 

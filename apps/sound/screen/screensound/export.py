@@ -24,7 +24,7 @@ from rostrum_sound import compile as compile_doc
 from rostrum_sound import deliver, handoff, midi, presets
 from rostrum_sound.doc import markers
 
-from . import delivery, export_stems, loudness, playback
+from . import delivery, export_stems, loudness, playback, strips
 from .export_versions import Versions, ranges, schedule_for
 
 
@@ -76,6 +76,8 @@ class RenderExport(ExportSheet):
     def _sync(self, *_):
         """The master's target changed (here, by undo, or by an agent): the list shows it. A chosen row whose numbers
         the master still has stays chosen (Podcast and Apple Music ask for the same numbers)."""
+        if not self.bridge.reached([strips.MASTER]):     # a track's own edit never moves the master's target
+            return
         t = self._loud.target if self._loud is not None else {}
         if self._choice == MIDI:                         # not a loudness target: the master's doesn't move it
             return
