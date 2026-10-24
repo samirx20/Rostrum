@@ -1,7 +1,7 @@
 """Seeing and checking drawings: look_drawing, look_drawing_change, inspect_drawing_at, inspect_stroke_landed.
 
 Every coordinate here is a canvas pixel (a drawing layer's own w × h; a painted element's paintW × paintH, stretched over
-its box), never a composition pixel. `layer` may be a drawing or any painted element.
+its box; a painting's own w × h), never a composition pixel. `layer` may be a drawing, a painting or any painted element.
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from rostrum2d import drawing as D, paint_fields
 
 tools = Tools()
 ITEM = {"item": {"type": "string", "description": "The document's project item id. Optional when only one document is open."}}
-LAYER = {"layer": {"type": "string", "description": "A drawing layer's id, or a painted element's (shape, text, image, video, path)."}}
+LAYER = {"layer": {"type": "string", "description": "A drawing layer's id, a painting's, or a painted element's (shape, text, image, video, path)."}}
 FRAME = {"frame": {"type": "integer", "minimum": 0, "default": 0,
                    "description": "A frame number. A drawing shows its drawing with the largest `at` at or before it."}}
 ZOOM = {"zoom": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4,
@@ -28,11 +28,11 @@ SAMPLING = {"sampling": {"type": "string", "enum": list(see.SAMPLINGS), "default
 
 
 def drawing_of(ctx, doc, layer):
-    """A drawing layer, or an element holding paint (paint.stroke): both are painting-kit canvases in frames."""
-    painted = [i["id"] for i in doc.items() if i.get("type") == "drawing" or (i.get("type") in paint_fields.TYPES and i.get("frames"))]
+    """A drawing layer, a painting, or an element holding paint (paint.stroke): all are painting-kit canvases in frames."""
+    painted = [i["id"] for i in doc.items() if i.get("type") in D.CANVASES or (i.get("type") in paint_fields.TYPES and i.get("frames"))]
     item = doc.item(layer) if doc.has(layer) else None
     if item is None:
-        raise RostrumError.not_found(ctx.tool, "drawing layer", layer, painted, "this document's drawings and painted layers")
+        raise RostrumError.not_found(ctx.tool, "drawing layer or painting", layer, painted, "this document's drawings, paintings and painted layers")
     if item["id"] not in painted:
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f'"{layer}"', f'is a {item.get("type")} layer with no paint',
                            painted, hint="Paint on it first (paint.stroke).")

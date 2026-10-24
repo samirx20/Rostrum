@@ -15,6 +15,9 @@ rostrum_core merges that tree in (`run_script`), so a re-run never wipes what so
     flame = drawing("flame", w=800, h=1000)                           # frame-by-frame: one drawing per frame or held
     ink = flame.frame(0).paint("ink")                                 # drawing at frame 0, its paint layer
     ink.stroke([(400, 900), (380, 600, 0.6), (420, 300, 0.2)], color="#ffb040", size=40, brush="bristle")
+    grain = painting("paper grain", w=128, h=128, seamless=True)      # a painting of the scene, in its own px (paintings.py)
+    grain.stroke([(10, 20, .6), (118, 24, .8)], brush="bristle", color="#c1683a", size=6)     # on its first drawing's Ink layer
+    shape("card", w=300, h=380, fill=painted(grain, fit="tile", scale=0.78, drift=(12, 0)))   # many layers may use one
 
 Ids: the first argument; left out, they are counted per type (text_1, text_2 …), skipping every quoted word in
 the script, so adding one item never renames another. Unknown fields and bad values fail loudly.
@@ -115,7 +118,7 @@ class Item:
 
     # drawing layers (painting kit): drawing.frame(at) -> frame.paint() -> paint.stroke(points, **brush)
     def frame(self, at: int, id: str | None = None) -> "Item":
-        self._need("drawing", "frame")
+        self._need(("drawing", "painting"), "frame")
         node = {"id": self._b.new_id("frame", id), "type": "frame", "at": F.param("frame", "at").check(at, "frame"),
                 "paints": [], "paintmasks": []}
         frames = self.node["frames"]
@@ -133,12 +136,21 @@ class Item:
         return self._b.add_kit("paintmask", id, {"points": points, **values}, self.node["paintmasks"])
 
     def stroke(self, points, id: str | None = None, **brush) -> "Item":
+        if self.node["type"] == "painting":              # the shortcut: its first drawing and its Ink layer, made when missing
+            return self._ink().stroke(points, id, **brush)
         self._need("paint", "stroke")
         return self._b.add_kit("stroke", id, {"points": points, **brush}, self.node["strokes"])
 
+    def _ink(self) -> "Item":
+        frames = self.node["frames"]
+        frame = Item(self._b, frames[0]) if frames else self.frame(0)
+        paints = frame.node["paints"]
+        return Item(self._b, paints[0]) if paints else frame.paint(name="Ink")
+
     def _need(self, type_, what):
-        if self.node["type"] != type_:
-            raise ValueError(f"{self.id} is a {self.node['type']}; .{what}() is for a {type_}")
+        types = (type_,) if isinstance(type_, str) else type_
+        if self.node["type"] not in types:
+            raise ValueError(f"{self.id} is a {self.node['type']}; .{what}() is for a {' or '.join(types)}")
 
     def __enter__(self):
         if self.node["type"] not in ("group", "rig"):
@@ -150,6 +162,29 @@ class Item:
         self._b.holders.pop()
         if self.node["type"] == "group" and not exc[0] and self.id not in self._b.sized:
             fit(self.node)
+
+
+class Painted:
+    """What `painted(painting, fit=, scale=, offset=(x, y), rotation=, drift=(x, y), under=, blend=, opacity=, phase=)` gives:
+    a shape's or path's fill from a painting of the document; `fill=` takes it."""
+    NAMES = {"fit": "fillFit", "scale": "fillScale", "rotation": "fillRotation", "under": "fillUnder", "blend": "fillBlend",
+             "opacity": "fillOpacity", "phase": "fillPhase"}
+
+    def __init__(self, painting, offset=None, drift=None, **fields):
+        unknown = set(fields) - set(self.NAMES)
+        if unknown:
+            raise ValueError(f'painted() has no "{sorted(unknown)[0]}"; it takes {", ".join(sorted([*self.NAMES, "offset", "drift"]))}')
+        self.id = getattr(painting, "id", painting)
+        self.values = {self.NAMES[k]: v for k, v in fields.items()}
+        for word, prop in (("offset", "fillOffset"), ("drift", "fillDrift")):
+            xy = offset if word == "offset" else drift
+            if xy is not None:
+                if not isinstance(xy, (tuple, list)) or len(xy) != 2:
+                    raise ValueError(f"painted({word}=…) is a pair: ({word}=(x, y))")
+                self.values[prop + "X"], self.values[prop + "Y"] = xy
+
+    def fields(self) -> dict:
+        return {"filled": True, "fillType": "painted", "fillPainting": self.id, **self.values}
 
 
 class Build:
@@ -170,6 +205,8 @@ class Build:
         return id_
 
     def fill(self, node, values):
+        if isinstance(values.get("fill"), Painted):         # fill=painted(grain, fit="tile", …): a painted fill, the fields below
+            values = {**{k: v for k, v in values.items() if k != "fill"}, **values["fill"].fields()}
         params = F.FIELDS[node["type"]]
         known = [p.name for p in params]
         kinds = {p.name: p.type for p in params}
@@ -201,6 +238,17 @@ class Build:
         node = build(type_, self.new_id(type_, id_), values, f"{type_} {id_ or ''}".strip())
         into.append(node)
         return Item(self, node)
+
+    def painting(self, id=None, **values) -> Item:
+        """A painting of the document (paintings.py): its size, Seamless, its drawings; layers use it with painted().
+        The first word is its id; written as words ("paper grain") it is its name and the id is counted."""
+        if id is not None and not ids.is_valid(id):
+            values.setdefault("name", id)
+            id = None
+        item = self.add("painting", id, values, self.root.setdefault("paintings", []))
+        if "name" not in values:
+            item.node["name"] = id or F.LABELS["painting"]
+        return item
 
     def comp(self, id=None, **values) -> Item:
         item = self.add("comp", id, values, self.root["comps"])
@@ -273,7 +321,7 @@ def run_source(source: str, name: str) -> dict:
     """Python source -> the document tree it builds. Any error is a loud BAD_ARGUMENT naming the line; nothing is merged."""
     b = Build(_reserved(source))
     scope = {"__builtins__": {**SAFE, "__import__": _import}, "math": math, "comp": b.comp,
-             **{t: (lambda id=None, _t=t, **v: b.layer(_t, id, **v)) for t in F.PLACED}, "frame": b.frame, "camera": b.camera,
+             **{t: (lambda id=None, _t=t, **v: b.layer(_t, id, **v)) for t in F.PLACED}, "frame": b.frame, "camera": b.camera, "painting": b.painting, "painted": Painted,
              **pathdata.for_script(b.layer), **rig_script.for_script(b),
              **lipsync_script.for_script(b)}
     try:
@@ -288,7 +336,8 @@ API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)"
        "item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields)",
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
        "path(id, d=star(5, 100, 45))", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)",
-       "frame.paintmask(points)"]
+       "frame.paintmask(points)", "painting(id, w=, h=, seamless=)", "painting.stroke(points, **brush)",
+       "shape / path(id, fill=painted(painting, fit=, scale=, offset=(x, y), rotation=, drift=(x, y), under=, blend=, opacity=))"]
 
 
 def _failed(e: Exception, name: str, scope: dict) -> RostrumError:

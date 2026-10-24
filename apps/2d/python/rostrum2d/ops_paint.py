@@ -24,7 +24,7 @@ from .engine import EngineError
 from .evaluate import resolve
 from .kind import REGISTRY as R
 
-PAINTABLE = ("drawing", *paint_fields.TYPES)
+PAINTABLE = ("drawing", "painting", *paint_fields.TYPES)
 MASK = next(p for p in rostrum_paint.FIELDS["stroke"] if p.name == "mask")
 
 
@@ -50,12 +50,13 @@ def paint_stroke(ctx, targets, args):
     for t in targets:
         item = ctx.item(t)
         n = args.get("frame", 0)
-        props = resolve(item, n / _fps(ctx, t))
-        cw, ch = D.paint_size(item, props)
         pts = args["points"]
-        if args.get("space", "comp") == "comp":         # where the engine draws the layer at that frame (placement.py)
-            pts = placement.canvas_points(item, props, _place(ctx, t, n), pts)
-        if item["type"] != "drawing" and not item.get("paintW"):
+        if item["type"] != "painting":                   # a painting has no place in the scene: its points are always its own px
+            props = resolve(item, n / _fps(ctx, t))
+            cw, ch = D.paint_size(item, props)
+            if args.get("space", "comp") == "comp":     # where the engine draws the layer at that frame (placement.py)
+                pts = placement.canvas_points(item, props, _place(ctx, t, n), pts)
+        if item["type"] not in D.CANVASES and not item.get("paintW"):
             ctx.set(t, "paintW", cw)
             ctx.set(t, "paintH", ch)
         frame = _frame(ctx, t, n)

@@ -1,14 +1,16 @@
 """A layer's fill as one paint (fill_fields.py): read it (`of`), hand it to the engine (`lower`, `engine_props`) and
 bring an old file's gradient effect into the fill (`upgrade`).
 
-    {"type": "none" | "solid" | "linear" | "radial" | "angular" | "picture", "color": "#rrggbb", "opacity": 0..1 (solid),
+    {"type": "none" | "solid" | "linear" | "radial" | "angular" | "picture" | "painted", "color": "#rrggbb", "opacity": 0..1 (solid),
      "stops": [{"at": 0..1, "color": "#rrggbb" | "#rrggbbaa", "opacity": 0..1}, …], "angle": °, "cx": 0..1, "cy": 0..1,
-     "span": "box" | "points", "x1", "y1", "x2", "y2", "rx", "ry": 0..1, "picture": path, "fit", "scale"}
+     "span": "box" | "points", "x1", "y1", "x2", "y2", "rx", "ry": 0..1, "picture": path, "painting": id, "fit", "scale",
+     "offsetX", "offsetY", "rotation", "driftX", "driftY", "under": colour | None, "blend", "phase"}
 
 The engine draws a gradient as its `gradient` effect with the stops as its `stops` children (any number, anywhere in
 0..1, see-through allowed; each stop's colour, position and opacity keyed like any field). A stop colour written
 #rrggbbaa (keyed too) goes as written; the engine multiplies its alpha into the stop's opacity. A solid fill's opacity is the layer's own `fillOpacity` (the engine multiplies it into the colour's alpha, keys too). A picture fill is the layer's own
-fillPicture / fillFit / fillScale (fill_fields.PICTURE), read by the engine.
+fillPicture / fillFit / fillScale (fill_fields.PICTURE), read by the engine. A painted fill names a painting of the
+document (`fillPainting`, paintings.py) and shares Fit, Scale and the per-use fields with a picture fill.
 """
 from __future__ import annotations
 
@@ -46,7 +48,17 @@ def of(item: dict) -> dict:
                       for s in stops_of(item)],
             "angle": item.get("gradAngle", 90.0), "cx": item.get("gradX", 0.5), "cy": item.get("gradY", 0.5),
             **{short: item.get(name, _default(name)) for name, short in GEOMETRY.items()},
-            "picture": item.get("fillPicture", ""), "fit": item.get("fillFit", "fill"), "scale": item.get("fillScale", 1.0)}
+            "picture": item.get("fillPicture", ""), "fit": item.get("fillFit", "fill"), "scale": item.get("fillScale", 1.0),
+            "painting": item.get("fillPainting", ""),
+            **{short: item.get(name, _default_raster(name)) for name, short in RASTER.items()}}
+
+
+RASTER = {"fillOffsetX": "offsetX", "fillOffsetY": "offsetY", "fillRotation": "rotation", "fillDriftX": "driftX",
+          "fillDriftY": "driftY", "fillUnder": "under", "fillBlend": "blend", "fillPhase": "phase"}
+
+
+def _default_raster(name: str):
+    return next(p.default for p in FF.PICTURE if p.name == name)
 
 
 def _default(name: str):
@@ -61,8 +73,8 @@ def lower(item: dict) -> dict | None:
     """The gradient effect item the engine draws for this layer's gradient fill (None: not a gradient). Raises
     ValueError, in words, for a gradient it can't be (fewer than 2 stops)."""
     kind = kind_of(item)
-    if kind == "picture" and item["type"] == "text":
-        raise ValueError(f'{item["id"]}: a text’s letters take no picture fill yet; use a colour or a gradient')
+    if kind in ("picture", "painted") and item["type"] == "text":
+        raise ValueError(f'{item["id"]}: a text’s letters take no {kind} fill yet; use a colour or a gradient')
     if kind not in FF.GRADIENTS:
         return None
     stops = stops_of(item)
@@ -86,9 +98,12 @@ def _stop(item: dict, i: int, stop: dict) -> dict:
 
 
 def engine_props(item: dict, props: dict) -> dict:
-    """A shape's or path's props as sent: its picture only while the fill type is picture."""
+    """A shape's or path's props as sent: its picture only while the fill type is picture. A painted fill is not drawn
+    by the engine yet (brief P2): the shape shows no fill rather than a stray colour."""
     if "fillPicture" in props and kind_of(item) != "picture":
         props["fillPicture"] = ""
+    if kind_of(item) == "painted" and "filled" in props:
+        props["filled"] = False
     return props
 
 

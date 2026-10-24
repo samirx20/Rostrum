@@ -1,5 +1,5 @@
 """A layer's fill as a paint (SPEC 2d-design-v2 § 6): solid, a linear / radial / angular gradient (on a shape, a
-path or a text's letters) or a picture (shapes and paths: PICTURE, fields the engine reads itself). The paint is fields on the layer (its type and the gradient's geometry, animatable) plus its
+path or a text's letters), a picture or a painting of the document (shapes and paths: PICTURE, shared raster fields). The paint is fields on the layer (its type and the gradient's geometry, animatable) plus its
 stops: child items `stop` (at, color, opacity), each with its own keys, so a stop's colour and position animate like
 any other field. "None" is the layer's `filled` off (a text has no None). fill_paint.py reads and writes it as one
 paint; scene.py hands it to the engine (fill_paint.lower). Document-side only: the engine never sees these fields.
@@ -16,8 +16,8 @@ from rostrum_core import Param
 
 OWNERS = ("shape", "text", "path")
 GRADIENTS = ("linear", "radial", "angular")
-TYPES = ("solid", *GRADIENTS, "picture")
-TEXT_TYPES = ("solid", *GRADIENTS)                          # a text's letters take no picture yet
+TYPES = ("solid", *GRADIENTS, "picture", "painted")
+TEXT_TYPES = ("solid", *GRADIENTS)                          # a text's letters take no picture or painting yet
 G = "Fill"
 _GRAD = {"any": [{"is": ["fillType", t]} for t in GRADIENTS]}
 _ANGLED = {"any": [{"is": ["fillType", "linear"]}, {"is": ["fillType", "angular"]}]}
@@ -25,7 +25,7 @@ _CENTRED = {"any": [{"is": ["fillType", "radial"]}, {"is": ["fillType", "angular
 
 LAYER = [
     Param.choice("fillType", list(TYPES), label="Fill type", group=G, default="solid", importance="deep",
-                 labels={"solid": "Solid", "linear": "Linear", "radial": "Radial", "angular": "Angular", "picture": "Picture"}),
+                 labels={"solid": "Solid", "linear": "Linear", "radial": "Radial", "angular": "Angular", "picture": "Picture", "painted": "Painted"}),
     Param.number("gradAngle", label="Gradient angle", group=G, min=-360, max=360, step=0.1, unit="°", default=90.0,
                  importance="deep", valid_when=_ANGLED, help="Linear: the direction (90° = left to right). Angular: where the sweep starts (0° = up)"),
     Param.number("gradX", label="Gradient centre X", group=G, min=-5, max=6, step=0.01, default=0.5, importance="deep",
@@ -33,11 +33,11 @@ LAYER = [
     Param.number("gradY", label="Gradient centre Y", group=G, min=-5, max=6, step=0.01, default=0.5, importance="deep",
                  valid_when=_CENTRED, display="percent", help="Fraction of the layer's box: 0 = top edge, 1 = bottom edge"),
 ]
-# A solid fill's opacity: a field the engine reads itself (a gradient's is its stops'); old files have none = 1.
+# A solid, picture or painted fill's opacity: a field the engine reads itself (a gradient's is its stops'); old files have none = 1.
 OPACITY = [
     Param.number("fillOpacity", label="Fill opacity", group=G, min=0, max=1, step=0.01, default=1.0, importance="deep",
-                 valid_when={"is": ["fillType", "solid"]}, display="percent",
-                 help="How much of the solid colour shows (the stroke and the layer's own opacity are separate)"),
+                 valid_when={"any": [{"is": ["fillType", t]} for t in ("solid", "picture", "painted")]}, display="percent",
+                 help="How much of the fill shows (the stroke and the layer's own opacity are separate)"),
 ]
 _POINTS = {"all": [{"is": ["gradSpan", "points"]}, {"any": [{"is": ["fillType", "linear"]}, {"is": ["fillType", "radial"]}]}]}
 _LIN = {"all": [{"is": ["gradSpan", "points"]}, {"is": ["fillType", "linear"]}]}
@@ -76,15 +76,44 @@ GEOMETRY = [
                       ("rx", "Radius X", 0.5), ("ry", "Radius Y", 0.5))),
 ]
 
-# A picture fill: fields the engine reads on shapes and paths. scene.py sends fillPicture "" unless the fill type is
-# picture, so a picture chosen once and then left for a colour is kept but not drawn.
+# A picture fill and a painted fill are one thing with two sources: a raster covering the box. Fit and Scale are shared;
+# the per-use fields below (where it sits in this element) are shared too, painted adds which painting and which drawing it
+# starts on. scene.py sends fillPicture "" unless the fill type is picture, so a picture chosen once and then left for a
+# colour is kept but not drawn. The engine reads fillPicture / fillFit / fillScale; the rest are Python-side until the
+# engine draws them (RASTER_ONLY: brief P2 hands them over).
 _PIC = {"is": ["fillType", "picture"]}
+_PAINTED = {"is": ["fillType", "painted"]}
+_RASTER = {"any": [_PIC, _PAINTED]}
+_TILED = {"all": [_RASTER, {"is": ["fillFit", "tile"]}]}
+_FREE = {"all": [_RASTER, {"any": [{"is": ["fillFit", f]} for f in ("fill", "fit", "tile")]}]}     # not Stretch
+BLENDS = ["normal", "multiply", "screen", "overlay"]
 PICTURE = [
     Param.text("fillPicture", label="Picture", group=G, default="", importance="primary", valid_when=_PIC, control="file",
                help="The picture file that fills the shape, clipped to it"),
     Param.choice("fillFit", ["fill", "fit", "tile", "stretch"], label="Picture fit", group=G, default="fill",
-                 importance="primary", valid_when=_PIC,
+                 importance="primary", valid_when=_RASTER,
                  labels={"fill": "Fill", "fit": "Fit", "tile": "Tile", "stretch": "Stretch"}),
     Param.number("fillScale", label="Picture scale", group=G, min=0.01, max=100, step=0.01, default=1.0,
-                 importance="secondary", valid_when=_PIC, display="percent"),
+                 importance="secondary", valid_when=_FREE, display="percent"),
+    Param.text("fillPainting", label="Painting", group=G, default="", importance="primary", valid_when=_PAINTED, control="pick",
+               help="The painting of this scene that fills the shape; editing it changes every layer using it"),
+    Param.number("fillOffsetX", label="Offset X", group=G, min=-100000, max=100000, step=1, unit="px", default=0.0,
+                 importance="secondary", valid_when=_FREE, help="Moves the painting inside this element"),
+    Param.number("fillOffsetY", label="Offset Y", group=G, min=-100000, max=100000, step=1, unit="px", default=0.0,
+                 importance="secondary", valid_when=_FREE),
+    Param.number("fillRotation", label="Rotation", group=G, min=-360, max=360, step=0.1, unit="°", default=0.0,
+                 importance="secondary", valid_when=_TILED, help="Turns the tiles about the centre of the box"),
+    Param.number("fillDriftX", label="Drift X", group=G, min=-100000, max=100000, step=1, unit="px/s", default=0.0,
+                 importance="secondary", valid_when=_TILED, help="Slides the tiles at a steady speed, for ever"),
+    Param.number("fillDriftY", label="Drift Y", group=G, min=-100000, max=100000, step=1, unit="px/s", default=0.0,
+                 importance="secondary", valid_when=_TILED),
+    Param.color("fillUnder", label="Colour under it", group=G, default=None, nullable=True, importance="secondary",
+                valid_when=_RASTER, help="A colour drawn under the picture or painting, inside the outline. Empty = none"),
+    Param.choice("fillBlend", BLENDS, label="Blend", group=G, default="normal", importance="secondary",
+                 valid_when={"all": [_RASTER, {"not": {"is": ["fillUnder", None]}}]},
+                 labels={b: b.capitalize() for b in BLENDS}, help="How the picture or painting meets the colour under it"),
+    Param.number("fillPhase", label="Start at drawing", group=G, min=0, max=10000, step=1, integer=True, default=0,
+                 importance="secondary", valid_when=_PAINTED, help="Which drawing of a painting that draws each frame this layer starts on"),
 ]
+RASTER_ONLY = {p.name for p in PICTURE if p.name not in ("fillPicture", "fillFit", "fillScale")}
+NAMES |= RASTER_ONLY                      # python-only until the engine draws them (scene.python_only)

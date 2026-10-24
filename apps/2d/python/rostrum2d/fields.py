@@ -13,7 +13,7 @@ from dataclasses import replace
 from rostrum_core import Param
 from rostrum_core.keys import KEY_FIELDS
 
-from . import blends as _blends, group_bg as _group_bg, looping, fill_fields as _fill, grade_fields as _grade, layout_fields as _layout, paint_fields as _paint, stepped as _stepped, swap as _swap
+from . import painting_fields as _painting, blends as _blends, group_bg as _group_bg, looping, fill_fields as _fill, grade_fields as _grade, layout_fields as _layout, paint_fields as _paint, stepped as _stepped, swap as _swap
 
 NEW_FILL = "#d9d9d9"  # a new shape or path starts in this light grey: never the accent, so a selection shows on it (Figma's choice too)
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
@@ -433,16 +433,17 @@ FIELDS["drawing"] += _paint.DRAWING
 for _t in _fill.OWNERS:                    # the fill as a paint (fill_fields.py): its type, gradient geometry, stops
     FIELDS[_t] += _fill.LAYER
 FIELDS["stop"] = _fill.STOP
+FIELDS["painting"] = _painting.FIELDS         # a painting of the scene (paintings.py)
 FIELDS["swatch"] = [C("color", "Colour", "Colour", "#ffffff")]     # a project colour (ops_fill_paint.py)
 EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", "grain", *_motion.EFFECTS)
 ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask", "stop") + _rig.OWNED_KEYS
-STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h"}, "path": {"w", "h"},
+STILL = {"painting": {"w", "h", "newHold"}, "comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h"}, "path": {"w", "h"},
          "group": {"columns"},
          "video": {"w", "h", "offset", "speed"},
          "render3d": {"w", "h", "offset", "speed", "version"},
          "text": {"letterDelay", "letterSeed"},
-         **_rig.STILL, **_frame.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth", "locked", "hidden", "paintW", "paintH"}}
-LABELS = {"comp": "Scene", "shape": "Shape", "text": "Text", "image": "Image", "video": "Video", "render3d": "3D render", "group": "Group", "drawing": "Drawing", "path": "Path", "frame": "Drawing frame",
+         **_rig.STILL, **_frame.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth", "locked", "hidden", "paintW", "paintH", "fillPhase", "fillDriftX", "fillDriftY"}}
+LABELS = {"comp": "Scene", "shape": "Shape", "text": "Text", "image": "Image", "video": "Video", "render3d": "3D render", "group": "Group", "drawing": "Drawing", "path": "Path", "frame": "Drawing frame", "painting": "Painting",
           "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "grain": "Grain", "mask": "Mask", "key": "Key", "stop": "Gradient stop", "swatch": "Project colour",
           **_rig.LABELS, **_frame.LABELS, **_motion.LABELS}
 

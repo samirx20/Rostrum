@@ -51,6 +51,7 @@ card.key("fillOpacity", {0.0: 0.0, 1.0: 0.4})
 - On the screen: open the Fill colour square; a solid colour has an opacity strip and percentage under the hue, like a
   gradient stop's. A colour of 100 % shows no change.
 - Preview and export draw it the same way, with the same engine.
+- A picture fill and a painted fill (a painting of the scene, [drawing.md](drawing.md) part 9) are not solid: their `fillOpacity` is the fill's own, and `layer.fill {opacity}` takes it for a picture or painted fill too.
 
 ## Colour effects
 
