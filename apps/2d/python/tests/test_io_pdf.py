@@ -53,3 +53,15 @@ def test_bold_and_italic_come_from_the_font_name_or_descriptor():
     assert style_of("ABCDEF+Inter-SemiBoldItalic", 0, 0, 0) == ("Inter", 600.0, -12.0)
     assert style_of("Arial,Bold", 0, 0, 435) == ("Arial", 700.0, 0.0)              # a stem-derived 435 is not read as a weight
     assert style_of("Unnamed", 1 << 18, 0, 0)[1] == 700.0 and style_of("Unnamed", 64, -9, 400)[2] == -9.0
+
+
+def test_text_in_pieces_comes_in_as_one_text_layer_per_line(tmp_path):
+    w = PdfWriter()
+    _page(w, "BT /F1 20 Tf 10 60 Td (He) Tj ET BT /F1 20 Tf 31 60 Td (llo) Tj ET BT /F1 20 Tf 70 60 Td (you) Tj ET "
+             "BT /F1 20 Tf 10 20 Td (Second line) Tj ET")
+    page = w.pages[0]
+    page["/Resources"][NameObject("/Font")] = DictionaryObject({NameObject("/F1"): DictionaryObject({
+        NameObject("/Type"): NameObject("/Font"), NameObject("/Subtype"): NameObject("/Type1"), NameObject("/BaseFont"): NameObject("/Helvetica")})})
+    w.write(tmp_path / "t.pdf")
+    texts = [n for n in pdf_pages(tmp_path / "t.pdf")[0]["layers"] if n["type"] == "text"]
+    assert [t["props"]["body"].strip() for t in texts] == ["Hello you", "Second line"]

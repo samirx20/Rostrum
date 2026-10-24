@@ -5,7 +5,8 @@ import "."
 // The Problems chip in the top bar (INTERACTION.md 1.14, 1.15): "2 problems", only while something is wrong. Click:
 // the list, each in words with what to do; click one to select the thing and jump to its moment (the app's
 // `source.jump(row)`). `narrow`: the dot and the count.
-// `source`: an object with `rows` [{label, message, fix, item, kind?, danger?}] and a `jump(row)` slot.
+// `source`: an object with `rows` [{label, message, fix, item, kind?, danger?, action?, options?}] and a `jump(row)` slot;
+// a row with `action` (a word) and `options` shows a picker saying it, and a pick calls `source.act(row, value)`.
 Rectangle {
     id: chip
     property var source
@@ -82,9 +83,22 @@ Rectangle {
                            color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
                     Text { width: parent.width; visible: !!row.modelData.fix; text: row.modelData.fix || ""; wrapMode: Text.Wrap
                            color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+                    ChoiceField {   // a problem with its own picker (a missing font: "Use another font"): one pick fixes them all
+                        id: pick
+                        objectName: "problemPick"
+                        visible: !!row.modelData.action; width: parent.width
+                        height: visible ? implicitHeight : 0
+                        options: row.modelData.options || []; current: row.modelData.action || ""
+                        onPicked: v => { pop.close(); chip.source.act(row.modelData, String(v)) }
+                    }
                 }
                 HoverHandler { id: rowHover; cursorShape: Qt.PointingHandCursor }
-                TapHandler { onTapped: { pop.close(); chip.source.jump(row.modelData) } }
+                TapHandler {
+                    onTapped: {
+                        if (pick.visible && pick.contains(pick.mapFromItem(row, point.position.x, point.position.y))) return   // the picker's own click
+                        pop.close(); chip.source.jump(row.modelData)
+                    }
+                }
             }
         }
     }

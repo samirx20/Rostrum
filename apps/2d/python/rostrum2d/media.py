@@ -11,6 +11,8 @@ project folder, or in the folder this project was copied FROM (same place under 
 from __future__ import annotations
 
 import copy
+import tempfile
+import uuid
 from pathlib import Path
 
 from rostrum_core import RostrumError, codes
@@ -26,6 +28,15 @@ def file(folder, item: dict) -> Path:
         raise RostrumError(codes.NOT_FOUND, "render", f'{item.get("name") or item["id"]} ({item["id"]})', f"its file is missing: {path}",
                            hint="Point the layer at the file again (File field), or put the file back in the project folder.")
     return path
+
+
+def import_dir(folder, stem: str) -> Path:
+    """Where the pictures an import makes (a PSD's layers, a Figma frame's images) are written: the project's
+    imports/<stem>/. A scene not saved in a project yet has no folder: they go to a scratch folder of the computer, named
+    by absolute path (so `outside` says they won't travel with the project) until the person has a project."""
+    if folder:
+        return Path(folder) / "imports" / stem
+    return Path(tempfile.gettempdir()) / "rostrum2d-unsaved-imports" / uuid.uuid4().hex[:8] / stem
 
 
 def outside(folder, item: dict) -> bool:

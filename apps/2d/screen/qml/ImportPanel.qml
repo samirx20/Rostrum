@@ -13,14 +13,15 @@ Rectangle {
     property var job: backend.importer
     property bool shown: false
     readonly property bool done: panel.job.state === "done"
+    readonly property bool hasNothingToSay: panel.job.report.length === 0 && panel.job.notes.length === 0   // else it stays open (a loss, or a layer that came across in another form)
     readonly property int labelW: 92
     width: 320
     height: Theme.header + col.implicitHeight + Theme.pad
     visible: shown
-    onShownChanged: if (shown && done && panel.job.report.length === 0) panel.job.clearResult()   // opened again: the last result goes (a report it opened for stays)
+    onShownChanged: if (shown && done && panel.hasNothingToSay) panel.job.clearResult()   // opened again: the last result goes (a report it opened for stays)
     Connections {
         target: panel.job
-        function onChanged() { if (panel.done && panel.job.report.length === 0) panel.shown = false }
+        function onChanged() { if (panel.done && panel.hasNothingToSay) panel.shown = false }
     }
     color: Theme.panel; radius: Theme.radiusPanel
     border.color: Theme.popupEdge
@@ -123,6 +124,11 @@ Rectangle {
             width: col.width; spacing: Theme.grid
             Text { text: panel.job.note; width: col.width; wrapMode: Text.Wrap; color: Theme.ok
                    font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold }
+            Repeater {   // came across in another form (as a mask, kept hidden): not a loss
+                model: panel.job.notes
+                delegate: Text { required property var modelData; width: col.width; wrapMode: Text.Wrap
+                                 text: modelData; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label }
+            }
             Text { visible: panel.job.report.length > 0; width: col.width; topPadding: Theme.grid
                    text: "Didn't come across (" + panel.job.report.length + ")"; color: Theme.warn
                    font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }

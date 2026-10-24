@@ -18,6 +18,7 @@ from .. import pathdata as PD
 from . import pdf_clip as K
 from . import pdf_content as C
 from . import pdf_font as FONT
+from . import pdf_lines as LINES
 from . import pdf_raw as P
 from .pdf_shading import gradient
 
@@ -115,7 +116,7 @@ def _walk(ctx, objects, outer, events) -> list[dict]:
         if node:
             margin = node["props"].get("strokeWidth", 0.0) / 2 if node["props"].get("stroke") else 0.0
             items.append((node, K.needed(K.px_clips(ev["clips"], to_px), K.box_of(node), margin) if ev else ()))
-    return K.wrap(items, lambda base: _name(ctx, base))
+    return K.wrap(LINES.lines(items), lambda base: _name(ctx, base))
 
 
 def _name(ctx, base: str) -> str:
@@ -187,7 +188,7 @@ def _text(ctx, obj, m, outer) -> dict | None:
     R.FPDFPageObj_GetBounds(obj.raw, l, b, r, t)
     pts = [_flip(ctx, outer)(x, y) for x in (l.value, r.value) for y in (b.value, t.value)]
     xs, ys = [p[0] for p in pts], [p[1] for p in pts]
-    return {"type": "text", "name": body.strip()[:30], "box": [min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)],
+    return {"type": "text", "name": body.strip()[:30], "origin": _flip(ctx, m)(0.0, 0.0), "box": [min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)],
             "props": {"body": body.replace("\r\n", "\n"), "size": max(size, 1.0), "color": P.fill_colour(obj.raw),
                       "align": "left", "font": family, "weight": weight, **({"slant": slant} if slant else {})}}
 

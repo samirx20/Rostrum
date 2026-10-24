@@ -13,6 +13,8 @@ import atexit
 import threading
 from contextlib import contextmanager
 
+from .engine import EngineError
+
 # What decides a text's box: what the engine's measure takes (render/src/scene/measure.rs). Colour, outline and
 # the rest don't change it.
 FIELDS = ("body", "font", "size", "weight", "italic", "stretch", "tracking", "lineHeight", "align", "boxWidth",
@@ -69,8 +71,17 @@ def warm() -> None:
 
 
 def key(p: dict) -> tuple:
-    """The fields of a text that decide its box (`p`: its evaluated fields, evaluate.resolve)."""
-    return tuple(p[f] for f in FIELDS)
+    """The fields of a text that decide its box (`p`: its evaluated fields, evaluate.resolve). A font this computer lacks
+    is measured in the stand-in font (the box the canvas draws in its place, missing_font.py), never refused."""
+    return tuple(_measured_font(p) if f == "font" else p[f] for f in FIELDS)
+
+
+def _measured_font(p: dict) -> str:
+    from . import fields as F, fontlist
+    try:
+        return p["font"] if p["font"] in fontlist.names() else F.defaults("text")["font"]
+    except EngineError:         # no engine built: the measure says so
+        return p["font"]
 
 
 def sizes(texts: list[dict]) -> list[tuple[float, float]]:

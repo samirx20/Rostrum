@@ -65,9 +65,9 @@ def test_figma_sample_maps_and_reports_what_it_leaves(tmp_path):
     assert top[0]["type"] == "shape" and top[4]["type"] == "path" and top[5]["type"] == "group"
     assert [l["name"] for l in top[5]["layers"]] == ["Badge ring", "Photo"]
     assert (top[1]["x"], top[1]["y"]) == (80, 320) and top[1]["opacity"] == pytest.approx(0.5, abs=0.01)   # frame origin subtracted; fill alpha folded in
-    assert top[3]["font"] == "Roboto Flex" and top[6]["opacity"] == 0
+    assert top[3]["font"] == "Roboto Flex" and top[6]["hidden"] is True
     assert "C" in top[4]["d"] and "Q" not in top[4]["d"]
-    assert any("Inter" in r for r in report) and any("hidden" in r for r in report)
+    assert any("Inter" in r for r in report) and tr["notes"] == ["Kept hidden, as in the file: Hidden"]
 
 
 def test_a_field_that_is_not_in_fields_py_is_an_error():
@@ -89,3 +89,13 @@ def test_pdf_page_becomes_path_text_and_a_group(tmp_path):
     assert [l["type"] for l in top[4]["layers"]] == ["path", "path"]
     assert (top[1]["x"], top[1]["y"], top[1]["fill"]) == (80, 320, "#ff6b6b")   # y flipped: PDF y 100..280 → 320..500
     assert top[5]["body"] == "Hello Rostrum" and top[5]["size"] == 64
+
+
+def test_a_scene_with_no_project_folder_still_takes_a_psd_and_masks_are_not_losses(tmp_path):
+    doc = Document.new(KIND)                               # not in a project yet: no folder to write the pictures into
+    doc.apply([{"op": "comp.add", "args": {"id": "c", "width": 800, "height": 600}}], ME)
+    tr = psd_tree(_psd(tmp_path))
+    T.import_into(doc, tr, "c", ME)
+    assert Image.open(_top(doc)[1]["src"]).size == (30, 30)        # the picture is on disk, named by its own path
+    tr["report"].extend(["text 'a': the font 'X' is not here", "text 'b': the font 'X' is not here"])
+    assert [r for r in T.collapse(tr["report"])] == ["The font 'X' is not here (2 layers: a, b)"]

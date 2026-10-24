@@ -155,24 +155,25 @@ def plan(doc, comp_id: str, path=None, kind: str | None = None, page: int = 1, t
         if not path.is_file():
             raise ValueError(f"no file at {path}")
         _stage(progress, cancelled, 0.3, f"Reading {path.name}")
-        calls, report, name = media_calls(doc.data, comp, into, kind, path, at, Path(doc.folder) if doc.folder else None), [], path.name
+        calls, report, notes, name = media_calls(doc.data, comp, into, kind, path, at, Path(doc.folder) if doc.folder else None), [], [], path.name
     else:
         _stage(progress, cancelled, 0.1, "Downloading the frame" if kind == "figma" else f"Reading the {kind.upper()}")
         tr = tree_of(kind, path, page, text, figma)
         _stage(progress, cancelled, 0.6, "Placing the layers")
         calls, report = T.prepare(doc, tr, into, app_fonts(), fit=(comp["width"], comp["height"]) if fit else None)
-        name = tr["name"]
+        name, notes = tr["name"], tr.get("notes", [])
     _stage(progress, cancelled, 0.95, "Ready to put in")
-    return {"name": name, "kind": kind, "calls": calls, "report": report, "into": into, "label": f"Import {name}"}
+    return {"name": name, "kind": kind, "calls": calls, "report": report, "notes": notes, "into": into, "label": f"Import {name}"}
 
 
 def apply(doc, who, p: dict) -> dict:
     """The one change (one undo step) of a plan. Call it on the thread that owns the document.
-    → {"name", "kind", "calls": n, "layers": [new top-level ids in `into`], "report"}; a whole PDF also has "comps"."""
+    → {"name", "kind", "calls": n, "made": layers made, "layers": [new top-level ids in `into`], "report", "notes"}; a whole PDF also has "comps"."""
     into = p["into"]
     before = {c["id"] for c in doc.item(into).get("layers", [])} if into else set()
     doc.apply(p["calls"], who, label=p["label"])
-    out = {"name": p["name"], "kind": p["kind"], "calls": len(p["calls"]), "report": p["report"]}
+    made = sum(c["op"] == "layer.add" for c in p["calls"])             # every layer made, groups and mask layers too
+    out = {"name": p["name"], "kind": p["kind"], "calls": len(p["calls"]), "made": made, "report": p["report"], "notes": p.get("notes", [])}
     if p.get("comps"):
         return {**out, "layers": [], "comps": p["comps"]}
     return {**out, "layers": [c["id"] for c in doc.item(into).get("layers", []) if c["id"] not in before]}

@@ -13,7 +13,8 @@ Every project window is live: each change is on disk at once, shared with agents
                                                                     # real window size (rostrum_gui/layout_run.py)
 Steps and --shot go with any start (no file named: the plain start, so a walk can check it). Steps: see screen2d/steps.py (file steps: screen2d/file_steps.py). With --shot, or steps alone, the window quits by itself; a failed
 step or frame exits nonzero.
-A --shot / --step run draws offscreen by itself (rostrum_gui.app.qt_app); set QT_QPA_PLATFORM=windows to watch one.
+A --shot / --step run draws offscreen by itself (rostrum_gui.app.qt_app); set QT_QPA_PLATFORM=windows to watch one
+(it quits when done, the same as offscreen; --keep-open with steps alone leaves the window up to look at).
 """
 import argparse
 import os
@@ -88,8 +89,10 @@ def main():
     a.add_argument("--check-name")
     a.add_argument("--check-only", help="with --check-layout: only these states (comma-separated), as the full run starts them")
     a.add_argument("--check-batch", metavar="STATES.JSON", help="with --check-layout: the states a parent run hands this process")
+    a.add_argument("--keep-open", action="store_true", help="steps alone: leave the window open when they are done (to look at it); default: exit, the same offscreen and in a real window")
     a.add_argument("--quick", action="store_true", help="with --check-layout: the QUICK states, at 1646x900 only")
     args = a.parse_args()
+    sys.stdout.reconfigure(line_buffering=True)    # what a step says reaches a pipe at once (a run stopped from outside still told its result)
     if args.check_layout and not (args.check_name or args.check_batch):
         from screen2d.layout_states import states
         sys.exit(layout_run.run_all(Path(__file__), states(), args.check_layout, args.check_only, args.quick))
@@ -145,7 +148,7 @@ def main():
             QTimer.singleShot(30000, lambda: (print("FAIL: timeout: the closing picture's frame never landed", file=sys.stderr),
                                               app.exit(4)))
             wait_frame(0)
-        elif args.step and os.environ.get("QT_QPA_PLATFORM") == "offscreen":   # steps alone: done when they are (a watched run stays open)
+        elif args.step and not args.keep_open:   # steps alone: done when they are, offscreen or in a real window (only --keep-open stays)
             app.exit(code[0])
 
     def wait_frame(n):       # the newest frame has landed, then the screen holds still
@@ -169,7 +172,7 @@ def main():
         app.exit(code[0])
 
     QTimer.singleShot(400, lambda: guarded(run_steps))
-    if args.shot or args.check_layout:      # a backstop for a step that hangs without a limit of its own
+    if args.shot or args.check_layout or (args.step and not args.keep_open):      # a backstop for a step that hangs without a limit of its own
         QTimer.singleShot(120000 if args.check_layout else 1800000,
                           lambda: (print("FAIL: timeout: the run went on too long", file=sys.stderr), app.exit(4)))
     app.exec()

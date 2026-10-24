@@ -205,3 +205,4 @@ from . import ops_path_handles  # noqa: E402,F401  (key.path_handles: the path a
 from . import ops_anim  # noqa: E402,F401  (anim.ease, key.scale, key.paste, key.stagger: rostrum_core.keys.anim_ops; anims.py: anim.list)
 from . import ops_fill_paint  # noqa: E402,F401  (layer.fill, swatch.add / remove / rename: the fill as a paint, project colours)
 from . import text_styles  # noqa: E402  (style.define, style.use, style.detach, style.remove: named text styles)
+from . import ops_font  # noqa: E402,F401  (font.replace: one font for another across the document)

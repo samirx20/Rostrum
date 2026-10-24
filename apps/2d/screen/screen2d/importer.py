@@ -13,7 +13,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Property, QCoreApplication, QObject, QUrl, Signal, Slot
 from rostrum2d.io import importing
-from rostrum2d.io.figma import link_parts
+from rostrum2d.io.figma import NoToken, link_parts
 
 from .import_job import Job
 
@@ -49,7 +49,7 @@ class Importer(QObject):
         self.b, self.job = bridge, Job()
         self._source, self._file, self._page, self._text, self._keep = "file", "", 1, "text", False
         self._pages = 0                                              # the picked PDF's page count (0 = not a PDF)
-        self._state, self._note, self._progress, self._layers, self._report = "", "", 0.0, [], []
+        self._state, self._note, self._progress, self._layers, self._report, self._notes = "", "", 0.0, [], [], []
         self._queue, self._at, self._figma = [], None, ("", "")     # dropped / pasted files waiting; where they land; a link's key, frame
         self._landed.connect(self._finish)
         self._progressed.connect(self._on_progress)
@@ -130,6 +130,11 @@ class Importer(QObject):
     def report(self):
         """What didn't come across, one line each."""
         return list(self._report)
+
+    @Property("QVariantList", notify=changed)
+    def notes(self):
+        """What came across in another form (as a mask, kept hidden), one line each: not a loss, so not in `report`."""
+        return list(self._notes)
 
     @Property(bool, notify=changed)
     def ready(self):
@@ -244,11 +249,19 @@ class Importer(QObject):
         if self.running():
             return b._fail("Error: import: one is already running; wait for it.")
         doc, comp_id, fit = b.doc, b.comp_id, not self._keep
-        self._state, self._note, self._progress, self._layers, self._report = "running", "Starting…", 0.0, [], []
+        self._state, self._note, self._progress, self._layers, self._report, self._notes = "running", "Starting…", 0.0, [], [], []
         self.changed.emit()
         b._set_status("Importing…")
-        self.job.start(lambda progress, cancelled: importing.plan(doc, comp_id, fit=fit, progress=progress, cancelled=cancelled, **kw),
+        self.job.start(lambda progress, cancelled: self._plan(doc, comp_id, fit, progress, cancelled, kw),
                        self._landed.emit, self._progressed.emit)
+
+    @staticmethod
+    def _plan(doc, comp_id, fit, progress, cancelled, kw):
+        """importing.plan, with the one error that names an agent's way (token=…) said in a person's: the panel has a Token box."""
+        try:
+            return importing.plan(doc, comp_id, fit=fit, progress=progress, cancelled=cancelled, **kw)
+        except NoToken:
+            raise ValueError("Type your Figma token in the Token box") from None
 
     def _on_progress(self, fraction, words):
         if self._state == "running" and not self.job.cancelled:
@@ -269,18 +282,19 @@ class Importer(QObject):
             r = importing.apply(b.doc, b.who, plan)
         except Exception as e:  # noqa: BLE001  whatever it was: say it, change nothing
             line = line or (e.line() if hasattr(e, "line") else f"Error: import: {e}")
-            self._state, self._note, self._layers, self._report, self._progress = "failed", line, [], [], 0.0
+            self._state, self._note, self._layers, self._report, self._notes, self._progress = "failed", line, [], [], [], 0.0
             b._fail(line)
             self._queue = []                         # loud, and the rest of a drop waits for the person
             return self.changed.emit()
-        self._state, self._layers, self._report, self._progress = "done", r["layers"], r["report"], 1.0
-        self._note = f'Imported {r["name"]}: {len(r["layers"])} layer{"" if len(r["layers"]) == 1 else "s"}'
+        made = r["made"]
+        self._state, self._layers, self._report, self._notes, self._progress = "done", r["layers"], r["report"], r["notes"], 1.0
+        self._note = f'Imported {r["name"]}: {made} layer{"" if made == 1 else "s"}'
         b._set_status(self._note + (f", {len(r['report'])} not carried over" if r["report"] else ""))
         if r["layers"]:
             b.select(r["layers"][-1])
         self.changed.emit()
-        if r["report"]:
-            self.wantPanel.emit()                    # what didn't come across is listed there (Import… and drops alike)
+        if r["report"] or r["notes"]:
+            self.wantPanel.emit()                    # what didn't come across, and what came across in another form, is listed there (Import… and drops alike)
         self._next()                                 # the next dropped file, if any
 
     @Slot()
@@ -291,5 +305,5 @@ class Importer(QObject):
 
     def _clear(self):
         if not self.running():
-            self._state, self._note, self._progress, self._layers, self._report = "", "", 0.0, [], []
+            self._state, self._note, self._progress, self._layers, self._report, self._notes = "", "", 0.0, [], [], []
         self.changed.emit()

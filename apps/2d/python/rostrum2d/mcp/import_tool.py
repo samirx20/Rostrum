@@ -27,8 +27,10 @@ tools = Tools()
 def run_import(ctx, args):
     """Import a file or a Figma frame into a composition as new layers: svg, pdf (a page, or every page as its own composition), psd, figma → layers with their own names,
     groups and places (text stays text, paths stay paths); an image or a video → one layer, centred, shrunk to fit. One change, all
-    or nothing. Returns how many operations ran, the new layer ids and the report: everything that did NOT come across (a PDF mesh
-    shading, a font that isn't here, baked effects …). Tell the user what the report says."""
+    or nothing. Returns how many layers were made, the new top-level layer ids, `notes` (what came across in another form: a PSD's pixel masks
+    as matte layers, hidden layers kept hidden) and `report`: everything that did NOT come across (a PDF mesh shading, a font that
+    isn't here, baked effects …). Without a Figma token (`figma.token` or env FIGMA_TOKEN) it is refused. Pictures a PSD or Figma frame makes go into the
+    project's imports/ folder (a scene with no project folder keeps them in a scratch folder of the computer). Tell the user what the report says."""
     doc, comp = doc_and_comp(ctx, args)
     path = args.get("path")
     if path and not Path(path).is_absolute():
@@ -38,7 +40,9 @@ def run_import(ctx, args):
                           args.get("figma"), args.get("into"), bool(args.get("fit", False)))
     except ValueError as e:                 # a wrong file, kind or id: the caller's to fix, said plainly
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, "the import", str(e)) from None
-    say = f'Imported {r["name"]} into {args.get("into") or comp["id"]}: {r["calls"]} operations, {"compositions" if r.get("comps") else "layers"} {", ".join(r.get("comps") or r["layers"])}.'
+    say = (f'Imported {r["name"]} into {args.get("into") or comp["id"]}: {r["made"]} layers made ({r["calls"]} operations), '
+           f'{"compositions" if r.get("comps") else "top-level layers"} {", ".join(r.get("comps") or r["layers"])}.')
+    say += "".join(f" {line}." for line in r["notes"])
     say += " Not carried over: " + "; ".join(r["report"]) + "." if r["report"] else " Everything came across."
     return Reply(say, r)
 

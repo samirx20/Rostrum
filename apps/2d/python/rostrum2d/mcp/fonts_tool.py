@@ -13,7 +13,7 @@ def inspect_fonts(ctx, args):
     every computer), then the fonts installed on this computer (source "installed": another computer may not have
     them). Each with its real weights (`weights`; a variable family takes any weight in `range`), whether it has an
     italic (set the text's `italic`), and its files. A font that isn't listed is refused when set, never drawn in
-    another font; a project using one that this computer lacks shows a Missing font problem and won't export."""
+    another font; a project using one that this computer lacks shows a Missing font problem, draws that text as a dashed red box naming the font, and won't export until `font.replace {from, to}` has set another font on every text that used it (one undo step)."""
     from ..fontlist import families
     want = str(args.get("search", "")).strip().lower()
     found = [f for f in families() if want in f["family"].lower()]

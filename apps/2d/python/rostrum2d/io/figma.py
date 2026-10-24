@@ -16,6 +16,7 @@ from PIL import Image
 
 from .. import blends, pathdata as PD
 from . import figma_path as FP
+from .tree import Report
 
 API = "https://api.figma.com/v1"
 BLEND = blends.DESIGN_APPS        # Figma's blend names → ours (the one list, blends.txt)
@@ -23,10 +24,14 @@ GROUPS = {"FRAME", "GROUP", "COMPONENT", "COMPONENT_SET", "INSTANCE", "SECTION"}
 SHAPES = {"RECTANGLE": "rect", "ELLIPSE": "ellipse"}
 
 
+class NoToken(ValueError):
+    """No Figma token was given. The words are for an agent (it passes `token`); a screen says its own (it has a Token box)."""
+
+
 def _get(url: str, token: str | None, raw: bool = False):
     token = token or os.environ.get("FIGMA_TOKEN")
     if not token and url.startswith(API):
-        raise ValueError("Figma needs your token: pass token=… or set FIGMA_TOKEN")
+        raise NoToken("Figma needs your token: pass token=… or set FIGMA_TOKEN")
     req = urllib.request.Request(url, headers={"X-Figma-Token": token} if url.startswith(API) else {})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
@@ -71,11 +76,11 @@ def _find_frame(file: dict, name: str | None) -> dict:
 
 def frame_tree(file: dict, frame: str | None = None, render=None) -> dict:
     """The mapping: Figma JSON → import tree. `render(node_id)` → PIL image, for nodes with image fills."""
-    root, report = _find_frame(file, frame), []
+    root, report = _find_frame(file, frame), Report()
     box = root["absoluteBoundingBox"]
     ox, oy = box["x"], box["y"]
     node = _node(root, ox, oy, report, render)
-    return {"name": root["name"], "width": box["width"], "height": box["height"], "report": report,
+    return {"name": root["name"], "width": box["width"], "height": box["height"], "report": report, "notes": report.notes(),
             "layers": node["layers"] if node["type"] == "group" else [node]}
 
 
@@ -185,8 +190,8 @@ def _common(out: dict, n: dict, report: list) -> dict:
     p = out["props"]
     p["opacity"] = p.get("opacity", 1.0) * float(n.get("opacity", 1.0))
     if n.get("visible", True) is False:
-        report.append(f"'{n['name']}' is hidden in Figma; imported with opacity 0")
-        p["opacity"] = 0.0
+        report.hidden.append(n["name"])                  # kept hidden (the layer's Hidden switch)
+        p["hidden"] = True
     mode = n.get("blendMode", "NORMAL")
     if mode not in BLEND:
         report.append(f"'{n['name']}': blend mode {mode.lower().replace('_', ' ')} is not in the app; drawn normal")

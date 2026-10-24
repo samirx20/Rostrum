@@ -80,7 +80,7 @@ Press **I**, or hold **Alt** while painting. The pointer becomes a picker, and a
 ## 4. Select strokes, then move, copy, paste or delete them
 
 1. Press **S** (or choose **Select**), then drag a loop round the strokes and fills you want; or hold **Ctrl** and drag while painting. Anything with most of its length inside the loop is picked, and outlined.
-2. A small strip over the canvas shows **Copy**, **Paste** and **Delete**. Drag the picked strokes to move them; drag a corner of their box to scale them and the knob to turn them. They stay strokes, so they stay sharp.
+2. A small strip over the canvas says how many strokes are picked and shows **Copy** and **Delete**; **Paste** joins them only after you have copied something. Drag the picked strokes to move them; drag a corner of their box to scale them and the knob to turn them. They stay strokes, so they stay sharp.
 3. **Ctrl+C** copies them and **Ctrl+V** pastes them a little down and right of the originals; the pasted copy is what stays picked, so **Delete**, a drag or a turn acts on it, not on the original. **Delete** removes the picked strokes. A single straight stroke can be picked and dragged too. **Esc** lets go.
 
 Each of these is one change, so **Ctrl+Z** takes back a move, a paste or a delete. Only paint layers that are not locked can be picked from.

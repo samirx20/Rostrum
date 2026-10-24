@@ -38,6 +38,12 @@ def _box_mask(m) -> tuple | None:
     return None
 
 
+def _all_visible(m) -> bool:
+    """A pixel mask that is white everywhere (inside its box and outside it): it hides nothing, so there is nothing to carry."""
+    img = m.topil()
+    return img is not None and m.background_color == 255 and np.asarray(img.convert("L")).min() == 255
+
+
 def _pixel_matte(layer, m) -> dict | None:
     """The mask as a grey picture covering the layer and the mask (outside the mask: its background colour)."""
     img = m.topil()
@@ -80,14 +86,14 @@ def masks_for(layer, node_box, size: tuple, report: list, group: bool = False) -
         m = layer.mask
         if m.disabled:
             report.append(f"layer '{name}': its pixel mask is switched off in the PSD; left out")
-        else:
+        elif not _all_visible(m):
             got = None if group else _box_mask(m)
             if got:
                 rect = _rect(got[0], node_box, got[1])
                 masks += [rect] if rect else []
             elif (matte := _pixel_matte(layer, m)) is not None:
                 mode = "luma"
-                report.append(f"layer '{name}': its pixel mask is a picture, carried as a track matte layer '{name} mask'")
+                report.masked.append(name)
             else:
                 report.append(f"layer '{name}': its pixel mask could not be read; baked into the pixels")
                 return None
@@ -104,5 +110,5 @@ def masks_for(layer, node_box, size: tuple, report: list, group: bool = False) -
                 return None
             else:
                 matte, mode = _path_matte(layer, vm, *size), "alphaInverted" if vm.inverted else "alpha"
-                report.append(f"layer '{name}': its vector mask is carried as a track matte layer '{name} mask'")
+                report.masked.append(name)
     return {"masks": masks, "matte": matte, "mode": mode}

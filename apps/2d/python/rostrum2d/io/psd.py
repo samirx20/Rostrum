@@ -17,7 +17,7 @@ from .. import blends
 from .psd_mask import masks_for
 from .psd_shape import shape_node
 from .psd_text import text_node
-from .tree import _boxes
+from .tree import Report, _boxes
 
 # Photoshop blend mode → ours; anything else is drawn normal and reported.
 BLEND = {B[k]: v for k, v in blends.DESIGN_APPS.items()}     # the one list (blends.txt), by Photoshop's names
@@ -31,12 +31,12 @@ def psd_tree(path, fonts: set | None = None) -> dict:
     from .importing import app_fonts                           # the one font lookup (imported late: importing imports this)
     path = Path(path)
     psd = PSDImage.open(path)
-    report: list[str] = []
+    report = Report()
     ctx = {"fonts": app_fonts() if fonts is None else fonts, "size": (psd.width, psd.height)}
     layers = _walk(psd, ctx, report)
     if not layers:
         raise ValueError(f"{path.name} has no layers with pixels")
-    return {"name": path.name, "width": psd.width, "height": psd.height, "layers": layers, "report": report}
+    return {"name": path.name, "width": psd.width, "height": psd.height, "layers": layers, "report": report, "notes": report.notes()}
 
 
 def _walk(parent, ctx: dict, report: list) -> list[dict]:
@@ -47,8 +47,10 @@ def _walk(parent, ctx: dict, report: list) -> list[dict]:
             continue
         opacity = layer.opacity / 255 * (layer.fill_opacity / 255 if not layer.is_group() else 1.0)
         if not layer.visible:
-            report.append(f"layer '{layer.name}' is hidden in the PSD; imported with opacity 0")
-            opacity = 0.0
+            report.hidden.append(layer.name)               # kept hidden (the layer's Hidden switch), not faded to nothing
+            node["props"]["hidden"] = True
+            if node.get("matte_node"):                     # the engine draws a matte on its own when the layer it serves is hidden
+                node["matte_node"]["props"]["hidden"] = True
         blend = BLEND.get(layer.blend_mode)
         if blend is None:
             report.append(f"layer '{layer.name}': blend mode {layer.blend_mode.name.lower().replace('_', ' ')} "

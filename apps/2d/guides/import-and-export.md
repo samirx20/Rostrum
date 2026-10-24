@@ -10,8 +10,8 @@ library**, `rostrum2d.io`, used by the screen; they are **not yet MCP tools**. F
 
 Every importer returns the same **import tree**; `import_into(doc, tree, into, who)` turns it into ordinary layers in
 **one undo step** (`into` = a comp or group id). It returns a report: what could not be carried over, in plain words. Read it.
-Images with pixels are written to `<project folder>/imports/<file stem>/`. Colours with transparency (`#rrggbbaa`) fold into the
-layer's opacity. A font that is neither in the app nor installed on this computer is set in the default font, and the import report says so for each text (install the font and pick it in Font to get it back).
+Images with pixels are written to `<project folder>/imports/<file stem>/` (a document with no folder yet: a scratch folder of the computer, `media.import_dir`; the import never fails for that). Colours with transparency (`#rrggbbaa`) fold into the
+layer's opacity. A font that is neither in the app nor installed on this computer is set in the default font, and the import report says so (install the font and pick it in Font to get it back). The report names each kind once, with how many layers it touched (`tree.collapse`); `report` is what did NOT come across, the tree's `notes` is what came across in another form (as a mask, kept hidden).
 
 ```python
 from rostrum2d.io import svg_tree, pdf_tree, psd_tree, figma_tree, import_into
@@ -21,9 +21,9 @@ report = import_into(doc, svg_tree("logo.svg", text="text"), into="main", who="a
 | Source | Call | What comes in |
 |---|---|---|
 | **SVG** | `svg_tree(path, text="text" \| "outline")` | Shapes → `path` layers; groups → groups; images → `image`. Text → editable `text` layers (`"text"`) or paths that look exactly like the source (`"outline"`). CSS, `use`, units are resolved by the engine's reader. |
-| **PDF** | `pdf_tree(path, page=0, scale=1.0)` | One page: paths → `path` layers, text → `text`, images → `image`, forms → groups. 1 pt = 1 px unless `scale`. Shadings and clip paths are reported, not carried. Text keeps its bold (weight) and italic (slant) from the font's name, flags and angle. |
-| **PSD** | `psd_tree(path)` | Pixel layers → `image` layers, groups → groups. Text, shape, smart-object and adjustment layers arrive as rendered pixels; masks and effects are baked in; unsupported blend modes become `normal` and are reported. |
-| **Figma** | `figma_tree(file_key, frame=None, token=None)` | One frame (by name, else the first): frames and groups → groups, rectangles / ellipses → shapes, vectors → paths, text → `text`, nodes with image fills → `image`. Needs the user's own token (the `token` argument or `FIGMA_TOKEN`); never stored or logged. Built from the API docs, **not yet tested against the live API**. |
+| **PDF** | `pdf_tree(path, page=0, scale=1.0)` | One page: paths → `path` layers, text → `text`, images → `image`, forms → groups. 1 pt = 1 px unless `scale`. Shadings and clip paths are reported, not carried. Text keeps its bold (weight) and italic (slant) from the font's name, flags and angle. Text objects that follow each other on one baseline in one style (a PDF that stores every letter or word apart) are joined into one text layer per line (`io/pdf_lines.py`). |
+| **PSD** | `psd_tree(path)` | Pixel layers → `image` layers, groups → groups. Text, shape, smart-object and adjustment layers arrive as rendered pixels; effects are baked in; a pixel or vector mask is carried as a `mask` or a track-matte layer beside its layer (said in the tree's `notes`, not in `report`); a hidden layer gets `hidden: true` (and so does its matte); unsupported blend modes become `normal` and are reported. |
+| **Figma** | `figma_tree(file_key, frame=None, token=None)` | One frame (by name, else the first): frames and groups → groups, rectangles / ellipses → shapes, vectors → paths, text → `text`, nodes with image fills → `image`. Needs the user's own token (the `token` argument or `FIGMA_TOKEN`; without one the importer raises `NoToken`, which the screen shows as "Type your Figma token in the Token box"); never stored or logged. Hidden nodes get `hidden: true`. Built from the API docs, **not yet tested against the live API**. |
 
 Check an import: `look_frame` at full width next to the source, `inspect_item` (no id) for the layer tree, then read the report.
 

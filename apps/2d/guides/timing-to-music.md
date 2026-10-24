@@ -27,10 +27,10 @@ When your project has music, voice or sound made in RostrumSound, Rostrum2D play
 ## 4. Picking which sound plays
 
 1. Click an empty part of the canvas (outside every layer). The settings panel shows the scene's settings.
-2. Open the **Sound** group and click **Soundtrack**.
-3. Pick a song from the list. The first choice, **Default**, is the project's first RostrumSound song (named in brackets).
+2. Click **+ Sound** under the scene's settings. The **Soundtrack** setting appears, showing **Main mix:** and the name of the project's main song.
+3. Click **Soundtrack** to open its list. The first choice is **Main mix: <song>** (the project's main RostrumSound song, the one that plays unless you pick another); under it comes every RostrumSound song of the project, each by its name. Click one to play that song with this scene.
 
-The Soundtrack setting is there only when the project has at least one RostrumSound song.
+**+ Sound** and the Soundtrack setting are there only when the project has at least one RostrumSound song.
 
 ## 5. Showing the beats
 
@@ -47,20 +47,24 @@ The Soundtrack setting is there only when the project has at least one RostrumSo
 When you drag a layer's bar, its ends or a key in the timeline, it snaps to things nearby:
 
 - markers first (the flags on the ruler), then the playhead, then the ends of other bars and other keys, then the beats of the music;
-- a small label by the pointer says what it caught, for example "+15 f · beat 3" or "+18 f · drop";
+- a pink line down the timeline shows what it caught;
 - hold **Ctrl** while you drag to turn snapping off, so it moves by whole frames.
+
+A layer has a bar once it has keys (see [the-screen.md](the-screen.md)).
 
 ## 7. Tying a bar to a marker from the music
 
 Markers made in RostrumSound (for example "drop") are shared with the whole project and show as flags on the ruler.
 
-![The title's bar end dropped on the "drop" marker: a small yellow flag on the tied end](pictures/tied-to-marker.png)
+![The title's end tied to the "drop" marker: a small yellow mark at the tied end, and Ends at marker shows drop in the settings panel](pictures/tied-to-marker.png)
 
 1. Drag the start or the end of a layer's bar towards the marker's line.
-2. Let go when it snaps to the marker. A small yellow flag appears on that end: the end is now **tied** to the marker.
+2. Let go when it snaps to the marker. A small yellow mark appears on that end: the end is now **tied** to the marker. The **Timing** group of the settings panel says so too: **Ends at marker** (or **Timed from marker**, for the start) shows the marker's name.
 3. When the marker moves (someone changes the song in RostrumSound, or you drag the flag), the tied end moves with it. You don't have to do anything.
 
 You can tie a whole bar the same way: drag its middle so that its start lands on the marker.
+
+A layer with no keys has no bar to drag. Pick it, open **Timing** in the settings panel (click **+ Timing** if it is folded away) and pick the marker in **Timed from marker** (its start) or **Ends at marker** (its end).
 
 ## 8. Jumping from beat to beat
 

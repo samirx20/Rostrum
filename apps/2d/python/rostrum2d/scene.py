@@ -13,8 +13,10 @@ from __future__ import annotations
 import math
 from functools import lru_cache
 
-from . import drawing, group_bg, exprbake, fields as F, fill_fields, fill_paint, layoutbake, looping, media, paint_fields, project_sound, render3d, retime, stepped, swap, video
+from . import drawing, group_bg, missing_font, exprbake, fields as F, fill_fields, fill_paint, layoutbake, looping, media, paint_fields, project_sound, render3d, retime, stepped, swap, video
 from .layout_fields import py_only
+from rostrum_core import RostrumError
+from rostrum_core.errors import codes
 from rostrum_core.keys import after, animated, keys_of, springs
 from rostrum_paint import library
 
@@ -84,7 +86,19 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | 
         node["frames"] = video.frames({**node["props"], "id": item["id"]}, fps)
     if item["type"] == "render3d":      # the 3D item's render, from the project (render3d.py)
         node = _render3d(node, item, fps, where or {})
+    if item["type"] == "text" and (font := missing_font.trouble(item)):
+        node = _font_stand_in(node, item, font, where or {})
     return node
+
+
+def _font_stand_in(node: dict, item: dict, font: str, where: dict) -> dict:
+    """A text whose font is missing is, in looks, on the screen and in part renders (`span` given), its box with a dashed
+    red edge and the font's name, with a warning in the scene's `warnings`; a whole-film export is refused in `describe`."""
+    if where.get("span") is None:
+        where.setdefault("missing_fonts", {})[item["id"]] = font
+        return node
+    where.setdefault("warnings", []).append(f'{item["id"]} shows a placeholder: the font "{font}" is not on this computer')
+    return missing_font.stand_in(node, font, _engine_props)
 
 
 def _pictures(item: dict, fps: float, where: dict | None) -> list[dict]:
@@ -154,6 +168,10 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     where = {"folder": folder, "markers": markers, "span": span, "until": comp.get("duration", F.defaults("comp")["duration"]),
              "later": later}
     node = _node(comp, fps, baked, where)
+    if where.get("missing_fonts"):       # a whole-film export never writes a file with a stand-in in it
+        raise RostrumError(codes.RENDER_FAILED, "export", "the texts " + ", ".join(where["missing_fonts"]),
+                           "use a font this computer lacks: " + missing_font.refusal(where["missing_fonts"]),
+                           hint="Pick another font for them (font.replace), or install it.")
     node["layers"] = sorted(node.get("layers", []), key=lambda n: n["type"] != "camera")   # the frame first (the contract)
     swap.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)
     stepped.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)
