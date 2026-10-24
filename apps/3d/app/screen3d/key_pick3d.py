@@ -56,7 +56,8 @@ class KeyPick3D(QObject):
 
     @Slot(str, float, result=bool)
     def beginStretch(self, key_id, t):
-        return False                    # Alt+drag stretching keys in time: key.scale by agents only, not yet on the screen
+        """Alt+press on the first or last picked key: dragging stretches the picked keys in time (timeline3d.py, key.scale)."""
+        return self.b._mover.begin_stretch(list(self._ids), key_id, t)
 
     @Slot(str, float, result=bool)
     def beginDrag(self, key_id, t):
@@ -100,6 +101,12 @@ class KeyBar3D(QObject):
         self.b = bridge
 
     eases = Property("QVariantList", lambda self: [{"value": e["value"], "label": e["label"]} for e in eases.EASES], constant=True)
+    easeOnKey = Property(bool, lambda self: True, constant=True)    # a key's right-click is the Ease list (the kit's KeyDot.qml)
+
+    @Slot(float, float)
+    def askMenu(self, x, y):
+        """Right-click on a key: the Ease list at this window point (LayerTimeline.qml)."""
+        self.menuAsked.emit(x, y)
 
     @Slot(str, result=bool)
     def setEase(self, ease):

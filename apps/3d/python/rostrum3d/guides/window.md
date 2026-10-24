@@ -78,10 +78,13 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
 - **Poses** (P): with items selected (a lid and its buds), type a name and **Save pose**: it keeps their Position, Turn
   and Scale as they are at the playhead. Click a saved pose to key all of that at the playhead (one undo step).
   **Shift+click** a pose for a breakdown: each of its settings keyed halfway between its key before and its key after.
+  Each saved pose shows a small picture: what the viewport showed when you saved it (a pose an agent saved has none).
   Hover a pose for what it holds; its × deletes it (the keys it wrote stay).
 - **Onion skin** (O turns it on and off): ghosts of the selected item in the viewport, red before, green after, to
   time an arc by eye. Its panel picks the frames: **At the keys** (its previous and next keys) or **2 and 4 frames**
   each way. The quick look only: Final shows no ghosts. It never changes the scene.
+- The Poses and Onion skin panels open and close on their own: click a rail button to open its panel, again to close it, Esc
+  closes the one you are in. Both can be open side by side; leaving the Animate page closes them.
 
 Each shape, light or camera is added as one undo step and selected. It goes into the selected group, or the group that holds the
 selected item. The rail only shows tools that work today. Others (type and logos, editing faces, painting,
@@ -108,7 +111,7 @@ An item's rows come from its own settings:
 
 The diamond at a row's right end keys that setting at the playhead.
 
-**Timing** (in the row of names, once an item or something inside it has keys): **Smooth**, **On 2s** or **On 3s**.
+**Timing** (on the Animate page only, in the row of names, once an item or something inside it has keys): **Smooth**, **On 2s** or **On 3s**.
 On 2s holds every value for two frames, the stepped look of hand-drawn animation; the camera, left Smooth, still
 glides. A group's Timing steps everything inside it.
 
@@ -130,6 +133,17 @@ Intersect**; the first one you picked is the base. Rest the pointer on one for a
 result; move off and it goes back. Click to make it (one undo step); see the guide *modelling*. Only what applies is
 shown, so with one thing selected there is no Combine.
 
+### Follow and stick (an item's settings)
+
+- **Follow** (a bud riding on an opening lid): in the item's **Follow** group, pick the item to ride on with the
+  target (click it, then the lid in the viewport or the scene list). From then on it moves and turns with the lid,
+  from wherever it stands. **Amount** is 1 while it rides; key it **0** at the moment it should be let go and it stays
+  exactly where it is then, never jumping back. Key 0 first and 1 later to pick it up at a time.
+- **Stick to**: pick a mesh (a floor, a table, a ball) and the item stands on its surface straight below as it moves;
+  its **Y** is then its height above that surface. Off the surface's edge it keeps its own Y.
+- **A hinge**: hold **D** and drag the gizmo to the lid's back edge (its pivot), then key **Turn X**: the lid opens
+  around that edge. A bud following the lid rides the same hinge.
+
 ## The bottom panel: the timeline
 
 The same timeline as Rostrum2D's. It is taller on the Animate page.
@@ -147,6 +161,9 @@ The same timeline as Rostrum2D's. It is taller on the Animate page.
     and a box dragged on an empty part of a row picks every key it touches. Drag a key to move it, or all picked keys together;
     drag the bar to move all of the item's keys in time. One drag is one undo step. Keys land on whole frames, and on a marker,
     the playhead or another key when they come close (hold Ctrl to move freely); a label shows how far ("+6 f · logo lands").
+  - **Stretch keys in time:** pick two or more keys, then **Alt+drag the first or last** of them: the others stretch or squeeze
+    around the far end (one undo step; the moved end stays inside the shot). Agents: `key.scale`.
+  - **Right-click a key** for the Ease list (Linear, Ease in, Ease out, Smooth, Spring, Jump, Custom): every picked key gets that ease.
   - **Click the stretch between two keys** (the lid's Turn): the settings panel becomes that animation. Its header says what moves
     ("Turn · lid · Turn X"); then From and To, Start, Length, the easing presets **Linear, Smooth, In, Out, Spring, Bounce, Hold**,
     the curve (drag its two handles), and **Reverse** | **Delete**. One click on a preset eases it (one undo step). ‹ or Esc

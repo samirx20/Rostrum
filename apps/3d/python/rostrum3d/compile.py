@@ -1,14 +1,13 @@
 """The compiler: one shot of the document → the scene description the C++ core builds its USD stage from
-(ENGINE_CONTRACT.md § 2). Every field is present (defaults filled in), colours are linear, aims are turned into
-rx ry rz, and every animated field is baked to one value per frame, start..end inclusive, at the shot's fps (an item
+(ENGINE_CONTRACT.md § 2). Every field is present (defaults filled in), colours are linear, aims, sticks and follows
+are turned into x … sz (resolve.py, follow.py), and every animated field is baked to one value per frame, start..end inclusive, at the shot's fps (an item
 on 2s or 3s, its `timing`, holds each value for 2 or 3 frames, counted from the shot's start).
 Frame n is at n / fps seconds; the one evaluator and easing are rostrum_core.keys' (the same keys as 2D).
 """
 from __future__ import annotations
 
-from rostrum_core.keys import keys_of, track_value
-
-from . import aim, fields as F, material_scene, outline as outlines, rigs
+from . import aim, fields as F, follow, material_scene, outline as outlines, rigs
+from .resolve import PIVOT, TIMING, Frames as _Frames, pivoted, world_at_start  # noqa: F401  (world_at_start: ops)
 from .outline_fields import FIELDS as _OUTLINE_PARAMS, OUTLINE_SHAPES
 from .colors import linear
 from .light_fields import DOC_ONLY as LIGHT_DOC_ONLY
@@ -17,10 +16,9 @@ from .render_fields import shutter_frames
 FORMAT, VERSION = "rostrum-3d-scene", 1
 AIM_FIELDS = {"aim", "aimX", "aimY", "aimZ", "aimItem", "roll"}      # document-only: the compiler resolves them
 ROTATION = ("rx", "ry", "rz")
-PIVOT = ("px", "py", "pz")                     # document-only: Position is where the pivot is; the core gets the origin
 FOCUS_ITEM = "focusItem"                       # a camera's: the compiler turns it into focusDistance per frame
-TIMING = "timing"                              # stepped timing: the compiler holds the values (_Frames.values)
-RESOLVED = AIM_FIELDS | set(PIVOT) | {FOCUS_ITEM, TIMING}   # fields the compiler resolves into others, never sent
+CONSTRAINTS = {"follow", "followAmount", "stick"}             # follow.py: resolved into x … sz
+RESOLVED = AIM_FIELDS | set(PIVOT) | CONSTRAINTS | {FOCUS_ITEM, TIMING}   # fields the compiler resolves, never sent
 DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"}      # words, font, file … never sent
 
 
@@ -42,89 +40,6 @@ def shot_info(data: dict, shot_id: str) -> dict:
         raise ValueError(f'shot "{shot_id}" is shorter than one frame at {s["fps"]} fps')
     return {"id": s["id"], "camera": s["camera"], "fps": s["fps"], "start": start, "end": end,
             "width": s["width"], "height": s["height"]}
-
-
-class _Frames:
-    """Every item's resolved values and world transform, per frame; aims resolved lazily (an aim at an item needs
-    that item's world position, which may need its parent's aim first)."""
-
-    def __init__(self, data: dict, frames: range, fps: float, folder=None):
-        self.frames, self.fps, self.items, self.parent, self.folder = frames, fps, {}, {}, folder
-        stack = [(i, None) for i in data.get("items", [])]
-        while stack:
-            item, parent = stack.pop()
-            self.items[item["id"]], self.parent[item["id"]] = item, parent
-            stack += [(c, item["id"]) for c in item.get("children", [])]
-        self._world, self._values, self._busy, self._step = {}, {}, set(), {}
-
-    def step(self, id_: str) -> int:
-        """Frames each value holds (Timing): the item's own On 2s / On 3s, else its nearest group's, else 1."""
-        if id_ not in self._step:
-            own = F.STEPS.get(self.items[id_].get(TIMING, "smooth"), 1)
-            parent = self.parent[id_]
-            self._step[id_] = own if own > 1 or not parent else self.step(parent)
-        return self._step[id_]
-
-    def values(self, id_: str, f: int) -> dict:
-        n = self.step(id_)
-        if n > 1 and (f0 := self.frames[0] + (f - self.frames[0]) // n * n) != f:
-            return self._values.setdefault((id_, f), self.values(id_, f0))   # held from its block's first frame
-        if (id_, f) not in self._values:
-            item, t = self.items[id_], f / self.fps
-            v = {p.name: item.get(p.name, p.default) for p in F.FIELDS[item["type"]]}
-            for prop in {k["prop"] for k in item.get("keys", [])}:
-                v[prop] = track_value(keys_of(item, prop), t)
-            if item["type"] == "rig":
-                v.update(rigs.transform(v, t))
-            elif item["type"] == "light" and v["kind"] == "dome":     # a dome only turns around up (light_fields.py)
-                v["rx"], v["ry"], v["rz"] = 0.0, v["turn"], 0.0
-            elif v["aim"] != "none":
-                v["rx"], v["ry"], v["rz"] = self._aim(id_, v, f)
-            if any(v.get(p) for p in PIVOT):
-                v.update(zip(("x", "y", "z"), pivoted(v)))
-            self._values[(id_, f)] = v
-        return self._values[(id_, f)]
-
-    def world(self, id_: str, f: int):
-        if (id_, f) not in self._world:
-            parent = self.parent[id_]
-            pw = self.world(parent, f) if parent else aim.IDENTITY
-            self._world[(id_, f)] = aim.compose(pw, aim.local(self.values(id_, f)))
-        return self._world[(id_, f)]
-
-    def _aim(self, id_: str, v: dict, f: int):
-        if (id_, f) in self._busy:
-            raise ValueError(f"{id_}: its aim depends on itself (it aims at something inside it, or two items aim "
-                             "at each other through their parents)")
-        self._busy.add((id_, f))
-        try:
-            if v["aim"] == "point":
-                target = [v["aimX"], v["aimY"], v["aimZ"]]
-            else:
-                if v["aimItem"] not in self.items:
-                    raise ValueError(f'{id_}: aims at "{v["aimItem"]}", which is not an item')
-                target = aim.point(self.world(v["aimItem"], f), [0.0, 0.0, 0.0])
-            parent = self.parent[id_]
-            pw = self.world(parent, f) if parent else aim.IDENTITY
-            try:
-                return aim.aim_rotation(pw, [v["x"], v["y"], v["z"]], target, v["roll"])
-            except ValueError as e:
-                raise ValueError(f"{id_} at frame {f}: can't aim: {e}") from None
-        finally:
-            self._busy.discard((id_, f))
-
-
-def world_at_start(data: dict, id_: str):
-    """An item's world transform at time 0 (aims resolved): where an operation places things inside a group."""
-    return _Frames(data, range(0, 1), 1.0).world(id_, 0)
-
-
-def pivoted(v: dict) -> list[float]:
-    """The item's origin in its parent's space when its pivot (px py pz, in its own space) sits at x y z: the turn and
-    scale happen around the pivot, so x y z − (turn · scale)(pivot)."""
-    lin = aim.local({**v, "x": 0.0, "y": 0.0, "z": 0.0})
-    off = aim.point(lin, [v["px"], v["py"], v["pz"]])
-    return [v[k] - o for k, o in zip(("x", "y", "z"), off)]
 
 
 def _focus_on_item(id_: str, fr: _Frames) -> list[float] | None:
@@ -188,10 +103,11 @@ def _node(item: dict, fr: _Frames) -> dict:
         animated |= {"x", "y", "z"}                            # the origin moves as it turns around its pivot
     if type_ == "light" and v0["kind"] == "dome" and "turn" in animated:
         animated.add("ry")
-    per_frame = {}
-    if item.get("aim", "none") != "none":
-        per_frame = {r: [fr.values(item["id"], f)[r] for f in fr.frames] for r in ROTATION}
-        animated |= {r for r, vals in per_frame.items() if max(vals) - min(vals) > 1e-9}
+    worked = set(ROTATION if item.get("aim", "none") != "none" else ()) | set(follow.TRS if item.get("follow") else ())
+    if item.get("stick"):
+        worked |= {"x", "y", "z"}                              # fields worked out per frame (resolve.py)
+    per_frame = {r: [fr.values(item["id"], f)[r] for f in fr.frames] for r in worked}
+    animated |= {r for r, vals in per_frame.items() if max(vals) - min(vals) > 1e-9}
     anim = {}
     for p in params:
         if p.name in animated:

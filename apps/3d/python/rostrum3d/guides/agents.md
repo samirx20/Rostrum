@@ -11,7 +11,7 @@ scene from the document each time you look. Imported USD files stay untouched; y
    Each step ends with a look.
 3. **Look through the shot's camera, not around the scene.** Everything you see is what the final picture will hold.
    - `look_frame` — one frame. Quality `fast` (Storm) tells you composition, scale, framing and motion in about a second;
-     `final` (Cycles) tells you light, glass, shadows, reflections. Use `renderer: "stylized"` to see the stylized look.
+     `final` (Cycles) tells you light, glass, shadows, reflections. Use `renderer: "stylized"` to see the stylized look. `onion` adds the person's onion-skin ghosts of one item (quick looks only).
      Its reply says how much of the picture is clipped (blown to white) and, for a quick look, which lighting settings only
      Final applies ("Applied in Final: spread on rim, linking on rim").
    - `look_sheet` — the whole shot in six frames. Ask for it after every change to motion: does the thing arrive, hold, leave?
@@ -125,8 +125,18 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   when aimed), sx sy sz as they are at `at`, in the document's `poses`. `pose.apply` (target: the pose; `at`) keys all
   of them at `at`; with `share` 0..1 it is a breakdown instead: each field keyed that share of the way from its key
   before `at` to its key after (fields without both are skipped and named in the reply, as are items no longer in
-  the scene). `pose.rename`, `pose.remove`. Each is one undo step. Onion skin (the person's ghosts in the viewport)
-  has no look tool yet: check an arc with `look_sheet` over the move.
+  the scene). `pose.rename`, `pose.remove`. Each is one undo step. Onion skin (the person's ghosts in the viewport):
+  `look_frame` with `onion: {item, mode}` draws the same ghosts (mode `keys` = the item at its previous and next keys, `frames` =
+  2 and 4 frames before and after; red before, green after). Quick looks only, not `final`. Use it to check an arc or spacing at
+  one frame; `look_sheet` shows the whole move.
+- **Follow and stick.** `follow.add` (targets: the riders; `item`: what they ride on; optional `from`, `until` seconds)
+  makes them move and turn with that item from where they stand, picked up at `from` and let go at `until`
+  (`followAmount` keyed 1 and 0, held). Let go, they stay where they are then: no jump. `follow.release` (`at`) lets go
+  later. Part-way amounts ride that share of each frame's move. `stick.add` (`item`: a plane, disc, box, sphere,
+  cylinder, cone, capsule or editable mesh; optional `height`) stands them on its surface straight below; their `y` is
+  then the height above it. Each is one undo step; the fields are `follow`, `followAmount`, `stick` (`<type>.set`).
+  A hinge is a pivot: put `px py pz` on the lid's back edge (`x y z` is then where that edge stands) and key `rx`.
+  `look_sheet` shows whether the rider stays put after it is let go.
 - **Memory.** `look_frame` replies carry the video memory the render used; a 4 GB card holds a modest scene at 1080p. If a
   render fails with a memory message, lower `width` or the number of lights before anything else.
 
