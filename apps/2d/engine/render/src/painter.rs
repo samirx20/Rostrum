@@ -79,6 +79,9 @@ pub struct Painter {
     cache: SkiaSceneCache,
     /// The GPU output step of playing frames (`read_output8`), made on first use and kept while the table is the same.
     out8: Option<Out8>,
+    /// The world picture's second set of surfaces (`swap_aside`): the frame's export picture is drawn there while the
+    /// world picture's surfaces keep their size, so neither is made again each frame.
+    aside: Option<Aside>,
     gl: Option<Gl>,
     /// The surfaces' size: the view's (`set_view`).
     width: u32,
@@ -102,6 +105,20 @@ pub struct Painter {
     pub last_taps: usize,
     pub last_tap_read_ms: f64,
     pub last_tap_write_ms: f64,
+    /// Device px a paint leaves alone (`paint`): the frame's quad in the world picture, which the export fills.
+    pub clip_out: Option<skia_safe::Path>,
+}
+
+/// One set of picture surfaces and their size and view (`swap_aside`).
+struct Aside {
+    surface: Surface,
+    acc: Option<Surface>,
+    held: Option<Surface>,
+    last: Last,
+    out8: Option<Out8>,
+    width: u32,
+    height: u32,
+    view: (f32, f32, f32),
 }
 
 /// The output step on the GPU (`read_output8`): the program, the checked table it reads (color.rs `OutputLut::gpu_table`, as an
@@ -322,12 +339,12 @@ impl Painter {
     pub fn gpu_on(mut gl: Gl, width: u32, height: u32, space: Option<ColorSpace>) -> Result<Self, String> {
         gl.gr.set_resource_cache_limit(gpu_budget(width, height));
         let surface = new_surface(Some(&mut gl), width, height, &space)?;
-        Ok(Self { gl: Some(gl), surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0 })
+        Ok(Self { gl: Some(gl), surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0, aside: None, clip_out: None })
     }
 
     pub fn cpu(width: u32, height: u32, space: Option<ColorSpace>) -> Result<Self, String> {
         let surface = new_surface(None, width, height, &space)?;
-        Ok(Self { gl: None, surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0 })
+        Ok(Self { gl: None, surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0, aside: None, clip_out: None })
     }
 
     /// Paints from now on the page's part `v` (ENGINE_CONTRACT.md § 1 `scale`, `view`): the whole comp at 1, a smaller
@@ -408,11 +425,18 @@ impl Painter {
         {
             let canvas = if held { self.held.as_mut().unwrap().canvas() } else { self.surface.canvas() };
             canvas.clear(Color::TRANSPARENT);
+            let clipped = self.clip_out.as_ref().map(|q| {
+                canvas.save();
+                canvas.clip_path(q, skia_safe::ClipOp::Difference, true);
+            });
             // Half-float images were decoded into the working space: anyrender_skia tags them with it.
             anyrender_skia::working_space::set(self.space.clone());
             self.cache.set_root_view(self.view.0, self.view.1, self.view.2);
             draw(&mut SkiaScenePainter::new(canvas, &mut self.cache));
             self.cache.set_root_view(1.0, 0.0, 0.0);
+            if clipped.is_some() {
+                canvas.restore();
+            }
         }
         self.cache.held = None;
         self.cache.next_gen();
@@ -461,6 +485,45 @@ impl Painter {
     /// Lets the kept pictures go (the frame is done).
     pub fn clear_cached(&mut self) {
         self.cache.cached.clear();
+    }
+
+    /// Trades the picture surfaces (and their size, view and last picture) for the second set, made on first use at
+    /// the current size; a second call trades them back. The world picture draws the frame's export in the second set.
+    pub fn swap_aside(&mut self) -> Result<(), String> {
+        if !self.in_flight.is_empty() {
+            return Err("a world picture while frames are in flight to the encoder".into());
+        }
+        let mut a = match self.aside.take() {
+            Some(a) => a,
+            None => Aside { surface: new_surface(self.gl.as_mut(), self.width, self.height, &self.space)?, acc: None, held: None, last: Last::Frame, out8: None, width: self.width, height: self.height, view: self.view },
+        };
+        std::mem::swap(&mut self.surface, &mut a.surface);
+        std::mem::swap(&mut self.acc, &mut a.acc);
+        std::mem::swap(&mut self.held, &mut a.held);
+        std::mem::swap(&mut self.last, &mut a.last);
+        std::mem::swap(&mut self.out8, &mut a.out8);
+        std::mem::swap(&mut self.width, &mut a.width);
+        std::mem::swap(&mut self.height, &mut a.height);
+        std::mem::swap(&mut self.view, &mut a.view);
+        self.aside = Some(a);
+        Ok(())
+    }
+
+    /// The last picture (a frame, the motion-blur sum or a held paint), kept as an image.
+    pub fn last_image(&mut self) -> skia_safe::Image {
+        self.last_surface().image_snapshot()
+    }
+
+    /// Draws `image` over the last picture inside the device px polygon `clip`, through `m` (image px → device px):
+    /// the frame's export laid into its quad in the world picture.
+    pub fn draw_over(&mut self, image: &skia_safe::Image, m: &skia_safe::Matrix, clip: &skia_safe::Path) {
+        let canvas = self.last_surface().canvas();
+        canvas.save();
+        canvas.clip_path(clip, skia_safe::ClipOp::Intersect, true);
+        canvas.concat(m);
+        let sampling = skia_safe::SamplingOptions::new(skia_safe::FilterMode::Linear, skia_safe::MipmapMode::None);
+        canvas.draw_image_with_sampling_options(image, (0, 0), sampling, None);
+        canvas.restore();
     }
 
     /// Waits until the GPU has drawn everything submitted (timing one layer's paint, scene_export.rs).

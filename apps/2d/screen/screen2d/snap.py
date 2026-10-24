@@ -28,8 +28,18 @@ def threshold(zoom: float) -> float:
     return DISTANCE / max(zoom, 1e-6)
 
 
-def frame_target(w: float, h: float) -> tuple[int, tuple]:
-    return (0, (0.0, 0.0, float(w), float(h)))
+def frame_target(w: float, h: float, cam=None) -> tuple[int, tuple]:
+    """The frame as rank 0: its box where it is (`cam`: the frame's Shot at the playhead, frame/view.py; none: the
+    output rectangle at home). The box is width/zoom x height/zoom about the frame's centre (swapped at 90 / 270 deg).
+    A frame turned by anything else is only its centre point for now (the turned snap line is spec 9)."""
+    if cam is None:
+        return (0, (0.0, 0.0, float(w), float(h)))
+    k = (cam.roll / 90.0) % 4
+    if abs(k - round(k)) > 1e-6:
+        return (0, (cam.x, cam.y, cam.x, cam.y))
+    hw, hh = (w, h) if round(k) % 2 == 0 else (h, w)
+    hw, hh = hw / cam.zoom / 2, hh / cam.zoom / 2
+    return (0, (cam.x - hw, cam.y - hh, cam.x + hw, cam.y + hh))
 
 
 def _lines(b, which):

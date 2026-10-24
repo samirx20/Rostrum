@@ -19,9 +19,8 @@ def _selected(bridge) -> list[dict]:
 
 
 def _visible(bridge) -> dict | None:
-    """The part of the scene the canvas shows, in composition px (as the view last settled; sharp.py), or None."""
-    v = bridge.sharp._visible
-    return None if v is None else {"x": v[0], "y": v[1], "w": v[2] - v[0], "h": v[3] - v[1]}
+    """The part of the world the canvas shows, in world px (world_view.py), or None."""
+    return bridge.world.visible()
 
 
 def state(bridge) -> dict:

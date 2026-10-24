@@ -6,9 +6,11 @@ changed, and how a frame is read.
 On Windows the frame comes through the engine's shared memory (`pixels`, no PNG); elsewhere, until the engine has
 it there, through a PNG.
 
-Zoomed in past Full, a job also draws the visible part again at the size shown (`crop`: the engine's `view`, the same
-paint as any frame), served as image://framecrop/<n> over the frame (sharp.py). A job may ask for layers' places
-(`place`: the paint target's edge while painting, painter.py), sent with the frame; `place()` asks for one now
+Paused, a job asks for the world picture (`world`: the world rectangle the view shows, at the size shown, the
+frame's quad holding the export; world_view.py), served as image://frame/<n> with its rectangle (`pictured`); the
+pictures drawn last are kept (`WorldCache`), so a view or time seen a moment ago shows again without the engine.
+Playing, a job asks for the export at the playing size. A job may ask for layers' places (`place`: the paint target's
+edge while painting, painter.py; in world px with a world picture), sent with the frame; `place()` asks for one now
 (the pen's press: painting's one mapping, rostrum2d/placement.py).
 """
 from __future__ import annotations
@@ -37,15 +39,15 @@ def open_engine():
     return Engine()
 
 
-def _frame(eng, t: float, png: Path, samples: int | None, scale: float, place=None, view=None) -> QImage:
+def _frame(eng, t: float, png: Path, samples: int | None, scale: float, place=None, view=None, world=None) -> QImage:
     if sys.platform == "win32":
         with STATS.stage("pixels"):
-            got = eng.pixels(t, samples, scale, view, place)
+            got = eng.pixels(t, samples, scale, view, place, world)
         STATS.engine(eng.timing)
         with STATS.stage("image"):
             return image_from_pixels(*got)
-    if view:                                               # a crop needs the engine's pixels (Windows for now)
-        return QImage()
+    if view or world:                                      # a crop or the world needs the engine's pixels (Windows for now)
+        raise RuntimeError("the world view needs the engine's shared pixels (Windows for now)")
     eng.still(t, png)                                      # full size until the engine's pixels come to the Mac
     eng.placed = eng.place(t, place) if place else {}
     return QImage(str(png))
@@ -54,34 +56,59 @@ def _frame(eng, t: float, png: Path, samples: int | None, scale: float, place=No
 _TOLD = set()                    # what was said in the status line already: once per app run
 
 
+class WorldCache:
+    """The world pictures drawn last, by what they were drawn from (the scene described, t, motion-blur steps, the
+    rectangle and its scale): a view or time seen a moment ago shows again without the engine. The scene is a new
+    object on every change, so a changed piece never meets an old picture."""
+    MOST = 12                    # about 6 MB each at Sam's screen
+
+    def __init__(self):
+        self._scene, self._kept = None, []      # the scene the pictures were drawn from (held: its id stays its own)
+
+    @staticmethod
+    def key(scene, t, samples, world, place):
+        return None if place or world is None else (t, samples, tuple(sorted(world.items())))
+
+    def get(self, scene, key):
+        if not key or scene is not self._scene:
+            return None
+        return next((img for k, img in self._kept if k == key), None)
+
+    def put(self, scene, key, image):
+        if key:
+            if scene is not self._scene:
+                self._scene, self._kept = scene, []
+            self._kept = self._kept[-(self.MOST - 1):] + [(key, image)]
+
+
 class FrameRenderer(PictureWorker):
     ready = Signal(int, object)  # serial of the newest frame, and the tag it was asked with (what it was rendered from)
     note = Signal(str)           # a plain notice for the status line (painting on the processor: no graphics driver)
     placed = Signal(object)      # {id: place} the job asked for, just before its `ready`
-    cropped = Signal(int, object)  # serial of the newest sharp crop (0: none) and its comp px rect {x, y, w, h}
+    pictured = Signal(int, object)  # the newest frame's serial and its world rect {x, y, w, h, scale} (None: the export), before `ready`
 
     def __init__(self, parent=None):
         super().__init__("frames2d", parent)
-        self.crops = ImageProvider()                        # image://framecrop/<n>
-        self._crop_serial = 0
+        self._kept = WorldCache()
         self._loaded = None
         SCRATCH.mkdir(parents=True, exist_ok=True)
         scratch.sweep_later(SCRATCH.parent)      # folders killed runs left (a day old, no process owns): once, well after the start
         self.start()
 
-    def request(self, scene: dict, t: float, samples: int | None = None, scale: float = 1.0, tag=None, crop=None, place=None):
+    def request(self, scene: dict, t: float, samples: int | None = None, scale: float = 1.0, tag=None, world=None, place=None):
         """Draw `scene` at `t`. `samples`: motion-blur steps instead of the composition's; `scale`: 1, 0.5 or 0.25 of
-        its size (fast playback, dragging). The same scene and engine either way, so a paused frame and the export are
-        the full picture. `tag` comes back with the frame (`ready`): the state it was rendered from (shown.py).
-        `crop` {x, y, w, h, scale}: the visible part drawn again at the size shown (`cropped`); `place`: layer ids
-        whose places come with the frame (`placed`)."""
-        self.post_latest((scene, t, samples, scale, tag, crop, place))
+        its size (the export while playing). The same scene and engine either way (preview ≡ export). `tag` comes back
+        with the frame (`ready`): the state it was rendered from (shown.py). `world` {x, y, w, h, scale}: the world
+        picture of that rectangle instead (`pictured` says which); `place`: layer ids whose places come with the frame
+        (`placed`, world px with a world picture)."""
+        self.post_latest((scene, t, samples, scale, tag, world, place))
 
-    def place(self, scene: dict, t: float, ids: list[str], timeout_s: float = 10.0) -> dict:
+    def place(self, scene: dict, t: float, ids: list[str], timeout_s: float = 10.0, world: bool = False) -> dict:
         """The layers' places at `t` now (ahead of the next picture), from the engine that draws the canvas. Raises
-        what the engine said, or on no answer within `timeout_s`."""
+        what the engine said, or on no answer within `timeout_s`. `world`: places in world px (what the canvas shows)
+        instead of the export's."""
         box = {"done": threading.Event()}
-        self.post_ordered(("place", scene, t, ids, box))
+        self.post_ordered(("place", scene, t, ids, box, world))
         if not box["done"].wait(timeout_s):
             raise RuntimeError(f"the drawing engine gave no place for {', '.join(ids)} within {timeout_s:.0f} s")
         if "error" in box:
@@ -120,10 +147,10 @@ class FrameRenderer(PictureWorker):
 
     def handle(self, eng, job):
         if job[0] == "place":
-            _, scene, t, ids, box = job
+            _, scene, t, ids, box, world = job
             try:
                 self._load(eng, scene)
-                box["places"] = eng.place(t, ids)
+                box["places"] = eng.place(t, ids, world=world)
             except Exception as e:  # noqa: BLE001  handed to the asker, who raises it
                 box["error"] = e
             box["done"].set()
@@ -136,18 +163,19 @@ class FrameRenderer(PictureWorker):
             except Exception as e:  # noqa: BLE001  handed to the asker, who says it
                 return done(None, e)
             return done(answer, None)
-        scene, t, samples, scale, tag, crop, place = job
-        self._load(eng, scene)
-        image = _frame(eng, t, SCRATCH / "frame.png", samples, scale, place)
-        if image.isNull():
-            raise RuntimeError(f"the engine's frame could not be read: {SCRATCH / 'frame.png'}")
-        self.placed.emit(eng.placed if place else {})
-        self.ready.emit(self.publish(image), tag)
-        sharp = _frame(eng, t, SCRATCH / "crop.png", samples, 1.0, None, crop) if crop else QImage()
-        if not sharp.isNull():
-            self.crops.put(sharp)
-            self._crop_serial += 1
-        self.cropped.emit(self._crop_serial if not sharp.isNull() else 0, crop or {})
+        scene, t, samples, scale, tag, world, place = job
+        key = WorldCache.key(scene, t, samples, world, place)
+        image = self._kept.get(scene, key)
+        if image is None:
+            self._load(eng, scene)
+            image = _frame(eng, t, SCRATCH / "frame.png", samples, scale, place, None, world)
+            if image.isNull():
+                raise RuntimeError(f"the engine's frame could not be read: {SCRATCH / 'frame.png'}")
+            self._kept.put(scene, key, image)
+            self.placed.emit(eng.placed if place else {})
+        serial = self.publish(image)
+        self.pictured.emit(serial, world)
+        self.ready.emit(serial, tag)
         if eng.notice:                                      # it died and was restarted (engine.py): said once
             self.note.emit(eng.notice)
             eng.notice = None

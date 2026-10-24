@@ -30,6 +30,7 @@ pub(super) fn v(it: &Item, f: &str) -> String {
 /// each with its weight and slope (a variable font's weight is its own axis), and an empty stage the comp's size.
 /// Every picture on the stage (image, drawing, video, paint) is a block: an inline `<img>` sits on the text baseline, so
 /// one shorter than a line of text (a 5 px mouth from a PSD) was pushed below its own clipped box and never drawn.
+/// The stage clips at the frame; the world picture lifts that while it draws (serve.rs `open_stage`).
 pub fn shell(width: u32, height: u32, fonts: &[super::fonts::Font]) -> R<String> {
     let mut faces = String::new();
     let mut read: Vec<((&std::path::Path, u32), String)> = vec![];
@@ -56,9 +57,22 @@ pub fn stage(comp: &Item) -> R<String> {
 /// The stage markup of the comp at one time, one piece per top-level element (the background, then each top-level
 /// layer): serve.rs stages only the pieces that changed since the last frame (restage.rs).
 pub fn parts(comp: &Item) -> R<Vec<String>> {
-    let mut out = vec![format!("<div style=\"position:absolute;left:0;top:0;width:100%;height:100%;background:{};\"></div>", v(comp, "background"))];
+    let background = format!("<div style=\"position:absolute;left:0;top:0;width:100%;height:100%;background:{};\"></div>", v(comp, "background"));
     // The frame (crate::frame): each top-level layer seen through it, by its depth; the frame itself isn't drawn.
-    let view = crate::frame::View::of(comp)?;
+    placed(comp, background, crate::frame::View::of(comp)?)
+}
+
+/// The stage markup of the world view (spec § 8.3; the world picture, scene_world.rs): each top-level layer where the
+/// export shows it, carried back into world px, so page px are world px. The background fills the world rectangle
+/// `[x, y, w, h]` (it is behind everything, everywhere). A frame at home: the layers' pieces are the export's.
+pub fn world_parts(comp: &Item, rect: [f64; 4]) -> R<Vec<String>> {
+    let [x, y, w, h] = rect;
+    let background = format!("<div style=\"position:absolute;left:{x:.3}px;top:{y:.3}px;width:{w:.3}px;height:{h:.3}px;background:{};\"></div>", v(comp, "background"));
+    placed(comp, background, crate::frame::View::world(comp)?)
+}
+
+fn placed(comp: &Item, background: String, view: crate::frame::View) -> R<Vec<String>> {
+    let mut out = vec![background];
     out.extend(each_sibling(comp, |l, markup| view.place(l, markup))?);
     Ok(out)
 }

@@ -1,4 +1,4 @@
-"""Where each layer sits on the canvas at a time, in composition pixels: the selection outline and click-to-pick.
+"""Where each layer sits on the canvas at a time, in world pixels (the canvas shows the world; at home they are composition px): the selection outline and click-to-pick.
 No Qt.
 
 A layer's box: its anchor sits at (x, y) inside its parent (a group's layers are placed from the group's top-left
@@ -37,7 +37,7 @@ def _compose(m, a, b, c, d, e, f):
 
 def boxes(comp: dict, t: float) -> list[dict]:
     """[{id, x, y, w, h, rot, ax, ay}] for every layer showing at t, bottom of the stack first (a group before its
-    layers), all on screen (composition px): x, y is the unturned top-left of the box about its anchor, w x h the size on
+    layers), all on the canvas (world px): x, y is the unturned top-left of the box about its anchor, w x h the size on
     screen. A layer inside groups is carried through their whole chain (position, turn, scale, anchor), as the engine
     does: a layer sits at (x, y) inside its parent and turns and scales about its anchor, and a group's layers live in
     the group's own px, so they follow the group's turn. Also `lw lh lrot` (the box in its parent's px) and `m` (the
@@ -67,8 +67,8 @@ def boxes(comp: dict, t: float) -> list[dict]:
             if not (p["start"] <= te < p["end"]):
                 continue
             w, h = own_size(lay["type"], p)
-            if not up:                       # top level: the camera's matrix for this layer's depth (the same one for every box)
-                m = camera.layer_matrix(comp, cam, p)
+            if not up:                       # top level: the world view's matrix for this layer (frame/view.py world_matrix, spec 8.3)
+                m = camera.world_matrix(comp, cam, p)
             sx, sy = p["scale"] * p["scaleX"], p["scale"] * p["scaleY"]
             ang = math.atan2(m[1], m[0])
             gx, gy = math.hypot(m[0], m[1]), math.hypot(m[2], m[3])

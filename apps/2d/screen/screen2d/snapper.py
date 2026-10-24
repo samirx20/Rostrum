@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
+from rostrum2d.frame import view as camera
+
 from . import bounds, snap as S
 
 
@@ -61,7 +63,7 @@ class Snapper(QObject):
         ups = {g for b in mine for g in b["up"]}
         home = mine[0]["up"][-1:] if mine[0]["up"] else ()
         c = self.b.comp()
-        self._targets = [S.frame_target(c["width"], c["height"])]
+        self._targets = [S.frame_target(c["width"], c["height"], camera.shot(self.b.placed(), self.b._t))]
         for b in boxes:
             if b["id"] in moving or b["id"] in ups or moving & set(b["up"]) or b["w"] <= 0 or b["h"] <= 0 or b["opacity"] <= 0:
                 continue

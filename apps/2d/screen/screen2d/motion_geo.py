@@ -3,7 +3,7 @@ nothing itself; this module has no Qt).
 
 Two halves, so a playhead move costs little: `track` reads the document once per change and selection (the layer's own
 x / y per frame between its first and last position key, in its parent's px; the camera's look point in composition px),
-and `mapping` gives, at the playhead, the matrix from those px to the canvas (through the layer's groups and the camera
+and `mapping` gives, at the playhead, the matrix from those px to the canvas (through the layer's groups and the frame
 showing then, mcp/geometry.py and camera/view.py: the same maths as the engine). A key's spatial handles are offsets
 from its value (`out`, `in`; key.path_handles); a key without one shows the default third of the way to its neighbour.
 Positions come from rostrum2d.evaluate.value_at, so the path follows the one evaluation rule.
@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from rostrum2d.frame import view as camera
 from rostrum2d.evaluate import value_at
-from rostrum2d.mcp.geometry import flatten
+from rostrum2d.mcp.geometry import _invert, _mul, flatten
 from rostrum_core.keys.evaluate import keys_of
 
 FRAME_STEPS = 4                 # path points per frame (a fast curve stays smooth); ticks stay one per frame
@@ -78,20 +78,25 @@ def camera_keys(cam: dict) -> list[float]:
 
 
 def mapping(comp: dict, owner: dict, t: float):
-    """The matrix from the owner's travel px to the canvas at the playhead t: a layer through its groups (or, at the
-    top, the camera showing then, by its depth); the camera's look point through the view at depth 0."""
+    """The matrix from the owner's travel px to the canvas (world px) at the playhead t: a layer through its groups (or,
+    at the top, the world view's matrix for its depth, frame/view.py); the frame's own travel is already in world px."""
     cam = camera.shot(comp, t)
     if owner["type"] == "camera":
-        return camera.layer_matrix(comp, cam, {"depth": 0.0})
+        return camera.ID
     every = {e["id"]: e for e in flatten(comp, t)}
     e = every.get(owner["id"])
     if e is None:
         return camera.ID
-    return every[e["within"][-1]]["matrix"] if e["within"] else camera.layer_matrix(comp, cam, e["props"])
+    if not e["within"]:
+        return camera.world_matrix(comp, cam, e["props"])
+    top = every[e["within"][0]]["props"]            # a group's matrix is the export's: swap the top's export matrix for its world one
+    swap = _mul(camera.world_matrix(comp, cam, top), _invert(camera.layer_matrix(comp, cam, top)) or camera.ID)
+    return _mul(swap, every[e["within"][-1]]["matrix"])
 
 
 def frame_at(comp: dict, cam: dict, t: float, now) -> list[list[float]]:
-    """The camera's frame at time t (the composition rectangle it shows then) as the canvas shows it now (`now`)."""
+    """The frame's box at time t (the output rectangle carried back into world px: its quad) as the canvas shows it now
+    (`now`, the mapping of the frame's own travel: the identity in the world view)."""
     w, h = comp.get("width", 1920), comp.get("height", 1080)
     m = camera.layer_matrix(comp, camera.shot(comp, t), {"depth": 0.0})
     return [apply(now, *camera.undo(m, x, y)) for x, y in ((0, 0), (w, 0), (w, h), (0, h))]

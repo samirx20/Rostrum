@@ -28,3 +28,18 @@ pub(crate) fn planned(node: NodeId) -> Option<Run> {
         if p.is_empty() { None } else { p.get(&node).copied() }
     })
 }
+
+thread_local! {
+    static VIEWPORT: RefCell<Option<kurbo::Rect>> = const { RefCell::new(None) };
+}
+
+/// Rostrum patch (camera F3): the page px rectangle the next paints on this thread draw, culling what lies wholly
+/// outside it (None: the page's own width × height from its top-left, as without the patch). The 2D engine's world
+/// picture shows any part of the endless canvas, left of or above the page's origin too.
+pub fn set_viewport(rect: Option<kurbo::Rect>) {
+    VIEWPORT.with(|v| *v.borrow_mut() = rect);
+}
+
+pub(crate) fn viewport() -> Option<kurbo::Rect> {
+    VIEWPORT.with(|v| *v.borrow())
+}

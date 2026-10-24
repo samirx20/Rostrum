@@ -28,7 +28,7 @@ TWELVE = ["select card"] + [f"set {'xy'[n % 2]} {500 + n}" for n in range(12)]  
 IGNORE = ("/MotionPath#",)
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen), in
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
-QUICK = ("workspace", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
+QUICK = ("workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
          "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles",
          "sound-row", "rig-bones", "camera-ride", "scene-1080x1920", "long-status-line", "import-report")
@@ -106,6 +106,11 @@ def states() -> list[tuple[str, list[str], list[str]]]:
     busy = [*TWELVE, f"rename card {LONG_LAYER}", f"say {LONG_STATUS}"]
     return [
         ("workspace", ["--sample"], ["select title"]),
+        # F4: the world view (mock-1, mock-2): a new piece fitted (veil, outline, name tab); the view panned so the frame is
+        # out of view (the "‹ Frame" chip); the same with long names everywhere (tab and chip never cut off)
+        ("frame-new", ["--sample"], ["zoom fit"]),
+        ("frame-world-panned", ["--sample"], ["select title", "zoom fit", "pan -1800 0 hold"]),
+        ("frame-off-view-long", long(), [*busy, "zoom fit", "pan -1800 0 hold"]),
         ("rig-make-first", with_character(), ["select max"]),                # H32: parts named like a body: Make rig first
         ("rig-bones", with_character(), RIGGED),                             # H32: the bone overlay, a rig in hand
         ("rig-attach", with_character(), [*RIGGED, "selectmany hand_R bone_5"]),   # a part + a bone: Attach to bone

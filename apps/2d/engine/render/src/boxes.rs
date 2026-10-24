@@ -190,3 +190,36 @@ pub fn places(doc: &BaseDocument, width: u32, height: u32, attr: &'static str, i
     w.element(root, Affine::IDENTITY, None, Rect::new(0.0, 0.0, width as f64, height as f64), 1.0, None);
     w.places
 }
+
+/// `boxes`, carried by `m` (page px → world px; the identity when the page is the world view's): a world picture's
+/// boxes (scene_world.rs), every rect in world px.
+pub fn in_world(doc: &BaseDocument, width: u32, height: u32, m: crate::rig::math::Aff) -> Value {
+    let mut out = boxes(doc, width, height);
+    if m != crate::rig::math::Aff::ID {
+        for b in out.as_array_mut().into_iter().flatten() {
+            for k in ["box", "ink", "clip", "glyphs"] {
+                if let Some(w) = carried(&b[k], m) {
+                    b[k] = w;
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Adds `world` to each box: its `box` carried by `m` (output px → world px, the plain frame), where the world view
+/// draws the layer (camera spec § 8.3).
+pub fn add_world(boxes: &mut Value, m: crate::rig::math::Aff) {
+    for b in boxes.as_array_mut().into_iter().flatten() {
+        b["world"] = carried(&b["box"], m).unwrap_or(Value::Null);
+    }
+}
+
+/// A rect [x0, y0, x1, y1] carried by `m`: the bounding box of its corners.
+fn carried(v: &Value, m: crate::rig::math::Aff) -> Option<Value> {
+    let r: Vec<f64> = v.as_array()?.iter().filter_map(Value::as_f64).collect();
+    let [x0, y0, x1, y1] = r[..] else { return None };
+    let ps = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)].map(|p| m.apply(p));
+    let b = ps.iter().fold(Rect::new(f64::MAX, f64::MAX, f64::MIN, f64::MIN), |b, p| Rect::new(b.x0.min(p.0), b.y0.min(p.1), b.x1.max(p.0), b.y1.max(p.1)));
+    Some(rect(b))
+}

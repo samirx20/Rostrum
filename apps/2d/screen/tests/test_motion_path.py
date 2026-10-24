@@ -82,18 +82,3 @@ cam.key("x", {0.0: 160, 2.0: 220})
 cam.key("y", {0.0: 90, 2.0: 70})
 cam.key("zoom", {0.0: 1, 2.0: 1.4})
 '''
-
-
-def test_dropping_a_camera_key_announces_the_new_view_for_the_glide(bridge):  # noqa: F811
-    """The view only: the drop says where the new camera's frame lies in the picture shown (ViewGlide.qml slides there)."""
-    bridge.doc.run_script("cam.py", run_source(CAM, "cam.py"))
-    bridge.select("frame")
-    bridge.setTime(1.0)
-    seen = []
-    bridge.viewGlide.connect(seen.append)
-    mp = bridge.motionPath
-    assert mp.beginKey("frame", 2.0)
-    bridge.snap.keys(True, False)
-    mp.drag(60, -40, False)
-    bridge.endDrag()
-    assert len(seen) == 1 and len(seen[0]) == 4 and seen[0][2] > seen[0][0] and seen[0][3] > seen[0][1]

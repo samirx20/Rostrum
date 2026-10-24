@@ -4,9 +4,9 @@ import QtQuick
 // composition (0, 0) sits in the well). Screen state only: never the document, no undo step, an agent never moves it.
 // Stage.qml turns this into its one mapping (compScale, compOrigin, toComp, fromComp); nothing else reads it directly
 // except Stage's own children and the view controls. The view never moves on its own (SPEC 2d-design-v2 §4.1):
-// `fitAll()` fits the frame once (16 px margin on its tighter side) and the view then holds that zoom and place until
-// the next fit, which Stage asks for only when the window's layout changes (AppShell.layoutChanged) or the scene's
-// size does; a panel growing or shrinking moves nothing. `fitted`: the view is at that fit (the menu says "Fit").
+// `fitAll(rect)` fits the frame where it is at the playhead once (24 px round it) and the view then holds that zoom and
+// place until the next fit, which Stage asks for only when the window's layout changes (AppShell.layoutChanged) or the
+// scene's size does; a panel growing or shrinking moves nothing. `fitted`: the view is at that fit (the menu says "Fit").
 QtObject {
     id: v
     property real wellW: 0
@@ -15,10 +15,9 @@ QtObject {
     property real compH: 1
     property real top: 0                       // room kept clear above the frame at Fit (none in 2D: nothing floats there)
     readonly property real margin: 16
+    readonly property real frameMargin: 24     // the frame fit's room round the frame (SPEC 2d-camera 4.1)
     readonly property real fitMost: 4          // F on a tiny layer stops at 400 % (the frame is drawn at most at Full)
-    readonly property real above: Math.max(margin, top)   // the bar's room counts as the top margin, not on top of it
-    readonly property real fit: Math.max(0.01, Math.min((wellW - 2 * margin) / compW, (wellH - above - margin) / compH))
-    property bool fitted: true
+    property bool fitted: true                 // at the frame fit (the menu says "Fit")
     property real asked: 1
     property real cx: 0
     property real cy: 0
@@ -29,12 +28,17 @@ QtObject {
 
     function clamp(z) { return Math.max(steps[0], Math.min(steps[steps.length - 1], z)) }
     function hold() { fitted = false }
-    function fitAll() {                                                         // once: then the view holds still
+    // Fit the frame where it is at the playhead: `r` is its world rect {x0, y0, x1, y1} (backend.frameView.fitRect()), with
+    // 24 px round it. Once: then the view holds still. Without a rect: the composition's own rect (no frame known yet).
+    function fitAll(r) {
         if (wellW <= 0 || wellH <= 0) return
-        asked = fit; cx = compW / 2
-        cy = (wellH / 2 - (above + (wellH - above - margin - compH * fit) / 2)) / fit
+        const x0 = r ? r.x0 : 0, y0 = r ? r.y0 : 0, x1 = r ? r.x1 : compW, y1 = r ? r.y1 : compH
+        const w = Math.max(x1 - x0, 1), h = Math.max(y1 - y0, 1)
+        asked = clamp(Math.max(0.01, Math.min((wellW - 2 * frameMargin) / w, (wellH - 2 * frameMargin) / h)))
+        cx = (x0 + x1) / 2; cy = (y0 + y1) / 2
         fitted = true
     }
+    function fitEverything(r) { fitBox(r.x0, r.y0, r.x1, r.y1) }                  // Shift+1: every layer and the frame's path
     // zoom to `z`, keeping the composition point under (px, py) (well px) where it is
     function zoomAt(z, px, py) {
         const ax = (px - ox) / zoom, ay = (py - oy) / zoom
