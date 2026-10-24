@@ -3,7 +3,8 @@ import RostrumKit
 
 // One painting in the Library's Paintings section (painting_library.py): a 42 px picture (four repeats when the painting is
 // seamless, so the repeat reads; the painting alone otherwise), its name and one small line. Click = use it on the picked
-// layers (nothing picked: pick its uses), double-click = open it, right-click = the menu, rename types in place.
+// layers (nothing picked: pick its uses), its Open button (↗) = open it, right-click = the menu, rename
+// types in place. No double-click: its first click would already have put the painting on the picked layers.
 Rectangle {
     id: row
     property var p: ({})                 // {id, name, line, seamless, picture}
@@ -41,7 +42,8 @@ Rectangle {
     Column {
         id: words
         visible: !row.renaming
-        anchors { left: pic.right; leftMargin: Theme.gap; right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
+        anchors { left: pic.right; leftMargin: Theme.gap; right: openButton.left
+                  rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
         Text { id: titleText; width: parent.width; text: row.p.name; elide: Text.ElideRight; color: Theme.fg
                font.family: uiFont; font.pixelSize: Theme.body }
         Text { id: subText; width: parent.width; text: row.p.line; elide: Text.ElideRight; color: Theme.fg3
@@ -61,7 +63,15 @@ Rectangle {
         anchors.fill: parent; enabled: !row.renaming; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: (m) => { if (m.button === Qt.RightButton) row.openMenu(m.x, m.y); else row.asked("use") }
-        onDoubleClicked: (m) => { if (m.button === Qt.LeftButton) row.asked("open") }
+    }
+    IconButton {    // after the row's MouseArea, so its click is its own
+        id: openButton
+        objectName: "openPainting:" + row.p.id
+        visible: !row.renaming
+        anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
+        glyph: "↗"; kind: "ghost"; tip: "Open"
+        help: "Open the painting on its own, to paint it and see how it repeats."
+        onClicked: row.asked("open")
     }
     HoverTip { hovered: area.containsMouse && (titleText.truncated || subText.truncated)
                text: row.p.name + "\n" + row.p.line }

@@ -43,7 +43,7 @@ IGNORE = ("/MotionPath#", "/barEnd:")
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
 QUICK = ("export-area", "workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
-         "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles", "fill-painted-tile-rows", "paint-in-place", "paint-in-place-seamless", "library-paintings", "library-paintings-menu", "painting-opened", "painting-opened-boil", "paint-in-place-select",
+         "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles", "fill-painted-tile-rows", "paint-in-place", "paint-in-place-seamless", "library-paintings", "library-paintings-menu", "library-paintings-open", "painting-opened", "painting-opened-boil", "paint-in-place-select",
          "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "frame-pinned-title", "frame-look-through", "cover-band", "scene-1080x1920", "long-status-line", "import-report")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -299,6 +299,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # painted fill P6: the Library's Paintings (long name, seamless four repeats, uses), two layers picked; its right-click menu
         ("library-paintings", ["--sample"], LIBRARY_PAINTINGS),
         ("library-paintings-menu", ["--sample"], [*LIBRARY_PAINTINGS, "clickobj paintingRow:painting_2 0.5 0.5 right"]),
+        ("library-paintings-open", ["--sample"], [*LIBRARY_PAINTINGS, "clickobj openPainting:painting_2"]),   # the row's Open button: the painting alone, nothing used
         # P6: a painting opened on its own (its repeats round it, the path chip, Size and Used by); it boiling, three
         # drawings as cells with the onion skin; Select strokes on a painted fill painted in place
         ("painting-opened", ["--sample"], OPENED),

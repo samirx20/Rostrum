@@ -1,6 +1,6 @@
 """Scripted steps for a painting opened on its own (painting_open.py); each is the call a click or key makes.
 
-    paintingopen <painting id>     the Library's double-click (Open): the painting alone, the brush on
+    paintingopen <painting id>     the Library's Open (the row's ↗ button): the painting alone, the brush on
     paintingclose                  the path chip's scene name (back to the scene, picking and tool as they were)
     paintinguse <layer id>         Used by › that layer: back with it picked
 """

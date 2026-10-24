@@ -1,6 +1,6 @@
 """The Library drawer's Paintings section (painted fill, DESIGN § 3.2, 3.9, 4): the scene's paintings as rows (a small picture,
 the name, one line: "Seamless · 128 × 128 · 3 uses"), and what a person does with them: click = use it on the selection (with
-nothing picked: pick its uses), double-click = open it, right-click = Use / Open / Rename / Duplicate / Delete, "+ New painting",
+nothing picked: pick its uses), the row's ↗ button = open it, right-click = Use / Open / Rename / Duplicate / Delete, "+ New painting",
 "+ From <layer>'s paint". Offered to QML as `backend.library.paintings`. Paintings belong to the scene (the document), so the
 section shows with or without a project. Each action is one change made by the same operations an agent calls
 (layer.fill, painting.add / set / duplicate / remove), so one Ctrl+Z takes it back.
