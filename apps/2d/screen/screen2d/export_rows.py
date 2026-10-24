@@ -21,9 +21,16 @@ def what_for(formats: list[dict]) -> list[dict]:
             for f in formats]
 
 
-def settings(row: dict, values: dict) -> list[dict]:
-    """{key, kind toggle|choice|number, label, value, …} for the format `row` (exporting.info)."""
+AREAS = {"frame": "Frame", "items": "Picked layers", "world": "Everything"}
+
+
+def settings(row: dict, values: dict, picked: bool = False) -> list[dict]:
+    """{key, kind toggle|choice|number, label, value, …} for the format `row` (exporting.info). `picked`: layers are picked, so a
+    picture's Area can be them."""
     out = []
+    if "area" in values:                          # a picture: the frame, or an area of the world (mcp/export_area.py)
+        out.append({"key": "area", "kind": "choice", "label": "Area", "value": values["area"],
+                    "options": [{"value": k, "label": w} for k, w in AREAS.items() if k != "items" or picked]})
     if row["alpha"]:
         out.append({"key": "alpha", "kind": "toggle", "label": "Transparency", "value": values["alpha"]})
     if len(row["depths"]) > 1:

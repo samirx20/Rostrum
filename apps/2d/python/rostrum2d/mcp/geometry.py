@@ -37,8 +37,9 @@ def _invert(m):
     return (d / det, -b / det, -c / det, a / det, (c * f - d * e) / det, (b * e - a * f) / det)
 
 
-def flatten(comp: dict, t: float) -> list[dict]:
-    """Every layer of a composition at time t, bottom of the stack first. Each: id, type, name, props (evaluated),
+def flatten(comp: dict, t: float, world: bool = False) -> list[dict]:
+    """Every layer of a composition at time t, bottom of the stack first. `world`: corners and matrices in world px, where the
+    world view draws each layer (frame/view.py `world_matrix`), instead of in the picture. Each: id, type, name, props (evaluated),
     opacity (with its groups' opacity), in_time, corners (4 points in the comp), matrix, box (w, h own size), paint (the
     part of the box it paints itself, own px, or None: boxes.painted)."""
     out: list[dict] = []
@@ -55,7 +56,7 @@ def flatten(comp: dict, t: float) -> list[dict]:
             if took := follow.taken(layer, layers, t):     # a text on a path layer (its place and box) or a rider (its place)
                 w, h = took.pop("w", w), took.pop("h", h)
                 p.update(took)
-            outer = parent_m if path else camera.layer_matrix(comp, cam, p)
+            outer = parent_m if path else (camera.world_matrix if world else camera.layer_matrix)(comp, cam, p)
             m = _mul(outer, boxes.matrix(p, w, h))
             opacity = parent_opacity * min(1.0, max(0.0, p["opacity"]))
             in_time = parent_in_time and p["start"] <= t < p["end"]

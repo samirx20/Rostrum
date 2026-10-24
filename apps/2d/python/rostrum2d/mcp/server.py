@@ -6,7 +6,7 @@
 With no options the server opens the project the 2D screen would open: the newest row of Open recent still on disk.
 With none, no document is open (inspect_project says so). While running, inspect_recent_projects lists the person's
 projects and run_open_project switches. Every change is saved at once, so the 2D screen process can open the same file.
-Tools: the shared ones from rostrum_core, plus look_frame, look_sheet, look_motion, look_path, look_at, render_video, render_export,
+Tools: the shared ones from rostrum_core, plus look_frame, look_sheet, look_world, look_in_frame, look_motion, look_path, look_at, render_video, render_export,
 run_import, inspect_layout, inspect_swaps, inspect_diagnose, inspect_soundtrack, inspect_recent_projects, run_open_project,
 run_paint_picture, run_brush (My brushes), look_painting, inspect_painting (paintings: the fill many layers share).
 """
@@ -20,13 +20,13 @@ from mcp.server.stdio import stdio_server
 from rostrum_core.mcp import App, Guides, Runtime, build_server
 
 from rostrum2d import run_source
-from . import at, curves, diagnose_tool, draw, export_tool, fonts_tool, import_tool, layout_tool, look, motion, project_tool, rig, video
+from . import at, curves, diagnose_tool, draw, export_tool, fonts_tool, import_tool, layout_tool, look, motion, project_tool, rig, video, world
 from . import background_tool, brand_tool, brush_tool, lipsync, painting_tool, picture_tool, sound_cue_tool, soundtrack_tool, swap_tool
 from .project_tool import open_documents, start_choice, with_no_project_sentence   # noqa: F401  (open_documents: its old import path)
 
 GUIDES = Path(__file__).resolve().parents[3] / "guides"
 INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text / image / group layers animated by keys. "
-                "Read inspect_guide 'start-here', build with run_script, then check your work with look_frame, look_sheet and look_motion. "
+                "Read inspect_guide 'start-here', build with run_script, then check your work with look_frame, look_sheet and look_motion; look_world shows the whole canvas with the frame's path on it and look_in_frame says what is in, partly in or out of the frame. "
                 "Paint on any shape, text, picture or path, or on a drawing, with paint.stroke (its paint stays inside the outline and "
                 "moves with it; one call list = one undo step), fill a closed area with paint.fill {at, color, gap} (paint layers, shared by "
                 "all of a layer's drawings: paint.add, paint.set, paint.move, paint.duplicate, paint.remove; saved brushes: run_brush) and check with look_drawing, "
@@ -55,7 +55,7 @@ def app_tools():
             .merged_with(layout_tool.tools).merged_with(swap_tool.tools).merged_with(import_tool.tools).merged_with(diagnose_tool.tools).merged_with(fonts_tool.tools)
             .merged_with(background_tool.tools).merged_with(project_tool.tools).merged_with(soundtrack_tool.tools)
             .merged_with(sound_cue_tool.tools).merged_with(brand_tool.tools)
-            .merged_with(picture_tool.tools).merged_with(brush_tool.tools).merged_with(painting_tool.tools))
+            .merged_with(picture_tool.tools).merged_with(brush_tool.tools).merged_with(painting_tool.tools).merged_with(world.tools))
 
 
 def make_app(project: str | None = None, items: list[str] | None = None, documents: dict | None = None) -> App:

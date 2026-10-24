@@ -148,7 +148,9 @@ You can't judge motion from the script. Look.
 | `look_motion` | Read **what moves and when** from the keys, no rendering: each layer's moves, path, peak speed, ease, overshoot, holds; entrances that overlap; where nothing moves; layers off screen at the end; keys that do nothing. Facts only. Run it after every script. |
 | `look_sheet` | See the **whole motion at a glance**: N frames over a time range in one labelled image. |
 | `look_frame` | See **one moment** in detail, at a time or frame number. Look at the landing frames and the hold frames. |
-| `look_at` | Ask **what is at a point** (x, y, time): layers covering it, top first, with values (boxes are approximate). |
+| `look_at` | Ask **what is at a point** (x, y, time; `space` frame or world): layers covering it, top first, with values (boxes are approximate). |
+| `look_world` | See the **whole canvas** with the frame and its path drawn on it (a dot per frame, keys, cuts), and a ruler of world px. |
+| `look_in_frame` | Ask **what is in the frame** at a time, or over a span: each layer in, partly in or out, and when it enters and leaves. |
 | `render_video` | Export an mp4. Always a job: `inspect_job` with `wait_s` to follow it. |
 
 Look files go to `C:\Users\Sam\.rostrum\cache\look\`; every reply gives the full path. `look_frame` and `look_sheet` use the

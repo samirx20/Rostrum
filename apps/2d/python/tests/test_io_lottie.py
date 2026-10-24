@@ -84,6 +84,26 @@ def test_a_frame_move_is_baked_where_the_engine_puts_the_layers():
     assert not report and any("frame" in line for line in baked)        # carried exactly: not a difference
 
 
+def test_a_frame_that_never_leaves_home_writes_the_same_file_as_before():     # camera spec test 8
+    plain = _scene({"depth": 1.0})
+    at_home = _scene({"depth": 1.0})
+    at_home["comp"]["layers"].insert(0, {"id": "frame", "type": "camera", "props": {**_sent("camera"), "x": 960, "y": 540, "homeX": 960, "homeY": 540}})
+    assert to_lottie(at_home) == to_lottie(plain)
+
+
+def test_a_cut_is_a_hold_keyframe_and_a_pinned_layer_gets_no_null():
+    sc = _scene({"depth": 1.0})
+    sc["comp"]["layers"].append({"id": "title", "type": "shape", "props": {**F.defaults("shape"), "screenLock": True}})
+    sc["comp"]["layers"].insert(0, {"id": "frame", "type": "camera", "props": {**_sent("camera"), "x": 960, "y": 540, "homeX": 960, "homeY": 540},
+                                    "anim": {"x": [{"t": 0, "v": 960, "ease": "hold"}, {"t": 1, "v": 2400}]}})
+    lottie, _ = to_lottie(sc)
+    layers = {l["nm"]: l for l in lottie["layers"]}
+    assert "parent" in layers["box"] and "parent" not in layers["title"]
+    null = next(l for l in lottie["layers"] if l["ind"] == layers["box"]["parent"])
+    a = null["ks"]["a"]["k"]
+    assert next(k for k in a if k["t"] == 29).get("h") == 1                 # held up to the frame the cut lands on
+
+
 def _ease_frac(sc, name, t):
     from rostrum_core.keys import track_value
     keys = sc["comp"]["layers"][0]["anim"][name]

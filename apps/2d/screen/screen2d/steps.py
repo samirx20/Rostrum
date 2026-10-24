@@ -28,7 +28,7 @@
   Inspector kit: find <text> (the search box; alone clears it) | group <name> (fold / open a group) | reveal <field> (bring a field into view)
   Export (the kit's Export sheet): export <mp4|prores4444|webm|gif|png|exr|lottie> [alpha=on|off] [depth=8|16]
     [quality=<q>] [range=<a→b>] (the sheet's Export; waits for it) | exportpanel open [format]|close (= exportsheet) |
-    exportcancel [format] (start one, then Cancel it) | exportto <folder> [replace|both|cancel] | exportshow | exportsize (export_steps.py);
+    exportcancel [format] (start one, then Cancel it) | exportto <folder> [replace|both|cancel] | exportshow | exportsize | exportarea frame|items|world (export_steps.py);
     the kit's own: exportsheet, exportwhere, exportnow, job-show, job-failed (rostrum_gui/export_steps.py)
   Files (file_steps.py): new [name] | openproject <path> | startscreen open|close | version [name] | duplicateproject <name> |
     filemenu open|close

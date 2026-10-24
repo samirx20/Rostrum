@@ -7,7 +7,7 @@ Our anchor is a fraction of the box that sits at (x, y); Lottie's `a` is a point
 from __future__ import annotations
 
 from .. import blends, pathdata
-from .lottie_camera import ride_keys
+from .lottie_frame import ride_keys
 from .lottie_props import Ctx, build, frozen
 from .lottie_shapes import shape_value
 

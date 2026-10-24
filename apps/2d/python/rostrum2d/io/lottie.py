@@ -9,7 +9,7 @@ fades, the frame's move) is not a difference and goes to the `baked` list a call
   precomp's layers, in the group's own px. `clip` becomes a rect mask over the box; otherwise the precomp is made
   huge so nothing is cut. Time inside a precomp is the composition's time.
 - The composition's background becomes the bottom solid layer (Lottie has no background colour).
-- the frame's move: baked into null parent layers, a keyframe every frame (lottie_camera.py), so the picture matches;
+- the frame's move: baked into null parent layers, a keyframe every frame (lottie_frame.py), so the picture matches;
   a frame that never leaves home writes nothing.
 - text: glyph outlines as one shape layer per text (lottie_text.py). Not exported, always reported: drawing, video, tilt, effects, motion blur, conic gradients, soft mask edges.
 """
@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .lottie_camera import bake as bake_camera
+from .lottie_frame import bake as bake_frame
 from .lottie_image import image_layer
 from .lottie_layer import clip_mask, common
 from .lottie_outline import Outlines
@@ -38,7 +38,7 @@ def _layers(children: list[dict], ctx: Ctx, assets: list[dict], start_ind: int =
     for node in children:
         ctx.layer = node["id"]
         kind = node["type"]
-        if kind == "camera":                   # the scene's frame: bake_camera carries its move, after the layers
+        if kind == "camera":                   # the scene's frame: bake_frame carries its move, after the layers
             continue
         if node["props"]["end"] <= node["props"]["start"]:
             ctx.say("starts after it ends; never drawn, so not exported")
@@ -118,7 +118,7 @@ def to_lottie(scene: dict, background: bool = True, baked: list | None = None) -
         outlines.close()
     for i, layer in enumerate(layers):
         layer["ind"] = len(layers) - i
-    layers += bake_camera(comp, layers, ctx, len(layers) + 1)
+    layers += bake_frame(comp, layers, ctx, len(layers) + 1)
     if pr.get("shutter", 0) > 0:
         ctx.report.append(f'composition "{comp["id"]}": motion blur ({pr["shutter"]:g}° shutter) is not in Lottie; moving layers are sharp')
     if background:
