@@ -10,7 +10,7 @@ from rostrum_core.mcp import Reply, Tools
 
 from rostrum2d.frame import view as camera
 
-from . import render
+from . import render, world_facts as wf
 from .geometry import comp_size, covers, drawn_box, flatten, problems_showing
 from .pick import ITEM_COMP, TIME, doc_and_comp, time_of
 
@@ -22,35 +22,42 @@ POINT = {"x": {"type": "number", "description": "Pixels from the left of the com
          "y": {"type": "number", "description": "Pixels from the top of the composition."}}
 
 
-def _covering(comp: dict, t: float, x: float, y: float) -> list[dict]:
+SPACE = {"space": {"type": "string", "enum": ["frame", "world"], "default": "frame",
+                   "description": "frame: x, y are px of the picture (the export). world: x, y are world px, the canvas the frame moves over "
+                                  "(what look_world's ruler shows); boxes are where the world view draws each layer."}}
+
+
+def _covering(comp: dict, t: float, x: float, y: float, world: bool = False) -> list[dict]:
     """The flattened layers whose box covers (x, y) at t, top first."""
-    return [n for n in reversed(flatten(comp, t)) if covers(n, x, y)]      # the last layer in the list is on top
+    return [n for n in reversed(flatten(comp, t, world)) if covers(n, x, y)]      # the last layer in the list is on top
 
 
-@tools.tool("look_at", {"required": ["x", "y"], "properties": {**ITEM_COMP, **TIME, **POINT}})
+@tools.tool("look_at", {"required": ["x", "y"], "properties": {**ITEM_COMP, **TIME, **POINT, **SPACE}})
 def look_at(ctx, args):
-    """What is at a point (x, y in composition pixels) at a time: the layers whose box covers it, top first, with their values
-    at that time and their box. APPROXIMATE: boxes come from each layer's size and transform (text width is estimated);
+    """What is at a point at a time: the layers whose box covers it, top first, with their values at that time and their box.
+    `space` "frame" (default): x, y are composition pixels, the picture. "world": x, y are world px, the canvas around the frame
+    (read them off look_world's ruler); the reply says whether the point is inside the frame then. APPROXIMATE: boxes come from each layer's size and transform (text width is estimated);
     effects like glow and shadow, and masks, are not counted. Layers that are covered but invisible (opacity 0) are marked."""
     doc, comp = doc_and_comp(ctx, args)
     t, frame = time_of(ctx, comp, args)
     x, y, (w, h) = args["x"], args["y"], comp_size(comp)
+    world = args.get("space", "frame") == "world"
     rows = []
-    for n in _covering(comp, t, x, y):
-        why = problems_showing(n, w, h)
+    for n in _covering(comp, t, x, y, world):
+        why = problems_showing(n, w, h, frame=not world)
         box = [round(v, 1) for v in drawn_box(n)]
         rows.append({"id": n["id"], "type": n["type"], "box": {"left": box[0], "top": box[1], "right": box[2], "bottom": box[3]},
                      "values": {k: n["props"][k] for k in SHOWN if k in n["props"]}, "visible": not why, "why_not_visible": why,
                      "inside": list(n["within"])})
-    inside = 0 <= x < w and 0 <= y < h
+    inside = wf.point_in_frame(comp, t, x, y) if world else 0 <= x < w and 0 <= y < h
     lines = [f'{r["id"]} ({r["type"]}){"" if r["visible"] else " [not visible: " + ", ".join(r["why_not_visible"]) + "]"}' for r in rows]
-    where = f"({x:g}, {y:g}) px at {t:.3f} s (frame {frame}){'' if inside else ', which is outside the frame'}"
+    where = f"({x:g}, {y:g}) {'world px' if world else 'px'} at {t:.3f} s (frame {frame}){'' if inside else ', which is outside the frame'}"
     summary = f"At {where}: " + (f'{len(rows)} layer{"s" * (len(rows) != 1)}, top first: {"; ".join(lines)}.' if rows else "no layer's box covers it.")
     cam = camera.shot(comp, t)
     cam_says = f" Frame: x {cam.x:g}, y {cam.y:g}, zoom {cam.zoom:g}." if cam else ""
     return Reply(summary + " Approximate boxes." + cam_says,
-                 {"time": t, "frame": frame, "point": [x, y], "inside_frame": inside, "layers": rows,
-                  "frame": {"x": cam.x, "y": cam.y, "zoom": cam.zoom, "rotation": cam.roll} if cam else None})
+                 {"time": t, "frame": frame, "point": [x, y], "space": "world" if world else "frame", "inside_frame": inside, "layers": rows,
+                  "frame_at": {"x": cam.x, "y": cam.y, "zoom": cam.zoom, "rotation": cam.roll} if cam else None})
 
 
 @tools.tool("inspect_colour_at", {"required": ["x", "y"], "properties": {**ITEM_COMP, **TIME, **POINT}})

@@ -86,6 +86,12 @@ def _check_args(op, args, where):
     return {k: op.param(k).check(v, where) for k, v in args.items()}
 
 
+def refusal(op) -> str:
+    """Why an item can't take `op` now, in words (the operation's label, the fact's plain phrasing): `can't take Pin to
+    frame now: it only works when it sits directly in a scene and Locked is off`."""
+    return f"can't take {op.label or op.name} now: it only works when {describe(op.valid_when, {p.name: p.label for p in op.params})}"
+
+
 def _check_targets(kind, op, targets, view, where):
     idx, items = view.locs(), []
     if op.targets is None:
@@ -106,7 +112,7 @@ def _check_targets(kind, op, targets, view, where):
                                f"{' or '.join(op.targets)}")
         if not holds(op.valid_when, fields(it, kind.lists), kind.facts(it, view)):
             raise RostrumError(codes.BAD_ARGUMENT, where, f'target "{t}"',
-                               f"can't take {op.name} now: it needs {describe(op.valid_when)}")
+                               refusal(op))
         items.append(it)
     return items
 
@@ -120,7 +126,7 @@ def _check_valid_when(kind, op, items, args, view, where):
             p = op.param(name)
             if not holds(p.valid_when, values, facts):
                 raise RostrumError(codes.BAD_ARGUMENT, where, f'"{name}"',
-                                   f"only applies when {describe(p.valid_when)}",
+                                   f"only applies when {describe(p.valid_when, {q.name: q.label for q in op.params})}",
                                    hint=f"Set that in the same call to use {name}.")
 
 

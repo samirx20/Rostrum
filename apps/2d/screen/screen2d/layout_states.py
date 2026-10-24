@@ -29,7 +29,7 @@ TWELVE = ["select card"] + [f"set {'xy'[n % 2]} {500 + n}" for n in range(12)]  
 IGNORE = ("/MotionPath#", "/barEnd:")
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen), in
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
-QUICK = ("workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
+QUICK = ("export-area", "workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
          "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles",
          "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "frame-pinned-title", "frame-look-through", "scene-1080x1920", "long-status-line", "import-report")
@@ -172,6 +172,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("flyout-shapes", ["--sample"], ["flyout shapes"]),
         ("tool-zoom", ["--sample"], ["tool zoom"]),
         ("export-sheet", long(), [*busy, "exportsheet open png", f"exportwhere {LONG_FOLDER}"]),     # S34: the kit sheet
+        ("export-area", long(), [*busy, "select card", "exportsheet open png", "exportarea items"]),   # F9: a picture's Area row, layers picked
         ("job-chip", long(), [*busy, "job-show 42"]),
         ("job-failed", long(), [*busy, "job-failed The engine stopped while drawing frame 112: the GPU ran out of memory. Try a smaller size."]),
         ("import-panel", ["--sample"], ["importpanel open"]),

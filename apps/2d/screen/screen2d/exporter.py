@@ -12,9 +12,9 @@ import re
 from pathlib import Path
 
 from PySide6.QtCore import Property, Signal, Slot
-from rostrum2d import project_sound
+from rostrum2d import fields as F, project_sound, retime
 from rostrum2d.io import formats as table, gif_size
-from rostrum2d.mcp import export_name, exporting
+from rostrum2d.mcp import export_area, export_name, exporting
 from rostrum_gui.export_sheet import ExportSheet
 
 from . import export_rows, gif_guess
@@ -79,6 +79,8 @@ class Exporter(ExportSheet):
             self._values.update(table.GIF_DEFAULTS)
         if self._has_sound():
             self._values["sound"] = True
+        if self._choice == "png":                 # a picture can show any area of the world (export_area.py)
+            self._values["area"] = "frame"
         if not r["range"]:
             self._range = "all"
 
@@ -89,12 +91,24 @@ class Exporter(ExportSheet):
         except Exception:  # noqa: BLE001
             return False
 
+    def _picked(self) -> list[str]:
+        """The layers picked on the canvas (not the frame, not keys or effects): what Area › Picked layers would export."""
+        doc = self.bridge.doc
+        return [i for i in self.bridge.selection if doc.has(i) and doc.item(i).get("type") in F.PLACED]
+
+    def _area(self) -> str:
+        """The Area now: Picked layers falls back to the Frame once nothing is picked (the row stops offering it)."""
+        a = self._values.get("area", "frame")
+        return "frame" if a == "items" and not self._picked() else a
+
     def begin(self, out, overwrite):
         v, span = self._values, self.range_times() or (0.0, self._duration())
         sound = project_sound.for_export(self.bridge.doc.folder, self._comp().get("soundtrack", ""), self._choice, v.get("sound"))
         s = exporting.settings("export", self._choice, self._duration(), v["alpha"], v["depth"], span[0], span[1], v["quality"],
                                background=self._comp().get("background", "#000000"), sound=sound, size=v.get("size"), rate=v.get("rate"))
-        doc = self.bridge.doc
+        doc, comp = self.bridge.doc, self._comp()
+        timed = retime.timed(comp, self.bridge.marks.times if doc.folder else None, comp.get("fps", 30))
+        s["area"] = export_area.chosen("export", self._choice, timed, span[0], self._area(), self._picked() if self._area() == "items" else None)
         return {"scene": exporting.snapshot(doc, self._comp_id, self._choice), "fmt": self._choice, "s": s,
                 "folder": doc.folder, "item": doc.item_id, "seq": doc.seq, "name": self._stem(), "out": out,
                 "overwrite": overwrite}
@@ -135,7 +149,7 @@ class Exporter(ExportSheet):
             p, span = self._comp(), self.range_times() or (0.0, self._duration())
             v = {**v, "file": export_rows.gif_line(p.get("width", 1920), p.get("height", 1080), p.get("fps", 30),
                                                    span[1] - span[0], v, self._gif_bytes(span))}
-        return export_rows.settings(self._row(), v)
+        return export_rows.settings(self._row(), {**v, **({"area": self._area()} if "area" in v else {})}, bool(self._picked()))
 
     def _gif_bytes(self, span):
         """The GIF's measured size for the document as it is now and these choices (gif_guess; None while working)."""
@@ -178,6 +192,6 @@ class Exporter(ExportSheet):
     def setSetting(self, key, value):
         if self.running() or key not in self._values:
             return
-        self._values[key] = {"depth": int, "alpha": bool, "quality": str, "sound": bool, "size": str, "rate": str}[key](value)
+        self._values[key] = {"depth": int, "alpha": bool, "quality": str, "sound": bool, "size": str, "rate": str, "area": str}[key](value)
         self.stale()
         self.changed.emit()

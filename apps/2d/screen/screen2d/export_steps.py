@@ -4,17 +4,20 @@
                                            stays open for a screenshot), then wait for the job when it started
     exportshow                             press "Show in folder" (starts the file manager)
     exportsize                             wait for the GIF's measured size to show on the sheet (gif_guess.py)
+    exportarea frame|items|world           a picture's Area (the sheet open on png; items needs layers picked)
 Paths: _ for spaces.
 """
 from __future__ import annotations
 
-WORDS = ("exportto", "exportshow", "exportsize")
+WORDS = ("exportto", "exportshow", "exportsize", "exportarea")
 
 
 def do_export_step(bridge, word, rest, step):
     job = bridge.exporter
     if word == "exportshow":
         return job.showInFolder()
+    if word == "exportarea":
+        return job.setSetting("area", rest[0])
     if word == "exportsize":
         job.settings                                   # (read: starts the measuring when nothing has asked yet)
         if not job.guess.wait(60):

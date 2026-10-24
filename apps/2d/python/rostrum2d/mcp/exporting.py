@@ -17,6 +17,7 @@ from rostrum2d import settings as app_settings
 from rostrum2d.io import formats as table
 
 from .export_settings import DATA, LABELS, QUALITY_ARGS, GIF_ARGS, formats, info, see_through, settings  # noqa: F401  (callers read them here)
+from . import export_area
 from .render import _fail
 
 
@@ -64,6 +65,8 @@ def _to_file(where: str, scene: dict, fmt: str, s: dict, target: Path, progress,
         p = scene["comp"]["props"]
         return {"file": str(target), "frames": round((p["duration"]) * p["fps"]), "fps": p["fps"], "alpha": False, "depth": None,
                 "checked": {"layers": len(doc.get("layers", [])), "size": (doc.get("w"), doc.get("h")), "baked": baked}, "report": report}
+    if s.get("area"):                                # a picture of an area of the world (export_area.py), not of the frame
+        return export_area.pictures(where, scene, s, target, progress, engine_factory)
     from rostrum2d.io.export import export
     try:
         with (engine_factory or _engine)() as eng:
@@ -133,7 +136,7 @@ def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_
             facts = _to_file(where, scene, fmt, s, part / (stem if png else name), progress, engine_factory, folder)
             names = sorted(p.name for p in part.iterdir())
             done = project.finish_render(part, _manifest(item, doc_seq, comp["id"], fmt, s, facts, int(part.name[1:].split(".")[0]),
-                                                         names, (comp["props"].get("width"), comp["props"].get("height"))))
+                                                         names, facts["checked"]["size"] if s.get("area") else (comp["props"].get("width"), comp["props"].get("height"))))
         except BaseException:                        # a failed or stopped (cancelled) render leaves no unfinished version behind
             shutil.rmtree(part, ignore_errors=True)
             raise

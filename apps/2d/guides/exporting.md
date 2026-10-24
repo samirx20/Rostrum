@@ -17,7 +17,9 @@ The panel lists what each export is for, with its file type at the right. Click 
 - **Video for editing, with transparency** (MOV, ProRes 4444): a high-quality video that keeps transparency. Big files. For handing to a video editor.
 - **Video for the web** (WEBM): a video for web pages. Can keep transparency.
 - **Moving picture for a chat or a page** (GIF): a small looping picture. Limited colours, no sound. It starts at half the size and 15 frames a second, so a 4-second full-HD scene comes out well under 1 MB for flat motion graphics (a full-size GIF at the scene's rate is many times that).
-- **Still frames** (PNG): one picture for every frame, in a folder. Keeps transparency.
+- **Still frames** (PNG): one picture for every frame, in a folder. Keeps transparency. It also has an **Area**: **Frame** (the default: what the frame shows, as every export), **Picked layers** (only offered while layers are picked: the box round them in the world, a logo as a PNG) or **Everything** (every layer and the frame's whole path). An area is one world rectangle for the whole range, taken at the first picture, drawn at one picture px per world px. Pick one frame as the range for a single still. Agents: `render_export format=png time=3 area=items ids=[…] scale=0.5` (`time` = one picture; `scale` = picture px per world px, at most 8192 px a side; video, GIF and Lottie are always the frame).
+
+  ![Still frames with Area: Picked layers](pictures/export-area.png)
 - **Frames for the Editor** (EXR): one picture for every frame, made to be opened in Rostrum Editor.
 - **Animation for apps and websites** (JSON, Lottie): moving graphics for apps and web pages. It cannot carry everything. After the export, the panel lists what it left out under "Lottie couldn't carry". A solid fill's opacity (and its keys) is carried; a file saved before fill opacity existed exports as fully opaque, as before. PSD is for bringing files in only: the app has no PSD export.
 - **Motion for RostrumSound** (JSON): not a picture. It is the movement of your layers, for placing sounds against.

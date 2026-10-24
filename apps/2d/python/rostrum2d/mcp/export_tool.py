@@ -8,7 +8,7 @@ from rostrum_core.mcp import Reply, Tools
 
 from rostrum2d import project_sound
 
-from . import export_name, exporting
+from . import export_area, export_name, exporting
 from .pick import ITEM_COMP, doc_and_comp
 
 tools = Tools()
@@ -24,6 +24,8 @@ tools = Tools()
     **exporting.QUALITY_ARGS,
     **exporting.GIF_ARGS,
     "sound": {"type": "boolean", "description": "mp4 only: put the project's sound under the picture (the scene's soundtrack, else the project's main mix, mixed by RostrumSound's engine and cut to start..end). Default: on for mp4 when the project has sound. If the mix or putting it under the picture fails, the export fails; never a silent file."},
+    "time": {"type": "number", "minimum": 0, "description": "png only: one picture at this time (seconds), instead of start / end."},
+    **export_area.ARGS,
     "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0. Not for lottie or motion (both always hold the whole composition)."},
     "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition. Not for lottie or motion."},
     "path": {"type": "string", "description": "Write here (absolute, or relative to the project folder; for png a new folder). Default: the project's renders folder (a versioned render with a manifest, the file named after the project and composition), or the person's Videos folder (no project)."},
@@ -38,6 +40,13 @@ def render_export(ctx, args):
                                 args.get("quality"), args.get("bitrate"), comp.get("background", "#000000"),
                                 project_sound.for_export(doc.folder, comp.get("soundtrack", ""), fmt, args.get("sound")),
                            args.get("size"), args.get("rate"))
+    if "time" in args:
+        if fmt != "png" or "start" in args or "end" in args:
+            raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"time"', "is for one png picture; it can't go with another format or start / end")
+        s["start"], s["end"] = args["time"], min(args["time"] + 1 / comp.get("fps", 30), comp.get("duration", 5.0))
+        if not 0 <= s["start"] < s["end"]:
+            raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f'time {args["time"]} s', f'is at or past the end ({comp.get("duration", 5.0)} s)')
+    s["area"] = export_area.chosen(ctx.tool, fmt, comp, s["start"], args.get("area"), args.get("ids"), args.get("scale"))
     out = None
     if "path" in args:
         out = Path(args["path"])
@@ -64,4 +73,4 @@ def render_export(ctx, args):
         return Reply(say + ".", data, [Path(f) for f in facts["files"][:50]])
 
     return ctx.job(f'render_export {comp["id"]} {fmt}', job_fn,
-                   key=f"export|{item}|{comp['id']}|{fmt}|{sorted(s.items())}|{seq}|{out}|{overwrite}")
+                   key=f"export|{item}|{comp['id']}|{fmt}|{sorted(s.items(), key=str)}|{seq}|{out}|{overwrite}")
