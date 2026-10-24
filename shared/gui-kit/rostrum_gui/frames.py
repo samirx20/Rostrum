@@ -16,21 +16,22 @@ from collections import deque
 
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QImage
-from PySide6.QtQuick import QQuickImageProvider
+
+from .screen_images import ScreenImages
 
 
-class ImageProvider(QQuickImageProvider):
+class ImageProvider(ScreenImages):
     """Holds the newest picture; QML asks for it by id (the id only busts the cache)."""
 
     def __init__(self):
-        super().__init__(QQuickImageProvider.ImageType.Image)
+        super().__init__()
         self._lock, self._image = threading.Lock(), QImage()
 
     def put(self, image: QImage):
         with self._lock:
             self._image = image
 
-    def requestImage(self, id_, size, requested):  # noqa: N802 (Qt's name)
+    def picture(self, id_):
         with self._lock:
             return self._image
 

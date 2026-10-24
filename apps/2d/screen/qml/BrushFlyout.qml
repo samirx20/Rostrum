@@ -58,7 +58,7 @@ QQC.Popup {
         Image {
             x: 3; y: 3; width: parent.width - 6; height: fly.tileH
             source: "image://brushes/" + tile.modelData.id
-            asynchronous: true; fillMode: Image.PreserveAspectCrop; smooth: true; mipmap: true
+            asynchronous: false; fillMode: Image.PreserveAspectCrop; smooth: true; mipmap: true   // painted ahead: a lookup (screen_images.py)
         }
         Text {
             id: tileName
@@ -184,7 +184,7 @@ QQC.Popup {
           x: t ? Math.max(0, Math.min(parent.width - width, t.mapToItem(parent, t.width / 2, 0).x - width / 2)) : 0
           readonly property real ty: t ? t.mapToItem(parent, 0, 0).y : 0
           y: ty - height - 2 >= 0 ? ty - height - 2 : ty + (t ? t.height : 0) + 2     // above the tile, else below
-          Image { x: 4; y: 4; width: 232; height: 56; asynchronous: true; smooth: true
+          Image { x: 4; y: 4; width: 232; height: 56; asynchronous: false; smooth: true
                   source: bigPreview.t ? "image://brushes/" + bigPreview.t.modelData.id : "" }
           Timer { id: showDelay; property bool done: false; interval: 350
                   onTriggered: done = true }

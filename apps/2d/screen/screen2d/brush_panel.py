@@ -73,7 +73,7 @@ class BrushPanel(QObject):
 
     def _read_mine(self):
         self._mine = brushes.saved(self.b.doc.folder)
-        self.previews.saved.update({m["id"]: m["settings"] for m in self._mine})
+        self.previews.keep({m["id"]: m["settings"] for m in self._mine})
         if self.brush.preset in self.previews.saved:     # a renamed brush that is the brush: its new name
             self.brush.saved_name = next((m["name"] for m in self._mine if m["id"] == self.brush.preset), self.brush.saved_name)
         self.brushChanged.emit()

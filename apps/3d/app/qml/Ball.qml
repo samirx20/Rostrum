@@ -19,7 +19,7 @@ Item {
     }
     Image {
         id: picture
-        anchors.fill: parent; asynchronous: true; smooth: true
+        anchors.fill: parent; asynchronous: false; smooth: true     // image://ball: made ahead, a lookup (rostrum_gui/screen_images.py)
         source: ball.source; sourceSize: Qt.size(ball.size * 2, ball.size * 2); fillMode: Image.PreserveAspectFit
     }
     Rectangle {     // the selected ring

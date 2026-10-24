@@ -7,8 +7,8 @@ This page takes you from an empty project to something that moves, and shows you
 ## 1. Start a new project
 
 1. Click **≡** at the top left, then **New** (or press Ctrl+N).
-2. An empty black picture opens, called "Untitled 1". Its size and speed are in the settings panel, for example "1920 × 1080 · 25 fps".
-3. With nothing picked, the panel on the right shows the picture's own settings: **Width**, **Height**, **Frame rate**, **Length** and **Background**. Change them here if you need a different size or length.
+2. An empty black picture opens, called "Untitled", with nothing picked. The thin outline with the tab **Frame · 1920 × 1080** is the frame: what the export shows.
+3. With nothing picked, the panel on the right shows the scene's own settings, headed **Scene**: **Format** (a list of sizes, such as Wide 16:9), **Size** (W and H), **Frame rate**, **Length** and **Background**. Change them here if you need a different size or length. A click on empty canvas, or **Esc**, brings them back at any time. The frame is picked only when you ask for it (part 2), so a first drag on the empty canvas never moves the shot.
 
 ## 2. Add text
 

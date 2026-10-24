@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtGui import QImage
-from PySide6.QtQuick import QQuickImageProvider
+from rostrum_gui.screen_images import ScreenImages
 from rostrum_paint import canvas
 
 SIDE = 48          # px: twice the row's thumbnail box, so it stays sharp on a high-density screen
@@ -24,9 +24,9 @@ class ThumbsReady(QObject):
     ready = Signal()     # a thumbnail was drawn (emitted on the worker thread, heard on the GUI's)
 
 
-class ThumbProvider(QQuickImageProvider):
+class ThumbProvider(ScreenImages):
     def __init__(self):
-        super().__init__(QQuickImageProvider.ImageType.Image)
+        super().__init__()
         self._lock, self._images, self._last, self._asked = threading.Lock(), {}, {}, set()
         self.notes, self.drawn = ThumbsReady(), 0       # drawn: how many so far (a new one: the list's sources change)
 
@@ -57,7 +57,7 @@ class ThumbProvider(QQuickImageProvider):
             self.drawn += 1
         self.notes.ready.emit()
 
-    def requestImage(self, id_, size, requested):  # noqa: N802 (Qt's name)
+    def picture(self, id_):
         k, _, paint_id = id_.split("?")[0].partition("/")
         with self._lock:
             got = self._images.get(k)

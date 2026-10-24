@@ -85,7 +85,10 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     engine.addImportPath(str(KIT_QML))
     for folder in imports:
         engine.addImportPath(str(folder))
+    from .screen_images import ScreenImages
     for name, provider in (providers or {}).items():
+        if not isinstance(provider, ScreenImages):     # a Python picture read on Qt's loader thread can freeze the app
+            raise TypeError(f"image://{name}: {type(provider).__name__} must be a rostrum_gui.screen_images.ScreenImages")
         engine.addImageProvider(name, provider)
     ctx = engine.rootContext()
     ctx.setContextProperty("uiFont", pick(UI_FONTS))

@@ -10,7 +10,7 @@ import threading
 
 import numpy as np
 from PySide6.QtGui import QImage
-from PySide6.QtQuick import QQuickImageProvider
+from rostrum_gui.screen_images import ScreenImages
 from rostrum_paint import canvas
 from rostrum_paint.brush import stamp_stroke
 from rostrum_paint.fields import brush_defaults
@@ -115,22 +115,41 @@ def preview_of(s: dict) -> QImage:
     return QImage(px.data, W, H, 3 * W, QImage.Format.Format_RGB888).copy()
 
 
-class PreviewProvider(QQuickImageProvider):
-    """image://brushes/<id>: painted once per run, on QML's loader thread (Image { asynchronous: true }). A saved
-    brush's id is its content, so its picture never goes stale; `saved` (id -> settings) is kept by the brush panel."""
+class PreviewProvider(ScreenImages):
+    """image://brushes/<id>: every stroke painted ahead on a worker thread (the shipped ones as the window opens, a
+    saved one as `keep` hears of it: about 140 ms for all), read on the screen thread (rostrum_gui/screen_images.py:
+    painting them on Qt's loader thread froze the panel's first opening). One not painted yet is painted as it is asked.
+    A saved brush's id is its content, so its picture never goes stale; `saved` (id -> settings) is fed by `keep`."""
 
     def __init__(self):
-        super().__init__(QQuickImageProvider.ImageType.Image)
+        super().__init__()
         self._lock, self._made, self.saved = threading.Lock(), {}, {}
+        self._ahead([p[0] for p in PRESETS])
 
-    def requestImage(self, id_, size, requested):  # noqa: N802 (Qt's name)
-        pid = id_.split("?")[0]
+    def keep(self, saved: dict):
+        """My brushes as the brush panel read them (id -> settings): painted ahead, those not painted yet."""
         with self._lock:
-            if pid not in self._made:
-                if pid in self.saved:
-                    self._made[pid] = preview_of({**brush_defaults(), **self.saved[pid]})
-                elif pid in BY_ID:
-                    self._made[pid] = preview(pid)
-                else:
-                    raise KeyError(f"no brush {pid!r}")
-            return self._made[pid]
+            self.saved.update(saved)
+            new = [pid for pid in saved if pid not in self._made]
+        if new:
+            self._ahead(new)
+
+    def _ahead(self, ids):
+        threading.Thread(target=lambda: [self._make(pid) for pid in ids], name="brush-previews", daemon=True).start()
+
+    def _make(self, pid):
+        with self._lock:
+            if pid in self._made:
+                return self._made[pid]
+            own = self.saved.get(pid)
+        if own is not None:
+            image = preview_of({**brush_defaults(), **own})
+        elif pid in BY_ID:
+            image = preview(pid)
+        else:
+            raise KeyError(f"no brush {pid!r}")
+        with self._lock:
+            return self._made.setdefault(pid, image)
+
+    def picture(self, id_):
+        return self._make(id_.split("?")[0])

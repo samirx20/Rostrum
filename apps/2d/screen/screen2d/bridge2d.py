@@ -280,8 +280,9 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         return next(iter(self.shown_boxes([layer])), {})
 
     def _first(self):
-        layers = self.comp().get("layers", [])
-        return layers[-1]["id"] if layers else self.comp_id
+        """Nothing picked (a piece opening, the picked layers gone): the scene, its settings in the panel (camera SPEC
+        mock-1). Never a layer, the frame least of all: picked, a drag anywhere on the picture moves the whole shot."""
+        return self.comp_id
 
     # ---- screen state -----------------------------------------------------------------------------------------
     @Slot(float)

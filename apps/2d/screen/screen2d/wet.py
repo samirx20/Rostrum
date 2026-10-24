@@ -17,7 +17,7 @@ import threading
 import numpy as np
 from PySide6.QtCore import Property, QObject, Signal
 from PySide6.QtGui import QImage
-from PySide6.QtQuick import QQuickImageProvider
+from rostrum_gui.screen_images import ScreenImages
 from rostrum_paint import canvas
 
 from .wet_ink import WetInk
@@ -25,18 +25,18 @@ from .wet_ink import WetInk
 MOST_REVEAL = 8192           # the engine's largest picture side
 
 
-class WetProvider(QQuickImageProvider):
+class WetProvider(ScreenImages):
     """image://wet/dry-<n> (the stroke's settled part) and image://wet/tip-<n> (its newest points)."""
 
     def __init__(self):
-        super().__init__(QQuickImageProvider.ImageType.Image)
+        super().__init__()
         self._lock, self._images = threading.Lock(), {"dry": QImage(), "tip": QImage()}
 
     def put(self, part: str, image: QImage):
         with self._lock:
             self._images[part] = image
 
-    def requestImage(self, id_, size, requested):  # noqa: N802 (Qt's name)
+    def picture(self, id_):
         with self._lock:
             return self._images.get(id_.split("-")[0], QImage())
 
