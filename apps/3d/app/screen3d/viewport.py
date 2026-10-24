@@ -70,6 +70,8 @@ class Viewport(QObject):
         bridge.render.changed.connect(self._on_render_job)     # Final waits while the Render button renders
         from .gizmo_qt import Gizmo
         self.gizmo = Gizmo(bridge, self)                       # the selected item's handles (gizmo_qt.py)
+        from .place_light import PlaceLight
+        self.place = PlaceLight(self)                          # lights placed by highlight, linked by clicking
 
     # --- QML properties
     serial = Property(int, lambda s: s._serial, notify=serialChanged)
@@ -288,9 +290,18 @@ class Viewport(QObject):
 
     @Slot(float, float)
     def click(self, x, y):
-        """A click at (x, y) device pixels: select what is there, or place the shape the Shapes flyout armed there."""
-        if self._size is not None:
+        """A click at (x, y) device pixels: select what is there, or place the shape the Shapes flyout armed there (placing
+        or linking a light: that instead)."""
+        if self._size is not None and self.place.wants_click():
+            self._guard(lambda: self.place.click(x, y))
+        elif self._size is not None:
             self._guard(lambda: self._r.pick(*self._pick_at(x, y)))
+
+    @Slot(float, float)
+    def altClick(self, x, y):
+        """Alt+click at (x, y) device pixels: the selected light's highlight lands there."""
+        if self._size is not None:
+            self._guard(lambda: self.place.alt_click(x, y))
 
     def _pick_at(self, x, y):
         scene, cam = self.sent()

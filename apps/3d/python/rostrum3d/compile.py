@@ -99,6 +99,11 @@ class _Frames:
             self._busy.discard((id_, f))
 
 
+def world_at_start(data: dict, id_: str):
+    """An item's world transform at time 0 (aims resolved): where an operation places things inside a group."""
+    return _Frames(data, range(0, 1), 1.0).world(id_, 0)
+
+
 def pivoted(v: dict) -> list[float]:
     """The item's origin in its parent's space when its pivot (px py pz, in its own space) sits at x y z: the turn and
     scale happen around the pivot, so x y z − (turn · scale)(pivot)."""

@@ -10,7 +10,7 @@ from rostrum_core import Param, ids
 from rostrum_core.errors import codes
 from rostrum_core.tree import child_keys, index, subtree_ids
 
-from . import build, fields as F
+from . import build, fields as F, highlight
 from .kind import REGISTRY as R
 
 ID = Param.text("id", label="Id", help="Optional; counted per type when left out (mesh_1, mesh_2 …). Letters, digits, _")
@@ -46,11 +46,12 @@ def _holder(ctx, into):
     return into, "children"
 
 
-def _adder(type_: str, summary: str, extra=()):
+def _adder(type_: str, summary: str, extra=(), fill=None):
     fields = [p.name for p in F.FIELDS[type_]]
 
     def add(ctx, targets, args):
-        item = new_item(ctx, type_, args, {k: v for k, v in args.items() if k in fields})
+        given = {k: v for k, v in args.items() if k in fields}
+        item = new_item(ctx, type_, args, fill(given) if fill else given)
         parent, key = _holder(ctx, args.get("into"))
         ctx.insert(parent, key, item, args.get("index"))
         return item
@@ -61,7 +62,9 @@ def _adder(type_: str, summary: str, extra=()):
 _adder("group", "Add a group: items inside it move, turn and scale with it.")
 _adder("mesh", "Add a mesh: a box, sphere, cylinder, cone, capsule, plane, disc or torus, or an extruded word (text), SVG drawing (svg) "
        "or 2D path layer (path2d: doc2d + layer); centred on its origin (sizes in metres, depth = extrusion).")
-_adder("light", "Add a light: rect or disk panel (shines along its −Z), sphere bulb, distant sun or dome sky.")
+_adder("light", "Add a light: rect or disk panel (shines along its −Z), strip, sphere bulb, spot, distant sun or dome sky. "
+       "Without an intensity it starts at a sensible brightness for its distance to what it aims at (else the "
+       "scene's middle); a strip stands on end.", fill=lambda given: highlight.start_values(F.FIELDS["light"], given))
 _adder("camera", "Add a camera (looks along its −Z, Y up). A shot names the camera it looks through.")
 _adder("rig", "Add a camera rig (orbit / crane / dolly) at a base point; put the shot camera inside it "
        "(into=<rig id>) and key the rig's angle, lift, swing or travel. Handheld adds a gentle seeded drift.")
