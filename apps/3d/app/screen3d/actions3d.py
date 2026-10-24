@@ -69,4 +69,17 @@ ACTIONS.append(Action(
 ACTIONS.append(Action(
     "mesh:edit", "Edit mesh", kinds=F.SOLIDS, max_targets=1, importance="primary", rank=8, group="shape", do="edit-mesh",
     icon="", why="Edit mesh works on one shape or combine (Tab): its points, edges and faces."))
+# A camera (SPEC §8): real lenses one click away under "Lens ▾" (any other focal length is typed in its field); with
+# depth of field on, focus picked by clicking in the viewport (focus_pick.py: screen state until the click's one edit).
+LENSES = (24, 35, 50, 85, 105, 135)
+_ONE_CAMERA = dict(kinds=("camera",), max_targets=1, importance="primary", group="camera")
+ACTIONS += [Action(f"lens:{mm}", f"{mm} mm", rank=2 + i, bar="Lens", **_ONE_CAMERA,
+                   calls=lambda f, mm=mm: [{"op": "camera.set", "target": [f.ids[0]], "args": {"focalLength": float(mm)}}],
+                   why="A lens is offered with one camera selected (any other focal length: type it).")
+            for i, mm in enumerate(LENSES)]
+_DOF = dict(valid=lambda f: bool(f.items[0].get("dof")), **_ONE_CAMERA)
+ACTIONS += [Action("focus:point", "Focus on a point", rank=10, do="focus-point", **_DOF,
+                   why="Turn on the camera's Depth of field first; then click where it should be sharp."),
+            Action("focus:item", "Focus on an item", rank=11, do="focus-item", **_DOF,
+                   why="Turn on the camera's Depth of field first; then click the item to keep sharp.")]
 LIST = ActionList(ACTIONS, KeyMap("Rostrum3D"), noun="solid")

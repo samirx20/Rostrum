@@ -72,6 +72,26 @@ class Item {
     for (size_t i = 0; i < n; ++i) attr.Set(T(value(i)), PXR_NS::UsdTimeCode(double(ctx.start) + double(i)));
   }
 
+  // As write(), plus (motion blur on) a sample at each frame's shutter open and close: the straight line to the
+  // next / previous frame, which is what USD reads there anyway (held before the first and after the last frame).
+  // Cycles' Hydra plug-in spreads the samples it finds inside the shutter evenly over it (hydra/camera.cpp, util.h
+  // SampleTyped), so they must sit exactly at open, frame and close; with only whole-frame samples it would find the
+  // frames before and after and smear two whole frames whatever the shutter.
+  template <class T, class F>
+  void write_moving(const PXR_NS::UsdAttribute& attr, size_t n, F value) const {
+    write<T>(attr, n, value);
+    const double h = ctx.shutter / 2;
+    if (n <= 1 || h <= 0) return;
+    for (size_t i = 0; i < n; ++i) {
+      const T here(value(i));
+      for (const int side : {-1, 1}) {
+        const bool inside = side < 0 ? i > 0 : i + 1 < n;
+        const T there = inside ? T(value(i + side)) : here;
+        attr.Set(T(here + (there - here) * h), PXR_NS::UsdTimeCode(double(ctx.start) + double(i) + side * h));
+      }
+    }
+  }
+
   // Every prop read, every anim entry a field that was read as a track.
   void finish() const {
     props.finish();

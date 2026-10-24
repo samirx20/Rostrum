@@ -45,11 +45,11 @@ The fields, by item (all items also take `x y z rx ry rz sx sy sz px py pz visib
   (`depth` is how far an outline is pushed out).
 - **light** `kind length width height radius angle texture turn seenByCamera color intensity exposure temperature spread card lightsOnly normalize shadows`
   (`lightsOnly` is ids separated by spaces; `turn` and `texture` are for a dome).
-- **camera** `focalLength sensorWidth dof fStop focusDistance near far`.
+- **camera** `focalLength sensorWidth dof fStop focusDistance focusItem near far` (`focusItem`: an item id kept sharp as it moves).
 - **rig** `rig radius height angle armLength lift swing travel pan tilt handheld shake shakeFrequency shakeMove seed`.
 - **material** `baseColor baseColorTexture metallic roughness roughnessTexture transmission ior coat coatRoughness anisotropy anisotropyRotation bumpTexture bumpStrength emissionColor emissionStrength thinFilm`.
 - **import** `file prim material`; **part** `path material visible`.
-- **shot** `camera fps start end width height background`; its render settings `renderQuality renderSamples renderDenoise renderSize renderRange renderStart renderEnd`
+- **shot** `camera fps start end width height background`; its render settings `renderQuality renderSamples renderDenoise renderSize renderRange renderStart renderEnd motionBlur shutter` (motion blur: camera-rigs.md)
   (`inspect_guide` `agents`, "Render settings and the time estimate").
 - Every item also takes `name="…"` (what screens show). Left out, the name is the id.
 - A plane lies flat, facing up: `width` (along X) × `depth` (along Z); it has no `height`.
