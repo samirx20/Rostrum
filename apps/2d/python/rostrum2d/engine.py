@@ -242,9 +242,12 @@ class Engine:
         return self._request({"shapes": {"items": items}})["paths"]
 
     def pixels(self, t: float, samples: int | None = None, scale: float = 1.0, view: dict | None = None,
-               place: list[str] | None = None, world: dict | None = None) -> tuple[memoryview, int, int, int]:
+               place: list[str] | None = None, world: dict | None = None, screen: bool = False,
+               ahead: float | None = None) -> tuple[memoryview, int, int, int]:
         """The frame at `t` as straight-alpha RGBA8 in the engine's shared memory (no PNG, no pipe; Windows):
         (view, width, height, stride). The view is valid until the frame after next is asked for; copy it.
+        `screen`: in the screen's form instead (BGRA, premultiplied: `self.format` "bgra8-premul", Qt's
+        ARGB32_Premultiplied). `ahead`: the time asked for next (playing): the engine draws it while this one is shown.
         `samples`: motion-blur steps for this frame instead of the composition's (1 = no blur: fast playback).
         `scale`: 1, 0.5 or 0.25 × the composition's size, the same picture drawn smaller (playing); width and
         height are then the smaller size. `view` {x, y, w, h, scale}: only that part of the composition (comp px),
@@ -254,12 +257,14 @@ class Engine:
         the frame's corners in world px at t (None for other frames)."""
         self._props()
         req = {"t": t, "pixels": True, **({"shutterSamples": samples} if samples else {}), **({"scale": scale} if scale != 1 else {}),
-               **({"view": view} if view else {}), **({"place": place} if place else {}), **({"world": world} if world else {})}
+               **({"view": view} if view else {}), **({"place": place} if place else {}), **({"world": world} if world else {}),
+               **({"screen": True} if screen else {}), **({"ahead": ahead} if ahead is not None else {})}
         out = self._request({"frame": req})
         self.placed, shm, self.timing = out.get("place") or {}, out["shm"], out.get("timing") or {}
         self.quad = out.get("quad")
-        if shm["format"] != "rgba8":
-            raise EngineError(f"pixels: the engine sent {shm['format']}; the canvas reads rgba8")
+        self.format = shm["format"]
+        if self.format != ("bgra8-premul" if screen else "rgba8"):
+            raise EngineError(f"pixels: the engine sent {self.format}; asked for {'bgra8-premul' if screen else 'rgba8'}")
         if self._shm is None or self._shm[0] != shm["name"]:   # a new block when the frame size changes
             if self._shm is not None:
                 self._shm[1].close()

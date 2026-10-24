@@ -5,7 +5,8 @@ On while `ROSTRUM2D_PLAYBACK_LOG=1` (one line per shown frame on stderr) or whil
 sent to the engine), `pixels` (the engine draws the frame), `image` (the frame copied into a picture). Inside
 `pixels`, the engine's own split (its reply's `timing`) as `eng.<part>`: eval (keys and the stage markup), diff, layout,
 record (Skia drawing commands), flush (Skia's CPU work handing them to the GPU), gpu (the wait for the GPU), read
-(copy back), convert (into the shared memory).
+(copy back), convert (into the shared memory), ahead (a frame drawn ahead while the one before was shown: the time to
+hand it over; its count is how many were).
 """
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 
 
-ENGINE_PARTS = ("eval", "diff", "layout", "record", "flush", "gpu", "read", "convert")
+ENGINE_PARTS = ("eval", "diff", "layout", "record", "flush", "gpu", "read", "convert", "ahead")
 
 
 class PlayStats:

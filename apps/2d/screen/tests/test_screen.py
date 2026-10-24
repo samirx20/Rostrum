@@ -38,8 +38,9 @@ class FakeEngine:
     placed = {}
     timing = {}                # the last pixels frame's own split (engine.py), read by the screen's stats
 
-    def pixels(self, t, samples=None, scale=1.0, view=None, place=None, world=None):
+    def pixels(self, t, samples=None, scale=1.0, view=None, place=None, world=None, screen=False, ahead=None):
         self.placed = {i: self.place(t, [i])[i] for i in place or []}
+        self.format = "bgra8-premul" if screen else "rgba8"
         return memoryview(bytearray(4 * 4 * 4)), 4, 4, 16
 
     def place(self, t, ids, world=False):   # every layer at the comp's origin, unturned (the real one: engine `place`)

@@ -38,7 +38,7 @@ class ShownState:
     def _shown_init(self):
         self._shown = None          # (doc.data, marker times, t) of the frame on screen; None: none yet (the live state)
         self._shown_placed = None   # (key, the comp placed): worked out once per shown state
-        self._shown_boxes = None    # (placed, t, bounds.boxes): the same, for the overlays' boxes
+        self._shown_boxes = None    # (placed, t, {id: box or None}, every layer's in order or None): the overlays' boxes
         self._asked = {}            # id(doc.data) → when a drag made it (for drag→shown)
         self._zoom, self._view = 1.0, 1.0   # the canvas's zoom (screen px per world px) and device px per screen px
 
@@ -69,12 +69,12 @@ class ShownState:
         return min(view_scale(fit), self.play.scale())
 
     def frame_extras(self) -> dict:
-        """What a frame job asks for beside the frame: the world rectangle (world_view.py; None while playing) and the
-        paint target's place (paint_edge.py)."""
+        """What a frame job asks for beside the frame: the world rectangle (world_view.py; None while playing), the
+        paint target's place (paint_edge.py) and, playing, the frame after (playback.py `ahead`)."""
         world, place = self._world.rect(), self._paint_edge.ids()
         self._world.asked(world)
         self._paint_edge.asked(place)
-        return {"world": world, "place": place}
+        return {"world": world, "place": place, "ahead": self.play.ahead(self._t)}
 
     def place_of(self, layer_id: str) -> dict:
         """The layer's place at the playhead now, from the canvas's engine and the scene as the document is
@@ -114,13 +114,26 @@ class ShownState:
             self._shown_placed = (self._shown, retime.timed(comp.item, self.times(), comp.item["fps"]))
         return self._shown_placed[1]
 
-    def shown_boxes(self) -> list[dict]:
-        """bounds.boxes of the picture on screen, worked out once per picture: the selection box, the group outlines
-        and the agent view all ask on each frame."""
+    def shown_boxes(self, ids: list[str] | None = None) -> list[dict]:
+        """bounds.boxes of the picture on screen: of the layers `ids` (in that order; those with a box), else of every
+        layer. Each worked out once per picture, and only when asked: the selection box, the group outlines and the agent
+        view ask on each frame for their few layers (a scrub over 60 layers worked out all 60 per picture)."""
         placed, t = self.shown_placed(), self.shown_t()
-        if self._shown_boxes is None or self._shown_boxes[0] is not placed or self._shown_boxes[1] != t:
-            self._shown_boxes = (placed, t, bounds.boxes(placed, t))
-        return self._shown_boxes[2]
+        c = self._shown_boxes
+        if c is None or c[0] is not placed or c[1] != t:
+            c = self._shown_boxes = (placed, t, {}, None)
+        known = c[2]
+        if ids is None:
+            if c[3] is None:
+                c = self._shown_boxes = (placed, t, known, bounds.boxes(placed, t))
+                known.update({b["id"]: b for b in c[3]})
+            return c[3]
+        missing = {i for i in ids if i not in known}
+        if missing and c[3] is None:
+            got = {b["id"]: b for b in bounds.boxes(placed, t, only=missing)}
+            known.update(got)
+            known.update({i: None for i in missing if i not in got})     # no box at this time: not asked again
+        return [known[i] for i in ids if known.get(i)]
 
     def shown_item(self, id_: str) -> dict | None:
         """An item of the document as the picture on screen shows it (its own times, as doc.item): None when the

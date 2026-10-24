@@ -104,6 +104,15 @@ class Playback(QObject):
             return 1.0
         return SIZES[self._size]
 
+    def ahead(self, t: float) -> float | None:
+        """While playing, the frame after `t` (bridge.setTime's own rounding, so the next tick asks for exactly it): asked
+        with `t`, the engine draws it while `t` is shown. None paused or at the end."""
+        if not self._timer.isActive():
+            return None
+        c = self.b.comp()
+        nxt = round((t + 1 / c["fps"]) * c["fps"]) / c["fps"]
+        return nxt if nxt <= c["duration"] else None
+
     def _tick(self):
         c = self.b.comp()
         t = self._clock[1] + time.perf_counter() - self._clock[0]
@@ -119,5 +128,7 @@ class Playback(QObject):
         if t > c["duration"] + 1e-9:            # loop
             self._clock, t = (time.perf_counter(), 0.0), 0.0
             self.b.soundtrack.play(0.0)
+        if round(t * c["fps"]) == round(self.b.time * c["fps"]):
+            return                              # still the frame shown (ticks are a little faster than frames): nothing new
         with STATS.stage("gui"):
             self.b.setTime(t)

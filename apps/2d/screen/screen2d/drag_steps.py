@@ -1,14 +1,15 @@
 """`dragtime`: what one pointer move of a drag costs the screen's thread, per drag kind, through the same slots the
 timeline and the canvas call (so a check measures exactly what a person's drag does).
 
-    dragtime bar|trim|key|layer|frame [n] [profile]
+    dragtime bar|trim|key|layer|frame|scrub [n] [profile]
         n pointer moves of that drag (default 60), one per screen refresh (16 ms apart, as a hand gives them): each
         move's time on the screen's thread (the slot, then everything it set off: rows, panels, bindings, a picture
         arriving), median and worst; how many pictures the engine was asked for and drew. `profile`: the 25 most
         costly functions of the moves (cProfile, cumulative) after the line.
 
 bar: the "card" bar moved 2 s later (a frame per move); trim: its end trimmed; key: title's last y key; layer: "card" on the canvas;
-frame: the frame on the canvas (the sample's layers; any document with those names). Each drag is undone after.
+frame: the frame on the canvas (the sample's layers; any document with those names); scrub: the playhead dragged from
+0.2 s over 3 s (a new frame per move, nothing changed). Each drag is undone after.
 """
 from __future__ import annotations
 
@@ -47,7 +48,9 @@ def _drag(bridge, kind):
         b = box_at(bridge.placed(), bridge._t)
         fd = bridge.frameDrag
         return (lambda: (fd.pick(), fd.begin("move", b["cx"], b["cy"], 0))[1], lambda f: fd.moveBy(400 * f, 0), fd.end)
-    raise ValueError(f"dragtime: no drag kind {kind!r} (bar | trim | key | layer | frame)")
+    if kind == "scrub":
+        return (lambda: True), (lambda f: bridge.setTime(0.2 + 3.0 * f)), (lambda: None)
+    raise ValueError(f"dragtime: no drag kind {kind!r} (bar | trim | key | layer | frame | scrub)")
 
 
 def _wait(ms):
@@ -133,8 +136,9 @@ def drag_time(bridge, kind, n=60, profile=False):
         end()
         _wait(PACE_MS)
         release = busy.now() - b0
-        bridge.undo()                            # the document as it was: each kind measured on the same scene
-        _wait(PACE_MS)
+        if kind != "scrub":
+            bridge.undo()                        # the document as it was: each kind measured on the same scene
+            _wait(PACE_MS)
     finally:
         gc.callbacks.remove(collected)
         busy.close()
