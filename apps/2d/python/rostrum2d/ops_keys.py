@@ -47,6 +47,9 @@ def settable(ctx, owner: dict, prop: str):
     `valid_when`; e.g. a text following a path layer takes x, y, turn and scale from the path). Else refused, loudly."""
     from rostrum_core.conditions import holds
     from .exprbake import source_of
+    if prop in F.FIXED.get(owner["type"], ()):
+        ctx.fail(codes.BAD_ARGUMENT, f'{owner["id"]}.{prop}', "is written by the scene itself and never changed",
+                 hint="Home is where the frame's centre was when the scene was made; move the frame with x and y.")
     if source := source_of(owner, prop):
         ctx.fail(codes.CONFLICT, f'{owner["id"]}.{prop}', f"is driven by an expression ({source}); a value or key would do nothing",
                  hint="expr.clear it first.")

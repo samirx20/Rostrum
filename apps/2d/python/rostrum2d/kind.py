@@ -53,8 +53,8 @@ def _set_fields(ctx, targets, args):
 
 for _type, _params in F.FIELDS.items():
     _label = F.LABELS[_type].lower()
-    REGISTRY.operation(f"{_type}.set", f"Change a {_label}'s settings.", target=_type, params=_params,
-                       label=f"Edit {_label}", fields=True)(_set_fields)
+    REGISTRY.operation(f"{_type}.set", f"Change a {_label}'s settings.", target=_type, label=f"Edit {_label}",
+                       params=[p for p in _params if p.name not in F.FIXED.get(_type, ())], fields=True)(_set_fields)
 
 
 def facts(item: dict, doc=None) -> dict:

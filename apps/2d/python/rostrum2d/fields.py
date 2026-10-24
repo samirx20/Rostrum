@@ -436,6 +436,7 @@ FIELDS["stop"] = _fill.STOP
 FIELDS["swatch"] = [C("color", "Colour", "Colour", "#ffffff")]     # a project colour (ops_fill_paint.py)
 EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", "grain", *_motion.EFFECTS)
 ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask", "stop") + _rig.OWNED_KEYS
+FIXED = {**_frame.FIXED}     # fields no <type>.set takes: the document writes them itself (the frame's home)
 STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h"}, "path": {"w", "h"},
          "group": {"columns"},
          "video": {"w", "h", "offset", "speed"},
