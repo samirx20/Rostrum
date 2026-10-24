@@ -20,6 +20,7 @@
     look quick|final (Final: progressive Cycles in place; `wait` lets it refine)
   Gizmo (real mouse input on the window): gizmo-drag <handle: move0..2 | plane | turn0..2 | scale0..2> <dx> <dy> [ctrl]
     (press on that handle, move by dx dy screen px in 8 steps, release) | gizmo-show all|move|turn|scale | key-moved
+  Edit mesh: mesh-tab | mesh-edit | mesh-kind | mesh-pick | mesh-box | mesh-action | mesh-number | mesh-arrow (mesh_steps.py)
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
@@ -153,6 +154,9 @@ def do_step(bridge, win, step):
         bridge.viewport.gizmo.setShow(rest[0])
     elif word == "key-moved":
         bridge.viewport.gizmo.keyMoved()
+    elif word.startswith("mesh-"):                # Edit mesh (mesh_steps.py)
+        from . import mesh_steps
+        mesh_steps.do(bridge, word, rest)
     elif word in VIEW:
         if bridge.viewport is None:
             raise RuntimeError(f"step {step!r}: no viewport")

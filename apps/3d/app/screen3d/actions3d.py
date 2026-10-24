@@ -66,4 +66,7 @@ ACTIONS.append(Action(
     valid=lambda f: f.ids[0] in f.fits,
     calls=lambda f: [{"op": "mesh.set", "target": [f.ids[0]], "args": {"bevel": round(f.fits[f.ids[0]], 6)}}],
     why="Offered when the engine refused a text's or logo's bevel as too big for its outline."))
+ACTIONS.append(Action(
+    "mesh:edit", "Edit mesh", kinds=F.SOLIDS, max_targets=1, importance="primary", rank=8, group="shape", do="edit-mesh",
+    icon="", why="Edit mesh works on one shape or combine (Tab): its points, edges and faces."))
 LIST = ActionList(ACTIONS, KeyMap("Rostrum3D"), noun="solid")

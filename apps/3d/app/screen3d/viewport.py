@@ -16,16 +16,19 @@ import sys
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 
-from rostrum3d import aim, through
+from rostrum3d import aim, ops_mesh, through
 
 from . import placing, shot_frame
 from .gizmo import View
 from .final_look import NEXT_MS, FinalLook
 from .render_job import cycles_of
-from .frames import ViewRenderer
+from .frames import EngineVia, ViewRenderer
 from .viewcam import ViewCam
 
 MAX_WIDTH = 1600             # pictures wider than this are drawn smaller and scaled up on screen
+
+
+_ENGINE_FOR_OPS = [None]          # the viewport whose engine mesh.edit uses (one window at a time)
 
 
 def scene_ids(scene: dict) -> set[str]:
@@ -69,7 +72,11 @@ class Viewport(QObject):
         bridge.selectionChanged.connect(lambda *_: self.settingsChanged.emit())   # canThroughLight follows it
         bridge.render.changed.connect(self._on_render_job)     # Final waits while the Render button renders
         from .gizmo_qt import Gizmo
+        from .mesh_edit_qt import MeshEdit
+        self.mesh_edit = MeshEdit(bridge, self)                # Edit mesh: points / edges / faces (mesh_edit_qt.py)
         self.gizmo = Gizmo(bridge, self)                       # the selected item's handles (gizmo_qt.py)
+        ops_mesh.use_engine(EngineVia(self._r), bridge.doc.folder)   # mesh.edit asks this engine for a shape's mesh
+        _ENGINE_FOR_OPS[0] = self                              # (the newest window's; an old one closing leaves it)
         from .place_light import PlaceLight
         self.place = PlaceLight(self)                          # lights placed by highlight, linked by clicking
 
@@ -316,6 +323,9 @@ class Viewport(QObject):
         self.click(x, y)
 
     def close(self):
+        if _ENGINE_FOR_OPS[0] is self:
+            ops_mesh.use_engine(None)
+            _ENGINE_FOR_OPS[0] = None
         self._next.stop()
         self._r.close()
 

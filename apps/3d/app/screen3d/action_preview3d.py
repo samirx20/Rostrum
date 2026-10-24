@@ -48,6 +48,8 @@ class ActionPreview3D:
             self.select(made[0])
 
     def _act_do(self, name, entry):
+        if name == "edit-mesh" and getattr(self, "viewport", None) is not None:
+            return self.viewport.mesh_edit.enter()          # Edit mesh is screen state (mesh_edit_qt.py)
         raise ValueError(f'action {entry["id"]}: Rostrum3D has no "{name}" action')
 
     def _preview_calls(self, calls) -> None:

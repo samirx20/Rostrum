@@ -17,6 +17,11 @@ for line in sys.stdin:
             time.sleep(10)
         open(req["png"], "wb").write(PNG)
         out = {"ok": True, "frames": [{"frame": req["frame"], "png": req["png"], "ms": 5}], "renderer": req["renderer"], "timing": {}}
+    elif name == "geometry":  # a unit cube: 8 points, 6 quads, counter-clockwise seen from outside
+        out = {"ok": True, "item": req["item"],
+               "points": [[x, y, z] for x in (-.5, .5) for y in (-.5, .5) for z in (-.5, .5)],
+               "faceCounts": [4] * 6,
+               "faceIndices": [0, 1, 3, 2, 4, 6, 7, 5, 0, 4, 5, 1, 2, 3, 7, 6, 0, 2, 6, 4, 1, 5, 7, 3]}
     else:
         out = {"ok": True}
     print(json.dumps(out), flush=True)

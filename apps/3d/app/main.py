@@ -76,7 +76,7 @@ class Screen:
         old = (self.engine, self.win, self.bridge)
         self.bridge = bridge = Bridge3D(doc, shot_id, autosave=autosave)
         _, self.engine, self.win = start(HERE / "qml" / "Main.qml",
-                                         {"backend": bridge, "viewport": bridge.viewport, "gizmo": bridge.viewport.gizmo, "guides": GUIDES, "files": self.files}, self.size,
+                                         {"backend": bridge, "viewport": bridge.viewport, "gizmo": bridge.viewport.gizmo, "meshEdit": bridge.viewport.mesh_edit, "guides": GUIDES, "files": self.files}, self.size,
                                          providers={"view": bridge.viewport.provider, "ball": bridge.balls.provider})
         if old[0] is not None:
             stop(old[0], old[1], then=lambda: self._free(old[2]))

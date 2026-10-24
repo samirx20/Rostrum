@@ -66,6 +66,7 @@ int serve(std::FILE* in, std::FILE* out) {
       {"render", [&](const JsObject& a) { return core.render(a, progress); }},
       {"view", [&](const JsObject& a) { return core.view(a); }},
       {"pick", [&](const JsObject& a) { return core.pick(a); }},
+      {"geometry", [&](const JsObject& a) { return core.geometry(a); }},
       {"inspect_usd", [&](const JsObject& a) { return inspect_usd(Args(a, "inspect_usd", {"file"}).str("file")); }},
       {"save", [&](const JsObject& a) { return core.save(a); }},
       {"info", [&](const JsObject&) { return core.info(); }},

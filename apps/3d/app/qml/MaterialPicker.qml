@@ -11,10 +11,17 @@ MaterialPopup {
     width: 300
     readonly property int tile: (width - 2 * padding) / 3     // three across: "Polished metal" reads whole
     readonly property int ballSize: Theme.row
+    readonly property int tileHeight: ballSize + Theme.rowDense + Theme.gap
 
     contentItem: Flickable {
         id: flick
-        implicitHeight: Math.min(col.height, picker.fit - 2 * picker.padding)
+        // when it scrolls, it ends at a whole row of starting points (or above "Start from" when none fits), so no
+        // label shows as a sliver at the bottom
+        readonly property real room: picker.fit - 2 * picker.padding
+        readonly property real tileRows: Math.floor((room - starts.y) / picker.tileHeight)
+        implicitHeight: col.height <= room ? col.height
+                        : tileRows >= 1 ? starts.y + tileRows * picker.tileHeight
+                        : starts.y - Theme.rowDense > Theme.rowDense ? starts.y - Theme.rowDense : room
         contentWidth: width; contentHeight: col.height
         clip: true; boundsBehavior: Flickable.StopAtBounds
         Column {
@@ -46,6 +53,7 @@ MaterialPopup {
             Text { height: Theme.rowDense; verticalAlignment: Text.AlignVCenter
                    text: "Start from"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
             Flow {
+                id: starts
                 width: col.width
                 Repeater {
                     model: backend.mats.starts
@@ -53,7 +61,7 @@ MaterialPopup {
                         id: tile
                         required property var modelData
                         objectName: "matstart:" + modelData.value
-                        width: picker.tile; height: picker.ballSize + Theme.rowDense + Theme.gap; radius: Theme.radiusCtl
+                        width: picker.tile; height: picker.tileHeight; radius: Theme.radiusCtl
                         color: tgrab.containsMouse ? Theme.hover : "transparent"
                         Ball { id: tb; anchors.horizontalCenter: parent.horizontalCenter; y: Theme.gap; size: picker.ballSize
                                source: tile.modelData.ball; colour: tile.modelData.colour }

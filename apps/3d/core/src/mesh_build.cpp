@@ -4,12 +4,15 @@
 
 #include <pxr/usd/usdGeom/primvarsAPI.h>
 
+#include "poly.h"
+
 PXR_NAMESPACE_USING_DIRECTIVE
 
 namespace r3d {
 
 MeshData shape(Reader& p, FaceGroups& groups) {
-  const std::string s = p.one_of("shape", {"box", "sphere", "cylinder", "cone", "capsule", "plane", "disc", "torus", "outline"});
+  const std::string s =
+      p.one_of("shape", {"box", "sphere", "cylinder", "cone", "capsule", "plane", "disc", "torus", "outline", "poly"});
   const bool smooth = p.flag("smooth");
   auto size = [&](const char* key) { return float(p.num_min(key, 0.0, false)); };
   auto bevel = [&](float most) {
@@ -49,6 +52,7 @@ MeshData shape(Reader& p, FaceGroups& groups) {
     const float r = size("radius");
     return make_disc(r, p.count("segments", 3, 1024));
   }
+  if (s == "poly") return make_poly(p, smooth);
   if (s == "outline") {
     const float d = float(p.num_min("depth", 0.0, true));
     const float b = bevel(d / 2);
@@ -62,8 +66,8 @@ MeshData shape(Reader& p, FaceGroups& groups) {
 }
 
 void mesh_known(Reader& p) {
-  p.known({"width", "height", "depth", "radius", "tube", "bevel", "segments", "outline", "frontMaterial",
-           "bevelMaterial", "sideMaterial", "backMaterial"});
+  p.known({"width", "height", "depth", "radius", "tube", "bevel", "segments", "outline", "points", "faceCounts",
+           "faceIndices", "frontMaterial", "bevelMaterial", "sideMaterial", "backMaterial"});
 }
 
 void write_mesh(UsdGeomMesh m, const MeshData& d) {
