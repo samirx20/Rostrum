@@ -135,8 +135,9 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   `all`, `map`, `filter`, `divmod`, `pow`, and the modules `math` and `random` (`import` them or just use them; no
   other imports). `random` starts from the same seed every run, so running the script again writes the same notes;
   `random.seed(n)` gives another draw. `print(...)` lines come back in the reply's warnings, "print: …".
-- **Before the render:** `run_script` refuses a held note that would end before it starts (`dur={"to": …}` past its
-  marker), and warns, naming them, about notes, hits or clips that start at or after the song's `length` (never heard).
+- **Before the render:** every reply warns, naming them, about a held note that ends at or before its start
+  (`dur={"to": …}` that a moved marker pushed past; render_mix refuses it) and about notes, hits or clips that start at or
+  after the song's `length` (never heard). Warnings, not refusals: a marker moved in another app never locks the song.
 - Pitches: `"C4"` = MIDI 60, `"F#3"`, `"Bb2"`, or a MIDI number.
 - Names (tones, reverb spaces, EQ shapes, built-in instruments, drums, effect types and fields): `inspect_engine`.
 - Instruments installed on this machine: `inspect_library` (`find: "cello"`). What one can play: `inspect_instrument`

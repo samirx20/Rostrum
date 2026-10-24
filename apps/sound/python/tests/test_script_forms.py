@@ -35,8 +35,8 @@ def test_random_is_the_same_every_run_and_print_comes_back():
     assert notes(src) == notes(src) and printed() == ["hi"]
 
 
-def test_timing_slips_are_said_when_the_script_runs():
-    with pytest.raises(RostrumError, match="not after its start"):
-        notes("s.note('C2', at=10.1, dur={'to': 9.5})")
+def test_timing_slips_are_said_when_the_script_runs_and_never_lock_the_song():
+    tie = run_source("s = track('k', builtIn='grandPiano'); s.note('C2', at=10.1, dur={'to': 9.5})", "t.py")
+    assert any("not after its start" in w for w in KIND.warn(tie)) and not KIND.check(tie)
     t = run_source("length(10); s = track('k', builtIn='grandPiano'); s.note('C4', at=10.5, dur=1)", "t.py")
     assert any("never heard" in w for w in KIND.warn(t))

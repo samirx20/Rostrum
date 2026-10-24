@@ -48,8 +48,9 @@ instead:
 So a pad that swells into "land" and holds to the end is two notes: `at "#spark", dur "next"` and
 `at "#land", dur {"to": "#end"}`. Move "land" and the first note grows, the second shrinks, and there is never a gap.
 A swell (`dynamics`, the `swell` toggle) is drawn across the note's length, so it stretches with it and still peaks
-where the note ends. A tie that would end at or before its note's start (a marker moved past it) fails the check and
-the render, naming the note; it is never played as a silent note. Typing a length in the settings panel sets a fixed one
+where the note ends. A tie that would end at or before its note's start (a marker moved past it) is a warning in every
+reply and the Problems list, naming the note, and the render refuses it; it is never played as a silent note, and the
+song still opens. Typing a length in the settings panel sets a fixed one
 (the tie is the agent's or the person's choice, kept until someone types over it).
 
 ## 3. Make the grid serve the picture

@@ -1,8 +1,8 @@
-"""Timing a script can get wrong that single fields can't see, said when the script runs (not first at render_mix):
+"""Timing that single fields can't see, said in every reply (DocKind.warn) as soon as it happens, not first at render_mix.
+Warnings, not refusals: a project marker moved in another app can cause either, and a song must still open.
 
-- `problems`: a tied note (`dur {"to": …}` / `"next"`) that ends at or before its start: the render would fail on it.
-- `warn`: notes, hits and clips that start at or after the song's `length`: they are never heard (a person may shorten
-  a song on purpose, so this is a warning naming them, not a refusal).
+- a tied note (`dur {"to": …}` / `"next"`) that ends at or before its start: the render refuses it;
+- notes, hits and clips that start at or after the song's `length`: they are never heard.
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from . import times
 SHOWN = 3
 
 
-def problems(data: dict) -> list[str]:
+def ties(data: dict) -> list[str]:
     out = []
     for t in data.get("tracks", []):
         for n in t.get("notes", []):
@@ -22,11 +22,15 @@ def problems(data: dict) -> list[str]:
                 try:
                     times.length_seconds(d, data, times.seconds(n["at"], data, n["id"]), n, n["id"])
                 except RostrumError as e:
-                    out.append(f"{n['id']}: {e.subject} {e.problem}")
+                    out.append(f"{n['id']}: {e.subject} {e.problem}: render_mix refuses it until the note ends after it starts")
     return out
 
 
 def warn(data: dict) -> list[str]:
+    return ties(data) + late(data)
+
+
+def late(data: dict) -> list[str]:
     if data.get("length") is None:
         return []
     try:
