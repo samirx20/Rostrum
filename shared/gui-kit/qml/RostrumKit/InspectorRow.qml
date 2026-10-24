@@ -13,6 +13,7 @@ import "ValueKinds.js" as VK
 // opacity ease over Theme.reveal (160 ms); the Column below just follows. A new selection shows at once: a new
 // layout builds fresh rows at their final state (a Behavior does not animate the first value), and the same kind's
 // rows change in place with `instant` true (the list model's, RowsModel.instant), so nothing eases.
+// An optional `tag` (rows.py: a word like "Final") shows as a small quiet tag at the end of the label, its `tagHelp` on hover.
 // With `keyMarks` (an app with keys) every param row keeps a gutter at the right for its key mark (model.anim):
 // a filled diamond = a key at the playhead, outlined = animated, faint (always shown, a little stronger on hover) =
 // could be animated (INTERACTION 1.5: always visible, not only on hover).
@@ -167,7 +168,7 @@ Item {
                 height: Theme.row
                 Text { id: label   // the label sits in its own column, one per row (a pair has one: Position, Size)
                        visible: !row.second
-                       width: row.labelColumn - Theme.gap
+                       width: row.labelColumn - Theme.gap - (tag.visible ? tag.width + Theme.grid : 0)
                        anchors.verticalCenter: parent.verticalCenter
                        height: row.model.type === "toggle" ? parent.height : implicitHeight   // a switch's words: the line's full height to click
                        verticalAlignment: Text.AlignVCenter
@@ -177,6 +178,17 @@ Item {
                        TapHandler { enabled: row.model.type === "toggle"; onTapped: row.set(!row.model.value) }   // a switch's words flip it too (F12, F13)
                        HoverTip { text: row.model.help || label.truncated ? row.model.label : ""; help: row.model.help || ""
                                   hovered: labelHover.hovered } }   // hover help: the setting's name and its one sentence
+                Rectangle {  // an optional small tag after the label (model.tag, e.g. "Final"; its hover words model.tagHelp)
+                    id: tag
+                    visible: !row.second && !!row.model.tag
+                    x: row.labelColumn - Theme.gap - width; anchors.verticalCenter: parent.verticalCenter
+                    width: tagText.implicitWidth + 2 * Theme.grid; height: Theme.label + Theme.grid + 2
+                    radius: Theme.radiusCtl; color: Theme.raised
+                    Text { id: tagText; anchors.centerIn: parent; text: row.model.tag || ""; color: Theme.fg3
+                           font.pixelSize: Theme.label - 1; font.family: uiFont }
+                    HoverHandler { id: tagHover }
+                    HoverTip { text: row.model.tagHelp || ""; hovered: tagHover.hovered }
+                }
                 Loader {
                     id: widget
                     objectName: row.model.type === "toggle" ? "" : "grid:field"   // the layout check reads the grid from these two names
