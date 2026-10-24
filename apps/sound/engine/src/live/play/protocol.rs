@@ -14,7 +14,8 @@ use crate::live::wasapi;
 pub enum Msg {
     Cmd(Cmd),
     /// A new render to play, and its strips' meters (levels.rs) or why there are none.
-    Load(Cmd, Result<crate::mix::render::levels::Levels, String>),
+    /// A new render to play on: its frames, its meters and its length in seconds (the `end` line says this one).
+    Load(Cmd, Result<crate::mix::render::levels::Levels, String>, f64),
     Packet(record::Packet),
     Quit,
 }
@@ -66,7 +67,8 @@ pub fn parse(v: &serde_json::Value, rate: f64, notes: &Sender<Event>, monitoring
         Cmd::Hear(gain as f32, 0.0)
     } else if let Some(f) = v["load"].as_str() {
         let (mix, from, levels) = crate::live::play::mix::read(f)?;
-        return Ok(Some(Msg::Load(Cmd::Load(Arc::new(monitoring.again(&mix, from, rate as u32)?)), levels)));
+        let seconds = mix.seconds(from);
+        return Ok(Some(Msg::Load(Cmd::Load(Arc::new(monitoring.again(&mix, from, rate as u32)?)), levels, seconds)));
     } else {
         return Err(format!("unknown command {v}"));
     })))
