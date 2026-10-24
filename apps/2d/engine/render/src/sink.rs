@@ -1,7 +1,7 @@
 //! The encoder a render's frames go to (serve.rs `open.encode`): the renderer starts it (ffmpeg with the
 //! host's arguments, raw frames on its stdin) and hands it each frame's pixels on a writer thread, so the
 //! frames never pass through the host and painting the next frame overlaps writing this one. A bounded
-//! queue of two frames holds memory and keeps the order. `finish` closes its input and waits for it; an
+//! queue of two frames holds memory and keeps the order; the pipe holds a whole frame (big_pipe.rs). `finish` closes its input and waits for it; an
 //! encoder that stopped fails the next frame with what it said (AGENTS.md rule 6).
 //!
 //! A sink is either that encoder or a turn at one encoder shared by an export's drawing workers (sink_turn.rs):
@@ -115,14 +115,14 @@ impl Sink {
 impl Encoder {
     fn start(program: &str, args: &[String]) -> Result<Encoder, String> {
         let mut cmd = Command::new(program);
-        cmd.args(args).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::piped());
+        cmd.args(args).stdout(Stdio::null()).stderr(Stdio::piped());
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
             cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
         }
-        let mut child = cmd.spawn().map_err(|e| format!("the encoder ({program}) could not start: {e}"))?;
-        let mut stdin = child.stdin.take().expect("piped stdin");
+        let (mut child, mut stdin) = crate::big_pipe::spawn(&mut cmd).map_err(|e| format!("the encoder ({program}) could not start: {e}"))?;
+        drop(cmd); // it holds a copy of the pipe's reading end: with it gone, a stopped encoder shows as a failed write
         let mut stderr = child.stderr.take().expect("piped stderr");
         let said = Arc::new(Mutex::new(String::new()));
         let keep = said.clone();

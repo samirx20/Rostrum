@@ -222,13 +222,19 @@ impl SceneLut {
 /// frame equals the exported one) and the same every frame, so a held picture stays bit-identical (no shimmer,
 /// and an encoder sees no change).
 fn dither(x: u32, y: u32, c: u32) -> f32 {
+    offset(dither_hash(x, y, c))
+}
+
+/// The dither's 24-bit hash value of a pixel and channel.
+#[inline]
+pub(crate) fn dither_hash(x: u32, y: u32, c: u32) -> u32 {
     let mut h = x.wrapping_mul(0x9E37_79B1) ^ y.wrapping_mul(0x85EB_CA77) ^ c.wrapping_mul(0xC2B2_AE3D);
     h ^= h >> 15;
     h = h.wrapping_mul(0x2C1B_3C6D);
     h ^= h >> 12;
     h = h.wrapping_mul(0x297A_2D39);
     h ^= h >> 15;
-    offset(h >> 8)
+    h >> 8
 }
 
 /// The dither offset of a 24-bit hash value `m` (the GPU output step computes the same hash; gpu_output.rs).
@@ -268,9 +274,20 @@ pub fn output_rows(spec: &Spec, src: &[u8], width: u32, y0: u32, deep: bool, fas
     let px = src.len() / 8;
     let bpp = if deep { 8 } else { 4 };
     assert_eq!(out.len(), px * bpp, "output buffer size");
+    // An opaque pixel of an 8-bit frame from the integer codes the GPU's step reads too (output8.rs): same bytes, no float maths.
+    let codes = if deep { None } else { gpu_codes(spec, false) };
     crate::pixels::bands(px, |range, dst: &mut [u8]| {
-        for (i, o) in range.zip(dst.chunks_exact_mut(bpp)) {
-            let p = &src[i * 8..i * 8 + 8];
+        // The place in the frame by counting along (a division per pixel was the slowest step of an export).
+        let (mut x, mut y) = (range.start as u32 % width, y0 + range.start as u32 / width);
+        for (p, o) in src[range.start * 8..range.end * 8].chunks_exact(8).zip(dst.chunks_exact_mut(bpp)) {
+            let (px_x, px_y) = (x, y);
+            x += 1;
+            if x == width {
+                (x, y) = (0, y + 1);
+            }
+            if codes.as_ref().is_some_and(|c| crate::output8::opaque(c, p, (px_x, px_y), o)) {
+                continue;
+            }
             let bits = |k: usize| u16::from_le_bytes([p[k * 2], p[k * 2 + 1]]) as usize;
             let v = |k: usize| table[bits(k)];
             let a = if v(3).is_finite() { v(3).clamp(0.0, 1.0) } else { 0.0 };
@@ -291,12 +308,11 @@ pub fn output_rows(spec: &Spec, src: &[u8], width: u32, y0: u32, deep: bool, fas
                 }
                 _ => spec.output.apply([v(0) / a, v(1) / a, v(2) / a]),
             };
-            let (x, y) = (i as u32 % width, y0 + i as u32 / width);
             for (k, c) in [c[0], c[1], c[2], a].into_iter().enumerate() {
                 if deep {
                     o[k * 2..k * 2 + 2].copy_from_slice(&((c * 65535.0 + 0.5) as u16).to_le_bytes());
                 } else {
-                    o[k] = quantise8(c * 255.0, spec.dither && k < 3, || dither(x, y, k as u32));
+                    o[k] = quantise8(c * 255.0, spec.dither && k < 3, || dither(px_x, px_y, k as u32));
                 }
             }
         }
@@ -707,6 +723,31 @@ mod tests {
 
     fn half_px(c: [f32; 4]) -> Vec<u8> {
         c.iter().flat_map(|v| f16::from_f32(*v).to_le_bytes()).collect()
+    }
+
+    // An export's bytes must not depend on which route an opaque pixel took: the integer codes (output8.rs) against the float step.
+    #[test]
+    fn integer_codes_give_the_float_steps_bytes() {
+        let (w, h) = (97u32, 61u32);
+        let mut s = 99u32;
+        let mut rnd = || { s ^= s << 13; s ^= s >> 17; s ^= s << 5; s };
+        let src: Vec<u8> = (0..w * h).flat_map(|_| {
+            let c = [0, 1, 2].map(|_| match rnd() % 4 { 0 => rnd() as f32 / u32::MAX as f32 * 1.2 - 0.1, 1 => (rnd() % 256) as f32 / 255.0, _ => rnd() as f32 / u32::MAX as f32 });
+            half_px([c[0], c[1], c[2], if rnd() % 5 == 0 { 0.5 } else { 1.0 }])
+        }).collect();
+        for dither_on in [true, false] {
+            let spec = Spec { dither: dither_on, ..Spec::default() };
+            let table = channel_table(&spec).unwrap();
+            let mut got = vec![];
+            output(&spec, &src, w, false, false, 0, &mut got);
+            for (i, p) in src.chunks_exact(8).enumerate() {
+                let bits = |k: usize| u16::from_le_bytes([p[k * 2], p[k * 2 + 1]]) as usize;
+                if bits(3) != 0x3c00 { continue; }
+                let (x, y) = (i as u32 % w, i as u32 / w);
+                let want = [0, 1, 2].map(|k| quantise8(table[bits(k)] * 255.0, dither_on, || dither(x, y, k as u32)));
+                assert_eq!(&got[i * 4..i * 4 + 3], &want, "pixel {i}, dither {dither_on}");
+            }
+        }
     }
 
     #[test]
