@@ -113,6 +113,10 @@ void build_camera(Item& it, const SdfPath& path) {
   it.write<float>(cam.CreateFStopAttr(), dof ? fstop.size() : 1,
                   [&](size_t i) { return dof ? float(pick(fstop, i)) : 0.0f; });  // f-stop 0 = no depth of field
   write_float(it, cam.CreateFocusDistanceAttr(), "focusDistance");
+  // Motion blur: the shot's shutter, frame-relative and centred (USD's shutter:open / close; Cycles' Hydra plug-in
+  // samples the camera's moves inside it, and the engine switches Cycles' motion blur on when it is open, hydra.cpp).
+  cam.CreateShutterOpenAttr().Set(-it.ctx.shutter / 2);
+  cam.CreateShutterCloseAttr().Set(it.ctx.shutter / 2);
   const auto near_ = it.nums("near"), far_ = it.nums("far");
   for (size_t i = 0; i < std::max(near_.size(), far_.size()); ++i)
     if (pick(near_, i) <= 0 || pick(far_, i) <= pick(near_, i))

@@ -55,9 +55,19 @@ def _check_node(node, n_frames):
         _check_node(child, n_frames)
 
 
+def test_motion_blur_reaches_the_scene():
+    """The shot's shutter (degrees) reaches the core as frames, or 0 when off: nothing else shows it is lost."""
+    d = doc()
+    shot = d.data["shots"][0]
+    shot.update(motionBlur=True, shutter=90.0)
+    assert describe(d.data, "hero")["shot"]["shutter"] == 0.25
+    shot["motionBlur"] = False
+    assert describe(d.data, "hero")["shot"]["shutter"] == 0.0
+
+
 def test_describe_meets_the_contract():
     scene = describe(doc().data, "hero")
-    assert scene["shot"] == {"id": "hero", "fps": 24, "start": 0, "end": 47}
+    assert scene["shot"] == {"id": "hero", "fps": 24, "start": 0, "end": 47, "shutter": 0.0}
     for node in scene["items"]:
         _check_node(node, 48)
     by_id = {n["id"]: n for n in scene["items"]}

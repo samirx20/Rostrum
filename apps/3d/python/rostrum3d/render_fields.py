@@ -13,6 +13,7 @@ QUALITIES = {"draft": {"samples": 32, "denoise": True}, "good": {"samples": 128,
              "final": {"samples": 512, "denoise": True}}
 SIZES = {"full": 1.0, "half": 0.5, "double": 2.0}
 CUSTOM, RANGE = IS("renderQuality", "custom"), IS("renderRange", "range")
+BLUR = IS("motionBlur", True)
 
 RENDER = [
     CH("renderQuality", [*QUALITIES, "custom"], "Quality", "Render", "good", S,
@@ -25,7 +26,17 @@ RENDER = [
     N("renderStart", "From", "Render", 0, 36000, 0.001, "s", S, RANGE, help="Seconds from the start of the shot"),
     N("renderEnd", "To", "Render", 0, 36000, 0.001, "s", S, RANGE, default=1.0,
       help="Seconds from the start of the shot; the frame at this time is the last one"),
+    T("motionBlur", "Motion blur", "Motion blur", False, S,
+      help="Things that move smear along their path, as in a real camera. Shows only in Final and in renders"),
+    N("shutter", "Shutter", "Motion blur", 1, 360, 1, "°", S, BLUR, default=180.0,
+      help="How long each frame is exposed: 180° is half a frame (the film look), 360° a whole frame (more smear)"),
 ]
+
+
+def shutter_frames(shot: dict) -> float:
+    """How long the shutter is open, in frames (0 = no motion blur): what the scene description's `shot.shutter`
+    carries (ENGINE_CONTRACT.md § 2), so the Final look and every render blur alike."""
+    return float(shot.get("shutter", 180.0)) / 360.0 if shot.get("motionBlur", False) else 0.0
 
 
 def settings(shot: dict, info: dict) -> dict:

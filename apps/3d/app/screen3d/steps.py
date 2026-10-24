@@ -3,7 +3,7 @@
     select <id> | selectmany <id> <id> … (the first is the base) | deselect (nothing selected: the Scene) | action <id> (a settings panel action, e.g. combine:subtract)
     preview <id> / unpreview (the hover preview of a panel action: what resting the pointer on it shows; leaving) | frame <n> | set <param> <json value> | scrub <param> <v> <v> … | animate <param> (the key mark)
     keydrag <key id> <frame> | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
-    context <item id | -> (the right-click menu)
+    context <item id | -> (the right-click menu) | showshot <shot id> (the crumb's pick) | shot-from-view (its New shot from this view)
     add <menu value, e.g. mesh:sphere | light:distant | camera | material | shot> | duplicate | delete
     arm <mesh:box …> [field=value …] (a shape picked in the Shapes or Type & logo flyout, with its source for a logo:
     svgFile=<path> or doc2d=<id> layer=<id>; the next viewport click (`mouseclick`, `viewclick`) places it on the surface there)
@@ -108,6 +108,10 @@ def do_step(bridge, win, step):
         QMetaObject.invokeMethod(win, "openCommands", Q_ARG("QVariant", " ".join(rest)))
     elif word == "run":
         bridge.run(rest[0])
+    elif word == "showshot":
+        bridge.showShot(rest[0])
+    elif word == "shot-from-view":
+        bridge.newShotFromView()
     elif word == "add":
         bridge.adder.add(rest[0])
     elif word == "arm":            # arm <choice> [field=value …]: a flyout's pick; the next viewport click (`mouseclick`, `viewclick`) places it

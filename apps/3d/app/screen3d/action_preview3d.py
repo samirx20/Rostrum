@@ -1,7 +1,7 @@
 """The screen's side of Rostrum3D's action list (actions3d.py): one kit ActionHub (read in QML as `backend.actions`)
 feeds the settings panel's actions, and hover preview. A slot mix-in for Bridge3D.
 
-Hover preview (2D's ActionPreview, same idea): while the pointer rests on Combine's Union, Subtract or Intersect, the
+Hover preview (2D's ActionPreview, same idea): while the pointer rests on Combine's Union, Subtract or Intersect (or a lens), the
 viewport shows the result. The action's calls run on a scratch copy of the document (`run.plan`: pure, the live document
 and its history are never touched); that copy is described and drawn by the one engine path like any frame (preview ≡
 export). The preview is held in `self._previewed` and handed out by `scene()`; the pointer leaving, or any document
@@ -17,7 +17,7 @@ from rostrum_gui.action_hub import ActionHub
 
 from .actions3d import LIST, Facts, bevel_fits
 
-PREVIEWABLE = {"combine.make"}
+PREVIEWABLE = {"combine.make", "camera.set"}     # a lens rested on shows through the camera
 
 
 class ActionPreview3D:
@@ -50,6 +50,8 @@ class ActionPreview3D:
     def _act_do(self, name, entry):
         if name == "edit-mesh" and getattr(self, "viewport", None) is not None:
             return self.viewport.mesh_edit.enter()          # Edit mesh is screen state (mesh_edit_qt.py)
+        if name in ("focus-point", "focus-item") and getattr(self, "viewport", None) is not None:
+            return self.viewport.focus.start(self.selected, name == "focus-item")   # the next click (focus_pick.py)
         raise ValueError(f'action {entry["id"]}: Rostrum3D has no "{name}" action')
 
     def _preview_calls(self, calls) -> None:

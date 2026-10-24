@@ -29,7 +29,10 @@ AppShell {
     function openContext(id) { vp3d.openContext(id) }              // (the scripted `context <id | ->` step)
     function openMaterials() { materialsList.openFrom(materialsChip) }
     function openPicker() { materialRow.openPicker() }           // (the scripted `picker` step)
-    function openShots() { shotsMenu.openFrom(crumb, "left") }
+    function openShots() {         // read as it opens: the shown shot checked, "from this view" only off the shot camera
+        shotsMenu.entries = backend.shotEntries(viewport.mode)
+        shotsMenu.openFrom(crumb, "left")
+    }
     function openView() {          // its choices are read as it opens (the light choice follows the selection)
         viewMenu.entries = [{ value: "shot", label: "Shot camera", checked: viewport.mode === "shot" },
                             { value: "free", label: "Free camera", checked: viewport.mode === "free" }]
@@ -83,7 +86,7 @@ AppShell {
     StartScreen { id: startScreen; anchors.fill: parent; z: 100; onGuideAsked: (url) => shell.openGuide(url)
                   anchors.leftMargin: shell.guidesOpen ? (shell.guidesWidth || 0) : 0 }
 
-    crumb: Item {   // "› Hero 01 ▾": the shot this screen shows; its list opens a shot's settings or makes a new one
+    crumb: Item {   // "› Hero 01 ▾": the shot this screen shows; its list switches to another shot or makes a new one
         id: crumb
         implicitWidth: crumbRow.implicitWidth + 2 * Theme.grid; implicitHeight: Theme.button
         Rectangle { anchors.fill: parent; radius: Theme.radiusCtl; color: crumbArea.containsMouse ? Theme.hover : "transparent" }
@@ -99,8 +102,7 @@ AppShell {
         Menu {
             id: shotsMenu
             width: 200
-            entries: backend.shots.concat(backend.adder.canAddShot ? [{ value: "+shot", label: "New shot" }] : [])
-            onPicked: (v) => v === "+shot" ? backend.adder.add("shot") : backend.select(v)
+            onPicked: (v) => v === "+view" ? backend.newShotFromView() : v === "+shot" ? backend.showShot(backend.adder.add("shot")) : backend.showShot(v)
         }
     }
     tools: Segmented {   // the pages (Ctrl+1 / 2 / 3)

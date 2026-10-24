@@ -13,6 +13,7 @@ namespace r3d {
 struct ItemsContext {
   PXR_NS::UsdStageRefPtr stage;
   int start = 0, end = 0;               // the shot's frames, inclusive: anim lists hold end - start + 1 values
+  double shutter = 0;                   // frames the shutter is open, centred on each frame; 0 = no motion blur
   std::set<std::string> materials;      // material ids that exist
   std::set<std::string> ids;            // item ids seen so far (unique across the scene)
   int items = 0;

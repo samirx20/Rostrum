@@ -66,7 +66,12 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   Storm, then confirm light and materials with one `final` look at the frame that matters most. (A person on the screen gets the
   same with Shift+F, Look: Final: the viewport itself runs Cycles with the Render button's settings and cleans up sample by sample.)
 - **Depth of field is a choice of three numbers.** The focus distance is the distance from the camera to what must be sharp. Get
-  it from `look_at` (its `distance`) instead of measuring by eye.
+  it from `look_at` (its `distance`) instead of measuring by eye. Or name what must stay sharp: `camera.set focusItem=<item id>`
+  (with `dof` on); the distance then follows that item's origin every frame, along the way the camera looks. `focusItem=""`
+  goes back to `focusDistance`. Real lenses: 24, 35, 50, 85, 105, 135 mm (`focalLength`; any value works).
+- **Another angle is another shot.** `shot.from_view` with `position` [x, y, z], `turn` [rx, ry, rz] (degrees, it looks along
+  its −Z) and `focalLength` makes a camera and a shot through it in one step ("Shot N", the first shot's size, frame rate, time
+  and render settings; `id`, `name`, `cameraId` optional). A camera may serve several shots; each shot is its own window of time.
 - **Time.** `at` is seconds from the start of the shot; `frame` is the shot's own frame number. Both are valid in every tool; the
   replies carry both `time` and `frame`.
 - **Check the ends of a move.** First and last frame of a move, and the middle: `look_sheet` with `start` / `end` zoomed to that range.

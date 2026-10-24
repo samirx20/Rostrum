@@ -5,7 +5,29 @@ A **rig** is an item that carries what is inside it, usually the shot camera. Yo
 for every frame and sent to the renderers as an ordinary moving group, so Storm, Cycles and a saved `.usda` all play
 it the same way.
 
-## Make one
+## Put a camera on a rig (one step)
+
+In the window: **Camera** flyout (C) › **Orbit**, **Turntable**, **Crane**, **Dolly** or **Handheld**. The camera
+(the selected one, else the shot camera) goes onto a new rig and starts exactly where it was, so the shot does not
+jump. Orbit and Turntable then wait for a click on what to circle (an item: its middle; the ground: that point; Esc
+cancels). Turntable also keys one full turn over the shot. Crane, Dolly and Handheld start at once: the track or arm
+runs the way the camera looks. The rows are absent while the camera already rides a rig: change that rig's **Rig**
+setting instead.
+
+Agents do the same with one operation:
+
+```json
+{"op": "rig.wrap", "target": ["cam"], "args": {"kind": "orbit", "around": "case", "turn": "hero"}}
+```
+
+- `kind`: `orbit`, `crane` or `dolly`; `handheld: true` adds the drift (the window's Handheld is a still dolly with it).
+- An orbit circles `around` (an item's origin) or `point` [x, y, z], else what the camera aims at, else the point at its
+  focus distance straight ahead.
+- `turn: <shot id>` keys one turn (a turntable); later, `rig.turn_once` with `shot` does the same on an orbit rig.
+  The key at the shot's end is a full turn, so the last frame stops just short of it and the shot loops.
+- The camera's own position and turn keys are cleared (the rig moves it now); its aim stays and still works.
+
+## Make one by hand
 
 ```python
 r = rig("spin", rig="orbit", radius=0.6, height=0.15, y=0.05)   # the rig's x y z = the centre it circles
@@ -15,7 +37,7 @@ r.key("angle", {0: 0, 3: 360}, ease="linear")                    # one full turn
 shot("turn", camera="cam", fps=24, start=0, end=3)
 ```
 
-Operations: `rig.add` (then `camera.add into=<rig id>`, or `item.arrange` an existing camera into it), `rig.set`,
+Operations: `rig.wrap` (above), or `rig.add` (then `camera.add into=<rig id>`, or `item.arrange` an existing camera into it), `rig.set`, `rig.turn_once`,
 `key.add` on `angle`, `lift`, `swing`, `travel`, `pan`, `tilt`, `radius`, `height`, `armLength`.
 
 Leave the camera inside the rig at its own default place (x y z and turns 0): it then sits on the rig's head and looks
@@ -56,3 +78,26 @@ Things to know:
   and use `height` to lift the camera above that point.
 - `aim` on the camera inside a rig still works (it overrides the head's facing), e.g. a crane that rises while the
   camera stays aimed at the product.
+
+## Motion blur
+
+A camera on the move smears what it passes, the way a real film camera does, and that smear is what makes a fast
+orbit or a whip-pan read as motion instead of a string of sharp stills.
+
+Select the shot, then **Motion blur** in its row of names: switch it on, and **Shutter** appears. The shutter is how
+long each frame is exposed: **180°** (the default) is half a frame, the usual film look; smaller is crisper and
+choppier, **360°** is a whole frame, the most smear. It is off on a new shot.
+
+```python
+shot("turn", camera="cam", fps=24, start=0, end=3, motionBlur=True, shutter=180)
+```
+
+Agents: `shot.set` with `motionBlur` and `shutter` (degrees, 1–360).
+
+Things to know:
+- **Quick shows no motion blur** (the setting's tip says so). Switch the viewport to **Final** to see it, and every render
+  (Render button, `render_still`, `render_video`) draws the same blur: it is part of the shot, not of the render.
+- **The camera's own move blurs** (an orbit, a crane, a dolly, a handheld drift). A keyed object moving in front of a
+  still camera stays sharp for now.
+- Each frame's smear is centred on that frame: the sharp picture of a frame sits in the middle of its blur.
+- A faster move or a longer shutter smears more. If a turntable looks smeary, slow the turn or lower the shutter.
