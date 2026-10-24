@@ -126,8 +126,10 @@ def apply_paint(region, c0, c1, col, mode, k=1.0, base=None):
     if mode == "normal":
         region[..., :3] += inc * (col - region[..., :3])
         region[..., 3:] += inc * (1 - region[..., 3:])
-    elif mode == "multiply":                                  # times 1 - c(1-col), once per stroke
-        region[..., :3] *= (1 - hi * (1 - col)) / (1 - lo * (1 - col))
+    elif mode == "multiply":                                  # times 1 - c(1-col), once per stroke; where there is
+        bare = 1 - region[..., 3:]                            # no paint yet (a new layer) it lays its colour, so a
+        region[..., :3] = region[..., :3] * ((1 - hi * (1 - col)) / (1 - lo * (1 - col))) + inc * col * bare  # glaze shows
+        region[..., 3:] += inc * bare
     elif mode == "erase":
         region *= 1 - inc
     elif mode in ("screen", "add"):

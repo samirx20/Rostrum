@@ -4,8 +4,9 @@ The pen's stroke goes into the document once, when it lifts (strokes.StrokeDrag,
 it with the painting kit's own brush (`canvas.stamp`, the same stamp a saved stroke gets), in composition px, a few
 points at a time (WetInk), so no move waits for the scene to be described and drawn again. The saved
 stroke is then drawn by the one render path (preview ≡ export); the wet picture goes when that frame lands.
-Erasing and smudging change what is already painted, so they can't be shown on their own: they keep drawing
-through the document (`shows`).
+A smudging brush smears the layer's own paint: its wet ink works on that paint (`under`, in the paint canvas's px,
+laid over the layer's box like the onion skin) and shows the region smeared. Erasing can't be shown over the picture (what lies under the erased paint isn't in it): it keeps
+drawing through the document (`shows`).
 """
 from __future__ import annotations
 
@@ -20,12 +21,12 @@ from rostrum_paint import canvas, compose
 from rostrum_paint.ops import build, seed_of
 
 PAD = 4                     # px round the stroke's box, for the brush's soft edge and jitter
-CHUNK = 12                  # points in the tip before it settles into the dry part
+CHUNK = 12                  # the fewest points in the tip before the dry part is stamped again
 
 
 def shows(brush: dict) -> bool:
-    """Whether wet ink can show a stroke made with these settings on its own (not erasing or smudging)."""
-    return brush.get("mode", "normal") != "erase" and not brush.get("smudge")
+    """Whether wet ink can show a stroke made with these settings (not erasing)."""
+    return brush.get("mode", "normal") != "erase"
 
 
 class WetProvider(QQuickImageProvider):
@@ -46,17 +47,22 @@ class WetProvider(QQuickImageProvider):
 
 class WetInk:
     """One stroke's wet pictures. `scale`: canvas px per composition px (the brush size is in canvas px). Each look
-    stamps only the newest points (the tip); every CHUNK points they settle into the dry part, stamped once. So a
-    look costs the same however long the stroke is. The joins may differ from the saved stroke by a dab: it replaces
-    this the moment it is drawn."""
+    stamps only the newest points (the tip) over the dry part; once the tip is a quarter of the stroke (CHUNK points
+    at least) the dry part is stamped again from the whole stroke so far, as the saved stroke will be: no seams, and
+    the cost per point stays flat (the dry part is redone each time the stroke grows by a quarter). `under`: for a smudging brush, the layer's paint (premultiplied, its canvas px: then
+`bounds` is the canvas size, points come in canvas px and `place` = (x, y, x scale, y scale) puts canvas px on the
+composition)."""
 
-    def __init__(self, brush: dict, sid: str, scale: float, bounds: tuple[int, int]):
+    def __init__(self, brush: dict, sid: str, scale: float, bounds: tuple[int, int], under: np.ndarray | None = None,
+                 place=(0.0, 0.0, 1.0, 1.0)):
         self.brush, self.sid, self.scale, self.bounds = brush, sid, scale or 1.0, bounds
         self.size = brush.get("size", 10) / self.scale
         self.reach = self.size / 2 + PAD + 3 * brush.get("jitter", 0) * self.size
         self.points: list[list[float]] = []
-        self._dry = np.zeros((bounds[1], bounds[0], 4), np.float32)     # composition px
-        self._settled, self._chunks, self._dry_box = 0, 0, None         # points settled; their box (x0, y0, x1, y1)
+        self.smears, self.place = under is not None, place
+        self._base = under                                              # what the stroke starts on (None: nothing)
+        self._dry = under.copy() if under is not None else np.zeros((bounds[1], bounds[0], 4), np.float32)
+        self._settled, self._dry_box = 0, None                          # points in the dry part; its box (x0, y0, x1, y1)
 
     def add(self, x: float, y: float, pressure: float):
         self.points.append([x, y, round(min(max(pressure, 0.0), 1.0), 3)])
@@ -72,28 +78,27 @@ class WetInk:
         return self.points[max(0, self._settled - 1):]
 
     def _stamp(self, into, origin, pts):
-        item = build("stroke", self.sid, {**self.brush, "size": self.size, "seed": seed_of(self.sid) + self._chunks,
+        item = build("stroke", self.sid, {**self.brush, "size": self.size, "seed": seed_of(self.sid),
                                           "points": [[x - origin[0], y - origin[1], p] for x, y, p in pts]})
-        canvas.stamp(into, item, into.shape[1], into.shape[0], {})
+        canvas.stamp(into, item, into.shape[1], into.shape[0], {}, into[..., :3].copy() if item["smudge"] else None)
 
     def settle(self) -> bool:
-        """Settle the tip into the dry part once it is CHUNK points long; True if the dry part changed."""
-        tip = self._tip()
-        if len(tip) < CHUNK:
+        """The dry part stamped again from the whole stroke so far, once the tip is long enough; True if it changed."""
+        if len(self._tip()) < max(CHUNK, len(self.points) // 4):
             return False
-        box = self._box(tip)
+        box = self._box(self.points)
         if box:
             x0, y0, x1, y1 = box
-            part = np.ascontiguousarray(self._dry[y0:y1, x0:x1])      # the native stamper takes a whole array
-            self._stamp(part, (x0, y0), tip)
+            base = self._base[y0:y1, x0:x1] if self._base is not None else None
+            part = base.copy() if base is not None else np.zeros((y1 - y0, x1 - x0, 4), np.float32)
+            self._stamp(part, (x0, y0), self.points)
             self._dry[y0:y1, x0:x1] = part
-            d = self._dry_box
-            self._dry_box = box if d is None else (min(d[0], x0), min(d[1], y0), max(d[2], x1), max(d[3], y1))
-        self._settled, self._chunks = len(self.points), self._chunks + 1
+            self._dry_box = box
+        self._settled = len(self.points)
         return True
 
     def dry(self) -> tuple[QImage, dict] | None:
-        return None if self._dry_box is None else _picture(self._dry, self._dry_box)
+        return None if self._dry_box is None else self._placed(*_picture(self._dry, self._dry_box))
 
     def tip(self) -> tuple[QImage, dict] | None:
         tip = self._tip()
@@ -101,9 +106,14 @@ class WetInk:
         if box is None:
             return None
         x0, y0, x1, y1 = box
-        px = np.zeros((y1 - y0, x1 - x0, 4), np.float32)
+        px = (self._dry[y0:y1, x0:x1].copy() if self.smears        # a smudge's tip: the picture there, smeared
+              else np.zeros((y1 - y0, x1 - x0, 4), np.float32))
         self._stamp(px, (x0, y0), tip)
-        return _picture(px, (0, 0, x1 - x0, y1 - y0), (x0, y0))
+        return self._placed(*_picture(px, (0, 0, x1 - x0, y1 - y0), (x0, y0)))
+
+    def _placed(self, image, box):
+        ox, oy, kx, ky = self.place
+        return image, {"x": ox + box["x"] * kx, "y": oy + box["y"] * ky, "w": box["w"] * kx, "h": box["h"] * ky}
 
 
 def _picture(px, box, at=None) -> tuple[QImage, dict]:
@@ -133,6 +143,10 @@ class WetView(QObject):
 
     def start(self, ink: WetInk):
         self._ink, self._lifted = ink, False
+
+    @property
+    def smearing(self) -> bool:
+        return self._ink is not None and self._ink.smears
 
     def add(self, x, y, pressure):
         if self._ink is not None:
@@ -168,3 +182,15 @@ class WetView(QObject):
         if self._serial or self._dry_serial:
             self._serial, self._box, self._dry_serial, self._dry_box = 0, {}, 0, {}
             self.changed.emit()
+
+
+def smear_ink(brush: dict, stroke, box: dict, n: int) -> WetInk:
+    """A smudging stroke's wet ink: on the layer's own paint at the playhead (its drawing there, in canvas px), laid
+    over the layer's box on the composition (`box`: the bridge's selBox), as the onion skin is."""
+    from rostrum2d.drawing import frame_at, paint_size
+    item = stroke.item
+    w, h = paint_size(item, stroke.props)
+    here = frame_at(item, n) if item.get("frames") else None
+    paint = canvas.render(here, w, h).rgba.copy() if here else np.zeros((h, w, 4), np.float32)
+    place = (box.get("x", 0), box.get("y", 0), box.get("w", w) / w, box.get("h", h) / h)
+    return WetInk(brush, stroke.sid, 1.0, (w, h), np.ascontiguousarray(paint, np.float32), place)

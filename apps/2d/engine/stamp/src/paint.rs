@@ -42,9 +42,13 @@ pub fn apply(px: &mut [f32], c0: f32, c1: f64, col: [f64; 3], mode: Mode, k: f64
             alpha(px);
         }
         Mode::Multiply => {
+            // darkens the paint there; where there is none (a new layer) it lays its colour, so a glaze shows
+            let bare = (1.0f32 - px[3]) as f64;
             for ch in 0..3 {
-                px[ch] = (px[ch] as f64 * ((1.0 - hi * (1.0 - col[ch])) / (1.0 - lo * (1.0 - col[ch])))) as f32;
+                let f = (1.0 - hi * (1.0 - col[ch])) / (1.0 - lo * (1.0 - col[ch]));
+                px[ch] = (px[ch] as f64 * f + inc * col[ch] * bare) as f32;
             }
+            alpha(px);
         }
         Mode::Erase => {
             for v in px.iter_mut() {

@@ -14,7 +14,7 @@ from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
 from . import adding, brush_presets, framing, onion
-from .wet import WetInk, WetView, shows
+from .wet import WetInk, WetView, shows, smear_ink
 from .pen_tilt import PenTilt
 from .brush import Brush
 from .brush_panel import BrushPanel
@@ -166,8 +166,12 @@ class Painter(BrushPanel):
             self._stroke = s = StrokeDrag(self.b.doc, self.b.who, d["id"], self.b.time if make else self.b.own_t(d["id"]),
                                           c["fps"], args, x, y, self.b.place_of, pressure, make, layer, self.tilt.lean(), wet)
             if wet:
-                self._wet.start(WetInk(args, s.sid, s.scale(x, y), (c["width"], c["height"])))
-                self._wet.add(x, y, pressure)
+                if args.get("smudge"):                      # a smudge smears the layer's own paint (wet.py)
+                    self._wet.start(smear_ink(args, s, self.b.selBox, self._n()))
+                    self._wet.add(*s.points[-1][:3])
+                else:
+                    self._wet.start(WetInk(args, s.sid, s.scale(x, y), (c["width"], c["height"])))
+                    self._wet.add(x, y, pressure)
                 self._wet.show()
             if make:
                 self._fresh = None
@@ -177,9 +181,14 @@ class Painter(BrushPanel):
     @Slot(float, float, float)
     def strokeTo(self, x, y, pressure):
         s = self._stroke
-        if s is not None and s.wet:
-            self._wet.add(x, y, pressure)
-        if s is not None and self.b.guard(lambda: s.move(x, y, pressure, self.tilt.lean())) and not self._showing:
+        if s is None:
+            return
+        n = len(s.points)
+        if not self.b.guard(lambda: s.move(x, y, pressure, self.tilt.lean())):
+            return
+        if s.wet:
+            self._wet_add(s, n, x, y, pressure)
+        if not self._showing:
             self._showing = True                    # after the moves already queued: one picture for all of them
             QTimer.singleShot(0, self._show_stroke)
 
@@ -190,6 +199,13 @@ class Painter(BrushPanel):
             self.b.guard(self._wet.show if s.wet else s.show)
 
     wet = Property(QObject, lambda self: self._wet, constant=True)
+
+    def _wet_add(self, s, n, x, y, pressure):
+        """The move's point to the wet ink: a smudge's in canvas px, as the stroke took it (if it did)."""
+        if not self._wet.smearing:
+            self._wet.add(x, y, pressure)
+        elif len(s.points) > n:
+            self._wet.add(*s.points[-1][:3])
 
     @Slot()
     def endStroke(self):
