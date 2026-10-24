@@ -62,12 +62,12 @@ def test_camera_key_lands_under_the_pointer_with_the_playhead_between_keys(bridg
     """The canvas is seen through the camera the drag changes: the view holds as at the press, so the square follows
     the pointer exactly, and the picture follows the camera again at the drop."""
     bridge.doc.run_script("cam.py", run_source(CAM, "cam.py"))
-    bridge.select("cam")
+    bridge.select("frame")
     bridge.setTime(1.0)                            # between the camera's keys at 0 s and 2 s
     mp = bridge.motionPath
-    square = lambda: next(k for p in mp.paths if p["id"] == "cam" for k in p["keys"] if k["t"] == 2.0)["pos"]   # noqa: E731
+    square = lambda: next(k for p in mp.paths if p["id"] == "frame" for k in p["keys"] if k["t"] == 2.0)["pos"]   # noqa: E731
     x0, y0 = square()
-    assert mp.beginKey("cam", 2.0) and bridge.held_view is not None
+    assert mp.beginKey("frame", 2.0) and bridge.held_view is not None
     bridge.snap.keys(True, False)                  # Ctrl: free
     for dx, dy in ((20, -10), (60, -40), (95, -41)):
         mp.drag(dx, dy, False)
@@ -79,7 +79,7 @@ def test_camera_key_lands_under_the_pointer_with_the_playhead_between_keys(bridg
 
 CAM = '''
 comp("c", width=320, height=180, fps=10, duration=2)
-cam = camera("cam")
+cam = frame()
 cam.key("x", {0.0: 160, 2.0: 220})
 cam.key("y", {0.0: 90, 2.0: 70})
 cam.key("zoom", {0.0: 1, 2.0: 1.4})
@@ -89,12 +89,12 @@ cam.key("zoom", {0.0: 1, 2.0: 1.4})
 def test_dropping_a_camera_key_announces_the_new_view_for_the_glide(bridge):  # noqa: F811
     """The view only: the drop says where the new camera's frame lies in the picture shown (ViewGlide.qml slides there)."""
     bridge.doc.run_script("cam.py", run_source(CAM, "cam.py"))
-    bridge.select("cam")
+    bridge.select("frame")
     bridge.setTime(1.0)
     seen = []
     bridge.viewGlide.connect(seen.append)
     mp = bridge.motionPath
-    assert mp.beginKey("cam", 2.0)
+    assert mp.beginKey("frame", 2.0)
     bridge.snap.keys(True, False)
     mp.drag(60, -40, False)
     bridge.endDrag()

@@ -48,5 +48,5 @@ def test_keys_show_at_play_time_and_write_in_own_seconds(bridge):
     bridge.select("dot")
     bridge.setTime(12.3)
     shown = bridge.shown_values(bridge.doc.item("dot"))["opacity"]
-    engine = resolve(timed(bridge.comp(), bridge.times(), 10)["layers"][0], 12.3)["opacity"]
+    engine = resolve(next(l for l in timed(bridge.comp(), bridge.times(), 10)["layers"] if l["id"] == "dot"), 12.3)["opacity"]
     assert shown == pytest.approx(engine) and 0 < shown < 1

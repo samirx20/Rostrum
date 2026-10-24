@@ -76,10 +76,14 @@ def layer_add(ctx, targets, args):
             ctx.insert(item["id"], "frames", starter_frame(ctx))
 
 
-@R.operation("layer.remove", "Delete layers (with their effects, masks and keys).", target=F.PLACED, label="Delete",
-             importance="secondary")
+@R.operation("layer.remove", "Delete layers (with their effects, masks and keys). Never a scene's frame.", target=F.LAYERS,
+             label="Delete", importance="secondary")    # the frame is a target so screens can pick it (layer_order.py)
 def layer_remove(ctx, targets, args):
     from .rig.ops import drop_binds
+    for t in targets:
+        if ctx.item(t)["type"] == "camera":
+            ctx.fail(codes.BAD_ARGUMENT, f'target "{t}"', "is the scene's frame (what is exported); it can't be deleted",
+                     hint="Move it home instead (its X, Y at Home X, Home Y), or lock it.")
     drop_binds(ctx, targets)
     for t in targets:
         ctx.remove(t)

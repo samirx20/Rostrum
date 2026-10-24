@@ -47,11 +47,11 @@ def test_keys_work_after_typing_and_renaming_end_with_esc_or_ctrl_enter(screen):
     _steps(b, win, "keytap t", "mouseclick 700 300", "typekeys A", "keytap return ctrl", "keytap p")
     assert b.tool == "pen"
     _steps(b, win, "keytap escape", "keytap v", "select title")
-    x = b.comp()["layers"][1]["x"]
+    x = b.doc.item("title")["x"]
     _steps(b, win, "keytap f2", "keytap escape", "keytap right", "keytap right")
-    assert b.comp()["layers"][1]["x"] == x + 2
+    assert b.doc.item("title")["x"] == x + 2
     _steps(b, win, "keytap z ctrl")                       # each press is its own step
-    assert b.comp()["layers"][1]["x"] == x + 1
+    assert b.doc.item("title")["x"] == x + 1
 
     # Audit A3b: editing a text, however the typing ends (Esc, Ctrl+Enter, a click on the canvas), is one undo step, and the
     # arrows and Delete work right after (one window: a second screen in the same run gets no keyboard from Qt's test harness)

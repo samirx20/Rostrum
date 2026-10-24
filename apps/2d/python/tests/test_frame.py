@@ -55,7 +55,7 @@ def test_a_drag_in_the_world_view_lands_under_the_pointer(depth):
 
 
 def _old_shot(comp, t):
-    """The camera rule before frames (CAMERA.md, format 2): the later camera showing wins; none = at rest."""
+    """The camera rule before frames (the old CAMERA.md, format 2): the later camera showing wins; none = at rest."""
     for c in reversed([l for l in comp["layers"] if l["type"] == "camera"]):
         if c.get("start", 0.0) <= t < c.get("end", 36000.0):
             return tuple(float(value_at(c, f, t)) for f in ("x", "y", "zoom", "rotation"))
