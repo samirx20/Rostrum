@@ -130,4 +130,4 @@ def check(data: dict) -> list[str]:
 KIND = DocKind("3d", ".trd", REGISTRY, lists=LISTS, check=check, facts=facts,
                new=lambda: {"id": "root", "type": "doc", "items": [], "materials": [], "shots": []})
 
-from . import ops_combine, ops_items, ops_keys, ops_lights, ops_materials, ops_mesh, ops_rigs, ops_scene  # noqa: E402,F401  (they register on REGISTRY)
+from . import ops_combine, ops_items, ops_keys, ops_lights, ops_materials, ops_mesh, ops_mesh2, ops_rigs, ops_scene  # noqa: E402,F401  (they register on REGISTRY)

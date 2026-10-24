@@ -91,9 +91,10 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   facing away: fix with `rx` / `ry` by 180°, never by a negative scale).
 - **Cut, join, keep the overlap.** A port, a slot or a recess is a live boolean: `combine.make` on the base and the cutters
   (`op: subtract`), or `with combine("case", op="subtract"):` in a script. The cutters stay items; move one and look again.
-- **Push and pull faces.** `mesh.edit` makes a shape or combine an editable mesh; then `faces.extrude`, `faces.inset` and
-  `mesh.transform` with a selector (`"top"`, `"faces facing +y"`, `"faces 3"`) — never guessed numbers. Modelling guide,
-  "Editable mesh".
+- **Push and pull faces.** `mesh.edit` makes a shape or combine an editable mesh; then `faces.extrude`, `faces.inset`,
+  `edges.bevel`, `edges.loopcut`, `mesh.knife`, `faces.material`, `edges.sharp` and `mesh.transform` with a selector
+  (`"top"`, `"faces facing +y"`, `"faces 3"`) — never guessed numbers; `mesh.set subdivide=2` smooths it. Modelling
+  guide, "Editable mesh".
   Guide `modelling` has the whole technique and its errors.
 - **Memory.** `look_frame` replies carry the video memory the render used; a 4 GB card holds a modest scene at 1080p. If a
   render fails with a memory message, lower `width` or the number of lights before anything else.

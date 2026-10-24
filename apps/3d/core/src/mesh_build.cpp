@@ -2,7 +2,11 @@
 
 #include <algorithm>
 
+#include <map>
+
 #include <pxr/usd/usdGeom/primvarsAPI.h>
+#include <pxr/usd/usdGeom/subset.h>
+#include <pxr/usd/usdShade/materialBindingAPI.h>
 
 #include "poly.h"
 
@@ -67,7 +71,7 @@ MeshData shape(Reader& p, FaceGroups& groups) {
 
 void mesh_known(Reader& p) {
   p.known({"width", "height", "depth", "radius", "tube", "bevel", "segments", "outline", "points", "faceCounts",
-           "faceIndices", "frontMaterial", "bevelMaterial", "sideMaterial", "backMaterial"});
+           "faceIndices", "creases", "faceMaterials", "subdivide", "frontMaterial", "bevelMaterial", "sideMaterial", "backMaterial"});
 }
 
 void write_mesh(UsdGeomMesh m, const MeshData& d) {
@@ -82,6 +86,31 @@ void write_mesh(UsdGeomMesh m, const MeshData& d) {
       .Set(d.st);
   VtVec3fArray extent;
   if (UsdGeomPointBased::ComputeExtent(d.points, &extent)) m.CreateExtentAttr().Set(extent);
+}
+
+void bind_face_materials(Item& it, UsdGeomMesh m, const MeshData& d, const std::string& mat) {
+  Reader& p = it.props;
+  if (!p.has("faceMaterials") || p.list("faceMaterials").empty()) return;
+  const JsArray& jm = p.list("faceMaterials");
+  const size_t faces = p.list("faceCounts").size();
+  if (jm.size() != faces)
+    fail(p.at("faceMaterials"), std::to_string(jm.size()) + " materials for " + std::to_string(faces) + " faces",
+         "one material id per face (\"\" = the item's), or an empty list");
+  std::map<std::string, VtIntArray> sets;  // material ("" = the item's) -> drawn faces
+  for (size_t f = 0; f < d.base_face.size(); ++f) {
+    const JsValue& v = jm[size_t(d.base_face[f])];
+    if (!v.IsString()) fail(p.at("faceMaterials") + "[" + std::to_string(d.base_face[f]) + "]", "is not text",
+                            "a material id or \"\"");
+    sets[v.GetString()].push_back(int(f));
+  }
+  if (sets.size() == 1 && sets.begin()->first.empty()) return;
+  UsdShadeMaterialBindingAPI api = UsdShadeMaterialBindingAPI::Apply(m.GetPrim());
+  int n = 0;
+  for (const auto& [id, list] : sets) {
+    const UsdGeomSubset sub = api.CreateMaterialBindSubset(TfToken("faces" + std::to_string(n++)), list);
+    bind_material(it, sub.GetPrim(), id.empty() ? mat : id, p.at("faceMaterials"), UsdShadeTokens->fallbackStrength);
+  }
+  api.SetMaterialBindSubsetsFamilyType(UsdGeomTokens->partition);
 }
 
 }  // namespace r3d

@@ -95,6 +95,7 @@ void build_mesh(Item& it, const SdfPath& path) {
   const std::string mat = it.props.str("material");
   bind_material(it, m.GetPrim(), mat, it.props.at("material"), UsdShadeTokens->fallbackStrength);
   if (!groups[kFront].empty()) bind_parts(it, m, groups, mat);
+  if (!d.base_face.empty()) bind_face_materials(it, m, d, mat);
 }
 
 // An import references the file; its material and its parts' changes are overrides in our layer.

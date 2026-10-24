@@ -46,7 +46,7 @@ DATA_GROUPS = {"Mesh data"}             # groups that are data an operation writ
 
 def _is_data(type_, r) -> bool:
     p = F.param(type_, r["id"]) if r.get("row") == "param" else None
-    return (p is not None and p.group in DATA_GROUPS) or r.get("group") in DATA_GROUPS or r.get("in") in DATA_GROUPS
+    return (p is not None and p.group in DATA_GROUPS) or any(r.get(k) in DATA_GROUPS for k in ("group", "in", "fold"))
 
 
 def _without_data(r):

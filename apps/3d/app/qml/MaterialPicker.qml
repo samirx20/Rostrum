@@ -9,6 +9,8 @@ import RostrumKit
 MaterialPopup {
     id: picker
     width: 300
+    property bool faces: false        // Edit mesh: the picked faces take the material (meshEdit), not the selected item
+    function give(id) { picker.close(); faces ? meshEdit.setFaceMaterial(id) : backend.mats.assign(id) }
     readonly property int tile: (width - 2 * padding) / 3     // three across: "Polished metal" reads whole
     readonly property int ballSize: Theme.row
     readonly property int tileHeight: ballSize + Theme.rowDense + Theme.gap
@@ -27,6 +29,15 @@ MaterialPopup {
         Column {
             id: col
             width: flick.width
+            Rectangle {   // faces only: back to the shape's own material
+                visible: picker.faces
+                width: col.width; height: visible ? picker.ballSize + Theme.grid : 0; radius: Theme.radiusCtl
+                color: noneArea.containsMouse ? Theme.hover : "transparent"
+                Text { x: Theme.grid; anchors.verticalCenter: parent.verticalCenter; text: "The shape's own"
+                       color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
+                MouseArea { id: noneArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onClicked: picker.give("") }
+            }
             Text { visible: backend.mats.project.length > 0; height: visible ? Theme.rowDense : 0; verticalAlignment: Text.AlignVCenter
                    text: "This project"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
             Repeater {
@@ -45,16 +56,16 @@ MaterialPopup {
                     Text { id: users; anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
                            text: "Used by " + row.modelData.users; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
                     MaterialGrab { id: grab; materialId: row.modelData.id; colour: row.modelData.colour; ball: row.modelData.ball
-                                   onClicked: { picker.close(); backend.mats.assign(row.modelData.id) }
+                                   onClicked: picker.give(row.modelData.id)
                                    onDragEnded: picker.close() }
                 }
             }
-            Item { width: 1; height: Theme.gap; visible: backend.mats.project.length > 0 }
-            Text { height: Theme.rowDense; verticalAlignment: Text.AlignVCenter
+            Item { width: 1; height: Theme.gap; visible: backend.mats.project.length > 0 && !picker.faces }
+            Text { visible: !picker.faces; height: picker.faces ? 0 : Theme.rowDense; verticalAlignment: Text.AlignVCenter
                    text: "Start from"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
             Flow {
                 id: starts
-                width: col.width
+                width: col.width; visible: !picker.faces; height: picker.faces ? 0 : implicitHeight
                 Repeater {
                     model: backend.mats.starts
                     delegate: Rectangle {

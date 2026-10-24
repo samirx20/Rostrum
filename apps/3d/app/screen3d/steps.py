@@ -2,7 +2,7 @@
 
     select <id> | selectmany <id> <id> … (the first is the base) | deselect (nothing selected: the Scene) | action <id> (a settings panel action, e.g. combine:subtract)
     preview <id> / unpreview (the hover preview of a panel action: what resting the pointer on it shows; leaving) | frame <n> | set <param> <json value> | scrub <param> <v> <v> … | animate <param> (the key mark)
-    keydrag <key id> <frame> | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
+    keydrag <key id> <frame> | press <Tab | K | Return | Alt+Z …> (a real key) | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
     context <item id | -> (the right-click menu) | showshot <shot id> (the crumb's pick) | shot-from-view (its New shot from this view)
     add <menu value, e.g. mesh:sphere | light:distant | camera | material | shot> | duplicate | delete
     arm <mesh:box …> [field=value …] (a shape picked in the Shapes or Type & logo flyout, with its source for a logo:
@@ -23,13 +23,12 @@
     look quick|final (Final: progressive Cycles in place; `wait` lets it refine)
   Gizmo (real mouse input on the window): gizmo-drag <handle: move0..2 | plane | turn0..2 | scale0..2> <dx> <dy> [ctrl]
     (press on that handle, move by dx dy screen px in 8 steps, release) | gizmo-show all|move|turn|scale | key-moved
-  Edit mesh: mesh-tab | mesh-edit | mesh-kind | mesh-pick | mesh-box | mesh-action | mesh-number | mesh-arrow (mesh_steps.py)
+  Edit mesh: mesh-tab | mesh-edit | mesh-kind | mesh-pick | mesh-box | mesh-action | mesh-number | mesh-arrow | mesh-material | mesh-xray | mesh-knife* | mesh-esc (mesh_steps.py)
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
 
-import json
-import time
+import functools, json, operator, time  # noqa: E401
 
 from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject, QObject, QPoint, QPointF, Qt
 from PySide6.QtTest import QTest
@@ -98,6 +97,10 @@ def do_step(bridge, win, step):
         bridge.endDrag()
     elif word == "fold":
         bridge.toggleFold(rest[0])
+    elif word == "press":                      # a real key on the window: press Tab | K | Return | Escape | 2 | Alt+Z
+        *mods, key = rest[0].split("+")
+        m = functools.reduce(operator.or_, (getattr(Qt.KeyboardModifier, n.capitalize() + "Modifier") for n in mods), Qt.KeyboardModifier.NoModifier)
+        QTest.keyClick(win, getattr(Qt.Key, "Key_" + key), m)
     elif word in ("undo", "redo"):
         getattr(bridge, word)()
     elif word == "more":

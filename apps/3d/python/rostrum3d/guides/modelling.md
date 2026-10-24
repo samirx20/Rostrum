@@ -83,7 +83,7 @@ change the base's bevel and the cut edge follows. Nothing is baked.
   touches the surface (shares a face with it) leaves a paper-thin skin or nothing: make cutters a little longer than the
   wall they go through.
 
-## Editable mesh: extrude, inset, move points
+## Editable mesh: extrude, inset, bevel, cut, smooth
 
 Any shape (box, sphere, text …) or combine can become an **editable mesh**: its points and faces exactly as they were
 drawn, joined where they meet. Then you push faces out (**Extrude**), make a smaller face inside a face (**Inset**), or
@@ -98,15 +98,23 @@ back).
    faces.
 2. Pick what to select at the top of the settings panel, or press **1** points, **2** edges, **3** faces.
 3. Click a face (or point, or edge) in the viewport; **Shift+click** adds or removes; drag on empty space to box-select.
-   The selection is drawn in blue, faces tinted.
+   The selection is drawn in blue, faces tinted. Only the edges you edit are drawn in full: the little edges inside a
+   rounded corner (faces meeting at under about 35 degrees) are drawn faint. Box select and click pick only what you can
+   see; **X-ray** (button, or **Alt+Z**) lets them reach points, edges and faces hidden behind the mesh.
 4. With faces selected, the panel shows "1 face" and **Extrude** and **Inset**. Press one: it runs at once with its last
    numbers (Extrude: Distance; Inset: Width, Depth), and those numbers then show below it until your next action: type
    2 mm and that action is redone at 2 mm, still one undo step. After Extrude, an arrow stands on the faces: drag it and
    the distance follows the pointer in 0.5 mm steps (hold Ctrl for free), one step when you let go. While the arrow
-   shows, the gizmo steps aside.
+   shows, the gizmo steps aside. With faces picked, **Material** gives them a material from the project (or "The shape's
+   own" takes it back).
+   With edges selected, the panel shows **Bevel** (Width, Segments), **Loop cut** (Cuts, Slide) and **Sharp** / **Not
+   sharp**. Bevel and Loop cut work as above: numbers below, typed again as the same one step. After Bevel an arrow
+   stands on the edges: drag it and the width follows live. **Knife** (button, or **K**): click points across the faces,
+   a line is drawn as you go, **Enter** cuts along it (one undo step), **Esc** drops it. **Smooth surface** (0 to 3) is in
+   the Shape group of the settings once the mesh is editable.
 5. Otherwise the gizmo sits on the selection: drag it to move, turn (E) or scale (S) the selected points, edges or faces;
    each drag is one undo step.
-6. Middle-drag turns the view while you edit. **Tab** or **Esc** leaves editing, and so does picking another item.
+6. Middle-drag turns the view while you edit. **Tab** or **Esc** (with no Knife line) leaves editing, and so does picking another item.
 
 ### For agents
 
@@ -115,14 +123,29 @@ back).
 - Name what to change with a **selector**, never by guessing numbers: `"top"`, `"bottom"`, `"front"` (towards the default
   camera, +z), `"back"`, `"left"`, `"right"` (the outermost faces facing that way), `"faces facing +y"` (every face within
   30° of up; `"faces facing -x within 10"`), `"all"`, or by number: `"faces 3 4"`, `"points 0 1"`, `"edges 0-1 1-5"` (an
-  edge by its two points).
+  edge by its two points), `"edges around top"` (the loop round what a faces selector picks).
 - `faces.extrude` `{faces, distance}` (metres; negative pushes in). `faces.inset` `{faces, width, depth}`. Both answer
   with the faces that are now selected (`{"faces": "faces 3"}`), so the next action can use them.
 - `mesh.transform` `{select, move: [x, y, z], turn: [x, y, z] degrees, scale: [x, y, z]}`, in the item's own space,
   around the selection's middle. Push the lid's top up 2 mm: `{"op": "mesh.transform", "target": ["lid"], "args":
   {"select": "top", "move": [0, 0.002, 0]}}`.
-- Look after each edit (`look_frame`). An edited mesh's `points`, `faceCounts`, `faceIndices` are in the document like
-  USD's mesh, but change them through these operations, not by hand.
+- `edges.bevel` `{edges, width, segments}`: rounds the edges `width` metres wide with `segments` rows (1 is a flat
+  chamfer; 4 is a smooth round). Round the lid's top edge:
+  `{"edges": "edges around top", "width": 0.001, "segments": 4}` (`"edges around …"` takes any faces selector and names
+  the loop of edges round it). Too wide fails, saying the largest that fits. Answers
+  with the new faces.
+- `edges.loopcut` `{edges, count, slide}`: name one edge; the ring of four-sided faces across it is cut `count` times
+  (one cut: `slide` -1..1 moves it towards either side). `mesh.knife` `{points: [[x, y, z], …], view: [x, y, z]}`: a
+  line through the points (the item's own space, on the surface), seen along `view`; each face it passes over is cut
+  right across. Fails if it cuts nothing.
+- `faces.material` `{faces, material}`: those faces take that material (`""` gives them the item's own again). It
+  follows the faces through later cuts, bevels and smoothing.
+- **Smooth surface:** `mesh.set` `{subdivide: 0..3}` rounds the whole mesh (Catmull-Clark, OpenSubdiv): 2 on a box gives
+  a pebble. Edges marked sharp stay sharp: `edges.sharp` `{edges, sharp: true}` (false unmarks). Mark the edges first,
+  then smooth; the cage (the points you edit) stays the same, only the drawn surface rounds.
+- Every one of these is one undo step. Look after each edit (`look_frame`). An edited mesh's `points`, `faceCounts`,
+  `faceIndices`, `creases` (sharp edges) and `faceMaterials` are in the document like USD's mesh, but change them through
+  these operations, not by hand.
 
 ## Errors (loud, never a silent wrong shape)
 

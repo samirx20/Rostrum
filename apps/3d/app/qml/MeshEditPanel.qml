@@ -3,8 +3,9 @@ import RostrumKit
 
 // The settings panel while Edit mesh is on (SPEC §4.3; screen3d/mesh_edit_qt.py, mesh_actions.py). A shape that isn't
 // an editable mesh yet: one line and Edit (one undo step). Then Points | Edges | Faces (1 2 3), what is picked
-// ("1 face"), the actions that fit it (faces: Extrude, Inset; each runs at once), and the last action's numbers, which
-// run it again as the same one step. Only what applies now is shown. Tab or Esc leaves.
+// ("1 face"), the actions that fit it (faces: Extrude, Inset, Material; edges: Bevel, Loop cut, Sharp, Not sharp; each
+// runs at once), and the last action's numbers, which run it again as the same one step. Knife (K) and X-ray (Alt+Z)
+// are tools of the mode. Only what applies now is shown. Tab or Esc leaves.
 Item {
     Column {
         anchors { left: parent.left; right: parent.right; top: parent.top; margins: Theme.pad }
@@ -34,6 +35,11 @@ Item {
                 current: meshEdit.kind
                 onPicked: (v) => meshEdit.setKind(v)
             }
+            Row {
+                spacing: Theme.grid
+                Button { objectName: "meshKnife"; text: "Knife  K"; kind: meshEdit.knifing ? "primary" : "normal"; onClicked: meshEdit.toggleKnife() }
+                Button { objectName: "meshXray"; text: "X-ray  Alt+Z"; kind: meshEdit.xray ? "primary" : "normal"; onClicked: meshEdit.toggleXray() }
+            }
             Text { text: meshEdit.count; color: meshEdit.picked ? Theme.fg : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body }
             Text { visible: meshEdit.picked === 0; width: parent.width; wrapMode: Text.Wrap
                    color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label
@@ -53,10 +59,25 @@ Item {
                     spacing: Theme.grid
                     Text { width: 72; text: modelData.label; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
                            anchors.verticalCenter: parent.verticalCenter }
-                    NumberField { width: 110; value: modelData.value; unit: "mm"; step: 0.1; from: modelData.name === "depth" ? -1000 : 0; to: 1000
+                    NumberField { width: 110; value: modelData.value; unit: modelData.unit; step: modelData.step
+                                  from: modelData.from; to: modelData.to
                                   label: modelData.label; onEdited: (v) => meshEdit.setNumber(modelData.name, v) }
                 }
             }
+            Row {   // faces: the material they take (the kit's picker; a face's own material beats the shape's)
+                visible: meshEdit.kind === "faces" && meshEdit.picked > 0
+                spacing: Theme.grid
+                Text { width: 72; text: "Material"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
+                       anchors.verticalCenter: parent.verticalCenter }
+                FieldFrame {
+                    id: faceMaterial
+                    objectName: "meshFaceMaterial"
+                    width: 150; atRest: "Choose…"; engaged: facePicker.visible
+                    trailing: Chevron { anchors.centerIn: parent; color: Theme.fg2 }
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: facePicker.openFrom(faceMaterial) }
+                }
+            }
+            MaterialPicker { id: facePicker; faces: true }
         }
     }
 }
