@@ -32,7 +32,7 @@ type Word = usize;
 type Fn10 = extern "system" fn(Word, Word, Word, Word, Word, Word, Word, Word, Word, Word) -> Word;
 
 /// The GL calls counted: name, kind (index into `KINDS`).
-const WRAPPED: [(&str, usize); 34] = [
+const WRAPPED: [(&str, usize); 35] = [
     ("glCompileShader", 0),
     ("glLinkProgram", 1),
     ("glTexImage2D", 2),
@@ -67,19 +67,21 @@ const WRAPPED: [(&str, usize); 34] = [
     ("glDeleteFramebuffers", 12),
     ("glBindTexture", 13),
     ("glTexParameteri", 13),
+    ("glViewport", 4),
 ];
 pub const KINDS: [&str; 14] = ["compiles", "links", "texUploads", "bufUploads", "fboBinds", "draws", "useProgram", "syncs", "getError", "texAlloc", "fbStatus", "fbAttach", "genDelete", "bindTex"];
 
-static ORIG: [AtomicUsize; 34] = [const { AtomicUsize::new(0) }; 34];
+static ORIG: [AtomicUsize; 35] = [const { AtomicUsize::new(0) }; 35];
 static COUNT: [AtomicU64; 14] = [const { AtomicU64::new(0) }; 14];
 static NANOS: [AtomicU64; 14] = [const { AtomicU64::new(0) }; 14];
 
 macro_rules! tramp {
     ($($i:literal),*) => {
-        const TRAMPS: [Fn10; 34] = [$({
+        const TRAMPS: [Fn10; 35] = [$({
             extern "system" fn t(a: Word, b: Word, c: Word, d: Word, e: Word, f: Word, g: Word, h: Word, i: Word, j: Word) -> Word {
                 let orig: Fn10 = unsafe { std::mem::transmute(ORIG[$i].load(Relaxed)) };
                 let k = WRAPPED[$i].1;
+                crate::pass_profile::before(WRAPPED[$i].0, a, b, c, d);
                 let t0 = std::time::Instant::now();
                 let r = orig(a, b, c, d, e, f, g, h, i, j);
                 NANOS[k].fetch_add(t0.elapsed().as_nanos() as u64, Relaxed);
@@ -90,7 +92,7 @@ macro_rules! tramp {
         }),*];
     };
 }
-tramp!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33);
+tramp!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34);
 
 /// Skia's GL loader goes through this: a counted function gets its wrapper when profiling.
 pub fn wrap(name: &str, p: *const c_void) -> *const c_void {
@@ -120,6 +122,7 @@ const GL_QUERY_RESULT: u32 = 0x8866;
 impl Timer {
     pub fn new(load: impl Fn(&std::ffi::CStr) -> *const c_void) -> Option<Timer> {
         path()?;
+        crate::pass_profile::init(&load);
         let (g, c, r) = (load(c"glGenQueries"), load(c"glQueryCounter"), load(c"glGetQueryObjectui64v"));
         if g.is_null() || c.is_null() || r.is_null() {
             return None;
@@ -170,4 +173,5 @@ pub fn row(record: f64, flush: f64, wait: f64, gpu: f64) {
     let l = LABEL.with(|x| x.borrow().clone());
     let [submit, cleanup, check] = PARTS.with(|p| p.get());
     let _ = writeln!(f, "{l},{record:.3},{flush:.3},{wait:.3},{gpu:.3},{submit:.3},{cleanup:.3},{check:.3},{}", gl.join(","));
+    crate::pass_profile::row(&l);
 }
