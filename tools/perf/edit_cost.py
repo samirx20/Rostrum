@@ -46,6 +46,34 @@ def busy_source(n=60) -> str:
     return "\n".join(s) + "\n"
 
 
+def _cycles() -> int:
+    """This thread's CPU cycles so far (Windows QueryThreadCycleTime: exact, where thread_time steps by 15.6 ms)."""
+    import ctypes
+    from ctypes import wintypes
+    k32 = ctypes.windll.kernel32
+    k32.GetCurrentThread.restype = wintypes.HANDLE
+    k32.QueryThreadCycleTime.argtypes = [wintypes.HANDLE, ctypes.POINTER(ctypes.c_ulonglong)]
+    n = ctypes.c_ulonglong()
+    k32.QueryThreadCycleTime(k32.GetCurrentThread(), ctypes.byref(n))
+    return n.value
+
+
+_PER_MS = []
+
+
+def thread_ms() -> float:
+    """This thread's CPU time in ms, from its cycle count (cycles per ms measured once on a busy loop)."""
+    if not _PER_MS:
+        best = 0.0
+        for _ in range(5):
+            c, t = _cycles(), time.perf_counter()
+            while time.perf_counter() - t < 0.02:
+                pass
+            best = max(best, (_cycles() - c) / ((time.perf_counter() - t) * 1000))
+        _PER_MS.append(best)
+    return _cycles() / _PER_MS[0]
+
+
 class Rig:
     def __init__(self, scene):
         from rostrum_gui.app import qt_app
@@ -90,12 +118,15 @@ class Rig:
         raise RuntimeError("the screen never went idle")
 
     def cost(self, act) -> float:
-        """GUI-thread ms of `act` plus the events it queued (processed at once, as the loop would)."""
-        t = time.perf_counter()
+        """GUI-thread ms of `act` plus the events it queued (processed at once, as the loop would). CPU time of this
+        thread (time.thread_time) when CPU=1 (the default): the machine is shared, and other programs' load stretched
+        wall times 2-10x; the thread's own CPU is what the edit costs. CPU=0: wall time."""
+        clock = thread_ms if os.environ.get("CPU", "1") == "1" else time.perf_counter
+        t = clock()
         act()
         self.events()
         self.events()
-        return (time.perf_counter() - t) * 1000
+        return (clock() - t) * (1 if clock is thread_ms else 1000)
 
     # ---- edit kinds: each returns its act (what is timed), after doing any set-up untimed ----------------------
     def field(self, i):
@@ -242,6 +273,56 @@ def parts(rig, kind, n=10, make=None):
         print(f"{c / N * per:7.1f}  {k}")
 
 
+def all_signals(rig):
+    """[(name, SignalInstance)]: every argument-less signal of the bridge and its parts."""
+    from PySide6.QtCore import QObject, SignalInstance
+    b = rig.b
+    found = [("bridge", b)] + [(k, v) for k, v in vars(b).items() if isinstance(v, QObject)]
+    kit = b._kit
+    found += [(f"_kit.{k}", getattr(kit, k)) for k in getattr(kit, "__slots__", ()) if isinstance(getattr(kit, k, None), QObject)]
+    out = []
+    for owner, obj in found:
+        mo = obj.metaObject()
+        for i in range(mo.methodOffset() if owner != "bridge" else QObject.staticMetaObject.methodCount(), mo.methodCount()):
+            m = mo.method(i)
+            if m.methodType().name != "Signal" or m.parameterCount():
+                continue
+            name = bytes(m.name()).decode()
+            sig = getattr(obj, name, None)
+            if isinstance(sig, SignalInstance):
+                out.append((f"{owner}.{name}", sig))
+    return out
+
+
+def fired(rig, kind, n=15):
+    """Which signals one edit of `kind` sends (times), and each one's own reaction cost when emitted alone."""
+    from collections import Counter
+    sigs, hits = all_signals(rig), Counter()
+    for name, sig in sigs:
+        sig.connect(lambda name=name: hits.update([name]))
+    act = getattr(rig, kind)(0)
+    rig.idle(0.1)
+    hits.clear()
+    rig.cost(act)
+    got = dict(hits)
+    rig.idle(0.2)
+    rows = []
+    for name, sig in sigs:
+        if name not in got:
+            continue
+        ms = []
+        for _ in range(n):
+            t = time.perf_counter()
+            sig.emit()
+            rig.events()
+            ms.append((time.perf_counter() - t) * 1000)
+        rows.append((statistics.median(ms) * got[name], got[name], name))
+        rig.idle(0.05)
+    print(f"{kind}: signals sent by one edit (x times), cost of each alone")
+    for total, k, name in sorted(rows, reverse=True):
+        print(f"{total:7.2f} ms  x{k}  {name}")
+
+
 def signals(rig, n=15):
     """Each signal a change sends, emitted alone: what its listeners (QML and Python) cost, ms per emit."""
     from PySide6.QtCore import QObject, SignalInstance
@@ -274,6 +355,51 @@ def signals(rig, n=15):
         print(f"{med:7.2f} ms  {name}")
 
 
+def qml_tree(rig, depth=6):
+    """The window's QML items (class names, depth first) up to `depth`: where to look for a reaction's cost."""
+    out = []
+
+    def walk(item, d, path):
+        name = item.metaObject().className().split("_QML")[0]
+        out.append((path + "/" + name, item))
+        if d < depth:
+            for c in item.childItems():
+                walk(c, d + 1, path + "/" + name)
+    walk(rig.session.win.contentItem(), 0, "")
+    return out
+
+
+def bisect(rig, signal, n=15):
+    """The cost of `signal` alone, then with each big QML piece hidden (visible false; a hidden piece still binds, so
+    a drop means its layout / drawing work) and with each piece's `bridge` / `backend` cut (its bindings stop)."""
+    b = rig.b
+    b.select(rig.layer)
+    rig.idle(0.2)
+    obj = b if "." not in signal else getattr(b, signal.split(".")[0])
+    sig = getattr(obj, signal.split(".")[-1])
+
+    def cost():
+        ms = []
+        for _ in range(n):
+            t = time.perf_counter()
+            sig.emit()
+            rig.events()
+            ms.append((time.perf_counter() - t) * 1000)
+        return statistics.median(ms)
+    base = cost()
+    print(f"{signal}: {base:.2f} ms")
+    for path, item in qml_tree(rig, int(os.environ.get("DEPTH", "5"))):
+        if not item.isVisible() or item.width() * item.height() < 2000:
+            continue
+        item.setVisible(False)
+        rig.events()
+        c = cost()
+        item.setVisible(True)
+        rig.events()
+        if base - c > 0.4:
+            print(f"  hidden {base - c:5.2f} ms less  {path}")
+
+
 def main():
     scene = sys.argv[1] if len(sys.argv) > 1 else "sample"
     rig = Rig(scene)
@@ -286,6 +412,13 @@ def main():
             obj = rig.b if "." not in sys.argv[3] else getattr(rig.b, sys.argv[3].split(".")[0])
             rig.b.select(rig.layer)
             parts(rig, sys.argv[3], 20, lambda i: getattr(obj, sys.argv[3].split(".")[-1]).emit)
+            return
+        if len(sys.argv) > 2 and sys.argv[2] == "fired":
+            for k in sys.argv[3:] or Rig.KINDS:
+                fired(rig, k)
+            return
+        if len(sys.argv) > 2 and sys.argv[2] == "bisect":
+            bisect(rig, sys.argv[3])
             return
         if len(sys.argv) > 2 and sys.argv[2] == "signals":
             signals(rig)

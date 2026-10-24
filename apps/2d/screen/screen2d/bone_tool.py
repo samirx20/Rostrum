@@ -28,8 +28,10 @@ class BoneTool(QObject):
         self._from = None                   # (rig px point, parent bone id or None = found from the joint): the chain
         self._press = None                  # (comp px point, the start it makes, on a joint) while the button is down
         self._pointer = None
-        for sig in (bridge.selectedItemsChanged, bridge.docChanged):
-            sig.connect(self._check)
+        self._shown = None                  # `available` as last announced
+        bridge.selectedItemsChanged.connect(self._check)
+        bridge.docChanged.connect(lambda: self.b.reached(self.b._kit.selection) and self._check())   # (a change
+        # elsewhere leaves the rig in hand as it was)
         rig_view.changed.connect(self.changed)
 
     # ---- what QML reads --------------------------------------------------------------------------------------
@@ -127,9 +129,14 @@ class BoneTool(QObject):
 
     @Slot()
     def _check(self):
-        """The rig left the selection: the chain ends and the tool goes back to Move."""
-        if not self.available:
+        """The rig left the selection: the chain ends and the tool goes back to Move. Announced only when that changes
+        what QML shows (the rail rebuilds its tools on `available`: ~7 ms when sent on every edit)."""
+        was = (self._shown, self.drawing)
+        on = self.available
+        if not on:
             self._from = self._press = None
             if self.b.tool == "bone":
                 self.b.setTool("move")
-        self.changed.emit()
+        self._shown = on
+        if (on, self.drawing) != was:
+            self.changed.emit()

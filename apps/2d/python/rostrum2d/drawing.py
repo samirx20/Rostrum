@@ -12,6 +12,7 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
+from rostrum_core import filestamps
 from rostrum_paint import canvas
 
 from . import looping
@@ -110,11 +111,11 @@ def picture(item: dict, frame: dict, later: list | None = None) -> Path:
     `canvas.png` to make off the screen's thread, and its last picture (or a blank one) stands in meanwhile."""
     w, h = canvas_size(item)
     got = _SHOWN.get(frame["id"])
-    if got and got[1:3] == (w, h) and (got[0] is frame or got[0] == frame) and got[3].is_file():
+    if got and got[1:3] == (w, h) and (got[0] is frame or got[0] == frame) and filestamps.is_file(got[3]):
         return got[3]
     if later is not None and canvas.made(frame, w, h) is None:
         later.append((frame, w, h))
-        return got[3] if got and got[1:3] == (w, h) and got[3].is_file() else canvas.png({"paints": []}, w, h)
+        return got[3] if got and got[1:3] == (w, h) and filestamps.is_file(got[3]) else canvas.png({"paints": []}, w, h)
     path = canvas.png(frame, w, h)
     if len(_SHOWN) > 512:
         _SHOWN.clear()

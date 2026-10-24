@@ -54,6 +54,8 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
     searchChanged = Signal()
     rowsChanged = Signal()                  # the rows' values or validity changed (nothingFound follows it)
     fieldRevealed = Signal(str)             # revealField: the Inspector scrolls to the row and focuses it
+    countChanged = Signal()                 # historyCount moved (sent with docChanged, only then: _history_check)
+    historyChanged = Signal()               # ↶ ↷ labels or versions changed (the same)
 
     def __init__(self, doc, who=None, parent=None):
         kit_state.check(type(self))         # an app class that redefines a kit name fails here, by name
@@ -62,6 +64,7 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         self.doc, self.who = doc, who or Who.person("sam")
         self.model = RowsModel(rows.ROLES, self)
         self._kit.agent = AgentWatch(self)
+        self.docChanged.connect(self._history_check)      # first: the top bar's count and ↶ ↷ read it
         self._unsubscribe = doc.subscribe(self._on_doc)
         self.select(self._first())
 
@@ -134,14 +137,14 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         overrides clear_expr_calls (2D). Elsewhere "=5" is just 5."""
         return type(self).clear_expr_calls is not DocBridge.clear_expr_calls
 
-    @Property(int, notify=docChanged)
+    @Property(int, notify=countChanged)
     def historyCount(self):
         return self.changes_since_open()
 
     # History, ↶ ↷ and the agent chip (reads in bridge_review.py; Qt properties must sit on the QObject class)
-    undoLabel = Property(str, ReviewSlots.next_undo_label, notify=docChanged)        # "" = nothing to undo
-    redoLabel = Property(str, ReviewSlots.next_redo_label, notify=docChanged)
-    versions = Property("QVariantList", ReviewSlots.versions_list, notify=docChanged)
+    undoLabel = Property(str, ReviewSlots.next_undo_label, notify=historyChanged)        # "" = nothing to undo
+    redoLabel = Property(str, ReviewSlots.next_redo_label, notify=historyChanged)
+    versions = Property("QVariantList", ReviewSlots.versions_list, notify=historyChanged)
     agent = Property(QObject, lambda self: self._kit.agent, constant=True)    # agent_watch.AgentWatch
 
     @Property(str, notify=statusChanged)
@@ -218,6 +221,8 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
     def _heard(self, change, doc=None):
         """A change made by someone else (an agent, a script, another app) shows in the status as who did what
         ("Claude: Moved title"); the agent watch counts an agent's (doc: where it was made; None = this document)."""
+        if doc is not None and doc is not self.doc:
+            self._kit.touched = None                       # another document's change: this one's parts can't tell
         if change is not None and change.who != self.who:
             self._set_status(f"{who_name(change.who, self.who)}: {change.label}")
         self._kit.agent.heard(doc or self.doc, change)
@@ -241,6 +246,18 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         """The change being announced touched `ids` (or items above or inside them), or can't tell."""
         t = self._kit.touched
         return t is None or t.reaches(self.doc, list(ids))
+
+    def _history_check(self):
+        """The count and the ↶ ↷ labels are their own signals, sent only when they changed: on docChanged every binding
+        that reads them ran again on every edit (the top bar re-measured its words each time)."""
+        k, count = self._kit, self.changes_since_open()
+        labels = (self.next_undo_label(), self.next_redo_label(), self.versions_list())
+        if count != k.told[0]:
+            k.told[0] = count
+            self.countChanged.emit()
+        if labels != k.told[1]:
+            k.told[1] = labels
+            self.historyChanged.emit()
 
     @Slot(str)
     def setFocusArea(self, name):

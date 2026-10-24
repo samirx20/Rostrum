@@ -31,6 +31,7 @@ from pathlib import Path
 
 from . import edits as E
 from . import histfile
+from . import filestamps
 from .errors import RostrumError, codes
 from .kind import SHAPE_ERRORS
 from .tree import index
@@ -67,6 +68,7 @@ def paths(folder, item, ext) -> dict:
 
 
 def write_atomic(path: Path, text: str, tries: int = 20):
+    filestamps.forget(path)              # this process's own write: a kept "unchanged" answer about it is old
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.partial")   # one per writer: no collisions
     tmp.write_text(text, encoding="utf-8")
@@ -122,6 +124,7 @@ def save(doc, document=True):
             os.truncate(hist, w.size)             # a last line cut off by a crash goes before the next whole one
         with open(hist, "ab") as fh:              # appending: a seek-and-write handle cost ~6 ms per change on Windows
             fh.write(text.encode("utf-8"))
+        filestamps.forget(hist)
     for c in ch[(w.n - 1 if w and w.n else 0):-1]:
         c._after = None                           # written without its hash: no tree kept for it
     if w is None or doc.script_bases != w.script:

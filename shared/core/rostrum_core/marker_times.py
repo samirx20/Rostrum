@@ -6,9 +6,9 @@ used-markers subset for render cache keys, and the one reader of a time written 
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
 from .errors import RostrumError, codes
+from . import filestamps
 from .storage import paths
 
 ITEM, EXT = "markers", ".mkr"
@@ -27,10 +27,9 @@ def _stamp(folder) -> int:
     0 = no markers yet."""
     p = paths(folder, ITEM, EXT)
     for f in (p["history"], p["doc"]):
-        try:
-            return f.stat().st_mtime_ns
-        except OSError:
-            pass
+        got = filestamps.stamp(f)                 # kept between a screen's ticks; this process's writes forget it
+        if got is not None:
+            return got[0]
     return 0
 
 
@@ -42,7 +41,7 @@ def times(folder) -> dict[str, float]:
     the file is read again only when it changed. No project folder or no markers yet = {}."""
     if folder is None:
         return {}
-    path = Path(folder).resolve()
+    path = str(folder)                            # (not resolved: that asked the disk on every call)
     stamp = _stamp(folder)
     if not stamp:
         return {}

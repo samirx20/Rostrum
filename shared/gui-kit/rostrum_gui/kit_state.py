@@ -23,7 +23,7 @@ ONCE = frozenset({"doc", "who", "model", "_kit", "_unsubscribe"})
 class KitState:
     """Every piece of the bridge's own screen state (see each module for its meaning)."""
     __slots__ = ("sel", "selection", "more", "status", "scrub", "partners", "opened", "static", "op_kind",
-                 "open_groups", "search", "handlers", "agent", "shown_sel", "held", "touched")
+                 "open_groups", "search", "handlers", "agent", "shown_sel", "held", "touched", "told")
 
     def __init__(self, opened):
         self.sel, self.selection, self.more, self.status = "", [], False, ""
@@ -37,6 +37,7 @@ class KitState:
         self.agent = None                   # agent_watch.AgentWatch (the bridge makes it)
         self.shown_sel = None               # selectedItem as last announced (_follow_doc re-announces only a change)
         self.held = None                    # (param, item ids): the field being typed in and the items it is for
+        self.told = [None, None]            # [historyCount, (undo, redo, versions)] as QML last heard them
         self.touched = None                 # what the last change touched (touched.py); None = can't tell: everything
 
 

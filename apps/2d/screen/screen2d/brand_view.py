@@ -22,8 +22,17 @@ class LibraryView(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent or bridge)
         self.b, self._open, self._kit = bridge, False, {s: [] for s in B.SECTIONS}
-        bridge.docChanged.connect(self.changed)
-        bridge.selectedItemsChanged.connect(self.changed)
+        self._logos, self._told = [], None
+        bridge.docChanged.connect(self._check)
+        bridge.selectedItemsChanged.connect(self._check)
+
+    def _check(self):
+        """An edit or a selection: announced only when this document's styles or what the selection can take changed
+        (sent on every edit, the drawer's lists were redone even while it was closed)."""
+        told = (self.docStyles, self.picked)
+        if told != self._told:
+            self._told = told
+            self.changed.emit()
 
     def _folder(self) -> str:
         return str(self.b.doc.folder or "")
@@ -34,6 +43,10 @@ class LibraryView(QObject):
         except Exception as e:  # noqa: BLE001  a broken brand.json: said, and the kit shows empty
             self.b._fail(f"Error: brand kit: {e}")
             self._kit = {s: [] for s in B.SECTIONS}
+        folder = Path(self._folder())                   # each logo's picture, looked for once per read of the kit
+        self._logos = [{**logo, "found": (folder / logo["file"]).is_file(),
+                        "thumb": QUrl.fromLocalFile(str(folder / logo["file"])).toString()
+                        if (folder / logo["file"]).is_file() else ""} for logo in self._kit["logos"]]
         self.changed.emit()
 
     # ---- what QML shows ------------------------------------------------------------------------------------------
@@ -42,16 +55,9 @@ class LibraryView(QObject):
     colors = Property("QVariantList", lambda self: self._kit["colors"], notify=changed)
     textStyles = Property("QVariantList", lambda self: self._kit["textStyles"], notify=changed)
 
-    @Property("QVariantList", notify=changed)
-    def logos(self):
-        """Each logo with `thumb` (the url of its file in the project) and `found` (it can be read: otherwise QML shows the
-        "missing" mark, never a blank)."""
-        folder = Path(self._folder())
-        out = []
-        for logo in self._kit["logos"]:
-            f = folder / logo["file"]
-            out.append({**logo, "found": f.is_file(), "thumb": QUrl.fromLocalFile(str(f)).toString() if f.is_file() else ""})
-        return out
+    # Each logo with `thumb` (the url of its file in the project) and `found` (it can be read: otherwise QML shows the
+    # "missing" mark, never a blank).
+    logos = Property("QVariantList", lambda self: self._logos, notify=changed)
 
     @Property("QVariantList", notify=changed)
     def docStyles(self):

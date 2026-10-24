@@ -50,8 +50,9 @@ class EffectsPart(QObject):
         self.opened: set = set()
         self._groups: list = []
         self._opening = False
-        for sig in (bridge.docChanged, bridge.docStepped):     # an effect's values follow a drag live
-            sig.connect(self._sync)
+        self._told = None                            # (shown, found, count) as QML last heard them
+        for sig in (bridge.docChanged, bridge.docStepped):     # an effect's values follow a drag live; a change
+            sig.connect(lambda: self.bridge.reached(self.bridge._kit.selection) and self._sync())   # elsewhere: nothing
         bridge.selectedItemsChanged.connect(self._sync)
         bridge.searchChanged.connect(self.changed)
         self._sync()
@@ -141,7 +142,10 @@ class EffectsPart(QObject):
             g.refresh()
         for g in gone:
             g.deleteLater()
-        self.changed.emit()
+        told = (self.shown, self.found, self.count)     # sent on every edit, the Inspector redid its row (~5 ms)
+        if told != self._told:
+            self._told = told
+            self.changed.emit()
 
 
 def attach(bridge, spec: EffectsSpec) -> EffectsPart:

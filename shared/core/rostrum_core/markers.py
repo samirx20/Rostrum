@@ -23,6 +23,7 @@ from pathlib import Path
 
 from . import links
 from .document import Document
+from . import filestamps
 from .errors import RostrumError, codes
 from .kind import DocKind
 from .params import Param
@@ -133,7 +134,9 @@ KIND = DocKind(ITEM, EXT, REGISTRY, lists={"doc": ["markers"]}, check=_check,
 
 
 def _exists(folder) -> bool:
-    return (Path(folder) / "docs" / f"{ITEM}{KIND.ext}").is_file()
+    """The project has a marker file (kept between a screen's ticks, filestamps.py; this process's own save forgets it,
+    so the first marker shows at once; a project without markers asked the disk on every change)."""
+    return filestamps.stamp(Path(folder) / "docs" / f"{ITEM}{KIND.ext}") is not None
 
 
 def open_markers(folder) -> Document:

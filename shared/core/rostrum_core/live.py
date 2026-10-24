@@ -46,6 +46,7 @@ class Live:
     def __init__(self, doc):
         self.doc, self.p, self._depth, self._started = doc, paths(doc.folder, doc.item_id, doc.kind.ext), 0, False
         self._filed = doc.seq                    # the step the document file last got from us (or was at when we began)
+        self._doc_there = False                  # the document file is known to be there (we wrote it, or saw it)
 
     def _mine(self):
         h = self.doc.history
@@ -70,7 +71,9 @@ class Live:
                 first = not self._started and not (self.p["history"].exists() and self.p["doc"].exists())
                 if self._mine() != before or first:     # a first look at a saved document writes nothing
                     behind = self.doc.seq - self._filed >= FOLD_STEPS
-                    save(self.doc, document=first or behind or not self.p["doc"].exists())
+                    whole = first or behind or not self._doc_there and not self.p["doc"].exists()
+                    save(self.doc, document=whole)
+                    self._doc_there = True                  # (asked of the disk once, not on every change)
                     if first or behind:
                         self._filed = self.doc.seq
                 self._started = True

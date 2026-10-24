@@ -54,6 +54,8 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
     shownChanged = Signal()                                 # a new frame is on screen: the overlays follow it (shown.py)
     outlineChanged = Signal()
     layersChanged = Signal()                                # the timeline's rows really changed (timeline_rows.py)
+    layerChanged = Signal()                                 # selectedLayer is another layer (sent with outlineChanged, only then)
+    frameInfoChanged = Signal()                             # the scene's size, rate, length or label changed (the same)
     playingChanged = Signal()
     _sel_layer = None                                       # (document state, selection, its layer): selectedLayer
     _comp_at = _placed_idx = None                           # comp() and placed_item()'s, kept per document state
@@ -74,6 +76,8 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         self._shown_init()
         super().__init__(doc, parent=parent)
         self.outlineChanged.connect(self._layers_check)     # first: every later listener reads the new rows
+        self.outlineChanged.connect(self._outline_check)    # then selectedLayer / frameInfo, each sent only on news
+        self._told = (None, None)
         self.frames = FrameRenderer(self)
         self._scene = None                                  # the engine's scene, described once per change (_render)
         self._waiting = None                                # the document state whose paint pictures are being made
@@ -176,7 +180,18 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
     def time(self):
         return self._t
 
-    @Property("QVariantMap", notify=outlineChanged)
+    def _outline_check(self):
+        """selectedLayer and frameInfo are their own signals: on outlineChanged, every binding reading them (the panels
+        read selectedLayer hundreds of times) ran again on every edit."""
+        layer, info = self.selectedLayer, self.frameInfo
+        if layer != self._told[0]:
+            self._told = (layer, self._told[1])
+            self.layerChanged.emit()
+        if info != self._told[1]:
+            self._told = (self._told[0], info)
+            self.frameInfoChanged.emit()
+
+    @Property("QVariantMap", notify=frameInfoChanged)
     def frameInfo(self):
         c = {**F.defaults("comp"), **self.comp()}
         return {"width": c["width"], "height": c["height"], "fps": c["fps"], "duration": c["duration"],
@@ -226,7 +241,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         """The same, only the selected layer's row (the first layer's when none is selected): the small timeline."""
         return self.row_models()[1]
 
-    @Property(str, notify=outlineChanged)
+    @Property(str, notify=layerChanged)
     def selectedLayer(self):
         """The layer the selection belongs to (itself, or the layer of a selected effect, mask or key). The panels ask
         hundreds of times per change, so it is worked out once per document state and selection (a document is never
