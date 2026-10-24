@@ -14,7 +14,8 @@
     rail <shapes|type|lights|camera> (opens that flyout) | page build|animate|render | materials | shots | view (open the
     header's menus) | picker (the selected item's material picker) | startfrom <start> | split (Make its own) | assign <material id> | mouse <x> <y> (a click on the window) | renderstart | cancelrender (both don't wait)
     render (Cycles, the playhead frame; waits for the job, up to 10 min) | closerender
-    render-sheet (F12: the render sheet) | estimate-wait (until its time is measured) | budget <time, e.g. 10 min>
+    render-sheet (F12: the render sheet) | estimate-recorded (its time from a fixed, recorded measurement: never a probe) |
+    estimate-wait (until its time is measured) | budget <time, e.g. 10 min>
     sheet-render (the sheet's Render; waits for the job, up to 10 min)
   Viewport (screen state, never the document): orbit <dx> <dy> | pan <dx> <dy> | zoom <steps> | mode shot|free
     exposure <stops> | studio <amount> | lights on|off | home | viewclick <x> <y> (viewport pixels: selects what is there, places the armed shape,
@@ -39,6 +40,23 @@ VIEW = {"orbit": lambda v, a: v.orbit(float(a[0]), float(a[1])), "pan": lambda v
         "exposure": lambda v, a: v.setExposure(float(a[0])), "studio": lambda v, a: v.setStudio(float(a[0])),
         "lights": lambda v, a: v.setSceneLights(a[0] == "on"), "home": lambda v, a: v.home(),
         "viewclick": lambda v, a: v.click(float(a[0]), float(a[1])), "look": lambda v, a: v.setLook(a[0])}
+
+
+def recorded_estimate() -> dict:
+    """A measurement as estimate_job keeps one (the reference laptop, full HD, good = 128 samples, 2026-10-24), with a
+    plain grey picture: the layout check's render sheet, fast and the same every run."""
+    import tempfile
+    from pathlib import Path
+    from PySide6.QtGui import QColor, QImage
+    png = Path(tempfile.gettempdir()) / "rostrum3d_recorded_probe.png"
+    if not png.is_file():
+        img = QImage(960, 540, QImage.Format_RGB32)
+        img.fill(QColor("#3a3c42"))
+        img.save(str(png))
+    return {"frame": 12, "samples": 128, "curve": [[8, 0.27], [128, 1.0]], "load_ms": 900.0, "warmup_ms": 2500.0,
+            "fixed_ms": -1200.0, "per_px_ms": 0.0095, "probe": {"size": [960, 540], "ms": [2500.0, 3700.0], "few_ms": 700.0},
+            "full": {"size": [1920, 1080], "samples": 8, "ms": 5000.0, "at_job_samples_ms": 18500.0}, "probe_s": 12.0,
+            "measured_at": "2026-10-24T05:00:00", "gpu_busy": "", "picture": str(png), "cached": True}
 
 
 def value(text):
@@ -169,9 +187,12 @@ def do_step(bridge, win, step):
         mesh_steps.do(bridge, word, rest)
     elif word == "render-sheet":
         bridge.exporter.openFor()
+    elif word == "estimate-recorded":
+        bridge.exporter.estimate.use_recorded(recorded_estimate())
     elif word == "estimate-wait":
+        from .estimate_sheet import DEADLINE_S
         est = bridge.exporter.estimate
-        for _ in range(RENDER_WAIT_S * 10):           # the 0.4 s wait, then the probe on its own thread
+        for _ in range(int(DEADLINE_S + 10) * 10):    # the 0.4 s wait, the probe on its own thread, its deadline
             QCoreApplication.processEvents()
             if est.state in ("ready", "failed"):
                 break
