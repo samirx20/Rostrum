@@ -4,6 +4,41 @@ Every shape is an item made from numbers you can change later: `mesh.add` (or `m
 its sizes in metres. Shapes join, cut and overlap through a **combine**: a live boolean, worked out by the engine
 (Manifold) every time the scene is drawn, so the quick view, Final and the Render button all show the same cut.
 
+## Shapes, and placing them on a surface
+
+`box` (width height depth, bevel), `sphere` (radius), `cylinder` (radius height, bevel), `cone` (radius of the base,
+height to the point), `capsule` (radius, height end to end: at least twice the radius), `torus` (radius, tube),
+`plane` and `disc` (flat, facing up). Each is centred on its origin with up along +Y.
+
+On screen: **Shapes** in the rail, pick one, click where it goes. It lands with its base on the surface you clicked,
+standing along it, a fifth the size of the thing you clicked (10 cm on the floor or in an empty scene). Then type exact
+sizes in the settings panel.
+
+In a script, stand one mesh on another with `place_on`: its base on the other's top, over its middle; move it along
+the top afterwards.
+
+      mesh("plinth", shape="box", width=0.5, height=0.3, depth=0.5, y=0.15)
+      mesh("cap", shape="cone", radius=0.04, height=0.09).place_on("plinth").set(x=0.12)
+
+Agents placing by numbers use `mesh.add`'s `x y z rx ry rz`; the engine's `pick` gives the point **and the surface's
+direction** (`normal`) under any pixel, so an agent can do what the screen does.
+
+## Text and logos
+
+`text` (the words, `font`, `size` = the em in metres, `weight`, `tracking`, `lineHeight`, `align`), `svg` (`svgFile` or
+`pathData`, `svgWidth`) and `path2d` (`doc2d` + `layer`: a path layer of a 2D item in this project, linked) are flat
+outlines pushed out `depth` along their own +Z (the front), with a rounded edge `bevel`. Text is centred on its origin.
+
+On screen: **Type & logo** (T) in the rail, pick one, click where it goes. It stands upright facing the shot camera
+(never flat on the floor), base on the top you clicked, or in front of the side you clicked; then type the words in
+place (window guide). Agents do the same with `mesh.add shape=text … x y z ry`: `ry` turns its front (+Z) toward the
+camera (`ry` = atan2(camera x − x, camera z − z) in degrees).
+
+**Largest bevel.** A bevel too big for the outline (a thin stroke, a sharp corner) fails loudly: the engine says
+"… Accepted: at most 0.001602 m for this outline". The settings panel then offers **Bevel too big · use 1.60 mm (the
+largest that fits)**: one click sets it (one undo step, `mesh.set bevel`). A modest bevel is about a hundredth of the
+size; thin fonts and fine logos take less.
+
 ## Combine: union, subtract, intersect
 
 A **combine** item holds two or more solids (meshes, or other combines) as its children, in order. The engine draws only

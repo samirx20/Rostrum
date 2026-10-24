@@ -182,6 +182,29 @@ MeshData make_sphere(float radius, int segments, bool smooth) {
   return b.done(smooth);
 }
 
+MeshData make_cone(float radius, float height, int segments, bool smooth) {
+  const float a = std::atan2(radius, height);  // the side's normal leans up by this much
+  Builder b;
+  loft(b, circle(0.0f, segments), {{radius, -height / 2, a}, {0.0f, height / 2, a}});
+  cap(b, circle(0.0f, segments), radius, -height / 2, false, 2 * radius, 2 * radius);
+  return b.done(smooth);
+}
+
+MeshData make_capsule(float radius, float height, int segments, bool smooth) {
+  const int rings = std::max(2, segments / 4);  // per half-sphere
+  const float mid = std::max(0.0f, height / 2 - radius);
+  std::vector<Row> rows;
+  for (int half = 0; half < 2; ++half)
+    for (int k = 0; k <= rings; ++k) {
+      const float a = rad(90.0f * (float(k) / float(rings) - (half ? 0.0f : 1.0f)));
+      const bool pole = (half == 0 && k == 0) || (half == 1 && k == rings);
+      rows.push_back({pole ? 0.0f : radius * std::cos(a), (half ? mid : -mid) + radius * std::sin(a), a});
+    }
+  Builder b;
+  loft(b, circle(0.0f, segments), rows);
+  return b.done(smooth);
+}
+
 MeshData make_torus(float radius, float tube, int segments, bool smooth) {
   const int steps = std::max(3, segments / 2);
   std::vector<Row> rows;

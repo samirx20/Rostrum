@@ -27,6 +27,7 @@ import json
 import time
 
 from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject
+from rostrum_gui.settle import save_snap
 
 from .steps_record import WORDS as RECORD_WORDS, do_record_step
 from .steps_select import WORDS as SELECT_WORDS, do_select_step
@@ -147,9 +148,7 @@ def shot(bridge, win, path):
     while time.monotonic() < end:
         QCoreApplication.processEvents()
         time.sleep(0.02)
-    img = win.grabWindow()
-    if img.isNull() or not img.save(path):
-        raise RuntimeError(f"shot: could not save {path}")
+    save_snap(win, path)
 
 
 def do_step(bridge, win, step, recorder=None):

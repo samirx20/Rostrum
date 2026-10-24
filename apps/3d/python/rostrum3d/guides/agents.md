@@ -64,7 +64,8 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
 - **Check the ends of a move.** First and last frame of a move, and the middle: `look_sheet` with `start` / `end` zoomed to that range.
 - **A word or a logo.** `mesh.add shape=text text="Rostrum" font=Inter size=0.2 depth=0.03 bevel=0.002` makes a word 0.2 m
   tall (the em), pushed out 0.03 m; it is centred on its origin, so spinning it turns it around its middle. `size`, `depth`
-  and `bevel` are metres; try a depth of about a tenth of the size and a bevel a tenth of the depth. New lines in `text`
+  and `bevel` are metres; try a depth of about a tenth of the size and a bevel a tenth of the depth. A bevel too big for
+  the outline fails with "Accepted: at most … m for this outline": set `bevel` to that number (or less). New lines in `text`
   make lines (`lineHeight` × size apart); `weight` 100–900 on the shipped fonts; `tracking` is thousandths of an em.
   A logo: `shape=svg svgFile=<absolute .svg> svgWidth=0.4` (or `pathData="M0 0H10V10Z"` for a shape you write yourself;
   y points down as in SVG), or `shape=path2d doc2d=<2D item id> layer=<path layer id> svgWidth=0.4` to extrude a path drawn

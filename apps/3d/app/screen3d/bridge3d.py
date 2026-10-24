@@ -75,7 +75,7 @@ class Bridge3D(ActionPreview3D, DocBridge):
     # ---- what the viewport and QML read -----------------------------------------------------------------------
     def scene(self) -> dict:
         """The shot's scene for the engine: the document's, or the hovered action's result (action_preview3d.py)."""
-        return self._previewed if self._previewed is not None else describe(self.doc.data, self.shot_id)
+        return self._previewed if self._previewed is not None else describe(self.doc.data, self.shot_id, self.doc.folder)
 
     def shot_info(self) -> dict:
         return dict(self._info)

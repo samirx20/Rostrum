@@ -16,9 +16,10 @@ import sys
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 
-from rostrum3d import through
+from rostrum3d import aim, through
 
-from . import shot_frame
+from . import placing, shot_frame
+from .gizmo import View
 from .final_look import NEXT_MS, FinalLook
 from .render_job import cycles_of
 from .frames import ViewRenderer
@@ -287,13 +288,15 @@ class Viewport(QObject):
 
     @Slot(float, float)
     def click(self, x, y):
-        """A click at (x, y) device pixels: select what is there."""
+        """A click at (x, y) device pixels: select what is there, or place the shape the Shapes flyout armed there."""
         if self._size is not None:
             self._guard(lambda: self._r.pick(*self._pick_at(x, y)))
 
     def _pick_at(self, x, y):
         scene, cam = self.sent()
-        return scene, {**cam, "x": round(x * self._scale), "y": round(y * self._scale)}
+        req = {**cam, "x": round(x * self._scale), "y": round(y * self._scale)}
+        self._last_pick, self._last_click = (scene, req), [x, y]
+        return scene, req
 
     @Slot(str, float, float)
     def dropMaterial(self, material_id, x, y):
@@ -320,21 +323,40 @@ class Viewport(QObject):
             self._dome, self._cam_dof = dome, cam_dof
             self.settingsChanged.emit()
         self._set_status("")                         # a picture came: the last failure or restart notice is over
+        self.bridge.engine_said("")
         self.serialChanged.emit()
 
     def _on_failed(self, line):
+        self.bridge.engine_said(line)                # a bevel too big: the panel offers the largest that fits
         if self.final.on:                            # Cycles could not go on: back to Quick, and the line says why
             self.setLook("quick")
             line = f"{line}  ·  Final stopped, back to Quick"
         self._set_status(line)
 
-    def _on_picked(self, item):
+    def _on_picked(self, item, reply=None):
         drop, self._drop = getattr(self, "_drop", ""), ""
         if drop:
             return self.bridge.mats.dropOn(drop, item)
+        if self.bridge.add.armed:
+            return self._guard(lambda: self._place(item, reply or {}))
         if item != self.bridge.selected:
             self.bridge.select(item)
         self.picked.emit(item or "")
+
+    def _place(self, item, reply):
+        """The armed shape onto the surface the click hit (the engine's point and normal), else onto the ground."""
+        scene, req = self._last_pick
+        # the shot camera's place (an outline turns its front to it) and the click (where typing shows its cursor)
+        where = {"eye": aim.point(through.find_item(self._compiled(), self._shot["camera"], self.bridge.frame)[0], [0, 0, 0]),
+                 "px": self._last_click}
+        if item:
+            on = through.find_item(scene, item, self.bridge.frame)
+            return self.bridge.add.place_at({"point": reply["point"], "normal": reply["normal"], **where}, (on[0], on[1]))
+        view = View.of(req, scene, self.bridge.frame, req["width"], req["height"])
+        hit = placing.ground_hit(view, req["x"], req["y"])
+        if hit is None:
+            return self.bridge.fail_line("Error: place: that click is above the ground and on nothing; click a surface.")
+        self.bridge.add.place_at({"point": hit[0], "normal": hit[1], **where}, None)
 
     def _set_status(self, text):
         if text != self._status:

@@ -258,13 +258,13 @@ JsObject Core::pick(const JsObject& o) {
   const double x = a.num("x"), y = a.num("y");
   if (x < 0 || y < 0 || x >= w || y >= h) throw Error("pick.x/y: the point is outside the " +
                                                       std::to_string(w) + "x" + std::to_string(h) + " picture");
-  GfVec3d point;
+  GfVec3d point, normal;
   const GfFrustum fr = frustum_of(stage_, vc, f, w, h);
-  const SdfPath hit = hydra().pick(fr, f, w, h, x, y, &point);
+  const SdfPath hit = hydra().pick(fr, f, w, h, x, y, &point, &normal);
   if (hit.IsEmpty()) return JsObject{{"ok", JsValue(true)}, {"hit", JsValue(false)}};
   return JsObject{{"ok", JsValue(true)}, {"hit", JsValue(true)}, {"prim", JsValue(hit.GetString())},
                   {"item", JsValue(item_of(stage_, hit))}, {"material", JsValue(material_of(stage_, hit))},
-                  {"point", vec3(point)}, {"distance", JsValue((point - fr.GetPosition()).GetLength())}};
+                  {"point", vec3(point)}, {"normal", vec3(normal)}, {"distance", JsValue((point - fr.GetPosition()).GetLength())}};
 }
 
 JsObject Core::save(const JsObject& o) {

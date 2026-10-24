@@ -59,7 +59,7 @@ def _adder(type_: str, summary: str, extra=()):
 
 
 _adder("group", "Add a group: items inside it move, turn and scale with it.")
-_adder("mesh", "Add a mesh: a box, sphere, cylinder, plane, disc or torus, or an extruded word (text), SVG drawing (svg) "
+_adder("mesh", "Add a mesh: a box, sphere, cylinder, cone, capsule, plane, disc or torus, or an extruded word (text), SVG drawing (svg) "
        "or 2D path layer (path2d: doc2d + layer); centred on its origin (sizes in metres, depth = extrusion).")
 _adder("light", "Add a light: rect or disk panel (shines along its −Z), sphere bulb, distant sun or dome sky.")
 _adder("camera", "Add a camera (looks along its −Z, Y up). A shot names the camera it looks through.")

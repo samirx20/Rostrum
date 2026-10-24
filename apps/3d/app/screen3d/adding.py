@@ -5,6 +5,12 @@
 Where each is offered: the tool rail's Shapes, Lights and Camera flyouts (`rail`, SPEC §2), the header's Materials chip
 (New material) and the shot crumb (New shot). Only what applies now (a shot needs a camera, so New shot is absent until
 there is one). A new item goes into the selected group or import (or the group holding the selected item), else the top level.
+
+A shape from the Shapes flyout is placed by clicking (SPEC §4.1): picking it *arms* it (`armed`), the next click in the
+viewport places it on the surface under the pointer (`place_at`, maths in placing.py), and the tool is Select again;
+Esc or a right-click lets go (`disarm`). Agents place with `mesh.add`'s x y z rx ry rz, or `place_on` in a script.
+The Type & logo flyout's outlines (text, svg, path2d; SPEC §4.4) are armed with their source (`armWith`: the SVG file,
+the 2D item and path layer) and stand upright facing the shot camera; 3D text then takes typing in place (type_in_place.py).
 """
 from __future__ import annotations
 
@@ -15,8 +21,13 @@ from rostrum3d import fields as F
 from rostrum3d.kind import KIND
 from rostrum3d.outline_fields import OUTLINE_SHAPES
 
+from . import placing
+from .type_in_place import Typer
+
 LIGHT_NAMES = {"rect": "Softbox", "disk": "Round softbox", "strip": "Strip", "sphere": "Bulb", "distant": "Sun", "dome": "Sky"}
-RAIL_SHAPES = ("box", "sphere", "cylinder", "torus", "plane", "disc")       # text, logo and 2D paths: Type & logo (later)
+RAIL_SHAPES = ("box", "sphere", "cylinder", "cone", "torus", "capsule", "plane", "disc")   # SPEC §2's order
+RAIL_TYPE = (("text", "3D text"), ("svg", "SVG logo"), ("path2d", "2D drawing"))   # Type & logo (T)
+OUTLINE_NAMES = {"text": "Text", "svg": "Logo", "path2d": "Drawing"}          # a new outline's name (and the hint's word)
 START = {"camera": {"z": 5}, "light": {"y": 3}}          # where a new camera / light starts (an item starts at the origin)
 REMOVE = {**dict.fromkeys(F.ITEMS, "item.remove"), "part": "item.remove", "material": "material.remove", "shot": "shot.remove"}
 COPIES = (*F.ITEMS, "material", "shot")
@@ -32,6 +43,7 @@ def _entries(cameras: bool) -> list[dict]:
 def _rail() -> dict:
     """The rail's flyouts, filled from today's add operations: {group: [{value (an add choice), name, icon}]}."""
     return {"shapes": [{"value": f"mesh:{s}", "name": s.capitalize(), "icon": s} for s in RAIL_SHAPES if s in F.SHAPES],
+            "type": [{"value": f"mesh:{s}", "name": n, "icon": s} for s, n in RAIL_TYPE if s in F.SHAPES],
             "lights": [{"value": f"light:{k}", "name": LIGHT_NAMES.get(k, k.capitalize()), "icon": f"light-{k}"}
                        for k in F.LIGHT_KINDS],
             "camera": [{"value": "camera", "name": "Camera", "icon": "camera"},
@@ -40,10 +52,14 @@ def _rail() -> dict:
 
 class Adder(QObject):
     changed = Signal()
+    armedChanged = Signal()
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent or bridge)
         self.b = bridge
+        self._armed = ""                        # an add choice waiting for its click in the viewport ("" = none)
+        self._extra = {}                        # its source fields (svgFile; doc2d + layer), given when armed
+        self._typer = Typer(bridge, self)       # typing a placed 3D text in place
         bridge.docChanged.connect(self.changed)
         bridge.selectionChanged.connect(self.changed)
 
@@ -55,6 +71,8 @@ class Adder(QObject):
     @Property("QVariantMap", constant=True)
     def rail(self):
         return _rail()
+
+    typer = Property(QObject, lambda s: s._typer, constant=True)        # typing a placed 3D text (type_in_place.py)
 
     @Property(bool, notify=changed)
     def canAddShot(self):
@@ -75,9 +93,78 @@ class Adder(QObject):
     def canDuplicate(self):
         return self.selectedType in COPIES
 
+    @Property(str, notify=armedChanged)
+    def armed(self):
+        """The add choice the next viewport click places ("mesh:box"), "" when clicking selects."""
+        return self._armed
+
     # ---- the actions ---------------------------------------------------------------------------------------------
     @Slot(str)
-    def add(self, choice):
+    def arm(self, choice):
+        """Wait for a click in the viewport to place `choice` there (the Shapes flyout's pick)."""
+        if choice not in [e["value"] for e in self.entries]:
+            return self.b.fail_line(f"Error: add: {choice!r} can't be added right now.")
+        self._set_armed(choice)
+        word = choice.partition(":")[2] or choice
+        self.b.say(f"Click where the {OUTLINE_NAMES.get(word, word).lower()} goes  ·  Esc cancels")
+
+    @Slot(str, "QVariantMap")
+    def armWith(self, choice, extra):
+        """Arm an outline with its source: {"svgFile": path} for a logo, {"doc2d", "layer"} for a 2D drawing."""
+        self.arm(choice)
+        self._extra = dict(extra or {})
+
+    @Slot(result="QVariantList")
+    def drawings(self):
+        """The project's 2D items with drawn path layers (From a 2D drawing's two-level list; outline_svg.drawings)."""
+        from rostrum3d.outline_svg import drawings
+        try:
+            return drawings(self.b.doc.folder)
+        except ValueError as e:
+            self.b.fail_line(f"Error: 2D drawings: {e}")
+            return []
+
+    @Slot()
+    def disarm(self):
+        if self._armed:
+            self._set_armed("")
+            self.b.say("")
+
+    def place_at(self, hit: dict, on: tuple | None):
+        """Place the armed shape: `hit` = {point, normal} in world space (placing.ground_hit or the engine's pick),
+        `on` = (world transform, compiled props) of the item clicked, None for the ground. One undo step; selected."""
+        choice, shape, extra = self._armed, self._armed.partition(":")[2], self._extra
+        self.disarm()
+        size = placing.size_class(*on) if on else placing.PRODUCT
+        if shape not in OUTLINE_SHAPES:
+            return self.add(choice, placing.placed(shape, hit["point"], hit["normal"], size))
+        f = {**extra, **placing.outline_fields(shape, size)}
+        if (below := self._below(shape, f)) is None:
+            return
+        made = self.add(choice, {**f, **placing.outline_placed(hit["point"], hit["normal"], hit["eye"], below, f["depth"])})
+        if made and shape == "text":
+            self._typer.start(made, hit.get("px"))
+
+    def _below(self, shape, f) -> float | None:
+        """How far the outline's lowest point is under its origin (its base), from the outline itself; None (and the
+        status says why) when the source can't be read."""
+        from rostrum3d import outline as O
+        try:
+            shapes = O.for_item({**F.defaults("mesh"), "shape": shape, **f, "id": shape}, self.b.doc.folder)
+            return -min(p[1] for s in shapes for p in s["outer"])
+        except (ValueError, OSError) as e:
+            self.b.fail_line(f"Error: place: {e}")
+            return None
+
+    def _set_armed(self, choice):
+        self._extra = {} if not choice else self._extra
+        if choice != self._armed:
+            self._armed = choice
+            self.armedChanged.emit()
+
+    @Slot(str)
+    def add(self, choice, at: dict | None = None):
+        """Add `choice` (an entries value); `at` = fields of where it goes (world space; placing.placed's)."""
         type_, _, detail = choice.partition(":")
         if choice not in [e["value"] for e in self.entries]:
             return self.b.fail_line(f"Error: add: {choice!r} can't be added right now.")
@@ -85,9 +172,9 @@ class Adder(QObject):
         args = {"id": new, **START.get(type_, {})}
         if type_ == "mesh":
             args["shape"] = detail
-            args["name"] = detail.capitalize()
+            args["name"] = OUTLINE_NAMES.get(detail, detail.capitalize())
             if detail in OUTLINE_SHAPES:      # a flat outline pushed out: a slab 1 m deep would hide the word
-                args.update(depth=0.02, bevel=0.002)
+                args.update(depth=0.02, bevel=0.001)
         elif type_ == "light":
             args["kind"] = detail
             args["name"] = LIGHT_NAMES.get(detail, detail.capitalize())
@@ -95,7 +182,10 @@ class Adder(QObject):
             args["camera"] = self._camera()
         if type_ in F.ITEMS and (into := self._holder(type_)):
             args["into"] = into
+        if at:
+            args.update(placing.into_parent(at, self._world(args.get("into", ""))))
         self._apply([{"op": f"{type_}.add", "args": args}], f"Add {F.LABELS[type_].lower()}", new)
+        return new if self.b.doc.has(new) else ""
 
     @Slot()
     def duplicate(self):
@@ -133,6 +223,13 @@ class Adder(QObject):
                 return item["id"]
             here = doc.parent_of(here)[0]
         return ""
+
+    def _world(self, id_: str):
+        """The world transform of the holder `id_` at the playhead (aim.IDENTITY for the top level)."""
+        if not id_:
+            return placing.aim.IDENTITY
+        from rostrum3d import through
+        return through.find_item(self.b.viewport.sent()[0], id_, self.b.frame)[0]
 
     def _apply(self, calls, label, select):
         def go():

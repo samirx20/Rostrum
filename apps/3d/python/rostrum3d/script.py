@@ -26,7 +26,7 @@ from rostrum_core import ids
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.keys import key_id
 
-from . import build, fields as F
+from . import build, fields as F, shape_size
 from .kind import KIND, PRIM_ID
 from .material_starts import STARTS, start_key, start_values
 
@@ -83,6 +83,23 @@ class Item:
             x, y, z = target
             return self.set(aim="point", aimX=float(x), aimY=float(y), aimZ=float(z), **extra)
         return self.set(aim="item", aimItem=target, **extra)
+
+    def place_on(self, other) -> "Item":
+        """Stand this mesh on top of `other` (a mesh made earlier in the same group): its base on other's top, over
+        other's middle (move it along the top afterwards with .set(x=…, z=…)). Both unturned."""
+        o = other.node if isinstance(other, Item) else next(
+            (n for n in self._siblings() if n["id"] == other), None)
+        if o is None or o not in self._siblings():
+            raise ValueError(f"{self.id}.place_on: {_id_of(other)!r} is not a mesh made earlier in the same group")
+        mine, theirs = self.node, o
+        for n, v in ((self.id, mine), (o["id"], theirs)):
+            if v["type"] != "mesh" or any(v.get(k, 0) for k in ("rx", "ry", "rz")):
+                raise ValueError(f"{self.id}.place_on: {n} must be an unturned mesh")
+        y = theirs["y"] + shape_size.half_height(theirs) * theirs["sy"] + shape_size.half_height(mine) * mine["sy"]
+        return self.set(x=theirs["x"], y=round(y, 6), z=theirs["z"])
+
+    def _siblings(self) -> list:
+        return self._b.holders[-1]["children"] if self._b.holders else self._b.root["items"]
 
     def part(self, path: str, **values) -> "Item":
         """An import's part: a prim inside its file that gets its own material or is hidden."""
@@ -173,7 +190,7 @@ def _import(name, *args, **kw):
 
 API = ["group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
        "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "material(id, start=, **fields)", "shot(id, camera=, fps=, start=, end=)",
-       "item.set(**fields)", "item.key(field, {seconds: value}, ease=)", "item.aim(item or (x, y, z), roll=)",
+       "item.set(**fields)", "item.key(field, {seconds: value}, ease=)", "item.aim(item or (x, y, z), roll=)", "item.place_on(other mesh)",
        "import.part(path, material=, visible=)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...):"]
 
 

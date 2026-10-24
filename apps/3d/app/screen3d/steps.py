@@ -5,12 +5,18 @@
     keydrag <key id> <frame> | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
     context <item id | -> (the right-click menu)
     add <menu value, e.g. mesh:sphere | light:distant | camera | material | shot> | duplicate | delete
+    arm <mesh:box …> [field=value …] (a shape picked in the Shapes or Type & logo flyout, with its source for a logo:
+    svgFile=<path> or doc2d=<id> layer=<id>; the next viewport click (`mouseclick`, `viewclick`) places it on the surface there)
+    type <words …> (real keys into a 3D text just placed: live, one undo step) | typeend (Esc ends the typing)
+    (a click in the viewport by real input: the kit's `mouseclick <x> <y>`, window pixels)
+    drawings (From a 2D drawing's list of 2D items) | drawing <doc2d> (its path layers: the list's second level)
     wait <ms> | snap <png path> (a screenshot now, the run goes on)
-    rail <shapes|lights|camera> (opens that flyout) | page build|animate|render | materials | shots | view (open the
+    rail <shapes|type|lights|camera> (opens that flyout) | page build|animate|render | materials | shots | view (open the
     header's menus) | picker (the selected item's material picker) | startfrom <start> | split (Make its own) | assign <material id> | mouse <x> <y> (a click on the window) | renderstart | cancelrender (both don't wait)
     render (Cycles, the playhead frame; waits for the job, up to 10 min) | closerender
   Viewport (screen state, never the document): orbit <dx> <dy> | pan <dx> <dy> | zoom <steps> | mode shot|free
-    exposure <stops> | studio <amount> | lights on|off | home | click <x> <y> (viewport pixels: selects what is there)
+    exposure <stops> | studio <amount> | lights on|off | home | viewclick <x> <y> (viewport pixels: selects what is there, or places the armed shape;
+    named apart from the kit's `click <text>`, which runs first)
     look quick|final (Final: progressive Cycles in place; `wait` lets it refine)
   Gizmo (real mouse input on the window): gizmo-drag <handle: move0..2 | plane | turn0..2 | scale0..2> <dx> <dy> [ctrl]
     (press on that handle, move by dx dy screen px in 8 steps, release) | gizmo-show all|move|turn|scale | key-moved
@@ -20,15 +26,16 @@ from __future__ import annotations
 
 import json
 
-from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject, QPoint, QPointF, Qt
+from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject, QObject, QPoint, QPointF, Qt
 from PySide6.QtTest import QTest
+from rostrum_gui.settle import save_snap
 
 RENDER_WAIT_S = 600
 VIEW = {"orbit": lambda v, a: v.orbit(float(a[0]), float(a[1])), "pan": lambda v, a: v.pan(float(a[0]), float(a[1])),
         "zoom": lambda v, a: v.zoom(float(a[0])), "mode": lambda v, a: v.setMode(a[0]),
         "exposure": lambda v, a: v.setExposure(float(a[0])), "studio": lambda v, a: v.setStudio(float(a[0])),
         "lights": lambda v, a: v.setSceneLights(a[0] == "on"), "home": lambda v, a: v.home(),
-        "click": lambda v, a: v.click(float(a[0]), float(a[1])), "look": lambda v, a: v.setLook(a[0])}
+        "viewclick": lambda v, a: v.click(float(a[0]), float(a[1])), "look": lambda v, a: v.setLook(a[0])}
 
 
 def value(text):
@@ -81,6 +88,27 @@ def do_step(bridge, win, step):
         bridge.run(rest[0])
     elif word == "add":
         bridge.adder.add(rest[0])
+    elif word == "arm":            # arm <choice> [field=value …]: a flyout's pick; the next viewport click (`mouseclick`, `viewclick`) places it
+        extra = dict(a.split("=", 1) for a in rest[1:])
+        bridge.adder.armWith(rest[0], extra) if extra else bridge.adder.arm(rest[0])
+    elif word == "type":           # real keys into the cursor in the viewport
+        words, typer = step.split(None, 1)[1] if rest else "", bridge.adder.typer
+        for ch in words:
+            _key(win, Qt.Key(ord(ch.upper())) if ch.isalnum() else Qt.Key_unknown, ch)
+        if typer.text != words:
+            raise RuntimeError(f"type: the keys did not reach the text being typed (it has {typer.text!r})")
+    elif word == "typeend":        # Esc ends the typing (the keys' own way)
+        _key(win, Qt.Key_Escape, "")
+        if bridge.adder.typer.item:
+            raise RuntimeError("typeend: Esc did not end the typing")
+    elif word == "drawings":
+        QMetaObject.invokeMethod(win, "openDrawings")
+    elif word == "drawing":
+        QTest.qWait(300)
+        menu = win.findChild(QObject, "drawings2d")
+        if menu is None:
+            raise RuntimeError("drawing: the 2D drawings list is not there")
+        QMetaObject.invokeMethod(menu, "picked", Q_ARG(str, rest[0]))
     elif word in ("duplicate", "delete"):
         bridge.adder.duplicate() if word == "duplicate" else bridge.adder.remove()
     elif word == "context":        # context <item id | -> : the right-click menu for that item (- = empty space)
@@ -103,8 +131,9 @@ def do_step(bridge, win, step):
     elif word == "wait":
         QTest.qWait(int(rest[0]))
     elif word == "snap":
-        if not win.grabWindow().save(rest[0]):
-            raise RuntimeError(f"step {step!r}: could not save {rest[0]}")
+        v = bridge.viewport
+        save_snap(win, rest[0], may_move=bool((v and v.final.on) or getattr(bridge, "playing", False)),            # the shared snap: waits for the newest picture
+                  ready=(lambda: v.serial > 0 and v._r.idle() and not v._next.isActive()) if v else None)
     elif word == "renderstart":
         bridge.renderStill()
     elif word == "cancelrender":
@@ -132,6 +161,14 @@ def do_step(bridge, win, step):
         raise ValueError(f"unknown step {step!r}")
     if bridge.status.startswith("Error"):
         raise RuntimeError(f"step {step!r}: {bridge.status}")
+
+
+def _key(win, key, text):
+    """A key press and release with its text, sent to the window (what the keyboard sends)."""
+    from PySide6.QtGui import QKeyEvent
+    for kind in (QKeyEvent.Type.KeyPress, QKeyEvent.Type.KeyRelease):
+        QCoreApplication.sendEvent(win, QKeyEvent(kind, key, Qt.NoModifier, text))
+    QCoreApplication.processEvents()
 
 
 def _gizmo_drag(bridge, win, handle, dx, dy, ctrl):

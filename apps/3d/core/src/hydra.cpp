@@ -289,20 +289,24 @@ ViewDrawn Hydra::view_final(const SdfPath& camera, const GfFrustum& frustum, int
   return out;
 }
 
-SdfPath Hydra::pick(const GfFrustum& f, int frame, int w, int h, double x, double y, GfVec3d* point) {
+SdfPath Hydra::pick(const GfFrustum& f, int frame, int w, int h, double x, double y, GfVec3d* point,
+                    GfVec3d* normal) {
   const GfVec2d ndc(2.0 * (x + 0.5) / w - 1.0, 1.0 - 2.0 * (y + 0.5) / h);
   GfFrustum narrow = f.ComputeNarrowedFrustum(ndc, GfVec2d(1.0 / w, 1.0 / h));
   UsdImagingGLRenderParams params;
   params.frame = UsdTimeCode(frame);
   TfErrorMark mark;
   auto& e = engine("storm", true);  // picking is the viewport's Storm; the answer is the same whatever drew the picture
-  GfVec3d normal;
   SdfPath hit;
   framebuffer(w, h).bind_and_clear();
   const bool any = e.TestIntersection(narrow.ComputeViewMatrix(), narrow.ComputeProjectionMatrix(),
-                                      stage_->GetPseudoRoot(), params, point, &normal, &hit);
+                                      stage_->GetPseudoRoot(), params, point, normal, &hit);
   throw_usd_errors(mark, "pick");
-  return any ? hit : SdfPath();
+  if (!any) return SdfPath();
+  if (normal->GetLength() < 1e-12) *normal = f.GetPosition() - *point;  // no normal from the hit: face the camera
+  normal->Normalize();
+  if (GfDot(*normal, f.GetPosition() - *point) < 0) *normal = -*normal;  // the side the camera sees
+  return hit;
 }
 
 }  // namespace r3d

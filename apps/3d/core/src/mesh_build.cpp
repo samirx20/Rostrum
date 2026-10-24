@@ -9,7 +9,7 @@ PXR_NAMESPACE_USING_DIRECTIVE
 namespace r3d {
 
 MeshData shape(Reader& p, FaceGroups& groups) {
-  const std::string s = p.one_of("shape", {"box", "sphere", "cylinder", "plane", "disc", "torus", "outline"});
+  const std::string s = p.one_of("shape", {"box", "sphere", "cylinder", "cone", "capsule", "plane", "disc", "torus", "outline"});
   const bool smooth = p.flag("smooth");
   auto size = [&](const char* key) { return float(p.num_min(key, 0.0, false)); };
   auto bevel = [&](float most) {
@@ -30,6 +30,16 @@ MeshData shape(Reader& p, FaceGroups& groups) {
   if (s == "sphere") {
     const float r = size("radius");
     return make_sphere(r, p.count("segments", 3, 1024), smooth);
+  }
+  if (s == "cone") {
+    const float r = size("radius"), h = size("height");
+    return make_cone(r, h, p.count("segments", 3, 1024), smooth);
+  }
+  if (s == "capsule") {
+    const float r = size("radius"), h = size("height");
+    if (h < 2 * r) fail(p.at("height"), std::to_string(h) + " is shorter than the two round ends (2 x radius)",
+                        ">= " + std::to_string(2 * r));
+    return make_capsule(r, h, p.count("segments", 3, 1024), smooth);
   }
   if (s == "torus") {
     const float r = size("radius"), tube = size("tube");

@@ -74,7 +74,7 @@ TRANSFORM = [
 
 COMBINE_OPS = ["union", "subtract", "intersect"]
 SOLIDS = ("mesh", "combine")                                   # what a combine combines
-SHAPES = ["box", "sphere", "cylinder", "plane", "disc", "torus", *OUTLINE_SHAPES]
+SHAPES = ["box", "sphere", "cylinder", "cone", "capsule", "plane", "disc", "torus", *OUTLINE_SHAPES]
 from .light_fields import KINDS as LIGHT_KINDS, LIGHT, STILL as LIGHT_STILL  # noqa: E402  (needs the helpers above)
 from .material_fields import MATERIAL  # noqa: E402  (needs the helpers above)
 DOF = IS("dof", True)
@@ -86,11 +86,12 @@ FIELDS: dict[str, list[Param]] = {
         CH("shape", SHAPES, "Shape", "Shape", "box"),
         N("width", "Width", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "plane"), default=1.0,
           help="Along X. A plane lies flat, facing up: width (X) × depth (Z)"),
-        N("height", "Height", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "cylinder"), default=1.0),
+        N("height", "Height", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "cylinder", "cone", "capsule"), default=1.0,
+          help="Cone: base to point. Capsule: end to end (at least twice the radius)"),
         N("depth", "Depth", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "plane", *OUTLINE_SHAPES), default=1.0,
           help="Box: along Z. Plane: its other side, along Z (a plane has no height). Text, svg, path2d: how far "
                "the flat outline is pushed out (try 0.02)"),
-        N("radius", "Radius", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "sphere", "cylinder", "disc", "torus"),
+        N("radius", "Radius", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "sphere", "cylinder", "cone", "capsule", "disc", "torus"),
           default=0.5, help="Torus: from its centre to the middle of the ring"),
         N("tube", "Tube radius", "Shape", 0, 1e4, 0.001, "m", when=IS("shape", "torus"), default=0.15),
         *OUTLINE_FIELDS,
