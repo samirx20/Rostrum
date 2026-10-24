@@ -10,7 +10,6 @@ from __future__ import annotations
 import threading
 
 from PySide6.QtCore import QObject, Signal
-from rostrum_paint import canvas
 
 
 class PaintPictures(QObject):
@@ -24,7 +23,7 @@ class PaintPictures(QObject):
         self._thread.start()
 
     def make(self, jobs: list, token) -> None:
-        """Make each (canvas, w, h) picture, then `done(token)`."""
+        """Run each job (a call making one picture: drawing.picture / drawing.inked's `later`), then `done(token)`."""
         with self._wake:
             self._next = (list(jobs), token)
             self._wake.notify()
@@ -38,8 +37,8 @@ class PaintPictures(QObject):
                     return
                 (jobs, token), self._next = self._next, None
             try:
-                for frame, w, h in jobs:
-                    canvas.png(frame, w, h)
+                for job in jobs:
+                    job()
             except Exception as e:  # noqa: BLE001  said on screen, the frame isn't drawn
                 self.failed.emit(f"Error: the drawing's picture could not be made: {e}")
                 continue

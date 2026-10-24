@@ -302,8 +302,10 @@ FIELDS: dict[str, list[Param]] = {
     # A drawing: painted strokes (the shared painting kit), one drawing per frame or held for several. Its canvas
     # is w × h px; untransformed it covers that box with the canvas's px = the composition's px.
     "drawing": [
-        N("w", "Canvas width", "Drawing", 16, 8192, 1, "px", S, integer=True, default=1920),
-        N("h", "Canvas height", "Drawing", 16, 8192, 1, "px", S, integer=True, default=1080),
+        N("w", "Canvas width", "Drawing", 16, 8192, 1, "px", S, integer=True, default=1920,
+          help="Grows by itself when a stroke reaches past the edge (paint.stroke); at most 8192"),
+        N("h", "Canvas height", "Drawing", 16, 8192, 1, "px", S, integer=True, default=1080,
+          help="Grows by itself when a stroke reaches past the edge (paint.stroke); at most 8192"),
         CH("loop", looping.MODES, "Loop", "Timing", "off", S, labels=looping.WORDS,
            help="Repeat the drawings for the layer's length: Loop starts again, Ping-pong goes back and forth (Off holds the last drawing)"),
     ] + TRANSFORM + GRADED,
@@ -344,6 +346,9 @@ FIELDS: dict[str, list[Param]] = {
     # It is a painting-kit canvas: it holds paint layers (`paints`) and paint masks.
     "frame": [
         N("at", "Frame", "Drawing", 0, 10**7, 1, "f", integer=True, help="The frame number this drawing appears at"),
+        *(N(f"paper{c}", f"Paper {c}", "Drawing", -8192, 8192, 1, "px", D, integer=True, default=0, shown="script",
+            help="Where the paper's grain starts in the canvas px: moved with the strokes when the drawing grows left "
+                 "or up (paint_grow.py), so the grain stays under them") for c in "XY"),
     ],
     # Effects: a layer's look, in order (a gradient fills the shape, or the letters of a text).
     "blur": [N("radius", "Blur", "Blur", 0, 1000, 0.5, "px", default=12.0)],

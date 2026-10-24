@@ -2,7 +2,8 @@
 
 The canvas is the world: the frame is a box in it that can move, zoom and turn (apps/2d/FRAME.md). This object gives that
 box at the time of the picture ON SCREEN (shown.py: the overlays never run ahead of the picture), as numbers in world px,
-and the world rects the view fits to (Ctrl+0: the frame where it is now; Shift+1: everything, with the frame's whole path).
+and the world rects the view fits to (Ctrl+0: the frame where the document has it at the playhead, so a fit is right at
+once; Shift+1: everything, with the frame's whole path).
 It does no work while the view pans or zooms: the box changes only when the picture on screen does.
 """
 from __future__ import annotations
@@ -84,8 +85,9 @@ class FrameView(QObject):
 
     @Slot(result="QVariantMap")
     def fitRect(self):
-        """The frame's quad bounding box at the playhead (Ctrl+0)."""
-        return _rect(*quad_rect(self._now()[0]))
+        """The frame's quad bounding box at the playhead (Ctrl+0), from the document there, not from the picture on
+        screen: a fit right after the playhead or the frame moved fits where the frame is now, not one picture late."""
+        return _rect(*quad_rect(box_at(self._bridge.placed(), self._bridge.time)))
 
     @Slot(result="QVariantMap")
     def everythingRect(self):

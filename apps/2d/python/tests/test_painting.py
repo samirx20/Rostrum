@@ -10,7 +10,7 @@ from rostrum_core.storage import paths
 from rostrum2d import KIND, run_source
 
 SAM = Who.person("sam")
-STROKE = {"points": [[4, 4], [60, 60]], "size": 20, "color": "#ff0000", "hardness": 1.0, "space": "canvas"}
+STROKE = {"points": [[24, 24], [60, 60]], "size": 20, "color": "#ff0000", "hardness": 1.0, "space": "canvas"}
 
 
 def scene() -> Document:

@@ -22,8 +22,11 @@ QtObject {
     property real cx: 0
     property real cy: 0
     readonly property real zoom: asked
-    readonly property real ox: Math.round(wellW / 2 - cx * zoom)
-    readonly property real oy: Math.round(wellH / 2 - cy * zoom)
+    property real dpr: 1                       // device px per screen px (Stage: Screen.devicePixelRatio)
+    // the one place the origin is worked out: on a whole device px, so the world picture (whole picture px from world
+    // (0, 0): world_view.on_pixels) lands on the screen's px unresampled, and 100 % is the export px for px
+    readonly property real ox: Math.round((wellW / 2 - cx * zoom) * dpr) / dpr
+    readonly property real oy: Math.round((wellH / 2 - cy * zoom) * dpr) / dpr
     readonly property var steps: [0.02, 0.05, 0.1, 0.125, 0.25, 1 / 3, 0.5, 2 / 3, 1, 1.5, 2, 3, 4, 6, 8, 12, 16, 32, 64]
 
     function clamp(z) { return Math.max(steps[0], Math.min(steps[steps.length - 1], z)) }

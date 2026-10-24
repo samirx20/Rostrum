@@ -51,6 +51,16 @@ def new_layer_calls(doc, comp: dict, type_: str, more: dict | None = None) -> tu
     return calls, lid
 
 
+FIRST_DRAWING = 256        # px a side of the drawing the pen's first stroke makes: it grows with the strokes (paint_grow.py)
+
+
+def new_drawing_at(doc, comp: dict, x: float, y: float) -> tuple[list[dict], str]:
+    """(calls, id): a new drawing layer FIRST_DRAWING px a side centred on (x, y) (world px: a top-level layer at depth 0
+    is where its x, y say), for the pen's first stroke with nothing picked, inside or outside the frame. It starts small
+    and grows with what is painted, in any direction."""
+    return new_layer_calls(doc, comp, "drawing", {"x": x, "y": y, "w": FIRST_DRAWING, "h": FIRST_DRAWING})
+
+
 class Adder(QObject):
     changed = Signal()
     fileWanted = Signal(str)              # image | video: QML opens the file dialog, then calls addFile

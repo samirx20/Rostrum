@@ -5,7 +5,6 @@ A layer is HxWx4 float32: sRGB-encoded colour 0..1, **premultiplied by alpha** (
 import colorsys, math
 from typing import NamedTuple
 import numpy as np
-from PIL import Image
 
 TIPS = ("round", "bristle", "chalk", "flat", "block", "line")
 MODES = ("normal", "multiply", "erase", "screen", "add", "overlay", "soft_light", "color")
@@ -29,10 +28,35 @@ def _ss(x):
     return x * x * (3 - 2 * x)
 
 
-def _noise(h, w, cell, rng):
-    """Smooth value noise 0..1 with features about `cell` pixels wide."""
-    g = rng.random((int(h / cell) + 3, int(w / cell) + 3)).astype(np.float32)
-    return np.asarray(Image.fromarray(g, "F").resize((w, h), Image.BICUBIC)).clip(0, 1)
+def _knots(seed, salt, ky, kx):
+    """Value-noise knots 0..1 at whole lattice points (ky, kx): a hash of the point, so any part of the endless plane
+    is the same wherever and however big the canvas around it is."""
+    h = (kx * 0x27D4EB2D + ky * 0x165667B1 + seed * 0x9E3779B1 + salt * 0x85EBCA6B) & 0xFFFFFFFF
+    for mul, shift in ((0x2C1B3C6D, 12), (0x297A2D39, 15)):
+        h ^= h >> 15
+        h = (h * mul) & 0xFFFFFFFF
+        h ^= h >> shift
+    return (h / 4294967296.0).astype(np.float32)
+
+
+def _cubic(u):
+    """Catmull-Rom weights (4, n) and the lattice cell of each sample of `u`."""
+    i = np.floor(u).astype(np.int64)
+    t = (u - i).astype(np.float32)
+    t2, t3 = t * t, t * t * t
+    return i, ((-t3 + 2 * t2 - t) / 2, (3 * t3 - 5 * t2 + 2) / 2, (-3 * t3 + 4 * t2 + t) / 2, (t3 - t2) / 2)
+
+
+def _noise(h, w, cell, seed, salt, origin=(0, 0)):
+    """Smooth value noise 0..1 with features about `cell` px wide, over canvas px (0..w, 0..h) whose paper starts at
+    `origin` (canvas px): the plane's (x - ox, y - oy). Fixed to the paper, not to the canvas's size."""
+    ix, wx = _cubic((np.arange(w) - origin[0]) / cell)
+    iy, wy = _cubic((np.arange(h) - origin[1]) / cell)
+    kx0, ky0 = int(ix.min()) - 1, int(iy.min()) - 1
+    nx, ny = int(ix.max()) - kx0 + 3, int(iy.max()) - ky0 + 3
+    g = _knots(seed, salt, np.arange(ky0, ky0 + ny, dtype=np.int64)[:, None], np.arange(kx0, kx0 + nx, dtype=np.int64)[None, :])
+    rows = sum(g[:, ix - kx0 - 1 + j] * wx[j] for j in range(4))
+    return sum(rows[iy - ky0 - 1 + j] * wy[j][:, None] for j in range(4)).clip(0, 1)
 
 
 def _noise1(n, cell, rng):
@@ -47,20 +71,22 @@ def _up(p, n):
 
 class Paper:
     """Paper / canvas tooth shared by every stroke of a document (lazy, deterministic): the engine's own procedural
-    tooth, or `picture` (a pictures.PAPERS name) tiled over the canvas at `scale`. Either is fixed to the canvas."""
-    def __init__(self, h, w, seed=0, size=3.0, picture="tooth", scale=1.0):
+    tooth, or `picture` (a pictures.PAPERS name) tiled at `scale`. Either is fixed to the paper, which starts at canvas
+    px `origin`: a drawing that grows (its strokes moved by the growth, the origin with them) keeps every grain where it
+    was, and a canvas made bigger keeps the grain it had."""
+    def __init__(self, h, w, seed=0, size=3.0, picture="tooth", scale=1.0, origin=(0, 0)):
         self.h, self.w, self.seed, self.size, self._g = h, w, seed, size, None
-        self.picture, self.scale = picture, scale
+        self.picture, self.scale, self.origin = picture, scale, tuple(origin)
 
     def fields(self):
         if self._g is None and self.picture != "tooth":
             from .pictures import paper_tile, tiled
-            g = tiled(paper_tile(self.picture), self.h, self.w, self.scale)
+            g = tiled(paper_tile(self.picture), self.h, self.w, self.scale, self.origin)
             self._g = (g, g)
         if self._g is None:
-            rng, s = np.random.default_rng(self.seed), self.size
-            g = 0.6 * _noise(self.h, self.w, s, rng) + 0.4 * _noise(self.h, self.w, s * 4, rng)
-            self._g = (g, _noise(self.h, self.w, 1.5, rng))
+            s, o, h, w = self.size, self.origin, self.h, self.w
+            g = 0.6 * _noise(h, w, s, self.seed, 0, o) + 0.4 * _noise(h, w, s * 4, self.seed, 1, o)
+            self._g = (g, _noise(h, w, 1.5, self.seed, 2, o))
         return self._g
 
 

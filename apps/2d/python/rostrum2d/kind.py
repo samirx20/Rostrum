@@ -74,6 +74,9 @@ def facts(item: dict, doc=None) -> dict:
         # a scene's own layer with a camera beside it: Depth and Pinned to screen mean something (fields.UNDER_CAMERA)
         out["underCamera"] = bool(parent) and parent.get("type") == "comp" \
             and any(c.get("type") == "camera" for c in parent.get("layers", []))
+        if out["underCamera"]:                                # Cover the frame's move (background.fit) needs a move
+            from .frame import view
+            out["frameMoves"] = view.moves(view.of(parent))
     return out
 
 
@@ -199,7 +202,8 @@ from .rig import ops as _rig_ops, poses as _rig_poses, guess as _rig_guess, join
 from .lipsync import ops as _lipsync_ops  # noqa: E402,F401  (lipsync.apply)
 from . import ops_swap  # noqa: E402,F401  (swap.show, blink.add)
 from . import ops_timing  # noqa: E402,F401  (layer.shift, layer.trim: move and trim a layer in time)
-from . import ops_background  # noqa: E402,F401  (background.add, background.fit, background.move: painted backgrounds)
+from . import ops_background  # noqa: E402,F401  (background.add, background.move: painted backgrounds)
+from . import ops_cover  # noqa: E402,F401  (background.fit: Cover the frame's move)
 from . import ops_group, ops_mask, ops_state, ops_align, ops_look  # noqa: E402,F401  (select first, then act)
 from . import ops_clip  # noqa: E402,F401  (layer.paste: copy / cut / paste of layers)
 from . import ops_paint, ops_fill, paint_transform  # noqa: E402,F401  (paint.stroke, paint.fill, stroke.transform: paint, fill and move paint on any element or drawing)

@@ -13,7 +13,7 @@ import math
 from pathlib import Path
 
 from rostrum_core import filestamps
-from rostrum_paint import canvas
+from rostrum_paint import canvas, ink
 
 from . import looping
 from .sizes import own_size
@@ -110,17 +110,55 @@ def picture(item: dict, frame: dict, later: list | None = None) -> Path:
     """One drawing's picture (content-keyed PNG, canvas size, straight alpha) for the engine to draw. A drawing equal
     to the one last pictured (a document is never changed in place: each change is a new tree) reuses its PNG without
     keying every stroke again, so a change elsewhere costs a compare, not 10,000 strokes' keys.
-    `later` (a screen, which must not wait for pixels): a picture not made yet is added to it as (frame, w, h) for
-    `canvas.png` to make off the screen's thread, and its last picture (or a blank one) stands in meanwhile."""
+    `later` (a screen, which must not wait for pixels): a picture not made yet is added to it as a job (a call that
+    makes it) to run off the screen's thread, and its last picture (or a blank one) stands in meanwhile."""
     w, h = canvas_size(item)
     got = _SHOWN.get(frame["id"])
     if got and got[1:3] == (w, h) and (got[0] is frame or got[0] == frame) and filestamps.is_file(got[3]):
         return got[3]
     if later is not None and canvas.made(frame, w, h) is None:
-        later.append((frame, w, h))
+        later.append(lambda: canvas.png(frame, w, h))
         return got[3] if got and got[1:3] == (w, h) and filestamps.is_file(got[3]) else canvas.png({"paints": []}, w, h)
     path = canvas.png(frame, w, h)
     if len(_SHOWN) > 512:
         _SHOWN.clear()
     _SHOWN[frame["id"]] = (frame, w, h, path)
     return path
+
+
+_INKED: dict = {}           # frame id -> (the frame as it was, w, h, its entry): the last ink picture of each drawing
+
+
+def inked(item: dict, frame: dict, later: list | None = None) -> dict:
+    """A drawing layer's picture as the engine's frame entry: {"src": the ink's PNG, "crop": [x, y, w, h] in canvas px}
+    (rostrum_paint.ink: only the painted rectangle), no crop for a drawing with no ink. Remembered and `later` as
+    `picture`; the stand-in meanwhile is the last entry, moved as far as the drawing grew left or up since (or nothing
+    painted), so a stroke that grows the drawing never blinks the rest of it away."""
+    w, h = canvas_size(item)
+    got = _INKED.get(frame["id"])
+    if got and got[1:3] == (w, h) and (got[0] is frame or got[0] == frame) and filestamps.is_file(got[3]["src"]):
+        return got[3]
+    done = ink.made(frame, w, h)
+    if done is None and later is not None:
+        later.append(lambda: ink.png(frame, w, h))
+        if got and filestamps.is_file(got[3]["src"]):
+            return _moved(got[3], got[0], frame)
+        return _entry(ink.png({"paints": []}, w, h))
+    entry = _entry(done or ink.png(frame, w, h))
+    if len(_INKED) > 512:
+        _INKED.clear()
+    _INKED[frame["id"]] = (frame, w, h, entry)
+    return entry
+
+
+def _entry(made: tuple) -> dict:
+    return {"src": str(made[0]), **({"crop": made[1]} if made[1] else {})}
+
+
+def _moved(entry: dict, old: dict, new: dict) -> dict:
+    """The entry with its crop moved by the growth between two states of a drawing (paperX / paperY, paint_grow.py)."""
+    if "crop" not in entry:
+        return entry
+    (ox, oy), (nx, ny) = canvas.origin(old), canvas.origin(new)
+    x, y, w, h = entry["crop"]
+    return {**entry, "crop": [x + nx - ox, y + ny - oy, w, h]}

@@ -11,6 +11,8 @@ from __future__ import annotations
 from rostrum2d import fields as F
 from rostrum2d.frame import TYPE as FRAME
 
+from . import cover_move
+
 FIELDS = ("screenLock", "depth")
 WHY = "Pinning is for a scene's own layers (not the frame, not inside a group)."
 
@@ -36,14 +38,16 @@ def edit_call(doc, item_id: str, param: str, value, at: float) -> dict | None:
 
 
 def depth_calls(f, value: float) -> list[dict]:
-    """Set depth: each picked layer goes to this depth where it shows now (`layer.set_depth`), then the drawings are
-    resized to cover everything the frame shows of them over the shot (`background.fit`): one change; none when
-    every layer is already there."""
+    """Set depth: each picked layer goes to this depth where it shows now (`layer.set_depth`), then those Cover the
+    frame's move applies to (cover_move.targets: still, not pinned, the frame moves) are made to cover everything the
+    frame shows of them over the shot at the new depth (`background.fit`; a drawing that covers already is left as it
+    is): one change; none when every layer is already there."""
     todo = [i for i, it in zip(f.ids, f.items) if it.get("depth", 0.0) != value]
     if not todo:
         return []
+    fit = cover_move.targets(f.doc, todo)
     return [{"op": "layer.set_depth", "target": todo, "args": {"depth": value, **_keep(f.state.get("now", 0.0))}},
-            {"op": "background.fit", "target": todo, "args": {}}]
+            *([{"op": "background.fit", "target": fit, "args": {}}] if fit else [])]
 
 
 def facts(f) -> dict:

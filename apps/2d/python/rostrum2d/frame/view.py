@@ -111,3 +111,13 @@ def leaves_home(frame: dict | None, comp: dict) -> bool:
     return (bool(keyed & {"x", "y", "zoom", "rotation"}) or bool(g("ridePath"))
             or (g("x"), g("y"), g("zoom"), g("rotation")) != (g("homeX"), g("homeY"), 1.0, 0.0)
             or (g("homeX"), g("homeY")) != centre(comp))
+
+
+def moves(frame: dict | None) -> bool:
+    """Whether the frame moves over the piece (Cover the frame's move has something to cover): a ride, or keys on its
+    place, zoom or turn holding two different values."""
+    from rostrum_core.keys import keys_of
+    if frame is None:
+        return False
+    return bool(frame.get("ridePath")) or any(len({repr(k.get("v")) for k in keys_of(frame, f)}) > 1
+                                              for f in ("x", "y", "zoom", "rotation"))

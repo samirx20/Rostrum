@@ -9,12 +9,13 @@ from __future__ import annotations
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from rostrum2d.drawing import each_frame, frame_at, frame_number
 from rostrum2d.names import display_name
+from rostrum2d import paint_overflow
 from rostrum2d.ops_paint import PAINTABLE
 from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
 from . import adding, brush_presets, framing, onion
-from .wet import WetView, smear_ink, without_paint
+from .wet import WetView, reveal_rect, smear_ink, without_paint
 from .pen_tilt import PenTilt
 from .brush import Brush
 from .brush_panel import BrushPanel
@@ -166,7 +167,7 @@ class Painter(BrushPanel):
         c = self.b.comp()
         make = None
         if d is None:                       # Draw tool, no drawing selected: the first stroke makes the drawing layer too
-            make, lid = adding.new_layer_calls(self.b.doc, c, "drawing")
+            make, lid = adding.new_drawing_at(self.b.doc, c, x, y)
             d = {"id": lid}
         layer = "new" if self._new_layer else self.b._paint_layers.current()     # the highlighted paint layer
 
@@ -180,11 +181,11 @@ class Painter(BrushPanel):
                 self._wet.start(smear_ink(self._wet, args, s, self.b.selBox, self._n()))
                 self._wet.add(*s.points[-1][:3])
             else:
-                ink = self._wet.ink(args, s.sid, s.scale(x, y), (c["width"], c["height"]))
+                ink = self._wet.ink(args, s.sid, s.scale(x, y))         # world px: anywhere on the canvas
                 self._wet.start(ink)
                 self._wet.add(x, y, pressure)
                 if ink.erasing:
-                    self._ask_reveal(ink, d["id"])
+                    self._ask_reveal(ink, d["id"], x, y)
             self._wet.show()
             if make:
                 self._fresh = None
@@ -213,19 +214,21 @@ class Painter(BrushPanel):
 
     wet = Property(QObject, lambda self: self._wet, constant=True)
 
-    def _ask_reveal(self, ink, layer_id):
-        """The eraser's ink shows the frame without the layer it erases: asked of the canvas's engine now, off this
-        thread (a frame's time); its ink shows once it comes (wet.py)."""
+    def _ask_reveal(self, ink, layer_id, x, y):
+        """The eraser's ink shows the world the canvas shows without the layer it erases: asked of the canvas's engine
+        now, off this thread (a frame's time); its ink shows once it comes (wet.py)."""
         scene = without_paint(self.b._scene, layer_id) if self.b._scene else None
         if scene is None:
             raise RuntimeError("the canvas can't be drawn right now, so there is nothing to erase (see the status line)")
-        self.b.frames.still(scene, self.b.time, self.b.play.samples(), lambda px, e: self._revealed.emit(ink, px, e))
+        rect = reveal_rect(self.b.world.visible(), x, y)
+        self.b.frames.still(scene, self.b.time, self.b.play.samples(),
+                            lambda px, e: self._revealed.emit(ink, (px, (rect["x"], rect["y"])), e), rect)
 
-    def _reveal(self, ink, px, error):
+    def _reveal(self, ink, got, error):
         if error is not None:
             self.b._fail(f"Error: the eraser can't show what is under the layer: {error}")
         else:
-            self._wet.reveal(ink, px)
+            self._wet.reveal(ink, *got)
 
     def _wet_add(self, s, n, x, y, pressure):
         """The move's point to the wet ink: a smudge's in canvas px, as the stroke took it (if it did)."""
@@ -238,12 +241,19 @@ class Painter(BrushPanel):
     def endStroke(self):
         s, self._stroke = self._stroke, None
         if s is not None:
-            saved = self.b.guard(lambda: self.b.done(s.end(), ""))
+            saved = self.b.guard(lambda: self._saved(s.end()))
             if s.wet:
                 self._wet.lift(saved)
             if saved:
                 self._new_layer = False             # the new paint layer is made: later strokes go on it
             self._refresh()
+
+    def _saved(self, change):
+        """The stroke's change done; a stroke the drawing couldn't hold started a new one: the status line says so."""
+        self.b.done(change, "")
+        said = paint_overflow.note(change, self.b.doc) if change is not None else None
+        if said:
+            self.b._set_status(said)
 
     # ---- frame by frame (screen shortcuts and buttons; each is one change) -----------------------------------
     def _frame_edit(self, make):

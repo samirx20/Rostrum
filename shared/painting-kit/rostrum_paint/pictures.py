@@ -105,10 +105,11 @@ def _built_paper(name):
     return np.ascontiguousarray(_paper(name), np.float32)
 
 
-def tiled(tile, h, w, scale):
-    """The tile repeated over an h x w canvas at `scale` (bilinear, wrapping, so the seams never show)."""
+def tiled(tile, h, w, scale, origin=(0, 0)):
+    """The tile repeated over an h x w canvas at `scale` (bilinear, wrapping, so the seams never show), from canvas px
+    `origin` (where the paper starts: marks.Paper)."""
     n = tile.shape[0]
-    fy, fx = (np.arange(h) / scale) % n, (np.arange(w) / scale) % n
+    fy, fx = ((np.arange(h) - origin[1]) / scale) % n, ((np.arange(w) - origin[0]) / scale) % n
     y0, x0 = fy.astype(int), fx.astype(int)
     gy, gx = (fy - y0)[:, None], (fx - x0)[None, :]
     y1, x1 = (y0 + 1) % n, (x0 + 1) % n

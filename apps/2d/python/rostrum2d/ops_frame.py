@@ -8,7 +8,7 @@ import math
 from rostrum_core import Param
 from rostrum_core.errors import codes
 
-from . import frame_sizes
+from . import cover, frame_sizes
 from .evaluate import resolve
 from .kind import REGISTRY as R
 from .ops_align import AT, SIZED, _frame, _parent, _put
@@ -38,8 +38,7 @@ def _scale_for(mode: str, w: float, h: float, r: float, W: float, H: float) -> f
     both centred on the same point."""
     c, s = abs(math.cos(math.radians(r))), abs(math.sin(math.radians(r)))
     if mode == "cover":     # every frame corner, taken into the box's own turn, must lie within its half sides
-        need_u, need_v = (c * W + s * H) / 2, (s * W + c * H) / 2
-        return max(need_u / (w / 2), need_v / (h / 2))
+        return cover.scale_to_cover((c * W + s * H) / 2, (s * W + c * H) / 2, w, h)
     return min(W / (c * w + s * h), H / (s * w + c * h))
 
 
@@ -59,8 +58,7 @@ def layer_fill_frame(ctx, targets, args):
         if sx <= 0 or sy <= 0:
             ctx.fail(codes.BAD_ARGUMENT, f'target "{i}"', "has no size to scale")
         k = _scale_for(args.get("mode", "cover"), sx, sy, p["rotation"], W, H)
-        r = math.radians(p["rotation"])        # the box's centre sits at the frame's centre: move the anchor to match
-        dx, dy = (0.5 - p["anchorX"]) * sx * k, (0.5 - p["anchorY"]) * sy * k
+        x, y = cover.anchor_at(x0 + W / 2, y0 + H / 2, sx * k, sy * k, p["anchorX"], p["anchorY"], p["rotation"])
         _put(ctx, i, "scale", k, args)
-        _put(ctx, i, "x", x0 + W / 2 - (math.cos(r) * dx - math.sin(r) * dy), args)
-        _put(ctx, i, "y", y0 + H / 2 - (math.sin(r) * dx + math.cos(r) * dy), args)
+        _put(ctx, i, "x", x, args)
+        _put(ctx, i, "y", y, args)

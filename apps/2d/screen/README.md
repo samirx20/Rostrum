@@ -120,7 +120,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   Steps: `lasso x,y … [open]`, `selectstrokes on|off`, `strokesmove`, `strokesturn`, `strokesdelete`, `strokescopy`,
   `strokespaste`, `strokesclear`, `clickarea`, `clickat` (`stroke_steps.py`).
 - **Set depth ▾** (actions.py `depth_far|middle|near`, rule `depth` in action_rules.py): on drawings of a composition that
-  has a camera: `drawing.set {depth}` then `background.fit` in one change (3 / 1 / 0.25, the `background.add` defaults).
+  has a frame: `layer.set_depth` (kept where shown) then `background.fit` (Cover the frame's move) on those it applies to, in one change (3 / 1 / 0.25, the `background.add` defaults). ⋯ Cover the frame's move (cover_move.py) and the warning band (cover_band.py, CoverBand.qml) on a picked backdrop.
   Without a camera it is absent, in Ctrl+K too (a key pressed for it says why in the status line: the action's `why`).
 - **Focused area** (`backend.setFocusArea`, tools2d.py; Main.qml): the keyboard focus or a click in the canvas, timeline or
   settings sets it; `inspect_screen`'s `focus` reads it (`screen_seen.py`). The kit's AppShell version (S34) can replace it.
@@ -227,8 +227,8 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - **Drawings' pictures are made off the GUI thread**: a change to a drawing describes the scene with stand-ins for
   pictures not made yet (`scene.describe(later=…)`), `screen2d/paint_pictures.py` makes them (the same `canvas.png`
   export uses), then the scene is described again and drawn. Painting's wet ink (`wet.py`, `wet_ink.py`) shows the
-  stroke meanwhile; its whole-stroke restamp also runs on a worker, and the eraser's ink shows the frame drawn once
-  without its layer. Python's thread hand-over is 1 ms in the screen (`session.SWITCH_S`), so a worker never holds the
+  stroke meanwhile, in world px anywhere on the canvas (the frame at home or not); its whole-stroke restamp also runs
+  on a worker, and the eraser's ink shows the world the canvas shows, drawn once without its layer. Python's thread hand-over is 1 ms in the screen (`session.SWITCH_S`), so a worker never holds the
   screen's thread up for longer.
 - Click empty canvas: the composition is selected (size, frame rate, length, background).
 

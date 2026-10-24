@@ -26,3 +26,18 @@ def test_move_keeps_every_stroke_in_place_and_is_one_undo_step():
     assert d.parent_of(paint)[0] == far["frames"][0]["id"]
     d.undo(AGENT)
     assert d.data == snapshot
+
+
+def test_cover_the_frames_move_leaves_no_gap_for_a_turned_stretched_picture_and_a_drawing():
+    d = Document.new(KIND)
+    d.run_script("s.py", run_source(SETUP + 'cam.key("zoom", {0: 1, 2: 0.7})\ncam.key("rotation", {0: 0, 2: 12})\n', "s.py"))
+    d.apply([{"op": "layer.add", "target": "c", "args": {"type": "shape", "id": "sky"}},
+             {"op": "shape.set", "target": "sky", "args": {"x": 300, "y": 200, "w": 400, "h": 300, "rotation": 20,
+                                                           "scaleX": 1.5, "anchorX": 0.2, "depth": 1.5}},
+             {"op": "layer.add", "target": "c", "args": {"type": "drawing", "id": "hills"}},
+             {"op": "drawing.set", "target": "hills", "args": {"w": 600, "h": 400, "rotation": 10, "scale": 1.3, "depth": 0.5}}], AGENT)
+    assert B.gaps(d.item("c"), d.item("sky"))                  # small and off to one side: the frame sees past it
+    d.apply({"op": "background.fit", "target": ["sky", "hills"], "args": {}}, AGENT)
+    sky = d.item("sky")
+    assert B.gaps(d.item("c"), sky) == [] and sky["rotation"] == 20 and sky["scaleX"] == 1.5
+    assert B.gaps(d.item("c"), d.item("hills")) == [] and d.item("hills")["rotation"] == 10      # the canvas grew

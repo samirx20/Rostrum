@@ -78,7 +78,7 @@ def region(alpha: np.ndarray, at, gap: str = "small") -> list[list[float]]:
     h, w = alpha.shape
     x, y = int(np.floor(at[0])), int(np.floor(at[1]))
     if not (0 <= x < w and 0 <= y < h):
-        raise NotClosed(f"({at[0]:g}, {at[1]:g}) is outside the painting ({w}×{h} px)", "That click is outside the painting.")
+        raise NotClosed(f"({at[0]:g}, {at[1]:g}) is outside the painting ({w}×{h} px)", "That click is outside the drawing.")
     r = GAPS[gap]
     line = alpha >= 0.5
     walls = _grow(line, r)
@@ -89,7 +89,7 @@ def region(alpha: np.ndarray, at, gap: str = "small") -> list[list[float]]:
     if area[0].any() or area[-1].any() or area[:, 0].any() or area[:, -1].any():
         raise NotClosed(f"the area at ({at[0]:g}, {at[1]:g}) is not closed: it reaches the edge of the painting "
                         f"(close the lines, or a larger Close gaps)",
-                        "This area has a gap. Try Medium or Large under Close gaps.")
+                        "This area isn't closed: it runs out to the drawing's edge. Close the gap, or raise Close gaps.")
     area = _grow(_grow(area, r) & ~line, 1)
     return [[float(px), float(py), ring] for ring, loop in enumerate(_loops(area)) for px, py in loop]
 

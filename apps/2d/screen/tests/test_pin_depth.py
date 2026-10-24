@@ -51,3 +51,20 @@ def test_pin_and_unpin_offered_only_where_they_apply(doc):
     assert offered(["inner"]) == set() and offered(["frame"]) == set()
     doc.apply([pin_depth.calls(Facts(doc, ["card"], {"now": T}), True)[0]], Who.person(), "pin")
     assert offered(["card"]) == {"layer:unpin"}
+
+
+def test_set_depth_far_leaves_a_covering_drawing_s_canvas_alone(doc):
+    """Set depth ▾ Far on a painted background: it stays where it shows, and its canvas (which still covers the move)
+    is not resized, so its picture is not made again (it showed the old or a blank picture meanwhile)."""
+    doc.apply({"op": "background.add", "target": "c", "args": {"depths": [0.0], "names": ["Hills"]}}, Who.person())
+    hills = next(l for l in doc.item("c")["layers"] if l["type"] == "drawing")
+    paint = hills["frames"][0]["paints"][0]["id"]
+    doc.apply({"op": "stroke.add", "target": paint, "args": {"points": [[300, 300], [900, 600]], "size": 40}}, Who.person())
+    before = doc.item(hills["id"])
+    f = Facts(doc, [hills["id"]], {"now": T})
+    calls = pin_depth.depth_calls(f, 3.0)
+    assert [c["op"] for c in calls] == ["layer.set_depth", "background.fit"]
+    doc.apply(calls, Who.person(), "Set depth")
+    after = doc.item(hills["id"])
+    assert (after["w"], after["h"], after["depth"]) == (before["w"], before["h"], 3.0)
+    assert after["frames"][0]["paints"][0]["strokes"] == before["frames"][0]["paints"][0]["strokes"]

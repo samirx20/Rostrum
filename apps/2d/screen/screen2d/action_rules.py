@@ -6,7 +6,7 @@ field's `valid_when`), read on the selection's facts below. Its `calls`:
 
     {"op": "group.make", "target": "stack", "args": {"id": "$new:group", "as": "group"}}
     {"rule": "order", "how": "front"}                    a named rule that makes several calls (layer.arrange)
-    {"rule": "depth", "value": 3.0}                      Set depth: layer.set_depth (kept where shown) + background.fit
+    {"rule": "depth", "value": 3.0}                      Set depth: layer.set_depth (kept where shown) + background.fit where it applies
     {"rule": "attach"} · {"rule": "frame", "how": "view"}  Attach to bone (rig_attach.py) · the frame's (frame_actions.py)
     {"rule": "pin", "on": True}                          Pin to frame / Unpin from frame: layer.pin (pin_depth.py)
 
@@ -27,7 +27,7 @@ from rostrum2d.rig.mirror import pairs as mirror_pairs
 from rostrum_core.ids import counted
 from rostrum_core.tree import index
 
-from . import frame_actions, pin_depth, rig_attach
+from . import cover_move, frame_actions, pin_depth, rig_attach
 from .rig_mouths import is_eyes, is_mouth
 
 SHAPES = ("shape", "path")
@@ -88,7 +88,8 @@ class Facts:
             "eyes_set": self.count == 1 and is_eyes(self.items[0]),
             "depth_ok": self.kinds == {"drawing"} and bool(p) and p["type"] == "comp",   # Set depth: drawings of the scene itself
             **frame_actions.facts(self),                    # Frame the view, Cut here … (frame_actions.py)
-            **pin_depth.facts(self)}                        # Pin to frame / Unpin from frame (pin_depth.py)
+            **pin_depth.facts(self),                        # Pin to frame / Unpin from frame (pin_depth.py)
+            **cover_move.facts(self)}                       # Cover the frame's move (cover_move.py)
 
 
 def _comp_of(doc, id_: str) -> str:
@@ -176,6 +177,9 @@ def cutter_name(call: dict, doc) -> str:
 def said(calls: list[dict], label: str, doc) -> str:
     """The words a change is recorded and shown with: K says what it keyed ("Keyed 4 settings on 3 layers")."""
     cut = next((c for c in calls if c["op"] == "mask.make"), None)
+    note = cover_move.fill_note(calls, label, doc)             # Fill the frame while the frame moves: at that moment only
+    if note:
+        return note
     if cut:
         return f"{label} — {cutter_name(cut, doc)} is the cutter"
     pose = [c for c in calls if c["op"] == "key.add" and c["args"].get("fields") == "pose"]
