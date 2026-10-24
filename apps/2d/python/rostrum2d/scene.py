@@ -105,9 +105,12 @@ def _font_stand_in(node: dict, item: dict, font: str, where: dict) -> dict:
 
 def _pictures(item: dict, fps: float, where: dict | None) -> list[dict]:
     """The drawings that can show (the Draw each frame rule, drawing.py), each as its picture; a looping drawing's
-    run repeated to the layer's end (or the composition's)."""
+    run repeated to the layer's end (or the composition's). A drawing layer's pictures are cropped to their ink; paint
+    on an element covers its whole box."""
     until = min(item.get("end", retime.END_OF_COMP), (where or {}).get("until", 0.0) or 60.0)
     later = (where or {}).get("later")
+    if item["type"] == "drawing":       # a drawing's picture holds only its ink, with where it goes (`crop`)
+        return [{"at": n, **drawing.inked(item, f, later)} for n, f in drawing.repeats(item, math.ceil(until * fps))]
     return [{"at": n, "src": str(drawing.picture(item, f, later))} for n, f in drawing.repeats(item, math.ceil(until * fps))]
 
 

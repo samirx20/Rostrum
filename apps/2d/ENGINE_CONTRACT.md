@@ -68,9 +68,13 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - **`drawing`** (added S6, same version): a layer drawn frame by frame with the shared painting kit. `props` has `w`, `h`
   (its box, px) and the usual transform; `frames: [{"at": 0, "src": "C:\…\<key>_800x1000.png"}, …]`, sorted by `at`
   (a frame number). At time `t` the engine shows the `src` of the last frame with `at <= floor(t · fps)`; nothing
-  before the first. Each `src` is a straight-alpha RGBA PNG of exactly `w × h`, made once by the painting kit and named by
-  its content (never changes under the same name): the engine only reads it, stretched to the box like an image with
-  `fit: stretch`. Masks and effects apply as on any layer. Python sends only the drawings that can show: with the
+  before the first. Each `src` is a straight-alpha RGBA PNG made once by the painting kit and named by its content
+  (never changes under the same name): the engine only reads it. A frame entry may carry **`crop: [x, y, w, h]`**
+  (added F8, same version): the PNG holds only that rectangle of the drawing's canvas (canvas px, the box's px: whole
+  numbers, inside 0..`w` × 0..`h`), where its ink is (`rostrum_paint/ink.py`); it is drawn into exactly that rectangle of
+  the box, stretched to it, and the rest of the box is see-through. No `crop`: the PNG covers the whole box (`w × h`,
+  stretched like an image with `fit: stretch`; a drawing with no ink sends a 1 × 1 see-through PNG). Masks and effects
+  apply as on any layer. Python sends only the drawings that can show: with the
   document's "Draw each frame" off, only the first (`rostrum2d/drawing.py` `shown_frames`).
 - **`paint`** (added H29, same version): paint on an element. A `shape`, `text`, `image`, `video` or `path` may carry
   `paint: {"frames": [{"at", "src"}, …], "inside": true}`: its drawings, picked at `t` by the drawing rule above, each

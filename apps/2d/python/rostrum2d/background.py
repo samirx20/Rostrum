@@ -10,9 +10,8 @@ from __future__ import annotations
 import math
 
 from . import fields as F
+from .cover import BLEED, edges
 from .frame import view
-
-BLEED = 24          # px painted past the furthest edge the frame shows: a soft edge never reaches the frame
 
 
 def comp_size(comp: dict) -> tuple[float, float]:
@@ -87,14 +86,11 @@ def size_ratio(src: dict, dst: dict) -> float:
 
 
 def gaps(comp: dict, layer: dict, shot_list=None) -> list[str]:
-    """Plain words for each edge where the frame would see past a drawing's canvas over the shot; [] = it covers."""
-    x0, y0, x1, y1 = seen_box(comp, layer.get("depth", 0.0), shot_list)
-    l, t, r, b = canvas_box(layer)
-    out = []
-    for name, short in (("left", l - x0), ("top", t - y0), ("right", x1 - r), ("bottom", y1 - b)):
-        if short > 0.5:
-            out.append(f"{short:.0f} px short on the {name}")
-    return out
+    """Plain words for each edge where the frame would see past a layer over the shot (cover.edges: its own turned
+    box at each frame); [] = it covers."""
+    fps = float(comp.get("fps", F.defaults("comp")["fps"]))
+    return [f"{e['short']} px short on the {e['edge']}" + (f" from {e['from']:.1f} s" if e["from"] >= 0.05 else "")
+            for e in edges(comp, layer, shot_list or shots(comp), fps)]
 
 
 def depth_names(depths: list[float]) -> list[str]:

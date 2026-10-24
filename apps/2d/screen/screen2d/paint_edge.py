@@ -12,6 +12,21 @@ import pathops
 from PySide6.QtCore import Property, QObject, Signal
 
 
+def corner(d: str) -> tuple[float, float]:
+    """The path's top-left (its smallest x and y): the edge is sent from there, as Qt's dashed line drops the dashes
+    of a path at negative coordinates (a drawing that grew left or up of the world's 0, 0 lost its top and left edges)."""
+    v = [float(n) for n in re.findall(r"-?[\d.]+(?:e-?\d+)?", d)]
+    return (min(v[0::2]), min(v[1::2])) if v else (0.0, 0.0)
+
+
+def moved(d: str, dx: float, dy: float) -> str:
+    """M / L / Z path data moved by dx, dy."""
+    def one(m):
+        v = [float(n) for n in re.findall(r"-?[\d.]+(?:e-?\d+)?", m.group(2))]
+        return m.group(1) + " ".join(f"{v[i] + (dx if i % 2 == 0 else dy):.2f}" for i in range(len(v)))
+    return re.sub(r"([ML])([^MLZ]*)", one, d)
+
+
 def outer(d: str) -> str:
     """The engine's edge (flattened M / L / Z contours) with overlaps merged: a path's fill and stroke outlines, a
     variable font's overlapping letter contours, so the line shows only the edge paint stops at, never lines inside."""
@@ -40,7 +55,7 @@ class PaintEdge(QObject):
     def __init__(self, bridge):
         super().__init__(bridge)
         self.b = bridge
-        self._asked, self._layer, self._path = [], "", ""
+        self._asked, self._layer, self._path, self._at = [], "", "", (0.0, 0.0)
         bridge.frames.placed.connect(self._on_placed)
         for s in (bridge.toolChanged, bridge.selectedItemsChanged, bridge.painter.changed):
             s.connect(self._retarget)
@@ -64,9 +79,12 @@ class PaintEdge(QObject):
     def _on_placed(self, places: dict):
         layer = next(iter(places), "")
         path = outer(places[layer]["edge"]) if layer else ""
-        if (layer, path) != (self._layer, self._path):
-            self._layer, self._path = layer, path
+        at = corner(path)
+        path = moved(path, -at[0], -at[1]) if path else ""
+        if (layer, path, at) != (self._layer, self._path, self._at):
+            self._layer, self._path, self._at = layer, path, at
             self.changed.emit()
 
     layer = Property(str, lambda self: self._layer, notify=changed)      # "" while there is no edge to show
-    path = Property(str, lambda self: self._path, notify=changed)        # path data in composition px
+    path = Property(str, lambda self: self._path, notify=changed)        # path data in composition px, from `at`
+    at = Property("QVariantMap", lambda self: {"x": self._at[0], "y": self._at[1]}, notify=changed)

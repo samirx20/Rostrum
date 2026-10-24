@@ -29,9 +29,12 @@ fn same_shape(a: &Node, b: &Node) -> bool {
 }
 
 /// The edits that turn the subtree at `o` (kept) into the one at `n` (this frame's parse).
+/// The root's own attributes are the session's, not the markup's (the stage's `overflow: visible` while the world
+/// picture is drawn, serve.rs `open_stage`): only what is inside it is compared, so staging the whole page never
+/// drops them (a world picture with the frame at home was cut at the frame's edge on a fresh page).
 pub fn diff_from(old: &BaseDocument, new: &BaseDocument, o: NodeId, n: NodeId) -> Edits {
     let mut edits = Edits::default();
-    walk(old, new, o, n, &mut edits);
+    children(old, new, o, n, &mut edits);
     edits
 }
 
@@ -71,6 +74,11 @@ fn walk(old: &BaseDocument, new: &BaseDocument, o: NodeId, n: NodeId, edits: &mu
         }
         _ => {}
     }
+    children(old, new, o, n, edits);
+}
+
+fn children(old: &BaseDocument, new: &BaseDocument, o: NodeId, n: NodeId, edits: &mut Edits) {
+    let (on, nn) = (old.get_node(o).unwrap(), new.get_node(n).unwrap());
     let (oc, nc) = (&on.children, &nn.children);
     let shape_kept = oc.len() == nc.len() && oc.iter().zip(nc).all(|(&a, &b)| same_shape(old.get_node(a).unwrap(), new.get_node(b).unwrap()));
     if !shape_kept {

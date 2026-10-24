@@ -32,7 +32,7 @@ IGNORE = ("/MotionPath#", "/barEnd:")
 QUICK = ("export-area", "workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
          "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles",
-         "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "frame-pinned-title", "frame-look-through", "scene-1080x1920", "long-status-line", "import-report")
+         "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "frame-pinned-title", "frame-look-through", "cover-band", "scene-1080x1920", "long-status-line", "import-report")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 
@@ -340,6 +340,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("frame-look-through", ["--sample"], ["select card", "set depth 3", "select title", "set depth -0.4", "frame pick",
                                               "animate x", "animate zoom", "time 2", "set x 1300", "set zoom 1.25",
                                               "time 1.5", "select title", "lookthrough on"]),
+        # F8 (spec 4.12): a backdrop picked that the frame's move sees past on the right: the striped band with its time
+        ("cover-band", ["--sample"], ["select card", "set w 2100", "set h 1200", "set x 1000", "frame pick", "animate x",
+                                      "time 2", "set x 1300", "select card", "fitall"]),
         ("paint-layer-menu", ["--sample"], [*PAINTED, "paintlayer", "draw 600 400 1200 420", "paintlayer", f"paintset {LONG_PAINT}",
                                             "clickobj paintLayer:Paint_2 right"]),
     ]

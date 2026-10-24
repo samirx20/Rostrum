@@ -208,11 +208,20 @@ fn content(it: &Item, look: Look) -> R<(String, String)> {
             if grad.is_some() {
                 return Err(format!("{}: a gradient on a drawing is not drawn by this engine yet", it.id));
             }
-            // The painting kit's picture of the drawing showing now (eval.rs), stretched to the canvas box.
+            // The painting kit's picture of the drawing showing now (eval.rs), stretched to the canvas box; an
+            // ink-only picture (`crop`: its rectangle in canvas px) laid where it lies in it.
             let s = format!("width:{}px;height:{}px;", v(it, "w"), v(it, "h"));
+            let place = match it.props.get("crop").and_then(Value::as_array) {
+                Some(c) => {
+                    let n = |i: usize| c[i].as_f64().unwrap_or(0.0);
+                    let (w, h) = (it.num("w").max(1.0), it.num("h").max(1.0));
+                    format!("position:absolute;left:{}%;top:{}%;width:{}%;height:{}%;", n(0) / w * 100.0, n(1) / h * 100.0, n(2) / w * 100.0, n(3) / h * 100.0)
+                }
+                None => "width:100%;height:100%;".into(),
+            };
             match it.str("src") {
                 "" => Ok((s, String::new())),
-                src => Ok((s, format!("<img src=\"/__local_asset?p={}\" style=\"width:100%;height:100%;object-fit:fill;\">", percent(src)))),
+                src => Ok((s, format!("<img src=\"/__local_asset?p={}\" style=\"{place}object-fit:fill;\">", percent(src)))),
             }
         }
         "path" => path::content(it, look),

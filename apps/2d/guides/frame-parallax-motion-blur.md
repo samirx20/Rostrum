@@ -126,8 +126,8 @@ Layers are flat: for a layer that turns in perspective use `tiltX` / `tiltY` (se
 **On the screen:** pick a layer of the scene (not one inside a group) and open its **Depth** group in the settings
 panel. **Depth** sets how far it is; the layer **stays where it shows at the playhead** (its position and size change
 with it, as one undo step), so changing depth never makes it jump. For drawings, **Set depth ▾** on the actions row
-offers Far / Middle / Near / Other depth…, which also resizes a painted background to cover the frame's move (see
-`painted-backgrounds`). The canvas draws every layer as the frame sees it at the playhead, so a far layer slides by its
+offers Far / Middle / Near / Other depth…, which also grows a painted background where it must to cover the frame's
+move (see `painted-backgrounds`). The canvas draws every layer as the frame sees it at the playhead, so a far layer slides by its
 parallax when you scrub, and you grab it where you see it.
 
 **Place far things with the playhead at the moment the frame looks at them.** A far hill placed at 0 s, with the frame
@@ -165,7 +165,8 @@ layers keep their parallax. Layers in the world don't move. **Pinned layers keep
 centre**, so a centred title stays centred. One change, one undo step; the view refits if it was fitted.
 
 So Wide 16:9 → Vertical 9:16 shows the middle of the old picture, not its left edge; move the frame (or **Frame these**)
-to choose another part. **Fill the frame** and **Align to the frame** use the frame where it is at the playhead.
+to choose another part. **Fill the frame** and **Align to the frame** use the frame where it is at the playhead; while
+the frame moves, ⋯ › **Cover the frame's move** sizes a layer for the whole move (`painted-backgrounds`).
 
 
 ## Motion blur (shutter)

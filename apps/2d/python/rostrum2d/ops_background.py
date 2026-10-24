@@ -1,7 +1,8 @@
 """Painted backgrounds: operations. `background.add` sets up depth layers (far → near drawing layers, each at a
 depth and big enough for everything the frame shows of it over the shot); `background.move` moves paint
 layers or strokes into another drawing (a depth layer), keeping where they sit in the composition, so a flat painting
-becomes a parallax background. Each call is one change = one undo step. The maths is background.py.
+becomes a parallax background (`background.fit`, Cover the frame's move: ops_cover.py). Each call is one change = one
+undo step. The maths is background.py.
 """
 from __future__ import annotations
 
@@ -20,7 +21,7 @@ MAX_CANVAS = 8192       # the drawing layer's canvas limit (fields.py)
 
 @R.operation("background.add", "Set up a painted background in depth layers: one drawing layer per depth, far to near, "
              "under the other layers. Each is placed at its depth and sized to cover all the frame shows of it "
-             "over the composition (pans, push-ins, roll). Key the frame first, or resize later with background.fit.",
+             "over the composition (pans, push-ins, roll). Key the frame first, or grow them later with background.fit.",
              target="comp", label="Add painted background",
              params=[Param.list("depths", "number", label="Depths (far → near)", min=-0.99, max=1000, default=[3.0, 1.0, 0.25],
                                 help="Depth of each layer, far first: 0 = on the frame's plane, 1 = moves half as much"),
@@ -46,27 +47,6 @@ def background_add(ctx, targets, args):
             frame = starter_frame(ctx)
             frame["paints"][0]["name"] = "Paint"
             ctx.insert(item["id"], "frames", frame)
-
-
-@R.operation("background.fit", "Resize drawing layers so they cover everything the frame shows of them at their depth "
-             "over the composition (after the frame changed). Strokes keep their place in the composition.",
-             target="drawing", label="Fit to camera", importance="secondary",
-             params=[Param.number("bleed", label="Bleed", min=0, max=2000, unit="px", default=B.BLEED, importance="deep")])
-def background_fit(ctx, targets, args):
-    for t in targets:
-        layer, comp = ctx.item(t), _comp_of(ctx, t)
-        box = _fits(ctx, B.cover(comp, layer.get("depth", 0.0), args.get("bleed", B.BLEED)), t)
-        new = {**layer, **box, "scale": 1.0, "scaleX": 1.0, "scaleY": 1.0, "anchorX": 0.5, "anchorY": 0.5}
-        for frame in layer.get("frames", []):
-            for paint in frame.get("paints", []):
-                for s in list(paint.get("strokes", [])):
-                    _shift(ctx, s, layer, new)
-            for m in frame.get("paintmasks", []):
-                _shift(ctx, m, layer, new)
-        for k, v in box.items():
-            ctx.set(t, k, v)
-        for k in ("scale", "scaleX", "scaleY", "anchorX", "anchorY"):
-            ctx.set(t, k, new[k])
 
 
 @R.operation("background.move", "Move paint layers or strokes into another drawing layer (a depth layer), keeping where "

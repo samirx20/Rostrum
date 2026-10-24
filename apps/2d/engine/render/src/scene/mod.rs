@@ -78,15 +78,16 @@ pub struct Node {
     pub effects: Vec<Node>,
     pub masks: Vec<Node>,
     pub layers: Vec<Node>,
-    /// A drawing layer's drawings: (frame number it appears at, its picture), sorted by frame (contract § 2).
-    pub frames: Vec<(i64, String)>,
+    /// A drawing layer's drawings: (frame number it appears at, its picture, where the picture lies in the canvas),
+    /// sorted by frame (contract § 2).
+    pub frames: Vec<Pic>,
     /// Paint on an element (contract § 2 `paint`): its drawings as `frames` are, and whether it is kept inside the
     /// element's own pixels. Empty: no paint.
-    pub paint: Vec<(i64, String)>,
+    pub paint: Vec<Pic>,
     pub paint_inside: bool,
     /// A painted fill's drawings (contract § 2 `fillFrames`; a shape or path), as `frames` are: the one showing is the
     /// fill's picture (stage_raster.rs). Empty: the fill is `fillPicture` as written.
-    pub fill_frames: Vec<(i64, String)>,
+    pub fill_frames: Vec<Pic>,
     /// A rig's bones, iks and binds (crate::rig; RIG.md).
     pub rig: Vec<Node>,
     /// A gradient's colour stops (stage_fill.rs).
@@ -238,10 +239,10 @@ fn node(v: &Value, parent: &str) -> Result<Node, String> {
         layers: kids("layers", role == Role::Comp || matches!(kind, "group" | "rig"), &[Role::Layer])?,
         rig: kids("rig", kind == "rig", &[Role::Rig])?,
         stops: kids("stops", kind == "gradient", &[Role::Stop])?,
-        frames: if matches!(kind, "drawing" | "video") { drawings(&id, &v["frames"])? } else { vec![] },
-        paint: if v.get("paint").is_some() { drawings(&format!("{id}.paint"), &v["paint"]["frames"])? } else { vec![] },
+        frames: if matches!(kind, "drawing" | "video") { drawings(&id, &v["frames"], kind == "drawing")? } else { vec![] },
+        paint: if v.get("paint").is_some() { drawings(&format!("{id}.paint"), &v["paint"]["frames"], false)? } else { vec![] },
         paint_inside: v["paint"]["inside"].as_bool().unwrap_or(true),
-        fill_frames: if v.get("fillFrames").is_some() { drawings(&format!("{id}.fillFrames"), &v["fillFrames"])? } else { vec![] },
+        fill_frames: if v.get("fillFrames").is_some() { drawings(&format!("{id}.fillFrames"), &v["fillFrames"], false)? } else { vec![] },
         id, kind, role, props, anim,
     })
 }
@@ -252,8 +253,13 @@ pub const PAINTED: &[&str] = &["shape", "text", "image", "video", "path"];
 /// The item types a picture or painted fill fills (stage_raster.rs).
 pub const RASTER_FILLED: &[&str] = &["shape", "path"];
 
-/// A drawing's `frames: [{"at": n, "src": "…png"}, …]`, sorted by `at`; every picture must exist.
-fn drawings(id: &str, v: &Value) -> Result<Vec<(i64, String)>, String> {
+/// One picture of a drawing, an element's paint or a painted fill: (the frame it appears at, its file, and for a
+/// drawing the canvas rectangle [x, y, w, h] the picture covers: its ink only; None = the whole canvas).
+pub type Pic = (i64, String, Option<[f64; 4]>);
+
+/// A drawing's `frames: [{"at": n, "src": "…png", "crop": [x, y, w, h]?}, …]`, sorted by `at`; every picture must
+/// exist. `crop` (canvas px, a drawing's only: `cropped`) is where the picture lies in the canvas.
+fn drawings(id: &str, v: &Value, cropped: bool) -> Result<Vec<Pic>, String> {
     let list = v.as_array().ok_or_else(|| format!("{id}: a drawing needs frames: [{{at, src}}, …]"))?;
     let mut out = vec![];
     for f in list {
@@ -262,10 +268,25 @@ fn drawings(id: &str, v: &Value) -> Result<Vec<(i64, String)>, String> {
         if !std::path::Path::new(src).is_file() {
             return Err(format!("{id}.frames: the picture of the drawing at frame {at} is missing: {src}"));
         }
-        out.push((at, src.to_string()));
+        out.push((at, src.to_string(), crop(id, at, &f["crop"], cropped)?));
     }
     out.sort_by_key(|f| f.0);
     Ok(out)
+}
+
+fn crop(id: &str, at: i64, v: &Value, allowed: bool) -> Result<Option<[f64; 4]>, String> {
+    if v.is_null() {
+        return Ok(None);
+    }
+    let bad = || format!("{id}.frames: the drawing at frame {at} has crop {v}: a drawing's crop is [x, y, w, h] in canvas px, w and h above 0");
+    if !allowed {
+        return Err(format!("{id}.frames: only a drawing's pictures have a crop (frame {at})"));
+    }
+    let n: Vec<f64> = v.as_array().ok_or_else(bad)?.iter().filter_map(Value::as_f64).filter(|x| x.is_finite()).collect();
+    match n[..] {
+        [x, y, w, h] if w > 0.0 && h > 0.0 => Ok(Some([x, y, w, h])),
+        _ => Err(bad()),
+    }
 }
 
 fn check_value(id: &str, f: &fields::Field, v: &Value) -> Result<(), String> {

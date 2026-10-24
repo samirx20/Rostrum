@@ -4,7 +4,9 @@ drawing, making what it needs on the way, in one change (one undo step):
 - the drawing (`frame`) when the element has none at that frame, and the paint layer (`layer: "new"`, or the first
   stroke on a drawing that has none: paint layers are made by the first stroke);
 - `paintW` × `paintH` at an element's first stroke, from its box (drawing.paint_size): the paint is then stretched
-  over the box, so it moves, scales and turns with the element.
+  over the box, so it moves, scales and turns with the element;
+- on a drawing, a bigger canvas when the stroke reaches past it, in any direction (paint_grow.py), or past 8192 px a
+  side a new drawing beside it that takes the stroke (paint_overflow.py).
 
 Points are composition px (`space: "comp"`, the default: where the element is at `frame`) or the paint canvas's own
 px (`space: "canvas"`, what look_drawing shows and what the screen's pen sends). The stroke itself is the painting
@@ -19,7 +21,7 @@ from rostrum_paint.ops import build
 
 from rostrum_paint import linked
 
-from . import drawing as D, paint_fields, placement, shared_paints
+from . import drawing as D, paint_fields, paint_grow, paint_overflow, placement, shared_paints
 from .engine import EngineError
 from .evaluate import resolve
 from .kind import REGISTRY as R
@@ -31,7 +33,9 @@ MASK = next(p for p in rostrum_paint.FIELDS["stroke"] if p.name == "mask")
 @R.operation("paint.stroke", "Paint one stroke on an element (shape, text, image, video, path) or a drawing. Its paint "
              "is the element's own look: kept inside its outline (Keep inside the outline), stretched over its box, moving "
              "with it. Makes the drawing at that frame and the paint layer if missing; several calls in one list are one "
-             "undo step.", target=PAINTABLE, label="Paint",
+             "undo step. A drawing layer grows to hold the stroke, in any direction, nothing painted moving on screen (its "
+             "canvas px shift by the growth left / up); past 8192 px a side the stroke starts a new drawing just above it "
+             "(\"<name> 2\"), in the same undo step.", target=PAINTABLE, label="Paint",
              params=[Param.points("points", label="Path", min=2, max=5, required=True,
                                   help="[[x, y, pressure 0..1, tilt x°, tilt y°], …]; pressure 1 and no lean when "
                                        "left out (tilt: the pen's lean each way, -60..60)"),
@@ -56,6 +60,8 @@ def paint_stroke(ctx, targets, args):
             cw, ch = D.paint_size(item, props)
             if args.get("space", "comp") == "comp":     # where the engine draws the layer at that frame (placement.py)
                 pts = placement.canvas_points(item, props, _place(ctx, t, n), pts)
+        if item["type"] == "drawing":                   # the drawing grows to hold the stroke, or a new one starts
+            t, pts = _fit(ctx, t, pts, {**rostrum_paint.brush_defaults(), **brush})
         if item["type"] not in D.CANVASES and not item.get("paintW"):
             ctx.set(t, "paintW", cw)
             ctx.set(t, "paintH", ch)
@@ -65,6 +71,17 @@ def paint_stroke(ctx, targets, args):
         if sid in ctx.idx:
             ctx.fail(codes.BAD_ARGUMENT, f'id "{sid}"', "is already used in this document")
         ctx.insert(paint["id"], "strokes", build("stroke", sid, {**brush, "points": pts}, ctx.where))
+
+
+def _fit(ctx, t: str, pts, brush: dict) -> tuple[str, list]:
+    """(the drawing the stroke goes on, its points there): `t` grown to hold it (paint_grow.py), or a new drawing beside
+    it when `t` can't grow that far (paint_overflow.py)."""
+    item = ctx.item(t)
+    box = paint_grow.reach(pts, brush)
+    if paint_grow.fits(int(item.get("w", 1920)), int(item.get("h", 1080)), box):
+        dx, dy = paint_grow.grow(ctx, t, box)
+        return t, paint_grow.shifted(pts, dx, dy) if dx or dy else pts
+    return paint_overflow.start(ctx, t, box, pts)
 
 
 def _place(ctx, id_: str, n: int) -> dict:

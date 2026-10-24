@@ -1,5 +1,6 @@
 """One stroke's wet ink (wet.py shows it): stamped by the painting kit's own brush (`canvas.stamp`, the stamp a saved
-stroke gets), in composition px, so no pointer move waits for the scene to be described and drawn again.
+stroke gets), in world px (the endless canvas: anywhere, the frame at home or not, negative px too), so no pointer move
+waits for the scene to be described and drawn again. Only the stroke's own box is ever held, never the composition.
 
 Two parts. The tip, the newest points, is stamped on the screen's thread at each look: a few points, cheap. The dry
 part is the whole stroke so far stamped again as the saved stroke will be (a brush's dabs depend on the whole
@@ -7,11 +8,12 @@ stroke: its noise and tapers are sized by its length), so the tip never leaves a
 so it runs on a worker thread (`_DRY`): once the tip is CHUNK points long the next restamp starts, and the screen
 takes it in at the first look after it is done (`settle`). The pen never waits for it.
 
-`under`: a smudging brush smears the layer's own paint (premultiplied, its canvas px: `bounds` is the canvas size,
-points in canvas px, `place` = (x, y, x scale, y scale) puts canvas px on the composition). `reveal`: the eraser.
-Its ink is the eraser's coverage, and where it lies the picture shows the frame drawn without the layer being erased
-(straight RGBA8, composition px, `reveal_with`): over the frame that is (1 - e) × with + e × without, exactly what
-erasing e of a layer's paint gives (its blend is linear in the paint's alpha). Until that frame comes, nothing shows.
+`under`: a smudging brush smears the layer's own paint (premultiplied, its canvas px: `bounds` is the canvas size and
+the smear stays inside it, points in canvas px, `place` = (x, y, x scale, y scale) puts canvas px on the world).
+Normal ink has no bounds (None). `reveal`: the eraser. Its ink is the eraser's coverage, and where it lies the picture
+shows the world drawn without the layer being erased (straight RGBA8 at 1 px per world px, its top-left at world px
+`origin`: `reveal_with`): over the canvas that is (1 - e) × with + e × without, exactly what erasing e of a layer's
+paint gives (its blend is linear in the paint's alpha). Until that picture comes, and outside it, nothing shows.
 """
 from __future__ import annotations
 
@@ -29,7 +31,7 @@ _DRY = ThreadPoolExecutor(max_workers=1, thread_name_prefix="wet-dry")
 
 
 class WetInk:
-    def __init__(self, brush: dict, sid: str, scale: float, bounds: tuple[int, int], under: np.ndarray | None = None,
+    def __init__(self, brush: dict, sid: str, scale: float, bounds: tuple[int, int] | None, under: np.ndarray | None = None,
                  place=(0.0, 0.0, 1.0, 1.0), erasing: bool = False, done=None):
         self.erasing = erasing
         self.brush = {**brush, "mode": "normal", "smudge": False} if erasing else brush   # an eraser: its coverage
@@ -37,9 +39,9 @@ class WetInk:
         self.size = brush.get("size", 10) / self.scale
         self.reach = self.size / 2 + PAD + 3 * brush.get("jitter", 0) * self.size
         self.points: list[list[float]] = []
-        self.smears, self.place, self.reveal = under is not None, place, None
+        self.smears, self.place, self.reveal, self._origin = under is not None, place, None, (0, 0)
         self._base = under                                              # what the stroke starts on (None: nothing)
-        self._dry = under.copy() if under is not None else np.zeros((bounds[1], bounds[0], 4), np.float32)
+        self._dry = under.copy() if under is not None else None        # a smear's paint so far (its tip smears it)
         self._settled, self._dry_box, self._dry_pic = 0, None, None     # points in the dry part; its box; its picture
         self._job, self._done = None, done                              # the restamp running; called when it is done
 
@@ -48,17 +50,18 @@ class WetInk:
         """Whether there is anything to show yet (an eraser waits for the frame without its layer)."""
         return not self.erasing or self.reveal is not None
 
-    def reveal_with(self, frame: np.ndarray):
-        self.reveal = frame
+    def reveal_with(self, frame: np.ndarray, origin: tuple[int, int]):
+        self.reveal, self._origin = frame, origin
 
     def add(self, x: float, y: float, pressure: float):
         self.points.append([x, y, round(min(max(pressure, 0.0), 1.0), 3)])
 
     def _box(self, pts) -> tuple[int, int, int, int] | None:
         xs, ys = [p[0] for p in pts], [p[1] for p in pts]
-        x0, y0 = max(0, math.floor(min(xs) - self.reach)), max(0, math.floor(min(ys) - self.reach))
-        x1 = min(self.bounds[0], math.ceil(max(xs) + self.reach))
-        y1 = min(self.bounds[1], math.ceil(max(ys) + self.reach))
+        x0, y0 = math.floor(min(xs) - self.reach), math.floor(min(ys) - self.reach)
+        x1, y1 = math.ceil(max(xs) + self.reach), math.ceil(max(ys) + self.reach)
+        if self.bounds is not None:                                     # a smear stays on its canvas
+            x0, y0, x1, y1 = max(0, x0), max(0, y0), min(self.bounds[0], x1), min(self.bounds[1], y1)
         return (x0, y0, x1, y1) if x1 > x0 and y1 > y0 else None
 
     def _tip(self) -> list:
@@ -84,7 +87,9 @@ class WetInk:
             future, box, n = self._job
             self._job = None
             x0, y0, x1, y1 = box
-            self._dry[y0:y1, x0:x1], self._dry_pic = future.result()
+            part, self._dry_pic = future.result()
+            if self._dry is not None:
+                self._dry[y0:y1, x0:x1] = part
             self._dry_box, self._settled, changed = box, n, True
         if self._job is None and len(self._tip()) >= CHUNK:
             pts, box = [list(p) for p in self.points], self._box(self.points)
@@ -118,11 +123,22 @@ class WetInk:
         w, h = x1 - x0, y1 - y0
         ax, ay = at or (x0, y0)
         if self.erasing:
-            u8 = self.reveal[ay:ay + h, ax:ax + w].copy()
-            u8[..., 3] = np.clip(px[y0:y1, x0:x1, 3] * 255 + 0.5, 0, 255).astype(np.uint8)
+            u8 = self._revealed(ax, ay, w, h)
+            u8[..., 3] = np.minimum(u8[..., 3], np.clip(px[y0:y1, x0:x1, 3] * 255 + 0.5, 0, 255).astype(np.uint8))
         else:
             u8 = np.ascontiguousarray(compose.straight8(px[y0:y1, x0:x1]))
         return QImage(u8.data, w, h, w * 4, QImage.Format.Format_RGBA8888).copy(), {"x": ax, "y": ay, "w": w, "h": h}
+
+    def _revealed(self, x: int, y: int, w: int, h: int) -> np.ndarray:
+        """The reveal picture over world px x, y, w × h; where it doesn't reach, see-through (alpha 0)."""
+        out = np.zeros((h, w, 4), np.uint8)
+        rx, ry = x - self._origin[0], y - self._origin[1]
+        H, W = self.reveal.shape[:2]
+        sx0, sy0, sx1, sy1 = max(0, rx), max(0, ry), min(W, rx + w), min(H, ry + h)
+        if sx1 > sx0 and sy1 > sy0:
+            out[sy0 - ry:sy1 - ry, sx0 - rx:sx1 - rx, :3] = self.reveal[sy0:sy1, sx0:sx1, :3]
+            out[sy0 - ry:sy1 - ry, sx0 - rx:sx1 - rx, 3] = 255
+        return out
 
     def _placed(self, image, box):
         ox, oy, kx, ky = self.place

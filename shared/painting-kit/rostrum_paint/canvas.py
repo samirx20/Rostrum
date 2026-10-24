@@ -99,21 +99,27 @@ def _h(*parts) -> str:
     return hashlib.sha1("\x1f".join(parts).encode("utf-8")).hexdigest()
 
 
-def _paper(w, h, picture="tooth", scale=1.0):
+def origin(canvas: dict) -> tuple[int, int]:
+    """Where the canvas's paper starts, in its px: (paperX, paperY), moved with the strokes when a drawing grows left or
+    up, so the grain stays under them. (0, 0) for a canvas that never did."""
+    return int(canvas.get("paperX", 0)), int(canvas.get("paperY", 0))
+
+
+def _paper(w, h, picture="tooth", scale=1.0, at=(0, 0)):
     """The canvas's paper (kept: a stroke and the next on the same paper share it). Strokes made before paper
     choice name none: the engine's tooth, at its first size."""
-    key = (w, h, picture, scale)
+    key = (w, h, picture, scale, at)
     with _LOCK:
         if key not in _PAPER:
             if len(_PAPER) > 4:
                 _PAPER.clear()
-            _PAPER[key] = marks.Paper(h, w, 0, 3.0 * scale, picture, scale)
+            _PAPER[key] = marks.Paper(h, w, 0, 3.0 * scale, picture, scale, at)
         return _PAPER[key]
 
 
-def stamp(layer_px, s: dict, w, h, masks: dict, under=None):
+def stamp(layer_px, s: dict, w, h, masks: dict, under=None, at=(0, 0)):
     """Paint one stroke (or fill) item into a layer (in place); its Coverage or None. The one place a stroke item
-    becomes brush-engine arguments."""
+    becomes brush-engine arguments. `at`: where the paper starts (`origin`)."""
     rgb = [int(s["color"][i:i + 2], 16) / 255 for i in (1, 3, 5)]
     mask = compose.mask_array(masks[s["mask"]], w, h) if s.get("mask") else None
     if s["type"] == "fill":
@@ -124,7 +130,7 @@ def stamp(layer_px, s: dict, w, h, masks: dict, under=None):
                   opacity_pressure=s["opacity_pressure"], wet=s["wet"] if s["smudge"] else 0.0,
                   sample_all=bool(s["smudge"] and s["pickup"]), **{k: s.get(k, 0.0) for k in shape.KEYS},
                   even=s.get("even", False), texture=s.get("texture", "none"))   # absent: made before they were
-    paper = _paper(w, h, s.get("paper", "tooth"), s.get("paper_scale", 1.0))
+    paper = _paper(w, h, s.get("paper", "tooth"), s.get("paper_scale", 1.0), at)
     return brush.stamp_stroke(layer_px, s["points"], rgb, s["size"], s["brush"], mask=mask,
                               under=under if params["sample_all"] else None, paper=paper, lay=LAY, **params)
 
@@ -133,12 +139,12 @@ _CHAINS: OrderedDict = OrderedDict()     # (paint id, w, h) -> (its strokes, wha
 CHAINS_KEEP = 256
 
 
-def _chain(paint, w, h, masks, below_key) -> list[str]:
-    strokes, mine = paint["strokes"], (paint["id"], w, h)
+def _chain(paint, w, h, masks, below_key, at=(0, 0)) -> list[str]:
+    strokes, mine = paint["strokes"], (paint["id"], w, h, at)
     reads_of = json.dumps([masks.get(s.get("mask")) for s in strokes if s.get("mask")], sort_keys=True) + below_key
     with _LOCK:
         got = _CHAINS.get(mine)
-    keys, done = [_h(ENGINE_VERSION, str(w), str(h))], 0
+    keys, done = [_h(ENGINE_VERSION, str(w), str(h), *([f"{at[0]},{at[1]}"] if any(at) else []))], 0
     if got is not None and got[1] == reads_of:
         old = got[0]
         while done < min(len(old), len(strokes)) and old[done] is strokes[done]:
@@ -157,10 +163,10 @@ def _chain(paint, w, h, masks, below_key) -> list[str]:
     return keys
 
 
-def _layer(paint, w, h, masks, below_key, under_fn):
+def _layer(paint, w, h, masks, below_key, under_fn, at=(0, 0)):
     """(pixels, top, end key) of one paint layer, from the longest kept prefix. Returned arrays are shared: copy
     before changing them."""
-    keys = _chain(paint, w, h, masks, below_key)
+    keys = _chain(paint, w, h, masks, below_key, at)
     n = len(keys) - 1
     start = next(i for i in range(n, -1, -1) if i == 0 or KEPT.get(keys[i]) is not None)
     got = KEPT.get(keys[start])
@@ -170,7 +176,7 @@ def _layer(paint, w, h, masks, below_key, under_fn):
     top = got[1].copy() if got else np.full((h, w), -1, np.int32)
     for i in range(start, n):
         s = paint["strokes"][i]
-        cov = stamp(px, s, w, h, masks, under_fn() if s.get("smudge") and s.get("pickup") else None)
+        cov = stamp(px, s, w, h, masks, under_fn() if s.get("smudge") and s.get("pickup") else None, at)
         if cov is not None:
             x0, y0, x1, y1 = cov.bbox
             top[y0:y1, x0:x1][cov.a > 1 / 255] = i
@@ -187,7 +193,7 @@ def _layers(canvas, w, h):
     for paint in canvas.get("paints", []):
         done = list(out)
         px, top, key = _layer(paint, w, h, masks, below,
-                              lambda done=done: compose.over([(p, x) for p, x, _, _ in done], w, h)[..., :3])
+                              lambda done=done: compose.over([(p, x) for p, x, _, _ in done], w, h)[..., :3], origin(canvas))
         out.append((paint, px, top, key))
         below = _h(below, key, json.dumps({k: paint[k] for k in ("mode", "opacity", "visible")}, sort_keys=True))
     return out, below
@@ -286,7 +292,7 @@ def _layer_keys(canvas: dict, w: int, h: int):
     masks = {m["id"]: m for m in canvas.get("paintmasks", [])}
     below = _h("below")
     for paint in canvas.get("paints", []):
-        key = _chain(paint, w, h, masks, below)[-1]
+        key = _chain(paint, w, h, masks, below, origin(canvas))[-1]
         below = _h(below, key, json.dumps({k: paint[k] for k in ("mode", "opacity", "visible")}, sort_keys=True))
         yield paint, key, below
 

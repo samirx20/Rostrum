@@ -77,7 +77,7 @@ Rectangle {
         clip: true
         readonly property bool drawing: backend.tool === "draw"
         CanvasView { id: view; wellW: well.width; wellH: well.height; compW: panel.info.width || 1; compH: panel.info.height || 1
-}
+                     dpr: Screen.devicePixelRatio }
 
         Item {  // world px from here: (0, 0) of the world at view.ox, oy; one world px is view.zoom screen px
             id: frame
@@ -280,6 +280,10 @@ Rectangle {
             id: marks
             x: view.ox; y: view.oy
             visible: !backend.playing           // they follow the playhead again when it stops (playback.py)
+            CoverBand {     // the edges the frame sees past over the piece (cover_band.py); not while looking through
+                box: backend.selBox; fit: view.zoom
+                visible: edges.length > 0 && box.w !== undefined && !look.on && backend.multi.count === 1 && !well.drawing
+            }
             Repeater {
                 model: backend.multi.boxes
                 delegate: Handles {
@@ -305,6 +309,7 @@ Rectangle {
             BoneOverlay { fit: view.zoom; space: marks }   // a rig in hand: its bones and joints, posing and fixing drags (rig_view.py)
             Shape {  // painting: the target's true edge, the limit its paint stays inside (backend.paintEdge, composition px)
                 visible: well.drawing && backend.paintEdge.path !== ""
+                x: backend.paintEdge.at.x * view.zoom; y: backend.paintEdge.at.y * view.zoom   // the path is sent from its corner (paint_edge.py)
                 scale: view.zoom; transformOrigin: Item.TopLeft
                 ShapePath {     // dashed: the limit, not a selection
                     strokeWidth: 1 / view.zoom; strokeColor: Theme.accent; fillColor: "transparent"

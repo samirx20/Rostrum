@@ -12,7 +12,7 @@ from rostrum_core.mcp.files import look_path
 from rostrum_core.tree import index, subtree_ids
 from rostrum_paint import canvas, see, where
 
-from rostrum2d import drawing as D, paint_fields
+from rostrum2d import drawing as D, paint_fields, paint_grow
 
 tools = Tools()
 ITEM = {"item": {"type": "string", "description": "The document's project item id. Optional when only one document is open."}}
@@ -132,8 +132,9 @@ def look_drawing_change(ctx, args):
     c = last_change_touching(doc, frame)
     if c is None:
         raise RostrumError(codes.NOT_FOUND, ctx.tool, f"change to drawing {frame['id']}", "no change in the history touched it", hint="Draw something first (stroke.add).")
-    old = index(doc.at_step(c.seq - 1), doc.kind.lists).get(frame["id"])
-    before = canvas.rgba8(old.item, w, h) if old else blank(w, h)
+    then = index(doc.at_step(c.seq - 1), doc.kind.lists)
+    old, was = then.get(frame["id"]), then.get(drawing["id"])
+    before = paint_grow.as_now(old.item, D.canvas_size(was.item), frame, w, h) if old and was else blank(w, h)   # a stroke may have grown it
     try:
         pic = see.before_after(before, canvas.rgba8(frame, w, h), args.get("zoom"), args.get("grid"), sampling=args.get("sampling", "auto"))
     except ValueError as e:

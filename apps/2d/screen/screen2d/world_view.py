@@ -11,12 +11,23 @@ A QObject part, read in QML as `backend.world`.
 """
 from __future__ import annotations
 
+import math
+
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 MOST_SCALE = 64.0          # the engine's limits
 MOST_PX = 8192
 MARGIN = 0.25              # of the visible size, each side: room to pan before a new picture is needed
 DRAG_SCALE = 0.5           # while dragging: the picture at half the size shown, so it keeps up
+
+
+def on_pixels(x: float, y: float, w: float, h: float, k: float) -> dict:
+    """The world rectangle round x, y, w, h whose edges fall on whole picture px at `k` px per world px: the engine's
+    picture (round(w · k) px wide) then lands on the screen's px with no resampling (the view's origin is on a whole
+    device px too: CanvasView.qml), so at 100 % the canvas is the export px for px."""
+    px0, py0 = math.floor(x * k), math.floor(y * k)
+    pw, ph = math.ceil((x + w) * k) - px0, math.ceil((y + h) * k) - py0
+    return {"x": px0 / k, "y": py0 / k, "w": pw / k, "h": ph / k, "scale": k}
 
 
 class WorldView(QObject):
@@ -57,8 +68,8 @@ class WorldView(QObject):
         w, h = max(x1 - x0, 1.0), max(y1 - y0, 1.0)
         mx, my = w * MARGIN, h * MARGIN
         w, h = w + 2 * mx, h + 2 * my
-        k = round(min(k, MOST_PX / w, MOST_PX / h), 4)
-        return {"x": round(x0 - mx, 2), "y": round(y0 - my, 2), "w": round(w, 2), "h": round(h, 2), "scale": k}
+        k = round(min(k, (MOST_PX - 2) / w, (MOST_PX - 2) / h), 4)     # 2 px spare: on_pixels rounds out
+        return on_pixels(x0 - mx, y0 - my, w, h, k)
 
     def asked(self, rect):
         """A frame job with this world rect (None: the export, playing) was just requested."""

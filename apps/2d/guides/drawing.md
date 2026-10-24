@@ -28,7 +28,7 @@ Paint always belongs to something. Paint on a shape, a text, a picture or a path
 5. What you paint on depends on what is picked:
    - **a shape, a text, a picture or a path**: the paint goes onto it, kept inside its outline. Strokes that go past the edge are simply not shown there. Its edge is drawn dashed so you can see what you are painting on.
    - **a drawing**: the paint goes onto the drawing.
-   - **nothing**: **your first stroke makes a new drawing** and picks it. It is one step, so **Ctrl+Z** takes back the drawing and the stroke together.
+   - **nothing**: **your first stroke makes a new drawing** right where you paint, inside or outside the frame, and picks it. It starts just big enough for the stroke. It is one step, so **Ctrl+Z** takes back the drawing and the stroke together.
 6. **Esc** steps back one level at a time: first picked strokes are let go, then you are back on Move (the brush panel closes with the Brush, however you opened it). **V** goes straight to Move.
 
 When the brush is on, the timeline shrinks to its compact height: the header row and only the drawing's own row. Click the button at the right end of the ruler to bring all the rows back; each tool remembers the height you last used with it.
@@ -72,6 +72,7 @@ Once a brush is how you like it, click **+ Save this brush**: at the right of **
    - **Shift+[** and **Shift+]**: softer and harder edge.
    - **Alt + right-drag**: left and right sizes, up and down softens.
    - **1** … **9** set the opacity to 10 … 90 %, **0** to 100 %.
+4. **A drawing grows with what you paint.** Paint past its edge, in any direction, even outside the frame, and the drawing gets bigger so the whole stroke fits. Nothing already painted moves. A drawing is at most 8192 px a side; a stroke that would make it bigger goes into a **new drawing** beside it, in the same place and depth, and the top bar says so ("'sky' is at its largest; this stroke started 'sky 2'"). **Ctrl+Z** takes back the stroke and the new drawing together. No stroke is ever lost or cut off.
 
 ### Pick a colour from the picture
 
@@ -91,7 +92,7 @@ Each of these is one change, so **Ctrl+Z** takes back a move, a paste or a delet
 2. Press **G**, or choose **Fill** in the brush panel. The panel shows **Close gaps** (Small, Medium, Large) and **Colour** (no Size, Opacity or Pressure: they don't apply); the fill uses the brush's colour.
 3. Click inside the area. The area turns the brush's colour at once; a moment later (a second or two on a big drawing) the exact fill replaces it. It fills right up to the lines and a little under them, so no thin light edge shows between line and colour.
 4. Lines that don't quite meet: pick **Medium** or **Large** under **Close gaps** and click again.
-5. A click on a line, or in an area that is open to the edge of the painting, fills nothing and says why in plain words in the top bar ("This area has a gap. Try Medium or Large under Close gaps.").
+5. A click on a line, or in an area that runs out to the drawing's edge, fills nothing and says why in plain words in the top bar ("This area isn't closed: it runs out to the drawing's edge. Close the gap, or raise Close gaps."). Fill never floods an open area. A click outside the drawing says "That click is outside the drawing."
 6. The fill finds its edges in **all** the visible paint layers of the drawing, so you can fill "Colour" up to the lines of "Ink". A locked layer refuses a fill.
 7. Press **G** again to go back to the brush.
 

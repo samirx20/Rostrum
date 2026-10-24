@@ -5,10 +5,13 @@ it with the painting kit's own brush (wet_ink.py), so no move waits for the scen
 saved stroke is then drawn by the one render path (preview ≡ export); the wet picture goes when that frame lands.
 A smudging brush smears the layer's own paint: its wet ink works on that paint (`under`, in the paint canvas's px,
 laid over the layer's box like the onion skin) and shows the region smeared. The eraser's wet ink shows, where it
-lies, the frame drawn without the layer it erases (`erase_ink`, asked of the canvas's engine at the press).
+lies, the world drawn without the layer it erases (asked of the canvas's engine at the press: the part of the world
+the canvas shows, at 1 px per world px, at most MOST_REVEAL px a side round the press: `reveal_rect`). Wet ink lies
+in world px, anywhere on the endless canvas, the frame at home or not.
 """
 from __future__ import annotations
 
+import math
 import threading
 
 import numpy as np
@@ -18,6 +21,8 @@ from PySide6.QtQuick import QQuickImageProvider
 from rostrum_paint import canvas
 
 from .wet_ink import WetInk
+
+MOST_REVEAL = 8192           # the engine's largest picture side
 
 
 class WetProvider(QQuickImageProvider):
@@ -38,7 +43,7 @@ class WetProvider(QQuickImageProvider):
 
 class WetView(QObject):
     """The screen's wet ink, read in QML as `painter.wet`: the tip's `serial` (0: none showing) and `box`, the dry
-    part's `drySerial` and `dryBox` (composition px)."""
+    part's `drySerial` and `dryBox` (world px)."""
     changed = Signal()
     _dried = Signal()            # a dry part was stamped on the worker thread: take it in (on the screen's thread)
 
@@ -49,8 +54,9 @@ class WetView(QObject):
         frame_changed.connect(self._frame)
         self._dried.connect(self.show)
 
-    def ink(self, brush: dict, sid: str, scale: float, bounds, under=None, place=(0.0, 0.0, 1.0, 1.0)) -> WetInk:
-        """A stroke's ink, telling this view when a dry part is ready (from the worker thread)."""
+    def ink(self, brush: dict, sid: str, scale: float, bounds=None, under=None, place=(0.0, 0.0, 1.0, 1.0)) -> WetInk:
+        """A stroke's ink, telling this view when a dry part is ready (from the worker thread). `bounds`: a smear's
+        canvas size (normal ink has none: it goes anywhere in the world)."""
         return WetInk(brush, sid, scale, bounds, under, place, brush.get("mode") == "erase", self._dried.emit)
 
     serial = Property(int, lambda self: self._serial, notify=changed)
@@ -69,10 +75,11 @@ class WetView(QObject):
         if self._ink is not None:
             self._ink.add(x, y, pressure)
 
-    def reveal(self, ink: WetInk, frame: np.ndarray):
-        """The frame without the erased layer came (erase_ink): the eraser's ink shows from now on."""
+    def reveal(self, ink: WetInk, frame: np.ndarray, origin: tuple[int, int]):
+        """The world without the erased layer came (its top-left at world px `origin`): the eraser's ink shows from
+        now on."""
         if ink is self._ink:
-            ink.reveal_with(frame)
+            ink.reveal_with(frame, origin)
             self.show()
 
     def show(self):
@@ -114,6 +121,18 @@ class WetView(QObject):
         if self._serial or self._dry_serial:
             self._serial, self._box, self._dry_serial, self._dry_box = 0, {}, 0, {}
             self.changed.emit()
+
+
+def reveal_rect(visible: dict | None, x: float, y: float) -> dict:
+    """The world rectangle the eraser's reveal is drawn for (scale 1, whole px): what the canvas shows (`visible`,
+    world_view.visible()), at most MOST_REVEAL px a side round the press at x, y; the press's own square without a view."""
+    half = MOST_REVEAL // 2 - 1
+    x0, y0, x1, y1 = x - half, y - half, x + half, y + half
+    if visible:
+        x0, y0 = max(x0, visible["x"]), max(y0, visible["y"])
+        x1, y1 = min(x1, visible["x"] + visible["w"]), min(y1, visible["y"] + visible["h"])
+    x0, y0 = math.floor(x0), math.floor(y0)
+    return {"x": x0, "y": y0, "w": max(1, math.ceil(x1) - x0), "h": max(1, math.ceil(y1) - y0), "scale": 1.0}
 
 
 def without_paint(scene: dict, layer_id: str) -> dict | None:

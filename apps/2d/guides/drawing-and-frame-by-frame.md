@@ -11,6 +11,14 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
 ```
 
 - A **drawing layer** has a canvas `w × h` px. Untransformed and placed at its default spot, canvas px = composition px.
+  The canvas **grows with the strokes, in any direction**: `paint.stroke` past an edge makes it bigger (in 256 px
+  steps) in the same undo step. Growing left or up moves every stroke, fill and paint mask of every drawing by the same
+  amount in canvas px and moves the anchor with them, so nothing moves on screen (re-read canvas px after a stroke that
+  grew it: `inspect_drawing_at`, `look_drawing`). Its picture holds only the painted rectangle, so empty canvas costs
+  nothing.
+- At most **8192 px a side**. A stroke that would grow a drawing past that goes into a **new drawing layer** just above
+  it (same parent, depth, pin, position, scale, turn and keys; named "<name> 2", "<name> 3" …), in the same undo step;
+  the screen says "'sky' is at its largest; this stroke started 'sky 2'". Never a lost or cropped stroke.
 - A **frame** is one drawing. It shows from frame `at` until the next drawing (it is **held**); nothing shows before the
   first. Drawings on twos = a drawing every 2 frames. `frame.hold frames=3` makes one last 3 frames and moves the later
   ones.
@@ -40,7 +48,9 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
   so fill a colour layer under a line layer; pass `edges: "layer"` to use only the paint layer's own lines. A locked
   paint layer refuses paint and fill. `gap` closes line ends that don't quite meet. The fill is a `fill` item
   (its outline, ring 0 outside, 1.. holes) in the paint layer's `strokes`: sharp, one undo step, removed with
-  `stroke.remove`. A point on a line or in an open area is refused with the reason; nothing changes.
+  `stroke.remove`. A point on a line or in an open area is refused with the reason; nothing changes. An area that
+  runs out to the drawing's edge is never filled: "This area isn't closed: it runs out to the drawing's edge. Close the
+  gap, or raise Close gaps." A point outside the canvas: "That click is outside the drawing."
 - Paint layers: `paint.add {name}` adds one on top (the screen's **Paint layers +**); on a layer that draws each frame
   it adds it to every drawing at once (empty in the others). `stroke.add`/`paint.stroke` with `layer: "new"` starts one
   with the stroke; `paint.set` (name, mode, opacity, visible, locked), `paint.move {index}` (0 = bottom),

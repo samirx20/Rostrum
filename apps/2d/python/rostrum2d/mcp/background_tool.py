@@ -39,7 +39,7 @@ def _comp_holding(doc, layer_id):
 
 
 def _frame_boxes(comp, layer):
-    """The camera's frame at the first and last frame and everything it shows over the shot, in the layer's canvas px."""
+    """The frame at the first and last frame of the piece and everything it shows over the shot, in the layer's canvas px."""
     w, h = B.comp_size(comp)
     shots = B.shots(comp)
     out = {}
@@ -114,7 +114,9 @@ def _draw_overlay(pic, w, boxes, frames):
 def inspect_background(ctx, args):
     """The composition's drawing layers by depth (far first): each one's depth, how much it moves for the frame (s =
     1 / (1 + depth)), its canvas, and whether it covers everything the frame shows of it over the whole shot, in words
-    (\"312 px short on the right\"). Fix a short one with background.fit."""
+    (\"312 px short on the right from 1.7 s\"). Fix a short one with background.fit (Cover the frame's move: it also
+    sizes a picture, shape or group to cover the frame's whole move); for a backdrop that moves with the frame, pin it
+    (layer.pin) and layer.fill_frame it instead."""
     _, comp = doc_and_comp(ctx, args)
     shots = B.shots(comp)
     rows = []

@@ -33,6 +33,7 @@ from .stroke_select import StrokeSelect
 from .stretch_select import StretchSelect
 from .time_snap import TimeSnap
 from .depth_typed import DepthTyped
+from .cover_band import CoverBand
 from .ease_play import EasePlay
 
 
@@ -46,6 +47,7 @@ class ToolSlots(SlotMixin):
         self._key_bar = KeyBar(self)                        # the settings panel's Key block (key_bar.py): backend.keyBar
         self._stagger = Stagger(self)                       # Stagger…'s popover (stagger.py): backend.stagger
         self._depth_typed = DepthTyped(self)                # Set depth ▾ › Other depth…'s popover (depth_typed.py): backend.depthTyped
+        self._cover_band = CoverBand(self)                  # the edges the frame sees past, picked (cover_band.py): backend.coverBand
         self._time_snap = TimeSnap(self)                    # the "+6 f" label of a time drag (time_snap.py): backend.timeSnap
         self._ease_play = EasePlay(self)                    # an ease picked plays once on the canvas (ease_play.py)
         self._exporter, self._importer, self._adder = Exporter(self), Importer(self), Adder(self)
@@ -115,6 +117,11 @@ class ToolSlots(SlotMixin):
     def depthTyped(self):
         """Set depth ▾ › Other depth…: a typed camera depth for the selected drawings, live, one change (depth_typed.py)."""
         return self._depth_typed
+
+    @Property(QObject, constant=True)
+    def coverBand(self):
+        """The striped band on each edge of the picked layer the frame sees past over the piece (cover_band.py)."""
+        return self._cover_band
 
     @Property(QObject, constant=True)
     def timeSnap(self):
