@@ -16,6 +16,14 @@ def offscreen_env() -> dict:
     return {"QT_QPA_PLATFORM": "offscreen", **({"QT_QPA_FONTDIR": "C:/Windows/Fonts"} if os.name == "nt" else {})}
 
 
+def background() -> bool:
+    """A real window opened by a script or an agent (ROSTRUM_BACKGROUND_WINDOWS=1, or any scripted run): it opens
+    behind the person's windows and never takes the keyboard, so a check running while someone works never jumps in
+    front of them. It still draws (only a minimised window stops drawing), so its timings are the real window's."""
+    from rostrum_core import userhome
+    return os.environ.get("ROSTRUM_BACKGROUND_WINDOWS") == "1" or userhome.scripted() is not None
+
+
 def qt_app():
     """The one Qt app. A run that takes pictures or clicks by script (--shot / --step / --check-layout) draws offscreen:
     a real window draws only while the screen is on (Windows stops drawing it on a locked or sleeping screen), and a
@@ -85,6 +93,9 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
         raise RuntimeError(f"QML failed to load: {main_qml} (errors above)")
     win = engine.rootObjects()[0]
     win.resize(*size)
+    if background():
+        from PySide6.QtCore import Qt
+        win.setFlags(win.flags() | Qt.WindowType.WindowDoesNotAcceptFocus | Qt.WindowType.WindowStaysOnBottomHint)
     from rostrum_gui.focus_areas import watch         # the area last pressed takes the keys (AppShell.pressedAt)
     watch(win)
     return app, engine, win
