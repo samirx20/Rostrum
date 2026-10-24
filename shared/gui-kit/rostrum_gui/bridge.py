@@ -26,7 +26,7 @@ import sys
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_core import RostrumError, Who, codes
 
-from . import kit_state, news, rows
+from . import kit_state, news, qt_faults, rows
 from . import touched as touch
 from .agent_watch import AgentWatch
 from .bridge_edits import EditSlots
@@ -56,6 +56,7 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
     fieldRevealed = Signal(str)             # revealField: the Inspector scrolls to the row and focuses it
     countChanged = Signal()                 # historyCount moved (sent with docChanged, only then: _history_check)
     historyChanged = Signal()               # ↶ ↷ labels or versions changed (the same)
+    faultSeen = Signal(str)                 # qt_faults heard an error in the app: its plain line, for the top bar
 
     def __init__(self, doc, who=None, parent=None):
         kit_state.check(type(self))         # an app class that redefines a kit name fails here, by name
@@ -67,6 +68,8 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         self._kit.paced = news.OnceAFrame(self._step_rows, self)   # a drag's steps: the rows once per screen refresh
         self.docChanged.connect(self._history_check)      # first: the top bar's count and ↶ ↷ read it
         self._unsubscribe = doc.subscribe(self._on_doc)
+        self.faultSeen.connect(self._fault_said)           # queued from a worker thread: shown on the screen's thread
+        qt_faults.tell(self._fault_heard)                  # an error in the app is said in the top bar, never only logged
         self.select(self._first())
 
     def __setattr__(self, name, value):
@@ -286,6 +289,13 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
     def _fail_error(self, e, fallback):
         """An operation's error (or any exception) as a refusal: the full line to the console, the person's words to the top bar."""
         self._fail(e.line() if hasattr(e, "line") else fallback, e.person() if hasattr(e, "person") else None)
+
+    def _fault_heard(self, line):           # any thread (qt_faults): the signal carries it to the screen's thread
+        self.faultSeen.emit(line)
+
+    @Slot(str)
+    def _fault_said(self, line):
+        self._set_status(line, True)
 
     def _fail(self, line, shown=None):
         """`line`: the full developer line (console, agents); `shown`: the person's sentence for the top bar

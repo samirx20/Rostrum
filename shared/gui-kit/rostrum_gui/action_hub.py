@@ -7,7 +7,8 @@ goes (`message_fn`: the status line).
 QML reads `bar` (the context bar), `panel` (the settings panel's actions at its top), calls `menu()` on right-click, `commands(query)` for Ctrl+K's "Do" group,
 `run(id)` for a click, `previewStart(id)` / `previewEnd()` for a hover preview (an app that has one), and `key(job)` from the key map's shortcuts (`keys`); a hold key's release comes as
 `keyUp(job)` (keyhold.py), and runs the release of the action its press ran: nothing if the press ran nothing. Every door re-reads the list at the
-moment it is used, so a stale bar can never run an action that is no longer valid: it says why instead.
+moment it is used, so a stale bar can never run an action that is no longer valid: it says why instead. An action
+that raises is reported by name (qt_faults: the person sees "Select inside didn't work: …", a scripted run fails).
 """
 from __future__ import annotations
 
@@ -15,6 +16,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from . import commands as command_box
 from . import action_views as views
+from . import qt_faults
 from .actions import ActionList
 from .keyhold import KeyHold
 from .match import starts
@@ -144,9 +146,12 @@ class ActionHub(QObject):
 
     def _go(self, entry):
         self._refreshed = False
-        if entry["do"]:
-            self._do(entry["do"], entry)
-        else:
-            self._apply(entry["calls"], entry["label"])
+        try:
+            if entry["do"]:
+                self._do(entry["do"], entry)
+            else:
+                self._apply(entry["calls"], entry["label"])
+        except Exception:
+            qt_faults.python_error(f'action "{entry["id"]}"', entry["label"])
         if not self._refreshed:         # the change's own listeners refreshed already (once per change is enough)
             self.refresh()

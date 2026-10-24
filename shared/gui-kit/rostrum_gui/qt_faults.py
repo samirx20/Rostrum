@@ -13,8 +13,13 @@ A Python error that escapes into Qt (a slot, a QML call into Python, an event fi
 same way: PySide would only print it and carry on, so `watch` routes it here (sys.excepthook, threading.excepthook)
 with its traceback. The app survives it; a scripted run fails on it.
 
+In a person's run a fault is also told to the person, never only to the log: every window's bridge listens (`tell`)
+and shows one plain line in red ("Select inside didn't work: …"), so a button that fails is never silent (critic r4, M2).
+
     watch()     install the handlers (idempotent)
-    python_error(where)  report the Python error being handled now (gui_filter.py's guard calls it)
+    tell(fn)    fn(line) hears each fault in plain words (kept weakly: a closed window's bridge drops out)
+    python_error(where, what="")  report the Python error being handled now (gui_filter.py's guard calls it); `what`
+                names what the person did ("Select inside") for the line they see
     found()     the faults seen so far, in order
     code(c)     the run's exit code: c, else EXIT when a scripted run saw a fault (the app's last line: sys.exit(code(c)))
 """
@@ -22,6 +27,7 @@ from __future__ import annotations
 
 import sys
 import traceback
+import weakref
 
 FAULTS = (
     "destroyed while one of its QML signal handlers is in progress",
@@ -33,6 +39,7 @@ FAULTS = (
 EXIT = 6
 _found: list[str] = []
 _installed = False
+_told: list = []            # weak references to the listeners (`tell`)
 
 
 def found() -> list[str]:
@@ -44,8 +51,26 @@ def code(c: int) -> int:
     return c or (EXIT if _found and scripted() else 0)
 
 
-def _fault(message: str, where: str = ""):
+def tell(fn):
+    """`fn(line)` hears every fault from now on, in the person's words (a bound method is kept weakly)."""
+    _told.append(weakref.WeakMethod(fn) if hasattr(fn, "__self__") else (lambda f=fn: f))
+
+
+def _say(line: str):
+    for ref in list(_told):
+        fn = ref()
+        if fn is None:
+            _told.remove(ref)
+        else:
+            try:
+                fn(line)
+            except RuntimeError:            # its window's object is already gone
+                _told.remove(ref)
+
+
+def _fault(message: str, where: str = "", said: str = ""):
     _found.append(message + where)
+    _say(said or "Something on the screen didn't work. The details are in the log.")
     from rostrum_core.userhome import scripted
     if scripted():
         print(f"FAIL: {message}{where}", file=sys.stderr, flush=True)
@@ -57,15 +82,17 @@ def _fault(message: str, where: str = ""):
         print(f"FAULT: {message}{where}", file=sys.stderr, flush=True)
 
 
-def _python(kind, value, tb, where=""):
+def _python(kind, value, tb, where="", what=""):
     text = "".join(traceback.format_exception(kind, value, tb)).rstrip()
     print(text, file=sys.stderr, flush=True)
-    _fault(f"Python error{where}: {kind.__name__}: {value}")
+    _fault(f"Python error{where}: {kind.__name__}: {value}", "",
+           f"{what or 'That'} didn't work: an error in the app ({kind.__name__}: {value}). The details are in the log.")
 
 
-def python_error(where: str):
-    """Report the exception being handled now (call inside `except`), raised in `where`."""
-    _python(*sys.exc_info(), where=f" in {where}")
+def python_error(where: str, what: str = ""):
+    """Report the exception being handled now (call inside `except`), raised in `where`; `what` is what the person
+    did, in their words."""
+    _python(*sys.exc_info(), where=f" in {where}", what=what)
 
 
 def watch():
