@@ -3,6 +3,9 @@
 //! - `{"scene": {…scene…}, "cpu"?: bool, "depth"?: 8 | 16}` → `{"ok": true, "items": n, "width", "height", "fps", "duration"}`: load or
 //!   replace the scene, checked whole (`depth` 16: frames to an encoder are RGBA64LE, else RGBA8; both straight alpha) (scene/mod.rs; every layer's stage is written once, so a frame never meets
 //!   something it can't draw). Opens a session the comp's size if none is open at that size.
+//! - `{"change": {…scene…}, "cpu"?, "depth"?}` → as `scene`, plus `"kept": n`: a scene where any child may be the id of
+//!   an item of the held scene, kept as it is (scene/change.rs); only what is given anew is checked (and staged once).
+//!   Both replies carry `timing: {parseMs, checkMs, totalMs}`.
 //! - `{"frame": {"t": 1.25, "image"? | "rgba"? | "boxes"? …}}`: the scene at `t` seconds, drawn as any frame is
 //!   (serve.rs `frame`; `index` defaults to the frame number round(t·fps), so a still equals the exported frame).
 //!   Adds `timing.evalMs` (keys, easing and the stage markup). With the comp's `shutter` > 0 the frame is motion
@@ -34,8 +37,12 @@ use std::time::Instant;
 use serde_json::{json, Value};
 
 use crate::painter::Gl;
-use crate::scene::{eval, fonts, stage, Scene};
+use crate::scene::{change::Refs, eval, fonts, stage, Scene};
 use crate::serve::{self, Session};
+
+#[cfg(test)]
+#[path = "change_tests.rs"]
+mod tests;
 
 /// The scene the engine holds, and whether the open page is its shell.
 #[derive(Default)]
@@ -43,6 +50,8 @@ pub struct Held {
     scene: Option<Scene>,
     /// The session's page is the scene shell at this size (an `open` / `page` request clears it).
     pub shell: Option<(u32, u32)>,
+    /// The font families whose faces the shell carries (the scene's texts' fonts).
+    faces: Vec<String>,
 }
 
 impl Held {
@@ -53,18 +62,18 @@ impl Held {
 
 /// Every layer's stage written once (showing or not), so what can't be drawn is refused now.
 pub(crate) fn check(scene: &Scene) -> Result<(), String> {
+    check_part(scene, None)
+}
+
+/// `check`, staging only `part` (a comp of some of the scene's layers: scene/change.rs `part`) when given.
+fn check_part(scene: &Scene, part: Option<&crate::scene::Node>) -> Result<(), String> {
     scene.comp.walk(&mut |n| match n.kind {
         "text" => fonts::pick(&scene.fonts, n.props["font"].as_str().unwrap_or(""), 400.0, n.props["italic"].as_bool() == Some(true))
             .map(|_| ()).map_err(|e| format!("{}: {e}", n.id)),
         _ => Ok(()),
     })?;
     crate::motion::check(&scene.comp)?;
-    stage::stage(&eval::whole(&scene.comp, 0.0)).map(|_| ())
-}
-
-/// The font families the scene's texts use (the load reply's `fonts`; every family there is: the `fonts` request).
-fn fonts_of(scene: &Scene) -> Vec<String> {
-    fonts::used(&scene.comp)
+    stage::stage(&eval::whole(part.unwrap_or(&scene.comp), 0.0)).map(|_| ())
 }
 
 /// The page shell of the scene: its size, and the faces of the fonts its texts use (only those are embedded).
@@ -84,27 +93,63 @@ fn count(n: &crate::scene::Node) -> usize {
     1 + n.effects.iter().chain(&n.masks).chain(&n.layers).chain(&n.rig).map(count).sum::<usize>()
 }
 
+fn ms(since: Instant) -> f64 {
+    since.elapsed().as_secs_f64() * 1000.0
+}
+
+/// `scene`, or `change` (the held scene's items kept where it names them by id): read, checked, then held; all or
+/// nothing (a refused load leaves the held scene, and the fonts the stage reads, as they were).
 pub fn load(held: &mut Held, session: &mut Option<Session>, warm: &mut Option<Result<Gl, String>>, req: &Value) -> Result<Value, String> {
-    let scene = Scene::load(&req["scene"])?;
-    check(&scene)?;
-    let (w, h) = (scene.width(), scene.height());
+    let r = load_in(held, session, warm, req);
+    if let (Err(_), Some(s)) = (&r, &held.scene) {
+        crate::scene::type_font::register(&s.fonts);
+    }
+    r
+}
+
+fn load_in(held: &mut Held, session: &mut Option<Session>, warm: &mut Option<Result<Gl, String>>, req: &Value) -> Result<Value, String> {
+    let t0 = Instant::now();
     let deep = match req["depth"].as_u64() {
         None | Some(8) => false,
         Some(16) => true,
         Some(d) => return Err(format!("depth is 8 or 16; got {d}")),
     };
+    let (scene, kept, parse_ms, check_ms) = read(held, req)?;
+    let (w, h) = (scene.width(), scene.height());
     let same = session.as_ref().is_some_and(|s| (s.width, s.height, s.deep) == (w, h, deep));
+    let faces = fonts::used(&scene.comp);
     if !same {
         let open = json!({ "width": w, "height": h, "html": shell_of(&scene, w, h)?, "cpu": req["cpu"].as_bool() == Some(true), "depth": if deep { 16 } else { 8 } });
         serve::reopen(session, &open, warm)?;
-    } else if held.shell != Some((w, h)) {
+    } else if held.shell != Some((w, h)) || held.faces != faces {
         serve::page(session.as_mut().unwrap(), &json!({ "html": shell_of(&scene, w, h)? }))?;
     }
     held.shell = Some((w, h));
-    let mut reply = json!({ "ok": true, "items": count(&scene.comp), "width": w, "height": h, "fps": scene.fps(), "duration": scene.duration(), "fonts": fonts_of(&scene) });
+    let mut reply = json!({ "ok": true, "items": count(&scene.comp), "width": w, "height": h, "fps": scene.fps(), "duration": scene.duration(), "fonts": faces });
+    if let Some(n) = kept {
+        reply["kept"] = json!(n);
+    }
     serve::with_painting(&mut reply, &session.as_ref().unwrap().painting);
+    held.faces = faces;
     held.scene = Some(scene);
+    reply["timing"] = json!({ "parseMs": parse_ms, "checkMs": check_ms, "totalMs": ms(t0) });
     Ok(reply)
+}
+
+/// The scene a `scene` or `change` request gives, checked; with a change, how many items it kept.
+fn read(held: &Held, req: &Value) -> Result<(Scene, Option<usize>, f64, f64), String> {
+    let t0 = Instant::now();
+    let (v, change) = match req.get("change") {
+        Some(v) => (v, Some(held.scene().map_err(|_| "change: no scene is held (send {\"scene\": …} first)".to_string())?)),
+        None => (&req["scene"], None),
+    };
+    let mut refs = change.map_or_else(Refs::none, Refs::of);
+    let scene = Scene::read(v, &mut refs, held.scene.as_ref())?;
+    let parse_ms = ms(t0);
+    let t1 = Instant::now();
+    let part = change.and_then(|h| crate::scene::change::part(&scene, h, &crate::scene::change::kept_top(v)));
+    check_part(&scene, part.as_ref())?;
+    Ok((scene, change.map(|_| refs.kept), parse_ms, ms(t1)))
 }
 
 /// An edit; one that changes which fonts the texts use puts the page shell up again with those fonts' faces.
@@ -112,11 +157,12 @@ pub fn edit(held: &mut Held, session: &mut Option<Session>, edits: &Value) -> Re
     let mut next = held.scene()?.clone();
     let n = next.edit(edits)?;
     check(&next)?;
-    let before = fonts::used(&held.scene()?.comp);
-    if fonts::used(&next.comp) != before {
+    let faces = fonts::used(&next.comp);
+    if faces != held.faces {
         if let (Some(s), Some((w, h))) = (session.as_mut(), held.shell) {
             serve::page(s, &json!({ "html": shell_of(&next, w, h)? }))?;
         }
+        held.faces = faces;
     }
     held.scene = Some(next);
     Ok(json!({ "ok": true, "edits": n }))

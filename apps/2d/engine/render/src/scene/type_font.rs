@@ -19,7 +19,7 @@ type R<T> = Result<T, String>;
 
 #[derive(Default)]
 struct Registry {
-    faces: Vec<Font>,
+    faces: Arc<Vec<Font>>,
     bytes: HashMap<(PathBuf, u32), Arc<Vec<u8>>>,
 }
 
@@ -28,9 +28,9 @@ fn registry() -> &'static Mutex<Registry> {
     TABLE.get_or_init(Default::default)
 }
 
-/// The scene's fonts (fonts.rs `list`).
-pub fn register(fonts: &[Font]) {
-    registry().lock().unwrap_or_else(|e| e.into_inner()).faces = fonts.to_vec();
+/// The scene's fonts (fonts.rs `list`), shared with the scene that holds them (no copy per load).
+pub fn register(fonts: &Arc<Vec<Font>>) {
+    registry().lock().unwrap_or_else(|e| e.into_inner()).faces = fonts.clone();
 }
 
 /// The file of the face a text layer is drawn in (its font, weight and slope).

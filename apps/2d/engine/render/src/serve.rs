@@ -41,7 +41,7 @@
 //! - `{"finish": {}}` — closes the encoder's input and waits for it: `{"ok": true, "code": 0}`, or an error
 //!   with what it said.
 //!
-//! - `{"scene"}`, `{"frame": {"t"}}`, `{"export"}`, `{"edit"}`, `{"bones"}`, `{"outline"}`, `{"measure"}` — the engine holds the scene description and evaluates every
+//! - `{"scene"}`, `{"change"}`, `{"frame": {"t"}}`, `{"export"}`, `{"edit"}`, `{"bones"}`, `{"outline"}`, `{"measure"}` — the engine holds the scene description and evaluates every
 //!   frame itself (ENGINE_CONTRACT.md; scene_serve.rs).
 //!
 //! Errors reply `{"error": "…"}` (an asset that failed to load names its URL); the process keeps serving.
@@ -691,7 +691,7 @@ pub fn run() {
                 continue;
             }
         };
-        if req.get("scene").is_some() {
+        if req.get("scene").is_some() || req.get("change").is_some() {
             match crate::scene_serve::load(&mut held, &mut session, &mut warm, &req) {
                 Ok(r) => reply(&mut out, &r),
                 Err(e) => reply(&mut out, &json!({ "error": e })),
@@ -786,7 +786,7 @@ pub fn run() {
         } else if req.get("close").is_some() {
             break;
         } else {
-            reply(&mut out, &json!({ "error": "unknown request (scene, frame, export, edit, open, page, warm, match, finish or close)" }));
+            reply(&mut out, &json!({ "error": "unknown request (scene, change, frame, export, edit, open, page, warm, match, finish or close)" }));
         }
         out.flush().unwrap();
     }
