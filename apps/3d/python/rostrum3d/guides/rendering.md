@@ -44,6 +44,8 @@ The small picture beside it is the test frame: what you are about to render.
 - **Another render on the graphics card** (another app, another window) makes everything slower. The row says so in
   amber when the test ran while the card was busy, and that test is not kept, so the next one measures a free card.
   The sheet never tests while one of this window's own renders is running; it waits for it.
+- **Couldn't measure: …** means the test gave no answer in time (about two minutes: a very slow frame, or the
+  engine stopped answering). The test is stopped and the row says why; change a setting or reopen the sheet to try again.
 
 ## A time budget
 
